@@ -1,0 +1,12 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/360018469779-Security-checklist
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 4
+language: en
+notes: |
+  Security best practices hub. 6 categories: Basic security (user roles, Admin Quorum),
+  Transaction security (Policies, Deposit Control and Confirmation Policy, AML Transaction
+  Screening Policy), Authentication (User login IP whitelisting [Support enable], SSO),
+  Backup and Recovery (Auto-passphrase [Support enable]), Other (cooling-off period,
+  Emergency freeze, Security audit log), API + Co-Signer best practices.
+  References FSPM (Fireblocks Security Posture Management).

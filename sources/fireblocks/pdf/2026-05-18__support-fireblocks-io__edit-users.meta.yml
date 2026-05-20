@@ -1,0 +1,11 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/9747031353244-Edit-users
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 2
+language: en
+notes: |
+  Fireblocks Help Center article "Edit users".
+  "Updated 2 days ago" as captured 2026-05-18.
+  Covers: Edit user name/email procedure, "Admin-level users" actor scope,
+  Approval groups customization, role change is a separate process
+  (delete+recreate or Fireblocks Support).

@@ -1,0 +1,10 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/12545705435164-Reset-the-Owner-s-Recovery-Passphrase
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 3
+language: en
+notes: |
+  Owner's recovery passphrase reset.
+  Same mobile app flow as Admin/Signer, plus:
+  - Destroy existing recovery packages (org-managed or third-party DRS).
+  - Request new recovery package from Fireblocks Support (offline backup or DRS path).

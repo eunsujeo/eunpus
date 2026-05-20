@@ -1,0 +1,10 @@
+url: https://developers.fireblocks.com/docs/create-api-co-signer-callback-handler
+fetched_at: 2026-05-19
+source_type: webpage
+domain: cosigner-deployment / callback-handler / setup
+tier: 1
+title: "Setup API Co-signer Callback Handler"
+crawl_status: full-body (curl saved, chunked load only — body 미 LLM context 전체 로드)
+acquisition_method: "curl -L ...md → file save → bash grep/sed section extraction (v3.2.2 Mode C)"
+related_cluster: callback-handler
+promote_status: deep-ingested (Stage 24)

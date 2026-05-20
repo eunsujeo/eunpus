@@ -1,0 +1,10 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/360019873120-Mobile-device-minimum-requirements
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 3
+language: en
+notes: |
+  Android: 64-bit, Android 8.1+, Google Play Store, biometric.
+  iOS: iOS 16.6+, App Store, non-jailbroken, biometric.
+  iOS 11.0-14.0 keeps working but cannot update.
+  Cold Wallet app has different requirements.

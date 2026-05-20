@@ -1,0 +1,11 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/360017795320-Tezos-blockchain-limitations
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 2
+language: en
+category: blockchains-chain-specific
+chain: XTZ
+notes: |
+  Tezos: one-hour signing timeout (tx must reference block hash within last 120 blocks, ~15s/block).
+  Mempool limit: one tx per account at a time.
+  Placeholder ingestion.

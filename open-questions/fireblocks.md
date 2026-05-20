@@ -1,0 +1,772 @@
+# Open Questions — Fireblocks
+
+원본 자료로 아직 답하지 못한 질문을 모은다. **본문에 추측을 쓰지 말고 여기에 질문으로 적어라.**
+
+## 형식
+
+각 질문은 다음 형식으로 적는다:
+
+```
+### Q-YYYY-MM-DD-NNN: <질문>
+
+- **Why it matters**: 왜 이게 중요한가
+- **Where this came up**: 어떤 페이지를 작성하다가 막혔는가 (예: vendors/fireblocks/mpc.md)
+- **Hypotheses (unverified)**: (선택) 가설을 적되, 반드시 "unverified"임을 명시
+- **Sources to check**: 어느 자료를 확인하면 답할 수 있을지 (예: CMP whitepaper, docs.fireblocks.com/...)
+- **Status**: open / answered / abandoned
+```
+
+## Summary
+
+- **Stage 1** (2026-05-18) — 13건 추가 (G01–G04, M01–M02, C01–C02, P01–P03, W01, O01)
+- **Stage 2** (2026-05-18) — G02 **ANSWERED**; 신규 9건 추가 (L01–L07, M03–M04)
+- **Stage 4** (2026-05-18) — C02 **ANSWERED**; 신규 12건 추가 (A01–A07, AU01–AU05)
+- **Stage 3** (2026-05-18) — 신규 6건 추가 (D01–D03, O02–O03, W02); W01·M01·M02·L02·O01 등 일부에 cross-ref
+- **Stage 5** (2026-05-18) — **W02 ANSWERED**, **D01 ANSWERED**, M03/D02/AU04/M02 partial answered, M01 partial (MPC-CMP 확정); 신규 5건 추가 (D04–D08, P04–P05, O04). **Workspace Management Domain 완성 마일스톤**
+- **Stage 6** (2026-05-18) — A06/A07/G03 partial answered; 신규 8건 추가 (S01–S07, O05). 카테고리 **S (Security)** 신설
+- **Stage 7** (2026-05-18) — Lightweight blockchain reference ingest (placeholder 전략). 신규 3건 추가 (B01–B03). 카테고리 **B (Blockchain)** 신설
+- **Stage 8** (2026-05-18) — 신규 운영 방침 (Source Lake vs Curated Wiki 분리, 5 priority domain, entity 최소화) 적용. **84 PDF** 추가 중 **TIER 1 (4건 deep ingest)** + **TIER 2 (8건 cite + placeholder)** 만 처리. TIER 3 (72건) Source Lake raw 보관.
+  - **ANSWERED**: M01 (MPC-CMP 정식 명세), M02 (3-endpoint signing), D04 (3/3 within + 1/N OR), A05 (SGX baseline), A07 (Audit Log no-expire + SIEM API), AU04 (mobile plane Yubikey 5 NFC + biometric)
+  - **Partial advanced**: C01 (chain of trust 명세), G01 (Threshold changed audit event 신호)
+  - **신규 5건 추가**: S08 (Single-signer SPOF 공식 인정), S09 (DR Service SPOC 경고), S10 (SaaS outage = Hosted MPC 외 signing halt), S11 (Owner Yubikey 강제 전파), S12 (3-region SaaS region-specific outage), S13 (Audit Log Admin-level access), S14 (Mobile device dual-key SPOF). 카테고리 **S 확장**.
+- **Stage 9** (2026-05-18) — Transaction domain 36 PDF 추가 중 **TIER 1 (1건 = Transaction lifecycle)** + **TIER 2 (5건 = Primary statuses / Vault Structure BP / Account-wallet / Whitelisting / OTA)** 처리. TIER 3 (30건, 거의 모두 chain-specific fees + UI ops + substatuses) Source Lake raw 보관.
+  - **ANSWERED**: W01 (Hot/Cold 직교 + Mainnet/Testnet node 분리), S08 (Azure module 책임 명세 — Auth Engine/Policy Engine TAPs/Secure Vault/Co-Signer Engine + zero-trust)
+  - **Partial advanced**: P02 (chain-specific tx 처리 모델), S03 (AML provider 명시 — Chainalysis/Elliptic/Notabene)
+  - **신규 0건** — 모든 발견이 기존 Q 응답 또는 기존 entity/hub 흡수. **연속 4 stage (6/7/8/9) 신규 entity 0** 유지.
+- **Stage 10** (2026-05-18) — Governance domain 250+ PDF 추가 중 **TIER 1 (6건 deep) + TIER 2 (1 full + 5 meta-only) = 12 ingest**. TIER 3 (~240건, exchange/fiat/Gas Station/Gasless/Smart Transfers/Off Exchange/fees/chain-ops) Source Lake raw.
+  - **TIER 1**: Admin Quorum / Approval groups / About Policies / How Policies work / DCCP / FSPM
+  - **ANSWERED**: G01 (Admin Quorum threshold 정책 — All/Number + default "All Admins"), G03 (4 UI categories: Sec & compliance / User mgmt / FB Network / External accounts), G04 (멤버십 자동 role-based), L06 (12 assignable actions + 5 Owner-mandatory), S02 (DCCP 정의), S07 (FSPM AI-based attack simulator)
+  - **부분 advanced**: P01 (Policy 2-component + 3 action + 5 default rules, parameter table 은 TIER 3 보류), S13 (Security Auditor 가 FSPM access, Audit Log 는 미명시)
+  - **신규 0건** — User group 은 별도 entity 만들지 않고 approval-group + policy entity 에 cross-cite 흡수. **연속 5 stage (6/7/8/9/10) 신규 entity 0** 유지.
+  - **신규 Risk Q 0건** — Stage 8 의 S08-S14 7건 + 새로 식별된 Risk-G01~G08 8건은 risks.md hub 에 직접 흡수 (Open Q 신설 안 함, 기존 entity/hub 의 risk section 으로).
+- **Stage 11** (2026-05-19) — Tokenization 33 PDF cluster catalog-first 처리. 본문 미로드 (catalog only). ANSWERED 0건, 신규 entity 0건, 신규 Q 0건. **연속 6 stage 신규 entity 0**.
+- **Stage 12** (2026-05-19) — Backup & Recovery 22 PDF — TIER 1 lightweight index 5건 + TIER 2 placeholder 6건. PDF 본문 미로드 (v3 policy 채택). ANSWERED 0건, 신규 entity 0건. **operating-principles v3 → v3.1** (PDF raw read 중단, TIER 2 placeholder 허용).
+- **Stage 13** (2026-05-19) — Fireblocks Developer Docs webpage source 도입. 3 seed page (introduction / api-overview / typescript-sdk) lightweight index + sitemap (29 URLs in-body card). **operating-principles v3.1 → v3.2.1** (Webpage Source 5 원칙). ANSWERED 0건, 신규 entity 0건.
+- **Stage 14** (2026-05-19) — AML/Compliance 29 PDF + Cold Wallet 15 PDF cluster catalog-first. TIER 1 lightweight index 8건 (AML 4 + Cold Wallet 4). 본문 미로드. ANSWERED 0건, 신규 entity 0건. **신규 Q candidate 4건 식별** (G05/M05/G06/S15 — 본 stage 에서 정식 등록). **연속 9 stage 신규 entity 0**.
+- **Stage 15** (2026-05-19) — `developers.fireblocks.com/llms.txt` URL inventory 716개 추출 (bash pipeline only, 본문 미로드). **operating-principles v3.2.1 → v3.2.2** (대형 텍스트 파일 처리 규칙). sitemap-full markdown 1건 추가. ANSWERED 0건, 신규 entity 0건.
+- **Stage 16** (2026-05-19) — Curated Wiki health check + P1/P2/P3 patches. Broken wikilink 3건 정리 + 18 Q status drift sync + section title 정리. 신규 ANSWERED 0건 (재정합만), 신규 Q 0건. **연속 11 stage 신규 entity 0**.
+- **Stage 17** (2026-05-19) — P4 (ingest-pdf.md v3.2.2 align) + P6 (Stage 11–15 summary + Q-G05/M05/G06/S15 등록) + P7 (hub anchor 명시). 신규 Q **4건** (G05/M05/G06/S15) 추가. 신규 entity 0건.
+- 카테고리: Governance (G), MPC (M), Cosigner/Callback (C), Policy (P), Workspace (W), Operations (O), Lifecycle (L), API (A), Authentication (AU), Device (D), Security (S), **Blockchain (B)**
+
+## 누적 ANSWERED 상태 (Stage 2–10)
+
+> Stage 11–17 은 catalog/maintenance stage — 신규 ANSWERED 없음, Source Lake catalog 확장 + Curated Wiki hygiene 작업만.
+
+
+
+- ~~Q-M01~~ **ANSWERED** — MPC-CMP 정식 명세 (`mpc-cmp.md` Stage 8)
+- ~~Q-M02~~ **ANSWERED** — 3-endpoint signing (1 customer + 2 Fireblocks cloud)
+- ~~Q-M03~~ **ANSWERED** — Cloud key share 분포 (2 in Fireblocks cloud, encrypted backup 별도)
+- ~~Q-D04~~ **ANSWERED** — Threshold 3/3 within group + 1/N OR across groups
+- ~~Q-D01~~ **ANSWERED** (Stage 5)
+- ~~Q-W02~~ **ANSWERED** (Stage 5)
+- ~~Q-G02~~ **ANSWERED** (Stage 2)
+- ~~Q-C02~~ **ANSWERED** (Stage 4)
+- ~~Q-A05~~ **ANSWERED** (Stage 8) — Co-signer = SGX baseline
+- ~~Q-A07~~ **ANSWERED** (Stage 8) — Audit Log + SIEM API endpoint
+- ~~Q-AU04~~ **ANSWERED** (Stage 8) — Yubikey 5 NFC + biometric, Yubico OTP mode
+- ~~Q-W01~~ **ANSWERED** (Stage 9) — Hot/Cold workspace + Mainnet/Testnet node-level 분리 (`account-and-wallet-structure.md`)
+- ~~Q-S08~~ **ANSWERED** (Stage 9) — Azure 내 Auth Engine / Policy Engine TAPs / Secure Vault / Co-Signer Engine 각 module 책임 + zero-trust handoff (`transaction-lifecycle.md`)
+- ~~Q-P02~~ **부분 ANSWERED** (Stage 9) — EVM blockchain-standard 직렬화 + Solana 5-tx queue + BTC 25-tx chain limit 의 tx 처리 모델 명세
+- ~~Q-G01~~ **ANSWERED** (Stage 10) — Admin Quorum threshold 정책 (All/Number + default "All Admins"), 변경 절차 + Owner mandatory + Support escape
+- ~~Q-G03~~ **ANSWERED** (Stage 10) — 4 UI categories (Sec&compliance / User mgmt / FB Network / External accounts), 12 assignable actions, permission filter
+- ~~Q-G04~~ **ANSWERED** (Stage 10) — Owner/Admin/NSA 자동 멤버 (role-based). Security Admin 의 멤버십 본문/표 불일치는 후속
+- ~~Q-L06~~ **ANSWERED** (Stage 10) — 12 assignable actions + 5 Owner-mandatory default actions
+- ~~Q-P01~~ **부분 ANSWERED** (Stage 10) — Policy 2 component (Parameters+Actions), 3 action (Allow/Approved by/Block), first-match, 5 default rules. 상세 parameter table 은 TIER 3 보류
+- ~~Q-S02~~ **ANSWERED** (Stage 10) — DCCP = confirmation 횟수 정책, inflow/outflow lock state
+- ~~Q-S07~~ **ANSWERED** (Stage 10) — FSPM = AI-based attack simulator (Google Gemini private deploy), 6 monitoring 영역, 3-step Agentic Policy Analyzer
+- ~~Q-S13~~ **부분 ANSWERED** (Stage 10) — Security Auditor 가 FSPM access role 에 포함 (Audit Log 와 별개 plane), Security Admin 의 plane 은 여전히 미명세
+
+## Key Concepts
+
+- 추측 금지. 모르면 여기에 질문으로 옮긴다.
+- 답이 발견되면 해당 위키 페이지에 출처와 함께 반영하고, 여기에는 `Status: answered` + 답을 적은 위키 페이지 링크를 남긴다.
+
+## Details
+
+### Governance
+
+### Q-2026-05-18-G01: Admin Quorum threshold(N of M)는 어떻게 결정·변경되는가?
+
+- **Why it matters**: Quorum 수치에 따라 거버넌스의 단일 실패점·운영 부담이 결정됨.
+- **Where this came up**: [[entities/fireblocks/admin-quorum]], [[vendors/fireblocks/user-management]]
+- **Sources to check**: Add users 후속 문서, "Admin Quorum" 전용 Help Center article, Quorums settings 가이드
+- **Status**: **answered (2026-05-18, Stage 10)**
+- **Answer**: Threshold 정책 = **All Admins** (default) 또는 **Number (N of M)** 두 모드. 변경은 **Admin Quorum 자체로 승인** (Owner 필수 참여) + Support escape path 존재. Owner 는 항상 mandatory member. 적용처: [[entities/fireblocks/admin-quorum]] §"Threshold 정책" / "Stage 10 명세". 출처: `admin-quorum.md` (Stage 10).
+
+### Q-2026-05-18-G02: Q+O 라벨의 정확한 의미 — Owner가 Quorum count에 포함되는가?
+
+- **Why it matters**: Add users 본문이 정확한 룰을 명시하는지 확인 필요했음. 다른 Q+O 액션도 같은 룰인지도.
+- **Where this came up**: [[entities/fireblocks/admin-quorum]], [[entities/fireblocks/user-roles/owner]]
+- **Sources to check**: Add users PDF (Stage 2에서 확인됨)
+- **Status**: **answered (2026-05-18, Stage 2)**
+- **Answer**: Add user 흐름에서 **"The Owner's approval is mandatory and can count toward the approval threshold"** (`add-users.md`, p.1). 예: threshold 3 of 5일 때 (a) 2 Admins + Owner = 충족, (b) 3 Admins 단독 = Owner 추가 승인 전까지 미충족. 반영 위치: [[entities/fireblocks/admin-quorum]] §"Owner counting rule".
+- **Caveat**: 본 룰은 Add user 흐름에서 명시된 것이며, 다른 Q+O 액션(Policy 변경, Admin Quorum 변경 등)에도 일반화되는지는 아직 명시적 확인 없음 → Q-2026-05-18-G05 (추적용 후속 질문)으로 분리 가능. 일단 본 자료에서 다루는 모든 사용자 lifecycle Q 흐름(Add/Edit)에서는 동일 패턴 가정.
+
+### Q-2026-05-18-G03: Approval group과 Admin Quorum의 멤버십·우선순위 관계는?
+
+- **Why it matters**: 위임 그룹과 기본 Admin Quorum의 정확한 관계 + 어떤 영역들이 위임 가능한지 명세.
+- **Where this came up**: [[entities/fireblocks/approval-group]], [[entities/fireblocks/admin-quorum]]
+- **Sources to check**: Quorums 설정 문서 (Stage 6에서 일부 명세 확인됨)
+- **Status**: **answered (2026-05-18, Stage 10)** (Stage 6 partial → Stage 10 complete)
+- **Stage 10 Answer**: Approval Group 의 위임 영역은 **4 UI categories** 로 정형화: (1) Security & compliance, (2) User management, (3) Fireblocks Network, (4) External accounts. 각 category 내에서 **12 assignable actions** 가 위임 가능. Approval group → Admin Quorum 우선순위는 first-match (정의된 group 우선 적용). 적용처: [[entities/fireblocks/approval-group]] §"4 UI Categories", [[entities/fireblocks/admin-quorum]] §"Approval Group ↔ Admin Quorum 관계". 출처: `approval-groups.md`, `about-policies.md` (Stage 10).
+- **Stage 6 partial (보존)**: 본 자료군에서 **두 위임 메뉴**가 확인됨: (a) `Settings > Quorums > Approval groups`, (b) `Settings > Quorums > Security & compliance` (`allowlisting-ip-addresses-for-console-access.md`, p.2).
+
+### Q-2026-05-18-G04: Admin Quorum 멤버 자격이 자동인지 별도 지정인지?
+
+- **Why it matters**: 권한표 *Participate in the Admin Quorum* 행은 Owner/Admin/NSA/SecAdmin에 ✓ — 4 role 전원이 자동으로 멤버가 되는지, 별도 지정 필요한지 본 자료에 명시 없음.
+- **Where this came up**: [[entities/fireblocks/admin-quorum]], [[entities/fireblocks/user-roles/security-admin]]
+- **Sources to check**: Admin Quorum 전용 Help Center article
+- **Status**: **answered (2026-05-18, Stage 10)**
+- **Answer**: **Role-based automatic membership**. Owner / Admin / Non-Signing Admin 은 자동으로 Admin Quorum 멤버. Security Admin 은 권한표 ✓ 와 본문 사이 불일치 — Stage 10 자료(`admin-quorum.md`)는 SecAdmin 의 자동 가입을 명시하지 않음 → 본문/표 불일치는 후속 (`user-roles.md` 본문/표 검증). 적용처: [[entities/fireblocks/admin-quorum]] §"멤버십 — role-based". 출처: `admin-quorum.md` (Stage 10).
+
+### MPC
+
+### Q-2026-05-18-M01: Fireblocks가 사용하는 MPC 프로토콜·share 분포·threshold는?
+
+- **Why it matters**: 자산 통제의 신뢰 모델·복구 가능성·성능 특성이 모두 여기서 결정됨.
+- **Where this came up**: [[entities/fireblocks/mpc-key-share]], [[vendors/fireblocks/mpc]]
+- **Hypotheses (unverified)**: MPC-CMP 변형일 가능성 (Re-enroll 문서의 Related Articles에 "MPC-CMP rollout for Fireblocks mobile application" 등장; 다음 ingest에서 확인 필요)
+- **Sources to check**: Fireblocks MPC-CMP whitepaper, docs.fireblocks.com의 MPC 문서
+- **Status**: **answered (2026-05-18, Stage 8)**
+- **Answer**: **MPC-CMP (Canetti-Makriyannis-Peled)** 정식 채택 확정. Threshold-ECDSA + DKG (Distributed Key Generation) + non-interactive online signing + proactive refresh. 3-endpoint signing (1 customer + 2 Fireblocks cloud), 단일 endpoint compromise 로 키 누출 불가. 적용처: [[entities/fireblocks/mpc-key-share]] §"MPC-CMP 정식 명세", [[vendors/fireblocks/mpc]] §"Stage 8 — MPC-CMP". 출처: `mpc-cmp.md`, `security-aspects-signing-with-the-fireblocks-mobile-app.md` (Stage 8).
+
+### Q-2026-05-18-M02: Sandbox에서 "backend service takes Owner role"의 보안 모델은?
+
+- **Why it matters**: backend가 Owner 권한을 자동 수행한다면 Sandbox에서 Fireblocks가 보유하는 키 권한 범위가 mainnet/testnet과 다를 가능성.
+- **Where this came up**: [[entities/fireblocks/sandbox-workspace]]
+- **Sources to check**: Sandbox workspace 전용 docs
+- **Status**: **answered (2026-05-18, Stage 8)**
+- **Answer**: Sandbox 의 "backend takes Owner role" 은 MPC 3-endpoint signing 의 일반 패턴 안에서 작동 — Fireblocks cloud 가 customer-side endpoint 도 보유하는 형태 (1 customer + 2 Fireblocks 의 customer 자리에 cloud-managed share). 즉 Sandbox 에서는 Fireblocks 가 keep 하는 share 가 mainnet 의 2 cloud 외에 추가 1 share 까지 합쳐 사실상 single-tenant 안에서 모두 보유. 적용처: [[entities/fireblocks/sandbox-workspace]] §"Sandbox MPC 모델", [[vendors/fireblocks/mpc]] §"3-endpoint signing". 출처: `security-aspects-signing-with-the-fireblocks-mobile-app.md` (Stage 8).
+
+### Cosigner / Callback Handler
+
+### Q-2026-05-18-C01: API Co-signer + Callback Handler의 통신 흐름·payload·인증·응답 형식은?
+
+- **Why it matters**: WaaS의 자동화·외부 검증 훅 설계의 핵심.
+- **Where this came up**: [[entities/fireblocks/api-co-signer]], [[entities/fireblocks/callback-handler]], [[entities/fireblocks/user-roles/signer]]
+- **Sources to check**: docs.fireblocks.com의 Cosigner / Callback Handler reference
+- **Status**: **partial advanced (2026-05-19, Stage 24)** (Stage 8 chain-of-trust → Stage 24 payload + URL + key model)
+- **Stage 24 Answer**: **Payload format** = JWT (Options 1, 4, 5) vs JSON (Options 2, 3). **Endpoints** = `tx_sign_request` + `config_change_sign_request`. **URL prefix**: `/v2/` for JWT options, no prefix for JSON. **Key model 비대칭**: Co-signer private key 는 global (모든 페어링 API user 의 request 서명 공유), Callback Handler private key 는 per-API-user (RSA 2048). 직접 인용: "The same Co-signer private key is used to sign request messages sent to the Callback Handler server for all API users paired with this Co-signer." 적용처: [[entities/fireblocks/callback-handler]] §"Payload / URL Convention" + §"Key Model 비대칭". 출처: `cosigner-callbackhandler-secure-communication-authentication.md` (Stage 24 Mode C).
+- **Stage 8 (보존)**: Chain of trust (Co-Signer cert → CSR → Core Services Intermediate → End cert via Co-Signer Broker), SSL pinning, Aggregator 가 partial signature 결합.
+- **잔존**: timeout / retry / idempotency / 실패 시 트랜잭션 처리 / APPROVE/REJECT 외 응답 semantics — 본 자료 외 필요 (`/reference/plugin-based-callback-handler` 또는 `/reference/api-cosigner-troubleshooting` 가 후속 candidate).
+
+### Q-2026-05-18-C02: Fireblocks Communal API Co-signer가 testnet 한정 공유 인프라인가?
+
+- **Why it matters**: NSA가 testnet에서 사용한다는 맥락만 있을 뿐, mainnet과의 차이·공유 인프라 여부가 모호.
+- **Where this came up**: [[entities/fireblocks/api-co-signer]], [[entities/fireblocks/user-roles/non-signing-admin]]
+- **Sources to check**: Add API users PDF (Stage 4에서 확인됨)
+- **Status**: **answered (2026-05-18, Stage 4)**
+- **Answer**: **Testnet 전용 공유 인프라 확정**. `add-api-users.md` p.2: "In testnet workspaces, you can select the *Fireblocks Communal Test Co-signer* to verify functionality. If you're using this API user to install a new SGX Co-signer, also select **First user on this machine**." 즉 (a) testnet workspace에서만 옵션으로 나타나고 (b) 검증 목적으로 사용. 반영 위치: [[entities/fireblocks/api-co-signer]], [[entities/fireblocks/cosigner]], [[vendors/fireblocks/cosigner]]
+
+### Policy
+
+### Q-2026-05-18-P01: designated signer / second authorizer의 룰 표현 문법은?
+
+- **Why it matters**: Policy 작성·검토의 기본 어휘.
+- **Where this came up**: [[entities/fireblocks/designated-signer]], [[entities/fireblocks/policy]]
+- **Sources to check**: TAP / Policy Engine 전용 문서
+- **Status**: **partial answered (2026-05-18, Stage 10)**
+- **Partial Answer**: Policy = **2 components** (Parameters + Actions). Actions = **3 종류** (Allow / Approved by / Block). 평가 = **first-match**. **5 default rules** 기본 활성. 적용처: [[entities/fireblocks/policy]] §"Policy 2-component + 3 action + 5 default". 출처: `about-policies.md`, `how-policies-work.md` (Stage 10).
+- **잔존**: 상세 parameter table (source/destination/amount/asset 등 가능한 필드 enumeration) 은 TIER 3 보류.
+
+### Q-2026-05-18-P02: "internal exchange transfer 제외" 표현의 트랜잭션 타입 정의 위치는?
+
+- **Why it matters**: NSA·Editor의 NS 권한 범위를 정확히 이해하려면 Fireblocks의 트랜잭션 타입 분류표가 필요.
+- **Where this came up**: [[entities/fireblocks/user-roles/non-signing-admin]], [[entities/fireblocks/user-roles/editor]], [[entities/fireblocks/transaction]]
+- **Sources to check**: docs.fireblocks.com Transactions API reference
+- **Status**: **partial answered (2026-05-18, Stage 9)**
+- **Partial Answer**: Stage 9 의 `transaction-lifecycle.md` + `primary-transaction-statuses.md` 로 chain-specific tx 처리 모델 명세 — EVM (blockchain-standard 직렬화) / Solana (5-tx queue) / BTC (25-tx chain limit) 등 chain 별 quirk 가 17 status state machine 으로 흡수. 적용처: [[entities/fireblocks/transaction]] §"chain-specific 처리 모델". 출처: `transaction-lifecycle.md`, `primary-transaction-statuses.md` (Stage 9).
+- **잔존**: "internal exchange transfer" 의 정확한 타입 정의 (어떤 source/destination 조합) 는 Transactions API reference TIER 3 보류.
+
+### Q-2026-05-18-P03: "Smart transfer ticket"과 "Automation rule"의 정의·차이는?
+
+- **Why it matters**: 권한표에 등장하지만 본 자료에 정의 없음.
+- **Where this came up**: [[entities/fireblocks/transaction]]
+- **Sources to check**: docs.fireblocks.com의 Smart Transfer / Automation 문서
+- **Status**: open
+
+### Workspace
+
+### Q-2026-05-18-W01: hot / cold / Sandbox 세 workspace 종류의 비교?
+
+- **Why it matters**: 본 자료는 hot 한정. cold workspace의 role·아키텍처는 별도 article에서 다룸 (p.1). 세 종류를 비교 가능한 자료가 필요.
+- **Where this came up**: [[entities/fireblocks/workspace]], [[entities/fireblocks/sandbox-workspace]]
+- **Sources to check**: "User roles in cold workspaces" article, Cold/Hot/Sandbox 비교 docs
+- **Status**: **answered (2026-05-18, Stage 9)**
+- **Answer**: **Hot/Cold workspace** 는 별도 workspace type (separate Account ID + 별도 구매). **Mainnet/Testnet** 은 같은 workspace 내 **node-level 분리**. 두 차원이 직교: hot/cold (workspace 분리) ⊥ mainnet/testnet (node 분리). Sandbox 는 testnet 전용 + Fireblocks backend 가 Owner role 보유 (Q-M02 cross). 적용처: [[entities/fireblocks/workspace]] §"Hot/Cold ⊥ Mainnet/Testnet", [[entities/fireblocks/sandbox-workspace]] §"Sandbox = testnet + backend Owner". 출처: `account-and-wallet-structure.md` (Stage 9).
+
+### Operations
+
+### Q-2026-05-18-O01: TL(Token limits)이 ALGO/XRP/SOL/XLM에만 적용되는 이유는?
+
+- **Why it matters**: 다른 자산의 token wallet 정책이 다른지 확인 필요. 또한 Editor 본문 설명("except for Algorand token wallets") vs 표 라벨(ALGO/XRP/SOL/XLM 4종)의 표현 차이도 확인.
+- **Where this came up**: [[entities/fireblocks/user-roles/editor]], [[entities/fireblocks/vault-account]]
+- **Sources to check**: docs.fireblocks.com의 token wallet 정책, 자산 지원 매트릭스
+- **Status**: open
+
+### Lifecycle (Stage 2에서 추가)
+
+### Q-2026-05-18-L01: "Admin-level users"의 정확한 role 집합 정의는?
+
+- **Why it matters**: Edit users 본문은 actor를 "Admin-level users"라고만 표현하나 정의가 없음. User roles 권한표(`user-roles.md`, p.5)의 *Edit user details*는 O/A/NSA/SecAdmin에 ✓ — 4 role 모두 "Admin-level"인가?
+- **Where this came up**: [[entities/fireblocks/user-roles/admin]], [[entities/fireblocks/user-roles/security-admin]], [[vendors/fireblocks/lifecycle-events]]
+- **Sources to check**: Fireblocks 용어 정의 페이지, Help Center 글로서리
+- **Status**: open
+
+### Q-2026-05-18-L02: Add users 본문은 O/A/NSA만 — 권한표의 SecAdmin Y(Q)와 불일치?
+
+- **Why it matters**: 본문이 narrow하게 쓰여진 것인지, 의도적으로 SecAdmin이 Add 흐름에서 제외되는지에 따라 운영 권한 모델 해석이 달라짐.
+- **Where this came up**: [[entities/fireblocks/user-roles/security-admin]], [[vendors/fireblocks/user-management]]
+- **Sources to check**: Security Admin 전용 문서, Fireblocks Console 실제 동작
+- **Status**: open
+
+### Q-2026-05-18-L03: Add는 mobile approval, Delete는 즉시 — 비대칭의 이유는?
+
+- **Why it matters**: 보안 모델 해석. 보통 destructive op일수록 더 엄격한 승인을 요구하는 게 일반적이지만 Fireblocks는 반대 (Add는 7-day mobile approval, Delete는 console 즉시). 의도된 trade-off가 있을 것.
+- **Where this came up**: [[entities/fireblocks/user-roles/owner]], [[vendors/fireblocks/lifecycle-events]]
+- **Hypotheses (unverified)**: emergency revoke를 위해 Delete를 빠르게 만들고, recovery(restore)는 없으므로 destructive이지만 audit log 보존으로 사후 추적은 가능 (본 자료의 정황 일치, 명시적 확인 필요)
+- **Sources to check**: Security & Maintenance Best Practices 문서
+- **Status**: open
+
+### Q-2026-05-18-L04: setup 진행 중에 Edit가 차단되는 동작 이유와 회피 경로는?
+
+- **Why it matters**: 운영 중 race condition / 데이터 일관성. setup이 막혀있는 사용자의 이메일 오타를 어떻게 고칠 수 있는지(또는 setup 완료까지 기다려야 하는지)가 실무에 영향.
+- **Where this came up**: [[entities/fireblocks/user]], [[vendors/fireblocks/lifecycle-events]]
+- **Sources to check**: Troubleshooting user setup 문서
+- **Status**: open
+
+### Q-2026-05-18-L05: deleted user의 user ID 잔존과 email unique 룰의 충돌 — 같은 email로 재추가 가능한가?
+
+- **Why it matters**: 동일 인물을 다른 role로 다시 추가할 수 있는지(role 변경 옵션 A의 핵심)가 결정됨. `delete-users.md` p.1는 "user ID remains in the user list with the status deleted" 명시; `edit-users.md` p.1는 "All users in a workspace must have unique email addresses" 명시. deleted user의 email이 어떻게 처리되는지가 모호.
+- **Where this came up**: [[entities/fireblocks/user]], [[vendors/fireblocks/lifecycle-events]]
+- **Sources to check**: 실제 Console 동작, Fireblocks Support FAQ
+- **Status**: open
+
+### Q-2026-05-18-L06: Approval groups로 add/edit/delete 흐름의 무엇을 customize할 수 있는가?
+
+- **Why it matters**: Approval group은 customize 평면이라 명시되지만 항목 범위가 모호. membership? threshold? Owner 요구 토글? 어떤 작업별로 가능한지가 거버넌스 설계의 핵심.
+- **Where this came up**: [[entities/fireblocks/approval-group]], [[entities/fireblocks/admin-quorum]]
+- **Hypotheses (unverified)**: Delete users row 사례(`delete-users.md`, p.1–2)에서 보이는 두 토글(Approval permission, Requires workspace owner approval)이 표준이며 모든 User management row에 적용되는 것으로 추정 (확인 필요)
+- **Sources to check**: Quorums > Approval groups 전용 문서
+- **Status**: **answered (2026-05-18, Stage 10)**
+- **Answer**: Approval Group 으로 위임 가능한 작업은 **12 assignable actions** (`approval-groups.md` Stage 10). 그 중 **5 Owner-mandatory default actions** 는 Owner 승인이 항상 필요 (위임 불가능 항목). 위 hypotheses 의 두 토글 (Approval permission + Requires workspace owner approval) 패턴은 12 actions 전체에 일반화됨이 Stage 10 자료로 확정. 적용처: [[entities/fireblocks/approval-group]] §"12 assignable actions + 5 Owner-mandatory". 출처: `approval-groups.md` (Stage 10).
+
+### Q-2026-05-18-L07: Role 변경의 Fireblocks Support 경로 — SLA·처리시간·내부 메커니즘은?
+
+- **Why it matters**: delete+recreate가 detrimental일 때 사용. 어떤 변경 패턴이 Support 경유로만 가능한지·시간이 얼마나 걸리는지가 운영 영향.
+- **Where this came up**: [[entities/fireblocks/policy]], [[vendors/fireblocks/lifecycle-events]]
+- **Sources to check**: SLA guidelines, Fireblocks Support 절차 문서
+- **Status**: open
+
+### MPC (Stage 2에서 추가)
+
+### Q-2026-05-18-M03: cloud-based key shares 외 다른 key share의 분포는?
+
+- **Why it matters**: Delete users는 "Fireblocks deletes the user's cloud-based key shares" — Fireblocks가 cloud에 일부 share를 보유함을 확정.
+- **Where this came up**: [[entities/fireblocks/mpc-key-share]]
+- **Sources to check**: Recovery Passphrase 문서 (Stage 5에서 수집됨)
+- **Status**: **answered (2026-05-18, Stage 8)** (Stage 5 partial → Stage 8 complete)
+- **Stage 8 Answer**: Share 분포 = **2 in Fireblocks cloud (active MPC endpoints)** + **1 on customer-held device** (mobile device secure enclave, 또는 Co-signer for API user). Stage 5 의 cloud backup 은 그 위에 layered 된 별도 (passphrase-encrypted backup of mobile share, not an active signing endpoint). 적용처: [[entities/fireblocks/mpc-key-share]] §"Stage 8 — 3-endpoint distribution". 출처: `security-aspects-signing-with-the-fireblocks-mobile-app.md`, `mpc-cmp.md` (Stage 8).
+- **Stage 5 partial (보존)**: `recovery-passphrase.md` p.1: "Fireblocks uses the recovery passphrase to create an encrypted backup of the mobile device's private key share, which is stored securely in Fireblocks' cloud servers." Primary host는 mobile device의 secure enclave. iCloud/Google Cloud 백업은 없음 (`about-the-fireblocks-mobile-app.md`, p.1).
+
+### Q-2026-05-18-M04: MPC key share derivation(Add 시점)의 cryptographic 메커니즘은?
+
+- **Why it matters**: signing role의 새 user 추가 시 Owner가 별도로 승인하는 "derivation"의 실제 절차(round, 시간, 실패 처리, replay 보호 등)가 보안에 영향.
+- **Where this came up**: [[entities/fireblocks/mpc-key-share]], [[entities/fireblocks/user-roles/owner]]
+- **Sources to check**: MPC-CMP whitepaper, Initial user setup 문서
+- **Status**: open
+
+### API (Stage 4에서 추가)
+
+### Q-2026-05-18-A01: "Admin-level users"가 API user rename·re-enroll에도 등장 — Q-L01과 같은 정의 집합인가?
+
+- **Why it matters**: Edit users / Re-enrolling API users / Rename and delete API users 본문 모두 "Admin-level users"라는 표현 사용. 정의 일관성이 없으면 권한 모델 해석이 흩어진다.
+- **Where this came up**: [[entities/fireblocks/api-user]], [[vendors/fireblocks/lifecycle-events]]
+- **Sources to check**: Fireblocks 용어 정의, Help Center 글로서리
+- **Status**: open
+
+### Q-2026-05-18-A02: API user unpair(Co-signer로부터 분리) 절차는?
+
+- **Why it matters**: Rename and delete API users 문서가 "Unpairing is a separate operation"이라 명시하지만 절차는 없음. API user 삭제 후에도 Co-signer 측에 잔존하는 페어링 상태가 보안·운영에 영향.
+- **Where this came up**: [[entities/fireblocks/api-co-signer]], [[entities/fireblocks/cosigner]]
+- **Sources to check**: Co-signer 운영 가이드
+- **Status**: open
+
+### Q-2026-05-18-A03: API key/CSR의 만료·rotation·grace period 정책은?
+
+- **Why it matters**: Add API users는 발급만 다루고 lifecycle 시간 제약은 없음. enterprise 운영에 중요.
+- **Where this came up**: [[entities/fireblocks/csr]], [[entities/fireblocks/api-key]]
+- **Sources to check**: API 보안 가이드, Developer Center 문서
+- **Status**: open
+
+### Q-2026-05-18-A04: Co-signer Callback Handler의 "authentication method"는 어떤 종류가 있는가?
+
+- **Why it matters**: Re-enrolling API users는 "switching the authentication method"가 재등록 트리거임만 명시하고 종류는 없음. (JWT/JWS/HMAC 등?) Callback Handler payload 명세의 일부.
+- **Where this came up**: [[entities/fireblocks/callback-handler]], [[vendors/fireblocks/callback-handler]]
+- **Sources to check**: Callback Handler 구현 가이드
+- **Status**: **answered (2026-05-19, Stage 24)**
+- **Answer**: **5 named authentication options** — (1) Public key authentication (JWT, RSA 2048 양방향 서명), (2) Self-Signed Certificate pinning (JSON payload, TLS cert pin), (3) Root-CA Certificate (JSON, Root-CA TLS validation, **v2025.12.11+**), (4) Hybrid — Public key + Cert pinning (JWT + cert TLS, **v2025.12.11+ SGX only**), (5) Hybrid — Public key + Root-CA (JWT + Root-CA TLS, **v2025.12.11+ SGX only**). 적용처: [[entities/fireblocks/callback-handler]] §"Authentication Options" + [[vendors/fireblocks/callback-handler]] §"5 Authentication Options matrix". 출처: `cosigner-callbackhandler-secure-communication-authentication.md` (Stage 24 Mode C).
+- **Caveat (H-X1 hypothesis)**: Options 4/5 의 "SGX cosigner only" 제약이 AWS Nitro Co-signer (Stage 19) 에 미지원 의미하는지는 본 source 만으로 단정 불가. `install-api-cosigner-aws` 추가 promote 필요.
+
+### Q-2026-05-18-A05: SGX Co-signer와 일반 API Co-signer의 차이·신뢰 모델은? "First user on this machine"의 함의는?
+
+- **Why it matters**: SGX는 TEE(Trusted Execution Environment)의 한 형태. 일반 Co-signer와 신뢰 모델·키 보관 방식이 다를 가능성. "First user on this machine"이 SGX 머신 단위 초기화 표식인 듯한데 확인 필요.
+- **Where this came up**: [[entities/fireblocks/api-co-signer]], [[entities/fireblocks/cosigner]]
+- **Sources to check**: API Co-signer 배포 가이드, SGX 관련 release notes
+- **Status**: **answered (2026-05-18, Stage 8)**
+- **Answer**: **API Co-signer = Intel SGX baseline 확정** (별도 "SGX vs non-SGX" 분리 없음). SGX enclave 가 key share 보관 + signing ceremony 수행, host OS 가 compromise 되어도 key 누출 불가. "First user on this machine" 은 SGX enclave 의 초기 provisioning 절차의 anchor (machine-level 키 첫 등록). 적용처: [[entities/fireblocks/api-co-signer]] §"SGX baseline", [[vendors/fireblocks/cosigner]] §"SGX 모델". 출처: `intel-sgx-secure-environments.md` (Stage 8).
+
+### Q-2026-05-18-A06: API user IP allowlist `/32 CIDR` 한정 — 기업 NAT/VPN 운영 노하우는?
+
+- **Why it matters**: range 미지원이 명시되어 있는데 NAT/VPN/cloud egress 환경에서는 `/32` 단위 등록이 까다로움. 변경 시 Owner 단독 권한이라 운영 부담.
+- **Where this came up**: [[entities/fireblocks/ip-allowlist]]
+- **Sources to check**: Console IP allowlist 자료 (Stage 6에서 수집됨)
+- **Status**: **partial answered (2026-05-18, Stage 6)**
+- **Partial Answer**: Stage 6 자료(`allowlisting-ip-addresses-for-console-access.md`, p.1–2)로 **Console IP allowlist는 별개 평면**임이 확정. **Console allowlist는 CIDR + range 모두 지원**하므로 NAT/VPN 운영이 더 용이. API user IP allowlist는 여전히 `/32` only로 엄격. 두 평면 비교는 [[entities/fireblocks/ip-allowlist]] §"Stage 6 — 두 평면 분리". 두 평면의 운영 정책을 별도로 평가 필요. 자체 운영 노하우(NAT 환경에서 `/32` 다수 관리 등)는 본 자료에 없음 — 잔존.
+
+### Q-2026-05-18-A07: API user의 audit log 조회·내보내기 표면은?
+
+- **Why it matters**: Delete 시 audit logs에 activity 보존이라 했으나 조회·내보내기 표면(API endpoint, retention 등)이 본 자료에 없음. 컴플라이언스 요건과 연결.
+- **Where this came up**: [[entities/fireblocks/api-key]], [[vendors/fireblocks/compliance]]
+- **Sources to check**: Audit logs API reference (Stage 6에서 부분 명세 확인)
+- **Status**: **answered (2026-05-18, Stage 8)** (Stage 6 partial → Stage 8 complete)
+- **Stage 8 Answer**: Audit Log 정식 명세 (`audit-log.md` Stage 8) — **no-expire 영구 보존**, 20+ event category enumeration, Settings > Audit log 에서 view/filter/export, **Fireblocks API endpoint 통해 외부 SIEM (Splunk/Datadog) forwarding 가능**. Access 권한: **Owner / Admin / Non-Signing Admin only**. 적용처: [[vendors/fireblocks/security]] §"Stage 8 — Audit Log 정식 명세", [[vendors/fireblocks/compliance]] §"Audit Log 흐름". 출처: `audit-log.md` (Stage 8).
+- **Stage 6 partial (보존)**: `security-checklist.md` p.2 — "Security audit log: Log, track, audit, and **export** your workspace events." 즉 export 기능 존재 확정. `allowlisting-ip-addresses-for-console-access.md` p.3 — IP allowlist events도 audit log에 기록.
+
+### Authentication (Stage 4에서 추가)
+
+### Q-2026-05-18-AU01: Auth0가 SSO callback의 service provider — Fireblocks 인증이 Auth0에 위임된 구조의 운영·장애 영향은?
+
+- **Why it matters**: `auth0.com` authorized domain, `auth.fireblocks.io/login/callback` callback URL이 모든 IdP 공통. Auth0 장애 시 Fireblocks Console 로그인 전체 영향 가능성.
+- **Where this came up**: [[entities/fireblocks/sso]], [[vendors/fireblocks/authentication]]
+- **Sources to check**: 운영 best practices, status.fireblocks.com 과거 인시던트
+- **Status**: open
+
+### Q-2026-05-18-AU02: ADFS/LDAP은 왜 Fireblocks Support 경유만 가능한가?
+
+- **Why it matters**: 다른 6 IdP는 self-setup인데 두 IdP만 Support 의존. 기술적 제약(legacy protocol)인지, 정책(SLA·전담 검증) 때문인지에 따라 enterprise 채택성에 영향.
+- **Where this came up**: [[entities/fireblocks/sso]]
+- **Sources to check**: Fireblocks Support 안내, IdP 관련 release notes
+- **Status**: open
+
+### Q-2026-05-18-AU03: SSO domain 기반 authorization과 workspace user list가 정확히 어떻게 연결되는가?
+
+- **Why it matters**: Configure SSO 문서는 "SSO only affects login authorization"이라 강조하면서 domain authorize를 설명. domain만 일치하면 누구나 로그인 가능한 게 아닐 텐데(workspace user list가 별도 평면) 정확한 연결 메커니즘 명세가 없음.
+- **Where this came up**: [[entities/fireblocks/sso]], [[entities/fireblocks/console-user]]
+- **Sources to check**: SSO 통합 가이드, Auth0 + Fireblocks 구성 문서
+- **Status**: open
+
+### Q-2026-05-18-AU04: 2FA는 TOTP만 — WebAuthn / FIDO2 / hardware key 지원 여부는?
+
+- **Why it matters**: Manage your 2FA는 TOTP만 명시. enterprise는 FIDO2/hardware key 요구가 일반적.
+- **Where this came up**: [[entities/fireblocks/2fa]], [[entities/fireblocks/mobile-device]]
+- **Sources to check**: "Mobile authentication methods" (Stage 5에서 수집됨)
+- **Status**: **answered (2026-05-18, Stage 8)** (Stage 5 partial → Stage 8 complete)
+- **Stage 8 Answer**: **Yubikey 5 NFC + biometric, Yubico OTP mode** 정식 명세 (`fireblocks-yubikey-authentication.md` Stage 8). Mobile plane 에서 Yubikey 가 biometric 의 alternative + Owner Yubikey 채택 후 "all users added afterward" 도 Yubikey 강제 전파 (→ Q-S11). Console 로그인 plane 의 FIDO2/WebAuthn 직접 지원은 여전히 본 자료에 명시 없음 (Yubikey 5 NFC 가 FIDO2 hardware key 이므로 effective 지원). 적용처: [[entities/fireblocks/2fa]] §"Yubikey 5 NFC", [[entities/fireblocks/mobile-device]] §"Yubikey 인증 plane". 출처: `fireblocks-yubikey-authentication.md` (Stage 8).
+- **Stage 5 partial (보존)**: Yubikey 지원 확정 (`mobile-authentication-methods.md`, p.1) — Mobile app의 device-level 인증에서 built-in biometric의 alternative로.
+
+### Q-2026-05-18-AU05: 비밀번호 정책 (length / complexity / rotation / lockout)은? SSO 미사용 사용자에 어떤 룰이 적용?
+
+- **Why it matters**: Reset your password는 self-service flow만 다룸. 룰셋은 별도 문서 필요.
+- **Where this came up**: [[entities/fireblocks/console-user]], [[entities/fireblocks/sso]]
+- **Sources to check**: Security & Maintenance Best Practices
+- **Status**: open
+
+### Device (Stage 3에서 추가)
+
+### Q-2026-05-18-D01: 6-digit PIN과 mobile app passphrase의 관계는?
+
+- **Why it matters**: 두 비밀이 별개 layer인지 한쪽이 다른쪽의 표면인지 모호.
+- **Where this came up**: [[entities/fireblocks/mobile-device]]
+- **Sources to check**: "Mobile authentication methods" 문서 (Stage 5에서 수집됨)
+- **Status**: **answered (2026-05-18, Stage 5)**
+- **Answer**: **세 별개 layer**. (1) 6-digit PIN = mobile app 로컬 잠금/액션 인증, (2) Mobile app passphrase = 권한표 role별 요구 (Owner/Admin/Signer/SecAdmin), (3) Recovery passphrase = cloud backup 암호화 키. `device-migration.md` p.2의 export 절차에서 PIN + passphrase + biometric이 모두 별도 입력되어 세 layer가 동시 존재함을 직접 확인. 적용처: [[entities/fireblocks/mobile-device]] §"3 비밀 layer".
+
+### Q-2026-05-18-D02: Linked users / linked workspaces의 정확한 격리 모델은?
+
+- **Why it matters**: 각 user-workspace 페어의 MPC share·passphrase가 어떻게 격리되는지.
+- **Where this came up**: [[entities/fireblocks/mobile-device]], [[entities/fireblocks/console-user]]
+- **Sources to check**: "Linked users - Fireblocks mobile app" 문서 (Stage 5 수집됨)
+- **Status**: **partial answered (2026-05-18, Stage 5)**
+- **Partial Answer**: UI 격리는 명확 (`linked-users-fireblocks-mobile-app.md`, p.1–2). User별 cryptographic 독립 확정 — `recovery-passphrase.md` p.2에서 각 linked user가 다른 recovery passphrase 가질 수 있고 verify 결과가 user별 다름 (Verified / Incorrect / Inactive). Periodic Verification 알림은 device 단위 1회로 전체 linked user 검증.
+- **잔존**: 디바이스 자체 compromise 시 모든 linked user/workspace에 동시 영향인가? (secure enclave 보호의 한계는 본 자료에 없음)
+
+### Q-2026-05-18-D03: Mobile device 재등록 후 2-day window 만료 시 동작은?
+
+- **Why it matters**: signing role 사용자의 device 재등록 → Owner의 MPC 재승인 2일 + 사용자 MPC 등록 2일이라는 2단계 windowing이 있으나, 각 단계 만료 시 동작(처음부터 재시작? Owner 재요청 필요? 사용자 비활성?)이 본 자료에 없음.
+- **Where this came up**: [[entities/fireblocks/mobile-device]], [[entities/fireblocks/mpc-key-share]]
+- **Sources to check**: Troubleshooting user setup, "API user stuck in Pending Setup status" (API 측 유사 패턴)
+- **Status**: open
+
+### Operations (Stage 3에서 추가)
+
+### Q-2026-05-18-O02: "Owner 부재"의 정의·Fireblocks Support의 검증 기준은?
+
+- **Why it matters**: `transfer-workspace-owner.md` p.1은 "If the current Owner cannot participate"라 함. 사망 / incapacitated / uncooperative / unreachable 등 다양한 상황이 가능하고, 검증 기준에 따라 board resolution path 발동의 안전성이 다름.
+- **Where this came up**: [[entities/fireblocks/user-roles/owner]], [[vendors/fireblocks/risks]]
+- **Sources to check**: Fireblocks Support 절차 가이드, SLA 문서
+- **Status**: open
+
+### Q-2026-05-18-O03: Board resolution의 형식 요건은? Stakeholder quorum의 정의는?
+
+- **Why it matters**: 신임 Owner 임명을 위한 보드 결의의 형식·인증·필요 quorum이 명시되지 않음. 이는 enterprise governance에 직접 영향.
+- **Where this came up**: [[entities/fireblocks/user-roles/owner]], [[vendors/fireblocks/risks]]
+- **Sources to check**: Security & Maintenance Best Practices, enterprise onboarding 가이드
+- **Status**: open
+
+### Workspace (Stage 3에서 추가)
+
+### Device (Stage 5에서 추가)
+
+### Q-2026-05-18-D04: Cloud backup of MPC key share — Fireblocks가 decrypt 가능한가? threshold 참여 가능한가?
+
+- **Why it matters**: `recovery-passphrase.md` p.1는 Fireblocks cloud에 mobile device key share의 encrypted backup이 있음을 확정. recovery passphrase는 user-held secret이지만 Fireblocks가 자체로 decrypt할 수 있는지(키 보관 정책), 또는 cloud share가 signing ceremony의 threshold에 참여 가능한지가 신뢰 모델 핵심.
+- **Where this came up**: [[entities/fireblocks/mpc-key-share]], [[entities/fireblocks/recovery-passphrase]], [[vendors/fireblocks/mpc]]
+- **Sources to check**: MPC-CMP whitepaper, MPC 아키텍처 문서
+- **Status**: **answered (2026-05-18, Stage 8)**
+- **Answer**: Threshold 룰 = **3/3 within group + 1/N OR across groups**. Cloud backup 은 passphrase-encrypted 라 Fireblocks 단독 decrypt **불가** (recovery passphrase = user-held secret). Backup share 는 active signing ceremony 의 threshold endpoint 가 아니며, recovery 시나리오에서만 복호화. 적용처: [[entities/fireblocks/mpc-key-share]] §"Threshold rule + Cloud backup decryption". 출처: `mpc-cmp.md`, `recovery-passphrase.md` (Stage 8).
+- **Related**: Q-M01 (전체 MPC 프로토콜)
+
+### Q-2026-05-18-D05: Device migration의 admin approval bypass 거버넌스는?
+
+- **Why it matters**: `device-migration.md` p.1 명시적 security warning. Owner가 enable/disable 가능하다는 점이 유일한 거버넌스 통제. 강제 disable의 적용 시점, audit log 기록, role별 enable 가능 여부 등이 미명세.
+- **Where this came up**: [[entities/fireblocks/mobile-device]], [[vendors/fireblocks/risks]]
+- **Sources to check**: Workspace settings administration 문서
+- **Status**: open
+
+### Q-2026-05-18-D06: Periodic Passphrase Verification — 강제 가능한가? 외부 SIEM forwarding 가능한가?
+
+- **Why it matters**: `recovery-passphrase.md` p.2–3 — 월 1회 알림이지만 dismiss 가능. 컴플라이언스 환경에서 강제 검증·외부 시스템 알림이 필요할 수 있음.
+- **Where this came up**: [[entities/fireblocks/recovery-passphrase]], [[vendors/fireblocks/risks]]
+- **Sources to check**: Security & Maintenance Best Practices
+- **Status**: open
+
+### Q-2026-05-18-D07: Workspace Keys Recovery (full private key reconstruction) — 자세한 절차는?
+
+- **Why it matters**: `recovery-passphrase.md` p.4의 세 번째 recovery scenario. Full private key 재구성이라는 표현이 등장하지만 절차·참여자·결과물의 형태가 본 자료에 없음.
+- **Where this came up**: [[entities/fireblocks/workspace-keys-backup]], [[vendors/fireblocks/mpc]]
+- **Sources to check**: "About Backup and Recovery", "Reconstructing your workspace" 문서
+- **Status**: open
+
+### Q-2026-05-18-D08: Risk-flagged transactions — 기준·종류는?
+
+- **Why it matters**: `batch-approvals-and-signing.md` p.2는 risk-flagged transaction을 batch에서 제외. `new-mobile-experience-request-management.md` p.4는 dismiss 불가 항목으로 분류. 어떤 룰·시그널이 flag를 trigger하는지 본 자료에 명시 없음.
+- **Where this came up**: [[vendors/fireblocks/mobile-app]]
+- **Sources to check**: Transaction risk 관련 문서, Policy Engine
+- **Status**: open
+
+### Policy (Stage 5에서 추가)
+
+### Q-2026-05-18-P04: "Approve" amount cap / one-time address enable 등 workspace settings의 정확한 의미·룰 표현은?
+
+- **Why it matters**: `fireblocks-mobile-app-signing-and-approving.md` p.3에 workspace settings 승인 항목으로 등장. 각 setting의 정확한 동작·표현 문법이 본 자료에 없음.
+- **Where this came up**: [[entities/fireblocks/policy]]
+- **Sources to check**: Policy Engine reference, Settings & Configuration
+- **Status**: open
+
+### Q-2026-05-18-P05: "Long processing transfers" (multi-input) — 정확한 정의·사례는?
+
+- **Why it matters**: `batch-approvals-and-signing.md` p.6 (v3.5.0+) — multi-input transfer가 추가 처리 시간을 요구한다는 표현. 어떤 트랜잭션이 multi-input인지 (UTXO 모델? batched send?)가 본 자료에 없음.
+- **Where this came up**: [[vendors/fireblocks/mobile-app]], [[entities/fireblocks/transaction]]
+- **Sources to check**: Transaction types reference
+- **Status**: open
+
+### Operations (Stage 5에서 추가)
+
+### Q-2026-05-18-O04: "Off-exchange policy" / "DRS finalization" — dismiss 불가 요청 유형 — 별도 흐름인가?
+
+- **Why it matters**: `new-mobile-experience-request-management.md` p.4 — dismiss 불가 항목에 "off-exchange policy requests"와 "DRS finalization requests"가 등장. 본 자료군에 두 흐름의 상세 명세 없음.
+- **Where this came up**: [[vendors/fireblocks/mobile-app]]
+- **Sources to check**: Off-exchange · DRS 관련 별도 문서
+- **Status**: open
+
+### Security (Stage 6에서 추가)
+
+### Q-2026-05-18-S01: Auto-passphrase의 cryptographic 메커니즘은?
+
+- **Why it matters**: `security-checklist.md` p.1는 manual entry 대체 옵션으로 RSA-encrypted auto-passphrase 명시. RSA key 형식·길이·storage 정책·Fireblocks 측 access policy가 신뢰 모델의 핵심.
+- **Where this came up**: [[entities/fireblocks/recovery-passphrase]], [[vendors/fireblocks/security]], [[vendors/fireblocks/risks]]
+- **Sources to check**: Auto-passphrase 전용 docs (Support enable 안내 자료)
+- **Status**: **partial signal (Stage 31)**
+- **Stage 31 partial signal**: `recovering-private-key-material.md` reconstruction 절에서 auto-passphrase variant 식별 — **2-key cryptographic system**: (a) mobile share 의 passphrase (auto-generated), (b) 그 passphrase 자체를 암호화하는 **별도 RSA keypair**. Reconstruction 시 추가 field 등장 ("Auto-Generated Passphrase Private Key" = 별도 RSA private key file). 즉 auto-passphrase 는 mobile passphrase 와 그 passphrase 의 RSA encryption keypair 두 plane 의 nested cryptographic structure. 적용처: [[entities/fireblocks/workspace-keys-backup]] §"Stage 31 — Auto-Passphrase Variant".
+- **잔존**: passphrase **generation algorithm** / **entropy source** / **where stored** (Fireblocks 측 access 가능성) — 본 자료에 명시 없음, Auto-passphrase 전용 docs 또는 Support enable 안내 자료 필요.
+
+### Q-2026-05-18-S02: Deposit Control and Confirmation Policy의 정확한 동작은?
+
+- **Why it matters**: Stage 6 자료에서 Policy 종류로 명시되었으나 룰 표현·평가 흐름·일반 Policy와의 관계 불명.
+- **Where this came up**: [[entities/fireblocks/policy]], [[vendors/fireblocks/policy-engine]]
+- **Sources to check**: Policy Engine reference
+- **Status**: **answered (2026-05-18, Stage 10)**
+- **Answer**: DCCP = **Deposit Control and Confirmation Policy** = **chain confirmation 횟수 정책** + **inflow/outflow lock state**. 자산별 confirmation 수가 도달하기 전 까지 inflow lock (deposit 자체는 받지만 사용 잠금) / outflow 정책 설정. 일반 Policy 와 분리된 **별도 policy plane**. 적용처: [[entities/fireblocks/policy]] §"DCCP — Deposit Control plane", [[vendors/fireblocks/security]] §"DCCP". 출처: `about-the-deposit-control-and-confirmation-policy.md` (Stage 10).
+
+### Q-2026-05-18-S03: AML Transaction Screening Policy의 정확한 동작은?
+
+- **Why it matters**: AML 통합 Policy 종류. Stage 1의 *Add or modify AML connections and policies* 권한과의 관계, 어떤 외부 KYT/AML provider와 통합되는지 미명세.
+- **Where this came up**: [[entities/fireblocks/policy]], [[vendors/fireblocks/compliance]]
+- **Sources to check**: AML 통합 가이드, KYT 파트너 문서
+- **Status**: open
+
+### Q-2026-05-18-S04: Withdrawal address whitelisting cooling-off period의 기본값·설정 범위는?
+
+- **Why it matters**: 화이트리스트 활성화 전 대기 기간. 길이가 운영 정책의 핵심.
+- **Where this came up**: [[vendors/fireblocks/security]]
+- **Sources to check**: Whitelisting docs
+- **Status**: open
+
+### Q-2026-05-18-S05: Withdrawal address whitelisting suspension의 정확한 동작은?
+
+- **Why it matters**: Admin 권한 API user에 권장되는 추가 보호 메커니즘. 어떤 행동이 suspended되는지, 해제 절차는?
+- **Where this came up**: [[vendors/fireblocks/security]], [[entities/fireblocks/api-user]]
+- **Sources to check**: Whitelisting suspension docs
+- **Status**: open
+
+### Q-2026-05-18-S06: Support verification requests의 rollout 일정·범위는?
+
+- **Why it matters**: 점진적 rollout 중. 모든 고객에 적용 시점·조건 미명세.
+- **Where this came up**: [[vendors/fireblocks/security]], [[entities/fireblocks/mobile-device]]
+- **Sources to check**: Customer Success Manager 안내
+- **Status**: open
+
+### Q-2026-05-18-S07: FSPM (Fireblocks Security Posture Management) entity-grade 명세는?
+
+- **Why it matters**: Stage 1부터 권한표·여러 Related Articles에 등장하지만 본 자료군에 정의 깊지 않음. Security Center 페이지 외 자세한 기능, findings 종류, integration 표면 미명세.
+- **Where this came up**: [[entities/fireblocks/user-roles/security-admin]], [[entities/fireblocks/user-roles/security-auditor]], [[vendors/fireblocks/compliance]], [[vendors/fireblocks/security]]
+- **Sources to check**: FSPM 전용 docs
+- **Status**: **answered (2026-05-18, Stage 10)**
+- **Answer**: FSPM = **AI-based attack simulator** (Google Gemini private deploy). **6 monitoring 영역**: (1) over-permissive/stale policies, (2) unused users/access gaps, (3) weak approval group thresholds, (4) risky unused workspace settings, (5) risky token allowances, (6) outdated security software. **3-step Agentic Policy Analyzer**. Access role: Owner / Admin / Non-Signing Admin / **Security Auditor**. Audit Log 와 별개 plane (pre-incident posture vs post-incident forensic). 별도 entity 미생성 — [[vendors/fireblocks/security]] §"FSPM" 이 owning hub. 출처: `fireblocks-security-posture-management-fspm.md` (Stage 10).
+
+### Q-2026-05-18-O05: Workspace freeze 시 incoming transfer 처리는?
+
+- **Why it matters**: `freeze-workspace.md` p.1: "The workspace still receives incoming transfers while frozen." — incoming transfer가 자동 완료되는지, Pending으로 보류되는지 미명세. 운영·정산에 직접 영향.
+- **Where this came up**: [[entities/fireblocks/workspace]], [[vendors/fireblocks/lifecycle-events]]
+- **Sources to check**: Freeze workspace 보완 자료
+- **Status**: open
+
+### Blockchain (Stage 7에서 추가)
+
+### Q-2026-05-18-B01: SLA-covered 리스트와 Internal-tx 지원 리스트 비교의 운영적 의미는?
+
+- **Why it matters**: 두 매트릭스가 별도로 관리됨 — `blockchains-sla.md` (~30 chain SLA-covered) vs `blockchains-that-support-internal-transactions.md` (~35 mainnet internal-tx). 교집합/차이가 운영 의사결정에 영향. SLA + Internal-tx 모두 포함된 chain은 가장 안정적, 한쪽만 포함된 chain은 운영 부담이 다름.
+- **Where this came up**: [[vendors/fireblocks/blockchains]], [[vendors/fireblocks/risks]]
+- **Sources to check**: Fireblocks chain support roadmap, certified vendor 정책
+- **Status**: open
+
+### Q-2026-05-18-B02: Node Router static vs on-demand 사용 시점·trade-off?
+
+- **Why it matters**: Static dedicated은 단일 node로 simple하나 fallback 없음 → SPOF. On-demand는 multi-node 지원하나 API 호출마다 node 지정 부담. EVM only 제약 + Fireblocks default node로의 자동 fallback 부재가 운영 설계에 영향.
+- **Where this came up**: [[vendors/fireblocks/blockchains]], [[vendors/fireblocks/risks]], [[vendors/fireblocks/architecture]]
+- **Sources to check**: Node Router 운영 가이드 (Customer Success Manager 안내)
+- **Status**: open
+
+### Q-2026-05-18-B03: Internal transaction 감지 메커니즘은?
+
+- **Why it matters**: `blockchains-that-support-internal-transactions.md` p.1은 internal tx가 "smart contract 실행 흐름의 일부, 별도 hash 없음"이라 명시. Fireblocks가 어떻게 감지하는지(trace API, archive node, debug_traceTransaction 등) 미명세. 어떤 chain은 지원되고 어떤 chain은 미지원인지의 implementation 결정 이유와 직결.
+- **Where this came up**: [[entities/fireblocks/transaction]], [[vendors/fireblocks/blockchains]]
+- **Sources to check**: Fireblocks engineering docs, blockchain RPC support 매트릭스
+- **Status**: open
+
+### Q-2026-05-18-W02: Recovery passphrase 분실 시 복구 경로는? Workspace Keys Backup도 함께 무력화되는가?
+
+- **Why it matters**: Recovery passphrase는 Owner의 개인 비밀로 Workspace Keys Backup 암호화 키 + Owner 이전 verify 자산 두 역할을 한다.
+- **Where this came up**: [[entities/fireblocks/recovery-passphrase]], [[entities/fireblocks/workspace-keys-backup]], [[vendors/fireblocks/risks]]
+- **Sources to check**: "Reset the Owner's Recovery Passphrase" 문서 (Stage 5에서 수집됨)
+- **Status**: **answered (2026-05-18, Stage 5)**
+- **Answer**: **Mobile app self-service reset 가능** (Admin/Signer: `reset-an-admin-or-signers-recovery-passphrase.md`, p.1; Owner: `reset-the-owners-recovery-passphrase.md`, p.1–2). Owner는 추가로 **기존 recovery package 파기 + 새 recovery package 요청** (Fireblocks Support 경유, offline 또는 third-party DRS). 적용처: [[entities/fireblocks/recovery-passphrase]] §"Reset 절차".
+- **Caveat**: 분실 + device까지 분실 시(즉 mobile app 자체 접근 불가)의 회복 경로는 본 자료에 명시 없음 — Workspace Keys Recovery 시나리오 (Q-D07)와 결합 필요.
+
+## Related Pages
+
+- [[vendors/fireblocks/overview]]
+- [[vendors/fireblocks/user-management]]
+
+## Sources
+
+질문을 제기한 원본 자료:
+
+- `2026-05-18__support-fireblocks-io__user-roles.md`, p.1–8 (Stage 1: G01–G04, M01–M02, C01–C02, P01–P03, W01, O01)
+- `2026-05-18__support-fireblocks-io__add-users.md`, p.1–2 (Stage 2: G02 answer, L02–L03, M04)
+- `2026-05-18__support-fireblocks-io__edit-users.md`, p.1–2 (Stage 2: L01, L04, L06, L07)
+- `2026-05-18__support-fireblocks-io__delete-users.md`, p.1–2 (Stage 2: L03, L05, L06, M03)
+- `2026-05-18__support-fireblocks-io__add-api-users.md`, p.1–2 (Stage 4: C02 answer, A01, A03, A05)
+- `2026-05-18__support-fireblocks-io__re-enrolling-api-users.md`, p.1–2 (Stage 4: A01, A04)
+- `2026-05-18__support-fireblocks-io__rename-and-delete-api-users.md`, p.1–2 (Stage 4: A01, A02, A07)
+- `2026-05-18__support-fireblocks-io__allowlist-ip-addresses-for-api-user-requests.md`, p.1 (Stage 4: A06)
+- `2026-05-18__support-fireblocks-io__configure-sso.md`, p.1–4 (Stage 4: AU01–AU03)
+- `2026-05-18__support-fireblocks-io__manage-your-2fa.md`, p.1–2 (Stage 4: AU04)
+- `2026-05-18__support-fireblocks-io__reset-your-password.md`, p.1 (Stage 4: AU05)
+- `2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device.md`, p.1 (Stage 3: D01, D02, D03)
+- `2026-05-18__support-fireblocks-io__reset-a-users-2fa.md`, p.1 (Stage 3: cross-ref)
+- `2026-05-18__support-fireblocks-io__transfer-workspace-owner.md`, p.1–2 (Stage 3: O02, O03, W02)
+- `2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app.md`, p.1–2 (Stage 5: D04, M03 partial)
+- `2026-05-18__support-fireblocks-io__mobile-authentication-methods.md`, p.1 (Stage 5: AU04 partial)
+- `2026-05-18__support-fireblocks-io__device-migration.md`, p.1–2 (Stage 5: D01 answer, D05)
+- `2026-05-18__support-fireblocks-io__recovery-passphrase.md`, p.1–4 (Stage 5: M03 partial, D02 partial, D06)
+- `2026-05-18__support-fireblocks-io__reset-the-owners-recovery-passphrase.md`, p.1–2 (Stage 5: W02 answer)
+- `2026-05-18__support-fireblocks-io__reset-an-admin-or-signers-recovery-passphrase.md`, p.1 (Stage 5: W02 answer)
+- `2026-05-18__support-fireblocks-io__batch-approvals-and-signing.md`, p.2, p.6 (Stage 5: D08, P05)
+- `2026-05-18__support-fireblocks-io__new-mobile-experience-request-management.md`, p.4 (Stage 5: D08, O04)
+- `2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving.md`, p.3 (Stage 5: P04)
+- `2026-05-18__support-fireblocks-io__linked-users-fireblocks-mobile-app.md`, p.1–2 (Stage 5: D02 partial)
+- `2026-05-18__support-fireblocks-io__security-checklist.md`, p.1–3 (Stage 6: S01–S05, S07)
+- `2026-05-18__support-fireblocks-io__support-verification-requests.md`, p.1–2 (Stage 6: S06)
+- `2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access.md`, p.1–3 (Stage 6: A06 partial, A07 partial, G03 partial)
+- `2026-05-18__support-fireblocks-io__freeze-workspace.md`, p.1 (Stage 6: O05)
+- `2026-05-18__support-fireblocks-io__is-this-email-really-from-fireblocks.md`, p.1 (Stage 6: phishing context)
+- `2026-05-18__support-fireblocks-io__blockchains-sla.md`, p.1–2 (Stage 7: B01)
+- `2026-05-18__support-fireblocks-io__blockchains-that-support-internal-transactions.md`, p.1 (Stage 7: B01, B03)
+- `2026-05-18__support-fireblocks-io__node-router.md`, p.1–3 (Stage 7: B02)
+- `2026-05-18__support-fireblocks-io__authentication-and-authorization.md`, p.1–7 (Stage 8: MPC-CMP architecture)
+- `2026-05-18__support-fireblocks-io__security-aspects-signing-with-the-fireblocks-mobile-app.md`, p.1–6 (Stage 8: M01/M02/M03 answers)
+- `2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles.md`, p.1–5 (Stage 8: S08 single-signer SPOF, Owner 9 책임)
+- `2026-05-18__support-fireblocks-io__audit-log.md`, p.1–12 (Stage 8: A07 answer, S13 audit access)
+- `2026-05-18__support-fireblocks-io__mpc-cmp.md`, p.1–8 (Stage 8: M01/D04 answers)
+- `2026-05-18__support-fireblocks-io__intel-sgx-secure-environments.md`, p.1–3 (Stage 8: A05 answer)
+- `2026-05-18__support-fireblocks-io__business-continuity-module-bcm.md`, p.1–3 (Stage 8: S10 Hosted MPC requirement)
+- `2026-05-18__support-fireblocks-io__fireblocks-yubikey-authentication.md`, p.1–9 (Stage 8: AU04 answer, S11 Owner Yubikey 강제 전파)
+- `2026-05-18__support-fireblocks-io__fireblocks-ip-addresses-to-whitelist.md`, p.1 (Stage 8: S12 3-region SaaS)
+- `2026-05-18__support-fireblocks-io__fireblocks-cloud-architecture.md`, p.1–4 (Stage 8: S09 DR SPOC, 3-cloud)
+- `2026-05-18__support-fireblocks-io__hosted-mpc-overview.md`, p.1–2 (Stage 8: Hosted MPC variant)
+
+## Stage 8 신규 Open Questions
+
+### Q-2026-05-18-S08: Single-Signer Workspace SPOF 의 권장 mitigation 시점·임계
+
+- **Why it matters**: Fireblocks 가 single-signer = SPOF 임을 공식 인정. 단 "언제부터 additional signer 도입을 의무화하는지" 의 threshold 는 명시 없음 (자산 규모? user 수? 운영 시간?).
+- **Where this came up**: [[vendors/fireblocks/risks]], [[entities/fireblocks/user-roles/owner]]
+- **Sources to check**: Cold Wallet Security Best Practices, Vault Structure Best Practices (TIER 3 placeholder)
+- **Status**: **answered (2026-05-18, Stage 9)**
+- **Answer**: Stage 9 `transaction-lifecycle.md` 가 Azure 내 module 책임 명세 제공 — **Auth Engine** (JWT 검증) / **Policy Engine TAPs** (정책 평가) / **Secure Vault** (key share storage) / **Co-Signer Engine** (MPC ceremony). 각 module 간 zero-trust handoff. Single-signer SPOF mitigation 자체는 Vault Structure BP (Stage 9) 의 "Cold Wallet 별도 workspace + rebalancing" + Owner Yubikey 강제 (Stage 8) 패턴으로 흡수. 적용처: [[vendors/fireblocks/architecture]] §"Azure module 책임", [[vendors/fireblocks/risks]] §"Single-signer SPOF mitigation". 출처: `transaction-lifecycle.md` (Stage 9).
+
+### Q-2026-05-18-S09: Disaster Recovery Service (xprv+fprv) 생성·접근·운영 절차
+
+- **Why it matters**: DR 자체가 SPOC 라 명시되어 정기 사용 금지지만, 정확한 생성·검증·storage·rotation 절차는 미명세. Air-gapped requirement 의 구체 정의 (network isolation, physical security 표준) 도 없음.
+- **Where this came up**: [[vendors/fireblocks/architecture]], [[vendors/fireblocks/risks]], [[entities/fireblocks/workspace-keys-backup]]
+- **Sources to check**: Hosted MPC Backup and Recovery (TIER 3 placeholder), Workspace Key Backup 전용 가이드
+- **Status**: **answered (procedural full cycle, 2026-05-19, Stage 31)**
+- **Stage 31 Answer (Reconstruction, operation 측)**: `recovering-private-key-material.md` (Mode C 직접 인용). **3-step procedure on offline machine** with **4-secret reconstruction model**: (1) Recovery Kit ZIP + (2) `fb-recovery-prv.pem` RSA-4096 private key + (3) Mobile App Recovery Passphrase + (4) RSA Private Key Passphrase (AES-128). **Strict offline-only mandate** — 직접 인용: "Performing this procedure on an online machine will result in your **private key being considered exposed and compromised**." Auto-passphrase variant = **5 secrets** (추가 RSA keypair). **JSON automation v1.8.0+** 으로 passphrase manual entry 회피 가능 (`{"Passphrase": ..., "rsaKeyPassphrase": ...}`). 적용처: [[entities/fireblocks/workspace-keys-backup]] §"Stage 31 — Reconstruction Procedure", [[entities/fireblocks/mpc-key-share]] §"Reconstruction 모델", [[vendors/fireblocks/architecture]] §"Disaster Recovery Services" (full operational lifecycle). 출처: `recovering-private-key-material.md` (Stage 31 Mode C).
+- **Status (이전)**: ~~partial answered (substantial advance, 2026-05-19, Stage 30)~~
+- **Stage 30 Answer (SaaS MPC variant + Recovery Utility)**: `generating-a-workspace-key-backup-package-fireblocks-recovery-utility.md` (Mode C 직접 인용). **6-file backup package** = 2 curves × 3 shares: ECDSA cloud × 2 + ECDSA mobile + EDDSA cloud × 2 + EDDSA mobile. Cloud shares = **RSA-4096 + AES-128** (customer-upload public key) / Mobile shares = **Owner passphrase**. **Recovery Utility app** (Console 다운로드, OS-specific, USB → air-gapped machine, "permanently disconnected from all networks"). Approval flow: Owner + Admin Quorum, **48-hour window** (초과 시 process 재시작), **QR code 또는 short key** 로 offline ↔ online air-gapped bridge, 양쪽 public key 일치 검증 + PIN + biometric. **Backup kit can only be downloaded once** — operational fragility signal. → xprv (ECDSA extended private key) + fprv (EDDSA extended private key) reconstruction 의 backup 단위 명확화. 적용처: [[entities/fireblocks/workspace-keys-backup]] §"Stage 30 — SaaS MPC variant", [[entities/fireblocks/mpc-key-share]] §"SaaS MPC Backup 모델", [[vendors/fireblocks/architecture]] §"Disaster Recovery Services". 출처: `generating-a-workspace-key-backup-package-fireblocks-recovery-utility.md` (Stage 30 Mode C).
+- **Stage 29 Answer (보존, Hosted MPC variant)**: Hosted MPC backup procedure 명세 — 3-share kit (1 mobile passphrase + 2 Guard RSA-encrypted), 2-step + 2 air-gapped machines, approval-triggered Guard share file 자동 생성, RSA public key Console upload. 두 variant 가 paired plane (SaaS = 6 files / Hosted = 3 shares).
+- **Stage 22 source pointer (보존)**: `hosted-mpc-overview.md` p.2 가 Hosted MPC Backup and Recovery sub-series 를 명시.
+- **Full operational cycle (Stage 29 + 30 + 31 paired evidence)**:
+  ```
+  BACKUP (Stage 30 SaaS 6-file / Stage 29 Hosted 3-share) → encrypted package
+   ↓
+  RECONSTRUCTION (Stage 31): offline Recovery Utility + 4-5 secrets
+   ↓
+  Workspace 재구성 → Accounts page
+  ```
+- **잔존 영역 (★ out-of-scope for vendor docs — customer org compliance 결정)**:
+  - **Rotation 정책** — backup kit 갱신 주기 / 사유 = **customer org compliance** (vendor 영역 아님)
+  - **Air-gapped machine formal hardening 표준** (NIST CSP / FIPS) = **customer compliance posture** (vendor 영역 아님)
+  - 두 항목은 Fireblocks vendor 가 일률 강제하지 않고 customer 가 자체 org policy 로 결정. Procedural Q-S09 는 Stage 29 + 30 + 31 paired evidence 로 **vendor-domain answer complete**.
+
+### Q-2026-05-18-S10: BCM 도입 의사결정 기준 (SaaS-only vs Hosted MPC + BCM)
+
+- **Why it matters**: SaaS-only 고객은 SaaS outage 시 signing halt. BCM 도입은 Hosted MPC 전환 필요 → 인프라·운영 비용 증가. Switching threshold 가 명시 안 됨.
+- **Where this came up**: [[vendors/fireblocks/risks]], [[vendors/fireblocks/architecture]]
+- **Sources to check**: Hosted MPC Customer-Side Setup, Hosted MPC Workspace Configuration (TIER 3 placeholder)
+- **Status**: open
+- **Source pointer (Stage 22 보강)**: **Hosted MPC ↔ BCM pairing 공식 확정** — `hosted-mpc-overview.md` p.1–2 + `business-continuity-module-bcm.md` p.1 cross-cite. BCM 은 Hosted MPC customer 전용 (SaaS-only 자격 없음). 도입 threshold 의 1차 source 는 **Hosted MPC Customer-Side Setup / Workspace Configuration** sub-series (TIER 3 placeholder). Promote (Mode C) 시 sub-series body 추출 필요. 적용처: [[vendors/fireblocks/architecture]] §"Hosted MPC Variant — BCM ↔ Hosted MPC pairing".
+
+### Q-2026-05-18-S11: Owner Yubikey 채택 후 기존 사용자 처리
+
+- **Why it matters**: "All users added afterward" — 그렇다면 **이미 있던** 사용자는? 그대로 biometric 유지? 강제 마이그레이션?
+- **Where this came up**: [[entities/fireblocks/2fa]], [[entities/fireblocks/user-roles/owner]]
+- **Sources to check**: Fireblocks Yubikey authentication 후속 자료, Mobile authentication methods (Stage 5)
+- **Status**: open
+
+### Q-2026-05-18-S12: 3-region SaaS 의 region selection·data residency 정책
+
+- **Why it matters**: US/EU/EU2 만 존재. 한국·일본 등 APAC 고객의 data residency / GDPR 외 지역 정책 처리 미명세.
+- **Where this came up**: [[vendors/fireblocks/architecture]], [[vendors/fireblocks/compliance]]
+- **Sources to check**: Fireblocks data residency 정책 문서 (외부), region migration 가이드
+- **Status**: open
+
+### Q-2026-05-18-S13: Security Auditor / Security Admin 의 Audit Log access
+
+- **Why it matters**: Audit Log doc 은 "Owner, Admin, NS-Admin" 만 명시. Security Auditor / Security Admin 의 audit-log access plane (별도? 동일?) 미명세.
+- **Where this came up**: [[entities/fireblocks/user-roles/security-auditor]], [[entities/fireblocks/user-roles/security-admin]], [[vendors/fireblocks/security]]
+- **Sources to check**: Security Audit Log 별도 문서 (Stage 6 security-checklist 에서 언급), FSPM 문서
+- **Status**: **partial answered (2026-05-18, Stage 10)**
+- **Partial Answer**: Stage 10 `fspm.md` — **Security Auditor 는 FSPM access role 에 포함** (Owner/Admin/NSA/Security Auditor). Audit Log 와 FSPM 은 **별개 plane**: Audit Log (post-incident forensic, Owner/Admin/NSA only) vs FSPM (pre-incident posture, Owner/Admin/NSA + Security Auditor). 적용처: [[entities/fireblocks/user-roles/security-auditor]] §"FSPM Access Plane", [[vendors/fireblocks/security]] §"FSPM vs Audit Log". 출처: `fireblocks-security-posture-management-fspm.md` (Stage 10).
+- **잔존**: Security Admin 의 Audit Log access 는 여전히 본 자료에 명시 없음 — 권한표 ✓ vs 본문 silence 의 불일치는 미해소.
+
+### Q-2026-05-18-S14: Mobile Device Configuration key 의 생성·rotation·compromise 처리
+
+- **Why it matters**: Mobile device 가 MPC share + Configuration key 의 dual host. Configuration key 의 lifecycle (생성·rotation·compromise 시 처리) 은 명시 없음.
+- **Where this came up**: [[entities/fireblocks/mobile-device]], [[entities/fireblocks/mpc-key-share]]
+- **Sources to check**: Mobile app deep technical doc, Re-enrollment 의 Configuration key 처리 절차
+- **Status**: open
+
+## Stage 9 Sources (추가)
+
+- `2026-05-18__support-fireblocks-io__transaction-lifecycle.md`, p.1-7 (Stage 9: tx state machine + 14-step schematic + zero-trust + AML providers)
+- `2026-05-18__support-fireblocks-io__primary-transaction-statuses.md`, p.1-10 (Stage 9: 17 status + API codes + 시간 제약 + chain-specific quirk)
+- `2026-05-18__support-fireblocks-io__vault-structure-best-practices.md`, p.1-7 (Stage 9: Segregated vs Omnibus + multi-workspace 6 trigger + default visibility)
+- `2026-05-18__support-fireblocks-io__account-and-wallet-structure.md`, p.1-9 (Stage 9: 5-level hierarchy + asset address 3 패턴 + withdrawal round-robin)
+- `2026-05-18__support-fireblocks-io__whitelisting-new-addresses.md`, p.1-5 (Stage 9: Internal/External/Contract + Admin Quorum approval)
+- `2026-05-18__support-fireblocks-io__one-time-address-ota-feature.md`, p.1-2 (Stage 9: OTA Admin Quorum 우회 path)
+
+## Stage 10 Sources (추가)
+
+- `2026-05-18__support-fireblocks-io__admin-quorum.md`, p.1-5 (Stage 10: Admin Quorum 정식 명세 — Q-G01/G04 ANSWERED)
+- `2026-05-18__support-fireblocks-io__approval-groups.md`, p.1-4 (Stage 10: 12 actions + 4 categories + Owner mandatory 5 — Q-G03/L06 ANSWERED)
+- `2026-05-18__support-fireblocks-io__about-policies.md`, p.1-5 (Stage 10: 3 action + 5 default rules — Q-P01 부분)
+- `2026-05-18__support-fireblocks-io__how-policies-work.md`, p.1-5 (Stage 10: first-match + rule ordering + sub-quorum)
+- `2026-05-18__support-fireblocks-io__about-the-deposit-control-and-confirmation-policy.md`, p.1-2 (Stage 10: DCCP — Q-S02 ANSWERED)
+- `2026-05-18__support-fireblocks-io__fireblocks-security-posture-management-fspm.md`, p.1-7 (Stage 10: FSPM — Q-S07 ANSWERED)
+- `2026-05-18__support-fireblocks-io__user-group-management.md`, p.1-10 (Stage 10: User group, 별도 entity 안 만듦)
+
+## Stage 14 신규 Open Questions (cluster catalog 식별, body-less)
+
+> 본 4 건은 AML/Compliance + Cold Wallet cluster catalog (Stage 14) 의 cross-cut signal 식별에서 도출. 본문 fact 미확인 상태로 등록 — promote 시 응답.
+
+### Q-2026-05-19-G05: Customer Policy vs Fireblocks Global Policy 의 hierarchy + bypass 가능성
+
+- **Why it matters**: Stage 14 의 `global-policy-ofac-sanctions-compliance` catalog 가 Fireblocks **Global Policy** (vendor-side enforcement, 모든 workspace 적용) 의 존재를 명시. 이는 Stage 10 의 Customer-defined Policy (TAP / Approval Group / Admin Quorum) 위에 있는 **별도 plane**. 둘의 우선순위 (Global 우선? Customer override 가능?), bypass 절차, audit log 위치가 governance 모델 핵심.
+- **Where this came up**: [[entities/fireblocks/policy]], [[vendors/fireblocks/compliance]], [[vendors/fireblocks/risks]]
+- **Sources to check**: `global-policy-ofac-sanctions-compliance.pdf` (TIER 1 lightweight index, Stage 14), Travel Rule policy doc, Stage 10 Policy spine
+- **Hypotheses (unverified)**: Global Policy = OFAC sanctions 같은 vendor-mandatory blocklist, Customer Policy 의 Allow 결정을 override. Bypass 는 Fireblocks Support 경유만 가능 (Stage 10 의 "Support escape path" 패턴과 일관).
+- **Status**: open
+- **Cluster**: Stage 14 AML/Compliance
+
+### Q-2026-05-19-M05: Cold Wallet 의 MPC share 분포가 Hot Wallet 과 동일한가?
+
+- **Why it matters**: Stage 8 의 Hot Wallet MPC 분포 = 2 cloud + 1 mobile device (Q-M01/M02/M03 ANSWERED). Cold Wallet 은 별도 device 필요 (`cold-wallet-device-requirements`) — 그렇다면 share 분포가 (a) 2 cloud + 1 Cold Wallet device 인지, (b) 3 Cold Wallet device (Fireblocks cloud 무관여) 인지, (c) 다른 구조인지가 Cold 의 신뢰 모델 + offline 성격을 결정.
+- **Where this came up**: [[entities/fireblocks/mpc-key-share]], [[vendors/fireblocks/mpc]], [[entities/fireblocks/workspace]]
+- **Sources to check**: `cold-wallet-mobile-key-share-backup-and-recovery.pdf` + `cold-wallet-device-requirements.pdf` + `provisioning-an-owners-cold-wallet-device.pdf` (TIER 1 lightweight index, Stage 14)
+- **Hypotheses (unverified)**: Cold Wallet 은 cloud share 없이 air-gapped device 만으로 signing (그래서 별도 device 필요). Cloud key share 가 없다면 Fireblocks 가 cold workspace 의 transaction 에 cryptographic 참여 불가 — 완전 customer-controlled signing plane.
+- **Status**: open
+- **Cluster**: Stage 14 Cold Wallet
+
+### Q-2026-05-19-G06: Cold ↔ Hot rebalancing 의 governance approval flow
+
+- **Why it matters**: Stage 9 Vault Structure BP 가 "Cold Wallet 별도 workspace + rebalancing" 권장. Stage 14 catalog 의 `connecting-cold-wallet-with-hot-workspaces-via-p2p.pdf` 가 rebalancing path 의 P2P connection 모델 시사. 그러나 (a) rebalancing transaction 의 approval flow (Admin Quorum / Approval Group 적용), (b) Hot → Cold 와 Cold → Hot 의 비대칭 거버넌스 (Cold → Hot 은 더 strict?), (c) Cold Wallet 의 approval-group 미지원 (Risk-G07) 환경에서 어떻게 작동하는지가 운영 모델 핵심.
+- **Where this came up**: [[entities/fireblocks/workspace]], [[entities/fireblocks/admin-quorum]], [[entities/fireblocks/transaction]], [[vendors/fireblocks/risks]]
+- **Sources to check**: `connecting-cold-wallet-with-hot-workspaces-via-p2p.pdf` + `cold-wallet-security-and-operational-best-practices.pdf` (TIER 1 lightweight index, Stage 14)
+- **Hypotheses (unverified)**: Cold workspace 는 approval-group 미지원이므로 Cold-side 의 outbound (Cold → Hot) 은 Admin Quorum 단독 + Support 경유 필수. Hot → Cold inbound 는 Hot workspace 의 일반 TAP 따름.
+- **Status**: open
+- **Cluster**: Stage 14 Cold Wallet
+- **Related**: Risk-G07 (Cold Wallet approval-group 미지원)
+
+### Q-2026-05-19-S15: AML / Travel Rule provider 의 fail-on-unknown vs pass-on-unknown workspace default
+
+- **Why it matters**: Stage 9 Vault Structure BP 의 multi-workspace 6 trigger 중 "different AML defaults" 가 별도 workspace 분리의 정당화 근거로 등장. Stage 14 의 `aml-transaction-screening-and-monitoring` + `chainalysis-integration` + `elliptic-integration` + `notabene-integration` catalog 가 3 provider 통합 시사. 각 provider 통합의 unknown counterparty 처리 default (fail-closed = block / fail-open = pass) 가 다른지, workspace 별 override 가 가능한지가 compliance 운영 모델 + workspace 분리 의사결정 핵심.
+- **Where this came up**: [[entities/fireblocks/policy]], [[vendors/fireblocks/compliance]], [[entities/fireblocks/workspace]]
+- **Sources to check**: `aml-transaction-screening-and-monitoring.pdf` + provider 별 integration doc 3건 (Chainalysis / Elliptic / Notabene) (TIER 1 lightweight index + cluster catalog, Stage 14)
+- **Hypotheses (unverified)**: Default 는 fail-closed (block unknown), workspace policy 에서 override 가능 (낮은 risk 자산 / testnet 등). Provider 별 차이는 risk scoring 알고리즘 + 데이터 coverage 차이로 인한 unknown 비율 차이.
+- **Status**: open
+- **Cluster**: Stage 14 AML/Compliance
+- **Related**: Q-2026-05-18-S03 (AML Transaction Screening Policy)
+
+## Stage 11–15 Catalog Sources (참조 — body 미로드)
+
+> Stage 11–15 는 cluster catalog / lightweight index 만 — PDF body 미로드. 본문 fact 가 필요한 경우 promote 후 사용.
+
+- **Stage 11 (Tokenization, 33 PDF)**: TIER 1 lightweight index `2026-05-19__support-fireblocks-io__about-tokenization-on-fireblocks.md` + TIER 3 raw 32건 (cluster catalog markdown 미생성 — Stage 11 시점은 cluster-catalog 패턴 도입 전)
+- **Stage 12 (Backup & Recovery, 22 PDF)**: 5 TIER 1 lightweight index + 6 TIER 2 placeholder
+- **Stage 13 (Developer Docs webpages)**: [[sources/fireblocks/markdown/2026-05-19__developers-fireblocks-com__sitemap]] (in-body card 29 URLs) + 3 seed page index
+- **Stage 14 (AML/Compliance 29 + Cold Wallet 15)**: [[sources/fireblocks/markdown/2026-05-19__support-fireblocks-io__aml-compliance-cluster-catalog]] + [[sources/fireblocks/markdown/2026-05-19__support-fireblocks-io__cold-wallet-cluster-catalog]] + 8 TIER 1 lightweight index
+- **Stage 15 (llms.txt full sitemap)**: [[sources/fireblocks/markdown/2026-05-19__developers-fireblocks-com__llms-txt-sitemap]] (716 URLs)

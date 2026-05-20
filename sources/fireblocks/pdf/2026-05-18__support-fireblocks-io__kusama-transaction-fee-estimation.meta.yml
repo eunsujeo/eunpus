@@ -1,0 +1,12 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/13874958460956-Kusama-transaction-fee-estimation
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 2
+language: en
+category: blockchains-chain-specific
+chain: KSM
+notes: |
+  Kusama fee = current fee-per-byte * tx network fee + optional tip.
+  Console shows tip amount only; total fee = network + tip.
+  API "Estimate required fee" returns network fee only; client must add tip and send total.
+  Placeholder ingestion.

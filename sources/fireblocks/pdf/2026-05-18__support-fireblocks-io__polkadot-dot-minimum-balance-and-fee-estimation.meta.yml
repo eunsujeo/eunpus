@@ -1,0 +1,13 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/360017354220-Polkadot-DOT-minimum-balance-and-fee-estimation
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 3
+language: en
+category: blockchains-chain-specific
+chain: DOT
+notes: |
+  Polkadot: activate account requires first deposit >= 0.01 DOT.
+  Below 0.01 DOT, account is reaped + vulnerable to replay attack.
+  Fireblocks prevents wallet from going below 0.01 DOT.
+  Testnet WND also has 0.01 minimum. DOT tx valid for 2 hours (manual approver window).
+  Placeholder ingestion.

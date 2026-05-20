@@ -1,0 +1,2683 @@
+generated_at: '2026-05-19'
+version: v0.1 (P4)
+source_eval: tests/retrieval/retrieval-eval.yml
+total_gaps: 57
+by_signal:
+  hub_stub: 2
+  catalog_only_cluster: 4
+  open_q_unanswered: 46
+  open_q_partial: 5
+by_recommended_mode:
+  hub_content_draft: 2
+  mode_c: 55
+gaps:
+- question_id: Q-gen-wf-011
+  question: Policy Engine 운영 절차?
+  answer_type: workflow
+  classification: FAIL
+  signal: hub_stub
+  reason: hub is empty stub (577 bytes)
+  evidence:
+    keywords:
+    - engine
+    - policy
+    - 운영
+    explicit_sources: []
+    pdf_candidates: []
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__about-policies
+      - 6.0
+    - - 2026-05-19__support-fireblocks-io__set-up-your-fireblocks-vault-with-key-link
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__approval-groups
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__fireblocks-security-posture-management-fspm
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__how-policies-work
+      - 3.0
+    sitemap_candidates: []
+    related_open_questions:
+    - Q-2026-05-18-A06
+    - Q-2026-05-18-AU01
+    - Q-2026-05-18-B01
+    - Q-2026-05-18-S02
+  recommended_mode: hub_content_draft
+  rationale_1_line: Empty TODO stub. Stage 10 sources (admin-quorum / approval-groups
+    / about-policies / how-policies-work / DCCP / FSPM) 가 이미 full-ingest 되어 있고 본문은
+    [[entities/fireblocks/policy]] (15 KB) 에 있음. Hub 는 existing entity + Stage 10
+    source 로 manual draft 가능 — PDF ingest 불필요.
+- question_id: Q-gen-wf-014
+  question: TAP (Transaction Authorization Policy) 운영 절차?
+  answer_type: workflow
+  classification: FAIL
+  signal: hub_stub
+  reason: hub is empty stub (560 bytes)
+  evidence:
+    keywords:
+    - authorization
+    - transaction
+    - policy
+    - tap
+    - 운영
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__authentication-and-authorization.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__about-policies
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__authentication-and-authorization
+      - 4.0
+    - - 2026-05-18__support-fireblocks-io__blockchains-that-support-internal-transactions
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__primary-transaction-statuses
+      - 3.3
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/docs/set-transaction-authorization-policy.md
+      - 1.6
+    - - https://developers.fireblocks.com/reference/configure-transaction-authorization-policy.md
+      - 1.6
+    - - https://developers.fireblocks.com/reference/transaction-authorization-objects.md
+      - 1.3
+    related_open_questions:
+    - Q-2026-05-18-A06
+    - Q-2026-05-18-AU01
+    - Q-2026-05-18-AU03
+  recommended_mode: hub_content_draft
+  rationale_1_line: Empty TODO stub. Stage 10 sources (admin-quorum / approval-groups
+    / about-policies / how-policies-work / DCCP / FSPM) 가 이미 full-ingest 되어 있고 본문은
+    [[entities/fireblocks/policy]] (15 KB) 에 있음. Hub 는 existing entity + Stage 10
+    source 로 manual draft 가능 — PDF ingest 불필요.
+- question_id: Q-gen-cls-000
+  question: aml compliance 환경에서 어떻게 세팅?
+  answer_type: workflow
+  classification: PROMOTE_NEEDED
+  signal: catalog_only_cluster
+  reason: cluster catalog only, body needed
+  evidence:
+    keywords:
+    - compliance
+    - 환경에서
+    - aml
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-19__support-fireblocks-io__aml-advanced-configuration-settings.pdf
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__aml-policy-templates.pdf
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__aml-post-screening-policy.pdf
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__aml-transaction-screening-and-monitoring.pdf
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__aml-transaction-screening-policy.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__configure-sso
+      - 3.0
+    - - 2026-05-19__support-fireblocks-io__aml-compliance-cluster-catalog
+      - 2.0
+    - - 2026-05-19__support-fireblocks-io__aml-transaction-screening-and-monitoring
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__compliance-integrations
+      - 1.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/compliance-screening-configuration/get-aml-screening-policy-configuration.md
+      - 2.0
+    - - https://developers.fireblocks.com/api-reference/compliance/aml--view-post-screening-policy.md
+      - 2.0
+    - - https://developers.fireblocks.com/api-reference/compliance/aml--view-screening-policy.md
+      - 2.0
+    - - https://developers.fireblocks.com/api-reference/compliance/set-aml-verdict-byork-super-light.md
+      - 2.0
+    - - https://developers.fireblocks.com/api-reference/compliance/update-aml-configuration.md
+      - 2.0
+    related_open_questions:
+    - Q-2026-05-18-S03
+    - Q-2026-05-19-S15
+  recommended_mode: mode_c
+  rationale_1_line: Cluster catalog (2026-05-19__support-fireblocks-io__aml-compliance-cluster-catalog)
+    의 TIER 1 lightweight index 가 이미 다수 존재. Mode C 시 외부 도구로 cluster 내 1순위 PDF body
+    chunked text 추출 → curated wiki entity/hub 보강.
+- question_id: Q-gen-cls-001
+  question: aws-nitro-cosigner 환경에서 어떻게 세팅?
+  answer_type: workflow
+  classification: PROMOTE_NEEDED
+  signal: catalog_only_cluster
+  reason: cluster catalog only, body needed
+  evidence:
+    keywords:
+    - aws-nitro-cosigner
+    - 환경에서
+    explicit_sources: []
+    pdf_candidates: []
+    markdown_candidates: []
+    sitemap_candidates: []
+    related_open_questions: []
+  recommended_mode: mode_c
+  rationale_1_line: Cluster catalog (2026-05-19__support-fireblocks-io__aws-nitro-cluster-catalog)
+    의 TIER 1 lightweight index 가 이미 다수 존재. Mode C 시 외부 도구로 cluster 내 1순위 PDF body
+    chunked text 추출 → curated wiki entity/hub 보강.
+- question_id: Q-gen-cls-002
+  question: cold wallet 환경에서 어떻게 세팅?
+  answer_type: workflow
+  classification: PROMOTE_NEEDED
+  signal: catalog_only_cluster
+  reason: cluster catalog only, body needed
+  evidence:
+    keywords:
+    - wallet
+    - 환경에서
+    - cold
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-19__support-fireblocks-io__about-fireblocks-cold-wallet.pdf
+      - 1.3
+    - - 2026-05-19__support-fireblocks-io__adding-api-keys-to-a-cold-wallet-workspace.pdf
+      - 1.3
+    - - 2026-05-19__support-fireblocks-io__adding-users-to-a-cold-wallet-workspace.pdf
+      - 1.3
+    - - 2026-05-19__support-fireblocks-io__cold-wallet-device-requirements.pdf
+      - 1.3
+    - - 2026-05-19__support-fireblocks-io__cold-wallet-enhanced-console-experience.pdf
+      - 1.3
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__admin-quorum
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__approval-groups
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__business-continuity-module-bcm
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__mobile-device-minimum-requirements
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+      - 6.0
+    sitemap_candidates: []
+    related_open_questions:
+    - Q-2026-05-19-G06
+    - Q-2026-05-19-M05
+  recommended_mode: mode_c
+  rationale_1_line: Cluster catalog (2026-05-19__support-fireblocks-io__cold-wallet-cluster-catalog)
+    의 TIER 1 lightweight index 가 이미 다수 존재. Mode C 시 외부 도구로 cluster 내 1순위 PDF body
+    chunked text 추출 → curated wiki entity/hub 보강.
+- question_id: Q-gen-cls-003
+  question: key-link 환경에서 어떻게 세팅?
+  answer_type: workflow
+  classification: PROMOTE_NEEDED
+  signal: catalog_only_cluster
+  reason: cluster catalog only, body needed
+  evidence:
+    keywords:
+    - key-link
+    - 환경에서
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-19__support-fireblocks-io__fireblocks-key-link-overview.pdf
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__getting-started-with-fireblocks-key-link.pdf
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__set-up-your-fireblocks-vault-with-key-link.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-19__support-fireblocks-io__fireblocks-key-link-overview
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__getting-started-with-fireblocks-key-link
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__key-link-cluster-catalog
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__set-up-your-fireblocks-vault-with-key-link
+      - 1.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/key-link-beta/add-a-new-signing-key.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/key-link-beta/add-a-new-validation-key.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/key-link-beta/disables-a-validation-key.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/key-link-beta/get-a-signing-key-by-`keyid`.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/key-link-beta/get-a-validation-key-by-`keyid`.md
+      - 1.0
+    related_open_questions: []
+  recommended_mode: mode_c
+  rationale_1_line: Cluster catalog (2026-05-19__support-fireblocks-io__key-link-cluster-catalog)
+    의 TIER 1 lightweight index 가 이미 다수 존재. Mode C 시 외부 도구로 cluster 내 1순위 PDF body
+    chunked text 추출 → curated wiki entity/hub 보강.
+- question_id: Q-gen-ver-006
+  question: Q-2026-05-18-C01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-C01 open — promote needed
+  evidence:
+    keywords:
+    - co-signer
+    - handler의
+    - callback
+    - payload
+    - api
+    - 형식은
+    explicit_sources: []
+    pdf_candidates: []
+    markdown_candidates:
+    - - 2026-05-19__support-fireblocks-io__api-co-signer-overview-and-usage
+      - 6.6
+    - - 2026-05-19__support-fireblocks-io__aws-nitro-cluster-catalog
+      - 6.3
+    - - 2026-05-19__support-fireblocks-io__the-co-signer-management-tab
+      - 6.3
+    - - 2026-05-18__support-fireblocks-io__authentication-and-authorization
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__security-checklist
+      - 6.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/docs/create-api-co-signer-callback-handler.md
+      - 1.6
+    - - https://developers.fireblocks.com/api-reference/cosigners-beta/update-api-key-callback-handler.md
+      - 1.3
+    - - https://developers.fireblocks.com/reference/cosigner-callbackhandler-secure-communication-authentication.md
+      - 1.0
+    - - https://developers.fireblocks.com/reference/plugin-based-callback-handler.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-A04
+    - Q-2026-05-18-AU01
+    - Q-2026-05-18-C01
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-008
+  question: Q-2026-05-18-P01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: WEAK
+  signal: open_q_partial
+  reason: Q-2026-05-18-P01 partial — promote can complete
+  evidence:
+    keywords:
+    - authorizer의
+    - designated
+    - signer
+    - second
+    - 문법은
+    - 표현
+    explicit_sources: []
+    pdf_candidates: []
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__reset-an-admin-or-signers-recovery-passphrase
+      - 3.3
+    - - 2026-05-19__support-fireblocks-io__api-co-signer-overview-and-usage
+      - 3.3
+    - - 2026-05-19__support-fireblocks-io__aws-nitro-cloudformation-solution-for-fireblocks-co-signer
+      - 3.3
+    - - 2026-05-19__support-fireblocks-io__aws-nitro-cluster-catalog
+      - 3.3
+    - - 2026-05-19__support-fireblocks-io__the-co-signer-management-tab
+      - 3.3
+    sitemap_candidates: []
+    related_open_questions:
+    - Q-2026-05-18-P01
+    - Q-2026-05-18-P02
+    - Q-2026-05-18-P04
+  recommended_mode: mode_c
+  rationale_1_line: Partial answered — 잔여 영역 evidence 있음. 추가 chunked text 로 완성.
+- question_id: Q-gen-ver-009
+  question: Q-2026-05-18-P02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: WEAK
+  signal: open_q_partial
+  reason: Q-2026-05-18-P02 partial — promote can complete
+  evidence:
+    keywords:
+    - internal
+    - transfer
+    - exchange
+    - 트랜잭션
+    - 표현의
+    - 위치는
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__blockchains-that-support-internal-transactions.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__transfer-workspace-owner.pdf
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__travel-rule-compliance-for-exchange-transactions.pdf
+      - 1.0
+    - - About Fireblocks Off Exchange – Fireblocks Help Center.pdf
+      - 1.0
+    - - Canceling a Smart Transfers ticket – Fireblocks Help Center.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__blockchains-that-support-internal-transactions
+      - 4.0
+    - - 2026-05-18__support-fireblocks-io__batch-approvals-and-signing
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__how-policies-work
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__security-aspects-signing-with-the-fireblocks-mobile-app
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__transfer-workspace-owner
+      - 1.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/exchange-accounts/internal-transfer-for-exchange-accounts.md
+      - 3.0
+    - - https://developers.fireblocks.com/api-reference/connected-accounts-beta/get-exchange-rates-for-an-account.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/exchange-accounts/add-an-exchange-account.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/exchange-accounts/convert-exchange-account-funds.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/exchange-accounts/get-a-specific-exchange-account.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-P02
+    - Q-2026-05-18-P03
+    - Q-2026-05-18-P05
+  recommended_mode: mode_c
+  rationale_1_line: Partial answered — 잔여 영역 evidence 있음. 추가 chunked text 로 완성.
+- question_id: Q-gen-ver-010
+  question: Q-2026-05-18-P03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-P03 open — promote needed
+  evidence:
+    keywords:
+    - automation
+    - transfer
+    - ticket
+    - smart
+    - rule
+    - 차이는
+    explicit_sources: []
+    pdf_candidates:
+    - - Canceling a Smart Transfers ticket – Fireblocks Help Center.pdf
+      - 3.0
+    - - Creating a Smart Transfer ticket – Fireblocks Help Center.pdf
+      - 3.0
+    - - Funding a Smart Transfers ticket – Fireblocks Help Center.pdf
+      - 3.0
+    - - Automation rule example for sweeping vault accounts – Fireblocks Help Center.pdf
+      - 2.0
+    - - Automation rule example_ rebalance – Fireblocks Help Center.pdf
+      - 2.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__how-policies-work
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__about-policies
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__batch-approvals-and-signing
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__security-aspects-signing-with-the-fireblocks-mobile-app
+      - 3.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/smart-transfer/cancel-ticket.md
+      - 3.0
+    - - https://developers.fireblocks.com/api-reference/smart-transfer/create-ticket.md
+      - 3.0
+    - - https://developers.fireblocks.com/api-reference/smart-transfer/delete-ticket-leg-term.md
+      - 3.0
+    - - https://developers.fireblocks.com/api-reference/smart-transfer/find-ticket.md
+      - 3.0
+    - - https://developers.fireblocks.com/api-reference/smart-transfer/fund-dvp-ticket.md
+      - 3.0
+    related_open_questions:
+    - Q-2026-05-18-P02
+    - Q-2026-05-18-P03
+    - Q-2026-05-18-P05
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-012
+  question: Q-2026-05-18-O01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-O01 open — promote needed
+  evidence:
+    keywords:
+    - algo/xrp/sol/xlm에만
+    - limits
+    - token
+    - 적용되는
+    - 이유는
+    - tl
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__near-tokens-initial-deposit.pdf
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__about-tokenization-on-fireblocks.pdf
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__best-practices-when-assigning-token-contract-roles.pdf
+      - 1.0
+    - - Blockchain Bond Tokenization Best Practices – Fireblocks Help Center.pdf
+      - 1.0
+    - - Claiming & Redeeming NIGHT tokens from the Midnight Glacier Drop – Fireblocks
+        Help Center.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-19__support-fireblocks-io__about-tokenization-on-fireblocks
+      - 4.0
+    - - 2026-05-18__support-fireblocks-io__authentication-and-authorization
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__minimum-transaction-amounts
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__near-tokens-initial-deposit
+      - 1.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/nfts/list-all-distinct-owned-tokens-paginated.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/nfts/list-all-owned-tokens-paginated.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/nfts/list-token-data-by-id.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/nfts/list-tokens-by-ids.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/nfts/refresh-token-metadata.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-L03
+    - Q-2026-05-18-O01
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-013
+  question: Q-2026-05-18-L01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-L01 open — promote needed
+  evidence:
+    keywords:
+    - admin-level
+    - users
+    - role
+    - 정의는
+    - 정확한
+    - 집합
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__user-roles.pdf
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__best-practices-when-assigning-token-contract-roles.pdf
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__roles-in-fireblocks-smart-contracts.pdf
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__user-roles-for-cold-wallet-workspaces.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+      - 4.0
+    - - 2026-05-18__support-fireblocks-io__user-roles
+      - 4.0
+    - - 2026-05-18__support-fireblocks-io__delete-users
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__edit-users
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__linked-users-fireblocks-mobile-app
+      - 3.3
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/onchain-data/list-of-active-roles-for-a-given-contract-address-and-base-asset-id.md
+      - 1.0
+    - - https://developers.fireblocks.com/reference/setting-up-roles-in-erc20f-tokens.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-A01
+    - Q-2026-05-18-D02
+    - Q-2026-05-18-L01
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-014
+  question: Q-2026-05-18-L02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-L02 open — promote needed
+  evidence:
+    keywords:
+    - o/a/nsa만
+    - secadmin
+    - users
+    - 권한표의
+    - 불일치
+    - 본문은
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__fireblocks-security-posture-management-fspm
+    - 2026-05-18__support-fireblocks-io__security-aspects-signing-with-the-fireblocks-mobile-app
+    - 2026-05-18__support-fireblocks-io__security-checklist
+    - 2026-05-19__support-fireblocks-io__cold-wallet-security-and-operational-best-practices
+    - 2026-05-19__support-fireblocks-io__security-and-maintenance-best-practices
+    pdf_candidates: []
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__fireblocks-security-posture-management-fspm
+      - 10.0
+    - - 2026-05-18__support-fireblocks-io__security-aspects-signing-with-the-fireblocks-mobile-app
+      - 10.0
+    - - 2026-05-18__support-fireblocks-io__security-checklist
+      - 10.0
+    - - 2026-05-19__support-fireblocks-io__cold-wallet-security-and-operational-best-practices
+      - 10.0
+    - - 2026-05-19__support-fireblocks-io__security-and-maintenance-best-practices
+      - 10.0
+    sitemap_candidates: []
+    related_open_questions:
+    - Q-2026-05-18-A01
+    - Q-2026-05-18-L01
+    - Q-2026-05-18-L02
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-015
+  question: Q-2026-05-18-L03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-L03 open — promote needed
+  evidence:
+    keywords:
+    - approval
+    - delete는
+    - mobile
+    - 비대칭의
+    - add는
+    - 이유는
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+    - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+    - 2026-05-19__support-fireblocks-io__cold-wallet-security-and-operational-best-practices
+    - 2026-05-19__support-fireblocks-io__security-and-maintenance-best-practices
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__approval-groups.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__batch-approvals-and-signing.pdf
+      - 1.0
+    - - Approval and signing notification expiration – Fireblocks Help Center.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+      - 10.0
+    - - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+      - 10.0
+    - - 2026-05-19__support-fireblocks-io__cold-wallet-security-and-operational-best-practices
+      - 10.0
+    - - 2026-05-19__support-fireblocks-io__security-and-maintenance-best-practices
+      - 10.0
+    - - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+      - 6.3
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/smart-transfer/set-funding-source-and-approval.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/tags/cancel-an-approval-request-by-id.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/tags/get-an-approval-request-by-id.md
+      - 1.0
+    - - https://developers.fireblocks.com/docs/define-approval-quorums.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-L03
+    - Q-2026-05-18-O01
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-016
+  question: Q-2026-05-18-L04 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-L04 open — promote needed
+  evidence:
+    keywords:
+    - setup
+    - edit가
+    - 차단되는
+    - 이유와
+    - 경로는
+    - 동작
+    explicit_sources: []
+    pdf_candidates:
+    - - Hosted MPC Customer-Side Setup – Fireblocks Help Center.pdf
+      - 1.0
+    - - Initial setup & Onboarding for Off Exchange – Fireblocks Help Center.pdf
+      - 1.0
+    - - Intermediary setup for Smart Transfers – Fireblocks Help Center.pdf
+      - 1.0
+    - - Setup for Gas Station 2.0 – Fireblocks Help Center.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__about-policies
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__authentication-and-authorization
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__how-policies-work
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__intel-sgx-secure-environments
+      - 3.0
+    - - 2026-05-19__support-fireblocks-io__getting-started-with-fireblocks-key-link
+      - 3.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/embedded-wallets/get-device-key-setup-state.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/embedded-wallets/get-wallet-key-setup-state.md
+      - 1.0
+    - - https://developers.fireblocks.com/docs/embedded-wallet-setup.md
+      - 1.0
+    - - https://developers.fireblocks.com/reference/setup.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-D03
+    - Q-2026-05-18-L04
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-017
+  question: Q-2026-05-18-L05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-L05 open — promote needed
+  evidence:
+    keywords:
+    - deleted
+    - email로
+    - unique
+    - email
+    - user의
+    - user
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__is-this-email-really-from-fireblocks.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__edit-users
+      - 6.3
+    - - 2026-05-18__support-fireblocks-io__is-this-email-really-from-fireblocks
+      - 4.0
+    - - 2026-05-18__support-fireblocks-io__add-api-users
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__add-users
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+      - 3.3
+    sitemap_candidates: []
+    related_open_questions:
+    - Q-2026-05-18-L01
+    - Q-2026-05-18-L05
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-019
+  question: Q-2026-05-18-L07 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-L07 open — promote needed
+  evidence:
+    keywords:
+    - fireblocks
+    - support
+    - 메커니즘은
+    - 처리시간
+    - role
+    - 변경의
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles.pdf
+      - 2.3
+    - - 2026-05-18__support-fireblocks-io__user-roles.pdf
+      - 2.3
+    - - 2026-05-19__support-fireblocks-io__best-practices-when-assigning-token-contract-roles.pdf
+      - 2.3
+    - - 2026-05-19__support-fireblocks-io__roles-in-fireblocks-smart-contracts.pdf
+      - 2.3
+    - - 2026-05-19__support-fireblocks-io__user-roles-for-cold-wallet-workspaces.pdf
+      - 2.3
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__edit-users
+      - 10.3
+    - - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+      - 8.3
+    - - 2026-05-18__support-fireblocks-io__blockchains-that-support-internal-transactions
+      - 7.3
+    - - 2026-05-18__support-fireblocks-io__fireblocks-yubikey-authentication
+      - 7.3
+    - - 2026-05-18__support-fireblocks-io__user-roles
+      - 5.3
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/connected-accounts-beta/get-supported-trading-pairs-for-an-account.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/contract-templates/get-supported-blockchains-for-the-template.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/embedded-wallets/retrieve-supported-assets.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/onchain-data/list-of-active-roles-for-a-given-contract-address-and-base-asset-id.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/staking/list-supported-staking-chains.md
+      - 1.3
+    related_open_questions:
+    - Q-2026-05-18-AU02
+    - Q-2026-05-18-L07
+    - Q-2026-05-18-O02
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-021
+  question: Q-2026-05-18-M04 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-M04 open — promote needed
+  evidence:
+    keywords:
+    - cryptographic
+    - derivation
+    - share
+    - 메커니즘은
+    - mpc
+    - add
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__mpc-cmp
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__add-api-users.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__add-users.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__allowlist-ip-addresses-for-api-user-requests.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__fireblocks-ip-addresses-to-whitelist.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__mpc-cmp
+      - 16.3
+    - - 2026-05-18__support-fireblocks-io__add-users
+      - 4.0
+    - - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access
+      - 4.0
+    - - 2026-05-18__support-fireblocks-io__re-adding-a-user-to-the-fireblocks-mobile-app
+      - 4.0
+    - - 2026-05-18__support-fireblocks-io__hosted-mpc-overview
+      - 3.3
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/compliance/add-vault-accounts-to-the-address-registry-opt-out-list.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance/get-address-registry-participation-status-for-the-authenticated-workspace.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance/get-whether-a-vault-account-is-opted-out-of-the-address-registry.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance/list-vault-level-address-registry-opt-outs-paginated.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance/look-up-legal-entity-by-blockchain-address.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-M04
+    - Q-2026-05-18-S01
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-022
+  question: Q-2026-05-18-A01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-A01 open — promote needed
+  evidence:
+    keywords:
+    - re-enroll에도
+    - admin-level
+    - q-l01과
+    - rename
+    - users
+    - user
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users.pdf
+      - 1.6
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+      - 10.6
+    - - 2026-05-18__support-fireblocks-io__delete-users
+      - 6.6
+    - - 2026-05-18__support-fireblocks-io__linked-users-fireblocks-mobile-app
+      - 6.6
+    - - 2026-05-18__support-fireblocks-io__add-api-users
+      - 3.6
+    - - 2026-05-18__support-fireblocks-io__add-users
+      - 3.6
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/connected-accounts-beta/rename-connected-account.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/cosigners-beta/rename-cosigner.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/vaults/rename-a-vault-account.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-A01
+    - Q-2026-05-18-L01
+    - Q-2026-05-18-L02
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-023
+  question: Q-2026-05-18-A02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-A02 open — promote needed
+  evidence:
+    keywords:
+    - co-signer로부터
+    - unpair
+    - user
+    - 절차는
+    - api
+    - 분리
+    explicit_sources: []
+    pdf_candidates: []
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__add-api-users
+      - 6.6
+    - - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+      - 6.6
+    - - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+      - 6.6
+    - - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+      - 6.3
+    - - 2026-05-18__support-fireblocks-io__about-policies
+      - 6.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/cosigners-beta/unpair-api-key.md
+      - 1.3
+    related_open_questions:
+    - Q-2026-05-18-A01
+    - Q-2026-05-18-A02
+    - Q-2026-05-18-D07
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-024
+  question: Q-2026-05-18-A03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-A03 open — promote needed
+  evidence:
+    keywords:
+    - key/csr의
+    - rotation
+    - period
+    - grace
+    - 정책은
+    - api
+    explicit_sources:
+    - 2026-05-19__support-fireblocks-io__developer-center-catalog
+    pdf_candidates: []
+    markdown_candidates:
+    - - 2026-05-19__support-fireblocks-io__developer-center-catalog
+      - 10.3
+    - - 2026-05-18__support-fireblocks-io__add-api-users
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+      - 3.3
+    - - 2026-05-19__developers-fireblocks-com__reference-api-overview
+      - 3.3
+    sitemap_candidates: []
+    related_open_questions:
+    - Q-2026-05-18-A03
+    - Q-2026-05-18-AU05
+    - Q-2026-05-18-D06
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-025
+  question: Q-2026-05-18-A04 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-A04 open — promote needed
+  evidence:
+    keywords:
+    - authentication
+    - co-signer
+    - handler의
+    - callback
+    - method
+    - 종류가
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__mobile-authentication-methods.pdf
+      - 2.0
+    - - 2026-05-18__support-fireblocks-io__authentication-and-authorization.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__fireblocks-yubikey-authentication.pdf
+      - 1.0
+    - - Policy rules for specific contract call methods – Fireblocks Help Center.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-19__support-fireblocks-io__aws-nitro-cluster-catalog
+      - 9.3
+    - - 2026-05-18__support-fireblocks-io__authentication-and-authorization
+      - 7.0
+    - - 2026-05-18__support-fireblocks-io__security-checklist
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__mobile-authentication-methods
+      - 5.0
+    - - 2026-05-19__support-fireblocks-io__api-co-signer-overview-and-usage
+      - 3.3
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/reference/cosigner-callbackhandler-secure-communication-authentication.md
+      - 2.0
+    - - https://developers.fireblocks.com/docs/create-api-co-signer-callback-handler.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/cosigners-beta/update-api-key-callback-handler.md
+      - 1.0
+    - - https://developers.fireblocks.com/docs/cli-authentication.md
+      - 1.0
+    - - https://developers.fireblocks.com/reference/plugin-based-callback-handler.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-A04
+    - Q-2026-05-18-AU01
+    - Q-2026-05-18-C01
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-027
+  question: Q-2026-05-18-A06 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: WEAK
+  signal: open_q_partial
+  reason: Q-2026-05-18-A06 partial — promote can complete
+  evidence:
+    keywords:
+    - allowlist
+    - nat/vpn
+    - cidr`
+    - '`/32'
+    - user
+    - 노하우는
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__allowlist-ip-addresses-for-api-user-requests
+    - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__allowlist-ip-addresses-for-api-user-requests.pdf
+      - 1.3
+    - - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access.pdf
+      - 1.0
+    - - IP allowlisting for webhooks & notifications – Fireblocks Help Center.pdf
+      - 1.0
+    - - Operating the Allowlist contract – Fireblocks Help Center.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access
+      - 14.0
+    - - 2026-05-18__support-fireblocks-io__allowlist-ip-addresses-for-api-user-requests
+      - 11.3
+    - - 2026-05-18__support-fireblocks-io__add-api-users
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__add-users
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+      - 3.3
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/reference/webhooks-ip-allowlisting.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-A06
+    - Q-2026-05-18-L01
+    - Q-2026-05-18-L02
+  recommended_mode: mode_c
+  rationale_1_line: Partial answered — 잔여 영역 evidence 있음. 추가 chunked text 로 완성.
+- question_id: Q-gen-ver-029
+  question: Q-2026-05-18-AU01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-AU01 open — promote needed
+  evidence:
+    keywords:
+    - fireblocks
+    - callback의
+    - provider
+    - service
+    - auth0가
+    - auth0에
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+    - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+    - 2026-05-19__support-fireblocks-io__cold-wallet-security-and-operational-best-practices
+    - 2026-05-19__support-fireblocks-io__security-and-maintenance-best-practices
+    pdf_candidates:
+    - - Listing your service on the provider network – Fireblocks Help Center.pdf
+      - 2.3
+    - - 2026-05-19__support-fireblocks-io__disconnecting-your-aml-provider.pdf
+      - 1.3
+    - - 2026-05-19__support-fireblocks-io__disconnecting-your-travel-rule-provider.pdf
+      - 1.3
+    - - 2026-05-19__support-fireblocks-io__third-party-disaster-recovery-services.pdf
+      - 1.3
+    - - About the Fireblocks Gasless Service – Fireblocks Help Center.pdf
+      - 1.3
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+      - 10.3
+    - - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+      - 10.3
+    - - 2026-05-19__support-fireblocks-io__cold-wallet-security-and-operational-best-practices
+      - 10.3
+    - - 2026-05-19__support-fireblocks-io__security-and-maintenance-best-practices
+      - 10.3
+    - - 2026-05-18__support-fireblocks-io__account-and-wallet-structure
+      - 3.3
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/earn-beta/approve-earn-provider-terms-of-service.md
+      - 2.3
+    - - https://developers.fireblocks.com/api-reference/staking/approve-provider-terms-of-service.md
+      - 2.3
+    - - https://developers.fireblocks.com/docs/integrate-fireblocks-with-third-party-service-providers.md
+      - 2.3
+    - - https://developers.fireblocks.com/api-reference/earn-beta/get-list-of-earn-providers.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/staking/list-staking-providers.md
+      - 1.3
+    related_open_questions:
+    - Q-2026-05-18-AU01
+    - Q-2026-05-18-S09
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-030
+  question: Q-2026-05-18-AU02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-AU02 open — promote needed
+  evidence:
+    keywords:
+    - fireblocks
+    - adfs/ldap은
+    - support
+    - 가능한가
+    - 경유만
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__about-automation.pdf
+      - 1.3
+    - - 2026-05-18__support-fireblocks-io__about-blockchains.pdf
+      - 1.3
+    - - 2026-05-18__support-fireblocks-io__about-policies.pdf
+      - 1.3
+    - - 2026-05-18__support-fireblocks-io__about-the-deposit-control-and-confirmation-policy.pdf
+      - 1.3
+    - - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app.pdf
+      - 1.3
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__blockchains-that-support-internal-transactions
+      - 7.3
+    - - 2026-05-18__support-fireblocks-io__edit-users
+      - 7.3
+    - - 2026-05-18__support-fireblocks-io__fireblocks-yubikey-authentication
+      - 7.3
+    - - 2026-05-18__support-fireblocks-io__account-and-wallet-structure
+      - 4.3
+    - - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+      - 4.3
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/connected-accounts-beta/get-supported-trading-pairs-for-an-account.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/contract-templates/get-supported-blockchains-for-the-template.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/embedded-wallets/retrieve-supported-assets.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/staking/list-supported-staking-chains.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/trlink/get-supported-asset-by-id.md
+      - 1.3
+    related_open_questions:
+    - Q-2026-05-18-AU02
+    - Q-2026-05-18-L07
+    - Q-2026-05-18-O02
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-031
+  question: Q-2026-05-18-AU03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-AU03 open — promote needed
+  evidence:
+    keywords:
+    - authorization과
+    - workspace
+    - domain
+    - list가
+    - 연결되는가
+    - user
+    explicit_sources: []
+    pdf_candidates: []
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+      - 6.3
+    - - 2026-05-18__support-fireblocks-io__linked-users-fireblocks-mobile-app
+      - 6.3
+    - - 2026-05-18__support-fireblocks-io__reset-a-users-2fa
+      - 6.3
+    - - 2026-05-18__support-fireblocks-io__user-roles
+      - 6.3
+    - - 2026-05-18__support-fireblocks-io__approval-groups
+      - 6.0
+    sitemap_candidates: []
+    related_open_questions:
+    - Q-2026-05-18-AU03
+    - Q-2026-05-18-D02
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-033
+  question: Q-2026-05-18-AU05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-AU05 open — promote needed
+  evidence:
+    keywords:
+    - complexity
+    - rotation
+    - lockout
+    - length
+    - 비밀번호
+    - 사용자에
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+    - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+    - 2026-05-19__support-fireblocks-io__cold-wallet-security-and-operational-best-practices
+    - 2026-05-19__support-fireblocks-io__security-and-maintenance-best-practices
+    pdf_candidates: []
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+      - 10.0
+    - - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+      - 10.0
+    - - 2026-05-19__support-fireblocks-io__cold-wallet-security-and-operational-best-practices
+      - 10.0
+    - - 2026-05-19__support-fireblocks-io__security-and-maintenance-best-practices
+      - 10.0
+    sitemap_candidates: []
+    related_open_questions:
+    - Q-2026-05-18-A03
+    - Q-2026-05-18-AU05
+    - Q-2026-05-18-S14
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-035
+  question: Q-2026-05-18-D02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: WEAK
+  signal: open_q_partial
+  reason: Q-2026-05-18-D02 partial — promote can complete
+  evidence:
+    keywords:
+    - workspaces의
+    - linked
+    - users
+    - 모델은
+    - 정확한
+    - 격리
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+    - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+    - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-updates
+    - 2026-05-18__support-fireblocks-io__linked-users-fireblocks-mobile-app
+    - 2026-05-18__support-fireblocks-io__re-adding-a-user-to-the-fireblocks-mobile-app
+    - 2026-05-18__support-fireblocks-io__security-aspects-signing-with-the-fireblocks-mobile-app
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__linked-users-fireblocks-mobile-app.pdf
+      - 1.3
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__linked-users-fireblocks-mobile-app
+      - 17.3
+    - - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+      - 10.0
+    - - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+      - 10.0
+    - - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-updates
+      - 10.0
+    - - 2026-05-18__support-fireblocks-io__re-adding-a-user-to-the-fireblocks-mobile-app
+      - 10.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/tokenization/get-the-total-count-of-linked-tokens.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/tokenization/list-all-linked-tokens.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/tokenization/return-a-linked-token.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-D02
+    - Q-2026-05-18-L01
+  recommended_mode: mode_c
+  rationale_1_line: Partial answered — 잔여 영역 evidence 있음. 추가 chunked text 로 완성.
+- question_id: Q-gen-ver-036
+  question: Q-2026-05-18-D03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-D03 open — promote needed
+  evidence:
+    keywords:
+    - mobile
+    - window
+    - device
+    - 2-day
+    - 재등록
+    - 동작은
+    explicit_sources: []
+    pdf_candidates: []
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__security-aspects-signing-with-the-fireblocks-mobile-app
+      - 6.3
+    - - 2026-05-18__support-fireblocks-io__authentication-and-authorization
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__mobile-device-minimum-requirements
+      - 3.6
+    - - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+      - 3.6
+    - - 2026-05-18__support-fireblocks-io__device-migration
+      - 3.3
+    sitemap_candidates: []
+    related_open_questions:
+    - Q-2026-05-18-D03
+    - Q-2026-05-18-S03
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-037
+  question: Q-2026-05-18-O02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-O02 open — promote needed
+  evidence:
+    keywords:
+    - fireblocks
+    - support의
+    - owner
+    - 기준은
+    - 검증
+    - 부재
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__reset-the-owners-recovery-passphrase.pdf
+      - 1.3
+    - - 2026-05-18__support-fireblocks-io__transfer-workspace-owner.pdf
+      - 1.3
+    - - 2026-05-19__support-fireblocks-io__provisioning-an-owners-cold-wallet-device.pdf
+      - 1.3
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__fireblocks-yubikey-authentication
+      - 6.3
+    - - 2026-05-18__support-fireblocks-io__reset-the-owners-recovery-passphrase
+      - 4.3
+    - - 2026-05-18__support-fireblocks-io__transfer-workspace-owner
+      - 4.3
+    - - 2026-05-18__support-fireblocks-io__account-and-wallet-structure
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__admin-quorum
+      - 3.3
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/nfts/update-token-ownership-status.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/nfts/update-tokens-ownership-spam-property.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/nfts/update-tokens-ownership-status.md
+      - 1.3
+    related_open_questions:
+    - Q-2026-05-18-O02
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-038
+  question: Q-2026-05-18-O03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-O03 open — promote needed
+  evidence:
+    keywords:
+    - stakeholder
+    - resolution의
+    - quorum의
+    - board
+    - 요건은
+    - 정의는
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+    - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+    - 2026-05-19__support-fireblocks-io__cold-wallet-security-and-operational-best-practices
+    - 2026-05-19__support-fireblocks-io__security-and-maintenance-best-practices
+    pdf_candidates:
+    - - Initial setup & Onboarding for Off Exchange – Fireblocks Help Center.pdf
+      - 1.0
+    - - Managing keys with the Key Management Dashboard – Fireblocks Help Center.pdf
+      - 1.0
+    - - Settlements Dashboard overview – Fireblocks Help Center.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+      - 10.0
+    - - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+      - 10.0
+    - - 2026-05-19__support-fireblocks-io__cold-wallet-security-and-operational-best-practices
+      - 10.0
+    - - 2026-05-19__support-fireblocks-io__security-and-maintenance-best-practices
+      - 10.0
+    - - 2026-05-18__support-fireblocks-io__fireblocks-security-posture-management-fspm
+      - 3.0
+    sitemap_candidates: []
+    related_open_questions:
+    - Q-2026-05-18-L01
+    - Q-2026-05-18-O03
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-040
+  question: Q-2026-05-18-D05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-D05 open — promote needed
+  evidence:
+    keywords:
+    - migration의
+    - approval
+    - bypass
+    - device
+    - 거버넌스는
+    - admin
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__approval-groups.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__batch-approvals-and-signing.pdf
+      - 1.0
+    - - Approval and signing notification expiration – Fireblocks Help Center.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__approval-groups
+      - 7.0
+    - - 2026-05-18__support-fireblocks-io__admin-quorum
+      - 6.3
+    - - 2026-05-18__support-fireblocks-io__whitelisting-new-addresses
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__device-migration
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__mobile-device-minimum-requirements
+      - 3.3
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/compliance/calling-the-"bypass-screening-policy"-api-endpoint-triggers-a-new-transaction-with-the-api-user-as-the-initiator-bypassing-the-screening-policy-check.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/smart-transfer/set-funding-source-and-approval.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/tags/cancel-an-approval-request-by-id.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/tags/get-an-approval-request-by-id.md
+      - 1.0
+    - - https://developers.fireblocks.com/docs/define-approval-quorums.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-D05
+    - Q-2026-05-18-L03
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-041
+  question: Q-2026-05-18-D06 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-D06 open — promote needed
+  evidence:
+    keywords:
+    - verification
+    - passphrase
+    - forwarding
+    - periodic
+    - siem
+    - 가능한가
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+    - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+    - 2026-05-19__support-fireblocks-io__cold-wallet-security-and-operational-best-practices
+    - 2026-05-19__support-fireblocks-io__security-and-maintenance-best-practices
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__recovery-passphrase.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__reset-an-admin-or-signers-recovery-passphrase.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__reset-the-owners-recovery-passphrase.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__support-verification-requests.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+      - 10.0
+    - - 2026-05-18__support-fireblocks-io__recovery-passphrase
+      - 10.0
+    - - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+      - 10.0
+    - - 2026-05-19__support-fireblocks-io__cold-wallet-security-and-operational-best-practices
+      - 10.0
+    - - 2026-05-19__support-fireblocks-io__security-and-maintenance-best-practices
+      - 10.0
+    sitemap_candidates: []
+    related_open_questions:
+    - Q-2026-05-18-AU02
+    - Q-2026-05-18-D06
+    - Q-2026-05-18-L05
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-042
+  question: Q-2026-05-18-D07 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-D07 open — promote needed
+  evidence:
+    keywords:
+    - reconstruction
+    - workspace
+    - recovery
+    - private
+    - full
+    - keys
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__about-blockchains
+    - 2026-05-18__support-fireblocks-io__about-policies
+    - 2026-05-18__support-fireblocks-io__about-the-deposit-control-and-confirmation-policy
+    - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+    - 2026-05-19__support-fireblocks-io__about-backup-and-recovery
+    - 2026-05-19__support-fireblocks-io__about-fireblocks-cold-wallet
+    - 2026-05-19__support-fireblocks-io__about-the-fireblocks-recovery-utility
+    - 2026-05-19__support-fireblocks-io__about-the-travel-rule
+    - 2026-05-19__support-fireblocks-io__about-tokenization-on-fireblocks
+    - 2026-05-19__support-fireblocks-io__cold-wallet-mobile-key-share-backup-and-recovery
+    - 2026-05-19__support-fireblocks-io__how-to-perform-key-backup-and-recovery
+    - 2026-05-19__support-fireblocks-io__introduction-to-native-backup-and-recovery
+    - 2026-05-19__support-fireblocks-io__mobile-key-share-backup-and-recovery
+    - 2026-05-19__support-fireblocks-io__mobile-key-share-backup-and-recovery-with-a-third-party-drs
+    - 2026-05-19__support-fireblocks-io__reconstructing-your-workspace
+    pdf_candidates:
+    - - Generating a Workspace Key Backup Package - Fireblocks Recovery Utility –
+        Fireblocks Help Center.pdf
+      - 1.3
+    - - Importing your private keys to an external wallet – Fireblocks Help Center.pdf
+      - 1.3
+    - - Native Workspace Key Backup and Recovery with Python Script – Fireblocks Help
+        Center.pdf
+      - 1.3
+    - - 2026-05-18__support-fireblocks-io__recovery-passphrase.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__reset-an-admin-or-signers-recovery-passphrase.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-19__support-fireblocks-io__about-backup-and-recovery
+      - 14.0
+    - - 2026-05-18__support-fireblocks-io__about-policies
+      - 13.0
+    - - 2026-05-18__support-fireblocks-io__about-the-deposit-control-and-confirmation-policy
+      - 13.0
+    - - 2026-05-18__support-fireblocks-io__recovery-passphrase
+      - 13.0
+    - - 2026-05-19__support-fireblocks-io__about-tokenization-on-fireblocks
+      - 13.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/docs/embedded-wallet-full-key-takeover-export-private-key.md
+      - 2.0
+    - - https://developers.fireblocks.com/api-reference/travel-rule/validate-full-travel-rule-transaction.md
+      - 1.0
+    - - https://developers.fireblocks.com/docs/backup-and-recovery-overview.md
+      - 1.0
+    - - https://developers.fireblocks.com/docs/embedded-wallet-backup-and-recovery.md
+      - 1.0
+    - - https://developers.fireblocks.com/docs/embedded-wallet-disaster-recovery.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-D07
+    - Q-2026-05-18-S09
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-043
+  question: Q-2026-05-18-D08 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-D08 open — promote needed
+  evidence:
+    keywords:
+    - transactions
+    - risk-flagged
+    - 종류는
+    - 기준
+    explicit_sources: []
+    pdf_candidates: []
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__blockchains-that-support-internal-transactions
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__user-roles
+      - 3.0
+    sitemap_candidates: []
+    related_open_questions:
+    - Q-2026-05-18-D08
+    - Q-2026-05-18-O02
+    - Q-2026-05-18-S10
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-044
+  question: Q-2026-05-18-P04 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-P04 open — promote needed
+  evidence:
+    keywords:
+    - settings의
+    - workspace
+    - one-time
+    - approve
+    - address
+    - amount
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__one-time-address-ota-feature.pdf
+      - 2.0
+    - - One-Time Address Transactions – Fireblocks Help Center.pdf
+      - 2.0
+    - - 2026-05-18__support-fireblocks-io__allowlist-ip-addresses-for-api-user-requests.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__fireblocks-ip-addresses-to-whitelist.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__user-roles
+      - 9.0
+    - - 2026-05-18__support-fireblocks-io__account-and-wallet-structure
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__admin-quorum
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__security-aspects-signing-with-the-fireblocks-mobile-app
+      - 6.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/compliance/get-address-registry-participation-status-for-the-authenticated-workspace.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/compliance/opt-the-workspace-in-to-the-address-registry.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/compliance/opt-the-workspace-out-of-the-address-registry.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/compliance/remove-all-vault-level-address-registry-opt-outs-for-the-workspace.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/compliance/add-vault-accounts-to-the-address-registry-opt-out-list.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-P04
+    - Q-2026-05-18-S04
+    - Q-2026-05-18-S05
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-045
+  question: Q-2026-05-18-P05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-P05 open — promote needed
+  evidence:
+    keywords:
+    - multi-input
+    - processing
+    - transfers
+    - long
+    - 사례는
+    - 정확한
+    explicit_sources: []
+    pdf_candidates:
+    - - Canceling a Smart Transfers ticket – Fireblocks Help Center.pdf
+      - 1.0
+    - - Creating new transfers – Fireblocks Help Center.pdf
+      - 1.0
+    - - Funding a Smart Transfers ticket – Fireblocks Help Center.pdf
+      - 1.0
+    - - Gasless settings for individual transfers – Fireblocks Help Center.pdf
+      - 1.0
+    - - Intermediary setup for Smart Transfers – Fireblocks Help Center.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__batch-approvals-and-signing
+      - 9.0
+    - - 2026-05-18__support-fireblocks-io__authentication-and-authorization
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__how-policies-work
+      - 3.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/smart-transfer/get-smart-transfers-statistic.md
+      - 1.0
+    - - https://developers.fireblocks.com/docs/execute-smart-transfers
+      - 1.0
+    - - https://developers.fireblocks.com/docs/execute-smart-transfers.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-L01
+    - Q-2026-05-18-P05
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-046
+  question: Q-2026-05-18-O04 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-O04 open — promote needed
+  evidence:
+    keywords:
+    - off-exchange
+    - finalization
+    - dismiss
+    - policy
+    - 흐름인가
+    - drs
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-19__support-fireblocks-io__mobile-key-share-backup-and-recovery-with-a-third-party-drs.pdf
+      - 1.0
+    - - CoinCover for Off-Exchange – Fireblocks Help Center.pdf
+      - 1.0
+    - - Dismiss a transaction card – Fireblocks Help Center.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__about-policies
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__fireblocks-security-posture-management-fspm
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__how-policies-work
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__new-mobile-experience-request-management
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__one-time-address-ota-feature
+      - 3.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/off-exchanges/add-collateral.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/off-exchanges/create-settlement-for-a-trader.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/off-exchanges/find-a-specific-collateral-exchange-account.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/off-exchanges/get-settlements-transactions.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/off-exchanges/remove-collateral.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-O04
+    - Q-2026-05-18-S03
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-047
+  question: Q-2026-05-18-S01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-S01 open — promote needed
+  evidence:
+    keywords:
+    - auto-passphrase의
+    - cryptographic
+    - 메커니즘은
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__recovery-passphrase
+    - 2026-05-18__support-fireblocks-io__reset-an-admin-or-signers-recovery-passphrase
+    - 2026-05-18__support-fireblocks-io__reset-the-owners-recovery-passphrase
+    pdf_candidates: []
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__recovery-passphrase
+      - 10.0
+    - - 2026-05-18__support-fireblocks-io__reset-an-admin-or-signers-recovery-passphrase
+      - 10.0
+    - - 2026-05-18__support-fireblocks-io__reset-the-owners-recovery-passphrase
+      - 10.0
+    sitemap_candidates: []
+    related_open_questions:
+    - Q-2026-05-18-L07
+    - Q-2026-05-18-M04
+    - Q-2026-05-18-S01
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-049
+  question: Q-2026-05-18-S03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-S03 open — promote needed
+  evidence:
+    keywords:
+    - transaction
+    - screening
+    - policy의
+    - aml
+    - 정확한
+    - 동작은
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-19__support-fireblocks-io__aml-transaction-screening-and-monitoring.pdf
+      - 2.3
+    - - 2026-05-19__support-fireblocks-io__aml-transaction-screening-policy.pdf
+      - 2.3
+    - - 2026-05-19__support-fireblocks-io__aml-post-screening-policy.pdf
+      - 2.0
+    - - 2026-05-19__support-fireblocks-io__about-travel-rule-transaction-screening.pdf
+      - 1.3
+    - - 2026-05-19__support-fireblocks-io__transaction-screening-operations.pdf
+      - 1.3
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__blockchains-that-support-internal-transactions
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__primary-transaction-statuses
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__transaction-lifecycle
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__about-policies
+      - 3.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/compliance-screening-configuration/get-aml-screening-policy-configuration.md
+      - 2.0
+    - - https://developers.fireblocks.com/api-reference/compliance/aml--view-post-screening-policy.md
+      - 2.0
+    - - https://developers.fireblocks.com/api-reference/compliance/aml--view-screening-policy.md
+      - 2.0
+    - - https://developers.fireblocks.com/api-reference/compliance/calling-the-"bypass-screening-policy"-api-endpoint-triggers-a-new-transaction-with-the-api-user-as-the-initiator-bypassing-the-screening-policy-check.md
+      - 1.3
+    - - https://developers.fireblocks.com/reference/transaction-screening-objects.md
+      - 1.3
+    related_open_questions:
+    - Q-2026-05-18-S03
+    - Q-2026-05-18-S05
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-050
+  question: Q-2026-05-18-S04 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-S04 open — promote needed
+  evidence:
+    keywords:
+    - whitelisting
+    - cooling-off
+    - withdrawal
+    - address
+    - period의
+    - 기본값
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__whitelisting-new-addresses.pdf
+      - 2.0
+    - - 2026-05-18__support-fireblocks-io__allowlist-ip-addresses-for-api-user-requests.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__fireblocks-ip-addresses-to-whitelist.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__one-time-address-ota-feature.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__account-and-wallet-structure
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access
+      - 4.0
+    - - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__user-roles
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+      - 3.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/compliance/add-vault-accounts-to-the-address-registry-opt-out-list.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance/get-address-registry-participation-status-for-the-authenticated-workspace.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance/get-whether-a-vault-account-is-opted-out-of-the-address-registry.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance/list-vault-level-address-registry-opt-outs-paginated.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance/look-up-legal-entity-by-blockchain-address.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-P04
+    - Q-2026-05-18-S04
+    - Q-2026-05-18-S05
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-051
+  question: Q-2026-05-18-S05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-S05 open — promote needed
+  evidence:
+    keywords:
+    - whitelisting
+    - suspension의
+    - withdrawal
+    - address
+    - 정확한
+    - 동작은
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__whitelisting-new-addresses
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__whitelisting-new-addresses.pdf
+      - 2.0
+    - - 2026-05-18__support-fireblocks-io__allowlist-ip-addresses-for-api-user-requests.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__fireblocks-ip-addresses-to-whitelist.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__one-time-address-ota-feature.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__whitelisting-new-addresses
+      - 12.0
+    - - 2026-05-18__support-fireblocks-io__account-and-wallet-structure
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access
+      - 4.0
+    - - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__how-policies-work
+      - 3.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/compliance/add-vault-accounts-to-the-address-registry-opt-out-list.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance/get-address-registry-participation-status-for-the-authenticated-workspace.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance/get-whether-a-vault-account-is-opted-out-of-the-address-registry.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance/list-vault-level-address-registry-opt-outs-paginated.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance/look-up-legal-entity-by-blockchain-address.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-P04
+    - Q-2026-05-18-S04
+    - Q-2026-05-18-S05
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-052
+  question: Q-2026-05-18-S06 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-S06 open — promote needed
+  evidence:
+    keywords:
+    - verification
+    - requests의
+    - rollout
+    - support
+    - 범위는
+    - 일정
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__support-verification-requests.pdf
+      - 2.0
+    - - 2026-05-18__support-fireblocks-io__about-automation.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__about-blockchains.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__about-policies.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__about-the-deposit-control-and-confirmation-policy.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__support-verification-requests
+      - 5.0
+    - - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+      - 4.0
+    - - 2026-05-18__support-fireblocks-io__blockchains-that-support-internal-transactions
+      - 4.0
+    - - 2026-05-18__support-fireblocks-io__edit-users
+      - 4.0
+    - - 2026-05-18__support-fireblocks-io__fireblocks-yubikey-authentication
+      - 4.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/connected-accounts-beta/get-supported-trading-pairs-for-an-account.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/contract-templates/get-supported-blockchains-for-the-template.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/embedded-wallets/retrieve-supported-assets.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/staking/list-supported-staking-chains.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/trlink/get-supported-asset-by-id.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-AU02
+    - Q-2026-05-18-L07
+    - Q-2026-05-18-S06
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-054
+  question: Q-2026-05-18-O05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-O05 open — promote needed
+  evidence:
+    keywords:
+    - workspace
+    - incoming
+    - transfer
+    - freeze
+    - 처리는
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__freeze-workspace
+    pdf_candidates:
+    - - 2026-05-19__support-fireblocks-io__autofreeze-assets-from-incoming-transactions.pdf
+      - 2.0
+    - - 2026-05-18__support-fireblocks-io__freeze-workspace.pdf
+      - 1.3
+    - - 2026-05-18__support-fireblocks-io__transfer-workspace-owner.pdf
+      - 1.3
+    - - Canceling a Smart Transfers ticket – Fireblocks Help Center.pdf
+      - 1.0
+    - - Creating a Smart Transfer ticket – Fireblocks Help Center.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__freeze-workspace
+      - 17.3
+    - - 2026-05-18__support-fireblocks-io__security-aspects-signing-with-the-fireblocks-mobile-app
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__account-and-wallet-structure
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__admin-quorum
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__approval-groups
+      - 3.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/workspace/freeze.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/exchange-accounts/internal-transfer-for-exchange-accounts.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/smart-transfer/add-external-ref-id.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/smart-transfer/cancel-ticket.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/smart-transfer/create-leg-term.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-O05
+    - Q-2026-05-18-P02
+    - Q-2026-05-18-P03
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-055
+  question: Q-2026-05-18-B01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-B01 open — promote needed
+  evidence:
+    keywords:
+    - internal-tx
+    - sla-covered
+    - 리스트와
+    - 리스트
+    - 의미는
+    - 운영적
+    explicit_sources: []
+    pdf_candidates: []
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__blockchains-that-support-internal-transactions
+      - 3.0
+    sitemap_candidates: []
+    related_open_questions:
+    - Q-2026-05-18-B01
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-056
+  question: Q-2026-05-18-B02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-B02 open — promote needed
+  evidence:
+    keywords:
+    - on-demand
+    - trade-off
+    - static
+    - router
+    - node
+    - 사용
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__node-router
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__node-router.pdf
+      - 2.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__node-router
+      - 24.0
+    - - 2026-05-18__support-fireblocks-io__how-policies-work
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__security-aspects-signing-with-the-fireblocks-mobile-app
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__user-group-management
+      - 3.0
+    - - 2026-05-19__developers-fireblocks-com__llms-txt-sitemap
+      - 3.0
+    sitemap_candidates: []
+    related_open_questions:
+    - Q-2026-05-18-AU05
+    - Q-2026-05-18-B02
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-057
+  question: Q-2026-05-18-B03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-B03 open — promote needed
+  evidence:
+    keywords:
+    - transaction
+    - internal
+    - 메커니즘은
+    - 감지
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__blockchains-that-support-internal-transactions.pdf
+      - 1.3
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__blockchains-that-support-internal-transactions
+      - 7.3
+    - - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__transaction-lifecycle
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__about-policies
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__authentication-and-authorization
+      - 3.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/exchange-accounts/internal-transfer-for-exchange-accounts.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/internal-wallets/add-an-asset-to-an-internal-wallet.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/internal-wallets/create-an-internal-wallet.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/internal-wallets/delete-a-whitelisted-address.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/internal-wallets/delete-an-internal-wallet.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-B03
+    - Q-2026-05-18-L07
+    - Q-2026-05-18-P02
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-060
+  question: Q-2026-05-18-S09 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-S09 open — promote needed
+  evidence:
+    keywords:
+    - xprv+fprv
+    - recovery
+    - disaster
+    - service
+    - 운영
+    - 생성
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__hosted-mpc-overview
+    - 2026-05-19__support-fireblocks-io__cold-wallet-mobile-key-share-backup-and-recovery
+    - 2026-05-19__support-fireblocks-io__how-to-perform-key-backup-and-recovery
+    - 2026-05-19__support-fireblocks-io__mobile-key-share-backup-and-recovery
+    - 2026-05-19__support-fireblocks-io__mobile-key-share-backup-and-recovery-with-a-third-party-drs
+    pdf_candidates:
+    - - 2026-05-19__support-fireblocks-io__third-party-disaster-recovery-services.pdf
+      - 3.0
+    - - Disaster Recovery Service_ CoinCover – Fireblocks Help Center.pdf
+      - 3.0
+    - - Disaster Recovery Service_ Station70 – Fireblocks Help Center.pdf
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__recovery-passphrase.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__reset-an-admin-or-signers-recovery-passphrase.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-19__support-fireblocks-io__cold-wallet-mobile-key-share-backup-and-recovery
+      - 11.0
+    - - 2026-05-19__support-fireblocks-io__how-to-perform-key-backup-and-recovery
+      - 11.0
+    - - 2026-05-19__support-fireblocks-io__mobile-key-share-backup-and-recovery-with-a-third-party-drs
+      - 11.0
+    - - 2026-05-19__support-fireblocks-io__mobile-key-share-backup-and-recovery
+      - 11.0
+    - - 2026-05-18__support-fireblocks-io__hosted-mpc-overview
+      - 10.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/docs/embedded-wallet-disaster-recovery.md
+      - 2.0
+    - - https://developers.fireblocks.com/api-reference/earn-beta/approve-earn-provider-terms-of-service.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/staking/approve-provider-terms-of-service.md
+      - 1.0
+    - - https://developers.fireblocks.com/docs/backup-and-recovery-overview.md
+      - 1.0
+    - - https://developers.fireblocks.com/docs/embedded-wallet-backup-and-recovery.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-AU01
+    - Q-2026-05-18-S09
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-061
+  question: Q-2026-05-18-S10 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-S10 open — promote needed
+  evidence:
+    keywords:
+    - saas-only
+    - hosted
+    - 의사결정
+    - bcm
+    - mpc
+    - 기준
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__hosted-mpc-overview
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__hosted-mpc-overview.pdf
+      - 1.3
+    - - Hosted MPC Backup and Recovery – Fireblocks Help Center.pdf
+      - 1.3
+    - - Hosted MPC Customer-Side Setup – Fireblocks Help Center.pdf
+      - 1.3
+    - - Hosted MPC Workspace Configuration – Fireblocks Help Center.pdf
+      - 1.3
+    - - 2026-05-18__support-fireblocks-io__business-continuity-module-bcm.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__hosted-mpc-overview
+      - 17.3
+    - - 2026-05-18__support-fireblocks-io__mpc-cmp
+      - 3.3
+    - - 2026-05-18__support-fireblocks-io__authentication-and-authorization
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__fireblocks-cloud-architecture
+      - 3.0
+    - - 2026-05-19__support-fireblocks-io__fireblocks-key-link-overview
+      - 3.0
+    sitemap_candidates: []
+    related_open_questions:
+    - Q-2026-05-18-D08
+    - Q-2026-05-18-O02
+    - Q-2026-05-18-S10
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-062
+  question: Q-2026-05-18-S11 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-S11 open — promote needed
+  evidence:
+    keywords:
+    - yubikey
+    - owner
+    - 사용자
+    - 처리
+    - 채택
+    - 기존
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__fireblocks-yubikey-authentication
+    - 2026-05-18__support-fireblocks-io__mobile-authentication-methods
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__fireblocks-yubikey-authentication.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__reset-the-owners-recovery-passphrase.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__transfer-workspace-owner.pdf
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__provisioning-an-owners-cold-wallet-device.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__fireblocks-yubikey-authentication
+      - 17.0
+    - - 2026-05-18__support-fireblocks-io__mobile-authentication-methods
+      - 10.0
+    - - 2026-05-18__support-fireblocks-io__reset-the-owners-recovery-passphrase
+      - 4.0
+    - - 2026-05-18__support-fireblocks-io__transfer-workspace-owner
+      - 4.0
+    - - 2026-05-18__support-fireblocks-io__admin-quorum
+      - 3.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/nfts/update-token-ownership-status.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/nfts/update-tokens-ownership-spam-property.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/nfts/update-tokens-ownership-status.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-S11
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-063
+  question: Q-2026-05-18-S12 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-S12 open — promote needed
+  evidence:
+    keywords:
+    - residency
+    - selection
+    - 3-region
+    - region
+    - data
+    - saas
+    explicit_sources: []
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__blockchain-data-sheets.pdf
+      - 1.0
+    - - EVM fees_ Net vs. gross fee selection – Fireblocks Help Center.pdf
+      - 1.0
+    - - UTXO fees_ Net vs. gross fee selection – Fireblocks Help Center.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__blockchain-data-sheets
+      - 4.0
+    - - 2026-05-18__support-fireblocks-io__batch-approvals-and-signing
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__hosted-mpc-overview
+      - 3.0
+    - - 2026-05-18__support-fireblocks-io__new-mobile-experience-request-management
+      - 3.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/blockchains-&-assets/update-the-user’s-metadata-for-an-asset.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/contract-interactions/decode-a-function-call-data-error-or-event-log.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/deployed-contracts/list-deployed-contracts-data.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/deployed-contracts/return-deployed-contract-data-by-id.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/deployed-contracts/return-deployed-contract-data.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-S10
+    - Q-2026-05-18-S12
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-064
+  question: Q-2026-05-18-S13 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: WEAK
+  signal: open_q_partial
+  reason: Q-2026-05-18-S13 partial — promote can complete
+  evidence:
+    keywords:
+    - security
+    - auditor
+    - access
+    - audit
+    - admin
+    - log
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__audit-log
+    pdf_candidates:
+    - - 2026-05-18__support-fireblocks-io__audit-log.pdf
+      - 2.0
+    - - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__fireblocks-security-posture-management-fspm.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__security-aspects-signing-with-the-fireblocks-mobile-app.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__security-checklist.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__audit-log
+      - 21.0
+    - - 2026-05-18__support-fireblocks-io__user-roles
+      - 15.0
+    - - 2026-05-19__support-fireblocks-io__aml-compliance-cluster-catalog
+      - 10.0
+    - - 2026-05-19__support-fireblocks-io__cold-wallet-cluster-catalog
+      - 10.0
+    - - 2026-05-18__support-fireblocks-io__one-time-address-ota-feature
+      - 6.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/audit-logs/get-audit-logs.md
+      - 2.0
+    - - https://developers.fireblocks.com/reference/audit-log-events.md
+      - 2.0
+    - - https://developers.fireblocks.com/api-reference/contract-interactions/decode-a-function-call-data-error-or-event-log.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/onchain-data/get-the-current-state-of-addresses-in-an-access-registry.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/onchain-data/summary-of-access-registry-state.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-S13
+  recommended_mode: mode_c
+  rationale_1_line: Partial answered — 잔여 영역 evidence 있음. 추가 chunked text 로 완성.
+- question_id: Q-gen-ver-065
+  question: Q-2026-05-18-S14 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-18-S14 open — promote needed
+  evidence:
+    keywords:
+    - configuration
+    - compromise
+    - rotation
+    - mobile
+    - device
+    - key
+    explicit_sources:
+    - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+    - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+    - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-updates
+    - 2026-05-18__support-fireblocks-io__linked-users-fireblocks-mobile-app
+    - 2026-05-18__support-fireblocks-io__re-adding-a-user-to-the-fireblocks-mobile-app
+    - 2026-05-18__support-fireblocks-io__security-aspects-signing-with-the-fireblocks-mobile-app
+    pdf_candidates:
+    - - 2026-05-19__support-fireblocks-io__aml-advanced-configuration-settings.pdf
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__travel-rule-advanced-configuration-settings.pdf
+      - 1.0
+    - - Hosted MPC Workspace Configuration – Fireblocks Help Center.pdf
+      - 1.0
+    - - Settings & Configuration – Fireblocks Help Center.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-18__support-fireblocks-io__security-aspects-signing-with-the-fireblocks-mobile-app
+      - 19.3
+    - - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+      - 16.3
+    - - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+      - 10.3
+    - - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-updates
+      - 10.3
+    - - 2026-05-18__support-fireblocks-io__linked-users-fireblocks-mobile-app
+      - 10.3
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/compliance-screening-configuration/get-aml-screening-policy-configuration.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance-screening-configuration/get-travel-rule-screening-policy-configuration.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance/get-byork-light-configuration.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance/tenant--screening-configuration.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance/update-aml-configuration.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-A03
+    - Q-2026-05-18-AU05
+    - Q-2026-05-18-S14
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-066
+  question: Q-2026-05-19-G05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-19-G05 open — promote needed
+  evidence:
+    keywords:
+    - fireblocks
+    - hierarchy
+    - customer
+    - policy
+    - bypass
+    - global
+    explicit_sources:
+    - 2026-05-19__support-fireblocks-io__about-the-travel-rule
+    - 2026-05-19__support-fireblocks-io__global-policy-ofac-sanctions-compliance
+    pdf_candidates:
+    - - 2026-05-19__support-fireblocks-io__global-policy-ofac-sanctions-compliance.pdf
+      - 1.6
+    - - 2026-05-19__support-fireblocks-io__customer-reference-id.pdf
+      - 1.3
+    - - EDXM Global Account – Fireblocks Help Center.pdf
+      - 1.3
+    - - Globally supported assets – Fireblocks Help Center.pdf
+      - 1.3
+    - - Hosted MPC Customer-Side Setup – Fireblocks Help Center.pdf
+      - 1.3
+    markdown_candidates:
+    - - 2026-05-19__support-fireblocks-io__global-policy-ofac-sanctions-compliance
+      - 11.6
+    - - 2026-05-19__support-fireblocks-io__about-the-travel-rule
+      - 10.3
+    - - 2026-05-18__support-fireblocks-io__fireblocks-ip-addresses-to-whitelist
+      - 6.3
+    - - 2026-05-18__support-fireblocks-io__mpc-cmp
+      - 6.3
+    - - 2026-05-19__support-fireblocks-io__key-link-cluster-catalog
+      - 6.3
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/compliance/calling-the-"bypass-screening-policy"-api-endpoint-triggers-a-new-transaction-with-the-api-user-as-the-initiator-bypassing-the-screening-policy-check.md
+      - 1.6
+    - - https://developers.fireblocks.com/api-reference/external-wallets/set-an-aml-customer-reference-id-for-an-external-wallet.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/internal-wallets/set-an-amlkyt-customer-reference-id-for-internal-wallet.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/trlink/connect-customer-integration.md
+      - 1.3
+    - - https://developers.fireblocks.com/api-reference/trlink/create-customer-integration.md
+      - 1.3
+    related_open_questions:
+    - Q-2026-05-18-D05
+    - Q-2026-05-19-G05
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-067
+  question: Q-2026-05-19-M05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-19-M05 open — promote needed
+  evidence:
+    keywords:
+    - wallet
+    - share
+    - 동일한가
+    - cold
+    - 분포가
+    - mpc
+    explicit_sources:
+    - 2026-05-19__support-fireblocks-io__cold-wallet-mobile-key-share-backup-and-recovery
+    pdf_candidates:
+    - - 2026-05-19__support-fireblocks-io__cold-wallet-mobile-key-share-backup-and-recovery.pdf
+      - 2.3
+    - - 2026-05-19__support-fireblocks-io__about-fireblocks-cold-wallet.pdf
+      - 1.3
+    - - 2026-05-19__support-fireblocks-io__adding-api-keys-to-a-cold-wallet-workspace.pdf
+      - 1.3
+    - - 2026-05-19__support-fireblocks-io__adding-users-to-a-cold-wallet-workspace.pdf
+      - 1.3
+    - - 2026-05-19__support-fireblocks-io__cold-wallet-device-requirements.pdf
+      - 1.3
+    markdown_candidates:
+    - - 2026-05-19__support-fireblocks-io__cold-wallet-mobile-key-share-backup-and-recovery
+      - 12.3
+    - - 2026-05-18__support-fireblocks-io__admin-quorum
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__approval-groups
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__business-continuity-module-bcm
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__mobile-device-minimum-requirements
+      - 6.0
+    sitemap_candidates: []
+    related_open_questions:
+    - Q-2026-05-18-M04
+    - Q-2026-05-19-M05
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-068
+  question: Q-2026-05-19-G06 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-19-G06 open — promote needed
+  evidence:
+    keywords:
+    - rebalancing
+    - governance
+    - approval
+    - flow
+    - cold
+    - hot
+    explicit_sources:
+    - 2026-05-19__support-fireblocks-io__cold-wallet-security-and-operational-best-practices
+    pdf_candidates:
+    - - 2026-05-19__support-fireblocks-io__connecting-cold-wallet-with-hot-workspaces-via-p2p.pdf
+      - 2.0
+    - - 2026-05-18__support-fireblocks-io__approval-groups.pdf
+      - 1.0
+    - - 2026-05-18__support-fireblocks-io__batch-approvals-and-signing.pdf
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__about-fireblocks-cold-wallet.pdf
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__adding-api-keys-to-a-cold-wallet-workspace.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-19__support-fireblocks-io__cold-wallet-security-and-operational-best-practices
+      - 11.0
+    - - 2026-05-18__support-fireblocks-io__approval-groups
+      - 10.0
+    - - 2026-05-18__support-fireblocks-io__admin-quorum
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__one-time-address-ota-feature
+      - 6.0
+    - - 2026-05-19__support-fireblocks-io__getting-started-with-fireblocks-key-link
+      - 6.0
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/payments--flows/create-payment-flow-configuration.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/payments--flows/create-workflow-execution.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/payments--flows/delete-workflow-configuration.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/payments--flows/execute-the-payments-workflow.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/payments--flows/get-workflow-execution-details.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-19-G06
+    - Q-2026-05-19-M05
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.
+- question_id: Q-gen-ver-069
+  question: Q-2026-05-19-S15 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  signal: open_q_unanswered
+  reason: Q-2026-05-19-S15 open — promote needed
+  evidence:
+    keywords:
+    - fail-on-unknown
+    - pass-on-unknown
+    - workspace
+    - provider
+    - default
+    - travel
+    explicit_sources:
+    - 2026-05-19__support-fireblocks-io__aml-transaction-screening-and-monitoring
+    pdf_candidates:
+    - - 2026-05-19__support-fireblocks-io__disconnecting-your-travel-rule-provider.pdf
+      - 2.0
+    - - Integrating third-party AML providers with your workspace – Fireblocks Help
+        Center.pdf
+      - 1.3
+    - - Using a workspace as a gasless relay provider – Fireblocks Help Center.pdf
+      - 1.3
+    - - 2026-05-19__support-fireblocks-io__about-the-travel-rule.pdf
+      - 1.0
+    - - 2026-05-19__support-fireblocks-io__about-travel-rule-transaction-screening.pdf
+      - 1.0
+    markdown_candidates:
+    - - 2026-05-19__support-fireblocks-io__aml-transaction-screening-and-monitoring
+      - 10.0
+    - - 2026-05-18__support-fireblocks-io__approval-groups
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__configure-sso
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+      - 6.0
+    - - 2026-05-18__support-fireblocks-io__freeze-workspace
+      - 3.3
+    sitemap_candidates:
+    - - https://developers.fireblocks.com/api-reference/compliance-screening-configuration/get-travel-rule-screening-policy-configuration.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance/travel-rule--view-post-screening-policy.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance/travel-rule--view-screening-policy.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/compliance/update-travel-rule-configuration.md
+      - 1.0
+    - - https://developers.fireblocks.com/api-reference/earn-beta/approve-earn-provider-terms-of-service.md
+      - 1.0
+    related_open_questions:
+    - Q-2026-05-18-AU01
+    - Q-2026-05-19-S15
+  recommended_mode: mode_c
+  rationale_1_line: Source Lake / sitemap 에 evidence 있음. 외부 chunked text 추출 → Open
+    Q 응답 + entity/hub 보강.

@@ -1,0 +1,12 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/14826762746780-Is-this-email-really-from-Fireblocks
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 2
+language: en
+notes: |
+  Phishing defense guide.
+  Official domains: fireblocks.com / fireblocks.io.
+  DKIM signing + DMARC protection.
+  Communication channels: email, support tickets, Slack (no social media).
+  Fireblocks employees never request password, 2FA codes, or remote access.
+  Suspicious email -> security@fireblocks.com / CSM / Support.

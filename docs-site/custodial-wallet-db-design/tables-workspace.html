@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workspace & Vault Topology — 수탁형 지갑 DB 설계</title>
+  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Workspace & Vault Topology">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
+
+<div class="layout">
+
+<aside class="sidebar" aria-label="Table of contents">
+  <nav>
+    <div class="nav-section">
+      <h3 class="nav-section-title">Overview</h3>
+      <ul>
+        <li><a href="index.html">0. Overview</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">A. Architecture</h3>
+      <ul>
+        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
+        <li><a href="db-split.html">2. DB 분할</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">B. Workspace & Vault</h3>
+      <ul>
+        <li><a href="tables-workspace.html" class="active">3. Workspace & Vault</a></li>
+        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">C. Users & Access</h3>
+      <ul>
+        <li><a href="tables-user.html">5. Users</a></li>
+        <li><a href="tables-auth.html">6. Auth credentials</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">D. Governance & Policy</h3>
+      <ul>
+        <li><a href="tables-role.html">7. 9 User Roles</a></li>
+        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
+        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
+      <ul>
+        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
+        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
+        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+      <ul>
+        <li><a href="sm-transaction.html">13. Transaction State</a></li>
+        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
+        <li><a href="sm-approval.html">15. Approval State</a></li>
+        <li><a href="sm-signing.html">16. Signing State</a></li>
+        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
+        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+      <ul>
+        <li><a href="tables-audit.html">19. Audit Log</a></li>
+        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
+        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
+        <li><a href="risks.html">22. Risks Register</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
+      <ul>
+        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
+        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
+        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+
+<main class="content">
+
+<section id="tables-workspace">
+    <h2>3. Workspace & Vault Topology</h2>
+    <span class="section-subtitle">Workspace · Vault Account · Asset Wallet · Address — 4 단계 hierarchy</span>
+
+    <h3>Workspace = 최상위 격리·거버넌스 단위</h3>
+    <p><code>user-roles.md</code>, p.1 직접 인용: <em>"Every workspace requires one (and only one) Owner to set up the Vault."</em></p>
+    <ul>
+      <li><strong>1 workspace = 1 Owner</strong> — DB UNIQUE constraint 로 강제</li>
+      <li>workspace type 3 종: <strong>hot / cold / Sandbox</strong> (Sandbox 는 별도 role 모델 + auto-approve)</li>
+      <li>workspace-level 작업: Freeze (O/A/NSA/SecAdmin), Policy 변경 (Q+O), Admin Quorum 변경 (Q+O), AML/Travel Rule 설정</li>
+    </ul>
+
+    <pre><code>CREATE TABLE workspaces (
+  id              BINARY(16) PRIMARY KEY,
+  type            ENUM('hot', 'cold', 'sandbox') NOT NULL,
+  owner_user_id   BINARY(16) NOT NULL UNIQUE,        -- 1-Owner invariant
+  name            VARCHAR(128) NOT NULL,
+  region          ENUM('us', 'eu', 'eu2') NOT NULL,  -- 3-region SaaS
+  aml_default     ENUM('fail-on-unknown', 'pass-on-unknown') NOT NULL,
+  created_at      DATETIME(6) NOT NULL,
+  frozen_at       DATETIME(6),                       -- Emergency Freeze
+  frozen_by       BINARY(16),                        -- O / A / NSA / SecAdmin
+  KEY (frozen_at)
+);
+
+CREATE TABLE workspace_freeze_events (
+  -- append-only, freeze/unfreeze 이력
+  id              BINARY(16) PRIMARY KEY,
+  workspace_id    BINARY(16) NOT NULL,
+  event_type      ENUM('freeze', 'unfreeze') NOT NULL,
+  actor_user_id   BINARY(16) NOT NULL,
+  support_ticket_id VARCHAR(64),                     -- unfreeze 시 Support 경유 증빙
+  occurred_at     DATETIME(6) NOT NULL
+);</code></pre>
+
+    <div class="callout">
+      <div class="callout-title">Freeze 효과 (Stage 6 명세)</div>
+      <p>Freeze 발동 시 <strong>모든 user role 이 Viewer 로 강제 변경 (Owner 포함)</strong>. 차단: transfer / address whitelisting / 새 fiat·exchange / P2P Network connection. <strong>Incoming transfer 는 계속 수신</strong>. Unfreeze 는 Owner only via Fireblocks Support (Console 불가).</p>
+    </div>
+
+    <h3>Vault Account — 자산 보유 단위</h3>
+    <p>Workspace 안의 자산 보유 그룹. 권한표상 운영 동사: <code>create / rename / hide / unhide</code>.</p>
+
+    <pre><code>CREATE TABLE vault_accounts (
+  id              BINARY(16) PRIMARY KEY,
+  workspace_id    BINARY(16) NOT NULL,
+  name            VARCHAR(128) NOT NULL,
+  hidden          BOOLEAN NOT NULL DEFAULT FALSE,
+  account_role    ENUM('treasury', 'client', 'intermediate',
+                       'mint', 'burn', 'pause', 'deploy', 'upgrade',
+                       'withdrawal', 'general') NOT NULL,
+  created_by      BINARY(16) NOT NULL,
+  created_at      DATETIME(6) NOT NULL,
+  archived_at     DATETIME(6),                       -- hide 는 soft-archive
+  KEY (workspace_id, account_role)
+);</code></pre>
+
+    <h3>Vault Structure 패턴 (Stage 9 — <code>vault-structure-best-practices.md</code>)</h3>
+    <ul>
+      <li><strong>Omnibus</strong>: 중앙 vault + intermediate vault per client (account-based chain 의 1 address 제약 회피)</li>
+      <li><strong>Segregated</strong>: per-client / per-team / per-operation vault account</li>
+      <li><strong>Treasury vault</strong>: 가장 restrictive Policy</li>
+      <li><strong>Smart contract per-op vault</strong>: Mint / Burn / Pause / Deploy / Upgrade — privileged personnel 만 Policy 로 access 제한</li>
+      <li><strong>Withdrawal vault round-robin</strong>: EVM nonce / Bitcoin 25-chain limit 회피</li>
+    </ul>
+
+    <h3>Sandbox Workspace 의 특수성</h3>
+    <ul>
+      <li>3 role 만 제공 (Non-Signing Admin / Editor / Viewer) — Owner role 은 backend service 가 대행</li>
+      <li>모든 transaction <strong>auto-approve</strong> (Policy 흐름 자체가 다름)</li>
+      <li>API user 생성 시 CSR 인증서 브라우저 자동 생성</li>
+      <li>Sandbox NSA 는 mainnet/testnet 에 없는 추가 능력 (user create/delete, 2FA reset, <strong>tx sign</strong>)</li>
+    </ul>
+  </section>
+
+  <nav class="page-nav" aria-label="Section navigation">
+    <a class="page-nav-link page-nav-prev" href="db-split.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">2. DB 분할</span></a>
+    <a class="page-nav-link page-nav-next" href="tables-wallet.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">4. Wallet & Address</span></a>
+  </nav>
+
+</main>
+</div>
+
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+
+</body>
+</html>

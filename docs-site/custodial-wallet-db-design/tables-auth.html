@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Key · CSR · 2FA · SSO · IP — 수탁형 지갑 DB 설계</title>
+  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — API Key · CSR · 2FA · SSO · IP">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
+
+<div class="layout">
+
+<aside class="sidebar" aria-label="Table of contents">
+  <nav>
+    <div class="nav-section">
+      <h3 class="nav-section-title">Overview</h3>
+      <ul>
+        <li><a href="index.html">0. Overview</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">A. Architecture</h3>
+      <ul>
+        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
+        <li><a href="db-split.html">2. DB 분할</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">B. Workspace & Vault</h3>
+      <ul>
+        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
+        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">C. Users & Access</h3>
+      <ul>
+        <li><a href="tables-user.html">5. Users</a></li>
+        <li><a href="tables-auth.html" class="active">6. Auth credentials</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">D. Governance & Policy</h3>
+      <ul>
+        <li><a href="tables-role.html">7. 9 User Roles</a></li>
+        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
+        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
+      <ul>
+        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
+        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
+        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+      <ul>
+        <li><a href="sm-transaction.html">13. Transaction State</a></li>
+        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
+        <li><a href="sm-approval.html">15. Approval State</a></li>
+        <li><a href="sm-signing.html">16. Signing State</a></li>
+        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
+        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+      <ul>
+        <li><a href="tables-audit.html">19. Audit Log</a></li>
+        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
+        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
+        <li><a href="risks.html">22. Risks Register</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
+      <ul>
+        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
+        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
+        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+
+<main class="content">
+
+<section id="tables-auth">
+    <h2>6. API Key · CSR · 2FA · SSO · IP Allowlist</h2>
+    <span class="section-subtitle">5 자격증명 평면의 영속화</span>
+
+    <h3>API Key</h3>
+    <ul>
+      <li>API user 당 1개 — <em>"Each API user has an associated API key."</em></li>
+      <li>Console API users list 에서 hover 로 복사 (<em>"API User (ID)"</em> 열)</li>
+      <li><strong>Rename 시 API key 불변</strong></li>
+      <li><strong>Delete 시 즉시 invalid</strong> → 서드파티 통합 중단, in-flight tx 실패, 새 서명 거부</li>
+      <li>IP allowlist 없으면 도난된 API key 가 <strong>인터넷 임의 머신에서 사용 가능</strong></li>
+    </ul>
+
+    <pre><code>CREATE TABLE api_keys (
+  id                BINARY(16) PRIMARY KEY,
+  api_user_id       BINARY(16) NOT NULL UNIQUE,
+  csr_id            BINARY(16) NOT NULL,
+  created_by_owner_user_id BINARY(16) NOT NULL,
+  created_at        DATETIME(6) NOT NULL,
+  invalidated_at    DATETIME(6),                       -- delete 시 set, immediate
+  KEY (invalidated_at)
+);</code></pre>
+
+    <h3>CSR (Certificate Signing Request)</h3>
+    <ul>
+      <li><strong>RSA 4096</strong> X.509</li>
+      <li>Customer-side 에서 생성 — <code>fireblocks_secret.key</code> 로컬 보관</li>
+      <li>Sandbox: 브라우저에서 자동 생성 (private key 발급 단축)</li>
+      <li>Co-signer end cert chain 의 leaf</li>
+    </ul>
+
+    <pre><code>CREATE TABLE csrs (
+  id                BINARY(16) PRIMARY KEY,
+  subject_cn        VARCHAR(255) NOT NULL,
+  public_key_pem    TEXT NOT NULL,
+  fingerprint_sha256 BINARY(32) NOT NULL UNIQUE,
+  signed_by_intermediate_cert_id BINARY(16) NOT NULL,
+  end_cert_pem      TEXT,                              -- Core Services 가 sign 후 set
+  signed_at         DATETIME(6),
+  expires_at        DATETIME(6) NOT NULL,
+  uploaded_at       DATETIME(6) NOT NULL
+);</code></pre>
+
+    <h3>2FA (TOTP)</h3>
+    <ul>
+      <li><strong>모든 Console user 필수</strong> — TOTP authenticator (Google / Microsoft / LastPass / Yubico)</li>
+      <li>6-digit code, time-sensitive (시간 동기화 필요)</li>
+      <li>WebAuthn / FIDO2 / hardware key 지원 여부: 본 자료 미명시</li>
+      <li><strong>Reset 권한</strong>: 권한표 Owner + Security Admin. 본문은 Owner only (불일치 패턴)</li>
+      <li>본인 reset 불가 — Owner / Security Admin 에 요청 → Owner reset → 확인 이메일 → 재로그인하여 setup</li>
+    </ul>
+
+    <pre><code>CREATE TABLE user_2fa (
+  user_id           BINARY(16) PRIMARY KEY,
+  -- ★ TOTP secret 은 plaintext 저장 금지. HSM-wrapped 만.
+  secret_hsm_keyref VARCHAR(128) NOT NULL,
+  enrolled_at       DATETIME(6) NOT NULL,
+  last_used_at      DATETIME(6),
+  KEY (last_used_at)
+);
+
+CREATE TABLE twofa_reset_events (
+  -- append-only
+  id                BINARY(16) PRIMARY KEY,
+  target_user_id    BINARY(16) NOT NULL,
+  actor_user_id     BINARY(16) NOT NULL,
+  reset_at          DATETIME(6) NOT NULL,
+  via_support       BOOLEAN NOT NULL DEFAULT FALSE,    -- Owner 본인의 reset 은 Support
+  KEY (target_user_id)
+);</code></pre>
+
+    <h3>SSO (Auth0 → 외부 IdP)</h3>
+    <ul>
+      <li><strong>email domain 기반 authorization</strong> — workspace 가입자의 domain 이 list 에 있어야 로그인 가능</li>
+      <li>SSO 는 <strong>login authorization 만</strong> — workspace 내 user 추가/삭제는 별개 평면 (Owner/Admin Console)</li>
+      <li>Service provider: <strong>Auth0</strong> (<code>auth.fireblocks.io/login/callback</code>)</li>
+      <li>변경: Fireblocks Support 경유, Workspace Owner 승인 필요</li>
+    </ul>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>IdP</th><th>Self-setup</th><th>주요 입력</th></tr></thead>
+        <tbody>
+          <tr><td>Google Workspace</td><td>✓</td><td>Client ID, Secret, domain (OAuth 2.0)</td></tr>
+          <tr><td>Microsoft Entra ID</td><td>✓</td><td>Client ID, Secret value (★ ID 아님), domain</td></tr>
+          <tr><td>Okta</td><td>✓</td><td>customer-metadata.xml, X.509 (SAML, firstName/lastName/email 3 attr 매핑)</td></tr>
+          <tr><td>OpenID Connect</td><td>✓</td><td>Issuer URL, Client ID, domain</td></tr>
+          <tr><td>PingFederate</td><td>✓</td><td>Server URL, X.509 (Base64)</td></tr>
+          <tr><td>SAML 2.0 / 3.0</td><td>✓</td><td>metadata.xml, X.509</td></tr>
+          <tr><td>ADFS</td><td>—</td><td>Fireblocks Support 경유</td></tr>
+          <tr><td>LDAP / AD</td><td>—</td><td>Fireblocks Support 경유</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code>CREATE TABLE sso_configs (
+  id                BINARY(16) PRIMARY KEY,
+  workspace_id      BINARY(16) NOT NULL UNIQUE,
+  idp_type          ENUM('google', 'entra', 'okta', 'oidc',
+                         'pingfederate', 'saml2', 'saml3', 'adfs', 'ldap') NOT NULL,
+  callback_url      VARCHAR(255) NOT NULL,             -- auth.fireblocks.io/login/callback
+  client_id         VARCHAR(255),
+  client_secret_hsm_keyref VARCHAR(128),               -- HSM-wrapped, never plaintext
+  metadata_xml_blob BLOB,                              -- SAML 의 경우
+  configured_at     DATETIME(6) NOT NULL,
+  changed_at        DATETIME(6)                        -- Support 경유 변경
+);
+
+CREATE TABLE sso_authorized_domains (
+  sso_config_id     BINARY(16) NOT NULL,
+  email_domain      VARCHAR(255) NOT NULL,
+  PRIMARY KEY (sso_config_id, email_domain)
+);</code></pre>
+
+    <h3>IP Allowlist</h3>
+    <ul>
+      <li><strong>API user/Key 단위</strong>: per-API-user, <code>/32</code> CIDR only</li>
+      <li>수정 권한: Owner / Security Admin (권한표) — 본문은 "Only workspace Owners" (불일치)</li>
+      <li>없으면 도난된 API key 의 인터넷 임의 사용 가능</li>
+      <li><strong>workspace-level IP allowlist</strong> (Console access 용) 도 별도 존재 — Owner 만</li>
+    </ul>
+
+    <pre><code>CREATE TABLE api_user_ip_allowlists (
+  id                BINARY(16) PRIMARY KEY,
+  api_user_id       BINARY(16) NOT NULL,
+  cidr              VARCHAR(18) NOT NULL,              -- /32 only
+  added_by_user_id  BINARY(16) NOT NULL,               -- Owner or Security Admin
+  added_at          DATETIME(6) NOT NULL,
+  removed_at        DATETIME(6),
+  KEY (api_user_id, removed_at)
+);
+
+CREATE TABLE workspace_ip_allowlists (
+  id                BINARY(16) PRIMARY KEY,
+  workspace_id      BINARY(16) NOT NULL,
+  cidr              VARCHAR(18) NOT NULL,              -- /32 only
+  added_by_owner_user_id BINARY(16) NOT NULL,
+  added_at          DATETIME(6) NOT NULL,
+  removed_at        DATETIME(6),
+  KEY (workspace_id)
+);</code></pre>
+  </section>
+
+  <nav class="page-nav" aria-label="Section navigation">
+    <a class="page-nav-link page-nav-prev" href="tables-user.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">5. Users</span></a>
+    <a class="page-nav-link page-nav-next" href="tables-role.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">7. 9 User Roles</span></a>
+  </nav>
+
+</main>
+</div>
+
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,8 @@
+url: https://developers.fireblocks.com/reference/typescript-sdk
+fetched_at: 2026-05-19
+source_type: webpage
+domain: developer / SDK
+tier: 3
+title: "Fireblocks Developer Docs — TypeScript SDK"
+crawl_status: nav-links-only (body not fetched)
+promote_condition: "SDK integration domain 을 active 로 격상할 때, 또는 사용자 명시 promote"

@@ -1,0 +1,8 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/4406705242642-Linked-users-Fireblocks-mobile-app
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 3
+language: en
+notes: |
+  Linked Users screen UX on mobile app: view, link new (QR + PIN), remove (Android 3-dots / iOS swipe).
+  Remove does not notify the user.

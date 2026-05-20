@@ -1,0 +1,8 @@
+url: https://developers.fireblocks.com/docs/introduction
+fetched_at: 2026-05-19
+source_type: webpage
+domain: developer / platform overview
+tier: 2
+title: "Fireblocks Developer Docs — Introduction"
+crawl_status: nav-links-only (body not fetched, sidebar JS-rendered hence not captured)
+promote_condition: "Fireblocks architecture / API overview hub 구축 시점, 또는 사용자 명시 promote"

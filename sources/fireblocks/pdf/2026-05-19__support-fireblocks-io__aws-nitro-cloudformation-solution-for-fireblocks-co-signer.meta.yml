@@ -1,0 +1,10 @@
+url: https://support.fireblocks.io/hc/en-us/articles/aws-nitro-cloudformation-solution-for-fireblocks-co-signer
+url_status: inferred (slug 기반 추정, 실 article ID 미확인)
+fetched_at: 2026-05-19
+source_type: pdf
+domain: cosigner-deployment / aws-nitro-tee / customer-cloud
+tier: 1
+title: "AWS Nitro CloudFormation Solution for Fireblocks Co-Signer"
+crawl_status: not-fetched (body 미로드, lightweight index 만)
+promote_condition: "AWS 환경 Co-signer 설치 절차 (CloudFormation parameter / region / instance type / IAM) 필요시"
+cluster: aws-nitro-cosigner

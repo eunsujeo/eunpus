@@ -1,0 +1,13 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/10014355343516-Removing-a-Ripple-XRP-trust-line
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 2
+language: en
+category: blockchains-chain-specific
+chain: XRP
+notes: |
+  XRP trust line removal conditions: reserve balance 0.2 XRP + default flag values.
+  Fireblocks auto-creates trust lines with default flags via tokenization engine.
+  If wallet balance falls below min reserve (1 XRP base + 0.2 XRP/trust line), trust lines may be auto-deleted on-chain.
+  Min 1 XRP for base wallet independent of trust lines.
+  Placeholder ingestion.

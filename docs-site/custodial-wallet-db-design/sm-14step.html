@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>14-Step Transaction Flow — 수탁형 지갑 DB 설계</title>
+  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — 14-Step Transaction Flow">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
+
+<div class="layout">
+
+<aside class="sidebar" aria-label="Table of contents">
+  <nav>
+    <div class="nav-section">
+      <h3 class="nav-section-title">Overview</h3>
+      <ul>
+        <li><a href="index.html">0. Overview</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">A. Architecture</h3>
+      <ul>
+        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
+        <li><a href="db-split.html">2. DB 분할</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">B. Workspace & Vault</h3>
+      <ul>
+        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
+        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">C. Users & Access</h3>
+      <ul>
+        <li><a href="tables-user.html">5. Users</a></li>
+        <li><a href="tables-auth.html">6. Auth credentials</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">D. Governance & Policy</h3>
+      <ul>
+        <li><a href="tables-role.html">7. 9 User Roles</a></li>
+        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
+        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
+      <ul>
+        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
+        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
+        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+      <ul>
+        <li><a href="sm-transaction.html">13. Transaction State</a></li>
+        <li><a href="sm-14step.html" class="active">14. 14-step Flow</a></li>
+        <li><a href="sm-approval.html">15. Approval State</a></li>
+        <li><a href="sm-signing.html">16. Signing State</a></li>
+        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
+        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+      <ul>
+        <li><a href="tables-audit.html">19. Audit Log</a></li>
+        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
+        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
+        <li><a href="risks.html">22. Risks Register</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
+      <ul>
+        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
+        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
+        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+
+<main class="content">
+
+<section id="sm-14step">
+    <h2>14. 14-Step Transaction Flow</h2>
+    <span class="section-subtitle">Stage 9 정식 명세 · 각 step 의 DB row 생성·갱신 매핑</span>
+
+    <p><code>transaction-lifecycle.md</code>, p.4-5 + <code>fireblocks-cloud-architecture.md</code> 정합. 모든 service handoff 에 zero-trust 검증.</p>
+
+    <div class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+  participant User
+  participant API as Dev API Gateway
+  participant Auth as Auth Engine (SGX)
+  participant TM as Transaction Manager
+  participant BS as Balance Service
+  participant SS as Screening Service
+  participant AML as AML Provider
+  participant PE as Policy Engine (SGX)
+  participant SV as Secure Vault (SGX)
+  participant CSE as Co-Signer Engine (SGX)
+  participant C1 as Co-Signer 1 (FB SGX)
+  participant C2 as Co-Signer 2 (FB SGX)
+  participant C3 as Co-Signer 3 (Customer)
+  participant Node
+
+  User->>API: 1. tx request
+  API-->>API: 2. JWT 서명 access token
+  API->>Auth: 3-4. JWT 검증 (cert store + Auth Engine)
+  Auth-->>API: validated
+  API->>TM: 5. tx
+  TM->>BS: 5a. balance check
+  BS->>Node: query
+  TM->>SS: 5b/5c. AML + Travel Rule
+  SS->>AML: query (Chainalysis / Elliptic / Notabene)
+  TM->>PE: 6-7. policy evaluation (SGX)
+  PE-->>PE: auto-approve OR collect approvals
+  PE->>SV: 8. signing 개시
+  SV->>CSE: 9. tx request cache (UUID + Policy rules)
+  CSE->>C1: 10. signing ceremony
+  CSE->>C2: 10. signing ceremony
+  CSE->>C3: 10. signing ceremony
+  C3->>CSE: partial sig
+  Note over C3: optional Callback Handler attached
+  CSE->>Auth: 11. partial signature hash 검증
+  CSE->>SV: 12. signed tx 조립
+  SV->>Node: 13. broadcast
+  Node-->>Blockchain: 14. 최종 broadcast
+      </pre>
+      <span class="diagram-caption">Figure 6. 14-step transaction flow — Auth Engine / Policy Engine / Secure Vault / Co-Signer Engine 모두 SGX (Azure). Co-Signer 3 가 customer-side.</span>
+    </div>
+
+    <h3>Step 별 DB row 매핑</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Step</th><th>Action</th><th>DB row 생성/갱신</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>User → API tx request</td><td><code>transactions</code> INSERT (status=SUBMITTED)</td></tr>
+          <tr><td>2-4</td><td>JWT 발급 + Auth Engine 검증</td><td><code>auth_tokens</code> INSERT (access token, 6h)</td></tr>
+          <tr><td>5a</td><td>Balance Service → Node</td><td>(stateless query, no DB write)</td></tr>
+          <tr><td>5b</td><td>Screening Service → AML Provider</td><td><code>aml_screening_results</code> INSERT (status=PENDING_AML_SCREENING)</td></tr>
+          <tr><td>5c</td><td>Screening Service → Travel Rule</td><td><code>travel_rule_records</code> INSERT</td></tr>
+          <tr><td>6-7</td><td>Policy Engine 평가</td><td><code>approval_requests</code> INSERT (status=PENDING_AUTHORIZATION), <code>approval_decisions</code> INSERT per approver</td></tr>
+          <tr><td>8</td><td>충분한 approvals → Secure Vault</td><td><code>transactions.status</code> = QUEUED → PENDING_SIGNATURE</td></tr>
+          <tr><td>9</td><td>Vault tx request cache → Co-Signer Engine</td><td><code>signing_requests</code> INSERT (UUID + policy_rule_ref)</td></tr>
+          <tr><td>10</td><td>Co-Signer 1/2/3 signing ceremony</td><td><code>signing_events</code> INSERT per share (append-only)</td></tr>
+          <tr><td>10a</td><td>Co-Signer 3 → Callback Handler</td><td><code>callback_invocations</code> INSERT (optional)</td></tr>
+          <tr><td>11</td><td>Auth Engine partial sig hash 검증</td><td>(SGX-internal, no DB write)</td></tr>
+          <tr><td>12</td><td>Secure Vault 서명된 tx 조립</td><td><code>transactions.raw_payload_cbor</code> SET (set-once)</td></tr>
+          <tr><td>13</td><td>Node infrastructure broadcast</td><td><code>broadcast_attempts</code> INSERT, <code>transactions.status</code> = BROADCASTING</td></tr>
+          <tr><td>14</td><td>Blockchain 최종 broadcast</td><td><code>transactions.tx_hash</code> SET (set-once), status = CONFIRMING</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Zero-Trust Handoff 의 DB 함의</h3>
+    <p>각 service handoff 마다 derived cert 검증 — <strong>service-to-service 호출 자체가 audit event</strong>. <code>service_handoff_events</code> 테이블 (append-only) 에 from_service / to_service / cert_chain_hash / occurred_at 기록.</p>
+  </section>
+
+  <nav class="page-nav" aria-label="Section navigation">
+    <a class="page-nav-link page-nav-prev" href="sm-transaction.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">13. Transaction State</span></a>
+    <a class="page-nav-link page-nav-next" href="sm-approval.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">15. Approval State</span></a>
+  </nav>
+
+</main>
+</div>
+
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+
+</body>
+</html>

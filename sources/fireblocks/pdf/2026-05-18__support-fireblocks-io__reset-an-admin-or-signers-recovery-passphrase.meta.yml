@@ -1,0 +1,9 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/12545691460252-Reset-an-Admin-or-Signer-s-Recovery-Passphrase
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 3
+language: en
+notes: |
+  Admin/Signer recovery passphrase reset via mobile app.
+  Settings > Change Passphrase (Android) / Reset Recovery Passphrase (iOS).
+  PIN -> new passphrase (meets requirements) -> biometric.

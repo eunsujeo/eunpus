@@ -1,0 +1,12 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/11096124643484-Funding-a-new-Stellar-account
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 3
+language: en
+category: blockchains-chain-specific
+chain: XLM
+notes: |
+  Stellar account requires initial 1 XLM (base reserve).
+  Until 2024-01-01 Fireblocks auto-funded; now customer's responsibility (testnet change live 2023-12-19).
+  Fund via: integrated exchange / another wallet / third-party Stellar wallet.
+  Placeholder ingestion.

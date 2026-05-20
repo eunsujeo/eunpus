@@ -1,0 +1,11 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/8744575638044-About-the-Fireblocks-mobile-app
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 3
+language: en
+notes: |
+  Mobile app's two primary purposes: tx approval/signing and MPC-CMP key share host.
+  Secure enclave, hardware-encrypted, no iCloud/Google Cloud backup.
+  Three impossibilities: iCloud restore, uninstall+reinstall self-recovery, new biometric ID.
+  Owner uninstall requires Key Share Recovery.
+  API Co-Signer is alternative for automation.

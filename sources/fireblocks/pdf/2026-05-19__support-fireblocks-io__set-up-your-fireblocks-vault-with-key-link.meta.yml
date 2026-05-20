@@ -1,0 +1,10 @@
+url: https://support.fireblocks.io/hc/en-us/articles/set-up-your-fireblocks-vault-with-key-link
+url_status: inferred (slug 기반 추정, 실 article ID 미확인)
+fetched_at: 2026-05-19
+source_type: pdf
+domain: customer-held-key / workspace-config
+tier: 1
+title: "Set up your Fireblocks Vault with Key Link"
+crawl_status: not-fetched (body 미로드, lightweight index 만)
+promote_condition: "Vault Account ↔ Key Link 결합 패턴 / Vault 변형 명세 필요시"
+cluster: key-link

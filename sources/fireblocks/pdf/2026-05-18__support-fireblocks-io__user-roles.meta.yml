@@ -1,0 +1,11 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/360012832959-User-roles
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 10
+language: en
+notes: |
+  Fireblocks Help Center article "User roles".
+  "Updated 5 days ago" as captured 2026-05-18 (=> approximately 2026-05-13 last update).
+  Covers hot workspaces only; cold workspace roles linked to a separate article.
+  Pages 1-8 are content; 9-10 are TOC + footer.
+  Contains 4 permission tables: User management, Transactions, Assets and addresses, Workspace management.

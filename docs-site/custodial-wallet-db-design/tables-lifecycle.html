@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lifecycle Events (Add / Edit) — 수탁형 지갑 DB 설계</title>
+  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Lifecycle Events (Add / Edit)">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
+
+<div class="layout">
+
+<aside class="sidebar" aria-label="Table of contents">
+  <nav>
+    <div class="nav-section">
+      <h3 class="nav-section-title">Overview</h3>
+      <ul>
+        <li><a href="index.html">0. Overview</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">A. Architecture</h3>
+      <ul>
+        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
+        <li><a href="db-split.html">2. DB 분할</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">B. Workspace & Vault</h3>
+      <ul>
+        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
+        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">C. Users & Access</h3>
+      <ul>
+        <li><a href="tables-user.html">5. Users</a></li>
+        <li><a href="tables-auth.html">6. Auth credentials</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">D. Governance & Policy</h3>
+      <ul>
+        <li><a href="tables-role.html">7. 9 User Roles</a></li>
+        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
+        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
+      <ul>
+        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
+        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
+        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+      <ul>
+        <li><a href="sm-transaction.html">13. Transaction State</a></li>
+        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
+        <li><a href="sm-approval.html">15. Approval State</a></li>
+        <li><a href="sm-signing.html">16. Signing State</a></li>
+        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
+        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+      <ul>
+        <li><a href="tables-audit.html">19. Audit Log</a></li>
+        <li><a href="tables-lifecycle.html" class="active">20. Lifecycle Events</a></li>
+        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
+        <li><a href="risks.html">22. Risks Register</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
+      <ul>
+        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
+        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
+        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+
+<main class="content">
+
+<section id="tables-lifecycle">
+    <h2>20. Lifecycle Events (Add / Edit)</h2>
+    <span class="section-subtitle">User · Device · Owner identity 의 생성·수정·역할변경·삭제·재인증·이전</span>
+
+    <h3>핵심 비대칭</h3>
+    <div class="callout">
+      <div class="callout-title">Add/Edit vs Delete 의 거버넌스 비대칭</div>
+      <p>
+        <strong>Add / Edit</strong>: 모바일 기반 비동기 승인 (Q = Owner + Admin Quorum), 7-day expiry<br>
+        <strong>Delete</strong>: <strong>기본 Owner-only, 즉시, mobile approval 없음</strong>
+      </p>
+    </div>
+
+    <h3>User Lifecycle</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Event</th><th>Actor</th><th>승인</th><th>비고</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Add (Console / API)</strong></td><td>본문: O / A / NSA<br>권한표: + SecAdmin (불일치)</td><td>Q (Owner + Admin Quorum), <strong>7-day expiry</strong></td><td>Owner counting rule 적용</td></tr>
+          <tr><td><strong>Add (signing role)</strong></td><td>위 + Owner</td><td>위 + Owner 가 MPC key share derivation <strong>별도</strong> 승인</td><td>두 승인 모두 받아야 active</td></tr>
+          <tr><td><strong>Edit (name/email)</strong></td><td>"Admin-level users"</td><td>Q (Approval groups 로 customize 가능)</td><td>workspace 내 email UNIQUE. Owner 본인은 name/email 변경 불가 → Transfer 절차</td></tr>
+          <tr><td><strong>Role change</strong></td><td>—</td><td>Console 직접 변경 ✗</td><td>Option A: delete + re-add / Option B: Fireblocks Support 요청</td></tr>
+          <tr><td><strong>Delete (default)</strong></td><td>Owner</td><td>즉시, mobile approval 불요</td><td>access 즉시 박탈. Policy/Quorum 의존성 사전 검증 필요</td></tr>
+          <tr><td><strong>Delete (위임)</strong></td><td>Admin (AG)</td><td><code>Settings &gt; Quorums &gt; Approval groups</code> 에서 Owner 요구 토글 OFF</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Device Lifecycle</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Event</th><th>Actor</th><th>승인</th><th>비고</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Re-enroll mobile device</strong></td><td>Owner / Admin / NSA / Security Admin</td><td>Owner approval (2-day window) + 사용자 재등록 (2-day window)</td><td>signing role 의 경우 MPC key share 재승인 추가</td></tr>
+          <tr><td><strong>Device migration</strong></td><td>사용자 본인 self-service</td><td>관리자 승인 없이 PIN + passphrase + biometric 3중</td><td>(Stage 5)</td></tr>
+          <tr><td><strong>2FA reset (타인)</strong></td><td>Owner (+ Security Admin per 권한표)</td><td>—</td><td>본인 reset 불가</td></tr>
+          <tr><td><strong>2FA reset (Owner 본인)</strong></td><td>Fireblocks Support</td><td>영상 통화 신원 확인</td><td>Console 불가</td></tr>
+          <tr><td><strong>Recovery passphrase reset (Admin/Signer)</strong></td><td>본인</td><td>Mobile app self-reset (PIN + new passphrase + biometric)</td><td>—</td></tr>
+          <tr><td><strong>Recovery passphrase reset (Owner)</strong></td><td>본인 + Fireblocks Support</td><td>+ 기존 recovery package 파기 + 새 package 요청</td><td>Offline backup / Third-party DRS 분기</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Workspace Lifecycle</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Event</th><th>Actor</th><th>비고</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Freeze</strong></td><td>Owner / Admin / NSA / Security Admin</td><td>모든 role 이 Viewer 로 강제 변경, transfer / whitelisting / connection 차단. <strong>Incoming transfer 는 계속 수신</strong></td></tr>
+          <tr><td><strong>Unfreeze</strong></td><td><strong>Owner only via Fireblocks Support</strong></td><td>Console 불가, 영상 통화 신원 확인 필수</td></tr>
+          <tr><td><strong>Transfer Owner (current Owner 참여)</strong></td><td>Fireblocks Support</td><td>양 Owner 영상 통화, 신임 Owner 의 recovery passphrase verify, 3-5 영업일</td></tr>
+          <tr><td><strong>Transfer Owner (current Owner 부재)</strong></td><td>Board resolution + stakeholder quorum</td><td>이사회 결의로 신임 Owner 지명</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>DB Schema</h3>
+    <pre><code>-- ★ append-only — lifecycle 이력은 audit-grade
+CREATE TABLE lifecycle_events (
+  id                BINARY(16) PRIMARY KEY,
+  workspace_id      BINARY(16) NOT NULL,
+  event_type        VARCHAR(64) NOT NULL,              -- 'user-add', 'user-edit', 'user-delete',
+                                                       --  'device-re-enroll', 'device-migration',
+                                                       --  '2fa-reset', 'passphrase-reset',
+                                                       --  'workspace-freeze', 'workspace-unfreeze',
+                                                       --  'owner-transfer'
+  target_aggregate_type VARCHAR(64) NOT NULL,          -- 'user', 'device', 'workspace'
+  target_aggregate_id BINARY(16) NOT NULL,
+  actor_user_id     BINARY(16),                        -- self-service 면 target 와 같음
+  via_support_ticket VARCHAR(64),                       -- Fireblocks Support 경유 증빙
+  approval_request_id BINARY(16),                       -- Q / Q+O 흐름의 approval
+  signing_role_extra_approval BOOLEAN NOT NULL DEFAULT FALSE,   -- MPC derivation 별도 승인 여부
+  initiated_at      DATETIME(6) NOT NULL,
+  completed_at      DATETIME(6),                       -- ★ set-once
+  KEY (workspace_id, event_type, initiated_at),
+  KEY (target_aggregate_id)
+);
+
+CREATE TABLE user_setup_progress (
+  user_id           BINARY(16) PRIMARY KEY,
+  invited_at        DATETIME(6) NOT NULL,
+  mobile_paired_at  DATETIME(6),
+  mpc_key_approved_at DATETIME(6),                     -- ★ Owner 의 별도 승인
+  activated_at      DATETIME(6),                       -- ★ set-once
+  expires_at        DATETIME(6) NOT NULL                -- 7-day expiry
+);</code></pre>
+
+    <h3>Status 전이</h3>
+    <pre>users.status:
+  pending → active        (initial setup 완료)
+  active  → deleted       (즉시 박탈, row 유지)
+  active  → frozen-viewer (workspace freeze 시 implicit)
+  frozen-viewer → active  (Owner unfreeze via Support)</pre>
+  </section>
+
+  <nav class="page-nav" aria-label="Section navigation">
+    <a class="page-nav-link page-nav-prev" href="tables-audit.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">19. Audit Log</span></a>
+    <a class="page-nav-link page-nav-next" href="tables-aml.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">21. AML · Travel Rule</span></a>
+  </nav>
+
+</main>
+</div>
+
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+
+</body>
+</html>

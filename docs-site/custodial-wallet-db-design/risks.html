@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Risks Register — 수탁형 지갑 DB 설계</title>
+  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Risks Register">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
+
+<div class="layout">
+
+<aside class="sidebar" aria-label="Table of contents">
+  <nav>
+    <div class="nav-section">
+      <h3 class="nav-section-title">Overview</h3>
+      <ul>
+        <li><a href="index.html">0. Overview</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">A. Architecture</h3>
+      <ul>
+        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
+        <li><a href="db-split.html">2. DB 분할</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">B. Workspace & Vault</h3>
+      <ul>
+        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
+        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">C. Users & Access</h3>
+      <ul>
+        <li><a href="tables-user.html">5. Users</a></li>
+        <li><a href="tables-auth.html">6. Auth credentials</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">D. Governance & Policy</h3>
+      <ul>
+        <li><a href="tables-role.html">7. 9 User Roles</a></li>
+        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
+        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
+      <ul>
+        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
+        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
+        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+      <ul>
+        <li><a href="sm-transaction.html">13. Transaction State</a></li>
+        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
+        <li><a href="sm-approval.html">15. Approval State</a></li>
+        <li><a href="sm-signing.html">16. Signing State</a></li>
+        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
+        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+      <ul>
+        <li><a href="tables-audit.html">19. Audit Log</a></li>
+        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
+        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
+        <li><a href="risks.html" class="active">22. Risks Register</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
+      <ul>
+        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
+        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
+        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+
+<main class="content">
+
+<section id="risks">
+    <h2>22. Risks Register</h2>
+    <span class="section-subtitle">Fireblocks 의 자료에서 명시된 risk + DB 설계상 mitigation</span>
+
+    <h3>Risk Catalog</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Risk</th><th>Source</th><th>DB-level mitigation</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Owner SPOF</strong> — 2FA reset / device 재등록 / Owner transfer 모두 Fireblocks Support 영상 통화 필수 (Console 불가)</td><td><code>vendors/fireblocks/risks.md</code></td><td><code>owner_recovery_events</code> append-only log + multi-admin escalation procedure</td></tr>
+          <tr><td><strong>Recovery passphrase loss</strong> — 사용자가 passphrase 분실 시 cloud backup 해독 불가</td><td><code>recovery-passphrase.md</code></td><td>Periodic verification (월 1회, Owner/Admin/Signer) + 3-fail lockout. DB 에는 passphrase 자체 저장 안 함</td></tr>
+          <tr><td><strong>API credential exposure</strong> — API key 또는 CSR private key 노출 시 자동 서명</td><td><code>vendors/fireblocks/risks.md</code></td><td>IP allowlist (/32) + immediate revoke + audit log</td></tr>
+          <tr><td><strong>Mobile device 분실</strong> — Primary MPC key share 손실</td><td><code>vendors/fireblocks/mobile-app.md</code></td><td>Re-enroll device (2-day window × 2단계) + recovery from cloud backup</td></tr>
+          <tr><td><strong>SPOC at DR</strong> — Disaster Recovery 절차가 online machine 에서 실행되면 private key "considered exposed and compromised"</td><td><code>architecture.md</code> Stage 8 DR §</td><td>DR Recovery Utility 는 offline-only — 4 secrets 모두 air-gapped 환경에서만 사용</td></tr>
+          <tr><td><strong>Co-signer compromise</strong> — Customer 측 key share 가 compromise 되어도 Fireblocks 의 safeguards 가 작동</td><td><code>mpc.md</code> Stage 8 (★)</td><td>"Safeguards in case keys owned by customers are compromised" — Policy enforcement (tx amount threshold, destination integrity)</td></tr>
+          <tr><td><strong>EVM nonce 충돌</strong> — 동시 withdrawal 시 nonce gap → tx stuck</td><td><code>account-and-wallet-structure.md</code></td><td>Multiple withdrawal vault round-robin + nonce 직렬화 (vault account 단위)</td></tr>
+          <tr><td><strong>Bitcoin 25-chain limit</strong> — unconfirmed input chain 이 25 개 도달 시 추가 tx 차단</td><td><code>account-and-wallet-structure.md</code></td><td>Multiple withdrawal vault + 사전 confirmation 대기</td></tr>
+          <tr><td><strong>BCM dependency</strong> — Hosted MPC customer 만 BCM 자격 — SaaS-only 는 BCM 불가</td><td><code>business-continuity-module-bcm.md</code> Stage 8</td><td>SaaS customer 는 mobile + 2 Fireblocks share 의 가용성에 의존</td></tr>
+          <tr><td><strong>Incoming rejected freeze</strong> — Incoming tx rejected 시 자산이 Admin unfreeze 까지 lock</td><td><code>primary-transaction-statuses.md</code>, p.8</td><td>Admin escalation path + unfreeze audit</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>DB Schema — Risk Marker</h3>
+    <pre><code>CREATE TABLE risk_markers (
+  id              BINARY(16) PRIMARY KEY,
+  workspace_id    BINARY(16) NOT NULL,
+  risk_type       VARCHAR(64) NOT NULL,  -- 'owner-spof', 'passphrase-stale', ...
+  severity        ENUM('low', 'medium', 'high', 'critical') NOT NULL,
+  detected_at     DATETIME(6) NOT NULL,
+  resolved_at     DATETIME(6),
+  resolution_note TEXT,
+  KEY (workspace_id, risk_type, severity)
+);</code></pre>
+  </section>
+
+  <nav class="page-nav" aria-label="Section navigation">
+    <a class="page-nav-link page-nav-prev" href="tables-aml.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">21. AML · Travel Rule</span></a>
+    <a class="page-nav-link page-nav-next" href="storage-discipline.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">23. Storage Discipline</span></a>
+  </nav>
+
+</main>
+</div>
+
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+
+</body>
+</html>

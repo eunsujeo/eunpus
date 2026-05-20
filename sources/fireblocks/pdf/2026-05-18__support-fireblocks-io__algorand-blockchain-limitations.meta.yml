@@ -1,0 +1,10 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/13912132695196-Algorand-blockchain-limitations
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 2
+language: en
+category: blockchains-chain-specific
+chain: ALGO
+notes: |
+  Algorand: tx ID must be signed within 1000-blocks (~50 minutes).
+  Placeholder ingestion — full markdown not generated.

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wallets · Addresses · Asset — 수탁형 지갑 DB 설계</title>
+  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Wallets · Addresses · Asset">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
+
+<div class="layout">
+
+<aside class="sidebar" aria-label="Table of contents">
+  <nav>
+    <div class="nav-section">
+      <h3 class="nav-section-title">Overview</h3>
+      <ul>
+        <li><a href="index.html">0. Overview</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">A. Architecture</h3>
+      <ul>
+        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
+        <li><a href="db-split.html">2. DB 분할</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">B. Workspace & Vault</h3>
+      <ul>
+        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
+        <li><a href="tables-wallet.html" class="active">4. Wallet & Address</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">C. Users & Access</h3>
+      <ul>
+        <li><a href="tables-user.html">5. Users</a></li>
+        <li><a href="tables-auth.html">6. Auth credentials</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">D. Governance & Policy</h3>
+      <ul>
+        <li><a href="tables-role.html">7. 9 User Roles</a></li>
+        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
+        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
+      <ul>
+        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
+        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
+        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+      <ul>
+        <li><a href="sm-transaction.html">13. Transaction State</a></li>
+        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
+        <li><a href="sm-approval.html">15. Approval State</a></li>
+        <li><a href="sm-signing.html">16. Signing State</a></li>
+        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
+        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+      <ul>
+        <li><a href="tables-audit.html">19. Audit Log</a></li>
+        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
+        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
+        <li><a href="risks.html">22. Risks Register</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
+      <ul>
+        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
+        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
+        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+
+<main class="content">
+
+<section id="tables-wallet">
+    <h2>4. Wallets · Addresses · Asset Wallet</h2>
+    <span class="section-subtitle">Stage 9 정식 매핑 — 3 asset 패턴 · whitelisted address · chain-specific quirk</span>
+
+    <h3>3 Asset Pattern (★ Stage 9 정식 명세)</h3>
+    <p><code>account-and-wallet-structure.md</code>, p.1-2 에서 정식 enumerate.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Asset 패턴</th><th>예시</th><th>Permanent Address</th><th>Deposit Address 개수</th><th>분기자</th></tr></thead>
+        <tbody>
+          <tr><td><strong>UTXO-based</strong></td><td>BTC, BCH, LTC, DOGE</td><td>1</td><td><strong>N</strong></td><td>address 그 자체</td></tr>
+          <tr><td><strong>Account-based (no tag)</strong></td><td>ETH, EVM 전반</td><td>—</td><td><strong>1 (단일 강제)</strong></td><td>—</td></tr>
+          <tr><td><strong>Account-based (tag/memo)</strong></td><td>XRP, XLM</td><td>—</td><td>1 (on-chain 동일)</td><td><strong>N tags / memos</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <div class="callout-title">EVM 의 "1 vault account = 1 address" 제약</div>
+      <p>End-client 별 unique address 가 필요한 경우 individual vault account 필요 → <strong>intermediate vault</strong> 패턴 사용 (omnibus + intermediate per client).</p>
+    </div>
+
+    <h3>DB Schema</h3>
+    <pre><code>CREATE TABLE asset_wallets (
+  id                BINARY(16) PRIMARY KEY,
+  vault_account_id  BINARY(16) NOT NULL,
+  chain             VARCHAR(32) NOT NULL,            -- 'BTC', 'ETH', 'SOL', ...
+  asset_id          VARCHAR(64) NOT NULL,            -- 'BTC', 'ETH', 'USDC_ETH', ...
+  asset_pattern     ENUM('utxo', 'account-no-tag', 'account-tag') NOT NULL,
+  permanent_address VARCHAR(128),                    -- UTXO 만 set
+  created_at        DATETIME(6) NOT NULL,
+  UNIQUE KEY (vault_account_id, asset_id),
+  KEY (chain)
+);
+
+CREATE TABLE addresses (
+  id              BINARY(16) PRIMARY KEY,
+  asset_wallet_id BINARY(16) NOT NULL,
+  address_string  VARCHAR(128) NOT NULL,
+  tag_or_memo     VARCHAR(64),                       -- XRP/XLM 의 분기자
+  address_type    ENUM('deposit', 'change', 'permanent') NOT NULL,
+  derivation_index INT,                              -- UTXO 의 deposit address index
+  deactivated_at  DATETIME(6),
+  created_at      DATETIME(6) NOT NULL,
+  KEY (asset_wallet_id, address_type),
+  UNIQUE KEY (address_string, tag_or_memo)
+);</code></pre>
+
+    <h3>Whitelisted Address ≠ Vault Address</h3>
+    <p><code>whitelisting-new-addresses.md</code>, p.1: Whitelisted address = <strong>Vault 외부</strong> deposit address.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Type</th><th>의미</th><th>workspace 잔액 표시</th><th>billable</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Internal</strong></td><td>같은 workspace 의 다른 user/team 의 외부 wallet</td><td>표시</td><td>YES</td></tr>
+          <tr><td><strong>External</strong></td><td>외부 organization 의 wallet</td><td>표시 안 됨</td><td>—</td></tr>
+          <tr><td><strong>Contract / Program</strong></td><td>smart contract address</td><td>—</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code>CREATE TABLE whitelisted_addresses (
+  id              BINARY(16) PRIMARY KEY,
+  workspace_id    BINARY(16) NOT NULL,
+  type            ENUM('internal', 'external', 'contract') NOT NULL,
+  asset_id        VARCHAR(64) NOT NULL,
+  address_string  VARCHAR(128) NOT NULL,
+  tag_or_memo     VARCHAR(64),
+  label           VARCHAR(128),
+  approved_by_quorum_id BINARY(16) NOT NULL,         -- Admin Quorum approval 의무
+  approved_at     DATETIME(6) NOT NULL,
+  KEY (workspace_id, type)
+);
+
+CREATE TABLE one_time_addresses (
+  -- OTA = whitelist 우회 path. Address-level quorum 없음, Policy 가 유일한 방어선
+  id              BINARY(16) PRIMARY KEY,
+  workspace_id    BINARY(16) NOT NULL,
+  used_in_tx_id   BINARY(16) NOT NULL,
+  address_string  VARCHAR(128) NOT NULL,
+  used_at         DATETIME(6) NOT NULL
+);</code></pre>
+
+    <h3>Chain-별 운영 제약 (Stage 7)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>제약</th><th>예시</th><th>DB 의 함의</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Minimum balance (Base Reserve)</strong></td><td>ALGO / KSM / NEAR / DOT / XRP / SOL / XLM / TON 등</td><td><code>asset_wallets.min_balance_reserved</code> 컬럼</td></tr>
+          <tr><td><strong>Minimum transaction amount</strong></td><td>BTC 0.00000582 / ALGO 1e-6 / ADA 1 / DOGE 0.01 / TON 1e-6</td><td>Submit 시 validation; 미만 시 <code>Amount Too Small</code> status</td></tr>
+          <tr><td><strong>Account 활성화</strong></td><td>Stellar (1 XLM 필수), Polkadot (0.01 DOT 이상), Near (token contract pre-funding)</td><td><code>asset_wallets.activated_at</code> 컬럼</td></tr>
+          <tr><td><strong>Trust line (XRP)</strong></td><td>Reserve 미만 시 on-chain 자동 삭제</td><td>주기적 reconciliation + 상태 동기화</td></tr>
+          <tr><td><strong>Token wallet 제약 (TL)</strong></td><td>ALGO / XRP / SOL / XLM token wallet</td><td>Role 별 생성 권한 차이 — role_permissions 테이블에 'TL' label</td></tr>
+          <tr><td><strong>Chain type 분류</strong></td><td>EVM account-based / non-EVM account-based / UTXO / Cosmos SDK</td><td><code>chains</code> lookup 테이블의 type 컬럼</td></tr>
+          <tr><td><strong>Internal transactions (EVM)</strong></td><td>smart contract 내부 native transfer — Ethereum / Optimism / Arbitrum / Avalanche / Base / Celo 등</td><td>관찰 메커니즘은 본 자료 미명시 → <a href="sm-deposit.html">17. Deposit</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Withdrawal Vault Round-Robin (Stage 9)</h3>
+    <ul>
+      <li><strong>EVM</strong>: nonce 가 순차 — 단일 vault stuck 시 전체 queue 정체. 여러 withdrawal vault round-robin 권장</li>
+      <li><strong>Bitcoin</strong>: unconfirmed input <strong>25 subsequent tx chain limit</strong> (Bitcoin Core default) — 여러 withdrawal vault</li>
+      <li><strong>Solana</strong>: vault account 당 동시 <strong>5 tx queue</strong> (6번째 이상 Submitted max 2h 대기 후 terminated)</li>
+    </ul>
+  </section>
+
+  <nav class="page-nav" aria-label="Section navigation">
+    <a class="page-nav-link page-nav-prev" href="tables-workspace.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">3. Workspace & Vault</span></a>
+    <a class="page-nav-link page-nav-next" href="tables-user.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">5. Users</span></a>
+  </nav>
+
+</main>
+</div>
+
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+
+</body>
+</html>

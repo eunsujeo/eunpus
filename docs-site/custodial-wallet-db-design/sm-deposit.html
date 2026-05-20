@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deposit Observation Lifecycle — 수탁형 지갑 DB 설계</title>
+  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Deposit Observation Lifecycle">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
+
+<div class="layout">
+
+<aside class="sidebar" aria-label="Table of contents">
+  <nav>
+    <div class="nav-section">
+      <h3 class="nav-section-title">Overview</h3>
+      <ul>
+        <li><a href="index.html">0. Overview</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">A. Architecture</h3>
+      <ul>
+        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
+        <li><a href="db-split.html">2. DB 분할</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">B. Workspace & Vault</h3>
+      <ul>
+        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
+        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">C. Users & Access</h3>
+      <ul>
+        <li><a href="tables-user.html">5. Users</a></li>
+        <li><a href="tables-auth.html">6. Auth credentials</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">D. Governance & Policy</h3>
+      <ul>
+        <li><a href="tables-role.html">7. 9 User Roles</a></li>
+        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
+        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
+      <ul>
+        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
+        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
+        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+      <ul>
+        <li><a href="sm-transaction.html">13. Transaction State</a></li>
+        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
+        <li><a href="sm-approval.html">15. Approval State</a></li>
+        <li><a href="sm-signing.html">16. Signing State</a></li>
+        <li><a href="sm-deposit.html" class="active">17. Deposit Lifecycle</a></li>
+        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+      <ul>
+        <li><a href="tables-audit.html">19. Audit Log</a></li>
+        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
+        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
+        <li><a href="risks.html">22. Risks Register</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
+      <ul>
+        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
+        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
+        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+
+<main class="content">
+
+<section id="sm-deposit">
+    <h2>17. Deposit Observation Lifecycle</h2>
+    <span class="section-subtitle">Incoming tx flow + DCCP confirmation policy + zero-confirmation webhook</span>
+
+    <div class="callout callout-warn">
+      <div class="callout-title">Fireblocks 명시 vs Hypothesis 분리</div>
+      <p>본 페이지는 <strong>일부 Fireblocks 명시 + 일부 hypothesis</strong> 의 혼합:</p>
+      <ul style="margin-bottom:0">
+        <li><strong>명시</strong>: 17 status state machine 의 incoming flow (Stage 9), DCCP (Stage 10), zero-confirmation webhook (Stage 9), Manually confirm and credit inbound (권한표)</li>
+        <li><strong>Hypothesis</strong>: deposit observation 의 DB row 모델, ledger credit 의 정확한 trigger, reorg handling 의 DB 표현 → <code>persistence-architecture/07</code> 패턴 사용</li>
+      </ul>
+    </div>
+
+    <h3>Incoming Transaction Flow (Fireblocks 명시)</h3>
+    <div class="diagram">
+      <pre class="mermaid">
+stateDiagram-v2
+  [*] --> START
+  START --> PENDING_AML_SCREENING : AML/KYC enabled
+  START --> BROADCASTING : network conn / exchange / gas station
+  START --> CONFIRMING : AML/KYC disabled
+  PENDING_AML_SCREENING --> REJECTED : reject (asset → Admin unfreeze 까지 lock)
+  PENDING_AML_SCREENING --> PENDING_3RD_PARTY
+  PENDING_3RD_PARTY --> CONFIRMING
+  CONFIRMING --> COMPLETED : DCCP confirmation threshold 도달
+  CONFIRMING --> FAILED
+  CONFIRMING --> REJECTED : user-initiated freeze via API
+      </pre>
+      <span class="diagram-caption">Figure 10. Incoming tx flow — Stage 9 명시. AML/KYC 분기, DCCP 가 CONFIRMING → COMPLETED transition trigger.</span>
+    </div>
+
+    <h3>DCCP — Deposit Control and Confirmation Policy (★ Stage 10)</h3>
+    <p><code>about-the-deposit-control-and-confirmation-policy.md</code>:</p>
+    <ul>
+      <li><strong>blockchain confirmation 횟수 정책</strong> (incoming + outgoing)</li>
+      <li><strong>Clear 전</strong>: <strong>inflow/outflow state 에 lock</strong> — 사용 불가</li>
+      <li><strong>Clear 후</strong>: wallet available balance + UTXO outputs 즉시 spendable</li>
+      <li>CONFIRMING → COMPLETED transition 의 정확한 trigger</li>
+      <li>Override 메커니즘 + custom build 옵션 별도 존재 (TIER 3 source-lake-only)</li>
+    </ul>
+
+    <h3>Zero-Confirmation Webhook 의 Multiple-Notification (★ Stage 9)</h3>
+    <p><code>primary-transaction-statuses.md</code>, p.6: zero-confirmation Deposit Policy 의 경우 Completed status 에 대해 <strong>multiple webhook</strong> 수신 가능 (blockchain appearance + 첫 confirmation + 추가).</p>
+    <p>→ DB 측은 idempotent insert + webhook delivery 추적 필요.</p>
+
+    <h3>Manual Confirm and Credit (★ Admin override)</h3>
+    <p><code>user-roles.md</code>, p.2 권한표: <em>Manually confirm and credit inbound transactions</em> — Admin only. Anomaly / DCCP 미달 입금에 대한 수동 처리 path.</p>
+
+    <h3>Internal Transactions (EVM, ★ Stage 7)</h3>
+    <p><code>blockchains-that-support-internal-transactions.md</code>:</p>
+    <ul>
+      <li>Internal tx = smart contract 실행 중 발생하는 native asset transfer</li>
+      <li>별도 tx hash 없고 실행 흐름의 일부</li>
+      <li>Fireblocks 가 모든 EVM 의 <strong>직접 native transfer</strong>는 알림</li>
+      <li><strong>Internal tx 까지</strong> 알리는 chain 은 subset (~35 mainnet + ~24 testnet — Ethereum / Optimism / Arbitrum / Avalanche / Base / Celo 등)</li>
+      <li>감지 메커니즘 (trace API / archive node) 은 Fireblocks 자료 미명시</li>
+    </ul>
+
+    <h3>DB Schema (Fireblocks 명시 + persistence-architecture/07 hypothesis)</h3>
+    <pre><code>-- ★ append-only — chain 에서 관찰된 사건
+CREATE TABLE chain_events (
+  id                BINARY(16) PRIMARY KEY,
+  chain             VARCHAR(32) NOT NULL,
+  block_hash        VARCHAR(128) NOT NULL,
+  block_height      BIGINT NOT NULL,
+  tx_hash           VARCHAR(128),                    -- internal tx 는 NULL 가능
+  log_index         INT,                              -- internal tx / event index
+  event_type        ENUM('native-transfer', 'internal-transfer', 'erc20-transfer') NOT NULL,
+  to_address        VARCHAR(128) NOT NULL,
+  amount_raw        VARCHAR(80) NOT NULL,             -- decimal string for big numbers
+  observed_at       DATETIME(6) NOT NULL,
+  KEY (chain, block_height),
+  KEY (to_address),
+  UNIQUE KEY (chain, tx_hash, log_index)
+);
+
+-- 우리가 관찰 / 매핑한 deposit
+CREATE TABLE deposit_observations (
+  id                BINARY(16) PRIMARY KEY,
+  chain_event_id    BINARY(16) NOT NULL,
+  matched_address_id BINARY(16),                      -- 우리 vault 의 address (NULL = unmatched)
+  asset_wallet_id   BINARY(16),
+  workspace_id      BINARY(16),
+  status            ENUM('observed', 'aml-pending', 'aml-rejected',
+                          'confirming', 'dccp-cleared', 'ledger-credited',
+                          'manually-credited', 'failed') NOT NULL,
+  confirmations     INT NOT NULL DEFAULT 0,
+  required_confirmations INT NOT NULL,                -- DCCP threshold
+  manual_credit_actor_user_id BINARY(16),             -- Admin override
+  cleared_at        DATETIME(6),                      -- ★ set-once
+  KEY (workspace_id, status),
+  KEY (matched_address_id)
+);
+
+-- Webhook delivery 의 idempotency
+CREATE TABLE deposit_webhook_deliveries (
+  id                BINARY(16) PRIMARY KEY,
+  deposit_observation_id BINARY(16) NOT NULL,
+  notification_type ENUM('blockchain-appearance', 'first-confirmation',
+                          'additional-confirmation', 'completion') NOT NULL,
+  delivered_at      DATETIME(6) NOT NULL,
+  UNIQUE KEY (deposit_observation_id, notification_type)
+);</code></pre>
+
+    <h3>Reorg Handling (hypothesis)</h3>
+    <p>Fireblocks 자료에 deposit-side reorg handling 의 명시적 절차는 없음. <code>persistence-architecture/07</code> 의 일반 패턴:</p>
+    <ul>
+      <li>chain_events 는 append-only — reorg 발생 시 이전 row 를 UPDATE 하지 않고, <strong>새 reversing event</strong> 를 INSERT</li>
+      <li>deposit_observations 의 status 를 <code>confirming</code> → <code>failed</code> 로 전이 (set-once 가 아닌 status 컬럼은 UPDATE 가능)</li>
+      <li>이미 ledger credit 된 경우 reversal entry (→ <a href="storage-discipline.html">23</a>)</li>
+    </ul>
+  </section>
+
+  <nav class="page-nav" aria-label="Section navigation">
+    <a class="page-nav-link page-nav-prev" href="sm-signing.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">16. Signing State</span></a>
+    <a class="page-nav-link page-nav-next" href="sm-withdrawal.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">18. Withdrawal Lifecycle</span></a>
+  </nav>
+
+</main>
+</div>
+
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+
+</body>
+</html>

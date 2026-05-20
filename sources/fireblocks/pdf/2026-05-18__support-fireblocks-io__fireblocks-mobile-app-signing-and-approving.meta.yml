@@ -1,0 +1,14 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/7220224809756-Fireblocks-mobile-app-Signing-transactions-approving-changes-and-other-options
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 9
+language: en
+notes: |
+  Mobile app approval/signing scope: tx signing (transfers, contract calls, mint/burn, staking, typed/raw messages),
+  connection approvals (exchange, fiat, P2P Network, whitelisted addresses),
+  workspace settings (one-time address enable, "Approve" amount cap, Policy changes, adding users, admin quorum updates),
+  Owner approval of MPC keys for new signing users.
+  Multi-user: deny removes from all.
+  Approval/signing flow: View -> Approve/Deny -> PIN -> biometric.
+  Destination expansion: exchange/whitelisted/one-time only.
+  Mobile app menu: Linked Users, Connect DeFi app, Change/reset recovery passphrase, Send logs, Privacy Policy, About.

@@ -1,0 +1,9 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/360020429559-Mobile-authentication-methods
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 2
+language: en
+notes: |
+  Built-in authentication: fingerprint, facial recognition.
+  External authentication: Yubikey (alternative to built-in).
+  No explicit mention of FIDO2/WebAuthn beyond Yubikey.

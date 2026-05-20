@@ -1,0 +1,1855 @@
+version: 1
+generated_at: '2026-05-19'
+generator_version: v0.1 (P1 MVP)
+coverage:
+  entities: 23/23
+  user_roles: 9/9
+  hubs: 16/16
+  clusters: 4/4
+  open_questions_open: 42
+  open_questions_partial: 7
+  open_questions_answered: 21
+  sitemap_urls: 716
+total_questions: 106
+by_type:
+  definition: 32
+  workflow: 20
+  comparison: 5
+  verification: 49
+questions:
+- id: Q-gen-def-000
+  question: 2FA가 뭐야?
+  answer_type: definition
+  difficulty: medium
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/2fa.md
+  expected_entity: entities/fireblocks/2fa
+  expected_hub: vendors/fireblocks/authentication
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__manage-your-2fa
+  - 2026-05-18__support-fireblocks-io__configure-sso
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__fireblocks-yubikey-authentication
+  - 2026-05-18__support-fireblocks-io__security-aspects-signing-with-the-fireblocks-mobile-app
+  - 2026-05-18__support-fireblocks-io__reset-your-password
+  - 2026-05-18__support-fireblocks-io__reset-a-users-2fa
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-AU04
+  - Q-2026-05-18-S11
+- id: Q-gen-def-001
+  question: Admin Quorum가 뭐야?
+  answer_type: definition
+  difficulty: hard
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/admin-quorum.md
+  expected_entity: entities/fireblocks/admin-quorum
+  expected_hub: vendors/fireblocks/user-management
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+  - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access
+  - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-G01
+  - Q-2026-05-18-G02
+  - Q-2026-05-18-G03
+  - Q-2026-05-18-G04
+  - Q-2026-05-18-L06
+- id: Q-gen-def-002
+  question: API Co-signer가 뭐야?
+  answer_type: definition
+  difficulty: medium
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/api-co-signer.md
+  expected_entity: entities/fireblocks/api-co-signer
+  expected_hub: vendors/fireblocks/risks
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-C01
+  - Q-2026-05-18-C02
+  - Q-2026-05-18-A02
+  - Q-2026-05-18-A05
+- id: Q-gen-def-003
+  question: API Key가 뭐야?
+  answer_type: definition
+  difficulty: easy
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/api-key.md
+  expected_entity: entities/fireblocks/api-key
+  expected_hub: vendors/fireblocks/authentication
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__allowlist-ip-addresses-for-api-user-requests
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-A03
+  - Q-2026-05-18-A07
+- id: Q-gen-def-004
+  question: API User가 뭐야?
+  answer_type: definition
+  difficulty: medium
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/api-user.md
+  expected_entity: entities/fireblocks/api-user
+  expected_hub: vendors/fireblocks/authentication
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__allowlist-ip-addresses-for-api-user-requests
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-A01
+  - Q-2026-05-18-S05
+- id: Q-gen-def-005
+  question: Approval Group가 뭐야?
+  answer_type: definition
+  difficulty: hard
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/approval-group.md
+  expected_entity: entities/fireblocks/approval-group
+  expected_hub: vendors/fireblocks/lifecycle-events
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access
+  - 2026-05-18__support-fireblocks-io__approval-groups
+  - 2026-05-18__support-fireblocks-io__user-group-management
+  - 2026-05-18__support-fireblocks-io__how-policies-work
+  - 2026-05-18__support-fireblocks-io__delete-users
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-G03
+  - Q-2026-05-18-L06
+- id: Q-gen-def-006
+  question: Callback Handler가 뭐야?
+  answer_type: definition
+  difficulty: medium
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/callback-handler.md
+  expected_entity: entities/fireblocks/callback-handler
+  expected_hub: vendors/fireblocks/callback-handler
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-C01
+  - Q-2026-05-18-A04
+- id: Q-gen-def-007
+  question: Console User가 뭐야?
+  answer_type: definition
+  difficulty: medium
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/console-user.md
+  expected_entity: entities/fireblocks/console-user
+  expected_hub: vendors/fireblocks/authentication
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__configure-sso
+  - 2026-05-18__support-fireblocks-io__manage-your-2fa
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  - 2026-05-18__support-fireblocks-io__reset-your-password
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-AU03
+  - Q-2026-05-18-AU05
+  - Q-2026-05-18-D02
+- id: Q-gen-def-008
+  question: Cosigner가 뭐야?
+  answer_type: definition
+  difficulty: medium
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/cosigner.md
+  expected_entity: entities/fireblocks/cosigner
+  expected_hub: vendors/fireblocks/cosigner
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__authentication-and-authorization
+  - 2026-05-18__support-fireblocks-io__intel-sgx-secure-environments
+  - 2026-05-18__support-fireblocks-io__mpc-cmp
+  - 2026-05-18__support-fireblocks-io__hosted-mpc-overview
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-C02
+  - Q-2026-05-18-A02
+  - Q-2026-05-18-A05
+- id: Q-gen-def-009
+  question: CSR가 뭐야?
+  answer_type: definition
+  difficulty: easy
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/csr.md
+  expected_entity: entities/fireblocks/csr
+  expected_hub: vendors/fireblocks/authentication
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__user-roles
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-A03
+- id: Q-gen-def-010
+  question: Designated Signer가 뭐야?
+  answer_type: definition
+  difficulty: easy
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/designated-signer.md
+  expected_entity: entities/fireblocks/designated-signer
+  expected_hub: vendors/fireblocks/user-management
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-P01
+- id: Q-gen-def-011
+  question: IP Allowlist가 뭐야?
+  answer_type: definition
+  difficulty: medium
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/ip-allowlist.md
+  expected_entity: entities/fireblocks/ip-allowlist
+  expected_hub: vendors/fireblocks/authentication
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access
+  - 2026-05-18__support-fireblocks-io__security-checklist
+  - 2026-05-18__support-fireblocks-io__fireblocks-ip-addresses-to-whitelist
+  - 2026-05-18__support-fireblocks-io__allowlist-ip-addresses-for-api-user-requests
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-A06
+- id: Q-gen-def-012
+  question: Mobile Device가 뭐야?
+  answer_type: definition
+  difficulty: hard
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/mobile-device.md
+  expected_entity: entities/fireblocks/mobile-device
+  expected_hub: vendors/fireblocks/lifecycle-events
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__manage-your-2fa
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  - 2026-05-18__support-fireblocks-io__device-migration
+  - 2026-05-18__support-fireblocks-io__linked-users-fireblocks-mobile-app
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-updates
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-AU04
+  - Q-2026-05-18-D01
+  - Q-2026-05-18-D02
+  - Q-2026-05-18-D03
+  - Q-2026-05-18-D05
+- id: Q-gen-def-013
+  question: MPC Key Share가 뭐야?
+  answer_type: definition
+  difficulty: hard
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/mpc-key-share.md
+  expected_entity: entities/fireblocks/mpc-key-share
+  expected_hub: vendors/fireblocks/mpc
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__device-migration
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-updates
+  - 2026-05-18__support-fireblocks-io__add-users
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-M01
+  - Q-2026-05-18-M03
+  - Q-2026-05-18-M04
+  - Q-2026-05-18-D03
+  - Q-2026-05-18-D04
+- id: Q-gen-def-014
+  question: Policy가 뭐야?
+  answer_type: definition
+  difficulty: hard
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/policy.md
+  expected_entity: entities/fireblocks/policy
+  expected_hub: vendors/fireblocks/policy-engine
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+  - 2026-05-18__support-fireblocks-io__security-checklist
+  - 2026-05-18__support-fireblocks-io__transaction-lifecycle
+  - 2026-05-18__support-fireblocks-io__primary-transaction-statuses
+  - 2026-05-18__support-fireblocks-io__whitelisting-new-addresses
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-P01
+  - Q-2026-05-18-L07
+  - Q-2026-05-18-P04
+  - Q-2026-05-18-S02
+  - Q-2026-05-18-S03
+- id: Q-gen-def-015
+  question: Recovery Passphrase가 뭐야?
+  answer_type: definition
+  difficulty: medium
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/recovery-passphrase.md
+  expected_entity: entities/fireblocks/recovery-passphrase
+  expected_hub: vendors/fireblocks/security
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__reset-the-owners-recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-updates
+  - 2026-05-18__support-fireblocks-io__device-migration
+  - 2026-05-18__support-fireblocks-io__security-checklist
+  - 2026-05-18__support-fireblocks-io__transfer-workspace-owner
+  - 2026-05-18__support-fireblocks-io__reset-an-admin-or-signers-recovery-passphrase
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-D04
+  - Q-2026-05-18-D06
+  - Q-2026-05-18-S01
+  - Q-2026-05-18-W02
+- id: Q-gen-def-016
+  question: Sandbox Workspace가 뭐야?
+  answer_type: definition
+  difficulty: easy
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/sandbox-workspace.md
+  expected_entity: entities/fireblocks/sandbox-workspace
+  expected_hub: vendors/fireblocks/user-management
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-M02
+  - Q-2026-05-18-W01
+- id: Q-gen-def-017
+  question: SSO가 뭐야?
+  answer_type: definition
+  difficulty: medium
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/sso.md
+  expected_entity: entities/fireblocks/sso
+  expected_hub: vendors/fireblocks/lifecycle-events
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__configure-sso
+  - 2026-05-18__support-fireblocks-io__manage-your-2fa
+  - 2026-05-18__support-fireblocks-io__reset-your-password
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-AU01
+  - Q-2026-05-18-AU02
+  - Q-2026-05-18-AU03
+  - Q-2026-05-18-AU05
+- id: Q-gen-def-018
+  question: Transaction가 뭐야?
+  answer_type: definition
+  difficulty: hard
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/transaction.md
+  expected_entity: entities/fireblocks/transaction
+  expected_hub: vendors/fireblocks/blockchains
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+  - 2026-05-18__support-fireblocks-io__batch-approvals-and-signing
+  - 2026-05-18__support-fireblocks-io__transaction-lifecycle
+  - 2026-05-18__support-fireblocks-io__primary-transaction-statuses
+  - 2026-05-18__support-fireblocks-io__account-and-wallet-structure
+  - 2026-05-18__support-fireblocks-io__whitelisting-new-addresses
+  - 2026-05-18__support-fireblocks-io__one-time-address-ota-feature
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-P02
+  - Q-2026-05-18-P03
+  - Q-2026-05-18-P05
+  - Q-2026-05-18-B03
+  - Q-2026-05-19-G06
+- id: Q-gen-def-019
+  question: User가 뭐야?
+  answer_type: definition
+  difficulty: medium
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/user.md
+  expected_entity: entities/fireblocks/user
+  expected_hub: vendors/fireblocks/lifecycle-events
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__linked-users-fireblocks-mobile-app
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-L04
+  - Q-2026-05-18-L05
+- id: Q-gen-def-020
+  question: Vault Account가 뭐야?
+  answer_type: definition
+  difficulty: medium
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/vault-account.md
+  expected_entity: entities/fireblocks/vault-account
+  expected_hub: vendors/fireblocks/architecture
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__supported-blockchain-networks
+  - 2026-05-18__support-fireblocks-io__account-and-wallet-structure
+  - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+  - 2026-05-18__support-fireblocks-io__primary-transaction-statuses
+  - 2026-05-18__support-fireblocks-io__whitelisting-new-addresses
+  - 2026-05-18__support-fireblocks-io__minimum-balance
+  - 2026-05-18__support-fireblocks-io__minimum-transaction-amounts
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-O01
+- id: Q-gen-def-021
+  question: Workspace Keys Backup가 뭐야?
+  answer_type: definition
+  difficulty: hard
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/workspace-keys-backup.md
+  expected_entity: entities/fireblocks/workspace-keys-backup
+  expected_hub: vendors/fireblocks/risks
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__reset-the-owners-recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-19__support-fireblocks-io__hosted-mpc-backup-and-recovery
+  - 2026-05-19__support-fireblocks-io__generating-a-workspace-key-backup-package-fireblocks-recovery-utility
+  - 2026-05-19__support-fireblocks-io__recovering-private-key-material
+  - 2026-05-18__support-fireblocks-io__transfer-workspace-owner
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-D07
+  - Q-2026-05-18-S01
+  - Q-2026-05-18-W02
+  - Q-2026-05-18-S09
+- id: Q-gen-def-022
+  question: Workspace가 뭐야?
+  answer_type: definition
+  difficulty: medium
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/workspace.md
+  expected_entity: entities/fireblocks/workspace
+  expected_hub: vendors/fireblocks/user-management
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__account-and-wallet-structure
+  - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+  - 2026-05-18__support-fireblocks-io__freeze-workspace
+  - 2026-05-18__support-fireblocks-io__node-router
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-W01
+  - Q-2026-05-18-O05
+  - Q-2026-05-19-M05
+  - Q-2026-05-19-G06
+  - Q-2026-05-19-S15
+- id: Q-gen-def-023
+  question: Admin가 뭐야?
+  answer_type: definition
+  difficulty: medium
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/user-roles/admin.md
+  expected_entity: entities/fireblocks/user-roles/admin
+  expected_hub: vendors/fireblocks/user-management
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+  - 2026-05-18__support-fireblocks-io__add-users
+  - 2026-05-18__support-fireblocks-io__delete-users
+  - 2026-05-18__support-fireblocks-io__transfer-workspace-owner
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-L01
+- id: Q-gen-def-024
+  question: Approver가 뭐야?
+  answer_type: definition
+  difficulty: easy
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/user-roles/approver.md
+  expected_entity: entities/fireblocks/user-roles/approver
+  expected_hub: vendors/fireblocks/user-management
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions: []
+- id: Q-gen-def-025
+  question: Editor가 뭐야?
+  answer_type: definition
+  difficulty: easy
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/user-roles/editor.md
+  expected_entity: entities/fireblocks/user-roles/editor
+  expected_hub: vendors/fireblocks/user-management
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-P02
+  - Q-2026-05-18-O01
+- id: Q-gen-def-026
+  question: Non-Signing Admin가 뭐야?
+  answer_type: definition
+  difficulty: medium
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/user-roles/non-signing-admin.md
+  expected_entity: entities/fireblocks/user-roles/non-signing-admin
+  expected_hub: vendors/fireblocks/user-management
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__add-users
+  - 2026-05-18__support-fireblocks-io__delete-users
+  - 2026-05-18__support-fireblocks-io__freeze-workspace
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-C02
+  - Q-2026-05-18-P02
+- id: Q-gen-def-027
+  question: Owner가 뭐야?
+  answer_type: definition
+  difficulty: hard
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/user-roles/owner.md
+  expected_entity: entities/fireblocks/user-roles/owner
+  expected_hub: vendors/fireblocks/lifecycle-events
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  - 2026-05-18__support-fireblocks-io__reset-the-owners-recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__device-migration
+  - 2026-05-18__support-fireblocks-io__batch-approvals-and-signing
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-G02
+  - Q-2026-05-18-L03
+  - Q-2026-05-18-M04
+  - Q-2026-05-18-O02
+  - Q-2026-05-18-O03
+- id: Q-gen-def-028
+  question: Security Admin가 뭐야?
+  answer_type: definition
+  difficulty: medium
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/user-roles/security-admin.md
+  expected_entity: entities/fireblocks/user-roles/security-admin
+  expected_hub: vendors/fireblocks/security
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__add-users
+  - 2026-05-18__support-fireblocks-io__delete-users
+  - 2026-05-18__support-fireblocks-io__freeze-workspace
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-G04
+  - Q-2026-05-18-L01
+  - Q-2026-05-18-L02
+  - Q-2026-05-18-S07
+  - Q-2026-05-18-S13
+- id: Q-gen-def-029
+  question: Security Auditor가 뭐야?
+  answer_type: definition
+  difficulty: medium
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/user-roles/security-auditor.md
+  expected_entity: entities/fireblocks/user-roles/security-auditor
+  expected_hub: vendors/fireblocks/security
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__fireblocks-security-posture-management-fspm
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-S07
+  - Q-2026-05-18-S13
+- id: Q-gen-def-030
+  question: Signer가 뭐야?
+  answer_type: definition
+  difficulty: medium
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/user-roles/signer.md
+  expected_entity: entities/fireblocks/user-roles/signer
+  expected_hub: vendors/fireblocks/user-management
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+  - 2026-05-18__support-fireblocks-io__transfer-workspace-owner
+  - 2026-05-18__support-fireblocks-io__reset-an-admin-or-signers-recovery-passphrase
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions:
+  - Q-2026-05-18-C01
+- id: Q-gen-def-031
+  question: Viewer가 뭐야?
+  answer_type: definition
+  difficulty: easy
+  generator: rule_based:entity_def
+  source_seed: entities/fireblocks/user-roles/viewer.md
+  expected_entity: entities/fireblocks/user-roles/viewer
+  expected_hub: vendors/fireblocks/user-management
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  expected_confidence: high
+  promote_expected: 'false'
+  related_open_questions: []
+- id: Q-gen-wf-000
+  question: API 운영 절차?
+  answer_type: workflow
+  difficulty: medium
+  generator: rule_based:hub_workflow
+  source_seed: vendors/fireblocks/api.md
+  expected_hub: vendors/fireblocks/api
+  expected_entity: null
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__allowlist-ip-addresses-for-api-user-requests
+  expected_confidence: high
+  promote_expected: 'false'
+  expected_domain: identity-auth
+  related_open_questions: []
+- id: Q-gen-wf-001
+  question: Architecture 운영 절차?
+  answer_type: workflow
+  difficulty: hard
+  generator: rule_based:hub_workflow
+  source_seed: vendors/fireblocks/architecture.md
+  expected_hub: vendors/fireblocks/architecture
+  expected_entity: null
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__configure-sso
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-updates
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__blockchains-sla
+  - 2026-05-18__support-fireblocks-io__fireblocks-cloud-architecture
+  expected_confidence: high
+  promote_expected: 'false'
+  expected_domain: workspace-management
+  related_open_questions:
+  - Q-2026-05-18-B02
+  - Q-2026-05-18-S08
+  - Q-2026-05-18-S09
+  - Q-2026-05-18-S10
+  - Q-2026-05-18-S12
+- id: Q-gen-wf-002
+  question: Authentication 운영 절차?
+  answer_type: workflow
+  difficulty: hard
+  generator: rule_based:hub_workflow
+  source_seed: vendors/fireblocks/authentication.md
+  expected_hub: vendors/fireblocks/authentication
+  expected_entity: null
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__configure-sso
+  - 2026-05-18__support-fireblocks-io__manage-your-2fa
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access
+  - 2026-05-18__support-fireblocks-io__security-checklist
+  - 2026-05-18__support-fireblocks-io__reset-your-password
+  - 2026-05-18__support-fireblocks-io__allowlist-ip-addresses-for-api-user-requests
+  expected_confidence: high
+  promote_expected: 'false'
+  expected_domain: identity-auth
+  related_open_questions:
+  - Q-2026-05-18-AU01
+- id: Q-gen-wf-003
+  question: Blockchains 운영 절차?
+  answer_type: workflow
+  difficulty: hard
+  generator: rule_based:hub_workflow
+  source_seed: vendors/fireblocks/blockchains.md
+  expected_hub: vendors/fireblocks/blockchains
+  expected_entity: null
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__supported-blockchain-networks
+  - 2026-05-18__support-fireblocks-io__blockchain-data-sheets
+  - 2026-05-18__support-fireblocks-io__blockchains-sla
+  - 2026-05-18__support-fireblocks-io__algorand-blockchain-limitations
+  - 2026-05-18__support-fireblocks-io__tezos-blockchain-limitations
+  - 2026-05-18__support-fireblocks-io__filecoin-blockchain-functionality-overview
+  - 2026-05-18__support-fireblocks-io__flare-introduction
+  - 2026-05-18__support-fireblocks-io__funding-a-new-stellar-account
+  expected_confidence: high
+  promote_expected: 'false'
+  expected_domain: workspace-management
+  related_open_questions:
+  - Q-2026-05-18-B01
+  - Q-2026-05-18-B02
+  - Q-2026-05-18-B03
+- id: Q-gen-wf-004
+  question: Callback Handler 운영 절차?
+  answer_type: workflow
+  difficulty: medium
+  generator: rule_based:hub_workflow
+  source_seed: vendors/fireblocks/callback-handler.md
+  expected_hub: vendors/fireblocks/callback-handler
+  expected_entity: null
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  expected_confidence: high
+  promote_expected: 'false'
+  expected_domain: identity-auth
+  related_open_questions:
+  - Q-2026-05-18-A04
+- id: Q-gen-wf-005
+  question: Compliance 운영 절차?
+  answer_type: workflow
+  difficulty: medium
+  generator: rule_based:hub_workflow
+  source_seed: vendors/fireblocks/compliance.md
+  expected_hub: vendors/fireblocks/compliance
+  expected_entity: null
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__security-checklist
+  - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  expected_confidence: high
+  promote_expected: 'false'
+  expected_domain: governance
+  related_open_questions:
+  - Q-2026-05-18-A07
+  - Q-2026-05-18-S03
+  - Q-2026-05-18-S07
+  - Q-2026-05-18-S12
+  - Q-2026-05-19-G05
+- id: Q-gen-wf-006
+  question: Cosigner 운영 절차?
+  answer_type: workflow
+  difficulty: medium
+  generator: rule_based:hub_workflow
+  source_seed: vendors/fireblocks/cosigner.md
+  expected_hub: vendors/fireblocks/cosigner
+  expected_entity: null
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  expected_confidence: high
+  promote_expected: 'false'
+  expected_domain: identity-auth
+  related_open_questions:
+  - Q-2026-05-18-C02
+  - Q-2026-05-18-A05
+- id: Q-gen-wf-007
+  question: Lifecycle Events 운영 절차?
+  answer_type: workflow
+  difficulty: hard
+  generator: rule_based:hub_workflow
+  source_seed: vendors/fireblocks/lifecycle-events.md
+  expected_hub: vendors/fireblocks/lifecycle-events
+  expected_entity: null
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__device-migration
+  - 2026-05-18__support-fireblocks-io__reset-the-owners-recovery-passphrase
+  expected_confidence: high
+  promote_expected: 'false'
+  expected_domain: workspace-management
+  related_open_questions:
+  - Q-2026-05-18-L01
+  - Q-2026-05-18-L03
+  - Q-2026-05-18-L04
+  - Q-2026-05-18-L05
+  - Q-2026-05-18-L07
+- id: Q-gen-wf-008
+  question: Mobile App 운영 절차?
+  answer_type: workflow
+  difficulty: hard
+  generator: rule_based:hub_workflow
+  source_seed: vendors/fireblocks/mobile-app.md
+  expected_hub: vendors/fireblocks/mobile-app
+  expected_entity: null
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-updates
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+  - 2026-05-18__support-fireblocks-io__batch-approvals-and-signing
+  - 2026-05-18__support-fireblocks-io__new-mobile-experience-request-management
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__mobile-authentication-methods
+  - 2026-05-18__support-fireblocks-io__mobile-device-minimum-requirements
+  expected_confidence: high
+  promote_expected: 'false'
+  expected_domain: mobile-recovery
+  related_open_questions:
+  - Q-2026-05-18-D08
+  - Q-2026-05-18-P05
+  - Q-2026-05-18-O04
+- id: Q-gen-wf-009
+  question: MPC 운영 절차?
+  answer_type: workflow
+  difficulty: hard
+  generator: rule_based:hub_workflow
+  source_seed: vendors/fireblocks/mpc.md
+  expected_hub: vendors/fireblocks/mpc
+  expected_entity: null
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__device-migration
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__add-users
+  - 2026-05-18__support-fireblocks-io__delete-users
+  expected_confidence: high
+  promote_expected: 'false'
+  expected_domain: mobile-recovery
+  related_open_questions:
+  - Q-2026-05-18-M01
+  - Q-2026-05-18-M02
+  - Q-2026-05-18-D04
+  - Q-2026-05-18-D07
+  - Q-2026-05-19-M05
+- id: Q-gen-wf-010
+  question: Overview 운영 절차?
+  answer_type: workflow
+  difficulty: easy
+  generator: rule_based:hub_workflow
+  source_seed: vendors/fireblocks/overview.md
+  expected_hub: vendors/fireblocks/overview
+  expected_entity: null
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  expected_confidence: high
+  promote_expected: 'false'
+  expected_domain: workspace-management
+  related_open_questions:
+  - Q-2026-05-18-W02
+- id: Q-gen-wf-011
+  question: Policy Engine 운영 절차?
+  answer_type: workflow
+  difficulty: easy
+  generator: rule_based:hub_workflow
+  source_seed: vendors/fireblocks/policy-engine.md
+  expected_hub: vendors/fireblocks/policy-engine
+  expected_entity: null
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_domain: governance
+  related_open_questions:
+  - Q-2026-05-18-S02
+- id: Q-gen-wf-012
+  question: Risks 운영 절차?
+  answer_type: workflow
+  difficulty: hard
+  generator: rule_based:hub_workflow
+  source_seed: vendors/fireblocks/risks.md
+  expected_hub: vendors/fireblocks/risks
+  expected_entity: null
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__configure-sso
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  expected_confidence: high
+  promote_expected: 'false'
+  expected_domain: security-access
+  related_open_questions:
+  - Q-2026-05-18-O02
+  - Q-2026-05-18-O03
+  - Q-2026-05-18-D05
+  - Q-2026-05-18-D06
+  - Q-2026-05-18-S01
+- id: Q-gen-wf-013
+  question: Security 운영 절차?
+  answer_type: workflow
+  difficulty: hard
+  generator: rule_based:hub_workflow
+  source_seed: vendors/fireblocks/security.md
+  expected_hub: vendors/fireblocks/security
+  expected_entity: null
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__security-checklist
+  - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__audit-log
+  - 2026-05-18__support-fireblocks-io__authentication-and-authorization
+  - 2026-05-18__support-fireblocks-io__mpc-cmp
+  - 2026-05-18__support-fireblocks-io__security-aspects-signing-with-the-fireblocks-mobile-app
+  - 2026-05-18__support-fireblocks-io__intel-sgx-secure-environments
+  expected_confidence: high
+  promote_expected: 'false'
+  expected_domain: security-access
+  related_open_questions:
+  - Q-2026-05-18-A07
+  - Q-2026-05-18-S01
+  - Q-2026-05-18-S02
+  - Q-2026-05-18-S04
+  - Q-2026-05-18-S05
+- id: Q-gen-wf-014
+  question: TAP (Transaction Authorization Policy) 운영 절차?
+  answer_type: workflow
+  difficulty: easy
+  generator: rule_based:hub_workflow
+  source_seed: vendors/fireblocks/tap.md
+  expected_hub: vendors/fireblocks/tap
+  expected_entity: null
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_domain: governance
+  related_open_questions: []
+- id: Q-gen-wf-015
+  question: User Management 운영 절차?
+  answer_type: workflow
+  difficulty: hard
+  generator: rule_based:hub_workflow
+  source_seed: vendors/fireblocks/user-management.md
+  expected_hub: vendors/fireblocks/user-management
+  expected_entity: null
+  expected_source_candidates:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__add-users
+  - 2026-05-18__support-fireblocks-io__delete-users
+  - 2026-05-18__support-fireblocks-io__reset-a-users-2fa
+  - 2026-05-18__support-fireblocks-io__transfer-workspace-owner
+  - 2026-05-18__support-fireblocks-io__freeze-workspace
+  expected_confidence: high
+  promote_expected: 'false'
+  expected_domain: identity-auth
+  related_open_questions:
+  - Q-2026-05-18-G01
+  - Q-2026-05-18-L02
+  - Q-2026-05-18-W02
+- id: Q-gen-cls-000
+  question: aml compliance 환경에서 어떻게 세팅?
+  answer_type: workflow
+  difficulty: medium
+  generator: rule_based:cluster_scenario
+  source_seed: sources/fireblocks/markdown/2026-05-19__support-fireblocks-io__aml-compliance-cluster-catalog.md
+  expected_cluster: aml compliance
+  expected_source_candidates:
+  - 2026-05-19__support-fireblocks-io__aml-compliance-cluster-catalog
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_domain: Governance + Security-Access (5 priority domain 직격)
+  related_open_questions: []
+- id: Q-gen-cls-001
+  question: aws-nitro-cosigner 환경에서 어떻게 세팅?
+  answer_type: workflow
+  difficulty: medium
+  generator: rule_based:cluster_scenario
+  source_seed: sources/fireblocks/markdown/2026-05-19__support-fireblocks-io__aws-nitro-cluster-catalog.md
+  expected_cluster: aws-nitro-cosigner
+  expected_source_candidates:
+  - 2026-05-19__support-fireblocks-io__aws-nitro-cluster-catalog
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_domain: cosigner-deployment / customer-cloud / aws-nitro-tee
+  related_open_questions: []
+- id: Q-gen-cls-002
+  question: cold wallet 환경에서 어떻게 세팅?
+  answer_type: workflow
+  difficulty: medium
+  generator: rule_based:cluster_scenario
+  source_seed: sources/fireblocks/markdown/2026-05-19__support-fireblocks-io__cold-wallet-cluster-catalog.md
+  expected_cluster: cold wallet
+  expected_source_candidates:
+  - 2026-05-19__support-fireblocks-io__cold-wallet-cluster-catalog
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_domain: Workspace-Management + Security-Access + Mobile-Recovery (5 priority
+    domain 3중 직격)
+  related_open_questions: []
+- id: Q-gen-cls-003
+  question: key-link 환경에서 어떻게 세팅?
+  answer_type: workflow
+  difficulty: medium
+  generator: rule_based:cluster_scenario
+  source_seed: sources/fireblocks/markdown/2026-05-19__support-fireblocks-io__key-link-cluster-catalog.md
+  expected_cluster: key-link
+  expected_source_candidates:
+  - 2026-05-19__support-fireblocks-io__key-link-cluster-catalog
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_domain: customer-held-key (★ 새 plane — 신규 entity 미생성 정책 유지)
+  related_open_questions: []
+- id: Q-gen-cmp-000
+  question: API Co-signer vs Mobile Co-signer 차이?
+  answer_type: comparison
+  difficulty: medium
+  generator: rule_based:entity_pair
+  source_seed: null
+  expected_entity:
+  - entities/fireblocks/api-co-signer
+  - entities/fireblocks/cosigner
+  expected_source_candidates: []
+  expected_confidence: medium
+  promote_expected: 'false'
+  related_open_questions: []
+- id: Q-gen-cmp-001
+  question: Admin Quorum vs Approval Group 차이?
+  answer_type: comparison
+  difficulty: medium
+  generator: rule_based:entity_pair
+  source_seed: null
+  expected_entity:
+  - entities/fireblocks/admin-quorum
+  - entities/fireblocks/approval-group
+  expected_source_candidates: []
+  expected_confidence: medium
+  promote_expected: 'false'
+  related_open_questions: []
+- id: Q-gen-cmp-002
+  question: Hot Workspace vs Sandbox Workspace 차이?
+  answer_type: comparison
+  difficulty: medium
+  generator: rule_based:entity_pair
+  source_seed: null
+  expected_entity:
+  - entities/fireblocks/workspace
+  - entities/fireblocks/sandbox-workspace
+  expected_source_candidates: []
+  expected_confidence: medium
+  promote_expected: 'false'
+  related_open_questions: []
+- id: Q-gen-cmp-003
+  question: 2FA vs SSO 차이?
+  answer_type: comparison
+  difficulty: medium
+  generator: rule_based:entity_pair
+  source_seed: null
+  expected_entity:
+  - entities/fireblocks/2fa
+  - entities/fireblocks/sso
+  expected_source_candidates: []
+  expected_confidence: medium
+  promote_expected: 'false'
+  related_open_questions: []
+- id: Q-gen-cmp-004
+  question: MPC Key Share vs Recovery Passphrase 차이?
+  answer_type: comparison
+  difficulty: medium
+  generator: rule_based:entity_pair
+  source_seed: null
+  expected_entity:
+  - entities/fireblocks/mpc-key-share
+  - entities/fireblocks/recovery-passphrase
+  expected_source_candidates: []
+  expected_confidence: medium
+  promote_expected: 'false'
+  related_open_questions: []
+- id: Q-gen-ver-006
+  question: Q-2026-05-18-C01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-C01
+  expected_open_question_status: partial answered
+  expected_source_candidates: []
+  expected_confidence: high
+  promote_expected: mode_b
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-C01
+- id: Q-gen-ver-008
+  question: Q-2026-05-18-P01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-P01
+  expected_open_question_status: partial answered
+  expected_source_candidates: []
+  expected_confidence: high
+  promote_expected: mode_b
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-P01
+- id: Q-gen-ver-009
+  question: Q-2026-05-18-P02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-P02
+  expected_open_question_status: partial answered
+  expected_source_candidates: []
+  expected_confidence: high
+  promote_expected: mode_b
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-P02
+- id: Q-gen-ver-010
+  question: Q-2026-05-18-P03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-P03
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-P03
+- id: Q-gen-ver-012
+  question: Q-2026-05-18-O01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-O01
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-O01
+- id: Q-gen-ver-013
+  question: Q-2026-05-18-L01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-L01
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-L01
+- id: Q-gen-ver-014
+  question: Q-2026-05-18-L02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-L02
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-L02
+- id: Q-gen-ver-015
+  question: Q-2026-05-18-L03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-L03
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-L03
+- id: Q-gen-ver-016
+  question: Q-2026-05-18-L04 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-L04
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-L04
+- id: Q-gen-ver-017
+  question: Q-2026-05-18-L05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-L05
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-L05
+- id: Q-gen-ver-019
+  question: Q-2026-05-18-L07 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-L07
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-L07
+- id: Q-gen-ver-021
+  question: Q-2026-05-18-M04 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-M04
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-M04
+- id: Q-gen-ver-022
+  question: Q-2026-05-18-A01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-A01
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-A01
+- id: Q-gen-ver-023
+  question: Q-2026-05-18-A02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-A02
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-A02
+- id: Q-gen-ver-024
+  question: Q-2026-05-18-A03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-A03
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-A03
+- id: Q-gen-ver-027
+  question: Q-2026-05-18-A06 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-A06
+  expected_open_question_status: partial answered
+  expected_source_candidates: []
+  expected_confidence: high
+  promote_expected: mode_b
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-A06
+- id: Q-gen-ver-029
+  question: Q-2026-05-18-AU01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-AU01
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-AU01
+- id: Q-gen-ver-030
+  question: Q-2026-05-18-AU02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-AU02
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-AU02
+- id: Q-gen-ver-031
+  question: Q-2026-05-18-AU03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-AU03
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-AU03
+- id: Q-gen-ver-033
+  question: Q-2026-05-18-AU05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-AU05
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-AU05
+- id: Q-gen-ver-035
+  question: Q-2026-05-18-D02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-D02
+  expected_open_question_status: partial answered
+  expected_source_candidates: []
+  expected_confidence: high
+  promote_expected: mode_b
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-D02
+- id: Q-gen-ver-036
+  question: Q-2026-05-18-D03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-D03
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-D03
+- id: Q-gen-ver-037
+  question: Q-2026-05-18-O02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-O02
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-O02
+- id: Q-gen-ver-038
+  question: Q-2026-05-18-O03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-O03
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-O03
+- id: Q-gen-ver-040
+  question: Q-2026-05-18-D05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-D05
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-D05
+- id: Q-gen-ver-041
+  question: Q-2026-05-18-D06 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-D06
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-D06
+- id: Q-gen-ver-042
+  question: Q-2026-05-18-D07 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-D07
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-D07
+- id: Q-gen-ver-043
+  question: Q-2026-05-18-D08 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-D08
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-D08
+- id: Q-gen-ver-044
+  question: Q-2026-05-18-P04 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-P04
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-P04
+- id: Q-gen-ver-045
+  question: Q-2026-05-18-P05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-P05
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-P05
+- id: Q-gen-ver-046
+  question: Q-2026-05-18-O04 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-O04
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-O04
+- id: Q-gen-ver-047
+  question: Q-2026-05-18-S01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-S01
+  expected_open_question_status: partial answered
+  expected_source_candidates: []
+  expected_confidence: high
+  promote_expected: mode_b
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-S01
+- id: Q-gen-ver-049
+  question: Q-2026-05-18-S03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-S03
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-S03
+- id: Q-gen-ver-050
+  question: Q-2026-05-18-S04 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-S04
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-S04
+- id: Q-gen-ver-051
+  question: Q-2026-05-18-S05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-S05
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-S05
+- id: Q-gen-ver-052
+  question: Q-2026-05-18-S06 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-S06
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-S06
+- id: Q-gen-ver-054
+  question: Q-2026-05-18-O05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-O05
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-O05
+- id: Q-gen-ver-055
+  question: Q-2026-05-18-B01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-B01
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-B01
+- id: Q-gen-ver-056
+  question: Q-2026-05-18-B02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-B02
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-B02
+- id: Q-gen-ver-057
+  question: Q-2026-05-18-B03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-B03
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-B03
+- id: Q-gen-ver-061
+  question: Q-2026-05-18-S10 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-S10
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-S10
+- id: Q-gen-ver-062
+  question: Q-2026-05-18-S11 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-S11
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-S11
+- id: Q-gen-ver-063
+  question: Q-2026-05-18-S12 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-S12
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-S12
+- id: Q-gen-ver-064
+  question: Q-2026-05-18-S13 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-S13
+  expected_open_question_status: partial answered
+  expected_source_candidates: []
+  expected_confidence: high
+  promote_expected: mode_b
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-S13
+- id: Q-gen-ver-065
+  question: Q-2026-05-18-S14 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-18-S14
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-18-S14
+- id: Q-gen-ver-066
+  question: Q-2026-05-19-G05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-19-G05
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-19-G05
+- id: Q-gen-ver-067
+  question: Q-2026-05-19-M05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-19-M05
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-19-M05
+- id: Q-gen-ver-068
+  question: Q-2026-05-19-G06 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-19-G06
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-19-G06
+- id: Q-gen-ver-069
+  question: Q-2026-05-19-S15 답이 있는가? promote 필요한가?
+  answer_type: verification
+  difficulty: easy
+  generator: rule_based:open_q_verify
+  source_seed: open-questions/fireblocks.md
+  verifies_open_question: Q-2026-05-19-S15
+  expected_open_question_status: open
+  expected_source_candidates: []
+  expected_confidence: low
+  promote_expected: mode_c
+  expected_entity: null
+  expected_hub: null
+  related_open_questions:
+  - Q-2026-05-19-S15

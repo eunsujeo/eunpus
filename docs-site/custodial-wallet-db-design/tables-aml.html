@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AML · Travel Rule Provider Mapping — 수탁형 지갑 DB 설계</title>
+  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — AML · Travel Rule Provider Mapping">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
+
+<div class="layout">
+
+<aside class="sidebar" aria-label="Table of contents">
+  <nav>
+    <div class="nav-section">
+      <h3 class="nav-section-title">Overview</h3>
+      <ul>
+        <li><a href="index.html">0. Overview</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">A. Architecture</h3>
+      <ul>
+        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
+        <li><a href="db-split.html">2. DB 분할</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">B. Workspace & Vault</h3>
+      <ul>
+        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
+        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">C. Users & Access</h3>
+      <ul>
+        <li><a href="tables-user.html">5. Users</a></li>
+        <li><a href="tables-auth.html">6. Auth credentials</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">D. Governance & Policy</h3>
+      <ul>
+        <li><a href="tables-role.html">7. 9 User Roles</a></li>
+        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
+        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
+      <ul>
+        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
+        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
+        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+      <ul>
+        <li><a href="sm-transaction.html">13. Transaction State</a></li>
+        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
+        <li><a href="sm-approval.html">15. Approval State</a></li>
+        <li><a href="sm-signing.html">16. Signing State</a></li>
+        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
+        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+      <ul>
+        <li><a href="tables-audit.html">19. Audit Log</a></li>
+        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
+        <li><a href="tables-aml.html" class="active">21. AML · Travel Rule</a></li>
+        <li><a href="risks.html">22. Risks Register</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
+      <ul>
+        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
+        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
+        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+
+<main class="content">
+
+<section id="tables-aml">
+    <h2>21. AML · Travel Rule</h2>
+    <span class="section-subtitle">Step 5b/5c — AML provider 통합 · incoming reject 처리</span>
+
+    <h3>AML Provider 통합 (★ Stage 9 명시)</h3>
+    <p><code>transaction-lifecycle.md</code>, p.4 diagram 에서 정식 명시된 AML provider:</p>
+    <ul>
+      <li><strong>Chainalysis</strong></li>
+      <li><strong>Elliptic</strong></li>
+      <li><strong>Notabene</strong></li>
+    </ul>
+
+    <h3>14-step Flow 내 위치</h3>
+    <ul>
+      <li><strong>Step 5b</strong>: Transaction Manager → Screening Service → AML Provider</li>
+      <li><strong>Step 5c</strong>: Transaction Manager → Screening Service → Travel Rule Provider</li>
+      <li>두 검증 모두 통과 후에야 Policy Engine (Step 6) 진입</li>
+    </ul>
+
+    <h3>AML Policy 의 평면 분리</h3>
+    <p>Fireblocks Policy 와 별개 평면 (<code>security-checklist.md</code>):</p>
+    <ul>
+      <li><strong>Fireblocks Policies (TAP)</strong>: 일반 tx 단위 rule</li>
+      <li><strong>AML Transaction Screening Policy</strong>: AML provider 통합 — 별도 종류</li>
+      <li><strong>DCCP</strong>: confirmation 정책 — 또 다른 종류</li>
+    </ul>
+
+    <h3>Workspace-level AML Default (★ Stage 9)</h3>
+    <p><code>vault-structure-best-practices.md</code>, p.5-6: Multi-workspace 가 필요한 이유 중 하나로 <strong>다른 AML default</strong> 명시:</p>
+    <ul>
+      <li><strong>fail-on-unknown</strong>: 모르는 destination 은 차단</li>
+      <li><strong>pass-on-unknown</strong>: 모르는 destination 은 통과</li>
+    </ul>
+
+    <h3>Incoming Reject 의 Lock 상태 (★)</h3>
+    <p><code>primary-transaction-statuses.md</code>, p.8:</p>
+    <div class="callout callout-warn">
+      <div class="callout-title">Outgoing vs Incoming Rejected 차이</div>
+      <ul style="margin-bottom:0">
+        <li><strong>Outgoing rejected</strong>: 자산 즉시 사용 가능 (re-tx 가능)</li>
+        <li><strong>Incoming rejected</strong>: 자산이 <strong>Admin 가 unfreeze 할 때까지 사용 불가</strong></li>
+      </ul>
+    </div>
+
+    <h3>변경 거버넌스</h3>
+    <p><code>user-roles.md</code>, p.7-8 권한표:</p>
+    <ul>
+      <li><em>Add or modify AML connections and policies</em>: Owner / Admin / NSA ✓</li>
+      <li><em>Add or modify Travel Rule connections and policies</em>: Owner / Admin / NSA ✓</li>
+    </ul>
+
+    <h3>DB Schema</h3>
+    <pre><code>CREATE TABLE aml_providers (
+  id                BINARY(16) PRIMARY KEY,
+  workspace_id      BINARY(16) NOT NULL,
+  provider_name     ENUM('chainalysis', 'elliptic', 'notabene') NOT NULL,
+  endpoint_url      VARCHAR(255) NOT NULL,
+  api_credential_hsm_keyref VARCHAR(128) NOT NULL,    -- ★ HSM-wrapped, never plaintext
+  default_policy    ENUM('fail-on-unknown', 'pass-on-unknown') NOT NULL,
+  enabled_at        DATETIME(6) NOT NULL,
+  disabled_at       DATETIME(6),
+  UNIQUE KEY (workspace_id, provider_name)
+);
+
+-- ★ append-only
+CREATE TABLE aml_screening_results (
+  id                BINARY(16) PRIMARY KEY,
+  transaction_id    BINARY(16) NOT NULL,
+  provider_id       BINARY(16) NOT NULL,
+  direction         ENUM('incoming', 'outgoing') NOT NULL,
+  risk_score        DECIMAL(5, 2),
+  decision          ENUM('allow', 'block', 'manual-review') NOT NULL,
+  raw_response_cbor BLOB NOT NULL,                    -- vendor response 보존
+  screened_at       DATETIME(6) NOT NULL,
+  KEY (transaction_id),
+  KEY (provider_id, screened_at)
+);
+
+-- ★ append-only — Travel Rule message 보존 (counterparty exchange)
+CREATE TABLE travel_rule_records (
+  id                BINARY(16) PRIMARY KEY,
+  transaction_id    BINARY(16) NOT NULL,
+  provider_id       BINARY(16) NOT NULL,
+  direction         ENUM('outbound', 'inbound') NOT NULL,
+  originator_info_cbor BLOB NOT NULL,                 -- VASP info
+  beneficiary_info_cbor BLOB NOT NULL,
+  vasp_message_id   VARCHAR(128),
+  status            ENUM('pending', 'sent', 'acked', 'rejected') NOT NULL,
+  exchanged_at      DATETIME(6) NOT NULL,
+  KEY (transaction_id)
+);
+
+-- Incoming reject 의 asset lock 추적
+CREATE TABLE rejected_incoming_assets (
+  id                BINARY(16) PRIMARY KEY,
+  transaction_id    BINARY(16) NOT NULL UNIQUE,
+  asset_wallet_id   BINARY(16) NOT NULL,
+  amount_decimal    DECIMAL(38, 18) NOT NULL,
+  rejected_at       DATETIME(6) NOT NULL,
+  unfreeze_attempts INT NOT NULL DEFAULT 0,
+  unfrozen_at       DATETIME(6),                       -- ★ set-once
+  unfrozen_by_user_id BINARY(16),                      -- Admin
+  KEY (asset_wallet_id, unfrozen_at)
+);</code></pre>
+
+    <h3>FSPM (Fireblocks Security Posture Management)</h3>
+    <p>Security Auditor / Security Admin 의 권한 영역. Security Center 화면 + findings 관리. 정확한 entity-grade 명세는 Fireblocks 자료 부족 — <strong>Q-S07 Open Question</strong>.</p>
+  </section>
+
+  <nav class="page-nav" aria-label="Section navigation">
+    <a class="page-nav-link page-nav-prev" href="tables-lifecycle.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">20. Lifecycle Events</span></a>
+    <a class="page-nav-link page-nav-next" href="risks.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">22. Risks Register</span></a>
+  </nav>
+
+</main>
+</div>
+
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,13 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/4407786072082-Re-enroll-a-user-s-mobile-device
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 2
+language: en
+notes: |
+  Fireblocks Help Center article "Re-enroll a user's mobile device".
+  Triggers: biometric change, app uninstall, new device install, 6-digit PIN loss.
+  Linked users / linked workspaces model: each must be re-enrolled separately.
+  Signing-role user: Owner's MPC key share re-approval within 2 days; user's
+  MPC registration within 2 days after that.
+  Owner's own device re-enroll requires Fireblocks Support (even if Owner of a
+  different workspace).

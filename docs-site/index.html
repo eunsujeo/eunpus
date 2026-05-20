@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wallet Architecture — Documentation Hub</title>
+  <meta name="description" content="지갑 architecture 관련 reference 문서 모음">
+  <meta name="robots" content="noindex">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-subtle: #fafafa;
+      --bg-card: #ffffff;
+      --bg-card-hover: #f7f7f8;
+      --bg-tag: #f1f3f5;
+
+      --border: #e5e5e7;
+      --border-strong: #d2d2d7;
+      --border-card: #e5e5e7;
+      --border-card-hover: #c1c1c4;
+
+      --text: #1d1d1f;
+      --text-secondary: #515154;
+      --text-tertiary: #86868b;
+      --text-link: #0366d6;
+      --text-link-hover: #0246a8;
+
+      --accent: #0366d6;
+
+      --radius-sm: 4px;
+      --radius-md: 8px;
+
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Helvetica Neue", Arial, "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Cascadia Mono", "Roboto Mono", Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.65;
+      color: var(--text);
+      background-color: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .site-header {
+      border-bottom: 1px solid var(--border);
+      padding: 14px 32px;
+      background-color: var(--bg);
+    }
+
+    .site-header .inner {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .site-header .title {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .site-header .meta {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 56px 32px 80px;
+    }
+
+    h1 {
+      font-size: 30px;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      margin: 0 0 8px;
+    }
+
+    .lead {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin: 0 0 8px;
+    }
+
+    .lead code {
+      font-family: var(--font-mono);
+      font-size: 13.5px;
+      background-color: var(--bg-tag);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    .intro-note {
+      font-size: 13.5px;
+      color: var(--text-tertiary);
+      margin-top: 16px;
+      max-width: 680px;
+    }
+
+    h2 {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-tertiary);
+      margin: 48px 0 16px;
+    }
+
+    .doc-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .doc-card {
+      display: block;
+      padding: 22px 24px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+    }
+
+    .doc-card:hover {
+      border-color: var(--border-card-hover);
+      background-color: var(--bg-card-hover);
+    }
+
+    .doc-card:active {
+      transform: translateY(1px);
+    }
+
+    .doc-card .doc-title {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0 0 6px;
+      letter-spacing: -0.015em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .doc-card .doc-title .arrow {
+      color: var(--text-tertiary);
+      font-weight: 400;
+      font-size: 16px;
+      transition: transform 0.15s ease;
+    }
+
+    .doc-card:hover .doc-title .arrow {
+      transform: translateX(2px);
+      color: var(--accent);
+    }
+
+    .doc-card .doc-summary {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin: 0 0 14px;
+      line-height: 1.55;
+    }
+
+    .doc-card .doc-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      font-size: 12.5px;
+      color: var(--text-tertiary);
+    }
+
+    .doc-card .doc-meta-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .doc-card .doc-meta-item strong {
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .doc-card .doc-path {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .doc-card-placeholder {
+      background-color: var(--bg-subtle);
+      border-style: dashed;
+      cursor: default;
+      opacity: 0.75;
+    }
+
+    .doc-card-placeholder:hover {
+      border-color: var(--border-card);
+      background-color: var(--bg-subtle);
+    }
+
+    .doc-card-placeholder .doc-title {
+      color: var(--text-secondary);
+    }
+
+    .doc-card-placeholder .arrow {
+      display: none;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 1px 7px;
+      font-size: 11px;
+      font-weight: 500;
+      border-radius: 3px;
+      letter-spacing: 0.02em;
+      vertical-align: middle;
+    }
+
+    .badge-current {
+      background-color: #e7f4ec;
+      color: #1f6c3d;
+      border: 1px solid #b8dec7;
+    }
+
+    .badge-planned {
+      background-color: #f1f3f5;
+      color: #515154;
+      border: 1px solid #d2d2d7;
+    }
+
+    .footer-note {
+      margin-top: 56px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      font-size: 12.5px;
+      color: var(--text-tertiary);
+    }
+
+    .footer-note p {
+      margin: 4px 0;
+    }
+
+    .footer-note code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background-color: var(--bg-tag);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    @media (max-width: 640px) {
+      main {
+        padding: 32px 18px 48px;
+      }
+      h1 {
+        font-size: 24px;
+      }
+      .doc-card {
+        padding: 18px 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<main>
+  <h1>Documentation Hub</h1>
+
+  <div class="doc-list" style="margin-top:32px">
+
+    <a class="doc-card" href="custodial-wallet-db-design/">
+      <div class="doc-title">
+        수탁형 지갑 — DB 구조와 상태 흐름
+        <span class="arrow">→</span>
+      </div>
+      <p class="doc-summary">
+        Vendor (Fireblocks 등) 없이 직접 구축하는 수탁형 지갑의 persistence reference.
+        7-DB split · 7 storage class · append-only enforcement · set-once columns ·
+        4 state machine · reversal-entry · evidence chain · reconciliation.
+      </p>
+      <div class="doc-meta">
+        <span class="doc-meta-item"><span class="badge badge-current">v1.0</span></span>
+        <span class="doc-meta-item"><strong>Sections</strong> 25</span>
+        <span class="doc-meta-item"><strong>Diagrams</strong> 15</span>
+        <span class="doc-meta-item"><strong>독자</strong> Backend · DBA · Security · Operations · Architecture reviewer</span>
+      </div>
+      <div class="doc-path">custodial-wallet-db-design/</div>
+    </a>
+
+  </div>
+
+</main>
+
+</body>
+</html>

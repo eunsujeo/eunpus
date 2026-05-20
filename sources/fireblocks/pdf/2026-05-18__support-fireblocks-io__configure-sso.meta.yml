@@ -1,0 +1,14 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/10031671057692-Configure-SSO
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 4
+language: en
+notes: |
+  Fireblocks Help Center article "Configure SSO".
+  IdPs supported via self-setup: Google Workspace, Microsoft Entra ID, Okta,
+  OpenID Connect, PingFederate, SAML 2.0/3.0.
+  IdPs via Fireblocks Support: ADFS, LDAP / Active Directory.
+  SSO authorizes by email domain. SSO only affects login authorization;
+  user add/remove still done in Console.
+  Auth0 acts as service provider. Callback URL: https://auth.fireblocks.io/login/callback.
+  Changing SSO provider requires workspace Owner approval (via Support).

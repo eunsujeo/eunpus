@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audit Log (hash chain · SGX checkpoint) — 수탁형 지갑 DB 설계</title>
+  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Audit Log (hash chain · SGX checkpoint)">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
+
+<div class="layout">
+
+<aside class="sidebar" aria-label="Table of contents">
+  <nav>
+    <div class="nav-section">
+      <h3 class="nav-section-title">Overview</h3>
+      <ul>
+        <li><a href="index.html">0. Overview</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">A. Architecture</h3>
+      <ul>
+        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
+        <li><a href="db-split.html">2. DB 분할</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">B. Workspace & Vault</h3>
+      <ul>
+        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
+        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">C. Users & Access</h3>
+      <ul>
+        <li><a href="tables-user.html">5. Users</a></li>
+        <li><a href="tables-auth.html">6. Auth credentials</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">D. Governance & Policy</h3>
+      <ul>
+        <li><a href="tables-role.html">7. 9 User Roles</a></li>
+        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
+        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
+      <ul>
+        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
+        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
+        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+      <ul>
+        <li><a href="sm-transaction.html">13. Transaction State</a></li>
+        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
+        <li><a href="sm-approval.html">15. Approval State</a></li>
+        <li><a href="sm-signing.html">16. Signing State</a></li>
+        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
+        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+      <ul>
+        <li><a href="tables-audit.html" class="active">19. Audit Log</a></li>
+        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
+        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
+        <li><a href="risks.html">22. Risks Register</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
+      <ul>
+        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
+        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
+        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+
+<main class="content">
+
+<section id="tables-audit">
+    <h2>19. Audit Log</h2>
+    <span class="section-subtitle">Append-only hash chain + SGX-signed checkpoint · cross-DB binding</span>
+
+    <h3>Fireblocks 의 Audit Log 기능 (확인된 사실)</h3>
+    <p><code>security-checklist.md</code>, p.2: log / track / audit / <strong>export</strong> workspace events.</p>
+    <p>기록되는 이벤트 (Fireblocks 자료에서 확인된 것):</p>
+    <ul>
+      <li>IP allowlist 추가·수정·활성화·비활성화</li>
+      <li>Recovery passphrase verification 알림 / 결과 / risk status</li>
+      <li>(그 외 lifecycle event 는 본 자료 명시 없음 — 구현체가 광범위 기록한다고 가정)</li>
+    </ul>
+
+    <h3>접근 권한</h3>
+    <p><code>user-roles.md</code>, p.7 — <em>View all workspace settings including audit logs</em>:</p>
+    <ul>
+      <li>Owner / Admin / NSA / Security Auditor / Security Admin ✓</li>
+    </ul>
+
+    <h3>Hash Chain + SGX Checkpoint 의 영속화 모델</h3>
+    <p>외부 감사자가 "log 가 변조되지 않았다"를 cryptographically 검증할 수 있어야 institutional-grade. 두 layer:</p>
+
+    <div class="diagram">
+      <pre class="mermaid">
+graph LR
+  subgraph EVENTS["audit_events (append-only)"]
+    E1["seq=1<br/>prev_hash=0<br/>current_hash=h1"]
+    E2["seq=2<br/>prev_hash=h1<br/>current_hash=h2"]
+    E3["seq=3<br/>prev_hash=h2<br/>current_hash=h3"]
+    E4["seq=4<br/>prev_hash=h3<br/>current_hash=h4"]
+  end
+
+  subgraph CP["audit_checkpoints"]
+    C1["checkpoint @ seq=4<br/>checkpoint_hash=h4<br/>sgx_signature<br/>mrenclave"]
+  end
+
+  E1 --> E2 --> E3 --> E4
+  E4 -.signs.-> C1
+
+  EXT["External auditor"]
+  EXT -.recompute chain.-> EVENTS
+  EXT -.verify signature.-> C1
+      </pre>
+      <span class="diagram-caption">Figure 9. Hash chain + SGX checkpoint — 외부 감사자가 hash chain 재계산 + checkpoint signature 검증으로 정합성 입증.</span>
+    </div>
+
+    <h3>DB Schema</h3>
+    <pre><code>-- ★★ append-only — BEFORE UPDATE / BEFORE DELETE 트리거로 강제 (23 참조)
+CREATE TABLE audit_events (
+  id                BINARY(16) PRIMARY KEY,
+  partition_key     VARCHAR(64) NOT NULL,             -- e.g., workspace_id + month
+  seq               BIGINT NOT NULL,                  -- per-partition monotonic
+  event_type        VARCHAR(64) NOT NULL,             -- 'user-add', 'tx-broadcast', ...
+  event_domain      VARCHAR(64) NOT NULL,             -- 'user', 'transaction', 'policy', ...
+  source_aggregate_type VARCHAR(64) NOT NULL,
+  source_aggregate_id BINARY(16) NOT NULL,
+  source_db         VARCHAR(32) NOT NULL,             -- 'walletdb', 'ledgerdb', ...
+  event_payload_cbor BLOB NOT NULL,                   -- ★ byte-equal cross-DB binding
+  prev_hash         BINARY(32) NOT NULL,              -- prior seq 의 current_hash
+  current_hash      BINARY(32) NOT NULL,              -- SHA256(prev_hash || payload || seq)
+  actor_user_id     BINARY(16),
+  occurred_at       DATETIME(6) NOT NULL,
+  UNIQUE KEY (partition_key, seq),
+  KEY (event_domain, occurred_at),
+  KEY (source_aggregate_id)
+);
+
+-- ★ append-only — SGX/TEE 가 주기적으로 서명
+CREATE TABLE audit_checkpoints (
+  id                BINARY(16) PRIMARY KEY,
+  partition_key     VARCHAR(64) NOT NULL,
+  last_seq          BIGINT NOT NULL,
+  checkpoint_hash   BINARY(32) NOT NULL,              -- = last seq 의 current_hash
+  sgx_signature     BLOB NOT NULL,                    -- enclave signature
+  sgx_mrenclave     BINARY(32) NOT NULL,              -- enclave measurement
+  signed_at         DATETIME(6) NOT NULL,
+  UNIQUE KEY (partition_key, last_seq)
+);</code></pre>
+
+    <h3>Hash Chain 동작</h3>
+    <pre>seq=1: prev=0,  current = SHA256(0  || payload_1 || 1)
+seq=2: prev=h1, current = SHA256(h1 || payload_2 || 2)
+seq=3: prev=h2, current = SHA256(h2 || payload_3 || 3)
+...
+
+중간 row 변조 시 뒤의 모든 hash 가 깨짐 → 변조 감지</pre>
+
+    <h3>SGX-Signed Checkpoint 의 의미</h3>
+    <ul>
+      <li>운영자가 hash chain 을 통째로 재계산해서 위조하더라도, SGX enclave 의 서명이 없으면 외부 감사자에게 무효</li>
+      <li>MRENCLAVE 가 known-good 값과 일치해야 enclave integrity 확보</li>
+      <li>외부 감사자는 SGX attestation 또는 DCAP 으로 enclave 검증 가능</li>
+    </ul>
+
+    <h3>Cross-DB Binding</h3>
+    <p>audit_events 의 <code>event_payload_cbor</code> 가 다른 DB 의 source row (예: <code>approval_decisions</code>, <code>signing_events</code>, <code>transactions</code>) 와 byte-equal CBOR encoding 일치해야 함. 이로써 cross-DB 일관성도 cryptographically 입증.</p>
+
+    <pre><code>-- 검증 query (외부 감사자)
+SELECT
+  a.partition_key,
+  a.seq,
+  a.event_payload_cbor,
+  (SELECT cbor_encode(approver_user_id, decision, decided_at, mobile_device_sig)
+   FROM approverdb.approval_decisions
+   WHERE id = a.source_aggregate_id) AS source_payload,
+  a.event_payload_cbor = source_payload AS payload_matches
+FROM auditdb.audit_events a
+WHERE a.event_domain = 'approval'
+  AND a.partition_key = ?;</code></pre>
+
+    <h3>Append-only Enforcement</h3>
+    <p>Application code 가 evolve 하더라도 DB 가 거절해야 의미가 있음. <a href="storage-discipline.html">23. Storage Discipline</a> 의 trigger 패턴 참조.</p>
+  </section>
+
+  <nav class="page-nav" aria-label="Section navigation">
+    <a class="page-nav-link page-nav-prev" href="sm-withdrawal.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">18. Withdrawal Lifecycle</span></a>
+    <a class="page-nav-link page-nav-next" href="tables-lifecycle.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">20. Lifecycle Events</span></a>
+  </nav>
+
+</main>
+</div>
+
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+
+</body>
+</html>

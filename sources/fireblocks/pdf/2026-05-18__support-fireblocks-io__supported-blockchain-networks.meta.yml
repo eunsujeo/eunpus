@@ -1,0 +1,10 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/8993656344092-Supported-blockchain-networks
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 22
+language: en
+category: blockchains-core
+notes: |
+  Large catalog of supported chains. Per-chain: chain type (EVM account-based / non-EVM account-based / UTXO / Cosmos SDK),
+  supported networks (Mainnet/Testnet), foundation website, fee asset, Fireblocks asset ID.
+  Reference-grade catalog.

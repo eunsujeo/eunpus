@@ -1,0 +1,10 @@
+url: https://support.fireblocks.io/hc/en-us/articles/the-co-signer-management-tab
+url_status: inferred (slug 기반 추정, 실 article ID 미확인)
+fetched_at: 2026-05-19
+source_type: pdf
+domain: cosigner-deployment / management-plane / console-ui
+tier: 1
+title: "The Co-signer management tab"
+crawl_status: not-fetched (body 미로드, lightweight index 만)
+promote_condition: "Co-signer management UI / cosigners-beta API surface 명세 필요시"
+cluster: aws-nitro-cosigner

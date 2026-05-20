@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud & Trust Boundaries — 수탁형 지갑 DB 설계</title>
+  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Cloud & Trust Boundaries">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
+
+<div class="layout">
+
+<aside class="sidebar" aria-label="Table of contents">
+  <nav>
+    <div class="nav-section">
+      <h3 class="nav-section-title">Overview</h3>
+      <ul>
+        <li><a href="index.html">0. Overview</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">A. Architecture</h3>
+      <ul>
+        <li><a href="architecture.html" class="active">1. Cloud & Trust Boundaries</a></li>
+        <li><a href="db-split.html">2. DB 분할</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">B. Workspace & Vault</h3>
+      <ul>
+        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
+        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">C. Users & Access</h3>
+      <ul>
+        <li><a href="tables-user.html">5. Users</a></li>
+        <li><a href="tables-auth.html">6. Auth credentials</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">D. Governance & Policy</h3>
+      <ul>
+        <li><a href="tables-role.html">7. 9 User Roles</a></li>
+        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
+        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
+      <ul>
+        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
+        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
+        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+      <ul>
+        <li><a href="sm-transaction.html">13. Transaction State</a></li>
+        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
+        <li><a href="sm-approval.html">15. Approval State</a></li>
+        <li><a href="sm-signing.html">16. Signing State</a></li>
+        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
+        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+      <ul>
+        <li><a href="tables-audit.html">19. Audit Log</a></li>
+        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
+        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
+        <li><a href="risks.html">22. Risks Register</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
+      <ul>
+        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
+        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
+        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+
+<main class="content">
+
+<section id="architecture">
+    <h2>1. Cloud & Trust Boundaries</h2>
+    <span class="section-subtitle">Stage 8/9 — 3-cloud 분할 · 6 system component · zero-trust</span>
+
+    <h3>3-Cloud Provider 분할</h3>
+    <p>Fireblocks 는 단일 cloud 가 아니라 <strong>sensitive material 의 위치 기준으로 3 cloud 를 분할</strong>한다.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Provider</th><th>역할</th><th>Sensitive material</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Microsoft Azure</strong></td><td>Core services · Auth / Policy / TAP / MPC / SGX / Co-Signer Engine / Secure Vault · key shares · configs · policy rules · third-party API credentials · <strong>SGX Confidential Enclaves</strong></td><td><strong>YES</strong></td></tr>
+          <tr><td><strong>Amazon AWS</strong></td><td>Shell Services VPC (Firestore, Transaction Manager, Mobile Service, Dev API Gateway, Web Console, API Gateway) + Node Infrastructure VPC (Blockchain Nodes, Fireblocks Network)</td><td>NO</td></tr>
+          <tr><td><strong>GCP (Firebase)</strong></td><td>Console + mobile app caching DB</td><td>NO</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      <strong>Azure = sensitive 의 root</strong>, AWS = 외피 (gateway / frontend), GCP = caching.<br>
+      Azure ↔ AWS 통신은 <strong>SGX DMZ + PROXY</strong> 매개.
+    </p>
+
+    <div class="callout">
+      <div class="callout-title">DB 설계에 미치는 함의</div>
+      <p>물리적 DB 분할의 1차 기준은 <strong>"sensitive 인가 / 외피인가 / cache 인가"</strong>. 한 DB 안에 두 종류를 섞으면 cloud / network / IAM 분리가 무의미해진다.</p>
+    </div>
+
+    <h3>6 System Components</h3>
+    <ol>
+      <li><strong>Shell Services</strong> — API gateways, event orchestration, message queues (no sensitive data)</li>
+      <li><strong>Transaction Signing Modules (Co-signers)</strong> — MPC private key shares + signing tx</li>
+      <li><strong>Core Components</strong> — core service modules + sensitive data (Auth Engine, Policy Engine TAPs, Secure Vault, Co-Signer Engine)</li>
+      <li><strong>Trusted Shared Services</strong> — shared modules + Fireblocks P2P Network</li>
+      <li><strong>Blockchain Nodes Infrastructure</strong> — blockchain network broadcast (no sensitive data, scales V+H)</li>
+      <li><strong>Disaster Recovery Services</strong> — 자산 복구, extended ECDSA + EdDSA private keys (xprv+fprv) 재구성. "offline air-gapped machine with hardened access permissions". <strong>SPOC 경고</strong>: "Should not be used regularly — single point of compromise."</li>
+    </ol>
+
+    <div class="diagram">
+      <pre class="mermaid">
+graph TB
+  subgraph SHELL["Shell Services (AWS, no sensitive data)"]
+    GW[Dev API Gateway]
+    TM[Transaction Manager]
+    BS[Balance Service]
+    SS[Screening Service]
+    CS[Certificate Store]
+  end
+
+  subgraph CORE["Core Components (Azure SGX)"]
+    AE[Auth Engine - SGX]
+    PE[Policy Engine / TAPs - SGX]
+    SV[Secure Vault - SGX]
+    CSE[Co-Signer Engine - SGX]
+  end
+
+  subgraph SIG["Co-Signers"]
+    C1[Co-Signer 1<br/>Fireblocks SGX]
+    C2[Co-Signer 2<br/>Fireblocks SGX]
+    C3[Co-Signer 3<br/>Customer mobile / SGX]
+  end
+
+  subgraph NODES["Blockchain Nodes"]
+    N[Node infrastructure]
+  end
+
+  DR["DR Services<br/>offline air-gapped<br/>★ SPOC warning"]
+
+  GW --> TM --> BS --> N
+  TM --> SS
+  GW --> AE
+  SS --> PE
+  PE --> SV --> CSE --> C1 & C2 & C3
+  C3 -.optional.-> CH[Callback Handler<br/>customer-deployed]
+  CSE --> N
+
+  classDef azure fill:#dbeafe,stroke:#1e40af
+  classDef aws fill:#fef3c7,stroke:#92400e
+  classDef customer fill:#dcfce7,stroke:#166534
+  classDef dr fill:#fde2e2,stroke:#991b1b
+  class AE,PE,SV,CSE,C1,C2 azure
+  class GW,TM,BS,SS,CS,N aws
+  class C3,CH customer
+  class DR dr
+      </pre>
+      <span class="diagram-caption">Figure 1. 6 system components + 3 co-signers + DR plane. SGX components in Azure, gateway/screening in AWS, customer-side co-signer optional Callback Handler.</span>
+    </div>
+
+    <h3>Zero-Trust Architecture (Stage 9)</h3>
+    <p><code>transaction-lifecycle.md</code>, p.5 직접 인용:</p>
+    <blockquote style="border-left:3px solid var(--border-callout); padding-left:14px; color:var(--text-secondary); font-style:italic">
+      "All services in the Fireblocks core infrastructure operate in a <strong>zero-trust configuration</strong>. Each service has a <strong>derivation of root CA</strong> and <strong>validates every handoff between services</strong>."
+    </blockquote>
+    <p>→ Root Key (Core Services 의 CA) → Intermediate Cert → Co-Signer End Cert chain of trust. SGX 끼리도 derived cert 검증.</p>
+
+    <h3>Authentication Architecture</h3>
+    <ul>
+      <li><strong>Root Key</strong> (Core Services 의 CA) → <strong>Intermediate Cert</strong> → <strong>Co-Signer End Cert</strong> chain</li>
+      <li>Customer components 는 Core Services public Root Key 사전 보유 → 받은 access token 의 서명 검증</li>
+      <li>Token lifecycle: <strong>activation token (7d) → refresh token (mobile KeyChain) → access token (6h)</strong></li>
+    </ul>
+
+    <h3>신뢰 경계 (Trust Boundaries)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>영역</th><th>호스팅</th><th>신뢰 자산</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Fireblocks SaaS</strong></td><td>Fireblocks</td><td>Console, API, version 결정, audit logs, cloud key share backup</td></tr>
+          <tr><td><strong>Auth0 (SSO)</strong></td><td>Fireblocks 측 service provider</td><td>SSO callback</td></tr>
+          <tr><td><strong>사용자 mobile device</strong></td><td>사용자</td><td>Primary MPC key share (secure enclave), PIN, biometric, mobile app passphrase, recovery passphrase 입력</td></tr>
+          <tr><td><strong>고객 인프라</strong></td><td>고객</td><td>API Co-Signer instances (옵션 SGX), Callback Handler servers, CSR private keys</td></tr>
+          <tr><td><strong>외부 IdP</strong></td><td>고객 또는 third-party</td><td>SSO authentication</td></tr>
+          <tr><td><strong>Blockchain</strong></td><td>Public</td><td>서명된 트랜잭션</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>3-Region SaaS 배포 (Egress / Webhook IP)</h3>
+    <ul>
+      <li>US: <code>3.133.194.13</code></li>
+      <li>EU: <code>3.126.240.51</code></li>
+      <li>EU2: <code>3.77.238.179</code></li>
+      <li>Webhook source: US <code>3.134.25.131</code>, EU <code>3.72.125.45 / 18.184.217.45 / 18.198.71.192</code></li>
+    </ul>
+  </section>
+
+  <nav class="page-nav" aria-label="Section navigation">
+    <a class="page-nav-link page-nav-prev" href="index.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">0. Overview</span></a>
+    <a class="page-nav-link page-nav-next" href="db-split.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">2. DB 분할</span></a>
+  </nav>
+
+</main>
+</div>
+
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+
+</body>
+</html>

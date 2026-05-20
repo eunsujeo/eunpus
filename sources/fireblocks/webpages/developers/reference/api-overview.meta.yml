@@ -1,0 +1,8 @@
+url: https://developers.fireblocks.com/reference/api-overview
+fetched_at: 2026-05-19
+source_type: webpage
+domain: developer / API
+tier: 2
+title: "Fireblocks Developer Docs — API Overview"
+crawl_status: nav-links-only (body not fetched)
+promote_condition: "API authentication / transaction API / policy API hub 와 연결할 때, 또는 사용자 명시 promote"

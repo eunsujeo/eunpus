@@ -1,0 +1,14 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/25477979558556-Batch-approvals-signing
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 9
+language: en
+notes: |
+  Labs feature, Owner-only enablement (Settings > Workspaces > Labs).
+  Batch Approvals (v3.4.0+) + Batch Signing (v3.5.0+).
+  Max 10 requests/batch. Same workspace, same user, no risk-flagged.
+  PIN once + biometric (1x approval-only/signing-only, 2x mixed).
+  Cancel on 1st biometric: full cancel. On 2nd: signing only canceled.
+  Long processing tag for multi-input transfers.
+  Failed requests -> Console re-initiate.
+  Keep app open during processing.

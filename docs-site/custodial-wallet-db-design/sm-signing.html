@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signing State Machine — 수탁형 지갑 DB 설계</title>
+  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Signing State Machine">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
+
+<div class="layout">
+
+<aside class="sidebar" aria-label="Table of contents">
+  <nav>
+    <div class="nav-section">
+      <h3 class="nav-section-title">Overview</h3>
+      <ul>
+        <li><a href="index.html">0. Overview</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">A. Architecture</h3>
+      <ul>
+        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
+        <li><a href="db-split.html">2. DB 분할</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">B. Workspace & Vault</h3>
+      <ul>
+        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
+        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">C. Users & Access</h3>
+      <ul>
+        <li><a href="tables-user.html">5. Users</a></li>
+        <li><a href="tables-auth.html">6. Auth credentials</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">D. Governance & Policy</h3>
+      <ul>
+        <li><a href="tables-role.html">7. 9 User Roles</a></li>
+        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
+        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
+      <ul>
+        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
+        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
+        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+      <ul>
+        <li><a href="sm-transaction.html">13. Transaction State</a></li>
+        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
+        <li><a href="sm-approval.html">15. Approval State</a></li>
+        <li><a href="sm-signing.html" class="active">16. Signing State</a></li>
+        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
+        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+      <ul>
+        <li><a href="tables-audit.html">19. Audit Log</a></li>
+        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
+        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
+        <li><a href="risks.html">22. Risks Register</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
+      <ul>
+        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
+        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
+        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+
+<main class="content">
+
+<section id="sm-signing">
+    <h2>16. Signing State Machine</h2>
+    <span class="section-subtitle">Co-Signer Engine routing · 3-share ceremony · zero-trust handoff</span>
+
+    <h3>Two-Tier Co-Signer Model (★ Stage 8)</h3>
+    <p><code>mpc-cmp.md</code>, p.5-6 직접 인용: <em>"None of the parties (neither Fireblocks nor the customer) can sign a transaction alone."</em></p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tier</th><th>정체</th><th>Key share</th><th>정책</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Customer Co-Signer</strong></td><td>Mobile device (Keychain/TEE) <strong>또는</strong> SGX server</td><td>1/3</td><td>Customer 측</td></tr>
+          <tr><td><strong>Fireblocks Co-Signers (2)</strong></td><td>Azure SGX server</td><td>2/3</td><td><em>"Safeguards in case keys owned by customers are compromised"</em> — tx amount threshold, destination address integrity</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Co-Signer Broker + Aggregator Architecture</h3>
+    <ul>
+      <li><strong>Co-Signer Broker</strong>: MPC 메시지 + end cert 를 broadcast (chain of trust 검증)</li>
+      <li><strong>Aggregator</strong>: partial signature 들을 full signature 로 결합 → Blockchain</li>
+      <li><strong>"data is not passed between them during signing"</strong> — 각 co-signer 는 독립 partial sig 생성 (zero-trust)</li>
+    </ul>
+
+    <h3>Signing State Machine</h3>
+    <div class="diagram">
+      <pre class="mermaid">
+stateDiagram-v2
+  [*] --> QUEUED : Secure Vault → Co-Signer Engine (Step 9)
+  QUEUED --> ROUTING : UUID + Policy rules cached
+  ROUTING --> AWAITING_CUSTOMER : route to Co-Signer 3 (mobile/SGX)
+  ROUTING --> AWAITING_FB_1 : route to Co-Signer 1 (FB Azure SGX)
+  ROUTING --> AWAITING_FB_2 : route to Co-Signer 2 (FB Azure SGX)
+
+  AWAITING_CUSTOMER --> PARTIAL_SIG_3 : signed (PIN+biometric or API)
+  AWAITING_CUSTOMER --> REJECTED : customer co-signer reject
+  AWAITING_FB_1 --> PARTIAL_SIG_1 : FB safeguards pass
+  AWAITING_FB_1 --> REJECTED : safeguard violation (amount/destination)
+  AWAITING_FB_2 --> PARTIAL_SIG_2 : FB safeguards pass
+
+  PARTIAL_SIG_1 --> AGGREGATING : all 3 collected
+  PARTIAL_SIG_2 --> AGGREGATING
+  PARTIAL_SIG_3 --> AGGREGATING
+
+  AGGREGATING --> VERIFYING : Auth Engine hash 검증 (Step 11)
+  VERIFYING --> SIGNED : Secure Vault tx 조립 (Step 12)
+  VERIFYING --> FAILED : hash mismatch
+  SIGNED --> READY_TO_BROADCAST
+  REJECTED --> [*]
+      </pre>
+      <span class="diagram-caption">Figure 8. Signing state machine — 3-share ceremony, parallel collection. Either party reject = REJECTED. Auth Engine 가 partial sig hash 검증.</span>
+    </div>
+
+    <h3>Special Branches</h3>
+    <ul>
+      <li><strong>Hosted MPC</strong>: 3 share 모두 customer 환경 — Fireblocks 0 share. <code>signing_events.co_signer_location</code> 가 모두 'customer'</li>
+      <li><strong>Solana Sign-Only</strong>: SIGNED 상태에서 broadcast 안 함, payload client 에 반환. <code>NOT BROADCAST BY FIREBLOCKS</code> 태그</li>
+      <li><strong>Cached signature</strong> (Raw Signing): 동일 raw data 재서명 시 전체 ceremony 우회 — SIGNED 직접 진입</li>
+      <li><strong>Co-signer rejection at PENDING_SIGNATURE</strong> → tx 전체가 CANCELLED (transaction state machine 참조)</li>
+    </ul>
+
+    <h3>DB Schema</h3>
+    <pre><code>CREATE TABLE signing_requests (
+  id                BINARY(16) PRIMARY KEY,
+  transaction_id    BINARY(16) NOT NULL,
+  workspace_id      BINARY(16) NOT NULL,
+  policy_rule_id    BINARY(16),                       -- triggering rule
+  co_signer_set_id  BINARY(16) NOT NULL,              -- 3-share set 식별자
+  state             ENUM('QUEUED', 'ROUTING', 'AGGREGATING', 'VERIFYING',
+                          'SIGNED', 'REJECTED', 'FAILED') NOT NULL,
+  queued_at         DATETIME(6) NOT NULL,
+  signed_at         DATETIME(6),                      -- ★ set-once
+  KEY (transaction_id),
+  KEY (workspace_id, state)
+);
+
+-- append-only: BEFORE UPDATE / DELETE 트리거로 강제
+CREATE TABLE signing_events (
+  id                BINARY(16) PRIMARY KEY,
+  signing_request_id BINARY(16) NOT NULL,
+  co_signer_id      BINARY(16) NOT NULL,
+  co_signer_role    ENUM('customer-mobile', 'customer-sgx', 'fb-azure-sgx') NOT NULL,
+  share_index       TINYINT NOT NULL,                 -- 1, 2, or 3
+  event_type        ENUM('partial-sig', 'reject') NOT NULL,
+  partial_sig_hash  BINARY(32),                       -- Auth Engine 검증용
+  mrenclave_at_signing BINARY(32),                    -- SGX MRENCLAVE (★ set-once)
+  occurred_at       DATETIME(6) NOT NULL,
+  KEY (signing_request_id)
+);
+
+CREATE TABLE callback_invocations (
+  -- API Co-Signer 의 Callback Handler 호출 (optional)
+  id                BINARY(16) PRIMARY KEY,
+  signing_request_id BINARY(16) NOT NULL,
+  callback_endpoint_id BINARY(16) NOT NULL,
+  request_url       VARCHAR(255) NOT NULL,            -- /v2/tx_sign_request or /tx_sign_request
+  request_jwt_or_json ENUM('jwt', 'json') NOT NULL,
+  response_decision ENUM('approve', 'reject', 'ignore', 'retry') NOT NULL,
+  latency_ms        INT,
+  invoked_at        DATETIME(6) NOT NULL
+);</code></pre>
+
+    <h3>SGX MRENCLAVE 의 의미</h3>
+    <p>Fireblocks 의 Co-Signer 가 SGX enclave 안에서 실행되므로, 각 signing 시점의 enclave measurement (MRENCLAVE) 가 audit trail 에 기록됨. 외부 감사자는 attested MRENCLAVE 와 known-good 값을 비교해 enclave integrity 검증.</p>
+  </section>
+
+  <nav class="page-nav" aria-label="Section navigation">
+    <a class="page-nav-link page-nav-prev" href="sm-approval.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">15. Approval State</span></a>
+    <a class="page-nav-link page-nav-next" href="sm-deposit.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">17. Deposit Lifecycle</span></a>
+  </nav>
+
+</main>
+</div>
+
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+
+</body>
+</html>

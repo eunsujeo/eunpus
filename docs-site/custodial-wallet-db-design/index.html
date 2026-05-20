@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Overview — 수탁형 지갑 DB 설계</title>
+  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Overview">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
+
+<div class="layout">
+
+<aside class="sidebar" aria-label="Table of contents">
+  <nav>
+    <div class="nav-section">
+      <h3 class="nav-section-title">Overview</h3>
+      <ul>
+        <li><a href="index.html" class="active">0. Overview</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">A. Architecture</h3>
+      <ul>
+        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
+        <li><a href="db-split.html">2. DB 분할</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">B. Workspace & Vault</h3>
+      <ul>
+        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
+        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">C. Users & Access</h3>
+      <ul>
+        <li><a href="tables-user.html">5. Users</a></li>
+        <li><a href="tables-auth.html">6. Auth credentials</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">D. Governance & Policy</h3>
+      <ul>
+        <li><a href="tables-role.html">7. 9 User Roles</a></li>
+        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
+        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
+      <ul>
+        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
+        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
+        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+      <ul>
+        <li><a href="sm-transaction.html">13. Transaction State</a></li>
+        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
+        <li><a href="sm-approval.html">15. Approval State</a></li>
+        <li><a href="sm-signing.html">16. Signing State</a></li>
+        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
+        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+      <ul>
+        <li><a href="tables-audit.html">19. Audit Log</a></li>
+        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
+        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
+        <li><a href="risks.html">22. Risks Register</a></li>
+      </ul>
+    </div>
+    <div class="nav-section">
+      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
+      <ul>
+        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
+        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
+        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+
+<main class="content">
+
+<section id="overview">
+    <h1>수탁형 지갑 — DB 구조와 상태 흐름</h1>
+    <p class="lead">
+      Fireblocks 의 institutional custody 아키텍처를 직접 구축한다고 가정했을 때 필요한 DB 구조·테이블·상태 머신을 정리한 reference.<br>
+      Fireblocks 에 명시 없는 항목은 <strong>"Fireblocks 미명시, hypothesis"</strong> 라벨로 표시한다.
+    </p>
+
+    <h3>이 문서의 8 가지 도메인</h3>
+    <p>Fireblocks wiki 의 분류 (Architecture / Workspace / Users / Governance / Crypto / Transaction / Audit / Operations) 를 그대로 mirror.</p>
+
+    <div class="table-wrap">
+      <table class="overview-domains">
+        <thead><tr><th>도메인</th><th>다루는 내용</th><th>진입점</th></tr></thead>
+        <tbody>
+          <tr><td>A. Architecture</td><td>3-cloud · 6 component · zero-trust · 14-step</td><td><a href="architecture.html">1. Cloud &amp; Trust</a></td></tr>
+          <tr><td>B. Workspace</td><td>Workspace · Vault · asset wallet</td><td><a href="tables-workspace.html">3. Workspace</a></td></tr>
+          <tr><td>C. Users</td><td>Console / API / Mobile · 2FA · SSO · IP allowlist</td><td><a href="tables-user.html">5. Users</a></td></tr>
+          <tr><td>D. Governance</td><td>9 role · Admin Quorum · Policy / TAP</td><td><a href="tables-role.html">7. Roles</a></td></tr>
+          <tr><td>E. Crypto / Signing</td><td>MPC-CMP · Designated Signer · Cosigner · Recovery</td><td><a href="tables-mpc.html">10. MPC</a></td></tr>
+          <tr><td>F. Transaction</td><td>17-status state machine · 14-step · deposit / withdrawal</td><td><a href="sm-transaction.html">13. Tx State</a></td></tr>
+          <tr><td>G. Audit / Compliance</td><td>Audit log · Lifecycle · AML · Risks</td><td><a href="tables-audit.html">19. Audit</a></td></tr>
+          <tr><td>H. Cross-cutting<span class="g" tabindex="0" data-tip="여러 도메인에 공통으로 걸치는 횡단 관심사. 한 도메인 안에 들어가지 않고 전체에 영향을 주는 영속화·운영·인프라 측면 (DB 분할 / append-only 규율 / MySQL 운영 / Anti-pattern 등)">(?)</span></td><td>Storage · DB 분할 · MySQL 운영 · Anti-pattern</td><td><a href="storage-discipline.html">23. Storage</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-warn">
+      <div class="callout-title">Source-first 원칙</div>
+      <p>본 문서의 모든 fact 는 Fireblocks Help Center 의 curated wiki 가 출처.<br>
+      Fireblocks 미명시 항목은 <strong>"Hypothesis"</strong> 라벨로 명확히 분리.</p>
+    </div>
+  </section>
+
+  <nav class="page-nav" aria-label="Section navigation">
+    <span class="page-nav-spacer"></span>
+    <a class="page-nav-link page-nav-next" href="architecture.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">1. Cloud & Trust Boundaries</span></a>
+  </nav>
+
+</main>
+</div>
+
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+
+</body>
+</html>

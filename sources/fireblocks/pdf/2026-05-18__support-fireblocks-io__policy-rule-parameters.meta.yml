@@ -1,0 +1,8 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/policy-rule-parameters
+downloaded_at: 2026-05-18
+domain: governance
+tier: 2
+status: source-lake-only
+title: "Policy rule parameters"
+ingest_log: "Stage 10 (2026-05-18) — renamed, markdown deferred"
+note: "Reference table of policy rule parameters. Covered at high level by `about-policies.md` + `how-policies-work.md`. Promote to full ingest if specific parameter spec needed for Q-P01."
