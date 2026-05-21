@@ -1,3 +1,20 @@
+---
+type: user-role
+vendor: fireblocks
+status: stable
+tags: [user-role, signer, signing]
+stage_introduced: 3
+last_updated_stage: 5
+source_count: 5
+related:
+  - admin
+  - api-co-signer
+  - callback-handler
+  - mpc-key-share
+  - policy
+  - transaction
+  - user-management
+---
 # Entity: Signer (Fireblocks user role)
 
 ## Summary

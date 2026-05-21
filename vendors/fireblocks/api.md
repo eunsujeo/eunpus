@@ -1,3 +1,22 @@
+---
+type: vendor-hub
+vendor: fireblocks
+status: draft
+tags: [api, identity]
+source_count: 4
+related:
+  - api-co-signer
+  - api-key
+  - api-user
+  - architecture
+  - authentication
+  - callback-handler
+  - csr
+  - ip-allowlist
+  - lifecycle-events
+  - transaction
+  - workspace
+---
 # Fireblocks — API
 
 > REST API / SDK / Webhook 표면.

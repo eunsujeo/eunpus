@@ -1,3 +1,13 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [governance, policy]
+stage_introduced: 2
+last_updated_stage: 10
+source_count: 5
+related: [admin, admin-quorum, lifecycle-events, owner, user-management]
+---
 # Entity: Approval Group (Fireblocks)
 
 ## Summary

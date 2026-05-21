@@ -1,3 +1,11 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [signing, integration]
+source_count: 1
+related: [editor, non-signing-admin, policy, transaction, user-management]
+---
 # Entity: Designated Signer (Fireblocks)
 
 ## Summary

@@ -1,3 +1,11 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [api, identity]
+source_count: 2
+related: [api, api-key, api-user, authentication, sandbox-workspace]
+---
 # Entity: CSR (Certificate Signing Request)
 
 ## Summary

@@ -1,3 +1,20 @@
+---
+type: user-role
+vendor: fireblocks
+status: stable
+tags: [user-role, security-admin, security]
+stage_introduced: 6
+last_updated_stage: 6
+source_count: 5
+related:
+  - 2fa
+  - admin-quorum
+  - ip-allowlist
+  - owner
+  - security
+  - security-auditor
+  - user-management
+---
 # Entity: Security Admin (Fireblocks user role)
 
 ## Summary

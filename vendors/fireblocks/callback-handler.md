@@ -1,3 +1,13 @@
+---
+type: vendor-hub
+vendor: fireblocks
+status: stable
+tags: [signing, integration]
+stage_introduced: 24
+last_updated_stage: 24
+source_count: 4
+related: [api, api-co-signer, api-user, callback-handler, cosigner, policy-engine]
+---
 # Fireblocks — Callback Handler
 
 > Cosigner가 자동 서명 전에 호출하는 외부 검증 훅.

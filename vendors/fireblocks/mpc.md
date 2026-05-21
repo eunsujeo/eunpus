@@ -1,3 +1,22 @@
+---
+type: vendor-hub
+vendor: fireblocks
+status: draft
+tags: [mpc, cryptography]
+stage_introduced: 1
+last_updated_stage: 22
+source_count: 8
+related:
+  - api-co-signer
+  - architecture
+  - cosigner
+  - mobile-app
+  - mobile-device
+  - mpc-key-share
+  - recovery-passphrase
+  - risks
+  - workspace-keys-backup
+---
 # Fireblocks — MPC
 
 > Fireblocks의 MPC(Multi-Party Computation) 구현. 키 생성/분산/서명/리프레시.

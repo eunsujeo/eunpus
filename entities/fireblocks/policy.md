@@ -1,3 +1,21 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [governance, policy]
+stage_introduced: 1
+last_updated_stage: 10
+source_count: 6
+related:
+  - admin-quorum
+  - approver
+  - designated-signer
+  - non-signing-admin
+  - owner
+  - policy-engine
+  - tap
+  - transaction
+---
 # Entity: Policy (Fireblocks)
 
 ## Summary

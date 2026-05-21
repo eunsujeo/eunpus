@@ -1,3 +1,26 @@
+---
+type: vendor-hub
+vendor: fireblocks
+status: stable
+tags: [risks, security]
+stage_introduced: 1
+last_updated_stage: 10
+source_count: 7
+related:
+  - admin-quorum
+  - approval-group
+  - authentication
+  - compliance
+  - cosigner
+  - ip-allowlist
+  - lifecycle-events
+  - mobile-app
+  - policy-engine
+  - recovery-passphrase
+  - risks
+  - user-management
+  - workspace
+---
 # Fireblocks — Security
 
 > **Security / Governance hub** — Fireblocks workspace의 운영 보안 체크리스트와 권장 사항을 한 페이지에 통합. 실제 위험·완화는 [[vendors/fireblocks/risks]], 규제·인증은 [[vendors/fireblocks/compliance]] 참고.

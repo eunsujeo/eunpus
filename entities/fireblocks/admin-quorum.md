@@ -1,3 +1,20 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [governance, policy]
+stage_introduced: 1
+last_updated_stage: 10
+source_count: 14
+related:
+  - admin
+  - approval-group
+  - non-signing-admin
+  - owner
+  - policy
+  - security-admin
+  - user-management
+---
 # Entity: Admin Quorum (Fireblocks)
 
 ## Summary

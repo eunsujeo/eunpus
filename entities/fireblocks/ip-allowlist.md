@@ -1,3 +1,13 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [authentication, identity]
+stage_introduced: 4
+last_updated_stage: 8
+source_count: 4
+related: [api-key, api-user, authentication, owner, security-admin]
+---
 # Entity: IP Allowlist (API user)
 
 ## Summary

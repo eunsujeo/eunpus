@@ -1,3 +1,36 @@
+---
+type: vendor-hub
+vendor: fireblocks
+status: stable
+tags: [transaction]
+stage_introduced: 1
+last_updated_stage: 9
+source_count: 21
+related:
+  - admin
+  - admin-quorum
+  - api
+  - api-key
+  - approval-group
+  - authentication
+  - cosigner
+  - csr
+  - ip-allowlist
+  - mobile-app
+  - mobile-device
+  - mpc-key-share
+  - non-signing-admin
+  - overview
+  - owner
+  - policy
+  - recovery-passphrase
+  - risks
+  - security
+  - security-admin
+  - user
+  - user-management
+  - workspace-keys-backup
+---
 # Fireblocks — Lifecycle Events
 
 > Workspace user / 디바이스 / Owner의 lifecycle 이벤트(생성·수정·역할 변경·삭제·재인증·이전)와 각 단계의 거버넌스·운영 함의.

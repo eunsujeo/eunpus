@@ -1,3 +1,11 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [api, identity]
+source_count: 3
+related: [api, api-co-signer, api-user, authentication, csr, ip-allowlist]
+---
 # Entity: API Key
 
 ## Summary

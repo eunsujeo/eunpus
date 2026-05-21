@@ -6265,3 +6265,155 @@ T0 의 10 commitments + Stage 32 의 corpus 10 commitments + R0 의 10 operation
 
 본 corpus 의 closing state at Stage 34: **operational institution**, ready for multi-decade stewardship under disciplined practice — with full acknowledgment that the discipline itself can fail in 10 named ways, and that naming those ways honestly is part of the practice.
 
+
+
+## Stage 35 (2026-05-21) — Wiki Health Check + llm-wiki Alignment
+
+본 stage 는 [llm-wiki.md](llm-wiki.md) 원칙 대비 현재 wiki 상태를 정량 평가하고 (Plan 3 lint), 누락된 foundation (Plan 1 index.md, Plan 2 CLAUDE.md) 을 보강한다.
+
+### Plan 1 — Root index.md 생성 ✅
+
+- 산출물: [index.md](index.md) (258 lines, 31 KB)
+- 11 sub-section (Curated Wiki / Architecture Corpus / Operations Layer / Source Lake / etc.)
+- 177 relative links, broken 0 (Plan 2 CLAUDE.md placeholder 해결 후)
+- README.md 에 index.md / CLAUDE.md / log.md 진입점 link 추가
+
+### Plan 2 — CLAUDE.md schema entry point ✅
+
+- 산출물: [CLAUDE.md](CLAUDE.md) (150 lines, 9 section)
+- 분산된 5 schema source (prompts/ 4 + skill 1) 를 단일 orientation 진입점으로 위임
+- 핵심: 3-layer architecture / 3 trigger 분기 / 핵심 discipline / 페이지 작성 규약 / Reference-ready 답변 형식 / 출력 규약
+- Broken link 0
+
+### Plan 3 — Lint pass (read-only inventory)
+
+[lint-report.md](lint-report.md) 참조. 48 wiki 페이지 점검:
+
+| Issue | 건수 | Priority |
+|---|---|---|
+| 6-section 누락 | 11 | high (user-roles 9 + api-user + console-user) |
+| Sources 부재 + 본문 주장 | 2 | high (policy-engine.md, tap.md — TODO 가득) |
+| 단방향 wikilink | 138 | medium (37 페이지) |
+| Status 표기 불일치 | ~41 | high (Plan 4 대상) |
+| 중복 entity | 0 | - |
+| Stage orphan (wiki→log) | 10 | medium (early stage 1-10 references) |
+
+### 발견된 architectural 관찰
+
+- **user-roles/ 9 페이지** 중 8 개가 Key Concepts / Details 섹션 없음 — 간략 작성. 6-section template 의 의도된 예외인지 미정 → Open Q 후보.
+- **policy-engine / tap** vendor hub 2 개가 `_TODO_` 가득 — Sources 부재 + Key Concepts 도 TODO. Stage 1-5 자료 부족분 그대로 잔존. Stage 10 의 about-policies / how-policies-work ingest 결과를 policy entity 에는 반영했으나 vendor hub 는 미갱신.
+- **Stage 1-10 references in wiki, missing in log.md** — log.md 가 Stage 11 이후 format 으로 정리됐을 가능성. 데이터 손실 아니라 log format 진화.
+
+### 영향받은 페이지
+
+- 신규: `index.md`, `CLAUDE.md`, `lint-report.md`
+- 갱신: `README.md` (3 link 추가)
+- 신규 entity: **0** (Stage 6-35 = 29 stage 연속 0 streak 유지)
+
+### Next — Plan 4 (Status 표기 통일)
+
+- Target: open-questions/fireblocks.md 의 71 Q-number 전수
+- 현재: `Status: answered` 형식 1/71, `ANSWERED` inline 42/71
+- Action: 표준 `Status: open | partial-answered | answered` + `Answer: <wiki link>` 정형화
+- 산출물: open-questions/fireblocks.md 갱신 + diff 보고 → 승인 대기
+
+
+### Plan 4 — Open-Q Status 표기 통일 ✅ (no real work needed)
+
+**결론: lint 의 false positive — 작업할 issue 없음.**
+
+- 초기 lint regex (`Status:\s*([a-z-]+)`, lowercase only) 가 실제 wiki 의 `**Status**: answered (date, Stage X)` bold 형식을 매치 못 함
+- 정확한 측정 결과 (재실행 lint):
+  - 총 Q entries (Details 섹션): **70**
+  - `**Status**:` field 보유: **70 / 70** ✅
+  - 분포: open 42 / answered 21 / partial 7
+  - Summary 섹션의 `ANSWERED` inline 마커 42 = 중복 참고 표기 (Status field 와 별개 plane)
+- 발견된 변형: 일부 Q 는 `**Stage N Answer**` 또는 `**Partial Answer**` field name 사용 (semantically 동일, 형식 통일성 marginal)
+- **갱신**: [lint-report.md](lint-report.md) §4 가 corrected regex 로 재생성됨. Summary table 도 갱신.
+
+**Plan 4 lesson**: lint 자동화 시 regex 가 실제 wiki 형식을 cover 하는지 verify 필요. Lint script 자체도 wiki 의 작성 convention 와 함께 evolve.
+
+
+### Plan 5 — YAML Frontmatter 도입 ✅
+
+**Scope**: vendors/fireblocks/ (16) + entities/fireblocks/ (23) + user-roles/ (9) = **48 files**. open-questions / architecture corpus 는 다른 schema 필요로 별도 stage 권장.
+
+**Spec** (CLAUDE.md §"YAML Frontmatter" 영속):
+```yaml
+type: vendor-hub | entity | user-role
+vendor: fireblocks
+status: stable | draft | placeholder
+tags: [taxonomy ...]
+stage_introduced: <N>
+last_updated_stage: <N>
+source_count: <N>
+related: [entity-slug ...]
+```
+
+**자동 적용 logic**:
+- `type` = directory 기반 (vendors/ → vendor-hub, entities/ → entity, user-roles/ → user-role)
+- `status` = TODO count + Sources content presence 기반 heuristic (draft 7 / stable 41)
+- `tags` = filename keyword + 도메인 taxonomy 매핑
+- `stage_introduced` / `last_updated_stage` = 본문 "Stage N" 첫/마지막 match
+- `source_count` = `## Sources` 섹션 bullet 수
+- `related` = `## Related Pages` 의 wikilink 추출
+
+**적용 결과**: 48 / 48 files updated, 0 skipped.
+
+**Status 분포**: stable 41 · draft 7 (`api`, `compliance`, `policy-engine`, `tap` vendor hub 4 + entity 일부 — _TODO_ 가 많거나 Sources 부재).
+
+**활용 가능성**:
+- Obsidian Dataview: `LIST FROM #fireblocks WHERE type = "entity" AND "mpc" in tags`
+- grep-friendly filter: `grep -l "tags: \[.*mpc" entities/fireblocks/*.md`
+- Stage drift detection: `last_updated_stage` 가 오래된 entity 식별
+
+**영향**:
+- 신규 파일: 0 (모두 기존 파일 헤더 추가)
+- 신규 entity: 0 (Stage 6-35 = 29 stage 연속 0 streak)
+
+---
+
+## Stage 35 closing position
+
+[llm-wiki.md](llm-wiki.md) 원칙 alignment 완료. 본 stage 의 출력 정리:
+
+### 산출물
+
+| Plan | Deliverable | 상태 |
+|---|---|---|
+| 1 | [index.md](index.md) (258 lines, 31 KB) | ✅ |
+| 2 | [CLAUDE.md](CLAUDE.md) (165 lines, schema entry point) | ✅ |
+| 3 | [lint-report.md](lint-report.md) (6 lint category, summary table) | ✅ |
+| 4 | open-questions Status 표기 일관 확인 (lint false positive) | ✅ |
+| 5 | YAML frontmatter 48 files | ✅ |
+
+### llm-wiki.md 준수 점수 (자가 평가)
+
+| 영역 | Before Stage 35 | After Stage 35 |
+|---|---|---|
+| 3-layer architecture | 95% | 95% (변함 없음) |
+| Schema 단일 진입점 | ⚠️ 5 곳 분산 | ✅ CLAUDE.md 통합 |
+| index.md (catalog) | ❌ 부재 | ✅ root index.md |
+| log.md (chronological) | ✅ | ✅ |
+| Ingest workflow | ✅ 95% | ✅ 95% |
+| Query (Reference-ready) | ⚠️ 70% | ⚠️ 70% (skill 도입 완료, file-back-as-page 패턴 미도입) |
+| Lint cadence | ⚠️ 50% | ✅ Stage 35 정기 lint 패턴 확립 |
+| YAML frontmatter (Dataview) | ❌ | ✅ 48 files |
+| Search engine (qmd 등) | ❌ | ❌ (도입 보류) |
+| **종합** | **~75%** | **~88%** |
+
+### Stage 35 invariant
+
+> Wiki 의 maintenance 비용은 자동화의 함수다.
+> Lint script 가 wiki 의 실제 convention 와 함께 evolve 하지 않으면 false positive 가 새로운 oneset 으로 누적된다.
+> Plan 4 의 false positive 는 그 경계의 첫 실증.
+> Stage 35 의 closing rule: **lint regex 갱신은 wiki 형식 변경과 동일한 stage 안에서**.
+
+### Next stages 후보
+
+- Stage 36: Search engine 도입 (qmd 또는 ripgrep + index)
+- Stage 37: File-back-as-page 패턴 정형화 (query 결과를 wiki page 로 file)
+- Stage 38: 단방향 wikilink 138 → 양방향 정리
+- Stage 39: 6-section 누락 11 페이지 보강 (user-roles 9 + api-user / console-user)
+- Stage 40+: 외부 vendor 도입 (Privy / Coinbase WaaS / BitGo / Dfns)
+

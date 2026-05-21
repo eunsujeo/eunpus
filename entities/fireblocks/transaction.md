@@ -1,3 +1,13 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [transaction]
+stage_introduced: 5
+last_updated_stage: 9
+source_count: 5
+related: [approver, designated-signer, policy, signer, tap, vault-account]
+---
 # Entity: Transaction (Fireblocks)
 
 ## Summary

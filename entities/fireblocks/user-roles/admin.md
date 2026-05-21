@@ -1,3 +1,13 @@
+---
+type: user-role
+vendor: fireblocks
+status: stable
+tags: [user-role, admin, governance]
+stage_introduced: 3
+last_updated_stage: 6
+source_count: 10
+related: [admin-quorum, approval-group, owner, policy, signer, user-management]
+---
 # Entity: Admin (Fireblocks user role)
 
 ## Summary

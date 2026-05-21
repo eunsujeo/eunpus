@@ -1,3 +1,13 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [authentication, identity]
+stage_introduced: 3
+last_updated_stage: 8
+source_count: 5
+related: [authentication, console-user, owner, security-admin, sso]
+---
 # Entity: 2FA (Two-Factor Authentication)
 
 ## Summary

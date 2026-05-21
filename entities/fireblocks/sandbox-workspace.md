@@ -1,3 +1,13 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [workspace, governance]
+stage_introduced: 4
+last_updated_stage: 4
+source_count: 2
+related: [api-user, editor, non-signing-admin, user-management, viewer, workspace]
+---
 # Entity: Sandbox Workspace (Fireblocks Developer Sandbox)
 
 ## Summary

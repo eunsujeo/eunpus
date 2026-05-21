@@ -1,3 +1,30 @@
+---
+type: vendor-hub
+vendor: fireblocks
+status: stable
+tags: [misc]
+stage_introduced: 2
+last_updated_stage: 6
+source_count: 9
+related:
+  - admin-quorum
+  - api-co-signer
+  - api-user
+  - approval-group
+  - callback-handler
+  - console-user
+  - cosigner
+  - designated-signer
+  - lifecycle-events
+  - mpc-key-share
+  - overview
+  - policy
+  - sandbox-workspace
+  - transaction
+  - user
+  - vault-account
+  - workspace
+---
 # Fireblocks — User Management
 
 > Workspace 사용자 모델, 9개 user role, 권한 매트릭스, Sandbox 차이.

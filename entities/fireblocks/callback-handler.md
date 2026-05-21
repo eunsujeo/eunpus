@@ -1,3 +1,13 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [signing, integration]
+stage_introduced: 1
+last_updated_stage: 24
+source_count: 4
+related: [api-co-signer, api-user, callback-handler, cosigner, transaction]
+---
 # Entity: Callback Handler (Fireblocks)
 
 > **상태: Stage 24 명세 확보.** Stage 1 name → Stage 4 SSL pinning / re-enroll → **Stage 24: 5 auth options + payload format + key model 명세 (Q-A04 ANSWERED, Q-C01 substantial advance)**. timeout/retry/idempotency 만 잔존.

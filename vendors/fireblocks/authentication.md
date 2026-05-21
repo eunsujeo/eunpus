@@ -1,3 +1,26 @@
+---
+type: vendor-hub
+vendor: fireblocks
+status: stable
+tags: [authentication, identity]
+stage_introduced: 5
+last_updated_stage: 6
+source_count: 11
+related:
+  - 2fa
+  - api
+  - api-co-signer
+  - api-key
+  - api-user
+  - callback-handler
+  - console-user
+  - csr
+  - ip-allowlist
+  - lifecycle-events
+  - mobile-app
+  - sso
+  - user-management
+---
 # Fireblocks — Authentication
 
 > Console·API 사용자의 로그인 인증 모델 통합. SSO / 2FA / password / CSR / API key / IP allowlist 한 페이지.

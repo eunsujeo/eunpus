@@ -1,3 +1,11 @@
+---
+type: user-role
+vendor: fireblocks
+status: stable
+tags: [user-role, viewer]
+source_count: 1
+related: [sandbox-workspace, security-auditor, user-management]
+---
 # Entity: Viewer (Fireblocks user role)
 
 ## Summary

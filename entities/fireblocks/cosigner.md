@@ -1,3 +1,13 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [signing, integration]
+stage_introduced: 4
+last_updated_stage: 8
+source_count: 4
+related: [api-co-signer, api-user, callback-handler, cosigner, non-signing-admin, signer]
+---
 # Entity: Cosigner (Fireblocks)
 
 > **상태: 부분 정의.** 본 자료에서는 명칭과 사용 맥락만 확인됨. 구체 명세는 추후 ingest 필요.

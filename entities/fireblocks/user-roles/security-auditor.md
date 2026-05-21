@@ -1,3 +1,13 @@
+---
+type: user-role
+vendor: fireblocks
+status: stable
+tags: [user-role, security-auditor, audit, security]
+stage_introduced: 8
+last_updated_stage: 10
+source_count: 1
+related: [security, security-admin, user-management, viewer]
+---
 # Entity: Security Auditor (Fireblocks user role)
 
 ## Summary

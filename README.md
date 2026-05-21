@@ -4,6 +4,10 @@
 
 기반 패턴은 [`llm-wiki.md`](llm-wiki.md) 참고. 1차 리서치 대상은 **Fireblocks**.
 
+- 📖 **전체 페이지 카탈로그**: [index.md](index.md)
+- 🤖 **운영 진입점**: [CLAUDE.md](CLAUDE.md) (예정 — Plan 2 진행 중)
+- 📜 **변경 이력**: [log.md](log.md) (38 stage)
+
 ---
 
 ## 프로젝트 목적

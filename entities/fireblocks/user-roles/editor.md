@@ -1,3 +1,18 @@
+---
+type: user-role
+vendor: fireblocks
+status: stable
+tags: [user-role, editor]
+source_count: 1
+related:
+  - api-user
+  - designated-signer
+  - policy
+  - sandbox-workspace
+  - transaction
+  - user-management
+  - vault-account
+---
 # Entity: Editor (Fireblocks user role)
 
 ## Summary

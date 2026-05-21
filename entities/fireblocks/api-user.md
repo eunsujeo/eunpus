@@ -1,3 +1,25 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [user, identity, api]
+stage_introduced: 4
+last_updated_stage: 4
+source_count: 5
+related:
+  - api
+  - api-co-signer
+  - api-key
+  - authentication
+  - callback-handler
+  - console-user
+  - csr
+  - ip-allowlist
+  - lifecycle-events
+  - non-signing-admin
+  - sandbox-workspace
+  - user-management
+---
 # Entity: API User (Fireblocks)
 
 ## Summary

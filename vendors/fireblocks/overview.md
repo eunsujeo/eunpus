@@ -1,3 +1,26 @@
+---
+type: vendor-hub
+vendor: fireblocks
+status: draft
+tags: [architecture]
+stage_introduced: 7
+last_updated_stage: 7
+source_count: 2
+related:
+  - admin-quorum
+  - api
+  - architecture
+  - blockchains
+  - callback-handler
+  - compliance
+  - cosigner
+  - mpc
+  - policy-engine
+  - risks
+  - tap
+  - user-management
+  - workspace
+---
 # Fireblocks — Overview
 
 > Fireblocks가 어떤 제품/플랫폼인지에 대한 1차 개관. 다른 모든 vendor 페이지의 진입점.

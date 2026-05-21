@@ -1,3 +1,13 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [mpc, cryptography]
+stage_introduced: 1
+last_updated_stage: 31
+source_count: 10
+related: [mobile-device, mpc, non-signing-admin, owner, signer]
+---
 # Entity: MPC Key Share (Fireblocks)
 
 > **상태: 부분 정의.** 본 자료에서는 lifecycle 측면(승인·provisioning·일부 role의 보유 여부)만 확인됨. 프로토콜, share 분포, threshold는 추후 ingest 필요.

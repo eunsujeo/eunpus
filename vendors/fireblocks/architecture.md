@@ -1,3 +1,22 @@
+---
+type: vendor-hub
+vendor: fireblocks
+status: stable
+tags: [architecture]
+stage_introduced: 1
+last_updated_stage: 31
+source_count: 8
+related:
+  - authentication
+  - callback-handler
+  - cosigner
+  - mobile-app
+  - mobile-device
+  - mpc
+  - mpc-key-share
+  - overview
+  - policy-engine
+---
 # Fireblocks — Architecture
 
 > 시스템 전반의 아키텍처: 어떤 컴포넌트가 있고 어떻게 통신하는가.

@@ -1,3 +1,20 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [workspace, governance]
+stage_introduced: 1
+last_updated_stage: 9
+source_count: 3
+related:
+  - admin-quorum
+  - overview
+  - owner
+  - policy
+  - sandbox-workspace
+  - user-management
+  - vault-account
+---
 # Entity: Workspace (Fireblocks)
 
 ## Summary

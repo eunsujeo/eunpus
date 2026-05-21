@@ -1,3 +1,13 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [workspace, governance]
+stage_introduced: 1
+last_updated_stage: 9
+source_count: 4
+related: [architecture, editor, owner, policy, transaction, workspace]
+---
 # Entity: Vault Account (Fireblocks)
 
 ## Summary

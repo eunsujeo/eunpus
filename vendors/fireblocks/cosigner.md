@@ -1,3 +1,20 @@
+---
+type: vendor-hub
+vendor: fireblocks
+status: stable
+tags: [signing, integration]
+stage_introduced: 4
+last_updated_stage: 24
+source_count: 7
+related:
+  - api-co-signer
+  - architecture
+  - callback-handler
+  - cosigner
+  - mpc
+  - signer
+  - user-management
+---
 # Fireblocks — Cosigner
 
 > 고객 측에서 동작하는 자동 서명·정책 평가 컴포넌트.

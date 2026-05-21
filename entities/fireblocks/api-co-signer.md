@@ -1,3 +1,21 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [signing, integration, api, identity]
+stage_introduced: 1
+last_updated_stage: 24
+source_count: 5
+related:
+  - api-key
+  - api-user
+  - callback-handler
+  - cosigner
+  - csr
+  - lifecycle-events
+  - non-signing-admin
+  - signer
+---
 # Entity: API Co-signer (Fireblocks)
 
 > **상태: 부분 정의.** Stage 1에서는 이름만 확인; Stage 4에서 페어링·variant·Callback Handler 결합·재등록 흐름이 추가됨. 내부 cryptographic 명세는 추후 ingest 필요.

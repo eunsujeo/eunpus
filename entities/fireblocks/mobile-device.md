@@ -1,3 +1,22 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [authentication, identity]
+stage_introduced: 1
+last_updated_stage: 8
+source_count: 14
+related:
+  - 2fa
+  - admin-quorum
+  - console-user
+  - lifecycle-events
+  - mpc-key-share
+  - owner
+  - sandbox-workspace
+  - user
+  - user-management
+---
 # Entity: Mobile Device
 
 ## Summary

@@ -1,3 +1,10 @@
+---
+type: vendor-hub
+vendor: fireblocks
+status: draft
+tags: [governance, policy]
+source_count: 0
+---
 # Fireblocks — Policy Engine
 
 > 거버넌스·승인 규칙을 정의하고 강제하는 정책 엔진.

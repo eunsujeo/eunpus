@@ -1,3 +1,11 @@
+---
+type: user-role
+vendor: fireblocks
+status: stable
+tags: [user-role, approver, governance]
+source_count: 1
+related: [policy, signer, transaction, user-management]
+---
 # Entity: Approver (Fireblocks user role)
 
 ## Summary

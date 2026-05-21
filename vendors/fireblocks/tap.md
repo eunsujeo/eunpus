@@ -1,3 +1,10 @@
+---
+type: vendor-hub
+vendor: fireblocks
+status: draft
+tags: [transaction]
+source_count: 0
+---
 # Fireblocks — TAP (Transaction Authorization Policy)
 
 > 트랜잭션 단위 권한·승인 규칙. Policy Engine 위에서 동작.

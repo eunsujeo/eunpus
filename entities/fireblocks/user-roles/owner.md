@@ -1,3 +1,25 @@
+---
+type: user-role
+vendor: fireblocks
+status: stable
+tags: [user-role, owner, governance]
+stage_introduced: 1
+last_updated_stage: 8
+source_count: 13
+related:
+  - admin
+  - admin-quorum
+  - lifecycle-events
+  - mobile-device
+  - mpc-key-share
+  - policy
+  - recovery-passphrase
+  - risks
+  - signer
+  - user-management
+  - workspace
+  - workspace-keys-backup
+---
 # Entity: Owner (Fireblocks user role)
 
 ## Summary

@@ -1,3 +1,25 @@
+---
+type: vendor-hub
+vendor: fireblocks
+status: stable
+tags: [architecture]
+stage_introduced: 6
+last_updated_stage: 6
+source_count: 9
+related:
+  - 2fa
+  - admin-quorum
+  - api-co-signer
+  - authentication
+  - cosigner
+  - lifecycle-events
+  - mobile-device
+  - mpc
+  - mpc-key-share
+  - policy
+  - recovery-passphrase
+  - risks
+---
 # Fireblocks — Mobile App
 
 > Fireblocks mobile app 제품 전반: About / 인증·요구사항 / Updates / 승인 범위 / Labs(Batch) / New UX. Mobile device 자체의 사전 정의는 [[entities/fireblocks/mobile-device]] 참고.

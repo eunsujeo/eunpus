@@ -1,3 +1,13 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [user, identity]
+stage_introduced: 3
+last_updated_stage: 5
+source_count: 6
+related: [2fa, api-user, authentication, mobile-device, sso, user-management]
+---
 # Entity: Console User (Fireblocks)
 
 ## Summary

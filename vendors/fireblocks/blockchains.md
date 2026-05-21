@@ -1,3 +1,19 @@
+---
+type: vendor-hub
+vendor: fireblocks
+status: draft
+tags: [architecture]
+source_count: 9
+related:
+  - api
+  - architecture
+  - mpc
+  - overview
+  - risks
+  - transaction
+  - vault-account
+  - workspace
+---
 # Fireblocks — Blockchains
 
 > **Reference / catalog hub** for Fireblocks의 blockchain 자산 도메인. Workspace management/security 도메인과 결이 다른 자산 평면. Chain-specific 자료는 placeholder 인덱스 형식으로 유지하며 governance/signing 흐름과 강하게 연결되는 chain만 추후 selective full ingest 승격.

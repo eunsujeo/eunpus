@@ -1,3 +1,20 @@
+---
+type: vendor-hub
+vendor: fireblocks
+status: draft
+tags: [compliance, aml]
+stage_introduced: 1
+last_updated_stage: 6
+source_count: 4
+related:
+  - overview
+  - policy
+  - policy-engine
+  - risks
+  - security
+  - security-admin
+  - security-auditor
+---
 # Fireblocks — Compliance
 
 > 컴플라이언스·인증·규제 대응 측면.

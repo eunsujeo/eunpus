@@ -1,3 +1,24 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [misc]
+stage_introduced: 3
+last_updated_stage: 5
+source_count: 14
+related:
+  - admin-quorum
+  - api-user
+  - approval-group
+  - console-user
+  - designated-signer
+  - lifecycle-events
+  - mpc-key-share
+  - owner
+  - policy
+  - user-management
+  - workspace
+---
 # Entity: User (Fireblocks)
 
 ## Summary

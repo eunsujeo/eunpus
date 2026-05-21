@@ -1,3 +1,20 @@
+---
+type: user-role
+vendor: fireblocks
+status: stable
+tags: [user-role, non-signing-admin, governance]
+stage_introduced: 5
+last_updated_stage: 6
+source_count: 6
+related:
+  - admin-quorum
+  - api-co-signer
+  - api-user
+  - designated-signer
+  - policy
+  - sandbox-workspace
+  - user-management
+---
 # Entity: Non-Signing Admin (NSA, Fireblocks user role)
 
 ## Summary

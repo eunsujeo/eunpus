@@ -1,3 +1,22 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [recovery, backup, security]
+stage_introduced: 1
+last_updated_stage: 6
+source_count: 8
+related:
+  - admin
+  - lifecycle-events
+  - mobile-app
+  - mobile-device
+  - mpc-key-share
+  - owner
+  - risks
+  - signer
+  - workspace-keys-backup
+---
 # Entity: Recovery Passphrase
 
 ## Summary

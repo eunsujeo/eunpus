@@ -1,3 +1,28 @@
+---
+type: vendor-hub
+vendor: fireblocks
+status: stable
+tags: [risks, security]
+stage_introduced: 1
+last_updated_stage: 31
+source_count: 23
+related:
+  - admin-quorum
+  - api
+  - api-key
+  - approval-group
+  - authentication
+  - blockchains
+  - csr
+  - ip-allowlist
+  - lifecycle-events
+  - mobile-app
+  - mobile-device
+  - owner
+  - recovery-passphrase
+  - security
+  - workspace-keys-backup
+---
 # Fireblocks — Risks
 
 > Stage 1–4 자료에서 직접 확인된 리스크 / 단일 실패점 / 운영 부담. 외부 인시던트·CVE 등은 추후 자료.

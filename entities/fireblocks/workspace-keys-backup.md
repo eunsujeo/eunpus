@@ -1,3 +1,21 @@
+---
+type: entity
+vendor: fireblocks
+status: stable
+tags: [recovery, backup, security, workspace, governance]
+stage_introduced: 1
+last_updated_stage: 31
+source_count: 2
+related:
+  - admin-quorum
+  - architecture
+  - cosigner
+  - lifecycle-events
+  - mpc-key-share
+  - owner
+  - recovery-passphrase
+  - risks
+---
 # Entity: Workspace Keys Backup
 
 ## Summary
