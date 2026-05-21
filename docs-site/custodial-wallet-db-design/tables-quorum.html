@@ -1,103 +1,99 @@
 <!DOCTYPE html>
+
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Quorum · Approval Group — 수탁형 지갑 DB 설계</title>
-  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Admin Quorum · Approval Group">
-  <meta name="robots" content="noindex">
-  <link rel="stylesheet" href="assets/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin Quorum · Approval Group — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Admin Quorum · Approval Group" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
 </head>
 <body>
-
-<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
-
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
 <div class="layout">
-
-<aside class="sidebar" aria-label="Table of contents">
-  <nav>
-    <div class="nav-section">
-      <h3 class="nav-section-title">Overview</h3>
-      <ul>
-        <li><a href="index.html">0. Overview</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">A. Architecture</h3>
-      <ul>
-        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
-        <li><a href="db-split.html">2. DB 분할</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">B. Workspace & Vault</h3>
-      <ul>
-        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
-        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">C. Users & Access</h3>
-      <ul>
-        <li><a href="tables-user.html">5. Users</a></li>
-        <li><a href="tables-auth.html">6. Auth credentials</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">D. Governance & Policy</h3>
-      <ul>
-        <li><a href="tables-role.html">7. 9 User Roles</a></li>
-        <li><a href="tables-quorum.html" class="active">8. Admin Quorum · AG</a></li>
-        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
-      <ul>
-        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
-        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
-        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
-      <ul>
-        <li><a href="sm-transaction.html">13. Transaction State</a></li>
-        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
-        <li><a href="sm-approval.html">15. Approval State</a></li>
-        <li><a href="sm-signing.html">16. Signing State</a></li>
-        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
-        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
-      <ul>
-        <li><a href="tables-audit.html">19. Audit Log</a></li>
-        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
-        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
-        <li><a href="risks.html">22. Risks Register</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
-      <ul>
-        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
-        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
-        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
-      </ul>
-    </div>
-  </nav>
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace.html">3. Workspace</a></li>
+<li><a href="tables-vault.html">4. Vault</a></li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a class="active" href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">14. Transaction State</a></li>
+<li><a href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
 </aside>
-
 <main class="content">
-
 <section id="tables-quorum">
-    <h2>8. Admin Quorum · Approval Group</h2>
-    <span class="section-subtitle">Q / Q+O / AG 라벨의 영속화 + Owner counting rule + 7-day expiry</span>
-
-    <h3>Admin Quorum</h3>
-    <p>Workspace · Policy 변경의 다수결 승인 그룹. <strong>Owner / Admin / Non-Signing Admin / Security Admin</strong> 이 멤버 자격.</p>
+<h2>9. Admin Quorum<span class="g" data-tip="관리자급 사용자의 다수결 승인 그룹. 회사 이사회 정족수 개념. Q (Quorum) / Q+O (Quorum + Owner) 라벨로 표시" tabindex="0">(?)</span> · Approval Group<span class="g" data-tip="특정 작업을 위임받은 별도 승인 그룹. Admin Quorum 보다 좁은 범위로 정의 가능 (AG 라벨)" tabindex="0">(?)</span></h2>
+<span class="section-subtitle">Q / Q+O / AG 라벨의 영속화 + Owner counting rule + 7-day expiry</span>
+<h3>Admin Quorum</h3>
+<p>Workspace<span class="g" data-tip="Fireblocks 의 최상위 격리·거버넌스 단위. 1 workspace = 1 Owner. Slack workspace 와 무관" tabindex="0">(?)</span> · Policy 변경의 다수결 승인 그룹. <strong>Owner / Admin / Non-Signing Admin / Security Admin</strong> 이 멤버 자격.</p>
     <pre><code>CREATE TABLE admin_quorums (
   id             BINARY(16) PRIMARY KEY,
   workspace_id   BINARY(16) NOT NULL UNIQUE,  -- workspace 당 1개
@@ -117,17 +113,16 @@ CREATE TABLE admin_quorum_members (
 );</code></pre>
 
     <h3>Owner Counting Rule</h3>
-    <div class="callout">
-      <div class="callout-title"><code>add-users.md</code>, p.1 직접 인용 (Stage 2 ANSWERED)</div>
-      <p>Q 또는 Q+O 흐름에서 <strong>Owner 의 승인은 mandatory 이며 threshold count 에 포함될 수 있다</strong>. 예: threshold 가 3 of 5 일 때:</p>
-      <ul style="margin-bottom:0">
-        <li>2 Admins + Owner = 충족 (Owner 카운트 포함)</li>
-        <li>3 Admins = 미충족; Owner 의 추가 승인 전까지 거부</li>
-      </ul>
-    </div>
-
-    <h3>Approval Group (AG)</h3>
-    <p>일부 작업을 Owner 없이도 가능하게 위임하는 별개 메커니즘. <code>Settings &gt; Quorums &gt; Approval groups</code> 에서 작업별로 Owner 요구 토글.</p>
+<div class="callout">
+<div class="callout-title"><code>add-users.md</code>, p.1 직접 인용 (공식 확인)</div>
+<p>Q 또는 Q+O 흐름에서 <strong>Owner 의 승인은 mandatory 이며 threshold count 에 포함될 수 있다</strong>. 예: threshold 가 3 of 5 일 때:</p>
+<ul style="margin-bottom:0">
+<li>2 Admins + Owner = 충족 (Owner 카운트 포함)</li>
+<li>3 Admins = 미충족; Owner 의 추가 승인 전까지 거부</li>
+</ul>
+</div>
+<h3>Approval Group (AG)</h3>
+<p>일부 작업을 Owner 없이도 가능하게 위임하는 별개 메커니즘. <code>Settings &gt; Quorums &gt; Approval groups</code> 에서 작업별로 Owner 요구 토글.</p>
     <pre><code>CREATE TABLE approval_groups (
   id           BINARY(16) PRIMARY KEY,
   workspace_id BINARY(16) NOT NULL,
@@ -144,24 +139,19 @@ CREATE TABLE approval_group_members (
 );</code></pre>
 
     <h3>Add user 흐름의 7-day Expiry</h3>
-    <p>Add user 승인은 mobile 로 Owner + Admin Quorum 에 전송. <strong>threshold 가 7일 안에 충족되지 않으면 request expire</strong>되어 사용자 추가 안 됨. <code>approval_requests.expires_at</code> 컬럼 + scheduled job 으로 강제.</p>
-
-    <h3>Edit user 의 Customize</h3>
-    <p>Edit user 는 Approval groups 로 흐름 customize 가능. 정확한 범위 (membership / threshold / Owner 요구 토글) 는 본 자료에 명시 없음.</p>
-  </section>
-
-  <nav class="page-nav" aria-label="Section navigation">
-    <a class="page-nav-link page-nav-prev" href="tables-role.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">7. 9 User Roles</span></a>
-    <a class="page-nav-link page-nav-next" href="tables-policy.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">9. Policy · TAP</span></a>
-  </nav>
-
+<p>Add user 승인은 mobile 로 Owner + Admin Quorum 에 전송. <strong>threshold 가 7일 안에 충족되지 않으면 request expire</strong>되어 사용자 추가 안 됨. <code>approval_requests.expires_at</code> 컬럼 + scheduled job 으로 강제.</p>
+<h3>Edit user 의 Customize</h3>
+<p>Edit user 는 Approval groups 로 흐름 customize 가능. 정확한 범위 (membership / threshold / Owner 요구 토글) 는 본 자료에 명시 없음.</p>
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-role.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">8. 9 User Roles</span></a>
+<a class="page-nav-link page-nav-next" href="tables-policy.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">9. Policy · TAP<span class="g" data-tip="Transaction Authorization Policy. Fireblocks 의 거래 단위 승인 정책 엔진" tabindex="0">(?)</span></span></a>
+</nav>
 </main>
 </div>
-
 <!-- Mermaid + svg-pan-zoom CDN -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
 <script src="assets/app.js"></script>
-
 </body>
 </html>

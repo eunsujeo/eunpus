@@ -1,222 +1,334 @@
 <!DOCTYPE html>
+
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Deposit Observation Lifecycle — 수탁형 지갑 DB 설계</title>
-  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Deposit Observation Lifecycle">
-  <meta name="robots" content="noindex">
-  <link rel="stylesheet" href="assets/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Deposit Observation Lifecycle — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Deposit Observation Lifecycle" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
 </head>
 <body>
-
-<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
-
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
 <div class="layout">
-
-<aside class="sidebar" aria-label="Table of contents">
-  <nav>
-    <div class="nav-section">
-      <h3 class="nav-section-title">Overview</h3>
-      <ul>
-        <li><a href="index.html">0. Overview</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">A. Architecture</h3>
-      <ul>
-        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
-        <li><a href="db-split.html">2. DB 분할</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">B. Workspace & Vault</h3>
-      <ul>
-        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
-        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">C. Users & Access</h3>
-      <ul>
-        <li><a href="tables-user.html">5. Users</a></li>
-        <li><a href="tables-auth.html">6. Auth credentials</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">D. Governance & Policy</h3>
-      <ul>
-        <li><a href="tables-role.html">7. 9 User Roles</a></li>
-        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
-        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
-      <ul>
-        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
-        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
-        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
-      <ul>
-        <li><a href="sm-transaction.html">13. Transaction State</a></li>
-        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
-        <li><a href="sm-approval.html">15. Approval State</a></li>
-        <li><a href="sm-signing.html">16. Signing State</a></li>
-        <li><a href="sm-deposit.html" class="active">17. Deposit Lifecycle</a></li>
-        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
-      <ul>
-        <li><a href="tables-audit.html">19. Audit Log</a></li>
-        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
-        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
-        <li><a href="risks.html">22. Risks Register</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
-      <ul>
-        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
-        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
-        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
-      </ul>
-    </div>
-  </nav>
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace.html">3. Workspace</a></li>
+<li><a href="tables-vault.html">4. Vault</a></li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">14. Transaction State</a></li>
+<li><a href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a class="active" href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
 </aside>
-
 <main class="content">
-
 <section id="sm-deposit">
-    <h2>17. Deposit Observation Lifecycle</h2>
-    <span class="section-subtitle">Incoming tx flow + DCCP confirmation policy + zero-confirmation webhook</span>
+<h2>18. Deposit Observation Lifecycle</h2>
+<span class="section-subtitle">Incoming tx flow + DCCP<span class="g" data-tip="Deposit Control and Confirmation Policy. 입금 confirmation 횟수 기반 정책. clear 전까지 자금 lock" tabindex="0">(?)</span> confirmation policy + zero-confirmation webhook</span>
+<div class="callout">
+<div class="callout-title">본 페이지의 출처 — 어디까지가 Fireblocks 정의이고, 어디부터가 추정인가</div>
+<p>이 페이지의 내용은 두 갈래입니다. 미리 구분해두면 어떤 부분을 그대로 받아들이고 어떤 부분은 본인 환경에서 검증할지 판단이 쉬워집니다.</p>
+<p><strong>Fireblocks 공식 문서에 정의된 사실</strong> — 그대로 받아들여도 안전</p>
+<ul style="margin-bottom:0.5rem">
+<li>입금 tx 가 거치는 <strong>상태의 이름과 의미</strong> (Pending AML Screening · Confirming · Completed · Rejected …)</li>
+<li><strong>DCCP</strong> (Deposit Control and Confirmation Policy) — 입금을 몇 번 확정해야 사용 가능한지 정하는 정책</li>
+<li><strong>zero-confirmation 입금</strong> 에 대한 <strong>webhook 이 여러 번 발송될 수 있다</strong> 는 규칙</li>
+<li>"입금을 수동으로 확정 처리" 하는 권한은 <strong>Admin 만</strong> 가진다는 점</li>
+</ul>
+<p style="margin-bottom:0.3rem"><strong>저자가 합리적으로 추정해서 그린 설계 + 일반 운영 패턴</strong> — 참고용, 본인 환경에서 검증 권장</p>
+<ul style="margin-bottom:0">
+<li>위 상태들을 실제 DB 의 어떤 <strong>테이블·컬럼</strong> 으로 영속화할지의 구체 schema</li>
+<li>잔액을 ledger 에 <strong>반영하는 정확한 시점</strong> (Confirming 의 어느 순간 — Fireblocks 자료에 명시 없음)</li>
+<li><strong>reorg<span class="g" data-tip="Blockchain reorganization. 확정된 듯한 블록이 사라지고 다른 체인이 채택되는 현상" tabindex="0">(?)</span></strong> (블록 재구성) 가 일어났을 때 이미 기록한 입금 row 를 어떻게 정정할지</li>
+<li><strong>직접 chain 관찰 메커니즘</strong> — EVM <code>eth_getLogs</code>, UTXO block scan, XRP/XLM WebSocket subscription 같은 chain 별 RPC 패턴 (각 blockchain 의 공개 표준이지 Fireblocks-specific 은 아님)</li>
+</ul>
+</div>
+<h3>Chain 관찰 — 입금을 우리 시스템이 어떻게 알아채는가</h3>
+<p>아래 흐름의 시작점인 "chain 관찰" 이 실제로 어떻게 일어나는지. 우리 vault 주소로 자금이 들어왔다는 사실을 시스템이 인지하는 방법은 크게 두 갈래입니다.</p>
 
-    <div class="callout callout-warn">
-      <div class="callout-title">Fireblocks 명시 vs Hypothesis 분리</div>
-      <p>본 페이지는 <strong>일부 Fireblocks 명시 + 일부 hypothesis</strong> 의 혼합:</p>
-      <ul style="margin-bottom:0">
-        <li><strong>명시</strong>: 17 status state machine 의 incoming flow (Stage 9), DCCP (Stage 10), zero-confirmation webhook (Stage 9), Manually confirm and credit inbound (권한표)</li>
-        <li><strong>Hypothesis</strong>: deposit observation 의 DB row 모델, ledger credit 의 정확한 trigger, reorg handling 의 DB 표현 → <code>persistence-architecture/07</code> 패턴 사용</li>
-      </ul>
-    </div>
+<h4>접근 1 — Custody SaaS (Fireblocks 등) 가 보내는 알림 받기</h4>
+<p>Fireblocks 같은 custody SaaS 를 사용하면 chain 관찰을 SaaS 가 대신합니다. 우리 시스템은 HTTPS endpoint 하나만 열어두고 SaaS 가 보내는 webhook (알림 callback) 을 받으면 됩니다.</p>
+<ul>
+<li><strong>장점</strong>: chain 별 node 인프라 운영 부담이 없음. SaaS 가 지원하는 모든 chain 을 사실상 동시에 지원</li>
+<li><strong>단점</strong>: SaaS 의존, 비용, 실시간성이 SaaS 의 webhook 발송 정책에 종속</li>
+<li><strong>주의</strong>: webhook 이 같은 입금에 대해 여러 번 올 수 있음 (zero-confirmation 정책 시) — 아래 "Zero-Confirmation 입금에 대한 다중 webhook" 절의 idempotency 처리 필수</li>
+</ul>
 
-    <h3>Incoming Transaction Flow (Fireblocks 명시)</h3>
-    <div class="diagram">
+<h4>접근 2 — 직접 chain 관찰 (자체 node + 인덱싱)</h4>
+<p>자체 운영하는 경우 chain 마다 다른 감지 메커니즘이 필요합니다. blockchain 마다 데이터 모델과 RPC<span class="g" data-tip="Remote Procedure Call. blockchain node 가 노출하는 외부 호출 API. eth_getBlockByNumber 같은 메서드로 chain 상태 조회" tabindex="0">(?)</span> API 가 다르기 때문에:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">chain 모델</th><th>대표 감지 메커니즘</th><th>특이 사항</th></tr></thead>
+<tbody>
+<tr><td><strong>EVM (Ethereum 계열)</strong></td><td>새 block 마다 <code>eth_getLogs</code> (ERC-20 Transfer event filter) + <code>eth_getBlockByNumber</code> (native transfer 스캔)</td><td>우리 주소가 to/from 인 tx 와 ERC-20 Transfer event 를 동시에 추적</td></tr>
+<tr><td><strong>UTXO<span class="g" data-tip="Unspent Transaction Output. Bitcoin 계열의 잔액 모델. 잔액 = 사용 안 한 output 합" tabindex="0">(?)</span> (Bitcoin 계열)</strong></td><td>block 마다 tx output 스캔 + 우리 주소가 output 으로 등장하는 tx 매칭</td><td>주소 단위 push 알림이 표준화 안 됨 → block 전체 훑기 또는 ZMQ subscription</td></tr>
+<tr><td><strong>Account + tag (XRP / XLM)</strong></td><td>WebSocket account subscription — 우리 주소로의 incoming payment 가 발생할 때마다 server 가 push</td><td>destination tag/memo 까지 함께 수신</td></tr>
+<tr><td><strong>Solana</strong></td><td><code>getSignaturesForAddress</code> polling 또는 WebSocket <code>logsSubscribe</code></td><td>finalized<span class="g" data-tip="Solana 의 commitment level. 최소 ⅔ stake 가 확정한 슬롯. reorg 위험이 사실상 0 인 시점" tabindex="0">(?)</span> vs confirmed commitment 의 구분 필요</td></tr>
+</tbody>
+</table>
+</div>
+
+<h5>Internal transaction 감지의 어려움 (EVM 한정)</h5>
+<p>EVM 의 <strong>internal transaction</strong> (smart contract 실행 중 발생한 native transfer) 은 평범한 tx 조회로 안 보여서 별도 메커니즘이 필요합니다. 옵션:</p>
+<ul>
+<li><strong>Archive node 직접 운영</strong> → <code>debug_traceTransaction</code> 또는 <code>trace_filter</code> RPC. node 가 무겁고 운영 비용 큼</li>
+<li><strong>Indexer 서비스 위임</strong> — Alchemy / QuickNode / Infura 등 외부 RPC provider 의 trace API. 운영 부담 ↓, 외부 의존 ↑</li>
+<li><strong>Subgraph / Indexer 데이터</strong> — The Graph 같은 외부 인덱싱 서비스가 미리 추출해둔 데이터 조회</li>
+</ul>
+<p>자세히는 아래 "EVM 의 internal transaction" 절.</p>
+
+<h4>관찰된 raw 사건이 schema 에 들어가는 시점</h4>
+<p>어떤 접근을 쓰든, 관찰된 raw 사건은 아래의 <code>chain_events</code> 테이블에 <strong>append-only</strong> 로 INSERT 됩니다 — 이 시점이 다음 상태 흐름 도식의 <strong>출발점 ([*] 노드)</strong>. 매칭 / 잔액 반영 / DCCP 확인은 그 이후의 <code>deposit_observations</code> row 에서 단계적으로 일어납니다.</p>
+<p style="color:var(--text-secondary);font-size:0.95em">★ 위 표의 chain 별 RPC API 패턴은 각 blockchain 의 공개 표준 (public domain). Fireblocks 자료 attested 가 아니라 일반적인 운영 패턴 — 직접 구축할 때 참고용.</p>
+
+<h3>Incoming Transaction Flow — 입금 상태 흐름</h3>
+<p>외부에서 누군가가 우리 vault 의 주소로 입금한 tx 를 우리 시스템이 관찰한 이후, 어떤 단계를 거쳐 "이제 사용해도 안전" 한 확정 상태로 보내는지의 흐름. 각 상태의 이름과 의미는 Fireblocks 공식 정의를 그대로 따랐고, 그 사이를 잇는 전이 (어디서 어디로 갈 수 있는지) 는 Fireblocks 문서에 그림으로 그려져 있지 않아 각 상태의 설명을 종합해서 그렸습니다.</p>
+<div class="diagram">
       <pre class="mermaid">
 stateDiagram-v2
-  [*] --> START
-  START --> PENDING_AML_SCREENING : AML/KYC enabled
-  START --> BROADCASTING : network conn / exchange / gas station
-  START --> CONFIRMING : AML/KYC disabled
-  PENDING_AML_SCREENING --> REJECTED : reject (asset → Admin unfreeze 까지 lock)
-  PENDING_AML_SCREENING --> PENDING_3RD_PARTY
-  PENDING_3RD_PARTY --> CONFIRMING
-  CONFIRMING --> COMPLETED : DCCP confirmation threshold 도달
-  CONFIRMING --> FAILED
-  CONFIRMING --> REJECTED : user-initiated freeze via API
-      </pre>
-      <span class="diagram-caption">Figure 10. Incoming tx flow — Stage 9 명시. AML/KYC 분기, DCCP 가 CONFIRMING → COMPLETED transition trigger.</span>
-    </div>
+  direction LR
 
-    <h3>DCCP — Deposit Control and Confirmation Policy (★ Stage 10)</h3>
-    <p><code>about-the-deposit-control-and-confirmation-policy.md</code>:</p>
-    <ul>
-      <li><strong>blockchain confirmation 횟수 정책</strong> (incoming + outgoing)</li>
-      <li><strong>Clear 전</strong>: <strong>inflow/outflow state 에 lock</strong> — 사용 불가</li>
-      <li><strong>Clear 후</strong>: wallet available balance + UTXO outputs 즉시 spendable</li>
-      <li>CONFIRMING → COMPLETED transition 의 정확한 trigger</li>
-      <li>Override 메커니즘 + custom build 옵션 별도 존재 (TIER 3 source-lake-only)</li>
-    </ul>
+  state "🔍 AML 심사 대기\n(PENDING_AML_SCREENING)" as Aml
+  state "📨 외부 확인 대기\n(PENDING_3RD_PARTY)\nTravel Rule 등" as Trd
+  state "⏳ confirmation 누적\n(CONFIRMING)\nblockchain 확인 횟수 채우는 중" as Conf
+  state "✅ 입금 확정\n(COMPLETED)\n자금 사용 가능" as Done
+  state "🚫 차단\n(REJECTED)\nAdmin 수동 해제 필요" as Rej
+  state "❌ 실패\n(FAILED)\nreorg 등" as Fail
 
-    <h3>Zero-Confirmation Webhook 의 Multiple-Notification (★ Stage 9)</h3>
-    <p><code>primary-transaction-statuses.md</code>, p.6: zero-confirmation Deposit Policy 의 경우 Completed status 에 대해 <strong>multiple webhook</strong> 수신 가능 (blockchain appearance + 첫 confirmation + 추가).</p>
-    <p>→ DB 측은 idempotent insert + webhook delivery 추적 필요.</p>
+  [*] --> Aml : chain 관찰<br/>+ AML/KYC 사용
+  [*] --> Conf : chain 관찰<br/>+ AML/KYC 미사용
+  Aml --> Rej : AML 심사 거절
+  Aml --> Trd : Travel Rule 필요
+  Trd --> Conf : 외부 확인 통과
+  Conf --> Done : DCCP 임계 도달
+  Conf --> Rej : API 로 freeze 요청
+  Conf --> Fail : reorg / 처리 실패
+  Done --> [*]
+  Rej --> [*]
+  Fail --> [*]
 
-    <h3>Manual Confirm and Credit (★ Admin override)</h3>
-    <p><code>user-roles.md</code>, p.2 권한표: <em>Manually confirm and credit inbound transactions</em> — Admin only. Anomaly / DCCP 미달 입금에 대한 수동 처리 path.</p>
+  classDef good fill:#dcfce7,stroke:#16a34a,stroke-width:2px;
+  classDef bad fill:#fee2e2,stroke:#dc2626,stroke-width:2px;
+  classDef wait fill:#fef3c7,stroke:#d97706;
+  class Done good;
+  class Rej,Fail bad;
+  class Aml,Trd,Conf wait;
+</pre>
+      <span class="diagram-caption">Figure 10. 입금 상태 흐름. 노란 박스 = 진행 중 / 초록 = 확정 성공 / 빨강 = 차단 또는 실패. 핵심 전이 2 가지: ① AML/KYC 사용 여부가 시작 분기를 가른다 (사용 시 PENDING_AML_SCREENING → … → CONFIRMING, 미사용 시 바로 CONFIRMING). ② CONFIRMING → COMPLETED 는 DCCP (Deposit Control and Confirmation Policy) 가 정한 chain confirmation 횟수에 도달하는 순간 일어남. REJECTED 는 입금 케이스에서 특히 강한 의미 — 자산은 chain 상 우리 주소에 들어와 있지만 Admin 이 수동으로 unfreeze 하기 전까지 wallet 잔액 사용 불가.</span>
+</div>
+<h3>DCCP — 입금/출금에 필요한 confirmation 횟수 정책</h3>
+<p>Bitcoin block 이 1 개 채굴되었다고 입금이 "확정" 일까요? 아닙니다. 짧은 시간 안에 그 block 이 다른 chain branch 에 밀려 사라지면 (reorg) 입금도 같이 사라지므로, 그 위에 다음 block 들이 어느 정도 쌓이는 (= confirmation 누적) 시점까지 기다려야 안전합니다. <strong>DCCP (Deposit Control and Confirmation Policy)</strong> 가 chain 마다 그 "몇 번 confirm 되면 확정으로 보겠다" 의 횟수를 정합니다.</p>
+<ul>
+<li><strong>확정 전 (lock 상태)</strong>: 입금된 자산은 wallet 잔액으로 보이지만 사용 불가. 출금이나 다른 거래의 input 으로 못 씁니다</li>
+<li><strong>확정 후 (DCCP 임계 도달)</strong>: 잔액이 사용 가능 상태로 전환. UTXO<span class="g" data-tip="Unspent Transaction Output. Bitcoin 계열의 잔액 모델. 잔액 = 사용 안 한 output 합" tabindex="0">(?)</span> 기반 chain 은 그 output 을 새 tx 의 input 으로 즉시 사용 가능</li>
+<li><strong>출금 측에도 동일 정책</strong>: 우리 출금 tx 가 chain 에서 N 번 confirm 될 때까지 "송금 완료" 처리 안 함 (incoming 과 outgoing 양쪽에 적용)</li>
+<li>예외적으로 정책을 chain 별 customize 하거나 override 하는 메커니즘이 별도 존재 (본 문서 범위 밖)</li>
+</ul>
+<h3>Zero-Confirmation 입금에 대한 다중 webhook</h3>
+<p>DCCP 가 "0 confirmation" 으로 설정된 chain — 즉 block 에 등장하자마자 입금 확정으로 처리하는 운영 — 의 경우, Fireblocks 가 <strong>같은 입금에 대해 여러 번 알림 (webhook) 을 보낼 수 있습니다</strong>. 예:</p>
+<ul>
+<li>block 에 처음 등장한 순간 — "blockchain appearance"</li>
+<li>첫 번째 confirmation 누적 — "first confirmation"</li>
+<li>그 이후 추가 confirmation — "additional"</li>
+</ul>
+<p>같은 입금을 여러 번 처리하면 잔액이 중복 반영될 수 있습니다. DB 측은 같은 알림이 두 번 와도 한 번만 효력 발생하도록 <strong>중복 방지 (idempotency)</strong> 가 필요. 아래 <code>deposit_webhook_deliveries</code> 테이블의 <code>UNIQUE KEY (deposit_observation_id, notification_type)</code> 이 그 역할을 합니다.</p>
+<h3>수동 입금 확정 — Admin 권한</h3>
+<p>자동 확정 흐름이 막히는 케이스가 있습니다 — 예: DCCP 임계까지 도달했지만 시스템 버그로 자동 ledger 반영이 안 됨 · AML 심사가 false positive 로 묶임 · 비표준 입금 패턴이라 자동 address 매칭이 실패. 이런 비정상 케이스를 위해 <strong>Admin 만 사용할 수 있는 "수동 확정 (manually confirm and credit inbound)" 권한</strong> 이 별도로 정의되어 있습니다. Admin 이 자기 책임으로 그 입금을 정상 잔액으로 처리하는 path. DB 에는 <strong>어느 Admin 이 수동 처리했는지</strong> (<code>deposit_observations.manual_credit_actor_user_id</code>) 가 반드시 남아 감사에 쓰입니다.</p>
+<h3>EVM<span class="g" data-tip="Ethereum Virtual Machine. Ethereum 호환 chain 계열 (Polygon / Arbitrum / Optimism 등). account-based 모델" tabindex="0">(?)</span> 의 internal transaction — "안 보이는" 입금</h3>
+<p>Ethereum 계열 (EVM) 에서 우리 주소로의 입금은 두 가지 경로로 들어올 수 있습니다.</p>
+<ol>
+<li><strong>직접 송금 (native transfer)</strong> — 누군가가 자기 지갑에서 우리 주소로 직접 ETH 를 보냄. 평범한 tx, 고유한 tx hash 가 chain 에 남고 일반 tx 조회로 그대로 보입니다</li>
+<li><strong>간접 송금 (internal transaction)</strong> — 누군가가 smart contract 의 함수를 호출하고, 그 contract 가 <em>실행 도중에</em> 우리 주소로 ETH 를 전송. 이 경우 우리 주소를 직접 가리키는 tx 가 chain 에 없습니다 — contract 호출 tx 의 실행 trace 안에서 일어난 native transfer 일 뿐이라 별도의 tx hash 가 없고, 평범한 tx 조회로는 안 보입니다 ("internal" 이라는 이름의 이유)</li>
+</ol>
+<p>Fireblocks 는 모든 EVM chain 의 1번 (직접 송금) 은 알아챕니다. 그러나 2번 (internal transaction) 까지 자동 감지해서 알림 보내는 chain 은 일부에 한정 (Ethereum · Optimism · Arbitrum · Avalanche · Base · Celo 등). Fireblocks 가 정확히 어떤 메커니즘 (trace API / archive node / 다른 방식) 으로 감지하는지는 공식 문서에 명시되어 있지 않습니다.</p>
+<p>본 schema 의 <code>chain_events.event_type</code> ENUM 에 <code>'internal-transfer'</code> 가 <code>'native-transfer'</code> 와 별도 값으로 있는 이유 — 이 두 종류를 구분해서 영속화할 수 있도록 하기 위함.</p>
+<h3>DB Schema</h3>
+<p>입금 관찰은 세 테이블의 협업으로 모델링합니다. 위 흐름의 각 단계가 DB 의 어떤 row 와 컬럼으로 영속화되는지 1:1 매핑됩니다.</p>
 
-    <h3>Internal Transactions (EVM, ★ Stage 7)</h3>
-    <p><code>blockchains-that-support-internal-transactions.md</code>:</p>
-    <ul>
-      <li>Internal tx = smart contract 실행 중 발생하는 native asset transfer</li>
-      <li>별도 tx hash 없고 실행 흐름의 일부</li>
-      <li>Fireblocks 가 모든 EVM 의 <strong>직접 native transfer</strong>는 알림</li>
-      <li><strong>Internal tx 까지</strong> 알리는 chain 은 subset (~35 mainnet + ~24 testnet — Ethereum / Optimism / Arbitrum / Avalanche / Base / Celo 등)</li>
-      <li>감지 메커니즘 (trace API / archive node) 은 Fireblocks 자료 미명시</li>
-    </ul>
-
-    <h3>DB Schema (Fireblocks 명시 + persistence-architecture/07 hypothesis)</h3>
-    <pre><code>-- ★ append-only — chain 에서 관찰된 사건
+<h4>4.1 <code>chain_events</code> — chain 에서 관찰한 raw 사건 (append-only)</h4>
+<pre><code>-- ★ append-only — 한 번 INSERT 된 row 는 UPDATE / DELETE 절대 불가
 CREATE TABLE chain_events (
   id                BINARY(16) PRIMARY KEY,
   chain             VARCHAR(32) NOT NULL,
   block_hash        VARCHAR(128) NOT NULL,
   block_height      BIGINT NOT NULL,
-  tx_hash           VARCHAR(128),                    -- internal tx 는 NULL 가능
-  log_index         INT,                              -- internal tx / event index
+  tx_hash           VARCHAR(128),                    -- internal tx 는 parent tx hash, 순수 internal-only 라 없으면 NULL
+  log_index         INT,                              -- 같은 tx 안의 event 순번 또는 internal trace 위치
   event_type        ENUM('native-transfer', 'internal-transfer', 'erc20-transfer') NOT NULL,
   to_address        VARCHAR(128) NOT NULL,
-  amount_raw        VARCHAR(80) NOT NULL,             -- decimal string for big numbers
+  amount_raw        VARCHAR(80) NOT NULL,             -- 큰 수 표현 위해 decimal string
   observed_at       DATETIME(6) NOT NULL,
   KEY (chain, block_height),
   KEY (to_address),
   UNIQUE KEY (chain, tx_hash, log_index)
-);
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">컬럼</th><th style="width:18%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>사건 고유 식별자</td></tr>
+<tr><td><code>chain</code></td><td>VARCHAR(32)</td><td>어느 blockchain 에서 관찰된 사건인지 (예: <code>BTC</code>, <code>ETH</code>, <code>XRP</code>). <code>chains.id</code> 와 매칭</td></tr>
+<tr><td><code>block_hash</code></td><td>VARCHAR(128)</td><td>이 사건이 들어 있던 block 의 해시. reorg 발생 시 같은 height 라도 다른 block_hash 가 생김 — 그래서 height 만이 아니라 hash 까지 보존</td></tr>
+<tr><td><code>block_height</code></td><td>BIGINT</td><td>그 block 의 height (번호). 시간 순서 인덱싱에 사용</td></tr>
+<tr><td><code>tx_hash</code></td><td>VARCHAR(128) nullable</td><td>그 사건이 일어난 tx 의 해시. internal transaction 의 경우 contract 호출 tx 의 hash 가 들어가고, 순수 trace-only internal 이면 NULL 가능</td></tr>
+<tr><td><code>log_index</code></td><td>INT nullable</td><td>한 tx 안에서 여러 event 가 발생할 때 (예: ERC-20 transfer 여러 번, internal trace 여러 단계) 순번을 구분</td></tr>
+<tr><td><code>event_type</code></td><td>ENUM (3 값)</td><td><strong>native-transfer</strong> = 평범한 직접 송금 / <strong>internal-transfer</strong> = smart contract 실행 중 발생한 native 전송 / <strong>erc20-transfer</strong> = token contract 의 Transfer event</td></tr>
+<tr><td><code>to_address</code></td><td>VARCHAR(128)</td><td>받는 주소. 우리 vault 주소 매칭은 <code>deposit_observations.matched_address_id</code> 에서 별도 처리</td></tr>
+<tr><td><code>amount_raw</code></td><td>VARCHAR(80)</td><td>금액. ETH/BTC 등의 큰 수와 소수 처리를 위해 decimal string 으로 저장 (BIGINT 로는 표현 불가능)</td></tr>
+<tr><td><code>observed_at</code></td><td>DATETIME(6)</td><td>우리 시스템이 이 사건을 관찰해서 row 를 만든 시각 (chain 의 block timestamp 와는 별개)</td></tr>
+<tr><td><code>UNIQUE (chain, tx_hash, log_index)</code></td><td>—</td><td>같은 chain 에서 같은 (tx, log_index) 조합으로 중복 INSERT 방지</td></tr>
+</tbody>
+</table>
+</div>
 
--- 우리가 관찰 / 매핑한 deposit
-CREATE TABLE deposit_observations (
+<h4>4.2 <code>deposit_observations</code> — chain_event 를 우리 vault 의 입금으로 해석한 row</h4>
+<pre><code>CREATE TABLE deposit_observations (
   id                BINARY(16) PRIMARY KEY,
-  chain_event_id    BINARY(16) NOT NULL,
-  matched_address_id BINARY(16),                      -- 우리 vault 의 address (NULL = unmatched)
-  asset_wallet_id   BINARY(16),
-  workspace_id      BINARY(16),
-  status            ENUM('observed', 'aml-pending', 'aml-rejected',
-                          'confirming', 'dccp-cleared', 'ledger-credited',
-                          'manually-credited', 'failed') NOT NULL,
-  confirmations     INT NOT NULL DEFAULT 0,
-  required_confirmations INT NOT NULL,                -- DCCP threshold
-  manual_credit_actor_user_id BINARY(16),             -- Admin override
-  cleared_at        DATETIME(6),                      -- ★ set-once
+  chain_event_id    BINARY(16) NOT NULL,                -- FK → chain_events.id
+  matched_address_id BINARY(16),                        -- 우리 vault 의 address (NULL = 매칭 실패)
+  asset_wallet_id   BINARY(16),                         -- 어느 asset wallet 의 입금인지
+  workspace_id      BINARY(16),                         -- 어느 workspace 에 속하는지
+  status            ENUM('observed','aml-pending','aml-rejected','confirming','dccp-cleared','ledger-credited','manually-credited','failed') NOT NULL,
+  confirmations     INT NOT NULL DEFAULT 0,             -- 현재까지 누적된 confirmation 횟수
+  required_confirmations INT NOT NULL,                  -- DCCP 가 정한 임계
+  manual_credit_actor_user_id BINARY(16),               -- 수동 확정 시 Admin 의 id
+  cleared_at        DATETIME(6),                        -- ★ set-once — 확정 시각, 한 번 set 후 변경 불가
   KEY (workspace_id, status),
   KEY (matched_address_id)
-);
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:28%">컬럼</th><th style="width:18%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>입금 관찰의 고유 식별자</td></tr>
+<tr><td><code>chain_event_id</code></td><td>BINARY(16) FK</td><td>이 입금이 어느 raw chain 사건에서 비롯됐는지 (<code>chain_events.id</code>)</td></tr>
+<tr><td><code>matched_address_id</code></td><td>BINARY(16) nullable</td><td>받는 주소가 우리 vault 의 어떤 address 와 매칭되었는지. NULL = 매칭 실패 (해당 주소가 우리 시스템 소속이 아님 — 그러나 chain_event 자체는 보관)</td></tr>
+<tr><td><code>asset_wallet_id</code></td><td>BINARY(16) nullable</td><td>매칭된 address 가 속한 asset wallet</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16) nullable</td><td>매칭된 asset wallet 의 workspace</td></tr>
+<tr><td><code>status</code></td><td>ENUM (8 값)</td><td>입금의 현재 처리 단계. <strong>observed</strong> 관찰 → <strong>aml-pending</strong> 심사 대기 → <strong>confirming</strong> 누적 → <strong>dccp-cleared</strong> 임계 도달 → <strong>ledger-credited</strong> 잔액 반영 완료 / <strong>aml-rejected</strong> 심사 거절 / <strong>manually-credited</strong> Admin 수동 / <strong>failed</strong> reorg 등 실패</td></tr>
+<tr><td><code>confirmations</code></td><td>INT</td><td>현재까지 chain 에서 누적된 confirmation 횟수. block 이 새로 쌓일 때마다 +1</td></tr>
+<tr><td><code>required_confirmations</code></td><td>INT</td><td>DCCP 정책이 이 chain 에 대해 정한 임계 (예: BTC 3, ETH 12)</td></tr>
+<tr><td><code>manual_credit_actor_user_id</code></td><td>BINARY(16) nullable</td><td>Admin 이 수동 확정 처리한 경우 그 Admin 의 user id. 자동 확정이면 NULL</td></tr>
+<tr><td><code>cleared_at</code></td><td>DATETIME(6) nullable</td><td>입금이 확정 처리된 시각. set-once — 한 번 set 후 UPDATE 불가</td></tr>
+</tbody>
+</table>
+</div>
 
--- Webhook delivery 의 idempotency
-CREATE TABLE deposit_webhook_deliveries (
+<h4>4.3 <code>deposit_webhook_deliveries</code> — webhook 중복 방지 (idempotency)</h4>
+<pre><code>CREATE TABLE deposit_webhook_deliveries (
   id                BINARY(16) PRIMARY KEY,
-  deposit_observation_id BINARY(16) NOT NULL,
-  notification_type ENUM('blockchain-appearance', 'first-confirmation',
-                          'additional-confirmation', 'completion') NOT NULL,
+  deposit_observation_id BINARY(16) NOT NULL,         -- FK → deposit_observations.id
+  notification_type ENUM('blockchain-appearance','first-confirmation','additional-confirmation','completion') NOT NULL,
   delivered_at      DATETIME(6) NOT NULL,
   UNIQUE KEY (deposit_observation_id, notification_type)
 );</code></pre>
-
-    <h3>Reorg Handling (hypothesis)</h3>
-    <p>Fireblocks 자료에 deposit-side reorg handling 의 명시적 절차는 없음. <code>persistence-architecture/07</code> 의 일반 패턴:</p>
-    <ul>
-      <li>chain_events 는 append-only — reorg 발생 시 이전 row 를 UPDATE 하지 않고, <strong>새 reversing event</strong> 를 INSERT</li>
-      <li>deposit_observations 의 status 를 <code>confirming</code> → <code>failed</code> 로 전이 (set-once 가 아닌 status 컬럼은 UPDATE 가능)</li>
-      <li>이미 ledger credit 된 경우 reversal entry (→ <a href="storage-discipline.html">23</a>)</li>
-    </ul>
-  </section>
-
-  <nav class="page-nav" aria-label="Section navigation">
-    <a class="page-nav-link page-nav-prev" href="sm-signing.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">16. Signing State</span></a>
-    <a class="page-nav-link page-nav-next" href="sm-withdrawal.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">18. Withdrawal Lifecycle</span></a>
-  </nav>
-
-</main>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:28%">컬럼</th><th style="width:18%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>전송 기록의 고유 식별자</td></tr>
+<tr><td><code>deposit_observation_id</code></td><td>BINARY(16) FK</td><td>어느 입금에 대한 알림인지</td></tr>
+<tr><td><code>notification_type</code></td><td>ENUM (4 값)</td><td>알림 종류. zero-confirmation 운영에서는 같은 입금에 대해 <strong>blockchain-appearance</strong> → <strong>first-confirmation</strong> → <strong>additional-confirmation</strong> → <strong>completion</strong> 순으로 여러 번 발송될 수 있음</td></tr>
+<tr><td><code>delivered_at</code></td><td>DATETIME(6)</td><td>해당 알림이 우리 시스템에 도착한 시각</td></tr>
+<tr><td><code>UNIQUE (deposit_observation_id, notification_type)</code></td><td>—</td><td>같은 입금에 대해 같은 종류 알림이 중복 INSERT 되는 것을 막아 idempotency 강제. 같은 webhook 이 두 번 와도 두 번째는 거부</td></tr>
+</tbody>
+</table>
 </div>
 
+    <h3>Reorg (블록 재구성) 처리 — schema 가 반드시 표현해야 할 path</h3>
+<p>입금이 block 에 한 번 들어왔다고 끝이 아닙니다. 짧은 시간 안에 그 block 이 다른 chain branch 에 밀려 사라지면 (reorg) 입금도 같이 사라져야 합니다. DCCP 가 충분히 보수적인 confirmation 횟수를 요구하면 실제 발생 빈도는 극히 낮지만, schema 가 이 시나리오를 표현하지 못하면 발생 시 정정할 방법이 없습니다.</p>
+<div class="callout">
+<div class="callout-title">chain 별 reorg 위험도 — DCCP 설정의 근거</div>
+<ul style="margin-bottom:0">
+<li><strong>BTC</strong>: 6 confirmation 이후 reorg 는 역사적으로 거의 발생 안 함 — DCCP 3~6 가 일반적</li>
+<li><strong>ETH</strong>: 짧은 fork 가 12 confirmation 이내까지 가능 — DCCP 12~32 권장</li>
+<li><strong>L2 (Arbitrum / Optimism / Base)</strong>: sequencer rollback 위험이 별도 — 단순 block confirmation 이외의 finality 신호 필요</li>
+<li><strong>Solana</strong>: fork 가 자주 발생하지만 짧은 시간 안에 정착 — finalized commitment 까지 대기</li>
+</ul>
+</div>
+<p>Schema 차원의 reorg 처리는 세 단계로:</p>
+<ol>
+<li><strong><code>chain_events</code> 는 절대로 UPDATE/DELETE 안 함</strong> (append-only<span class="g" data-tip="DB 의 추가 전용 규칙. 한 번 들어간 row 는 UPDATE / DELETE 절대 불가. trigger 로 강제" tabindex="0">(?)</span>). reorg 가 발생해도 이전 row 는 그대로 두고, "그 block 이 무효화되었다" 는 사실을 새 row 로 INSERT (reversing event). 즉 사건의 역사 자체가 남도록</li>
+<li><strong><code>deposit_observations.status</code> 전이</strong>: 영향받은 입금 row 의 status 를 <code>confirming</code> → <code>failed</code> 로 UPDATE. status 컬럼은 set-once<span class="g" data-tip="DB 컬럼의 1회만 set 규칙. NULL → 값 1 회만 허용, 이후 변경 금지. trigger 로 강제" tabindex="0">(?)</span> 가 아니어서 변경 가능 (단 <code>cleared_at</code> 같은 set-once 컬럼은 그대로 유지)</li>
+<li><strong>이미 ledger credit 된 경우 reversal entry</strong>: 잔액 반영까지 진행됐던 입금이라면 ledger 평면에 reversal 회계 entry 를 발행해서 잔액을 원상복구. 단순 UPDATE 가 아니라 +N 입금에 대응하는 -N reversal 을 새 ledger row 로 추가 (append-only 회계). → <a href="storage-discipline.html">24. Storage Discipline</a> 의 append-only/set-once 규율</li>
+</ol>
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="sm-signing.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">17. Signing State</span></a>
+<a class="page-nav-link page-nav-next" href="sm-withdrawal.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">19. Withdrawal Lifecycle</span></a>
+</nav>
+</main>
+</div>
 <!-- Mermaid + svg-pan-zoom CDN -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
 <script src="assets/app.js"></script>
-
 </body>
 </html>

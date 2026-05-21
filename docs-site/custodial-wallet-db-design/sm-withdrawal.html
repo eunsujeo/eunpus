@@ -1,232 +1,394 @@
 <!DOCTYPE html>
+
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Withdrawal Lifecycle — 수탁형 지갑 DB 설계</title>
-  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Withdrawal Lifecycle">
-  <meta name="robots" content="noindex">
-  <link rel="stylesheet" href="assets/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Withdrawal Lifecycle — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Withdrawal Lifecycle" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
 </head>
 <body>
-
-<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
-
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
 <div class="layout">
-
-<aside class="sidebar" aria-label="Table of contents">
-  <nav>
-    <div class="nav-section">
-      <h3 class="nav-section-title">Overview</h3>
-      <ul>
-        <li><a href="index.html">0. Overview</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">A. Architecture</h3>
-      <ul>
-        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
-        <li><a href="db-split.html">2. DB 분할</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">B. Workspace & Vault</h3>
-      <ul>
-        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
-        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">C. Users & Access</h3>
-      <ul>
-        <li><a href="tables-user.html">5. Users</a></li>
-        <li><a href="tables-auth.html">6. Auth credentials</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">D. Governance & Policy</h3>
-      <ul>
-        <li><a href="tables-role.html">7. 9 User Roles</a></li>
-        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
-        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
-      <ul>
-        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
-        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
-        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
-      <ul>
-        <li><a href="sm-transaction.html">13. Transaction State</a></li>
-        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
-        <li><a href="sm-approval.html">15. Approval State</a></li>
-        <li><a href="sm-signing.html">16. Signing State</a></li>
-        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
-        <li><a href="sm-withdrawal.html" class="active">18. Withdrawal Lifecycle</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
-      <ul>
-        <li><a href="tables-audit.html">19. Audit Log</a></li>
-        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
-        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
-        <li><a href="risks.html">22. Risks Register</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
-      <ul>
-        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
-        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
-        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
-      </ul>
-    </div>
-  </nav>
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace.html">3. Workspace</a></li>
+<li><a href="tables-vault.html">4. Vault</a></li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">14. Transaction State</a></li>
+<li><a href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a class="active" href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
 </aside>
-
 <main class="content">
-
 <section id="sm-withdrawal">
-    <h2>18. Withdrawal Lifecycle</h2>
-    <span class="section-subtitle">Outgoing tx 의 customer-visible projection · operation vocabulary · chain-specific quirk</span>
+<h2>19. Withdrawal Lifecycle</h2>
+<span class="section-subtitle">출금 tx 가 거치는 상태 흐름 · 운영 액션 · chain 별 특이 제약</span>
 
-    <h3>Withdrawal = Outgoing Transaction</h3>
-    <p>Withdrawal 은 transaction state machine 의 <strong>customer-visible projection</strong>. <a href="sm-transaction.html">13. Transaction State</a> 의 17 status outgoing flow 와 동등 — 본 페이지는 운영 동사 + chain quirk 중심.</p>
-
-    <h3>Transaction Operations by Status (★ Stage 9)</h3>
-    <p><code>transaction-lifecycle.md</code>, p.2:</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Operation</th><th>가능 status</th><th>비고</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Cancel</strong></td><td>Broadcasting 이전</td><td>이후엔 chain 에 broadcast 됨</td></tr>
-          <tr><td><strong>Retry</strong></td><td>FAILED 후</td><td>동일 tx 재시도</td></tr>
-          <tr><td><strong>Boost / drop (EVM)</strong></td><td>Broadcasting</td><td>EVM gas parameter 변경 — Replace-By-Fee (RBF)</td></tr>
-          <tr><td><strong>Boost UTXO tx</strong></td><td>Broadcasting</td><td>Bitcoin RBF</td></tr>
-          <tr><td><strong>Rescreen / bypass AML</strong></td><td>PENDING_AML_SCREENING / AML rejected</td><td>재검사 또는 강제 진행</td></tr>
-          <tr><td><strong>Dismiss</strong></td><td>—</td><td>transaction card UI dismissal</td></tr>
-          <tr><td><strong>Edit transaction notes</strong></td><td>any</td><td>—</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3>Chain-specific Withdrawal Quirk (★ Stage 9)</h3>
-    <ul>
-      <li><strong>EVM</strong>: nonce 가 순차 — 단일 vault stuck 시 전체 queue 정체 → <strong>multiple withdrawal vault round-robin</strong></li>
-      <li><strong>Bitcoin</strong>: unconfirmed input <strong>25-tx chain limit</strong> (Bitcoin Core default) → multiple withdrawal vault</li>
-      <li><strong>Solana</strong>: vault account 당 동시 <strong>5 tx queue</strong> (6번째 이상 Submitted max 2h 대기 후 terminated)</li>
-      <li><strong>Algorand</strong>: ~50min signing window</li>
-      <li><strong>Tezos</strong>: ~30min + mempool 1 tx/account</li>
-      <li><strong>Polkadot</strong>: tx valid 2 hours</li>
-    </ul>
-
-    <h3>Chain-specific 시간 제약과 Approval 경합</h3>
-    <div class="callout callout-warn">
-      <div class="callout-title">Owner / Admin Quorum approval 흐름과 시간 경합 가능</div>
-      <p>Algorand / Tezos / Polkadot 등의 짧은 signing window 가 Q+O / AG 흐름의 7-day expiry 보다 훨씬 짧음 — approval 받는 동안 chain-side validity expire 가능. DB 측은 <code>chain_validity_expires_at</code> 추적 + alert 필요.</p>
-    </div>
-
-    <h3>Solana Sign-Only (★ Stage 9)</h3>
-    <ul>
-      <li>Signed payload <strong>client 에 반환</strong> (Fireblocks 가 broadcast 안 함)</li>
-      <li><code>NOT BROADCAST BY FIREBLOCKS</code> 태그 자동</li>
-      <li>on-chain 감지 시 Completed / Failed transition</li>
-      <li>Timeout 미달성 시 자동 invalidate</li>
-    </ul>
-
-    <h3>Raw Signing Special Path</h3>
-    <ul>
-      <li><strong>일반</strong>: Pending Signature → (broadcast 없음) → Completed</li>
-      <li><strong>Cached signature</strong> (동일 raw data 재서명): Submitted → Completed (전체 ceremony 우회)</li>
-    </ul>
-
-    <h3>DB Schema</h3>
-    <pre><code>CREATE TABLE withdrawals (
-  -- transaction 의 sub-aggregate. 1:1 with transaction 의 outgoing 경우.
-  id                BINARY(16) PRIMARY KEY,
-  transaction_id    BINARY(16) NOT NULL UNIQUE,
-  withdrawal_vault_id BINARY(16) NOT NULL,
-  destination_type  ENUM('vault', 'exchange', 'whitelisted', 'one-time', 'network'),
-  destination_address VARCHAR(128) NOT NULL,
-  tag_or_memo       VARCHAR(64),
-  chain             VARCHAR(32) NOT NULL,
-  chain_validity_expires_at DATETIME(6),              -- chain-specific validity (Algorand/Tezos/Polkadot)
-  retry_count       INT NOT NULL DEFAULT 0,
-  last_boost_at     DATETIME(6),                       -- RBF
-  cancel_attempted_at DATETIME(6),
-  cancel_completed_at DATETIME(6),                    -- ★ set-once
-  KEY (withdrawal_vault_id),
-  KEY (chain_validity_expires_at)
-);
-
--- ★ append-only — broadcast 시도마다 row
-CREATE TABLE broadcast_attempts (
-  id                BINARY(16) PRIMARY KEY,
-  withdrawal_id     BINARY(16) NOT NULL,
-  attempt_number    INT NOT NULL,
-  raw_payload_cbor  BLOB NOT NULL,                    -- ★ set-once
-  signed_payload    BLOB NOT NULL,                    -- ★ set-once
-  broadcasted_to_node VARCHAR(128) NOT NULL,
-  broadcasted_at    DATETIME(6) NOT NULL,
-  tx_hash           VARCHAR(128),                    -- ★ set-once (node 가 echo)
-  outcome           ENUM('submitted', 'rejected', 'dropped', 'replaced') NOT NULL,
-  UNIQUE KEY (withdrawal_id, attempt_number)
-);
-
--- ★ append-only — confirmation 누적
-CREATE TABLE confirmations (
-  id                BINARY(16) PRIMARY KEY,
-  broadcast_attempt_id BINARY(16) NOT NULL,
-  block_hash        VARCHAR(128) NOT NULL,
-  block_height      BIGINT NOT NULL,
-  confirmed_at      DATETIME(6) NOT NULL,
-  reorged_at        DATETIME(6),                      -- reorg 시 set (row 자체는 유지)
-  KEY (broadcast_attempt_id, block_height)
-);
-
--- 운영 액션 이력
-CREATE TABLE withdrawal_operations (
-  -- append-only
-  id                BINARY(16) PRIMARY KEY,
-  withdrawal_id     BINARY(16) NOT NULL,
-  operation         ENUM('cancel', 'retry', 'boost', 'drop',
-                          'rescreen-aml', 'bypass-aml', 'dismiss', 'edit-notes') NOT NULL,
-  actor_user_id     BINARY(16) NOT NULL,
-  parameters_cbor   BLOB,                              -- e.g., new gas params
-  occurred_at       DATETIME(6) NOT NULL,
-  KEY (withdrawal_id, occurred_at)
-);</code></pre>
-
-    <h3>Round-Robin Withdrawal Vault 운영</h3>
-    <p>EVM / Bitcoin 의 chain-specific 한 sequential bottleneck 회피:</p>
-    <pre>workspace
-  └── withdrawal vaults (N 개)
-        ├── vault A  →  EVM nonce A0, A1, A2, ...
-        ├── vault B  →  EVM nonce B0, B1, B2, ...
-        ├── vault C  →  EVM nonce C0, C1, C2, ...
-
-→ application layer 의 vault selector 가 round-robin 으로 vault 할당
-→ 한 vault 의 stuck tx 가 전체 queue 막지 않음</pre>
-  </section>
-
-  <nav class="page-nav" aria-label="Section navigation">
-    <a class="page-nav-link page-nav-prev" href="sm-deposit.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">17. Deposit Lifecycle</span></a>
-    <a class="page-nav-link page-nav-next" href="tables-audit.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">19. Audit Log</span></a>
-  </nav>
-
-</main>
+<div class="callout">
+<div class="callout-title">본 페이지의 출처 — 어디까지가 Fireblocks 정의이고, 어디부터가 추정인가</div>
+<p>이 페이지의 내용은 두 갈래입니다. 미리 구분해두면 어떤 부분을 그대로 받아들이고 어떤 부분은 본인 환경에서 검증할지 판단이 쉬워집니다.</p>
+<p><strong>Fireblocks 공식 문서에 정의된 사실</strong> — 그대로 받아들여도 안전</p>
+<ul style="margin-bottom:0.5rem">
+<li>출금 tx 가 거치는 <strong>상태 (17 status) 의 이름과 의미</strong> (Submitted · Pending Authorization · Pending Signature · Broadcasting · Confirming · Completed 등)</li>
+<li><strong>운영 액션</strong> 의 적용 가능 상태 — cancel · retry · boost · drop · rescreen · bypass · dismiss · edit notes</li>
+<li><strong>시간 제약</strong> — Pending Authorization / Pending Signature 의 2 시간 타임아웃, Cancelling 30 초, Broadcasting 약 1 분</li>
+<li><strong>chain 별 특이 제약</strong> — EVM nonce 순차성 · BTC 25-tx unconfirmed chain · Solana per-vault 5 + workspace 600 · Algorand 50 분 signing window · Tezos 30 분 · Polkadot 2 시간 validity</li>
+<li><strong>Solana Sign-Only</strong> 경로 (NOT BROADCAST BY FIREBLOCKS 태그) · <strong>Raw Signing 의 cached signature</strong> 경로</li>
+</ul>
+<p style="margin-bottom:0.3rem"><strong>저자가 합리적으로 추정해서 그린 설계</strong> — 참고용, 본인 환경에서 검증 권장</p>
+<ul style="margin-bottom:0">
+<li><code>withdrawals</code> · <code>broadcast_attempts</code> · <code>confirmations</code> · <code>withdrawal_operations</code> 의 구체 schema</li>
+<li>chain validity 만료 임박을 어떻게 alert 할지의 threshold</li>
+<li>round-robin vault selector 의 application-layer 알고리즘 (DB 가 아닌 코드 영역)</li>
+<li>reorg 발생 시 이미 confirmed 된 출금을 어떻게 정정할지의 schema 표현</li>
+</ul>
 </div>
 
+<h3>Withdrawal = Outgoing Transaction</h3>
+<p>Withdrawal (출금) 은 transaction state machine 의 <strong>출금 측면 (outgoing) 의 표현</strong>. <a href="sm-transaction.html">14. Transaction State</a> 가 다루는 17 status state machine 중 출금 경로를 customer 가 보는 관점에서 정리한 것입니다 — 본 페이지는 흐름 + 운영 액션 + chain 별 특이 제약을 중심으로.</p>
+<h3>Outgoing Transaction Flow — 출금 상태 흐름</h3>
+<p>고객이 출금 요청을 누르고 자금이 외부 주소에 도달하기까지 출금 tx 가 거치는 단계. 각 상태의 이름과 의미는 Fireblocks 공식 정의를 그대로 따랐고, 그 사이 전이 (어디서 어디로 갈 수 있는지) 는 17 status 의 각 상태 설명을 종합해서 그렸습니다.</p>
+<div class="diagram">
+      <pre class="mermaid">
+stateDiagram-v2
+  direction LR
+
+  state "📝 출금 요청 접수\n(SUBMITTED)" as Sub
+  state "🔍 AML 심사 대기\n(PENDING_AML_SCREENING)" as Aml
+  state "🛡️ Approver 승인 대기\n(PENDING_AUTHORIZATION)\n2h 안에 승인 필요" as Auth
+  state "✍️ 서명 대기\n(PENDING_SIGNATURE)\n2h 안에 서명 필요" as Sig
+  state "📡 blockchain 송신 중\n(BROADCASTING)\n약 1분" as Bcast
+  state "⏳ confirmation 누적\n(CONFIRMING)" as Conf
+  state "✅ 출금 확정\n(COMPLETED)" as Done
+  state "🚫 Policy 차단\n(BLOCKED)" as Blk
+  state "🚫 AML 거절\n(REJECTED)" as Rej
+  state "↩️ 취소\n(CANCELLED)" as Cancel
+  state "❌ 실패\n(FAILED)" as Fail
+  state "🖊️ 서명만 반환\n(SIGNED)\nSolana Sign-Only" as Signed
+
+  [*] --> Sub : AML 미사용
+  [*] --> Aml : AML 사용
+  Aml --> Auth : 심사 통과
+  Aml --> Rej : 심사 거절
+  Sub --> Auth
+  Auth --> Sig : Approver 승인
+  Auth --> Blk : Policy 차단
+  Auth --> Fail : 2h timeout
+  Sig --> Bcast : 서명 완료<br/>+ broadcast
+  Sig --> Signed : Sign-Only<br/>(고객이 broadcast)
+  Sig --> Cancel : 사용자 취소
+  Sig --> Fail : 2h timeout
+  Bcast --> Conf : chain 진입
+  Bcast --> Cancel : 사용자 취소
+  Conf --> Done : DCCP 임계 도달
+  Conf --> Fail : reorg / 실패
+  Done --> [*]
+  Cancel --> [*]
+  Fail --> [*]
+  Blk --> [*]
+  Rej --> [*]
+  Signed --> [*]
+
+  classDef good fill:#dcfce7,stroke:#16a34a,stroke-width:2px;
+  classDef bad fill:#fee2e2,stroke:#dc2626,stroke-width:2px;
+  classDef wait fill:#fef3c7,stroke:#d97706;
+  classDef special fill:#e0e7ff,stroke:#6366f1;
+  class Done good;
+  class Blk,Rej,Cancel,Fail bad;
+  class Sub,Aml,Auth,Sig,Bcast,Conf wait;
+  class Signed special;
+</pre>
+      <span class="diagram-caption">Figure 11. 출금 상태 흐름. 노란 박스 = 진행 중 / 초록 = 정상 완료 / 빨강 = 차단·취소·실패 / 파랑 = Solana Sign-Only 특수 종착. 정상 경로는 <strong>요청 → (AML) → Approver 승인 → 서명 → 송신 → confirmation 누적 → 확정</strong>. 곳곳에 두 시간 타임아웃 (Auth · Sig) 과 사용자 취소 가능 구간 (Bcast 이전까지) 이 존재. Solana 의 Sign-Only 운영은 Fireblocks 가 broadcast 하지 않고 서명된 payload 를 고객에게 반환해서 고객이 직접 broadcast 하는 분기 (특수 종착 SIGNED).</span>
+</div>
+
+<h3>운영 액션 — 어느 상태에서 무엇이 가능한가</h3>
+<p>출금 진행 도중 운영자/사용자가 시스템에 가할 수 있는 action 의 종류와 그 action 이 허용되는 상태:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>액션</th><th>가능한 상태</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td><strong>Cancel</strong> (취소)</td><td>BROADCASTING 이전까지</td><td>아직 blockchain 으로 송신되지 않은 시점이라면 출금을 취소 가능. broadcast 이후에는 chain 에 이미 들어가 있어 취소 못 함</td></tr>
+<tr><td><strong>Retry</strong> (재시도)</td><td>FAILED 이후</td><td>실패한 출금을 같은 내용으로 다시 시도. 새 tx 가 아니라 같은 withdrawal 의 재시도로 추적</td></tr>
+<tr><td><strong>Boost / Drop</strong> (EVM<span class="g" data-tip="Ethereum Virtual Machine. Ethereum 호환 chain 계열 (Polygon / Arbitrum / Optimism 등). account-based 모델" tabindex="0">(?)</span>)</td><td>BROADCASTING</td><td>EVM 에서 gas 가 부족해 stuck 된 tx 의 gas parameter 를 올려서 (boost) 또는 줄여서 (drop) 동일 nonce 로 교체 송신 — <strong>Replace-By-Fee</strong><span class="g" data-tip="Bitcoin / EVM 의 broadcast 중 tx 교체. 더 높은 fee 로 동일 nonce/input 재전송" tabindex="0">(?)</span> (RBF) 라고 부름</td></tr>
+<tr><td><strong>Boost UTXO<span class="g" data-tip="Unspent Transaction Output. Bitcoin 계열의 잔액 모델. 잔액 = 사용 안 한 output 합" tabindex="0">(?)</span> tx</strong></td><td>BROADCASTING</td><td>Bitcoin 의 RBF — 같은 input 을 쓰는 새 tx 를 더 높은 fee 로 송신해서 mempool 의 기존 tx 를 대체</td></tr>
+<tr><td><strong>Rescreen / Bypass AML</strong><span class="g" data-tip="Anti-Money Laundering. 자금세탁 방지 규제. tx 별 KYC / sanction screening 강제" tabindex="0">(?)</span></td><td>PENDING_AML_SCREENING 또는 AML 거절 후</td><td><strong>Rescreen</strong> 은 AML 심사를 다시 돌리는 것 (false positive 의심 시), <strong>Bypass</strong> 는 Admin 권한으로 심사를 우회해서 강제 진행하는 것</td></tr>
+<tr><td><strong>Dismiss</strong></td><td>—</td><td>완료/실패된 출금 카드를 UI 상에서만 숨김 처리. DB 의 상태는 그대로</td></tr>
+<tr><td><strong>Edit transaction notes</strong></td><td>모든 상태</td><td>운영 메모 (transaction notes) 만 수정. tx 자체에는 영향 없음</td></tr>
+</tbody>
+</table>
+</div>
+<h3>Chain 별 출금 특이 제약</h3>
+<p>같은 "출금" 인데 chain 마다 정체·실패 요인이 다릅니다. 각 chain 이 어떤 운영 제약을 가지는지를 알면 vault 수와 timeout 설계에 반영할 수 있습니다.</p>
+<dl class="chain-rr">
+<dt><strong>EVM (Ethereum · Polygon · Arbitrum 등)</strong></dt>
+<dd>같은 주소에서 출금하는 tx 는 0, 1, 2, 3 … 순서 번호 (nonce<span class="g" data-tip="EVM 의 transaction 순서 번호. 같은 주소의 tx 가 순차 처리되도록. 충돌 시 뒤 tx 가 stuck" tabindex="0">(?)</span>) 를 <strong>반드시 순서대로</strong> 처리합니다. 한 tx 가 stuck 되면 (수수료 부족 등) <strong>그 뒤 번호의 tx 가 전부 대기 상태로 묶입니다</strong>. 출금 vault 가 하나라면 그 vault 의 출금 전체가 멈춤.<br>
+→ <strong>출금 전용 vault 를 여러 개 두고 돌아가며 사용</strong> (round-robin).</dd>
+
+<dt><strong>Bitcoin</strong></dt>
+<dd>아직 block 에 확정되지 않은 (unconfirmed) tx 는 Bitcoin 의 mempool 에 쌓이는데, 한 tx 의 잔돈 (change) 을 다음 tx 의 input 으로 이어 쓰는 chain 이 <strong>25 개에 도달하면 26 번째 tx 는 네트워크가 거부</strong>합니다 (Bitcoin Core 기본 설정<span class="g" data-tip="Bitcoin Core default policy. 한 unconfirmed tx 의 descendant (그 change output 을 input 으로 쓰는 후속 tx) 가 25 개에 도달하면 mempool 이 추가 tx 거부. block confirm 전 출금 chain 이 길어지면 그 vault 의 출금이 정체" tabindex="0">(?)</span>).<br>
+→ <strong>출금 vault 를 여러 개로 분산</strong>.</dd>
+
+<dt><strong>Solana</strong></dt>
+<dd>두 단계 제약:
+<ul style="margin:0.3rem 0">
+<li><strong>vault 한 개당 동시 5 tx</strong>: 6 번째 출금 요청은 "Submitted" 상태로 줄을 서고, 최대 2 시간 안에 처리되지 않으면 자동 취소</li>
+<li><strong>workspace 전체에서 동시 600 tx</strong>: workspace 안의 모든 vault 의 진행 중 tx 합이 600 개를 넘으면 추가 요청 거부</li>
+</ul>
+EVM/BTC 와 결정적으로 다른 점 — 5 를 초과해도 <strong>막히는 게 아니라 기다리는 상태</strong>입니다 (앞 tx 가 끝나면 자동으로 다음 차례). 즉 <strong>출금 vault 1 개로도 충분히 운영 가능</strong>. 짧은 시간에 한꺼번에 많은 출금이 몰리는 경우에만 vault 여러 개로 분산이 의미 있음.</dd>
+
+<dt><strong>Algorand</strong></dt>
+<dd>서명 후 broadcast 까지의 유효 시간 (signing window) 이 약 <strong>50 분</strong>. 이 시간 안에 chain 에 진입하지 않으면 tx 가 무효화됩니다. Approver 승인이 늦어지면 chain 측 유효 시간이 먼저 만료되는 경합 위험.</dd>
+
+<dt><strong>Tezos</strong></dt>
+<dd>서명 후 유효 시간이 약 <strong>30 분</strong> + 한 계정의 mempool 에 동시에 <strong>1 tx 만</strong> 허용. 두 번째 출금은 첫 번째가 block 에 들어갈 때까지 대기. Algorand 보다도 빡빡한 운영 제약.</dd>
+
+<dt><strong>Polkadot</strong></dt>
+<dd>tx 의 유효 시간이 <strong>2 시간</strong>. Algorand/Tezos 보다는 여유가 있지만 여전히 Approval workflow 와 경합 가능.</dd>
+</dl>
+<h3>Approval 흐름 vs chain 유효 시간 — 경합 가능성</h3>
+<div class="callout callout-warn">
+<div class="callout-title">⚠️ 짧은 chain validity 와 긴 approval workflow 의 충돌</div>
+<p>위 표에서 본 것처럼 Algorand 50 분, Tezos 30 분, Polkadot 2 시간 같은 chain 들은 tx 의 유효 시간이 매우 짧습니다. 반면 Admin Quorum<span class="g" data-tip="관리자급 사용자의 다수결 승인 그룹. 회사 이사회 정족수 개념. Q (Quorum) / Q+O (Quorum + Owner) 라벨로 표시" tabindex="0">(?)</span> 의 일반 approval workflow 는 최대 <strong>7 일</strong> 까지 기다릴 수 있습니다.</p>
+<p>이 차이가 문제를 만듭니다 — Approver 가 승인할 때쯤이면 이미 <strong>chain 측 유효 시간이 만료</strong>되어 출금이 fail 처리될 수 있음. 특히 야간/주말에 들어온 출금 요청은 다음 영업 시간에 승인되는데 그동안 chain 유효 시간이 다 흘러가 버립니다.</p>
+<p>DB 측 대응:</p>
+<ul style="margin-bottom:0">
+<li><code>withdrawals.chain_validity_expires_at</code> 컬럼에 그 출금의 chain 측 만료 시각 기록</li>
+<li>임박 (예: 만료 15 분 전) 시 운영 alert 발송 → Approver 가 우선 처리하도록 push</li>
+<li>만료된 출금은 자동 fail 처리 후 같은 의도의 새 출금 재생성 (retry 액션) 안내</li>
+</ul>
+</div>
+
+<h3>Solana Sign-Only — Fireblocks 가 broadcast 안 하는 특수 경로</h3>
+<p>일반 출금은 Fireblocks 가 서명 후 직접 blockchain 에 broadcast 합니다. 그러나 Solana 의 <strong>Sign-Only</strong> 운영은 다릅니다 — Fireblocks 는 서명까지만 하고, <strong>서명된 payload 를 고객 시스템에 그대로 반환</strong>합니다. 고객이 자기 인프라로 직접 broadcast.</p>
+<p>왜? — 고객 측 dApp 이나 거래소 통합에서 broadcast 타이밍이나 nonce/fee 계산을 자체 제어해야 하는 경우. 그런 운영에 대비한 분기.</p>
+<ul>
+<li>이 경로의 출금은 <strong><code>NOT BROADCAST BY FIREBLOCKS</code> 태그</strong>가 자동으로 붙음 — 운영팀이 즉시 식별 가능</li>
+<li>이후 on-chain 에서 그 tx 가 관찰되면 Completed 로, 관찰 안 되면 (고객이 broadcast 안 했거나 실패) Failed 로 전이</li>
+<li>Solana 자체의 signing window 안에 broadcast 가 일어나지 않으면 자동 무효 처리</li>
+</ul>
+
+<h3>Raw Signing — broadcast 자체가 없는 경로</h3>
+<p>또 다른 특수 경로. Fireblocks 가 단순히 "raw data 에 서명" 만 해주고 broadcast 는 아예 안 합니다. 임의의 메시지 (예: 인증용 challenge, 외부 시스템과의 handshake) 에 서명을 요청하는 use case.</p>
+<ul>
+<li><strong>일반 raw signing</strong>: Pending Signature → (broadcast 단계 없음) → Completed</li>
+<li><strong>Cached signature</strong>: 같은 raw data 에 대한 서명이 이미 캐시에 있으면 전체 서명 ceremony 를 우회하고 Submitted → Completed 로 즉시 점프. 인증 challenge 같이 동일 데이터에 반복 서명이 필요한 시나리오 최적화</li>
+</ul>
+<h3>DB Schema</h3>
+<p>출금은 네 테이블의 협업으로 모델링합니다. 위 흐름의 각 단계가 DB 의 어떤 row 와 컬럼으로 영속화되는지 1:1 매핑됩니다.</p>
+
+<h4>4.1 <code>withdrawals</code> — 출금 본체</h4>
+<pre><code>CREATE TABLE withdrawals (
+  -- transaction 의 sub-aggregate. 1 출금 = 1 transaction 의 outgoing 측면.
+  id                  BINARY(16) PRIMARY KEY,
+  transaction_id      BINARY(16) NOT NULL UNIQUE,        -- transaction 본체 (sm-transaction.html)
+  withdrawal_vault_id BINARY(16) NOT NULL,               -- 어느 출금 vault 에서 나가는지
+  destination_type    ENUM('vault','exchange','whitelisted','one-time','network'),
+  destination_address VARCHAR(128) NOT NULL,
+  tag_or_memo         VARCHAR(64),                       -- XRP/XLM 등의 destination tag
+  chain               VARCHAR(32) NOT NULL,
+  chain_validity_expires_at DATETIME(6),                 -- Algorand/Tezos/Polkadot 의 짧은 유효 시간 추적
+  retry_count         INT NOT NULL DEFAULT 0,            -- FAILED 후 재시도 횟수
+  last_boost_at       DATETIME(6),                       -- 마지막 RBF (boost/drop) 시각
+  cancel_attempted_at DATETIME(6),                       -- 취소 요청 시각
+  cancel_completed_at DATETIME(6),                       -- ★ set-once — 취소 확정 시각
+  KEY (withdrawal_vault_id),
+  KEY (chain_validity_expires_at)
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:26%">컬럼</th><th style="width:18%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>출금의 고유 식별자</td></tr>
+<tr><td><code>transaction_id</code></td><td>BINARY(16) UNIQUE FK</td><td>이 출금이 속한 transaction 의 id. transaction 1 개당 출금 1 개 (UNIQUE)</td></tr>
+<tr><td><code>withdrawal_vault_id</code></td><td>BINARY(16) FK</td><td>어느 출금 전용 vault 에서 자금이 나가는지. round-robin selector 가 여기에 어느 vault 를 할당했는지 기록</td></tr>
+<tr><td><code>destination_type</code></td><td>ENUM (5 값)</td><td>송금 대상의 종류. <strong>vault</strong>=같은 workspace 안의 다른 vault / <strong>exchange</strong>=거래소 / <strong>whitelisted</strong>=Admin Quorum 으로 사전 등록된 외부 / <strong>one-time</strong>=일회용 (Policy 통과 필수) / <strong>network</strong>=on-chain network address</td></tr>
+<tr><td><code>destination_address</code></td><td>VARCHAR(128)</td><td>실제 송금 대상 주소</td></tr>
+<tr><td><code>tag_or_memo</code></td><td>VARCHAR(64) nullable</td><td>XRP/XLM 등 tag/memo 기반 chain 의 destination tag</td></tr>
+<tr><td><code>chain</code></td><td>VARCHAR(32)</td><td>송금하는 blockchain. <code>chains.id</code> 와 매칭</td></tr>
+<tr><td><code>chain_validity_expires_at</code></td><td>DATETIME(6) nullable</td><td>chain 측 tx 유효 시간 만료 시각. Algorand 50 분 / Tezos 30 분 / Polkadot 2 시간 등. 임박 시 운영 alert</td></tr>
+<tr><td><code>retry_count</code></td><td>INT</td><td>FAILED 후 retry 액션이 호출된 횟수</td></tr>
+<tr><td><code>last_boost_at</code></td><td>DATETIME(6) nullable</td><td>RBF (Replace-By-Fee) 가 마지막으로 적용된 시각</td></tr>
+<tr><td><code>cancel_attempted_at</code></td><td>DATETIME(6) nullable</td><td>사용자가 취소를 요청한 시각</td></tr>
+<tr><td><code>cancel_completed_at</code></td><td>DATETIME(6) nullable</td><td>취소가 실제로 확정된 시각. set-once — 한 번 set 후 변경 불가</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>4.2 <code>broadcast_attempts</code> — broadcast 시도 이력 (append-only)</h4>
+<pre><code>-- ★ append-only — broadcast 시도할 때마다 새 row 가 추가됨 (UPDATE 없음)
+CREATE TABLE broadcast_attempts (
+  id                  BINARY(16) PRIMARY KEY,
+  withdrawal_id       BINARY(16) NOT NULL,             -- FK → withdrawals.id
+  attempt_number      INT NOT NULL,                    -- 1, 2, 3 ... (RBF 시 +1)
+  raw_payload_cbor    BLOB NOT NULL,                   -- ★ set-once — 서명 전 raw tx 데이터
+  signed_payload      BLOB NOT NULL,                   -- ★ set-once — 서명 후 송신할 payload
+  broadcasted_to_node VARCHAR(128) NOT NULL,           -- 어느 node 로 송신했는지
+  broadcasted_at      DATETIME(6) NOT NULL,
+  tx_hash             VARCHAR(128),                    -- ★ set-once — node 가 응답한 tx hash
+  outcome             ENUM('submitted','rejected','dropped','replaced') NOT NULL,
+  UNIQUE KEY (withdrawal_id, attempt_number)
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:26%">컬럼</th><th style="width:18%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>broadcast 시도의 고유 식별자</td></tr>
+<tr><td><code>withdrawal_id</code></td><td>BINARY(16) FK</td><td>어느 출금에 대한 시도인지</td></tr>
+<tr><td><code>attempt_number</code></td><td>INT</td><td>같은 출금에 대한 몇 번째 시도인지 (RBF / boost / drop 으로 새 시도가 발생하면 +1)</td></tr>
+<tr><td><code>raw_payload_cbor</code></td><td>BLOB</td><td>서명 직전의 raw tx 데이터를 CBOR<span class="g" data-tip="Concise Binary Object Representation. JSON 과 비슷한 데이터 구조의 binary 표현. 크기 작고 byte-deterministic" tabindex="0">(?)</span> 로 직렬화. byte-deterministic 해야 cross-DB 감사에서 비교 가능. set-once</td></tr>
+<tr><td><code>signed_payload</code></td><td>BLOB</td><td>서명 후 chain 으로 송신할 최종 payload. set-once</td></tr>
+<tr><td><code>broadcasted_to_node</code></td><td>VARCHAR(128)</td><td>어느 node endpoint 로 송신했는지 (debugging 용)</td></tr>
+<tr><td><code>broadcasted_at</code></td><td>DATETIME(6)</td><td>송신 시각</td></tr>
+<tr><td><code>tx_hash</code></td><td>VARCHAR(128) nullable</td><td>송신 직후 node 가 응답한 tx hash. set-once. 응답 실패면 NULL</td></tr>
+<tr><td><code>outcome</code></td><td>ENUM (4 값)</td><td><strong>submitted</strong>=네트워크 수락 / <strong>rejected</strong>=즉시 거부 (가스 부족 등) / <strong>dropped</strong>=mempool 에서 떨어짐 / <strong>replaced</strong>=후속 RBF tx 가 대체</td></tr>
+<tr><td><code>UNIQUE (withdrawal_id, attempt_number)</code></td><td>—</td><td>같은 출금에 같은 attempt_number 가 두 번 들어가지 않도록 강제</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>4.3 <code>confirmations</code> — confirmation 누적 (append-only)</h4>
+<pre><code>-- ★ append-only — block 이 새로 쌓일 때마다 새 row 추가
+CREATE TABLE confirmations (
+  id                   BINARY(16) PRIMARY KEY,
+  broadcast_attempt_id BINARY(16) NOT NULL,           -- FK → broadcast_attempts.id
+  block_hash           VARCHAR(128) NOT NULL,         -- 그 confirmation 의 block hash
+  block_height         BIGINT NOT NULL,               -- block 번호
+  confirmed_at         DATETIME(6) NOT NULL,          -- 우리 시스템이 confirmation 을 인지한 시각
+  reorged_at           DATETIME(6),                   -- reorg 발생 시 set, row 자체는 보존
+  KEY (broadcast_attempt_id, block_height)
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:26%">컬럼</th><th style="width:18%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>confirmation event 의 고유 식별자</td></tr>
+<tr><td><code>broadcast_attempt_id</code></td><td>BINARY(16) FK</td><td>어느 broadcast 시도의 confirmation 인지. 같은 출금이라도 RBF 가 있었으면 어느 attempt 가 chain 에 들어갔는지 구분</td></tr>
+<tr><td><code>block_hash</code></td><td>VARCHAR(128)</td><td>이 confirmation 이 속한 block 의 해시. reorg 발생 시 같은 height 라도 다른 hash 가 나옴 — 그래서 height 만이 아니라 hash 까지 보존</td></tr>
+<tr><td><code>block_height</code></td><td>BIGINT</td><td>block 번호. confirmation 횟수 카운트에 사용</td></tr>
+<tr><td><code>confirmed_at</code></td><td>DATETIME(6)</td><td>우리 시스템이 이 confirmation 을 관찰한 시각</td></tr>
+<tr><td><code>reorged_at</code></td><td>DATETIME(6) nullable</td><td>나중에 그 block 이 reorg 으로 무효화되면 이 시각이 set. row 자체는 삭제하지 않고 reorged_at 만 채워서 이력 보존</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>4.4 <code>withdrawal_operations</code> — 운영 액션 이력 (append-only)</h4>
+<pre><code>-- ★ append-only — 운영자/사용자가 출금에 가한 모든 action 의 trail
+CREATE TABLE withdrawal_operations (
+  id              BINARY(16) PRIMARY KEY,
+  withdrawal_id   BINARY(16) NOT NULL,                -- FK → withdrawals.id
+  operation       ENUM('cancel','retry','boost','drop','rescreen-aml','bypass-aml','dismiss','edit-notes') NOT NULL,
+  actor_user_id   BINARY(16) NOT NULL,                -- 이 action 을 가한 user
+  parameters_cbor BLOB,                               -- action 에 따른 추가 파라미터 (예: 새 gas price)
+  occurred_at     DATETIME(6) NOT NULL,
+  KEY (withdrawal_id, occurred_at)
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:26%">컬럼</th><th style="width:18%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>이벤트 고유 식별자</td></tr>
+<tr><td><code>withdrawal_id</code></td><td>BINARY(16) FK</td><td>어느 출금에 대한 운영 action 인지</td></tr>
+<tr><td><code>operation</code></td><td>ENUM (8 값)</td><td>가한 action 의 종류. 위 "운영 액션" 표의 8 가지와 1:1 매칭</td></tr>
+<tr><td><code>actor_user_id</code></td><td>BINARY(16)</td><td>action 을 가한 user 의 id. bypass-aml 같은 권한 action 의 책임 추적에 핵심</td></tr>
+<tr><td><code>parameters_cbor</code></td><td>BLOB nullable</td><td>action 에 따른 부가 정보를 CBOR 로 저장. 예: boost 의 새 gas price, edit-notes 의 새 메모 텍스트</td></tr>
+<tr><td><code>occurred_at</code></td><td>DATETIME(6)</td><td>action 이 발생한 시각</td></tr>
+</tbody>
+</table>
+</div>
+
+    <h3>Round-Robin 운영 — 여러 출금 vault 분산</h3>
+<p>EVM / Bitcoin 의 sequential bottleneck (nonce gap · 25-tx chain) 을 회피하기 위해 출금 전용 vault 를 여러 개 두고 dispatcher 가 차례로 분산합니다. 시각화와 비교 (단일 vault 의 stuck vs round-robin) 는 <a href="tables-wallet.html#tables-wallet">5. Wallets · Addresses · Asset Wallet</a> 페이지의 "Withdrawal Vault Round-Robin" 절에 있습니다.</p>
+<p>DB 측 표현은 단순 — <code>withdrawals.withdrawal_vault_id</code> 컬럼에 dispatcher 가 할당한 vault 의 id 가 들어갈 뿐입니다. dispatcher 자체의 round-robin 알고리즘 (어느 vault 가 다음 차례인지, vault 의 stuck 상태 판별 등) 은 application 코드 영역이며 본 schema 의 표현 대상은 아닙니다.</p>
+
+<h3>Reorg (블록 재구성) 처리 — 출금 측에서도 schema 가 표현해야 할 path</h3>
+<p>출금 측 reorg 시나리오: 우리 출금 tx 가 chain 에 confirm 되어 COMPLETED 처리됐는데, 그 block 이 reorg 으로 사라지면? 입금 측과 본질은 같지만 위험의 방향이 다릅니다 — 우리는 자산을 외부에 "이미 보냈다" 고 처리했지만 chain 상에는 사라진 상태. 만약 자금이 reorged 새 chain branch 에 다시 포함되지 않으면 출금 실패. 새 chain branch 에 다시 포함되면 tx 가 재실행되어 정상 완료.</p>
+<p>Schema 차원의 처리:</p>
+<ol>
+<li><strong><code>confirmations</code> 는 UPDATE/DELETE 안 함</strong> — reorg 발생 시 해당 row 의 <code>reorged_at</code> 만 set 해서 "이 confirmation 은 무효화됐다" 표시. row 자체는 historical trail 로 보존</li>
+<li><strong>새 chain branch 의 confirmation 은 새 row 로 INSERT</strong> — 같은 broadcast_attempt 가 다른 block_hash 에서 다시 confirm 되는 흐름</li>
+<li><strong>tx 가 새 chain 에 결국 포함 안 된 경우</strong>: withdrawal 의 transaction status 를 COMPLETED 에서 FAILED 로 전이 + ledger 측에 reversal entry 발행 (잔액 원상복구). → <a href="storage-discipline.html">24. Storage Discipline</a> 의 append-only/set-once 규율</li>
+<li><strong>같은 출금을 재시도</strong>: retry 액션으로 새 broadcast_attempts row INSERT. <code>retry_count</code> +1</li>
+</ol>
+<p>출금 측 reorg 가 실무적으로 발생하는 빈도는 DCCP 가 보수적이면 극히 낮지만, schema 가 표현 못 하면 발생 시 정정이 불가능합니다.</p>
+  </section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="sm-deposit.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">18. Deposit Lifecycle</span></a>
+<a class="page-nav-link page-nav-next" href="tables-audit.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">20. Audit Log</span></a>
+</nav>
+</main>
+</div>
 <!-- Mermaid + svg-pan-zoom CDN -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
 <script src="assets/app.js"></script>
-
 </body>
 </html>

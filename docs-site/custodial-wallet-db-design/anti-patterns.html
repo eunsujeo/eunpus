@@ -1,164 +1,154 @@
 <!DOCTYPE html>
+
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Anti-patterns — 수탁형 지갑 DB 설계</title>
-  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Anti-patterns">
-  <meta name="robots" content="noindex">
-  <link rel="stylesheet" href="assets/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Anti-patterns — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Anti-patterns" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
 </head>
 <body>
-
-<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
-
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
 <div class="layout">
-
-<aside class="sidebar" aria-label="Table of contents">
-  <nav>
-    <div class="nav-section">
-      <h3 class="nav-section-title">Overview</h3>
-      <ul>
-        <li><a href="index.html">0. Overview</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">A. Architecture</h3>
-      <ul>
-        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
-        <li><a href="db-split.html">2. DB 분할</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">B. Workspace & Vault</h3>
-      <ul>
-        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
-        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">C. Users & Access</h3>
-      <ul>
-        <li><a href="tables-user.html">5. Users</a></li>
-        <li><a href="tables-auth.html">6. Auth credentials</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">D. Governance & Policy</h3>
-      <ul>
-        <li><a href="tables-role.html">7. 9 User Roles</a></li>
-        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
-        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
-      <ul>
-        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
-        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
-        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
-      <ul>
-        <li><a href="sm-transaction.html">13. Transaction State</a></li>
-        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
-        <li><a href="sm-approval.html">15. Approval State</a></li>
-        <li><a href="sm-signing.html">16. Signing State</a></li>
-        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
-        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
-      <ul>
-        <li><a href="tables-audit.html">19. Audit Log</a></li>
-        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
-        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
-        <li><a href="risks.html">22. Risks Register</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
-      <ul>
-        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
-        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
-        <li><a href="anti-patterns.html" class="active">25. Anti-patterns</a></li>
-      </ul>
-    </div>
-  </nav>
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace.html">3. Workspace</a></li>
+<li><a href="tables-vault.html">4. Vault</a></li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">14. Transaction State</a></li>
+<li><a href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a class="active" href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
 </aside>
-
 <main class="content">
-
 <section id="anti-patterns">
-    <h2>25. Anti-patterns</h2>
-    <span class="section-subtitle">발견 즉시 immediate stop</span>
-
-    <div class="callout callout-danger">
-      <div class="callout-title">절대 안 되는 5 가지 storage 오류</div>
-      <ol>
-        <li><strong>Forbidden 의 plaintext storage</strong> — private key / MPC share / recovery passphrase 를 DB column 에</li>
-        <li><strong>Append-only 의 silent rewrite</strong> — "잘못된 audit_event 를 UPDATE"</li>
-        <li><strong>Mutable 의 derived value 를 canonical 로</strong> — balance cache 를 ledger truth 로</li>
-        <li><strong>Runtime 의 persistence</strong> — MPC partial signature 를 Redis 에</li>
-        <li><strong>External 의 cache 를 fresh state 로 가정</strong> — Chain RPC cache 를 canonical 로</li>
-      </ol>
-    </div>
-
-    <h3>도메인 별 anti-patterns</h3>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Anti-pattern</th><th>왜 안 좋은가</th></tr></thead>
-        <tbody>
-          <tr><td><code>users.role</code> mutable + history 없음</td><td>누가 / 언제 / 왜 role 바뀌었는지 추적 불가</td></tr>
-          <tr><td><code>workspaces.owner_user_id</code> mutable</td><td>Owner identity = workspace identity, 변경은 Transfer Owner 절차만</td></tr>
-          <tr><td><code>audit_events</code> 의 row UPDATE / DELETE</td><td>hash chain 영구 손상 — high-severity violation</td></tr>
-          <tr><td><code>balance</code> 를 FLOAT 또는 DOUBLE</td><td>floating-point error — wei 단위 손실 가능</td></tr>
-          <tr><td>음수 balance 허용</td><td>overdraft = architectural violation</td></tr>
-          <tr><td><code>transactions.raw_payload_cbor</code> UPDATE</td><td>서명된 payload 변조 — TEE / SGX 의 의미 무력화</td></tr>
-          <tr><td><code>transactions.tx_hash</code> mutable</td><td>chain ↔ DB binding 깨짐</td></tr>
-          <tr><td><code>approval_decisions.verdict</code> UPDATE</td><td>사후 verdict 변경 = policy engine 무력화</td></tr>
-          <tr><td><code>signing_events</code> 의 partial_sig_hash mutable</td><td>사후 재서명 가능 — zero-trust 무력화</td></tr>
-          <tr><td>Console 에 "approve" 버튼 추가 (정책 우회)</td><td>governance separation 무력화 — Owner / Quorum 흐름 우회</td></tr>
-          <tr><td>TEE / SGX 없는 checkpoint (단순 SHA-256)</td><td>운영자가 hash 재계산 가능 — checkpoint 무력화</td></tr>
-          <tr><td>Reorg 처리 시 <code>chain_events</code> 이전 row UPDATE</td><td>append-only 위반</td></tr>
-          <tr><td>Finality threshold 무시 (1 confirmation 에서 ledger 반영)</td><td>reorg risk</td></tr>
-          <tr><td>Reconciliation Service 에 write 권한</td><td>권한 분리 위반</td></tr>
-          <tr><td>Mismatch 자동 정정 (사람 결정 없이)</td><td>audit defense 약화</td></tr>
-          <tr><td>API credential plaintext DB 저장</td><td>forbidden storage 위반</td></tr>
-          <tr><td>Recovery passphrase hash 저장</td><td>passphrase 자체가 forbidden — hash 도 brute-force 가능성</td></tr>
-          <tr><td>Online machine 에서 Workspace Keys Recovery 실행</td><td>Fireblocks 명시 SPOC 경고 — private key "considered exposed and compromised"</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="callout">
-      <div class="callout-title">이 문서가 다루지 않는 것</div>
-      <ul>
-        <li>SQL DDL 통째로 dump — 본 문서는 reasoning</li>
-        <li>ORM 매핑 — 언어 / framework 의존</li>
-        <li>MPC 프로토콜 detail — cryptography tutorial 회피 (MPC-CMP 의 라운드 구조는 본 문서 범위 외)</li>
-        <li>특정 MySQL 버전 / storage engine 추천 — 운영 환경 의존</li>
-        <li>TPS / latency / capacity 수치 — institution scale 의존</li>
-        <li>Fireblocks vendor 추천 — 본 문서는 Fireblocks 의 구조를 mirror 한 architecture reference</li>
-      </ul>
-    </div>
-  </section>
-
-  <nav class="page-nav" aria-label="Section navigation">
-    <a class="page-nav-link page-nav-prev" href="db-ops.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">24. DB 운영 (MySQL)</span></a>
-    <span class="page-nav-spacer"></span>
-  </nav>
-
+<h2>26. Anti-patterns</h2>
+<span class="section-subtitle">발견 즉시 immediate stop</span>
+<div class="callout callout-danger">
+<div class="callout-title">절대 안 되는 5 가지 storage 오류</div>
+<ol>
+<li><strong>Forbidden 의 plaintext storage</strong> — private key / MPC<span class="g" data-tip="Multi-Party Computation. 여러 당사자가 각자 키 조각만 들고 협력해서 서명 — 누구도 단독으로 키를 모름. 전체 키가 한 번도 한곳에 모이지 않음" tabindex="0">(?)</span> share / recovery passphrase<span class="g" data-tip="사용자 로그인 password 와 다름. mobile device 의 MPC key share 를 cloud 에 backup 할 때 암호화하는 별도 비밀" tabindex="0">(?)</span> 를 DB column 에</li>
+<li><strong>Append-only 의 silent rewrite</strong> — "잘못된 audit_event 를 UPDATE"</li>
+<li><strong>Mutable 의 derived value 를 canonical 로</strong> — balance cache 를 ledger truth 로</li>
+<li><strong>Runtime 의 persistence</strong> — MPC partial signature 를 Redis 에</li>
+<li><strong>External 의 cache 를 fresh state 로 가정</strong> — Chain RPC cache 를 canonical 로</li>
+</ol>
+</div>
+<h3>도메인 별 anti-patterns</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Anti-pattern</th><th>왜 안 좋은가</th></tr></thead>
+<tbody>
+<tr><td><code>users.role</code> mutable + history 없음</td><td>누가 / 언제 / 왜 role 바뀌었는지 추적 불가</td></tr>
+<tr><td><code>workspaces.owner_user_id</code> mutable</td><td>Owner identity = workspace<span class="g" data-tip="Fireblocks 의 최상위 격리·거버넌스 단위. 1 workspace = 1 Owner" tabindex="0">(?)</span> identity, 변경은 Transfer Owner 절차만</td></tr>
+<tr><td><code>audit_events</code> 의 row UPDATE / DELETE</td><td>hash chain<span class="g" data-tip="각 row 가 이전 row 의 해시를 포함하는 체인. 중간을 변조하면 뒤 모든 row 의 해시가 깨져서 변조 즉시 감지" tabindex="0">(?)</span> 영구 손상 — high-severity violation</td></tr>
+<tr><td><code>balance</code> 를 FLOAT 또는 DOUBLE</td><td>floating-point error — wei 단위 손실 가능</td></tr>
+<tr><td>음수 balance 허용</td><td>overdraft = architectural violation</td></tr>
+<tr><td><code>transactions.raw_payload_cbor</code> UPDATE</td><td>서명된 payload 변조 — TEE<span class="g" data-tip="Trusted Execution Environment. SGX 같은 봉인된 실행 환경의 일반 용어" tabindex="0">(?)</span> / SGX<span class="g" data-tip="Intel Software Guard Extensions. CPU 안의 봉인된 메모리 영역 (enclave). OS 나 hypervisor 도 그 안을 들여다볼 수 없음" tabindex="0">(?)</span> 의 의미 무력화</td></tr>
+<tr><td><code>transactions.tx_hash</code> mutable</td><td>chain ↔ DB binding 깨짐</td></tr>
+<tr><td><code>approval_decisions.verdict</code> UPDATE</td><td>사후 verdict 변경 = policy engine 무력화</td></tr>
+<tr><td><code>signing_events</code> 의 partial_sig_hash mutable</td><td>사후 재서명 가능 — zero-trust<span class="g" data-tip="모든 service handoff 마다 derived cert 로 다시 검증. internal network 라도 신뢰 안 함" tabindex="0">(?)</span> 무력화</td></tr>
+<tr><td>Console 에 "approve" 버튼 추가 (정책 우회)</td><td>governance separation 무력화 — Owner / Quorum 흐름 우회</td></tr>
+<tr><td>TEE / SGX 없는 checkpoint (단순 SHA-256)</td><td>운영자가 hash 재계산 가능 — checkpoint 무력화</td></tr>
+<tr><td>Reorg 처리 시 <code>chain_events</code> 이전 row UPDATE</td><td>append-only<span class="g" data-tip="DB 의 추가 전용 규칙. 한 번 들어간 row 는 UPDATE / DELETE 절대 불가. trigger 로 강제" tabindex="0">(?)</span> 위반</td></tr>
+<tr><td>Finality threshold 무시 (1 confirmation 에서 ledger 반영)</td><td>reorg<span class="g" data-tip="Blockchain reorganization. 확정된 듯한 블록이 사라지고 다른 체인이 채택되는 현상" tabindex="0">(?)</span> risk</td></tr>
+<tr><td>Reconciliation Service 에 write 권한</td><td>권한 분리 위반</td></tr>
+<tr><td>Mismatch 자동 정정 (사람 결정 없이)</td><td>audit defense 약화</td></tr>
+<tr><td>API credential plaintext DB 저장</td><td>forbidden storage<span class="g" data-tip="DB 의 어느 컬럼에도 저장 금지 영역. private key / MPC share / passphrase 등 — 평문도 cipher 도 안 됨" tabindex="0">(?)</span> 위반</td></tr>
+<tr><td>Recovery passphrase hash 저장</td><td>passphrase 자체가 forbidden — hash 도 brute-force 가능성</td></tr>
+<tr><td>Online machine 에서 Workspace<span class="g" data-tip="Fireblocks 의 최상위 격리·거버넌스 단위. 1 workspace = 1 Owner. Slack workspace 와 무관" tabindex="0">(?)</span> Keys Recovery 실행</td><td>Fireblocks 명시 SPOC 경고 — private key "considered exposed and compromised"</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout">
+<div class="callout-title">이 문서가 다루지 않는 것</div>
+<ul>
+<li>SQL DDL 통째로 dump — 본 문서는 reasoning</li>
+<li>ORM 매핑 — 언어 / framework 의존</li>
+<li>MPC 프로토콜 detail — cryptography tutorial 회피 (MPC-CMP<span class="g" data-tip="MPC 의 한 종류. Canetti–Makriyannis–Peled (2020) 가 만든 threshold ECDSA 프로토콜. GG18 의 8 라운드를 4 라운드로 단축. Fireblocks 가 사용" tabindex="0">(?)</span> 의 라운드 구조는 본 문서 범위 외)</li>
+<li>특정 MySQL 버전 / storage engine 추천 — 운영 환경 의존</li>
+<li>TPS / latency / capacity 수치 — institution scale 의존</li>
+<li>Fireblocks vendor 추천 — 본 문서는 Fireblocks 의 구조를 mirror 한 architecture reference</li>
+</ul>
+</div>
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="db-ops.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">25. DB 운영 (MySQL)</span></a>
+<span class="page-nav-spacer"></span>
+</nav>
 </main>
 </div>
-
 <!-- Mermaid + svg-pan-zoom CDN -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
 <script src="assets/app.js"></script>
-
 </body>
 </html>

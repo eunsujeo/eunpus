@@ -1,135 +1,128 @@
 <!DOCTYPE html>
+
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Recovery Passphrase · Workspace Keys Backup — 수탁형 지갑 DB 설계</title>
-  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Recovery Passphrase · Workspace Keys Backup">
-  <meta name="robots" content="noindex">
-  <link rel="stylesheet" href="assets/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Recovery Passphrase · Workspace Keys Backup — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Recovery Passphrase · Workspace Keys Backup" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
 </head>
 <body>
-
-<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
-
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
 <div class="layout">
-
-<aside class="sidebar" aria-label="Table of contents">
-  <nav>
-    <div class="nav-section">
-      <h3 class="nav-section-title">Overview</h3>
-      <ul>
-        <li><a href="index.html">0. Overview</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">A. Architecture</h3>
-      <ul>
-        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
-        <li><a href="db-split.html">2. DB 분할</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">B. Workspace & Vault</h3>
-      <ul>
-        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
-        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">C. Users & Access</h3>
-      <ul>
-        <li><a href="tables-user.html">5. Users</a></li>
-        <li><a href="tables-auth.html">6. Auth credentials</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">D. Governance & Policy</h3>
-      <ul>
-        <li><a href="tables-role.html">7. 9 User Roles</a></li>
-        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
-        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
-      <ul>
-        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
-        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
-        <li><a href="tables-recovery.html" class="active">12. Recovery & Backup</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
-      <ul>
-        <li><a href="sm-transaction.html">13. Transaction State</a></li>
-        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
-        <li><a href="sm-approval.html">15. Approval State</a></li>
-        <li><a href="sm-signing.html">16. Signing State</a></li>
-        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
-        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
-      <ul>
-        <li><a href="tables-audit.html">19. Audit Log</a></li>
-        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
-        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
-        <li><a href="risks.html">22. Risks Register</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
-      <ul>
-        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
-        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
-        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
-      </ul>
-    </div>
-  </nav>
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace.html">3. Workspace</a></li>
+<li><a href="tables-vault.html">4. Vault</a></li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a class="active" href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">14. Transaction State</a></li>
+<li><a href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
 </aside>
-
 <main class="content">
-
 <section id="tables-recovery">
-    <h2>12. Recovery Passphrase &amp; Workspace Keys Backup</h2>
-    <span class="section-subtitle">Stage 5 + 29 + 30 + 31 누적 — 3 recovery scenarios · 6-file package · 4 secrets · SPOC 경고</span>
-
-    <h3>Recovery Passphrase 의 역할</h3>
-    <p><code>recovery-passphrase.md</code>, p.1 직접 인용:</p>
-    <blockquote style="border-left:3px solid var(--border-callout); padding-left:14px; color:var(--text-secondary); font-style:italic">
-      "Fireblocks uses the recovery passphrase to create an encrypted backup of the mobile device's private key share, which is stored securely in Fireblocks' cloud servers."
+<h2>13. Recovery Passphrase<span class="g" data-tip="사용자 로그인 password 와 다름. mobile device 의 MPC key share 를 암호화 backup 하는 별도 비밀" tabindex="0">(?)</span> &amp; Workspace<span class="g" data-tip="Fireblocks 의 최상위 격리·거버넌스 단위. 1 workspace = 1 Owner. Slack workspace 와 무관" tabindex="0">(?)</span> Keys Backup</h2>
+<span class="section-subtitle">3 recovery scenarios · 6-file package · 4 secrets · SPOC 경고</span>
+<h3>Recovery Passphrase 의 역할</h3>
+<p><code>recovery-passphrase.md</code>, p.1 직접 인용:</p>
+<blockquote style="border-left:3px solid var(--border-callout); padding-left:14px; color:var(--text-secondary); font-style:italic">
+      "Fireblocks uses the recovery passphrase<span class="g" data-tip="사용자 로그인 password 와 다름. mobile device 의 MPC key share 를 cloud 에 backup 할 때 암호화하는 별도 비밀" tabindex="0">(?)</span> to create an encrypted backup of the mobile device's private key share, which is stored securely in Fireblocks' cloud servers."
     </blockquote>
-    <ul>
-      <li><strong>누가 생성</strong>: Owner / Admin / Signer — initial user setup 시 mobile app 에서 필수 생성</li>
-      <li><strong>Requirements</strong>: ≥10 chars + ≥1 capital + ≥1 number + ≥1 special. Mobile client-side validate</li>
-      <li><strong>역할</strong>: Mobile device 의 MPC key share 를 cloud backup 으로 암호화하는 키</li>
-      <li><strong>저장 위치</strong>: <strong>Owner 가 별도 보관 — DB 에는 hash 도 저장 안 함</strong> (forbidden storage)</li>
-    </ul>
-
-    <h3>3 Recovery Scenarios</h3>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Scenario</th><th>사용 자산</th><th>사용처</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Owner key share recovery</strong></td><td>본인 recovery passphrase (또는 password-less)</td><td>Owner device 분실 / 신규</td></tr>
-          <tr><td><strong>Admin/Signer key share recovery</strong></td><td><strong>다른 authorized signer</strong>의 recovery passphrase</td><td>Admin / Signer device 분실</td></tr>
-          <tr><td><strong>Workspace Keys Recovery</strong></td><td>Recovery passphrase + Workspace Keys Backup</td><td>Owner의 <strong>full private key 재구성</strong></td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3>Verify Passphrase + Periodic Verification</h3>
-    <ul>
-      <li>Mobile app <code>Settings &gt; Verify recovery passphrase</code> — cloud 에서 backup download → 입력한 passphrase 로 decrypt 시도</li>
-      <li><strong>3회 연속 실패 → 5분 lockout</strong></li>
-      <li><strong>월 1회 알림</strong>, Owner/Admin/Signer 대상 (iOS 2.5.7+, Android 2.5.2+)</li>
-      <li>Owner / Admin 이 workspace audit logs 에서 key share risk status 검토 가능 — log 에 verification 시점 + 정상 verify 여부 포함</li>
-    </ul>
-
-    <h3>Workspace Keys Backup (★ Stage 30 — 6 files)</h3>
-    <p><code>generating-a-workspace-key-backup-package-fireblocks-recovery-utility.md</code> 직접 인용: <em>"The package is composed of six files that contain the following key share components."</em></p>
+<ul>
+<li><strong>누가 생성</strong>: Owner / Admin / Signer — initial user setup 시 mobile app 에서 필수 생성</li>
+<li><strong>Requirements</strong>: ≥10 chars + ≥1 capital + ≥1 number + ≥1 special. Mobile client-side validate</li>
+<li><strong>역할</strong>: Mobile device 의 MPC<span class="g" data-tip="Multi-Party Computation. 여러 당사자가 각자 키 조각만 들고 협력해서 서명 — 누구도 단독으로 키를 모름. 전체 키가 한 번도 한곳에 모이지 않음" tabindex="0">(?)</span> key share 를 cloud backup 으로 암호화하는 키</li>
+<li><strong>저장 위치</strong>: <strong>Owner 가 별도 보관 — DB 에는 hash 도 저장 안 함</strong> (forbidden storage<span class="g" data-tip="DB 의 어느 컬럼에도 저장 금지 영역. private key / MPC share / passphrase 등 — 평문도 cipher 도 안 됨" tabindex="0">(?)</span>)</li>
+</ul>
+<h3>3 Recovery Scenarios</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Scenario</th><th>사용 자산</th><th>사용처</th></tr></thead>
+<tbody>
+<tr><td><strong>Owner key share recovery</strong></td><td>본인 recovery passphrase (또는 password-less)</td><td>Owner device 분실 / 신규</td></tr>
+<tr><td><strong>Admin/Signer key share recovery</strong></td><td><strong>다른 authorized signer</strong>의 recovery passphrase</td><td>Admin / Signer device 분실</td></tr>
+<tr><td><strong>Workspace Keys Recovery</strong></td><td>Recovery passphrase + Workspace Keys Backup</td><td>Owner의 <strong>full private key 재구성</strong></td></tr>
+</tbody>
+</table>
+</div>
+<h3>Verify Passphrase + Periodic Verification</h3>
+<ul>
+<li>Mobile app <code>Settings &gt; Verify recovery passphrase</code> — cloud 에서 backup download → 입력한 passphrase 로 decrypt 시도</li>
+<li><strong>3회 연속 실패 → 5분 lockout</strong></li>
+<li><strong>월 1회 알림</strong>, Owner/Admin/Signer 대상 (iOS 2.5.7+, Android 2.5.2+)</li>
+<li>Owner / Admin 이 workspace<span class="g" data-tip="Fireblocks 의 최상위 격리·거버넌스 단위. 1 workspace = 1 Owner" tabindex="0">(?)</span> audit logs 에서 key share risk status 검토 가능 — log 에 verification 시점 + 정상 verify 여부 포함</li>
+</ul>
+<h3>Workspace Keys Backup (★ 6 files)</h3>
+<p><code>generating-a-workspace-key-backup-package-fireblocks-recovery-utility.md</code> 직접 인용: <em>"The package is composed of six files that contain the following key share components."</em></p>
 
     <pre>Backup Package — 6 encrypted shares:
   ┌── ECDSA shares (3 files)
@@ -141,55 +134,49 @@
       ├── FB Cloud share #1   — RSA-4096 encrypted
       └── FB Cloud share #2   — RSA-4096 encrypted</pre>
 
-    <h3>Hosted MPC Backup — 3-share variant (Stage 29)</h3>
-    <p><code>hosted-mpc-backup-and-recovery.md</code>: SaaS MPC 와 달리 <strong>Owner mobile + 2 Guard Co-Signer</strong> 가 함께 backup 에 참여.</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Share</th><th>출처</th><th>암호화 방식</th><th>전달 경로</th></tr></thead>
-        <tbody>
-          <tr><td>1. Mobile key share</td><td>Owner mobile device</td><td>passphrase-encrypted</td><td>encrypted kit via email → download → air-gapped machine #1</td></tr>
-          <tr><td>2. Guard Co-Signer #1 share</td><td>Guard CS#1 (SGX)</td><td>RSA public key (customer 업로드)</td><td>자동 생성 → local host file</td></tr>
-          <tr><td>3. Guard Co-Signer #2 share</td><td>Guard CS#2 (SGX)</td><td>RSA public key</td><td>자동 생성 → local host file</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p>→ <strong>Asymmetric encryption layers</strong>: mobile = passphrase, Guard = RSA. <strong>2 air-gapped machines</strong> 요건 (download + assembly 분리).</p>
-
-    <h3>Reconstruction — 4 secrets (Stage 31)</h3>
-    <p>Recovery Utility 의 offline-only procedure 가 요구하는 4 가지 비밀:</p>
-    <ol>
-      <li><strong>Recovery Kit ZIP</strong> (6-file package)</li>
-      <li><strong>RSA private key</strong> (Guard share 의 복호화)</li>
-      <li><strong>Mobile App Recovery Passphrase</strong></li>
-      <li><strong>RSA Private Key Passphrase</strong></li>
-    </ol>
-
-    <div class="callout callout-danger">
-      <div class="callout-title">SPOC 경고 (★ Fireblocks 직접 인용)</div>
-      <p><em>"Performing this procedure on an online machine will result in your private key being considered exposed and compromised."</em></p>
-      <p>→ DR Recovery Utility 는 <strong>offline air-gapped machine</strong> 에서만 사용. Online 실행 = 즉시 key compromise.</p>
-    </div>
-
-    <h3>Auto-passphrase (Enterprise 옵션, Stage 6)</h3>
-    <ul>
-      <li><strong>Support enable 필요</strong> (자체 활성 불가)</li>
-      <li>Mobile device 가 <strong>secure random passphrase 자동 생성</strong> → 고객 RSA key 로 암호화 → Fireblocks 에 저장</li>
-      <li><strong>Offline machine 에서 decrypt</strong> (recovery 시)</li>
-      <li>효과: 사용자 인적 오류 (분실/유출) 제거, 표준화</li>
-      <li>Trade-off: 새로운 SPOF = RSA private key 의 안전 보관</li>
-    </ul>
-
-    <h3>DB Schema (auditdb, all append-only)</h3>
+    <h3>Hosted MPC Backup — 3-share variant</h3>
+<p><code>hosted-mpc-backup-and-recovery.md</code>: SaaS MPC 와 달리 <strong>Owner mobile + 2 Guard Co-Signer</strong> 가 함께 backup 에 참여.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Share</th><th>출처</th><th>암호화 방식</th><th>전달 경로</th></tr></thead>
+<tbody>
+<tr><td>1. Mobile key share</td><td>Owner mobile device</td><td>passphrase-encrypted</td><td>encrypted kit via email → download → air-gapped machine #1</td></tr>
+<tr><td>2. Guard Co-Signer #1 share</td><td>Guard CS#1 (SGX<span class="g" data-tip="Intel Software Guard Extensions. CPU 안의 봉인된 메모리 영역 (enclave). OS 나 hypervisor 도 그 안을 들여다볼 수 없음" tabindex="0">(?)</span>)</td><td>RSA public key (customer 업로드)</td><td>자동 생성 → local host file</td></tr>
+<tr><td>3. Guard Co-Signer #2 share</td><td>Guard CS#2 (SGX)</td><td>RSA public key</td><td>자동 생성 → local host file</td></tr>
+</tbody>
+</table>
+</div>
+<p>→ <strong>Asymmetric encryption layers</strong>: mobile = passphrase, Guard = RSA. <strong>2 air-gapped machines</strong> 요건 (download + assembly 분리).</p>
+<h3>Reconstruction — 4 secrets</h3>
+<p>Recovery Utility 의 offline-only procedure 가 요구하는 4 가지 비밀:</p>
+<ol>
+<li><strong>Recovery Kit ZIP</strong> (6-file package)</li>
+<li><strong>RSA private key</strong> (Guard share 의 복호화)</li>
+<li><strong>Mobile App Recovery Passphrase</strong></li>
+<li><strong>RSA Private Key Passphrase</strong></li>
+</ol>
+<div class="callout callout-danger">
+<div class="callout-title">SPOC 경고 (★ Fireblocks 직접 인용)</div>
+<p><em>"Performing this procedure on an online machine will result in your private key being considered exposed and compromised."</em></p>
+<p>→ DR Recovery Utility 는 <strong>offline air-gapped machine</strong> 에서만 사용. Online 실행 = 즉시 key compromise.</p>
+</div>
+<h3>Auto-passphrase (Enterprise 옵션)</h3>
+<ul>
+<li><strong>Support enable 필요</strong> (자체 활성 불가)</li>
+<li>Mobile device 가 <strong>secure random passphrase 자동 생성</strong> → 고객 RSA key 로 암호화 → Fireblocks 에 저장</li>
+<li><strong>Offline machine 에서 decrypt</strong> (recovery 시)</li>
+<li>효과: 사용자 인적 오류 (분실/유출) 제거, 표준화</li>
+<li>Trade-off: 새로운 SPOF = RSA private key 의 안전 보관</li>
+</ul>
+<h3>DB Schema (auditdb, all append-only<span class="g" data-tip="DB 의 추가 전용 규칙. 한 번 들어간 row 는 UPDATE / DELETE 절대 불가. trigger 로 강제" tabindex="0">(?)</span>)</h3>
     <pre><code>CREATE TABLE recovery_events (
   id                  BINARY(16) PRIMARY KEY,
   workspace_id        BINARY(16) NOT NULL,
-  scenario_type       ENUM('owner-key-share', 'admin-signer-key-share',
-                            'workspace-keys-recovery') NOT NULL,
+  scenario_type       ENUM('owner-key-share', 'admin-signer-key-share', 'workspace-keys-recovery') NOT NULL,
   initiated_by_user_id BINARY(16) NOT NULL,
   initiated_at        DATETIME(6) NOT NULL,
   completed_at        DATETIME(6),                    -- ★ set-once
-  status              ENUM('initiated', 'verifying', 'reconstructed',
-                            'failed', 'aborted') NOT NULL,
+  status              ENUM('initiated', 'verifying', 'reconstructed', 'failed', 'aborted') NOT NULL,
   air_gapped_machine_1_attested BOOLEAN,             -- DCAP attestation evidence
   air_gapped_machine_2_attested BOOLEAN,
   KEY (workspace_id, scenario_type)
@@ -220,19 +207,15 @@ CREATE TABLE workspace_keys_backups (
 -- ★ Forbidden columns 의 ABSENCE 가 schema 자체로 보이도록 audit
 -- 절대 추가 X: passphrase_plaintext, passphrase_hash, rsa_private_key, backup_blob_plaintext</code></pre>
   </section>
-
-  <nav class="page-nav" aria-label="Section navigation">
-    <a class="page-nav-link page-nav-prev" href="tables-signer.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">11. Cosigner · Callback</span></a>
-    <a class="page-nav-link page-nav-next" href="sm-transaction.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">13. Transaction State</span></a>
-  </nav>
-
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-signer.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">11. Cosigner<span class="g" data-tip="자동 서명 컴포넌트. Mobile Cosigner (사용자 device) / API Cosigner (customer server) / Fireblocks Cloud Cosigner (Azure SGX)" tabindex="0">(?)</span> · Callback</span></a>
+<a class="page-nav-link page-nav-next" href="sm-transaction.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">14. Transaction State</span></a>
+</nav>
 </main>
 </div>
-
 <!-- Mermaid + svg-pan-zoom CDN -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
 <script src="assets/app.js"></script>
-
 </body>
 </html>

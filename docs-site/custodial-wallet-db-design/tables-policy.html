@@ -1,164 +1,151 @@
 <!DOCTYPE html>
+
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Policy & TAP Rules — 수탁형 지갑 DB 설계</title>
-  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Policy & TAP Rules">
-  <meta name="robots" content="noindex">
-  <link rel="stylesheet" href="assets/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Policy &amp; TAP Rules — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Policy &amp; TAP Rules" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
 </head>
 <body>
-
-<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
-
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
 <div class="layout">
-
-<aside class="sidebar" aria-label="Table of contents">
-  <nav>
-    <div class="nav-section">
-      <h3 class="nav-section-title">Overview</h3>
-      <ul>
-        <li><a href="index.html">0. Overview</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">A. Architecture</h3>
-      <ul>
-        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
-        <li><a href="db-split.html">2. DB 분할</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">B. Workspace & Vault</h3>
-      <ul>
-        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
-        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">C. Users & Access</h3>
-      <ul>
-        <li><a href="tables-user.html">5. Users</a></li>
-        <li><a href="tables-auth.html">6. Auth credentials</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">D. Governance & Policy</h3>
-      <ul>
-        <li><a href="tables-role.html">7. 9 User Roles</a></li>
-        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
-        <li><a href="tables-policy.html" class="active">9. Policy · TAP</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
-      <ul>
-        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
-        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
-        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
-      <ul>
-        <li><a href="sm-transaction.html">13. Transaction State</a></li>
-        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
-        <li><a href="sm-approval.html">15. Approval State</a></li>
-        <li><a href="sm-signing.html">16. Signing State</a></li>
-        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
-        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
-      <ul>
-        <li><a href="tables-audit.html">19. Audit Log</a></li>
-        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
-        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
-        <li><a href="risks.html">22. Risks Register</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
-      <ul>
-        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
-        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
-        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
-      </ul>
-    </div>
-  </nav>
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace.html">3. Workspace</a></li>
+<li><a href="tables-vault.html">4. Vault</a></li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a class="active" href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">14. Transaction State</a></li>
+<li><a href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
 </aside>
-
 <main class="content">
-
 <section id="tables-policy">
-    <h2>9. Policy &amp; TAP Rules</h2>
-    <span class="section-subtitle">Stage 10 정식 명세 · 2 component · 3 action · designated signer · DCCP</span>
-
-    <div class="callout">
-      <div class="callout-title">Policy = Primary Security Control</div>
-      <p><code>about-policies.md</code>, p.1 직접 인용: <em>"Policies are your primary security control in your workspace."</em> Fireblocks 보안 모델의 first-class spine.</p>
-    </div>
-
-    <h3>Policy Rule 의 2 Component (★ Stage 10)</h3>
-    <ul>
-      <li><strong>Parameters (= Scope)</strong>: initiator / source / destination / asset 등 characteristic</li>
-      <li><strong>Actions</strong>: Allow / Approved by / Block (→ <a href="sm-approval.html">15. Approval State</a>)</li>
-    </ul>
-
-    <h3>Policy 종류 (3 평면 — Stage 6+10)</h3>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>종류</th><th>역할</th><th>평가 시점</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Fireblocks Policies (TAP)</strong></td><td>일반 tx 단위 rule. 본 페이지 주 대상</td><td>Step 6-7 (Policy Engine SGX)</td></tr>
-          <tr><td><strong>Deposit Control and Confirmation Policy (DCCP)</strong></td><td>blockchain confirmation 횟수 정책 (incoming + outgoing). Clear 전 = inflow/outflow state lock</td><td>Confirming → Completed transition trigger</td></tr>
-          <tr><td><strong>AML Transaction Screening Policy</strong></td><td>AML provider 통합. workspace-level default 가능 (fail-on-unknown vs pass-on-unknown)</td><td>Step 5b (Screening Service)</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3>Designated Signer 메커니즘 (★ NS 라벨)</h3>
-    <p>Policy 가 특정 tx type 의 서명자를 지정 → MPC 키 없는 NSA / Editor 가 그 tx 타입을 initiate 가능.</p>
-    <ul>
-      <li>NSA: <em>"can initiate transactions when the Policy assigns a designated signer"</em></li>
-      <li>Editor: <em>"can also initiate certain transactions if the Policy defines another user capable of signing as a designated signer for that transaction type"</em></li>
-      <li>적용 범위: NSA / Editor 는 <strong>internal exchange transfer 를 제외한 모든 tx</strong> 를 designated signer 흐름으로 initiate</li>
-    </ul>
-
-    <h3>Second Authorizer</h3>
-    <p>Non-Signing Admin / Approver 를 두 번째 authorizer 로 정의 가능 (Owner의 책임에 명시).</p>
-
-    <h3>User Group in Policy</h3>
-    <ul>
-      <li>User group 으로 다중 사용자를 single rule 에 매핑 → team 변경 시 rule 수정 불필요</li>
-      <li>Initiator + Approved by 양쪽에 user group 사용 가능</li>
-      <li><strong>Sub-quorum</strong>: <em>"requires any two members of a user group called Management to approve"</em> — rule-level N-of-M</li>
-    </ul>
-
-    <h3>변경 거버넌스</h3>
-    <ul>
-      <li><strong>Policy 변경</strong>: <strong>Q+O</strong> (Admin Quorum + Owner) 필수 — <code>user-roles.md</code>, p.7 권한표 *Approve workspace policies / Policy changes* 행</li>
-      <li><strong>관리권</strong>: Owner + Admin-level user (NSA 포함). Console 에서 작성, <strong>assigned approval group</strong> 이 변경 approve</li>
-      <li><strong>mobile app 승인</strong>: <em>"Transaction Policy changes"</em> 가 workspace settings 승인 항목에 명시 — 실제 승인은 mobile 에서</li>
-    </ul>
-
-    <h3>Premium Features</h3>
-    <p>Raw Signing / Mint / Burn = premium feature, 별도 구매. Vault Structure Best Practices 의 Mint/Burn/Pause/Deploy/Upgrade segregated vault 권장과 정합.</p>
-
-    <h3>Whitelist vs OTA — Policy 의 방어 차이</h3>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Address path</th><th>Policy 의 역할</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Whitelisted address</strong></td><td>Admin Quorum 가 address-level approval — Policy 는 추가 rule (cap, approver) 적용</td></tr>
-          <tr><td><strong>One-Time Address (OTA)</strong></td><td>Address-level Admin Quorum 없음 — <strong>Policy 가 사실상 유일한 자동 방어선</strong> (preselected user/group/vault, threshold approval)</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3>DB Schema</h3>
+<h2>10. Policy &amp; TAP<span class="g" data-tip="Transaction Authorization Policy. Fireblocks 의 거래 단위 승인 정책 엔진" tabindex="0">(?)</span> Rules</h2>
+<span class="section-subtitle">정식 명세 · 2 component · 3 action · designated signer · DCCP<span class="g" data-tip="Deposit Control and Confirmation Policy. 입금 confirmation 횟수 기반 정책. clear 전까지 자금 lock" tabindex="0">(?)</span></span>
+<div class="callout">
+<div class="callout-title">Policy = Primary Security Control</div>
+<p><code>about-policies.md</code>, p.1 직접 인용: <em>"Policies are your primary security control in your workspace<span class="g" data-tip="Fireblocks 의 최상위 격리·거버넌스 단위. 1 workspace = 1 Owner" tabindex="0">(?)</span>."</em> Fireblocks 보안 모델의 first-class spine.</p>
+</div>
+<h3>Policy Rule 의 2 Component </h3>
+<ul>
+<li><strong>Parameters (= Scope)</strong>: initiator / source / destination / asset 등 characteristic</li>
+<li><strong>Actions</strong>: Allow / Approved by / Block (→ <a href="sm-approval.html">16. Approval State</a>)</li>
+</ul>
+<h3>Policy 종류 (3 평면)</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>종류</th><th>역할</th><th>평가 시점</th></tr></thead>
+<tbody>
+<tr><td><strong>Fireblocks Policies (TAP)</strong></td><td>일반 tx 단위 rule. 본 페이지 주 대상</td><td>Step 6-7 (Policy Engine SGX<span class="g" data-tip="Intel Software Guard Extensions. CPU 안의 봉인된 메모리 영역 (enclave). OS 나 hypervisor 도 그 안을 들여다볼 수 없음" tabindex="0">(?)</span>)</td></tr>
+<tr><td><strong>Deposit Control and Confirmation Policy (DCCP)</strong></td><td>blockchain confirmation 횟수 정책 (incoming + outgoing). Clear 전 = inflow/outflow state lock</td><td>Confirming → Completed transition trigger</td></tr>
+<tr><td><strong>AML<span class="g" data-tip="Anti-Money Laundering. 자금세탁 방지 규제. tx 별 KYC / sanction screening 강제" tabindex="0">(?)</span> Transaction Screening Policy</strong></td><td>AML provider 통합. workspace-level default 가능 (fail-on-unknown vs pass-on-unknown)</td><td>Step 5b (Screening Service)</td></tr>
+</tbody>
+</table>
+</div>
+<h3>Designated Signer 메커니즘 (★ NS 라벨)</h3>
+<p>Policy 가 특정 tx type 의 서명자를 지정 → MPC<span class="g" data-tip="Multi-Party Computation. 여러 당사자가 각자 키 조각만 들고 협력해서 서명 — 누구도 단독으로 키를 모름. 전체 키가 한 번도 한곳에 모이지 않음" tabindex="0">(?)</span> 키 없는 NSA / Editor 가 그 tx 타입을 initiate 가능.</p>
+<ul>
+<li>NSA: <em>"can initiate transactions when the Policy assigns a designated signer"</em></li>
+<li>Editor: <em>"can also initiate certain transactions if the Policy defines another user capable of signing as a designated signer for that transaction type"</em></li>
+<li>적용 범위: NSA / Editor 는 <strong>internal exchange transfer 를 제외한 모든 tx</strong> 를 designated signer 흐름으로 initiate</li>
+</ul>
+<h3>Second Authorizer</h3>
+<p>Non-Signing Admin / Approver 를 두 번째 authorizer 로 정의 가능 (Owner의 책임에 명시).</p>
+<h3>User Group in Policy</h3>
+<ul>
+<li>User group 으로 다중 사용자를 single rule 에 매핑 → team 변경 시 rule 수정 불필요</li>
+<li>Initiator + Approved by 양쪽에 user group 사용 가능</li>
+<li><strong>Sub-quorum</strong>: <em>"requires any two members of a user group called Management to approve"</em> — rule-level N-of-M</li>
+</ul>
+<h3>변경 거버넌스</h3>
+<ul>
+<li><strong>Policy 변경</strong>: <strong>Q+O</strong> (Admin Quorum<span class="g" data-tip="관리자급 사용자의 다수결 승인 그룹. 회사 이사회 정족수 개념. Q (Quorum) / Q+O (Quorum + Owner) 라벨로 표시" tabindex="0">(?)</span> + Owner) 필수 — <code>user-roles.md</code>, p.7 권한표 *Approve workspace policies / Policy changes* 행</li>
+<li><strong>관리권</strong>: Owner + Admin-level user (NSA 포함). Console 에서 작성, <strong>assigned approval group</strong> 이 변경 approve</li>
+<li><strong>mobile app 승인</strong>: <em>"Transaction Policy changes"</em> 가 workspace settings 승인 항목에 명시 — 실제 승인은 mobile 에서</li>
+</ul>
+<h3>Premium Features</h3>
+<p>Raw Signing / Mint / Burn = premium feature, 별도 구매. Vault Structure Best Practices 의 Mint/Burn/Pause/Deploy/Upgrade segregated vault 권장과 정합.</p>
+<h3>Whitelist vs OTA — Policy 의 방어 차이</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Address path</th><th>Policy 의 역할</th></tr></thead>
+<tbody>
+<tr><td><strong>Whitelisted address</strong></td><td>Admin Quorum 가 address-level approval — Policy 는 추가 rule (cap, approver) 적용</td></tr>
+<tr><td><strong>One-Time Address (OTA)</strong></td><td>Address-level Admin Quorum 없음 — <strong>Policy 가 사실상 유일한 자동 방어선</strong> (preselected user/group/vault, threshold approval)</td></tr>
+</tbody>
+</table>
+</div>
+<h3>DB Schema</h3>
     <pre><code>CREATE TABLE policies (
   id              BINARY(16) PRIMARY KEY,
   workspace_id    BINARY(16) NOT NULL,
@@ -209,21 +196,17 @@ CREATE TABLE user_group_members (
 );</code></pre>
 
     <h3>BLOCKED rule number</h3>
-    <p>tx 가 <code>BLOCKED</code> status 도달 시 violated rule number 표시 — <code>transactions.blocked_by_rule_id</code> + <code>blocked_by_rule_number</code> 컬럼.</p>
-  </section>
-
-  <nav class="page-nav" aria-label="Section navigation">
-    <a class="page-nav-link page-nav-prev" href="tables-quorum.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">8. Admin Quorum · AG</span></a>
-    <a class="page-nav-link page-nav-next" href="tables-mpc.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">10. MPC Key Share</span></a>
-  </nav>
-
+<p>tx 가 <code>BLOCKED</code> status 도달 시 violated rule number 표시 — <code>transactions.blocked_by_rule_id</code> + <code>blocked_by_rule_number</code> 컬럼.</p>
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-quorum.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">9. Admin Quorum · AG</span></a>
+<a class="page-nav-link page-nav-next" href="tables-mpc.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">11. MPC Key Share</span></a>
+</nav>
 </main>
 </div>
-
 <!-- Mermaid + svg-pan-zoom CDN -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
 <script src="assets/app.js"></script>
-
 </body>
 </html>

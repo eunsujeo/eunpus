@@ -1,117 +1,111 @@
 <!DOCTYPE html>
+
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Users (Console / API / Mobile) — 수탁형 지갑 DB 설계</title>
-  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Users (Console / API / Mobile)">
-  <meta name="robots" content="noindex">
-  <link rel="stylesheet" href="assets/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Users (Console / API / Mobile) — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Users (Console / API / Mobile)" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
 </head>
 <body>
-
-<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
-
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
 <div class="layout">
-
-<aside class="sidebar" aria-label="Table of contents">
-  <nav>
-    <div class="nav-section">
-      <h3 class="nav-section-title">Overview</h3>
-      <ul>
-        <li><a href="index.html">0. Overview</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">A. Architecture</h3>
-      <ul>
-        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
-        <li><a href="db-split.html">2. DB 분할</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">B. Workspace & Vault</h3>
-      <ul>
-        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
-        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">C. Users & Access</h3>
-      <ul>
-        <li><a href="tables-user.html" class="active">5. Users</a></li>
-        <li><a href="tables-auth.html">6. Auth credentials</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">D. Governance & Policy</h3>
-      <ul>
-        <li><a href="tables-role.html">7. 9 User Roles</a></li>
-        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
-        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
-      <ul>
-        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
-        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
-        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
-      <ul>
-        <li><a href="sm-transaction.html">13. Transaction State</a></li>
-        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
-        <li><a href="sm-approval.html">15. Approval State</a></li>
-        <li><a href="sm-signing.html">16. Signing State</a></li>
-        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
-        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
-      <ul>
-        <li><a href="tables-audit.html">19. Audit Log</a></li>
-        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
-        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
-        <li><a href="risks.html">22. Risks Register</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
-      <ul>
-        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
-        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
-        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
-      </ul>
-    </div>
-  </nav>
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace.html">3. Workspace</a></li>
+<li><a href="tables-vault.html">4. Vault</a></li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a class="active" href="tables-user.html">6. Users</a></li>
+<li><a href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">14. Transaction State</a></li>
+<li><a href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
 </aside>
-
 <main class="content">
-
 <section id="tables-user">
-    <h2>5. Users (Console / API / Mobile)</h2>
-    <span class="section-subtitle">2 user type · 9 role · mobile device 의 secure enclave host</span>
-
-    <h3>User Type 2 종</h3>
-    <p><code>user-roles.md</code>, p.1: 사용자 유형은 <strong>Console user / API user</strong> 2 종. <strong>권한 매트릭스는 동일한 9 role</strong> 사용. 인증·자격증명·자동화 표면이 다름.</p>
-
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th></th><th>Console User</th><th>API User</th></tr></thead>
-        <tbody>
-          <tr><td><strong>인증</strong></td><td>email + (password 또는 SSO via IdP) + <strong>TOTP 2FA 필수</strong></td><td>CSR/X.509 (RSA 4096) + API key</td></tr>
-          <tr><td><strong>인터페이스</strong></td><td>Fireblocks Console (Web)</td><td>REST API / SDK / API Co-signer</td></tr>
-          <tr><td><strong>Mobile device 의존</strong></td><td>일부 role (Owner/Admin/NSA/Signer/Approver/Security Admin)</td><td>—</td></tr>
-          <tr><td><strong>IP 제한</strong></td><td>workspace-level IP allowlisting (Owner-only)</td><td>per-API-user IP allowlist (/32 CIDR)</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3>Unified <code>users</code> 테이블</h3>
+<h2>6. Users (Console / API / Mobile)</h2>
+<span class="section-subtitle">2 user type · 9 role · mobile device 의 secure enclave<span class="g" data-tip="SGX/TEE 안의 격리된 실행 공간. 외부에서 메모리 접근 불가" tabindex="0">(?)</span> host</span>
+<h3>User Type 2 종</h3>
+<p><code>user-roles.md</code>, p.1: 사용자 유형은 <strong>Console user / API user</strong> 2 종. <strong>권한 매트릭스는 동일한 9 role</strong> 사용. 인증·자격증명·자동화 표면이 다름.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>Console User</th><th>API User</th></tr></thead>
+<tbody>
+<tr><td><strong>인증</strong></td><td>email + (password 또는 SSO<span class="g" data-tip="Single Sign-On. 사내 IdP (Google / Okta 등) 에 로그인 위임. Fireblocks 는 Auth0 가 service provider" tabindex="0">(?)</span> via IdP<span class="g" data-tip="Identity Provider. 외부 인증 서비스 (Google Workspace / Okta / Entra ID 등)" tabindex="0">(?)</span>) + <strong>TOTP<span class="g" data-tip="Time-based One-Time Password. authenticator app 이 30 초마다 생성하는 6 자리 코드" tabindex="0">(?)</span> 2FA<span class="g" data-tip="Two-Factor Authentication. password + 추가 인증 (대부분 TOTP authenticator app 의 6 자리 코드)" tabindex="0">(?)</span> 필수</strong></td><td>CSR<span class="g" data-tip="Certificate Signing Request. RSA public key + 신원 정보를 묶은 cert 발급 요청서. API user 인증에 사용" tabindex="0">(?)</span>/X.509 (RSA 4096) + API key</td></tr>
+<tr><td><strong>인터페이스</strong></td><td>Fireblocks Console (Web)</td><td>REST API / SDK / API Co-signer</td></tr>
+<tr><td><strong>Mobile device 의존</strong></td><td>일부 role (Owner/Admin/NSA/Signer/Approver/Security Admin)</td><td>—</td></tr>
+<tr><td><strong>IP 제한</strong></td><td>workspace<span class="g" data-tip="Fireblocks 의 최상위 격리·거버넌스 단위. 1 workspace = 1 Owner" tabindex="0">(?)</span>-level IP allowlisting (Owner-only)</td><td>per-API-user IP allowlist (/32 CIDR)</td></tr>
+</tbody>
+</table>
+</div>
+<h3>Unified <code>users</code> 테이블</h3>
     <pre><code>CREATE TABLE users (
   id              BINARY(16) PRIMARY KEY,
   workspace_id    BINARY(16) NOT NULL,
@@ -132,21 +126,20 @@
 -- Console user 의 SSO / password 정보는 외부 (IdP / Auth0). DB 는 email + type 만.
 -- 본 테이블에는 password hash 저장 X. SSO 사용 시 IdP 가 password 관리.</code></pre>
 
-    <h3>API User Lifecycle (Stage 4)</h3>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Event</th><th>Actor</th><th>승인</th><th>비고</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Add</strong></td><td>O / A / NSA</td><td>Owner + Admin Quorum (Console user 와 same flow)</td><td>CSR 생성 (RSA 4096) → Console 에서 upload + Co-signer setup</td></tr>
-          <tr><td><strong>Re-enroll</strong></td><td>"Admin-level users"</td><td>Owner approval + key share approval</td><td>Trigger: 초기 Co-signer setup 오류 / 페어링 / Callback Handler 변경. <strong>Pairing token 1시간 유효</strong></td></tr>
-          <tr><td><strong>Rename</strong></td><td>"Admin-level users"</td><td>Owner + Admin Quorum</td><td>API key 불변</td></tr>
-          <tr><td><strong>Delete</strong></td><td>Owner 단독</td><td>즉시, mobile approval 불요</td><td>API key 즉시 invalid → in-flight tx 실패, 새 서명 거부. Co-signer 페어링 잔존 (별도 unpair 작업)</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3>Mobile Device — Primary MPC Share Host (★ Stage 5)</h3>
-    <p><code>about-the-fireblocks-mobile-app.md</code>, p.1: MPC key share 는 device 의 <strong>secure enclave</strong> 에 보관 (hardware-encrypted). <strong>iCloud / Google Cloud 백업 불가</strong>.</p>
+    <h3>API User Lifecycle</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Event</th><th>Actor</th><th>승인</th><th>비고</th></tr></thead>
+<tbody>
+<tr><td><strong>Add</strong></td><td>O / A / NSA</td><td>Owner + Admin Quorum<span class="g" data-tip="관리자급 사용자의 다수결 승인 그룹. 회사 이사회 정족수 개념. Q (Quorum) / Q+O (Quorum + Owner) 라벨로 표시" tabindex="0">(?)</span> (Console user 와 same flow)</td><td>CSR 생성 (RSA 4096) → Console 에서 upload + Co-signer setup</td></tr>
+<tr><td><strong>Re-enroll</strong></td><td>"Admin-level users"</td><td>Owner approval + key share approval</td><td>Trigger: 초기 Co-signer setup 오류 / 페어링 / Callback Handler<span class="g" data-tip="Customer 가 운영하는 외부 검증 endpoint. Cosigner 가 서명 전에 콜백해서 비즈니스 규칙 추가 검증" tabindex="0">(?)</span> 변경. <strong>Pairing token 1시간 유효</strong></td></tr>
+<tr><td><strong>Rename</strong></td><td>"Admin-level users"</td><td>Owner + Admin Quorum</td><td>API key 불변</td></tr>
+<tr><td><strong>Delete</strong></td><td>Owner 단독</td><td>즉시, mobile approval 불요</td><td>API key 즉시 invalid → in-flight tx 실패, 새 서명 거부. Co-signer 페어링 잔존 (별도 unpair 작업)</td></tr>
+</tbody>
+</table>
+</div>
+<h3>Mobile Device — Primary MPC<span class="g" data-tip="Multi-Party Computation. 여러 당사자가 각자 키 조각만 들고 협력해서 서명 — 누구도 단독으로 키를 모름. 전체 키가 한 번도 한곳에 모이지 않음" tabindex="0">(?)</span> Share Host </h3>
+<p><code>about-the-fireblocks-mobile-app.md</code>, p.1: MPC key share 는 device 의 <strong>secure enclave</strong> 에 보관 (hardware-encrypted). <strong>iCloud / Google Cloud 백업 불가</strong>.</p>
 
     <pre><code>CREATE TABLE mobile_devices (
   id                BINARY(16) PRIMARY KEY,
@@ -166,25 +159,22 @@
 CREATE TABLE mobile_device_events (
   id                BINARY(16) PRIMARY KEY,
   device_id         BINARY(16) NOT NULL,
-  event_type        ENUM('registered', 're-enrolled', 'migrated',
-                          'uninstalled', 'biometric-changed') NOT NULL,
+  event_type        ENUM('registered', 're-enrolled', 'migrated', 'uninstalled', 'biometric-changed') NOT NULL,
   owner_approval_at DATETIME(6),                       -- 2-day window 1
   user_approval_at  DATETIME(6),                       -- 2-day window 2
   occurred_at       DATETIME(6) NOT NULL
 );</code></pre>
 
     <h3>3 비밀 Layer</h3>
-    <ul>
-      <li><strong>PIN</strong>: mobile app 잠금 해제</li>
-      <li><strong>Mobile app passphrase</strong>: app-level 추가 잠금</li>
-      <li><strong>Recovery passphrase</strong>: cloud backup 의 암호화 키 (→ <a href="tables-recovery.html">12. Recovery</a>)</li>
-    </ul>
-
-    <h3>Device Migration (Stage 5)</h3>
-    <p><code>device-migration.md</code>, p.2: 사용자 본인 self-service, <strong>관리자 승인 없이</strong> PIN + passphrase + biometric 3중 인증.</p>
-
-    <h3>Linked Users / Linked Workspaces</h3>
-    <p>한 mobile device 에 multiple users / workspaces 가 linked 가능. 각각 별도 재등록 필요.</p>
+<ul>
+<li><strong>PIN</strong>: mobile app 잠금 해제</li>
+<li><strong>Mobile app passphrase</strong>: app-level 추가 잠금</li>
+<li><strong>Recovery passphrase</strong>: cloud backup 의 암호화 키 (→ <a href="tables-recovery.html">13. Recovery</a>)</li>
+</ul>
+<h3>Device Migration</h3>
+<p><code>device-migration.md</code>, p.2: 사용자 본인 self-service, <strong>관리자 승인 없이</strong> PIN + passphrase + biometric 3중 인증.</p>
+<h3>Linked Users / Linked Workspaces</h3>
+<p>한 mobile device 에 multiple users / workspaces 가 linked 가능. 각각 별도 재등록 필요.</p>
 
     <pre><code>CREATE TABLE device_user_links (
   device_id    BINARY(16) NOT NULL,
@@ -196,24 +186,20 @@ CREATE TABLE mobile_device_events (
 );</code></pre>
 
     <h3>Uninstall 비가역성</h3>
-    <ul>
-      <li>일반 user: re-download + re-enroll 로 회복</li>
-      <li><strong>Owner: Key Share Recovery 필수</strong> (단순 재설치로 회복 불가)</li>
-    </ul>
-  </section>
-
-  <nav class="page-nav" aria-label="Section navigation">
-    <a class="page-nav-link page-nav-prev" href="tables-wallet.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">4. Wallet & Address</span></a>
-    <a class="page-nav-link page-nav-next" href="tables-auth.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">6. Auth credentials</span></a>
-  </nav>
-
+<ul>
+<li>일반 user: re-download + re-enroll 로 회복</li>
+<li><strong>Owner: Key Share Recovery 필수</strong> (단순 재설치로 회복 불가)</li>
+</ul>
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-wallet.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">5. Wallet &amp; Address</span></a>
+<a class="page-nav-link page-nav-next" href="tables-auth.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">7. Auth credentials</span></a>
+</nav>
 </main>
 </div>
-
 <!-- Mermaid + svg-pan-zoom CDN -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
 <script src="assets/app.js"></script>
-
 </body>
 </html>

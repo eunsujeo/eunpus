@@ -1,118 +1,113 @@
 <!DOCTYPE html>
+
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Transaction — 17 Primary Status State Machine — 수탁형 지갑 DB 설계</title>
-  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Transaction — 17 Primary Status State Machine">
-  <meta name="robots" content="noindex">
-  <link rel="stylesheet" href="assets/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Transaction — 17 Primary Status State Machine — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Transaction — 17 Primary Status State Machine" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
 </head>
 <body>
-
-<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
-
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
 <div class="layout">
-
-<aside class="sidebar" aria-label="Table of contents">
-  <nav>
-    <div class="nav-section">
-      <h3 class="nav-section-title">Overview</h3>
-      <ul>
-        <li><a href="index.html">0. Overview</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">A. Architecture</h3>
-      <ul>
-        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
-        <li><a href="db-split.html">2. DB 분할</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">B. Workspace & Vault</h3>
-      <ul>
-        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
-        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">C. Users & Access</h3>
-      <ul>
-        <li><a href="tables-user.html">5. Users</a></li>
-        <li><a href="tables-auth.html">6. Auth credentials</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">D. Governance & Policy</h3>
-      <ul>
-        <li><a href="tables-role.html">7. 9 User Roles</a></li>
-        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
-        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
-      <ul>
-        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
-        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
-        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
-      <ul>
-        <li><a href="sm-transaction.html" class="active">13. Transaction State</a></li>
-        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
-        <li><a href="sm-approval.html">15. Approval State</a></li>
-        <li><a href="sm-signing.html">16. Signing State</a></li>
-        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
-        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
-      <ul>
-        <li><a href="tables-audit.html">19. Audit Log</a></li>
-        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
-        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
-        <li><a href="risks.html">22. Risks Register</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
-      <ul>
-        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
-        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
-        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
-      </ul>
-    </div>
-  </nav>
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace.html">3. Workspace</a></li>
+<li><a href="tables-vault.html">4. Vault</a></li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a class="active" href="sm-transaction.html">14. Transaction State</a></li>
+<li><a href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
 </aside>
-
 <main class="content">
-
 <section id="sm-transaction">
-    <h2>13. Transaction — 17 Primary Status State Machine</h2>
-    <span class="section-subtitle">Stage 9 정식 명세 · color-coded · 시간 제약 · chain-specific quirk</span>
-
-    <h3>17 Primary Status (color-coded)</h3>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Color</th><th>Stage</th><th>Status (API code)</th></tr></thead>
-        <tbody>
-          <tr><td>🟡 Yellow</td><td>입력/검증</td><td><code>SUBMITTED</code> / <code>PENDING_AML_SCREENING</code> / <code>PENDING_ENRICHMENT</code> / <code>PENDING_AUTHORIZATION</code> / <code>QUEUED</code></td></tr>
-          <tr><td>🟡 Yellow</td><td>서명</td><td><code>PENDING_SIGNATURE</code> / <code>SIGNED</code> (Solana-only) / <code>CANCELLING</code></td></tr>
-          <tr><td>🔵 Blue</td><td>외부 처리 (3rd party)</td><td><code>PENDING_3RD_PARTY_MANUAL_APPROVAL</code> / <code>PENDING_3RD_PARTY</code></td></tr>
-          <tr><td>🔵 Blue</td><td>blockchain</td><td><code>BROADCASTING</code> / <code>CONFIRMING</code></td></tr>
-          <tr><td>🟢 Green</td><td>종결 (성공)</td><td><code>COMPLETED</code></td></tr>
-          <tr><td>🔴 Red</td><td>종결 (실패)</td><td><code>CANCELLED</code> / <code>BLOCKED</code> / <code>REJECTED</code> / <code>FAILED</code></td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3>Outgoing Transaction Flow</h3>
-    <div class="diagram">
+<h2>14. Transaction — 17 Primary Status State Machine</h2>
+<span class="section-subtitle">정식 명세 · color-coded · 시간 제약 · chain 별 특이 제약</span>
+<h3>17 Primary Status (color-coded)</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Color</th><th>Stage</th><th>Status (API code)</th></tr></thead>
+<tbody>
+<tr><td>🟡 Yellow</td><td>입력/검증</td><td><code>SUBMITTED</code> / <code>PENDING_AML_SCREENING</code> / <code>PENDING_ENRICHMENT</code> / <code>PENDING_AUTHORIZATION</code> / <code>QUEUED</code></td></tr>
+<tr><td>🟡 Yellow</td><td>서명</td><td><code>PENDING_SIGNATURE</code> / <code>SIGNED</code> (Solana-only) / <code>CANCELLING</code></td></tr>
+<tr><td>🔵 Blue</td><td>외부 처리 (3rd party)</td><td><code>PENDING_3RD_PARTY_MANUAL_APPROVAL</code> / <code>PENDING_3RD_PARTY</code></td></tr>
+<tr><td>🔵 Blue</td><td>blockchain</td><td><code>BROADCASTING</code> / <code>CONFIRMING</code></td></tr>
+<tr><td>🟢 Green</td><td>종결 (성공)</td><td><code>COMPLETED</code></td></tr>
+<tr><td>🔴 Red</td><td>종결 (실패)</td><td><code>CANCELLED</code> / <code>BLOCKED</code> / <code>REJECTED</code> / <code>FAILED</code></td></tr>
+</tbody>
+</table>
+</div>
+<h3>Outgoing Transaction Flow</h3>
+<div class="diagram">
       <pre class="mermaid">
 stateDiagram-v2
   [*] --> SUBMITTED
@@ -133,11 +128,10 @@ stateDiagram-v2
   CANCELLING --> CANCELLED
   CANCELLING --> COMPLETED : already broadcast
       </pre>
-      <span class="diagram-caption">Figure 4. Outgoing transaction state machine — 17 status. AML/Travel Rule optional, 2h timeout on Pending Authorization + Pending Signature.</span>
-    </div>
-
-    <h3>Incoming Transaction Flow</h3>
-    <div class="diagram">
+      <span class="diagram-caption">Figure 4. Outgoing transaction state machine — 17 status. AML<span class="g" data-tip="Anti-Money Laundering. 자금세탁 방지 규제. tx 별 KYC / sanction screening 강제" tabindex="0">(?)</span>/Travel Rule<span class="g" data-tip="VASP (가상자산 사업자) 간 송금 시 originator / beneficiary 정보 교환 의무화 규제" tabindex="0">(?)</span> optional, 2h timeout on Pending Authorization + Pending Signature.</span>
+</div>
+<h3>Incoming Transaction Flow</h3>
+<div class="diagram">
       <pre class="mermaid">
 stateDiagram-v2
   [*] --> START
@@ -152,40 +146,36 @@ stateDiagram-v2
   CONFIRMING --> REJECTED : user-initiated freeze via API
       </pre>
       <span class="diagram-caption">Figure 5. Incoming transaction state machine — rejected incoming 의 asset 은 Admin unfreeze 까지 사용 불가.</span>
-    </div>
-
-    <h3>시간 제약</h3>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>제약</th><th>적용 상태</th><th>동작</th></tr></thead>
-        <tbody>
-          <tr><td><strong>2 hours</strong></td><td>Pending Authorization</td><td>timeout → fail</td></tr>
-          <tr><td><strong>2 hours</strong></td><td>Pending Signature</td><td>timeout → fail</td></tr>
-          <tr><td><strong>30 seconds</strong></td><td>Cancelling (typical)</td><td>길어지면 Status page 확인</td></tr>
-          <tr><td><strong>1 minute</strong></td><td>Broadcasting (typical)</td><td>길어지면 Status page 확인</td></tr>
-          <tr><td><strong>2 hours</strong></td><td>Solana 6번째 이상 tx Submitted</td><td>만료 → terminated</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3>Chain-Specific 처리 모델</h3>
-    <ul>
-      <li><strong>EVM-compatible</strong>: 동일 vault account 의 EVM tx 들은 <strong>blockchain-standard 단위 직렬화</strong> (Ethereum + Polygon → 순차, BTC + Solana → 병렬)</li>
-      <li><strong>Solana</strong>: vault account 당 동시 <strong>5 tx queue</strong> (6번째 이상은 Submitted max 2h 대기)</li>
-      <li><strong>EVM withdrawal</strong>: nonce 충돌 위험 → <strong>multiple withdrawal vault 권장 round-robin</strong></li>
-      <li><strong>Bitcoin withdrawal</strong>: unconfirmed input <strong>25-tx chain limit</strong> (Bitcoin Core default) → multiple withdrawal vault</li>
-    </ul>
-
-    <h3>Special Branches</h3>
-    <ul>
-      <li><strong>Approvers Unanimous-Veto Rule</strong>: "If at least one person chooses to reject, the transaction is rejected." Approvers N명 → reject 1표 = tx 즉시 rejected</li>
-      <li><strong>Outgoing rejected</strong>: 자산 즉시 사용 가능 (re-tx 가능)</li>
-      <li><strong>Incoming rejected</strong>: 자산이 <strong>Admin 가 unfreeze 할 때까지 사용 불가</strong></li>
-      <li><strong>Raw Signing (cached signature)</strong>: 동일 raw data 재서명 시 Submitted → Completed (전체 ceremony 우회)</li>
-      <li><strong>Solana Sign-Only</strong>: signed payload client 에 반환, Fireblocks 가 broadcast 안 함, <code>NOT BROADCAST BY FIREBLOCKS</code> 태그</li>
-    </ul>
-
-    <h3>DB Schema — Transaction State</h3>
+</div>
+<h3>시간 제약</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>제약</th><th>적용 상태</th><th>동작</th></tr></thead>
+<tbody>
+<tr><td><strong>2 hours</strong></td><td>Pending Authorization</td><td>timeout → fail</td></tr>
+<tr><td><strong>2 hours</strong></td><td>Pending Signature</td><td>timeout → fail</td></tr>
+<tr><td><strong>30 seconds</strong></td><td>Cancelling (typical)</td><td>길어지면 Status page 확인</td></tr>
+<tr><td><strong>1 minute</strong></td><td>Broadcasting (typical)</td><td>길어지면 Status page 확인</td></tr>
+<tr><td><strong>2 hours</strong></td><td>Solana 6번째 이상 tx Submitted</td><td>만료 → terminated</td></tr>
+</tbody>
+</table>
+</div>
+<h3>Chain-Specific 처리 모델</h3>
+<ul>
+<li><strong>EVM<span class="g" data-tip="Ethereum Virtual Machine. Ethereum 호환 chain 계열 (Polygon / Arbitrum / Optimism 등). account-based 모델" tabindex="0">(?)</span>-compatible</strong>: 동일 vault account<span class="g" data-tip="Fireblocks 의 자산 보관 단위. workspace 안에서 여러 개 만들어 client / team / 용도별 분리" tabindex="0">(?)</span> 의 EVM tx 들은 <strong>blockchain-standard 단위 직렬화</strong> (Ethereum + Polygon → 순차, BTC + Solana → 병렬)</li>
+<li><strong>Solana</strong>: per-vault 동시 <strong>5 tx</strong> + workspace-wide <strong>600 tx</strong> queue cap. EVM/BTC 와 달리 hard stuck 아닌 <strong>soft throttle</strong> (6번째부터 Submitted 대기, max 2h 후 terminated) — 1 vault 로도 운영 가능</li>
+<li><strong>EVM withdrawal</strong>: nonce<span class="g" data-tip="EVM 의 transaction 순서 번호. 같은 주소의 tx 가 순차 처리되도록. 충돌 시 뒤 tx 가 stuck" tabindex="0">(?)</span> 충돌 위험 → <strong>multiple withdrawal vault 권장 round-robin</strong></li>
+<li><strong>Bitcoin withdrawal</strong>: unconfirmed input <strong>25-tx chain limit</strong><span class="g" data-tip="Bitcoin Core default policy. 한 unconfirmed tx 의 descendant (그 change output 을 input 으로 쓰는 후속 tx) 가 25 개에 도달하면 mempool 이 추가 tx 거부. block confirm 전 출금 chain 이 길어지면 그 vault 의 출금이 정체" tabindex="0">(?)</span> (Bitcoin Core default) → multiple withdrawal vault</li>
+</ul>
+<h3>Special Branches</h3>
+<ul>
+<li><strong>Approvers Unanimous-Veto Rule</strong>: "If at least one person chooses to reject, the transaction is rejected." Approvers N명 → reject 1표 = tx 즉시 rejected</li>
+<li><strong>Outgoing rejected</strong>: 자산 즉시 사용 가능 (re-tx 가능)</li>
+<li><strong>Incoming rejected</strong>: 자산이 <strong>Admin 가 unfreeze 할 때까지 사용 불가</strong></li>
+<li><strong>Raw Signing (cached signature)</strong>: 동일 raw data 재서명 시 Submitted → Completed (전체 ceremony 우회)</li>
+<li><strong>Solana Sign-Only</strong>: signed payload client 에 반환, Fireblocks 가 broadcast 안 함, <code>NOT BROADCAST BY FIREBLOCKS</code> 태그</li>
+</ul>
+<h3>DB Schema — Transaction State</h3>
     <pre><code>CREATE TABLE transactions (
   id                  BINARY(16) PRIMARY KEY,
   workspace_id        BINARY(16) NOT NULL,
@@ -194,7 +184,7 @@ stateDiagram-v2
   asset_id            VARCHAR(32),
   amount_decimal      DECIMAL(38, 18),
   chain               VARCHAR(32),
-  status              ENUM('SUBMITTED', 'PENDING_AML_SCREENING', ...) NOT NULL,
+  status              ENUM('SUBMITTED', 'PENDING_AML_SCREENING') NOT NULL,
   status_changed_at   DATETIME(6) NOT NULL,
   created_at          DATETIME(6) NOT NULL,
   raw_payload_cbor    BLOB,                    -- ★ append-only (TEE-signed)
@@ -215,19 +205,15 @@ CREATE TABLE transaction_events (
   KEY (transaction_id, occurred_at)
 );</code></pre>
   </section>
-
-  <nav class="page-nav" aria-label="Section navigation">
-    <a class="page-nav-link page-nav-prev" href="tables-recovery.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">12. Recovery & Backup</span></a>
-    <a class="page-nav-link page-nav-next" href="sm-14step.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">14. 14-step Flow</span></a>
-  </nav>
-
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-recovery.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">13. Recovery &amp; Backup</span></a>
+<a class="page-nav-link page-nav-next" href="sm-14step.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">15. 14-step Flow</span></a>
+</nav>
 </main>
 </div>
-
 <!-- Mermaid + svg-pan-zoom CDN -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
 <script src="assets/app.js"></script>
-
 </body>
 </html>

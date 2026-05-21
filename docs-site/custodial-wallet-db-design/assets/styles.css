@@ -34,7 +34,7 @@
   --radius-lg: 10px;
 
   --sidebar-width: 280px;
-  --max-content-width: 820px;
+  --max-content-width: 1100px;
   --header-height: 0px;
 
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Helvetica Neue", Arial, "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
@@ -315,8 +315,19 @@ td code { font-size: 12.5px; }
 .overview-domains { font-size: 13px; }
 .overview-domains th,
 .overview-domains td { padding: 8px 10px; }
-/* tooltip clipping 방지: 이 table-wrap 만 overflow visible */
-.table-wrap:has(.overview-domains) { overflow: visible; }
+/* tooltip clipping 방지: glossary (?) 가 들어있는 table 은 overflow visible */
+.table-wrap:has(.overview-domains),
+.table-wrap:has(.g) { overflow: visible; }
+
+/* Trust Boundaries 표 — 너비 확장 + col 비율 명시 */
+.trust-boundaries table { table-layout: fixed; width: 100%; }
+.trust-boundaries th:nth-child(1),
+.trust-boundaries td:nth-child(1) { width: 22%; }
+.trust-boundaries th:nth-child(2),
+.trust-boundaries td:nth-child(2) { width: 24%; }
+.trust-boundaries th:nth-child(3),
+.trust-boundaries td:nth-child(3) { width: 54%; }
+.trust-boundaries td { word-break: keep-all; }
 
 /* ---------- Callouts ---------- */
 
@@ -391,6 +402,72 @@ td code { font-size: 12.5px; }
 
 @media (max-width: 768px) {
   .diagram .mermaid { height: 340px; }
+}
+
+/* ---------- Diagram Fullscreen ---------- */
+
+.diagram-fullscreen-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  padding: 5px 10px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0.7;
+  box-shadow: var(--shadow-sm);
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.diagram:hover .diagram-fullscreen-btn { opacity: 1; }
+.diagram-fullscreen-btn:hover { background-color: var(--bg-subtle); }
+.diagram-fullscreen-btn:active { transform: translateY(1px); }
+
+/* Fullscreen 진입 시: 다이어그램이 전체 viewport 점유 */
+.diagram:fullscreen,
+.diagram:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.diagram:fullscreen .mermaid,
+.diagram:-webkit-full-screen .mermaid {
+  flex: 1 1 auto;
+  height: auto !important;
+  min-height: 0;
+  background-color: #ffffff;
+}
+
+.diagram:fullscreen .diagram-caption,
+.diagram:-webkit-full-screen .diagram-caption {
+  flex-shrink: 0;
+  padding: 12px 24px;
+  font-size: 13px;
+  background-color: #ffffff;
+  border-top: 1px solid var(--border);
+}
+
+.diagram:fullscreen .diagram-fullscreen-btn,
+.diagram:-webkit-full-screen .diagram-fullscreen-btn {
+  opacity: 1;
+  top: 16px;
+  right: 16px;
+  padding: 8px 14px;
+  font-size: 13px;
 }
 
 /* ---------- Badges ---------- */
@@ -503,6 +580,20 @@ td code { font-size: 12.5px; }
 
 @media (max-width: 640px) {
   .g::after { max-width: 220px; }
+}
+
+/* h2 안의 (?) 는 페이지 최상단에 가까워서 tooltip 을 위로 띄우면 viewport 밖으로 잘림 — 아래로 표시 */
+h2 .g::after,
+h3 .g::after {
+  top: calc(100% + 8px);
+  bottom: auto;
+  transform: translateY(-2px);
+}
+h2 .g:hover::after,
+h2 .g:focus::after,
+h3 .g:hover::after,
+h3 .g:focus::after {
+  transform: translateY(0);
 }
 
 /* ---------- Page nav (prev / next) ---------- */

@@ -1,198 +1,249 @@
 <!DOCTYPE html>
+
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DB 분할 — 수탁형 지갑 DB 설계</title>
-  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — DB 분할">
-  <meta name="robots" content="noindex">
-  <link rel="stylesheet" href="assets/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DB 분할 — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — DB 분할" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
 </head>
 <body>
-
-<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
-
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
 <div class="layout">
-
-<aside class="sidebar" aria-label="Table of contents">
-  <nav>
-    <div class="nav-section">
-      <h3 class="nav-section-title">Overview</h3>
-      <ul>
-        <li><a href="index.html">0. Overview</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">A. Architecture</h3>
-      <ul>
-        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
-        <li><a href="db-split.html" class="active">2. DB 분할</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">B. Workspace & Vault</h3>
-      <ul>
-        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
-        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">C. Users & Access</h3>
-      <ul>
-        <li><a href="tables-user.html">5. Users</a></li>
-        <li><a href="tables-auth.html">6. Auth credentials</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">D. Governance & Policy</h3>
-      <ul>
-        <li><a href="tables-role.html">7. 9 User Roles</a></li>
-        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
-        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
-      <ul>
-        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
-        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
-        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
-      <ul>
-        <li><a href="sm-transaction.html">13. Transaction State</a></li>
-        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
-        <li><a href="sm-approval.html">15. Approval State</a></li>
-        <li><a href="sm-signing.html">16. Signing State</a></li>
-        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
-        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
-      <ul>
-        <li><a href="tables-audit.html">19. Audit Log</a></li>
-        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
-        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
-        <li><a href="risks.html">22. Risks Register</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
-      <ul>
-        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
-        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
-        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
-      </ul>
-    </div>
-  </nav>
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a class="active" href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace.html">3. Workspace</a></li>
+<li><a href="tables-vault.html">4. Vault</a></li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">14. Transaction State</a></li>
+<li><a href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
 </aside>
-
 <main class="content">
-
 <section id="db-split">
-    <h2>2. DB 분할</h2>
-    <span class="section-subtitle">Sensitive material 위치 + 서비스 ownership 기준으로 분할</span>
-
-    <p>
-      Fireblocks 의 3-cloud 분할은 <strong>"sensitive 인가 / 외피인가 / cache 인가"</strong> 가 1차 기준.<br>
-      이를 DB 분할로 옮기면 <strong>service ownership + mutability profile</strong> 기준의 다중 DB 토폴로지가 된다.
+<h2>2. DB 분할</h2>
+<span class="section-subtitle">"한 DB 에 다 넣지 않는다" — 데이터 종류별로 DB 7 개로 쪼개는 이유</span>
+<p>
+      Fireblocks 가 cloud 를 3 개로 쪼개는 이유와 같다 — <strong>한 곳에 다 넣으면 한 군데 사고가 전체로 번진다</strong>.<br/>
+      DB 도 같은 원리로 7 개로 쪼갠다. 기준은 두 가지:
     </p>
-
-    <div class="callout">
-      <div class="callout-title">Fireblocks vs 본 reference</div>
-      <p>Fireblocks 는 internal DB 구조를 공개하지 않는다. 본 페이지의 7-DB 분할은 Fireblocks 의 6 system component 와 3-cloud 분할의 logical mirror — <strong>"동등한 sensitivity 격리를 DB 단위로 표현하면"</strong> 의 hypothesis.</p>
-    </div>
-
-    <h3>7-DB 토폴로지 (hypothesis)</h3>
-    <div class="diagram">
-      <pre class="mermaid">
-graph TB
-  subgraph APP["Application services"]
-    WS["Wallet / Workspace Service"]
-    LS["Ledger Service"]
-    APS["Approval / Policy Service"]
-    SGS["Signing Service"]
-    BCS["Broadcast Service<br/>(Chain Adapter)"]
-    RCS["Reconciliation Service"]
-    AUS["Audit Service"]
-  end
-
-  subgraph DB1["walletdb<br/>(Azure equiv.)"]
-    T_W[("workspaces · vault_accounts<br/>wallets · addresses<br/>users · roles")]
-  end
-  subgraph DB2["ledgerdb"]
-    T_L[("ledger_accounts · ledger_entries<br/>internal_transfers · withdrawals<br/>deposit_observations")]
-  end
-  subgraph DB3["approverdb"]
-    T_A[("policy_rules · policy_change_log<br/>approval_requests · approval_decisions<br/>admin_quorums · approval_groups")]
-  end
-  subgraph DB4["auditdb<br/>(append-only)"]
-    T_AU[("audit_events · audit_checkpoints<br/>signing_events · signing_requests<br/>key_lifecycle · master_key_operations<br/>recovery_events")]
-  end
-  subgraph DB5["chaindb"]
-    T_C[("chain_events · transactions<br/>broadcast_attempts · confirmations")]
-  end
-  subgraph DB6["providerdb"]
-    T_P[("provider_accounts<br/>provider_external_references<br/>provider_event_log")]
-  end
-  subgraph DB7["recondb"]
-    T_R[("reconciliation_sessions<br/>reconciliation_snapshots<br/>mismatch_findings")]
-  end
-
-  WS --> DB1
-  LS --> DB2
-  APS --> DB3
-  SGS --> DB4
-  BCS --> DB5
-  AUS --> DB4
-  RCS --> DB7
-  RCS -.read-only.-> DB1
-  RCS -.read-only.-> DB2
-  RCS -.read-only.-> DB3
-  RCS -.read-only.-> DB4
-  RCS -.read-only.-> DB5
-  RCS -.read-only.-> DB6
-      </pre>
-      <span class="diagram-caption">Figure 2. 7-DB split — 각 service 는 자기 DB 만 write, Reconciliation Service 만 모든 DB read-only.</span>
-    </div>
-
-    <h3>분할의 5 가지 근거</h3>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>근거</th><th>의미</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Sensitivity isolation</strong></td><td>Fireblocks 의 3-cloud 분할의 1차 원칙. SGX-protected material 과 외피 metadata 는 동일 DB 에 두지 않음</td></tr>
-          <tr><td><strong>Mutability isolation</strong></td><td>append-only DB (auditdb) 의 vacuum / lock 패턴과 mutable DB 의 운영 profile 분리</td></tr>
-          <tr><td><strong>Blast-radius reduction</strong></td><td>한 DB corruption / 보안 사고 = 그 DB 의 도메인만 영향</td></tr>
-          <tr><td><strong>Operational separation</strong></td><td>각 service 의 ownership 명확 — 권한 escalation 회피</td></tr>
-          <tr><td><strong>Audit separation</strong></td><td>External auditor 가 auditdb 만 read-only access — privacy 단순화</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3>Trade-offs</h3>
-    <ul>
-      <li>Cross-DB FK 불가 — application 검증 + 정기 reconciliation 필요</li>
-      <li>Multi-DB transaction 불가 — <strong>outbox pattern</strong> 권장 (eventual consistency)</li>
-      <li>운영 복잡도 ↑ — 7 instance 관리</li>
-    </ul>
-  </section>
-
-  <nav class="page-nav" aria-label="Section navigation">
-    <a class="page-nav-link page-nav-prev" href="architecture.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">1. Cloud & Trust Boundaries</span></a>
-    <a class="page-nav-link page-nav-next" href="tables-workspace.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">3. Workspace & Vault</span></a>
-  </nav>
-
-</main>
+<div class="two-col">
+<div class="col-card">
+<h4>① 누가 쓰는 DB 인가 (ownership)</h4>
+<p>한 DB 는 <strong>한 service 만 write</strong>. 다른 service 는 못 씀. 권한 escalation (한 service 가 다른 도메인을 침범) 사고 차단.</p>
+</div>
+<div class="col-card">
+<h4>② 데이터가 어떻게 변하는가 (mutability)</h4>
+<p>잔액 같은 <strong>변경 데이터</strong>, 감사 log 같은 <strong>append-only 데이터</strong>, chain event 같은 <strong>read-mostly 데이터</strong> 는 운영 방식이 달라서 같이 두면 둘 다 비효율.</p>
+</div>
+</div>
+<div class="callout">
+<div class="callout-title">Fireblocks vs 본 reference</div>
+<p>Fireblocks 는 internal DB 구조를 공개하지 않는다. 본 페이지의 7-DB 분할은 Fireblocks 의 6 system component / 3-cloud 분할 원칙을 <strong>"DB 단위로 옮기면 이렇게 된다"</strong> 의 직접 구축 가이드 (hypothesis).</p>
 </div>
 
+<h3>각 DB 의 책임 + 들어가는 데이터 예시</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:14%">DB</th><th style="width:24%">책임</th><th>들어가는 데이터 (예시)</th><th style="width:14%">변경 패턴</th></tr></thead>
+<tbody>
+<tr><td><strong>walletdb</strong></td><td>사용자·지갑 metadata</td><td>workspaces · vault_accounts · wallets · addresses · users · roles</td><td>mutable<br/><small>(사용자 이름 등은 변경됨)</small></td></tr>
+<tr><td><strong>ledgerdb</strong></td><td>잔액 원장 + 이체 이력</td><td>ledger_accounts · ledger_entries · internal_transfers · withdrawals · deposit_observations</td><td>append-only<br/><small>(이체 이력은 추가만)</small></td></tr>
+<tr><td><strong>approverdb</strong></td><td>정책 + 승인 요청·결정</td><td>policy_rules · policy_change_log · approval_requests · approval_decisions · admin_quorums · approval_groups</td><td>partial-mutable<br/><small>(정책은 바뀜, 결정은 set-once)</small></td></tr>
+<tr><td><strong>auditdb</strong></td><td>변조방지 audit log + 서명·키 이력</td><td>audit_events · audit_checkpoints · signing_events · signing_requests · key_lifecycle · master_key_operations · recovery_events</td><td>strictly append-only<br/><small>(절대 UPDATE / DELETE 불가)</small></td></tr>
+<tr><td><strong>chaindb</strong></td><td>blockchain event 거울 (mirror)</td><td>chain_events · transactions · broadcast_attempts · confirmations</td><td>append-only</td></tr>
+<tr><td><strong>providerdb</strong></td><td>외부 system 매핑 (AML provider · IdP · 거래소 등)</td><td>provider_accounts · provider_external_references · provider_event_log</td><td>mutable<br/><small>(외부 정보 변경 반영)</small></td></tr>
+<tr><td><strong>recondb</strong></td><td>정산 결과 + mismatch 발견</td><td>reconciliation_sessions · reconciliation_snapshots · mismatch_findings</td><td>append-only</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>서비스 → DB write 매핑 (누가 어디에 쓰는가)</h3>
+<div class="diagram">
+      <pre class="mermaid">
+graph LR
+  WS["Wallet / Workspace<br/>Service"] --> DB1["walletdb"]
+  LS["Ledger Service"] --> DB2["ledgerdb"]
+  APS["Approval / Policy<br/>Service"] --> DB3["approverdb"]
+  SGS["Signing Service"] --> DB4["auditdb"]
+  AUS["Audit Service"] --> DB4
+  BCS["Broadcast Service"] --> DB5["chaindb"]
+  PMS["Provider Mapping<br/>Service"] --> DB6["providerdb"]
+  RCS["Reconciliation<br/>Service"] --> DB7["recondb"]
+
+  classDef svc fill:#dbeafe,stroke:#1e40af
+  classDef db fill:#fef3c7,stroke:#92400e
+  class WS,LS,APS,SGS,BCS,AUS,RCS,PMS svc
+  class DB1,DB2,DB3,DB4,DB5,DB6,DB7 db
+      </pre>
+      <span class="diagram-caption">Figure 2. 한 service = 한 DB 의 주인. 다른 service 는 쓰지 못함. (Signing + Audit 둘 다 auditdb 에 쓰는 것만 예외 — audit log 는 공동 영역)</span>
+</div>
+
+<h3>Reconciliation Service 의 cross-DB read 흐름</h3>
+<div class="callout callout-warn">
+<div class="callout-title">⚠️ Fireblocks 미명시 — direct-build reference 의 hypothesis</div>
+<p>본 service 는 <strong>직접 구축 시 권장 architecture</strong> (출처: <code>persistence-architecture/09</code> + <code>reference-architecture/recurring-patterns P6</code>).<br/>
+Fireblocks vendor 자료에는 "Reconciliation Service" component 이름으로 명시되지 않음 — "Daily reconciliation report" 만 언급. Fireblocks 가 이를 별도 service 로 운영하는지 미공개.</p>
+</div>
+<p>모든 DB 의 데이터가 서로 일관되는지 검증하는 별도 service. <strong>다른 DB 들로부터 read 만</strong> 하고 자기 DB (recondb) 에만 결과를 쓴다.</p>
+<div class="diagram">
+      <pre class="mermaid">
+graph LR
+  RCS["Reconciliation<br/>Service"]
+  DB1["walletdb"]
+  DB2["ledgerdb"]
+  DB3["approverdb"]
+  DB4["auditdb"]
+  DB5["chaindb"]
+  DB6["providerdb"]
+  DB7["recondb"]
+
+  DB1 -. read .-> RCS
+  DB2 -. read .-> RCS
+  DB3 -. read .-> RCS
+  DB4 -. read .-> RCS
+  DB5 -. read .-> RCS
+  DB6 -. read .-> RCS
+  RCS ==> DB7
+
+  classDef svc fill:#dbeafe,stroke:#1e40af
+  classDef db fill:#fef3c7,stroke:#92400e
+  classDef target fill:#dcfce7,stroke:#166534
+  class RCS svc
+  class DB1,DB2,DB3,DB4,DB5,DB6 db
+  class DB7 target
+      </pre>
+      <span class="diagram-caption">Figure 3. Reconciliation Service 는 6 개 DB read + recondb 1 개 write. mismatch 가 발견되면 사람이 검토.</span>
+</div>
+
+<h3>분할의 5 가지 근거</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">근거</th><th>의미 + 구체 예시</th></tr></thead>
+<tbody>
+<tr><td><strong>① 민감도 격리</strong><br/><small>(Sensitivity isolation)</small></td><td>
+<p><strong>같은 DB 에 두면 안 되는 두 종류</strong>:</p>
+<ul style="margin-bottom:0">
+<li><strong>핵심 자료</strong>: 서명 키 조각 · 정책 규칙 · 승인 결정 · 감사 log → 유출 시 자산 손실 직결</li>
+<li><strong>외피 자료</strong>: 사용자 이름·email · 지갑 이름표 · UI 표시용 잔액 cache → 유출돼도 자산 직접 손실 없음</li>
+</ul>
+<p style="margin-top:8px"><strong>예시</strong>: 신규 직원이 사용자 이름 검색 query 를 만들다가 실수로 같은 DB 의 audit log 를 삭제하는 사고. 두 데이터를 다른 DB 에 두면 권한 자체가 분리됨.</p></td></tr>
+<tr><td><strong>② 변경 패턴 분리</strong><br/><small>(Mutability isolation)</small></td><td>
+<p>append-only DB (auditdb) 와 mutable DB 는 운영 방식이 다르다:</p>
+<ul style="margin-bottom:0">
+<li><strong>append-only DB</strong>: 매일 row 가 추가만 됨 → partition 끊고 archive 하는 운영. vacuum / lock 거의 필요 없음</li>
+<li><strong>mutable DB</strong>: row 가 자주 update / delete → autovacuum · index 재구성 자주 필요. row locking 패턴 다름</li>
+</ul>
+<p style="margin-top:8px"><strong>예시</strong>: 같은 DB 에 두면 audit log 의 무거운 write 부하가 사용자 metadata 의 빠른 query 를 막을 수 있다.</p></td></tr>
+<tr><td><strong>③ 사고 범위 축소</strong><br/><small>(Blast-radius reduction)</small></td><td>
+<p>한 DB 가 corrupt 되거나 해킹당해도 다른 DB 는 무사. <strong>전체 시스템이 동시에 죽지 않는다</strong>.</p>
+<p style="margin-top:8px"><strong>예시</strong>: providerdb (AML provider 연동) 가 SQL injection 으로 뚫려도 ledgerdb (잔액) 와 auditdb (audit log) 는 별개 DB 라서 그대로 안전.</p></td></tr>
+<tr><td><strong>④ 운영 권한 분리</strong><br/><small>(Operational separation)</small></td><td>
+<p>각 service 의 DB 계정이 자기 DB 만 접근 가능. <strong>한 service 가 다른 도메인을 침범할 수 없음</strong>.</p>
+<p style="margin-top:8px"><strong>예시</strong>: Broadcast Service (chain 에 tx 보내는 역할) 의 코드가 버그로 ledger entries 를 조작하려 해도 권한 자체가 없어서 실패. 같은 DB 였으면 가능했을 일.</p></td></tr>
+<tr><td><strong>⑤ 외부 감사 단순화</strong><br/><small>(Audit separation)</small></td><td>
+<p>외부 감사관이 <strong>auditdb 한 곳만 read-only</strong> 로 보면 됨. 다른 DB 에 있는 고객 PII (개인정보) 는 볼 필요 없음 → privacy 보호 + 감사 범위 명확.</p>
+<p style="margin-top:8px"><strong>예시</strong>: 분기별 SOC 2<span class="g" tabindex="0" data-tip="System and Organization Controls. 미국 AICPA 의 외부 감사 기준. 고객 자산을 위탁받는 회사가 보안 / 가용성 / 처리 무결성 / 기밀성 / 개인정보 5 영역의 통제를 제대로 운영하는지 외부 감사인이 검증. institutional 고객 (은행 / 거래소 / 핀테크) 영업의 사실상 필수 자격증">(?)</span> 감사 때 감사관에 walletdb 의 사용자 email 까지 노출하지 않아도 됨.</p></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>대가 (Trade-offs) — 7 개로 쪼개면 무엇이 어려워지는가</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">제약</th><th>의미 + 해결책</th></tr></thead>
+<tbody>
+<tr><td><strong>① DB 끼리 직접 연결 불가</strong><br/><small>(Cross-DB FK 불가)</small></td><td>
+<p>같은 DB 안에서는 <code>users.workspace_id REFERENCES workspaces.id</code> 같은 <strong>foreign key 제약</strong>으로 "존재하지 않는 workspace 의 사용자" 를 막을 수 있다. 다른 DB 사이엔 이 제약을 못 건다.</p>
+<p style="margin-top:8px"><strong>해결</strong>: application code 에서 검증 + Reconciliation Service 가 정기적으로 일관성 확인 (예: walletdb 의 user 가 가리키는 workspace 가 실제 존재하는지).</p></td></tr>
+<tr><td><strong>② 여러 DB 에 동시 commit 불가</strong><br/><small>(Multi-DB transaction 불가)</small></td><td>
+<p>"approval 통과 → audit log 기록" 을 한 transaction 으로 묶을 수 없음. approverdb 에 결정 저장 후 auditdb 에 기록하는 도중 시스템이 죽으면 audit log 가 누락될 위험.</p>
+<p style="margin-top:8px"><strong>해결</strong>: <strong>outbox pattern</strong><span class="g" tabindex="0" data-tip="approverdb 에 결정을 쓰는 transaction 안에서 동시에 'outbox' 테이블에도 행을 쓴다. 별도 worker 가 outbox 를 읽어 auditdb 에 비동기로 복제한다 — 모든 row 가 결국 도착함을 보장">(?)</span>. 같은 DB 의 transaction 으로 "결정 + outbox 행" 두 개를 함께 쓰고, worker 가 outbox 를 읽어 다른 DB 로 비동기 복제. 결과적으로 eventual consistency 보장.</p></td></tr>
+<tr><td><strong>③ 운영 복잡도 증가</strong></td><td>
+<p>7 개 DB 인스턴스 = 7 배의 backup / 모니터링 / 권한 관리 / version upgrade.</p>
+<p style="margin-top:8px"><strong>해결</strong>: 자동화 도구 (Terraform / Ansible) + monitoring dashboard 표준화 + 작은 institution 은 <strong>1 개 DB + schema 분리</strong> 로 시작해서 점진 분할. <a href="db-ops.html">25. DB 운영</a> 참조.</p></td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="architecture.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">1. Cloud &amp; Trust Boundaries</span></a>
+<a class="page-nav-link page-nav-next" href="tables-workspace.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">3. Workspace</span></a>
+</nav>
+</main>
+</div>
 <!-- Mermaid + svg-pan-zoom CDN -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
 <script src="assets/app.js"></script>
-
 </body>
 </html>

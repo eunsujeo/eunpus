@@ -43,7 +43,7 @@
     }
 
     try {
-      window.svgPanZoom(svg, {
+      var instance = window.svgPanZoom(svg, {
         zoomEnabled: true,
         panEnabled: true,
         controlIconsEnabled: true,
@@ -56,6 +56,8 @@
         maxZoom: 8,
         contain: false,
       });
+      // 전체화면 진입/이탈 시 재사용할 수 있도록 instance 저장
+      svg.__panZoom = instance;
     } catch (e) {
       console.warn('svg-pan-zoom init failed', e);
     }
@@ -64,6 +66,73 @@
   function setupPanZoomForAllDiagrams() {
     var svgs = document.querySelectorAll('.diagram .mermaid svg');
     svgs.forEach(applyPanZoomTo);
+  }
+
+  function setupFullscreenButtons() {
+    var diagrams = document.querySelectorAll('.diagram');
+    diagrams.forEach(function (diagram) {
+      if (diagram.querySelector('.diagram-fullscreen-btn')) return;
+
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'diagram-fullscreen-btn';
+      btn.setAttribute('aria-label', '다이어그램 전체화면');
+      btn.textContent = '⛶ 전체화면';
+
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!document.fullscreenElement) {
+          var req =
+            diagram.requestFullscreen ||
+            diagram.webkitRequestFullscreen ||
+            diagram.mozRequestFullScreen ||
+            diagram.msRequestFullscreen;
+          if (req) {
+            req.call(diagram).catch(function (err) {
+              console.warn('fullscreen failed', err);
+            });
+          }
+        } else {
+          var exit =
+            document.exitFullscreen ||
+            document.webkitExitFullscreen ||
+            document.mozCancelFullScreen ||
+            document.msExitFullscreen;
+          if (exit) exit.call(document);
+        }
+      });
+      diagram.appendChild(btn);
+    });
+
+    function onFullscreenChange() {
+      var isFs = !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      );
+      document.querySelectorAll('.diagram-fullscreen-btn').forEach(function (b) {
+        b.textContent = isFs ? '✕ 닫기 (ESC)' : '⛶ 전체화면';
+      });
+      // SVG 의 viewport 가 바뀌었으므로 pan-zoom 재계산
+      setTimeout(function () {
+        document.querySelectorAll('.diagram .mermaid svg').forEach(function (svg) {
+          if (svg.__panZoom) {
+            try {
+              svg.__panZoom.resize();
+              svg.__panZoom.fit();
+              svg.__panZoom.center();
+            } catch (e) {}
+          }
+        });
+      }, 100);
+    }
+
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+    document.addEventListener('mozfullscreenchange', onFullscreenChange);
+    document.addEventListener('MSFullscreenChange', onFullscreenChange);
   }
 
   async function initMermaid() {
@@ -95,6 +164,7 @@
     }
 
     setupPanZoomForAllDiagrams();
+    setupFullscreenButtons();
   }
 
   function init() {

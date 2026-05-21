@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Workspace &amp; Vault Topology — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Workspace &amp; Vault Topology" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace.html">3. Workspace</a></li>
+<li><a class="active" href="tables-vault.html">4. Vault</a></li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">14. Transaction State</a></li>
+<li><a href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="tables-vault">
+<h2>4. Vault Account<span class="g" data-tip="Fireblocks 의 자산 보관 단위. workspace 안에서 여러 개 만들어 client / team / 용도별 분리" tabindex="0">(?)</span></h2>
+<span class="section-subtitle">workspace 안의 자산 보관 단위 — 다중 role · 변경 이력 · vault 구성 패턴 4 종 (Omnibus / Segregated / Treasury / Withdrawal)</span>
+
+<h3>Vault Account — workspace 안의 자산 그룹</h3>
+<p>한 workspace 안에서 client / 팀 / 용도별로 자산을 나누는 단위. vault 의 생성·변경·archive 이력은 1.5 절 의 <code>vault_account_change_events</code> 가 영속화.</p>
+
+<h4>1.1 <code>vault_accounts</code> 테이블</h4>
+<pre><code>CREATE TABLE vault_accounts (
+  id                       BINARY(16) PRIMARY KEY,
+  workspace_id             BINARY(16) NOT NULL,
+  name                     VARCHAR(128) NOT NULL,
+  hidden                   BOOLEAN NOT NULL DEFAULT FALSE,
+  created_by               BINARY(16) NOT NULL,        -- 생성 요청한 user
+  created_at               DATETIME(6) NOT NULL,
+  approved_by_quorum_id    BINARY(16) NOT NULL,        -- Admin Quorum 승인 (set-once, 생성용)
+  approved_at              DATETIME(6) NOT NULL,       -- threshold 충족 시각 (set-once)
+  modified_by              BINARY(16) NOT NULL,
+  modified_at              DATETIME(6) NOT NULL,
+  archived_at              DATETIME(6),                -- archive 시각 (set-once when set)
+  archived_by              BINARY(16),                 -- archive 실행한 user (set-once when set)
+  KEY (workspace_id)
+);</code></pre>
+
+<h4>1.2 필드별 설명</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">컬럼</th><th style="width:18%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>vault account 의 고유 식별자</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16)</td><td>어느 workspace 에 속하는지. <strong>FK 검증</strong>은 같은 DB 안에서만</td></tr>
+<tr><td><code>name</code></td><td>VARCHAR(128)</td><td>사람이 읽는 이름표 (예: "Client Acme - USD vault", "Mint authority")</td></tr>
+<tr><td><code>hidden</code></td><td>BOOLEAN</td><td>UI 에서 숨김 처리 여부. soft-hide — 자료는 그대로, 화면에 안 보일 뿐</td></tr>
+<tr><td><code>created_by</code></td><td>BINARY(16)</td><td>이 vault account 를 <strong>생성 요청</strong> 한 user id (= 요청자). set-once</td></tr>
+<tr><td><code>created_at</code></td><td>DATETIME(6)</td><td>생성 요청 시각. set-once</td></tr>
+<tr><td><code>approved_by_quorum_id</code></td><td>BINARY(16)</td><td>Admin Quorum 의 id (FK → <code>admin_quorums.id</code>). vault 생성에는 quorum 승인이 필수 — 우리 시스템은 Fireblocks 보다 엄격하게 vault 생성을 approval-gated 로 처리. set-once</td></tr>
+<tr><td><code>approved_at</code></td><td>DATETIME(6)</td><td>threshold (N-of-M) 충족 시각. 이 row 는 승인 완료 후에만 INSERT — pending 상태는 별도 <code>approval_requests</code> 평면에서 관리. set-once</td></tr>
+<tr><td><code>modified_by</code></td><td>BINARY(16)</td><td>마지막 변경자의 user id. 변경 발생 시마다 갱신. 자세한 이력은 1.5 change log</td></tr>
+<tr><td><code>modified_at</code></td><td>DATETIME(6)</td><td>마지막 변경 시각. <strong>무엇이</strong> 변경되었는지는 1.5 change log</td></tr>
+<tr><td><code>archived_at</code></td><td>DATETIME(6) nullable</td><td>archive (영구 숨김) 시각. NULL = 활성. hide 와 다르게 archive 는 더 강한 soft-delete. set-once when set</td></tr>
+<tr><td><code>archived_by</code></td><td>BINARY(16) nullable</td><td>archive 를 실행한 user id. archive 발생 시에만 set, set-once. admin 단독 동사 (quorum-gated 아님)</td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary)">★ <strong>role 은 별도 junction table</strong> 로 — 하나의 vault 가 <strong>다중 role</strong> (예: treasury + general) 을 동시 보유 가능하므로 <code>vault_accounts</code> 본체에 단일 ENUM 으로 두지 않음. 다음 1.3 절 참조.</p>
+
+<div class="callout">
+<div class="callout-title">Vault lifecycle 의 quorum-gated 분류 (design choice — Fireblocks default 보다 엄격)</div>
+<p>vault 의 lifecycle 동사 중 어디까지를 Admin Quorum 승인으로 막을지의 현재 design:</p>
+<ul style="margin-bottom:0.5rem">
+<li><strong>quorum-gated</strong>: <code>create</code> — vault 자체의 존재가 자산 책임 경계를 정의하므로 단독 admin 으로 못 만듦</li>
+<li><strong>admin 단독</strong>: <code>rename</code> · <code>hide</code> · <code>unhide</code> · <code>archive</code> — 자산 자체에 영향을 주지 않는 UI / 가시성 변경. <code>modified_by</code> 또는 <code>archived_by</code> + change_events 의 <code>actor_user_id</code> 만</li>
+<li>참고: <code>vault_account_roles</code> 의 grant/revoke 도 현재 admin 단독 (1.3 절). role 변경이 운영 위험을 키울 수 있다면 별도 재검토 가능</li>
+</ul>
+</div>
+
+<div class="callout">
+<div class="callout-title">본 schema 의 범위 밖 — 후속 검토 위치</div>
+<ul style="margin-bottom:0">
+<li><strong>Approver-level audit trail (N-of-M 의 specific signatures)</strong> — 본 schema 의 <code>approved_by_quorum_id</code> 는 quorum 자체의 id 만 가리키므로 "그 시점에 누가 sign 했는지" 의 trail 이 없음. Quorum membership 이 시간에 따라 바뀌므로 historical signer trail 은 별도 audit 평면에서 보존 필요. → <a href="tables-audit.html">20. Cross-DB Audit</a> 의 <code>approval_decisions</code> (approver 별 <code>mobile_device_sig</code>) + <code>audit_events</code> hash chain 패턴</li>
+<li><strong>Pending 상태의 approval workflow</strong> — vault 생성 요청은 quorum threshold 충족 전까지 pending. 그 상태 (request_id, 누구에게 routed, 누가 sign, 누가 reject, expire 시각) 는 별도 <code>approval_requests</code> 평면 (Add user 의 7-day expiry 와 같은 메커니즘) 에서 영속화. → <a href="tables-quorum.html">9. Admin Quorum</a></li>
+</ul>
+</div>
+
+<h4>1.3 <code>vault_account_roles</code> — vault 의 다중 role 부여</h4>
+<p>하나의 vault 가 여러 role 동시 보유 가능 (예: treasury + general). 각 role 독립 grant / revoke + audit trail.</p>
+<pre><code>CREATE TABLE vault_account_roles (
+  id                BINARY(16) PRIMARY KEY,
+  vault_account_id  BINARY(16) NOT NULL,
+  role              ENUM('treasury', 'client', 'intermediate', 'withdrawal', 'general') NOT NULL,
+  granted_by        BINARY(16) NOT NULL,
+  granted_at        DATETIME(6) NOT NULL,
+  revoked_by        BINARY(16),
+  revoked_at        DATETIME(6),
+  KEY (vault_account_id, role),
+  KEY (vault_account_id, revoked_at)
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">컬럼</th><th style="width:18%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>role grant 의 고유 식별자</td></tr>
+<tr><td><code>vault_account_id</code></td><td>BINARY(16)</td><td>어느 vault account 의 role 부여인지</td></tr>
+<tr><td><code>role</code></td><td>ENUM (5 값)</td><td>vault 의 용도 분류 (다음 1.4 절 표 참조)</td></tr>
+<tr><td><code>granted_by</code></td><td>BINARY(16)</td><td>부여자 user id</td></tr>
+<tr><td><code>granted_at</code></td><td>DATETIME(6)</td><td>부여 시각. set-once</td></tr>
+<tr><td><code>revoked_by</code></td><td>BINARY(16) nullable</td><td>회수자 user id. NULL = 현재 active</td></tr>
+<tr><td><code>revoked_at</code></td><td>DATETIME(6) nullable</td><td>회수 시각. NULL = active. set-once</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout">
+<div class="callout-title">왜 junction table 인가</div>
+<ul style="margin-bottom:0">
+<li><strong>1 vault → N roles</strong>: 같은 vault 가 treasury + general 등 동시 보유 가능</li>
+<li><strong>독립 grant / revoke</strong>: 한 role 만 회수 + 나머지 유지 같은 부분 변경 가능</li>
+<li><strong>독립 audit trail</strong>: 각 role 부여·회수가 자신의 row + timestamp + user 정보 보유</li>
+<li><strong>set-once row</strong>: revoke 후 같은 role 을 재부여할 때 새 row INSERT → role 부여 history 누적</li>
+<li><strong>현재 active role 조회</strong>: <code>SELECT role FROM vault_account_roles WHERE vault_account_id=? AND revoked_at IS NULL</code></li>
+</ul>
+</div>
+
+<h4>1.4 <code>role</code> ENUM 5 값 — 각 값의 의미</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:14%">값</th><th>의미</th><th style="width:22%">전형적 정책</th></tr></thead>
+<tbody>
+<tr><td><strong>treasury</strong></td><td>회사 전체의 메인 자금 vault. 모든 자산의 최상위 저장소</td><td>가장 엄격 — 큰 금액 송금에 다수 승인 강제</td></tr>
+<tr><td><strong>client</strong></td><td>한 개별 client 의 자산 보관</td><td>해당 client 의 입출금 한도 + KYC 기준</td></tr>
+<tr><td><strong>intermediate</strong></td><td>중계용 vault. EVM 처럼 "1 vault = 1 address" 제약 chain 에서 client 별로 unique 입금 주소 제공하려고 만듦</td><td>입금만 받고 즉시 treasury 로 sweep</td></tr>
+<tr><td><strong>withdrawal</strong></td><td>외부로 송금하는 전용 vault. 여러 개 두고 round-robin 으로 사용해서 chain 의 sequential bottleneck 회피</td><td>EVM 의 nonce 충돌 / Bitcoin 의 25-tx chain limit<span class="g" data-tip="Bitcoin Core default policy. 한 unconfirmed tx 의 descendant (그 change output 을 input 으로 쓰는 후속 tx) 가 25 개에 도달하면 mempool 이 추가 tx 거부. block confirm 전 출금 chain 이 길어지면 그 vault 의 출금이 정체" tabindex="0">(?)</span> 회피</td></tr>
+<tr><td><strong>general</strong></td><td>위 분류에 안 맞는 일반 용도</td><td>기본 정책</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout callout-warn">
+<div class="callout-title">⚠️ Scope out — mint / burn / pause / deploy / upgrade 는 본 문서 범위 밖</div>
+<p>위 5 종 (token / contract 권한) 은 <strong>수탁형 지갑의 본연 기능이 아님</strong>:</p>
+<ul style="margin-bottom:0">
+<li>수탁형 지갑 = 고객 자산 <strong>보관 + 송금</strong> 이 본질</li>
+<li>mint / burn = <strong>token issuer</strong> (Circle, Tether 등) 의 작업</li>
+<li>pause / deploy / upgrade = <strong>protocol operator</strong> 의 작업</li>
+</ul>
+<p style="margin-top:8px">Fireblocks 가 이를 vault 권한으로 다루는 이유는 plain custodian 이 아니라 <strong>digital asset operations platform</strong> 이고, 고객 중에 token issuer / protocol team 이 있어서. <strong>순수 custodial wallet 만 구축한다면 위 5 종은 schema 에 포함시키지 않음</strong>.</p>
+<p style="margin-top:8px"><strong>Hybrid (수탁 + token operation) use case 가 필요한 경우</strong>: 별도 <code>vault_contract_roles</code> 테이블로 (vault_account_id, chain, contract_address, role) 4-tuple key 의 구조 추가. 본 문서에서는 다루지 않음.</p>
+</div>
+
+<h4>1.5 <code>vault_account_change_events</code> — vault 본체 변경 이력</h4>
+<p>vault account 의 본체 변경 (rename / hide / unhide / archive) 이력.</p>
+<pre><code>CREATE TABLE vault_account_change_events (
+  id                    BINARY(16) PRIMARY KEY,
+  vault_account_id      BINARY(16) NOT NULL,
+  event_type            ENUM('created', 'renamed', 'hidden', 'unhidden', 'archived') NOT NULL,
+  field_name            VARCHAR(64) NOT NULL,
+  old_value             JSON,
+  new_value             JSON,
+  actor_user_id         BINARY(16) NOT NULL,
+  approved_by_quorum_id BINARY(16),                   -- quorum-gated event (현재 created 만) 에서만 set
+  audit_event_id        BINARY(16),
+  occurred_at           DATETIME(6) NOT NULL,
+  KEY (vault_account_id, occurred_at),
+  KEY (event_type)
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">컬럼</th><th style="width:18%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>이벤트 고유 식별자</td></tr>
+<tr><td><code>vault_account_id</code></td><td>BINARY(16)</td><td>어느 vault account 의 변경인지</td></tr>
+<tr><td><code>event_type</code></td><td>ENUM (5 값)</td><td><strong>created</strong> · <strong>renamed</strong> · <strong>hidden</strong> · <strong>unhidden</strong> · <strong>archived</strong></td></tr>
+<tr><td><code>field_name</code></td><td>VARCHAR(64)</td><td>변경된 컬럼명 (예: <code>name</code>, <code>hidden</code>)</td></tr>
+<tr><td><code>old_value</code> · <code>new_value</code></td><td>JSON nullable</td><td>변경 전/후 값. created event 시 old=NULL</td></tr>
+<tr><td><code>actor_user_id</code></td><td>BINARY(16)</td><td>변경 실행자의 user id (= 변경을 <strong>요청</strong> 한 user). quorum-gated event 의 경우 요청자가 quorum approver 자신일 필요는 없음</td></tr>
+<tr><td><code>approved_by_quorum_id</code></td><td>BINARY(16) nullable</td><td>이 이벤트가 quorum-gated 일 때만 set — 현재 <code>created</code> 1 종. <code>renamed</code> · <code>hidden</code> · <code>unhidden</code> · <code>archived</code> 는 admin 단독 (NULL)</td></tr>
+<tr><td><code>audit_event_id</code></td><td>BINARY(16) nullable</td><td><code>auditdb.audit_events</code> 의 cross-DB binding</td></tr>
+<tr><td><code>occurred_at</code></td><td>DATETIME(6)</td><td>변경 발생 시각</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">왜 별도 change log 가 필요한가</div>
+<ul style="margin-bottom:0">
+<li><strong>외부 감사 대응</strong>: 분기별 SOC 2<span class="g" tabindex="0" data-tip="System and Organization Controls. 미국 AICPA 의 외부 감사 기준. 고객 자산을 위탁받는 회사가 보안 / 가용성 / 처리 무결성 / 기밀성 / 개인정보 5 영역의 통제를 제대로 운영하는지 외부 감사인이 검증. institutional 고객 (은행 / 거래소 / 핀테크) 영업의 사실상 필수 자격증">(?)</span> 감사 시 "이 workspace 의 owner 가 언제 누구에게 transferred 되었나?" / "AML 정책이 언제 변경되었나?" 같은 질문에 즉시 답할 수 있어야 함</li>
+<li><strong>법적 책임 추적</strong>: 사고 발생 시 "누가 언제 무엇을 바꿨다" 의 cryptographic evidence (auditdb 의 hash chain 으로도 영속화) 필수</li>
+<li><strong>UPDATE 만으로는 부족</strong>: <code>modified_at</code> 은 "마지막 변경 시점" 만 알 뿐, <strong>무엇이 어떻게 변했는지</strong>는 별도 log 가 있어야 알 수 있음</li>
+</ul>
+</div>
+
+<h3>Vault Structure 4 가지 패턴 — 실제 운영 방식</h3>
+<p>출처: <code>vault-structure-best-practices.md</code></p>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:22%">패턴</th><th>설명 + 언제 쓰나</th></tr></thead>
+<tbody>
+<tr><td><strong>Omnibus</strong><br/>(통합형)</td><td>중앙 treasury vault 1 개 + client 별 intermediate vault. EVM 처럼 1 vault = 1 address 인 chain 에서 client 별 unique 입금 주소를 만들려고 intermediate 를 둠. 입금되면 즉시 treasury 로 sweep.</td></tr>
+<tr><td><strong>Segregated</strong><br/>(분리형)</td><td>per-client / per-team / per-operation 으로 vault 를 완전히 분리. 규제상 client 자산 분리가 필요하거나 회계상 명확한 attribution 이 필요할 때.</td></tr>
+<tr><td><strong>Treasury vault</strong></td><td>전체 자금의 메인 vault. <strong>가장 엄격한 policy</strong> 적용 (다수 승인 + 큰 금액 cap + 외부 주소 whitelist 만).</td></tr>
+<tr><td><strong>Smart contract per-op vault</strong><br/><small>(hybrid use case)</small></td><td><strong>※ 순수 수탁형 지갑 본연 기능 아님</strong> — token issuer / protocol operator 가 custody 와 함께 사용하는 hybrid 패턴. contract 의 특권 작업마다 별도 vault 분리해서 권한 노출 최소화.</td></tr>
+<tr><td><strong>Withdrawal vault round-robin</strong></td><td>외부 송금 vault 를 여러 개 두고 순환 사용. 한 vault 의 tx 가 stuck 되어도 다른 vault 로 진행 가능. EVM 의 nonce 순차성 / Bitcoin 의 25-tx unconfirmed chain limit 같은 chain 의 sequential bottleneck 회피.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>참고글</h3>
+<ul>
+<li><a href="https://support.fireblocks.io/hc/en-us/articles/5253421857564-Vault-Structure-Best-Practices" target="_blank" rel="noopener">Fireblocks — Vault Structure Best Practices</a> · Omnibus / Segregated / Treasury / Withdrawal vault 패턴 출처</li>
+<li><a href="tables-workspace.html">3. Workspace</a> · vault account 가 속하는 상위 격리 단위</li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a> · vault account 안의 asset wallet · address 구조</li>
+<li><a href="tables-policy.html">10. Policy · TAP</a> · vault 별 정책 (treasury / withdrawal 등)</li>
+<li><a href="tables-audit.html">20. Audit Log</a> · vault_account_change_events 의 cross-DB hash chain 영속화</li>
+<li><a href="storage-discipline.html">24. Storage Discipline</a> · append-only / set-once 규율</li>
+</ul>
+</section>
+</main>
+</div>
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

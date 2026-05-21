@@ -1,119 +1,152 @@
 <!DOCTYPE html>
+
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wallets · Addresses · Asset — 수탁형 지갑 DB 설계</title>
-  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Wallets · Addresses · Asset">
-  <meta name="robots" content="noindex">
-  <link rel="stylesheet" href="assets/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Wallets · Addresses · Asset — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Wallets · Addresses · Asset" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
 </head>
 <body>
-
-<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
-
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
 <div class="layout">
-
-<aside class="sidebar" aria-label="Table of contents">
-  <nav>
-    <div class="nav-section">
-      <h3 class="nav-section-title">Overview</h3>
-      <ul>
-        <li><a href="index.html">0. Overview</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">A. Architecture</h3>
-      <ul>
-        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
-        <li><a href="db-split.html">2. DB 분할</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">B. Workspace & Vault</h3>
-      <ul>
-        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
-        <li><a href="tables-wallet.html" class="active">4. Wallet & Address</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">C. Users & Access</h3>
-      <ul>
-        <li><a href="tables-user.html">5. Users</a></li>
-        <li><a href="tables-auth.html">6. Auth credentials</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">D. Governance & Policy</h3>
-      <ul>
-        <li><a href="tables-role.html">7. 9 User Roles</a></li>
-        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
-        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
-      <ul>
-        <li><a href="tables-mpc.html">10. MPC Key Share</a></li>
-        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
-        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
-      <ul>
-        <li><a href="sm-transaction.html">13. Transaction State</a></li>
-        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
-        <li><a href="sm-approval.html">15. Approval State</a></li>
-        <li><a href="sm-signing.html">16. Signing State</a></li>
-        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
-        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
-      <ul>
-        <li><a href="tables-audit.html">19. Audit Log</a></li>
-        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
-        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
-        <li><a href="risks.html">22. Risks Register</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
-      <ul>
-        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
-        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
-        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
-      </ul>
-    </div>
-  </nav>
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace.html">3. Workspace</a></li>
+<li><a href="tables-vault.html">4. Vault</a></li>
+<li><a class="active" href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">14. Transaction State</a></li>
+<li><a href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
 </aside>
-
 <main class="content">
-
 <section id="tables-wallet">
-    <h2>4. Wallets · Addresses · Asset Wallet</h2>
-    <span class="section-subtitle">Stage 9 정식 매핑 — 3 asset 패턴 · whitelisted address · chain-specific quirk</span>
+<h2>5. Wallets · Addresses · Asset Wallet</h2>
+<span class="section-subtitle">정식 매핑 — 3 asset 패턴 · whitelisted address · chain 별 특이 제약</span>
 
-    <h3>3 Asset Pattern (★ Stage 9 정식 명세)</h3>
-    <p><code>account-and-wallet-structure.md</code>, p.1-2 에서 정식 enumerate.</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Asset 패턴</th><th>예시</th><th>Permanent Address</th><th>Deposit Address 개수</th><th>분기자</th></tr></thead>
-        <tbody>
-          <tr><td><strong>UTXO-based</strong></td><td>BTC, BCH, LTC, DOGE</td><td>1</td><td><strong>N</strong></td><td>address 그 자체</td></tr>
-          <tr><td><strong>Account-based (no tag)</strong></td><td>ETH, EVM 전반</td><td>—</td><td><strong>1 (단일 강제)</strong></td><td>—</td></tr>
-          <tr><td><strong>Account-based (tag/memo)</strong></td><td>XRP, XLM</td><td>—</td><td>1 (on-chain 동일)</td><td><strong>N tags / memos</strong></td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="callout">
-      <div class="callout-title">EVM 의 "1 vault account = 1 address" 제약</div>
-      <p>End-client 별 unique address 가 필요한 경우 individual vault account 필요 → <strong>intermediate vault</strong> 패턴 사용 (omnibus + intermediate per client).</p>
-    </div>
+<div class="diagram">
+<pre class="mermaid">
+graph TB
+  VA["🏦 Vault Account<br/>(workspace 안 자산 보관 단위)"]
 
-    <h3>DB Schema</h3>
+  VA --> AW1["💰 Asset Wallet — BTC<br/>(UTXO 패턴)"]
+  VA --> AW2["💰 Asset Wallet — ETH<br/>(Account no-tag 패턴)"]
+  VA --> AW3["💰 Asset Wallet — XRP<br/>(Account tag 패턴)"]
+
+  subgraph UTXO_BOX["① UTXO: 1 wallet → N addresses"]
+    AW1 --> A1a["📍 address #1"]
+    AW1 --> A1b["📍 address #2"]
+    AW1 --> A1c["📍 address #N …"]
+  end
+
+  subgraph ACCT_BOX["② Account no-tag: 1 wallet → 1 address (강제)"]
+    AW2 --> A2["📍 단일 address<br/>(ERC-20 token 도 동일 address 공유)"]
+  end
+
+  subgraph TAG_BOX["③ Account tag/memo: 1 address + N tags"]
+    AW3 --> A3["📍 단일 on-chain address"]
+    A3 -. tag .-> T1["🏷️ tag/memo #1"]
+    A3 -. tag .-> T2["🏷️ tag/memo #2"]
+    A3 -. tag .-> T3["🏷️ tag/memo #N"]
+  end
+
+  classDef vault fill:#fef3c7,stroke:#d97706,stroke-width:2px;
+  classDef wallet fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px;
+  classDef addr fill:#dcfce7,stroke:#16a34a;
+  classDef tag fill:#fce7f3,stroke:#db2777;
+  class VA vault;
+  class AW1,AW2,AW3 wallet;
+  class A1a,A1b,A1c,A2,A3 addr;
+  class T1,T2,T3 tag;
+</pre>
+<span class="diagram-caption">Vault Account — Asset Wallet — Address 관계. 같은 vault 안에 chain × asset 단위로 asset wallet 이 생성되고, address 분기는 chain 의 잔액 모델 (UTXO / account-based) 에 따라 3 패턴으로 갈린다.</span>
+</div>
+
+<h3>3 Asset Pattern</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Asset 패턴</th><th>예시</th><th>Permanent Address</th><th>Deposit Address 개수</th><th>분기자</th></tr></thead>
+<tbody>
+<tr><td><strong>UTXO<span class="g" data-tip="Unspent Transaction Output. Bitcoin 계열의 잔액 모델. 잔액 = 사용 안 한 output 합" tabindex="0">(?)</span>-based</strong></td><td>BTC, BCH, LTC, DOGE</td><td>1</td><td><strong>N</strong></td><td>address 그 자체</td></tr>
+<tr><td><strong>Account-based (no tag)</strong></td><td>ETH, EVM<span class="g" data-tip="Ethereum Virtual Machine. Ethereum 호환 chain 계열 (Polygon / Arbitrum / Optimism 등). account-based 모델" tabindex="0">(?)</span> 전반</td><td>—</td><td><strong>1 (단일 강제)</strong></td><td>—</td></tr>
+<tr><td><strong>Account-based (tag/memo)</strong></td><td>XRP, XLM</td><td>—</td><td>1 (on-chain 동일)</td><td><strong>N tags / memos</strong></td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout">
+<div class="callout-title">EVM 의 "1 vault account<span class="g" data-tip="Fireblocks 의 자산 보관 단위. workspace 안에서 여러 개 만들어 client / team / 용도별 분리" tabindex="0">(?)</span> = 1 address" 제약</div>
+<p>End-client 별 unique address 가 필요한 경우 individual vault account 필요 → <strong>intermediate vault</strong> 패턴 사용 (omnibus + intermediate per client).</p>
+</div>
+<h3>DB Schema</h3>
     <pre><code>CREATE TABLE asset_wallets (
   id                BINARY(16) PRIMARY KEY,
   vault_account_id  BINARY(16) NOT NULL,
@@ -139,18 +172,18 @@ CREATE TABLE addresses (
   UNIQUE KEY (address_string, tag_or_memo)
 );</code></pre>
 
-    <h3>Whitelisted Address ≠ Vault Address</h3>
-    <p><code>whitelisting-new-addresses.md</code>, p.1: Whitelisted address = <strong>Vault 외부</strong> deposit address.</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Type</th><th>의미</th><th>workspace 잔액 표시</th><th>billable</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Internal</strong></td><td>같은 workspace 의 다른 user/team 의 외부 wallet</td><td>표시</td><td>YES</td></tr>
-          <tr><td><strong>External</strong></td><td>외부 organization 의 wallet</td><td>표시 안 됨</td><td>—</td></tr>
-          <tr><td><strong>Contract / Program</strong></td><td>smart contract address</td><td>—</td><td>—</td></tr>
-        </tbody>
-      </table>
-    </div>
+    <h3>Whitelisted Address — Vault 외부 송금 대상 목록</h3>
+<p>Vault address 는 workspace 안의 vault 가 보유한 address (입금·출금·잔액 보관·on-chain 식별 모두 거기), whitelisted address 는 외부로 송금할 <strong>목적지</strong> 를 Admin Quorum<span class="g" data-tip="관리자급 사용자의 다수결 승인 그룹. 회사 이사회 정족수 개념. Q (Quorum) / Q+O (Quorum + Owner) 라벨로 표시" tabindex="0">(?)</span> 승인으로 사전 등록해둔 화이트리스트. 두 개념은 가리키는 대상이 다름.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Type</th><th>의미</th><th>workspace<span class="g" data-tip="Fireblocks 의 최상위 격리·거버넌스 단위. 1 workspace = 1 Owner" tabindex="0">(?)</span> 잔액 표시</th></tr></thead>
+<tbody>
+<tr><td><strong>Internal</strong></td><td>같은 workspace 의 다른 user/team 의 외부 wallet</td><td>표시</td></tr>
+<tr><td><strong>External</strong></td><td>외부 organization 의 wallet</td><td>표시 안 됨</td></tr>
+<tr><td><strong>Contract / Program</strong></td><td>EVM smart contract 주소 또는 Solana Program ID (base58). 자산 수령 wallet 이 아닌 <strong>callable 대상</strong> — DApp interaction (DEX swap / DeFi staking / NFT mint 등) 출금에 사용. Solana 의 user wallet / token account 는 Contract 아님 (Internal/External 로 등록)</td><td>—</td></tr>
+</tbody>
+</table>
+</div>
 
     <pre><code>CREATE TABLE whitelisted_addresses (
   id              BINARY(16) PRIMARY KEY,
@@ -174,42 +207,154 @@ CREATE TABLE one_time_addresses (
   used_at         DATETIME(6) NOT NULL
 );</code></pre>
 
-    <h3>Chain-별 운영 제약 (Stage 7)</h3>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>제약</th><th>예시</th><th>DB 의 함의</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Minimum balance (Base Reserve)</strong></td><td>ALGO / KSM / NEAR / DOT / XRP / SOL / XLM / TON 등</td><td><code>asset_wallets.min_balance_reserved</code> 컬럼</td></tr>
-          <tr><td><strong>Minimum transaction amount</strong></td><td>BTC 0.00000582 / ALGO 1e-6 / ADA 1 / DOGE 0.01 / TON 1e-6</td><td>Submit 시 validation; 미만 시 <code>Amount Too Small</code> status</td></tr>
-          <tr><td><strong>Account 활성화</strong></td><td>Stellar (1 XLM 필수), Polkadot (0.01 DOT 이상), Near (token contract pre-funding)</td><td><code>asset_wallets.activated_at</code> 컬럼</td></tr>
-          <tr><td><strong>Trust line (XRP)</strong></td><td>Reserve 미만 시 on-chain 자동 삭제</td><td>주기적 reconciliation + 상태 동기화</td></tr>
-          <tr><td><strong>Token wallet 제약 (TL)</strong></td><td>ALGO / XRP / SOL / XLM token wallet</td><td>Role 별 생성 권한 차이 — role_permissions 테이블에 'TL' label</td></tr>
-          <tr><td><strong>Chain type 분류</strong></td><td>EVM account-based / non-EVM account-based / UTXO / Cosmos SDK</td><td><code>chains</code> lookup 테이블의 type 컬럼</td></tr>
-          <tr><td><strong>Internal transactions (EVM)</strong></td><td>smart contract 내부 native transfer — Ethereum / Optimism / Arbitrum / Avalanche / Base / Celo 등</td><td>관찰 메커니즘은 본 자료 미명시 → <a href="sm-deposit.html">17. Deposit</a></td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3>Withdrawal Vault Round-Robin (Stage 9)</h3>
-    <ul>
-      <li><strong>EVM</strong>: nonce 가 순차 — 단일 vault stuck 시 전체 queue 정체. 여러 withdrawal vault round-robin 권장</li>
-      <li><strong>Bitcoin</strong>: unconfirmed input <strong>25 subsequent tx chain limit</strong> (Bitcoin Core default) — 여러 withdrawal vault</li>
-      <li><strong>Solana</strong>: vault account 당 동시 <strong>5 tx queue</strong> (6번째 이상 Submitted max 2h 대기 후 terminated)</li>
-    </ul>
-  </section>
-
-  <nav class="page-nav" aria-label="Section navigation">
-    <a class="page-nav-link page-nav-prev" href="tables-workspace.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">3. Workspace & Vault</span></a>
-    <a class="page-nav-link page-nav-next" href="tables-user.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">5. Users</span></a>
-  </nav>
-
-</main>
+<div class="callout">
+<div class="callout-title">본 schema 의 범위 밖 — 후속 검토 위치</div>
+<p>아래 두 항목은 <code>whitelisted_addresses</code> 단독으로는 다루지 않고, 다른 평면에서 처리하도록 분리합니다. 이 페이지의 schema 를 단순하게 유지하기 위함.</p>
+<ul style="margin-bottom:0">
+<li><strong>Method whitelist (Contract type 의 함수 호출 제어)</strong> — Contract address 만 등록하면 "어떤 contract" 는 막아도 "그 contract 의 <strong>어떤 함수를 어떤 인자로</strong>" 는 못 막음. DApp interaction 출금 운영 시 method/function selector + argument constraint whitelist 가 한 layer 더 필요. → <a href="tables-policy.html">10. Policy</a> 의 Policy rule 평면</li>
+<li><strong>Approver-level audit trail (N-of-M 의 specific signatures)</strong> — 본 schema 의 <code>approved_by_quorum_id</code> 는 quorum 자체의 id 만 가리키므로 "그 시점에 누가 sign 했는지" 의 trail 이 없음. Quorum membership 이 시간에 따라 바뀌므로 historical signer trail 은 별도 audit 평면에서 보존 필요. → <a href="tables-audit.html">20. Cross-DB Audit</a> 의 <code>approval_decisions</code> (approver 별 <code>mobile_device_sig</code>) + <code>audit_events</code> hash chain 패턴</li>
+</ul>
 </div>
 
+    <h3>Chain 별 특이 제약 — DB schema 에 어떻게 흡수되는가</h3>
+<p>Asset 패턴 (UTXO / account / account+tag) 위에 한 layer 더. 각 chain 마다 다른 디테일 제약 — 최소 잔액, 최소 송금 금액, account 활성화 보증금, trust line, token wallet 권한 등 — 을 Fireblocks 가 어떻게 schema 컬럼으로 흡수하는지 정리. 마지막 컬럼 <strong>"DB 의 함의"</strong> 가 핵심.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>제약</th><th>예시</th><th>DB 의 함의</th></tr></thead>
+<tbody>
+<tr><td><strong>Minimum balance (Base Reserve)</strong></td><td>ALGO / KSM / NEAR / DOT / XRP / SOL / XLM / TON 등</td><td><code>asset_wallets.min_balance_reserved</code> 컬럼</td></tr>
+<tr><td><strong>Minimum transaction amount</strong></td><td>BTC 0.00000582 / ALGO 1e-6 / ADA 1 / DOGE 0.01 / TON 1e-6</td><td>Submit 시 validation; 미만 시 <code>Amount Too Small</code> status</td></tr>
+<tr><td><strong>Account 활성화</strong></td><td>Stellar (1 XLM 필수), Polkadot (0.01 DOT 이상), Near (token contract pre-funding)</td><td><code>asset_wallets.activated_at</code> 컬럼</td></tr>
+<tr><td><strong>Trust line (XRP)</strong></td><td>Reserve 미만 시 on-chain 자동 삭제</td><td>주기적 reconciliation + 상태 동기화</td></tr>
+<tr><td><strong>Token wallet 제약 (TL)</strong></td><td>ALGO / XRP / SOL / XLM token wallet</td><td>Role 별 생성 권한 차이 — role_permissions 테이블에 'TL' label</td></tr>
+<tr><td><strong>Chain type 분류</strong></td><td>EVM account-based / non-EVM account-based / UTXO / Cosmos SDK</td><td><code>chains</code> lookup 테이블의 type 컬럼</td></tr>
+<tr><td><strong>Internal transactions (EVM)</strong></td><td>smart contract 내부 native transfer — Ethereum / Optimism / Arbitrum / Avalanche / Base / Celo 등</td><td>관찰 메커니즘은 본 자료 미명시 → <a href="sm-deposit.html">18. Deposit Lifecycle</a></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3><code>chains</code> Lookup Table — chain-level static config 의 single source-of-truth</h3>
+<p>위의 "Chain 별 특이 제약" 표의 거의 모든 행이 가리키던 home. 각 chain 의 type/모델/최소값/플래그/제약값을 한 row 로 모아둠. <code>asset_wallets</code> 등 다른 테이블이 chain 단위 설정을 읽을 때 JOIN/lookup 대상.</p>
+<pre><code>CREATE TABLE chains (
+  id                       VARCHAR(32) PRIMARY KEY,    -- 'BTC','ETH','XRP','XLM','SOL',...
+  display_name             VARCHAR(128) NOT NULL,
+  type                     ENUM('utxo','evm','non_evm_account','cosmos_sdk') NOT NULL,
+  account_model            ENUM('utxo','account_no_tag','account_with_tag') NOT NULL,
+  min_tx_amount            DECIMAL(40,20),             -- chain 의 최소 송금 금액 default
+  base_reserve_minimum     DECIMAL(40,20),             -- 활성 유지를 위한 최소 잔액
+  requires_activation      BOOLEAN NOT NULL DEFAULT FALSE,   -- Stellar / Polkadot / Near 등
+  activation_minimum       DECIMAL(40,20),             -- 활성화 보증금 (예: 1 XLM)
+  requires_trust_line      BOOLEAN NOT NULL DEFAULT FALSE,   -- XRP token holding 시 trust line
+  supports_internal_tx     BOOLEAN NOT NULL DEFAULT FALSE,   -- EVM internal transfers
+  supports_token_wallet    BOOLEAN NOT NULL DEFAULT FALSE,   -- ALGO / XRP / SOL / XLM
+  unconfirmed_chain_limit  INT,                        -- BTC 25 등 — mempool descendant cap
+  concurrent_tx_limit_per_vault INT,                   -- Solana per-vault 5 등 (soft throttle)
+  concurrent_tx_limit_per_workspace INT,               -- Solana workspace-wide 600 등
+  signing_window_seconds   INT,                        -- Algorand ~50min 등
+  is_active                BOOLEAN NOT NULL DEFAULT TRUE,    -- 서비스가 지원 중인지
+  modified_by              BINARY(16) NOT NULL,
+  modified_at              DATETIME(6) NOT NULL
+);</code></pre>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:18%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>VARCHAR(32) PK</td><td>chain ticker 또는 short code. <code>asset_wallets.chain_id</code> 가 FK 로 가리킴</td></tr>
+<tr><td><code>display_name</code></td><td>VARCHAR(128)</td><td>UI 표시용 정식 이름 ("Bitcoin", "Ethereum")</td></tr>
+<tr><td><code>type</code></td><td>ENUM (4 값)</td><td>큰 분류: utxo / evm / non_evm_account / cosmos_sdk. 위 표의 "Chain type 분류" 행 대응</td></tr>
+<tr><td><code>account_model</code></td><td>ENUM (3 값)</td><td>address 분기 모델 — 본 페이지 "3 Asset Pattern" 절의 3 패턴과 1:1 매핑</td></tr>
+<tr><td><code>min_tx_amount</code></td><td>DECIMAL(40,20)</td><td>chain default 최소 송금. submit 시 validation. BTC 0.00000582 / TON 1e-6 등. 더 정밀한 per-asset 값은 별도 자산 테이블에서 override 가능</td></tr>
+<tr><td><code>base_reserve_minimum</code></td><td>DECIMAL(40,20)</td><td>활성 유지에 묶여 있어야 하는 최소 잔액. per-wallet 현재 reserve 는 <code>asset_wallets.min_balance_reserved</code></td></tr>
+<tr><td><code>requires_activation</code></td><td>BOOLEAN</td><td>account 활성화가 필요한 chain 인지. <code>asset_wallets.activated_at</code> 의 작성 조건</td></tr>
+<tr><td><code>activation_minimum</code></td><td>DECIMAL(40,20) nullable</td><td>활성화 보증금. Stellar 1 XLM / Polkadot 0.01 DOT 등. requires_activation=FALSE 이면 NULL</td></tr>
+<tr><td><code>requires_trust_line</code></td><td>BOOLEAN</td><td>XRP 등에서 token 보유 시 trust line 필요 여부. on-chain 자동 삭제 가능성 알림</td></tr>
+<tr><td><code>supports_internal_tx</code></td><td>BOOLEAN</td><td>EVM 의 smart contract 내부 native transfer 같은 deposit path 관찰이 필요한 chain 인지</td></tr>
+<tr><td><code>supports_token_wallet</code></td><td>BOOLEAN</td><td>chain 위에 token wallet (ALGO/XRP/SOL/XLM 의 SPL/IOU/TL) 을 만들 수 있는지. role 'TL' label 의 트리거 조건</td></tr>
+<tr><td><code>unconfirmed_chain_limit</code></td><td>INT nullable</td><td>UTXO 의 mempool descendant cap. BTC = 25. withdrawal vault round-robin 산정 기준</td></tr>
+<tr><td><code>concurrent_tx_limit_per_vault</code></td><td>INT nullable</td><td>per-vault 동시 tx 한도. Solana = 5. <strong>soft throttle</strong> — 초과 시 Submitted 대기, hard stuck 아님</td></tr>
+<tr><td><code>concurrent_tx_limit_per_workspace</code></td><td>INT nullable</td><td>workspace-wide 동시 tx 한도. Solana = 600. per-vault 5 와 별도 scope</td></tr>
+<tr><td><code>signing_window_seconds</code></td><td>INT nullable</td><td>서명 후 broadcast 까지 허용 시간. Algorand ~3000s</td></tr>
+<tr><td><code>is_active</code></td><td>BOOLEAN</td><td>서비스가 현재 그 chain 을 지원하는지. FALSE 면 신규 vault wallet 생성 불가, 기존 잔액은 유지</td></tr>
+<tr><td><code>modified_by</code> · <code>modified_at</code></td><td>BINARY(16) · DATETIME(6)</td><td>이 row 의 마지막 변경자/시각. config 변경 이력 자체는 별도 audit 평면</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">운영 노트 — chain config 의 변경 경로</div>
+<ul style="margin-bottom:0">
+<li><strong>chain seed 추가 / 신규 chain 지원</strong>: 보통 migration 또는 deployment-time seed 로 INSERT. 실시간 UI 추가 시 audit 평면에 event 영속화 권장</li>
+<li><strong>제약 값 변경</strong> (예: BTC 가 mempool default 를 25 → N 으로 변경) : UPDATE + change_events 1 row + <a href="tables-audit.html">20. Cross-DB Audit</a> 의 hash chain</li>
+<li><strong>chain 지원 중단</strong>: <code>is_active=FALSE</code> 로 soft-disable. row 삭제하면 기존 wallet 의 FK 가 깨짐 — append-only/set-once 의 spine</li>
+</ul>
+</div>
+
+<h3>Withdrawal Vault Round-Robin</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  subgraph SINGLE["❌ 단일 vault — sequential bottleneck"]
+    direction LR
+    SQ[("tx_1 · tx_2 · tx_3 · tx_4 …")] --> S_V["Vault A"]
+    S_V --> S_STUCK["⚠️ hard stuck<br/>EVM: nonce gap<br/>BTC: 25-tx chain limit"]
+    S_STUCK -.blocks all.-> S_WAIT["뒤따르는 tx<br/>전부 대기"]
+  end
+
+  subgraph RR["✅ Round-Robin — N vaults"]
+    direction LR
+    RQ[("tx_1 · tx_2 · tx_3 · tx_4 · tx_5 …")] --> DISP{{"dispatcher<br/>(round-robin)"}}
+    DISP -->|"tx_1, tx_4 …"| VA["Vault A"]
+    DISP -->|"tx_2, tx_5 …"| VB["Vault B"]
+    DISP -->|"tx_3, tx_6 …"| VC["Vault C"]
+    VA -.stuck.-> ISO_A["A 만 정체"]
+    VB --> OK_B["B 정상 진행"]
+    VC --> OK_C["C 정상 진행"]
+  end
+
+  classDef bad fill:#fee2e2,stroke:#dc2626,stroke-width:2px;
+  classDef good fill:#dcfce7,stroke:#16a34a,stroke-width:2px;
+  classDef vault fill:#dbeafe,stroke:#2563eb;
+  classDef stuck fill:#fef3c7,stroke:#d97706;
+  classDef okstate fill:#dcfce7,stroke:#16a34a;
+  class SINGLE bad;
+  class RR good;
+  class S_V,VA,VB,VC vault;
+  class S_STUCK,ISO_A stuck;
+  class OK_B,OK_C okstate;
+</pre>
+<span class="diagram-caption">위 — 단일 vault 의 sequential bottleneck (EVM nonce gap · BTC 25-chain). 한 tx 가 막히면 뒤가 다 멈춤. 아래 — 같은 출금 흐름을 N 개의 독립 vault 로 round-robin 분산. 한 vault 가 정체돼도 나머지는 정상 진행. Solana 는 다름 — per-vault 5 는 hard stuck 이 아니라 soft throttle (Submitted 대기). 1 vault 로도 운영 가능, burst &gt; 5/vault 일 때만 보조용 round-robin.</span>
+</div>
+
+<dl class="chain-rr">
+<dt><strong>EVM (Ethereum · Polygon · Arbitrum 등)</strong></dt>
+<dd>같은 주소에서 출금하는 tx 는 0, 1, 2, 3 … 순서 번호 (nonce<span class="g" data-tip="EVM 의 transaction 순서 번호. 같은 주소의 tx 가 순차 처리되도록. 충돌 시 뒤 tx 가 stuck" tabindex="0">(?)</span>) 를 <strong>반드시 순서대로</strong> 처리합니다. 한 tx 가 멈추면 (수수료 부족으로 채굴자가 안 집어감 등) <strong>그 뒤 번호의 tx 가 전부 대기 상태로 묶입니다</strong>. 출금 vault 가 하나라면 그 vault 의 출금 전체가 멈춥니다.<br>
+→ <strong>출금 전용 vault 를 여러 개 두고 돌아가며 사용</strong>하면 (round-robin), 한 vault 가 막혀도 나머지로 출금이 계속 흐릅니다.</dd>
+
+<dt><strong>Bitcoin</strong></dt>
+<dd>아직 block 에 확정되지 않은 tx 는 Bitcoin 네트워크의 임시 보관소 (mempool) 에 쌓입니다. 한 tx 의 잔돈 (change) 을 다음 tx 의 입력으로 이어 쓰는 chain 이 <strong>25 개에 도달하면, 26 번째 tx 는 네트워크가 거부</strong>합니다 (Bitcoin Core 기본 설정<span class="g" data-tip="Bitcoin Core default policy. 한 unconfirmed tx 의 descendant (그 change output 을 input 으로 쓰는 후속 tx) 가 25 개에 도달하면 mempool 이 추가 tx 거부. block confirm 전 출금 chain 이 길어지면 그 vault 의 출금이 정체" tabindex="0">(?)</span>). block 확정까지 평균 10 분, 그 사이 빠르게 연속 출금하면 한 vault 가 25 limit 에 부딪혀 출금이 막힙니다.<br>
+→ <strong>출금 vault 를 여러 개로 분산</strong>해서 각각의 chain 이 25 에 부딪히지 않도록.</dd>
+
+<dt><strong>Solana</strong></dt>
+<dd>제약이 두 단계입니다.
+<ul style="margin:0.3rem 0">
+<li><strong>vault 한 개당 동시 5 tx</strong>: 6 번째 출금 요청은 "Submitted" 상태로 줄을 서고, 최대 2 시간 안에 처리되지 않으면 자동 취소됩니다.</li>
+<li><strong>workspace 전체에서 동시 600 tx</strong>: 한 workspace 안의 모든 vault 의 진행 중 tx 합이 600 개를 넘으면 추가 요청을 안 받습니다.</li>
+</ul>
+EVM/BTC 와 결정적으로 다른 점 — 5 를 초과해도 <strong>tx 가 막히는 게 아니라 "기다리는" 상태</strong>일 뿐입니다 (앞 tx 가 끝나면 자동으로 다음 차례로). 즉 <strong>출금 vault 1 개로도 충분히 운영 가능</strong>합니다.<br>
+→ vault 여러 개로 나누는 것은 <strong>짧은 시간에 출금 요청이 갑자기 한꺼번에 몰릴 때</strong> (예: 정각마다 일괄 자동 출금이 도는 운영에서 한 vault 의 5 한도를 넘길 가능성이 있는 경우) 에만 보조적으로 의미가 있습니다.</dd>
+</dl>
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-vault.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">4. Vault</span></a>
+<a class="page-nav-link page-nav-next" href="tables-user.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">6. Users</span></a>
+</nav>
+</main>
+</div>
 <!-- Mermaid + svg-pan-zoom CDN -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
 <script src="assets/app.js"></script>
-
 </body>
 </html>

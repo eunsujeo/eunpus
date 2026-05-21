@@ -1,113 +1,108 @@
 <!DOCTYPE html>
+
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MPC Key Share Distribution — 수탁형 지갑 DB 설계</title>
-  <meta name="description" content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — MPC Key Share Distribution">
-  <meta name="robots" content="noindex">
-  <link rel="stylesheet" href="assets/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MPC Key Share Distribution — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — MPC Key Share Distribution" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
 </head>
 <body>
-
-<button class="menu-toggle" aria-label="Toggle navigation">≡ Menu</button>
-
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
 <div class="layout">
-
-<aside class="sidebar" aria-label="Table of contents">
-  <nav>
-    <div class="nav-section">
-      <h3 class="nav-section-title">Overview</h3>
-      <ul>
-        <li><a href="index.html">0. Overview</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">A. Architecture</h3>
-      <ul>
-        <li><a href="architecture.html">1. Cloud & Trust Boundaries</a></li>
-        <li><a href="db-split.html">2. DB 분할</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">B. Workspace & Vault</h3>
-      <ul>
-        <li><a href="tables-workspace.html">3. Workspace & Vault</a></li>
-        <li><a href="tables-wallet.html">4. Wallet & Address</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">C. Users & Access</h3>
-      <ul>
-        <li><a href="tables-user.html">5. Users</a></li>
-        <li><a href="tables-auth.html">6. Auth credentials</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">D. Governance & Policy</h3>
-      <ul>
-        <li><a href="tables-role.html">7. 9 User Roles</a></li>
-        <li><a href="tables-quorum.html">8. Admin Quorum · AG</a></li>
-        <li><a href="tables-policy.html">9. Policy · TAP</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">E. Cryptography & Signing</h3>
-      <ul>
-        <li><a href="tables-mpc.html" class="active">10. MPC Key Share</a></li>
-        <li><a href="tables-signer.html">11. Cosigner · Callback</a></li>
-        <li><a href="tables-recovery.html">12. Recovery & Backup</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">F. Transaction Lifecycle</h3>
-      <ul>
-        <li><a href="sm-transaction.html">13. Transaction State</a></li>
-        <li><a href="sm-14step.html">14. 14-step Flow</a></li>
-        <li><a href="sm-approval.html">15. Approval State</a></li>
-        <li><a href="sm-signing.html">16. Signing State</a></li>
-        <li><a href="sm-deposit.html">17. Deposit Lifecycle</a></li>
-        <li><a href="sm-withdrawal.html">18. Withdrawal Lifecycle</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
-      <ul>
-        <li><a href="tables-audit.html">19. Audit Log</a></li>
-        <li><a href="tables-lifecycle.html">20. Lifecycle Events</a></li>
-        <li><a href="tables-aml.html">21. AML · Travel Rule</a></li>
-        <li><a href="risks.html">22. Risks Register</a></li>
-      </ul>
-    </div>
-    <div class="nav-section">
-      <h3 class="nav-section-title">H. Cross-cutting & Ops</h3>
-      <ul>
-        <li><a href="storage-discipline.html">23. Storage Discipline</a></li>
-        <li><a href="db-ops.html">24. DB 운영 (MySQL)</a></li>
-        <li><a href="anti-patterns.html">25. Anti-patterns</a></li>
-      </ul>
-    </div>
-  </nav>
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace.html">3. Workspace</a></li>
+<li><a href="tables-vault.html">4. Vault</a></li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a class="active" href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">14. Transaction State</a></li>
+<li><a href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
 </aside>
-
 <main class="content">
-
 <section id="tables-mpc">
-    <h2>10. MPC Key Share Distribution</h2>
-    <span class="section-subtitle">MPC-CMP · 3-share 분포 · key lifecycle</span>
-
-    <h3>Protocol</h3>
-    <ul>
-      <li><strong>MPC-CMP</strong> (Canetti–Makriyannis–Peled, NIST 2020 / ACM CCS 2020) — <em>UC Non-Interactive, Proactive, Threshold ECDSA</em></li>
-      <li><strong>ECDSA + EdDSA</strong> 양쪽 지원</li>
-      <li><strong>4 rounds (3 pre-processed)</strong> vs GG18 의 8 rounds → 800% faster</li>
-      <li>마지막 라운드 QR offline 가능 → true air-gapped wallet</li>
-      <li>Universally composable · proactive security · accountability (bad-party identification)</li>
-      <li>Additive Secret Sharing (= Shamir t=n) — share 조합은 simple addition 만, perfect secrecy, "the secret itself never exists"</li>
-    </ul>
-
-    <h3>Share 분포 (Default SaaS MPC)</h3>
-    <div class="diagram">
+<h2>11. MPC<span class="g" data-tip="Multi-Party Computation. 여러 당사자가 각자 키 조각만 들고 협력해서 서명 — 누구도 단독으로 키를 모름. 전체 키가 한 번도 한곳에 모이지 않음" tabindex="0">(?)</span> Key Share Distribution</h2>
+<span class="section-subtitle">MPC-CMP<span class="g" data-tip="MPC 의 한 종류. Canetti–Makriyannis–Peled (2020) 가 만든 threshold ECDSA 프로토콜. GG18 의 8 라운드를 4 라운드로 단축. Fireblocks 가 사용" tabindex="0">(?)</span> · 3-share 분포 · key lifecycle</span>
+<h3>Protocol</h3>
+<ul>
+<li><strong>MPC-CMP</strong> (Canetti–Makriyannis–Peled, NIST 2020 / ACM CCS 2020) — <em>UC Non-Interactive, Proactive, Threshold ECDSA</em></li>
+<li><strong>ECDSA + EdDSA</strong> 양쪽 지원</li>
+<li><strong>4 rounds (3 pre-processed)</strong> vs GG18 의 8 rounds → 800% faster</li>
+<li>마지막 라운드 QR offline 가능 → true air-gapped wallet</li>
+<li>Universally composable · proactive security · accountability (bad-party identification)</li>
+<li>Additive Secret Sharing (= Shamir t=n) — share 조합은 simple addition 만, perfect secrecy, "the secret itself never exists"</li>
+</ul>
+<h3>Share 분포 (Default SaaS MPC)</h3>
+<div class="diagram">
       <pre class="mermaid">
 graph TB
   subgraph FB["Fireblocks (Azure SGX)"]
@@ -128,28 +123,25 @@ graph TB
   M -.backup.-> BAK
       </pre>
       <span class="diagram-caption">Figure 3. Default SaaS MPC — 3 share within-group (1 customer + 2 Fireblocks). Across-group: 각 Admin/Signer 가 자체 3-share set 보유.</span>
-    </div>
-
-    <h3>Threshold 구조</h3>
-    <ul>
-      <li><strong>Within-group</strong>: 3/3 (1 customer-side + 2 Fireblocks cloud)</li>
-      <li><strong>Across-group</strong>: 1/N OR (각 Admin/Signer 가 자체 3-share set 보유)</li>
-      <li>모든 signing user 의 set 은 <strong>Owner 의 set 에서 derived</strong></li>
-    </ul>
-
-    <h3>Hosted MPC Variant</h3>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>모델</th><th>Customer 측</th><th>Fireblocks 측</th></tr></thead>
-        <tbody>
-          <tr><td>Default SaaS MPC</td><td>1 share (mobile or API Co-Signer)</td><td>2 shares (Fireblocks Azure SGX)</td></tr>
-          <tr><td><strong>Hosted MPC</strong></td><td><strong>3 shares</strong> (1 Primary + 2 Guard, 모두 SGX)</td><td><strong>0 shares</strong></td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p>Hosted MPC = customer ownership deployment axis — Fireblocks 는 cryptographic 참여 없음.</p>
-
-    <h3>DB Schema — Key Lifecycle (auditdb)</h3>
+</div>
+<h3>Threshold 구조</h3>
+<ul>
+<li><strong>Within-group</strong>: 3/3 (1 customer-side + 2 Fireblocks cloud)</li>
+<li><strong>Across-group</strong>: 1/N OR (각 Admin/Signer 가 자체 3-share set 보유)</li>
+<li>모든 signing user 의 set 은 <strong>Owner 의 set 에서 derived</strong></li>
+</ul>
+<h3>Hosted MPC Variant</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>모델</th><th>Customer 측</th><th>Fireblocks 측</th></tr></thead>
+<tbody>
+<tr><td>Default SaaS MPC</td><td>1 share (mobile or API Co-Signer)</td><td>2 shares (Fireblocks Azure SGX<span class="g" data-tip="Intel Software Guard Extensions. CPU 안의 봉인된 메모리 영역 (enclave). OS 나 hypervisor 도 그 안을 들여다볼 수 없음" tabindex="0">(?)</span>)</td></tr>
+<tr><td><strong>Hosted MPC</strong></td><td><strong>3 shares</strong> (1 Primary + 2 Guard, 모두 SGX)</td><td><strong>0 shares</strong></td></tr>
+</tbody>
+</table>
+</div>
+<p>Hosted MPC = customer ownership deployment axis — Fireblocks 는 cryptographic 참여 없음.</p>
+<h3>DB Schema — Key Lifecycle (auditdb)</h3>
     <pre><code>-- 키 자체는 forbidden storage. row 는 lifecycle event 만 기록.
 CREATE TABLE key_lifecycle (
   id              BINARY(16) PRIMARY KEY,
@@ -165,34 +157,30 @@ CREATE TABLE key_lifecycle (
 );
 
 -- 절대 컬럼 X: private key, MPC share material, recovery passphrase, RSA private key
--- → 어떤 컬럼에도 plaintext 또는 cipher 로도 저장 금지 (Stage 23 참조)</code></pre>
+-- → 어떤 컬럼에도 plaintext 또는 cipher 로도 저장 금지</code></pre>
 
     <h3>Key Share Derivation 이벤트</h3>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>이벤트</th><th>인증 강도</th><th>출처</th></tr></thead>
-        <tbody>
-          <tr><td>Add user (signing role)</td><td>Owner 단독 MPC key share derivation 별도 승인</td><td><code>add-users.md</code>, p.1</td></tr>
-          <tr><td>Re-enroll device</td><td>Owner 재승인 (2-day window) + 사용자 재등록 (2-day window)</td><td><code>re-enroll-a-users-mobile-device.md</code>, p.1</td></tr>
-          <tr><td>Device migration</td><td>사용자 본인 self-service, 관리자 승인 없이 PIN+passphrase+biometric 3중</td><td><code>device-migration.md</code>, p.2</td></tr>
-          <tr><td>Co-signer pairing</td><td>Owner 가 Co-signer key shares 승인</td><td><code>re-enrolling-api-users.md</code>, p.1</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <nav class="page-nav" aria-label="Section navigation">
-    <a class="page-nav-link page-nav-prev" href="tables-policy.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">9. Policy · TAP</span></a>
-    <a class="page-nav-link page-nav-next" href="tables-signer.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">11. Cosigner · Callback</span></a>
-  </nav>
-
+<div class="table-wrap">
+<table>
+<thead><tr><th>이벤트</th><th>인증 강도</th><th>출처</th></tr></thead>
+<tbody>
+<tr><td>Add user (signing role)</td><td>Owner 단독 MPC key share derivation 별도 승인</td><td><code>add-users.md</code>, p.1</td></tr>
+<tr><td>Re-enroll device</td><td>Owner 재승인 (2-day window) + 사용자 재등록 (2-day window)</td><td><code>re-enroll-a-users-mobile-device.md</code>, p.1</td></tr>
+<tr><td>Device migration</td><td>사용자 본인 self-service, 관리자 승인 없이 PIN+passphrase+biometric 3중</td><td><code>device-migration.md</code>, p.2</td></tr>
+<tr><td>Co-signer pairing</td><td>Owner 가 Co-signer key shares 승인</td><td><code>re-enrolling-api-users.md</code>, p.1</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-policy.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">9. Policy · TAP<span class="g" data-tip="Transaction Authorization Policy. Fireblocks 의 거래 단위 승인 정책 엔진" tabindex="0">(?)</span></span></a>
+<a class="page-nav-link page-nav-next" href="tables-signer.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">11. Cosigner<span class="g" data-tip="자동 서명 컴포넌트. Mobile Cosigner (사용자 device) / API Cosigner (customer server) / Fireblocks Cloud Cosigner (Azure SGX)" tabindex="0">(?)</span> · Callback</span></a>
+</nav>
 </main>
 </div>
-
 <!-- Mermaid + svg-pan-zoom CDN -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
 <script src="assets/app.js"></script>
-
 </body>
 </html>
