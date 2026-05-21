@@ -1,0 +1,45 @@
+{
+  "expectations": [
+    {
+      "text": "각 PDF 에 대해 Mode A / B / C 중 하나로 분류 (3-mode 결정 적용)",
+      "passed": true,
+      "evidence": "matched: Mode B"
+    },
+    {
+      "text": "각 PDF 에 TIER 1 / 2 / 3 분류 명시",
+      "passed": true,
+      "evidence": "matched: TIER 1"
+    },
+    {
+      "text": "5 priority domain 적합도 평가",
+      "passed": true,
+      "evidence": "... 엄수).\n- 3 file 모두 5 priority domain 직격 (compliance / lifecycle-events) 으로 **TIER 1 후보**.\n- curated w..."
+    },
+    {
+      "text": "PDF 본문 fact 추측 없음 (filename / URL slug 기반 cross-cut signal 만)",
+      "passed": true,
+      "evidence": "...Source Ingest) — 본문 fact 추측 금지, 파일/URL/도메인 기반 triage 만.\n> **상태**: dry-run — 본 보고서는 분석 + diff preview..."
+    },
+    {
+      "text": "meta.yml 파일 생성 제안 또는 구조 명시",
+      "passed": true,
+      "evidence": "...iance / screening | meta.yml + lightweight index — 본문 미로드 |\n| 2 | `2026-06-01__support-fireblocks-io..."
+    },
+    {
+      "text": "사용자 승인 대기 명시 (실제 파일 수정 안 함)",
+      "passed": true,
+      "evidence": "...금지 (diff preview 만, 승인 대기)\n\n---\n\n## 결론 — 사용자 승인 대기\n\n위 분석을 승인하시면:\n\n1. 3 개 `.meta.yml` 생성 (sources/fir..."
+    },
+    {
+      "text": "log.md 추가 entry 제안",
+      "passed": true,
+      "evidence": "...ep 7 maintenance)\n\n`log.md` 에 추가:\n\n```markdown\n## Stage 35 (2026-05-20) — 3 PDF Mode B lightweight-i..."
+    }
+  ],
+  "summary": {
+    "pass_rate": 1.0,
+    "passed": 7,
+    "failed": 0,
+    "total": 7
+  }
+}

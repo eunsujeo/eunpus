@@ -1,0 +1,40 @@
+{
+  "expectations": [
+    {
+      "text": "entity-min discipline check — 기존 entity / vendor hub 흡수 가능성 평가",
+      "passed": true,
+      "evidence": "...Calculation\" 서브섹션으로 흡수** — 별도 파일 안 만듦. 컨벤션 일관성 우선.\n3. **placeholder entity 만 생성** — 본 entity 를 한 줄 s..."
+    },
+    {
+      "text": "흡수 후보 명시 (transaction.md / policy.md / vault-account.md / blockchains.md 등 중 ≥1)",
+      "passed": true,
+      "evidence": "...y 보다는 **note** 또는 **transaction.md 의 서브섹션**이 더 컨벤션에 부합합니다.\n\n세 가지 선택지:\n\n| 선택지 | 위치 | 장점 | 단점 |\n|---|-..."
+    },
+    {
+      "text": "새 entity 즉시 생성 안 함 — 분석 보고 + 승인 대기",
+      "passed": true,
+      "evidence": "... / RBF 의 **Policy / Approval 재검사** 여부 (boosted tx 가 새 approval 사이클을 트리거하는지, 또는 원 tx approval 을 승계하는지..."
+    },
+    {
+      "text": "신규 entity 생성 시 Stage counter reset 명시 또는 entity-min 누적 카운트 언급",
+      "passed": false,
+      "evidence": "none of: ['stage counter reset', 'stage reset', '카운터 reset']..."
+    },
+    {
+      "text": "공식 근거 wiki 안에서 fee 관련 fact 검색 후 hypothesis 와 분리",
+      "passed": true,
+      "evidence": "... 검색 결과 wiki 가 보유한 **확정 evidence** 는:\n\n- `kusama-transaction-fee-estimation.md` — **placeholder only*..."
+    },
+    {
+      "text": "실제 파일 생성 안 함 — diff / draft 만 제시",
+      "passed": true,
+      "evidence": "...eblocks/*.md`) 에 맞춰 초안으로 작성했습니다. 단, 작업 전 짚어야 할 **scope/이름 컨벤션 이슈**가 있어 먼저 안내드리고, 이어서 본문 초안을 제공합니다.\n\n..."
+    }
+  ],
+  "summary": {
+    "pass_rate": 0.8333333333333334,
+    "passed": 5,
+    "failed": 1,
+    "total": 6
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "eval_id": 2,
+  "eval_name": "new-entity-request-min-discipline",
+  "prompt": "Fireblocks 의 새 entity 만들어줘: \"transaction-fee-calculation\" — gas fee / network fee 계산 로직 정리하는 entity.",
+  "assertions": [
+    {"id": "entity-min-check", "text": "entity-min discipline check — 기존 entity / vendor hub 흡수 가능성 평가"},
+    {"id": "candidate-absorb-pages", "text": "흡수 후보 명시 (transaction.md, policy.md, vault-account.md, blockchains.md 등 중 ≥1)"},
+    {"id": "no-immediate-creation", "text": "새 entity 즉시 생성 안 함 — 분석 보고 + 승인 대기"},
+    {"id": "stage-reset-warning", "text": "신규 entity 생성 시 Stage counter reset 명시 또는 entity-min 누적 카운트 언급"},
+    {"id": "source-discipline", "text": "공식 근거 wiki 안에서 fee 관련 fact 검색 후 hypothesis 와 분리"},
+    {"id": "dry-run-respected", "text": "실제 파일 생성 안 함 — diff / draft 만 제시"}
+  ]
+}

@@ -1,0 +1,22 @@
+[
+  {"query": "Fireblocks 의 user role 이 9개 있다고 들었는데 각 role 의 권한 차이가 정확히 어떻게 돼? 특히 Non-Signing Admin 이 designated signer 흐름으로 tx 를 어떻게 initiate 할 수 있는지 궁금해.", "should_trigger": true},
+  {"query": "이거 ingest 해줘. 방금 download 받은 PDF 3개야: sources/fireblocks/pdf/2026-06-05__support__transaction-policies-overview.pdf, sources/fireblocks/pdf/2026-06-05__support__compliance-integrations.pdf, sources/fireblocks/pdf/2026-06-05__developers__webhook-payload-schema.pdf — 일단 mode 분류만 알려줘", "should_trigger": true},
+  {"query": "workspace freeze 시 정확히 어떤 동작이 막히는지 알려줘. 그리고 incoming transfer 는 어떻게 처리되는지.", "should_trigger": true},
+  {"query": "Fireblocks 의 새 entity 만들어줘: \"off-exchange-counterparty\" — Off Exchange product 의 counterparty 관계 정리하는 entity 로 transaction.md 랑 분리.", "should_trigger": true},
+  {"query": "webhook event 종류랑 payload schema 가 어디 정리되어 있어? Fireblocks 가 어떤 event 를 emit 하는지 전체 목록 보고 싶어.", "should_trigger": true},
+  {"query": "open-question Q-S03 답할 자료 있는 것 같아. AML transaction screening policy 의 정확한 룰 표현 문법 확인하고 wiki 업데이트해줘.", "should_trigger": true},
+  {"query": "callback handler 의 5 auth option 차이가 뭐였지? 특히 hybrid 두 개 (option 4, 5) 가 SGX-only 인 이유.", "should_trigger": true},
+  {"query": "Hosted MPC 도입한 customer 가 BCM 도 같이 도입해야 하는 이유가 있어? 두 feature 의 관계가 어떻게 돼.", "should_trigger": true},
+  {"query": "오늘 작업 끝났으니까 log.md 에 stage 36 entry 추가해줘 — 3 PDF Mode B ingest, 신규 entity 0 streak 유지, Q-S03 ANSWERED.", "should_trigger": true},
+  {"query": "policy 변경시 Q+O 흐름이 정확히 어떻게 돌아? Owner 의 승인이 quorum threshold 에 카운트 되는지 헷갈려.", "should_trigger": true},
+  {"query": "새 React 컴포넌트 하나 만들어줘 — dashboard 의 transaction history 표시용. tailwind 쓰고 date filter 도 추가.", "should_trigger": false},
+  {"query": "우리 회사 internal wiki (Notion) 에 새 페이지 추가하는 절차 알려줘. 권한 설정이 까다로워서.", "should_trigger": false},
+  {"query": "EVM transaction fee 계산하는 Python 함수 짜줘. EIP-1559 의 base + priority fee 계산 + suggested gas 도 포함.", "should_trigger": false},
+  {"query": "Kafka 에 streaming data ingest 하는 pipeline 어떻게 구성해? batch vs streaming 결정 기준 포함해서 알려줘.", "should_trigger": false},
+  {"query": "Fireblocks Python SDK 로 vault account 생성하는 코드 예시 좀 보여줘. async 로 처리해야 해.", "should_trigger": false},
+  {"query": "MPC 가 일반적으로 어떻게 작동해? GG18 vs CMP vs Shamir 차이를 protocol 라운드 수 관점에서 비교해줘.", "should_trigger": false},
+  {"query": "log file 분석 스크립트 짜줘. /var/log/app.log 에서 ERROR 라인만 모아서 timestamp 별로 정렬.", "should_trigger": false},
+  {"query": "회사 내부 시스템에 새 user 추가하는 절차 정리해줘. HR 시스템 + Slack 초대 + IAM 권한 + onboarding 메일.", "should_trigger": false},
+  {"query": "우리 회사 보안 정책 v3 변경안 review 좀 부탁해. 특히 access control 부분이 너무 빡빡한 것 같아.", "should_trigger": false},
+  {"query": "Notion 에서 LLM-powered wiki 만드는 법 좀 알려줘. Database template + API integration 까지.", "should_trigger": false}
+]

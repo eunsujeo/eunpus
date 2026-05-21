@@ -1,0 +1,15 @@
+{
+  "eval_id": 3,
+  "eval_name": "fact-query-reference-ready",
+  "prompt": "Fireblocks 의 MPC key share 가 어디에 분포되어 있는지 알려줘. 그리고 Hosted MPC 와의 차이도.",
+  "assertions": [
+    {"id": "cite-mpc-md", "text": "vendors/fireblocks/mpc.md 또는 entities/fireblocks/mpc-key-share.md 인용"},
+    {"id": "six-section-template", "text": "6-section 답변 템플릿 적용 (핵심 요약 / 운영 상세 / 확정 vs hypothesis / 답 가능 범위 / promote 필요 / 추천)"},
+    {"id": "stage-tags", "text": "Stage 번호 (Stage 8 / 22 / 29 등) 명시"},
+    {"id": "mpc-cmp-protocol", "text": "MPC-CMP protocol 명시 (Canetti-Makriyannis-Peled 또는 4-round 또는 ACM CCS 2020)"},
+    {"id": "saas-3-share-distribution", "text": "SaaS MPC = 1 customer + 2 Fireblocks (3-of-3) 명시"},
+    {"id": "hosted-mpc-variant", "text": "Hosted MPC = 3 customer + 0 Fireblocks 차이 명시"},
+    {"id": "confirmed-vs-hypothesis", "text": "확정 fact vs hypothesis 명확 분리 (★ separator 또는 callout)"},
+    {"id": "open-question-ref", "text": "Open Question (Q-...) 또는 미해결 영역 ≥1 언급"}
+  ]
+}

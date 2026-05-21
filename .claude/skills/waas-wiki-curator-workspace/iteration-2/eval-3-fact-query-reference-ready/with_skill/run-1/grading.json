@@ -1,0 +1,65 @@
+{
+  "expectations": [
+    {
+      "text": "응답 opening 에 Trigger 3 (fact query / reference-ready) 판별 선언",
+      "passed": true,
+      "evidence": "trigger=True, step=True, route=True, status=True"
+    },
+    {
+      "text": "6 정확한 한국어 헤더 모두 사용",
+      "passed": true,
+      "evidence": "matched 6/6 exact headers"
+    },
+    {
+      "text": "vendors/fireblocks/mpc.md AND entities/fireblocks/mpc-key-share.md 둘 다 인용",
+      "passed": true,
+      "evidence": "mpc.md=True, mpc-key-share.md=True"
+    },
+    {
+      "text": "각 fact 진술에 inline 출처 ≥5 건",
+      "passed": true,
+      "evidence": "found 98 source citations"
+    },
+    {
+      "text": "Stage 번호 ≥2 개 명시",
+      "passed": true,
+      "evidence": "stages: ['2', '22', '29', '30', '31', '5', '8']"
+    },
+    {
+      "text": "MPC-CMP protocol 명시",
+      "passed": true,
+      "evidence": "...mpc.md` §\"Stage 8 — MPC-CMP 정식 명세 / Threshold 구조 / Cloud Architecture\").\n- **Backup**: 고객 mobile sha..."
+    },
+    {
+      "text": "SaaS MPC = 1 customer + 2 Fireblocks (3-of-3) 명시",
+      "passed": true,
+      "evidence": "...---|\n| 3 share 분포 | 1 customer + 2 Fireblocks cloud | 3 customer (1 Primary + 2 Guard) |\n| Customer ..."
+    },
+    {
+      "text": "Hosted MPC = 3 customer + 0 Fireblocks 명시",
+      "passed": true,
+      "evidence": "...e 가 어디에 분포되어 있는지\", \"Hosted MPC 와의 차이\"\n> **단계**: SKILL.md 7-step workflow Step 7 (Reference-Ready Mai..."
+    },
+    {
+      "text": "확정 fact vs hypothesis 명확 분리",
+      "passed": true,
+      "evidence": "... vs hypothesis\n\n### 3.1 확정 (wiki 인용 가능)\n\n- SaaS MPC = 3-of-3 within-group: 1 customer + 2 Fireblocks..."
+    },
+    {
+      "text": "Open Question ≥1 언급",
+      "passed": true,
+      "evidence": "matched: Q-2026"
+    },
+    {
+      "text": "LLM 일반 지식 fill-in 없음 — unverified 라벨 없이 단정형 진술 0건",
+      "passed": false,
+      "evidence": "no unverified marker"
+    }
+  ],
+  "summary": {
+    "pass_rate": 0.9090909090909091,
+    "passed": 10,
+    "failed": 1,
+    "total": 11
+  }
+}

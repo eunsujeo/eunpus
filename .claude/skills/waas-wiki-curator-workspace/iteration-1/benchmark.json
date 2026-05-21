@@ -1,0 +1,383 @@
+{
+  "metadata": {
+    "skill_name": "waas-wiki-curator",
+    "skill_path": "<path/to/skill>",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-05-20T11:09:46Z",
+    "evals_run": [
+      1,
+      2,
+      3
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 1,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "time_seconds": 182.3,
+        "tokens": 51588,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "\uac01 PDF \uc5d0 \ub300\ud574 Mode A / B / C \uc911 \ud558\ub098\ub85c \ubd84\ub958 (3-mode \uacb0\uc815 \uc801\uc6a9)",
+          "passed": true,
+          "evidence": "matched: Mode B"
+        },
+        {
+          "text": "\uac01 PDF \uc5d0 TIER 1 / 2 / 3 \ubd84\ub958 \uba85\uc2dc",
+          "passed": true,
+          "evidence": "matched: TIER 1"
+        },
+        {
+          "text": "5 priority domain \uc801\ud569\ub3c4 \ud3c9\uac00",
+          "passed": true,
+          "evidence": "... \uc5c4\uc218).\n- 3 file \ubaa8\ub450 5 priority domain \uc9c1\uaca9 (compliance / lifecycle-events) \uc73c\ub85c **TIER 1 \ud6c4\ubcf4**.\n- curated w..."
+        },
+        {
+          "text": "PDF \ubcf8\ubb38 fact \ucd94\uce21 \uc5c6\uc74c (filename / URL slug \uae30\ubc18 cross-cut signal \ub9cc)",
+          "passed": true,
+          "evidence": "...Source Ingest) \u2014 \ubcf8\ubb38 fact \ucd94\uce21 \uae08\uc9c0, \ud30c\uc77c/URL/\ub3c4\uba54\uc778 \uae30\ubc18 triage \ub9cc.\n> **\uc0c1\ud0dc**: dry-run \u2014 \ubcf8 \ubcf4\uace0\uc11c\ub294 \ubd84\uc11d + diff preview..."
+        },
+        {
+          "text": "meta.yml \ud30c\uc77c \uc0dd\uc131 \uc81c\uc548 \ub610\ub294 \uad6c\uc870 \uba85\uc2dc",
+          "passed": true,
+          "evidence": "...iance / screening | meta.yml + lightweight index \u2014 \ubcf8\ubb38 \ubbf8\ub85c\ub4dc |\n| 2 | `2026-06-01__support-fireblocks-io..."
+        },
+        {
+          "text": "\uc0ac\uc6a9\uc790 \uc2b9\uc778 \ub300\uae30 \uba85\uc2dc (\uc2e4\uc81c \ud30c\uc77c \uc218\uc815 \uc548 \ud568)",
+          "passed": true,
+          "evidence": "...\uae08\uc9c0 (diff preview \ub9cc, \uc2b9\uc778 \ub300\uae30)\n\n---\n\n## \uacb0\ub860 \u2014 \uc0ac\uc6a9\uc790 \uc2b9\uc778 \ub300\uae30\n\n\uc704 \ubd84\uc11d\uc744 \uc2b9\uc778\ud558\uc2dc\uba74:\n\n1. 3 \uac1c `.meta.yml` \uc0dd\uc131 (sources/fir..."
+        },
+        {
+          "text": "log.md \ucd94\uac00 entry \uc81c\uc548",
+          "passed": true,
+          "evidence": "...ep 7 maintenance)\n\n`log.md` \uc5d0 \ucd94\uac00:\n\n```markdown\n## Stage 35 (2026-05-20) \u2014 3 PDF Mode B lightweight-i..."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8333333333333334,
+        "passed": 5,
+        "failed": 1,
+        "total": 6,
+        "time_seconds": 176.7,
+        "tokens": 43577,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "entity-min discipline check \u2014 \uae30\uc874 entity / vendor hub \ud761\uc218 \uac00\ub2a5\uc131 \ud3c9\uac00",
+          "passed": true,
+          "evidence": "...\"\uc2e0\uaddc entity \uc0dd\uc131 \ucd5c\uc18c\ud654 \u2014 \uae30\uc874 entity / vendor hub \uc5d0 \ud761\uc218 \uac00\ub2a5\ud55c\uc9c0 \uba3c\uc800 \uc810\uac80\"** + **\"curated wiki \uc790\ub3d9 \uc218\uc815 \uae08\uc9c0 \u2014 diff \ubcf4\uc5ec\uc8fc\uace0..."
+        },
+        {
+          "text": "\ud761\uc218 \ud6c4\ubcf4 \uba85\uc2dc (transaction.md / policy.md / vault-account.md / blockchains.md \ub4f1 \uc911 \u22651)",
+          "passed": true,
+          "evidence": "...entities/fireblocks/transaction.md` \uc758 fee \uad00\ub828 \ud589 \ubcf4\uac15 + (c) \uc2e0\uaddc source ingest \ud544\uc694\ubd84\uc740 **open-questions** \ub85c \ube7c..."
+        },
+        {
+          "text": "\uc0c8 entity \uc989\uc2dc \uc0dd\uc131 \uc548 \ud568 \u2014 \ubd84\uc11d \ubcf4\uace0 + \uc2b9\uc778 \ub300\uae30",
+          "passed": true,
+          "evidence": "...*\uc790\ub3d9 \uc0dd\uc131\ud558\uc9c0 \uc54a\uace0 \ubd84\uc11d \ubcf4\uace0 + \uc2b9\uc778 \ub300\uae30**\ub85c \uc751\ub2f5\ud569\ub2c8\ub2e4.\n\n---\n\n## 1. \ud575\uc2ec \uc694\uc57d (10\ucd08)\n\n- **\uc2e0\uaddc entity \uc0dd\uc131\uc744 \uad8c\uc7a5\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.** \"gas fee..."
+        },
+        {
+          "text": "\uc2e0\uaddc entity \uc0dd\uc131 \uc2dc Stage counter reset \uba85\uc2dc \ub610\ub294 entity-min \ub204\uc801 \uce74\uc6b4\ud2b8 \uc5b8\uae09",
+          "passed": false,
+          "evidence": "none of: ['stage counter reset', 'stage reset', '\uce74\uc6b4\ud130 reset']..."
+        },
+        {
+          "text": "\uacf5\uc2dd \uadfc\uac70 wiki \uc548\uc5d0\uc11c fee \uad00\ub828 fact \uac80\uc0c9 \ud6c4 hypothesis \uc640 \ubd84\ub9ac",
+          "passed": true,
+          "evidence": "...-estimation.md) | \u2605 confirmed |\n+ | DOT | min 0.01 (reaped + replay risk); tx 2h valid | [polkadot-d..."
+        },
+        {
+          "text": "\uc2e4\uc81c \ud30c\uc77c \uc0dd\uc131 \uc548 \ud568 \u2014 diff / draft \ub9cc \uc81c\uc2dc",
+          "passed": true,
+          "evidence": "...ted wiki \uc790\ub3d9 \uc218\uc815 \uae08\uc9c0 \u2014 diff \ubcf4\uc5ec\uc8fc\uace0 \uc2b9\uc778 \ud6c4\ub9cc\"** \uc801\uc6a9.\n> \u2192 **\uc790\ub3d9 \uc0dd\uc131\ud558\uc9c0 \uc54a\uace0 \ubd84\uc11d \ubcf4\uace0 + \uc2b9\uc778 \ub300\uae30**\ub85c \uc751\ub2f5\ud569\ub2c8\ub2e4.\n\n---\n\n## 1. \ud575\uc2ec \uc694..."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 3,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 8,
+        "failed": 0,
+        "total": 8,
+        "time_seconds": 145.2,
+        "tokens": 61493,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "vendors/fireblocks/mpc.md \ub610\ub294 entities/fireblocks/mpc-key-share.md \uc778\uc6a9",
+          "passed": true,
+          "evidence": "... machines).\n\n- \ucd9c\ucc98: `vendors/fireblocks/mpc.md` \u00a7\"Stage 8 \u2014 MPC-CMP \uc815\uc2dd \uba85\uc138\" + \u00a7\"Hosted MPC Variant\"\n- ..."
+        },
+        {
+          "text": "6-section \ub2f5\ubcc0 \ud15c\ud50c\ub9bf \uc801\uc6a9 (\ud575\uc2ec \uc694\uc57d / \uc6b4\uc601 \uc0c1\uc138 / \ud655\uc815 vs hypothesis / \ub2f5 \uac00\ub2a5 \ubc94\uc704 / promote \ud544\uc694 / \ucd94\ucc9c)",
+          "passed": true,
+          "evidence": "matched 7/7 markers: ['\ud575\uc2ec \uc694\uc57d', '\uc6b4\uc601 \uc0c1\uc138', '\ud655\uc815', 'hypothesis', '\ub2f5 \uac00\ub2a5 \ubc94\uc704', 'promote', '\ucd94\ucc9c']"
+        },
+        {
+          "text": "Stage \ubc88\ud638 (Stage 8 / 22 / 29 \ub4f1) \uba85\uc2dc",
+          "passed": true,
+          "evidence": "matched: Stage 8"
+        },
+        {
+          "text": "MPC-CMP protocol \uba85\uc2dc",
+          "passed": true,
+          "evidence": "...mpc.md` \u00a7\"Stage 8 \u2014 MPC-CMP \uc815\uc2dd \uba85\uc138\" + \u00a7\"Hosted MPC Variant\"\n- \ucd9c\ucc98: `vendors/fireblocks/architecture.md..."
+        },
+        {
+          "text": "SaaS MPC = 1 customer + 2 Fireblocks (3-of-3) \uba85\uc2dc",
+          "passed": true,
+          "evidence": "...** = **3-of-3 \ubd84\ud560** (1 customer + 2 Fireblocks Azure SGX cloud).\n**Hosted MPC** = **3-of-3 customer-s..."
+        },
+        {
+          "text": "Hosted MPC = 3 customer + 0 Fireblocks \ucc28\uc774 \uba85\uc2dc",
+          "passed": true,
+          "evidence": "... MPC key share \ubd84\ud3ec + Hosted MPC \ube44\uad50\n\n> Reference-ready \ub2f5\ubcc0 (Trigger 3) \u2014 wiki grep \uacb0\uacfc\ub9cc \uc778\uc6a9, LLM \uc77c\ubc18 \uc9c0\uc2dd \ub2e8\ub3c5..."
+        },
+        {
+          "text": "\ud655\uc815 fact vs hypothesis \uba85\ud655 \ubd84\ub9ac",
+          "passed": true,
+          "evidence": "...ey \ubd84\ub9ac\")\n\n---\n\n## 3. \ud655\uc815 vs hypothesis (\u2605 \uba85\ud655 \ubd84\ub9ac)\n\n### Confirmed fact (\ucd9c\ucc98 \uba85\uc2dc)\n\n- 3-of-3 within-group th..."
+        },
+        {
+          "text": "Open Question (Q-...) \ub610\ub294 \ubbf8\ud574\uacb0 \uc601\uc5ed \u22651 \uc5b8\uae09",
+          "passed": true,
+          "evidence": "matched: Q-2026"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "time_seconds": 139.7,
+        "tokens": 42363,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "\uac01 PDF \uc5d0 \ub300\ud574 Mode A / B / C \uc911 \ud558\ub098\ub85c \ubd84\ub958 (3-mode \uacb0\uc815 \uc801\uc6a9)",
+          "passed": true,
+          "evidence": "matched: Mode A"
+        },
+        {
+          "text": "\uac01 PDF \uc5d0 TIER 1 / 2 / 3 \ubd84\ub958 \uba85\uc2dc",
+          "passed": true,
+          "evidence": "matched: TIER 2"
+        },
+        {
+          "text": "5 priority domain \uc801\ud569\ub3c4 \ud3c9\uac00",
+          "passed": true,
+          "evidence": "...*: Governance \uc790\uccb4\ub294 5 priority domain \uc911 \ud558\ub098\uc9c0\ub9cc, \uae30\uc874 AML/Compliance/Travel Rule cluster \ub294 \ubaa8\ub450 `tier: 2-defe..."
+        },
+        {
+          "text": "PDF \ubcf8\ubb38 fact \ucd94\uce21 \uc5c6\uc74c (filename / URL slug \uae30\ubc18 cross-cut signal \ub9cc)",
+          "passed": true,
+          "evidence": "...ename + URL \ucd94\uc815\ub9cc, \ubcf8\ubb38 fact \ucd94\uce21 \uae08\uc9c0)\n\n### 1. `2026-06-01__support-fireblocks-io__transaction-screening.pd..."
+        },
+        {
+          "text": "meta.yml \ud30c\uc77c \uc0dd\uc131 \uc81c\uc548 \ub610\ub294 \uad6c\uc870 \uba85\uc2dc",
+          "passed": true,
+          "evidence": "...\ubaa8\ub450 \ubcf8\ubb38 \ubbf8\ub85c\ub4dc, rename + meta.yml hygiene \uae4c\uc9c0\ub9cc 1\ucc28 \ucc98\ub9ac.** Curated wiki (entity / hub) \uc218\uc815 \uc5c6\uc74c. promote \uc2b9\uc778\uc740 \ubcc4\ub3c4 ..."
+        },
+        {
+          "text": "\uc0ac\uc6a9\uc790 \uc2b9\uc778 \ub300\uae30 \uba85\uc2dc (\uc2e4\uc81c \ud30c\uc77c \uc218\uc815 \uc548 \ud568)",
+          "passed": true,
+          "evidence": "...wn \uc791\uc131.\n- \ucc98\ub9ac \uc804 **\uc0ac\uc6a9\uc790 \uc2b9\uc778 \ub300\uae30**: \uc704 step 3 (meta.yml \uc791\uc131) \ubd80\ud130\ub294 file \uc218\uc815\uc774\ubbc0\ub85c v3.2.2 \ucd9c\ub825 \uaddc\uc57d\uc0c1 \uc2b9\uc778 \ud544\uc694.\n\n\u2192 \uc704 \ubd84\ub958 + \uc808\ucc28..."
+        },
+        {
+          "text": "log.md \ucd94\uac00 entry \uc81c\uc548",
+          "passed": true,
+          "evidence": "...N`** \uc740 \uc2e4\uc81c ingest \uc2dc `log.md` \uc758 \ub2e4\uc74c stage \ubc88\ud638\ub85c \uce58\ud658. URL \ub3c4 \ubcf8\ubb38\uc5d0\uc11c canonical URL \ud655\uc778 \ud6c4 fix.\n\n### Step 4. (\uc120\ud0dd) ..."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8333333333333334,
+        "passed": 5,
+        "failed": 1,
+        "total": 6,
+        "time_seconds": 179.8,
+        "tokens": 41503,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "entity-min discipline check \u2014 \uae30\uc874 entity / vendor hub \ud761\uc218 \uac00\ub2a5\uc131 \ud3c9\uac00",
+          "passed": true,
+          "evidence": "...Calculation\" \uc11c\ube0c\uc139\uc158\uc73c\ub85c \ud761\uc218** \u2014 \ubcc4\ub3c4 \ud30c\uc77c \uc548 \ub9cc\ub4e6. \ucee8\ubca4\uc158 \uc77c\uad00\uc131 \uc6b0\uc120.\n3. **placeholder entity \ub9cc \uc0dd\uc131** \u2014 \ubcf8 entity \ub97c \ud55c \uc904 s..."
+        },
+        {
+          "text": "\ud761\uc218 \ud6c4\ubcf4 \uba85\uc2dc (transaction.md / policy.md / vault-account.md / blockchains.md \ub4f1 \uc911 \u22651)",
+          "passed": true,
+          "evidence": "...y \ubcf4\ub2e4\ub294 **note** \ub610\ub294 **transaction.md \uc758 \uc11c\ube0c\uc139\uc158**\uc774 \ub354 \ucee8\ubca4\uc158\uc5d0 \ubd80\ud569\ud569\ub2c8\ub2e4.\n\n\uc138 \uac00\uc9c0 \uc120\ud0dd\uc9c0:\n\n| \uc120\ud0dd\uc9c0 | \uc704\uce58 | \uc7a5\uc810 | \ub2e8\uc810 |\n|---|-..."
+        },
+        {
+          "text": "\uc0c8 entity \uc989\uc2dc \uc0dd\uc131 \uc548 \ud568 \u2014 \ubd84\uc11d \ubcf4\uace0 + \uc2b9\uc778 \ub300\uae30",
+          "passed": true,
+          "evidence": "... / RBF \uc758 **Policy / Approval \uc7ac\uac80\uc0ac** \uc5ec\ubd80 (boosted tx \uac00 \uc0c8 approval \uc0ac\uc774\ud074\uc744 \ud2b8\ub9ac\uac70\ud558\ub294\uc9c0, \ub610\ub294 \uc6d0 tx approval \uc744 \uc2b9\uacc4\ud558\ub294\uc9c0..."
+        },
+        {
+          "text": "\uc2e0\uaddc entity \uc0dd\uc131 \uc2dc Stage counter reset \uba85\uc2dc \ub610\ub294 entity-min \ub204\uc801 \uce74\uc6b4\ud2b8 \uc5b8\uae09",
+          "passed": false,
+          "evidence": "none of: ['stage counter reset', 'stage reset', '\uce74\uc6b4\ud130 reset']..."
+        },
+        {
+          "text": "\uacf5\uc2dd \uadfc\uac70 wiki \uc548\uc5d0\uc11c fee \uad00\ub828 fact \uac80\uc0c9 \ud6c4 hypothesis \uc640 \ubd84\ub9ac",
+          "passed": true,
+          "evidence": "... \uac80\uc0c9 \uacb0\uacfc wiki \uac00 \ubcf4\uc720\ud55c **\ud655\uc815 evidence** \ub294:\n\n- `kusama-transaction-fee-estimation.md` \u2014 **placeholder only*..."
+        },
+        {
+          "text": "\uc2e4\uc81c \ud30c\uc77c \uc0dd\uc131 \uc548 \ud568 \u2014 diff / draft \ub9cc \uc81c\uc2dc",
+          "passed": true,
+          "evidence": "...eblocks/*.md`) \uc5d0 \ub9de\ucdb0 \ucd08\uc548\uc73c\ub85c \uc791\uc131\ud588\uc2b5\ub2c8\ub2e4. \ub2e8, \uc791\uc5c5 \uc804 \uc9da\uc5b4\uc57c \ud560 **scope/\uc774\ub984 \ucee8\ubca4\uc158 \uc774\uc288**\uac00 \uc788\uc5b4 \uba3c\uc800 \uc548\ub0b4\ub4dc\ub9ac\uace0, \uc774\uc5b4\uc11c \ubcf8\ubb38 \ucd08\uc548\uc744 \uc81c\uacf5\ud569\ub2c8\ub2e4.\n\n..."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 3,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 8,
+        "failed": 0,
+        "total": 8,
+        "time_seconds": 129.8,
+        "tokens": 39768,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "vendors/fireblocks/mpc.md \ub610\ub294 entities/fireblocks/mpc-key-share.md \uc778\uc6a9",
+          "passed": true,
+          "evidence": "...keys-backup]]`\n- `[[vendors/fireblocks/mpc]]`\n- `[[vendors/fireblocks/architecture]]`\n- `[[vendors/f..."
+        },
+        {
+          "text": "6-section \ub2f5\ubcc0 \ud15c\ud50c\ub9bf \uc801\uc6a9 (\ud575\uc2ec \uc694\uc57d / \uc6b4\uc601 \uc0c1\uc138 / \ud655\uc815 vs hypothesis / \ub2f5 \uac00\ub2a5 \ubc94\uc704 / promote \ud544\uc694 / \ucd94\ucc9c)",
+          "passed": true,
+          "evidence": "matched 5/7 markers: ['\ud575\uc2ec \uc694\uc57d', '\ud655\uc815', 'hypothesis', '\ub2f5 \uac00\ub2a5 \ubc94\uc704', '\ucd94\ucc9c']"
+        },
+        {
+          "text": "Stage \ubc88\ud638 (Stage 8 / 22 / 29 \ub4f1) \uba85\uc2dc",
+          "passed": true,
+          "evidence": "matched: Stage 8"
+        },
+        {
+          "text": "MPC-CMP protocol \uba85\uc2dc",
+          "passed": true,
+          "evidence": "...efault SaaS MPC \ub294 **MPC-CMP protocol** (Canetti-Makriyannis-Peled, NIST 2020 / ACM CCS 2020 \ucc44\ud0dd) \uae30\ubc18\uc758 ..."
+        },
+        {
+          "text": "SaaS MPC = 1 customer + 2 Fireblocks (3-of-3) \uba85\uc2dc",
+          "passed": true,
+          "evidence": "...signing group):\n  - 1 Customer Co-Signer  (mobile device  OR  customer SGX server)\n  - 2 Fireblocks ..."
+        },
+        {
+          "text": "Hosted MPC = 3 customer + 0 Fireblocks \ucc28\uc774 \uba85\uc2dc",
+          "passed": true,
+          "evidence": "... MPC Key Share \ubd84\ud3ec & Hosted MPC \ucc28\uc774\n\n## 1. \ud575\uc2ec \uc694\uc57d (10\ucd08 \uc774\ud574)\n\nFireblocks \uc758 default SaaS MPC \ub294 **MPC-CMP p..."
+        },
+        {
+          "text": "\ud655\uc815 fact vs hypothesis \uba85\ud655 \ubd84\ub9ac",
+          "passed": true,
+          "evidence": "...kup \ucc45\uc784.\n\n---\n\n## 4. \ud655\uc815 vs Hypothesis (Evidence Isolation)\n\n### \ud655\uc815 (Fireblocks \uacf5\uc2dd \ucd9c\ucc98)\n\n- \u2705 **SaaS MPC..."
+        },
+        {
+          "text": "Open Question (Q-...) \ub610\ub294 \ubbf8\ud574\uacb0 \uc601\uc5ed \u22651 \uc5b8\uae09",
+          "passed": true,
+          "evidence": "matched: Q-D04"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 0.9444,
+        "stddev": 0.0962,
+        "min": 0.8333,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 168.0667,
+        "stddev": 20.0001,
+        "min": 145.2,
+        "max": 182.3
+      },
+      "tokens": {
+        "mean": 52219.3333,
+        "stddev": 8974.6699,
+        "min": 43577,
+        "max": 61493
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.9444,
+        "stddev": 0.0962,
+        "min": 0.8333,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 149.7667,
+        "stddev": 26.4765,
+        "min": 129.8,
+        "max": 179.8
+      },
+      "tokens": {
+        "mean": 41211.3333,
+        "stddev": 1321.8579,
+        "min": 39768,
+        "max": 42363
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.00",
+      "time_seconds": "+18.3",
+      "tokens": "+11008"
+    }
+  },
+  "notes": []
+}

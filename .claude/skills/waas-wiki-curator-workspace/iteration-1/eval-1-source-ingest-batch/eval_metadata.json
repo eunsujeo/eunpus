@@ -1,0 +1,14 @@
+{
+  "eval_id": 1,
+  "eval_name": "source-ingest-batch",
+  "prompt": "사용자가 새 PDF 3 개를 sources/fireblocks/pdf/ 에 추가하려고 한다. 파일명만 알려준다. 다음 3 개를 ingest 해줘.\n\n- 2026-06-01__support-fireblocks-io__transaction-screening.pdf\n- 2026-06-01__support-fireblocks-io__compliance-overview.pdf\n- 2026-06-01__developers-fireblocks-com__webhook-events.pdf\n\n각 파일의 mode 분류와 처리 절차를 알려줘.",
+  "assertions": [
+    {"id": "mode-classification", "text": "각 PDF 에 대해 Mode A / B / C 중 하나로 분류 (3-mode 결정 적용)"},
+    {"id": "tier-classification", "text": "각 PDF 에 TIER 1 / 2 / 3 분류 명시"},
+    {"id": "domain-triage", "text": "5 priority domain (Workspace / Identity / Governance / Mobile / Security) 적합도 평가"},
+    {"id": "no-body-speculation", "text": "PDF 본문 fact 추측 없음 (filename / URL slug 기반 cross-cut signal 만)"},
+    {"id": "meta-yml-proposal", "text": "meta.yml 파일 생성 제안 또는 구조 명시"},
+    {"id": "approval-gated", "text": "사용자 승인 대기 명시 (실제 파일 수정 안 함)"},
+    {"id": "log-entry-proposal", "text": "log.md 추가 entry 제안"}
+  ]
+}
