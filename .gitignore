@@ -1,0 +1,5 @@
+# Wrangler (Cloudflare Pages) build cache + auth state
+.wrangler/
+
+# macOS
+.DS_Store
