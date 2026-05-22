@@ -48,7 +48,7 @@
 <section id="signing">
 <h1>5. Cold Wallet Signing — 사실 + 추정</h1>
 <p class="lead">
-Cold Wallet 의 transaction signing 절차. <strong>공식 본문 미적재 비중이 가장 큰 영역</strong>이며,
+Cold Wallet 의 transaction signing 절차. <strong>Fireblocks 공식 원문의 정밀 인용을 가장 적게 확보한 영역</strong>이며,
 은행은 도입 전 Fireblocks 와 직접 협의 권장.
 </p>
 
@@ -64,7 +64,7 @@ Cold Wallet 의 transaction signing 절차. <strong>공식 본문 미적재 비�
 </ul>
 <p style="margin-bottom:0"><strong>저자가 합리적으로 추정한 운영 권장</strong> — 참고용</p>
 <ul style="margin-bottom:0">
-<li>Cold signing 의 정확한 절차 (Cluster catalog 의 본문 미적재로 상세 미확정)</li>
+<li>Cold signing 의 정확한 절차 (15 건 공식 문서의 원문 정밀 인용 미확보로 상세 미확정)</li>
 <li>3 가지 가설 (H1 / H2 / H3) 의 share 분포</li>
 <li>"Less than 10%" 이벤트의 의미 (Cold device 별 sign quota 유한 가능성)</li>
 <li>은행 운영 권장 (Signer device redundancy, 사전 alert, 영상 기록 등)</li>
@@ -91,7 +91,7 @@ Fireblocks 공식 블로그 "Enterprise Digital Asset Security with Fireblocks a
 <li>Cold Wallet cluster 에 <strong>Cold Wallet Mobile Key Share Backup and Recovery</strong> 가 별도 문서.
   Hot 의 "1 mobile + 2 Fireblocks SGX cloud" 모델과의 비교점.</li>
 <li>Owner cold device 와 Signer cold device 의 provisioning 절차가 별도 문서로 분리 (<strong>Provisioning an Owner's Cold Wallet Device</strong> + <strong>Provisioning a Signer's Cold Wallet Device</strong>).</li>
-<li><strong>Cold Wallet Device Requirements</strong> 가 별도 문서 — device 사양이 별도 명세 (본문 미적재).</li>
+<li><strong>Cold Wallet Device Requirements</strong> 가 별도 문서 — device 사양이 별도 명세 (본 문서의 원문 인용 미확보).</li>
 <li>Audit Log 의 <strong>"Cold Wallet 'Less than 10% remaining signatures'"</strong> 이벤트.</li>
 </ul>
 <p>
@@ -114,7 +114,7 @@ Hot workspace 의 MPC-CMP signing 은 공식 본문이 적재됨:
 
 <h2>5.3 Cold Wallet signing 의 추정 흐름</h2>
 <p>
-Cold 의 정확한 모델은 공식 본문 미적재로 인해 추정만 가능. 3 가지 큰 가설:
+Cold 의 정확한 모델은 Fireblocks 공식 원문의 정밀 인용 미확보로 인해 추정만 가능. 3 가지 큰 가설:
 </p>
 
 <div class="table-wrap">
@@ -252,7 +252,7 @@ flowchart TB
 </pre>
 </div>
 <p class="diagram-caption">
-Cold signing 의 추정 흐름. 빨강 단계는 공식 문서 본문 미적재로 인한 미명세 영역.
+Cold signing 의 추정 흐름. 빨강 단계는 Fireblocks 공식 원문 정밀 인용 미확보로 인한 미명세 영역.
 추가 가능: Air-gapped transfer (USB / SFTP / data diodes — 2025-09-23 vendor 공식 발언) 와 verification ceremony.
 </p>
 

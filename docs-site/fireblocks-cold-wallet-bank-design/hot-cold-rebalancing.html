@@ -57,7 +57,7 @@ Fireblocks 는 두 workspace 간 P2P 연결을 통해 manual rebalancing 을 지
 <p><strong>공식 문서에 정의된 사실</strong></p>
 <ul style="margin-bottom:0.5rem">
 <li>"Cold Wallet workspace 별도 구매 → hot workspace 와 rebalancing" — Fireblocks Vault Structure Best Practices</li>
-<li>Cold Wallet cluster 의 <strong>Connecting Cold Wallet with hot workspaces via P2P</strong> 가 별도 문서로 존재 (본문 미적재)</li>
+<li>Cold Wallet 전용 문서 묶음 중 <strong>Connecting Cold Wallet with hot workspaces via P2P</strong> 가 별도 문서로 존재 (본 문서가 원문 정밀 인용을 확보 못 함)</li>
 <li>Sweep-to-omnibus diagram 의 "Manual Rebalancing" 화살표 — Fireblocks Vault Structure Best Practices</li>
 <li>Round-robin withdrawal vault 권장 (EVM nonce / Bitcoin 25-chain) — Fireblocks Account and Wallet Structure</li>
 </ul>
@@ -76,7 +76,7 @@ Fireblocks 는 두 workspace 간 P2P 연결을 통해 manual rebalancing 을 지
   <span class="src">(출처: Fireblocks 공식 문서 — Vault Structure Best Practices)</span></li>
 <li>Cold Wallet cluster 의 <strong>Connecting Cold Wallet with hot workspaces via P2P</strong> 가 별도 문서로 존재
   <span class="src">(출처: Fireblocks 공식 문서 — Cold Wallet cluster)</span></li>
-<li>"Cold ↔ Hot rebalancing path" 의 본문은 공식 문서 본문에 적재되지 않은 상태이므로, 본 페이지는 인접 공식 fact + 운영 권장으로 추정.</li>
+<li>"Cold ↔ Hot rebalancing path" 의 정밀 절차는 본 문서가 원문 인용을 확보하지 못한 상태이므로, 본 페이지는 인접 공식 fact + 운영 권장으로 추정.</li>
 </ul>
 
 <h2>4.2 Sweep-to-omnibus 와의 차이</h2>
@@ -122,7 +122,7 @@ flowchart LR
 
 <h2>4.3 P2P (workspace 간) 추정 흐름</h2>
 <p>
-"Connecting Cold Wallet with hot workspaces via P2P" 본문 미적재 상태에서의 합리적 운영 가정 (저자 추정):
+"Connecting Cold Wallet with hot workspaces via P2P" 의 원문 정밀 인용 없이, 합리적 운영 가정 (저자 추정):
 </p>
 
 <div class="diagram">
@@ -147,7 +147,7 @@ flowchart LR
 </div>
 <p class="diagram-caption">
 Hot ↔ Cold workspace 간 양방향 rebalancing. 노랑 = Hot / 파랑 = Cold.
-"P2P" 의 정확한 transport (internal vs on-chain) 는 공식 본문 미적재.
+"P2P" 의 정확한 transport (internal vs on-chain) 는 본 문서가 원문 인용을 확보하지 못함.
 </p>
 
 <p>
