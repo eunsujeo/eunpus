@@ -1,10 +1,7 @@
-// Cloudflare Pages Functions — 단일 패스코드 접근 제어
+// Cloudflare Pages — 단일 패스코드 접근 제어 (_worker.js 형태)
 //
-// 흐름:
-//   1. 모든 요청에 적용 (functions/_middleware.js 가 root 에 있으면 전체 path)
-//   2. cookie 의 wiki_auth 값을 env.PASSCODE 의 SHA-256 hash 와 비교
-//   3. 일치하면 통과, 아니면 /login 페이지 표시
-//   4. /login POST 로 passcode 제출 → 일치 시 hash cookie 발급
+// _worker.js 는 Cloudflare Pages 가 무조건 인식 + 우선 처리 (functions/ 디렉토리 인식 문제 회피).
+// 모든 요청을 이 worker 가 받고, 인증 통과 시 env.ASSETS.fetch(request) 로 정적 자산 응답.
 //
 // 환경변수 설정 (Cloudflare Dashboard → Pages → wiki-docs → Settings → Environment variables):
 //   PASSCODE = <사용자가 정하는 값>
@@ -15,38 +12,39 @@
 const COOKIE_NAME = "wiki_auth";
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
-export async function onRequest(context) {
-  const { request, env, next } = context;
-  const url = new URL(request.url);
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
 
-  // /login 경로는 인증 없이 통과 (로그인 핸들러)
-  if (url.pathname === "/login" || url.pathname === "/login/") {
-    return await handleLogin(request, env);
-  }
+    // /login 은 인증 없이 처리
+    if (url.pathname === "/login" || url.pathname === "/login/") {
+      return await handleLogin(request, env);
+    }
 
-  // PASSCODE 환경변수 미설정 시 안전을 위해 차단
-  if (!env.PASSCODE) {
-    return new Response(
-      "PASSCODE environment variable is not configured. Set it in Cloudflare Pages → Settings → Environment variables.",
-      { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } }
-    );
-  }
+    // PASSCODE 환경변수 미설정 시 503
+    if (!env.PASSCODE) {
+      return new Response(
+        "PASSCODE environment variable is not configured. Set it in Cloudflare Pages → Settings → Environment variables.",
+        { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } }
+      );
+    }
 
-  // 쿠키 확인
-  const cookie = parseCookie(request.headers.get("Cookie") || "");
-  const authToken = cookie[COOKIE_NAME];
-  const expectedToken = await sha256(env.PASSCODE);
+    // 쿠키 확인
+    const cookie = parseCookie(request.headers.get("Cookie") || "");
+    const authToken = cookie[COOKIE_NAME];
+    const expectedToken = await sha256(env.PASSCODE);
 
-  if (authToken && authToken === expectedToken) {
-    // 인증 통과 — 정적 자산 제공
-    return await next();
-  }
+    if (authToken && authToken === expectedToken) {
+      // 인증 통과 → 정적 자산 응답
+      return env.ASSETS.fetch(request);
+    }
 
-  // 인증 실패 → /login 으로 redirect (원래 URL 을 next 파라미터로 보존)
-  const loginUrl = new URL("/login", url);
-  loginUrl.searchParams.set("next", url.pathname + url.search);
-  return Response.redirect(loginUrl.toString(), 302);
-}
+    // 인증 실패 → /login 으로 redirect (원래 URL 을 next 파라미터로 보존)
+    const loginUrl = new URL("/login", url);
+    loginUrl.searchParams.set("next", url.pathname + url.search);
+    return Response.redirect(loginUrl.toString(), 302);
+  },
+};
 
 async function handleLogin(request, env) {
   if (!env.PASSCODE) {
@@ -70,11 +68,10 @@ async function handleLogin(request, env) {
       });
     }
 
-    // 패스코드 불일치 → 다시 로그인 페이지 + 에러 표시
     return renderLoginPage(nextPath, "접근 코드가 일치하지 않습니다.");
   }
 
-  // GET — 로그인 페이지 표시
+  // GET
   const url = new URL(request.url);
   const nextPath = sanitizeNext(url.searchParams.get("next") || "/");
   return renderLoginPage(nextPath);
@@ -225,7 +222,6 @@ function escapeHtml(text) {
     .replace(/'/g, "&#39;");
 }
 
-// open redirect 방지 — next 가 외부 URL 이거나 //path 형태이면 / 로 대체
 function sanitizeNext(nextPath) {
   if (typeof nextPath !== "string") return "/";
   if (!nextPath.startsWith("/")) return "/";
