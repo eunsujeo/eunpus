@@ -59,7 +59,7 @@ Cold Wallet workspace 의 가장 중요한 governance 제약은 <strong>Approval
 <li>Approval Group 미지원 (Risk-G07) — Fireblocks 공식 문서</li>
 <li>Owner Console-direct 특수 규칙 — Fireblocks 공식 문서</li>
 <li>Audit Log 의 "Less than 10% remaining signatures" 이벤트 카테고리 존재 — Fireblocks 공식 문서</li>
-<li>Support 경유 user/API key 추가 — Fireblocks Cold Wallet cluster 문서명에 명시</li>
+<li>Support 경유 user / API key 추가 — Fireblocks 공식 문서 "Adding users to a Cold Wallet workspace" / "Adding API keys to a Cold Wallet workspace" 의 제목에 명시</li>
 </ul>
 <p style="margin-bottom:0"><strong>저자가 합리적으로 추정한 운영 권장</strong> — 참고용</p>
 <ul style="margin-bottom:0">
@@ -160,10 +160,10 @@ Cold workspace 에서 Admin 을 삭제할 때, 그 Admin 이 관련된 모든 <s
 <table>
 <thead><tr><th>Operation</th><th>Hot workspace</th><th>Cold workspace</th></tr></thead>
 <tbody>
-<tr><td>User add</td><td>Admin Quorum approve, 7-day window</td><td>Support 경유 + Admin Quorum (Fireblocks Cold Wallet cluster)</td></tr>
+<tr><td>User add</td><td>Admin Quorum approve, 7-day window</td><td>Support 경유 + Admin Quorum (Fireblocks 공식 문서 "Adding users to a Cold Wallet workspace")</td></tr>
 <tr><td>User delete</td><td>Admin / NSA console immediate</td><td><strong>Owner Console-direct</strong></td></tr>
 <tr><td>Reset 2FA</td><td>Admin approve</td><td><strong>Owner Console-direct</strong></td></tr>
-<tr><td>API key add</td><td>Admin Quorum</td><td>Support 경유 + Admin Quorum (Fireblocks Cold Wallet cluster)</td></tr>
+<tr><td>API key add</td><td>Admin Quorum</td><td>Support 경유 + Admin Quorum (Fireblocks 공식 문서 "Adding API keys to a Cold Wallet workspace")</td></tr>
 <tr><td>Admin Quorum threshold 변경</td><td>Admin Quorum (Risk-G01 — API Admin 자동 approve)</td><td>Cold variant 미명세 — Risk-G01 동일 적용 가정</td></tr>
 </tbody>
 </table>
@@ -195,7 +195,7 @@ Fireblocks 의 Approval Group 위임은 4 가지 UI 카테고리로 구분된다
 <h2>3.4 Support-mediated user operations</h2>
 <p>
 Cold Wallet workspace 의 사용자 / API key 추가는 <strong>Fireblocks Support 경유 필수</strong>.
-<span class="src">(출처: Fireblocks 공식 문서 — Cold Wallet cluster: "Adding users to a Cold Wallet workspace" / "Adding API keys to a Cold Wallet workspace")</span>
+<span class="src">(출처: Fireblocks 공식 문서 — "Adding users to a Cold Wallet workspace" / "Adding API keys to a Cold Wallet workspace")</span>
 </p>
 
 <p>
@@ -295,7 +295,7 @@ Audit Log 의 카테고리 catalog 에 명시된 <strong>Cold Wallet 전용 이�
 </table>
 </div>
 <p>
-<span class="src">(출처: Fireblocks 공식 문서 — Approval Groups · Admin Quorum · Audit Log · Cold Wallet cluster)</span>
+<span class="src">(출처: Fireblocks 공식 문서 — Approval Groups · Admin Quorum · Audit Log · Cold Wallet 관련 공식 문서들)</span>
 </p>
 
 <h2>3.8 은행 운영을 위한 거버넌스 권장</h2>
