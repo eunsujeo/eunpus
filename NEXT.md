@@ -1,110 +1,204 @@
-# Next Review Session — 6. Users
+# Next Work Session — Fireblocks Key Link docs-site 신규 작성
 
-> docs-site 페이지 리뷰의 다음 차례 handoff 문서. 새 Claude Code 세션이 본 문서만 보고도 작업을 곧바로 이어갈 수 있도록 self-contained 하게 작성. 작성 시점: 2026-05-21.
+> 다음 차례 작업의 handoff 문서. 새 Claude Code 세션 (다른 PC 포함) 이 본 문서만 보고도 작업을 곧바로 이어갈 수 있도록 self-contained 하게 작성.
+> 작성 시점: 2026-05-22. 작업 대상 시점: 사용자 지정.
 
-## 1. 컨텍스트
+## 1. 작업 개요
 
-- **작업 성격**: `wiki-docs.pages.dev` 의 27 페이지 (Fireblocks-mirrored 수탁형 지갑 DB 설계) 를 한 페이지씩 리뷰하며 일반 독자에게 읽기 쉽도록 정정
-- **이미 리뷰 완료된 페이지** (이번 시리즈): 3. Workspace · 4. Vault · 5. Wallets · Addresses · Asset Wallet · 18. Deposit Observation Lifecycle · 19. Withdrawal Lifecycle
-- **이번 차례**: [`docs-site/custodial-wallet-db-design/tables-user.html`](docs-site/custodial-wallet-db-design/tables-user.html) — "6. Users (Console / API / Mobile)"
-- **사용할 skill**: [`.claude/skills/doc-author/`](.claude/skills/doc-author/) — description trigger 가 "이 페이지 리뷰" / "X 절 작성" 등에 매칭되어 새 세션에서도 자동 발동
+- **작업 성격**: `docs-site/` 에 **Fireblocks Key Link 신규 reference 문서 작성**
+- **참고 구조**: [`docs-site/fireblocks-cold-wallet-bank-design/`](docs-site/fireblocks-cold-wallet-bank-design/) (8 페이지) — 동일 패턴 mirror
+- **사용할 skill**: [`.claude/skills/doc-author/`](.claude/skills/doc-author/) — description trigger 가 "신규 페이지 작성" / "X reference 문서" 에 매칭
+- **신규 폴더**: `docs-site/fireblocks-key-link-bank-design/`
+- **docs-site/index.html 카드**:
+  - 배지: `badge-pending-review` (🟡 리뷰 전)
+  - 업데이트: **2026-05-21**
+  - Sections: 7
+  - 위치: 기존 카드 list 의 적절한 위치 (cold-wallet 카드 옆 권장)
 
-## 2. 대상 페이지 인벤토리 (작성 시점 기준)
+## 2. 자료 — 이미 ingest 완료, 추가 ingest 불필요
 
-`tables-user.html` 의 현 구조:
+### 2.1 wiki body (정밀 인용 가능)
 
-- **h2**: "6. Users (Console / API / Mobile)"
-- **section-subtitle**: "2 user type · 9 role · mobile device 의 secure enclave host"
-- **h3 절** (5 개): `User Type 2 종` · `Unified users 테이블` · `Mobile Device — Primary MPC Share Host` · `Device Migration` · `Linked Users / Linked Workspaces`
-- **CREATE TABLE** (4 개): `users` · `mobile_devices` · `mobile_device_events` · `device_user_links`
-- **현재 상단에 "본 페이지의 출처" callout 없음** — 추가 필요
-
-## 3. 알려진 work items
-
-### 3.1 인라인 `.md` 출처 제거 (3 곳 — check-consistency.py 가 감지)
-
-| 위치 | 패턴 |
+| 파일 | 핵심 fact |
 |---|---|
-| line 96 | `<code>user-roles.md</code>, p.1` |
-| line 142 | `<code>about-the-fireblocks-mobile-app.md</code>, p.1` |
-| line 175 | `<code>device-migration.md</code>, p.2` |
+| `vendors/fireblocks/security.md` §Stage 36 — Customer Signature Validation Plane | Validation Key + Signing Key 모델 / PoO 2 methods (Interactive + Non-interactive) / cert flow / Risk-S17 |
+| `vendors/fireblocks/risks.md` §Stage 36 + Stage 38 | Risk-KL01-KL07 (Customer Server SPOF / Agent open-source / Beta / Validation Key compromise / HSM Adaptor cold-latency / PoO replay / Workspace immutability) + Stage 38 Thales 사실 |
+| `entities/fireblocks/workspace.md` | Key Link workspace type (immutable) |
+| `entities/fireblocks/cosigner.md` | Fireblocks Agent variant (open-source TS) |
+| `entities/fireblocks/mpc-key-share.md` | Validation Key + Signing Key 매핑 |
+| `open-questions/fireblocks.md` §Stage 36 + Stage 38 | Q-KL01-KL05 (open) + Q-FB01-FB03 (Stage 38) |
 
-→ skill 의 [`references/provenance.md`](.claude/skills/doc-author/references/provenance.md) 룰에 따라 본문에서 제거하고 상단 callout 으로 일괄 disclosure 전환.
+### 2.2 1차 source (Mode C ingested)
 
-### 3.2 페이지 상단 "본 페이지의 출처" callout 추가
-- 다른 리뷰된 페이지 ([`sm-deposit.html`](docs-site/custodial-wallet-db-design/sm-deposit.html), [`sm-withdrawal.html`](docs-site/custodial-wallet-db-design/sm-withdrawal.html)) 와 동일 패턴
-- "Fireblocks 공식 문서에 정의된 사실 (그대로 받아도 안전)" vs "저자가 합리적으로 추정해서 그린 설계 (참고용, 본인 환경에서 검증 권장)" 두 갈래로 enumerate
-- `callout-warn` 이 아닌 중립 `callout` 사용
+| 파일 | 내용 |
+|---|---|
+| `sources/fireblocks/markdown/2026-05-22__support-fireblocks-io__fireblocks-key-link-overview-extracted.txt` | Key Link overview, p.1-3 (Customer Server SPOF, Agent open-source, customer-held key plane) |
+| `sources/fireblocks/markdown/2026-05-22__support-fireblocks-io__getting-started-with-fireblocks-key-link-extracted.txt` | PoO 2 methods, validation key 등록, cert flow, p.1-9 |
+| `sources/fireblocks/markdown/2026-05-22__support-fireblocks-io__set-up-your-fireblocks-vault-with-key-link-extracted.txt` | Vault key exclusivity, workspace setup, p.1-4 |
+| `sources/fireblocks/markdown/2026-05-22__fireblocks-com__enterprise-digital-asset-security-thales.md` | Thales Luna HSM 통합 (FIPS 140-3 L3 + Common Criteria + PQC) + Hot/Warm/Cold 3-mode framing + air-gap = USB/SFTP/data diodes |
 
-### 3.3 CREATE TABLE 마다 필드별 설명 표 점검
-4 개 테이블 각각 자료형 + 역할 + ENUM 값별 의미가 표로 풀어져 있는지 확인. 없으면 추가:
-- `users` — Console / API 두 user type 의 통합 모델
-- `mobile_devices` — MPC key share host 의 device 등록 정보
-- `mobile_device_events` — device 의 enroll / re-enroll / migration 이력 (append-only)
-- `device_user_links` — Linked Users / Linked Workspaces 관계 junction
+### 2.3 Cold Wallet docs 와의 cross-cut
 
-표 너비: 24% / 18% / rest. ENUM 컬럼은 값별 의미를 역할 셀에 풀어쓰기.
+`docs-site/fireblocks-cold-wallet-bank-design/bank-operations.html` §6.3 에 이미 "옵션 C — Key Link + Cold" 와 "옵션 C-Thales" 가 표로 명시. 본 신규 docs 작성 시 이 페이지로 cross-link.
 
-### 3.4 평이한 한글 풀어쓰기 후보
-다음 영문/약어가 본문에 어떻게 등장하는지 점검하고 필요 시 풀이 또는 glossary `(?)`:
+## 3. 페이지 구조 — 7 페이지 plan
 
-- **Console user / API user** — 차이가 무엇이고 왜 같은 9 role 매트릭스를 쓰는가
-- **9 role permission matrix** — Owner / Admin / NSA / Signer / Approver / Editor / Viewer / Auditor / Custom 등 — 각 role 의 책임 분기
-- **Primary MPC Share Host** — mobile device 가 사용자 측 MPC key share 의 1 차 보관 장소라는 의미
-- **Secure enclave / Hardware-encrypted** — iOS Keychain / Android TEE 같은 하드웨어 격리 메커니즘
-- **Device Migration** — 사용자 본인 self-service 의 의미, 관리자 승인 없이 PIN+passphrase+biometric 3 중 인증으로만 진행되는 운영 시나리오
-- **Linked Users / Linked Workspaces** — 한 device 가 여러 user / 여러 workspace 와 연결될 수 있다는 개념
+| # | 페이지 | 다루는 내용 |
+|---|---|---|
+| 0 | `index.html` | Overview + 3-way 비교 (SaaS MPC / Hosted MPC / Key Link) + 핵심 invariant + 도입 의사결정 시나리오 |
+| A1 | `key-link-fundamentals.html` | 정의 / customer-held HSM / Validation+Signing key 모델 / paired alternate signing plane (Customer Signature Validation Plane) |
+| A2 | `architecture-components.html` | Fireblocks Agent (open-source TS) + HSM Adaptor (optional, cold HSM) + Customer Server + Validation Key plane + Thales Luna HSM 통합 |
+| B1 | `key-registration-poo.html` | Validation/Signing Key 등록 절차 + PoO 2 methods (Interactive vs Non-interactive cert flow) |
+| B2 | `signing-flow.html` | Hot · Warm · Cold 3-mode signing workflow + air-gap transport (USB / SFTP / data diodes) + Thales Luna HSM 시각화 |
+| C1 | `bank-deployment.html` | KR 은행 도입 시 Key Link 활용 + 망분리 적합성 + KR 컴플라이언스 매핑 (옵션 C-Thales) + cross-link to fireblocks-kr-vasp-compliance |
+| C2 | `risks-open-questions.html` | Risk-KL01-KL07 + Q-KL01-KL05 + Q-FB01-FB03 + KR 검증 항목 (망분리 해석, MPC 실질통제 판단 등) |
 
-### 3.5 다이어그램 추가 검토 (선택)
-- **User type · role 분기 도식** — 9 role permission matrix 가 표로 길어진다면 mermaid graph 가 유용
-- **Device → user → workspace 관계 도식** — Linked Users / Linked Workspaces 절의 다대다 관계 시각화
-- 직전 페이지 (`tables-wallet.html`) 의 vault → wallet → address 관계 도식이 좋은 참고
+## 4. 적용할 doc-author skill 룰 (필수)
 
-## 4. 작업 순서
+- **§2.1 평이한 한글** — jargon glossary `(?)` tooltip (HSM / PKCS#11 / PQC / TEE / SGX 등 처음 등장 시 풀이)
+- **§2.2 출처 callout 2-tier** — 모든 페이지 상단에:
+  - "공식 문서에 정의된 사실 (그대로 받아도 안전)"
+  - "저자가 합리적으로 추정한 운영 권장 (참고용, 본인 환경 검증 권장)"
+- **§2.3 wiki 잔재 0** — `★ Hypothesis` 마커 / `.md` p.N 인라인 인용 / `§` section sign / `Stage N` 마커 / `Mode A/B/C` pseudo-tag 모두 사용 금지. 평이한 한국어 ("저자 추정", "공식 문서 — Key Link Overview" 등) 로
+- **§2.5 mermaid 색 팔레트**:
+  - good `fill:#dcfce7,stroke:#16a34a`
+  - bad `fill:#fee2e2,stroke:#dc2626`
+  - wait `fill:#fef3c7,stroke:#d97706`
+  - special `fill:#e0e7ff,stroke:#6366f1`
+  - vault `fill:#dbeafe,stroke:#2563eb`
+  - direction LR (단일 흐름) / TB (트리)
+  - 이모지 + 한글 + 영문 status code label
+  - 각 diagram 에 `<p class="diagram-caption">` 캡션
+  - 페이지 하단에 mermaid + svg-pan-zoom CDN script 2 줄 추가
+- **§2.7 consistency check** — 작업 종료 시 `python3 .claude/skills/doc-author/scripts/check-consistency.py docs-site/fireblocks-key-link-bank-design` 4/4 PASS 까지
+- **출처 인용 정직성** — "Key Link cluster" 같은 wiki 작업자 그룹화 표현을 vendor 공식인 척 표기 금지. "저자가 식별한 ..." / "공식 문서 X · Y · Z" 같이 정직하게
 
-1. **현재 페이지 전체 read** — 5 개 h3 절을 모두 읽고 상태 파악
-2. **변경 제안을 사용자에게 보고** — 작업 항목 목록 + 추가/제거할 내용 요약. 사용자 승인 대기
-3. **승인된 변경을 순차 적용** — Edit 도구로 한 번에 하나씩
-4. **mermaid 작성 시 entity 검증** — `<pre class="mermaid">` 의 `--&gt;` / `&amp;` / `</br>` 0 인지 확인
-5. **`check-consistency.py` sweep** —
+## 5. 알려진 work items
+
+### 5.1 신규 권장 mermaid diagram 후보
+
+| 페이지 | diagram | 목적 |
+|---|---|---|
+| `key-link-fundamentals.html` | Validation Key + Signing Key paired plane | 두 key 의 위치 (Fireblocks vs Customer HSM) 시각화 |
+| `architecture-components.html` | Customer Server + Agent + HSM Adaptor + Fireblocks SaaS 의 컴포넌트 토폴로지 | 5 component LR flow |
+| `key-registration-poo.html` | Interactive vs Non-interactive PoO 2 flow 비교 | 시퀀스 다이어그램 |
+| `signing-flow.html` | Hot / Warm / Cold 3-mode signing flow | TB tree (3 mode 비교) + 각 mode 별 transport |
+| `bank-deployment.html` | KR 망분리 IDC 안의 Key Link 배치 | LR with subgraph (KR IDC / Fireblocks SaaS) |
+
+### 5.2 cold-wallet docs 와의 cross-link
+
+다음 위치에서 cold-wallet docs 를 reference 로 인용:
+
+- `index.html` 3-way 비교 표 — Cold Wallet workspace 와의 결합 (옵션 C-Thales)
+- `bank-deployment.html` — `fireblocks-cold-wallet-bank-design/bank-operations.html` §6.3 의 옵션 C-Thales 표 참조
+- `risks-open-questions.html` Q-FB02 — SaaS Cold Wallet 과 Key Link Cold signing 의 관계 (open)
+
+### 5.3 docs-site/index.html 카드 추가
+
+기존 4 카드 list 의 끝에 신규 카드 추가:
+
+```html
+<a class="doc-card" href="fireblocks-key-link-bank-design/">
+  <div class="doc-title">
+    Fireblocks Key Link — Customer HSM 통합
+    <span class="arrow">→</span>
+  </div>
+  <p class="doc-summary">
+    Fireblocks 의 Key Link plane — Fireblocks 가 키 share 를 보유하지 않는
+    customer-held HSM 모델 (Validation Key + Signing Key paired plane).
+    Thales Luna HSM 통합 · Hot/Warm/Cold 3-mode signing · Customer Server SPOF ·
+    PoO 2 methods · KR 망분리 적합성 · 7 risks + 8 open questions.
+  </p>
+  <div class="doc-meta">
+    <span class="doc-meta-item"><span class="badge badge-pending-review">리뷰 전</span></span>
+    <span class="doc-meta-item"><strong>업데이트</strong> 2026-05-21</span>
+    <span class="doc-meta-item"><strong>Sections</strong> 7</span>
+    <span class="doc-meta-item"><strong>Source</strong> Fireblocks Help Center</span>
+  </div>
+  <div class="doc-path">fireblocks-key-link-bank-design/</div>
+</a>
+```
+
+## 6. 절차
+
+1. **폴더 + assets 생성**:
    ```bash
-   python3 /Users/mob.bit/Workspace/waas-wiki/.claude/skills/doc-author/scripts/check-consistency.py \
-     /Users/mob.bit/Workspace/waas-wiki/docs-site/custodial-wallet-db-design
+   mkdir -p docs-site/fireblocks-key-link-bank-design/assets
+   cp docs-site/fireblocks-cold-wallet-bank-design/assets/styles.css docs-site/fireblocks-key-link-bank-design/assets/
+   cp docs-site/fireblocks-cold-wallet-bank-design/assets/app.js docs-site/fireblocks-key-link-bank-design/assets/
    ```
-   현재 39 occurrences (다른 리뷰 안 한 페이지들). 본 페이지의 3 곳이 사라지면 36 으로 줄어야 함
-6. **사용자가 "배포해줘" 라고 명시 시에만 배포** — 아래 §7 참조
+2. **7 페이지 순차 작성** — 위 §3 의 plan 순서대로. 각 페이지 상단에 출처 callout 2-tier 필수.
+3. **mermaid CDN script 추가** — diagram 이 있는 페이지의 `</body>` 직전에:
+   ```html
+   <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+   ```
+4. **docs-site/index.html 신규 카드 추가** (§5.3 의 HTML)
+5. **consistency check**:
+   ```bash
+   python3 .claude/skills/doc-author/scripts/check-consistency.py docs-site/fireblocks-key-link-bank-design
+   ```
+   4/4 PASS 까지
+6. **commit + push** — 표준 git workflow
+7. **deploy** — 사용자가 명시 지시 시에만:
+   ```bash
+   npx wrangler pages deploy /Users/mob.bit/Workspace/waas-wiki/docs-site \
+     --project-name=wiki-docs \
+     --branch=main \
+     --commit-dirty=true \
+     --commit-message="key-link docs-site initial"
+   ```
+   `--commit-message` ASCII-only 필수 (한글 commit message 는 Cloudflare API 가 거절)
 
-## 5. 적용할 skill 룰 (relevant references)
+## 7. 출처 정직성 룰 (필수)
 
-- **평이한 한글 + glossary tooltips** → [`writing-style.md`](.claude/skills/doc-author/references/writing-style.md)
-- **출처 disclosure callout 템플릿** → [`provenance.md`](.claude/skills/doc-author/references/provenance.md)
-- **DB schema 필드 표 + ENUM 풀어쓰기** → [`db-schema.md`](.claude/skills/doc-author/references/db-schema.md)
-- **Mermaid 색/방향/caption** → [`diagrams.md`](.claude/skills/doc-author/references/diagrams.md)
-- **wiki 잔재 정리 (.md / ★ / §)** → [`cleanup.md`](.claude/skills/doc-author/references/cleanup.md)
-- **사이트 HTML scaffold + glossary tooltip 사전** → [`site-template-custodial-db.md`](.claude/skills/doc-author/references/site-template-custodial-db.md)
+직전 cold-wallet 리뷰에서 발견된 문제 — 다음을 vendor 공식인 척 표기하면 안 됨:
 
-## 6. 성공 기준
+- **"Key Link cluster"** / **"Cold Wallet cluster"** — 저자가 식별한 그룹화. Fireblocks 공식 분류 아님
+- **"X PDF"** — Fireblocks Help Center 는 PDF 가 아닌 HTML article. wiki ingest 시 PDF 저장한 결과일 뿐
+- **"공식 본문 미적재"** — wiki 내부 사정. public docs 에서는 "본 문서의 원문 정밀 인용 미확보"
 
-- check-consistency.py 의 `[md_citation]` count 가 본 페이지 분 (3) 만큼 감소
-- 페이지가 일반 독자가 막힘 없이 통과 가능한 상태 (사용자 추가 정정 요청 없음)
-- 본 NEXT.md 를 **다음 차례 페이지로 갱신** (예: 7. 9 User Roles → `tables-role.html`)
+대신 사용할 표현:
+- "Fireblocks Help Center 의 Key Link 관련 공식 문서 (저자가 식별한 N 건)"
+- "Fireblocks 공식 문서 — Key Link Overview / Getting Started with Key Link / ..."
+- "본 문서의 원문 정밀 인용 미확보"
+- "저자 추정" / "저자가 합리적으로 추정한 운영 권장"
 
-## 7. 배포 안전 룰 (재확인 — 절대 위반 금지)
+## 8. 사용자 메모리 룰 (참조)
 
-- **자동 deploy 금지**. 사용자가 "배포해줘" / "deploy" 라고 명시했을 때만 실행. 자세히: [`feedback_no_auto_deploy.md`](../../.claude/projects/-Users-mob-bit-Workspace-waas-wiki/memory/feedback_no_auto_deploy.md)
-- **cwd 는 반드시 `docs-site/custodial-wallet-db-design/`** 또는 절대경로. wiki repo root 에서 `wrangler pages deploy .` 실행 시 raw Fireblocks PDF 등 wiki 전체가 public 으로 유출
-- 권장 형태:
-  ```bash
-  cd /Users/mob.bit/Workspace/waas-wiki/docs-site/custodial-wallet-db-design && \
-  npx wrangler pages deploy . --project-name=wiki-docs --branch=main --commit-dirty=true
-  ```
-- 배포 후 "Uploaded N files" 가 1000+ 이면 cwd 사고. 즉시 사용자 통지 + `wrangler pages deployment delete <id>` 안내
+본 작업에 적용되는 핵심 룰. 새 PC / 세션이 본 NEXT.md 만 보고도 룰을 알 수 있도록 inline 명시:
 
-## 8. 작업 흐름의 끝
+- **리뷰완료 배지 + 업데이트 날짜 = 사용자 통제** — docs-site/index.html 의 doc-card 의 "리뷰완료" 배지 전환과 "업데이트" 날짜 변경은 사용자 명시 지시 시에만. 본 작업의 신규 카드는 "리뷰 전" + 2026-05-21 고정 (사용자 지정)
+- **wrangler ASCII commit message** — `npx wrangler pages deploy` 시 한글 commit message 는 Cloudflare API 가 거절 ("Invalid UTF-8"). 항상 `--commit-message="<ASCII-only>"` 옵션 추가
+- **No auto-deploy** — Cloudflare Pages 배포는 사용자 명시 지시 시에만. 작업 완료 → commit + push 까지만 자동, deploy 는 별도 지시 대기
+- **Evidence isolation** — Fireblocks 공식 근거 vs 저자 추정 절대 혼합 금지. 출처 callout 2-tier 분리 필수
+- **PDF 직접 Read 금지** — wiki 의 1차 source 가 `-extracted.txt` 또는 `.md` 형태로 이미 추출되어 있음. 추가 PDF read 불필요
 
-- 본 페이지 리뷰가 끝나면 본 `NEXT.md` 의 §2 / §3 / §6 을 **다음 차례 페이지 정보로 교체**해서 다음 세션에 또 이어질 수 있도록 갱신.
-- 사이드바 순서 기준 다음 차례 후보: `tables-role.html` (7. 9 User Roles)
+## 9. 다른 PC / 세션에서 작업하기 위한 조건
 
----
+본 NEXT.md 는 다른 PC / 새 세션에서도 self-contained 로 작업 가능하도록 작성됨. 단 다음 조건 확인:
 
-_본 파일은 단일 작업 handoff. 영속적인 운영 패턴은 `.claude/skills/doc-author/`, 사용자별 룰은 `~/.claude/projects/.../memory/` 에 있음._
+| 조건 | 상태 |
+|---|---|
+| Git repo clone 완료 (`waas-wiki` 전체) | 필수 |
+| wiki body (`vendors/` / `entities/` / `open-questions/` / `sources/`) 가 commit 에 포함 | ✅ Stage 38 commit 까지 모두 포함 |
+| `.claude/skills/doc-author/` 가 commit 에 포함 | ✅ |
+| `CLAUDE.md` 의 룰 (PDF read 금지 / 신규 entity 최소화 등) | ✅ git 에 있음 |
+| User memory (`~/.claude/projects/.../memory/`) | ⚠️ PC 별 별도. 본 NEXT.md §8 가 inline 명시로 대체 |
+| Cloudflare 자격증명 (`wrangler` deploy 용) | ⚠️ PC 별 별도 — deploy 단계만 영향. commit/push 까지는 무관 |
+| Python 3 (consistency check 스크립트용) | 필수 |
+
+→ **commit/push 까지의 작업은 다른 PC 에서 100% 재현 가능**. Deploy 만 Cloudflare 자격증명이 있는 PC 에서.
+
+## 10. 우선순위 / 분량
+
+- 분량: 7 페이지 (cold-wallet 8 페이지와 유사)
+- 우선순위 페이지: ① index → ② key-link-fundamentals → ③ architecture-components → ④ signing-flow → ⑤ key-registration-poo → ⑥ risks-open-questions → ⑦ bank-deployment
+- 가장 정직성 주의 필요: ⑥ risks-open-questions (Risk-KL01-KL07 + Q-KL01-KL05 + Q-FB01-FB03 의 정확한 출처 분리)
+
+## 11. 예상 결과
+
+- 신규 폴더 1 + 신규 페이지 7 + assets 2
+- docs-site/index.html 신규 카드 1 (4 → 5 카드)
+- consistency check 4/4 PASS
+- log.md Stage 39 entry (optional) — Key Link docs-site 신규 작성
