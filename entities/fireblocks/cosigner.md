@@ -2,10 +2,10 @@
 type: entity
 vendor: fireblocks
 status: stable
-tags: [signing, integration]
+tags: [signing, integration, key-link]
 stage_introduced: 4
-last_updated_stage: 8
-source_count: 4
+last_updated_stage: 36
+source_count: 6
 related: [api-co-signer, api-user, callback-handler, cosigner, non-signing-admin, signer]
 ---
 # Entity: Cosigner (Fireblocks)
@@ -113,3 +113,94 @@ Co-Signer End Certificate (배포)
 - ~~Q-2026-05-18-C02~~ — **ANSWERED (Stage 4)**: Communal Test Co-signer는 testnet 전용
 - Q-2026-05-18-A02 — API user unpair 별도 작업 절차
 - ~~Q-2026-05-18-A05~~ — **ANSWERED (Stage 8)**: 일반 Co-signer = SGX 강제. SGX 가 baseline
+
+## Stage 36 — Fireblocks Agent (Key Link 의 customer-side signing bridge)
+
+`fireblocks-key-link-overview.md`, p.2-3 + `getting-started-with-fireblocks-key-link.md`, p.1-2 (Stage 36 Mode C).
+
+Key Link workspace 의 customer-held key plane 에서 작동하는 **별도 cosigner 변형**. Stage 8 의 API Co-Signer / Mobile Co-Signer / SGX Co-Signer 와 **trust model 자체가 다름** — MPC share 보유 안 함.
+
+### Fireblocks Agent 정체
+
+| 항목 | 명세 |
+|---|---|
+| **언어** | TypeScript |
+| **배포** | **Open-source repository** — 고객이 직접 호스팅 (on-prem) |
+| **역할** | (1) Fireblocks SaaS 로부터 새 sign 요청 retrieve, (2) Customer Server 로 relay, (3) 서명 결과 반환 |
+| **인증 주체** | **Signer-role API user** (pairing token 으로 페어링) |
+| **MPC share 보유** | **없음** (signing 은 HSM 단독) |
+| **SGX 요구** | **명시 없음** (Stage 8 의 일반 Co-signer SGX baseline 과 다름) |
+
+### Agent ↔ API User 페어링 절차 (`getting-started-with-fireblocks-key-link.md`, p.2)
+
+1. Fireblocks Agent 설치 (on-prem machine)
+2. Agent 실행 → example server 또는 actual Customer Server 연결 → pairing token 입력 prompt
+3. Console 에서 **Signer-role API user** 생성
+4. **Admin Quorum approval** → pairing token 발급
+5. Console 에서 발급된 pairing token 을 Agent prompt 에 입력 → 페어 완료
+
+### Re-enroll (`getting-started-with-fireblocks-key-link.md`, p.2)
+
+`Settings > Users > More Actions > Re-enroll API user` → **Owner approval** 필요 → 새 pairing token 발급.
+
+### Stage 8 cosigner variants 와의 매트릭스 (Stage 36 보강)
+
+| Variant | MPC share | SGX | Auth | Stage |
+|---|---|---|---|---|
+| Mobile Co-Signer | 1/3 (MPC-CMP) | Secure Enclave | mobile app | 8 |
+| API Co-Signer (default) | 1/3 (MPC-CMP) | SGX baseline | API user + Callback Handler | 4-8 |
+| Fireblocks Cloud Co-Signer (×2) | 2/3 (MPC-CMP) | Azure SGX (강제) | Core Services chain of trust | 8 |
+| Hosted MPC Primary | 1/3 (MPC-CMP) | SGX | API user OR mobile | 8/22 |
+| Hosted MPC Guard (×2) | 1/3 each (MPC-CMP) | SGX (강제) | customer-side TLS | 8/29 |
+| **Key Link Agent (Stage 36)** | **0 (HSM 단독)** | **불요** | **Signer-role API user + pairing token** | **36** |
+
+→ Fireblocks Agent 는 cosigner 의 *messaging layer only* — 실제 signing 은 Customer Server → HSM 으로 위임. cryptographic 책임이 customer 측 HSM 으로 100% 이동.
+
+## Sources (Stage 36 추가)
+- `2026-05-22__support-fireblocks-io__fireblocks-key-link-overview-extracted.txt`, p.2-3 (Stage 36: 4-component architecture, Agent open-source TS)
+- `2026-05-22__support-fireblocks-io__getting-started-with-fireblocks-key-link-extracted.txt`, p.1-2 (Stage 36: Agent setup, pairing token, re-enroll)
+
+## Stage 36 — API Co-signer Deployment Matrix (`api-cosigner-installation-flow.md`)
+
+`api-cosigner-installation-flow.md` (Stage 36 Mode C, body via curl) — Stage 8 의 SGX baseline 의 정식 deployment matrix.
+
+### 3-Step Installation Flow
+
+| Step | 행동 |
+|---|---|
+| **1. 환경 설정** | Co-signer 가 동작할 deployment environment 준비. 네트워크 + 보안 설정 — Co-signer installation/operation 필요 도메인 access 허용 |
+| **2. Workspace 에 Co-signer 등록** | Console 또는 API 로 API user 생성 → 그 API user 로 새 Co-signer 등록 |
+| **3. 설치 + 페어링** | Co-signer 타입별 installation script 다운로드 실행. Policy 설정: designated signer = API user (paired with Co-signer) — 이 paired API user 가 designated signer 인 Policy rule 에서 자동 서명 |
+
+### 6 Deployment Options (★ Stage 8 SGX baseline 의 cloud 매트릭스)
+
+| Option | TEE / Confidential Compute | Cloud / On-prem |
+|---|---|---|
+| **Azure SGX** | Intel SGX | Microsoft Azure (★ Fireblocks 의 default cloud, Stage 8 cross-cut) |
+| **On-Prem SGX** | Intel SGX | Customer 자체 데이터 센터 |
+| **AWS Nitro** | AWS Nitro Enclaves | Amazon Web Services |
+| **GCP Confidential Space** | Confidential Computing | Google Cloud Platform |
+| **Alibaba Cloud SGX** | Intel SGX | Alibaba Cloud |
+| **IBM Cloud SGX** | Intel SGX | IBM Cloud |
+
+→ Stage 8 의 SGX baseline (cosigner = SGX 강제) 가 **Azure SGX 외에 AWS Nitro / GCP Confidential Space 도 baseline 인정**. Confidential compute 기술의 cloud 별 변형이 모두 신뢰 환경의 baseline.
+
+### Hosted MPC + Customer-Side Setup 통합 (Stage 36 cross-cut)
+
+`hosted-mpc-customer-side-setup.md` (Stage 36) 와 결합 시:
+- Hosted MPC **최소 3 Co-Signer** 모두 SGX-enabled
+- 6 deployment option 중 어느 조합도 가능 (cross-cloud HA 가능)
+- "Configuring multiple API Co-Signers in high availability mode" 별도 article (본 wiki 아직 미ingest — KL02 retain)
+- Azure Availability Zones (A & B) 가 typical HA 패턴
+
+### Maintenance / Versioning (paired pages)
+
+본 batch 에서 paired 로 ingest 된 page 들:
+- `api-cosigner-maintenance.md` / `api-cosigner-maintenance-aws-nitro.md` / `api-cosigner-maintenance-gcp-confspace.md` / `api-cosigner-maintenance-sgx.md`
+- `api-cosigner-versions.md` / `api-cosigner-versions-aws.md` / `api-cosigner-versions-gcp.md` / `api-cosigner-versions-sgx.md`
+- `api-cosigner-management.md` / `api-cosigner-operate.md` / `api-cosigner-troubleshooting.md`
+
+→ 모두 disk 저장 (`sources/fireblocks/markdown/2026-05-22__developers-fireblocks-com__reference-api-cosigner-*.md`) — Mode B catalog-only, body 미 deep ingest. 사용자가 deployment 진행 시 promote 후보.
+
+## Sources (Stage 36 cosigner 추가)
+- `2026-05-22__developers-fireblocks-com__reference-api-cosigner-installation-flow.md`, p.1-2 (Stage 36: 3-step flow, 6 deployment options)

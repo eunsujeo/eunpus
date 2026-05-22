@@ -1,0 +1,116 @@
+26. 5. 18. 오후 3:35                                             Set up your Fireblocks Vault with Key Link – Fireblocks Help Center
+
+
+                     Don't see what you're looking for? Log in for the full Help Center experience
+
+                                                                            Fireblocks Help Center Search the Help Center /
+
+
+
+
+        Set up your Fireblocks Vault with
+        Key Link
+        Updated 6 months ago
+
+        The Fireblocks Vault is the secure wallet storage solution for safely managing your assets
+        and client funds. Learn more in the Fireblocks Vault article.
+        In your Fireblocks Key Link workspace, each vault account can be assigned one ECDSA and
+        one EdDSA key. Once a key is assigned to a vault account, it cannot be used in other vault
+        accounts.
+        The key assignment to a vault account can be done automatically to offer a more seamless
+        experience. If you would like to assign a key manually to a vault account, you can do so by
+        creating a vault account without the automatic key assignment option and following the
+        instructions below.
+        Automatic key assignment
+        When you create a vault account in the Fireblocks Console, an automatic key assignment
+        option appears only when there are available keys in your workspace to be assigned.
+
+
+
+
+https://support.fireblocks.io/hc/en-us/articles/14231441357340-Set-up-your-Fireblocks-Vault-with-Key-Link                            1/4
+26. 5. 18. 오후 3:35                                             Set up your Fireblocks Vault with Key Link – Fireblocks Help Center
+
+        This function automatically assigns one ECDSA key and one EdDSA key to your vault
+                Don't see what you're looking for? Log in for the full Help Center experience
+        account from the pool of available keys. You can also create a new vault account with the
+        Create vault account API endpoint and the autoAssign parameter set to true .
+                                                                            Fireblocks Help Center                                   /
+        If there are no available keys in the workspace (i.e., all the keys are already assigned to other
+        vault accounts), this option will not be available, but you can create a new vault account
+        without any keys assigned. When new keys become available in the workspace, you can
+        assign them manually to the vault account by following the instructions in the Manual Key
+        Assignment section below or by using the Key Management Dashboard.
+        Manual key assignment
+        You can assign keys to vault accounts using either the Key Management Dashboard or the
+        API.
+
+        Using the Key Management Dashboard
+         1. Navigate to Settings > External Keys.
+         2. Go to the Signing keys tab.
+         3. Find an available key and click the Manage button.
+         4. Assign the key to your preferred vault.
+        Alternatively, from the vault account page:
+           1. Go to Accounts and select your vault account.
+           2. Click Assign key.
+           3. Select an available key from the list.
+        For detailed instructions, see Managing Keys with the Key Management Dashboard.
+
+        Using the API
+        To assign an available key to a vault account using the API:
+           1. Check the list of available keys in your workspace using the Get signing keys API
+              endpoint.
+           2. Assign a key to a vault account with the Modify signing keyId API endpoint, by
+               specifying the vault account to which you want to assign the key.
+        Creating asset wallets
+        Once you have created your vault account, you can create asset wallets. Once done, you
+        can start receiving funds and create transactions to be signed by your HSM.
+
+            Note
+            To create a specific asset wallet in the vault account, you must have an assigned key
+            with the algorithm (ECDSA, or EdDSA) required by that asset’s underlying protocol.
+
+https://support.fireblocks.io/hc/en-us/articles/14231441357340-Set-up-your-Fireblocks-Vault-with-Key-Link                                2/4
+26. 5. 18. 오후 3:35                                             Set up your Fireblocks Vault with Key Link – Fireblocks Help Center
+
+            If a specific key is missing in the vault account, in the Console’s “Create asset wallet”
+                  Don't see what you're looking for? Log in for the full Help Center experience
+            screen, a warning message will display specifying the missing key, and the assets
+            requiring that key will be disabled.
+                                                                            Fireblocks Help Center                                   /
+
+
+
+
+        Learn more about Monitoring your Key Link stats.
+
+
+
+                                                              Was this article helpful?
+                                                                       Yes              No
+
+
+
+              Related Articles
+                     Troubleshooting incomplete user setup
+
+
+https://support.fireblocks.io/hc/en-us/articles/14231441357340-Set-up-your-Fireblocks-Vault-with-Key-Link                                3/4
+26. 5. 18. 오후 3:35                                             Set up your Fireblocks Vault with Key Link – Fireblocks Help Center
+
+
+                     Don't see what you're looking for? Log in for the full Help Center experience
+
+                                                                            Fireblocks Help Center                                   /
+      fireblocks.com           Status        API Docs         Console         info@fireblocks.com
+
+
+
+      Fireblocks © 2026. All Rights Reserved. NMLS Registration Number: 2066055
+      Privacy Policy
+
+
+
+
+https://support.fireblocks.io/hc/en-us/articles/14231441357340-Set-up-your-Fireblocks-Vault-with-Key-Link                                4/4
+

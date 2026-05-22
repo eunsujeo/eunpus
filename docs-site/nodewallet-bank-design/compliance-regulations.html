@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>14. 5 규제 + 트래블룰 — NodeWallet 은행 도입</title>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. 컴포넌트 토폴로지</a></li>
+<li><a href="trust-boundaries.html">2. 신뢰 경계</a></li>
+<li><a href="db-split.html">3. 4-DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. DB Schema</h3>
+<ul>
+<li><a href="tables-approver.html">4. approverdb</a></li>
+<li><a href="tables-audit.html">5. auditdb</a></li>
+<li><a href="tables-ledger-chain.html">6. ledgerdb · chaindb</a></li>
+<li><a href="tables-tenant-wallet.html">7. 테넌트 · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Cryptography</h3>
+<ul><li><a href="keys-hsm-tee.html">8. HSM · SGX · 키 수명주기</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Policy &amp; Decisions</h3>
+<ul>
+<li><a href="policy-rules.html">9. 10 Policy Rules</a></li>
+<li><a href="sm-decision.html">10. 결정 라이프사이클</a></li>
+<li><a href="sm-signing.html">11. 3-key 서명 흐름</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Transactions &amp; Audit</h3>
+<ul>
+<li><a href="sm-deposit-withdrawal.html">12. 입금 · 출금 흐름</a></li>
+<li><a href="audit-2layer.html">13. 2-Layer 감사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Compliance</h3>
+<ul><li><a class="active" href="compliance-regulations.html">14. 5 규제 + 트래블룰</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Discipline</h3>
+<ul>
+<li><a href="storage-discipline.html">15. Storage Discipline</a></li>
+<li><a href="risks-anti-patterns.html">16. Risks &amp; Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="compliance-regulations">
+<h2>14. 5 규제 + 트래블룰</h2>
+<span class="section-subtitle">특금법 · EFTA · VACPA · FATF R.16 · AML/KYC — 각 규제 와 NodeWallet 의 매핑</span>
+
+<div class="callout">
+<div class="callout-title">출처</div>
+<p><code>compliance__regulations__*.md</code> (5 페이지), <code>compliance__regulations__travel-rule.md</code> (가장 dense), <code>vendor-specific-patterns.md</code> P7.</p>
+</div>
+
+<h3>5 규제 한눈에 — Stage 37 시행일·1차 출처 확정</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>규제</th><th>한국 약칭</th><th>시행일</th><th>핵심 의무</th><th>NodeWallet 의 매핑</th></tr></thead>
+<tbody>
+<tr><td>특정금융정보의 보고 및 이용 등에 관한 법률</td><td>특금법</td><td><strong>2024-07-19</strong></td>
+  <td>VASP 신고 · KYC · AML · 트래블룰 · 미신고 VASP 거래금지. 신고 유효 <strong>3년</strong>, 미신고 영업 = 5년 이하 징역</td>
+  <td>address_list + approval_tier + auditdb 로 KYC/AML evidence 5년 보존</td></tr>
+<tr><td>특금법 시행령</td><td>—</td><td><strong>2026-01-02</strong></td>
+  <td>실명확인 입출금계정 기준, 트래블룰 <strong>100만원 이상</strong> 임계, VASP 조치 세부화</td>
+  <td>velocity_window + address_list 의 임계 매핑</td></tr>
+<tr><td>전자금융거래법</td><td>EFTA</td><td>(별도)</td>
+  <td>전자금융 안정성 · 영업시간 · 사고 대응 · 보안 조치</td>
+  <td>time_window + global_halt + 2-layer 감사 + 망분리</td></tr>
+<tr><td>가상자산이용자보호법</td><td>VACPA</td><td><strong>2024-07-19</strong></td>
+  <td>예치금 보호, 이용자 가상자산 <strong>분리보관 + 동종·동량 보유</strong>, 보험·준비금</td>
+  <td>★ NodeWallet 은 hot wallet 인프라 — 분리보관은 테넌트/계정 격리. 동종·동량은 일일 reconciliation</td></tr>
+<tr><td>이용자보호법 시행령</td><td>—</td><td><strong>2025-04-23</strong></td>
+  <td>입출금 차단의 정당한 사유 (정보통신망 장애 / 거래종료 / AML / 자금세탁 의심 최소 기간 / 전기통신금융사기 <strong>72시간</strong>)</td>
+  <td>global_halt + per_tx_amount_limit + decision rationale 의 차단 사유 enum</td></tr>
+<tr><td>가상자산업감독규정</td><td>—</td><td><strong>2024-07-19</strong></td>
+  <td><strong>콜드월렛 보관비율 = 경제적 가치 80%</strong>, 취약점 점검·평가, 이용자보호 세부기준</td>
+  <td>★ NodeWallet 은 hot 인프라 (≤ 20% 범위). cold 80% 는 외부 cold workspace 필수</td></tr>
+<tr><td>FATF Recommendation 16</td><td>트래블룰</td><td>2019 권고 / 한국 2022-03-25 시행</td>
+  <td>VASP 간 송수신자 정보 교환 (한국 100만원 이상)</td>
+  <td>address_list whitelist (식별 + 기술 통제) — 정보 교환은 외부 솔루션</td></tr>
+<tr><td>AML / KYC general</td><td>—</td>
+  <td>특금법 §5조의2 / §4 (STR)</td>
+  <td>의심거래 감시 · 고객 신원 확인 · 재이행 주기 · 신규 서비스 위험평가</td>
+  <td>address_cooldown + velocity_window + 외부 KYC 시스템 결합 + 제품승인위원회 (운영)</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+<span class="src">(source: Stage 37 — KR_Custodial_Wallet_Compliance_Guide.pdf · 1차 출처: law.go.kr lsiSeq=252787 / lsiSeq=252731 / lsiSeq=270729 / admRulSeq=2100000244180)</span>
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">은행 도입 시 결정적 임계 (Stage 37 ingest)</div>
+<ul>
+<li><strong>콜드월렛 80%</strong> — 이용자 가상자산의 경제적 가치 80% 를 인터넷과 분리. NodeWallet 은 hot wallet 인프라이므로 자체적으로는 ≤ 20% 만 보관. <strong>나머지 80% 는 별도 cold workspace 필수</strong> (외부 또는 Fireblocks Cold Wallet 등).</li>
+<li><strong>트래블룰 100만원</strong> — 시행령 §10조의10. 100만원 이상 출금 시 송·수신인 이름 전송 실패 시 출고 차단 필수.</li>
+<li><strong>기록보존 5년</strong> — 특금법 §5조의4. auditdb 의 모든 evidence 가 5년 archive.</li>
+<li><strong>신규 신고 심사 3개월 / 변경 45일</strong> — NodeWallet 의 vault 주소 / 신규 자산 추가 시 변경신고 필수.</li>
+</ul>
+</div>
+
+<h3>특금법 — 자금세탁 방지 + 트래블룰의 한국 기반</h3>
+<p>특금법은 한국에서 VASP 의 등록 · KYC · AML · 트래블룰 의무를 정의한다. 노드월렛 은행 도입 시 은행이 직접 VASP 등록의 주체 (커스터디 / 송금 등) 가 되거나, 자행 고객 대상으로만 운영하는 경우 (in-house custody) 가 된다.</p>
+<ul>
+<li>고객 신원 확인 — 외부 KYC 시스템 (은행의 기존 시스템) 과 결합</li>
+<li>의심거래 보고 — auditdb 의 결정 + 트랜잭션 export 가 보고서 source</li>
+<li>위험 평가 기반 차등 — approval_tier 의 금액 구간으로 표현</li>
+</ul>
+
+<h3>EFTA — 전자금융거래법</h3>
+<p>전자금융기관 / 은행이 전자금융 서비스를 제공할 때의 안정성 · 보안 · 사고 대응 의무. 노드월렛 매핑:</p>
+<ul>
+<li><strong>영업시간 운영</strong> — <code>time_window</code> 룰로 영업시간 외 차단</li>
+<li><strong>사고 대응</strong> — <code>global_halt</code> kill-switch + 24h Held TTL 의 자동 안전 기본값</li>
+<li><strong>보안 조치</strong> — HSM (FIPS 140-3 L3) + 망분리 + 3-key 다중서명</li>
+<li><strong>인증</strong> — KCMVP / 보안기능확인서 / GS (NodeInfra 진행 중) + 은행의 ISMS / 정보보호경영시스템</li>
+</ul>
+
+<h3>VACPA — 가상자산이용자보호법</h3>
+<p>2023 시행. 고객 가상자산의 분리보관 · 자산 보호 · 핫/콜드 분리 등 요구.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>VACPA 요구</th><th>NodeWallet 대응</th><th>은행 추가 설계</th></tr></thead>
+<tbody>
+<tr><td>고객 자산의 분리보관</td><td>테넌트 격리 + 사용자 지갑 + 집중 지갑 분리. ledger 의 account_id 별 잔액.</td><td>★ 자행 자금과 고객 자금의 회계 분리 — application layer</td></tr>
+<tr><td>핫/콜드 분리</td><td>NodeWallet 은 hot wallet 인프라</td><td>cold storage 는 별도 (★ NodeWallet 미포함)</td></tr>
+<tr><td>자산 보호 의무</td><td>2-layer 감사 + append-only + set-once</td><td>보험 · 자본금 의무 등 (외부)</td></tr>
+<tr><td>고객 신원 확인 (KYC)</td><td>외부 KYC 시스템과 결합 — NodeWallet 은 KYC owner 아님</td><td>KYC 시스템 통합</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>FATF Recommendation 16 — 트래블룰</h3>
+<p>VASP 간 송수신자 정보 교환 의무 (source: <code>compliance__regulations__travel-rule.md</code>):</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>규제권</th><th>임계치</th><th>시행</th></tr></thead>
+<tbody>
+<tr><td>한국 (특금법 시행령)</td><td>100만원 이상</td><td>2022-03-25 시행</td></tr>
+<tr><td>미국 (FinCEN Travel Rule)</td><td>$3,000 이상</td><td>1996 시행, 2019 가상자산 확장</td></tr>
+<tr><td>EU (TFR 2023/1113)</td><td>모든 거래</td><td>2024-12-30 시행</td></tr>
+<tr><td>FATF (글로벌)</td><td>$1,000 / EUR 1,000</td><td>2019 권고</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>NodeWallet 의 트래블룰 책임 경계</h3>
+<p>트래블룰은 두 단계로 나뉜다:</p>
+<ol>
+<li><strong>카운터파티 식별</strong> — 수신 주소가 어느 VASP 의 hot wallet 인지 식별</li>
+<li><strong>정보 교환</strong> — 송수신자 정보를 카운터파티 VASP 에 전달 (TRP / Sygna / Notabene 등)</li>
+</ol>
+<p><strong>NodeWallet 은 첫 단계의 기술 통제만 담당</strong> — 미식별 주소로의 출금을 차단. 정보 교환은 외부 솔루션.</p>
+
+<h3>패턴 1 — VASP 화이트리스트 (가장 기본)</h3>
+<pre><code>INSERT INTO condition_sets (id, name, set_type, description) VALUES
+  ('vasp-allowlist-kr', 'vasp_allowlist_kr', 'whitelist',
+   '한국 인가 VASP hot wallets — 2026-05-01 import');
+
+INSERT INTO condition_set_items (condition_set_id, value, label) VALUES
+  ('vasp-allowlist-kr', 'UpbitHot1...', 'Upbit hot wallet'),
+  ('vasp-allowlist-kr', 'BithumbHot1...', 'Bithumb hot wallet'),
+  ('vasp-allowlist-kr', 'CoinoneHot1...', 'Coinone hot wallet');
+
+-- USDC 출금은 인가 VASP hot wallet 으로만
+{
+  "rule_type": "address_list",
+  "flow_type": "withdrawal",
+  "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "priority": 30,
+  "config": {
+    "condition_set_id": "vasp-allowlist-kr",
+    "mode": "whitelist"
+  }
+}</code></pre>
+
+<h3>패턴 2 — 임계치 이하 자유 / 초과 화이트리스트</h3>
+<p>100만원 이하 거래는 임의 주소 허용 / 초과 거래는 VASP 화이트리스트 제한. <code>expression</code> 룰로 조건부 적용 (예시는 docs <code>compliance__regulations__travel-rule.md</code> §패턴 2).</p>
+
+<h3>자기 보관 (self-custody) 처리</h3>
+<p>EU TFR 2023/1113 은 1,000 EUR 초과 자기 보관 지갑 송금 시 추가 의무. NodeWallet 운영 패턴:</p>
+<ol>
+<li>미식별 주소 (VASP 화이트리스트 외) 에 대한 출금에 <code>approval_tier</code> 의 <code>SINGLE_APPROVE</code> 적용</li>
+<li>운영자가 KYC 시스템에서 고객이 자기 보관 신고를 했는지 확인 후 결정 채널을 통해 해소</li>
+<li>미신고 자기 보관 주소는 정책 변경 없이 Held 만료 (24h) → 자동 Deny</li>
+</ol>
+
+<h3>송신 vs 수신 통제</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>측면</th><th>NodeWallet 대응</th></tr></thead>
+<tbody>
+<tr><td>출금 (송신)</td><td><code>address_list</code> whitelist 로 카운터파티 VASP 만 허용</td></tr>
+<tr><td>입금 (수신)</td><td>입금 자체는 막을 수 없음. 단, 출처 검증 후 <em>스윕</em>을 <code>address_cooldown</code> / <code>approval_tier</code> 로 지연 가능</td></tr>
+</tbody>
+</table>
+</div>
+<p>송신 측 통제가 핵심. 수신 측은 후속 절차 (KYC 결과 · 블록체인 분석) 와 결합.</p>
+
+<h3>정보 교환 데이터 (외부 솔루션이 다루는 것)</h3>
+<p>NodeWallet 외부 (TRP / Sygna / Notabene) 가 다루는 필드와 NodeWallet 의 source:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>필드</th><th>NodeWallet 데이터 출처</th></tr></thead>
+<tbody>
+<tr><td>송금자 이름·주소·계좌번호</td><td>외부 KYC 시스템</td></tr>
+<tr><td>수취자 이름·주소·VASP 식별자</td><td>외부 카운터파티 입력</td></tr>
+<tr><td>거래 식별자</td><td><code>policy_decisions.request_id</code></td></tr>
+<tr><td>거래 금액 / 토큰</td><td><code>policy_decisions.amount</code> / <code>mint</code></td></tr>
+<tr><td>거래 시각</td><td><code>policy_decisions.decided_at</code></td></tr>
+<tr><td>체인 트랜잭션 해시</td><td><code>auditdb.signing_events.tx_hash</code></td></tr>
+</tbody>
+</table>
+</div>
+<p><code>request_id</code> ↔ <code>tx_hash</code> 는 <code>signing_events.chain_evidence_ref</code> 로 cross-DB join.</p>
+
+<h3>AML / KYC general</h3>
+<p>NodeWallet 의 책임 범위:</p>
+<ul>
+<li><strong>KYC 는 NodeWallet 책임 아님</strong> — 외부 시스템의 KYC 결과를 입력으로 받는다. 자기 보관 신고 등.</li>
+<li><strong>AML</strong> — address_cooldown + velocity_window + audit log export 로 의심거래 패턴 검출 + 보고서 제공</li>
+<li><strong>sanctions screening</strong> — address_list blacklist 모드로 제재 명단 차단. 명단 큐레이션 procedure 는 NodeInfra 내부 cert pack (<code>aml-sanctions-coverage.md</code>) 에 명시</li>
+</ul>
+
+<h3>인증 stack (NodeInfra 진행 중)</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>인증</th><th>의미</th><th>NodeInfra 상태</th></tr></thead>
+<tbody>
+<tr><td>KCMVP</td><td>Korean Cryptographic Module Validation Program</td><td>진행 중 (source: <code>/index</code>)</td></tr>
+<tr><td>GS (Good Software)</td><td>국내 SW 품질 인증</td><td>진행 중</td></tr>
+<tr><td>보안기능확인서</td><td>국정원 보안기능 검증</td><td>진행 중</td></tr>
+<tr><td>ISMS</td><td>정보보호 관리체계</td><td>예정</td></tr>
+</tbody>
+</table>
+</div>
+<p class="hint">은행 도입 시 자행의 ISMS / ISMS-P / 정보보호경영시스템 인증과 결합. NodeInfra 의 제품 인증과 은행의 운영 인증이 보완 관계.</p>
+
+<h3>한계 (vendor 자기서술)</h3>
+<ul>
+<li><strong>정보 교환 미포함</strong> — NodeWallet 은 차단/허용만. 카운터파티 VASP 에 정보 전달은 외부 솔루션.</li>
+<li><strong>VASP 식별 정확도 의존</strong> — 잘못 식별된 주소 (non-VASP 인데 화이트리스트에 포함) 는 보안 게이트 약화.</li>
+<li><strong>체인 메모 미검사</strong> — 일부 트래블룰 구현은 트랜잭션 메모 필드에 ID 첨부. NodeWallet 은 메모 내용을 평가에 사용하지 않음.</li>
+<li><strong>VACPA 의 cold/hot 분리</strong> — 노드월렛은 hot 인프라. 콜드 보관은 외부 설계.</li>
+</ul>
+
+<h3>은행 도입 시 결정해야 할 것</h3>
+<ul>
+<li><strong>VASP 명단 source</strong> — 한국 금융정보분석원 (KoFIU) 등록 VASP 명단 + 자체 검증 큐레이션 + 정기 import 주기.</li>
+<li><strong>KYC 시스템 통합</strong> — customer_ref 와 KYC 시스템의 join key. 자기 보관 신고 여부 lookup 의 SLA.</li>
+<li><strong>트래블룰 외부 솔루션</strong> — TRP / Sygna / Notabene / Chainalysis Travel Rule 중 선택. NodeWallet 의 export API 와 통합.</li>
+<li><strong>의심거래 보고 (STR)</strong> — auditdb export → KoFIU 양식 변환 / 자동 제출 절차.</li>
+<li><strong>제재 명단</strong> — UN / OFAC / EU / 한국 자체 명단의 통합 import 와 정기 refresh.</li>
+<li><strong>VACPA 분리보관</strong> — application layer 의 회계 분리 + 보고서 생성.</li>
+</ul>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="audit-2layer.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">13. 2-Layer 감사</span></a>
+<a class="page-nav-link page-nav-next" href="storage-discipline.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">15. Storage Discipline</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

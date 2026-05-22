@@ -241,6 +241,18 @@
       border: 1px solid #d2d2d7;
     }
 
+    .badge-reviewed {
+      background-color: #e7f4ec;
+      color: #1f6c3d;
+      border: 1px solid #b8dec7;
+    }
+
+    .badge-pending-review {
+      background-color: #fff4e0;
+      color: #8a5a00;
+      border: 1px solid #ffd591;
+    }
+
     .footer-note {
       margin-top: 56px;
       padding-top: 24px;
@@ -292,12 +304,69 @@
         4 state machine · reversal-entry · evidence chain · reconciliation.
       </p>
       <div class="doc-meta">
-        <span class="doc-meta-item"><span class="badge badge-current">v1.0</span></span>
+        <span class="doc-meta-item"><span class="badge badge-reviewed">리뷰완료</span></span>
+        <span class="doc-meta-item"><strong>업데이트</strong> 2026-05-22</span>
         <span class="doc-meta-item"><strong>Sections</strong> 25</span>
         <span class="doc-meta-item"><strong>Diagrams</strong> 15</span>
-        <span class="doc-meta-item"><strong>독자</strong> Backend · DBA · Security · Operations · Architecture reviewer</span>
       </div>
       <div class="doc-path">custodial-wallet-db-design/</div>
+    </a>
+
+    <a class="doc-card" href="nodewallet-bank-design/">
+      <div class="doc-title">
+        NodeWallet 은행 도입 — 인프라 · DB · 상태 흐름
+        <span class="arrow">→</span>
+      </div>
+      <p class="doc-summary">
+        은행이 NodeInfra 의 NodeWallet (온프레미스 스테이블코인 핫월렛 인프라) 을 자사 망분리 IDC 에
+        설치·운영할 때의 인프라 · DB 스키마 · 상태 머신. 3-key 다중서명 (HSM + SGX) · 4-DB 분할 ·
+        10 policy rule · 결정 라이프사이클 · 2-layer 감사 · 5 KR 규제 매핑.
+      </p>
+      <div class="doc-meta">
+        <span class="doc-meta-item"><span class="badge badge-pending-review">리뷰 전</span></span>
+        <span class="doc-meta-item"><strong>업데이트</strong> 2026-05-12</span>
+        <span class="doc-meta-item"><strong>Sections</strong> 17</span>
+        <span class="doc-meta-item"><strong>Diagrams</strong> 14</span>
+      </div>
+      <div class="doc-path">nodewallet-bank-design/</div>
+    </a>
+
+    <a class="doc-card" href="fireblocks-kr-vasp-compliance/">
+      <div class="doc-title">
+        국내 블록체인 사업 법규 × Fireblocks
+        <span class="arrow">→</span>
+      </div>
+      <p class="doc-summary">
+        한국에서 가상자산사업자 (VASP) 로 사업할 때의 법규를 Fireblocks 로 어디까지 풀고 어디부터 못 푸는지
+        정직하게 정리한 reference. ✅ 직접 / ⚠️ 부분 / ❌ 외부 3-분류 17 의무 매핑 + 4 종합검사 사례 분석
+        + KR VASP 신고 + Fireblocks 도입 통합 절차 + 8 미해결 항목.
+      </p>
+      <div class="doc-meta">
+        <span class="doc-meta-item"><span class="badge badge-pending-review">리뷰 전</span></span>
+        <span class="doc-meta-item"><strong>업데이트</strong> 2026-05-08</span>
+        <span class="doc-meta-item"><strong>Sections</strong> 8</span>
+        <span class="doc-meta-item"><strong>Source</strong> KR 법령 + Fireblocks Help Center</span>
+      </div>
+      <div class="doc-path">fireblocks-kr-vasp-compliance/</div>
+    </a>
+
+    <a class="doc-card" href="fireblocks-cold-wallet-bank-design/">
+      <div class="doc-title">
+        Fireblocks Cold Wallet — 수탁형 지갑 운영
+        <span class="arrow">→</span>
+      </div>
+      <p class="doc-summary">
+        은행이 수탁형 지갑을 만들 때 Fireblocks Cold Wallet 을 어떻게 배치·운영할지 정리. Hot/Cold workspace
+        직교 축 · multi-workspace 토폴로지 · Admin Quorum 단독 거버넌스 (Risk-G07) · Hot↔Cold P2P
+        rebalancing · signing flow · KR 은행 운영 절차 · 8 open questions.
+      </p>
+      <div class="doc-meta">
+        <span class="doc-meta-item"><span class="badge badge-reviewed">리뷰완료</span></span>
+        <span class="doc-meta-item"><strong>업데이트</strong> 2026-05-22</span>
+        <span class="doc-meta-item"><strong>Sections</strong> 8</span>
+        <span class="doc-meta-item"><strong>Source</strong> Fireblocks Help Center</span>
+      </div>
+      <div class="doc-path">fireblocks-cold-wallet-bank-design/</div>
     </a>
 
   </div>

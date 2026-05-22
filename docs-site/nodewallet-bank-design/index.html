@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Overview — NodeWallet 은행 도입 (DB · 상태 흐름)</title>
+<meta content="NodeInfra NodeWallet 을 은행이 도입할 때의 인프라 · DB 구조 · 상태 흐름 reference" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a class="active" href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. 컴포넌트 토폴로지</a></li>
+<li><a href="trust-boundaries.html">2. 신뢰 경계</a></li>
+<li><a href="db-split.html">3. 4-DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. DB Schema</h3>
+<ul>
+<li><a href="tables-approver.html">4. approverdb</a></li>
+<li><a href="tables-audit.html">5. auditdb</a></li>
+<li><a href="tables-ledger-chain.html">6. ledgerdb · chaindb</a></li>
+<li><a href="tables-tenant-wallet.html">7. 테넌트 · Wallet</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Cryptography</h3>
+<ul>
+<li><a href="keys-hsm-tee.html">8. HSM · SGX · 키 수명주기</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Policy &amp; Decisions</h3>
+<ul>
+<li><a href="policy-rules.html">9. 10 Policy Rules</a></li>
+<li><a href="sm-decision.html">10. 결정 라이프사이클</a></li>
+<li><a href="sm-signing.html">11. 3-key 서명 흐름</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Transactions &amp; Audit</h3>
+<ul>
+<li><a href="sm-deposit-withdrawal.html">12. 입금 · 출금 흐름</a></li>
+<li><a href="audit-2layer.html">13. 2-Layer 감사</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Compliance</h3>
+<ul>
+<li><a href="compliance-regulations.html">14. 5 규제 + 트래블룰</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Discipline</h3>
+<ul>
+<li><a href="storage-discipline.html">15. Storage Discipline</a></li>
+<li><a href="risks-anti-patterns.html">16. Risks &amp; Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="overview">
+<h1>NodeWallet 은행 도입 — 인프라 · DB · 상태 흐름</h1>
+<p class="lead">
+  은행이 <strong>NodeInfra 의 NodeWallet</strong> 을 자사 데이터센터에 설치·운영해 수탁형 스테이블코인 지갑을 구축할 때 알아야 할 인프라 · DB 스키마 · 상태 머신을 정리한 reference.<br/>
+  본문의 모든 fact 는 <code>docs.nodeinfra.com</code> 의 vendor docs 가 출처. 명시 없는 추정은 <strong>"★ Hypothesis"</strong> 라벨로 분리.
+</p>
+
+<div class="callout">
+<div class="callout-title">한 줄 정체성</div>
+<p>NodeWallet 은 <strong>국내 금융 · 가상자산 규제를 준수하는 온프레미스 스테이블코인 핫월렛 인프라</strong>. 망분리<span class="g" data-tip="금융기관 내부망과 외부망을 물리·논리적으로 분리한 환경. 한국 금융 IT 표준" tabindex="0">(?)</span> IDC 에 설치형 SW 로 배포되며, 은행·카드사·PG/결제사·증권사·공공기관이 주요 대상 (source: <code>/index</code>).</p>
+</div>
+
+<h3>이 문서가 다루는 7 도메인</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>도메인</th><th>다루는 내용</th><th>진입점</th></tr></thead>
+<tbody>
+<tr><td>A. Architecture</td><td>컴포넌트 5종 · 신뢰 경계 4단 · 4-DB 분할</td><td><a href="architecture.html">1. 컴포넌트 토폴로지</a></td></tr>
+<tr><td>B. DB Schema</td><td>approverdb · auditdb · ledgerdb · chaindb · 테넌트 · 3-wallet</td><td><a href="tables-approver.html">4. approverdb</a></td></tr>
+<tr><td>C. Cryptography</td><td>HSM<span class="g" data-tip="Hardware Security Module. FIPS 140-3 Level 3 — 키 plaintext 가 모듈 밖으로 노출되지 않는 전용 보안 하드웨어" tabindex="0">(?)</span> + SGX<span class="g" data-tip="Intel Software Guard Extensions. CPU 수준에서 격리된 실행 영역 (Enclave). 호스트 OS 침해와 무관하게 메모리 보호" tabindex="0">(?)</span> TEE<span class="g" data-tip="Trusted Execution Environment. CPU/하드웨어가 제공하는 격리된 실행 영역. SGX 는 그 한 구현" tabindex="0">(?)</span> · 키 수명주기 5단계</td><td><a href="keys-hsm-tee.html">8. HSM · SGX · 수명주기</a></td></tr>
+<tr><td>D. Policy &amp; Decisions</td><td>10 rule type · Allow/Held/Deny · 3-key 서명</td><td><a href="policy-rules.html">9. 10 Policy Rules</a></td></tr>
+<tr><td>E. Transactions &amp; Audit</td><td>입금/출금 흐름 · 2-Layer 감사 (TEE 영수증 + 해시체인)</td><td><a href="sm-deposit-withdrawal.html">12. 입금 · 출금</a></td></tr>
+<tr><td>F. Compliance</td><td>특금법<span class="g" data-tip="특정금융정보의 보고 및 이용 등에 관한 법률 (한국). VASP 의무 기반" tabindex="0">(?)</span> · EFTA<span class="g" data-tip="전자금융거래법 (한국). 전자금융 안정성 의무" tabindex="0">(?)</span> · VACPA<span class="g" data-tip="가상자산이용자보호법 (한국). 2023 시행. 고객자산 분리보관 등 강제" tabindex="0">(?)</span> · FATF R.16 · AML/KYC</td><td><a href="compliance-regulations.html">14. 규제 + 트래블룰</a></td></tr>
+<tr><td>G. Discipline</td><td>append-only<span class="g" data-tip="DB row INSERT 만 허용. UPDATE/DELETE 금지. trigger 로 강제" tabindex="0">(?)</span> · set-once<span class="g" data-tip="컬럼이 NULL → 값 1회 INSERT 만 허용. UPDATE 금지. DB trigger 로 강제" tabindex="0">(?)</span> · runtime-only · never-store · risks</td><td><a href="storage-discipline.html">15. Storage Discipline</a></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>은행이 NodeWallet 을 고르는 이유 (제품 자기서술 기준)</h3>
+<p>벤더가 공개 docs 의 <em>"다른 솔루션과의 비교"</em> 에서 명시한 차별점 (source: <code>/index</code>):</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>항목</th><th>VASP<span class="g" data-tip="Virtual Asset Service Provider. 가상자산사업자" tabindex="0">(?)</span> 하이브리드</th><th>Cloud MPC<span class="g" data-tip="Multi-Party Computation. 키 plaintext 가 한 번도 한 곳에 모이지 않는 분산 서명 프로토콜" tabindex="0">(?)</span> 계열</th><th>NodeWallet</th></tr></thead>
+<tbody>
+<tr><td>제품 종류</td><td>VASP + SaaS</td><td>SaaS</td><td>설치형 SW</td></tr>
+<tr><td>망분리 대응</td><td>X</td><td>X</td><td>O</td></tr>
+<tr><td>배포 모드</td><td>클라우드</td><td>클라우드</td><td>망분리 IDC</td></tr>
+<tr><td>보안 모듈</td><td>MPC</td><td>MPC</td><td>HSM + SGX</td></tr>
+<tr><td>키 소유권</td><td>벤더 샤드</td><td>벤더 샤드</td><td>고객 직접 보유</td></tr>
+<tr><td>정책 실행 위치</td><td>벤더 클라우드</td><td>벤더 클라우드</td><td>고객 인프라</td></tr>
+<tr><td>제품 보안 인증</td><td>—</td><td>—</td><td>보안기능확인서 · KCMVP<span class="g" data-tip="Korean Cryptographic Module Validation Program. 국내 암호모듈 검증 제도" tabindex="0">(?)</span> · GS (진행중)</td></tr>
+<tr><td>외부 의존성</td><td>SW + 정책 + 키(샤드) + 라이센스</td><td>SW + 정책 + 키(샤드)</td><td>없음 (고객 설치·운영)</td></tr>
+</tbody>
+</table>
+</div>
+<p class="hint">은행 관점에서 핵심은 <strong>키 소유권 + 망분리 대응 + 정책 실행 위치</strong>. 한국 금융 IT 환경의 망분리 규제 + KCMVP/보안기능확인서 조달 요건이 SaaS 형 MPC 솔루션을 사실상 배제하기 때문에 설치형 HSM+SGX 가 채택된다.</p>
+
+<h3>핵심 invariant (어겨선 안 되는 보안 속성 5개)</h3>
+<ol>
+<li><strong>개시 ≠ 승인 ≠ 실행</strong> — 3개의 독립 서비스가 각자의 HSM/TEE 키로 서명해야 체인 트랜잭션이 나간다. 어느 하나라도 빠지면 거부 (source: <code>security__architecture__multisig.md</code>).</li>
+<li><strong>HSM 키 ≠ SGX 키</strong> — 개시·승인 키는 HSM 파티션, 실행 키는 SGX-sealed blob. 두 key-custody 도메인이 독립. HSM 전체 탈취도 실행 키에 영향 없음 (post-provisioning 이후 HSM 오프라인 가능).</li>
+<li><strong>테넌트 A 키 탈취 ≠ 테넌트 B 영향</strong> — 테넌트별 3-키 세트 + SPKI-hash<span class="g" data-tip="Subject Public Key Info 의 해시. 공개키 자체의 표준 binary 표현 해시" tabindex="0">(?)</span> 바인딩 + 매 payload 의 tenant_id 검증. 한 계열사 키 탈취가 다른 계열사로 전파되지 않는다 (source: <code>security__architecture__tenant.md</code>).</li>
+<li><strong>shadow_mode<span class="g" data-tip="정책 평가를 관찰만 하고 차단하지 않는 모드. 노드월렛에는 의도적으로 없음" tabindex="0">(?)</span> 없음 + fail-closed</strong> — 모든 Deny 는 실제 차단으로 집행. DB/HSM/서명검증 실패는 모두 Deny 로 매핑. <em>승인자 장애 = 출금 정지</em> 는 의도된 안전 기본값 (source: <code>compliance__decision-lifecycle.md</code>).</li>
+<li><strong>Layer 1 ≠ Layer 2 감사 — 둘 다 필수</strong> — Layer 1 (TEE 영수증 + FK 제약) 은 실시간 사기 방어, Layer 2 (해시체인 + 엔클레이브 서명 체크포인트) 는 사후 변조 탐지. 어느 한 쪽만으로는 불충분 (source: <code>security__ops__audit-logs.md</code>).</li>
+</ol>
+
+<div class="callout callout-warn">
+<div class="callout-title">Source-first 원칙</div>
+<p>본 site 의 모든 fact 는 <code>docs.nodeinfra.com</code> 의 41 페이지 (Mintlify password-gated; 사용자 인증 후 ingest, <code>sources/nodeinfra/</code>) 가 출처. NodeInfra 미명시 항목은 <strong>"★ Hypothesis"</strong> 로 명확히 분리한다. 추정을 fact 로 옮기지 않는다.</p>
+</div>
+
+<h3>은행이 운영해야 하는 컴포넌트 (NodeInfra 가 만들지 않는 부분)</h3>
+<ul>
+<li><strong>HSM 클러스터</strong> — Thales Luna / Utimaco / YubiHSM2 중 선택. 3-key 다중서명을 위해 3 파티션 또는 3 HSM. m-of-n<span class="g" data-tip="M-out-of-N. N 명의 운영자 중 M 명의 동의가 있어야 작업 수행 (HSM 활성화 등)" tabindex="0">(?)</span> 운영자 쿼럼 정의.</li>
+<li><strong>SGX-capable HW</strong> — Intel CPU + SGX + DCAP<span class="g" data-tip="Data Center Attestation Primitives. SGX 엔클레이브 무결성·신원을 원격 검증하는 Intel 의 표준" tabindex="0">(?)</span> 원격 증명 인프라. MRENCLAVE<span class="g" data-tip="엔클레이브 바이너리의 해시. SGX 봉인이 이 값에 바인딩되어 다른 이미지로 sealed blob 을 언실할 수 없음" tabindex="0">(?)</span> 이미지 관리.</li>
+<li><strong>4개 DB</strong> — approverdb · auditdb · ledgerdb · chaindb. NodeInfra 권장은 물리적 분리.</li>
+<li><strong>Spring backend</strong> — 은행 자체 비즈니스 로직. Java SDK + Spring Boot Auto-Configuration 으로 통합.</li>
+<li><strong>망분리</strong> — 한국 금융 IT 표준. 내부망 격리 구역에 모든 컴포넌트 배치.</li>
+<li><strong>모니터링 · 하드닝</strong> — OS/네트워크 hardening + 보안 모니터링은 customer-운영 책임.</li>
+</ul>
+<p class="hint">NodeInfra 는 SW + 운영 매뉴얼 + 인증 패키지를 제공한다. SaaS 가 아니므로 <em>벤더 phoning-home 없음</em>, 모든 trust state (키 · 정책 · 감사) 가 은행 perimeter 안에 머문다.</p>
+
+<h3>NodeWallet 이 다루지 않는 영역 (은행이 별도 설계 필요)</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>영역</th><th>NodeInfra docs 상태</th><th>은행이 결정해야 할 것</th></tr></thead>
+<tbody>
+<tr><td>Multi-chain</td><td>Solana only (Ed25519<span class="g" data-tip="Edwards-curve Digital Signature Algorithm. Solana/SSH/Tor 등에서 사용" tabindex="0">(?)</span>)</td><td>EVM/Bitcoin 도 필요하면 chain adapter 추가 설계 — 현재 unsupported</td></tr>
+<tr><td>Treasury / Mint-burn</td><td>미명시</td><td>발행 측면 시스템은 NodeWallet 외부에서</td></tr>
+<tr><td>DR / HA</td><td>미명시</td><td>핫/웜 스탠바이 · multi-DC · RPO/RTO</td></tr>
+<tr><td>Reconciliation cadence</td><td>"정합성 체크 권장: 60초 이하" 외 미명시</td><td>구체 주기 · alert routing · 수동 대조 절차</td></tr>
+<tr><td>Recovery ceremony</td><td>부분적 (키 lifecycle) — 전체 ceremony 미명시</td><td>백업 · 복원 · 키 복구 ceremony 운영 매뉴얼</td></tr>
+<tr><td>Webhook</td><td>미명시</td><td>이벤트 전달 · 재시도 · 순서 보장</td></tr>
+<tr><td>Public API reference</td><td>본문 내 단편으로만</td><td>OpenAPI/protobuf 스펙 · SLA · rate limit 합의</td></tr>
+<tr><td>Capacity / scale numbers</td><td>미명시</td><td>TPS · 저장 증가율 (감사 trail monotone 증가) · 파티션 전략</td></tr>
+</tbody>
+</table>
+</div>
+<p class="hint">이 silence 들은 vendor 의 약점이 아니라 <em>"단일 jurisdiction · 단일 chain · custody-only" 좁은 positioning 에 따른 의도된 범위</em> 다. 은행은 자사 환경에 맞춰 위 항목들을 별도 설계해야 한다.</p>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<span class="page-nav-spacer"></span>
+<a class="page-nav-link page-nav-next" href="architecture.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">1. 컴포넌트 토폴로지</span></a>
+</nav>
+</main>
+</div>
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

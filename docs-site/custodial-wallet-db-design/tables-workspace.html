@@ -14,6 +14,9 @@
 <div class="layout">
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
 <div class="nav-section">
 <h3 class="nav-section-title">Overview</h3>
 <ul>
@@ -92,6 +95,49 @@
 <section id="tables-workspace">
 <h2>3. Workspace<span class="g" data-tip="Fireblocks 의 최상위 격리·거버넌스 단위. 1 workspace = 1 Owner. Slack workspace 와 무관" tabindex="0">(?)</span></h2>
 <span class="section-subtitle">workspace = 회사 (또는 사업부) 의 격리·거버넌스 단위</span>
+
+<h3>관계도 — Workspace → Vault → Asset Wallet → Address 의 4 단계 계층</h3>
+<p>3. Workspace 와 다음 두 페이지 (<a href="tables-vault.html">4. Vault Account</a>, <a href="tables-wallet.html">5. Wallets · Addresses</a>) 는 한 묶음으로 읽어야 합니다 — <strong>workspace → vault → asset wallet → address</strong> 의 4 단계 hierarchy 를 형성하기 때문. 이 도식이 그 4 단계를 한눈에 보여주고, 마지막 단계 (address) 는 chain 의 잔액 모델에 따라 3 패턴으로 갈립니다.</p>
+<div class="diagram">
+<pre class="mermaid">
+graph TB
+  WS["📦 workspaces<br/>(회사/사업부의 격리 단위)"]
+  WS --> VA["🏦 vault_accounts<br/>(자산 보관 그룹)"]
+
+  VA --> AW1["💰 Asset Wallet — BTC<br/>(UTXO 패턴)"]
+  VA --> AW2["💰 Asset Wallet — ETH<br/>(Account no-tag 패턴)"]
+  VA --> AW3["💰 Asset Wallet — XRP<br/>(Account tag 패턴)"]
+
+  subgraph UTXO_BOX["① UTXO: 1 wallet → N addresses"]
+    AW1 --> A1a["📍 address #1"]
+    AW1 --> A1b["📍 address #2"]
+    AW1 --> A1c["📍 address #N …"]
+  end
+
+  subgraph ACCT_BOX["② Account no-tag: 1 wallet → 1 address (강제)"]
+    AW2 --> A2["📍 단일 address<br/>(ERC-20 token 도 동일 address 공유)"]
+  end
+
+  subgraph TAG_BOX["③ Account tag/memo: 1 address + N tags"]
+    AW3 --> A3["📍 단일 on-chain address"]
+    A3 -. tag .-> T1["🏷️ tag/memo #1"]
+    A3 -. tag .-> T2["🏷️ tag/memo #2"]
+    A3 -. tag .-> T3["🏷️ tag/memo #N"]
+  end
+
+  classDef ws fill:#dbeafe,stroke:#2563eb,stroke-width:2px;
+  classDef vault fill:#fef3c7,stroke:#d97706,stroke-width:2px;
+  classDef wallet fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px;
+  classDef addr fill:#dcfce7,stroke:#16a34a;
+  classDef tag fill:#fce7f3,stroke:#db2777;
+  class WS ws;
+  class VA vault;
+  class AW1,AW2,AW3 wallet;
+  class A1a,A1b,A1c,A2,A3 addr;
+  class T1,T2,T3 tag;
+</pre>
+<span class="diagram-caption">Figure 16. Workspace → Vault → Asset Wallet → Address 4 단계 계층 + chain 별 3 address 패턴. <code>workspaces</code> 가 root → <code>vault_accounts</code> 가 자산 그룹 → <code>asset_wallets</code> 가 chain × asset 단위로 분기 → 그 다음 단계가 chain 의 잔액 모델에 따라 ① UTXO (BTC: 1 wallet → N addresses) / ② Account no-tag (ETH: 1 wallet → 1 강제 address) / ③ Account tag/memo (XRP: 1 address + N tags) 3 패턴으로 갈림. 본 도식은 cluster 의 "데이터 hierarchy" 만 보여줌 — append-only 이력 (workspace_change_events / workspace_freeze_events / vault_account_change_events) · junction (vault_account_roles) · destination 평면 (whitelisted_addresses / one_time_addresses) · 거버넌스 평면 (admin_quorums) · 이런 보조 테이블은 각 페이지의 해당 절에서 별도로 다룬다.</span>
+</div>
 
 <h3>개념 정리 — 왜 4 단계로 나누는가</h3>
 <p>한 회사가 여러 client 의 자산을 보관할 때, 모든 자산을 한 통에 섞으면 누가 무엇을 가지고 있는지 추적 불가능. 그래서 다음처럼 계층을 나눈다:</p>
@@ -260,6 +306,41 @@
 <li>Freeze 발동: Owner / Admin / NSA / Security Admin 4 role 가능</li>
 <li>Unfreeze: <strong>Owner only via Fireblocks Support</strong> (Console 으로 직접 못 푸는 안전장치)</li>
 </ul>
+</div>
+
+<h4>1.9 Freeze flow 시퀀스 — schema 가 흐름 안에서 어떻게 작동하는가</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Admin as 👤 Admin
+  actor Owner as 👤 Owner
+  participant Console as 🖥️ Fireblocks Console
+  participant Support as 🆘 Fireblocks Support
+  participant FB as 🛡️ Fireblocks Core
+  participant TxQ as 🔄 출금 tx 큐
+  participant Chain as ⛓️ Blockchain
+
+  Note over Admin,Chain: ① Freeze 시작 — 의심 활동 감지 시
+  Admin->>Console: "Freeze workspace" 요청
+  Console->>FB: workspace_freeze_events INSERT<br/>(frozen_at + frozen_by_user_id + reason)
+  FB->>FB: workspaces.frozen_at = now()
+
+  Note over FB,Chain: ② 그 시점부터 outgoing 만 차단
+  TxQ->>FB: 새 출금 요청
+  FB->>TxQ: REJECTED (workspace frozen)
+  Chain->>FB: 외부에서 들어오는 입금 observation
+  FB->>FB: chain_events / deposit_observations<br/>계속 INSERT (입금은 차단 안 됨)
+  Note over Chain,FB: 입금은 chain 의 본질상 막을 수 없음 —<br/>외부 송금자를 우리가 통제 못 함
+
+  Note over Owner,Support: ③ Unfreeze — Owner 만 + Support 경유
+  Owner->>Support: unfreeze 요청 (별도 검증 절차)
+  Support->>FB: workspace_freeze_events INSERT<br/>(unfrozen_at + unfrozen_by_user_id)
+  FB->>FB: workspaces.frozen_at = NULL
+  FB->>TxQ: 출금 재개 가능
+  Console->>Admin: 정상 운영 상태로 복귀
+</pre>
+<span class="diagram-caption">Figure 17. Workspace Freeze 흐름. 핵심 3 단계: ① Admin 이 Console 에서 freeze 시작 (즉시 적용, append-only event 1 row) → ② 그 순간부터 모든 출금 요청 거부, <strong>입금은 계속 들어옴</strong> (chain 의 본질 — 외부 송금자를 우리가 막을 수 없음) → ③ Unfreeze 는 Owner 만 + 반드시 Fireblocks Support 경유 (Console UI 로 직접 못 푸는 안전장치 — 공격자가 Admin 권한을 탈취해도 freeze 를 임의로 풀지 못하도록). <code>workspace_freeze_events</code> 가 append-only 라서 freeze / unfreeze 의 모든 이력이 audit 차원에서 보존됨.</span>
 </div>
 
 <h3>참고글</h3>

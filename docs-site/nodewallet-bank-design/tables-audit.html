@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>5. auditdb — NodeWallet 은행 도입</title>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. 컴포넌트 토폴로지</a></li>
+<li><a href="trust-boundaries.html">2. 신뢰 경계</a></li>
+<li><a href="db-split.html">3. 4-DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. DB Schema</h3>
+<ul>
+<li><a href="tables-approver.html">4. approverdb</a></li>
+<li><a class="active" href="tables-audit.html">5. auditdb</a></li>
+<li><a href="tables-ledger-chain.html">6. ledgerdb · chaindb</a></li>
+<li><a href="tables-tenant-wallet.html">7. 테넌트 · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Cryptography</h3>
+<ul><li><a href="keys-hsm-tee.html">8. HSM · SGX · 키 수명주기</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Policy &amp; Decisions</h3>
+<ul>
+<li><a href="policy-rules.html">9. 10 Policy Rules</a></li>
+<li><a href="sm-decision.html">10. 결정 라이프사이클</a></li>
+<li><a href="sm-signing.html">11. 3-key 서명 흐름</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Transactions &amp; Audit</h3>
+<ul>
+<li><a href="sm-deposit-withdrawal.html">12. 입금 · 출금 흐름</a></li>
+<li><a href="audit-2layer.html">13. 2-Layer 감사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Compliance</h3>
+<ul><li><a href="compliance-regulations.html">14. 5 규제 + 트래블룰</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Discipline</h3>
+<ul>
+<li><a href="storage-discipline.html">15. Storage Discipline</a></li>
+<li><a href="risks-anti-patterns.html">16. Risks &amp; Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="tables-audit">
+<h2>5. auditdb (서명 · 키 이벤트)</h2>
+<span class="section-subtitle">3 표 모두 append-only — 변조 가능성을 구조적으로 0 으로 만든다</span>
+
+<div class="callout">
+<div class="callout-title">출처</div>
+<p><code>compliance__architecture.md</code> §데이터 모델, <code>security__ops__audit-logs.md</code> (2-layer 감사), <code>security__keys__lifecycle.md</code> (key_lifecycle 이벤트 종류).</p>
+</div>
+
+<h3>3 표 한눈 보기</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>표</th><th>용도</th><th>주요 컬럼</th></tr></thead>
+<tbody>
+<tr><td><code>signing_events</code></td><td>체인 서명 이벤트 + approver 결정 CBOR 재포함 + 해시체인</td><td>request_id · tx_hash · chain_evidence_ref · approver_decision_rationale · prev_hash · signed_at</td></tr>
+<tr><td><code>key_lifecycle</code></td><td>키 생성 · 봉인 · 활성 · 로테이션 · 폐기 이벤트</td><td>key_id · event_type · timestamp · witnesses · sealed_blob_hash</td></tr>
+<tr><td><code>master_key_operations</code></td><td>마스터 KEK 프로비저닝 · TOFU<span class="g" data-tip="Trust On First Use. 첫 사용 시점에 신뢰를 핀(pin)하고 이후 그 핀과 일치하는지 검증" tabindex="0">(?)</span> 핀 · 컨피그 서명 증거</td><td>operation_type · timestamp · enclave_pubkey · wrap_proof</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>signing_events — 결정과 서명을 한 행에 묶는 cross-DB 증거</h3>
+<p>이 표가 노드월렛 감사 설계의 핵심이다. 한 체인 서명 이벤트마다 INSERT 되며, <strong>approver_decision_rationale</strong> 에 <em>approverdb 의 PolicyDecision 을 CBOR 로 byte-deterministic 하게 재포함</em>한다. 두 DB 가 독립적으로 변조되어도 결정 ↔ 서명 link 가 보존됨 (source: <code>compliance__architecture.md</code> §시간·증거 격리).</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>컬럼</th><th>의미</th></tr></thead>
+<tbody>
+<tr><td><code>request_id</code></td><td>요청 UUID — approverdb.policy_decisions 와 join</td></tr>
+<tr><td><code>tenant_id</code></td><td>테넌트</td></tr>
+<tr><td><code>tx_hash</code></td><td>온체인 Solana 트랜잭션 해시</td></tr>
+<tr><td><code>chain_evidence_ref</code></td><td>chaindb 의 chain_events 행 pointer (검증 후 일치 확인)</td></tr>
+<tr><td><code>approver_decision_rationale</code></td><td><strong>CBOR PolicyDecision</strong> — approverdb 의 결정을 byte-for-byte 재포함</td></tr>
+<tr><td><code>chain_sig</code></td><td>실행 키 (SGX) 의 Ed25519 서명</td></tr>
+<tr><td><code>enclave_signature</code></td><td>★ Hypothesis — 엔클레이브가 어떤 MRENCLAVE 로 서명했는지 추적용</td></tr>
+<tr><td><code>signed_at</code></td><td>서명 시각 (감사관이 시점별 상태 증명에 사용)</td></tr>
+<tr><td><code>prev_hash</code></td><td>SHA-256 chain — 같은 테넌트/계정 단위 (★ docs 는 per-account 까지만 명시)</td></tr>
+<tr><td><code>operation</code></td><td>withdraw / sweep / transfer / unsafe_send (★ enum)</td></tr>
+</tbody>
+</table>
+</div>
+<p class="hint"><strong>왜 CBOR 재포함이 강한가</strong>: CBOR 은 byte-deterministic — 같은 PolicyDecision 객체는 항상 같은 바이트 시퀀스. approverdb 의 결정 컬럼이 사후 변조되면 CBOR re-encode 와 signing_events 의 저장 CBOR 이 불일치 → 즉시 탐지. cross-DB tamper-evidence (source: <code>vendor-specific-patterns.md</code> P4.2).</p>
+
+<h3>key_lifecycle — 5 상태 전환 이벤트</h3>
+<p>모든 키의 5 단계 수명주기 (생성 → 봉인 → 활성 → 교체 → 폐기) 가 이 표에 append (source: <code>security__keys__lifecycle.md</code>):</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>event_type</th><th>의미</th><th>증인 / 증거</th></tr></thead>
+<tbody>
+<tr><td><code>key.generated</code></td><td>HSM 내부 키 생성</td><td>생성 세레머니 참여자 서명 (m-of-n 운영자 쿼럼)</td></tr>
+<tr><td><code>key.sealed</code></td><td>키 봉투 (sealed blob) 물리 보관소 격납</td><td>봉투 서명 + 보관 위치 기록</td></tr>
+<tr><td><code>key.activated</code></td><td>활성 — 실제 서명에 사용 시작</td><td>활성화 명령 + 감사 로그</td></tr>
+<tr><td><code>key.rotation.started</code></td><td>신규 키와 이전 키가 동시 유효 (병행 기간)</td><td>로테이션 개시 승인</td></tr>
+<tr><td><code>key.rotation.completed</code></td><td>신규 키 단독 활성 → 이전 키 폐기</td><td></td></tr>
+<tr><td><code>key.revoked</code></td><td>HSM 에서 제거, 재사용 불가</td><td>폐기 사유 (정기 / 긴급 / 탈취 의심) + 확인 증인</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>master_key_operations — KEK 의 보호된 transit 증거</h3>
+<p>실행 키 마스터의 HSM → Enclave 전달 과정 (RSA-OAEP wrap + MRENCLAVE seal) 의 cryptographic 증거.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>컬럼</th><th>의미</th></tr></thead>
+<tbody>
+<tr><td><code>operation_type</code></td><td>provisioning / re-provisioning (enclave 이미지 교체 시) / config_signed</td></tr>
+<tr><td><code>enclave_pubkey</code></td><td>enclave 가 생성한 일회성 RSA 공개키</td></tr>
+<tr><td><code>wrap_proof</code></td><td>HSM 이 발급한 wrap 증명 (★ docs 미명시 세부)</td></tr>
+<tr><td><code>mrenclave</code></td><td>대상 enclave 이미지 해시</td></tr>
+<tr><td><code>tofu_pinned_at</code></td><td>첫 사용 시점 TOFU pin 시각</td></tr>
+<tr><td><code>config_signature</code></td><td>enclave 가 서명한 컨피그 (TOFU 핀 + MRENCLAVE 등)</td></tr>
+<tr><td><code>recorded_at</code></td><td>이벤트 시각</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>append-only 강제 — <code>prevent_mutation()</code></h3>
+<p>3 표 모두에 같은 패턴의 trigger 적용 (source: <code>pm-db-design-notes.md</code>):</p>
+<pre><code>-- ★ 추정 구현 — vendor docs 는 trigger 의 존재만 명시
+CREATE FUNCTION prevent_mutation() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'append-only: % not allowed on %', TG_OP, TG_TABLE_NAME;
+END $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER signing_events_no_update
+  BEFORE UPDATE OR DELETE OR TRUNCATE ON signing_events
+  FOR EACH STATEMENT EXECUTE FUNCTION prevent_mutation();</code></pre>
+
+<h3>감사관 검증 절차 (source: <code>security__ops__audit-logs.md</code>)</h3>
+<ol>
+<li><strong>DCAP 원격 증명</strong> — 엔클레이브 공개키 확보 (MRENCLAVE 바인딩)</li>
+<li><strong>영수증 서명 검증</strong> — <code>signing_events.chain_sig</code> 를 엔클레이브 공개키로 검증</li>
+<li><strong>시점별 상태 증명</strong> — 체크포인트 테이블 (ledgerdb) 에서 원하는 시점의 서명된 체인 헤드 조회</li>
+<li><strong>해시체인 재구성</strong> — 원장 엔트리로부터 SHA-256 chain 을 다시 만들어 체크포인트의 체인 헤드와 일치 확인</li>
+<li><strong>FK 정합성</strong> — 연속된 두 체크포인트 사이의 모든 ledger 엔트리가 영수증을 가진 action 을 참조하는지 확인</li>
+</ol>
+
+<h3>ERD — auditdb</h3>
+<div class="diagram">
+<pre class="mermaid">
+erDiagram
+  signing_events }o--|| policy_decisions : "request_id (cross-DB)"
+  signing_events }o--|| chain_events : "chain_evidence_ref (cross-DB)"
+  key_lifecycle ||--o{ master_key_operations : "마스터 키 이벤트 연결"
+  signing_events }o--|| key_lifecycle : "★ 사용한 키 추적"
+</pre>
+</div>
+
+<h3>은행 도입 시 결정해야 할 것</h3>
+<ul>
+<li><strong>retention</strong> — 한국 금융권 규제는 거래 기록 5년 또는 그 이상. auditdb 의 row 크기 × 일평균 거래 수 × 5년 → 저장 sizing 추정.</li>
+<li><strong>cold archive</strong> — WORM<span class="g" data-tip="Write Once Read Many. 한 번 기록되면 변경 불가능한 저장소. compliance 용 archive 표준" tabindex="0">(?)</span> 스토리지로 일정 기간 후 이관. append-only trigger 와 충돌하지 않도록 read-replica + 외부 sink 로 ship.</li>
+<li><strong>DCAP collateral 캐시</strong> — 망분리 환경에서 Intel PCS 접근 어려움. internal mirror 의 collateral refresh 주기 결정.</li>
+<li><strong>MRENCLAVE rotation 절차</strong> — 이미지 교체는 <code>master_key_operations</code> 의 re-provisioning 으로 기록. rotation 빈도 + 검증 자동화 도구.</li>
+</ul>
+
+<div class="callout callout-warn">
+<div class="callout-title">절대 금지</div>
+<p>auditdb 의 어떤 행이라도 UPDATE / DELETE 가 성공하면 (예: application user 에 권한이 잘못 부여되어) 2-layer 감사 보증이 일부 무너진다. 운영 권한 검증을 release / migration 마다 자동 테스트로 강제할 것 (★ 권장).</p>
+</div>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-approver.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">4. approverdb</span></a>
+<a class="page-nav-link page-nav-next" href="tables-ledger-chain.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">6. ledgerdb · chaindb</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

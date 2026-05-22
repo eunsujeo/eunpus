@@ -2,10 +2,10 @@
 type: vendor-hub
 vendor: fireblocks
 status: stable
-tags: [risks, security]
+tags: [risks, security, key-link]
 stage_introduced: 1
-last_updated_stage: 10
-source_count: 7
+last_updated_stage: 36
+source_count: 9
 related:
   - admin-quorum
   - approval-group
@@ -353,3 +353,96 @@ Admin Quorum  (workspace-level default, Stage 10 admin-quorum doc)
 - `2026-05-18__support-fireblocks-io__about-the-deposit-control-and-confirmation-policy.md`, p.1-2 (Stage 10: DCCP)
 - `2026-05-18__support-fireblocks-io__fireblocks-security-posture-management-fspm.md`, p.1-7 (Stage 10: FSPM AI architecture)
 - `2026-05-18__support-fireblocks-io__user-group-management.md`, p.1-10 (Stage 10: User group prerequisite)
+
+## Stage 36 — Customer Signature Validation Plane (Key Link)
+
+`getting-started-with-fireblocks-key-link.md`, p.3-6 (Stage 36 Mode C).
+
+Stage 8 의 MPC architecture spine (3-endpoint signing + 3/3 within group) 와 **paired alternate signing plane** 도입. Fireblocks 가 키 share 를 보유하지 않는 **외부 HSM 위탁 signing** + **Fireblocks 측 validation key 검증** 모델.
+
+### Asymmetric Key Pair 구조
+
+| Key | 보유자 | 역할 |
+|---|---|---|
+| **Signing key** | **Customer HSM** | transaction 의 ECDSA / EdDSA signature 생성. Fireblocks 가 접근 불가 |
+| **Validation key** | **Fireblocks SaaS** | 새 signing key 등록 시 cert 서명 + signature verification |
+
+→ Stage 8 의 SaaS MPC "1 customer + 2 Fireblocks shares" 모델과 다른 trust 구조: cryptographic 협력 서명 없음. Customer 측 키 compromise 시 Fireblocks safeguards (Policy / amount threshold / destination integrity) 가 1차 방어선.
+
+### Proof of Ownership — 2 등록 방법 (`getting-started-with-fireblocks-key-link.md`, p.4-6)
+
+새 signing key 가 등록될 때 customer 가 HSM 의 키 소유를 증명해야 함:
+
+| 방법 | 메시지 형식 | 흐름 |
+|---|---|---|
+| **Interactive** | `sha256({tenant_id}-{request_id}-{key_id})` | Fireblocks 가 challenge 발급 → Agent 가 HSM 으로 relay → HSM sign → Fireblocks 검증 |
+| **Non-interactive** | `Fireblocks\|Proof of Ownership Message\|<WorkspaceDisplayName>\|<SdkApiKey>` (hex format) + `signingDeviceKeyId` + `UnixTimeInSeconds` 포함 | Customer 가 사전 sign → request body 의 `proofOfOwnership` object 첨부 → 즉시 enable |
+
+→ Non-interactive 는 cold HSM (offline) 환경에서 미리 cert 준비 후 등록 가능 — Stage 31 의 SPOC offline procedure 와 유사한 패턴.
+
+### Validation Key 등록 거버넌스 (`getting-started-with-fireblocks-key-link.md`, p.3)
+
+| 단계 | 명세 |
+|---|---|
+| 1. Approval group 사전 설정 | `Settings > Quorums > Security & compliance > Add validation keys` — 별도 group |
+| 2. API 호출 | Add validation key endpoint |
+| 3. Approval | Approval group quorum 이 **mobile app 으로 approve** — Stage 8 의 Configuration key 와 정합 |
+| 4. Enable | Approve 후 새 signing key 등록 가능 |
+
+→ Stage 10 의 12 assignable approval-group actions 에 "Add validation keys" 추가됨 (Key Link workspace 한정 — 비-Key Link workspace 의 approval group 구성과는 별개).
+
+### Signing Key Cert 발급 흐름 (`getting-started-with-fireblocks-key-link.md`, p.5-6)
+
+```
+1. Customer 가 HSM 에서 keypair 생성 → public key 획득
+2. Customer 가 active validation key 로 public key 에 X.509 cert 발급 (Ed25519 또는 ECDSA)
+3. Cert + signing key → Fireblocks `Create signing key` API endpoint
+4. Fireblocks 가 cert 의 validation key signature 검증 → enabled=false 상태로 등록
+5. Proof of Ownership 검증 (Interactive 또는 Non-interactive)
+6. 검증 완료 → enabled=true → vault account 에 assign 가능
+```
+
+→ Stage 8 의 chain of trust (Root Key → Intermediate → End cert) 의 **paired model**: Key Link 는 customer 측 PKI 가 root, validation key 가 intermediate, signing key 가 end-of-chain.
+
+### Risk-S17: Validation Key Compromise (Stage 36 신규)
+
+- Compromise 시 **위조된 signing key 등록 가능** — attacker 가 자체 HSM 의 키를 enable 시킬 수 있음
+- Mitigation: approval group quorum (default Admin Quorum 또는 위임 group) + audit log (validation key Submitted/Approved/Rejected/Activated/Deactivated 이벤트)
+- 자세한 내용: [[vendors/fireblocks/risks]] §"Stage 36 — Key Link Risks"
+
+## Sources (Stage 36 추가)
+- `2026-05-22__support-fireblocks-io__getting-started-with-fireblocks-key-link-extracted.txt`, p.3-6 (Stage 36: Validation/Signing key 등록 + PoO 2 methods + cert flow)
+- `2026-05-22__support-fireblocks-io__fireblocks-key-link-overview-extracted.txt`, p.1-3 (Stage 36: customer-held key plane)
+
+## Stage 38 — Thales Luna HSM 통합 (vendor blog cross-cut)
+
+Fireblocks 공식 블로그 ("Enterprise Digital Asset Security with Fireblocks and Thales", 2025-09-23, by Adam Levine SVP) 가 Stage 36 의 Customer Signature Validation Plane 의 후속 사실을 명시. **HSM 항목 보강** (별도 신규 entity 미생성, 본 hub 의 HSM 항목에 흡수).
+
+### Stage 38 신규 사실
+
+| 사실 | 직접 인용 |
+|---|---|
+| **Thales Luna HSM 통합** | "At the heart of this solution is Fireblocks KeyLink, our secure middleware layer that connects the Fireblocks platform to Thales Luna Hardware Security Modules (HSMs)" |
+| **HSM 인증 등급** | "Private keys remain within FIPS 140-3 Level 3 and Common Criteria certified hardware" |
+| **PQC readiness** | "Thales Luna HSMs provide crypto agility and post-quantum cryptography (PQC) readiness" |
+| **3-mode signing** | "Hot, Warm, and Cold signing workflows" — vendor 공식 framing |
+| **Air-gap transport** | USB · SFTP · data diodes — Cold workflow 의 명시 transport |
+| **Customer key ownership** | "Institutions maintain full key ownership while accessing enterprise-grade digital asset capabilities" |
+| **관할권 명시** | HKMA · HKSFC · JFSA. **KR 미명시** |
+
+### Stage 36 Customer Signature Validation Plane 와의 관계
+
+- 본 자료의 "FIPS 140-3 Level 3 + Common Criteria" 가 Stage 36 의 **Signing key** (Customer HSM) 의 reference 인증 등급
+- Stage 36 의 PoO 2 methods (Interactive / Non-interactive) 가 Hot vs Cold (air-gap) workflow 에 직접 매핑
+- "Hot/Warm/Cold" 3-mode 의 **Warm** 변종 = vendor 공식 framing 등장. 기술 정의 미명세 → **Q-2025-09-23-FB01**
+
+### 잔존 미명세 (Stage 38 신규 Q)
+
+- Q-2025-09-23-FB01 — Hot/Warm/Cold 3-mode 의 정확한 정의
+- Q-2025-09-23-FB02 — SaaS Cold Wallet workspace vs Key Link Cold signing 관계
+- Q-2025-09-23-FB03 — KR VASP 환경 vendor 공식 입장 (HKMA/HKSFC/JFSA 명시, KR 미명시)
+
+자세히: [[open-questions/fireblocks]] §"Stage 38" · [[vendors/fireblocks/risks]] §"Stage 38"
+
+## Sources (Stage 38 추가)
+- `2026-05-22__fireblocks-com__enterprise-digital-asset-security-thales.md` (Stage 38: Thales Luna HSM 통합, Hot/Warm/Cold 3-mode, air-gap transport, PQC, HKMA/HKSFC/JFSA)

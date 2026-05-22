@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>4. Hot ↔ Cold Rebalancing — P2P 자산 이동</title>
+<meta content="Hot workspace 와 Cold workspace 간 P2P rebalancing 패턴" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Cold Wallet 기초</h3>
+<ul>
+<li><a href="cold-wallet-fundamentals.html">1. Cold Wallet 이란</a></li>
+<li><a href="workspace-topology.html">2. Workspace 토폴로지</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Governance &amp; Flow</h3>
+<ul>
+<li><a href="governance-quorum.html">3. Admin Quorum 단독 거버넌스</a></li>
+<li><a class="active" href="hot-cold-rebalancing.html">4. Hot ↔ Cold Rebalancing</a></li>
+<li><a href="signing-flow.html">5. Cold Wallet Signing</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 은행 도입</h3>
+<ul>
+<li><a href="bank-operations.html">6. 은행 운영 절차</a></li>
+<li><a href="risks-open-questions.html">7. Risks &amp; Open Questions</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="rebalancing">
+<h1>4. Hot ↔ Cold Rebalancing — P2P 자산 이동</h1>
+<p class="lead">
+Hot workspace 의 working balance 와 Cold workspace 의 bulk reserve 간 자산 이동.
+Fireblocks 는 두 workspace 간 P2P 연결을 통해 manual rebalancing 을 지원한다.
+</p>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처</div>
+<p><strong>공식 문서에 정의된 사실</strong></p>
+<ul style="margin-bottom:0.5rem">
+<li>"Cold Wallet workspace 별도 구매 → hot workspace 와 rebalancing" — Fireblocks Vault Structure Best Practices</li>
+<li>Cold Wallet cluster 의 <strong>Connecting Cold Wallet with hot workspaces via P2P</strong> 가 별도 문서로 존재 (본문 미적재)</li>
+<li>Sweep-to-omnibus diagram 의 "Manual Rebalancing" 화살표 — Fireblocks Vault Structure Best Practices</li>
+<li>Round-robin withdrawal vault 권장 (EVM nonce / Bitcoin 25-chain) — Fireblocks Account and Wallet Structure</li>
+</ul>
+<p style="margin-bottom:0"><strong>저자가 합리적으로 추정한 운영 권장</strong> — 참고용</p>
+<ul style="margin-bottom:0">
+<li>"P2P" 의 두 해석 (internal off-chain vs on-chain w/ abstraction). 본 페이지는 on-chain 가정으로 안전한 운영 권장</li>
+<li>4 단계 거버넌스 흐름 (Cold 측 출금 / Hot 측 수취 / Hot 측 송금 / Cold 측 수취)</li>
+<li>Whitelist 양방향 사전 등록</li>
+<li>Rebalancing 주기 · 금액 한도 · confirmation 임계 권장</li>
+</ul>
+</div>
+
+<h2>4.1 핵심 사실</h2>
+<ul>
+<li>Fireblocks 공식 권장: "Cold Wallet workspace 별도 구매 → hot workspace 와 <strong>rebalancing</strong>"
+  <span class="src">(출처: Fireblocks 공식 문서 — Vault Structure Best Practices)</span></li>
+<li>Cold Wallet cluster 의 <strong>Connecting Cold Wallet with hot workspaces via P2P</strong> 가 별도 문서로 존재
+  <span class="src">(출처: Fireblocks 공식 문서 — Cold Wallet cluster)</span></li>
+<li>"Cold ↔ Hot rebalancing path" 의 본문은 공식 문서 본문에 적재되지 않은 상태이므로, 본 페이지는 인접 공식 fact + 운영 권장으로 추정.</li>
+</ul>
+
+<h2>4.2 Sweep-to-omnibus 와의 차이</h2>
+<p>
+Fireblocks Vault Structure BP 의 sweep-to-omnibus 다이어그램은 <strong>단일 workspace 내부</strong>의
+intermediate vault → omnibus → withdrawal pool 패턴.
+<span class="src">(출처: Fireblocks 공식 문서 — Vault Structure Best Practices)</span>
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  U["👤 User Deposits<br/>(ETH / ERC-20)"]
+  IV["Intermediate Vault<br/>(per user)"]
+  DO["Deposit Omnibus<br/>Vault Account"]
+  WP["Withdrawal Pool<br/>Vault Account"]
+  EW["External Wallet<br/>(per user)"]
+
+  U --> IV
+  IV -- "Sweeping<br/>(Gas Station 자동)" --> DO
+  DO <-. "Manual Rebalancing" .-> WP
+  WP -- "Gas Station 자동" --> EW
+
+  classDef vault fill:#dbeafe,stroke:#2563eb
+  classDef ext fill:#dcfce7,stroke:#16a34a
+
+  class IV,DO,WP vault
+  class U,EW ext
+</pre>
+</div>
+<p class="diagram-caption">
+단일 hot workspace 내부의 sweep-to-omnibus 패턴. "Manual Rebalancing" 화살표가 vault 간 자산 이동.
+이는 workspace 내부 이동이며, Hot ↔ Cold workspace 간 rebalancing 은 별도 P2P 경로.
+</p>
+
+<p>
+→ <strong>"Manual Rebalancing" 화살표가 공식 문서에 명시.</strong>
+단 이 manual rebalancing 은 <strong>단일 hot workspace 내부의 vault 간 이동</strong>.
+</p>
+<p>
+<strong>Hot ↔ Cold workspace 간 rebalancing 은 별도 P2P 경로</strong> 가 필요 (별도 문서로 분리된 이유).
+</p>
+
+<h2>4.3 P2P (workspace 간) 추정 흐름</h2>
+<p>
+"Connecting Cold Wallet with hot workspaces via P2P" 본문 미적재 상태에서의 합리적 운영 가정 (저자 추정):
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  subgraph HOT["🔥 Hot Workspace"]
+    OPSV["Operational<br/>Vault Account"]
+  end
+  subgraph COLD["❄ Cold Workspace"]
+    CCV["Custodial Cold<br/>Vault Account"]
+  end
+
+  OPSV -- "① on-chain tx (or P2P)<br/>대량 자산 인계" --> CCV
+  CCV -- "② on-chain tx (필요 시)<br/>working balance 보충" --> OPSV
+
+  classDef hot fill:#fef3c7,stroke:#d97706
+  classDef cold fill:#dbeafe,stroke:#2563eb
+
+  class OPSV hot
+  class CCV cold
+</pre>
+</div>
+<p class="diagram-caption">
+Hot ↔ Cold workspace 간 양방향 rebalancing. 노랑 = Hot / 파랑 = Cold.
+"P2P" 의 정확한 transport (internal vs on-chain) 는 공식 본문 미적재.
+</p>
+
+<p>
+"P2P" 라는 표현은 두 가지 해석 가능 (공식 본문 검증 필요):
+</p>
+<ul>
+<li><strong>해석 A</strong> — Hot 과 Cold 두 workspace 가 동일 Customer Domain 안에서 internal off-chain transfer 가능
+  (자산이 on-chain 으로 안 나가고 Fireblocks 내부 ledger 만 이동)</li>
+<li><strong>해석 B</strong> — On-chain tx 가 발생하나 Fireblocks Console UI 가 "P2P" abstraction 으로 추상화
+  (양측 workspace 의 deposit address 가 사전 whitelisted)</li>
+</ul>
+<p>
+은행 입장에서는 <strong>해석 B 로 가정</strong>하는 것이 안전. 즉 rebalancing 은 on-chain tx 로
+fee + confirmation time + audit trail 발생.
+</p>
+
+<h2>4.4 Rebalancing 거버넌스 — 두 측의 거버넌스가 모두 발동</h2>
+<p>
+양 workspace 의 governance 가 각자 발동한다 (저자 추정):
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>단계</th><th>발동 거버넌스</th><th>특징</th></tr></thead>
+<tbody>
+<tr><td>① Cold 측 출금 (Cold → Hot)</td>
+  <td><strong>Cold workspace 의 Admin Quorum</strong></td>
+  <td>Approval Group 미지원 → 전체 Admin Quorum 동의 필요</td></tr>
+<tr><td>② Hot 측 수취</td>
+  <td>(passive — incoming deposit, governance 미발동)</td>
+  <td>Webhook event 만 발생</td></tr>
+<tr><td>③ Hot → Cold (대량 자산 인계)</td>
+  <td><strong>Hot workspace 의 거버넌스</strong> (Approval Group 또는 Admin Quorum)</td>
+  <td>Policy rule 로 destination = Cold workspace 의 사전 whitelisted address 검증</td></tr>
+<tr><td>④ Cold 측 수취</td>
+  <td>(passive)</td>
+  <td>Cold side 의 deposit 으로 처리</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">은행 권장 — Whitelist 사전 등록</div>
+<p>
+양 workspace 의 deposit address 를 <strong>사전에 whitelist 로 상호 등록</strong>.
+Policy rule (TAP) 에서 "to = whitelisted_cold_addresses" 인 출금만 일반 rebalancing flow 로 처리, 그 외는 더 strict.
+이렇게 하면 ② / ④ 의 passive deposit 만으로 두 workspace 간 정기적 rebalancing 이 운영 가능.
+</p>
+</div>
+
+<h2>4.5 Round-Robin Withdrawal vault 의 적용</h2>
+<p>
+Fireblocks 의 <strong>round-robin withdrawal vault</strong> 권장은 chain-specific bottleneck 회피 목적
+(EVM nonce / Bitcoin 25-chain).
+<span class="src">(출처: Fireblocks 공식 문서 — Account and Wallet Structure)</span>
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Chain</th><th>단일 withdrawal vault 의 위험</th><th>Hot → Cold rebalancing 적용</th></tr></thead>
+<tbody>
+<tr><td>EVM-based (ETH, USDC 등)</td><td>nonce 순차 — 한 tx 가 stuck → 전체 queue 정체</td>
+  <td>Hot 측에 multiple withdrawal vault, round-robin 으로 Cold 로 송금</td></tr>
+<tr><td>Bitcoin</td><td>unconfirmed input → 25 subsequent tx 까지만 chain 가능</td>
+  <td>Hot 측 multiple withdrawal vault, 25-chain limit 우회</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>
+→ 은행이 일일 batch 로 Hot → Cold rebalancing 을 운영하면, 1회 batch 의 양이 chain capacity 와 매칭되어야.
+</p>
+
+<h2>4.6 Rebalancing 정책 권장</h2>
+<ol>
+<li><strong>주기 — 일 1회 또는 임계점 기반</strong>
+  <ul>
+    <li>Hot 의 잔액 &gt; X% → Cold 로 추출</li>
+    <li>Hot 의 잔액 &lt; Y% → Cold 에서 보충</li>
+  </ul></li>
+<li><strong>금액 한도</strong>
+  <ul>
+    <li>1회 rebalancing 최대 금액</li>
+    <li>일일 누적 금액</li>
+    <li>Cold → Hot 이 Hot → Cold 보다 strict (출금 위험 더 큼)</li>
+  </ul></li>
+<li><strong>승인 quorum</strong>
+  <ul>
+    <li>Hot 측: Treasury Approval Group 위임 가능</li>
+    <li>Cold 측: Admin Quorum 전체 강제 (Risk-G07)</li>
+  </ul></li>
+<li><strong>Whitelist 양방향 사전 등록</strong> — Policy rule (TAP) destination 검증</li>
+<li><strong>Audit Log 양측 보존</strong> — Hot 의 출금 + Cold 의 입금 reconciliation</li>
+<li><strong>Confirmation 임계</strong> — Cold 측 수취 확인 후 internal ledger 반영 (~12 conf for BTC, ~30 conf for ETH 권장)</li>
+</ol>
+
+<h2>4.7 Rebalancing 의 실패 시나리오</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>실패 종류</th><th>완화 방법</th></tr></thead>
+<tbody>
+<tr><td>Cold side Admin Quorum 동의 지연 (Admin 부재)</td>
+  <td>Admin 인원 ≥ 3 유지 / 비상 근무 schedule</td></tr>
+<tr><td>Hot side stuck tx (EVM nonce)</td>
+  <td>Round-robin withdrawal vault + nonce gap reset 절차</td></tr>
+<tr><td>Network outage (chain congestion)</td>
+  <td>Rebalancing 임계점에 buffer 추가 (예: Hot 의 잔액이 0 직전까지 가지 않도록)</td></tr>
+<tr><td>Cold device signature quota 소진</td>
+  <td>"Less than 10% remaining signatures" 사전 alert → device 재 provisioning</td></tr>
+<tr><td>Wrong address (whitelist 오류)</td>
+  <td>Policy TAP 양측 모두 whitelist 강제, 변경에 Admin Quorum 동의</td></tr>
+</tbody>
+</table>
+</div>
+
+<p class="back-top"><a href="#rebalancing">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

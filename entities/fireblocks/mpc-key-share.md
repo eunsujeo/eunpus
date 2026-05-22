@@ -2,10 +2,10 @@
 type: entity
 vendor: fireblocks
 status: stable
-tags: [mpc, cryptography]
+tags: [mpc, cryptography, key-link]
 stage_introduced: 1
-last_updated_stage: 31
-source_count: 10
+last_updated_stage: 36
+source_count: 12
 related: [mobile-device, mpc, non-signing-admin, owner, signer]
 ---
 # Entity: MPC Key Share (Fireblocks)
@@ -265,3 +265,41 @@ Mobile device 의 secure environment 에는 **두 종류 키**가 분리되어 �
 `audit-log.md` Keys 섹션:
 - **MPC key set**: Created / Enabled / Activated 이벤트로 lifecycle 추적
 - **Validation key**: Submitted/Approved/Rejected/Activated/Deactivated 이벤트
+
+## Stage 36 — MPC plane vs Key Link plane boundary (Q-2026-05-19-M06 ANSWERED)
+
+`fireblocks-key-link-overview.md`, p.1-3 + `getting-started-with-fireblocks-key-link.md`, p.3-6 (Stage 36 Mode C).
+
+Stage 18 catalog 의 Q-2026-05-19-M06 ("Key Link 의 signing flow — MPC 와 어떻게 다른가?") **ANSWERED**:
+
+| 항목 | MPC (SaaS / Hosted) | Key Link |
+|---|---|---|
+| Fireblocks key share | 2 (SaaS) 또는 0 (Hosted) | **0** |
+| Customer key share | 1 (mobile/SGX) 또는 3 (all SGX) | **N/A** — MPC share 자체 없음 |
+| 서명 주체 | 3-endpoint MPC ceremony | **외부 HSM 단독 서명** |
+| Key storage | Secure Enclave / Azure SGX | **Customer HSM** (on-prem / cloud / hot / cold / FIPS-certified) |
+| Algorithm | ECDSA + EdDSA | **ECDSA + EdDSA** (algorithm 단위 호환) |
+| Signature 검증 | 3-share aggregated full signature | **Customer HSM signature → Fireblocks 의 validation key 로 검증** |
+
+→ Key Link 는 **MPC plane 자체가 없음** — Fireblocks 와 키 협력 서명이 일어나지 않음. 외부 HSM 단독 서명 후 Fireblocks 가 검증 (asymmetric key pair).
+
+### Asymmetric Key Pair Pattern (`getting-started-with-fireblocks-key-link.md`, p.3-4)
+
+- **Validation key** = "proof of authority" — active validation key 가 새 signing key 의 cert 에 서명 → Fireblocks 가 그 서명을 검증해서 signing key enable
+- **Signing key** = customer HSM 에 보관된 individual key — transaction signing 용
+- 양쪽 모두 **approval group quorum** (Settings > Quorums > Security & compliance > Add validation keys) 으로 등록 승인
+
+### Proof of Ownership 2 방법 (`getting-started-with-fireblocks-key-link.md`, p.4-6)
+
+새 signing key 추가 시 키 소유 증명 필수:
+
+| 방법 | 메시지 | 검증 |
+|---|---|---|
+| **Interactive** | `sha256({tenant_id}-{request_id}-{key_id})` (Fireblocks 가 challenge 발급) | HSM 이 sign → Fireblocks 가 검증 → enable |
+| **Non-interactive** | `Fireblocks|Proof of Ownership Message|<WorkspaceDisplayName>|<SdkApiKey>` (customer 가 미리 sign) | Fireblocks 가 attached signature 검증 → 즉시 enable |
+
+→ Stage 31 의 SaaS MPC backup 4-secret reconstruction 과 다른 trust model — Key Link 는 키 자체가 Fireblocks 측에 존재한 적 없음.
+
+## Sources (Stage 36 추가)
+- `2026-05-22__support-fireblocks-io__fireblocks-key-link-overview-extracted.txt`, p.1-3 (Stage 36: MPC plane 외부 customer-held)
+- `2026-05-22__support-fireblocks-io__getting-started-with-fireblocks-key-link-extracted.txt`, p.3-6 (Stage 36: Validation/Signing key + PoO 2 methods)

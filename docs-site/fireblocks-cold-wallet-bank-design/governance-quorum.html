@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>3. Admin Quorum 단독 거버넌스 — Risk-G07</title>
+<meta content="Cold Wallet workspace 의 거버넌스 — Approval Group 미지원, Admin Quorum 단독, Owner Console-direct" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Cold Wallet 기초</h3>
+<ul>
+<li><a href="cold-wallet-fundamentals.html">1. Cold Wallet 이란</a></li>
+<li><a href="workspace-topology.html">2. Workspace 토폴로지</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Governance &amp; Flow</h3>
+<ul>
+<li><a class="active" href="governance-quorum.html">3. Admin Quorum 단독 거버넌스</a></li>
+<li><a href="hot-cold-rebalancing.html">4. Hot ↔ Cold Rebalancing</a></li>
+<li><a href="signing-flow.html">5. Cold Wallet Signing</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 은행 도입</h3>
+<ul>
+<li><a href="bank-operations.html">6. 은행 운영 절차</a></li>
+<li><a href="risks-open-questions.html">7. Risks &amp; Open Questions</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="governance">
+<h1>3. Admin Quorum 단독 거버넌스 — Cold Wallet 의 핵심 제약</h1>
+<p class="lead">
+Cold Wallet workspace 의 가장 중요한 governance 제약은 <strong>Approval Group 미지원</strong>.
+모든 거버넌스 결정이 Admin Quorum 단독에 집중된다. 은행 도입 시 운영 부담의 70% 가 여기서 발생.
+</p>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처</div>
+<p><strong>공식 문서에 정의된 사실</strong></p>
+<ul style="margin-bottom:0.5rem">
+<li>Approval Group 미지원 (Risk-G07) — Fireblocks 공식 문서</li>
+<li>Owner Console-direct 특수 규칙 — Fireblocks 공식 문서</li>
+<li>Audit Log 의 "Less than 10% remaining signatures" 이벤트 카테고리 존재 — Fireblocks 공식 문서</li>
+<li>Support 경유 user/API key 추가 — Fireblocks Cold Wallet cluster 문서명에 명시</li>
+</ul>
+<p style="margin-bottom:0"><strong>저자가 합리적으로 추정한 운영 권장</strong> — 참고용</p>
+<ul style="margin-bottom:0">
+<li>Cold variant 의 9-role 적용 매트릭스 (Q-CW04 open)</li>
+<li>Signature quota 의 정확한 limit (Q-CW01 open)</li>
+<li>완화 방안의 구체 수치 (threshold ≥ 2, Admin ≥ 3 등)</li>
+</ul>
+</div>
+
+<h2>3.1 Risk-G07 — Approval Group 미지원</h2>
+<p>
+Fireblocks 의 거버넌스는 보통 두 plane 으로 분리된다:
+</p>
+<ul>
+<li><strong>Admin Quorum</strong> <span class="g" data-tip="관리자급 사용자의 다수결 승인 그룹. Owner / Admin / Non-Signing Admin 자동 멤버. Workspace-wide governance" tabindex="0">(?)</span>
+  — workspace-wide 결정 (threshold 변경, user / role 변경 등)</li>
+<li><strong>Approval Group</strong> <span class="g" data-tip="특정 use case 별 위임 가능한 작은 quorum. Hot workspace 에서 Admin Quorum 일부 권한을 더 작은 그룹에 위임 가능" tabindex="0">(?)</span>
+  — 특정 use case 별 위임 그룹 (예: Treasury op 용 별도 quorum)</li>
+</ul>
+
+<p>
+하지만 <strong>Cold Wallet workspace 에서는 Approval Group 자체가 미지원</strong>:
+</p>
+<blockquote>
+"Cold Wallet workspace 는 approval group 미지원 → Admin Quorum 단독 → Cold Wallet 의 governance flexibility 축소.
+Workspace config 변경마다 quorum 전체 동의 필요. Hot 보다 운영 부담 증가."
+</blockquote>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Approval Groups)</span>
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">운영 의미 — 모든 결정이 Admin Quorum 전체</div>
+<p>
+Hot workspace 에서는 "Treasury withdrawal" 같은 use case 를 별도 Approval Group 에 위임 가능 (예: Treasury Admin 2명 quorum).
+Cold 에서는 <strong>모든 workspace-level 결정에 Admin Quorum 전체</strong> 가 동의해야 한다 →
+Admin 한 명의 부재가 governance halt 로 직결.
+</p>
+</div>
+
+<h2>3.2 Admin Quorum 의 자동 멤버십 (Cold 도 동일 가정)</h2>
+<p>
+Admin Quorum 의 자동 멤버는 다음 3 role 사용자.
+<span class="src">(출처: Fireblocks 공식 문서 — Admin Quorum)</span>
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Role</th><th>Admin Quorum 자동 멤버</th><th>Cold workspace 적용</th></tr></thead>
+<tbody>
+<tr><td>Owner</td><td>✅</td><td>✅ (Owner 단독 SPOF — Risk-S08)</td></tr>
+<tr><td>Admin</td><td>✅</td><td>✅</td></tr>
+<tr><td>Non-Signing Admin</td><td>✅</td><td>✅</td></tr>
+<tr><td>Signer / Approver / Editor / Viewer</td><td>❌</td><td>Cold variant 의 role 적용 매트릭스 공식 문서 미명세 (Q-CW04)</td></tr>
+<tr><td>Security Admin / Security Auditor</td><td>(공식 문서 본문/표 불일치)</td><td>Cold variant 의 멤버십 미명세</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>3.3 Cold workspace 특수 규칙 — Owner Console-direct</h2>
+<p>
+Fireblocks 공식 Admin Quorum 문서의 Cold Wallet 특수 규칙:
+</p>
+<blockquote>
+"Cold Wallet 의 user delete + reset 2FA 는 <strong>Owner Console-direct</strong>"
+</blockquote>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Admin Quorum / Cold Wallet 특수 규칙)</span>
+</p>
+
+<p>
+→ 일부 critical operation 은 Admin Quorum 도 거치지 않고 <strong>Owner 가 Console 에서 직접 수행</strong>.
+이는 Hot workspace 의 일반 패턴과 다름.
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Operation</th><th>Hot workspace</th><th>Cold workspace</th></tr></thead>
+<tbody>
+<tr><td>User add</td><td>Admin Quorum approve, 7-day window</td><td>Support 경유 + Admin Quorum (Fireblocks Cold Wallet cluster)</td></tr>
+<tr><td>User delete</td><td>Admin / NSA console immediate</td><td><strong>Owner Console-direct</strong></td></tr>
+<tr><td>Reset 2FA</td><td>Admin approve</td><td><strong>Owner Console-direct</strong></td></tr>
+<tr><td>API key add</td><td>Admin Quorum</td><td>Support 경유 + Admin Quorum (Fireblocks Cold Wallet cluster)</td></tr>
+<tr><td>Admin Quorum threshold 변경</td><td>Admin Quorum (Risk-G01 — API Admin 자동 approve)</td><td>Cold variant 미명세 — Risk-G01 동일 적용 가정</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>3.4 Support-mediated user operations</h2>
+<p>
+Cold Wallet workspace 의 사용자 / API key 추가는 <strong>Fireblocks Support 경유 필수</strong>.
+<span class="src">(출처: Fireblocks 공식 문서 — Cold Wallet cluster: "Adding users to a Cold Wallet workspace" / "Adding API keys to a Cold Wallet workspace")</span>
+</p>
+
+<p>
+구체적 절차는 공식 문서 본문 미적재 상태이지만, Hot workspace 의 패턴과 유사하다면:
+</p>
+<ol>
+<li>은행 IT 가 Fireblocks Support ticket 생성</li>
+<li>Support 가 신원 확인 (video call 등 — Hot workspace 의 Owner-touching 절차 패턴)</li>
+<li>Support 측에서 user provision request 시작</li>
+<li>Admin Quorum mobile approval (7-day window 가정 — 추정)</li>
+<li>User 가 mobile device 등록 (Cold variant device 사양 미명세)</li>
+</ol>
+
+<div class="callout">
+<div class="callout-title">은행 운영 영향</div>
+<p>
+은행은 보통 Hot workspace 의 user provision 을 IT / Admin 셀프서비스로 운영 가능하지만,
+<strong>Cold workspace 는 모든 user 추가 / 삭제가 Fireblocks Support 응답 시간에 직접 종속</strong>된다.
+SLA / 대응 시간은 Fireblocks 계약 시 별도 확인 필요.
+</p>
+</div>
+
+<h2>3.5 Risk-G06 의 Cold 적용 — 초기 bootstrap</h2>
+<p>
+Hot workspace 의 Risk-G06: "워크스페이스 첫 생성 시 threshold = All Admins, 이때 Owner 단독 active".
+<span class="src">(출처: Fireblocks 공식 문서)</span>
+</p>
+<p>
+→ Cold workspace 생성 시에도 동일 invariant 적용으로 가정 (추정).
+즉 Cold workspace bootstrap = Owner 단독 → 첫 Admin 추가 시까지의 짧은 윈도우에 Owner 가 모든 변경의 sole approver.
+</p>
+
+<h2>3.6 Audit Log 의 Cold Wallet 이벤트</h2>
+<p>
+Audit Log 의 카테고리 catalog 에 명시된 <strong>Cold Wallet 전용 이벤트</strong>:
+</p>
+<blockquote>
+"Wallets (Vault Account + Workspace Key Backup + Gas Station + <strong>Cold Wallet 'Less than 10% remaining signatures'</strong>)"
+</blockquote>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Audit Log 20+ 이벤트 카테고리)</span>
+</p>
+
+<p>
+→ Cold Wallet 의 <strong>signature quota 모니터링</strong> 이 정식 audit log 카테고리.
+이는 Cold device 가 <em>제한된 signature 사용 횟수</em> 를 가질 가능성을 시사한다 (정확한 limit 은 공식 문서 미명세).
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">은행 운영 알림 권장</div>
+<p>
+"Less than 10% remaining signatures" 이벤트는 cold device 의 sign capacity 가 임계점에 도달함을 의미.
+은행은 이 이벤트를 <strong>최우선 alert</strong> 로 등록 (SIEM, Slack 등). 즉시 device 재provisioning 또는 추가 device 배치 필요.
+</p>
+</div>
+
+<h2>3.7 거버넌스 비교 — Hot vs Cold</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>거버넌스 항목</th><th>Hot workspace</th><th>Cold workspace</th></tr></thead>
+<tbody>
+<tr><td>Approval Group 위임</td><td>지원</td><td><strong>미지원 (Risk-G07)</strong></td></tr>
+<tr><td>Admin Quorum 자동 멤버</td><td>Owner / Admin / NSA</td><td>동일 (Cold 미명세, 동일 가정)</td></tr>
+<tr><td>User add</td><td>self-service + Admin Quorum + 7-day window</td><td><strong>Support 경유</strong> + Admin Quorum</td></tr>
+<tr><td>User delete</td><td>console immediate (Admin)</td><td><strong>Owner Console-direct</strong></td></tr>
+<tr><td>Reset 2FA</td><td>Admin approve</td><td><strong>Owner Console-direct</strong></td></tr>
+<tr><td>API key add</td><td>Admin Quorum + IP allowlist</td><td><strong>Support 경유</strong> + Admin Quorum</td></tr>
+<tr><td>Audit Log 접근</td><td>Owner / Admin / NSA only (Risk-S13)</td><td>동일 가정 (추정)</td></tr>
+<tr><td>Signature quota 이벤트</td><td>—</td><td><strong>"Less than 10% remaining"</strong></td></tr>
+</tbody>
+</table>
+</div>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Approval Groups · Admin Quorum · Audit Log · Cold Wallet cluster)</span>
+</p>
+
+<h2>3.8 은행 운영을 위한 거버넌스 권장</h2>
+<ol>
+<li><strong>Admin Quorum threshold ≥ 2</strong> — Owner SPOF (Risk-S08) 완화</li>
+<li><strong>API Admin 보유 시 threshold ≥ 3</strong> — Risk-G01 (API Admin = quorum −1) 완화</li>
+<li><strong>Cold workspace 의 Admin 인원 = 최소</strong> — Default visibility 함정 + Support 경유 부담 최소화 균형</li>
+<li><strong>Owner 의 mobile device + recovery passphrase 별도 안전 보관</strong> — Cold 의 Owner Console-direct 의존성</li>
+<li><strong>이사회 결의 절차 사전 정의</strong> — Owner 부재 시 transfer 의 KR 은행 거버넌스 통합</li>
+<li><strong>Signature quota 모니터링</strong> — "Less than 10%" 이벤트의 자동 alert</li>
+<li><strong>Fireblocks Support SLA 계약 명시</strong> — Cold workspace user 추가 응답 시간이 운영 critical path</li>
+</ol>
+
+<p class="back-top"><a href="#governance">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="assets/app.js"></script>
+</body>
+</html>

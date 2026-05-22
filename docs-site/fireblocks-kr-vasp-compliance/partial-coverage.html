@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>3. Fireblocks 가 거드는 것 (부분 해결)</title>
+<meta content="Fireblocks 가 일부만 풀어주고 사업자 운영이 함께 필요한 6 개 영역" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. 법규 지형</h3>
+<ul>
+<li><a href="regulation-landscape.html">1. 한국 규제 지형</a></li>
+<li><a href="fireblocks-coverage.html">2. Fireblocks 가 푸는 것 (직접)</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. 경계선</h3>
+<ul>
+<li><a class="active" href="partial-coverage.html">3. Fireblocks 가 거드는 것 (부분)</a></li>
+<li><a href="out-of-scope.html">4. Fireblocks 로 안 풀리는 것</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 운영</h3>
+<ul>
+<li><a href="enforcement-defense.html">5. 제재 사례와 도구 매핑</a></li>
+<li><a href="deployment-checklist.html">6. 도입 통합 절차</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. 미해결</h3>
+<ul>
+<li><a href="open-questions.html">7. 별도 검증이 필요한 항목</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="partial">
+<h1>3. Fireblocks 가 거드는 것 — 부분 해결 6 영역</h1>
+<p class="lead">
+KR 의무 중 Fireblocks 가 <strong>일부분만</strong> 풀어주는 영역. 도구는 있지만 외부 시스템 통합·사업자 운영·회계·인사 결정이
+함께 작동해야 의무가 충족된다. 이 부분이 "Fireblocks 도입해두면 알아서 풀린다" 라는 오해가 가장 많은 영역이기도 하다.
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">"부분" 의 의미</div>
+<p>
+"부분 해결" 은 다음 중 하나 이상에 해당:
+</p>
+<ul style="margin-bottom:0">
+<li>Fireblocks 가 <strong>일부 데이터·기능만 제공</strong>하고, 나머지를 사업자가 외부 시스템에서 처리</li>
+<li>Fireblocks 의 출력값을 사업자가 <strong>자체 ledger 또는 회계 시스템에서 검증</strong>해야 의무가 충족됨</li>
+<li>도구는 있으나 <strong>설계·운영·조직 결정</strong>이 사업자에게 100% 위임됨</li>
+</ul>
+</div>
+
+<h2>3.1 6 영역 한눈에</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>영역</th><th>Fireblocks 가 주는 것</th><th>사업자가 채워야 하는 것</th></tr></thead>
+<tbody>
+<tr><td>3.2</td><td>고객확인 (KYC/CDD)</td><td>source.kyc_status 필드</td><td>외부 KYC 시스템 + 재이행 주기 + 위험등급</td></tr>
+<tr><td>3.3</td><td>STR 의심거래보고</td><td>AML screening 결과 + Audit Log</td><td>STR 보고서 양식 + 보고책임자 + KoFIU 제출</td></tr>
+<tr><td>3.4</td><td>기록보존 5년</td><td>Audit Log + transaction history</td><td>정기 export + 자체 archive + 5년 retention 인프라</td></tr>
+<tr><td>3.5</td><td>분리보관 + 동종·동량</td><td>Workspace / Vault 분리 + balance</td><td>회계 분리 + 일일 reconciliation + 회계 기준 결정</td></tr>
+<tr><td>3.6</td><td>콜드월렛 80%</td><td>Cold Wallet workspace + vault balance</td><td>경제적 가치 환산 + ratio 일일 검증 + 기록</td></tr>
+<tr><td>3.7</td><td>신규 서비스 AML 위험평가</td><td>Workspace AML default + sandbox</td><td>제품승인위원회 + 위험평가서 + 법무검토</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>3.2 고객확인 (KYC/CDD) — 외부 KYC 의존</h2>
+
+<h3>KR 의무</h3>
+<p>특금법 5조의2:</p>
+<ul>
+<li>주민등록번호 등 법정 고객확인정보 수집</li>
+<li><strong>원본성 있는 신분증 확인</strong> — 운전면허증 암호일련번호 미검증 사례가 두나무 제재 사유</li>
+<li>주소 검증</li>
+<li>재이행 주기 관리 — 만료 자동락</li>
+<li>위험등급 상향 시 추가 CDD</li>
+</ul>
+
+<h3>Fireblocks 의 역할 — KYC 결과의 소비자</h3>
+<p>
+Fireblocks 자체는 KYC 모듈을 제공하지 않는다. 사업자는 외부 KYC 시스템으로 신원 확인을 수행하고,
+그 결과를 Fireblocks 트랜잭션 entity 의 metadata (예: <code>customerInternalId</code> 와 연결된 KYC status) 로 전달.
+</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  subgraph EXT["🔐 외부 KYC 시스템"]
+    KYC["NICE · Sumsub · 자체 KYC<br/>신원확인 · 원본성 · 주소검증"]
+  end
+  subgraph BIZ["🏦 사업자 Backend"]
+    SYNC["kyc_status · cdd_level<br/>sync 로직"]
+  end
+  subgraph FB["⚙️ Fireblocks"]
+    META["Transaction metadata<br/>customerInternalId 매핑"]
+    TAP{"TAP rule<br/>source.kyc_status == ok ?"}
+    ALLOW["✅ ALLOW<br/>거래 진행"]
+    BLOCK["⛔ BLOCK<br/>거래 차단"]
+  end
+
+  KYC -- "완료 → ok<br/>만료 → expired<br/>위험 → enhanced" --> SYNC
+  SYNC -- "source.kyc_status<br/>실시간 업데이트" --> META
+  META --> TAP
+  TAP -- "ok" --> ALLOW
+  TAP -- "expired · pending" --> BLOCK
+
+  classDef good fill:#dcfce7,stroke:#16a34a
+  classDef bad fill:#fee2e2,stroke:#dc2626
+  classDef wait fill:#fef3c7,stroke:#d97706
+  classDef vault fill:#dbeafe,stroke:#2563eb
+
+  class ALLOW good
+  class BLOCK bad
+  class TAP wait
+  class KYC vault
+</pre>
+</div>
+<p class="diagram-caption">
+KYC 의 신원확인은 외부 시스템에서, 거래 차단의 enforcement 는 Fireblocks TAP 에서. 두 시스템 간 sync 단절이 가장 큰 위반 위험.
+초록 = 정상 통과 / 빨강 = 차단 / 노랑 = 판정 단계 / 파랑 = 외부 source.
+</p>
+
+<h3>사업자가 채워야 하는 것</h3>
+<ul>
+<li>외부 KYC 시스템 선정·통합 (NICE / KCB / 자체 / 글로벌 vendor 등)</li>
+<li>원본성 검증 로직 — 단순 사진이 아닌 OCR + 안티 위변조</li>
+<li>주소 검증 — 우편번호·도로명·실 거주지 확인</li>
+<li>재이행 주기 자동화 — 만료 전 사전 알림 + 만료 시 자동 락</li>
+<li>위험등급 산출 로직 — 거래 패턴·기관 정보·blacklist 결합</li>
+<li>KYC 미완료 고객의 거래 시도 시 거절 사유 로깅</li>
+</ul>
+
+<h2>3.3 STR — 의심거래보고</h2>
+
+<h3>KR 의무</h3>
+<p>특금법 4. 의심거래 발견 시 KoFIU 보고. 보고책임자 승인 + 5년 보존.</p>
+
+<h3>Fireblocks 가 주는 것</h3>
+<ul>
+<li><strong>AML provider screening 결과</strong> — Chainalysis · Elliptic 의 risk score, 라벨</li>
+<li><strong>Audit Log</strong> — 거래 시도·차단·해제의 전 흐름</li>
+<li><strong>Webhook</strong> — 의심 거래 감지 시 외부 시스템으로 알림</li>
+</ul>
+
+<h3>사업자가 채워야 하는 것</h3>
+<ul>
+<li>STR 보고서 작성 양식 — KoFIU 제출용</li>
+<li>보고책임자 지정 + 보고책임자의 승인 흐름</li>
+<li>내부 escalation matrix — 누가 first review, 누가 final decision</li>
+<li>KoFIU 시스템 직접 제출 (Fireblocks 가 제출하지 않음)</li>
+<li>의심거래 판단 기준 — chain analytics + 거래 패턴 + 고객 위험등급 결합 룰</li>
+</ul>
+
+<h2>3.4 기록보존 5년 — vendor archive 와 사업자 archive 분리</h2>
+
+<h3>KR 의무</h3>
+<p>특금법 5조의4. 보고·고객확인·정보제공 등 의무이행 관련 자료 및 정보를 <strong>금융거래 등 관계 종료 후 5년</strong>간 보존.</p>
+
+<h3>Fireblocks 가 주는 것</h3>
+<ul>
+<li>Audit Log — 거래·승인·설정 변경의 전체 흐름 (vendor 측 보관)</li>
+<li>Transaction history — REST API 로 export 가능</li>
+<li>Webhook event payload — 실시간 archive 의 source</li>
+</ul>
+
+<h3>사업자가 채워야 하는 것 — vendor 보관에 의존 금지</h3>
+<ul>
+<li><strong>정기 export 자동화</strong> — 일/주 단위. Fireblocks 의 Audit Log 보관 기간 한도에 의존하지 말 것</li>
+<li><strong>자체 archive 인프라</strong> — 5년 retention, immutable storage (WORM 또는 ledger-style)</li>
+<li><strong>KYC 사본 보존</strong> — 외부 KYC 시스템에서 받은 신분증 사본 등 (Fireblocks 가 보유하지 않음)</li>
+<li><strong>차단·해제 근거 기록</strong> — TAP rule trigger 이력 + 인적 승인 흐름</li>
+<li><strong>해지 / 거래 종료 시점 기록</strong> — 5년 카운트 시작점</li>
+</ul>
+
+<div class="callout">
+<div class="callout-title">왜 vendor 보관에 의존하면 안 되나</div>
+<p>
+Fireblocks 가 계약 해지·서비스 중단·정책 변경 시 사업자가 audit data 를 잃을 수 있음.
+KR 감독 당국은 사업자에게 "자체 보존" 책임을 부과 — vendor 가 가지고 있다고 항변 못함.
+빗썸 제재 (2026-03) 의 <strong>자료보존 위반</strong>이 직접 사유.
+</p>
+</div>
+
+<h2>3.5 분리보관 + 동종·동량 — Workspace 분리는 가능, 회계 분리는 별개</h2>
+
+<h3>KR 의무</h3>
+<p>이용자보호법 (2024-07-19 시행):</p>
+<ul>
+<li>이용자 가상자산과 자기 가상자산을 <strong>분리하여 보관</strong></li>
+<li>이용자 가상자산과 <strong>동종·동량</strong>의 가상자산을 실질적으로 보유</li>
+</ul>
+
+<h3>Fireblocks 가 주는 것</h3>
+<ul>
+<li><strong>Workspace 분리</strong> — 자기 자산 workspace ≠ 고객 자산 workspace</li>
+<li><strong>Vault Account 분리</strong> — workspace 내부에서 고객별 / 자산별 vault</li>
+<li><strong>Vault balance</strong> — 실시간 잔액 조회 API</li>
+</ul>
+
+<h3>사업자가 채워야 하는 것 — 회계 분리는 application layer</h3>
+<ul>
+<li><strong>재무회계 상 분리</strong> — Workspace 분리가 곧 회계 분리는 아님. 회사 자산 vs 고객 자산을 회계 시스템에서 분리 처리</li>
+<li><strong>일일 reconciliation</strong> — Fireblocks vault balance ↔ 자체 ledger 의 일치 검증</li>
+<li><strong>동종·동량 검증</strong> — 고객 BTC 잔액 합계 = vault 의 BTC balance 인지 매일 확인</li>
+<li><strong>회계 기준 결정</strong> — sweeping 중간 시점, fee 차감, gas station 이체 등의 회계 처리 기준</li>
+<li><strong>외부 감사 대응</strong> — 분리보관·동종동량의 증빙 자료 (vault balance 일별 snapshot 등)</li>
+</ul>
+
+<h2>3.6 콜드월렛 80% — 인프라는 있다, 검증은 별개</h2>
+
+<h3>KR 의무</h3>
+<p>
+가상자산업감독규정 9 — 이용자 가상자산의 <strong>경제적 가치 기준 80% 이상</strong>을 인터넷과 분리하여 보관.
+시행령 11 의 위임 ("이용자 가상자산 중 70% 이상의 범위에서 금융위가 정하는 비율 이상").
+</p>
+
+<h3>Fireblocks 가 주는 것</h3>
+<ul>
+<li><strong>Cold Wallet workspace</strong> — Hot 와 별도 product. 별도 구매 + 별도 인프라</li>
+<li><strong>Hot ↔ Cold rebalancing 경로</strong> (P2P 또는 on-chain)</li>
+<li>각 workspace 의 vault balance API</li>
+</ul>
+
+<h3>사업자가 채워야 하는 것 — 비율 검증의 100%</h3>
+<p>
+"80% 가 cold 에 있다" 의 검증은 매일 사업자 시스템에서 일어난다. Fireblocks 는 답을 알려주지 않는다.
+</p>
+<pre><code># 사업자 자체 검증 로직 (예시)
+daily_cold_ratio_check():
+    hot_balance_usd = 0
+    for vault in hot_workspace.vaults:
+        for asset in vault.assets:
+            hot_balance_usd += asset.amount * market_price(asset)
+
+    cold_balance_usd = 0
+    for vault in cold_workspace.vaults:
+        for asset in vault.assets:
+            cold_balance_usd += asset.amount * market_price(asset)
+
+    total = hot_balance_usd + cold_balance_usd
+    cold_ratio = cold_balance_usd / total
+
+    if cold_ratio &lt; 0.80:
+        ALERT — 규제 위반. 즉시 Hot → Cold rebalancing
+    log_to_archive(date, cold_ratio, evidence)
+</code></pre>
+
+<h3>사업자가 결정해야 하는 것</h3>
+<ul>
+<li><strong>시세 source</strong> — 어느 거래소의 어느 시점 가격을 사용할 것인가</li>
+<li><strong>이용자 자산만 계산</strong> — 자기 자산은 80% 산정 대상이 아님. workspace 단위 회계 분리가 선결</li>
+<li><strong>임계점 buffer</strong> — 시세 변동으로 80% 가 깨질 위험. 실무에서는 85% 또는 90% 보유로 buffer</li>
+<li><strong>Cold 으로의 rebalancing 주기</strong> — 일·주 또는 임계점 기반</li>
+<li><strong>외부 cold 인프라 옵션</strong> — Fireblocks Cold Wallet 외에 별도 hardware cold 도 사용 가능 (혼합)</li>
+</ul>
+
+<h2>3.7 신규 서비스 AML 위험평가 — 도구는 있다, 위원회는 사업자가</h2>
+
+<h3>KR 의무</h3>
+<p>특금법 5 + 시행령 9. 신규 상품·서비스 출시 전 AML 위험평가. 신규 토큰·신규 지갑 유형·staking·earn·NFT 지원 전 필수.</p>
+
+<h3>Fireblocks 가 주는 것</h3>
+<ul>
+<li><strong>Sandbox workspace</strong> (Testnet) — 신규 자산·서비스의 격리 시험 환경</li>
+<li><strong>Workspace AML default 설정</strong> — 신규 workspace 의 fail-on-unknown / pass-on-unknown 결정</li>
+<li><strong>FSPM (Fireblocks Security Posture Management)</strong> — 별도 add-on, AI 기반 attack simulator</li>
+</ul>
+
+<h3>사업자가 채워야 하는 것 — 제품승인위원회 + 위험평가서</h3>
+<ul>
+<li><strong>제품승인위원회 운영</strong> — 보고책임자, 준법감시인, 지갑운영, 제품, 보안, 개발 참여. 4 종합검사 의 공통 권고</li>
+<li><strong>위험평가서 양식</strong> — 신규 자산의 chain risk, 거래소 risk, regulatory risk, technical risk</li>
+<li><strong>법무검토</strong> — 신규 토큰의 증권성·자본시장법 적용 여부</li>
+<li><strong>출고정책 사전 설계</strong> — 신규 자산의 trace-rule, address book, 카운터파티 화이트리스트</li>
+<li><strong>승인 흐름 로깅</strong> — 위원회 회의록, 위험평가서, 최종 승인 결재 — 5년 보존</li>
+</ul>
+
+<div class="callout callout-warn">
+<div class="callout-title">2025-12 코빗 제재 — 신규 서비스 위험평가 미실시 655 건</div>
+<p>
+코빗은 NFT 등 신규 거래지원 전 위험평가 미실시 655 건이 적발되어 기관경고 + 과태료 27.3억원.
+"Fireblocks 가 sandbox 를 주는데 왜 위반?" — sandbox 는 기술 검증 환경일 뿐, 위험평가서 작성·위원회 운영·법무검토 같은
+조직 절차가 별개로 작동해야 한다는 점이 핵심.
+</p>
+</div>
+
+<h2>3.8 부분 해결 영역의 공통 패턴</h2>
+<p>위 6 개 영역의 공통점:</p>
+<ul>
+<li>Fireblocks 가 <strong>"기술 인프라" 만 제공</strong>한다는 사실의 인식이 필요</li>
+<li>"의무 충족" 의 최종 검증은 <strong>사업자 자체 시스템 / 회계 / 조직</strong>에서 일어남</li>
+<li><strong>도구 사용 사실은 제재 면책이 되지 않음</strong> — 4 종합검사가 보여준 패턴</li>
+<li>위 6 영역 모두 <strong>운영 통제의 부재</strong>가 위반의 직접 원인 (도구 부재 아님)</li>
+</ul>
+
+<p class="back-top"><a href="#partial">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

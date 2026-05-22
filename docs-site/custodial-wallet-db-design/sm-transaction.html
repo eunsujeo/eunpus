@@ -14,6 +14,9 @@
 <div class="layout">
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
 <div class="nav-section">
 <h3 class="nav-section-title">Overview</h3>
 <ul>
@@ -91,8 +94,113 @@
 <main class="content">
 <section id="sm-transaction">
 <h2>14. Transaction — 17 Primary Status State Machine</h2>
-<span class="section-subtitle">정식 명세 · color-coded · 시간 제약 · chain 별 특이 제약</span>
-<h3>17 Primary Status (color-coded)</h3>
+<span class="section-subtitle">17 status state machine · 시간 제약 · chain 별 특이 제약 · Outgoing/Incoming 흐름 분리</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처 — 어디까지가 Fireblocks 정의이고, 어디부터가 추정인가</div>
+<p>이 페이지의 내용은 두 갈래입니다.</p>
+<p><strong>Fireblocks 공식 문서에 정의된 사실</strong> — 그대로 받아들여도 안전</p>
+<ul style="margin-bottom:0.5rem">
+<li><strong>17 Primary Status</strong> 의 이름과 API code, color 분류 (Yellow / Blue / Green / Red)</li>
+<li><strong>시간 제약</strong>: Pending Authorization 2h · Pending Signature 2h · Cancelling 30s typical · Broadcasting 1min typical · Solana 6번째 tx 2h Submitted timeout</li>
+<li><strong>Chain-Specific 처리</strong>: EVM blockchain-standard 직렬화 / Solana per-vault 5 + workspace 600 / EVM withdrawal nonce 충돌 / Bitcoin unconfirmed 25-tx chain</li>
+<li><strong>Special Branches</strong>: Approvers Unanimous-Veto<span class="g" data-tip="Unanimous-Veto: 다수결이 아니라 만장일치 필수. N 명 중 1 명이라도 거부하면 즉시 전체 REJECTED. 한 명의 거부권이 다수 찬성을 무효화 — Fireblocks 의 안전망 설계" tabindex="0">(?)</span> Rule (1 명 reject = 즉시 rejected) · Outgoing rejected 자산 즉시 사용 가능 · Incoming rejected = Admin unfreeze 까지 lock · Raw Signing cached signature · Solana Sign-Only (NOT BROADCAST BY FIREBLOCKS 태그)</li>
+</ul>
+<p style="margin-bottom:0.3rem"><strong>저자가 합리적으로 추정해서 그린 설계</strong> — 참고용, 본인 환경에서 검증 권장</p>
+<ul style="margin-bottom:0">
+<li><code>transactions</code> · <code>transaction_events</code> 두 테이블의 구체 schema</li>
+<li>Outgoing/Incoming 흐름의 transition edge — Fireblocks 문서가 17-status 의 의미는 명시하지만 그 사이 전이 그림은 그려져 있지 않아 status 별 설명을 종합해서 재구성</li>
+<li><code>raw_payload_cbor</code> 의 CBOR<span class="g" data-tip="Concise Binary Object Representation. JSON 과 비슷한 데이터 구조의 binary 표현. 크기 작고 byte-deterministic" tabindex="0">(?)</span> 직렬화 선택 (audit cross-DB 비교를 위한 byte-deterministic)</li>
+</ul>
+</div>
+
+<h3>ERD<span class="g" data-tip="Entity-Relationship Diagram. 데이터베이스 테이블과 그 사이 외래키 관계를 한 장에 시각화한 도식" tabindex="0">(?)</span> — Transaction Lifecycle cluster (6 페이지 13 테이블)</h3>
+<p>14. Transaction State 가 중심 (transactions 본체 + transaction_events 이력). 그 주변으로 <a href="sm-approval.html">16. Approval</a> 의 승인 평면, <a href="sm-signing.html">17. Signing</a> 의 서명 평면, <a href="sm-deposit.html">18. Deposit</a> 의 입금 관찰 평면, <a href="sm-withdrawal.html">19. Withdrawal</a> 의 출금 운영 평면이 매달림. <a href="sm-14step.html">15. 14-Step Flow</a> 는 이 모든 테이블이 어떤 순서로 작동하는지의 process diagram (별도 schema 없음).</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  subgraph external["외부 참조 (다른 페이지)"]
+    direction LR
+    WS["📦 workspaces<br/>(3)"]
+    VA["🏦 vault_accounts<br/>(4)"]
+    PR["📜 policy_rules<br/>(10)"]
+    COS["🖥️ cosigner_configs<br/>(12)"]
+    WLA["📋 whitelisted_addresses<br/>(5)"]
+  end
+
+  subgraph tx_core["14. Transaction core"]
+    direction LR
+    TX["💸 transactions"]
+    TXE["📜 transaction_events<br/>(append-only)"]
+  end
+
+  subgraph approval_p["16. Approval"]
+    direction LR
+    AR["🛡️ approval_requests"]
+    AD["✅ approval_decisions<br/>(append-only)"]
+  end
+
+  subgraph signing_p["17. Signing"]
+    direction LR
+    SR["✍️ signing_requests"]
+    SE["📜 signing_events<br/>(append-only)"]
+    CI["🌐 callback_invocations<br/>(append-only)"]
+  end
+
+  subgraph deposit_p["18. Deposit"]
+    direction LR
+    CE["⛓️ chain_events<br/>(append-only)"]
+    DO["📥 deposit_observations"]
+    DWD["📨 deposit_webhook_deliveries<br/>(append-only)"]
+  end
+
+  subgraph withdrawal_p["19. Withdrawal"]
+    direction LR
+    W["📤 withdrawals"]
+    BA["📡 broadcast_attempts<br/>(append-only)"]
+    CF["⏳ confirmations<br/>(append-only)"]
+    WO["📋 withdrawal_operations<br/>(append-only)"]
+  end
+
+  WS --> TX
+  TX --> TXE
+  TX --> AR
+  AR --> AD
+  TX --> SR
+  SR --> SE
+  SR --> CI
+  TX -. "outgoing 의 경우" .-> W
+  W --> BA
+  BA --> CF
+  W --> WO
+  CE --> DO
+  DO --> DWD
+  DO -. "incoming 도 tx 생성" .-> TX
+
+  PR -. "rule 평가" .-> AR
+  COS -. "서명자" .-> SR
+  VA -. "source" .-> W
+  WLA -. "destination" .-> W
+
+  classDef ext fill:#e0e7ff,stroke:#6366f1;
+  classDef tx fill:#fef3c7,stroke:#d97706,stroke-width:2px;
+  classDef approval fill:#dbeafe,stroke:#2563eb;
+  classDef signing fill:#dcfce7,stroke:#16a34a;
+  classDef deposit fill:#fce7f3,stroke:#db2777;
+  classDef withdrawal fill:#fef3c7,stroke:#d97706;
+  classDef append fill:#fee2e2,stroke:#dc2626;
+  class WS,VA,PR,COS,WLA ext;
+  class TX tx;
+  class AR approval;
+  class SR signing;
+  class DO deposit;
+  class W withdrawal;
+  class TXE,AD,SE,CI,CE,DWD,BA,CF,WO append;
+</pre>
+<span class="diagram-caption">Figure 30. Transaction Lifecycle cluster ERD. <strong><code>transactions</code> 본체가 중심</strong>, 평면별로 색 분리 (Approval 파랑 / Signing 초록 / Deposit 분홍 / Withdrawal 노랑). 빨강 = append-only 이력 테이블 (state machine 의 audit trail). incoming 흐름은 <code>chain_events → deposit_observations → transactions</code> 경로로 외부 입금이 tx 로 승격, outgoing 흐름은 <code>transactions → withdrawals → broadcast_attempts → confirmations</code> 경로로 customer 요청이 chain 까지 도달. 모든 tx 는 정책 평가 (<code>approval_requests</code>) 와 서명 (<code>signing_requests</code>) 평면을 거침. cosigner_configs / policy_rules / vault_accounts / whitelisted_addresses 는 외부 참조 — 본 클러스터의 schema 가 의존하지만 자기 정의는 다른 페이지에.</span>
+</div>
+
+<h3>17 Primary Status — color-coded</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>Color</th><th>Stage</th><th>Status (API code)</th></tr></thead>
@@ -106,46 +214,107 @@
 </tbody>
 </table>
 </div>
-<h3>Outgoing Transaction Flow</h3>
+<h3>Outgoing Transaction Flow — 출금 상태 흐름 (canonical)</h3>
+<p>고객이 시작한 출금 요청이 어떤 단계를 거쳐 chain 에 도달하는지의 완전한 17-status 흐름. 본 페이지는 master reference 이고, <a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a> 에서 운영 동사 (cancel / boost / retry 등) 와 함께 customer-facing 시각으로 재정리.</p>
 <div class="diagram">
-      <pre class="mermaid">
+<pre class="mermaid">
 stateDiagram-v2
-  [*] --> SUBMITTED
-  SUBMITTED --> PENDING_AML_SCREENING : AML/Travel Rule enabled
-  PENDING_AML_SCREENING --> PENDING_ENRICHMENT
-  SUBMITTED --> PENDING_ENRICHMENT : AML disabled
-  PENDING_ENRICHMENT --> PENDING_AUTHORIZATION : dApp Protection done
-  PENDING_AUTHORIZATION --> QUEUED : approvals collected
-  PENDING_AUTHORIZATION --> FAILED : 2h timeout
-  QUEUED --> PENDING_SIGNATURE
-  PENDING_SIGNATURE --> SIGNED : Solana sign-only
-  PENDING_SIGNATURE --> BROADCASTING
-  PENDING_SIGNATURE --> CANCELLED : co-signer reject
-  PENDING_SIGNATURE --> FAILED : 2h timeout
-  BROADCASTING --> CONFIRMING : ~1 min typical
-  CONFIRMING --> COMPLETED
-  CONFIRMING --> FAILED
-  CANCELLING --> CANCELLED
-  CANCELLING --> COMPLETED : already broadcast
-      </pre>
-      <span class="diagram-caption">Figure 4. Outgoing transaction state machine — 17 status. AML<span class="g" data-tip="Anti-Money Laundering. 자금세탁 방지 규제. tx 별 KYC / sanction screening 강제" tabindex="0">(?)</span>/Travel Rule<span class="g" data-tip="VASP (가상자산 사업자) 간 송금 시 originator / beneficiary 정보 교환 의무화 규제" tabindex="0">(?)</span> optional, 2h timeout on Pending Authorization + Pending Signature.</span>
+  direction LR
+
+  state "📝 SUBMITTED\n요청 접수" as Sub
+  state "🔍 PENDING_AML_SCREENING\nAML/Travel Rule 심사" as Aml
+  state "🛡️ PENDING_ENRICHMENT\n보안 enrichment\n(dApp Protection)" as Enrich
+  state "👤 PENDING_AUTHORIZATION\nApprover 승인 대기\n(2h timeout)" as Auth
+  state "📨 PENDING_3RD_PARTY_MANUAL_APPROVAL\n외부 email 승인" as ThirdM
+  state "🏦 PENDING_3RD_PARTY\n거래소 처리" as Third
+  state "🎯 QUEUED\nsigner 전송 대기" as Queue
+  state "✍️ PENDING_SIGNATURE\n서명 대기\n(2h timeout)" as Sig
+  state "📡 BROADCASTING\n송신 중\n(약 1분)" as Bcast
+  state "⏳ CONFIRMING\nconfirmation 누적" as Conf
+  state "✅ COMPLETED\n확정" as Done
+  state "🖊️ SIGNED\nSolana Sign-Only" as Signed
+  state "↩️ CANCELLING\n취소 중 (30초)" as Cancelling
+  state "↩️ CANCELLED\n취소됨" as Cancel
+  state "🚫 BLOCKED\nPolicy 차단" as Blk
+  state "❌ FAILED\n실패" as Fail
+
+  [*] --> Sub
+  Sub --> Aml : AML/Travel Rule 사용
+  Sub --> Enrich : AML 미사용
+  Aml --> Enrich : 심사 통과
+  Aml --> Third : Travel Rule 필요
+  Third --> Enrich : 외부 확인 완료
+  Enrich --> Auth : dApp 검증 완료
+  Enrich --> Blk : Policy 차단
+  Auth --> Queue : Approver 승인
+  Auth --> ThirdM : 거래소 email 승인 필요
+  Auth --> Blk : Policy 차단
+  Auth --> Fail : 2h timeout
+  Auth --> Cancelling : 사용자 취소
+  ThirdM --> Queue : email 승인
+  Queue --> Sig
+  Sig --> Bcast : 서명 완료
+  Sig --> Signed : Sign-Only 분기
+  Sig --> Cancelling : 사용자 취소
+  Sig --> Fail : 2h timeout / co-signer reject
+  Bcast --> Conf : chain 진입
+  Bcast --> Cancelling : 사용자 취소
+  Conf --> Done : DCCP 임계
+  Conf --> Fail : reorg
+  Cancelling --> Cancel : 취소 성공
+  Cancelling --> Done : 이미 broadcast — 취소 불가
+  Done --> [*]
+  Signed --> [*]
+  Cancel --> [*]
+  Blk --> [*]
+  Fail --> [*]
+
+  classDef good fill:#dcfce7,stroke:#16a34a,stroke-width:2px;
+  classDef bad fill:#fee2e2,stroke:#dc2626,stroke-width:2px;
+  classDef wait fill:#fef3c7,stroke:#d97706;
+  classDef special fill:#e0e7ff,stroke:#6366f1;
+  class Done good;
+  class Cancel,Blk,Fail bad;
+  class Sub,Aml,Enrich,Auth,ThirdM,Third,Queue,Sig,Bcast,Conf,Cancelling wait;
+  class Signed special;
+</pre>
+<span class="diagram-caption">Figure 4. Outgoing transaction state machine (canonical 17-status). 노랑=진행 중 / 초록=확정 / 빨강=차단·취소·실패 / 파랑=Solana Sign-Only 특수 종착. 주요 분기: ① AML/Travel Rule 사용 여부 (Sub → Aml vs Enrich). ② Approver 승인 시점에서 거래소 email 승인 분기 (Third Party Manual). ③ Sig 직후 Sign-Only vs Broadcast 분기. ④ 취소 가능 구간 (Auth/Sig/Bcast) 모두에서 Cancelling 진입 가능. ⑤ Cancelling 의 두 결말 — 취소 성공 (Cancelled) 또는 이미 broadcast 되어 chain 에 들어간 후 (Completed, 취소 불가). ⑥ 2h timeout 두 곳 (Auth · Sig).</span>
 </div>
-<h3>Incoming Transaction Flow</h3>
+
+<h3>Incoming Transaction Flow — 입금 상태 흐름 (canonical)</h3>
+<p>외부에서 우리 vault 주소로 들어온 입금이 어떤 단계를 거쳐 "사용 가능" 상태로 가는지. 출금과는 완전히 다른 흐름 — BROADCASTING 같은 출금 전용 상태는 입금 흐름에 없음. 본 페이지가 master reference 이고, <a href="sm-deposit.html">18. Deposit Lifecycle</a> 에서 chain 관찰 메커니즘과 함께 재구성.</p>
 <div class="diagram">
-      <pre class="mermaid">
+<pre class="mermaid">
 stateDiagram-v2
-  [*] --> START
-  START --> PENDING_AML_SCREENING : AML/KYC enabled
-  START --> BROADCASTING : network conn / exchange / gas station
-  START --> CONFIRMING : AML/KYC disabled
-  PENDING_AML_SCREENING --> REJECTED : reject
-  PENDING_AML_SCREENING --> PENDING_3RD_PARTY
-  PENDING_3RD_PARTY --> CONFIRMING
-  CONFIRMING --> COMPLETED
-  CONFIRMING --> FAILED
-  CONFIRMING --> REJECTED : user-initiated freeze via API
-      </pre>
-      <span class="diagram-caption">Figure 5. Incoming transaction state machine — rejected incoming 의 asset 은 Admin unfreeze 까지 사용 불가.</span>
+  direction LR
+
+  state "🔍 PENDING_AML_SCREENING\nAML/KYC 심사" as Aml
+  state "📨 PENDING_3RD_PARTY\nTravel Rule / 외부 확인" as Third
+  state "⏳ CONFIRMING\nconfirmation 누적" as Conf
+  state "✅ COMPLETED\n입금 확정\n(자금 사용 가능)" as Done
+  state "🚫 REJECTED\n차단\n(Admin unfreeze 필요)" as Rej
+  state "❌ FAILED\n실패 (reorg 등)" as Fail
+
+  [*] --> Aml : chain 관찰 + AML 사용
+  [*] --> Conf : chain 관찰 + AML 미사용
+  Aml --> Rej : AML 심사 거절
+  Aml --> Third : Travel Rule 필요
+  Third --> Conf : 외부 확인 통과
+  Conf --> Done : DCCP 임계 도달
+  Conf --> Rej : API 로 freeze 요청
+  Conf --> Fail : reorg / 처리 실패
+  Done --> [*]
+  Rej --> [*]
+  Fail --> [*]
+
+  classDef good fill:#dcfce7,stroke:#16a34a,stroke-width:2px;
+  classDef bad fill:#fee2e2,stroke:#dc2626,stroke-width:2px;
+  classDef wait fill:#fef3c7,stroke:#d97706;
+  class Done good;
+  class Rej,Fail bad;
+  class Aml,Third,Conf wait;
+</pre>
+<span class="diagram-caption">Figure 5. Incoming transaction state machine (canonical). ⚠️ <strong>이전 버전에서 잘못 그려져 있던 <code>START → BROADCASTING</code> edge 와 "network conn / exchange / gas station" 라벨 제거</strong> — BROADCASTING 은 출금 전용 상태 (#9), 입금 흐름에 등장하지 않음. 입금은 chain 에 이미 broadcast 된 tx 를 우리가 관찰하는 흐름이라 송신 단계가 없음. 핵심 전이: ① AML 사용 여부가 시작 분기. ② AML 거절 시 자금이 chain 상 도착해 있어도 <strong>REJECTED — Admin 이 unfreeze 할 때까지 사용 불가</strong>. ③ CONFIRMING → COMPLETED 는 DCCP (Deposit Control and Confirmation Policy) 가 정한 confirmation 횟수 도달 시.</span>
 </div>
 <h3>시간 제약</h3>
 <div class="table-wrap">
@@ -162,10 +331,23 @@ stateDiagram-v2
 </div>
 <h3>Chain-Specific 처리 모델</h3>
 <ul>
-<li><strong>EVM<span class="g" data-tip="Ethereum Virtual Machine. Ethereum 호환 chain 계열 (Polygon / Arbitrum / Optimism 등). account-based 모델" tabindex="0">(?)</span>-compatible</strong>: 동일 vault account<span class="g" data-tip="Fireblocks 의 자산 보관 단위. workspace 안에서 여러 개 만들어 client / team / 용도별 분리" tabindex="0">(?)</span> 의 EVM tx 들은 <strong>blockchain-standard 단위 직렬화</strong> (Ethereum + Polygon → 순차, BTC + Solana → 병렬)</li>
+<li><strong>EVM<span class="g" data-tip="Ethereum Virtual Machine. Ethereum 호환 chain 계열 (Polygon / Arbitrum / Optimism 등). account-based 모델" tabindex="0">(?)</span>-compatible</strong>: 동일 vault account<span class="g" data-tip="Fireblocks 의 자산 보관 단위. workspace 안에서 여러 개 만들어 client / team / 용도별 분리" tabindex="0">(?)</span> 의 EVM tx 들은 <strong>blockchain-standard 단위 직렬화</strong> (Ethereum + Polygon → 순차, BTC + Solana → 병렬). 추가로 <strong>transfer type 3 종</strong> (Fireblocks API <code>evmTransferType</code>): <code>NATIVE</code> (ETH 등 native transfer) / <code>TOKEN</code> (ERC-20 등 log 기반) / <code>INTERNAL</code> (smart contract 내부 호출, trace 기반)</li>
 <li><strong>Solana</strong>: per-vault 동시 <strong>5 tx</strong> + workspace-wide <strong>600 tx</strong> queue cap. EVM/BTC 와 달리 hard stuck 아닌 <strong>soft throttle</strong> (6번째부터 Submitted 대기, max 2h 후 terminated) — 1 vault 로도 운영 가능</li>
 <li><strong>EVM withdrawal</strong>: nonce<span class="g" data-tip="EVM 의 transaction 순서 번호. 같은 주소의 tx 가 순차 처리되도록. 충돌 시 뒤 tx 가 stuck" tabindex="0">(?)</span> 충돌 위험 → <strong>multiple withdrawal vault 권장 round-robin</strong></li>
 <li><strong>Bitcoin withdrawal</strong>: unconfirmed input <strong>25-tx chain limit</strong><span class="g" data-tip="Bitcoin Core default policy. 한 unconfirmed tx 의 descendant (그 change output 을 input 으로 쓰는 후속 tx) 가 25 개에 도달하면 mempool 이 추가 tx 거부. block confirm 전 출금 chain 이 길어지면 그 vault 의 출금이 정체" tabindex="0">(?)</span> (Bitcoin Core default) → multiple withdrawal vault</li>
+<li><strong>TON</strong>: <code>tonTransferType</code> = <code>NATIVE</code> 또는 <code>JETTON</code>. ★ TON 은 arbitrary message body 지원 — <code>messageComment</code> 필드가 raw payload 노출. 비표준 format custom parsing 필요</li>
+<li><strong>★ Canton (2-step transfer protocol)</strong>: 다른 chain 과 lifecycle 자체가 다름. Fireblocks API <code>transactionType</code> 5 enum:
+<ul>
+<li><code>OFFER</code> — sender 가 transfer 제안. recipient 의 action 대기 (1-step 의 시작)</li>
+<li><code>ACCEPT</code> — recipient 가 OFFER 수락. 자금 이동 완료</li>
+<li><code>REJECT</code> — recipient 가 거부. 자금 이동 안 됨</li>
+<li><code>WITHDRAW</code> — sender 가 OFFER 취소 (recipient 가 action 하기 전). 자금 이동 안 됨</li>
+<li><code>PRE_APPROVAL</code> — recipient 가 사전 승인. ★ <strong>1-step instant transfer</strong> (Kraken 등 외부 source 에서 들어오는 자동 승인). 17-status state machine 의 Confirming 으로 직진</li>
+</ul>
+<code>traceableId</code> + <code>hashes.{offerUpdateId, acceptUpdateId, rejectUpdateId, withdrawUpdateId, preApprovalUpdateId}</code> 가 OFFER → 후속 action 의 cross-reference. <strong>DB 영향</strong>: <code>transactions.operation</code> 외에 <code>chain_specific_action ENUM('OFFER','ACCEPT','REJECT','WITHDRAW','PRE_APPROVAL')</code> + <code>parent_tx_id BINARY(16)</code> 컬럼이 Canton 자산 보유 시 필요. 일반 chain 은 NULL</li>
+<li><strong>Polkadot (DOT)</strong>: <code>substrateExtrinsicId</code> 필드 — extrinsic ID 로 tx 추적. <code>tx_hash</code> 와 별개 plane</li>
+<li><strong>Sui</strong>: gas 가 4-way 분해 — <code>storageCost</code> / <code>storageRebate</code> (storage cleanup 환급) / <code>computationCost</code> / <code>nonRefundableStorageFee</code>. 단순 <code>networkFee</code> 단일 컬럼으로는 부족</li>
+<li><strong>Hedera (HBAR)</strong>: 별도 <code>hbarTxHash</code> 필드 — HBAR-specific transaction hash</li>
 </ul>
 <h3>Special Branches</h3>
 <ul>
@@ -175,35 +357,135 @@ stateDiagram-v2
 <li><strong>Raw Signing (cached signature)</strong>: 동일 raw data 재서명 시 Submitted → Completed (전체 ceremony 우회)</li>
 <li><strong>Solana Sign-Only</strong>: signed payload client 에 반환, Fireblocks 가 broadcast 안 함, <code>NOT BROADCAST BY FIREBLOCKS</code> 태그</li>
 </ul>
-<h3>DB Schema — Transaction State</h3>
-    <pre><code>CREATE TABLE transactions (
+<h3>DB Schema</h3>
+
+<h4>6.1 <code>transactions</code> — tx 본체 (state machine 의 current state)</h4>
+<pre><code>CREATE TABLE transactions (
   id                  BINARY(16) PRIMARY KEY,
   workspace_id        BINARY(16) NOT NULL,
-  source_vault_id     BINARY(16),
-  destination_type    ENUM('vault', 'exchange', 'whitelisted', 'one-time', 'network'),
+  source_vault_id     BINARY(16),                       -- outgoing: source / incoming: NULL
+  destination_type    ENUM('VAULT_ACCOUNT','EXCHANGE_ACCOUNT','INTERNAL_WALLET','EXTERNAL_WALLET','UNMANAGED_WALLET','ONE_TIME_ADDRESS','NETWORK_CONNECTION','FIAT_ACCOUNT'),
   asset_id            VARCHAR(32),
   amount_decimal      DECIMAL(38, 18),
   chain               VARCHAR(32),
-  status              ENUM('SUBMITTED', 'PENDING_AML_SCREENING') NOT NULL,
+  operation           ENUM('TRANSFER','CONTRACT_CALL','PROGRAM_CALL','TYPED_MESSAGE','RAW','MINT','BURN') DEFAULT 'TRANSFER',
+  status              ENUM('SUBMITTED','PENDING_AML_SCREENING','PENDING_ENRICHMENT','PENDING_AUTHORIZATION','PENDING_3RD_PARTY','PENDING_3RD_PARTY_MANUAL_APPROVAL','QUEUED','PENDING_SIGNATURE','BROADCASTING','CONFIRMING','COMPLETED','SIGNED','CANCELLING','CANCELLED','BLOCKED','REJECTED','FAILED') NOT NULL,
+  network_status      ENUM('DROPPED','BROADCASTING','CONFIRMING','FAILED','CONFIRMED'),  -- blockchain-layer status (별개 plane)
   status_changed_at   DATETIME(6) NOT NULL,
+  created_by          BINARY(16) NOT NULL,              -- tx 시작한 user (incoming 의 경우 시스템 user)
   created_at          DATETIME(6) NOT NULL,
-  raw_payload_cbor    BLOB,                    -- ★ append-only (TEE-signed)
-  tx_hash             VARCHAR(128),            -- ★ set-once (broadcast 시점)
-  pending_auth_at     DATETIME(6),             -- 2h timeout 산정
-  pending_sign_at     DATETIME(6),
-  KEY (workspace_id, status)
+  modified_by         BINARY(16) NOT NULL,              -- 마지막 상태 전이를 trigger 한 actor
+  modified_at         DATETIME(6) NOT NULL,             -- = 가장 최근 status_changed_at
+  external_tx_id      VARCHAR(255) UNIQUE,              -- ★ idempotency key (Fireblocks 공식 "critical practice")
+  raw_payload_cbor    BLOB,                              -- ★ append-only — set-once after TEE 서명
+  tx_hash             VARCHAR(128),                      -- ★ set-once (broadcast 시점)
+  chain_nonce         VARCHAR(64),                       -- ★ EVM transaction nonce. EVM 만 set, 그 외 NULL. Fireblocks API transaction-objects.nonce 와 정합. RBF/Boost/Drop 의 binding key
+  -- Relay 모델 (feeInfo) — Gasless / sponsored tx (현재 vault 가 fee 대납 안 함)
+  paid_by_relay       BOOLEAN NOT NULL DEFAULT FALSE,    -- ★ relay 가 fee 대납 여부
+  relay_type          ENUM('LOCAL','THIRD_PARTY'),       -- LOCAL=같은 tenant 내 다른 vault / THIRD_PARTY=다른 tenant
+  relay_vault_id      BINARY(16),                         -- relay 가 LOCAL 이면 vault id 참조 (Gas Station vault 등)
+  relay_tenant_name   VARCHAR(128),                       -- THIRD_PARTY relay 의 tenant 이름
+  -- Chain-specific 식별자 (tx_hash 외 별도 hash 가 필요한 chain)
+  chain_specific_payload_cbor BLOB,                       -- ★ chain-별 추가 필드 (HBAR hbarTxHash / DOT substrateExtrinsicId / TON messageComment+jetton* / Sui gasUsed breakdown 등) CBOR 직렬화
+  -- Canton 2-step transfer protocol 분기
+  canton_action       ENUM('OFFER','ACCEPT','REJECT','WITHDRAW','PRE_APPROVAL'),
+  parent_tx_id        BINARY(16),                         -- Canton OFFER → 후속 ACCEPT/REJECT/WITHDRAW 의 parent. 일반 chain 은 NULL
+  -- Algorand staking rewards
+  algo_src_rewards    DECIMAL(38, 18),                    -- ALGO source 측 rewards acknowledged
+  algo_dest_rewards   DECIMAL(38, 18),                    -- ALGO destination 측 rewards acknowledged
+  -- Sui gas 4-way breakdown
+  sui_storage_cost            DECIMAL(38, 18),
+  sui_storage_rebate          DECIMAL(38, 18),
+  sui_computation_cost        DECIMAL(38, 18),
+  sui_non_refundable_storage  DECIMAL(38, 18),
+  pending_auth_at     DATETIME(6),                       -- 2h timeout 산정 기준
+  pending_sign_at     DATETIME(6),                       -- 2h timeout 산정 기준
+  routing_type        ENUM('DEFAULT','NODE_ROUTER','MEV') DEFAULT 'DEFAULT',  -- NODE_ROUTER = customer-provided node, MEV = MEV protection routing (EVM only)
+  base_fee            DECIMAL(38, 18),                   -- EIP-1559 base fee (EVM only)
+  priority_fee        DECIMAL(38, 18),                   -- EIP-1559 priority fee (EVM only) / Solana priority fee
+  rent_fee            DECIMAL(38, 18),                   -- Solana account rent fee
+  KEY (workspace_id, status),
+  KEY idx_external_tx (workspace_id, external_tx_id),
+  KEY idx_evm_nonce (source_vault_id, chain, chain_nonce),  -- stuck detection / RBF lookup
+  KEY idx_canton_parent (parent_tx_id),                      -- Canton OFFER → action lookup
+  KEY idx_relay (relay_vault_id, paid_by_relay)              -- Gas Station / sponsored tx 조회
 );
 
--- 상태 전이는 별도 테이블 (append-only)
+-- Multi-destination tx (UTXO 가 한 tx 에서 N destinations 분기 가능)
+-- single-destination (EVM 등) 은 본 테이블 사용 안 함, transactions.destination_type 만으로 표현
+CREATE TABLE transaction_destinations (
+  transaction_id    BINARY(16) NOT NULL,
+  sequence_no       SMALLINT NOT NULL,                    -- destination index (0, 1, 2 ...)
+  destination_type  ENUM('VAULT_ACCOUNT','EXCHANGE_ACCOUNT','INTERNAL_WALLET','EXTERNAL_WALLET','UNMANAGED_WALLET','ONE_TIME_ADDRESS','NETWORK_CONNECTION','FIAT_ACCOUNT') NOT NULL,
+  destination_id    VARCHAR(128),                          -- peer ID. ONE_TIME_ADDRESS 일 때 NULL (대신 ota_address)
+  ota_address       VARCHAR(128),                          -- ONE_TIME_ADDRESS 의 destination
+  ota_tag           VARCHAR(64),                           -- XRP tag / XLM memo_text / EOS·HBAR·XDB memo / ALGO notes
+  amount_decimal    DECIMAL(38, 18) NOT NULL,
+  net_amount        DECIMAL(38, 18),                       -- fee 차감 후 (treatAsGrossAmount=true 흐름)
+  PRIMARY KEY (transaction_id, sequence_no),
+  KEY idx_destination (destination_type, destination_id)
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:28%">컬럼</th><th style="width:22%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>tx 의 고유 식별자</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16) FK</td><td>이 tx 가 속한 workspace</td></tr>
+<tr><td><code>source_vault_id</code></td><td>BINARY(16) nullable</td><td>출금의 source vault. incoming tx 는 NULL (외부에서 들어옴)</td></tr>
+<tr><td><code>destination_type</code></td><td>ENUM (8 값)</td><td>Fireblocks API 의 정식 destination type enum 8 종 — <strong>VAULT_ACCOUNT</strong> (같은 workspace 다른 vault) / <strong>EXCHANGE_ACCOUNT</strong> (거래소 연동) / <strong>INTERNAL_WALLET</strong> (잔액 표시 + billable whitelisted) / <strong>EXTERNAL_WALLET</strong> (표시 안 됨 whitelisted) / <strong>UNMANAGED_WALLET</strong> (Fireblocks 가 직접 관리 안 하는 wallet) / <strong>ONE_TIME_ADDRESS</strong> (OTA, whitelist 우회 path) / <strong>NETWORK_CONNECTION</strong> (Fireblocks P2P Network counterparty) / <strong>FIAT_ACCOUNT</strong> (fiat provider 계좌)</td></tr>
+<tr><td><code>asset_id</code> · <code>amount_decimal</code> · <code>chain</code></td><td>VARCHAR · DECIMAL · VARCHAR</td><td>송금 대상 자산 · 금액 · chain</td></tr>
+<tr><td><code>operation</code></td><td>ENUM (7 값)</td><td>API `operation` body parameter — <strong>TRANSFER</strong> (default, 자금 이동) / <strong>CONTRACT_CALL</strong> (EVM smart contract) / <strong>PROGRAM_CALL</strong> (Solana program) / <strong>TYPED_MESSAGE</strong> (EIP-191 / EIP-712 / TIP-191 / BTC personal message) / <strong>RAW</strong> (off-chain raw signing) / <strong>MINT</strong> · <strong>BURN</strong> (Stellar / Ripple / EVM token supply 변경). 모두 같은 17-status state machine 통과</td></tr>
+<tr><td><code>status</code></td><td>ENUM (17 값)</td><td>현재 상태. 17 Primary Status 의 API code 그대로 — Fireblocks 의 internal lifecycle plane</td></tr>
+<tr><td><code>network_status</code></td><td>ENUM (5 값) nullable</td><td>★ <strong>blockchain-layer status</strong> (별개 plane): <strong>DROPPED</strong> (mempool 누락, fee 부족 또는 mempool full) / <strong>BROADCASTING</strong> / <strong>CONFIRMING</strong> / <strong>FAILED</strong> (chain 측 실패) / <strong>CONFIRMED</strong>. status (Fireblocks plane) 와 별개로 chain 자체의 tx 상태 추적</td></tr>
+<tr><td><code>external_tx_id</code></td><td>VARCHAR(255) UNIQUE</td><td>★ <strong>Idempotency key</strong> — Fireblocks 공식 "critical practice". customer 가 발급한 unique ID, 같은 ID 의 추가 POST request 는 Fireblocks 측에서 reject (duplicate-spend 방어선). max 255 chars. workspace 단위 unique index</td></tr>
+<tr><td><code>routing_type</code></td><td>ENUM (3 값)</td><td><strong>DEFAULT</strong>=Fireblocks default routing / <strong>NODE_ROUTER</strong>=customer-provided node 로 라우팅 (Stage 7 Node Router) / <strong>MEV</strong>=MEV protection routing (Flashbots private mempool 추정, EVM only)</td></tr>
+<tr><td><code>base_fee</code> · <code>priority_fee</code></td><td>DECIMAL(38, 18) nullable</td><td>EIP-1559 fee 분해 (EVM only). `priority_fee` 는 Solana 의 priority fee 도 흡수</td></tr>
+<tr><td><code>rent_fee</code></td><td>DECIMAL(38, 18) nullable</td><td>Solana account rent fee (계정 storage 비용). 다른 chain 은 NULL</td></tr>
+<tr><td><code>chain_nonce</code></td><td>VARCHAR(64) nullable</td><td>★ <strong>EVM transaction nonce</strong> — 같은 source address 의 sequential ordering 번호. EVM 만 set, 그 외 (BTC/Solana/Algorand 등) 는 NULL. Fireblocks API <code>transaction-objects.nonce</code> 와 정합. RBF / Boost / Drop 시 <strong>동일 nonce 로 교체 송신</strong> 의 binding key. <strong>운영 query 패턴</strong>: <code>SELECT * FROM transactions WHERE source_vault_id = ? AND chain = 'ETH' AND status IN ('BROADCASTING','CONFIRMING') ORDER BY chain_nonce</code> — 같은 vault 의 nonce gap / stuck detection. <strong>MPC-CMP cryptographic nonce 와 무관</strong> — 그건 <a href="storage-discipline.html">24. Storage Discipline</a> 의 R-only class (메모리만, DB 영속화 금지)</td></tr>
+<tr><td><code>paid_by_relay</code> · <code>relay_type</code> · <code>relay_vault_id</code> · <code>relay_tenant_name</code></td><td>BOOLEAN · ENUM · BINARY(16) · VARCHAR</td><td>★ <strong>Relay 모델</strong> — Fireblocks API <code>feeInfo.{paidByRelay, relayType, relayId, relayName}</code>. Gasless / sponsored tx 에서 누가 fee 를 대납했는지 추적. <code>relay_type='LOCAL'</code>=같은 tenant 내 다른 vault (예: Gas Station, <code>relay_vault_id</code> 참조) / <code>'THIRD_PARTY'</code>=다른 tenant (<code>relay_tenant_name</code> 으로 식별). 운영: Gasless 거래의 fee accounting 과 sponsor reconciliation</td></tr>
+<tr><td><code>chain_specific_payload_cbor</code></td><td>BLOB nullable</td><td>★ chain 별 추가 식별자 / 데이터를 CBOR 로 직렬화. 예: HBAR <code>hbarTxHash</code> / Polkadot <code>substrateExtrinsicId</code> / TON <code>messageComment</code> + jetton hashes (<code>externalIncoming</code>, <code>tonTransfer</code>, <code>jettonTransfer</code>) / Canton hashes (<code>traceableId</code>, <code>offerUpdateId</code>, <code>acceptUpdateId</code> 등). <code>tx_hash</code> 외 chain-specific 식별자가 필요한 경우 본 컬럼이 흡수. CBOR 직렬화 → byte-deterministic audit 가능</td></tr>
+<tr><td><code>canton_action</code> · <code>parent_tx_id</code></td><td>ENUM (5) · BINARY(16) nullable</td><td>★ <strong>Canton 2-step transfer protocol</strong>. <code>canton_action</code>=<code>OFFER</code>/<code>ACCEPT</code>/<code>REJECT</code>/<code>WITHDRAW</code>/<code>PRE_APPROVAL</code>. <code>parent_tx_id</code> 는 ACCEPT/REJECT/WITHDRAW 가 어느 OFFER 에 대한 응답인지 참조 (PRE_APPROVAL 은 1-step 이므로 NULL). 일반 chain (EVM/BTC 등) 은 둘 다 NULL. Index: <code>idx_canton_parent</code></td></tr>
+<tr><td><code>algo_src_rewards</code> · <code>algo_dest_rewards</code></td><td>DECIMAL(38, 18) nullable</td><td>★ Algorand staking rewards 의 src/dest 측 acknowledged amount (Fireblocks API <code>RewardsInfo</code>). tx 단위 reward accrual 추적 — staking 자산의 audit 차원에서 필요. 그 외 chain 은 NULL</td></tr>
+<tr><td><code>sui_storage_cost</code> · <code>sui_storage_rebate</code> · <code>sui_computation_cost</code> · <code>sui_non_refundable_storage</code></td><td>DECIMAL(38, 18) nullable</td><td>★ Sui gas 4-way breakdown (Fireblocks API <code>GasUsed</code>). <code>storageCost</code>=storage 비용 / <code>storageRebate</code>=cleanup 환급 / <code>computationCost</code>=계산 비용 / <code>nonRefundableStorageFee</code>=환급 불가 storage 비용. Sui 의 storage rebate 모델 표현. 다른 chain 은 NULL — <code>base_fee</code> + <code>priority_fee</code> 만 set</td></tr>
+<tr><td><code>status_changed_at</code></td><td>DATETIME(6)</td><td>현재 status 로 진입한 시각. <code>modified_at</code> 과 동일 의미</td></tr>
+<tr><td><code>created_by</code></td><td>BINARY(16)</td><td>tx 를 시작한 actor. outgoing 의 경우 initiator user, incoming 의 경우 시스템 user (chain observer). set-once</td></tr>
+<tr><td><code>created_at</code></td><td>DATETIME(6)</td><td>tx row 생성 시각. set-once</td></tr>
+<tr><td><code>modified_by</code></td><td>BINARY(16)</td><td>마지막 상태 전이를 trigger 한 actor. 사용자 행동 (cancel 등) 또는 시스템 이벤트 (timeout, chain confirmation)</td></tr>
+<tr><td><code>modified_at</code></td><td>DATETIME(6)</td><td>마지막 변경 시각 (= status_changed_at)</td></tr>
+<tr><td><code>raw_payload_cbor</code></td><td>BLOB nullable</td><td>서명 대상 raw tx payload. TEE 서명 후 set, set-once + append-only 강제</td></tr>
+<tr><td><code>tx_hash</code></td><td>VARCHAR(128) nullable</td><td>broadcast 시점에 chain 이 반환한 tx hash. set-once</td></tr>
+<tr><td><code>pending_auth_at</code></td><td>DATETIME(6) nullable</td><td>PENDING_AUTHORIZATION 진입 시각. 2h timeout 계산용</td></tr>
+<tr><td><code>pending_sign_at</code></td><td>DATETIME(6) nullable</td><td>PENDING_SIGNATURE 진입 시각. 2h timeout 계산용</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>6.2 <code>transaction_events</code> — 상태 전이 이력 (append-only)</h4>
+<pre><code>-- ★ append-only — 모든 status 전이의 audit trail
 CREATE TABLE transaction_events (
   id              BINARY(16) PRIMARY KEY,
   transaction_id  BINARY(16) NOT NULL,
   from_status     VARCHAR(32),
   to_status       VARCHAR(32) NOT NULL,
-  reason          VARCHAR(255),
+  reason          VARCHAR(255),                  -- 전이 사유 (예: "2h timeout", "user cancel", "DCCP threshold")
+  actor_user_id   BINARY(16) NOT NULL,            -- 전이를 trigger 한 actor (사용자 또는 시스템 user)
   occurred_at     DATETIME(6) NOT NULL,
   KEY (transaction_id, occurred_at)
 );</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:28%">컬럼</th><th style="width:22%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>이벤트 고유 식별자</td></tr>
+<tr><td><code>transaction_id</code></td><td>BINARY(16) FK</td><td>어느 tx 의 전이인지</td></tr>
+<tr><td><code>from_status</code></td><td>VARCHAR(32) nullable</td><td>이전 상태. 최초 INSERT 시 NULL (= 시작 상태로 진입)</td></tr>
+<tr><td><code>to_status</code></td><td>VARCHAR(32)</td><td>전이 후 상태</td></tr>
+<tr><td><code>reason</code></td><td>VARCHAR(255) nullable</td><td>전이 사유 — 자유 텍스트. 예: "Approver Q+O 충족", "2h timeout", "user cancel", "DCCP confirmation 도달", "co-signer reject", "policy rule #3 violated"</td></tr>
+<tr><td><code>actor_user_id</code></td><td>BINARY(16) FK</td><td>전이를 trigger 한 actor. 사용자 동작 (취소 / 승인) 의 경우 사용자 id, 시스템 이벤트 (timeout / chain confirmation) 의 경우 시스템 user id</td></tr>
+<tr><td><code>occurred_at</code></td><td>DATETIME(6)</td><td>전이 발생 시각</td></tr>
+</tbody>
+</table>
+</div>
   </section>
 <nav aria-label="Section navigation" class="page-nav">
 <a class="page-nav-link page-nav-prev" href="tables-recovery.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">13. Recovery &amp; Backup</span></a>

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>9. 10 Policy Rules — NodeWallet 은행 도입</title>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. 컴포넌트 토폴로지</a></li>
+<li><a href="trust-boundaries.html">2. 신뢰 경계</a></li>
+<li><a href="db-split.html">3. 4-DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. DB Schema</h3>
+<ul>
+<li><a href="tables-approver.html">4. approverdb</a></li>
+<li><a href="tables-audit.html">5. auditdb</a></li>
+<li><a href="tables-ledger-chain.html">6. ledgerdb · chaindb</a></li>
+<li><a href="tables-tenant-wallet.html">7. 테넌트 · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Cryptography</h3>
+<ul><li><a href="keys-hsm-tee.html">8. HSM · SGX · 키 수명주기</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Policy &amp; Decisions</h3>
+<ul>
+<li><a class="active" href="policy-rules.html">9. 10 Policy Rules</a></li>
+<li><a href="sm-decision.html">10. 결정 라이프사이클</a></li>
+<li><a href="sm-signing.html">11. 3-key 서명 흐름</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Transactions &amp; Audit</h3>
+<ul>
+<li><a href="sm-deposit-withdrawal.html">12. 입금 · 출금 흐름</a></li>
+<li><a href="audit-2layer.html">13. 2-Layer 감사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Compliance</h3>
+<ul><li><a href="compliance-regulations.html">14. 5 규제 + 트래블룰</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Discipline</h3>
+<ul>
+<li><a href="storage-discipline.html">15. Storage Discipline</a></li>
+<li><a href="risks-anti-patterns.html">16. Risks &amp; Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="policy-rules">
+<h2>9. 10 Policy Rules</h2>
+<span class="section-subtitle">closed set 10종 + priority + short-circuit + 3-verdict (Allow / Held / Deny)</span>
+
+<div class="callout">
+<div class="callout-title">출처</div>
+<p><code>compliance__rules__*.md</code> (각 rule 개별 페이지), <code>compliance__decision-lifecycle.md</code> §우선순위 평가, <code>pm-db-design-notes.md</code> §5 (10 rule catalog).</p>
+</div>
+
+<h3>한눈에 보는 10 종</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>rule_type</th><th>주요 config 키</th><th>verdict 의미</th><th>주된 우선순위 대역</th></tr></thead>
+<tbody>
+<tr><td><code>global_halt</code></td><td>message</td><td><strong>Deny all</strong> — 모든 거래 차단</td><td>10-19 (사고 대응)</td></tr>
+<tr><td><code>address_list</code></td><td>condition_set_id · mode (whitelist/blacklist)</td><td>Deny if not allowed (whitelist) / if blocked (blacklist)</td><td>20-39 (정적 차단)</td></tr>
+<tr><td><code>time_window</code></td><td>start_hour · end_hour · timezone · days_of_week</td><td>Deny outside hours</td><td>20-39</td></tr>
+<tr><td><code>per_tx_amount_limit</code></td><td>max_amount_lamports</td><td>Deny if amount &gt; max</td><td>40-59 (한도)</td></tr>
+<tr><td><code>daily_withdrawal_limit</code></td><td>max_daily_lamports</td><td>Deny if cumulative_today &gt; max</td><td>40-59</td></tr>
+<tr><td><code>velocity_limit</code></td><td>max_count_per_day</td><td>Deny if today's count ≥ max</td><td>40-59</td></tr>
+<tr><td><code>velocity_window</code></td><td>window_seconds · max_count · max_amount_lamports</td><td>Deny if window exceeded</td><td>60-79 (동적 차단)</td></tr>
+<tr><td><code>address_cooldown</code></td><td>threshold_lamports · cooldown_seconds</td><td><strong>Held</strong> if new addr + amount &gt; threshold</td><td>60-79</td></tr>
+<tr><td><code>approval_tier</code></td><td>min_amount · max_amount · approval_mode (AUTO/SINGLE_APPROVE/QUORUM_2_OF_3)</td><td><strong>Held</strong> if not AUTO</td><td>80-99 (수동 게이트)</td></tr>
+<tr><td><code>expression</code></td><td>action (DENY/HELD) · conditions (DSL: field/operator/value)</td><td>Per DSL — 커스텀 룰</td><td>100+ (커스텀)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>평가 알고리즘 — priority + short-circuit</h3>
+<p>활성 규칙은 <code>priority</code> 오름차순으로 평가된다. <strong>첫 번째 Deny 또는 Held 에서 즉시 반환</strong> — 뒤따르는 규칙은 평가하지 않는다 (source: <code>compliance__decision-lifecycle.md</code>).</p>
+<pre><code>fn evaluate(request) -&gt; PolicyDecision:
+    ctx = compute_evaluation_context(request)  // coordinator pre-computes
+    rules = active_rules.snapshot()  // ArcSwap atomic snapshot
+    sorted = rules.sorted_by(priority asc)
+    for rule in sorted:
+        verdict = rule.evaluate(request, ctx)
+        if verdict in [Deny, Held]:
+            return verdict  // short-circuit
+    return Allow</code></pre>
+
+<h3>우선순위 설계 가이드 (NodeInfra docs 권장)</h3>
+<ul>
+<li><strong>10-19</strong> — 사고 대응 (<code>global_halt</code>). 다른 모든 검사를 우회해야 하므로 최저값.</li>
+<li><strong>20-39</strong> — 정적 차단 (<code>address_list</code> denylist · <code>time_window</code>). DB 조회가 가볍거나 없음.</li>
+<li><strong>40-59</strong> — 한도 (<code>per_tx_amount_limit</code> · <code>daily_withdrawal_limit</code> · <code>velocity_limit</code>).</li>
+<li><strong>60-79</strong> — 동적 차단 (<code>address_cooldown</code> · <code>velocity_window</code>). DB 조회 필요.</li>
+<li><strong>80-99</strong> — 수동 게이트 (<code>approval_tier</code>). 위에서 다 통과한 경우만 의미.</li>
+<li><strong>100+</strong> — 커스텀 (<code>expression</code>).</li>
+</ul>
+<p class="hint">같은 priority 끼리는 평가 순서가 보장되지 않는다 — 의존 관계가 있는 규칙은 priority gap 으로 분리.</p>
+
+<h3>10 rule 상세</h3>
+
+<h3 id="global_halt">1. <code>global_halt</code> — 전체 차단 (사고 대응)</h3>
+<pre><code>{
+  "rule_type": "global_halt",
+  "flow_type": "withdrawal",  // 또는 "*"
+  "priority": 10,
+  "config": { "message": "긴급 점검 — 전체 출금 정지 (티켓 #2026-05-22-001)" }
+}</code></pre>
+<p>모든 거래를 즉시 Deny. 사고 발생 시 가장 먼저 활성화하는 kill-switch.</p>
+
+<h3 id="address_list">2. <code>address_list</code> — 주소 화이트/블랙리스트</h3>
+<pre><code>{
+  "rule_type": "address_list",
+  "flow_type": "withdrawal",
+  "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC mint
+  "priority": 30,
+  "config": {
+    "condition_set_id": "vasp-allowlist-kr",
+    "mode": "whitelist"
+  }
+}</code></pre>
+<p>VASP 화이트리스트 패턴 (트래블룰 첫 단계). <code>mode</code> 가 whitelist 면 list 외 destination 차단, blacklist 면 list 안 destination 차단.</p>
+
+<h3 id="time_window">3. <code>time_window</code> — 영업시간 제한</h3>
+<pre><code>{
+  "rule_type": "time_window",
+  "flow_type": "withdrawal",
+  "priority": 35,
+  "config": {
+    "start_hour": 9,
+    "end_hour": 18,
+    "timezone": "Asia/Seoul",
+    "days_of_week": [1, 2, 3, 4, 5]  // 월-금
+  }
+}</code></pre>
+<p>영업시간 외 / 휴일 출금을 차단. EFTA 의 영업시간 운영 의무에 대응.</p>
+
+<h3 id="per_tx_amount_limit">4. <code>per_tx_amount_limit</code> — 건당 절대 한도</h3>
+<pre><code>{
+  "rule_type": "per_tx_amount_limit",
+  "flow_type": "withdrawal",
+  "mint": "NATIVE_SOL",
+  "priority": 45,
+  "config": { "max_amount_lamports": 100000000000 }  // 100 SOL
+}</code></pre>
+<p>위에 어떤 정책이 있어도 절대 넘을 수 없는 상한. <code>approval_tier</code> 와 조합 — 상한 안에서 구간별 승인 강도 차등.</p>
+
+<h3 id="daily_withdrawal_limit">5. <code>daily_withdrawal_limit</code></h3>
+<pre><code>{ "config": { "max_daily_lamports": 500000000000 } }  // 500 SOL/일</code></pre>
+<p>코디네이터가 미리 계산한 <code>daily_withdrawal_total</code> (오늘 누적 출금) 과 비교. 누적이 max 를 넘으면 Deny.</p>
+
+<h3 id="velocity_limit">6. <code>velocity_limit</code> — 일일 건수</h3>
+<pre><code>{ "config": { "max_count_per_day": 100 } }</code></pre>
+<p>오늘 누적 출금 <em>건수</em> 가 max 이상이면 Deny. 횡령형 다발 인출 차단.</p>
+
+<h3 id="velocity_window">7. <code>velocity_window</code> — 슬라이딩 윈도우</h3>
+<pre><code>{
+  "config": {
+    "window_seconds": 600,    // 10 분
+    "max_count": 5,
+    "max_amount_lamports": 1000000000
+  }
+}</code></pre>
+<p><code>velocity_windows</code> 표의 최근 N 초간 row 를 합산하여 건수 또는 금액 둘 중 하나라도 초과 시 Deny. 단시간 burst 차단.</p>
+
+<h3 id="address_cooldown">8. <code>address_cooldown</code> — 신규 주소 쿨다운 (Held 발화)</h3>
+<pre><code>{
+  "config": {
+    "threshold_lamports": 5000000000,   // 5 SOL
+    "cooldown_seconds": 7200            // 2 시간
+  }
+}</code></pre>
+<p>주소가 <code>address_first_use</code> 표에 처음 등장 (또는 cooldown 미경과) 이면서 금액이 threshold 초과 → <strong>Held</strong>. cooldown 경과 후 자동 해소. 사회공학으로 새 주소를 받아 즉시 거액 이체하는 패턴 차단.</p>
+
+<h3 id="approval_tier">9. <code>approval_tier</code> — 금액 구간별 수동 승인 (Held 발화)</h3>
+<pre><code>// 0 ~ 5 SOL : 자동 승인
+{ "config": { "min_amount_lamports": 0, "max_amount_lamports": 5000000000, "approval_mode": "AUTO" } }
+
+// 5 ~ 50 SOL : 단일 승인 — Held
+{ "config": { "min_amount_lamports": 5000000001, "max_amount_lamports": 50000000000, "approval_mode": "SINGLE_APPROVE" } }
+
+// 50 SOL 초과 : 2-of-3 의식 — Held
+{ "config": { "min_amount_lamports": 50000000001, "max_amount_lamports": 9223372036854775807, "approval_mode": "QUORUM_2_OF_3" } }</code></pre>
+<p><code>amount</code> 가 구간에 들면 <code>approval_mode</code> 에 따라 동작 (source: <code>compliance__rules__approval-tier.md</code>):</p>
+<ul>
+<li><code>AUTO</code> → Allow</li>
+<li><code>SINGLE_APPROVE</code> → <strong>Held</strong> (단일 운영자 외부 승인 필요)</li>
+<li><code>QUORUM_2_OF_3</code> → <strong>Held</strong> (3인 중 2인 의식 승인 필요)</li>
+</ul>
+<p class="hint"><strong>콘솔 폼 매핑</strong>: dropdown 의 <code>auto</code> → <code>AUTO</code>, <code>single</code> → <code>SINGLE_APPROVE</code>, <code>dual</code> → <code>QUORUM_2_OF_3</code> (source: <code>compliance__rules__approval-tier.md</code> §콘솔 폼 매핑). i64::MAX = <code>9223372036854775807</code> 을 상한으로 두면 "그 이상 전체" 표현. 구간이 겹치면 priority 같을 때 어느 행이 매치되는지 보장 안 됨 — +1 차이로 엄격 분리.</p>
+
+<h3>Held 의 외부 해소 패턴</h3>
+<p>콘솔에 "승인 버튼" 이 없는 이유 (★ 권한 분리 + 결정론적 재평가). Held 해소는 다음 절차:</p>
+<ol>
+<li>외부 의식 (운영자 회의 · 별도 시스템 승인 · 키 의식)</li>
+<li><code>approval_tier</code> 행을 임시 AUTO 로 수정 (<code>policy_change_log</code> 에 기록됨)</li>
+<li>coordinator 폴링이 다음 평가에서 Allow → 정상 진행</li>
+<li>평가 통과 즉시 <code>approval_tier</code> 를 원래대로 복원 (역시 <code>policy_change_log</code> 에 기록)</li>
+</ol>
+<p>변경 자체가 영구 감사 흔적 — old_data / new_data 가 모두 보존된다. 외부 의식의 evidence (서명된 회의록 등) 와 묶이면 sound 한 감사 추적.</p>
+
+<h3 id="expression">10. <code>expression</code> — 커스텀 룰 (escape valve)</h3>
+<pre><code>{
+  "rule_type": "expression",
+  "flow_type": "withdrawal",
+  "priority": 110,
+  "config": {
+    "action": "DENY",
+    "conditions": [
+      { "field": "amount", "operator": "gte",
+        "value": { "type": "int", "value": 1000000 } },
+      { "field": "destination", "operator": "not_in",
+        "value": { "type": "string_list", "value": ["UpbitHot1...", "BithumbHot1..."] } }
+    ]
+  }
+}</code></pre>
+<p>field/operator/value DSL 로 임의 조건. 모든 condition 이 true 면 action 발화. closed 10 종 으로 표현 안 되는 케이스의 escape valve.</p>
+<p class="hint">한계: 현재 <code>expression</code> 페이지가 404 — vendor docs 의 명시적 spec 미비 (source: <code>inventory.md</code> §4.3.4). DSL 의 operator 목록 / 지원 type / type coercion 은 onboarding 시 확인 필요.</p>
+
+<h3>EvaluationContext — 코디네이터가 계산하는 상태값</h3>
+<p>승인자는 ledger 를 직접 조회하지 않는다. coordinator 가 미리 계산해서 넘긴다 (source: <code>compliance__decision-lifecycle.md</code>):</p>
+<pre><code>pub struct PolicyContext {
+    pub flow_type: FlowType,         // Withdrawal / Deposit / Transfer
+    pub request_id: Uuid,
+    pub wallet_id: Uuid,
+    pub destination: String,
+    pub amount: i64,                 // lamports
+    pub fee: i64,
+    pub mint: String,                // "NATIVE_SOL" 또는 SPL mint
+    pub context: EvaluationContext,
+}
+
+pub struct EvaluationContext {
+    pub daily_withdrawal_total: Option&lt;i64&gt;,  // 오늘 누적 출금
+    pub daily_withdrawal_count: Option&lt;i64&gt;,  // 오늘 누적 건수
+    pub account_balance: Option&lt;i64&gt;,         // 현재 잔액
+}</code></pre>
+<p>필수 field 가 <code>None</code> 이면 규칙은 <code>PolicyError</code> 를 반환하고 fail-closed (Deny) 처리.</p>
+
+<h3>Hot reload (ArcSwap)</h3>
+<ol>
+<li>Admin API 또는 콘솔이 <code>policy_rules</code> 를 INSERT/UPDATE/DELETE</li>
+<li>DB trigger 가 <code>policy_change_log</code> 에 INSERT (created_by · old_data · new_data)</li>
+<li>승인자의 <code>loader</code> 태스크가 변경 감지 → 새 규칙 집합 build → ArcSwap 으로 원자적 교체</li>
+<li>다음 <code>/v1/evaluate</code> 호출부터 새 규칙 적용</li>
+</ol>
+<p class="hint"><strong>일관성 보장</strong>: 평가 중인 단일 요청은 평가 시작 시점의 규칙 스냅샷을 끝까지 사용. 절반은 옛 규칙 / 절반은 새 규칙 race 는 발생하지 않는다.</p>
+
+<h3>은행 도입 시 결정해야 할 것</h3>
+<ul>
+<li><strong>규칙 카탈로그 design</strong> — flow_type × mint 조합으로 어떤 룰을 어느 priority 에 두는지. NodeInfra 권장 priority 대역 안에서 자행 룰 배치.</li>
+<li><strong>condition_set 큐레이션</strong> — VASP 화이트리스트의 source · 검증 절차 · update cadence.</li>
+<li><strong>approval_tier 구간 설계</strong> — 자행의 거래 분포 + 자행의 운영자 capacity 에 맞춰 AUTO / SINGLE / QUORUM 구간 결정.</li>
+<li><strong>운영자 외부 의식 채널</strong> — Held 해소를 위한 외부 승인 절차의 evidence 보존 방식 (회의록 서명 · 별도 시스템 로그 · email + 보존된 PDF 등).</li>
+<li><strong>긴급 freeze 절차</strong> — global_halt 활성화 권한 + 활성/해제 ceremony.</li>
+</ul>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="keys-hsm-tee.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">8. HSM · SGX · 키 수명주기</span></a>
+<a class="page-nav-link page-nav-next" href="sm-decision.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">10. 결정 라이프사이클</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

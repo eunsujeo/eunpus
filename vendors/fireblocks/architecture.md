@@ -2,10 +2,10 @@
 type: vendor-hub
 vendor: fireblocks
 status: stable
-tags: [architecture]
+tags: [architecture, key-link]
 stage_introduced: 1
-last_updated_stage: 31
-source_count: 8
+last_updated_stage: 36
+source_count: 11
 related:
   - authentication
   - callback-handler
@@ -305,3 +305,50 @@ p.5: "All services in the Fireblocks core infrastructure operate in a **zero-tru
 - ~~완전한 컴포넌트 다이어그램~~ — **부분 해소** (Stage 8 cloud-architecture diagram 확보; 컴포넌트 간 message flow 의 세부 protocol 은 여전히 부분만 명세)
 - ~~Q-2026-05-18-S08~~ — **ANSWERED (Stage 9)**: Auth Engine / Policy Engine TAPs / Secure Vault / Co-Signer Engine 각 module 의 책임 + zero-trust handoff 명세
 - Q-2026-05-18-S09 — Hosted MPC + BCM + Cold Wallet 의 통합 deployment topology
+
+## Stage 36 — Key Link Customer-Held Key Plane (★ 신규 plane)
+
+`fireblocks-key-link-overview.md`, p.1-3 + `getting-started-with-fireblocks-key-link.md`, p.1-9 (Stage 36 Mode C ingest).
+
+Fireblocks 가 키 share 를 보유하지 않는 **별도 customer-held key plane** 도입. MPC plane 과 cryptographic 으로 직교 — 동일 workspace 안의 별도 type (Key Link workspace) 으로 운영.
+
+### 4-Component Topology (overview p.2-3 직접 인용)
+
+| Component | 호스팅 | 책임 | SGX |
+|---|---|---|---|
+| **Fireblocks Agent** | **Customer 인프라 (on-prem)** | Open-source TypeScript service. Fireblocks 로부터 sign 요청 polling → Customer Server 로 relay → 결과 반환 | NO (customer 의 자체 hardening) |
+| **Customer Server** | Customer 개발/호스팅 | Agent ↔ HSM 매개. Custom policy / tx validation 가능 | NO |
+| **HSM Component** | On-prem / cloud / hot / cold | 실제 키 보관 + signing — FIPS-certified HSM 또는 동등 KMS | N/A |
+| **HSM Adaptor** (optional) | Customer | offline (cold) HSM 과 통신용 별도 component | N/A |
+
+→ Stage 8 의 6-component cloud architecture 와 **paired alternate plane**. 같은 Fireblocks SaaS Core (Auth Engine / Policy Engine / Secure Vault / Co-Signer Engine) 가 위쪽으로 그대로 작동, signing 단계만 customer 측 HSM stack 으로 분기.
+
+### Trust Boundary 차이 (Stage 8 SaaS MPC 대비)
+
+| 항목 | SaaS MPC | Hosted MPC | **Key Link (Stage 36)** |
+|---|---|---|---|
+| Fireblocks key share | 2 (Azure SGX) | 0 | **0** |
+| Customer key share | 1 (mobile or SGX) | 3 (all SGX) | **N/A** (no MPC) |
+| Customer 측 인프라 | mobile only | full SGX stack | **HSM + Agent + Server** |
+| Signing protocol | MPC-CMP 3-endpoint | MPC-CMP 3-endpoint | **External HSM (단독 서명)** |
+| Asymmetric pair | N/A | N/A | **Validation key (Fireblocks) + Signing key (Customer)** |
+| Algorithm | ECDSA + EdDSA | ECDSA + EdDSA | **ECDSA + EdDSA** (vault account 당 각 1) |
+
+### Signing Flow (Stage 9 14-step 의 분기)
+
+Stage 9 의 14-step transaction flow 에서 **step 10 (Co-Signer Engine → Co-Signers)** 가 Key Link 의 경우 다음으로 대체:
+
+```
+10'. Co-Signer Engine → Fireblocks Agent (customer 측, polling)
+10'a. Agent → Customer Server (HTTPS)
+10'b. Customer Server → HSM (vendor-specific)
+10'c. HSM → signature → Customer Server → Agent → Fireblocks
+11.  Auth Engine 이 signature 검증 (validation key 사용)
+```
+
+→ Stage 9 의 zero-trust handoff + chain of trust 가 Key Link plane 까지 적용 (Auth Engine 의 derived cert 검증).
+
+## Sources (Stage 36 추가)
+- `2026-05-22__support-fireblocks-io__fireblocks-key-link-overview-extracted.txt`, p.1-3 (Stage 36: Key Link architecture, 4-component, FIPS-HSM)
+- `2026-05-22__support-fireblocks-io__getting-started-with-fireblocks-key-link-extracted.txt`, p.1-9 (Stage 36: Onboarding, Agent setup, Proof of Ownership)
+- `2026-05-22__support-fireblocks-io__set-up-your-fireblocks-vault-with-key-link-extracted.txt`, p.1-4 (Stage 36: Vault account ECDSA+EdDSA binding)

@@ -2,10 +2,10 @@
 type: entity
 vendor: fireblocks
 status: stable
-tags: [transaction]
+tags: [transaction, key-link]
 stage_introduced: 5
-last_updated_stage: 9
-source_count: 5
+last_updated_stage: 36
+source_count: 8
 related: [approver, designated-signer, policy, signer, tap, vault-account]
 ---
 # Entity: Transaction (Fireblocks)
@@ -210,3 +210,228 @@ Start:
 
 - ~~Q-2026-05-18-P02~~ — **부분 ANSWERED (Stage 9)**: EVM blockchain-standard 직렬화 + Solana 5-tx queue + BTC 25-tx chain limit 의 chain-specific tx 처리 모델 정식 명세
 - Q-2026-05-18-P03 — Smart transfer ticket, Automation rule의 정의
+
+## Stage 36 — Key Link Signing Flow
+
+`fireblocks-key-link-overview.md`, p.2-3 + `getting-started-with-fireblocks-key-link.md`, p.7 (Stage 36 Mode C).
+
+Stage 9 의 14-step transaction flow 의 **signing 단계 (step 10)** 가 Key Link workspace 에서 다음 변형으로 동작:
+
+### Key Link Signing Pipeline (★ MPC 와 직교)
+
+```
+Stage 9 step 10 (Co-Signer Engine → Co-Signers) 대체:
+
+10'. Co-Signer Engine → Fireblocks Agent (customer 측, polling)
+     ↓ (HTTPS)
+10'a. Agent → Customer Server
+     ↓ (vendor-specific, often HTTPS or local protocol)
+10'b. Customer Server → HSM (ECDSA or EdDSA sign)
+     ↓
+10'c. HSM signature → Customer Server → Agent → Fireblocks SaaS
+11.   Auth Engine 이 validation key 로 signature 검증
+12-14. Stage 9 와 동일 (Secure Vault → Node → Blockchain)
+```
+
+### Policy 와의 연동 (`getting-started-with-fireblocks-key-link.md`, p.7)
+
+> "For each Policy rule, you must ensure the **designated signer is set to the API user you created for the Fireblocks Agent**."
+
+→ Stage 9 의 designated-signer pattern (NS 라벨 의 NSA / Editor) 가 Key Link 에서는 **Agent-paired Signer-role API user 로 강제**. Policy rule 마다 명시 필요.
+
+### MPC plane 과의 동작 차이 요약
+
+| 단계 | MPC (Stage 9) | Key Link (Stage 36) |
+|---|---|---|
+| 5. Balance / AML / Travel Rule | 동일 | 동일 |
+| 6-7. Policy Engine TAPs | 동일 (designated signer = mobile or API co-signer) | 동일 (designated signer = Agent-paired API user) |
+| 8. Secure Vault 가 tx assemble | 동일 | 동일 |
+| **10. Signing** | **3-endpoint MPC ceremony** (Mobile/SGX + 2 Azure SGX) | **외부 HSM 단독 서명** (Agent → Customer Server → HSM) |
+| 11. Signature 검증 | Aggregator 가 partial signatures 결합 → full signature | Auth Engine 이 customer HSM signature 를 validation key 로 검증 |
+| 12-14. Vault → Node → Blockchain | 동일 | 동일 |
+
+→ Stage 9 의 **transaction state machine (17 status, 2h timeout, Outgoing/Incoming flow) 는 Key Link 에서도 동일 적용** — 키 plane 만 분기, transaction lifecycle 은 share 됨.
+
+### Algorithm 제약 (`set-up-your-fireblocks-vault-with-key-link.md`, p.2-3)
+
+Key Link asset wallet 생성 가능 여부 = **vault account 에 해당 algorithm 의 signing key 가 assigned 되어 있는가**. Missing 시 Console "Create asset wallet" 화면에 warning.
+
+→ Stage 9 의 chain-specific tx 제약 (Solana 5-tx queue, EVM serial, BTC 25-chain) 은 Key Link 에서도 그대로 적용 (chain 자체 제약이라 signing plane 무관).
+
+## Sources (Stage 36 추가)
+- `2026-05-22__support-fireblocks-io__fireblocks-key-link-overview-extracted.txt`, p.2-3 (Stage 36: Agent → Customer Server → HSM signing pipeline)
+- `2026-05-22__support-fireblocks-io__getting-started-with-fireblocks-key-link-extracted.txt`, p.7 (Stage 36: Policy designated signer requirement)
+- `2026-05-22__support-fireblocks-io__set-up-your-fireblocks-vault-with-key-link-extracted.txt`, p.2-3 (Stage 36: Algorithm-asset matching)
+
+## Stage 36 — API Data Object Schema (transaction-objects.md ingest)
+
+`transaction-objects.md` (Stage 36 Mode C, body via curl).
+
+### 8 Destination Types (정식 enumeration, p.DestinationTransferPeerPath)
+
+Stage 9 의 transaction lifecycle 의 destination 분류가 API schema level 까지 정형화:
+
+| Type | 정체 |
+|---|---|
+| `VAULT_ACCOUNT` | 같은 workspace 의 다른 vault account |
+| `EXCHANGE_ACCOUNT` | exchange 연동 계좌 (Binance / Coinbase 등) |
+| `INTERNAL_WALLET` | workspace 잔액 표시 + billable whitelisted |
+| `EXTERNAL_WALLET` | workspace 외부, 잔액 표시 안 함 whitelisted |
+| `UNMANAGED_WALLET` | Fireblocks 가 직접 관리하지 않는 wallet container |
+| `ONE_TIME_ADDRESS` | OTA (Stage 9 의 whitelist 우회 path) |
+| `NETWORK_CONNECTION` | Fireblocks P2P Network counterparty |
+| `FIAT_ACCOUNT` | fiat provider 계좌 |
+
+### NetworkStatus enum (blockchain layer, p.NetworkStatus)
+
+`DROPPED` (mempool 누락) / `BROADCASTING` / `CONFIRMING` / `FAILED` / `CONFIRMED`
+
+→ Stage 9 의 17 primary status 와 다른 plane — **blockchain network 자체의 tx 상태**. DROPPED 는 Fireblocks 의 Failed 상태 의 한 원인 (mempool dropping → tx replay 또는 boost 필요).
+
+### Chain-Specific Blockchain Info (p.BlockchainInfo)
+
+Stage 7 의 chain-specific quirk 가 API contract level 까지 침투:
+
+| Chain | 특이 필드 | 의미 |
+|---|---|---|
+| **HBAR** | `hbarTxHash` | Hedera tx hash |
+| **EVM** | `evmTransferType`: `NATIVE` / `TOKEN` / `INTERNAL` | Stage 7 의 internal tx 정의 cross-ref. TOKEN = log 기반, INTERNAL = trace 기반 |
+| **TON** | `messageComment` (raw payload), `tonTransferType`: `NATIVE` / `JETTON`, `hashes.{externalIncoming, tonTransfer, jettonTransfer}` | TON 의 arbitrary message body 노출 — non-standard format custom parsing 필요 |
+| **CANTON** (★ NEW) | `transactionType`: `OFFER` / `ACCEPT` / `REJECT` / `WITHDRAW` / `PRE_APPROVAL`, `traceableId`, `hashes.*UpdateId` | ★ **2-step transfer protocol** — sender OFFER → recipient ACCEPT/REJECT/WITHDRAW. PRE_APPROVAL = 1-step (Kraken 등 외부 source) |
+| **DOT** | `substrateExtrinsicId` | Polkadot extrinsic ID |
+| **SUI** | `gasUsed` breakdown: `storageCost` / `storageRebate` / `computationCost` / `nonRefundableStorageFee` | Sui 의 storage rebate 모델 |
+
+→ ★ **Canton 의 2-step transfer protocol** 은 Stage 9 의 outgoing tx flow 와 **다른 lifecycle** — Q-2026-05-22-A11 신규 등록.
+
+### Node Routing — NODE_ROUTER vs MEV (★ Stage 36 신규 plane)
+
+`NodeControls.type` enum:
+- `NODE_ROUTER` — customer-provided node 로 라우팅 (Stage 7 Node Router)
+- **`MEV`** — MEV protection routing (Q-2026-05-22-A10 — Flashbots private mempool 추정 미확정)
+
+→ Stage 7 의 Node Router 외에 별개 routing plane. EVM-only로 추정.
+
+### Raw Signing Typed Messages (`raw-signing-objects.md` 4 types)
+
+`UnsignedRawMessage.type` enum:
+- `EIP191` — ETH personal_sign
+- `EIP712` — ETH typed structured data
+- `TIP191` — TRX personal_sign
+- `BTC_MESSAGE` — Bitcoin personal message
+
+→ Stage 5 의 mobile app signing scope (Typed/raw messages) 의 protocol-level enumeration.
+
+### Raw Signing Cold Wallet PreHash (★ Cold Wallet workspace 한정)
+
+`PreHash.hashAlgorithm` 5 종: `SHA256` / `KECCAK256` / `BLAKE2` / `SHA3` / `DOUBLE_SHA256`.
+
+→ Regular workspace 는 PreHash 불요 — Cold Wallet workspace 만 prehash 제공 필수. Stage 14 의 Cold Wallet cluster catalog 와 paired API contract.
+
+### Fee Model — EIP-1559 + Solana Rent (`fee-estimation-objects.md`)
+
+| Asset | Fields |
+|---|---|
+| **UTXO** | `feePerByte` |
+| **EVM** | `gasPrice` / `gasLimit` + EIP-1559: `baseFee` + `priorityFee` |
+| **Solana** | `baseFee` + `priorityFee` + **`rent`** (account creation/storage) |
+| **Other** | `networkFee` |
+
+`EstimatedTransactionFeeResponse`: `low` / `medium` / `high` 3 tier — Stage 9 의 fee level 선택 cross-cut.
+
+### Transaction Authorization (Stage 10 governance API contract)
+
+`transaction-authorization-objects.md` p.AuthorizationInfo:
+
+```
+AuthorizationInfo {
+  allowOperatorAsAuthorizer: bool  ← initiator self-approval 허용?
+  logic: "AND" | "OR"              ← multiple groups 간 logic
+  groups: [{ th: number, users: { userId: ApprovalStatus } }]
+}
+
+ApprovalStatus: "PENDING_AUTHORIZATION" | "APPROVED" | "REJECTED" | "NA"
+```
+
+→ Stage 10 의 user-group N-of-M policy 의 API shape. **logic="OR"** 가 Stage 10 의 1/N OR threshold (Stage 8 across-group) cross-ref.
+
+### Transaction Screening Verdicts (`transaction-screening-objects.md`)
+
+`TravelRuleScreeningResult.verdict`: `ACCEPT` / `REJECT` / `ALERT` / `WAIT` / `FREEZE` / `CANCEL`
+
+→ Stage 9 의 Pending Screening (AML/Travel Rule) 의 verdict enum. **WAIT** / **FREEZE** = manual escalation lane.
+
+## Sources (Stage 36 reference 추가)
+- `2026-05-22__developers-fireblocks-com__reference-transaction-objects.md`, p.1-7 (8 destination types, NetworkStatus, BlockchainInfo, NodeControls)
+- `2026-05-22__developers-fireblocks-com__reference-transaction-authorization-objects.md`, p.1-2 (Authorization data model)
+- `2026-05-22__developers-fireblocks-com__reference-raw-signing-objects.md`, p.1-2 (Typed messages + Cold Wallet PreHash)
+- `2026-05-22__developers-fireblocks-com__reference-transaction-screening-objects.md`, p.1-2 (Travel Rule verdicts)
+- `2026-05-22__developers-fireblocks-com__reference-fee-estimation-objects.md`, p.1-2 (EIP-1559 + Solana rent)
+
+## Stage 36 — Create Transaction API Contract (`create-transactions.md`)
+
+`create-transactions.md` (Stage 36 Mode C, body via curl).
+
+### 7 Operation Types (정식 enumeration)
+
+`operation` body parameter:
+
+| Operation | 용도 | 지원 chain |
+|---|---|---|
+| **TRANSFER** (default) | 자금 이동 | All — UTXO 는 multi-input/output, 그 외는 single source/destination |
+| **CONTRACT_CALL** | EVM smart contract method call | EVM 전반 |
+| **PROGRAM_CALL** | Solana program call | Solana |
+| **TYPED_MESSAGE** | Off-chain typed message signing | EVM (EIP-191 personal / EIP-712 typed), TRX (TIP-191), BTC |
+| **RAW** | Off-chain raw message signing | Any — custom protocol / non-supported chain |
+| **MINT** | Token supply 증가 | Stellar, Ripple, EVM |
+| **BURN** | Token supply 감소 | Stellar, Ripple, EVM |
+
+→ Stage 9 의 transaction state machine 의 input axis. 모든 operation 이 같은 17-status state machine 통과.
+
+### Critical Pattern: externalTxId Idempotency (★)
+
+> "A *critical* practice to avoid processing multiple identical POST transaction requests more than once is to use the `externalTxId` parameter."
+
+- Max 255 chars
+- 같은 `externalTxId` 의 추가 request 는 **Fireblocks 측에서 reject**
+- → Stage 9 의 retry / network failure 시나리오의 **duplicate-spend 방어선**. Idempotency key 의 표준 패턴.
+
+### Optional Parameters (운영 영향 큰 4개)
+
+| Parameter | Default | 효과 |
+|---|---|---|
+| `externalTxId` | none | ★ idempotency key (max 255 chars) |
+| `treatAsGrossAmount` | `false` | `true` 시 network fee 가 requested amount 에서 차감됨. 전체 잔액 송금 시 자동 적용 |
+| `feeLevel` | `MEDIUM` | `LOW` / `MEDIUM` / `HIGH` — ETH / Solana / UTXO 만 지원 |
+| `failOnLowFee` | `false` | `true` + MEDIUM fee 가 acceptable 보다 높을 때 → tx fail (stuck 방지) |
+
+→ `failOnLowFee` = Stage 7 의 EVM nonce 충돌 / BTC 25-chain quirk 의 mitigation 패턴. **Pre-emptive fail > stuck transaction**.
+
+### Source / Destination Combination Matrix
+
+API 가 모든 source/destination 조합 지원:
+- vault account / OTA / internal wallet / external wallet / contract wallet / Network connection / exchange / fiat
+- UTXO assets: **multi-destination 가능** (한 tx 에 N destinations)
+- Account-based: single source + single destination
+
+### extraParameters Object (전용 use case)
+
+- **Raw signing**: `messages` array (UnsignedRawMessage objects) + `algorithm` optional
+- **Contract calls**: `contractCallData` (hex-encoded function call data)
+- **UTXO selection**: `inputsToSpend` / `inputsToExclude` (Stage 9 의 InputsSelection 의 API surface)
+
+→ Stage 9 의 Raw Signing Special Path 의 input format 명확화. `contractCallData` 가 EVM ABI encoding 의 raw bytes.
+
+### Contract Call Pattern (EVM)
+
+```
+operation: CONTRACT_CALL
+assetId: "ETH" (gas asset)
+destination: { type: ONE_TIME_ADDRESS, oneTimeAddress: { address: <contract> } }
+amount: "0" (또는 payable amount)
+extraParameters: { contractCallData: <hex ABI-encoded> }
+```
+
+→ Stage 9 의 dApp Protection (Pending Security Screening) 의 contract simulation 이 본 payload 의 contractCallData 를 parse → vault asset 영향 + final value + fee 표시.
+
+## Sources (Stage 36 create-transactions 추가)
+- `2026-05-22__developers-fireblocks-com__reference-create-transactions.md`, p.1-20 (7 operations, idempotency, optional params, source/dest matrix)

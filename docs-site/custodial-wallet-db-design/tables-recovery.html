@@ -14,6 +14,9 @@
 <div class="layout">
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
 <div class="nav-section">
 <h3 class="nav-section-title">Overview</h3>
 <ul>
@@ -91,8 +94,34 @@
 <main class="content">
 <section id="tables-recovery">
 <h2>13. Recovery Passphrase<span class="g" data-tip="사용자 로그인 password 와 다름. mobile device 의 MPC key share 를 암호화 backup 하는 별도 비밀" tabindex="0">(?)</span> &amp; Workspace<span class="g" data-tip="Fireblocks 의 최상위 격리·거버넌스 단위. 1 workspace = 1 Owner. Slack workspace 와 무관" tabindex="0">(?)</span> Keys Backup</h2>
-<span class="section-subtitle">3 recovery scenarios · 6-file package · 4 secrets · SPOC 경고</span>
-<h3>Recovery Passphrase 의 역할</h3>
+<span class="section-subtitle">3 recovery scenarios · 6-file backup package · 4 secrets · SPOC<span class="g" data-tip="SPOC — Single Point of Compromise. 한 번이라도 노출되면 전체 키가 compromise 된 것으로 간주하는 지점. Fireblocks DR Recovery Utility 가 online machine 에서 실행될 때 정식 SPOC 경고 발동" tabindex="0">(?)</span> 경고</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처 — 어디까지가 Fireblocks 정의이고, 어디부터가 추정인가</div>
+<p>이 페이지의 내용은 두 갈래입니다.</p>
+<p><strong>Fireblocks 공식 문서에 정의된 사실</strong> — 그대로 받아들여도 안전</p>
+<ul style="margin-bottom:0.5rem">
+<li><strong>Recovery passphrase 의 역할</strong>: mobile device 의 MPC key share 를 cloud 에 backup 할 때 암호화하는 비밀. Owner / Admin / Signer 가 initial setup 시 mobile app 에서 필수 생성</li>
+<li><strong>요구사항</strong>: ≥10 chars + ≥1 capital + ≥1 number + ≥1 special. 검증은 mobile client-side</li>
+<li><strong>저장 정책</strong>: <strong>DB 에는 hash 도 저장 안 함</strong> (forbidden storage) — Owner 가 별도 보관</li>
+<li><strong>3 Recovery Scenarios</strong>: Owner key share / Admin·Signer key share (다른 authorized signer 의 passphrase 사용) / Workspace Keys Recovery (full private key 재구성)</li>
+<li><strong>Verify + Periodic Verification</strong>: mobile app 에서 본인 passphrase 검증, 3 회 연속 실패 시 5 분 lockout. 월 1회 알림</li>
+<li><strong>Workspace Keys Backup 의 6 file 구성</strong>: ECDSA 3 + EdDSA 3, mobile share 는 passphrase-encrypted, FB Cloud 2 share 는 RSA-4096-encrypted</li>
+<li><strong>Hosted MPC variant</strong>: Owner mobile + 2 Guard Co-Signer 가 함께 backup 참여 (3-share)</li>
+<li><strong>4 secrets for reconstruction</strong>: Recovery Kit ZIP · RSA private key · Mobile Recovery Passphrase · RSA Private Key Passphrase</li>
+<li><strong>SPOC 경고</strong>: online machine 에서 reconstruction 시 즉시 key compromise — 반드시 offline air-gapped machine 에서만</li>
+<li><strong>Auto-passphrase 옵션</strong>: Enterprise tier, Support enable 필요. mobile 이 secure random passphrase 자동 생성 → 고객 RSA key 로 암호화</li>
+</ul>
+<p style="margin-bottom:0.3rem"><strong>저자가 합리적으로 추정해서 그린 설계</strong> — 참고용, 본인 환경에서 검증 권장</p>
+<ul style="margin-bottom:0">
+<li><code>recovery_events</code> · <code>passphrase_verification_attempts</code> · <code>workspace_keys_backups</code> 3 테이블의 구체 schema (auditdb 위치, 모두 append-only)</li>
+<li><code>recovery_events</code> 의 <code>air_gapped_machine_*_attested</code> 컬럼 — DCAP attestation 으로 offline 기계의 무결성 입증을 schema 에 표현하는 선택</li>
+<li><code>passphrase_verification_attempts</code> 의 3-fail / 5-min lockout 강제는 application layer 에서 처리하고 본 schema 는 attempt 기록만 보관</li>
+<li><code>workspace_keys_backups.passphrase_owner_user_id</code> + <code>rsa_pubkey_fingerprint</code> 가 SaaS vs Hosted variant 구분</li>
+</ul>
+</div>
+
+<h3>Recovery Passphrase — 역할과 위치</h3>
 <p><code>recovery-passphrase.md</code>, p.1 직접 인용:</p>
 <blockquote style="border-left:3px solid var(--border-callout); padding-left:14px; color:var(--text-secondary); font-style:italic">
       "Fireblocks uses the recovery passphrase<span class="g" data-tip="사용자 로그인 password 와 다름. mobile device 의 MPC key share 를 cloud 에 backup 할 때 암호화하는 별도 비밀" tabindex="0">(?)</span> to create an encrypted backup of the mobile device's private key share, which is stored securely in Fireblocks' cloud servers."
@@ -121,7 +150,7 @@
 <li><strong>월 1회 알림</strong>, Owner/Admin/Signer 대상 (iOS 2.5.7+, Android 2.5.2+)</li>
 <li>Owner / Admin 이 workspace<span class="g" data-tip="Fireblocks 의 최상위 격리·거버넌스 단위. 1 workspace = 1 Owner" tabindex="0">(?)</span> audit logs 에서 key share risk status 검토 가능 — log 에 verification 시점 + 정상 verify 여부 포함</li>
 </ul>
-<h3>Workspace Keys Backup (★ 6 files)</h3>
+<h3>Workspace Keys Backup — 6 files 의 구성</h3>
 <p><code>generating-a-workspace-key-backup-package-fireblocks-recovery-utility.md</code> 직접 인용: <em>"The package is composed of six files that contain the following key share components."</em></p>
 
     <pre>Backup Package — 6 encrypted shares:
@@ -135,7 +164,7 @@
       └── FB Cloud share #2   — RSA-4096 encrypted</pre>
 
     <h3>Hosted MPC Backup — 3-share variant</h3>
-<p><code>hosted-mpc-backup-and-recovery.md</code>: SaaS MPC 와 달리 <strong>Owner mobile + 2 Guard Co-Signer</strong> 가 함께 backup 에 참여.</p>
+<p>SaaS MPC 와 달리 <strong>Owner mobile + 2 Guard Co-Signer</strong> 가 함께 backup 에 참여 (Hosted MPC 의 customer-3-share 모델).</p>
 <div class="table-wrap">
 <table>
 <thead><tr><th>Share</th><th>출처</th><th>암호화 방식</th><th>전달 경로</th></tr></thead>
@@ -156,7 +185,7 @@
 <li><strong>RSA Private Key Passphrase</strong></li>
 </ol>
 <div class="callout callout-danger">
-<div class="callout-title">SPOC 경고 (★ Fireblocks 직접 인용)</div>
+<div class="callout-title">⚠️ SPOC 경고 — Fireblocks 직접 인용</div>
 <p><em>"Performing this procedure on an online machine will result in your private key being considered exposed and compromised."</em></p>
 <p>→ DR Recovery Utility 는 <strong>offline air-gapped machine</strong> 에서만 사용. Online 실행 = 즉시 key compromise.</p>
 </div>
@@ -168,44 +197,132 @@
 <li>효과: 사용자 인적 오류 (분실/유출) 제거, 표준화</li>
 <li>Trade-off: 새로운 SPOF = RSA private key 의 안전 보관</li>
 </ul>
-<h3>DB Schema (auditdb, all append-only<span class="g" data-tip="DB 의 추가 전용 규칙. 한 번 들어간 row 는 UPDATE / DELETE 절대 불가. trigger 로 강제" tabindex="0">(?)</span>)</h3>
-    <pre><code>CREATE TABLE recovery_events (
-  id                  BINARY(16) PRIMARY KEY,
-  workspace_id        BINARY(16) NOT NULL,
-  scenario_type       ENUM('owner-key-share', 'admin-signer-key-share', 'workspace-keys-recovery') NOT NULL,
-  initiated_by_user_id BINARY(16) NOT NULL,
-  initiated_at        DATETIME(6) NOT NULL,
-  completed_at        DATETIME(6),                    -- ★ set-once
-  status              ENUM('initiated', 'verifying', 'reconstructed', 'failed', 'aborted') NOT NULL,
-  air_gapped_machine_1_attested BOOLEAN,             -- DCAP attestation evidence
+<h3>DB Schema — auditdb 의 3 append-only 테이블</h3>
+<p>키 material 자체는 forbidden storage 영역이라 DB 에 없고, 복구 절차의 <strong>event 와 attempt 만</strong> audit-grade 로 기록합니다. 모두 별도 <code>auditdb</code> 에 위치 + BEFORE UPDATE/DELETE trigger 로 append-only 강제.</p>
+
+<h4>5.1 <code>recovery_events</code> — 3 scenario 의 복구 시도 이력</h4>
+<pre><code>CREATE TABLE recovery_events (
+  id                            BINARY(16) PRIMARY KEY,
+  workspace_id                  BINARY(16) NOT NULL,
+  scenario_type                 ENUM('owner-key-share','admin-signer-key-share','workspace-keys-recovery') NOT NULL,
+  initiated_by_user_id          BINARY(16) NOT NULL,
+  initiated_at                  DATETIME(6) NOT NULL,
+  completed_at                  DATETIME(6),                  -- ★ set-once
+  status                        ENUM('initiated','verifying','reconstructed','failed','aborted') NOT NULL,
+  air_gapped_machine_1_attested BOOLEAN,                       -- DCAP attestation evidence
   air_gapped_machine_2_attested BOOLEAN,
   KEY (workspace_id, scenario_type)
-);
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>복구 시도 이벤트의 고유 식별자</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16) FK</td><td>복구가 진행되는 workspace</td></tr>
+<tr><td><code>scenario_type</code></td><td>ENUM (3 값)</td><td><strong>owner-key-share</strong> Owner 본인 device 분실 시 / <strong>admin-signer-key-share</strong> Admin·Signer device 분실 시 (다른 authorized signer 의 passphrase 사용) / <strong>workspace-keys-recovery</strong> full private key 재구성</td></tr>
+<tr><td><code>initiated_by_user_id</code></td><td>BINARY(16) FK</td><td>복구 시작한 user. set-once</td></tr>
+<tr><td><code>initiated_at</code></td><td>DATETIME(6)</td><td>복구 시작 시각. set-once</td></tr>
+<tr><td><code>completed_at</code></td><td>DATETIME(6) nullable</td><td>복구 완료 또는 실패 시각. set-once when set</td></tr>
+<tr><td><code>status</code></td><td>ENUM (5 값)</td><td><strong>initiated</strong> 시작 / <strong>verifying</strong> passphrase 검증 중 / <strong>reconstructed</strong> 키 재구성 완료 / <strong>failed</strong> 실패 / <strong>aborted</strong> 사용자 중단</td></tr>
+<tr><td><code>air_gapped_machine_1_attested</code></td><td>BOOLEAN nullable</td><td>workspace-keys-recovery 시 사용된 첫 번째 air-gapped 머신의 무결성 attestation (DCAP / TPM 같은 cryptographic 증명). TRUE = 정상, NULL = 미적용 scenario</td></tr>
+<tr><td><code>air_gapped_machine_2_attested</code></td><td>BOOLEAN nullable</td><td>두 번째 air-gapped 머신 (Hosted MPC 의 download + assembly 분리 요건) 의 attestation</td></tr>
+</tbody>
+</table>
+</div>
 
-CREATE TABLE passphrase_verification_attempts (
-  id                  BINARY(16) PRIMARY KEY,
-  user_id             BINARY(16) NOT NULL,
-  attempt_type        ENUM('verify', 'periodic', 'recovery') NOT NULL,
-  result              ENUM('verified', 'incorrect', 'lockout') NOT NULL,
-  attempted_at        DATETIME(6) NOT NULL,
+<h4>5.2 <code>passphrase_verification_attempts</code> — 검증 시도 이력 (lockout audit)</h4>
+<pre><code>CREATE TABLE passphrase_verification_attempts (
+  id           BINARY(16) PRIMARY KEY,
+  user_id      BINARY(16) NOT NULL,
+  attempt_type ENUM('verify','periodic','recovery') NOT NULL,
+  result       ENUM('verified','incorrect','lockout') NOT NULL,
+  attempted_at DATETIME(6) NOT NULL,
   KEY (user_id, attempted_at)
-);
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>시도 이벤트 식별자</td></tr>
+<tr><td><code>user_id</code></td><td>BINARY(16) FK</td><td>passphrase 를 시도한 user (자기 자신만 시도 가능)</td></tr>
+<tr><td><code>attempt_type</code></td><td>ENUM (3 값)</td><td><strong>verify</strong> 사용자 본인의 자발적 검증 / <strong>periodic</strong> 월 1 회 자동 알림 검증 / <strong>recovery</strong> 실제 복구 시도</td></tr>
+<tr><td><code>result</code></td><td>ENUM (3 값)</td><td><strong>verified</strong> 통과 / <strong>incorrect</strong> 틀린 입력 / <strong>lockout</strong> 3 회 연속 실패로 5 분 lockout 발효 (application layer 가 강제, 본 row 는 그 시점 기록)</td></tr>
+<tr><td><code>attempted_at</code></td><td>DATETIME(6)</td><td>시도 시각</td></tr>
+<tr><td><code>KEY (user_id, attempted_at)</code></td><td>—</td><td>"이 user 의 최근 실패 패턴" 조회 인덱스 — 의심 활동 탐지</td></tr>
+</tbody>
+</table>
+</div>
 
-CREATE TABLE workspace_keys_backups (
-  id                  BINARY(16) PRIMARY KEY,
-  workspace_id        BINARY(16) NOT NULL,
-  variant             ENUM('saas-mpc', 'hosted-mpc') NOT NULL,
-  share_count         INT NOT NULL,                  -- 6 (SaaS) or 3 (Hosted)
-  passphrase_owner_user_id BINARY(16) NOT NULL,      -- 누구의 passphrase 로 암호화
-  rsa_pubkey_fingerprint BINARY(32),                 -- Hosted MPC Guard 의 RSA
-  created_at          DATETIME(6) NOT NULL,
-  superseded_at       DATETIME(6),                    -- Owner transfer 시 파기 결정
-  destroyed_at        DATETIME(6),                    -- 파기 완료
+<h4>5.3 <code>workspace_keys_backups</code> — backup package 메타데이터</h4>
+<pre><code>CREATE TABLE workspace_keys_backups (
+  id                       BINARY(16) PRIMARY KEY,
+  workspace_id             BINARY(16) NOT NULL,
+  variant                  ENUM('saas-mpc','hosted-mpc') NOT NULL,
+  share_count              INT NOT NULL,                    -- 6 (SaaS) or 3 (Hosted)
+  passphrase_owner_user_id BINARY(16) NOT NULL,             -- 누구의 passphrase 로 암호화
+  rsa_pubkey_fingerprint   BINARY(32),                       -- Hosted MPC Guard 의 RSA
+  created_by               BINARY(16) NOT NULL,
+  created_at               DATETIME(6) NOT NULL,
+  superseded_at            DATETIME(6),                      -- Owner transfer 시 파기 결정
+  destroyed_at             DATETIME(6),                      -- 파기 완료
   KEY (workspace_id)
 );
 
 -- ★ Forbidden columns 의 ABSENCE 가 schema 자체로 보이도록 audit
 -- 절대 추가 X: passphrase_plaintext, passphrase_hash, rsa_private_key, backup_blob_plaintext</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>backup package 의 고유 식별자</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16) FK</td><td>이 backup 이 속한 workspace</td></tr>
+<tr><td><code>variant</code></td><td>ENUM (2 값)</td><td><strong>saas-mpc</strong> 기본 SaaS MPC (mobile + 2 FB Cloud) / <strong>hosted-mpc</strong> customer 가 3 share 전부 보유</td></tr>
+<tr><td><code>share_count</code></td><td>INT</td><td>backup 의 file 수 — SaaS 는 6 (ECDSA 3 + EdDSA 3), Hosted 는 3</td></tr>
+<tr><td><code>passphrase_owner_user_id</code></td><td>BINARY(16) FK</td><td>이 backup 의 mobile share 를 암호화한 passphrase 의 소유 user</td></tr>
+<tr><td><code>rsa_pubkey_fingerprint</code></td><td>BINARY(32) nullable</td><td>Hosted MPC 의 경우 Guard share 를 암호화한 customer RSA pubkey 의 SHA-256 지문. SaaS variant 는 NULL</td></tr>
+<tr><td><code>created_by</code></td><td>BINARY(16)</td><td>backup 생성을 trigger 한 user (보통 Owner). set-once</td></tr>
+<tr><td><code>created_at</code></td><td>DATETIME(6)</td><td>backup 생성 시각. set-once</td></tr>
+<tr><td><code>superseded_at</code></td><td>DATETIME(6) nullable</td><td>Owner transfer 등으로 이 backup 이 무효화된 시각. NULL = 현재 활성</td></tr>
+<tr><td><code>destroyed_at</code></td><td>DATETIME(6) nullable</td><td>backup file 들이 실제로 파기 완료된 시각. superseded 와 분리 — supersede 결정 후 실제 파기까지의 시간차 audit</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Putting It Together — Recovery 시퀀스</h3>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Owner as 👤 Owner<br/>(device 분실 후)
+  participant Console as 🖥️ Fireblocks Console
+  participant FB as 🛡️ Fireblocks Core
+  participant New_M as 📱 신규 mobile<br/>(또는 air-gapped 머신)
+  participant Audit as 📋 auditdb<br/>(recovery_events)
+
+  Owner->>Console: "Workspace Keys Recovery" 시작
+  Console->>FB: recovery_events INSERT<br/>(scenario_type='workspace-keys-recovery', status='initiated')
+
+  Note over Owner,FB: ① 4 secrets 확보<br/>1. Recovery Kit ZIP (6-file backup package)<br/>2. RSA private key (Guard share 복호화용)<br/>3. Mobile App Recovery Passphrase<br/>4. RSA Private Key Passphrase
+
+  Owner->>New_M: air-gapped machine #1 에서 Recovery Kit ZIP 다운로드
+  Note over New_M: ⚠️ online machine 에서 실행하면<br/>키 즉시 compromise (SPOC)
+
+  Owner->>New_M: air-gapped machine #2 로 ZIP 이동 (USB 등)<br/>+ RSA private key 입력
+  New_M->>New_M: Guard share (RSA-encrypted) 복호화
+  New_M->>New_M: Mobile share (passphrase-encrypted) 복호화 with Mobile Passphrase
+  New_M->>New_M: 6 share 조합 → full private key 재구성
+
+  Console->>FB: recovery_events UPDATE status='reconstructed',<br/>air_gapped_machine_1_attested + air_gapped_machine_2_attested SET
+  FB->>Audit: event 기록 (append-only)
+
+  Note over Owner,FB: ② 신규 mobile 등록 + 새 MPC ceremony<br/>(이전 share 는 폐기되고 새 share set 발급)
+  Owner->>Console: 신규 device enrollment
+  Console->>FB: key_lifecycle INSERT<br/>(event_type='re-enrolled', source_aggregate='workspace-recovery')
+
+  Console->>Owner: 복구 완료 — 자산 접근 가능
+</pre>
+<span class="diagram-caption">Figure 29. Workspace Keys Recovery — Owner 의 device 분실 시 full private key 재구성. 핵심 안전 장치: ① <strong>4 secrets 가 동시에 필요</strong> — Recovery Kit ZIP + RSA private key + Mobile Passphrase + RSA Passphrase. 하나라도 없으면 복구 불가 (그래서 평소 분리 보관 중요). ② <strong>반드시 offline air-gapped machine 2 대</strong> 에서만 진행 — 1 대는 download, 1 대는 assembly. SPOC 경고: online machine 에서 실행하면 그 순간 키가 compromise 된 것으로 간주. ③ schema 측은 키 material 을 절대 저장하지 않고 <code>recovery_events</code> 의 attestation 컬럼 (<code>air_gapped_machine_*_attested</code>) 으로 "정말 offline 환경이었나" 의 cryptographic 증거 (DCAP / TPM) 만 기록. ④ 복구 완료 후에는 신규 mobile 에서 새 MPC share ceremony 가 일어나고 <code>key_lifecycle</code> 에 're-enrolled' event 가 append-only 로 기록.</span>
+</div>
   </section>
 <nav aria-label="Section navigation" class="page-nav">
 <a class="page-nav-link page-nav-prev" href="tables-signer.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">11. Cosigner<span class="g" data-tip="자동 서명 컴포넌트. Mobile Cosigner (사용자 device) / API Cosigner (customer server) / Fireblocks Cloud Cosigner (Azure SGX)" tabindex="0">(?)</span> · Callback</span></a>

@@ -19,9 +19,26 @@
 - `tabindex="0"` — 키보드 포커스 가능 (접근성)
 - 본문 단어 바로 뒤에 inline 으로 부착
 
+### Page-wide consistency — 새 tooltip 추가 시 같은 용어 전수 sweep 필수
+
+용어를 본문 어딘가에 풀이하거나 tooltip 을 새로 붙일 때, **그 용어가 같은 페이지의 다른 곳 (특히 상단 출처 callout / 한눈 비교 표 / 다이어그램 caption 등 reader 가 본문보다 먼저 만나는 위치) 에 처리되지 않은 채 남아 있는지 반드시 grep** 해야 한다.
+
+**왜** — 본문에서 풀이를 봤더라도 reader 가 페이지를 위에서 아래로 순서대로 읽기 시작하는 경우, **상단 callout 의 같은 용어가 acronym 만으로 노출되어 있으면 그 시점에 막힘**. 본문에 도달하기 전에 이미 신뢰가 깨짐.
+
+**적용 패턴**:
+1. 본문에 용어 풀이 / tooltip 추가 직후 `grep -n "<용어>"` 로 같은 페이지의 다른 occurrence 점검
+2. 다른 곳에 동일 용어가 있으면 모두 같은 tooltip 텍스트 부착 (검색 가능성 + 일관성)
+3. 특히 점검 우선순위:
+   - 페이지 상단 출처 callout (가장 먼저 읽힘)
+   - 비교 / 요약 표 (본문보다 먼저 읽는 경우 많음)
+   - 다이어그램의 caption
+   - 섹션 heading
+
+이 룰은 [site-template](site-template-custodial-db.md) 의 tooltip 사전과 함께 쓰임 — 새 용어를 처음 풀이할 때 사전에도 추가하면 다음 페이지에서 같은 용어가 등장할 때 일관 적용 가능.
+
 ## 한국어 어휘 매핑 (자주 쓰는 정정)
 
-| 영어 직역 (X) | 자연스러운 한국어 (O) |
+| 정정 대상 (영어 jargon / 한자어 / 격식어) | 자연스러운 한국어 |
 |---|---|
 | 운영 동사 | 운영 액션 |
 | chain-specific quirk | chain 별 특이 제약 |
@@ -32,6 +49,10 @@
 | stuck | 멈춤 |
 | reorg | reorg (블록 재구성) — 영문은 처음 등장 시만 |
 | webhook delivery 추적 | 알림 도착 추적 |
+| 불요 (한자어) | 필요 없음 / 없이 진행 / 없음 — 문맥에 맞게 |
+| 발효 (한자어) | 적용 / 효력 발생 — 법률/정책 맥락이라도 평이한 한글로 |
+| 함의 (한자어) | 미치는 영향 / 운영상 의미 / 시사하는 것 — 학술적 표현 회피 |
+| SOP | 운영 절차 (체크리스트) — Standard Operating Procedure 의 약어, 일반 독자에게 낯섦 |
 | set-once | set-once — schema discipline marker 라 영문 유지 |
 | append-only | append-only — 동일 |
 | FK / PK | FK / PK — 자료형 컬럼에서 약어 OK |

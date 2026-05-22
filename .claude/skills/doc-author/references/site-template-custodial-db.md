@@ -99,6 +99,22 @@
 | append-only | DB 의 추가 전용 규칙. 한 번 들어간 row 는 UPDATE / DELETE 절대 불가. trigger 로 강제 |
 | set-once | DB 컬럼의 1회만 set 규칙. NULL → 값 1 회만 허용, 이후 변경 금지. trigger 로 강제 |
 | CBOR | Concise Binary Object Representation. JSON 과 비슷한 데이터 구조의 binary 표현. 크기 작고 byte-deterministic |
+| TOTP | Time-based One-Time Password. authenticator app 이 30 초마다 생성하는 6 자리 코드 |
+| FIDO2 | Fast IDentity Online 2. password 자체를 없애는 인증 표준. 보안 키 (YubiKey 등) 또는 기기 내장 인증기로 로컬 private key 서명. phishing 방어 강력 |
+| WebAuthn | Web Authentication. W3C 표준. 브라우저에서 FIDO2 보안 키 또는 기기 내장 인증기 (지문/Face ID) 로 password 없이 로그인 |
+| HSM | Hardware Security Module. 암호 키를 plaintext 로 노출하지 않는 전용 보안 하드웨어. wrap 된 key 만 외부로 나옴 |
+| X.509 | 공개키 인증서 표준 형식. CSR 으로 발급받아 서버-클라이언트 신원 검증에 사용 |
+| OAuth 2.0 | 권한 위임 표준. 외부 앱이 사용자 대신 리소스 접근하는 토큰 발급 프로토콜. 로그인 인증에도 사용 |
+| SAML | Security Assertion Markup Language. SSO 의 XML 기반 표준. assertion 으로 사용자 속성 전달 |
+| OIDC | OpenID Connect. OAuth 2.0 위에 얹은 신원 검증 layer. JWT 기반 ID token 발급 |
+| ADFS | Active Directory Federation Services. Microsoft 의 SAML 기반 SSO 서버 |
+| LDAP | Lightweight Directory Access Protocol. 사내 디렉토리 접근 표준. AD 의 기반 프로토콜 |
+| CIDR | Classless Inter-Domain Routing. IP 주소 + prefix 길이로 범위 표현. /32 = single IP |
+| RPC | Remote Procedure Call. blockchain node 가 노출하는 외부 호출 API |
+| ERD | Entity-Relationship Diagram. 데이터베이스 테이블과 그 사이 외래키 관계를 한 장에 시각화한 도식 |
+| Unanimous-Veto | 다수결이 아니라 만장일치 필수. N 명 중 1 명이라도 거부하면 즉시 전체 REJECTED. 한 명의 거부권이 다수 찬성을 무효화 — Fireblocks 의 안전망 설계 |
+| SPOC | SPOC — Single Point of Compromise. 한 번이라도 노출되면 전체 키가 compromise 된 것으로 간주하는 지점. Fireblocks DR Recovery Utility 가 online machine 에서 실행될 때 정식 SPOC 경고 발동 |
+| counterparty registry | 외부 거래 상대방 등록부 — 송금 destination 으로 사용 가능한 외부 wallet 주소 / 거래소 계좌 / fiat 은행 / Fireblocks P2P Network 의 다른 고객사 등을 Admin Quorum 승인으로 사전 등록한 화이트리스트. providerdb (AML provider · IdP 같은 infrastructure vendor) 와 구분 — counterparty 는 자산이 실제 흘러가는 business-level 외부 |
 
 같은 용어에 다른 tooltip 을 쓰지 말 것 (검색/일관성).
 

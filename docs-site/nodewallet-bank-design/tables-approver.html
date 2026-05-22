@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>4. approverdb — NodeWallet 은행 도입</title>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. 컴포넌트 토폴로지</a></li>
+<li><a href="trust-boundaries.html">2. 신뢰 경계</a></li>
+<li><a href="db-split.html">3. 4-DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. DB Schema</h3>
+<ul>
+<li><a class="active" href="tables-approver.html">4. approverdb</a></li>
+<li><a href="tables-audit.html">5. auditdb</a></li>
+<li><a href="tables-ledger-chain.html">6. ledgerdb · chaindb</a></li>
+<li><a href="tables-tenant-wallet.html">7. 테넌트 · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Cryptography</h3>
+<ul><li><a href="keys-hsm-tee.html">8. HSM · SGX · 키 수명주기</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Policy &amp; Decisions</h3>
+<ul>
+<li><a href="policy-rules.html">9. 10 Policy Rules</a></li>
+<li><a href="sm-decision.html">10. 결정 라이프사이클</a></li>
+<li><a href="sm-signing.html">11. 3-key 서명 흐름</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Transactions &amp; Audit</h3>
+<ul>
+<li><a href="sm-deposit-withdrawal.html">12. 입금 · 출금 흐름</a></li>
+<li><a href="audit-2layer.html">13. 2-Layer 감사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Compliance</h3>
+<ul><li><a href="compliance-regulations.html">14. 5 규제 + 트래블룰</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Discipline</h3>
+<ul>
+<li><a href="storage-discipline.html">15. Storage Discipline</a></li>
+<li><a href="risks-anti-patterns.html">16. Risks &amp; Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="tables-approver">
+<h2>4. approverdb (정책 · 결정)</h2>
+<span class="section-subtitle">8 표 + 1 멱등성 표 + 1 변경 로그 = 모든 정책 작업의 영속화 단위</span>
+
+<div class="callout">
+<div class="callout-title">출처</div>
+<p><code>pm-db-design-notes.md</code> §1.2 (테이블 enumeration), <code>compliance__architecture.md</code> §데이터 모델, <code>compliance__decision-lifecycle.md</code> (sticky decision + set-once).</p>
+</div>
+
+<h3>10 표 한눈 보기</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>표</th><th>용도</th><th>mutability</th><th>주요 컬럼 (식별 가능 범위)</th></tr></thead>
+<tbody>
+<tr><td><code>policy_rules</code></td><td>활성 정책 규칙 (10종)</td><td>admin mutable + change-logged</td><td>rule_type · flow_type · mint · priority · config(JSON) · active</td></tr>
+<tr><td><code>policy_decisions</code></td><td>모든 평가 결과 + 해시체인</td><td>append-only (<code>prevent_mutation()</code>)</td><td>request_id · verdict · triggered_rules · auth_approver_sig · auth_approver_pubkey · decided_at · prev_hash</td></tr>
+<tr><td><code>held_deposits</code></td><td>Held 큐 — 입금 후 스윕 대상</td><td>결정 컬럼 set-once · payload 컬럼 immutable</td><td>request_id · payload · decision (HELD→AUTO_APPROVE/DENY) · auth_approver_sig · reason · age_started_at</td></tr>
+<tr><td><code>held_withdrawals</code></td><td>Held 큐 — 출금 대상</td><td>동일 (set-once)</td><td>동일 + amount · destination · mint</td></tr>
+<tr><td><code>velocity_windows</code></td><td><code>velocity_window</code> 룰용 슬라이딩 윈도우 카운터</td><td>insert-only</td><td>account_id · mint · ts · amount · counter_window_seconds</td></tr>
+<tr><td><code>address_first_use</code></td><td><code>address_cooldown</code> 룰용 최초사용 시각</td><td>insert-only</td><td>account_id · destination · first_seen_at</td></tr>
+<tr><td><code>condition_sets</code></td><td>address group (whitelist/blacklist 컨테이너) — <code>address_list</code>/<code>expression</code> 룰이 참조</td><td>admin mutable + change-logged</td><td>id · name · set_type(whitelist/blacklist) · description</td></tr>
+<tr><td><code>condition_set_items</code></td><td>condition_set 안의 개별 주소</td><td>admin mutable + change-logged</td><td>condition_set_id · value · label</td></tr>
+<tr><td><code>policy_change_log</code></td><td>규칙 변경 감사 로그</td><td>append-only</td><td>action(CREATE/UPDATE/DELETE) · created_by · old_data · new_data · changed_at</td></tr>
+<tr><td><code>initiator_nonce_seen</code></td><td>멱등성 — (initiator_pubkey, nonce) PK</td><td>insert-only</td><td>initiator_pubkey · nonce · seen_at · request_id</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>policy_rules — 규칙 schema</h3>
+<p>모든 규칙은 다음 모양 (source: <code>pm-db-design-notes.md</code> §5):</p>
+<pre><code>{
+  "rule_type": "&lt;10종 중 하나&gt;",
+  "flow_type": "withdrawal" | "transfer" | "deposit",
+  "mint": "&lt;NATIVE_SOL or SPL mint&gt;" | "*",
+  "priority": &lt;integer&gt;,
+  "config": { /* rule-specific JSON */ }
+}</code></pre>
+<p class="hint"><code>config</code> 는 rule_type 별로 schema 가 다르다. 자세히는 <a href="policy-rules.html">9. 10 Policy Rules</a> 페이지.</p>
+
+<h3>policy_decisions — append-only 해시체인</h3>
+<p>모든 평가 결과는 <code>policy_decisions</code> 에 INSERT 되며, <code>prev_hash</code> 로 해시체인을 형성한다. <code>prevent_mutation()</code> trigger 가 UPDATE/DELETE 를 raise — superuser 가 아닌 application user 권한으로는 우회 불가 (source: <code>pm-db-design-notes.md</code>).</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>컬럼</th><th>의미</th></tr></thead>
+<tbody>
+<tr><td><code>request_id</code></td><td>요청 UUID — cross-DB join key</td></tr>
+<tr><td><code>verdict</code></td><td>AUTO_APPROVE / REJECT / HELD (★ enum 정확 명칭 docs 단편 — wire 에서는 "AutoApprove")</td></tr>
+<tr><td><code>triggered_rules</code></td><td>위반 규칙 list (JSON array) — Deny 시 충전 (예: <code>[{"rule_name": "address_list"}]</code>)</td></tr>
+<tr><td><code>auth_approver_sig</code></td><td><strong>set-once</strong> — 승인 키의 Ed25519 서명. INSERT 후 UPDATE 불가.</td></tr>
+<tr><td><code>auth_approver_pubkey</code></td><td><strong>set-once</strong> — 서명 검증용 공개키</td></tr>
+<tr><td><code>decided_at</code></td><td>결정 시각 (트래블룰 보고서용)</td></tr>
+<tr><td><code>prev_hash</code></td><td>이전 행의 hash — SHA-256 chain</td></tr>
+<tr><td><code>hash</code></td><td>이 행의 hash (= SHA256(prev_hash ‖ 다른 컬럼들))</td></tr>
+<tr><td><code>amount</code> / <code>mint</code></td><td>트래블룰 리포트 export 용 (source: <code>compliance__regulations__travel-rule.md</code>)</td></tr>
+</tbody>
+</table>
+</div>
+<p class="hint">★ 모든 컬럼 정확 명세는 vendor docs 단편 (예: <code>auth_approver_sig</code> 만 명시). 위 컬럼명은 docs 에 나온 식별자를 그대로 사용하고, 그 밖은 ★ Hypothesis.</p>
+
+<h3>held_* — set-once 강제</h3>
+<p>두 표 (<code>held_deposits</code> / <code>held_withdrawals</code>) 의 공통 구조 — Held 의 자동 결정 보류 큐:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>컬럼</th><th>규칙</th></tr></thead>
+<tbody>
+<tr><td><code>decision</code></td><td>HELD → AUTO_APPROVE 또는 DENY 로 단방향 전환 (sticky). 같은 행에 두 번째 INSERT 시도 불가, 다른 값으로의 UPDATE 불가 — trigger 강제.</td></tr>
+<tr><td><code>auth_approver_sig</code></td><td>set-once. <code>decision = AUTO_APPROVE</code> 가 set 되는 동일 트랜잭션 안에만 INSERT 가능.</td></tr>
+<tr><td><code>auth_approver_pubkey</code></td><td>set-once. 동일.</td></tr>
+<tr><td>payload (request 의 amount/destination/mint)</td><td>immutable — 처음 INSERT 후 변경 불가.</td></tr>
+<tr><td><code>age_started_at</code></td><td>최초 Held 시각 — 24h TTL 계산 기준.</td></tr>
+<tr><td><code>reason</code></td><td>Held 사유 (예: <code>"requires single-operator approval"</code>).</td></tr>
+</tbody>
+</table>
+</div>
+<p class="hint">★ 24h 가 hardcode 인 것은 <code>compliance__decision-lifecycle.md</code> 에 명시 ("폴링은 기본 24시간까지"). 테넌트별로 다르게 두려면 product extension 필요.</p>
+
+<h3>velocity_windows — 슬라이딩 윈도우</h3>
+<p><code>velocity_window</code> 룰이 사용하는 카운터. INSERT-only 로 매 거래 증분을 기록하고, 평가 시 윈도우 안의 row 만 합산 (source: <code>pm-db-design-notes.md</code> §1.2).</p>
+<pre><code>-- ★ 추정 schema (docs 미명시 세부)
+CREATE TABLE velocity_windows (
+  id            BIGSERIAL PRIMARY KEY,
+  tenant_id     UUID NOT NULL,
+  account_id    UUID NOT NULL,
+  mint          TEXT NOT NULL,
+  ts            TIMESTAMPTZ NOT NULL,
+  amount        BIGINT NOT NULL,   -- lamports
+  request_id    UUID NOT NULL
+);
+-- 평가는 (account_id, mint, ts &gt;= now() - INTERVAL '&lt;window_seconds&gt; sec') 합산
+-- INSERT-only — prevent_mutation 트리거</code></pre>
+
+<h3>address_first_use — 쿨다운 trigger</h3>
+<p><code>address_cooldown</code> 룰이 "이 destination 이 최초인지 + 마지막 사용 후 얼마나 지났는지" 를 본다. INSERT-only.</p>
+<pre><code>-- ★ 추정 schema
+CREATE TABLE address_first_use (
+  account_id     UUID NOT NULL,
+  destination    TEXT NOT NULL,
+  first_seen_at  TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (account_id, destination)
+);</code></pre>
+
+<h3>condition_sets · condition_set_items</h3>
+<p>VASP 화이트리스트 / 블랙리스트 / address group 의 컨테이너 + 멤버. <code>address_list</code> 룰의 <code>config.condition_set_id</code> 가 이 표를 참조. admin 가능, 변경은 <code>policy_change_log</code> 에 기록.</p>
+<pre><code>-- 출처: compliance__regulations__travel-rule.md 의 INSERT 예시
+INSERT INTO condition_sets (id, name, set_type, description) VALUES
+  ('vasp-allowlist-kr', 'vasp_allowlist_kr', 'whitelist',
+   '한국 인가 VASP hot wallets — 2026-05-01 import');
+
+INSERT INTO condition_set_items (condition_set_id, value, label) VALUES
+  ('vasp-allowlist-kr', 'UpbitHot1...', 'Upbit hot wallet'),
+  ('vasp-allowlist-kr', 'BithumbHot1...', 'Bithumb hot wallet');</code></pre>
+
+<h3>policy_change_log — 누가 언제 무엇을 바꿨는가</h3>
+<p>모든 <code>policy_rules</code> · <code>condition_sets</code> · <code>condition_set_items</code> 변경이 trigger 로 자동 INSERT 된다 (append-only). 외부 의식으로 Held 를 해소하는 패턴 (예: <code>approval_tier</code> 를 임시 AUTO 로 → 폴링 통과 → 원복) 에서 변경 증거가 영구히 남는 핵심 표.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>컬럼</th><th>의미</th></tr></thead>
+<tbody>
+<tr><td><code>action</code></td><td>CREATE / UPDATE / DELETE</td></tr>
+<tr><td><code>created_by</code></td><td>변경 주체 (운영자 ID)</td></tr>
+<tr><td><code>old_data</code> / <code>new_data</code></td><td>변경 전/후 JSON</td></tr>
+<tr><td><code>changed_at</code></td><td>변경 시각</td></tr>
+<tr><td><code>table_name</code> / <code>row_id</code></td><td>★ 어느 표의 어느 행이 바뀌었는지</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>initiator_nonce_seen — 멱등성</h3>
+<p>(initiator_pubkey, nonce) 를 unique key 로 가지는 표. 매 요청의 첫 진입에서 INSERT 시도 → unique violation 이면 중복 요청으로 거부. SDK 가 강제하는 <code>reference_id</code> 가 이 nonce 와 매핑 (★ Hypothesis — 정확 매핑 docs 미명시).</p>
+
+<h3>ERD<span class="g" data-tip="Entity-Relationship Diagram. 테이블과 외래키 관계를 시각화한 도식" tabindex="0">(?)</span> — approverdb</h3>
+<div class="diagram">
+<pre class="mermaid">
+erDiagram
+  policy_rules ||--o{ policy_change_log : "변경 자동 기록"
+  condition_sets ||--o{ condition_set_items : "contains"
+  policy_rules }o--o{ condition_sets : "address_list/expression refers"
+  policy_decisions ||--|| held_withdrawals : "AUTO_APPROVE 해소 시 set-once join"
+  policy_decisions ||--|| held_deposits : "AUTO_APPROVE 해소 시 set-once join"
+  initiator_nonce_seen ||--|| policy_decisions : "request_id by (initiator_pubkey, nonce)"
+  policy_decisions }o--|| velocity_windows : "evaluation reads"
+  policy_decisions }o--|| address_first_use : "evaluation reads"
+</pre>
+</div>
+<p class="diagram-caption">approverdb 안의 10 표 관계 — 정책 정의 (rules + condition_sets) · 결정 사슬 (decisions + held_*) · 평가 카운터 (velocity + address_first_use) · 변경 로그 · 멱등성. 모든 mutable 변경은 policy_change_log 에 자동 trigger.</p>
+
+<h3>은행 도입 시 결정해야 할 것</h3>
+<ul>
+<li><strong>parition strategy</strong> — <code>policy_decisions</code> · <code>velocity_windows</code> 는 monotone 증가 — 시간 partition (일/월) + 오래된 partition 의 cold archive 정책.</li>
+<li><strong>24h Held TTL</strong> — hardcode. 영업일 기준으로 동작하려면 운영팀이 영업종료 직전 Held 가 24h 후 (다음 영업일) DENY 처리되는 것을 인지해야 한다.</li>
+<li><strong><code>policy_change_log</code> retention</strong> — VACPA 등 한국 규제는 거래 기록 5년 보존 등 요건이 있다. 변경 로그는 audit table 과 함께 동일/장기 retention 권장.</li>
+<li><strong>condition_set 큐레이션 절차</strong> — VASP 주소 import 는 외부 데이터 (소스: <code>aml-sanctions-coverage.md</code> internal) 의존. 큐레이션 sources 와 import 주기를 운영팀이 정해야 한다.</li>
+</ul>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="db-split.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">3. 4-DB 분할</span></a>
+<a class="page-nav-link page-nav-next" href="tables-audit.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">5. auditdb</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -14,6 +14,9 @@
 <div class="layout">
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
 <div class="nav-section">
 <h3 class="nav-section-title">Overview</h3>
 <ul>
@@ -91,7 +94,28 @@
 <main class="content">
 <section id="anti-patterns">
 <h2>26. Anti-patterns</h2>
-<span class="section-subtitle">발견 즉시 immediate stop</span>
+<span class="section-subtitle">발견 즉시 immediate stop — 17 가지 anti-pattern 카탈로그</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처 — 무엇을 하지 말아야 하는가</div>
+<p>이 페이지는 본 docs-site 의 다른 페이지들이 정의한 규약을 거꾸로 뒤집은 <strong>"하면 안 되는 것" 목록</strong>입니다. 각 anti-pattern 은 본 docs-site 내 다른 페이지의 invariant 위반에 해당합니다.</p>
+<p style="margin-bottom:0.3rem"><strong>Fireblocks 공식 문서에서 직접 명시된 anti-pattern</strong> — 그대로 받아들여도 안전</p>
+<ul style="margin-bottom:0.5rem">
+<li><strong>Online machine 에서 Workspace Keys Recovery 실행</strong> — Fireblocks 의 SPOC<span class="g" data-tip="SPOC — Single Point of Compromise. 한 번이라도 노출되면 전체 키가 compromise 된 것으로 간주하는 지점. Fireblocks DR Recovery Utility 가 online machine 에서 실행될 때 정식 SPOC 경고 발동" tabindex="0">(?)</span> 경고에 명시: <em>"considered exposed and compromised"</em></li>
+<li><strong>Forbidden storage 위반</strong> — private key / MPC share / recovery passphrase 의 plaintext 저장 (Fireblocks 의 forbidden storage 정책)</li>
+<li><strong>Recovery passphrase hash 저장</strong> — passphrase 자체가 forbidden, hash 도 brute-force 가능성</li>
+</ul>
+<p style="margin-bottom:0.3rem"><strong>본 docs-site 의 invariant 에서 도출된 anti-pattern</strong> — 우리 schema 규약의 위반 케이스</p>
+<ul style="margin-bottom:0">
+<li><strong>Append-only 위반</strong>: audit_events / signing_events / chain_events 같은 append-only 테이블의 UPDATE/DELETE — <a href="storage-discipline.html">24. Storage Discipline</a> 의 핵심 invariant 위반</li>
+<li><strong>Set-once 위반</strong>: transactions.tx_hash · approval_decisions.verdict · raw_payload_cbor 의 사후 변경 — set-once 컬럼 규약 위반</li>
+<li><strong>Mutable identity</strong>: workspaces.owner_user_id · users.role 같은 identity-grade 컬럼을 history 없이 mutable 로 두는 패턴</li>
+<li><strong>governance separation 우회</strong>: Console 에 자체 "approve" 버튼 추가 같은 Owner/Quorum 흐름 우회</li>
+<li><strong>checkpoint 약화</strong>: SGX/TEE 없는 단순 SHA-256 checkpoint (운영자가 재계산 가능)</li>
+<li><strong>권한 분리 위반</strong>: Reconciliation Service 에 write 권한 부여</li>
+</ul>
+</div>
+
 <div class="callout callout-danger">
 <div class="callout-title">절대 안 되는 5 가지 storage 오류</div>
 <ol>
@@ -114,6 +138,13 @@
 <tr><td>음수 balance 허용</td><td>overdraft = architectural violation</td></tr>
 <tr><td><code>transactions.raw_payload_cbor</code> UPDATE</td><td>서명된 payload 변조 — TEE<span class="g" data-tip="Trusted Execution Environment. SGX 같은 봉인된 실행 환경의 일반 용어" tabindex="0">(?)</span> / SGX<span class="g" data-tip="Intel Software Guard Extensions. CPU 안의 봉인된 메모리 영역 (enclave). OS 나 hypervisor 도 그 안을 들여다볼 수 없음" tabindex="0">(?)</span> 의 의미 무력화</td></tr>
 <tr><td><code>transactions.tx_hash</code> mutable</td><td>chain ↔ DB binding 깨짐</td></tr>
+<tr><td><code>transactions.chain_nonce</code> UPDATE (broadcast 후)</td><td>EVM nonce 는 broadcast 시점에 set-once. RBF / Boost / Drop 는 같은 nonce 유지가 핵심 (nonce 변경 시 별도 tx 로 mempool 누적, "drop" 의미 상실)</td></tr>
+<tr><td><code>transactions.parent_tx_id</code> UPDATE (Canton)</td><td>OFFER → ACCEPT/REJECT/WITHDRAW 의 linking 이 사후 변경되면 audit trail 손상</td></tr>
+<tr><td><code>transactions.external_tx_id</code> UNIQUE 위반</td><td>idempotency key 의 의미 무력화 — duplicate-spend 방어선 붕괴</td></tr>
+<tr><td><code>asset_wallet_public_keys.public_key</code> UPDATE</td><td>asset_wallet 의 root key 가 사후 변경되면 그 wallet 의 모든 derived address 무효화. set-once 필수</td></tr>
+<tr><td><code>unspent_inputs.status</code> 의 spent → unconfirmed 역행</td><td>UTXO state machine 위반. spent 후 reorg 시 별도 row INSERT 로 처리 (기존 row UPDATE 금지)</td></tr>
+<tr><td><code>transaction_destinations</code> 의 row 변경/삭제</td><td>multi-destination tx 의 분배 결정 변경 = 자금 흐름 위조. append-only</td></tr>
+<tr><td><code>network_connections.approved_at</code> UPDATE</td><td>counterparty approval 시점 위변조 — legal counterparty 책임 추적 깨짐</td></tr>
 <tr><td><code>approval_decisions.verdict</code> UPDATE</td><td>사후 verdict 변경 = policy engine 무력화</td></tr>
 <tr><td><code>signing_events</code> 의 partial_sig_hash mutable</td><td>사후 재서명 가능 — zero-trust<span class="g" data-tip="모든 service handoff 마다 derived cert 로 다시 검증. internal network 라도 신뢰 안 함" tabindex="0">(?)</span> 무력화</td></tr>
 <tr><td>Console 에 "approve" 버튼 추가 (정책 우회)</td><td>governance separation 무력화 — Owner / Quorum 흐름 우회</td></tr>

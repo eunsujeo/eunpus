@@ -134,4 +134,32 @@ scripts/check-consistency.py 가 사후 검증 (잔존 `&gt;` / `&amp;` / `</br>
 <p>시각화는 <a href="other-page.html#section">X. Y 페이지</a> 의 "Z" 절 참조.</p>
 ```
 
+## Cross-cutting cluster — ERD + 시퀀스 다이어그램 권장
+
+2 개 이상의 페이지가 도메인 cluster 를 이루고 다음 조건 중 하나를 만족하면, 단순 cross-ref 만으로는 부족하고 **통합 도식 (ERD + 시퀀스)** 을 적극 권장:
+
+- 두 페이지 schema 의 FK 가 5 개 이상 cross-cut
+- 동일 lifecycle event 가 양쪽 페이지의 schema 를 동시에 건드림 (예: API user 추가가 users + api_keys + csrs + admin_quorums 4 테이블에 동시 작동)
+- reader 가 자기 시스템에 mapping 하려면 두 페이지를 머릿속에서 합성해야 함
+
+### 패턴
+
+1. **ERD (Entity-Relationship Diagram) 1 장** — cluster 의 모든 테이블 + 외부 참조 1 회로 묶음. mermaid `flowchart TB` + subgraph (페이지 별 그룹) + classDef 색 분리 (외부 참조 / 도메인 A / 도메인 B / append-only 이력)
+2. **시퀀스 다이어그램 N 개** — cluster 의 대표 운영 흐름 (보통 2~3 개). mermaid `sequenceDiagram` + `autonumber` + `alt/else` 분기 + Note 박스로 분기 조건 설명
+3. **배치**: ERD 는 cluster 의 "anchor" 페이지 (가장 central 한 entity 가 있는 페이지) 상단, 시퀀스는 자격증명/credential 같은 "운영" 페이지 끝 "Putting it together" 절
+4. 양쪽 페이지 사이에 cross-ref 명시 — 한쪽이 다른 쪽을 가리킴
+
+### 예시 (이미 적용)
+
+- 6. Users + 7. Auth Credentials cluster — Users 페이지에 ERD 1 장, Auth 페이지에 sequence 3 개 (Console 로그인 / API REST 호출 / API user 추가)
+- 5. Wallets · Addresses · Asset Wallet 페이지의 vault→wallet→address 관계도 (단일 페이지 내부 cluster)
+
+### 시퀀스 다이어그램 규약
+
+- `autonumber` — step 번호 자동 부여 (caption 에서 참조 가능)
+- actor 와 participant 모두 이모지 + 한글 의미 + 영문 식별자 (예: `actor User as 👤 Console user`)
+- 분기는 `alt ... else ... end` 블록 활용 — 분기 조건을 라벨에 명시
+- 검증/계산 같은 self-loop 은 `Auth->>Auth: ...` 로 표현 가능 (4-level 보안 체크 같은 cascade 가독성 ↑)
+- `Note over A,B: ...` 로 흐름의 핵심 invariant 강조
+
 ASCII art tree 같은 텍스트 도식은 mermaid 가 더 정확/예쁨 → 가능하면 mermaid 로.

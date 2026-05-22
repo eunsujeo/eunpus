@@ -14,6 +14,9 @@
 <div class="layout">
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
 <div class="nav-section">
 <h3 class="nav-section-title">Overview</h3>
 <ul>
@@ -179,7 +182,8 @@ stateDiagram-v2
 <tr><td><strong>Cancel</strong> (취소)</td><td>BROADCASTING 이전까지</td><td>아직 blockchain 으로 송신되지 않은 시점이라면 출금을 취소 가능. broadcast 이후에는 chain 에 이미 들어가 있어 취소 못 함</td></tr>
 <tr><td><strong>Retry</strong> (재시도)</td><td>FAILED 이후</td><td>실패한 출금을 같은 내용으로 다시 시도. 새 tx 가 아니라 같은 withdrawal 의 재시도로 추적</td></tr>
 <tr><td><strong>Boost / Drop</strong> (EVM<span class="g" data-tip="Ethereum Virtual Machine. Ethereum 호환 chain 계열 (Polygon / Arbitrum / Optimism 등). account-based 모델" tabindex="0">(?)</span>)</td><td>BROADCASTING</td><td>EVM 에서 gas 가 부족해 stuck 된 tx 의 gas parameter 를 올려서 (boost) 또는 줄여서 (drop) 동일 nonce 로 교체 송신 — <strong>Replace-By-Fee</strong><span class="g" data-tip="Bitcoin / EVM 의 broadcast 중 tx 교체. 더 높은 fee 로 동일 nonce/input 재전송" tabindex="0">(?)</span> (RBF) 라고 부름</td></tr>
-<tr><td><strong>Boost UTXO<span class="g" data-tip="Unspent Transaction Output. Bitcoin 계열의 잔액 모델. 잔액 = 사용 안 한 output 합" tabindex="0">(?)</span> tx</strong></td><td>BROADCASTING</td><td>Bitcoin 의 RBF — 같은 input 을 쓰는 새 tx 를 더 높은 fee 로 송신해서 mempool 의 기존 tx 를 대체</td></tr>
+<tr><td><strong>Boost UTXO<span class="g" data-tip="Unspent Transaction Output. Bitcoin 계열의 잔액 모델. 잔액 = 사용 안 한 output 합" tabindex="0">(?)</span> tx</strong></td><td>BROADCASTING</td><td>Bitcoin 의 RBF — 같은 input 을 쓰는 새 tx 를 더 높은 fee 로 송신해서 mempool 의 기존 tx 를 대체. <code>unspent_inputs.status='reserved'</code> 유지 (spent 아님)</td></tr>
+<tr><td><strong>Multi-destination UTXO</strong></td><td>SUBMITTED</td><td>한 BTC tx 에 여러 destination + 여러 input — <code>transaction_destinations</code> 의 N rows + <code>unspent_inputs.spent_in_tx_id</code> 의 N rows 가 같은 transaction_id 참조. <code>extraParameters.inputsToSpend</code> 로 input 선택 제어 가능 (<a href="tables-wallet.html">5. Wallet</a> 의 unspent_inputs)</td></tr>
 <tr><td><strong>Rescreen / Bypass AML</strong><span class="g" data-tip="Anti-Money Laundering. 자금세탁 방지 규제. tx 별 KYC / sanction screening 강제" tabindex="0">(?)</span></td><td>PENDING_AML_SCREENING 또는 AML 거절 후</td><td><strong>Rescreen</strong> 은 AML 심사를 다시 돌리는 것 (false positive 의심 시), <strong>Bypass</strong> 는 Admin 권한으로 심사를 우회해서 강제 진행하는 것</td></tr>
 <tr><td><strong>Dismiss</strong></td><td>—</td><td>완료/실패된 출금 카드를 UI 상에서만 숨김 처리. DB 의 상태는 그대로</td></tr>
 <tr><td><strong>Edit transaction notes</strong></td><td>모든 상태</td><td>운영 메모 (transaction notes) 만 수정. tx 자체에는 영향 없음</td></tr>
@@ -368,6 +372,20 @@ CREATE TABLE withdrawal_operations (
     <h3>Round-Robin 운영 — 여러 출금 vault 분산</h3>
 <p>EVM / Bitcoin 의 sequential bottleneck (nonce gap · 25-tx chain) 을 회피하기 위해 출금 전용 vault 를 여러 개 두고 dispatcher 가 차례로 분산합니다. 시각화와 비교 (단일 vault 의 stuck vs round-robin) 는 <a href="tables-wallet.html#tables-wallet">5. Wallets · Addresses · Asset Wallet</a> 페이지의 "Withdrawal Vault Round-Robin" 절에 있습니다.</p>
 <p>DB 측 표현은 단순 — <code>withdrawals.withdrawal_vault_id</code> 컬럼에 dispatcher 가 할당한 vault 의 id 가 들어갈 뿐입니다. dispatcher 자체의 round-robin 알고리즘 (어느 vault 가 다음 차례인지, vault 의 stuck 상태 판별 등) 은 application 코드 영역이며 본 schema 의 표현 대상은 아닙니다.</p>
+
+<h3>Node Routing — DEFAULT / NODE_ROUTER / MEV (3 plane)</h3>
+<p>Fireblocks API <code>NodeControls.type</code> enum 이 알려주는 3 가지 broadcast routing plane. <a href="sm-transaction.html#tx-state">14. Transaction State</a> 의 <code>transactions.routing_type</code> 컬럼이 본 routing 선택을 영속화.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Plane</th><th>의미</th><th>적용 chain</th></tr></thead>
+<tbody>
+<tr><td><code>DEFAULT</code></td><td>Fireblocks 가 선택한 default node infrastructure 로 broadcast (Fireblocks-hosted node 또는 certified vendor)</td><td>All</td></tr>
+<tr><td><code>NODE_ROUTER</code></td><td>★ <strong>Customer-provided node</strong> 로 broadcast. workspace 단위 또는 per-tx 지정 가능. 예: 자체 운영하는 EVM node 또는 RPC 서비스 (Infura/Alchemy 등). <code>tag</code> 필드로 pre-configured node alias 지정</td><td>EVM 위주 (Stage 7 Node Router infrastructure)</td></tr>
+<tr><td><code>MEV</code></td><td>★ <strong>MEV protection routing</strong> — public mempool 대신 private mempool 또는 builder 통해 broadcast (Flashbots Protect 등 추정). MEV bot 의 sandwich/frontrun 공격 회피. EVM only</td><td>EVM (Flashbots / Eden / bloXroute 호환)</td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary)">★ <code>MEV</code> plane 은 schema 차원에서 <code>routing_type ENUM('DEFAULT','NODE_ROUTER','MEV')</code> 한 컬럼 추가로 표현. specific mempool / builder endpoint 의 명시는 본 wiki 미명세 (Q-2026-05-22-A10 잔존) — 운영 시 customer 가 별도 설정 채널 사용.</p>
 
 <h3>Reorg (블록 재구성) 처리 — 출금 측에서도 schema 가 표현해야 할 path</h3>
 <p>출금 측 reorg 시나리오: 우리 출금 tx 가 chain 에 confirm 되어 COMPLETED 처리됐는데, 그 block 이 reorg 으로 사라지면? 입금 측과 본질은 같지만 위험의 방향이 다릅니다 — 우리는 자산을 외부에 "이미 보냈다" 고 처리했지만 chain 상에는 사라진 상태. 만약 자금이 reorged 새 chain branch 에 다시 포함되지 않으면 출금 실패. 새 chain branch 에 다시 포함되면 tx 가 재실행되어 정상 완료.</p>

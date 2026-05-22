@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>6. 도입 통합 절차 — VASP 신고와 Fireblocks 도입의 병행</title>
+<meta content="한국에서 새 VASP 사업을 시작하면서 Fireblocks 를 도입하는 통합 절차 체크리스트" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. 법규 지형</h3>
+<ul>
+<li><a href="regulation-landscape.html">1. 한국 규제 지형</a></li>
+<li><a href="fireblocks-coverage.html">2. Fireblocks 가 푸는 것 (직접)</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. 경계선</h3>
+<ul>
+<li><a href="partial-coverage.html">3. Fireblocks 가 거드는 것 (부분)</a></li>
+<li><a href="out-of-scope.html">4. Fireblocks 로 안 풀리는 것</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 운영</h3>
+<ul>
+<li><a href="enforcement-defense.html">5. 제재 사례와 도구 매핑</a></li>
+<li><a class="active" href="deployment-checklist.html">6. 도입 통합 절차</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. 미해결</h3>
+<ul>
+<li><a href="open-questions.html">7. 별도 검증이 필요한 항목</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="checklist">
+<h1>6. 도입 통합 절차 — VASP 신고와 Fireblocks 도입의 병행</h1>
+<p class="lead">
+한국에서 새 VASP 사업을 시작하면서 Fireblocks 를 함께 도입할 때의 통합 절차. 신고제·실명계정·ISMS·법인 설립 같은
+외부 절차와 Fireblocks workspace 구성을 어떻게 병행할지를 단계별로 정리.
+</p>
+
+<h2>6.1 전체 timeline — 누적 6–12 개월</h2>
+<p>
+신규 사업자의 일반적인 도입 timeline. 각 절차의 소요 기간은 사업자 규모·은행 협상력·인증 준비도에 따라 변동.
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>단계</th><th>외부 절차</th><th>Fireblocks 작업</th><th>소요 기간 (개월)</th></tr></thead>
+<tbody>
+<tr><td>① 법인 설립</td><td>법무법인 + 등기소 + 정관</td><td>(대기)</td><td>1–3</td></tr>
+<tr><td>② 사업모델 확정</td><td>법무 검토 + VASP 평가</td><td>workspace 설계 (개념)</td><td>1</td></tr>
+<tr><td>③ 실명계정 발급</td><td>은행 협상 + AML 위험평가</td><td>(대기)</td><td>2–6</td></tr>
+<tr><td>④ ISMS 인증</td><td>정보보호 정책 + 심사</td><td>병행 가능 (Fireblocks 부분 평가 input)</td><td>6–12</td></tr>
+<tr><td>⑤ Fireblocks 도입</td><td>—</td><td>workspace 생성 + 정책 설정 + sandbox 시험</td><td>1–2</td></tr>
+<tr><td>⑥ KYC 시스템 통합</td><td>외부 KYC vendor 선정</td><td>kyc_status sync 인터페이스</td><td>1–3</td></tr>
+<tr><td>⑦ FIU 신고서 작성</td><td>12 종 자료 + 변호사 검토</td><td>지갑주소 목록 export</td><td>1</td></tr>
+<tr><td>⑧ FIU 신고 심사</td><td>심사 + 보완 대응</td><td>운영 시뮬레이션 + 보완</td><td>3 (법정)</td></tr>
+<tr><td>⑨ 영업 개시</td><td>—</td><td>운영 시작</td><td>—</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">병행 가능한 단계</div>
+<p>
+③ 실명계정 + ④ ISMS + ⑤ Fireblocks 도입 + ⑥ KYC 시스템 통합은 <strong>모두 병행 가능</strong>.
+critical path 는 보통 ③ 실명계정 또는 ④ ISMS. Fireblocks 도입 자체가 critical path 가 되는 경우는 드물다.
+</p>
+</div>
+
+<h2>6.2 단계별 체크리스트 — 외부 절차</h2>
+
+<h3>① 법인 설립 단계 (1–3 개월)</h3>
+<ul>
+<li>☐ 법인 형태 결정 (주식회사 권장)</li>
+<li>☐ 정관 작성 — 사업 목적에 "가상자산 보관·관리·이전" 명시</li>
+<li>☐ 자본금 결정 — 감독규정 / 보험 underwriting 요건 고려</li>
+<li>☐ 이사회 구성 — 보고책임자·준법감시인 별도 임명 가능 인원</li>
+<li>☐ 대주주 현황 정리 — 2026 개정안의 "대주주 범위 구체화" 사전 반영</li>
+<li>☐ 사업자등록증 발급</li>
+</ul>
+
+<h3>② 사업모델 확정 (1 개월)</h3>
+<ul>
+<li>☐ 5 사업모델 평가 — 본 사이트 <a href="regulation-landscape.html">1.3 절</a> 참조</li>
+<li>☐ "보관 또는 관리" / "이전" 행위 범위의 법무 검토</li>
+<li>☐ 대법원 2024도10710 ratio 적용 시 본인 모델의 VASP 평가</li>
+<li>☐ 원화 매매·교환 기능 포함 여부 — 실명계정 요건 결정</li>
+<li>☐ staking·earn·NFT 등 부수 상품 범위 — 유사수신행위법 검토</li>
+<li>☐ Cold workspace 사용 여부 (콜드월렛 80% 충족 전략)</li>
+</ul>
+
+<h3>③ 실명계정 발급 (2–6 개월)</h3>
+<ul>
+<li>☐ 은행 선정 (신한·NH농협·케이뱅크·전북 중 — 2026 기준)</li>
+<li>☐ 사업자 제안서 + 사업계획 + 위험평가서 제출</li>
+<li>☐ 은행 AML 위험평가 응대</li>
+<li>☐ 계약 협상 (수수료·SLA·운영 정책)</li>
+<li>☐ 실명계정 발급 확인서 + 계약서 사본</li>
+<li>☐ 은행 AML 위험평가 서류 사본 (FIU 신고용)</li>
+</ul>
+
+<h3>④ ISMS / ISMS-P 인증 (6–12 개월)</h3>
+<ul>
+<li>☐ 정보보호 정책 수립 (사내 인사·운영·기술 통합)</li>
+<li>☐ 위험평가 수행 — Fireblocks SaaS 도 평가 대상</li>
+<li>☐ 통제 항목 구현 (관리적·물리적·기술적)</li>
+<li>☐ 인증 기관 선정 (KISA 또는 ISMS-P 인증 기관)</li>
+<li>☐ 인증 신청 → 심사 → 인증서 발급</li>
+<li>☐ 사후 운영 (매년 사후심사 + 3 년 갱신)</li>
+</ul>
+
+<h3>⑦ FIU 신고서 작성 (1 개월)</h3>
+<ul>
+<li>☐ 12 종 자료 준비 (<a href="regulation-landscape.html">1.5 절</a> 참조)</li>
+<li>☐ <strong>가상자산 취급 지갑주소 목록</strong> — Fireblocks vault 의 모든 deposit address export</li>
+<li>☐ 정보보호 관리체계 인증서 (④)</li>
+<li>☐ 실명확인 입출금계정 발급 확인서·계약서 (③)</li>
+<li>☐ 은행 AML 위험평가 서류 (③)</li>
+<li>☐ 법령준수체계 자료 — 조직·인력·전산설비·내부통제체계 (Fireblocks 활용 포함)</li>
+<li>☐ 변호사 사전 검토</li>
+</ul>
+
+<h2>6.3 단계별 체크리스트 — Fireblocks 작업</h2>
+
+<h3>⑤ Fireblocks 도입 (1–2 개월)</h3>
+
+<h4>5.1 Customer Domain · Workspace 생성</h4>
+<ul>
+<li>☐ Customer Domain 생성</li>
+<li>☐ Administrative workspace (Hot, Mainnet)</li>
+<li>☐ Operational workspace (Hot, Mainnet)</li>
+<li>☐ Custodial Hot workspace (Hot, Mainnet)</li>
+<li>☐ Custodial Cold workspace (Cold, Mainnet) — 별도 product 구매</li>
+<li>☐ Sandbox workspace (Hot, Testnet) — 신규 자산·서비스 시험</li>
+</ul>
+
+<h4>5.2 Owner · Admin Quorum 구성</h4>
+<ul>
+<li>☐ Owner 임명 (workspace 별 — 보통 사내 임원 1명)</li>
+<li>☐ Admin ≥ 3 추가 (Cold workspace 의 경우 Support 경유 필수)</li>
+<li>☐ Admin Quorum threshold 설정 (최소 ≥ 2)</li>
+<li>☐ API Admin 보유 시 threshold ≥ 3 (Risk-G01)</li>
+<li>☐ Non-Signing Admin 임명 — 보고책임자·준법감시인 역할</li>
+<li>☐ Owner mobile device 등록 + recovery passphrase 안전 보관</li>
+<li>☐ Workspace Keys Backup 생성</li>
+</ul>
+
+<h4>5.3 9-role 인사 매핑</h4>
+<ul>
+<li>☐ Signer ≥ 2 임명 (이해상충 방지)</li>
+<li>☐ Approver ≥ 2 임명 — Signer 와 별도 인원</li>
+<li>☐ Security Admin 임명 — 정보보안 책임자 (ISMS 책임자)</li>
+<li>☐ Viewer / Editor 최소화 (default visibility 함정)</li>
+<li>☐ 각 role 의 인사 발령장 + 책임 문서화 (이용자보호법 대응)</li>
+</ul>
+
+<h4>5.4 Policy / TAP 룰 구성</h4>
+<ul>
+<li>☐ Rule 1 — KYC 미완료 차단 (source.kyc_status != ok → BLOCK)</li>
+<li>☐ Rule 2 — 미신고 VASP 차단 (destination NOT IN whitelist → BLOCK)</li>
+<li>☐ Rule 3 — 트래블룰 100만원 임계 (amount ≥ 1M KRW → require Notabene message)</li>
+<li>☐ Rule 4 — 전기통신금융사기 72시간 hold</li>
+<li>☐ Rule 5 — 영업종료 winddown 모드</li>
+<li>☐ Rule N — last block-all (default, 삭제 불가)</li>
+<li>☐ Rule ordering review — strict 룰이 앞에</li>
+</ul>
+
+<h4>5.5 AML / Travel Rule provider 통합</h4>
+<ul>
+<li>☐ Chainalysis 또는 Elliptic 계약 + Fireblocks integration 활성</li>
+<li>☐ Notabene 계약 + integration 활성</li>
+<li>☐ Workspace-level AML default 를 <strong>fail-on-unknown</strong> 으로 설정</li>
+<li>☐ AML screening 결과의 Audit Log 적재 확인</li>
+</ul>
+
+<h4>5.6 Whitelist 등록</h4>
+<ul>
+<li>☐ 인가 VASP 27 사 hot wallet 주소 일괄 등록</li>
+<li>☐ Hot ↔ Cold workspace 양방향 whitelist 등록</li>
+<li>☐ Whitelist 변경 절차 정의 — Admin Quorum 승인 필요</li>
+<li>☐ 일일 갱신 자동화 (인가 VASP 목록 변동 시)</li>
+</ul>
+
+<h3>⑥ KYC 시스템 통합 (1–3 개월)</h3>
+<ul>
+<li>☐ 외부 KYC vendor 선정 (NICE / KCB / Sumsub / 자체)</li>
+<li>☐ kyc_status sync 인터페이스 — 실시간 / 일별 reconciliation</li>
+<li>☐ 위험등급 산출 로직</li>
+<li>☐ 재이행 주기 자동화 (만료 알림 + 자동 락)</li>
+<li>☐ 원본성 검증 + 주소 검증</li>
+<li>☐ KYC 사본 자체 archive (5년)</li>
+</ul>
+
+<h3>⑧ 운영 시뮬레이션 + 보완 (FIU 심사 3개월 동안)</h3>
+<ul>
+<li>☐ Sandbox workspace 에서 end-to-end 거래 시뮬레이션</li>
+<li>☐ 입금·출금·sweep·rebalancing 의 단계별 검증</li>
+<li>☐ 의심거래 / 미신고 VASP 거래 시도 시 차단 검증</li>
+<li>☐ Audit Log 의 자체 archive 자동화 검증</li>
+<li>☐ DR rehearsal — Owner 부재 / Cold device 분실 시나리오</li>
+<li>☐ "Less than 10% remaining signatures" alert 검증 (Cold workspace)</li>
+<li>☐ KR 망분리 해석 검증 (Fireblocks Sales 와 직접 협의)</li>
+</ul>
+
+<h2>6.4 일상 운영 체크리스트 (영업 개시 후)</h2>
+
+<h3>일별</h3>
+<ul>
+<li>☐ Audit Log 추출 (Hot + Cold)</li>
+<li>☐ Hot 잔액 vs Cold 잔액 reconciliation</li>
+<li>☐ 콜드월렛 80% 비율 검증 + 자체 archive</li>
+<li>☐ 의심거래 review (TAP rule trigger)</li>
+<li>☐ "Less than 10% remaining signatures" alert 확인</li>
+<li>☐ Fireblocks status page 모니터링</li>
+</ul>
+
+<h3>주별</h3>
+<ul>
+<li>☐ 인가 VASP whitelist 갱신</li>
+<li>☐ KYC 재이행 대상 점검</li>
+<li>☐ STR 후보 거래 escalation</li>
+</ul>
+
+<h3>월별</h3>
+<ul>
+<li>☐ Recovery Passphrase Periodic Verification</li>
+<li>☐ Workspace Keys Backup 갱신 (인원 변경 반영)</li>
+<li>☐ 신규 자산·서비스 위험평가 위원회 (해당 시)</li>
+<li>☐ KR 특금법·이용자보호법·감독규정 변동 모니터링</li>
+</ul>
+
+<h3>분기/반기</h3>
+<ul>
+<li>☐ Testnet 에서 DR rehearsal (production keys 사용 금지)</li>
+<li>☐ Cold device sign capacity audit</li>
+<li>☐ Admin Quorum 인원 audit + threshold 재검토</li>
+<li>☐ IP allowlist 갱신 (VPN·NAT 변경)</li>
+<li>☐ Policy / Whitelist 일관성 audit</li>
+<li>☐ KR 특금법 cold ratio + 5년 보존 reporting</li>
+<li>☐ FIU 변경신고 사항 점검 (대주주 변동, 임원 변동, 지갑주소 추가 등)</li>
+</ul>
+
+<h3>연 1회 또는 갱신 시</h3>
+<ul>
+<li>☐ ISMS 사후심사 또는 갱신</li>
+<li>☐ 보험 갱신 — cold ratio 변동 반영</li>
+<li>☐ FIU 신고 갱신 (3 년 주기, 만료 45일 전)</li>
+<li>☐ 외부 감사 (회계 + 평가전문기관 취약점 평가)</li>
+<li>☐ 약관·마케팅 자료 법무 재검토</li>
+</ul>
+
+<h2>6.5 사고 / 비상 시나리오</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>사고</th><th>심각도</th><th>대응</th></tr></thead>
+<tbody>
+<tr><td>Cold device 분실 / 도난</td><td>★★★★★</td>
+  <td>① 즉시 Fireblocks Support ② Workspace freeze ③ Workspace Keys Backup 으로 재provisioning ④ 금감원 보고 / 고객 통지</td></tr>
+<tr><td>Cold Owner 사고 (사망/실종)</td><td>★★★★★</td>
+  <td>① Board resolution ② Fireblocks Support + 신임 Owner ③ Recovery Passphrase verify ④ 3–5 영업일 절차</td></tr>
+<tr><td>의심 거래 (Cold)</td><td>★★★★</td>
+  <td>① Workspace freeze ② Audit Log + signing 기록 forensic ③ KoFIU STR 보고 + 금감원 보고</td></tr>
+<tr><td>"Less than 10% remaining signatures" alert</td><td>★★★★</td>
+  <td>① 신규 device provisioning 즉시 ② 기존 device 잔여 signature 는 emergency-only</td></tr>
+<tr><td>Cold Admin 다수 부재</td><td>★★★</td>
+  <td>① Quorum threshold 충족 불가 ② Fireblocks Support 통한 임시 Admin 추가</td></tr>
+<tr><td>Hot → Cold rebalancing 실패</td><td>★★★</td>
+  <td>① stuck tx 진단 ② Round-robin withdrawal vault ③ 필요 시 nonce reset</td></tr>
+<tr><td>Fireblocks SaaS outage</td><td>★★★</td>
+  <td>BCM 없으면 signing halt — 사고 대응 절차 + 외부 통지</td></tr>
+<tr><td>해킹 의심</td><td>★★★★★</td>
+  <td>① Workspace freeze ② 보험사 통지 ③ 금감원·KoFIU 보고 ④ 이용자 통지</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>6.6 도입 결정 시 마지막 점검</h2>
+<p>Fireblocks 도입을 결정하기 전 다음 항목을 사전 확인:</p>
+<ul>
+<li>☐ Cold workspace 가 KR 망분리 해석에 부합하는지 — Fireblocks Sales 와 직접 협의 (<a href="open-questions.html">7. 미해결 7.1</a>)</li>
+<li>☐ Fireblocks SaaS 가 「금융회사의 정보처리 업무 위탁에 관한 규정」 의 외주 위탁 대상인지 — 법무 의견</li>
+<li>☐ ISMS 인증 시 Fireblocks SaaS 평가 방법 — 인증 기관 사전 협의</li>
+<li>☐ Cold MPC share 분포 모델 (Q-M05) — Fireblocks 측 답변 확보</li>
+<li>☐ Support SLA — Cold workspace user 추가 응답 시간</li>
+<li>☐ Workspace type immutability — 1-way door 인 점 사전 인식</li>
+<li>☐ MPC·멀티시그 사업자의 "실질 통제" 판단에서 Fireblocks 사용이 어떻게 평가되는지 — Q-CMP-08</li>
+<li>☐ <strong>Key Link + HSM 옵션 검토</strong> — Fireblocks KeyLink ↔ Thales Luna HSM (FIPS 140-3 L3 + Common Criteria, PQC readiness) 통합 옵션. Vendor 공식 발표 2025-09-23. <strong>KR 미명시 (HKMA/HKSFC/JFSA 만 명시)</strong> — KR 적용 시 Fireblocks Sales 협의 필수</li>
+<li>☐ <strong>Hot/Warm/Cold 3-mode 의 정확한 의미</strong> — vendor 가 "Hot, Warm, Cold signing workflows" 를 공식 framing 으로 사용. "Warm" 의 기술 정의 (Hot 와 Cold 의 중간 격리 수준) 사전 확인</li>
+<li>☐ <strong>Air-gap transport 메커니즘</strong> — Cold workflow 의 USB · SFTP · data diodes 운영 환경 (망분리 IDC 안 설치 시 USB 정책 등)</li>
+</ul>
+
+<p class="back-top"><a href="#checklist">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="assets/app.js"></script>
+</body>
+</html>

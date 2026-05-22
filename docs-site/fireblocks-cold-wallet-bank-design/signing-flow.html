@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>5. Cold Wallet Signing — 사실 + 추정</title>
+<meta content="Cold Wallet signing 흐름 — 공식 fact + 추정 흐름" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Cold Wallet 기초</h3>
+<ul>
+<li><a href="cold-wallet-fundamentals.html">1. Cold Wallet 이란</a></li>
+<li><a href="workspace-topology.html">2. Workspace 토폴로지</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Governance &amp; Flow</h3>
+<ul>
+<li><a href="governance-quorum.html">3. Admin Quorum 단독 거버넌스</a></li>
+<li><a href="hot-cold-rebalancing.html">4. Hot ↔ Cold Rebalancing</a></li>
+<li><a class="active" href="signing-flow.html">5. Cold Wallet Signing</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 은행 도입</h3>
+<ul>
+<li><a href="bank-operations.html">6. 은행 운영 절차</a></li>
+<li><a href="risks-open-questions.html">7. Risks &amp; Open Questions</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="signing">
+<h1>5. Cold Wallet Signing — 사실 + 추정</h1>
+<p class="lead">
+Cold Wallet 의 transaction signing 절차. <strong>공식 본문 미적재 비중이 가장 큰 영역</strong>이며,
+은행은 도입 전 Fireblocks 와 직접 협의 권장.
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">본 페이지의 출처</div>
+<p><strong>공식 문서에 정의된 사실</strong></p>
+<ul style="margin-bottom:0.5rem">
+<li>Hot workspace 의 MPC-CMP 3-endpoint signing (1 mobile + 2 Fireblocks SGX) — Fireblocks MPC-CMP 공식 문서</li>
+<li>Audit Log 의 "Less than 10% remaining signatures" 이벤트 카테고리 — Fireblocks Audit Log catalog</li>
+<li>Cold Wallet cluster 의 문서명들 (Signing transactions / Provisioning / Device Requirements 등) — Fireblocks Help Center</li>
+<li>"Hot, Warm, and Cold signing workflows" + air-gap transport (USB · SFTP · data diodes) — Fireblocks 공식 블로그 (2025-09-23)</li>
+<li>Fireblocks KeyLink ↔ Thales Luna HSM 통합 — Fireblocks 공식 블로그 (2025-09-23)</li>
+</ul>
+<p style="margin-bottom:0"><strong>저자가 합리적으로 추정한 운영 권장</strong> — 참고용</p>
+<ul style="margin-bottom:0">
+<li>Cold signing 의 정확한 절차 (Cluster catalog 의 본문 미적재로 상세 미확정)</li>
+<li>3 가지 가설 (H1 / H2 / H3) 의 share 분포</li>
+<li>"Less than 10%" 이벤트의 의미 (Cold device 별 sign quota 유한 가능성)</li>
+<li>은행 운영 권장 (Signer device redundancy, 사전 alert, 영상 기록 등)</li>
+</ul>
+</div>
+
+<div class="callout">
+<div class="callout-title">2025-09-23 vendor 공식 발언 — Hot / Warm / Cold 3-mode</div>
+<p>
+Fireblocks 공식 블로그 "Enterprise Digital Asset Security with Fireblocks and Thales" (2025-09-23, by Adam Levine SVP) 가
+"<strong>Hot, Warm, and Cold signing workflows</strong>" 의 3-mode signing 을 vendor 공식 framing 으로 명시.
+또한 Cold workflow 의 air-gap transport 가 <strong>USB · SFTP · data diodes</strong> 임을 발언.
+이로써 본 페이지의 "별도 hardware" 추정이 보강된다 — 단 "Warm" 의 정확한 기술 정의는 여전히 미명세.
+</p>
+<p>
+관련 통합: Fireblocks <strong>KeyLink</strong> ("secure middleware layer") 가 <strong>Thales Luna HSM</strong> (FIPS 140-3 Level 3 + Common Criteria 인증, PQC readiness) 와 결합.
+</p>
+</div>
+
+<h2>5.1 공식 문서 사실 (확정)</h2>
+<ul>
+<li>Cold Wallet cluster 에 <strong>Signing transactions with your Cold Wallet device</strong> 가 별도 문서로 존재.
+  "3-share signing 의 Cold variant" 로 분류됨.</li>
+<li>Cold Wallet cluster 에 <strong>Cold Wallet Mobile Key Share Backup and Recovery</strong> 가 별도 문서.
+  Hot 의 "1 mobile + 2 Fireblocks SGX cloud" 모델과의 비교점.</li>
+<li>Owner cold device 와 Signer cold device 의 provisioning 절차가 별도 문서로 분리 (<strong>Provisioning an Owner's Cold Wallet Device</strong> + <strong>Provisioning a Signer's Cold Wallet Device</strong>).</li>
+<li><strong>Cold Wallet Device Requirements</strong> 가 별도 문서 — device 사양이 별도 명세 (본문 미적재).</li>
+<li>Audit Log 의 <strong>"Cold Wallet 'Less than 10% remaining signatures'"</strong> 이벤트.</li>
+</ul>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Cold Wallet cluster · Audit Log)</span>
+</p>
+
+<h2>5.2 Hot wallet signing 의 기본 모델 (비교 baseline)</h2>
+<p>
+Hot workspace 의 MPC-CMP signing 은 공식 본문이 적재됨:
+</p>
+<ul>
+<li><strong>3-endpoint signing</strong>: Customer mobile (또는 SGX) + 2 Fireblocks Azure SGX</li>
+<li>Mobile + 2 cloud + cloud-based mediator</li>
+<li>MPC share 의 한 share 는 mobile secure enclave, 두 share 는 Fireblocks Azure SGX cloud</li>
+<li>3 algorithm 지원: ECDSA SECP256K1 / EdDSA Ed25519 / ECDSA SECP256R1</li>
+</ul>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — MPC-CMP · Security Aspects of Signing with the Fireblocks Mobile App)</span>
+</p>
+
+<h2>5.3 Cold Wallet signing 의 추정 흐름</h2>
+<p>
+Cold 의 정확한 모델은 공식 본문 미적재로 인해 추정만 가능. 3 가지 큰 가설:
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>가설</th><th>Share 분포</th><th>Trade-off</th></tr></thead>
+<tbody>
+<tr><td><strong>H1 — Hot 와 동일 (mobile + 2 cloud)</strong></td>
+  <td>1 mobile + 2 Fireblocks SGX. 단 "cold" 의미는 Fireblocks 측의 air-gap 운영 (cold facility) 또는 별도 console plane.</td>
+  <td>Fireblocks 측 cloud 의존 여전. Hot 과 SaaS 의존도 동일.</td></tr>
+<tr><td><strong>H2 — 별도 cold device + 2 cloud</strong></td>
+  <td>1 air-gapped device (mobile 아닌 별도 hardware) + 2 Fireblocks SGX. Hot 의 mobile 대신 cold-specific device.</td>
+  <td>Cold device 가 일반 모바일 아닌 hardware. Audit log 의 "remaining signatures" 가 이 device 의 sign capacity 일 가능성.</td></tr>
+<tr><td><strong>H3 — 별도 cold device + air-gap manual</strong></td>
+  <td>Customer side 가 multiple cold device, Fireblocks 의 cloud share 도 cold mode 운영. Manual ceremony.</td>
+  <td>가장 strict. Hosted MPC 와 유사한 sovereign key 모델. 일반 cold wallet customer 적용 가능성 낮음.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">힌트 — "Less than 10% remaining signatures" 의 함의 (저자 추정)</div>
+<p>
+이 audit log 이벤트가 정식 카테고리로 존재한다는 것은 <strong>device 별 sign quota 가 유한</strong>함을 시사.
+Hot workspace 의 mobile signing 에는 이런 quota 가 없으므로 (mobile re-enroll 만으로 복구 가능),
+Cold device 는 <strong>별도 hardware</strong> 일 가능성이 높다 (H2 가설에 가까움).
+</p>
+</div>
+
+<h2>5.4 Provisioning — Owner vs Signer cold device</h2>
+<p>
+Cluster catalog 는 Owner cold device 와 Signer cold device 의 provisioning 을 별도 문서로 분리:
+</p>
+<ul>
+<li>Provisioning an Owner's Cold Wallet Device</li>
+<li>Provisioning a Signer's Cold Wallet Device</li>
+</ul>
+<p>
+→ Owner 와 Signer 의 cold device 가 <strong>서로 다른 procedure</strong> 또는 <strong>다른 device class</strong> 일 가능성 (추정).
+Hot 에서는 Owner / Signer 가 동일 mobile app 사용. Cold 는 distinction 강조됨.
+</p>
+
+<h2>5.5 Hot 의 Signing 흐름 (baseline)</h2>
+<p>
+은행이 Cold device signing 의 흐름을 추정할 때 baseline 으로 사용 — Hot workspace 의 일반 transaction signing:
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  S1["1. Submit<br/>Customer app → API"]
+  S2["2. Policy / TAP<br/>검증"]
+  S3["3. Designated Signer<br/>선택"]
+  S4["4. Mobile Cosigner<br/>또는 API Cosigner<br/>(share #1)"]
+  S5["5. Fireblocks SGX #1<br/>(share #2)"]
+  S6["6. Fireblocks SGX #2<br/>(share #3)"]
+  S7["7. CMP 4-round<br/>→ signature"]
+  S8["8. Tx broadcast<br/>→ on-chain"]
+
+  S1 --> S2 --> S3 --> S4
+  S4 --> S5
+  S4 --> S6
+  S5 --> S7
+  S6 --> S7
+  S7 --> S8
+
+  classDef step fill:#fef3c7,stroke:#d97706
+  classDef sign fill:#dbeafe,stroke:#2563eb
+  classDef final fill:#dcfce7,stroke:#16a34a
+
+  class S1,S2,S3 step
+  class S4,S5,S6,S7 sign
+  class S8 final
+</pre>
+</div>
+<p class="diagram-caption">
+Hot 의 MPC-CMP 3-endpoint signing (1 mobile + 2 Fireblocks Azure SGX). 노랑 = 사전 단계 / 파랑 = MPC 서명 단계 / 초록 = 최종 broadcast.
+<span class="src">(출처: Fireblocks 공식 문서 — MPC-CMP)</span>
+</p>
+
+<h2>5.6 Cold Wallet signing 의 추정 흐름</h2>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  C1["1. Bank Console<br/>Cold workspace tx 요청"]
+  C2["2. Cold workspace<br/>Policy 검증"]
+  C3["3. Admin Quorum 전체<br/>mobile approval<br/>(Approval Group 미지원)"]
+  C4["4. Designated Signer<br/>cold device 활성<br/>(device class 미명세)"]
+  C5["5. Cold device<br/>share #1 활성<br/>(Hot device 와 동일/별도 미명세)"]
+  C6["6. Fireblocks SGX #1<br/>share #2 활성<br/>(Cold facility 별도? 미명세)"]
+  C7["7. Fireblocks SGX #2<br/>share #3 활성"]
+  C8["8. 3 share 합의<br/>→ signature"]
+  C9["9. Tx broadcast<br/>→ on-chain"]
+
+  C1 --> C2 --> C3 --> C4 --> C5
+  C5 --> C6
+  C5 --> C7
+  C6 --> C8
+  C7 --> C8
+  C8 --> C9
+
+  classDef step fill:#fef3c7,stroke:#d97706
+  classDef hyp fill:#fee2e2,stroke:#dc2626
+  classDef final fill:#dcfce7,stroke:#16a34a
+
+  class C1,C2,C3 step
+  class C4,C5,C6,C7,C8 hyp
+  class C9 final
+</pre>
+</div>
+<p class="diagram-caption">
+Cold signing 의 추정 흐름. 빨강 단계는 공식 문서 본문 미적재로 인한 미명세 영역.
+추가 가능: Air-gapped transfer (USB / SFTP / data diodes — 2025-09-23 vendor 공식 발언) 와 verification ceremony.
+</p>
+
+<h2>5.7 Audit Log 시그널 정리</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Audit Log 이벤트</th><th>의미 (추정)</th><th>은행 대응</th></tr></thead>
+<tbody>
+<tr><td>Cold Wallet "Less than 10% remaining signatures"</td>
+  <td>Cold device 의 sign quota 임계점 임박</td>
+  <td>최우선 alert. 즉시 추가 device provisioning 시작</td></tr>
+<tr><td>Cold workspace transaction signed</td>
+  <td>일반 cold-side 출금 / 송금 성공</td>
+  <td>일반 audit 로그 보존</td></tr>
+<tr><td>Cold device provisioned (Owner / Signer)</td>
+  <td>device 신규 활성</td>
+  <td>Provisioning 절차의 모든 단계 audit 보존, 영상 기록</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>5.8 은행 운영 권장 (signing plane)</h2>
+<ol>
+<li><strong>Cold device 의 redundancy</strong> — single Signer device 의 SPOF 회피. 최소 Signer device 2 개 (별도 인원 보유)</li>
+<li><strong>Signature quota 사전 alert</strong> — "Less than 10%" 이전 (예: 30%, 20%) 에 사전 alert</li>
+<li><strong>Provisioning ceremony 영상 기록</strong> — Audit + 감독 대응 요건</li>
+<li><strong>Signing 물리적 환경</strong> — Cold signing 은 별도 secure room 운영 (네트워크 격리, 영상 감시)</li>
+<li><strong>Signing 인원의 분리</strong> — KR 특금법의 "이해상충 방지" 요건 충족 (Cold Signer ≠ Approver ≠ Reviewer)</li>
+<li><strong>DR ceremony 사전 rehearsal</strong> — Cold device 분실 시 backup 으로부터 복구. Testnet 에서 rehearsal 권장
+  (production keys 로 reconstruction test = compromise 가정 — Hot 의 invariant 가 Cold 에도 동일 적용 추정)</li>
+</ol>
+
+<h2>5.9 미확정 사항 정리 (→ Risks &amp; Open Questions 참조)</h2>
+<p>
+본 페이지의 모든 추정 항목은 <a href="risks-open-questions.html">7. Risks &amp; Open Questions</a> 에 정리.
+주요 미확정:
+</p>
+<ul>
+<li>Q-M05 — Cold Wallet MPC share 분포 (H1 / H2 / H3 중 어떤 모델인가)</li>
+<li>Cold device = mobile 인가 별도 hardware 인가</li>
+<li>Cold device 의 signature quota 가 정확히 몇 개인가</li>
+<li>Signing ceremony 의 정확한 단계 (QR? USB? air-gap?)</li>
+<li>Cold side SGX 가 Hot 의 SGX 와 별도 facility 인가</li>
+<li>Cold ↔ Hot rebalancing 시 어느 쪽 signing 이 발동</li>
+</ul>
+
+<p class="back-top"><a href="#signing">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

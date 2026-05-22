@@ -14,6 +14,9 @@
 <div class="layout">
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
 <div class="nav-section">
 <h3 class="nav-section-title">Overview</h3>
 <ul>
@@ -92,8 +95,108 @@
 <section id="tables-user">
 <h2>6. Users (Console / API / Mobile)</h2>
 <span class="section-subtitle">2 user type · 9 role · mobile device 의 secure enclave<span class="g" data-tip="SGX/TEE 안의 격리된 실행 공간. 외부에서 메모리 접근 불가" tabindex="0">(?)</span> host</span>
-<h3>User Type 2 종</h3>
-<p><code>user-roles.md</code>, p.1: 사용자 유형은 <strong>Console user / API user</strong> 2 종. <strong>권한 매트릭스는 동일한 9 role</strong> 사용. 인증·자격증명·자동화 표면이 다름.</p>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처 — 어디까지가 Fireblocks 정의이고, 어디부터가 추정인가</div>
+<p>이 페이지의 내용은 두 갈래입니다. 미리 구분해두면 어떤 부분을 그대로 받아들이고 어떤 부분은 본인 환경에서 검증할지 판단이 쉬워집니다.</p>
+<p><strong>Fireblocks 공식 문서에 정의된 사실</strong> — 그대로 받아들여도 안전</p>
+<ul style="margin-bottom:0.5rem">
+<li>사용자가 <strong>Console user / API user</strong> 두 종류로 나뉜다는 점, 그리고 <strong>같은 9 role 매트릭스</strong> 를 둘 다 공유한다는 점</li>
+<li>API user 의 lifecycle 4 가지 — <strong>Add · Re-enroll · Rename · Delete</strong> 각각의 actor 와 승인 요건</li>
+<li>Mobile app 의 MPC<span class="g" data-tip="Multi-Party Computation. 여러 당사자가 각자 키 조각만 들고 협력해서 서명 — 누구도 단독으로 키를 모름. 전체 키가 한 번도 한곳에 모이지 않음" tabindex="0">(?)</span> key share 가 device 의 <strong>secure enclave 에 보관</strong>되며 iCloud / Google Cloud <strong>백업 불가</strong></li>
+<li>Device migration 이 <strong>user self-service</strong> (PIN + passphrase + biometric 3중 인증, 관리자 승인 없이 진행)</li>
+<li><strong>3 비밀 layer</strong> (PIN · mobile app passphrase · recovery passphrase) 가 각각 다른 역할</li>
+<li>Re-enroll 의 <strong>pairing token 이 1 시간 유효</strong>, owner / user 각각 <strong>2-day window</strong> 안에 승인</li>
+<li><strong>Owner uninstall = Key Share Recovery 필수</strong> (단순 재설치로 회복 불가), 일반 user 는 재등록만으로 회복</li>
+<li>한 mobile device 가 <strong>여러 user / workspace 와 linked</strong> 될 수 있음 (각각 별도 재등록 필요)</li>
+</ul>
+<p style="margin-bottom:0.3rem"><strong>저자가 합리적으로 추정해서 그린 설계</strong> — 참고용, 본인 환경에서 검증 권장</p>
+<ul style="margin-bottom:0">
+<li><code>users</code> · <code>mobile_devices</code> · <code>mobile_device_events</code> · <code>device_user_links</code> 네 테이블의 구체 schema</li>
+<li>9 role 의 정확한 식별자/저장 형식 (본 schema 는 <code>role_id VARCHAR(32)</code>; 운영 시 ENUM 또는 별도 lookup 으로 정형화 권장)</li>
+<li><code>mobile_device_events.owner_approval_at</code> / <code>user_approval_at</code> 두 컬럼으로 2-day window 를 표현하는 방식 — 별도 approval_requests 평면을 안 쓰는 단순화 선택</li>
+</ul>
+</div>
+
+<h3>ERD<span class="g" data-tip="Entity-Relationship Diagram. 데이터베이스 테이블과 그 사이 외래키 관계를 한 장에 시각화한 도식" tabindex="0">(?)</span> — Users + Auth 도메인 12 테이블의 연결</h3>
+<p>6. Users 의 4 테이블과 <a href="tables-auth.html">7. Auth Credentials</a> 의 8 테이블, 그리고 외부 참조 (workspaces · admin_quorums) 가 어떻게 묶이는지 한눈에. 이 ERD 가 두 페이지를 하나의 cluster 로 묶어주므로, 본 페이지를 읽기 전에 큰 그림부터 잡으면 각 절의 schema 가 어디에 맞는 조각인지 즉시 보입니다.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  subgraph external["외부 참조 (다른 페이지)"]
+    direction LR
+    WS["📦 workspaces<br/>(3. Workspace)"]
+    AQ["👥 admin_quorums<br/>(9. Admin Quorum)"]
+  end
+
+  subgraph users_dom["6. Users — 사용자 신원과 device"]
+    direction LR
+    U["👤 users<br/>type=console/api"]
+    MD["📱 mobile_devices"]
+    MDE["📜 mobile_device_events<br/>(append-only)"]
+    DUL["🔗 device_user_links<br/>(junction)"]
+  end
+
+  subgraph auth_dom["7. Auth Credentials — 인증 자격증명 5 평면"]
+    direction LR
+    AK["🔑 api_keys"]
+    CSR["📄 csrs<br/>(X.509 cert)"]
+    TFA["🔐 user_2fa<br/>(TOTP)"]
+    TRE["📋 twofa_reset_events<br/>(append-only)"]
+    SC["🌐 sso_configs"]
+    SAD["🌐 sso_authorized_domains"]
+    AIA["🛡️ api_user_ip_allowlists"]
+    WIA["🛡️ workspace_ip_allowlists"]
+  end
+
+  WS --> U
+  WS --> SC
+  WS --> WIA
+  AQ -. "user 추가 / 변경 승인" .-> U
+
+  U --> MD
+  U --> DUL
+  MD --> DUL
+  MD --> MDE
+
+  U -. "type=api" .-> AK
+  AK --> CSR
+  U --> TFA
+  U -. "target / actor" .-> TRE
+  U -. "type=api" .-> AIA
+
+  SC --> SAD
+
+  classDef ext fill:#e0e7ff,stroke:#6366f1;
+  classDef userdom fill:#dbeafe,stroke:#2563eb;
+  classDef authdom fill:#fef3c7,stroke:#d97706;
+  classDef append fill:#fce7f3,stroke:#db2777;
+  class WS,AQ ext;
+  class U,MD,DUL userdom;
+  class AK,CSR,TFA,SC,SAD,AIA,WIA authdom;
+  class MDE,TRE append;
+</pre>
+<span class="diagram-caption">Figure 12. Users + Auth cluster ERD. 파랑=외부 참조 (다른 페이지 의 테이블) / 진한 파랑=Users 도메인 / 노랑=Auth Credentials 도메인 / 분홍=append-only 이력 테이블. 실선=FK 직접 참조 / 점선=의미적 참조 (조건부 또는 N-N 양 끝). 핵심 관계: <code>workspaces</code> 가 root → <code>users</code> 가 중심 → 그 주변에 device (4 테이블) + credential (8 테이블) 이 위성으로 매달림. <code>admin_quorums</code> 가 거버넌스 평면에서 user 추가/변경을 승인 (FK 는 없고 흐름상 의존).</span>
+</div>
+
+<h3>User Type — Console user 와 API user</h3>
+<p>사람이 직접 console UI 에서 작업하는 사용자와, 자동화 / 외부 시스템이 REST API 로 호출하는 사용자가 있습니다 — Fireblocks 는 이 둘을 <strong>Console user</strong> 와 <strong>API user</strong> 로 명시적으로 구분합니다. 운영 표면 (어떻게 로그인하고 어떻게 호출하는가) 은 다르지만, <strong>권한 매트릭스는 동일한 9 role</strong> 을 둘 다 공유합니다 — 어느 type 이든 같은 role 을 받으면 같은 일을 할 수 있다는 의미.</p>
+
+<div class="callout">
+<div class="callout-title">9 role — 권한 매트릭스의 모든 행이 이 9 값 안에서 결정</div>
+<ol style="margin-bottom:0;columns:2">
+<li><strong>Owner</strong> — workspace 의 최상위 책임자. 1 workspace = 1 Owner</li>
+<li><strong>Admin</strong> — Quorum 멤버가 될 수 있는 관리자급</li>
+<li><strong>Non-Signing Admin (NSA)</strong> — 관리는 하지만 서명 권한 없음</li>
+<li><strong>Signer</strong> — tx 서명 가능 (mobile MPC share 보유)</li>
+<li><strong>Approver</strong> — tx 승인 가능 (서명은 다른 사람)</li>
+<li><strong>Editor</strong> — 설정 / vault / address 편집 가능</li>
+<li><strong>Viewer</strong> — 읽기 전용</li>
+<li><strong>Security Admin</strong> — 보안 설정 전담</li>
+<li><strong>Security Auditor</strong> — audit log 열람 전담</li>
+</ol>
+</div>
+
 <div class="table-wrap">
 <table>
 <thead><tr><th></th><th>Console User</th><th>API User</th></tr></thead>
@@ -105,19 +208,23 @@
 </tbody>
 </table>
 </div>
-<h3>Unified <code>users</code> 테이블</h3>
-    <pre><code>CREATE TABLE users (
+<h3><code>users</code> 테이블 — Console / API user 통합</h3>
+<p>Console user 와 API user 가 같은 9 role 매트릭스를 공유하므로 한 테이블에 type 컬럼으로 구분해서 저장합니다. <strong>비밀번호 hash 는 본 테이블에 저장하지 않음</strong> — Console user 의 인증 정보는 외부 IdP / Auth0 가 관리하고, API user 는 별도 X.509 cert + API key 평면에서 관리됩니다 (→ <a href="tables-auth.html">7. Auth Credentials</a>).</p>
+
+<pre><code>CREATE TABLE users (
   id              BINARY(16) PRIMARY KEY,
   workspace_id    BINARY(16) NOT NULL,
   type            ENUM('console', 'api') NOT NULL,
-  role_id         VARCHAR(32) NOT NULL,                -- 9 role
+  role_id         VARCHAR(32) NOT NULL,                -- 9 role 중 하나
   status          ENUM('pending', 'active', 'deleted') NOT NULL,
   first_name      VARCHAR(64),
   last_name       VARCHAR(64),
   email           VARCHAR(255),                        -- workspace 내 UNIQUE
-  created_by_user_id BINARY(16) NOT NULL,
+  created_by      BINARY(16) NOT NULL,                 -- "Add user" 요청을 시작한 관리자
   created_at      DATETIME(6) NOT NULL,
-  activated_at    DATETIME(6),                          -- initial setup 완료
+  modified_by     BINARY(16) NOT NULL,                 -- 마지막 변경 (role/email/name 등) actor
+  modified_at     DATETIME(6) NOT NULL,
+  activated_at    DATETIME(6),                          -- initial setup 완료 시각
   deleted_at      DATETIME(6),                          -- soft delete (audit 위해 row 유지)
   UNIQUE KEY (workspace_id, email),
   KEY (workspace_id, type, status)
@@ -126,22 +233,67 @@
 -- Console user 의 SSO / password 정보는 외부 (IdP / Auth0). DB 는 email + type 만.
 -- 본 테이블에는 password hash 저장 X. SSO 사용 시 IdP 가 password 관리.</code></pre>
 
-    <h3>API User Lifecycle</h3>
 <div class="table-wrap">
 <table>
-<thead><tr><th>Event</th><th>Actor</th><th>승인</th><th>비고</th></tr></thead>
+<thead><tr><th style="width:24%">컬럼</th><th style="width:18%">자료형</th><th>역할</th></tr></thead>
 <tbody>
-<tr><td><strong>Add</strong></td><td>O / A / NSA</td><td>Owner + Admin Quorum<span class="g" data-tip="관리자급 사용자의 다수결 승인 그룹. 회사 이사회 정족수 개념. Q (Quorum) / Q+O (Quorum + Owner) 라벨로 표시" tabindex="0">(?)</span> (Console user 와 same flow)</td><td>CSR 생성 (RSA 4096) → Console 에서 upload + Co-signer setup</td></tr>
-<tr><td><strong>Re-enroll</strong></td><td>"Admin-level users"</td><td>Owner approval + key share approval</td><td>Trigger: 초기 Co-signer setup 오류 / 페어링 / Callback Handler<span class="g" data-tip="Customer 가 운영하는 외부 검증 endpoint. Cosigner 가 서명 전에 콜백해서 비즈니스 규칙 추가 검증" tabindex="0">(?)</span> 변경. <strong>Pairing token 1시간 유효</strong></td></tr>
-<tr><td><strong>Rename</strong></td><td>"Admin-level users"</td><td>Owner + Admin Quorum</td><td>API key 불변</td></tr>
-<tr><td><strong>Delete</strong></td><td>Owner 단독</td><td>즉시, mobile approval 불요</td><td>API key 즉시 invalid → in-flight tx 실패, 새 서명 거부. Co-signer 페어링 잔존 (별도 unpair 작업)</td></tr>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>user 의 고유 식별자</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16)</td><td>이 user 가 속한 workspace</td></tr>
+<tr><td><code>type</code></td><td>ENUM (2 값)</td><td><strong>console</strong> 사람이 직접 로그인하는 사용자 / <strong>api</strong> 자동화·외부 시스템이 호출하는 사용자</td></tr>
+<tr><td><code>role_id</code></td><td>VARCHAR(32)</td><td>위 9 role 중 하나의 식별자. 운영 시 별도 lookup 테이블 또는 ENUM 으로 정형화 권장</td></tr>
+<tr><td><code>status</code></td><td>ENUM (3 값)</td><td><strong>pending</strong> 초대만 받고 setup 미완료 / <strong>active</strong> 정상 운영 중 / <strong>deleted</strong> 삭제됨 (row 는 audit 위해 유지)</td></tr>
+<tr><td><code>first_name</code> · <code>last_name</code></td><td>VARCHAR(64) nullable</td><td>사람이 읽는 이름. API user 는 비울 수 있음</td></tr>
+<tr><td><code>email</code></td><td>VARCHAR(255) nullable</td><td>workspace 내에서 UNIQUE. 알림 발송 / 초대 / SSO 매칭 키</td></tr>
+<tr><td><code>created_by</code></td><td>BINARY(16)</td><td>"Add user" 요청을 시작한 관리자의 id (Owner / Admin / NSA). set-once</td></tr>
+<tr><td><code>created_at</code></td><td>DATETIME(6)</td><td>user 추가 요청 시각. set-once</td></tr>
+<tr><td><code>modified_by</code></td><td>BINARY(16)</td><td>마지막 변경 (role / email / name 등 컬럼 갱신) 을 실행한 관리자. 단순 갱신은 권한표의 일반 룰 적용, role 같은 민감 변경은 별도 거버넌스 통과 필요</td></tr>
+<tr><td><code>modified_at</code></td><td>DATETIME(6)</td><td>마지막 변경 시각. <strong>무엇이</strong> 변경되었는지의 trail 은 별도 user_change_events 평면 (본 schema 의 범위 밖) 으로 분리 가능</td></tr>
+<tr><td><code>activated_at</code></td><td>DATETIME(6) nullable</td><td>초대 수락 + initial setup 완료 시각. NULL = pending. set-once when set</td></tr>
+<tr><td><code>deleted_at</code></td><td>DATETIME(6) nullable</td><td>soft delete 시각. 본 테이블에서 row 를 제거하지 않고 이 컬럼에 시각만 set — 과거 audit log 의 actor 매핑이 깨지지 않도록</td></tr>
+<tr><td><code>UNIQUE (workspace_id, email)</code></td><td>—</td><td>한 workspace 안에서 email 중복 방지</td></tr>
 </tbody>
 </table>
 </div>
-<h3>Mobile Device — Primary MPC<span class="g" data-tip="Multi-Party Computation. 여러 당사자가 각자 키 조각만 들고 협력해서 서명 — 누구도 단독으로 키를 모름. 전체 키가 한 번도 한곳에 모이지 않음" tabindex="0">(?)</span> Share Host </h3>
-<p><code>about-the-fireblocks-mobile-app.md</code>, p.1: MPC key share 는 device 의 <strong>secure enclave</strong> 에 보관 (hardware-encrypted). <strong>iCloud / Google Cloud 백업 불가</strong>.</p>
 
-    <pre><code>CREATE TABLE mobile_devices (
+<h3>API User Lifecycle — 추가 · 재등록 · 이름 변경 · 삭제</h3>
+<p>API user 는 사람이 아닌 시스템이라 등록·교체·해제 절차가 Console user 와 다릅니다. Fireblocks 가 정의하는 4 가지 lifecycle event 와 각각의 운영상 의미:</p>
+
+<dl class="chain-rr">
+<dt><strong>Add — 신규 API user 추가</strong></dt>
+<dd>
+  <strong>실행자</strong>: Owner / Admin / Non-Signing Admin 중 1 명이 시작.<br>
+  <strong>승인</strong>: <strong>Owner + Admin Quorum<span class="g" data-tip="관리자급 사용자의 다수결 승인 그룹. 회사 이사회 정족수 개념. Q (Quorum) / Q+O (Quorum + Owner) 라벨로 표시" tabindex="0">(?)</span></strong> 모두 거쳐야 함 — Console user 추가와 동일한 flow.<br>
+  <strong>절차</strong>: CSR<span class="g" data-tip="Certificate Signing Request. RSA public key + 신원 정보를 묶은 cert 발급 요청서. API user 인증에 사용" tabindex="0">(?)</span> (RSA 4096) 을 외부 (혹은 운영 서버) 에서 생성해서 Console 에 upload → Co-signer<span class="g" data-tip="자동 서명 컴포넌트. Mobile Cosigner (사용자 device) / API Cosigner (customer server) / Fireblocks Cloud Cosigner (Azure SGX)" tabindex="0">(?)</span> setup. 즉 새 API user 는 단순 추가가 아니라 <strong>인증서 발급 + 서명 인프라 페어링</strong> 까지의 큰 작업.
+</dd>
+
+<dt><strong>Re-enroll — Co-signer 재등록</strong></dt>
+<dd>
+  <strong>언제</strong>: 초기 Co-signer setup 이 실패했거나 / 다른 머신으로 페어링을 옮기거나 / Callback Handler<span class="g" data-tip="Customer 가 운영하는 외부 검증 endpoint. Cosigner 가 서명 전에 콜백해서 비즈니스 규칙 추가 검증" tabindex="0">(?)</span> endpoint 가 바뀐 경우.<br>
+  <strong>실행자</strong>: "Admin-level users" (Owner / Admin / NSA).<br>
+  <strong>승인</strong>: <strong>Owner 승인 + key share approval</strong> (별도 단계).<br>
+  <strong>운영 주의</strong>: 재등록 시 발급되는 <strong>pairing token 은 1 시간만 유효</strong>. 그 안에 Co-signer 머신에서 페어링 완료해야 함 — 늦으면 다시 발급받아야 함.
+</dd>
+
+<dt><strong>Rename — 이름만 변경</strong></dt>
+<dd>
+  <strong>실행자</strong>: "Admin-level users".<br>
+  <strong>승인</strong>: Owner + Admin Quorum.<br>
+  <strong>중요</strong>: <strong>API key 자체는 불변</strong> — 이름 변경 후에도 같은 key 로 계속 호출 가능. 운영 시스템 측 secret rotation (비밀 키 교체) 필요 없음.
+</dd>
+
+<dt><strong>Delete — 영구 삭제</strong></dt>
+<dd>
+  <strong>실행자</strong>: Owner 단독 (mobile 승인 단계 없음).<br>
+  <strong>즉시성</strong>: <strong>승인 절차 없이 즉시 적용</strong> — 보안상 빠른 차단이 가능하도록.<br>
+  <strong>영향</strong>: API key 가 그 순간부터 invalid 처리되어 <strong>진행 중인 tx 들이 실패하고 새 서명 요청은 거부</strong>됩니다. <strong>주의</strong>: API user 만 삭제될 뿐 Co-signer 머신의 <strong>페어링 정보는 자동 정리되지 않음</strong> — 별도 unpair 작업이 필요.
+</dd>
+</dl>
+<h3>Mobile Device — MPC key share 의 1 차 보관소</h3>
+<p>Fireblocks 의 자산 서명에는 여러 곳에 흩어진 MPC key share 가 필요하고, 그 중 <strong>사용자 측 share 는 사용자의 mobile app 에 보관</strong>됩니다 (Owner / Signer / Approver 등 mobile-required role 의 경우). 이 share 는 device 의 <strong>secure enclave</strong><span class="g" data-tip="iOS Secure Enclave / Android TEE. 메인 OS 가 침해되어도 외부에서 메모리 접근 불가한 하드웨어 격리 영역" tabindex="0">(?)</span> — 즉 메인 OS 가 침해되어도 외부에서 메모리 접근이 불가능한 하드웨어 격리 영역 — 에 hardware-encrypted 상태로 저장.</p>
+<p>중요한 운영상 주의점 — <strong>iCloud / Google Cloud 백업 불가</strong>. secure enclave 의 내용은 device 본체를 떠날 수 없도록 OS 가 강제하므로, 보통의 앱 데이터처럼 클라우드에 백업되지 않습니다. 즉 <strong>device 분실 / 초기화 = key share 소실</strong> 이고, 이를 복구하려면 별도의 recovery 절차 (→ <a href="tables-recovery.html">13. Recovery &amp; Backup</a>) 가 필요합니다.</p>
+
+<h4>5.1 <code>mobile_devices</code> — 등록된 device 의 현재 상태</h4>
+<pre><code>CREATE TABLE mobile_devices (
   id                BINARY(16) PRIMARY KEY,
   user_id           BINARY(16) NOT NULL,
   device_uuid       VARCHAR(128) NOT NULL,
@@ -153,43 +305,113 @@
   uninstalled_at    DATETIME(6),                       -- 비가역적 (recovery 필요)
   KEY (user_id),
   UNIQUE KEY (device_uuid)
-);
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">컬럼</th><th style="width:18%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>device 의 고유 식별자</td></tr>
+<tr><td><code>user_id</code></td><td>BINARY(16) FK</td><td>이 device 의 주 소유 user. multi-user link 는 별도 junction (<code>device_user_links</code>) 으로</td></tr>
+<tr><td><code>device_uuid</code></td><td>VARCHAR(128) UNIQUE</td><td>OS 가 발급한 device 식별자. 같은 device 가 두 번 등록되지 않도록 UNIQUE</td></tr>
+<tr><td><code>platform</code></td><td>ENUM (2 값)</td><td><strong>ios</strong> 또는 <strong>android</strong>. Secure enclave 구현이 OS 마다 다름</td></tr>
+<tr><td><code>enclave_pubkey</code></td><td>BLOB</td><td>device 의 secure enclave 가 attest 한 public key. 서명 검증 + device 위변조 확인용</td></tr>
+<tr><td><code>app_version</code></td><td>VARCHAR(32)</td><td>현재 설치된 Fireblocks app 버전. 보안 업데이트 강제 / 호환성 체크용</td></tr>
+<tr><td><code>registered_at</code></td><td>DATETIME(6)</td><td>최초 등록 시각. set-once. <strong>이 row 의 created_at 과 같은 의미</strong> — Fireblocks 의 enrollment 의미가 더 직관적이라 registered_at 라는 이름을 유지</td></tr>
+<tr><td><code>re_enrolled_at</code></td><td>DATETIME(6) nullable</td><td>가장 최근 재등록 시각. 변경 시 갱신</td></tr>
+<tr><td><code>uninstalled_at</code></td><td>DATETIME(6) nullable</td><td>uninstall 감지 시각. set 후 비가역 — 단순 재설치만으로는 회복 불가, Recovery 절차 필요</td></tr>
+</tbody>
+</table>
+</div>
 
--- mobile device 의 lifecycle 이벤트 (append-only)
+<h4>5.2 <code>mobile_device_events</code> — device lifecycle 이벤트 (append-only)</h4>
+<pre><code>-- ★ append-only — 모든 device 변경 이벤트의 trail
 CREATE TABLE mobile_device_events (
   id                BINARY(16) PRIMARY KEY,
   device_id         BINARY(16) NOT NULL,
   event_type        ENUM('registered', 're-enrolled', 'migrated', 'uninstalled', 'biometric-changed') NOT NULL,
-  owner_approval_at DATETIME(6),                       -- 2-day window 1
+  actor_user_id     BINARY(16) NOT NULL,                -- 이벤트를 trigger 한 user (보통 device 소유 user 본인)
+  owner_approval_at DATETIME(6),                       -- 2-day window 1 (quorum-gated event 일 때만)
   user_approval_at  DATETIME(6),                       -- 2-day window 2
   occurred_at       DATETIME(6) NOT NULL
 );</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">컬럼</th><th style="width:18%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>이벤트 고유 식별자</td></tr>
+<tr><td><code>device_id</code></td><td>BINARY(16) FK</td><td>어느 device 의 이벤트인지</td></tr>
+<tr><td><code>event_type</code></td><td>ENUM (5 값)</td><td><strong>registered</strong> 최초 등록 / <strong>re-enrolled</strong> 페어링 재발급 / <strong>migrated</strong> 새 기기로 이전 / <strong>uninstalled</strong> 앱 제거 감지 / <strong>biometric-changed</strong> OS 의 지문/Face ID 가 변경됨 (보안 신호)</td></tr>
+<tr><td><code>actor_user_id</code></td><td>BINARY(16) FK</td><td>이 이벤트를 trigger 한 user — 대부분 device 소유 본인 (예: re-enroll / migrated 의 self-service path). registered 시는 등록을 진행한 user. uninstalled / biometric-changed 처럼 OS-level 감지 이벤트의 경우 device 소유자로 표시</td></tr>
+<tr><td><code>owner_approval_at</code></td><td>DATETIME(6) nullable</td><td>Owner 가 이 이벤트를 승인한 시각. re-enroll / migrated 같은 quorum-gated 이벤트에서만 set, <strong>2-day window</strong> 안에 채워져야 함</td></tr>
+<tr><td><code>user_approval_at</code></td><td>DATETIME(6) nullable</td><td>해당 user 본인이 자기 device 등록을 확인한 시각. 위와 별개의 <strong>2-day window</strong></td></tr>
+<tr><td><code>occurred_at</code></td><td>DATETIME(6)</td><td>이벤트 발생 시각</td></tr>
+</tbody>
+</table>
+</div>
 
-    <h3>3 비밀 Layer</h3>
-<ul>
-<li><strong>PIN</strong>: mobile app 잠금 해제</li>
-<li><strong>Mobile app passphrase</strong>: app-level 추가 잠금</li>
-<li><strong>Recovery passphrase</strong>: cloud backup 의 암호화 키 (→ <a href="tables-recovery.html">13. Recovery</a>)</li>
-</ul>
-<h3>Device Migration</h3>
-<p><code>device-migration.md</code>, p.2: 사용자 본인 self-service, <strong>관리자 승인 없이</strong> PIN + passphrase + biometric 3중 인증.</p>
-<h3>Linked Users / Linked Workspaces</h3>
-<p>한 mobile device 에 multiple users / workspaces 가 linked 가능. 각각 별도 재등록 필요.</p>
+<h3>3 비밀 Layer — PIN · App passphrase · Recovery passphrase</h3>
+<p>Fireblocks mobile app 사용자가 외워야 하는 비밀 정보는 세 종류입니다. 각각 다른 layer 의 보안을 담당하므로 절대 혼동하지 말 것:</p>
+<dl class="chain-rr">
+<dt><strong>PIN — app 잠금 해제용 단순 비밀번호</strong></dt>
+<dd>4~6 자리 숫자. 매번 app 을 켤 때 입력. 분실해도 device 본인 인증 (PIN + passphrase + biometric) 으로 재설정 가능.</dd>
 
-    <pre><code>CREATE TABLE device_user_links (
+<dt><strong>Mobile app passphrase — app-level 추가 비밀</strong></dt>
+<dd>PIN 위에 한 layer 더 얹는 별도 비밀번호. 시스템 차원의 추가 보호 — 다른 기기에서 등록 검증 / migration 등의 핵심 동작에서 함께 요구. PIN 보다 길고 강한 비밀.</dd>
+
+<dt><strong>Recovery passphrase — cloud backup 의 암호화 키</strong></dt>
+<dd>위 두 가지와 결이 완전히 다름. <strong>cloud 에 백업되는 일부 데이터를 암호화하는 마스터 키</strong> 입니다. 분실하면 cloud backup 을 풀 수 없게 되어 <strong>복구 불가</strong>. 가장 안전하게 별도 보관해야 하는 비밀. 자세히는 <a href="tables-recovery.html">13. Recovery &amp; Backup</a>.</dd>
+</dl>
+<h3>Device Migration — 기기 교체 (self-service)</h3>
+<p>사용자가 새 폰으로 바꾸면 mobile app 도 옮겨야 합니다. Fireblocks 는 이 절차를 <strong>사용자 본인이 직접 처리</strong>하도록 설계 — 관리자 승인 절차 없이 (운영팀 개입 없이) 다음 3 중 인증만으로 진행:</p>
+<ol>
+<li><strong>PIN</strong> 입력</li>
+<li><strong>Mobile app passphrase</strong> 입력</li>
+<li>새 기기의 <strong>biometric</strong> (지문 / Face ID) 인증</li>
+</ol>
+<p>왜 관리자 승인을 요구하지 않을까 — 3 중 인증을 모두 통과한 사람은 "본인 확인이 충분히 되었다" 로 간주하는 것이 Fireblocks 의 운영 모델. 즉 운영팀이 한밤중에 device 교체 승인을 처리할 필요가 없어 사용자 경험이 매끄러워지지만, 그 대신 <strong>PIN / passphrase / biometric 중 하나라도 새지 않도록 사용자가 단단히 관리</strong>해야 한다는 책임이 따릅니다.</p>
+<h3>Linked Users / Linked Workspaces — 한 폰에 여러 신원</h3>
+<p>실무에서 한 사람이 여러 신원을 가지는 경우가 많습니다 — 예: 컨설팅 펌의 직원이 client A 의 workspace 와 client B 의 workspace 둘 다 접근해야 하거나, 같은 회사 안에서 production workspace 와 staging workspace 를 동시에 운영하거나. Fireblocks 는 <strong>한 mobile device 가 여러 user / 여러 workspace 와 동시에 link 되는 것</strong> 을 지원합니다.</p>
+<p><strong>다만 link 마다 별도 재등록 필요</strong> — 즉 새 workspace 를 같은 폰에 연결할 때마다 그 workspace 의 enrollment 절차를 새로 거쳐야 합니다. 한 device 가 자동으로 모든 workspace 권한을 상속받지는 않음 (보안상).</p>
+
+<h4>6.1 <code>device_user_links</code> — device × user × workspace 의 junction (grant/revoke 패턴)</h4>
+<pre><code>CREATE TABLE device_user_links (
+  id           BINARY(16) PRIMARY KEY,
   device_id    BINARY(16) NOT NULL,
   user_id      BINARY(16) NOT NULL,
   workspace_id BINARY(16) NOT NULL,
-  linked_at    DATETIME(6) NOT NULL,
-  PRIMARY KEY (device_id, user_id),
-  KEY (workspace_id)
+  granted_by   BINARY(16) NOT NULL,                 -- link 를 설정한 user (보통 본인)
+  granted_at   DATETIME(6) NOT NULL,
+  revoked_by   BINARY(16),                           -- unlink 한 user. NULL = 현재 active
+  revoked_at   DATETIME(6),
+  KEY (device_id, user_id),
+  KEY (workspace_id, revoked_at)
 );</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">컬럼</th><th style="width:18%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>link 이벤트의 surrogate PK. revoke 후 재 link 시 새 row INSERT — 이력 보존</td></tr>
+<tr><td><code>device_id</code></td><td>BINARY(16) FK</td><td>어느 mobile device 인지</td></tr>
+<tr><td><code>user_id</code></td><td>BINARY(16) FK</td><td>그 device 에 연결된 user</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16)</td><td>그 user-device link 가 속한 workspace. 같은 사람이 두 workspace 에 별도 user 로 있을 수 있어 명시 컬럼</td></tr>
+<tr><td><code>granted_by</code> · <code>granted_at</code></td><td>BINARY(16) · DATETIME(6)</td><td>link 설정 actor + 시각 (보통 본인이 enrollment 절차로 link). set-once</td></tr>
+<tr><td><code>revoked_by</code> · <code>revoked_at</code></td><td>BINARY(16) nullable · DATETIME(6) nullable</td><td>unlink (예: device migration / uninstall) actor + 시각. NULL = 현재 active. set-once when set</td></tr>
+<tr><td><code>KEY (device_id, user_id)</code></td><td>—</td><td>"이 device 가 이 user 와 link 됐던 이력 전부" 조회</td></tr>
+<tr><td><code>KEY (workspace_id, revoked_at)</code></td><td>—</td><td>"이 workspace 에 현재 active 한 device link" 조회 (WHERE revoked_at IS NULL)</td></tr>
+</tbody>
+</table>
+</div>
 
-    <h3>Uninstall 비가역성</h3>
-<ul>
-<li>일반 user: re-download + re-enroll 로 회복</li>
-<li><strong>Owner: Key Share Recovery 필수</strong> (단순 재설치로 회복 불가)</li>
-</ul>
+<h3>Uninstall 비가역성 — Owner 와 일반 user 의 차이</h3>
+<p>Mobile app 을 OS 차원에서 삭제하면 secure enclave 안의 key share 도 함께 사라집니다. 클라우드 백업이 안 되므로 (위 "Mobile Device" 절 참조) 이는 비가역적인 손실입니다 — 회복하려면 별도 절차를 거쳐야 합니다.</p>
+<dl class="chain-rr">
+<dt><strong>일반 user (Signer / Approver / Editor 등)</strong></dt>
+<dd>App 을 다시 다운로드해서 <strong>재등록 (re-enroll)</strong> 절차를 거치면 정상 복귀. 그동안의 share 는 폐기되고 새 share 가 발급됩니다. 자산은 안전 — 그 user 의 share 가 없어도 다른 멤버들의 share 로 서명이 가능한 구조이기 때문.</dd>
+
+<dt><strong>Owner</strong></dt>
+<dd>훨씬 강력한 절차 — <strong>Key Share Recovery</strong> 가 반드시 필요합니다. 단순 재설치만으로는 회복 불가. 왜? — Owner 의 share 는 거버넌스의 spine 이라서 다른 멤버로 대체될 수 없고, 만약 분실되면 workspace 자체가 위험에 빠지기 때문. Recovery 절차는 recovery passphrase + Disaster Recovery 서비스가 함께 동원되는 운영급 작업 (→ <a href="tables-recovery.html">13. Recovery &amp; Backup</a>).</dd>
+</dl>
+<p style="color:var(--text-secondary);font-size:0.95em">★ 운영상 주의점 — Owner 의 mobile device 는 일반 user 와 다른 등급으로 관리되어야 합니다. 폰 분실 시 즉시 운영팀 통지 + 백업 device 확보 같은 별도 운영 절차 (체크리스트) 를 미리 정해두는 것이 안전.</p>
 </section>
 <nav aria-label="Section navigation" class="page-nav">
 <a class="page-nav-link page-nav-prev" href="tables-wallet.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">5. Wallet &amp; Address</span></a>

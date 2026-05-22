@@ -14,6 +14,9 @@
 <div class="layout">
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
 <div class="nav-section">
 <h3 class="nav-section-title">Overview</h3>
 <ul>
@@ -91,7 +94,28 @@
 <main class="content">
 <section id="db-ops">
 <h2>25. DB 운영 (MySQL)</h2>
-<span class="section-subtitle">Replication · Outbox · Idempotency · Partitioning · Retention</span>
+<span class="section-subtitle">Replication · Outbox · Idempotency · UUID · Partitioning · Retention · Migration Governance</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처 — 일반 운영 best practice + 저자 정리</div>
+<p>이 페이지는 Fireblocks 자료가 아니라 <strong>본 docs-site 의 다른 페이지들 (DB 분할 7 개 / append-only / set-once / cross-DB binding 등) 에서 도출된 운영 권장사항을 일반 MySQL 운영 best practice 와 묶어서 정리</strong>한 것입니다.</p>
+<p style="margin-bottom:0.3rem"><strong>다른 페이지의 schema 의 운영 요구사항</strong> — 그대로 받아들여도 안전 (본 docs-site 의 자체 규약)</p>
+<ul style="margin-bottom:0.5rem">
+<li><strong>ledger / audit DB 의 zero-tolerance</strong> — semi-sync (loseless) replication 필수</li>
+<li><strong>Outbox pattern</strong> — multi-DB transaction 이 불가능하므로 single-DB transaction + outbox 로 cross-DB eventual consistency</li>
+<li><strong>Append-only / set-once 의 DB-level 강제</strong> — trigger 로 application layer 우회 차단 (24. Storage Discipline)</li>
+<li><strong>Cross-DB binding</strong> — 다른 DB 의 source row 와 byte-equal CBOR encoding 일치 (20. Audit Log)</li>
+</ul>
+<p style="margin-bottom:0.3rem"><strong>일반 MySQL 운영 best practice (public domain)</strong> — 참고용</p>
+<ul style="margin-bottom:0">
+<li>UUID 저장은 <code>UUID_TO_BIN(UUID(), 1)</code> 의 16-byte time-ordered BINARY 권장</li>
+<li>Idempotency 는 <code>INSERT IGNORE</code> + UNIQUE constraint + 별도 <code>SELECT</code> 조합</li>
+<li>PostgreSQL 의 <code>RETURNING</code> / <code>ON CONFLICT</code> / <code>jsonb</code> / partial index 등은 MySQL 에서 별도 우회 패턴</li>
+<li>고-growth 테이블의 RANGE partitioning + regulatory retention (7~10년)</li>
+<li>Schema migration governance — trigger 변경은 charter-class, 테이블 drop 절대 금지</li>
+</ul>
+</div>
+
 <h3>Replication 권장</h3>
 <div class="table-wrap">
 <table>
@@ -127,7 +151,39 @@ COMMIT;
 -- outbox row 를 target DB 로 idempotent replicate
 -- INSERT ... ON DUPLICATE KEY UPDATE id=id  (no-op merge)</code></pre>
 
-    <h3>Idempotency SQL Pattern</h3>
+<h4>Outbox cross-DB consistency 시퀀스</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant App as 🎯 Application service
+  participant SrcDB as 💾 source DB<br/>(예: ledgerdb)
+  participant Outbox as 📤 outbox table<br/>(same DB)
+  participant Worker as ⚙️ outbox worker<br/>(별도 process)
+  participant TgtDB as 💾 target DB<br/>(예: auditdb)
+
+  Note over App,SrcDB: ① business operation + outbox 를 같은 transaction 으로
+  App->>SrcDB: BEGIN TRANSACTION
+  App->>SrcDB: INSERT ledger_entries (business data)
+  App->>Outbox: INSERT outbox (target_db, payload_cbor, ...)
+  App->>SrcDB: COMMIT
+  Note over SrcDB,Outbox: 두 INSERT 가 atomic — 하나라도 실패하면 둘 다 롤백
+
+  Note over Worker,TgtDB: ② Worker 가 outbox 폴링 + target DB 에 idempotent replicate
+  loop 주기적 poll
+    Worker->>Outbox: SELECT pending outbox rows
+    Worker->>TgtDB: INSERT audit_events ... ON DUPLICATE KEY UPDATE id=id
+    Note over TgtDB: target DB 가 UNIQUE 제약 + ON DUPLICATE 로 idempotent
+    Worker->>Outbox: UPDATE outbox.delivered_at = NOW()
+  end
+
+  Note over App,TgtDB: ③ 외부 감사자 검증
+  Note over TgtDB: target DB 의 row 가 source DB 의 outbox payload 와<br/>byte-equal CBOR encoding 일치 (cross-DB binding)
+</pre>
+<span class="diagram-caption">Figure 35. Outbox pattern — multi-DB transaction 이 불가능한 환경에서 cross-DB eventual consistency 를 어떻게 보장하는가. 핵심 invariant: ① <strong>business operation 과 outbox 가 같은 DB transaction</strong> — 하나라도 실패하면 둘 다 롤백, "내가 했다고 알린 일은 반드시 실제 일어난 일" 의 보장. ② <strong>worker 의 idempotent replicate</strong> — 같은 outbox row 가 두 번 처리돼도 target DB 의 ON DUPLICATE 제약이 no-op 만들어 부작용 없음. ③ <strong>byte-equal CBOR binding</strong> — source 의 payload 와 target 의 row 가 binary 일치해야 cross-DB 일관성 검증 통과. 이 3 단계가 source / target DB 가 분리되어 있어도 "두 DB 가 같은 사실을 본다" 의 cryptographic 보장.</span>
+</div>
+
+<h3>Idempotency SQL Pattern</h3>
     <pre><code>-- 1. INSERT IGNORE 로 중복 시 무시 (reference_id 는 UNIQUE)
 INSERT IGNORE INTO withdrawals (id, reference_id, ...)
 VALUES (UUID_TO_BIN(UUID(), 1), ?, ...);

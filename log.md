@@ -6411,9 +6411,187 @@ related: [entity-slug ...]
 
 ### Next stages 후보
 
-- Stage 36: Search engine 도입 (qmd 또는 ripgrep + index)
-- Stage 37: File-back-as-page 패턴 정형화 (query 결과를 wiki page 로 file)
+- ~~Stage 36: Search engine 도입~~ → Stage 37 로 displace (Stage 36 은 Key Link ingest 로 사용됨)
+- Stage 37: Search engine 도입 (qmd 또는 ripgrep + index) **또는** File-back-as-page 패턴 정형화
 - Stage 38: 단방향 wikilink 138 → 양방향 정리
 - Stage 39: 6-section 누락 11 페이지 보강 (user-roles 9 + api-user / console-user)
 - Stage 40+: 외부 vendor 도입 (Privy / Coinbase WaaS / BitGo / Dfns)
+
+---
+
+## Stage 36 (2026-05-22) — Key Link Cluster Mode C Deep Ingest + Reference Mass-Fetch
+
+### Trigger
+
+사용자 직접 요청 (Trigger 1 — 새 source ingest):
+1. `https://developers.fireblocks.com/reference/data-objects` 확인 후 reference cluster 전체 mass-fetch (option 2)
+2. Key Link cluster Mode C deep ingest
+
+### Source
+
+- **Key Link Mode C** (3 PDFs, body ingest via `pdftotext` 외부 추출):
+  - `2026-05-22__support-fireblocks-io__fireblocks-key-link-overview-extracted.txt` (98 lines, 4.7KB)
+  - `2026-05-22__support-fireblocks-io__getting-started-with-fireblocks-key-link-extracted.txt` (343 lines, 19KB)
+  - `2026-05-22__support-fireblocks-io__set-up-your-fireblocks-vault-with-key-link-extracted.txt` (115 lines, 6KB)
+  - 본 3 PDF 는 Stage 18 에서 catalog-only / lightweight-index 단계 → Stage 36 에서 promote (Mode C)
+- **Reference mass-fetch (Mode A+B)**: `developers.fireblocks.com/reference/*.md` 163개 disk 저장 (sequential curl, body LLM read 없음). 1 FAIL (URL log-truncated, 추후 재시도). 기존 fetched 3 + 신규 159 = **162 / 166** 확보.
+
+### ANSWERED
+
+- **Q-2026-05-19-M06**: Key Link signing flow = 외부 HSM 단독 서명. Fireblocks key share 0개. Customer HSM signature → Fireblocks validation key 로 검증 (asymmetric pair). 4-component pipeline.
+- **Q-2026-05-19-G07**: 3-level governance (Admin Quorum / Approval Group / Policy) 모두 적용. `Settings > Quorums > Security & compliance > Add validation keys` 전용 group.
+- **Q-2026-05-19-AU06**: Signer-role API user + pairing token. Re-enroll = Owner approval.
+- **Q-2026-05-19-W03 (partial)**: Vault account = ECDSA 1 + EdDSA 1 전속. Workspace-level Key Link/MPC 공존 여부는 미명시 → Q-KL01.
+- **Q-2026-05-19-S16 (partial)**: Beta state 재확인, specific limitation 본 3 PDF 에 미명시.
+- **Q-2026-05-19-A08 (partial)**: ECDSA + EdDSA algorithm 단위 지원. Chain matrix = algorithm 결정.
+
+### 영향받은 페이지 (8)
+
+- [[entities/fireblocks/mpc-key-share]] §"Stage 36 — MPC plane vs Key Link plane boundary"
+- [[entities/fireblocks/cosigner]] §"Stage 36 — Fireblocks Agent"
+- [[entities/fireblocks/workspace]] §"Stage 36 — Key Link Workspace Variant"
+- [[entities/fireblocks/vault-account]] §"Stage 36 — Key Link Vault Binding"
+- [[entities/fireblocks/transaction]] §"Stage 36 — Key Link Signing Flow"
+- [[vendors/fireblocks/architecture]] §"Stage 36 — Key Link Customer-Held Key Plane"
+- [[vendors/fireblocks/security]] §"Stage 36 — Customer Signature Validation Plane"
+- [[vendors/fireblocks/risks]] §"Stage 36 — Key Link Risks" (7 신규 risk)
+
+### 신규 entity 0 (★ 연속 29 stage 0 streak 유지)
+
+흡수 매핑:
+- Fireblocks Agent → `entities/cosigner` (cosigner variant 추가)
+- Validation key + Signing key (customer-held) → `entities/mpc-key-share` + `vendors/security` (key plane boundary)
+- Key Link workspace → `entities/workspace` (workspace type 축 추가)
+
+### 신규 Q 5건 (KL01–KL05, 모두 open)
+
+- KL01: Key Link / MPC workspace same-organization 공존
+- KL02: Customer Server fail 시 fallback
+- KL03: Fireblocks Agent open-source update 정책
+- KL04: HSM Adaptor cold-HSM signing latency
+- KL05: Non-Interactive PoO replay window
+
+### 부수 작업 (이번 turn 에 함께 처리)
+
+- **27 custodial 페이지 사이드바 ← Documentation Hub** 링크 추가 + CSS `.nav-up` 룰
+- **SPOC tooltip** 5 docs-site 페이지 + skill dictionary 항목 추가
+- **doc-author skill** site-template-custodial-db.md 에 SPOC 정의 추가
+- **Reference cluster catalog** markdown 생성 예정 (`_catalog_2026-05-22__developers-reference-batch.md`)
+
+### Stage 36 invariant
+
+> External 도구 (`pdftotext`) 가 PDF/HTML 의 raw read 금지 정책의 실제 enabler.
+> v3.2.2 의 "외부 도구 chunked extract" 가 실제 운영에 어떻게 작동하는지 — pdftotext 가 PDF → text 추출, classifier 회복 시 chunk read 가능.
+> Mode C 의 chunk read 는 LLM 의 직접 PDF read 가 아니라 외부에서 가공된 텍스트의 read 임이 이번 stage 에서 정형화됨.
+
+### Stage 36 closing rule
+
+> Catalog-level Q candidate (Stage 18 의 M06/W03/G07/S16/AU06/A08) 가 Mode C ingest 에서 일괄 ANSWERED 되는 패턴 — promote 결정 시점에 candidate 가 정식 등록되는 lazy-registration 모델. 향후 Mode C promote 의 표준 flow.
+
+## Stage 37 (2026-05-22) — KR Compliance Domain 신설 + Mode C Ingest
+
+### source
+- `sources/compliance/KR_Custodial_Wallet_Compliance_Guide.pdf` (12 페이지, ChatGPT 생성 종합 보고서, 75 footnote 1차 출처)
+
+### 분류
+- TIER 1, 신규 도메인 (**Compliance / KR Regulations** — 6 번째 도메인)
+- Mode C ingest (사용자 명시 승인)
+
+### ANSWERED
+- fireblocks-cold-wallet-bank-design 의 §7.4 의 5 KR 규제 ★ Hypothesis → 정식 fact 화 (시행일, 1차 출처 URL 병기)
+- "KR 특금법 cold storage 비율" → **가상자산업감독규정 §9 = 경제적 가치 80%** (시행령 위임 "≥70%")
+- 트래블룰 임계 = **100만원 이상** (특금법 시행령 §10조의10)
+- 기록보존 = **최소 5년** (특금법 §5조의4)
+- 신고 유효 = **3년**, 갱신 45일 전, 신규 심사 3개월, 변경 45일
+
+### 신규 entity
+- **0** (28+1 stage 연속 0 streak 유지)
+- 흡수 매핑: 모든 KR 법령 fact 가 기존 docs-site 3 문서 + sources/compliance/source-notes 에 흡수
+
+### 영향받은 페이지
+**신규**:
+- `sources/compliance/source-notes/inventory.md` — 12 페이지 catalog + 50+ fact + 8 KR 법령 매핑 + 4 종합검사 제재 + 해외 비교
+- `sources/compliance/source-notes/lightweight-index.md` — TIER 1 hub + cross-cut signal
+- `open-questions/compliance.md` — Q-CMP-01 ~ Q-CMP-08 (신규 도메인 8 Q)
+
+**보강**:
+- `docs-site/fireblocks-cold-wallet-bank-design/risks-open-questions.html` §7.4 (KR 규제 매핑 ANSWERED + 4 종합검사 제재사례 + 신고제 운영)
+- `docs-site/fireblocks-cold-wallet-bank-design/bank-operations.html` §6.3 + §6.5 (KR 망분리 + 14-row 감사 매핑 매트릭스 + 4 종합검사 공통 위반)
+- `docs-site/fireblocks-cold-wallet-bank-design/index.html` (80% 냉지갑 fact 인용)
+- `docs-site/fireblocks-cold-wallet-bank-design/cold-wallet-fundamentals.html` (multi-workspace trigger #6 의 KR 근거 명시)
+- `docs-site/nodewallet-bank-design/compliance-regulations.html` (5 → 8 규제 한눈에 표 + 시행일 + 1차 출처 + 4 임계값 callout)
+- `docs-site/custodial-wallet-db-design/tables-aml.html` (KR Travel Rule 100만원 + 5년 보존 + 신규 서비스 위험평가 callout)
+
+### 신규 Q 8건 (CMP-01 ~ CMP-08, 모두 open)
+
+- CMP-01: 2026-03-30 예고된 시행령·감독규정 개정안 정식 시행일
+- CMP-02: 대법원 2024도10710 판결 ratio decidendi 원문
+- CMP-03: 4 종합검사 제재 원문 (두나무·코빗·빗썸·코인원)
+- CMP-04: ISMS·ISMS-P 인증 vs 신고요건 매핑
+- CMP-05: "법령준수체계" 요건의 시행세칙
+- CMP-06: "동종·동량" 보유 의무의 실무 해석
+- CMP-07: 미신고 해외 VASP 의 "한국인 유치" 판단 기준
+- CMP-08: MPC·멀티시그 사업자의 "실질 통제" 기준 (2024도10710 wallet architecture 적용)
+
+### Stage 37 invariant
+
+> 6 번째 도메인 (Compliance) 신설 시 신규 entity 0 패턴 유지 — KR 법령 fact 는 sources/compliance/ + docs-site 의 cross-cut 형태로 흡수.
+> ChatGPT-generated 2차 source 의 Mode C ingest 는 **1차 출처 URL 병기 + evidence isolation rule 엄수** 의 새 운영 sample. ChatGPT 의 해석/연결 추론은 공식 fact 로 표기 금지.
+
+### Stage 37 closing rule
+
+> 새 도메인 도입 시 (1) inventory + lightweight-index 의 catalog, (2) open-questions/&lt;domain&gt;.md 의 신규 Q 등록, (3) docs-site 의 cross-cut 보강, (4) log.md Stage entry — 4 단계 절차를 표준 flow 로 정형화.
+
+## Stage 38 (2026-05-22) — Fireblocks × Thales Luna HSM (vendor blog) Mode C Ingest
+
+### source
+- `https://www.fireblocks.com/blog/enterprise-digital-asset-security-fireblocks-thales` (Fireblocks 공식 블로그, 2025-09-23, by Adam Levine SVP)
+- 적재 위치: `sources/fireblocks/markdown/2026-05-22__fireblocks-com__enterprise-digital-asset-security-thales.md`
+
+### 분류
+- TIER 1, 1차 source (vendor 공식 블로그)
+- Mode C ingest (사용자 명시 승인)
+- Stage 36 Key Link cluster 의 후속 + Stage 37 KR 컴플라이언스 옵션 C 의 보강
+
+### ANSWERED 1 partial
+- **Q-2026-05-22-KL04 (partial)** — Air-gap transport 메커니즘 = USB · SFTP · data diodes (vendor 공식 발언)
+
+### 신규 Q 3건
+- **Q-2025-09-23-FB01** — Hot/Warm/Cold 3-mode 의 정확한 정의 (특히 "Warm")
+- **Q-2025-09-23-FB02** — SaaS Cold Wallet workspace vs Key Link Cold signing 의 관계
+- **Q-2025-09-23-FB03** — KR VASP 환경 Key Link + Thales Luna 적용 vendor 공식 입장 (HKMA/HKSFC/JFSA 명시, KR 미명시)
+
+### 핵심 fact
+- **Fireblocks KeyLink ↔ Thales Luna HSM** 통합. "secure middleware layer" 표현
+- **Thales Luna HSM** — FIPS 140-3 Level 3 + Common Criteria 인증, PQC readiness
+- **Hot · Warm · Cold signing workflows** — vendor 공식 3-mode framing 등장
+- **Air-gap transport** — USB · SFTP · data diodes (Cold workflow 의 명시 매체)
+- **Customer key ownership** — "Institutions maintain full key ownership"
+- **관할권 명시** — HKMA · HKSFC · JFSA. **KR 미명시**
+- Resource: "Thales-Fireblocks Digital Asset Key Security Solution Brief" (현재 미적재)
+
+### 신규 entity
+- **0** (30 stage 연속 0 streak 유지)
+- 흡수 매핑: Thales Luna HSM → `vendors/fireblocks/security` 의 HSM 항목에 흡수 (별도 entity 미생성)
+
+### 영향받은 페이지
+**신규**:
+- `sources/fireblocks/markdown/2026-05-22__fireblocks-com__enterprise-digital-asset-security-thales.md` (lightweight-index + 10 핵심 fact + cross-cut signal)
+
+**보강**:
+- `open-questions/fireblocks.md` — Stage 38 entry: Q-KL04 부분 ANSWERED + 신규 Q-FB01/FB02/FB03
+- `vendors/fireblocks/risks.md` — Risk-KL05 의 air-gap transport 부분 ANSWERED + Stage 38 — Key Link × Thales 섹션
+- `vendors/fireblocks/security.md` — Stage 38 — Thales Luna HSM 통합 cross-cut + Stage 36 Customer Signature Validation Plane 와의 관계
+- `docs-site/fireblocks-cold-wallet-bank-design/signing-flow.html` — Hot/Warm/Cold 3-mode vendor 공식 framing callout
+- `docs-site/fireblocks-cold-wallet-bank-design/risks-open-questions.html` §7.4d/e — KR 미명시 검증 항목 + Hot/Warm/Cold 3-mode 부분 ANSWERED 표
+- `docs-site/fireblocks-cold-wallet-bank-design/bank-operations.html` §6.3 — 옵션 C-Thales 행 추가 (Key Link + Thales Luna HSM)
+- `docs-site/fireblocks-kr-vasp-compliance/deployment-checklist.html` §6.6 — Thales Luna HSM + Hot/Warm/Cold + air-gap transport 3 신규 점검 항목
+
+### Stage 38 invariant
+
+> 1차 source (vendor 공식 블로그) 의 Mode C ingest 는 marketing 톤이라도 (a) vendor 공식 framing (Hot/Warm/Cold 3-mode 같은), (b) 인증 등급 (FIPS 140-3 L3 + Common Criteria) 같은 명시적 fact, (c) 관할권 명시 vs 미명시 (HKMA/HKSFC/JFSA vs KR) 가 가치. 단 fact 추출 후 1차 source 의 marketing 해석은 wiki 본문에 반영 금지.
+
+### Stage 38 closing rule
+
+> vendor blog 처럼 짧은 1차 source 라도 (a) 직접 인용 가능한 표현, (b) 다른 wiki/docs 의 ★ Hypothesis 답변, (c) 새 Open Q 후보 의 3 축에서 추출. 셋 다 0 이면 Mode A (catalog-only) 가 적절.
 

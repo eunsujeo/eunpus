@@ -14,6 +14,9 @@
 <div class="layout">
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
 <div class="nav-section">
 <h3 class="nav-section-title">Overview</h3>
 <ul>
@@ -91,28 +94,89 @@
 <main class="content">
 <section id="tables-quorum">
 <h2>9. Admin Quorum<span class="g" data-tip="관리자급 사용자의 다수결 승인 그룹. 회사 이사회 정족수 개념. Q (Quorum) / Q+O (Quorum + Owner) 라벨로 표시" tabindex="0">(?)</span> · Approval Group<span class="g" data-tip="특정 작업을 위임받은 별도 승인 그룹. Admin Quorum 보다 좁은 범위로 정의 가능 (AG 라벨)" tabindex="0">(?)</span></h2>
-<span class="section-subtitle">Q / Q+O / AG 라벨의 영속화 + Owner counting rule + 7-day expiry</span>
-<h3>Admin Quorum</h3>
-<p>Workspace<span class="g" data-tip="Fireblocks 의 최상위 격리·거버넌스 단위. 1 workspace = 1 Owner. Slack workspace 와 무관" tabindex="0">(?)</span> · Policy 변경의 다수결 승인 그룹. <strong>Owner / Admin / Non-Signing Admin / Security Admin</strong> 이 멤버 자격.</p>
-    <pre><code>CREATE TABLE admin_quorums (
-  id             BINARY(16) PRIMARY KEY,
-  workspace_id   BINARY(16) NOT NULL UNIQUE,  -- workspace 당 1개
-  threshold      INT NOT NULL,                 -- N of M (Owner 포함 가능)
-  created_at     DATETIME(6) NOT NULL,
-  changed_at     DATETIME(6) NOT NULL,          -- 변경은 Q+O
-  FOREIGN KEY (workspace_id) REFERENCES workspaces(id)
-);
+<span class="section-subtitle">Q · Q+O · AG 라벨의 영속화 + Owner counting rule + 7-day expiry</span>
 
-CREATE TABLE admin_quorum_members (
-  quorum_id  BINARY(16) NOT NULL,
-  user_id    BINARY(16) NOT NULL,
-  joined_at  DATETIME(6) NOT NULL,
-  PRIMARY KEY (quorum_id, user_id),
+<div class="callout">
+<div class="callout-title">본 페이지의 출처 — 어디까지가 Fireblocks 정의이고, 어디부터가 추정인가</div>
+<p>이 페이지의 내용은 두 갈래입니다.</p>
+<p><strong>Fireblocks 공식 문서에 정의된 사실</strong> — 그대로 받아들여도 안전</p>
+<ul style="margin-bottom:0.5rem">
+<li><strong>Admin Quorum</strong>: workspace 당 1 개. Owner / Admin / NSA / Security Admin 4 role 이 멤버 자격. threshold N-of-M 으로 다수결 승인</li>
+<li><strong>Owner Counting Rule</strong>: Q / Q+O 흐름에서 Owner 의 승인은 mandatory + threshold count 에 포함될 수 있음</li>
+<li><strong>Approval Group (AG)</strong>: 일부 작업을 Owner 없이 위임 가능. Settings 에서 작업별 Owner 요구 토글</li>
+<li><strong>7-day expiry</strong>: Add user 같은 요청은 mobile 로 Owner + Quorum 에 전달, 7 일 안에 threshold 미충족 시 자동 expire</li>
+<li>Edit user 는 Approval groups 로 흐름 customize 가능 (정확한 범위는 자료 미명시)</li>
+</ul>
+<p style="margin-bottom:0.3rem"><strong>저자가 합리적으로 추정해서 그린 설계</strong> — 참고용, 본인 환경에서 검증 권장</p>
+<ul style="margin-bottom:0">
+<li><code>admin_quorums</code> · <code>admin_quorum_members</code> · <code>approval_groups</code> · <code>approval_group_members</code> 의 구체 schema</li>
+<li><code>approval_groups.action</code> 을 VARCHAR 자유 텍스트로 둔 선택 (ENUM 으로 정형화 가능)</li>
+<li>7-day expiry 를 <code>approval_requests.expires_at</code> 컬럼 + scheduled job 으로 강제하는 패턴 — 실제 Fireblocks 내부 구현은 다를 수 있음</li>
+</ul>
+</div>
+
+<h3>Admin Quorum — workspace 의 의사결정 정족수</h3>
+<p>회사의 이사회 정족수 (quorum) 개념을 그대로 옮긴 것. 어떤 결정 — 예: 신규 사용자 추가, Policy 변경, Whitelist 등록 — 은 한 명의 관리자가 단독으로 못 하고 <strong>여러 관리자가 동의해야</strong> 진행됩니다. 그 "여러 명" 을 정의하는 것이 Admin Quorum.</p>
+<p>구성 — workspace 당 정확히 1 개의 quorum 이 있고, 그 안에 멤버 사용자들이 포함됩니다. 멤버 자격은 <strong>Owner · Admin · NSA · Security Admin</strong> 4 role 만 (sign / viewer / auditor 등은 멤버가 될 수 없음). Threshold 는 N-of-M 형태 — 예: "5명 중 3명 승인" / "10명 중 5명 승인".</p>
+
+<h4>1.1 <code>admin_quorums</code> — workspace 의 quorum 설정</h4>
+<pre><code>CREATE TABLE admin_quorums (
+  id             BINARY(16) PRIMARY KEY,
+  workspace_id   BINARY(16) NOT NULL UNIQUE,  -- workspace 당 1개 강제
+  threshold      INT NOT NULL,                 -- N of M (Owner 포함 가능)
+  created_by     BINARY(16) NOT NULL,          -- 최초 생성 actor (보통 workspace 의 Owner)
+  created_at     DATETIME(6) NOT NULL,
+  modified_by    BINARY(16) NOT NULL,          -- 마지막 변경의 initiator. ★ 변경 자체는 Q+O 승인 필요
+  modified_at    DATETIME(6) NOT NULL,
+  FOREIGN KEY (workspace_id) REFERENCES workspaces(id)
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>quorum 의 고유 식별자</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16) UNIQUE</td><td>이 quorum 이 속한 workspace. <strong>UNIQUE</strong> — workspace 당 quorum 1 개 강제</td></tr>
+<tr><td><code>threshold</code></td><td>INT</td><td>승인이 필요한 멤버 수 (N-of-M 의 N). 예: 멤버 5 명 중 3 명 승인 필요 → threshold=3</td></tr>
+<tr><td><code>created_by</code></td><td>BINARY(16)</td><td>최초 quorum 을 생성한 user (보통 workspace 의 Owner). set-once</td></tr>
+<tr><td><code>created_at</code></td><td>DATETIME(6)</td><td>quorum 최초 생성 시각. set-once</td></tr>
+<tr><td><code>modified_by</code></td><td>BINARY(16)</td><td>마지막 변경 (멤버 추가/제거 또는 threshold 조정) 을 시작한 user. <strong>★ 변경 자체는 Q+O 라벨</strong> — Owner 단독으로 못 바꿈, 현재 Quorum 의 N-of-M + Owner 승인이 모두 필요한 self-amending 패턴. 즉 이 컬럼은 "누가 변경을 시작했는가" 의 initiator 이고, 실제로 승인한 quorum 의 audit 은 별도 <code>approval_requests</code> 평면에서 추적</td></tr>
+<tr><td><code>modified_at</code></td><td>DATETIME(6)</td><td>마지막 변경 적용 시각</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>1.2 <code>admin_quorum_members</code> — 누가 quorum 의 멤버인지 (junction · grant/revoke 패턴)</h4>
+<pre><code>CREATE TABLE admin_quorum_members (
+  id          BINARY(16) PRIMARY KEY,
+  quorum_id   BINARY(16) NOT NULL,
+  user_id     BINARY(16) NOT NULL,
+  granted_by  BINARY(16) NOT NULL,            -- 멤버로 추가한 initiator (Q+O 흐름)
+  granted_at  DATETIME(6) NOT NULL,
+  revoked_by  BINARY(16),                      -- 제거 시 set, set-once
+  revoked_at  DATETIME(6),                     -- 제거 시각, NULL = 현재 active
+  KEY (quorum_id, user_id),
+  KEY (quorum_id, revoked_at),
   FOREIGN KEY (quorum_id) REFERENCES admin_quorums(id),
   FOREIGN KEY (user_id) REFERENCES users(id)
 );</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>grant 이벤트의 surrogate PK. 같은 user 가 revoke 후 재추가되면 새 row INSERT — 이력 보존</td></tr>
+<tr><td><code>quorum_id</code></td><td>BINARY(16) FK</td><td>어느 quorum 의 멤버인지</td></tr>
+<tr><td><code>user_id</code></td><td>BINARY(16) FK</td><td>멤버 사용자. role 은 Owner / Admin / NSA / Security Admin 중 하나여야 함 (application-layer 검증)</td></tr>
+<tr><td><code>granted_by</code></td><td>BINARY(16)</td><td>이 멤버 추가를 시작한 user (Q+O 흐름의 initiator). set-once</td></tr>
+<tr><td><code>granted_at</code></td><td>DATETIME(6)</td><td>멤버로 추가된 시각. set-once</td></tr>
+<tr><td><code>revoked_by</code></td><td>BINARY(16) nullable</td><td>멤버에서 제거를 시작한 user. NULL = 현재 active. set-once when set</td></tr>
+<tr><td><code>revoked_at</code></td><td>DATETIME(6) nullable</td><td>제거 시각. NULL = 현재 active. set-once when set</td></tr>
+<tr><td><code>KEY (quorum_id, user_id)</code></td><td>—</td><td>"이 user 가 이 quorum 의 멤버였던 이력 전부" 조회 인덱스 (PRIMARY 가 아니어서 같은 (quorum, user) 의 grant/revoke 사이클 다중 row 가능)</td></tr>
+<tr><td><code>KEY (quorum_id, revoked_at)</code></td><td>—</td><td>"이 quorum 의 현재 active 멤버" 조회 인덱스 (WHERE revoked_at IS NULL)</td></tr>
+</tbody>
+</table>
+</div>
 
-    <h3>Owner Counting Rule</h3>
+<h3>Owner Counting Rule — Owner 의 승인은 mandatory + count 에도 포함</h3>
 <div class="callout">
 <div class="callout-title"><code>add-users.md</code>, p.1 직접 인용 (공식 확인)</div>
 <p>Q 또는 Q+O 흐름에서 <strong>Owner 의 승인은 mandatory 이며 threshold count 에 포함될 수 있다</strong>. 예: threshold 가 3 of 5 일 때:</p>
@@ -121,31 +185,145 @@ CREATE TABLE admin_quorum_members (
 <li>3 Admins = 미충족; Owner 의 추가 승인 전까지 거부</li>
 </ul>
 </div>
-<h3>Approval Group (AG)</h3>
-<p>일부 작업을 Owner 없이도 가능하게 위임하는 별개 메커니즘. <code>Settings &gt; Quorums &gt; Approval groups</code> 에서 작업별로 Owner 요구 토글.</p>
-    <pre><code>CREATE TABLE approval_groups (
-  id           BINARY(16) PRIMARY KEY,
-  workspace_id BINARY(16) NOT NULL,
-  action       VARCHAR(64) NOT NULL,  -- 'delete_user', 'edit_user', ...
+<h3>Approval Group (AG) — Owner 없이 위임 가능한 작업</h3>
+<p>Admin Quorum 이 "거의 모든 중요한 결정에는 Owner 가 반드시 들어가야 함" 인 반면, <strong>Approval Group</strong> 은 일부 작업을 <strong>Owner 없이도 처리할 수 있도록 위임</strong>하는 별개 메커니즘입니다. 예: 운영팀 매니저 3 명이 모이면 사용자 삭제 가능 (Owner 호출 없이). 작업별로 별도 group 을 정의하고 각 group 에 <code>requires_owner</code> 토글을 둡니다.</p>
+<p>설정 위치 — Console 의 <code>Settings &gt; Quorums &gt; Approval groups</code> 에서 작업 → group 매핑과 Owner 요구 여부를 조정.</p>
+
+<h4>2.1 <code>approval_groups</code> — 작업별 위임 group 정의</h4>
+<pre><code>CREATE TABLE approval_groups (
+  id             BINARY(16) PRIMARY KEY,
+  workspace_id   BINARY(16) NOT NULL,
+  action         VARCHAR(64) NOT NULL,  -- 'delete_user', 'edit_user', ...
   requires_owner BOOLEAN NOT NULL,
-  threshold    INT NOT NULL,
+  threshold      INT NOT NULL,
+  created_by     BINARY(16) NOT NULL,
+  created_at     DATETIME(6) NOT NULL,
+  modified_by    BINARY(16) NOT NULL,
+  modified_at    DATETIME(6) NOT NULL,
   FOREIGN KEY (workspace_id) REFERENCES workspaces(id)
-);
-
-CREATE TABLE approval_group_members (
-  group_id   BINARY(16) NOT NULL,
-  user_id    BINARY(16) NOT NULL,
-  PRIMARY KEY (group_id, user_id)
 );</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>group 의 고유 식별자</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16) FK</td><td>이 group 이 속한 workspace</td></tr>
+<tr><td><code>action</code></td><td>VARCHAR(64)</td><td>이 group 이 위임받은 작업 (예: <code>delete_user</code>, <code>edit_user</code>). 정형화한다면 ENUM 가능</td></tr>
+<tr><td><code>requires_owner</code></td><td>BOOLEAN</td><td>이 group 의 결정에 Owner 가 반드시 참여해야 하는지 토글. FALSE 면 그룹 자체 threshold 만으로 처리 — 즉 AG 의 핵심 가치</td></tr>
+<tr><td><code>threshold</code></td><td>INT</td><td>group 멤버 중 몇 명이 승인해야 충족되는지 (N-of-M 의 N)</td></tr>
+<tr><td><code>created_by</code> · <code>created_at</code></td><td>BINARY(16) · DATETIME(6)</td><td>group 최초 생성 actor + 시각. set-once</td></tr>
+<tr><td><code>modified_by</code> · <code>modified_at</code></td><td>BINARY(16) · DATETIME(6)</td><td>마지막 변경 (threshold 조정 · requires_owner 토글 · 멤버 외 속성 변경) actor + 시각</td></tr>
+</tbody>
+</table>
+</div>
 
-    <h3>Add user 흐름의 7-day Expiry</h3>
-<p>Add user 승인은 mobile 로 Owner + Admin Quorum 에 전송. <strong>threshold 가 7일 안에 충족되지 않으면 request expire</strong>되어 사용자 추가 안 됨. <code>approval_requests.expires_at</code> 컬럼 + scheduled job 으로 강제.</p>
+<h4>2.2 <code>approval_group_members</code> — group 의 멤버 (junction · grant/revoke 패턴)</h4>
+<pre><code>CREATE TABLE approval_group_members (
+  id          BINARY(16) PRIMARY KEY,
+  group_id    BINARY(16) NOT NULL,
+  user_id     BINARY(16) NOT NULL,
+  granted_by  BINARY(16) NOT NULL,
+  granted_at  DATETIME(6) NOT NULL,
+  revoked_by  BINARY(16),
+  revoked_at  DATETIME(6),
+  KEY (group_id, user_id),
+  KEY (group_id, revoked_at)
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>grant 이벤트의 surrogate PK. revoke 후 재추가 시 새 row INSERT — 이력 보존</td></tr>
+<tr><td><code>group_id</code></td><td>BINARY(16) FK</td><td>어느 approval group 의 멤버인지</td></tr>
+<tr><td><code>user_id</code></td><td>BINARY(16) FK</td><td>멤버 사용자</td></tr>
+<tr><td><code>granted_by</code> · <code>granted_at</code></td><td>BINARY(16) · DATETIME(6)</td><td>멤버 추가 actor + 시각. set-once</td></tr>
+<tr><td><code>revoked_by</code> · <code>revoked_at</code></td><td>BINARY(16) nullable · DATETIME(6) nullable</td><td>제거 actor + 시각. NULL = 현재 active. set-once when set</td></tr>
+<tr><td><code>KEY (group_id, revoked_at)</code></td><td>—</td><td>"이 group 의 현재 active 멤버" 조회 인덱스 (WHERE revoked_at IS NULL)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Add user 흐름의 7-day Expiry</h3>
+<p>새 사용자 추가 요청은 단순히 "Owner 가 클릭" 만으로 끝나지 않습니다 — Owner + Admin Quorum 멤버 각자의 mobile app 에 push 알림이 가고, 각자 mobile 에서 서명 (mobile MPC key share) 으로 승인해야 합니다. 그런데 모든 사람이 항상 즉시 응답하지는 않으므로 <strong>제한 시간 (7일)</strong> 안에 threshold 가 충족되지 않으면 요청이 자동으로 expire — 즉 "잊혀진 채 영원히 pending" 상태를 막는 안전장치.</p>
+<p>schema 측 표현 — <code>approval_requests</code> 테이블에 <code>expires_at = created_at + 7 day</code> 를 set 하고, scheduled job 이 그 시각을 지난 pending 요청을 자동으로 expired 처리.</p>
+
 <h3>Edit user 의 Customize</h3>
-<p>Edit user 는 Approval groups 로 흐름 customize 가능. 정확한 범위 (membership / threshold / Owner 요구 토글) 는 본 자료에 명시 없음.</p>
+<p>Edit user (사용자 정보 수정) 는 위 Approval groups 로 흐름을 <strong>customize</strong> 가능 — 즉 어떤 그룹이 승인하면 진행할지, Owner 가 들어가야 할지 등을 Settings 에서 조정. 정확한 customize 범위 (어떤 field 가 어떤 권한이 필요한지) 는 Fireblocks 자료에 명시되어 있지 않습니다.</p>
+
+<h3>Putting It Together — 2 시퀀스</h3>
+<p>위 schema 가 실제 운영 흐름 안에서 어떻게 작동하는지 — Add user (Q 흐름, 7-day expiry) 와 Approval Group 위임 (AG 흐름, Owner 없이 처리) 의 두 시나리오로.</p>
+
+<h4>3.1 Add user 흐름 — Q (Admin Quorum) + 7-day expiry</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Initiator as 👤 Owner / Admin / NSA
+  actor Owner as 👤 Owner
+  actor Quorum as 👥 Admin Quorum<br/>(M 명 멤버)
+  participant Console as 🖥️ Fireblocks Console
+  participant FB as 🛡️ Fireblocks Core
+  participant Job as ⏰ Scheduled job
+
+  Initiator->>Console: "Add user" 요청<br/>(email + role)
+  Console->>FB: approval_requests INSERT<br/>(expires_at = +7day, status='pending')
+  Console->>Owner: mobile push
+  Console->>Quorum: mobile push (M 명 전체)
+
+  Note over Owner,Quorum: 각자 mobile app 에서 검토 + 서명
+
+  loop 7일 안에 승인 누적
+    Owner->>Console: 승인 (mobile 서명)
+    Quorum->>Console: 멤버 1 명씩 승인
+  end
+
+  alt threshold + Owner counting rule 충족
+    Console->>FB: users INSERT (type='console' 또는 'api', status='pending')
+    FB->>FB: approval_requests.status = 'approved'
+    Console->>Initiator: 사용자 초대 메일 발송
+    Note over FB: 신규 사용자가 초대 수락하면 users.activated_at SET
+  else 7일 expire
+    Job->>FB: pending 요청 sweep
+    FB->>FB: approval_requests.status = 'expired'
+    FB->>Console: 요청 자동 취소
+    Console->>Initiator: "요청이 만료되어 사용자가 추가되지 않았습니다" 알림
+  end
+</pre>
+<span class="diagram-caption">Figure 22. Add user — Q (Admin Quorum) 흐름 + 7-day expiry. 핵심: ① 요청은 즉시 적용되지 않고 <code>approval_requests</code> 에 <code>expires_at = +7day</code> 와 함께 pending 으로 들어감. ② Owner + Quorum 멤버 각자 mobile 에서 서명 누적 — Owner Counting Rule 에 의해 Owner 의 승인은 mandatory + threshold count 에도 포함. ③ threshold 충족 시 <code>users</code> INSERT (status='pending'), 사용자가 초대를 수락하면 <code>activated_at</code> SET 으로 active 전환. ④ 7일 동안 미충족 시 scheduled job 이 자동으로 expired 처리 — pending 이 영원히 남아 운영자 confusion 을 일으키지 않도록.</span>
+</div>
+
+<h4>3.2 Approval Group 위임 흐름 — AG (Owner 없이 처리)</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Initiator as 👤 Admin / NSA 등
+  actor AG_Members as 👥 Approval Group<br/>(이 작업 위임받은 그룹)
+  participant Console as 🖥️ Fireblocks Console
+  participant FB as 🛡️ Fireblocks Core
+
+  Note over Initiator,FB: 사전 설정 — Settings / Quorums / Approval groups<br/>action='delete_user', requires_owner=FALSE, threshold=2, members=[...]
+
+  Initiator->>Console: "Delete user X" 요청
+  Console->>FB: action='delete_user' 의 approval_groups 조회
+  FB->>FB: 해당 group 의 requires_owner = FALSE 확인
+
+  alt requires_owner = FALSE (AG 위임)
+    Console->>AG_Members: mobile push (Owner 제외)
+    AG_Members->>Console: threshold 명 승인 (mobile 서명)
+    Console->>FB: users.deleted_at = now()<br/>(soft delete)
+    Console->>Initiator: 삭제 완료
+    Note over Initiator,FB: Owner 가 잠들어 있어도 운영 가능
+  else requires_owner = TRUE (Q+O 와 사실상 동일)
+    Console->>FB: 일반 Q+O 흐름으로 fallback
+  end
+</pre>
+<span class="diagram-caption">Figure 23. Approval Group 위임 — AG (Owner 없이 가능) 흐름. 핵심 가치: ① 일상 운영 작업 (사용자 삭제 / edit / 정책 미세 조정 등) 까지 Owner 가 매번 들어가야 한다면 Owner 가 병목이 됨 — 야간/주말 운영 지연 + Owner mobile 분실 시 마비. ② Approval Group 으로 작업별 위임이 가능해서 <strong>Owner 가 없어도 운영팀 자체로 처리</strong>. ③ 단 <code>requires_owner</code> 토글이 TRUE 면 사실상 Q+O 와 같은 흐름 — Settings 에서 작업별로 정책적으로 결정. 보안과 운영 편의 사이의 trade-off 를 group 단위로 세밀 조정하는 메커니즘.</span>
+</div>
 </section>
 <nav aria-label="Section navigation" class="page-nav">
 <a class="page-nav-link page-nav-prev" href="tables-role.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">8. 9 User Roles</span></a>
-<a class="page-nav-link page-nav-next" href="tables-policy.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">9. Policy · TAP<span class="g" data-tip="Transaction Authorization Policy. Fireblocks 의 거래 단위 승인 정책 엔진" tabindex="0">(?)</span></span></a>
+<a class="page-nav-link page-nav-next" href="tables-policy.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">10. Policy · TAP<span class="g" data-tip="Transaction Authorization Policy. Fireblocks 의 거래 단위 승인 정책 엔진" tabindex="0">(?)</span></span></a>
 </nav>
 </main>
 </div>

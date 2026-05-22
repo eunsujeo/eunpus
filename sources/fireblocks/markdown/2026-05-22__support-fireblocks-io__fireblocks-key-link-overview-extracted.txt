@@ -1,0 +1,99 @@
+26. 5. 18. 오후 3:35                                                  Fireblocks Key Link Overview – Fireblocks Help Center
+
+
+                     Don't see what you're looking for? Log in for the full Help Center experience
+
+                                                                           Fireblocks Help Center Search the Help Center /
+
+
+
+
+        Fireblocks Key Link Overview
+        Updated 6 months ago
+
+        With Fireblocks Key Link, you can integrate your organization's Key Management solution
+        with the platform. This enables you to leverage the following features:
+              Robust wallet management capabilities
+              Built-in node infrastructure
+              Governance engine
+              Transfer network
+              Automated compliance functionality
+        You can seamlessly manage assets across hot, warm, and air-gapped cold storage
+        environments from a single platform. Manage your key storage in cloud hardware enclaves
+        or with FIPS-certified hardware security models (HSMs) in the cloud or on-prem.
+        This article assumes your Key Management Infrastructure is based on an HSM. However, we
+        allow the usage of other systems that support this framework.
+
+        Architecture
+
+
+
+
+https://support.fireblocks.io/hc/en-us/articles/14228517105052-Fireblocks-Key-Link-Overview                                  1/3
+26. 5. 18. 오후 3:35                                                  Fireblocks Key Link Overview – Fireblocks Help Center
+
+
+                     Don't see what you're looking for? Log in for the full Help Center experience
+
+                                                                           Fireblocks Help Center                           /
+
+
+
+
+        The Fireblocks Key Link workspace setup differs from the standard Fireblocks MPC-based
+        workspaces by allowing customers to host several key components, as shown in the
+        diagram above.
+        The following lists describes the components and their responsibilities:
+              Fireblocks Agent: An open-source repository that needs to be hosted by the
+              customer. It is an on-prem service (Typescript) responsible for retrieving new
+              messages to sign from Fireblocks, relaying these messages to the customer’s HSM
+              through the customer’s server, and returning the signed results to Fireblocks.
+              Customer Server: Developed and hosted by the customer. Receives messages to
+              sign from the Fireblocks Agent, signs the messages via the customer’s HSM, and
+              relays them back to Fireblocks. The customer server can have any custom logic
+              (e.g., custom on-prem policy, transaction validation, etc.) to approve or reject
+              transaction signing requests.
+              HSM Component: The actual HSM implementation. Can be on-prem, cloud-based,
+              hot or cold HSM, or a different Key Management System.
+https://support.fireblocks.io/hc/en-us/articles/14228517105052-Fireblocks-Key-Link-Overview                                     2/3
+26. 5. 18. 오후 3:35                                                  Fireblocks Key Link Overview – Fireblocks Help Center
+
+              HSMDon't
+                   Adaptor:  Anyou're
+                       see what optional separate
+                                      looking      component
+                                              for? Log in for thethat  can, for
+                                                                  full Help     example,
+                                                                            Center experience
+              communicate with an offline (cold) HSM. An online HSM setup can be part of the
+              customer server code or a separate component.
+                                                                           Fireblocks Help Center                           /
+        Learn more about Getting started with Fireblocks Key Link.
+
+
+
+                                                             Was this article helpful?
+                                                                      Yes              No
+
+        ON THIS PAGE
+              Architecture
+
+
+             Related Articles
+                     Getting started with Fireblocks Key Link
+
+
+
+
+      fireblocks.com          Status        API Docs         Console         info@fireblocks.com
+
+
+
+      Fireblocks © 2026. All Rights Reserved. NMLS Registration Number: 2066055
+      Privacy Policy
+
+
+
+
+https://support.fireblocks.io/hc/en-us/articles/14228517105052-Fireblocks-Key-Link-Overview                                     3/3
+

@@ -770,3 +770,153 @@
 - **Stage 13 (Developer Docs webpages)**: [[sources/fireblocks/markdown/2026-05-19__developers-fireblocks-com__sitemap]] (in-body card 29 URLs) + 3 seed page index
 - **Stage 14 (AML/Compliance 29 + Cold Wallet 15)**: [[sources/fireblocks/markdown/2026-05-19__support-fireblocks-io__aml-compliance-cluster-catalog]] + [[sources/fireblocks/markdown/2026-05-19__support-fireblocks-io__cold-wallet-cluster-catalog]] + 8 TIER 1 lightweight index
 - **Stage 15 (llms.txt full sitemap)**: [[sources/fireblocks/markdown/2026-05-19__developers-fireblocks-com__llms-txt-sitemap]] (716 URLs)
+
+## Stage 36 (2026-05-22) — Key Link Cluster Mode C Deep Ingest
+
+3 PDF body ingest (extracted via pdftotext): `fireblocks-key-link-overview.md` + `getting-started-with-fireblocks-key-link.md` + `set-up-your-fireblocks-vault-with-key-link.md`. Parallel: `developers.fireblocks.com/reference/*.md` 163개 mass-fetch (Mode B disk-only, body 미read).
+
+### Q candidates 정식 등록 (Stage 18 catalog 에서 등록 보류 → Stage 36 에서 일괄 등록)
+
+#### Q-2026-05-19-M06 — Key Link signing flow vs MPC — **ANSWERED (Stage 36)**
+
+- **Why it matters**: Key Link 가 MPC plane 과 어떻게 다른 trust model 인지가 product line 의 정체성
+- **Where this came up**: [[entities/fireblocks/mpc-key-share]], [[sources/fireblocks/markdown/2026-05-19__support-fireblocks-io__key-link-cluster-catalog]]
+- **Answer**: 외부 HSM 단독 서명. Fireblocks 가 key share 0개. MPC plane 자체 없음. Customer HSM signature → Fireblocks validation key 로 검증 (asymmetric pair). 4-component pipeline: Fireblocks Agent (TS open-source) → Customer Server → HSM → 역경로
+- **Status**: answered
+- **Sources**: `2026-05-22__support-fireblocks-io__fireblocks-key-link-overview-extracted.txt` p.1-3, `getting-started-with-fireblocks-key-link-extracted.txt` p.1-9
+- **Applied to**: [[entities/fireblocks/mpc-key-share]] §"Stage 36 — MPC plane vs Key Link plane boundary", [[entities/fireblocks/transaction]] §"Stage 36 — Key Link Signing Flow", [[vendors/fireblocks/architecture]] §"Stage 36 — Key Link Customer-Held Key Plane"
+
+#### Q-2026-05-19-W03 — Vault Account 의 Key Link / MPC 공존 — **부분 ANSWERED (Stage 36)**
+
+- **Why it matters**: Vault account 단위 격리 모델 — 한 vault 안에 두 plane 의 asset 가능 여부
+- **Answer (partial)**: Key Link workspace 의 vault account 는 **ECDSA 1 + EdDSA 1 = 2 key 전용**. 한 key 가 한 vault 전속 (다른 vault 재사용 불가). 같은 workspace 안에서 MPC + Key Link asset 공존 여부는 미명시 — workspace-level 분리 가능성 강함 (Key Link workspace = 별도 type). 이 부분은 Q-KL01 으로 분리
+- **Status**: partial
+- **Sources**: `set-up-your-fireblocks-vault-with-key-link-extracted.txt` p.1-4
+- **Applied to**: [[entities/fireblocks/vault-account]] §"Stage 36 — Key Link Vault Binding", [[entities/fireblocks/workspace]] §"Stage 36 — Key Link Workspace Variant"
+
+#### Q-2026-05-19-G07 — Key Link governance plane — **ANSWERED (Stage 36)**
+
+- **Why it matters**: 어떤 governance feature (Admin Quorum / Approval Group / Policy) 가 Key Link asset 에 적용 가능한가
+- **Answer**: 3-level governance 모두 적용. (a) Admin Quorum 이 API user (Signer role) 생성 승인 — Agent 페어링 prerequisite. (b) Approval Group: `Settings > Quorums > Security & compliance > Add validation keys` 전용 group. (c) Policy rule 의 designated signer = Signer-role API user (Agent 페어된) 강제. Cold Wallet Risk-G07 (approval-group 미지원) 패턴 ≠ Key Link
+- **Status**: answered
+- **Sources**: `getting-started-with-fireblocks-key-link-extracted.txt` p.2-3, p.7
+- **Applied to**: [[entities/fireblocks/workspace]] §"Stage 36", [[vendors/fireblocks/security]] §"Stage 36 — Customer Signature Validation Plane"
+
+#### Q-2026-05-19-S16 — Key Link beta production-readiness — **부분 ANSWERED (Stage 36)**
+
+- **Why it matters**: Beta 상태의 specific limitation 식별
+- **Answer (partial)**: Catalog-level beta fact 재확인 (API prefix `/key-link-beta/`). 본 3 PDF 에는 Key Link workspace 가 일관되게 별도 workspace type 으로 명시 — beta-specific 제약 미명시. Cold Wallet 의 G07 패턴 (approval-group 미지원) 과는 다름 (Key Link 는 approval-group 지원). Specific limitation 식별 위해 추가 cluster ingest 필요 → 향후 Mode C 잔존
+- **Status**: partial
+- **Applied to**: [[vendors/fireblocks/risks]] §"Risk-KL03"
+
+#### Q-2026-05-19-AU06 — Key Link signing key authentication — **ANSWERED (Stage 36)**
+
+- **Why it matters**: 어떤 customer-side credential 이 keyId 와 매핑되는가
+- **Answer**: **Signer-role API user + pairing token**. Procedure: API user 생성 → Admin Quorum approval → pairing token 발급 → Agent 에 입력 → 페어 완료. Re-enroll = Owner approval 필요. 신규 signing key 등록 시 `set-agent-user-id` 로 keyId ↔ API user 매핑
+- **Status**: answered
+- **Sources**: `getting-started-with-fireblocks-key-link-extracted.txt` p.2
+- **Applied to**: [[entities/fireblocks/cosigner]] §"Stage 36 — Fireblocks Agent"
+
+#### Q-2026-05-19-A08 — Key Link chain / algorithm support — **부분 ANSWERED (Stage 36)**
+
+- **Why it matters**: Key Link 의 자산군 — MPC 와 동일? 별도 매트릭스?
+- **Answer (partial)**: **ECDSA + EdDSA 알고리즘 단위 지원** (MPC-CMP 와 동일 algorithm 매트릭스). Vault account 당 ECDSA 1 + EdDSA 1 = 2 key 전용. Asset wallet 활성화 = 해당 asset 의 underlying protocol algorithm 의 key 가 vault 에 assigned 여부. Specific chain matrix 는 algorithm 결정 (별도 chain whitelist 미명시 → Mode C 추가 필요)
+- **Status**: partial
+- **Sources**: `set-up-your-fireblocks-vault-with-key-link-extracted.txt` p.2-3, `getting-started-with-fireblocks-key-link-extracted.txt` p.4
+- **Applied to**: [[entities/fireblocks/vault-account]] §"Stage 36"
+
+### 신규 Q (Stage 36 본문 read 후 발견)
+
+#### Q-2026-05-22-KL01: Key Link workspace 와 MPC workspace 의 same-organization 공존? — **부분 ANSWERED (Stage 36)**
+
+- **Why it matters**: Migration path (MPC → Key Link 전환) + 운영 변경 영향 + Customer Domain 의 mixed-plane 가능 여부
+- **Where this came up**: [[entities/fireblocks/workspace]] §"Stage 36", [[vendors/fireblocks/risks]] §"Risk-KL07"
+- **Answer (partial, Stage 36)**: Hosted MPC 의 invariant 명시 — "modifying an existing SaaS MPC workspace is impossible" (`hosted-mpc-workspace-configuration.md` p.1). Workspace type 은 immutable. Key Link 도 같은 패턴 추정 (architectural symmetry). Customer Domain (Stage 9 5-level hierarchy top) 안에 mixed-plane workspace 공존 가능 — 각 workspace 가 type 고정. **Migration = 새 workspace + cross-workspace asset transfer**. Key Link 자체에 명시적 inavariant 는 별도 ingest 필요.
+- **Sources**: `2026-05-22__support-fireblocks-io__hosted-mpc-workspace-configuration-extracted.txt` p.1, `hosted-mpc-customer-side-setup-extracted.txt` p.2
+- **Status**: partial — Key Link 자체 invariant 의 직접 명시는 후속 ingest 필요
+
+#### Q-2026-05-22-KL02: Customer Server fail 시 transaction signing fallback?
+
+- **Why it matters**: Risk-KL01 의 mitigation 명시 부재 — Active-Active HA 권장 여부, Retry policy, Stage 9 의 Pending Signature 2h timeout 과의 호환성
+- **Where this came up**: [[vendors/fireblocks/risks]] §"Risk-KL01"
+- **Sources to check**: Fireblocks Agent open-source repo, Key Link advanced ops PDF
+- **Status**: open
+
+#### Q-2026-05-22-KL03: Fireblocks Agent (open-source TS) update 정책?
+
+- **Why it matters**: Open-source customer-hosted service 의 minimum version 강제 / security patch deployment 정책
+- **Where this came up**: [[vendors/fireblocks/risks]] §"Risk-KL02"
+- **Sources to check**: Fireblocks Agent GitHub repo README, Key Link release notes
+- **Status**: open
+
+#### Q-2026-05-22-KL04: HSM Adaptor cold-HSM signing latency / batching?
+
+- **Why it matters**: Cold HSM signing 의 manual sign 사이클 vs Stage 9 의 Pending Signature 2h timeout + chain-specific 시간 제약 (Algorand 50min, Tezos 30min, Polkadot 2h)
+- **Where this came up**: [[vendors/fireblocks/risks]] §"Risk-KL05"
+- **Sources to check**: HSM Adaptor reference architecture, Cold HSM signing case study
+- **Status**: open
+
+#### Q-2026-05-22-KL05: Non-Interactive PoO replay window?
+
+- **Why it matters**: UnixTimeInSeconds 의 validity window 명시 없음 — same-workspace replay 가능성
+- **Where this came up**: [[vendors/fireblocks/risks]] §"Risk-KL06"
+- **Hypotheses (unverified)**: SdkApiKey GUID + UnixTimeInSeconds 가 nonce 역할 가능 — 단 server-side replay protection 강제 미명시
+- **Sources to check**: Key Link API reference (`add-a-new-signing-key` endpoint spec)
+- **Status**: open
+
+### Stage 36 Summary
+
+- **ANSWERED 4 full + 2 partial**: M06 / G07 / AU06 (full) + W03 / S16 / A08 (partial)
+- **신규 Q 5건**: KL01-KL05 (모두 open)
+- **신규 entity 0건**: Fireblocks Agent → cosigner, Validation/Signing key → security + mpc-key-share, Key Link workspace → workspace 흡수. **연속 29 stage 신규 entity 0** 유지
+- **신규 Risk 7건**: Risk-KL01–KL07 모두 [[vendors/fireblocks/risks]] hub 흡수
+- **영향 페이지 8**: architecture / mpc-key-share / cosigner / workspace / vault-account / transaction / security / risks
+- **Mass-fetch parallel**: `developers.fireblocks.com/reference/*.md` 163개 disk 저장 (Mode A+B 하이브리드, body 미read)
+
+## Stage 38 (2026-05-22) — Thales Luna HSM 통합 (vendor blog)
+
+### ANSWERED 부분
+
+#### Q-2026-05-22-KL04 (partial): Air-gap transport 메커니즘
+
+- **Status**: **부분 ANSWERED (Stage 38)**
+- **What's confirmed**: USB · SFTP · data diodes 가 Cold workflow 의 air-gap transport 매체임이 vendor 공식 발언으로 확인 (Fireblocks blog 2025-09-23)
+- **Still open**: 정확한 cold-HSM signing latency 수치 / batching 패턴 / Pending Signature 2h timeout 과의 호환성 미명세
+- **Source**: `sources/fireblocks/markdown/2026-05-22__fireblocks-com__enterprise-digital-asset-security-thales.md`
+
+### 신규 Q (3) — Key Link × Thales × Cold variant
+
+#### Q-2025-09-23-FB01: Key Link 의 Hot/Warm/Cold 3-mode 의 정확한 기술 정의
+
+- **Why it matters**: Vendor 공식 발언에서 "Hot, Warm, Cold signing workflows" 가 등장 (Stage 38). 단 "Warm" 의 기술 정의 (Hot 와 Cold 의 중간 — 어떤 격리 수준? 어떤 transport?) 명시 없음
+- **Where this came up**: Stage 38, Fireblocks blog × Thales
+- **Hypotheses (unverified)**:
+  - Warm = HSM partition 이 online 이지만 별도 격리 zone (예: jump server 경유)
+  - Warm = Cold HSM 의 batch online 모드 (정기적 batch signing)
+- **Sources to check**: Thales-Fireblocks Solution Brief (미적재), HSM Adaptor reference architecture
+- **Status**: open
+
+#### Q-2025-09-23-FB02: SaaS Cold Wallet workspace vs Key Link Cold signing 의 관계
+
+- **Why it matters**: Fireblocks 에 (a) SaaS Cold Wallet workspace (Stage 14 cluster, 별도 product) 와 (b) Key Link Cold signing workflow (Stage 38, customer HSM 기반) 가 동시 존재. 둘이 별개 product 인지, 같은 plane 의 variant 인지, 혼합 사용 가능한지 명시 없음
+- **Where this came up**: Stage 38, Fireblocks blog × Thales
+- **Hypotheses (unverified)**:
+  - 별개 product — SaaS Cold = Fireblocks 관리 cold facility, Key Link Cold = customer HSM 의 cold mode
+  - 혼합 — 한 workspace 안에서 SaaS Cold vault + Key Link Cold vault 가능?
+- **Sources to check**: Cold Wallet cluster (Stage 14) 의 본문 Mode C ingest, Key Link 의 workspace type 명세
+- **Status**: open
+
+#### Q-2025-09-23-FB03: KR VASP 환경의 Key Link + Thales Luna 적용
+
+- **Why it matters**: Fireblocks blog (Stage 38) 가 HKMA · HKSFC · JFSA 의 관할권을 명시했으나 **KR 미명시**. KR 가상자산이용자보호법 (Stage 37) 의 콜드월렛 80% + 망분리 해석 환경에서 Key Link + Thales Luna 의 적용 옵션 vendor 공식 입장 없음
+- **Where this came up**: Stage 38, Fireblocks blog × Thales (KR 관할권 누락)
+- **Cross-cut**: docs-site/fireblocks-kr-vasp-compliance/out-of-scope.html + open-questions/compliance.md
+- **Sources to check**: Fireblocks Sales 직접 협의, KR VASP 사례 (현재 공개 case 부재)
+- **Status**: open
+
+### Stage 38 Summary
+
+- **ANSWERED 1 partial**: Q-2026-05-22-KL04 (air-gap transport = USB/SFTP/data diodes)
+- **신규 Q 3건**: FB01 / FB02 / FB03 (모두 open)
+- **신규 entity 0건**: Thales Luna HSM → vendors/fireblocks/security 의 HSM 항목에 흡수. **연속 30 stage 신규 entity 0** 유지
+- **영향 페이지**: vendors/fireblocks/security · risks + docs-site 의 cold-wallet-bank-design/signing-flow + risks-open-questions + kr-vasp-compliance/deployment-checklist

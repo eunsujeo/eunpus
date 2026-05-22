@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Overview — 국내 블록체인 사업 법규 × Fireblocks</title>
+<meta content="한국에서 가상자산사업자(VASP)로 사업할 때의 법규를 Fireblocks 로 어떻게 풀고, 어디까지 못 푸는지 정리한 reference" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a class="active" href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. 법규 지형</h3>
+<ul>
+<li><a href="regulation-landscape.html">1. 한국 규제 지형</a></li>
+<li><a href="fireblocks-coverage.html">2. Fireblocks 가 푸는 것 (직접)</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. 경계선</h3>
+<ul>
+<li><a href="partial-coverage.html">3. Fireblocks 가 거드는 것 (부분)</a></li>
+<li><a href="out-of-scope.html">4. Fireblocks 로 안 풀리는 것</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 운영</h3>
+<ul>
+<li><a href="enforcement-defense.html">5. 제재 사례와 도구 매핑</a></li>
+<li><a href="deployment-checklist.html">6. 도입 통합 절차</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. 미해결</h3>
+<ul>
+<li><a href="open-questions.html">7. 별도 검증이 필요한 항목</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="overview">
+<h1>국내 블록체인 사업 법규 × Fireblocks — 어디까지 풀리고 어디부터 막히는가</h1>
+<p class="lead">
+한국에서 수탁형 또는 거래중개형 가상자산사업자 (VASP) 로 사업할 때 적용되는 법규를
+Fireblocks 의 어떤 기능이 풀어주고, 어떤 부분은 풀어주지 않는지를 정직하게 정리한 reference.
+"풀린다" 와 "안 풀린다" 의 경계를 흐릿하게 두지 않는 것이 본 문서의 목적.
+</p>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처 — 어디까지가 공식 사실이고, 어디부터가 저자 추정인가</div>
+<p>이 문서의 내용은 두 갈래입니다.</p>
+<p><strong>공식 문서에 정의된 사실</strong> — 그대로 받아도 안전</p>
+<ul style="margin-bottom:0.5rem">
+<li>한국 법령·규정의 시행일·조문·임계값 — <code>law.go.kr</code> / <code>fsc.go.kr</code> 원전 출처</li>
+<li>최근 종합검사 결과 — 금융위 / 금감원 보도자료</li>
+<li>Fireblocks 의 기능 — Help Center 의 명시적 기재 사항</li>
+</ul>
+<p style="margin-bottom:0.3rem"><strong>저자가 합리적으로 추정한 매핑</strong> — 참고용, 본인 환경 검증 권장</p>
+<ul style="margin-bottom:0">
+<li>"이 KR 의무는 이 Fireblocks 기능으로 풀린다" 의 매핑 자체 — 공식 문서에 명시되지 않은 운영 권장</li>
+<li>Fireblocks SaaS 가 KR 전자금융감독규정의 망분리 해석에 부합하는지 — 별도 검증</li>
+<li>Fireblocks 가 "금융회사의 정보처리 업무 위탁에 관한 규정" 의 외주 위탁 대상인지 — 별도 검증</li>
+</ul>
+</div>
+
+<h2>10 초 요약 — 4 줄로</h2>
+<ul>
+<li><strong>Fireblocks 는 도구</strong>. 법규를 푸는 주체는 사업자 자신. Fireblocks 는 거버넌스 + 거래 통제 + 감사 trail 의 기술 인프라.</li>
+<li><strong>풀리는 것</strong> — Policy 엔진, AML/Travel Rule provider 통합, Audit Log, MPC 거버넌스, Whitelist, Cold Wallet workspace 분리.</li>
+<li><strong>안 풀리는 것</strong> — 신고제 자체, 실명확인 입출금계정, ISMS 인증, 보험·준비금, 영업행위 규율, 법인 설립, 평가전문기관 취약점 평가.</li>
+<li><strong>가장 큰 함정</strong> — 4 종합검사 (두나무·코빗·빗썸·코인원) 의 위반은 모두 <em>도구 부재</em> 가 아니라 <em>운영 통제의 부재</em>. Fireblocks 가 있어도 운영 규율이 없으면 동일 위반.</li>
+</ul>
+
+<h2>한눈에 매핑 — 의무 17 항목</h2>
+<div class="table-wrap">
+<table>
+<thead><tr>
+<th>의무</th><th>법적 근거</th><th>Fireblocks 처리</th><th>분류</th>
+</tr></thead>
+<tbody>
+<tr><td>VASP 신고 자체</td><td>특금법 7</td><td>도와주지 않음 (사업자가 FIU 에 직접)</td><td><span class="badge-x">❌ 외부</span></td></tr>
+<tr><td>실명확인 입출금계정</td><td>특금법 시행령</td><td>도와주지 않음 (은행 연계)</td><td><span class="badge-x">❌ 외부</span></td></tr>
+<tr><td>ISMS / ISMS-P 인증</td><td>신고요건</td><td>도와주지 않음 (KISA 인증)</td><td><span class="badge-x">❌ 외부</span></td></tr>
+<tr><td>고객확인 (KYC/CDD)</td><td>특금법 5조의2</td><td>외부 KYC 시스템과 결합 (Fireblocks 자체 KYC 모듈 없음)</td><td><span class="badge-warn">⚠️ 부분</span></td></tr>
+<tr><td>거래제한 (KYC 미완료 시)</td><td>특금법 8 + 시행령 10조의20</td><td>Policy/TAP rule 로 destination 차단</td><td><span class="badge-ok">✅ 직접</span></td></tr>
+<tr><td>미신고 VASP 와 거래금지</td><td>특금법 8 + 시행령 10조의20 ④</td><td>Whitelist + AML provider screening</td><td><span class="badge-ok">✅ 직접</span></td></tr>
+<tr><td>트래블룰 100만원 이상</td><td>시행령 10조의10</td><td>Notabene 통합 + 실패 시 출고 차단 정책</td><td><span class="badge-ok">✅ 직접</span></td></tr>
+<tr><td>STR 의심거래보고</td><td>특금법 4</td><td>AML provider screening + Audit Log → 외부 STR 시스템 export</td><td><span class="badge-warn">⚠️ 부분</span></td></tr>
+<tr><td>기록보존 5년</td><td>특금법 5조의4</td><td>Audit Log 보존 + customer side archive 필요</td><td><span class="badge-warn">⚠️ 부분</span></td></tr>
+<tr><td>신규 서비스 AML 위험평가</td><td>특금법 5 + 시행령 9</td><td>Workspace 별 AML default 설정. 위원회 운영은 사업자</td><td><span class="badge-warn">⚠️ 부분</span></td></tr>
+<tr><td>분리보관 (자기자산 ≠ 고객자산)</td><td>가상자산이용자보호법 (VACPA)</td><td>Workspace / Vault 분리 + 회계 분리는 사업자</td><td><span class="badge-warn">⚠️ 부분</span></td></tr>
+<tr><td>동종·동량 보유</td><td>이용자보호법</td><td>일일 reconciliation 의 source 제공. 실제 검증은 사업자</td><td><span class="badge-warn">⚠️ 부분</span></td></tr>
+<tr><td>콜드월렛 80%</td><td>가상자산업감독규정 9</td><td>Cold Wallet workspace 별도 product. ratio 검증은 사업자 ledger</td><td><span class="badge-warn">⚠️ 부분</span></td></tr>
+<tr><td>입출금 차단 정당한 사유</td><td>이용자보호법 시행령</td><td>Policy/TAP 의 dynamic rule + global_halt 류 kill-switch</td><td><span class="badge-ok">✅ 직접</span></td></tr>
+<tr><td>거버넌스 / 이해상충 방지</td><td>전반</td><td>Admin Quorum + Approval Group + 9-role + threshold</td><td><span class="badge-ok">✅ 직접</span></td></tr>
+<tr><td>보험·준비금</td><td>이용자보호법 + 감독규정</td><td>도와주지 않음 (보험사·회계)</td><td><span class="badge-x">❌ 외부</span></td></tr>
+<tr><td>영업행위 규율 (수익약정 금지 등)</td><td>이용자보호법, 유사수신행위법</td><td>도와주지 않음 (사업자 결정)</td><td><span class="badge-x">❌ 외부</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<style>
+.badge-ok { display:inline-block; padding:1px 8px; font-size:12px; background:#e7f4ec; color:#1f6c3d; border:1px solid #b8dec7; border-radius:3px; }
+.badge-warn { display:inline-block; padding:1px 8px; font-size:12px; background:#fff4e0; color:#8a5a00; border:1px solid #ffd591; border-radius:3px; }
+.badge-x { display:inline-block; padding:1px 8px; font-size:12px; background:#fdecea; color:#a8322a; border:1px solid #f5b9b3; border-radius:3px; }
+</style>
+
+<h2>3-분류 — 무엇을 의미하는가</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>분류</th><th>의미</th><th>사업자의 책임</th></tr></thead>
+<tbody>
+<tr><td><span class="badge-ok">✅ 직접</span></td>
+  <td>Fireblocks 에 기능이 있고, 설정만 잘 하면 KR 의무를 충족</td>
+  <td>정책 설계 + 운영 — 도구는 준비됨</td></tr>
+<tr><td><span class="badge-warn">⚠️ 부분</span></td>
+  <td>Fireblocks 가 일부 기능을 제공하지만 외부 시스템 / 사업자 운영이 함께 필요</td>
+  <td>외부 시스템 통합 + 자체 운영 절차 + 회계·인사 결합</td></tr>
+<tr><td><span class="badge-x">❌ 외부</span></td>
+  <td>Fireblocks 의 기능 범위 밖. 별도 솔루션 / 인가 / 인증으로만 해결</td>
+  <td>사업자가 별도 프로세스로 해결</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>도입 의사결정 — 3 가지 시나리오</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>① 신규 VASP 창업</th><th>② 기존 VASP 시스템 교체</th><th>③ 은행 신탁업 신규 진출</th></tr></thead>
+<tbody>
+<tr><td><strong>Fireblocks 의 위치</strong></td>
+  <td>지갑 인프라 (코어)</td>
+  <td>기존 자체 wallet 의 교체</td>
+  <td>cold reserve 인프라 (Hot 은 별도)</td></tr>
+<tr><td><strong>먼저 풀어야 할 것</strong></td>
+  <td>법인 설립 + 실명계정 + ISMS</td>
+  <td>마이그레이션 + 신고 변경</td>
+  <td>은행 자체 시스템 + 외부 신탁업 인가</td></tr>
+<tr><td><strong>Fireblocks 우선 활용 영역</strong></td>
+  <td>Policy/TAP, AML, 9-role, Audit Log</td>
+  <td>Workspace Keys Backup, Cold Wallet</td>
+  <td>Cold Wallet workspace + Admin Quorum</td></tr>
+<tr><td><strong>가장 위험한 함정</strong></td>
+  <td>"Fireblocks 가 있으니 컴플라이언스 OK" 라는 착각</td>
+  <td>migration 중 audit trail 단절</td>
+  <td>SaaS 의존도와 KR 망분리 해석 충돌</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>이 문서가 다루지 <em>않는</em> 것</h2>
+<ul>
+<li>한국 외 다른 관할 (미국 / EU / 영국 / 싱가포르) — 비교만 참고. 운영 가이드 아님</li>
+<li>Fireblocks 가 아닌 다른 vendor (BitGo / Anchorage / Copper) — 본 문서는 Fireblocks 한정</li>
+<li>법인 설립·자본금·이사회 구성 등 회사법 영역</li>
+<li>특정 토큰의 증권성 분석 (자본시장법 / SEC 관할)</li>
+<li>금감원·금융위의 비공개 가이드라인 — 공식 공개 문서만 사용</li>
+</ul>
+
+<h2>가장 자주 받는 질문 — 3 가지</h2>
+
+<h3>Q1. "Fireblocks 만 쓰면 한국 VASP 컴플라이언스가 끝나나요?"</h3>
+<p>
+아니오. Fireblocks 는 지갑·거버넌스·감사 도구. 신고제·실명계정·ISMS·보험·법인 설립·KYC 시스템 등은 별도.
+대부분 시간이 더 걸리는 것은 도구가 아니라 <strong>은행 실명계정 발급</strong> 과 <strong>FIU 신고 심사 3개월</strong>.
+</p>
+
+<h3>Q2. "콜드월렛 80% 는 Fireblocks Cold Wallet 하나로 끝나나요?"</h3>
+<p>
+아니오. Cold Wallet workspace 는 격리 인프라이지만, "이용자 가상자산의 80% 가 cold 에 있다" 의 검증은
+<strong>사업자의 일일 reconciliation</strong> 에서 일어남. Fireblocks 는 vault balance 를 보여줄 뿐.
+경제적 가치 환산 / 이용자 자산 vs 자기 자산 구분 / 매일 검증·기록은 사업자 책임.
+</p>
+
+<h3>Q3. "두나무·빗썸·코빗·코인원 처럼 제재 받는 걸 Fireblocks 가 막아주나요?"</h3>
+<p>
+부분적으로만. 4 종합검사의 공통 위반은 ① 미신고 해외 VASP 거래 차단 실패, ② KYC 재이행 실패, ③ 신규 서비스 위험평가 누락.
+①과 ②의 차단 메커니즘은 Fireblocks Policy/TAP 으로 구현 가능. 하지만 <strong>운영 절차·정책 결정·인사 책임자 지정</strong> 은 사업자.
+즉 Fireblocks 가 있어도 운영 규율이 없으면 동일 위반. 자세히는
+<a href="enforcement-defense.html">5. 제재 사례와 도구 매핑</a>.
+</p>
+
+<p class="back-top"><a href="#overview">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="assets/app.js"></script>
+</body>
+</html>

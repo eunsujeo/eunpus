@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>7. 테넌트 · Wallet — NodeWallet 은행 도입</title>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. 컴포넌트 토폴로지</a></li>
+<li><a href="trust-boundaries.html">2. 신뢰 경계</a></li>
+<li><a href="db-split.html">3. 4-DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. DB Schema</h3>
+<ul>
+<li><a href="tables-approver.html">4. approverdb</a></li>
+<li><a href="tables-audit.html">5. auditdb</a></li>
+<li><a href="tables-ledger-chain.html">6. ledgerdb · chaindb</a></li>
+<li><a class="active" href="tables-tenant-wallet.html">7. 테넌트 · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Cryptography</h3>
+<ul><li><a href="keys-hsm-tee.html">8. HSM · SGX · 키 수명주기</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Policy &amp; Decisions</h3>
+<ul>
+<li><a href="policy-rules.html">9. 10 Policy Rules</a></li>
+<li><a href="sm-decision.html">10. 결정 라이프사이클</a></li>
+<li><a href="sm-signing.html">11. 3-key 서명 흐름</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Transactions &amp; Audit</h3>
+<ul>
+<li><a href="sm-deposit-withdrawal.html">12. 입금 · 출금 흐름</a></li>
+<li><a href="audit-2layer.html">13. 2-Layer 감사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Compliance</h3>
+<ul><li><a href="compliance-regulations.html">14. 5 규제 + 트래블룰</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Discipline</h3>
+<ul>
+<li><a href="storage-discipline.html">15. Storage Discipline</a></li>
+<li><a href="risks-anti-patterns.html">16. Risks &amp; Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="tables-tenant-wallet">
+<h2>7. 테넌트 · Wallet</h2>
+<span class="section-subtitle">테넌트 = 은행 내부 sub-unit · 테넌트당 3 wallet 종류 (사용자 / 집중 / 가스대납)</span>
+
+<div class="callout">
+<div class="callout-title">출처</div>
+<p><code>security__architecture__tenant.md</code> (테넌트 격리 + SPKI-hash + register_enclave), <code>dev__architecture.md</code> §지갑 종류 (3 wallet type), <code>vendor-specific-patterns.md</code> P1.2 / P5.1 / P5.2.</p>
+</div>
+
+<h3>테넌트 = 은행 내부 sub-unit</h3>
+<p>NodeWallet 의 "테넌트" 는 외부 SaaS 의 고객이 아니라 <em>은행 안의 sub-unit</em>이다. 계열사 / 부서 / 상품군 단위로 격리 운영 (source: <code>vendor-specific-patterns.md</code> P1.2):</p>
+<ul>
+<li>은행 그룹사 (지주 → 시중은행 · 카드사 · 증권사 · 캐피탈) 가 한 그룹사 NodeWallet 배포 안에서 각 자회사를 별도 테넌트로 운영</li>
+<li>또는 한 은행 안의 <em>리테일 / 기업 / 자산관리 / WM</em> 같은 사업부별 격리</li>
+<li>또는 신상품 (스테이블코인 X / 스테이블코인 Y) 별 격리</li>
+</ul>
+<p class="hint">테넌트 모델은 DB schema 의 first-class. retrofit 이 아니라 day-1 에 결정해야 — tenant_id 가 거의 모든 표의 컬럼이 된다.</p>
+
+<h3>테넌트 등록 (register_enclave)</h3>
+<p>vendor docs 는 register_enclave 시점에 enclave 가 SPKI-hash 와 blob_hash 를 원장 (=ledgerdb 의 append-only 영역으로 추정) 에 기록한다고 명시 (source: <code>security__architecture__tenant.md</code>).</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>표 (★ 추정)</th><th>용도</th><th>주요 컬럼</th></tr></thead>
+<tbody>
+<tr><td><code>tenants</code></td><td>테넌트 메타데이터</td><td>tenant_id · name · created_at · status (active/suspended)</td></tr>
+<tr><td><code>tenant_keys</code></td><td>테넌트별 3-key 의 공개키 등록</td><td>tenant_id · key_role (initiation/approval/execution) · pubkey · spki_hash · registered_at</td></tr>
+<tr><td><code>tenant_enclave_registrations</code></td><td>register_enclave 이벤트 — append-only 원장</td><td>tenant_id · enclave_pubkey · spki_hash · blob_hash · mrenclave · registered_at</td></tr>
+</tbody>
+</table>
+</div>
+<p class="hint">★ Hypothesis: docs 는 "원장에 기록" 표현만 사용. 별도 표인지 ledgerdb 의 ledger_entries 의 한 종류인지 명시 없음. 은행 도입 시 NodeInfra 와 confirm 필요.</p>
+
+<h3>3 wallet types (테넌트당)</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>지갑</th><th>역할</th><th>생성 주체</th><th>테넌트당 개수</th><th>조회 API</th></tr></thead>
+<tbody>
+<tr><td><strong>사용자 지갑</strong></td><td>사용자별 입금 주소</td><td>SDK <code>client.wallets().create()</code></td><td>사용자당 1개 (N)</td><td><code>GET /v1/wallets</code> · <code>GET /v1/wallets/{id}</code></td></tr>
+<tr><td><strong>집중 지갑 (omnibus)</strong></td><td>사용자 입금이 스윕되어 모이는 핫월렛. 출금 자금의 출처</td><td>테넌트 부트스트랩 시 시스템 자동 생성</td><td>정확히 1개</td><td><code>GET /v1/tenant/omnibus-wallet</code></td></tr>
+<tr><td><strong>가스대납 지갑 (gas-payer)</strong></td><td>스윕/출금 트랜잭션의 SOL 수수료 대납</td><td>시스템 자동 생성</td><td>정확히 1개</td><td><code>GET /v1/tenant/gas-payer-wallet</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>wallets 표 (★ 추정 schema)</h3>
+<pre><code>CREATE TABLE wallets (
+  id              UUID PRIMARY KEY,
+  tenant_id       UUID NOT NULL,
+  wallet_type     TEXT NOT NULL CHECK (wallet_type IN ('user', 'omnibus', 'gas_payer')),
+  derivation_path TEXT NOT NULL,    -- BIP-44, m/44'/501'/account'/change/index
+  solana_address  TEXT NOT NULL UNIQUE,
+  customer_ref    TEXT,             -- 은행 측 고객 식별자 (user wallet 만)
+  created_at      TIMESTAMPTZ NOT NULL,
+  -- DB-level invariant: per (tenant_id, wallet_type='omnibus') 정확히 1개
+  -- 마찬가지로 per (tenant_id, wallet_type='gas_payer') 정확히 1개
+  UNIQUE (tenant_id, wallet_type)
+    WHERE wallet_type IN ('omnibus', 'gas_payer')
+);</code></pre>
+<p class="hint">DB 무결성 제약으로 "테넌트당 정확히 1 omnibus + 1 gas_payer" 가 enforce 된다 (source: <code>dev__architecture.md</code> §자금 흐름). SDK 가 user wallet 만 만들 수 있는 이유.</p>
+
+<h3>자금 흐름 (테넌트 내)</h3>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  USER1["사용자 1<br/>입금 주소"]
+  USER2["사용자 2<br/>입금 주소"]
+  USERN["사용자 N<br/>..."]
+  OMNI["집중 지갑<br/>(테넌트당 1)<br/>USDC + NATIVE_SOL"]
+  GAS["가스대납 지갑<br/>(테넌트당 1)<br/>NATIVE_SOL only"]
+  EXT["외부 destination<br/>(VASP whitelist)"]
+
+  USER1 -.deposit.-> USER1
+  USER1 -->|sweep<br/>(3-key)| OMNI
+  USER2 -->|sweep| OMNI
+  USERN -->|sweep| OMNI
+  OMNI -->|withdraw<br/>(3-key)| EXT
+  GAS -.fee 대납.-> USER1
+  GAS -.fee 대납.-> OMNI
+</pre>
+</div>
+<p class="diagram-caption">사용자 지갑의 잔액은 ledgerdb 의 사용자 계정에 기록되지만, 실제 자산은 sweep 후 집중 지갑에 보관. 가스대납 지갑은 SOL 만 보유하며 잔액 모니터링은 SDK / 운영도구가 폴링.</p>
+
+<h3>BIP-44 derivation</h3>
+<p>모든 wallet 의 주소는 sealed master key 에서 BIP-44 경로로 파생 (source: <code>security__keys__tee-enclave.md</code> §엔클레이브 내부 흐름):</p>
+<pre><code>m / 44' / 501' / account' / change / index
+            ↑     ↑
+            |     +-- Solana SLIP-44 (501)
+            +-- BIP-44 purpose
+
+★ 추정: tenant_id → account' 의 매핑 + wallet_type/index → 별도 파생
+       정확한 매핑은 docs 미명시 (vendor 내부 구현)</code></pre>
+<p>SGX 엔클레이브가 경로 검증을 수행 — 허용된 경로 외 임의 경로 서명 요청은 거부.</p>
+
+<h3>SPKI-hash 바인딩 — 테넌트 경계 검증</h3>
+<p>매 서명 요청은 다음 검증을 통과해야 한다 (source: <code>security__architecture__tenant.md</code>):</p>
+<ol>
+<li>요청 payload 의 <code>tenant_id</code> 추출</li>
+<li>tenant_keys 표에서 해당 tenant_id 의 개시 키 SPKI-hash 조회</li>
+<li>요청 서명자의 공개키 SPKI-hash 와 대조 — 불일치 시 거부</li>
+<li>승인자 단계: 같은 검증을 승인 키 측에서 다시</li>
+<li>엔클레이브 단계: 같은 검증을 실행 키 측에서 다시</li>
+</ol>
+<p class="hint">3 키 모두에서 교차 검증되므로 한 키 탈취로는 다른 테넌트 자금 이동 불가.</p>
+
+<h3>SDK API 표면 (테넌트 + 지갑)</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>API</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>client.wallets().create()</code></td><td>사용자 지갑 생성 (개시 키 서명)</td></tr>
+<tr><td><code>GET /v1/wallets</code></td><td>사용자 지갑 list</td></tr>
+<tr><td><code>GET /v1/wallets/{id}</code></td><td>사용자 지갑 상세</td></tr>
+<tr><td><code>GET /v1/tenant/omnibus-wallet</code></td><td>집중 지갑 조회</td></tr>
+<tr><td><code>GET /v1/tenant/gas-payer-wallet</code></td><td>가스대납 지갑 조회</td></tr>
+<tr><td>(없음)</td><td>집중/가스대납 지갑 생성 API — SDK 가 노출하지 않음 (시스템 부트스트랩만)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>은행 도입 시 결정해야 할 것</h3>
+<ul>
+<li><strong>테넌트 granularity</strong> — 그룹사 단위 / 사업부 단위 / 상품 단위. 너무 잘게 쪼개면 운영 부담, 너무 크게 묶으면 격리 약화.</li>
+<li><strong>customer_ref 명명</strong> — 은행의 고객번호 / 계좌번호 / 휴대폰 번호 등 어느 식별자를 user wallet 의 customer_ref 로 둘지. KYC 시스템과의 join key.</li>
+<li><strong>omnibus 단일 / 다중</strong> — NodeInfra default 는 테넌트당 1 omnibus. hot/warm/cold 다층 보관은 product extension. 은행 정책상 cold storage 가 필요하면 별도 설계.</li>
+<li><strong>가스대납 잔액 모니터링</strong> — gas-payer 의 SOL 잔액이 임계 미만이면 출금/스윕이 멈춘다. SDK polling 또는 외부 모니터링 + 자동 충전 로직 필요.</li>
+<li><strong>테넌트 라이프사이클</strong> — provisioning 은 docs 에 있지만 suspend / deprovisioning 은 미명시. 사고 시 테넌트 freeze 절차를 NodeInfra 와 합의.</li>
+</ul>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-ledger-chain.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">6. ledgerdb · chaindb</span></a>
+<a class="page-nav-link page-nav-next" href="keys-hsm-tee.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">8. HSM · SGX · 키 수명주기</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

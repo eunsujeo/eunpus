@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>10. 결정 라이프사이클 — NodeWallet 은행 도입</title>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. 컴포넌트 토폴로지</a></li>
+<li><a href="trust-boundaries.html">2. 신뢰 경계</a></li>
+<li><a href="db-split.html">3. 4-DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. DB Schema</h3>
+<ul>
+<li><a href="tables-approver.html">4. approverdb</a></li>
+<li><a href="tables-audit.html">5. auditdb</a></li>
+<li><a href="tables-ledger-chain.html">6. ledgerdb · chaindb</a></li>
+<li><a href="tables-tenant-wallet.html">7. 테넌트 · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Cryptography</h3>
+<ul><li><a href="keys-hsm-tee.html">8. HSM · SGX · 키 수명주기</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Policy &amp; Decisions</h3>
+<ul>
+<li><a href="policy-rules.html">9. 10 Policy Rules</a></li>
+<li><a class="active" href="sm-decision.html">10. 결정 라이프사이클</a></li>
+<li><a href="sm-signing.html">11. 3-key 서명 흐름</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Transactions &amp; Audit</h3>
+<ul>
+<li><a href="sm-deposit-withdrawal.html">12. 입금 · 출금 흐름</a></li>
+<li><a href="audit-2layer.html">13. 2-Layer 감사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Compliance</h3>
+<ul><li><a href="compliance-regulations.html">14. 5 규제 + 트래블룰</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Discipline</h3>
+<ul>
+<li><a href="storage-discipline.html">15. Storage Discipline</a></li>
+<li><a href="risks-anti-patterns.html">16. Risks &amp; Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="sm-decision">
+<h2>10. 결정 라이프사이클</h2>
+<span class="section-subtitle">Allow / Held / Deny — 정확히 하나의 결정. monotone + sticky + 24h TTL + fail-closed</span>
+
+<div class="callout">
+<div class="callout-title">출처</div>
+<p><code>compliance__decision-lifecycle.md</code> 전체 — 가장 dense 한 single-source. <code>compliance__rules__approval-tier.md</code> §Held 의 외부 해소.</p>
+</div>
+
+<h3>3 verdict + shadow_mode 없음</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>결정</th><th>의미</th><th>coordinator 동작</th></tr></thead>
+<tbody>
+<tr><td><strong>Allow</strong> (wire 형식 <code>AutoApprove</code>)</td><td>모든 활성 규칙 통과. 승인자가 승인 키로 co-sign.</td><td>엔클레이브에 전달 → 체인 서명</td></tr>
+<tr><td><strong>Deny</strong></td><td>한 개 이상 규칙 위반. <code>triggered_rules</code> 에 위반 규칙 기록.</td><td>호출자에 400 반환, 체인 서명 단계 미도달</td></tr>
+<tr><td><strong>Held</strong></td><td>자동 결정 불가. 요청을 held_* 표에 보관 후 폴링으로 재평가.</td><td><code>/v1/poll</code> 폴링 루프 진입</td></tr>
+</tbody>
+</table>
+</div>
+<p class="hint"><strong>shadow_mode (관찰 전용) 가 없다 — 모든 Deny 는 실제 차단</strong>. enum 측면에서는 내부 <code>Verdict</code> (rule 단위) 와 <code>PolicyDecision</code> (전체 결정) 두 enum 이 있고, Allow 는 wire 직렬화 시 <code>AutoApprove</code>.</p>
+
+<h3>상태 머신</h3>
+<div class="diagram">
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> EVALUATING: /v1/evaluate
+  EVALUATING --> DENY: 1 rule = Deny<br/>(short-circuit)
+  EVALUATING --> HELD: 1 rule = Held<br/>(short-circuit)
+  EVALUATING --> AUTO_APPROVE: 모든 rule pass
+  HELD --> RE_EVALUATING: /v1/poll (next tick)
+  RE_EVALUATING --> DENY: any rule Deny<br/>(sticky, terminal)
+  RE_EVALUATING --> AUTO_APPROVE: all pass<br/>(sticky, terminal)
+  RE_EVALUATING --> HELD: still Held AND age &lt; 24h
+  RE_EVALUATING --> DENY_TTL: age &gt;= 24h<br/>(TTL exceeded → Deny)
+  AUTO_APPROVE --> [*]: signing path
+  DENY --> [*]: 400 to caller
+  DENY_TTL --> [*]
+</pre>
+</div>
+
+<h3>4 가지 핵심 성질</h3>
+<dl class="chain-rr">
+<dt>Sticky decision (단방향성)</dt>
+<dd>한번 <code>AUTO_APPROVE</code> 또는 <code>DENY</code> 로 전환되면 다시 <code>HELD</code> 로 돌아가지 않는다. DB trigger 가 강제. monotone 상태 머신.</dd>
+<dt>Set-once approver 서명</dt>
+<dd><code>auth_approver_sig</code> / <code>auth_approver_pubkey</code> 컬럼은 한번 INSERT 되면 변경 불가. 동일 요청에 대해 서로 다른 두 서명이 존재할 수 없다.</dd>
+<dt>24h TTL</dt>
+<dd>폴링은 기본 24시간까지. 그 안에 Allow/Deny 로 결정되지 않으면 coordinator 가 Deny 처리. 영업일 기준이 아닌 absolute hardcode.</dd>
+<dt>Idempotent</dt>
+<dd>(initiator_pubkey, nonce) 키로 중복 호출 방지 (<code>initiator_nonce_seen</code> 표). SDK 가 강제하는 <code>reference_id</code> 가 nonce 와 매핑.</dd>
+</dl>
+
+<h3>수동 승인 버튼이 없는 이유 (NodeInfra 자기서술)</h3>
+<p>Held 는 운영자가 콘솔의 "승인" 버튼을 눌러 해제하지 않는다. NodeInfra docs 는 두 이유를 명시 (source: <code>compliance__decision-lifecycle.md</code> §수동 승인 없는 이유):</p>
+<ol>
+<li><strong>권한 분리</strong> — 정책 엔진이 정책 키를 가지므로, 운영자가 정책 엔진의 결정을 우회할 수 있다면 정책 엔진의 의미가 무너진다. 운영자가 결정을 바꾸려면 <em>규칙 자체를 수정</em>해야 한다 (변경은 <code>policy_change_log</code> 에 남는다).</li>
+<li><strong>결정론적 재평가</strong> — 동일 입력 + 동일 규칙 set → 동일 결정. Held 가 풀리려면 시간 (<code>address_cooldown</code>) · 규칙 변경 (<code>approval_tier</code> 한도 상향) · 외부 상태 (<code>velocity_window</code> 의 시간 경과) 중 하나가 바뀌어야 한다.</li>
+</ol>
+<p class="hint">이것이 <code>approval_tier</code> 의 <code>SINGLE_APPROVE</code> / <code>QUORUM_2_OF_3</code> 가 외부 승인 채널을 거쳐 규칙을 일시 수정한 뒤 폴링이 자동 해소되는 방식으로 동작하는 이유.</p>
+
+<h3>fail-closed — 의도된 안전 기본값</h3>
+<p>승인자가 다음 상황에 처하면 <strong>Deny 로 처리</strong> (fail-open 아님):</p>
+<ul>
+<li>DB 연결 실패</li>
+<li>규칙 평가 중 panic 또는 <code>PolicyError</code></li>
+<li>필수 <code>EvaluationContext</code> field 누락</li>
+<li>HSM 응답 실패 (승인 키 co-sign 실패)</li>
+<li>호출자 서명 검증 실패</li>
+</ul>
+<blockquote>"운영 관점에서는 승인자 장애 = 출금 정지. 이는 의도된 안전 기본값" (source: <code>compliance__decision-lifecycle.md</code>)</blockquote>
+
+<h3>요청 입장 → 결정 → 영속화 흐름</h3>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  participant App as Spring Backend
+  participant SDK as Java SDK
+  participant Coord as Coordinator
+  participant Approver as Approver
+  participant HSM as HSM (승인 키)
+  participant DB as approverdb
+
+  App->>SDK: withdraw(...)
+  SDK->>Coord: signed request
+  Coord->>Coord: EvaluationContext 계산
+  Coord->>Approver: /v1/evaluate (PolicyContext)
+  Approver->>Approver: rules.snapshot() (ArcSwap)
+  Approver->>Approver: priority 오름차순 평가
+  alt 모든 rule pass
+    Approver->>HSM: co-sign (승인 키)
+    HSM-->>Approver: auth_approver_sig
+    Approver->>DB: policy_decisions INSERT (set-once sig)
+    Approver-->>Coord: AutoApprove + sig
+  else 1 rule = Deny
+    Approver->>DB: policy_decisions INSERT (verdict=REJECT, triggered_rules)
+    Approver-->>Coord: Deny(reasons)
+  else 1 rule = Held
+    Approver->>DB: held_withdrawals INSERT (decision=HELD, age_started_at=now)
+    Approver-->>Coord: Held(reason)
+    Coord->>Coord: 폴링 루프 진입
+    loop 폴링 (max 24h)
+      Coord->>Approver: /v1/poll(request_id)
+      Approver->>Approver: 재평가 (현재 rule set)
+      alt all pass
+        Approver->>HSM: co-sign
+        Approver->>DB: held_withdrawals UPDATE (decision=AUTO_APPROVE, set-once sig)
+        Approver-->>Coord: AutoApprove (sticky)
+      else any Deny
+        Approver->>DB: held_withdrawals UPDATE (decision=DENY, sticky)
+        Approver-->>Coord: Deny (sticky)
+      else still Held
+        Approver-->>Coord: Held — 다음 tick
+      end
+    end
+    Note over Coord: 24h 경과 → Deny TTL
+  end
+</pre>
+</div>
+
+<h3>Held 발화 규칙 — 단 2 종</h3>
+<p>10 rule 중 Held 를 반환하는 것은 다음 2 종 (source: <code>compliance__decision-lifecycle.md</code> §Held 자동 결정 보류):</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>규칙</th><th>Held 발화 조건</th></tr></thead>
+<tbody>
+<tr><td><code>address_cooldown</code></td><td>출금 주소가 최근에 처음 사용됐고 금액이 threshold 초과 — 일정 시간 후 자동 해소</td></tr>
+<tr><td><code>approval_tier</code></td><td>금액 구간이 수동 승인 모드 (SINGLE_APPROVE/QUORUM_2_OF_3) 에 해당 — 운영자의 별도 채널 승인 필요</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>임시 AUTO 변경 후 복원 — Held 해소의 정석 패턴</h3>
+<p>vendor docs 가 명시하는 패턴 (source: <code>compliance__rules__approval-tier.md</code> §Held 의 외부 해소):</p>
+<ol>
+<li>외부 의식 (운영자 회의 · 키 의식 · 별도 시스템 승인) 으로 결정</li>
+<li>임시로 <code>approval_tier</code> 행을 수정해 해당 구간을 <code>AUTO</code> 로 — <code>policy_change_log</code> 에 변경 자동 기록</li>
+<li>coordinator 폴링이 다음 평가에서 Allow 받음</li>
+<li>평가 통과 후 즉시 <code>approval_tier</code> 를 원래대로 복원 — 역시 기록</li>
+</ol>
+<p class="hint">변경 자체가 영구 감사 흔적. 외부 의식의 evidence (서명된 회의록 · 별도 시스템 로그) 와 묶이면 sound 한 감사 추적이 가능. 단점은 <em>타이밍 race</em> — A가 AUTO 로 바꾸자마자 B 가 별도 출금을 시도하면 B 도 통과. 의식 절차가 운영자 행동 약속에 의존.</p>
+
+<h3>은행 도입 시 결정해야 할 것</h3>
+<ul>
+<li><strong>승인자 HA</strong> — fail-closed 가 의도된 동작이지만 정상 운영 중 가용성은 높여야 한다. active-passive 또는 active-active + 정족수 합의.</li>
+<li><strong>24h TTL 의 영업적 의미</strong> — 영업일 종료 직전 Held 가 다음 영업일 같은 시간까지 폴링 → Deny. 운영자 모니터링이 영업시간 외에도 가능하도록.</li>
+<li><strong>외부 의식 evidence 보존</strong> — 운영자 회의록 서명 · email 보존 · video 등. 보존 매체는 WORM 권장.</li>
+<li><strong>임시 AUTO 변경 권한 분리</strong> — 정책 변경 권한자 ≠ 운영 권한자 ≠ approval ceremony 참여자.</li>
+<li><strong>fail-closed 알람</strong> — 승인자 장애 = 출금 정지 → 사고 escalation 절차.</li>
+</ul>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="policy-rules.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">9. 10 Policy Rules</span></a>
+<a class="page-nav-link page-nav-next" href="sm-signing.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">11. 3-key 서명 흐름</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

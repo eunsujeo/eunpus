@@ -14,6 +14,9 @@
 <div class="layout">
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
 <div class="nav-section">
 <h3 class="nav-section-title">Overview</h3>
 <ul>
@@ -91,15 +94,96 @@
 <main class="content">
 <section id="tables-mpc">
 <h2>11. MPC<span class="g" data-tip="Multi-Party Computation. 여러 당사자가 각자 키 조각만 들고 협력해서 서명 — 누구도 단독으로 키를 모름. 전체 키가 한 번도 한곳에 모이지 않음" tabindex="0">(?)</span> Key Share Distribution</h2>
-<span class="section-subtitle">MPC-CMP<span class="g" data-tip="MPC 의 한 종류. Canetti–Makriyannis–Peled (2020) 가 만든 threshold ECDSA 프로토콜. GG18 의 8 라운드를 4 라운드로 단축. Fireblocks 가 사용" tabindex="0">(?)</span> · 3-share 분포 · key lifecycle</span>
-<h3>Protocol</h3>
+<span class="section-subtitle">MPC-CMP<span class="g" data-tip="MPC 의 한 종류. Canetti–Makriyannis–Peled (2020) 가 만든 threshold ECDSA 프로토콜. GG18 의 8 라운드를 4 라운드로 단축. Fireblocks 가 사용" tabindex="0">(?)</span> 프로토콜 · 3-share 분포 · key lifecycle</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처 — 어디까지가 Fireblocks 정의이고, 어디부터가 추정인가</div>
+<p>이 페이지의 내용은 두 갈래입니다.</p>
+<p><strong>Fireblocks 공식 문서에 정의된 사실</strong> — 그대로 받아들여도 안전</p>
+<ul style="margin-bottom:0.5rem">
+<li><strong>MPC-CMP 프로토콜</strong>: Canetti–Makriyannis–Peled (2020) 의 threshold ECDSA, 4 라운드 (3 라운드는 pre-processed) · 마지막 라운드 air-gapped 가능 · <strong>3 종 algorithm</strong> 지원: <code>MPC_ECDSA_SECP256K1</code> (BTC / EVM) · <code>MPC_EDDSA_ED25519</code> (Solana / XLM / ALGO) · <code>MPC_ECDSA_SECP256R1</code> (P-256, FIPS-compliant HSM 호환)</li>
+<li><strong>Default SaaS MPC 의 3-share 분포</strong>: 1 customer-side (mobile 또는 API Co-signer) + 2 Fireblocks Azure SGX</li>
+<li><strong>Hosted MPC variant</strong>: customer 가 3 share 전부 보유 (1 Primary + 2 Guard, 모두 SGX), Fireblocks 는 cryptographic 참여 없음</li>
+<li><strong>Threshold 구조</strong>: within-group 3/3, across-group 1/N OR — 모든 signing user 의 set 은 Owner 의 set 에서 derived</li>
+<li><strong>Key share derivation 이벤트 4 종</strong>: Add user (Owner 단독 승인) · Re-enroll device (Owner 재승인 + 사용자 재등록, 각 2-day window) · Device migration (self-service, PIN+passphrase+biometric) · Co-signer pairing (Owner 가 승인)</li>
+</ul>
+<p style="margin-bottom:0.3rem"><strong>저자가 합리적으로 추정해서 그린 설계</strong> — 참고용, 본인 환경에서 검증 권장</p>
+<ul style="margin-bottom:0">
+<li><code>key_lifecycle</code> 테이블의 schema (Fireblocks 가 내부 audit 을 정확히 어떻게 영속화하는지는 미명시)</li>
+<li>이 schema 가 <strong>auditdb</strong> (별도 DB) 에 위치하는 분리 선택 — 키 자체는 DB 어디에도 저장 안 함 (forbidden storage), event 이력만 audit-grade 로 보존</li>
+</ul>
+</div>
+
+<h3>ERD<span class="g" data-tip="Entity-Relationship Diagram. 데이터베이스 테이블과 그 사이 외래키 관계를 한 장에 시각화한 도식" tabindex="0">(?)</span> — Cryptography & Signing 평면 cluster</h3>
+<p>11. MPC + <a href="tables-signer.html">12. Cosigner · Callback</a> + <a href="tables-recovery.html">13. Recovery &amp; Backup</a> 의 7 테이블이 어떻게 묶이는지. 이 cluster 는 자산 서명에 필요한 <strong>cryptographic 자원의 lifecycle</strong> — 생성 (key_lifecycle) · 사용 (cosigner_configs · designated_signers · callback) · 복구 (recovery_events · backups) — 을 책임지는 평면.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  subgraph external["외부 참조 (다른 페이지)"]
+    direction LR
+    WS["📦 workspaces<br/>(3. Workspace)"]
+    U["👤 users<br/>(6. Users)"]
+    MD["📱 mobile_devices<br/>(6. Users)"]
+    PR["📜 policy_rules<br/>(10. Policy)"]
+  end
+
+  subgraph mpc_plane["11. MPC Key Share"]
+    direction LR
+    KL["🔑 key_lifecycle<br/>(append-only audit)"]
+  end
+
+  subgraph signer_plane["12. Cosigner · Callback"]
+    direction LR
+    CC["🖥️ cosigner_configs"]
+    CE["🌐 callback_endpoints"]
+    DS["🎯 designated_signers<br/>(junction)"]
+  end
+
+  subgraph recovery_plane["13. Recovery & Backup"]
+    direction LR
+    RE["📋 recovery_events<br/>(append-only)"]
+    PVA["🔐 passphrase_verification_attempts<br/>(append-only)"]
+    WKB["💾 workspace_keys_backups<br/>(append-only)"]
+  end
+
+  WS --> KL
+  WS --> CC
+  WS --> WKB
+  U --> KL
+  U --> PVA
+  MD -. "device 의 key share" .-> KL
+  CC --> CE
+  PR -. "designated signer 지정" .-> DS
+  KL -. "key share 가 손실되면 복구 평면 동원" .-> RE
+  WKB -. "복구 자원" .-> RE
+
+  classDef ext fill:#e0e7ff,stroke:#6366f1;
+  classDef mpc fill:#fef3c7,stroke:#d97706;
+  classDef signer fill:#dbeafe,stroke:#2563eb;
+  classDef recovery fill:#dcfce7,stroke:#16a34a;
+  classDef append fill:#fce7f3,stroke:#db2777;
+  class WS,U,MD,PR ext;
+  class KL,RE,PVA,WKB append;
+  class CC,CE,DS signer;
+</pre>
+<span class="diagram-caption">Figure 25. Cryptography & Signing cluster ERD. 색 분리: 외부 참조 (파랑) / MPC + Recovery + audit 평면 (분홍, append-only 이력 테이블) / Cosigner 평면 (파랑, mutable). 핵심 패턴: <strong>cryptography 자원은 forbidden storage 영역이라 DB 에는 key material 이 없고 event 이력만</strong> append-only 로 audit 됨 — <code>key_lifecycle</code> 가 평면의 중심. signing 흐름에 쓰이는 <code>cosigner_configs</code> 와 <code>designated_signers</code> 는 mutable (운영 변경 가능). 복구는 audit 평면에 가까운 3 테이블 (<code>recovery_events</code> · <code>passphrase_verification_attempts</code> · <code>workspace_keys_backups</code>) 가 협업.</span>
+</div>
+
+<h3>MPC-CMP — Fireblocks 가 쓰는 MPC 프로토콜</h3>
+<p>여러 당사자가 각자 키 조각만 들고 협력해서 서명하는 다양한 MPC 프로토콜 중 Fireblocks 는 <strong>MPC-CMP</strong> 를 사용합니다. Canetti–Makriyannis–Peled 가 2020 년에 발표한 threshold ECDSA 알고리즘 (NIST 2020 / ACM CCS 2020) 이고, 이름의 약자가 각 저자 (CMP) 의 머리글자.</p>
+<p>핵심 특성:</p>
 <ul>
-<li><strong>MPC-CMP</strong> (Canetti–Makriyannis–Peled, NIST 2020 / ACM CCS 2020) — <em>UC Non-Interactive, Proactive, Threshold ECDSA</em></li>
-<li><strong>ECDSA + EdDSA</strong> 양쪽 지원</li>
-<li><strong>4 rounds (3 pre-processed)</strong> vs GG18 의 8 rounds → 800% faster</li>
-<li>마지막 라운드 QR offline 가능 → true air-gapped wallet</li>
-<li>Universally composable · proactive security · accountability (bad-party identification)</li>
-<li>Additive Secret Sharing (= Shamir t=n) — share 조합은 simple addition 만, perfect secrecy, "the secret itself never exists"</li>
+<li><strong>3 종 signing algorithm</strong> 지원 — 같은 MPC 인프라로 처리 가능:
+<ul>
+<li><code>MPC_ECDSA_SECP256K1</code> — Bitcoin, EVM 전반 (Ethereum / Polygon / BSC / Arbitrum / Optimism / …)</li>
+<li><code>MPC_EDDSA_ED25519</code> — Solana, Stellar, Algorand, Cardano (일부), TON</li>
+<li><code>MPC_ECDSA_SECP256R1</code> — NIST P-256 curve, FIPS-compliant HSM 호환 chain (enterprise / regulated environment)</li>
+</ul>
+세 algorithm 이 API `SigningAlgorithm` enum 의 정식 3 값. Public key 의 `algorithm` 필드 와 derivation path (BIP-32) 가 algorithm 별로 분기</li>
+<li><strong>4 라운드 (그중 3 라운드는 pre-processed)</strong> — 이전 세대 GG18 protocol 이 8 라운드였던 것에 비해 약 800% 빠름. 즉 서명 한 번에 네트워크 왕복이 1 번이면 충분 (pre-processed 단계는 미리 계산 가능)</li>
+<li><strong>마지막 라운드 air-gapped 가능</strong> — 인터넷 연결 없이 (예: QR code 전달) 마지막 서명 단계를 처리할 수 있어 진정한 air-gapped wallet 운영 가능</li>
+<li><strong>Universally composable + proactive security + accountability</strong> — 학술적으로 검증된 보안 속성. 특히 "어느 party 가 정상이 아니었는지 사후에 식별 가능" (accountability) 가 institution 운영에 중요</li>
+<li><strong>Additive Secret Sharing</strong> — share 조합이 단순 덧셈만으로 작동, perfect secrecy. <em>"The secret itself never exists in one place"</em> — 전체 키가 어느 시점에도 한곳에 모이지 않는다는 것이 이 protocol 의 핵심 보안 가정</li>
 </ul>
 <h3>Share 분포 (Default SaaS MPC)</h3>
 <div class="diagram">
@@ -122,7 +206,7 @@ graph TB
   BAK[(Cloud backup<br/>passphrase-encrypted<br/>Fireblocks cloud servers)]
   M -.backup.-> BAK
       </pre>
-      <span class="diagram-caption">Figure 3. Default SaaS MPC — 3 share within-group (1 customer + 2 Fireblocks). Across-group: 각 Admin/Signer 가 자체 3-share set 보유.</span>
+      <span class="diagram-caption">Figure 26. Default SaaS MPC — 3 share within-group (1 customer + 2 Fireblocks). Across-group: 각 Admin/Signer 가 자체 3-share set 보유.</span>
 </div>
 <h3>Threshold 구조</h3>
 <ul>
@@ -141,15 +225,17 @@ graph TB
 </table>
 </div>
 <p>Hosted MPC = customer ownership deployment axis — Fireblocks 는 cryptographic 참여 없음.</p>
-<h3>DB Schema — Key Lifecycle (auditdb)</h3>
-    <pre><code>-- 키 자체는 forbidden storage. row 는 lifecycle event 만 기록.
+<h3>DB Schema — <code>key_lifecycle</code> (auditdb · append-only)</h3>
+<p>중요한 설계 결정: <strong>키 material 자체는 DB 의 어떤 컬럼에도 저장하지 않습니다</strong> (forbidden storage 영역) — plaintext 도 cipher 도 안 됨. 본 테이블은 키의 "어떤 event 가 언제 일어났는가" 만 audit-grade 로 기록. 그래서 별도 <strong>auditdb</strong> (audit 전용 DB) 에 위치하고 BEFORE UPDATE / DELETE trigger 로 append-only 가 강제됩니다.</p>
+<pre><code>-- 키 자체는 forbidden storage. row 는 lifecycle event 만 기록.
 CREATE TABLE key_lifecycle (
   id              BINARY(16) PRIMARY KEY,
   workspace_id    BINARY(16) NOT NULL,
   user_id         BINARY(16) NOT NULL,
   key_set_id      BINARY(16) NOT NULL,        -- 한 user 의 3-share set 식별자
   event_type      ENUM('provisioned', 're-enrolled', 'migrated', 'revoked', 'backup-verified') NOT NULL,
-  approved_by_owner_user_id BINARY(16),         -- provisioning 은 Owner 단독
+  actor_user_id   BINARY(16) NOT NULL,         -- 이 event 를 trigger 한 user
+  approved_by_owner_user_id BINARY(16),         -- provisioning 은 Owner 단독 승인 필수
   occurred_at     DATETIME(6) NOT NULL,
   source_aggregate VARCHAR(64),                  -- 'add-user', 'device-migration', ...
   -- ★ append-only — BEFORE UPDATE / DELETE 트리거로 강제
@@ -158,23 +244,73 @@ CREATE TABLE key_lifecycle (
 
 -- 절대 컬럼 X: private key, MPC share material, recovery passphrase, RSA private key
 -- → 어떤 컬럼에도 plaintext 또는 cipher 로도 저장 금지</code></pre>
-
-    <h3>Key Share Derivation 이벤트</h3>
 <div class="table-wrap">
 <table>
-<thead><tr><th>이벤트</th><th>인증 강도</th><th>출처</th></tr></thead>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
 <tbody>
-<tr><td>Add user (signing role)</td><td>Owner 단독 MPC key share derivation 별도 승인</td><td><code>add-users.md</code>, p.1</td></tr>
-<tr><td>Re-enroll device</td><td>Owner 재승인 (2-day window) + 사용자 재등록 (2-day window)</td><td><code>re-enroll-a-users-mobile-device.md</code>, p.1</td></tr>
-<tr><td>Device migration</td><td>사용자 본인 self-service, 관리자 승인 없이 PIN+passphrase+biometric 3중</td><td><code>device-migration.md</code>, p.2</td></tr>
-<tr><td>Co-signer pairing</td><td>Owner 가 Co-signer key shares 승인</td><td><code>re-enrolling-api-users.md</code>, p.1</td></tr>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>event 의 고유 식별자</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16) FK</td><td>event 가 속한 workspace</td></tr>
+<tr><td><code>user_id</code></td><td>BINARY(16) FK</td><td>이 key share 의 소유 user</td></tr>
+<tr><td><code>key_set_id</code></td><td>BINARY(16)</td><td>한 user 의 3-share set 식별자 (key material 자체는 아님 — 그건 forbidden). 서로 다른 share 들이 같은 logical key 에 속함을 표시</td></tr>
+<tr><td><code>event_type</code></td><td>ENUM (5 값)</td><td><strong>provisioned</strong> 최초 share 생성 / <strong>re-enrolled</strong> 페어링 재발급 / <strong>migrated</strong> 새 기기로 이전 / <strong>revoked</strong> share 폐기 / <strong>backup-verified</strong> 복구 가능 여부 확인 (월 1회 알림 시점 등)</td></tr>
+<tr><td><code>actor_user_id</code></td><td>BINARY(16) FK</td><td>이 event 를 trigger 한 user — 대부분 share 소유자 본인 (device migration / re-enroll 같은 self-service)</td></tr>
+<tr><td><code>approved_by_owner_user_id</code></td><td>BINARY(16) nullable</td><td>Owner 의 승인이 필요한 event (예: provisioned · re-enrolled · co-signer pairing) 에서만 set. device migration 처럼 self-service path 는 NULL</td></tr>
+<tr><td><code>occurred_at</code></td><td>DATETIME(6)</td><td>event 발생 시각</td></tr>
+<tr><td><code>source_aggregate</code></td><td>VARCHAR(64) nullable</td><td>이 event 가 어느 상위 흐름에서 비롯됐는지 (예: <code>add-user</code>, <code>device-migration</code>, <code>re-enrolling-api-user</code>). cross-DB 추적용</td></tr>
 </tbody>
 </table>
 </div>
+
+<h3>Key Share Derivation 이벤트 — 4 가지 흐름</h3>
+<p>새 key share 가 생성되거나 기존 share 가 새 디바이스로 옮겨가는 운영 시나리오는 4 가지. 각각 승인 강도가 다릅니다.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>이벤트</th><th>승인 강도</th><th>schema 매핑</th></tr></thead>
+<tbody>
+<tr><td><strong>Add user (signing role)</strong></td><td>Owner 단독 MPC key share derivation 별도 승인 필요</td><td><code>event_type='provisioned'</code> + <code>approved_by_owner_user_id</code> set</td></tr>
+<tr><td><strong>Re-enroll device</strong></td><td>Owner 재승인 (2-day window) + 사용자 재등록 (2-day window) 둘 다 필요</td><td><code>event_type='re-enrolled'</code> + <code>approved_by_owner_user_id</code> set</td></tr>
+<tr><td><strong>Device migration</strong></td><td>사용자 본인 self-service — 관리자 승인 없이 PIN+passphrase+biometric 3중 인증</td><td><code>event_type='migrated'</code> + <code>actor_user_id</code> = 본인, <code>approved_by_owner_user_id</code> NULL</td></tr>
+<tr><td><strong>Co-signer pairing</strong></td><td>Owner 가 Co-signer key shares 승인</td><td><code>event_type='provisioned'</code> + <code>source_aggregate='co-signer-pairing'</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Putting It Together — MPC Key Provisioning 시퀀스</h3>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Owner as 👤 Owner
+  participant Console as 🖥️ Fireblocks Console
+  participant Owner_M as 📱 Owner mobile
+  participant User_M as 📱 신규 user mobile
+  participant FB1 as 🔵 FB Cloud Co-Signer 1<br/>(Azure SGX)
+  participant FB2 as 🔵 FB Cloud Co-Signer 2<br/>(Azure SGX)
+  participant Audit as 📋 auditdb
+
+  Note over Owner,Audit: 신규 signing user 추가 (Owner + Admin Quorum 승인 후)
+  Owner->>Console: "Add user with signing role" 승인
+  Console->>Owner_M: MPC key derivation 별도 승인 요청 (push)
+  Owner->>Owner_M: 별도 승인 (mobile 서명)
+
+  Note over Owner_M,FB2: MPC-CMP key generation ceremony (4 rounds, 3 pre-processed)
+  Owner_M->>User_M: round 1: share derivation setup
+  User_M->>FB1: round 2-3: pre-processed
+  User_M->>FB2: round 2-3: pre-processed
+  FB1->>User_M: round 4: final share to user mobile
+  FB2->>User_M: round 4: final share to user mobile
+  Note over User_M: User mobile secure enclave 에 share 보관<br/>(iOS Keychain / Android TEE)
+
+  Console->>Audit: key_lifecycle INSERT<br/>(event_type='provisioned', actor_user_id=신규 user,<br/>approved_by_owner_user_id=Owner, source_aggregate='add-user')
+  Audit->>Console: event 기록 완료
+  Console->>Owner: 신규 user 의 signing 준비 완료
+</pre>
+<span class="diagram-caption">Figure 27. MPC key share provisioning — 신규 signing user 의 3-share set 생성. 핵심: ① Owner 가 user 추가 외에 <strong>MPC key derivation 도 별도로 승인</strong> (mobile push 로 추가 서명) — 한 클릭이 아닌 2 단계 승인. ② <strong>MPC-CMP ceremony</strong>: 4 라운드 (3 라운드는 pre-processed) 로 user mobile 과 두 Fireblocks SGX co-signer 가 share 를 생성, 전체 키는 어느 시점에도 한곳에 모이지 않음. ③ user mobile share 는 secure enclave 에 hardware-encrypted 보관 (iCloud / Google Cloud 백업 불가). ④ <code>key_lifecycle</code> 에 event_type='provisioned' append-only INSERT — 키 material 자체는 forbidden storage 라 DB 에 없고 event 이력만 audit 됨.</span>
+</div>
 </section>
 <nav aria-label="Section navigation" class="page-nav">
-<a class="page-nav-link page-nav-prev" href="tables-policy.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">9. Policy · TAP<span class="g" data-tip="Transaction Authorization Policy. Fireblocks 의 거래 단위 승인 정책 엔진" tabindex="0">(?)</span></span></a>
-<a class="page-nav-link page-nav-next" href="tables-signer.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">11. Cosigner<span class="g" data-tip="자동 서명 컴포넌트. Mobile Cosigner (사용자 device) / API Cosigner (customer server) / Fireblocks Cloud Cosigner (Azure SGX)" tabindex="0">(?)</span> · Callback</span></a>
+<a class="page-nav-link page-nav-prev" href="tables-policy.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">10. Policy · TAP<span class="g" data-tip="Transaction Authorization Policy. Fireblocks 의 거래 단위 승인 정책 엔진" tabindex="0">(?)</span></span></a>
+<a class="page-nav-link page-nav-next" href="tables-signer.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">12. Cosigner<span class="g" data-tip="자동 서명 컴포넌트. Mobile Cosigner (사용자 device) / API Cosigner (customer server) / Fireblocks Cloud Cosigner (Azure SGX)" tabindex="0">(?)</span> · Callback</span></a>
 </nav>
 </main>
 </div>

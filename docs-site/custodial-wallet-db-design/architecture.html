@@ -14,6 +14,9 @@
 <div class="layout">
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
 <div class="nav-section">
 <h3 class="nav-section-title">Overview</h3>
 <ul>
@@ -109,7 +112,7 @@
       Azure ↔ AWS 통신은 <strong>SGX DMZ + PROXY</strong> 매개.
     </p>
 <div class="callout">
-<div class="callout-title">DB 설계에 미치는 함의</div>
+<div class="callout-title">DB 설계가 받는 영향</div>
 <p>물리적 DB 분할의 1차 기준은 <strong>"sensitive 인가 / 외피인가 / cache 인가"</strong>. 한 DB 안에 두 종류를 섞으면 cloud / network / IAM 분리가 무의미해진다.</p>
 </div>
 <h3>6 System Components</h3>
@@ -123,7 +126,7 @@
 <tr><td>3</td><td><strong>Core Components</strong></td><td><strong>코어</strong> — 민감 데이터를 SGX enclave 안에서 처리하는 4 개 모듈:<br/>· <strong>Auth Engine</strong> (사용자·서비스 인증 검증)<br/>· <strong>Policy Engine / TAPs</strong> (트랜잭션 단위 정책 평가)<br/>· <strong>Secure Vault</strong> (서명된 tx 조립 + PKI 보관)<br/>· <strong>Co-Signer Engine</strong> (3 co-signer 에 서명 분산 라우팅)</td><td>YES</td></tr>
 <tr><td>4</td><td><strong>Trusted Shared Services</strong></td><td><strong>신뢰 공유 서비스</strong> — Fireblocks 내부 공유 모듈 + <strong>P2P Network</strong> (Fireblocks 고객사들끼리 chain 안 거치고 즉시 송금 가능한 망)</td><td>partial</td></tr>
 <tr><td>5</td><td><strong>Blockchain Nodes</strong></td><td><strong>블록체인 노드</strong> — 서명 끝난 tx 를 실제 blockchain 에 broadcast. BTC / ETH / SOL 등 chain 별 노드 운영</td><td>NO</td></tr>
-<tr><td>6</td><td><strong>Disaster Recovery Services</strong></td><td><strong>재해복구</strong> — 자산 복구용. extended private keys (xprv + fprv) 를 재구성 가능. 반드시 <strong>offline air-gapped</strong> (네트워크 끊긴 별도 머신) 에서만.<br/>★ <strong>SPOC 경고</strong>: 정기 사용 금지 — 1 회만 사용해도 키 노출로 간주</td><td>EXTREME</td></tr>
+<tr><td>6</td><td><strong>Disaster Recovery Services</strong></td><td><strong>재해복구</strong> — 자산 복구용. extended private keys (xprv + fprv) 를 재구성 가능. 반드시 <strong>offline air-gapped</strong> (네트워크 끊긴 별도 머신) 에서만.<br/>★ <strong>SPOC<span class="g" data-tip="SPOC — Single Point of Compromise. 한 번이라도 노출되면 전체 키가 compromise 된 것으로 간주하는 지점. Fireblocks DR Recovery Utility 가 online machine 에서 실행될 때 정식 SPOC 경고 발동" tabindex="0">(?)</span> 경고</strong>: 정기 사용 금지 — 1 회만 사용해도 키 노출로 간주</td><td>EXTREME</td></tr>
 </tbody>
 </table>
 </div>

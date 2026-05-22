@@ -14,6 +14,9 @@
 <div class="layout">
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
 <div class="nav-section">
 <h3 class="nav-section-title">Overview</h3>
 <ul>
@@ -91,9 +94,32 @@
 <main class="content">
 <section id="sm-approval">
 <h2>16. Approval State Machine (TAP<span class="g" data-tip="Transaction Authorization Policy. Fireblocks 의 거래 단위 승인 정책 엔진" tabindex="0">(?)</span>)</h2>
-<span class="section-subtitle">Policy 정식 명세 — 3 action · first-match · Unanimous-Veto · 3-tier governance</span>
-<h3>3 Action Semantics </h3>
-<p><code>how-policies-work.md</code>, p.1 — Policy rule 의 action 은 3 종.</p>
+<span class="section-subtitle">Policy 3 action · first-match · Unanimous-Veto<span class="g" data-tip="Unanimous-Veto: 다수결이 아니라 만장일치 필수. N 명 중 1 명이라도 거부하면 즉시 전체 REJECTED. 한 명의 거부권이 다수 찬성을 무효화 — Fireblocks 의 안전망 설계" tabindex="0">(?)</span> · 3-tier governance · 5 default policies</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처 — 어디까지가 Fireblocks 정의이고, 어디부터가 추정인가</div>
+<p>이 페이지의 내용은 두 갈래입니다.</p>
+<p><strong>Fireblocks 공식 문서에 정의된 사실</strong> — 그대로 받아들여도 안전</p>
+<ul style="margin-bottom:0.5rem">
+<li><strong>3 Action Semantics</strong>: Allow (자동 승인) · Approved by (지정된 user/group 승인) · Block (차단)</li>
+<li><strong>First-Match Principle</strong>: top-to-bottom scan + 첫 match 에서 중단 · 모든 Policy 의 마지막 rule = block-all (default-deny)</li>
+<li><strong>Rule Ordering</strong>: time-period rule 이 single-tx rule 보다 앞 · overlap 시 더 strict 한 rule 이 앞</li>
+<li><strong>Approvers Unanimous-Veto Rule</strong>: 1 명 reject = 즉시 REJECTED (다수결 아님)</li>
+<li><strong>3-Tier Governance</strong>: Admin Quorum (workspace-level) → Approval Group (action-level 위임) → Policy "Approved by" sub-quorum (rule-level)</li>
+<li><strong>5 Default Policy Rules</strong>: 신규 workspace 자동 적용 — Transfer 1/2 (whitelisted NFT/USD), Contract Call (whitelisted contract), Approve (Web3 Approve), All Policies block-all</li>
+<li><strong>Custom Policy 도입 = default 즉시 삭제</strong> (one-way replacement). 모든 custom 삭제 시 default 복원</li>
+</ul>
+<p style="margin-bottom:0.3rem"><strong>저자가 합리적으로 추정해서 그린 설계</strong> — 참고용, 본인 환경에서 검증 권장</p>
+<ul style="margin-bottom:0">
+<li><code>approval_requests</code> · <code>approval_decisions</code> 두 테이블의 구체 schema</li>
+<li><code>approval_requests.subject_type</code> ENUM 의 6 값 정형화 (tx / add_user / edit_user / policy_change / admin_quorum_change / whitelist_address)</li>
+<li><code>approval_decisions.mobile_device_sig</code> 의 BLOB 형식 — Fireblocks 내부 mobile-signed bytes</li>
+<li><code>finalized_at</code> set-once + Sticky Terminal 패턴 (BEFORE UPDATE trigger 강제)</li>
+</ul>
+</div>
+
+<h3>3 Action Semantics — Policy rule 의 3 action</h3>
+<p>Policy rule 매칭 시 발효되는 action 은 3 종 — 단순한 통과 / 추가 승인 요청 / 차단.</p>
 <div class="table-wrap">
 <table>
 <thead><tr><th>Action</th><th>의미</th><th>State 전이</th></tr></thead>
@@ -139,18 +165,23 @@ stateDiagram-v2
       <span class="diagram-caption">Figure 7. Approval state machine — Allow auto-approve / Approved by collecting / Block fail-fast. Unanimous-Veto: 1 reject = 즉시 REJECTED.</span>
 </div>
 <div class="callout callout-warn">
-<div class="callout-title">Approvers Unanimous-Veto Rule (★)</div>
-<p><code>transaction-lifecycle.md</code>, p.6 직접 인용: <em>"If at least one person chooses to reject a transaction, the transaction is rejected."</em><br/>
-      Approval group 의 N명 중 <strong>1명 reject = 즉시 fail</strong>. 다수결 아님.</p>
+<div class="callout-title">⚠️ Approvers Unanimous-Veto Rule</div>
+<p><code>transaction-lifecycle.md</code>, p.6 직접 인용:</p>
+<blockquote style="border-left:3px solid var(--border-callout); padding-left:14px; color:var(--text-secondary); font-style:italic">"If at least one person chooses to reject a transaction, the transaction is rejected."</blockquote>
+<p>Approval group 의 N 명 중 <strong>1 명이라도 reject 하면 즉시 fail</strong>. 다수결이 아니라 만장일치 (unanimous) 필수 — 한 명의 거부권이 곧 veto.</p>
 </div>
-<h3>3-Tier Governance </h3>
-    <pre>Admin Quorum  (workspace-level default)
+
+<h3>3-Tier Governance — 거버넌스 3 계층</h3>
+<p>승인 메커니즘이 한 가지가 아니라 3 단계 위계로 작동합니다. 위에서 아래로 갈수록 더 작은 범위에 위임:</p>
+<pre>Admin Quorum  (workspace-level default)
   └── Approval Group  (action-level 위임, 12 actions)
         └── Policy "Approved by" sub-quorum  (rule-level 위임, user group 기반 N-of-M)</pre>
+<p>Fireblocks 의 <code>how-policies-work.md</code>, p.4 직접 인용:</p>
+<blockquote style="border-left:3px solid var(--border-callout); padding-left:14px; color:var(--text-secondary); font-style:italic">"you can also define approval quorums within a group as part of the Approved by action... requires any two members of a user group called Management to approve."</blockquote>
+<p>즉 같은 Policy 안에서도 rule 마다 다른 group + 다른 threshold (N-of-M) 를 지정 가능. workspace 의 Admin Quorum 과 별개로 정밀 통제.</p>
 
-    <p><code>how-policies-work.md</code>, p.4: <em>"you can also define approval quorums within a group as part of the Approved by action... requires any two members of a user group called Management to approve."</em></p>
-<h3>Default Policy Rules (5)</h3>
-<p>모든 신규 workspace<span class="g" data-tip="Fireblocks 의 최상위 격리·거버넌스 단위. 1 workspace = 1 Owner" tabindex="0">(?)</span> 자동 적용 (<code>about-policies.md</code>, p.4):</p>
+<h3>5 Default Policy Rules — 신규 workspace 의 출발선</h3>
+<p>모든 신규 workspace 가 자동 적용받는 5 가지 default rule:</p>
 <ol>
 <li><strong>Transfer Policy 1</strong>: Allow NFT transfer → whitelisted address</li>
 <li><strong>Transfer Policy 2</strong>: Allow 모든 USD amount, 모든 asset → whitelisted address</li>
@@ -160,37 +191,79 @@ stateDiagram-v2
 </ol>
 <p>→ <strong>Custom Policy 도입 = default 즉시 삭제 (one-way replacement)</strong>. Custom 전부 삭제 시 default 복원.</p>
 <h3>DB Schema</h3>
-    <pre><code>CREATE TABLE approval_requests (
-  id                BINARY(16) PRIMARY KEY,
-  workspace_id      BINARY(16) NOT NULL,
-  subject_type      ENUM('transaction', 'add_user', 'edit_user', 'policy_change', 'admin_quorum_change', 'whitelist_address') NOT NULL,
-  subject_id        BINARY(16) NOT NULL,
-  matched_rule_id   BINARY(16),                       -- first-match rule
-  action            ENUM('allow', 'approved_by', 'block') NOT NULL,
-  state             ENUM('EVALUATING', 'COLLECTING', 'AUTO_APPROVED', 'APPROVED', 'REJECTED', 'BLOCKED', 'EXPIRED') NOT NULL,
-  threshold         INT,                              -- N of M
+
+<h4>6.1 <code>approval_requests</code> — 승인 요청 본체</h4>
+<pre><code>CREATE TABLE approval_requests (
+  id                  BINARY(16) PRIMARY KEY,
+  workspace_id        BINARY(16) NOT NULL,
+  subject_type        ENUM('transaction','add_user','edit_user','policy_change','admin_quorum_change','whitelist_address') NOT NULL,
+  subject_id          BINARY(16) NOT NULL,
+  matched_rule_id     BINARY(16),                       -- first-match rule
+  action              ENUM('allow','approved_by','block') NOT NULL,
+  state               ENUM('EVALUATING','COLLECTING','AUTO_APPROVED','APPROVED','REJECTED','BLOCKED','EXPIRED') NOT NULL,
+  threshold           INT,                              -- N of M
   collected_approvals INT NOT NULL DEFAULT 0,
-  created_at        DATETIME(6) NOT NULL,
-  expires_at        DATETIME(6) NOT NULL,             -- 2h (tx) / 7-day (add_user)
-  finalized_at      DATETIME(6),                      -- ★ set-once
+  created_by          BINARY(16) NOT NULL,              -- 요청 시작한 user
+  created_at          DATETIME(6) NOT NULL,
+  expires_at          DATETIME(6) NOT NULL,             -- 2h (tx) / 7-day (add_user)
+  finalized_at        DATETIME(6),                      -- ★ set-once
   KEY (workspace_id, state),
   KEY (expires_at)
-);
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>요청의 고유 식별자</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16) FK</td><td>요청이 속한 workspace</td></tr>
+<tr><td><code>subject_type</code></td><td>ENUM (6 값)</td><td>승인 대상의 종류. <strong>transaction</strong> tx 승인 / <strong>add_user</strong>·<strong>edit_user</strong> 사용자 관리 / <strong>policy_change</strong> Policy 변경 / <strong>admin_quorum_change</strong> Quorum 자체 변경 / <strong>whitelist_address</strong> 화이트리스트 등록</td></tr>
+<tr><td><code>subject_id</code></td><td>BINARY(16)</td><td>승인 대상의 id (해당 subject_type 에 맞는 테이블 row)</td></tr>
+<tr><td><code>matched_rule_id</code></td><td>BINARY(16) nullable FK</td><td>first-match 로 매칭된 policy_rules 의 id (tx 의 경우). 다른 subject_type 은 NULL</td></tr>
+<tr><td><code>action</code></td><td>ENUM (3 값)</td><td>매칭된 rule 의 action — Allow (즉시 통과) / Approved by (승인 수집) / Block (차단)</td></tr>
+<tr><td><code>state</code></td><td>ENUM (7 값)</td><td>승인 state machine 의 현재 상태. EVALUATING → (분기) → 종착. Figure 7 참조</td></tr>
+<tr><td><code>threshold</code></td><td>INT nullable</td><td>N-of-M 의 N. action='approved_by' 일 때만 set</td></tr>
+<tr><td><code>collected_approvals</code></td><td>INT</td><td>현재까지 누적된 approve 결정 수 — threshold 와 비교해서 APPROVED 도달 여부 판단</td></tr>
+<tr><td><code>created_by</code> · <code>created_at</code></td><td>BINARY(16) · DATETIME(6)</td><td>요청 시작한 user + 시각. set-once</td></tr>
+<tr><td><code>expires_at</code></td><td>DATETIME(6)</td><td>만료 시각. tx 는 2h, add_user 는 7-day. scheduled job 이 만료된 row 를 EXPIRED 로 전이</td></tr>
+<tr><td><code>finalized_at</code></td><td>DATETIME(6) nullable</td><td>종착 상태 (APPROVED / REJECTED / BLOCKED / EXPIRED / AUTO_APPROVED) 도달 시각. <strong>set-once</strong> + Sticky Terminal — 이후 state 변경 불가 (BEFORE UPDATE trigger 강제)</td></tr>
+</tbody>
+</table>
+</div>
 
+<h4>6.2 <code>approval_decisions</code> — 개별 approver 의 결정 (append-only)</h4>
+<pre><code>-- ★ append-only — 한 번 결정한 row 는 절대 변경/삭제 안 됨
 CREATE TABLE approval_decisions (
   id                BINARY(16) PRIMARY KEY,
   request_id        BINARY(16) NOT NULL,
   approver_user_id  BINARY(16) NOT NULL,
-  decision          ENUM('approve', 'reject') NOT NULL,
+  decision          ENUM('approve','reject') NOT NULL,
   mobile_device_sig BLOB NOT NULL,                    -- ★ set-once, append-only
   decided_at        DATETIME(6) NOT NULL,
   UNIQUE KEY (request_id, approver_user_id)           -- 1 user = 1 decision per request
 );</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>결정 이벤트의 고유 식별자</td></tr>
+<tr><td><code>request_id</code></td><td>BINARY(16) FK</td><td>이 결정이 속한 approval_requests</td></tr>
+<tr><td><code>approver_user_id</code></td><td>BINARY(16) FK</td><td>결정한 approver</td></tr>
+<tr><td><code>decision</code></td><td>ENUM (2 값)</td><td><strong>approve</strong> 또는 <strong>reject</strong>. Unanimous-Veto Rule 에 의해 reject 1 개로 즉시 전체 REJECTED</td></tr>
+<tr><td><code>mobile_device_sig</code></td><td>BLOB</td><td>approver 의 mobile device 에서 MPC share 로 서명한 bytes. byte-equal cross-DB binding (audit 평면과 일치) + <strong>set-once + append-only</strong> — 결정을 사후 바꿀 수 없음</td></tr>
+<tr><td><code>decided_at</code></td><td>DATETIME(6)</td><td>결정 시각</td></tr>
+<tr><td><code>UNIQUE (request_id, approver_user_id)</code></td><td>—</td><td>한 approver 가 같은 request 에 두 번 결정 불가</td></tr>
+</tbody>
+</table>
+</div>
 
-    <div class="callout">
-<div class="callout-title">Sticky Terminal · Set-once</div>
-<p><code>approval_requests.state</code> 가 APPROVED / REJECTED / BLOCKED / EXPIRED 도달 시 더 이상 전이 불가 (BEFORE UPDATE trigger).<br/>
-<code>approval_decisions</code> 의 mobile_device_sig 는 set-once<span class="g" data-tip="DB 컬럼의 1회만 set 규칙. NULL → 값 1 회만 허용, 이후 변경 금지. trigger 로 강제" tabindex="0">(?)</span> + append-only<span class="g" data-tip="DB 의 추가 전용 규칙. 한 번 들어간 row 는 UPDATE / DELETE 절대 불가. trigger 로 강제" tabindex="0">(?)</span>.</p>
+<div class="callout">
+<div class="callout-title">Sticky Terminal · Set-once · Append-only — 변경 불가성 강제</div>
+<p>승인 평면의 핵심 audit 속성은 "결정한 것은 절대 바꿀 수 없다" 입니다. 세 가지 trigger 가 협업:</p>
+<ul style="margin-bottom:0">
+<li><strong>Sticky Terminal</strong>: <code>approval_requests.state</code> 가 종착 상태 (APPROVED / REJECTED / BLOCKED / EXPIRED / AUTO_APPROVED) 도달 시 BEFORE UPDATE trigger 가 이후 모든 state 변경 거부</li>
+<li><strong>Set-once</strong>: <code>finalized_at</code>, <code>mobile_device_sig</code> 같은 audit-critical 컬럼은 NULL → 값 한 번만 허용</li>
+<li><strong>Append-only</strong>: <code>approval_decisions</code> 전체 — 한 번 INSERT 된 row 는 UPDATE / DELETE 절대 불가</li>
+</ul>
 </div>
 </section>
 <nav aria-label="Section navigation" class="page-nav">

@@ -2,10 +2,10 @@
 type: vendor-hub
 vendor: fireblocks
 status: stable
-tags: [risks, security]
+tags: [risks, security, key-link]
 stage_introduced: 1
-last_updated_stage: 31
-source_count: 23
+last_updated_stage: 36
+source_count: 26
 related:
   - admin-quorum
   - api
@@ -464,3 +464,100 @@ SaaS MPC reconstruction 은 **4-secret model** + **strict offline-only mandate**
 - FSPM = add-on license
 - → license 미보유 워크스페이스는 pre-incident posture 모니터링 부재
 - FSPM 의 monitoring 6 영역 중 일부 (e.g., weak approval group threshold) 는 **수동 review 가 유일한 대안**
+
+## Stage 36 — Key Link Risks (★ 신규 plane)
+
+`fireblocks-key-link-overview.md`, p.1-3 + `getting-started-with-fireblocks-key-link.md`, p.1-9 + `set-up-your-fireblocks-vault-with-key-link.md`, p.1-4 (Stage 36 Mode C).
+
+Key Link plane 도입으로 **6 가지 신규 risk** 식별. 모두 MPC plane 의 risk profile 과 다른 영역 — customer 측 인프라 의존성이 risk 의 root.
+
+### Risk-KL01: Customer Server SPOF
+
+- Stage 8 의 trust boundary 가 Key Link 에서 **Customer Server 까지 확장** — Server fail 시 모든 signing 중단
+- Stage 9 의 17-status transaction state machine 에서 **Pending Signature (2h timeout)** 가 timeout → tx fail
+- → Customer 측 Active-Active / Active-Passive HA 필수, Stage 8 의 BCM 패턴과 유사한 보수성 요구
+- Mitigation 미명시 (PDFs 에 customer server HA recommendation 없음) → **Q-2026-05-22-KL02**
+
+### Risk-KL02: Fireblocks Agent Open-Source Update Burden
+
+- Agent 가 customer 호스팅 open-source TypeScript service
+- Update 의 강제 minimum version / security patch deployment 정책이 PDFs 에 미명시 → **Q-2026-05-22-KL03**
+- → Outdated Agent 가 long-term security debt 가능성. Mobile app 의 Stage 5 강제 update 메커니즘 (current/effective version) 과 다른 운영 모델
+
+### Risk-KL03: Beta State Production Risk (Q-2026-05-19-S16 부분 ANSWERED)
+
+- API prefix `/key-link-beta/` 가 catalog-level fact (Stage 18)
+- 본 3 PDF 에 "Key Link workspace" 가 일관되게 별도 workspace type 으로 명시 — beta-specific 제약은 PDFs 에 명시 없음
+- → **Specific limitation 식별 위해 Mode C 추가 ingest 필요** (별도 cluster ingest 잔존)
+- Cold Wallet 의 Risk-G07 (approval-group 미지원) 패턴과 비교: Key Link 는 approval-group 지원 확인 (`Settings > Quorums > Security & compliance > Add validation keys`) — Cold Wallet 패턴과 같지 않음
+
+### Risk-KL04: Validation Key Compromise
+
+- Compromise 시 **위조된 signing key 등록 가능** — attacker 가 자체 HSM 의 키를 enable
+- Stage 8 의 audit log 가 validation key 의 Submitted / Approved / Rejected / Activated / Deactivated 이벤트 추적
+- Mitigation: approval group quorum (default Admin Quorum 또는 위임 group) — Key Link 의 governance plane
+- 자세한 내용: [[vendors/fireblocks/security]] §"Stage 36 — Customer Signature Validation Plane"
+
+### Risk-KL05: HSM Adaptor Cold-HSM Latency
+
+- HSM Adaptor 가 **optional** component, cold (offline) HSM 과의 통신 매개
+- Cold HSM signing 의 latency / batching pattern 명세 없음 → **Q-2026-05-22-KL04**
+- Stage 9 의 Pending Signature 2h timeout 과의 호환성 미명시
+- → 일부 chain 의 시간 제약 (Algorand 50min signing window / Tezos 30min / Polkadot 2h tx valid) 과 cold HSM 의 manual signing 사이클이 충돌 가능
+
+**Stage 38 부분 ANSWERED** (Fireblocks blog × Thales 2025-09-23):
+- Air-gap transport 메커니즘 = **USB · SFTP · data diodes** (vendor 공식 발언)
+- "Hot / Warm / Cold signing workflows" 3-mode 가 vendor 공식 framing
+- 단 cold-HSM signing latency 수치 / batching 패턴 / Pending Signature 2h timeout 호환성은 여전히 미명세
+
+### Risk-KL06: Non-Interactive PoO Replay (★ specific 가능성)
+
+- Non-interactive Proof of Ownership 의 메시지 = `Fireblocks|Proof of Ownership Message|<WorkspaceDisplayName>|<SdkApiKey>` + `signingDeviceKeyId` + `UnixTimeInSeconds`
+- UnixTimeInSeconds 의 validity window 명시 없음 — attacker 가 같은 cert 를 다른 workspace 에 replay 시도 가능성?
+  - WorkspaceDisplayName 이 message 에 포함되어 workspace cross-replay 방어 — 단 같은 workspace 내 replay window 미명시
+- → **Q-2026-05-22-KL05** (Stage 36 신규)
+- Mitigation 추정 (PDFs 미명시): SdkApiKey 가 GUID 라 키별 unique, UnixTimeInSeconds 가 nonce 역할 가능
+
+### Risk-KL07: Workspace Type Immutability (Q-2026-05-22-KL01 ★ 부분 ANSWERED Stage 36)
+
+- `hosted-mpc-workspace-configuration.md` p.1 직접 인용: "You must open and configure a **new workspace** for a Hosted MPC setup, as **modifying an existing SaaS MPC workspace is impossible**."
+- → **Workspace type 은 immutable** — Hosted MPC ↔ SaaS MPC 변환 불가. Key Link 도 architectural symmetry 로 같은 invariant 추정
+- **운영 영향**: MPC → Key Link migration = 새 Key Link workspace 생성 + cross-workspace asset transfer 가 유일한 경로
+- **Same-organization mixed-plane**: Customer Domain (Stage 9 의 5-level hierarchy top) 안에 다양한 type 의 workspace 가능 — Customer Domain 이 workspace 들의 logical group, 각 workspace 는 type 고정
+- **Cold Signing variant**: Hosted MPC + Cold Signing 의 경우도 새 workspace 필수 (기존 Cold Signing workspace 재사용 불가, `hosted-mpc-customer-side-setup.md` p.2)
+
+### Stage 36 와 다른 Risk plane 의 cross-cut
+
+| Stage | Risk plane | Key Link 와의 cross-cut |
+|---|---|---|
+| 8 (S08-S14) | SaaS architecture risks | Key Link 는 Fireblocks key share 0 → S08 (Single-signer SPOF) 자동 회피 |
+| 10 (G01-G08) | Governance risks | G07 (Cold Wallet approval-group 미지원) 패턴 ≠ Key Link 의 approval-group 지원 |
+| Stage 31 SPOC | DR 4-secret reconstruction | Key Link 는 MPC backup 자체 없음 → SPOC 형태가 다름 (customer HSM 자체 가 SPOC) |
+
+## Sources (Stage 36 추가)
+- `2026-05-22__support-fireblocks-io__fireblocks-key-link-overview-extracted.txt`, p.1-3 (Stage 36: Customer Server SPOF, Agent open-source)
+- `2026-05-22__support-fireblocks-io__getting-started-with-fireblocks-key-link-extracted.txt`, p.1-9 (Stage 36: PoO methods, validation key governance)
+- `2026-05-22__support-fireblocks-io__set-up-your-fireblocks-vault-with-key-link-extracted.txt`, p.1-4 (Stage 36: Vault key exclusivity)
+
+## Stage 38 — Key Link × Thales Luna HSM (vendor blog 2025-09-23)
+
+Fireblocks 공식 블로그 ("Enterprise Digital Asset Security with Fireblocks and Thales", 2025-09-23 by Adam Levine) 가 Key Link 의 후속 사실을 명시:
+
+### Stage 38 신규 Risk plane 사실 (Risk 등급 아닌 architectural fact)
+
+- **Thales Luna HSM** — Key Link 의 reference HSM partner. **FIPS 140-3 Level 3 + Common Criteria 인증**. PQC (post-quantum cryptography) readiness.
+- **Hot / Warm / Cold signing workflows** — vendor 공식 3-mode framing 등장. "Warm" 의 기술 정의는 미명세 → **Q-2025-09-23-FB01**
+- **Air-gap transport** — USB · SFTP · data diodes (Risk-KL05 의 부분 ANSWERED)
+- **Customer key ownership** — "Institutions maintain full key ownership" — Stage 36 의 Key Link key-share-0 invariant 의 vendor 강조
+- **관할권** — HKMA · HKSFC · JFSA 명시. KR 미명시 → **Q-2025-09-23-FB03**
+
+### Stage 38 신규 Q
+
+- **Q-2025-09-23-FB01** — Hot/Warm/Cold 3-mode 의 정확한 기술 정의 (특히 "Warm")
+- **Q-2025-09-23-FB02** — SaaS Cold Wallet workspace vs Key Link Cold signing 의 관계
+- **Q-2025-09-23-FB03** — KR VASP 환경 Key Link + Thales Luna 적용 vendor 공식 입장
+
+자세히: [[open-questions/fireblocks]] §"Stage 38"
+
+## Sources (Stage 38 추가)
+- `2026-05-22__fireblocks-com__enterprise-digital-asset-security-thales.md` (Stage 38: Thales Luna HSM 통합, Hot/Warm/Cold 3-mode, air-gap transport)

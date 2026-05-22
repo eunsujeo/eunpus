@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Overview — 은행 Fireblocks Cold Wallet 도입</title>
+<meta content="은행이 수탁형 지갑을 만들 때 Fireblocks Cold Wallet 을 어떻게 사용하는지 — workspace · governance · rebalancing · 운영" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a class="active" href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Cold Wallet 기초</h3>
+<ul>
+<li><a href="cold-wallet-fundamentals.html">1. Cold Wallet 이란</a></li>
+<li><a href="workspace-topology.html">2. Workspace 토폴로지</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Governance &amp; Flow</h3>
+<ul>
+<li><a href="governance-quorum.html">3. Admin Quorum 단독 거버넌스</a></li>
+<li><a href="hot-cold-rebalancing.html">4. Hot ↔ Cold Rebalancing</a></li>
+<li><a href="signing-flow.html">5. Cold Wallet Signing</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 은행 도입</h3>
+<ul>
+<li><a href="bank-operations.html">6. 은행 운영 절차</a></li>
+<li><a href="risks-open-questions.html">7. Risks &amp; Open Questions</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="overview">
+<h1>은행 Fireblocks Cold Wallet 도입 — 수탁형 지갑 reference</h1>
+<p class="lead">
+은행이 수탁형 지갑 (custodial wallet) 을 운영할 때 <strong>Fireblocks Cold Wallet workspace</strong>
+를 어떻게 배치·운영할지를 정리한 reference. 출처는 모두 Fireblocks Help Center 공식 문서.
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">본 페이지의 출처 — 어디까지가 공식 사실이고, 어디부터가 저자 추정인가</div>
+<p>
+Fireblocks Cold Wallet 자료의 일부는 공식 문서에 본문이 적재되지 않은 상태이다 (15 PDF cluster).
+본 문서는 다음 두 등급으로 구분한다:
+</p>
+<ul>
+<li><strong>공식 문서에 정의된 사실</strong> — 그대로 받아도 안전 (출처 명시)</li>
+<li><strong>저자가 합리적으로 추정한 운영 권장</strong> — 참고용, 본인 환경 검증 권장 (공식 보강 필요)</li>
+</ul>
+</div>
+
+<h2>10 초 요약</h2>
+<ul>
+<li><strong>Cold Wallet 은 별개 workspace product</strong>. Hot workspace 와 별도 구매·별도 인프라.
+  <span class="src">(출처: Fireblocks 공식 문서 — Account and Wallet Structure · Vault Structure Best Practices)</span></li>
+<li><strong>Workspace 축</strong>: Hot/Cold × Mainnet/Testnet 두 직교 축. Cold workspace = "cold wallet 보유, offline storage".
+  <span class="src">(출처: Fireblocks 공식 문서 — Account and Wallet Structure)</span></li>
+<li><strong>Approval Group 미지원</strong>. Cold Wallet workspace 의 모든 governance 결정은 <strong>Admin Quorum 단독</strong> (Risk-G07).
+  <span class="src">(출처: Fireblocks 공식 문서 — Approval Groups)</span></li>
+<li><strong>Multi-workspace 6 trigger</strong> 중 #6 = "Cold Wallet 분리 (offline regulation 충족)". KR 은행은 이 trigger 가 사실상 강제.
+  <span class="src">(출처: Fireblocks 공식 문서 — Vault Structure Best Practices)</span></li>
+<li><strong>Hot ↔ Cold rebalancing</strong> 은 별도 P2P 경로로 수행 (Fireblocks Cold Wallet cluster).
+  <span class="src">(출처: Fireblocks 공식 문서)</span></li>
+<li><strong>MPC share 분포 모델, device type, signing 절차</strong> — 공식 문서 본문 미적재 (Q-M05, Q-D-cold).</li>
+</ul>
+
+<h2>이 문서의 8 페이지</h2>
+<div class="table-wrap">
+<table class="overview-domains">
+<thead><tr><th>도메인</th><th>다루는 내용</th><th>진입점</th></tr></thead>
+<tbody>
+<tr><td>0. Overview</td><td>요약, 3-way 비교 (Hot only / Hybrid / Cold only)</td><td><a href="index.html">현재 페이지</a></td></tr>
+<tr><td>A. Cold Wallet 기초</td><td>workspace type · 3-domain cross-cut · multi-workspace 구성</td><td><a href="cold-wallet-fundamentals.html">1. Cold Wallet 이란</a></td></tr>
+<tr><td>B. Governance &amp; Flow</td><td>Admin Quorum 단독 · Risk-G07 · rebalancing · signing</td><td><a href="governance-quorum.html">3. 거버넌스</a></td></tr>
+<tr><td>C. 은행 도입</td><td>KR 은행 운영 절차 · 사용자 / 2FA / API key 의 Cold 특수 규칙 · risk register</td><td><a href="bank-operations.html">6. 은행 운영</a></td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>은행 입장에서 본 3-way 비교</h2>
+<p>
+은행 (수탁업자) 이 디지털 자산을 보관할 때 선택 가능한 3 가지 배치 모델.
+<strong>실제 운영은 대부분 Hybrid (Hot + Cold 병행)</strong>.
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>① Hot only</th><th>② Hybrid (Hot + Cold)</th><th>③ Cold only</th></tr></thead>
+<tbody>
+<tr><td><strong>Fireblocks 구성</strong></td><td>Hot workspace 1개</td><td>Hot workspace + Cold workspace</td><td>Cold workspace 1개</td></tr>
+<tr><td><strong>주 보관 자산</strong></td><td>일일 처리 자산</td><td>Hot = working balance / Cold = bulk reserve</td><td>전량 offline</td></tr>
+<tr><td><strong>거버넌스</strong></td><td>Admin Quorum + Approval Group</td><td>Hot 은 Approval Group / Cold 은 Admin Quorum 단독</td><td>Admin Quorum 단독</td></tr>
+<tr><td><strong>입출금 latency</strong></td><td>실시간</td><td>Hot 실시간 / Cold 운영 시간 단위</td><td>운영 시간 단위 (manual ceremony 가능)</td></tr>
+<tr><td><strong>운영 부담</strong></td><td>중</td><td>중-상 (workspace 2개 운영)</td><td>상 (모든 결정에 Admin Quorum 전체)</td></tr>
+<tr><td><strong>KR 규제 적합성</strong></td><td>감독규정 9조 (콜드월렛 80%) 위반 위험</td><td>표준 패턴 (Cold ≥ 80% / Hot ≤ 20%)</td><td>가능하나 사용자 출금 응답 어려움</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">권장 — Hybrid</div>
+<p>
+은행 환경에서 합리적 default 는 <strong>② Hybrid</strong>. Hot workspace 가 사용자 입출금 / 일일 운영을 담당하고,
+Cold workspace 가 <span class="g" data-tip="고객 자산을 한곳에 풀(pool) 형태로 모아 보관하는 모델. 개별 사용자가 아닌 은행이 통합 관리. KR 특금법의 'cold storage' 의무 비율 (전체 자산의 일정 비율 이상 오프라인 보관) 충족용으로 자주 사용" tabindex="0">(?)</span> bulk reserve 를 담당하며,
+정기적 rebalancing 으로 Hot workspace 의 risk exposure 를 제한한다.
+<span class="src">(출처: Fireblocks 공식 문서 — Vault Structure Best Practices: "Cold Wallet workspace 별도 구매 + rebalancing 권장")</span>
+</p>
+</div>
+
+<h2>핵심 invariant (5)</h2>
+<ol>
+<li><strong>Workspace separation</strong> — Cold 와 Hot 은 항상 별도 workspace.
+  <span class="src">(출처: Fireblocks 공식 문서 — Vault Structure Best Practices)</span></li>
+<li><strong>Admin Quorum-only governance</strong> — Cold workspace 에 approval group 위임 경로 없음.
+  <span class="src">(출처: Fireblocks 공식 문서 — Approval Groups · Risk-G07)</span></li>
+<li><strong>Owner-direct critical ops</strong> — user delete, 2FA reset 등 일부 operation 은 Owner Console-direct 만 가능 (Cold 특수 규칙).
+  <span class="src">(출처: Fireblocks 공식 문서 — Admin Quorum)</span></li>
+<li><strong>Support-mediated user add</strong> — Cold Wallet workspace 의 user / API key 추가는 Fireblocks Support 경유 필수.
+  <span class="src">(출처: Fireblocks 공식 문서 — "Adding users to a Cold Wallet workspace")</span></li>
+<li><strong>Signature quota monitoring</strong> — Cold Wallet 의 "Less than 10% remaining signatures" 이벤트가 Audit Log 의 명시적 모니터링 대상.
+  <span class="src">(출처: Fireblocks 공식 문서 — Audit Log 카테고리)</span></li>
+</ol>
+
+<h2>은행이 Cold Wallet 을 도입하는 이유 — 4 가지</h2>
+<ol>
+<li><strong>규제 (KR 특금법 / VACPA)</strong> — 가상자산업감독규정 9조: <strong>이용자 가상자산의 80% (경제적 가치 기준) 를 인터넷과 분리하여 보관</strong>.
+  시행령 위임 "≥70%" 범위 내 금융위 정함.
+  <span class="src">(출처: KR 컴플라이언스 가이드 · law.go.kr admRulSeq=2100000244180)</span></li>
+<li><strong>Risk segregation</strong> — Hot workspace 의 attack surface (API key 도난, mobile device 분실, SaaS outage) 와 격리.
+  <span class="src">(출처: Fireblocks 공식 risk register)</span></li>
+<li><strong>Audit &amp; 감독 대응</strong> — bulk reserve 의 cold-side 격리가 외부 감사 / 금감원 점검 / 회계 reporting 의 표준 요건</li>
+<li><strong>Insurance underwriting</strong> — 디지털 자산 보험의 보험료가 cold storage 비율에 강하게 의존.
+  <em>저자 추정 — 공식 문서 미명세, 산업 표준</em></li>
+</ol>
+
+<h2>이 문서가 다루지 <em>않는</em> 것</h2>
+<ul>
+<li><strong>Fireblocks 내부 MPC share 분포의 정확한 구조</strong> (Cold variant) — 공식 문서 본문 미적재 (Q-M05)</li>
+<li><strong>Cold device 의 하드웨어 사양</strong> — Fireblocks 공식 문서명 ("Cold Wallet Device Requirements") 만 존재, 본문 미적재</li>
+<li><strong>구체적 signing ceremony 절차</strong> — 공식 문서명 ("Signing transactions with your Cold Wallet device") 만 존재, 본문 미적재</li>
+<li><strong>KR 특금법의 cold storage 비율 외 추가 수치</strong> — KR 법령 별도 검증 필요</li>
+<li><strong>다른 vendor (BitGo, Anchorage 등) 의 cold wallet</strong> — 본 문서는 Fireblocks 한정</li>
+</ul>
+
+<p class="back-top"><a href="#overview">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="assets/app.js"></script>
+</body>
+</html>

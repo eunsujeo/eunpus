@@ -14,6 +14,9 @@
 <div class="layout">
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
 <div class="nav-section">
 <h3 class="nav-section-title">Overview</h3>
 <ul>
@@ -101,7 +104,9 @@
   id                       BINARY(16) PRIMARY KEY,
   workspace_id             BINARY(16) NOT NULL,
   name                     VARCHAR(128) NOT NULL,
-  hidden                   BOOLEAN NOT NULL DEFAULT FALSE,
+  hidden                   BOOLEAN NOT NULL DEFAULT FALSE,         -- API: hiddenOnUI
+  customer_ref_id          VARCHAR(128),                            -- AML provider 가 funds owner 식별용 (선택)
+  auto_fuel                BOOLEAN NOT NULL DEFAULT FALSE,          -- Gas Station 의 ETH auto-fund 대상 여부
   created_by               BINARY(16) NOT NULL,        -- 생성 요청한 user
   created_at               DATETIME(6) NOT NULL,
   approved_by_quorum_id    BINARY(16) NOT NULL,        -- Admin Quorum 승인 (set-once, 생성용)
@@ -121,7 +126,9 @@
 <tr><td><code>id</code></td><td>BINARY(16) PK</td><td>vault account 의 고유 식별자</td></tr>
 <tr><td><code>workspace_id</code></td><td>BINARY(16)</td><td>어느 workspace 에 속하는지. <strong>FK 검증</strong>은 같은 DB 안에서만</td></tr>
 <tr><td><code>name</code></td><td>VARCHAR(128)</td><td>사람이 읽는 이름표 (예: "Client Acme - USD vault", "Mint authority")</td></tr>
-<tr><td><code>hidden</code></td><td>BOOLEAN</td><td>UI 에서 숨김 처리 여부. soft-hide — 자료는 그대로, 화면에 안 보일 뿐</td></tr>
+<tr><td><code>hidden</code></td><td>BOOLEAN</td><td>UI 에서 숨김 처리 여부. soft-hide — 자료는 그대로, 화면에 안 보일 뿐. Fireblocks API 의 `hiddenOnUI` 와 정합</td></tr>
+<tr><td><code>customer_ref_id</code></td><td>VARCHAR(128) nullable</td><td>★ AML provider 가 funds owner 를 transaction 과 연결할 때 사용하는 외부 식별자 (선택). Fireblocks API VaultAccount.customerRefId 와 정합. tx attribution 의 cross-DB key</td></tr>
+<tr><td><code>auto_fuel</code></td><td>BOOLEAN</td><td>★ Gas Station 의 ETH auto-fund 대상 여부. <code>true</code> 일 때 잔액이 <code>gasThreshold</code> 미만이면 Gas Station vault 가 자동 충전. Fireblocks API VaultAccount.autoFuel 와 정합</td></tr>
 <tr><td><code>created_by</code></td><td>BINARY(16)</td><td>이 vault account 를 <strong>생성 요청</strong> 한 user id (= 요청자). set-once</td></tr>
 <tr><td><code>created_at</code></td><td>DATETIME(6)</td><td>생성 요청 시각. set-once</td></tr>
 <tr><td><code>approved_by_quorum_id</code></td><td>BINARY(16)</td><td>Admin Quorum 의 id (FK → <code>admin_quorums.id</code>). vault 생성에는 quorum 승인이 필수 — 우리 시스템은 Fireblocks 보다 엄격하게 vault 생성을 approval-gated 로 처리. set-once</td></tr>
@@ -256,6 +263,43 @@
 <li><strong>법적 책임 추적</strong>: 사고 발생 시 "누가 언제 무엇을 바꿨다" 의 cryptographic evidence (auditdb 의 hash chain 으로도 영속화) 필수</li>
 <li><strong>UPDATE 만으로는 부족</strong>: <code>modified_at</code> 은 "마지막 변경 시점" 만 알 뿐, <strong>무엇이 어떻게 변했는지</strong>는 별도 log 가 있어야 알 수 있음</li>
 </ul>
+</div>
+
+<h3>Vault Create 시퀀스 — quorum-gated 흐름이 schema 에 어떻게 떨어지는가</h3>
+<p>위에서 본 "vault 생성은 Owner + Admin Quorum 승인 필수" 가 실제 운영에서 어떻게 작동하는지. 본 schema 의 <code>approved_by_quorum_id</code> 컬럼이 어느 시점에 set 되는지 흐름 안에서 확인.</p>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Initiator as 👤 Owner / Admin / NSA / Signer<br/>Approver / Editor
+  actor Owner as 👤 Owner
+  actor Quorum as 👥 Admin Quorum<br/>(N-of-M)
+  participant Console as 🖥️ Fireblocks Console
+  participant FB as 🛡️ Fireblocks Core
+
+  Initiator->>Console: "Create vault account" 요청<br/>(name + 초기 role 후보)
+  Console->>FB: approval_requests row INSERT<br/>(status='pending', expires_at = +7day)
+  Console->>Owner: mobile push 알림
+  Console->>Quorum: mobile push 알림 (M 명)
+
+  Note over Owner,Quorum: 각자 mobile app 에서 검토
+  Owner->>Console: 승인 (mobile 서명)
+  Quorum->>Console: N 명 승인 (mobile 서명 누적)
+
+  alt 7일 안에 Owner + N-of-M 충족
+    Console->>FB: vault_accounts INSERT<br/>(approved_by_quorum_id + approved_at SET)
+    FB->>FB: vault_account_change_events INSERT<br/>(event_type='created' + approved_by_quorum_id)
+    FB->>FB: vault_account_roles INSERT<br/>(초기 role 후보들 grant)
+    FB->>Console: 신규 vault 생성 완료
+    Console->>Initiator: vault 사용 가능
+  else 7일 expire 또는 거절
+    FB->>Console: approval_requests.status = 'expired' 또는 'rejected'
+    Console->>Initiator: vault 생성 실패 — 재요청 필요
+  end
+
+  Note over Initiator,FB: 이후 rename / hide / unhide / archive 는 admin 단독 (quorum 불요)<br/>vault_account_change_events 에 actor_user_id 만 기록 (approved_by_quorum_id = NULL)
+</pre>
+<span class="diagram-caption">Figure 18. Vault Create — quorum-gated lifecycle. 핵심 단계: ① 6 role (Owner/Admin/NSA/Signer/Approver/Editor) 중 누구든 요청 시작 가능, 단 ② Owner + Admin Quorum N-of-M 승인을 7 일 안에 받아야 함 (Add user 의 7-day expiry 와 동일 메커니즘) → ③ threshold 충족 시 비로소 <code>vault_accounts</code> row INSERT 되며 <code>approved_by_quorum_id</code> 와 <code>approved_at</code> 이 동시에 set (set-once). 동시에 <code>vault_account_change_events</code> 에 created 이벤트 + 같은 quorum_id 기록. ④ 이후 rename / hide / unhide / archive 같은 admin 단독 동사는 quorum_id 없이 진행 — 본 schema 의 <code>approved_by_quorum_id</code> 컬럼이 nullable 인 이유.</span>
 </div>
 
 <h3>Vault Structure 4 가지 패턴 — 실제 운영 방식</h3>

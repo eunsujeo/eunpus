@@ -14,6 +14,9 @@
 <div class="layout">
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
 <div class="nav-section">
 <h3 class="nav-section-title">Overview</h3>
 <ul>
@@ -187,7 +190,8 @@ stateDiagram-v2
 <p>Bitcoin block 이 1 개 채굴되었다고 입금이 "확정" 일까요? 아닙니다. 짧은 시간 안에 그 block 이 다른 chain branch 에 밀려 사라지면 (reorg) 입금도 같이 사라지므로, 그 위에 다음 block 들이 어느 정도 쌓이는 (= confirmation 누적) 시점까지 기다려야 안전합니다. <strong>DCCP (Deposit Control and Confirmation Policy)</strong> 가 chain 마다 그 "몇 번 confirm 되면 확정으로 보겠다" 의 횟수를 정합니다.</p>
 <ul>
 <li><strong>확정 전 (lock 상태)</strong>: 입금된 자산은 wallet 잔액으로 보이지만 사용 불가. 출금이나 다른 거래의 input 으로 못 씁니다</li>
-<li><strong>확정 후 (DCCP 임계 도달)</strong>: 잔액이 사용 가능 상태로 전환. UTXO<span class="g" data-tip="Unspent Transaction Output. Bitcoin 계열의 잔액 모델. 잔액 = 사용 안 한 output 합" tabindex="0">(?)</span> 기반 chain 은 그 output 을 새 tx 의 input 으로 즉시 사용 가능</li>
+<li><strong>확정 후 (DCCP 임계 도달)</strong>: 잔액이 사용 가능 상태로 전환. UTXO<span class="g" data-tip="Unspent Transaction Output. Bitcoin 계열의 잔액 모델. 잔액 = 사용 안 한 output 합" tabindex="0">(?)</span> 기반 chain 은 그 output 을 새 tx 의 input 으로 즉시 사용 가능 — <code>unspent_inputs</code> 테이블의 row 가 <code>status='confirmed'</code> 로 전이 (<a href="tables-wallet.html">5. Wallet</a> 의 UTXO unspent_inputs M-cache 참조)</li>
+<li><strong>Multi-destination 입금 흐름</strong>: UTXO 자산은 한 tx 가 여러 output 으로 분기 가능 — 우리 vault address 가 그 중 하나일 수 있음. <code>transaction_destinations</code> 의 row 각각이 한 destination 의 amount/address 추적 (<a href="sm-transaction.html">14. Transaction</a> 의 multi-dest schema 참조)</li>
 <li><strong>출금 측에도 동일 정책</strong>: 우리 출금 tx 가 chain 에서 N 번 confirm 될 때까지 "송금 완료" 처리 안 함 (incoming 과 outgoing 양쪽에 적용)</li>
 <li>예외적으로 정책을 chain 별 customize 하거나 override 하는 메커니즘이 별도 존재 (본 문서 범위 밖)</li>
 </ul>
