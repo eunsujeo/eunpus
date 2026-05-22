@@ -123,7 +123,7 @@ Cold 의 정확한 모델은 공식 본문 미적재로 인해 추정만 가능.
 <tbody>
 <tr><td><strong>H1 — Hot 와 동일 (mobile + 2 cloud)</strong></td>
   <td>1 mobile + 2 Fireblocks SGX. 단 "cold" 의미는 Fireblocks 측의 air-gap 운영 (cold facility) 또는 별도 console plane.</td>
-  <td>Fireblocks 측 cloud 의존 여전. Hot 과 SaaS 의존도 동일.</td></tr>
+  <td><strong>"Cold Wallet 은 별도 앱" fact 와 충돌</strong> — H1 가능성 낮음.</td></tr>
 <tr><td><strong>H2 — 별도 cold device + 2 cloud</strong></td>
   <td>1 air-gapped device (mobile 아닌 별도 hardware) + 2 Fireblocks SGX. Hot 의 mobile 대신 cold-specific device.</td>
   <td>Cold device 가 일반 모바일 아닌 hardware. Audit log 의 "remaining signatures" 가 이 device 의 sign capacity 일 가능성.</td></tr>
@@ -140,6 +140,32 @@ Cold 의 정확한 모델은 공식 본문 미적재로 인해 추정만 가능.
 이 audit log 이벤트가 정식 카테고리로 존재한다는 것은 <strong>device 별 sign quota 가 유한</strong>함을 시사.
 Hot workspace 의 mobile signing 에는 이런 quota 가 없으므로 (mobile re-enroll 만으로 복구 가능),
 Cold device 는 <strong>별도 hardware</strong> 일 가능성이 높다 (H2 가설에 가까움).
+</p>
+</div>
+
+<h2>5.3b Cold Wallet 은 별도 mobile app — 공식 사실</h2>
+<div class="callout callout-warn">
+<div class="callout-title">중요 — Cold Wallet 은 일반 Fireblocks mobile app 과 별개의 앱</div>
+<p>
+Fireblocks Mobile Device Minimum Requirements 직접 인용:
+</p>
+<blockquote>
+"Cold Wallet 은 별도 앱"
+</blockquote>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Mobile Device Minimum Requirements)</span>
+</p>
+<p>
+이 사실의 함의:
+</p>
+<ul>
+<li>Cold workspace 의 signer / approver 는 일반 Fireblocks mobile app 이 아닌 <strong>Cold 전용 별도 app</strong> 을 사용</li>
+<li>별도 앱이 iOS / Android mobile 인지, 별도 device 의 firmware 인지는 공식 미명세 (Q-D-cold)</li>
+<li>"Hot/Warm/Cold signing workflows" 의 vendor framing (2025-09-23) 과 정합 — Cold 가 별도 plane</li>
+<li>일반 mobile app 의 iOS 16.6+ / Android 8.1+ 사양이 Cold 별도 앱에 동일 적용되는지 미명세 (Q-CW09 신규)</li>
+</ul>
+<p>
+→ 이 사실은 가설 H2 (별도 cold device + 2 cloud) 와 H3 (별도 cold device + air-gap manual) 둘 다와 정합. H1 (Hot 와 동일 mobile + 2 cloud) 는 "별도 앱" fact 와 충돌하므로 가능성 낮음.
 </p>
 </div>
 

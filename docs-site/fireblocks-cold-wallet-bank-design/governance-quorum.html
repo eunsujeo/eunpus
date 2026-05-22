@@ -118,21 +118,43 @@ Admin Quorum 의 자동 멤버는 다음 3 role 사용자.
 </table>
 </div>
 
-<h2>3.3 Cold workspace 특수 규칙 — Owner Console-direct</h2>
+<h2>3.3 Cold workspace 특수 규칙 — 4 가지 액션 분류</h2>
 <p>
-Fireblocks 공식 Admin Quorum 문서의 Cold Wallet 특수 규칙:
+Fireblocks 공식 Admin Quorum 문서가 Cold Wallet workspace 에 대해 다음 4 가지 액션 분류를 명시:
 </p>
-<blockquote>
-"Cold Wallet 의 user delete + reset 2FA 는 <strong>Owner Console-direct</strong>"
-</blockquote>
+<div class="table-wrap">
+<table>
+<thead><tr><th>액션 분류</th><th>Cold Wallet 처리</th></tr></thead>
+<tbody>
+<tr><td>Owner + Admin approval 액션<br/>(add users, provisioning signing devices 등)</td>
+  <td><strong>Fireblocks Support 경유 필수</strong></td></tr>
+<tr><td>Admin 삭제 시 pending request</td>
+  <td><strong>outstanding cancel + new submit</strong> (기존 pending 모두 취소 후 재제출)</td></tr>
+<tr><td>Other workspace config</td>
+  <td>Non-Signing Admin (NS-Admin) approve 가능</td></tr>
+<tr><td>user delete · reset 2FA</td>
+  <td><strong>Owner-only Console direct</strong></td></tr>
+</tbody>
+</table>
+</div>
 <p>
-<span class="src">(출처: Fireblocks 공식 문서 — Admin Quorum / Cold Wallet 특수 규칙)</span>
+<span class="src">(출처: Fireblocks 공식 문서 — Admin Quorum: Cold Wallet workspace 특수 규칙)</span>
 </p>
 
 <p>
 → 일부 critical operation 은 Admin Quorum 도 거치지 않고 <strong>Owner 가 Console 에서 직접 수행</strong>.
 이는 Hot workspace 의 일반 패턴과 다름.
 </p>
+
+<div class="callout callout-warn">
+<div class="callout-title">운영 함정 — "outstanding cancel + new submit" 의 의미</div>
+<p>
+Cold workspace 에서 Admin 을 삭제할 때, 그 Admin 이 관련된 모든 <strong>pending request 가 자동 취소</strong>되며,
+필요 시 <strong>새로운 request 로 처음부터 다시 제출</strong>해야 한다.
+즉 Admin 삭제 시점에 진행 중이던 트랜잭션 · 정책 변경 · governance change 는 전부 재시작.
+은행은 Admin 삭제 전 모든 pending request 의 사전 완료 권장.
+</p>
+</div>
 
 <div class="table-wrap">
 <table>
@@ -146,6 +168,29 @@ Fireblocks 공식 Admin Quorum 문서의 Cold Wallet 특수 규칙:
 </tbody>
 </table>
 </div>
+
+<h2>3.3b Approval Group 의 4 UI 카테고리 — Cold workspace 에서는 모두 불가</h2>
+<p>
+Fireblocks 의 Approval Group 위임은 4 가지 UI 카테고리로 구분된다 (Settings &gt; Quorums &gt; Assign approval groups):
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>카테고리</th><th>Hot workspace</th><th>Cold workspace</th></tr></thead>
+<tbody>
+<tr><td><strong>Security &amp; compliance</strong></td><td>Approval Group 위임 가능</td><td>위임 불가 — Admin Quorum 단독</td></tr>
+<tr><td><strong>User management</strong></td><td>Approval Group 위임 가능</td><td>위임 불가 — Admin Quorum 단독</td></tr>
+<tr><td><strong>Fireblocks Network</strong></td><td>Approval Group 위임 가능</td><td>위임 불가 — Admin Quorum 단독</td></tr>
+<tr><td><strong>External accounts</strong></td><td>Approval Group 위임 가능</td><td>위임 불가 — Admin Quorum 단독</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Approval Groups: 4 UI categories + Cold Wallet 미지원)</span>
+</p>
+<p>
+→ Hot workspace 에서 4 카테고리 별 별도 quorum 위임이 가능하지만, Cold workspace 에서는 4 카테고리 모두에 Admin Quorum 전체 동의 필요.
+운영 부담의 정량적 차이가 여기서 결정됨.
+</p>
 
 <h2>3.4 Support-mediated user operations</h2>
 <p>
@@ -182,6 +227,32 @@ Hot workspace 의 Risk-G06: "워크스페이스 첫 생성 시 threshold = All A
 → Cold workspace 생성 시에도 동일 invariant 적용으로 가정 (추정).
 즉 Cold workspace bootstrap = Owner 단독 → 첫 Admin 추가 시까지의 짧은 윈도우에 Owner 가 모든 변경의 sole approver.
 </p>
+
+<h2>3.5b Mobile Approval 의 device 사양 — Cold 은 별도 앱</h2>
+<p>
+Cold workspace 의 Admin Quorum approval 은 mobile app 에서 수행 (Hot 와 동일 가정). 단 다음이 중요:
+</p>
+<ul>
+<li><strong>"Cold Wallet 은 별도 앱"</strong> — 일반 Fireblocks mobile app 과 별개의 app
+  <span class="src">(출처: Fireblocks 공식 문서 — Mobile Device Minimum Requirements)</span></li>
+<li>일반 Fireblocks mobile app 의 OS 최소 사양 (Hot 기준):
+  <ul>
+    <li><strong>iOS 16.6+</strong> (non-jailbroken) + App Store + biometric capability</li>
+    <li><strong>Android 8.1+</strong> (64-bit) + Google Play Store + biometric capability</li>
+  </ul>
+  <span class="src">(출처: Fireblocks 공식 문서 — Authentication · Mobile App)</span></li>
+<li>Cold Wallet 별도 앱의 동일 사양 적용 여부 / 별도 device 요구 여부 — <strong>공식 미명세</strong> (Q-CW09 — 신규 Open Q)</li>
+<li>iOS 11.0–14.0: 일반 mobile app 은 동작하나 업데이트 불가 — Cold 별도 앱의 동일 정책 여부 미명세</li>
+</ul>
+
+<div class="callout">
+<div class="callout-title">은행 운영 결정 — Cold workspace 의 mobile device 정책</div>
+<ol>
+<li><strong>Hot 와 Cold 앱을 같은 device 에 설치 vs 별도 device</strong> — Cold 의 "별도 앱" 의미는 동일 OS 안에서 2 개 app 으로 분리. 별도 device 운영 시 보안 격리 강화 가능.</li>
+<li><strong>Cold approver 의 device 분실 / 재발급 절차</strong> — Cold 의 mobile re-enrollment 정책 미명세. Fireblocks Support 협의 필요.</li>
+<li><strong>Cold 별도 앱의 OS update 정책</strong> — 일반 mobile app 의 grace period 와 동일한지 미명세.</li>
+</ol>
+</div>
 
 <h2>3.6 Audit Log 의 Cold Wallet 이벤트</h2>
 <p>

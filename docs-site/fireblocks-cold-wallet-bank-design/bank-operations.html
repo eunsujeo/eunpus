@@ -150,6 +150,43 @@ KR 금융감독 해석에 따라 변동 가능 — 본 권장은 저자 추정.
 </p>
 </div>
 
+<h2>6.3b Mobile Device 정책 — Cold 은 별도 앱</h2>
+<p>
+Cold Wallet workspace 의 Admin Quorum approval 과 Signer signing 은 mobile app 에서 수행되지만,
+<strong>Cold Wallet 은 일반 Fireblocks mobile app 과 별개의 mobile app</strong> 임이 공식 문서에 명시.
+<span class="src">(출처: Fireblocks 공식 문서 — Mobile Device Minimum Requirements)</span>
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>항목</th><th>일반 Fireblocks mobile app (Hot)</th><th>Cold Wallet 별도 앱</th></tr></thead>
+<tbody>
+<tr><td>OS 최소 사양</td>
+  <td><strong>iOS 16.6+</strong> / <strong>Android 8.1+ (64-bit)</strong> + biometric 필수</td>
+  <td>공식 미명세 (Hot 와 동일 가정 — Q-CW09 open)</td></tr>
+<tr><td>설치 store</td>
+  <td>App Store / Google Play Store</td>
+  <td>공식 미명세 (별도 enterprise 배포 가능성)</td></tr>
+<tr><td>동일 device 에 Hot + Cold 앱 동시 설치</td>
+  <td>—</td>
+  <td>가능성 / 별도 device 운영 권장 여부 미명세</td></tr>
+<tr><td>iOS 11.0–14.0 동작 정책</td>
+  <td>동작하나 업데이트 불가</td>
+  <td>공식 미명세</td></tr>
+<tr><td>Re-enrollment 절차</td>
+  <td>Owner / Admin 승인 (workflow 명세 적재)</td>
+  <td>공식 미명세 (Fireblocks Support 협의 필요)</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+은행 운영 권장:
+</p>
+<ol>
+<li><strong>Cold 별도 앱은 별도 device 에 설치</strong> — 보안 격리 강화 (Hot device compromise 가 Cold 에 영향 안 미치도록)</li>
+<li><strong>Cold approver 의 device 인벤토리 별도 관리</strong> — Hot device 와 분리된 폐쇄 자산 인벤토리</li>
+<li><strong>device 분실 시나리오 사전 정의</strong> — Fireblocks Support 와 SLA 협의 필요</li>
+</ol>
+
 <h2>6.4 인원 구성 권장</h2>
 <div class="table-wrap">
 <table>

@@ -206,7 +206,39 @@ Fireblocks 가 식별한 "Cold Wallet cluster" 의 15 개 PDF.
 </p>
 </div>
 
-<h2>1.6 인접 문서의 Cold Wallet 언급 매핑</h2>
+<h2>1.6 Cold Wallet 은 별도 mobile app</h2>
+<div class="callout callout-warn">
+<div class="callout-title">중요 사실 — Cold Wallet 은 별도 앱</div>
+<p>
+Fireblocks 공식 mobile app 문서 직접 인용:
+</p>
+<blockquote>
+"Cold Wallet 은 별도 앱"
+</blockquote>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Mobile Device Minimum Requirements)</span>
+</p>
+<p>
+→ 은행 직원이 Hot workspace 에서 사용하는 Fireblocks mobile app 과 <strong>Cold workspace 에서 사용하는 mobile app 이 별개의 앱</strong>임.
+같은 iPhone / Android 에 두 앱을 모두 설치하는지, 별도 device 에 각각 설치하는지의 운영 정책 결정 필요.
+</p>
+<p>
+일반 Fireblocks mobile app 의 최소 사양 (Hot 기준):
+</p>
+<ul>
+<li><strong>iOS 16.6+</strong> (non-jailbroken) + App Store + biometric capability</li>
+<li><strong>Android 8.1+</strong> (64-bit) + Google Play Store + biometric capability</li>
+</ul>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Authentication · Mobile App)</span>
+</p>
+<p>
+Cold Wallet 의 별도 앱이 동일 OS 최소 사양인지, 더 strict 한지는 <strong>공식 미명세</strong> (Q-CW09 — 신규 Open Q).
+또한 Cold Wallet 별도 앱이 mobile 인지 별도 hardware 의 firmware 인지도 미명세.
+</p>
+</div>
+
+<h2>1.7 인접 문서의 Cold Wallet 언급 매핑</h2>
 <p>
 Cold Wallet 자체 PDF 본문은 적재 안 됐지만, 인접 Fireblocks 공식 문서에 산재된 Cold Wallet 언급은 사실로 확보됨.
 </p>
@@ -226,6 +258,8 @@ Cold Wallet 자체 PDF 본문은 적재 안 됐지만, 인접 Fireblocks 공식 
   <td>Cold Wallet workspace 특수 규칙: user delete + 2FA reset = Owner Console-direct</td></tr>
 <tr><td>Audit Log 카테고리</td>
   <td>"Cold Wallet 'Less than 10% remaining signatures'" 이벤트</td></tr>
+<tr><td>Mobile App / Mobile Device Minimum Requirements</td>
+  <td><strong>"Cold Wallet 은 별도 앱"</strong> — 일반 Fireblocks mobile app 과 별개</td></tr>
 </tbody>
 </table>
 </div>

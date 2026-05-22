@@ -235,6 +235,61 @@ Cold Wallet 도입 시 식별 가능한 risk register + 공식 문서에 명시�
 <p><strong>영향 영역</strong>: <a href="bank-operations.html">6. 운영</a> — 사고 대응</p>
 </div>
 
+<div class="oq">
+<h3>Q-CW09 — Cold Wallet 별도 mobile app 의 device 사양</h3>
+<p><strong>질문</strong>: Fireblocks 공식 문서에 "Cold Wallet 은 별도 앱" 명시 — 이 별도 앱이
+일반 Fireblocks mobile app 의 iOS 16.6+ / Android 8.1+ 사양과 동일한가? 별도 hardware (예: dedicated firmware) 인가?
+App Store / Google Play 일반 배포인가, 별도 enterprise 배포인가?</p>
+<p><strong>출처</strong>: Fireblocks 공식 문서 — Mobile Device Minimum Requirements ("Cold Wallet 은 별도 앱"). device 사양 본문 미적재</p>
+<p><strong>영향 영역</strong>: <a href="signing-flow.html">5. Signing</a>, <a href="governance-quorum.html">3. 거버넌스</a>, <a href="bank-operations.html">6. 운영</a></p>
+</div>
+
+<div class="oq">
+<h3>Q-CW10 — Cold workspace 의 SSO / Auth0 적용</h3>
+<p><strong>질문</strong>: Hot workspace 의 SSO 운영 (Auth0 service provider 의존) 이 Cold workspace 에도 적용 가능한가?
+Cold workspace 의 Console 접근이 Auth0 SSO 를 사용하는가, 별도 인증인가?</p>
+<p><strong>출처</strong>: 공식 문서 미명세. Hot workspace 의 SSO 만 명시</p>
+<p><strong>영향 영역</strong>: <a href="bank-operations.html">6. 운영</a> — 인증 정책 통합</p>
+</div>
+
+<div class="oq">
+<h3>Q-CW11 — Cold workspace 의 AML provider (Notabene / Chainalysis / Elliptic) 통합</h3>
+<p><strong>질문</strong>: Cold workspace 의 출금 시 트래블룰 100만원 이상 거래에 Notabene 통합이 발동되는가?
+Chainalysis / Elliptic 의 transaction screening 이 Cold workspace 의 출고에도 자동 적용되는가?
+3 provider 통합의 workspace-level 설정이 Cold 에도 가능한가?</p>
+<p><strong>출처</strong>: 공식 문서에 Hot workspace 의 통합만 명시. Cold variant 미명세</p>
+<p><strong>영향 영역</strong>: <a href="bank-operations.html">6. 운영</a> — KR 트래블룰 + AML 매핑</p>
+</div>
+
+<div class="oq">
+<h3>Q-CW12 — Cold workspace 의 Callback Handler / API user 운영</h3>
+<p><strong>질문</strong>: Cold workspace 에 API user 가 존재하는가? 존재한다면 Callback Handler 미설정 시
+자동 sign 패턴 (Risk-S16) 이 Cold 에서도 적용되는가? Cold 의 API user 추가가 Support 경유인가?</p>
+<p><strong>출처</strong>: 공식 문서에 Hot 의 API user 만 명시. Cold variant 미명세</p>
+<p><strong>영향 영역</strong>: <a href="governance-quorum.html">3. 거버넌스</a>, <a href="bank-operations.html">6. 운영</a></p>
+</div>
+
+<div class="oq">
+<h3>Q-CW13 — Cold workspace 의 Device migration / SCIM / FSPM 적용</h3>
+<p><strong>질문</strong>:
+</p>
+<ul>
+<li><strong>Device migration</strong>: Hot 의 self-service device migration (PIN + passphrase + biometric 3중 인증) 이 Cold 에도 가능한가?</li>
+<li><strong>SCIM</strong>: Cold workspace 의 user provisioning 이 SCIM (자동 user 동기화) 으로 가능한가? (Support 경유 의무와 충돌)</li>
+<li><strong>FSPM (Fireblocks Security Posture Management)</strong>: Cold workspace 도 FSPM add-on 의 attack simulator 대상인가?</li>
+</ul>
+<p><strong>출처</strong>: 공식 문서에 Hot variant 만 명시. Cold 적용 미명세</p>
+<p><strong>영향 영역</strong>: <a href="bank-operations.html">6. 운영</a>, <a href="governance-quorum.html">3. 거버넌스</a></p>
+</div>
+
+<div class="oq">
+<h3>Q-CW14 — Cold workspace 의 Batch operations</h3>
+<p><strong>질문</strong>: Hot 의 batch approvals (최대 10 requests / batch, 부분 실패 가능) 이 Cold workspace 에도 적용되는가?
+Cold workspace 의 rebalancing batch 가 동일 메커니즘인가?</p>
+<p><strong>출처</strong>: 공식 문서에 Hot batch operations 만 명시. Cold variant 미명세</p>
+<p><strong>영향 영역</strong>: <a href="hot-cold-rebalancing.html">4. Rebalancing</a></p>
+</div>
+
 <h2>7.4 KR 규제 매핑 — 2026-05-22 확정 fact</h2>
 <p>
 2026-05-22 KR 컴플라이언스 가이드 본문 적재로 다음 항목들이 확정 fact 로 갱신됨.
@@ -352,7 +407,7 @@ Fireblocks 공식 블로그 "Enterprise Digital Asset Security with Fireblocks a
 
 <h2>7.5 권장 다음 단계</h2>
 <ol>
-<li>Fireblocks 와 직접 협의 — 본 페이지의 Q-CW01 ~ Q-CW08 명시적 응답 요청</li>
+<li>Fireblocks 와 직접 협의 — 본 페이지의 Q-CW01 ~ Q-CW14 명시적 응답 요청</li>
 <li>Sandbox workspace 에서 Cold Wallet 의 rebalancing rehearsal</li>
 <li>KR 법률 / 금감원 검토 — 본 문서 7.4 항목별 검증</li>
 <li>내부 인원 구성 — Cold Owner / Admin / Signer / Approver 인원 사전 임명</li>
