@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>6. Risks &amp; Open Questions — Key Link 의 7 risk + 8 미해결 항목</title>
+<meta content="Fireblocks Key Link 의 식별된 risk 7건 + 미해결 8 open question" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Key Link 기초</h3>
+<ul>
+<li><a href="key-link-fundamentals.html">1. Key Link 란</a></li>
+<li><a href="architecture-components.html">2. 아키텍처 구성요소</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Registration &amp; Signing</h3>
+<ul>
+<li><a href="key-registration-poo.html">3. Key 등록 + PoO</a></li>
+<li><a href="signing-flow.html">4. Signing Flow</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 은행 도입</h3>
+<ul>
+<li><a href="bank-deployment.html">5. 은행 도입</a></li>
+<li><a class="active" href="risks-open-questions.html">6. Risks &amp; Open Questions</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="risks">
+<h1>6. Risks &amp; Open Questions</h1>
+<p class="lead">
+Key Link 도입을 검토할 때 식별된 7 가지 risk (Risk-KL01~KL07) 와 8 가지 미해결 open question (Q-KL01~05, Q-FB01~03) 을 정리.
+은행 도입 전 각 항목에 대한 mitigation 또는 vendor 확인이 권장된다.
+</p>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처</div>
+<p><strong>공식 문서에 정의된 사실</strong></p>
+<ul style="margin-bottom:0.5rem">
+<li>Fireblocks Agent open-source / TypeScript / on-prem 운영 — Fireblocks Key Link Overview</li>
+<li>Customer Server 가 custom logic 추가 가능 / 고객이 hosting — Fireblocks Key Link Overview</li>
+<li>HSM Adaptor 가 cold HSM 통신 매개 — Fireblocks Key Link Overview</li>
+<li>Validation Key 의 Approval Group 위임 — Getting Started with Fireblocks Key Link</li>
+<li>Non-interactive PoO 의 timestamp 포함 — Getting Started with Fireblocks Key Link</li>
+<li>Air-gap = USB / SFTP / data diodes — Fireblocks 공식 블로그 (2025-09-23)</li>
+<li>HKMA · HKSFC · JFSA 관할 명시 (KR 미명시) — Fireblocks 공식 블로그 (2025-09-23)</li>
+</ul>
+<p style="margin-bottom:0"><strong>저자가 합리적으로 추정한 운영 권장 / risk 평가</strong> — 참고용</p>
+<ul style="margin-bottom:0">
+<li>7 risk 의 분류 / 완화 권장</li>
+<li>8 open question 의 우선순위 / 영향 평가</li>
+<li>각 risk 의 mitigation 권장 (공식 권장 미명시한 항목)</li>
+</ul>
+</div>
+
+<h2>6.1 Risk Register — 7 가지 식별된 risk</h2>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>ID</th><th>Risk</th><th>심각도</th><th>완화 권장</th></tr></thead>
+<tbody>
+<tr><td>KL01</td><td>Customer Server SPOF</td><td>높음</td><td>HA 구성 (active-active)</td></tr>
+<tr><td>KL02</td><td>Fireblocks Agent 운영 부담</td><td>중</td><td>자체 patch 정책 수립</td></tr>
+<tr><td>KL03</td><td>Beta API production risk</td><td>중-높음</td><td>vendor SLA 확보</td></tr>
+<tr><td>KL04</td><td>Validation Key 침해</td><td>높음</td><td>HSM 안 보관 + 주기적 회수</td></tr>
+<tr><td>KL05</td><td>Cold HSM latency</td><td>중</td><td>운영 정책 (batch 시간대) 수립</td></tr>
+<tr><td>KL06</td><td>Non-interactive PoO replay 가능성</td><td>낮음</td><td>PoO 생성 직후 즉시 등록 + 폐기</td></tr>
+<tr><td>KL07</td><td>Workspace type immutability</td><td>운영 영향</td><td>도입 결정을 1-way door 로 간주</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Risk-KL01 — Customer Server SPOF</h3>
+<p>
+<strong>위협</strong>: Customer Server 가 Key Link 의 signing path 의 단일 장애점. server down → 모든 서명 중단.
+</p>
+<ul>
+<li><strong>근거</strong>: Fireblocks 공식 문서가 "Customer Server is developed and hosted by the customer" 명시. HA 권장은 별도 명시 없음
+  <span class="src">(출처: Fireblocks 공식 문서 — Fireblocks Key Link Overview)</span></li>
+<li><strong>영향</strong>: 사용자 출금 응답 시간 초과, KR 가상자산이용자보호법의 "예치금 환급" 의무 위반 가능성</li>
+<li><strong>완화 권장 (저자)</strong>: Customer Server 의 active-active HA 2-node + load balancer + health check. Agent 도 2 인스턴스 권장.
+  <a href="architecture-components.html">2. 아키텍처 구성요소</a> 의 권장 토폴로지 참조</li>
+</ul>
+
+<h3>Risk-KL02 — Fireblocks Agent 운영 부담</h3>
+<p>
+<strong>위협</strong>: Agent 가 open-source TS 프로젝트. security patch / version 호환성 책임이 고객.
+</p>
+<ul>
+<li><strong>근거</strong>: "Fireblocks Agent is an open-source on-prem service (TypeScript)" 명시
+  <span class="src">(출처: Fireblocks 공식 문서 — Getting Started with Fireblocks Key Link)</span></li>
+<li><strong>영향</strong>: minimum version 호환성, security CVE 대응 지연 시 침해 가능성</li>
+<li><strong>완화 권장 (저자)</strong>: Agent version 정기 점검 정책 수립, Fireblocks 의 release notes / advisory 모니터링, 사내 patch policy</li>
+<li><strong>미해결</strong>: Fireblocks 가 minimum version 을 강제하는지 / security patch deployment 정책이 무엇인지 공식 미명세 (Q-KL03)</li>
+</ul>
+
+<h3>Risk-KL03 — Beta API Production Risk</h3>
+<p>
+<strong>위협</strong>: Key Link API 가 Beta 상태 (endpoint prefix <code>/key-link-beta/</code>). production-grade SLA / 호환성 보장 불확실.
+</p>
+<ul>
+<li><strong>근거</strong>: API prefix 가 <code>/key-link-beta/</code> 임. Fireblocks 공식 문서가 Beta 상태에 대한 일반적 limitation 을 명시하지 않음</li>
+<li><strong>영향</strong>: Beta API breaking changes, production 환경에 적용 시 운영 리스크</li>
+<li><strong>완화 권장 (저자)</strong>: vendor 와 직접 협의하여 (a) Beta SLA 명시, (b) breaking change advance notice, (c) production-readiness roadmap 합의</li>
+</ul>
+
+<h3>Risk-KL04 — Validation Key 침해</h3>
+<p>
+<strong>위협</strong>: Validation Key 가 침해되면 공격자가 임의 Signing Key 를 등록 가능 (quorum 매개 없이). 침해 후 발행한 Signing Key 로 자금 탈취 시도 가능.
+</p>
+<ul>
+<li><strong>근거</strong>: "A validation key is used as proof of authority for the approvals when adding new signing keys" — Validation Key 가 등록 권한 plane
+  <span class="src">(출처: Fireblocks 공식 문서 — Getting Started with Fireblocks Key Link)</span></li>
+<li><strong>완화 권장 (저자)</strong>:
+  <ul>
+    <li>Validation Key 자체를 HSM 안에 보관 (공식 명시 권장은 미확보, 강하게 권장)</li>
+    <li>Approval Group "Add validation keys" 의 quorum 을 보안팀에 위임 (default Admin Quorum 보다 좁은 group)</li>
+    <li>주기적 회수 / 재발급 정책 (예: 분기별)</li>
+    <li>Validation Key 별 audit log monitor (Fireblocks Console)</li>
+  </ul>
+</li>
+</ul>
+
+<h3>Risk-KL05 — Cold HSM Latency</h3>
+<p>
+<strong>위협</strong>: Cold HSM mode 의 signing latency 가 air-gap transport 때문에 시간 단위. 긴급 상황 대응 불가.
+</p>
+<ul>
+<li><strong>근거</strong>: HSM Adaptor 가 cold HSM 통신 매개. Air-gap = USB / SFTP / data diodes 명시. 정확한 latency 수치는 미공개
+  <span class="src">(출처: Fireblocks 공식 블로그 — 2025-09-23; 정확한 latency 는 미명세)</span></li>
+<li><strong>완화 권장 (저자)</strong>:
+  <ul>
+    <li>Cold 비율을 가상자산업감독규정 9조 80% 안에서 합리적 수준 (80-85%)</li>
+    <li>Hot↔Cold rebalancing 빈도 정책 (일일 / 주간)</li>
+    <li>긴급 출금 대응 절차 — Cold ceremony 의 신속 ceremony 옵션 (수 시간 안에 가능한 운영자 schedule)</li>
+    <li>사용자 출금 응답 시간 정책 (KR 가상자산이용자보호법의 응답 시간 요건 검토)</li>
+  </ul>
+</li>
+</ul>
+
+<h3>Risk-KL06 — Non-Interactive PoO Replay 가능성</h3>
+<p>
+<strong>위협</strong>: Non-interactive PoO 메시지가 <code>UnixTimeInSeconds</code> 포함하지만, Fireblocks 가 timestamp 만료를 강제하는지 미명세.
+이론상 한 번 만든 PoO 서명 재사용 가능성.
+</p>
+<ul>
+<li><strong>근거</strong>: 메시지 포맷에 <code>UnixTimeInSeconds</code> 포함은 명시. 만료 정책은 명시 없음
+  <span class="src">(출처: Fireblocks 공식 문서 — Getting Started with Fireblocks Key Link)</span></li>
+<li><strong>실제 replay vector</strong>: 같은 (<code>SdkApiKey</code> + <code>signingDeviceKeyId</code>) 조합은 한 번만 등록되므로 단순 replay 는 제한적. 단 새 API key + 같은 device key 조합으로 우회 가능성 별도 검토</li>
+<li><strong>완화 권장 (저자)</strong>: PoO 생성 직후 즉시 등록, 사용하지 않은 PoO 서명 즉시 폐기, audit log 로 등록 시점과 timestamp 의 차이 monitor</li>
+</ul>
+
+<h3>Risk-KL07 — Workspace Type Immutability</h3>
+<p>
+<strong>위협</strong>: Key Link workspace 를 다른 type (SaaS MPC / Hosted MPC) 으로 변환 불가 (저자 추정 — Hosted MPC 의 invariant 와 architectural symmetry).
+이로 인해 마이그레이션 시 새 workspace 생성 + 자산 이전 비용 발생.
+</p>
+<ul>
+<li><strong>근거</strong>: Hosted MPC 공식 명시 — "modifying an existing SaaS MPC workspace is impossible"
+  <span class="src">(출처: Fireblocks 공식 문서 — Hosted MPC Workspace Configuration)</span></li>
+<li><strong>운영 영향</strong>: Key Link → SaaS MPC 또는 SaaS MPC → Key Link 마이그레이션은 새 workspace 생성 + cross-workspace asset transfer 가 유일한 경로</li>
+<li><strong>완화 권장 (저자)</strong>: 도입 전 충분한 검토. Phase 1 시범 단계에서 적은 자산으로 검증 후 전면 도입. 도입 후 변경 시 자산 이전 비용 (on-chain fee + 운영 부담) 사전 산정</li>
+</ul>
+
+<h2>6.2 Open Questions — 8 미해결 항목</h2>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>ID</th><th>질문</th><th>왜 중요한가</th><th>우선순위</th></tr></thead>
+<tbody>
+<tr><td>Q-KL01</td><td>Key Link workspace ↔ MPC workspace 의 same-organization 공존 가능?</td><td>마이그레이션 경로 + Customer Domain 의 mixed-plane 가능 여부</td><td>중</td></tr>
+<tr><td>Q-KL02</td><td>Fireblocks Agent 의 정확한 GitHub repo URL + 운영 정책</td><td>운영 책임 범위 + version 추적</td><td>높음</td></tr>
+<tr><td>Q-KL03</td><td>Agent minimum version 강제 + security patch deployment 정책</td><td>호환성 + 보안 패치 운영 모델</td><td>높음</td></tr>
+<tr><td>Q-KL04</td><td>Cold HSM signing 의 정확한 latency / batching 패턴</td><td>SLA 설계 + 사용자 응답 시간 정책</td><td>높음</td></tr>
+<tr><td>Q-KL05</td><td>Non-interactive PoO 의 timestamp 만료 정책</td><td>Risk-KL06 의 정밀 평가</td><td>중</td></tr>
+<tr><td>Q-FB01</td><td>Hot/Warm/Cold 의 정확한 기술 정의 (특히 Warm)</td><td>운영 정책 설계 + mode 별 SLA</td><td>중-높음</td></tr>
+<tr><td>Q-FB02</td><td>SaaS Cold Wallet workspace ↔ Key Link Cold signing 관계</td><td>product 선택 결정 + 옵션 C 의 정확한 정의</td><td>높음</td></tr>
+<tr><td>Q-FB03</td><td>KR VASP 환경에서 Key Link + Thales Luna 의 vendor 공식 입장</td><td>관할권 명시 + 계약 조항</td><td>최고</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Q-KL01 — Key Link ↔ MPC workspace 공존</h3>
+<p>
+한 Customer Domain 안에 Key Link workspace 와 SaaS MPC workspace 가 공존 가능한지 vendor 공식 명세 부분 명시.
+</p>
+<ul>
+<li><strong>부분 답변 (저자 추정)</strong>: Hosted MPC 의 invariant 가 architectural symmetry 로 Key Link 에도 확장된다고 추정 시, 한 Customer Domain 안에 다양한 type 의 workspace 공존 가능. 단 workspace type 자체는 immutable</li>
+<li><strong>미해결</strong>: Key Link 자체의 immutability 직접 명시 + 한 vault 안에 MPC asset + Key Link asset 공존 가능 여부</li>
+<li><strong>확인 경로</strong>: Fireblocks Sales 와 직접 협의, 또는 Key Link 의 advanced ops 문서 (현재 본 reference 미확보)</li>
+</ul>
+
+<h3>Q-KL02 / Q-KL03 — Fireblocks Agent 운영 모델</h3>
+<p>
+Fireblocks Agent 가 open-source TS 프로젝트라는 사실은 공식이지만:
+</p>
+<ul>
+<li><strong>Q-KL02</strong>: 정확한 GitHub repo URL + license + 운영 책임 범위 (Fireblocks vs 고객)</li>
+<li><strong>Q-KL03</strong>: minimum version 강제 / security patch deployment 정책</li>
+</ul>
+<p>
+운영 책임 (특히 security CVE 발생 시 누가 patch 를 만들고 누가 deploy 하는지) 의 명확화가 필요.
+</p>
+
+<h3>Q-KL04 — Cold HSM Latency / Batching</h3>
+<p>
+Cold HSM 의 signing latency 와 batching 패턴이 air-gap transport 종류 (USB / SFTP / data diode) 별로 어떻게 다른지 vendor 공식 명세 미확보.
+Stage 38 의 Fireblocks Thales 블로그에서 transport 종류는 명시했지만 정확한 latency 수치는 여전히 미공개.
+</p>
+<ul>
+<li><strong>은행 운영 영향</strong>: 사용자 응답 시간 정책 (KR 가상자산이용자보호법) 설계 시 critical input</li>
+<li><strong>확인 경로</strong>: Thales-Fireblocks Solution Brief 본문 (현재 본 reference 미확보) + 실제 PoC 측정</li>
+</ul>
+
+<h3>Q-KL05 — Non-interactive PoO Timestamp 만료</h3>
+<p>
+Non-interactive PoO 메시지의 <code>UnixTimeInSeconds</code> 가 Fireblocks 측에서 만료 검증되는지 공식 명세 미확보.
+Risk-KL06 의 replay 위험 평가의 핵심 변수.
+</p>
+
+<h3>Q-FB01 — Hot/Warm/Cold 의 정확한 기술 정의</h3>
+<p>
+Fireblocks 공식 블로그 (2025-09-23) 가 "Hot/Warm/Cold 3-mode" 를 framing 했지만 정확한 기술 정의 (특히 Warm 의 의미) 미명시.
+</p>
+<ul>
+<li><strong>저자 추정 (<a href="signing-flow.html">4. Signing Flow</a> 의 Warm 절)</strong>: Warm = "정해진 운영 시간대 + 수동 활성화 조합"</li>
+<li><strong>대안 해석</strong>: Warm = 별도 mode 아니라 Hot 의 운영 변형, 또는 Customer Server 의 일부 캐싱</li>
+<li><strong>확인 경로</strong>: Thales-Fireblocks Solution Brief 본문 + 추가 vendor 자료</li>
+</ul>
+
+<h3>Q-FB02 — SaaS Cold Wallet vs Key Link Cold Signing</h3>
+<p>
+<strong>가장 큰 product 분류 모호점</strong>. Fireblocks 에는 두 가지 Cold variant 가 동시 존재:
+</p>
+<ul>
+<li><strong>(a) SaaS Cold Wallet workspace</strong> — 별도 product, Admin Quorum 단독, P2P rebalancing (Risk-G07 등). <a href="../fireblocks-cold-wallet-bank-design/">은행 Fireblocks Cold Wallet 도입</a> 참조</li>
+<li><strong>(b) Key Link Cold signing workflow</strong> — Key Link 의 HSM 이 cold mode 인 경우 (본 문서)</li>
+</ul>
+<p>
+두 옵션이 별개 product 인지, 같은 plane 의 variant 인지, 혼합 사용 가능한지 vendor 공식 명세 미확보.
+</p>
+<p>
+<strong>은행 결정 영향</strong>: Cold storage 운영을 (a) Fireblocks 가 관리하는 Cold facility (SaaS Cold Wallet) 로 할지, (b) 고객이 직접 운영하는 Cold HSM (Key Link Cold) 로 할지의 선택은 product 분류 명확화 후만 가능.
+</p>
+
+<h3>Q-FB03 — KR VASP 환경의 Vendor 공식 입장</h3>
+<p>
+<strong>본 reference 의 최고 우선순위 미해결 항목</strong>. Fireblocks 공식 블로그 (2025-09-23) 가 명시한 관할권:
+</p>
+<ul>
+<li><strong>명시</strong>: HKMA (홍콩 금융관리국) · HKSFC (홍콩 증권선물위원회) · JFSA (일본 금융청)</li>
+<li><strong>미명시</strong>: KR 금융위원회 / 금감원 / KR VASP 신고 관련 일체</li>
+</ul>
+<p>
+KR 가상자산이용자보호법 / 가상자산업감독규정 환경에서 Key Link + Thales Luna 의 적용 가능성에 대한 vendor 공식 입장 부재.
+</p>
+<ul>
+<li><strong>은행 도입 영향</strong>: vendor 보증 없이 KR 환경 도입 시 risk 부담을 은행이 단독으로 짊어짐</li>
+<li><strong>확인 경로</strong>: Fireblocks Sales · Legal 과 직접 협의, KR 관할 관련 공식 statement / 계약 조항 확보</li>
+</ul>
+
+<h2>6.3 우선순위 권장 — 도입 전 vendor 확인 항목</h2>
+<p>
+다음 3 항목은 Phase 1 (사전 평가) 단계에서 vendor 답변 필수 (저자 권장):
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>항목</th><th>왜 필수인가</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Q-FB03 — KR 관할 공식 입장</td><td>vendor 보증 없는 도입은 은행 단독 risk 부담</td></tr>
+<tr><td>2</td><td>Risk-KL03 + Q-KL02/03 — Beta API + Agent 운영 모델</td><td>production-readiness 의 SLA 확보 필수</td></tr>
+<tr><td>3</td><td>Q-FB02 — SaaS Cold vs Key Link Cold</td><td>product 선택 결정의 필수 정보</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>6.4 관련 외부 reference</h2>
+<ul>
+<li><a href="../fireblocks-cold-wallet-bank-design/">은행 Fireblocks Cold Wallet 도입 — 수탁형 지갑 reference</a> — SaaS Cold Wallet workspace 전용 (Q-FB02 cross-cut)</li>
+<li><a href="../fireblocks-kr-vasp-compliance/">국내 블록체인 사업 법규 × Fireblocks</a> — KR VASP 컴플라이언스 17 의무 매핑</li>
+<li><a href="../fireblocks-kr-vasp-compliance/deployment-checklist.html">은행 도입 체크리스트 (KR VASP)</a> — 옵션 C-Thales 표 포함</li>
+</ul>
+
+<p class="back-top"><a href="#risks">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="assets/app.js"></script>
+</body>
+</html>

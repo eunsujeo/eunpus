@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>4. Signing Flow — Hot · Warm · Cold 3-mode</title>
+<meta content="Fireblocks Key Link 의 거래 서명 흐름. Hot · Warm · Cold 3-mode workflow" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Key Link 기초</h3>
+<ul>
+<li><a href="key-link-fundamentals.html">1. Key Link 란</a></li>
+<li><a href="architecture-components.html">2. 아키텍처 구성요소</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Registration &amp; Signing</h3>
+<ul>
+<li><a href="key-registration-poo.html">3. Key 등록 + PoO</a></li>
+<li><a class="active" href="signing-flow.html">4. Signing Flow</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 은행 도입</h3>
+<ul>
+<li><a href="bank-deployment.html">5. 은행 도입</a></li>
+<li><a href="risks-open-questions.html">6. Risks &amp; Open Questions</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="signing">
+<h1>4. Signing Flow — Hot · Warm · Cold 3-mode</h1>
+<p class="lead">
+Key Link 의 거래 서명은 HSM 의 운영 모드에 따라 <strong>Hot · Warm · Cold 3 가지 workflow</strong> 로 분류된다.
+이 framing 은 Fireblocks 공식 블로그 (2025-09-23, Thales 파트너십) 에서 공식화되었다.
+</p>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처</div>
+<p><strong>공식 문서에 정의된 사실</strong></p>
+<ul style="margin-bottom:0.5rem">
+<li>"hot, warm, and air-gapped cold storage environments" 3-mode — Fireblocks Key Link Overview</li>
+<li>Hot · Warm · Cold 3-mode signing workflow — Fireblocks 공식 블로그 (2025-09-23)</li>
+<li>Air-gap transport = USB · SFTP · data diodes — Fireblocks 공식 블로그 (2025-09-23)</li>
+<li>거버넌스 기능 (multi-approval, address whitelisting, transaction limits, immutable logs) — Fireblocks 공식 블로그 (2025-09-23)</li>
+<li>Policy rule designated signer = Agent API user — Getting Started with Fireblocks Key Link</li>
+</ul>
+<p style="margin-bottom:0"><strong>저자가 합리적으로 추정한 운영 권장</strong> — 참고용</p>
+<ul style="margin-bottom:0">
+<li>Hot / Warm / Cold 의 정확한 기술적 분류 (Warm 의 의미는 공식 명세 미확보 — Q-FB01)</li>
+<li>각 mode 의 latency / throughput 추정치</li>
+<li>은행 환경에서 Mode 별 비율 권장 (Hot 20% / Cold 80% — KR 규제 매핑)</li>
+</ul>
+</div>
+
+<h2>4.1 3-mode 한눈에 보기</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>🔥 Hot</th><th>♨️ Warm</th><th>❄ Cold</th></tr></thead>
+<tbody>
+<tr><td><strong>HSM 상태</strong></td><td>항상 online · network 연결</td><td>일부 시간 online (수동/스케줄)</td><td>완전 air-gapped · 물리 격리</td></tr>
+<tr><td><strong>서명 transport</strong></td><td>네트워크 직접 (PKCS#11 / SDK)</td><td>네트워크 (필요 시점만) 또는 air-gap</td><td>USB · SFTP · data diodes</td></tr>
+<tr><td><strong>서명 latency</strong></td><td>초 단위 (실시간)</td><td>분 단위 (활성화 대기)</td><td>시간 단위 (수동 ceremony)</td></tr>
+<tr><td><strong>주 사용처</strong></td><td>실시간 입출금 / 거래</td><td>일정 빈도 정기 출금</td><td>대량 보관 / batch 출금</td></tr>
+<tr><td><strong>HSM Adaptor</strong></td><td>불필요</td><td>선택</td><td>필요</td></tr>
+<tr><td><strong>KR 규제 매핑 (저자)</strong></td><td>핫월렛 비율 (≤ 20%)</td><td>(미분류, 운영 정책에 따라)</td><td>콜드월렛 비율 (≥ 80%)</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+<span class="src">(출처: Fireblocks 공식 블로그 — Enterprise Digital Asset Security with Fireblocks and Thales, 2025-09-23; Fireblocks Key Link Overview)</span>
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">Warm 의 정의 — vendor 공식 미명세 (Q-FB01)</div>
+<p style="margin-bottom:0">
+"Warm" mode 의 정확한 기술 정의는 Fireblocks 공식 블로그가 명시하지 않는다. 본 페이지의 Warm 정의 ("일부 시간 online, 수동/스케줄 활성화") 는 <strong>저자 추정</strong>이며,
+실제 vendor 의 정의가 다를 수 있다. 예: "Warm 은 별도 mode 가 아니라 Hot 의 일부 운영 변형" 가능성 — Q-FB01 참조.
+</p>
+</div>
+
+<h2>4.2 공통 — 모든 mode 에서 일어나는 일</h2>
+<p>
+mode 와 무관하게 Key Link 거래 서명은 다음 흐름을 따른다 (공식 문서 기반):
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant User as 👤 운영자/시스템
+  participant FB as ☁️ Fireblocks Cloud
+  participant Approver as 👥 Approvers<br/>(Policy rule)
+  participant Agent as 🔄 Agent
+  participant CSrv as ⚙️ Customer Server
+  participant HSM as 🔒 HSM
+
+  User->>FB: 거래 생성 요청
+  FB->>FB: Policy rule 평가<br/>(designated signer = Agent API user)
+  alt 추가 승인 필요
+    FB->>Approver: 승인 요청
+    Approver-->>FB: 승인
+  end
+  Note over FB: 서명 요청 enqueue
+  FB->>Agent: 서명 요청 (HTTPS)
+  Agent->>CSrv: 메시지 중계
+  CSrv->>CSrv: (선택) custom validation
+  CSrv->>HSM: 서명 요청<br/>(mode 별 transport)
+  HSM-->>CSrv: 서명
+  CSrv-->>Agent: 서명 반환
+  Agent-->>FB: 서명 반환
+  FB->>FB: 트랜잭션 어셈블 + 브로드캐스트
+</pre>
+</div>
+<p class="diagram-caption">
+모든 mode 공통 흐름. Policy rule 통과 → Agent → Customer Server → HSM 서명 → 역순 반환 → Fireblocks 브로드캐스트.
+HSM 통신 (단계 7) 의 transport 가 mode 별로 달라진다.
+</p>
+
+<h2>4.3 Hot 서명 — 실시간</h2>
+<p>
+HSM 이 Customer Server 와 항상 네트워크 연결되어 있는 mode. 입출금 처리와 같은 실시간 거래에 사용.
+</p>
+
+<h3>4.3.1 특징</h3>
+<ul>
+<li>HSM 이 항상 online (PKCS#11 / vendor SDK / REST API)</li>
+<li>서명 latency = 네트워크 round-trip + HSM 연산 = 초 단위</li>
+<li>HSM 침해 시 latency 가 낮은만큼 공격 surface 가 큼 — Risk-KL01 의 Customer Server SPOF 와 결합 시 가장 큰 위협</li>
+</ul>
+
+<h3>4.3.2 권장 사용처 (은행)</h3>
+<ul>
+<li>고객 입출금 즉시 처리 (working balance 한도 안)</li>
+<li>Gas station / sweeping 운영</li>
+<li>가스 fee 가 빠르게 변하는 fast-finality 체인의 거래</li>
+</ul>
+
+<h3>4.3.3 HSM 종류 (예시)</h3>
+<ul>
+<li><strong>Thales Luna Network HSM</strong> — 네트워크 연결, FIPS 140-3 L3 + CC</li>
+<li><strong>AWS CloudHSM / Azure Dedicated HSM</strong> — 클라우드 환경, 단 KR 망분리 해석 부담</li>
+</ul>
+<p>
+<span class="src">(출처: Fireblocks 공식 블로그 — 2025-09-23 Thales Luna 통합)</span>
+</p>
+
+<h2>4.4 Warm 서명 — 활성화 대기</h2>
+<p>
+HSM 이 평시 offline / standby 상태이고, 필요 시점에 online 으로 전환되는 mode (저자 정의 — Q-FB01).
+</p>
+
+<h3>4.4.1 가능한 해석</h3>
+<ul>
+<li><strong>해석 A — 스케줄 활성화</strong>: 정해진 시간대 (예: 영업시간) 에만 HSM 이 online. 그 외 시간에는 offline</li>
+<li><strong>해석 B — 수동 활성화</strong>: 운영자가 수동으로 HSM 을 활성화 (예: 특정 거래 batch 처리 직전)</li>
+<li><strong>해석 C — 부분 캐싱</strong>: Customer Server 에 일부 서명 권한 캐시, HSM 은 정기 갱신</li>
+</ul>
+
+<p>
+공식 문서가 정확한 정의를 명시하지 않으므로, 본 reference 는 <strong>해석 A + 해석 B 의 조합</strong>을 권장:
+"정해진 운영 시간대 + 별도 수동 활성화 가능" 이 보안 / 운영 균형에서 합리적 — 저자 추정.
+</p>
+
+<h3>4.4.2 권장 사용처 (은행)</h3>
+<ul>
+<li>일일 batch 출금 (오전 / 오후 시간대)</li>
+<li>대량 정기 transfer (rebalancing 등)</li>
+<li>실시간이 필요하지 않은 정형 거래</li>
+</ul>
+
+<h2>4.5 Cold 서명 — Air-gapped</h2>
+<p>
+HSM 이 완전히 네트워크 격리된 mode. air-gap transport 로만 서명 요청/결과 전달.
+</p>
+
+<h3>4.5.1 Air-gap transport — 공식 명시</h3>
+<blockquote>
+"Thales Luna HSMs ... support air-gapped workflows via USB, SFTP, or data diodes."
+</blockquote>
+<p>
+<span class="src">(출처: Fireblocks 공식 블로그 — 2025-09-23)</span>
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Transport</th><th>특성</th><th>적합한 환경</th></tr></thead>
+<tbody>
+<tr><td><strong>USB</strong></td>
+  <td>물리 매체 (USB drive). 운영자가 직접 이동</td>
+  <td>최고 격리, ceremony 기반 운영. 수동 부담 큼</td></tr>
+<tr><td><strong>SFTP</strong></td>
+  <td>일방향 전용 네트워크 + SFTP transfer</td>
+  <td>망분리 환경의 단방향 채널 (저자 추정)</td></tr>
+<tr><td><strong>Data diodes</strong></td>
+  <td>물리적 단방향 회선 (광 + receiver only)</td>
+  <td>최고 보안 (군/정보기관 표준). 비용 큼</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+<span class="src">(출처: Fireblocks 공식 블로그 — 2025-09-23; transport 별 특성은 저자 정리)</span>
+</p>
+
+<h3>4.5.2 Cold 서명 ceremony 흐름</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant FB as ☁️ Fireblocks Cloud
+  participant Agent as 🔄 Agent
+  participant CSrv as ⚙️ Customer Server
+  participant Adaptor as 🔌 HSM Adaptor
+  participant Op as 👤 운영자
+  participant ColdHSM as 🔒❄ Cold HSM<br/>(air-gapped)
+
+  FB->>Agent: 서명 요청 (queue)
+  Agent->>CSrv: 메시지 중계
+  CSrv->>Adaptor: 서명 요청
+  Adaptor->>Op: 메시지 패키지 추출
+  Note over Op: 물리 이동<br/>(USB · SFTP · data diode)
+  Op->>ColdHSM: 메시지 주입
+  ColdHSM-->>Op: 서명 산출
+  Note over Op: 물리 이동 (역방향)
+  Op->>Adaptor: 서명 주입
+  Adaptor-->>CSrv: 결과 반환
+  CSrv-->>Agent: 서명 반환
+  Agent-->>FB: 서명 반환
+</pre>
+</div>
+<p class="diagram-caption">
+Cold 서명 ceremony 의 단계. HSM Adaptor 가 메시지를 air-gap 가능한 형태로 패키지화 → 운영자가 물리 transport (USB / SFTP / data diode) → Cold HSM 이 서명 → 역방향 반환.
+운영자의 물리 이동 + ceremony 가 latency 의 주 원인.
+</p>
+
+<h3>4.5.3 권장 사용처 (은행)</h3>
+<ul>
+<li>대량 보관 자산의 출금 (cold reserve → hot rebalancing)</li>
+<li>월간 / 분기별 정기 ceremony</li>
+<li>KR 가상자산업감독규정 9조의 콜드월렛 80% 보관 자산</li>
+</ul>
+
+<h3>4.5.4 Latency 영향</h3>
+<ul>
+<li>USB ceremony: 30 분 ~ 수 시간 (인원 동원 + 물리 이동)</li>
+<li>SFTP / data diode: 분 단위 ~ 수십 분 (자동화 정도에 따라)</li>
+<li>긴급 출금 대응 불가 — 사용자 응답 시간 정책 별도 수립 필요</li>
+</ul>
+<p>
+<span class="src">(출처: 저자 추정 — 공식 latency 수치는 미명세, Risk-KL05)</span>
+</p>
+
+<h2>4.6 거버넌스 — 모든 mode 에 공통 적용</h2>
+<p>
+Fireblocks Cloud 의 governance plane 은 mode 와 무관하게 적용된다. Fireblocks 공식 블로그가 명시한 거버넌스 기능:
+</p>
+<ul>
+<li><strong>Multi-approval rules</strong> — Approval Group quorum, Admin Quorum</li>
+<li><strong>Address whitelisting</strong> — 수신 주소 사전 등록</li>
+<li><strong>Transaction limits</strong> — 금액 / 빈도 한도</li>
+<li><strong>Immutable audit logs</strong> — Fireblocks Console 의 변경 불가 로그</li>
+</ul>
+<p>
+<span class="src">(출처: Fireblocks 공식 블로그 — 2025-09-23)</span>
+</p>
+
+<div class="callout">
+<div class="callout-title">왜 거버넌스가 mode 와 독립적인가</div>
+<p style="margin-bottom:0">
+거버넌스 plane 은 Fireblocks Cloud 에서 작동하며, 서명 plane (HSM) 과 분리되어 있다.
+Policy rule 평가는 Cloud 에서 수행되고, 통과한 거래만 Agent 로 서명 요청이 흘러간다.
+즉 HSM 이 cold 라 해도 Cloud 의 거버넌스는 동일하게 작동.
+</p>
+</div>
+
+<h2>4.7 Hot ↔ Cold rebalancing</h2>
+<p>
+은행 환경에서는 Hot 과 Cold 사이 자산 재배치 (rebalancing) 가 정기적으로 필요. Key Link 의 rebalancing 은 다음 옵션:
+</p>
+
+<h3>4.7.1 옵션 A — 동일 workspace 내 (저자 추정 가능 여부 불명)</h3>
+<p>
+한 Key Link workspace 안에 Hot HSM signing key + Cold HSM signing key 가 공존 가능한지 vendor 공식 명세 미확보.
+Vault account 의 1 ECDSA + 1 EdDSA 룰을 고려하면, vault 단위로 Hot/Cold 분리하는 것이 자연스러움 — 저자 추정.
+</p>
+
+<h3>4.7.2 옵션 B — 별도 workspace + cross-workspace transfer</h3>
+<p>
+Hot workspace 와 Cold workspace 를 별도로 운영하고, on-chain transfer 로 rebalancing.
+이 패턴은 SaaS Cold Wallet 의 운영 방식과 유사 (Fireblocks 공식 문서 "Connecting Cold Wallet with hot workspaces via P2P").
+단 Key Link 자체의 cross-workspace 권장은 본 문서 미확보.
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">Q-FB02 — Key Link Cold vs SaaS Cold Wallet 관계</div>
+<p style="margin-bottom:0">
+Fireblocks 에는 (a) SaaS Cold Wallet workspace (별도 product) 와 (b) Key Link Cold signing workflow (HSM 의 cold mode) 가 둘 다 존재한다.
+이 둘이 별개 product 인지, 같은 plane 의 variant 인지, 혼합 사용 가능한지 vendor 공식 명세 미확보. <a href="risks-open-questions.html">Q-FB02</a> 참조.
+</p>
+</div>
+
+<h2>4.8 PQC (Post-Quantum Cryptography) 대응</h2>
+<p>
+Fireblocks 공식 블로그가 Thales Luna 통합의 강점으로 명시한 점:
+</p>
+<blockquote>
+"Thales Luna HSMs provide crypto agility and post-quantum cryptography (PQC) readiness."
+</blockquote>
+<p>
+<span class="src">(출처: Fireblocks 공식 블로그 — 2025-09-23)</span>
+</p>
+
+<ul>
+<li><strong>Crypto agility</strong> — HSM 펌웨어 업데이트로 새 알고리즘 추가 가능. HSM 교체 없이 알고리즘 진화 대응</li>
+<li><strong>PQC readiness</strong> — NIST 표준 후보 (ML-KEM, ML-DSA 등) 의 향후 추가 가능</li>
+<li><strong>은행 함의</strong> — 양자컴퓨터 위협 대비 자산 계획에 HSM 의 PQC 지원 여부 반영 필요</li>
+</ul>
+
+<div class="callout">
+<div class="callout-title">PQC 적용 시점 — 저자 추정</div>
+<p style="margin-bottom:0">
+NIST 의 PQC 표준화 (2024-) 가 진행 중이며, blockchain 의 PQC 전환은 (a) 서명 알고리즘 자체의 표준화 + (b) 체인 protocol 수준의 채택이 필요.
+현재 시점 (2026-05) 에는 ECDSA / EdDSA 가 dominant. PQC 전환은 2030 년대 이후 단계적 — 저자 추정.
+은행은 지금 PQC 적용보다 "<strong>HSM 이 향후 PQC 추가를 지원하는 장비인지</strong>" 만 확인해도 충분.
+</p>
+</div>
+
+<h2>4.9 다음 페이지</h2>
+<p>
+KR 은행 환경에서 Key Link 를 어떻게 도입할지 (망분리 적합성, 컴플라이언스 매핑, 검증 항목) 는
+<a href="bank-deployment.html">5. 은행 도입</a> 에서 다룬다.
+</p>
+
+<p class="back-top"><a href="#signing">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
