@@ -111,18 +111,50 @@ plane 간 자산 이동은 P2P rebalancing 으로 수행한다.
 Cold workspace 내부도 Hot 과 동일한 5-level 계층을 따른다는 가정 (5-level 구조 자체는 공식 문서 fact, workspace type 직교는 저자 추정).
 </p>
 
-<pre><code>Customer Domain (bank)
-└── Workspace [4: Custodial-Cold]      ← 본 페이지 대상
-    ├── Vault Account "BTC-Reserve"
-    │   └── Asset Wallet (BTC)
-    │       └── Deposit Address × N (UTXO multi-address)
-    ├── Vault Account "ETH-Reserve"
-    │   └── Asset Wallet (ETH)
-    │       └── Deposit Address × 1 (account-based single)
-    └── Vault Account "USDC-Reserve"
-        └── Asset Wallet (USDC, ERC-20)
-            └── Deposit Address × 1
-</code></pre>
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  CD["🏢 Customer Domain<br/>(Bank)"]
+  WS["❄ Workspace<br/>Custodial Cold<br/>(본 페이지 대상)"]
+
+  VA1["📁 Vault Account<br/>BTC-Reserve"]
+  VA2["📁 Vault Account<br/>ETH-Reserve"]
+  VA3["📁 Vault Account<br/>USDC-Reserve"]
+
+  AW1["💰 Asset Wallet<br/>BTC"]
+  AW2["💰 Asset Wallet<br/>ETH"]
+  AW3["💰 Asset Wallet<br/>USDC (ERC-20)"]
+
+  DA1["📍 Deposit Address × N<br/>(UTXO multi-address)"]
+  DA2["📍 Deposit Address × 1<br/>(account-based single)"]
+  DA3["📍 Deposit Address × 1"]
+
+  CD --> WS
+  WS --> VA1
+  WS --> VA2
+  WS --> VA3
+  VA1 --> AW1 --> DA1
+  VA2 --> AW2 --> DA2
+  VA3 --> AW3 --> DA3
+
+  classDef domain fill:#dcfce7,stroke:#16a34a
+  classDef cold fill:#dbeafe,stroke:#2563eb
+  classDef vault fill:#fef3c7,stroke:#d97706
+  classDef asset fill:#e0e7ff,stroke:#6366f1
+  classDef addr fill:#fae8ff,stroke:#a855f7
+
+  class CD domain
+  class WS cold
+  class VA1,VA2,VA3 vault
+  class AW1,AW2,AW3 asset
+  class DA1,DA2,DA3 addr
+</pre>
+</div>
+<p class="diagram-caption">
+Custodial Cold workspace 내부의 5-level 계층 예시. 5 레벨이 색으로 구분:
+초록 = Customer Domain / 파랑 = Cold Workspace / 노랑 = Vault Account / 보라 = Asset Wallet / 분홍 = Deposit Address.
+Asset 유형에 따라 Deposit Address 개수가 다름 (BTC = N 개 / ETH·USDC = 1 개).
+</p>
 
 <p>
 <span class="src">(출처: Fireblocks 공식 문서 — Account and Wallet Structure: 5-level 계층, Asset Type → Address 매핑)</span>
