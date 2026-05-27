@@ -14,43 +14,48 @@
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
 <div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
-<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
 <div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
 <li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
-<li><a href="db-split.html">2. DB 분할</a></li>
+<li><a href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
-<li><a href="tables-user.html">4. Users</a></li>
+<li><a href="tables-user.html">6. Users</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
-<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+<li><a href="tables-governance.html">7. Roles · Quorum · Policy</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
-<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+<li><a href="tables-crypto.html">8. MPC · Key Link · Cosigner</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
-<li><a href="sm-transaction.html">7. Transaction State + 14-step</a></li>
-<li><a href="sm-webhook.html">8. Webhook 처리</a></li>
-<li><a href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+<li><a href="sm-transaction.html">9. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">10. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">11. Deposit · Withdrawal Flow</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
-<li><a href="risks.html">11. Risks Register</a></li>
+<li><a href="tables-audit.html">12. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
+<li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
-<li><a class="active" href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+<li><a class="active" href="db-ops.html">15. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
 <main class="content">
 <section id="db-ops">
-<h2>12. DB 운영 · Anti-patterns</h2>
+<h2>15. DB 운영 · Anti-patterns</h2>
 <span class="section-subtitle">customerdb / mirrordb / compliancedb 의 MySQL · PostgreSQL 운영 권장 + 안티패턴</span>
 
-<h3>12.1 DB 엔진 선택</h3>
+<h3>15.1 DB 엔진 선택</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>DB</th><th>권장 엔진</th><th>근거</th></tr></thead>
@@ -72,7 +77,7 @@
 </ul>
 </div>
 
-<h3>12.2 partition 전략 — 5년 보존 대응</h3>
+<h3>15.2 partition 전략 — 5년 보존 대응</h3>
 
 <h4>mirrordb.webhook_events / tx_status_history / audit_log_mirror</h4>
 <ul>
@@ -90,7 +95,7 @@
 <li>매월 1일 자동 archive (5년 도래 partition)</li>
 </ul>
 
-<h3>12.3 백업 정책</h3>
+<h3>15.3 백업 정책</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>DB</th><th>RPO</th><th>RTO</th><th>방식</th></tr></thead>
@@ -102,7 +107,7 @@
 </table>
 </div>
 
-<h3>12.4 인덱스 설계 권장</h3>
+<h3>15.4 인덱스 설계 권장</h3>
 
 <h4>mirrordb.tx_mirror</h4>
 <ul>
@@ -131,7 +136,7 @@
 <li>(event_category, event_type)</li>
 </ul>
 
-<h3>12.5 권한 분리 — DB account</h3>
+<h3>15.5 권한 분리 — DB account</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>Account</th><th>customerdb</th><th>mirrordb</th><th>compliancedb</th></tr></thead>
@@ -154,7 +159,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer acc
 </p>
 </div>
 
-<h3>12.6 모니터링 metric</h3>
+<h3>15.6 모니터링 metric</h3>
 
 <h4>application metric</h4>
 <ul>
@@ -191,13 +196,13 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer acc
 <li>reconciliation mismatch 건수 (0 권장)</li>
 </ul>
 
-<h3>12.7 Anti-patterns — 도입 시 흔한 실수</h3>
+<h3>15.7 Anti-patterns — 도입 시 흔한 실수</h3>
 
 <h4>AP-1: Webhook signature 검증 누락</h4>
 <p>
 <strong>실수</strong>: webhook endpoint 가 signature 검증 없이 payload 처리.
 <strong>결과</strong>: 공격자가 임의 event 위조 → mirror DB / 회계 / 알림 시스템 오염.
-<strong>대응</strong>: signature 검증 없는 webhook 처리 절대 금지. <a href="sm-webhook.html">8. Webhook 처리</a> 의 검증 절차 적용.
+<strong>대응</strong>: signature 검증 없는 webhook 처리 절대 금지. <a href="sm-webhook.html">10. Webhook 처리</a> 의 검증 절차 적용.
 </p>
 
 <h4>AP-2: idempotency 미구현</h4>
@@ -263,7 +268,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer acc
 <strong>대응</strong>: BCP 절차 사전 수립. SLA 정책 + 알림 시스템.
 </p>
 
-<h3>12.8 운영 체크리스트 — 도입 시작 전</h3>
+<h3>15.8 운영 체크리스트 — 도입 시작 전</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>#</th><th>항목</th><th>완료 기준</th></tr></thead>
@@ -284,7 +289,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer acc
 </table>
 </div>
 
-<h3>12.9 관련 외부 reference</h3>
+<h3>15.9 관련 외부 reference</h3>
 <ul>
 <li><a href="../custodial-wallet-db-design/">직접 구축 — 수탁형 지갑 DB 설계</a> — 7-DB 구조 참고</li>
 <li><a href="../fireblocks-cold-wallet-bank-design/">Fireblocks Cold Wallet 도입</a> — Cold workspace 운영</li>
@@ -297,7 +302,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer acc
 
 </section>
 <nav aria-label="Section navigation" class="page-nav">
-<a class="page-nav-link page-nav-prev" href="risks.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">11. Risks</span></a>
+<a class="page-nav-link page-nav-prev" href="risks.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">14. Risks</span></a>
 <span class="page-nav-spacer"></span>
 </nav>
 </main>

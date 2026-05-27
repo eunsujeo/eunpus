@@ -14,43 +14,48 @@
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
 <div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
-<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
 <div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
 <li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
-<li><a href="db-split.html">2. DB 분할</a></li>
+<li><a href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
-<li><a href="tables-user.html">4. Users</a></li>
+<li><a href="tables-user.html">6. Users</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
-<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+<li><a href="tables-governance.html">7. Roles · Quorum · Policy</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
-<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+<li><a href="tables-crypto.html">8. MPC · Key Link · Cosigner</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
-<li><a class="active" href="sm-transaction.html">7. Transaction State + 14-step</a></li>
-<li><a href="sm-webhook.html">8. Webhook 처리</a></li>
-<li><a href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+<li><a class="active" href="sm-transaction.html">9. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">10. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">11. Deposit · Withdrawal Flow</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
-<li><a href="risks.html">11. Risks Register</a></li>
+<li><a href="tables-audit.html">12. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
+<li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
-<li><a href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">15. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
 <main class="content">
 <section id="tx-state">
-<h2>7. Transaction State + 14-step</h2>
+<h2>9. Transaction State + 14-step</h2>
 <span class="section-subtitle">Fireblocks 가 운영하는 17-status state machine — 은행은 webhook 으로 mirror</span>
 
-<h3>7.1 Fireblocks 의 17 transaction status</h3>
+<h3>9.1 Fireblocks 의 17 transaction status</h3>
 <p>
 Fireblocks 가 거래에 대해 정의한 status 는 17 가지. 모두 webhook event 로 은행에 전달됨.
 </p>
@@ -84,7 +89,7 @@ Fireblocks 가 거래에 대해 정의한 status 는 17 가지. 모두 webhook e
 <a href="https://developers.fireblocks.com/docs/configure-webhooks">Configure Webhooks</a>
 </p>
 
-<h3>7.2 7 Operation Types</h3>
+<h3>9.2 7 Operation Types</h3>
 <p>
 Fireblocks 의 거래는 operation type 에 따라 다른 lifecycle 을 가짐.
 </p>
@@ -106,7 +111,7 @@ Fireblocks 의 거래는 operation type 에 따라 다른 lifecycle 을 가짐.
 출처: <a href="https://developers.fireblocks.com/reference/create-a-new-transaction">Create a New Transaction</a>
 </p>
 
-<h3>7.3 14-step Flow (요약) — 거래 한 건의 전체 흐름</h3>
+<h3>9.3 14-step Flow (요약) — 거래 한 건의 전체 흐름</h3>
 <p>
 Fireblocks 가 거래 한 건을 처리할 때 내부적으로 거치는 14 step (직접 구축 reference 의 분석과 동일):
 </p>
@@ -149,7 +154,7 @@ flowchart TB
 출처: <a href="https://developers.fireblocks.com/docs/introduction">Fireblocks Developer Portal — Introduction</a>
 </p>
 
-<h3>7.4 State Transition — 정상 경로</h3>
+<h3>9.4 State Transition — 정상 경로</h3>
 
 <div class="diagram">
 <pre class="mermaid">
@@ -189,7 +194,7 @@ stateDiagram-v2
 state 는 단방향만 진행 (예: COMPLETED 에서 다시 PENDING 으로 되돌리지 않음).
 </p>
 
-<h3>7.5 은행 mirrordb 의 tx_mirror 테이블</h3>
+<h3>9.5 은행 mirrordb 의 tx_mirror 테이블</h3>
 
 <h4><code>mirrordb.tx_mirror</code> — 거래 한 건당 1 row</h4>
 <div class="table-wrap">
@@ -247,7 +252,7 @@ tx_mirror.current_status 는 가장 최근만 보관 (조회 효율). 모든 변
 </p>
 </div>
 
-<h3>7.6 EVM Nonce / Bitcoin UTXO 의 특수성</h3>
+<h3>9.6 EVM Nonce / Bitcoin UTXO 의 특수성</h3>
 <p>
 Fireblocks 가 내부적으로 처리하는 chain-specific 룰. 은행은 직접 다룰 필요 없으나 운영 관찰 시 알아야 함.
 </p>
@@ -260,7 +265,7 @@ Fireblocks 가 내부적으로 처리하는 chain-specific 룰. 은행은 직접
 출처: <a href="https://developers.fireblocks.com/docs/introduction">Fireblocks Developer Portal</a> · <a href="https://developers.fireblocks.com/reference/list-unspent-outputs">List Unspent Outputs</a>
 </p>
 
-<h3>7.7 Transaction Mirror 의 데이터 무결성 보장</h3>
+<h3>9.7 Transaction Mirror 의 데이터 무결성 보장</h3>
 <p>
 은행 mirrordb 의 tx_mirror 가 Fireblocks Console 과 정합한가 — 정기 reconciliation:
 </p>
@@ -281,8 +286,8 @@ Fireblocks 가 내부적으로 처리하는 chain-specific 룰. 은행은 직접
 
 </section>
 <nav aria-label="Section navigation" class="page-nav">
-<a class="page-nav-link page-nav-prev" href="tables-crypto.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">6. MPC · Key Link</span></a>
-<a class="page-nav-link page-nav-next" href="sm-webhook.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">8. Webhook 처리</span></a>
+<a class="page-nav-link page-nav-prev" href="tables-crypto.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">8. MPC · Key Link</span></a>
+<a class="page-nav-link page-nav-next" href="sm-webhook.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">10. Webhook 처리</span></a>
 </nav>
 </main>
 </div>

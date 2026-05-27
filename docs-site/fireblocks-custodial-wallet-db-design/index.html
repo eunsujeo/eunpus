@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Overview — Fireblocks 도입 수탁형 지갑 DB 설계</title>
-<meta content="Fireblocks 를 도입한 은행의 수탁형 지갑 — 책임 분담, DB 구조, 상태 흐름" name="description"/>
+<title>Overview — Fireblocks 도입 수탁형 지갑 종합 reference</title>
+<meta content="Fireblocks 를 도입한 은행의 수탁형 지갑 — 인프라 · 규제 · DB · 입출금 · Cold Wallet · 상태 흐름 종합" name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
 </head>
@@ -13,75 +13,50 @@
 <div class="layout">
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
-<div class="nav-section nav-up">
-<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
-</div>
-<div class="nav-section">
-<h3 class="nav-section-title">Overview</h3>
-<ul>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
 <li><a class="active" href="index.html">0. Overview</a></li>
-</ul>
-</div>
-<div class="nav-section">
-<h3 class="nav-section-title">A. Architecture</h3>
-<ul>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
 <li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
-<li><a href="db-split.html">2. DB 분할</a></li>
-</ul>
-</div>
-<div class="nav-section">
-<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
-<ul>
-<li><a href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
-</ul>
-</div>
-<div class="nav-section">
-<h3 class="nav-section-title">C. Users &amp; Access</h3>
-<ul>
-<li><a href="tables-user.html">4. Users</a></li>
-</ul>
-</div>
-<div class="nav-section">
-<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
-<ul>
-<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
-</ul>
-</div>
-<div class="nav-section">
-<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
-<ul>
-<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
-</ul>
-</div>
-<div class="nav-section">
-<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
-<ul>
-<li><a href="sm-transaction.html">7. Transaction State + 14-step</a></li>
-<li><a href="sm-webhook.html">8. Webhook 처리</a></li>
-<li><a href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
-</ul>
-</div>
-<div class="nav-section">
-<h3 class="nav-section-title">G. Audit &amp; Compliance</h3>
-<ul>
-<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
-<li><a href="risks.html">11. Risks Register</a></li>
-</ul>
-</div>
-<div class="nav-section">
-<h3 class="nav-section-title">H. Ops</h3>
-<ul>
-<li><a href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
-</ul>
-</div>
+<li><a href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a href="db-split.html">3. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a href="tables-user.html">6. Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a href="tables-governance.html">7. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a href="tables-crypto.html">8. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a href="sm-transaction.html">9. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">10. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">11. Deposit · Withdrawal Flow</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">12. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
+<li><a href="risks.html">14. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<li><a href="db-ops.html">15. DB 운영 · Anti-patterns</a></li>
+</ul></div>
 </nav>
 </aside>
 <main class="content">
 <section id="overview">
-<h1>Fireblocks 도입 수탁형 지갑 — DB 구조와 상태 흐름</h1>
+<h1>Fireblocks 도입 수탁형 지갑 — 인프라 · 규제 · DB · 상태 흐름 종합</h1>
 <p class="lead">
-은행이 <strong>Fireblocks 를 도입하여</strong> 수탁형 지갑을 운영할 때의 인프라 · DB 구조 · 상태 흐름 reference.
-직접 구축 reference (<a href="../custodial-wallet-db-design/">수탁형 지갑 — DB 구조와 상태 흐름</a>) 의 mirror 본으로,
+은행이 <strong>Fireblocks 를 도입하여</strong> 수탁형 지갑을 운영할 때의 종합 reference.
+인프라 운영 · 망분리 IDC 배치 · KR 규제 매핑 · DB 구조 · 거버넌스 · 입출금 라이프사이클 · Cold Wallet 운영 · webhook 처리까지.
+직접 구축 reference (<a href="../custodial-wallet-db-design/">수탁형 지갑 — DB 구조와 상태 흐름</a>) 의 도입판 mirror,
 "무엇을 Fireblocks 가 책임지고, 무엇을 은행이 여전히 운영해야 하는가" 의 분담을 정리한다.
 </p>
 
@@ -114,12 +89,12 @@
 <ul>
 <li><strong>인프라 운영 부담 감소</strong> — MPC 키 분포 · cosigner 운영 · 정책 엔진 · audit log 보안 등 깊은 보안 인프라를 Fireblocks 가 담당</li>
 <li><strong>DB 가 단순해진다</strong> — 7 DB → 2-3 DB. 단 webhook 수신/idempotency/5년 보존 책임은 여전히 은행</li>
-<li><strong>vendor lock-in + outage 의존성 발생</strong> — 새로운 risk register 필요 (<a href="risks.html">11. Risks Register</a>)</li>
+<li><strong>vendor lock-in + outage 의존성 발생</strong> — 새로운 risk register 필요 (<a href="risks.html">14. Risks Register</a>)</li>
 <li><strong>KR 컴플라이언스는 여전히 은행 책임</strong> — Fireblocks 가 자동 제공하지 않음 (특금법 · 가상자산이용자보호법 · 가상자산업감독규정 등)
   — 상세는 <a href="../fireblocks-kr-vasp-compliance/">국내 블록체인 사업 법규 × Fireblocks</a> 참조</li>
 </ul>
 
-<h2>이 문서의 8 가지 도메인</h2>
+<h2>이 문서의 8 가지 도메인 (16 페이지)</h2>
 <p>
 직접 구축 reference (<a href="../custodial-wallet-db-design/">custodial-wallet-db-design</a>) 의 8 도메인을 그대로 mirror.
 도메인별로 "Fireblocks 책임" 과 "은행 책임" 을 구분하여 정리.
@@ -129,29 +104,29 @@
 <thead><tr><th>도메인</th><th>다루는 내용</th><th>진입점</th></tr></thead>
 <tbody>
 <tr><td>A. Architecture</td>
-  <td>책임 분담 다이어그램 · trust boundary · 3 product option (SaaS MPC / Hosted MPC / Key Link) · 단순화된 DB 분할</td>
-  <td><a href="architecture.html">1. 책임 분담</a></td></tr>
+  <td>책임 분담 · trust boundary · 3 product option · <strong>망분리 IDC 인프라 운영</strong> · 단순화된 DB 분할</td>
+  <td><a href="architecture.html">1. 책임 분담</a> · <a href="infrastructure.html">2. 인프라 운영</a></td></tr>
 <tr><td>B. Workspace</td>
-  <td>Workspace ↔ 은행 매핑 · Vault Account · Asset Wallet · Deposit Address mirror</td>
-  <td><a href="tables-workspace-vault.html">3. Workspace · Vault</a></td></tr>
+  <td>Workspace ↔ 은행 매핑 · Vault Account · Wallet · <strong>Cold Wallet 운영 (80% 비율 · rebalancing)</strong></td>
+  <td><a href="tables-workspace-vault.html">4. Workspace · Vault</a> · <a href="cold-wallet.html">5. Cold Wallet</a></td></tr>
 <tr><td>C. Users</td>
-  <td>은행 사용자 ↔ Fireblocks Console / API / Mobile user 매핑 · 2FA · SSO · IP allowlist</td>
-  <td><a href="tables-user.html">4. Users</a></td></tr>
+  <td>은행 사용자 ↔ Fireblocks Console / API / Mobile user · 2FA · SSO · IP allowlist</td>
+  <td><a href="tables-user.html">6. Users</a></td></tr>
 <tr><td>D. Governance</td>
   <td>9 user role · Admin Quorum · Approval Group · TAP / Policy rule</td>
-  <td><a href="tables-governance.html">5. Roles · Quorum</a></td></tr>
+  <td><a href="tables-governance.html">7. Roles · Quorum</a></td></tr>
 <tr><td>E. Crypto</td>
-  <td>3 option (SaaS MPC / Hosted MPC / Key Link) · Cosigner deployment 6 options · Recovery (Fireblocks 책임)</td>
-  <td><a href="tables-crypto.html">6. MPC · Key Link</a></td></tr>
+  <td>3 option (SaaS MPC / Hosted MPC / Key Link) · Cosigner deployment 6 options · Recovery</td>
+  <td><a href="tables-crypto.html">8. MPC · Key Link</a></td></tr>
 <tr><td>F. Transaction</td>
-  <td>17 state machine (Fireblocks 가 운영) · 14-step (은행은 webhook 으로 관찰) · Deposit/Withdrawal lifecycle</td>
-  <td><a href="sm-transaction.html">7. Tx State</a></td></tr>
-<tr><td>G. Audit</td>
-  <td>Fireblocks Audit Log · 은행 mirror (5년 보존) · AML provider 연동 · Travel Rule</td>
-  <td><a href="tables-audit.html">10. Audit</a></td></tr>
+  <td>17 state machine · 14-step · webhook (HMAC-SHA512 · idempotency) · <strong>입금/출금 lifecycle</strong></td>
+  <td><a href="sm-transaction.html">9. Tx State</a> · <a href="sm-webhook.html">10. Webhook</a> · <a href="sm-deposit-withdrawal.html">11. Deposit/Withdrawal</a></td></tr>
+<tr><td>G. Audit &amp; Compliance</td>
+  <td>Fireblocks Audit Log · 은행 mirror (5년) · AML · Travel Rule · <strong>KR 규제 17 의무 매핑</strong> · Risks</td>
+  <td><a href="tables-audit.html">12. Audit · AML</a> · <a href="kr-compliance.html">13. KR 규제</a> · <a href="risks.html">14. Risks</a></td></tr>
 <tr><td>H. Ops</td>
-  <td>DB 운영 · webhook idempotency · anti-patterns</td>
-  <td><a href="db-ops.html">12. DB 운영</a></td></tr>
+  <td>DB 운영 (PostgreSQL · partition · 5년 retention) · 10 anti-patterns · 운영 체크리스트</td>
+  <td><a href="db-ops.html">15. DB 운영</a></td></tr>
 </tbody>
 </table>
 </div>

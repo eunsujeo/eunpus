@@ -14,43 +14,48 @@
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
 <div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
-<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
 <div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
 <li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
-<li><a href="db-split.html">2. DB 분할</a></li>
+<li><a href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
-<li><a href="tables-user.html">4. Users</a></li>
+<li><a href="tables-user.html">6. Users</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
-<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+<li><a href="tables-governance.html">7. Roles · Quorum · Policy</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
-<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+<li><a href="tables-crypto.html">8. MPC · Key Link · Cosigner</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
-<li><a href="sm-transaction.html">7. Transaction State + 14-step</a></li>
-<li><a href="sm-webhook.html">8. Webhook 처리</a></li>
-<li><a href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+<li><a href="sm-transaction.html">9. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">10. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">11. Deposit · Withdrawal Flow</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
-<li><a class="active" href="risks.html">11. Risks Register</a></li>
+<li><a href="tables-audit.html">12. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
+<li><a class="active" href="risks.html">14. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
-<li><a href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">15. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
 <main class="content">
 <section id="risks">
-<h2>11. Risks Register</h2>
+<h2>14. Risks Register</h2>
 <span class="section-subtitle">Fireblocks 도입으로 새로 추가되는 risk + 완화 방안</span>
 
-<h3>11.1 도입으로 추가되는 risk 한눈에 보기</h3>
+<h3>14.1 도입으로 추가되는 risk 한눈에 보기</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>ID</th><th>Risk</th><th>심각도</th><th>완화 권장</th></tr></thead>
@@ -215,7 +220,7 @@
 </li>
 </ul>
 
-<h3>11.2 도입 후 사라지는 risk (직접 구축 대비 개선)</h3>
+<h3>14.2 도입 후 사라지는 risk (직접 구축 대비 개선)</h3>
 <p>
 직접 구축의 risk 중 Fireblocks 도입으로 완화 / 사라지는 risk:
 </p>
@@ -235,7 +240,7 @@
 </table>
 </div>
 
-<h3>11.3 잔류 risk — 도입 후에도 동일하게 남는 risk</h3>
+<h3>14.3 잔류 risk — 도입 후에도 동일하게 남는 risk</h3>
 <ul>
 <li><strong>고객 정보 (PII) 유출</strong> — customerdb 의 운영 책임</li>
 <li><strong>KR 법규 의무 위반</strong> — 도입 후에도 은행 책임</li>
@@ -245,7 +250,7 @@
 <li><strong>법규 변경 risk</strong> — KR 가상자산이용자보호법 후속 시행령 / 감독규정 변경</li>
 </ul>
 
-<h3>11.4 도입 결정의 risk-reward 분석 (저자)</h3>
+<h3>14.4 도입 결정의 risk-reward 분석 (저자)</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>축</th><th>직접 구축</th><th>Fireblocks 도입</th></tr></thead>
@@ -264,8 +269,8 @@
 
 </section>
 <nav aria-label="Section navigation" class="page-nav">
-<a class="page-nav-link page-nav-prev" href="tables-audit.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">10. Audit · AML</span></a>
-<a class="page-nav-link page-nav-next" href="db-ops.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">12. DB 운영</span></a>
+<a class="page-nav-link page-nav-prev" href="kr-compliance.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">13. KR 규제 매핑</span></a>
+<a class="page-nav-link page-nav-next" href="db-ops.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">15. DB 운영 · Anti-patterns</span></a>
 </nav>
 </main>
 </div>

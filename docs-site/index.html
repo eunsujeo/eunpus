@@ -391,19 +391,20 @@
 
     <a class="doc-card" href="fireblocks-custodial-wallet-db-design/">
       <div class="doc-title">
-        Fireblocks 도입 수탁형 지갑 — DB 구조와 상태 흐름
+        Fireblocks 도입 수탁형 지갑 — 인프라 · 규제 · DB · 상태 흐름 종합
         <span class="arrow">→</span>
       </div>
       <p class="doc-summary">
-        은행이 Fireblocks 를 도입했을 때의 인프라 · DB · 상태 흐름 reference.
-        직접 구축의 7-DB → 3-DB 단순화 (customerdb · mirrordb · compliancedb) · 책임 분담 ·
-        3 product option (SaaS MPC / Hosted MPC / Key Link) · 17-status state machine mirror ·
-        Webhook 처리 (HMAC-SHA512 · idempotency) · 2-layer audit · KR 컴플라이언스 · 10 risks · 10 anti-patterns.
+        은행이 Fireblocks 를 도입했을 때의 종합 reference (16 페이지).
+        책임 분담 · <strong>망분리 IDC 인프라 운영</strong> · 3 DB 단순화 (customerdb · mirrordb · compliancedb) ·
+        Workspace/Vault · <strong>Cold Wallet 80% 비율 + rebalancing</strong> · 9 user role · Admin Quorum / TAP ·
+        SaaS MPC / Hosted MPC / Key Link · 17-status state mirror · webhook (HMAC-SHA512 + idempotency) ·
+        입출금 lifecycle · 2-layer audit · <strong>KR 규제 17 의무 매핑</strong> · 10 risks · 10 anti-patterns.
       </p>
       <div class="doc-meta">
         <span class="doc-meta-item"><span class="badge badge-pending-review">리뷰 전</span></span>
         <span class="doc-meta-item"><strong>업데이트</strong> 2026-05-27</span>
-        <span class="doc-meta-item"><strong>Sections</strong> 13</span>
+        <span class="doc-meta-item"><strong>Sections</strong> 16</span>
         <span class="doc-meta-item"><strong>Source</strong> Fireblocks Developer Portal + Help Center</span>
       </div>
       <div class="doc-path">fireblocks-custodial-wallet-db-design/</div>

@@ -14,43 +14,48 @@
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
 <div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
-<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
 <div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
 <li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
-<li><a href="db-split.html">2. DB 분할</a></li>
+<li><a href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a class="active" href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+<li><a class="active" href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
-<li><a href="tables-user.html">4. Users</a></li>
+<li><a href="tables-user.html">6. Users</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
-<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+<li><a href="tables-governance.html">7. Roles · Quorum · Policy</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
-<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+<li><a href="tables-crypto.html">8. MPC · Key Link · Cosigner</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
-<li><a href="sm-transaction.html">7. Transaction State + 14-step</a></li>
-<li><a href="sm-webhook.html">8. Webhook 처리</a></li>
-<li><a href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+<li><a href="sm-transaction.html">9. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">10. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">11. Deposit · Withdrawal Flow</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
-<li><a href="risks.html">11. Risks Register</a></li>
+<li><a href="tables-audit.html">12. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
+<li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
-<li><a href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">15. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
 <main class="content">
 <section id="workspace-vault">
-<h2>3. Workspace · Vault · Wallet · Address</h2>
+<h2>4. Workspace · Vault · Wallet · Address</h2>
 <span class="section-subtitle">Fireblocks 의 5-level 계층을 은행 DB 에 어떻게 매핑하는가</span>
 
-<h3>3.1 Fireblocks 의 5-level 계층 (변하지 않는 사실)</h3>
+<h3>4.1 Fireblocks 의 5-level 계층 (변하지 않는 사실)</h3>
 <p>
 Fireblocks 의 자산 계층은 <strong>5 단계</strong>로 구성된다. 이 구조는 도입 후에도 동일하게 적용.
 </p>
@@ -87,7 +92,7 @@ Fireblocks 의 5-level 계층. 최상위 Customer Domain (은행) → Workspace 
 출처: <a href="https://developers.fireblocks.com/docs/create-direct-custody-wallets">Create Direct Custody Wallets</a>
 </p>
 
-<h3>3.2 Workspace — 은행 매핑</h3>
+<h3>4.2 Workspace — 은행 매핑</h3>
 <p>
 Workspace 는 Fireblocks 의 격리·거버넌스 단위. 은행은 보통 4-5 workspace 로 시작 (Vault Structure Best Practices 의 3-workspace 분리 + Cold 분리).
 </p>
@@ -139,7 +144,7 @@ Fireblocks 공식: "modifying an existing SaaS MPC workspace is impossible" (Hos
 </p>
 </div>
 
-<h3>3.3 Vault Account — 고객 단위 격리</h3>
+<h3>4.3 Vault Account — 고객 단위 격리</h3>
 <p>
 Vault Account 는 자산 보관의 격리 단위. 은행은 (a) 고객 1 인 = vault 1 개 (segregated) 또는 (b) 자산군 별 omnibus vault 중 선택.
 </p>
@@ -182,7 +187,7 @@ Vault Account 는 자산 보관의 격리 단위. 은행은 (a) 고객 1 인 = v
 <a href="https://developers.fireblocks.com/docs/work-with-gas-station">Gas Station</a>
 </p>
 
-<h3>3.4 Asset Wallet — 자산별 등록</h3>
+<h3>4.4 Asset Wallet — 자산별 등록</h3>
 <p>
 한 vault 안에 자산별로 asset wallet 을 생성. Fireblocks 는 1,800 + 종 자산 지원.
 </p>
@@ -207,7 +212,7 @@ Vault Account 는 자산 보관의 격리 단위. 은행은 (a) 고객 1 인 = v
 <a href="https://developers.fireblocks.com/api-reference/blockchains-&amp;-assets/list-assets">List Assets API</a>
 </p>
 
-<h3>3.5 Deposit Address — UTXO vs Account-based</h3>
+<h3>4.5 Deposit Address — UTXO vs Account-based</h3>
 <p>
 Asset Wallet 안에 deposit address 가 생성됨. 자산 유형에 따라 개수가 다르다:
 </p>
@@ -241,7 +246,7 @@ Asset Wallet 안에 deposit address 가 생성됨. 자산 유형에 따라 개�
 </table>
 </div>
 
-<h3>3.6 Counterparty Registry — 외부 송금 대상</h3>
+<h3>4.6 Counterparty Registry — 외부 송금 대상</h3>
 <p>
 은행이 송금하는 외부 대상 (whitelisted address · 외부 거래소 · Fireblocks Network counterparty) 의 매핑.
 보통 Admin Quorum 승인으로 사전 등록.
@@ -271,7 +276,7 @@ Asset Wallet 안에 deposit address 가 생성됨. 자산 유형에 따라 개�
 <a href="https://developers.fireblocks.com/docs/connect-to-exchanges-and-fiat-providers">Connect to Exchanges and Fiat Providers</a>
 </p>
 
-<h3>3.7 Vault → Customer 매핑의 권장 패턴 (저자)</h3>
+<h3>4.7 Vault → Customer 매핑의 권장 패턴 (저자)</h3>
 <p>
 은행 customerdb 의 매핑 패턴:
 </p>
@@ -292,8 +297,8 @@ omnibus 패턴 시 은행 내부 회계로 고객별 잔액을 분리 관리하�
 
 </section>
 <nav aria-label="Section navigation" class="page-nav">
-<a class="page-nav-link page-nav-prev" href="db-split.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">2. DB 분할</span></a>
-<a class="page-nav-link page-nav-next" href="tables-user.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">4. Users</span></a>
+<a class="page-nav-link page-nav-prev" href="db-split.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">3. DB 분할</span></a>
+<a class="page-nav-link page-nav-next" href="cold-wallet.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">5. Cold Wallet 운영</span></a>
 </nav>
 </main>
 </div>

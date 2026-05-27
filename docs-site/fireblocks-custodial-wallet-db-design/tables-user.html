@@ -14,43 +14,48 @@
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
 <div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
-<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
 <div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
 <li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
-<li><a href="db-split.html">2. DB 분할</a></li>
+<li><a href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
-<li><a class="active" href="tables-user.html">4. Users</a></li>
+<li><a class="active" href="tables-user.html">6. Users</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
-<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+<li><a href="tables-governance.html">7. Roles · Quorum · Policy</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
-<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+<li><a href="tables-crypto.html">8. MPC · Key Link · Cosigner</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
-<li><a href="sm-transaction.html">7. Transaction State + 14-step</a></li>
-<li><a href="sm-webhook.html">8. Webhook 처리</a></li>
-<li><a href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+<li><a href="sm-transaction.html">9. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">10. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">11. Deposit · Withdrawal Flow</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
-<li><a href="risks.html">11. Risks Register</a></li>
+<li><a href="tables-audit.html">12. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
+<li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
-<li><a href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">15. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
 <main class="content">
 <section id="users">
-<h2>4. Users</h2>
+<h2>6. Users</h2>
 <span class="section-subtitle">은행 사용자 ↔ Fireblocks Console / API / Mobile user 매핑</span>
 
-<h3>4.1 Fireblocks 의 3 user type</h3>
+<h3>6.1 Fireblocks 의 3 user type</h3>
 <p>
 Fireblocks 는 사용자를 3 가지 type 으로 분류한다. 각 type 별로 인증 방식과 책임이 다르다.
 </p>
@@ -69,16 +74,16 @@ Fireblocks 는 사용자를 3 가지 type 으로 분류한다. 각 type 별로 �
 출처: <a href="https://developers.fireblocks.com/docs/manage-users">Fireblocks — Manage Users</a>
 </p>
 
-<h3>4.2 인증 매커니즘 별 정리</h3>
+<h3>6.2 인증 매커니즘 별 정리</h3>
 
-<h4>4.2.1 2FA (Two-Factor Authentication)</h4>
+<h4>6.2.1 2FA (Two-Factor Authentication)</h4>
 <ul>
 <li>Fireblocks 가 TOTP authenticator app (Google Authenticator / Authy 등) 의 6 자리 코드 강제</li>
 <li>Console 첫 로그인 시 setup 강제</li>
 <li>2FA 분실 시 Admin Quorum quorum 승인으로 reset</li>
 </ul>
 
-<h4>4.2.2 SSO (Single Sign-On)</h4>
+<h4>6.2.2 SSO (Single Sign-On)</h4>
 <ul>
 <li>외부 IdP (Google Workspace · Okta · Entra ID 등) 와 SAML / OIDC 연동</li>
 <li>Fireblocks 측 service provider 는 <strong>Auth0</strong> 가 담당</li>
@@ -89,14 +94,14 @@ Fireblocks 는 사용자를 3 가지 type 으로 분류한다. 각 type 별로 �
 출처: <a href="https://support.fireblocks.io/hc/en-us/articles/10031671057692-Configure-SSO">Configure SSO</a>
 </p>
 
-<h4>4.2.3 IP Allowlist</h4>
+<h4>6.2.3 IP Allowlist</h4>
 <ul>
 <li>API user 별로 허용된 IP 목록 설정 가능</li>
 <li>은행은 application server 의 outbound NAT IP 만 허용 권장</li>
 <li>SaaS Cold Wallet workspace 는 IP allowlist 가 거버넌스의 일부 (별도 모드)</li>
 </ul>
 
-<h4>4.2.4 Mobile device 페어링</h4>
+<h4>6.2.4 Mobile device 페어링</h4>
 <ul>
 <li>Console user 가 mobile app 을 페어링 → activation token (7일 유효) → KeyChain 보관</li>
 <li>SaaS MPC 의 경우 mobile device 가 MPC share 1 of 3 보유 (primary share)</li>
@@ -106,7 +111,7 @@ Fireblocks 는 사용자를 3 가지 type 으로 분류한다. 각 type 별로 �
 출처: <a href="https://support.fireblocks.io/hc/en-us/articles/11288189152924-Device-migration">Device Migration</a>
 </p>
 
-<h3>4.3 은행 customerdb 의 사용자 테이블</h3>
+<h3>6.3 은행 customerdb 의 사용자 테이블</h3>
 
 <h4><code>customerdb.bank_users</code> — 은행 내부 사용자</h4>
 <div class="table-wrap">
@@ -177,7 +182,7 @@ SSO 설정 시 Fireblocks 도 IdP 위임 → 한 곳에서 password / 2FA 관리
 출처: <a href="https://developers.fireblocks.com/docs/manage-api-keys">Manage API Keys</a>
 </p>
 
-<h3>4.4 Mobile device 추적 (저자 권장)</h3>
+<h3>6.4 Mobile device 추적 (저자 권장)</h3>
 <p>
 SaaS MPC 시 mobile device 가 MPC share 보유 → device 등록 / 분실 / 교체가 자산 보안에 critical.
 은행은 device 단위 추적을 자체적으로 권장.
@@ -212,7 +217,7 @@ SaaS MPC 의 primary key share 가 mobile device 의 KeyChain 에 있으므로, 
 </p>
 </div>
 
-<h3>4.5 Callback Handler (Hosted MPC 시)</h3>
+<h3>6.5 Callback Handler (Hosted MPC 시)</h3>
 <p>
 Hosted MPC 의 API Co-signer 는 거래 서명 직전에 Callback Handler endpoint 를 호출하여 은행 측의 추가 검증을 받음 (자체 정책 적용).
 </p>
@@ -236,7 +241,7 @@ Hosted MPC 의 API Co-signer 는 거래 서명 직전에 Callback Handler endpoi
 <a href="https://developers.fireblocks.com/reference/cosigner-callbackhandler-secure-communication-authentication">Callback Handler Secure Communication</a>
 </p>
 
-<h3>4.6 SSO 매핑 (선택)</h3>
+<h3>6.6 SSO 매핑 (선택)</h3>
 <p>
 은행이 SSO 를 사용하면 별도 mapping 테이블 불필요 (IdP 가 사용자 identity 의 source of truth).
 단 audit / 운영 추적을 위해 가벼운 mapping 가능.
@@ -256,7 +261,7 @@ Hosted MPC 의 API Co-signer 는 거래 서명 직전에 Callback Handler endpoi
 </table>
 </div>
 
-<h3>4.7 핵심 운영 원칙</h3>
+<h3>6.7 핵심 운영 원칙</h3>
 <ul>
 <li><strong>은행 application 의 인증 = IdP 위임</strong> — 자체 password 관리 금지 (보안 risk 큼)</li>
 <li><strong>API key 는 secret manager 만</strong> — DB column 에 평문 저장 절대 금지</li>
@@ -267,8 +272,8 @@ Hosted MPC 의 API Co-signer 는 거래 서명 직전에 Callback Handler endpoi
 
 </section>
 <nav aria-label="Section navigation" class="page-nav">
-<a class="page-nav-link page-nav-prev" href="tables-workspace-vault.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">3. Workspace · Vault</span></a>
-<a class="page-nav-link page-nav-next" href="tables-governance.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">5. Roles · Quorum</span></a>
+<a class="page-nav-link page-nav-prev" href="cold-wallet.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">5. Cold Wallet 운영</span></a>
+<a class="page-nav-link page-nav-next" href="tables-governance.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">7. Roles · Quorum · Policy</span></a>
 </nav>
 </main>
 </div>

@@ -14,43 +14,48 @@
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
 <div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
-<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
 <div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
 <li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
-<li><a class="active" href="db-split.html">2. DB 분할</a></li>
+<li><a href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a class="active" href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
-<li><a href="tables-user.html">4. Users</a></li>
+<li><a href="tables-user.html">6. Users</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
-<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+<li><a href="tables-governance.html">7. Roles · Quorum · Policy</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
-<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+<li><a href="tables-crypto.html">8. MPC · Key Link · Cosigner</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
-<li><a href="sm-transaction.html">7. Transaction State + 14-step</a></li>
-<li><a href="sm-webhook.html">8. Webhook 처리</a></li>
-<li><a href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+<li><a href="sm-transaction.html">9. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">10. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">11. Deposit · Withdrawal Flow</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
-<li><a href="risks.html">11. Risks Register</a></li>
+<li><a href="tables-audit.html">12. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
+<li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
-<li><a href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">15. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
 <main class="content">
 <section id="db-split">
-<h2>2. DB 분할</h2>
+<h2>3. DB 분할</h2>
 <span class="section-subtitle">7 DB → 3 DB 단순화 — Fireblocks 가 떠맡는 책임만큼 은행 DB 가 줄어든다</span>
 
-<h3>2.1 직접 구축의 7-DB → 도입 후 3-DB</h3>
+<h3>3.1 직접 구축의 7-DB → 도입 후 3-DB</h3>
 <p>
 직접 구축 reference (<a href="../custodial-wallet-db-design/db-split.html">2. DB 분할</a>) 의 7 DB 중 어떤 것이 Fireblocks 로 흡수되고, 어떤 것이 은행에 남는가:
 </p>
@@ -79,7 +84,7 @@
 </ul>
 </div>
 
-<h3>2.2 각 DB 의 책임 / 테이블 / 도메인 매핑</h3>
+<h3>3.2 각 DB 의 책임 / 테이블 / 도메인 매핑</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>DB</th><th>책임</th><th>들어가는 데이터 (테이블)</th><th>변경 패턴</th><th>주 사용 cluster</th></tr></thead>
@@ -118,7 +123,7 @@
 </table>
 </div>
 
-<h3>2.3 서비스 → DB write 매핑</h3>
+<h3>3.3 서비스 → DB write 매핑</h3>
 
 <div class="diagram">
 <pre class="mermaid">
@@ -149,7 +154,7 @@ flowchart LR
 compliance service 는 compliancedb write + mirrordb read.
 </p>
 
-<h3>2.4 분할의 근거 — 직접 구축 5 근거 중 도입 후에도 유효한 것</h3>
+<h3>3.4 분할의 근거 — 직접 구축 5 근거 중 도입 후에도 유효한 것</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>근거</th><th>도입 후 적용</th></tr></thead>
@@ -163,7 +168,7 @@ compliance service 는 compliancedb write + mirrordb read.
 </table>
 </div>
 
-<h3>2.5 단순화의 trade-off</h3>
+<h3>3.5 단순화의 trade-off</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>제약</th><th>의미 + 해결책</th></tr></thead>
@@ -182,7 +187,7 @@ compliance service 는 compliancedb write + mirrordb read.
 </table>
 </div>
 
-<h3>2.6 Storage Class (column 동작) — 도입 후 적용</h3>
+<h3>3.6 Storage Class (column 동작) — 도입 후 적용</h3>
 <p>
 직접 구축의 7 storage class 중 도입 후 은행 DB 에서 자주 쓰이는 4 가지:
 </p>
@@ -210,8 +215,8 @@ compliance service 는 compliancedb write + mirrordb read.
 
 </section>
 <nav aria-label="Section navigation" class="page-nav">
-<a class="page-nav-link page-nav-prev" href="architecture.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">1. 책임 분담</span></a>
-<a class="page-nav-link page-nav-next" href="tables-workspace-vault.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">3. Workspace · Vault</span></a>
+<a class="page-nav-link page-nav-prev" href="infrastructure.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">2. 인프라 운영</span></a>
+<a class="page-nav-link page-nav-next" href="tables-workspace-vault.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">4. Workspace · Vault · Wallet</span></a>
 </nav>
 </main>
 </div>

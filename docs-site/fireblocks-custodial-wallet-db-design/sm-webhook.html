@@ -14,49 +14,54 @@
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
 <div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
-<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
 <div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
 <li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
-<li><a href="db-split.html">2. DB 분할</a></li>
+<li><a href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
-<li><a href="tables-user.html">4. Users</a></li>
+<li><a href="tables-user.html">6. Users</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
-<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+<li><a href="tables-governance.html">7. Roles · Quorum · Policy</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
-<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+<li><a href="tables-crypto.html">8. MPC · Key Link · Cosigner</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
-<li><a href="sm-transaction.html">7. Transaction State + 14-step</a></li>
-<li><a class="active" href="sm-webhook.html">8. Webhook 처리</a></li>
-<li><a href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+<li><a href="sm-transaction.html">9. Transaction State + 14-step</a></li>
+<li><a class="active" href="sm-webhook.html">10. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">11. Deposit · Withdrawal Flow</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
-<li><a href="risks.html">11. Risks Register</a></li>
+<li><a href="tables-audit.html">12. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
+<li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
-<li><a href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">15. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
 <main class="content">
 <section id="webhook">
-<h2>8. Webhook 처리</h2>
+<h2>10. Webhook 처리</h2>
 <span class="section-subtitle">Fireblocks 이벤트 수신 + HMAC-SHA512 검증 + idempotency + retry</span>
 
-<h3>8.1 Webhook 이란 — 은행 책임의 핵심</h3>
+<h3>10.1 Webhook 이란 — 은행 책임의 핵심</h3>
 <p>
 Fireblocks 가 거래 / vault / address / approval 등의 상태 변경을 발생시킬 때, 은행이 Fireblocks Console 에 등록한 endpoint URL 로 HTTPS POST 요청을 보낸다.
 이 webhook 수신 인프라는 <strong>은행 책임</strong>이며, 직접 구축의 chaindb / auditdb 역할 일부를 대체.
 </p>
 
-<h3>8.2 Webhook event 종류 (대표)</h3>
+<h3>10.2 Webhook event 종류 (대표)</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>Event type</th><th>발생 시점</th></tr></thead>
@@ -81,7 +86,7 @@ Fireblocks 가 거래 / vault / address / approval 등의 상태 변경을 발�
 출처: <a href="https://developers.fireblocks.com/docs/configure-webhooks">Fireblocks — Configure Webhooks</a>
 </p>
 
-<h3>8.3 Webhook 보안 — HMAC-SHA512 검증</h3>
+<h3>10.3 Webhook 보안 — HMAC-SHA512 검증</h3>
 <p>
 Fireblocks 가 webhook payload 를 <strong>HMAC-SHA512</strong> 로 서명하여 <code>Fireblocks-Signature</code> HTTP header 에 첨부.
 은행 endpoint 는 모든 incoming webhook 에 대해 signature 검증 필수.
@@ -106,7 +111,7 @@ endpoint URL 이 공개되어 있다고 가정해야 함 (URL 자체는 secret �
 </p>
 </div>
 
-<h3>8.4 Webhook 처리 흐름</h3>
+<h3>10.4 Webhook 처리 흐름</h3>
 
 <div class="diagram">
 <pre class="mermaid">
@@ -144,7 +149,7 @@ Webhook 의 표준 처리 흐름. signature 검증 → dedup → 큐잉 → work
 200 OK 는 빨리 응답하고, 실제 처리는 비동기. Fireblocks 의 retry timeout 회피.
 </p>
 
-<h3>8.5 Idempotency — 중복 event 처리</h3>
+<h3>10.5 Idempotency — 중복 event 처리</h3>
 <p>
 Fireblocks 의 webhook 은 <strong>적어도 한 번 (at-least-once)</strong> 보장. 즉 같은 event 가 2 회 이상 전달될 수 있음.
 은행은 idempotency 로 중복 처리를 방지해야 함.
@@ -191,7 +196,7 @@ parser 변경 / 분쟁 / 외부 감사 시점에 원본 payload 가 필요. 5년
 </p>
 </div>
 
-<h3>8.6 Retry / Backoff 정책</h3>
+<h3>10.6 Retry / Backoff 정책</h3>
 <p>
 Fireblocks 의 webhook 은 실패 시 자동 retry. 은행이 5xx 응답하면 Fireblocks 가 exponential backoff 로 재시도.
 </p>
@@ -201,7 +206,7 @@ Fireblocks 의 webhook 은 실패 시 자동 retry. 은행이 5xx 응답하면 F
 <li><strong>처리 실패는 200 OK 후 자체 retry 큐</strong> — Fireblocks 에 5xx 보내는 대신 자체 dead-letter queue 운영 권장</li>
 </ul>
 
-<h3>8.7 Webhook endpoint 보안 권장</h3>
+<h3>10.7 Webhook endpoint 보안 권장</h3>
 <ul>
 <li><strong>전용 endpoint 분리</strong> — application 의 다른 API 와 별도 path (예: <code>/webhook/fireblocks</code>)</li>
 <li><strong>WAF rule</strong> — Fireblocks 측 IP 만 허용 (Fireblocks 가 source IP 목록 제공)</li>
@@ -210,7 +215,7 @@ Fireblocks 의 webhook 은 실패 시 자동 retry. 은행이 5xx 응답하면 F
 <li><strong>signature 검증 실패 alerting</strong> — 단일 실패도 운영팀 즉시 알림 (공격 시도 가능성)</li>
 </ul>
 
-<h3>8.8 Webhook 처리 실패 대응</h3>
+<h3>10.8 Webhook 처리 실패 대응</h3>
 
 <h4><code>mirrordb.webhook_failures</code></h4>
 <div class="table-wrap">
@@ -229,7 +234,7 @@ Fireblocks 의 webhook 은 실패 시 자동 retry. 은행이 5xx 응답하면 F
 </table>
 </div>
 
-<h3>8.9 정기 Reconciliation — webhook 누락 detection</h3>
+<h3>10.9 정기 Reconciliation — webhook 누락 detection</h3>
 <p>
 webhook 이 네트워크 장애로 누락될 가능성 대응:
 </p>
@@ -248,7 +253,7 @@ Fireblocks 의 at-least-once 보장은 retry 정책의 max attempt 안에서 유
 </p>
 </div>
 
-<h3>8.10 Webhook 운영 metric (저자 권장)</h3>
+<h3>10.10 Webhook 운영 metric (저자 권장)</h3>
 <ul>
 <li><strong>throughput</strong> — 분당 webhook 수신 수</li>
 <li><strong>signature failure rate</strong> — 0 이 정상 (공격 시도 detection)</li>
@@ -260,8 +265,8 @@ Fireblocks 의 at-least-once 보장은 retry 정책의 max attempt 안에서 유
 
 </section>
 <nav aria-label="Section navigation" class="page-nav">
-<a class="page-nav-link page-nav-prev" href="sm-transaction.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">7. Transaction State</span></a>
-<a class="page-nav-link page-nav-next" href="sm-deposit-withdrawal.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">9. Deposit · Withdrawal</span></a>
+<a class="page-nav-link page-nav-prev" href="sm-transaction.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">9. Transaction State</span></a>
+<a class="page-nav-link page-nav-next" href="sm-deposit-withdrawal.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">11. Deposit · Withdrawal Flow</span></a>
 </nav>
 </main>
 </div>

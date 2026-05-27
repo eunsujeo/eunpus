@@ -14,43 +14,48 @@
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
 <div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
-<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
 <div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
 <li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
-<li><a href="db-split.html">2. DB 분할</a></li>
+<li><a href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
-<li><a href="tables-user.html">4. Users</a></li>
+<li><a href="tables-user.html">6. Users</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
-<li><a class="active" href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+<li><a class="active" href="tables-governance.html">7. Roles · Quorum · Policy</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
-<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+<li><a href="tables-crypto.html">8. MPC · Key Link · Cosigner</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
-<li><a href="sm-transaction.html">7. Transaction State + 14-step</a></li>
-<li><a href="sm-webhook.html">8. Webhook 처리</a></li>
-<li><a href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+<li><a href="sm-transaction.html">9. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">10. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">11. Deposit · Withdrawal Flow</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
-<li><a href="risks.html">11. Risks Register</a></li>
+<li><a href="tables-audit.html">12. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
+<li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
-<li><a href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">15. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
 <main class="content">
 <section id="governance">
-<h2>5. Roles · Quorum · Policy</h2>
+<h2>7. Roles · Quorum · Policy</h2>
 <span class="section-subtitle">9 user role · Admin Quorum · Approval Group · TAP — Fireblocks 가 운영하는 거버넌스 plane</span>
 
-<h3>5.1 9 User Roles — Fireblocks 의 권한 모델</h3>
+<h3>7.1 9 User Roles — Fireblocks 의 권한 모델</h3>
 <p>
 Fireblocks 는 user role 을 9 가지로 정의. 각 role 의 권한과 책임:
 </p>
@@ -87,7 +92,7 @@ Fireblocks 는 user role 을 9 가지로 정의. 각 role 의 권한과 책임:
 </ul>
 </div>
 
-<h3>5.2 Admin Quorum — workspace 의 최고 거버넌스</h3>
+<h3>7.2 Admin Quorum — workspace 의 최고 거버넌스</h3>
 <p>
 Admin Quorum 은 workspace 의 모든 Admin user 의 집합. 거버넌스 작업은 quorum (예: 3 of 5) 의 mobile app 승인 매개.
 </p>
@@ -122,7 +127,7 @@ Admin Quorum 은 workspace 의 모든 Admin user 의 집합. 거버넌스 작업
 </table>
 </div>
 
-<h3>5.3 Approval Group — Admin Quorum 의 위임</h3>
+<h3>7.3 Approval Group — Admin Quorum 의 위임</h3>
 <p>
 Approval Group 은 특정 작업의 quorum 권한을 Admin Quorum 보다 좁은 group 에 위임하는 매커니즘.
 </p>
@@ -148,7 +153,7 @@ SaaS Cold Wallet workspace 는 <strong>Approval Group 위임 미지원</strong> 
 </p>
 </div>
 
-<h3>5.4 Policy / TAP (Transaction Authorization Policy)</h3>
+<h3>7.4 Policy / TAP (Transaction Authorization Policy)</h3>
 <p>
 TAP 는 Fireblocks 의 거래 단위 정책 엔진. 모든 거래는 TAP 평가를 통과해야 서명 단계로 진입.
 </p>
@@ -195,7 +200,7 @@ TAP 는 Fireblocks 의 거래 단위 정책 엔진. 모든 거래는 TAP 평가�
 </table>
 </div>
 
-<h3>5.5 거버넌스 흐름 — 거래 한 건의 평가</h3>
+<h3>7.5 거버넌스 흐름 — 거래 한 건의 평가</h3>
 
 <div class="diagram">
 <pre class="mermaid">
@@ -230,7 +235,7 @@ sequenceDiagram
 모든 단계가 Fireblocks 내부에서 발생하며, 은행은 webhook 으로 결과만 관찰.
 </p>
 
-<h3>5.6 거래 시작자 / 승인자 분리 (Maker-Checker)</h3>
+<h3>7.6 거래 시작자 / 승인자 분리 (Maker-Checker)</h3>
 <p>
 은행 운영 best practice — <strong>거래 시작자 ≠ 승인자</strong>. Fireblocks 의 정책 + role 분리로 enforce:
 </p>
@@ -241,7 +246,7 @@ sequenceDiagram
 <li>한 사람이 모든 단계를 단독으로 못 하도록 정책 + role 분리</li>
 </ul>
 
-<h3>5.7 KR 컴플라이언스 매핑</h3>
+<h3>7.7 KR 컴플라이언스 매핑</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>KR 요건</th><th>Fireblocks 매핑</th></tr></thead>
@@ -262,8 +267,8 @@ sequenceDiagram
 
 </section>
 <nav aria-label="Section navigation" class="page-nav">
-<a class="page-nav-link page-nav-prev" href="tables-user.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">4. Users</span></a>
-<a class="page-nav-link page-nav-next" href="tables-crypto.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">6. MPC · Key Link</span></a>
+<a class="page-nav-link page-nav-prev" href="tables-user.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">6. Users</span></a>
+<a class="page-nav-link page-nav-next" href="tables-crypto.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">8. MPC · Key Link · Cosigner</span></a>
 </nav>
 </main>
 </div>

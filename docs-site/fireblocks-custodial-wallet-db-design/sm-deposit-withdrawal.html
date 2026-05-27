@@ -14,48 +14,53 @@
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
 <div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
-<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
 <div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
 <li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
-<li><a href="db-split.html">2. DB 분할</a></li>
+<li><a href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
-<li><a href="tables-user.html">4. Users</a></li>
+<li><a href="tables-user.html">6. Users</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
-<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+<li><a href="tables-governance.html">7. Roles · Quorum · Policy</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
-<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+<li><a href="tables-crypto.html">8. MPC · Key Link · Cosigner</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
-<li><a href="sm-transaction.html">7. Transaction State + 14-step</a></li>
-<li><a href="sm-webhook.html">8. Webhook 처리</a></li>
-<li><a class="active" href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+<li><a href="sm-transaction.html">9. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">10. Webhook 처리</a></li>
+<li><a class="active" href="sm-deposit-withdrawal.html">11. Deposit · Withdrawal Flow</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
-<li><a href="risks.html">11. Risks Register</a></li>
+<li><a href="tables-audit.html">12. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
+<li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
-<li><a href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">15. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
 <main class="content">
 <section id="deposit-withdrawal">
-<h2>9. Deposit · Withdrawal</h2>
+<h2>11. Deposit · Withdrawal</h2>
 <span class="section-subtitle">고객 입금 / 출금 라이프사이클 — Fireblocks 가 main flow, 은행은 mirror + 회계</span>
 
-<h3>9.1 Deposit Lifecycle — 입금</h3>
+<h3>11.1 Deposit Lifecycle — 입금</h3>
 <p>
 고객이 외부 (다른 거래소 / 외부 wallet) 에서 은행 vault 의 deposit address 로 송금. Fireblocks 가 on-chain monitoring 하여 입금 detection.
 </p>
 
-<h4>9.1.1 정상 흐름</h4>
+<h4>11.1.1 정상 흐름</h4>
 <div class="diagram">
 <pre class="mermaid">
 sequenceDiagram
@@ -93,7 +98,7 @@ sequenceDiagram
 은행은 webhook event 로 mirror + 자체 회계 업데이트.
 </p>
 
-<h4>9.1.2 Deposit 상태</h4>
+<h4>11.1.2 Deposit 상태</h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>상태</th><th>의미</th><th>은행 액션</th></tr></thead>
@@ -111,7 +116,7 @@ sequenceDiagram
 출처: <a href="https://developers.fireblocks.com/docs/define-aml-policies">Define AML Policies</a>
 </p>
 
-<h4>9.1.3 <code>mirrordb.deposit_observations</code></h4>
+<h4>11.1.3 <code>mirrordb.deposit_observations</code></h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>column</th><th>설명</th></tr></thead>
@@ -131,12 +136,12 @@ sequenceDiagram
 </table>
 </div>
 
-<h3>9.2 Withdrawal Lifecycle — 출금</h3>
+<h3>11.2 Withdrawal Lifecycle — 출금</h3>
 <p>
 고객이 외부 address 로 출금 요청. 은행 application 이 Fireblocks API 호출 → TAP 평가 → 승인 → 서명 → broadcast.
 </p>
 
-<h4>9.2.1 정상 흐름</h4>
+<h4>11.2.1 정상 흐름</h4>
 <div class="diagram">
 <pre class="mermaid">
 sequenceDiagram
@@ -183,7 +188,7 @@ sequenceDiagram
 모든 단계가 webhook event 로 mirrordb 에 기록.
 </p>
 
-<h4>9.2.2 출금 상태 (Fireblocks 17 status 의 부분 집합 매핑)</h4>
+<h4>11.2.2 출금 상태 (Fireblocks 17 status 의 부분 집합 매핑)</h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>은행 도메인 상태</th><th>대응 Fireblocks status</th><th>의미</th></tr></thead>
@@ -201,7 +206,7 @@ sequenceDiagram
 </table>
 </div>
 
-<h4>9.2.3 <code>mirrordb.withdrawal_orders</code></h4>
+<h4>11.2.3 <code>mirrordb.withdrawal_orders</code></h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>column</th><th>설명</th></tr></thead>
@@ -225,9 +230,9 @@ sequenceDiagram
 </table>
 </div>
 
-<h3>9.3 KR 컴플라이언스 통합</h3>
+<h3>11.3 KR 컴플라이언스 통합</h3>
 
-<h4>9.3.1 트래블룰 (100만원 이상)</h4>
+<h4>11.3.1 트래블룰 (100만원 이상)</h4>
 <p>
 시행령 10조의10 — VASP 간 100만원 이상 송금 시 송신자 / 수신자 정보 교환 의무.
 </p>
@@ -244,7 +249,7 @@ sequenceDiagram
 <a href="https://www.law.go.kr/법령/특정금융거래정보의보고및이용등에관한법률시행령">특금법 시행령</a>
 </p>
 
-<h4>9.3.2 STR / 의심 거래 보고</h4>
+<h4>11.3.2 STR / 의심 거래 보고</h4>
 <ul>
 <li>입금: AML provider 가 flagged → compliance reviewer 의 manual review</li>
 <li>출금: high-risk address 또는 unusual pattern → 컴플라이언스 담당자 alert</li>
@@ -252,7 +257,7 @@ sequenceDiagram
 <li>처리 결과를 compliancedb.suspicious_tx_review 에 기록</li>
 </ul>
 
-<h4>9.3.3 콜드월렛 80% 비율 유지</h4>
+<h4>11.3.3 콜드월렛 80% 비율 유지</h4>
 <p>
 가상자산업감독규정 9조의 80% offline 보관 의무.
 </p>
@@ -265,7 +270,7 @@ sequenceDiagram
 출처: <a href="../fireblocks-cold-wallet-bank-design/hot-cold-rebalancing.html">Hot ↔ Cold Rebalancing</a>
 </p>
 
-<h3>9.4 잔액 mirror — 정합성 보장</h3>
+<h3>11.4 잔액 mirror — 정합성 보장</h3>
 <p>
 은행 customerdb / mirrordb 의 고객별 잔액과 Fireblocks vault balance 의 정합성.
 </p>
@@ -304,7 +309,7 @@ omnibus vault 운영 시 on-chain 에는 통합 balance 만 존재. 은행은 �
 </p>
 </div>
 
-<h3>9.5 사용자 응답 시간 정책</h3>
+<h3>11.5 사용자 응답 시간 정책</h3>
 <p>
 KR 가상자산이용자보호법의 사용자 출금 응답 시간 요건 (구체 시한은 별도 검토 필요). 은행이 응답 시간 SLA 를 정의해야 함.
 </p>
@@ -323,8 +328,8 @@ KR 가상자산이용자보호법의 사용자 출금 응답 시간 요건 (구�
 
 </section>
 <nav aria-label="Section navigation" class="page-nav">
-<a class="page-nav-link page-nav-prev" href="sm-webhook.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">8. Webhook 처리</span></a>
-<a class="page-nav-link page-nav-next" href="tables-audit.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">10. Audit · AML</span></a>
+<a class="page-nav-link page-nav-prev" href="sm-webhook.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">10. Webhook 처리</span></a>
+<a class="page-nav-link page-nav-next" href="tables-audit.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">12. Audit · AML · Travel Rule</span></a>
 </nav>
 </main>
 </div>

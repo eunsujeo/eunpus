@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>5. Cold Wallet 운영 — 도입 시 통합 view</title>
+<meta content="Fireblocks Cold Wallet workspace 운영 — 도입 시 통합 view (Hot/Cold 비율 · rebalancing · 거버넌스)" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a href="db-split.html">3. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a class="active" href="cold-wallet.html">5. Cold Wallet 운영</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a href="tables-user.html">6. Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a href="tables-governance.html">7. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a href="tables-crypto.html">8. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a href="sm-transaction.html">9. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">10. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">11. Deposit · Withdrawal Flow</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">12. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
+<li><a href="risks.html">14. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<li><a href="db-ops.html">15. DB 운영 · Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="cold-wallet">
+<h2>5. Cold Wallet 운영</h2>
+<span class="section-subtitle">Cold Wallet workspace 의 도입 시 통합 view — Hot/Cold 비율 · rebalancing · 거버넌스</span>
+
+<div class="callout">
+<div class="callout-title">전용 reference 안내</div>
+<p style="margin-bottom:0">
+본 페이지는 도입 시 Cold Wallet 운영의 핵심 요약. 상세는 별도 reference 참조:
+<a href="../fireblocks-cold-wallet-bank-design/">은행 Fireblocks Cold Wallet 도입 — 수탁형 지갑 reference</a> (8 페이지)
+</p>
+</div>
+
+<h3>5.1 왜 Cold Wallet 이 필요한가</h3>
+<p>
+KR 은행은 두 가지 이유로 Cold Wallet workspace 필수:
+</p>
+<ul>
+<li><strong>규제 — 가상자산업감독규정 9조</strong>: 이용자 자산의 80% 를 인터넷과 분리하여 보관 (cold storage)</li>
+<li><strong>Risk segregation</strong>: Hot workspace 의 attack surface (API key 도난 · mobile 분실 · SaaS outage) 에서 격리</li>
+</ul>
+<p>
+출처: <a href="https://www.law.go.kr/법령/가상자산이용자보호법">가상자산이용자보호법 · 가상자산업감독규정</a>
+</p>
+
+<h3>5.2 Cold Wallet 의 핵심 사실</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>특성</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td><strong>별개 product</strong></td><td>Cold Wallet workspace 는 SaaS MPC 의 cold variant. <strong>별도 구매 필요</strong> (Hot workspace 와 별개)</td></tr>
+<tr><td><strong>Workspace type 직교 축</strong></td><td>Hot / Cold × Mainnet / Testnet 두 직교 축</td></tr>
+<tr><td><strong>Approval Group 미지원</strong></td><td>Cold Wallet workspace 의 모든 거버넌스 결정은 <strong>Admin Quorum 단독</strong> (Risk-G07)</td></tr>
+<tr><td><strong>User 추가 = Support 경유</strong></td><td>Cold workspace 의 user / API key 추가는 Fireblocks Support 매개 필수</td></tr>
+<tr><td><strong>Owner-direct critical ops</strong></td><td>user delete · 2FA reset 등 일부 op 는 Owner Console-direct</td></tr>
+<tr><td><strong>Signature quota</strong></td><td>"Less than 10% remaining signatures" 이벤트가 Audit Log 모니터링 대상</td></tr>
+<tr><td><strong>P2P Rebalancing</strong></td><td>Hot ↔ Cold 자산 이동은 별도 P2P 경로 (Cold Wallet workspace 의 별도 정책)</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: Fireblocks 공식 문서 — <a href="https://support.fireblocks.io/">Account and Wallet Structure</a> · Vault Structure Best Practices · Approval Groups
+</p>
+
+<h3>5.3 은행 권장 workspace 구성 (5 workspace baseline)</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>Workspace</th><th>Type</th><th>Network</th><th>역할</th><th>Approval Group</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Administrative</td><td>Hot</td><td>Mainnet</td><td>smart contract · role allocation</td><td>지원</td></tr>
+<tr><td>2</td><td>Operational</td><td>Hot</td><td>Mainnet</td><td>일일 입출금 · Gas Station</td><td>지원</td></tr>
+<tr><td>3</td><td>Custodial Hot</td><td>Hot</td><td>Mainnet</td><td>working balance (≤ 20%)</td><td>지원</td></tr>
+<tr><td>4</td><td><strong>Custodial Cold</strong></td><td><strong>Cold</strong></td><td>Mainnet</td><td>bulk reserve (≥ 80%)</td><td><strong>미지원 — Admin Quorum 단독</strong></td></tr>
+<tr><td>5</td><td>Sandbox</td><td>Hot</td><td>Testnet</td><td>개발 / 통합 테스트</td><td>지원</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="../fireblocks-cold-wallet-bank-design/workspace-topology.html">Cold Wallet Workspace 토폴로지</a>
+</p>
+
+<h3>5.4 자산 비율 운영 — 80% / 20% 유지</h3>
+<p>
+가상자산업감독규정 9조의 80% offline 의무를 일상 운영에서 어떻게 유지하는가.
+</p>
+
+<h4>5.4.1 일일 monitoring</h4>
+<ul>
+<li>모든 Custodial Hot vault 의 asset balance 합산 (KRW 환산)</li>
+<li>모든 Custodial Cold vault 의 asset balance 합산</li>
+<li>Hot ÷ (Hot + Cold) 비율 계산</li>
+<li>임계 (예: Hot 18% 초과) 도달 시 운영팀 alert</li>
+</ul>
+
+<h4>5.4.2 mirrordb 의 비율 추적</h4>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  Webhook["Fireblocks webhook<br/>(BALANCE_UPDATED)"]
+  Snap["balance_snapshots<br/>(asset 단위)"]
+  Calc["일일 KRW 환산 + 합산"]
+  Report["hot_cold_ratio_daily"]
+  Alert["임계 도달 시 alert"]
+
+  Webhook --> Snap
+  Snap --> Calc
+  Calc --> Report
+  Report --> Alert
+
+  classDef proc fill:#dbeafe,stroke:#2563eb
+  classDef alert fill:#fee2e2,stroke:#dc2626
+  class Webhook,Snap,Calc,Report proc
+  class Alert alert
+</pre>
+</div>
+<p class="diagram-caption">
+일일 Hot/Cold 비율 monitoring 파이프라인. webhook 의 BALANCE_UPDATED event → balance_snapshots 누적 → 일일 KRW 환산 → 임계 도달 시 alert.
+</p>
+
+<h4>5.4.3 <code>mirrordb.hot_cold_ratio_daily</code></h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>snapshot_date (PK)</td><td>일자</td></tr>
+<tr><td>hot_total_krw</td><td>모든 Hot vault 자산의 KRW 환산 합</td></tr>
+<tr><td>cold_total_krw</td><td>모든 Cold vault 자산의 KRW 환산 합</td></tr>
+<tr><td>cold_ratio</td><td>cold_total / (hot + cold)</td></tr>
+<tr><td>regulatory_threshold_met</td><td>cold_ratio &gt;= 0.80</td></tr>
+<tr><td>asset_breakdown</td><td>jsonb — 자산별 Hot/Cold 분포</td></tr>
+<tr><td>computed_at</td><td>일일 계산 시점</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>5.5 Hot ↔ Cold Rebalancing</h3>
+<p>
+임계 도달 시 자산을 Hot ↔ Cold 사이 이동 (별도 P2P 경로).
+</p>
+
+<h4>5.5.1 트리거 시나리오</h4>
+<ul>
+<li><strong>대량 사용자 입금 후</strong> → Hot ratio 상승 → Cold 로 sweep</li>
+<li><strong>대량 출금 예정</strong> → Cold ratio 너무 높음 → 일부 Cold → Hot</li>
+<li><strong>정기 rebalancing</strong> → 일일 / 주간 schedule</li>
+</ul>
+
+<h4>5.5.2 rebalancing 절차</h4>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Mon as 모니터링
+  participant Ops as 운영팀
+  participant AQH as Admin Quorum (Hot)
+  participant AQC as Admin Quorum (Cold)
+  participant FB as Fireblocks
+  participant Bank as 은행 mirrordb
+
+  Mon->>Ops: 임계 도달 alert (Hot 18% 초과)
+  Ops->>FB: Cold → Hot transfer 시작 (P2P)
+  FB->>AQC: Cold workspace quorum 승인 요청
+  AQC-->>FB: quorum 승인 (mobile)
+  FB->>AQH: Hot workspace 측 receive 승인 (Whitelisted)
+  AQH-->>FB: 승인
+  FB->>FB: P2P transfer (on-chain 또는 internal)
+  FB-.webhook.->Bank
+  Note over Bank: rebalancing_log 기록
+  Bank-->>Mon: 비율 재계산 (~80% 달성)
+</pre>
+</div>
+<p class="diagram-caption">
+rebalancing 절차. Hot/Cold 양측 모두 Admin Quorum 승인 매개. on-chain transfer 또는 Fireblocks 의 P2P 경로 사용.
+</p>
+
+<h4>5.5.3 <code>mirrordb.rebalancing_log</code></h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>rebalance_id (PK)</td><td>은행 내부 ID</td></tr>
+<tr><td>direction</td><td><code>cold_to_hot / hot_to_cold</code></td></tr>
+<tr><td>asset_id</td><td>이동 자산</td></tr>
+<tr><td>amount</td><td>이동 금액</td></tr>
+<tr><td>amount_krw</td><td>KRW 환산</td></tr>
+<tr><td>fb_tx_id_send</td><td>발신 측 tx</td></tr>
+<tr><td>fb_tx_id_recv</td><td>수신 측 tx (별도 workspace)</td></tr>
+<tr><td>trigger_reason</td><td><code>threshold_alert / scheduled / manual</code></td></tr>
+<tr><td>quorum_approved_by_cold</td><td>jsonb — Cold AQ 승인자</td></tr>
+<tr><td>quorum_approved_by_hot</td><td>jsonb — Hot AQ 승인자</td></tr>
+<tr><td>initiated_at</td><td>시작 시점</td></tr>
+<tr><td>completed_at</td><td>완료 시점</td></tr>
+<tr><td>hot_ratio_before · hot_ratio_after</td><td>비율 변화</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>5.6 Cold Wallet 의 User 추가 절차 — Support 매개</h3>
+<p>
+Cold Wallet workspace 의 user / API key 추가는 Fireblocks Support 매개 필수.
+일반 workspace 처럼 Admin Quorum 만으로 추가할 수 없음.
+</p>
+<ol>
+<li>Owner 가 Fireblocks Support 에 ticket 발생 (Console)</li>
+<li>Support 가 추가 검증 (정체성 / 권한 / 사유)</li>
+<li>Admin Quorum 의 mobile 승인 절차</li>
+<li>Support 가 user 추가 처리</li>
+<li>새 user 의 mobile activation (activation token 7 일)</li>
+</ol>
+<p>
+출처: Fireblocks 공식 — Adding users to a Cold Wallet workspace
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ Cold Wallet workspace 의 인원 최소화 권장</div>
+<p style="margin-bottom:0">
+Cold Wallet 의 user 추가가 무겁고, default visibility 정책상 모든 user 가 모든 vault 보유 → <strong>Owner + 2-3 Admin 최소 인원</strong> 권장.
+대량 사용자 운영은 Hot workspace 에서. Cold 는 정기 rebalancing + 큰 출금 결정만.
+</p>
+</div>
+
+<h3>5.7 Cold Wallet 의 device 정책</h3>
+<ul>
+<li><strong>device 분리</strong>: Cold Wallet user 의 mobile device 는 별도 (Hot workspace 와 같은 device 사용 금지 — 저자 권장)</li>
+<li><strong>2FA + biometric 필수</strong>: 모든 Cold user 의 mobile</li>
+<li><strong>device 분실 시</strong>: 즉시 Admin Quorum 매개 device migration ceremony</li>
+<li><strong>승인 device 추적</strong>: customerdb.fb_mobile_device 에 device 등록 / status 관리</li>
+</ul>
+
+<h3>5.8 옵션 C-Thales — Key Link + Cold</h3>
+<p>
+Cold Wallet workspace 와 Key Link 의 결합 — 가장 강한 KR 컴플라이언스 (저자):
+</p>
+<ul>
+<li>Key Link workspace 의 HSM 을 Cold mode 로 운영 (air-gap)</li>
+<li>키 share 0 + on-prem HSM + 망분리 IDC + FIPS 140-3 L3</li>
+<li>실질 통제 (대법원 2024도10710) 의 가장 강한 주장 근거</li>
+<li>단 SaaS Cold Wallet workspace vs Key Link Cold signing 의 관계는 vendor 미명시 (Q-FB02)</li>
+</ul>
+<p>
+상세: <a href="../fireblocks-key-link-bank-design/bank-deployment.html">Key Link 의 KR 은행 도입</a>
+</p>
+
+<h3>5.9 Cold Wallet 운영 위험 (요약)</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Risk</th><th>완화</th></tr></thead>
+<tbody>
+<tr><td><strong>Risk-G07</strong> — Approval Group 미지원, Admin Quorum 단독</td><td>Cold AQ 인원 충분 확보 (3-5인). drill</td></tr>
+<tr><td><strong>User add 운영 부담</strong></td><td>최소 인원 유지 + 사전 plan</td></tr>
+<tr><td><strong>Device 분실</strong></td><td>2FA + biometric + 즉시 ceremony</td></tr>
+<tr><td><strong>Hot/Cold 비율 위반</strong></td><td>일일 monitor + rebalancing 자동화</td></tr>
+<tr><td><strong>Rebalancing 시 운영 지연</strong></td><td>일일 schedule + 임계 buffer 충분 (예: Cold 85% 목표)</td></tr>
+<tr><td><strong>Signature quota 부족</strong></td><td>Audit Log 의 "Less than 10%" 모니터링 + 추가 구매</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+상세: <a href="../fireblocks-cold-wallet-bank-design/risks-open-questions.html">Cold Wallet Risks &amp; Open Questions</a>
+</p>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-workspace-vault.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">4. Workspace · Vault</span></a>
+<a class="page-nav-link page-nav-next" href="tables-user.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">6. Users</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
