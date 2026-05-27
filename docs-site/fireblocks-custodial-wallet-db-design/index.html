@@ -45,8 +45,12 @@
 <li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
 <li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
+<div class="nav-section"><h3 class="nav-section-title">I. Accounting &amp; Reconciliation</h3><ul>
+<li><a href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
+</ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
-<li><a href="db-ops.html">15. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -55,8 +59,8 @@
 <h1>Fireblocks 도입 수탁형 지갑 — 인프라 · 규제 · DB · 상태 흐름 종합</h1>
 <p class="lead">
 은행이 <strong>Fireblocks 를 도입하여</strong> 수탁형 지갑을 운영할 때의 종합 reference.
-인프라 운영 · 망분리 IDC 배치 · KR 규제 매핑 · DB 구조 · 거버넌스 · 입출금 라이프사이클 · Cold Wallet 운영 · webhook 처리까지.
-직접 구축 reference (<a href="../custodial-wallet-db-design/">수탁형 지갑 — DB 구조와 상태 흐름</a>) 의 도입판 mirror,
+인프라 운영 · 망분리 IDC 배치 · KR 규제 매핑 · DB 구조 · 거버넌스 · 입출금 라이프사이클 · Cold Wallet 운영 · webhook 처리 ·
+<strong>회계 · 원장 · 결산 · 대사</strong>까지.
 "무엇을 Fireblocks 가 책임지고, 무엇을 은행이 여전히 운영해야 하는가" 의 분담을 정리한다.
 </p>
 
@@ -74,29 +78,48 @@
 <table>
 <thead><tr><th>축</th><th>직접 구축</th><th>Fireblocks 도입</th></tr></thead>
 <tbody>
-<tr><td><strong>주 운영자</strong></td><td>은행이 모든 인프라</td><td>Fireblocks SaaS 가 core / 은행은 mirror + integration</td></tr>
-<tr><td><strong>키 보유</strong></td><td>은행이 MPC 키 share 전부 또는 다수</td><td>옵션별: SaaS MPC (Cloud share 보유) / Hosted MPC (Co-signer 보유) / <strong>Key Link (전량 고객 HSM)</strong></td></tr>
-<tr><td><strong>DB 개수</strong></td><td>7 DB (walletdb · ledgerdb · approverdb · auditdb · chaindb · providerdb · recondb)</td><td><strong>2-3 DB 면 충분</strong> (customerdb + mirrordb [+compliancedb])</td></tr>
-<tr><td><strong>상태 머신 책임</strong></td><td>은행이 17 transaction state · 14-step · approval · signing 전부 운영</td><td>Fireblocks 가 17 state 운영, 은행은 <strong>webhook 으로 mirror</strong></td></tr>
-<tr><td><strong>거버넌스 책임</strong></td><td>은행이 Admin Quorum · Approval Group · Policy/TAP 직접 구축</td><td>Fireblocks Console 이 governance plane. 은행은 user 등록 + 정책 설정</td></tr>
-<tr><td><strong>감사 로그</strong></td><td>은행의 append-only auditdb</td><td>Fireblocks Console 의 immutable audit log + <strong>은행은 5 년 보존을 위한 mirror</strong></td></tr>
+<tr><td><strong>주 운영자</strong></td><td>은행이 모든 인프라</td><td>Fireblocks SaaS 가 핵심 / 은행은 거래·이벤트의 사본 (mirror) 보관 + 외부 시스템 통합</td></tr>
+<tr><td><strong>키 보유</strong></td><td>은행이 MPC 키 share 전부 또는 다수</td><td><strong>SaaS MPC + Hosted MPC</strong>: Fireblocks 가 키 share 일부 보유 (3-party MPC)<br/><strong>Key Link</strong>: 전량 고객 HSM (Fireblocks 0 share)</td></tr>
+<tr><td><strong>DB 개수</strong></td>
+  <td>7 DB (walletdb · ledgerdb · approverdb · auditdb · chaindb · providerdb · recondb)</td>
+  <td>Fireblocks 가 vault · 정책 · audit log 등 대부분의 DB 책임을 인수.
+    <strong>은행이 직접 운영하는 DB 는 2-3 개</strong> (customerdb + mirrordb [+compliancedb]) —
+    단 webhook 중복 처리 · 5년 보존 · AML/트래블룰 통합 등 <strong>새 책임이 발생</strong>하므로 운영 부담이 "줄었다" 가 아니라 "성격이 달라졌다"</td></tr>
+<tr><td><strong>상태 머신 책임</strong></td>
+  <td>은행이 17 transaction state · 14-step · approval · signing 전부 운영</td>
+  <td>Fireblocks 가 17 transaction state 운영 (서명 / 승인 / broadcast). 은행은 webhook 으로 사본 보관 + <strong>은행 자체 비즈니스 상태</strong> 별도 운영 (REQUESTED → BANK_VALIDATING → FB_SUBMITTED → … → SETTLED)</td></tr>
+<tr><td><strong>거버넌스 책임</strong></td><td>은행이 Admin Quorum · Approval Group · Policy/TAP 직접 구축</td><td>Fireblocks Console 이 거버넌스 담당. 은행은 user 등록 + 정책 설정만</td></tr>
+<tr><td><strong>감사 로그</strong></td><td>은행의 append-only auditdb</td><td>Fireblocks Console 의 immutable audit log + <strong>은행은 5 년 보존을 위한 사본 보관</strong></td></tr>
 <tr><td><strong>주요 책임</strong></td><td>모든 것</td><td>① 은행 사용자 ↔ Fireblocks user 매핑 / ② webhook 수신 + 5 년 보존 / ③ AML · 트래블룰 / ④ KR 컴플라이언스 / ⑤ vendor outage 대응</td></tr>
 </tbody>
 </table>
 </div>
 
+<div class="callout">
+<div class="callout-title">은행이 갖는 자체 상태 (mirror 이상의 가치)</div>
+<p style="margin-bottom:0">
+Fireblocks 가 17 transaction state 를 운영하지만, 은행 application 은 <strong>사용자 신청부터 Fireblocks 접수 전</strong> 의 자체 상태를 별도로 가진다.
+예: REQUESTED (사용자 신청 접수) → BANK_VALIDATING (KYC · 한도 · counterparty 검증) → FB_SUBMITTED (Fireblocks 에 거래 요청 송신) → AWAITING_APPROVAL → SIGNING → BROADCASTED → SETTLED.
+이 상태들은 Fireblocks 가 모르는 영역이며, 은행이 자체 DB 에서 관리. 상세는
+<a href="sm-deposit-withdrawal.html">11. Deposit · Withdrawal Flow</a> 참조.
+</p>
+</div>
+
 <h2>도입의 핵심 효과</h2>
 <ul>
 <li><strong>인프라 운영 부담 감소</strong> — MPC 키 분포 · cosigner 운영 · 정책 엔진 · audit log 보안 등 깊은 보안 인프라를 Fireblocks 가 담당</li>
-<li><strong>DB 가 단순해진다</strong> — 7 DB → 2-3 DB. 단 webhook 수신/idempotency/5년 보존 책임은 여전히 은행</li>
-<li><strong>vendor lock-in + outage 의존성 발생</strong> — 새로운 risk register 필요 (<a href="risks.html">14. Risks Register</a>)</li>
+<li><strong>DB 가 단순해진다</strong> — 7 DB → 2-3 DB. 단 webhook 수신 / 중복 처리 방지 / 5년 보존 책임은 여전히 은행</li>
+<li><strong>새로운 의존성 발생</strong> — Fireblocks 에 종속되어 다른 vendor 로의 마이그레이션이 어려워지고 (vendor lock-in),
+  Fireblocks SaaS 가 장애를 일으키면 은행 거래 처리도 함께 멈춘다 (outage 의존성).
+  직접 구축에는 없던 이 vendor 관련 위험들을 별도 위험 목록으로 관리해야 한다 (<a href="risks.html">14. Risks Register</a>)</li>
 <li><strong>KR 컴플라이언스는 여전히 은행 책임</strong> — Fireblocks 가 자동 제공하지 않음 (특금법 · 가상자산이용자보호법 · 가상자산업감독규정 등)
   — 상세는 <a href="../fireblocks-kr-vasp-compliance/">국내 블록체인 사업 법규 × Fireblocks</a> 참조</li>
 </ul>
 
-<h2>이 문서의 8 가지 도메인 (16 페이지)</h2>
+<h2>이 문서의 9 가지 도메인 (18 페이지)</h2>
 <p>
-직접 구축 reference (<a href="../custodial-wallet-db-design/">custodial-wallet-db-design</a>) 의 8 도메인을 그대로 mirror.
+직접 구축 reference (<a href="../custodial-wallet-db-design/">custodial-wallet-db-design</a>) 의 8 도메인 +
+<strong>I. Accounting &amp; Reconciliation (회계 · 정산)</strong> 도메인을 추가.
 도메인별로 "Fireblocks 책임" 과 "은행 책임" 을 구분하여 정리.
 </p>
 <div class="table-wrap">
@@ -124,78 +147,152 @@
 <tr><td>G. Audit &amp; Compliance</td>
   <td>Fireblocks Audit Log · 은행 mirror (5년) · AML · Travel Rule · <strong>KR 규제 17 의무 매핑</strong> · Risks</td>
   <td><a href="tables-audit.html">12. Audit · AML</a> · <a href="kr-compliance.html">13. KR 규제</a> · <a href="risks.html">14. Risks</a></td></tr>
+<tr><td>I. Accounting &amp; Reconciliation <strong>(신규)</strong></td>
+  <td>3 계층 정합 (온체인 · 오프체인 · 계정계) · 회계 항등식 · 4 원장 + 거래 매트릭스 · 손익 · 외화환산 ·
+    <strong>4 단계 대사 (L1-L4)</strong> · 결산 · 마감 · 정정 · 외부 감사 대응</td>
+  <td><a href="accounting-ledger.html">15. 회계 · 원장</a> · <a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></td></tr>
 <tr><td>H. Ops</td>
   <td>DB 운영 (PostgreSQL · partition · 5년 retention) · 10 anti-patterns · 운영 체크리스트</td>
-  <td><a href="db-ops.html">15. DB 운영</a></td></tr>
+  <td><a href="db-ops.html">17. DB 운영</a></td></tr>
 </tbody>
 </table>
 </div>
 
-<h2>책임 분담 — 한눈에 보기</h2>
+<h2>인프라 구조도 — 컴포넌트가 어디 배치되는가</h2>
 <p>
-도입 후 시스템 책임이 어떻게 나뉘는지 시각화.
+KR 은행이 Fireblocks 를 도입할 때의 표준 배치. 외부망 / DMZ / 내부망 / 보안 구역 4 zone 으로 격리.
+망분리 의무 (전자금융감독규정) 충족.
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  subgraph ext["🌐 외부망"]
+    direction LR
+    FBcloud["☁️ Fireblocks SaaS"]
+    Mobile["📱 운영자 Mobile<br/>(Admin Quorum / Approval)"]
+    IdP["🔐 외부 IdP<br/>(Okta · Entra)"]
+    AML["🔍 AML / Travel Rule<br/>provider"]
+    Chain["⛓ Public Blockchain"]
+  end
+
+  subgraph dmz["🛡 DMZ (서비스망)"]
+    direction LR
+    Webhook["Webhook endpoint<br/>HMAC-SHA512 검증 (HA 2-node)"]
+    Agent["Fireblocks Agent<br/>(Key Link 시)"]
+  end
+
+  subgraph int["🔒 내부망 (망분리 안쪽)"]
+    direction LR
+    App["은행 application<br/>(SDK + 비즈니스 로직)"]
+    CDB["customerdb<br/>고객 ↔ Fireblocks 매핑"]
+    MDB["mirrordb<br/>이벤트 사본 · 5년 보존"]
+    ComplDB["compliancedb<br/>AML · 트래블룰 · STR"]
+    CSrv["Customer Server<br/>(Key Link 시)"]
+    Cosigner["Hosted Co-signer<br/>(Hosted MPC 시)"]
+  end
+
+  subgraph vault["🔐 보안 구역 (Vault Room)"]
+    HSM["HSM (Thales Luna 등)<br/>FIPS 140-3 Level 3<br/>(Key Link 시)"]
+  end
+
+  Mobile -.HTTPS.-> FBcloud
+  IdP -.SAML / OIDC.-> FBcloud
+  FBcloud -.webhook.-> Webhook
+  Webhook --> MDB
+  App -.REST API.-> FBcloud
+  App --> CDB
+  App --> MDB
+  App --> ComplDB
+  App -.AML / TR 조회.-> AML
+  FBcloud -.signing req.-> Agent
+  FBcloud -.signing req.-> Cosigner
+  Agent <--> CSrv
+  CSrv -->|PKCS#11| HSM
+  FBcloud -.broadcast.-> Chain
+
+  classDef ext fill:#fef3c7,stroke:#d97706
+  classDef dmz fill:#fde2e2,stroke:#dc2626
+  classDef int fill:#dcfce7,stroke:#16a34a
+  classDef vlt fill:#e0e7ff,stroke:#6366f1
+
+  class FBcloud,Mobile,IdP,AML,Chain ext
+  class Webhook,Agent dmz
+  class App,CDB,MDB,ComplDB,CSrv,Cosigner int
+  class HSM vlt
+</pre>
+</div>
+<p class="diagram-caption">
+4 zone 배치 — <strong>노랑 = 외부망</strong> (Fireblocks SaaS · 운영자 mobile · IdP · AML provider · Blockchain) /
+<strong>빨강 = DMZ</strong> (Webhook · Fireblocks Agent) /
+<strong>초록 = 내부망</strong> (application · 3 DB · Customer Server · Hosted Co-signer) /
+<strong>보라 = 보안 구역</strong> (HSM).
+모든 외부 통신은 DMZ 의 webhook · Agent 에서 종단. 내부망의 DB / HSM 은 외부에서 직접 접근 불가.
+컴포넌트 별 상세는 <a href="infrastructure.html">2. 인프라 운영</a> 참조.
+</p>
+
+<h2>책임 분담 — 누가 무엇을 책임지는가</h2>
+<p>
+도입 후 시스템 책임이 어떻게 나뉘는지 시각화. 위 = Fireblocks 책임, 아래 = 은행 책임.
 </p>
 
 <div class="diagram">
 <pre class="mermaid">
 flowchart TB
   subgraph fb["☁️ Fireblocks SaaS (vendor 책임)"]
-    direction TB
-    FBcore["Core: MPC · Cosigner · Policy Engine · TAP<br/>Secure Vault · Auth Engine"]
-    FBwks["Workspace · Vault Account · Asset Wallet · Address"]
-    FBgov["Governance: Admin Quorum · Approval Group"]
-    FBlog["Immutable Audit Log (Console)"]
-    FBevt["Webhook events (TRANSACTION_*, VAULT_ACCOUNT_*, ...)"]
+    direction LR
+    FBcore["Core<br/>MPC · TAP · Auth · Vault"]
+    FBwks["Workspace · Vault · Wallet"]
+    FBgov["거버넌스<br/>Admin Quorum · Approval Group"]
+    FBlog["Audit Log (변경 불가)"]
   end
 
   subgraph bank["🏢 은행 책임"]
-    direction TB
-    CDB["customerdb<br/>은행 고객 ↔ Fireblocks user/vault 매핑"]
-    MDB["mirrordb<br/>Webhook 수신 + 5년 보존<br/>(idempotency · audit trail)"]
-    AMLp["AML / Travel Rule<br/>provider 연동 + KR 컴플라이언스"]
+    direction LR
+    CDB["customerdb<br/>고객 ↔ Fireblocks 매핑"]
+    MDB["mirrordb<br/>이벤트 사본 · 5년 보존"]
+    AMLp["AML · Travel Rule<br/>provider 통합"]
     REPORT["금감원 보고 · 회계 · BCP"]
   end
 
-  FBevt -->|webhook HTTPS<br/>HMAC-SHA512 서명| MDB
-  CDB <-->|API 호출<br/>vault account 생성/조회| FBwks
-  CDB <-->|user 생성 · 정책 설정| FBgov
-  MDB --> AMLp
-  MDB --> REPORT
+  fb ==>|"webhook (HMAC-SHA512)"| bank
+  bank -.->|"REST API 호출"| fb
 
   classDef fbcloud fill:#dbeafe,stroke:#2563eb
   classDef bankops fill:#dcfce7,stroke:#16a34a
-  classDef compliance fill:#fef3c7,stroke:#d97706
 
-  class FBcore,FBwks,FBgov,FBlog,FBevt fbcloud
-  class CDB,MDB bankops
-  class AMLp,REPORT compliance
+  class FBcore,FBwks,FBgov,FBlog fbcloud
+  class CDB,MDB,AMLp,REPORT bankops
 </pre>
 </div>
 <p class="diagram-caption">
-파랑 = Fireblocks SaaS (vendor 가 운영) · 초록 = 은행이 운영하는 mirror DB · 노랑 = 컴플라이언스 책임.
-은행은 webhook 수신과 API 호출을 통해 Fireblocks 와 통신. 5 년 보존 · AML · 금감원 보고는 은행 책임.
+파랑 = Fireblocks SaaS / 초록 = 은행. 은행 → Fireblocks 는 REST API 호출 (거래 요청 · 정책 설정 등),
+Fireblocks → 은행 은 webhook (이벤트 사본 전송). 5 년 보존 · AML · 금감원 보고 · BCP 는 모두 은행 책임.
 </p>
 
-<h2>핵심 invariant (7)</h2>
+<h2>핵심 invariant (7) — 어겨서는 안 되는 규칙</h2>
+<p>
+invariant = "변하지 않는 핵심 규칙". 도입 운영에서 무엇이 잘못되어도 다음 7 가지는 항상 지켜야 한다.
+운영자 · 개발자 · 외부 감사인이 가장 먼저 확인하는 항목.
+</p>
 <ol>
-<li><strong>Workspace type 은 immutable</strong> — 한 번 SaaS MPC / Hosted MPC / Key Link 로 생성한 workspace 는 다른 type 으로 변환 불가.
+<li><strong>Workspace 종류는 한 번 정하면 바꿀 수 없다 (immutable)</strong> — 한 번 SaaS MPC / Hosted MPC / Key Link 로 생성한 workspace 는 다른 종류로 변환 불가. 변경하려면 새 workspace 생성 + 자산 cross-workspace 이전 필요.
   <a href="https://support.fireblocks.io/hc/en-us/articles/14228517105052-Fireblocks-Key-Link-Overview">(Fireblocks Key Link Overview)</a></li>
 <li><strong>Vault Account = 1 ECDSA + 1 EdDSA</strong> (Key Link 시) — 각 vault 에 algorithm 별 1 키만 할당.
   <a href="https://support.fireblocks.io/hc/en-us/articles/14231441357340-Set-up-your-Fireblocks-Vault-with-Key-Link">(Set up your Fireblocks Vault with Key Link)</a></li>
-<li><strong>Webhook 은 idempotent</strong> 해야 한다 — 같은 event 가 중복 수신될 수 있으므로 event ID 기반 dedup 필수.
+<li><strong>Webhook 은 멱등 (idempotent) 처리해야 한다</strong> — 같은 event 가 네트워크 재시도로 여러 번 들어와도 결과는 한 번 처리된 것과 같아야 함. event ID 기반 중복 검출 (dedup) 필수.
   <a href="https://developers.fireblocks.com/docs/configure-webhooks">(Configure Webhooks)</a></li>
-<li><strong>Webhook signature 검증 필수</strong> — Fireblocks 가 HMAC-SHA512 로 서명. signature 검증 없는 webhook 처리는 위조 vector.
+<li><strong>Webhook signature 검증 필수</strong> — Fireblocks 가 HMAC-SHA512 로 서명. signature 검증 없는 webhook 처리는 위조 공격의 진입 경로 (vector) 가 된다.
   <a href="https://developers.fireblocks.com/docs/configure-webhooks">(Configure Webhooks)</a></li>
 <li><strong>Admin Quorum 매개 작업은 mobile app 으로만</strong> — Console 에서 시작, mobile 에서 quorum 승인.
   <a href="https://support.fireblocks.io/hc/en-us/articles/10371416837788-Transfer-workspace-Owner">(Fireblocks Help Center)</a></li>
-<li><strong>은행 audit trail = Fireblocks audit + 자체 mirror</strong> — Fireblocks 가 immutable log 제공하지만 은행의 5년 보존 의무 (특금법 5조의4) 는 자체 mirror 필수.
+<li><strong>은행 audit trail = Fireblocks audit + 자체 사본</strong> — Fireblocks 가 변경 불가 (immutable) log 를 제공하지만 은행의 5년 보존 의무 (특금법 5조의4) 는 자체 사본으로 별도 보관 필수.
   <a href="https://www.law.go.kr/법령/특정금융거래정보의보고및이용등에관한법률">(특금법)</a></li>
 <li><strong>키 material 은 어떤 은행 DB 에도 저장 금지</strong> — Fireblocks 가 키를 관리 (Key Link 의 경우 고객 HSM). 은행 application DB 어디에도 private key / mnemonic / MPC share 가 저장되어선 안 됨.</li>
 </ol>
 
 <h2>이 문서가 다루지 <em>않는</em> 것</h2>
 <ul>
-<li><strong>Fireblocks 내부 DB 구조</strong> — Fireblocks 가 미공개. 본 문서는 은행 측 DB 만 다룸</li>
 <li><strong>Fireblocks Console UI 사용법</strong> — 공식 <a href="https://support.fireblocks.io/">Help Center</a> 참조</li>
 <li><strong>Fireblocks SDK 사용법</strong> — 공식 <a href="https://developers.fireblocks.com/">Developer Portal</a> 참조</li>
 <li><strong>KR VASP 컴플라이언스 매핑</strong> — 별도 reference <a href="../fireblocks-kr-vasp-compliance/">국내 블록체인 사업 법규 × Fireblocks</a> 참조</li>

@@ -6595,3 +6595,52 @@ related: [entity-slug ...]
 
 > vendor blog 처럼 짧은 1차 source 라도 (a) 직접 인용 가능한 표현, (b) 다른 wiki/docs 의 ★ Hypothesis 답변, (c) 새 Open Q 후보 의 3 축에서 추출. 셋 다 0 이면 Mode A (catalog-only) 가 적절.
 
+
+## Stage 39 (2026-05-27) — DAW 회계 설계 자문 자료 Mode C ingest
+
+### Trigger
+사용자 명시: "이 문서는 공식문서는 아니고 현재 설계 초기 단계로 작성한거에요. 이 부분 참고해서 MODE C 로 진행해 주세요."
+
+### Source 추가
+- `sources/bank/DAW_회계설계_자문요청.pptx` (binary, 11 슬라이드, 카뱅 회계자금 개발팀, 2026-04-30 자문 미팅)
+- `sources/bank/2026-04-30__bank__DAW_accounting_design_consultation-extracted.md` (외부 도구 unzip + python regex 로 추출한 텍스트 + 메타데이터)
+
+### Classification
+- **TIER 1** — 도입 reference 의 회계 영역 직접 영향
+- **Confidential** — 카뱅 internal 자료 (DAW / KRWK / 5,010 등 수치 포함). docs-site 공개 site 노출 시 일반화 필수
+- **work-in-progress 설계** — vendor 공식 자료 아님. 회계법인 / 외부 감사 검증 전 초안
+
+### docs-site 영향 — 신규 도메인 I. Accounting & Reconciliation
+
+신규 2 페이지 (13 → 16 → **18 페이지** 로 확장):
+- `docs-site/fireblocks-custodial-wallet-db-design/accounting-ledger.html` (15) — 3 계층 정합 / 회계 항등식 / 4 원장 / 거래 매트릭스 / 손익 계정 / 외화환산
+- `docs-site/fireblocks-custodial-wallet-db-design/reconciliation-close.html` (16) — 4 단계 대사 (L1-L4) / 결산·마감 / 정정 절차 / 외부 감사 대응
+
+### Confidential 처리
+
+PPT 의 specific 명칭·수치 모두 일반화:
+- "카뱅" → "은행 도입 시" / "본 은행"
+- "DAW" → "수탁 시스템"
+- "KRWK" → "원화 stablecoin (KRW-pegged)"
+- "USDC" → "달러 stablecoin (USDC 등)"
+- 수치 (5,010 / 5,000 / 100 KRWK) — 제거 또는 추상 (X / Y) 또는 예시 일반화
+
+### 출처 callout — 3-tier 신규
+
+본 영역의 출처 분류를 3-tier 로 명시 (vendor 공식 자료 부재):
+1. Fireblocks 공식 사실 — URL 링크
+2. 일반 수탁업 회계 패턴 — 업계 표준 (이중부기 / 회계 항등식 / 외화환산 / 결산)
+3. 본 reference 의 권장 설계 (work-in-progress) — 운영 시작 전 회계법인 / 외부 감사 검증 권장
+
+### 페이지 번호 / 사이드바 일괄 갱신
+
+- 18 페이지 (0-17) 구조로 사이드바 모두 갱신 (Python 스크립트 일괄)
+- 기존 db-ops 의 페이지 번호: 15 → 17
+- 신규 도메인 I 가 G (Audit) 와 H (Ops) 사이에 위치
+- index.html overview 표 + lead 문구 + docs-site 카드 description 모두 갱신
+
+### invariant — Mode C ingest 의 confidential 처리
+
+> Internal 자료 (회사 명칭 · 수치 · 자체 약어 포함) 의 Mode C ingest 시 다음 규칙: (a) extracted 본문은 sources/ 에 raw 보관 (5 년 audit), (b) docs-site 적재 시 specific 명칭/수치 모두 일반화, (c) "vendor 공식이 아닌 work-in-progress 설계" 라벨 명시, (d) 회계 · 법무 · 외부 감사 검증 권장 callout 필수.
+
+### 신규 entity 0 / 신규 페이지 +2

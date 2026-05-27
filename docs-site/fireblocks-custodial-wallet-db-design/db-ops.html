@@ -45,17 +45,21 @@
 <li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
 <li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
+<div class="nav-section"><h3 class="nav-section-title">I. Accounting &amp; Reconciliation</h3><ul>
+<li><a href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
+</ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
-<li><a class="active" href="db-ops.html">15. DB 운영 · Anti-patterns</a></li>
+<li><a class="active" href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
 <main class="content">
 <section id="db-ops">
-<h2>15. DB 운영 · Anti-patterns</h2>
+<h2>17. DB 운영 · Anti-patterns</h2>
 <span class="section-subtitle">customerdb / mirrordb / compliancedb 의 MySQL · PostgreSQL 운영 권장 + 안티패턴</span>
 
-<h3>15.1 DB 엔진 선택</h3>
+<h3>17.1 DB 엔진 선택</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>DB</th><th>권장 엔진</th><th>근거</th></tr></thead>
@@ -77,7 +81,7 @@
 </ul>
 </div>
 
-<h3>15.2 partition 전략 — 5년 보존 대응</h3>
+<h3>17.2 partition 전략 — 5년 보존 대응</h3>
 
 <h4>mirrordb.webhook_events / tx_status_history / audit_log_mirror</h4>
 <ul>
@@ -95,7 +99,7 @@
 <li>매월 1일 자동 archive (5년 도래 partition)</li>
 </ul>
 
-<h3>15.3 백업 정책</h3>
+<h3>17.3 백업 정책</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>DB</th><th>RPO</th><th>RTO</th><th>방식</th></tr></thead>
@@ -107,7 +111,7 @@
 </table>
 </div>
 
-<h3>15.4 인덱스 설계 권장</h3>
+<h3>17.4 인덱스 설계 권장</h3>
 
 <h4>mirrordb.tx_mirror</h4>
 <ul>
@@ -136,7 +140,7 @@
 <li>(event_category, event_type)</li>
 </ul>
 
-<h3>15.5 권한 분리 — DB account</h3>
+<h3>17.5 권한 분리 — DB account</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>Account</th><th>customerdb</th><th>mirrordb</th><th>compliancedb</th></tr></thead>
@@ -159,7 +163,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer acc
 </p>
 </div>
 
-<h3>15.6 모니터링 metric</h3>
+<h3>17.6 모니터링 metric</h3>
 
 <h4>application metric</h4>
 <ul>
@@ -196,7 +200,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer acc
 <li>reconciliation mismatch 건수 (0 권장)</li>
 </ul>
 
-<h3>15.7 Anti-patterns — 도입 시 흔한 실수</h3>
+<h3>17.7 Anti-patterns — 도입 시 흔한 실수</h3>
 
 <h4>AP-1: Webhook signature 검증 누락</h4>
 <p>
@@ -268,7 +272,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer acc
 <strong>대응</strong>: BCP 절차 사전 수립. SLA 정책 + 알림 시스템.
 </p>
 
-<h3>15.8 운영 체크리스트 — 도입 시작 전</h3>
+<h3>17.8 운영 체크리스트 — 도입 시작 전</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>#</th><th>항목</th><th>완료 기준</th></tr></thead>
@@ -289,7 +293,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer acc
 </table>
 </div>
 
-<h3>15.9 관련 외부 reference</h3>
+<h3>17.9 관련 외부 reference</h3>
 <ul>
 <li><a href="../custodial-wallet-db-design/">직접 구축 — 수탁형 지갑 DB 설계</a> — 7-DB 구조 참고</li>
 <li><a href="../fireblocks-cold-wallet-bank-design/">Fireblocks Cold Wallet 도입</a> — Cold workspace 운영</li>
@@ -302,7 +306,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer acc
 
 </section>
 <nav aria-label="Section navigation" class="page-nav">
-<a class="page-nav-link page-nav-prev" href="risks.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">14. Risks</span></a>
+<a class="page-nav-link page-nav-prev" href="reconciliation-close.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">16. 대사 · 결산 · 마감</span></a>
 <span class="page-nav-spacer"></span>
 </nav>
 </main>
