@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>8. Webhook 처리 — Fireblocks 이벤트 수신 인프라</title>
+<meta content="Fireblocks webhook event 수신 / signature 검증 / idempotency / retry 처리" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a href="tables-user.html">4. Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a href="sm-transaction.html">7. Transaction State + 14-step</a></li>
+<li><a class="active" href="sm-webhook.html">8. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
+<li><a href="risks.html">11. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<li><a href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="webhook">
+<h2>8. Webhook 처리</h2>
+<span class="section-subtitle">Fireblocks 이벤트 수신 + HMAC-SHA512 검증 + idempotency + retry</span>
+
+<h3>8.1 Webhook 이란 — 은행 책임의 핵심</h3>
+<p>
+Fireblocks 가 거래 / vault / address / approval 등의 상태 변경을 발생시킬 때, 은행이 Fireblocks Console 에 등록한 endpoint URL 로 HTTPS POST 요청을 보낸다.
+이 webhook 수신 인프라는 <strong>은행 책임</strong>이며, 직접 구축의 chaindb / auditdb 역할 일부를 대체.
+</p>
+
+<h3>8.2 Webhook event 종류 (대표)</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Event type</th><th>발생 시점</th></tr></thead>
+<tbody>
+<tr><td><code>TRANSACTION_CREATED</code></td><td>거래 생성</td></tr>
+<tr><td><code>TRANSACTION_STATUS_UPDATED</code></td><td>거래 status 변경 (17 status 중 어느 것이든)</td></tr>
+<tr><td><code>TRANSACTION_APPROVAL_STATUS_UPDATED</code></td><td>Approval Group 의 quorum 진행 상황</td></tr>
+<tr><td><code>VAULT_ACCOUNT_ADDED</code></td><td>새 vault 생성</td></tr>
+<tr><td><code>VAULT_ACCOUNT_ASSET_ADDED</code></td><td>vault 에 새 asset wallet 추가</td></tr>
+<tr><td><code>VAULT_ACCOUNT_ASSET_BALANCE_UPDATED</code></td><td>잔액 변경 (입금 / 출금 / fee)</td></tr>
+<tr><td><code>NEW_DEPOSIT_ADDRESS_ADDED</code></td><td>새 deposit address 발급</td></tr>
+<tr><td><code>EXTERNAL_WALLET_ADDED / INTERNAL_WALLET_ADDED</code></td><td>counterparty 등록</td></tr>
+<tr><td><code>EXCHANGE_ACCOUNT_ADDED</code></td><td>거래소 계정 연동</td></tr>
+<tr><td><code>FIAT_ACCOUNT_ADDED</code></td><td>fiat 계좌 연동</td></tr>
+<tr><td><code>NETWORK_CONNECTION_*</code></td><td>Fireblocks Network counterparty 변경</td></tr>
+<tr><td><code>USER_ACTION_*</code></td><td>user 작업 (Admin Quorum 매개 등)</td></tr>
+<tr><td><code>POLICY_RULE_*</code></td><td>Policy rule 변경</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/configure-webhooks">Fireblocks — Configure Webhooks</a>
+</p>
+
+<h3>8.3 Webhook 보안 — HMAC-SHA512 검증</h3>
+<p>
+Fireblocks 가 webhook payload 를 <strong>HMAC-SHA512</strong> 로 서명하여 <code>Fireblocks-Signature</code> HTTP header 에 첨부.
+은행 endpoint 는 모든 incoming webhook 에 대해 signature 검증 필수.
+</p>
+
+<h4>검증 절차</h4>
+<ol>
+<li>HTTP request body 의 raw bytes 추출 (JSON parsing 전)</li>
+<li>Fireblocks 가 제공하는 webhook public key 와 함께 HMAC-SHA512 검증</li>
+<li>signature 불일치 → 401 Unauthorized 즉시 응답, payload 무시</li>
+<li>signature 일치 → idempotency 검사 (dedup) → mirrordb 저장</li>
+</ol>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/configure-webhooks">Configure Webhooks</a>
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ signature 검증 없는 webhook 처리 금지</div>
+<p style="margin-bottom:0">
+signature 검증 없는 webhook 처리는 <strong>위조 vector</strong>. 공격자가 임의 event 를 은행 endpoint 에 전송하여 mirror DB / 회계 / 알림 시스템을 오염시킬 수 있다.
+endpoint URL 이 공개되어 있다고 가정해야 함 (URL 자체는 secret 아님). signature 검증이 유일한 신뢰의 근거.
+</p>
+</div>
+
+<h3>8.4 Webhook 처리 흐름</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant FB as ☁️ Fireblocks
+  participant LB as 은행 LB / WAF
+  participant WS as Webhook Service
+  participant Q as 처리 큐 (Kafka / SQS)
+  participant Worker as Worker
+  participant DB as mirrordb
+
+  FB->>LB: POST /webhook/fireblocks<br/>(body + Fireblocks-Signature)
+  LB->>WS: forward
+  WS->>WS: HMAC-SHA512 검증
+  alt signature 불일치
+    WS-->>FB: 401 Unauthorized
+  else signature 일치
+    WS->>DB: webhook_dedup INSERT<br/>ON CONFLICT (event_id) DO NOTHING
+    alt 중복 event (이미 수신)
+      WS-->>FB: 200 OK (dedup, no-op)
+    else 새 event
+      WS->>Q: enqueue raw payload
+      WS-->>FB: 200 OK (수신 확인)
+      Q->>Worker: dequeue
+      Worker->>DB: webhook_events INSERT (append-only)
+      Worker->>DB: tx_mirror UPSERT
+      Worker->>DB: tx_status_history INSERT
+    end
+  end
+</pre>
+</div>
+<p class="diagram-caption">
+Webhook 의 표준 처리 흐름. signature 검증 → dedup → 큐잉 → worker 가 mirrordb 저장.
+200 OK 는 빨리 응답하고, 실제 처리는 비동기. Fireblocks 의 retry timeout 회피.
+</p>
+
+<h3>8.5 Idempotency — 중복 event 처리</h3>
+<p>
+Fireblocks 의 webhook 은 <strong>적어도 한 번 (at-least-once)</strong> 보장. 즉 같은 event 가 2 회 이상 전달될 수 있음.
+은행은 idempotency 로 중복 처리를 방지해야 함.
+</p>
+
+<h4><code>mirrordb.webhook_dedup</code></h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>event_id (PK, UNIQUE)</td><td>varchar</td><td>A-set</td><td>Fireblocks event UUID — UNIQUE 제약으로 중복 차단</td></tr>
+<tr><td>received_at</td><td>timestamptz</td><td>A-set</td><td>최초 수신 시점</td></tr>
+<tr><td>processed_at</td><td>timestamptz nullable</td><td>M-mut</td><td>worker 처리 완료 시점</td></tr>
+<tr><td>retry_count</td><td>integer</td><td>M-mut</td><td>Fireblocks 의 retry 횟수 (header 에서 추출)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4><code>mirrordb.webhook_events</code> — 모든 webhook 의 raw 로그 (append-only, 5년)</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>webhook_log_id (PK)</td><td>uuid</td><td>A-set</td><td>은행 내부 ID</td></tr>
+<tr><td>event_id</td><td>varchar</td><td>A-set</td><td>Fireblocks event UUID</td></tr>
+<tr><td>event_type</td><td>varchar</td><td>A-set</td><td>TRANSACTION_STATUS_UPDATED 등</td></tr>
+<tr><td>fb_workspace_id</td><td>varchar</td><td>A-set</td><td>workspace</td></tr>
+<tr><td>related_resource_id</td><td>varchar</td><td>A-set nullable</td><td>관련 tx_id / vault_id / address_id 등</td></tr>
+<tr><td>raw_payload</td><td>jsonb</td><td>A-set</td><td>HTTP body 전체 (JSON)</td></tr>
+<tr><td>signature_header</td><td>varchar</td><td>A-set</td><td>원본 Fireblocks-Signature header (검증 통과한 값)</td></tr>
+<tr><td>received_at</td><td>timestamptz</td><td>A-set</td><td>수신 시점</td></tr>
+<tr><td>source_ip</td><td>inet</td><td>A-set</td><td>요청 source IP (Fireblocks 측 IP)</td></tr>
+<tr><td>processing_status</td><td>enum</td><td>M-mut</td><td><code>pending / processed / failed</code></td></tr>
+<tr><td>processing_error</td><td>text nullable</td><td>M-mut</td><td>처리 실패 시 에러</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">왜 raw_payload 를 보존하는가</div>
+<p style="margin-bottom:0">
+parser 변경 / 분쟁 / 외부 감사 시점에 원본 payload 가 필요. 5년 보존 의무도 raw 가 정합성 증명에 유리.
+디스크 비용 vs audit 정확성의 trade-off — 일반적으로 audit 우선.
+</p>
+</div>
+
+<h3>8.6 Retry / Backoff 정책</h3>
+<p>
+Fireblocks 의 webhook 은 실패 시 자동 retry. 은행이 5xx 응답하면 Fireblocks 가 exponential backoff 로 재시도.
+</p>
+<ul>
+<li><strong>200 OK 빠른 응답이 우선</strong> — 5xx 응답하면 Fireblocks 가 retry 큐 형성, 운영 부담 증가</li>
+<li><strong>signature 불일치 = 401</strong> — Fireblocks 가 retry 하지 않음 (정상)</li>
+<li><strong>처리 실패는 200 OK 후 자체 retry 큐</strong> — Fireblocks 에 5xx 보내는 대신 자체 dead-letter queue 운영 권장</li>
+</ul>
+
+<h3>8.7 Webhook endpoint 보안 권장</h3>
+<ul>
+<li><strong>전용 endpoint 분리</strong> — application 의 다른 API 와 별도 path (예: <code>/webhook/fireblocks</code>)</li>
+<li><strong>WAF rule</strong> — Fireblocks 측 IP 만 허용 (Fireblocks 가 source IP 목록 제공)</li>
+<li><strong>rate limit</strong> — 정상 흐름의 10x 이상은 의심 (DDoS / 위조)</li>
+<li><strong>TLS 1.2+</strong> — TLS 1.0 / 1.1 금지</li>
+<li><strong>signature 검증 실패 alerting</strong> — 단일 실패도 운영팀 즉시 알림 (공격 시도 가능성)</li>
+</ul>
+
+<h3>8.8 Webhook 처리 실패 대응</h3>
+
+<h4><code>mirrordb.webhook_failures</code></h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>failure_id (PK)</td><td>은행 내부 ID</td></tr>
+<tr><td>webhook_log_id (FK)</td><td>실패한 webhook event</td></tr>
+<tr><td>failure_type</td><td><code>signature_mismatch / parse_error / db_error / worker_exception / timeout</code></td></tr>
+<tr><td>error_detail</td><td>text — 에러 stack trace / 원인</td></tr>
+<tr><td>occurred_at</td><td>실패 시점</td></tr>
+<tr><td>resolved_at</td><td>운영팀이 수동 처리 완료 시점</td></tr>
+<tr><td>resolved_by</td><td>처리한 운영자 (bank_user_id)</td></tr>
+<tr><td>resolution_note</td><td>처리 메모</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>8.9 정기 Reconciliation — webhook 누락 detection</h3>
+<p>
+webhook 이 네트워크 장애로 누락될 가능성 대응:
+</p>
+<ol>
+<li><strong>일일 sync</strong> — Fireblocks <code>GET /v1/transactions?after=&lt;timestamp&gt;</code> 로 24h 이내 거래 조회</li>
+<li>mirrordb 의 tx_mirror 와 대조 (fb_tx_id 기준)</li>
+<li>mirror 에 없는 거래 발견 → reconciliation_finding 으로 기록 + 운영팀 alert</li>
+<li>해당 거래의 webhook 을 Fireblocks Console 에서 manual replay 가능</li>
+</ol>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ webhook 의 손실은 운영자 책임</div>
+<p style="margin-bottom:0">
+Fireblocks 의 at-least-once 보장은 retry 정책의 max attempt 안에서 유효. retry max 초과 시 event 영구 손실 가능.
+은행은 정기 reconciliation 으로 누락 detection + Fireblocks Console 의 transaction list 가 1차 source 임을 전제로 운영.
+</p>
+</div>
+
+<h3>8.10 Webhook 운영 metric (저자 권장)</h3>
+<ul>
+<li><strong>throughput</strong> — 분당 webhook 수신 수</li>
+<li><strong>signature failure rate</strong> — 0 이 정상 (공격 시도 detection)</li>
+<li><strong>processing latency</strong> — webhook 수신 → mirrordb 저장 완료까지 (목표: p99 &lt; 500ms)</li>
+<li><strong>retry rate</strong> — Fireblocks 가 retry 한 비율 (높으면 은행 endpoint 가 느림)</li>
+<li><strong>worker queue depth</strong> — Kafka / SQS lag (높으면 worker 부족)</li>
+<li><strong>reconciliation mismatch count</strong> — 일일 reconciliation 의 mismatch 건수 (0 권장)</li>
+</ul>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="sm-transaction.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">7. Transaction State</span></a>
+<a class="page-nav-link page-nav-next" href="sm-deposit-withdrawal.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">9. Deposit · Withdrawal</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

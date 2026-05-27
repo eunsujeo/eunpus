@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>12. DB 운영 · Anti-patterns — Fireblocks 도입 시</title>
+<meta content="은행 customerdb / mirrordb / compliancedb 의 운영 + 도입 시 안티패턴" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a href="tables-user.html">4. Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a href="sm-transaction.html">7. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">8. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
+<li><a href="risks.html">11. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<li><a class="active" href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="db-ops">
+<h2>12. DB 운영 · Anti-patterns</h2>
+<span class="section-subtitle">customerdb / mirrordb / compliancedb 의 MySQL · PostgreSQL 운영 권장 + 안티패턴</span>
+
+<h3>12.1 DB 엔진 선택</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>DB</th><th>권장 엔진</th><th>근거</th></tr></thead>
+<tbody>
+<tr><td>customerdb</td><td>MySQL 8.0+ 또는 PostgreSQL 14+</td><td>mutable, 일반 application DB pattern</td></tr>
+<tr><td>mirrordb</td><td>PostgreSQL 14+ 권장</td><td>append-only + jsonb 광범위 사용 (webhook payload) + partition 효율</td></tr>
+<tr><td>compliancedb</td><td>PostgreSQL 14+ 권장</td><td>jsonb (IVMS101 등) + 외부 감사 query 효율</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">왜 PostgreSQL 권장 (mirrordb / compliancedb)</div>
+<ul style="margin-bottom:0">
+<li><strong>jsonb 의 성능</strong> — webhook payload 의 부분 query 효율 (예: <code>raw_payload-&gt;'data'-&gt;'tx'-&gt;'status'</code>)</li>
+<li><strong>partition 의 native 지원</strong> — declarative partitioning (월별 / 연도별)</li>
+<li><strong>row-level append-only enforcement</strong> — trigger / RLS 로 UPDATE/DELETE 차단 용이</li>
+<li><strong>extension</strong> — pg_partman (자동 partition), pgcrypto (hash chain) 등 활용</li>
+</ul>
+</div>
+
+<h3>12.2 partition 전략 — 5년 보존 대응</h3>
+
+<h4>mirrordb.webhook_events / tx_status_history / audit_log_mirror</h4>
+<ul>
+<li><strong>월별 partition</strong> — RANGE on (occurred_at_fb) or (received_at)</li>
+<li>현재 월 + 직전 12 개월 = hot tier (인덱스 활성)</li>
+<li>13 개월 ~ 5 년 = cold tier (compressed, archive)</li>
+<li>5 년 + 1 일 도래 시 → legal hold 검토 후 detach + archive 스토리지 이동</li>
+</ul>
+
+<h4>partition 자동화</h4>
+<ul>
+<li>PostgreSQL: <code>pg_partman</code> extension</li>
+<li>MySQL: 별도 cron / shell script (MySQL native partition 한계 보완)</li>
+<li>매월 1일 자동 partition 생성 (다음 월 대비)</li>
+<li>매월 1일 자동 archive (5년 도래 partition)</li>
+</ul>
+
+<h3>12.3 백업 정책</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>DB</th><th>RPO</th><th>RTO</th><th>방식</th></tr></thead>
+<tbody>
+<tr><td>customerdb</td><td>1 분</td><td>15 분</td><td>continuous WAL + 일일 base backup + cross-region replication</td></tr>
+<tr><td>mirrordb</td><td>1 분</td><td>15 분</td><td>continuous WAL + 일일 base backup + 5년 archive</td></tr>
+<tr><td>compliancedb</td><td>1 분</td><td>15 분</td><td>customerdb 와 동일</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>12.4 인덱스 설계 권장</h3>
+
+<h4>mirrordb.tx_mirror</h4>
+<ul>
+<li>(fb_tx_id) UNIQUE</li>
+<li>(fb_external_tx_id) — idempotency lookup</li>
+<li>(fb_workspace_id, created_at_fb DESC) — workspace 별 시계열</li>
+<li>(source_vault_id, created_at_fb DESC)</li>
+<li>(current_status, created_at_fb DESC) WHERE current_status IN ('PENDING_AUTHORIZATION', 'PENDING_SIGNATURE') — pending 거래 queue</li>
+<li>(tx_hash) WHERE tx_hash IS NOT NULL — on-chain hash 역조회</li>
+</ul>
+
+<h4>mirrordb.webhook_events</h4>
+<ul>
+<li>(event_id) UNIQUE</li>
+<li>(received_at DESC) — 시계열</li>
+<li>(event_type, received_at DESC)</li>
+<li>(related_resource_id) WHERE related_resource_id IS NOT NULL — 거래 / vault 별 lookup</li>
+</ul>
+
+<h4>mirrordb.audit_log_mirror</h4>
+<ul>
+<li>(sequence_num) UNIQUE</li>
+<li>(fb_event_id) UNIQUE</li>
+<li>(occurred_at_fb DESC) — 시계열</li>
+<li>(actor_user_id, occurred_at_fb DESC) — 사용자별 audit</li>
+<li>(event_category, event_type)</li>
+</ul>
+
+<h3>12.5 권한 분리 — DB account</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Account</th><th>customerdb</th><th>mirrordb</th><th>compliancedb</th></tr></thead>
+<tbody>
+<tr><td>application_rw</td><td>RW</td><td>R</td><td>R</td></tr>
+<tr><td>webhook_writer</td><td>—</td><td>RW (only INSERT)</td><td>—</td></tr>
+<tr><td>compliance_rw</td><td>R</td><td>R</td><td>RW</td></tr>
+<tr><td>audit_reader</td><td>R</td><td>R</td><td>R</td></tr>
+<tr><td>regulator_external</td><td>—</td><td>R (specific tables)</td><td>R (specific tables)</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">webhook_writer 의 INSERT-only</div>
+<p style="margin-bottom:0">
+mirrordb 는 append-only 가 핵심 — webhook_writer account 에 UPDATE / DELETE 권한을 주지 않음.
+PostgreSQL 의 row-level security 또는 trigger 로 INSERT 만 허용.
+worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer account (제한적 update 권한) 활용.
+</p>
+</div>
+
+<h3>12.6 모니터링 metric</h3>
+
+<h4>application metric</h4>
+<ul>
+<li>Fireblocks API call rate / latency (p50, p95, p99)</li>
+<li>Fireblocks API error rate (4xx / 5xx)</li>
+<li>API key 사용 빈도 / 시간대 패턴</li>
+</ul>
+
+<h4>webhook metric</h4>
+<ul>
+<li>분당 webhook 수신 수</li>
+<li>signature failure rate (0 권장)</li>
+<li>processing latency p99 &lt; 500ms</li>
+<li>worker queue depth</li>
+<li>retry rate</li>
+<li>dedup hit rate (중복 event 비율)</li>
+</ul>
+
+<h4>DB metric</h4>
+<ul>
+<li>partition 크기 / row count (월별)</li>
+<li>archive 진행 상황</li>
+<li>backup 완료 시점</li>
+<li>WAL lag (replica)</li>
+<li>connection pool 사용률</li>
+</ul>
+
+<h4>비즈니스 metric</h4>
+<ul>
+<li>일일 / 주간 / 월간 거래량 (deposit / withdrawal)</li>
+<li>Hot / Cold 자산 비율 (80% 컴플라이언스)</li>
+<li>AML flag 건수 / STR 보고 건수</li>
+<li>트래블룰 처리 건수</li>
+<li>reconciliation mismatch 건수 (0 권장)</li>
+</ul>
+
+<h3>12.7 Anti-patterns — 도입 시 흔한 실수</h3>
+
+<h4>AP-1: Webhook signature 검증 누락</h4>
+<p>
+<strong>실수</strong>: webhook endpoint 가 signature 검증 없이 payload 처리.
+<strong>결과</strong>: 공격자가 임의 event 위조 → mirror DB / 회계 / 알림 시스템 오염.
+<strong>대응</strong>: signature 검증 없는 webhook 처리 절대 금지. <a href="sm-webhook.html">8. Webhook 처리</a> 의 검증 절차 적용.
+</p>
+
+<h4>AP-2: idempotency 미구현</h4>
+<p>
+<strong>실수</strong>: webhook 처리 시 dedup 없이 매번 INSERT.
+<strong>결과</strong>: 같은 event 가 2 회 처리 → tx_status_history 중복 row, 잔액 mirror 오류, 회계 통합 오류.
+<strong>대응</strong>: webhook_dedup 의 UNIQUE 제약 + ON CONFLICT DO NOTHING.
+</p>
+
+<h4>AP-3: API secret 의 DB 평문 저장</h4>
+<p>
+<strong>실수</strong>: Fireblocks API secret 을 application DB 의 column 에 평문 저장.
+<strong>결과</strong>: DB 침해 시 모든 자산 위협 (API 권한으로 거래 시작 가능).
+<strong>대응</strong>: secret manager (Vault / Secrets Manager / Key Vault) 만. DB 에는 reference 만.
+</p>
+
+<h4>AP-4: Recovery passphrase 의 digital 보관</h4>
+<p>
+<strong>실수</strong>: passphrase 를 password manager / 사내 Wiki / Slack DM 등에 저장.
+<strong>결과</strong>: digital 저장 시점에 노출 risk 발생 (SPOC).
+<strong>대응</strong>: 물리 vault 의 sealed envelope + multi-custodian split.
+</p>
+
+<h4>AP-5: Mirror 가 canonical 이라고 가정</h4>
+<p>
+<strong>실수</strong>: 분쟁 시 mirrordb 의 거래 기록만 보고 결정.
+<strong>결과</strong>: Fireblocks Console 과 불일치 시 권리 행사 불가 / 손실 부담.
+<strong>대응</strong>: Fireblocks Console = 1차 source. mirror 는 보조. 항상 양측 정합성 reconciliation.
+</p>
+
+<h4>AP-6: KR 컴플라이언스 자동화 가정</h4>
+<p>
+<strong>실수</strong>: Fireblocks 도입 = KR 법규 자동 충족 으로 가정.
+<strong>결과</strong>: 5년 보존 / STR / 트래블룰 / 콜드월렛 80% 의무 위반 발견.
+<strong>대응</strong>: <a href="../fireblocks-kr-vasp-compliance/">국내 블록체인 사업 법규 × Fireblocks</a> 참조. 17 의무 명시적 매핑.
+</p>
+
+<h4>AP-7: Workspace type 변경 시도</h4>
+<p>
+<strong>실수</strong>: 도입 후 SaaS MPC → Hosted MPC 변경 시도 (또는 Key Link 로 변경).
+<strong>결과</strong>: <strong>workspace type immutable</strong> — 변경 불가. 새 workspace 생성 + 자산 cross-workspace transfer 필요.
+<strong>대응</strong>: 도입 전 충분한 검토. Phase 1 시범으로 적은 자산 검증 후 결정.
+</p>
+
+<h4>AP-8: omnibus vault 의 subledger 무결성 검증 누락</h4>
+<p>
+<strong>실수</strong>: omnibus 패턴 시 customer_balance_subledger 의 자체 변조 방지 매커니즘 없음.
+<strong>결과</strong>: DBA 가 row 변경해도 detection 불가 → 외부 감사 시 정합성 증명 불가.
+<strong>대응</strong>: subledger 에 hash chain 또는 정기 cross-DB reconciliation log.
+</p>
+
+<h4>AP-9: webhook endpoint 가 application server 와 동일</h4>
+<p>
+<strong>실수</strong>: 일반 API endpoint 와 webhook endpoint 가 같은 server / 같은 path prefix.
+<strong>결과</strong>: webhook 의 부하가 일반 service 영향. signature 검증 / rate limit 정책 혼동.
+<strong>대응</strong>: webhook 전용 service 분리. 별도 path / port / WAF rule.
+</p>
+
+<h4>AP-10: BCP / Vendor outage 시나리오 미수립</h4>
+<p>
+<strong>실수</strong>: Fireblocks SaaS 가 항상 가용하다고 가정.
+<strong>결과</strong>: 실제 장애 발생 시 사용자 응답 정책 부재 → 신뢰 손실.
+<strong>대응</strong>: BCP 절차 사전 수립. SLA 정책 + 알림 시스템.
+</p>
+
+<h3>12.8 운영 체크리스트 — 도입 시작 전</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>항목</th><th>완료 기준</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>workspace type 결정</td><td>은행 경영 + 보안팀 + 컴플라이언스 합의</td></tr>
+<tr><td>2</td><td>3 DB 구축 (customerdb / mirrordb / compliancedb)</td><td>schema migration + 권한 분리 완료</td></tr>
+<tr><td>3</td><td>webhook endpoint HA 구성</td><td>2-node + load balancer + signature 검증 테스트</td></tr>
+<tr><td>4</td><td>API key + secret manager 통합</td><td>secret manager 의 access policy + audit 통합</td></tr>
+<tr><td>5</td><td>Approval Group quorum 인원 확보</td><td>3-5 인 Admin + mobile 페어링 + drill</td></tr>
+<tr><td>6</td><td>Recovery passphrase ceremony 수립</td><td>multi-custodian split + 물리 vault + drill</td></tr>
+<tr><td>7</td><td>AML provider 통합</td><td>Chainalysis / Elliptic / TRM 선택 + 통합 테스트</td></tr>
+<tr><td>8</td><td>트래블룰 provider 통합</td><td>Notabene / Sumsub / TRP 선택 + 통합 테스트</td></tr>
+<tr><td>9</td><td>5년 retention 정책</td><td>partition 운영 + archive 자동화</td></tr>
+<tr><td>10</td><td>BCP / DR plan</td><td>vendor outage 시 사용자 응답 SLA</td></tr>
+<tr><td>11</td><td>reconciliation 자동화</td><td>일일 / 주간 / 월간 schedule + alert</td></tr>
+<tr><td>12</td><td>외부 감사 / 금감원 대응 절차</td><td>access policy + 데이터 추출 절차 + audit log retention</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>12.9 관련 외부 reference</h3>
+<ul>
+<li><a href="../custodial-wallet-db-design/">직접 구축 — 수탁형 지갑 DB 설계</a> — 7-DB 구조 참고</li>
+<li><a href="../fireblocks-cold-wallet-bank-design/">Fireblocks Cold Wallet 도입</a> — Cold workspace 운영</li>
+<li><a href="../fireblocks-key-link-bank-design/">Fireblocks Key Link</a> — customer HSM 통합</li>
+<li><a href="../fireblocks-kr-vasp-compliance/">국내 블록체인 사업 법규 × Fireblocks</a> — KR 17 의무 매핑</li>
+<li><a href="../nodewallet-bank-design/">NodeWallet 은행 도입</a> — 비교 reference (자체 인프라 + 망분리)</li>
+<li><a href="https://developers.fireblocks.com/">Fireblocks Developer Portal</a> — 공식 API · SDK · webhook 문서</li>
+<li><a href="https://support.fireblocks.io/">Fireblocks Help Center</a> — 공식 운영 / 거버넌스 문서</li>
+</ul>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="risks.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">11. Risks</span></a>
+<span class="page-nav-spacer"></span>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

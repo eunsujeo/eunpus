@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>2. DB 분할 — Fireblocks 도입 시 단순화된 3-DB 구조</title>
+<meta content="Fireblocks 도입 시 은행 DB 가 7개 → 3개로 단순화되는 구조" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a class="active" href="db-split.html">2. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a href="tables-user.html">4. Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a href="sm-transaction.html">7. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">8. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
+<li><a href="risks.html">11. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<li><a href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="db-split">
+<h2>2. DB 분할</h2>
+<span class="section-subtitle">7 DB → 3 DB 단순화 — Fireblocks 가 떠맡는 책임만큼 은행 DB 가 줄어든다</span>
+
+<h3>2.1 직접 구축의 7-DB → 도입 후 3-DB</h3>
+<p>
+직접 구축 reference (<a href="../custodial-wallet-db-design/db-split.html">2. DB 분할</a>) 의 7 DB 중 어떤 것이 Fireblocks 로 흡수되고, 어떤 것이 은행에 남는가:
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>직접 구축 DB</th><th>책임</th><th>Fireblocks 도입 시</th></tr></thead>
+<tbody>
+<tr><td><strong>walletdb</strong></td><td>workspace · vault · 사용자 · counterparty</td><td>✅ Fireblocks 가 흡수 (Console + API). 은행은 <strong>customerdb 만</strong> (고객 ↔ vault 매핑 + counterparty registry)</td></tr>
+<tr><td><strong>ledgerdb</strong></td><td>잔액 · 이체 이력 · balance cache</td><td>⚠️ 부분 — Fireblocks 가 잔액 API 제공. 은행은 <strong>mirrordb 에 balance snapshot mirror</strong> + 자체 회계 통합 (별도 ledger 운영 권장 — 저자)</td></tr>
+<tr><td><strong>approverdb</strong></td><td>정책 + 승인 결정</td><td>✅ Fireblocks 가 흡수 (Console Policy 화면 + Approval Group). 은행 DB 에는 정책 자체를 저장하지 않음 — mirrordb 에 결정 이벤트 mirror</td></tr>
+<tr><td><strong>auditdb</strong></td><td>변조방지 audit log</td><td>⚠️ Fireblocks Console 의 immutable log 가 1차. 은행은 <strong>mirrordb 에 5년 보존용 mirror</strong> (특금법 5조의4)</td></tr>
+<tr><td><strong>chaindb</strong></td><td>tx · broadcast · chain event · AML</td><td>⚠️ 부분 — Fireblocks 가 transaction lifecycle 운영. 은행은 mirrordb 에 webhook 으로 mirror</td></tr>
+<tr><td><strong>providerdb</strong></td><td>외부 system 매핑 (AML provider · IdP)</td><td>⚠️ Fireblocks 가 AML provider 통합 제공. 은행은 <strong>compliancedb 에 KR 컴플라이언스 / 트래블룰 / 금감원 보고</strong></td></tr>
+<tr><td><strong>recondb</strong></td><td>정산 결과</td><td>✅ 선택 — mirrordb 안에 reconciliation 결과 column 추가 (별도 DB 불필요, 저자 추정)</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">결론 — 은행이 운영하는 DB 는 2-3 개</div>
+<ul style="margin-bottom:0">
+<li><strong>customerdb</strong> — 고객 (은행 사용자) ↔ Fireblocks vault account 매핑 + counterparty registry + 은행 user 정보</li>
+<li><strong>mirrordb</strong> — Fireblocks webhook 이벤트 수신 + 5년 보존 + audit mirror + balance snapshot</li>
+<li><strong>compliancedb</strong> (선택) — KR 컴플라이언스 / 트래블룰 / 금감원 보고용 별도 DB. 작은 시작 시 mirrordb 와 통합 가능</li>
+</ul>
+</div>
+
+<h3>2.2 각 DB 의 책임 / 테이블 / 도메인 매핑</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>DB</th><th>책임</th><th>들어가는 데이터 (테이블)</th><th>변경 패턴</th><th>주 사용 cluster</th></tr></thead>
+<tbody>
+<tr><td><strong>customerdb</strong></td><td>은행 도메인 — 고객 ↔ Fireblocks 매핑</td>
+  <td>
+    <small style="color:var(--text-tertiary)"><strong>① 은행 사용자</strong></small><br/>
+    bank_users · bank_user_sessions<br/>
+    <small style="color:var(--text-tertiary); margin-top:6px; display:inline-block"><strong>② Fireblocks 매핑</strong></small><br/>
+    fb_workspace_link · fb_vault_account_map · fb_user_map · fb_api_key_meta<br/>
+    <small style="color:var(--text-tertiary); margin-top:6px; display:inline-block"><strong>③ Counterparty registry</strong></small><br/>
+    whitelisted_destinations · internal_wallet_map · exchange_account_map
+  </td>
+  <td>mutable</td>
+  <td><strong>B</strong> Workspace · <strong>C</strong> Users · D 보조</td></tr>
+<tr><td><strong>mirrordb</strong></td><td>Fireblocks 이벤트 mirror — append-only 5년 보존</td>
+  <td>
+    <small style="color:var(--text-tertiary)"><strong>① Webhook event log</strong></small><br/>
+    webhook_events · webhook_dedup · webhook_failures<br/>
+    <small style="color:var(--text-tertiary); margin-top:6px; display:inline-block"><strong>② Transaction mirror</strong></small><br/>
+    tx_mirror · tx_status_history · tx_destinations_mirror<br/>
+    <small style="color:var(--text-tertiary); margin-top:6px; display:inline-block"><strong>③ Audit mirror</strong></small><br/>
+    audit_log_mirror · vault_account_lifecycle_mirror · address_lifecycle_mirror<br/>
+    <small style="color:var(--text-tertiary); margin-top:6px; display:inline-block"><strong>④ Balance snapshot</strong></small><br/>
+    balance_snapshots · asset_value_kRW
+  </td>
+  <td>strictly append-only</td>
+  <td><strong>F</strong> Transaction · <strong>G</strong> Audit</td></tr>
+<tr><td><strong>compliancedb</strong> (선택)</td><td>KR 컴플라이언스 — 트래블룰 · 금감원 보고</td>
+  <td>
+    travel_rule_records · vasp_counterparty · screening_results · regulator_reports · sanctions_check · suspicious_tx_review
+  </td>
+  <td>append-only + mutable</td>
+  <td><strong>G</strong> Compliance</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>2.3 서비스 → DB write 매핑</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  AppSvc["은행 application<br/>(REST 호출)"]
+  WebhookSvc["Webhook 수신 service<br/>(HMAC-SHA512 검증)"]
+  ComplSvc["Compliance service<br/>(트래블룰 / KYT)"]
+
+  CustDB["customerdb<br/>고객 매핑"]
+  MirrorDB["mirrordb<br/>이벤트 mirror"]
+  ComplDB["compliancedb<br/>KR 컴플라이언스"]
+
+  AppSvc --> CustDB
+  WebhookSvc --> MirrorDB
+  ComplSvc --> ComplDB
+  ComplSvc -.read.-> MirrorDB
+  AppSvc -.read.-> MirrorDB
+
+  classDef svc fill:#dbeafe,stroke:#1e40af
+  classDef db fill:#fef3c7,stroke:#92400e
+
+  class AppSvc,WebhookSvc,ComplSvc svc
+  class CustDB,MirrorDB,ComplDB db
+</pre>
+</div>
+<p class="diagram-caption">
+한 service = 한 DB 의 owner. application service 는 customerdb 만, webhook service 는 mirrordb 만 write.
+compliance service 는 compliancedb write + mirrordb read.
+</p>
+
+<h3>2.4 분할의 근거 — 직접 구축 5 근거 중 도입 후에도 유효한 것</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>근거</th><th>도입 후 적용</th></tr></thead>
+<tbody>
+<tr><td><strong>① 민감도 격리</strong></td><td>유효 — customerdb 의 고객 PII 와 mirrordb 의 거래 기록 분리</td></tr>
+<tr><td><strong>② 변경 패턴 분리</strong></td><td>유효 — mirrordb 는 strictly append-only (webhook 받은 그대로), customerdb 는 mutable (사용자 이름 등 변경)</td></tr>
+<tr><td><strong>③ 사고 범위 축소</strong></td><td>유효 — mirrordb 가 SQL injection 으로 corrupt 되어도 customerdb 의 고객 정보는 별개 DB 라 안전</td></tr>
+<tr><td><strong>④ 운영 권한 분리</strong></td><td>유효 — webhook service 의 DB account 가 customerdb 에 write 권한 없음</td></tr>
+<tr><td><strong>⑤ 외부 감사 단순화</strong></td><td>유효 + 강화 — 금감원 / 회계감사관은 mirrordb 만 read-only. 고객 개인정보 (customerdb) 비공개 가능</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>2.5 단순화의 trade-off</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>제약</th><th>의미 + 해결책</th></tr></thead>
+<tbody>
+<tr><td><strong>① 진실 source = Fireblocks Console</strong></td>
+  <td>은행 mirrordb 는 mirror 이므로 canonical source 가 아님. 분쟁 시 Fireblocks Console 의 immutable log 가 1차. 은행은 mirror 가 정확함을 reconciliation 으로 증명해야 함.</td></tr>
+<tr><td><strong>② Webhook 손실 risk</strong></td>
+  <td>네트워크 장애 / 은행 서버 다운 시 webhook 누락 가능. <strong>해결</strong>: (a) Fireblocks 의 retry 정책 활용
+    <a href="https://developers.fireblocks.com/docs/configure-webhooks">(Configure Webhooks)</a>,
+    (b) 정기 reconciliation (Fireblocks REST API 의 List Transactions 로 mirror 와 대조)</td></tr>
+<tr><td><strong>③ Vendor outage 시 운영 중단</strong></td>
+  <td>Fireblocks SaaS 장애 = 은행 거래 처리 중단. <strong>해결</strong>: 사용자 응답 시간 정책 + 알림 시스템 + queue. 직접 구축에는 없는 새 risk.</td></tr>
+<tr><td><strong>④ 5년 보존 의무 (KR 특금법)</strong></td>
+  <td>Fireblocks 의 Console log 보존 정책이 5 년 충족 여부는 vendor 확인 필요. <strong>해결</strong>: mirrordb 에 자체 5년 retention 적용 — partition + cold storage archive</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>2.6 Storage Class (column 동작) — 도입 후 적용</h3>
+<p>
+직접 구축의 7 storage class 중 도입 후 은행 DB 에서 자주 쓰이는 4 가지:
+</p>
+<ul>
+<li><strong>M-mut (Mutable)</strong> — customerdb 의 bank_users.name 등. 자유 update</li>
+<li><strong>M-cache</strong> — mirrordb 의 balance_snapshots.value_krw 등. canonical source 는 Fireblocks (stale 가능, refresh 정책 필요)</li>
+<li><strong>A-row (Append-only row)</strong> — mirrordb 의 webhook_events. 새 행만 추가, UPDATE/DELETE 금지</li>
+<li><strong>A-set (Set-once)</strong> — mirrordb 의 tx_mirror.fb_tx_id, tx_mirror.created_at_fb. 한 번 write 후 변경 불가</li>
+</ul>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ 절대 어떤 column 에도 저장 금지 (F-bid)</div>
+<p style="margin-bottom:0">
+직접 구축에서와 동일 — 모든 은행 DB column 에 다음 절대 저장 금지:
+</p>
+<ul style="margin-bottom:0">
+<li>Fireblocks API secret 평문 (secret manager 만 가능)</li>
+<li>MPC private key share (직접 구축 시에도, 도입 시에도 동일하게 금지)</li>
+<li>Mobile device 의 KeyChain 내용</li>
+<li>Recovery passphrase (Workspace Keys Backup 의 입력)</li>
+<li>HSM PIN (Key Link 시)</li>
+<li>외부 IdP password (SSO 위임)</li>
+</ul>
+</div>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="architecture.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">1. 책임 분담</span></a>
+<a class="page-nav-link page-nav-next" href="tables-workspace-vault.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">3. Workspace · Vault</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Overview — Fireblocks 도입 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks 를 도입한 은행의 수탁형 지갑 — 책임 분담, DB 구조, 상태 흐름" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a class="active" href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">4. Users</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">7. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">8. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit &amp; Compliance</h3>
+<ul>
+<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
+<li><a href="risks.html">11. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Ops</h3>
+<ul>
+<li><a href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="overview">
+<h1>Fireblocks 도입 수탁형 지갑 — DB 구조와 상태 흐름</h1>
+<p class="lead">
+은행이 <strong>Fireblocks 를 도입하여</strong> 수탁형 지갑을 운영할 때의 인프라 · DB 구조 · 상태 흐름 reference.
+직접 구축 reference (<a href="../custodial-wallet-db-design/">수탁형 지갑 — DB 구조와 상태 흐름</a>) 의 mirror 본으로,
+"무엇을 Fireblocks 가 책임지고, 무엇을 은행이 여전히 운영해야 하는가" 의 분담을 정리한다.
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">본 문서의 출처 원칙</div>
+<p>모든 fact 진술은 Fireblocks 공식 문서 (Help Center / Developer Portal / 공식 블로그) URL 을 직접 링크로 표기.</p>
+<ul style="margin-bottom:0">
+<li><strong>공식 문서에 정의된 사실</strong> — Fireblocks 공식 URL 링크 명시</li>
+<li><strong>저자가 합리적으로 추정한 운영 권장</strong> — "저자 추정" 명시 (참고용, 본인 환경 검증 권장)</li>
+</ul>
+</div>
+
+<h2>10 초 요약 — 직접 구축 vs Fireblocks 도입</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>축</th><th>직접 구축</th><th>Fireblocks 도입</th></tr></thead>
+<tbody>
+<tr><td><strong>주 운영자</strong></td><td>은행이 모든 인프라</td><td>Fireblocks SaaS 가 core / 은행은 mirror + integration</td></tr>
+<tr><td><strong>키 보유</strong></td><td>은행이 MPC 키 share 전부 또는 다수</td><td>옵션별: SaaS MPC (Cloud share 보유) / Hosted MPC (Co-signer 보유) / <strong>Key Link (전량 고객 HSM)</strong></td></tr>
+<tr><td><strong>DB 개수</strong></td><td>7 DB (walletdb · ledgerdb · approverdb · auditdb · chaindb · providerdb · recondb)</td><td><strong>2-3 DB 면 충분</strong> (customerdb + mirrordb [+compliancedb])</td></tr>
+<tr><td><strong>상태 머신 책임</strong></td><td>은행이 17 transaction state · 14-step · approval · signing 전부 운영</td><td>Fireblocks 가 17 state 운영, 은행은 <strong>webhook 으로 mirror</strong></td></tr>
+<tr><td><strong>거버넌스 책임</strong></td><td>은행이 Admin Quorum · Approval Group · Policy/TAP 직접 구축</td><td>Fireblocks Console 이 governance plane. 은행은 user 등록 + 정책 설정</td></tr>
+<tr><td><strong>감사 로그</strong></td><td>은행의 append-only auditdb</td><td>Fireblocks Console 의 immutable audit log + <strong>은행은 5 년 보존을 위한 mirror</strong></td></tr>
+<tr><td><strong>주요 책임</strong></td><td>모든 것</td><td>① 은행 사용자 ↔ Fireblocks user 매핑 / ② webhook 수신 + 5 년 보존 / ③ AML · 트래블룰 / ④ KR 컴플라이언스 / ⑤ vendor outage 대응</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>도입의 핵심 효과</h2>
+<ul>
+<li><strong>인프라 운영 부담 감소</strong> — MPC 키 분포 · cosigner 운영 · 정책 엔진 · audit log 보안 등 깊은 보안 인프라를 Fireblocks 가 담당</li>
+<li><strong>DB 가 단순해진다</strong> — 7 DB → 2-3 DB. 단 webhook 수신/idempotency/5년 보존 책임은 여전히 은행</li>
+<li><strong>vendor lock-in + outage 의존성 발생</strong> — 새로운 risk register 필요 (<a href="risks.html">11. Risks Register</a>)</li>
+<li><strong>KR 컴플라이언스는 여전히 은행 책임</strong> — Fireblocks 가 자동 제공하지 않음 (특금법 · 가상자산이용자보호법 · 가상자산업감독규정 등)
+  — 상세는 <a href="../fireblocks-kr-vasp-compliance/">국내 블록체인 사업 법규 × Fireblocks</a> 참조</li>
+</ul>
+
+<h2>이 문서의 8 가지 도메인</h2>
+<p>
+직접 구축 reference (<a href="../custodial-wallet-db-design/">custodial-wallet-db-design</a>) 의 8 도메인을 그대로 mirror.
+도메인별로 "Fireblocks 책임" 과 "은행 책임" 을 구분하여 정리.
+</p>
+<div class="table-wrap">
+<table class="overview-domains">
+<thead><tr><th>도메인</th><th>다루는 내용</th><th>진입점</th></tr></thead>
+<tbody>
+<tr><td>A. Architecture</td>
+  <td>책임 분담 다이어그램 · trust boundary · 3 product option (SaaS MPC / Hosted MPC / Key Link) · 단순화된 DB 분할</td>
+  <td><a href="architecture.html">1. 책임 분담</a></td></tr>
+<tr><td>B. Workspace</td>
+  <td>Workspace ↔ 은행 매핑 · Vault Account · Asset Wallet · Deposit Address mirror</td>
+  <td><a href="tables-workspace-vault.html">3. Workspace · Vault</a></td></tr>
+<tr><td>C. Users</td>
+  <td>은행 사용자 ↔ Fireblocks Console / API / Mobile user 매핑 · 2FA · SSO · IP allowlist</td>
+  <td><a href="tables-user.html">4. Users</a></td></tr>
+<tr><td>D. Governance</td>
+  <td>9 user role · Admin Quorum · Approval Group · TAP / Policy rule</td>
+  <td><a href="tables-governance.html">5. Roles · Quorum</a></td></tr>
+<tr><td>E. Crypto</td>
+  <td>3 option (SaaS MPC / Hosted MPC / Key Link) · Cosigner deployment 6 options · Recovery (Fireblocks 책임)</td>
+  <td><a href="tables-crypto.html">6. MPC · Key Link</a></td></tr>
+<tr><td>F. Transaction</td>
+  <td>17 state machine (Fireblocks 가 운영) · 14-step (은행은 webhook 으로 관찰) · Deposit/Withdrawal lifecycle</td>
+  <td><a href="sm-transaction.html">7. Tx State</a></td></tr>
+<tr><td>G. Audit</td>
+  <td>Fireblocks Audit Log · 은행 mirror (5년 보존) · AML provider 연동 · Travel Rule</td>
+  <td><a href="tables-audit.html">10. Audit</a></td></tr>
+<tr><td>H. Ops</td>
+  <td>DB 운영 · webhook idempotency · anti-patterns</td>
+  <td><a href="db-ops.html">12. DB 운영</a></td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>책임 분담 — 한눈에 보기</h2>
+<p>
+도입 후 시스템 책임이 어떻게 나뉘는지 시각화.
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  subgraph fb["☁️ Fireblocks SaaS (vendor 책임)"]
+    direction TB
+    FBcore["Core: MPC · Cosigner · Policy Engine · TAP<br/>Secure Vault · Auth Engine"]
+    FBwks["Workspace · Vault Account · Asset Wallet · Address"]
+    FBgov["Governance: Admin Quorum · Approval Group"]
+    FBlog["Immutable Audit Log (Console)"]
+    FBevt["Webhook events (TRANSACTION_*, VAULT_ACCOUNT_*, ...)"]
+  end
+
+  subgraph bank["🏢 은행 책임"]
+    direction TB
+    CDB["customerdb<br/>은행 고객 ↔ Fireblocks user/vault 매핑"]
+    MDB["mirrordb<br/>Webhook 수신 + 5년 보존<br/>(idempotency · audit trail)"]
+    AMLp["AML / Travel Rule<br/>provider 연동 + KR 컴플라이언스"]
+    REPORT["금감원 보고 · 회계 · BCP"]
+  end
+
+  FBevt -->|webhook HTTPS<br/>HMAC-SHA512 서명| MDB
+  CDB <-->|API 호출<br/>vault account 생성/조회| FBwks
+  CDB <-->|user 생성 · 정책 설정| FBgov
+  MDB --> AMLp
+  MDB --> REPORT
+
+  classDef fbcloud fill:#dbeafe,stroke:#2563eb
+  classDef bankops fill:#dcfce7,stroke:#16a34a
+  classDef compliance fill:#fef3c7,stroke:#d97706
+
+  class FBcore,FBwks,FBgov,FBlog,FBevt fbcloud
+  class CDB,MDB bankops
+  class AMLp,REPORT compliance
+</pre>
+</div>
+<p class="diagram-caption">
+파랑 = Fireblocks SaaS (vendor 가 운영) · 초록 = 은행이 운영하는 mirror DB · 노랑 = 컴플라이언스 책임.
+은행은 webhook 수신과 API 호출을 통해 Fireblocks 와 통신. 5 년 보존 · AML · 금감원 보고는 은행 책임.
+</p>
+
+<h2>핵심 invariant (7)</h2>
+<ol>
+<li><strong>Workspace type 은 immutable</strong> — 한 번 SaaS MPC / Hosted MPC / Key Link 로 생성한 workspace 는 다른 type 으로 변환 불가.
+  <a href="https://support.fireblocks.io/hc/en-us/articles/14228517105052-Fireblocks-Key-Link-Overview">(Fireblocks Key Link Overview)</a></li>
+<li><strong>Vault Account = 1 ECDSA + 1 EdDSA</strong> (Key Link 시) — 각 vault 에 algorithm 별 1 키만 할당.
+  <a href="https://support.fireblocks.io/hc/en-us/articles/14231441357340-Set-up-your-Fireblocks-Vault-with-Key-Link">(Set up your Fireblocks Vault with Key Link)</a></li>
+<li><strong>Webhook 은 idempotent</strong> 해야 한다 — 같은 event 가 중복 수신될 수 있으므로 event ID 기반 dedup 필수.
+  <a href="https://developers.fireblocks.com/docs/configure-webhooks">(Configure Webhooks)</a></li>
+<li><strong>Webhook signature 검증 필수</strong> — Fireblocks 가 HMAC-SHA512 로 서명. signature 검증 없는 webhook 처리는 위조 vector.
+  <a href="https://developers.fireblocks.com/docs/configure-webhooks">(Configure Webhooks)</a></li>
+<li><strong>Admin Quorum 매개 작업은 mobile app 으로만</strong> — Console 에서 시작, mobile 에서 quorum 승인.
+  <a href="https://support.fireblocks.io/hc/en-us/articles/10371416837788-Transfer-workspace-Owner">(Fireblocks Help Center)</a></li>
+<li><strong>은행 audit trail = Fireblocks audit + 자체 mirror</strong> — Fireblocks 가 immutable log 제공하지만 은행의 5년 보존 의무 (특금법 5조의4) 는 자체 mirror 필수.
+  <a href="https://www.law.go.kr/법령/특정금융거래정보의보고및이용등에관한법률">(특금법)</a></li>
+<li><strong>키 material 은 어떤 은행 DB 에도 저장 금지</strong> — Fireblocks 가 키를 관리 (Key Link 의 경우 고객 HSM). 은행 application DB 어디에도 private key / mnemonic / MPC share 가 저장되어선 안 됨.</li>
+</ol>
+
+<h2>이 문서가 다루지 <em>않는</em> 것</h2>
+<ul>
+<li><strong>Fireblocks 내부 DB 구조</strong> — Fireblocks 가 미공개. 본 문서는 은행 측 DB 만 다룸</li>
+<li><strong>Fireblocks Console UI 사용법</strong> — 공식 <a href="https://support.fireblocks.io/">Help Center</a> 참조</li>
+<li><strong>Fireblocks SDK 사용법</strong> — 공식 <a href="https://developers.fireblocks.com/">Developer Portal</a> 참조</li>
+<li><strong>KR VASP 컴플라이언스 매핑</strong> — 별도 reference <a href="../fireblocks-kr-vasp-compliance/">국내 블록체인 사업 법규 × Fireblocks</a> 참조</li>
+<li><strong>Cold Wallet workspace 운영</strong> — 별도 reference <a href="../fireblocks-cold-wallet-bank-design/">은행 Fireblocks Cold Wallet 도입</a> 참조</li>
+<li><strong>Key Link customer HSM 통합</strong> — 별도 reference <a href="../fireblocks-key-link-bank-design/">Fireblocks Key Link — Customer HSM 통합</a> 참조</li>
+</ul>
+
+<h2>가장 자주 인용되는 출처 (외부 링크)</h2>
+<ul>
+<li><a href="https://support.fireblocks.io/">Fireblocks Help Center</a> — 운영 / 거버넌스 / workspace 관련 공식 문서</li>
+<li><a href="https://developers.fireblocks.com/">Fireblocks Developer Portal</a> — API · SDK · webhook · cosigner 관련 공식 문서</li>
+<li><a href="https://developers.fireblocks.com/docs/introduction">Developer Portal — Introduction</a> — 전체 architecture 개요</li>
+<li><a href="https://developers.fireblocks.com/docs/configure-webhooks">Configure Webhooks</a> — webhook 설정 · 검증 · idempotency</li>
+<li><a href="https://developers.fireblocks.com/docs/manage-users">Manage Users</a> — user / role 관리</li>
+<li><a href="https://support.fireblocks.io/hc/en-us/articles/14228517105052-Fireblocks-Key-Link-Overview">Fireblocks Key Link Overview</a> — customer-held HSM 통합</li>
+<li><a href="https://www.fireblocks.com/blog/enterprise-digital-asset-security-fireblocks-thales">Enterprise Digital Asset Security with Fireblocks and Thales (2025-09-23)</a> — Hot/Warm/Cold 3-mode</li>
+</ul>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<span class="page-nav-spacer"></span>
+<a class="page-nav-link page-nav-next" href="architecture.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">1. 책임 분담 · Trust Boundary</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

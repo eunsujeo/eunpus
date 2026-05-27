@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>7. Transaction State + 14-step — Fireblocks 의 거래 라이프사이클</title>
+<meta content="Fireblocks 의 17 transaction state + 14-step flow — 은행 mirror 관점" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a href="tables-user.html">4. Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a class="active" href="sm-transaction.html">7. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">8. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
+<li><a href="risks.html">11. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<li><a href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="tx-state">
+<h2>7. Transaction State + 14-step</h2>
+<span class="section-subtitle">Fireblocks 가 운영하는 17-status state machine — 은행은 webhook 으로 mirror</span>
+
+<h3>7.1 Fireblocks 의 17 transaction status</h3>
+<p>
+Fireblocks 가 거래에 대해 정의한 status 는 17 가지. 모두 webhook event 로 은행에 전달됨.
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>Status</th><th>의미</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><code>SUBMITTED</code></td><td>거래 요청이 Fireblocks 에 접수</td></tr>
+<tr><td>2</td><td><code>QUEUED</code></td><td>처리 대기 (이전 거래의 dependency 등)</td></tr>
+<tr><td>3</td><td><code>PENDING_AUTHORIZATION</code></td><td>Approval Group quorum 의 mobile 승인 대기</td></tr>
+<tr><td>4</td><td><code>PENDING_SIGNATURE</code></td><td>Designated Signer 의 서명 대기</td></tr>
+<tr><td>5</td><td><code>PENDING_3RD_PARTY_MANUAL_APPROVAL</code></td><td>외부 시스템 (거래소 API 등) 의 추가 승인 대기</td></tr>
+<tr><td>6</td><td><code>PENDING_3RD_PARTY</code></td><td>외부 처리 진행 중</td></tr>
+<tr><td>7</td><td><code>PARTIALLY_COMPLETED</code></td><td>일부 destination 만 완료 (multi-destination tx)</td></tr>
+<tr><td>8</td><td><code>BROADCASTING</code></td><td>blockchain 으로 broadcast 시작</td></tr>
+<tr><td>9</td><td><code>CONFIRMING</code></td><td>blockchain confirmation 진행 (1 → N confirmations)</td></tr>
+<tr><td>10</td><td><code>COMPLETED</code></td><td>최종 확정</td></tr>
+<tr><td>11</td><td><code>CANCELLED</code></td><td>사용자 / 운영자가 취소</td></tr>
+<tr><td>12</td><td><code>REJECTED</code></td><td>Approval Group / TAP 가 거절</td></tr>
+<tr><td>13</td><td><code>FAILED</code></td><td>처리 실패 (network / 잔액 부족 등)</td></tr>
+<tr><td>14</td><td><code>BLOCKED</code></td><td>Policy rule 의 BLOCK action</td></tr>
+<tr><td>15</td><td><code>TIMEOUT</code></td><td>승인 / 서명 timeout</td></tr>
+<tr><td>16</td><td><code>CONFIRMED</code></td><td>일부 chain 의 finality 도달 (CONFIRMING 의 변형)</td></tr>
+<tr><td>17</td><td><code>DROPPED</code></td><td>mempool drop (chain 에서 거부)</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/reference/create-a-new-transaction">Create a New Transaction API</a> ·
+<a href="https://developers.fireblocks.com/docs/configure-webhooks">Configure Webhooks</a>
+</p>
+
+<h3>7.2 7 Operation Types</h3>
+<p>
+Fireblocks 의 거래는 operation type 에 따라 다른 lifecycle 을 가짐.
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Operation</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td><code>TRANSFER</code></td><td>자산 송금 (가장 일반적)</td></tr>
+<tr><td><code>MINT</code></td><td>토큰 발행 (issuer 가 새 token 생성)</td></tr>
+<tr><td><code>BURN</code></td><td>토큰 소각</td></tr>
+<tr><td><code>CONTRACT_CALL</code></td><td>smart contract 호출 (ETH / EVM)</td></tr>
+<tr><td><code>TYPED_MESSAGE</code></td><td>EIP-712 typed message 서명</td></tr>
+<tr><td><code>RAW</code></td><td>raw transaction (advanced)</td></tr>
+<tr><td><code>STAKE / UNSTAKE / CLAIM_REWARDS</code></td><td>staking 작업</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/reference/create-a-new-transaction">Create a New Transaction</a>
+</p>
+
+<h3>7.3 14-step Flow (요약) — 거래 한 건의 전체 흐름</h3>
+<p>
+Fireblocks 가 거래 한 건을 처리할 때 내부적으로 거치는 14 step (직접 구축 reference 의 분석과 동일):
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  S1["1. 거래 요청 접수<br/>(SUBMITTED)"]
+  S2["2. 잔액 확인 / 큐잉<br/>(QUEUED)"]
+  S3["3. Policy / TAP 평가"]
+  S4["4. Approval Group quorum<br/>(PENDING_AUTHORIZATION)"]
+  S5["5. AML / Travel Rule screening"]
+  S6["6. 트랜잭션 어셈블<br/>(Secure Vault)"]
+  S7["7. Designated Signer 라우팅<br/>(PENDING_SIGNATURE)"]
+  S8["8. 3-party MPC 서명<br/>(또는 Key Link Customer HSM 서명)"]
+  S9["9. 서명 결과 검증"]
+  S10["10. Blockchain 으로 broadcast<br/>(BROADCASTING)"]
+  S11["11. Mempool 진입 확인"]
+  S12["12. Confirmation 추적<br/>(CONFIRMING)"]
+  S13["13. Finality 도달<br/>(COMPLETED)"]
+  S14["14. Audit log + Webhook event 발생"]
+
+  S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8 --> S9 --> S10 --> S11 --> S12 --> S13 --> S14
+
+  S3 -. BLOCK .-> X1["BLOCKED"]
+  S4 -. quorum 거절 .-> X2["REJECTED"]
+  S5 -. AML 차단 .-> X3["REJECTED"]
+  S10 -. broadcast 실패 .-> X4["FAILED"]
+  S11 -. mempool drop .-> X5["DROPPED"]
+  S12 -. timeout .-> X6["TIMEOUT"]
+
+  classDef step fill:#dbeafe,stroke:#2563eb
+  classDef fail fill:#fee2e2,stroke:#dc2626
+  class S1,S2,S3,S4,S5,S6,S7,S8,S9,S10,S11,S12,S13,S14 step
+  class X1,X2,X3,X4,X5,X6 fail
+</pre>
+</div>
+<p class="diagram-caption">
+14-step 흐름과 6 가지 실패 경로. 모든 step 이 Fireblocks 내부에서 발생, 은행은 webhook 으로 status 변경만 관찰.
+출처: <a href="https://developers.fireblocks.com/docs/introduction">Fireblocks Developer Portal — Introduction</a>
+</p>
+
+<h3>7.4 State Transition — 정상 경로</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> SUBMITTED
+  SUBMITTED --> QUEUED: 잔액 확인 대기
+  SUBMITTED --> PENDING_AUTHORIZATION: 즉시 평가
+  QUEUED --> PENDING_AUTHORIZATION
+  PENDING_AUTHORIZATION --> PENDING_SIGNATURE: quorum 승인
+  PENDING_AUTHORIZATION --> REJECTED: quorum 거절
+  PENDING_AUTHORIZATION --> CANCELLED: 사용자 취소
+  PENDING_AUTHORIZATION --> TIMEOUT: 승인 timeout
+
+  PENDING_SIGNATURE --> BROADCASTING: 서명 완료
+  PENDING_SIGNATURE --> FAILED: 서명 실패
+  PENDING_SIGNATURE --> TIMEOUT: 서명 timeout
+
+  BROADCASTING --> CONFIRMING: mempool 진입
+  BROADCASTING --> FAILED: broadcast 실패
+  BROADCASTING --> DROPPED: mempool drop
+
+  CONFIRMING --> COMPLETED: N confirmation 도달
+  CONFIRMING --> FAILED: chain 측 거부
+  CONFIRMING --> TIMEOUT: confirmation timeout
+
+  COMPLETED --> [*]
+  REJECTED --> [*]
+  CANCELLED --> [*]
+  FAILED --> [*]
+  BLOCKED --> [*]
+  TIMEOUT --> [*]
+  DROPPED --> [*]
+</pre>
+</div>
+<p class="diagram-caption">
+정상 경로 (SUBMITTED → QUEUED → PENDING_AUTH → PENDING_SIGNATURE → BROADCASTING → CONFIRMING → COMPLETED) 와 예외 경로.
+state 는 단방향만 진행 (예: COMPLETED 에서 다시 PENDING 으로 되돌리지 않음).
+</p>
+
+<h3>7.5 은행 mirrordb 의 tx_mirror 테이블</h3>
+
+<h4><code>mirrordb.tx_mirror</code> — 거래 한 건당 1 row</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>tx_mirror_id (PK)</td><td>uuid</td><td>A-set</td><td>은행 내부 ID</td></tr>
+<tr><td>fb_tx_id</td><td>varchar</td><td>A-set</td><td>Fireblocks 의 transaction UUID (set-once, 변경 불가)</td></tr>
+<tr><td>fb_workspace_id</td><td>varchar</td><td>A-set</td><td>workspace</td></tr>
+<tr><td>fb_external_tx_id</td><td>varchar</td><td>A-set nullable</td><td>은행이 거래 요청 시 보낸 idempotency key</td></tr>
+<tr><td>operation</td><td>enum</td><td>A-set</td><td>TRANSFER / CONTRACT_CALL 등</td></tr>
+<tr><td>source_vault_id</td><td>varchar</td><td>A-set</td><td>출금 vault</td></tr>
+<tr><td>destination_type</td><td>enum</td><td>A-set</td><td>VAULT_ACCOUNT / WHITELISTED_ADDRESS / ONE_TIME_ADDRESS / EXCHANGE_ACCOUNT / FIAT_ACCOUNT / NETWORK_CONNECTION / GAS_STATION / UNKNOWN</td></tr>
+<tr><td>destination_ref</td><td>jsonb</td><td>A-set</td><td>destination 의 구체 정보 (vault_id / address / ...)</td></tr>
+<tr><td>asset_id</td><td>varchar</td><td>A-set</td><td>BTC / ETH / USDC_ETH ...</td></tr>
+<tr><td>amount</td><td>numeric(38,18)</td><td>A-set</td><td>요청 금액</td></tr>
+<tr><td>fee_currency</td><td>varchar</td><td>A-set</td><td>가스 fee 자산 (보통 native)</td></tr>
+<tr><td>fee_amount</td><td>numeric(38,18)</td><td>A-set nullable</td><td>실제 지불 fee (broadcast 시점에 확정)</td></tr>
+<tr><td>tx_hash</td><td>varchar</td><td>A-set nullable</td><td>on-chain hash (broadcast 후 set-once, 변경 불가)</td></tr>
+<tr><td>current_status</td><td>enum</td><td>M-mut</td><td>가장 최근 status (17 status 중 하나)</td></tr>
+<tr><td>final_status</td><td>enum</td><td>A-set nullable</td><td>최종 status (COMPLETED / CANCELLED / FAILED / ...) — set-once</td></tr>
+<tr><td>created_at_fb</td><td>timestamptz</td><td>A-set</td><td>Fireblocks 의 생성 시점</td></tr>
+<tr><td>updated_at_fb</td><td>timestamptz</td><td>M-mut</td><td>Fireblocks 의 마지막 업데이트</td></tr>
+<tr><td>mirror_received_at</td><td>timestamptz</td><td>A-set</td><td>은행 mirrordb 가 webhook 으로 수신한 시점</td></tr>
+<tr><td>initiated_by_user_id</td><td>varchar</td><td>A-set nullable</td><td>거래 시작자 (fb_user_id)</td></tr>
+<tr><td>approved_by_list</td><td>jsonb</td><td>M-mut nullable</td><td>Approval Group quorum 승인자 목록 (webhook event 로 수신)</td></tr>
+<tr><td>raw_event_payload</td><td>jsonb</td><td>A-set</td><td>webhook 의 원본 payload (audit 용 보존)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4><code>mirrordb.tx_status_history</code> — status 변경 이력 (append-only)</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>history_id (PK)</td><td>uuid</td><td>A-set</td><td>은행 내부 ID</td></tr>
+<tr><td>tx_mirror_id (FK)</td><td>uuid</td><td>A-set</td><td>tx_mirror 의 ID</td></tr>
+<tr><td>fb_tx_id</td><td>varchar</td><td>A-set</td><td>중복 lookup 용</td></tr>
+<tr><td>old_status</td><td>enum nullable</td><td>A-set</td><td>이전 status</td></tr>
+<tr><td>new_status</td><td>enum</td><td>A-set</td><td>새 status</td></tr>
+<tr><td>changed_at_fb</td><td>timestamptz</td><td>A-set</td><td>Fireblocks 측 변경 시점</td></tr>
+<tr><td>mirror_received_at</td><td>timestamptz</td><td>A-set</td><td>은행 수신 시점</td></tr>
+<tr><td>raw_event_id</td><td>varchar</td><td>A-set</td><td>webhook event UUID</td></tr>
+<tr><td>change_reason</td><td>varchar nullable</td><td>A-set</td><td>변경 이유 (예: "quorum 승인 / AML 차단")</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">왜 history 테이블이 별도인가 (append-only)</div>
+<p style="margin-bottom:0">
+거래 한 건이 SUBMITTED → QUEUED → PENDING_AUTH → ... → COMPLETED 의 7+ 번 status 변경을 거친다.
+tx_mirror.current_status 는 가장 최근만 보관 (조회 효율). 모든 변경 이력은 tx_status_history 에 append-only 로 보관 — 사후 audit / 분쟁 시 정확한 시점 재구성 가능.
+</p>
+</div>
+
+<h3>7.6 EVM Nonce / Bitcoin UTXO 의 특수성</h3>
+<p>
+Fireblocks 가 내부적으로 처리하는 chain-specific 룰. 은행은 직접 다룰 필요 없으나 운영 관찰 시 알아야 함.
+</p>
+<ul>
+<li><strong>EVM nonce ordering</strong> — 같은 vault 의 ETH 거래는 nonce 순서대로 broadcast. 이전 거래가 PENDING 이면 다음 거래 QUEUED. Fireblocks 가 자동 처리.</li>
+<li><strong>Bitcoin 25-chain 제약</strong> — UTXO 한 chain 안의 unconfirmed tx 25 개 제한. Fireblocks 의 round-robin pattern 으로 회피.</li>
+<li><strong>Solana priority fee</strong> — congestion 시 fee 동적 조정. Fireblocks 가 자동.</li>
+</ul>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/introduction">Fireblocks Developer Portal</a> · <a href="https://developers.fireblocks.com/reference/list-unspent-outputs">List Unspent Outputs</a>
+</p>
+
+<h3>7.7 Transaction Mirror 의 데이터 무결성 보장</h3>
+<p>
+은행 mirrordb 의 tx_mirror 가 Fireblocks Console 과 정합한가 — 정기 reconciliation:
+</p>
+<ol>
+<li><strong>일일 reconciliation</strong> — Fireblocks <code>GET /v1/transactions</code> 로 24h 이내 거래 목록 조회, mirrordb 와 대조</li>
+<li><strong>주간 deep check</strong> — 모든 status 변경 history 검증 (webhook 누락 detection)</li>
+<li><strong>월간 archive</strong> — 30 일 이상 거래를 cold storage 로 partition + archive (5 년 보존 위해)</li>
+<li><strong>mismatch finding</strong> → reconciliation_session 테이블에 기록, 운영팀 review</li>
+</ol>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ 분쟁 시 Fireblocks Console 이 1차 source</div>
+<p style="margin-bottom:0">
+은행 mirrordb 와 Fireblocks Console 사이에 불일치가 있을 때, <strong>분쟁 해결의 1차 source 는 Fireblocks Console 의 immutable log</strong>.
+은행 mirror 는 mirror 이지 canonical 이 아님. 은행은 mirror 가 정확함을 reconciliation log 로 증명 책임.
+</p>
+</div>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-crypto.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">6. MPC · Key Link</span></a>
+<a class="page-nav-link page-nav-next" href="sm-webhook.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">8. Webhook 처리</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

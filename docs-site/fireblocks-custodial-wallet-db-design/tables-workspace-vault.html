@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>3. Workspace · Vault · Wallet · Address — Fireblocks 도입 시 매핑</title>
+<meta content="Fireblocks Workspace · Vault Account · Asset Wallet · Deposit Address 의 은행 DB 매핑" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a class="active" href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a href="tables-user.html">4. Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a href="sm-transaction.html">7. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">8. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
+<li><a href="risks.html">11. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<li><a href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="workspace-vault">
+<h2>3. Workspace · Vault · Wallet · Address</h2>
+<span class="section-subtitle">Fireblocks 의 5-level 계층을 은행 DB 에 어떻게 매핑하는가</span>
+
+<h3>3.1 Fireblocks 의 5-level 계층 (변하지 않는 사실)</h3>
+<p>
+Fireblocks 의 자산 계층은 <strong>5 단계</strong>로 구성된다. 이 구조는 도입 후에도 동일하게 적용.
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  CD["🏢 Customer Domain<br/>(고객사 = 은행)"]
+  WS["📋 Workspace<br/>type: SaaS MPC / Hosted MPC / Key Link / Cold"]
+  VA["📁 Vault Account<br/>고객 별 또는 자산군 별"]
+  AW["💰 Asset Wallet<br/>BTC · ETH · USDC · ..."]
+  DA["📍 Deposit Address<br/>UTXO = N개 / Account-based = 1개"]
+
+  CD --> WS
+  WS --> VA
+  VA --> AW
+  AW --> DA
+
+  classDef domain fill:#dcfce7,stroke:#16a34a
+  classDef workspace fill:#dbeafe,stroke:#2563eb
+  classDef vault fill:#fef3c7,stroke:#d97706
+  classDef wallet fill:#e0e7ff,stroke:#6366f1
+  classDef addr fill:#fae8ff,stroke:#a855f7
+
+  class CD domain
+  class WS workspace
+  class VA vault
+  class AW wallet
+  class DA addr
+</pre>
+</div>
+<p class="diagram-caption">
+Fireblocks 의 5-level 계층. 최상위 Customer Domain (은행) → Workspace (1 + 개) → Vault Account → Asset Wallet → Deposit Address.
+출처: <a href="https://developers.fireblocks.com/docs/create-direct-custody-wallets">Create Direct Custody Wallets</a>
+</p>
+
+<h3>3.2 Workspace — 은행 매핑</h3>
+<p>
+Workspace 는 Fireblocks 의 격리·거버넌스 단위. 은행은 보통 4-5 workspace 로 시작 (Vault Structure Best Practices 의 3-workspace 분리 + Cold 분리).
+</p>
+
+<h4>은행 권장 workspace 구성</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>Workspace</th><th>Type</th><th>Network</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Administrative</td><td>Hot (SaaS/Hosted/Key Link)</td><td>Mainnet</td><td>smart contract deploy · role allocation</td></tr>
+<tr><td>2</td><td>Operational</td><td>Hot</td><td>Mainnet</td><td>일일 입출금 · gas station · sweeping</td></tr>
+<tr><td>3</td><td>Custodial Hot</td><td>Hot</td><td>Mainnet</td><td>고객 자산 working balance (≤ 20%)</td></tr>
+<tr><td>4</td><td>Custodial Cold</td><td>Cold</td><td>Mainnet</td><td>bulk reserve (≥ 80%) — KR 가상자산업감독규정 9조</td></tr>
+<tr><td>5</td><td>Sandbox</td><td>Hot</td><td>Testnet</td><td>개발 · 통합 테스트</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://support.fireblocks.io/hc/en-us/sections/14497036340252">Fireblocks Vault Structure Best Practices</a> ·
+<a href="../fireblocks-cold-wallet-bank-design/">은행 Fireblocks Cold Wallet 도입</a>
+</p>
+
+<h4><code>customerdb.fb_workspace_link</code> — workspace 메타데이터</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage class</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>workspace_id (PK)</td><td>uuid</td><td>A-set</td><td>은행 내부 ID</td></tr>
+<tr><td>fb_workspace_id</td><td>varchar</td><td>A-set</td><td>Fireblocks 가 발급한 workspace UUID</td></tr>
+<tr><td>workspace_name</td><td>varchar</td><td>M-mut</td><td>은행에서 부르는 이름 (예: "Custodial Hot")</td></tr>
+<tr><td>workspace_type</td><td>enum</td><td>A-set</td><td><code>saas_mpc / hosted_mpc / key_link / cold</code> — workspace 생성 시 결정, 변경 불가</td></tr>
+<tr><td>network</td><td>enum</td><td>A-set</td><td><code>mainnet / testnet</code></tr></td>
+<tr><td>fb_owner_user_id</td><td>varchar</td><td>M-mut</td><td>Owner 의 Fireblocks user ID</td></tr>
+<tr><td>console_url</td><td>varchar</td><td>M-mut</td><td>Fireblocks Console 직접 진입 URL</td></tr>
+<tr><td>created_at</td><td>timestamptz</td><td>A-set</td><td>은행 DB 에 등록한 시점</td></tr>
+<tr><td>retired_at</td><td>timestamptz</td><td>M-mut nullable</td><td>workspace 폐기 시점 (Fireblocks 측 workspace 삭제 후)</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처 (workspace type immutability): <a href="https://support.fireblocks.io/hc/en-us/articles/14228517105052-Fireblocks-Key-Link-Overview">Fireblocks Key Link Overview</a>
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ workspace_type 은 set-once</div>
+<p style="margin-bottom:0">
+Fireblocks 공식: "modifying an existing SaaS MPC workspace is impossible" (Hosted MPC Workspace Configuration).
+한 번 workspace 생성 시 결정된 type 은 영구히 변경 불가. 은행 DB column 도 A-set (set-once) 로 enforce.
+</p>
+</div>
+
+<h3>3.3 Vault Account — 고객 단위 격리</h3>
+<p>
+Vault Account 는 자산 보관의 격리 단위. 은행은 (a) 고객 1 인 = vault 1 개 (segregated) 또는 (b) 자산군 별 omnibus vault 중 선택.
+</p>
+
+<h4>Sweep-to-omnibus vs Segregated</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>패턴</th><th>vault 구성</th><th>적합한 운영</th></tr></thead>
+<tbody>
+<tr><td><strong>Sweep-to-omnibus</strong></td><td>End user 입금 vault → Intermediate vault → Omnibus vault</td><td>대량 사용자 · 자동 sweeping · Gas Station 자동</td></tr>
+<tr><td><strong>Segregated</strong></td><td>Per-client vault (고객 1 인당 1 vault)</td><td>institutional 고객 · settlement on-chain atomic · 작은 사용자 base</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://support.fireblocks.io/hc/en-us/sections/14497036340252">Fireblocks Vault Structure Best Practices</a> ·
+<a href="https://developers.fireblocks.com/docs/work-with-gas-station">Work with Gas Station</a>
+</p>
+
+<h4><code>customerdb.fb_vault_account_map</code></h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>vault_map_id (PK)</td><td>uuid</td><td>A-set</td><td>은행 내부 ID</td></tr>
+<tr><td>fb_vault_account_id</td><td>varchar</td><td>A-set</td><td>Fireblocks 의 vault account ID (정수 문자열)</td></tr>
+<tr><td>workspace_id (FK)</td><td>uuid</td><td>A-set</td><td>속한 workspace</td></tr>
+<tr><td>vault_purpose</td><td>enum</td><td>A-set</td><td><code>customer_segregated / omnibus / intermediate / withdrawal_pool / gas_station / treasury</code></td></tr>
+<tr><td>bank_customer_id (FK)</td><td>uuid nullable</td><td>A-set</td><td>segregated 시 은행 고객 ID, omnibus 시 NULL</td></tr>
+<tr><td>vault_name</td><td>varchar</td><td>M-mut</td><td>Fireblocks Console 에서 보이는 이름</td></tr>
+<tr><td>hide_on_ui</td><td>boolean</td><td>M-mut</td><td>"Hidden on UI" 옵션 — Fireblocks 의 vault hiding 기능 (대량 vault 시)</td></tr>
+<tr><td>auto_fuel</td><td>boolean</td><td>M-mut</td><td>Gas Station 자동 연료 공급 활성화 여부</td></tr>
+<tr><td>created_at</td><td>timestamptz</td><td>A-set</td><td>vault 생성 시점</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/reference/create-vault-account">Create Vault Account API</a> ·
+<a href="https://developers.fireblocks.com/docs/create-direct-custody-wallets#hiding-vault-accounts">Hiding Vault Accounts</a> ·
+<a href="https://developers.fireblocks.com/docs/work-with-gas-station">Gas Station</a>
+</p>
+
+<h3>3.4 Asset Wallet — 자산별 등록</h3>
+<p>
+한 vault 안에 자산별로 asset wallet 을 생성. Fireblocks 는 1,800 + 종 자산 지원.
+</p>
+
+<h4><code>customerdb.fb_asset_wallet_map</code></h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>asset_wallet_id (PK)</td><td>uuid</td><td>A-set</td><td>은행 내부 ID</td></tr>
+<tr><td>fb_vault_account_id (FK)</td><td>varchar</td><td>A-set</td><td>속한 vault</td></tr>
+<tr><td>asset_id</td><td>varchar</td><td>A-set</td><td>Fireblocks asset ID (예: <code>BTC</code>, <code>ETH</code>, <code>USDC_ETH</code>, <code>USDC_POLYGON</code>)</td></tr>
+<tr><td>chain</td><td>varchar</td><td>A-set</td><td>blockchain (예: <code>bitcoin</code>, <code>ethereum</code>, <code>polygon</code>)</td></tr>
+<tr><td>algorithm</td><td>enum</td><td>A-set</td><td><code>ECDSA_SECP256K1 / EDDSA_ED25519 / ECDSA_SECP256R1</code></td></tr>
+<tr><td>created_at</td><td>timestamptz</td><td>A-set</td><td>asset wallet 생성 시점</td></tr>
+<tr><td>retired_at</td><td>timestamptz</td><td>M-mut nullable</td><td>은행에서 해당 asset 운영 중단 시점</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/reference/create-vault-wallet">Create Vault Wallet API</a> ·
+<a href="https://developers.fireblocks.com/api-reference/blockchains-&amp;-assets/list-assets">List Assets API</a>
+</p>
+
+<h3>3.5 Deposit Address — UTXO vs Account-based</h3>
+<p>
+Asset Wallet 안에 deposit address 가 생성됨. 자산 유형에 따라 개수가 다르다:
+</p>
+<ul>
+<li><strong>UTXO 체인 (BTC, LTC 등)</strong>: <strong>다중 deposit address</strong> 가능. 새 입금마다 새 주소 발급 가능</li>
+<li><strong>Account-based 체인 (ETH, SOL, ...)</strong>: <strong>단일 deposit address</strong>. 한 asset wallet = 한 주소</li>
+</ul>
+
+<h4>One-time vs Permanent address</h4>
+<ul>
+<li><strong>Permanent</strong>: deposit address 가 영구 보관, 여러 번 입금 수신</li>
+<li><strong>One-time</strong>: 한 번만 사용 가능, 입금 후 폐기 (privacy 향상)</li>
+</ul>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/create-direct-custody-wallets">Create Direct Custody Wallets</a>
+</p>
+
+<h4><code>customerdb.fb_deposit_address</code></h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>address_id (PK)</td><td>uuid</td><td>A-set</td><td>은행 내부 ID</td></tr>
+<tr><td>asset_wallet_id (FK)</td><td>uuid</td><td>A-set</td><td>속한 asset wallet</td></tr>
+<tr><td>address</td><td>varchar</td><td>A-set</td><td>on-chain address (set-once, 절대 변경 불가)</td></tr>
+<tr><td>address_type</td><td>enum</td><td>A-set</td><td><code>permanent / one_time</code></td></tr>
+<tr><td>tag_memo</td><td>varchar</td><td>A-set nullable</td><td>destination tag (XRP / XLM 등의 memo)</td></tr>
+<tr><td>created_at</td><td>timestamptz</td><td>A-set</td><td>address 생성 시점</td></tr>
+<tr><td>used_at</td><td>timestamptz</td><td>M-mut nullable</td><td>one-time 의 경우 사용 시점</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>3.6 Counterparty Registry — 외부 송금 대상</h3>
+<p>
+은행이 송금하는 외부 대상 (whitelisted address · 외부 거래소 · Fireblocks Network counterparty) 의 매핑.
+보통 Admin Quorum 승인으로 사전 등록.
+</p>
+
+<h4><code>customerdb.whitelisted_destinations</code></h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>dest_id (PK)</td><td>은행 내부 ID</td></tr>
+<tr><td>dest_type</td><td><code>whitelisted_address / external_wallet / exchange_account / network_connection / fiat_account</code></td></tr>
+<tr><td>fb_dest_id</td><td>Fireblocks 의 destination ID</td></tr>
+<tr><td>display_name</td><td>은행에서 부르는 이름</td></tr>
+<tr><td>chain · asset</td><td>해당 자산 / 체인</td></tr>
+<tr><td>address</td><td>on-chain address (해당 시)</td></tr>
+<tr><td>aml_screening_status</td><td>AML 검사 결과 (별도 trigger)</td></tr>
+<tr><td>approved_by</td><td>Admin Quorum quorum member 목록</td></tr>
+<tr><td>approved_at</td><td>등록 승인 시점</td></tr>
+<tr><td>created_at / retired_at</td><td>생성 / 폐기 시점</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/whitelist-addresses#internal-wallets">Whitelist Addresses</a> ·
+<a href="https://developers.fireblocks.com/docs/add-an-exchange-account">Add an Exchange Account</a> ·
+<a href="https://developers.fireblocks.com/docs/connect-to-exchanges-and-fiat-providers">Connect to Exchanges and Fiat Providers</a>
+</p>
+
+<h3>3.7 Vault → Customer 매핑의 권장 패턴 (저자)</h3>
+<p>
+은행 customerdb 의 매핑 패턴:
+</p>
+<ul>
+<li><strong>segregated 패턴</strong> — <code>fb_vault_account_map.bank_customer_id</code> = 은행 고객 ID 직접 매핑. 1 고객 = 1 vault</li>
+<li><strong>omnibus 패턴</strong> — <code>fb_vault_account_map.bank_customer_id IS NULL</code> + 별도 <code>customer_balance_subledger</code> 테이블에 고객별 잔액 mirror. 회계 시스템 통합</li>
+<li><strong>혼합 패턴</strong> — Retail (omnibus) + Institutional (segregated) 동시 운영. vault_purpose enum 으로 분리</li>
+</ul>
+
+<div class="callout callout-warn">
+<div class="callout-title">omnibus vault 의 KR 컴플라이언스 함의 (저자)</div>
+<p style="margin-bottom:0">
+omnibus 패턴 시 은행 내부 회계로 고객별 잔액을 분리 관리하더라도, on-chain 에는 1 vault 의 통합 balance 만 표시됨.
+대법원 2024도10710 의 "실질 통제" 판단 시 한 vault 안의 자산이 누구의 통제권에 있는지 명확히 구분되어야 함.
+은행은 customer_balance_subledger 의 무결성 (audit log 와 정합성) 을 별도로 증명할 책임.
+</p>
+</div>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="db-split.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">2. DB 분할</span></a>
+<a class="page-nav-link page-nav-next" href="tables-user.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">4. Users</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>4. Users — 은행 사용자 ↔ Fireblocks user 매핑</title>
+<meta content="은행 사용자 ↔ Fireblocks Console / API / Mobile user 매핑 + 2FA + SSO + IP allowlist" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a class="active" href="tables-user.html">4. Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a href="sm-transaction.html">7. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">8. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
+<li><a href="risks.html">11. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<li><a href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="users">
+<h2>4. Users</h2>
+<span class="section-subtitle">은행 사용자 ↔ Fireblocks Console / API / Mobile user 매핑</span>
+
+<h3>4.1 Fireblocks 의 3 user type</h3>
+<p>
+Fireblocks 는 사용자를 3 가지 type 으로 분류한다. 각 type 별로 인증 방식과 책임이 다르다.
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>User type</th><th>인증 방식</th><th>대표 책임</th></tr></thead>
+<tbody>
+<tr><td><strong>Console user</strong></td><td>email + password + 2FA / SSO</td><td>UI 접근 (workspace 관리, 거래 승인 등). Mobile app 페어링 가능</td></tr>
+<tr><td><strong>API user</strong></td><td>API key + secret (HMAC)</td><td>프로그램틱 접근. 은행 application server 가 사용</td></tr>
+<tr><td><strong>Mobile-only user</strong></td><td>activation token 으로 mobile app 만</td><td>Cold Wallet workspace 의 user (Console 접근 권한 없음, Cold Wallet 특수)</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/manage-users">Fireblocks — Manage Users</a>
+</p>
+
+<h3>4.2 인증 매커니즘 별 정리</h3>
+
+<h4>4.2.1 2FA (Two-Factor Authentication)</h4>
+<ul>
+<li>Fireblocks 가 TOTP authenticator app (Google Authenticator / Authy 등) 의 6 자리 코드 강제</li>
+<li>Console 첫 로그인 시 setup 강제</li>
+<li>2FA 분실 시 Admin Quorum quorum 승인으로 reset</li>
+</ul>
+
+<h4>4.2.2 SSO (Single Sign-On)</h4>
+<ul>
+<li>외부 IdP (Google Workspace · Okta · Entra ID 등) 와 SAML / OIDC 연동</li>
+<li>Fireblocks 측 service provider 는 <strong>Auth0</strong> 가 담당</li>
+<li>SSO 활성화 시 password 는 IdP 가 관리, Fireblocks 는 IdP 의 assertion 만 검증</li>
+<li>2FA 는 IdP 측에서 또는 Fireblocks 측에서 둘 다 적용 가능</li>
+</ul>
+<p>
+출처: <a href="https://support.fireblocks.io/hc/en-us/articles/10031671057692-Configure-SSO">Configure SSO</a>
+</p>
+
+<h4>4.2.3 IP Allowlist</h4>
+<ul>
+<li>API user 별로 허용된 IP 목록 설정 가능</li>
+<li>은행은 application server 의 outbound NAT IP 만 허용 권장</li>
+<li>SaaS Cold Wallet workspace 는 IP allowlist 가 거버넌스의 일부 (별도 모드)</li>
+</ul>
+
+<h4>4.2.4 Mobile device 페어링</h4>
+<ul>
+<li>Console user 가 mobile app 을 페어링 → activation token (7일 유효) → KeyChain 보관</li>
+<li>SaaS MPC 의 경우 mobile device 가 MPC share 1 of 3 보유 (primary share)</li>
+<li>Device 분실 / 교체 시 device migration 절차 (Admin Quorum 승인 매개)</li>
+</ul>
+<p>
+출처: <a href="https://support.fireblocks.io/hc/en-us/articles/11288189152924-Device-migration">Device Migration</a>
+</p>
+
+<h3>4.3 은행 customerdb 의 사용자 테이블</h3>
+
+<h4><code>customerdb.bank_users</code> — 은행 내부 사용자</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>bank_user_id (PK)</td><td>uuid</td><td>A-set</td><td>은행 내부 사용자 ID</td></tr>
+<tr><td>employee_id</td><td>varchar</td><td>A-set</td><td>은행 직원번호</td></tr>
+<tr><td>email</td><td>varchar</td><td>M-mut</td><td>업무 email (IdP 와 연동)</td></tr>
+<tr><td>full_name</td><td>varchar</td><td>M-mut</td><td>이름 (한글)</td></tr>
+<tr><td>department</td><td>varchar</td><td>M-mut</td><td>부서 (운영팀 / 보안팀 / 컴플라이언스 / 법무)</td></tr>
+<tr><td>active</td><td>boolean</td><td>M-mut</td><td>퇴사 / 휴직 시 false</td></tr>
+<tr><td>created_at</td><td>timestamptz</td><td>A-set</td><td>은행 시스템 등록 시점</td></tr>
+<tr><td>retired_at</td><td>timestamptz</td><td>M-mut nullable</td><td>퇴사 / 권한 회수 시점</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ password 는 절대 저장 금지</div>
+<p style="margin-bottom:0">
+은행 application 의 인증은 IdP (Okta / Entra) 위임 권장. <code>bank_users.password_hash</code> 같은 column 자체를 만들지 않는 것이 안전.
+SSO 설정 시 Fireblocks 도 IdP 위임 → 한 곳에서 password / 2FA 관리.
+</p>
+</div>
+
+<h4><code>customerdb.fb_user_map</code> — Fireblocks user 매핑</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>user_map_id (PK)</td><td>uuid</td><td>A-set</td><td>은행 내부 ID</td></tr>
+<tr><td>bank_user_id (FK)</td><td>uuid</td><td>A-set</td><td>은행 내부 사용자</td></tr>
+<tr><td>fb_workspace_id (FK)</td><td>varchar</td><td>A-set</td><td>어느 workspace 의 user 인가</td></tr>
+<tr><td>fb_user_id</td><td>varchar</td><td>A-set</td><td>Fireblocks 의 user UUID</td></tr>
+<tr><td>fb_user_type</td><td>enum</td><td>A-set</td><td><code>console / api / mobile_only</code></td></tr>
+<tr><td>fb_role</td><td>varchar</td><td>M-mut</td><td>Fireblocks 의 role (Owner / Admin / Editor / Signer / Viewer / Non-Signing Admin / Approver / Non-Signing User / Auditor)</td></tr>
+<tr><td>activated_at</td><td>timestamptz</td><td>A-set nullable</td><td>mobile app 페어링 완료 시점</td></tr>
+<tr><td>last_login_at</td><td>timestamptz</td><td>M-mut nullable</td><td>마지막 로그인 (Fireblocks API 조회)</td></tr>
+<tr><td>status</td><td>enum</td><td>M-mut</td><td><code>pending / active / suspended / retired</code></td></tr>
+<tr><td>created_at</td><td>timestamptz</td><td>A-set</td><td>매핑 등록 시점</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/manage-users">Manage Users</a>
+</p>
+
+<h4><code>customerdb.fb_api_key_meta</code> — API key 메타데이터</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>api_key_id (PK)</td><td>uuid</td><td>A-set</td><td>은행 내부 ID</td></tr>
+<tr><td>fb_workspace_id (FK)</td><td>varchar</td><td>A-set</td><td>workspace</td></tr>
+<tr><td>fb_api_key_uuid</td><td>varchar</td><td>A-set</td><td>Fireblocks 의 API key UUID</td></tr>
+<tr><td>key_name</td><td>varchar</td><td>M-mut</td><td>은행 부르는 이름 (예: "production-app-readonly")</td></tr>
+<tr><td>role</td><td>varchar</td><td>M-mut</td><td>API user 의 role (Viewer / Signer / Editor / Admin / Non-Signing Admin)</td></tr>
+<tr><td>secret_ref</td><td>varchar</td><td>A-set</td><td>secret manager 의 reference (예: AWS Secrets Manager ARN). <strong>secret 자체는 절대 column 에 저장 금지</strong></td></tr>
+<tr><td>ip_allowlist</td><td>jsonb</td><td>M-mut</td><td>허용 IP 목록 (Fireblocks 측 설정의 mirror)</td></tr>
+<tr><td>created_at</td><td>timestamptz</td><td>A-set</td><td>API key 발급 시점</td></tr>
+<tr><td>rotated_at</td><td>timestamptz</td><td>M-mut nullable</td><td>마지막 로테이션 시점</td></tr>
+<tr><td>revoked_at</td><td>timestamptz</td><td>M-mut nullable</td><td>회수 시점</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/manage-api-keys">Manage API Keys</a>
+</p>
+
+<h3>4.4 Mobile device 추적 (저자 권장)</h3>
+<p>
+SaaS MPC 시 mobile device 가 MPC share 보유 → device 등록 / 분실 / 교체가 자산 보안에 critical.
+은행은 device 단위 추적을 자체적으로 권장.
+</p>
+
+<h4><code>customerdb.fb_mobile_device</code></h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>device_id (PK)</td><td>은행 내부 ID</td></tr>
+<tr><td>fb_user_id (FK)</td><td>Fireblocks user</td></tr>
+<tr><td>device_os</td><td><code>ios / android</code></td></tr>
+<tr><td>device_model</td><td>모델명 (예: iPhone 15 Pro)</td></tr>
+<tr><td>paired_at</td><td>최초 페어링 시점</td></tr>
+<tr><td>activation_token_used_at</td><td>activation token 사용 시점</td></tr>
+<tr><td>last_seen_at</td><td>마지막 access token 발급 시점 (Fireblocks audit log 에서 mirror)</td></tr>
+<tr><td>migrated_from</td><td>device migration 이전 device_id</td></tr>
+<tr><td>status</td><td><code>active / migrated / reported_lost / retired</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">device migration 절차 — Admin Quorum 매개</div>
+<p style="margin-bottom:0">
+device 교체 시 (a) 기존 device 가 정상 동작하면 self-migration 가능, (b) device 분실 / 손상 시 Admin Quorum 의 quorum 승인 매개로 re-enrollment.
+SaaS MPC 의 primary key share 가 mobile device 의 KeyChain 에 있으므로, device 잃어버리면 Workspace Keys Backup 의 recovery passphrase 가 유일한 회복 경로.
+</p>
+<p style="margin-bottom:0">
+출처: <a href="https://support.fireblocks.io/hc/en-us/articles/11288189152924-Device-migration">Device Migration</a>
+</p>
+</div>
+
+<h3>4.5 Callback Handler (Hosted MPC 시)</h3>
+<p>
+Hosted MPC 의 API Co-signer 는 거래 서명 직전에 Callback Handler endpoint 를 호출하여 은행 측의 추가 검증을 받음 (자체 정책 적용).
+</p>
+
+<h4><code>customerdb.callback_handler_meta</code></h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>handler_id (PK)</td><td>은행 내부 ID</td></tr>
+<tr><td>fb_cosigner_id</td><td>속한 Co-signer 인스턴스</td></tr>
+<tr><td>endpoint_url</td><td>HTTPS endpoint URL (은행 application)</td></tr>
+<tr><td>csr_public_key_pem</td><td>CSR 의 public key (Fireblocks 가 등록 시 발급)</td></tr>
+<tr><td>active</td><td>활성 여부</td></tr>
+<tr><td>last_called_at</td><td>마지막 호출 시점</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/create-api-co-signer-callback-handler">Create API Co-signer Callback Handler</a> ·
+<a href="https://developers.fireblocks.com/reference/cosigner-callbackhandler-secure-communication-authentication">Callback Handler Secure Communication</a>
+</p>
+
+<h3>4.6 SSO 매핑 (선택)</h3>
+<p>
+은행이 SSO 를 사용하면 별도 mapping 테이블 불필요 (IdP 가 사용자 identity 의 source of truth).
+단 audit / 운영 추적을 위해 가벼운 mapping 가능.
+</p>
+
+<h4><code>customerdb.sso_session_log</code> (선택)</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>session_id (PK)</td><td>은행 내부 ID</td></tr>
+<tr><td>fb_user_id (FK)</td><td>Fireblocks user</td></tr>
+<tr><td>idp_subject</td><td>IdP 의 subject claim</td></tr>
+<tr><td>login_at</td><td>SSO 로그인 시점 (IdP assertion 시점)</td></tr>
+<tr><td>fb_console_url</td><td>접근한 Console URL</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>4.7 핵심 운영 원칙</h3>
+<ul>
+<li><strong>은행 application 의 인증 = IdP 위임</strong> — 자체 password 관리 금지 (보안 risk 큼)</li>
+<li><strong>API key 는 secret manager 만</strong> — DB column 에 평문 저장 절대 금지</li>
+<li><strong>최소 권한 원칙</strong> — read-only 작업 = Viewer role 의 API key. Signer / Admin 권한은 별도 key</li>
+<li><strong>퇴사자 처리</strong> — 즉시 (a) <code>bank_users.active=false</code>, (b) Fireblocks Console 에서 user remove, (c) IdP 에서 비활성화 — 세 곳 동시</li>
+<li><strong>device 분실 신고</strong> — 즉시 (a) Admin Quorum 에 알림, (b) device migration 또는 user 의 mobile 권한 회수, (c) audit log 검토</li>
+</ul>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-workspace-vault.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">3. Workspace · Vault</span></a>
+<a class="page-nav-link page-nav-next" href="tables-governance.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">5. Roles · Quorum</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

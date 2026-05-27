@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>9. Deposit · Withdrawal — 입출금 라이프사이클</title>
+<meta content="Fireblocks 도입 시 입금/출금 lifecycle - 은행 mirror 관점" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a href="tables-user.html">4. Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a href="sm-transaction.html">7. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">8. Webhook 처리</a></li>
+<li><a class="active" href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
+<li><a href="risks.html">11. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<li><a href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="deposit-withdrawal">
+<h2>9. Deposit · Withdrawal</h2>
+<span class="section-subtitle">고객 입금 / 출금 라이프사이클 — Fireblocks 가 main flow, 은행은 mirror + 회계</span>
+
+<h3>9.1 Deposit Lifecycle — 입금</h3>
+<p>
+고객이 외부 (다른 거래소 / 외부 wallet) 에서 은행 vault 의 deposit address 로 송금. Fireblocks 가 on-chain monitoring 하여 입금 detection.
+</p>
+
+<h4>9.1.1 정상 흐름</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Cust as 👤 고객 (외부)
+  participant Chain as 🌐 Blockchain
+  participant FB as ☁️ Fireblocks
+  participant Bank as 🏢 은행 mirrordb
+  participant App as 은행 application
+  participant AML as AML provider
+
+  Note over Cust,FB: 사전: vault 에 deposit address 할당 (CUSTOMER_X)
+  Cust->>Chain: 송금 tx broadcast<br/>(to: deposit_address)
+  Chain->>FB: tx 발견 (block monitoring)
+  FB-.webhook TRANSACTION_CREATED.->Bank
+  Note over FB: status: CONFIRMING
+  FB->>AML: incoming address screening
+  alt AML 통과
+    AML-->>FB: clean
+    FB->>FB: confirmation 추적 (1 → N)
+    FB-.webhook TRANSACTION_STATUS_UPDATED.->Bank
+    Note over FB: status: COMPLETED
+    FB-.webhook VAULT_ACCOUNT_ASSET_BALANCE_UPDATED.->Bank
+    Bank->>App: 고객 잔액 업데이트<br/>(customer_balance_subledger)
+    App->>Cust: 입금 알림
+  else AML 차단
+    AML-->>FB: blocked
+    FB-.webhook TRANSACTION_STATUS_UPDATED (REJECTED).->Bank
+    Note over Bank: 의심 거래 review queue
+  end
+</pre>
+</div>
+<p class="diagram-caption">
+고객 입금의 전체 흐름. Fireblocks 가 on-chain 발견 → AML screening → confirmation 추적 → 완료.
+은행은 webhook event 로 mirror + 자체 회계 업데이트.
+</p>
+
+<h4>9.1.2 Deposit 상태</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>상태</th><th>의미</th><th>은행 액션</th></tr></thead>
+<tbody>
+<tr><td><code>CREATED</code></td><td>Fireblocks 가 mempool 또는 chain 에서 tx 발견</td><td>알림: "입금 처리 중"</td></tr>
+<tr><td><code>CONFIRMING</code></td><td>confirmation 진행 중</td><td>운영 모니터링</td></tr>
+<tr><td><code>AML_PENDING</code></td><td>AML screening 진행</td><td>—</td></tr>
+<tr><td><code>AML_BLOCKED</code></td><td>AML 차단 → REJECTED</td><td>compliance review queue · STR 후보</td></tr>
+<tr><td><code>COMPLETED</code></td><td>finality 도달 + AML 통과</td><td>고객 잔액 업데이트 + 알림</td></tr>
+<tr><td><code>REJECTED_INCOMING</code></td><td>거부된 입금 자산 (반환 / 격리)</td><td>별도 처리 queue</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/define-aml-policies">Define AML Policies</a>
+</p>
+
+<h4>9.1.3 <code>mirrordb.deposit_observations</code></h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>deposit_id (PK)</td><td>은행 내부 ID</td></tr>
+<tr><td>tx_mirror_id (FK)</td><td>tx_mirror 의 ID</td></tr>
+<tr><td>customer_id</td><td>입금 받는 고객 (segregated 시) 또는 NULL (omnibus)</td></tr>
+<tr><td>destination_address</td><td>입금 deposit address</td></tr>
+<tr><td>incoming_amount</td><td>입금 금액</td></tr>
+<tr><td>incoming_from_address</td><td>발신 address (on-chain 정보)</td></tr>
+<tr><td>aml_status</td><td><code>pending / clean / flagged / blocked</code></td></tr>
+<tr><td>aml_risk_score</td><td>AML provider 의 risk score</td></tr>
+<tr><td>aml_screening_result_ref</td><td>compliance DB 의 screening_results FK</td></tr>
+<tr><td>completed_at</td><td>최종 완료 시점</td></tr>
+<tr><td>credited_to_customer_at</td><td>은행 회계에 반영 시점 (compliance 완료 후)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>9.2 Withdrawal Lifecycle — 출금</h3>
+<p>
+고객이 외부 address 로 출금 요청. 은행 application 이 Fireblocks API 호출 → TAP 평가 → 승인 → 서명 → broadcast.
+</p>
+
+<h4>9.2.1 정상 흐름</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Cust as 👤 고객
+  participant App as 🏢 은행 application
+  participant CDB as customerdb
+  participant FB as ☁️ Fireblocks API
+  participant TAP as Policy / TAP
+  participant AG as Approval Group
+  participant Sig as MPC / Cosigner / HSM
+  participant Chain as 🌐 Blockchain
+  participant Bank as 🏢 mirrordb
+
+  Cust->>App: 출금 요청 (금액 + 외부 address)
+  App->>CDB: counterparty 확인<br/>(whitelisted_destinations)
+  App->>App: KYC 상태 / 잔액 / 한도 검증
+  App->>FB: Create Transaction<br/>(idempotency key 첨부)
+  FB->>TAP: Policy 평가
+  alt AML 차단
+    TAP-->>FB: BLOCKED
+    FB-.webhook.->Bank
+    App-->>Cust: 거절 알림
+  else 정책 통과 + quorum 필요
+    TAP->>AG: quorum 승인 요청 (mobile push)
+    AG-->>TAP: 승인 (또는 거절)
+  end
+  TAP->>Sig: 서명 라우팅
+  Sig-->>FB: 서명 완료
+  FB->>Chain: broadcast
+  Chain-->>FB: tx_hash + confirmation
+  FB-.webhook (단계마다).->Bank
+  Note over Bank: tx_status_history 누적
+  alt COMPLETED
+    Bank->>App: 출금 확정
+    App-->>Cust: 출금 완료 알림
+  else FAILED / TIMEOUT
+    App-->>Cust: 출금 실패 알림
+  end
+</pre>
+</div>
+<p class="diagram-caption">
+고객 출금의 전체 흐름. 은행 application 이 사전 검증 → Fireblocks API 호출 → TAP / Approval Group / 서명 → broadcast → webhook mirror.
+모든 단계가 webhook event 로 mirrordb 에 기록.
+</p>
+
+<h4>9.2.2 출금 상태 (Fireblocks 17 status 의 부분 집합 매핑)</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>은행 도메인 상태</th><th>대응 Fireblocks status</th><th>의미</th></tr></thead>
+<tbody>
+<tr><td><code>REQUESTED</code></td><td>—</td><td>고객 신청 (은행 application 단계, Fireblocks 미접수)</td></tr>
+<tr><td><code>BANK_VALIDATING</code></td><td>—</td><td>은행 사전 검증 (KYC / 한도 / counterparty)</td></tr>
+<tr><td><code>FB_SUBMITTED</code></td><td>SUBMITTED</td><td>Fireblocks 접수</td></tr>
+<tr><td><code>AWAITING_APPROVAL</code></td><td>PENDING_AUTHORIZATION</td><td>Approval Group quorum 대기</td></tr>
+<tr><td><code>SIGNING</code></td><td>PENDING_SIGNATURE</td><td>MPC / HSM 서명 중</td></tr>
+<tr><td><code>BROADCASTED</code></td><td>BROADCASTING / CONFIRMING</td><td>chain 으로 broadcast</td></tr>
+<tr><td><code>SETTLED</code></td><td>COMPLETED</td><td>최종 확정 + 고객 회계 반영</td></tr>
+<tr><td><code>BLOCKED</code></td><td>BLOCKED / REJECTED</td><td>TAP 또는 quorum 거절</td></tr>
+<tr><td><code>FAILED</code></td><td>FAILED / DROPPED</td><td>서명 / broadcast 실패</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>9.2.3 <code>mirrordb.withdrawal_orders</code></h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>withdrawal_id (PK)</td><td>은행 내부 ID</td></tr>
+<tr><td>tx_mirror_id (FK nullable)</td><td>Fireblocks 접수 후 연결</td></tr>
+<tr><td>customer_id</td><td>출금 요청 고객</td></tr>
+<tr><td>requested_amount</td><td>요청 금액</td></tr>
+<tr><td>destination_address</td><td>출금 대상</td></tr>
+<tr><td>destination_type</td><td>WHITELISTED / ONE_TIME / EXCHANGE / NETWORK / FIAT</td></tr>
+<tr><td>bank_status</td><td>REQUESTED / BANK_VALIDATING / FB_SUBMITTED / AWAITING_APPROVAL / SIGNING / BROADCASTED / SETTLED / BLOCKED / FAILED</td></tr>
+<tr><td>fb_external_tx_id</td><td>idempotency key (은행이 발급, Fireblocks 에 send)</td></tr>
+<tr><td>idempotency_key_sent_at</td><td>Fireblocks API 호출 시점</td></tr>
+<tr><td>requested_at</td><td>고객 신청 시점</td></tr>
+<tr><td>fb_submitted_at</td><td>Fireblocks 접수 응답 시점</td></tr>
+<tr><td>completed_at</td><td>최종 완료 시점</td></tr>
+<tr><td>travel_rule_required</td><td>boolean (100만원 이상 시 true)</td></tr>
+<tr><td>travel_rule_record_id (FK)</td><td>compliancedb 의 travel_rule_records FK</td></tr>
+<tr><td>user_response_sent_at</td><td>고객에게 알림 발송 시점</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>9.3 KR 컴플라이언스 통합</h3>
+
+<h4>9.3.1 트래블룰 (100만원 이상)</h4>
+<p>
+시행령 10조의10 — VASP 간 100만원 이상 송금 시 송신자 / 수신자 정보 교환 의무.
+</p>
+<ol>
+<li>은행 application 이 출금 요청 시 금액 평가</li>
+<li>100만원 이상이면 트래블룰 trigger</li>
+<li>VASP counterparty (수신측) 확인 (Sumsub / Notabene / TRP 등 트래블룰 provider 활용)</li>
+<li>송신자 / 수신자 정보를 트래블룰 protocol 로 교환</li>
+<li>compliancedb.travel_rule_records 에 기록</li>
+<li>Fireblocks Create Transaction 호출 — Fireblocks 의 정책 외 별도 처리</li>
+</ol>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/define-travel-rule-policies">Define Travel Rule Policies</a> ·
+<a href="https://www.law.go.kr/법령/특정금융거래정보의보고및이용등에관한법률시행령">특금법 시행령</a>
+</p>
+
+<h4>9.3.2 STR / 의심 거래 보고</h4>
+<ul>
+<li>입금: AML provider 가 flagged → compliance reviewer 의 manual review</li>
+<li>출금: high-risk address 또는 unusual pattern → 컴플라이언스 담당자 alert</li>
+<li>판단 결과 의심 거래 시: KOFIU (금융정보분석원) 에 STR 보고</li>
+<li>처리 결과를 compliancedb.suspicious_tx_review 에 기록</li>
+</ul>
+
+<h4>9.3.3 콜드월렛 80% 비율 유지</h4>
+<p>
+가상자산업감독규정 9조의 80% offline 보관 의무.
+</p>
+<ul>
+<li>대량 출금 시 Hot vault 잔액 부족 가능 → Cold workspace 에서 rebalancing</li>
+<li>Cold → Hot 이동 자체가 별도 Fireblocks 거래 (Cold workspace 의 Admin Quorum 매개)</li>
+<li>은행 운영팀: 일일 Hot/Cold 비율 monitoring + 임계점 도달 시 rebalancing trigger</li>
+</ul>
+<p>
+출처: <a href="../fireblocks-cold-wallet-bank-design/hot-cold-rebalancing.html">Hot ↔ Cold Rebalancing</a>
+</p>
+
+<h3>9.4 잔액 mirror — 정합성 보장</h3>
+<p>
+은행 customerdb / mirrordb 의 고객별 잔액과 Fireblocks vault balance 의 정합성.
+</p>
+
+<h4><code>mirrordb.balance_snapshots</code></h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>snapshot_id (PK)</td><td>은행 내부 ID</td></tr>
+<tr><td>fb_vault_id</td><td>vault</td></tr>
+<tr><td>asset_id</td><td>BTC / ETH / ...</td></tr>
+<tr><td>balance_total</td><td>Fireblocks 측 total balance</td></tr>
+<tr><td>balance_available</td><td>가용 balance (pending 제외)</td></tr>
+<tr><td>balance_locked</td><td>locked (pending tx)</td></tr>
+<tr><td>snapshot_at</td><td>스냅샷 시점 (정기 API 호출)</td></tr>
+<tr><td>source</td><td><code>webhook / api_poll / reconciliation</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>일일 reconciliation 절차</h4>
+<ol>
+<li>각 vault 의 balance 조회 (Fireblocks API)</li>
+<li>mirrordb.balance_snapshots 에 기록</li>
+<li>customer_balance_subledger 의 합계와 대조 (omnibus 시)</li>
+<li>mismatch 발견 시 reconciliation_finding 으로 기록 + 운영팀 alert</li>
+<li>금감원 보고 / 외부 감사 시점에 reconciliation log 가 증명 자료</li>
+</ol>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ 고객별 잔액 분리의 함의</div>
+<p style="margin-bottom:0">
+omnibus vault 운영 시 on-chain 에는 통합 balance 만 존재. 은행은 자체 customer_balance_subledger 의 정합성 (audit log 와 합) 을 별도로 증명해야 함.
+대법원 2024도10710 의 "실질 통제" 판단 시 고객별 자산 구분이 명확해야 함 — subledger 의 변조방지 (hash chain 등) 권장.
+</p>
+</div>
+
+<h3>9.5 사용자 응답 시간 정책</h3>
+<p>
+KR 가상자산이용자보호법의 사용자 출금 응답 시간 요건 (구체 시한은 별도 검토 필요). 은행이 응답 시간 SLA 를 정의해야 함.
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>거래 유형</th><th>권장 SLA (저자)</th><th>근거</th></tr></thead>
+<tbody>
+<tr><td>Hot 출금 (소액, AML clean)</td><td>실시간 (분 단위)</td><td>working balance + 자동 서명</td></tr>
+<tr><td>Hot 출금 (대량, quorum 매개)</td><td>1-2 시간</td><td>Approval Group 의 mobile 승인 시간</td></tr>
+<tr><td>Cold 출금</td><td>운영 시간 단위 (24h)</td><td>Cold workspace ceremony 절차</td></tr>
+<tr><td>긴급 출금</td><td>별도 정책 (예: 신청 후 12h 안)</td><td>긴급 ceremony 운영자 schedule</td></tr>
+</tbody>
+</table>
+</div>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="sm-webhook.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">8. Webhook 처리</span></a>
+<a class="page-nav-link page-nav-next" href="tables-audit.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">10. Audit · AML</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>6. MPC · Key Link · Cosigner — 키 관리 옵션</title>
+<meta content="3 product option (SaaS MPC / Hosted MPC / Key Link) + Cosigner deployment + Recovery" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a href="tables-user.html">4. Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a class="active" href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a href="sm-transaction.html">7. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">8. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
+<li><a href="risks.html">11. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<li><a href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="crypto">
+<h2>6. MPC · Key Link · Cosigner</h2>
+<span class="section-subtitle">3 product option · Cosigner deployment · Workspace Keys Backup · Recovery</span>
+
+<h3>6.1 키 관리 3 product option</h3>
+<p>
+Fireblocks 는 키 관리를 3 가지 product 으로 제공. 은행은 도입 결정 시 하나를 선택 (workspace type immutable, 변경 불가).
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>SaaS MPC</th><th>Hosted MPC</th><th>Key Link</th></tr></thead>
+<tbody>
+<tr><td><strong>키 share 분포</strong></td><td>Cloud 1 + Mobile 1 + Cloud Co-signer 1 = 3</td><td>Cloud 1 + Mobile 1 + Hosted Co-signer 1 = 3</td><td>고객 HSM 단독 (Fireblocks 0)</td></tr>
+<tr><td><strong>알고리즘 (MPC-CMP)</strong></td><td>ECDSA-SECP256K1, EdDSA-Ed25519, ECDSA-SECP256R1</td><td>동일</td><td>ECDSA, EdDSA (Validation/Signing key)</td></tr>
+<tr><td><strong>고객 측 인프라</strong></td><td>Mobile app 만</td><td>Hosted Co-signer 1대 이상</td><td>Agent + Customer Server + HSM</td></tr>
+<tr><td><strong>Backup 매커니즘</strong></td><td>Workspace Keys Backup (recovery passphrase)</td><td>동일</td><td>HSM vendor 의 backup (Thales 의 backup HSM 등)</td></tr>
+<tr><td><strong>Recovery</strong></td><td>recovery passphrase + R+ device 매개</td><td>recovery passphrase + Co-signer 재구성</td><td>HSM vendor 의 recovery 절차</td></tr>
+<tr><td><strong>은행이 DB 에 보관하는 키 material</strong></td><td><strong>없음</strong></td><td><strong>없음</strong> (Co-signer 가 자체 보관)</td><td><strong>없음</strong> (HSM 안에서만)</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://support.fireblocks.io/hc/en-us/articles/10167020461596-MPC-CMP-security-enhancements-version-update-August-2023">MPC-CMP Security Enhancements</a> ·
+<a href="https://support.fireblocks.io/hc/en-us/articles/14228517105052-Fireblocks-Key-Link-Overview">Key Link Overview</a>
+</p>
+
+<h3>6.2 MPC-CMP — Fireblocks 의 threshold 서명 (참고)</h3>
+<p>
+SaaS MPC / Hosted MPC 는 <strong>MPC-CMP (Canetti-Makriyannis-Peled 2020)</strong> protocol 사용. 3-party threshold ECDSA / EdDSA.
+</p>
+<ul>
+<li>3 party 중 <strong>2 party 가 협력</strong>해야 서명 1 개 완성 (2-of-3)</li>
+<li>한 party 의 share 만으로는 서명 불가능 → 단일 침해로 자산 탈취 불가</li>
+<li>2023-08 보안 업데이트: GG18 → MPC-CMP 로 전환 (8 라운드 → 4 라운드)</li>
+</ul>
+<p>
+출처: <a href="https://support.fireblocks.io/hc/en-us/articles/10167020461596-MPC-CMP-security-enhancements-version-update-August-2023">MPC-CMP Security Update 2023-08</a>
+</p>
+
+<div class="callout">
+<div class="callout-title">은행 입장에서 — MPC 의 함의</div>
+<p style="margin-bottom:0">
+은행은 MPC 내부 동작을 자세히 알 필요는 없다. 알아야 할 것은:
+</p>
+<ul style="margin-bottom:0">
+<li>키 share 가 1 곳에 모이지 않으므로, Fireblocks Cloud / 은행 mobile / 은행 cosigner 중 1 곳만 침해되어도 자산 탈취 불가</li>
+<li>SaaS MPC 는 Fireblocks Cloud + 은행 mobile + Cloud Co-signer 의 3-party. 즉 은행 측 device 가 1 개 필요</li>
+<li>Hosted MPC 는 은행 측 Co-signer 1 대 추가 — Cloud Co-signer 대신</li>
+<li>Key Link 는 MPC 가 아닌 단일 HSM 모델 (다른 보안 모델)</li>
+</ul>
+</div>
+
+<h3>6.3 Cosigner Deployment — 6 options</h3>
+<p>
+Hosted MPC 의 Co-signer 는 다양한 환경에 배포 가능:
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>Deployment</th><th>특성</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Azure SGX (Fireblocks 운영)</td><td>SaaS 의 default</td></tr>
+<tr><td>2</td><td>On-prem (고객 SGX 머신)</td><td>망분리 IDC 적합. 가장 강한 격리</td></tr>
+<tr><td>3</td><td>AWS Nitro Enclaves</td><td>AWS 환경의 confidential computing</td></tr>
+<tr><td>4</td><td>GCP Confidential Space</td><td>GCP confidential computing</td></tr>
+<tr><td>5</td><td>Alibaba Cloud SGX</td><td>중국 region</td></tr>
+<tr><td>6</td><td>IBM Cloud Confidential Computing</td><td>IBM region</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/aws-nitro-api-co-signer">AWS Nitro API Co-signer</a> ·
+<a href="https://developers.fireblocks.com/reference/install-api-cosigner-aws">Install API Cosigner AWS</a>
+</p>
+
+<h4><code>customerdb.fb_cosigner_meta</code> (Hosted MPC 시)</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>cosigner_id (PK)</td><td>은행 내부 ID</td></tr>
+<tr><td>fb_cosigner_uuid</td><td>Fireblocks 가 발급한 cosigner UUID</td></tr>
+<tr><td>fb_workspace_id</td><td>속한 workspace</td></tr>
+<tr><td>deployment</td><td><code>azure_sgx / onprem / aws_nitro / gcp_cs / alibaba / ibm</code></td></tr>
+<tr><td>hostname</td><td>운영 hostname</td></tr>
+<tr><td>region</td><td>cloud region (예: ap-northeast-2)</td></tr>
+<tr><td>cosigner_version</td><td>설치된 cosigner version</td></tr>
+<tr><td>last_heartbeat_at</td><td>마지막 alive 확인 시점 (Fireblocks 측 monitoring API)</td></tr>
+<tr><td>installed_at</td><td>최초 설치 시점</td></tr>
+<tr><td>status</td><td><code>active / suspended / retired</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>6.4 Callback Handler (Hosted MPC 운영 검증)</h3>
+<p>
+Hosted MPC 의 Co-signer 는 서명 직전에 은행의 Callback Handler endpoint 를 호출하여 추가 검증 요청 가능.
+</p>
+<ul>
+<li>은행이 자체 정책 (예: KR 거주자 제외 / KYC 미완료 차단 / 추가 한도 검증) 을 적용할 수 있음</li>
+<li>Endpoint URL · CSR public key 를 Fireblocks 에 등록</li>
+<li>secure communication (mTLS) 강제</li>
+</ul>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/create-api-co-signer-callback-handler">Create API Co-signer Callback Handler</a> ·
+<a href="https://developers.fireblocks.com/reference/cosigner-callbackhandler-secure-communication-authentication">Callback Handler Secure Communication</a>
+</p>
+
+<h3>6.5 Workspace Keys Backup — Backup 매커니즘</h3>
+<p>
+Fireblocks 가 제공하는 자산 회복 매커니즘. mobile device 분실 / Co-signer 손상 등의 시나리오 대응.
+</p>
+
+<h4>매커니즘 (저자 정리)</h4>
+<ul>
+<li>Owner / Admin 이 "Create new backup" 시작 (Fireblocks Console)</li>
+<li><strong>Recovery passphrase</strong> (사용자 입력) 로 backup 암호화</li>
+<li>Fireblocks 가 backup 의 encrypted form 을 보관</li>
+<li>Mobile device 분실 시 새 device 에 recovery passphrase 입력 → 복원</li>
+</ul>
+
+<h4><code>customerdb.fb_workspace_backup_meta</code></h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>backup_id (PK)</td><td>은행 내부 ID</td></tr>
+<tr><td>fb_workspace_id</td><td>workspace</td></tr>
+<tr><td>fb_backup_uuid</td><td>Fireblocks 가 발급한 backup ID</td></tr>
+<tr><td>created_by</td><td>backup 생성 시작자 (fb_user_id)</td></tr>
+<tr><td>passphrase_storage_location</td><td>recovery passphrase 의 물리 보관 위치 (예: "은행 vault room safe #3") — <strong>passphrase 자체는 DB 에 절대 저장 금지</strong></td></tr>
+<tr><td>passphrase_custodians</td><td>jsonb — passphrase 를 알고 있는 사람 (custodian) 목록</td></tr>
+<tr><td>created_at</td><td>backup 생성 시점</td></tr>
+<tr><td>last_tested_at</td><td>마지막 recovery drill 시점 (저자 권장 — 분기별 1회 drill)</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ Recovery passphrase 의 보관</div>
+<ul style="margin-bottom:0">
+<li><strong>절대 DB / digital storage 에 저장 금지</strong> — 물리 vault room 의 sealed envelope 권장</li>
+<li><strong>다수 custodian 분할 보관 권장</strong> — Shamir's Secret Sharing 또는 split-phrase 패턴</li>
+<li><strong>정기 recovery drill</strong> — 분기별 1회 testnet workspace 에서 실제 recovery 절차 검증</li>
+<li><strong>SPOC (Single Point of Compromise) 인식</strong> — recovery passphrase 가 한 번이라도 노출되면 자산 노출로 간주</li>
+</ul>
+</div>
+
+<h3>6.6 Recovery — Disaster Recovery Utility</h3>
+<p>
+Fireblocks 의 Recovery Utility 는 자산 회복용 도구. <strong>★ SPOC 경고</strong> — 정기 사용 금지, 1 회 사용도 키 노출 risk 로 간주.
+</p>
+<ul>
+<li>반드시 <strong>offline air-gapped machine</strong> 에서만 실행</li>
+<li>사용 후 해당 machine 폐기 또는 disk wipe</li>
+<li>extended private keys (xprv + fprv) 재구성 가능 — 즉 사용자가 키 자체를 손에 쥐는 상태</li>
+<li>은행 정책: Recovery Utility 사용 = Admin Quorum 전원 동의 + 외부 감사 ceremony</li>
+</ul>
+
+<h4><code>customerdb.recovery_event_log</code> (저자 권장)</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>event_id (PK)</td><td>은행 내부 ID</td></tr>
+<tr><td>event_type</td><td><code>backup_created / recovery_drill / actual_recovery / device_migration</code></td></tr>
+<tr><td>fb_workspace_id</td><td>workspace</td></tr>
+<tr><td>initiated_by</td><td>시작자 (Admin Quorum quorum)</td></tr>
+<tr><td>witness_list</td><td>jsonb — ceremony 참관인 (외부 감사인 포함)</td></tr>
+<tr><td>video_recording_ref</td><td>ceremony 녹화 파일 reference (외부 감사 대응)</td></tr>
+<tr><td>started_at · completed_at</td><td>ceremony 시점</td></tr>
+<tr><td>result</td><td><code>success / partial / failed</code></td></tr>
+<tr><td>findings</td><td>text — ceremony 결과 / 발견 사항</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>6.7 Key Link 의 특수성 (별도 reference)</h3>
+<p>
+Key Link product 는 customer-held HSM 모델로 위의 모든 룰이 다르게 적용됨:
+</p>
+<ul>
+<li><strong>Backup 은 HSM vendor 가 제공</strong> — Thales Luna 의 backup HSM 또는 smart card 백업</li>
+<li><strong>Workspace Keys Backup 매커니즘 미적용</strong> (Fireblocks 가 키 share 0 이므로)</li>
+<li><strong>Validation Key + Signing Key 2 key 모델</strong></li>
+<li><strong>HSM 자체가 SPOC</strong> — HSM 침해 / 손상 = 자산 손실</li>
+</ul>
+<p>
+상세: <a href="../fireblocks-key-link-bank-design/">Fireblocks Key Link — Customer HSM 통합</a> reference
+</p>
+
+<h3>6.8 알고리즘 매핑 (asset → algorithm)</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>알고리즘</th><th>커브</th><th>주요 자산</th></tr></thead>
+<tbody>
+<tr><td>ECDSA</td><td>SECP256K1</td><td>BTC, ETH, USDC (ERC-20), MATIC, BNB</td></tr>
+<tr><td>EdDSA</td><td>Ed25519</td><td>SOL, XLM, NEAR, ALGO, ADA</td></tr>
+<tr><td>ECDSA</td><td>SECP256R1 (NIST P-256)</td><td>특정 enterprise 자산 (소수)</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/api-reference/blockchains-&amp;-assets/list-assets">List Assets API</a>
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ Forbidden — 은행 DB 에 저장하지 말 것</div>
+<p style="margin-bottom:0">다음은 어떤 column 에도 저장 금지 (직접 구축의 F-bid storage class 와 동일):</p>
+<ul style="margin-bottom:0">
+<li>MPC private key share (어떤 party 의 share 도)</li>
+<li>extended private keys (xprv, fprv)</li>
+<li>Recovery passphrase</li>
+<li>HSM PIN, PKCS#11 access token (Key Link 시)</li>
+<li>Validation Key / Signing Key private (Key Link 시)</li>
+<li>Mobile device KeyChain dump</li>
+<li>Fireblocks API secret 평문</li>
+<li>SGX enclave sealing key</li>
+</ul>
+</div>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-governance.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">5. Roles · Quorum</span></a>
+<a class="page-nav-link page-nav-next" href="sm-transaction.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">7. Transaction State</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

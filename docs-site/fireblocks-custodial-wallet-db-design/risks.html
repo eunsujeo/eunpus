@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>11. Risks Register — Fireblocks 도입 risk</title>
+<meta content="Fireblocks 도입 시 새로 추가되는 vendor / outage / lock-in risk 와 완화 방안" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a href="tables-workspace-vault.html">3. Workspace · Vault · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a href="tables-user.html">4. Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a href="tables-governance.html">5. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a href="tables-crypto.html">6. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a href="sm-transaction.html">7. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">8. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">9. Deposit · Withdrawal</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">10. Audit · AML · Travel Rule</a></li>
+<li><a class="active" href="risks.html">11. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<li><a href="db-ops.html">12. DB 운영 · Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="risks">
+<h2>11. Risks Register</h2>
+<span class="section-subtitle">Fireblocks 도입으로 새로 추가되는 risk + 완화 방안</span>
+
+<h3>11.1 도입으로 추가되는 risk 한눈에 보기</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>ID</th><th>Risk</th><th>심각도</th><th>완화 권장</th></tr></thead>
+<tbody>
+<tr><td>FB-R01</td><td>Vendor lock-in</td><td>중-높음</td><td>마이그레이션 plan + multi-vendor 검토</td></tr>
+<tr><td>FB-R02</td><td>Fireblocks SaaS outage</td><td>높음</td><td>BCP + 사용자 응답 정책 + 큐잉</td></tr>
+<tr><td>FB-R03</td><td>Webhook 손실 / delay</td><td>중</td><td>정기 reconciliation + retry 정책</td></tr>
+<tr><td>FB-R04</td><td>API key 도난</td><td>높음</td><td>secret manager + IP allowlist + rotation</td></tr>
+<tr><td>FB-R05</td><td>Recovery passphrase 분실 / 침해</td><td>치명</td><td>multi-custodian + 정기 drill</td></tr>
+<tr><td>FB-R06</td><td>vendor 정책 변경 (API breaking change)</td><td>중</td><td>SDK version pinning + change log monitor</td></tr>
+<tr><td>FB-R07</td><td>vendor 측 침해 (Fireblocks 자체 보안)</td><td>낮음 (MPC) — 자산 직접 손실 X / 운영 중단 가능</td><td>MPC 의 보안 모델 활용</td></tr>
+<tr><td>FB-R08</td><td>KR 컴플라이언스 의무 vendor 미보장</td><td>높음</td><td>은행 자체 수행 + vendor 와 공식 보증 협의</td></tr>
+<tr><td>FB-R09</td><td>KR 관할 명시 vs 미명시 (Q-FB03)</td><td>중-높음</td><td>계약 조항 + 공식 statement 확보</td></tr>
+<tr><td>FB-R10</td><td>비용 증가 (자산 / 거래 증가에 따라)</td><td>중</td><td>요금제 검토 + 임계 alarm</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>FB-R01 — Vendor Lock-in</h3>
+<p>
+<strong>위협</strong>: 모든 vault / 거래 / governance 가 Fireblocks 에 종속. 다른 vendor 로 마이그레이션 시 모든 자산을 새 wallet 으로 on-chain transfer 필요.
+</p>
+<ul>
+<li><strong>원인</strong>: workspace type immutable + 키 share 가 Fireblocks 의 보안 매커니즘에 종속</li>
+<li><strong>영향</strong>: 마이그레이션 비용 = on-chain fee + 운영 시간 + 사용자 영향</li>
+<li><strong>완화</strong>:
+  <ul>
+    <li>도입 전 multi-vendor 검토 (BitGo / Anchorage / Hex Trust 등)</li>
+    <li>마이그레이션 plan 사전 수립 (한 번에 전체 vs 단계적)</li>
+    <li>Key Link option 선택 시 lock-in 완화 (HSM 자체는 다른 platform 에서도 사용 가능)</li>
+  </ul>
+</li>
+</ul>
+
+<h3>FB-R02 — Fireblocks SaaS Outage</h3>
+<p>
+<strong>위협</strong>: Fireblocks SaaS 장애 = 은행 거래 처리 중단. 직접 구축에는 없는 새 종속성.
+</p>
+<ul>
+<li><strong>완화</strong>:
+  <ul>
+    <li>Fireblocks Status page 모니터링 (<a href="https://status.fireblocks.com/">status.fireblocks.com</a> 또는 유사 endpoint)</li>
+    <li>BCP — 장애 발생 시 사용자 응답 시간 SLA 사전 정의 (예: 4 시간 지연 시 알림)</li>
+    <li>거래 큐잉 — 장애 중 접수된 출금 신청은 큐에 보관, 정상화 후 처리</li>
+    <li>Fireblocks SLA 협의 — 계약 시 가용성 보장 + 위약금 조항</li>
+    <li>오프라인 ceremony 절차 (Key Link Cold mode 활용 시 일부 거래 처리 가능)</li>
+  </ul>
+</li>
+</ul>
+
+<h3>FB-R03 — Webhook 손실 / Delay</h3>
+<p>
+<strong>위협</strong>: Webhook 누락 시 mirrordb 가 Fireblocks Console 과 불일치 → audit 정합성 깨짐.
+</p>
+<ul>
+<li><strong>완화</strong>:
+  <ul>
+    <li>일일 reconciliation — API 로 transaction list 조회 후 mirror 와 대조</li>
+    <li>Fireblocks 의 webhook retry 정책 활용</li>
+    <li>endpoint HA 구성 (Active-Active load balancer)</li>
+    <li>webhook delay metric monitoring (p99 alert)</li>
+    <li>missing event 자동 backfill 절차</li>
+  </ul>
+</li>
+</ul>
+
+<h3>FB-R04 — API Key 도난</h3>
+<p>
+<strong>위협</strong>: API key + secret 이 노출되면 공격자가 임의 거래 시작 가능 (단 TAP 정책 + 서명 단계가 추가 보호).
+</p>
+<ul>
+<li><strong>완화</strong>:
+  <ul>
+    <li>secret manager 만 사용 — DB / log / 코드 commit 금지</li>
+    <li>IP allowlist — 은행 application server 의 NAT IP 만</li>
+    <li>최소 권한 — Viewer / Editor / Signer / Admin role 분리</li>
+    <li>정기 rotation (분기별 권장)</li>
+    <li>API call 이상 detection (volume / source IP / time-of-day)</li>
+    <li>secret 사용 audit — 어떤 application 이 어떤 key 사용 중인지 inventory</li>
+  </ul>
+</li>
+</ul>
+
+<h3>FB-R05 — Recovery Passphrase 분실 / 침해</h3>
+<p>
+<strong>위협 (치명적)</strong>: Mobile device 또는 Co-signer 분실 + passphrase 도 분실 = <strong>자산 영구 손실</strong>. 반대로 passphrase 노출 = 자산 단독 탈취 가능 (SPOC).
+</p>
+<ul>
+<li><strong>완화</strong>:
+  <ul>
+    <li><strong>Multi-custodian split</strong> — Shamir's Secret Sharing 으로 3-of-5 분할. 한 custodian 의 분실 / 침해로 전체 손실 / 노출 안 됨</li>
+    <li>물리 vault 보관 (sealed envelope · safe deposit box)</li>
+    <li>분기별 recovery drill — testnet workspace 에서 실제 복원 절차 검증</li>
+    <li>custodian 의 신원 / 권한 분리 (보안팀 ≠ 운영팀)</li>
+    <li>passphrase 사용 시 ceremony (외부 감사인 참관 + 녹화)</li>
+  </ul>
+</li>
+</ul>
+
+<h3>FB-R06 — Vendor API Breaking Change</h3>
+<ul>
+<li><strong>위협</strong>: Fireblocks SDK / API 의 breaking change 로 은행 application 호환성 깨짐</li>
+<li><strong>완화</strong>:
+  <ul>
+    <li>SDK version pinning</li>
+    <li>Fireblocks change log 정기 review</li>
+    <li>vendor 의 deprecation notice 추적 (보통 90일 사전 공지)</li>
+    <li>sandbox workspace 에서 새 version pre-test</li>
+    <li>특히 Beta API (Key Link) 는 production 적용 전 충분한 검증
+      <a href="../fireblocks-key-link-bank-design/risks-open-questions.html">(Key Link Risk-KL03)</a>
+    </li>
+  </ul>
+</li>
+</ul>
+
+<h3>FB-R07 — Vendor 측 침해</h3>
+<p>
+<strong>위협</strong>: Fireblocks SaaS 자체가 침해되는 경우. MPC 의 보안 모델 덕에 자산 직접 손실 risk 는 낮으나, 운영 중단 / governance 침해 가능성.
+</p>
+<ul>
+<li><strong>자산 직접 손실</strong>: <strong>낮음</strong> — MPC 의 3-party 모델 (Fireblocks Cloud + 은행 mobile + Cloud Co-signer) 에서 Fireblocks Cloud 단독 침해로 키 추출 불가</li>
+<li><strong>운영 중단</strong>: 가능 — Console / API 접근 불가</li>
+<li><strong>Governance 침해</strong>: 가능 — 공격자가 정책 변경 / Whitelisted address 추가 시도. 단 Admin Quorum mobile 승인 + 2FA 가 추가 방어</li>
+<li><strong>완화</strong>: Hosted MPC / Key Link option 으로 Fireblocks 의존 비율 축소. Mobile device 의 strong 2FA / biometric</li>
+</ul>
+
+<h3>FB-R08 — KR 컴플라이언스 의무 Vendor 미보장</h3>
+<p>
+<strong>위협</strong>: 가상자산이용자보호법 / 특금법 / 가상자산업감독규정의 의무는 <strong>은행에 부과</strong>. Fireblocks 가 자동 보장하지 않음.
+</p>
+<ul>
+<li><strong>5년 보존 (특금법 5조의4)</strong> — Fireblocks 의 retention 정책 확인 + 자체 mirror</li>
+<li><strong>콜드월렛 80% (감독규정 9조)</strong> — Fireblocks 가 비율 자동 monitoring 안 함. 은행이 자체 monitor</li>
+<li><strong>실질 통제 (대법원 2024도10710)</strong> — option 선택의 함의 (Key Link 가 가장 강함)</li>
+<li><strong>STR 보고 / 트래블룰</strong> — 은행 책임. provider 연동은 도와줄 수 있지만 의무 수행 자체는 은행</li>
+<li><strong>완화</strong>: 별도 reference <a href="../fireblocks-kr-vasp-compliance/">국내 블록체인 사업 법규 × Fireblocks</a> 의 17 의무 매핑 참조</li>
+</ul>
+
+<h3>FB-R09 — KR 관할 명시 vs 미명시</h3>
+<ul>
+<li><strong>위협</strong>: Fireblocks 공식 블로그 (2025-09-23 Thales 파트너십) 가 HKMA · HKSFC · JFSA 만 명시. KR 미명시</li>
+<li><strong>영향</strong>: vendor 보증 없이 KR 환경 도입 시 risk 부담을 은행이 단독으로 짊어짐</li>
+<li><strong>완화</strong>:
+  <ul>
+    <li>Fireblocks Sales / Legal 과 직접 협의 — KR 공식 statement 확보</li>
+    <li>계약 조항에 KR 관할 적용 + 위약금</li>
+    <li>금감원 사전 검토 / 신고 / 인허가 절차 확인</li>
+  </ul>
+</li>
+</ul>
+
+<h3>FB-R10 — 비용 증가</h3>
+<ul>
+<li><strong>위협</strong>: Fireblocks 의 가격 정책이 워크스페이스 / 거래량 / 자산 가치에 의존. 사업 확장 시 비용 증가</li>
+<li><strong>완화</strong>:
+  <ul>
+    <li>요금제 모델 사전 분석 (자산 가치 / 거래량 / vault 수 등)</li>
+    <li>임계 alarm (예: 월 비용이 X 초과 시 alert)</li>
+    <li>장기 계약 시 가격 cap 협의</li>
+    <li>대안 option (자체 Cold storage 등) 의 비용 비교</li>
+  </ul>
+</li>
+</ul>
+
+<h3>11.2 도입 후 사라지는 risk (직접 구축 대비 개선)</h3>
+<p>
+직접 구축의 risk 중 Fireblocks 도입으로 완화 / 사라지는 risk:
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>직접 구축의 risk</th><th>도입 후</th></tr></thead>
+<tbody>
+<tr><td>MPC 구현의 보안 결함 (자체 구현)</td><td>✅ Fireblocks 의 MPC-CMP (외부 audit 검증)</td></tr>
+<tr><td>SGX enclave 운영 부담</td><td>✅ Fireblocks 가 운영 (Hosted MPC 시 일부)</td></tr>
+<tr><td>Cosigner HA / DR 운영</td><td>✅ Fireblocks 가 운영 (SaaS MPC 시 전부)</td></tr>
+<tr><td>Policy Engine 의 정책 충돌 / 버그</td><td>✅ Fireblocks 의 TAP 가 외부 audit 검증</td></tr>
+<tr><td>Audit log 의 변조 방지 매커니즘 구축</td><td>✅ Fireblocks Console 의 immutable log</td></tr>
+<tr><td>blockchain node 운영 (BTC / ETH / SOL ...)</td><td>✅ Fireblocks node infrastructure</td></tr>
+<tr><td>Disaster Recovery utility 개발</td><td>✅ Workspace Keys Backup</td></tr>
+<tr><td>P2P transfer 망 구축</td><td>✅ Fireblocks Network</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>11.3 잔류 risk — 도입 후에도 동일하게 남는 risk</h3>
+<ul>
+<li><strong>고객 정보 (PII) 유출</strong> — customerdb 의 운영 책임</li>
+<li><strong>KR 법규 의무 위반</strong> — 도입 후에도 은행 책임</li>
+<li><strong>블록체인 자체 risk</strong> — 51% 공격 · chain reorg · smart contract 취약점</li>
+<li><strong>외부 counterparty risk</strong> — whitelisted address 의 진위 / 사기 / 환수</li>
+<li><strong>내부 직원 부정</strong> — Admin Quorum 매개로 완화 가능하나 0 은 아님</li>
+<li><strong>법규 변경 risk</strong> — KR 가상자산이용자보호법 후속 시행령 / 감독규정 변경</li>
+</ul>
+
+<h3>11.4 도입 결정의 risk-reward 분석 (저자)</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>축</th><th>직접 구축</th><th>Fireblocks 도입</th></tr></thead>
+<tbody>
+<tr><td>초기 구축 비용</td><td>매우 높음 (보안 인프라 + MPC + 컴플라이언스)</td><td>낮음 (SDK + DB 매핑만)</td></tr>
+<tr><td>운영 부담</td><td>높음 (모든 component 관리)</td><td>중 (mirror + KR 컴플라이언스)</td></tr>
+<tr><td>월 운영 비용</td><td>낮음 (인프라만)</td><td>중-높음 (vendor 요금)</td></tr>
+<tr><td>보안 risk</td><td>자체 구현 책임 (높음)</td><td>vendor 위임 + 잔류</td></tr>
+<tr><td>유연성</td><td>최대 (자유 설계)</td><td>낮음 (vendor lock-in)</td></tr>
+<tr><td>컴플라이언스 적합</td><td>은행이 직접 (구축 비용)</td><td>은행 + Fireblocks 협업</td></tr>
+<tr><td>도입 속도</td><td>장기 (2-3년)</td><td>단기 (3-6개월)</td></tr>
+<tr><td>적합 시나리오</td><td>대형 은행 + 디지털 자산 사업 핵심</td><td>중소 은행 + 신규 사업 진입</td></tr>
+</tbody>
+</table>
+</div>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-audit.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">10. Audit · AML</span></a>
+<a class="page-nav-link page-nav-next" href="db-ops.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">12. DB 운영</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
