@@ -331,12 +331,16 @@ tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover { background-color: var(--bg-subtle); }
 td code { font-size: 12.5px; }
 
-/* Overview domains table — cell 줄바꿈 방지 + 컨테이너 안에 맞춤 */
-.overview-domains td,
-.overview-domains th { white-space: nowrap; }
-.overview-domains { font-size: 13px; }
+/* Overview domains table — 도메인 cell 만 nowrap, 다루는 내용 / 진입점은 자동 줄바꿈 + col 비율 고정 */
+.overview-domains { font-size: 13px; table-layout: fixed; width: 100%; }
 .overview-domains th,
-.overview-domains td { padding: 8px 10px; }
+.overview-domains td { padding: 8px 10px; vertical-align: top; }
+.overview-domains th:nth-child(1),
+.overview-domains td:nth-child(1) { width: 18%; white-space: nowrap; }
+.overview-domains th:nth-child(2),
+.overview-domains td:nth-child(2) { width: 52%; white-space: normal; word-break: keep-all; }
+.overview-domains th:nth-child(3),
+.overview-domains td:nth-child(3) { width: 30%; white-space: normal; word-break: keep-all; }
 /* tooltip clipping 방지: glossary (?) 가 들어있는 table 은 overflow visible */
 .table-wrap:has(.overview-domains),
 .table-wrap:has(.g) { overflow: visible; }

@@ -23,7 +23,7 @@
 <li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a></li>
 <li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
@@ -45,11 +45,11 @@
 <li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
 <li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">I. Accounting &amp; Reconciliation</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
 <li><a href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
 <li><a class="active" href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
 <li><a href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
@@ -74,7 +74,7 @@ Fireblocks 는 대사·결산·마감을 다루지 않는다. 본 도메인은 �
 <ol>
 <li><strong>블록체인 (canonical source)</strong> — 실제 자산의 truth</li>
 <li><strong>Fireblocks Console / API</strong> — vendor 의 vault balance · audit log</li>
-<li><strong>은행 mirrordb</strong> — webhook 으로 받은 사본 + 4 원장 (고객 / 자체 / 델타 / 총계정)</li>
+<li><strong>은행 operationsdb</strong> — webhook 으로 받은 사본 + 4 원장 (고객 / 자체 / 델타 / 총계정)</li>
 <li><strong>계정계</strong> — 기존 은행 시스템의 법정통화 측 정합</li>
 </ol>
 <p>
@@ -154,7 +154,7 @@ flowchart TB
 <li><strong>불일치 시</strong>: <strong>치명적</strong> — 즉시 시스템 정지 수준. 보안 침해 / 회계 오류 의심</li>
 </ul>
 
-<h3>16.3 mirrordb 의 대사 테이블</h3>
+<h3>16.3 operationsdb 의 대사 테이블</h3>
 
 <div class="table-wrap">
 <table>
@@ -233,7 +233,7 @@ sequenceDiagram
   participant Time as ⏰ 마감 시점<br/>(KST 00:00)
   participant Lock as 거래 lock<br/>(L1 대사 대기)
   participant FB as Fireblocks API
-  participant DB as mirrordb
+  participant DB as operationsdb
   participant Calc as 결산 계산기
   participant Snap as 스냅샷 테이블
   participant GL as 계정계 sync

@@ -23,7 +23,7 @@
 <li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a></li>
 <li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
@@ -45,11 +45,11 @@
 <li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
 <li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">I. Accounting &amp; Reconciliation</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
 <li><a href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
 <li><a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
 <li><a href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
@@ -72,7 +72,7 @@ Fireblocks 는 user role 을 9 가지로 정의. 각 role 의 권한과 책임:
 <tr><td><strong>Admin</strong></td><td>Admin Quorum 의 구성원. user / policy / quorum 변경 승인</td><td>운영팀 팀장 · 보안팀 팀장</td></tr>
 <tr><td><strong>Non-Signing Admin</strong></td><td>거래 서명 권한 없음, 그 외 Admin 작업</td><td>컴플라이언스팀</td></tr>
 <tr><td><strong>Approver</strong></td><td>Approval Group 에서 거래 / 정책 승인</td><td>운영팀 일반 직원</td></tr>
-<tr><td><strong>Signer</strong></td><td>Policy rule 의 designated signer (Hosted MPC / Key Link 의 Co-signer / Agent API user)</td><td>application server 의 API key</td></tr>
+<tr><td><strong>Signer</strong></td><td>Policy rule 의 designated signer (Hosted MPC / Key Link 의 Co-signer / Agent API user)</td><td>플랫폼 의 API key</td></tr>
 <tr><td><strong>Non-Signing User</strong></td><td>거래 시작 가능, 서명 권한 없음</td><td>거래 요청자 (예: ops 신청)</td></tr>
 <tr><td><strong>Editor</strong></td><td>workspace 설정 편집 (정책 미반영 시도 가능, 단 실제 적용은 quorum)</td><td>설정 관리자</td></tr>
 <tr><td><strong>Viewer</strong></td><td>read-only</td><td>회계팀 · 감사 access</td></tr>
@@ -116,17 +116,17 @@ Admin Quorum 은 workspace 의 모든 Admin user 의 집합. 거버넌스 작업
 출처: <a href="https://support.fireblocks.io/hc/en-us/articles/10371416837788-Transfer-workspace-Owner">Transfer Workspace Owner</a>
 </p>
 
-<h4><code>customerdb.fb_admin_quorum_meta</code> — quorum 구성 mirror</h4>
+<h4><code>customerdb.admin_quorum_meta</code> — quorum 구성 mirror</h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>column</th><th>설명</th></tr></thead>
 <tbody>
 <tr><td>quorum_id (PK)</td><td>은행 내부 ID</td></tr>
-<tr><td>fb_workspace_id (FK)</td><td>workspace</td></tr>
+<tr><td>workspace_code</td><td>config 의 workspace key (<code>"hot"</code> / <code>"cold"</code>)</td></tr>
 <tr><td>quorum_threshold</td><td>예: <code>3 of 5</code> 형태 (Fireblocks 측 설정 mirror)</td></tr>
-<tr><td>member_user_ids</td><td>jsonb — Admin 사용자 fb_user_id 목록</td></tr>
+<tr><td>member_user_ids</td><td>jsonb — Admin 사용자 vendor_user_id 목록</td></tr>
 <tr><td>last_changed_at</td><td>마지막 quorum 변경 시점 (Fireblocks audit log mirror)</td></tr>
-<tr><td>last_changed_by</td><td>변경 시작자 (fb_user_id)</td></tr>
+<tr><td>last_changed_by</td><td>변경 시작자 (vendor_user_id)</td></tr>
 </tbody>
 </table>
 </div>
@@ -183,7 +183,7 @@ TAP 는 Fireblocks 의 거래 단위 정책 엔진. 모든 거래는 TAP 평가�
 <a href="https://developers.fireblocks.com/docs/define-travel-rule-policies">Define Travel Rule Policies</a>
 </p>
 
-<h4><code>customerdb.fb_policy_rule_mirror</code> — 정책 mirror (참고용)</h4>
+<h4><code>customerdb.policy_rule_mirror</code> — 정책 mirror (참고용)</h4>
 <p>
 정책 자체는 Fireblocks Console / API 가 source of truth. 은행 DB 는 audit / 변경 이력 mirror 만:
 </p>
@@ -192,8 +192,8 @@ TAP 는 Fireblocks 의 거래 단위 정책 엔진. 모든 거래는 TAP 평가�
 <thead><tr><th>column</th><th>설명</th></tr></thead>
 <tbody>
 <tr><td>rule_mirror_id (PK)</td><td>은행 내부 ID</td></tr>
-<tr><td>fb_rule_id</td><td>Fireblocks 정책 UUID</td></tr>
-<tr><td>fb_workspace_id</td><td>workspace</td></tr>
+<tr><td>vendor_rule_id</td><td>Fireblocks 정책 UUID</td></tr>
+<tr><td>vendor_workspace_id</td><td>workspace</td></tr>
 <tr><td>rule_json</td><td>jsonb — 정책 전체 spec (변경 시점의 snapshot)</td></tr>
 <tr><td>rule_hash</td><td>SHA-256(rule_json) — 변조 검출용</td></tr>
 <tr><td>active_from</td><td>활성 시작 시점</td></tr>
@@ -215,7 +215,7 @@ sequenceDiagram
   participant TAP as Policy Engine / TAP
   participant AG as Approval Group<br/>(필요 시)
   participant Signer as Designated Signer<br/>(API user / Agent)
-  participant Bank as 🏢 은행 webhook<br/>(mirrordb)
+  participant Bank as 🏢 은행 webhook<br/>(operationsdb)
 
   App->>FB: Create Transaction
   FB->>TAP: Policy 평가
@@ -256,7 +256,7 @@ sequenceDiagram
 <thead><tr><th>KR 요건</th><th>Fireblocks 매핑</th></tr></thead>
 <tbody>
 <tr><td>이용자 자산의 80% offline (가상자산업감독규정 9조)</td><td>Cold Wallet workspace + rebalancing Policy rule</td></tr>
-<tr><td>거래 5년 보존 (특금법 5조의4)</td><td>Fireblocks Console immutable log + 은행 mirrordb 5년 retention</td></tr>
+<tr><td>거래 5년 보존 (특금법 5조의4)</td><td>Fireblocks Console immutable log + 은행 operationsdb 5년 retention</td></tr>
 <tr><td>의심 거래 보고 (특금법)</td><td>Approval Group 의 compliance reviewer + 별도 SAR queue</td></tr>
 <tr><td>트래블룰 100만원 이상 (시행령 10조의10)</td><td>Fireblocks 트래블룰 정책 + Sumsub / Notabene / TRP 연동</td></tr>
 <tr><td>실질 통제 (대법원 2024도10710)</td><td>Key Link 시 가장 강함 (키 share 0). SaaS MPC 시 분산 — 별도 법률 검토</td></tr>

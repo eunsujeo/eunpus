@@ -23,7 +23,7 @@
 <li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a></li>
 <li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
@@ -45,11 +45,11 @@
 <li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
 <li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">I. Accounting &amp; Reconciliation</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
 <li><a href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
 <li><a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
 <li><a href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
@@ -83,7 +83,7 @@
 <tr><td><strong>DB 개수</strong></td>
   <td>7 DB (walletdb · ledgerdb · approverdb · auditdb · chaindb · providerdb · recondb)</td>
   <td>Fireblocks 가 vault · 정책 · audit log 등 대부분의 DB 책임을 인수.
-    <strong>은행이 직접 운영하는 DB 는 2-3 개</strong> (customerdb + mirrordb [+compliancedb]) —
+    <strong>은행이 직접 운영하는 DB 는 2-3 개</strong> (customerdb + operationsdb [+compliancedb]) —
     단 webhook 중복 처리 · 5년 보존 · AML/트래블룰 통합 등 <strong>새 책임이 발생</strong>하므로 운영 부담이 "줄었다" 가 아니라 "성격이 달라졌다"</td></tr>
 <tr><td><strong>상태 머신 책임</strong></td>
   <td>은행이 17 transaction state · 14-step · approval · signing 전부 운영</td>
@@ -119,7 +119,7 @@ Fireblocks 가 17 transaction state 를 운영하지만, 은행 application 은 
 <h2>이 문서의 9 가지 도메인 (18 페이지)</h2>
 <p>
 직접 구축 reference (<a href="../custodial-wallet-db-design/">custodial-wallet-db-design</a>) 의 8 도메인 +
-<strong>I. Accounting &amp; Reconciliation (회계 · 정산)</strong> 도메인을 추가.
+<strong>H. Accounting &amp; Reconciliation (회계 · 정산)</strong> 도메인을 추가.
 도메인별로 "Fireblocks 책임" 과 "은행 책임" 을 구분하여 정리.
 </p>
 <div class="table-wrap">
@@ -128,10 +128,10 @@ Fireblocks 가 17 transaction state 를 운영하지만, 은행 application 은 
 <tbody>
 <tr><td>A. Architecture</td>
   <td>책임 분담 · trust boundary · 3 product option · <strong>망분리 IDC 인프라 운영</strong> · 단순화된 DB 분할</td>
-  <td><a href="architecture.html">1. 책임 분담</a> · <a href="infrastructure.html">2. 인프라 운영</a></td></tr>
+  <td><a href="architecture.html">1. 책임 분담</a> · <a href="infrastructure.html">2. 인프라 운영</a> · <a href="db-split.html">3. DB 분할</a></td></tr>
 <tr><td>B. Workspace</td>
   <td>Workspace ↔ 은행 매핑 · Vault Account · Wallet · <strong>Cold Wallet 운영 (80% 비율 · rebalancing)</strong></td>
-  <td><a href="tables-workspace-vault.html">4. Workspace · Vault</a> · <a href="cold-wallet.html">5. Cold Wallet</a></td></tr>
+  <td><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a> · <a href="cold-wallet.html">5. Cold Wallet</a></td></tr>
 <tr><td>C. Users</td>
   <td>은행 사용자 ↔ Fireblocks Console / API / Mobile user · 2FA · SSO · IP allowlist</td>
   <td><a href="tables-user.html">6. Users</a></td></tr>
@@ -147,116 +147,191 @@ Fireblocks 가 17 transaction state 를 운영하지만, 은행 application 은 
 <tr><td>G. Audit &amp; Compliance</td>
   <td>Fireblocks Audit Log · 은행 mirror (5년) · AML · Travel Rule · <strong>KR 규제 17 의무 매핑</strong> · Risks</td>
   <td><a href="tables-audit.html">12. Audit · AML</a> · <a href="kr-compliance.html">13. KR 규제</a> · <a href="risks.html">14. Risks</a></td></tr>
-<tr><td>I. Accounting &amp; Reconciliation <strong>(신규)</strong></td>
-  <td>3 계층 정합 (온체인 · 오프체인 · 계정계) · 회계 항등식 · 4 원장 + 거래 매트릭스 · 손익 · 외화환산 ·
-    <strong>4 단계 대사 (L1-L4)</strong> · 결산 · 마감 · 정정 · 외부 감사 대응</td>
+<tr><td>H. Accounting &amp; Reconciliation</td>
+  <td>3 계층 정합 · 회계 항등식 · 4 원장 + 거래 매트릭스 · 외화환산 · <strong>4 단계 대사 (L1-L4)</strong> · 결산 · 마감 · 외부 감사 대응</td>
   <td><a href="accounting-ledger.html">15. 회계 · 원장</a> · <a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></td></tr>
-<tr><td>H. Ops</td>
+<tr><td>I. Ops</td>
   <td>DB 운영 (PostgreSQL · partition · 5년 retention) · 10 anti-patterns · 운영 체크리스트</td>
   <td><a href="db-ops.html">17. DB 운영</a></td></tr>
 </tbody>
 </table>
 </div>
 
-<h2>인프라 구조도 — 컴포넌트가 어디 배치되는가</h2>
+<h2>인프라 구조도 — 누가 무엇을 운영하는가</h2>
 <p>
-KR 은행이 Fireblocks 를 도입할 때의 표준 배치. 외부망 / DMZ / 내부망 / 보안 구역 4 zone 으로 격리.
-망분리 의무 (전자금융감독규정) 충족.
+KR 은행이 Fireblocks 를 도입할 때의 표준 배치를 <strong>운영 주체 별 3 영역</strong> 으로 분리:
+<strong>🏢 은행</strong> (내부망 + DMZ + 보안 구역
+<span class="g" data-tip="보안 구역. HSM 같은 고가치 보안 장비를 보관하는 별도의 잠긴 물리 공간. 일반 사무실 / IDC 와 분리. 출입 통제 (생체 + 키 카드 + 다중 인증) · 24/7 영상 감시 · 화재 방지 · 전자 차폐 등 물리 보안 강화. 은행의 현금 금고 개념을 디지털 자산 / 키 보관 용으로 확장한 zone" tabindex="0">(?)</span>) · <strong>☁️ Fireblocks</strong> (SaaS + 운영자 Mobile app) · <strong>🌐 그 외 3rd-party</strong> (IdP · AML · Travel Rule · Blockchain).
+은행 ↔ Fireblocks 통신은 양방향 모두 <strong>은행 DMZ</strong> 의 outbound proxy / webhook endpoint 경유 — 망분리 의무 (전자금융감독규정) 충족.
 </p>
 
 <div class="diagram">
 <pre class="mermaid">
 flowchart TB
-  subgraph ext["🌐 외부망"]
+  subgraph bank["은행 (자체 운영)"]
+    direction TB
+    subgraph dmz["DMZ (외부 통신 종단)"]
+      direction LR
+      OutProxy["Outbound Proxy / Firewall<br/>(REST API 호출 매개)"]
+      Webhook["Webhook endpoint<br/>HMAC-SHA512 검증 (HA 2-node)"]
+      Agent["Fireblocks Agent<br/>(Key Link 시)"]
+    end
+    subgraph int["코인계 (망분리)"]
+      direction LR
+      TxAPI["거래 API<br/>사용자 facing 입출금 · 스왑<br/>+ Fireblocks SDK 호출"]
+      WhWorker["Webhook<br/>이벤트 dedup + operationsdb 저장"]
+      LedgerRecon["원장 / 대사<br/>회계 4 원장 · 거래 매트릭스 · 외화환산<br/>+ 4 단계 대사 (L1-L4) · 결산 · Hot/Cold rebalancing"]
+      AdminUI["관리 콘솔<br/>운영자 / 컴플라이언스 / 회계 UI"]
+      Monitor["운영 감시<br/>metric · alert · dashboard"]
+      CDB["customerdb<br/>고객 ↔ Fireblocks 매핑"]
+      MDB["operationsdb<br/>이벤트 사본 · 5년 보존"]
+      ComplDB["compliancedb<br/>AML · 트래블룰 · STR"]
+      Callback["Callback Server<br/>(Hosted MPC 시)<br/>Cosigner 서명 직전 자체 검증"]
+      CSrv["Customer Server<br/>(Key Link 시)"]
+      Cosigner["Hosted Co-signer<br/>(Hosted MPC 시)"]
+    end
+    subgraph legacy["기존 은행 시스템 (내부망 별도 zone)"]
+      direction LR
+      Acct["계정계<br/>(고객 KRW 잔액 · 입출금)"]
+      FX["외환계<br/>(환율 · 외환 환산)"]
+      DW["정보계<br/>(DW · 마감 · 감사 보고)"]
+      Channel["채널계<br/>(mobile · web · 점포 단말)"]
+    end
+    subgraph vault["보안 구역"]
+      HSM["HSM (Thales Luna 등)<br/>FIPS 140-3 Level 3<br/>(Key Link 시)"]
+    end
+  end
+
+  subgraph fb["Fireblocks (vendor 운영)"]
+    direction TB
+    FBcloud["Fireblocks SaaS<br/>(Console · API · TAP · Vault)<br/><strong>Hot + Cold Workspace</strong>"]
+    Mobile["운영자 Mobile<br/>(Approval / Admin Quorum)"]
+  end
+
+  subgraph third["그 외 (3rd-party)"]
     direction LR
-    FBcloud["☁️ Fireblocks SaaS"]
-    Mobile["📱 운영자 Mobile<br/>(Admin Quorum / Approval)"]
-    IdP["🔐 외부 IdP<br/>(Okta · Entra)"]
-    AML["🔍 AML / Travel Rule<br/>provider"]
-    Chain["⛓ Public Blockchain"]
+    IdP["외부 IdP<br/>(Okta · Entra)"]
+    AML["AML Provider<br/>(Chainalysis · Elliptic)"]
+    TR["Travel Rule Provider<br/>(Notabene · Sumsub)"]
+    Chain["Public Blockchain"]
   end
 
-  subgraph dmz["🛡 DMZ (서비스망)"]
-    direction LR
-    Webhook["Webhook endpoint<br/>HMAC-SHA512 검증 (HA 2-node)"]
-    Agent["Fireblocks Agent<br/>(Key Link 시)"]
-  end
+  %% 코인계 ↔ DMZ
+  TxAPI --> OutProxy
+  LedgerRecon --> OutProxy
+  Webhook --> WhWorker
+  Agent <--> CSrv
 
-  subgraph int["🔒 내부망 (망분리 안쪽)"]
-    direction LR
-    App["은행 application<br/>(SDK + 비즈니스 로직)"]
-    CDB["customerdb<br/>고객 ↔ Fireblocks 매핑"]
-    MDB["mirrordb<br/>이벤트 사본 · 5년 보존"]
-    ComplDB["compliancedb<br/>AML · 트래블룰 · STR"]
-    CSrv["Customer Server<br/>(Key Link 시)"]
-    Cosigner["Hosted Co-signer<br/>(Hosted MPC 시)"]
-  end
+  %% 관리 콘솔 → 3 service
+  AdminUI --> TxAPI
+  AdminUI --> LedgerRecon
 
-  subgraph vault["🔐 보안 구역 (Vault Room)"]
-    HSM["HSM (Thales Luna 등)<br/>FIPS 140-3 Level 3<br/>(Key Link 시)"]
-  end
+  %% 3 service ↔ DB
+  TxAPI --> CDB
+  TxAPI --> ComplDB
+  WhWorker --> MDB
+  LedgerRecon --> MDB
 
-  Mobile -.HTTPS.-> FBcloud
-  IdP -.SAML / OIDC.-> FBcloud
+  %% Customer Server / HSM (Key Link)
+  CSrv -->|PKCS#11| HSM
+
+  %% Cosigner ↔ Callback (Hosted MPC)
+  Cosigner <-.callback.-> Callback
+
+  %% 운영 감시 → 3 service + DB
+  Monitor -.metric scrape.-> TxAPI
+  Monitor -.metric scrape.-> WhWorker
+  Monitor -.metric scrape.-> LedgerRecon
+  Monitor -.metric scrape.-> MDB
+
+  %% 코인계 ↔ 기존 은행 시스템
+  Channel --> TxAPI
+  TxAPI <--> Acct
+  TxAPI <--> FX
+  LedgerRecon --> DW
+
+  %% 은행 ↔ Fireblocks (DMZ 경유)
+  OutProxy -.REST API.-> FBcloud
   FBcloud -.webhook.-> Webhook
-  Webhook --> MDB
-  App -.REST API.-> FBcloud
-  App --> CDB
-  App --> MDB
-  App --> ComplDB
-  App -.AML / TR 조회.-> AML
   FBcloud -.signing req.-> Agent
   FBcloud -.signing req.-> Cosigner
-  Agent <--> CSrv
-  CSrv -->|PKCS#11| HSM
+
+  %% Fireblocks 내부
+  Mobile <-.HTTPS push.-> FBcloud
+
+  %% 은행 ↔ 3rd-party (DMZ 경유)
+  OutProxy -.AML 조회.-> AML
+  OutProxy -.트래블룰.-> TR
+
+  %% Fireblocks ↔ 3rd-party
+  FBcloud -.SAML / OIDC.-> IdP
   FBcloud -.broadcast.-> Chain
 
-  classDef ext fill:#fef3c7,stroke:#d97706
-  classDef dmz fill:#fde2e2,stroke:#dc2626
-  classDef int fill:#dcfce7,stroke:#16a34a
-  classDef vlt fill:#e0e7ff,stroke:#6366f1
+  classDef bankzone fill:#dcfce7,stroke:#16a34a
+  classDef dmzzone fill:#fde2e2,stroke:#dc2626
+  classDef vaultzone fill:#e0e7ff,stroke:#6366f1
+  classDef fbzone fill:#dbeafe,stroke:#2563eb
+  classDef thirdzone fill:#fef3c7,stroke:#d97706
+  classDef legacyzone fill:#f3e8ff,stroke:#7e22ce
 
-  class FBcloud,Mobile,IdP,AML,Chain ext
-  class Webhook,Agent dmz
-  class App,CDB,MDB,ComplDB,CSrv,Cosigner int
-  class HSM vlt
+  class TxAPI,WhWorker,LedgerRecon,AdminUI,Monitor,CDB,MDB,ComplDB,Callback,CSrv,Cosigner bankzone
+  class OutProxy,Webhook,Agent dmzzone
+  class HSM vaultzone
+  class FBcloud,Mobile fbzone
+  class IdP,AML,TR,Chain thirdzone
+  class Acct,FX,DW,Channel legacyzone
 </pre>
 </div>
 <p class="diagram-caption">
-4 zone 배치 — <strong>노랑 = 외부망</strong> (Fireblocks SaaS · 운영자 mobile · IdP · AML provider · Blockchain) /
-<strong>빨강 = DMZ</strong> (Webhook · Fireblocks Agent) /
-<strong>초록 = 내부망</strong> (application · 3 DB · Customer Server · Hosted Co-signer) /
-<strong>보라 = 보안 구역</strong> (HSM).
-모든 외부 통신은 DMZ 의 webhook · Agent 에서 종단. 내부망의 DB / HSM 은 외부에서 직접 접근 불가.
-컴포넌트 별 상세는 <a href="infrastructure.html">2. 인프라 운영</a> 참조.
+영역 분리 — <strong>초록 = 은행 자체 운영 (코인계)</strong> (DMZ + 코인계 + 보안 구역) /
+<strong>연보라 = 기존 은행 시스템</strong> (계정계 · 외환계 · 정보계 · 채널계) /
+<strong>파랑 = Fireblocks (vendor)</strong> (SaaS + 운영자 Mobile app) /
+<strong>노랑 = 3rd-party</strong> (외부 IdP · AML provider · Travel Rule provider · Blockchain).
+<br/>
+<strong>화살표 의미</strong>: <strong>실선</strong> = 동기 호출 (request → 즉시 응답, 같은 영역 안 또는 직접 데이터 흐름) /
+<strong>점선</strong> = 영역 경계 넘는 외부 통신 + 비동기 (webhook · push notification · metric scrape).
+<br/>
+은행 ↔ Fireblocks 통신은 <strong>양방향 모두 DMZ 의 Outbound Proxy / Webhook endpoint 경유</strong> (망분리 의무).
+코인계의 DB · application 은 외부와 직접 통신하지 않음. 보안 구역 (HSM) 은 코인계 Customer Server 의 PKCS#11 호출로만 접근.
+<br/>
+<strong>두 "Webhook" 노드의 차이</strong>: DMZ <strong>"Webhook endpoint"</strong> = 외부 HTTPS 수신 + HMAC-SHA512 검증 (HA 2-node).
+코인계 <strong>"Webhook"</strong> = 검증 통과한 이벤트의 dedup + operationsdb 저장 (worker). 두 노드는 zone 이 다른 별도 컴포넌트.
+<br/>
+<strong>Cold Wallet workspace 의 위치</strong>: Fireblocks SaaS 안의 별도 workspace type (Hot Workspace 와 동급).
+KR 은행은 가상자산업감독규정 9조 (80% offline) 의무로 Cold Wallet 사실상 필수.
+Cold Wallet 자체는 Fireblocks 가 운영하지만 <strong>Hot/Cold 비율 모니터링 + rebalancing 트리거는 은행 책임</strong>.
+<br/>
+<strong>기존 은행 시스템 통합</strong>: 채널계 → 플랫폼 (사용자 facing 진입) · 플랫폼 ↔ 계정계 (KRW 잔액 / 입출금) · 플랫폼 ↔ 외환계 (환율 / 외환 환산) · 플랫폼 → 정보계 (마감 / 감사 보고 push).
+실제 통합은 별도 ESB / API Gateway / iPaaS 경유 가능 (본 다이어그램은 단순화 직접 호출).
+컴포넌트 별 상세는 <a href="infrastructure.html">2. 인프라 운영</a>, Cold Wallet 운영 상세는 <a href="cold-wallet.html">5. Cold Wallet 운영</a> 참조.
 </p>
 
 <h2>책임 분담 — 누가 무엇을 책임지는가</h2>
 <p>
-도입 후 시스템 책임이 어떻게 나뉘는지 시각화. 위 = Fireblocks 책임, 아래 = 은행 책임.
+도입 후 시스템 책임이 어떻게 나뉘는지 시각화. 위 = Fireblocks (vendor) 책임, 아래 = 은행 책임. 각 영역 안의 컴포넌트는 좌우 배치.
 </p>
 
 <div class="diagram">
 <pre class="mermaid">
 flowchart TB
-  subgraph fb["☁️ Fireblocks SaaS (vendor 책임)"]
+  subgraph fb["☁️ Fireblocks (vendor 책임)"]
     direction LR
     FBcore["Core<br/>MPC · TAP · Auth · Vault"]
-    FBwks["Workspace · Vault · Wallet"]
+    FBwks["Workspace<br/>Vault · Wallet"]
     FBgov["거버넌스<br/>Admin Quorum · Approval Group"]
-    FBlog["Audit Log (변경 불가)"]
+    FBlog["Audit Log<br/>(변경 불가)"]
   end
 
   subgraph bank["🏢 은행 책임"]
     direction LR
     CDB["customerdb<br/>고객 ↔ Fireblocks 매핑"]
-    MDB["mirrordb<br/>이벤트 사본 · 5년 보존"]
+    MDB["operationsdb<br/>이벤트 사본 · 5년 보존"]
     AMLp["AML · Travel Rule<br/>provider 통합"]
     REPORT["금감원 보고 · 회계 · BCP"]
   end
 
-  fb ==>|"webhook (HMAC-SHA512)"| bank
-  bank -.->|"REST API 호출"| fb
+  FBlog ==>|"webhook (HMAC-SHA512)"| MDB
+  CDB -.->|"REST API 호출"| FBcore
 
   classDef fbcloud fill:#dbeafe,stroke:#2563eb
   classDef bankops fill:#dcfce7,stroke:#16a34a
@@ -266,8 +341,9 @@ flowchart TB
 </pre>
 </div>
 <p class="diagram-caption">
-파랑 = Fireblocks SaaS / 초록 = 은행. 은행 → Fireblocks 는 REST API 호출 (거래 요청 · 정책 설정 등),
-Fireblocks → 은행 은 webhook (이벤트 사본 전송). 5 년 보존 · AML · 금감원 보고 · BCP 는 모두 은행 책임.
+파랑 = Fireblocks (vendor) / 초록 = 은행. 두 영역은 위/아래로 분리, 각 영역 안의 컴포넌트는 좌우.
+은행 → Fireblocks 는 REST API 호출 (거래 요청 · 정책 설정), Fireblocks → 은행 은 webhook (이벤트 사본).
+5 년 보존 · AML · 금감원 보고 · BCP 는 모두 은행 책임.
 </p>
 
 <h2>핵심 invariant (7) — 어겨서는 안 되는 규칙</h2>

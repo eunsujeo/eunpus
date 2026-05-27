@@ -23,7 +23,7 @@
 <li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a></li>
 <li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
@@ -45,11 +45,11 @@
 <li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
 <li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">I. Accounting &amp; Reconciliation</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
 <li><a href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
 <li><a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
 <li><a href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
@@ -72,7 +72,7 @@ sequenceDiagram
   participant Cust as 👤 고객 (외부)
   participant Chain as 🌐 Blockchain
   participant FB as ☁️ Fireblocks
-  participant Bank as 🏢 은행 mirrordb
+  participant Bank as 🏢 은행 operationsdb
   participant App as 은행 application
   participant AML as AML provider
 
@@ -120,7 +120,7 @@ sequenceDiagram
 출처: <a href="https://developers.fireblocks.com/docs/define-aml-policies">Define AML Policies</a>
 </p>
 
-<h4>11.1.3 <code>mirrordb.deposit_observations</code></h4>
+<h4>11.1.3 <code>operationsdb.deposit_observations</code></h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>column</th><th>설명</th></tr></thead>
@@ -158,7 +158,7 @@ sequenceDiagram
   participant AG as Approval Group
   participant Sig as MPC / Cosigner / HSM
   participant Chain as 🌐 Blockchain
-  participant Bank as 🏢 mirrordb
+  participant Bank as 🏢 operationsdb
 
   Cust->>App: 출금 요청 (금액 + 외부 address)
   App->>CDB: counterparty 확인<br/>(whitelisted_destinations)
@@ -189,7 +189,7 @@ sequenceDiagram
 </div>
 <p class="diagram-caption">
 고객 출금의 전체 흐름. 은행 application 이 사전 검증 → Fireblocks API 호출 → TAP / Approval Group / 서명 → broadcast → webhook mirror.
-모든 단계가 webhook event 로 mirrordb 에 기록.
+모든 단계가 webhook event 로 operationsdb 에 기록.
 </p>
 
 <h4>11.2.2 출금 상태 (Fireblocks 17 status 의 부분 집합 매핑)</h4>
@@ -210,7 +210,7 @@ sequenceDiagram
 </table>
 </div>
 
-<h4>11.2.3 <code>mirrordb.withdrawal_orders</code></h4>
+<h4>11.2.3 <code>operationsdb.withdrawal_orders</code></h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>column</th><th>설명</th></tr></thead>
@@ -222,10 +222,10 @@ sequenceDiagram
 <tr><td>destination_address</td><td>출금 대상</td></tr>
 <tr><td>destination_type</td><td>WHITELISTED / ONE_TIME / EXCHANGE / NETWORK / FIAT</td></tr>
 <tr><td>bank_status</td><td>REQUESTED / BANK_VALIDATING / FB_SUBMITTED / AWAITING_APPROVAL / SIGNING / BROADCASTED / SETTLED / BLOCKED / FAILED</td></tr>
-<tr><td>fb_external_tx_id</td><td>idempotency key (은행이 발급, Fireblocks 에 send)</td></tr>
+<tr><td>vendor_external_tx_id</td><td>idempotency key (은행이 발급, Fireblocks 에 send)</td></tr>
 <tr><td>idempotency_key_sent_at</td><td>Fireblocks API 호출 시점</td></tr>
 <tr><td>requested_at</td><td>고객 신청 시점</td></tr>
-<tr><td>fb_submitted_at</td><td>Fireblocks 접수 응답 시점</td></tr>
+<tr><td>vendor_submitted_at</td><td>Fireblocks 접수 응답 시점</td></tr>
 <tr><td>completed_at</td><td>최종 완료 시점</td></tr>
 <tr><td>travel_rule_required</td><td>boolean (100만원 이상 시 true)</td></tr>
 <tr><td>travel_rule_record_id (FK)</td><td>compliancedb 의 travel_rule_records FK</td></tr>
@@ -276,16 +276,16 @@ sequenceDiagram
 
 <h3>11.4 잔액 mirror — 정합성 보장</h3>
 <p>
-은행 customerdb / mirrordb 의 고객별 잔액과 Fireblocks vault balance 의 정합성.
+은행 customerdb / operationsdb 의 고객별 잔액과 Fireblocks vault balance 의 정합성.
 </p>
 
-<h4><code>mirrordb.balance_snapshots</code></h4>
+<h4><code>operationsdb.balance_snapshots</code></h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>column</th><th>설명</th></tr></thead>
 <tbody>
 <tr><td>snapshot_id (PK)</td><td>은행 내부 ID</td></tr>
-<tr><td>fb_vault_id</td><td>vault</td></tr>
+<tr><td>vendor_vault_id</td><td>vault</td></tr>
 <tr><td>asset_id</td><td>BTC / ETH / ...</td></tr>
 <tr><td>balance_total</td><td>Fireblocks 측 total balance</td></tr>
 <tr><td>balance_available</td><td>가용 balance (pending 제외)</td></tr>
@@ -299,7 +299,7 @@ sequenceDiagram
 <h4>일일 reconciliation 절차</h4>
 <ol>
 <li>각 vault 의 balance 조회 (Fireblocks API)</li>
-<li>mirrordb.balance_snapshots 에 기록</li>
+<li>operationsdb.balance_snapshots 에 기록</li>
 <li>customer_balance_subledger 의 합계와 대조 (omnibus 시)</li>
 <li>mismatch 발견 시 reconciliation_finding 으로 기록 + 운영팀 alert</li>
 <li>금감원 보고 / 외부 감사 시점에 reconciliation log 가 증명 자료</li>

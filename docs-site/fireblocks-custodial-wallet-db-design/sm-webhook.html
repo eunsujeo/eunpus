@@ -23,7 +23,7 @@
 <li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a></li>
 <li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
@@ -45,11 +45,11 @@
 <li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
 <li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">I. Accounting &amp; Reconciliation</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
 <li><a href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
 <li><a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
 <li><a href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
@@ -101,7 +101,7 @@ Fireblocks 가 webhook payload 를 <strong>HMAC-SHA512</strong> 로 서명하여
 <li>HTTP request body 의 raw bytes 추출 (JSON parsing 전)</li>
 <li>Fireblocks 가 제공하는 webhook public key 와 함께 HMAC-SHA512 검증</li>
 <li>signature 불일치 → 401 Unauthorized 즉시 응답, payload 무시</li>
-<li>signature 일치 → idempotency 검사 (dedup) → mirrordb 저장</li>
+<li>signature 일치 → idempotency 검사 (dedup) → operationsdb 저장</li>
 </ol>
 <p>
 출처: <a href="https://developers.fireblocks.com/docs/configure-webhooks">Configure Webhooks</a>
@@ -126,7 +126,7 @@ sequenceDiagram
   participant WS as Webhook Service
   participant Q as 처리 큐 (Kafka / SQS)
   participant Worker as Worker
-  participant DB as mirrordb
+  participant DB as operationsdb
 
   FB->>LB: POST /webhook/fireblocks<br/>(body + Fireblocks-Signature)
   LB->>WS: forward
@@ -149,7 +149,7 @@ sequenceDiagram
 </pre>
 </div>
 <p class="diagram-caption">
-Webhook 의 표준 처리 흐름. signature 검증 → dedup → 큐잉 → worker 가 mirrordb 저장.
+Webhook 의 표준 처리 흐름. signature 검증 → dedup → 큐잉 → worker 가 operationsdb 저장.
 200 OK 는 빨리 응답하고, 실제 처리는 비동기. Fireblocks 의 retry timeout 회피.
 </p>
 
@@ -159,7 +159,7 @@ Fireblocks 의 webhook 은 <strong>적어도 한 번 (at-least-once)</strong> �
 은행은 idempotency 로 중복 처리를 방지해야 함.
 </p>
 
-<h4><code>mirrordb.webhook_dedup</code></h4>
+<h4><code>operationsdb.webhook_dedup</code></h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
@@ -172,7 +172,7 @@ Fireblocks 의 webhook 은 <strong>적어도 한 번 (at-least-once)</strong> �
 </table>
 </div>
 
-<h4><code>mirrordb.webhook_events</code> — 모든 webhook 의 raw 로그 (append-only, 5년)</h4>
+<h4><code>operationsdb.webhook_events</code> — 모든 webhook 의 raw 로그 (append-only, 5년)</h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
@@ -180,7 +180,7 @@ Fireblocks 의 webhook 은 <strong>적어도 한 번 (at-least-once)</strong> �
 <tr><td>webhook_log_id (PK)</td><td>uuid</td><td>A-set</td><td>은행 내부 ID</td></tr>
 <tr><td>event_id</td><td>varchar</td><td>A-set</td><td>Fireblocks event UUID</td></tr>
 <tr><td>event_type</td><td>varchar</td><td>A-set</td><td>TRANSACTION_STATUS_UPDATED 등</td></tr>
-<tr><td>fb_workspace_id</td><td>varchar</td><td>A-set</td><td>workspace</td></tr>
+<tr><td>vendor_workspace_id</td><td>varchar</td><td>A-set</td><td>workspace</td></tr>
 <tr><td>related_resource_id</td><td>varchar</td><td>A-set nullable</td><td>관련 tx_id / vault_id / address_id 등</td></tr>
 <tr><td>raw_payload</td><td>jsonb</td><td>A-set</td><td>HTTP body 전체 (JSON)</td></tr>
 <tr><td>signature_header</td><td>varchar</td><td>A-set</td><td>원본 Fireblocks-Signature header (검증 통과한 값)</td></tr>
@@ -221,7 +221,7 @@ Fireblocks 의 webhook 은 실패 시 자동 retry. 은행이 5xx 응답하면 F
 
 <h3>10.8 Webhook 처리 실패 대응</h3>
 
-<h4><code>mirrordb.webhook_failures</code></h4>
+<h4><code>operationsdb.webhook_failures</code></h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>column</th><th>설명</th></tr></thead>
@@ -244,7 +244,7 @@ webhook 이 네트워크 장애로 누락될 가능성 대응:
 </p>
 <ol>
 <li><strong>일일 sync</strong> — Fireblocks <code>GET /v1/transactions?after=&lt;timestamp&gt;</code> 로 24h 이내 거래 조회</li>
-<li>mirrordb 의 tx_mirror 와 대조 (fb_tx_id 기준)</li>
+<li>operationsdb 의 tx_mirror 와 대조 (vendor_tx_id 기준)</li>
 <li>mirror 에 없는 거래 발견 → reconciliation_finding 으로 기록 + 운영팀 alert</li>
 <li>해당 거래의 webhook 을 Fireblocks Console 에서 manual replay 가능</li>
 </ol>
@@ -261,7 +261,7 @@ Fireblocks 의 at-least-once 보장은 retry 정책의 max attempt 안에서 유
 <ul>
 <li><strong>throughput</strong> — 분당 webhook 수신 수</li>
 <li><strong>signature failure rate</strong> — 0 이 정상 (공격 시도 detection)</li>
-<li><strong>processing latency</strong> — webhook 수신 → mirrordb 저장 완료까지 (목표: p99 &lt; 500ms)</li>
+<li><strong>processing latency</strong> — webhook 수신 → operationsdb 저장 완료까지 (목표: p99 &lt; 500ms)</li>
 <li><strong>retry rate</strong> — Fireblocks 가 retry 한 비율 (높으면 은행 endpoint 가 느림)</li>
 <li><strong>worker queue depth</strong> — Kafka / SQS lag (높으면 worker 부족)</li>
 <li><strong>reconciliation mismatch count</strong> — 일일 reconciliation 의 mismatch 건수 (0 권장)</li>

@@ -23,7 +23,7 @@
 <li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a></li>
 <li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
@@ -45,11 +45,11 @@
 <li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
 <li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">I. Accounting &amp; Reconciliation</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
 <li><a href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
 <li><a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
 <li><a href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
@@ -130,14 +130,14 @@ Hosted MPC 의 Co-signer 는 다양한 환경에 배포 가능:
 <a href="https://developers.fireblocks.com/reference/install-api-cosigner-aws">Install API Cosigner AWS</a>
 </p>
 
-<h4><code>customerdb.fb_cosigner_meta</code> (Hosted MPC 시)</h4>
+<h4><code>customerdb.cosigner_meta</code> (Hosted MPC 시)</h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>column</th><th>설명</th></tr></thead>
 <tbody>
 <tr><td>cosigner_id (PK)</td><td>은행 내부 ID</td></tr>
-<tr><td>fb_cosigner_uuid</td><td>Fireblocks 가 발급한 cosigner UUID</td></tr>
-<tr><td>fb_workspace_id</td><td>속한 workspace</td></tr>
+<tr><td>vendor_cosigner_uuid</td><td>Fireblocks 가 발급한 cosigner UUID</td></tr>
+<tr><td>vendor_workspace_id</td><td>속한 workspace</td></tr>
 <tr><td>deployment</td><td><code>azure_sgx / onprem / aws_nitro / gcp_cs / alibaba / ibm</code></td></tr>
 <tr><td>hostname</td><td>운영 hostname</td></tr>
 <tr><td>region</td><td>cloud region (예: ap-northeast-2)</td></tr>
@@ -176,15 +176,15 @@ Fireblocks 가 제공하는 자산 회복 매커니즘. mobile device 분실 / C
 <li>Mobile device 분실 시 새 device 에 recovery passphrase 입력 → 복원</li>
 </ul>
 
-<h4><code>customerdb.fb_workspace_backup_meta</code></h4>
+<h4><code>customerdb.workspace_backup_meta</code></h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>column</th><th>설명</th></tr></thead>
 <tbody>
 <tr><td>backup_id (PK)</td><td>은행 내부 ID</td></tr>
-<tr><td>fb_workspace_id</td><td>workspace</td></tr>
-<tr><td>fb_backup_uuid</td><td>Fireblocks 가 발급한 backup ID</td></tr>
-<tr><td>created_by</td><td>backup 생성 시작자 (fb_user_id)</td></tr>
+<tr><td>vendor_workspace_id</td><td>workspace</td></tr>
+<tr><td>vendor_backup_uuid</td><td>Fireblocks 가 발급한 backup ID</td></tr>
+<tr><td>created_by</td><td>backup 생성 시작자 (vendor_user_id)</td></tr>
 <tr><td>passphrase_storage_location</td><td>recovery passphrase 의 물리 보관 위치 (예: "은행 vault room safe #3") — <strong>passphrase 자체는 DB 에 절대 저장 금지</strong></td></tr>
 <tr><td>passphrase_custodians</td><td>jsonb — passphrase 를 알고 있는 사람 (custodian) 목록</td></tr>
 <tr><td>created_at</td><td>backup 생성 시점</td></tr>
@@ -221,7 +221,7 @@ Fireblocks 의 Recovery Utility 는 자산 회복용 도구. <strong>★ SPOC �
 <tbody>
 <tr><td>event_id (PK)</td><td>은행 내부 ID</td></tr>
 <tr><td>event_type</td><td><code>backup_created / recovery_drill / actual_recovery / device_migration</code></td></tr>
-<tr><td>fb_workspace_id</td><td>workspace</td></tr>
+<tr><td>vendor_workspace_id</td><td>workspace</td></tr>
 <tr><td>initiated_by</td><td>시작자 (Admin Quorum quorum)</td></tr>
 <tr><td>witness_list</td><td>jsonb — ceremony 참관인 (외부 감사인 포함)</td></tr>
 <tr><td>video_recording_ref</td><td>ceremony 녹화 파일 reference (외부 감사 대응)</td></tr>

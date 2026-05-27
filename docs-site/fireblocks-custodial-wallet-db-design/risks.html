@@ -23,7 +23,7 @@
 <li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a></li>
 <li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
@@ -45,11 +45,11 @@
 <li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
 <li><a class="active" href="risks.html">14. Risks Register</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">I. Accounting &amp; Reconciliation</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
 <li><a href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
 <li><a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
 <li><a href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
@@ -112,7 +112,7 @@
 
 <h3>FB-R03 — Webhook 손실 / Delay</h3>
 <p>
-<strong>위협</strong>: Webhook 누락 시 mirrordb 가 Fireblocks Console 과 불일치 → audit 정합성 깨짐.
+<strong>위협</strong>: Webhook 누락 시 operationsdb 가 Fireblocks Console 과 불일치 → audit 정합성 깨짐.
 </p>
 <ul>
 <li><strong>완화</strong>:
@@ -134,7 +134,7 @@
 <li><strong>완화</strong>:
   <ul>
     <li>secret manager 만 사용 — DB / log / 코드 commit 금지</li>
-    <li>IP allowlist — 은행 application server 의 NAT IP 만</li>
+    <li>IP allowlist — 플랫폼 의 NAT IP 만</li>
     <li>최소 권한 — Viewer / Editor / Signer / Admin role 분리</li>
     <li>정기 rotation (분기별 권장)</li>
     <li>API call 이상 detection (volume / source IP / time-of-day)</li>

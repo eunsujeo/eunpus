@@ -23,7 +23,7 @@
 <li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a></li>
 <li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
@@ -45,11 +45,11 @@
 <li><a class="active" href="kr-compliance.html">13. KR 규제 매핑</a></li>
 <li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">I. Accounting &amp; Reconciliation</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
 <li><a href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
 <li><a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
 <li><a href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
@@ -101,7 +101,7 @@
 <tr><td>6</td><td>EDD (고위험 고객)</td><td>특금법</td><td>❌ 외부</td><td>은행 자체</td></tr>
 <tr><td>7</td><td>STR (의심거래보고)</td><td>특금법</td><td>⚠️ 부분</td><td>Fireblocks AML provider 통합 + 은행 manual review → KOFIU 보고</td></tr>
 <tr><td>8</td><td>CTR (고액거래보고)</td><td>특금법</td><td>⚠️ 부분</td><td>Fireblocks audit log 활용 + 은행 자체 보고</td></tr>
-<tr><td>9</td><td>거래기록 5년 보존</td><td>특금법 5조의4</td><td>⚠️ 부분</td><td>Fireblocks Console + <strong>은행 mirrordb 자체 5년 retention</strong></td></tr>
+<tr><td>9</td><td>거래기록 5년 보존</td><td>특금법 5조의4</td><td>⚠️ 부분</td><td>Fireblocks Console + <strong>은행 operationsdb 자체 5년 retention</strong></td></tr>
 <tr><td>10</td><td>고객 식별 정보 5년 보존</td><td>특금법</td><td>❌ 외부</td><td>은행 customerdb</td></tr>
 <tr><td>11</td><td>이용자 자산 분리 보관</td><td>VACPA</td><td>✅ 직접</td><td>Fireblocks Vault Account 별 분리 / omnibus 시 subledger</td></tr>
 <tr><td>12</td><td><strong>콜드월렛 80%</strong></td><td>감독규정 9조</td><td>✅ 직접</td><td>Cold Wallet workspace + 일일 비율 monitor + rebalancing</td></tr>
@@ -126,7 +126,7 @@
 <ol>
 <li>Cold Wallet workspace 설치 + 별도 구매 (vendor 협의)</li>
 <li>이용자 자산의 대부분 (80-85% 목표) 을 Cold workspace 로 입금</li>
-<li>일일 Hot/Cold 비율 monitoring (mirrordb.hot_cold_ratio_daily)</li>
+<li>일일 Hot/Cold 비율 monitoring (operationsdb.hot_cold_ratio_daily)</li>
 <li>임계 도달 시 자동 alert + rebalancing trigger</li>
 <li>월간 compliance report — 금감원 / 외부 감사 대응</li>
 </ol>
@@ -136,7 +136,7 @@
 
 <h4>13.3.2 5년 보존 (특금법 5조의4)</h4>
 <ol>
-<li>모든 webhook event 를 mirrordb.webhook_events 에 append-only 보존</li>
+<li>모든 webhook event 를 operationsdb.webhook_events 에 append-only 보존</li>
 <li>tx_mirror · tx_status_history · audit_log_mirror 의 partition 운영 (월별)</li>
 <li>30 일 이상 = warm tier, 1 년 이상 = cold tier (compressed archive)</li>
 <li>5 년 도래 시 legal hold 검토 후 detach</li>

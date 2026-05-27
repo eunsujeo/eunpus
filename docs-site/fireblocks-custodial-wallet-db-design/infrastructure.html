@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>2. 인프라 운영 — Fireblocks 도입 시 은행 인프라</title>
-<meta content="은행 application server · Co-signer · HSM · webhook endpoint · 망분리 IDC 배치" name="description"/>
+<meta content="플랫폼 · Co-signer · HSM · webhook endpoint · 망분리 IDC 배치" name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
 </head>
@@ -23,7 +23,7 @@
 <li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a></li>
 <li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
@@ -45,11 +45,11 @@
 <li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
 <li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">I. Accounting &amp; Reconciliation</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
 <li><a href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
 <li><a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
 <li><a href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
@@ -57,28 +57,40 @@
 <main class="content">
 <section id="infrastructure">
 <h2>2. 인프라 운영</h2>
-<span class="section-subtitle">은행 측 인프라 (application server · Co-signer · HSM · webhook endpoint · 망분리 IDC)</span>
+<span class="section-subtitle">은행 측 인프라 (플랫폼 · Co-signer · HSM · webhook endpoint · 망분리 IDC)</span>
 
 <h3>2.1 인프라 구성 한눈에 보기</h3>
 <p>
 Fireblocks 도입 후 은행이 실제 운영하는 인프라 구성요소. <a href="architecture.html">1. 책임 분담</a> 의 trust boundary 를 물리 / 네트워크 레벨로 풀어냄.
 </p>
 
+<div class="callout callout-warn">
+<div class="callout-title">★ KR 은행은 망분리 정책으로 on-prem IDC 강제</div>
+<p>
+전자금융감독규정의 망분리 의무로 인해 KR 은행은 <strong>public cloud (AWS / Azure / GCP 일반 region) 직접 사용 어려움</strong>.
+모든 코인계 컴포넌트 (플랫폼 · DB · Cosigner · HSM 등) 는 <strong>은행 자체 on-prem IDC</strong> 배치가 default.
+</p>
+<p style="margin-bottom:0">
+예외 — 망분리 cloud 옵션 (AWS Outposts · Azure Stack · 금융 클라우드 등) 은 망분리 환경에 배치 가능하지만 vendor / 금감원 사전 협의 필수.
+본 reference 는 <strong>on-prem IDC default</strong> 로 기술.
+</p>
+</div>
+
 <div class="table-wrap">
 <table>
 <thead><tr><th>구성요소</th><th>배치</th><th>운영 부담</th><th>적용 옵션</th></tr></thead>
 <tbody>
-<tr><td><strong>은행 application server</strong></td><td>은행 cloud / IDC</td><td>중</td><td>모든 옵션 공통</td></tr>
-<tr><td><strong>3 DB</strong> (customerdb · mirrordb · compliancedb)</td><td>은행 IDC (망분리 안쪽)</td><td>중</td><td>모든 옵션 공통</td></tr>
-<tr><td><strong>Webhook endpoint</strong> (HA 2-node)</td><td>은행 DMZ</td><td>중</td><td>모든 옵션 공통</td></tr>
-<tr><td><strong>Secret manager</strong> (Vault / Secrets Manager / Key Vault)</td><td>은행 cloud</td><td>낮음</td><td>모든 옵션 공통</td></tr>
-<tr><td><strong>Hosted Co-signer</strong></td><td>은행 SGX 머신 또는 cloud</td><td>중-높음</td><td>Hosted MPC 시</td></tr>
-<tr><td><strong>Fireblocks Agent</strong> (TypeScript on-prem)</td><td>은행 DMZ</td><td>중</td><td>Key Link 시</td></tr>
-<tr><td><strong>Customer Server</strong></td><td>은행 IDC (HA)</td><td>높음</td><td>Key Link 시</td></tr>
-<tr><td><strong>HSM</strong> (Thales Luna 등)</td><td>은행 vault room</td><td>높음</td><td>Key Link 시</td></tr>
-<tr><td><strong>AML provider 통합</strong></td><td>외부 API call</td><td>낮음</td><td>모든 옵션 공통</td></tr>
-<tr><td><strong>Travel Rule provider 통합</strong></td><td>외부 API call</td><td>낮음</td><td>모든 옵션 공통</td></tr>
-<tr><td><strong>외부 IdP</strong> (SSO 시)</td><td>은행 또는 third-party</td><td>낮음</td><td>SSO 활용 시</td></tr>
+<tr><td><strong>플랫폼</strong> (거래 API · Webhook · 원장/대사)</td><td>은행 IDC (on-prem, 망분리 안)</td><td>중</td><td>모든 옵션 공통</td></tr>
+<tr><td><strong>3 DB</strong> (customerdb · operationsdb · compliancedb)</td><td>은행 IDC (on-prem)</td><td>중</td><td>모든 옵션 공통</td></tr>
+<tr><td><strong>Webhook endpoint</strong> (HA 2-node)</td><td>은행 DMZ (on-prem)</td><td>중</td><td>모든 옵션 공통</td></tr>
+<tr><td><strong>Secret manager</strong> (HashiCorp Vault 등)</td><td>은행 IDC (on-prem)</td><td>낮음</td><td>모든 옵션 공통</td></tr>
+<tr><td><strong>Hosted Co-signer</strong></td><td>은행 IDC 의 on-prem SGX 머신</td><td>중-높음</td><td>Hosted MPC 시</td></tr>
+<tr><td><strong>Fireblocks Agent</strong> (TypeScript on-prem)</td><td>은행 DMZ (on-prem)</td><td>중</td><td>Key Link 시</td></tr>
+<tr><td><strong>Customer Server</strong></td><td>은행 IDC (on-prem HA)</td><td>높음</td><td>Key Link 시</td></tr>
+<tr><td><strong>HSM</strong> (Thales Luna 등)</td><td>은행 IDC 의 보안 구역</td><td>높음</td><td>Key Link 시</td></tr>
+<tr><td><strong>AML provider 통합</strong></td><td>외부 API call (DMZ 경유)</td><td>낮음</td><td>모든 옵션 공통</td></tr>
+<tr><td><strong>Travel Rule provider 통합</strong></td><td>외부 API call (DMZ 경유)</td><td>낮음</td><td>모든 옵션 공통</td></tr>
+<tr><td><strong>외부 IdP</strong> (SSO 시)</td><td>은행 또는 3rd-party</td><td>낮음</td><td>SSO 활용 시</td></tr>
 </tbody>
 </table>
 </div>
@@ -91,85 +103,155 @@ Fireblocks 도입 후 은행이 실제 운영하는 인프라 구성요소. <a h
 <div class="diagram">
 <pre class="mermaid">
 flowchart TB
-  subgraph external["🌐 외부망"]
-    FB["☁️ Fireblocks SaaS"]
-    IdP["🔐 외부 IdP (Okta / Entra)"]
-    AML["🔍 AML Provider"]
-    TR["📋 Travel Rule Provider"]
-    User["👤 사용자 mobile (Owner)"]
+  subgraph external["외부망"]
+    FB["Fireblocks SaaS"]
+    IdP["외부 IdP (Okta / Entra)"]
+    AML["AML Provider"]
+    TR["Travel Rule Provider"]
+    Mob["운영자 Mobile (Owner / Approver)"]
   end
 
-  subgraph dmz["🛡 DMZ (서비스망)"]
+  subgraph dmz["DMZ (외부 통신 종단)"]
+    OutProxy["Outbound Proxy / Firewall<br/>(REST API 호출 매개)"]
     WebhookSvc["Webhook endpoint<br/>HA 2-node<br/>HMAC-SHA512 검증"]
     Agent["Fireblocks Agent<br/>(Key Link 시)<br/>TypeScript on-prem"]
     LB["Reverse proxy / WAF"]
   end
 
-  subgraph internal["🔒 내부망 (망분리 안쪽)"]
-    AppSvc["은행 application server<br/>HA + auto-scaling"]
+  subgraph internal["코인계 (망분리)"]
+    TxAPI["거래 API<br/>사용자 facing 입출금 · 스왑<br/>+ Fireblocks SDK 호출"]
+    WhWorker["Webhook<br/>이벤트 dedup + operationsdb 저장"]
+    LedgerRecon["원장 / 대사<br/>회계 4 원장 + 4 단계 대사 (L1-L4)<br/>+ 결산 · Hot/Cold rebalancing"]
+    AdminUI["관리 콘솔<br/>운영자 / 컴플라이언스 / 회계 UI"]
+    Monitor["운영 감시<br/>metric · alert · dashboard"]
     CustDB["customerdb<br/>PostgreSQL HA"]
-    MirrorDB["mirrordb<br/>PostgreSQL HA + replica"]
+    MirrorDB["operationsdb<br/>PostgreSQL HA + replica"]
     ComplDB["compliancedb<br/>PostgreSQL HA"]
+    Callback["Callback Server<br/>(Hosted MPC 시)"]
     CSrv["Customer Server<br/>(Key Link 시) HA"]
     Cosigner["Hosted Co-signer<br/>(Hosted MPC 시)"]
     Secrets["Secret Manager<br/>(Vault / KMS)"]
   end
 
-  subgraph vault["🔐 보안 구역 (Vault Room)"]
+  subgraph legacy["기존 은행 시스템 (망분리 안 별도 zone)"]
+    Acct["계정계<br/>(고객 KRW 잔액 · 입출금)"]
+    FX["외환계<br/>(환율 · 외환 환산)"]
+    DW["정보계<br/>(DW · 마감 · 감사 보고)"]
+    Channel["채널계<br/>(mobile · web · 점포 단말)"]
+  end
+
+  subgraph vault["보안 구역"]
     HSM["Thales Luna HSM<br/>FIPS 140-3 L3<br/>(Key Link 시)"]
   end
 
-  User -. HTTPS .-> FB
-  IdP -. SAML / OIDC .-> FB
-  FB -. webhook HTTPS<br/>HMAC-SHA512 .-> LB
+  %% 외부 ↔ Fireblocks (DMZ 우회 — vendor 측 통신)
+  Mob -.HTTPS push.-> FB
+  IdP -.SAML / OIDC.-> FB
+
+  %% 코인계 ↔ DMZ outbound proxy ↔ 외부
+  TxAPI --> OutProxy
+  LedgerRecon --> OutProxy
+  OutProxy -.REST API.-> FB
+  OutProxy -.AML 조회.-> AML
+  OutProxy -.트래블룰.-> TR
+
+  %% 관리 콘솔 → 3 service
+  AdminUI --> TxAPI
+  AdminUI --> LedgerRecon
+
+  %% Fireblocks → DMZ webhook → 코인계
+  FB -.webhook HMAC-SHA512.-> LB
   LB --> WebhookSvc
-  WebhookSvc --> MirrorDB
-  AppSvc -. REST API .-> FB
-  AppSvc --> CustDB
-  AppSvc --> MirrorDB
-  AppSvc --> ComplDB
-  AppSvc -. AML query .-> AML
-  AppSvc -. travel rule .-> TR
-  AppSvc --> Secrets
-  FB <-.signing req.-> Agent
-  Agent <--> CSrv
-  CSrv <-->|PKCS#11| HSM
-  FB <-.signing req.-> Cosigner
+  WebhookSvc --> WhWorker
+
+  %% Fireblocks → DMZ Agent → 코인계 (Key Link)
+  FB -.signing req.-> Agent
+  Agent --> CSrv
+  CSrv -->|PKCS#11| HSM
+
+  %% Fireblocks → 코인계 Cosigner (Hosted MPC)
+  FB -.signing req.-> Cosigner
+  Cosigner -.callback.-> Callback
+
+  %% 3 service ↔ DB / Secret Manager
+  TxAPI --> CustDB
+  TxAPI --> ComplDB
+  TxAPI --> Secrets
+  WhWorker --> MirrorDB
+  LedgerRecon --> MirrorDB
+  Monitor -.metric scrape.-> TxAPI
+  Monitor -.metric scrape.-> WhWorker
+  Monitor -.metric scrape.-> LedgerRecon
+  Monitor -.metric scrape.-> MirrorDB
+
+  %% 기존 은행 시스템 ↔ 코인계
+  Channel --> TxAPI
+  TxAPI <--> Acct
+  TxAPI <--> FX
+  LedgerRecon --> DW
 
   classDef ext fill:#fef3c7,stroke:#d97706
   classDef dmz fill:#fde2e2,stroke:#dc2626
   classDef int fill:#dcfce7,stroke:#16a34a
+  classDef legacyzone fill:#f3e8ff,stroke:#7e22ce
   classDef vault fill:#e0e7ff,stroke:#6366f1
 
-  class FB,IdP,AML,TR,User ext
-  class WebhookSvc,Agent,LB dmz
-  class AppSvc,CustDB,MirrorDB,ComplDB,CSrv,Cosigner,Secrets int
+  class FB,IdP,AML,TR,Mob ext
+  class OutProxy,WebhookSvc,Agent,LB dmz
+  class TxAPI,WhWorker,LedgerRecon,AdminUI,Monitor,CustDB,MirrorDB,ComplDB,Callback,CSrv,Cosigner,Secrets int
+  class Acct,FX,DW,Channel legacyzone
   class HSM vault
 </pre>
 </div>
 <p class="diagram-caption">
-은행 망분리 IDC 의 표준 zone 분리. 노랑 = 외부망 (Fireblocks SaaS · IdP · AML / Travel Rule provider) · 빨강 = DMZ (Webhook · Agent · LB / WAF) · 초록 = 내부망 (Application · DB · Cosigner · Customer Server · Secret Manager) · 보라 = 보안 구역 (HSM).
-망분리 의무: Application · DB · HSM 은 내부망. 외부 통신은 DMZ 의 webhook · Agent 만.
+은행 망분리 IDC 의 표준 zone 분리. <strong>노랑 = 외부망</strong> (Fireblocks SaaS · IdP · AML / Travel Rule provider · 운영자 Mobile) /
+<strong>빨강 = DMZ</strong> (Outbound Proxy · Webhook · Agent · LB / WAF) /
+<strong>초록 = 코인계 (망분리)</strong> (거래 API · Webhook · 원장/대사 · 관리 콘솔 · 운영 감시 · 3 DB · Cosigner · Customer Server · Callback Server · Secret Manager) /
+<strong>연보라 = 기존 은행 시스템</strong> (계정계 · 외환계 · 정보계 · 채널계) /
+<strong>보라 = 보안 구역</strong> (HSM)
+<span class="g" data-tip="보안 구역. HSM 같은 고가치 보안 장비를 보관하는 별도의 잠긴 물리 공간. 일반 사무실 / IDC 와 분리. 출입 통제 (생체 + 키 카드 + 다중 인증) · 24/7 영상 감시 · 화재 방지 · 전자 차폐 등 물리 보안 강화" tabindex="0">(?)</span>.
+<br/>
+화살표 — 방향은 <strong>발신자 → 수신자</strong> (response 는 같은 채널로 자연스럽게).
+<strong>실선</strong> = 동기 호출 (같은 영역 안) / <strong>점선</strong> = 영역 경계 넘는 외부 통신 + 비동기.
+<br/>
+<strong>망분리 원칙</strong>: Application · DB · HSM 은 코인계 (망분리 안). 모든 외부 통신은 DMZ 의 <strong>Outbound Proxy</strong> (은행 → 외부) 또는 <strong>Webhook endpoint / Agent</strong> (외부 → 은행) 종단. 코인계에서 직접 외부 호출하는 화살표 없음 (망분리 의무).
+<br/>
+<strong>기존 은행 시스템 통합</strong>: 채널계 → 플랫폼 (사용자 facing 진입) · 플랫폼 ↔ 계정계 (KRW 잔액 / 입출금) · 플랫폼 ↔ 외환계 (환율 / 외환 환산) · 플랫폼 → 정보계 (마감 / 감사 보고).
+실제 통합은 별도 ESB / API Gateway / iPaaS 경유하는 경우 많음 (본 다이어그램은 직접 호출로 단순화 표시).
+3 계층 정합 (블록체인 · 오프체인 · 계정계) 의 상세는 <a href="accounting-ledger.html">15. 회계 · 원장 설계</a> 참조.
 </p>
 
-<h3>2.3 Application Server 운영</h3>
+<h3>2.3 플랫폼 운영</h3>
 
-<h4>2.3.1 호스팅 요건</h4>
+<div class="callout">
+<div class="callout-title">본 절의 출처</div>
+<p style="margin-bottom:0">
+이하 호스팅 요건 · SDK 활용 · Secret 관리는 <strong>저자 권장 + 일반 IT 표준</strong> 혼합. Fireblocks 공식 권장이 아님 (단 vendor-specific 사항 — API key 의 IP allowlist · webhook signature 등 — 은 공식 fact 로 별도 표시).
+운영 시작 전 본인 환경의 부하 테스트 + 보안팀 / 운영팀 검증 권장.
+</p>
+</div>
+
+<h4>2.3.1 호스팅 요건 (저자 권장)</h4>
 <ul>
-<li><strong>최소 2-node HA</strong> — load balancer + health check</li>
-<li><strong>Auto-scaling</strong> — 거래량 증가 대응</li>
-<li><strong>region failover</strong> — KR region 의 zone 장애 대응 (예: AWS ap-northeast-2a → 2c)</li>
-<li><strong>outbound NAT IP 고정</strong> — Fireblocks API key 의 IP allowlist 적용용</li>
+<li><strong>최소 2-node HA</strong> <span class="g" data-tip="HA (High Availability, 고가용성) — 시스템이 한 대 장애로 멈추지 않게 다중화하는 구성. 2-node = 서버 2 대를 동시에 운영" tabindex="0">(?)</span>
+  <strong>+ load balancer + health check</strong> — load balancer
+  <span class="g" data-tip="load balancer — 들어오는 트래픽을 여러 서버에 분산하는 장비 / 서비스 (예: AWS ALB · Nginx). 한 대 장애 시 다른 대로 트래픽 자동 전환" tabindex="0">(?)</span>
+  가 들어오는 트래픽을 두 서버에 분산, health check
+  <span class="g" data-tip="health check — 각 서버가 정상 작동 중인지 주기적으로 (보통 5-30 초마다) 확인. 비정상 응답 시 load balancer 가 해당 서버를 트래픽에서 제외" tabindex="0">(?)</span>
+  로 비정상 서버 자동 제외</li>
+<li><strong>Auto-scaling</strong> — 거래량 증가 시 서버 자동 증설 (CPU / memory / 요청 수 기준). on-prem 환경에서는 사전 capacity 예약 + 수동 증설 패턴</li>
+<li><strong>IDC zone failover</strong> — 단일 IDC zone 장애 대응 (예: 주 IDC → 백업 IDC). 본사 IDC + DR site IDC 의 cross-IDC replication</li>
+<li><strong>outbound NAT IP 고정</strong> — Fireblocks API key 의 IP allowlist 적용용 (vendor-specific)</li>
 <li><strong>TLS 1.2+ outbound</strong> — Fireblocks API 호출 / 외부 provider 통신</li>
 </ul>
 
 <h4>2.3.2 Fireblocks SDK 활용</h4>
 <ul>
 <li><strong>공식 SDK</strong>: TypeScript / JavaScript / Python / Java / Go
-  (<a href="https://developers.fireblocks.com/reference/typescript-sdk">TypeScript SDK</a>)</li>
-<li><strong>SDK version pinning</strong> — production 은 fixed version. version upgrade 는 sandbox workspace 에서 사전 검증</li>
-<li><strong>retry 정책</strong> — 5xx / network error 시 exponential backoff (max 3 retry)</li>
-<li><strong>rate limit</strong> — Fireblocks 의 분당 API call 제한 준수 (요금제별 다름)</li>
+  (<a href="https://developers.fireblocks.com/reference/typescript-sdk">TypeScript SDK</a>) — <em>공식 사실</em></li>
+<li><strong>SDK version pinning</strong> — production 은 fixed version. version upgrade 는 Testnet Staging 에서 사전 검증 — <em>저자 권장</em></li>
+<li><strong>rate limit 준수</strong> — Fireblocks 의 분당 API call 제한 (요금제별 다름, vendor 와 협의) — <em>공식 사실</em></li>
+<li><strong>retry 정책 (저자 권장)</strong> — 5xx / network error 시 exponential backoff (예: 1s → 2s → 4s) · max 3 retry. Fireblocks 가 specific 수치를 강제하지 않으므로 본인 환경 부하 + Fireblocks SLA 에 맞춰 조정 필요 — <em>저자 권장</em></li>
 </ul>
 
 <h4>2.3.3 Secret 관리</h4>
@@ -192,25 +274,30 @@ flowchart TB
 
 <h3>2.4 Hosted Co-signer 운영 (Hosted MPC 선택 시)</h3>
 
-<h4>2.4.1 6 가지 배포 option</h4>
+<h4>2.4.1 6 가지 배포 option (KR 은행은 on-prem 강제)</h4>
 <div class="table-wrap">
 <table>
-<thead><tr><th>#</th><th>Deployment</th><th>장단점</th></tr></thead>
+<thead><tr><th>#</th><th>Deployment</th><th>KR 은행 망분리 적합성</th><th>장단점</th></tr></thead>
 <tbody>
-<tr><td>1</td><td>Azure SGX</td><td>Fireblocks 의 default · KR region 가능 · MS 의존</td></tr>
-<tr><td>2</td><td><strong>On-prem SGX 머신</strong></td><td>망분리 IDC 적합 · 운영 부담 큼 · 가장 강한 격리</td></tr>
-<tr><td>3</td><td>AWS Nitro Enclaves</td><td>AWS 환경 통합 · KR region 가능</td></tr>
-<tr><td>4</td><td>GCP Confidential Space</td><td>GCP 환경 통합 · KR region 가능</td></tr>
-<tr><td>5</td><td>Alibaba SGX</td><td>중국 region (KR 비적용)</td></tr>
-<tr><td>6</td><td>IBM Cloud Confidential Computing</td><td>IBM 의존</td></tr>
+<tr><td>1</td><td>Azure SGX (Fireblocks default cloud)</td><td><strong>부적합</strong> — public cloud, 망분리 위반</td><td>은행 외 일반 고객의 default · KR 은행은 사용 불가</td></tr>
+<tr><td>2</td><td><strong>On-prem SGX 머신</strong></td><td><strong>★ KR 은행 유일 선택지</strong> (망분리 IDC 안 배치)</td><td>가장 강한 격리 · 운영 부담 큼 · SGX 하드웨어 조달 + 운영 필요</td></tr>
+<tr><td>3</td><td>AWS Nitro Enclaves</td><td>부적합 — AWS 일반 region 은 망분리 위반. <strong>AWS Outposts</strong> 같은 망분리 옵션은 별도 검토</td><td>일반 AWS 환경 시 사용. KR 은행은 거의 안 씀</td></tr>
+<tr><td>4</td><td>GCP Confidential Space</td><td>부적합 — GCP 일반 region 은 망분리 위반</td><td>일반 GCP 환경 시 사용. KR 은행은 거의 안 씀</td></tr>
+<tr><td>5</td><td>Alibaba SGX</td><td>N/A (중국 region)</td><td>—</td></tr>
+<tr><td>6</td><td>IBM Cloud Confidential Computing</td><td>N/A (IBM 전용)</td><td>—</td></tr>
 </tbody>
 </table>
 </div>
+<div class="callout callout-warn">
+<div class="callout-title">★ KR 은행은 ② On-prem SGX 머신이 사실상 유일 선택지</div>
+<p style="margin-bottom:0">
+망분리 의무 (전자금융감독규정) 로 인해 1, 3, 4 의 public cloud option 은 KR 은행 적용 불가.
+망분리 cloud 옵션 (AWS Outposts · Azure Stack · 금융 클라우드 등) 사용 시 별도 vendor / 금감원 협의 필수.
+대부분의 KR 은행은 <strong>② On-prem SGX 머신</strong> 으로 진행.
+</p>
+</div>
 <p>
-출처: <a href="https://developers.fireblocks.com/docs/aws-nitro-api-co-signer">AWS Nitro API Co-signer</a> ·
-<a href="https://developers.fireblocks.com/reference/install-api-cosigner-aws">Install API Co-signer AWS</a> ·
-<a href="https://developers.fireblocks.com/reference/api-cosigner-versions-aws">API Co-signer Versions AWS</a> ·
-<a href="https://developers.fireblocks.com/reference/api-cosigner-maintenance-aws-nitro">API Co-signer Maintenance Nitro</a>
+출처: <a href="https://developers.fireblocks.com/docs/introduction">Fireblocks Developer Portal — Introduction</a> · On-prem SGX cosigner 설치 / 운영 가이드는 vendor / Sales 협의 (Fireblocks 가 NDA 하 별도 제공). public cloud 옵션 (AWS Nitro · GCP · Azure) 의 공식 docs 는 KR 은행 환경에 직접 적용 불가
 </p>
 
 <h4>2.4.2 Co-signer HA / DR</h4>
@@ -222,6 +309,39 @@ flowchart TB
 <li><strong>SGX attestation</strong> — Co-signer 가 정상 SGX enclave 안에서 실행 중인지 정기 검증</li>
 </ul>
 
+<h4>2.4.3 Co-signer 버전 관리 (★ 중요)</h4>
+<p>
+Co-signer 는 키 share 를 보유하는 서명 컴포넌트라 <strong>버전 관리가 critical</strong>. Fireblocks 가 신규 version 을 발표할 때마다 보안 patch · breaking change · 호환성 변경이 동시에 발생할 수 있음.
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>관리 항목</th><th>권장 절차</th></tr></thead>
+<tbody>
+<tr><td><strong>version pinning</strong></td><td>Production 은 항상 fixed version 로 고정. 자동 upgrade 금지</td></tr>
+<tr><td><strong>신규 version 검증</strong></td><td>Fireblocks 가 release 한 신규 version 은 <strong>Testnet Staging workspace</strong> 에 먼저 배포하여 검증 (서명 흐름 · Callback Handler · SGX attestation · 호환성). 최소 1-2 주 운영 관찰 후 production 적용</td></tr>
+<tr><td><strong>security CVE 대응</strong></td><td>Fireblocks 의 보안 advisory 발표 시 <strong>긴급 patch 절차</strong> 적용. 24-48 시간 안에 Staging 검증 후 production 배포</td></tr>
+<tr><td><strong>Fireblocks minimum version 강제</strong></td><td>Fireblocks 가 일정 시점부터 구 version 지원 중단 가능. release notes 모니터링 + 사전 대응. on-prem cosigner 의 version 정책은 vendor 와 직접 협의 (Fireblocks 공식 cosigner 문서 + Sales)</td></tr>
+<tr><td><strong>downgrade 가능성</strong></td><td>신규 version 의 critical bug 발견 시 이전 version 으로 rollback 가능한지 사전 검증. Fireblocks 의 downgrade 지원 정책 vendor 확인 필수</td></tr>
+<tr><td><strong>SGX enclave 재인증</strong></td><td>version upgrade 시 SGX enclave 의 attestation 재발급 필요. 재인증 절차 + 다운타임 관리</td></tr>
+<tr><td><strong>change log 관리</strong></td><td>모든 version 변경을 자체 change log 에 기록 (version 번호 · 변경 시점 · 책임자 · 검증 결과). 외부 감사 대응 자료</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/introduction">Fireblocks Developer Portal — Introduction</a> (on-prem cosigner 운영 가이드는 vendor / Sales 협의 별도 문서) · 저자 권장 (운영 절차)
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ Cosigner 버전 관리 실패 시 위험</div>
+<ul style="margin-bottom:0">
+<li><strong>키 손상</strong> — 잘못된 version 으로 인한 키 share 손상 가능성 (vendor 가 보장 안 함)</li>
+<li><strong>서명 중단</strong> — Fireblocks minimum version 미달 시 모든 거래 서명 중단</li>
+<li><strong>security CVE</strong> — patch 지연 시 보안 침해 가능성</li>
+<li><strong>외부 감사 지적</strong> — 변경 관리 미흡 시 SOC 2 · 금감원 검사 시 risk finding</li>
+</ul>
+</div>
+
 <h3>2.5 Key Link 인프라 (Key Link 선택 시)</h3>
 <p>
 별도 reference: <a href="../fireblocks-key-link-bank-design/architecture-components.html">Key Link 의 4 컴포넌트 토폴로지</a>
@@ -231,7 +351,7 @@ flowchart TB
 <ul>
 <li><strong>Fireblocks Agent</strong> — DMZ. TypeScript on-prem service. Fireblocks ↔ Customer Server 중계</li>
 <li><strong>Customer Server</strong> — 내부망 HA. 은행 자체 비즈니스 로직 + custom validation</li>
-<li><strong>HSM Component</strong> — Vault Room. Thales Luna HSM 또는 다른 FIPS 장비</li>
+<li><strong>HSM Component</strong> — 보안 구역. Thales Luna HSM 또는 다른 FIPS 장비</li>
 <li><strong>HSM Adaptor</strong> (선택) — Cold HSM 통신 매개 (USB / SFTP / data diodes)</li>
 </ul>
 <p>
@@ -263,11 +383,16 @@ flowchart TB
 </ul>
 
 <h4>2.6.2 모니터링</h4>
+<p>
+Webhook endpoint 의 monitoring 은 내부망의 <strong>Monitoring 컴포넌트</strong> (Prometheus / Grafana / Datadog 등) 가 metric scrape.
+주요 metric:
+</p>
 <ul>
-<li>signature failure rate (0 권장)</li>
+<li>signature failure rate (0 권장 — 0 이 아니면 위조 시도 가능성)</li>
 <li>processing latency p99 &lt; 500ms</li>
 <li>worker queue depth</li>
-<li>dedup hit rate</li>
+<li>dedup hit rate (중복 수신 비율)</li>
+<li>retry rate (Fireblocks 가 retry 한 비율 — 높으면 endpoint 가 느림)</li>
 </ul>
 
 <h3>2.7 외부 시스템 통합</h3>
@@ -316,15 +441,14 @@ flowchart TB
 
 <h3>2.8 운영 환경 분리</h3>
 <p>
-은행은 보통 3 환경 운영:
+은행은 2 환경 운영:
 </p>
 <div class="table-wrap">
 <table>
 <thead><tr><th>환경</th><th>workspace</th><th>용도</th></tr></thead>
 <tbody>
 <tr><td><strong>Production</strong></td><td>Mainnet workspace (Hot + Cold)</td><td>실제 자산 운영</td></tr>
-<tr><td><strong>Staging</strong></td><td>Mainnet workspace 별도 또는 Testnet</td><td>운영 환경 변경 사전 검증</td></tr>
-<tr><td><strong>Sandbox / Development</strong></td><td>Sandbox workspace (Testnet)</td><td>개발 + 통합 테스트</td></tr>
+<tr><td><strong>Testnet Staging</strong></td><td>Testnet workspace</td><td>개발 + 통합 테스트 + 운영 환경 변경 사전 검증 (SDK upgrade · Cosigner version · 신규 정책 등)</td></tr>
 </tbody>
 </table>
 </div>
@@ -332,36 +456,93 @@ flowchart TB
 출처: <a href="../fireblocks-cold-wallet-bank-design/workspace-topology.html">Workspace 토폴로지</a>
 </p>
 
+<div class="callout">
+<div class="callout-title">Testnet Staging 환경의 활용 — 운영 변경 사전 검증</div>
+<ul style="margin-bottom:0">
+<li><strong>SDK / Cosigner version upgrade</strong> — 신규 version 을 Staging 에 먼저 배포 → 최소 1-2 주 운영 관찰 후 production</li>
+<li><strong>Policy rule / Approval Group 변경</strong> — 신규 정책을 Staging 에 적용 → 기대 동작 검증</li>
+<li><strong>Webhook · Callback Handler endpoint 분리</strong> — Production / Staging 의 endpoint URL · signature key 가 별도여야 충돌 방지</li>
+<li><strong>Cold Wallet workspace</strong> — Cold Wallet 은 Mainnet 전용 (Testnet 미지원) — Cold workspace 운영 변경은 별도 신중 검증 필요</li>
+</ul>
+</div>
+
 <h3>2.9 BCP / DR 시나리오</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>장애 시나리오</th><th>대응</th></tr></thead>
 <tbody>
 <tr><td>Fireblocks SaaS 장애</td><td>거래 큐잉 + 사용자 응답 SLA + Fireblocks status page 모니터링</td></tr>
-<tr><td>은행 application server 장애</td><td>HA 자동 failover (load balancer)</td></tr>
+<tr><td>플랫폼 장애</td><td>HA 자동 failover (load balancer)</td></tr>
 <tr><td>은행 DB 장애</td><td>HA failover (PostgreSQL streaming replication)</td></tr>
 <tr><td>Webhook endpoint 장애</td><td>Fireblocks 의 retry 정책 + 정상화 후 reconciliation backfill</td></tr>
 <tr><td>Cosigner / Customer Server 장애</td><td>HA failover (Hosted MPC / Key Link)</td></tr>
 <tr><td>HSM 장애 (Key Link)</td><td>backup HSM swap (Thales 의 backup HSM 활용)</td></tr>
 <tr><td>외부 IdP 장애 (SSO)</td><td>backup IdP 또는 일시적 SSO 우회 (Fireblocks 직접 인증)</td></tr>
-<tr><td>region 전체 장애</td><td>cross-region DR (별도 region 의 standby)</td></tr>
+<tr><td>본사 IDC 전체 장애</td><td>cross-IDC DR (백업 IDC 의 standby 환경)</td></tr>
 </tbody>
 </table>
 </div>
 
 <h3>2.10 인프라 capacity sizing</h3>
 <p>
-운영 규모별 권장 인프라 (저자 추정):
+운영 규모별 권장 인프라 (저자 추정 — 수치는 일반 패턴 기반. 실제 sizing 은 본인 환경의 부하 테스트 + Fireblocks SLA + AML provider 응답 시간 등을 반영하여 검증 필요).
 </p>
 <div class="table-wrap">
 <table>
-<thead><tr><th>규모</th><th>일일 거래량</th><th>권장 구성</th></tr></thead>
+<thead><tr><th>규모</th><th>일일 거래량 (저자 추정)</th><th>권장 구성 (on-prem IDC)</th></tr></thead>
 <tbody>
-<tr><td>소규모 (시범 도입)</td><td>~100 tx</td><td>App 2-node · DB 1-node + replica · Webhook 1-node</td></tr>
-<tr><td>중규모 (시장 진입)</td><td>~1,000 tx</td><td>App 4-node auto-scale · DB HA · Webhook 2-node · 모니터링 풀</td></tr>
-<tr><td>대규모 (운영 안정)</td><td>~10,000 tx</td><td>App 8+ node multi-region · DB cluster · Webhook 4+ node · DR site</td></tr>
+<tr><td>소규모 (시범 도입)</td><td>~100 tx</td><td>App 2-node · DB 1-node + replica · Webhook 1-node (단일 IDC)</td></tr>
+<tr><td>중규모 (시장 진입)</td><td>~1,000 tx</td><td>App 4-node + 사전 capacity 예약 · DB HA · Webhook 2-node · 모니터링 풀 (단일 IDC)</td></tr>
+<tr><td>대규모 (운영 안정)</td><td>~10,000 tx</td><td>App 8+ node + cross-IDC DR · DB cluster · Webhook 4+ node · 본사 IDC + 백업 IDC</td></tr>
 </tbody>
 </table>
+</div>
+
+<div class="callout">
+<div class="callout-title">capacity sizing 의 vendor 의존성</div>
+<p style="margin-bottom:0">
+은행 인프라 sizing 은 다음 vendor 측 변수에 영향 받음 — 별도 확인 필수:
+</p>
+<ul style="margin-bottom:0">
+<li><strong>Fireblocks API 의 분당 rate limit</strong> (요금제 별 다름)</li>
+<li><strong>Webhook 의 동시 전송 한계</strong> (peak 시점)</li>
+<li><strong>AML / Travel Rule provider 의 응답 latency</strong></li>
+<li><strong>blockchain confirmation 시간</strong> (chain 별, 마감 시간 영향)</li>
+</ul>
+</div>
+
+<h3>2.11 운영자 역할 분담 (RACI)</h3>
+<p>
+인프라 운영의 운영자 / 보안팀 / 컴플라이언스 / 회계의 역할 분담. <strong>R</strong> = Responsible (실행 담당) /
+<strong>A</strong> = Accountable (최종 책임) / <strong>C</strong> = Consulted (자문) / <strong>I</strong> = Informed (정보 공유).
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>인프라 영역</th><th>운영팀</th><th>보안팀</th><th>컴플라이언스</th><th>회계</th><th>법무</th></tr></thead>
+<tbody>
+<tr><td>Application server / DB 운영</td><td><strong>R/A</strong></td><td>C</td><td>I</td><td>I</td><td>—</td></tr>
+<tr><td>Webhook endpoint 운영</td><td><strong>R/A</strong></td><td>C</td><td>I</td><td>I</td><td>—</td></tr>
+<tr><td>Secret Manager · API key 관리</td><td>R</td><td><strong>A</strong></td><td>I</td><td>—</td><td>—</td></tr>
+<tr><td>HSM · Co-signer · Customer Server (Hosted/Key Link)</td><td>R</td><td><strong>A</strong></td><td>I</td><td>—</td><td>—</td></tr>
+<tr><td>Admin Quorum ceremony (recovery passphrase 등)</td><td>R</td><td><strong>A</strong></td><td>C</td><td>—</td><td>C</td></tr>
+<tr><td>BCP / DR plan + drill</td><td><strong>R/A</strong></td><td>C</td><td>I</td><td>I</td><td>I</td></tr>
+<tr><td>vendor 장애 대응 / SLA 협의</td><td>R</td><td>C</td><td>C</td><td>—</td><td><strong>A</strong></td></tr>
+<tr><td>AML / Travel Rule provider 통합</td><td>R</td><td>C</td><td><strong>A</strong></td><td>—</td><td>C</td></tr>
+<tr><td>외부 IdP 통합 (SSO)</td><td><strong>R/A</strong></td><td>C</td><td>I</td><td>—</td><td>—</td></tr>
+<tr><td>모니터링 dashboard · alert</td><td><strong>R/A</strong></td><td>C</td><td>I</td><td>I</td><td>—</td></tr>
+<tr><td>외부 감사 · 금감원 검사 대응</td><td>R</td><td>C</td><td><strong>R/A</strong></td><td>C</td><td>C</td></tr>
+<tr><td>5 년 보존 retention 정책</td><td>R</td><td>C</td><td><strong>A</strong></td><td>C</td><td>C</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ 보안팀의 핵심 책임</div>
+<p style="margin-bottom:0">
+보안팀이 Accountable (최종 책임) 인 영역: <strong>Secret · API key · HSM · Co-signer · Admin Quorum ceremony</strong>. 운영팀이 일상 운영 (R) 을 수행하지만 최종 의사 결정 + 침해 시 대응 책임은 보안팀.
+컴플라이언스 / 법무는 외부 의무 (감사 · 금감원 · KR 규제 · vendor 계약) 의 책임 분담.
+</p>
 </div>
 
 </section>

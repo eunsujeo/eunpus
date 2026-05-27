@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>12. DB 운영 · Anti-patterns — Fireblocks 도입 시</title>
-<meta content="은행 customerdb / mirrordb / compliancedb 의 운영 + 도입 시 안티패턴" name="description"/>
+<meta content="은행 customerdb / operationsdb / compliancedb 의 운영 + 도입 시 안티패턴" name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
 </head>
@@ -23,7 +23,7 @@
 <li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a></li>
 <li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
@@ -45,11 +45,11 @@
 <li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
 <li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">I. Accounting &amp; Reconciliation</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
 <li><a href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
 <li><a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
 <li><a class="active" href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
@@ -57,7 +57,7 @@
 <main class="content">
 <section id="db-ops">
 <h2>17. DB 운영 · Anti-patterns</h2>
-<span class="section-subtitle">customerdb / mirrordb / compliancedb 의 MySQL · PostgreSQL 운영 권장 + 안티패턴</span>
+<span class="section-subtitle">customerdb / operationsdb / compliancedb 의 MySQL · PostgreSQL 운영 권장 + 안티패턴</span>
 
 <h3>17.1 DB 엔진 선택</h3>
 <div class="table-wrap">
@@ -65,14 +65,14 @@
 <thead><tr><th>DB</th><th>권장 엔진</th><th>근거</th></tr></thead>
 <tbody>
 <tr><td>customerdb</td><td>MySQL 8.0+ 또는 PostgreSQL 14+</td><td>mutable, 일반 application DB pattern</td></tr>
-<tr><td>mirrordb</td><td>PostgreSQL 14+ 권장</td><td>append-only + jsonb 광범위 사용 (webhook payload) + partition 효율</td></tr>
+<tr><td>operationsdb</td><td>PostgreSQL 14+ 권장</td><td>append-only + jsonb 광범위 사용 (webhook payload) + partition 효율</td></tr>
 <tr><td>compliancedb</td><td>PostgreSQL 14+ 권장</td><td>jsonb (IVMS101 등) + 외부 감사 query 효율</td></tr>
 </tbody>
 </table>
 </div>
 
 <div class="callout">
-<div class="callout-title">왜 PostgreSQL 권장 (mirrordb / compliancedb)</div>
+<div class="callout-title">왜 PostgreSQL 권장 (operationsdb / compliancedb)</div>
 <ul style="margin-bottom:0">
 <li><strong>jsonb 의 성능</strong> — webhook payload 의 부분 query 효율 (예: <code>raw_payload-&gt;'data'-&gt;'tx'-&gt;'status'</code>)</li>
 <li><strong>partition 의 native 지원</strong> — declarative partitioning (월별 / 연도별)</li>
@@ -83,7 +83,7 @@
 
 <h3>17.2 partition 전략 — 5년 보존 대응</h3>
 
-<h4>mirrordb.webhook_events / tx_status_history / audit_log_mirror</h4>
+<h4>operationsdb.webhook_events / tx_status_history / audit_log_mirror</h4>
 <ul>
 <li><strong>월별 partition</strong> — RANGE on (occurred_at_fb) or (received_at)</li>
 <li>현재 월 + 직전 12 개월 = hot tier (인덱스 활성)</li>
@@ -105,7 +105,7 @@
 <thead><tr><th>DB</th><th>RPO</th><th>RTO</th><th>방식</th></tr></thead>
 <tbody>
 <tr><td>customerdb</td><td>1 분</td><td>15 분</td><td>continuous WAL + 일일 base backup + cross-region replication</td></tr>
-<tr><td>mirrordb</td><td>1 분</td><td>15 분</td><td>continuous WAL + 일일 base backup + 5년 archive</td></tr>
+<tr><td>operationsdb</td><td>1 분</td><td>15 분</td><td>continuous WAL + 일일 base backup + 5년 archive</td></tr>
 <tr><td>compliancedb</td><td>1 분</td><td>15 분</td><td>customerdb 와 동일</td></tr>
 </tbody>
 </table>
@@ -113,17 +113,17 @@
 
 <h3>17.4 인덱스 설계 권장</h3>
 
-<h4>mirrordb.tx_mirror</h4>
+<h4>operationsdb.tx_mirror</h4>
 <ul>
-<li>(fb_tx_id) UNIQUE</li>
-<li>(fb_external_tx_id) — idempotency lookup</li>
-<li>(fb_workspace_id, created_at_fb DESC) — workspace 별 시계열</li>
+<li>(vendor_tx_id) UNIQUE</li>
+<li>(vendor_external_tx_id) — idempotency lookup</li>
+<li>(vendor_workspace_id, created_at_fb DESC) — workspace 별 시계열</li>
 <li>(source_vault_id, created_at_fb DESC)</li>
 <li>(current_status, created_at_fb DESC) WHERE current_status IN ('PENDING_AUTHORIZATION', 'PENDING_SIGNATURE') — pending 거래 queue</li>
 <li>(tx_hash) WHERE tx_hash IS NOT NULL — on-chain hash 역조회</li>
 </ul>
 
-<h4>mirrordb.webhook_events</h4>
+<h4>operationsdb.webhook_events</h4>
 <ul>
 <li>(event_id) UNIQUE</li>
 <li>(received_at DESC) — 시계열</li>
@@ -131,10 +131,10 @@
 <li>(related_resource_id) WHERE related_resource_id IS NOT NULL — 거래 / vault 별 lookup</li>
 </ul>
 
-<h4>mirrordb.audit_log_mirror</h4>
+<h4>operationsdb.audit_log_mirror</h4>
 <ul>
 <li>(sequence_num) UNIQUE</li>
-<li>(fb_event_id) UNIQUE</li>
+<li>(vendor_event_id) UNIQUE</li>
 <li>(occurred_at_fb DESC) — 시계열</li>
 <li>(actor_user_id, occurred_at_fb DESC) — 사용자별 audit</li>
 <li>(event_category, event_type)</li>
@@ -143,7 +143,7 @@
 <h3>17.5 권한 분리 — DB account</h3>
 <div class="table-wrap">
 <table>
-<thead><tr><th>Account</th><th>customerdb</th><th>mirrordb</th><th>compliancedb</th></tr></thead>
+<thead><tr><th>Account</th><th>customerdb</th><th>operationsdb</th><th>compliancedb</th></tr></thead>
 <tbody>
 <tr><td>application_rw</td><td>RW</td><td>R</td><td>R</td></tr>
 <tr><td>webhook_writer</td><td>—</td><td>RW (only INSERT)</td><td>—</td></tr>
@@ -157,7 +157,7 @@
 <div class="callout">
 <div class="callout-title">webhook_writer 의 INSERT-only</div>
 <p style="margin-bottom:0">
-mirrordb 는 append-only 가 핵심 — webhook_writer account 에 UPDATE / DELETE 권한을 주지 않음.
+operationsdb 는 append-only 가 핵심 — webhook_writer account 에 UPDATE / DELETE 권한을 주지 않음.
 PostgreSQL 의 row-level security 또는 trigger 로 INSERT 만 허용.
 worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer account (제한적 update 권한) 활용.
 </p>
@@ -232,7 +232,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer acc
 
 <h4>AP-5: Mirror 가 canonical 이라고 가정</h4>
 <p>
-<strong>실수</strong>: 분쟁 시 mirrordb 의 거래 기록만 보고 결정.
+<strong>실수</strong>: 분쟁 시 operationsdb 의 거래 기록만 보고 결정.
 <strong>결과</strong>: Fireblocks Console 과 불일치 시 권리 행사 불가 / 손실 부담.
 <strong>대응</strong>: Fireblocks Console = 1차 source. mirror 는 보조. 항상 양측 정합성 reconciliation.
 </p>
@@ -258,7 +258,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer acc
 <strong>대응</strong>: subledger 에 hash chain 또는 정기 cross-DB reconciliation log.
 </p>
 
-<h4>AP-9: webhook endpoint 가 application server 와 동일</h4>
+<h4>AP-9: webhook endpoint 가 플랫폼 와 동일</h4>
 <p>
 <strong>실수</strong>: 일반 API endpoint 와 webhook endpoint 가 같은 server / 같은 path prefix.
 <strong>결과</strong>: webhook 의 부하가 일반 service 영향. signature 검증 / rate limit 정책 혼동.
@@ -278,7 +278,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer acc
 <thead><tr><th>#</th><th>항목</th><th>완료 기준</th></tr></thead>
 <tbody>
 <tr><td>1</td><td>workspace type 결정</td><td>은행 경영 + 보안팀 + 컴플라이언스 합의</td></tr>
-<tr><td>2</td><td>3 DB 구축 (customerdb / mirrordb / compliancedb)</td><td>schema migration + 권한 분리 완료</td></tr>
+<tr><td>2</td><td>3 DB 구축 (customerdb / operationsdb / compliancedb)</td><td>schema migration + 권한 분리 완료</td></tr>
 <tr><td>3</td><td>webhook endpoint HA 구성</td><td>2-node + load balancer + signature 검증 테스트</td></tr>
 <tr><td>4</td><td>API key + secret manager 통합</td><td>secret manager 의 access policy + audit 통합</td></tr>
 <tr><td>5</td><td>Approval Group quorum 인원 확보</td><td>3-5 인 Admin + mobile 페어링 + drill</td></tr>

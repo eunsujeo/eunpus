@@ -23,7 +23,7 @@
 <li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a></li>
 <li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
@@ -45,11 +45,11 @@
 <li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
 <li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">I. Accounting &amp; Reconciliation</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
 <li><a href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
 <li><a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
 <li><a href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
@@ -69,7 +69,7 @@ Fireblocks 는 사용자를 3 가지 type 으로 분류한다. 각 type 별로 �
 <thead><tr><th>User type</th><th>인증 방식</th><th>대표 책임</th></tr></thead>
 <tbody>
 <tr><td><strong>Console user</strong></td><td>email + password + 2FA / SSO</td><td>UI 접근 (workspace 관리, 거래 승인 등). Mobile app 페어링 가능</td></tr>
-<tr><td><strong>API user</strong></td><td>API key + secret (HMAC)</td><td>프로그램틱 접근. 은행 application server 가 사용</td></tr>
+<tr><td><strong>API user</strong></td><td>API key + secret (HMAC)</td><td>프로그램틱 접근. 플랫폼 가 사용</td></tr>
 <tr><td><strong>Mobile-only user</strong></td><td>activation token 으로 mobile app 만</td><td>Cold Wallet workspace 의 user (Console 접근 권한 없음, Cold Wallet 특수)</td></tr>
 </tbody>
 </table>
@@ -101,7 +101,7 @@ Fireblocks 는 사용자를 3 가지 type 으로 분류한다. 각 type 별로 �
 <h4>6.2.3 IP Allowlist</h4>
 <ul>
 <li>API user 별로 허용된 IP 목록 설정 가능</li>
-<li>은행은 application server 의 outbound NAT IP 만 허용 권장</li>
+<li>은행은 플랫폼 의 outbound NAT IP 만 허용 권장</li>
 <li>SaaS Cold Wallet workspace 는 IP allowlist 가 거버넌스의 일부 (별도 모드)</li>
 </ul>
 
@@ -142,17 +142,17 @@ SSO 설정 시 Fireblocks 도 IdP 위임 → 한 곳에서 password / 2FA 관리
 </p>
 </div>
 
-<h4><code>customerdb.fb_user_map</code> — Fireblocks user 매핑</h4>
+<h4><code>customerdb.user_map</code> — Fireblocks user 매핑</h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
 <tbody>
 <tr><td>user_map_id (PK)</td><td>uuid</td><td>A-set</td><td>은행 내부 ID</td></tr>
 <tr><td>bank_user_id (FK)</td><td>uuid</td><td>A-set</td><td>은행 내부 사용자</td></tr>
-<tr><td>fb_workspace_id (FK)</td><td>varchar</td><td>A-set</td><td>어느 workspace 의 user 인가</td></tr>
-<tr><td>fb_user_id</td><td>varchar</td><td>A-set</td><td>Fireblocks 의 user UUID</td></tr>
-<tr><td>fb_user_type</td><td>enum</td><td>A-set</td><td><code>console / api / mobile_only</code></td></tr>
-<tr><td>fb_role</td><td>varchar</td><td>M-mut</td><td>Fireblocks 의 role (Owner / Admin / Editor / Signer / Viewer / Non-Signing Admin / Approver / Non-Signing User / Auditor)</td></tr>
+<tr><td>workspace_code</td><td>varchar</td><td>A-set</td><td>config 의 workspace key (<code>"hot"</code> / <code>"cold"</code>) — 어느 workspace 의 user 인가</td></tr>
+<tr><td>vendor_user_id</td><td>varchar</td><td>A-set</td><td>Fireblocks 의 user UUID</td></tr>
+<tr><td>vendor_user_type</td><td>enum</td><td>A-set</td><td><code>console / api / mobile_only</code></td></tr>
+<tr><td>vendor_role</td><td>varchar</td><td>M-mut</td><td>Fireblocks 의 role (Owner / Admin / Editor / Signer / Viewer / Non-Signing Admin / Approver / Non-Signing User / Auditor)</td></tr>
 <tr><td>activated_at</td><td>timestamptz</td><td>A-set nullable</td><td>mobile app 페어링 완료 시점</td></tr>
 <tr><td>last_login_at</td><td>timestamptz</td><td>M-mut nullable</td><td>마지막 로그인 (Fireblocks API 조회)</td></tr>
 <tr><td>status</td><td>enum</td><td>M-mut</td><td><code>pending / active / suspended / retired</code></td></tr>
@@ -164,14 +164,14 @@ SSO 설정 시 Fireblocks 도 IdP 위임 → 한 곳에서 password / 2FA 관리
 출처: <a href="https://developers.fireblocks.com/docs/manage-users">Manage Users</a>
 </p>
 
-<h4><code>customerdb.fb_api_key_meta</code> — API key 메타데이터</h4>
+<h4><code>customerdb.api_key_meta</code> — API key 메타데이터</h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
 <tbody>
 <tr><td>api_key_id (PK)</td><td>uuid</td><td>A-set</td><td>은행 내부 ID</td></tr>
-<tr><td>fb_workspace_id (FK)</td><td>varchar</td><td>A-set</td><td>workspace</td></tr>
-<tr><td>fb_api_key_uuid</td><td>varchar</td><td>A-set</td><td>Fireblocks 의 API key UUID</td></tr>
+<tr><td>workspace_code</td><td>varchar</td><td>A-set</td><td>config 의 workspace key (<code>"hot"</code> / <code>"cold"</code>)</td></tr>
+<tr><td>vendor_api_key_uuid</td><td>varchar</td><td>A-set</td><td>Fireblocks 의 API key UUID</td></tr>
 <tr><td>key_name</td><td>varchar</td><td>M-mut</td><td>은행 부르는 이름 (예: "production-app-readonly")</td></tr>
 <tr><td>role</td><td>varchar</td><td>M-mut</td><td>API user 의 role (Viewer / Signer / Editor / Admin / Non-Signing Admin)</td></tr>
 <tr><td>secret_ref</td><td>varchar</td><td>A-set</td><td>secret manager 의 reference (예: AWS Secrets Manager ARN). <strong>secret 자체는 절대 column 에 저장 금지</strong></td></tr>
@@ -192,13 +192,13 @@ SaaS MPC 시 mobile device 가 MPC share 보유 → device 등록 / 분실 / 교
 은행은 device 단위 추적을 자체적으로 권장.
 </p>
 
-<h4><code>customerdb.fb_mobile_device</code></h4>
+<h4><code>customerdb.mobile_device</code></h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>column</th><th>설명</th></tr></thead>
 <tbody>
 <tr><td>device_id (PK)</td><td>은행 내부 ID</td></tr>
-<tr><td>fb_user_id (FK)</td><td>Fireblocks user</td></tr>
+<tr><td>vendor_user_id (FK)</td><td>Fireblocks user</td></tr>
 <tr><td>device_os</td><td><code>ios / android</code></td></tr>
 <tr><td>device_model</td><td>모델명 (예: iPhone 15 Pro)</td></tr>
 <tr><td>paired_at</td><td>최초 페어링 시점</td></tr>
@@ -232,7 +232,7 @@ Hosted MPC 의 API Co-signer 는 거래 서명 직전에 Callback Handler endpoi
 <thead><tr><th>column</th><th>설명</th></tr></thead>
 <tbody>
 <tr><td>handler_id (PK)</td><td>은행 내부 ID</td></tr>
-<tr><td>fb_cosigner_id</td><td>속한 Co-signer 인스턴스</td></tr>
+<tr><td>vendor_cosigner_id</td><td>속한 Co-signer 인스턴스</td></tr>
 <tr><td>endpoint_url</td><td>HTTPS endpoint URL (은행 application)</td></tr>
 <tr><td>csr_public_key_pem</td><td>CSR 의 public key (Fireblocks 가 등록 시 발급)</td></tr>
 <tr><td>active</td><td>활성 여부</td></tr>
@@ -257,10 +257,10 @@ Hosted MPC 의 API Co-signer 는 거래 서명 직전에 Callback Handler endpoi
 <thead><tr><th>column</th><th>설명</th></tr></thead>
 <tbody>
 <tr><td>session_id (PK)</td><td>은행 내부 ID</td></tr>
-<tr><td>fb_user_id (FK)</td><td>Fireblocks user</td></tr>
+<tr><td>vendor_user_id (FK)</td><td>Fireblocks user</td></tr>
 <tr><td>idp_subject</td><td>IdP 의 subject claim</td></tr>
 <tr><td>login_at</td><td>SSO 로그인 시점 (IdP assertion 시점)</td></tr>
-<tr><td>fb_console_url</td><td>접근한 Console URL</td></tr>
+<tr><td>vendor_console_url</td><td>접근한 Console URL</td></tr>
 </tbody>
 </table>
 </div>

@@ -23,7 +23,7 @@
 <li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a></li>
 <li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
@@ -45,11 +45,11 @@
 <li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
 <li><a href="risks.html">14. Risks Register</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">I. Accounting &amp; Reconciliation</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
 <li><a href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
 <li><a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">H. Ops</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
 <li><a href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
@@ -73,7 +73,7 @@ Fireblocks 도입 시 audit log 는 2 layer 로 운영:
   <td>immutable, vendor 가 보장</td>
   <td>Fireblocks</td></tr>
 <tr><td><strong>Layer 2 — 은행 mirror</strong></td>
-  <td>mirrordb.audit_log_mirror</td>
+  <td>operationsdb.audit_log_mirror</td>
   <td>append-only, hash chain (저자 권장)</td>
   <td>은행 (5년 보존 의무)</td></tr>
 </tbody>
@@ -116,20 +116,20 @@ Fireblocks 가 Console 의 immutable log 로 기록하는 event:
 출처: <a href="https://developers.fireblocks.com/docs/configure-webhooks">Configure Webhooks</a> — webhook 으로 mirror 가능한 event 목록 참조
 </p>
 
-<h3>12.3 mirrordb.audit_log_mirror — 5년 보존</h3>
+<h3>12.3 operationsdb.audit_log_mirror — 5년 보존</h3>
 
-<h4><code>mirrordb.audit_log_mirror</code></h4>
+<h4><code>operationsdb.audit_log_mirror</code></h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
 <tbody>
 <tr><td>audit_id (PK)</td><td>uuid</td><td>A-set</td><td>은행 내부 ID</td></tr>
 <tr><td>sequence_num (UNIQUE)</td><td>bigint</td><td>A-set, sequential</td><td>append-only 단조 증가 시퀀스 (gap detection 용)</td></tr>
-<tr><td>fb_event_id</td><td>varchar</td><td>A-set</td><td>Fireblocks event UUID</td></tr>
-<tr><td>fb_workspace_id</td><td>varchar</td><td>A-set</td><td>workspace</td></tr>
+<tr><td>vendor_event_id</td><td>varchar</td><td>A-set</td><td>Fireblocks event UUID</td></tr>
+<tr><td>vendor_workspace_id</td><td>varchar</td><td>A-set</td><td>workspace</td></tr>
 <tr><td>event_category</td><td>enum</td><td>A-set</td><td>user / governance / policy / vault / counterparty / transaction / api / backup</td></tr>
 <tr><td>event_type</td><td>varchar</td><td>A-set</td><td>구체 event type</td></tr>
-<tr><td>actor_user_id</td><td>varchar nullable</td><td>A-set</td><td>작업자 (fb_user_id 또는 api_key_id)</td></tr>
+<tr><td>actor_user_id</td><td>varchar nullable</td><td>A-set</td><td>작업자 (vendor_user_id 또는 api_key_id)</td></tr>
 <tr><td>resource_type</td><td>varchar nullable</td><td>A-set</td><td>vault / address / policy / user 등</td></tr>
 <tr><td>resource_id</td><td>varchar nullable</td><td>A-set</td><td>리소스 ID</td></tr>
 <tr><td>event_payload</td><td>jsonb</td><td>A-set</td><td>event 의 상세 정보</td></tr>
@@ -264,7 +264,7 @@ Fireblocks 의 Travel Rule policy 는 정책 trigger 까지만 제공. 실제 VA
 </p>
 <ol>
 <li><strong>Fireblocks Console 의 immutable log</strong> — Auditor role 의 read-only access 제공</li>
-<li><strong>mirrordb.audit_log_mirror</strong> — hash chain 무결성 증명 포함</li>
+<li><strong>operationsdb.audit_log_mirror</strong> — hash chain 무결성 증명 포함</li>
 <li><strong>tx_mirror + tx_status_history</strong> — 5년 거래 기록</li>
 <li><strong>compliancedb.screening_results</strong> — AML 점검 이력</li>
 <li><strong>compliancedb.travel_rule_records</strong> — 트래블룰 처리 이력</li>
