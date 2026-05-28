@@ -488,7 +488,65 @@ sequenceDiagram
 <strong>미실현 손익 인식 + 일별 박제</strong>. 환율 상승 → 외화 부채 평가 증가 → 환산손익 (자기자본 감소) 또는 평가이익 (자기자본 증가) 인식. 박제 시점부터 hash chain 으로 변조 방지.
 </p>
 
-<h4>시나리오 ⑤ 정정 분개 (오류 발견 시)</h4>
+<h4>시나리오 ⑤ 자산 스왑 (delta_ledger 패턴 — off-chain immediate + settlement)</h4>
+<p>
+앞 4 시나리오는 customer_ledger / bank_ledger / general_ledger_entry 만 갱신 — <strong>delta_ledger 는 사용 안 함</strong> (외부 입금 / 출금 / 내부 이체 / 일말 환산은 즉시-반영 vs 정산-지연 의 timing gap 이 없음). <strong>delta_ledger 는 "off-chain 즉시 반영 + on-chain settlement 시점 차이"</strong> 가 있는 경우에 사용 — 18.6 절 매트릭스의 <strong>온램프 · 자산 스왑 · 오프램프</strong> 3 케이스가 해당.
+</p>
+<p>
+본 시나리오는 자산 스왑 (스테이블코인 A → B) 으로 delta_ledger 패턴을 보여준다 — 사용자 UI 에는 즉시 잔액 변동, 은행 측의 실제 vault 재조달 (외부 거래소 매개 또는 자체 swap) 은 별도 시점에 settlement. 오프램프 (USDC → 원화) · 온램프 (원화 → USDC) 도 동일 패턴 적용.
+</p>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Cust as 👤 고객
+  participant App as 🏢 은행 App
+  participant CL as customer_ledger
+  participant DL as delta_ledger
+  participant GLE as general_ledger_entry
+  participant Worker as settlement worker<br/>(외부 거래소 / Fireblocks Swap API)
+  participant BL as bank_ledger
+
+  Note over Cust,GLE: ★ Step 1 — off-chain 즉시 반영 (UI 즉시 변동)
+  Cust->>App: 스왑 요청 100 USDC → 100 USDT
+  App->>App: 잔액 / 한도 / 환율 검증
+  App->>CL: UPDATE 고객 X.USDC -= 100
+  App->>CL: UPDATE 고객 X.USDT += 100
+  App->>DL: INSERT delta_ledger (2 row):<br/>(USDC, +100, status=pending)<br/>(USDT, -100, status=pending)
+  App->>GLE: INSERT 이중부기 (4 row, 고객측):<br/>(차) USDC 반환채무 -100<br/>(대) USDT 반환채무 +100<br/>(차) USDT 미정산 자산 (delta) +100<br/>(대) USDC 미정산 부채 (delta) +100
+  App-->>Cust: 스왑 완료 알림 (UI 잔액 변동 ↑)
+
+  Note over Worker,BL: ★ Step 2 — settlement (수 분 ~ 수 시간 후)
+  Worker->>Worker: 외부 거래소 또는<br/>Fireblocks Swap API 매개<br/>100 USDC → 100 USDT 매매
+  Worker-->>App: 정산 완료<br/>(USDT vault 입금 / USDC vault 출금)
+  App->>DL: UPDATE delta_ledger<br/>(status=settled, settled_at)
+  App->>GLE: INSERT 정산 분개 (4 row, 은행측):<br/>(차) USDT vault 자산 +100<br/>(대) USDT 미정산 자산 -100 (delta cleared)<br/>(차) USDC 미정산 부채 -100 (delta cleared)<br/>(대) USDC vault 자산 -100
+  opt 매매 spread / 수수료 발생
+    App->>BL: UPDATE 수수료수익 / 환차익 인식
+    App->>GLE: INSERT 손익 분개
+  end
+</pre>
+</div>
+<p class="diagram-caption">
+<strong>2-step 패턴</strong>: Step 1 (즉시 — customer_ledger + delta_ledger pending) 에서 UI 응답성 확보, Step 2 (settlement — delta cleared + general_ledger 정산 분개) 에서 회계 정합성 회복. delta_ledger 의 pending row 가 회계 항등식 임시 균형 유지 (외부 정산 완료 전까지 자산/부채 양변 모두 미정산 표기).
+</p>
+
+<h5>delta_ledger 가 필요한 이유</h5>
+<ul>
+<li><strong>UX</strong> — 사용자가 스왑 / 온램프 / 오프램프 요청 시 외부 정산 (수 분 ~ 수 시간) 을 기다리지 않고 즉시 UI 반영. 사용자 응답 시간 SLA 충족</li>
+<li><strong>회계 항등식 유지</strong> — Step 1 시점에 자산 vault 가 실제 변동되지 않았는데 customer_ledger 만 변동하면 항등식이 깨진다. delta_ledger 의 미정산 자산/부채 row 가 이 gap 을 매개</li>
+<li><strong>외부 감사 추적</strong> — 정산 지연이 발생한 거래의 시점 / 원인 / 정산 완료 시점이 별도 audit trail. delta_ledger.settlement_status 의 ageing 모니터링으로 stuck pending detection</li>
+<li><strong>대사 명확화</strong> — L1 대사 시 (19.2 절) "customer_ledger 합 ≠ on-chain vault 합" 인 경우 delta_ledger 의 pending 합으로 균형 검증 가능</li>
+</ul>
+
+<h5>매트릭스의 다른 delta_ledger 케이스 (18.6 절 참조)</h5>
+<ul>
+<li><strong>온램프</strong> (법정통화 → stablecoin) — KRW 즉시 차감 (계정계) + USDC 즉시 증가 (customer_ledger) + delta_ledger pending → 외부 USDC 매입 settlement 후 cleared</li>
+<li><strong>오프램프</strong> (stablecoin → 법정통화) — USDC 즉시 차감 + KRW 약속 (계정계 입금 대기) + delta_ledger pending → 외부 USDC 매도 settlement 후 KRW 실 입금 + cleared</li>
+<li><strong>자산 스왑</strong> (본 시나리오) — 스테이블코인 A ↔ B</li>
+</ul>
+
+<h4>시나리오 ⑥ 정정 분개 (오류 발견 시)</h4>
 <div class="diagram">
 <pre class="mermaid">
 sequenceDiagram
