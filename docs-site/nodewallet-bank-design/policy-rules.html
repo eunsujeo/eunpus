@@ -56,7 +56,7 @@
 
 <div class="callout">
 <div class="callout-title">출처</div>
-<p><code>compliance__rules__*.md</code> (각 rule 개별 페이지), <code>compliance__decision-lifecycle.md</code> §우선순위 평가, <code>pm-db-design-notes.md</code> §5 (10 rule catalog).</p>
+<p><code>compliance__rules__*.md</code> (각 rule 개별 페이지), <code>compliance__decision-lifecycle.md</code> 우선순위 평가, <code>pm-db-design-notes.md</code> 섹션 5 (10 rule catalog).</p>
 </div>
 
 <h3>한눈에 보는 10 종</h3>
@@ -191,7 +191,7 @@
 <li><code>SINGLE_APPROVE</code> → <strong>Held</strong> (단일 운영자 외부 승인 필요)</li>
 <li><code>QUORUM_2_OF_3</code> → <strong>Held</strong> (3인 중 2인 의식 승인 필요)</li>
 </ul>
-<p class="hint"><strong>콘솔 폼 매핑</strong>: dropdown 의 <code>auto</code> → <code>AUTO</code>, <code>single</code> → <code>SINGLE_APPROVE</code>, <code>dual</code> → <code>QUORUM_2_OF_3</code> (source: <code>compliance__rules__approval-tier.md</code> §콘솔 폼 매핑). i64::MAX = <code>9223372036854775807</code> 을 상한으로 두면 "그 이상 전체" 표현. 구간이 겹치면 priority 같을 때 어느 행이 매치되는지 보장 안 됨 — +1 차이로 엄격 분리.</p>
+<p class="hint"><strong>콘솔 폼 매핑</strong>: dropdown 의 <code>auto</code> → <code>AUTO</code>, <code>single</code> → <code>SINGLE_APPROVE</code>, <code>dual</code> → <code>QUORUM_2_OF_3</code> (source: <code>compliance__rules__approval-tier.md</code> 콘솔 폼 매핑). i64::MAX = <code>9223372036854775807</code> 을 상한으로 두면 "그 이상 전체" 표현. 구간이 겹치면 priority 같을 때 어느 행이 매치되는지 보장 안 됨 — +1 차이로 엄격 분리.</p>
 
 <h3>Held 의 외부 해소 패턴</h3>
 <p>콘솔에 "승인 버튼" 이 없는 이유 (★ 권한 분리 + 결정론적 재평가). Held 해소는 다음 절차:</p>
@@ -219,7 +219,7 @@
   }
 }</code></pre>
 <p>field/operator/value DSL 로 임의 조건. 모든 condition 이 true 면 action 발화. closed 10 종 으로 표현 안 되는 케이스의 escape valve.</p>
-<p class="hint">한계: 현재 <code>expression</code> 페이지가 404 — vendor docs 의 명시적 spec 미비 (source: <code>inventory.md</code> §4.3.4). DSL 의 operator 목록 / 지원 type / type coercion 은 onboarding 시 확인 필요.</p>
+<p class="hint">한계: 현재 <code>expression</code> 페이지가 404 — vendor docs 의 명시적 spec 미비 (source: <code>inventory.md</code> 4.3.4 절). DSL 의 operator 목록 / 지원 type / type coercion 은 onboarding 시 확인 필요.</p>
 
 <h3>EvaluationContext — 코디네이터가 계산하는 상태값</h3>
 <p>승인자는 ledger 를 직접 조회하지 않는다. coordinator 가 미리 계산해서 넘긴다 (source: <code>compliance__decision-lifecycle.md</code>):</p>

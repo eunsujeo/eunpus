@@ -86,7 +86,7 @@
   <td>VASP 간 송수신자 정보 교환 (한국 100만원 이상)</td>
   <td>address_list whitelist (식별 + 기술 통제) — 정보 교환은 외부 솔루션</td></tr>
 <tr><td>AML / KYC general</td><td>—</td>
-  <td>특금법 §5조의2 / §4 (STR)</td>
+  <td>특금법 제5조의2 / 제4조 (STR)</td>
   <td>의심거래 감시 · 고객 신원 확인 · 재이행 주기 · 신규 서비스 위험평가</td>
   <td>address_cooldown + velocity_window + 외부 KYC 시스템 결합 + 제품승인위원회 (운영)</td></tr>
 </tbody>
@@ -100,8 +100,8 @@
 <div class="callout-title">은행 도입 시 결정적 임계 (Stage 37 ingest)</div>
 <ul>
 <li><strong>콜드월렛 80%</strong> — 이용자 가상자산의 경제적 가치 80% 를 인터넷과 분리. NodeWallet 은 hot wallet 인프라이므로 자체적으로는 ≤ 20% 만 보관. <strong>나머지 80% 는 별도 cold workspace 필수</strong> (외부 또는 Fireblocks Cold Wallet 등).</li>
-<li><strong>트래블룰 100만원</strong> — 시행령 §10조의10. 100만원 이상 출금 시 송·수신인 이름 전송 실패 시 출고 차단 필수.</li>
-<li><strong>기록보존 5년</strong> — 특금법 §5조의4. auditdb 의 모든 evidence 가 5년 archive.</li>
+<li><strong>트래블룰 100만원</strong> — 시행령 제10조의10. 100만원 이상 출금 시 송·수신인 이름 전송 실패 시 출고 차단 필수.</li>
+<li><strong>기록보존 5년</strong> — 특금법 제5조의4. auditdb 의 모든 evidence 가 5년 archive.</li>
 <li><strong>신규 신고 심사 3개월 / 변경 45일</strong> — NodeWallet 의 vault 주소 / 신규 자산 추가 시 변경신고 필수.</li>
 </ul>
 </div>
@@ -182,7 +182,7 @@ INSERT INTO condition_set_items (condition_set_id, value, label) VALUES
 }</code></pre>
 
 <h3>패턴 2 — 임계치 이하 자유 / 초과 화이트리스트</h3>
-<p>100만원 이하 거래는 임의 주소 허용 / 초과 거래는 VASP 화이트리스트 제한. <code>expression</code> 룰로 조건부 적용 (예시는 docs <code>compliance__regulations__travel-rule.md</code> §패턴 2).</p>
+<p>100만원 이하 거래는 임의 주소 허용 / 초과 거래는 VASP 화이트리스트 제한. <code>expression</code> 룰로 조건부 적용 (예시는 docs <code>compliance__regulations__travel-rule.md</code> 패턴 2).</p>
 
 <h3>자기 보관 (self-custody) 처리</h3>
 <p>EU TFR 2023/1113 은 1,000 EUR 초과 자기 보관 지갑 송금 시 추가 의무. NodeWallet 운영 패턴:</p>

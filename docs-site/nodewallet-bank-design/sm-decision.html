@@ -56,7 +56,7 @@
 
 <div class="callout">
 <div class="callout-title">출처</div>
-<p><code>compliance__decision-lifecycle.md</code> 전체 — 가장 dense 한 single-source. <code>compliance__rules__approval-tier.md</code> §Held 의 외부 해소.</p>
+<p><code>compliance__decision-lifecycle.md</code> 전체 — 가장 dense 한 single-source. <code>compliance__rules__approval-tier.md</code> Held 의 외부 해소.</p>
 </div>
 
 <h3>3 verdict + shadow_mode 없음</h3>
@@ -104,7 +104,7 @@ stateDiagram-v2
 </dl>
 
 <h3>수동 승인 버튼이 없는 이유 (NodeInfra 자기서술)</h3>
-<p>Held 는 운영자가 콘솔의 "승인" 버튼을 눌러 해제하지 않는다. NodeInfra docs 는 두 이유를 명시 (source: <code>compliance__decision-lifecycle.md</code> §수동 승인 없는 이유):</p>
+<p>Held 는 운영자가 콘솔의 "승인" 버튼을 눌러 해제하지 않는다. NodeInfra docs 는 두 이유를 명시 (source: <code>compliance__decision-lifecycle.md</code> 수동 승인 없는 이유):</p>
 <ol>
 <li><strong>권한 분리</strong> — 정책 엔진이 정책 키를 가지므로, 운영자가 정책 엔진의 결정을 우회할 수 있다면 정책 엔진의 의미가 무너진다. 운영자가 결정을 바꾸려면 <em>규칙 자체를 수정</em>해야 한다 (변경은 <code>policy_change_log</code> 에 남는다).</li>
 <li><strong>결정론적 재평가</strong> — 동일 입력 + 동일 규칙 set → 동일 결정. Held 가 풀리려면 시간 (<code>address_cooldown</code>) · 규칙 변경 (<code>approval_tier</code> 한도 상향) · 외부 상태 (<code>velocity_window</code> 의 시간 경과) 중 하나가 바뀌어야 한다.</li>
@@ -171,7 +171,7 @@ sequenceDiagram
 </div>
 
 <h3>Held 발화 규칙 — 단 2 종</h3>
-<p>10 rule 중 Held 를 반환하는 것은 다음 2 종 (source: <code>compliance__decision-lifecycle.md</code> §Held 자동 결정 보류):</p>
+<p>10 rule 중 Held 를 반환하는 것은 다음 2 종 (source: <code>compliance__decision-lifecycle.md</code> Held 자동 결정 보류):</p>
 <div class="table-wrap">
 <table>
 <thead><tr><th>규칙</th><th>Held 발화 조건</th></tr></thead>
@@ -183,7 +183,7 @@ sequenceDiagram
 </div>
 
 <h3>임시 AUTO 변경 후 복원 — Held 해소의 정석 패턴</h3>
-<p>vendor docs 가 명시하는 패턴 (source: <code>compliance__rules__approval-tier.md</code> §Held 의 외부 해소):</p>
+<p>vendor docs 가 명시하는 패턴 (source: <code>compliance__rules__approval-tier.md</code> Held 의 외부 해소):</p>
 <ol>
 <li>외부 의식 (운영자 회의 · 키 의식 · 별도 시스템 승인) 으로 결정</li>
 <li>임시로 <code>approval_tier</code> 행을 수정해 해당 구간을 <code>AUTO</code> 로 — <code>policy_change_log</code> 에 변경 자동 기록</li>

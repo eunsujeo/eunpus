@@ -121,13 +121,13 @@
 <div class="callout">
 <div class="callout-title">KR 임계값 (Stage 37 ingest)</div>
 <ul>
-<li><strong>Travel Rule 임계 = 100만원 이상</strong> (특금법 시행령 §10조의10). 한국 송·수신인 이름 정보 전송 의무. 실패 시 출고 차단.
-  <span class="src">(source: KR_Custodial_Wallet_Compliance_Guide.pdf p.4 §31 · 1차: law.go.kr lspttninfSeq=82843)</span></li>
-<li><strong>기록보존 최소 5년</strong> (특금법 §5조의4). KYC 사본, 로그, 승인흐름, 모니터링 결과, 차단·해제 근거.
-  <span class="src">(source: 동 p.4 §27 · 1차: law.go.kr lsiSeq=252787)</span></li>
+<li><strong>Travel Rule 임계 = 100만원 이상</strong> (특금법 시행령 제10조의10). 한국 송·수신인 이름 정보 전송 의무. 실패 시 출고 차단.
+  <span class="src">(source: KR_Custodial_Wallet_Compliance_Guide.pdf p.4 섹션 31 · 1차: law.go.kr lspttninfSeq=82843)</span></li>
+<li><strong>기록보존 최소 5년</strong> (특금법 제5조의4). KYC 사본, 로그, 승인흐름, 모니터링 결과, 차단·해제 근거.
+  <span class="src">(source: 동 p.4 섹션 27 · 1차: law.go.kr lsiSeq=252787)</span></li>
 <li><strong>FATF 글로벌 임계 = $1,000 / EUR 1,000</strong>. 미국 FinCEN = $3,000. EU TFR 2023/1113 = 모든 거래 (2024-12-30 시행).</li>
-<li><strong>신규 서비스 AML 위험평가</strong> (특금법 §5 + 시행령 §9) — 신규 토큰·자산 등록 전 product risk committee. 코빗 NFT 신규지원 전 미실시 655건이 2025-12 종합검사에서 적발.
-  <span class="src">(source: 동 p.5 §34, p.7 §48)</span></li>
+<li><strong>신규 서비스 AML 위험평가</strong> (특금법 제5조 + 시행령 제9조) — 신규 토큰·자산 등록 전 product risk committee. 코빗 NFT 신규지원 전 미실시 655건이 2025-12 종합검사에서 적발.
+  <span class="src">(source: 동 p.5 섹션 34, p.7 섹션 48)</span></li>
 </ul>
 <p>
 → <code>travel_rule_records</code> 테이블의 <code>threshold_satisfied</code> 컬럼은 100만원 (KR) / $3,000 (US) / $1,000 (FATF) 등 jurisdiction 별 임계값을 별도 컬럼으로 분리 권장. 5년 archive 는 모든 AML evidence 테이블의 retention policy.

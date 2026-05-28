@@ -70,7 +70,7 @@
 </tbody>
 </table>
 </div>
-<p class="hint">실행 키의 마스터는 HSM 에서 <em>최초 1회만</em> 생성되어 RSA-OAEP wrap 으로 enclave 에 전달 → enclave 가 MRENCLAVE 봉인. 이후 운영 중에는 HSM 접근 없이도 동작. 그래서 "실행 키 전용 HSM 은 프로비저닝 후 오프라인 전환 가능" 이 NodeInfra 의 권장 운영 패턴 (source: <code>security__keys__hsm.md</code> §다중 HSM 배치 권장).</p>
+<p class="hint">실행 키의 마스터는 HSM 에서 <em>최초 1회만</em> 생성되어 RSA-OAEP wrap 으로 enclave 에 전달 → enclave 가 MRENCLAVE 봉인. 이후 운영 중에는 HSM 접근 없이도 동작. 그래서 "실행 키 전용 HSM 은 프로비저닝 후 오프라인 전환 가능" 이 NodeInfra 의 권장 운영 패턴 (source: <code>security__keys__hsm.md</code> 다중 HSM 배치 권장).</p>
 
 <h3>HSM — 3 파티션 구조</h3>
 <p>NodeInfra default 는 <strong>단일 HSM + 3 파티션</strong> (비용/운영 부담이 가장 적음). 더 강한 격리가 필요하면 <strong>키별 독립 HSM</strong> 권장.</p>

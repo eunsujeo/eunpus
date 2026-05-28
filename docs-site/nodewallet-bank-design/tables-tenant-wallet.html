@@ -56,7 +56,7 @@
 
 <div class="callout">
 <div class="callout-title">출처</div>
-<p><code>security__architecture__tenant.md</code> (테넌트 격리 + SPKI-hash + register_enclave), <code>dev__architecture.md</code> §지갑 종류 (3 wallet type), <code>vendor-specific-patterns.md</code> P1.2 / P5.1 / P5.2.</p>
+<p><code>security__architecture__tenant.md</code> (테넌트 격리 + SPKI-hash + register_enclave), <code>dev__architecture.md</code> 지갑 종류 (3 wallet type), <code>vendor-specific-patterns.md</code> P1.2 / P5.1 / P5.2.</p>
 </div>
 
 <h3>테넌트 = 은행 내부 sub-unit</h3>
@@ -108,7 +108,7 @@
   UNIQUE (tenant_id, wallet_type)
     WHERE wallet_type IN ('omnibus', 'gas_payer')
 );</code></pre>
-<p class="hint">DB 무결성 제약으로 "테넌트당 정확히 1 omnibus + 1 gas_payer" 가 enforce 된다 (source: <code>dev__architecture.md</code> §자금 흐름). SDK 가 user wallet 만 만들 수 있는 이유.</p>
+<p class="hint">DB 무결성 제약으로 "테넌트당 정확히 1 omnibus + 1 gas_payer" 가 enforce 된다 (source: <code>dev__architecture.md</code> 자금 흐름). SDK 가 user wallet 만 만들 수 있는 이유.</p>
 
 <h3>자금 흐름 (테넌트 내)</h3>
 <div class="diagram">
@@ -133,7 +133,7 @@ flowchart LR
 <p class="diagram-caption">사용자 지갑의 잔액은 ledgerdb 의 사용자 계정에 기록되지만, 실제 자산은 sweep 후 집중 지갑에 보관. 가스대납 지갑은 SOL 만 보유하며 잔액 모니터링은 SDK / 운영도구가 폴링.</p>
 
 <h3>BIP-44 derivation</h3>
-<p>모든 wallet 의 주소는 sealed master key 에서 BIP-44 경로로 파생 (source: <code>security__keys__tee-enclave.md</code> §엔클레이브 내부 흐름):</p>
+<p>모든 wallet 의 주소는 sealed master key 에서 BIP-44 경로로 파생 (source: <code>security__keys__tee-enclave.md</code> 엔클레이브 내부 흐름):</p>
 <pre><code>m / 44' / 501' / account' / change / index
             ↑     ↑
             |     +-- Solana SLIP-44 (501)

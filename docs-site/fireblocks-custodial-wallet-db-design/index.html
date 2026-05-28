@@ -23,34 +23,37 @@
 <li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a></li>
-<li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace</a></li>
+<li><a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a></li>
+<li><a href="tables-counterparty.html">6. Counterparty Registry</a></li>
+<li><a href="cold-wallet.html">7. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
-<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-user.html">8. Internal Users</a></li>
+<li><a href="tables-customer-user.html">9. Customer Users</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
-<li><a href="tables-governance.html">7. Roles · Quorum · Policy</a></li>
+<li><a href="tables-governance.html">10. Roles · Quorum · Policy</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
-<li><a href="tables-crypto.html">8. MPC · Key Link · Cosigner</a></li>
+<li><a href="tables-crypto.html">11. MPC · Key Link · Cosigner</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
-<li><a href="sm-transaction.html">9. Transaction State + 14-step</a></li>
-<li><a href="sm-webhook.html">10. Webhook 처리</a></li>
-<li><a href="sm-deposit-withdrawal.html">11. Deposit · Withdrawal Flow</a></li>
+<li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">13. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">12. Audit · AML · Travel Rule</a></li>
-<li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
-<li><a href="risks.html">14. Risks Register</a></li>
+<li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">16. KR 규제 매핑</a></li>
+<li><a href="risks.html">17. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
-<li><a href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
-<li><a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
+<li><a href="accounting-ledger.html">18. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
-<li><a href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">20. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -73,17 +76,30 @@
 </ul>
 </div>
 
+<div class="callout">
+<div class="callout-title">본 문서의 cross-link 정책</div>
+<p>본 reference 는 시리즈의 다른 reference (예: Cold Wallet 8 페이지 · KR VASP 8 페이지 · Key Link 7 페이지 · 직접 구축 25 sections) 로 cross-link 한다. <strong>독자는 cross-link 를 클릭하지 않아도 본문만으로 의미를 파악</strong> 할 수 있도록 다음 원칙 적용:</p>
+<ul style="margin-bottom:0">
+<li><strong>외부 reference 가 별도 영역 (8+ 페이지) 인 경우</strong> — 본문에 핵심 풀이를 자체 완결시키고, link 는 "더 자세한 분석" 용도의 보조로만 둠</li>
+<li><strong>식별자 인용 시</strong> (예: <code>Risk-G07</code> / <code>Q-FB02</code>) — 본문에 의미 + 식별자 분해 (예: "G = Governance, 07 = 위험 catalog 7 번") 를 함께 풀어 씀</li>
+<li><strong>약어 / 전문 용어</strong> — 첫 등장 시 본문에서 풀이. link 는 옵션</li>
+</ul>
+</div>
+
 <h2>10 초 요약 — 직접 구축 vs Fireblocks 도입</h2>
 <div class="table-wrap">
 <table>
 <thead><tr><th>축</th><th>직접 구축</th><th>Fireblocks 도입</th></tr></thead>
 <tbody>
 <tr><td><strong>주 운영자</strong></td><td>은행이 모든 인프라</td><td>Fireblocks SaaS 가 핵심 / 은행은 거래·이벤트의 사본 (mirror) 보관 + 외부 시스템 통합</td></tr>
-<tr><td><strong>키 보유</strong></td><td>은행이 MPC 키 share 전부 또는 다수</td><td><strong>SaaS MPC + Hosted MPC</strong>: Fireblocks 가 키 share 일부 보유 (3-party MPC)<br/><strong>Key Link</strong>: 전량 고객 HSM (Fireblocks 0 share)</td></tr>
+<tr><td><strong>키 보유</strong></td><td>은행이 MPC 키 share 전부 또는 다수</td><td>3 product line 마다 share 분포 다름 (모두 3-party MPC-CMP · 2-of-3 threshold):<br/>
+<strong>SaaS MPC</strong>: Fireblocks Cloud Co-Signer 2 share + <strong>운영자 Mobile 1 share</strong> (iOS Keychain / Android TEE) — 사람 매개 서명<br/>
+<strong>Hosted MPC</strong>: Fireblocks Cloud Co-Signer 2 share + <strong>고객 SGX 서버 1 share</strong> (은행 운영) — 자동 서명 가능<br/>
+<strong>Key Link</strong>: 전량 고객 HSM 보유 (Fireblocks 0 share) — vendor lock-in 최소</td></tr>
 <tr><td><strong>DB 개수</strong></td>
   <td>7 DB (walletdb · ledgerdb · approverdb · auditdb · chaindb · providerdb · recondb)</td>
   <td>Fireblocks 가 vault · 정책 · audit log 등 대부분의 DB 책임을 인수.
-    <strong>은행이 직접 운영하는 DB 는 2-3 개</strong> (customerdb + operationsdb [+compliancedb]) —
+    <strong>은행이 직접 운영하는 DB 는 2-3 개</strong> (core + audit + compliance) —
     단 webhook 중복 처리 · 5년 보존 · AML/트래블룰 통합 등 <strong>새 책임이 발생</strong>하므로 운영 부담이 "줄었다" 가 아니라 "성격이 달라졌다"</td></tr>
 <tr><td><strong>상태 머신 책임</strong></td>
   <td>은행이 17 transaction state · 14-step · approval · signing 전부 운영</td>
@@ -101,22 +117,22 @@
 Fireblocks 가 17 transaction state 를 운영하지만, 은행 application 은 <strong>사용자 신청부터 Fireblocks 접수 전</strong> 의 자체 상태를 별도로 가진다.
 예: REQUESTED (사용자 신청 접수) → BANK_VALIDATING (KYC · 한도 · counterparty 검증) → FB_SUBMITTED (Fireblocks 에 거래 요청 송신) → AWAITING_APPROVAL → SIGNING → BROADCASTED → SETTLED.
 이 상태들은 Fireblocks 가 모르는 영역이며, 은행이 자체 DB 에서 관리. 상세는
-<a href="sm-deposit-withdrawal.html">11. Deposit · Withdrawal Flow</a> 참조.
+<a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a> 참조.
 </p>
 </div>
 
 <h2>도입의 핵심 효과</h2>
 <ul>
 <li><strong>인프라 운영 부담 감소</strong> — MPC 키 분포 · cosigner 운영 · 정책 엔진 · audit log 보안 등 깊은 보안 인프라를 Fireblocks 가 담당</li>
-<li><strong>DB 가 단순해진다</strong> — 7 DB → 2-3 DB. 단 webhook 수신 / 중복 처리 방지 / 5년 보존 책임은 여전히 은행</li>
+<li><strong>DB 가 단순해진다</strong> — 7 DB → 3 DB (core + audit + compliance). 단 webhook 수신 / 중복 처리 방지 / 5년 보존 책임은 여전히 은행</li>
 <li><strong>새로운 의존성 발생</strong> — Fireblocks 에 종속되어 다른 vendor 로의 마이그레이션이 어려워지고 (vendor lock-in),
   Fireblocks SaaS 가 장애를 일으키면 은행 거래 처리도 함께 멈춘다 (outage 의존성).
-  직접 구축에는 없던 이 vendor 관련 위험들을 별도 위험 목록으로 관리해야 한다 (<a href="risks.html">14. Risks Register</a>)</li>
+  직접 구축에는 없던 이 vendor 관련 위험들을 별도 위험 목록으로 관리해야 한다 (<a href="risks.html">17. Risks Register</a>)</li>
 <li><strong>KR 컴플라이언스는 여전히 은행 책임</strong> — Fireblocks 가 자동 제공하지 않음 (특금법 · 가상자산이용자보호법 · 가상자산업감독규정 등)
   — 상세는 <a href="../fireblocks-kr-vasp-compliance/">국내 블록체인 사업 법규 × Fireblocks</a> 참조</li>
 </ul>
 
-<h2>이 문서의 9 가지 도메인 (18 페이지)</h2>
+<h2>이 문서의 9 가지 도메인 (20 페이지)</h2>
 <p>
 직접 구축 reference (<a href="../custodial-wallet-db-design/">custodial-wallet-db-design</a>) 의 8 도메인 +
 <strong>H. Accounting &amp; Reconciliation (회계 · 정산)</strong> 도메인을 추가.
@@ -131,28 +147,28 @@ Fireblocks 가 17 transaction state 를 운영하지만, 은행 application 은 
   <td><a href="architecture.html">1. 책임 분담</a> · <a href="infrastructure.html">2. 인프라 운영</a> · <a href="db-split.html">3. DB 분할</a></td></tr>
 <tr><td>B. Workspace</td>
   <td>Workspace ↔ 은행 매핑 · Vault Account · Wallet · <strong>Cold Wallet 운영 (80% 비율 · rebalancing)</strong></td>
-  <td><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a> · <a href="cold-wallet.html">5. Cold Wallet</a></td></tr>
-<tr><td>C. Users</td>
-  <td>은행 사용자 ↔ Fireblocks Console / API / Mobile user · 2FA · SSO · IP allowlist</td>
-  <td><a href="tables-user.html">6. Users</a></td></tr>
+  <td><a href="tables-workspace-vault.html">4. Workspace</a> · <a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a> · <a href="tables-counterparty.html">6. Counterparty Registry</a> · <a href="cold-wallet.html">7. Cold Wallet</a></td></tr>
+<tr><td>C. Users &amp; Access</td>
+  <td>내부 운영자 (Console / API / Mobile · 2FA · SSO · IP allowlist) + 고객 (채널계 / KYC 외부 시스템 통합 · PII 외부 reference)</td>
+  <td><a href="tables-user.html">8. Internal Users</a> · <a href="tables-customer-user.html">9. Customer Users</a></td></tr>
 <tr><td>D. Governance</td>
   <td>9 user role · Admin Quorum · Approval Group · TAP / Policy rule</td>
-  <td><a href="tables-governance.html">7. Roles · Quorum</a></td></tr>
+  <td><a href="tables-governance.html">10. Roles · Quorum</a></td></tr>
 <tr><td>E. Crypto</td>
   <td>3 option (SaaS MPC / Hosted MPC / Key Link) · Cosigner deployment 6 options · Recovery</td>
-  <td><a href="tables-crypto.html">8. MPC · Key Link</a></td></tr>
+  <td><a href="tables-crypto.html">11. MPC · Key Link</a></td></tr>
 <tr><td>F. Transaction</td>
   <td>17 state machine · 14-step · webhook (HMAC-SHA512 · idempotency) · <strong>입금/출금 lifecycle</strong></td>
-  <td><a href="sm-transaction.html">9. Tx State</a> · <a href="sm-webhook.html">10. Webhook</a> · <a href="sm-deposit-withdrawal.html">11. Deposit/Withdrawal</a></td></tr>
+  <td><a href="sm-transaction.html">12. Tx State</a> · <a href="sm-webhook.html">13. Webhook</a> · <a href="sm-deposit-withdrawal.html">14. Deposit/Withdrawal</a></td></tr>
 <tr><td>G. Audit &amp; Compliance</td>
   <td>Fireblocks Audit Log · 은행 mirror (5년) · AML · Travel Rule · <strong>KR 규제 17 의무 매핑</strong> · Risks</td>
-  <td><a href="tables-audit.html">12. Audit · AML</a> · <a href="kr-compliance.html">13. KR 규제</a> · <a href="risks.html">14. Risks</a></td></tr>
+  <td><a href="tables-audit.html">15. Audit · AML</a> · <a href="kr-compliance.html">16. KR 규제</a> · <a href="risks.html">17. Risks</a></td></tr>
 <tr><td>H. Accounting &amp; Reconciliation</td>
   <td>3 계층 정합 · 회계 항등식 · 4 원장 + 거래 매트릭스 · 외화환산 · <strong>4 단계 대사 (L1-L4)</strong> · 결산 · 마감 · 외부 감사 대응</td>
-  <td><a href="accounting-ledger.html">15. 회계 · 원장</a> · <a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></td></tr>
+  <td><a href="accounting-ledger.html">18. 회계 · 원장</a> · <a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a></td></tr>
 <tr><td>I. Ops</td>
   <td>DB 운영 (PostgreSQL · partition · 5년 retention) · 10 anti-patterns · 운영 체크리스트</td>
-  <td><a href="db-ops.html">17. DB 운영</a></td></tr>
+  <td><a href="db-ops.html">20. DB 운영</a></td></tr>
 </tbody>
 </table>
 </div>
@@ -179,13 +195,13 @@ flowchart TB
     subgraph int["코인계 (망분리)"]
       direction LR
       TxAPI["거래 API<br/>사용자 facing 입출금 · 스왑<br/>+ Fireblocks SDK 호출"]
-      WhWorker["Webhook<br/>이벤트 dedup + operationsdb 저장"]
+      WhWorker["Webhook<br/>이벤트 dedup + core 영역 저장"]
       LedgerRecon["원장 / 대사<br/>회계 4 원장 · 거래 매트릭스 · 외화환산<br/>+ 4 단계 대사 (L1-L4) · 결산 · Hot/Cold rebalancing"]
       AdminUI["관리 콘솔<br/>운영자 / 컴플라이언스 / 회계 UI"]
       Monitor["운영 감시<br/>metric · alert · dashboard"]
-      CDB["customerdb<br/>고객 ↔ Fireblocks 매핑"]
-      MDB["operationsdb<br/>이벤트 사본 · 5년 보존"]
-      ComplDB["compliancedb<br/>AML · 트래블룰 · STR"]
+      WDB["core 영역<br/>(7 domain)"]
+      ADB["audit 영역<br/>변조방지 + 5년 보존"]
+      ComplDB["compliance 영역<br/>AML · 트래블룰 · STR"]
       Callback["Callback Server<br/>(Hosted MPC 시)<br/>Cosigner 서명 직전 자체 검증"]
       CSrv["Customer Server<br/>(Key Link 시)"]
       Cosigner["Hosted Co-signer<br/>(Hosted MPC 시)"]
@@ -227,10 +243,12 @@ flowchart TB
   AdminUI --> LedgerRecon
 
   %% 3 service ↔ DB
-  TxAPI --> CDB
+  TxAPI --> WDB
   TxAPI --> ComplDB
-  WhWorker --> MDB
-  LedgerRecon --> MDB
+  WhWorker --> WDB
+  WhWorker --> ADB
+  LedgerRecon --> WDB
+  AdminUI --> ADB
 
   %% Customer Server / HSM (Key Link)
   CSrv -->|PKCS#11| HSM
@@ -242,7 +260,8 @@ flowchart TB
   Monitor -.metric scrape.-> TxAPI
   Monitor -.metric scrape.-> WhWorker
   Monitor -.metric scrape.-> LedgerRecon
-  Monitor -.metric scrape.-> MDB
+  Monitor -.metric scrape.-> WDB
+  Monitor -.metric scrape.-> ADB
 
   %% 코인계 ↔ 기존 은행 시스템
   Channel --> TxAPI
@@ -274,7 +293,7 @@ flowchart TB
   classDef thirdzone fill:#fef3c7,stroke:#d97706
   classDef legacyzone fill:#f3e8ff,stroke:#7e22ce
 
-  class TxAPI,WhWorker,LedgerRecon,AdminUI,Monitor,CDB,MDB,ComplDB,Callback,CSrv,Cosigner bankzone
+  class TxAPI,WhWorker,LedgerRecon,AdminUI,Monitor,WDB,ADB,ComplDB,Callback,CSrv,Cosigner bankzone
   class OutProxy,Webhook,Agent dmzzone
   class HSM vaultzone
   class FBcloud,Mobile fbzone
@@ -295,7 +314,7 @@ flowchart TB
 코인계의 DB · application 은 외부와 직접 통신하지 않음. 보안 구역 (HSM) 은 코인계 Customer Server 의 PKCS#11 호출로만 접근.
 <br/>
 <strong>두 "Webhook" 노드의 차이</strong>: DMZ <strong>"Webhook endpoint"</strong> = 외부 HTTPS 수신 + HMAC-SHA512 검증 (HA 2-node).
-코인계 <strong>"Webhook"</strong> = 검증 통과한 이벤트의 dedup + operationsdb 저장 (worker). 두 노드는 zone 이 다른 별도 컴포넌트.
+코인계 <strong>"Webhook"</strong> = 검증 통과한 이벤트의 dedup + core 영역 저장 (worker). 두 노드는 zone 이 다른 별도 컴포넌트.
 <br/>
 <strong>Cold Wallet workspace 의 위치</strong>: Fireblocks SaaS 안의 별도 workspace type (Hot Workspace 와 동급).
 KR 은행은 가상자산업감독규정 9조 (80% offline) 의무로 Cold Wallet 사실상 필수.
@@ -303,7 +322,7 @@ Cold Wallet 자체는 Fireblocks 가 운영하지만 <strong>Hot/Cold 비율 모
 <br/>
 <strong>기존 은행 시스템 통합</strong>: 채널계 → 플랫폼 (사용자 facing 진입) · 플랫폼 ↔ 계정계 (KRW 잔액 / 입출금) · 플랫폼 ↔ 외환계 (환율 / 외환 환산) · 플랫폼 → 정보계 (마감 / 감사 보고 push).
 실제 통합은 별도 ESB / API Gateway / iPaaS 경유 가능 (본 다이어그램은 단순화 직접 호출).
-컴포넌트 별 상세는 <a href="infrastructure.html">2. 인프라 운영</a>, Cold Wallet 운영 상세는 <a href="cold-wallet.html">5. Cold Wallet 운영</a> 참조.
+컴포넌트 별 상세는 <a href="infrastructure.html">2. 인프라 운영</a>, Cold Wallet 운영 상세는 <a href="cold-wallet.html">7. Cold Wallet 운영</a> 참조.
 </p>
 
 <h2>책임 분담 — 누가 무엇을 책임지는가</h2>
@@ -324,20 +343,21 @@ flowchart TB
 
   subgraph bank["🏢 은행 책임"]
     direction LR
-    CDB["customerdb<br/>고객 ↔ Fireblocks 매핑"]
-    MDB["operationsdb<br/>이벤트 사본 · 5년 보존"]
+    WDB["core 영역<br/>7 domain · 거래 사본 + 회계 + 운영"]
+    ADB["audit 영역<br/>변조방지 + 5년 보존"]
     AMLp["AML · Travel Rule<br/>provider 통합"]
     REPORT["금감원 보고 · 회계 · BCP"]
   end
 
-  FBlog ==>|"webhook (HMAC-SHA512)"| MDB
-  CDB -.->|"REST API 호출"| FBcore
+  FBlog ==>|"webhook (HMAC-SHA512)"| ADB
+  FBlog ==>|"webhook (HMAC-SHA512)"| WDB
+  WDB -.->|"REST API 호출"| FBcore
 
   classDef fbcloud fill:#dbeafe,stroke:#2563eb
   classDef bankops fill:#dcfce7,stroke:#16a34a
 
   class FBcore,FBwks,FBgov,FBlog fbcloud
-  class CDB,MDB,AMLp,REPORT bankops
+  class WDB,ADB,AMLp,REPORT bankops
 </pre>
 </div>
 <p class="diagram-caption">

@@ -23,34 +23,37 @@
 <li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a></li>
-<li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace</a></li>
+<li><a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a></li>
+<li><a href="tables-counterparty.html">6. Counterparty Registry</a></li>
+<li><a href="cold-wallet.html">7. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
-<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-user.html">8. Internal Users</a></li>
+<li><a href="tables-customer-user.html">9. Customer Users</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
-<li><a href="tables-governance.html">7. Roles · Quorum · Policy</a></li>
+<li><a href="tables-governance.html">10. Roles · Quorum · Policy</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
-<li><a href="tables-crypto.html">8. MPC · Key Link · Cosigner</a></li>
+<li><a href="tables-crypto.html">11. MPC · Key Link · Cosigner</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
-<li><a href="sm-transaction.html">9. Transaction State + 14-step</a></li>
-<li><a href="sm-webhook.html">10. Webhook 처리</a></li>
-<li><a href="sm-deposit-withdrawal.html">11. Deposit · Withdrawal Flow</a></li>
+<li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">13. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">12. Audit · AML · Travel Rule</a></li>
-<li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
-<li><a href="risks.html">14. Risks Register</a></li>
+<li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">16. KR 규제 매핑</a></li>
+<li><a href="risks.html">17. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
-<li><a href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
-<li><a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
+<li><a href="accounting-ledger.html">18. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
-<li><a href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">20. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -219,17 +222,22 @@ Fireblocks 도입 시 시스템 영역별로 누가 호스팅하고 무엇을 �
   <td>Workspace · Vault · Asset Wallet · 정책 / TAP · MPC key share 2 개 (Cloud Co-Signer ×2, SaaS/Hosted 시) · <strong>1차 audit log (변경 불가)</strong> · webhook event 발신</td></tr>
 <tr><td><strong>플랫폼</strong></td>
   <td>은행</td>
-  <td>customerdb (고객 ↔ Fireblocks 매핑) · 비즈니스 로직 · API 호출자</td></tr>
-<tr><td><strong>은행 operationsdb</strong></td>
+  <td>core 의 customer domain (고객 ↔ Fireblocks 매핑) · 비즈니스 로직 · API 호출자</td></tr>
+<tr><td><strong>core 영역</strong></td>
   <td>은행</td>
   <td>
-    <strong>(a) Fireblocks 사본</strong>: webhook 이벤트 · 거래 mirror · audit log mirror · 잔액 snapshot.<br/>
+    <strong>(a) Fireblocks 사본 (transaction schema)</strong>: webhook 이벤트 · vendor 거래 mirror · 잔액 snapshot.<br/>
     <strong>(b) 은행 자체 데이터 (Fireblocks 가 모르는 영역)</strong>: 회계 4 원장
     <span class="g" data-tip="① 고객 원장 — UserID 별 자산 종류별 잔액 + 거래 이력. ② 은행 자체 원장 — 은행이 직접 보유한 자산 (treasury · gas station · 수수료 수익 등). ③ 델타 원장 — 미정산 차액. 오프체인 거래는 즉시 반영되었으나 온체인 confirmation 전인 자산 (사용자 출금 즉시 고객 잔액 감소 → 온체인 broadcast 까지의 차이 등). ④ 총계정 원장 — 회계의 최상위 통합 원장. 모든 자산·부채·자기자본을 한 곳에 모아 회계 항등식 (자산 = 부채 + 자기자본) 적용. 이중부기의 합산 결과" tabindex="0">(?)</span>
-    (고객 / 자체 / <strong>델타</strong> / <strong>총계정</strong>) · 대사 결과 · 환율 이력 · 외화환산 로그 · 멱등 처리 메타 · 운영 로그 (Hot/Cold 비율 · rebalancing · webhook 실패 등).<br/>
-    <strong>(c) 보장</strong>: 5 년 보존 + hash chain 변조방지
+    (accounting schema) · 대사 / 결산 (reconciliation schema) · 환율 / 외화환산 (accounting schema) · 고객 vault 매핑 (customer schema) · counterparty registry · 운영자 매핑 + 거버넌스 (admin schema) · 자체 운영 vault + 자산 master (ops schema).<br/>
+    <strong>(c) 보장</strong>: 5 년 보존 (transaction · accounting · reconciliation schema)
   </td></tr>
-<tr><td><strong>은행 compliancedb</strong></td>
+<tr><td><strong>audit 영역</strong></td>
+  <td>은행</td>
+  <td>
+    변조방지 audit log 전용. <code>audit_log_mirror</code> (Fireblocks Console immutable log 의 사본) + <code>audit_log_internal</code> (은행 자체 master 변경 audit). 별도 storage · hash chain · 5 년 보존. <strong>core core 영역 와 storage 분리</strong> — disaster 시 audit log 가 진실 재구성 source.
+  </td></tr>
+<tr><td><strong>은행 compliance 영역</strong></td>
   <td>은행</td>
   <td>AML screening 결과 · Travel Rule records · STR (의심거래 보고) 이력 · 금감원 보고 자료</td></tr>
 <tr><td><strong>운영자 mobile device</strong></td>
@@ -258,8 +266,8 @@ Fireblocks 도입 시 시스템 영역별로 누가 호스팅하고 무엇을 �
 <div class="callout-title">trust boundary 의 핵심 원칙</div>
 <ul style="margin-bottom:0">
 <li><strong>각 영역 독립 보호</strong> — Fireblocks SaaS 가 침해되어도 은행 mobile MPC share / Hosted Co-Signer share / Key Link HSM 키 가 없으면 서명 불가능</li>
-<li><strong>은행 자체 audit 가능</strong> — Fireblocks Console 의 1차 audit log + 은행 operationsdb 의 자체 audit log mirror (hash chain) 으로 분쟁 시 양측 정합성 증명</li>
-<li><strong>은행 application 의 자산 직접 손실 위험 제한</strong> — customerdb / operationsdb 는 키 material 보관 안 함. 침해 시 PII / 거래 기록 노출은 별도 위험 (개인정보보호법 / 특금법)</li>
+<li><strong>은행 자체 audit 가능</strong> — Fireblocks Console 의 1차 audit log + audit 영역의 audit log mirror (hash chain) 으로 분쟁 시 양측 정합성 증명</li>
+<li><strong>은행 application 의 자산 직접 손실 위험 제한</strong> — 코인계의 어떤 영역도 키 material 보관 안 함. 침해 시 PII / 거래 기록 노출은 별도 위험 (개인정보보호법 / 특금법)</li>
 </ul>
 </div>
 
@@ -290,9 +298,9 @@ flowchart TB
   subgraph bank_app["은행 application 영역"]
     direction TB
     AppSvc["플랫폼<br/>(SDK 호출 + webhook 수신)"]
-    CustDB["customerdb<br/>고객 ↔ vault 매핑"]
-    MirrorDB["operationsdb<br/>사본 (webhook · audit) + 자체 데이터 (회계 · 대사 · 운영)"]
-    ComplDB["compliancedb<br/>AML · 트래블룰 · STR"]
+    WalletDB["core 영역<br/>(customer · counterparty · transaction /<br/>accounting · reconciliation · ops · admin domain)"]
+    AuditDB["audit 영역<br/>변조방지 audit log (사본 + 내부)"]
+    ComplDB["compliance 영역<br/>AML · 트래블룰 · STR"]
   end
 
   subgraph bank_infra["은행 infra (Hosted MPC / Key Link 시만)"]
@@ -326,11 +334,11 @@ flowchart TB
 
   %% Webhook + 5년 사본
   FBgateway -.webhook HMAC-SHA512.-> AppSvc
-  FBlog -.5년 보존 사본.-> MirrorDB
+  FBlog -.5년 보존 사본.-> AuditDB
 
   %% 은행 application ↔ DB
-  AppSvc --> CustDB
-  AppSvc --> MirrorDB
+  AppSvc --> WalletDB
+  AppSvc --> AuditDB
   AppSvc --> ComplDB
 
   %% 트래블룰 (은행 ↔ TR provider)
@@ -343,7 +351,7 @@ flowchart TB
   classDef mobile fill:#fce7f3,stroke:#be185d,color:#831843
 
   class FBgateway,FBcore,FBcs,FBlog,FBnode fbcloud
-  class AppSvc,CustDB,MirrorDB,ComplDB bankops
+  class AppSvc,WalletDB,AuditDB,ComplDB bankops
   class Cosigner,KLAgent bankinfra
   class IdP,AML,TR,Chain ext
   class Mob mobile
@@ -409,7 +417,7 @@ Fireblocks 의 인증 model 은 <strong>zero-trust</strong>
 <li><strong>secret 은 은행 application 의 secret manager</strong> (HashiCorp Vault / AWS Secrets Manager / Azure Key Vault) 에 보관. application DB 에 절대 평문 저장 금지</li>
 <li><strong>IP allowlist 활용</strong> — API key 별로 허용된 IP 주소만 통신 가능. 플랫폼 의 outbound NAT IP 만 등록 → key 가 유출돼도 허용 IP 가 아니면 호출 차단
   <a href="https://support.fireblocks.io/hc/en-us/articles/10031671057692-Configure-SSO">(IP allowlist · SSO 설정)</a></li>
-<li><strong>최소 권한 원칙</strong> — 9 가지 role (Owner / Admin / Non-Signing Admin / Approver / Signer / Non-Signing User / Editor / Viewer / Auditor) 별로 분리 발급. 예: read-only 작업 = Viewer role 의 API key 만 사용. 자세한 role 은 <a href="tables-governance.html">7. Roles · Quorum · Policy</a> 참조</li>
+<li><strong>최소 권한 원칙</strong> — 9 가지 role (Owner / Admin / Non-Signing Admin / Approver / Signer / Non-Signing User / Editor / Viewer / Auditor) 별로 분리 발급. 예: read-only 작업 = Viewer role 의 API key 만 사용. 자세한 role 은 <a href="tables-governance.html">10. Roles · Quorum · Policy</a> 참조</li>
 <li><strong>주기적 갱신 (로테이션)</strong> — Fireblocks 가 자동 강제하지 않으나, 은행 내부 정책으로 분기별 발급/폐기 권장 (저자 추정). 침해 의심 시 즉시 회수</li>
 </ul>
 <p>

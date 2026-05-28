@@ -202,7 +202,7 @@ sequenceDiagram
 </div>
 
 <h3>4-축 격리 (vendor 자기서술)</h3>
-<p>NodeInfra 는 "4-축 격리" 라는 용어로 보안 boundary 를 정리한다 (source: <code>compliance__architecture.md</code> §4-축 격리 안에서의 위치):</p>
+<p>NodeInfra 는 "4-축 격리" 라는 용어로 보안 boundary 를 정리한다 (source: <code>compliance__architecture.md</code> 4-축 격리 안에서의 위치):</p>
 <ol>
 <li><strong>서비스 격리</strong> — 승인 키는 개시 키·실행 키와 분리된 HSM 파티션. 승인자 호스트 탈취 시에도 PKCS#11<span class="g" data-tip="HSM 접근의 표준 API. 슬롯/세션 기반. 벤더 portability" tabindex="0">(?)</span> 외부로 키 자체는 노출되지 않는다.</li>
 <li><strong>키 격리</strong> — HSM 파티션 + SGX sealed blob 의 dual key-custody 도메인.</li>
@@ -213,7 +213,7 @@ sequenceDiagram
 <h3>은행 도입 시 결정해야 할 것 (이 페이지 범위)</h3>
 <ul>
 <li><strong>망분리 깊이</strong> — HSM/Enclave 호스트를 추가 VLAN 으로 또 분리할지. NodeInfra 권장: 별도 management network.</li>
-<li><strong>HSM 토폴로지</strong> — 단일 HSM + 3 파티션 (기본) vs 키별 독립 HSM (권장). 후자가 단일 펌웨어 취약점 전파를 막는다 (source: <code>security__keys__hsm.md</code> §다중 HSM 배치 권장).</li>
+<li><strong>HSM 토폴로지</strong> — 단일 HSM + 3 파티션 (기본) vs 키별 독립 HSM (권장). 후자가 단일 펌웨어 취약점 전파를 막는다 (source: <code>security__keys__hsm.md</code> 다중 HSM 배치 권장).</li>
 <li><strong>벤더 다양화</strong> — 예: 개시·승인 키는 Thales Luna, 실행 키는 Utimaco — 단일 vendor 의 monoculture risk 회피.</li>
 <li><strong>물리적 DB 분리</strong> — 4 DB 를 4 instance 로 둘지, 1 instance 의 4 schema 로 둘지. NodeInfra docs 는 separate DB 를 전제로 한 cross-DB join 패턴.</li>
 <li><strong>Coordinator HA</strong> — Coordinator 는 load-bearing 컴포넌트. 장애 시 출금 정지 → 핫/콜드 스탠바이 설계.</li>

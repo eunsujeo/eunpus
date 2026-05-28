@@ -23,34 +23,37 @@
 <li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a></li>
-<li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace</a></li>
+<li><a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a></li>
+<li><a href="tables-counterparty.html">6. Counterparty Registry</a></li>
+<li><a href="cold-wallet.html">7. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
-<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-user.html">8. Internal Users</a></li>
+<li><a href="tables-customer-user.html">9. Customer Users</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
-<li><a href="tables-governance.html">7. Roles · Quorum · Policy</a></li>
+<li><a href="tables-governance.html">10. Roles · Quorum · Policy</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
-<li><a href="tables-crypto.html">8. MPC · Key Link · Cosigner</a></li>
+<li><a href="tables-crypto.html">11. MPC · Key Link · Cosigner</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
-<li><a href="sm-transaction.html">9. Transaction State + 14-step</a></li>
-<li><a href="sm-webhook.html">10. Webhook 처리</a></li>
-<li><a href="sm-deposit-withdrawal.html">11. Deposit · Withdrawal Flow</a></li>
+<li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">13. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">12. Audit · AML · Travel Rule</a></li>
-<li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
-<li><a href="risks.html">14. Risks Register</a></li>
+<li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">16. KR 규제 매핑</a></li>
+<li><a href="risks.html">17. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
-<li><a href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
-<li><a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
+<li><a href="accounting-ledger.html">18. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
-<li><a href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">20. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -81,7 +84,7 @@ Fireblocks 도입 후 은행이 실제 운영하는 인프라 구성요소. <a h
 <thead><tr><th>구성요소</th><th>배치</th><th>운영 부담</th><th>적용 옵션</th></tr></thead>
 <tbody>
 <tr><td><strong>플랫폼</strong> (거래 API · Webhook · 원장/대사)</td><td>은행 IDC (on-prem, 망분리 안)</td><td>중</td><td>모든 옵션 공통</td></tr>
-<tr><td><strong>3 DB</strong> (customerdb · operationsdb · compliancedb)</td><td>은행 IDC (on-prem)</td><td>중</td><td>모든 옵션 공통</td></tr>
+<tr><td><strong>3 DB</strong> (core · audit · compliance (3 격리 영역))</td><td>은행 IDC (on-prem)</td><td>중</td><td>모든 옵션 공통</td></tr>
 <tr><td><strong>Webhook endpoint</strong> (HA 2-node)</td><td>은행 DMZ (on-prem)</td><td>중</td><td>모든 옵션 공통</td></tr>
 <tr><td><strong>Secret manager</strong> (HashiCorp Vault 등)</td><td>은행 IDC (on-prem)</td><td>낮음</td><td>모든 옵션 공통</td></tr>
 <tr><td><strong>Hosted Co-signer</strong></td><td>은행 IDC 의 on-prem SGX 머신</td><td>중-높음</td><td>Hosted MPC 시</td></tr>
@@ -120,13 +123,13 @@ flowchart TB
 
   subgraph internal["코인계 (망분리)"]
     TxAPI["거래 API<br/>사용자 facing 입출금 · 스왑<br/>+ Fireblocks SDK 호출"]
-    WhWorker["Webhook<br/>이벤트 dedup + operationsdb 저장"]
+    WhWorker["Webhook<br/>이벤트 dedup + core 영역 저장"]
     LedgerRecon["원장 / 대사<br/>회계 4 원장 + 4 단계 대사 (L1-L4)<br/>+ 결산 · Hot/Cold rebalancing"]
     AdminUI["관리 콘솔<br/>운영자 / 컴플라이언스 / 회계 UI"]
     Monitor["운영 감시<br/>metric · alert · dashboard"]
-    CustDB["customerdb<br/>PostgreSQL HA"]
-    MirrorDB["operationsdb<br/>PostgreSQL HA + replica"]
-    ComplDB["compliancedb<br/>PostgreSQL HA"]
+    WalletDB["core 영역<br/>(7 domain)"]
+    AuditDB["audit 영역<br/>별도 storage<br/>+ 5년 archive"]
+    ComplDB["compliance 영역"]
     Callback["Callback Server<br/>(Hosted MPC 시)"]
     CSrv["Customer Server<br/>(Key Link 시) HA"]
     Cosigner["Hosted Co-signer<br/>(Hosted MPC 시)"]
@@ -174,15 +177,18 @@ flowchart TB
   Cosigner -.callback.-> Callback
 
   %% 3 service ↔ DB / Secret Manager
-  TxAPI --> CustDB
+  TxAPI --> WalletDB
   TxAPI --> ComplDB
   TxAPI --> Secrets
-  WhWorker --> MirrorDB
-  LedgerRecon --> MirrorDB
+  WhWorker --> WalletDB
+  WhWorker --> AuditDB
+  LedgerRecon --> WalletDB
+  AdminUI --> AuditDB
   Monitor -.metric scrape.-> TxAPI
   Monitor -.metric scrape.-> WhWorker
   Monitor -.metric scrape.-> LedgerRecon
-  Monitor -.metric scrape.-> MirrorDB
+  Monitor -.metric scrape.-> WalletDB
+  Monitor -.metric scrape.-> AuditDB
 
   %% 기존 은행 시스템 ↔ 코인계
   Channel --> TxAPI
@@ -198,7 +204,7 @@ flowchart TB
 
   class FB,IdP,AML,TR,Mob ext
   class OutProxy,WebhookSvc,Agent,LB dmz
-  class TxAPI,WhWorker,LedgerRecon,AdminUI,Monitor,CustDB,MirrorDB,ComplDB,Callback,CSrv,Cosigner,Secrets int
+  class TxAPI,WhWorker,LedgerRecon,AdminUI,Monitor,WalletDB,AuditDB,ComplDB,Callback,CSrv,Cosigner,Secrets int
   class Acct,FX,DW,Channel legacyzone
   class HSM vault
 </pre>
@@ -218,7 +224,7 @@ flowchart TB
 <br/>
 <strong>기존 은행 시스템 통합</strong>: 채널계 → 플랫폼 (사용자 facing 진입) · 플랫폼 ↔ 계정계 (KRW 잔액 / 입출금) · 플랫폼 ↔ 외환계 (환율 / 외환 환산) · 플랫폼 → 정보계 (마감 / 감사 보고).
 실제 통합은 별도 ESB / API Gateway / iPaaS 경유하는 경우 많음 (본 다이어그램은 직접 호출로 단순화 표시).
-3 계층 정합 (블록체인 · 오프체인 · 계정계) 의 상세는 <a href="accounting-ledger.html">15. 회계 · 원장 설계</a> 참조.
+3 계층 정합 (블록체인 · 오프체인 · 계정계) 의 상세는 <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 참조.
 </p>
 
 <h3>2.3 플랫폼 운영</h3>
@@ -371,7 +377,7 @@ Co-signer 는 키 share 를 보유하는 서명 컴포넌트라 <strong>버전 �
 
 <h3>2.6 Webhook Endpoint 인프라</h3>
 <p>
-은행이 운영하는 Webhook 수신 인프라 의 표준 구성. 상세: <a href="sm-webhook.html">10. Webhook 처리</a>.
+은행이 운영하는 Webhook 수신 인프라 의 표준 구성. 상세: <a href="sm-webhook.html">13. Webhook 처리</a>.
 </p>
 
 <h4>2.6.1 HA 구성</h4>

@@ -56,7 +56,7 @@
 
 <div class="callout">
 <div class="callout-title">출처</div>
-<p><code>pm-db-design-notes.md</code> §1.2 (테이블 enumeration), <code>compliance__architecture.md</code> §데이터 모델, <code>compliance__decision-lifecycle.md</code> (sticky decision + set-once).</p>
+<p><code>pm-db-design-notes.md</code> 1.2 절 (테이블 enumeration), <code>compliance__architecture.md</code> 데이터 모델, <code>compliance__decision-lifecycle.md</code> (sticky decision + set-once).</p>
 </div>
 
 <h3>10 표 한눈 보기</h3>
@@ -79,7 +79,7 @@
 </div>
 
 <h3>policy_rules — 규칙 schema</h3>
-<p>모든 규칙은 다음 모양 (source: <code>pm-db-design-notes.md</code> §5):</p>
+<p>모든 규칙은 다음 모양 (source: <code>pm-db-design-notes.md</code> 섹션 5):</p>
 <pre><code>{
   "rule_type": "&lt;10종 중 하나&gt;",
   "flow_type": "withdrawal" | "transfer" | "deposit",
@@ -127,7 +127,7 @@
 <p class="hint">★ 24h 가 hardcode 인 것은 <code>compliance__decision-lifecycle.md</code> 에 명시 ("폴링은 기본 24시간까지"). 테넌트별로 다르게 두려면 product extension 필요.</p>
 
 <h3>velocity_windows — 슬라이딩 윈도우</h3>
-<p><code>velocity_window</code> 룰이 사용하는 카운터. INSERT-only 로 매 거래 증분을 기록하고, 평가 시 윈도우 안의 row 만 합산 (source: <code>pm-db-design-notes.md</code> §1.2).</p>
+<p><code>velocity_window</code> 룰이 사용하는 카운터. INSERT-only 로 매 거래 증분을 기록하고, 평가 시 윈도우 안의 row 만 합산 (source: <code>pm-db-design-notes.md</code> 1.2 절).</p>
 <pre><code>-- ★ 추정 schema (docs 미명시 세부)
 CREATE TABLE velocity_windows (
   id            BIGSERIAL PRIMARY KEY,

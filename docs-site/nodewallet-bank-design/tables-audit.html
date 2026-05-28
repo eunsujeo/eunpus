@@ -56,7 +56,7 @@
 
 <div class="callout">
 <div class="callout-title">출처</div>
-<p><code>compliance__architecture.md</code> §데이터 모델, <code>security__ops__audit-logs.md</code> (2-layer 감사), <code>security__keys__lifecycle.md</code> (key_lifecycle 이벤트 종류).</p>
+<p><code>compliance__architecture.md</code> 데이터 모델, <code>security__ops__audit-logs.md</code> (2-layer 감사), <code>security__keys__lifecycle.md</code> (key_lifecycle 이벤트 종류).</p>
 </div>
 
 <h3>3 표 한눈 보기</h3>
@@ -72,7 +72,7 @@
 </div>
 
 <h3>signing_events — 결정과 서명을 한 행에 묶는 cross-DB 증거</h3>
-<p>이 표가 노드월렛 감사 설계의 핵심이다. 한 체인 서명 이벤트마다 INSERT 되며, <strong>approver_decision_rationale</strong> 에 <em>approverdb 의 PolicyDecision 을 CBOR 로 byte-deterministic 하게 재포함</em>한다. 두 DB 가 독립적으로 변조되어도 결정 ↔ 서명 link 가 보존됨 (source: <code>compliance__architecture.md</code> §시간·증거 격리).</p>
+<p>이 표가 노드월렛 감사 설계의 핵심이다. 한 체인 서명 이벤트마다 INSERT 되며, <strong>approver_decision_rationale</strong> 에 <em>approverdb 의 PolicyDecision 을 CBOR 로 byte-deterministic 하게 재포함</em>한다. 두 DB 가 독립적으로 변조되어도 결정 ↔ 서명 link 가 보존됨 (source: <code>compliance__architecture.md</code> 시간·증거 격리).</p>
 <div class="table-wrap">
 <table>
 <thead><tr><th>컬럼</th><th>의미</th></tr></thead>

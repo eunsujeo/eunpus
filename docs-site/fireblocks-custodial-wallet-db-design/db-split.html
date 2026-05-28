@@ -23,126 +23,190 @@
 <li><a class="active" href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a></li>
-<li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace</a></li>
+<li><a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a></li>
+<li><a href="tables-counterparty.html">6. Counterparty Registry</a></li>
+<li><a href="cold-wallet.html">7. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
-<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-user.html">8. Internal Users</a></li>
+<li><a href="tables-customer-user.html">9. Customer Users</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
-<li><a href="tables-governance.html">7. Roles · Quorum · Policy</a></li>
+<li><a href="tables-governance.html">10. Roles · Quorum · Policy</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
-<li><a href="tables-crypto.html">8. MPC · Key Link · Cosigner</a></li>
+<li><a href="tables-crypto.html">11. MPC · Key Link · Cosigner</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
-<li><a href="sm-transaction.html">9. Transaction State + 14-step</a></li>
-<li><a href="sm-webhook.html">10. Webhook 처리</a></li>
-<li><a href="sm-deposit-withdrawal.html">11. Deposit · Withdrawal Flow</a></li>
+<li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">13. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">12. Audit · AML · Travel Rule</a></li>
-<li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
-<li><a href="risks.html">14. Risks Register</a></li>
+<li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">16. KR 규제 매핑</a></li>
+<li><a href="risks.html">17. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
-<li><a href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
-<li><a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
+<li><a href="accounting-ledger.html">18. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
-<li><a href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">20. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
 <main class="content">
 <section id="db-split">
 <h2>3. DB 분할</h2>
-<span class="section-subtitle">7 DB → 3 DB 단순화 — Fireblocks 가 떠맡는 책임만큼 은행 DB 가 줄어든다</span>
+<span class="section-subtitle">Fireblocks 가 떠맡는 책임만큼 은행 데이터 영역이 줄어든다 — 9 logical domain · 3 격리 영역 (core · audit · compliance)</span>
 
-<h3>3.1 직접 구축의 7-DB → 도입 후 3-DB</h3>
+<div class="callout callout-warn">
+<div class="callout-title">★ 본 페이지는 logical 설계 — engine 운영자 결정</div>
+<p style="margin-bottom:0">
+본 페이지의 <code>customer.customer_vault</code> 같은 표기는 <strong>logical domain.table</strong> 이며 특정 DB engine 에 binding 안 됨. 같은 logical 모델을 다음 engine 들로 다양하게 구현 가능:
+</p>
+<ul style="margin-bottom:0">
+<li><strong>RDB</strong> (PostgreSQL · MySQL · Oracle · SQL Server) — 9 domain 을 schema / 별도 database / 별도 instance 중 선택하여 격리</li>
+<li><strong>NoSQL</strong> (DynamoDB · MongoDB · Cassandra) — domain 별 별도 collection / table group</li>
+<li><strong>Time-series DB</strong> (TimescaleDB · InfluxDB · ClickHouse) — transaction / balance_check_history / fx_rate 등 시계열 영역</li>
+<li><strong>Append-only object store</strong> (S3 Object Lock · AWS QLDB · Azure Immutable Blob) — audit 영역의 변조방지 storage</li>
+<li><strong>Cache</strong> (Redis · Memcached) — balance_snapshots 등 외부 SoT 의 mutable cache</li>
+</ul>
+<p style="margin-bottom:0">
+운영자는 각 domain 의 <strong>data 특성 (§3.6)</strong> 을 보고 자신의 환경에 맞는 engine 을 선택. 본 wiki 는 5 가지 보장 (audit 격리 · service 권한 분리 · 변조방지 · 외부 감사 read-only · 5년 retention) 만 명세하며 구현 수단은 자유.
+</p>
+</div>
+
+<h3>3.1 직접 구축의 7-DB → 도입 후 3 격리 영역</h3>
 <p>
 직접 구축 reference (<a href="../custodial-wallet-db-design/db-split.html">2. DB 분할</a>) 의 7 DB 중 어떤 것이 Fireblocks 로 흡수되고, 어떤 것이 은행에 남는가:
 </p>
 
 <div class="table-wrap">
 <table>
-<thead><tr><th>직접 구축 DB</th><th>책임</th><th>Fireblocks 도입 시</th></tr></thead>
+<thead><tr><th>직접 구축 DB</th><th>책임</th><th>Fireblocks 도입 시 → 새 영역</th></tr></thead>
 <tbody>
-<tr><td><strong>walletdb</strong></td><td>workspace · vault · 사용자 · counterparty</td><td>✅ Fireblocks 가 흡수 (Console + API). 은행은 <strong>customerdb 만</strong> (고객 ↔ vault 매핑 + counterparty registry)</td></tr>
-<tr><td><strong>ledgerdb</strong></td><td>잔액 · 이체 이력 · balance cache</td><td>⚠️ 부분 — Fireblocks 가 잔액 API 제공. 은행은 <strong>operationsdb 에 balance snapshot mirror</strong> + 자체 회계 통합 (별도 ledger 운영 권장 — 저자)</td></tr>
-<tr><td><strong>approverdb</strong></td><td>정책 + 승인 결정</td><td>✅ Fireblocks 가 흡수 (Console Policy 화면 + Approval Group). 은행 DB 에는 정책 자체를 저장하지 않음 — operationsdb 에 결정 이벤트 mirror</td></tr>
-<tr><td><strong>auditdb</strong></td><td>변조방지 audit log</td><td>⚠️ Fireblocks Console 의 immutable log 가 1차. 은행은 <strong>operationsdb 에 5년 보존용 mirror</strong> (특금법 5조의4)</td></tr>
-<tr><td><strong>chaindb</strong></td><td>tx · broadcast · chain event · AML</td><td>⚠️ 부분 — Fireblocks 가 transaction lifecycle 운영. 은행은 operationsdb 에 webhook 으로 mirror</td></tr>
-<tr><td><strong>providerdb</strong></td><td>외부 system 매핑 (AML provider · IdP)</td><td>⚠️ Fireblocks 가 AML provider 통합 제공. 은행은 <strong>compliancedb 에 KR 컴플라이언스 / 트래블룰 / 금감원 보고</strong></td></tr>
-<tr><td><strong>recondb</strong></td><td>정산 결과</td><td>✅ 선택 — operationsdb 안에 reconciliation 결과 column 추가 (별도 DB 불필요, 저자 추정)</td></tr>
+<tr><td><strong>walletdb</strong></td><td>workspace · vault · 사용자 · counterparty</td><td>✅ Fireblocks 가 흡수 (Console + API). 은행은 <strong>core 격리 영역 안의 customer · counterparty domain</strong> (고객 ↔ vault 매핑 + counterparty registry)</td></tr>
+<tr><td><strong>ledgerdb</strong></td><td>잔액 · 이체 이력 · balance cache</td><td>⚠️ 부분 — Fireblocks 가 잔액 API 제공. 은행은 <strong>core 의 transaction domain</strong> (balance snapshot mirror) + <strong>core 의 accounting domain</strong> (자체 회계 4 원장)</td></tr>
+<tr><td><strong>approverdb</strong></td><td>정책 + 승인 결정</td><td>✅ Fireblocks 가 흡수 (Console Policy 화면 + Approval Group). 은행은 정책 자체를 저장하지 않음 — core 의 admin domain 에 결정 이벤트 mirror</td></tr>
+<tr><td><strong>auditdb</strong></td><td>변조방지 audit log</td><td>⚠️ Fireblocks Console 의 immutable log 가 1차. 은행은 <strong>별도 audit 격리 영역에 5년 보존용 mirror</strong> (특금법 5조의4)</td></tr>
+<tr><td><strong>chaindb</strong></td><td>tx · broadcast · chain event · AML</td><td>⚠️ 부분 — Fireblocks 가 transaction lifecycle 운영. 은행은 core 의 transaction domain 에 webhook 으로 mirror</td></tr>
+<tr><td><strong>providerdb</strong></td><td>외부 system 매핑 (AML provider · IdP)</td><td>⚠️ Fireblocks 가 AML provider 통합 제공. 은행은 <strong>compliance 격리 영역에 KR 컴플라이언스 / 트래블룰 / 금감원 보고</strong></td></tr>
+<tr><td><strong>recondb</strong></td><td>정산 결과</td><td>✅ 선택 — core 의 reconciliation domain 안에 정산 결과 (별도 격리 영역 불필요)</td></tr>
 </tbody>
 </table>
 </div>
 
 <div class="callout">
-<div class="callout-title">결론 — 은행이 운영하는 DB 는 2-3 개</div>
+<div class="callout-title">결론 — 3 격리 영역 · 9 logical domain</div>
+<p style="margin-bottom:0">
+은행 데이터를 <strong>격리 요구사항</strong> 기준으로 3 영역으로 분리. 각 영역의 logical domain 들은 운영자가 1 engine instance · 별도 engine · 또는 mix 로 자유롭게 매핑 (§3.6 의 data 특성 표 참조):
+</p>
 <ul style="margin-bottom:0">
-<li><strong>customerdb</strong> — 고객 (은행 사용자) ↔ Fireblocks vault account 매핑 + counterparty registry + 은행 user 정보</li>
-<li><strong>operationsdb</strong> — (a) Fireblocks 사본 (webhook · 거래 · audit log · 잔액 snapshot) + (b) 은행 자체 데이터 (회계 4 원장 · 대사 결과 · 환율 · 멱등 메타 · 운영 로그) + (c) 5 년 보존 + hash chain 변조방지</li>
-<li><strong>compliancedb</strong> (선택) — KR 컴플라이언스 / 트래블룰 / 금감원 보고용 별도 DB. 작은 시작 시 operationsdb 와 통합 가능</li>
+<li><strong>core (7 domain)</strong> — 코인계 운영 데이터 전반: <code>customer</code> · <code>counterparty</code> · <code>transaction</code> · <code>accounting</code> · <code>reconciliation</code> · <code>ops</code> · <code>admin</code>. service-level 권한 분리는 schema GRANT (RDB) 또는 별도 collection (NoSQL) 등으로</li>
+<li><strong>audit (1 영역)</strong> — 변조방지 audit log 전용. <code>audit_log_mirror</code> (Fireblocks 사본) + <code>audit_log_internal</code> (은행 자체 master 변경). <strong>core 와 storage 분리 필수</strong> — 변조방지 store (append-only DB / object store WORM / hash chain) 권장</li>
+<li><strong>compliance (1 영역)</strong> — KR 컴플라이언스 / 트래블룰 / 금감원 보고. 외부 보고 영역 격리</li>
 </ul>
 </div>
 
-<h3>3.2 각 DB 의 책임 / 테이블 / 도메인 매핑</h3>
+
+<h3>3.2 9 logical domain — 격리 영역 · 테이블 · 변경 패턴</h3>
+
+<h4>3.2.1 core 격리 영역 — 코인계 운영 전반 (7 domain)</h4>
 <div class="table-wrap">
 <table>
-<thead><tr><th>DB</th><th>책임</th><th>들어가는 데이터 (테이블)</th><th>변경 패턴</th><th>주 사용 cluster</th></tr></thead>
+<thead><tr><th>domain</th><th>책임</th><th>테이블</th><th>변경 패턴</th></tr></thead>
 <tbody>
-<tr><td><strong>customerdb</strong></td><td>은행 도메인 — 고객 ↔ Fireblocks 매핑</td>
-  <td>
-    <small style="color:var(--text-tertiary)"><strong>① 은행 사용자</strong></small><br/>
-    bank_users · bank_user_sessions<br/>
-    <small style="color:var(--text-tertiary); margin-top:6px; display:inline-block"><strong>② Fireblocks 매핑 (고객 라인)</strong></small><br/>
-    customer_vault · customer_asset_wallet · customer_deposit_address · user_map · api_key_meta<br/>
-    <small style="color:var(--text-tertiary); margin-top:6px; display:inline-block"><strong>③ Counterparty registry</strong></small><br/>
-    whitelisted_destinations · internal_wallet_map · exchange_account_map<br/>
-    <small style="color:var(--text-tertiary); margin-top:6px; display:inline-block"><em>Workspace 메타는 config 로 (config/workspaces.yaml — hot · cold 2 entry)</em></small>
-  </td>
-  <td>mutable</td>
-  <td><strong>B</strong> Workspace · <strong>C</strong> Users · D 보조</td></tr>
-<tr><td><strong>operationsdb</strong></td><td>Fireblocks 사본 + 은행 자체 데이터 (회계 · 대사 · 운영)</td>
-  <td>
-    <small style="color:var(--text-tertiary)"><strong>(a) Fireblocks 사본 — append-only</strong></small><br/>
-    <small style="color:var(--text-tertiary); margin-top:4px; display:inline-block">① Webhook event log</small><br/>
-    webhook_events · webhook_dedup · webhook_failures<br/>
-    <small style="color:var(--text-tertiary); margin-top:6px; display:inline-block">② Transaction mirror</small><br/>
-    tx_mirror · tx_status_history · tx_destinations_mirror<br/>
-    <small style="color:var(--text-tertiary); margin-top:6px; display:inline-block">③ Audit mirror</small><br/>
-    audit_log_mirror · vault_account_lifecycle_mirror · address_lifecycle_mirror<br/>
-    <small style="color:var(--text-tertiary); margin-top:6px; display:inline-block">④ Balance snapshot</small><br/>
-    balance_snapshots · asset_value_krw<br/>
-    <small style="color:var(--text-tertiary); margin-top:8px; display:inline-block"><strong>(b) 은행 자체 데이터 — append-only + mutable 혼합</strong></small><br/>
-    <small style="color:var(--text-tertiary); margin-top:4px; display:inline-block">⑤ 회계 4 원장 (15. 회계 · 원장 설계)</small><br/>
-    customer_ledger · bank_ledger · delta_ledger · general_ledger_entry · general_ledger_snapshot<br/>
-    <small style="color:var(--text-tertiary); margin-top:6px; display:inline-block">⑥ 대사 / 결산 (16. 대사 · 결산)</small><br/>
-    reconciliation_session · reconciliation_finding · reconciliation_resolution · balance_check_history · onchain_sync_log<br/>
-    <small style="color:var(--text-tertiary); margin-top:6px; display:inline-block">⑦ 환율 · 외화환산</small><br/>
-    fx_rate_history · fx_revaluation_log<br/>
-    <small style="color:var(--text-tertiary); margin-top:6px; display:inline-block">⑧ 운영 로그</small><br/>
-    hot_cold_ratio_daily · rebalancing_log<br/>
-    <small style="color:var(--text-tertiary); margin-top:6px; display:inline-block">⑨ 은행 내부 audit (master / 정책 변경)</small><br/>
-    audit_log_internal<br/>
-    <small style="color:var(--text-tertiary); margin-top:6px; display:inline-block">⑩ 은행 자체 운영 vault 라인 (omnibus / treasury / gas / pool)</small><br/>
-    ops_vault · ops_asset_wallet · ops_deposit_address<br/>
-    <small style="color:var(--text-tertiary); margin-top:6px; display:inline-block">⑪ 자산 단위 master (전 고객 공통 정책)</small><br/>
-    asset_catalog
-  </td>
-  <td>(a) 사본 = append-only<br/>(b) 자체 = mixed</td>
-  <td><strong>F</strong> Transaction · <strong>G</strong> Audit · <strong>H</strong> Accounting</td></tr>
-<tr><td><strong>compliancedb</strong> (선택)</td><td>KR 컴플라이언스 — 트래블룰 · 금감원 보고</td>
-  <td>
-    travel_rule_records · vasp_counterparty · screening_results · regulator_reports · sanctions_check · suspicious_tx_review
-  </td>
-  <td>append-only + mutable</td>
-  <td><strong>G</strong> Compliance</td></tr>
+<tr><td><strong>customer</strong></td>
+  <td>고객 vault 라인 (고객 ↔ Fireblocks Vault Account 매핑) + 외부 event log (AML 제재 · KYC 신원 · lifecycle 별 분리) + 출금 요청 (bank intent layer) + 고객 본인의 외부 destination 등록</td>
+  <td>customer_vault · customer_asset_wallet · customer_deposit_address · aml_sanction_event · kyc_status_event · lifecycle_event · withdrawal_request · customer_external_destination</td>
+  <td>mutable + append-only (event log)</td></tr>
+<tr><td><strong>counterparty</strong></td>
+  <td>외부 송금 대상 등록 (whitelisted address · 외부 거래소 · 외부 wallet)</td>
+  <td>whitelisted_destinations · internal_wallet_map · exchange_account_map</td>
+  <td>mutable</td></tr>
+<tr><td><strong>transaction</strong></td>
+  <td>webhook event + vendor 거래 lifecycle mirror + balance snapshot + 입금 관찰 + 출금 실행 (vendor lifecycle layer)</td>
+  <td>webhook_events · webhook_dedup · webhook_failures · vendor_transaction · vendor_transaction_status_history · vendor_transaction_destinations · balance_snapshots · asset_value_krw · deposit_observations · withdrawal_execution · vault_lifecycle_event · address_lifecycle_event</td>
+  <td>append-only (사본) · withdrawal_execution 은 mixed</td></tr>
+<tr><td><strong>accounting</strong> ★</td>
+  <td>회계 4 원장 + 환율 + 정정 (<a href="accounting-ledger.html">18. 회계 · 원장 설계</a>). <strong>★ 도메인 view 까지만 정의 — column schema 는 회계법인 / KR 회계 표준 (K-GAAP / K-IFRS) 자문 후 별도 stage</strong></td>
+  <td>customer_ledger · bank_ledger · delta_ledger · general_ledger_entry · general_ledger_snapshot · fx_rate_history · fx_revaluation_log · accounting_correction_log</td>
+  <td>append-only + mutable</td></tr>
+<tr><td><strong>reconciliation</strong> ★</td>
+  <td>대사 · 결산 · 잔액 정합성 (<a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a>). <strong>★ 도메인 view 까지만 정의 — column schema 는 회계감사 / 금감원 검사 대응 자문 후 별도 stage</strong></td>
+  <td>reconciliation_session · reconciliation_finding · reconciliation_resolution · balance_check_history · onchain_sync_log</td>
+  <td>append-only + mutable</td></tr>
+<tr><td><strong>ops</strong></td>
+  <td>자체 운영 vault (omnibus / treasury / gas / pool) + 자산 단위 master + Hot/Cold 운영 log</td>
+  <td>ops_vault · ops_asset_wallet · ops_deposit_address · asset_catalog · hot_cold_ratio_daily · rebalancing_log</td>
+  <td>mutable + append-only</td></tr>
+<tr><td><strong>admin</strong></td>
+  <td>내부 운영자 ↔ Fireblocks 매핑 + 거버넌스 mirror + MPC / Cosigner / Backup / Recovery 메타 (직원 마스터는 외부 HRIS / IdP. Workspace 메타는 <code>config/workspaces.yaml</code>)</td>
+  <td>user_map · api_key_meta · mobile_device · callback_handler_meta · sso_session_log · admin_quorum_meta · policy_rule_snapshot · cosigner_meta · workspace_backup_meta · recovery_event_log</td>
+  <td>mutable + mixed</td></tr>
 </tbody>
 </table>
 </div>
+
+<h4>3.2.2 audit 격리 영역 — 변조방지 audit log 전용 (1 domain, flat)</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>테이블</th><th>책임</th><th>변경 패턴</th></tr></thead>
+<tbody>
+<tr><td><code>audit_log_mirror</code></td>
+  <td>Fireblocks Console 의 immutable log 의 webhook 사본. signing / approval / vault / user / policy 등 모든 vendor 측 작업</td>
+  <td>append-only + hash chain (A-chain) · 5년 보존 · 단조 sequence_num</td></tr>
+<tr><td><code>audit_log_internal</code></td>
+  <td>은행 자체 master 변경 audit (예: asset_catalog status · workspace config · counterparty 추가 · API key 발급 등 Fireblocks 가 모르는 변경)</td>
+  <td>append-only + hash chain (A-chain) · 5년 보존 · application 이 직접 INSERT</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+audit 영역이 별도 격리인 이유: (a) 변조방지 storage 격리 — core 영역의 사고 (SQL injection / data corruption / DBA 실수) 가 audit log 까지 망가뜨리지 못함, (b) 외부 감사 read-only 권한 모델 단순화, (c) 5년 retention 정책의 storage-level 분리, (d) disaster recovery 시 audit log 가 진실 재구성 source. 구현 예: RDB 별도 instance · S3 Object Lock + KMS · AWS QLDB · Azure Immutable Blob.
+</p>
+
+<h4>3.2.3 compliance 격리 영역 — KR 컴플라이언스 / 외부 보고 (1 domain, flat)</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>테이블</th><th>책임</th><th>변경 패턴</th></tr></thead>
+<tbody>
+<tr><td>travel_rule_records · vasp_counterparty · screening_results · regulator_reports · sanctions_check · suspicious_tx_review · transaction_screening</td>
+  <td>트래블룰 IVMS101 송수신 · VASP counterparty 식별 · AML provider 응답 · 금감원 보고 · 제재 list screening · STR 후보 review</td>
+  <td>append-only + mutable</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>3.2.4 service 별 권한 분리 (engine-agnostic)</h4>
+<p>
+9 domain 의 권한 분리는 engine 마다 다른 수단으로 구현. 핵심은 <strong>service 별 write 영역 제한</strong> — 어느 engine 으로 가도 다음 매핑 유지:
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Service</th><th>책임</th><th>core 영역 write</th><th>core 영역 read</th><th>audit 영역</th></tr></thead>
+<tbody>
+<tr><td>거래 API (사용자 facing)</td><td>입출금 요청 진입</td><td><code>customer.*</code> (vault 할당 · withdrawal_request) · <code>counterparty.*</code> (whitelist 등록) · <code>transaction.withdrawal_execution</code></td><td>전 domain read-only</td><td>—</td></tr>
+<tr><td>Webhook worker</td><td>Fireblocks event 처리</td><td><code>transaction.*</code> (event + tx mirror + balance snap) · <code>accounting.*</code> (ledger 갱신)</td><td>전 domain read-only</td><td><code>audit_log_mirror</code> write</td></tr>
+<tr><td>원장 / 대사 cron</td><td>일일 마감 · 대사 · 환율 적용</td><td><code>accounting.*</code> · <code>reconciliation.*</code></td><td>전 domain read-only</td><td>—</td></tr>
+<tr><td>운영자 / admin</td><td>master 변경 (asset_catalog · counterparty · user_map 등)</td><td><code>customer.*</code> · <code>counterparty.*</code> · <code>ops.*</code> · <code>admin.*</code></td><td>전 domain read-only</td><td><code>audit_log_internal</code> write (변경 audit)</td></tr>
+<tr><td>외부 감사인 / 금감원</td><td>증적 review</td><td>—</td><td>전 domain read-only (개인정보 가까운 customer · counterparty · admin 제외 검토)</td><td>전체 read-only</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+구현 수단:
+</p>
+<ul>
+<li><strong>RDB (PostgreSQL)</strong> — domain 별 schema GRANT (예: <code>GRANT INSERT ON SCHEMA transaction TO webhook_worker</code>)</li>
+<li><strong>RDB (MySQL · Oracle)</strong> — domain 별 별도 database 또는 prefix + role GRANT</li>
+<li><strong>NoSQL</strong> — IAM role / fine-grained access control</li>
+<li><strong>Object store (audit 영역)</strong> — bucket / prefix 별 IAM 정책 + Object Lock 으로 변조방지</li>
+<li><strong>application-layer enforcement</strong> — engine 권한이 약하면 application middleware 에서 추가 enforcement (단 권한은 storage-level 이 1차)</li>
+</ul>
 
 <h3>3.3 서비스 → DB write 매핑</h3>
 
@@ -159,9 +223,9 @@ flowchart LR
   LedgerRecon["원장 / 대사<br/>(회계 · 대사 · rebalancing)"]
   AdminUI["관리 콘솔<br/>(운영자 / 컴플라이언스 UI)"]
 
-  CustDB["customerdb<br/>고객 매핑"]
-  MirrorDB["operationsdb<br/>사본 + 자체 데이터"]
-  ComplDB["compliancedb<br/>KR 컴플라이언스"]
+  WalletDB["core 영역<br/>(7 domain)"]
+  AuditDB["audit 영역<br/>변조방지 audit log"]
+  ComplDB["compliance 영역<br/>KR 컴플라이언스"]
 
   %% 외부 진입점 → service
   Channel --> TxAPI
@@ -174,13 +238,15 @@ flowchart LR
   AdminUI --> LedgerRecon
 
   %% service → DB write
-  TxAPI --> CustDB
+  TxAPI --> WalletDB
   TxAPI --> ComplDB
-  WhWorker --> MirrorDB
-  LedgerRecon --> MirrorDB
+  WhWorker --> WalletDB
+  WhWorker --> AuditDB
+  LedgerRecon --> WalletDB
+  AdminUI --> AuditDB
 
   %% service → DB read
-  TxAPI -.read.-> MirrorDB
+  TxAPI -.read.-> WalletDB
   LedgerRecon -.read.-> ComplDB
 
   classDef ext fill:#fef3c7,stroke:#d97706
@@ -189,13 +255,13 @@ flowchart LR
 
   class Channel,FB,Cron,Admin ext
   class TxAPI,WhWorker,LedgerRecon,AdminUI svc
-  class CustDB,MirrorDB,ComplDB db
+  class WalletDB,AuditDB,ComplDB db
 </pre>
 </div>
 <p class="diagram-caption">
 3-layer 흐름 — <strong>노랑 = 외부 진입점</strong> (채널계 사용자 · Fireblocks webhook · 운영 스케줄 cron · 운영자) /
 <strong>파랑 = 코인계 service</strong> (거래 API · Webhook · 원장/대사 · 관리 콘솔) /
-<strong>초록 = 3 DB</strong> (customerdb · operationsdb · compliancedb).
+<strong>초록 = 3 격리 영역</strong> (core · audit · compliance).
 <br/>
 각 service 별 진입점:
 <strong>거래 API</strong> = 채널계 (사용자 입출금) /
@@ -203,26 +269,43 @@ flowchart LR
 <strong>원장 / 대사</strong> = 운영 스케줄 (daily 마감 · 5min 대사 cron) /
 <strong>관리 콘솔</strong> = 운영자 / 컴플라이언스 / 회계팀.
 <br/>
-service 별 DB write owner: 거래 API = customerdb · compliancedb / Webhook = operationsdb (사본) / 원장 / 대사 = operationsdb (자체 데이터).
-관리 콘솔은 직접 DB 호출 안 함 — 다른 service 의 백엔드 API 경유.
+service 별 write owner: 거래 API = core (customer · counterparty · transaction.withdrawal_execution) · compliance / Webhook = core (transaction · accounting) + audit (audit_log_mirror) / 원장 / 대사 = core (accounting · reconciliation) / 운영자 = audit (audit_log_internal) + core 의 master domain.
+core 영역 안에서는 service 별 domain 권한으로 격리 (3.2.4 절 참조).
 인프라 배치는 <a href="infrastructure.html">2. 인프라 운영</a> 참조.
 </p>
 
 <h3>3.4 분할의 근거 — 직접 구축 5 근거 중 도입 후에도 유효한 것</h3>
 <p style="font-size:13.5px;color:var(--text-tertiary)">
-출처: 직접 구축 reference (<a href="../custodial-wallet-db-design/db-split.html">2. DB 분할</a>) 의 5 분할 근거를 본 reference 의 도입 환경에 적용한 분석. 일반 IT 표준 (DB 분할의 보안 / 운영 패턴) 기반.
+출처: 직접 구축 reference (<a href="../custodial-wallet-db-design/db-split.html">2. DB 분할</a>) 의 5 분할 근거를 본 reference 의 도입 환경에 적용. 본 버전은 engine-agnostic 으로 추상화하여 격리 목적 보장만 명시.
 </p>
 <div class="table-wrap">
 <table>
-<thead><tr><th>근거</th><th>도입 후 적용</th></tr></thead>
+<thead><tr><th>근거</th><th>본 버전 (3 격리 영역 · 9 domain) 에서 어떻게 충족하는가</th></tr></thead>
 <tbody>
-<tr><td><strong>① 민감도 격리</strong></td><td>유효 — customerdb 의 고객 PII 와 operationsdb 의 거래 기록 / 회계 분리</td></tr>
-<tr><td><strong>② 변경 패턴 분리</strong></td><td>유효 — operationsdb 의 사본 부분은 strictly append-only (webhook 받은 그대로), customerdb / operationsdb 자체 회계는 mixed (mutable + append-only)</td></tr>
-<tr><td><strong>③ 사고 범위 축소</strong></td><td>유효 — operationsdb 가 SQL injection 으로 corrupt 되어도 customerdb 의 고객 정보 / compliancedb 의 STR 기록은 별개 DB 라 안전</td></tr>
-<tr><td><strong>④ 운영 권한 분리</strong></td><td>유효 — Webhook service 의 DB account 가 customerdb 에 write 권한 없음. 각 service 별 최소 권한</td></tr>
-<tr><td><strong>⑤ 외부 감사 단순화</strong></td><td>유효 — 금감원 / 회계감사관은 <strong>operationsdb + compliancedb</strong> 만 read-only (거래 + AML + STR + 트래블룰 전 영역 audit). 고객 개인정보 (customerdb) 비공개 가능</td></tr>
+<tr><td><strong>① 민감도 격리</strong></td><td><strong>domain-level 로 달성</strong> — <code>customer</code> domain (외부 ref 만, PII 없음) 와 <code>transaction</code> · <code>accounting</code> 분리. 진짜 PII (이름 / 주민번호) 는 외부 채널계 / KYC 가 보유 (코인계는 reference 만)</td></tr>
+<tr><td><strong>② 변경 패턴 분리</strong></td><td><strong>domain-level 로 달성</strong> — <code>transaction</code> 은 append-only (webhook 사본), <code>accounting</code> 의 ledger snapshot 은 append-only + hash chain, <code>reconciliation</code> · <code>customer</code> · <code>admin</code> 은 mutable. 변경 패턴 axis 는 engine 선택의 기준 (§3.6 표 참조)</td></tr>
+<tr><td><strong>③ 사고 범위 축소</strong></td><td><strong>audit 영역 분리로 핵심 보호</strong>. core 영역 안 SQL injection / data corruption 시 영향 가능하나, audit log (변조방지 가장 critical) 는 storage 분리 → disaster 시 진실 재구성 가능. core 안에서는 domain 별 service 권한으로 사고 격리</td></tr>
+<tr><td><strong>④ 운영 권한 분리</strong></td><td><strong>storage-level 권한 + service role 로 달성</strong> — service 별 write 영역 매핑 (§3.2.4 표). 구현 수단은 engine 에 따라 (RDB schema GRANT · NoSQL IAM · object store bucket policy 등)</td></tr>
+<tr><td><strong>⑤ 외부 감사 단순화</strong></td><td><strong>audit + compliance 영역이 핵심</strong> — 금감원 / 회계감사관은 <strong>audit + compliance 전체 + core 의 transaction · accounting · reconciliation</strong> read-only. <code>customer</code> · <code>counterparty</code> · <code>admin</code> domain 은 PII 가까운 매핑이라 별도 권한으로 제한 가능</td></tr>
 </tbody>
 </table>
+</div>
+
+<div class="callout">
+<div class="callout-title">왜 core 안을 추가 분할하지 않았는가 — review 결과</div>
+<p style="margin-bottom:0">
+초기 검토에서 <code>customer</code> 영역을 별도 격리로 둘지 고민했으나 5 근거에서 약했음:
+</p>
+<ul style="margin-bottom:0">
+<li><strong>① 민감도 격리 약함</strong> — customer 에 실제 PII 없음 (외부 ref 만)</li>
+<li><strong>② 변경 패턴 분리 약함</strong> — core 의 다른 domain 들도 mutable + append-only 혼합. 분리 가치 적음</li>
+<li><strong>③ 사고 범위 축소 부분</strong> — domain-level 권한으로 부분 달성. 별도 storage 의 고유 가치는 audit 영역에 집중</li>
+<li><strong>④ 권한 분리 약함</strong> — domain-level grant 로 동일 효과</li>
+<li><strong>⑤ 외부 감사 약함</strong> — 감사 핵심은 audit + compliance 영역</li>
+</ul>
+<p style="margin-bottom:0">
+반면 추가 분리 비용은 컸음 — cross-storage FK 불가 · distributed tx · 운영 부담 · naming 직관 어긋남. <strong>본 버전은 audit 만 진정으로 분리하고 (변조방지 핵심), 나머지는 core 단일 + domain 격리</strong> — 한국 거래소 실무 표준과 일치.
+</p>
 </div>
 
 <h3>3.5 단순화의 trade-off</h3>
@@ -231,28 +314,118 @@ service 별 DB write owner: 거래 API = customerdb · compliancedb / Webhook = 
 <thead><tr><th>제약</th><th>의미 + 해결책</th></tr></thead>
 <tbody>
 <tr><td><strong>① 진실 source = Fireblocks Console</strong></td>
-  <td>Fireblocks 가 발신한 이벤트의 1 차 source 는 Fireblocks Console 의 immutable log. 은행 operationsdb 의 사본 부분은 canonical 아님 — 분쟁 시 Fireblocks Console 의 log 가 1 차.
-    단 operationsdb 의 <strong>자체 데이터 (회계 4 원장 · 대사 결과 · 환율)</strong> 는 은행이 1차 source. 두 영역 구분 명확화 필요.</td></tr>
+  <td>Fireblocks 가 발신한 이벤트의 1 차 source 는 Fireblocks Console 의 immutable log. core 의 <code>transaction</code> domain (사본) 는 canonical 아님 — 분쟁 시 Fireblocks Console 의 log 가 1 차.
+    단 core 의 <strong><code>accounting</code> · <code>reconciliation</code> · <code>customer</code> · <code>counterparty</code> domain</strong> 은 은행이 1차 source. 두 영역 구분 명확화 필요.</td></tr>
 <tr><td><strong>② Webhook 손실 risk</strong></td>
   <td>네트워크 장애 / 은행 서버 다운 시 webhook 누락 가능. <strong>해결</strong>: (a) Fireblocks 의 retry 정책 활용
     <a href="https://developers.fireblocks.com/docs/configure-webhooks">(Configure Webhooks)</a>,
-    (b) 정기 reconciliation (Fireblocks REST API 의 List Transactions 로 mirror 와 대조 — <a href="sm-webhook.html">10. Webhook 처리</a> 의 § "정기 Reconciliation" 참조)</td></tr>
+    (b) 정기 reconciliation (Fireblocks REST API 의 List Transactions 로 mirror 와 대조 — <a href="sm-webhook.html">13. Webhook 처리</a> 의  "정기 Reconciliation" 참조)</td></tr>
 <tr><td><strong>③ Vendor outage 시 운영 중단</strong></td>
   <td>Fireblocks SaaS 장애 = 은행 거래 처리 중단. <strong>해결</strong>: 사용자 응답 시간 정책 + 알림 시스템 + queue. 직접 구축에는 없는 새 risk —
-    상세는 <a href="risks.html">14. Risks Register</a> 의 FB-R02 참조.</td></tr>
+    상세는 <a href="risks.html">17. Risks Register</a> 의 <strong>Fireblocks SaaS outage</strong> 항목 참조.</td></tr>
 <tr><td><strong>④ 5년 보존 의무 (KR 특금법)</strong></td>
-  <td>Fireblocks 의 Console log 보존 정책이 5 년 충족 여부는 vendor 확인 필요. <strong>해결</strong>: operationsdb 에 자체 5년 retention 적용 — partition + cold storage archive.
-    상세는 <a href="kr-compliance.html">13. KR 규제 매핑</a> 의 § "5년 보존" + <a href="db-ops.html">17. DB 운영 · Anti-patterns</a> 의 partition 전략 참조.</td></tr>
+  <td>Fireblocks 의 Console log 보존 정책이 5 년 충족 여부는 vendor 확인 필요. <strong>해결</strong>: core (<code>transaction</code>) + audit 양 영역에 자체 5년 retention 적용 — partition + cold storage archive (engine 에 따라 RDB partition · object store lifecycle policy · time-series DB retention 등).
+    상세는 <a href="kr-compliance.html">16. KR 규제 매핑</a> 의 "5년 보존" + <a href="db-ops.html">20. DB 운영 · Anti-patterns</a> 의 partition 전략 참조.</td></tr>
 <tr><td><strong>⑤ 자체 회계 영역의 변조방지 책임</strong></td>
-  <td>operationsdb 의 자체 회계 (4 원장 · 대사 · 환율) 는 은행이 1 차 source. <strong>해결</strong>: hash chain 적용 (각 row 의 SHA-256 chain) + 정기 외부 anchor.
-    외부 감사 시 무결성 증명. 상세는 <a href="accounting-ledger.html">15. 회계 · 원장 설계</a> · <a href="tables-audit.html">12. Audit · AML · Travel Rule</a> 참조.</td></tr>
+  <td>core <code>accounting</code> · <code>reconciliation</code> domain 의 4 원장 · 대사 · 환율 는 은행이 1 차 source. <strong>해결</strong>: hash chain 적용 (각 row 의 SHA-256 chain) + 정기 외부 anchor + audit 영역 의 audit_log_internal 에 변경 기록.
+    외부 감사 시 무결성 증명. 상세는 <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> · <a href="tables-audit.html">15. Audit · AML · Travel Rule</a> 참조.</td></tr>
+<tr><td><strong>⑥ core 안 domain 격리의 한계 (★ 본 버전의 trade-off)</strong></td>
+  <td>core 단일 storage 안의 domain 격리는 storage-level 격리보다 약함 — admin 권한이 모든 domain 에 접근 가능. <strong>해결</strong>: (a) 최소 권한 원칙 (service 별 별도 role + 명시 grant), (b) admin 작업 audit (audit 영역에 자동 기록), (c) row-level security 도입 검토 (지원 engine 에 한정), (d) 정기 권한 review. 더 강한 격리가 필요하면 core 안의 일부 domain 을 별도 storage 로 분리하는 옵션 검토.</td></tr>
 </tbody>
 </table>
 </div>
 
-<h3>3.6 Storage Class (column 동작 패턴) — 도입 후 적용</h3>
+<h3>3.6 Domain data 특성 → engine 후보 매핑</h3>
 <p>
-<strong>Storage Class</strong> = column 별로 어떻게 변경되는지 (mutable / append-only / set-once / hash chain 등) 분류한 패턴. 직접 구축 reference 의 7 storage class
+각 domain 의 <strong>data 특성</strong> (변경 패턴 · velocity · retention · consistency 요구) 을 기준으로 engine 후보. 본 표는 권장이며 운영자가 자신의 환경 (자산 규모 · 기존 BCP · 운영 비용) 에 맞게 선택.
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>domain</th><th>변경 패턴</th><th>velocity</th><th>retention</th><th>consistency</th><th>engine 후보 (저자 권장 굵게)</th></tr></thead>
+<tbody>
+<tr><td><strong>customer</strong></td>
+  <td>mutable</td><td>low</td><td>5년 (특금법 고객 식별)</td><td>strict ACID + FK</td>
+  <td><strong>RDB</strong> (PostgreSQL · MySQL · Oracle)</td></tr>
+<tr><td><strong>counterparty</strong></td>
+  <td>mutable, slow-changing</td><td>low</td><td>5년</td><td>strict ACID</td>
+  <td><strong>RDB</strong></td></tr>
+<tr><td><strong>transaction</strong></td>
+  <td>append-only (사본) + mutable (withdrawal_execution)</td><td>high (매 거래)</td><td>5년 (특금법 거래 기록)</td><td>eventual (vendor SoT) · 단 withdrawal_execution 는 ACID</td>
+  <td><strong>RDB partitioned</strong> 또는 RDB + time-series DB (TimescaleDB · ClickHouse) hybrid · 또는 append-only event store</td></tr>
+<tr><td><strong>accounting</strong></td>
+  <td>append-only + mutable cache (이중부기)</td><td>medium (마감 cycle)</td><td>5년 (특금법 + 회계 7년)</td><td>★ <strong>strict ACID 필수</strong> — 회계 항등식 보장</td>
+  <td><strong>RDB strict (transactional)</strong> 필수 (PostgreSQL · Oracle 권장. MySQL 도 InnoDB)</td></tr>
+<tr><td><strong>reconciliation</strong></td>
+  <td>append-only + mutable</td><td>medium (대사 cycle)</td><td>5년</td><td>strict ACID</td>
+  <td><strong>RDB</strong> · balance_check_history 만 별도 time-series DB 가능</td></tr>
+<tr><td><strong>ops</strong></td>
+  <td>mutable + append-only</td><td>low (운영 cycle)</td><td>5년</td><td>strict ACID</td>
+  <td><strong>RDB</strong></td></tr>
+<tr><td><strong>admin</strong></td>
+  <td>mutable + mixed</td><td>low</td><td>5년 + (직원 마스터는 외부)</td><td>strict ACID</td>
+  <td><strong>RDB</strong></td></tr>
+<tr><td><strong>audit</strong></td>
+  <td>★ append-only + hash chain + 변조방지</td><td>high (vendor 모든 작업 사본)</td><td>5년 (특금법 5조의4)</td><td>★ <strong>immutability 필수</strong></td>
+  <td><strong>append-only specialized store</strong>: AWS QLDB · S3 Object Lock + KMS · Azure Immutable Blob · 또는 별도 RDB instance + INSERT-only trigger + WORM storage</td></tr>
+<tr><td><strong>compliance</strong></td>
+  <td>append-only + mutable (review)</td><td>medium</td><td>5년</td><td>strict ACID</td>
+  <td><strong>RDB</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>특수 sub-domain 의 engine 옵션</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>sub-domain</th><th>특성</th><th>engine 옵션</th></tr></thead>
+<tbody>
+<tr><td><code>fx_rate_history</code> (accounting 내)</td>
+  <td>time-series · append-only · 외부 source (한국은행 / 매매기준율)</td>
+  <td>RDB · time-series DB (InfluxDB · TimescaleDB) · 단순 cron + 파일도 가능</td></tr>
+<tr><td><code>balance_snapshots</code> (transaction 내)</td>
+  <td>mutable cache · 외부 SoT (Fireblocks / on-chain) · 정기 refresh</td>
+  <td>RDB · <strong>cache (Redis · Memcached)</strong> + 영구 store · 또는 hybrid</td></tr>
+<tr><td><code>balance_check_history</code> (reconciliation 내)</td>
+  <td>append-only · time-series</td>
+  <td>RDB · <strong>time-series DB</strong> 후보</td></tr>
+<tr><td><code>webhook_events</code> · <code>webhook_dedup</code> (transaction 내)</td>
+  <td>append-only · high-velocity · idempotency UNIQUE 필수</td>
+  <td>RDB (UNIQUE 제약 활용) · 또는 stream (Kafka · Kinesis) + DLQ</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>3 격리 영역 — engine 매핑 옵션</h4>
+<p>
+3 격리 영역을 어떻게 storage 로 매핑하는가는 운영자 결정. 대표 옵션 (저자 정리):
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>옵션</th><th>매핑</th><th>장점</th><th>단점</th></tr></thead>
+<tbody>
+<tr><td><strong>(A) 단일 RDB</strong></td>
+  <td>1 RDB instance 안에 3 영역 (database / schema / prefix 로 격리)</td>
+  <td>운영 부담 ↓ · 비용 ↓ · cross-domain join 가능</td>
+  <td>audit 격리 약함 (★ 변조방지 우선 시 부적합)</td></tr>
+<tr><td><strong>(B) Core RDB + Audit 분리</strong> (★ 저자 권장)</td>
+  <td>core + compliance = 1 RDB instance (별도 database 또는 schema). audit = 별도 storage (append-only store · 별도 RDB instance 등)</td>
+  <td>audit 변조방지 핵심 보장 + 운영 단순 + 비용 합리적</td>
+  <td>cross-storage join 어려움 (단 audit 와 core 의 join 은 거의 안 함)</td></tr>
+<tr><td><strong>(C) 영역별 별도 storage 3 개</strong></td>
+  <td>core RDB + audit append-only store + compliance RDB 모두 별도 instance</td>
+  <td>최강 격리 + service 별 독립 disaster</td>
+  <td>운영 부담 ↑ · 비용 ↑ · cross-storage 처리 필요</td></tr>
+<tr><td><strong>(D) Engine 혼합</strong></td>
+  <td>core (RDB · 일부 domain 은 time-series DB) + audit (QLDB · S3 Object Lock) + compliance (RDB) + cache (Redis) + stream (Kafka)</td>
+  <td>각 domain 의 최적 engine 활용 · 성능 / 비용 최적화</td>
+  <td>운영 복잡도 매우 ↑ · 인력 / 모니터링 부담 ↑</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>3.7 Storage Class (column 동작 패턴) — 도입 후 적용</h3>
+<p>
+<strong>Storage Class</strong> = column 별로 어떻게 변경되는지 (자유 수정 / 추가만 가능 / 한 번 쓰면 변경 불가 / hash 사슬 등) 분류한 패턴. 직접 구축 reference 의 7 storage class
 (<a href="../custodial-wallet-db-design/storage-discipline.html">24. Storage Discipline</a>) 중 도입 후 은행 DB 에서 자주 쓰이는 항목:
 </p>
 
@@ -262,22 +435,22 @@ service 별 DB write owner: 거래 API = customerdb · compliancedb / Webhook = 
 <tbody>
 <tr><td><strong>M-mut</strong><br/>(Mutable)</td>
   <td>자유롭게 UPDATE 가능</td>
-  <td>customerdb 의 <code>bank_users.name</code>, <code>bank_users.department</code> 등 사용자 정보</td></tr>
+  <td><code>customer.customer_vault.status</code>, <code>admin.user_map.vendor_role</code> 등</td></tr>
 <tr><td><strong>M-cache</strong><br/>(Mutable cache)</td>
-  <td>canonical source 가 외부 (Fireblocks · blockchain) 에 있고 은행 DB 는 cache. stale 가능 → 정기 refresh</td>
-  <td>operationsdb 의 <code>balance_snapshots.value_krw</code> (Fireblocks 잔액 cache)</td></tr>
+  <td>canonical source 가 외부 (Fireblocks · blockchain) 에 있고 은행 store 는 cache. stale 가능 → 정기 refresh</td>
+  <td><code>transaction.balance_snapshots.value_krw</code> (Fireblocks 잔액 cache)</td></tr>
 <tr><td><strong>A-row</strong><br/>(Append-only row)</td>
   <td>새 row 만 INSERT. UPDATE / DELETE 금지</td>
-  <td>operationsdb 의 <code>webhook_events</code>, <code>tx_status_history</code></td></tr>
-<tr><td><strong>A-set</strong><br/>(Append-only + set-once column)</td>
+  <td><code>transaction.webhook_events</code>, <code>transaction.vendor_transaction_status_history</code></td></tr>
+<tr><td><strong>A-set</strong><br/>(Append-only + 한 번 쓰면 변경 불가 column)</td>
   <td>row 는 추가 가능하지만 특정 column 은 첫 write 후 변경 불가</td>
-  <td>operationsdb 의 <code>tx_mirror.vendor_tx_id</code>, <code>tx_mirror.created_at_fb</code></td></tr>
+  <td><code>transaction.vendor_transaction.vendor_tx_id</code>, <code>transaction.vendor_transaction.vendor_created_at</code></td></tr>
 <tr><td><strong>A-chain</strong><br/>(Append-only + hash chain)</td>
   <td>A-row + 이전 row 의 hash 를 포함하여 SHA-256 chain 형성. 중간 변조 detection 가능</td>
-  <td>operationsdb 의 <code>audit_log_mirror.current_hash</code>, <code>general_ledger_snapshot.current_hash</code> (15. 회계 / 16. 대사 영역)</td></tr>
+  <td><code>audit.audit_log_mirror.current_hash</code>, <code>audit.audit_log_internal.current_hash</code>, <code>accounting.general_ledger_snapshot.current_hash</code></td></tr>
 <tr><td><strong>R-only</strong><br/>(Read-only)</td>
-  <td>application code 가 작성 안 함. DB 외부 (예: ETL · 정보계) 가 채움</td>
-  <td>operationsdb 의 외부 reference 데이터 (예: 정보계에서 import 된 cross-reference)</td></tr>
+  <td>application code 가 작성 안 함. 외부 (예: ETL · 정보계) 가 채움</td>
+  <td>외부 reference 데이터 (예: 정보계에서 import 된 cross-reference)</td></tr>
 <tr><td><strong>F-bid</strong><br/>(Forbidden)</td>
   <td>어떤 column 에도 절대 저장 금지. 자산 노출 risk</td>
   <td>아래 callout 참조</td></tr>
@@ -287,7 +460,7 @@ service 별 DB write owner: 거래 API = customerdb · compliancedb / Webhook = 
 
 <p>
 각 column 의 storage class 분류 + enforcement (DB trigger · RLS · application 코드 검증) 의 상세는
-<a href="db-ops.html">17. DB 운영 · Anti-patterns</a> 의 권한 / partition / trigger 절 참조.
+<a href="db-ops.html">20. DB 운영 · Anti-patterns</a> 의 권한 / partition / trigger 절 참조.
 </p>
 
 <div class="callout callout-warn">

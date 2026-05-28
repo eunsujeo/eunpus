@@ -56,12 +56,12 @@
 
 <div class="callout">
 <div class="callout-title">출처</div>
-<p><code>pm-db-design-notes.md</code> §1.2 (ledgerdb / chaindb 명시), <code>security__ops__audit-logs.md</code> (해시체인 · 체크포인트), <code>compliance__architecture.md</code> (한계 — 잔액은 ledger 책임).</p>
+<p><code>pm-db-design-notes.md</code> 1.2 절 (ledgerdb / chaindb 명시), <code>security__ops__audit-logs.md</code> (해시체인 · 체크포인트), <code>compliance__architecture.md</code> (한계 — 잔액은 ledger 책임).</p>
 <p>★ ledgerdb / chaindb 의 정확한 컬럼은 public docs 단편 — 일부는 ★ Hypothesis. 내부 design doc (<code>deposit_verification.md</code>) 이 reference 되지만 vendor 가 onboarding 시 별도 제공.</p>
 </div>
 
 <h3>ledgerdb — 잔액 + 해시체인</h3>
-<p>ledgerdb 의 핵심 표는 <strong>per-account ledger 엔트리</strong> + <strong>주기적 enclave-signed checkpoint</strong>. 각 계정마다 독립된 SHA-256 해시체인이 흐른다 (per-account, not global — source: <code>pm-db-design-notes.md</code> §4.1).</p>
+<p>ledgerdb 의 핵심 표는 <strong>per-account ledger 엔트리</strong> + <strong>주기적 enclave-signed checkpoint</strong>. 각 계정마다 독립된 SHA-256 해시체인이 흐른다 (per-account, not global — source: <code>pm-db-design-notes.md</code> 4.1 절).</p>
 <div class="table-wrap">
 <table>
 <thead><tr><th>표 (추정 이름)</th><th>용도</th><th>주요 컬럼</th><th>mutability</th></tr></thead>
@@ -100,7 +100,7 @@ CREATE TABLE ledger_entries (
 <p class="hint">실제로 ledgerdb 와 auditdb 가 별도 instance 면 FK 가 cross-DB 라 직접 강제 불가 — application layer 의 정합성 체크 (60초 이하 권장 cadence) 가 대체.</p>
 
 <h3>정합성 체크 (reconciliation)</h3>
-<p>NodeInfra 는 "원장 ↔ 작업 레코드 ↔ 온체인 상태를 짧은 주기 (권장 60초 이하) 로 대조하며, 불일치 시 즉시 알림" 이라고만 명시 (source: <code>security__ops__audit-logs.md</code> §Layer 1).</p>
+<p>NodeInfra 는 "원장 ↔ 작업 레코드 ↔ 온체인 상태를 짧은 주기 (권장 60초 이하) 로 대조하며, 불일치 시 즉시 알림" 이라고만 명시 (source: <code>security__ops__audit-logs.md</code> Layer 1).</p>
 <ul>
 <li><strong>방향 1</strong>: ledger_entries 의 action_ref → signing_events 가 모두 있는지 (고아 검출)</li>
 <li><strong>방향 2</strong>: signing_events.tx_hash → chaindb.chain_events 가 confirmed 인지 (체인 비-제출 검출)</li>
@@ -121,12 +121,12 @@ CREATE TABLE ledger_entries (
 </div>
 
 <h3>입금 검증 — 노드월렛이 차단하지 않는다</h3>
-<p>중요한 비-책임 (source: <code>compliance__architecture.md</code> §한계와 비책임):</p>
+<p>중요한 비-책임 (source: <code>compliance__architecture.md</code> 한계와 비책임):</p>
 <blockquote>승인자는 입금을 차단할 수 없다 — 입금 트랜잭션은 이미 체인에 실행된 사건. <code>flow_type=deposit</code> 규칙은 <strong>입금 후 후속 스윕</strong>의 정책 결정에 적용된다.</blockquote>
 <p>입금 자체의 검증 (지갑 주소 매칭 · 토큰 종류 · 금액 정확성 · finality 확인) 은 chaindb 의 deposit_verifications 단계에서 처리. 의심스러운 입금은 후속 스윕을 Held 시킨다.</p>
 
 <h3>Sweep — 입금된 자금의 omnibus 이동</h3>
-<p>Solana 의 SPL token / Native SOL 입금은 사용자 지갑 → omnibus<span class="g" data-tip="다수 고객의 자산을 한 지갑에 통합 보관. 노드월렛 = 테넌트당 1 집중지갑" tabindex="0">(?)</span> 지갑으로 sweep. NodeWallet 의 sweep 은 출금과 동일한 3-key 서명 경로를 거친다 (source: <code>security__architecture__multisig.md</code> §작업별 차이) — internal shortcut 없음.</p>
+<p>Solana 의 SPL token / Native SOL 입금은 사용자 지갑 → omnibus<span class="g" data-tip="다수 고객의 자산을 한 지갑에 통합 보관. 노드월렛 = 테넌트당 1 집중지갑" tabindex="0">(?)</span> 지갑으로 sweep. NodeWallet 의 sweep 은 출금과 동일한 3-key 서명 경로를 거친다 (source: <code>security__architecture__multisig.md</code> 작업별 차이) — internal shortcut 없음.</p>
 <div class="diagram">
 <pre class="mermaid">
 sequenceDiagram

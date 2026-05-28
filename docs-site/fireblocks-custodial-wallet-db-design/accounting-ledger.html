@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>15. 회계 · 원장 설계 — Fireblocks 도입 수탁형 지갑</title>
+<title>18. 회계 · 원장 설계 — Fireblocks 도입 수탁형 지갑</title>
 <meta content="3 계층 정합 (온체인 / 오프체인 / 계정계) · 회계 항등식 · 4 원장 구조 · 손익 계정 · 외화환산" name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
@@ -23,40 +23,43 @@
 <li><a href="db-split.html">3. DB 분할</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
-<li><a href="tables-workspace-vault.html">4. Workspace · Vault · Wallet · Address</a></li>
-<li><a href="cold-wallet.html">5. Cold Wallet 운영</a></li>
+<li><a href="tables-workspace-vault.html">4. Workspace</a></li>
+<li><a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a></li>
+<li><a href="tables-counterparty.html">6. Counterparty Registry</a></li>
+<li><a href="cold-wallet.html">7. Cold Wallet 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
-<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-user.html">8. Internal Users</a></li>
+<li><a href="tables-customer-user.html">9. Customer Users</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
-<li><a href="tables-governance.html">7. Roles · Quorum · Policy</a></li>
+<li><a href="tables-governance.html">10. Roles · Quorum · Policy</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
-<li><a href="tables-crypto.html">8. MPC · Key Link · Cosigner</a></li>
+<li><a href="tables-crypto.html">11. MPC · Key Link · Cosigner</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
-<li><a href="sm-transaction.html">9. Transaction State + 14-step</a></li>
-<li><a href="sm-webhook.html">10. Webhook 처리</a></li>
-<li><a href="sm-deposit-withdrawal.html">11. Deposit · Withdrawal Flow</a></li>
+<li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">13. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">12. Audit · AML · Travel Rule</a></li>
-<li><a href="kr-compliance.html">13. KR 규제 매핑</a></li>
-<li><a href="risks.html">14. Risks Register</a></li>
+<li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">16. KR 규제 매핑</a></li>
+<li><a href="risks.html">17. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
-<li><a class="active" href="accounting-ledger.html">15. 회계 · 원장 설계</a></li>
-<li><a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a></li>
+<li><a class="active" href="accounting-ledger.html">18. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
-<li><a href="db-ops.html">17. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">20. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
 <main class="content">
 <section id="accounting-ledger">
-<h2>15. 회계 · 원장 설계</h2>
+<h2>18. 회계 · 원장 설계</h2>
 <span class="section-subtitle">온체인 + 오프체인 + 계정계 3 계층 정합 · 회계 항등식 · 4 원장 구조 · 손익 / 외화환산</span>
 
 <div class="callout callout-warn">
@@ -71,7 +74,116 @@ Fireblocks 는 회계·원장·결산을 다루지 않는다 (vault 잔액 API �
 </ul>
 </div>
 
-<h3>15.1 왜 회계 영역이 별도 도메인인가</h3>
+<div class="callout callout-warn">
+<div class="callout-title">★ 본 페이지의 정의 수준 — 도메인 view 까지</div>
+<p style="margin-bottom:0">
+본 페이지는 <strong>회계 4 원장 구조 / 거래 매트릭스 / 회계 항등식 / 외화환산 정책 / 손익 계정 분류</strong> 같은 <strong>도메인 view (master 설계)</strong> 까지 정의한다. 각 표 (<code>customer_ledger</code> · <code>bank_ledger</code> · <code>delta_ledger</code> · <code>general_ledger_entry</code> · <code>general_ledger_snapshot</code> · <code>fx_rate_history</code> · <code>fx_revaluation_log</code> · <code>accounting_correction_log</code>) 의 <strong>column-level schema 는 정의하지 않음</strong>.
+</p>
+<p style="margin-bottom:0;margin-top:8px">
+이유: 회계 column schema 는 <strong>회계법인 / KR 회계 표준 (K-GAAP / K-IFRS) 자문 + 외부 감사 의견</strong> 후 확정되어야 후속 변경 비용이 작다. 표명 + 책임 + 대표 column 까지만 정의하고, 정확한 column / type / constraint 는 별도 stage 에서 자문 후 추가 예정. 운영 시작 시점에는 본 페이지의 view 를 base 로 회계법인과 함께 column schema 확정 권장.
+</p>
+</div>
+
+<h3>18.1 회계 데이터 모델 — ER 다이어그램</h3>
+<p>
+회계 영역의 9 표 + 외부 영역의 참조 관계. 모든 거래는 결국 <code>general_ledger_entry</code> 의 이중부기 row 로 귀결 — 4 원장이 trigger / source 역할.
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+erDiagram
+  CL["customer_ledger"] {
+    string user_id "= bank_customer_id (외부 ref)"
+    string asset_id
+    numeric balance
+    string last_tx_id
+  }
+  CBS["customer_balance_snapshot"] {
+    date snapshot_date
+    string user_id
+    string asset_id
+    numeric balance
+    string current_hash "★ hash chain"
+  }
+  BL["bank_ledger"] {
+    enum account_type "treasury/gas/fee"
+    string asset_id
+    numeric balance
+  }
+  DL["delta_ledger"] {
+    enum delta_type
+    string asset_id
+    numeric amount
+    enum settlement_status
+  }
+  GLA["general_ledger_account"] {
+    string account_code PK
+    enum account_type "자산/부채/자본/수익/비용"
+    string description
+  }
+  GLE["general_ledger_entry"] {
+    string entry_id PK
+    string account_code FK
+    enum debit_credit
+    numeric amount
+    string source_ref "거래 원천 (vendor_tx_id 등)"
+    timestamp recorded_at
+  }
+  GLS["general_ledger_snapshot"] {
+    date snapshot_date
+    string account_code
+    numeric balance
+    string current_hash "★ hash chain"
+  }
+  FXR["fx_rate_history"] {
+    timestamp rate_date
+    string currency_pair
+    numeric rate "매매기준율"
+  }
+  FXL["fx_revaluation_log"] {
+    timestamp revaluation_at
+    string asset_id
+    numeric gain_loss
+  }
+  ACL["accounting_correction_log"] {
+    string correction_id PK
+    string original_entry_id FK
+    string reason
+    string approved_by
+  }
+
+  EXT_CV["customer.customer_vault<br/>(외부 도메인)"] {
+    string bank_customer_id "고객 식별"
+  }
+  EXT_VT["transaction.vendor_transaction<br/>(외부 도메인)"] {
+    string vendor_tx_id "거래 원천"
+  }
+
+  CL ||--o{ GLE : "이중부기 trigger"
+  BL ||--o{ GLE : "이중부기 trigger"
+  DL ||--o{ GLE : "정산 분개 trigger"
+  FXL ||--o{ GLE : "외화환산 분개"
+  ACL }o--|| GLE : "정정 original_entry_id"
+  GLA ||--o{ GLE : "계정과목 참조"
+  GLE }o--|| GLS : "일별 박제"
+  CL ||--o{ CBS : "일별 박제"
+  FXR ||--o{ FXL : "환율 source"
+  EXT_CV ||--o{ CL : "고객 매핑"
+  EXT_VT }o--|| GLE : "거래 원천 (source_ref)"
+</pre>
+</div>
+<p class="diagram-caption">
+회계 9 표 + 외부 도메인 (<code>customer.customer_vault</code> · <code>transaction.vendor_transaction</code>) 참조 관계. 모든 거래가 <code>general_ledger_entry</code> 로 귀결 (이중부기) → <code>general_ledger_snapshot</code> 일별 박제 + hash chain 무결성. <code>customer_balance_snapshot</code> · <code>fx_rate_history</code> · <code>fx_revaluation_log</code> 는 일말 cron 영역.
+</p>
+
+<h4>3 type 의 트리거 분류</h4>
+<ul>
+<li><strong>거래 trigger (실시간)</strong> — <code>customer_ledger</code> · <code>bank_ledger</code> · <code>delta_ledger</code> 갱신 시 매번 <code>general_ledger_entry</code> 이중부기 row INSERT (webhook handler 또는 거래 service 가 동시 commit)</li>
+<li><strong>외화환산 trigger (일말 cron)</strong> — <code>fx_rate_history</code> 의 당일 환율 + 전 자산 잔액으로 <code>fx_revaluation_log</code> 산출 → <code>general_ledger_entry</code> 외화환산 분개 INSERT</li>
+<li><strong>정정 trigger (Admin Quorum 매개)</strong> — 오류 발견 시 <code>accounting_correction_log</code> INSERT + 원본 entry 의 reverse 분개 + 새 entry. hash chain 위에 분개 추가 (변조 아님)</li>
+</ul>
+
+<h3>18.2 왜 회계 영역이 별도 도메인인가</h3>
 <p>
 Fireblocks 의 vault balance API · webhook event 는 <strong>"자산이 어디에 얼마나 있는가"</strong> 까지만 알려준다.
 은행 회계는 그 위에 다음을 추가로 요구한다:
@@ -85,7 +197,7 @@ Fireblocks 의 vault balance API · webhook event 는 <strong>"자산이 어디�
 <li><strong>외부 감사 대응</strong> — 회계법인이 받아 보는 양식</li>
 </ul>
 
-<h3>15.2 3 계층 정합 — 온체인 / 오프체인 / 계정계</h3>
+<h3>18.3 3 계층 정합 — 온체인 / 오프체인 / 계정계</h3>
 <p>
 은행이 수탁형 디지털자산 사업을 할 때 자산·부채 정보가 3 계층에 흩어진다. 각 계층이 같은 거래에 대해 다른 표상을 가지며, <strong>3 계층 모두 정합</strong>해야 한다.
 </p>
@@ -134,7 +246,7 @@ flowchart TB
 거래 발생 시 3 계층이 동시 갱신, 정기 대사로 정합성 검증.
 </p>
 
-<h3>15.3 회계 항등식 — 시스템의 핵심 불변식</h3>
+<h3>18.4 회계 항등식 — 시스템의 핵심 불변식</h3>
 <blockquote>
 <strong>자산총액 = 반환채무 총액 + 자기자본</strong>
 </blockquote>
@@ -179,7 +291,7 @@ flowchart TB
 </ul>
 </div>
 
-<h3>15.4 4 원장 구조</h3>
+<h3>18.5 4 원장 구조</h3>
 <p>
 오프체인 수탁 원장은 4 가지로 분리. 각 원장이 책임과 데이터 특성이 다름.
 </p>
@@ -188,13 +300,13 @@ flowchart TB
 <table>
 <thead><tr><th>원장</th><th>책임</th><th>변경 패턴</th><th>대표 column</th></tr></thead>
 <tbody>
-<tr><td><strong>고객 원장</strong><br/>(customer_ledger)</td>
-  <td>UserID 별 자산 종류별 잔액·거래 이력</td>
-  <td>거래 이력 = append-only / 잔액 = M-cache</td>
+<tr><td><strong>고객 원장</strong><br/>(customer_ledger)<br/><small style="color:var(--text-tertiary)">★ subledger</small></td>
+  <td>UserID 별 자산 종류별 잔액·거래 이력. 5.4 / 14. Deposit·Withdrawal Flow 에서 언급된 <code>customer_balance_subledger</code> 와 같은 영역 — 본 페이지에서 master 표로 정의. <strong>subledger (보조원장)</strong> = general ledger 의 한 계정 (예: "고객 자산 USDT 합계") 을 고객별 (예: 고객 X = 100 / 고객 Y = 250) 로 풀어서 기록한 표. 합계는 general ledger 의 해당 계정과 일치해야 함 (L1 대사)</td>
+  <td>거래 이력 = 추가만 가능 / 잔액 = 캐시 (외부 source)</td>
   <td>user_id · asset_id · balance · last_tx_id</td></tr>
 <tr><td><strong>은행 자체 원장</strong><br/>(bank_ledger)</td>
   <td>은행의 자체 보유분 (gas station · treasury · 수수료 수익 등)</td>
-  <td>거래 이력 = append-only / 잔액 = M-cache</td>
+  <td>거래 이력 = 추가만 가능 / 잔액 = 캐시 (외부 source)</td>
   <td>account_type · asset_id · balance</td></tr>
 <tr><td><strong>델타 원장</strong><br/>(delta_ledger)</td>
   <td>미정산 차액 — 오프체인 거래는 즉시 반영, 온체인 confirmation 전까지 pending</td>
@@ -213,23 +325,23 @@ flowchart TB
 본 reference 의 3 DB (<a href="db-split.html">3. DB 분할</a>) 와 4 원장의 매핑:
 </p>
 <ul>
-<li><strong>customerdb</strong> — 고객 식별 정보만 (잔액 mirror 제외)</li>
-<li><strong>operationsdb</strong> — 4 원장 모두 위치. webhook 으로 자동 갱신 + 5년 보존</li>
-<li><strong>compliancedb</strong> — 회계 영역의 외부 보고 (금감원 / 회계법인) 결과만</li>
+<li><strong>core 영역</strong> — 고객 vault 라인 (customer_vault · customer_asset_wallet · customer_deposit_address) + counterparty registry. 4 원장 자체는 여기 없음</li>
+<li><strong>core 영역</strong> — <strong>4 원장 모두 위치</strong>. customer_ledger / bank_ledger / delta_ledger 는 webhook 으로 자동 갱신. general_ledger 는 application 이 derived (이중부기 row 를 application 이 직접 INSERT). 5년 보존</li>
+<li><strong>compliance 영역</strong> — 회계 영역의 외부 보고 (금감원 / 회계법인) 결과만</li>
 </ul>
 
-<h3>15.5 거래 유형별 원장 영향 매트릭스</h3>
+<h3>18.6 거래 유형별 원장 영향 매트릭스</h3>
 <p>
-수탁업의 6 가지 대표 거래 유형 × 4 원장 + 계정계 (법정통화) 영향. 거래마다 어느 원장을 갱신하는지 사전 정의.
+수탁업의 6 가지 대표 거래 유형 × 4 원장 + 계정계 (법정통화) 영향. 거래마다 어느 원장을 갱신하는지 사전 정의. <strong>SND</strong> = Send (송금), <strong>RECV</strong> = Receive (수취) 약어.
 </p>
 
 <div class="table-wrap">
 <table>
 <thead><tr><th>거래 유형</th><th>온체인</th><th>고객 원장</th><th>은행 원장</th><th>델타 원장</th><th>총계정 변화</th></tr></thead>
 <tbody>
-<tr><td><strong>Stablecoin Mint</strong><br/>(은행 발행)</td><td>○</td><td>−</td><td>○</td><td>−</td><td>자산 ↑</td></tr>
+<tr><td><strong>Stablecoin Mint</strong><br/>(은행 발행 — <em>은행이 stablecoin 발행자일 때만 적용</em>)</td><td>○</td><td>−</td><td>○</td><td>−</td><td>자산 ↑</td></tr>
 <tr><td><strong>온램프</strong><br/>(법정통화 → stablecoin)</td><td>−</td><td>○</td><td>○</td><td>○</td><td>부채 ↑</td></tr>
-<tr><td><strong>내부 이체 (SND)</strong><br/>(고객 → 고객)</td><td>−</td><td>○</td><td>−</td><td>−</td><td>−</td></tr>
+<tr><td><strong>내부 이체 (SND)</strong><br/>(고객 → 고객, on-chain 거래 없음)</td><td>−</td><td>○</td><td>−</td><td>−</td><td>−</td></tr>
 <tr><td><strong>외부 수취 (RECV)</strong><br/>(외부 → 은행 vault)</td><td>○</td><td>○</td><td>−</td><td>−</td><td>자산·부채 ↑</td></tr>
 <tr><td><strong>자산 스왑</strong><br/>(stablecoin A → B)</td><td>−</td><td>○</td><td>○</td><td>○</td><td>−</td></tr>
 <tr><td><strong>오프램프</strong><br/>(stablecoin → 법정통화)</td><td>−</td><td>○</td><td>○</td><td>○</td><td>부채 ↓</td></tr>
@@ -251,14 +363,159 @@ flowchart TB
 <p style="margin-bottom:0">
 온램프 / 스왑 / 오프램프 는 4 원장을 한 transaction 으로 갱신해야 함. 그러나 본 reference 의 3 DB 가
 서로 분리되어 있어 <strong>multi-DB transaction 불가능</strong>.
-해결: <strong>outbox pattern</strong> — operationsdb 에 결정 row + outbox row 동시 commit, worker 가 외부 시스템 (계정계 / AML) 으로 비동기 복제.
-실패 시 idempotent retry. eventual consistency 보장.
+해결: <strong>outbox pattern</strong> — core 영역에 결정 row + outbox row 동시 commit, worker 가 외부 시스템 (계정계 / AML) 으로 비동기 복제.
+실패 시 idempotent retry. eventual consistency 보장. 출금 lifecycle 의 multi-system commit 흐름은 <a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a> 참조.
 </p>
 </div>
 
-<h3>15.6 손익 계정 분류</h3>
+<h3>18.7 시나리오별 데이터 흐름 (저자 예시)</h3>
 <p>
-수탁업의 일반적 손익 계정 구조 (저자 권장 — 운영 시작 전 회계법인 / 내부 회계팀 검증 필수).
+대표 4 시나리오의 데이터 변경 흐름. 각 시나리오마다 어느 표가 INSERT / UPDATE 되는지 + 이중부기 분개의 형태. 본 시나리오는 저자 정리이며 실제 분개는 회계법인 자문 후 확정.
+</p>
+
+<h4>시나리오 ① 외부 입금 (외부 → 은행 vault)</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant FB as ☁️ Fireblocks
+  participant Wh as Webhook handler
+  participant DO as deposit_observations
+  participant AML as AML provider
+  participant CL as customer_ledger
+  participant GLE as general_ledger_entry
+
+  Note over FB: 고객 X 의 vault 로<br/>100 USDC 입금 (on-chain)
+  FB-->>Wh: TRANSACTION_CREATED webhook
+  Wh->>DO: INSERT (amount=100, aml_status=pending)
+  Wh->>AML: incoming address screening
+  AML-->>Wh: clean
+  Wh->>DO: UPDATE aml_status=clean
+  Note over FB: CONFIRMING → COMPLETED
+  FB-->>Wh: BALANCE_UPDATED webhook
+  Wh->>CL: UPDATE 고객 X.USDC.balance += 100
+  Wh->>GLE: INSERT 이중부기 (2 row):<br/>(차) USDC 자산 vault +100<br/>(대) USDC 반환채무 +100
+  Wh->>DO: UPDATE credited_to_customer_at
+</pre>
+</div>
+<p class="diagram-caption">
+회계 항등식 유지: <strong>자산 ↑ = 부채 ↑</strong> (균등 증가). 자기자본 변동 없음. omnibus 시 <code>customer_balance_subledger</code> 갱신은 별도 (5.4 절).
+</p>
+
+<h4>시나리오 ② 외부 출금 (은행 vault → 외부, 수수료 1 USDC)</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Cust as 👤 고객
+  participant App as 🏢 은행 App
+  participant WR as withdrawal_request
+  participant WE as withdrawal_execution
+  participant FB as ☁️ Fireblocks
+  participant CL as customer_ledger
+  participant BL as bank_ledger
+  participant GLE as general_ledger_entry
+
+  Cust->>App: 출금 요청 100 USDC + 수수료 1
+  App->>WR: INSERT (status=PENDING_VALIDATION)
+  App->>App: KYC/한도/잔액 검증
+  App->>WR: UPDATE status=APPROVED_BY_BANK
+  App->>FB: Create Transaction
+  FB-->>App: vendor_tx_id
+  App->>WE: INSERT (leg=1, amount=100)
+  App->>WR: UPDATE status=SUBMITTED_TO_VENDOR
+  Note over FB: Approval / Signing / Broadcasting
+  FB-->>App: COMPLETED webhook
+  App->>CL: UPDATE 고객 X.USDC.balance -= 101
+  App->>BL: UPDATE 수수료수익.USDC += 1
+  App->>GLE: INSERT 이중부기 (3 row):<br/>(차) USDC 반환채무 -101<br/>(대) USDC 자산 vault -100<br/>(대) USDC 수수료수익 +1
+  App->>WE: UPDATE status=COMPLETED
+  App->>WR: UPDATE status=COMPLETED
+</pre>
+</div>
+<p class="diagram-caption">
+<strong>자산 ↓100 / 부채 ↓101 / 수익 ↑1</strong>. 항등식: 자산 변동 (−100) = 부채 변동 (−101) + 자본 변동 (+1) → 자기자본 +1 (수익 인식).
+</p>
+
+<h4>시나리오 ③ 내부 이체 (고객 A → 고객 B, off-chain only)</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant App as 🏢 은행 App
+  participant CL_A as customer_ledger (A)
+  participant CL_B as customer_ledger (B)
+  participant GLE as general_ledger_entry
+
+  Note over App: 고객 A → B 로 50 USDC 이체<br/>(on-chain 거래 없음)
+  App->>App: A 잔액 / B 활성 / 정책 검증
+  App->>CL_A: UPDATE A.USDC.balance -= 50
+  App->>CL_B: UPDATE B.USDC.balance += 50
+  App->>GLE: INSERT 이중부기 (2 row):<br/>(차) USDC 반환채무 A -50<br/>(대) USDC 반환채무 B +50
+  Note over GLE: 자산 vault 갱신 없음<br/>(on-chain 변경 없음)
+</pre>
+</div>
+<p class="diagram-caption">
+<strong>자산 변동 없음 / 부채 순변동 0</strong> (반환채무의 고객 간 이전만). 가장 가벼운 거래 — vault / on-chain / Fireblocks 호출 없음.
+</p>
+
+<h4>시나리오 ④ 일말 외화환산 (cron)</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Cron as ⏰ 일말 cron (23:59 KST)
+  participant FXR as fx_rate_history
+  participant CL as customer_ledger
+  participant BL as bank_ledger
+  participant FXL as fx_revaluation_log
+  participant GLE as general_ledger_entry
+  participant CBS as customer_balance_snapshot
+  participant GLS as general_ledger_snapshot
+
+  Note over Cron: trigger
+  Cron->>FXR: SELECT 당일 환율<br/>(USDC: 1,010 KRW · 전일 1,000)
+  Cron->>CL: SELECT Σ USDC 잔액 (전 고객)
+  Cron->>BL: SELECT 은행 USDC 잔액
+  Note over Cron: 환산 가치 변동 = Σ × 10 KRW
+  Cron->>FXL: INSERT (asset=USDC, gain_loss=Σ×10)
+  Cron->>GLE: INSERT 이중부기 (2 row):<br/>(차) 외화환산손익 Σ×10<br/>(대) USDC 반환채무 평가증가 Σ×10
+  Cron->>CBS: INSERT 고객별 일별 박제<br/>(hash chain)
+  Cron->>GLS: INSERT 총계정 일별 박제<br/>(hash chain)
+</pre>
+</div>
+<p class="diagram-caption">
+<strong>미실현 손익 인식 + 일별 박제</strong>. 환율 상승 → 외화 부채 평가 증가 → 환산손익 (자기자본 감소) 또는 평가이익 (자기자본 증가) 인식. 박제 시점부터 hash chain 으로 변조 방지.
+</p>
+
+<h4>시나리오 ⑤ 정정 분개 (오류 발견 시)</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Op as 🏢 운영자<br/>(컴플라이언스 / 회계팀)
+  participant AQ as Admin Quorum
+  participant ACL as accounting_correction_log
+  participant GLE as general_ledger_entry
+  participant Audit as audit_log_internal
+
+  Note over Op: 오류 발견 — 5일 전 잘못된 분개
+  Op->>AQ: 정정 승인 요청 (mobile push)
+  AQ-->>Op: quorum 승인
+  Op->>ACL: INSERT (original_entry_id, reason, approved_by)
+  Op->>GLE: INSERT reverse 분개 (원본의 차/대 반전)
+  Op->>GLE: INSERT 정정 분개 (올바른 차/대)
+  Op->>Audit: INSERT audit_log_internal<br/>(append-only · hash chain)
+  Note over GLE,Audit: 원본 row 는 그대로 보존<br/>(append-only · 변조 아님)
+</pre>
+</div>
+<p class="diagram-caption">
+<strong>변조 없는 정정</strong>. 원본 entry 유지 + reverse + 정정 3 row 가 hash chain 위에 누적. 외부 감사 시 정정 이력 추적 가능 (<code>accounting_correction_log</code> + <code>audit_log_internal</code>).
+</p>
+
+<h3>18.8 손익 계정 분류 (저자 hypothesis)</h3>
+<p>
+수탁업의 일반적 손익 계정 구조 — <strong>본 분류는 저자의 일반 권장이며 K-IFRS 9 / K-GAAP 의 정확한 분류는 회계법인 검토 필수</strong>. 특히 가상자산을 "외환" 으로 분류 가능한지 / 별도 자산 분류가 필요한지는 회계 기준 적용 자체가 hypothesis.
 </p>
 
 <div class="table-wrap">
@@ -283,9 +540,9 @@ flowchart TB
 <li><strong>권장 (저자)</strong>: <strong>옵션 1 (통합 + 보조부)</strong>. 회계법인이 일반적으로 선호하는 패턴. 자산 종류 증가 시 계정 확장 부담 적음. 단 회계법인 / 내부 회계팀의 권장이 다를 수 있으므로 검증</li>
 </ul>
 
-<h3>15.7 외화환산 처리</h3>
+<h3>18.9 외화환산 처리 (저자 hypothesis)</h3>
 <p>
-다통화 자산 보유 시 (예: 원화 stablecoin + USDC 등) 환율 적용 시점 결정이 필요.
+다통화 자산 보유 시 (예: 원화 stablecoin + USDC 등) 환율 적용 시점 결정이 필요. 본 절의 패턴은 KR 외화 회계의 표준 (한국은행 매매기준율 + K-IFRS) 을 가상자산에 일반화한 권장 — 가상자산이 K-IFRS 9 의 외환 분류에 해당하는지 자체가 hypothesis 라 회계법인 검토 필수.
 </p>
 
 <h4>3 가지 결정 사항</h4>
@@ -330,9 +587,12 @@ flowchart TB
             (0.1 USD × 10원 환율 차이)</code></pre>
 </div>
 
-<h3>15.8 operationsdb 와의 통합</h3>
+<h3>18.10 core 의 다른 domain 와의 통합</h3>
 <p>
-4 원장은 <a href="db-split.html">3. DB 분할</a> 의 <strong>operationsdb</strong> 안에 위치. webhook 으로 자동 갱신.
+4 원장은 <a href="db-split.html">3. DB 분할</a> 의 <strong>core 영역</strong> 안에 위치. customer_ledger / bank_ledger / delta_ledger 는 webhook 으로 자동 갱신, general_ledger 계열은 application 이 직접 INSERT.
+</p>
+<p>
+본 페이지는 회계 영역의 <strong>도메인 설계 view</strong>. 아래 테이블 목록은 4 원장의 매핑 차원이며, 각 표의 컬럼 / type / storage 상세는 19. 대사 · 결산 · 마감 페이지 또는 추후 별도 schema 페이지에서 정의 (현재 도메인 view 까지만).
 </p>
 
 <h4>주요 테이블 (저자 권장)</h4>
@@ -355,16 +615,16 @@ flowchart TB
 
 <h4>Hash Chain 적용 (변조 방지)</h4>
 <p>
-<code>general_ledger_entry</code> + <code>customer_balance_snapshot</code> + <code>general_ledger_snapshot</code> 의 3 테이블은 <a href="tables-audit.html">12. Audit · AML · Travel Rule</a> 의 hash chain 패턴 적용. 외부 감사 / 금감원 검사 시 무결성 증명.
+<code>general_ledger_entry</code> + <code>customer_balance_snapshot</code> + <code>general_ledger_snapshot</code> 의 3 테이블은 <a href="tables-audit.html">15. Audit · AML · Travel Rule</a> 의 hash chain 패턴 적용. 외부 감사 / 금감원 검사 시 무결성 증명.
 </p>
 
-<h3>15.9 펀드 수신 시스템 / 자산운용업과의 패턴 차용</h3>
+<h3>18.11 펀드 수신 시스템 / 자산운용업과의 패턴 차용 (저자 권장)</h3>
 <p>
-수탁업의 회계는 펀드 수신 시스템 / 자산운용업의 회계와 패턴이 유사. 차용 가능한 항목:
+수탁업의 회계는 <strong>펀드 수신 시스템</strong> (자산운용업의 펀드 — 투자자 자금을 모아 자산별 잔액을 관리하는 시스템) / 자산운용업의 회계와 패턴이 유사. 본 절의 차용 권장은 일반 회계 표준화 관점의 저자 의견이며, 실제 시스템 차용 시 회계법인 / 운용업계 표준 (한국금융투자협회 등) 와 정합성 검토 필수. 차용 가능한 항목:
 </p>
 <ul>
 <li><strong>계정과목 체계</strong> — 펀드의 계정과목 (수수료수익 · 외환매매수익 · 외화환산손익 등) 을 참고</li>
-<li><strong>대사 자동화 프레임워크</strong> — 펀드 시스템의 대사 도구 / 보고 양식 활용 (<a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a> 참조)</li>
+<li><strong>대사 자동화 프레임워크</strong> — 펀드 시스템의 대사 도구 / 보고 양식 활용 (<a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a> 참조)</li>
 <li><strong>외화 종목 처리 방식</strong> — 펀드의 외화 표시 종목의 환산 / 평가 패턴</li>
 <li><strong>일말 / 월말 마감 schedule</strong> — 기존 은행 / 운용업의 마감 schedule 과 정합</li>
 <li><strong>immutable 스냅샷 보장 매커니즘</strong> — 펀드의 마감 잔액 스냅샷 보장 패턴</li>
@@ -384,15 +644,15 @@ flowchart TB
 </ul>
 </div>
 
-<h3>15.10 다음 페이지</h3>
+<h3>18.12 다음 페이지</h3>
 <p>
-실시간 잔액 대사 / 결산 마감 / 정정 절차 / 외부 감사 대응은 <a href="reconciliation-close.html">16. 대사 · 결산 · 마감</a> 참조.
+실시간 잔액 대사 / 결산 마감 / 정정 절차 / 외부 감사 대응은 <a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a> 참조.
 </p>
 
 </section>
 <nav aria-label="Section navigation" class="page-nav">
-<a class="page-nav-link page-nav-prev" href="risks.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">14. Risks</span></a>
-<a class="page-nav-link page-nav-next" href="reconciliation-close.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">16. 대사 · 결산 · 마감</span></a>
+<a class="page-nav-link page-nav-prev" href="risks.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">17. Risks Register</span></a>
+<a class="page-nav-link page-nav-next" href="reconciliation-close.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">19. 대사 · 결산 · 마감</span></a>
 </nav>
 </main>
 </div>

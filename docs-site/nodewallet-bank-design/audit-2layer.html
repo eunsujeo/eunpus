@@ -56,7 +56,7 @@
 
 <div class="callout">
 <div class="callout-title">출처</div>
-<p><code>security__ops__audit-logs.md</code> 전체 (가장 dense single source). <code>compliance__architecture.md</code> §시간·증거 격리.</p>
+<p><code>security__ops__audit-logs.md</code> 전체 (가장 dense single source). <code>compliance__architecture.md</code> 시간·증거 격리.</p>
 </div>
 
 <h3>두 Layer 의 분담</h3>
@@ -85,7 +85,7 @@
 </div>
 
 <h3>구조적 불변 — FK 제약</h3>
-<p>ledger_entries 는 반드시 영수증이 있는 작업 레코드를 참조한다. 고아 엔트리는 <em>구조적으로 불가능</em> — DB FK 가 거부 (source: <code>security__ops__audit-logs.md</code> §Layer 1).</p>
+<p>ledger_entries 는 반드시 영수증이 있는 작업 레코드를 참조한다. 고아 엔트리는 <em>구조적으로 불가능</em> — DB FK 가 거부 (source: <code>security__ops__audit-logs.md</code> Layer 1).</p>
 <pre><code>-- 같은 DB 라면 직접 FK
 ALTER TABLE ledger_entries
   ADD CONSTRAINT fk_action_ref
@@ -122,7 +122,7 @@ checkpoint.sig   = EnclaveSign(chain_head_hash ‖ account_id ‖ entry_count �
 checkpoint.mrenclave = 어느 엔클레이브 이미지가 서명했는지</code></pre>
 
 <h3>체크포인트 cadence</h3>
-<p>vendor docs 명시: <strong>1시간 또는 100 entries</strong> 중 먼저 도달하는 시점 (source: <code>security__ops__audit-logs.md</code> §Layer 2). 트래픽이 적은 계정도 시간 보장, 많은 계정도 count 보장.</p>
+<p>vendor docs 명시: <strong>1시간 또는 100 entries</strong> 중 먼저 도달하는 시점 (source: <code>security__ops__audit-logs.md</code> Layer 2). 트래픽이 적은 계정도 시간 보장, 많은 계정도 count 보장.</p>
 
 <h3>Layer 2 가 제공하는 것</h3>
 <ul>
