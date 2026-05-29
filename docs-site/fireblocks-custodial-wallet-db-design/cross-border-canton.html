@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>14c. Cross-border + Canton — 해외송금 · institutional settlement</title>
+<meta content="해외송금 (개인 P2P + Institutional) · Canton Network · Musubi · DvP 정산 · KR 외국환 / 특금법 규제" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a href="db-split.html">3. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a href="tables-workspace-vault.html">4. Workspace</a></li>
+<li><a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a></li>
+<li><a href="tables-counterparty.html">6. Counterparty Registry</a></li>
+<li><a href="cold-wallet.html">7. Cold Wallet 운영</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a href="tables-user.html">8. Internal Users</a></li>
+<li><a href="tables-customer-user.html">9. Customer Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a href="tables-governance.html">10. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a href="tables-crypto.html">11. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">13. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
+<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
+<li><a class="active" href="cross-border-canton.html">14c. Cross-border + Canton</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">16. KR 규제 매핑</a></li>
+<li><a href="risks.html">17. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
+<li><a href="accounting-ledger.html">18. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
+<li><a href="db-ops.html">20. DB 운영 · Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="cross-border-canton">
+<h2>14c. Cross-border + Canton</h2>
+<span class="section-subtitle">해외송금 (개인 P2P + Institutional) · Canton Network · Musubi · DvP 정산 · KR 외국환 / 특금법 규제</span>
+
+<div class="callout callout-warn">
+<div class="callout-title">본 페이지의 범위 + tier</div>
+<p style="margin-bottom:0.5rem">
+해외송금 + cross-border settlement 의 2 layer 를 모두 cover:
+</p>
+<ul style="margin-bottom:0">
+<li><strong>개인 P2P 해외송금</strong> — 사용자 → 해외 wallet/거래소 (외부 출금의 special case · 트래블룰 + 외국환신고 + AML 강화). 기본 흐름은 14b.4 오프램프 + 14. Deposit·Withdrawal 14.4.2 절 (외부 거래소 출금) 의 확장</li>
+<li><strong>Institutional cross-border settlement</strong> — bank ↔ bank · DvP · stablecoin-to-stablecoin · Canton Network 기반</li>
+</ul>
+<p style="margin-bottom:0;margin-top:8px;color:var(--text-secondary);font-size:13px">
+<strong>★ 출처 tier</strong>: Canton Network 자체 정보는 <strong>일반 reference + 공개 docs (digitalasset.com / canton.network)</strong> 기반. KR 규제 적용 (외국환거래법 + 특금법) 은 회계법인 / 외환계 자문 후 확정 권장. 본 페이지는 <strong>설계 reference</strong> 까지 — 실제 institutional 운영 시 Canton Foundation + KR 금감원 / 한국은행 (외환) 협의 필수.
+</p>
+</div>
+
+<h3>14c.1 개요 — 개인 P2P vs Institutional 차이</h3>
+<p>
+"해외송금" 이라는 단일 단어 안에 운영 / 회계 / 규제 가 완전히 다른 2 layer 가 들어가 있음 — 사전 명확화 필요.
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>측면</th><th>개인 P2P 해외송금</th><th>Institutional cross-border settlement</th></tr></thead>
+<tbody>
+<tr><td>주체</td><td>고객 (수탁 서비스 사용자)</td><td>은행 ↔ 은행 (또는 거래소 ↔ 거래소)</td></tr>
+<tr><td>금액</td><td>일반적으로 소액 (~수천만원)</td><td>대규모 (수십억 ~ 수조원)</td></tr>
+<tr><td>채널</td><td>외부 거래소 / 외부 wallet (Binance · Coinbase · 개인 wallet 등)</td><td>Canton Network · Musubi · 기타 DLT settlement layer</td></tr>
+<tr><td>거래 모델</td><td>송금 (one-way) + 외부 거래소 매도 (필요 시)</td><td>DvP (Delivery vs Payment) · atomic settlement</td></tr>
+<tr><td>본 wiki schema</td><td><code>transaction_request.type = WITHDRAWAL</code> + destination 이 외부 거래소</td><td>새 type 또는 별도 영역 — 14c.7 참조</td></tr>
+<tr><td>vendor</td><td>Fireblocks (기존 출금) + AML provider</td><td>Canton validator 추가 운영 또는 외부 settlement 위탁</td></tr>
+<tr><td>KR 규제</td><td>외국환거래법 + 특금법 트래블룰 + 가상자산이용자보호법</td><td>외국환거래법 (은행 위탁 거래) + 자본시장법 (settlement) + 한국은행 외환 보고 의무</td></tr>
+<tr><td>본 페이지 sub-section</td><td>14c.4</td><td>14c.5</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>14c.2 Canton Network 기초</h3>
+<p>
+출처: <a href="https://www.canton.network/">canton.network</a> · <a href="https://docs.digitalasset.com/">docs.digitalasset.com</a>. KR 은행이 institutional cross-border settlement 에 Canton 도입 시 알아야 할 기본 개념.
+</p>
+
+<h4>14c.2.1 Canton 이 무엇인가</h4>
+<ul>
+<li><strong>Privacy-enabled public DLT</strong> — Digital Asset 사가 운영하는 plataform. "the only public chain with privacy"</li>
+<li><strong>대상</strong>: institutional finance — "decentralization of public blockchain with the privacy and controls required for financial markets"</li>
+<li><strong>Smart contract language</strong>: <strong>DAML</strong> (Digital Asset Modeling Language) — 금융 거래 모델링 특화</li>
+<li><strong>Privacy model</strong>: "sub-transactions visible only to relevant parties" — 거래 참여 당사자만 데이터 보이고, 비당사자는 거래 존재 자체도 모름 (vs Ethereum 전체 공개)</li>
+</ul>
+
+<h4>14c.2.2 핵심 컴포넌트</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>컴포넌트</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><strong>Participant Node</strong></td><td>은행 / 기관이 운영하는 노드 — 자기 party 의 contract 보관 + 거래 참여</td></tr>
+<tr><td><strong>Synchronizer</strong></td><td>거래 ordering / atomic commit 매개. <strong>Global Synchronizer</strong> = 전체 네트워크 backbone (sync.global foundation 운영) · application synchronizer = 특정 application 용</td></tr>
+<tr><td><strong>Party</strong></td><td>거래 당사자 식별자 (예: <code>Bank-A::namespace</code>). 은행은 자체 party + 고객 party 발행 가능</td></tr>
+<tr><td><strong>Super Validator</strong></td><td>Global Synchronizer 운영 (영구 노드 · 거버넌스 참여)</td></tr>
+<tr><td><strong>Validator</strong></td><td>일반 participant node (은행 운영 시 이 등급)</td></tr>
+<tr><td><strong>Canton Coin (CC)</strong></td><td>네트워크 utility token — traffic fee (거래 처리 비용 · CC 차감) + governance</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>14c.2.3 institutional 채택 사례 (canton.network 공시)</h4>
+<ul>
+<li><strong>DTCC</strong> — U.S. Treasury 토큰화 (2026 target)</li>
+<li><strong>HSBC</strong> — tokenized deposit pilot</li>
+<li><strong>Goldman Sachs · BNP Paribas · Standard Chartered</strong> — institutional settlement (Digital Asset 공개 사례)</li>
+<li><strong>Stablecoin payments / 크로스보더 결제</strong> — Musubi 등 (14c.3 절)</li>
+</ul>
+
+<h4>14c.2.4 Fireblocks 의 Canton 지원</h4>
+<p>
+Fireblocks 는 Canton Coin (CC) custody 지원 — Backup &amp; Recovery 문서에 별도 절차 (Recover Canton Coin · validator disaster recovery + ACS import). 의미:
+</p>
+<ul>
+<li>Fireblocks vault 에 Canton Coin / USDCx 등 Canton-native asset 보관 가능</li>
+<li>일반 token 과 다른 recovery 절차 (Active Contract Set import 필요)</li>
+<li>USDCx 같은 token 복구는 별도 — Token Registrar (Circle 등) 의 추가 action 필요</li>
+</ul>
+<p>
+출처: <code>sources/canton/2026-05-19__fireblocks-recover-canton-coin.md</code> · <a href="https://support.fireblocks.io/hc/en-us/articles/25741677788828-Recover-Canton-Coin-CC">Fireblocks Help Center</a>
+</p>
+
+<h3>14c.3 Musubi Network — Institutional Stablecoin Settlement 사례</h3>
+<p>
+일본 ↔ 한국 institutional cross-border settlement 의 구체 사례. Canton 위에서 작동하는 atomic DvP 네트워크. 출처: <a href="https://musubinetwork.com/introduction">musubinetwork.com</a>.
+</p>
+
+<h4>14c.3.1 무엇을 해결하나</h4>
+<ul>
+<li><strong>1-3 영업일 settlement delay 제거</strong> — atomic settlement (~15 초)</li>
+<li><strong>Herstatt risk 제거</strong> — 양 leg 동시 settle (FX swap 의 settlement risk 0)</li>
+<li><strong>Correspondent bank 중간자 다수 제거</strong> — 직접 atomic 거래</li>
+<li><strong>Transparent FX pricing</strong> — RFQ (Request For Quote) model</li>
+<li><strong>통합 audit trail</strong> — SWIFT 메시지 분산 대비</li>
+</ul>
+
+<h4>14c.3.2 참여자 모델 (3 core types + 추가)</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>참여자</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><strong>Institutions</strong></td><td>payment 시작 + market maker pricing 선택. 본 wiki context = <strong>은행</strong></td></tr>
+<tr><td><strong>Custodians</strong></td><td>institutional client 자산 이동 authorize. cryptographic dual control. <strong>Fireblocks 같은 custody platform 이 이 역할</strong></td></tr>
+<tr><td><strong>Market Makers</strong></td><td>anonymized RFQ 수신 + 가격 경쟁. 본 wiki context = <strong>외환 거래소 · liquidity provider</strong></td></tr>
+<tr><td>Operator</td><td>네트워크 운영 (Musubi 의 경우 Startale + Nodeinfra)</td></tr>
+<tr><td>Settlement Mediator</td><td>Canton level — atomic commit 매개</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>14c.3.3 기술 architecture</h4>
+<ul>
+<li>각 참여자가 <strong>isolated infrastructure</strong> (backend / DB / settlement node) — no shared systems</li>
+<li>Cross-party coordination 은 settlement network 통해서만</li>
+<li>Settlement = <strong>4 atomic legs</strong> + signatory closure (operator · sender custodian · market maker · receiver custodian) — per-leg <code>Allocation</code> contract 기반</li>
+<li><strong>Privacy-by-design</strong> — market maker 는 sender / receiver identity 모름</li>
+</ul>
+
+<h4>14c.3.4 지원 자산 + corridor</h4>
+<ul>
+<li><strong>JPYSC0</strong> (Japanese yen stablecoin) ↔ <strong>USDCx</strong> (USD Coin · Canton-native)</li>
+<li><strong>Japan ↔ Korea</strong> corridor (POC validation)</li>
+<li>현재 status: Canton <strong>testnet</strong> 배포 (institutional POC)</li>
+</ul>
+
+<h4>14c.3.5 KR / 일본 컴플라이언스 mapping</h4>
+<ul>
+<li><strong>일본</strong>: FSA · JAFIC · PPC 의무 매핑</li>
+<li><strong>한국</strong>: FSC · KoFIU · PIPC 의무 매핑</li>
+<li>FXOrder field 마다 compliance obligation 매핑</li>
+<li>Built-in: KYC references · jurisdiction codes · timestamps · settlement proof hashing</li>
+</ul>
+
+<h3>14c.4 해외송금 — 개인 P2P (외부 출금의 special case)</h3>
+<p>
+본 wiki 의 <strong>외부 출금</strong> (14. Deposit·Withdrawal · 시나리오 ②) 의 special case — destination 이 해외 wallet 또는 해외 거래소. 기존 schema 변경 없음 + KR 규제 추가 항목.
+</p>
+
+<h4>14c.4.1 흐름 — 외부 출금 패턴 재사용</h4>
+<p>
+14b.4 오프램프 또는 14. Deposit·Withdrawal 14.4.2 절 (고객 → 본인 외부 거래소 출금) 과 동일한 lifecycle. 차이는 <strong>destination 의 식별</strong> + <strong>KR 외국환 / 트래블룰 정보 수집</strong>:
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Cust as 👤 고객
+  participant App as 🏢 은행 App
+  participant Ext as 🌐 해외 거래소/wallet
+  participant TR as transaction_request
+  participant Comp as compliance<br/>(travel_rule + 외환신고)
+  participant FB as ☁️ Fireblocks vault
+
+  Cust->>App: 해외송금 요청 (target = 해외 거래소 · 금액 · 사유)
+  App->>App: 검증 (KYC · 한도 · 시세 · counterparty)
+
+  alt 100만원 이상
+    App->>Comp: 트래블룰 (IVMS101) — 송신자/수신자 정보
+    Comp-->>App: VASP counterparty 식별 결과
+  end
+
+  alt 외국환신고 임계 초과
+    App->>App: 외국환거래법 신고 의무 검증<br/>(연 5만 USD 이상 / 건당 5천 USD 이상 등)
+    App->>Comp: 외환신고 (한국은행 또는 외환계 매개)
+  end
+
+  App->>TR: INSERT (type=WITHDRAWAL, destination=해외 wallet)
+  App->>App: 14b.4 (또는 14.2) 의 standard 출금 흐름 진행
+  App->>FB: Fireblocks Create Transaction
+  FB-->>App: 거래 lifecycle
+  App-->>Cust: 출금 완료 + 외국환신고 confirm
+</pre>
+</div>
+<p class="diagram-caption">
+<strong>개인 P2P 해외송금</strong> = 외부 출금 패턴 + 외국환신고 / 트래블룰 사전 검증. schema 변경 없음 — <code>transaction_request.type = WITHDRAWAL</code> + <code>destination_type = EXCHANGE_ACCOUNT</code> 또는 <code>WHITELISTED_ADDRESS</code>. 트래블룰 / 외환신고는 <code>compliance.travel_rule_records</code> + <code>compliance.regulator_reports</code> 에 별도 기록.
+</p>
+
+<h4>14c.4.2 KR 외국환거래법 적용 (저자 hypothesis)</h4>
+<div class="callout callout-warn">
+<div class="callout-title">★ 외국환거래법 적용 — 법률 자문 필수</div>
+<p style="margin-bottom:0.5rem">
+가상자산의 해외 송금이 외국환거래법의 외환 거래로 분류되는지 자체가 hypothesis. 다음 시나리오는 저자의 일반 해석 — 법무 / 한국은행 / 외환계 자문 후 확정:
+</p>
+<ul style="margin-bottom:0">
+<li><strong>연 5 만 USD 이상</strong> 송금 시 한국은행 외환 거래 신고 (저자 추론 · 일반 외환 거래 기준)</li>
+<li><strong>건당 5 천 USD 이상</strong> 송금 시 사전 신고 (저자 추론)</li>
+<li>가상자산이 KR 외환 규제상 <strong>"지급수단"</strong> 인지 <strong>"자본거래"</strong> 인지 분류가 모호 — 회계법인 / 법무 자문 필요</li>
+<li>특금법 트래블룰 (100만원 이상) 과는 별도 의무</li>
+</ul>
+</div>
+
+<h4>14c.4.3 모범 패턴 — schema 추가 없이 처리</h4>
+<ul>
+<li><code>transaction_request.metadata</code> jsonb 에 외국환 정보 (송금 사유 / 외환신고 번호 등) 저장</li>
+<li><code>compliance.regulator_reports</code> 에 외환신고 결과 기록 (외환계 + 한국은행)</li>
+<li><code>customer.customer_external_destination</code> 에 해외 destination 사전 등록 시 KYC level 강화 (수신자 신원 확인)</li>
+</ul>
+
+<h3>14c.5 해외송금 — Institutional (Canton 기반)</h3>
+<p>
+은행 ↔ 은행 cross-border settlement 의 새 architecture. 본 wiki 의 기존 outbound 출금 + Fireblocks 흐름과 완전히 다른 모델 — atomic DvP · Canton validator 운영 또는 외부 위탁.
+</p>
+
+<h4>14c.5.1 흐름 — atomic DvP 모델 (Musubi 패턴)</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant BankA as 🏢 KR 은행 A
+  participant Cust as Custodian (Fireblocks)
+  participant MM as Market Maker<br/>(외환 거래소 · liquidity)
+  participant Canton as Canton<br/>Synchronizer
+  participant BankB as 🏢 JP 은행 B
+  participant CustB as Custodian (Bank B)
+
+  BankA->>BankA: 검증 (FX rate · 한도 · counterparty)
+  BankA->>Canton: RFQ (KRWst 1억 → JPYSC0 N · anonymized)
+  Canton->>MM: anonymized quote 요청
+  MM-->>Canton: 가격 응답 (경쟁)
+  Canton-->>BankA: best price + quote ID
+  BankA->>BankA: quote 확인 + 컴플라이언스 (FSC · KoFIU · 외환신고)
+
+  Note over BankA,CustB: ★ Atomic DvP 4-leg settlement (~15 초)
+  BankA->>Canton: FXOrder INSERT (Allocation contracts · 4 legs)
+  Canton->>Cust: leg 1 — KR Bank vault 에서 KRWst 출금 (custodian dual control)
+  Canton->>MM: leg 2 — Market Maker 매개 (KRWst → JPYSC0 교환)
+  Canton->>CustB: leg 3 — JP Bank vault 로 JPYSC0 입금
+  Canton->>CustB: leg 4 — settlement proof + signature aggregation
+
+  Canton-->>BankA: settlement complete (atomic · all-or-nothing)
+  Canton-->>BankB: settlement complete
+
+  BankA->>BankA: 회계 분개 (4 원장 update · transaction_execution settled)
+  BankB->>BankB: 회계 분개 (자기 측)
+</pre>
+</div>
+<p class="diagram-caption">
+<strong>4-leg atomic DvP</strong> — RFQ → quote → atomic settle (~15 초). 모든 4 leg 가 commit 되거나 전체 rollback. Herstatt risk 0 · counterparty risk 0. 본 wiki 의 <code>transaction_request.type = CROSS_BORDER_SETTLEMENT</code> (신규) + <code>cross_border_settlement_detail</code> 표 추가 필요 (14c.7 절).
+</p>
+
+<h4>14c.5.2 본 wiki schema 와의 통합 옵션</h4>
+
+<p>
+Canton institutional settlement 는 본 wiki 의 기존 <code>transaction_request</code> 패턴 (header + 3 detail) 의 4 type 외 신규 type 추가 또는 별도 영역으로 격리. 3 옵션:
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>옵션</th><th>설명</th><th>장단점</th></tr></thead>
+<tbody>
+<tr><td><strong>A 통합</strong> (transaction_request 확장)</td><td><code>type = CROSS_BORDER</code> 추가 + 새 detail 표 <code>customer.cross_border_request_detail</code></td><td>✅ 기존 패턴 재사용 / ❌ 사용자 (개인 P2P) vs 은행 (institutional) 의 혼재 가능성</td></tr>
+<tr><td><strong>B 별도 영역</strong></td><td>새 도메인 <code>treasury</code> 또는 <code>settlement</code> 추가 + 별도 표 <code>cross_border_settlement</code></td><td>✅ 명확한 분리 (은행 자체 거래) / ❌ 새 domain · cross-domain 관계 증가</td></tr>
+<tr><td><strong>C Hybrid</strong></td><td>개인 P2P = WITHDRAWAL type 재사용 / institutional = 별도 도메인</td><td>✅ 의미적 정확 (다른 주체 · 다른 회계) / ⚠️ 운영 복잡도 약간 ↑</td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary);font-size:13px">
+<strong>저자 권장 = C (Hybrid)</strong> — 개인 P2P 는 외부 출금의 special case 로 처리 (기존 schema 그대로) + institutional 은 새 도메인 (예: <code>treasury</code>) 으로 격리. 은행 자체 거래는 회계 처리가 다르고 (자기자본 · bank_ledger 갱신) · 운영 권한도 다름 (Admin Quorum + 회계팀 + 외환계).
+</p>
+
+<h4>14c.5.3 Canton 도입 시 인프라 추가</h4>
+<ul>
+<li><strong>Canton Validator Node</strong> — 은행 자체 운영 (또는 위탁) — 망분리 안 또는 외부</li>
+<li><strong>DAML smart contract 개발 / 검증</strong> — settlement logic 정의 (FXOrder · Allocation 등)</li>
+<li><strong>Custodian 통합</strong> — Fireblocks vault 와 Canton party 매핑 (사용자별 Canton party allocate)</li>
+<li><strong>Synchronizer 연결</strong> — Global Synchronizer (sync.global) 또는 Application Synchronizer</li>
+<li><strong>Canton Coin (CC) 보유</strong> — traffic fee 지불용 (vault 에 CC 일정량 유지)</li>
+</ul>
+
+<h3>14c.6 KR 규제 매핑</h3>
+
+<h4>14c.6.1 외국환거래법 (저자 hypothesis)</h4>
+<ul>
+<li><strong>개인 P2P</strong>: 14c.4.2 의 외환신고 임계 적용</li>
+<li><strong>Institutional cross-border</strong>: <strong>은행이 외국환 업무 인가</strong> 보유 시 가능. 한국은행 외환 보고 의무 (월별 / 분기별)</li>
+<li><strong>가상자산의 "지급수단" vs "자본거래" 분류</strong> — KR 외환 규제 적용 가능성의 핵심. 회계법인 + 법무 자문 필수</li>
+</ul>
+
+<h4>14c.6.2 자본시장법 (institutional 측)</h4>
+<ul>
+<li>stablecoin 의 settlement asset 적격성 — 자본시장법 적용 가능성 (저자 hypothesis)</li>
+<li>외환 매매 분류 시 자본시장업 인가 필요할 수 있음</li>
+</ul>
+
+<h4>14c.6.3 특금법 (양 layer 공통)</h4>
+<ul>
+<li>트래블룰 100만원 이상 — 개인 P2P 시 (institutional 시 별도 자문)</li>
+<li>STR / 의심 거래 보고 — KOFIU</li>
+<li>VASP counterparty 식별 (Musubi 같은 institutional network 의 VASP 지위 분류)</li>
+</ul>
+
+<h4>14c.6.4 가상자산이용자보호법 (개인 P2P 측)</h4>
+<ul>
+<li>해외송금 시에도 사용자 자산 분리 보관 의무 (예치 / 신탁)</li>
+<li>이상 거래 모니터링 (FDS)</li>
+</ul>
+
+<h3>14c.7 Schema 영향 — 신규 표 / 컬럼 권장 (저자 hypothesis)</h3>
+
+<h4>14c.7.1 개인 P2P 해외송금 (schema 변경 없음)</h4>
+<p>
+<code>transaction_request.type = WITHDRAWAL</code> + <code>destination_type</code> 활용 (기존 schema 그대로):
+</p>
+<ul>
+<li><code>customer.transaction_request.metadata jsonb</code> — 외국환 정보 (송금 사유 코드 · 외환신고 번호 등) 저장</li>
+<li><code>customer.customer_external_destination</code> — 해외 destination 사전 등록 시 country / VASP 정보 추가 (메타데이터)</li>
+<li><code>compliance.regulator_reports</code> 에 외환신고 결과 기록</li>
+</ul>
+
+<h4>14c.7.2 Institutional cross-border (신규 도메인 — 저자 hypothesis)</h4>
+<p>
+새 도메인 <code>treasury</code> 또는 <code>settlement</code> + 신규 표:
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>표 (저자 권장)</th><th>책임</th></tr></thead>
+<tbody>
+<tr><td><code>treasury.cross_border_settlement</code></td><td>은행 ↔ 은행 cross-border 거래의 헤더 (counterparty bank · settlement network · 시작 시점 · 완료 시점 · 상태)</td></tr>
+<tr><td><code>treasury.cross_border_leg</code></td><td>각 settlement leg 의 상세 (Canton 의 4-leg 또는 그 외 multi-leg · per-leg amount · asset · direction)</td></tr>
+<tr><td><code>treasury.fx_quote</code></td><td>RFQ 요청 + 받은 quote 들 + 선택된 quote (audit trail · spread 분석)</td></tr>
+<tr><td><code>treasury.canton_party_mapping</code></td><td>은행 / 고객 ↔ Canton party (예: <code>Bank-A::namespace</code>) 매핑</td></tr>
+<tr><td><code>treasury.canton_traffic_fee_log</code></td><td>Canton Coin (CC) 소비 이력 + balance tracking</td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary);font-size:13px">
+구체 column 정의는 회계법인 + Canton Foundation + 한국은행 외환 협의 후 확정. 본 표는 <strong>도메인 view 까지</strong>.
+</p>
+
+<h4>14c.7.3 기존 표 영향</h4>
+<ul>
+<li><code>accounting.general_ledger_account</code> — 새 계정과목 추가 (외환매매수익 · 외환매매손실 · CC 보유 · 외국환 결제 미정산 등)</li>
+<li><code>accounting.fx_rate_history</code> — institutional FX rate (RFQ 결과) 별도 기록 또는 기존 표 type 컬럼 확장</li>
+<li><code>customer.customer_external_destination</code> — country / VASP 정보 컬럼 추가 (또는 metadata jsonb)</li>
+</ul>
+
+<h3>14c.8 운영 시작 전 검증 + 트레이드오프</h3>
+<div class="callout callout-warn">
+<div class="callout-title">★ 운영 시작 전 검증 필수</div>
+<ul style="margin-bottom:0">
+<li><strong>법무 / 외환계 / 한국은행 자문</strong> — 가상자산의 외국환거래법 / 자본시장법 적용 범위</li>
+<li><strong>외국환 업무 인가</strong> — 은행이 이미 보유한 외환 인가의 가상자산 cross-border 적용 가능성</li>
+<li><strong>Canton 도입 의사결정</strong> — validator 자체 운영 vs 위탁 vs 외부 settlement network 위탁 (Musubi 등)</li>
+<li><strong>Custodian 통합</strong> — Fireblocks vault + Canton party 매핑 모델 (1:1 vs 1:N)</li>
+<li><strong>CC 보유 / 환매</strong> — Canton Coin 의 회계 처리 (utility token? · gas fee?) + 환매 정책</li>
+<li><strong>POC → 운영 전환</strong> — testnet (Musubi 현재 status) → mainnet 안정성 검증</li>
+<li><strong>Counterparty bank 협약</strong> — JP / SG / HK / EU 은행과의 양자 협약 + DvP 표준 합의</li>
+<li><strong>금감원 / 한국은행 사전 보고</strong> — 시범 사업 단계에서 감독당국 사전 협의</li>
+</ul>
+</div>
+
+<h4>14c.8.1 Canton 도입의 trade-off</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>측면</th><th>장점</th><th>단점 / 리스크</th></tr></thead>
+<tbody>
+<tr><td>속도</td><td>~15 초 atomic settlement (vs SWIFT 1-3 일)</td><td>testnet 단계 — mainnet 안정성 미검증</td></tr>
+<tr><td>Risk</td><td>Herstatt risk 0 · counterparty risk 0</td><td>Canton 자체 SPOF (synchronizer 장애 시 전체 영향)</td></tr>
+<tr><td>비용</td><td>correspondent bank 수수료 제거</td><td>Canton validator 운영 비용 + CC 보유 + DAML 개발 인력</td></tr>
+<tr><td>규제</td><td>privacy-by-design · 컴플라이언스 매핑 내장</td><td>KR 외환 / 자본시장법 적용 미정 · 한국은행 인가 필요 가능성</td></tr>
+<tr><td>유연성</td><td>institutional ↔ institutional 직접 거래 · 자체 logic (DAML smart contract)</td><td>다른 settlement network 와의 interop 미정</td></tr>
+<tr><td>vendor lock-in</td><td>open source DAML</td><td>Canton Foundation 거버넌스 의존 + Super Validator 영향력</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>14c.9 출처 + 추가 자료</h3>
+<ul>
+<li><strong>Canton Network</strong> — <a href="https://www.canton.network/">canton.network</a> · <a href="https://docs.digitalasset.com/">Digital Asset docs</a> · <code>sources/canton/2026-05-29__canton-network-homepage.md</code></li>
+<li><strong>Musubi Network</strong> — <a href="https://musubinetwork.com/introduction">musubinetwork.com</a> · <code>sources/canton/2026-05-29__musubi-network-introduction.md</code></li>
+<li><strong>Fireblocks Canton custody</strong> — <a href="https://support.fireblocks.io/hc/en-us/articles/25741677788828-Recover-Canton-Coin-CC">Recover Canton Coin (CC)</a> · <code>sources/canton/2026-05-19__fireblocks-recover-canton-coin.md</code></li>
+<li><strong>회계 처리</strong> — <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> (4 원장 + 평가 + 외환매매수익)</li>
+<li><strong>schema 통합</strong> — <a href="tables-transaction-request.html">14a. Transaction Request · Execution</a> (header + detail 확장)</li>
+<li><strong>KR 규제</strong> — <a href="kr-compliance.html">16. KR 규제 매핑</a></li>
+</ul>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="sm-swap-ramp.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">14b. Swap · Ramp Lifecycle</span></a>
+<a class="page-nav-link page-nav-next" href="tables-audit.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">15. Audit · AML · Travel Rule</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
