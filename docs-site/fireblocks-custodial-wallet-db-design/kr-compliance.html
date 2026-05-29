@@ -42,6 +42,8 @@
 <li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
 <li><a href="sm-webhook.html">13. Webhook 처리</a></li>
 <li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
+<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
 <li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
@@ -161,6 +163,22 @@
 출처: <a href="https://developers.fireblocks.com/docs/define-travel-rule-policies">Define Travel Rule Policies</a> ·
 <a href="https://developers.fireblocks.com/reference/validatefulltravelruletransaction">Validate Full Travel Rule Transaction</a>. 입출금 lifecycle 내 hook 은 <a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a> 14.3.1 절, 표 상세는 <a href="tables-audit.html">15. Audit · AML · Travel Rule</a> 15.5 절 참조.
 </p>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ 금융위 2026 AML 강화 계획 — 트래블룰 임계 확장 예정</div>
+<p style="margin-bottom:0.5rem">
+2026년 금융위는 KR AML 체계 강화 방향을 발표:
+</p>
+<ul style="margin-bottom:0.5rem">
+<li><strong>국내 거래소 간 트래블룰 적용 대상을 100만원 미만으로 확장</strong> (현재 100만원 이상 → 향후 더 낮은 임계 검토)</li>
+<li><strong>수신 거래소에도 정보확보 의무 부과</strong> (현재는 송신측 의무 위주)</li>
+<li><strong>개인지갑 · 해외거래소 거래는 저위험 거래 위주로 허용</strong> (unhosted wallet rule)</li>
+<li>2025년 비영리법인 / 거래소 매도 허용 → 자금원천 / 거래목적 검증 + 주기적 재확인 + AML 모니터링 강화</li>
+</ul>
+<p style="margin-bottom:0;color:var(--text-secondary);font-size:13px">
+은행 시스템은 트래블룰 임계를 <strong>동적 변경 가능한 config</strong> 로 설계하고, 임계 변경 시 정책 변경 절차 (Admin Quorum + audit_log_internal) 권장. 출처: <code>sources/monitoring/2026-05-28__blockchain-wallet-stablecoin-monitoring.md</code>.
+</p>
+</div>
 
 <h4>16.3.4 실질 통제 (대법원 2024도10710) — 저자 hypothesis</h4>
 <p>

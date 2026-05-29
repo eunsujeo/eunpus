@@ -42,6 +42,8 @@
 <li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
 <li><a href="sm-webhook.html">13. Webhook 처리</a></li>
 <li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
+<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
 <li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
@@ -187,7 +189,7 @@ service 별 write 영역을 명확히 분리. core 영역 안에서는 domain-le
 <thead><tr><th>Role</th><th>core 의 write 권한 (domain 별)</th><th>audit</th><th>compliance</th></tr></thead>
 <tbody>
 <tr><td><code>tx_api_rw</code><br/>(거래 API)</td>
-  <td>customer · counterparty · transaction.withdrawal_execution RW · 나머지 domain R</td>
+  <td>customer · counterparty · transaction.transaction_execution RW · 나머지 domain R</td>
   <td>—</td>
   <td>R</td></tr>
 <tr><td><code>webhook_writer</code><br/>(Webhook worker)</td>
@@ -330,7 +332,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer rol
 
 <h4>AP-8: omnibus vault 의 subledger 무결성 검증 누락</h4>
 <p>
-<strong>실수</strong>: omnibus 패턴 시 customer_balance_subledger 의 자체 변조 방지 매커니즘 없음.
+<strong>실수</strong>: omnibus 패턴 시 customer_ledger 의 자체 변조 방지 매커니즘 없음.
 <strong>결과</strong>: DBA 가 row 변경해도 detection 불가 → 외부 감사 시 정합성 증명 불가.
 <strong>대응</strong>: subledger 에 hash chain 또는 정기 cross-DB reconciliation log. <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.4 절 customer_ledger + <a href="tables-audit.html">15. Audit · AML · Travel Rule</a> 15.3 절 의 hash chain 패턴 참조.
 </p>

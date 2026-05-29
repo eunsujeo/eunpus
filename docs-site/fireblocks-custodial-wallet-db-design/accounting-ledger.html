@@ -42,6 +42,8 @@
 <li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
 <li><a href="sm-webhook.html">13. Webhook 처리</a></li>
 <li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
+<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
 <li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
@@ -65,131 +67,32 @@
 <div class="callout callout-warn">
 <div class="callout-title">본 영역의 출처 — vendor 공식 자료 부재</div>
 <p>
-Fireblocks 는 회계·원장·결산을 다루지 않는다 (vault 잔액 API · audit log 까지만 제공). 따라서 본 도메인은 다음 3 tier 로 출처를 구분한다.
+Fireblocks 는 회계·원장·결산을 다루지 않는다 (vault 잔액 API · audit log 까지만 제공). 따라서 본 도메인은 다음 <strong>3 등급 <span class="g" data-tip="본문 진술의 신뢰 수준을 3 단계로 분류 — ① vendor 공식 (URL 링크 있는 확정 사실) / ② 일반 회계 표준 (수탁업 / 자산운용업의 검증된 패턴) / ③ 저자 권장 (본 reference 의 work-in-progress · 자문 후 확정 필요)" tabindex="0">(?)</span></strong> (tier) 로 출처를 구분한다.
 </p>
 <ul style="margin-bottom:0">
 <li><strong>Fireblocks 공식 사실</strong> — Fireblocks 공식 URL 링크 명시 (vault balance · webhook event 등)</li>
-<li><strong>일반 수탁업 회계 패턴</strong> — 은행 · 자산운용업 표준 (이중부기 · 자산-부채-자기자본 항등식 · 외화환산 · 결산 등)</li>
+<li><strong>일반 수탁업 회계 패턴</strong> — 은행 · 자산운용업 표준 (<span class="g" data-tip="이중부기 (double-entry bookkeeping) = 모든 거래를 차변 (Debit · 자산 증가 또는 부채/자본 감소) 과 대변 (Credit · 자산 감소 또는 부채/자본 증가) 두 곳에 동시 기록하는 회계 방식. 차변 합계 = 대변 합계가 항상 같아 회계 항등식 자동 유지. 한 거래가 두 row 생성 → 회계 시스템의 표준" tabindex="0">이중부기 (?)</span> · <span class="g" data-tip="분개 (journal entry) = 회계 거래 하나를 차변 (왼쪽) + 대변 (오른쪽) 으로 나누어 기록하는 단위. 형식: (차) 계정과목 A 금액 / (대) 계정과목 B 같은 금액. 예: USDC 10 (13,000원) 입금 → (차) USDC 자산 13,000원 / (대) USDC 반환채무 13,000원. 본 wiki 에서는 general_ledger_entry 표가 분개를 저장 — 1 거래 = 최소 2 row (차/대 짝)" tabindex="0">분개 (?)</span> · <span class="g" data-tip="자산 (Assets) = 은행이 보유 / 통제하는 모든 가치 (현금 · 가상자산 vault · 부동산 등). 부채 (Liabilities) = 은행이 갚아야 할 것 (고객 예금 · 반환채무 · 차입금 등). 자기자본 (Equity) = 자산 − 부채. 모든 자산을 매각해 부채를 갚으면 은행에 남는 순수 자본. 회계 항등식: 자산 = 부채 + 자기자본 (항상 균형)" tabindex="0">자산-부채-자기자본 (?)</span> 항등식 · 외화환산 · 결산 등)</li>
 <li><strong>본 reference 의 권장 설계 (work-in-progress)</strong> — 본 영역의 패턴은 수탁업 설계 초기 단계의 일반 권장. 운영 시작 전 회계법인 / 외부 감사 / 내부 회계팀 검증 권장</li>
 </ul>
 </div>
 
 <div class="callout callout-warn">
-<div class="callout-title">★ 본 페이지의 정의 수준 — 도메인 view 까지</div>
+<div class="callout-title">★ 본 페이지의 정의 수준 — 도메인 view + 핵심 컬럼</div>
 <p style="margin-bottom:0">
-본 페이지는 <strong>회계 4 원장 구조 / 거래 매트릭스 / 회계 항등식 / 외화환산 정책 / 손익 계정 분류</strong> 같은 <strong>도메인 view (master 설계)</strong> 까지 정의한다. 각 표 (<code>customer_ledger</code> · <code>bank_ledger</code> · <code>delta_ledger</code> · <code>general_ledger_entry</code> · <code>general_ledger_snapshot</code> · <code>fx_rate_history</code> · <code>fx_revaluation_log</code> · <code>accounting_correction_log</code>) 의 <strong>column-level schema 는 정의하지 않음</strong>.
+본 페이지는 <strong>회계 4 원장 구조 / 거래 매트릭스 / 회계 항등식 / 외화환산 정책 / 손익 계정 분류 + 핵심 컬럼 (시나리오 / 회계 처리에 필요한 만큼)</strong> 을 정의한다. 각 표 (<code>customer_ledger</code> · <code>bank_ledger</code> · <code>delta_ledger</code> · <code>general_ledger_entry</code> · <code>general_ledger_snapshot</code> · <code>fx_rate_history</code> · <code>fx_revaluation_log</code> · <code>accounting_correction_log</code>) 의 <strong>완전한 column schema (type · constraint · index) 는 정의하지 않음</strong>.
 </p>
 <p style="margin-bottom:0;margin-top:8px">
-이유: 회계 column schema 는 <strong>회계법인 / KR 회계 표준 (K-GAAP / K-IFRS) 자문 + 외부 감사 의견</strong> 후 확정되어야 후속 변경 비용이 작다. 표명 + 책임 + 대표 column 까지만 정의하고, 정확한 column / type / constraint 는 별도 stage 에서 자문 후 추가 예정. 운영 시작 시점에는 본 페이지의 view 를 base 로 회계법인과 함께 column schema 확정 권장.
+이유: 회계 column schema 는 <strong>회계법인 / KR 회계 표준 (K-GAAP / K-IFRS) 자문 + 외부 감사 의견</strong> 후 확정되어야 후속 변경 비용이 작다. 표명 + 책임 + 시나리오 이해에 필요한 핵심 column 까지 본 페이지에서 정의 (예: customer_ledger 의 confirmed/pending 분리 · general_ledger_entry 의 debit_credit) — 완전한 type / constraint / index 는 별도 stage 에서 자문 후 추가 예정.
 </p>
 </div>
 
-<h3>18.1 회계 데이터 모델 — ER 다이어그램</h3>
-<p>
-회계 영역의 9 표 + 외부 영역의 참조 관계. 모든 거래는 결국 <code>general_ledger_entry</code> 의 이중부기 row 로 귀결 — 4 원장이 trigger / source 역할.
-</p>
-
-<div class="diagram">
-<pre class="mermaid">
-erDiagram
-  CL["customer_ledger"] {
-    string user_id "= bank_customer_id (외부 ref)"
-    string asset_id
-    numeric balance
-    string last_tx_id
-  }
-  CBS["customer_balance_snapshot"] {
-    date snapshot_date
-    string user_id
-    string asset_id
-    numeric balance
-    string current_hash "★ hash chain"
-  }
-  BL["bank_ledger"] {
-    enum account_type "treasury/gas/fee"
-    string asset_id
-    numeric balance
-  }
-  DL["delta_ledger"] {
-    enum delta_type
-    string asset_id
-    numeric amount
-    enum settlement_status
-  }
-  GLA["general_ledger_account"] {
-    string account_code PK
-    enum account_type "자산/부채/자본/수익/비용"
-    string description
-  }
-  GLE["general_ledger_entry"] {
-    string entry_id PK
-    string account_code FK
-    enum debit_credit
-    numeric amount
-    string source_ref "거래 원천 (vendor_tx_id 등)"
-    timestamp recorded_at
-  }
-  GLS["general_ledger_snapshot"] {
-    date snapshot_date
-    string account_code
-    numeric balance
-    string current_hash "★ hash chain"
-  }
-  FXR["fx_rate_history"] {
-    timestamp rate_date
-    string currency_pair
-    numeric rate "매매기준율"
-  }
-  FXL["fx_revaluation_log"] {
-    timestamp revaluation_at
-    string asset_id
-    numeric gain_loss
-  }
-  ACL["accounting_correction_log"] {
-    string correction_id PK
-    string original_entry_id FK
-    string reason
-    string approved_by
-  }
-
-  EXT_CV["customer.customer_vault<br/>(외부 도메인)"] {
-    string bank_customer_id "고객 식별"
-  }
-  EXT_VT["transaction.vendor_transaction<br/>(외부 도메인)"] {
-    string vendor_tx_id "거래 원천"
-  }
-
-  CL ||--o{ GLE : "이중부기 trigger"
-  BL ||--o{ GLE : "이중부기 trigger"
-  DL ||--o{ GLE : "정산 분개 trigger"
-  FXL ||--o{ GLE : "외화환산 분개"
-  ACL }o--|| GLE : "정정 original_entry_id"
-  GLA ||--o{ GLE : "계정과목 참조"
-  GLE }o--|| GLS : "일별 박제"
-  CL ||--o{ CBS : "일별 박제"
-  FXR ||--o{ FXL : "환율 source"
-  EXT_CV ||--o{ CL : "고객 매핑"
-  EXT_VT }o--|| GLE : "거래 원천 (source_ref)"
-</pre>
-</div>
-<p class="diagram-caption">
-회계 9 표 + 외부 도메인 (<code>customer.customer_vault</code> · <code>transaction.vendor_transaction</code>) 참조 관계. 모든 거래가 <code>general_ledger_entry</code> 로 귀결 (이중부기) → <code>general_ledger_snapshot</code> 일별 박제 + hash chain 무결성. <code>customer_balance_snapshot</code> · <code>fx_rate_history</code> · <code>fx_revaluation_log</code> 는 일말 cron 영역.
-</p>
-
-<h4>3 type 의 트리거 분류</h4>
-<ul>
-<li><strong>거래 trigger (실시간)</strong> — <code>customer_ledger</code> · <code>bank_ledger</code> · <code>delta_ledger</code> 갱신 시 매번 <code>general_ledger_entry</code> 이중부기 row INSERT (webhook handler 또는 거래 service 가 동시 commit)</li>
-<li><strong>외화환산 trigger (일말 cron)</strong> — <code>fx_rate_history</code> 의 당일 환율 + 전 자산 잔액으로 <code>fx_revaluation_log</code> 산출 → <code>general_ledger_entry</code> 외화환산 분개 INSERT</li>
-<li><strong>정정 trigger (Admin Quorum 매개)</strong> — 오류 발견 시 <code>accounting_correction_log</code> INSERT + 원본 entry 의 reverse 분개 + 새 entry. hash chain 위에 분개 추가 (변조 아님)</li>
-</ul>
-
-<h3>18.2 왜 회계 영역이 별도 도메인인가</h3>
+<h3>18.1 왜 회계 영역이 별도 도메인인가</h3>
 <p>
 Fireblocks 의 vault balance API · webhook event 는 <strong>"자산이 어디에 얼마나 있는가"</strong> 까지만 알려준다.
 은행 회계는 그 위에 다음을 추가로 요구한다:
 </p>
 <ul>
-<li><strong>이중부기</strong> — 모든 거래가 차변 / 대변 동시 갱신, 회계 항등식 유지</li>
+<li><strong>이중부기</strong> <span class="g" data-tip="이중부기 (double-entry bookkeeping) = 모든 거래를 차변 (Debit · 자산 증가 또는 부채/자본 감소) 과 대변 (Credit · 자산 감소 또는 부채/자본 증가) 두 곳에 동시 기록. 차변 합계 = 대변 합계 항상 균형 → 회계 항등식 자동 유지" tabindex="0">(?)</span> — 모든 거래가 차변 / 대변 동시 갱신, 회계 항등식 유지</li>
 <li><strong>고객 단위 잔액 (subledger)</strong> — Fireblocks 의 vault 잔액 ≠ 고객별 잔액 (특히 omnibus vault 시)</li>
 <li><strong>법정통화 환산</strong> — 가상자산을 원화 / 달러로 환산하여 총자산 산출</li>
 <li><strong>손익 인식</strong> — 수수료수익 · 외환매매수익 · 외화환산손익 · 가스비 등</li>
@@ -197,16 +100,16 @@ Fireblocks 의 vault balance API · webhook event 는 <strong>"자산이 어디�
 <li><strong>외부 감사 대응</strong> — 회계법인이 받아 보는 양식</li>
 </ul>
 
-<h3>18.3 3 계층 정합 — 온체인 / 오프체인 / 계정계</h3>
+<h3>18.2 3 계층 정합 — 온체인 / 오프체인 / 계정계</h3>
 <p>
 은행이 수탁형 디지털자산 사업을 할 때 자산·부채 정보가 3 계층에 흩어진다. 각 계층이 같은 거래에 대해 다른 표상을 가지며, <strong>3 계층 모두 정합</strong>해야 한다.
 </p>
 
 <div class="diagram">
 <pre class="mermaid">
-flowchart TB
+flowchart LR
   subgraph onchain["① 온체인 (블록체인 원장)"]
-    direction LR
+    direction TB
     Hot_in["Hot · 입금 vault<br/>(고객 받는 지갑)"]
     Hot_out["Hot · 출금 vault<br/>(고객 보내는 지갑)"]
     Cold["Cold vault<br/>(에어갭 · 80% 이상)"]
@@ -214,14 +117,14 @@ flowchart TB
   end
 
   subgraph offchain["② 오프체인 (수탁 시스템 원장)"]
-    direction LR
+    direction TB
     CustomerLedger["고객 원장<br/>(UserID 별 잔액·거래)"]
     BankLedger["은행 자체 원장<br/>(자체 보유분)"]
     DeltaLedger["델타 원장<br/>(미정산 차액)"]
   end
 
   subgraph legacy["③ 계정계 (기존 은행 시스템 · 법정통화)"]
-    direction LR
+    direction TB
     Acct_cust["고객 수신계좌<br/>(원화 · 달러)"]
     Acct_bank["은행 자체 수신계좌<br/>(원화 · 달러)"]
     Acct_gl["총계정 원장<br/>(자산·부채 통합)"]
@@ -246,12 +149,12 @@ flowchart TB
 거래 발생 시 3 계층이 동시 갱신, 정기 대사로 정합성 검증.
 </p>
 
-<h3>18.4 회계 항등식 — 시스템의 핵심 불변식</h3>
+<h3>18.3 회계 항등식 — 시스템의 핵심 불변식</h3>
 <blockquote>
-<strong>자산총액 = 반환채무 총액 + 자기자본</strong>
+<strong>자산 <span class="g" data-tip="자산 (Assets) = 은행이 보유 / 통제하는 모든 가치. 가상자산 vault 잔액 · 현금 · 부동산 · 채권 등. 회계 분개의 차변 측에 위치 — '가지고 있는 것'" tabindex="0">(?)</span> 총액 = 반환채무 <span class="g" data-tip="반환채무 (Customer-Restitution Obligation) = 은행이 고객에게 돌려줘야 하는 보관 자산. 부채 (Liabilities) 의 한 종류 — 수탁업의 가장 큰 부채 항목. 예: 고객 X 의 100 USDC 가 vault 에 있으면, 그 USDC 는 은행 자산이지만 동시에 같은 금액의 반환채무 (고객에게 갚을 의무)" tabindex="0">(?)</span> 총액 + 자기자본 <span class="g" data-tip="자기자본 (Equity) = 자산 − 부채. 은행이 모든 자산을 매각하고 모든 부채를 갚은 후 남는 순수 자본. '진짜 은행 소유' 자본. 음수면 자본잠식 (insolvency) — 고객 자산을 은행이 부족분 메우는 상태 = 즉시 시스템 정지 수준 사고" tabindex="0">(?)</span></strong>
 </blockquote>
 <p>
-모든 거래 후에 이 항등식이 깨지면 즉시 시스템 정지 수준의 사고. 일반 수탁업 회계의 표준 항등식 (이중부기의 기본).
+모든 거래 후에 이 항등식이 깨지면 즉시 시스템 정지 수준의 사고. 일반 수탁업 회계의 표준 항등식 (이중부기의 기본). 회계 항등식의 기본 패턴은 <a href="https://ko.wikipedia.org/wiki/%ED%9A%8C%EA%B3%84_%EB%93%B1%EC%8B%9D">회계 등식 (위키백과)</a> 참조.
 </p>
 
 <h4>구성 요소 (자산 측)</h4>
@@ -264,13 +167,13 @@ flowchart TB
 <h4>구성 요소 (부채 측 = 반환채무)</h4>
 <ul>
 <li>각 자산 종류별 <strong>고객 잔액 합계</strong> (고객 원장의 UserID 별 잔액의 합)</li>
-<li>고객별 미인출 자산은 모두 은행의 "반환 의무" 로 인식</li>
+<li>고객별 미인출 자산은 모두 은행의 "반환 의무" 로 인식 — <strong>고객이 출금 요청 시 은행이 돌려줘야 하는 의무량</strong></li>
 </ul>
 
 <h4>구성 요소 (자기자본)</h4>
 <ul>
 <li><strong>자기자본 = 자산총액 − 반환채무</strong> (산출 또는 별도 계정)</li>
-<li>은행의 자체 자산 + 누적 손익</li>
+<li>은행의 자체 자산 + 누적 손익 — <strong>예: 자산 1000 + 고객 반환채무 990 → 자기자본 10 (은행 본인의 순수 보유분)</strong></li>
 </ul>
 
 <div class="callout">
@@ -291,71 +194,121 @@ flowchart TB
 </ul>
 </div>
 
-<h3>18.5 4 원장 구조</h3>
+<h3 id="section-18-4">18.4 4 원장 구조</h3>
 <p>
-오프체인 수탁 원장은 4 가지로 분리. 각 원장이 책임과 데이터 특성이 다름.
+오프체인 수탁 원장은 4 가지로 분리. 각 원장이 책임과 데이터 특성이 다름. <strong>4 원장 모두 코인계 DB 에 위치</strong> — 일부는 운영 시 계정계와 sync 책임이 있음 (마지막 컬럼).
 </p>
+
+<div class="callout">
+<div class="callout-title">★ customer_ledger 잔액 = confirmed vs pending 분리</div>
+<p style="margin-bottom:0.5rem">
+거래소 (Upbit · Binance · 증권사 MTS) 의 표준 — customer_ledger 잔액은 <strong>3 가지 필드로 분리</strong>해야 misleading 표시 방지 + 회계 정합성 확보:
+</p>
+<ul style="margin-bottom:0.5rem">
+<li><strong><code>confirmed_balance</code></strong> — 정산 완료된 잔액. 출금 / 추가 거래 가능. vault 실제 잔액과 매칭 (L1 대사)</li>
+<li><strong><code>pending_in_balance</code></strong> — 입금 처리중 (Step 1 완료, Step 2 미완). 사용자 UI 에 "처리중 +X" 별도 표시. delta_ledger 미정산 자산과 매칭</li>
+<li><strong><code>pending_out_balance</code></strong> — 출금 처리중. 사용자 UI 에 "출금 처리중 -Y" 표시. delta_ledger 미정산 부채와 매칭</li>
+</ul>
+<p style="margin-bottom:0;color:var(--text-secondary);font-size:13px">
+<strong>왜 분리하나?</strong> ① 사용자가 "처리중" 임을 명확히 인지 (UI 거짓 표시 방지) · ② 출금 가능 잔액 검증 (pending 자산은 출금 못 함) · ③ Step 2 실패 시 confirmed 변동 없이 pending rollback 만 → phantom money 없음 · ④ L1 대사 simplification (confirmed = vault / pending = delta_ledger 1:1 매칭).
+</p>
+</div>
+
+<div class="callout">
+<div class="callout-title">★ 4 원장은 "수량" 을 기록한다 — 평가금액 (KRW) 은 derived · 3 layer</div>
+<p style="margin-bottom:0.5rem">
+원장의 <code>balance</code> 컬럼은 <strong>자산 단위 수량</strong> (예: USDC 100 · BTC 0.5) 만 기록. <strong>코인의 KRW 평가금액은 시세가 초~분 단위로 바뀌므로 원장에 직접 저장하지 않고</strong> 별도 시세 · 취득원가와 join 해서 derived. 책임이 다른 3 layer 로 분리:
+</p>
+<ul style="margin-bottom:0">
+<li><strong>① 운영 평가 (실시간)</strong> — UI 잔액 표시 · 트래블룰 100만원 임계 · 출금 한도 검증 · 거래 시점 환산. 시세 source = 외부 oracle / 거래소 ticker (초~분 단위). 영구 저장 X — <code>transaction.asset_value_krw</code> 에 거래 시점만 짧은 cache (TTL 1 시간 정도) 로 박제 (트래블룰 / 금감원 보고 증적)</li>
+<li><strong>② 고객 포지션 (취득원가 대비 P&amp;L)</strong> — 사용자가 보는 "내 자산 / 평단가 / 평가손익" 화면. 거래소 (Upbit · Binance) · 증권사 MTS 와 동일한 책임. <strong>거래 시점 KRW 시세를 취득원가 (cost basis) 로 누적</strong> → 현재 시세와 비교해 미실현 손익 표시. <a href="#section-18-8">18.8 고객 포지션 (평단가 · 미실현 손익)</a> 참조</li>
+<li><strong>③ 회계 평가 (일말 1회)</strong> — 평가손익 인식 · 분개. 시세 source = 종가 (한국은행 매매기준율 또는 거래소 종가). <code>fx_rate_history</code> 종가 × 잔액 → <code>fx_revaluation_log</code> → <code>general_ledger_entry</code> + <code>general_ledger_snapshot</code> (hash chain · 변조방지 박제). <a href="#section-18-7">18.7 평가 / 환산 처리</a> 참조</li>
+</ul>
+<p style="margin-top:0.5rem;margin-bottom:0;color:var(--text-secondary);font-size:13px">
+<strong>3 layer 는 같은 수량 원장 위에서 derived 하지만 시세 source · 저장 정책이 다름</strong>: ① = 실시간 query (저장 X) · ② = 거래 시점 KRW 누적 (취득원가) · ③ = 일말 종가 박제 (immutable). 외부 감사는 ③ 만 본다 (① · ② 는 운영 view).
+</p>
+</div>
 
 <div class="table-wrap">
 <table>
-<thead><tr><th>원장</th><th>책임</th><th>변경 패턴</th><th>대표 column</th></tr></thead>
+<thead><tr><th>원장</th><th>책임</th><th>변경 패턴</th><th>대표 column</th><th>계정계 sync</th></tr></thead>
 <tbody>
-<tr><td><strong>고객 원장</strong><br/>(customer_ledger)<br/><small style="color:var(--text-tertiary)">★ subledger</small></td>
-  <td>UserID 별 자산 종류별 잔액·거래 이력. 5.4 / 14. Deposit·Withdrawal Flow 에서 언급된 <code>customer_balance_subledger</code> 와 같은 영역 — 본 페이지에서 master 표로 정의. <strong>subledger (보조원장)</strong> = general ledger 의 한 계정 (예: "고객 자산 USDT 합계") 을 고객별 (예: 고객 X = 100 / 고객 Y = 250) 로 풀어서 기록한 표. 합계는 general ledger 의 해당 계정과 일치해야 함 (L1 대사)</td>
+<tr><td><strong>고객 원장</strong><br/>(customer_ledger)<br/><small style="color:var(--text-tertiary)">★ 보조원장 (subledger)</small></td>
+  <td>UserID 별 자산 종류별 잔액·거래 이력 (5.4 / 14. Deposit · Withdrawal Flow 에서 인용). <strong>subledger (보조원장)</strong> = general ledger 의 한 계정 (예: "고객 자산 USDT 합계") 을 고객별로 풀어서 기록한 표. <strong>confirmed (정산 완료) ↔ pending (처리중) 잔액 분리</strong> — pending 은 거래소 표준 UI 의 "처리중" 표시와 회계 정합 모두에 사용. confirmed 합계는 general ledger 의 해당 계정과 일치 (<span class="g" data-tip="L1 = Layer 1 = 4 단계 대사 (L1-L4) 의 가장 높은 빈도 단계. L1 = 실시간 잔액 대사 (거래마다 4 원장 합 = 총계정 잔액 검증) · L2 = 5분 주기 건별 대조 · L3 = 정산 검증 (온체인 confirmation 후) · L4 = 일별 온체인 검증 (블록체인 잔액 = 오프체인+델타). 상세는 19. 대사·결산·마감 19.2 절 참조" tabindex="0">L1 대사 (?)</span>)</td>
   <td>거래 이력 = 추가만 가능 / 잔액 = 캐시 (외부 source)</td>
-  <td>user_id · asset_id · balance · last_tx_id</td></tr>
+  <td>user_id · asset_id · <strong>confirmed_balance · pending_in_balance · pending_out_balance</strong> · last_tx_id</td>
+  <td>—<br/><small style="color:var(--text-tertiary)">디지털자산 only · 계정계 KRW 와 무관</small></td></tr>
 <tr><td><strong>은행 자체 원장</strong><br/>(bank_ledger)</td>
   <td>은행의 자체 보유분 (gas station · treasury · 수수료 수익 등)</td>
   <td>거래 이력 = 추가만 가능 / 잔액 = 캐시 (외부 source)</td>
-  <td>account_type · asset_id · balance</td></tr>
+  <td>account_type · asset_id · balance</td>
+  <td>⚠️ 부분<br/><small style="color:var(--text-tertiary)">KRW 부분 (treasury KRW · 수수료 수익 KRW) 은 계정계 잔액과 정합 필요</small></td></tr>
 <tr><td><strong>델타 원장</strong><br/>(delta_ledger)</td>
   <td>미정산 차액 — 오프체인 거래는 즉시 반영, 온체인 confirmation 전까지 pending</td>
   <td>append-only + 정산 플래그 (mutable)</td>
-  <td>delta_type · asset_id · amount · settlement_status</td></tr>
-<tr><td><strong>총계정 원장</strong><br/>(general_ledger)</td>
-  <td>자산·부채·자기자본의 통합 view (회계 항등식 enforce)</td>
-  <td>일별 스냅샷 = append-only / 잔액 = derived</td>
-  <td>account_code · debit · credit · balance · snapshot_date</td></tr>
+  <td>delta_type · asset_id · amount · settlement_status</td>
+  <td>—<br/><small style="color:var(--text-tertiary)">코인계 내부 차액 · 계정계 영향 없음</small></td></tr>
+<tr><td><strong>총계정 원장</strong><br/>(general_ledger_entry + general_ledger_snapshot)</td>
+  <td>자산·부채·자기자본의 통합 view (회계 항등식 enforce). <code>general_ledger_entry</code> = 이중부기 분개 row (1 거래 = N row) · <code>general_ledger_snapshot</code> = 일말 잔액 박제</td>
+  <td>entry = append-only / snapshot = append-only + hash chain / 잔액 = derived</td>
+  <td>entry: entry_id · account_code · debit_credit · amount · source_ref · recorded_at<br/><small style="color:var(--text-tertiary)">snapshot: snapshot_date · account_code · balance · current_hash</small></td>
+  <td>✅ 필수<br/><small style="color:var(--text-tertiary)">일말 마감 후 계정계 회계로 push (회계 통합)</small></td></tr>
 </tbody>
 </table>
 </div>
 
-<h4>3 DB 매핑</h4>
+<div class="callout">
+<div class="callout-title">delta_ledger 가 필요한 이유 — 4 가지</div>
+<ul style="margin-bottom:0">
+<li><strong>UX</strong> — 사용자가 스왑 / 온램프 / 오프램프 요청 시 외부 정산 (수 분 ~ 수 시간) 을 기다리지 않고 즉시 UI 반영. 사용자 응답 시간 SLA 충족</li>
+<li><strong>회계 항등식 유지</strong> — Step 1 시점에 자산 vault 가 실제 변동되지 않았는데 customer_ledger 만 변동하면 항등식이 깨짐. delta_ledger 의 미정산 자산/부채 row 가 이 gap 을 매개</li>
+<li><strong>외부 감사 추적</strong> — 정산 지연 거래의 시점 / 원인 / 정산 완료 시점이 별도 audit trail. <code>delta_ledger.settlement_status</code> 의 ageing 모니터링으로 stuck pending detection</li>
+<li><strong>대사 명확화</strong> — <a href="reconciliation-close.html">19. 대사·결산·마감</a> 의 L1 대사 (실시간 잔액 검증) 시 "customer_ledger 합 ≠ on-chain vault 합" 인 경우 delta_ledger 의 pending 합으로 균형 검증 가능</li>
+</ul>
+</div>
+
+<h4>3 격리 영역 매핑</h4>
 <p>
-본 reference 의 3 DB (<a href="db-split.html">3. DB 분할</a>) 와 4 원장의 매핑:
+본 reference 의 3 격리 영역 (<a href="db-split.html">3. DB 분할</a>) 과 4 원장의 매핑:
 </p>
 <ul>
-<li><strong>core 영역</strong> — 고객 vault 라인 (customer_vault · customer_asset_wallet · customer_deposit_address) + counterparty registry. 4 원장 자체는 여기 없음</li>
-<li><strong>core 영역</strong> — <strong>4 원장 모두 위치</strong>. customer_ledger / bank_ledger / delta_ledger 는 webhook 으로 자동 갱신. general_ledger 는 application 이 derived (이중부기 row 를 application 이 직접 INSERT). 5년 보존</li>
+<li><strong>core / customer domain</strong> — 고객 vault 라인 (customer_vault · customer_asset_wallet · customer_deposit_address) + counterparty registry. 4 원장 자체는 여기 없음 (참조만)</li>
+<li><strong>core / accounting domain</strong> — <strong>4 원장 모두 위치</strong>. customer_ledger / bank_ledger / delta_ledger 는 webhook 으로 자동 갱신. general_ledger_entry 는 application 이 derived (이중부기 row 를 application 이 직접 INSERT). 5년 보존</li>
 <li><strong>compliance 영역</strong> — 회계 영역의 외부 보고 (금감원 / 회계법인) 결과만</li>
 </ul>
 
-<h3>18.6 거래 유형별 원장 영향 매트릭스</h3>
+<h3>18.5 거래 유형별 원장 영향 매트릭스</h3>
 <p>
-수탁업의 6 가지 대표 거래 유형 × 4 원장 + 계정계 (법정통화) 영향. 거래마다 어느 원장을 갱신하는지 사전 정의. <strong>SND</strong> = Send (송금), <strong>RECV</strong> = Receive (수취) 약어.
+수탁업의 6 가지 대표 거래 유형 × 4 원장 + 계정계 (법정통화) 영향. 거래마다 어느 원장을 갱신하는지 사전 정의.
+</p>
+<p style="color:var(--text-secondary);font-size:13px">
+<strong>범례</strong>: <strong>○</strong> = 해당 원장 / 영역 갱신됨 · <strong>−</strong> = 영향 없음 · <strong>온체인</strong> = vault 의 on-chain 잔액 변동 (= 블록체인에 broadcast 발생).
 </p>
 
 <div class="table-wrap">
 <table>
 <thead><tr><th>거래 유형</th><th>온체인</th><th>고객 원장</th><th>은행 원장</th><th>델타 원장</th><th>총계정 변화</th></tr></thead>
 <tbody>
-<tr><td><strong>Stablecoin Mint</strong><br/>(은행 발행 — <em>은행이 stablecoin 발행자일 때만 적용</em>)</td><td>○</td><td>−</td><td>○</td><td>−</td><td>자산 ↑</td></tr>
-<tr><td><strong>온램프</strong><br/>(법정통화 → stablecoin)</td><td>−</td><td>○</td><td>○</td><td>○</td><td>부채 ↑</td></tr>
-<tr><td><strong>내부 이체 (SND)</strong><br/>(고객 → 고객, on-chain 거래 없음)</td><td>−</td><td>○</td><td>−</td><td>−</td><td>−</td></tr>
-<tr><td><strong>외부 수취 (RECV)</strong><br/>(외부 → 은행 vault)</td><td>○</td><td>○</td><td>−</td><td>−</td><td>자산·부채 ↑</td></tr>
-<tr><td><strong>자산 스왑</strong><br/>(stablecoin A → B)</td><td>−</td><td>○</td><td>○</td><td>○</td><td>−</td></tr>
-<tr><td><strong>오프램프</strong><br/>(stablecoin → 법정통화)</td><td>−</td><td>○</td><td>○</td><td>○</td><td>부채 ↓</td></tr>
+<tr><td><strong>외부 입금</strong><br/>(다른 wallet/거래소 → 은행 vault — <em>외부 trigger · 사용자 요청 없음 · 회계만</em>)</td><td>○</td><td>○</td><td>−</td><td>−</td><td>자산·부채 ↑</td></tr>
+<tr><td><strong>외부 출금</strong><br/>(은행 vault → 외부 wallet/거래소 — <em>사용자 요청</em>)</td><td>○</td><td>○</td><td>○ (수수료)</td><td>○</td><td>부채 ↓ + 수익 ↑</td></tr>
+<tr><td><strong>내부 이체</strong><br/>(고객 A → 고객 B · off-chain only · on-chain 거래 없음)</td><td>−</td><td>○</td><td>−</td><td>−</td><td>−</td></tr>
+<tr><td><strong>자산 스왑</strong><br/>(stablecoin A → B — <em>사용자 요청 · JV burn + Circle mint 또는 외부 거래소 매개</em>)</td><td>○ (vault 송수신)</td><td>○</td><td>○</td><td>○</td><td>−</td></tr>
+<tr><td><strong>온램프</strong><br/>(KRW → stablecoin — <em>사용자 요청 · JV mint 또는 Circle/거래소 조달</em>)</td><td>○ (vault 입금)</td><td>○</td><td>○</td><td>○</td><td>부채 ↑</td></tr>
+<tr><td><strong>오프램프</strong><br/>(stablecoin → KRW — <em>사용자 요청 · JV burn 또는 Circle/거래소 처분</em>)</td><td>○ (vault 출금)</td><td>○</td><td>○</td><td>○</td><td>부채 ↓</td></tr>
 </tbody>
 </table>
 </div>
+<p style="color:var(--text-secondary);font-size:13px">
+<strong>외부 입금 vs 온램프 차이</strong>: 둘 다 stablecoin 이 vault 로 들어오지만 trigger 가 다름. <strong>외부 입금</strong> = 다른 누군가가 송금 (외부 trigger · 은행은 회계만 처리). <strong>온램프</strong> = 사용자가 KRW 로 stablecoin 매입 요청 (사용자 trigger · 은행이 JV/Circle 호출해 조달). <strong>Stablecoin Mint 는 매트릭스에 별도 행 없음</strong> — KRWK 발행자가 JV (은행 ≠ 발행자) 이므로 온램프의 part 로 처리.
+</p>
 
 <h4>관찰 — 거래 복잡도</h4>
 <ul>
-<li><strong>가장 가벼움</strong>: 내부 이체 (고객 원장만)</li>
-<li><strong>가장 복잡</strong>: 온램프 · 스왑 · 오프램프 (4 원장 동시 갱신, 트랜잭션 원자성 critical)</li>
-<li><strong>특이</strong>: 외부 수취 — 자산·부채 동시 증가, 자기자본 변동 없음 (양변 균등 증가)</li>
-<li><strong>온체인 발생</strong>: Mint · 외부 수취 (vault 의 실제 입금)</li>
-<li><strong>온체인 미발생</strong>: 내부 이체 · 스왑 (오프체인 원장 갱신만, 추후 정산)</li>
+<li><strong>가장 가벼움</strong>: 내부 이체 (고객 원장만 갱신 · on-chain 거래 없음)</li>
+<li><strong>가장 복잡</strong>: 온램프 · 자산 스왑 · 오프램프 (4 원장 동시 갱신, 트랜잭션 원자성 critical · delta_ledger 필수)</li>
+<li><strong>특이</strong>: 외부 입금 — 자산·부채 동시 증가, 자기자본 변동 없음 (양변 균등 증가)</li>
+<li><strong>온체인 발생</strong>: 외부 입금 / 출금 · 온램프 (vault 입금) · 오프램프 (vault 출금) · 자산 스왑 (vault 송수신)</li>
+<li><strong>온체인 미발생</strong>: 내부 이체 (오프체인 원장 갱신만)</li>
 </ul>
 
 <div class="callout callout-warn">
@@ -363,78 +316,220 @@ flowchart TB
 <p style="margin-bottom:0">
 온램프 / 스왑 / 오프램프 는 4 원장을 한 transaction 으로 갱신해야 함. 그러나 본 reference 의 3 DB 가
 서로 분리되어 있어 <strong>multi-DB transaction 불가능</strong>.
-해결: <strong>outbox pattern</strong> — core 영역에 결정 row + outbox row 동시 commit, worker 가 외부 시스템 (계정계 / AML) 으로 비동기 복제.
+해결: <strong><span class="g" data-tip="Outbox Pattern = 분산 시스템에서 'DB 갱신 + 외부 시스템 호출' 을 원자적으로 처리하는 표준 패턴. 같은 DB 안에 outbox 표를 두고 거래 row + outbox row 를 한 transaction 으로 commit → 별도 worker 가 outbox 를 폴링해 외부로 비동기 전송. 속성: at-least-once delivery · atomic with business data · eventual consistency. 거래소 / 은행에서 광범위하게 검증된 패턴 (수신측 idempotency + 메시지 순서 보장 + 모니터링 필요). 도구: 자체 worker (cron+JDBC) · CDC (Debezium+Kafka) · Axon/Eventuate" tabindex="0">outbox pattern (?)</span></strong> — core 영역에 결정 row + outbox row 동시 commit, worker 가 외부 시스템 (계정계 / AML) 으로 비동기 복제.
 실패 시 idempotent retry. eventual consistency 보장. 출금 lifecycle 의 multi-system commit 흐름은 <a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a> 참조.
 </p>
 </div>
 
-<h3>18.7 시나리오별 데이터 흐름 (저자 예시)</h3>
+<h3>18.6 시나리오별 데이터 흐름</h3>
 <p>
-대표 4 시나리오의 데이터 변경 흐름. 각 시나리오마다 어느 표가 INSERT / UPDATE 되는지 + 이중부기 분개의 형태. 본 시나리오는 저자 정리이며 실제 분개는 회계법인 자문 후 확정.
+대표 8 시나리오의 데이터 변경 흐름. 각 시나리오마다 어느 표가 INSERT / UPDATE 되는지 + 이중부기 분개의 형태.
+</p>
+<p style="color:var(--text-secondary);font-size:13px">
+<strong>분개 표기 읽는 법</strong>: <code>(차) 계정과목 A 금액 / (대) 계정과목 B 금액</code> — 왼쪽 = <strong>차변</strong> (Debit) · 오른쪽 = <strong>대변</strong> (Credit). 차변 합계 = 대변 합계가 항상 같아야 함 (이중부기). 분개 정의는 18 페이지 intro 의 tooltip 참조.
 </p>
 
+<div class="callout">
+<div class="callout-title">분개 instinct 충전 — 차변/대변 부호 룰 + 6 가지 예시</div>
+<p style="margin-bottom:0.5rem">
+시나리오 분개를 읽기 전 4 줄 룰 + 일상 → 은행 context 예시로 instinct 충전.
+</p>
+
+<h5 style="margin-bottom:0.5rem">차변/대변 부호 — 4 줄 룰</h5>
+<div class="table-wrap">
+<table>
+<thead><tr><th>항목</th><th>증가 시</th><th>감소 시</th></tr></thead>
+<tbody>
+<tr><td><strong>자산</strong></td><td>(차) 차변</td><td>(대) 대변</td></tr>
+<tr><td><strong>부채</strong></td><td>(대) 대변</td><td>(차) 차변</td></tr>
+<tr><td><strong>자기자본 (수익)</strong></td><td>(대) 대변</td><td>(차) 차변</td></tr>
+<tr><td><strong>자기자본 (비용)</strong></td><td>(차) 차변</td><td>(대) 대변</td></tr>
+</tbody>
+</table>
+</div>
+<p style="margin-bottom:0.5rem;color:var(--text-secondary);font-size:13px">
+핵심 invariant: <strong>차변 합계 = 대변 합계</strong> (항상). 깨지면 분개 오류.
+</p>
+
+<h5 style="margin-bottom:0.5rem">예시 6 가지 — 일상 → 본 wiki context</h5>
+
+<p style="margin-bottom:0.3rem"><strong>예 1 — 점심값 1만 원을 카드로 결제</strong></p>
+<pre style="background:#f7f7f7;padding:10px;border-radius:6px;font-size:13px;margin:0 0 0.5rem 0"><code>(차) 식비           10,000원    ← 비용 ↑ (자기자본 감소)
+(대) 카드 미결제금   10,000원    ← 부채 ↑</code></pre>
+
+<p style="margin-bottom:0.3rem"><strong>예 2 — 월급 300만 원을 통장으로 받음</strong></p>
+<pre style="background:#f7f7f7;padding:10px;border-radius:6px;font-size:13px;margin:0 0 0.5rem 0"><code>(차) 통장 잔액     3,000,000원   ← 자산 ↑
+(대) 급여수익      3,000,000원   ← 수익 (자기자본 ↑)</code></pre>
+
+<p style="margin-bottom:0.3rem"><strong>예 3 — 카페에서 커피 5,000원 현금 판매</strong></p>
+<pre style="background:#f7f7f7;padding:10px;border-radius:6px;font-size:13px;margin:0 0 0.5rem 0"><code>(차) 현금           5,000원    ← 자산 ↑
+(대) 매출           5,000원    ← 수익 (자기자본 ↑)</code></pre>
+
+<p style="margin-bottom:0.3rem"><strong>예 4 — 친구한테 10만 원 빌려줌</strong></p>
+<pre style="background:#f7f7f7;padding:10px;border-radius:6px;font-size:13px;margin:0 0 0.5rem 0"><code>(차) 대여금         100,000원   ← 자산 ↑ (받을 권리)
+(대) 현금           100,000원   ← 자산 ↓</code></pre>
+
+<p style="margin-bottom:0.3rem"><strong>예 5 — 친구가 그 10만 원을 갚음</strong></p>
+<pre style="background:#f7f7f7;padding:10px;border-radius:6px;font-size:13px;margin:0 0 0.5rem 0"><code>(차) 현금           100,000원   ← 자산 ↑
+(대) 대여금         100,000원   ← 자산 ↓ (예 4 의 역방향)</code></pre>
+
+<p style="margin-bottom:0.3rem"><strong>예 6 — 본 wiki: 고객 X 가 USDC 100 입금 (은행 입장)</strong></p>
+<pre style="background:#f7f7f7;padding:10px;border-radius:6px;font-size:13px;margin:0 0 0.5rem 0"><code>(차) USDC 자산 vault     100   ← 은행 자산 ↑ (vault 에 받음)
+(대) USDC 반환채무 (X)   100   ← 은행 부채 ↑ (X 에게 갚을 의무)</code></pre>
+<p style="margin-bottom:0;color:var(--text-secondary);font-size:13px">
+은행은 "남의 돈을 보관" 하는 구조 → 고객 입금 = 자산 ↑ <strong>동시에</strong> 부채 ↑ (균등 증가, 자기자본 변동 0). 본 wiki 의 시나리오 ① 외부 입금이 정확히 이 패턴. 출금은 역방향 + 수수료수익 인식.
+</p>
+</div>
+
+<div class="callout">
+<div class="callout-title">분개의 DB row 모델 — 1 표 · N row (표 2 개 아님)</div>
+<p style="margin-bottom:0.5rem">
+분개 1 건 = <strong><code>general_ledger_entry</code> 표 1 개 안에 N row</strong> (최소 차변 1 + 대변 1). <strong>표 2 개 아님</strong> — 차변 / 대변 도 같은 표의 row 들 (debit_credit 컬럼으로 구분).
+</p>
+
+<h5 style="margin-bottom:0.5rem">실제 DB 모습 — 고객 X 가 USDC 100 입금</h5>
+<div class="table-wrap">
+<table>
+<thead><tr><th>entry_id</th><th>account_code</th><th>debit_credit</th><th>amount</th><th>source_ref</th></tr></thead>
+<tbody>
+<tr><td><code>gle_001</code></td><td><code>ASSET_USDC_VAULT</code></td><td><strong>DEBIT</strong></td><td>100</td><td><code>txr_xxx</code></td></tr>
+<tr><td><code>gle_002</code></td><td><code>LIAB_RETURN_USDC_X</code></td><td><strong>CREDIT</strong></td><td>100</td><td><code>txr_xxx</code></td></tr>
+</tbody>
+</table>
+</div>
+<p style="margin-bottom:0.5rem;color:var(--text-secondary);font-size:13px">
+같은 표 안 2 row · 같은 <code>source_ref</code> (transaction_request_id) 로 묶임 · <code>debit_credit</code> 컬럼으로 차변 / 대변 구분 · amount 합 동일 (100 = 100).
+</p>
+
+<h5 style="margin-bottom:0.5rem">거래마다 row 수가 다름</h5>
+<div class="table-wrap">
+<table>
+<thead><tr><th>거래</th><th>row 수</th><th>분개 구성</th></tr></thead>
+<tbody>
+<tr><td>단순 입금 (시나리오 ①)</td><td><strong>2</strong></td><td>(차) 자산 +100 / (대) 부채 +100</td></tr>
+<tr><td>출금 + 수수료 (시나리오 ② Step 2)</td><td><strong>3</strong></td><td>(차) 부채 -101 / (대) 자산 -100 + 수익 +1</td></tr>
+<tr><td>자산 스왑 Step 1 (시나리오 ④)</td><td><strong>4</strong></td><td>KRWK 부채 ↓ · USDC 부채 ↑ · USDC 미정산 자산 ↑ · KRWK 미정산 부채 ↑</td></tr>
+<tr><td>자산 스왑 Step 2 정산</td><td><strong>4</strong></td><td>양변 미정산 cleared + 실제 vault 자산 이동</td></tr>
+<tr><td>일말 외화환산 (자산 1 종류)</td><td><strong>2</strong></td><td>(차) 환산손익 / (대) 부채 평가증가</td></tr>
+</tbody>
+</table>
+</div>
+
+<h5 style="margin-bottom:0.5rem">왜 1 표 (`general_ledger_entry`) 안에?</h5>
+<ul style="margin-bottom:0.5rem">
+<li>모든 분개 row 가 <strong>같은 구조</strong> (account_code · debit_credit · amount · source_ref · recorded_at) → 단일 표로 통일</li>
+<li>회계 query 단순 — "전체 자산 합" / "전체 부채 합" 등을 단일 표에서 GROUP BY 로 산출</li>
+<li>같은 거래의 rows 는 <code>source_ref</code> (예: <code>transaction_request_id</code>) 로 묶임 — 한 거래의 모든 분개 row 를 1 query 로 조회</li>
+</ul>
+
+<h5 style="margin-bottom:0.5rem">핵심 invariant — 차변 합 = 대변 합 (DB 로 검증)</h5>
+<pre style="background:#f7f7f7;padding:10px;border-radius:6px;font-size:13px;margin:0 0 0.5rem 0"><code>SELECT source_ref,
+       SUM(CASE WHEN debit_credit='DEBIT'  THEN amount ELSE 0 END) AS debit_sum,
+       SUM(CASE WHEN debit_credit='CREDIT' THEN amount ELSE 0 END) AS credit_sum
+FROM general_ledger_entry
+GROUP BY source_ref
+HAVING SUM(CASE WHEN debit_credit='DEBIT' THEN amount ELSE -amount END) != 0;
+-- 결과 0 row 이면 모든 거래의 차/대 합 일치 (정합 OK)</code></pre>
+<p style="margin-bottom:0;color:var(--text-secondary);font-size:13px">
+L1 대사 (<a href="reconciliation-close.html">19. 대사·결산·마감</a> 19.2 절) 가 이 invariant 를 실시간으로 검증. 위반 시 alert + 거래 일시중단 고려.
+</p>
+</div>
+
 <h4>시나리오 ① 외부 입금 (외부 → 은행 vault)</h4>
+<p>
+<strong>2-step + pending_in 패턴</strong>. Step 1 (TRANSACTION_CREATED · 입금 관찰 + UI 처리중 표시) + Step 2 (BALANCE_UPDATED · block confirmation 후 회계 분개 + confirmed 반영). 외부 입금은 ramp 시나리오와 달리 <strong>Step 1 에 회계 분개 없음</strong> — 블록 confirmation 전이라 re-org 위험. pending_in 은 UI 표시 목적.
+</p>
 <div class="diagram">
 <pre class="mermaid">
 sequenceDiagram
   autonumber
+  participant Cust as 👤 고객
   participant FB as ☁️ Fireblocks
   participant Wh as Webhook handler
-  participant DO as deposit_observations
+  participant DO as deposit_observations<br/>(입금 관찰)
   participant AML as AML provider
   participant CL as customer_ledger
   participant GLE as general_ledger_entry
 
-  Note over FB: 고객 X 의 vault 로<br/>100 USDC 입금 (on-chain)
+  Note over FB,GLE: ★ Step 1 — 입금 관찰 + AML + UI 처리중
+  Note over FB: 고객 X 의 vault 로<br/>100 USDC 입금 (on-chain broadcast)
   FB-->>Wh: TRANSACTION_CREATED webhook
   Wh->>DO: INSERT (amount=100, aml_status=pending)
+  Wh->>CL: UPDATE 고객 X.USDC.pending_in += 100<br/>(UI: "입금 처리중 +100 — confirmation 대기")
   Wh->>AML: incoming address screening
   AML-->>Wh: clean
   Wh->>DO: UPDATE aml_status=clean
-  Note over FB: CONFIRMING → COMPLETED
+  Wh-->>Cust: 입금 발견 알림 (UI: 처리중)
+
+  Note over FB,GLE: ★ Step 2 — block confirmation 완료
+  Note over FB: N confirmations<br/>(CONFIRMING → COMPLETED)
   FB-->>Wh: BALANCE_UPDATED webhook
-  Wh->>CL: UPDATE 고객 X.USDC.balance += 100
+  Wh->>CL: UPDATE 고객 X.USDC.pending_in -= 100<br/>UPDATE 고객 X.USDC.confirmed += 100<br/>(UI: "입금 완료")
   Wh->>GLE: INSERT 이중부기 (2 row):<br/>(차) USDC 자산 vault +100<br/>(대) USDC 반환채무 +100
   Wh->>DO: UPDATE credited_to_customer_at
+  Wh-->>Cust: 입금 완료 알림 (push)
 </pre>
 </div>
 <p class="diagram-caption">
-회계 항등식 유지: <strong>자산 ↑ = 부채 ↑</strong> (균등 증가). 자기자본 변동 없음. omnibus 시 <code>customer_balance_subledger</code> 갱신은 별도 (5.4 절).
+회계 항등식 유지: <strong>자산 ↑ = 부채 ↑</strong> (균등 증가, Step 2 시점). 자기자본 변동 없음. <strong>외부 입금은 Step 1 분개 없음</strong> — block confirmation 전 re-org 가능성. omnibus 시 <code>customer_ledger</code> 갱신은 별도 (5.4 절).
 </p>
 
 <h4>시나리오 ② 외부 출금 (은행 vault → 외부, 수수료 1 USDC)</h4>
+<p>
+온/오프램프와 동일한 <strong>2-step + pending_out + delta_ledger 패턴</strong>. Step 1 (요청 즉시 — 잔액 lock + UI 처리중 표시) + Step 2 (Fireblocks COMPLETED webhook — vault 실제 출금 후).
+</p>
 <div class="diagram">
 <pre class="mermaid">
 sequenceDiagram
   autonumber
   participant Cust as 👤 고객
   participant App as 🏢 은행 App
-  participant WR as withdrawal_request
-  participant WE as withdrawal_execution
-  participant FB as ☁️ Fireblocks
+  participant WR as transaction_request
+  participant WE as transaction_execution
   participant CL as customer_ledger
-  participant BL as bank_ledger
+  participant DL as delta_ledger<br/>(미정산)
   participant GLE as general_ledger_entry
+  participant FB as ☁️ Fireblocks
+  participant BL as bank_ledger
 
+  Note over Cust,GLE: ★ Step 1 — 요청 + 잔액 lock + Fireblocks 제출
   Cust->>App: 출금 요청 100 USDC + 수수료 1
   App->>WR: INSERT (status=PENDING_VALIDATION)
-  App->>App: KYC/한도/잔액 검증
+  App->>App: KYC / 한도 / 잔액 검증<br/>(confirmed_balance ≥ 101)
+  App->>CL: UPDATE 고객 X.USDC.confirmed -= 101<br/>UPDATE 고객 X.USDC.pending_out += 101<br/>(잔액 lock + UI: "출금 처리중 -101")
+  App->>DL: INSERT (USDC, +101, pending) — vault 출금 미완료
+  App->>GLE: INSERT 이중부기 (Step 1 · 미정산):<br/>(차) USDC 반환채무 -101<br/>(대) USDC 출금 대기 부채 +101<br/>(부채 → 미정산 부채 이동 · 항등식 유지)
   App->>WR: UPDATE status=APPROVED_BY_BANK
   App->>FB: Create Transaction
   FB-->>App: vendor_tx_id
   App->>WE: INSERT (leg=1, amount=100)
   App->>WR: UPDATE status=SUBMITTED_TO_VENDOR
-  Note over FB: Approval / Signing / Broadcasting
+  App-->>Cust: 출금 요청 접수 알림 (UI: 처리중)
+
+  Note over FB,BL: ★ Step 2 — Fireblocks 처리 + vault 실제 출금
+  Note over FB: Approval / Signing / Broadcasting<br/>(수 분 ~ 수 시간)
   FB-->>App: COMPLETED webhook
-  App->>CL: UPDATE 고객 X.USDC.balance -= 101
+  App->>BL: UPDATE USDC vault 자산 -= 100 (실제 출금)
   App->>BL: UPDATE 수수료수익.USDC += 1
-  App->>GLE: INSERT 이중부기 (3 row):<br/>(차) USDC 반환채무 -101<br/>(대) USDC 자산 vault -100<br/>(대) USDC 수수료수익 +1
+  App->>CL: UPDATE 고객 X.USDC.pending_out -= 101<br/>(confirmed 는 Step 1 에 이미 차감됨 · UI: "출금 완료")
+  App->>DL: UPDATE delta_ledger (status=settled)
+  App->>GLE: INSERT 정산 분개 (Step 2):<br/>(차) USDC 출금 대기 부채 -101 (cleared)<br/>(대) USDC vault 자산 -100<br/>(대) USDC 수수료수익 +1
   App->>WE: UPDATE status=COMPLETED
   App->>WR: UPDATE status=COMPLETED
+  App-->>Cust: 출금 완료 알림 (push)
+
+  Note over App,DL: ★ 실패 / 취소 시 rollback
+  alt Fireblocks reject / TAP fail / broadcast 실패
+    FB-->>App: FAILED webhook
+    App->>CL: UPDATE pending_out -= 101 · confirmed += 101 (lock 해제)
+    App->>DL: UPDATE delta_ledger (status=cancelled)
+    App->>GLE: INSERT 정정 분개 (reverse Step 1 미정산)
+    App->>WR: UPDATE status=FAILED
+  end
 </pre>
 </div>
 <p class="diagram-caption">
-<strong>자산 ↓100 / 부채 ↓101 / 수익 ↑1</strong>. 항등식: 자산 변동 (−100) = 부채 변동 (−101) + 자본 변동 (+1) → 자기자본 +1 (수익 인식).
+<strong>5 가지 보강</strong>: ① 요청 시점 잔액 lock (pending_out + confirmed -=) — race condition 방지. ② UI "처리중" 표시. ③ delta_ledger 로 Step 1/Step 2 gap 매개. ④ Step 1 미정산 분개 → Step 2 cleared. ⑤ 실패 / 취소 rollback 명시. <strong>자산 ↓100 / 부채 ↓101 / 수익 ↑1</strong> 의 회계 효과는 Step 2 합산.
 </p>
 
 <h4>시나리오 ③ 내부 이체 (고객 A → 고객 B, off-chain only)</h4>
@@ -443,14 +538,14 @@ sequenceDiagram
 sequenceDiagram
   autonumber
   participant App as 🏢 은행 App
-  participant CL_A as customer_ledger (A)
-  participant CL_B as customer_ledger (B)
-  participant GLE as general_ledger_entry
+  participant CL_A as customer_ledger<br/>(고객 원장 · A)
+  participant CL_B as customer_ledger<br/>(고객 원장 · B)
+  participant GLE as general_ledger_entry<br/>(총계정원장 분개)
 
   Note over App: 고객 A → B 로 50 USDC 이체<br/>(on-chain 거래 없음)
   App->>App: A 잔액 / B 활성 / 정책 검증
-  App->>CL_A: UPDATE A.USDC.balance -= 50
-  App->>CL_B: UPDATE B.USDC.balance += 50
+  App->>CL_A: UPDATE A.USDC.confirmed -= 50
+  App->>CL_B: UPDATE B.USDC.confirmed += 50<br/>(off-chain only — vault 변동 없음 · 즉시 confirmed)
   App->>GLE: INSERT 이중부기 (2 row):<br/>(차) USDC 반환채무 A -50<br/>(대) USDC 반환채무 B +50
   Note over GLE: 자산 vault 갱신 없음<br/>(on-chain 변경 없음)
 </pre>
@@ -459,19 +554,305 @@ sequenceDiagram
 <strong>자산 변동 없음 / 부채 순변동 0</strong> (반환채무의 고객 간 이전만). 가장 가벼운 거래 — vault / on-chain / Fireblocks 호출 없음.
 </p>
 
-<h4>시나리오 ④ 일말 외화환산 (cron)</h4>
+<h4>시나리오 ④ 자산 스왑 (KRWK → USDC)</h4>
+<p>
+앞 3 시나리오 (외부 입금 · 외부 출금 · 내부 이체) 는 customer_ledger / bank_ledger / general_ledger_entry 만 갱신 — <strong>delta_ledger 는 사용 안 함</strong> (외부 입금 / 출금 / 내부 이체 / 일말 환산은 즉시-반영 vs 정산-지연 의 timing gap 이 없음). <strong>delta_ledger 는 "off-chain 즉시 반영 + on-chain settlement 시점 차이"</strong> 가 있는 경우에 사용 — 18.6 절 매트릭스의 <strong>온램프 · 자산 스왑 · 오프램프</strong> 3 케이스가 해당.
+</p>
+<p>
+본 시나리오는 자산 스왑 — <strong>원화스테이블코인 (KRWK) → USDC</strong> 케이스로 delta_ledger 패턴을 보여준다. 사용자 UI 에는 즉시 잔액 변동, 은행 측의 실제 vault 재조달 (외부 거래소 매개 또는 자체 swap) 은 별도 시점에 settlement. 다른 stablecoin pair (USDC → USDT 등) 도 동일 패턴.
+</p>
+<p style="color:var(--text-secondary);font-size:13px">
+가정: 시세 1,300 KRWK = 1 USDC. 사용자가 KRWK 1,300 을 USDC 1 로 스왑.
+</p>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Cust as 👤 고객
+  participant App as 🏢 은행 App
+  participant CL as customer_ledger<br/>(고객 원장)
+  participant DL as delta_ledger<br/>(델타 원장 · 미정산)
+  participant GLE as general_ledger_entry<br/>(총계정원장 분개)
+  participant Worker as settlement worker<br/>(외부 거래소 / Fireblocks Swap API)
+  participant BL as bank_ledger<br/>(은행 자체 원장)
+
+  Note over Cust,GLE: ★ Step 1 — off-chain 즉시 반영 (UI 즉시 변동)
+  Cust->>App: 스왑 요청 KRWK 1,300 → USDC 1
+  App->>App: 잔액 / 한도 / 시세 검증<br/>(1,300원/USD · confirmed KRWK ≥ 1,300)
+  App->>CL: UPDATE 고객 X.KRWK.confirmed -= 1,300<br/>UPDATE 고객 X.KRWK.pending_out += 1,300
+  App->>CL: UPDATE 고객 X.USDC.pending_in += 1<br/>(UI: "스왑 처리중 — KRWK -1,300 / USDC +1")
+  App->>DL: INSERT delta_ledger (2 row):<br/>(KRWK, +1,300, pending)<br/>(USDC, -1, pending)
+  App->>GLE: INSERT 이중부기 (4 row, 고객측):<br/>(차) KRWK 반환채무 -1,300<br/>(대) USDC 반환채무 +1,300원 (= 1 USDC)<br/>(차) USDC 미정산 자산 +1,300<br/>(대) KRWK 미정산 부채 +1,300
+  App-->>Cust: 스왑 요청 접수 알림 (UI: 처리중)
+
+  Note over Worker,BL: ★ Step 2 — settlement (수 분 ~ 수 시간 후)
+  Worker->>Worker: 채널 (a) JV 에 KRWK burn 요청 + Circle 에 USDC mint 요청<br/>채널 (b) 외부 거래소 KRWK/USDC pair 매매<br/>(Fireblocks 는 custodian — 발행 권한 없음)
+  Worker-->>App: 정산 완료<br/>(USDC vault 입금 / KRWK vault 출금)
+  App->>CL: UPDATE 고객 X.KRWK.pending_out -= 1,300<br/>UPDATE 고객 X.USDC.pending_in -= 1<br/>UPDATE 고객 X.USDC.confirmed += 1<br/>(UI: "스왑 완료")
+  App->>DL: UPDATE delta_ledger<br/>(status=settled)
+  App->>GLE: INSERT 정산 분개 (4 row, 은행측):<br/>(차) USDC vault 자산 +1<br/>(대) USDC 미정산 자산 -1,300 (cleared)<br/>(차) KRWK 미정산 부채 -1,300 (cleared)<br/>(대) KRWK vault 자산 -1,300
+  opt 매매 spread / 수수료 발생
+    App->>BL: UPDATE 수수료수익 / 환차익 인식
+    App->>GLE: INSERT 손익 분개
+  end
+</pre>
+</div>
+<p class="diagram-caption">
+<strong>2-step 패턴</strong>: Step 1 (즉시 — customer_ledger + delta_ledger pending) 에서 UI 응답성 확보, Step 2 (settlement — delta cleared + general_ledger 정산 분개) 에서 회계 정합성 회복. delta_ledger 의 pending row 가 회계 항등식 임시 균형 유지.
+</p>
+
+<h4>시나리오 ⑤ 온램프 (법정통화 → 스테이블코인)</h4>
+<p>
+사용자가 KRW (법정통화) 를 stablecoin 으로 충전. <strong>Mint 권한은 발행자 (issuer) 에게만</strong> — 은행은 발행자에게 요청만 함:
+</p>
+<ul>
+<li><strong>KRWK</strong> 발행자 = <strong>JV</strong> (joint venture · 원화스테이블코인 발행 컨소시엄)</li>
+<li><strong>USDC</strong> 조달 채널 = <strong>Circle 직접</strong> (1차 시장 · mint API) 또는 <strong>외부 거래소</strong> (2차 시장 · 매입)</li>
+<li>Fireblocks 는 <strong>custodian (보관자)</strong> 일 뿐 — vault 에 토큰 받기만. mint 권한 없음</li>
+</ul>
+<p>
+<strong>두 case 모두 2-step + delta_ledger 패턴</strong> — Step 1 (off-chain 즉시 · UI 응답성) + Step 2 (issuer/거래소 정산 + vault 도착). 차이는 시세 변동성과 조달 channel.
+</p>
+
+<h5>Case A — KRW → 원화스테이블코인 (JV mint 요청)</h5>
+<p style="color:var(--text-secondary);font-size:13px">
+가정: JV 가 KRWK 발행자. 1 KRW = 1 KRWK (1:1 peg). 사용자가 1,000 KRW 충전 → KRWK 1,000 받음. 은행 → JV mint 요청 → JV 가 mint 후 은행 vault 로 deliver.
+</p>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Cust as 👤 고객
+  participant App as 🏢 은행 App
+  participant Acct as 🏦 계정계
+  participant CL as customer_ledger
+  participant DL as delta_ledger<br/>(미정산)
+  participant Outbox as outbox
+  participant GLE as general_ledger_entry
+  participant JV as 🏛 JV<br/>(KRWK 발행자)
+  participant FB as ☁️ Fireblocks vault
+  participant BL as bank_ledger
+
+  Note over Cust,GLE: ★ Step 1 — off-chain 즉시 (UI 응답)
+  Cust->>App: 온램프 요청 KRW 1,000 → KRWK 1,000
+  App->>App: 검증 (KYC / 한도 / 계정계 잔액)
+  App->>CL: UPDATE 고객 X.KRWK.pending_in += 1,000<br/>(UI 에 "처리중 +1,000 KRWK" 표시)
+  App->>DL: INSERT (KRWK, -1,000, pending) — vault 미수
+  App->>Outbox: 계정계 KRW 1,000 차감 요청
+  App->>Outbox: JV 에게 KRWK 1,000 mint 요청
+  App->>GLE: INSERT 이중부기 (Step 1 · 미정산 계정만):<br/>(차) KRWK 미정산 자산 +1,000<br/>(대) KRWK 반환채무 +1,000
+  App-->>Cust: 충전 요청 접수 알림 (UI: 처리중 표시)
+
+  Note over Outbox,FB: ★ Step 2 — 계정계 차감 + JV mint + vault 도착
+  Outbox->>Acct: KRW 1,000 차감 (비동기)
+  Acct-->>App: 차감 완료
+  Outbox->>JV: KRWK 1,000 mint (target: 은행 vault)
+  JV->>FB: mint KRWK 1,000 → 은행 vault
+  FB-->>App: vault 입금 webhook (KRWK +1,000)
+  App->>BL: UPDATE KRWK vault 자산 += 1,000 (실제 도착)
+  App->>CL: UPDATE 고객 X.KRWK.pending_in -= 1,000<br/>UPDATE 고객 X.KRWK.confirmed += 1,000<br/>(UI: "사용 가능 +1,000")
+  App->>DL: UPDATE delta_ledger (status=settled)
+  App->>GLE: INSERT 정산 분개 (Step 2 · cleared):<br/>(차) KRWK vault 자산 +1,000<br/>(대) KRWK 미정산 자산 -1,000 (cleared)
+  App-->>Cust: 충전 완료 알림 (push)
+</pre>
+</div>
+<p class="diagram-caption">
+<strong>Mint 패턴 (1:1 peg)</strong> — 시세 변동 없음. Step 1 = 미정산 계정만 (vault 미도착). Step 2 (JV mint + vault 도착) 에서 실제 자산 계정으로 cleared. <strong>bank_ledger 는 Step 2 에서만 update</strong> — vault 실제 도착 후.
+</p>
+
+<h5>Case B — KRW → 달러스테이블코인 (Circle 직접 또는 외부 거래소)</h5>
+<p style="color:var(--text-secondary);font-size:13px">
+가정: 시세 1,300 KRW/USD. 사용자가 1,300 KRW → USDC 1 받음. 조달 채널 2 가지 — <strong>(a) Circle 직접</strong> (mint API · 1차 시장 · peg 안정) 또는 <strong>(b) 외부 거래소 매입</strong> (Coinbase 등 · 2차 시장 · spread 발생).
+</p>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Cust as 👤 고객
+  participant App as 🏢 은행 App
+  participant Acct as 🏦 계정계
+  participant CL as customer_ledger
+  participant DL as delta_ledger
+  participant Outbox as outbox
+  participant GLE as general_ledger_entry
+  participant Source as 🏛 Circle 또는 외부 거래소
+  participant FB as ☁️ Fireblocks vault
+  participant BL as bank_ledger
+
+  Note over Cust,GLE: ★ Step 1 — off-chain 즉시 (UI 응답)
+  Cust->>App: 온램프 요청 KRW 1,300 → USDC 1
+  App->>App: 검증 (시세 1,300원/USD)
+  App->>CL: UPDATE 고객 X.USDC.pending_in += 1<br/>(UI 에 "처리중 +1 USDC" 표시)
+  App->>DL: INSERT (USDC, -1, pending) — vault 미수
+  App->>Outbox: 계정계 KRW 1,300 차감 요청
+  App->>Outbox: USDC 1 조달 요청 (Circle 또는 거래소)
+  App->>GLE: INSERT 이중부기 (Step 1 · 미정산 계정):<br/>(차) USDC 미정산 자산 +1,300<br/>(대) USDC 반환채무 +1,300원 (= 1 USDC)
+  App-->>Cust: 충전 요청 접수 알림 (UI: 처리중)
+
+  Note over Outbox,FB: ★ Step 2 — 계정계 차감 + USDC 조달 + vault 도착
+  Outbox->>Acct: KRW 1,300 차감
+  Acct-->>App: 완료
+  alt 채널 (a) Circle 직접
+    Outbox->>Source: Circle mint API (USDC 1 → 은행 vault)
+    Source->>FB: mint USDC 1
+  else 채널 (b) 외부 거래소
+    Outbox->>Source: 거래소 USDC 1 매입 (KRW 1,300 + spread)
+    Source->>FB: USDC 1 transfer → 은행 vault
+  end
+  FB-->>App: vault 입금 webhook (USDC +1)
+  App->>BL: UPDATE USDC vault 자산 += 1 (실제 도착)
+  App->>CL: UPDATE 고객 X.USDC.pending_in -= 1<br/>UPDATE 고객 X.USDC.confirmed += 1<br/>(UI: "사용 가능 +1")
+  App->>DL: UPDATE delta_ledger (status=settled)
+  App->>GLE: INSERT 정산 분개 (Step 2):<br/>(차) USDC vault 자산 +1<br/>(대) USDC 미정산 자산 -1,300 (cleared)
+  opt 거래소 채널 — spread 발생
+    App->>GLE: INSERT 손익 분개 (외환매매수익 / 손실)
+  end
+  App-->>Cust: 충전 완료 알림 (push)
+</pre>
+</div>
+<p class="diagram-caption">
+<strong>조달 채널 2 가지</strong> — Circle 직접 (peg 안정 · spread 거의 없음) vs 외부 거래소 (시세 변동 · spread 인식). 두 channel 모두 동일 회계 구조. <strong>customer_ledger 는 Step 1 에 pending_in 만 update</strong> (UI: 처리중 표시), Step 2 (vault 도착) 에서 pending → confirmed transit. bank_ledger 는 Step 2 에서만 update.
+</p>
+
+<h4>시나리오 ⑥ 오프램프 (스테이블코인 → 법정통화)</h4>
+<p>
+사용자가 stablecoin 을 KRW 로 환전. 온램프의 역방향. <strong>Burn 권한은 발행자에게만</strong>:
+</p>
+<ul>
+<li><strong>KRWK</strong> burn → <strong>JV</strong> 에게 요청</li>
+<li><strong>USDC</strong> 처분 채널 = <strong>Circle redeem 직접</strong> (1차 시장 · burn) 또는 <strong>외부 거래소 매도</strong> (2차 시장)</li>
+<li>Fireblocks 는 vault 에서 토큰을 발행자/거래소로 보낼 뿐 — burn 권한 없음</li>
+</ul>
+
+<h5>Case A — 원화스테이블코인 → KRW (JV burn 요청)</h5>
+<p style="color:var(--text-secondary);font-size:13px">
+가정: JV 가 KRWK 발행자. 1:1 peg. 사용자가 KRWK 1,000 → KRW 1,000 환전. 은행 vault → JV 로 KRWK 송금 → JV 가 burn + KRW 환금.
+</p>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Cust as 👤 고객
+  participant App as 🏢 은행 App
+  participant CL as customer_ledger
+  participant DL as delta_ledger<br/>(미정산)
+  participant Outbox as outbox
+  participant GLE as general_ledger_entry
+  participant JV as 🏛 JV<br/>(KRWK 발행자)
+  participant FB as ☁️ Fireblocks vault
+  participant BL as bank_ledger
+  participant Acct as 🏦 계정계
+
+  Note over Cust,GLE: ★ Step 1 — off-chain 즉시 (UI 응답)
+  Cust->>App: 오프램프 요청 KRWK 1,000 → KRW 1,000
+  App->>App: 검증 (KYC / 한도 / 잔액 — confirmed_balance ≥ 1,000)
+  App->>CL: UPDATE 고객 X.KRWK.confirmed -= 1,000<br/>UPDATE 고객 X.KRWK.pending_out += 1,000<br/>(UI: "출금 처리중 -1,000 KRWK")
+  App->>DL: INSERT (KRWK, +1,000, pending) — vault 출금 미완료
+  App->>Outbox: JV 에게 KRWK 1,000 burn 요청
+  App->>Outbox: 계정계 KRW 1,000 입금 요청 (고객 X 계좌)
+  App->>GLE: INSERT 이중부기 (Step 1 · 미정산):<br/>(차) KRWK 반환채무 -1,000<br/>(대) KRWK 미정산 자산 -1,000
+  App-->>Cust: 환전 요청 접수 알림 (UI: 출금 처리중)
+
+  Note over Outbox,Acct: ★ Step 2 — JV burn + vault 출금 + 계정계 입금
+  Outbox->>JV: KRWK 1,000 transfer + burn 요청
+  JV->>FB: vault 에서 KRWK 1,000 차감 (JV 측으로 송금)
+  FB-->>App: vault 출금 webhook (KRWK -1,000)
+  JV->>JV: KRWK 1,000 burn
+  Outbox->>Acct: KRW 1,000 입금 (고객 X 계좌)
+  Acct-->>App: 입금 완료
+  App->>BL: UPDATE KRWK vault 자산 -= 1,000 (실제 출금)
+  App->>CL: UPDATE 고객 X.KRWK.pending_out -= 1,000<br/>(confirmed 는 Step 1 에 이미 차감됨)<br/>(UI: "출금 완료")
+  App->>DL: UPDATE delta_ledger (settled)
+  App->>GLE: INSERT 정산 분개 (Step 2):<br/>(차) KRWK 미정산 자산 +1,000 (cleared)<br/>(대) KRWK vault 자산 -1,000
+  App-->>Cust: 환전 완료 알림 (push)
+</pre>
+</div>
+<p class="diagram-caption">
+<strong>Burn 패턴 (1:1 peg)</strong> — JV 에게 burn 요청. Step 1 = 미정산 계정만. Step 2 (vault 출금 + JV burn + 계정계 입금) 에서 실제 자산 cleared. bank_ledger 는 Step 2 에서만 update — vault 실제 출금 후.
+</p>
+
+<h5>Case B — 달러스테이블코인 → KRW (Circle redeem 또는 외부 거래소)</h5>
+<p style="color:var(--text-secondary);font-size:13px">
+가정: 시세 1,310 KRW/USD. 사용자가 USDC 1 → KRW 받음. 처분 채널 2 가지 — <strong>(a) Circle redeem</strong> (mint 의 역방향 · 1차 시장) 또는 <strong>(b) 외부 거래소 매도</strong> (2차 시장 · spread 발생).
+</p>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Cust as 👤 고객
+  participant App as 🏢 은행 App
+  participant CL as customer_ledger
+  participant DL as delta_ledger
+  participant Outbox as outbox
+  participant GLE as general_ledger_entry
+  participant Source as 🏛 Circle 또는 외부 거래소
+  participant FB as ☁️ Fireblocks vault
+  participant BL as bank_ledger
+  participant Acct as 🏦 계정계
+
+  Note over Cust,GLE: ★ Step 1 — off-chain 즉시 (UI 응답)
+  Cust->>App: 오프램프 요청 USDC 1 → KRW
+  App->>App: 검증 (시세 1,310원/USD 확정 · confirmed_balance ≥ 1)
+  App->>CL: UPDATE 고객 X.USDC.confirmed -= 1<br/>UPDATE 고객 X.USDC.pending_out += 1<br/>(UI: "출금 처리중 -1 USDC")
+  App->>DL: INSERT (USDC, +1, pending) — vault 출금 미완료
+  App->>Outbox: USDC 1 처분 요청 (Circle 또는 거래소)
+  App->>GLE: INSERT 이중부기 (Step 1 · 미정산):<br/>(차) USDC 반환채무 -1,310 (= 1 USDC at 시세)<br/>(대) USDC 미정산 자산 -1,310
+  App-->>Cust: 환전 요청 접수 알림 (UI: 출금 처리중 · KRW 입금 대기)
+
+  Note over Outbox,Acct: ★ Step 2 — USDC 처분 + vault 출금 + 계정계 입금
+  alt 채널 (a) Circle redeem
+    Outbox->>Source: Circle redeem API (USDC 1 → KRW 1,300 + 환전 수수료)
+    Source->>FB: USDC 1 vault 출금
+  else 채널 (b) 외부 거래소 매도
+    Outbox->>Source: 거래소 USDC 1 매도 (시세 1,310 · spread 발생)
+    Source->>FB: USDC 1 vault 출금
+  end
+  FB-->>App: vault 출금 webhook (USDC -1)
+  Source->>Acct: KRW (~1,310 - 수수료) 입금 (고객 X)
+  Acct-->>App: 입금 완료
+  App->>BL: UPDATE USDC vault 자산 -= 1 (실제 출금)
+  App->>CL: UPDATE 고객 X.USDC.pending_out -= 1<br/>(confirmed 는 Step 1 에 이미 차감됨)<br/>(UI: "환전 완료")
+  App->>DL: UPDATE delta_ledger (settled)
+  App->>GLE: INSERT 정산 분개 (Step 2):<br/>(차) USDC 미정산 자산 +1,310 (cleared)<br/>(대) USDC vault 자산 -1
+  opt 매매 spread / 수수료
+    App->>GLE: INSERT 손익 분개 (외환매매수익 / 수수료수익)
+  end
+  App-->>Cust: 환전 완료 알림 (push)
+</pre>
+</div>
+<p class="diagram-caption">
+<strong>처분 채널 2 가지</strong> — Circle redeem (peg 안정) vs 외부 거래소 매도 (시세 변동). Step 1 = 미정산. Step 2 (USDC 처분 + vault 출금 + 계정계 입금) 에서 실제 자산 cleared. Case A 와 차이: Circle/거래소 매개 + 시세 변동 spread.
+</p>
+
+<h5>4 가지 케이스 요약</h5>
+<div class="table-wrap">
+<table>
+<thead><tr><th>거래</th><th>패턴</th><th>발행자 / 채널</th><th>외부 settlement</th><th>시세 의존</th></tr></thead>
+<tbody>
+<tr><td>온램프 Case A<br/>(KRW → KRWK)</td><td>Mint</td><td>JV (발행자)</td><td>JV mint + vault 도착</td><td>없음 (1:1 peg)</td></tr>
+<tr><td>온램프 Case B<br/>(KRW → USDC)</td><td>Mint 또는 Purchase</td><td>(a) Circle 직접<br/>(b) 외부 거래소</td><td>vault 도착</td><td>있음 (KRW/USD)</td></tr>
+<tr><td>오프램프 Case A<br/>(KRWK → KRW)</td><td>Burn</td><td>JV (발행자)</td><td>vault 출금 + JV burn + 계정계 입금</td><td>없음 (1:1 peg)</td></tr>
+<tr><td>오프램프 Case B<br/>(USDC → KRW)</td><td>Redeem 또는 Sell</td><td>(a) Circle redeem<br/>(b) 외부 거래소</td><td>vault 출금 + 계정계 입금</td><td>있음 (KRW/USD)</td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary);font-size:13px">
+<strong>모든 case 가 2-step + delta_ledger 패턴</strong> — Fireblocks 는 custodian (보관자) 일 뿐 mint/burn 권한 없음. 토큰 발행자 (JV / Circle) 또는 외부 거래소가 실제 mint/burn/매매를 수행하고 vault 와 송수신. <strong>bank_ledger 는 항상 Step 2 (vault 실제 변동 후) 에만 update</strong> — Step 1 에서 update 하면 블록체인 미반영 자산이 장부에 잡힘 (정합성 오류). 4 가지 case 의 차이는 <strong>peg 안정성</strong> (KRWK · Circle = 안정 / 거래소 = spread) 과 <strong>손익 인식 여부</strong> (거래소 경유 시 spread 손익).
+</p>
+
+<h4>시나리오 ⑦ 일말 외화환산 (cron)</h4>
 <div class="diagram">
 <pre class="mermaid">
 sequenceDiagram
   autonumber
   participant Cron as ⏰ 일말 cron (23:59 KST)
-  participant FXR as fx_rate_history
-  participant CL as customer_ledger
-  participant BL as bank_ledger
-  participant FXL as fx_revaluation_log
-  participant GLE as general_ledger_entry
-  participant CBS as customer_balance_snapshot
-  participant GLS as general_ledger_snapshot
+  participant FXR as fx_rate_history<br/>(환율 이력)
+  participant CL as customer_ledger<br/>(고객 원장)
+  participant BL as bank_ledger<br/>(은행 자체 원장)
+  participant FXL as fx_revaluation_log<br/>(외화환산 log)
+  participant GLE as general_ledger_entry<br/>(총계정원장 분개)
+  participant CBS as customer_balance_snapshot<br/>(고객 잔액 스냅샷)
+  participant GLS as general_ledger_snapshot<br/>(총계정원장 스냅샷)
 
   Note over Cron: trigger
   Cron->>FXR: SELECT 당일 환율<br/>(USDC: 1,010 KRW · 전일 1,000)
@@ -488,74 +869,16 @@ sequenceDiagram
 <strong>미실현 손익 인식 + 일별 박제</strong>. 환율 상승 → 외화 부채 평가 증가 → 환산손익 (자기자본 감소) 또는 평가이익 (자기자본 증가) 인식. 박제 시점부터 hash chain 으로 변조 방지.
 </p>
 
-<h4>시나리오 ⑤ 자산 스왑 (delta_ledger 패턴 — off-chain immediate + settlement)</h4>
-<p>
-앞 4 시나리오는 customer_ledger / bank_ledger / general_ledger_entry 만 갱신 — <strong>delta_ledger 는 사용 안 함</strong> (외부 입금 / 출금 / 내부 이체 / 일말 환산은 즉시-반영 vs 정산-지연 의 timing gap 이 없음). <strong>delta_ledger 는 "off-chain 즉시 반영 + on-chain settlement 시점 차이"</strong> 가 있는 경우에 사용 — 18.6 절 매트릭스의 <strong>온램프 · 자산 스왑 · 오프램프</strong> 3 케이스가 해당.
-</p>
-<p>
-본 시나리오는 자산 스왑 (스테이블코인 A → B) 으로 delta_ledger 패턴을 보여준다 — 사용자 UI 에는 즉시 잔액 변동, 은행 측의 실제 vault 재조달 (외부 거래소 매개 또는 자체 swap) 은 별도 시점에 settlement. 오프램프 (USDC → 원화) · 온램프 (원화 → USDC) 도 동일 패턴 적용.
-</p>
-<div class="diagram">
-<pre class="mermaid">
-sequenceDiagram
-  autonumber
-  participant Cust as 👤 고객
-  participant App as 🏢 은행 App
-  participant CL as customer_ledger
-  participant DL as delta_ledger
-  participant GLE as general_ledger_entry
-  participant Worker as settlement worker<br/>(외부 거래소 / Fireblocks Swap API)
-  participant BL as bank_ledger
-
-  Note over Cust,GLE: ★ Step 1 — off-chain 즉시 반영 (UI 즉시 변동)
-  Cust->>App: 스왑 요청 100 USDC → 100 USDT
-  App->>App: 잔액 / 한도 / 환율 검증
-  App->>CL: UPDATE 고객 X.USDC -= 100
-  App->>CL: UPDATE 고객 X.USDT += 100
-  App->>DL: INSERT delta_ledger (2 row):<br/>(USDC, +100, status=pending)<br/>(USDT, -100, status=pending)
-  App->>GLE: INSERT 이중부기 (4 row, 고객측):<br/>(차) USDC 반환채무 -100<br/>(대) USDT 반환채무 +100<br/>(차) USDT 미정산 자산 (delta) +100<br/>(대) USDC 미정산 부채 (delta) +100
-  App-->>Cust: 스왑 완료 알림 (UI 잔액 변동 ↑)
-
-  Note over Worker,BL: ★ Step 2 — settlement (수 분 ~ 수 시간 후)
-  Worker->>Worker: 외부 거래소 또는<br/>Fireblocks Swap API 매개<br/>100 USDC → 100 USDT 매매
-  Worker-->>App: 정산 완료<br/>(USDT vault 입금 / USDC vault 출금)
-  App->>DL: UPDATE delta_ledger<br/>(status=settled, settled_at)
-  App->>GLE: INSERT 정산 분개 (4 row, 은행측):<br/>(차) USDT vault 자산 +100<br/>(대) USDT 미정산 자산 -100 (delta cleared)<br/>(차) USDC 미정산 부채 -100 (delta cleared)<br/>(대) USDC vault 자산 -100
-  opt 매매 spread / 수수료 발생
-    App->>BL: UPDATE 수수료수익 / 환차익 인식
-    App->>GLE: INSERT 손익 분개
-  end
-</pre>
-</div>
-<p class="diagram-caption">
-<strong>2-step 패턴</strong>: Step 1 (즉시 — customer_ledger + delta_ledger pending) 에서 UI 응답성 확보, Step 2 (settlement — delta cleared + general_ledger 정산 분개) 에서 회계 정합성 회복. delta_ledger 의 pending row 가 회계 항등식 임시 균형 유지 (외부 정산 완료 전까지 자산/부채 양변 모두 미정산 표기).
-</p>
-
-<h5>delta_ledger 가 필요한 이유</h5>
-<ul>
-<li><strong>UX</strong> — 사용자가 스왑 / 온램프 / 오프램프 요청 시 외부 정산 (수 분 ~ 수 시간) 을 기다리지 않고 즉시 UI 반영. 사용자 응답 시간 SLA 충족</li>
-<li><strong>회계 항등식 유지</strong> — Step 1 시점에 자산 vault 가 실제 변동되지 않았는데 customer_ledger 만 변동하면 항등식이 깨진다. delta_ledger 의 미정산 자산/부채 row 가 이 gap 을 매개</li>
-<li><strong>외부 감사 추적</strong> — 정산 지연이 발생한 거래의 시점 / 원인 / 정산 완료 시점이 별도 audit trail. delta_ledger.settlement_status 의 ageing 모니터링으로 stuck pending detection</li>
-<li><strong>대사 명확화</strong> — L1 대사 시 (19.2 절) "customer_ledger 합 ≠ on-chain vault 합" 인 경우 delta_ledger 의 pending 합으로 균형 검증 가능</li>
-</ul>
-
-<h5>매트릭스의 다른 delta_ledger 케이스 (18.6 절 참조)</h5>
-<ul>
-<li><strong>온램프</strong> (법정통화 → stablecoin) — KRW 즉시 차감 (계정계) + USDC 즉시 증가 (customer_ledger) + delta_ledger pending → 외부 USDC 매입 settlement 후 cleared</li>
-<li><strong>오프램프</strong> (stablecoin → 법정통화) — USDC 즉시 차감 + KRW 약속 (계정계 입금 대기) + delta_ledger pending → 외부 USDC 매도 settlement 후 KRW 실 입금 + cleared</li>
-<li><strong>자산 스왑</strong> (본 시나리오) — 스테이블코인 A ↔ B</li>
-</ul>
-
-<h4>시나리오 ⑥ 정정 분개 (오류 발견 시)</h4>
+<h4>시나리오 ⑧ 정정 분개 (오류 발견 시)</h4>
 <div class="diagram">
 <pre class="mermaid">
 sequenceDiagram
   autonumber
   participant Op as 🏢 운영자<br/>(컴플라이언스 / 회계팀)
   participant AQ as Admin Quorum
-  participant ACL as accounting_correction_log
-  participant GLE as general_ledger_entry
-  participant Audit as audit_log_internal
+  participant ACL as accounting_correction_log<br/>(회계 정정 log)
+  participant GLE as general_ledger_entry<br/>(총계정원장 분개)
+  participant Audit as audit_log_internal<br/>(은행 자체 audit log)
 
   Note over Op: 오류 발견 — 5일 전 잘못된 분개
   Op->>AQ: 정정 승인 요청 (mobile push)
@@ -571,7 +894,182 @@ sequenceDiagram
 <strong>변조 없는 정정</strong>. 원본 entry 유지 + reverse + 정정 3 row 가 hash chain 위에 누적. 외부 감사 시 정정 이력 추적 가능 (<code>accounting_correction_log</code> + <code>audit_log_internal</code>).
 </p>
 
-<h3>18.8 손익 계정 분류 (저자 hypothesis)</h3>
+<h3 id="section-18-7">18.7 평가 / 환산 처리 (회계 layer)</h3>
+<p>
+본 절은 평가 3 layer (<a href="#section-18-4">18.4 4 원장 구조</a> callout 참조) 중 <strong>③ 회계 평가 (일말 1회)</strong> 에 한정. 운영 평가 (실시간 ①) 와 고객 포지션 (취득원가 ②) 은 본 절 범위 밖 — <a href="#section-18-8">18.8 고객 포지션</a> 참조.
+</p>
+<p>
+회계 평가는 <strong>마감 시점의 자산 잔액을 KRW 로 환산해 평가손익을 분개</strong>. 자산 분류에 따라 시세 source · 손익 계정이 다름:
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>자산 종류</th><th>예시</th><th>평가 방식</th><th>시세 source</th><th>손익 계정</th></tr></thead>
+<tbody>
+<tr><td><strong>법정통화 / stablecoin</strong></td>
+  <td>KRW-stablecoin · USDC · USDT</td>
+  <td><strong>외화환산</strong> (FX translation)</td>
+  <td>한국은행 매매기준율 / 고시환율</td>
+  <td>외화환산손익</td></tr>
+<tr><td><strong>변동성 자산</strong></td>
+  <td>BTC · ETH · 기타 altcoin</td>
+  <td><strong>시가평가</strong> (Mark-to-market)</td>
+  <td>외부 거래소 종가 / oracle / 시장 평균가</td>
+  <td>가상자산평가손익</td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary);font-size:13px">
+본 절의 패턴은 KR 외화 회계 표준 (매매기준율 + K-IFRS) 을 가상자산에 일반화한 권장. 가상자산이 K-IFRS 9 의 외환 분류에 해당하는지 자체가 hypothesis — 회계법인 / 외부 감사 검토 필수.
+</p>
+
+<h4>회계 평가의 3 가지 결정 사항</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>결정</th><th>옵션</th><th>권장 (저자)</th></tr></thead>
+<tbody>
+<tr><td><strong>평가 시점</strong></td>
+  <td>일말 / 월말</td>
+  <td>일말 평가 (일별 마감). 거래 시점 환산은 별도 cache (<code>asset_value_krw</code>) — 회계 평가와는 분리</td></tr>
+<tr><td><strong>시세 기준</strong></td>
+  <td>매매기준율 / 고시환율 / 시장환율 / 외부 oracle / 거래소 종가</td>
+  <td>stablecoin = 매매기준율 / 변동성 자산 = 외부 거래소 종가 (또는 oracle 의 일별 close)</td></tr>
+<tr><td><strong>평가 주기</strong></td>
+  <td>일말 / 월말</td>
+  <td>일말 평가 (회계 표준). 운영 평가는 별도로 실시간 동작</td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary);font-size:13px">
+<strong>운영 평가 (실시간)</strong> 의 결정은 ① 시세 feed (선정한 oracle / 거래소 — 단일 또는 multi-source 평균) · ② cache TTL (1 분 / 1 시간) · ③ source 다중화 정책 (oracle 하나가 문제 시 fallback) — 본 페이지 회계 view 와는 분리되어 시스템 운영 layer 의 결정.
+</p>
+
+<h4>3 가지 손익 분리</h4>
+<p>
+다음 손익을 별도 계정으로 분리하는 것이 회계 표준:
+</p>
+<ul>
+<li><strong>외환매매수익</strong> — 매매 거래 시점의 실현 손익 (예: 원화 → USDC 스왑 시점의 환차익)</li>
+<li><strong>외화환산손익 (FX)</strong> — 마감 시점의 stablecoin 잔액을 원화로 환산 시 발생하는 미실현 손익 (환율 변동)</li>
+<li><strong>가상자산평가손익 (MTM)</strong> — 변동성 자산 (BTC · ETH) 의 일일 시가 평가 변동 (시장가격 변동) — <strong>매일 다른 평가금액이 누적되는 미실현 손익</strong></li>
+</ul>
+
+<div class="callout">
+<div class="callout-title">예시 1 — 외화환산 (stablecoin)</div>
+<p><strong>거래 시점 분개 (스왑 자체)</strong> — 사용자 1 이 100 KRW-stablecoin → 0.1 USDC 스왑 (환율 1,000원/USD):</p>
+<pre style="background:#f7f7f7;padding:14px;border-radius:6px;font-size:13px;overflow-x:auto"><code>(차) KRW-stablecoin 반환채무   100원
+        (대) USDC 반환채무             0.1 USD
+            (= 100원 매매기준율 환산)</code></pre>
+<p style="margin-bottom:0">
+<strong>일말 외화환산 분개 (★ 본 절의 주제)</strong> — 마감 시 환율이 1,010원/USD 로 변동되면:
+</p>
+<pre style="background:#f7f7f7;padding:14px;border-radius:6px;font-size:13px;overflow-x:auto"><code>(차) 외화환산손익                  1원
+        (대) USDC 반환채무 평가증가     1원
+            (0.1 USD × 10원 환율 차이)</code></pre>
+<p style="margin-bottom:0;color:var(--text-secondary);font-size:13px">
+첫 분개는 스왑 거래 (시나리오 ④ 의 거래 시점) 의 일부. 두 번째 분개가 본 절의 주제인 <strong>외화환산 (일말 평가손익 인식)</strong>. 두 분개는 별도 시점 · 별도 trigger.
+</p>
+</div>
+
+<div class="callout">
+<div class="callout-title">예시 2 — 시가평가 (변동성 자산)</div>
+<p>고객 X 가 BTC 0.5 보유. 거래 시점 평가 = 50,000,000 KRW/BTC 기준 → 25,000,000 KRW.</p>
+<p style="margin-bottom:0">
+다음날 일말 종가가 52,000,000 KRW/BTC 로 상승하면 평가금액 = 26,000,000 KRW (+1,000,000 KRW). 평가손익 분개:
+</p>
+<pre style="background:#f7f7f7;padding:14px;border-radius:6px;font-size:13px;overflow-x:auto"><code>(차) BTC 반환채무 평가증가     1,000,000원
+        (대) 가상자산평가손익        1,000,000원
+            (0.5 BTC × 2,000,000원 시세 상승)</code></pre>
+<p style="margin-bottom:0;color:var(--text-secondary);font-size:13px">
+하루마다 종가가 다르므로 평가금액이 매일 갱신됨. 원장의 BTC 수량 (0.5) 은 그대로, 평가금액만 변동. 다음날 시세가 하락하면 reverse 분개 (가상자산평가손실 / BTC 반환채무 평가감소).
+</p>
+</div>
+
+<h3 id="section-18-8">18.8 고객 포지션 (평단가 · 미실현 손익)</h3>
+<p>
+사용자가 앱 / 웹에서 보는 <strong>"보유 자산 + 평단가 + 평가손익 (P&amp;L)" 화면</strong> 의 데이터 모델. 거래소 (Upbit · Binance) · 증권사 MTS 와 동일한 책임. 회계 평가 (③) 와 별개의 운영 view 이며, <strong>고객 진입가 (취득원가) 대비 현재가 손익</strong> 을 표시.
+</p>
+
+<h4>핵심 시나리오</h4>
+<div class="callout">
+<div class="callout-title">사용자 시나리오 — "내가 13:00 에 입금한 USDC, 1 시간 후 손익?"</div>
+<pre style="background:#f7f7f7;padding:14px;border-radius:6px;font-size:13px;overflow-x:auto"><code>13:00  USDC 10 입금  · 시세 1,300원/USDC  → 취득원가 = 13,000원
+14:00  USDC 10 보유   · 시세 1,310원/USDC  → 현재 평가 = 13,100원
+
+  미실현 손익  = 13,100 - 13,000 = +100원
+  손익률      = +0.77%</code></pre>
+</div>
+
+<h4>2 가지 cost basis 방식</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>방식</th><th>계산</th><th>장단점</th><th>적용 예</th></tr></thead>
+<tbody>
+<tr><td><strong>평균단가법</strong><br/>(Weighted Average)</td>
+  <td>입금마다 <code>new_avg = (old_avg × old_qty + price × in_qty) / (old_qty + in_qty)</code> 갱신. lot 추적 불필요</td>
+  <td>○ 단순 · 1 row per (user, asset) · 출금 시 차감 단순<br/>× lot 추적 불가 → 세무 (양도소득세 lot-by-lot) 시 제한</td>
+  <td>KR 거래소 (Upbit · Bithumb) 표준</td></tr>
+<tr><td><strong>FIFO</strong><br/>(선입선출)</td>
+  <td>입금마다 lot 추가. 출금 시 가장 오래된 lot 부터 차감. lot 별 cost basis 추적</td>
+  <td>○ 세무 추적 정확 · lot 별 양도차익 산출 가능<br/>× 복잡 · 출금 시 multi-lot 차감 처리</td>
+  <td>회계법인이 가상자산 세무에 권장할 수 있음 (K-IFRS 9 자문 필요)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>데이터 모델 — <code>customer.customer_position</code> (저자 hypothesis)</h4>
+<p>
+4 원장 외 별도 표로 P&amp;L view 의 집계 결과 보관. customer_ledger 의 거래 이력에서 derived 하지만 매번 재계산하기 어려우므로 cached / append-only:
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>user_id (PK)</td><td>varchar</td><td>고객 ID (composite PK)</td></tr>
+<tr><td>asset_id (PK)</td><td>varchar</td><td>자산 ID (composite PK)</td></tr>
+<tr><td>quantity</td><td>numeric(38,18)</td><td>현재 보유 수량 (customer_ledger 와 일치)</td></tr>
+<tr><td>avg_cost_krw</td><td>numeric(20,4)</td><td>평단가 (KRW per unit) — 입금마다 가중평균 갱신</td></tr>
+<tr><td>total_cost_krw</td><td>numeric(20,4)</td><td>누적 취득원가 (= avg_cost_krw × quantity)</td></tr>
+<tr><td>realized_pnl_krw</td><td>numeric(20,4)</td><td>실현 손익 누적 (출금 / 매도 시점 손익 합)</td></tr>
+<tr><td>last_acquisition_at</td><td>timestamptz</td><td>마지막 취득 시점</td></tr>
+<tr><td>updated_at</td><td>timestamptz</td><td>갱신 시점</td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary);font-size:13px">
+FIFO 방식 채택 시 별도 <code>customer_position_lot</code> 표 (lot_id · acquired_at · acquired_price · remaining_qty) 추가. 평균단가법은 lot 표 불필요.
+</p>
+
+<h4>미실현 손익 (derived · 실시간)</h4>
+<pre style="background:#f7f7f7;padding:14px;border-radius:6px;font-size:13px;overflow-x:auto"><code>현재_평가금액  = quantity × 현재시세_KRW    (실시간 oracle)
+미실현_손익    = 현재_평가금액 − total_cost_krw
+손익률         = 미실현_손익 / total_cost_krw × 100%</code></pre>
+<p>
+DB 에 저장 X — UI / API 호출 시 derived. 현재시세는 <code>asset_value_krw</code> cache 또는 실시간 oracle 조회.
+</p>
+
+<h4>회계 평가와의 정합</h4>
+<ul>
+<li><strong>회계 평가손익</strong> (일말 종가 기준) ≠ <strong>고객 미실현 손익</strong> (취득원가 기준). 두 view 는 시점 / 기준 자체가 다름</li>
+<li>회계는 <strong>"오늘 종가 기준 잔액의 KRW 가치 변동"</strong> 만 인식 → 고객 진입가 정보 사용 X</li>
+<li>고객 P&amp;L 은 <strong>"진입가 대비 현재가 손익"</strong> 표시 → 회계 분개 발생 X (사용자 view 만)</li>
+<li>실현 손익 (출금 / 매도 시 손익) 은 회계의 외환매매수익과 매핑 가능 — 회계법인 자문 필요</li>
+</ul>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ 운영 시작 전 검증 필수</div>
+<p style="margin-bottom:0">
+본 절은 저자 권장 — 실제 운영 시 다음 결정 필요:
+</p>
+<ul style="margin-bottom:0">
+<li><strong>평균단가법 vs FIFO</strong> 선택 — 회계법인 자문 (가상자산 세무 · K-IFRS 9 적용)</li>
+<li><strong>고객 진입가 시세 source</strong> — 거래 시점의 oracle / 거래소 ticker 결정 (asset_value_krw cache 활용)</li>
+<li><strong>외부 이체 (deposit from external wallet) 의 취득원가</strong> — 외부에서 들어온 자산의 진입가는 입금 시점 시세로 설정. 단 사용자가 직접 진입가 입력 가능한 옵션 (예: "내가 1년 전 산 BTC 를 입금" 케이스) 검토</li>
+<li><strong>실현 손익 시점</strong> — 출금 시점 vs 매도 시점. 출금만 있고 매도가 없는 모델이면 출금 시점이 실현 시점</li>
+</ul>
+</div>
+
+<h3>18.9 손익 계정 분류</h3>
 <p>
 수탁업의 일반적 손익 계정 구조 — <strong>본 분류는 저자의 일반 권장이며 K-IFRS 9 / K-GAAP 의 정확한 분류는 회계법인 검토 필수</strong>. 특히 가상자산을 "외환" 으로 분류 가능한지 / 별도 자산 분류가 필요한지는 회계 기준 적용 자체가 hypothesis.
 </p>
@@ -582,14 +1080,17 @@ sequenceDiagram
 <tbody>
 <tr><td><strong>수수료수익</strong></td><td>수익</td><td>출금 수수료 · 스왑 수수료 · 보관 수수료</td></tr>
 <tr><td><strong>외환매매수익</strong></td><td>수익</td><td>실현된 환차익 (매매 시점의 손익)</td></tr>
-<tr><td><strong>외화환산손익</strong></td><td>손익 (미실현)</td><td>마감 시점의 외화 잔액 평가 (환율 변동분)</td></tr>
-<tr><td><strong>외화평가손익</strong></td><td>손익 (미실현)</td><td>외화 자산의 시가 평가 변동</td></tr>
+<tr><td><strong>외화환산손익</strong><br/><small style="color:var(--text-tertiary)">= FX translation</small></td><td>손익 (미실현)</td><td>법정통화 / stablecoin 의 환율 변동분 (예: USDC 보유분의 USD/KRW 환율 변동). 한국은행 매매기준율 기준</td></tr>
+<tr><td><strong>가상자산평가손익</strong><br/><small style="color:var(--text-tertiary)">= Mark-to-market</small></td><td>손익 (미실현)</td><td>변동성 자산 (BTC · ETH 등) 의 일일 시장가격 변동분. 외부 시장 (거래소 / oracle) 시세 기준</td></tr>
 <tr><td><strong>가스비</strong></td><td>비용</td><td>broadcast 시 지불한 chain fee</td></tr>
 <tr><td><strong>vendor 운영비</strong></td><td>비용</td><td>Fireblocks 요금 · AML provider 요금 등</td></tr>
 <tr><td><strong>HSM · 인프라 비용</strong></td><td>비용</td><td>Thales Luna HSM 운영 · Co-signer 호스팅</td></tr>
 </tbody>
 </table>
 </div>
+<p style="margin-top:0.5rem;color:var(--text-secondary);font-size:13px">
+<strong>★ 외화환산손익 vs 가상자산평가손익 분리 이유</strong> — stablecoin (USDC) 은 USD peg 이라 외환과 동일한 매매기준율 적용 가능하지만, 변동성 자산 (BTC · ETH) 은 매매기준율이 없고 외부 시장가격이 source. 회계 처리 / 공시 시 두 손익을 같이 묶을지 분리할지는 K-IFRS 9 / K-GAAP 의 가상자산 분류 결정에 따라 다름 (회계법인 검토 필요).
+</p>
 
 <h4>설계 결정 — 자산별 분리 vs 통합</h4>
 <ul>
@@ -598,85 +1099,210 @@ sequenceDiagram
 <li><strong>권장 (저자)</strong>: <strong>옵션 1 (통합 + 보조부)</strong>. 회계법인이 일반적으로 선호하는 패턴. 자산 종류 증가 시 계정 확장 부담 적음. 단 회계법인 / 내부 회계팀의 권장이 다를 수 있으므로 검증</li>
 </ul>
 
-<h3>18.9 외화환산 처리 (저자 hypothesis)</h3>
+<h3>18.10 회계 데이터 모델 — ER 다이어그램</h3>
 <p>
-다통화 자산 보유 시 (예: 원화 stablecoin + USDC 등) 환율 적용 시점 결정이 필요. 본 절의 패턴은 KR 외화 회계의 표준 (한국은행 매매기준율 + K-IFRS) 을 가상자산에 일반화한 권장 — 가상자산이 K-IFRS 9 의 외환 분류에 해당하는지 자체가 hypothesis 라 회계법인 검토 필수.
+회계 영역의 9 표 + 고객 P&amp;L 표 1 (hypothesis) + 외부 영역 참조 관계. 모든 거래는 결국 <code>general_ledger_entry</code> 의 이중부기 row 로 귀결 — 4 원장이 trigger / source 역할.
 </p>
 
-<h4>3 가지 결정 사항</h4>
+<h4>박스 (표) 책임 한 줄 설명</h4>
 <div class="table-wrap">
 <table>
-<thead><tr><th>결정</th><th>옵션</th><th>권장 (저자)</th></tr></thead>
+<thead><tr><th>한글명</th><th>식별자</th><th>책임</th></tr></thead>
 <tbody>
-<tr><td><strong>환율 적용 시점</strong></td>
-  <td>거래 시점 / 일말 / 월말</td>
-  <td>거래 시점 (실제 거래의 환율) + 일말 (평가용 환산) 병행</td></tr>
-<tr><td><strong>환율 기준</strong></td>
-  <td>매매기준율 / 고시환율 / 시장환율</td>
-  <td>매매기준율 (외화 회계의 표준)</td></tr>
-<tr><td><strong>환산 주기</strong></td>
-  <td>실시간 / 일말 / 월말</td>
-  <td>일말 환산 (일별 마감 시 외화 잔액 → 원화 환산)</td></tr>
+<tr><td><strong>고객 원장</strong></td><td><code>customer_ledger</code></td><td>고객별 · 자산별 보유 <strong>수량</strong> + 입출금 이력 (실시간 갱신). <a href="#section-18-4">18.4</a></td></tr>
+<tr><td><strong>고객 잔액 스냅샷</strong></td><td><code>customer_balance_snapshot</code></td><td>일말 시점 고객별 잔액 박제 (hash chain · immutable). <a href="#section-18-4">18.4</a></td></tr>
+<tr><td><strong>고객 포지션</strong> <small style="color:var(--text-tertiary)">(hypothesis)</small></td><td><code>customer_position</code></td><td>고객 P&amp;L view — 평단가 + 누적 취득원가 + 실현 손익. <a href="#section-18-8">18.8</a></td></tr>
+<tr><td><strong>은행 자체 원장</strong></td><td><code>bank_ledger</code></td><td>은행 자체 보유 자산 (treasury · gas station · 수수료수익). <a href="#section-18-4">18.4</a></td></tr>
+<tr><td><strong>델타 원장</strong></td><td><code>delta_ledger</code></td><td>오프체인 vs 온체인 시점차 의 미정산 차액 (settlement 후 cleared). <a href="#section-18-4">18.4</a></td></tr>
+<tr><td><strong>총계정 계정과목</strong></td><td><code>general_ledger_account</code></td><td>회계 계정과목 master (자산 · 부채 · 자본 · 수익 · 비용 분류)</td></tr>
+<tr><td><strong>총계정 분개</strong></td><td><code>general_ledger_entry</code></td><td><strong>이중부기 분개 row</strong> — 모든 거래의 최종 회계 결과 (차변 + 대변 2 row 가 짝)</td></tr>
+<tr><td><strong>총계정 스냅샷</strong></td><td><code>general_ledger_snapshot</code></td><td>일말 총계정 잔액 박제 (hash chain · immutable · 외부 감사 대상)</td></tr>
+<tr><td><strong>시세 history</strong></td><td><code>fx_rate_history</code></td><td>일별 시세 history — 매매기준율 (stablecoin) + 거래소 종가 (변동성 자산)</td></tr>
+<tr><td><strong>평가 로그</strong></td><td><code>fx_revaluation_log</code></td><td>일말 평가 결과 — 외화환산손익 (FX) + 가상자산평가손익 (MTM) 산출</td></tr>
+<tr><td><strong>정정 로그</strong></td><td><code>accounting_correction_log</code></td><td>회계 정정 audit — 잘못된 분개의 reverse + 정정 이력 (변조 없는 정정)</td></tr>
+<tr><td><strong>고객 vault</strong><br/><small style="color:var(--text-tertiary)">(외부 domain)</small></td><td><code>customer.customer_vault</code></td><td>고객 ↔ Fireblocks vault 매핑. <a href="tables-customer-user.html">11. Customer User</a></td></tr>
+<tr><td><strong>vendor 거래</strong><br/><small style="color:var(--text-tertiary)">(외부 domain)</small></td><td><code>transaction.vendor_transaction</code></td><td>Fireblocks 거래 lifecycle 사본 (webhook source). <a href="sm-transaction.html">12. Transaction</a></td></tr>
 </tbody>
 </table>
 </div>
 
-<h4>평가손익 분리</h4>
-<p>
-다음 3 가지 손익을 별도 계정으로 분리하는 것이 회계 표준:
-</p>
-<ul>
-<li><strong>외환매매수익</strong> — 매매 거래 시점의 실현 손익 (예: 원화 → USDC 스왑 시점의 환차익)</li>
-<li><strong>외화환산손익</strong> — 마감 시점의 외화 잔액을 원화로 환산 시 발생하는 미실현 손익</li>
-<li><strong>외화평가손익</strong> — 외화 자산의 시가 평가 변동 (시장가격 변동)</li>
-</ul>
+<div class="diagram">
+<pre class="mermaid">
+erDiagram
+  CL["고객 원장 · customer_ledger"] {
+    string user_id "= bank_customer_id (외부 ref)"
+    string asset_id
+    numeric confirmed_balance "정산 완료 수량"
+    numeric pending_in_balance "입금 처리중"
+    numeric pending_out_balance "출금 처리중"
+    string last_tx_id
+  }
+  CBS["고객 잔액 스냅샷 · customer_balance_snapshot"] {
+    date snapshot_date
+    string user_id
+    string asset_id
+    numeric balance
+    string current_hash "★ hash chain"
+  }
+  BL["은행 자체 원장 · bank_ledger"] {
+    enum account_type "treasury/gas/fee"
+    string asset_id
+    numeric balance
+  }
+  DL["델타 원장 · delta_ledger"] {
+    enum delta_type
+    string asset_id
+    numeric amount
+    enum settlement_status
+  }
+  GLA["총계정 계정과목 · general_ledger_account"] {
+    string account_code PK
+    enum account_type "자산/부채/자본/수익/비용"
+    string description
+  }
+  GLE["총계정 분개 · general_ledger_entry"] {
+    string entry_id PK
+    string account_code FK
+    enum debit_credit
+    numeric amount
+    string source_ref "거래 원천 (vendor_tx_id 등)"
+    timestamp recorded_at
+  }
+  GLS["총계정 스냅샷 · general_ledger_snapshot"] {
+    date snapshot_date
+    string account_code
+    numeric balance
+    string current_hash "★ hash chain"
+  }
+  FXR["시세 history · fx_rate_history"] {
+    timestamp rate_date
+    string currency_pair
+    numeric rate "매매기준율"
+  }
+  FXL["평가 로그 · fx_revaluation_log"] {
+    timestamp revaluation_at
+    string asset_id
+    numeric gain_loss
+  }
+  ACL["정정 로그 · accounting_correction_log"] {
+    string correction_id PK
+    string original_entry_id FK
+    string reason
+    string approved_by
+  }
+  CP["고객 포지션 · customer_position (hypothesis · 18.8)"] {
+    string user_id PK
+    string asset_id PK
+    numeric quantity
+    numeric avg_cost_krw "★ 평단가"
+    numeric realized_pnl_krw
+  }
 
-<div class="callout">
-<div class="callout-title">예시 거래 — 회계 처리</div>
-<p>사용자 1 이 100 KRW-stablecoin → 0.1 USDC 스왑 (환율 1,000원/USD):</p>
-<pre style="background:#f7f7f7;padding:14px;border-radius:6px;font-size:13px;overflow-x:auto"><code>(차) KRW-stablecoin 반환채무   100원
-        (대) USDC 반환채무             0.1 USD
-            (= 100원 매매기준율 환산)</code></pre>
-<p style="margin-bottom:0">
-이후 일말 마감 시 환율이 1,010원/USD 로 변동되면:
+  EXT_CV["고객 vault · customer.customer_vault (외부 domain)"] {
+    string bank_customer_id "고객 식별"
+  }
+  EXT_VT["vendor 거래 · transaction.vendor_transaction (외부 domain)"] {
+    string vendor_tx_id "거래 원천"
+  }
+
+  CL ||--o{ GLE : "이중부기 trigger"
+  BL ||--o{ GLE : "이중부기 trigger"
+  DL ||--o{ GLE : "정산 분개 trigger"
+  FXL ||--o{ GLE : "외화환산 분개"
+  ACL }o--|| GLE : "정정 original_entry_id"
+  GLA ||--o{ GLE : "계정과목 참조"
+  GLE }o--|| GLS : "일별 박제"
+  CL ||--o{ CBS : "일별 박제"
+  CL ||--o{ CP : "취득원가 누적"
+  FXR ||--o{ FXL : "시세 source"
+  EXT_CV ||--o{ CL : "고객 매핑"
+  EXT_VT }o--|| GLE : "거래 원천 (source_ref)"
+</pre>
+</div>
+<p class="diagram-caption">
+회계 9 표 + <code>customer_position</code> (P&amp;L · hypothesis) + 외부 도메인 2 표. 모든 거래가 <code>general_ledger_entry</code> 로 귀결 → <code>general_ledger_snapshot</code> 일별 박제 (hash chain). 일말 cron 영역 = <code>customer_balance_snapshot</code> · <code>fx_rate_history</code> · <code>fx_revaluation_log</code>.
 </p>
-<pre style="background:#f7f7f7;padding:14px;border-radius:6px;font-size:13px;overflow-x:auto"><code>(차) 외화환산손익                  1원
-        (대) USDC 반환채무 평가증가     1원
-            (0.1 USD × 10원 환율 차이)</code></pre>
+
+<h4>관계선 의미 — 모든 화살표 해설</h4>
+<div class="callout">
+<div class="callout-title">카디널리티 (1:N · N:1) 읽는 법</div>
+<p style="margin-bottom:0.5rem">
+표끼리의 연결 비율을 나타냄. "왼쪽 표의 1 row 가 오른쪽 표의 몇 row 와 연결되는가" 의 표기:
+</p>
+<ul style="margin-bottom:0">
+<li><strong>1:1</strong> — 왼쪽 1 ↔ 오른쪽 1 (정확히 짝)</li>
+<li><strong>1:N</strong> — 왼쪽 1 → 오른쪽 여러 개 (부모 1 → 자식 N)</li>
+<li><strong>N:1</strong> — 왼쪽 여러 개 → 오른쪽 1 (자식 N → 부모 1)</li>
+<li><strong>N:M</strong> — 양쪽 다 여러 개 (학생 N ↔ 강의 M)</li>
+</ul>
+<p style="margin-top:0.5rem;margin-bottom:0;color:var(--text-secondary);font-size:13px">
+예: <strong>고객 원장 → 총계정 분개 (1:N)</strong> — 고객이 USDC 10 입금하면 고객 원장에 1 row 생기고, 이중부기로 총계정 분개에는 (차)자산 / (대)부채 2 row 가 생긴다 → 1 row 가 N row 와 연결.
+</p>
+</div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>관계</th><th>방향 / 카디널리티</th><th>의미</th><th>발생 시점</th></tr></thead>
+<tbody>
+<tr><td><strong>고객 원장 → 총계정 분개</strong></td><td>1:N</td><td>고객 입출금 → 이중부기 분개 (차) 자산 / (대) 반환채무 자동 생성</td><td>거래 실시간 (webhook)</td></tr>
+<tr><td><strong>은행 자체 원장 → 총계정 분개</strong></td><td>1:N</td><td>은행 자체 거래 (gas 충전 · 수수료 수익 등) → 이중부기 분개 자동</td><td>거래 실시간</td></tr>
+<tr><td><strong>델타 원장 → 총계정 분개</strong></td><td>1:N</td><td>델타 원장의 pending 차액이 settlement 후 cleared → 정산 분개</td><td>온체인 confirmation 시점</td></tr>
+<tr><td><strong>평가 로그 → 총계정 분개</strong></td><td>1:N</td><td>일말 평가 결과 (환산손익 + 평가손익) → 이중부기 분개</td><td>일말 cron 1회</td></tr>
+<tr><td><strong>정정 로그 → 총계정 분개</strong></td><td>N:1</td><td>정정 시 어떤 원본 분개를 reverse 했는지 추적 (FK: original_entry_id)</td><td>회계팀 정정 시점</td></tr>
+<tr><td><strong>총계정 계정과목 → 총계정 분개</strong></td><td>1:N</td><td>모든 분개 row 가 계정과목 master 참조 (account_code FK)</td><td>거래 실시간</td></tr>
+<tr><td><strong>총계정 분개 → 총계정 스냅샷</strong></td><td>N:1</td><td>당일 모든 분개 합산 → 계정과목별 잔액 박제</td><td>일말 cron 1회</td></tr>
+<tr><td><strong>고객 원장 → 고객 잔액 스냅샷</strong></td><td>1:N</td><td>고객별 잔액 일말 박제 (변조방지)</td><td>일말 cron 1회</td></tr>
+<tr><td><strong>고객 원장 → 고객 포지션</strong></td><td>1:N</td><td>고객 입금 시 취득원가 누적 (평단가 갱신) · 출금 시 실현 손익 산출</td><td>거래 실시간 (입출금)</td></tr>
+<tr><td><strong>시세 history → 평가 로그</strong></td><td>1:N</td><td>일말 평가 시 어떤 시세 (매매기준율 / 종가) 를 사용했는지 추적</td><td>일말 cron 1회</td></tr>
+<tr><td><strong>고객 vault → 고객 원장</strong></td><td>1:N</td><td>고객 1명이 여러 자산의 ledger 라인 보유 (USDC · BTC · ETH 등)</td><td>고객 등록 + 자산 추가 시</td></tr>
+<tr><td><strong>vendor 거래 → 총계정 분개</strong></td><td>N:1</td><td>각 분개의 거래 원천 (어떤 Fireblocks tx 가 trigger 인지) — <code>source_ref</code> 필드</td><td>거래 실시간</td></tr>
+</tbody>
+</table>
 </div>
 
-<h3>18.10 core 의 다른 domain 와의 통합</h3>
+<h4>3 type 의 트리거 분류</h4>
+<ul>
+<li><strong>거래 trigger (실시간)</strong> — <code>customer_ledger</code> · <code>bank_ledger</code> · <code>delta_ledger</code> 갱신 시 매번 <code>general_ledger_entry</code> 이중부기 row INSERT (webhook handler 또는 거래 service 가 동시 commit)</li>
+<li><strong>외화환산 trigger (일말 cron)</strong> — <code>fx_rate_history</code> 의 당일 환율 + 전 자산 잔액으로 <code>fx_revaluation_log</code> 산출 → <code>general_ledger_entry</code> 외화환산 분개 INSERT</li>
+<li><strong>정정 trigger (Admin Quorum 매개)</strong> — 오류 발견 시 <code>accounting_correction_log</code> INSERT + 원본 entry 의 reverse 분개 + 새 entry. hash chain 위에 분개 추가 (변조 아님)</li>
+</ul>
+
+<h4>account_code 매핑 — 본문 한글 ↔ DB enum</h4>
+<p>
+시나리오 분개의 본문에서는 가독성 위해 한글로 표기 (예: "USDC 자산 vault") 하지만 DB <code>general_ledger_entry.account_code</code> 는 영어 enum. 대표 매핑 예시:
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>분류</th><th>본문 표기 (한글)</th><th>account_code (DB enum 예)</th></tr></thead>
+<tbody>
+<tr><td>자산</td><td>USDC 자산 vault</td><td><code>ASSET_USDC_VAULT</code></td></tr>
+<tr><td>자산 (미정산)</td><td>USDC 미정산 자산</td><td><code>ASSET_USDC_PENDING</code></td></tr>
+<tr><td>부채 (반환채무)</td><td>USDC 반환채무 (X)</td><td><code>LIAB_RETURN_USDC</code> + user_id 차원</td></tr>
+<tr><td>부채 (미정산)</td><td>KRW 미정산 부채</td><td><code>LIAB_KRW_PENDING</code></td></tr>
+<tr><td>수익</td><td>USDC 수수료수익</td><td><code>REV_FEE_USDC</code></td></tr>
+<tr><td>손익 (미실현)</td><td>외화환산손익</td><td><code>PNL_FX_TRANSLATION</code></td></tr>
+<tr><td>손익 (미실현)</td><td>가상자산평가손익</td><td><code>PNL_CRYPTO_MTM</code></td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary);font-size:13px">
+정확한 account_code 명명 규칙은 회계법인 자문 후 확정. 본 표는 본문 ↔ DB 매핑 이해용 예시.
+</p>
+
+<h3>18.11 운영 시작 전 검증 · 데이터 통합 · 다음 페이지</h3>
+<h4>core 의 다른 domain 와의 통합</h4>
 <p>
 4 원장은 <a href="db-split.html">3. DB 분할</a> 의 <strong>core 영역</strong> 안에 위치. customer_ledger / bank_ledger / delta_ledger 는 webhook 으로 자동 갱신, general_ledger 계열은 application 이 직접 INSERT.
 </p>
 <p>
-본 페이지는 회계 영역의 <strong>도메인 설계 view</strong>. 아래 테이블 목록은 4 원장의 매핑 차원이며, 각 표의 컬럼 / type / storage 상세는 19. 대사 · 결산 · 마감 페이지 또는 추후 별도 schema 페이지에서 정의 (현재 도메인 view 까지만).
+본 페이지는 회계 영역의 <strong>도메인 설계 view</strong> 까지만. 각 표의 컬럼 / type / storage 상세는 <a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a> 또는 추후 별도 schema 페이지에서 회계법인 자문 후 확정.
 </p>
-
-<h4>주요 테이블 (저자 권장)</h4>
-<div class="table-wrap">
-<table>
-<thead><tr><th>테이블</th><th>역할</th></tr></thead>
-<tbody>
-<tr><td><code>customer_ledger</code></td><td>고객별 자산 종류별 잔액 + 거래 이력 (append-only)</td></tr>
-<tr><td><code>customer_balance_snapshot</code></td><td>고객별 일별 잔액 스냅샷 (immutable)</td></tr>
-<tr><td><code>bank_ledger</code></td><td>은행 자체 보유분 (treasury / gas station / 수수료수익)</td></tr>
-<tr><td><code>delta_ledger</code></td><td>오프체인 거래의 정산 대기 차액</td></tr>
-<tr><td><code>general_ledger_account</code></td><td>총계정 계정과목 (자산 · 부채 · 자기자본 · 수익 · 비용)</td></tr>
-<tr><td><code>general_ledger_entry</code></td><td>이중부기 row (차변 · 대변, append-only)</td></tr>
-<tr><td><code>general_ledger_snapshot</code></td><td>일별 총계정 잔액 스냅샷 (immutable)</td></tr>
-<tr><td><code>fx_rate_history</code></td><td>환율 이력 (일별 매매기준율 등)</td></tr>
-<tr><td><code>fx_revaluation_log</code></td><td>외화환산 거래 이력</td></tr>
-</tbody>
-</table>
-</div>
 
 <h4>Hash Chain 적용 (변조 방지)</h4>
 <p>
 <code>general_ledger_entry</code> + <code>customer_balance_snapshot</code> + <code>general_ledger_snapshot</code> 의 3 테이블은 <a href="tables-audit.html">15. Audit · AML · Travel Rule</a> 의 hash chain 패턴 적용. 외부 감사 / 금감원 검사 시 무결성 증명.
 </p>
 
-<h3>18.11 펀드 수신 시스템 / 자산운용업과의 패턴 차용 (저자 권장)</h3>
+<h4>펀드 수신 시스템 / 자산운용업과의 패턴 차용 (저자 권장)</h4>
 <p>
 수탁업의 회계는 <strong>펀드 수신 시스템</strong> (자산운용업의 펀드 — 투자자 자금을 모아 자산별 잔액을 관리하는 시스템) / 자산운용업의 회계와 패턴이 유사. 본 절의 차용 권장은 일반 회계 표준화 관점의 저자 의견이며, 실제 시스템 차용 시 회계법인 / 운용업계 표준 (한국금융투자협회 등) 와 정합성 검토 필수. 차용 가능한 항목:
 </p>
@@ -702,10 +1328,11 @@ sequenceDiagram
 </ul>
 </div>
 
-<h3>18.12 다음 페이지</h3>
+<h4>다음 페이지</h4>
 <p>
 실시간 잔액 대사 / 결산 마감 / 정정 절차 / 외부 감사 대응은 <a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a> 참조.
 </p>
+
 
 </section>
 <nav aria-label="Section navigation" class="page-nav">

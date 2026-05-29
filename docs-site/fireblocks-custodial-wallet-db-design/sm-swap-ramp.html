@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>14b. Swap · Ramp Lifecycle — 스왑 · 온/오프램프 운영 흐름</title>
+<meta content="자산 스왑 · 온램프 · 오프램프 의 운영 lifecycle (state machine · KR 컴플라이언스 · JV/Circle/거래소 통합)" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a href="db-split.html">3. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a href="tables-workspace-vault.html">4. Workspace</a></li>
+<li><a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a></li>
+<li><a href="tables-counterparty.html">6. Counterparty Registry</a></li>
+<li><a href="cold-wallet.html">7. Cold Wallet 운영</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a href="tables-user.html">8. Internal Users</a></li>
+<li><a href="tables-customer-user.html">9. Customer Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a href="tables-governance.html">10. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a href="tables-crypto.html">11. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">13. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
+<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
+<li><a class="active" href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">16. KR 규제 매핑</a></li>
+<li><a href="risks.html">17. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
+<li><a href="accounting-ledger.html">18. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
+<li><a href="db-ops.html">20. DB 운영 · Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="swap-ramp">
+<h2>14b. Swap · Ramp Lifecycle</h2>
+<span class="section-subtitle">자산 스왑 · 온램프 · 오프램프 의 운영 라이프사이클 — state machine · KR 컴플라이언스 · 외부 채널 통합</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 범위 + 다른 페이지와의 관계</div>
+<p style="margin-bottom:0.5rem">
+swap / onramp / offramp 의 <strong>운영 lifecycle</strong> 중심 — 사용자 요청 → 검증 → 외부 채널 정산 → 완료 흐름. 회계 / 데이터 / 컴플라이언스 와의 cross-link:
+</p>
+<ul style="margin-bottom:0">
+<li><strong>회계 관점</strong> — <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.6 시나리오 ④ ⑤ ⑥ (분개 + delta_ledger 처리)</li>
+<li><strong>Schema 관점</strong> — <a href="tables-transaction-request.html">14a. Transaction Request · Execution</a> (header + 3 detail + execution)</li>
+<li><strong>입금/출금 패턴</strong> — <a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a> (외부 입출금 — 비교 / 차이점)</li>
+<li><strong>본 페이지 (14b)</strong> — <strong>운영 흐름</strong> (state machine · 검증 · 외부 채널 · KR 컴플라이언스 · 실패 처리)</li>
+</ul>
+</div>
+
+<h3>14b.1 개요 — 3 type 의 공통 패턴</h3>
+<p>
+Swap · Onramp · Offramp 는 모두 다음 공통 특성을 가짐:
+</p>
+<ul>
+<li><strong>사용자 요청 → 외부 채널 정산 → vault 변동</strong> 패턴 (외부 입금 · 외부 출금 의 단순 1-leg 와 다름)</li>
+<li><strong>2-step + delta_ledger 필수</strong> — Step 1 (off-chain 즉시 · UI 응답) + Step 2 (외부 settlement + vault 도착/출금)</li>
+<li><strong>customer_ledger pending 사용</strong> — pending_in (스왑 in / 온램프 / 오프램프 의 KRW 입금 예정) 또는 pending_out (스왑 out / 오프램프 출금) 으로 lock</li>
+<li><strong>외부 채널 의존</strong> — JV (KRWK 발행자) · Circle (USDC 발행자) · 외부 거래소 (Coinbase 등) 중 선택</li>
+<li><strong>시세 의존</strong> (변동성 자산) — quoted_rate 시점 vs 정산 시점 차이로 spread 발생</li>
+</ul>
+
+<h4>3 type 비교</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>type</th><th>source → target</th><th>외부 채널 (가능)</th><th>leg 수</th><th>시세 의존</th><th>대표 컴플라이언스</th></tr></thead>
+<tbody>
+<tr><td><strong>Swap</strong></td><td>stablecoin A → B (예: KRWK → USDC)</td><td>FIREBLOCKS_SWAP_API · EXTERNAL_EXCHANGE · JV_BURN + CIRCLE_MINT</td><td>2 (out + in)</td><td>있음</td><td>외환매매 분류 hypothesis (K-IFRS 9 자문)</td></tr>
+<tr><td><strong>Onramp</strong></td><td>KRW → stablecoin (예: KRW → KRWK 또는 USDC)</td><td>JV_MINT · CIRCLE_MINT · EXTERNAL_EXCHANGE</td><td>1 (in)</td><td>USDC 경우만 있음</td><td>가상자산이용자보호법 + 자본시장법</td></tr>
+<tr><td><strong>Offramp</strong></td><td>stablecoin → KRW (예: KRWK 또는 USDC → KRW)</td><td>JV_BURN · CIRCLE_REDEEM · EXTERNAL_EXCHANGE</td><td>1 (out)</td><td>USDC 경우만 있음</td><td>특금법 · 트래블룰 · 환금성 · STR</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>14b.2 Swap Lifecycle</h3>
+<p>
+사용자가 보유한 stablecoin 을 다른 stablecoin 으로 교환. 2 leg (OUTBOUND + INBOUND) 동시 처리.
+</p>
+
+<h4>14b.2.1 정상 흐름</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Cust as 👤 고객
+  participant App as 🏢 은행 App
+  participant TR as transaction_request<br/>(header)
+  participant SRD as swap_request_detail
+  participant CL as customer_ledger
+  participant DL as delta_ledger
+  participant GLE as general_ledger_entry
+  participant TE as transaction_execution
+  participant Source as 🏛 JV/Circle/거래소
+  participant FB as ☁️ Fireblocks vault
+
+  Note over Cust,GLE: ★ Step 1 — 요청 + 검증 + 잔액 lock (UI 즉시)
+  Cust->>App: 스왑 요청 KRWK 1,300 → USDC 1
+  App->>App: 검증 (KYC · 한도 · confirmed 잔액 · 시세 1,300원/USD)
+  App->>TR: INSERT (type=SWAP, status=PENDING_VALIDATION)
+  App->>TR: UPDATE status=VALIDATING → APPROVED_BY_BANK
+  App->>SRD: INSERT (target_asset_id=USDC, target_amount=1, quoted_rate=1300)
+  App->>CL: UPDATE 고객.KRWK.confirmed -= 1,300<br/>UPDATE 고객.KRWK.pending_out += 1,300<br/>UPDATE 고객.USDC.pending_in += 1
+  App->>DL: INSERT (KRWK, +1300, pending), (USDC, -1, pending)
+  App->>GLE: INSERT 이중부기 (4 row · 미정산):<br/>(차) KRWK 반환채무 -1,300<br/>(대) USDC 반환채무 +1,300원<br/>(차) USDC 미정산 자산 +1,300<br/>(대) KRWK 미정산 부채 +1,300
+  App-->>Cust: 스왑 요청 접수 (UI: "스왑 처리중 KRWK -1,300 → USDC +1")
+
+  Note over App,Source: ★ Step 2 — 외부 채널 정산 (Circle/JV/거래소 자동 선택)
+  App->>TE: INSERT (type=SWAP, leg=1, direction=OUTBOUND, channel=JV_BURN, amount=1300)
+  App->>TE: INSERT (type=SWAP, leg=2, direction=INBOUND, channel=CIRCLE_MINT, amount=1)
+  App->>Source: leg 1 — KRWK 1,300 burn 요청 (vault → JV)
+  Source->>FB: vault 에서 KRWK 1,300 출금
+  FB-->>App: 출금 webhook
+  Source->>Source: JV 가 KRWK 1,300 burn
+  App->>Source: leg 2 — USDC 1 mint 요청 (Circle 또는 거래소 매입)
+  Source->>FB: vault 에 USDC 1 입금
+  FB-->>App: 입금 webhook
+
+  Note over App,GLE: ★ Step 3 — 정산 분개 + pending → confirmed
+  App->>TE: UPDATE leg 1/2 status=COMPLETED
+  App->>CL: UPDATE 고객.KRWK.pending_out -= 1,300<br/>UPDATE 고객.USDC.pending_in -= 1<br/>UPDATE 고객.USDC.confirmed += 1
+  App->>DL: UPDATE delta_ledger 모두 settled
+  App->>GLE: INSERT 정산 분개 (4 row):<br/>(차) USDC vault 자산 +1<br/>(대) USDC 미정산 자산 -1,300<br/>(차) KRWK 미정산 부채 -1,300<br/>(대) KRWK vault 자산 -1,300
+  opt 매매 spread / 수수료
+    App->>GLE: INSERT 손익 분개 (외환매매수익)
+  end
+  App->>TR: UPDATE status=COMPLETED
+  App-->>Cust: 스왑 완료 알림 (push)
+</pre>
+</div>
+<p class="diagram-caption">
+<strong>2-leg + 3-step 패턴</strong> — Step 1 (잔액 lock + 미정산 분개) → Step 2 (외부 채널 정산) → Step 3 (정산 분개 + confirmed 반영). 회계 정합 상세는 <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.6 시나리오 ④.
+</p>
+
+<h4>14b.2.2 Swap status 흐름</h4>
+<p>
+<code>transaction_request.request_status</code> (헤더) 와 <code>transaction_execution.execution_status</code> (leg 별) 의 2-layer status — 14a.5 절 참조. swap 특이사항:
+</p>
+<ul>
+<li><strong>2 leg COMPLETED 모두 도착 시</strong> request_status = COMPLETED. 1 leg 만 COMPLETED 면 request 는 SUBMITTED_TO_VENDOR 유지</li>
+<li><strong>leg 1 (OUT) 실패 시</strong> = leg 2 시도 안 함. request 는 REJECTED</li>
+<li><strong>leg 2 (IN) 실패 시</strong> = leg 1 의 reversal 필요 (이미 burn 한 KRWK 의 보상 — JV 와 협의)</li>
+</ul>
+
+<h3>14b.3 Onramp Lifecycle</h3>
+<p>
+사용자가 KRW (계정계) 를 stablecoin 으로 변환. Case A (KRWK mint via JV) vs Case B (USDC purchase via Circle 또는 거래소) 로 분기.
+</p>
+
+<h4>14b.3.1 정상 흐름 (Case A — KRWK mint)</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Cust as 👤 고객
+  participant App as 🏢 은행 App
+  participant TR as transaction_request
+  participant RRD as ramp_request_detail
+  participant CL as customer_ledger
+  participant DL as delta_ledger
+  participant Outbox as outbox<br/>(계정계 + JV 비동기)
+  participant GLE as general_ledger_entry
+  participant TE as transaction_execution
+  participant Acct as 🏦 계정계
+  participant JV as 🏛 JV (KRWK 발행자)
+  participant FB as ☁️ Fireblocks vault
+
+  Note over Cust,GLE: ★ Step 1 — 요청 + 검증 + UI 처리중
+  Cust->>App: 온램프 요청 KRW 1,000 → KRWK 1,000
+  App->>App: 검증 (KYC · 한도 · 계정계 KRW 잔액)
+  App->>TR: INSERT (type=ONRAMP, status=PENDING_VALIDATION)
+  App->>TR: UPDATE status=VALIDATING → APPROVED_BY_BANK
+  App->>RRD: INSERT (target_asset_id=KRWK, target_amount=1000, quoted_rate=1, channel_preference=JV_MINT)
+  App->>CL: UPDATE 고객.KRWK.pending_in += 1,000
+  App->>DL: INSERT (KRWK, -1000, pending)
+  App->>Outbox: 계정계 KRW 1,000 차감 요청
+  App->>Outbox: JV mint 요청 (target: 은행 vault)
+  App->>GLE: INSERT 이중부기 (Step 1 미정산):<br/>(차) KRWK 미정산 자산 +1,000<br/>(대) KRWK 반환채무 +1,000
+  App-->>Cust: 충전 요청 접수 (UI: "처리중 +1,000 KRWK")
+
+  Note over Outbox,FB: ★ Step 2 — 외부 비동기 정산
+  Outbox->>Acct: KRW 1,000 차감 confirm
+  Acct-->>App: 차감 완료
+  Outbox->>JV: KRWK 1,000 mint
+  JV->>FB: vault 에 mint
+  FB-->>App: 입금 webhook (KRWK +1,000)
+  App->>TE: INSERT (type=ONRAMP, leg=1, channel=JV_MINT, status=COMPLETED)
+
+  Note over App,GLE: ★ Step 3 — 정산 + confirmed 반영
+  App->>CL: UPDATE 고객.KRWK.pending_in -= 1,000<br/>UPDATE 고객.KRWK.confirmed += 1,000
+  App->>DL: UPDATE delta_ledger settled
+  App->>GLE: INSERT 정산 분개:<br/>(차) KRW 자산 (계정계) +1,000<br/>(대) KRWK 미정산 자산 -1,000<br/>(차) KRWK vault 자산 +1,000<br/>(대) ...
+  App->>TR: UPDATE status=COMPLETED
+  App-->>Cust: 충전 완료 알림 (push)
+</pre>
+</div>
+<p class="diagram-caption">
+<strong>Mint 패턴 (1:1 peg)</strong> — 시세 변동 없음. 계정계 KRW 차감 + JV mint 가 비동기 outbox 로 병렬 진행. 회계 항등식 상세 18.6 시나리오 ⑤ Case A.
+</p>
+
+<h4>14b.3.2 정상 흐름 (Case B — USDC purchase)</h4>
+<p>
+Case A 와의 차이만 강조 (sequence 자체는 유사 — 14a.6 절 type 별 사용 패턴 참조):
+</p>
+<ul>
+<li><strong>channel 선택</strong> — <code>CIRCLE_MINT</code> (1차 시장 · peg 안정) 또는 <code>EXTERNAL_EXCHANGE</code> (2차 시장 · spread 발생)</li>
+<li><strong>시세 quote 필수</strong> — quoted_rate (예: 1,300 KRW/USDC) at 요청 시점</li>
+<li><strong>정산 시점 시세 차이</strong> = spread 손익 (외환매매수익 / 손실 분개)</li>
+<li><strong>실패 시 KRW 차감 rollback</strong> — 계정계로 환불 요청 (outbox 별도 처리)</li>
+</ul>
+
+<h3>14b.4 Offramp Lifecycle</h3>
+<p>
+사용자가 stablecoin 을 KRW 로 변환. 출금 lifecycle 과 유사하지만 vault → 외부 wallet 이 아니라 vault → JV/Circle 정산 + 계정계 KRW 입금.
+</p>
+
+<h4>14b.4.1 정상 흐름 (Case A — KRWK burn)</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Cust as 👤 고객
+  participant App as 🏢 은행 App
+  participant TR as transaction_request
+  participant RRD as ramp_request_detail
+  participant CL as customer_ledger
+  participant DL as delta_ledger
+  participant Outbox as outbox
+  participant GLE as general_ledger_entry
+  participant TE as transaction_execution
+  participant JV as 🏛 JV
+  participant FB as ☁️ Fireblocks vault
+  participant Acct as 🏦 계정계
+
+  Note over Cust,GLE: ★ Step 1 — 요청 + 잔액 lock
+  Cust->>App: 오프램프 요청 KRWK 1,000 → KRW 1,000
+  App->>App: 검증 (KYC · 한도 · confirmed KRWK ≥ 1,000)
+  App->>TR: INSERT (type=OFFRAMP, status=PENDING_VALIDATION)
+  App->>TR: UPDATE status=VALIDATING → APPROVED_BY_BANK
+  App->>RRD: INSERT (target_asset_id=KRW, target_amount=1000, quoted_rate=1, fiat_account_ref=고객계좌)
+  App->>CL: UPDATE 고객.KRWK.confirmed -= 1,000<br/>UPDATE 고객.KRWK.pending_out += 1,000
+  App->>DL: INSERT (KRWK, +1000, pending)
+  App->>GLE: INSERT 이중부기 (Step 1 미정산):<br/>(차) KRWK 반환채무 -1,000<br/>(대) KRWK 미정산 자산 -1,000
+  App-->>Cust: 환전 요청 접수 (UI: "출금 처리중 -1,000 KRWK")
+
+  Note over Outbox,Acct: ★ Step 2 — vault → JV burn + 계정계 KRW 입금
+  App->>TE: INSERT (type=OFFRAMP, leg=1, channel=JV_BURN, direction=OUTBOUND)
+  Outbox->>JV: KRWK 1,000 transfer + burn 요청
+  JV->>FB: vault 에서 KRWK 1,000 출금
+  FB-->>App: 출금 webhook
+  JV->>JV: KRWK 1,000 burn
+  Outbox->>Acct: KRW 1,000 입금 (고객 계좌)
+  Acct-->>App: 입금 완료
+  App->>TE: UPDATE leg=1 status=COMPLETED
+
+  Note over App,GLE: ★ Step 3 — 정산 + pending 해제
+  App->>CL: UPDATE 고객.KRWK.pending_out -= 1,000
+  App->>DL: UPDATE delta_ledger settled
+  App->>GLE: INSERT 정산 분개:<br/>(차) KRWK 미정산 자산 +1,000<br/>(대) KRWK vault 자산 -1,000
+  App->>TR: UPDATE status=COMPLETED
+  App-->>Cust: 환전 완료 알림 (push)
+</pre>
+</div>
+<p class="diagram-caption">
+<strong>Burn 패턴</strong> — JV 가 KRWK burn + 계정계 KRW 입금. 자산 ↓ = 부채 ↓ 균등 변동. 회계 항등식 상세 18.6 시나리오 ⑥ Case A.
+</p>
+
+<h4>14b.4.2 정상 흐름 (Case B — USDC sell)</h4>
+<ul>
+<li><strong>channel</strong> — <code>CIRCLE_REDEEM</code> (1차 시장) 또는 <code>EXTERNAL_EXCHANGE</code> (2차 시장 매도)</li>
+<li><strong>시세 변동</strong> — quoted_rate (요청 시) vs 매도 시점 시세 차이 = 외환매매수익/손실</li>
+<li><strong>트래블룰 100만원 임계</strong> — 외부 거래소 매도 시 거래소 자체가 VASP. 양도성 / originator-beneficiary 식별 필요 (14.3.1)</li>
+<li><strong>매도 실패 시 KRWK / USDC vault 잔액 복구</strong> — JV 측에 reverse 협의 필요</li>
+</ul>
+
+<h3>14b.5 KR 컴플라이언스 통합</h3>
+
+<h4>14b.5.1 가상자산이용자보호법 (2024.07 시행)</h4>
+<ul>
+<li><strong>예치금 분리 보관</strong> — 사용자의 KRW (오프램프 결과) 는 은행 계정계의 별도 계좌 / 신탁 (4 조)</li>
+<li><strong>이용자 가상자산 80% 콜드월렛</strong> — onramp 로 받은 stablecoin 의 80% 이상은 Cold vault (9 조 / 가상자산업감독규정)</li>
+<li><strong>이상거래 모니터링</strong> — swap / ramp 의 high-frequency · 이상 금액 패턴 → 컴플라이언스 review</li>
+</ul>
+
+<h4>14b.5.2 특금법 (트래블룰)</h4>
+<ul>
+<li>100만원 이상 stablecoin 이동 시 (offramp 의 외부 거래소 경유 경우) IVMS101 정보 교환 — Sumsub · Notabene · TRP</li>
+<li>onramp / offramp 의 1차 시장 (Circle · JV) 경유는 트래블룰 적용 모호 — <strong>법률 자문 필요</strong></li>
+</ul>
+
+<h4>14b.5.3 자본시장법 (swap 의 외환매매 분류 hypothesis)</h4>
+<div class="callout callout-warn">
+<div class="callout-title">★ Swap 의 법적 성격 — 외환매매 vs 가상자산 교환</div>
+<p style="margin-bottom:0">
+KRWK ↔ USDC 같은 stablecoin-to-stablecoin swap 이 <strong>외환매매</strong> 로 분류되면 자본시장법 / 외국환거래법 적용. KR 회계 표준 (K-IFRS 9) 의 가상자산 분류 자체가 hypothesis 라 swap 의 외환매매 분류 가능성도 자문 필요. 회계법인 + 법무팀 + 금감원 사전 협의 필수.
+</p>
+</div>
+
+<h4>14b.5.4 STR (의심 거래 보고)</h4>
+<ul>
+<li>swap / ramp 의 의심 패턴 (rapid round-trip · structured amounts · 고위험 stablecoin 등) → 컴플라이언스 review</li>
+<li>판단 시 KOFIU 보고 — 처리 결과 <code>compliance.suspicious_tx_review</code> 기록</li>
+</ul>
+
+<h3>14b.6 외부 채널 통합</h3>
+
+<h4>14b.6.1 JV (KRWK 발행자) 통합</h4>
+<ul>
+<li><strong>API</strong> — JV 가 제공하는 mint / burn / 잔액 조회 endpoint (구체 spec 은 JV 협약 시 확정)</li>
+<li><strong>인증</strong> — mTLS 또는 API key + signature (협약 시 결정)</li>
+<li><strong>vault 송수신</strong> — JV mint 시 Fireblocks vault address 로 transfer / JV burn 시 은행 vault → JV address 로 송금 후 burn</li>
+<li><strong>정산 schedule</strong> — 실시간 또는 batch (KRWK 발행 정책 의존)</li>
+</ul>
+
+<h4>14p.6.2 Circle (USDC 발행자) 통합</h4>
+<ul>
+<li><strong>Circle Mint API</strong> — 1차 시장 mint (USD 입금 후 USDC 발행). USDC 매도 시 redeem (USDC burn 후 USD 출금) <a href="https://www.circle.com/circle-mint">Circle Mint</a></li>
+<li><strong>인증</strong> — API key + IP allowlist</li>
+<li><strong>KRW ↔ USD 환전</strong> — Circle 은 USD 만 다룸. KRW ↔ USD 환전은 은행 자체 또는 외환계 처리 필요</li>
+<li><strong>limit / KYC</strong> — Circle 측의 institutional 검증 통과 필요</li>
+</ul>
+
+<h4>14b.6.3 외부 거래소 통합 (Coinbase · Binance 등)</h4>
+<ul>
+<li><strong>API</strong> — 거래소별 trading API (REST / WebSocket). order placement + execution monitoring</li>
+<li><strong>인증</strong> — API key + secret + IP allowlist</li>
+<li><strong>vault ↔ 거래소 sub-account</strong> — 은행이 거래소에 own institutional account 보유 + Fireblocks vault 와 매핑 (6.4 <code>counterparty.exchange_account_map</code>)</li>
+<li><strong>spread / slippage</strong> — order book depth 에 따라 거래 시점 시세 변동. limit order 또는 TWAP 권장</li>
+<li><strong>정산 schedule</strong> — 거래 즉시 (T+0) 또는 거래소 정산 schedule (T+1 등)</li>
+</ul>
+
+<h4>14b.6.4 환율 quote source</h4>
+<ul>
+<li><strong>KRW/USD</strong> — 한국은행 매매기준율 · 외환계 / 외부 oracle (Chainlink 등)</li>
+<li><strong>USDC/USD</strong> — Circle 1:1 peg (peg 깨질 시 외부 oracle 시세)</li>
+<li><strong>KRWK/KRW</strong> — JV 발행자가 1:1 peg 보장 (협약 의존)</li>
+<li><strong>quote 유효 기간</strong> — 요청 시점 lock vs 정산 시점 시세 — spread / slippage 정책 결정 필요</li>
+</ul>
+
+<h3>14b.7 실패 / Rollback 패턴</h3>
+
+<h4>14b.7.1 Step 1 (요청 검증) 실패</h4>
+<ul>
+<li>KYC / 한도 / 잔액 / 시세 unavailable → <code>transaction_request.status = REJECTED</code></li>
+<li>잔액 lock 안 잡힘 (Step 1 미진입)</li>
+<li>고객에게 즉시 실패 알림</li>
+</ul>
+
+<h4>14b.7.2 Step 2 (외부 정산) 실패</h4>
+<ul>
+<li>JV / Circle / 거래소 API timeout · reject · 시세 변동 등</li>
+<li>잔액 lock 해제: <code>confirmed += amount</code> · <code>pending_out -= amount</code> (오프램프 · 스왑 out)</li>
+<li>또는 <code>pending_in -= amount</code> (온램프 · 스왑 in)</li>
+<li><code>delta_ledger.status = cancelled</code></li>
+<li><code>general_ledger_entry</code> 에 reverse 분개 (Step 1 미정산 entries 의 역방향)</li>
+<li><code>transaction_request.status = REJECTED</code> + cancellation_reason 기록</li>
+<li>고객 알림 (push)</li>
+</ul>
+
+<h4>14b.7.3 Step 3 (정산 분개 실패)</h4>
+<ul>
+<li>Step 2 의 외부 정산은 성공했지만 DB 분개 INSERT 실패 (드물지만 가능)</li>
+<li>vault 는 이미 변동됨 — manual 정정 분개 + audit log 필요 (Admin Quorum 매개)</li>
+<li>회계 정정은 18.6 시나리오 ⑧ (정정 분개) 패턴 따름</li>
+</ul>
+
+<h3>14b.8 다음 페이지</h3>
+<p>
+회계 처리 상세 (분개 + delta_ledger + 항등식 검증) 는 <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.6 시나리오 ④ ⑤ ⑥ 참조. schema 통합 정의는 <a href="tables-transaction-request.html">14a. Transaction Request · Execution</a>.
+</p>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-transaction-request.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">14a. Transaction Request · Execution</span></a>
+<a class="page-nav-link page-nav-next" href="tables-audit.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">15. Audit · AML · Travel Rule</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

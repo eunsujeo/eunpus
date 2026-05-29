@@ -42,6 +42,8 @@
 <li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
 <li><a href="sm-webhook.html">13. Webhook 처리</a></li>
 <li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
+<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
 <li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
@@ -205,7 +207,7 @@ flowchart LR
 </table>
 </div>
 <p>
-<strong>회계 매핑</strong> — <code>bank_ledger</code> 에 매핑. omnibus 의 경우 표 자체는 "은행 보관 통합 vault" 지만, 그 안의 고객별 잔액 분해는 별도 <code>customer_balance_subledger</code> 표에서 mirror (5.4 참조).
+<strong>회계 매핑</strong> — <code>bank_ledger</code> 에 매핑. omnibus 의 경우 표 자체는 "은행 보관 통합 vault" 지만, 그 안의 고객별 잔액 분해는 별도 <code>customer_ledger</code> 표에서 mirror (5.4 참조).
 </p>
 
 <div class="callout">
@@ -367,7 +369,7 @@ Asset Wallet 안에 deposit address 가 생성됨. 자산 유형에 따라 개�
 </p>
 <ul>
 <li><strong>segregated 패턴</strong> — <code>customer_vault</code> 에 1 행 = 1 고객 (<code>bank_customer_id NOT NULL</code> 강제). 고객 ID 가 표 단위로 보장되어 회계 정합성 ↑</li>
-<li><strong>omnibus 패턴</strong> — <code>ops_vault</code> 의 <code>vault_purpose = 'omnibus'</code> 행 1 개에 다수 고객 자산 통합 + 별도 <code>customer_balance_subledger</code> 표에 고객별 잔액 mirror. 회계 시스템 통합</li>
+<li><strong>omnibus 패턴</strong> — <code>ops_vault</code> 의 <code>vault_purpose = 'omnibus'</code> 행 1 개에 다수 고객 자산 통합 + 별도 <code>customer_ledger</code> 표에 고객별 잔액 mirror. 회계 시스템 통합</li>
 <li><strong>혼합 패턴</strong> — Retail (omnibus → <code>ops_vault</code>) + Institutional (segregated → <code>customer_vault</code>) 동시 운영. <strong>표 분리 자체가 패턴 분리를 표현</strong>하므로 application layer 의 조건 분기 부담 ↓</li>
 </ul>
 
@@ -376,10 +378,10 @@ Asset Wallet 안에 deposit address 가 생성됨. 자산 유형에 따라 개�
 <p style="margin-bottom:0">
 omnibus 패턴 시 은행 내부 회계로 고객별 잔액을 분리 관리하더라도, on-chain 에는 1 vault 의 통합 balance 만 표시됨.
 대법원 2024도10710 의 "실질 통제" 판단 시 한 vault 안의 자산이 누구의 통제권에 있는지 명확히 구분되어야 함.
-은행은 customer_balance_subledger 의 무결성 (audit log 와 정합성) 을 별도로 증명할 책임.
+은행은 customer_ledger 의 무결성 (audit log 와 정합성) 을 별도로 증명할 책임.
 </p>
 <p style="margin-bottom:0;margin-top:0.5rem">
-<code>customer_balance_subledger</code> 는 <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 의 <strong>고객 원장 (4 원장의 ①)</strong> 과 같은 영역.
+<code>customer_ledger</code> 는 <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 의 <strong>고객 원장 (4 원장의 ①)</strong> 과 같은 영역.
 hash chain 변조방지 + 정기 reconciliation 은 <a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a> 의 L1 / L2 대사 참조.
 </p>
 </div>

@@ -42,6 +42,8 @@
 <li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
 <li><a href="sm-webhook.html">13. Webhook 처리</a></li>
 <li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
+<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
 <li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
@@ -120,14 +122,14 @@
 <thead><tr><th>layer</th><th>관리 대상</th><th>표</th><th>core 영역 schema</th><th>정의 위치</th></tr></thead>
 <tbody>
 <tr><td><strong>구조</strong></td><td>어느 vault · 어느 chain · 어느 주소</td><td><code>customer_vault</code> → <code>customer_asset_wallet</code> → <code>customer_deposit_address</code></td><td><code>customer</code></td><td><a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a> 5.1.2 절 / 5.2.1 절 / 5.3.2 절</td></tr>
-<tr><td><strong>잔액 ★</strong></td><td>고객 ID × asset 별 잔액 (★ 자산 SoT)</td><td><code>customer_ledger</code> (= <code>customer_balance_subledger</code>)</td><td><code>accounting</code></td><td><a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.4 절 의 4 원장 ①</td></tr>
-<tr><td><strong>거래</strong></td><td>입금 관찰 + 출금 요청 (bank intent) + vendor lifecycle</td><td><code>deposit_observations</code> · <code>withdrawal_request</code> (customer) · <code>withdrawal_execution</code> (transaction) · <code>vendor_transaction</code></td><td><code>customer</code> + <code>transaction</code></td><td><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a> + <a href="sm-transaction.html">12. Transaction State + 14-step</a></td></tr>
+<tr><td><strong>잔액 ★</strong></td><td>고객 ID × asset 별 잔액 (★ 자산 SoT)</td><td><code>customer_ledger</code></td><td><code>accounting</code></td><td><a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.4 절 의 4 원장 ①</td></tr>
+<tr><td><strong>거래</strong></td><td>입금 관찰 + 출금 요청 (bank intent) + vendor lifecycle</td><td><code>deposit_observations</code> · <code>transaction_request</code> (customer) · <code>transaction_execution</code> (transaction) · <code>vendor_transaction</code></td><td><code>customer</code> + <code>transaction</code></td><td><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a> + <a href="sm-transaction.html">12. Transaction State + 14-step</a></td></tr>
 </tbody>
 </table>
 </div>
 
 <p>
-<strong>핵심</strong>: 고객 자산은 여러 vault 에 분산 (Hot omnibus + Cold + segregated). 고객별 자산의 source-of-truth 는 <strong><code>accounting.customer_ledger</code></strong> (= <code>customer_balance_subledger</code> — <strong>subledger = 보조원장</strong>. general ledger 의 한 계정 "고객 자산" 을 고객별로 풀어서 기록한 표). 매일 reconciliation 으로 다음 식 검증 (<a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a> 19.2 절 L4):
+<strong>핵심</strong>: 고객 자산은 여러 vault 에 분산 (Hot omnibus + Cold + segregated). 고객별 자산의 source-of-truth 는 <strong><code>accounting.customer_ledger</code></strong> (subledger = 보조원장. general ledger 의 한 계정 "고객 자산" 을 고객별로 풀어서 기록한 표). 매일 reconciliation 으로 다음 식 검증 (<a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a> 19.2 절 L4):
 </p>
 
 <div class="callout">
@@ -145,7 +147,7 @@ hash chain 무결성 + L1-L4 다층 대사로 분리 보관 의무 입증.
 <div class="diagram">
 <pre class="mermaid">
 erDiagram
-  EXTERNAL["채널계/정보계/KYC<br/>(고객 master · 외부 SoT)"] {
+  EXTERNAL["채널계/정보계/KYC · 고객 master (외부 SoT)"] {
     string bank_customer_id PK
     string customer_name "PII (외부 보유)"
   }
@@ -200,16 +202,17 @@ erDiagram
     string vendor_transaction_id FK
     numeric incoming_amount
   }
-  WR["customer.withdrawal_request"] {
-    string withdrawal_request_id PK "wdr_*"
+  WR["customer.transaction_request<br/>(헤더 — 14a 페이지)"] {
+    string transaction_request_id PK "txr_*"
     string bank_customer_id
-    numeric requested_amount
-    string destination_address
+    enum type "WITHDRAWAL/SWAP/ONRAMP/OFFRAMP"
+    string source_asset_id
+    numeric source_amount
     enum request_status "bank intent"
   }
-  WE["transaction.withdrawal_execution"] {
-    string withdrawal_execution_id PK "wde_*"
-    string withdrawal_request_id FK
+  WE["transaction.transaction_execution"] {
+    string transaction_execution_id PK "txe_*"
+    string transaction_request_id FK
     string vendor_transaction_id FK
     int leg_index "1 of N"
     enum execution_purpose "primary/retry/swap_leg"
@@ -239,14 +242,14 @@ erDiagram
 </pre>
 </div>
 <p class="diagram-caption">
-고객 관련 12 entity 의 관계도. 외부 master (<code>bank_customer_id</code>) 를 중심으로 core 영역 의 3 domain (<code>customer</code> = 구조 + event log + 출금 요청 · <code>accounting</code> = 잔액 · <code>transaction</code> = vendor lifecycle 사본 + 출금 실행) 에 분산. on-chain 은 omnibus, 분리는 ledger 수준.
+고객 관련 entity 의 관계도. 외부 master (<code>bank_customer_id</code>) 를 중심으로 core 영역 의 3 domain (<code>customer</code> = 구조 + event log + 거래 요청 · <code>accounting</code> = 잔액 · <code>transaction</code> = vendor lifecycle 사본 + 거래 실행) 에 분산. 본 그림의 <code>transaction_request</code> 는 헤더만 표시 — type 별 3 detail 표 (withdrawal · swap · ramp) 및 4 type (withdrawal · swap · onramp · offramp) 통합 schema 는 <a href="tables-transaction-request.html">14a. Transaction Request · Execution</a> 참조.
 </p>
 
 <h4>9.3.3 "고객별 자산" 질문에 대한 답 — layer 별 접근</h4>
 <ul>
 <li><strong>"고객 X 가 BTC 얼마 보유?"</strong> → <code>accounting.customer_ledger</code> WHERE <code>bank_customer_id = X AND asset_id = 'BTC'</code></li>
 <li><strong>"고객 X 의 ETH 입금 주소?"</strong> → <code>customer</code> schema 의 <code>customer_vault → customer_asset_wallet → customer_deposit_address</code> 3-단 join</li>
-<li><strong>"고객 X 의 최근 출금 내역?"</strong> → <code>customer.withdrawal_request</code> WHERE <code>bank_customer_id = X</code> (<code>transaction.withdrawal_execution</code> 와 join 시 leg 별 vendor lifecycle 포함, <code>vendor_transaction</code> 까지 join 시 Fireblocks 측 status 도 포함)</li>
+<li><strong>"고객 X 의 최근 출금 내역?"</strong> → <code>customer.transaction_request</code> WHERE <code>bank_customer_id = X</code> (<code>transaction.transaction_execution</code> 와 join 시 leg 별 vendor lifecycle 포함, <code>vendor_transaction</code> 까지 join 시 Fireblocks 측 status 도 포함)</li>
 <li><strong>"고객 X 의 자산 분리 보관 증명?"</strong> → <code>customer_ledger</code> 잔액 + 매일 reconciliation log (<code>Σ(customer_ledger) + Σ(delta_ledger) == Σ(고객 자산 vault on-chain 잔액)</code>, Hot omnibus + Cold + segregated 합산) + hash chain 무결성</li>
 </ul>
 
@@ -365,8 +368,8 @@ erDiagram
 <table>
 <thead><tr><th>구분</th><th>on-chain</th><th>DB ledger</th></tr></thead>
 <tbody>
-<tr><td>고객 자산 (Hot)</td><td>Omnibus vault</td><td><code>customer_balance_subledger</code> 로 고객별 분리</td></tr>
-<tr><td>고객 자산 (Cold)</td><td>Omnibus vault</td><td><code>customer_balance_subledger</code> 로 고객별 분리</td></tr>
+<tr><td>고객 자산 (Hot)</td><td>Omnibus vault</td><td><code>customer_ledger</code> 로 고객별 분리</td></tr>
+<tr><td>고객 자산 (Cold)</td><td>Omnibus vault</td><td><code>customer_ledger</code> 로 고객별 분리</td></tr>
 <tr><td>은행 고유 자산</td><td>★ 별도 vault (분리 필수)</td><td>별도 ledger (4 원장 ③ 회사 자산)</td></tr>
 <tr><td>입금 추적</td><td>고객별 deposit address</td><td><code>deposit_observations</code> 로 매핑</td></tr>
 </tbody>
@@ -376,7 +379,7 @@ erDiagram
 <p><strong>핵심</strong>:</p>
 <ul>
 <li><strong>on-chain 은 omnibus</strong> — gas 효율 + Fireblocks vault account 수 절감 + dust 누적 회피 + 운영 부담 ↓. 수십만~수백만 고객 규모에서 1:1 매핑은 운영 비용 측면에서 비현실적</li>
-<li><strong>DB ledger 는 <code>customer_balance_subledger</code> 로 고객별 분리</strong> (<a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a> 5.4 절 / <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.4 절 의 4 원장 ①)</li>
+<li><strong>DB ledger 는 <code>customer_ledger</code> 로 고객별 분리</strong> (<a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a> 5.4 절 / <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.4 절 의 4 원장 ①)</li>
 <li><strong>분리 보관 증명 매커니즘</strong>:
   <ul>
     <li>매일 reconciliation — subledger 의 고객별 잔액 합 == omnibus vault 의 on-chain 잔액 (<a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a> 19.2 절 의 L1-L4)</li>
@@ -444,7 +447,7 @@ omnibus 패턴은 다음 조건이 동시 충족되어야 VACPA 분리 보관 �
 <ul>
 <li><strong>PII 최소 보유</strong> — 코인계 DB 에는 이름 · 주민번호 · 주소 · 연락처 등 직접 식별정보 저장 금지. 필요 시 외부 시스템에 즉시 조회 후 메모리 사용 · 폐기</li>
 <li><strong>인증은 채널계 위임</strong> — 고객 password / 2FA / 생체인증 모두 채널계 IdP. 코인계는 신뢰된 인증 토큰만 검증</li>
-<li><strong>vault 자산 분리 보관</strong> — on-chain 은 omnibus, DB ledger 수준에서 <code>customer_balance_subledger</code> 로 고객별 분리. VACPA 분리 보관 의무는 ledger 분리 + 매일 reconciliation + hash chain 무결성 으로 충족. 단 고객 자산 vault 와 은행 고유 자산 vault 는 on-chain 분리 필수</li>
+<li><strong>vault 자산 분리 보관</strong> — on-chain 은 omnibus, DB ledger 수준에서 <code>customer_ledger</code> 로 고객별 분리. VACPA 분리 보관 의무는 ledger 분리 + 매일 reconciliation + hash chain 무결성 으로 충족. 단 고객 자산 vault 와 은행 고유 자산 vault 는 on-chain 분리 필수</li>
 <li><strong>자산 이동은 자동화 금지</strong> — 사망 · 제재 · 휴면 등 lifecycle 이벤트는 vault status 만 변경. 실제 자산 이동은 사람 quorum 승인 매개</li>
 <li><strong>외부 이벤트는 event 별 분리 audit</strong> — AML 제재는 <code>aml_sanction_event</code>, KYC 신원은 <code>kyc_status_event</code>, lifecycle (휴면 / 사망 / 탈퇴) 은 <code>lifecycle_event</code> 표에 각각 기록. trigger 시스템 / SLA / schema 가 모두 다르므로 분리. 원본 payload 는 PII 가까운 경우 별도 secure store 에 보관</li>
 </ul>

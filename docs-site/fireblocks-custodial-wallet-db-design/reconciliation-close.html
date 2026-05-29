@@ -42,6 +42,8 @@
 <li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
 <li><a href="sm-webhook.html">13. Webhook 처리</a></li>
 <li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
+<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
 <li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
@@ -98,6 +100,21 @@ Fireblocks 는 대사·결산·마감을 다루지 않는다. 본 도메인은 �
 <p>
 아래 4-tier 분류는 본 reference 의 권장 설계. 일반 수탁업 / 펀드 시스템의 multi-tier reconciliation 패턴을 가상자산 환경에 일반화한 것 — 정확한 tier 구분과 주기는 회계법인 / 운용업계 표준 (한국금융투자협회 등) 과 정합성 검증 권장.
 </p>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ 금융위 2026.04 — KR 거래소에 "5 분 주기 상시 대사" 요구</div>
+<p style="margin-bottom:0.5rem">
+2026년 4월 금융위원회는 빗썸 오지급 사태 (BTC 랜덤박스 사고) 이후 5 대 거래소와 간담회를 열고 다음을 요구:
+</p>
+<ul style="margin-bottom:0.5rem">
+<li><strong>이용자 자산을 5분 주기로 상시 대사하는 자동화 시스템</strong></li>
+<li><strong>이벤트 보상 등 수작업 거래의 계정 분리 · 자동 검증 · 다중 승인</strong></li>
+<li><strong>금융회사 수준의 준법감시 + 표준 위험관리 체계</strong></li>
+</ul>
+<p style="margin-bottom:0;color:var(--text-secondary);font-size:13px">
+배경 — 콜드월렛 80% 같은 "보관 위치" 와 "총량 보유" 만으로는 충분하지 않고, 실제 사고는 <strong>장부 · 운영 · 권한관리</strong>에서 발생한다는 감독당국의 인식 전환. 본 wiki 의 L2 (5분 건별 대조) 가 정확히 이 요구사항에 부합. KR 은행은 이를 1단계 디지털자산법 → 2단계 입법으로 의무화될 가능성에 대비. 출처: <code>sources/monitoring/2026-05-28__customer-asset-separation-kr-exchanges.md</code> · <a href="https://www.fsc.go.kr/no010101/86636">금융위 보도자료 (2026-04-06)</a>.
+</p>
+</div>
 
 <div class="diagram">
 <pre class="mermaid">

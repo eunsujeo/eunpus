@@ -42,6 +42,8 @@
 <li><a class="active" href="sm-transaction.html">12. Transaction State + 14-step</a></li>
 <li><a href="sm-webhook.html">13. Webhook 처리</a></li>
 <li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
+<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
 <li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
@@ -220,12 +222,12 @@ state 는 단방향만 진행 (예: COMPLETED 에서 다시 PENDING 으로 되�
 거래는 3 개의 layer 로 존재한다:
 </p>
 <ul style="margin-bottom:0">
-<li><strong>(A) 은행 측 canonical 거래 (bank intent)</strong> — 고객이 누구이고, 어느 채널로, 얼마를, 어떤 사유로 요청했는가. 직접 들고 있는 테이블: <a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a> 의 <code>customer.withdrawal_request</code> (출금 요청) / <code>transaction.deposit_observations</code> (입금). <strong>이 layer 가 은행의 source of truth</strong>.</li>
+<li><strong>(A) 은행 측 canonical 거래 (bank intent)</strong> — 고객이 누구이고, 어느 채널로, 얼마를, 어떤 사유로 요청했는가. 직접 들고 있는 테이블: <a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a> 의 <code>customer.transaction_request</code> (출금 요청) / <code>transaction.deposit_observations</code> (입금). <strong>이 layer 가 은행의 source of truth</strong>.</li>
 <li><strong>(B) vendor lifecycle (본 페이지)</strong> — Fireblocks 가 17-status state machine 으로 처리하는 거래의 lifecycle. 본 페이지의 <code>vendor_transaction</code> + <code>vendor_transaction_status_history</code> 가 담당. (A) 의 entry 가 Fireblocks 에 접수되면 (B) 가 생성됨.</li>
 <li><strong>(C) on-chain reality</strong> — blockchain 의 block height · confirmation · reorg. <code>vendor_transaction.tx_hash</code> + <code>raw_event_payload</code> 안의 NetworkStatus 에 일부 보관.</li>
 </ul>
 <p style="margin-bottom:0">
-즉 <strong><code>vendor_transaction</code> 는 vendor 측 거래 lifecycle 의 mirror 일 뿐, 은행 canonical 이 아님</strong>. canonical 은 <code>customer.withdrawal_request</code> · <code>transaction.deposit_observations</code> 등 bank intent layer.
+즉 <strong><code>vendor_transaction</code> 는 vendor 측 거래 lifecycle 의 mirror 일 뿐, 은행 canonical 이 아님</strong>. canonical 은 <code>customer.transaction_request</code> · <code>transaction.deposit_observations</code> 등 bank intent layer.
 </p>
 </div>
 

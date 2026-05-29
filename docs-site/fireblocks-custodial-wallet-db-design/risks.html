@@ -42,6 +42,8 @@
 <li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
 <li><a href="sm-webhook.html">13. Webhook 처리</a></li>
 <li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
+<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
 <li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
@@ -256,6 +258,29 @@
 <li><strong>내부 직원 부정</strong> — Admin Quorum 매개로 완화 가능하나 0 은 아님</li>
 <li><strong>법규 변경 risk</strong> — KR 가상자산이용자보호법 후속 시행령 / 감독규정 변경</li>
 </ul>
+
+<h3>17.3.5 KR 거래소 사고 사례 — 학습 포인트</h3>
+<p>
+KR 4 대 거래소 (Upbit · 빗썸 · 코인원 · 코빗) 의 실제 사고 사례. 본 wiki 의 design 결정 (5분 주기 상시 대사 · 자동 검증 · 다중 승인 · 80%+ 콜드월렛) 의 근거. 출처: <code>sources/monitoring/2026-05-28__customer-asset-separation-kr-exchanges.md</code>.
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>시점</th><th>사업자</th><th>유형</th><th>피해 / 조치</th><th>본 wiki design 의 대응</th></tr></thead>
+<tbody>
+<tr><td>2018</td><td>빗썸</td><td>해킹</td><td>대규모 해킹 — 보험으로 충분 커버 못함</td><td>80%+ 콜드월렛 + 보험 / 준비금 (가상자산이용자보호법 시행)</td></tr>
+<tr><td>2019-11</td><td>Upbit</td><td>해킹</td><td>ETH 342,000개 (~580억원) Hot 에서 미확인 지갑으로 유출 → 회사 자산으로 충당</td><td>Hot vault 잔량 최소화 · 정기 rebalancing (<a href="cold-wallet.html">7. Cold Wallet 운영</a>)</td></tr>
+<tr><td>2025-12</td><td>코빗</td><td>서비스 장애</td><td>12 시간 서비스 중단 — 고객자산 / 데이터 안전 공지</td><td>BCP / DR drill (<a href="infrastructure.html">2. 인프라 운영</a> 2.9 / 2.14.1)</td></tr>
+<tr><td>2025</td><td>FIU 종합검사</td><td>AML / KYC 위반</td><td>두나무 (영업 일부정지 + 대표 문책경고) · 빗썸 (이용자보호법 약 9만건 위반) · 코인원 / 코빗도 위반 적발</td><td>자체 FDS + Chainalysis screening + KYC/AML 강화 (<a href="infrastructure.html">2. 인프라 운영</a> 2.13.3 / 2.13.4)</td></tr>
+<tr><td>2026-03</td><td>빗썸</td><td>★ 오지급</td><td><strong>BTC 랜덤박스 이벤트의 단위 입력 / 장부 검증 실패</strong> → 외부 해킹이 아닌 운영 통제 실패. 금융위 긴급 대응반 구성</td><td><strong>5분 주기 상시 대사</strong> + 이벤트 보상 별도 계정 · 자동 검증 · 다중 승인 (<a href="reconciliation-close.html">19. 대사·결산·마감</a> 19.2)</td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary);font-size:13px">
+<strong>★ 학습 포인트</strong>: 2018-2019 해킹 시기 = 외부 침해 중심 → 콜드월렛 + 보험 대응. <strong>2025-2026 = 운영 통제 실패 중심</strong> (오지급 · AML · KYC) → 5분 주기 상시 대사 + FDS + 자동 검증 + 다중 승인 으로 패러다임 전환. 본 wiki 의 19 (대사) · 2.13 (모니터링) 가 이 흐름에 부합하도록 설계.
+</p>
+<p style="color:var(--text-secondary);font-size:13px">
+공시 / 검증의 한계 — KR 거래소 실사보고서는 회계감사 (Audit) 가 아니라 <strong>AUP (합의된 절차 수행 결과 보고서, Agreed-Upon Procedures)</strong>. 내부통제 설계 / 운영 효과성 / 잠재적 부외 위험은 cover 하지 않음. 본 wiki 의 회계 영역 (<a href="accounting-ledger.html">18. 회계 · 원장 설계</a>) 은 회계법인 자문 시 AUP 가 아닌 회계감사 (Audit) 수준 검증 추가 권장.
+</p>
 
 <h3>17.4 도입 결정의 risk-reward 분석 (저자)</h3>
 <p>

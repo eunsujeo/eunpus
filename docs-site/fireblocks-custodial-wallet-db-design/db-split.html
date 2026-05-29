@@ -42,6 +42,8 @@
 <li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
 <li><a href="sm-webhook.html">13. Webhook 처리</a></li>
 <li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
+<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
 <li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
@@ -75,7 +77,7 @@
 <li><strong>Cache</strong> (Redis · Memcached) — balance_snapshots 등 외부 SoT 의 mutable cache</li>
 </ul>
 <p style="margin-bottom:0">
-운영자는 각 domain 의 <strong>data 특성 (§3.6)</strong> 을 보고 자신의 환경에 맞는 engine 을 선택. 본 wiki 는 5 가지 보장 (audit 격리 · service 권한 분리 · 변조방지 · 외부 감사 read-only · 5년 retention) 만 명세하며 구현 수단은 자유.
+운영자는 각 domain 의 <strong>data 특성 (3.6)</strong> 을 보고 자신의 환경에 맞는 engine 을 선택. 본 wiki 는 5 가지 보장 (audit 격리 · service 권한 분리 · 변조방지 · 외부 감사 read-only · 5년 retention) 만 명세하며 구현 수단은 자유.
 </p>
 </div>
 
@@ -102,7 +104,7 @@
 <div class="callout">
 <div class="callout-title">결론 — 3 격리 영역 · 9 logical domain</div>
 <p style="margin-bottom:0">
-은행 데이터를 <strong>격리 요구사항</strong> 기준으로 3 영역으로 분리. 각 영역의 logical domain 들은 운영자가 1 engine instance · 별도 engine · 또는 mix 로 자유롭게 매핑 (§3.6 의 data 특성 표 참조):
+은행 데이터를 <strong>격리 요구사항</strong> 기준으로 3 영역으로 분리. 각 영역의 logical domain 들은 운영자가 1 engine instance · 별도 engine · 또는 mix 로 자유롭게 매핑 (3.6 의 data 특성 표 참조):
 </p>
 <ul style="margin-bottom:0">
 <li><strong>core (7 domain)</strong> — 코인계 운영 데이터 전반: <code>customer</code> · <code>counterparty</code> · <code>transaction</code> · <code>accounting</code> · <code>reconciliation</code> · <code>ops</code> · <code>admin</code>. service-level 권한 분리는 schema GRANT (RDB) 또는 별도 collection (NoSQL) 등으로</li>
@@ -114,6 +116,18 @@
 
 <h3>3.2 9 logical domain — 격리 영역 · 테이블 · 변경 패턴</h3>
 
+<div class="callout">
+<div class="callout-title">★ 모든 wiki 테이블 = 코인계 소속</div>
+<p style="margin-bottom:0.5rem">
+본 reference 에 정의된 <strong>9 domain · 모든 테이블</strong> 은 <strong>코인계</strong> (디지털자산 운영 시스템) 안에 위치. <strong>계정계</strong> (기존 은행 코어 — KRW 잔액 / 입출금 / 고객 계좌) 의 테이블은 <strong>본 wiki 범위 밖</strong> 이며 외부 reference 만 함.
+</p>
+<ul style="margin-bottom:0">
+<li><strong>코인계 (본 wiki)</strong> — core (7 domain) + audit + compliance 격리 영역 = 디지털자산 vault · 거래 · 회계 · 컴플라이언스 운영 데이터. 모든 application · DB 는 망분리 안에 배치</li>
+<li><strong>계정계 (외부)</strong> — 본 wiki 는 column schema 정의 없이 통합 지점만 명시. 통합은 outbox pattern 의 비동기 push (코인계 → 계정계 KRW 입출금 요청) + 일말 마감 회계 push (코인계 <code>general_ledger_entry</code> → 계정계 회계). <a href="infrastructure.html">5. 인프라 · 망분리</a> 참조</li>
+<li><strong>계정계와 sync 책임이 있는 코인계 표</strong> — <code>accounting.bank_ledger</code> (KRW 부분) · <code>accounting.general_ledger_entry</code> (일말 push) · <code>customer.transaction_request</code> (KRW 출금 의도) 등. 표 자체는 코인계 DB 에 있지만 운영 시 계정계와 정합 / 연동 책임이 있음 (<a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.4 / 18.5 참조)</li>
+</ul>
+</div>
+
 <h4>3.2.1 core 격리 영역 — 코인계 운영 전반 (7 domain)</h4>
 <div class="table-wrap">
 <table>
@@ -121,7 +135,7 @@
 <tbody>
 <tr><td><strong>customer</strong></td>
   <td>고객 vault 라인 (고객 ↔ Fireblocks Vault Account 매핑) + 외부 event log (AML 제재 · KYC 신원 · lifecycle 별 분리) + 출금 요청 (bank intent layer) + 고객 본인의 외부 destination 등록</td>
-  <td>customer_vault · customer_asset_wallet · customer_deposit_address · aml_sanction_event · kyc_status_event · lifecycle_event · withdrawal_request · customer_external_destination</td>
+  <td>customer_vault · customer_asset_wallet · customer_deposit_address · aml_sanction_event · kyc_status_event · lifecycle_event · transaction_request <small style="color:var(--text-tertiary)">(헤더)</small> · withdrawal_request_detail · swap_request_detail · ramp_request_detail · customer_external_destination</td>
   <td>mutable + append-only (event log)</td></tr>
 <tr><td><strong>counterparty</strong></td>
   <td>외부 송금 대상 등록 (whitelisted address · 외부 거래소 · 외부 wallet)</td>
@@ -129,11 +143,11 @@
   <td>mutable</td></tr>
 <tr><td><strong>transaction</strong></td>
   <td>webhook event + vendor 거래 lifecycle mirror + balance snapshot + 입금 관찰 + 출금 실행 (vendor lifecycle layer)</td>
-  <td>webhook_events · webhook_dedup · webhook_failures · vendor_transaction · vendor_transaction_status_history · vendor_transaction_destinations · balance_snapshots · asset_value_krw · deposit_observations · withdrawal_execution · vault_lifecycle_event · address_lifecycle_event</td>
-  <td>append-only (사본) · withdrawal_execution 은 mixed</td></tr>
+  <td>webhook_events · webhook_dedup · webhook_failures · vendor_transaction · vendor_transaction_status_history · vendor_transaction_destinations · balance_snapshots · asset_value_krw · deposit_observations · transaction_execution · vault_lifecycle_event · address_lifecycle_event</td>
+  <td>append-only (사본) · transaction_execution 은 mixed</td></tr>
 <tr><td><strong>accounting</strong> ★</td>
   <td>회계 4 원장 + 환율 + 정정 (<a href="accounting-ledger.html">18. 회계 · 원장 설계</a>). <strong>★ 도메인 view 까지만 정의 — column schema 는 회계법인 / KR 회계 표준 (K-GAAP / K-IFRS) 자문 후 별도 stage</strong></td>
-  <td>customer_ledger · bank_ledger · delta_ledger · general_ledger_entry · general_ledger_snapshot · fx_rate_history · fx_revaluation_log · accounting_correction_log</td>
+  <td>customer_ledger · bank_ledger · delta_ledger · general_ledger_entry · general_ledger_snapshot · fx_rate_history · fx_revaluation_log · accounting_correction_log · customer_position <small style="color:var(--text-tertiary)">(고객 P&amp;L 평단가 / 미실현 손익 — 18.8)</small></td>
   <td>append-only + mutable</td></tr>
 <tr><td><strong>reconciliation</strong> ★</td>
   <td>대사 · 결산 · 잔액 정합성 (<a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a>). <strong>★ 도메인 view 까지만 정의 — column schema 는 회계감사 / 금감원 검사 대응 자문 후 별도 stage</strong></td>
@@ -189,7 +203,7 @@ audit 영역이 별도 격리인 이유: (a) 변조방지 storage 격리 — cor
 <table>
 <thead><tr><th>Service</th><th>책임</th><th>core 영역 write</th><th>core 영역 read</th><th>audit 영역</th></tr></thead>
 <tbody>
-<tr><td>거래 API (사용자 facing)</td><td>입출금 요청 진입</td><td><code>customer.*</code> (vault 할당 · withdrawal_request) · <code>counterparty.*</code> (whitelist 등록) · <code>transaction.withdrawal_execution</code></td><td>전 domain read-only</td><td>—</td></tr>
+<tr><td>거래 API (사용자 facing)</td><td>입출금 요청 진입</td><td><code>customer.*</code> (vault 할당 · transaction_request) · <code>counterparty.*</code> (whitelist 등록) · <code>transaction.transaction_execution</code></td><td>전 domain read-only</td><td>—</td></tr>
 <tr><td>Webhook worker</td><td>Fireblocks event 처리</td><td><code>transaction.*</code> (event + tx mirror + balance snap) · <code>accounting.*</code> (ledger 갱신)</td><td>전 domain read-only</td><td><code>audit_log_mirror</code> write</td></tr>
 <tr><td>원장 / 대사 cron</td><td>일일 마감 · 대사 · 환율 적용</td><td><code>accounting.*</code> · <code>reconciliation.*</code></td><td>전 domain read-only</td><td>—</td></tr>
 <tr><td>운영자 / admin</td><td>master 변경 (asset_catalog · counterparty · user_map 등)</td><td><code>customer.*</code> · <code>counterparty.*</code> · <code>ops.*</code> · <code>admin.*</code></td><td>전 domain read-only</td><td><code>audit_log_internal</code> write (변경 audit)</td></tr>
@@ -269,7 +283,7 @@ flowchart LR
 <strong>원장 / 대사</strong> = 운영 스케줄 (daily 마감 · 5min 대사 cron) /
 <strong>관리 콘솔</strong> = 운영자 / 컴플라이언스 / 회계팀.
 <br/>
-service 별 write owner: 거래 API = core (customer · counterparty · transaction.withdrawal_execution) · compliance / Webhook = core (transaction · accounting) + audit (audit_log_mirror) / 원장 / 대사 = core (accounting · reconciliation) / 운영자 = audit (audit_log_internal) + core 의 master domain.
+service 별 write owner: 거래 API = core (customer · counterparty · transaction.transaction_execution) · compliance / Webhook = core (transaction · accounting) + audit (audit_log_mirror) / 원장 / 대사 = core (accounting · reconciliation) / 운영자 = audit (audit_log_internal) + core 의 master domain.
 core 영역 안에서는 service 별 domain 권한으로 격리 (3.2.4 절 참조).
 인프라 배치는 <a href="infrastructure.html">2. 인프라 운영</a> 참조.
 </p>
@@ -283,9 +297,9 @@ core 영역 안에서는 service 별 domain 권한으로 격리 (3.2.4 절 참�
 <thead><tr><th>근거</th><th>본 버전 (3 격리 영역 · 9 domain) 에서 어떻게 충족하는가</th></tr></thead>
 <tbody>
 <tr><td><strong>① 민감도 격리</strong></td><td><strong>domain-level 로 달성</strong> — <code>customer</code> domain (외부 ref 만, PII 없음) 와 <code>transaction</code> · <code>accounting</code> 분리. 진짜 PII (이름 / 주민번호) 는 외부 채널계 / KYC 가 보유 (코인계는 reference 만)</td></tr>
-<tr><td><strong>② 변경 패턴 분리</strong></td><td><strong>domain-level 로 달성</strong> — <code>transaction</code> 은 append-only (webhook 사본), <code>accounting</code> 의 ledger snapshot 은 append-only + hash chain, <code>reconciliation</code> · <code>customer</code> · <code>admin</code> 은 mutable. 변경 패턴 axis 는 engine 선택의 기준 (§3.6 표 참조)</td></tr>
+<tr><td><strong>② 변경 패턴 분리</strong></td><td><strong>domain-level 로 달성</strong> — <code>transaction</code> 은 append-only (webhook 사본), <code>accounting</code> 의 ledger snapshot 은 append-only + hash chain, <code>reconciliation</code> · <code>customer</code> · <code>admin</code> 은 mutable. 변경 패턴 axis 는 engine 선택의 기준 (3.6 표 참조)</td></tr>
 <tr><td><strong>③ 사고 범위 축소</strong></td><td><strong>audit 영역 분리로 핵심 보호</strong>. core 영역 안 SQL injection / data corruption 시 영향 가능하나, audit log (변조방지 가장 critical) 는 storage 분리 → disaster 시 진실 재구성 가능. core 안에서는 domain 별 service 권한으로 사고 격리</td></tr>
-<tr><td><strong>④ 운영 권한 분리</strong></td><td><strong>storage-level 권한 + service role 로 달성</strong> — service 별 write 영역 매핑 (§3.2.4 표). 구현 수단은 engine 에 따라 (RDB schema GRANT · NoSQL IAM · object store bucket policy 등)</td></tr>
+<tr><td><strong>④ 운영 권한 분리</strong></td><td><strong>storage-level 권한 + service role 로 달성</strong> — service 별 write 영역 매핑 (3.2.4 표). 구현 수단은 engine 에 따라 (RDB schema GRANT · NoSQL IAM · object store bucket policy 등)</td></tr>
 <tr><td><strong>⑤ 외부 감사 단순화</strong></td><td><strong>audit + compliance 영역이 핵심</strong> — 금감원 / 회계감사관은 <strong>audit + compliance 전체 + core 의 transaction · accounting · reconciliation</strong> read-only. <code>customer</code> · <code>counterparty</code> · <code>admin</code> domain 은 PII 가까운 매핑이라 별도 권한으로 제한 가능</td></tr>
 </tbody>
 </table>
@@ -350,7 +364,7 @@ core 영역 안에서는 service 별 domain 권한으로 격리 (3.2.4 절 참�
   <td>mutable, slow-changing</td><td>low</td><td>5년</td><td>strict ACID</td>
   <td><strong>RDB</strong></td></tr>
 <tr><td><strong>transaction</strong></td>
-  <td>append-only (사본) + mutable (withdrawal_execution)</td><td>high (매 거래)</td><td>5년 (특금법 거래 기록)</td><td>eventual (vendor SoT) · 단 withdrawal_execution 는 ACID</td>
+  <td>append-only (사본) + mutable (transaction_execution)</td><td>high (매 거래)</td><td>5년 (특금법 거래 기록)</td><td>eventual (vendor SoT) · 단 transaction_execution 는 ACID</td>
   <td><strong>RDB partitioned</strong> 또는 RDB + time-series DB (TimescaleDB · ClickHouse) hybrid · 또는 append-only event store</td></tr>
 <tr><td><strong>accounting</strong></td>
   <td>append-only + mutable cache (이중부기)</td><td>medium (마감 cycle)</td><td>5년 (특금법 + 회계 7년)</td><td>★ <strong>strict ACID 필수</strong> — 회계 항등식 보장</td>
@@ -478,6 +492,137 @@ core 영역 안에서는 service 별 domain 권한으로 격리 (3.2.4 절 참�
 </ul>
 </div>
 
+<h3>3.8 전체 ER 개요 — 9 도메인 cluster view</h3>
+<p>
+9 logical domain 의 cluster 차원 overview. <strong>도메인 안의 entity 간 상세 ER (FK · cardinality · column)</strong> 은 각 detail 페이지의 mermaid erDiagram 참조 (link 는 하단 매핑 표). 본 다이어그램은 <strong>도메인 간 connection 의 큰 그림</strong> 만 보여줌.
+</p>
+
+<div class="callout">
+<div class="callout-title">읽는 법</div>
+<ul style="margin-bottom:0">
+<li><strong>각 box = 1 domain</strong> · 박스 안에 entity 수 + 핵심 hub 표</li>
+<li><strong>색상</strong> = 격리 영역 — 파랑 (core 7 domain) · 노랑 (audit) · 보라 (compliance)</li>
+<li><strong>실선 화살표</strong> = 강한 관계 (FK · 1:N)</li>
+<li><strong>점선 화살표</strong> = 약한 관계 (source_ref · audit mirror · 비동기 outbox)</li>
+<li>화살표 라벨 = 주된 hub entity 또는 관계 의미</li>
+</ul>
+</div>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+
+  customer["<b>customer</b> (11)<br/>고객 vault + transaction_request<br/>+ 3 detail (withdrawal/swap/ramp)"]
+  counterparty["<b>counterparty</b> (3)<br/>whitelist · 외부 거래소 매핑"]
+  transaction["<b>transaction</b> (12)<br/>vendor_transaction · transaction_execution<br/>webhook · deposit_observations"]
+  accounting["<b>accounting</b> (11)<br/>4 원장 + customer_position<br/>+ fx / 정정"]
+  reconciliation["<b>reconciliation</b> (5)<br/>L1-L4 대사 + finding"]
+  ops["<b>ops</b> (6)<br/>운영 vault · 자산 master<br/>Hot/Cold ratio"]
+  admin["<b>admin</b> (10)<br/>직원 매핑 · 거버넌스 mirror<br/>cosigner / backup / recovery"]
+  audit["<b>audit</b> (2)<br/>audit_log_mirror (Fireblocks 사본)<br/>+ audit_log_internal (은행 자체)"]
+  compliance["<b>compliance</b> (7)<br/>travel_rule + VASP<br/>+ 금감원 보고 + screening"]
+
+  customer -->|"transaction_request<br/>→ execution (1:N)"| transaction
+  customer -->|"고객 vault ↔<br/>customer_ledger"| accounting
+  counterparty -->|"화이트리스트 ↔<br/>customer_external_destination"| customer
+
+  transaction -->|"source_ref<br/>(거래 → 분개)"| accounting
+  ops -->|"운영 vault ↔<br/>bank_ledger"| accounting
+
+  accounting -.->|"L1-L4 대사"| reconciliation
+
+  transaction -.->|"vendor 거래 사본"| audit
+  admin -.->|"운영자 변경"| audit
+
+  customer -->|"트래블룰<br/>(100만원 이상)"| compliance
+  transaction -.->|"AML / screening"| compliance
+  accounting -.->|"일말 박제 → 금감원 보고"| compliance
+
+  classDef core fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-width:2px
+  classDef auditCls fill:#fef3c7,stroke:#d97706,color:#92400e,stroke-width:2px
+  classDef compCls fill:#ede9fe,stroke:#7c3aed,color:#5b21b6,stroke-width:2px
+  class customer,counterparty,transaction,accounting,reconciliation,ops,admin core
+  class audit auditCls
+  class compliance compCls
+</pre>
+</div>
+<p class="diagram-caption">
+9 domain 의 <strong>cluster 차원</strong> 관계. 핵심 hub entity 만 박스 안에 표시 (전체 67 entities 는 아래 3.8.1 매핑 표 참조). 실선 = FK 관계 · 점선 = audit / 보고 / 약한 참조. 색상 = 파랑 (core 7) / 노랑 (audit) / 보라 (compliance).
+</p>
+
+<h4>3.8.1 Entity → Domain → 상세 페이지 매핑</h4>
+<p>
+50+ 전체 entity 의 도메인 분류 + 상세 정의 위치:
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Domain</th><th>Entities (전체)</th><th>상세 페이지</th></tr></thead>
+<tbody>
+<tr><td><strong>customer</strong> (11)</td>
+<td><code>customer_vault</code> · <code>customer_asset_wallet</code> · <code>customer_deposit_address</code> · <code>aml_sanction_event</code> · <code>kyc_status_event</code> · <code>lifecycle_event</code> · <code>transaction_request</code> (헤더) · <code>withdrawal_request_detail</code> · <code>swap_request_detail</code> · <code>ramp_request_detail</code> · <code>customer_external_destination</code></td>
+<td><a href="tables-customer-user.html">9. Customer Users</a> + <a href="tables-vault-wallet.html">5. Vault · Asset Wallet</a> + <a href="tables-transaction-request.html">14a. Transaction Request</a></td></tr>
+
+<tr><td><strong>counterparty</strong> (3)</td>
+<td><code>whitelisted_destinations</code> · <code>internal_wallet_map</code> · <code>exchange_account_map</code></td>
+<td><a href="tables-counterparty.html">6. Counterparty Registry</a></td></tr>
+
+<tr><td><strong>transaction</strong> (12)</td>
+<td><code>webhook_events</code> · <code>webhook_dedup</code> · <code>webhook_failures</code> · <code>vendor_transaction</code> · <code>vendor_transaction_status_history</code> · <code>vendor_transaction_destinations</code> · <code>balance_snapshots</code> · <code>asset_value_krw</code> · <code>deposit_observations</code> · <code>transaction_execution</code> · <code>vault_lifecycle_event</code> · <code>address_lifecycle_event</code></td>
+<td><a href="sm-transaction.html">12. Transaction State</a> + <a href="sm-webhook.html">13. Webhook</a> + <a href="tables-transaction-request.html">14a. Transaction Execution</a></td></tr>
+
+<tr><td><strong>accounting</strong> (11)</td>
+<td><code>customer_ledger</code> · <code>customer_balance_snapshot</code> · <code>customer_position</code> (hypothesis) · <code>bank_ledger</code> · <code>delta_ledger</code> · <code>general_ledger_account</code> · <code>general_ledger_entry</code> · <code>general_ledger_snapshot</code> · <code>fx_rate_history</code> · <code>fx_revaluation_log</code> · <code>accounting_correction_log</code></td>
+<td><a href="accounting-ledger.html">18. 회계 · 원장 설계</a></td></tr>
+
+<tr><td><strong>reconciliation</strong> (5)</td>
+<td><code>reconciliation_session</code> · <code>reconciliation_finding</code> · <code>reconciliation_resolution</code> · <code>balance_check_history</code> · <code>onchain_sync_log</code></td>
+<td><a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a></td></tr>
+
+<tr><td><strong>ops</strong> (6)</td>
+<td><code>ops_vault</code> · <code>ops_asset_wallet</code> · <code>ops_deposit_address</code> · <code>asset_catalog</code> · <code>hot_cold_ratio_daily</code> · <code>rebalancing_log</code></td>
+<td><a href="tables-vault-wallet.html">5. Vault · Asset Wallet</a> + <a href="cold-wallet.html">7. Cold Wallet</a></td></tr>
+
+<tr><td><strong>admin</strong> (10)</td>
+<td><code>user_map</code> · <code>api_key_meta</code> · <code>mobile_device</code> · <code>callback_handler_meta</code> · <code>sso_session_log</code> · <code>admin_quorum_meta</code> · <code>policy_rule_snapshot</code> · <code>cosigner_meta</code> · <code>workspace_backup_meta</code> · <code>recovery_event_log</code></td>
+<td><a href="tables-user.html">8. Internal Users</a> + <a href="tables-governance.html">10. Roles · Quorum · Policy</a> + <a href="tables-crypto.html">11. MPC · Cosigner</a></td></tr>
+
+<tr><td><strong>audit</strong> (2)</td>
+<td><code>audit_log_mirror</code> (Fireblocks 사본) · <code>audit_log_internal</code> (은행 자체 변경)</td>
+<td><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></td></tr>
+
+<tr><td><strong>compliance</strong> (7)</td>
+<td><code>travel_rule_records</code> · <code>vasp_counterparty</code> · <code>screening_results</code> · <code>regulator_reports</code> · <code>sanctions_check</code> · <code>suspicious_tx_review</code> · <code>transaction_screening</code></td>
+<td><a href="tables-audit.html">15. Audit · AML · Travel Rule</a> + <a href="kr-compliance.html">16. KR 규제 매핑</a></td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary);font-size:13px">
+<strong>총 67 entities</strong> across 9 domains. 본 페이지는 cluster 차원 overview — 도메인 내부 ER (entity 간 FK · cardinality · column) 은 각 detail 페이지의 mermaid erDiagram 참조 (예: <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.10 · <a href="tables-customer-user.html">9. Customer Users</a> 9.3 · <a href="tables-transaction-request.html">14a. Transaction Request</a> 14a.7).
+</p>
+
+<h4>3.8.2 주요 cross-domain 관계 해설</h4>
+<p>
+다이어그램의 핵심 cross-domain 화살표 의미:
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>관계</th><th>의미</th><th>발생 시점</th></tr></thead>
+<tbody>
+<tr><td><strong>customer.transaction_request → transaction.transaction_execution</strong></td><td>1 요청 → N 실행 (bank intent → vendor lifecycle)</td><td>거래 요청 시</td></tr>
+<tr><td><strong>customer.customer_vault → accounting.customer_ledger</strong></td><td>고객 ↔ 자산 잔액 SoT</td><td>고객 등록 + 자산 추가</td></tr>
+<tr><td><strong>customer.customer_external_destination → counterparty.whitelisted_destinations</strong></td><td>고객 본인 외부 destination 사전 등록 (선택)</td><td>등록 시</td></tr>
+<tr><td><strong>transaction.vendor_transaction → accounting.general_ledger_entry</strong></td><td>거래마다 분개 trigger (source_ref)</td><td>거래 실시간</td></tr>
+<tr><td><strong>transaction.deposit_observations → accounting.customer_ledger</strong></td><td>입금 confirmation 후 잔액 갱신</td><td>BALANCE_UPDATED webhook</td></tr>
+<tr><td><strong>ops.ops_vault → accounting.bank_ledger</strong></td><td>은행 자체 vault → 자체 보유 원장</td><td>treasury / gas 변동</td></tr>
+<tr><td><strong>accounting.* → reconciliation.*</strong></td><td>L1-L4 대사 (잔액 / 일별 박제 등)</td><td>실시간 / 5분 / 일별</td></tr>
+<tr><td><strong>admin.* + transaction.vendor_transaction → audit.*</strong></td><td>모든 운영자 변경 + Fireblocks 거래 → audit log 5년 보존</td><td>실시간</td></tr>
+<tr><td><strong>customer.transaction_request → compliance.travel_rule_records</strong></td><td>100만원 이상 거래 시 IVMS101</td><td>출금 / 오프램프 시</td></tr>
+<tr><td><strong>transaction.vendor_transaction → compliance.transaction_screening</strong></td><td>AML / 제재 list screening</td><td>거래 실시간</td></tr>
+<tr><td><strong>accounting.general_ledger_snapshot → compliance.regulator_reports</strong></td><td>일말 회계 박제 → 금감원 보고</td><td>일말 cron / 보고 schedule</td></tr>
+</tbody>
+</table>
+</div>
 </section>
 <nav aria-label="Section navigation" class="page-nav">
 <a class="page-nav-link page-nav-prev" href="infrastructure.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">2. 인프라 운영</span></a>

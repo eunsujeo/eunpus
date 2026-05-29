@@ -42,6 +42,8 @@
 <li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
 <li><a href="sm-webhook.html">13. Webhook 처리</a></li>
 <li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
+<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
 <li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
@@ -142,8 +144,7 @@ KR 은행은 <strong>전자금융감독규정의 망분리 정책</strong> 으�
 </div>
 
 <p>
-출처: <a href="https://developers.fireblocks.com/docs/aws-nitro-api-co-signer">AWS Nitro API Co-signer</a> ·
-<a href="https://developers.fireblocks.com/reference/install-api-cosigner-aws">Install API Cosigner AWS</a>
+출처: <a href="https://developers.fireblocks.com/docs/intel-sgx-api-co-signer">Intel SGX API Co-signer</a>
 </p>
 
 <h4><code>admin.cosigner_meta</code> (Hosted MPC 시)</h4>
@@ -167,6 +168,284 @@ KR 은행은 <strong>전자금융감독규정의 망분리 정책</strong> 으�
 </div>
 <p>
 version upgrade / status 변경 같은 lifecycle 이벤트는 <code>audit.audit_log_internal</code> 의 <code>cosigner_meta</code> entry 로 추적 (5년 보존).
+</p>
+
+<h4>On-prem Cosigner 설치 — 사전 준비</h4>
+<p>
+출처: Fireblocks 공식 docs (<a href="https://developers.fireblocks.com/reference/install-api-cosigner-onprem">Install SGX On-prem API Co-signer</a>) + 설치 스크립트 <code>cosigner-v2026.03.02</code> 분석. on-prem 한정 (스크립트가 chassis-asset-tag 로 Azure VM 자동 감지하는 부분은 on-prem 에서 무관 — standard <code>cosigner</code> 이미지 사용).
+</p>
+
+<h5>하드웨어 요구사항 (Fireblocks 공식 docs)</h5>
+<div class="table-wrap">
+<table>
+<thead><tr><th>항목</th><th>요구사항</th></tr></thead>
+<tbody>
+<tr><td>CPU processor</td><td><a href="https://www.intel.com/content/www/us/en/architecture-and-technology/software-guard-extensions-processors.html">Intel® SGX 지원 processor</a> (목록)</td></tr>
+<tr><td>CPU cores</td><td>Minimum <strong>4</strong></td></tr>
+<tr><td>OS</td><td><strong>Ubuntu 22.04 LTS 또는 24.04 LTS</strong> (Canonical) — 최신 Linux kernel + Intel microcode (BIOS update)</td></tr>
+<tr><td>RAM</td><td>Minimum <strong>16 GB</strong></td></tr>
+<tr><td>Storage</td><td>Minimum <strong>128 GB</strong></td></tr>
+<tr><td>SGX Memory</td><td>Minimum <strong>2 GB EPC</strong></td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary);font-size:13px">
+Fireblocks 가 <strong>OVHcloud</strong> on-prem SGX 서버도 지원. 스크립트 v2026.03.02 의 SGX driver URL 은 <code>ubuntu20.04-server</code> 경로지만 공식 docs 의 최신 OS 권장은 22.04 / 24.04 LTS — 스크립트가 자동 다운로드하는 driver 가 22.04 / 24.04 에서도 호환되는지는 사전 검증 필요.
+</p>
+
+<h5>BIOS 설정 (Fireblocks 공식)</h5>
+<ul>
+<li><strong>Intel SGX</strong> (Software Guard Extension) — Enable</li>
+<li><strong>DCAP (FLC)</strong> — Enable</li>
+<li><strong>Hyper threading</strong> — <strong>Disable</strong></li>
+<li><strong>Intel SpeedStep Technology</strong> — <strong>Disable</strong></li>
+<li><strong>Onboard VGA</strong> — <strong>Disable</strong></li>
+</ul>
+
+<h5>SGX 활성 검증 (설치 전 / 후)</h5>
+<pre style="background:#f7f7f7;padding:10px;border-radius:6px;font-size:13px;margin:0 0 0.5rem 0"><code>sudo apt update
+sudo apt upgrade
+sudo apt install cpuid
+cpuid -1 | grep -i sgx</code></pre>
+<p style="color:var(--text-secondary);font-size:13px">
+검증 결과 — <strong>SGX = true</strong> (Software Guard Extensions supported) · <strong>SGX_LC = true</strong> (SGX launch config supported) 모두 필수. 설치 스크립트는 cpuid instruction 으로 자체 검증 (leaf 7 / EBX bit 2 = SGX · ECX bit 30 = SGX_LC). 메모: Azure Standard_DC*_v2 instance 는 SGX2 미지원이지만 cosigner 실행에는 무관.
+</p>
+
+<h5>네트워크 — 사전 도메인 허용 + 포트 설정</h5>
+<p>Fireblocks 공식 allowlist:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>도메인</th><th>소유</th><th>용도</th></tr></thead>
+<tbody>
+<tr><td><code>mobile-api.fireblocks.io</code></td><td>Fireblocks</td><td>API 시그널링 (런타임 상시)</td></tr>
+<tr><td><code>signurl.fireblocks.io</code></td><td>Fireblocks</td><td>signed URL</td></tr>
+<tr><td><code>s3signurl.fireblocks.io</code></td><td>Fireblocks</td><td>S3 signed URL</td></tr>
+<tr><td><code>fb-certs.s3.amazonaws.com</code></td><td>AWS</td><td>Fireblocks 발급 인증서</td></tr>
+<tr><td><code>fb-cosigner-images.s3.amazonaws.com</code></td><td>AWS</td><td>Cosigner 이미지</td></tr>
+<tr><td><code>fb-customers.s3.amazonaws.com</code> (+ <code>/uploads</code>)</td><td>AWS</td><td>고객 파일 업로드</td></tr>
+<tr><td><code>download.docker.com</code></td><td>Docker</td><td>Docker repo (설치)</td></tr>
+<tr><td><code>github.com</code></td><td>GitHub</td><td>docker-compose 바이너리</td></tr>
+<tr><td><code>cdn.registry.gitlab-static.net</code></td><td>GitLab</td><td>registry CDN</td></tr>
+<tr><td><code>gitlab.com</code></td><td>GitLab</td><td>GitLab</td></tr>
+<tr><td><code>registry.gitlab.com</code></td><td>GitLab</td><td>Cosigner Docker 이미지 pull (포트 <strong>5000</strong>)</td></tr>
+<tr><td><code>download.01.org</code></td><td>Intel</td><td>SGX driver / DCAP</td></tr>
+<tr><td><code>bootstrap.pypa.io</code></td><td>PSF</td><td>pip 부트스트랩</td></tr>
+<tr><td><code>files.pythonhosted.org</code> · <code>pypi.org</code> · <code>pypi.python.org</code></td><td>PSF</td><td>Python 패키지</td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary);font-size:13px">
+포트: 대부분 <strong>443 (HTTPS)</strong> · <code>registry.gitlab.com/customer-cosigner</code> 는 <strong>5000</strong>.
+</p>
+<p style="color:var(--text-secondary);font-size:13px">
+<strong>★ Region 별 Fireblocks 도메인 차이</strong> — Global SaaS = <code>mobile-api.fireblocks.io</code> · Europe SaaS = <code>eu2-mobile-api.fireblocks.io</code> 등 prefix · Swiss SaaS = <code>eu-mobile-api.fireblocks.io</code> 등 prefix. 사용 region 에 맞춰 allowlist 조정.
+</p>
+<p style="color:var(--text-secondary);font-size:13px">
+<strong>Outbound Proxy</strong> 는 스크립트에서 선택사항 — <code>HTTPS_PROXY</code> 환경변수 + <code>set-proxy</code> 커맨드로 설정 가능. proxy 설정 시 WebSocket 자동 비활성화 (long polling 으로 전환).
+</p>
+
+<h5>스토리지</h5>
+<ul>
+<li><strong>경로</strong>: <code>/databases/cosigner/</code> 아래 5 디렉토리 자동 생성 — <code>db/</code> (<code>secrets.db</code> · SGX enclave key 로 암호화) · <code>config/</code> · <code>log/</code> · <code>backup/</code> (DB 변경마다 자동 백업) · <code>enclave/</code> (<code>ra_loader_enclave.signed.so</code>)</li>
+<li><strong>소유자</strong>: UID/GID <code>2000:2000</code> (스크립트 자동 chown — 컨테이너 내부 <code>fb_service</code> user)</li>
+<li><strong>로그 파일 (공식 docs)</strong> — <code>run.log</code> (설치 / 설정 history) + <code>customer_cosigner.log</code> (workspace 거래 승인 / 서명 / 연결 승인 history). 후자는 <strong>10 file × 4MB rotation</strong> · 시간 순 overwrite</li>
+<li><strong>Docker log rotation (스크립트 daemon.json)</strong>: max 500MB × 6 file (json-file driver · non-blocking · max-buffer 4MB)</li>
+</ul>
+
+<h5>Fireblocks 측 사전 발급</h5>
+<ul>
+<li><strong>API user 생성</strong> — Fireblocks Console 또는 API. 이 API user 가 cosigner 와 페어링됨</li>
+<li><strong>Pairing Token</strong> — Console 에서 cosigner 추가 시 발급. setup 시 한 번 interactive 입력 (또는 headless mode 시 <code>/tmp/pairing-token.json</code>)</li>
+<li><strong>설치 스크립트 download URL</strong> — Fireblocks Console 에서 발급 (cosigner 추가 후). <code>curl -o cosigner "URL"</code> 로 다운로드</li>
+</ul>
+
+<h5>Intel 측 사전 등록 (공식 docs Step 1.4 + 1.5)</h5>
+<p>
+SGX driver 설치 자체는 스크립트가 자동 처리하지만, 공식 docs 는 <strong>Intel 측 사전 등록 절차</strong>도 명시:
+</p>
+<ol>
+<li><strong>Intel PCS 구독</strong> (<a href="https://api.portal.trustedservices.intel.com/provisioning-certification">ECDSA Attestation</a>) — API key 발급</li>
+<li><strong>Intel PCCS</strong> (Provisioning Certification Caching Service) 설정 — Intel reference caching service</li>
+<li><strong>PCKIDRetrievalTool 실행</strong> — <code>pckid_retrieval.csv</code> 생성 → JSON 변환 → Intel 등록</li>
+<li><strong>Reimage SGX platform</strong> + Intel SGX runtime stack 설치</li>
+<li><strong>Fireblocks 측 등록 검증</strong> — <code>curl https://mobile-api.fireblocks.io/sgx/certification/v3/pckcert?...</code> 로 certificate 반환 확인</li>
+</ol>
+<p style="color:var(--text-secondary);font-size:13px">
+이 등록 절차 없이는 remote attestation 실패. Intel 자료: <a href="https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/Intel_SGX_SW_Installation_Guide_for_Linux.pdf">Intel SGX SW Installation Guide</a> · <a href="https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/SGX_DCAP_Caching_Service_Design_Guide.pdf">SGX DCAP Caching Service Design Guide</a>.
+</p>
+
+<h5>은행 측 사전 결정</h5>
+<ul>
+<li><strong>Callback Handler endpoint</strong> 구축 — URL + 인증 방식 (스크립트 5 옵션 interactive — Public key / Certificate / Root-CA / Hybrid cert / Hybrid CA. <a href="https://developers.fireblocks.com/reference/cosigner-callbackhandler-secure-communication-authentication">공식 문서</a>).
+  <div class="callout callout-warn" style="margin-top:0.5rem">
+  <p style="margin-bottom:0">
+  <strong>★ Callback Handler 미설정 시 자동 승인</strong> (Fireblocks <a href="https://developers.fireblocks.com/docs/create-api-co-signer-callback-handler">공식 docs</a>): "If a Callback Handler is not configured for an API user, the Co-signer will automatically sign or approve all requests it receives for that API user." → 미설정 = 외부 validation 없이 모든 거래 자동 서명. 은행 환경에서는 <strong>Callback Handler 설정 필수</strong>.
+  </p>
+  </div>
+</li>
+<li><strong>Callback retry 사용 여부</strong> 결정 — 스크립트 interactive. retry 사용 = WebSocket 자동 비활성화 (long polling). 스크립트 prompt: "응답 30초 이상 또는 비동기 통신 목표 시 retry 사용 · 그 외에는 비활성화 권장 (성능 영향)"</li>
+<li><strong>Recovery Public Key</strong> — 스크립트 자동 생성 (<code>fb-recovery-pub.pem</code>). 대응 private key 의 보관 plan 은 스크립트 범위 밖 — 별도 절차 필요</li>
+<li><strong>Physical Device ID (UUID)</strong> — 스크립트 자동 생성 (<code>uuidgen</code>) → <code>.local_config</code> 저장</li>
+<li><strong>Workspace Owner mobile app</strong> — 설치 완료 후 MPC key share 요청 승인 단계에 필요 (Owner 가 mobile app 으로 승인)</li>
+</ul>
+
+<h4>On-prem Cosigner 설치 — 설치 과정</h4>
+
+<p>
+Fireblocks 공식 docs 의 3 단계 high-level:
+</p>
+<ol>
+<li><strong>Step 1</strong>: on-prem 환경 + SGX 서버 setup / configure (위 "사전 준비" 절)</li>
+<li><strong>Step 2</strong>: Console 에서 API user 생성 → cosigner 추가 → Pairing Token + 설치 스크립트 URL 발급</li>
+<li><strong>Step 3</strong>: 설치 스크립트 다운로드 + 실행 + workspace owner 가 mobile app 으로 MPC key share 승인</li>
+</ol>
+
+<h5>Step 3.1: 설치 스크립트 다운로드</h5>
+<p>
+Console 에서 받은 URL 로 SGX 머신에 직접 다운로드:
+</p>
+<pre style="background:#f7f7f7;padding:10px;border-radius:6px;font-size:13px;margin:0 0 0.5rem 0"><code>curl -o cosigner "URL"
+chmod +x cosigner</code></pre>
+
+<h5>Step 3.2: 설치 실행</h5>
+<pre style="background:#f7f7f7;padding:10px;border-radius:6px;font-size:13px;margin:0 0 0.5rem 0"><code>sudo ./cosigner setup</code></pre>
+<p>
+스크립트 1 회 실행으로 자동 진행. 각 단계는 idempotent (재실행 안전 — 이미 설치된 항목은 skip):
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>단계</th><th>작업</th><th>스크립트 동작</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>사전 검증</td><td>Root 권한 · SGX CPU 지원 (cpuid 검증) 확인</td></tr>
+<tr><td>2</td><td>필수 패키지 설치</td><td><code>apt install build-essential dkms curl jq python3 uuid-runtime</code></td></tr>
+<tr><td>3</td><td>SGX driver 설치</td><td>Intel SGX driver 다운로드 + 설치 → <code>/dev/sgx_*</code> device 등록 확인 (사전에 Intel PCS / PCCS / 등록 완료된 상태 가정)</td></tr>
+<tr><td>4</td><td>Docker 설치</td><td>Docker CE + docker-compose 1.29.2 설치. <code>daemon.json</code> 설정 (live-restore · log rotation)</td></tr>
+<tr><td>5</td><td>GitLab registry 로그인</td><td>스크립트 내장 자격으로 <code>registry.gitlab.com</code> 로그인 (이미 로그인된 경우 skip)</td></tr>
+<tr><td>6</td><td>docker-compose 파일 생성</td><td><code>docker-compose.yml</code> (메인) + <code>docker-compose-init.yml</code> (초기화) 자동 생성</td></tr>
+<tr><td>7</td><td>physicalDeviceId 생성</td><td><code>uuidgen</code> 으로 UUID 생성 → <code>.local_config</code> 저장 (이미 있으면 skip)</td></tr>
+<tr><td>8</td><td>storage 디렉토리 초기화</td><td><code>/databases/cosigner/{db,config,log,backup,enclave}</code> 생성 + UID 2000 chown</td></tr>
+<tr><td>9</td><td>Pairing 정보 입력</td><td><strong>interactive</strong> — Pairing Token + Callback Handler URL + 인증 정보 (5 옵션) + Recovery key 자동 생성 + <code>config.json</code> 작성</td></tr>
+<tr><td>10</td><td>Revision 결정</td><td>인자로 받거나 <code>.revision</code> 파일 또는 default (<code>2026.03.02</code>) 사용</td></tr>
+<tr><td>11</td><td>Proxy 설정 (선택)</td><td>interactive — outbound proxy URL 입력 또는 skip</td></tr>
+<tr><td>12</td><td>통신 모드 자동 결정</td><td>proxy 있거나 callback retry 사용 → long polling (<code>WEBSOCKET=0</code>) / 둘 다 없으면 WebSocket (<code>WEBSOCKET=1</code>)</td></tr>
+<tr><td>13</td><td>초기 설정 적용 (init container)</td><td><code>docker-compose -p init -f docker-compose-init.yml up -d</code> → init container 안에서 attestation flow 포함 <code>customer_cosigner --initial-config-file config/config.json</code> 실행 → init container down. setup 단계가 SGX enclave 안에서 cosigner 실행되는지 attestation 으로 검증</td></tr>
+</tbody>
+</table>
+</div>
+
+<p style="color:var(--text-secondary);font-size:13px">
+<strong>★ 메인 컨테이너 시작은 별도 단계</strong> — 스크립트의 <code>setup</code> 은 위 13 단계 (init 까지) 만 실행. 메인 cosigner 컨테이너 시작은 사용자가 <code>./cosigner start</code> 를 별도로 실행 (스크립트 line 803: 메인 컨테이너 자동 시작은 <code>headless</code> 모드 = Azure Marketplace 전용 branch 안에만 있음). on-prem 흐름: <code>./cosigner setup</code> → <code>./cosigner start</code>. setup 완료 시 cosigner 가 향후 설정 갱신용 JSON 설정 파일 생성.
+</p>
+
+<h5>Step 3.3: Workspace owner 의 MPC key share 승인</h5>
+<p>
+Cosigner 와 페어링된 API user 가 <strong>Admin 또는 User role</strong> 인 경우, workspace owner 가 mobile app 에서 <strong>새 MPC key share 요청 승인</strong> 알림 받음. owner 가 승인하면 Console 의 Co-signers tab (Developer Center) 에 cosigner 가 <strong>online + API user paired</strong> 상태로 표시.
+</p>
+<p style="color:var(--text-secondary);font-size:13px">
+모든 setup 동작은 <code>{날짜시간}_run.log</code> 에 기록 (스크립트 상단의 exec redirect). 문제 발생 시 이 로그 + <code>./cosigner logs</code> 출력으로 Fireblocks 지원에 전달.
+</p>
+
+<h4>운영 커맨드 (CLI reference) + 절차</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>커맨드</th><th>용도</th></tr></thead>
+<tbody>
+<tr><td><code>setup</code></td><td>최초 설치 (prerequisite 설치 + init container 실행. 메인 컨테이너는 별도 <code>start</code> 필요)</td></tr>
+<tr><td><code>start [revision]</code></td><td>메인 cosigner 컨테이너 시작 — <code>docker-compose -p cc pull</code> + <code>up -d</code>. revision 지정 시 <code>.revision</code> 파일 갱신</td></tr>
+<tr><td><code>stop</code></td><td>cosigner 중지 (<code>docker-compose -p cc down</code>)</td></tr>
+<tr><td><code>restart</code></td><td>down + up 으로 재시작 (env var 변경 반영용 explicit recreate)</td></tr>
+<tr><td><code>upgrade</code></td><td>실행 중 컨테이너에 SIGUSR1 signal — in-place 업그레이드 trigger</td></tr>
+<tr><td><code>upgrade-script</code></td><td>설치 스크립트 자체 백업 (<code>{스크립트명}.{VER}.{날짜}</code>) — 새 스크립트 URL 은 Fireblocks Console 에서 retrieve</td></tr>
+<tr><td><code>list-users</code></td><td>이 cosigner 에 연결된 API user 목록 (<code>customer_cosigner --list-devices</code>). workspace name · API user ID · Callback URL 표시</td></tr>
+<tr><td><code>print-public-key</code></td><td>cosigner public key 출력 — Callback Handler 가 cosigner 요청 인증에 사용</td></tr>
+<tr><td><code>add-user</code></td><td>추가 API user 등록 — multi-device 운영 시 <code>multiDevice=1</code> flag 가 <code>.local_config</code> 에 자동 추가</td></tr>
+<tr><td><code>callback-update [userId]</code></td><td>Callback URL + 인증 정보 재설정. interactive 5 옵션 흐름. multi-user 시 userId 필수. retry 설정 변화 시 통신 모드 변경 + 재시작</td></tr>
+<tr><td><code>set-proxy</code></td><td>outbound proxy URL 변경. proxy 변경 시 자동 재시작</td></tr>
+<tr><td><code>logs [num] [target]</code></td><td>최근 N 줄 log 추출 (기본 3000 줄 · target=cosigner). <code>{날짜시간}_{target}.log</code> 로 저장</td></tr>
+<tr><td><code>version</code></td><td>스크립트 / Docker 이미지 / 내부 binary version 출력</td></tr>
+</tbody>
+</table>
+</div>
+
+<h5>로그 확인 (공식 docs)</h5>
+<p>
+Cosigner 가 생성하는 2 가지 log:
+</p>
+<ul>
+<li><strong><code>run.log</code></strong> — setup / configuration history 자동 기록</li>
+<li><strong><code>customer_cosigner.log</code></strong> — workspace 운영 데이터 (거래 승인 / 서명 history · 신규 연결 승인). <strong>10 file × 4MB rotation</strong> · 시간 순 overwrite. 위치: <code>/databases/cosigner/log/customer_cosigner.log{,.1,.2,...}</code></li>
+</ul>
+<p>
+로그 포맷 RegEx: <code>${AppName}:${Line} ${LogLevel} ${dd/MM/yyyy} ${HH:mm:ss,fff} ${ClassName} ::${MethodName} - ${LogMessage}</code>. <strong>외부 log delivery 권장</strong>: ELK · Splunk · Datadog 등 (Docker JSON file driver 기본 사용 — 다른 driver 로 변경 가능).
+</p>
+<p>
+실행 중 docker image / script version 조회:
+</p>
+<pre style="background:#f7f7f7;padding:10px;border-radius:6px;font-size:13px;margin:0 0 0.5rem 0"><code># Docker image version
+docker inspect cosigner | jq -r '.[0].Config.Image' + " " + '.[0].Image'
+
+# Script version
+head cosigner -n 3 | grep -i ver</code></pre>
+
+<h5>Update 절차 (공식 docs)</h5>
+<p>
+공식 절차 — 단순 <code>upgrade</code> 커맨드보다 안전:
+</p>
+<ol>
+<li>Console 에서 새 설치 스크립트 URL retrieve → <code>curl -o cosigner "URL"</code> + <code>chmod +x cosigner</code></li>
+<li><code>./cosigner stop</code> + <code>docker ps -a</code> 로 cosigner container 없음 확인</li>
+<li>Enclave 백업: <code>mv /databases/cosigner/enclave/enclave.signed.so /databases/cosigner/enclave/enclave.signed.so_old</code></li>
+<li><code>sudo rm -f .revision</code> — revision 파일 제거</li>
+<li><code>./cosigner start</code> (최신 버전) 또는 <code>./cosigner start &lt;image_version&gt;</code> (특정 버전)</li>
+<li><code>docker ps -a</code> 로 cosigner container 실행 확인</li>
+</ol>
+<p style="color:var(--text-secondary);font-size:13px">
+업데이트 실패 시 재설치 절차 (공식): <code>sudo rm -rf /databases</code> + <code>sudo rm -f .local_config .revision</code> → <code>./cosigner setup</code>. 그래도 실패하면 <a href="https://developers.fireblocks.com/reference/api-cosigner-troubleshooting">API Co-signer Troubleshooting</a>.
+</p>
+
+<h5>신규 머신 Migration (공식 docs)</h5>
+<p>
+기존 머신 → 신규 SGX 머신 이전 시 backup data 활용 (downtime 최소화):
+</p>
+<ol>
+<li>신규 SGX 머신 setup (위 사전 준비 절차 동일)</li>
+<li>기존 머신에서 다음 2 파일 백업:
+  <ul>
+    <li><code>/databases/cosigner/db/secrets.db</code> — secrets DB (SGX enclave key 로 암호화)</li>
+    <li><code>/databases/cosigner/enclave/ra_loader_enclave.signed.so</code> — enclave loader</li>
+  </ul>
+</li>
+<li>신규 머신의 같은 경로에 두 파일 복사</li>
+<li><code>./cosigner start</code></li>
+</ol>
+<p style="color:var(--text-secondary);font-size:13px">
+<strong>★ 두 파일 백업 부재 시</strong> — cosigner 와 연결된 API user 들을 unpair (re-enroll) + 신규 머신에 새 cosigner setup 필요. backup 절차 사전 수립 필수.
+</p>
+
+<div class="callout">
+<div class="callout-title">스크립트가 명시하는 추가 운영 동작</div>
+<ul style="margin-bottom:0">
+<li><strong>upgrade 메커니즘</strong> — <code>upgrade</code> 커맨드는 실행 중 <code>customer_cosigner</code> 프로세스에 SIGUSR1 signal 발송 (<code>kill -s SIGUSR1</code>). 새 이미지 pull 은 별도 <code>start</code> 또는 docker-compose 의 <code>pull</code> 단계</li>
+<li><strong>Recovery key</strong> — setup 중 <code>openssl genrsa 2048</code> 로 keypair 생성. public key (<code>fb-recovery-pub.pem</code>) 는 config 에 등록. private key 의 보관 / 백업 절차는 스크립트 범위 밖</li>
+<li><strong>multi-cosigner</strong> — <code>add-user</code> 성공 시 <code>multiDevice=1</code> 이 <code>.local_config</code> 에 추가됨. 이 flag 가 있으면 <code>callback-update</code> 등에서 userId 지정 강제</li>
+<li><strong>통신 모드</strong> — proxy 설정 OR slow_callback_handler (retry 사용) = true 일 때 WebSocket 비활성화. 둘 다 false 일 때만 WebSocket 활성화</li>
+<li><strong>restart 정책</strong> — 메인 컨테이너는 <code>restart: always</code> · init 컨테이너는 <code>restart: "no"</code></li>
+</ul>
+</div>
+
+<p>
+출처: 본 절의 사실은 다음 자료에 근거:
+</p>
+<ul>
+<li>Fireblocks 공식 docs: <a href="https://developers.fireblocks.com/reference/install-api-cosigner-onprem">Install SGX On-prem API Co-signer</a></li>
+<li>Fireblocks 공식 docs: <a href="https://developers.fireblocks.com/reference/api-cosigner-maintenance-sgx">SGX API Co-signer Maintenance</a></li>
+<li>Fireblocks 공식 docs: <a href="https://developers.fireblocks.com/docs/create-api-co-signer-callback-handler">Setup API Co-signer Callback Handler</a></li>
+<li>설치 스크립트 (<code>sources/fireblocks/cosigner-v2026.03.02</code>) 코드 동작 분석</li>
+</ul>
+<p>
+운영 정책 (upgrade 시점 · proxy 이중화 · Recovery key HSM 보관 · attestation 모니터링 등) 은 본 wiki 범위 밖 — 별도 운영 절차서 / <a href="https://developers.fireblocks.com/reference/api-cosigner-troubleshooting">Fireblocks Troubleshooting</a> 참조.
 </p>
 
 <h3>11.4 Callback Handler (Hosted MPC 운영 검증)</h3>
