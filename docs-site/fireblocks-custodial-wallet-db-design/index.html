@@ -42,21 +42,21 @@
 <li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
 <li><a href="sm-webhook.html">13. Webhook 처리</a></li>
 <li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
-<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
-<li><a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
-<li><a href="cross-border-canton.html">14c. Cross-border + Canton</a></li>
+<li><a href="tables-transaction-request.html">15. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">16. Swap · Ramp Lifecycle</a></li>
+<li><a href="cross-border-canton.html">17. Cross-border + Canton</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
-<li><a href="kr-compliance.html">16. KR 규제 매핑</a></li>
-<li><a href="risks.html">17. Risks Register</a></li>
+<li><a href="tables-audit.html">18. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">19. KR 규제 매핑</a></li>
+<li><a href="risks.html">20. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
-<li><a href="accounting-ledger.html">18. 회계 · 원장 설계</a></li>
-<li><a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a></li>
+<li><a href="accounting-ledger.html">21. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">22. 대사 · 결산 · 마감</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
-<li><a href="db-ops.html">20. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">23. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -130,12 +130,12 @@ Fireblocks 가 17 transaction state 를 운영하지만, 은행 application 은 
 <li><strong>DB 가 단순해진다</strong> — 7 DB → 3 DB (core + audit + compliance). 단 webhook 수신 / 중복 처리 방지 / 5년 보존 책임은 여전히 은행</li>
 <li><strong>새로운 의존성 발생</strong> — Fireblocks 에 종속되어 다른 vendor 로의 마이그레이션이 어려워지고 (vendor lock-in),
   Fireblocks SaaS 가 장애를 일으키면 은행 거래 처리도 함께 멈춘다 (outage 의존성).
-  직접 구축에는 없던 이 vendor 관련 위험들을 별도 위험 목록으로 관리해야 한다 (<a href="risks.html">17. Risks Register</a>)</li>
+  직접 구축에는 없던 이 vendor 관련 위험들을 별도 위험 목록으로 관리해야 한다 (<a href="risks.html">20. Risks Register</a>)</li>
 <li><strong>KR 컴플라이언스는 여전히 은행 책임</strong> — Fireblocks 가 자동 제공하지 않음 (특금법 · 가상자산이용자보호법 · 가상자산업감독규정 등)
   — 상세는 <a href="../fireblocks-kr-vasp-compliance/">국내 블록체인 사업 법규 × Fireblocks</a> 참조</li>
 </ul>
 
-<h2>이 문서의 9 가지 도메인 (20 페이지)</h2>
+<h2>이 문서의 9 가지 도메인 (23 페이지)</h2>
 <p>
 직접 구축 reference (<a href="../custodial-wallet-db-design/">custodial-wallet-db-design</a>) 의 8 도메인 +
 <strong>H. Accounting &amp; Reconciliation (회계 · 정산)</strong> 도메인을 추가.
@@ -162,16 +162,16 @@ Fireblocks 가 17 transaction state 를 운영하지만, 은행 application 은 
   <td><a href="tables-crypto.html">11. MPC · Key Link</a></td></tr>
 <tr><td>F. Transaction</td>
   <td>17 state machine · 14-step · webhook (HMAC-SHA512 · idempotency) · <strong>입금/출금 lifecycle</strong> · 통합 거래 요청/실행 (withdrawal · swap · onramp · offramp) · <strong>swap/ramp 운영 흐름</strong> · <strong>cross-border + Canton</strong> (해외송금 + institutional settlement)</td>
-  <td><a href="sm-transaction.html">12. Tx State</a> · <a href="sm-webhook.html">13. Webhook</a> · <a href="sm-deposit-withdrawal.html">14. Deposit/Withdrawal</a> · <a href="tables-transaction-request.html">14a. Transaction Request · Execution</a> · <a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a> · <a href="cross-border-canton.html">14c. Cross-border + Canton</a></td></tr>
+  <td><a href="sm-transaction.html">12. Tx State</a> · <a href="sm-webhook.html">13. Webhook</a> · <a href="sm-deposit-withdrawal.html">14. Deposit/Withdrawal</a> · <a href="tables-transaction-request.html">15. Transaction Request · Execution</a> · <a href="sm-swap-ramp.html">16. Swap · Ramp Lifecycle</a> · <a href="cross-border-canton.html">17. Cross-border + Canton</a></td></tr>
 <tr><td>G. Audit &amp; Compliance</td>
   <td>Fireblocks Audit Log · 은행 mirror (5년) · AML · Travel Rule · <strong>KR 규제 17 의무 매핑</strong> · Risks</td>
-  <td><a href="tables-audit.html">15. Audit · AML</a> · <a href="kr-compliance.html">16. KR 규제</a> · <a href="risks.html">17. Risks</a></td></tr>
+  <td><a href="tables-audit.html">18. Audit · AML</a> · <a href="kr-compliance.html">19. KR 규제</a> · <a href="risks.html">20. Risks</a></td></tr>
 <tr><td>H. Accounting &amp; Reconciliation</td>
   <td>3 계층 정합 · 회계 항등식 · 4 원장 + 거래 매트릭스 · 외화환산 · <strong>4 단계 대사 (L1-L4)</strong> · 결산 · 마감 · 외부 감사 대응</td>
-  <td><a href="accounting-ledger.html">18. 회계 · 원장</a> · <a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a></td></tr>
+  <td><a href="accounting-ledger.html">21. 회계 · 원장</a> · <a href="reconciliation-close.html">22. 대사 · 결산 · 마감</a></td></tr>
 <tr><td>I. Ops</td>
   <td>DB 운영 (PostgreSQL · partition · 5년 retention) · 10 anti-patterns · 운영 체크리스트</td>
-  <td><a href="db-ops.html">20. DB 운영</a></td></tr>
+  <td><a href="db-ops.html">23. DB 운영</a></td></tr>
 </tbody>
 </table>
 </div>

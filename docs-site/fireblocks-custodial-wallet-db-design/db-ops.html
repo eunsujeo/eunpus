@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>20. DB 운영 · Anti-patterns — Fireblocks 도입 시</title>
+<title>23. DB 운영 · Anti-patterns — Fireblocks 도입 시</title>
 <meta content="은행 core / audit / compliance 의 운영 + 도입 시 안티패턴" name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
@@ -42,27 +42,27 @@
 <li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
 <li><a href="sm-webhook.html">13. Webhook 처리</a></li>
 <li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
-<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
-<li><a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
-<li><a href="cross-border-canton.html">14c. Cross-border + Canton</a></li>
+<li><a href="tables-transaction-request.html">15. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">16. Swap · Ramp Lifecycle</a></li>
+<li><a href="cross-border-canton.html">17. Cross-border + Canton</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
-<li><a href="kr-compliance.html">16. KR 규제 매핑</a></li>
-<li><a href="risks.html">17. Risks Register</a></li>
+<li><a href="tables-audit.html">18. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">19. KR 규제 매핑</a></li>
+<li><a href="risks.html">20. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
-<li><a href="accounting-ledger.html">18. 회계 · 원장 설계</a></li>
-<li><a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a></li>
+<li><a href="accounting-ledger.html">21. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">22. 대사 · 결산 · 마감</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
-<li><a class="active" href="db-ops.html">20. DB 운영 · Anti-patterns</a></li>
+<li><a class="active" href="db-ops.html">23. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
 <main class="content">
 <section id="db-ops">
-<h2>20. DB 운영 · Anti-patterns</h2>
+<h2>23. DB 운영 · Anti-patterns</h2>
 <span class="section-subtitle">3 격리 영역 (core · audit · compliance) 의 engine 선택 · partition · 백업 · 권한 · 안티패턴</span>
 
 <div class="callout callout-warn">
@@ -72,7 +72,7 @@
 </p>
 </div>
 
-<h3>20.1 영역별 engine 후보</h3>
+<h3>23.1 영역별 engine 후보</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>격리 영역</th><th>핵심 특성</th><th>engine 후보 (저자 권장 굵게)</th><th>주의</th></tr></thead>
@@ -119,7 +119,7 @@
 </ul>
 </div>
 
-<h3>20.2 partition 전략 — 5년 보존 대응</h3>
+<h3>23.2 partition 전략 — 5년 보존 대응</h3>
 
 <h4>transaction.webhook_events · vendor_transaction_status_history · audit.audit_log_mirror</h4>
 <ul>
@@ -137,7 +137,7 @@
 <li>매월 1일 자동 partition 생성 (다음 월 대비) + 매월 1일 자동 archive (5년 도래 partition)</li>
 </ul>
 
-<h3>20.3 백업 정책 (저자 권장)</h3>
+<h3>23.3 백업 정책 (저자 권장)</h3>
 <p>
 아래 RPO / RTO 는 본 reference 의 권장 — 은행 BCP 정책 / 자산 규모 / vendor SLA 와 정합성 검토 후 확정. 일반 financial-grade backup 패턴.
 </p>
@@ -152,7 +152,7 @@
 </table>
 </div>
 
-<h3>20.4 인덱스 설계 권장</h3>
+<h3>23.4 인덱스 설계 권장</h3>
 
 <h4>transaction.vendor_transaction</h4>
 <ul>
@@ -181,7 +181,7 @@
 <li>(event_category, event_type)</li>
 </ul>
 
-<h3>20.5 권한 분리 — service role × 영역 / domain</h3>
+<h3>23.5 권한 분리 — service role × 영역 / domain</h3>
 <p>
 service 별 write 영역을 명확히 분리. core 영역 안에서는 domain-level 권한 (RDB schema GRANT · NoSQL IAM · 또는 prefix-based) 으로 분리. audit / compliance 는 별도 storage 라 storage-level 권한.
 </p>
@@ -237,7 +237,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer rol
 </p>
 </div>
 
-<h3>20.6 모니터링 metric</h3>
+<h3>23.6 모니터링 metric</h3>
 
 <h4>application metric</h4>
 <ul>
@@ -277,7 +277,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer rol
 <li>reconciliation mismatch 건수 (0 권장)</li>
 </ul>
 
-<h3>20.7 Anti-patterns — 도입 시 흔한 실수 (저자 정리)</h3>
+<h3>23.7 Anti-patterns — 도입 시 흔한 실수 (저자 정리)</h3>
 <p>
 아래 10 가지는 본 reference 가 정리한 도입 시 흔한 실수 패턴. 보안 / 운영의 일반 모범사례 (industry common pitfalls) + 본 reference 의 도입 경험 기반.
 </p>
@@ -314,7 +314,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer rol
 <p>
 <strong>실수</strong>: 분쟁 시 core 영역 의 거래 기록만 보고 결정.
 <strong>결과</strong>: Fireblocks Console 과 불일치 시 권리 행사 불가 / 손실 부담.
-<strong>대응</strong>: Fireblocks Console = 1차 source. mirror 는 보조. 항상 양측 정합성 reconciliation. <a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a> 19.8 절 의 외부 감사 대응 자료 참조.
+<strong>대응</strong>: Fireblocks Console = 1차 source. mirror 는 보조. 항상 양측 정합성 reconciliation. <a href="reconciliation-close.html">22. 대사 · 결산 · 마감</a> 22.8 절 의 외부 감사 대응 자료 참조.
 </p>
 
 <h4>AP-6: KR 컴플라이언스 자동화 가정</h4>
@@ -335,7 +335,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer rol
 <p>
 <strong>실수</strong>: omnibus 패턴 시 customer_ledger 의 자체 변조 방지 매커니즘 없음.
 <strong>결과</strong>: DBA 가 row 변경해도 detection 불가 → 외부 감사 시 정합성 증명 불가.
-<strong>대응</strong>: subledger 에 hash chain 또는 정기 cross-DB reconciliation log. <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.4 절 customer_ledger + <a href="tables-audit.html">15. Audit · AML · Travel Rule</a> 15.3 절 의 hash chain 패턴 참조.
+<strong>대응</strong>: subledger 에 hash chain 또는 정기 cross-DB reconciliation log. <a href="accounting-ledger.html">21. 회계 · 원장 설계</a> 21.4 절 customer_ledger + <a href="tables-audit.html">18. Audit · AML · Travel Rule</a> 18.3 절 의 hash chain 패턴 참조.
 </p>
 
 <h4>AP-9: webhook endpoint 가 일반 API 와 동일 server</h4>
@@ -349,10 +349,10 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer rol
 <p>
 <strong>실수</strong>: Fireblocks SaaS 가 항상 가용하다고 가정.
 <strong>결과</strong>: 실제 장애 발생 시 사용자 응답 정책 부재 → 신뢰 손실.
-<strong>대응</strong>: BCP 절차 사전 수립. SLA 정책 + 알림 시스템. <a href="risks.html">17. Risks Register</a> FB-R02 (Fireblocks SaaS outage) 의 완화 방안 참조.
+<strong>대응</strong>: BCP 절차 사전 수립. SLA 정책 + 알림 시스템. <a href="risks.html">20. Risks Register</a> FB-R02 (Fireblocks SaaS outage) 의 완화 방안 참조.
 </p>
 
-<h3>20.8 운영 체크리스트 — 도입 시작 전</h3>
+<h3>23.8 운영 체크리스트 — 도입 시작 전</h3>
 <div class="table-wrap">
 <table>
 <thead><tr><th>#</th><th>항목</th><th>완료 기준</th></tr></thead>
@@ -373,7 +373,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer rol
 </table>
 </div>
 
-<h3>20.9 관련 외부 reference</h3>
+<h3>23.9 관련 외부 reference</h3>
 <ul>
 <li><a href="../custodial-wallet-db-design/">직접 구축 — 수탁형 지갑 DB 설계</a> — 7-DB 구조 참고</li>
 <li><a href="../fireblocks-cold-wallet-bank-design/">Fireblocks Cold Wallet 도입</a> — Cold workspace 운영</li>
@@ -386,7 +386,7 @@ worker 가 처리 status 등을 update 해야 한다면 별도 worker_writer rol
 
 </section>
 <nav aria-label="Section navigation" class="page-nav">
-<a class="page-nav-link page-nav-prev" href="reconciliation-close.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">19. 대사 · 결산 · 마감</span></a>
+<a class="page-nav-link page-nav-prev" href="reconciliation-close.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">22. 대사 · 결산 · 마감</span></a>
 <span class="page-nav-spacer"></span>
 </nav>
 </main>

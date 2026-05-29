@@ -42,21 +42,21 @@
 <li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
 <li><a href="sm-webhook.html">13. Webhook 처리</a></li>
 <li><a class="active" href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
-<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
-<li><a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
-<li><a href="cross-border-canton.html">14c. Cross-border + Canton</a></li>
+<li><a href="tables-transaction-request.html">15. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">16. Swap · Ramp Lifecycle</a></li>
+<li><a href="cross-border-canton.html">17. Cross-border + Canton</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
-<li><a href="kr-compliance.html">16. KR 규제 매핑</a></li>
-<li><a href="risks.html">17. Risks Register</a></li>
+<li><a href="tables-audit.html">18. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">19. KR 규제 매핑</a></li>
+<li><a href="risks.html">20. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
-<li><a href="accounting-ledger.html">18. 회계 · 원장 설계</a></li>
-<li><a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a></li>
+<li><a href="accounting-ledger.html">21. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">22. 대사 · 결산 · 마감</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
-<li><a href="db-ops.html">20. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">23. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -168,7 +168,7 @@ sequenceDiagram
 </table>
 </div>
 <p>
-omnibus vault 시 입금이 <code>bank_customer_id NULL</code> 로 들어오고, 별도 <code>customer_ledger</code> (5.4 + 18. 회계 · 원장 설계의 4 원장 ①) 에서 고객별로 분배. <a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a> 5.4 절 참조.
+omnibus vault 시 입금이 <code>bank_customer_id NULL</code> 로 들어오고, 별도 <code>customer_ledger</code> (5.4 + 21. 회계 · 원장 설계의 4 원장 ①) 에서 고객별로 분배. <a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a> 5.4 절 참조.
 </p>
 
 <h3>14.2 Withdrawal Lifecycle — 출금</h3>
@@ -249,19 +249,19 @@ sequenceDiagram
 출금의 2-layer 흐름. customer.transaction_request 는 bank intent layer (1 request) ↔ transaction.transaction_execution 은 vendor lifecycle (1+ execution). 재시도 시 새 execution row 추가.
 </p>
 
-<h4>14.2.2 출금 상태 + schema → 14a 페이지</h4>
+<h4>14.2.2 출금 상태 + schema → 15 페이지</h4>
 <div class="callout">
 <p style="margin-bottom:0">
-출금 (withdrawal) 의 2-layer status 모델 (<code>request_status</code> · <code>execution_status</code>) + <code>customer.transaction_request</code> · <code>transaction.transaction_execution</code> schema + cross-domain 1:N 관계는 <strong><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></strong> 의 통합 정의로 이동.
+출금 (withdrawal) 의 2-layer status 모델 (<code>request_status</code> · <code>execution_status</code>) + <code>customer.transaction_request</code> · <code>transaction.transaction_execution</code> schema + cross-domain 1:N 관계는 <strong><a href="tables-transaction-request.html">15. Transaction Request · Execution</a></strong> 의 통합 정의로 이동.
 </p>
 <p style="margin-bottom:0;margin-top:8px">
-14a 페이지는 4 type (withdrawal · swap · onramp · offramp) 의 통합 schema 를 다루며, withdrawal 특정 사용 패턴은 14a.6 절 (type 별 사용 패턴) 참조. status enum 은 14a.5 절. 17 primary Fireblocks status 와의 매핑은 <a href="sm-transaction.html">12. Transaction State + 14-step</a> 12.1 절 참조.
+15 페이지는 4 type (withdrawal · swap · onramp · offramp) 의 통합 schema 를 다루며, withdrawal 특정 사용 패턴은 15.6 절 (type 별 사용 패턴) 참조. status enum 은 15.5 절. 17 primary Fireblocks status 와의 매핑은 <a href="sm-transaction.html">12. Transaction State + 14-step</a> 12.1 절 참조.
 </p>
 </div>
 
 <h3>14.3 KR 컴플라이언스 통합</h3>
 <p>
-입출금 lifecycle 의 KR 컴플라이언스 hook 요약. 상세 정의는 <a href="tables-audit.html">15. Audit · AML · Travel Rule</a> 의 표 / 인덱스, <a href="kr-compliance.html">16. KR 규제 매핑</a> 의 17 의무 매핑 참조.
+입출금 lifecycle 의 KR 컴플라이언스 hook 요약. 상세 정의는 <a href="tables-audit.html">18. Audit · AML · Travel Rule</a> 의 표 / 인덱스, <a href="kr-compliance.html">19. KR 규제 매핑</a> 의 17 의무 매핑 참조.
 </p>
 
 <h4>14.3.1 트래블룰 (100만원 이상)</h4>
@@ -507,13 +507,13 @@ AML provider 의 cluster 식별은 100% 정확하지 않음 (특히 신규 거�
 <div class="callout callout-warn">
 <div class="callout-title">★ 고객별 잔액 분리의 함의 (저자 hypothesis)</div>
 <p style="margin-bottom:0">
-고객 자산이 여러 vault (Hot omnibus + Cold + segregated) 에 분산된 경우, on-chain 에는 각 vault 별 통합 balance 만 존재. 은행은 자체 <code>customer_ledger</code> (<a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a> 5.4 절 / <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 의 4 원장 ①) 로 고객별 분배를 기록 + 모든 고객 자산 vault 합계 와의 정합성 (audit log 와 합) 을 별도로 증명해야 함. 대법원 2024도10710 의 "실질 통제" 판단 시 고객별 자산 구분이 명확해야 한다는 해석은 <strong>저자 hypothesis</strong> — 별도 법률 검토 필요. subledger 의 변조방지 (hash chain 등) 권장.
+고객 자산이 여러 vault (Hot omnibus + Cold + segregated) 에 분산된 경우, on-chain 에는 각 vault 별 통합 balance 만 존재. 은행은 자체 <code>customer_ledger</code> (<a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a> 5.4 절 / <a href="accounting-ledger.html">21. 회계 · 원장 설계</a> 의 4 원장 ①) 로 고객별 분배를 기록 + 모든 고객 자산 vault 합계 와의 정합성 (audit log 와 합) 을 별도로 증명해야 함. 대법원 2024도10710 의 "실질 통제" 판단 시 고객별 자산 구분이 명확해야 한다는 해석은 <strong>저자 hypothesis</strong> — 별도 법률 검토 필요. subledger 의 변조방지 (hash chain 등) 권장.
 </p>
 </div>
 
 <h3>14.6 사용자 응답 시간 정책 (저자 권장)</h3>
 <p>
-KR 가상자산이용자보호법의 사용자 출금 응답 시간 요건 — <strong>구체 시한은 법률 검토 필요</strong>. 본 reference 는 운영 관점의 권장 SLA 만 제시하며, 정확한 법률 의무 시한은 별도 자문 (<a href="kr-compliance.html">16. KR 규제 매핑</a> 의 후속 검토 항목) 으로 확인해야 함.
+KR 가상자산이용자보호법의 사용자 출금 응답 시간 요건 — <strong>구체 시한은 법률 검토 필요</strong>. 본 reference 는 운영 관점의 권장 SLA 만 제시하며, 정확한 법률 의무 시한은 별도 자문 (<a href="kr-compliance.html">19. KR 규제 매핑</a> 의 후속 검토 항목) 으로 확인해야 함.
 </p>
 
 <div class="table-wrap">
@@ -531,7 +531,7 @@ KR 가상자산이용자보호법의 사용자 출금 응답 시간 요건 — <
 </section>
 <nav aria-label="Section navigation" class="page-nav">
 <a class="page-nav-link page-nav-prev" href="sm-webhook.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">13. Webhook 처리</span></a>
-<a class="page-nav-link page-nav-next" href="tables-transaction-request.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">14a. Transaction Request · Execution</span></a>
+<a class="page-nav-link page-nav-next" href="tables-transaction-request.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">15. Transaction Request · Execution</span></a>
 </nav>
 </main>
 </div>

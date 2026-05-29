@@ -42,21 +42,21 @@
 <li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
 <li><a class="active" href="sm-webhook.html">13. Webhook 처리</a></li>
 <li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
-<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
-<li><a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
-<li><a href="cross-border-canton.html">14c. Cross-border + Canton</a></li>
+<li><a href="tables-transaction-request.html">15. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">16. Swap · Ramp Lifecycle</a></li>
+<li><a href="cross-border-canton.html">17. Cross-border + Canton</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
-<li><a href="kr-compliance.html">16. KR 규제 매핑</a></li>
-<li><a href="risks.html">17. Risks Register</a></li>
+<li><a href="tables-audit.html">18. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">19. KR 규제 매핑</a></li>
+<li><a href="risks.html">20. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
-<li><a href="accounting-ledger.html">18. 회계 · 원장 설계</a></li>
-<li><a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a></li>
+<li><a href="accounting-ledger.html">21. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">22. 대사 · 결산 · 마감</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
-<li><a href="db-ops.html">20. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">23. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -292,7 +292,7 @@ Fireblocks 의 at-least-once 보장은 retry 정책의 max attempt 안에서 유
 <li><strong>processing latency</strong> — webhook 수신 → core 영역 저장 완료까지 (목표: p99 &lt; 500ms)</li>
 <li><strong>retry rate</strong> — Fireblocks 가 retry 한 비율 (높으면 은행 endpoint 가 느림)</li>
 <li><strong>worker queue depth</strong> — Kafka / SQS lag (높으면 worker 부족)</li>
-<li><strong>reconciliation mismatch count</strong> — 일일 reconciliation 의 mismatch 건수 (0 권장. 20. DB 운영 페이지의 monitoring 영역 참조)</li>
+<li><strong>reconciliation mismatch count</strong> — 일일 reconciliation 의 mismatch 건수 (0 권장. 23. DB 운영 페이지의 monitoring 영역 참조)</li>
 </ul>
 
 </section>

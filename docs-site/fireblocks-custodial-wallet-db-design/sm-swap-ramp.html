@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>14b. Swap · Ramp Lifecycle — 스왑 · 온/오프램프 운영 흐름</title>
+<title>16. Swap · Ramp Lifecycle — 스왑 · 온/오프램프 운영 흐름</title>
 <meta content="자산 스왑 · 온램프 · 오프램프 의 운영 lifecycle (state machine · KR 컴플라이언스 · JV/Circle/거래소 통합)" name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
@@ -42,27 +42,27 @@
 <li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
 <li><a href="sm-webhook.html">13. Webhook 처리</a></li>
 <li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
-<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
-<li><a class="active" href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
-<li><a href="cross-border-canton.html">14c. Cross-border + Canton</a></li>
+<li><a href="tables-transaction-request.html">15. Transaction Request · Execution</a></li>
+<li><a class="active" href="sm-swap-ramp.html">16. Swap · Ramp Lifecycle</a></li>
+<li><a href="cross-border-canton.html">17. Cross-border + Canton</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
-<li><a href="kr-compliance.html">16. KR 규제 매핑</a></li>
-<li><a href="risks.html">17. Risks Register</a></li>
+<li><a href="tables-audit.html">18. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">19. KR 규제 매핑</a></li>
+<li><a href="risks.html">20. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
-<li><a href="accounting-ledger.html">18. 회계 · 원장 설계</a></li>
-<li><a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a></li>
+<li><a href="accounting-ledger.html">21. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">22. 대사 · 결산 · 마감</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
-<li><a href="db-ops.html">20. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">23. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
 <main class="content">
 <section id="swap-ramp">
-<h2>14b. Swap · Ramp Lifecycle</h2>
+<h2>16. Swap · Ramp Lifecycle</h2>
 <span class="section-subtitle">자산 스왑 · 온램프 · 오프램프 의 운영 라이프사이클 — state machine · KR 컴플라이언스 · 외부 채널 통합</span>
 
 <div class="callout">
@@ -71,14 +71,14 @@
 swap / onramp / offramp 의 <strong>운영 lifecycle</strong> 중심 — 사용자 요청 → 검증 → 외부 채널 정산 → 완료 흐름. 회계 / 데이터 / 컴플라이언스 와의 cross-link:
 </p>
 <ul style="margin-bottom:0">
-<li><strong>회계 관점</strong> — <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.6 시나리오 ④ ⑤ ⑥ (분개 + delta_ledger 처리)</li>
-<li><strong>Schema 관점</strong> — <a href="tables-transaction-request.html">14a. Transaction Request · Execution</a> (header + 3 detail + execution)</li>
+<li><strong>회계 관점</strong> — <a href="accounting-ledger.html">21. 회계 · 원장 설계</a> 21.6 시나리오 ④ ⑤ ⑥ (분개 + delta_ledger 처리)</li>
+<li><strong>Schema 관점</strong> — <a href="tables-transaction-request.html">15. Transaction Request · Execution</a> (header + 3 detail + execution)</li>
 <li><strong>입금/출금 패턴</strong> — <a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a> (외부 입출금 — 비교 / 차이점)</li>
-<li><strong>본 페이지 (14b)</strong> — <strong>운영 흐름</strong> (state machine · 검증 · 외부 채널 · KR 컴플라이언스 · 실패 처리)</li>
+<li><strong>본 페이지 (16)</strong> — <strong>운영 흐름</strong> (state machine · 검증 · 외부 채널 · KR 컴플라이언스 · 실패 처리)</li>
 </ul>
 </div>
 
-<h3>14b.1 개요 — 3 type 의 공통 패턴</h3>
+<h3>16.1 개요 — 3 type 의 공통 패턴</h3>
 <p>
 Swap · Onramp · Offramp 는 모두 다음 공통 특성을 가짐:
 </p>
@@ -102,12 +102,12 @@ Swap · Onramp · Offramp 는 모두 다음 공통 특성을 가짐:
 </table>
 </div>
 
-<h3>14b.2 Swap Lifecycle</h3>
+<h3>16.2 Swap Lifecycle</h3>
 <p>
 사용자가 보유한 stablecoin 을 다른 stablecoin 으로 교환. 2 leg (OUTBOUND + INBOUND) 동시 처리.
 </p>
 
-<h4>14b.2.1 정상 흐름</h4>
+<h4>16.2.1 정상 흐름</h4>
 <div class="diagram">
 <pre class="mermaid">
 sequenceDiagram
@@ -158,12 +158,12 @@ sequenceDiagram
 </pre>
 </div>
 <p class="diagram-caption">
-<strong>2-leg + 3-step 패턴</strong> — Step 1 (잔액 lock + 미정산 분개) → Step 2 (외부 채널 정산) → Step 3 (정산 분개 + confirmed 반영). 회계 정합 상세는 <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.6 시나리오 ④.
+<strong>2-leg + 3-step 패턴</strong> — Step 1 (잔액 lock + 미정산 분개) → Step 2 (외부 채널 정산) → Step 3 (정산 분개 + confirmed 반영). 회계 정합 상세는 <a href="accounting-ledger.html">21. 회계 · 원장 설계</a> 21.6 시나리오 ④.
 </p>
 
-<h4>14b.2.2 Swap status 흐름</h4>
+<h4>16.2.2 Swap status 흐름</h4>
 <p>
-<code>transaction_request.request_status</code> (헤더) 와 <code>transaction_execution.execution_status</code> (leg 별) 의 2-layer status — 14a.5 절 참조. swap 특이사항:
+<code>transaction_request.request_status</code> (헤더) 와 <code>transaction_execution.execution_status</code> (leg 별) 의 2-layer status — 15.5 절 참조. swap 특이사항:
 </p>
 <ul>
 <li><strong>2 leg COMPLETED 모두 도착 시</strong> request_status = COMPLETED. 1 leg 만 COMPLETED 면 request 는 SUBMITTED_TO_VENDOR 유지</li>
@@ -171,12 +171,12 @@ sequenceDiagram
 <li><strong>leg 2 (IN) 실패 시</strong> = leg 1 의 reversal 필요 (이미 burn 한 KRWK 의 보상 — JV 와 협의)</li>
 </ul>
 
-<h3>14b.3 Onramp Lifecycle</h3>
+<h3>16.3 Onramp Lifecycle</h3>
 <p>
 사용자가 KRW (계정계) 를 stablecoin 으로 변환. Case A (KRWK mint via JV) vs Case B (USDC purchase via Circle 또는 거래소) 로 분기.
 </p>
 
-<h4>14b.3.1 정상 흐름 (Case A — KRWK mint)</h4>
+<h4>16.3.1 정상 흐름 (Case A — KRWK mint)</h4>
 <div class="diagram">
 <pre class="mermaid">
 sequenceDiagram
@@ -224,12 +224,12 @@ sequenceDiagram
 </pre>
 </div>
 <p class="diagram-caption">
-<strong>Mint 패턴 (1:1 peg)</strong> — 시세 변동 없음. 계정계 KRW 차감 + JV mint 가 비동기 outbox 로 병렬 진행. 회계 항등식 상세 18.6 시나리오 ⑤ Case A.
+<strong>Mint 패턴 (1:1 peg)</strong> — 시세 변동 없음. 계정계 KRW 차감 + JV mint 가 비동기 outbox 로 병렬 진행. 회계 항등식 상세 21.6 시나리오 ⑤ Case A.
 </p>
 
-<h4>14b.3.2 정상 흐름 (Case B — USDC purchase)</h4>
+<h4>16.3.2 정상 흐름 (Case B — USDC purchase)</h4>
 <p>
-Case A 와의 차이만 강조 (sequence 자체는 유사 — 14a.6 절 type 별 사용 패턴 참조):
+Case A 와의 차이만 강조 (sequence 자체는 유사 — 15.6 절 type 별 사용 패턴 참조):
 </p>
 <ul>
 <li><strong>channel 선택</strong> — <code>CIRCLE_MINT</code> (1차 시장 · peg 안정) 또는 <code>EXTERNAL_EXCHANGE</code> (2차 시장 · spread 발생)</li>
@@ -238,12 +238,12 @@ Case A 와의 차이만 강조 (sequence 자체는 유사 — 14a.6 절 type 별
 <li><strong>실패 시 KRW 차감 rollback</strong> — 계정계로 환불 요청 (outbox 별도 처리)</li>
 </ul>
 
-<h3>14b.4 Offramp Lifecycle</h3>
+<h3>16.4 Offramp Lifecycle</h3>
 <p>
 사용자가 stablecoin 을 KRW 로 변환. 출금 lifecycle 과 유사하지만 vault → 외부 wallet 이 아니라 vault → JV/Circle 정산 + 계정계 KRW 입금.
 </p>
 
-<h4>14b.4.1 정상 흐름 (Case A — KRWK burn)</h4>
+<h4>16.4.1 정상 흐름 (Case A — KRWK burn)</h4>
 <div class="diagram">
 <pre class="mermaid">
 sequenceDiagram
@@ -291,10 +291,10 @@ sequenceDiagram
 </pre>
 </div>
 <p class="diagram-caption">
-<strong>Burn 패턴</strong> — JV 가 KRWK burn + 계정계 KRW 입금. 자산 ↓ = 부채 ↓ 균등 변동. 회계 항등식 상세 18.6 시나리오 ⑥ Case A.
+<strong>Burn 패턴</strong> — JV 가 KRWK burn + 계정계 KRW 입금. 자산 ↓ = 부채 ↓ 균등 변동. 회계 항등식 상세 21.6 시나리오 ⑥ Case A.
 </p>
 
-<h4>14b.4.2 정상 흐름 (Case B — USDC sell)</h4>
+<h4>16.4.2 정상 흐름 (Case B — USDC sell)</h4>
 <ul>
 <li><strong>channel</strong> — <code>CIRCLE_REDEEM</code> (1차 시장) 또는 <code>EXTERNAL_EXCHANGE</code> (2차 시장 매도)</li>
 <li><strong>시세 변동</strong> — quoted_rate (요청 시) vs 매도 시점 시세 차이 = 외환매매수익/손실</li>
@@ -302,22 +302,22 @@ sequenceDiagram
 <li><strong>매도 실패 시 KRWK / USDC vault 잔액 복구</strong> — JV 측에 reverse 협의 필요</li>
 </ul>
 
-<h3>14b.5 KR 컴플라이언스 통합</h3>
+<h3>16.5 KR 컴플라이언스 통합</h3>
 
-<h4>14b.5.1 가상자산이용자보호법 (2024.07 시행)</h4>
+<h4>16.5.1 가상자산이용자보호법 (2024.07 시행)</h4>
 <ul>
 <li><strong>예치금 분리 보관</strong> — 사용자의 KRW (오프램프 결과) 는 은행 계정계의 별도 계좌 / 신탁 (4 조)</li>
 <li><strong>이용자 가상자산 80% 콜드월렛</strong> — onramp 로 받은 stablecoin 의 80% 이상은 Cold vault (9 조 / 가상자산업감독규정)</li>
 <li><strong>이상거래 모니터링</strong> — swap / ramp 의 high-frequency · 이상 금액 패턴 → 컴플라이언스 review</li>
 </ul>
 
-<h4>14b.5.2 특금법 (트래블룰)</h4>
+<h4>16.5.2 특금법 (트래블룰)</h4>
 <ul>
 <li>100만원 이상 stablecoin 이동 시 (offramp 의 외부 거래소 경유 경우) IVMS101 정보 교환 — Sumsub · Notabene · TRP</li>
 <li>onramp / offramp 의 1차 시장 (Circle · JV) 경유는 트래블룰 적용 모호 — <strong>법률 자문 필요</strong></li>
 </ul>
 
-<h4>14b.5.3 자본시장법 (swap 의 외환매매 분류 hypothesis)</h4>
+<h4>16.5.3 자본시장법 (swap 의 외환매매 분류 hypothesis)</h4>
 <div class="callout callout-warn">
 <div class="callout-title">★ Swap 의 법적 성격 — 외환매매 vs 가상자산 교환</div>
 <p style="margin-bottom:0">
@@ -325,15 +325,15 @@ KRWK ↔ USDC 같은 stablecoin-to-stablecoin swap 이 <strong>외환매매</str
 </p>
 </div>
 
-<h4>14b.5.4 STR (의심 거래 보고)</h4>
+<h4>16.5.4 STR (의심 거래 보고)</h4>
 <ul>
 <li>swap / ramp 의 의심 패턴 (rapid round-trip · structured amounts · 고위험 stablecoin 등) → 컴플라이언스 review</li>
 <li>판단 시 KOFIU 보고 — 처리 결과 <code>compliance.suspicious_tx_review</code> 기록</li>
 </ul>
 
-<h3>14b.6 외부 채널 통합</h3>
+<h3>16.6 외부 채널 통합</h3>
 
-<h4>14b.6.1 JV (KRWK 발행자) 통합</h4>
+<h4>16.6.1 JV (KRWK 발행자) 통합</h4>
 <ul>
 <li><strong>API</strong> — JV 가 제공하는 mint / burn / 잔액 조회 endpoint (구체 spec 은 JV 협약 시 확정)</li>
 <li><strong>인증</strong> — mTLS 또는 API key + signature (협약 시 결정)</li>
@@ -349,7 +349,7 @@ KRWK ↔ USDC 같은 stablecoin-to-stablecoin swap 이 <strong>외환매매</str
 <li><strong>limit / KYC</strong> — Circle 측의 institutional 검증 통과 필요</li>
 </ul>
 
-<h4>14b.6.3 외부 거래소 통합 (Coinbase · Binance 등)</h4>
+<h4>16.6.3 외부 거래소 통합 (Coinbase · Binance 등)</h4>
 <ul>
 <li><strong>API</strong> — 거래소별 trading API (REST / WebSocket). order placement + execution monitoring</li>
 <li><strong>인증</strong> — API key + secret + IP allowlist</li>
@@ -358,7 +358,7 @@ KRWK ↔ USDC 같은 stablecoin-to-stablecoin swap 이 <strong>외환매매</str
 <li><strong>정산 schedule</strong> — 거래 즉시 (T+0) 또는 거래소 정산 schedule (T+1 등)</li>
 </ul>
 
-<h4>14b.6.4 환율 quote source</h4>
+<h4>16.6.4 환율 quote source</h4>
 <ul>
 <li><strong>KRW/USD</strong> — 한국은행 매매기준율 · 외환계 / 외부 oracle (Chainlink 등)</li>
 <li><strong>USDC/USD</strong> — Circle 1:1 peg (peg 깨질 시 외부 oracle 시세)</li>
@@ -366,16 +366,16 @@ KRWK ↔ USDC 같은 stablecoin-to-stablecoin swap 이 <strong>외환매매</str
 <li><strong>quote 유효 기간</strong> — 요청 시점 lock vs 정산 시점 시세 — spread / slippage 정책 결정 필요</li>
 </ul>
 
-<h3>14b.7 실패 / Rollback 패턴</h3>
+<h3>16.7 실패 / Rollback 패턴</h3>
 
-<h4>14b.7.1 Step 1 (요청 검증) 실패</h4>
+<h4>16.7.1 Step 1 (요청 검증) 실패</h4>
 <ul>
 <li>KYC / 한도 / 잔액 / 시세 unavailable → <code>transaction_request.status = REJECTED</code></li>
 <li>잔액 lock 안 잡힘 (Step 1 미진입)</li>
 <li>고객에게 즉시 실패 알림</li>
 </ul>
 
-<h4>14b.7.2 Step 2 (외부 정산) 실패</h4>
+<h4>16.7.2 Step 2 (외부 정산) 실패</h4>
 <ul>
 <li>JV / Circle / 거래소 API timeout · reject · 시세 변동 등</li>
 <li>잔액 lock 해제: <code>confirmed += amount</code> · <code>pending_out -= amount</code> (오프램프 · 스왑 out)</li>
@@ -386,22 +386,22 @@ KRWK ↔ USDC 같은 stablecoin-to-stablecoin swap 이 <strong>외환매매</str
 <li>고객 알림 (push)</li>
 </ul>
 
-<h4>14b.7.3 Step 3 (정산 분개 실패)</h4>
+<h4>16.7.3 Step 3 (정산 분개 실패)</h4>
 <ul>
 <li>Step 2 의 외부 정산은 성공했지만 DB 분개 INSERT 실패 (드물지만 가능)</li>
 <li>vault 는 이미 변동됨 — manual 정정 분개 + audit log 필요 (Admin Quorum 매개)</li>
-<li>회계 정정은 18.6 시나리오 ⑧ (정정 분개) 패턴 따름</li>
+<li>회계 정정은 21.6 시나리오 ⑧ (정정 분개) 패턴 따름</li>
 </ul>
 
-<h3>14b.8 다음 페이지</h3>
+<h3>16.8 다음 페이지</h3>
 <p>
-회계 처리 상세 (분개 + delta_ledger + 항등식 검증) 는 <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.6 시나리오 ④ ⑤ ⑥ 참조. schema 통합 정의는 <a href="tables-transaction-request.html">14a. Transaction Request · Execution</a>.
+회계 처리 상세 (분개 + delta_ledger + 항등식 검증) 는 <a href="accounting-ledger.html">21. 회계 · 원장 설계</a> 21.6 시나리오 ④ ⑤ ⑥ 참조. schema 통합 정의는 <a href="tables-transaction-request.html">15. Transaction Request · Execution</a>.
 </p>
 
 </section>
 <nav aria-label="Section navigation" class="page-nav">
-<a class="page-nav-link page-nav-prev" href="tables-transaction-request.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">14a. Transaction Request · Execution</span></a>
-<a class="page-nav-link page-nav-next" href="cross-border-canton.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">14c. Cross-border + Canton</span></a>
+<a class="page-nav-link page-nav-prev" href="tables-transaction-request.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">15. Transaction Request · Execution</span></a>
+<a class="page-nav-link page-nav-next" href="cross-border-canton.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">17. Cross-border + Canton</span></a>
 </nav>
 </main>
 </div>

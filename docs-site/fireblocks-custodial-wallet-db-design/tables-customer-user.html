@@ -42,21 +42,21 @@
 <li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
 <li><a href="sm-webhook.html">13. Webhook 처리</a></li>
 <li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
-<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
-<li><a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
-<li><a href="cross-border-canton.html">14c. Cross-border + Canton</a></li>
+<li><a href="tables-transaction-request.html">15. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">16. Swap · Ramp Lifecycle</a></li>
+<li><a href="cross-border-canton.html">17. Cross-border + Canton</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
-<li><a href="kr-compliance.html">16. KR 규제 매핑</a></li>
-<li><a href="risks.html">17. Risks Register</a></li>
+<li><a href="tables-audit.html">18. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">19. KR 규제 매핑</a></li>
+<li><a href="risks.html">20. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
-<li><a href="accounting-ledger.html">18. 회계 · 원장 설계</a></li>
-<li><a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a></li>
+<li><a href="accounting-ledger.html">21. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">22. 대사 · 결산 · 마감</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
-<li><a href="db-ops.html">20. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">23. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -123,14 +123,14 @@
 <thead><tr><th>layer</th><th>관리 대상</th><th>표</th><th>core 영역 schema</th><th>정의 위치</th></tr></thead>
 <tbody>
 <tr><td><strong>구조</strong></td><td>어느 vault · 어느 chain · 어느 주소</td><td><code>customer_vault</code> → <code>customer_asset_wallet</code> → <code>customer_deposit_address</code></td><td><code>customer</code></td><td><a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a> 5.1.2 절 / 5.2.1 절 / 5.3.2 절</td></tr>
-<tr><td><strong>잔액 ★</strong></td><td>고객 ID × asset 별 잔액 (★ 자산 SoT)</td><td><code>customer_ledger</code></td><td><code>accounting</code></td><td><a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.4 절 의 4 원장 ①</td></tr>
+<tr><td><strong>잔액 ★</strong></td><td>고객 ID × asset 별 잔액 (★ 자산 SoT)</td><td><code>customer_ledger</code></td><td><code>accounting</code></td><td><a href="accounting-ledger.html">21. 회계 · 원장 설계</a> 21.4 절 의 4 원장 ①</td></tr>
 <tr><td><strong>거래</strong></td><td>입금 관찰 + 출금 요청 (bank intent) + vendor lifecycle</td><td><code>deposit_observations</code> · <code>transaction_request</code> (customer) · <code>transaction_execution</code> (transaction) · <code>vendor_transaction</code></td><td><code>customer</code> + <code>transaction</code></td><td><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a> + <a href="sm-transaction.html">12. Transaction State + 14-step</a></td></tr>
 </tbody>
 </table>
 </div>
 
 <p>
-<strong>핵심</strong>: 고객 자산은 여러 vault 에 분산 (Hot omnibus + Cold + segregated). 고객별 자산의 source-of-truth 는 <strong><code>accounting.customer_ledger</code></strong> (subledger = 보조원장. general ledger 의 한 계정 "고객 자산" 을 고객별로 풀어서 기록한 표). 매일 reconciliation 으로 다음 식 검증 (<a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a> 19.2 절 L4):
+<strong>핵심</strong>: 고객 자산은 여러 vault 에 분산 (Hot omnibus + Cold + segregated). 고객별 자산의 source-of-truth 는 <strong><code>accounting.customer_ledger</code></strong> (subledger = 보조원장. general ledger 의 한 계정 "고객 자산" 을 고객별로 풀어서 기록한 표). 매일 reconciliation 으로 다음 식 검증 (<a href="reconciliation-close.html">22. 대사 · 결산 · 마감</a> 22.2 절 L4):
 </p>
 
 <div class="callout">
@@ -139,7 +139,7 @@
 &nbsp;&nbsp;= Hot omnibus 의 고객분 + Cold 의 고객분 + Σ(segregated customer vault)
 </p>
 <p style="margin-bottom:0;margin-top:8px;font-size:13px;color:var(--text-tertiary)">
-<code>delta_ledger</code> = 오프체인 즉시 반영 ↔ on-chain confirmation 시차의 미정산 차액 (<a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.4 절 의 4 원장 ③). 은행 고유 자산 (treasury · gas · 수수료 vault) 은 별도 <code>bank_ledger</code> 가 관리 — 위 식에 포함 안 됨.
+<code>delta_ledger</code> = 오프체인 즉시 반영 ↔ on-chain confirmation 시차의 미정산 차액 (<a href="accounting-ledger.html">21. 회계 · 원장 설계</a> 21.4 절 의 4 원장 ③). 은행 고유 자산 (treasury · gas · 수수료 vault) 은 별도 <code>bank_ledger</code> 가 관리 — 위 식에 포함 안 됨.
 hash chain 무결성 + L1-L4 다층 대사로 분리 보관 의무 입증.
 </p>
 </div>
@@ -203,7 +203,7 @@ erDiagram
     string vendor_transaction_id FK
     numeric incoming_amount
   }
-  WR["customer.transaction_request<br/>(헤더 — 14a 페이지)"] {
+  WR["customer.transaction_request<br/>(헤더 — 15 페이지)"] {
     string transaction_request_id PK "txr_*"
     string bank_customer_id
     enum type "WITHDRAWAL/SWAP/ONRAMP/OFFRAMP"
@@ -243,7 +243,7 @@ erDiagram
 </pre>
 </div>
 <p class="diagram-caption">
-고객 관련 entity 의 관계도. 외부 master (<code>bank_customer_id</code>) 를 중심으로 core 영역 의 3 domain (<code>customer</code> = 구조 + event log + 거래 요청 · <code>accounting</code> = 잔액 · <code>transaction</code> = vendor lifecycle 사본 + 거래 실행) 에 분산. 본 그림의 <code>transaction_request</code> 는 헤더만 표시 — type 별 3 detail 표 (withdrawal · swap · ramp) 및 4 type (withdrawal · swap · onramp · offramp) 통합 schema 는 <a href="tables-transaction-request.html">14a. Transaction Request · Execution</a> 참조.
+고객 관련 entity 의 관계도. 외부 master (<code>bank_customer_id</code>) 를 중심으로 core 영역 의 3 domain (<code>customer</code> = 구조 + event log + 거래 요청 · <code>accounting</code> = 잔액 · <code>transaction</code> = vendor lifecycle 사본 + 거래 실행) 에 분산. 본 그림의 <code>transaction_request</code> 는 헤더만 표시 — type 별 3 detail 표 (withdrawal · swap · ramp) 및 4 type (withdrawal · swap · onramp · offramp) 통합 schema 는 <a href="tables-transaction-request.html">15. Transaction Request · Execution</a> 참조.
 </p>
 
 <h4>9.3.3 "고객별 자산" 질문에 대한 답 — layer 별 접근</h4>
@@ -380,11 +380,11 @@ erDiagram
 <p><strong>핵심</strong>:</p>
 <ul>
 <li><strong>on-chain 은 omnibus</strong> — gas 효율 + Fireblocks vault account 수 절감 + dust 누적 회피 + 운영 부담 ↓. 수십만~수백만 고객 규모에서 1:1 매핑은 운영 비용 측면에서 비현실적</li>
-<li><strong>DB ledger 는 <code>customer_ledger</code> 로 고객별 분리</strong> (<a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a> 5.4 절 / <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.4 절 의 4 원장 ①)</li>
+<li><strong>DB ledger 는 <code>customer_ledger</code> 로 고객별 분리</strong> (<a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a> 5.4 절 / <a href="accounting-ledger.html">21. 회계 · 원장 설계</a> 21.4 절 의 4 원장 ①)</li>
 <li><strong>분리 보관 증명 매커니즘</strong>:
   <ul>
-    <li>매일 reconciliation — subledger 의 고객별 잔액 합 == omnibus vault 의 on-chain 잔액 (<a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a> 19.2 절 의 L1-L4)</li>
-    <li>subledger hash chain 무결성 (<a href="tables-audit.html">15. Audit · AML · Travel Rule</a> 15.3 절 의 audit_log_internal 패턴)</li>
+    <li>매일 reconciliation — subledger 의 고객별 잔액 합 == omnibus vault 의 on-chain 잔액 (<a href="reconciliation-close.html">22. 대사 · 결산 · 마감</a> 22.2 절 의 L1-L4)</li>
+    <li>subledger hash chain 무결성 (<a href="tables-audit.html">18. Audit · AML · Travel Rule</a> 18.3 절 의 audit_log_internal 패턴)</li>
     <li>외부 감사 · 금감원 검사 시 reconciliation log + hash chain 으로 입증</li>
   </ul>
 </li>

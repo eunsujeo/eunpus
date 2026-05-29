@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>14a. Transaction Request · Execution — 통합 거래 요청 / 실행 schema</title>
+<title>15. Transaction Request · Execution — 통합 거래 요청 / 실행 schema</title>
 <meta content="customer.transaction_request + transaction.transaction_execution 통합 2-layer 모델 — withdrawal · swap · onramp · offramp 통합" name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
@@ -42,27 +42,27 @@
 <li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
 <li><a href="sm-webhook.html">13. Webhook 처리</a></li>
 <li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
-<li><a class="active" href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
-<li><a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
-<li><a href="cross-border-canton.html">14c. Cross-border + Canton</a></li>
+<li><a class="active" href="tables-transaction-request.html">15. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">16. Swap · Ramp Lifecycle</a></li>
+<li><a href="cross-border-canton.html">17. Cross-border + Canton</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
-<li><a href="kr-compliance.html">16. KR 규제 매핑</a></li>
-<li><a href="risks.html">17. Risks Register</a></li>
+<li><a href="tables-audit.html">18. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">19. KR 규제 매핑</a></li>
+<li><a href="risks.html">20. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
-<li><a href="accounting-ledger.html">18. 회계 · 원장 설계</a></li>
-<li><a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a></li>
+<li><a href="accounting-ledger.html">21. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">22. 대사 · 결산 · 마감</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
-<li><a href="db-ops.html">20. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">23. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
 <main class="content">
 <section id="transaction-request">
-<h2>14a. Transaction Request · Execution</h2>
+<h2>15. Transaction Request · Execution</h2>
 <span class="section-subtitle">통합 거래 요청 / 실행 schema — withdrawal · swap · onramp · offramp 4 type 통합 2-layer 모델</span>
 
 <div class="callout">
@@ -72,7 +72,7 @@
 </p>
 </div>
 
-<h3>14a.1 schema 설계 — Header + Detail (request) · Unified (execution)</h3>
+<h3>15.1 schema 설계 — Header + Detail (request) · Unified (execution)</h3>
 <p>
 은행 환경 (규제 / 장기 운영 / 외부 감사) 을 고려해 다음 mixed 패턴 적용:
 </p>
@@ -98,7 +98,7 @@
 이 mixed 패턴은 은행 코어 시스템 (SAP CFM · Murex 등) 의 일반 패턴. 요청 layer 는 type 별 다양 → 분리 / 실행 layer 는 vendor lifecycle 통일 → 단일.
 </p>
 
-<h3>14a.2 2-layer 모델 — request vs execution</h3>
+<h3>15.2 2-layer 모델 — request vs execution</h3>
 <p>
 한 거래 = <strong>1 헤더 + 1 디테일 (type 별) → N execution</strong>. request layer 는 customer-facing (bank intent · 헤더 공통 + type 별 디테일), execution 은 vendor lifecycle (Fireblocks · JV · Circle · 외부 거래소).
 </p>
@@ -141,12 +141,12 @@ flowchart LR
 <strong>Header + Detail 분리 이유</strong>: ④ type 별 컬럼 차이 (destination_* vs target_* + quoted_rate) 가 커서 DB <code>NOT NULL</code> · CHECK constraint 로 무결성 강제. ⑤ 새 type 추가 시 새 디테일 표만 (헤더 영향 X).
 </p>
 
-<h3>14a.3 Request layer — Header + 3 Detail tables</h3>
+<h3>15.3 Request layer — Header + 3 Detail tables</h3>
 <p>
 customer-facing 요청 layer 는 헤더 1 표 + type 별 디테일 3 표로 분리. 헤더는 4 type 공통 컬럼만, 디테일은 type 별 필수 컬럼 (DB <code>NOT NULL</code> · CHECK 강제).
 </p>
 
-<h4>14a.3.1 <code>customer.transaction_request</code> — 헤더 (공통)</h4>
+<h4>15.3.1 <code>customer.transaction_request</code> — 헤더 (공통)</h4>
 <p>
 4 type (withdrawal · swap · onramp · offramp) 공통 컬럼만. 1 요청 = 헤더 1 row + 해당 type 의 디테일 표 1 row (1:1).
 </p>
@@ -160,7 +160,7 @@ customer-facing 요청 layer 는 헤더 1 표 + type 별 디테일 3 표로 분�
 <tr><td>source_asset_id</td><td>varchar NOT NULL</td><td>등록 후 변경 불가</td><td>원천 자산 (모든 type 공통 — withdrawal/swap/offramp 의 in · onramp 의 KRW)</td></tr>
 <tr><td>source_amount</td><td>numeric(38,18) NOT NULL</td><td>등록 후 변경 불가</td><td>원천 금액</td></tr>
 <tr><td>channel_code</td><td>varchar NOT NULL</td><td>등록 후 변경 불가</td><td>요청 채널 (mobile / web / 영업점 / API)</td></tr>
-<tr><td>request_status</td><td>enum NOT NULL</td><td>수정 가능</td><td>14a.5 절 의 request_status enum</td></tr>
+<tr><td>request_status</td><td>enum NOT NULL</td><td>수정 가능</td><td>15.5 절 의 request_status enum</td></tr>
 <tr><td>travel_rule_required</td><td>boolean NOT NULL</td><td>등록 후 변경 불가</td><td>100만원 이상 시 true</td></tr>
 <tr><td>travel_rule_record_id (FK)</td><td>uuid nullable</td><td>수정 가능</td><td><code>compliance.travel_rule_records</code> FK</td></tr>
 <tr><td>cancellation_reason</td><td>varchar nullable</td><td>수정 가능</td><td>취소 / 거절 사유</td></tr>
@@ -176,7 +176,7 @@ customer-facing 요청 layer 는 헤더 1 표 + type 별 디테일 3 표로 분�
 헤더 = type-무관 공통 정보만. nullable 거의 없음 (시점 컬럼 / cancellation 만 nullable). <code>general_ledger_entry.source_ref</code> 등 외부 FK 는 헤더의 <code>transaction_request_id</code> 를 참조 → 단일 FK target.
 </p>
 
-<h4>14a.3.2 <code>customer.withdrawal_request_detail</code> — WITHDRAWAL only</h4>
+<h4>15.3.2 <code>customer.withdrawal_request_detail</code> — WITHDRAWAL only</h4>
 <p>
 출금 요청의 type-specific 컬럼. 헤더의 <code>type = 'WITHDRAWAL'</code> 인 경우 1:1 대응.
 </p>
@@ -192,7 +192,7 @@ customer-facing 요청 layer 는 헤더 1 표 + type 별 디테일 3 표로 분�
 </table>
 </div>
 
-<h4>14a.3.3 <code>customer.swap_request_detail</code> — SWAP only</h4>
+<h4>15.3.3 <code>customer.swap_request_detail</code> — SWAP only</h4>
 <p>
 자산 스왑 (stablecoin A ↔ B 또는 KRWK ↔ USDC) 의 type-specific 컬럼. 헤더의 <code>type = 'SWAP'</code> 인 경우 1:1 대응.
 </p>
@@ -209,7 +209,7 @@ customer-facing 요청 layer 는 헤더 1 표 + type 별 디테일 3 표로 분�
 </table>
 </div>
 
-<h4>14a.3.4 <code>customer.ramp_request_detail</code> — ONRAMP + OFFRAMP</h4>
+<h4>15.3.4 <code>customer.ramp_request_detail</code> — ONRAMP + OFFRAMP</h4>
 <p>
 온/오프램프의 type-specific 컬럼. 헤더의 <code>type IN ('ONRAMP', 'OFFRAMP')</code> 인 경우 1:1 대응. 두 type 의 컬럼 구조가 거의 동일하므로 1 표로 통합 (방향은 header.type 으로 결정).
 </p>
@@ -227,7 +227,7 @@ customer-facing 요청 layer 는 헤더 1 표 + type 별 디테일 3 표로 분�
 </table>
 </div>
 
-<h4>14a.3.5 type × detail 표 매핑</h4>
+<h4>15.3.5 type × detail 표 매핑</h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>header.type</th><th>참조 detail 표</th><th>1:1 관계</th><th>CHECK constraint</th></tr></thead>
@@ -243,7 +243,7 @@ customer-facing 요청 layer 는 헤더 1 표 + type 별 디테일 3 표로 분�
 헤더 INSERT 와 디테일 INSERT 는 <strong>단일 transaction</strong> 으로 동시 처리 (application layer 책임). 헤더 row 가 있는데 디테일 row 가 없는 상태는 회계 무결성 깨짐 → application + trigger 로 enforce. 새 type 추가 시 새 detail 표만 추가 (헤더 영향 X).
 </p>
 
-<h3>14a.4 <code>transaction.transaction_execution</code> — vendor lifecycle</h3>
+<h3>15.4 <code>transaction.transaction_execution</code> — vendor lifecycle</h3>
 <p>
 실제 vendor / 외부 시스템 leg 의 lifecycle. 1 request 에 N execution (재시도 / multi-leg / swap 의 2 leg / chunk 출금).
 </p>
@@ -263,7 +263,7 @@ customer-facing 요청 layer 는 헤더 1 표 + type 별 디테일 3 표로 분�
 <tr><td>amount</td><td>numeric(38,18)</td><td>등록 후 변경 불가</td><td>이 leg 의 금액 (multi-leg 시 partial)</td></tr>
 <tr><td>direction</td><td>enum</td><td>등록 후 변경 불가</td><td><code>OUTBOUND / INBOUND</code> — vault 출금 / 입금 방향. swap 의 2 leg 구분에 사용</td></tr>
 <tr><td>vendor_external_tx_id</td><td>varchar</td><td>등록 후 변경 불가</td><td>idempotency key (은행이 생성). 재시도 시 새 key</td></tr>
-<tr><td>execution_status</td><td>enum</td><td>수정 가능</td><td>14a.5 절 의 execution_status enum</td></tr>
+<tr><td>execution_status</td><td>enum</td><td>수정 가능</td><td>15.5 절 의 execution_status enum</td></tr>
 <tr><td>idempotency_key_sent_at</td><td>timestamptz</td><td>등록 후 변경 불가</td><td>외부 API 호출 시점</td></tr>
 <tr><td>vendor_submitted_at</td><td>timestamptz nullable</td><td>수정 가능 (NULL 가능)</td><td>vendor 접수 응답 시점</td></tr>
 <tr><td>completed_at</td><td>timestamptz nullable</td><td>수정 가능 (NULL 가능)</td><td>이 leg 의 vendor 측 종결 시점</td></tr>
@@ -286,7 +286,7 @@ customer-facing 요청 layer 는 헤더 1 표 + type 별 디테일 3 표로 분�
 </table>
 </div>
 
-<h3 id="section-14a-5">14a.5 상태 lifecycle — 2-layer status 모델</h3>
+<h3 id="section-15-5">15.5 상태 lifecycle — 2-layer status 모델</h3>
 
 <h4>Bank intent status (<code>transaction_request.request_status</code>)</h4>
 <p>고객 의지 lifecycle — 모든 type 공통:</p>
@@ -325,7 +325,7 @@ customer-facing 요청 layer 는 헤더 1 표 + type 별 디테일 3 표로 분�
 17 primary status 와의 전체 매핑은 <a href="sm-transaction.html">12. Transaction State + 14-step</a> 12.1 절 참조. JV / Circle channel 의 status 매핑은 추후 별도 자문.
 </p>
 
-<h3>14a.6 type 별 사용 패턴</h3>
+<h3>15.6 type 별 사용 패턴</h3>
 
 <h4>WITHDRAWAL — 외부 출금</h4>
 <p>
@@ -342,7 +342,7 @@ customer-facing 요청 layer 는 헤더 1 표 + type 별 디테일 3 표로 분�
 <li><strong>JV_BURN + CIRCLE_MINT</strong> — KRWK burn (JV) + USDC mint (Circle) 직접 연계 (1차 시장)</li>
 </ul>
 <p>
-회계 / 시나리오 상세는 <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.6 절 시나리오 ④ 참조.
+회계 / 시나리오 상세는 <a href="accounting-ledger.html">21. 회계 · 원장 설계</a> 21.6 절 시나리오 ④ 참조.
 </p>
 
 <h4>ONRAMP — 법정통화 → 스테이블코인</h4>
@@ -355,7 +355,7 @@ customer-facing 요청 layer 는 헤더 1 표 + type 별 디테일 3 표로 분�
 <li><strong>EXTERNAL_EXCHANGE</strong> (USDC 2차 시장) — 거래소 매입</li>
 </ul>
 <p>
-계정계 KRW 차감은 outbox 별도. 시나리오 상세는 <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.6 절 시나리오 ⑤ 참조.
+계정계 KRW 차감은 outbox 별도. 시나리오 상세는 <a href="accounting-ledger.html">21. 회계 · 원장 설계</a> 21.6 절 시나리오 ⑤ 참조.
 </p>
 
 <h4>OFFRAMP — 스테이블코인 → 법정통화</h4>
@@ -368,7 +368,7 @@ customer-facing 요청 layer 는 헤더 1 표 + type 별 디테일 3 표로 분�
 <li><strong>EXTERNAL_EXCHANGE</strong> (USDC 2차) — 거래소 매도</li>
 </ul>
 <p>
-계정계 KRW 입금은 outbox 별도. 시나리오 상세는 <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.6 절 시나리오 ⑥ 참조.
+계정계 KRW 입금은 outbox 별도. 시나리오 상세는 <a href="accounting-ledger.html">21. 회계 · 원장 설계</a> 21.6 절 시나리오 ⑥ 참조.
 </p>
 
 <div class="callout">
@@ -388,7 +388,7 @@ customer-facing 요청 layer 는 헤더 1 표 + type 별 디테일 3 표로 분�
 </p>
 </div>
 
-<h3>14a.7 ER 다이어그램 — Header + Detail + Execution</h3>
+<h3>15.7 ER 다이어그램 — Header + Detail + Execution</h3>
 <div class="diagram">
 <pre class="mermaid">
 erDiagram
@@ -454,7 +454,7 @@ erDiagram
 <strong>Header + 3 Detail (request) + Unified (execution)</strong>: 헤더 (4 type 공통) ↔ 3 디테일 (type 별 1:1 · DB CHECK 강제) ↔ execution (N · type 무관 통합). 헤더 row 와 그에 해당하는 디테일 row 는 동일 transaction 으로 INSERT (application layer enforcement). cross-domain (customer / transaction) FK 는 application 또는 cross-schema FK.
 </p>
 
-<h3>14a.8 운영 시작 전 검증 + trade-off</h3>
+<h3>15.8 운영 시작 전 검증 + trade-off</h3>
 <div class="callout callout-warn">
 <div class="callout-title">★ 운영 시작 전 검증 필수</div>
 <ul style="margin-bottom:0">
@@ -467,15 +467,15 @@ erDiagram
 </ul>
 </div>
 
-<h3>14a.9 다음 페이지</h3>
+<h3>15.9 다음 페이지</h3>
 <p>
-거래 lifecycle 의 회계 처리 상세는 <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 18.6 절 (시나리오) 참조. 출금 전반 흐름은 <a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a> 14.2 절.
+거래 lifecycle 의 회계 처리 상세는 <a href="accounting-ledger.html">21. 회계 · 원장 설계</a> 21.6 절 (시나리오) 참조. 출금 전반 흐름은 <a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a> 14.2 절.
 </p>
 
 </section>
 <nav aria-label="Section navigation" class="page-nav">
 <a class="page-nav-link page-nav-prev" href="sm-deposit-withdrawal.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">14. Deposit · Withdrawal Flow</span></a>
-<a class="page-nav-link page-nav-next" href="sm-swap-ramp.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">14b. Swap · Ramp Lifecycle</span></a>
+<a class="page-nav-link page-nav-next" href="sm-swap-ramp.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">16. Swap · Ramp Lifecycle</span></a>
 </nav>
 </main>
 </div>

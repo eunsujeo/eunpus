@@ -42,21 +42,21 @@
 <li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
 <li><a href="sm-webhook.html">13. Webhook 처리</a></li>
 <li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
-<li><a href="tables-transaction-request.html">14a. Transaction Request · Execution</a></li>
-<li><a href="sm-swap-ramp.html">14b. Swap · Ramp Lifecycle</a></li>
-<li><a href="cross-border-canton.html">14c. Cross-border + Canton</a></li>
+<li><a href="tables-transaction-request.html">15. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">16. Swap · Ramp Lifecycle</a></li>
+<li><a href="cross-border-canton.html">17. Cross-border + Canton</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
-<li><a href="tables-audit.html">15. Audit · AML · Travel Rule</a></li>
-<li><a href="kr-compliance.html">16. KR 규제 매핑</a></li>
-<li><a href="risks.html">17. Risks Register</a></li>
+<li><a href="tables-audit.html">18. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">19. KR 규제 매핑</a></li>
+<li><a href="risks.html">20. Risks Register</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
-<li><a href="accounting-ledger.html">18. 회계 · 원장 설계</a></li>
-<li><a href="reconciliation-close.html">19. 대사 · 결산 · 마감</a></li>
+<li><a href="accounting-ledger.html">21. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">22. 대사 · 결산 · 마감</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
-<li><a href="db-ops.html">20. DB 운영 · Anti-patterns</a></li>
+<li><a href="db-ops.html">23. DB 운영 · Anti-patterns</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -227,7 +227,7 @@ flowchart TB
 <br/>
 <strong>기존 은행 시스템 통합</strong>: 채널계 → 플랫폼 (사용자 facing 진입) · 플랫폼 ↔ 계정계 (KRW 잔액 / 입출금) · 플랫폼 ↔ 외환계 (환율 / 외환 환산) · 플랫폼 → 정보계 (마감 / 감사 보고).
 실제 통합은 별도 ESB / API Gateway / iPaaS 경유하는 경우 많음 (본 다이어그램은 직접 호출로 단순화 표시).
-3 계층 정합 (블록체인 · 오프체인 · 계정계) 의 상세는 <a href="accounting-ledger.html">18. 회계 · 원장 설계</a> 참조.
+3 계층 정합 (블록체인 · 오프체인 · 계정계) 의 상세는 <a href="accounting-ledger.html">21. 회계 · 원장 설계</a> 참조.
 </p>
 
 <h3>2.3 플랫폼 운영</h3>
@@ -579,6 +579,187 @@ Webhook endpoint 의 monitoring 은 내부망의 <strong>Monitoring 컴포넌트
 </div>
 <p style="color:var(--text-secondary);font-size:13px">
 <strong>spec 수치는 중규모 (일 ~1,000 tx) 기준 저자 권장</strong> — 실제 sizing 은 부하 테스트 + Fireblocks API rate limit + AML provider 응답 latency + 회계 cron 의 일말 처리 시간으로 검증 필요.
+</p>
+
+<h3>2.12a Database engine — 용도별 선택 가이드</h3>
+<p>
+2.12 의 "core DB / audit DB / compliance DB" 같은 단일 표현은 실제 운영에서 <strong>data 특성 별로 다른 engine</strong> 을 mix 하는 것이 일반적. 본 절은 7 가지 용도 (시계열 · OLTP · 메타데이터 · 분석 · 변조방지 · 캐시 · 검색) 별 engine 선택 가이드 + 본 wiki 표가 어디에 들어가는지 매핑. <a href="db-split.html">3. DB 분할</a> 3.6 절 (domain 의 data 특성 → engine 후보) 의 server-role 차원 보완.
+</p>
+
+<h4>2.12a.1 7 카테고리 한눈에 보기</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>카테고리</th><th>data 특성</th><th>추천 engine (OSS)</th><th>추천 engine (Commercial / Managed)</th><th>본 wiki 의 적용 표</th></tr></thead>
+<tbody>
+<tr><td><strong>① OLTP / Transactional</strong></td><td>mutable · row-level lock · ACID · 정합성 critical</td><td>PostgreSQL · MySQL · MariaDB</td><td>Oracle · SQL Server · Aurora · Cloud SQL</td><td>customer · counterparty · admin · ops · transaction_request (header + detail) · withdrawal_execution / transaction_execution</td></tr>
+<tr><td><strong>② 시계열 (Time-series)</strong></td><td>append-only · 시간 기반 query · 대용량 · partition by time</td><td>TimescaleDB · InfluxDB · QuestDB</td><td>ClickHouse · DataDog Metrics · AWS Timestream</td><td>balance_snapshots · asset_value_krw · fx_rate_history · webhook_events · vendor_transaction_status_history · hot_cold_ratio_daily · 일별 metrics</td></tr>
+<tr><td><strong>③ 메타데이터 / NoSQL</strong></td><td>key-value · schema-less · 빠른 read · 단순 query</td><td>Redis (persistent) · MongoDB · Cassandra</td><td>DynamoDB · Cosmos DB · Firestore</td><td>cosigner_meta · mobile_device · workspace 메타 (단순 config) · vault_lifecycle_event (jsonb payload)</td></tr>
+<tr><td><strong>④ 분석 / BI (Data Warehouse)</strong></td><td>OLAP · large scan · columnar · BI tool 연결</td><td>ClickHouse · Apache Druid · Doris</td><td>Snowflake · BigQuery · Redshift · Synapse</td><td>모든 표의 BI 사본 (회계 / 거래 / 사용자 분석 · 위험 분석 · 컴플라이언스 보고서 생성)</td></tr>
+<tr><td><strong>⑤ 변조방지 Audit</strong></td><td>append-only · WORM · hash chain · 5년 보존</td><td>append-only PostgreSQL + hash chain · Apache Kafka (with retention)</td><td>AWS S3 Object Lock · Azure Immutable Blob · AWS QLDB · Google Cloud Storage Object Lock</td><td>audit_log_mirror · audit_log_internal · general_ledger_snapshot · customer_balance_snapshot</td></tr>
+<tr><td><strong>⑥ Cache (in-memory)</strong></td><td>millisecond access · TTL · ephemeral</td><td>Redis · Memcached</td><td>ElastiCache · Memorystore</td><td>asset_value_krw (TTL cache) · 세션 토큰 · rate limit counter · 일시적 잔액 조회 cache</td></tr>
+<tr><td><strong>⑦ 검색 / 로그 (Search)</strong></td><td>full-text search · log aggregation · faceted query</td><td>Elasticsearch · OpenSearch · Apache Solr</td><td>Algolia · AWS OpenSearch Service</td><td>application 로그 · audit log 검색 · 거래 내역 search · compliance review 검색</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>2.12a.2 카테고리 1 — OLTP / Transactional (PostgreSQL 권장)</h4>
+<ul>
+<li><strong>본 wiki 의 대표 표</strong>: <code>customer.*</code> · <code>counterparty.*</code> · <code>admin.*</code> · <code>ops.*</code> · <code>transaction_request</code> (header + 3 detail) · <code>transaction_execution</code> · <code>vendor_transaction</code> · 회계 4 원장 (customer_ledger · bank_ledger · delta_ledger · general_ledger_entry · general_ledger_account)</li>
+<li><strong>핵심 요구사항</strong>:
+  <ul>
+    <li>ACID transaction — 회계 분개의 양변 동시 commit · 잔액 lock + delta_ledger INSERT 동시</li>
+    <li>row-level lock — 동일 user_id 동시 출금 prevention</li>
+    <li>cross-schema FK — customer / transaction / accounting domain 간 1:N 관계</li>
+    <li>complex query — 5년 보존 데이터 검색 · multi-table JOIN</li>
+  </ul>
+</li>
+<li><strong>권장</strong>: <strong>PostgreSQL 15+</strong>
+  <ul>
+    <li>장점: 가장 풍부한 SQL · JSONB 지원 (metadata 컬럼) · streaming replication · partial / partial index · CHECK constraint</li>
+    <li>HA: primary + 1+ standby (streaming replication) · failover automation (Patroni / repmgr)</li>
+    <li>partition: 시간 기반 (월/년) · 일별 audit log partition</li>
+  </ul>
+</li>
+<li><strong>대안</strong>: Oracle (기존 은행 코어 일관성) · MySQL (성능 ↑ but JSON / FK 제약) · CockroachDB (multi-region 분산 시)</li>
+<li><strong>spec</strong>: 16 vCPU · 64GB RAM · NVMe SSD · primary + replica</li>
+</ul>
+
+<h4>2.12a.3 카테고리 2 — 시계열 (TimescaleDB 또는 ClickHouse)</h4>
+<ul>
+<li><strong>본 wiki 의 대표 표</strong>: <code>balance_snapshots</code> (일별 잔액) · <code>asset_value_krw</code> (시점 cache · 시계열로 archive) · <code>fx_rate_history</code> (일별 / 시간별 시세) · <code>webhook_events</code> (대용량 event) · <code>vendor_transaction_status_history</code> (status 변경 시계열) · <code>hot_cold_ratio_daily</code> · 모니터링 metrics (Prometheus → archive)</li>
+<li><strong>핵심 요구사항</strong>:
+  <ul>
+    <li>append-only · 시간 ordering · partition by time</li>
+    <li>대용량 (수억 row) · 시간 범위 query 빠름 (예: "최근 30일 거래 추이")</li>
+    <li>retention 정책 (예: 5년 후 cold tier archive)</li>
+    <li>downsampling (예: 분 단위 → 시간 단위 → 일 단위 점진 압축)</li>
+  </ul>
+</li>
+<li><strong>권장 옵션</strong>:
+  <ul>
+    <li><strong>TimescaleDB</strong> (PostgreSQL extension) — SQL 호환성 ↑ · OLTP 와 동일 engine 운영 가능 (운영 단순화) · hypertable + continuous aggregate</li>
+    <li><strong>ClickHouse</strong> — 더 빠른 OLAP · columnar · 대용량 시계열 분석 + BI 통합 ↑ · 별도 운영 부담</li>
+    <li><strong>InfluxDB</strong> — IoT / 인프라 metrics 표준 · Prometheus remote write 통합 자연스러움</li>
+  </ul>
+</li>
+<li><strong>권장 mix</strong>: OLTP 와 같이 운영 → TimescaleDB (PostgreSQL extension) · 별도 시계열 → ClickHouse (분석 시 BI 통합 용이)</li>
+<li><strong>spec</strong>: 8 vCPU · 32GB RAM · 시간 기반 partition · 일별 retention monitoring</li>
+</ul>
+
+<h4>2.12a.4 카테고리 3 — 메타데이터 / NoSQL (Redis · MongoDB)</h4>
+<ul>
+<li><strong>본 wiki 의 대표 표</strong>: <code>cosigner_meta</code> · <code>mobile_device</code> · <code>workspace.config</code> · <code>vault_lifecycle_event</code> (jsonb event payload) · 단순 key-value 설정</li>
+<li><strong>핵심 요구사항</strong>:
+  <ul>
+    <li>schema-less · 빠른 lookup · 단순 query (PK 또는 secondary index)</li>
+    <li>schema 변경 빈번 (예: vendor 가 새 event field 추가)</li>
+  </ul>
+</li>
+<li><strong>권장 옵션</strong>:
+  <ul>
+    <li><strong>PostgreSQL JSONB 컬럼</strong> (저자 권장) — OLTP 와 동일 engine 사용 · 운영 단순화 · JSON path query 지원. 본 wiki 의 표 대부분 metadata jsonb 컬럼으로 처리 권장</li>
+    <li><strong>Redis</strong> (cache 겸용) — TTL · pub/sub · 빠른 read. event-driven workflow 적합</li>
+    <li><strong>MongoDB</strong> — 진짜 schema-less 가 필요할 때 (대규모 event log 등)</li>
+  </ul>
+</li>
+<li><strong>저자 권장</strong>: <strong>대부분 PostgreSQL JSONB 로 처리</strong> — 별도 NoSQL engine 운영 부담 회피. 정말 필요한 경우만 Redis (cache) 추가</li>
+</ul>
+
+<h4>2.12a.5 카테고리 4 — 분석 / BI (Data Warehouse · Snowflake/BigQuery)</h4>
+<ul>
+<li><strong>용도</strong>: 임원 BI 보고서 · 거래 / 사용자 / 위험 분석 · 컴플라이언스 / 금감원 보고서 생성 · 회계 마감 자료 산출</li>
+<li><strong>data flow</strong>: OLTP / 시계열 / audit → ETL / CDC → Data warehouse (analytical 사본)</li>
+<li><strong>권장 옵션</strong>:
+  <ul>
+    <li><strong>Snowflake</strong> — KR 은행권 채택 ↑ · separation of compute/storage · 멀티 region · BI 통합 풍부 (Tableau · PowerBI)</li>
+    <li><strong>BigQuery</strong> (GCP) — 완전 serverless · ad-hoc query 빠름 · 가격 query-based</li>
+    <li><strong>ClickHouse</strong> (OSS) — 자체 운영 · 빠른 OLAP · KR 은행 망분리 환경에 적합</li>
+    <li><strong>Apache Druid</strong> — real-time analytics · 거래 streaming 분석</li>
+  </ul>
+</li>
+<li><strong>data 동기화</strong>: Debezium CDC (PostgreSQL → Kafka → DW) 또는 nightly batch ETL</li>
+<li><strong>분리 필수</strong>: OLTP DB 와 분리 (OLAP query 가 OLTP 성능 영향 X)</li>
+<li><strong>망분리 고려</strong>: DW 자체도 코인계 안에 배치 (KR 은행 망분리 정책). 또는 IDC 별도 zone (BI 영역)</li>
+</ul>
+
+<h4>2.12a.6 카테고리 5 — 변조방지 Audit (Object Store WORM · QLDB)</h4>
+<ul>
+<li><strong>본 wiki 의 대표 표</strong>: <code>audit_log_mirror</code> (Fireblocks 사본) · <code>audit_log_internal</code> (은행 자체 변경) · <code>general_ledger_snapshot</code> (일말 회계 박제) · <code>customer_balance_snapshot</code> (일말 잔액)</li>
+<li><strong>핵심 요구사항</strong>:
+  <ul>
+    <li>append-only — UPDATE / DELETE 금지 (특금법 5조의4)</li>
+    <li>hash chain 또는 WORM (Write Once Read Many) storage</li>
+    <li>5 년 보존 (특금법) · 일부 7년 (회계 자료)</li>
+    <li>외부 감사 read-only access</li>
+  </ul>
+</li>
+<li><strong>권장 옵션</strong>:
+  <ul>
+    <li><strong>append-only PostgreSQL + hash chain</strong> (자체 구현) — INSERT 만 허용 trigger + previous_hash 컬럼 + current_hash 컬럼. 운영 단순 · 검증 가능</li>
+    <li><strong>AWS S3 Object Lock</strong> (Compliance mode) — WORM 보장 + KMS 암호화 + Glacier archive 가능. KR 은행 망분리 환경에서는 AWS GovCloud 또는 직접 S3 호환 storage (MinIO + Object Lock)</li>
+    <li><strong>AWS QLDB</strong> (Quantum Ledger Database) — 자체 cryptographic verifiability · 다만 KR region 한계 (망분리 우려)</li>
+    <li><strong>Apache Kafka (with retention)</strong> — append-only stream · 5년 retention · audit log 의 streaming 사본</li>
+  </ul>
+</li>
+<li><strong>저자 권장</strong>: <strong>PostgreSQL append-only + hash chain (운영 일관성) + S3 호환 WORM (장기 archive)</strong>. 두 layer 로 운영 단순화 + 변조방지 강화</li>
+</ul>
+
+<h4>2.12a.7 카테고리 6 — Cache (Redis)</h4>
+<ul>
+<li><strong>용도</strong>: <code>asset_value_krw</code> 시점 cache (TTL 1 시간) · session 토큰 · rate limit counter · vault balance 조회 cache · pre-computed UI 잔액</li>
+<li><strong>권장</strong>: <strong>Redis 7+</strong> (cluster mode) — pub/sub · pipeline · Lua script · TLS</li>
+<li><strong>HA</strong>: Redis Sentinel 또는 Redis Cluster (자동 failover)</li>
+<li><strong>persistent vs ephemeral</strong>: cache 는 ephemeral · session 은 short persistent (AOF)</li>
+<li><strong>spec</strong>: 2 vCPU · 8GB RAM × 3 node (cluster)</li>
+</ul>
+
+<h4>2.12a.8 카테고리 7 — 검색 / 로그 (Elasticsearch / OpenSearch)</h4>
+<ul>
+<li><strong>용도</strong>: application 로그 검색 · audit log full-text query · 거래 내역 search · compliance reviewer 의 의심 거래 search</li>
+<li><strong>본 wiki 의 적용</strong>: 2.13.2 ELK Stack 의 데이터 source (application + DB + audit log)</li>
+<li><strong>권장</strong>: <strong>Elasticsearch 8+</strong> (또는 OpenSearch 2+ — Amazon fork) · Logstash · Kibana</li>
+<li><strong>spec</strong>: 16 vCPU · 64GB RAM · 5TB+ disk · 3+ node cluster (master / data / coordinator 분리)</li>
+<li><strong>주의</strong>: 검색 engine 자체는 transactional consistency 부족 → 진실의 source 는 OLTP / audit DB 이고 ES 는 사본</li>
+</ul>
+
+<h4>2.12a.9 통합 운영 — 7 engine 동시 운영의 부담 vs 단일 engine 의 한계</h4>
+<div class="callout callout-warn">
+<div class="callout-title">★ 운영 단순화 권장 — 시작 단계는 3-4 engine 으로</h4>
+<p style="margin-bottom:0.5rem">
+모든 카테고리에 별도 engine 도입 시 운영 부담 ↑. 시작 단계 권장:
+</p>
+<ol style="margin-bottom:0">
+<li><strong>PostgreSQL</strong> — OLTP + 시계열 (TimescaleDB extension) + NoSQL (JSONB) + audit (append-only + hash chain) 통합 운영</li>
+<li><strong>Redis</strong> — Cache + session</li>
+<li><strong>Elasticsearch / OpenSearch</strong> — 로그 + 검색</li>
+<li><strong>S3 호환 storage</strong> — 장기 archive (Object Lock WORM)</li>
+</ol>
+<p style="margin-bottom:0;margin-top:0.5rem">
+운영 안정화 후 (예: 일 거래량 ~10,000+) 분리 필요 영역 식별 → Data warehouse (Snowflake / ClickHouse) · 시계열 separate (ClickHouse) 등 점진 도입. KR 은행 망분리 환경에서는 <strong>cloud SaaS engine 선택 시 망분리 적합성 사전 검증</strong> 필수.
+</p>
+</div>
+
+<h4>2.12a.10 본 wiki 표의 통합 매핑 (참고)</h4>
+<p>
+앞 2.12 의 server role 별 spec 표와 본 절의 engine 카테고리 cross 매핑:
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>본 wiki 표</th><th>1차 engine (OLTP 권장)</th><th>2차 engine (분석 / archive)</th></tr></thead>
+<tbody>
+<tr><td>customer · counterparty · admin · ops</td><td>PostgreSQL</td><td>Data warehouse (BI)</td></tr>
+<tr><td>transaction_request (header + detail) · transaction_execution · vendor_transaction</td><td>PostgreSQL (시간 partition)</td><td>Data warehouse (분석) · 시계열 archive</td></tr>
+<tr><td>회계 4 원장 (customer_ledger · bank_ledger · delta_ledger · general_ledger_entry)</td><td>PostgreSQL (ACID critical)</td><td>Data warehouse (BI · 외부 감사)</td></tr>
+<tr><td>balance_snapshots · fx_rate_history · asset_value_krw</td><td>TimescaleDB 또는 PostgreSQL</td><td>ClickHouse (시계열 분석)</td></tr>
+<tr><td>webhook_events</td><td>PostgreSQL (시간 partition) + Kafka (stream)</td><td>시계열 archive</td></tr>
+<tr><td>audit_log_mirror · audit_log_internal</td><td>PostgreSQL append-only + hash chain</td><td>S3 Object Lock (장기 archive)</td></tr>
+<tr><td>general_ledger_snapshot · customer_balance_snapshot</td><td>PostgreSQL + hash chain</td><td>S3 archive (immutable)</td></tr>
+<tr><td>compliance.travel_rule_records · screening_results · regulator_reports</td><td>PostgreSQL (별도 DB instance)</td><td>장기 archive</td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary);font-size:13px">
+구체 engine / spec 은 운영 환경 (망분리 / cloud / 거래량 / KR 규제) 에 따라 다름. 본 표는 일반 권장이며 도입 시 부하 테스트 + DBA 검토 + 망분리 적합성 확인 필수.
 </p>
 
 <h3>2.13 모니터링 Stack — 5 카테고리 통합</h3>
