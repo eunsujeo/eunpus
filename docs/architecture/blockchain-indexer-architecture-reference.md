@@ -295,6 +295,19 @@ NEAR Indexer for Explorer: 공개 SQL 스키마 진화 가능, release note 추�
 2. **필요한 블록만 read** → dictionary · topic/address filter · startBlock 최적화 = 비용 절감
 3. **archive node 무조건 self-host 금지** → 초기엔 private archived RPC 또는 lake/firehose 공급자. 트래픽이 비용 역전 시점에만 self-hosting.
 
+### 9.3a Hypothesis-tier 추가 vendor 사례 (★ Stage 44)
+
+[[docs/architecture/vendor-indexer-implementations-hypothesis]] §6 에 B4 (LLM 생성, 36 외부 URL footnote) 의 7 거래소 비교 보존. 특히 **Coinbase ChainStorage / ChainNode** 의 공개 아키텍처 (Coinbase blog Part 1, Part 3 traceable) 가 본 reference §3 의 참조 아키텍처 + §8.2 reorg 처리 패턴과 cross-confirm:
+
+- Coinbase ChainStorage = raw block lake (S3 + DynamoDB) + ELT 변환 후행 + chain-native/agnostic parser
+- **Reorg 처리** = block overwrite ✗ → **add (+) / remove (-) event sequence 적재** (CDC 류 downstream 동기화 가능)
+- AWS Ethereum 예시: 1~2 초 freshness, 실험적 약 1000 blocks/sec
+- ChainNode = Temporal workflows + DynamoDB sink + Golang RPC serving + ChainStorage 변경분 지속 복제
+
+→ Coinbase 의 공개 아키텍처가 본 reference 의 §3 참조 아키텍처와 정합 — 본 reference 의 fact-tier 신뢰도 강화.
+
+**Korbit 사례** (B4 §6.3, footnote 22-23): Kafka Event Sourcing + Temporal workflow + Go/Rust + gRPC + EKS — 국내 거래소 reference 최초.
+
 ### 9.3 Hypothesis-tier 추가 비용 데이터 (★ Stage 43, unverified)
 
 [[docs/architecture/vendor-indexer-implementations-hypothesis]] §5.3 에 LLM 생성 자료 (B3) 의 추가 vendor pricing 데이터 보존:

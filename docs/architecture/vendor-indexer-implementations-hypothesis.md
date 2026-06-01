@@ -295,7 +295,137 @@ B3 가 제공하는 비용 모델:
 
 → B3 는 B1 의 가장 specific 한 수치 (1분/10분, ATC 등) 는 다루지 않음. B3 가 다루는 영역은 더 generalized — Fireblocks 공식 docs 인용 위주.
 
-## 6. Stage 41 reference 와의 hypothesis-tier 비교
+## 6. B4 (Stage 44 추가 자료) — 7 거래소 비교 + 외부 URL footnote
+
+**원본**: [[sources/indexer/Fireblocks와 국내외 거래소의 블록체인 인덱서 설계·구현 비교 보고서.pdf]] (9 페이지, Korean), markdown extract: [[sources/indexer/2026-06-01__Fireblocks와-국내외-거래소-인덱서-비교-보고서]]
+
+**B1/B2/B3 와의 차이**:
+- **36 개 외부 URL footnote 본문 명시** — Coinbase blog (Part 1 + Part 3) / Fireblocks developers / Upbit/Bithumb/Coinone/Korbit docs / Binance tech blog / Korbit tech blog 직접 인용
+- 모든 항목에 자체 tier 분류 ("확인됨 / 부분 확인 / 미확인") 일관 적용
+- 7 거래소 비교 (Fireblocks / Coinbase / Binance / Upbit / Bithumb / Coinone / Korbit)
+- Coinbase ChainStorage / ChainNode 의 공개 아키텍처 가장 specific
+- Korbit 의 국내 거래소 사례 최초 (Kafka + Temporal + Go/Rust + gRPC + EKS)
+
+### 6.1 B4 의 Fireblocks 자체 tier 분류 (★ 본 자료에 따르면)
+
+| 분류 | 항목 | B4 의 footnote |
+|---|---|---|
+| **확인됨** | `/blockchains` + 자산 API, EVM receipt 조회, network routing, Webhooks v2 (순서 비보장, 30일 재전송, JWKS, IP allowlist, balance validation), `externalTxId` 영구 멱등성, multi-destination batching, 같은 EVM vault account 한 번에 하나, 이종 체인 동시 처리 | 3, 7, 8, 9, 10, 24, 35 |
+| **부분 확인** | 노드 운영 (다중 체인 + receipt 제공이므로 내부 노드/외부 제공자 조합 시사), 메시지 큐 (공식 docs 가 "큐 기반 권장") | 추론 |
+| **미확인** | 노드 토폴로지, Kafka 사용, DB 선택, 스트리밍 버스, 캐시 / 검색 / 분석 스토어, 백필 전략 | — |
+
+→ B4 의 Fireblocks 결론: **"인덱서 자체보다 트랜잭션 제어·정합성·서명·이벤트 전달 신뢰성이 중심"**
+
+→ B4 가 강조하는 "**입금 감지 vs 잔고 반영 분리**" — incoming transaction 웹훅만 믿지 말고 balance update 웹훅 + block height 교차검증 권고. 본 wiki [[docs/architecture/deposit-lifecycle]] §1.3 와 정합 (cross-confirm).
+
+### 6.2 Coinbase ChainStorage / ChainNode — B4 가 공개 자료에서 정리한 architecture (★)
+
+**B4 의 가장 specific 한 영역** — Coinbase 공식 blog (Part 1, Part 3) 직접 인용:
+
+**ChainStorage (raw 데이터 레이어, footnote 11)**:
+- 로드밸런싱된 노드 클러스터 → raw block 동시 추출
+- Blob storage (S3 계열) + Key-value storage (DynamoDB 계열) 저장
+- **ELT 방식** (변환은 ingestion 이후로 미룸)
+- Chain-native parser + chain-agnostic parser
+- **Reorg = block overwrite ✗, 추가 (+) / 제거 (-) 이벤트 시퀀스로 적재** ← ★ 본 wiki Stage 41 reference §8.2 reorg 처리의 구체 패턴
+- Merkle hash validation + node failover
+- AWS Ethereum 예시: **1~2 초 freshness, 실험적 약 1000 blocks/sec**
+
+**ChainNode (파생 인덱서 레이어, footnote 12)**:
+- Temporal workflows orchestration
+- DynamoDB data sink
+- Golang RPC service serving layer
+- ChainStorage 변경분 지속 복제 → 재인덱싱
+
+**다른 인덱서** (Source: S3 parquet + DynamoDB / Sink: DynamoDB + S3 + Delta Lake + Kafka / Serving: K8s + Go / Cache: watermark + immutable contract metadata / 계산: Spark / 배포: exclusive deployment locks)
+
+**CDP Webhooks** (외부 제품, footnote 13):
+- At-least-once delivery
+- 최대 60 회 재시도
+- **< 500ms freshness**
+
+→ Coinbase 의 raw-block-lake + 파생 인덱서 다층 구조는 Stage 41 reference §3 의 참조 아키텍처와 정합 (★ cross-confirm).
+
+### 6.3 Korbit — 국내 거래소 사례 최초 specific 공개
+
+**B4 가 Korbit tech blog 직접 인용** (footnote 22, 23):
+
+**기술 스택**:
+- **Kafka 중심 비동기 이벤트 아키텍처 + Event Sourcing**
+- 주문 → 체결 엔진 → 잔고·시세 서비스 (event-driven flow)
+- 언어: Open API/주문 = **Go**, 체결 엔진/시세 = **Rust**
+- 통신: **gRPC** 또는 Kafka + Protocol Buffers
+- 런타임: **AWS EKS**
+
+**입출금 워크플로 (Temporal)**:
+- 입금 감지 → 외부 AML (**Chainalysis 등**) 스크리닝 → 잔고 반영 또는 계류 → 반환 확정 시 자산 이동·블록체인 출금
+- Temporal 기능: durable timer (`Workflow.sleep`), Activity Retry Policy, Replay, 멱등성, `ALLOW_DUPLICATE_FAILED_ONLY`, `continueAsNew`, 대시보드
+- **Chronos**: 입출금 중단/재개 예약, Slack Fail-safe, 노드 상태·수수료·업그레이드 실시간 모니터링, 수수료 지갑 자동 충전 계획
+
+**상태 모델** (Korbit docs, footnote 21):
+- 입출금: `pending` / `actionRequired` / `reviewing` / `processing` / `done` / `failed`
+- `transactionHash` = null 가능 (아직 블록체인 미전송)
+
+→ ★ **국내 거래소 인덱서/워크플로 영역의 reference 사례** — KR 은행 도입 시 Korbit 패턴이 가장 가까운 정밀 사례. Chainalysis 통합 = Fireblocks 와 동일 (Q-VRF-08 의 추가 cross-confirm).
+
+### 6.4 국내 4 거래소 상태 모델 비교 (B4 인용)
+
+| 거래소 | 공개 상태 enum | 공개 수준 |
+|---|---|---|
+| Upbit | `minimum_deposit_confirmations` 만 노출 (myAsset/myOrder Private WS) | 부분 확인 |
+| Bithumb | 2024-09 부터 `MyOrder` / `MyAsset` Private WS | 부분 확인 |
+| **Coinone** | `DEPOSIT_WAIT` / `DEPOSIT_SUCCESS` / `DEPOSIT_REJECT` / `WITHDRAWAL_REGISTER` / `WITHDRAWAL_WAIT` / `WITHDRAWAL_REFUND_FAIL` (가장 세밀) | 부분 확인 (리크루팅 인터뷰로 MSA + Replica DB + DMS + Spring Batch + AML 단서) |
+| **Korbit** | `pending` / `actionRequired` / `reviewing` / `processing` / `done` / `failed` + Kafka/Temporal 워크플로 공개 | 확인됨 (가장 상세) |
+
+→ KR 은행 도입 시 입출금 상태 모델 reference 우선순위: **Korbit > Coinone > Bithumb ≈ Upbit**.
+
+### 6.5 B4 의 권장 아키텍처 3 분류
+
+**중소 거래소** (footnote 33):
+- 모든 체인 풀 자체 인덱싱 ✗
+- 상위 체인만 자가 Full/Archive, 나머지 = 관리형 RPC + SQD/HyperIndex
+- Postgres + Redis + Object Storage + Single Temporal workflow
+
+**대형 거래소** (footnote 34):
+- Coinbase 의 raw-data lake + multi-sink serving
+- Korbit 의 Kafka/Temporal 워크플로
+- Fireblocks 의 웹훅 보안·멱등성 패턴 결합
+- 3 원칙: 원시 블록 저장 / 파생 인덱서 분리 / 입출금 durable workflow
+
+**기관용 서비스** (footnote 35):
+- Fireblocks 류 정책/서명/웹훅 플레인 + 자체 인덱서 플레인 분리
+- 인덱서 = 체인별 최소 read model 중심
+- 서명 평면과 데이터 평면 혼합 ✗
+
+→ Stage 41 reference §11.3 (3-way custody 책임 분담) 와 정합. KR 은행 도입 시 "기관용 서비스" 분류 적용 가능.
+
+### 6.6 B4 가 Stage 41 fact 와 cross-confirm 한 항목
+
+| 항목 | B4 인용 | Stage 41 / 본 wiki 와 일치? |
+|---|---|---|
+| Coinbase reorg = add/remove event sequence | footnote 11 | ✓ Stage 41 §8.2 (Idempotent projection + checkpoint + rollback) 과 정합 |
+| Coinbase serving 분리 (S3 + DynamoDB + Delta Lake + Kafka + K8s + Spark) | footnote 11, 12 | ✓ Stage 41 §3 참조 아키텍처와 정합 |
+| Fireblocks externalTxId 영구 멱등성 | footnote 10 | ✓ 본 wiki Stage 36 transaction.md 와 정합 (이미 fact-tier) |
+| Fireblocks Webhook JWKS 서명 검증 | footnote 9, 35 | ✓ 본 wiki Stage 4 webhook docs 와 정합 (이미 fact-tier) |
+| Fireblocks 입금 감지 vs 잔고 반영 분리 | footnote 9 | ✓ 본 wiki deposit-lifecycle.md §1.3 와 정합 |
+| Korbit 의 Chainalysis 통합 | footnote 23 | △ B1 의 "Fireblocks Chainalysis 실시간 API" 와 같은 vendor 통합 사례 — Q-VRF-08 의 cross-confirm 기반 강화 |
+
+### 6.7 B4 가 답하는 Q-VRF 일부
+
+| Q-VRF | B4 의 답 | 답 tier |
+|---|---|---|
+| Q-VRF-08 (Chainalysis/Elliptic 통합) | Korbit 가 Chainalysis 사용 명시 (footnote 23) — Fireblocks 의 통합과 별개로 KR 거래소도 동일 vendor 사용 | △ 별도 사례 — Fireblocks specific 통합은 여전히 cross-verify 필요 |
+| Q-2026-05-18-B03 (Fireblocks internal-tx 감지) | "Fireblocks 는 범용 인덱서 제품 노출 안 함, 내부 인덱싱은 미확인" — 정책적 비공개 결정 명시 | ✓ Q-B03 의 답: Fireblocks 의 indexer 비공개는 의도적 |
+
+### 6.8 B4 의 핵심 결론 (인용)
+
+> "거래소 인덱서는 'RPC 를 읽어서 DB 에 넣는 프로그램' 이 아니라, 거래소 원장과 고객 자산을 안전하게 연결하는 **정산 시스템의 일부**. 좋은 설계는 빠른 인덱싱보다 **재처리 가능성 / reorg 안전성 / 멱등성 / 운영 자동화 / 이벤트 재전송 / 상태 전이 가시성** 우선."
+
+> 설계 출발점 = "**어떤 평면을 직접 소유해야 사업 리스크를 통제할 수 있는가**"
+
+→ 본 wiki 의 [[docs/architecture/three-way-custody-decision-framework]] 의 책임 분담 원리와 동일.
+
+## 7. Stage 41 reference 와의 hypothesis-tier 비교
 
 | 측면 | Stage 41 (fact) | Stage 42 (hypothesis) |
 |---|---|---|
@@ -308,7 +438,7 @@ B3 가 제공하는 비용 모델:
 
 ---
 
-## 7. Q-2026-05-18-B03 의 hypothesis-tier 잠정 답
+## 8. Q-2026-05-18-B03 의 hypothesis-tier 잠정 답
 
 본 페이지의 fact 가 **모두 정확하다면 (UNVERIFIED)** Q-B03 (Fireblocks internal-tx 감지 메커니즘) 의 답은:
 
@@ -322,7 +452,7 @@ B3 가 제공하는 비용 모델:
 
 ---
 
-## 8. Cross-verification 필요 항목 (Q-VRF list)
+## 9. Cross-verification 필요 항목 (Q-VRF list)
 
 각 항목은 vendor 측 cross-verify 통과 시 Stage 41 reference / Fireblocks 본문 으로 fact 승격 가능.
 
@@ -373,6 +503,18 @@ B3 가 제공하는 비용 모델:
 - **Q-VRF-21**: AWS MSK 3-broker + 1,000GB 예시 $1,020.66/월 의 AWS 공식 calculator cross-verify
 - **Q-VRF-22**: QuickNode Streams "exactly-once delivery (finality order)" 공식 문서 인용
 
+### B4 추가 영역 (Stage 44 신규, 9 건) — ★ 외부 URL footnote 직접 추적 가능
+
+- **Q-VRF-23**: Coinbase ChainStorage 의 raw block + S3 + DynamoDB + ELT (Part 1 blog URL traceable)
+- **Q-VRF-24**: Coinbase reorg = add/remove event sequence 메커니즘 (Part 1 blog 직접 확인)
+- **Q-VRF-25**: Coinbase ChainNode + Temporal + DynamoDB sink + Golang RPC (Part 3 blog URL traceable)
+- **Q-VRF-26**: Coinbase AWS Ethereum 1-2초 freshness + 1000 blocks/sec 실험치
+- **Q-VRF-27**: CDP Webhooks 최대 60회 재시도 + <500ms freshness
+- **Q-VRF-28**: Binance tech blog Flink + Kafka + Hive + S3 + ElasticSearch + Snowflake stack
+- **Q-VRF-29**: Binance WebSocket 단일 연결 1024 streams 제약
+- **Q-VRF-30**: Korbit tech blog Kafka Event Sourcing + Go (주문) + Rust (체결/시세) + gRPC + EKS
+- **Q-VRF-31**: Korbit Temporal 입금 계류 워크플로 디테일 (durable timer, Retry Policy, Replay, ALLOW_DUPLICATE_FAILED_ONLY, continueAsNew, Chronos)
+
 ---
 
 ## Open Questions (이 페이지 자체)
@@ -387,6 +529,7 @@ B3 가 제공하는 비용 모델:
 - [[sources/indexer/블록체인_인덱서_구현_리서치.md]] — LLM 생성, 36 KB (B1, Stage 42)
 - [[sources/indexer/엔터프라이즈_블록체인_인덱서_설계_구조.html]] — LLM 생성, 30 KB (B2, Stage 42 시각화 짝)
 - [[sources/indexer/블록체인 인덱서 구현 사례와 Fireblocks 사례 분석.md]] — ChatGPT 추정, 242 lines (B3, Stage 43, citation tag 포함 + 자체 tier 분리)
+- [[sources/indexer/Fireblocks와 국내외 거래소의 블록체인 인덱서 설계·구현 비교 보고서.pdf]] + [[sources/indexer/2026-06-01__Fireblocks와-국내외-거래소-인덱서-비교-보고서]] — ChatGPT 추정, 9 페이지 PDF + extract (B4, Stage 44, 36 외부 URL footnote + 7 거래소 비교)
 
 ### 동급 fact-tier reference (cross-ref)
 

@@ -6804,3 +6804,46 @@ LLM 생성 hypothesis 는 docs/architecture/ 의 별도 hypothesis 페이지로 
 ### 신규 entity 0 (32 stage 연속 0 streak 유지)
 
 B3 는 Stage 42 hypothesis 페이지의 §5 로 흡수, 별도 페이지 안 만듦.
+
+## Stage 44 (2026-06-01) — B4 거래소 비교 보고서 Mode C ingest (★ 외부 URL traceability 최고)
+
+- source: `sources/indexer/Fireblocks와 국내외 거래소의 블록체인 인덱서 설계·구현 비교 보고서.pdf` (9 페이지, Korean, ChatGPT 추정)
+- 자료 성격: B1/B2/B3 와 같은 LLM 생성, but **36 외부 URL footnote 본문 명시** + 자체 tier 분류 ("확인됨 / 부분 확인 / 미확인") 일관 적용 + 7 거래소 비교
+
+### 핵심 신규 fact (B4 가 외부 URL footnote 로 정리)
+
+- **Coinbase ChainStorage** (Part 1 blog): raw block lake (S3 + DynamoDB) + ELT + chain-native parser + **reorg = add/remove event sequence 적재** + Merkle 검증 + node failover + AWS Ethereum 1-2초 freshness · 1000 blocks/sec
+- **Coinbase ChainNode** (Part 3 blog): Temporal workflows + DynamoDB sink + Golang RPC + ChainStorage 변경분 지속 복제
+- **CDP Webhooks**: at-least-once, 최대 60회 재시도, <500ms freshness
+- **Binance tech blog**: Flink + Kafka + Hive + S3 + ElasticSearch + Snowflake stack
+- **Binance WebSocket**: 단일 연결 최대 1024 streams
+- **Korbit** (tech blog 22-23): Kafka 중심 Event Sourcing + Temporal + Go (Open API/주문) + Rust (체결/시세) + gRPC/protobuf + AWS EKS + Chainalysis 통합
+- **Korbit Temporal**: durable timer (`Workflow.sleep`), Activity Retry Policy, Replay, `ALLOW_DUPLICATE_FAILED_ONLY`, `continueAsNew`, Slack Fail-safe, Chronos (입출금 중단/재개 예약 + 수수료 지갑 자동 충전)
+- **Coinone status enum 세분화**: `DEPOSIT_WAIT` / `DEPOSIT_SUCCESS` / `DEPOSIT_REJECT` / `WITHDRAWAL_REGISTER` / `WITHDRAWAL_WAIT` / `WITHDRAWAL_REFUND_FAIL` + 백엔드 MSA + Replica DB + AWS DMS + Spring Batch + AML
+- **Upbit Private WS** 운영 제약: idle timeout 120초, `minimum_deposit_confirmations` 노출, myAsset 최초 구독 시 수분 지연 가능
+
+### 영향
+
+- Layer 1: 신규 markdown extract `sources/indexer/2026-06-01__Fireblocks와-국내외-거래소-인덱서-비교-보고서.md` + 원본 PDF
+- Layer 2: Stage 42 hypothesis 페이지 §6 신규 (B4 흡수 6.1~6.8)
+- §7 / §8 / §9 renumber (B4 section 삽입에 따른 chapter 재배치)
+- Stage 41 reference `blockchain-indexer-architecture-reference.md` §9.3a 신규 — Coinbase ChainStorage cross-confirm + Korbit reference 추가
+- Q-2026-05-18-B03 추가 답 (Stage 44, hypothesis-tier): Fireblocks 의 indexer 비공개는 의도적 — "범용 인덱서 회사" 아님
+
+### B4 가 Stage 41 fact 와 cross-confirm 한 항목 (fact-tier 강화)
+
+- Coinbase reorg = add/remove event sequence → Stage 41 §8.2 idempotent projection 패턴과 정합
+- Coinbase serving 분리 (S3 + DynamoDB + Delta Lake + Kafka + K8s + Spark) → Stage 41 §3 참조 아키텍처와 정합
+- Fireblocks externalTxId 영구 멱등성 + JWKS 검증 → 본 wiki Stage 36 transaction.md + Stage 4 webhook docs 와 정합
+
+### 신규 Q-VRF (Stage 44, 9 건)
+
+- Q-VRF-23~31: Coinbase ChainStorage/ChainNode 디테일, Binance tech blog stack, Korbit tech blog + Temporal 워크플로 — **모두 외부 URL traceable** (Q-VRF priority 결정 시 cross-verify path 가장 명확)
+
+### invariant — Outside URL traceability tier
+
+> LLM 생성 자료의 hypothesis tier 안에서도 외부 URL footnote 의 명시 여부에 따라 cross-verify priority 가 다름. B4 처럼 36 외부 URL 직접 인용 자료 = 가장 높은 priority (URL 추적으로 paragraph-level 확인 가능). B1/B2 처럼 URL 없음 = 가장 낮은 priority. Q-VRF 분류 시 외부 URL 명시 여부를 별도 column 으로 관리 필요.
+
+### 신규 entity 0 (33 stage 연속 0 streak 유지)
+
+B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 만듦.
