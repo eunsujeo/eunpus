@@ -6644,3 +6644,43 @@ PPT 의 specific 명칭·수치 모두 일반화:
 > Internal 자료 (회사 명칭 · 수치 · 자체 약어 포함) 의 Mode C ingest 시 다음 규칙: (a) extracted 본문은 sources/ 에 raw 보관 (5 년 audit), (b) docs-site 적재 시 specific 명칭/수치 모두 일반화, (c) "vendor 공식이 아닌 work-in-progress 설계" 라벨 명시, (d) 회계 · 법무 · 외부 감사 검증 권장 callout 필수.
 
 ### 신규 entity 0 / 신규 페이지 +2
+
+## Stage 40 (2026-06-01) — DCCP (Deposit Control and Confirmation Policy) Mode C ingest
+
+- source: 3 Fireblocks Help Center articles (전부 TIER1 full ingest)
+  - `default-deposit-control-and-confirmation-policy.md` (2 pages)
+  - `build-a-custom-deposit-control-and-confirmation-policy.md` (5 pages)
+  - `blockchain-confirmation-limitations.md` (8 pages)
+- ANSWERED (partially): **Q-2026-05-18-B03** (internal-tx 감지 메커니즘) — confirmation/finality 차원의 truth-determination 정책은 명시화 (SOL 의 empirical "reversion has never happened before" 인용); indexer 의 RPC 구현 자체 (`debug_traceTransaction` 등) 는 여전히 비공개
+- 신규 Open Q: **Q-2026-05-29-DC01 ~ DC07** (7 건)
+  - DC01: contract-call 의 3-conf "recommended" 가 default 인지 권장값인지
+  - DC02: Custom DCCP 의 Fireblocks Support review SLA / lead-time
+  - DC03: Custom DCCP 변경 audit trail (customer 측 노출)
+  - DC04: "Override the DCCP for specific transactions" 별도 plane 메커니즘
+  - DC05: KR 은행 compliance — SOL `Confirmed` vs `Finalized` 의무 판단
+  - DC06: Finality 체인의 chain-자체 finality 실패 시 webhook re-emit 정책
+  - DC07: Max confirmations table 의 신규 체인 추가 catalog 업데이트 주기
+- 영향받은 페이지:
+  - `vendors/fireblocks/blockchains.md` — §"Deposit Control and Confirmation Policy (DCCP) — Stage 40" 신규 (default + custom + min/max + finality + SOL `Confirmed` 정책 + 운영 함의). source_count 9→12, tags 추가 (transaction, policy), last_updated_stage:40
+  - `entities/fireblocks/transaction.md` — §"Stage 40 — DCCP 와 confirmation lifecycle" 신규 (Stage 9 17-status state machine 의 `CONFIRMING` → `COMPLETED` 전이 trigger 로 연결)
+  - `open-questions/fireblocks.md` — Q-B03 부분 ANSWERED + 신규 DC01~DC07 등록
+
+### 핵심 fact (Fireblocks 공식 source)
+
+- **ETC default = 372 confirmations** (51% attack risk 명시 인용)
+- **EVM minimum = 1 conf rigid** (0 불가)
+- **Max conf 등급별**: 1 / 2 / 3 / 20 / 30 / 100 / 300 / 1200 (chain 별 hard limit)
+  - Ethereum max 100, Polygon max 300, ETC max 1200
+- **Finality 체인 dual-level**: SOL/POLKADOT = `Confirmed` 1 / `Finalized` 2 — Fireblocks 는 **`Confirmed`** 사용
+- **★ SOL 직접 인용**: "we only mark confirmed blocks as completed... **Based on our analysis, a reversion has never happened before.**"
+- **Custom DCCP self-service 불가** — Fireblocks Support 제출 → review/approval/implementation
+- **6-parameter first-match rule**: Source / Destination / Amount / Asset / Blockchain / # Conf
+- **`Minimum` 의 dynamic mapping**: BTC vault-to-vault = 0 conf, Polygon vault-to-vault = 1 conf
+
+### invariant — DCCP 의 truth-determination 평면
+
+> Fireblocks 의 deposit completion 결정은 단순 N-block 누적이 아니라 (a) chain 별 finality 정책 (rigid finality property 포함) + (b) Fireblocks 의 empirical risk monitoring 의 합성. Indexer 의 RPC method 구현은 비공개지만 정책 layer 는 customer 가 override 가능 (Custom DCCP 경유 Fireblocks Support). KR 은행 도입 시 SOL `Confirmed` 사용이 규제 관점에서 인정되는지 별도 확인 영역 (Q-DC05).
+
+### 신규 entity 0 (29 stage 연속 0 streak 유지)
+
+DCCP 는 vendors/fireblocks/blockchains.md 의 sub-domain + entities/fireblocks/transaction.md 의 confirmation lifecycle 로 흡수.

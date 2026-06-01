@@ -435,3 +435,70 @@ extraParameters: { contractCallData: <hex ABI-encoded> }
 
 ## Sources (Stage 36 create-transactions 추가)
 - `2026-05-22__developers-fireblocks-com__reference-create-transactions.md`, p.1-20 (7 operations, idempotency, optional params, source/dest matrix)
+
+## Stage 40 — DCCP 와 confirmation lifecycle (★)
+
+`default-deposit-control-and-confirmation-policy.md` + `build-a-custom-deposit-control-and-confirmation-policy.md` + `blockchain-confirmation-limitations.md` 통합. **DCCP = transaction lifecycle 의 truth-determination layer** — chain tx 가 언제 deposit 으로 "completed" 되는지 결정. Stage 9 의 17-status state machine 에서 `CONFIRMING` → `COMPLETED` 전이를 trigger 하는 정책.
+
+### Default DCCP — per-chain rule
+
+`default-...md`, p.1:
+
+- **Ethereum Classic = 372 confirmations** (51% attack risk 명시)
+- **Finality-property 체인** = chain 별 rigid value (rigid, customer override 불가)
+- **그 외 모든 체인 = 1 confirmation** (vault↔vault 포함)
+- **Contract call op = 3 confirmations (recommended minimum)**
+
+### Custom DCCP — 6 parameters, first-match
+
+`build-a-custom-...md`, p.1-3:
+
+- Parameters: Source / Destination / Amount / Asset / Blockchain network / # of Confirmations
+- Source / Destination: vault account / group / general (all exchanges, all P2P Network connections)
+- Amount: USD equivalent / asset quantity / `Any`
+- # Conf 의 `Minimum` 값 = chain 별 minimum 으로 동적 매핑
+- ★ Custom DCCP 활성화 = **Fireblocks Support 제출 → review/approval/implementation** (customer self-service 불가)
+
+### Chain Min/Max — hard limit
+
+`blockchain-confirmation-limitations.md`, p.1-4:
+
+- **EVM minimum = 1** (rigid, 0 불가)
+- Max conf 등급별: 1 / 2 / 3 / 20 / 30 / 100 / 300 / 1200
+- Ethereum max = 100, ETC max = 1200, Polygon max = 300
+
+### Finality-property 체인 — rigid
+
+`blockchain-confirmation-limitations.md`, p.4-6:
+
+- 1 conf: ALGO / ATOM / INJ / CELESTIA / CRONOS / HBAR / MORPH / RIPPLE / STABILITY / STELLAR / TON
+- 2 conf: EOS / HUMANITY / KAVA / KUSAMA / LINEA / TERRA / TEZOS
+- 3 conf: WorldMobile
+- **POLKADOT** + **SOL**: dual-level (Confirmed 1 / Finalized 2) — Fireblocks 는 **`Confirmed`** 사용
+
+### SOL 의 `Confirmed` 선택 (★ 직접 인용)
+
+`blockchain-confirmation-limitations.md`, p.6:
+
+> "we only mark confirmed blocks as completed. Confirmed blocks are backed by votes from the majority of validators and have a very low probability of being reverted. **Based on our analysis, a reversion has never happened before.**"
+
+→ Fireblocks 의 deposit completion 은 chain-level finality 외에 **자체 empirical risk monitoring** 을 포함. **Q-2026-05-18-B03 부분 ANSWERED**.
+
+### Stage 9 state machine 과의 연결
+
+- Stage 9 의 `CONFIRMING` status = DCCP `# of Confirmations` 충족 대기 단계
+- Confirmation 수 충족 → `COMPLETED` 로 전이
+- DCCP 의 first-match rule 결과에 따라 동일 tx 도 `CONFIRMING` 시간이 가변 (예: vault↔vault BTC 0 conf 즉시 completed, 외부 BTC 3 conf 대기)
+
+### 운영 함의 (KR 은행 관점)
+
+1. **Vault-to-vault 0 conf** = "trusted internal source" 가정 — KR 감사 관점에서 1 conf 이상 강제 검토
+2. **SOL `Confirmed`** = Fireblocks 의 empirical 정책 — regulatory pressure 시 `Finalized` 의무 변경 가능성
+3. **Custom DCCP self-service 불가** = Fireblocks Support review-approval 경유 → 정책 변경 lead-time / audit trail 별도 확인 필요
+
+자세한 chain 별 권장값 + max table 전체는 [[vendors/fireblocks/blockchains]] §"Deposit Control and Confirmation Policy (DCCP)" 참고.
+
+## Sources (Stage 40 DCCP 추가)
+- `2026-05-19__support-fireblocks-io__default-deposit-control-and-confirmation-policy.md`, p.1
+- `2026-05-19__support-fireblocks-io__build-a-custom-deposit-control-and-confirmation-policy.md`, p.1-3
+- `2026-05-19__support-fireblocks-io__blockchain-confirmation-limitations.md`, p.1-6

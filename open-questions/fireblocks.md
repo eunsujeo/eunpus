@@ -564,6 +564,57 @@
 - **Why it matters**: `blockchains-that-support-internal-transactions.md` p.1은 internal tx가 "smart contract 실행 흐름의 일부, 별도 hash 없음"이라 명시. Fireblocks가 어떻게 감지하는지(trace API, archive node, debug_traceTransaction 등) 미명세. 어떤 chain은 지원되고 어떤 chain은 미지원인지의 implementation 결정 이유와 직결.
 - **Where this came up**: [[entities/fireblocks/transaction]], [[vendors/fireblocks/blockchains]]
 - **Sources to check**: Fireblocks engineering docs, blockchain RPC support 매트릭스
+- **Status**: **partially answered (2026-05-29, Stage 40)**
+- **Partial answer**: Indexer 의 internal-tx 감지 RPC 구현 자체는 여전히 비공개. 다만 confirmation/finality 차원의 truth-determination 정책은 명시화됨 — Fireblocks 는 chain-level finality 외에 **자체 empirical risk monitoring** 으로 deposit completion 결정 (source: `blockchain-confirmation-limitations.md`, p.6 SOL 관련 인용 "Based on our analysis, a reversion has never happened before"). 즉 indexer 의 truth 는 단순 N-block 누적이 아니라 chain 별 finality 정책 + empirical 평가의 합성. 구체 RPC method 조합 (`debug_traceTransaction` vs `trace_*` vs receipt log) 은 별도 source 필요.
+- **Caveat**: Internal tx 감지의 dependency (trace API 필수 vs receipt log 로 충분) 은 chain 별 max conf table 의 분기와 무관해 보임 — engineering-level 문의 필요.
+
+### Q-2026-05-29-DC01: Contract call 의 3-confirmation "recommended" 가 default 인지 권장값인지?
+
+- **Why it matters**: `default-deposit-control-and-confirmation-policy.md` p.1 은 "Fireblocks recommends configuring contract call operations with a minimum of 3 confirmations." 라고만 명시 — 자동 적용 default 인지, customer 가 custom DCCP 에 명시해야 적용되는지 분기 불명. Contract call 의 latency / risk 추정에 직결.
+- **Where this came up**: [[vendors/fireblocks/blockchains]], [[entities/fireblocks/transaction]]
+- **Sources to check**: "Override the DCCP for specific transactions" article (related), Fireblocks Support 직접 문의
+- **Status**: open
+
+### Q-2026-05-29-DC02: Custom DCCP 의 Fireblocks Support review SLA / lead-time?
+
+- **Why it matters**: `build-a-custom-...md` p.1 — customer 가 template 제출 후 Fireblocks Support 의 "review, approval, and implementation" 거치는데, lead-time 명시 없음. KR 은행이 신규 자산/체인 추가 시 confirmation 정책 변경 lead-time 이 운영 risk.
+- **Where this came up**: [[vendors/fireblocks/blockchains]], [[entities/fireblocks/transaction]]
+- **Sources to check**: Customer Success Manager / SOW
+- **Status**: open
+
+### Q-2026-05-29-DC03: Custom DCCP 변경 audit trail (customer 측 노출 여부)?
+
+- **Why it matters**: 정책 변경이 Fireblocks Support 경유라면 customer 측 audit log 에 어떤 형태로 노출되는지 (Audit Log 시스템 에 entry 가 남는지, change ticket 으로만 추적되는지) — KR 규제 (외부감사인 검증 가능성) 관점에서 핵심.
+- **Where this came up**: [[vendors/fireblocks/blockchains]], [[vendors/fireblocks/audit]]
+- **Sources to check**: Fireblocks Audit Log spec, change management process docs
+- **Status**: open
+
+### Q-2026-05-29-DC04: "Override the DCCP for specific transactions" 의 별도 plane 메커니즘?
+
+- **Why it matters**: A2/A3 의 Related Articles 에 "Override the DCCP for specific transactions" 가 별도 article 로 존재. Custom DCCP (정책 layer) 와 per-tx override (operational layer) 가 분리된 plane 인지, 동일한 메커니즘인지 — runtime authorization 흐름과 직결.
+- **Where this came up**: [[vendors/fireblocks/blockchains]], [[entities/fireblocks/transaction]]
+- **Sources to check**: "Override the DCCP for specific transactions" article ingest 필요
+- **Status**: open
+
+### Q-2026-05-29-DC05: KR 은행 compliance — SOL `Confirmed` (1 slot) vs `Finalized` (2 slot)?
+
+- **Why it matters**: Fireblocks 는 SOL 의 `Confirmed` 사용. KR 금융위 / 금감원의 reorg risk 평가 기준이 deterministic finality (`Finalized`) 를 요구할 가능성. Fireblocks 의 empirical "reversion has never happened" 평가가 한국 규제 관점에서 인정되는지 불명.
+- **Where this came up**: [[vendors/fireblocks/blockchains]], [[entities/fireblocks/transaction]], [[vendors/fireblocks/kr-compliance]]
+- **Sources to check**: 금융위 가상자산 가이드 (2026), 금감원 검사 매뉴얼
+- **Status**: open
+
+### Q-2026-05-29-DC06: Finality 체인의 chain-자체 finality 실패 시 Fireblocks webhook re-emit 정책?
+
+- **Why it matters**: Rigid finality 체인도 chain-level 사고 (validator collusion, social fork) 시 finality 실패 가능. Fireblocks 가 이미 `COMPLETED` 로 emit 한 webhook 을 어떻게 reverse 하는지 명세 없음.
+- **Where this came up**: [[vendors/fireblocks/blockchains]], [[entities/fireblocks/transaction]], [[vendors/fireblocks/risks]]
+- **Sources to check**: webhook re-emit 정책 docs (이미 일부 ingest: `reference-resend-webhook-notifications.md`)
+- **Status**: open
+
+### Q-2026-05-29-DC07: Max confirmations table 의 신규 체인 추가 catalog 업데이트 주기?
+
+- **Why it matters**: `blockchain-confirmation-limitations.md` p.1 — "For most newly supported assets see Blockchain data sheets on Fireblocks". 신규 체인 추가 시 max conf 가 30 (EVM 기본) 으로 자동 설정인지, chain 별 평가 후 결정인지 불명. KR 은행이 신규 chain 지원 시점에 default risk 평가 가능 여부와 직결.
+- **Where this came up**: [[vendors/fireblocks/blockchains]]
+- **Sources to check**: `blockchain-data-sheets.md` (이미 ingest, p.1-3), Fireblocks chain 추가 changelog
 - **Status**: open
 
 ### Q-2026-05-18-W02: Recovery passphrase 분실 시 복구 경로는? Workspace Keys Backup도 함께 무력화되는가?

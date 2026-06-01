@@ -2,8 +2,9 @@
 type: vendor-hub
 vendor: fireblocks
 status: draft
-tags: [architecture]
-source_count: 9
+tags: [architecture, transaction, policy]
+source_count: 12
+last_updated_stage: 40
 related:
   - api
   - architecture
@@ -119,6 +120,100 @@ Activation: Customer Success Manager 경유.
 - **Internal-tx 있고 SLA 없음**: 신규 EVM L2/L1 다수 (Monad, Sonic, Sophon, Berachain 등)
 - 운영 선택의 trade-off는 [[open-questions/fireblocks]] Q-2026-05-18-B01 참조.
 
+### Deposit Control and Confirmation Policy (DCCP) — Stage 40
+
+`default-deposit-control-and-confirmation-policy.md` + `build-a-custom-deposit-control-and-confirmation-policy.md` + `blockchain-confirmation-limitations.md` 통합. DCCP = **indexer 의 truth-determination layer** — chain tx 가 언제 deposit 으로 "completed" 되는지 결정.
+
+#### Default DCCP (per-chain default)
+
+| 체인 group | Default conf | 비고 |
+|---|---|---|
+| Ethereum Classic | **372** | 51% attack risk 명시 (source: `default-...md`, p.1) |
+| Finality-property 체인 | (별도) | rigid, 변경 불가 — 아래 표 |
+| All other blockchains | **1** | vault↔vault 포함 |
+| Contract call operations | **3 (recommended)** | tx type 별 별도 권장 (source: `default-...md`, p.1) |
+
+#### Custom DCCP — 6 parameters, first-match basis
+
+`build-a-custom-...md`, p.1-2:
+
+- **Source / Destination**: vault account / group (예: all Binance accounts) / general (all exchanges, all P2P)
+- **Amount**: USD equiv / asset qty / `Any`
+- **Asset**: Asset ID / contract address / symbol+chain (chain 명시 mandatory)
+- **Blockchain network**: Fireblocks 지원 chain
+- **# of Confirmations**: whole number (chain min/max 범위) 또는 `Minimum` (동적)
+
+**Workflow** (★ self-service 불가): Customer template download → modify → **Fireblocks Support 제출 → review + approval + implementation**. Lead-time / SLA 명시 없음 → Q-2026-05-29-DC02.
+
+#### Min/Max confirmations (chain 별 hard limit)
+
+`blockchain-confirmation-limitations.md`, p.1-4:
+
+- **EVM minimum = 1** (rigid, 0 불가)
+- **Max conf 그룹** (요약):
+  - 1: Cronos, Morph, Peaq, Xion
+  - 2: Initia, Gevolut, Humanity
+  - 3: Fastex, WorldMobile
+  - 20: TRON
+  - 30: 대부분 신규 EVM L2/L1 (~60+ chain)
+  - 100: Cosmos Hub, Injective, Celestia, **Ethereum**, NEAR
+  - 300: Polygon (+Mumbai +zkEVM)
+  - 1200: Ethereum Classic (+Testnet)
+
+→ ETC default 372 = max 1200 의 31% — Fireblocks default 는 "balanced", recommended (500) 는 "safe".
+
+#### Finality-property 체인 — rigid, customer override 불가
+
+`blockchain-confirmation-limitations.md`, p.4-6:
+
+| Asset | Finality value |
+|---|---|
+| ALGO / ATOM / INJ / CELESTIA / CRONOS / HBAR / MORPH / RIPPLE / STABILITY / STELLAR / TON | **1** |
+| EOS / HUMANITY / KAVA / KUSAMA / LINEA / TERRA / TEZOS | **2** |
+| WorldMobile | **3** |
+| **POLKADOT** | **Confirmed: 1 / Finalized: 2** (dual-level) |
+| **SOL** | **Confirmed: 1 / Finalized: 2** — Fireblocks 가 **`Confirmed`** 사용 |
+
+#### SOL 의 `Confirmed` 선택 — Fireblocks 의 empirical risk 정책 (★ 직접 인용)
+
+`blockchain-confirmation-limitations.md`, p.6:
+
+> "To find the right balance between speed and finality confidence, we only mark confirmed blocks as completed. Confirmed blocks are backed by votes from the majority of validators and have a very low probability of being reverted. Based on our analysis, a reversion has never happened before."
+
+→ Fireblocks 가 `Finalized` 까지 안 기다리고 `Confirmed` 로 deposit completion 결정. KR 은행 compliance 관점에서 `Finalized` 강제 여부는 Q-2026-05-29-DC05.
+
+#### Recommended (default 보다 강화) — external deposit 시
+
+`blockchain-confirmation-limitations.md`, p.5-6:
+
+| Chain | Recommended | 비고 |
+|---|---|---|
+| BTC | 3 | |
+| BCH | 6 | |
+| BSV | 30 | |
+| DASH | 3 | |
+| ETC | 500 | default 372 보다 강화 |
+| **ETH PoS** | **60** | "2-epoch timeframe, chain's finality period" |
+| ETHW | 30 | |
+| LTC | 6 | |
+| SOL | 1 | (Confirmed level) |
+| ZEC | 12 | |
+| XDC | 30 | |
+| USDC on AVAX | 7 | |
+| USDC on ETH | 6 | |
+
+→ ETH PoS 60 conf ≈ 12.8 분 latency. UX 영향 큼.
+
+#### DCCP 운영적 함의 (KR 은행 관점)
+
+1. **Vault-to-vault 0 conf** = "trusted internal source" 가정 — KR 감사 관점에서 1 conf 이상 강제 검토
+2. **EVM min 1 conf rigid** = instant deposit UI 의 hard floor (chain truth 이후 최소 1 block 대기)
+3. **SOL `Confirmed`** = empirical risk 정책 — regulatory pressure 시 `Finalized` 의무 변경 가능성 (Fireblocks Support 제출 필요)
+4. **ETC default 372 vs recommended 500** = Fireblocks default 가 보수적이지 않음 — KR 은행은 custom DCCP 로 500 적용 권장 검토
+5. **Custom DCCP self-service 불가** = Fireblocks Support review-approval 경유 → 정책 변경 lead-time / audit trail 별도 확인 필요 (Q-2026-05-29-DC02, DC03)
+
+자세한 내용은 [[entities/fireblocks/transaction]] §"DCCP 와 confirmation lifecycle" 참고.
+
 ## Details
 
 ### Catalog 항목 형식 (per chain)
@@ -186,6 +281,12 @@ Activation: Customer Success Manager 경유.
 - `2026-05-18__support-fireblocks-io__minimum-transaction-amounts.md`, p.1
 - `2026-05-18__support-fireblocks-io__blockchains-that-support-internal-transactions.md`, p.1–3
 
+### DCCP (3 full ingest, Stage 40)
+
+- `2026-05-19__support-fireblocks-io__default-deposit-control-and-confirmation-policy.md`, p.1
+- `2026-05-19__support-fireblocks-io__build-a-custom-deposit-control-and-confirmation-policy.md`, p.1–3
+- `2026-05-19__support-fireblocks-io__blockchain-confirmation-limitations.md`, p.1–6
+
 ### Chain-specific (12 placeholder)
 
 - algorand-blockchain-limitations / tezos-blockchain-limitations / filecoin-blockchain-functionality-overview / flare-introduction / funding-a-new-stellar-account / kusama-transaction-fee-estimation / moonbeam-and-moonriver-transaction-support / near-tokens-initial-deposit / polkadot-dot-minimum-balance-and-fee-estimation / removing-a-ripple-xrp-trust-line / solana-maximum-queued-transactions / songbird-support-and-the-flare-airdrop
@@ -194,4 +295,11 @@ Activation: Customer Success Manager 경유.
 
 - Q-2026-05-18-B01 — SLA-covered ∩ Internal-tx 지원 매트릭스의 운영적 의미
 - Q-2026-05-18-B02 — Node Router static vs on-demand trade-off (EVM only, fallback 없음)
-- Q-2026-05-18-B03 — Internal transaction 감지 메커니즘 (trace API? archive node?)
+- Q-2026-05-18-B03 — Internal transaction 감지 메커니즘 (trace API? archive node?) — **부분 ANSWERED (★ Stage 40)**: SOL 의 reorg 영역에 대해 Fireblocks 가 "based on our analysis, a reversion has never happened before" 라는 empirical 정책 명시 (source: `blockchain-confirmation-limitations.md`, p.6). 즉 Fireblocks 의 confirmation truth 는 chain-level finality 외에 **자체 monitoring + empirical risk 평가** 를 포함. 내부 indexer 의 RPC method 조합 자체는 여전히 비공개.
+- Q-2026-05-29-DC01 — Contract call 의 3-conf "recommended" 가 default 인지 권장값인지
+- Q-2026-05-29-DC02 — Custom DCCP 의 Fireblocks Support review SLA / lead-time
+- Q-2026-05-29-DC03 — Custom DCCP 변경 audit trail (customer 측 audit log 노출 여부)
+- Q-2026-05-29-DC04 — "Override the DCCP for specific transactions" 의 별도 plane 메커니즘 (per-tx override)
+- Q-2026-05-29-DC05 — KR 은행 compliance 관점에서 SOL `Confirmed` (1 slot) vs `Finalized` (2 slot) 의무 판단
+- Q-2026-05-29-DC06 — Finality 체인의 chain-자체 finality 실패 (예: validator collusion) 시 Fireblocks webhook re-emit 정책
+- Q-2026-05-29-DC07 — Max confirmations table 의 신규 체인 추가 catalog 업데이트 주기
