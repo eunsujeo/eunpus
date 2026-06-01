@@ -214,6 +214,12 @@ Activation: Customer Success Manager 경유.
 
 자세한 내용은 [[entities/fireblocks/transaction]] §"DCCP 와 confirmation lifecycle" 참고.
 
+#### Vendor-neutral indexer reference 와의 대비 (★ Stage 41)
+
+Fireblocks 의 DCCP 는 본 wiki 의 [[docs/architecture/blockchain-indexer-architecture-reference]] §5.1 "확정성은 API 계약" 의 **SaaS 변형**. Customer 는 indexer 구현 자체를 보지 못하고 (P1~P4 패턴 중 어느 조합인지 비공개), 정책 layer (DCCP) 만 일부 override 가능.
+
+→ **Direct-build path** 를 선택하면 4 pattern 의 직접 설계 + projection / query plane / monitoring 전체 영역이 customer 책임. 본 reference §11 "Fireblocks 와의 관계" 의 책임 분담표 참조.
+
 ## Details
 
 ### Catalog 항목 형식 (per chain)

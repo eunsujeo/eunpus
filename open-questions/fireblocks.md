@@ -564,9 +564,10 @@
 - **Why it matters**: `blockchains-that-support-internal-transactions.md` p.1은 internal tx가 "smart contract 실행 흐름의 일부, 별도 hash 없음"이라 명시. Fireblocks가 어떻게 감지하는지(trace API, archive node, debug_traceTransaction 등) 미명세. 어떤 chain은 지원되고 어떤 chain은 미지원인지의 implementation 결정 이유와 직결.
 - **Where this came up**: [[entities/fireblocks/transaction]], [[vendors/fireblocks/blockchains]]
 - **Sources to check**: Fireblocks engineering docs, blockchain RPC support 매트릭스
-- **Status**: **partially answered (2026-05-29, Stage 40)**
-- **Partial answer**: Indexer 의 internal-tx 감지 RPC 구현 자체는 여전히 비공개. 다만 confirmation/finality 차원의 truth-determination 정책은 명시화됨 — Fireblocks 는 chain-level finality 외에 **자체 empirical risk monitoring** 으로 deposit completion 결정 (source: `blockchain-confirmation-limitations.md`, p.6 SOL 관련 인용 "Based on our analysis, a reversion has never happened before"). 즉 indexer 의 truth 는 단순 N-block 누적이 아니라 chain 별 finality 정책 + empirical 평가의 합성. 구체 RPC method 조합 (`debug_traceTransaction` vs `trace_*` vs receipt log) 은 별도 source 필요.
-- **Caveat**: Internal tx 감지의 dependency (trace API 필수 vs receipt log 로 충분) 은 chain 별 max conf table 의 분기와 무관해 보임 — engineering-level 문의 필요.
+- **Status**: **partially answered (2026-05-29, Stage 40 + 2026-06-01, Stage 41)**
+- **Partial answer (Stage 40)**: Indexer 의 internal-tx 감지 RPC 구현 자체는 여전히 비공개. 다만 confirmation/finality 차원의 truth-determination 정책은 명시화됨 — Fireblocks 는 chain-level finality 외에 **자체 empirical risk monitoring** 으로 deposit completion 결정 (source: `blockchain-confirmation-limitations.md`, p.6 SOL 관련 인용 "Based on our analysis, a reversion has never happened before"). 즉 indexer 의 truth 는 단순 N-block 누적이 아니라 chain 별 finality 정책 + empirical 평가의 합성.
+- **Additional context (Stage 41)**: Vendor-neutral indexer reference 의 4 implementation pattern (P1 풀노드 pull / P2 이벤트 스트리밍 / P3 트랜잭션·이벤트 스캔 / P4 상태 스냅샷·레이크) 기반으로 Fireblocks 구현 분류 가능 — EVM 은 P1 (eth_subscribe + tracing API) + P3 (event/log scan with filter) 추정, Solana 는 P2 (Geyser / Yellowstone 또는 자체 구현) 추정. `evmTransferType=INTERNAL` 노출 (Stage 36 `transaction-objects.md`) 으로 보아 trace API 기반. 자세한 일반화 분석은 [[docs/architecture/blockchain-indexer-architecture-reference]] §11.4 참조.
+- **Caveat**: 본 분석은 vendor-neutral pattern 매핑 + Fireblocks API 노출 분석 기반의 추정. 구체 RPC method (`debug_traceTransaction` vs `trace_*` vs receipt log) 는 Fireblocks 비공개 → engineering-level 문의 필요.
 
 ### Q-2026-05-29-DC01: Contract call 의 3-confirmation "recommended" 가 default 인지 권장값인지?
 

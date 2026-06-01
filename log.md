@@ -6684,3 +6684,46 @@ PPT 의 specific 명칭·수치 모두 일반화:
 ### 신규 entity 0 (29 stage 연속 0 streak 유지)
 
 DCCP 는 vendors/fireblocks/blockchains.md 의 sub-domain + entities/fireblocks/transaction.md 의 confirmation lifecycle 로 흡수.
+
+## Stage 41 (2026-06-01) — Vendor-Neutral Blockchain Indexer Reference Mode C ingest
+
+- source: `sources/indexer/블록체인 인덱서 구현과 운영에 대한 심층 분석 보고서.pdf` (16 페이지, Korean)
+- external references: 28 (Polkadot · SubQuery · The Graph · NEAR · Solana · Ethereum · Blockscout · Firehose · Kafka · Postgres · Elasticsearch · RocksDB · Geth · AWS gp3 / S3 / m7i)
+- 자료 성격: **vendor-neutral generalized reference** — Fireblocks 도메인 외부. docs/architecture/ Stage 32+ generalized publication 영역에 흡수.
+
+### 신규 페이지
+
+1. **Layer 1**: `sources/indexer/2026-06-01__블록체인-인덱서-심층-분석-보고서.md` — TIER1 full ingest. 4 구현 패턴 · 참조 아키텍처 · 8 NFR axis · 5 대표 사례 비교 · 비용 모델 (AWS 공식 단가 직접 인용) · 11 체크리스트.
+2. **Layer 2**: `docs/architecture/blockchain-indexer-architecture-reference.md` — Stage 41 wiki 페이지. §11 "Fireblocks 와의 관계" 신규 추가 (vendor-neutral reference 를 Fireblocks SaaS 모델과 대비).
+
+### 영향받은 페이지 (cross-ref 양방향)
+
+- `vendors/fireblocks/blockchains.md` § DCCP 끝부분 — "Vendor-neutral indexer reference 와의 대비" subsection 추가
+- `docs/architecture/multi-chain-adapter-pattern.md` § 9.4 Adapter internal layers — indexer layer 의 generalized 참조 link
+- `docs/architecture/deposit-lifecycle.md` § 1.3 — indexer truth-determination 정책의 vendor-neutral guidance link
+- `open-questions/fireblocks.md` Q-2026-05-18-B03 — Stage 41 추가 부분 답 (4 pattern 분류 + Fireblocks 구현 추정)
+
+### 신규 Open Q (3 건)
+
+- Q-2026-06-01-IDX01: 11 체크리스트를 Fireblocks SaaS 모델에 적용 시 customer 가 verify 가능한 항목 범위
+- Q-2026-06-01-IDX02: 설치형 WaaS (Hosted MPC / BCM) 의 indexer 평면 vendor/customer 분리 boundary
+- Q-2026-06-01-IDX03: KR 금융위 가상자산 가이드 (2026) 가 요구하는 audit/trace 항목과 본 reference 모니터링 지표 매핑
+
+### 핵심 fact (vendor-neutral)
+
+- **4 구현 패턴**: P1 풀노드 pull / P2 이벤트 스트리밍 / P3 트랜잭션·이벤트 스캔 / P4 상태 스냅샷·레이크 — 실무에서는 2~3 조합
+- **참조 아키텍처 핵심**: 수집-질의 분리 (Graph Node = query node + indexing node + Postgres shard; Blockscout = indexer/API/UI 분리; Solana = Geyser 외부화)
+- **공통 5 entity**: `Block` / `Transaction` / `Log/Event` / `StateChange` / `Checkpoint` — EVM·Substrate·NEAR·Solana 공통 적용
+- **확정성 = API 계약**: `processed` / `confirmed` / `finalized` 를 spec 에 노출하지 않으면 UX·데이터팀 불일치
+- **비용 모델 공식 단가**: AWS gp3 $0.08/GB-month, S3 Standard $0.023/GB-month + $0.005/1k req. Geth hash archive 20TB = $1,638.40/월 (스토리지만)
+- **The Graph 의 슬래싱 모델**: GRT staking + signed receipt + RAV → 데이터 평면 / 결제 평면 분리
+- **NEAR Lake 2026-03-24 신규 인덱싱 중단** — Neardata / Nearcore Indexer 권장
+- **Solana slot 400–600ms** — 저지연 indexer 의 설계 목표 "한 슬롯 이내 또는 수 슬롯 이내"
+
+### invariant — vendor-neutral / SaaS 흡수 경계
+
+> SaaS (Fireblocks) 는 indexer 의 4 pattern + projection + confirmation policy + reorg handling + webhook 송출까지 흡수해 customer 에게 정책 layer (DCCP) override 만 노출. Direct-build path 는 본 reference 의 전체 영역이 customer 책임. 설치형 WaaS 도 projection 이후는 customer 영역 — 본 reference §4~§6 동일 적용. **선택은 risk model + trust model 의 일부**, 단순 성능 문제가 아님.
+
+### 신규 entity 0 (30 stage 연속 0 streak 유지)
+
+Vendor-neutral indexer reference 는 docs/architecture/ 의 단일 페이지로 흡수.

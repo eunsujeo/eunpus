@@ -125,6 +125,8 @@ graph TB
   - Recognition policy (인정 가능한 deposit 인가 — spam / dust 아닌가)
 - 위 4 gate 모두 통과해야 ledger credit.
 
+**Indexer 의 4 구현 패턴 + reorg / replay 정책** (raw append-only + idempotent projection + checkpoint + rollback) 의 generalized 설계는 [[docs/architecture/blockchain-indexer-architecture-reference]] 참조 (Stage 41). "Indexer 가 본 tx" 의 truth-determination 정책 (Solana `processed`/`confirmed`/`finalized` 등 commitment 분리) 이 어떻게 API 계약으로 노출되어야 하는지의 vendor-neutral guidance 도 거기에 정리됨.
+
 ---
 
 ## 2. Cross-Domain Authority (2-domain)

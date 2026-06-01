@@ -594,6 +594,8 @@ graph TB
     class A_NET,A_INDEX,A_FINALITY,A_TX,A_SIGN,A_BROAD,A_NORM layer
 ```
 
+**Indexer layer 의 상세 설계** (4 implementation pattern · 데이터 모델 · 비기능 요구사항 · 비용 모델) 은 [[docs/architecture/blockchain-indexer-architecture-reference]] 참조 (Stage 41 vendor-neutral reference). 본 adapter 의 indexer layer 는 그 reference 의 P1 (풀노드 pull) 또는 P2 (이벤트 스트리밍) 또는 둘의 조합으로 구현 — chain semantic 에 따라 다름.
+
 ### 9.5 Adapter version + chain upgrade 대응
 
 (★ Hypothesis — operational reasoning)
