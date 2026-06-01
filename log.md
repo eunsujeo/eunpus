@@ -6764,3 +6764,43 @@ Vendor-neutral indexer reference 는 docs/architecture/ 의 단일 페이지로 
 ### 신규 entity 0 (31 stage 연속 0 streak 유지)
 
 LLM 생성 hypothesis 는 docs/architecture/ 의 별도 hypothesis 페이지로 격리. 기존 fact-tier 페이지 오염 없음.
+
+## Stage 43 (2026-06-01) — Vendor-Specific Indexer Hypothesis 추가 자료 (B3) Mode C ingest
+
+- source: `sources/indexer/블록체인 인덱서 구현 사례와 Fireblocks 사례 분석.md` (242 lines, ChatGPT 추정)
+- 자료 성격: B1/B2 와 같이 LLM 생성이지만 **한 단계 신뢰도 ↑** — ChatGPT citation tag (`citeturn34view0` 등) 본문 포함 + 자체 tier 분리 (공개 확인 / 합리적 추론 / 미확인)
+
+### 영향
+
+- Layer 1: B3 raw 에 disclaimer comment 추가 (B1/B2 와 같은 패턴)
+- Layer 2: Stage 42 hypothesis 페이지 `docs/architecture/vendor-indexer-implementations-hypothesis.md` 에 §5 신규 추가 (5.1 자체 tier 분류 / 5.2 Stage 41 cross-confirm / 5.3 비용 데이터 / 5.4 Fireblocks 핵심 해석 / 5.5 Q-VRF 일부 답)
+- §7 / §8 renumber (B3 section 삽입에 따른 chapter 재배치)
+- §8 Q-VRF list 에 Stage 43 update mark — Q-VRF-01 (UTXO/Account mempool timing) + Q-VRF-08 (Chainalysis/Elliptic) 의 cross-verify path 명확화 (B3 가 Fireblocks 공식 docs 명칭 인용)
+- 신규 Q-VRF-18~22 (5건, B3 추가 영역): Alchemy / QuickNode pricing, Subgraphs sunset, AWS MSK 예시, QuickNode exactly-once
+- Stage 41 reference `blockchain-indexer-architecture-reference.md` §9.3 신규 — hypothesis-tier 비용 데이터 cross-ref (★ unverified 명시)
+
+### B3 가 Stage 41 fact 와 cross-confirm 한 항목 (fact-tier 강화)
+
+- Geth path-based archive flat state 2TB / trie data 6.5TB ✓
+- Infura `removed=true` + 재조직 시 중복 가능성 ✓
+- The Graph query nodes ↔ index nodes 분리 권장 ✓
+
+→ Stage 41 fact-tier 의 신뢰도 강화. 동일 fact 가 독립 source 두 곳에서 일치 확인.
+
+### B3 가 답하지 못하는 항목 (B1 only, 여전히 unverified)
+
+- 1분 / 10분 timeout (Q-VRF-02)
+- ATC + `stuck_confirming` (Q-VRF-03)
+- Stellar 10 wallet 라운드 로빈 (Q-VRF-04)
+- BTC 30초 batching (Q-VRF-05)
+- Solana 1,000 동시 (Q-VRF-06)
+
+→ B1 의 가장 specific 한 수치는 B3 가 다루지 않음 — Q-VRF priority 결정 시 우선순위 ↓ 영역.
+
+### invariant — Tier-aware Mode C 흡수 패턴
+
+> 동일 도메인의 다중 LLM 생성 자료 ingest 시: (a) 각 자료의 tier 평가 분리 (B1/B2 vs B3 처럼 자체 tier 분리 여부 / citation tag 여부), (b) Stage 41 fact 와의 cross-confirm 영역은 fact-tier 강화 효과 명시, (c) cross-confirm 안 되는 specific fact 는 unverified 유지, (d) cross-verify path 가 명확한 항목 (vendor 공식 docs 명칭 인용 등) 은 Q-VRF 에 path 명시 — 운영 결정 시 우선 verify priority 결정 도움.
+
+### 신규 entity 0 (32 stage 연속 0 streak 유지)
+
+B3 는 Stage 42 hypothesis 페이지의 §5 로 흡수, 별도 페이지 안 만듦.

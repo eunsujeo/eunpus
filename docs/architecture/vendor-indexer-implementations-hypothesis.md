@@ -221,7 +221,81 @@ ParentHash_New == Hash_CurrentHead
 
 ---
 
-## 5. Stage 41 reference 와의 hypothesis-tier 비교
+## 5. B3 (Stage 43 추가 자료) — 자체 tier 분리된 LLM 분석
+
+**원본**: [[sources/indexer/블록체인 인덱서 구현 사례와 Fireblocks 사례 분석.md]] (242 lines, ChatGPT 추정)
+
+**B1/B2 와의 차이**:
+- ChatGPT citation tag (`citeturn34view0`, `citeturn30view2` 등) 본문 포함 → 외부 source 부분적 traceable
+- Fireblocks 영역에서 **"공개적으로 확인됨 / 합리적 추론 / 미확인"** 자체 tier 분리 (B1 의 단정형과 대비)
+- 비용 수치는 vendor 공식 페이지에서 cross-verify 가능
+
+### 5.1 B3 의 Fireblocks 자체 tier 분리 인용
+
+본 자료에 따르면 (★ unverified — 다만 자체 분류는 존중):
+
+| 자체 분류 | 항목 |
+|---|---|
+| **공개적으로 확인됨** | 트랜잭션 히스토리 API, 상태 API, 웹훅, EVM receipt/log 조회, 확인 수 정책, blockHeight 기반 잔액 검증, AML 실시간 모니터링, 정책 엔진·감사 추적 |
+| **합리적 추론** | 내부 체인 감시기, 정규화 레이어, 상태 저장소, 확인 수·재조직 처리 로직 존재 (위 기능들의 안정 제공 위해) |
+| **미확인** | 내부 노드 구성 (자체 풀/아카이브/서드파티 RPC 혼합 여부), Kafka 사용 여부, DB 선택 (Postgres/ClickHouse/RocksDB 등), 스트리밍 버스, 특허 귀속, 구현 세부 |
+
+→ ★ B3 의 "공개적으로 확인됨" 영역은 본 wiki 의 fact-tier 자료 (Stage 36 `transaction-objects.md`, Stage 40 DCCP, Stage 4 webhook docs 등) 와 cross-confirm 가능. B1 의 unverified vendor analysis 와 분리.
+
+### 5.2 B3 가 추가로 제공하는 fact (Stage 41 과 cross-confirm)
+
+| 항목 | B3 의 인용 | Stage 41 reference 와 일치? |
+|---|---|---|
+| Geth path-based archive flat state 2TB | "약 2TB의 flat state history" (B3 §요구사항) | ✓ 일치 (Stage 41 §7.5 동일 수치) |
+| Geth + trie data 6.5TB | "trie data까지 보관하면 약 6.5TB" (B3) | ✓ 일치 |
+| Alchemy `indexed` 태그는 캐시, 최신보다 지연 | B3 §기업별 비교 | △ 새로운 fact (Stage 41 미포함) |
+| Alchemy Webhooks at-least-once 전달 | B3 §기업별 비교 | △ 새로운 fact |
+| **Alchemy Subgraphs 2025-12-08 sunset** | B3 §기업별 비교 | △ 새로운 fact (Stage 41 의 The Graph 영역 보강) |
+| Infura 의 `removed=true` + 재조직 시 중복 가능성 | B3 §요구사항, §데이터 일관성 | ✓ 일치 (Stage 41 §8.2 reorg 처리) |
+| The Graph query nodes ↔ index nodes 분리 권장 | B3 §엔터프라이즈 권장 | ✓ 일치 (Stage 41 §3.1) |
+| QuickNode Streams exactly-once delivery (finality order 기준) | B3 §기업별 비교 | △ 새로운 fact |
+
+→ Stage 41 fact 와 일치하는 항목은 cross-confirm 효과 (Stage 41 reference 의 fact tier 강화). 새로운 fact 는 B3 의 citation tag 기반으로 vendor 공식 cross-verify 필요.
+
+### 5.3 B3 의 비용 추정 (★ 공식 단가 cross-verify 가능)
+
+B3 가 제공하는 비용 모델:
+
+| 항목 | B3 인용 | 비고 |
+|---|---|---|
+| Alchemy 무료 플랜 | 월 30M CU + 5 webhooks | vendor 공식 페이지 cross-verify 필요 |
+| QuickNode Build 플랜 | 월 $42~49, 80M API credits + Streams/Webhooks | vendor 공식 페이지 cross-verify 필요 |
+| QuickNode Business 플랜 | 월 $849~999, 2B API credits + 500 RPS | vendor 공식 페이지 cross-verify 필요 |
+| AWS EC2 t3.large on-demand | 시간당 $0.0832 | AWS 공식 (Stage 41 §9 의 AWS gp3 / S3 단가와 같은 source family) |
+| AWS gp3 | GB-월 $0.08 | ✓ Stage 41 §9 와 동일 (cross-confirm) |
+| **AWS MSK 예시** | 3 broker + 1,000GB ingest/storage = $1,020.66/월 | Stage 41 §9 에 미포함 — 새로운 fact |
+
+**B3 의 운영 추정 범위**:
+- 스타트업: **월 $100~$800** (Alchemy 무료/저사용량 + 소형 EC2 1~2대) ~ (QuickNode Build $42-49 + EC2 2-3대 + 수백 GB gp3)
+- 엔터프라이즈: **월 $3,000~$20,000 이상** (QuickNode Business $849-999 + AWS MSK $1,020 + 자체 archive node 2TB-6.5TB + ClickHouse + Postgres + 멀티리전)
+
+→ Stage 41 §9.1 3-tier 예산 모델과 같은 방향성. **B3 의 구체 수치는 vendor 공식 페이지에서 별도 cross-verify 후 fact 승격 가능**.
+
+### 5.4 B3 의 Fireblocks 핵심 해석 (인용)
+
+본 자료 §"Fireblocks 사례의 핵심 해석" 인용:
+
+> "Fireblocks 사례는 '범용 인덱서 회사'의 사례라기보다, **지갑·거래소·결제·컴플라이언스 서비스가 실제로 어떤 인덱서 기능을 필요로 하는가** 를 보여준다. 이 회사가 공개적으로 강조하는 것은 GraphQL/SQL 자체가 아니라, **트랜잭션의 운영 상태, 확인 수, 블록 높이 정합성, 실시간 정책 검사, 감사 가능성** 이다. 따라서 Fireblocks 가 보여주는 인덱서의 본질은 '데이터 접근성' 보다 더 넓은 **운영 안전성 계층** 이라고 보는 것이 맞다."
+
+→ 이 해석은 본 wiki 의 [[docs/architecture/three-way-custody-decision-framework]] 의 SaaS vs direct-build 책임 분담 관점과 정렬. B3 의 ChatGPT 출처지만 framing 은 본 wiki 의 fact-tier 결론과 일치.
+
+### 5.5 B3 가 답하는 Q-VRF 일부
+
+| Q-VRF | B3 의 답 | 답 tier |
+|---|---|---|
+| Q-VRF-01 (UTXO mempool / Account mined 알림 timing) | "UTXO 기반 자산은 mempool 단계에서 incoming notification 이 생성되고, account-based 자산은 mined 시점에 생성된다고 적시" (Fireblocks `Monitoring Transaction Statuses` docs 인용) | △ 공식 문서명 인용 — Fireblocks 공식 docs 에서 cross-verify 가능 (★ 권장) |
+| Q-VRF-08 (Chainalysis/Elliptic 통합) | "Chainalysis나 Elliptic과 연계해 incoming/outgoing transaction을 실시간으로 스크리닝" (AML 기능 문서 인용) | △ 공식 문서명 인용 — Fireblocks AML overview docs 에서 cross-verify 가능 |
+| Q-VRF-02 (1분 / 10분 timeout 수치) | **B3 미언급** | B1 에만 등장, 여전히 unverified |
+| Q-VRF-03 (ATC + `stuck_confirming`) | **B3 미언급** | B1 에만 등장, 여전히 unverified |
+
+→ B3 는 B1 의 가장 specific 한 수치 (1분/10분, ATC 등) 는 다루지 않음. B3 가 다루는 영역은 더 generalized — Fireblocks 공식 docs 인용 위주.
+
+## 6. Stage 41 reference 와의 hypothesis-tier 비교
 
 | 측면 | Stage 41 (fact) | Stage 42 (hypothesis) |
 |---|---|---|
@@ -234,7 +308,7 @@ ParentHash_New == Hash_CurrentHead
 
 ---
 
-## 6. Q-2026-05-18-B03 의 hypothesis-tier 잠정 답
+## 7. Q-2026-05-18-B03 의 hypothesis-tier 잠정 답
 
 본 페이지의 fact 가 **모두 정확하다면 (UNVERIFIED)** Q-B03 (Fireblocks internal-tx 감지 메커니즘) 의 답은:
 
@@ -248,20 +322,30 @@ ParentHash_New == Hash_CurrentHead
 
 ---
 
-## 7. Cross-verification 필요 항목 (Q-VRF list)
+## 8. Cross-verification 필요 항목 (Q-VRF list)
 
 각 항목은 vendor 측 cross-verify 통과 시 Stage 41 reference / Fireblocks 본문 으로 fact 승격 가능.
+
+**★ Stage 43 update**: B3 (`블록체인 인덱서 구현 사례와 Fireblocks 사례 분석.md`) 가 Fireblocks 공식 docs 명칭 인용 → 일부 Q-VRF 의 cross-verify path 명확화.
 
 ### Fireblocks 관련 (8 건)
 
 - **Q-VRF-01**: Fireblocks UTXO mempool-level 수신 알림 timing 명세 (webhook status enum 매핑)
+  - ★ Stage 43: B3 가 Fireblocks `Monitoring Transaction Statuses` docs 인용 — 해당 공식 문서에서 직접 확인 가능 (cross-verify path 명확)
 - **Q-VRF-02**: 송신 1분 / 수신 10분 timeout 수치 출처
+  - B3 미언급 → 여전히 B1 only, unverified 유지
 - **Q-VRF-03**: "ATC (Account Traffic Control)" 아키텍처 명칭 + `stuck_confirming` 지표 명칭
+  - B3 미언급 → 여전히 B1 only, unverified 유지
 - **Q-VRF-04**: Stellar 1 TPS 당 10 wallet 라운드 로빈 운영 수치
+  - B3 미언급 → 여전히 B1 only, unverified 유지
 - **Q-VRF-05**: BTC 30초 batching / 10분 20건 억제 / CPFP 운영 수치
+  - B3 미언급 → 여전히 B1 only, unverified 유지
 - **Q-VRF-06**: Solana 1,000 동시 pending 수치 (공식 600 vs 본 자료 1,000 mismatch)
+  - B3 미언급 → 여전히 B1 only, unverified 유지
 - **Q-VRF-07**: Fireblocks 의 stuck EVM tx 해소 메커니즘 (RBF / cancel-replace 등 공식 명칭)
+  - B3 미언급 → 여전히 B1 only, unverified 유지
 - **Q-VRF-08**: Chainalysis / Elliptic 통합의 vendor-specific API 수준 (실시간 API 직접 연결 여부)
+  - ★ Stage 43: B3 가 Fireblocks AML overview docs 인용 — 해당 공식 문서에서 직접 확인 가능 (cross-verify path 명확)
 
 ### BitGo 관련 (4 건)
 
@@ -281,6 +365,14 @@ ParentHash_New == Hash_CurrentHead
 - **Q-VRF-16**: cryo 의 백필 "수십 배 단축" 수치 출처
 - **Q-VRF-17**: Reth ExEx 의 "1ms 단위 가로채" 수치 출처
 
+### B3 추가 영역 (Stage 43 신규, 5 건)
+
+- **Q-VRF-18**: Alchemy 무료 플랜 30M CU + 5 webhooks 의 vendor 공식 페이지 cross-verify
+- **Q-VRF-19**: QuickNode Build $42-49, Business $849-999 pricing tier cross-verify
+- **Q-VRF-20**: Alchemy `indexed` 태그 캐시 지연 + Subgraphs 2025-12-08 sunset 공식 공지 확인
+- **Q-VRF-21**: AWS MSK 3-broker + 1,000GB 예시 $1,020.66/월 의 AWS 공식 calculator cross-verify
+- **Q-VRF-22**: QuickNode Streams "exactly-once delivery (finality order)" 공식 문서 인용
+
 ---
 
 ## Open Questions (이 페이지 자체)
@@ -292,8 +384,9 @@ ParentHash_New == Hash_CurrentHead
 
 ### 본 페이지의 1 차 자료 (★ unverified)
 
-- [[sources/indexer/블록체인_인덱서_구현_리서치.md]] — LLM 생성, 36 KB
-- [[sources/indexer/엔터프라이즈_블록체인_인덱서_설계_구조.html]] — LLM 생성, 30 KB (시각화 짝 자료)
+- [[sources/indexer/블록체인_인덱서_구현_리서치.md]] — LLM 생성, 36 KB (B1, Stage 42)
+- [[sources/indexer/엔터프라이즈_블록체인_인덱서_설계_구조.html]] — LLM 생성, 30 KB (B2, Stage 42 시각화 짝)
+- [[sources/indexer/블록체인 인덱서 구현 사례와 Fireblocks 사례 분석.md]] — ChatGPT 추정, 242 lines (B3, Stage 43, citation tag 포함 + 자체 tier 분리)
 
 ### 동급 fact-tier reference (cross-ref)
 

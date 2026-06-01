@@ -295,6 +295,18 @@ NEAR Indexer for Explorer: 공개 SQL 스키마 진화 가능, release note 추�
 2. **필요한 블록만 read** → dictionary · topic/address filter · startBlock 최적화 = 비용 절감
 3. **archive node 무조건 self-host 금지** → 초기엔 private archived RPC 또는 lake/firehose 공급자. 트래픽이 비용 역전 시점에만 self-hosting.
 
+### 9.3 Hypothesis-tier 추가 비용 데이터 (★ Stage 43, unverified)
+
+[[docs/architecture/vendor-indexer-implementations-hypothesis]] §5.3 에 LLM 생성 자료 (B3) 의 추가 vendor pricing 데이터 보존:
+
+- Alchemy 무료 플랜 (월 30M CU + 5 webhooks)
+- QuickNode Build $42-49/월, Business $849-999/월
+- AWS MSK 3-broker + 1,000GB ingest/storage 예시 = $1,020.66/월
+- AWS EC2 t3.large on-demand 시간당 $0.0832
+- 스타트업 운영 추정: 월 $100-800, 엔터프라이즈: 월 $3,000-20,000+
+
+★ 위 수치는 LLM 생성 자료 인용 — vendor 공식 페이지에서 cross-verify 후 fact 승격 가능 (Q-VRF-18~22). 본 reference 의 AWS gp3 / S3 단가 (§9 위) 는 vendor 공식 cross-verify 완료, B3 는 별도 verify 필요.
+
 ---
 
 ## 10. 설계 체크리스트 (11 항목)
