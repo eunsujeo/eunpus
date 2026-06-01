@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Spec 4. 구현 가이드 — Indexer Design</title>
+<meta name="description" content="TypeScript interface + error handling + retry + idempotency + reorg + KR 은행 망분리." />
+<meta name="robots" content="noindex" />
+<link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="topbar-back" href="index.html">← Hub</a>
+    <span class="topbar-title">구현 가이드</span>
+    <span class="topbar-progress">Spec 4 · 9 / 9</span>
+  </div>
+</div>
+
+<main>
+  <span class="step-tag">SPEC 4 · LIBRARY DESIGN</span>
+  <h1>구현 가이드</h1>
+  <p class="subtitle">실제 운영 시 코드 / 에러 처리 / retry / idempotency / reorg / KR 은행 망분리 적용 가이드.</p>
+
+  <div class="tier tier-basic">
+    <span class="tier-label">기초안내</span>
+    <p>구현 시 신경 써야 할 7 가지 영역:</p>
+    <ol>
+      <li>Idempotency 강제 (모든 deposit / withdrawal 호출)</li>
+      <li>Retry 정책 (exponential backoff + max 30 일)</li>
+      <li>Reorg-safe event handling</li>
+      <li>Capability negotiation 분기</li>
+      <li>Multi-adapter 운영 (vault → adapter 매핑)</li>
+      <li>망분리 환경 적용 (KR 은행 필수)</li>
+      <li>Audit / observability</li>
+    </ol>
+  </div>
+
+  <div class="tier tier-next">
+    <span class="tier-label">다음 단계 — 핵심 구현 패턴</span>
+
+    <h3>1. Idempotency 강제 — Outbox 패턴</h3>
+
+<pre><code>// 모든 deposit / withdrawal 처리는 outbox 거쳐서
+async function handleDepositEvent(event: DepositEvent) {
+  await db.tx(async (tx) =&gt; {
+    // ① outbox 에 등록 (idempotency key UNIQUE 제약)
+    try {
+      await tx.execute(
+        `INSERT INTO deposit_outbox (idempotency_key, event_json, status)
+         VALUES (?, ?, 'pending')`,
+        [event.idempotencyKey, JSON.stringify(event)],
+      );
+    } catch (e) {
+      if (isUniqueViolation(e)) return;  // 이미 처리됨
+      throw e;
+    }
+
+    // ② 평면 3 의 도메인 워크플로 호출
+    if (event.confirmedAt) {
+      await creditLedger(tx, event.walletId, event.amount);
+    }
+
+    // ③ outbox 상태 완료로
+    await tx.execute(
+      `UPDATE deposit_outbox SET status='completed' WHERE idempotency_key=?`,
+      [event.idempotencyKey],
+    );
+  });
+}</code></pre>
+
+    <p>Adapter 에서 같은 event 가 두 번 와도 (Fireblocks webhook 재시도) outbox 의 UNIQUE 제약으로 차단.</p>
+
+    <h3>2. Multi-adapter 라우팅</h3>
+
+<pre><code>class IndexerRouter implements WalletIndexerPort {
+  constructor(private adapters: Map&lt;string, WalletIndexerPort&gt;) {}
+
+  async getBalance(walletId: WalletId, asset: Asset) {
+    const adapter = await this.resolveAdapter(walletId);
+    return adapter.getBalance(walletId, asset);
+  }
+
+  private async resolveAdapter(walletId: WalletId) {
+    const w = await db.wallet.find(walletId);
+    return this.adapters.get(w.adapterName) ?? error('unknown adapter');
+  }
+}</code></pre>
+
+    <p>한 은행이 여러 adapter 동시 운영 가능. <code>wallets.adapter_name</code> column 으로 어느 adapter 가 담당하는지 저장.</p>
+
+    <h3>3. Capability 분기 — 회계 마감 시</h3>
+
+<pre><code>async function getClosingBalance(walletId: WalletId, asset: Asset,
+                                  closingBlock: number) {
+  const adapter = await router.resolveAdapter(walletId);
+  const caps = adapter.capabilities();
+
+  if (caps.supportsBalanceAsOf) {
+    return adapter.getBalanceAsOf(walletId, asset, closingBlock);
+  }
+
+  // Fallback: 이벤트 합산
+  const events = await db.depositEvents.findByWallet(walletId,
+    { upToBlock: closingBlock });
+  return events.reduce((acc, e) =&gt; acc + e.amount, 0n);
+}</code></pre>
+  </div>
+
+  <div class="tier tier-advanced">
+    <span class="tier-label">심화 · 운영 가이드</span>
+
+    <h3>KR 은행 망분리 적용</h3>
+
+    <p>KR 은행 의 망분리 환경 (인터넷망 ↔ 업무망 ↔ 운영망) 에서 adapter 가 다르게 동작:</p>
+
+    <table>
+      <thead><tr><th>Adapter</th><th>망 배치</th><th>제약</th></tr></thead>
+      <tbody>
+        <tr><td>FireblocksAdapter</td><td>업무망에 webhook receiver. 운영망의 ledger 워크플로 와 단방향 큐 통신</td><td>Fireblocks SaaS 가 인터넷 → 업무망 webhook (방화벽 IP allowlist + JWKS)</td></tr>
+        <tr><td>BitGoAdapter</td><td>동일 패턴</td><td>동일</td></tr>
+        <tr><td>NodeInfraAdapter</td><td>업무망 + 운영망 IDC 에 설치. 인터넷 통신 ✗</td><td>가장 strict 한 망분리 가능</td></tr>
+        <tr><td>OwnAdapter</td><td>운영망에 풀노드 + 인덱서. DMZ 에 webhook outbound</td><td>완전 자체 통제. 가장 큰 운영 부담</td></tr>
+      </tbody>
+    </table>
+
+    <p>본 wiki <a href="../fireblocks-custodial-wallet-db-design/infrastructure.html">인프라 운영</a> 의 망분리 모델 참조.</p>
+
+    <h3>Retry 정책</h3>
+
+<pre><code>const retryPolicy: RetryPolicy = {
+  initialDelayMs: 1000,
+  maxDelayMs: 60_000,
+  backoffMultiplier: 2.0,
+  maxAttempts: 7,
+  maxDurationMs: 30 * 24 * 60 * 60 * 1000,  // 30일 (Fireblocks v2 기준)
+  retryableErrors: ['NETWORK', 'VENDOR_5XX', 'RATE_LIMITED'],
+  giveUpAction: 'alert',  // PagerDuty / Slack
+};</code></pre>
+
+    <p>Fireblocks v2 의 webhook 재시도 정책 (최대 30 일) 과 정렬. 자체구축 path 도 동일 정책 적용 권장.</p>
+
+    <h3>Reorg-safe ledger 처리</h3>
+
+    <p>이미 confirmed 처리한 deposit 이 vendor 측 reorg revert 로 사라진 경우:</p>
+
+<pre><code>async function handleDepositRevertEvent(revertEvent: DepositRevertedEvent) {
+  await db.tx(async (tx) =&gt; {
+    // ① 원래 event 찾기
+    const original = await tx.depositEvents.find(revertEvent.idempotencyKey);
+    if (!original) throw error('reverting unknown deposit');
+
+    // ② 평면 3 의 보정 분개 (compensating entry)
+    await reverseLedger(tx, original.walletId, original.amount, {
+      reason: 'reorg_revert',
+      originalEventKey: revertEvent.idempotencyKey,
+      revertedAtBlock: revertEvent.blockNumber,
+    });
+
+    // ③ 원래 outbox row 상태 변경
+    await tx.depositEvents.markReverted(revertEvent.idempotencyKey);
+
+    // ④ 감사 / 알림
+    await audit.log('DEPOSIT_REVERTED', revertEvent);
+    await alert.notify('reorg_revert', revertEvent);
+  });
+}</code></pre>
+
+    <p>회계 정합성: 정정 entry 는 <strong>새 row</strong> 로 기록 (기존 row 수정 ✗). 본 wiki <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계 · 원장 설계</a> 의 reversal entry 패턴.</p>
+
+    <h3>Observability — 필수 metric</h3>
+
+    <table>
+      <thead><tr><th>Metric</th><th>이유</th><th>알람 threshold</th></tr></thead>
+      <tbody>
+        <tr><td><code>adapter.ingestion_lag_seconds</code></td><td>vendor 측 데이터 수신 지연</td><td>&gt; 60s (push) / &gt; 5min (poll)</td></tr>
+        <tr><td><code>outbox.pending_count</code></td><td>처리 대기 중인 deposit/withdrawal</td><td>&gt; 100</td></tr>
+        <tr><td><code>outbox.retry_max_reached</code></td><td>30 일 retry 끝난 항목</td><td>&gt; 0 (즉시 alert)</td></tr>
+        <tr><td><code>adapter.health</code></td><td>vendor 측 reachable</td><td>down 5 분 지속</td></tr>
+        <tr><td><code>reorg_revert.count</code></td><td>reorg 인한 정정</td><td>day &gt; 5 회</td></tr>
+        <tr><td><code>capability_missing.count</code></td><td>fallback 분기 사용</td><td>monitor only</td></tr>
+        <tr><td><code>idempotency_dedup.count</code></td><td>중복 webhook 차단</td><td>monitor only (정상)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Audit log 형식</h3>
+
+<pre><code>interface IndexerAuditLog {
+  timestamp: Date;
+  category: 'deposit' | 'withdrawal' | 'config' | 'reorg' | 'adapter_health';
+  adapterName: string;
+  vendorVersion: string;          // FB API version 등
+  idempotencyKey?: string;
+  walletId?: WalletId;
+  action: string;
+  before?: any;
+  after?: any;
+  outcome: 'success' | 'failure' | 'retry';
+  userId?: UserId;                // customer 측 operator
+  vendorReference?: string;       // FB tx ID 등
+}</code></pre>
+
+    <p>5 년 보관 (KR 특금법 + 가상자산이용자보호법). 본 wiki <a href="../fireblocks-custodial-wallet-db-design/tables-audit.html">Audit · AML · Travel Rule</a> 의 evidence chain 패턴.</p>
+
+    <h3>Migration / vendor 전환 procedure</h3>
+
+    <p>Phase 1 (Fireblocks 만) → Phase 2 (Fireblocks + NodeInfra 병행) → Phase 3 (NodeInfra 만) 전환:</p>
+
+    <ol>
+      <li><strong>Phase 2 시작</strong> — 새 vault 는 NodeInfra adapter, 기존 vault 는 Fireblocks adapter. <code>wallets.adapter_name</code> 으로 분기.</li>
+      <li><strong>Mirror data export</strong> — Fireblocks 의 transaction history 를 OwnAdapter 의 mirror DB 로 백필.</li>
+      <li><strong>이중 동작 검증</strong> — 새 deposit 이 Fireblocks + NodeInfra 양쪽에서 같은 결과 (cross-check).</li>
+      <li><strong>Vault migration</strong> — 기존 vault 의 자산을 NodeInfra vault 로 sweep. <code>wallets.adapter_name</code> 업데이트.</li>
+      <li><strong>Fireblocks decommission</strong> — Phase 3.</li>
+    </ol>
+
+    <p>이 procedure 가 가능한 이유: 평면 3 (ledger 워크플로) 의 코드는 단 한 줄도 안 바뀜. <strong>이게 추상화의 정확한 가치</strong>.</p>
+
+    <h3>Testing 전략</h3>
+
+    <ul>
+      <li><strong>Adapter contract test</strong> — 모든 adapter 는 동일한 contract test suite 통과 필수 (port 의 의미 통일 보장)</li>
+      <li><strong>Mock adapter</strong> — 평면 3 단위 테스트 용. Mock 이 실제 adapter 와 같은 contract.</li>
+      <li><strong>Reorg simulation</strong> — adapter 가 revert event 를 emit 했을 때 평면 3 의 보정 분개 검증.</li>
+      <li><strong>Idempotency stress</strong> — 같은 event 1000 회 반복 emit, 1 회만 처리됐는지 검증.</li>
+      <li><strong>Multi-adapter swap</strong> — 같은 vault 에 Fireblocks → Own adapter 로 swap 시 평면 3 결과 일치.</li>
+    </ul>
+
+    <h3>마지막 — 이 abstraction 의 ROI 정리</h3>
+
+    <p>이 abstraction library 가 만들어주는 것:</p>
+    <ol>
+      <li><strong>Vendor lock-in 회피</strong> — 평면 3 코드는 vendor 무관. 협상력 ↑ / 비용 통제력 ↑</li>
+      <li><strong>Multi-vendor 동시 운영</strong> — Fireblocks (Hot wallet) + NodeInfra (Cold wallet) + Own (대량 출금 전용) 분산 가능</li>
+      <li><strong>회계 / 감사 일관성</strong> — 평면 3 의 evidence chain 이 vendor 무관하게 동일</li>
+      <li><strong>점진적 마이그레이션</strong> — vault 단위로 vendor 전환 가능. Big-bang 없음.</li>
+      <li><strong>자체구축 path 보호</strong> — 사업 성장 시 sovereignty 확보 (대형 거래소 / 큰 은행 전환 가능)</li>
+    </ol>
+
+    <p>본 가이드 끝. 본 wiki 의 다른 reference (Fireblocks / NodeWallet / 회계 / 망분리 / 인덱서 fact reference / hypothesis) 와 함께 사용.</p>
+  </div>
+
+  <div class="step-nav">
+    <a href="08-vendor-adapters.html" class="nav-prev">
+      <div class="step-nav-label">← Prev</div>
+      <div class="step-nav-title">Spec 3. Vendor adapter 설계</div>
+    </a>
+    <a href="index.html" class="nav-next">
+      <div class="step-nav-label">Hub →</div>
+      <div class="step-nav-title">처음으로</div>
+    </a>
+  </div>
+
+  <div class="source-footer">
+    <p><strong>자료 출처</strong> · Outbox 패턴 = 본 wiki <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계 · 원장 설계</a> §18 <span class="tier-badge tier-badge-fact">FACT</span> · Webhook retry 30일 = Fireblocks v2 공식 (Stage 44 B4 footnote 3, 9) · Audit 5년 = KR 특금법 + 가상자산이용자보호법</p>
+    <p>Reorg-as-event 패턴 = Coinbase ChainStorage 공식 (Stage 44 B4 footnote 11) · 망분리 = 본 wiki <a href="../fireblocks-custodial-wallet-db-design/infrastructure.html">인프라 운영</a></p>
+  </div>
+</main>
+
+</body>
+</html>

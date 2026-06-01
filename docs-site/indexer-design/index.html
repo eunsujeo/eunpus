@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>블록체인 인덱서 — 수탁형 지갑 설계 가이드</title>
+<meta name="description" content="KR 은행이 수탁형 지갑을 만들 때 인덱서가 왜 필요한지, 어떻게 추상화 할지의 선형 학습 + spec 가이드." />
+<meta name="robots" content="noindex" />
+<link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="topbar-back" href="../index.html">← Documentation Hub</a>
+    <span class="topbar-title">Indexer Design</span>
+    <span class="topbar-progress">9 페이지</span>
+  </div>
+</div>
+
+<main>
+  <span class="step-tag">INTRO · 0 / 9</span>
+  <h1>블록체인 인덱서 — 수탁형 지갑 설계 가이드</h1>
+  <p class="subtitle">KR 은행이 수탁형 지갑을 만들 때 인덱서가 왜 필요하고, 어떤 역할을 하며, vendor 가 바뀌어도 흔들리지 않는 추상화는 어떻게 만들어야 하는가.</p>
+
+  <div class="hub-intro">
+    <p>본 사이트는 <strong>두 가지 path</strong> 로 나뉩니다.</p>
+    <p><strong>학습 path (S1 ~ S5)</strong> 는 vendor 와 무관한 일반 원리. "왜 인덱서가 필요한지" 부터 "수탁형 지갑에서 어떤 역할인지" 까지 단계별로 따라갑니다.</p>
+    <p><strong>Spec path (Spec 1 ~ 4)</strong> 는 KR 은행이 실제로 도입할 때 적용하는 abstraction library 설계 spec. Fireblocks / BitGo / NodeInfra / 자체구축 4 가지 path 모두에서 작동하는 통합 인터페이스를 정의합니다.</p>
+  </div>
+
+  <div class="tier tier-basic">
+    <span class="tier-label">기초안내</span>
+    <p>본 가이드의 등장인물은 한 명입니다.</p>
+    <p><strong>Alice</strong> — KR 은행 X 의 개인 고객. 미국에서 USDC 100 을 받아 KR 은행 X 의 수탁형 지갑으로 입금합니다. 은행 앱을 켜서 잔고를 확인하고, 며칠 후 일부를 다른 사람에게 송금합니다.</p>
+    <p>Alice 가 보는 모든 숫자 (잔고, 입금 내역, 송금 상태) 의 뒤에는 <strong>인덱서</strong> 가 있습니다. 인덱서가 없으면 그 숫자들은 존재하지 않습니다 — 또는 너무 느려서 사용할 수 없습니다.</p>
+  </div>
+
+  <div class="path-section">
+    <h3>학습 Path — 왜 / 어떻게 / 누가</h3>
+    <ul class="path-list">
+      <li><a href="01-why.html">
+        <span class="path-step">S1</span>
+        <span class="path-title">왜 인덱서가 필요한가</span>
+        <span class="path-desc">Alice 가 잔고를 본다 — RPC 만으로 충분한가?</span>
+      </a></li>
+      <li><a href="02-without-vs-with.html">
+        <span class="path-step">S2</span>
+        <span class="path-title">사용 vs 미사용 비교</span>
+        <span class="path-desc">RPC 만 쓸 때의 5 가지 문제, 인덱서가 해결하는 방식</span>
+      </a></li>
+      <li><a href="03-custody-role.html">
+        <span class="path-step">S3</span>
+        <span class="path-title">수탁형 지갑에서의 역할</span>
+        <span class="path-desc">3 평면 분리 — 원시 수집 / 파생 / 원장·워크플로</span>
+      </a></li>
+      <li><a href="04-when-required.html">
+        <span class="path-step">S4</span>
+        <span class="path-title">인덱서는 필수인가</span>
+        <span class="path-desc">use case 별 Must / Should / Optional 분석</span>
+      </a></li>
+      <li><a href="05-vendor-landscape.html">
+        <span class="path-step">S5</span>
+        <span class="path-title">Vendor 풍경</span>
+        <span class="path-desc">Fireblocks / BitGo / NodeInfra / 자체구축 의 책임 분담</span>
+      </a></li>
+    </ul>
+  </div>
+
+  <div class="path-section">
+    <h3>Spec Path — Abstraction Library 설계</h3>
+    <ul class="path-list">
+      <li><a href="06-abstraction-design.html">
+        <span class="path-step">Spec 1</span>
+        <span class="path-title">추상화 설계 원리</span>
+        <span class="path-desc">왜 추상화가 필요한가 — vendor lock-in 회피 + 자체구축 path</span>
+      </a></li>
+      <li><a href="07-functions-spec.html">
+        <span class="path-step">Spec 2</span>
+        <span class="path-title">기능 spec</span>
+        <span class="path-desc">Must-have / Should-have / Nice-to-have 분류</span>
+      </a></li>
+      <li><a href="08-vendor-adapters.html">
+        <span class="path-step">Spec 3</span>
+        <span class="path-title">Vendor adapter 설계</span>
+        <span class="path-desc">Fireblocks / BitGo / NodeInfra / 자체구축 4 adapter</span>
+      </a></li>
+      <li><a href="09-implementation-guide.html">
+        <span class="path-step">Spec 4</span>
+        <span class="path-title">구현 가이드</span>
+        <span class="path-desc">TypeScript interface + retry + idempotency + reorg + 망분리</span>
+      </a></li>
+    </ul>
+  </div>
+
+  <div class="tier tier-advanced">
+    <span class="tier-label">심화 · 사용 시 주의</span>
+    <p>본 사이트는 <strong>학습 가이드 + 설계 spec</strong> 이지, vendor 공식 문서가 아닙니다. Fireblocks / BitGo / NodeInfra 의 구체 동작은 vendor 공식 docs 와 Solutions Engineer 검증을 최종 source of truth 로 사용하세요.</p>
+    <p>본 wiki 의 <a href="../fireblocks-custodial-wallet-db-design/index.html">Fireblocks 도입 수탁형 지갑 reference</a> 와 <a href="../custodial-wallet-db-design/index.html">수탁형 지갑 — DB 구조와 상태 흐름</a> 이 함께 활용되도록 설계됐습니다.</p>
+  </div>
+
+  <div class="source-footer">
+    <p><strong>자료 출처</strong> · 학습 path (S1-S5) = vendor-neutral 일반 원리 <span class="tier-badge tier-badge-fact">FACT</span> &nbsp; Spec path (Spec 1-4) = 본 wiki 의 3-way custody framework + adapter pattern <span class="tier-badge tier-badge-fact">FACT</span> &nbsp; Vendor 비교 영역 (S5, Spec 3) = vendor 공식 + 일부 hypothesis <span class="tier-badge tier-badge-hypothesis">MIXED</span></p>
+    <p><strong>업데이트</strong> 2026-06-01 · <strong>작성 모드</strong> 학습 narrative (bitcoin-study 풍 3-tier)</p>
+  </div>
+</main>
+
+</body>
+</html>
