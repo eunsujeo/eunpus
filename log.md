@@ -6727,3 +6727,40 @@ DCCP 는 vendors/fireblocks/blockchains.md 의 sub-domain + entities/fireblocks/
 ### 신규 entity 0 (30 stage 연속 0 streak 유지)
 
 Vendor-neutral indexer reference 는 docs/architecture/ 의 단일 페이지로 흡수.
+
+## Stage 42 (2026-06-01) — Vendor-Specific Indexer Hypothesis Mode C ingest (★ UNVERIFIED tier)
+
+- source: 2 LLM 생성 자료 (사용자 명시 확인)
+  - `sources/indexer/블록체인_인덱서_구현_리서치.md` (36 KB, 본문)
+  - `sources/indexer/엔터프라이즈_블록체인_인덱서_설계_구조.html` (30 KB, 시각화 짝)
+- 자료 성격: **★ UNVERIFIED hypothesis tier** — Fireblocks / BitGo / Coinbase Mesh 의 vendor-specific 구현 분석이지만 공식 source cross-verify 안 됨. 사용자 결정으로 "unverified vendor analysis" tier 로 분리 보존.
+
+### 신규 페이지
+
+1. **Layer 1 metadata**: 두 raw 파일에 disclaimer comment 추가 (LLM 생성 출처 명시 + tier 분류 + 사용 시 주의 + 짝 자료 cross-ref)
+2. **Layer 2 hypothesis page**: `docs/architecture/vendor-indexer-implementations-hypothesis.md` — Stage 41 reference 와 분리된 hypothesis tier 페이지. 모든 fact 에 "본 자료에 따르면" hedged 표현. 17 개 Q-VRF cross-verification 항목 명시.
+
+### 영향받은 페이지 (cross-ref 양방향)
+
+- `docs/architecture/blockchain-indexer-architecture-reference.md` §11.4 — Stage 42 hypothesis 페이지 link 추가 (tier 차이 명시)
+- `open-questions/fireblocks.md` Q-2026-05-18-B03 — Stage 42 hypothesis-tier additional context 추가 (UNVERIFIED 라벨)
+
+### 핵심 hypothesis (모두 unverified, fact 승격 조건부)
+
+- **Fireblocks**: 송신 1분 / 수신 10분 timeout, UTXO mempool 즉시 vs Account block-mined 후, ATC + `stuck_confirming` 지표, Solana 1,000 동시 pending (공식 600 과 mismatch), Stellar 10 wallet/TPS 라운드 로빈, BTC 30초 batching + CPFP, Chainalysis/Elliptic 실시간 API
+- **BitGo**: BigInt 라이브러리 (256bit → 6 field 분할), 단일 스레드 EVM + Parity tracing 아웃소싱, CREATE2 dynamic wallet + Gas Tanks 중앙 풀, TAP Universe 오프체인 영수증
+- **Coinbase Mesh**: BadgerDB 4 파라미터 튜닝 (Compression=None, NumMemtables=1 등), WaitTable 패턴 (BlockSeen vs AddBlock 분리, mutex 채널 wake), Mina Mesh 4 계층
+- **Modern Decoupled ETL**: cryo (Paradigm) + Reth ExEx, Kafka 3-partition (blocks/transactions/logs), Flink 디코딩 + 스키마 replay, Bloom filter 매칭
+
+### 신규 Open Q
+
+- **Q-2026-06-01-IDX04**: 17 Q-VRF 항목 중 우선 cross-verify priority
+- **Q-2026-06-01-IDX05**: Hypothesis 가 vendor 공식 검증 실패 시 보존 정책
+
+### invariant — Tier 분리 강제
+
+> LLM 생성 자료를 wiki 에 흡수할 때: (a) sources/ 에 raw 보존 + disclaimer comment, (b) 별도 hypothesis-tier 페이지 (절대 fact-tier 페이지에 직접 흡수 ✗), (c) 모든 fact 에 "본 자료에 따르면" hedged 표현, (d) cross-verification 필요 항목을 Q-VRF-NN 으로 enumerate, (e) Fireblocks 공식 fact 와 동일 tier 로 표시 금지. **Evidence Isolation 룰의 직접 적용**.
+
+### 신규 entity 0 (31 stage 연속 0 streak 유지)
+
+LLM 생성 hypothesis 는 docs/architecture/ 의 별도 hypothesis 페이지로 격리. 기존 fact-tier 페이지 오염 없음.

@@ -360,6 +360,8 @@ NEAR Indexer for Explorer: 공개 SQL 스키마 진화 가능, release note 추�
 
 → Q-B03 의 본질은 "Fireblocks 가 4 pattern 중 어느 조합인가" — 본 reference 로 일반화된 분류는 가능, 구체 구현은 여전히 비공개.
 
+**Stage 42 hypothesis-tier 추가 자료**: [[docs/architecture/vendor-indexer-implementations-hypothesis]] 에 LLM 생성 자료 기반의 vendor-specific 추정 (Fireblocks ATC / 1분-10분 timeout / BitGo BigInt / Coinbase Mesh BadgerDB / Modern Decoupled ETL 등) 보존. **★ 본 reference 와 tier 가 다름** — 본 페이지는 28 공식 출처 fact, hypothesis 페이지는 unverified. 17 개 Q-VRF cross-verification 항목 통과 시점에 fact 승격 가능.
+
 ---
 
 ## 12. Open Questions
