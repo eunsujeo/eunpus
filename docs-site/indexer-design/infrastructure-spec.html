@@ -302,35 +302,30 @@ flowchart TB
 <h4>11.4.1 논리 구성</h4>
 
 <div class="diagram"><pre class="mermaid">
-flowchart TB
+flowchart LR
     subgraph SRC[Source layer]
-      AN[Archive Node<br/>Ethereum]
-      AN2[Archive Node<br/>Polygon]
-      AN3[Solana Validator<br/>+ Geyser]
-      FH[Firehose<br/>fallback]
+      direction TB
+      AN[Archive Node<br/>Ethereum] ~~~ AN2[Archive Node<br/>Polygon] ~~~ AN3[Solana Validator<br/>+ Geyser] ~~~ FH[Firehose<br/>fallback]
     end
 
     subgraph ING[Ingestion layer]
-      KAFKA[Kafka cluster<br/>multi-AZ]
-      INGEST[Ingest workers<br/>per-chain]
+      direction TB
+      KAFKA[Kafka cluster<br/>multi-AZ] ~~~ INGEST[Ingest workers<br/>per-chain]
     end
 
     subgraph PROC[Processing layer]
-      WORKERS[Projection workers<br/>auto-scale]
-      FLINK[Flink<br/>complex transform]
+      direction TB
+      WORKERS[Projection workers<br/>auto-scale] ~~~ FLINK[Flink<br/>complex transform]
     end
 
     subgraph STORE[Storage layer]
-      PG[(Postgres<br/>sharded × 4)]
-      CH[(ClickHouse<br/>analytics)]
-      ES[(Elasticsearch<br/>search)]
-      S3[(S3<br/>cold + backup)]
+      direction TB
+      PG[(Postgres<br/>sharded × 4)] ~~~ CH[(ClickHouse<br/>analytics)] ~~~ ES[(Elasticsearch<br/>search)] ~~~ S3[(S3<br/>cold + backup)]
     end
 
     subgraph SERVE[Serving layer]
-      REST[REST API]
-      GQL[GraphQL]
-      WH[Webhook emitter]
+      direction TB
+      REST[REST API] ~~~ GQL[GraphQL] ~~~ WH[Webhook emitter]
     end
 
     SRC --> ING --> PROC --> STORE --> SERVE
