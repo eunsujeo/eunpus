@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>5. 데이터 모델 — 블록체인 인덱서 설계 가이드</title>
+<meta content="공통 entity (Block / Tx / Log / StateChange / Checkpoint) + 도메인 projection schema." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Foundation</h3><ul>
+<li><a href="what-is-indexer.html">1. 인덱서란 무엇인가</a></li>
+<li><a href="requirements.html">2. 요구사항</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Implementation</h3><ul>
+<li><a href="implementation-patterns.html">3. 4 구현 패턴</a></li>
+<li><a href="reference-architecture.html">4. 참조 아키텍처</a></li>
+<li><a class="active" href="data-model.html">5. 데이터 모델</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Operations</h3><ul>
+<li><a href="reorg-finality.html">6. Reorg · Finality</a></li>
+<li><a href="performance-scalability.html">7. 성능 · 확장성</a></li>
+<li><a href="monitoring-ops.html">8. 운영 · 모니터링</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Industry Cases</h3><ul>
+<li><a href="exchange-cases.html">9. 자체 인덱서 운영</a></li>
+<li><a href="saas-cases.html">10. 인덱서 / 데이터 인프라 vendor</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Infrastructure</h3><ul>
+<li><a href="infrastructure-spec.html">11. 인프라 · 스펙</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="data-model">
+<h2>5. 데이터 모델</h2>
+<span class="section-subtitle">공통 entity + 도메인 projection + idempotency key 전략</span>
+
+<h3>5.1 두 계층 분리</h3>
+
+<p>인덱서 데이터 모델은 두 계층으로 명확히 분리한다.</p>
+
+<ul>
+  <li><strong>Common layer (공통 entity)</strong> — 모든 체인 / 모든 도메인에 공통. <code>Block</code>, <code>Transaction</code>, <code>Log</code>, <code>StateChange</code>, <code>Checkpoint</code>.</li>
+  <li><strong>Domain layer (도메인 projection)</strong> — 비즈니스 별. <code>TokenTransfer</code>, <code>NFTOwnership</code>, <code>AccountBalance</code>, <code>PoolSwap</code>, <code>OrderBookFill</code> 등.</li>
+</ul>
+
+<p>이 분리의 핵심 — 공통 layer 는 immutable source of truth (한번 적재되면 변경 ✗), 도메인 layer 는 disposable read model (언제든 raw 로부터 재생성 가능). 새 도메인 query 가 필요할 때 raw 는 그대로 두고 새 projection 만 추가한다.</p>
+
+<h3>5.2 공통 5 entity</h3>
+
+<p>EVM · Substrate · NEAR · Solana 모두에 공통 적용. PostgreSQL schema 예시.</p>
+
+<h4>Block</h4>
+<pre><code>CREATE TABLE blocks (
+  chain_id      varchar(32)  NOT NULL,
+  number        bigint       NOT NULL,
+  hash          bytea        NOT NULL,
+  parent_hash   bytea        NOT NULL,
+  timestamp     timestamptz  NOT NULL,
+  status        varchar(16)  NOT NULL,  -- 'processed' | 'confirmed' | 'finalized'
+  ingested_at   timestamptz  NOT NULL DEFAULT now(),
+  PRIMARY KEY (chain_id, number, hash)   -- reorg 시 같은 number 에 여러 hash 가능
+);
+CREATE INDEX ON blocks (chain_id, hash);
+CREATE INDEX ON blocks (chain_id, timestamp);</code></pre>
+
+<p>주의 — primary key 가 (chain_id, number, hash) 인 이유는 reorg 때문. 같은 block number 에 다른 hash 의 블록이 다 기록될 수 있다 (orphan 포함).</p>
+
+<h4>Transaction</h4>
+<pre><code>CREATE TABLE transactions (
+  chain_id    varchar(32) NOT NULL,
+  block_hash  bytea       NOT NULL,
+  block_num   bigint      NOT NULL,
+  tx_index    integer     NOT NULL,
+  hash        bytea       NOT NULL,
+  from_addr   bytea,
+  to_addr     bytea,
+  value       numeric(78, 0),  -- 256-bit uint
+  nonce       bigint,
+  gas_used    bigint,
+  fee_paid    numeric(78, 0),
+  status      smallint,        -- 0=fail, 1=success
+  PRIMARY KEY (chain_id, block_hash, hash)
+);
+CREATE INDEX ON transactions (chain_id, from_addr);
+CREATE INDEX ON transactions (chain_id, to_addr);
+CREATE INDEX ON transactions (chain_id, hash);</code></pre>
+
+<p><code>numeric(78, 0)</code> — 256-bit unsigned integer 의 정확 표현. EVM 의 uint256 max ≈ 1.16e77.</p>
+
+<h4>Event (Log)</h4>
+<pre><code>CREATE TABLE events (
+  chain_id    varchar(32) NOT NULL,
+  block_hash  bytea       NOT NULL,
+  block_num   bigint      NOT NULL,
+  tx_hash     bytea       NOT NULL,
+  log_index   integer     NOT NULL,
+  contract    bytea       NOT NULL,
+  topic0      bytea,                -- event signature hash
+  topic1      bytea,
+  topic2      bytea,
+  topic3      bytea,
+  data        bytea,
+  event_name  varchar(64),         -- decoded
+  args_json   jsonb,               -- decoded
+  PRIMARY KEY (chain_id, block_hash, tx_hash, log_index)
+);
+CREATE INDEX ON events (chain_id, contract, topic0);
+CREATE INDEX ON events (chain_id, event_name);
+CREATE INDEX ON events USING gin (args_json);</code></pre>
+
+<p><code>topic0</code> = event signature 의 keccak256 hash. 예 — ERC-20 의 Transfer 는 <code>0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef</code>.</p>
+
+<h4>StateChange (선택)</h4>
+<pre><code>CREATE TABLE state_changes (
+  chain_id    varchar(32) NOT NULL,
+  block_hash  bytea       NOT NULL,
+  block_num   bigint      NOT NULL,
+  account     bytea       NOT NULL,
+  key         text        NOT NULL,
+  old_value   jsonb,
+  new_value   jsonb,
+  PRIMARY KEY (chain_id, block_hash, account, key)
+);
+CREATE INDEX ON state_changes (chain_id, account);</code></pre>
+
+<p>모든 체인이 state change 를 emit 하진 않음. Ethereum 의 경우 archive node + trace API 필요. Solana 는 Geyser plugin 의 account update.</p>
+
+<h4>Checkpoint (cursor)</h4>
+<pre><code>CREATE TABLE checkpoints (
+  worker_id              varchar(64)  NOT NULL,
+  chain_id               varchar(32)  NOT NULL,
+  last_processed_number  bigint       NOT NULL,
+  last_processed_hash    bytea        NOT NULL,
+  last_finalized_number  bigint       NOT NULL,
+  cursor_token           text,
+  updated_at             timestamptz  NOT NULL DEFAULT now(),
+  PRIMARY KEY (worker_id, chain_id)
+);</code></pre>
+
+<p>각 worker (projection / ingestion) 가 own checkpoint. crash 후 재시작 시 여기서 resume.</p>
+
+<h3>5.3 도메인 projection 예시</h3>
+
+<h4>Token Transfer projection</h4>
+<pre><code>CREATE TABLE token_transfers (
+  chain_id   varchar(32)    NOT NULL,
+  block_num  bigint         NOT NULL,
+  tx_hash    bytea          NOT NULL,
+  log_index  integer        NOT NULL,
+  contract   bytea          NOT NULL,
+  from_addr  bytea          NOT NULL,
+  to_addr    bytea          NOT NULL,
+  amount     numeric(78, 0) NOT NULL,
+  ts         timestamptz    NOT NULL,
+  reverted   boolean        NOT NULL DEFAULT false,  -- reorg revert flag
+  PRIMARY KEY (chain_id, tx_hash, log_index)
+);
+CREATE INDEX ON token_transfers (chain_id, contract, from_addr, block_num DESC);
+CREATE INDEX ON token_transfers (chain_id, contract, to_addr, block_num DESC);
+CREATE INDEX ON token_transfers (chain_id, contract, ts DESC);</code></pre>
+
+<h4>Materialized balance</h4>
+<pre><code>CREATE TABLE balances (
+  chain_id   varchar(32)    NOT NULL,
+  account    bytea          NOT NULL,
+  asset      bytea          NOT NULL,  -- contract address (NULL for native)
+  balance    numeric(78, 0) NOT NULL,
+  as_of_block bigint        NOT NULL,
+  as_of_ts   timestamptz    NOT NULL,
+  PRIMARY KEY (chain_id, account, asset)
+);
+CREATE INDEX ON balances (chain_id, account);
+CREATE INDEX ON balances (chain_id, asset, balance DESC);</code></pre>
+
+<h4>NFT ownership</h4>
+<pre><code>CREATE TABLE nft_ownership (
+  chain_id   varchar(32) NOT NULL,
+  contract   bytea       NOT NULL,
+  token_id   numeric(78, 0) NOT NULL,
+  owner      bytea       NOT NULL,
+  as_of_block bigint     NOT NULL,
+  PRIMARY KEY (chain_id, contract, token_id)
+);
+CREATE INDEX ON nft_ownership (chain_id, owner);</code></pre>
+
+<h3>5.4 Idempotency key 전략</h3>
+
+<p>인덱서의 모든 event 는 unique key 를 가져야 한다. 같은 event 가 두 번 전달돼도 (webhook retry, reorg replay) 결과가 같아야 함.</p>
+
+<h4>EVM 체인 (Ethereum, Polygon 등)</h4>
+<p><code>(chain_id, tx_hash, log_index)</code></p>
+<p>tx_hash 만으로는 부족 — 같은 tx 안에 여러 log 가 있을 수 있음. log_index 를 포함해야 unique.</p>
+
+<h4>UTXO 체인 (Bitcoin)</h4>
+<p><code>(chain_id, tx_hash, vout)</code></p>
+<p>각 output 별로 unique. input 의 경우 <code>(tx_hash, vin)</code>.</p>
+
+<h4>Solana</h4>
+<p><code>(chain_id, signature, instruction_index, inner_instruction_index)</code></p>
+<p>signature 가 tx 식별. instruction_index 는 같은 tx 의 instruction 순서. CPI (Cross-Program Invocation) 는 inner_instruction_index 추가.</p>
+
+<h4>Internal transaction (EVM)</h4>
+<p><code>(chain_id, tx_hash, trace_path)</code></p>
+<p>trace_path 는 call tree 의 경로 (예: "0/2/1"). trace API 응답에서 추출.</p>
+
+<h3>5.5 reorg-safe upsert 패턴</h3>
+
+<p>같은 idempotency key 가 다시 들어왔을 때 두 케이스:</p>
+<ul>
+  <li>(a) 같은 block_hash — 단순 retry. UPSERT 로 처리 가능.</li>
+  <li>(b) 다른 block_hash — reorg 발생. 기존 row 를 <code>reverted=true</code> 로 marking 하고 새 block_hash 의 row 를 추가.</li>
+</ul>
+
+<pre><code>-- (a) 단순 retry
+INSERT INTO token_transfers (chain_id, tx_hash, log_index, contract, from_addr, to_addr, amount, ts)
+VALUES (...)
+ON CONFLICT (chain_id, tx_hash, log_index) DO UPDATE
+  SET amount = EXCLUDED.amount;  -- noop if same data
+
+-- (b) reorg detected
+BEGIN;
+UPDATE token_transfers SET reverted = true
+  WHERE chain_id = $1 AND tx_hash = $2 AND log_index = $3
+    AND block_num &lt; $newFinalizedBlock;
+INSERT INTO token_transfers (...) VALUES (...);
+COMMIT;</code></pre>
+
+<p>자세한 reorg 처리는 <a href="reorg-finality.html">6. Reorg · Finality 페이지</a>.</p>
+
+<h3>5.6 GraphQL schema (The Graph 풍)</h3>
+
+<p>The Graph 의 subgraph 스타일로 같은 모델을 표현하면:</p>
+
+<pre><code>type Block @entity {
+  id: ID!                  # &lt;chainId&gt;-&lt;number&gt;-&lt;hash&gt;
+  chainId: String! @index
+  number: BigInt! @index
+  hash: Bytes! @index(unique: true)
+  parentHash: Bytes!
+  timestamp: BigInt! @index
+  status: String! @index
+}
+
+type Transaction @entity {
+  id: ID!                  # &lt;chainId&gt;-&lt;hash&gt;
+  block: Block!
+  hash: Bytes! @index(unique: true)
+  from: Bytes @index
+  to: Bytes @index
+  value: BigInt
+  gasUsed: BigInt
+  feePaid: BigInt
+  success: Boolean!
+}
+
+type Event @entity {
+  id: ID!                  # &lt;chainId&gt;-&lt;txHash&gt;-&lt;logIndex&gt;
+  tx: Transaction!
+  block: Block!
+  contract: Bytes @index
+  eventName: String @index
+  args: JSON
+}
+
+type TokenTransfer @entity {
+  id: ID!
+  block: Block!
+  contract: Bytes! @index
+  from: Bytes! @index
+  to: Bytes! @index
+  amount: BigInt!
+}
+
+type Balance @entity {
+  id: ID!                  # &lt;chainId&gt;-&lt;account&gt;-&lt;asset&gt;
+  account: Bytes! @index
+  asset: Bytes! @index
+  balance: BigInt!
+  asOfBlock: BigInt!
+}
+
+type Checkpoint @entity {
+  id: ID!                  # workerId
+  lastProcessedNumber: BigInt!
+  lastFinalizedNumber: BigInt!
+  cursor: String
+}</code></pre>
+
+<h3>5.7 파티셔닝 전략 (PostgreSQL)</h3>
+
+<p>large 인덱서에서는 핵심 테이블을 파티셔닝해야 한다.</p>
+
+<h4>시간 기반 (월별)</h4>
+<pre><code>CREATE TABLE events (...)
+  PARTITION BY RANGE (ts);
+
+CREATE TABLE events_2026_06 PARTITION OF events
+  FOR VALUES FROM ('2026-06-01') TO ('2026-07-01');</code></pre>
+
+<p>장점 — 오래된 파티션 DROP 으로 retention 적용 쉬움. hot partition (최근) 만 메모리에.</p>
+
+<h4>블록 번호 기반</h4>
+<pre><code>CREATE TABLE events (...)
+  PARTITION BY RANGE (block_num);
+
+CREATE TABLE events_block_19m PARTITION OF events
+  FOR VALUES FROM (19000000) TO (20000000);</code></pre>
+
+<p>장점 — 블록 기준 query 가 자연스럽게 partition pruning.</p>
+
+<h4>체인 기반 (multi-chain 인덱서)</h4>
+<pre><code>CREATE TABLE events (...)
+  PARTITION BY LIST (chain_id);
+
+CREATE TABLE events_ethereum PARTITION OF events FOR VALUES IN ('ethereum');
+CREATE TABLE events_polygon  PARTITION OF events FOR VALUES IN ('polygon');</code></pre>
+
+<p>여러 패턴을 조합 (예: chain → block range 의 2-level partitioning) 도 가능.</p>
+
+<h3>5.8 다음 페이지</h3>
+
+<p>데이터 모델을 정의했으니, 다음은 — <a href="reorg-finality.html"><strong>6. Reorg · Finality</strong></a> 처리. 인덱서의 가장 까다로운 부분이고, 시나리오 + 애니메이션으로 설명한다.</p>
+
+</section>
+</main>
+</div>
+
+</body>
+</html>

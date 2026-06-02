@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>1. 인덱서란 무엇인가 — 블록체인 인덱서 설계 가이드</title>
+<meta content="블록체인 인덱서의 정의, 기능, 역할 — 백엔드 엔지니어를 위한 reference." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Foundation</h3><ul>
+<li><a class="active" href="what-is-indexer.html">1. 인덱서란 무엇인가</a></li>
+<li><a href="requirements.html">2. 요구사항</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Implementation</h3><ul>
+<li><a href="implementation-patterns.html">3. 4 구현 패턴</a></li>
+<li><a href="reference-architecture.html">4. 참조 아키텍처</a></li>
+<li><a href="data-model.html">5. 데이터 모델</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Operations</h3><ul>
+<li><a href="reorg-finality.html">6. Reorg · Finality</a></li>
+<li><a href="performance-scalability.html">7. 성능 · 확장성</a></li>
+<li><a href="monitoring-ops.html">8. 운영 · 모니터링</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Industry Cases</h3><ul>
+<li><a href="exchange-cases.html">9. 자체 인덱서 운영</a></li>
+<li><a href="saas-cases.html">10. 인덱서 / 데이터 인프라 vendor</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Infrastructure</h3><ul>
+<li><a href="infrastructure-spec.html">11. 인프라 · 스펙</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="what-is">
+<h2>1. 인덱서란 무엇인가</h2>
+<span class="section-subtitle">정의, 데이터 변환의 본질, 인덱서 vs 노드 vs RPC 의 차이</span>
+
+<h3>1.1 정의</h3>
+
+<p>블록체인 인덱서는 <strong>원장에 순차적으로 기록되는 블록·트랜잭션·이벤트·상태 변화를 애플리케이션이 읽기 쉬운 형태로 추출하고, 스키마화하여, 데이터베이스/검색 인덱스에 적재한 뒤, GraphQL·SQL·REST·gRPC 같은 질의 인터페이스로 제공하는 데이터 인프라 계층</strong>이다.</p>
+
+<p>Polkadot 문서는 이를 "블록체인 데이터용 검색 엔진" 으로 비유한다. The Graph, SubQuery, Blockscout, NEAR, Solana 생태계의 공식 문서도 모두 같은 방향의 ETL + 질의 가속 레이어로 설명한다.</p>
+
+<h3>1.2 인덱서의 4 가지 본질적 기능</h3>
+
+<p>모든 인덱서는 다음 4 가지 기능을 갖는다.</p>
+
+<h4>(1) 블록 · 트랜잭션 색인 (Indexing)</h4>
+<p>블록 hash · 트랜잭션 hash · 주소 · 자산 · 상태 별로 빠르게 조회 가능하게 구조화. RPC 의 "tx hash → tx body" 외에 "주소 → 받은 tx 목록" 같은 reverse lookup 도 제공.</p>
+
+<h4>(2) 이벤트 · 로그 색인 (Event log indexing)</h4>
+<p>Smart contract 가 emit 하는 event 를 <code>address · topics · logIndex</code> 단위로 구조화. ERC-20 의 <code>Transfer(from, to, value)</code> 가 대표적.</p>
+
+<h4>(3) 상태 스냅샷 · 히스토리 (State snapshot)</h4>
+<p>특정 블록 높이의 잔고 / contract state 를 재현하거나 즉시 조회. 과거 시점 잔고 조회는 archive node 가 사실상 필요.</p>
+
+<h4>(4) 알림 · 스트리밍 (Notification)</h4>
+<p>새 블록 / 로그 / 입금 / 상태 변경을 push 방식으로 전달. Webhook, WebSocket, Server-Sent Events 등.</p>
+
+<h3>1.3 인덱서 · 노드 · RPC 의 차이</h3>
+
+<p>혼동되기 쉬운 3 가지 컴포넌트를 정확히 구분한다.</p>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th style="width:18%">컴포넌트</th><th>역할</th><th>제공 형태</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>블록체인 노드</strong></td>
+  <td>P2P 네트워크에 참여, 블록 검증, state 보관</td>
+  <td>설치형 software (geth, reth, bitcoin-core)</td>
+</tr>
+<tr>
+  <td><strong>RPC endpoint</strong></td>
+  <td>노드의 API surface — block/tx/state 조회, tx 제출</td>
+  <td>HTTP + WebSocket endpoint (포트 8545 등)</td>
+</tr>
+<tr>
+  <td><strong>인덱서</strong></td>
+  <td>RPC 또는 노드 내부에서 데이터 read → 변환 → 자체 DB 적재 → query API 제공</td>
+  <td>커스텀 service + DB + (선택) API</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<h4>예시</h4>
+<ul>
+  <li>"Ethereum mainnet 의 최신 블록 번호" → 노드 RPC (<code>eth_blockNumber</code>) 한 번이면 됨. <strong>인덱서 불필요</strong>.</li>
+  <li>"address 0xABC 가 지난 30 일간 받은 USDC 입금 목록" → 노드 RPC 만으로는 30일치 블록 스캔 (수 분). <strong>인덱서 필요</strong>.</li>
+  <li>"USDC 컨트랙트의 모든 Transfer event 를 받아 자체 분석 DB 에 적재" → <strong>인덱서 필요</strong>.</li>
+</ul>
+
+<h3>1.4 인덱서가 출력하는 데이터의 3 가지 형태</h3>
+
+<h4>(a) 정형 row (relational)</h4>
+<p>Postgres / MySQL 의 row. 가장 일반적. SQL 로 query.</p>
+<pre><code>blocks(number, hash, parent_hash, timestamp, status)
+transactions(hash, block_number, from, to, value, gas_used)
+events(tx_hash, log_index, contract, topic0, payload)</code></pre>
+
+<h4>(b) 문서 (document)</h4>
+<p>JSON 형태로 ElasticSearch / OpenSearch / MongoDB 에 적재. 전문 검색 + 집계 강점.</p>
+<pre><code>{
+  "tx_hash": "0xabc...",
+  "block_number": 19345678,
+  "transfers": [
+    { "from": "0x...", "to": "0x1a2b...", "asset": "USDC", "amount": "100" }
+  ],
+  "tags": ["large", "exchange-flow"]
+}</code></pre>
+
+<h4>(c) 시계열 (time-series)</h4>
+<p>InfluxDB / TimescaleDB. 가격 추이, TPS, 수수료 통계 등.</p>
+
+<h3>1.5 인덱서가 NOT 하는 것</h3>
+
+<p>흔히 오해되는 영역. 인덱서는 다음을 하지 않는다.</p>
+
+<ul>
+  <li><strong>키 관리 · 서명</strong> — 별도 wallet/HSM/MPC 영역.</li>
+  <li><strong>트랜잭션 broadcast</strong> — 노드 RPC 또는 별도 broadcaster 의 역할.</li>
+  <li><strong>합의 (consensus)</strong> — 노드의 역할. 인덱서는 chain truth 를 <em>관찰</em>만 함.</li>
+  <li><strong>가격 결정</strong> — 외부 oracle / market data 영역.</li>
+  <li><strong>거래 매칭 · 정산</strong> — 거래소 매칭 엔진의 영역.</li>
+</ul>
+
+<p>인덱서는 <strong>읽기 전용 (read-only) 데이터 변환 레이어</strong>. write 는 블록체인이 한다.</p>
+
+<h3>1.6 인덱서의 위치 — 시스템 전체에서</h3>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    subgraph EXT[외부]
+      CHAIN[블록체인 네트워크<br/>P2P]
+    end
+
+    subgraph INFRA[자체 인프라]
+      NODE[블록체인 노드<br/>geth · reth · bitcoin-core]
+      IDX[인덱서<br/>ingest · parse · store]
+      DB[(read model<br/>Postgres · Redis · ES)]
+      API[Query API<br/>REST · GraphQL · gRPC]
+      WALLET[Wallet / 서명 서비스<br/>HSM · MPC]
+      BROADCAST[Broadcaster<br/>tx 제출]
+    end
+
+    subgraph APP[애플리케이션]
+      UI[UI / Mobile]
+      BACK[비즈니스 백엔드]
+    end
+
+    CHAIN <--> NODE
+    NODE --> IDX --> DB --> API --> BACK --> UI
+
+    UI --> BACK --> WALLET --> BROADCAST --> NODE
+
+    classDef chain fill:#fff7ed,stroke:#f5d5a8
+    classDef node fill:#f5f7fb,stroke:#d1dbf0
+    classDef store fill:#f0faf2,stroke:#c8e6cf
+    classDef app fill:#fef2f2,stroke:#f3c0c0
+
+    class CHAIN chain
+    class NODE,IDX,API,WALLET,BROADCAST node
+    class DB store
+    class UI,BACK app
+</pre></div>
+<p class="diagram-caption">Figure 1-1. 인덱서는 "노드 → DB → API" 의 read path 에 위치. write path (UI → Wallet → Broadcaster → Node) 는 별개.</p>
+
+<p>핵심 — <strong>read path 와 write path 가 분리</strong>. 인덱서가 망가져도 write (송금) 는 가능. write 가 막혀도 read (조회) 는 가능. 이 분리가 시스템 가용성의 기초.</p>
+
+<h3>1.7 다음 페이지</h3>
+
+<p>지금까지가 "인덱서가 무엇인지" 의 정의. 다음 <a href="requirements.html"><strong>2. 요구사항</strong></a> 에서는 — 인덱서를 만들거나 도입할 때 어떤 요구사항을 명시해야 하는지 (성능 · 정합성 · 보안 · 운영 등 8 가지 axis) 를 본다.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

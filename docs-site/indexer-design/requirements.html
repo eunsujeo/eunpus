@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>2. 요구사항 — 블록체인 인덱서 설계 가이드</title>
+<meta content="인덱서의 8 가지 비기능 요구사항 — 정합성, 지연, 처리량, 확장성, 보안, 운영성, 마이그레이션, 비용." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Foundation</h3><ul>
+<li><a href="what-is-indexer.html">1. 인덱서란 무엇인가</a></li>
+<li><a class="active" href="requirements.html">2. 요구사항</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Implementation</h3><ul>
+<li><a href="implementation-patterns.html">3. 4 구현 패턴</a></li>
+<li><a href="reference-architecture.html">4. 참조 아키텍처</a></li>
+<li><a href="data-model.html">5. 데이터 모델</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Operations</h3><ul>
+<li><a href="reorg-finality.html">6. Reorg · Finality</a></li>
+<li><a href="performance-scalability.html">7. 성능 · 확장성</a></li>
+<li><a href="monitoring-ops.html">8. 운영 · 모니터링</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Industry Cases</h3><ul>
+<li><a href="exchange-cases.html">9. 자체 인덱서 운영</a></li>
+<li><a href="saas-cases.html">10. 인덱서 / 데이터 인프라 vendor</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Infrastructure</h3><ul>
+<li><a href="infrastructure-spec.html">11. 인프라 · 스펙</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="requirements">
+<h2>2. 요구사항</h2>
+<span class="section-subtitle">왜 필요한가 + 8 가지 비기능 요구사항 + 정의해야 할 SLO</span>
+
+<h3>2.1 왜 인덱서가 필요한가 — 4 가지 본질적 이유</h3>
+
+<p>인덱서는 "있으면 좋은 것" 이 아니라 <strong>일정 규모 이상의 블록체인 애플리케이션에서는 필연적으로 등장하는 계층</strong>이다. 그 이유를 4 가지로 정리한다.</p>
+
+<h4>(1) 성능 — 블록체인 데이터는 본질적으로 순차적</h4>
+<p>블록체인 데이터는 시간 순서대로 append-only 로 쌓인다. 다중 블록을 가로지르는 query, 과거 state, 집계 query 를 직접 RPC 로 수행하면 매우 느리다.</p>
+
+<p>구체 예시:</p>
+<ul>
+  <li><strong>"주소 X 의 30 일 입금 내역"</strong> — Ethereum 의 12 초/블록 × 30 일 = 약 <strong>216,000 블록</strong> 스캔. <code>eth_getLogs</code> 의 응답 크기 제한 (Alchemy 10,000 logs / Infura 10,000) 때문에 chunked 호출 필요. 총 응답 시간 수십 초 ~ 분 단위.</li>
+  <li><strong>"USDC contract 의 최근 100만 건 Transfer"</strong> — 블록당 평균 100 건 가정 시 10,000 블록 = 약 33 시간 분량 데이터. 단일 RPC 응답 불가.</li>
+  <li><strong>"특정 컨트랙트의 모든 internal transaction"</strong> — trace API + archive node 필요.</li>
+</ul>
+
+<h4>(2) UX — "지금 막" + "역사 전체" 동시 요구</h4>
+<p>지갑/거래소 UI 는 두 가지를 동시에 제공해야 한다.</p>
+<ul>
+  <li><strong>실시간</strong> — 방금 들어온 입금 (1-2 초 이내 알림)</li>
+  <li><strong>역사 집계</strong> — 지난 1 년 거래량, 자산별 holding 추이</li>
+</ul>
+<p>RPC 만으로는 두 요구를 모두 동시에 만족시키기 어렵다. 인덱서가 한 곳에서 처리.</p>
+
+<h4>(3) 데이터 접근성 — 원시 RPC ≠ 도메인 schema</h4>
+<p>RPC 가 답하는 것은 "트랜잭션 raw bytes" 단위. 애플리케이션이 원하는 것은 "특정 사용자의 USDC 입금 내역" 같은 도메인 query.</p>
+<p>변환 + 인덱싱 없이는 도메인 query 불가능. 예 — USDC contract 의 Transfer event 의 <code>topics[2]</code> (recipient address) 를 자체 user/wallet DB 와 매칭, USDC 의 6 decimals 적용 (raw 100,000,000 → 100.00), tx timestamp 를 KR 시간대 변환 등.</p>
+
+<h4>(4) 분산성 — 외부 RPC 의존도 vs 자체 운영 비용</h4>
+<p>인덱서를 잘 설계하면 외부 hosted RPC (Alchemy 등) 의존도가 낮아진다. 잘못 설계하면 vendor 한 곳에 모든 데이터 권력이 집중. <strong>인덱서 전략 = 위험 모델 + 신뢰 모델의 일부</strong>, 단순 성능 문제가 아니다.</p>
+
+<h3>2.2 8 가지 비기능 요구사항 (NFR)</h3>
+
+<p>인덱서를 만들거나 도입할 때 정의해야 할 8 가지 axis. 모든 항목에 <strong>측정 가능한 SLO</strong> 가 있어야 한다.</p>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th style="width:14%">요구사항</th><th>의미</th><th>측정 지표 (SLO 후보)</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>일관성 · 정합성</strong></td>
+  <td>reorg, 미확정 블록, 중복 수신에도 결과가 틀리지 않아야 함</td>
+  <td>rollback 성공률, data drift 건수, double-credit 발생률</td>
+</tr>
+<tr>
+  <td><strong>지연시간</strong></td>
+  <td>UX 에 보이는 최신성. 새 블록 → 인덱서 적재 → 애플리케이션 인지</td>
+  <td>head lag p50/p95/p99, ingest latency</td>
+</tr>
+<tr>
+  <td><strong>처리량</strong></td>
+  <td>고 TPS 체인 + 대규모 backfill 대응</td>
+  <td>blocks/sec, tx/sec, events/sec, backfill 완료 시간</td>
+</tr>
+<tr>
+  <td><strong>확장성</strong></td>
+  <td>체인 수 · projection 수 · query 량 증가 대응</td>
+  <td>shard 별 QPS, DB connection wait, autoscale 반응 시간</td>
+</tr>
+<tr>
+  <td><strong>보안</strong></td>
+  <td>데이터 위조 · DoS · 오염 방지</td>
+  <td>invalid proof 비율, rate-limit hit, sanctioned address 매칭 false positive</td>
+</tr>
+<tr>
+  <td><strong>운영성</strong></td>
+  <td>백업, 재동기화, 장애 복구</td>
+  <td>RPO (목표 복구 시점), RTO (목표 복구 시간), replay 시간</td>
+</tr>
+<tr>
+  <td><strong>마이그레이션</strong></td>
+  <td>schema 변경 시 서비스 중단 최소화</td>
+  <td>migration 시간, rollback 가능 여부, dual-write 기간</td>
+</tr>
+<tr>
+  <td><strong>비용</strong></td>
+  <td>인프라 + 운영 인력 비용</td>
+  <td>월별 cloud cost, vendor 라이센스, FTE 수</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<h3>2.3 각 요구사항의 디테일</h3>
+
+<h4>(1) 일관성 · 정합성</h4>
+
+<p>가장 어려운 요구사항. 다음 3 가지 시나리오에서 결과가 틀리지 않아야 한다.</p>
+
+<ul>
+  <li><strong>Reorg</strong> — chain head 가 다른 fork 로 교체. confirmed 라고 본 tx 가 사라짐. 자세한 처리는 <a href="reorg-finality.html">6. Reorg · Finality 페이지</a>.</li>
+  <li><strong>미확정 (pending) 블록</strong> — Solana 의 <code>processed</code> commitment 처럼 아직 final 이 아닌 데이터.</li>
+  <li><strong>중복 수신</strong> — 같은 webhook 이 재시도로 두 번 들어옴. Adapter / consumer 에서 idempotency 처리 필요.</li>
+</ul>
+
+<p>권장 전술: <strong>append-only raw log + idempotent upsert + cursor 저장 + rollback/replay</strong>. raw log 는 절대 삭제하지 않고, projection 만 disposable 로 다룬다.</p>
+
+<h4>(2) 지연시간</h4>
+
+<p>"새 블록이 인덱서에 반영되기까지" 의 시간. 체인마다 다른 자연적 lower bound 가 있다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>체인</th><th>블록 주기</th><th>이상적 인덱서 lag</th></tr></thead>
+<tbody>
+<tr><td>Bitcoin</td><td>~ 10 분</td><td>&lt; 30 초</td></tr>
+<tr><td>Ethereum</td><td>~ 12 초</td><td>&lt; 5 초</td></tr>
+<tr><td>Polygon</td><td>~ 2 초</td><td>&lt; 1 초</td></tr>
+<tr><td>Solana</td><td>~ 400-600 ms (slot)</td><td>1-2 slot</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>지연을 줄이는 핵심 — pull 대신 push (WebSocket / Geyser / Firehose), commit 직후 메모리 cache 우선 반영.</p>
+
+<h4>(3) 처리량</h4>
+
+<p>두 가지 worst case 를 견뎌야 한다.</p>
+
+<ul>
+  <li><strong>실시간 burst</strong> — Solana mainnet 의 peak TPS ~ 수천. Ethereum 도 NFT mint 시 5,000+ tx/block 가능.</li>
+  <li><strong>Backfill</strong> — 신규 체인 추가 시 genesis 부터 다시 sync. Ethereum mainnet 전체 = 약 2 TB (path-based archive). 신규 인덱서 startup 시 수일 ~ 수주.</li>
+</ul>
+
+<p>권장 — filter / dictionary 로 처리 블록 수 감소, parallel worker, Kafka partitioning, bulk write.</p>
+
+<h4>(4) 확장성</h4>
+
+<p>"체인 수 / projection 수 / query 량" 의 증가에 대응. 핵심 패턴 — <strong>read/write 분리</strong>. The Graph 의 query node ↔ indexing node 분리 권장이 그 예.</p>
+
+<h4>(5) 보안</h4>
+
+<p>인덱서의 주요 공격면:</p>
+<ul>
+  <li>데이터 위조 / 오염 — 잘못된 RPC 결과 또는 악성 노드</li>
+  <li>Replay · reorg 악용 — 같은 tx 가 다른 결과로 처리되도록 유도</li>
+  <li>DoS / query 폭주 — query API 가 backend 를 무너뜨림</li>
+  <li>운영자 실수 — schema migration 실수로 잘못된 데이터 적재</li>
+</ul>
+
+<p>권장 — 다중 RPC source + signed receipt (해당 시), WAF + rate limit + query complexity 제한, schema version 분리.</p>
+
+<h4>(6) 운영성</h4>
+
+<p>실패 복구 시나리오 — DB 손실, Kafka offset 손실, RPC 노드 손실, 인덱서 process crash, schema 손상.</p>
+
+<p>RPO/RTO 의 현실적 목표:</p>
+<ul>
+  <li>RPO &lt; 1 분 (raw event 손실 ≤ 1 분치)</li>
+  <li>RTO &lt; 1 시간 (전체 service 복구)</li>
+  <li>Backfill replay &lt; 24 시간 (전체 history 재구성)</li>
+</ul>
+
+<h4>(7) 마이그레이션</h4>
+
+<p>schema 변경 = 곧바로 전체 재인덱싱이어선 안 된다. <strong>dual-write + backfill + cutover</strong> 패턴이 표준. 인덱서 release 시 항상 rollback 경로를 갖춰야.</p>
+
+<h4>(8) 비용</h4>
+
+<p>3 종류의 비용을 분리해서 본다.</p>
+<ul>
+  <li><strong>인프라</strong> — 노드 compute, DB storage, stream bus, egress. Ethereum archive 만으로 월 $500-$2,000.</li>
+  <li><strong>외부 vendor</strong> — Alchemy/QuickNode 사용 시. 트래픽 따라 월 수백 ~ 수만 달러.</li>
+  <li><strong>운영 인력</strong> — 인덱서 운영 SRE / DBA. FTE 1-5 명 (규모에 따라).</li>
+</ul>
+
+<h3>2.4 우선순위 결정</h3>
+
+<p>8 가지를 다 동시에 최고로 만들 수는 없다. 워크로드 별 우선순위:</p>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>워크로드 유형</th><th>최우선 NFR</th><th>중요</th><th>덜 중요</th></tr>
+</thead>
+<tbody>
+<tr><td>지갑 / 거래소</td><td>정합성, 지연시간</td><td>운영성, 보안</td><td>처리량 (실시간만)</td></tr>
+<tr><td>탐색기 (Etherscan 류)</td><td>처리량, 확장성</td><td>지연시간, 비용</td><td>정합성 (eventual OK)</td></tr>
+<tr><td>분석 / BI</td><td>처리량, 확장성</td><td>비용, 마이그레이션</td><td>지연시간 (수 분 OK)</td></tr>
+<tr><td>컴플라이언스 / AML</td><td>정합성, 보안</td><td>운영성, 마이그레이션</td><td>지연시간 (~ 분 OK)</td></tr>
+<tr><td>실시간 알림</td><td>지연시간</td><td>처리량</td><td>마이그레이션</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>2.5 흔한 실패 모드</h3>
+
+<p>인덱서 운영 중 가장 자주 발생하는 4 가지 장애:</p>
+
+<ol>
+  <li><strong>체인 헤드 추격 실패</strong> — RPC source 가 느려져서 인덱서 lag 가 누적. UX 에 즉시 보임.</li>
+  <li><strong>DB 디스크 고갈</strong> — backfill 도중 / log retention 부족으로 인덱서 DB 가 디스크 한계 도달. write 실패.</li>
+  <li><strong>RPC rate limit</strong> — Alchemy 같은 외부 vendor 의 monthly quota 초과 → 429.</li>
+  <li><strong>Reorg 후 projection 불일치</strong> — raw 는 잘 처리됐는데 projection 의 보정이 빠짐. 잔고 / 집계 값이 틀림.</li>
+</ol>
+
+<p>4 가지 모두 모니터링 부재 시 악화. <a href="monitoring-ops.html">8. 모니터링 페이지</a> 에서 자세히.</p>
+
+<h3>2.6 다음 페이지</h3>
+
+<p>요구사항을 알았으니, 다음은 <a href="implementation-patterns.html"><strong>3. 4 구현 패턴</strong></a> — 인덱서를 실제로 어떻게 만드는가의 4 가지 접근.</p>
+
+</section>
+</main>
+</div>
+
+</body>
+</html>

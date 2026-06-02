@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>9. 거래소 + 자체 인덱서 운영 사례 — 블록체인 인덱서 설계 가이드</title>
+<meta content="Coinbase · Korbit · Binance · Upbit · Bithumb · Coinone — 자체 인덱서 운영의 공개 아키텍처." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Foundation</h3><ul>
+<li><a href="what-is-indexer.html">1. 인덱서란 무엇인가</a></li>
+<li><a href="requirements.html">2. 요구사항</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Implementation</h3><ul>
+<li><a href="implementation-patterns.html">3. 4 구현 패턴</a></li>
+<li><a href="reference-architecture.html">4. 참조 아키텍처</a></li>
+<li><a href="data-model.html">5. 데이터 모델</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Operations</h3><ul>
+<li><a href="reorg-finality.html">6. Reorg · Finality</a></li>
+<li><a href="performance-scalability.html">7. 성능 · 확장성</a></li>
+<li><a href="monitoring-ops.html">8. 운영 · 모니터링</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Industry Cases</h3><ul>
+<li><a class="active" href="exchange-cases.html">9. 자체 인덱서 운영</a></li>
+<li><a href="saas-cases.html">10. 인덱서 / 데이터 인프라 vendor</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Infrastructure</h3><ul>
+<li><a href="infrastructure-spec.html">11. 인프라 · 스펙</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="exchange-cases">
+<h2>9. 거래소 + 자체 인덱서 운영 사례</h2>
+<span class="section-subtitle">자체 노드 · 자체 인덱서를 운영하는 회사들의 공개 아키텍처</span>
+
+<h3>9.1 개요</h3>
+
+<p>본 페이지는 <strong>거래소 또는 대규모 서비스가 자체적으로 노드와 인덱서를 운영하는 회사들</strong> 의 공개 아키텍처를 정리. 인덱서를 product 로 판매하는 vendor 는 <a href="saas-cases.html">10. 인덱서 / 데이터 인프라 vendor</a> 에서 다룬다.</p>
+
+<p>모든 정보는 <strong>공식 docs · tech blog · 채용 페이지 · 공식 announcement</strong> 만 사용. 내부 비공개 구현은 "미확인" 으로 명시. 3 단계 분류:</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>분류</th><th>의미</th></tr></thead>
+<tbody>
+<tr><td><strong>확인됨</strong></td><td>공식 docs 또는 tech blog 에 명시</td></tr>
+<tr><td><strong>부분 확인</strong></td><td>채용 페이지 / 인터뷰 / 우회 자료에서 추론 가능</td></tr>
+<tr><td><strong>미확인</strong></td><td>공개 자료로 확인 불가</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>9.2 한눈에 비교</h3>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>회사</th><th>공개 수준</th><th>핵심 공개 stack</th><th>비고</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Coinbase</strong></td><td>확인됨 (가장 자세)</td><td>ChainStorage + ChainNode 다층 아키텍처. S3 + DynamoDB + Temporal + Delta Lake + Kafka + K8s + Spark</td><td>인덱서 product 도 외부 노출 (CDP)</td></tr>
+<tr><td><strong>Korbit</strong></td><td>확인됨 (KR 1 위)</td><td>Kafka Event Sourcing + Temporal + Go (주문) / Rust (체결) + gRPC + AWS EKS + Chainalysis</td><td>KR 거래소 중 가장 상세 공개</td></tr>
+<tr><td><strong>Binance</strong></td><td>부분 확인</td><td>Wallet API + User Data Stream + WebSocket 1024 streams 제약. 조직 차원 Flink + Kafka + Hive + S3 + Snowflake</td><td>거래소 API 풍부, 인덱서 내부는 비공개</td></tr>
+<tr><td><strong>Upbit</strong></td><td>부분 확인</td><td>REST + Private WS, <code>minimum_deposit_confirmations</code>, idle timeout 120s</td><td>외부 API 만 공개</td></tr>
+<tr><td><strong>Bithumb</strong></td><td>부분 확인</td><td>REST + WS, <code>MyOrder</code> · <code>MyAsset</code> Private channel (2024-09~)</td><td>외부 API 만 공개</td></tr>
+<tr><td><strong>Coinone</strong></td><td>부분 확인</td><td>세분화된 status enum (6 단계). Kotlin + Spring + AWS DMS + Spring Batch (인터뷰)</td><td>상태 모델 가장 세밀</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>9.3 Coinbase — ChainStorage + ChainNode</h3>
+
+<p>거래소 중 인덱서 아키텍처를 가장 자세히 공개한 회사. 자체 아키텍처를 외부에 (CDP) product 로도 판매.</p>
+
+<h4>전체 데이터 흐름</h4>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    NODES[Load-balanced<br/>Node Cluster]
+    subgraph CS[ChainStorage]
+      direction TB
+      S3[(S3<br/>Blob storage)]
+      DDB[(DynamoDB<br/>KV index)]
+    end
+    PARSE[Chain Parser<br/>native + agnostic]
+    subgraph CN[ChainNode]
+      direction TB
+      TEMP[Temporal<br/>Workflows]
+      GORPC[Go RPC<br/>service]
+    end
+    SINK1[(DynamoDB<br/>realtime)]
+    SINK2[(S3 parquet<br/>analytics)]
+    SINK3[(Delta Lake)]
+    KAFKA[Kafka<br/>notifications]
+    SPARK[Spark<br/>대규모 계산]
+    API[Go service<br/>on K8s]
+    CDP[CDP Webhooks<br/>외부 노출]
+
+    NODES --> CS
+    CS --> PARSE --> CN
+    CN --> SINK1
+    CN --> SINK2 --> SPARK
+    CN --> SINK3
+    CN --> KAFKA --> CDP
+    SINK1 --> API
+</pre></div>
+
+<h4>ChainStorage — 원시 데이터 레이어</h4>
+
+<p>출처 — <a href="https://www.coinbase.com/blog/part-1-chainstorage-the-enterprise-blockchain-data-availability-layer" target="_blank" rel="noopener">Coinbase blog Part 1</a>.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>항목</th><th>구현</th></tr></thead>
+<tbody>
+<tr><td>노드</td><td>로드밸런싱된 클러스터에서 동시 raw block 추출</td></tr>
+<tr><td>Blob storage</td><td>S3 계열 — block의 raw body</td></tr>
+<tr><td>KV storage</td><td>DynamoDB 계열 — block 메타 (height / hash / parent_hash)</td></tr>
+<tr><td>ETL 방향</td><td><strong>ELT</strong> (Extract-Load-Transform) — 변환은 ingestion 이후로 미룸</td></tr>
+<tr><td>Parser</td><td>chain-native parser + chain-agnostic parser 둘 다 지원</td></tr>
+<tr><td>Reorg 처리</td><td>block overwrite ✗ — <strong>추가 (+) / 제거 (-) 이벤트 시퀀스</strong> 로 적재. CDC 류 downstream 동기화 가능</td></tr>
+<tr><td>검증</td><td>Merkle hash validation + node failover</td></tr>
+<tr><td>성능 (AWS Ethereum)</td><td><strong>1-2 초 freshness, 실험적 ~1000 blocks/sec</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>ChainNode — 파생 인덱서 레이어</h4>
+
+<p>출처 — <a href="https://www.coinbase.com/blog/part-3-from-block-to-apis-building-indexers-on-chainstack" target="_blank" rel="noopener">Coinbase blog Part 3</a>.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>항목</th><th>구현</th></tr></thead>
+<tbody>
+<tr><td>Orchestration</td><td><strong>Temporal workflows</strong></td></tr>
+<tr><td>Data sink</td><td>DynamoDB (realtime), S3 parquet (analytics), Delta Lake (BI), Kafka (notifications)</td></tr>
+<tr><td>Serving</td><td>Kubernetes 위 Golang RPC service</td></tr>
+<tr><td>Cache</td><td>watermark + immutable contract metadata</td></tr>
+<tr><td>계산</td><td>Spark (대규모)</td></tr>
+<tr><td>배포</td><td>exclusive deployment locks (동시 한 job 만 업데이트)</td></tr>
+<tr><td>재인덱싱</td><td>ChainStorage 변경분 지속 복제</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>CDP Webhooks — 외부 제품</h4>
+
+<p>출처 — <a href="https://docs.cdp.coinbase.com/data/get-started/quickstart" target="_blank" rel="noopener">Coinbase Developer Platform docs</a>. Coinbase 가 자체 인덱서를 외부에 판매하는 product.</p>
+
+<ul>
+  <li><strong>At-least-once delivery</strong></li>
+  <li>최대 <strong>60 회 재시도</strong></li>
+  <li>온체인 데이터 이벤트 <strong>&lt; 500ms freshness</strong></li>
+  <li>Onchain Data Quickstart — SQL 기반 온체인 데이터 조회</li>
+  <li>Base Node Playground</li>
+</ul>
+
+<h3>9.4 Korbit — Kafka + Temporal + Go/Rust</h3>
+
+<p>KR 거래소 중 인덱서 / 워크플로 영역에 대한 공개 정보가 가장 많다.</p>
+
+<h4>전체 아키텍처</h4>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    CHAIN[블록체인]
+    DETECT[입금 감지<br/>Go service]
+    AML[Chainalysis<br/>AML 스크리닝]
+    subgraph TEMP[Temporal Workflow]
+      direction TB
+      PEND[입금 계류]
+      REFUND[반환]
+      AUTO[자동화]
+    end
+    KAFKA[Kafka<br/>Event Bus]
+    subgraph CORE[Core services]
+      direction TB
+      MATCH[체결 엔진<br/>Rust]
+      LEDGER[잔고 서비스<br/>Rust]
+      PRICE[시세 서비스<br/>Rust]
+    end
+    REST[REST/WS API<br/>Go]
+    APP[고객 앱]
+
+    CHAIN --> DETECT --> TEMP
+    TEMP --> AML
+    TEMP --> KAFKA
+    KAFKA --> MATCH
+    KAFKA --> LEDGER
+    KAFKA --> PRICE
+    LEDGER --> REST --> APP
+</pre></div>
+
+<h4>기술 스택</h4>
+
+<p>출처 — <a href="https://tech.korbit.co.kr/posts/system-architecture-design-of-cryptocurrency-exchange/" target="_blank" rel="noopener">차세대 거래 시스템 설계 blog</a>.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>영역</th><th>선택</th><th>이유</th></tr></thead>
+<tbody>
+<tr><td>아키텍처 paradigm</td><td>Kafka Event Sourcing + Event-driven</td><td>이벤트 unification, replay 가능</td></tr>
+<tr><td>주문 / Open API</td><td><strong>Go</strong></td><td>생산성 + 적당한 성능</td></tr>
+<tr><td>체결 엔진 / 시세</td><td><strong>Rust</strong></td><td>저지연 + 메모리 안정성</td></tr>
+<tr><td>서비스 간 통신</td><td>gRPC 또는 Kafka + Protocol Buffers</td><td>typed contract</td></tr>
+<tr><td>런타임</td><td>AWS EKS</td><td>Kubernetes managed</td></tr>
+<tr><td>AML 통합</td><td>Chainalysis</td><td>외부 vendor (실시간)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>입출금 워크플로 — Temporal</h4>
+
+<p>출처 — <a href="https://tech.korbit.co.kr/posts/building-deposit-pending-with-temporal/" target="_blank" rel="noopener">Temporal 사용기 blog</a>.</p>
+
+<p>입금 처리 흐름: <strong>입금 감지 → AML 스크리닝 → 잔고 반영 또는 계류 → 반환 확정 시 자산 이동 또는 출금</strong>.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Temporal 기능</th><th>활용</th></tr></thead>
+<tbody>
+<tr><td>Durable timer</td><td><code>Workflow.sleep</code> — 장기 계류 처리</td></tr>
+<tr><td>Activity Retry Policy</td><td>외부 API (Chainalysis) 실패 시 재시도</td></tr>
+<tr><td>Replay</td><td>장애 후 워크플로 재실행</td></tr>
+<tr><td>멱등성</td><td>Activity 중복 호출 방지</td></tr>
+<tr><td><code>ALLOW_DUPLICATE_FAILED_ONLY</code></td><td>실패한 워크플로만 재실행 허용</td></tr>
+<tr><td><code>continueAsNew</code></td><td>장기 워크플로의 history 분할</td></tr>
+<tr><td>대시보드</td><td>워크플로 상태 시각 추적</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>Chronos — 입출금 운영 자동화</h4>
+
+<ul>
+  <li>입출금 중단 / 재개 예약</li>
+  <li>Slack Fail-safe 알림</li>
+  <li>노드 상태 · 수수료 · 업그레이드 실시간 모니터링</li>
+  <li>수수료 지갑 자동 충전 (계획)</li>
+</ul>
+
+<h4>외부 API 상태 모델</h4>
+
+<p>출처 — <a href="https://docs.korbit.co.kr/" target="_blank" rel="noopener">Korbit docs</a>.</p>
+
+<ul>
+  <li>REST + WebSocket, Open API 비동기 시스템 (응답 지연 가능 명시)</li>
+  <li>Public / Private WebSocket 분리</li>
+  <li>Private 채널 — <code>myOrder</code> / <code>myTrade</code> / <code>myAsset</code></li>
+  <li>입출금 상태 enum — <code>pending</code> / <code>actionRequired</code> / <code>reviewing</code> / <code>processing</code> / <code>done</code> / <code>failed</code></li>
+  <li><code>transactionHash</code> 가 아직 블록체인에 안 보내졌으면 <code>null</code> 반환</li>
+</ul>
+
+<h3>9.5 Binance — 외부 API 풍부, 내부 미공개</h3>
+
+<h4>Wallet / Capital API (확인됨)</h4>
+
+<p>출처 — <a href="https://developers.binance.com/docs/wallet/capital" target="_blank" rel="noopener">Binance Wallet API docs</a>.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Endpoint</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>GET /sapi/v1/capital/config/getall</code></td><td>coin/network metadata, depositEnable / withdrawEnable</td></tr>
+<tr><td><code>GET /sapi/v1/capital/deposit/history</code></td><td>입금 이력</td></tr>
+<tr><td><code>GET /sapi/v1/capital/withdraw/history</code></td><td>출금 이력</td></tr>
+<tr><td><code>GET /sapi/v1/capital/deposit/address</code></td><td>입금 주소</td></tr>
+<tr><td>Spot User Data Stream</td><td>balance update 실시간 push (입출금 + 계정 간 이체)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>운영 권고</h4>
+<ul>
+  <li>REST timeout 시 → User Data Stream 확인 후 재조회</li>
+  <li>WebSocket — 24h 연결 갱신, ping-pong</li>
+  <li>WebSocket 단일 연결 최대 <strong>1024 streams</strong></li>
+</ul>
+
+<h4>내부 인덱서 — 미확인</h4>
+
+<p>노드 운영 / 파서 / 트랜스포머 / DB / 캐시 / 백필 / 포크 처리 / RPC 로드밸런싱 — Binance Exchange 공식 개발자 문서 미확인.</p>
+
+<h4>조직 차원의 데이터 인프라 (부분 확인)</h4>
+
+<p>출처 — <a href="https://www.binance.com/en/blog/tech/7972341655591522254" target="_blank" rel="noopener">Binance tech blog — Risk AI</a>.</p>
+
+<ul>
+  <li>Flink job + Kafka ingestion + S3 또는 Elasticsearch sink</li>
+  <li>Batch + stream 구조 — Kafka / Kinesis / Hive / Snowflake</li>
+  <li>Kafka 7 일 보존 한계 → S3 / Hive 백업</li>
+  <li>Notebook 환경 backfill</li>
+</ul>
+
+<p>★ 위는 거래소 운영 전체의 데이터 인프라이고, "블록체인 입출금 인덱서" specific 인지는 직접 확인되지 않음.</p>
+
+<h3>9.6 Upbit — REST + Private WebSocket</h3>
+
+<p>출처 — <a href="https://docs.upbit.com/kr/reference/get-service-status" target="_blank" rel="noopener">Upbit docs</a>.</p>
+
+<h4>확인됨</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Endpoint / 기능</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>GET /v1/status/wallet</code></td><td>입출금 서비스 상태</td></tr>
+<tr><td><code>GET /v1/deposits/chance/coin</code></td><td>입금 가능 여부 + <code>minimum_deposit_confirmations</code></td></tr>
+<tr><td>입금 주소 API</td><td>생성 / 목록</td></tr>
+<tr><td>Private WebSocket <code>myAsset</code></td><td>잔고 변경 실시간 push</td></tr>
+<tr><td>Private WebSocket <code>myOrder</code></td><td>주문 상태 실시간 push</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>운영 제약</h4>
+
+<ul>
+  <li>입출금 상태와 입금 가능 정보 — <strong>실시간 보장 안 함, 수 분 지연 가능</strong></li>
+  <li>Private WebSocket <code>myAsset</code> 최초 구독 시 수 분간 데이터 안 옴</li>
+  <li>WebSocket idle timeout <strong>120 초</strong></li>
+  <li>Private endpoint 분리 + 인증 토큰 + 재연결 요구사항</li>
+</ul>
+
+<h4>미확인</h4>
+
+<p>노드 / 큐 / DB / 캐시 / 포크 처리 / 백필 / 장애복구 내부 구현.</p>
+
+<h3>9.7 Bithumb — Upbit 와 유사 패턴</h3>
+
+<p>출처 — <a href="https://apidocs.bithumb.com/" target="_blank" rel="noopener">Bithumb Developer Docs</a>.</p>
+
+<h4>확인됨</h4>
+
+<ul>
+  <li>REST + WebSocket — 시세 / 주문 / 입출금 / 계정</li>
+  <li><code>GET /v1/status/wallet</code> — 입출금 + 블록 상태</li>
+  <li>2024 년 9 월부터 Private WebSocket <code>MyOrder</code> / <code>MyAsset</code> 지원</li>
+</ul>
+
+<h4>미확인</h4>
+
+<p>Upbit 와 동일 영역. Bithumb 의 공개 자료가 가장 적음.</p>
+
+<h3>9.8 Coinone — 세밀한 status enum</h3>
+
+<p>출처 — <a href="https://docs.coinone.co.kr/reference/coin-transaction-history" target="_blank" rel="noopener">Coinone docs</a>.</p>
+
+<h4>확인됨 — 가장 세밀한 상태 모델</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>필드 / 상태</th><th>의미</th></tr></thead>
+<tbody>
+<tr><td><code>txid</code></td><td>온체인 tx hash</td></tr>
+<tr><td><code>confirmations</code></td><td>현재 confirmation 수</td></tr>
+<tr><td><code>DEPOSIT_WAIT</code></td><td>입금 대기 (confirmation 미달)</td></tr>
+<tr><td><code>DEPOSIT_SUCCESS</code></td><td>입금 완료</td></tr>
+<tr><td><code>DEPOSIT_REJECT</code></td><td>입금 거절</td></tr>
+<tr><td><code>WITHDRAWAL_REGISTER</code></td><td>출금 등록</td></tr>
+<tr><td><code>WITHDRAWAL_WAIT</code></td><td>출금 대기</td></tr>
+<tr><td><code>WITHDRAWAL_REFUND_FAIL</code></td><td>출금 환불 실패</td></tr>
+</tbody>
+</table>
+</div>
+
+<ul>
+  <li>Private WebSocket <code>MYASSET</code> — 잔고 변경 실시간 스트림</li>
+</ul>
+
+<h4>부분 확인 — 백엔드 운영 (채용 인터뷰)</h4>
+
+<ul>
+  <li>Kotlin / Spring 기반 MSA 전환</li>
+  <li>AWS Managed Service 활용</li>
+  <li>Replica DB → <strong>AWS DMS</strong> 실시간 동기화 → <strong>Spring Boot Batch</strong> 가공 적재</li>
+  <li>AML 정보 배치 프로그램</li>
+</ul>
+
+<h4>미확인</h4>
+
+<p>인덱서 전용 노드 / 큐 / DB / 포크 처리 / RPC 로드밸런싱.</p>
+
+<h3>9.9 6 회사 공통 패턴</h3>
+
+<p>위 6 회사의 공개 자료에서 보이는 공통 패턴:</p>
+
+<ol>
+  <li><strong>3 평면 분리</strong> — 원시 체인 수집 / 파생 인덱서 / 사용자 facing API. Coinbase 가 가장 명확하게 공개.</li>
+  <li><strong>Event-driven backend</strong> — Kafka / Event Sourcing 이 표준. 거의 모두 사용.</li>
+  <li><strong>Durable workflow</strong> — Temporal (Korbit, Coinbase) 또는 자체. 입출금의 multi-step 흐름 관리.</li>
+  <li><strong>실시간 + REST 이중 인터페이스</strong> — Private WebSocket 으로 실시간 잔고 변경, REST 로 이력.</li>
+  <li><strong>Status enum 세분화</strong> — 단순 success/fail 이 아닌 5-6 단계 분리 (Korbit, Coinone 이 모범).</li>
+  <li><strong>AML 외부 vendor 통합</strong> — Chainalysis 가 가장 자주 등장.</li>
+</ol>
+
+<h3>9.10 다음 페이지</h3>
+
+<p>위는 자체 운영 사례. 다음 <a href="saas-cases.html"><strong>10. 인덱서 / 데이터 인프라 vendor</strong></a> 에서 인덱서를 product 로 판매하는 회사들 — The Graph / Alchemy / QuickNode / Fireblocks / BitGo / Firehose / 설치형 vendor — 의 공개 아키텍처를 본다.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
