@@ -112,7 +112,7 @@ flowchart LR
 <div class="diagram"><pre class="mermaid">
 flowchart TB
     subgraph CLOUD[AWS ap-northeast-2]
-      subgraph AZ1[ap-northeast-2a (single AZ)]
+      subgraph AZ1["ap-northeast-2a (single AZ)"]
         subgraph PUB[Public subnet]
           ALB[ALB<br/>HTTPS]
         end
@@ -217,7 +217,7 @@ flowchart LR
 <div class="diagram"><pre class="mermaid">
 flowchart TB
     subgraph CLOUD[AWS ap-northeast-2]
-      subgraph AZ1[AZ a (primary)]
+      subgraph AZ1["AZ a (primary)"]
         NODE1[i4i.xlarge<br/>geth full node<br/>1 TB NVMe]
         WORKER1[c7i.xlarge × 2<br/>Indexer workers]
         PGM[(RDS db.r7g.xlarge<br/>Postgres primary<br/>1 TB gp3)]
@@ -225,7 +225,7 @@ flowchart TB
         ES1[OpenSearch r6g.large]
         REDIS1[ElastiCache 3-shard]
       end
-      subgraph AZ2[AZ c (replica)]
+      subgraph AZ2["AZ c (replica)"]
         WORKER2[c7i.xlarge × 2<br/>Indexer workers]
         PGR[(RDS db.r7g.large<br/>Postgres replica)]
         KAFKA2[MSK broker m5.large]
