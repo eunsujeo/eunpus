@@ -52,37 +52,29 @@
 
 <p>블록체인 매니저는 거의 항상 외부 SaaS 에 의존한다 — 서명은 Fireblocks, 인덱싱은 The Graph/Alchemy, 수집은 QuickNode 같은 식이다. 그런데 이들을 컴포넌트 코드에 직접 박아 넣으면 <strong>벤더를 바꾸거나 자체 구축으로 전환할 때 매니저 전체를 뜯어야</strong> 한다.</p>
 
-<p>해법은 <strong>포트와 어댑터(Ports &amp; Adapters, 헥사고날) 패턴</strong>이다. 매니저 코어는 "포트(인터페이스)" 에만 의존하고, 각 벤더(또는 자체 구축)는 그 포트를 구현하는 "어댑터" 로 바깥에 둔다. 그러면 벤더 교체 = 어댑터 교체이고, 테스트는 가짜 어댑터로 한다.</p>
+<p>해법은 <strong>포트와 어댑터(Ports &amp; Adapters, 헥사고날) 패턴</strong>이다. 블록체인 매니저의 로직은 벤더 SDK 가 아니라 "포트(인터페이스)" 에만 의존하고, 각 벤더(또는 자체 구축)는 그 포트를 구현하는 "어댑터" 로 바깥에 둔다. 그러면 벤더 교체 = 어댑터 교체이고, 테스트는 가짜 어댑터로 한다.</p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart TB
-    subgraph CORE["매니저 코어 (벤더 무관)"]
-      LOGIC["입금 · 출금 · 온오프램프 · 대사 로직"]
-    end
-    subgraph PORTS["포트 (인터페이스)"]
-      P1["ChainAdapterPort"]
-      P2["IndexerPort"]
-      P3["SignerPort"]
-      P4["BroadcastPort"]
-    end
-    subgraph ADP["어댑터 (벤더별 구현)"]
-      A1["Fireblocks"]
-      A2["Alchemy"]
-      A3["QuickNode · SQD · The Graph"]
-      A4["자체 노드 · HSM"]
-    end
+    UP["상위 서비스 · 클라이언트"]
+    MGR["블록체인 매니저 (벤더 무관 로직)<br/>입금 · 출금 · 온오프램프 · 대사 오케스트레이션"]
+    PORTS["출력 포트 (인터페이스)<br/>ChainAdapterPort · IndexerPort · SignerPort · BroadcastPort"]
+    ADP["벤더 어댑터 (구현)<br/>Fireblocks · Alchemy · QuickNode · SQD · The Graph · 자체 노드 · HSM · GCP BNE"]
 
-    LOGIC --> P1 & P2 & P3 & P4
-    P1 & P2 & P3 & P4 --> A1 & A2 & A3 & A4
+    UP -->|① 매니저 호출| MGR
+    MGR -->|② 벤더 SDK 아닌 포트에만 의존| PORTS
+    PORTS -->|구현 교체 가능| ADP
 
-    classDef core fill:#dcfce7,stroke:#16a34a;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    classDef mgr fill:#dcfce7,stroke:#16a34a;
     classDef port fill:#e0e7ff,stroke:#6366f1;
     classDef adp fill:#dbeafe,stroke:#2563eb;
-    class LOGIC core;
-    class P1,P2,P3,P4 port;
-    class A1,A2,A3,A4 adp;
+    class UP ext;
+    class MGR mgr;
+    class PORTS port;
+    class ADP adp;
 </pre></div>
-<p class="diagram-caption">Figure 10-1. 헥사고날 구조. 코어(초록)는 포트(보라)에만 의존하고, 벤더(파랑)는 포트를 구현하는 어댑터로 바깥에 꽂힌다. 벤더 교체 = 바깥 레이어만 교체.</p>
+<p class="diagram-caption">Figure 10-1. 헥사고날 구조 — 호출 방향(위→아래). ① 상위 서비스가 블록체인 매니저(초록)를 호출 → ② 매니저는 벤더 SDK 가 아니라 출력 포트(보라)에만 의존 → 포트가 벤더 어댑터(파랑)로 구현된다. "벤더 무관" 은 매니저 자체의 성질이며, 벤더 교체 = 바깥 어댑터만 교체. 어느 포트가 어느 어댑터에 매핑되는지는 아래 10.4 표 참조.</p>
 
 <h3>10.2 SaaS 가 커버하는 영역 비교</h3>
 
@@ -97,6 +89,7 @@ flowchart TB
 <tr><td><strong>QuickNode Streams</strong></td><td>수집(push 파이프라인)</td><td>Stream(dataset + JS filter + webhook 목적지) · exactly-once · finality-order · reorg 재전송 · backfill · checkpoint resume</td></tr>
 <tr><td><strong>The Graph</strong></td><td>인덱싱 조회</td><td>subgraph GraphQL 질의 · schema entity · block-height 질의</td></tr>
 <tr><td><strong>SQD / Subsquid</strong></td><td>수집 + 가공(배치)</td><td><code>EvmBatchProcessor</code> · SQD Network archive + RPC · batch <code>ctx.blocks</code> · unfinalized 지원 · custom sink</td></tr>
+<tr><td><strong>GCP Blockchain Node Engine</strong></td><td>관리형 전용 노드 (RPC 소스)</td><td>완전관리형 노드 호스팅 · REST + RPC API · Ethereum first · single-op 배포 · 자동 재시작 · SLA. <strong>enhanced/indexing API 없음</strong>(별도 인덱서 필요)</td></tr>
 </tbody>
 </table>
 </div>
@@ -158,16 +151,77 @@ flowchart TB
 
 <p>예를 들어 한 조합은 — <strong>SignerPort+BroadcastPort = Fireblocks</strong>, <strong>IndexerPort = Alchemy 또는 자체 인덱서</strong>, <strong>ChainAdapterPort = 내부</strong> — 이렇게 포트별로 최적 벤더를 꽂고, 나중에 한 포트만 갈아끼운다.</p>
 
+<div class="callout">
+<div class="callout-title">노드 레이어 어댑터 — GCP Blockchain Node Engine 의 경우</div>
+<p><strong>GCP BNE</strong> 같은 <strong>관리형 전용 노드</strong>는 표준 RPC 를 제공하므로 <strong>ChainAdapterPort 의 RPC 소스 + BroadcastPort(<code>eth_sendRawTransaction</code> 류)</strong> 어댑터로 들어간다. 단 SignerPort 는 구현하지 않고(키는 별도 서명자), Transfers/Streams 같은 enhanced 기능이 없어 <strong>IndexerPort 는 직접 인덱서(또는 BigQuery 데이터셋 등)로 채워야</strong> 한다. 즉 "공용 RPC(Alchemy/QuickNode)" 대신 "전용·격리 노드" 가 필요할 때 같은 자리에 끼우는 또 다른 어댑터 선택지다.</p>
+</div>
+
 <h3>10.5 설계 원칙</h3>
 
 <div class="callout">
 <div class="callout-title">추상화를 지탱하는 규칙</div>
 <ul>
-<li><strong>능력 노출(capability)</strong> — 어댑터마다 되는 것/안 되는 것이 다르다(RBF 지원, unfinalized 조회, 확정 단계 수). 포트가 <code>capabilities()</code> 로 알려 코어가 분기 없이 적응하게.</li>
+<li><strong>능력 노출(capability)</strong> — 어댑터마다 되는 것/안 되는 것이 다르다(RBF 지원, unfinalized 조회, 확정 단계 수). 포트가 <code>capabilities()</code> 로 알려 매니저 로직이 분기 없이 적응하게.</li>
 <li><strong>묶음 흡수</strong> — Fireblocks 처럼 여러 포트가 한 API 로 묶인 경우, 한 어댑터가 복수 포트를 구현하게 둔다. 억지로 쪼개지 않는다.</li>
 <li><strong>멱등 경계</strong> — 포트 호출에 요청 ID 를 실어, 어댑터/벤더가 재시도해도 한 번만 실행되게.</li>
-<li><strong>확정은 데이터에</strong> — IndexerPort 의 응답에 "확정 수준" 을 함께 실어 코어가 안전 판정하게.</li>
+<li><strong>확정은 데이터에</strong> — IndexerPort 의 응답에 "확정 수준" 을 함께 실어 매니저 로직이 안전 판정하게.</li>
 <li><strong>테스트용 가짜 어댑터</strong> — 모든 포트는 in-memory fake 구현을 둬, 벤더 없이 시나리오(입금·출금·reorg)를 테스트.</li>
+</ul>
+</div>
+
+<h3>10.6 어댑터가 구현해야 하는 것</h3>
+
+<p>포트가 "계약(인터페이스)" 이라면, 어댑터는 그 계약을 <strong>벤더 API 로 채우는 구현체</strong>다. 벤더마다 채울 수 있는 포트가 다르고, <strong>채우지 못하는 포트는 다른 어댑터나 직접 구현으로 메워야</strong> 한다. 아래는 어댑터 관점에서 "무엇을 구현해야 하는가" 를 정리한 것이다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    FB["Fireblocks 어댑터"]
+    AL["Alchemy 어댑터"]
+    QS["QuickNode · SQD<br/>The Graph 어댑터"]
+    HSM["자체 HSM · MPC 어댑터"]
+    ND["자체 노드 · GCP BNE 어댑터"]
+
+    CAP{{ChainAdapterPort}}
+    IDX{{IndexerPort}}
+    SIG{{SignerPort}}
+    BC{{BroadcastPort}}
+
+    FB --> SIG
+    FB --> BC
+    AL --> IDX
+    AL --> BC
+    QS --> IDX
+    HSM --> SIG
+    ND --> CAP
+    ND --> BC
+
+    classDef adp fill:#dbeafe,stroke:#2563eb;
+    classDef port fill:#e0e7ff,stroke:#6366f1;
+    class FB,AL,QS,HSM,ND adp;
+    class CAP,IDX,SIG,BC port;
+</pre></div>
+<p class="diagram-caption">Figure 10-2. 어댑터 관점 — 화살표 = "이 어댑터가 구현하는 포트". 파랑 = 어댑터, 보라 = 포트. 한 어댑터가 모든 포트를 채우지 않는다. 예: Fireblocks 어댑터는 SignerPort+BroadcastPort 만, Alchemy 어댑터는 IndexerPort+BroadcastPort 만. 빈 포트는 다른 어댑터로 메운다. (ChainAdapterPort 는 대개 내부 공통 구현)</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:18%">어댑터</th><th style="width:20%">구현해야 하는 포트</th><th>벤더 API → 포트 메서드 (예)</th><th style="width:18%">안 채우는 포트(직접 마련)</th></tr></thead>
+<tbody>
+<tr><td><strong>Fireblocks</strong></td><td>SignerPort · BroadcastPort</td><td>create transaction(서명·전파 일괄) → <code>sign</code>+<code>broadcast</code> · transaction status → <code>status</code> · RBF/boost → <code>replace</code></td><td>IndexerPort(전량 조회) · ChainAdapterPort(내부)</td></tr>
+<tr><td><strong>Alchemy</strong></td><td>IndexerPort · BroadcastPort</td><td><code>getAssetTransfers</code> → <code>getTransfers</code> · Notify webhook → <code>subscribe</code> · tx receipt → <code>confirmationOf</code> · <code>eth_sendRawTransaction</code> → <code>broadcast</code></td><td>SignerPort(키는 직접)</td></tr>
+<tr><td><strong>QuickNode · SQD · The Graph</strong></td><td>IndexerPort</td><td>Streams 구독 → <code>subscribe</code> · SQD batch / The Graph GraphQL → <code>getTransfers</code></td><td>SignerPort · BroadcastPort</td></tr>
+<tr><td><strong>자체 HSM · MPC</strong></td><td>SignerPort</td><td>HSM/MPC 서명 → <code>sign</code> · 키 조회 → <code>publicKeyOf</code></td><td>나머지 전부</td></tr>
+<tr><td><strong>자체 노드 · GCP BNE</strong></td><td>ChainAdapterPort(RPC) · BroadcastPort</td><td>표준 JSON-RPC → 수수료/잔액/조립 · <code>eth_sendRawTransaction</code> → <code>broadcast</code> · <code>eth_getTransactionReceipt</code> → <code>status</code></td><td>IndexerPort(enhanced 없음 → 별도 인덱서) · SignerPort</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">어댑터 구현 체크리스트</div>
+<ul>
+<li><strong>포트 메서드 전부 충족</strong> — 못 채우는 메서드는 빈 구현이 아니라 <code>capabilities()</code> 로 "미지원" 을 명시(매니저 로직이 분기 없이 우회).</li>
+<li><strong>벤더 응답 → 포트 타입 정규화</strong> — 벤더별 에러·상태 코드·금액 단위를 포트가 정의한 공통 타입으로 변환.</li>
+<li><strong>멱등 보존</strong> — 매니저가 넘긴 요청 ID 를 벤더 호출(또는 재시도)에 전파해 한 번만 실행.</li>
+<li><strong>가짜(fake) 구현 동봉</strong> — 같은 포트의 in-memory 어댑터를 만들어 벤더 없이 시나리오 테스트.</li>
 </ul>
 </div>
 
