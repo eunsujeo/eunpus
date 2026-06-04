@@ -304,7 +304,7 @@ NEAR Indexer for Explorer: 공개 SQL 스키마 진화 가능, release note 추�
 
 1. **raw 와 projection 분리** → projection 재생성 가능 → backup 주기 공격적 단축
 2. **필요한 블록만 read** → dictionary · topic/address filter · startBlock 최적화 = 비용 절감
-3. **archive node 무조건 self-host 금지** → 초기엔 private archived RPC 또는 lake/firehose 공급자. 트래픽이 비용 역전 시점에만 self-hosting.
+3. **archive node 무조건 self-host 금지** → 초기엔 private archived RPC 또는 lake/firehose 공급자. 트래픽이 비용 역전 시점에만 self-hosting. (관리형 전용 노드 옵션 = §9.4 GCP BNE)
 
 ### 9.3a Hypothesis-tier 추가 vendor 사례 (★ Stage 44)
 
@@ -345,6 +345,17 @@ NEAR Indexer for Explorer: 공개 SQL 스키마 진화 가능, release note 추�
 - 스타트업 운영 추정: 월 $100-800, 엔터프라이즈: 월 $3,000-20,000+
 
 ★ 위 수치는 LLM 생성 자료 인용 — vendor 공식 페이지에서 cross-verify 후 fact 승격 가능 (Q-VRF-18~22). 본 reference 의 AWS gp3 / S3 단가 (§9 위) 는 vendor 공식 cross-verify 완료, B3 는 별도 verify 필요.
+
+### 9.4 Managed dedicated node — GCP Blockchain Node Engine (★ Stage 49, official fact-tier)
+
+[[sources/gcp/markdown/2026-06-04__cloud-google-com__blockchain-node-engine]] (Google Cloud 공식). §9.2.3 의 노드 호스팅 옵션에 **"관리형 전용 노드"** 선택지를 추가:
+
+- **정의**: 완전관리형 노드 호스팅(Web3) — 트랜잭션 relay · 컨트랙트 배포 · 데이터 read/write. single-op 배포(region+network), multi-day genesis sync 제거, 상시 모니터링, 장애 시 자동 재시작, **SLA 제공**. 접근은 **REST API + RPC API**.
+- **지원**: Ethereum first (mainnet + testnet). (공식 "Ethereum is the first blockchain supported")
+- **위치 (노드 호스팅 3 모델 대비)**: ① 자체 호스팅(최대 통제·운영 부담) ② 멀티테넌트 공용 RPC(Alchemy/QuickNode — enhanced API 풍부, 공유) ③ **관리형 전용 노드(GCP BNE — 전용·격리 + Google 운영, 표준 RPC 중심)**. BNE 는 ②의 enhanced/indexing API(getAssetTransfers · Streams 류)가 없어 **입금 감지/projection 은 별도 인덱서 필요**.
+- **doc 미확인 (Q-VRF-33)**: node type(full/archive) · 클라이언트(geth/erigon) · 보안(Private Service Connect/Cloud Armor/IAM) · pricing · 멀티체인 확장 — 공식 하위 페이지(supported-networks/create-node/secure/pricing)가 이번 ingest 시 404/truncated 라 미확인.
+
+→ §9.2.3("archive node 무조건 self-host 금지")의 연장: 트래픽·격리 요구가 공용 RPC 한계를 넘되 자체 운영은 부담일 때 BNE 같은 **관리형 전용 노드**가 중간 선택지.
 
 ---
 

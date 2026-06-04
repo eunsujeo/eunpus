@@ -6891,3 +6891,14 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 핵심: EvmBatchProcessor·ctx.blocks batch·boundary block·isHead·setFields·filter-before-decode·batch insert·schema codegen·unfinalized 지원·custom sink(BigQuery/Parquet)
 - ★ vs-The-Graph 수치(1k~50k vs 100~150 blocks/sec 등)는 **SQD 자체 주장(편향)** → Q-VRF-32 추가(vendor-indexer-implementations-hypothesis.md), §7.6 본문 inline caveat 병행
 - 신규 entity: 0, 신규 page: 0 (entity-min, indexer reference 흡수, streak 37)
+
+## Stage 49 (2026-06-04) — GCP Blockchain Node Engine 공식 문서 Mode C ingest (official fact-tier)
+
+- source: cloud.google.com/blockchain-node-engine (→ docs.cloud.google.com), overview/landing/product. WebFetch 추출
+- crawl_status: partial — overview/landing OK, supported-networks·create-node·secure 페이지 404/truncated
+- 확정: 완전관리형 노드 호스팅(Web3), Ethereum first(mainnet+testnet), REST+RPC API, single-op 배포·multi-day sync 제거·자동 재시작·SLA·상시 모니터링
+- doc 미확인(fabrication 금지): node type(full/archive)·클라이언트·보안(PSC/Cloud Armor/IAM)·pricing·멀티체인 → Q-VRF-33 분리
+- 흡수: blockchain-indexer-architecture-reference §9.4 신설(관리형 전용 노드 = 노드 호스팅 3 모델 중 ③) + §9.2.3 cross-link
+- 추가: docs-site/wallet-service-components abstraction 페이지 SaaS 비교표·어댑터 매핑에 GCP BNE 행 반영
+- 소스: sources/gcp/ 신설 (markdown 추출본 + meta.yml)
+- 신규 entity: 0, 신규 page: 0 (entity-min, indexer reference 흡수, streak 38)
