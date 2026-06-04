@@ -1,0 +1,22 @@
+source_url: https://www.educative.io/blog/coinbase-system-design
+host: educative.io
+title: Coinbase System Design
+publisher: Educative.io (제3자 교육 플랫폼)
+language: en
+tier: 3
+domain: indexer (custody/ledger 인접)
+mode: A (catalog-only — 본문 미로드)
+stage_indexed: 48
+crawl_status: triaged-not-ingested
+fact_tier: third-party-generic (★ vendor-official 아님; 인터뷰 대비 "Coinbase-like blueprint")
+notes: |
+  ★ Mode A catalog-only — 본문 promote 안 함 (Stage 48 결정).
+  사유 (evidence isolation): 제3자 인터뷰 대비 교육 글로 fact-tier 아님(일반 지식 등가).
+  다루는 주제(append-only ledger·double-entry·hot/warm/cold custody·finality·
+  KYC/AML·idempotency replay)는 이미 위키의 더 높은 tier 문서와 중복:
+  - [[docs/architecture/vault-wallet-ledger-db-schema]] (ledger/double-entry)
+  - [[docs/architecture/withdrawal-lifecycle]] / [[docs/architecture/deposit-lifecycle]] (finality)
+  - [[docs/architecture/reconciliation-settlement-consistency]] (on-chain 대사)
+  인덱싱/데이터 파이프라인 커버리지는 약함. 본 자료가 인용하는 Coinbase Solana blog 은
+  이미 Stage 47 official-tier 로 흡수됨([[docs/architecture/blockchain-indexer-architecture-reference]] §9.3b).
+  promote_condition: 향후 본 글에서만 확인되는 고유 fact 가 필요해질 때만 재검토.

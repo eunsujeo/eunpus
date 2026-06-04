@@ -514,6 +514,7 @@ B3 가 제공하는 비용 모델:
 - **Q-VRF-29**: Binance WebSocket 단일 연결 1024 streams 제약
 - **Q-VRF-30**: Korbit tech blog Kafka Event Sourcing + Go (주문) + Rust (체결/시세) + gRPC + EKS
 - **Q-VRF-31**: Korbit Temporal 입금 계류 워크플로 디테일 (durable timer, Retry Policy, Replay, ALLOW_DUPLICATE_FAILED_ONLY, continueAsNew, Chronos)
+- **Q-VRF-32** (Stage 48): SQD/Subsquid 의 vs-The-Graph 성능·기능 주장(~1k–50k vs ~100–150 blocks/sec, unfinalized block 지원, custom sink, TS vs WASM) — **SQD 자체 마케팅 자료** 이므로 중립 벤치마크 + The Graph 공식 문서로 cross-verify 필요. ([[blockchain-indexer-architecture-reference]] §7.6)
 
 ---
 

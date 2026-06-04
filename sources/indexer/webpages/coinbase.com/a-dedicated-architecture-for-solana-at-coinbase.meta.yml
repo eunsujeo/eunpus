@@ -1,0 +1,35 @@
+source_url: https://www.coinbase.com/blog/a-dedicated-architecture-for-solana-at-coinbase
+host: coinbase.com
+title: A dedicated architecture for Solana at Coinbase
+publisher: Coinbase (engineering blog)
+language: en
+authors: Bill Sahin, Linda Liu, Andrew Allen, Ning Wei, Xiaying Peng
+doc_date: 2026-01-30
+tier: 1
+domain: indexer
+mode: C (full ingest — 사용자 저장 PDF 경유)
+stage_ingested: 47
+crawl_status: full-text-extracted
+fact_tier: official-vendor-engineering (Coinbase 공식 블로그)
+pdf: ../../pdf/2026-06-04__coinbase__dedicated-architecture-for-solana.pdf
+extract: ../../markdown/2026-06-04__coinbase__dedicated-architecture-for-solana.md
+fetch_history:
+  - WebFetch/curl 직접 — HTTP 403 (Cloudflare challenge); Wayback/archive.today 미아카이브
+  - 사용자가 페이지를 PDF 로 저장 → sources/indexer/pdf/ 투입 → pdftotext 추출 (2026-06-04)
+why_tier_1: |
+  제목·URL 기준 예측 (★ 본문 fact 아님): Coinbase 의 Solana **전용** 데이터 아키텍처.
+  기존 [[docs/architecture/blockchain-indexer-architecture-reference]] §9.3a 의
+  Coinbase ChainStorage/ChainNode cross-ref (B4 보고서 경유, blog Part1/Part3) 와 동일
+  publisher 의 공식 자료 → indexer reference 의 fact-tier 강화 후보.
+cross_cut_signal: |
+  예상 연결 (URL/도메인 기반, 본문 미확인):
+  - blockchain-indexer-architecture-reference §3(참조 아키텍처)/§8.2(reorg) — Coinbase 공식 아키텍처 cross-confirm
+  - multi-chain-adapter-pattern — Solana chain semantic (slot/commitment processed·confirmed·finalized, vote tx, account model)
+  - vendors/fireblocks/blockchains — Solana 지원 대비
+promote_condition: |
+  본문 확보 필요 (Cloudflare 로 자동 fetch 불가). 사용자가 다음 중 하나 제공 시 Mode C:
+  (a) 기사 본문 텍스트 붙여넣기, (b) 페이지를 PDF/HTML 로 저장해 sources/indexer/ 에 투입,
+  (c) 접근 가능한 대체 URL. 확보 시 indexer reference 에 Coinbase-Solana fact-tier 로 통합.
+notes: |
+  Mode B placeholder. 본문 미로드 — 본 meta 의 cross_cut_signal 은 제목·URL·publisher 기반
+  예측이며 기사 본문 fact 가 아님 (추측 금지 원칙 준수).

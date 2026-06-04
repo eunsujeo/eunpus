@@ -903,6 +903,7 @@ graph TB
 | [[docs/architecture/deposit-lifecycle]] | §7.4 (bridge deposit), §3 (chain variance) |
 | [[docs/architecture/withdrawal-lifecycle]] | §7.5 (bridge withdrawal), §8.4 (chain finality) |
 | [[docs/architecture/three-way-custody-decision-framework]] | §13 (3-way burden for multi-chain) |
+| [[docs/architecture/nonce-management-reference]] | §3, §6 (EVM nonce-replace / L2 sequencer 상세) |
 
 ### Uncertainty Boundary (★ 절대 유지)
 

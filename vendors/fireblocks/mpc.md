@@ -130,6 +130,7 @@ MPC key share 분포
 - [[entities/fireblocks/workspace-keys-backup]] — Owner-managed DR 자산
 - [[entities/fireblocks/mobile-device]] — Primary host
 - [[entities/fireblocks/api-co-signer]] — Co-signer 측 key share
+- [[docs/architecture/krw-stablecoin-architecture-reference]] — 원화 스테이블코인 MPC-TSS 3주체 키분산과 3-cloud 분할 대비 (Stage 45)
 
 ## Sources
 

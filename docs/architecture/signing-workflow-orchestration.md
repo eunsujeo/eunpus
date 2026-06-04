@@ -797,6 +797,7 @@ Direct-build 시 위 모든 영역이 customer 부담.
 | 참조 | 어디서 사용 |
 |---|---|
 | [[entities/fireblocks/mpc-key-share]] | §2.3 (3-endpoint MPC-CMP), §6.3 (nonce reuse) |
+| [[docs/architecture/nonce-management-reference]] | EVM 트랜잭션 nonce(B) — ★ §6.3 의 MPC 서명 nonce(A) 와 구분 |
 | [[entities/fireblocks/api-co-signer]] | §1 (S6), §8 (B9 signer topology) |
 | [[entities/fireblocks/callback-handler]] | §5 (5 auth options), §5.3 (2-key asymmetry) |
 | [[entities/fireblocks/cosigner]] | §1 (S6), §8 (Cosigner topology) |

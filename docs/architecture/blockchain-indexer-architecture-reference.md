@@ -191,6 +191,7 @@ NEAR Indexer for Explorer: 공개 SQL 스키마 진화 가능, release note 추�
 | **The Graph / Graph Node** | Subgraph 기반 인덱싱·GraphQL | 분산형 indexer 네트워크 · query node 분리 · Postgres shard · Prometheus/Grafana | GraphQL/entity 모델 중심 자유도 ↓ · Postgres 의존 | dApp 공개 API · 표준 이벤트 도메인 |
 | **Firehose / Substreams** | 대규모 병렬 추출·변환 | sub-second live streaming · fork-aware · cursor resume · 병렬 실행 · 일부 subgraph 100x+ | 도입·학습 비용 · 별도 저장/서빙 설계 필요 | 대규모 백필 · 멀티프로젝션 · 고성능 ETL |
 | **SubQuery** | 멀티체인 인덱서 SDK + GraphQL | EVM·Substrate·NEAR 폭넓은 지원 · filter/dictionary · worker thread · schema migration | 프레임워크 복잡도 · Postgres/RPC 품질 좌우 | 멀티체인 · 빠른 개발 · 자체 호스팅 또는 네트워크 |
+| **SQD / Subsquid** | batch-processor SDK + GraphQL | SQD Network archive + RPC 이중 소스 · batch ctx.blocks · unfinalized 지원 · custom sink(BigQuery/Parquet) | 성능수치 vendor-claimed (Q-VRF-32) · 프레임워크 학습곡선 | 고처리량 백필 · 멀티 sink · TS 개발 (§7.6) |
 | **Blockscout** | EVM 탐색기 / 인덱서 | realtime + catchup 이중 인덱서 · 다수 secondary fetcher · API/UI/Indexer 분리 | explorer 성격 강해 범용 DW 가공 필요 | 탐색기 · API · verification · 멀티 EVM |
 | **Kafka** | 스트림 버스 · 재처리 · 역압 | partition 병렬성 · offset replay · retention/compaction · replication/idempotence | 운영 복잡도 · broker/partition 설계 필요 | high-volume event bus · fan-out 파이프라인 |
 | **PostgreSQL** | 기준 저장소 · GraphQL 백엔드 | 강한 SQL · 파티셔닝 · jsonb · 운영 성숙도 | 쓰기 폭주 · 대규모 전문검색 약점 · shard 운영 난이도 | 대부분 인덱서의 system of record |
@@ -243,6 +244,16 @@ NEAR Indexer for Explorer: 공개 SQL 스키마 진화 가능, release note 추�
 - internal transactions · pending tx · dropped/replaced tx · contract bytecodes · balances · NFT instances · chain-specific fetcher
 - → "원시 블록 적재만으로 끝나지 않음" — 파생 데이터가 훨씬 많음
 - mode separation: indexer/API/UI 분리, same DB 공유
+
+### 7.6 SQD / Subsquid (Squid SDK) — batch-processor 모델 (★ Stage 48, vendor-official)
+
+[[sources/indexer/markdown/2026-06-04__sqd-dev__squid-sdk-cluster]] (docs.sqd.dev 공식). The Graph(§7.1)·SubQuery(§7.3) 와 같은 framework 계열의 누락 벤더 보완:
+- **Processor**: `EvmBatchProcessor` / `SubstrateBatchProcessor` (Node.js). data source = **SQD Network(archive) + Node RPC** 이중. sink = `ctx.store`(Store).
+- **Batch 모델**: `processor.run(db, handler)` → `ctx.blocks` 가 on-chain item 을 block 단위 그룹(EVM: logs/transactions/stateDiffs/traces). **boundary block** 은 매칭 없어도 header 포함, **canonical ordering** 으로 in-memory 압축. 단 processor 가 비매칭 배제 미보장 → **handler 에서 filter-before-decode** 필수. `setFields()` 로 selective field fetching, `isHead` 로 chain head 신호.
+- **차별점 (★ SQD 자체 주장, 편향 — Q-VRF-32)**: vs The Graph 비교에서 **unfinalized block 실시간 인덱싱**, **custom sink(BigQuery/Parquet/CSV)**, TypeScript(vs WASM), ~1k–50k blocks/sec(vs ~100–150). → 본 reference §1.2(미확정 데이터 실시간 vs 확정성)·§5.3(검색/분석 분리)·§7.1 The Graph 의 black-box WASM 과 대비축.
+- **BAYC 패턴**: `squid-evm-typegen` ABI→TS codegen → address+topic0 filter → decode → TypeORM 누적 후 `ctx.store.insert()` **batch insert** → schema.graphql 단일 진실원천이 TypeORM+GraphQL 동시 생성. → §5.2(덜 읽고 굵게 쓰기)·schema-driven codegen 실증.
+
+→ **cross-confirm**: batch processing + filter-before-decode + canonical ordering = 본 reference §2(P3 스캔)·§3.1(수집-질의 분리)·§8.2(idempotent projection) 와 정합. unfinalized 지원은 §1.2 UX-vs-확정성 trade-off 의 SQD 측 선택.
 
 ---
 
@@ -307,6 +318,21 @@ NEAR Indexer for Explorer: 공개 SQL 스키마 진화 가능, release note 추�
 → Coinbase 의 공개 아키텍처가 본 reference 의 §3 참조 아키텍처와 정합 — 본 reference 의 fact-tier 신뢰도 강화.
 
 **Korbit 사례** (B4 §6.3, footnote 22-23): Kafka Event Sourcing + Temporal workflow + Go/Rust + gRPC + EKS — 국내 거래소 reference 최초.
+
+### 9.3b Coinbase Solana I/O — 공식 fact-tier (★ Stage 47)
+
+[[sources/indexer/markdown/2026-06-04__coinbase__dedicated-architecture-for-solana]] (Coinbase Engineering, 2026-01-30, **공식 — §9.3a 의 B4 hypothesis 와 tier 다름**). §9.3a 의 ChainStorage 가 "chain-agnostic parser" 였다면, 본 자료는 Coinbase 가 **Solana 만은 chain-agnostic 에서 전용 아키텍처로 이탈**한 진화를 보여줌:
+
+- **Legacy (chain-agnostic, 60체인)**: Node Layer(RPC) → Blockchain I/O(finalized block 폴링·파싱) → Wallet Service(주소 source of truth, sequential gRPC). 2 병목: (1) 모든 체인용 strict-sequential(nonce·reorg 대비)이 **Solana 엔 인위적**(Solana 는 nonce 미사용+fast finality), (2) finalized slot RPC **폴링 지연** — Alpenglow sub-second finality 와 비호환.
+- **신규 Solana I/O** (Anza·Helius·Triton One·Solana Foundation 협업): high-throughput 스트림을 legacy stack 에서 decouple, Wallet Service 인터페이스(보안·reconciliation)는 보존. 5단계 병렬 파이프라인:
+  1. Address Registration (Wallet Service→Solana I/O→DB)
+  2. **Hybrid ingestion**: 폴링→**Geyser** 실시간 slot height 스트림 + **병렬 RPC** block 조회 → push-only Geyser 의 약점(failover·backfill)을 pull 결합으로 보완, zero data loss
+  3. Parallel filtering → 전용 **Kafka** 클러스터에 개별 메시지
+  4. Concurrent processing: Kafka consumer→entity transform→Wallet DB 병렬 저장. 순서 뒤바뀜은 **high-water mark** 체크포인트로 strict sequencing 유지 ("transform-then-store" drop-in)
+  5. write 확정→event-driven deposit 알림
+- **성과**: 30일 Shadow Mode(zero discrepancy)→2025-09-10 프로덕션. tx 처리량 **12x**, withdrawal capacity **5x**, traffic spike **8x** 흡수, deposit latency **20%↓**.
+
+→ **본 reference cross-confirm (fact-tier 강화)**: (i) **Geyser hybrid push+pull** = §ingestion 의 push/pull 절충 패턴 실증, (ii) **high-water mark ordering** = §8.2 idempotent projection / 순서보장 패턴 실증, (iii) raw stream ↔ serving(Wallet DB) **분리** = §3 참조 아키텍처 정합. ★ 단 "chain-agnostic 이 항상 옳다" 가 아니라 **고처리량 체인은 전용 파이프라인이 필요**하다는 교훈([[docs/architecture/multi-chain-adapter-pattern]] 의 chain-semantic 변이 reasoning 과 정합). Solana 의 **nonce 미사용** 은 [[docs/architecture/nonce-management-reference]] §0(EVM 전용 nonce) 의 경계와도 연결.
 
 ### 9.3 Hypothesis-tier 추가 비용 데이터 (★ Stage 43, unverified)
 
@@ -399,6 +425,8 @@ NEAR Indexer for Explorer: 공개 SQL 스키마 진화 가능, release note 추�
 
 ### 본 reference 의 1차 자료
 - [[sources/indexer/2026-06-01__블록체인-인덱서-심층-분석-보고서]] (16 페이지, 28 외부 출처)
+- [[sources/indexer/markdown/2026-06-04__coinbase__dedicated-architecture-for-solana]] — Coinbase Engineering "A Dedicated Architecture for Solana" (2026-01-30, ★ official fact-tier, §9.3b). PDF: `sources/indexer/pdf/2026-06-04__coinbase__dedicated-architecture-for-solana.pdf`
+- [[sources/indexer/markdown/2026-06-04__sqd-dev__squid-sdk-cluster]] — SQD/Subsquid 공식 docs 3-page (2026-06-04, vendor-official; vs-The-Graph 는 편향 caveat, §7.6)
 
 ### Fireblocks 측 cross-ref
 - [[vendors/fireblocks/blockchains]] §"Deposit Control and Confirmation Policy (DCCP) — Stage 40"
@@ -419,3 +447,4 @@ NEAR Indexer for Explorer: 공개 SQL 스키마 진화 가능, release note 추�
 - [[docs/architecture/three-way-custody-decision-framework]]
 - [[vendors/fireblocks/blockchains]]
 - [[entities/fireblocks/transaction]]
+- [[docs/architecture/krw-stablecoin-architecture-reference]] — 스테이블코인 필수 인프라(노드/탐색기/인덱싱)가 본 reference 와 정합 (Stage 45)

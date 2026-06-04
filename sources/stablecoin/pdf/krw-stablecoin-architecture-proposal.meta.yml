@@ -1,0 +1,33 @@
+source_url: (internal distribution — K-STAR consortium, 배포등급 Limited)
+downloaded_at: 2026-06-04
+doc_type: architecture-proposal
+title: 원화 스테이블코인 아키텍처 제안서 (KRW Stablecoin Architecture Proposal)
+authors:
+  - 카이아 DLT 재단 (주저자·총괄·편집)
+  - 람다256㈜
+  - ㈜안랩블록체인컴퍼니
+  - ㈜오픈에셋
+reviewers:
+  - 강민석 (KAIST) / 강형구 (한양대) / 박수용·박혜진 (서강대) / 엄현상 (서울대)
+  - 김용영 CSO (엠블록컴퍼니) / 노리타가 오카베 대표 (JPYC)
+  - 박신애 변호사 (LKB평산) / 차상진 변호사 (비컴)
+doc_date: 2026-02-13
+doc_status: Final
+distribution: Limited
+pages: 165
+language: ko
+tier: 1
+domain: stablecoin
+mode: C (full ingest — 전체 8장)
+stage_ingested: 45
+crawl_status: full-text-extracted
+extract: ../markdown/2026-02-13__k-star__krw-stablecoin-architecture-proposal.md
+notes: |
+  K-STAR 컨소시엄의 원화 스테이블코인 권고 아키텍처 종합 제안서.
+  "토큰 상품"이 아니라 "지급결제 인프라" 관점 — 신뢰·상환·감독가능성·운영복원력·위기통제.
+  8장 구성: 1 서론 / 2 요구사항 / 3 구현 아키텍처 / 4 운영 정책·거버넌스 /
+  5 요구사항-제안 비교 / 6 활용 사례 / 7 관련 사례(KRW1·KRWQ·JPYC·PHPC PoC) / 8 결론.
+  위키 교차 도메인: 지갑·커스터디·서명(3.6), 인프라(노드/블록탐색기/브릿지/오라클, 3.5),
+  컴플라이언스(KYT/KYB/AML/FRAML, 3.7), 데이터·대시보드(3.8), 거버넌스·리스크(4장).
+  Curated 흡수처: docs/architecture/krw-stablecoin-architecture-reference.md (신규, vendor-neutral),
+  open-questions/stablecoin.md (신규).

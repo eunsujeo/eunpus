@@ -6847,3 +6847,47 @@ B3 는 Stage 42 hypothesis 페이지의 §5 로 흡수, 별도 페이지 안 만
 ### 신규 entity 0 (33 stage 연속 0 streak 유지)
 
 B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 만듦.
+
+## Stage 45 (2026-06-04) — 원화 스테이블코인 아키텍처 제안서 (K-STAR) Mode C ingest (신규 도메인)
+
+- source: krw-stablecoin-architecture-proposal.pdf (165p, K-STAR 컨소시엄: 카이아DLT·람다256·안랩블록체인·오픈에셋, Final 2026-02-13, 배포등급 Limited)
+- 소스 위생: `sources/indexer/` → `sources/stablecoin/` 신설 이동 + meta.yml + 페이지마커 markdown 추출 (`2026-02-13__k-star__krw-stablecoin-architecture-proposal.md`, 166p)
+- 추출 방식: `pdftotext` 외부 도구 (PDF Read tool 직접 호출 금지 규칙 준수, context 보호)
+- 신규 페이지: `docs/architecture/krw-stablecoin-architecture-reference.md` (8장 전체, 절번호 출처), `open-questions/stablecoin.md` (Q-2026-06-04-STBL01~06)
+- 흡수 범위: 토큰통제(USDT/USDC 함수)·4레이어·발행/상환 플로우·발행관리시스템(요청ID 멱등성)·블록체인/SC 6기능·필수인프라(노드/탐색기/브릿지/오라클)·지갑커스터디서명(MPC-TSS+HSM+사전통제)·KYT/KYB/AML/FRAML·데이터대시보드·상호운용성·오케스트레이션(온체인FX)·운영4모드·8참여자·RACI·KRI/트리거·PoC(KRW1/KRWQ)·해외(JPYC/PHPC)
+- Fireblocks 3-way 매핑: MPC-TSS↔[[vendors/fireblocks/mpc]], 사전통제↔[[vendors/fireblocks/policy-engine]]/[[vendors/fireblocks/tap]], SoD/다자승인↔[[entities/fireblocks/cosigner]], 인프라↔[[docs/architecture/blockchain-indexer-architecture-reference]]
+- 영향받은 페이지(역방향 링크): blockchain-indexer-architecture-reference.md / mpc.md / policy-engine.md 의 Related Pages 3건
+- 신규 entity: 0 (신규 *도메인* reference 이므로 Fireblocks entity streak 34 stage 연속 0 무영향)
+
+## Stage 46 (2026-06-04) — Ethereum nonce 관리 (Chainstack) Mode C ingest (신규 도메인)
+
+- source: chainstack.com/ethereum-nonce-management (vendor 기술 블로그, WebFetch 추출 → `tool-extracted` tier)
+- 소스 위생: `sources/nonce/webpages/chainstack.com/` meta.yml + markdown 추출본(`2026-06-04__chainstack-com__ethereum-nonce-management.md`)
+- 신규 페이지: `docs/architecture/nonce-management-reference.md` (EVM tx nonce 전용), `open-questions/nonce.md` (Q-2026-06-04-NONCE01~03)
+- ★ 용어 구분: (B) EVM **트랜잭션 nonce** vs (A) MPC **서명 nonce** — §0.1 혼동방지 (evidence isolation 룰 적용)
+- 흡수 범위: nonce 규칙(no-gap)·stuck cascade·concurrency race·local tracker(ethers v6)·eth_getTransactionCount pending/latest·replacement(같은 nonce+양 fee≥10%)·cancellation·mempool 캡(~16/~64 Geth·Reth)·Flashbots private route·L2 sequencer force-inclusion·build-vs-buy(ethers NonceManager/OZ Defender)
+- Fireblocks 대비: `failOnLowFee`(=pre-emptive fail > stuck) · multiple withdrawal vault round-robin
+- 영향받은 페이지(역링크): transaction.md / multi-chain-adapter-pattern.md / withdrawal-lifecycle.md / signing-workflow-orchestration.md 4건
+- 미처리 보류: `sources/nonce/블록체인 nonce 관리 사례와 권장 아키텍처.pdf` (별도 promote 시 nonce-management-reference 에 통합)
+- 신규 entity: 0 (신규 도메인 reference; Fireblocks entity streak 35 stage 연속 0 무영향)
+
+## Stage 47 (2026-06-04) — Coinbase "Dedicated Architecture for Solana" Mode C ingest (official fact-tier)
+
+- source: coinbase.com/blog/a-dedicated-architecture-for-solana-at-coinbase (Bill Sahin·Linda Liu·Andrew Allen·Ning Wei·Xiaying Peng, 2026-01-30)
+- ★ Cloudflare 로 자동 fetch 불가(WebFetch/curl 403, Wayback·archive.today 미아카이브) → 사용자가 PDF 저장 투입 → `pdftotext` 추출 (PDF 직접 Read 없음)
+- 소스: pdf rename + `sources/indexer/markdown/2026-06-04__coinbase__dedicated-architecture-for-solana.md` + meta.yml crawl_status full-text-extracted
+- 흡수: `blockchain-indexer-architecture-reference.md` §9.3b 신규 (Coinbase Solana I/O 공식 자료) + Sources 1건
+- 핵심: chain-agnostic→Solana 전용 이탈, Geyser hybrid push+pull, 전용 Kafka 병렬, high-water mark ordering, 30일 Shadow Mode→2025-09-10 prod, 12x throughput / 5x withdrawal / 8x spike 흡수 / deposit latency 20%↓
+- fact-tier 강화: §9.3a B4 hypothesis(Coinbase ChainStorage)와 tier 구분 — official-tier 로 본 reference §3/§8.2 패턴 실증 cross-confirm. Solana nonce 미사용 → nonce-management-reference §0 경계 cross-link
+- 신규 entity: 0, 신규 page: 0 (기존 indexer reference 에 흡수 — entity-min, streak 36)
+
+## Stage 48 (2026-06-04) — SQD/Subsquid 인덱서 클러스터 + educative triage (Plan A)
+
+- sources(4 URL): docs.sqd.dev ×3 (processors/architecture, vs-the-graph, bayc tutorial) + educative.io/coinbase-system-design
+- triage 결정:
+  - SQD 3개 = **Mode C** (vendor-official) → WebFetch 추출 → `sources/indexer/markdown/2026-06-04__sqd-dev__squid-sdk-cluster.md` + meta
+  - educative = **Mode A catalog-only** (제3자 인터뷰 글, fact-tier 아님; vault-wallet-ledger-db-schema/withdrawal/deposit/reconciliation 와 중복 → evidence isolation 위해 본문 미로드). meta 만.
+- 흡수: `blockchain-indexer-architecture-reference.md` **§7.6 신규** (SQD/Subsquid — The Graph §7.1·SubQuery §7.3 의 peer 위치) + §6 스택표 1행 + Sources 1건
+- 핵심: EvmBatchProcessor·ctx.blocks batch·boundary block·isHead·setFields·filter-before-decode·batch insert·schema codegen·unfinalized 지원·custom sink(BigQuery/Parquet)
+- ★ vs-The-Graph 수치(1k~50k vs 100~150 blocks/sec 등)는 **SQD 자체 주장(편향)** → Q-VRF-32 추가(vendor-indexer-implementations-hypothesis.md), §7.6 본문 inline caveat 병행
+- 신규 entity: 0, 신규 page: 0 (entity-min, indexer reference 흡수, streak 37)

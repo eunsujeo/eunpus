@@ -28,6 +28,7 @@ _TODO: 룰 평가 순서, 조건 표현 방식, 정책 변경 자체에 대한 �
 - [Architecture](architecture.md)
 - [Policy](../../entities/fireblocks/policy.md)
 - [Transaction](../../entities/fireblocks/transaction.md)
+- [[docs/architecture/krw-stablecoin-architecture-reference]] — 스테이블코인 "서명 이전 사전통제" 와 First-Match ordering 대비 (Stage 45)
 
 ## Sources
 

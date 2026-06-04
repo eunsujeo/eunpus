@@ -1071,6 +1071,7 @@ graph TB
 | [[entities/fireblocks/api-co-signer]] | §6 (MPC signing) |
 | [[entities/fireblocks/callback-handler]] | §3 (callback as policy gate, if enabled) |
 | [[entities/fireblocks/mpc-key-share]] | §6.3 (MPC retry nonce) |
+| [[docs/architecture/nonce-management-reference]] | account nonce idempotency / stuck-replacement (★ MPC nonce 와 구분) |
 | [[entities/fireblocks/workspace-keys-backup]] | §3.5 (Recovery-경유 first withdrawal) |
 | [[entities/fireblocks/vault-account]] | §1, §5 (wallet ownership) |
 | [[vendors/fireblocks/architecture]] | §15 (vendor reference) |

@@ -84,6 +84,7 @@ Owner/Admin Quorum approval 흐름과 시간 경합 가능.
 - [[entities/fireblocks/user-roles/signer]]
 - [[entities/fireblocks/user-roles/approver]]
 - [[vendors/fireblocks/tap]]
+- [[docs/architecture/nonce-management-reference]] — EVM 트랜잭션 nonce 운영 (failOnLowFee 의 stuck-cascade 맥락) (Stage 46)
 
 ## Sources
 
