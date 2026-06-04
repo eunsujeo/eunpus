@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>1. 컴포넌트 개요 — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="블록체인 매니저의 8 컴포넌트 개요와 책임 경계 매트릭스 — 멀티체인 어댑터, 인덱서, 트랜잭션/Nonce/Broadcast, 서명, 원장, API 게이트웨이, 온오프램프, 알림." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a class="active" href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 컴포넌트 상세</h3><ul>
+<li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
+<li><a href="component-indexer.html">3. 인덱서</a></li>
+<li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
+<li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
+<li><a href="component-ledger.html">6. 원장 정합성 · 대사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
+<li><a href="scenario-deposit.html">7. 입금</a></li>
+<li><a href="scenario-withdrawal.html">8. 출금</a></li>
+<li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
+<li><a href="abstraction.html">10. SaaS API 와 Port 설계</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="components">
+<h2>1. 컴포넌트 개요</h2>
+<span class="section-subtitle">8 컴포넌트를 한눈에 — 책임 · 경계 · 어디서 자세히 보는가</span>
+
+<p class="lead">컴포넌트를 나누는 기준은 "기능" 이 아니라 <strong>책임 경계</strong>다. 즉 "무엇을 결정하고, 무엇을 받기만 하고, 어디서 외부와 맞닿는가" 로 나눈다. 경계가 분명해야 한 컴포넌트의 장애나 변경이 다른 컴포넌트로 번지지 않는다.</p>
+
+<h3>1.1 컴포넌트 한눈에 보기</h3>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th style="width:24%">컴포넌트</th><th>한 줄 책임</th><th style="width:14%">상세</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>API 게이트웨이</strong></td><td>외부 요청을 받아 인증하고, 같은 요청이 두 번 실행되지 않게 멱등 키<span class="g" data-tip="같은 요청 ID 로 두 번 들어와도 실행은 한 번만 — 재시도·장애 시 중복 실행/이중 지급 방지">?</span>를 부여해 내부로 라우팅</td><td>아래 1.3</td></tr>
+<tr><td><strong>멀티체인 어댑터</strong></td><td>체인마다 다른 규칙(계정/UTXO<span class="g" data-tip="비트코인식 모델 — 잔액이 아니라 사용하지 않은 출력(Unspent Tx Output)들의 집합으로 자산을 표현">?</span>, 확정 방식, 수수료)을 매니저 내부의 한 가지 인터페이스로 정규화</td><td><a href="component-multichain.html">2. 상세</a></td></tr>
+<tr><td><strong>인덱서</strong></td><td>체인 데이터를 수집·가공(projection<span class="g" data-tip="원시 블록/로그를 그대로 두고, 조회하기 쉬운 형태로 따로 만든 가공본. 재구성 가능하므로 언제든 다시 만들 수 있음">?</span>)해 입금 감지·확정 판단·조회·알림의 근거를 만든다</td><td><a href="component-indexer.html">3. 상세</a></td></tr>
+<tr><td><strong>트랜잭션 빌더 · Nonce/Broadcast</strong></td><td>출금 트랜잭션을 조립하고, 순번(nonce<span class="g" data-tip="계정 기반 체인에서 한 주소의 트랜잭션 순번 카운터. 순차적이어야 하고 비면 뒤 트랜잭션이 모두 막힌다">?</span>·UTXO)을 관리하며, 전파하고, 막히면(stuck) 재전송</td><td><a href="component-tx-nonce.html">4. 상세</a></td></tr>
+<tr><td><strong>서명 오케스트레이션</strong></td><td>조립된 트랜잭션을 외부 서명자(MPC/HSM/co-signer)에게 보내 서명을 받아오는 경계. <strong>키 자체는 보관하지 않는다</strong></td><td><a href="component-signing.html">5. 상세</a></td></tr>
+<tr><td><strong>원장 정합성 · 대사</strong></td><td>체인 위 사실과 내부 장부를 요청 ID 기준으로 맞춰 보고, 불일치를 잡아낸다</td><td><a href="component-ledger.html">6. 상세</a></td></tr>
+<tr><td><strong>온/오프램프 커넥터</strong></td><td>법정화폐 쪽 시스템(은행·PG·거래소)과의 입출금 연동 경계</td><td>아래 1.3</td></tr>
+<tr><td><strong>이벤트 · 알림</strong></td><td>입금·확정·출금 완료 등 상태 변화를 외부에 push(webhook/스트림)</td><td>아래 1.3</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>무게가 큰 5 컴포넌트(멀티체인 어댑터 · 인덱서 · 트랜잭션/Nonce/Broadcast · 서명 · 원장)는 전용 상세 페이지에서 "왜 필요 / 어떻게 동작 / 내부 flow / 다른 컴포넌트가 어떻게 쓰는지" 를 깊게 다룬다. 나머지 셋(API 게이트웨이 · 온오프램프 · 알림)은 비교적 얇고 시나리오에서 동작이 드러나므로 여기서 짧게 정리한다.</p>
+
+<h3>1.2 책임 경계 매트릭스</h3>
+
+<p>각 컴포넌트가 "결정(D)" 하는지, "집행(X)" 만 하는지, "외부와 맞닿는(E)" 지를 정리하면 경계가 분명해진다.</p>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>관심사</th><th>주관 컴포넌트</th><th>성격</th></tr>
+</thead>
+<tbody>
+<tr><td>요청 진입 · 멱등</td><td>API 게이트웨이</td><td>집행(X)</td></tr>
+<tr><td>체인 규칙 정규화</td><td>멀티체인 어댑터</td><td>결정(D) — 체인 semantic 한정</td></tr>
+<tr><td>입금 감지 · 확정 판단</td><td>인덱서</td><td>결정(D) — 확정 정책 적용</td></tr>
+<tr><td>nonce · 전파 · 재전송</td><td>트랜잭션 빌더 · Nonce/Broadcast</td><td>결정(D) — 체인 쓰기 전략</td></tr>
+<tr><td>서명</td><td>서명 오케스트레이션 → 외부 서명자</td><td>외부(E) — 키 위임</td></tr>
+<tr><td>정합성 · 대사</td><td>원장 정합성 · 대사</td><td>집행(X) — 사실 비교</td></tr>
+<tr><td>fiat 경계</td><td>온/오프램프 커넥터 → 은행/PG</td><td>외부(E)</td></tr>
+<tr><td>출금 승인 · 한도</td><td>(정책 평면)</td><td>범위 밖 — 신호 수신</td></tr>
+<tr><td>제재 · 이상거래</td><td>(컴플라이언스 평면)</td><td>범위 밖 — 신호 수신</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>1.3 가벼운 세 컴포넌트</h3>
+
+<h4>API 게이트웨이</h4>
+<dl class="chain-rr">
+<dt>왜 필요</dt><dd>모든 요청의 단일 진입점. 인증·rate limit 과 <strong>멱등 키</strong>로 "재시도해도 한 번만 실행" 을 보장하는 곳. 이게 없으면 네트워크 재시도가 곧바로 이중 출금으로 이어진다.</dd>
+<dt>하는 일</dt><dd>입금 주소 발급, 출금 요청, 잔액/상태 조회를 받아 트랜잭션 빌더(쓰기)·원장(조회)·온오프램프(램프)로 라우팅. 비즈니스 판단은 안 한다.</dd>
+<dt>경계</dt><dd>얇게 유지 — 로직은 뒤 컴포넌트로 위임.</dd>
+</dl>
+
+<h4>온/오프램프 커넥터</h4>
+<dl class="chain-rr">
+<dt>왜 필요</dt><dd>법정화폐 세계와 체인 세계는 확정 시점·되돌림 가능성이 다르다. 두 흐름의 <strong>순서와 증빙</strong>을 안전하게 잇는 전담 경계가 필요하다.</dd>
+<dt>하는 일</dt><dd>은행·PG·거래소 API 와 연동해 fiat 확정을 확인하고, 체인 쪽 흐름(출금/입금 컴포넌트)과 settle-then-pay 순서로 잇는다.</dd>
+<dt>경계</dt><dd>fiat 정산 자체는 외부 기관. 자세한 두 방향 흐름은 <a href="scenario-onofframp.html">9. 온·오프램프</a> 참조.</dd>
+</dl>
+
+<h4>이벤트 · 알림</h4>
+<dl class="chain-rr">
+<dt>왜 필요</dt><dd>상위 서비스·고객이 폴링하지 않고도 입금·확정·출금 완료를 즉시 알 수 있어야 한다.</dd>
+<dt>하는 일</dt><dd>인덱서·트랜잭션·원장의 상태 변화를 webhook/스트림으로 push. 재시도·순서·서명 검증.</dd>
+<dt>경계</dt><dd>상태를 만들지 않고 전달만 한다. 멱등 전달(같은 이벤트 중복 수신 대비)을 소비자에게 보장.</dd>
+</dl>
+
+<div class="callout callout-warn">
+<div class="callout-title">범위 밖 (다시 강조)</div>
+<p>출금 승인·한도(정책), 제재·이상거래(컴플라이언스), 준비자산 운용(자금)은 매니저가 결정하지 않는다. 매니저는 이들이 내린 <strong>승인/거부/제한 신호를 입력으로 받아</strong> 트랜잭션 빌더(전파 차단·보류)나 API 게이트웨이(요청 거부)에서 집행만 한다. 시나리오 다이어그램에서 이 신호는 점선으로 표시한다.</p>
+</div>
+
+<p>다음 — <a href="component-multichain.html"><strong>2. 멀티체인 어댑터</strong></a> 부터 컴포넌트를 깊게 본다.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

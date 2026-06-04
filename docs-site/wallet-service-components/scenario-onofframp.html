@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>9. 온·오프램프 시나리오 — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="온램프(fiat→토큰)·오프램프(토큰→fiat) 시나리오에서 온오프램프 커넥터가 체인 흐름과 법정화폐 흐름을 순서 안전하게 잇는 방법." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 컴포넌트 상세</h3><ul>
+<li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
+<li><a href="component-indexer.html">3. 인덱서</a></li>
+<li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
+<li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
+<li><a href="component-ledger.html">6. 원장 정합성 · 대사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
+<li><a href="scenario-deposit.html">7. 입금</a></li>
+<li><a href="scenario-withdrawal.html">8. 출금</a></li>
+<li><a class="active" href="scenario-onofframp.html">9. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
+<li><a href="abstraction.html">10. SaaS API 와 Port 설계</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="onofframp">
+<h2>9. 온·오프램프 시나리오</h2>
+<span class="section-subtitle">법정화폐와 체인 자산을 잇는 두 방향 — 순서 안전이 전부</span>
+
+<p class="lead">온·오프램프는 <strong>법정화폐(fiat) 세계와 체인 세계</strong>를 잇는다. 두 세계는 확정 시점도, 되돌릴 수 있는 정도도 다르다. <strong>온/오프램프 커넥터</strong>가 두 흐름의 <strong>순서와 증빙</strong>을 잇고, 체인 쪽은 입금·출금 시나리오를 재사용한다. fiat 정산 자체와 한도·승인은 외부 기관·정책 평면 몫이다.</p>
+
+<h3>9.1 온램프 (fiat → 토큰)</h3>
+
+<p>사용자가 법정화폐를 넣으면 토큰을 지급한다. 핵심은 <strong>fiat 입금이 확정된 뒤에만 토큰을 지급</strong>하는 것.</p>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant U as 사용자
+    participant RAMP as 온/오프램프 커넥터
+    participant BK as 은행 · PG<br/>(외부)
+    participant TX as 트랜잭션 빌더
+    participant SIG as 서명 오케스트레이션
+    participant CH as 블록체인
+    participant IDX as 인덱서
+    participant NT as 이벤트 · 알림
+
+    U->>BK: 법정화폐 입금
+    BK-->>RAMP: 입금 확정 통지
+    RAMP->>RAMP: 요청 ID 로 fiat 확정 증빙 고정
+    RAMP->>TX: 토큰 지급 지시(발행 또는 treasury 전송)
+    TX->>SIG: 서명 요청
+    SIG-->>TX: 서명된 tx
+    TX->>CH: 전파
+    CH->>IDX: 확정 감지
+    IDX-->>RAMP: 토큰 지급 확정
+    RAMP->>NT: 온램프 완료 알림
+    NT-->>U: "토큰 지급 완료" webhook
+</pre></div>
+<p class="diagram-caption">Figure 9-1. 온램프. fiat 확정(2) → 토큰 지급(4~) 순서가 핵심. fiat 확정 전 토큰을 먼저 주면 미수금 위험. 온/오프램프 커넥터는 fiat 확정 증빙을 요청 ID 에 묶어 두고, 체인 쪽은 출금 시나리오(트랜잭션 빌더·서명·인덱서)를 그대로 재사용한다.</p>
+
+<h3>9.2 오프램프 (토큰 → fiat)</h3>
+
+<p>사용자가 토큰을 보내면 법정화폐를 지급한다. 핵심은 <strong>토큰 입금이 확정된 뒤에만 fiat 를 지급</strong>하는 것.</p>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant U as 사용자
+    participant CH as 블록체인
+    participant IDX as 인덱서
+    participant RAMP as 온/오프램프 커넥터
+    participant BK as 은행 · PG<br/>(외부)
+    participant LED as 원장
+    participant NT as 이벤트 · 알림
+
+    U->>CH: 토큰 전송(우리 주소로)
+    CH->>IDX: transfer 감지 · 확정 대기
+    IDX-->>RAMP: 토큰 입금 확정(CONFIRMED)
+    RAMP->>BK: 법정화폐 지급 요청
+    BK-->>RAMP: fiat 지급 확정
+    RAMP->>LED: 토큰↔fiat 매칭 · 장부 반영
+    LED->>LED: 대사(체인 입금 = fiat 지급)
+    RAMP->>NT: 오프램프 완료 알림
+    NT-->>U: "법정화폐 지급 완료" webhook
+</pre></div>
+<p class="diagram-caption">Figure 9-2. 오프램프. 토큰 확정(3) → fiat 지급(4~) 순서가 핵심. 토큰 확정 전 fiat 를 먼저 주면 reorg 로 토큰이 사라졌을 때 손실. 커넥터가 두 다리를 잇고 원장이 토큰 입금과 fiat 지급을 한 건으로 대사한다.</p>
+
+<h3>9.3 두 세계를 잇는 원칙</h3>
+
+<div class="callout callout-warn">
+<div class="callout-title">순서 · 멱등 · 대사</div>
+<ul>
+<li><strong>확정 우선(settle-then-pay)</strong> — 받는 쪽이 확정된 뒤에만 주는 쪽을 실행한다. 온램프는 fiat 확정 후 토큰, 오프램프는 토큰 확정 후 fiat.</li>
+<li><strong>한쪽 실패 처리</strong> — 두 다리 중 하나가 실패/지연하면 대기(큐)·롤백·재시도를 사전에 정의한다. 동시 보장이 필요하면 양쪽 확정을 묶는 장치를 둔다.</li>
+<li><strong>요청 ID 로 묶기</strong> — fiat 거래와 체인 거래를 같은 요청 ID 로 연결해 원장이 단일 건으로 대사하고 사후 추적할 수 있게 한다.</li>
+</ul>
+</div>
+
+<h3>9.4 컴포넌트 재사용 관계</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:22%">방향</th><th>fiat 다리</th><th>체인 다리(재사용)</th></tr></thead>
+<tbody>
+<tr><td><strong>온램프</strong></td><td>커넥터 ← 은행/PG 입금 확정</td><td>출금 흐름(트랜잭션 빌더·서명·어댑터·인덱서) — 토큰 지급</td></tr>
+<tr><td><strong>오프램프</strong></td><td>커넥터 → 은행/PG 지급</td><td>입금 흐름(인덱서·어댑터) — 토큰 수령 확정</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>즉 온/오프램프 커넥터는 새 체인 로직을 거의 만들지 않는다 — 입금·출금 시나리오를 fiat 다리와 <strong>순서 안전하게 이어 붙이는</strong> 조정자다.</p>
+
+<p>다음 — <a href="abstraction.html"><strong>10. SaaS API 와 Port 설계</strong></a> 에서 이 모든 컴포넌트를 벤더에 묶이지 않게 추상화한다.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

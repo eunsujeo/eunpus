@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>8. 출금 시나리오 — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="크립토 출금 시나리오 — 트랜잭션 빌더/Nonce·Broadcast, 서명 오케스트레이션, 멀티체인 어댑터가 협력하는 쓰기 흐름과 stuck 재전송." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 컴포넌트 상세</h3><ul>
+<li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
+<li><a href="component-indexer.html">3. 인덱서</a></li>
+<li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
+<li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
+<li><a href="component-ledger.html">6. 원장 정합성 · 대사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
+<li><a href="scenario-deposit.html">7. 입금</a></li>
+<li><a class="active" href="scenario-withdrawal.html">8. 출금</a></li>
+<li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
+<li><a href="abstraction.html">10. SaaS API 와 Port 설계</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="withdrawal">
+<h2>8. 출금 시나리오</h2>
+<span class="section-subtitle">우리 자산을 외부로 보내는 쓰기 흐름 — 조립 · 서명 · 전파 · 확정 · 재전송</span>
+
+<p class="lead">출금은 체인에 <strong>쓰는</strong> 흐름이라 가장 많은 컴포넌트가 맞물린다. 핵심 주연은 <strong>트랜잭션 빌더 · Nonce/Broadcast</strong>이고, 서명·멀티체인 어댑터·인덱서(확정 감지)가 협력한다. 단 <strong>출금 승인 자체는 매니저 밖(정책 평면)</strong>에서 끝나야 하고, 매니저는 "승인됨" 신호를 받은 뒤에야 움직인다.</p>
+
+<h3>8.1 표준 흐름</h3>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant U as 사용자
+    participant GW as API 게이트웨이
+    participant GOV as 정책·컴플라이언스<br/>(범위 밖)
+    participant TX as 트랜잭션 빌더 · Nonce
+    participant SIG as 서명 오케스트레이션
+    participant SG as 외부 서명자<br/>MPC/HSM
+    participant ADP as 멀티체인 어댑터
+    participant CH as 블록체인
+    participant IDX as 인덱서
+    participant LED as 원장
+    participant NT as 이벤트 · 알림
+
+    U->>GW: 출금 요청(+멱등 키)
+    GW-->>GOV: 승인·제재 판단 위임
+    GOV-->>GW: 승인됨(또는 거부/보류)
+    GW->>TX: 승인된 출금 지시
+    TX->>ADP: 체인 규칙 조회(순번/UTXO·수수료)
+    ADP-->>TX: 순번·수수료 파라미터
+    TX->>TX: 트랜잭션 조립 · 순번 점유
+    TX->>SIG: 서명 요청
+    SIG->>SG: 서명(키는 외부 보관)
+    SG-->>SIG: 서명 결과
+    SIG-->>TX: 서명된 tx
+    TX->>ADP: 전파(broadcast)
+    ADP->>CH: 트랜잭션 제출
+    TX->>NT: 전파됨(BROADCAST) 알림
+
+    loop 확정 대기
+        CH->>IDX: 후속 블록
+        IDX->>TX: confirmation 상태
+    end
+    IDX-->>TX: 확정(CONFIRMED)
+    TX->>LED: 출금 확정 · 장부 반영
+    LED->>LED: 체인 사실 ↔ 장부 대사
+    TX->>NT: 출금 완료 알림
+    NT-->>U: "출금 완료" webhook
+</pre></div>
+<p class="diagram-caption">Figure 8-1. 출금 표준 흐름. 점선 구간(API↔정책·컴플라이언스)은 범위 밖 — 매니저는 "승인됨" 신호를 받은 뒤에만 트랜잭션 빌더로 진입한다. 키는 외부 서명자(SG)에만 있고 서명 오케스트레이션은 호출 경계일 뿐이다. 순번 점유 → 서명 → 전파 → 확정 순서가 깨지지 않는 것이 안전성의 핵심.</p>
+
+<h3>8.2 막힌 트랜잭션(stuck) 재전송</h3>
+
+<p>전파한 트랜잭션이 수수료 부족·혼잡으로 확정되지 않으면, 계정형 체인에서는 그 <strong>순번(nonce<span class="g" data-tip="계정 기반 체인에서 한 주소의 트랜잭션 순번 카운터. 비면 뒤 트랜잭션이 모두 막힌다">?</span>)이 막혀 뒤 트랜잭션이 전부 멈춘다</strong>. 트랜잭션 빌더가 이를 감지해 재전송한다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    BC["🟡 전파됨<br/>(BROADCAST)<br/>확정 대기"]
+    OK["✅ 확정<br/>(CONFIRMED)"]
+    STUCK["🟡 막힘<br/>(STUCK)<br/>임계 시간 초과"]
+    REPL["♻️ 재전송<br/>같은 순번<br/>수수료 ↑ (양 필드)"]
+    CANCEL["❌ 취소<br/>같은 순번<br/>0원 self-send"]
+
+    BC -->|기준 시간 내 채굴| OK
+    BC -->|미채굴 · 임계 초과| STUCK
+    STUCK -->|계속 진행| REPL
+    STUCK -->|중단 필요| CANCEL
+    REPL --> BC
+
+    classDef wait fill:#fef3c7,stroke:#d97706;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    class BC,STUCK wait;
+    class OK good;
+    class CANCEL bad;
+    class REPL special;
+</pre></div>
+<p class="diagram-caption">Figure 8-2. stuck 재전송. 노랑 = 대기/막힘, 초록 = 확정, 보라 = 재전송(같은 순번 + 수수료 양 필드 동시 인상), 빨강 = 취소(같은 순번으로 0원 self-send). 규칙: 항상 가장 오래된 막힌 순번부터 처리하고, 수수료는 상한(ceiling)을 두고 단계적으로 올린다. 자세히는 <a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a>.</p>
+
+<h3>8.3 컴포넌트별 역할 요약</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컴포넌트</th><th>출금에서의 역할</th></tr></thead>
+<tbody>
+<tr><td><a href="component-tx-nonce.html"><strong>트랜잭션 빌더 · Nonce/Broadcast</strong></a></td><td>주연. 조립·순번 점유·전파·확정 추적·stuck 재전송. 지갑별 직렬화로 순번 충돌 방지.</td></tr>
+<tr><td><a href="component-signing.html"><strong>서명 오케스트레이션</strong></a></td><td>외부 서명자 호출 경계. 키 미보관.</td></tr>
+<tr><td><a href="component-multichain.html"><strong>멀티체인 어댑터</strong></a></td><td>체인별 순번/UTXO·수수료·재전송 규칙 제공.</td></tr>
+<tr><td><a href="component-indexer.html"><strong>인덱서</strong></a></td><td>전파한 tx 의 확정 여부 역방향 확인.</td></tr>
+<tr><td><a href="component-ledger.html"><strong>원장</strong></a></td><td>출금 확정 후 장부 반영·대사.</td></tr>
+<tr><td>(정책·컴플라이언스)</td><td><strong>범위 밖</strong> — 승인/제재 신호만 입력.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout callout-danger">
+<div class="callout-title">순서가 곧 안전</div>
+<p>출금에서 가장 위험한 실수는 <strong>순서 역전</strong>이다. 승인 전 전파, 서명 전 장부 차감, 확정 전 "완료" 통지는 모두 사고로 이어진다. 각 단계는 직전 단계의 확정을 전제로만 진행하고, 모든 전이는 요청 ID + 멱등 키로 추적되어 재처리에도 한 번만 실행되어야 한다.</p>
+</div>
+
+<p>다음 — <a href="scenario-onofframp.html"><strong>9. 온·오프램프 시나리오</strong></a> 에서 fiat 경계가 끼는 흐름을 본다.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

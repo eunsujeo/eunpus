@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>6. 원장 정합성 · 대사 — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="원장 정합성·대사 — 체인 위 사실과 내부 장부를 요청 ID 기준으로 맞춰 보고 불일치를 잡아내는 컴포넌트의 동작과 사용 관계." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 컴포넌트 상세</h3><ul>
+<li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
+<li><a href="component-indexer.html">3. 인덱서</a></li>
+<li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
+<li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
+<li><a class="active" href="component-ledger.html">6. 원장 정합성 · 대사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
+<li><a href="scenario-deposit.html">7. 입금</a></li>
+<li><a href="scenario-withdrawal.html">8. 출금</a></li>
+<li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
+<li><a href="abstraction.html">10. SaaS API 와 Port 설계</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="ledger">
+<h2>6. 원장 정합성 · 대사</h2>
+<span class="section-subtitle">체인 위 사실과 내부 장부가 어긋나지 않게 — 돈을 다루는 시스템의 진실 검증</span>
+
+<h3>6.1 왜 필요한가</h3>
+
+<p>매니저 안에는 두 개의 "사실" 이 있다. 하나는 <strong>체인 위 사실</strong>(인덱서가 본 입금·출금 결과)이고, 다른 하나는 <strong>내부 장부</strong>(우리 시스템이 기록한 요청·잔액)다. 이 둘이 어긋나면 — 장부엔 있는데 체인엔 없거나, 체인엔 왔는데 장부에 안 잡히면 — "있다고 생각한 돈이 없거나, 없는 돈을 내보내는" 사고로 직결된다.</p>
+
+<p>대사(reconciliation<span class="g" data-tip="두 장부/기록을 맞춰 보아 차이를 찾아내는 작업">?</span>)는 이 둘을 지속적으로 맞춰 보고, 불일치를 조기에 잡아낸다. 돈을 다루는 시스템에서 사후 정정이 가능하려면 대사는 선택이 아니라 필수다.</p>
+
+<h3>6.2 어떻게 동작하는가</h3>
+
+<p>핵심은 <strong>요청 ID</strong> 라는 하나의 축이다. 한 건의 입금/출금이 채널 요청부터 최종 결과까지 같은 요청 ID 로 꿰여, 어디서 멈췄는지·어긋났는지 단일 조회로 추적된다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    REQ["채널 요청<br/>(요청 ID)"]
+    OFF["오프체인 정산/지급<br/>(은행·PG 결과)"]
+    ON["온체인 실행 결과<br/>(인덱서)"]
+    LGR["내부 원장 반영"]
+    MATCH{"요청 ID 로 대조"}
+    OK["✅ 정상<br/>(일치)"]
+    CHK["🟡 확인 필요<br/>(지연·미반영)"]
+    BAD["❌ 불일치<br/>(예외 목록)"]
+
+    REQ --> MATCH
+    OFF --> MATCH
+    ON --> MATCH
+    LGR --> MATCH
+    MATCH --> OK
+    MATCH --> CHK
+    MATCH --> BAD
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef wait fill:#fef3c7,stroke:#d97706;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    class REQ,OFF,ON,LGR good;
+    class MATCH special;
+    class OK good;
+    class CHK wait;
+    class BAD bad;
+</pre></div>
+<p class="diagram-caption">Figure 6-1. 대사. 한 요청 ID 에 묶인 네 가지 기록(채널 요청·오프체인 지급·온체인 결과·내부 원장)을 대조해 정상/확인 필요/불일치로 분류한다. 확인 필요·불일치는 예외 목록으로 분리해 조치·조회·보고로 잇는다.</p>
+
+<p>최소 산출물은 셋이다 — ① 각 요청 ID 의 <strong>정합성 상태</strong>(정상/확인 필요/불일치), ② 예외 건의 <strong>원인 유형</strong>(온체인 미반영·지급 지연·원장 미반영 등), ③ 운영 콘솔·알림·보고로 잇는 <strong>예외 목록</strong>.</p>
+
+<h3>6.3 다른 컴포넌트와의 관계</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">관계</th><th>내용</th></tr></thead>
+<tbody>
+<tr><td>← <a href="component-indexer.html">인덱서</a></td><td>체인 위 사실(입금/출금 확정 결과)을 대조 근거로 받는다.</td></tr>
+<tr><td>← <a href="component-tx-nonce.html">트랜잭션 빌더</a></td><td>출금 확정 결과를 장부에 반영.</td></tr>
+<tr><td>← <a href="scenario-onofframp.html">온/오프램프</a></td><td>fiat 지급/입금 결과를 토큰 흐름과 한 건으로 대조.</td></tr>
+<tr><td>→ API 게이트웨이</td><td>건별 처리 상태·정합성 조회 제공.</td></tr>
+<tr><td>→ 이벤트 · 알림</td><td>불일치·예외를 운영자에게 알림.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">경계 — 회계 정책은 범위 밖</div>
+<p>이 컴포넌트는 "체인과 장부가 기술적으로 맞는가" 만 본다. 준비자산 운용·공시·회계 기준 같은 <strong>정책</strong>은 자금 운용 평면의 몫이다. 내부 원장을 복식부기로 둘지 같은 설계는 매니저 안에서 하되, 그 위의 회계·공시 판단은 위임한다.</p>
+</div>
+
+<div class="callout">
+<div class="callout-title">설계 포인트</div>
+<ul>
+<li><strong>요청 ID 단일 축</strong> — 모든 기록을 한 ID 로 꿰어야 종단 추적·대사가 가능.</li>
+<li><strong>멱등 반영</strong> — 같은 결과를 두 번 반영해 장부가 두 번 늘지 않게.</li>
+<li><strong>as-of-block 인식</strong> — 인덱서가 준 사실의 확정 수준을 함께 보고, reorg 로 뒤집히면 장부도 정정.</li>
+</ul>
+</div>
+
+<p>여기까지가 컴포넌트 상세다. 다음 — <a href="scenario-deposit.html"><strong>7. 입금 시나리오</strong></a> 부터 컴포넌트들이 실제로 협력하는 흐름을 본다.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

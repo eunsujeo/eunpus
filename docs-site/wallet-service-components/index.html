@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>0. Overview — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="블록체인 지갑 서비스의 블록체인 상호작용 레이어(블록체인 매니저)를 컴포넌트로 분해하고, 입금·출금·온오프램프 시나리오와 SaaS API 추상화를 다루는 설계 가이드." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a class="active" href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 컴포넌트 상세</h3><ul>
+<li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
+<li><a href="component-indexer.html">3. 인덱서</a></li>
+<li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
+<li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
+<li><a href="component-ledger.html">6. 원장 정합성 · 대사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
+<li><a href="scenario-deposit.html">7. 입금</a></li>
+<li><a href="scenario-withdrawal.html">8. 출금</a></li>
+<li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
+<li><a href="abstraction.html">10. SaaS API 와 Port 설계</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="overview">
+<h2>0. Overview</h2>
+<span class="section-subtitle">블록체인 매니저가 무엇이고, 어떤 컴포넌트로 나뉘며, 무엇을 다루지 않는가</span>
+
+<p class="lead">
+본 가이드는 블록체인 지갑 서비스의 <strong>블록체인 상호작용 레이어</strong> — 여기서는 <strong>블록체인 매니저</strong> 라고 부른다 — 를 컴포넌트로 분해하고, 입금·출금·온오프램프 시나리오에서 컴포넌트들이 어떻게 맞물려 동작하는지, 그리고 특정 벤더(Fireblocks·Alchemy 등)에 묶이지 않으려면 어떻게 추상화해야 하는지를 보여주는 설계 reference 다.
+</p>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 성격</div>
+<p>여기 담긴 컴포넌트 구분과 다이어그램은 <strong>특정 제품의 공식 명세가 아니라, 저자가 일반적인 지갑 인프라 패턴과 공개된 SaaS API 형태를 바탕으로 정리한 설계 참고안</strong>이다. 실제 시스템에 적용할 때는 자신의 요구사항·규제 환경에서 다시 검증하는 것을 전제로 읽어야 한다.</p>
+</div>
+
+<h3>0.1 블록체인 매니저란</h3>
+
+<p>지갑 서비스에는 "사람·정책·돈" 을 다루는 부분과 "블록체인" 을 다루는 부분이 섞여 있다. 블록체인 매니저는 그 중 <strong>체인과 직접 대화하는 부분</strong>만 떼어낸 하위 시스템이다. 즉 다음을 책임진다.</p>
+
+<ul>
+<li>체인에서 일어난 일을 <strong>읽어 들이고</strong> (인덱싱·입금 감지·확정 판단)</li>
+<li>우리가 원하는 일을 체인에 <strong>써 넣는다</strong> (트랜잭션 조립·서명 요청·전파·재전송)</li>
+<li>체인마다 다른 규칙을 <strong>한 가지 방식으로 정규화</strong>한다 (멀티체인)</li>
+<li>체인 위 사실과 내부 장부를 <strong>맞춰 본다</strong> (정합성·대사)</li>
+</ul>
+
+<p>반대로 "누가 출금을 승인하는가(정책)", "이 주소가 제재 대상인가(컴플라이언스)", "준비자산을 어떻게 운용하는가(자금 운용)" 같은 판단은 매니저가 직접 내리지 않는다. 매니저는 그런 <strong>상위 평면이 내린 결정을 신호로 받아 집행</strong>할 뿐이다. (0.3 참조)</p>
+
+<h3>0.2 한 화면으로 보는 컴포넌트 맵</h3>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    subgraph EXT[외부 경계]
+      USER["클라이언트 · 상위 서비스"]
+      CHAIN["블록체인 네트워크<br/>RPC · Geyser · Firehose"]
+      FIAT["은행 · PG · 거래소"]
+      SIGNER["서명자<br/>MPC · HSM · co-signer"]
+      GOV["정책 · 컴플라이언스 평면<br/>(범위 밖)"]
+    end
+    subgraph MGR["블록체인 매니저"]
+      GW["API 게이트웨이"]
+      TX["트랜잭션 빌더<br/>Nonce · Broadcast"]
+      SIG["서명 오케스트레이션"]
+      ADP["멀티체인 어댑터"]
+      IDX["인덱서"]
+      LED["원장 정합성 · 대사"]
+      RAMP["온/오프램프 커넥터"]
+      NOTIF["이벤트 · 알림"]
+    end
+
+    USER --> GW
+    GW --> TX
+    GW --> RAMP
+    TX --> SIG --> SIGNER
+    TX --> ADP
+    ADP --> CHAIN
+    CHAIN --> IDX
+    IDX --> LED
+    IDX --> NOTIF --> USER
+    RAMP --> FIAT
+    LED --> GW
+    GOV -. 승인 · 제재 신호 .-> TX
+
+    classDef gw fill:#e0e7ff,stroke:#6366f1;
+    classDef chain fill:#dbeafe,stroke:#2563eb;
+    classDef out fill:#fee2e2,stroke:#dc2626;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    class GW,ADP,IDX,TX,SIG,LED,RAMP,NOTIF gw;
+    class CHAIN chain;
+    class GOV out;
+    class USER,FIAT,SIGNER ext;
+</pre></div>
+<p class="diagram-caption">Figure 0-1. 블록체인 매니저의 8 컴포넌트와 외부 경계. 보라색 = 매니저 내부 컴포넌트, 파랑 = 블록체인, 빨강 = 범위 밖(정책·컴플라이언스 평면, 점선 신호로만 연결), 회색 = 외부 시스템. 핵심 흐름: 읽기는 체인 → 인덱서 → 내부, 쓰기는 API → 트랜잭션 빌더 → 서명 → 멀티체인 어댑터 → 체인.</p>
+
+<h3>0.3 범위 — 다루는 것과 위임하는 것</h3>
+
+<div class="callout callout-warn">
+<div class="callout-title">이 가이드가 다루지 않는 것 (다른 평면에 위임)</div>
+<p>블록체인 매니저는 다음을 <strong>스스로 결정하지 않는다</strong>. 결정은 상위 평면이 내리고, 매니저는 그 결과를 신호로 받아 집행하는 연결점(hook)만 노출한다.</p>
+<ul>
+<li><strong>정책 · 승인</strong> — 누가 얼마를 어떤 절차로 승인하는가 (거버넌스 평면)</li>
+<li><strong>컴플라이언스</strong> — 고객확인·제재·이상거래 판단 (KYT/KYB/AML 평면)</li>
+<li><strong>준비자산 운용 · 회계 정책</strong> — 자금을 어떻게 굴리고 공시하는가 (자금 운용 평면)</li>
+</ul>
+<p>본 가이드는 "블록체인 매니저" 를 만드는 관점이므로 이 셋을 의도적으로 범위에서 제외한다. 다만 시나리오에서 이들과 맞닿는 지점은 점선 신호로 표시한다.</p>
+</div>
+
+<h3>0.4 읽는 법</h3>
+
+<ul>
+<li><strong>1. 컴포넌트 개요</strong> — 8 컴포넌트 한눈에 + 책임 경계 매트릭스.</li>
+<li><strong>2~6. 컴포넌트 상세</strong> — 멀티체인 어댑터 · 인덱서 · 트랜잭션/Nonce/Broadcast · 서명 · 원장 — 각 컴포넌트의 "왜 필요 / 어떻게 동작 / 내부 flow / 다른 컴포넌트가 어떻게 쓰는지".</li>
+<li><strong>7~9. 시나리오</strong> — 입금 / 출금 / 온·오프램프에서 컴포넌트가 어떻게 협력하는지.</li>
+<li><strong>10. 추상화</strong> — Fireblocks·Alchemy·QuickNode·The Graph·SQD 의 공개 API 형태를 참고해, 벤더에 묶이지 않는 Port/Adapter 설계.</li>
+</ul>
+
+<p>다음 — <a href="components.html"><strong>1. 컴포넌트 개요</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

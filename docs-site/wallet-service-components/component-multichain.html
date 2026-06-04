@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>2. 멀티체인 어댑터 — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="멀티체인 어댑터 — 체인마다 다른 계정/UTXO·확정·수수료·재전송 규칙을 한 가지 인터페이스로 정규화하는 컴포넌트의 동작과 사용 관계." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 컴포넌트 상세</h3><ul>
+<li><a class="active" href="component-multichain.html">2. 멀티체인 어댑터</a></li>
+<li><a href="component-indexer.html">3. 인덱서</a></li>
+<li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
+<li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
+<li><a href="component-ledger.html">6. 원장 정합성 · 대사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
+<li><a href="scenario-deposit.html">7. 입금</a></li>
+<li><a href="scenario-withdrawal.html">8. 출금</a></li>
+<li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
+<li><a href="abstraction.html">10. SaaS API 와 Port 설계</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="multichain">
+<h2>2. 멀티체인 어댑터</h2>
+<span class="section-subtitle">체인마다 다른 규칙을 한 가지 인터페이스로 — 다른 모든 컴포넌트가 체인 차이를 모르게 한다</span>
+
+<h3>2.1 왜 필요한가</h3>
+
+<p>체인은 저마다 규칙이 다르다. 이더리움은 계정마다 순번(nonce)으로 트랜잭션을 직렬화하고, 비트코인은 UTXO 를 골라 쓰며, 솔라나는 또 다르다. 확정(finality<span class="g" data-tip="이 거래가 더는 뒤집히지 않는다고 볼 수 있는 상태. 체인마다 판단 기준과 시간이 다르다">?</span>) 판단 기준도, 수수료 매기는 법도, 막힌 트랜잭션을 바꾸는 방법도 전부 다르다.</p>
+
+<p>이 차이를 매니저 곳곳에 흩어 두면 인덱서·트랜잭션 빌더·서명·원장이 전부 <code>if (chain === 'ethereum') … else if (chain === 'bitcoin') …</code> 로 오염된다. 멀티체인 어댑터는 이 차이를 <strong>한 군데로 모아</strong>, 나머지 컴포넌트에게는 "체인이 무엇이든 똑같아 보이는" 인터페이스를 제공한다.</p>
+
+<div class="callout">
+<div class="callout-title">한 문장 요약</div>
+<p>멀티체인 어댑터 = "체인별 차이를 흡수하는 단 하나의 장소". 새 체인 추가 = 어댑터 하나 추가, 나머지 컴포넌트는 그대로.</p>
+</div>
+
+<h3>2.2 무엇을 정규화하는가</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:22%">관심사</th><th>계정 모델 (EVM 등)</th><th>UTXO 모델 (비트코인 등)</th></tr></thead>
+<tbody>
+<tr><td>잔액 표현</td><td>주소별 잔액 + nonce</td><td>사용하지 않은 출력(UTXO) 집합</td></tr>
+<tr><td>순서 보장</td><td>주소별 nonce 순차</td><td>입력(UTXO) 선택 · 체인 길이 제한</td></tr>
+<tr><td>확정 판단</td><td>N 블록 확인 (또는 commitment 단계)</td><td>N 블록 확인</td></tr>
+<tr><td>수수료</td><td>gas × gasPrice (EIP-1559 base+priority)</td><td>byte 당 fee rate</td></tr>
+<tr><td>재전송</td><td>같은 nonce + 수수료 인상 (replace)</td><td>RBF 또는 CPFP</td></tr>
+<tr><td>주소 파생</td><td>BIP-32/44 경로 + coin type</td><td>BIP-32/44 + 스크립트 유형</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>어댑터는 이 모든 차이를 감추고, 위쪽 컴포넌트에는 다음과 같은 <strong>공통 동사</strong>만 노출한다 — "주소 파생해라", "잔액 알려줘", "이 이체를 트랜잭션으로 조립해라", "수수료 추정해라", "전파해라", "확정됐는지 판정해라", "막혔으면 재전송해라".</p>
+
+<h3>2.3 어떻게 동작하는가</h3>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    REQ["매니저 내부 요청<br/>(chainId + 추상 동작)"]
+    IFACE["공통 어댑터 인터페이스<br/>파생 · 조립 · 수수료 · 전파 · 확정 · 재전송"]
+    SEL{"chainId 로<br/>구현 선택"}
+    EVM["EVM 어댑터<br/>nonce · gas · RBF"]
+    BTC["UTXO 어댑터<br/>coin 선택 · feerate · RBF/CPFP"]
+    SOL["Solana 어댑터<br/>commitment · 병렬 tx"]
+    NORM["정규화된 결과<br/>(체인 무관 형태)"]
+
+    REQ --> IFACE --> SEL
+    SEL --> EVM --> NORM
+    SEL --> BTC --> NORM
+    SEL --> SOL --> NORM
+
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef chain fill:#dbeafe,stroke:#2563eb;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    class IFACE,SEL special;
+    class EVM,BTC,SOL chain;
+    class NORM good;
+    class REQ good;
+</pre></div>
+<p class="diagram-caption">Figure 2-1. 어댑터 동작. 위쪽 컴포넌트는 공통 인터페이스(보라)만 호출하고, chainId 로 체인별 구현(파랑)이 선택되며, 결과는 항상 체인 무관 형태(초록)로 정규화되어 돌아온다. 핵심: 차이는 파랑 안에만 갇혀 있다.</p>
+
+<h3>2.4 다른 컴포넌트가 어떻게 쓰는가</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">사용하는 컴포넌트</th><th>어댑터에 무엇을 요청하나</th></tr></thead>
+<tbody>
+<tr><td><a href="component-indexer.html">인덱서</a></td><td>"이 체인의 블록을 어떻게 수집·디코딩하나", "확정 기준은 몇 블록인가"</td></tr>
+<tr><td><a href="component-tx-nonce.html">트랜잭션 빌더 · Nonce/Broadcast</a></td><td>"이 이체를 조립해라(nonce/UTXO 포함)", "수수료 추정", "전파", "막혔으니 재전송 규칙대로 바꿔라"</td></tr>
+<tr><td><a href="component-signing.html">서명 오케스트레이션</a></td><td>"이 체인은 어떤 서명 알고리즘·해시 방식인가"(서명 전 직렬화)</td></tr>
+<tr><td><a href="component-ledger.html">원장 · 대사</a></td><td>"이 체인의 자산 단위·소수점·주소 정규화 규칙"</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">설계 포인트</div>
+<ul>
+<li><strong>차이는 어댑터 안에만</strong> — 위 컴포넌트에 체인 분기 코드가 새면 추상화 실패 신호.</li>
+<li><strong>능력 노출(capability)</strong> — 어떤 체인은 RBF 가 없거나 확정 단계가 다르다. 어댑터가 "이 체인이 지원하는 능력" 을 함께 알려 위 컴포넌트가 분기 없이 적응하게 한다.</li>
+<li><strong>SaaS 도 결국 어댑터 뒤로</strong> — Fireblocks·Alchemy 같은 SaaS 를 쓰더라도 그들을 "또 다른 어댑터 구현" 으로 두면 벤더 교체가 쉬워진다. (<a href="abstraction.html">10. 추상화</a>)</li>
+</ul>
+</div>
+
+<p>다음 — <a href="component-indexer.html"><strong>3. 인덱서</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

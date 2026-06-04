@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>3. 인덱서 — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="인덱서 — 체인 데이터를 어떻게 수집하고(pull/push 하이브리드) 가공하고(projection) 보여주는가(조회/알림), reorg 처리, 다른 컴포넌트가 인덱서를 쓰는 방법." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 컴포넌트 상세</h3><ul>
+<li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
+<li><a class="active" href="component-indexer.html">3. 인덱서</a></li>
+<li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
+<li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
+<li><a href="component-ledger.html">6. 원장 정합성 · 대사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
+<li><a href="scenario-deposit.html">7. 입금</a></li>
+<li><a href="scenario-withdrawal.html">8. 출금</a></li>
+<li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
+<li><a href="abstraction.html">10. SaaS API 와 Port 설계</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="indexer">
+<h2>3. 인덱서</h2>
+<span class="section-subtitle">체인 데이터를 어떻게 수집하고 · 가공하고 · 보여주는가 — 모든 읽기의 토대</span>
+
+<h3>3.1 왜 필요한가</h3>
+
+<p>노드와 RPC 만으로는 지갑 서비스가 필요한 질문에 잘 답하지 못한다. RPC 는 "이 tx 해시의 내용" 은 주지만, <strong>"이 주소가 받은 입금 목록", "지금 잔액", "과거 어느 시점 잔액", "방금 입금 들어왔다는 알림"</strong> 은 그대로 주지 못하거나 너무 느리다.</p>
+
+<p>인덱서는 체인 데이터를 미리 <strong>조회하기 좋은 형태로 가공</strong>해 두고, 입금을 <strong>감지</strong>하고, 확정 여부를 <strong>판단</strong>해, 매니저의 다른 컴포넌트가 빠르고 정확하게 읽을 수 있게 한다. 즉 인덱서는 "체인과 애플리케이션 사이의 데이터 운영체제" 다.</p>
+
+<h3>3.2 어떻게 동작하는가 — 수집 → 가공 → 제공</h3>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    subgraph SRC["수집 소스"]
+      RPC["RPC 폴링<br/>(pull · 신뢰)"]
+      STREAM["Geyser · Firehose<br/>(push · 빠름)"]
+    end
+    ING["① 수집기<br/>하이브리드 ingestion"]
+    RAW["② 원시 로그<br/>append-only<br/>(삭제 금지)"]
+    PROJ["③ projection 빌더<br/>멱등 변환 · 우리 주소 필터"]
+    DB["④ 조회 저장소<br/>잔액 · 입금 · 이력"]
+    SERVE["⑤ 제공<br/>조회 API · 알림 트리거"]
+
+    RPC --> ING
+    STREAM --> ING
+    ING --> RAW --> PROJ --> DB --> SERVE
+
+    classDef src fill:#f5f5f7,stroke:#86868b;
+    classDef raw fill:#dbeafe,stroke:#2563eb;
+    classDef proc fill:#e0e7ff,stroke:#6366f1;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    class RPC,STREAM src;
+    class RAW raw;
+    class ING,PROJ proc;
+    class DB,SERVE good;
+</pre></div>
+<p class="diagram-caption">Figure 3-1. 인덱서 파이프라인. 파랑 = 원시 보존(불변), 보라 = 변환, 초록 = 제공. ②원시와 ③projection 의 분리가 핵심 — reorg 가 나도 원시로부터 projection 을 다시 만들면 된다.</p>
+
+<h4>① 수집(ingestion) — pull + push 하이브리드</h4>
+<p>두 방식을 섞는다. <strong>push 스트림</strong>(Geyser<span class="g" data-tip="Solana 검증 노드가 데이터를 외부로 밀어주는(push) 스트리밍 인터페이스">?</span>·Firehose)은 새 블록을 즉시 받아 지연이 낮지만, 연결이 끊기면 구멍이 난다. <strong>pull 폴링</strong>(RPC)은 느리지만 빠진 구간을 메우고 과거 데이터를 backfill 할 수 있다. 둘을 합쳐 "빠르되 빠짐 없는" 수집을 만든다.</p>
+
+<h4>② 원시 보존(raw, append-only)</h4>
+<p>받은 블록·로그를 <strong>가공 전 원본 그대로</strong> append-only 로 쌓는다. 절대 덮어쓰거나 지우지 않는다. 이게 있어야 가공 로직이 바뀌거나 reorg 가 나도 다시 만들 수 있다.</p>
+
+<h4>③ 가공(projection) — 멱등 변환</h4>
+<p>원시 로그에서 <strong>우리 주소와 관련된 것만 골라</strong> 디코딩하고(예: ERC-20 <code>Transfer</code> 이벤트 → 입금 레코드), 잔액·입금 목록·이력 같은 <strong>조회용 테이블</strong>을 만든다. 같은 이벤트를 두 번 처리해도 결과가 같도록 <strong>(tx 해시 + logIndex)</strong> 를 키로 멱등하게 쓴다. 각 레코드에는 "어느 블록 기준(as-of-block)" 인지 남긴다.</p>
+
+<h4>④⑤ 저장·제공</h4>
+<p>가공 결과를 조회 저장소에 넣고, <strong>조회 API</strong>(잔액·입금·이력)와 <strong>알림 트리거</strong>(입금 감지/확정)로 제공한다. 수집 부하와 조회 부하가 서로를 무너뜨리지 않도록 두 평면을 분리한다.</p>
+
+<h3>3.3 확정(finality) 판단과 reorg 처리</h3>
+
+<p>인덱서의 가장 어려운 부분은 "감지" 와 "확정" 을 구분하고, 체인 끝이 교체되는 <strong>reorg</strong> 를 견디는 것이다. (확정 기준 자체는 <a href="component-multichain.html">멀티체인 어댑터</a>가 체인별로 제공한다.)</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    HEAD["체인 헤드 추적 중"]
+    NEW["🟡 새 블록 · 입금 감지<br/>(PENDING) 사용 불가"]
+    CONF["✅ 확정<br/>(CONFIRMED) 사용 가능"]
+    DETECT["🟡 reorg 감지<br/>(부모 해시 불일치)"]
+    ROLLBACK["♻️ projection 롤백<br/>분기 지점까지<br/>(as-of-block 기준)"]
+    REBUILD["원시 로그로<br/>새 체인 재적용"]
+    ORPH["❌ 무효화 정정<br/>확정→재대기 알림"]
+
+    HEAD --> NEW
+    NEW -->|확정 기준 충족| CONF
+    HEAD --> DETECT
+    DETECT --> ROLLBACK --> REBUILD --> ORPH
+    ORPH -.다시 감지 가능.-> NEW
+
+    classDef wait fill:#fef3c7,stroke:#d97706;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    class NEW,DETECT wait;
+    class CONF,HEAD good;
+    class ORPH bad;
+    class ROLLBACK,REBUILD special;
+</pre></div>
+<p class="diagram-caption">Figure 3-2. 확정 · reorg 처리. 감지(노랑)와 확정(초록)을 분리하고, reorg 시 보존된 원시 로그로 분기 지점까지 롤백 후 재적용한다. 무효화된 tx 가 새 블록에 다시 들어올 수 있으니 영구 삭제 금지.</p>
+
+<h3>3.4 다른 컴포넌트가 인덱서를 어떻게 쓰는가</h3>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    IDX["인덱서"]
+    NOTIF["이벤트 · 알림"]
+    TX["트랜잭션 빌더<br/>Nonce · Broadcast"]
+    LED["원장 · 대사"]
+    GW["API 게이트웨이"]
+    RAMP["온/오프램프"]
+
+    IDX -->|입금 감지/확정 이벤트| NOTIF
+    IDX -->|출금 tx 확정 여부 역확인| TX
+    IDX -->|체인 사실(입금/출금 결과)| LED
+    IDX -->|잔액 · 입금 · 이력 조회| GW
+    IDX -->|토큰 입금 확정 통지| RAMP
+
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    class IDX special;
+    class NOTIF,TX,LED,GW,RAMP good;
+</pre></div>
+<p class="diagram-caption">Figure 3-3. 인덱서는 매니저 안에서 가장 많이 참조되는 컴포넌트다. 입금 흐름의 시작(감지→알림), 출금 흐름의 끝(확정 역확인), 대사의 근거(체인 사실), 조회의 원천(잔액/이력), 온오프램프의 토큰 확정 신호를 모두 제공한다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">사용 컴포넌트</th><th>인덱서에서 받는 것</th></tr></thead>
+<tbody>
+<tr><td>이벤트 · 알림</td><td>입금 감지(PENDING) · 확정(CONFIRMED) · 무효화 이벤트</td></tr>
+<tr><td><a href="component-tx-nonce.html">트랜잭션 빌더</a></td><td>우리가 보낸 출금 tx 의 확정 여부(역방향 확인)</td></tr>
+<tr><td><a href="component-ledger.html">원장 · 대사</a></td><td>체인 위 사실 — 입금/출금 결과를 장부와 대조할 근거</td></tr>
+<tr><td>API 게이트웨이</td><td>잔액 · 입금 내역 · 거래 이력 조회</td></tr>
+<tr><td><a href="scenario-onofframp.html">온/오프램프</a></td><td>오프램프에서 토큰 입금 확정 신호</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>3.5 흔한 장애와 방어</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:38%">장애</th><th>방어</th></tr></thead>
+<tbody>
+<tr><td>체인 헤드 추격 실패(랙)</td><td>수집 지연 모니터링 + push/pull 이중화</td></tr>
+<tr><td>reorg 후 projection 불일치</td><td>원시 보존 + as-of-block + 롤백 가능 설계</td></tr>
+<tr><td>같은 이벤트 중복 적재</td><td>(tx 해시 + logIndex) 멱등 키</td></tr>
+<tr><td>조회 저장소 디스크 고갈 · RPC rate limit</td><td>용량/쿼터 모니터링 + 백프레셔</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">인덱서 설계 3 원칙</div>
+<ul>
+<li><strong>원시는 불변</strong> — append-only, 삭제 금지. projection 은 재구성 가능한 캐시로 취급.</li>
+<li><strong>확정을 계약으로</strong> — "이 데이터가 어느 확정 수준인지" 를 조회/알림에 함께 노출해 소비자가 판단하게 한다.</li>
+<li><strong>질의 분리</strong> — 수집과 질의를 분리해 한쪽 부하가 다른 쪽을 무너뜨리지 않게.</li>
+</ul>
+</div>
+
+<p>인덱서를 직접 만들지, The Graph·SQD·Alchemy 같은 외부를 쓸지는 <a href="abstraction.html">10. 추상화</a> 에서 Port 로 다룬다. 다음 — <a href="component-tx-nonce.html"><strong>4. 트랜잭션 · Nonce · Broadcast</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

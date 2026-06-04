@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>4. 트랜잭션 · Nonce · Broadcast — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="트랜잭션 빌더와 Nonce/Broadcast 관리 — 조립·순번 점유·전파·확정 추적·stuck 재전송. 자체 구축 vs Fireblocks 같은 SaaS 위임의 차이." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 컴포넌트 상세</h3><ul>
+<li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
+<li><a href="component-indexer.html">3. 인덱서</a></li>
+<li><a class="active" href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
+<li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
+<li><a href="component-ledger.html">6. 원장 정합성 · 대사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
+<li><a href="scenario-deposit.html">7. 입금</a></li>
+<li><a href="scenario-withdrawal.html">8. 출금</a></li>
+<li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
+<li><a href="abstraction.html">10. SaaS API 와 Port 설계</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="tx-nonce">
+<h2>4. 트랜잭션 빌더 · Nonce · Broadcast</h2>
+<span class="section-subtitle">체인에 쓰는 컴포넌트 — 가장 사고가 나기 쉬운 곳</span>
+
+<h3>4.1 왜 필요한가</h3>
+
+<p>출금은 체인에 <strong>쓰는</strong> 일이다. 그런데 계정 기반 체인에서는 한 주소의 트랜잭션이 순번(nonce<span class="g" data-tip="계정 기반 체인에서 한 주소의 트랜잭션 순번 카운터. 0부터 1씩, 비면 뒤가 모두 막힌다">?</span>) 순서로만 처리된다. 그래서 다음 세 가지가 늘 문제다.</p>
+
+<ul>
+<li><strong>막힘 연쇄(stuck cascade)</strong> — 수수료가 모자란 트랜잭션 하나가 안 나가면, 그 뒤 순번이 전부 막힌다.</li>
+<li><strong>동시성 충돌(race)</strong> — 여러 작업이 동시에 같은 순번을 집으면, 하나만 성공하고 나머지는 "nonce too low" 로 실패하거나 서로 덮어쓴다.</li>
+<li><strong>수수료 변동</strong> — 혼잡하면 예상 수수료로는 확정이 안 돼 재전송이 필요하다.</li>
+</ul>
+
+<p>이 컴포넌트는 출금 트랜잭션을 <strong>조립하고, 순번을 안전하게 점유하고, 전파하고, 막히면 고쳐 보내는</strong> 일을 전담한다. 단 <strong>출금 승인은 하지 않는다</strong> — 승인은 정책 평면이 끝낸 뒤 신호로 들어온다.</p>
+
+<h3>4.2 어떻게 동작하는가</h3>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    IN["승인된 출금 지시<br/>(+멱등 키)"]
+    BUILD["① 조립<br/>금액 · 대상 · 데이터"]
+    NONCE["② 순번 점유<br/>계정별 직렬화"]
+    SIGN["③ 서명 요청<br/>→ 서명 오케스트레이션"]
+    CAST["④ 전파<br/>→ 멀티체인 어댑터"]
+    TRACK["⑤ 확정 추적<br/>← 인덱서"]
+    DONE["✅ 확정 · 장부 반영"]
+
+    IN --> BUILD --> NONCE --> SIGN --> CAST --> TRACK --> DONE
+
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    class BUILD,NONCE,SIGN,CAST,TRACK special;
+    class IN,DONE good;
+</pre></div>
+<p class="diagram-caption">Figure 4-1. 쓰기 파이프라인. 순번 점유(②) → 서명(③) → 전파(④) → 확정(⑤) 순서가 깨지지 않는 것이 안전성의 핵심. 서명은 외부 서명자에, 전파·순번 규칙은 어댑터에 위임하지만 "오케스트레이션" 은 이 컴포넌트가 쥔다.</p>
+
+<h4>Nonce 관리 — 계정별 직렬화</h4>
+<p>계정 기반 체인에서는 주소(또는 출금 지갑)마다 <strong>로컬 순번 카운터 + 잠금(lock)</strong> 을 둔다. 체인에서 한 번 시작 값을 읽어온 뒤(<code>pending</code> 기준), 이후로는 로컬에서 1씩 올려 동시 요청이 같은 순번을 집지 않게 직렬화한다. 매 요청마다 체인에 순번을 물어보면 동시성 구간에서 같은 값이 나와 충돌한다.</p>
+
+<h4>Stuck 재전송 — 같은 순번, 수수료 인상</h4>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    BC["🟡 전파됨<br/>(BROADCAST) 확정 대기"]
+    OK["✅ 확정<br/>(CONFIRMED)"]
+    STUCK["🟡 막힘<br/>(STUCK) 임계 시간 초과"]
+    REPL["♻️ 재전송<br/>같은 순번<br/>수수료 양 필드 ↑"]
+    CANCEL["❌ 취소<br/>같은 순번<br/>0원 self-send"]
+
+    BC -->|기준 시간 내 채굴| OK
+    BC -->|미채굴 · 임계 초과| STUCK
+    STUCK -->|계속 진행| REPL
+    STUCK -->|중단 필요| CANCEL
+    REPL --> BC
+
+    classDef wait fill:#fef3c7,stroke:#d97706;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    class BC,STUCK wait;
+    class OK good;
+    class CANCEL bad;
+    class REPL special;
+</pre></div>
+<p class="diagram-caption">Figure 4-2. stuck 재전송. 막히면 <strong>같은 순번</strong>으로 수수료를 (양 필드 동시에) 올려 다시 보낸다. 순번을 건너뛰면 안 된다. 규칙: 가장 오래된 막힌 순번부터, 수수료는 상한을 두고 단계적으로, 그래도 안 되면 알림.</p>
+
+<h3>4.3 다른 컴포넌트와의 관계</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">관계</th><th>내용</th></tr></thead>
+<tbody>
+<tr><td>← 정책 평면(범위 밖)</td><td>"승인됨" 신호를 받은 뒤에만 진입. 거부/보류 신호 시 전파 차단.</td></tr>
+<tr><td>→ <a href="component-multichain.html">멀티체인 어댑터</a></td><td>순번/UTXO 규칙, 수수료 추정, 전파, 재전송 규칙을 체인별로 위임.</td></tr>
+<tr><td>→ <a href="component-signing.html">서명 오케스트레이션</a></td><td>조립된 트랜잭션의 서명 요청.</td></tr>
+<tr><td>← <a href="component-indexer.html">인덱서</a></td><td>전파한 tx 의 확정 여부 역방향 확인.</td></tr>
+<tr><td>→ <a href="component-ledger.html">원장 · 대사</a></td><td>확정 후 출금 결과를 장부에 반영·대사.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>4.4 자체 구축 vs SaaS 위임 (Fireblocks 등)</h3>
+
+<div class="callout callout-warn">
+<div class="callout-title">중요 — Fireblocks 같은 풀 트랜잭션 SaaS 를 쓰면 이 컴포넌트의 대부분이 위임된다</div>
+<p>Fireblocks 같은 플랫폼은 단순한 키 보관소가 아니라 <strong>트랜잭션 전 과정(순번 직렬화 · 전파 · 수수료 재책정/boost · 재시도)을 내부에서 처리</strong>한다. 그래서 이 경우 직접 <strong>raw 순번 카운터(예: Redis nonce 매니저)를 돌리면 오히려 플랫폼의 내부 순번 할당과 충돌</strong>한다. 애플리케이션이 보는 단위는 "순번" 이 아니라 "트랜잭션 요청" 이다.</p>
+<p>SaaS 위임 시 우리가 여전히 짓는 것은:</p>
+<ul>
+<li><strong>출금 요청 큐 + 멱등성</strong> — 같은 요청이 두 번 실행되지 않게 (여기에 Redis 를 쓰면 타당)</li>
+<li><strong>출금 지갑 분산(round-robin) 라우팅</strong> — 한 지갑이 막혀도 다른 지갑으로 (순번 직렬화가 지갑 단위로 일어나므로)</li>
+<li><strong>상태 모니터링 + boost/재전송 트리거</strong> — 막힘을 감지해 플랫폼의 boost/재전송 기능을 호출</li>
+</ul>
+<p>즉 "stuck 은 SaaS 를 써도 발생한다" 는 맞지만, 대응은 raw 순번 매니저가 아니라 <strong>요청 큐 · 지갑 라우팅 · 플랫폼 API 활용</strong>이다. 직접 구축(자체 노드)일 때만 4.2 의 raw 순번 관리를 우리가 전부 진다.</p>
+</div>
+
+<div class="callout callout-danger">
+<div class="callout-title">순서가 곧 안전</div>
+<p>승인 전 전파, 서명 전 장부 차감, 확정 전 "완료" 통지는 모두 사고다. 각 단계는 직전 단계의 확정을 전제로만 진행하고, 모든 전이는 요청 ID + 멱등 키로 추적되어 재처리에도 한 번만 실행되어야 한다.</p>
+</div>
+
+<p>다음 — <a href="component-signing.html"><strong>5. 서명 오케스트레이션</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

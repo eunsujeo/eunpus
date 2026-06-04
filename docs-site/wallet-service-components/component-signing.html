@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>5. 서명 오케스트레이션 — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="서명 오케스트레이션 — 외부 서명자(MPC/HSM/co-signer) 호출 경계. 키 미보관 원칙, 서명 재시도의 비멱등성, 서명 nonce 와 트랜잭션 nonce 의 차이." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 컴포넌트 상세</h3><ul>
+<li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
+<li><a href="component-indexer.html">3. 인덱서</a></li>
+<li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
+<li><a class="active" href="component-signing.html">5. 서명 오케스트레이션</a></li>
+<li><a href="component-ledger.html">6. 원장 정합성 · 대사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
+<li><a href="scenario-deposit.html">7. 입금</a></li>
+<li><a href="scenario-withdrawal.html">8. 출금</a></li>
+<li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
+<li><a href="abstraction.html">10. SaaS API 와 Port 설계</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="signing">
+<h2>5. 서명 오케스트레이션</h2>
+<span class="section-subtitle">외부 서명자 호출 경계 — 키는 보관하지 않는다</span>
+
+<h3>5.1 왜 필요한가</h3>
+
+<p>개인키는 시스템에서 가장 민감한 자산이다. 매니저가 키를 직접 들고 있으면, <strong>매니저가 침해당하는 순간 키도 샌다</strong>. 그래서 키 보관·서명은 전용 외부 서명자 — MPC<span class="g" data-tip="여러 참가자가 키 조각을 나눠 갖고, 임계 수 이상이 모여야 서명이 만들어지는 방식. 단일 개인키가 한 곳에 존재하지 않는다">?</span> 임계 서명·HSM<span class="g" data-tip="키를 하드웨어 안에서만 다루고 밖으로 꺼내지 않는 보안 장치">?</span>·co-signer — 에 맡기고, 매니저는 그 <strong>호출 경계</strong>만 둔다.</p>
+
+<div class="callout">
+<div class="callout-title">한 문장 요약</div>
+<p>서명 오케스트레이션 = "서명해 달라고 요청하고 결과를 받아오는 얇은 경계". 키 생성·보관은 절대 이 컴포넌트(매니저)의 일이 아니다.</p>
+</div>
+
+<h3>5.2 어떻게 동작하는가</h3>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant TX as 트랜잭션 빌더
+    participant SIG as 서명 오케스트레이션
+    participant ADP as 멀티체인 어댑터
+    participant SG as 외부 서명자<br/>MPC · HSM
+
+    TX->>SIG: 서명 요청(트랜잭션 + 맥락)
+    SIG->>ADP: 체인별 직렬화 · 서명 해시 규칙
+    ADP-->>SIG: 서명 대상 payload
+    SIG->>SG: 서명 요청(키는 외부에)
+    SG-->>SIG: 서명 결과
+    SIG->>SIG: 서명 검증(주소·해시 일치)
+    SIG-->>TX: 서명된 트랜잭션
+</pre></div>
+<p class="diagram-caption">Figure 5-1. 서명 흐름. 매니저는 "무엇을 서명할지" 만 만들고, 실제 서명은 외부 서명자(SG)에서 일어난다. 어댑터가 체인별 직렬화·해시 규칙을 제공한다. 서명 결과는 기대 주소·해시와 일치하는지 검증 후 돌려준다.</p>
+
+<h3>5.3 서명 재시도는 멱등이 아니다 (★ 주의)</h3>
+
+<p>트랜잭션 전송은 "같은 순번이면 같은 결과" 라 재시도가 비교적 안전하지만, <strong>MPC 서명 재시도는 다르다</strong>. 서명 과정에는 일회용 난수(서명 nonce)가 쓰이는데, <strong>이 값을 재사용하면 개인키가 수학적으로 노출</strong>될 수 있다. 그래서 서명이 실패/타임아웃하면 같은 시도를 반복하는 게 아니라 <strong>새 서명 라운드(새 난수)로 다시</strong> 해야 한다.</p>
+
+<div class="callout callout-danger">
+<div class="callout-title">"nonce" 두 가지를 혼동하지 말 것</div>
+<ul>
+<li><strong>트랜잭션 nonce</strong> (<a href="component-tx-nonce.html">4번 컴포넌트</a>) — 계정의 트랜잭션 순번. 같은 값 재사용 = 같은 트랜잭션(재전송). 멱등.</li>
+<li><strong>서명 nonce</strong> (이 컴포넌트) — 서명에 쓰는 일회용 난수. 같은 값 재사용 = <strong>키 유출</strong>. 비멱등.</li>
+</ul>
+<p>이름은 같지만 정반대다. 트랜잭션 재전송 로직(같은 순번 유지)과 서명 재시도 로직(매번 새 난수)을 절대 한데 묶지 말 것.</p>
+</div>
+
+<h3>5.4 다른 컴포넌트와의 관계</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">관계</th><th>내용</th></tr></thead>
+<tbody>
+<tr><td>← <a href="component-tx-nonce.html">트랜잭션 빌더</a></td><td>조립된 트랜잭션의 서명 요청을 받는다.</td></tr>
+<tr><td>→ <a href="component-multichain.html">멀티체인 어댑터</a></td><td>체인별 서명 알고리즘·직렬화·해시 규칙을 받는다.</td></tr>
+<tr><td>→ 외부 서명자</td><td>실제 서명. 키 보관·생성은 전적으로 여기.</td></tr>
+<tr><td>← 정책 평면(범위 밖)</td><td>공동 승인(다자 서명 정족수)이 필요한 경우, 승인 결과가 서명 진행의 전제.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>5.5 SaaS 와의 관계</h3>
+
+<p>Fireblocks 같은 플랫폼을 쓰면 이 컴포넌트가 곧 <strong>그 플랫폼의 서명 API 호출 경계</strong>가 된다. 키는 플랫폼의 MPC/HSM 안에만 있고, 매니저는 "이 트랜잭션 서명해 달라" 만 호출한다. 직접 구축이면 자체 HSM·MPC 클러스터가 외부 서명자 자리에 온다. 어느 쪽이든 <strong>매니저 코드가 개인키를 만지지 않는다</strong>는 원칙은 동일하다. (Port 설계는 <a href="abstraction.html">10. 추상화</a>)</p>
+
+<p>다음 — <a href="component-ledger.html"><strong>6. 원장 정합성 · 대사</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
