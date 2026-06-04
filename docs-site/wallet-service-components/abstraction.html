@@ -25,7 +25,7 @@
 <li><a href="component-indexer.html">3. 인덱서</a></li>
 <li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
 <li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
-<li><a href="component-ledger.html">6. 원장 정합성 · 대사</a></li>
+<li><a href="component-ledger.html">6. 온체인 정합성 · 추적</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
 <li><a href="scenario-deposit.html">7. 입금</a></li>
@@ -57,7 +57,7 @@
 <div class="diagram"><pre class="mermaid">
 flowchart TB
     UP["상위 서비스 · 클라이언트"]
-    MGR["블록체인 매니저 (벤더 무관 로직)<br/>입금 · 출금 · 온오프램프 · 대사 오케스트레이션"]
+    MGR["블록체인 매니저 (벤더 무관 로직)<br/>입금 · 출금 · 정합성 오케스트레이션"]
     PORTS["출력 포트 (인터페이스)<br/>ChainAdapterPort · IndexerPort · SignerPort · BroadcastPort"]
     ADP["벤더 어댑터 (구현)<br/>Fireblocks · Alchemy · QuickNode · SQD · The Graph · 자체 노드 · HSM · GCP BNE"]
 
@@ -225,7 +225,7 @@ flowchart LR
 </ul>
 </div>
 
-<p>이로써 8 컴포넌트가 벤더에 묶이지 않고, 자체 구축 ↔ SaaS 사이를 포트 단위로 오갈 수 있는 그림이 완성된다. 처음으로 — <a href="index.html"><strong>0. Overview</strong></a> 의 컴포넌트 맵을 다시 보면 전체가 맞춰진다.</p>
+<p>이로써 7 컴포넌트가 벤더에 묶이지 않고, 자체 구축 ↔ SaaS 사이를 포트 단위로 오갈 수 있는 그림이 완성된다. 처음으로 — <a href="index.html"><strong>0. Overview</strong></a> 의 컴포넌트 맵을 다시 보면 전체가 맞춰진다.</p>
 
 </section>
 </main>

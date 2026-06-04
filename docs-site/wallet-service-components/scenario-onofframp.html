@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>9. 온·오프램프 시나리오 — 블록체인 매니저 컴포넌트 가이드</title>
-<meta content="온램프(fiat→토큰)·오프램프(토큰→fiat) 시나리오에서 온오프램프 커넥터가 체인 흐름과 법정화폐 흐름을 순서 안전하게 잇는 방법." name="description"/>
+<title>9. 온·오프램프 (수탁) — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="수탁 지갑에서 온/오프램프(현금↔코인)는 은행 앱의 내부 DB 작업이며, 블록체인 매니저는 온체인 가장자리(외부 입출금)에서만 호출된다." name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
 </head>
@@ -25,7 +25,7 @@
 <li><a href="component-indexer.html">3. 인덱서</a></li>
 <li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
 <li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
-<li><a href="component-ledger.html">6. 원장 정합성 · 대사</a></li>
+<li><a href="component-ledger.html">6. 온체인 정합성 · 추적</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
 <li><a href="scenario-deposit.html">7. 입금</a></li>
@@ -40,94 +40,94 @@
 
 <main class="content">
 <section id="onofframp">
-<h2>9. 온·오프램프 시나리오</h2>
-<span class="section-subtitle">법정화폐와 체인 자산을 잇는 두 방향 — 순서 안전이 전부</span>
+<h2>9. 온·오프램프 (수탁) — 매니저는 언제 호출되나</h2>
+<span class="section-subtitle">현금↔코인 전환은 은행 앱의 내부 DB 작업 — 블록체인 매니저는 온체인 가장자리에서만</span>
 
-<p class="lead">온·오프램프는 <strong>법정화폐(fiat) 세계와 체인 세계</strong>를 잇는다. 두 세계는 확정 시점도, 되돌릴 수 있는 정도도 다르다. <strong>온/오프램프 커넥터</strong>가 두 흐름의 <strong>순서와 증빙</strong>을 잇고, 체인 쪽은 입금·출금 시나리오를 재사용한다. fiat 정산 자체와 한도·승인은 외부 기관·정책 평면 몫이다.</p>
-
-<h3>9.1 온램프 (fiat → 토큰)</h3>
-
-<p>사용자가 법정화폐를 넣으면 토큰을 지급한다. 핵심은 <strong>fiat 입금이 확정된 뒤에만 토큰을 지급</strong>하는 것.</p>
-
-<div class="diagram"><pre class="mermaid">
-sequenceDiagram
-    autonumber
-    participant U as 사용자
-    participant RAMP as 온/오프램프 커넥터
-    participant BK as 은행 · PG<br/>(외부)
-    participant TX as 트랜잭션 빌더
-    participant SIG as 서명 오케스트레이션
-    participant CH as 블록체인
-    participant IDX as 인덱서
-    participant NT as 이벤트 · 알림
-
-    U->>BK: 법정화폐 입금
-    BK-->>RAMP: 입금 확정 통지
-    RAMP->>RAMP: 요청 ID 로 fiat 확정 증빙 고정
-    RAMP->>TX: 토큰 지급 지시(발행 또는 treasury 전송)
-    TX->>SIG: 서명 요청
-    SIG-->>TX: 서명된 tx
-    TX->>CH: 전파
-    CH->>IDX: 확정 감지
-    IDX-->>RAMP: 토큰 지급 확정
-    RAMP->>NT: 온램프 완료 알림
-    NT-->>U: "토큰 지급 완료" webhook
-</pre></div>
-<p class="diagram-caption">Figure 9-1. 온램프. fiat 확정(2) → 토큰 지급(4~) 순서가 핵심. fiat 확정 전 토큰을 먼저 주면 미수금 위험. 온/오프램프 커넥터는 fiat 확정 증빙을 요청 ID 에 묶어 두고, 체인 쪽은 출금 시나리오(트랜잭션 빌더·서명·인덱서)를 그대로 재사용한다.</p>
-
-<h3>9.2 오프램프 (토큰 → fiat)</h3>
-
-<p>사용자가 토큰을 보내면 법정화폐를 지급한다. 핵심은 <strong>토큰 입금이 확정된 뒤에만 fiat 를 지급</strong>하는 것.</p>
-
-<div class="diagram"><pre class="mermaid">
-sequenceDiagram
-    autonumber
-    participant U as 사용자
-    participant CH as 블록체인
-    participant IDX as 인덱서
-    participant RAMP as 온/오프램프 커넥터
-    participant BK as 은행 · PG<br/>(외부)
-    participant LED as 원장
-    participant NT as 이벤트 · 알림
-
-    U->>CH: 토큰 전송(우리 주소로)
-    CH->>IDX: transfer 감지 · 확정 대기
-    IDX-->>RAMP: 토큰 입금 확정(CONFIRMED)
-    RAMP->>BK: 법정화폐 지급 요청
-    BK-->>RAMP: fiat 지급 확정
-    RAMP->>LED: 토큰↔fiat 매칭 · 장부 반영
-    LED->>LED: 대사(체인 입금 = fiat 지급)
-    RAMP->>NT: 오프램프 완료 알림
-    NT-->>U: "법정화폐 지급 완료" webhook
-</pre></div>
-<p class="diagram-caption">Figure 9-2. 오프램프. 토큰 확정(3) → fiat 지급(4~) 순서가 핵심. 토큰 확정 전 fiat 를 먼저 주면 reorg 로 토큰이 사라졌을 때 손실. 커넥터가 두 다리를 잇고 원장이 토큰 입금과 fiat 지급을 한 건으로 대사한다.</p>
-
-<h3>9.3 두 세계를 잇는 원칙</h3>
+<p class="lead">앞 시나리오(입금·출금)와 달리, <strong>온/오프램프(현금↔코인 전환)는 블록체인 매니저의 일이 아니다.</strong> 수탁(custodial) 지갑에서는 고객의 코인 잔액이 <strong>은행 앱 안의 내부 장부(DB)</strong> 로 관리되므로, 현금↔코인 전환은 대부분 <strong>은행 앱의 DB 변경 + 코어뱅킹 처리</strong>로 끝난다. 블록체인 매니저는 <strong>실제 온체인 이동이 필요한 순간(외부 입금·외부 출금·준비자산 이동)</strong> 에만 호출된다.</p>
 
 <div class="callout callout-warn">
-<div class="callout-title">순서 · 멱등 · 대사</div>
-<ul>
-<li><strong>확정 우선(settle-then-pay)</strong> — 받는 쪽이 확정된 뒤에만 주는 쪽을 실행한다. 온램프는 fiat 확정 후 토큰, 오프램프는 토큰 확정 후 fiat.</li>
-<li><strong>한쪽 실패 처리</strong> — 두 다리 중 하나가 실패/지연하면 대기(큐)·롤백·재시도를 사전에 정의한다. 동시 보장이 필요하면 양쪽 확정을 묶는 장치를 둔다.</li>
-<li><strong>요청 ID 로 묶기</strong> — fiat 거래와 체인 거래를 같은 요청 ID 로 연결해 원장이 단일 건으로 대사하고 사후 추적할 수 있게 한다.</li>
-</ul>
+<div class="callout-title">그래서 "온/오프램프 커넥터" 는 매니저의 컴포넌트가 아니다</div>
+<p>온/오프램프 오케스트레이션(현금 처리 → 코인화 결정)은 <strong>은행 앱(상위)의 일</strong>이다. 매니저가 제공하는 것은 온체인 입금 감지(인덱서)와 외부 출금(트랜잭션 빌더·서명)뿐이다. 그래서 본 가이드는 온/오프램프를 컴포넌트가 아니라 <strong>"은행 앱이 매니저를 언제 호출/미호출하는가" 시나리오</strong>로만 다룬다. (전제: 은행이 만드는 수탁 지갑 앱)</p>
 </div>
 
-<h3>9.4 컴포넌트 재사용 관계</h3>
+<h3>9.1 온/오프램프 = 은행 앱의 내부 DB 작업 (매니저 미호출)</h3>
+
+<p>고객이 현금을 코인으로(온램프) 또는 코인을 현금으로(오프램프) 바꿀 때, 자산은 <strong>밖으로 나가지 않는다</strong>. 은행 앱 안에서 코어뱅킹 잔액과 수탁 코인 잔액(DB)만 서로 조정될 뿐이다.</p>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant U as 고객
+    participant APP as 은행 지갑 앱
+    participant CB as 코어뱅킹 · 계정계
+    participant DB as 수탁 잔액 장부 (DB)
+
+    Note over U,DB: 온램프 (현금 → 코인)
+    U->>APP: 온램프 요청
+    APP->>CB: 계좌 차감 · fiat 처리
+    CB-->>APP: fiat 처리 완료
+    APP->>DB: 수탁 코인 잔액 +
+    APP-->>U: 코인 잔액 반영
+    Note over U,DB: 온체인 tx 없음 · 블록체인 매니저 미호출
+
+    Note over U,DB: 오프램프 (코인 → 현금) = 역방향
+    U->>APP: 오프램프 요청
+    APP->>DB: 수탁 코인 잔액 −
+    APP->>CB: 계좌 입금 · fiat 지급
+    APP-->>U: 현금 지급 완료
+</pre></div>
+<p class="diagram-caption">Figure 9-1. 수탁 온/오프램프 = 은행 앱 내부 작업. 코어뱅킹(현금)과 수탁 DB(코인 잔액)만 조정되고 <strong>온체인 tx 도, 블록체인 매니저 호출도 없다.</strong> 코인은 은행이 보관 중인 준비자산 안에서 "장부상" 배정될 뿐이다.</p>
+
+<h3>9.2 블록체인 매니저가 호출되는 때 (온체인 가장자리)</h3>
+
+<p>매니저는 <strong>자산이 실제로 체인을 건너는 순간</strong>에만 등장한다.</p>
 
 <div class="table-wrap">
 <table>
-<thead><tr><th style="width:22%">방향</th><th>fiat 다리</th><th>체인 다리(재사용)</th></tr></thead>
+<thead><tr><th>작업</th><th style="width:14%">온체인?</th><th style="width:18%">매니저 호출?</th><th>담당</th></tr></thead>
 <tbody>
-<tr><td><strong>온램프</strong></td><td>커넥터 ← 은행/PG 입금 확정</td><td>출금 흐름(트랜잭션 빌더·서명·어댑터·인덱서) — 토큰 지급</td></tr>
-<tr><td><strong>오프램프</strong></td><td>커넥터 → 은행/PG 지급</td><td>입금 흐름(인덱서·어댑터) — 토큰 수령 확정</td></tr>
+<tr><td>온램프 (내부 현금→코인)</td><td>✗</td><td>✗</td><td>은행 앱 + DB</td></tr>
+<tr><td>오프램프 (내부 코인→현금)</td><td>✗</td><td>✗</td><td>은행 앱 + DB</td></tr>
+<tr><td>외부 입금 (타 지갑 → 우리 주소)</td><td>✓</td><td>✓</td><td><a href="component-indexer.html">인덱서</a> (<a href="scenario-deposit.html">7. 입금</a>)</td></tr>
+<tr><td>외부 출금 (우리 → 타 주소)</td><td>✓</td><td>✓</td><td><a href="component-tx-nonce.html">트랜잭션 빌더·서명</a> (<a href="scenario-withdrawal.html">8. 출금</a>)</td></tr>
+<tr><td>준비자산 온체인 이동 (treasury)</td><td>✓</td><td>✓</td><td>트랜잭션 빌더·서명</td></tr>
 </tbody>
 </table>
 </div>
 
-<p>즉 온/오프램프 커넥터는 새 체인 로직을 거의 만들지 않는다 — 입금·출금 시나리오를 fiat 다리와 <strong>순서 안전하게 이어 붙이는</strong> 조정자다.</p>
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    subgraph BANK["은행 앱 (상위)"]
+      APP["지갑 앱 · 코어뱅킹 · 수탁 DB"]
+    end
+    subgraph MGR["블록체인 매니저"]
+      IDX["인덱서"]
+      TX["트랜잭션 빌더 · 서명"]
+    end
+    EXTW["외부 지갑 · 거래소"]
 
-<p>다음 — <a href="abstraction.html"><strong>10. SaaS API 와 Port 설계</strong></a> 에서 이 모든 컴포넌트를 벤더에 묶이지 않게 추상화한다.</p>
+    APP -->|온/오프램프 = 내부 DB만| APP
+    APP -->|외부 출금 요청| TX
+    TX -->|온체인 전송| EXTW
+    EXTW -->|외부 입금| IDX
+    IDX -->|입금 확정 통지| APP
+
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    classDef gw fill:#e0e7ff,stroke:#6366f1;
+    class APP,EXTW ext;
+    class IDX,TX gw;
+</pre></div>
+<p class="diagram-caption">Figure 9-2. 매니저 호출 경계. 내부 현금↔코인(온/오프램프)은 은행 앱 안에서 끝나 <strong>매니저를 거치지 않는다</strong>. 매니저(보라)는 <strong>외부 출금</strong>(은행 앱이 호출)과 <strong>외부 입금</strong>(인덱서가 감지)에서만 동작한다. 이는 0.2 의 두 트리거 — ① 호출(외부 출금)·② 감지(외부 입금) — 와 정확히 같다.</p>
+
+<h3>9.3 정리</h3>
+
+<ul>
+<li><strong>온/오프램프는 은행 앱의 오케스트레이션</strong> — 현금 처리(코어뱅킹) + 코인 잔액(수탁 DB) 조정. 매니저 밖.</li>
+<li><strong>수탁이라 내부 이동은 DB로 충분</strong> — 코인이 실제로 체인을 건너지 않으면 온체인 tx 가 없고, 매니저도 부르지 않는다.</li>
+<li><strong>매니저는 온체인 가장자리 전용</strong> — 외부 입금(인덱서)·외부 출금(트랜잭션 빌더·서명)·준비자산 이동에서만.</li>
+</ul>
+
+<p>다음 — <a href="abstraction.html"><strong>10. SaaS API 와 Port 설계</strong></a> 에서 이 컴포넌트들을 벤더에 묶이지 않게 추상화한다.</p>
 
 </section>
 </main>

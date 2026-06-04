@@ -25,7 +25,7 @@
 <li><a href="component-indexer.html">3. 인덱서</a></li>
 <li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
 <li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
-<li><a href="component-ledger.html">6. 원장 정합성 · 대사</a></li>
+<li><a href="component-ledger.html">6. 온체인 정합성 · 추적</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
 <li><a href="scenario-deposit.html">7. 입금</a></li>
@@ -63,7 +63,9 @@
 <li>체인 위 사실과 내부 장부를 <strong>맞춰 본다</strong> (정합성·대사)</li>
 </ul>
 
-<p>반대로 "누가 출금을 승인하는가(정책)", "이 주소가 제재 대상인가(컴플라이언스)", "준비자산을 어떻게 운용하는가(자금 운용)" 같은 판단은 매니저가 직접 내리지 않는다. 매니저는 그런 <strong>상위 평면이 내린 결정을 신호로 받아 집행</strong>할 뿐이다. (0.3 참조)</p>
+<p>반대로 출금 승인이나 준비자산 운용·회계 같은 판단은 매니저가 직접 내리지 않는다. 매니저는 <strong>승인이 끝난 요청을 받아 집행</strong>할 뿐이다. (0.3 참조)</p>
+
+<p><strong>전제</strong>: 본 가이드는 <strong>은행이 만드는 수탁(custodial) 지갑 앱</strong>을 가정한다. 그래서 현금↔코인 전환(온/오프램프)은 은행 앱 내부 DB 작업이고, 블록체인 매니저는 온체인 입출금 가장자리에서만 쓰인다. (9. 온·오프램프 참조)</p>
 
 <h3>0.2 한 화면으로 보는 컴포넌트 맵</h3>
 
@@ -71,10 +73,9 @@
 flowchart TB
     subgraph EXT[외부 경계]
       USER["클라이언트 · 상위 서비스"]
-      CHAIN["블록체인 네트워크<br/>RPC · Geyser · Firehose"]
-      FIAT["은행 · PG · 거래소"]
+      NODE["블록체인 노드 · RPC 접근<br/>자체 · GCP BNE · Alchemy · QuickNode<br/>(RPC · Geyser · Firehose)"]
+      NET["블록체인 네트워크<br/>(체인 · 합의)"]
       SIGNER["서명자<br/>MPC · HSM · co-signer"]
-      GOV["정책 · 컴플라이언스 평면<br/>(범위 밖)"]
     end
     subgraph MGR["블록체인 매니저"]
       GW["API 게이트웨이"]
@@ -82,34 +83,41 @@ flowchart TB
       SIG["서명 오케스트레이션"]
       ADP["멀티체인 어댑터"]
       IDX["인덱서"]
-      LED["원장 정합성 · 대사"]
-      RAMP["온/오프램프 커넥터"]
+      LED["온체인 정합성 · 추적"]
       NOTIF["이벤트 · 알림"]
     end
 
-    USER --> GW
+    USER -->|① 호출: 출금·조회·주소발급| GW
     GW --> TX
-    GW --> RAMP
     TX --> SIG --> SIGNER
     TX --> ADP
-    ADP --> CHAIN
-    CHAIN --> IDX
+    ADP -->|제출| NODE
+    NODE --> NET
+    NET -->|블록 · 이벤트| NODE
+    NODE -->|② 입금 감지 · event-driven| IDX
     IDX --> LED
-    IDX --> NOTIF --> USER
-    RAMP --> FIAT
+    IDX --> NOTIF -->|입금·완료 알림 push| USER
     LED --> GW
-    GOV -. 승인 · 제재 신호 .-> TX
 
     classDef gw fill:#e0e7ff,stroke:#6366f1;
     classDef chain fill:#dbeafe,stroke:#2563eb;
     classDef out fill:#fee2e2,stroke:#dc2626;
     classDef ext fill:#f5f5f7,stroke:#86868b;
-    class GW,ADP,IDX,TX,SIG,LED,RAMP,NOTIF gw;
-    class CHAIN chain;
-    class GOV out;
-    class USER,FIAT,SIGNER ext;
+    class GW,ADP,IDX,TX,SIG,LED,NOTIF gw;
+    class NODE chain;
+    class USER,SIGNER,NET ext;
 </pre></div>
-<p class="diagram-caption">Figure 0-1. 블록체인 매니저의 8 컴포넌트와 외부 경계. 보라색 = 매니저 내부 컴포넌트, 파랑 = 블록체인, 빨강 = 범위 밖(정책·컴플라이언스 평면, 점선 신호로만 연결), 회색 = 외부 시스템. 핵심 흐름: 읽기는 체인 → 인덱서 → 내부, 쓰기는 API → 트랜잭션 빌더 → 서명 → 멀티체인 어댑터 → 체인.</p>
+<p class="diagram-caption">Figure 0-1. 블록체인 매니저의 7 컴포넌트와 외부 경계. 보라색 = 매니저 내부 컴포넌트, 파랑 = <strong>블록체인 노드 · RPC 접근 계층</strong>(자체 · GCP BNE · Alchemy 등 — 무엇을 쓰든 이 자리), 회색 = 외부(블록체인 네트워크 · 서명자). 노드/RPC 는 매니저와 네트워크 사이의 접근 계층이다. 쓰기: 멀티체인 어댑터 → 노드 → 네트워크 / 읽기: 네트워크 → 노드 → 인덱서.</p>
+
+<div class="callout">
+<div class="callout-title">매니저를 움직이는 두 가지 트리거</div>
+<p>블록체인 매니저는 두 방식으로 시작된다. 이 둘을 섞으면 "입금도 누가 호출하나?" 같은 혼동이 생긴다 — <strong>입금은 호출이 아니라 감지</strong>다.</p>
+<ul>
+<li><strong>① 호출 (inbound)</strong> — 상위 서비스·클라이언트가 <strong>API 게이트웨이</strong>를 호출. <strong>출금 · 주소 발급 · 잔액/상태 조회</strong>가 여기. 매니저는 "호출당하는" 쪽.</li>
+<li><strong>② 감지 (event-driven)</strong> — 아무도 호출하지 않는다. <strong>인덱서가 노드/RPC 를 폴링·구독해 입금을 스스로 감지</strong>하고, 결과를 알림(push)으로 내보낸다. <strong>입금(자금 인지)</strong>이 여기.</li>
+</ul>
+<p>온/오프램프(현금↔코인)는 수탁 지갑에선 은행 앱의 내부 DB 작업이라 매니저를 거의 거치지 않는다 — 매니저는 외부 입금(②)·외부 출금(①)에서만 호출된다. (9. 온·오프램프 참조)</p>
+</div>
 
 <h3>0.3 범위 — 다루는 것과 위임하는 것</h3>
 
@@ -117,18 +125,17 @@ flowchart TB
 <div class="callout-title">이 가이드가 다루지 않는 것 (다른 평면에 위임)</div>
 <p>블록체인 매니저는 다음을 <strong>스스로 결정하지 않는다</strong>. 결정은 상위 평면이 내리고, 매니저는 그 결과를 신호로 받아 집행하는 연결점(hook)만 노출한다.</p>
 <ul>
-<li><strong>정책 · 승인</strong> — 누가 얼마를 어떤 절차로 승인하는가 (거버넌스 평면)</li>
-<li><strong>컴플라이언스</strong> — 고객확인·제재·이상거래 판단 (KYT/KYB/AML 평면)</li>
 <li><strong>준비자산 운용 · 회계 정책</strong> — 자금을 어떻게 굴리고 공시하는가 (자금 운용 평면)</li>
+<li><strong>회계 원장 · 대사</strong> — 내부 복식부기 장부(잔액 진실원천)와의 대사·기표 (회계/원장 평면). 매니저는 검증된 체인 사실을 제공만 한다.</li>
 </ul>
-<p>본 가이드는 "블록체인 매니저" 를 만드는 관점이므로 이 셋을 의도적으로 범위에서 제외한다. 다만 시나리오에서 이들과 맞닿는 지점은 점선 신호로 표시한다.</p>
+<p>본 가이드는 "블록체인 매니저" 를 만드는 관점이므로 이들을 의도적으로 범위에서 제외한다. 매니저는 그 결과(예: 승인된 출금 지시)를 입력으로 받아 집행만 한다.</p>
 </div>
 
 <h3>0.4 읽는 법</h3>
 
 <ul>
-<li><strong>1. 컴포넌트 개요</strong> — 8 컴포넌트 한눈에 + 책임 경계 매트릭스.</li>
-<li><strong>2~6. 컴포넌트 상세</strong> — 멀티체인 어댑터 · 인덱서 · 트랜잭션/Nonce/Broadcast · 서명 · 원장 — 각 컴포넌트의 "왜 필요 / 어떻게 동작 / 내부 flow / 다른 컴포넌트가 어떻게 쓰는지".</li>
+<li><strong>1. 컴포넌트 개요</strong> — 7 컴포넌트 한눈에 + 책임 경계 매트릭스.</li>
+<li><strong>2~6. 컴포넌트 상세</strong> — 멀티체인 어댑터 · 인덱서 · 트랜잭션/Nonce/Broadcast · 서명 · 온체인 정합성 — 각 컴포넌트의 "왜 필요 / 어떻게 동작 / 내부 flow / 다른 컴포넌트가 어떻게 쓰는지".</li>
 <li><strong>7~9. 시나리오</strong> — 입금 / 출금 / 온·오프램프에서 컴포넌트가 어떻게 협력하는지.</li>
 <li><strong>10. 추상화</strong> — Fireblocks·Alchemy·QuickNode·The Graph·SQD 의 공개 API 형태를 참고해, 벤더에 묶이지 않는 Port/Adapter 설계.</li>
 </ul>

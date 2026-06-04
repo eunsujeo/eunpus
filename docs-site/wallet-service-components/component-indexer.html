@@ -25,7 +25,7 @@
 <li><a class="active" href="component-indexer.html">3. 인덱서</a></li>
 <li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
 <li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
-<li><a href="component-ledger.html">6. 원장 정합성 · 대사</a></li>
+<li><a href="component-ledger.html">6. 온체인 정합성 · 추적</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
 <li><a href="scenario-deposit.html">7. 입금</a></li>
@@ -128,22 +128,20 @@ flowchart LR
     IDX["인덱서"]
     NOTIF["이벤트 · 알림"]
     TX["트랜잭션 빌더<br/>Nonce · Broadcast"]
-    LED["원장 · 대사"]
+    LED["온체인 정합성 · 추적"]
     GW["API 게이트웨이"]
-    RAMP["온/오프램프"]
 
     IDX -->|입금 감지/확정 이벤트| NOTIF
     IDX -->|출금 tx 확정 여부 역확인| TX
     IDX -->|체인 사실(입금/출금 결과)| LED
     IDX -->|잔액 · 입금 · 이력 조회| GW
-    IDX -->|토큰 입금 확정 통지| RAMP
 
     classDef special fill:#e0e7ff,stroke:#6366f1;
     classDef good fill:#dcfce7,stroke:#16a34a;
     class IDX special;
-    class NOTIF,TX,LED,GW,RAMP good;
+    class NOTIF,TX,LED,GW good;
 </pre></div>
-<p class="diagram-caption">Figure 3-3. 인덱서는 매니저 안에서 가장 많이 참조되는 컴포넌트다. 입금 흐름의 시작(감지→알림), 출금 흐름의 끝(확정 역확인), 대사의 근거(체인 사실), 조회의 원천(잔액/이력), 온오프램프의 토큰 확정 신호를 모두 제공한다.</p>
+<p class="diagram-caption">Figure 3-3. 인덱서는 매니저 안에서 가장 많이 참조되는 컴포넌트다. 입금 흐름의 시작(감지→알림), 출금 흐름의 끝(확정 역확인), 대사의 근거(체인 사실), 조회의 원천(잔액/이력)을 제공한다. (온/오프램프 같은 내부 현금↔코인 전환은 매니저 밖 — 9. 온·오프램프 참조)</p>
 
 <div class="table-wrap">
 <table>
@@ -151,9 +149,8 @@ flowchart LR
 <tbody>
 <tr><td>이벤트 · 알림</td><td>입금 감지(PENDING) · 확정(CONFIRMED) · 무효화 이벤트</td></tr>
 <tr><td><a href="component-tx-nonce.html">트랜잭션 빌더</a></td><td>우리가 보낸 출금 tx 의 확정 여부(역방향 확인)</td></tr>
-<tr><td><a href="component-ledger.html">원장 · 대사</a></td><td>체인 위 사실 — 입금/출금 결과를 장부와 대조할 근거</td></tr>
+<tr><td><a href="component-ledger.html">온체인 정합성 · 추적</a></td><td>체인 위 사실 — 입금/출금 결과를 장부와 대조할 근거</td></tr>
 <tr><td>API 게이트웨이</td><td>잔액 · 입금 내역 · 거래 이력 조회</td></tr>
-<tr><td><a href="scenario-onofframp.html">온/오프램프</a></td><td>오프램프에서 토큰 입금 확정 신호</td></tr>
 </tbody>
 </table>
 </div>

@@ -25,7 +25,7 @@
 <li><a href="component-indexer.html">3. 인덱서</a></li>
 <li><a class="active" href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
 <li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
-<li><a href="component-ledger.html">6. 원장 정합성 · 대사</a></li>
+<li><a href="component-ledger.html">6. 온체인 정합성 · 추적</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
 <li><a href="scenario-deposit.html">7. 입금</a></li>
@@ -53,7 +53,7 @@
 <li><strong>수수료 변동</strong> — 혼잡하면 예상 수수료로는 확정이 안 돼 재전송이 필요하다.</li>
 </ul>
 
-<p>이 컴포넌트는 출금 트랜잭션을 <strong>조립하고, 순번을 안전하게 점유하고, 전파하고, 막히면 고쳐 보내는</strong> 일을 전담한다. 단 <strong>출금 승인은 하지 않는다</strong> — 승인은 정책 평면이 끝낸 뒤 신호로 들어온다.</p>
+<p>이 컴포넌트는 출금 트랜잭션을 <strong>조립하고, 순번을 안전하게 점유하고, 전파하고, 막히면 고쳐 보내는</strong> 일을 전담한다. 단 <strong>출금 승인은 하지 않는다</strong> — 승인이 끝난 지시를 받아 집행할 뿐이다.</p>
 
 <h3>4.2 어떻게 동작하는가</h3>
 
@@ -112,11 +112,11 @@ flowchart TB
 <table>
 <thead><tr><th style="width:30%">관계</th><th>내용</th></tr></thead>
 <tbody>
-<tr><td>← 정책 평면(범위 밖)</td><td>"승인됨" 신호를 받은 뒤에만 진입. 거부/보류 신호 시 전파 차단.</td></tr>
+<tr><td>← 승인 절차 (범위 밖)</td><td>이미 승인된 출금 지시를 받아 진입. 승인 자체는 매니저가 하지 않음.</td></tr>
 <tr><td>→ <a href="component-multichain.html">멀티체인 어댑터</a></td><td>순번/UTXO 규칙, 수수료 추정, 전파, 재전송 규칙을 체인별로 위임.</td></tr>
 <tr><td>→ <a href="component-signing.html">서명 오케스트레이션</a></td><td>조립된 트랜잭션의 서명 요청.</td></tr>
 <tr><td>← <a href="component-indexer.html">인덱서</a></td><td>전파한 tx 의 확정 여부 역방향 확인.</td></tr>
-<tr><td>→ <a href="component-ledger.html">원장 · 대사</a></td><td>확정 후 출금 결과를 장부에 반영·대사.</td></tr>
+<tr><td>→ <a href="component-ledger.html">온체인 정합성 · 추적</a></td><td>확정 후 출금 결과를 장부에 반영·대사.</td></tr>
 </tbody>
 </table>
 </div>

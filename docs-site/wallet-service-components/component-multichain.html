@@ -25,7 +25,7 @@
 <li><a href="component-indexer.html">3. 인덱서</a></li>
 <li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
 <li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
-<li><a href="component-ledger.html">6. 원장 정합성 · 대사</a></li>
+<li><a href="component-ledger.html">6. 온체인 정합성 · 추적</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
 <li><a href="scenario-deposit.html">7. 입금</a></li>
@@ -47,7 +47,7 @@
 
 <p>체인은 저마다 규칙이 다르다. 이더리움은 계정마다 순번(nonce)으로 트랜잭션을 직렬화하고, 비트코인은 UTXO 를 골라 쓰며, 솔라나는 또 다르다. 확정(finality<span class="g" data-tip="이 거래가 더는 뒤집히지 않는다고 볼 수 있는 상태. 체인마다 판단 기준과 시간이 다르다">?</span>) 판단 기준도, 수수료 매기는 법도, 막힌 트랜잭션을 바꾸는 방법도 전부 다르다.</p>
 
-<p>이 차이를 매니저 곳곳에 흩어 두면 인덱서·트랜잭션 빌더·서명·원장이 전부 <code>if (chain === 'ethereum') … else if (chain === 'bitcoin') …</code> 로 오염된다. 멀티체인 어댑터는 이 차이를 <strong>한 군데로 모아</strong>, 나머지 컴포넌트에게는 "체인이 무엇이든 똑같아 보이는" 인터페이스를 제공한다.</p>
+<p>이 차이를 매니저 곳곳에 흩어 두면 인덱서·트랜잭션 빌더·서명·온체인 정합성이 전부 <code>if (chain === 'ethereum') … else if (chain === 'bitcoin') …</code> 로 오염된다. 멀티체인 어댑터는 이 차이를 <strong>한 군데로 모아</strong>, 나머지 컴포넌트에게는 "체인이 무엇이든 똑같아 보이는" 인터페이스를 제공한다.</p>
 
 <div class="callout">
 <div class="callout-title">한 문장 요약</div>
@@ -108,7 +108,7 @@ flowchart TB
 <tr><td><a href="component-indexer.html">인덱서</a></td><td>"이 체인의 블록을 어떻게 수집·디코딩하나", "확정 기준은 몇 블록인가"</td></tr>
 <tr><td><a href="component-tx-nonce.html">트랜잭션 빌더 · Nonce/Broadcast</a></td><td>"이 이체를 조립해라(nonce/UTXO 포함)", "수수료 추정", "전파", "막혔으니 재전송 규칙대로 바꿔라"</td></tr>
 <tr><td><a href="component-signing.html">서명 오케스트레이션</a></td><td>"이 체인은 어떤 서명 알고리즘·해시 방식인가"(서명 전 직렬화)</td></tr>
-<tr><td><a href="component-ledger.html">원장 · 대사</a></td><td>"이 체인의 자산 단위·소수점·주소 정규화 규칙"</td></tr>
+<tr><td><a href="component-ledger.html">온체인 정합성 · 추적</a></td><td>"이 체인의 자산 단위·소수점·주소 정규화 규칙"</td></tr>
 </tbody>
 </table>
 </div>
