@@ -85,8 +85,11 @@ flowchart TB
       TRF["TransferPort<br/>제출·상태·가속"]
       IDX["IndexerPort<br/>조회·수신 이벤트"]
     end
-    FB["Fireblocks 어댑터"]
-    OWN["자체/Alchemy<br/>인덱서 어댑터"]
+    subgraph ADP["어댑터 — 포트마다 택일"]
+      FB["Fireblocks"]
+      SELF["자체 HSM + 노드"]
+      OWN["자체 인덱서 · Alchemy"]
+    end
 
     BIZ --> CORE
     CORE --> ACC
@@ -94,8 +97,10 @@ flowchart TB
     CORE --> IDX
     FB -.구현.-> ACC
     FB -.구현.-> TRF
-    FB -.일부만.-> IDX
-    OWN -.교체.-> IDX
+    FB -.일부.-> IDX
+    SELF -.구현.-> ACC
+    SELF -.구현.-> TRF
+    OWN -.구현.-> IDX
 
     classDef ext fill:#f5f5f7,stroke:#86868b;
     classDef svc fill:#dcfce7,stroke:#16a34a;
@@ -104,9 +109,9 @@ flowchart TB
     class BIZ ext;
     class CORE svc;
     class ACC,TRF,IDX port;
-    class FB,OWN adp;
+    class FB,SELF,OWN adp;
 </pre></div>
-<p class="diagram-caption">Figure 10-1. 기능별 포트로 자른다. 지갑 서비스 백엔드(초록)는 세 포트(보라: Account·Transfer·Indexer)에 의존한다. 어댑터(파랑)가 포트를 채우는데 — <strong>Fireblocks 한 어댑터가 Account·Transfer 를 채우고 Indexer 는 일부(vault webhook)만</strong>. 그래서 임의 조회·이력이 필요하면 <strong>IndexerPort 만 Alchemy/자체 인덱서로 교체</strong>한다. 매니저 통째가 아니라 포트마다 갈아끼우는 게 핵심이다.</p>
+<p class="diagram-caption">Figure 10-1. 기능별 포트로 자른다. 지갑 서비스 백엔드(초록)는 세 포트(보라)에 의존하고, 어댑터(파랑)가 포트를 채운다 — <strong>포트마다 하나씩 고른다.</strong> Account·Transfer 는 <strong>Fireblocks 또는 자체 HSM+노드</strong>(자체면 노드가 전파·RPC, HSM 이 서명), Indexer 는 <strong>Fireblocks(내 vault 일부)·자체 인덱서·Alchemy</strong> 중. 그래서 "Account·Transfer 는 Fireblocks, Indexer 만 자체" 같은 하이브리드가 가능하다. 매니저 통째가 아니라 포트마다 갈아끼우는 게 핵심이다.</p>
 
 <h3>10.3 세 기능 포트</h3>
 

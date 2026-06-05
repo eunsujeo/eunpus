@@ -135,10 +135,10 @@ flowchart LR
     LED["온체인 정합성 · 추적"]
     GW["API 게이트웨이"]
 
-    IDX -->|입금 감지/확정 이벤트| NOTIF
-    IDX -->|출금 tx 확정 여부 역확인| TX
-    IDX -->|체인 사실(입금/출금 결과)| LED
-    IDX -->|잔액 · 입금 · 이력 조회| GW
+    IDX -->|"입금 감지·확정 이벤트"| NOTIF
+    IDX -->|"출금 tx 확정 여부 역확인"| TX
+    IDX -->|"체인 사실 (입금·출금 결과)"| LED
+    IDX -->|"잔액·입금·이력 조회"| GW
 
     classDef special fill:#e0e7ff,stroke:#6366f1;
     classDef good fill:#dcfce7,stroke:#16a34a;

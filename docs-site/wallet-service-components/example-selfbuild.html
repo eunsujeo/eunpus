@@ -151,7 +151,32 @@ sequenceDiagram
 </ol>
 <p>Fireblocks 가 webhook 으로 주던 것을, 여기선 인덱서를 직접 운영해 <code>onChainEvent</code> 뒤에서 만든다.</p>
 
-<h3>12.5 Fireblocks 대비 — 직접 지는 책임</h3>
+<h3>12.5 인덱서는 별도 백그라운드 job (요청 경로 밖)</h3>
+
+<p>앞의 부품 중 <strong>인덱서만 성격이 다르다.</strong> nonce·서명·전파는 <code>submitTransaction</code> 요청이 올 때 동작하지만(요청 경로), <strong>인덱서 수집·가공은 체인이 흐르는 한 계속 돌아야 한다</strong> — 끊기면 입금·확정을 놓친다. 그래서 요청 경로와 분리된 <strong>상시 worker</strong> 로 둔다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    CHAIN["블록체인 노드"] -->|지속 폴링 · 스트림| ING["수집 job<br/>(상시 가동)"]
+    ING -->|가공| PROJ["projection store"]
+    PROJ -.읽기.-> Q["IndexerPort.query · getBalance"]
+    PROJ -.push.-> EV["IndexerPort.onChainEvent"]
+
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    classDef adp fill:#dbeafe,stroke:#2563eb;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    class CHAIN ext;
+    class ING,PROJ adp;
+    class Q,EV good;
+</pre></div>
+<p class="diagram-caption">Figure 12-3. 자체 인덱서 = 상시 백그라운드 job. 노드에서 계속 수집·가공해 projection 을 만들어 두고, <code>IndexerPort</code> 메서드(<code>query·getBalance·onChainEvent</code>)는 그 결과를 <strong>읽거나 구독</strong>할 뿐이다. 이것이 0.2 의 <strong>② 감지(event-driven)</strong> — 누가 호출하지 않아도 돈다. 반대로 Account·TransferPort 는 <strong>① 호출</strong>(요청 시에만). 상세 수집 파이프라인은 <a href="component-indexer.html">3. 인덱서</a>.</p>
+
+<div class="callout">
+<div class="callout-title">Fireblocks 면 이 job 이 사라진다</div>
+<p>이 상시 수집 job 은 <strong>자체 구축에서만 우리가 운영</strong>한다. Fireblocks 를 쓰면 Fireblocks 가 자기 vault 범위에서 이 job 을 대신 돌려 <strong>webhook 으로 push</strong> 해주므로, 우리는 수신만 한다 (단 임의 주소·커스텀 가공이 필요하면 이 job 을 자체로 운영 — 10.4 의 IndexerPort 교체).</p>
+</div>
+
+<h3>12.6 Fireblocks 대비 — 직접 지는 책임</h3>
 
 <div class="table-wrap">
 <table>
