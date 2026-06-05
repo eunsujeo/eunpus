@@ -33,7 +33,11 @@
 <li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
-<li><a href="abstraction.html">10. SaaS API 와 Port 설계</a></li>
+<li><a href="abstraction.html">10. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">11. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">12. 자체 구축 어댑터</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -52,7 +56,7 @@
 
 <p>매니저가 체인에 무언가를 쓰거나 읽었으면, <strong>그게 정말 체인에 반영됐는지·끊김 없이 추적되는지</strong>를 확인해야 한다. 우리가 보낸 출금이 확정됐나, 입금이 빠짐없이 잡혔나, 한 건의 요청이 채널 접수부터 온체인 결과까지 같은 요청 ID 로 이어지나 — 이 <strong>체인 측 정합성</strong>이 깨지면 "보냈다고 생각한 게 안 갔거나, 들어온 걸 놓치는" 사고로 직결된다.</p>
 
-<p>단, 이것은 <strong>"회계가 맞는가"</strong> 와는 다른 문제다. 잔액 장부(복식부기, system-of-record)와 체인을 맞추고 기표하는 일은 회계 평면의 몫이고, 이 컴포넌트는 그 평면이 신뢰할 수 있는 <strong>검증된 체인 사실을 만들어 넘기는 데까지</strong>가 책임이다.</p>
+<p>단, 이것은 <strong>"회계가 맞는가"</strong> 와는 다른 문제다. 잔액 장부(복식부기, system-of-record<span class="g" data-tip="잔액의 진실원천 — 다른 데이터와 다르면 이쪽이 맞다고 보는 원본 장부">?</span>)와 체인을 맞추고 기표하는 일은 회계 평면의 몫이고, 이 컴포넌트는 그 평면이 신뢰할 수 있는 <strong>검증된 체인 사실을 만들어 넘기는 데까지</strong>가 책임이다.</p>
 
 <h3>6.2 어떻게 동작하는가</h3>
 
@@ -83,7 +87,7 @@ flowchart LR
     classDef wait fill:#fef3c7,stroke:#d97706;
     classDef bad fill:#fee2e2,stroke:#dc2626;
     classDef special fill:#e0e7ff,stroke:#6366f1;
-    classDef out fill:#fee2e2,stroke:#dc2626;
+    classDef out fill:#f5f5f7,stroke:#86868b;
     class REQ,OFF,ON,OPS good;
     class MATCH special;
     class OK good;
@@ -91,7 +95,7 @@ flowchart LR
     class BAD bad;
     class ACC out;
 </pre></div>
-<p class="diagram-caption">Figure 6-1. 온체인 정합성 대조. 한 요청 ID 에 묶인 기록(채널 요청·오프체인 지급·온체인 결과·매니저 운영 기록)을 대조해 정상/확인 필요/불일치로 분류한다. 검증된 사실은 <strong>회계·원장 평면(빨강 = 범위 밖)</strong>에 제공되며, 복식부기 기표·잔액 대사는 그 평면이 한다.</p>
+<p class="diagram-caption">Figure 6-1. 온체인 정합성 대조. 한 요청 ID 에 묶인 기록(채널 요청·오프체인 지급·온체인 결과·매니저 운영 기록)을 대조해 정상/확인 필요/불일치로 분류한다. 검증된 사실은 <strong>회계·원장 평면(회색 = 범위 밖)</strong>에 제공되며, 복식부기 기표·잔액 대사는 그 평면이 한다.</p>
 
 <p>최소 산출물은 셋이다 — ① 각 요청 ID 의 <strong>온체인 정합성 상태</strong>(정상/확인 필요/불일치), ② 예외 건의 <strong>원인 유형</strong>(온체인 미반영·지급 지연·운영 기록 누락 등), ③ 운영 콘솔·알림·회계 평면으로 잇는 <strong>예외 목록 + 검증 사실</strong>.</p>
 
@@ -127,7 +131,7 @@ flowchart LR
 <ul>
 <li><strong>요청 ID 단일 축</strong> — 모든 기록을 한 ID 로 꿰어야 종단 추적·검증이 가능.</li>
 <li><strong>멱등 처리</strong> — 같은 결과를 두 번 처리해도 상태가 두 번 바뀌지 않게.</li>
-<li><strong>as-of-block 인식</strong> — 인덱서가 준 사실의 확정 수준을 함께 보고, reorg 로 뒤집히면 제공한 사실도 정정 통지.</li>
+<li><strong>as-of-block<span class="g" data-tip="어느 블록 시점 기준의 값인지 — 확정 수준을 함께 표기">?</span> 인식</strong> — 인덱서가 준 사실의 확정 수준을 함께 보고, reorg 로 뒤집히면 제공한 사실도 정정 통지.</li>
 <li><strong>회계 장부 미소유</strong> — 매니저는 검증 사실 제공까지. 잔액 진실원천·기표는 회계 평면.</li>
 </ul>
 </div>

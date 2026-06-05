@@ -33,7 +33,11 @@
 <li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
-<li><a href="abstraction.html">10. SaaS API 와 Port 설계</a></li>
+<li><a href="abstraction.html">10. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">11. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">12. 자체 구축 어댑터</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -45,7 +49,7 @@
 
 <h3>5.1 왜 필요한가</h3>
 
-<p>개인키는 시스템에서 가장 민감한 자산이다. 매니저가 키를 직접 들고 있으면, <strong>매니저가 침해당하는 순간 키도 샌다</strong>. 그래서 키 보관·서명은 전용 외부 서명자 — MPC<span class="g" data-tip="여러 참가자가 키 조각을 나눠 갖고, 임계 수 이상이 모여야 서명이 만들어지는 방식. 단일 개인키가 한 곳에 존재하지 않는다">?</span> 임계 서명·HSM<span class="g" data-tip="키를 하드웨어 안에서만 다루고 밖으로 꺼내지 않는 보안 장치">?</span>·co-signer — 에 맡기고, 매니저는 그 <strong>호출 경계</strong>만 둔다.</p>
+<p>개인키는 시스템에서 가장 민감한 자산이다. 매니저가 키를 직접 들고 있으면, <strong>매니저가 침해당하는 순간 키도 샌다</strong>. 그래서 키 보관·서명은 전용 외부 서명자 — MPC<span class="g" data-tip="여러 참가자가 키 조각을 나눠 갖고, 임계 수 이상이 모여야 서명이 만들어지는 방식. 단일 개인키가 한 곳에 존재하지 않는다">?</span> 임계 서명·HSM<span class="g" data-tip="키를 하드웨어 안에서만 다루고 밖으로 꺼내지 않는 보안 장치">?</span>·co-signer<span class="g" data-tip="공동 서명자 — 정책 검증을 거쳐 서명에 함께 참여하는 별도 구성요소">?</span> — 에 맡기고, 매니저는 그 <strong>호출 경계</strong>만 둔다.</p>
 
 <div class="callout">
 <div class="callout-title">한 문장 요약</div>
@@ -72,7 +76,7 @@ sequenceDiagram
 </pre></div>
 <p class="diagram-caption">Figure 5-1. 서명 흐름. 매니저는 "무엇을 서명할지" 만 만들고, 실제 서명은 외부 서명자(SG)에서 일어난다. 어댑터가 체인별 직렬화·해시 규칙을 제공한다. 서명 결과는 기대 주소·해시와 일치하는지 검증 후 돌려준다.</p>
 
-<h3>5.3 서명 재시도는 멱등이 아니다 (★ 주의)</h3>
+<h3>5.3 서명 재시도는 멱등이 아니다 (주의)</h3>
 
 <p>트랜잭션 전송은 "같은 순번이면 같은 결과" 라 재시도가 비교적 안전하지만, <strong>MPC 서명 재시도는 다르다</strong>. 서명 과정에는 일회용 난수(서명 nonce)가 쓰이는데, <strong>이 값을 재사용하면 개인키가 수학적으로 노출</strong>될 수 있다. 그래서 서명이 실패/타임아웃하면 같은 시도를 반복하는 게 아니라 <strong>새 서명 라운드(새 난수)로 다시</strong> 해야 한다.</p>
 
@@ -101,7 +105,7 @@ sequenceDiagram
 
 <h3>5.5 SaaS 와의 관계</h3>
 
-<p>Fireblocks 같은 플랫폼을 쓰면 이 컴포넌트가 곧 <strong>그 플랫폼의 서명 API 호출 경계</strong>가 된다. 키는 플랫폼의 MPC/HSM 안에만 있고, 매니저는 "이 트랜잭션 서명해 달라" 만 호출한다. 직접 구축이면 자체 HSM·MPC 클러스터가 외부 서명자 자리에 온다. 어느 쪽이든 <strong>매니저 코드가 개인키를 만지지 않는다</strong>는 원칙은 동일하다. (Port 설계는 <a href="abstraction.html">10. 추상화</a>)</p>
+<p>Fireblocks 같은 플랫폼을 쓰면 이 컴포넌트가 곧 <strong>그 플랫폼의 서명 API 호출 경계</strong>가 된다. 키는 플랫폼의 MPC/HSM 안에만 있고, 매니저는 "이 트랜잭션 서명해 달라" 만 호출한다. 직접 구축이면 자체 HSM·MPC 클러스터가 외부 서명자 자리에 온다. 어느 쪽이든 <strong>매니저 코드가 개인키를 만지지 않는다</strong>는 원칙은 동일하다. (벤더 추상화는 <a href="abstraction.html">10. 추상화</a>)</p>
 
 <p>다음 — <a href="component-ledger.html"><strong>6. 온체인 정합성 · 추적</strong></a>.</p>
 

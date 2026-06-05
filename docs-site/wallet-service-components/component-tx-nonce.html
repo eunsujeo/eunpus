@@ -33,7 +33,11 @@
 <li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
-<li><a href="abstraction.html">10. SaaS API 와 Port 설계</a></li>
+<li><a href="abstraction.html">10. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">11. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">12. 자체 구축 어댑터</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -45,7 +49,7 @@
 
 <h3>4.1 왜 필요한가</h3>
 
-<p>출금은 체인에 <strong>쓰는</strong> 일이다. 그런데 계정 기반 체인에서는 한 주소의 트랜잭션이 순번(nonce<span class="g" data-tip="계정 기반 체인에서 한 주소의 트랜잭션 순번 카운터. 0부터 1씩, 비면 뒤가 모두 막힌다">?</span>) 순서로만 처리된다. 그래서 다음 세 가지가 늘 문제다.</p>
+<p>출금(우리가 만드는 송신 트랜잭션)은 체인에 <strong>쓰는</strong> 일이다. 그런데 계정 기반 체인에서는 한 주소의 트랜잭션이 순번(nonce<span class="g" data-tip="계정 기반 체인에서 한 주소의 트랜잭션 순번 카운터. 0부터 1씩, 비면 뒤가 모두 막힌다">?</span>) 순서로만 처리된다. 그래서 다음 세 가지가 늘 문제다.</p>
 
 <ul>
 <li><strong>막힘 연쇄(stuck cascade)</strong> — 수수료가 모자란 트랜잭션 하나가 안 나가면, 그 뒤 순번이 전부 막힌다.</li>

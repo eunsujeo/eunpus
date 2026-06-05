@@ -33,7 +33,11 @@
 <li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
-<li><a href="abstraction.html">10. SaaS API 와 Port 설계</a></li>
+<li><a href="abstraction.html">10. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">11. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">12. 자체 구축 어댑터</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -123,7 +127,7 @@ flowchart TB
 <tbody>
 <tr><td><a href="component-tx-nonce.html"><strong>트랜잭션 빌더 · Nonce/Broadcast</strong></a></td><td>주연. 조립·순번 점유·전파·확정 추적·stuck 재전송. 지갑별 직렬화로 순번 충돌 방지.</td></tr>
 <tr><td><a href="component-signing.html"><strong>서명 오케스트레이션</strong></a></td><td>외부 서명자 호출 경계. 키 미보관.</td></tr>
-<tr><td><a href="component-multichain.html"><strong>멀티체인 어댑터</strong></a></td><td>체인별 순번/UTXO·수수료·재전송 규칙 제공.</td></tr>
+<tr><td><a href="component-multichain.html"><strong>멀티체인 어댑터</strong></a></td><td>체인별 순번/UTXO<span class="g" data-tip="비트코인식 모델 — 잔액이 아니라 사용하지 않은 출력(Unspent Tx Output)들의 집합">?</span>·수수료·재전송 규칙 제공.</td></tr>
 <tr><td><a href="component-indexer.html"><strong>인덱서</strong></a></td><td>전파한 tx 의 확정 여부 역방향 확인.</td></tr>
 <tr><td><a href="component-ledger.html"><strong>온체인 정합성</strong></a></td><td>출금 확정의 온체인 정합성 확인 후 회계 평면 제공.</td></tr>
 </tbody>

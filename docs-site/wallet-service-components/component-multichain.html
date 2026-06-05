@@ -33,7 +33,11 @@
 <li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
-<li><a href="abstraction.html">10. SaaS API 와 Port 설계</a></li>
+<li><a href="abstraction.html">10. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">11. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">12. 자체 구축 어댑터</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -58,13 +62,13 @@
 
 <div class="table-wrap">
 <table>
-<thead><tr><th style="width:22%">관심사</th><th>계정 모델 (EVM 등)</th><th>UTXO 모델 (비트코인 등)</th></tr></thead>
+<thead><tr><th style="width:22%">관심사</th><th>계정 모델 (EVM 등)</th><th>UTXO<span class="g" data-tip="비트코인식 모델 — 잔액이 아니라 사용하지 않은 출력(Unspent Tx Output)들의 집합">?</span> 모델 (비트코인 등)</th></tr></thead>
 <tbody>
 <tr><td>잔액 표현</td><td>주소별 잔액 + nonce</td><td>사용하지 않은 출력(UTXO) 집합</td></tr>
 <tr><td>순서 보장</td><td>주소별 nonce 순차</td><td>입력(UTXO) 선택 · 체인 길이 제한</td></tr>
-<tr><td>확정 판단</td><td>N 블록 확인 (또는 commitment 단계)</td><td>N 블록 확인</td></tr>
-<tr><td>수수료</td><td>gas × gasPrice (EIP-1559 base+priority)</td><td>byte 당 fee rate</td></tr>
-<tr><td>재전송</td><td>같은 nonce + 수수료 인상 (replace)</td><td>RBF 또는 CPFP</td></tr>
+<tr><td>확정 판단</td><td>N 블록 확인 (또는 commitment<span class="g" data-tip="솔라나의 확정 단계 — processed/confirmed/finalized 로 신뢰 수준 구분">?</span> 단계)</td><td>N 블록 확인</td></tr>
+<tr><td>수수료</td><td>gas × gasPrice (EIP-1559<span class="g" data-tip="이더리움 수수료 방식 — 기본료(base fee)+우선료(priority fee) 구조">?</span> base+priority)</td><td>byte 당 fee rate</td></tr>
+<tr><td>재전송</td><td>같은 nonce + 수수료 인상 (replace)</td><td>RBF<span class="g" data-tip="Replace-By-Fee — 같은 순번 트랜잭션을 더 높은 수수료로 교체해 재전송">?</span> 또는 CPFP<span class="g" data-tip="Child-Pays-For-Parent — 막힌 부모 트랜잭션을 높은 수수료의 자식 트랜잭션으로 끌어 확정">?</span></tr>
 <tr><td>주소 파생</td><td>BIP-32/44 경로 + coin type</td><td>BIP-32/44 + 스크립트 유형</td></tr>
 </tbody>
 </table>
@@ -120,6 +124,27 @@ flowchart TB
 <li><strong>능력 노출(capability)</strong> — 어떤 체인은 RBF 가 없거나 확정 단계가 다르다. 어댑터가 "이 체인이 지원하는 능력" 을 함께 알려 위 컴포넌트가 분기 없이 적응하게 한다.</li>
 <li><strong>SaaS 도 결국 어댑터 뒤로</strong> — Fireblocks·Alchemy 같은 SaaS 를 쓰더라도 그들을 "또 다른 어댑터 구현" 으로 두면 벤더 교체가 쉬워진다. (<a href="abstraction.html">10. 추상화</a>)</li>
 </ul>
+</div>
+
+<h3>2.5 노드/RPC 접근 — 엔드포인트 풀과 장애 전환</h3>
+
+<p>어댑터가 실제로 체인과 대화하려면 그 아래에 <strong>블록체인 노드 · RPC 엔드포인트</strong>가 있어야 한다(0. Overview 의 파랑 계층). 엔드포인트가 하나뿐이면 그 노드가 죽거나 느려지는 순간 해당 체인의 읽기·쓰기가 전부 멈춘다 — 단일 장애점<span class="g" data-tip="single point of failure — 한 곳이 죽으면 전체가 멈추는 지점">?</span>이다.</p>
+
+<p>그래서 자체 구축에선 한 체인당 <strong>엔드포인트 여러 개를 풀(pool)로 묶어</strong> 운영한다:</p>
+<ul>
+<li><strong>장애 전환(failover)</strong> — 한 엔드포인트가 응답하지 않거나 헤드가 뒤처지면 자동으로 예비 엔드포인트로 전환한다.</li>
+<li><strong>로테이션 · 부하 분산</strong> — 요청을 여러 엔드포인트로 나눠 rate limit<span class="g" data-tip="외부 노드/RPC 제공자가 거는 초당 요청 수 상한">?</span>을 피하고 한쪽에 부하가 몰리지 않게 한다.</li>
+<li><strong>건강 검사(health check)</strong> — 각 엔드포인트의 응답성·블록 높이를 주기적으로 확인해 뒤처진 노드를 풀에서 빼고, 회복되면 다시 넣는다.</li>
+</ul>
+
+<div class="callout callout-warn">
+<div class="callout-title">엔드포인트마다 체인 헤드가 다를 수 있다</div>
+<p>풀 안의 노드들은 블록 높이가 미세하게 어긋날 수 있어, 방금 전파한 트랜잭션을 다른 엔드포인트로 조회하면 "아직 없음" 으로 보이는 read-after-write 불일치가 생긴다. 같은 트랜잭션의 조립·전파·조회는 <strong>되도록 같은 엔드포인트로 고정(sticky)</strong> 하고, 확정 판정은 <a href="component-ledger.html">6. 온체인 정합성·추적</a> 의 as-of-block 기준으로 본다.</p>
+</div>
+
+<div class="callout">
+<div class="callout-title">누가 이 풀을 운영하나 — 전제에 따라 다르다</div>
+<p>이 풀·failover 는 <strong>자체 구축일 때만 우리 책임</strong>이다. 수탁+Fireblocks 경로에선 노드 인프라·엔드포인트 가용성을 <strong>Fireblocks 가 내부에서 처리</strong>하므로 우리 매니저의 컴포넌트가 아니다. GCP Blockchain Node Engine·Alchemy·QuickNode 같은 관리형 노드를 쓰면 그 일부(가용성)를 제공자에게 위임하고, 멀티 제공자 failover 만 우리가 얹는 식도 가능하다. 그래서 본 가이드는 이를 별도 컴포넌트가 아니라 <strong>멀티체인 어댑터 아래의 노드 접근 계층</strong>으로 둔다. 자체 구축에서의 위치는 <a href="example-selfbuild.html">12. 자체 구축</a> 의 <code>NodeRpc</code> 부품에 해당한다.</p>
 </div>
 
 <p>다음 — <a href="component-indexer.html"><strong>3. 인덱서</strong></a>.</p>

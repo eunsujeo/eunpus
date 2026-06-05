@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>12. 자체 구축 어댑터 — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="SelfBuiltProvider 가 같은 세 포트(Account·Transfer·Indexer)를 구현하되, 내부에서 nonce·서명(HSM)·전파(노드/GCP BNE)·자체 인덱서를 직접 조립한다. 트랜잭션 제출 시 조립→서명→전파 분리." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 컴포넌트 상세</h3><ul>
+<li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
+<li><a href="component-indexer.html">3. 인덱서</a></li>
+<li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
+<li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
+<li><a href="component-ledger.html">6. 온체인 정합성 · 추적</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
+<li><a href="scenario-deposit.html">7. 입금</a></li>
+<li><a href="scenario-withdrawal.html">8. 출금</a></li>
+<li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
+<li><a href="abstraction.html">10. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">11. Fireblocks 어댑터</a></li>
+<li><a class="active" href="example-selfbuild.html">12. 자체 구축 어댑터</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="example-selfbuild">
+<h2>12. 자체 구축 어댑터 — 세 포트 구현 예시</h2>
+<span class="section-subtitle">같은 포트, 내부만 다름 — SelfBuiltProvider 가 nonce·서명·전파·인덱서를 직접 조립한다</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 성격</div>
+<p>설명용 의사코드다. <a href="example-fireblocks.html">11. Fireblocks</a> 와 <strong>같은 지갑 서비스 백엔드·같은 세 포트</strong> 위에서, 어댑터 구현만 자체 구축으로 바꾸면 무엇이 달라지는지 보여준다. 위층 코드는 한 줄도 바뀌지 않는다 — 어댑터만 교체된다.</p>
+</div>
+
+<h3>12.1 큰 그림 — provider 는 하나, 내부에 부품이 여럿</h3>
+
+<p>자체 구축은 <strong>블록체인 매니저(체인 엔진)를 직접 만드는</strong> 길이다 — Fireblocks 가 관리형으로 주던 엔진을 우리가 짓는다. 지갑 서비스 백엔드가 보는 것은 여전히 <strong>같은 세 포트</strong>지만, Fireblocks 가 통째로 해주던 트랜잭션 제출을 <strong>SelfBuiltProvider 가 내부에서 여러 부품으로 직접 조립</strong>한다. Fireblocks 가 묶어주던 <strong>서명·전파·nonce 가 다시 분리</strong>되지만, 그 분리는 provider <em>내부</em>에서만 보이고 코어에는 노출되지 않는다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    CORE["지갑 서비스 백엔드<br/>(포트에만 의존)"]
+    subgraph SBP["SelfBuiltProvider (세 포트 구현)"]
+      direction LR
+      NONCE["nonce 매니저<br/>+ tx 빌더"]
+      HSM["자체 HSM · MPC<br/>서명"]
+      NODE["자체 노드 · GCP BNE<br/>전파 · 체인 RPC"]
+      IDXA["자체 인덱서<br/>수집 · projection"]
+    end
+    CHAIN["블록체인 노드 · 네트워크"]
+
+    CORE -->|"submitTransaction · getStatus · onChainEvent …"| SBP
+    NODE --> CHAIN
+    IDXA --> CHAIN
+
+    classDef mgr fill:#dcfce7,stroke:#16a34a;
+    classDef adp fill:#dbeafe,stroke:#2563eb;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    class CORE mgr;
+    class NONCE,HSM,NODE,IDXA adp;
+    class CHAIN ext;
+</pre></div>
+<p class="diagram-caption">Figure 12-1. 자체 구축. 코어는 여전히 <strong>같은 세 포트</strong>만 호출한다. 그 구현인 SelfBuiltProvider(파랑 박스) 안에서 nonce·서명(HSM)·전파(노드)·수집(인덱서) 네 부품을 직접 엮는다. Fireblocks 와 달리 서명과 전파가 <strong>다른 부품</strong>이라 provider 내부에서 둘을 따로 호출한다.</p>
+
+<h3>12.2 provider 코드 — 내부에서 부품을 조립</h3>
+
+<pre><code>class SelfBuiltProvider implements AccountPort, TransferPort, IndexerPort {
+
+  // 내부 부품 (코어에는 안 보임) — 각각 별도 컴포넌트
+  constructor(
+    private node: NodeRpc,        // 2·4 멀티체인/전파 : 노드 · GCP BNE
+    private hsm: Hsm,             // 5 서명 : 자체 HSM · MPC
+    private nonceMgr: NonceMgr,   // 4 nonce : 계정별 lock · local counter
+    private indexer: SelfIndexer, // 3 인덱서 : 수집 · projection · reorg
+  ) {}
+
+  createAccount(ref)         = hd.allocateAccount(ref)                    // HD account index 할당
+  deriveAddress(acct, asset) = bip32.derive(this.node.xpub(asset), acct)  // 우리가 파생
+  getBalance(addr, asset)    = this.indexer.balanceOf(addr, asset)        // projection 조회
+
+  // 트랜잭션 제출 : Fireblocks 가 한 번에 하던 것을 내부에서 3단계로
+  submitTransaction(req) {
+    const nonce  = this.nonceMgr.reserve(req.from)         // 계정별 순번 점유
+    const raw    = assembleUnsignedTx({ ...req, nonce })   // 조립
+    const signed = this.hsm.sign(raw)                      // 서명 (HSM, 실패 시 비멱등)
+    return this.node.sendRawTransaction(signed)            // 전파 → TxRef(hash)
+  }
+  getStatus(txRef) = this.indexer.confirmationOf(txRef)    // as-of-block 확정수
+  bumpFee(txRef)   = this.node.sendRawTransaction(         // 같은 nonce + fee↑ 재서명·재전파
+                       this.hsm.sign(reFee(txRef)))
+
+  // 수신 트랜잭션 · 확정 : webhook 이 없으니 인덱서를 직접 운영
+  onChainEvent(handler) {
+    this.indexer.subscribe(ourAddrs, ev =&gt; handler(ev))    // RPC 폴링/스트림 → 우리 주소 필터
+  }
+}</code></pre>
+
+<p>코어가 호출하는 <strong>시그니처는 11장과 글자 그대로 같다</strong>(submitTransaction·getStatus·bumpFee·onChainEvent…). 달라진 것은 오직 <code>{ }</code> 안 — Fireblocks 의 한 줄이 여기서는 "조립→서명→전파" 와 "인덱서 운영" 으로 펼쳐진다.</p>
+
+<h3>12.3 송신 트랜잭션 단계별 흐름 — provider 내부에서 3단계가 다 보인다</h3>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant CORE as 지갑 서비스 백엔드
+    participant SBP as SelfBuiltProvider
+    participant SIG as 자체 HSM
+    participant BC as 자체 노드
+    participant IDX as 자체 인덱서
+
+    CORE->>SBP: submitTransaction(승인된 송신 req)
+    Note over SBP: nonce 점유 · raw tx 조립
+    SBP->>SIG: sign(unsigned)
+    SIG-->>SBP: signed tx
+    SBP->>BC: sendRawTransaction(signed)
+    BC-->>SBP: txRef(hash)
+    SBP-->>CORE: txRef
+    loop 확정 대기
+        IDX-->>CORE: onChainEvent / getStatus(txRef)
+    end
+    Note over CORE,BC: stuck 이면 CORE→SBP.bumpFee → 같은 nonce 재서명·재전파
+</pre></div>
+<p class="diagram-caption">Figure 12-2. 자체 구축 송신 트랜잭션. 코어 입장에선 Fireblocks 와 똑같이 <strong>submitTransaction 한 번</strong>(<a href="example-fireblocks.html">Figure 11-2</a>) 이지만, provider 내부에서는 <strong>조립(nonce 점유) → 서명(HSM) → 전파(노드) → 확정(인덱서)</strong> 4단계가 펼쳐진다. 순번·재전송·확정 추적이 전부 우리 책임.</p>
+
+<h3>12.4 수신 트랜잭션 단계별 흐름</h3>
+
+<ol>
+<li>외부에서 우리 주소로 트랜잭션이 들어옴</li>
+<li><strong>자체 인덱서</strong>가 노드/RPC 를 폴링·구독해 우리 주소로의 transfer 를 <strong>스스로 감지</strong> → projection 에 pending</li>
+<li>confirmation 누적이 확정 기준(finalityRule) 충족 → confirmed → <code>onChainEvent</code> 로 코어에 통지</li>
+<li>reorg 나면 projection 롤백 (원시 로그 보존)</li>
+</ol>
+<p>Fireblocks 가 webhook 으로 주던 것을, 여기선 인덱서를 직접 운영해 <code>onChainEvent</code> 뒤에서 만든다.</p>
+
+<h3>12.5 Fireblocks 대비 — 직접 지는 책임</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">항목</th><th>Fireblocks (11장)</th><th>자체 구축 (이 장)</th></tr></thead>
+<tbody>
+<tr><td>키 관리·서명</td><td>Fireblocks MPC</td><td><strong>자체 HSM/MPC 운영</strong></td></tr>
+<tr><td>서명+전파</td><td>createTransaction 한 번(묶임)</td><td><strong>분리</strong> — 조립·서명·전파 각각</td></tr>
+<tr><td>nonce</td><td>Fireblocks 내부</td><td><strong>직접</strong> — 계정별 lock·local counter·직렬화</td></tr>
+<tr><td>stuck 재전송</td><td>bumpFee(RBF/boost) 호출만</td><td><strong>직접</strong> — 같은 nonce 재서명·fee bump</td></tr>
+<tr><td>수신 트랜잭션 감지</td><td>webhook 수신</td><td><strong>자체 인덱서</strong> — 수집·projection·reorg</td></tr>
+<tr><td>멀티체인·주소·수수료</td><td>Fireblocks 제공</td><td><strong>직접</strong> — 파생·RPC·정규화</td></tr>
+<tr><td>위층이 보는 인터페이스</td><td colspan="2" style="text-align:center"><strong>동일 — 같은 세 포트 (어댑터 내부만 다름)</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">핵심</div>
+<p>자체 구축은 Fireblocks 가 묶어 주던 것(서명·전파·nonce·수신감지·멀티체인)을 <strong>전부 provider 안에서 우리가 진다</strong>. 그래서 <a href="component-tx-nonce.html">4. 트랜잭션·Nonce·Broadcast</a>·<a href="component-indexer.html">3. 인덱서</a>·<a href="component-signing.html">5. 서명</a> 같은 상세 페이지가 자체 구축에선 그대로 SelfBuiltProvider 의 내부 부품이 된다. 그래도 <strong>지갑 서비스 백엔드와 세 포트는 11장과 똑같다</strong> — 그래서 어댑터만 바꿔(또는 IndexerPort 만 자체로) Fireblocks ↔ 자체 구축을 오갈 수 있다 (10. 벤더 추상화). 그리고 멱등 게이트웨이·이벤트 팬아웃·내부 장부 대사는 <strong>어느 쪽이든 코어에 그대로 남는다.</strong></p>
+</div>
+
+<p>처음으로 — <a href="index.html"><strong>0. Overview</strong></a> 의 컴포넌트 맵을 다시 보면 전체가 맞춰진다.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

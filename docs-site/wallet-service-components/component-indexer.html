@@ -33,7 +33,11 @@
 <li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
-<li><a href="abstraction.html">10. SaaS API 와 Port 설계</a></li>
+<li><a href="abstraction.html">10. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">11. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">12. 자체 구축 어댑터</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -47,7 +51,7 @@
 
 <p>노드와 RPC 만으로는 지갑 서비스가 필요한 질문에 잘 답하지 못한다. RPC 는 "이 tx 해시의 내용" 은 주지만, <strong>"이 주소가 받은 입금 목록", "지금 잔액", "과거 어느 시점 잔액", "방금 입금 들어왔다는 알림"</strong> 은 그대로 주지 못하거나 너무 느리다.</p>
 
-<p>인덱서는 체인 데이터를 미리 <strong>조회하기 좋은 형태로 가공</strong>해 두고, 입금을 <strong>감지</strong>하고, 확정 여부를 <strong>판단</strong>해, 매니저의 다른 컴포넌트가 빠르고 정확하게 읽을 수 있게 한다. 즉 인덱서는 "체인과 애플리케이션 사이의 데이터 운영체제" 다.</p>
+<p>인덱서는 체인 데이터를 미리 <strong>조회하기 좋은 형태로 가공</strong>해 두고, 수신 트랜잭션(입금)을 <strong>감지</strong>하고, 확정 여부를 <strong>판단</strong>해, 매니저의 다른 컴포넌트가 빠르고 정확하게 읽을 수 있게 한다. 즉 인덱서는 "체인과 애플리케이션 사이의 데이터 운영체제" 다.</p>
 
 <h3>3.2 어떻게 동작하는가 — 수집 → 가공 → 제공</h3>
 
@@ -79,7 +83,7 @@ flowchart LR
 <p class="diagram-caption">Figure 3-1. 인덱서 파이프라인. 파랑 = 원시 보존(불변), 보라 = 변환, 초록 = 제공. ②원시와 ③projection 의 분리가 핵심 — reorg 가 나도 원시로부터 projection 을 다시 만들면 된다.</p>
 
 <h4>① 수집(ingestion) — pull + push 하이브리드</h4>
-<p>두 방식을 섞는다. <strong>push 스트림</strong>(Geyser<span class="g" data-tip="Solana 검증 노드가 데이터를 외부로 밀어주는(push) 스트리밍 인터페이스">?</span>·Firehose)은 새 블록을 즉시 받아 지연이 낮지만, 연결이 끊기면 구멍이 난다. <strong>pull 폴링</strong>(RPC)은 느리지만 빠진 구간을 메우고 과거 데이터를 backfill 할 수 있다. 둘을 합쳐 "빠르되 빠짐 없는" 수집을 만든다.</p>
+<p>두 방식을 섞는다. <strong>push 스트림</strong>(Geyser<span class="g" data-tip="Solana 검증 노드가 데이터를 외부로 밀어주는(push) 스트리밍 인터페이스">?</span>·Firehose<span class="g" data-tip="StreamingFast 가 만든 블록 스트리밍 인터페이스 — 새 블록·트랜잭션을 실시간으로 밀어줌">?</span>)은 새 블록을 즉시 받아 지연이 낮지만, 연결이 끊기면 구멍이 난다. <strong>pull 폴링</strong>(RPC)은 느리지만 빠진 구간을 메우고 과거 데이터를 backfill 할 수 있다. 둘을 합쳐 "빠르되 빠짐 없는" 수집을 만든다.</p>
 
 <h4>② 원시 보존(raw, append-only)</h4>
 <p>받은 블록·로그를 <strong>가공 전 원본 그대로</strong> append-only 로 쌓는다. 절대 덮어쓰거나 지우지 않는다. 이게 있어야 가공 로직이 바뀌거나 reorg 가 나도 다시 만들 수 있다.</p>
@@ -164,7 +168,7 @@ flowchart LR
 <tr><td>체인 헤드 추격 실패(랙)</td><td>수집 지연 모니터링 + push/pull 이중화</td></tr>
 <tr><td>reorg 후 projection 불일치</td><td>원시 보존 + as-of-block + 롤백 가능 설계</td></tr>
 <tr><td>같은 이벤트 중복 적재</td><td>(tx 해시 + logIndex) 멱등 키</td></tr>
-<tr><td>조회 저장소 디스크 고갈 · RPC rate limit</td><td>용량/쿼터 모니터링 + 백프레셔</td></tr>
+<tr><td>조회 저장소 디스크 고갈 · RPC rate limit</td><td>용량/쿼터 모니터링 + 백프레셔<span class="g" data-tip="처리 속도를 못 따라갈 때 유입을 늦춰 밀림을 막는 흐름 제어(backpressure)">?</span></td></tr>
 </tbody>
 </table>
 </div>

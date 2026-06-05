@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>10. SaaS API 와 Port 설계 — 블록체인 매니저 컴포넌트 가이드</title>
-<meta content="Fireblocks·Alchemy·QuickNode·The Graph·SQD 의 공개 API 형태를 참고해, 블록체인 매니저를 벤더에 묶이지 않게 하는 Port/Adapter 추상화 설계와 TypeScript 의사코드." name="description"/>
+<title>10. 벤더 추상화 (기능별 포트) — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="블록체인 매니저를 통째로가 아니라 기능별 포트(AccountPort·TransferPort·IndexerPort)로 추상화한다. 한 어댑터가 여러 포트를 채우고(Fireblocks), 포트마다 갈아끼운다(인덱서만 Alchemy/자체)." name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
 </head>
@@ -33,195 +33,155 @@
 <li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
-<li><a class="active" href="abstraction.html">10. SaaS API 와 Port 설계</a></li>
+<li><a class="active" href="abstraction.html">10. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">11. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">12. 자체 구축 어댑터</a></li>
 </ul></div>
 </nav>
 </aside>
 
 <main class="content">
 <section id="abstraction">
-<h2>10. SaaS API 와 Port 설계</h2>
-<span class="section-subtitle">벤더에 묶이지 않게 — 공개 API 형태를 참고한 Port/Adapter 추상화</span>
+<h2>10. 벤더 추상화 (기능별 포트)</h2>
+<span class="section-subtitle">매니저를 통째로가 아니라 기능마다 자른다 — 한 어댑터가 여러 포트를 채우고, 포트마다 갈아끼운다</span>
 
 <div class="callout">
 <div class="callout-title">본 페이지의 성격</div>
-<p>아래 Port 인터페이스와 매핑은 <strong>저자가 각 SaaS 의 공개 문서에 드러난 API 형태를 참고해 설계한 안</strong>이다. 특정 벤더의 공식 권장 구조가 아니며, 메서드 이름·시그니처는 설명을 위한 의사코드다. 실제 적용 시 각 벤더의 최신 문서로 검증하라.</p>
+<p>아래 인터페이스·코드는 <strong>설명용 의사코드</strong>다. <strong>Fireblocks 의 기능 범위</strong>(서명·전파·nonce·webhook·DCCP·externalTxId·vault·수수료)는 본 위키의 검증된 사실에 근거한다. 그 외 벤더(Alchemy 등)·자체 구축 진술은 공개 문서와 일반 설계 패턴이므로 적용 전 검증하라.</p>
 </div>
 
-<h3>10.1 왜 추상화하는가</h3>
+<h3>10.1 두 층 — 지갑 서비스 백엔드 와 블록체인 매니저</h3>
 
-<p>블록체인 매니저는 거의 항상 외부 SaaS 에 의존한다 — 서명은 Fireblocks, 인덱싱은 The Graph/Alchemy, 수집은 QuickNode 같은 식이다. 그런데 이들을 컴포넌트 코드에 직접 박아 넣으면 <strong>벤더를 바꾸거나 자체 구축으로 전환할 때 매니저 전체를 뜯어야</strong> 한다.</p>
+<p>컴포넌트는 성격이 다른 두 층에 걸쳐 있다.</p>
+<ul>
+<li><strong>블록체인 매니저 (체인 엔진)</strong> — 체인과 직접 대화하는 부분: 멀티체인·인덱서·nonce/트랜잭션·서명·전파. <strong>벤더가 채우거나 자체 구축하는 대상</strong>이다.</li>
+<li><strong>지갑 서비스 백엔드 (항상 내 것)</strong> — API 게이트웨이·멱등·오케스트레이션·이벤트 팬아웃·내부 장부 정합성. 어떤 벤더를 써도 남는다.</li>
+</ul>
+<p>추상화 경계는 이 둘 사이에 둔다. 문제는 <strong>"그 경계를 어떻게 자르느냐"</strong> 다.</p>
 
-<p>해법은 <strong>포트와 어댑터(Ports &amp; Adapters, 헥사고날) 패턴</strong>이다. 블록체인 매니저의 로직은 벤더 SDK 가 아니라 "포트<span class="g" data-tip="인터페이스(약속·계약). 이 기능을 이런 모양으로 제공하라는 규격만 정의하고 구현은 없다. 콘센트 규격에 비유 — 어떤 플러그(어댑터·벤더)든 규격만 맞추면 꽂힌다.">?</span>(인터페이스)" 에만 의존하고, 각 벤더(또는 자체 구축)는 그 포트를 구현하는 "어댑터" 로 바깥에 둔다. 그러면 벤더 교체 = 어댑터 교체이고, 테스트는 가짜 어댑터로 한다.</p>
+<h3>10.2 핵심 — 매니저를 통째로가 아니라 "기능별 포트" 로 자른다</h3>
+
+<div class="callout callout-warn">
+<div class="callout-title">흔한 실수 — 매니저를 한 덩어리로 추상화</div>
+<p>"블록체인 매니저" 를 <strong>인터페이스 하나로 통째</strong> 추상화하면, 교체 단위가 "전부 Fireblocks냐, 전부 자체냐" <strong>둘뿐</strong>이 된다. 그러면 <strong>섞을 수가 없다</strong> — 예컨대 "트랜잭션은 Fireblocks, 임의 조회는 자체 인덱서" 같은 현실적인 조합이 표현되지 않는다.</p>
+</div>
+
+<p>그래서 <strong>기능(capability)마다 포트를 둔다.</strong> 두 가지 규칙만 지키면 된다.</p>
+<ul>
+<li><strong>한 어댑터가 여러 포트를 채울 수 있다</strong> — Fireblocks 는 여러 기능을 묶어 주니 여러 포트를 한꺼번에 구현한다. Alchemy 는 인덱서 포트만.</li>
+<li><strong>포트마다 따로 갈아끼운다</strong> — 한 벤더가 약한 포트만 다른 어댑터로 교체.</li>
+</ul>
 
 <div class="diagram"><pre class="mermaid">
 flowchart TB
-    UP["상위 서비스 · 클라이언트"]
-    MGR["블록체인 매니저 (벤더 무관 로직)<br/>입금 · 출금 · 정합성 오케스트레이션"]
-    PORTS["출력 포트 (인터페이스)<br/>ChainAdapterPort · IndexerPort · SignerPort · BroadcastPort"]
-    ADP["벤더 어댑터 (구현)<br/>Fireblocks · Alchemy · QuickNode · SQD · The Graph · 자체 노드 · HSM · GCP BNE"]
+    BIZ["비즈니스 레이어"]
+    subgraph SVC["지갑 서비스 백엔드 (벤더 무관)"]
+      CORE["게이트웨이·멱등·오케스트레이션<br/>이벤트 팬아웃·내부장부 정합성"]
+    end
+    subgraph MGR["블록체인 매니저 — 기능별 포트"]
+      ACC["AccountPort<br/>계정·주소·잔액"]
+      TRF["TransferPort<br/>제출·상태·가속"]
+      IDX["IndexerPort<br/>조회·수신 이벤트"]
+    end
+    FB["Fireblocks 어댑터"]
+    OWN["자체/Alchemy<br/>인덱서 어댑터"]
 
-    UP -->|① 매니저 호출| MGR
-    MGR -->|② 벤더 SDK 아닌 포트에만 의존| PORTS
-    PORTS -->|구현 교체 가능| ADP
+    BIZ --> CORE
+    CORE --> ACC
+    CORE --> TRF
+    CORE --> IDX
+    FB -.구현.-> ACC
+    FB -.구현.-> TRF
+    FB -.일부만.-> IDX
+    OWN -.교체.-> IDX
 
     classDef ext fill:#f5f5f7,stroke:#86868b;
-    classDef mgr fill:#dcfce7,stroke:#16a34a;
+    classDef svc fill:#dcfce7,stroke:#16a34a;
     classDef port fill:#e0e7ff,stroke:#6366f1;
     classDef adp fill:#dbeafe,stroke:#2563eb;
-    class UP ext;
-    class MGR mgr;
-    class PORTS port;
-    class ADP adp;
+    class BIZ ext;
+    class CORE svc;
+    class ACC,TRF,IDX port;
+    class FB,OWN adp;
 </pre></div>
-<p class="diagram-caption">Figure 10-1. 헥사고날 구조 — 호출 방향(위→아래). ① 상위 서비스가 블록체인 매니저(초록)를 호출 → ② 매니저는 벤더 SDK 가 아니라 출력 포트(보라)에만 의존 → 포트가 벤더 어댑터(파랑)로 구현된다. "벤더 무관" 은 매니저 자체의 성질이며, 벤더 교체 = 바깥 어댑터만 교체. 어느 포트가 어느 어댑터에 매핑되는지는 아래 10.4 표 참조.</p>
+<p class="diagram-caption">Figure 10-1. 기능별 포트로 자른다. 지갑 서비스 백엔드(초록)는 세 포트(보라: Account·Transfer·Indexer)에 의존한다. 어댑터(파랑)가 포트를 채우는데 — <strong>Fireblocks 한 어댑터가 Account·Transfer 를 채우고 Indexer 는 일부(vault webhook)만</strong>. 그래서 임의 조회·이력이 필요하면 <strong>IndexerPort 만 Alchemy/자체 인덱서로 교체</strong>한다. 매니저 통째가 아니라 포트마다 갈아끼우는 게 핵심이다.</p>
 
-<h3>10.2 SaaS 가 커버하는 영역 비교</h3>
+<h3>10.3 세 기능 포트</h3>
 
-<p>핵심 통찰 하나 — <strong>SaaS 마다 커버하는 포트가 다르다.</strong> 그래서 "Fireblocks 하나로 다 된다" 거나 "Alchemy 하나로 다 된다" 가 아니라, <strong>포트별로 다른 벤더를 조합</strong>하게 된다.</p>
+<p>매니저가 필요로 하는 기능을 세 포트로 묶었다. 입금/출금이 아니라 <strong>트랜잭션·계정·조회</strong> 단위다.</p>
+
+<pre><code>interface AccountPort {                  // 계정·주소 (키가 있는 곳)
+  createAccount(ref): Promise&lt;Account&gt;     // 고객 계정(vault) 생성
+  deriveAddress(account, asset): Promise&lt;Address&gt;
+  getBalance(account, asset): Promise&lt;Amount&gt;
+}
+
+interface TransferPort {                 // 트랜잭션 쓰기 (서명+전파를 묶어서)
+  submitTransaction(req): Promise&lt;TxRef&gt;
+  getStatus(txRef): Promise&lt;TxStatus&gt;      // pending / confirmed / stuck
+  bumpFee(txRef): Promise&lt;TxRef&gt;           // stuck 재전송 (RBF/boost)
+}
+
+interface IndexerPort {                  // 읽기 (조회 · 수신 이벤트)
+  query(filter): Promise&lt;Records&gt;          // 잔액·이력·확정 (as-of-block)
+  onChainEvent(handler): Subscription      // 수신 트랜잭션 · 확정 push
+}</code></pre>
+
+<div class="callout">
+<div class="callout-title">입금/출금은 트랜잭션의 "해석" 이다</div>
+<p><strong>출금 = 우리가 만든 송신 트랜잭션</strong>(TransferPort), <strong>입금 = 우리 주소로 들어온 수신 트랜잭션</strong>(IndexerPort 의 이벤트). 포트엔 "입금하다/출금하다" 가 없고 트랜잭션·조회 동작만 있다. 업무 의미는 위층(비즈니스 레이어)이 붙인다.</p>
+</div>
+
+<h3>10.4 한 어댑터가 여러 포트 — 그리고 포트마다 교체</h3>
 
 <div class="table-wrap">
 <table>
-<thead><tr><th style="width:20%">SaaS</th><th>주로 커버하는 영역</th><th>공개 API 형태(예시)</th></tr></thead>
+<thead><tr><th style="width:28%">어댑터</th><th>AccountPort</th><th>TransferPort</th><th>IndexerPort</th></tr></thead>
 <tbody>
-<tr><td><strong>Fireblocks</strong></td><td><strong>4 포트 거의 전부</strong> — 서명·전파·입금감지·멀티체인·custody (수탁 풀스택)</td><td>create transaction(서명·전파·순번) · RBF/boost · <strong>incoming tx · webhook · DCCP(입금 확정)</strong> · 잔액 · <strong>멀티체인 지원 · fee estimation · 주소 파생</strong></td></tr>
-<tr><td><strong>Alchemy</strong></td><td>인덱싱 읽기 + 알림 + RPC 전파</td><td><code>alchemy_getAssetTransfers</code> · Notify(Address Activity webhook) · <code>eth_sendRawTransaction</code> · <code>eth_getTransactionCount</code> · Gas Manager · 70+ 체인</td></tr>
-<tr><td><strong>QuickNode Streams</strong></td><td>수집(push 파이프라인)</td><td>Stream(dataset + JS filter + webhook 목적지) · exactly-once · finality-order · reorg 재전송 · backfill · checkpoint resume</td></tr>
-<tr><td><strong>The Graph</strong></td><td>인덱싱 조회</td><td>subgraph GraphQL 질의 · schema entity · block-height 질의</td></tr>
-<tr><td><strong>SQD / Subsquid</strong></td><td>수집 + 가공(배치)</td><td><code>EvmBatchProcessor</code> · SQD Network archive + RPC · batch <code>ctx.blocks</code> · unfinalized 지원 · custom sink</td></tr>
-<tr><td><strong>GCP Blockchain Node Engine</strong></td><td>관리형 전용 노드 (RPC 소스)</td><td>완전관리형 노드 호스팅 · REST + RPC API · Ethereum first · single-op 배포 · 자동 재시작 · SLA. <strong>enhanced/indexing API 없음</strong>(별도 인덱서 필요)</td></tr>
+<tr><td><strong>Fireblocks</strong></td><td>✅</td><td>✅ createTransaction</td><td>△ webhook + 내 vault 잔액·이력 조회 (임의 주소·커스텀 가공 X)</td></tr>
+<tr><td><strong>Alchemy · The Graph · SQD</strong></td><td>—</td><td>—</td><td>✅ 임의 조회·이력</td></tr>
+<tr><td><strong>자체 (HSM + 노드 + 인덱서)</strong></td><td>✅</td><td>✅</td><td>✅</td></tr>
 </tbody>
 </table>
+</div>
+
+<div class="callout callout-success">
+<div class="callout-title">이게 단일 seam 으론 못 하던 조합</div>
+<p>Fireblocks 로 <strong>AccountPort·TransferPort</strong> 를 쓰되, 임의 주소 조회나 커스텀 가공·집계가 필요하면 <strong>IndexerPort 만 자체 인덱서(또는 Alchemy)로</strong> 교체한다. 매니저를 통째로 추상화했다면 "Fireblocks 아니면 자체" 둘 중 하나라 이 하이브리드가 불가능했다. <strong>기능별 포트라서 약한 포트 하나만 바꿀 수 있다.</strong></p>
 </div>
 
 <div class="callout callout-warn">
-<div class="callout-title">한 벤더가 여러 포트를 묶어 준다 (특히 Fireblocks)</div>
-<p>수탁 지갑 기준, <strong>Fireblocks 는 4 포트를 사실상 다 구현</strong>한다 — 서명(MPC)·전파(+RBF)·입금감지/잔액/확정(webhook·DCCP)·멀티체인/주소/수수료. 즉 <strong>Fireblocks 하나로 매니저 전체가 돌아간다</strong>(단 IndexerPort 는 "자기 vault 한정" — 임의 주소 범용 인덱싱은 아니나, 수탁이면 충분). 반면 Alchemy 는 Indexer·Broadcast·ChainAdapter(RPC)는 주지만 <strong>SignerPort 는 직접 가져와야</strong> 한다(키는 내 몫). 추상화의 의미는 "Fireblocks 같은 풀스택을 쓰되, 나중에 자체 구축으로 갈 때 포트별로 쪼개 갈아끼울 수 있다" 는 것이다.</p>
+<div class="callout-title">근거 구분</div>
+<p>"Fireblocks" 행은 <strong>본 위키의 검증된 사실</strong>이다(Fireblocks 의 IndexerPort 가 내 vault 범위 — webhook + 잔액·이력 조회 — 이고 임의 주소·커스텀 가공은 자체인 점 포함). 그 외 벤더·자체 구축 행은 <strong>공개 문서·설계 판단</strong>이다.</p>
 </div>
 
-<h3>10.3 4 포트 설계 (의사코드)</h3>
+<h3>10.5 서명·nonce·전파·멀티체인은 어디에 — 포트 "안" 의 메커니즘</h3>
 
-<h4>① ChainAdapterPort — 체인 의미 정규화</h4>
-<pre><code>interface ChainAdapterPort {
-  deriveAddress(account: AccountRef, path: DerivationPath): Promise&lt;Address&gt;
-  buildTransfer(req: TransferRequest): Promise&lt;UnsignedTx&gt;   // 계정형 순번 / UTXO 선택 포함
-  estimateFee(tx: UnsignedTx, speed: FeeSpeed): Promise&lt;FeeParams&gt;
-  finalityRule(): FinalityRule                                // 예: N 블록 또는 commitment 단계
-  capabilities(): ChainCapabilities                           // RBF 지원? account vs utxo? 등
-}</code></pre>
-<p>→ <a href="component-multichain.html">멀티체인 어댑터</a> 가 이 포트. 어떤 벤더를 쓰든 체인 차이는 여기서 정규화. (Fireblocks 는 멀티체인·주소·수수료를 자체 제공 / Alchemy·GCP BNE·자체 노드는 RPC 를 데이터 소스로)</p>
-
-<h4>② IndexerPort — 체인 데이터 읽기 · 구독</h4>
-<pre><code>interface IndexerPort {
-  getBalance(address: Address, asset: AssetId): Promise&lt;Amount&gt;
-  getTransfers(q: TransferQuery): Promise&lt;Transfer[]&gt;          // address / from·to / block 범위
-  confirmationOf(txHash: TxHash): Promise&lt;Confirmation&gt;        // 확정 수준 노출
-  subscribe(addresses: Address[], onEvent: (e: ChainEvent) =&gt; void): Subscription
-}</code></pre>
-<p>→ <a href="component-indexer.html">인덱서</a> 가 이 포트. <strong>Fireblocks(자기 vault: webhook·잔액·DCCP 확정)</strong> / Alchemy(<code>getAssetTransfers</code>+Notify) / The Graph·SQD(질의) / QuickNode(구독) / 자체 인덱서가 각각 어댑터.</p>
-
-<h4>③ SignerPort — 서명 (키는 외부)</h4>
-<pre><code>interface SignerPort {
-  sign(payload: SignPayload): Promise&lt;Signature&gt;   // 키 미보관. 실패 시 새 라운드(비멱등)
-  publicKeyOf(account: AccountRef): Promise&lt;PublicKey&gt;
-}</code></pre>
-<p>→ <a href="component-signing.html">서명 오케스트레이션</a> 이 이 포트. Fireblocks MPC / 자체 HSM·MPC 가 어댑터. (Alchemy 등 RPC 전용 벤더는 이 포트를 구현하지 않음 → 직접 마련)</p>
-
-<h4>④ BroadcastPort — 전파 · 추적 · 재전송</h4>
-<pre><code>interface BroadcastPort {
-  broadcast(signedTx: SignedTx): Promise&lt;TxHash&gt;
-  status(txHash: TxHash): Promise&lt;BroadcastStatus&gt;            // pending / confirmed / stuck
-  replace(txHash: TxHash, higherFee: FeeParams): Promise&lt;TxHash&gt;  // 같은 순번 재전송
-}</code></pre>
-<p>→ <a href="component-tx-nonce.html">트랜잭션 빌더 · Nonce/Broadcast</a> 의 체인 IO 부분. Fireblocks(서명과 묶임) / Alchemy(<code>eth_sendRawTransaction</code>) / 자체 노드가 어댑터. <strong>순번 점유·큐·멱등은 포트 밖 애플리케이션 로직</strong>(벤더가 순번을 소유하면 그 부분은 위임).</p>
-
-<h3>10.4 포트 ↔ 어댑터 매핑</h3>
-
-<p>이 표는 <strong>"어느 벤더가 어느 포트를 채울 수 있나(가능 관계)"</strong> 다. <strong>✅</strong>=구현 가능 · <strong>△</strong>=부분/직접 보강 필요 · <strong>✗</strong>=미지원.</p>
-
-<div class="table-wrap">
-<table>
-<thead><tr><th>포트</th><th>Fireblocks</th><th>Alchemy</th><th>QuickNode·SQD·The Graph</th><th>자체 HSM·MPC</th><th>자체 노드·GCP BNE</th></tr></thead>
-<tbody>
-<tr><td>SignerPort</td><td>✅ MPC</td><td>✗</td><td>✗</td><td>✅</td><td>✗</td></tr>
-<tr><td>IndexerPort</td><td>✅ 자기 vault<br/>(webhook·잔액·DCCP)</td><td>✅ transfers·webhook</td><td>✅ 수집/질의</td><td>✗</td><td>△ raw RPC<br/>(인덱싱 직접)</td></tr>
-<tr><td>BroadcastPort</td><td>✅ (+RBF/boost)</td><td>✅ sendRawTx</td><td>△ 약함</td><td>✗</td><td>✅ sendRawTx</td></tr>
-<tr><td>ChainAdapterPort</td><td>✅ 멀티체인·주소·수수료</td><td>✅ RPC 소스</td><td>△</td><td>✗</td><td>✅ RPC 소스</td></tr>
-</tbody>
-</table>
-</div>
-
-<div class="callout callout-warn">
-<div class="callout-title">근거 tier — 같은 ✅ 라도 출처가 다름</div>
-<p><strong>Fireblocks 행만 본 위키의 검증된 fact</strong> 다. Alchemy·QuickNode·SQD·The Graph 는 <strong>벤더 공개 문서 기반(2026-06 확인, 비-위키)</strong> 이므로 적용 전 최신 문서로 다시 확인하라.</p>
-</div>
-
-<p>★ 이 표는 <strong>가능 관계</strong>일 뿐이다. 실제 시스템은 <strong>4 포트를 빠짐없이 채운 한 벌(조합)</strong> 이어야 하며, 한 어댑터가 여러 포트를 덮어도 빈 포트가 하나라도 있으면 안 돈다. 조합 예시는 <a href="#stacks">10.6 절</a>.</p>
-
-<div class="callout">
-<div class="callout-title">노드 레이어 어댑터 — GCP Blockchain Node Engine 의 경우</div>
-<p><strong>GCP BNE</strong> 같은 <strong>관리형 전용 노드</strong>는 표준 RPC 를 제공하므로 <strong>ChainAdapterPort 의 RPC 소스 + BroadcastPort(<code>eth_sendRawTransaction</code> 류)</strong> 어댑터로 들어간다. 단 SignerPort 는 구현하지 않고(키는 별도 서명자), Transfers/Streams 같은 enhanced 기능이 없어 <strong>IndexerPort 는 직접 인덱서(또는 BigQuery 데이터셋 등)로 채워야</strong> 한다. 즉 "공용 RPC(Alchemy/QuickNode)" 대신 "전용·격리 노드" 가 필요할 때 같은 자리에 끼우는 또 다른 어댑터 선택지다.</p>
-</div>
-
-<h3>10.5 설계 원칙</h3>
-
-<div class="callout">
-<div class="callout-title">추상화를 지탱하는 규칙</div>
+<p>이들은 별도 포트가 아니라 <strong>TransferPort·AccountPort 안의 메커니즘</strong>이다. 같은 <code>submitTransaction</code> 을 —</p>
 <ul>
-<li><strong>능력 노출(capability)</strong> — 어댑터마다 되는 것/안 되는 것이 다르다(RBF 지원, unfinalized 조회, 확정 단계 수). 포트가 <code>capabilities()</code> 로 알려 매니저 로직이 분기 없이 적응하게.</li>
-<li><strong>묶음 흡수</strong> — Fireblocks 처럼 여러 포트가 한 API 로 묶인 경우, 한 어댑터가 복수 포트를 구현하게 둔다. 억지로 쪼개지 않는다.</li>
-<li><strong>멱등 경계</strong> — 포트 호출에 요청 ID 를 실어, 어댑터/벤더가 재시도해도 한 번만 실행되게.</li>
-<li><strong>확정은 데이터에</strong> — IndexerPort 의 응답에 "확정 수준" 을 함께 실어 매니저 로직이 안전 판정하게.</li>
-<li><strong>테스트용 가짜 어댑터</strong> — 모든 포트는 in-memory fake 구현을 둬, 벤더 없이 시나리오(입금·출금·reorg)를 테스트.</li>
+<li><strong>Fireblocks 어댑터</strong>는 <code>createTransaction</code> 한 번으로 (서명+전파+nonce 묶음),</li>
+<li><strong>자체 어댑터</strong>는 내부에서 nonce 점유 → 조립 → HSM 서명 → 노드 전파로</li>
 </ul>
-</div>
-
-<h3 id="stacks">10.6 조합(stack) — 포트를 전부 채운 한 벌</h3>
-
-<p>10.4 매트릭스가 "누가 채울 수 있나" 라면, 실제 배포는 <strong>4 포트를 빠짐없이 채운 한 벌(stack)</strong> 이다. 한 어댑터가 여러 포트를 덮더라도, <strong>빈 포트가 하나라도 있으면 시스템은 안 돈다</strong>. 같은 코어 위에 꽂을 수 있는 두 조합 예시:</p>
-
-<div class="table-wrap">
-<table>
-<thead><tr><th style="width:22%">포트</th><th>조합 A — 수탁 풀스택</th><th>조합 B — 혼합(자체 + SaaS)</th></tr></thead>
-<tbody>
-<tr><td>SignerPort</td><td>Fireblocks</td><td>자체 HSM · MPC</td></tr>
-<tr><td>BroadcastPort</td><td>Fireblocks</td><td>자체 노드 · GCP BNE</td></tr>
-<tr><td>ChainAdapterPort</td><td>Fireblocks</td><td>자체 노드 · GCP BNE</td></tr>
-<tr><td>IndexerPort</td><td>Fireblocks (자기 vault)</td><td>Alchemy 또는 자체 인덱서</td></tr>
-</tbody>
-</table>
-</div>
-
-<p>조합 A 는 <strong>Fireblocks 한 어댑터가 4 포트 전부</strong> — 수탁 지갑이면 이 한 벌로 매니저 전체가 돈다. 조합 B 는 포트별로 쪼갰다. <strong>코어 로직은 A·B 어느 쪽이든 한 줄도 바뀌지 않는다</strong> — 그게 추상화의 목적이다. (어느 조합이든 4 포트가 *전부* 채워졌다는 점에 주목)</p>
-
-<h4>어댑터별 구현 책임</h4>
-
-<p>각 어댑터를 만들 때 "어떤 포트의 어떤 메서드를, 벤더 API 의 무엇으로 채우나" 를 정리하면:</p>
-
-<div class="table-wrap">
-<table>
-<thead><tr><th style="width:18%">어댑터</th><th style="width:20%">구현해야 하는 포트</th><th>벤더 API → 포트 메서드 (예)</th><th style="width:18%">안 채우는 포트(직접 마련)</th></tr></thead>
-<tbody>
-<tr><td><strong>Fireblocks</strong> (수탁)</td><td>4 포트 전부</td><td>create transaction → <code>sign</code>+<code>broadcast</code> · status/RBF → <code>status</code>/<code>replace</code> · incoming·webhook·DCCP → <code>subscribe</code>+<code>confirmationOf</code> · 잔액 → <code>getBalance</code> · 멀티체인·주소·fee → ChainAdapterPort</td><td>(없음 — 자기 vault 범위) 임의 주소 범용 인덱싱만 별도</td></tr>
-<tr><td><strong>Alchemy</strong></td><td>IndexerPort · BroadcastPort · ChainAdapterPort(RPC)</td><td><code>getAssetTransfers</code> → <code>getTransfers</code> · Notify webhook → <code>subscribe</code> · tx receipt → <code>confirmationOf</code> · <code>eth_sendRawTransaction</code> → <code>broadcast</code></td><td>SignerPort(키는 직접)</td></tr>
-<tr><td><strong>QuickNode · SQD · The Graph</strong></td><td>IndexerPort</td><td>Streams 구독 → <code>subscribe</code> · SQD batch / The Graph GraphQL → <code>getTransfers</code></td><td>SignerPort · BroadcastPort</td></tr>
-<tr><td><strong>자체 HSM · MPC</strong></td><td>SignerPort</td><td>HSM/MPC 서명 → <code>sign</code> · 키 조회 → <code>publicKeyOf</code></td><td>나머지 전부</td></tr>
-<tr><td><strong>자체 노드 · GCP BNE</strong></td><td>ChainAdapterPort(RPC) · BroadcastPort</td><td>표준 JSON-RPC → 수수료/잔액/조립 · <code>eth_sendRawTransaction</code> → <code>broadcast</code> · <code>eth_getTransactionReceipt</code> → <code>status</code></td><td>IndexerPort(enhanced 없음 → 별도 인덱서) · SignerPort</td></tr>
-</tbody>
-</table>
-</div>
+<p>채운다. 그래서 서명·전파를 억지로 SignerPort·BroadcastPort 로 쪼개지 않는다 — 그건 메커니즘 분해라 Fireblocks 의 묶음과 안 맞는다(예전 4-포트가 leaky 했던 이유).</p>
 
 <div class="callout">
-<div class="callout-title">어댑터 구현 체크리스트</div>
-<ul>
-<li><strong>포트 메서드 전부 충족</strong> — 못 채우는 메서드는 빈 구현이 아니라 <code>capabilities()</code> 로 "미지원" 을 명시(매니저 로직이 분기 없이 우회).</li>
-<li><strong>벤더 응답 → 포트 타입 정규화</strong> — 벤더별 에러·상태 코드·금액 단위를 포트가 정의한 공통 타입으로 변환.</li>
-<li><strong>멱등 보존</strong> — 매니저가 넘긴 요청 ID 를 벤더 호출(또는 재시도)에 전파해 한 번만 실행.</li>
-<li><strong>가짜(fake) 구현 동봉</strong> — 같은 포트의 in-memory 어댑터를 만들어 벤더 없이 시나리오 테스트.</li>
-</ul>
+<div class="callout-title">언제 더 쪼개나 (Rule of Three)</div>
+<p>포트를 더 잘게(예: TransferPort → SignerPort + BroadcastPort) 나누는 건 <strong>그 기능을 정말로 따로 갈아끼울 때만</strong>이다 — 예: "키는 자체 HSM 으로 서명하되 전파는 외부 노드 서비스로". 그런 실제 요구가 생기기 전에 미리 쪼개면 다시 leaky 추상화가 된다.</p>
 </div>
 
-<p>이로써 7 컴포넌트가 벤더에 묶이지 않고, 자체 구축 ↔ SaaS 사이를 포트 단위로 오갈 수 있는 그림이 완성된다. 처음으로 — <a href="index.html"><strong>0. Overview</strong></a> 의 컴포넌트 맵을 다시 보면 전체가 맞춰진다.</p>
+<h3>10.6 Fireblocks 를 써도 지갑 서비스 백엔드는 남는다</h3>
+
+<p>Fireblocks 가 세 포트를 거의 다 채워도, 그 <strong>위층은 그대로 우리가 만든다.</strong></p>
+<ul>
+<li><strong>멱등 게이트웨이</strong> — 인바운드 요청에 우리 멱등 키 부여 → Fireblocks 의 <code>externalTxId</code> 로 매핑 (externalTxId 만으로는 트랜잭션 한정 dedup).</li>
+<li><strong>이벤트 팬아웃</strong> — Fireblocks 는 webhook 을 줄 뿐, 비즈 레이어·클라이언트로 알리는 건 우리.</li>
+<li><strong>내부 장부 정합성</strong> — 체인 사실을 우리 장부와 맞춰보는 건 항상 우리 (<a href="component-ledger.html">6. 온체인 정합성·추적</a>).</li>
+<li><strong>오케스트레이션</strong> — 요청 큐·상태머신·재시도·vault 라우팅.</li>
+</ul>
+
+<p>정리하면 — <strong>매니저를 통째로 추상화하지 말고 기능별 포트(Account·Transfer·Indexer)로 자른다.</strong> 한 어댑터가 여러 포트를 채우고(Fireblocks), 약한 포트만 갈아끼운다(인덱서는 자체/Alchemy). 구체 구현은 <a href="example-fireblocks.html">11. Fireblocks</a> · <a href="example-selfbuild.html">12. 자체 구축</a>. 처음으로 — <a href="index.html"><strong>0. Overview</strong></a>.</p>
 
 </section>
 </main>
