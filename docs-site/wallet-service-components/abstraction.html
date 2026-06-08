@@ -38,7 +38,6 @@
 <div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
 <li><a href="example-fireblocks.html">11. Fireblocks 어댑터</a></li>
 <li><a href="example-selfbuild.html">12. 자체 구축 어댑터</a></li>
-<li><a href="example-nodeinfra.html">13. 노드 인프라 어댑터</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -187,7 +186,7 @@ interface IndexerPort {                  // 읽기 (조회 · 수신 이벤트)
 <li><strong>오케스트레이션</strong> — 요청 큐·상태머신·재시도·vault 라우팅.</li>
 </ul>
 
-<p>정리하면 — <strong>매니저를 통째로 추상화하지 말고 기능별 포트(Account·Transfer·Indexer)로 자른다.</strong> 한 어댑터가 여러 포트를 채우고(Fireblocks), 약한 포트만 갈아끼운다(인덱서는 자체/Alchemy). 구체 구현은 <a href="example-fireblocks.html">11. Fireblocks</a> · <a href="example-selfbuild.html">12. 자체 구축</a> · <a href="example-nodeinfra.html">13. 노드 인프라</a>. 처음으로 — <a href="index.html"><strong>0. Overview</strong></a>.</p>
+<p>정리하면 — <strong>매니저를 통째로 추상화하지 말고 기능별 포트(Account·Transfer·Indexer)로 자른다.</strong> 한 어댑터가 여러 포트를 채우고(Fireblocks), 약한 포트만 갈아끼운다(인덱서는 자체/Alchemy). 구체 구현은 <a href="example-fireblocks.html">11. Fireblocks</a> · <a href="example-selfbuild.html">12. 자체 구축</a>(노드 조달 옵션 포함). 처음으로 — <a href="index.html"><strong>0. Overview</strong></a>.</p>
 
 </section>
 </main>
