@@ -6902,3 +6902,13 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 추가: docs-site/wallet-service-components abstraction 페이지 SaaS 비교표·어댑터 매핑에 GCP BNE 행 반영
 - 소스: sources/gcp/ 신설 (markdown 추출본 + meta.yml)
 - 신규 entity: 0, 신규 page: 0 (entity-min, indexer reference 흡수, streak 38)
+
+## Stage 50 (2026-06-08) — Fireblocks REST endpoint surface (read/write) ingest → api.md TODO 해소
+- source: developers.fireblocks.com 공식 API reference — `llms.txt` 인덱스 + `api-reference/{vaults,transactions,webhooks-v2}/*` (web fetch, 2026-06-08). 개별 page 는 JS 렌더 stub → `.md` 변형/llms.txt 로 method+path 확보
+- 범위: 수탁 "블록체인 매니저" 가 쓰는 그룹만 (Vault / Transactions / Webhooks v2). Policies(TAP)·Network·Exchange 제외
+- 흡수: `vendors/fireblocks/api.md` **Stage 50 섹션 신설** — Vault/Transactions/Webhooks 를 read/write 로 구분한 endpoint 표. 기존 REST TODO(line 28/46/50/84) → Stage 50 참조로 갱신, frontmatter last_updated_stage 36→50
+- 경로 직접 확인(✅): POST /v1/transactions, POST /v1/transactions/{txId}/drop, POST /v1/transactions/estimate_fee, GET /v1/transactions/{txId}, POST /v1/vault/accounts, POST /v1/vault/accounts/{id}/{asset}/addresses, POST /v1/webhooks, GET /v1/vault/accounts_paged. 나머지(○)는 reference 페이지 존재 + REST 표준 경로
+- read/write 본질: WRITE=상태변경(생성·drop·cancel·webhook 설정), READ=조회, event=webhook push. estimate_fee 는 POST지만 read 성격
+- docs-site wallet-service-components 11장(AccountPort/TransferPort/IndexerPort) 의 실제 endpoint 근거로 연계
+- 신규 Q: Q-2026-06-08-A13(Policies/Network/Exchange endpoint) · A14(set_confirmation_threshold↔DCCP) · A15(webhook v1→v2 migration 상태)
+- 신규 entity: 0, 신규 page: 0 (기존 vendor-hub api.md 흡수, streak 39)

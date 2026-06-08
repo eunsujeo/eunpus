@@ -4,7 +4,7 @@ vendor: fireblocks
 status: stable
 tags: [api, identity, data-objects]
 stage_introduced: 1
-last_updated_stage: 36
+last_updated_stage: 50
 source_count: 14
 related:
   - api-co-signer
@@ -43,11 +43,11 @@ _TODO: REST endpoint·SDK·Webhook 표면 명세는 추후 자료. 현재 자료
 - [[entities/fireblocks/api-co-signer]] · [[entities/fireblocks/callback-handler]] — 자동 서명 표면
 - [[vendors/fireblocks/authentication]] — 인증 통합 페이지
 
-_TODO: REST endpoint group(Vault, Transactions, Policies, Network, Webhooks), JWT signing 헤더, idempotency, rate limit, webhook event types — 추후 자료_
+_REST endpoint surface: **Vault / Transactions / Webhooks v2 는 Stage 50 (아래) 에서 채움** (read/write 구분). Policies(TAP) / Network / Exchange 그룹 + JWT 헤더 세부 · rate limit 은 잔존 TODO._
 
 ## Details
 
-_TODO: endpoint·SDK·webhook은 추후 자료._
+_REST endpoint surface 는 Stage 50 섹션 참조 (Vault / Transactions / Webhooks v2). SDK 매핑은 추후._
 
 ### API user 표면 (본 자료로 확인된 부분)
 
@@ -81,7 +81,7 @@ _TODO: endpoint·SDK·webhook은 추후 자료._
 - Q-2026-05-18-A02 — API user unpair 절차
 - Q-2026-05-18-A03 — API key 만료·rotation
 - Q-2026-05-18-A07 — API user audit log 조회 표면
-- (전체 REST/SDK/Webhook 명세는 후속 자료 필요)
+- REST endpoint surface (Vault/Transactions/Webhooks): Stage 50 에서 해소. SDK·Policies(TAP)·Network endpoint 는 후속.
 
 ## Stage 36 — Data Object Catalog (`developers.fireblocks.com/reference/`)
 
@@ -261,3 +261,99 @@ ApprovalStatus.approval: "PENDING_AUTHORIZATION" | "APPROVED" | "REJECTED" | "NA
 - `2026-05-22__developers-fireblocks-com__reference-gas-station-objects.md` (22 lines, 2 schemas)
 - `2026-05-22__developers-fireblocks-com__reference-internalexternal-wallet-objects.md` (51 lines, 4 schemas)
 - `2026-05-22__developers-fireblocks-com__reference-payments-objects.md` (245 lines, 신규 plane)
+
+## Stage 50 — REST Endpoint Surface (지갑 매니저 관점, read/write)
+
+> Stage 1·36 의 REST endpoint TODO 해소 — 수탁 "블록체인 매니저" 가 쓰는 그룹(Vault / Transactions / Webhooks v2)만.
+> Source: developers.fireblocks.com 공식 API reference — `llms.txt` 인덱스 + `api-reference/*` pages (**2026-06-08 web fetch 확인**).
+> ✅ = method+path 직접 확인 (.md fetch / 검색 스니펫). ○ = reference 페이지 존재 확인, 경로는 Fireblocks REST 표준 패턴 (적용 전 페이지 재확인 권장).
+> base URL `https://api.fireblocks.io`. 모든 요청 JWT 서명(API Key + RSA) — [[entities/fireblocks/api-key]], `reference-signing-a-request-jwt-structure.md`.
+
+### Vault (AccountPort — 계정·주소·잔액)
+
+**WRITE (상태 변경)**
+
+| method · path | 용도 |
+|---|---|
+| ✅ `POST /v1/vault/accounts` | 고객 계정(vault) 생성 |
+| ○ `POST /v1/vault/accounts/{vaultAccountId}/{assetId}` | 자산 지갑 활성화/추가 (Create vault wallet) |
+| ✅ `POST /v1/vault/accounts/{vaultAccountId}/{assetId}/addresses` | 입금 주소 발급 (UTXO·tag/memo) |
+| ○ `POST /v1/vault/accounts/bulk` · `.../addresses_bulk` | 대량 생성 (온보딩 스케일) |
+
+**READ (조회)**
+
+| method · path | 용도 |
+|---|---|
+| ✅ `GET /v1/vault/accounts_paged` | 계정 목록 (paginated) |
+| ○ `GET /v1/vault/accounts/{vaultAccountId}` | 계정 단건 |
+| ○ `GET /v1/vault/accounts/{vaultAccountId}/{assetId}` | **자산 잔액** |
+| ○ `GET /v1/vault/accounts/{vaultAccountId}/{assetId}/addresses_paginated` | 주소 목록 |
+| ○ `GET /v1/vault/accounts/{vaultAccountId}/{assetId}/public_key_info` | 주소 파생용 공개키 |
+
+→ [[entities/fireblocks/vault-account]]. 8 destination type · vault schema 는 Stage 36 object catalog.
+
+### Transactions (TransferPort — 제출·상태·가속)
+
+**WRITE**
+
+| method · path | 용도 |
+|---|---|
+| ✅ `POST /v1/transactions` | 트랜잭션 생성 = **서명+전파+nonce 묶음**. `externalTxId` 로 멱등 |
+| ✅ `POST /v1/transactions/{txId}/drop` | stuck EVM tx 교체/드롭 (boost/RBF) |
+| ○ `POST /v1/transactions/{txId}/cancel` | 취소 |
+| ✅ `POST /v1/transactions/estimate_fee` | 수수료 추정 (POST지만 상태변경 X — `low/medium/high` 3 tier, fee-estimation-objects) |
+| ○ `POST /v1/transactions/{txId}/set_confirmation_threshold` | 확정 임계 설정 (DCCP 보강) |
+
+**READ**
+
+| method · path | 용도 |
+|---|---|
+| ✅ `GET /v1/transactions/{txId}` | 상태 조회 (Stage 9 17-status / NetworkStatus) |
+| ○ `GET /v1/transactions/external_tx_id/{externalTxId}` | 멱등 키로 조회 |
+| ○ `GET /v1/transactions` | 이력·필터 (after / status / sourceId / destId) |
+
+→ [[entities/fireblocks/transaction]]. tx schema·status·chain-specific 필드는 Stage 36 object catalog.
+
+### Webhooks v2 (수신 트랜잭션·확정 = event push, "② 감지")
+
+**WRITE (설정·운영)**
+
+| method · path | 용도 |
+|---|---|
+| ✅ `POST /v1/webhooks` | webhook URL + 이벤트 등록 (idempotency key 지원) |
+| ○ `PUT /v1/webhooks/{id}` · `DELETE /v1/webhooks/{id}` | 수정·삭제 |
+| ○ `POST /v1/webhooks/{id}/notifications/resend` · `.../resend_failed` | 알림 재전송 |
+
+**READ**
+
+| method · path | 용도 |
+|---|---|
+| ○ `GET /v1/webhooks` · `GET /v1/webhooks/{id}` | webhook 조회 |
+| ○ `GET /v1/webhooks/{id}/notifications` (· `/{notificationId}` · `/attempts`) | 전송 이력·재시도 |
+
+- 수신 핵심 event type: `TRANSACTION_CREATED` / `TRANSACTION_STATUS_UPDATED` (INCOMING · CONFIRMING · COMPLETED) — `reference-webhooks-structures-eventtypes.md`, [[vendors/fireblocks/lifecycle-events]]. 입금 감지·DCCP 확정이 여기로 push.
+- 요청 검증(서명) + IP allowlist — `reference-webhooks-ip-allowlisting.md`.
+
+### read/write 본질 (지갑 매니저 매핑)
+
+- **WRITE = 상태 변경**: 계정·자산·주소 생성, 트랜잭션 생성·drop·cancel, webhook 설정. (`estimate_fee` 는 POST지만 사실상 read)
+- **READ = 조회**: 계정·잔액·주소·tx 상태/이력, webhook 조회.
+- **event(push) = webhook** — read API 가 아니라 Fireblocks 가 밀어줌.
+- IndexerPort 관점: Fireblocks 는 **내 vault 범위** (위 tx 이력·잔액 + webhook) 만 커버 — 임의 주소·과거 이력·커스텀 가공은 자체 인덱서/Alchemy. (docs-site `wallet-service-components` 10.4 IndexerPort 교체)
+
+### docs-site 연계
+
+이 표면이 docs-site `wallet-service-components` 의 **11. Fireblocks 어댑터** 의 AccountPort / TransferPort / IndexerPort 실제 endpoint 근거다 (그 페이지 의사코드의 `fb.createTransaction` 등 → 위 `POST /v1/transactions`).
+
+### Stage 50 신규 Q
+
+- **Q-2026-06-08-A13**: Policies(TAP) · Network Connection · Exchange endpoint group — 매니저 범위 밖이나 governance plane 보강 시 필요.
+- **Q-2026-06-08-A14**: `set_confirmation_threshold` (tx ID / tx hash 두 변종) 과 DCCP(default deposit confirmation) 의 관계 — 건별 override 인가?
+- **Q-2026-06-08-A15**: webhook v1 → v2 migration 상태 — 신규 구축 시 v2(POST /v1/webhooks) 전제 맞나? (`reference-webhook-v2-migration-guide.md` 추가 ingest)
+
+## Sources (Stage 50 추가)
+
+- `https://developers.fireblocks.com/llms.txt` — 공식 문서 인덱스 (2026-06-08 web fetch)
+- `developers.fireblocks.com/api-reference/vaults/*` · `/transactions/*` · `/webhooks-v2/*` — 개별 endpoint pages (제목·slug 확인)
+- 경로 직접 확인(.md fetch): `POST /v1/transactions/{txId}/drop` · `POST /v1/transactions/estimate_fee` · `GET /v1/transactions/{txId}`
+- 검색 스니펫 확인: `POST /v1/vault/accounts` · `POST /v1/vault/accounts/{vaultAccountId}/{assetId}/addresses` · `POST /v1/webhooks` · `GET /v1/vault/accounts_paged`

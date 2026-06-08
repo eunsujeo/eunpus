@@ -156,6 +156,29 @@ sequenceDiagram
 <li><strong>상태 모니터링 + bumpFee 트리거</strong> — stuck 감지 시 RBF/boost 호출</li>
 </ul>
 
+<h3>11.6 포트 메서드 → 실제 Fireblocks REST API</h3>
+
+<p>위 의사코드의 <code>fb.*</code> 호출은 실제로 다음 Fireblocks REST 엔드포인트로 매핑된다. 경로는 <a href="https://developers.fireblocks.com/">Fireblocks 공식 API reference</a> 기준이며, base URL 은 <code>https://api.fireblocks.io</code>, 모든 요청은 JWT(API Key + RSA) 서명이다. (적용 전 최신 문서로 재확인 권장)</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:14%">포트</th><th style="width:22%">메서드</th><th>Fireblocks REST</th><th style="width:12%">read/write</th></tr></thead>
+<tbody>
+<tr><td rowspan="3"><strong>AccountPort</strong></td><td><code>createAccount</code></td><td><code>POST /v1/vault/accounts</code></td><td>write</td></tr>
+<tr><td><code>deriveAddress</code></td><td><code>POST /v1/vault/accounts/{vaultAccountId}/{assetId}/addresses</code></td><td>write</td></tr>
+<tr><td><code>getBalance</code></td><td><code>GET /v1/vault/accounts/{vaultAccountId}/{assetId}</code></td><td>read</td></tr>
+<tr><td rowspan="4"><strong>TransferPort</strong></td><td><code>submitTransaction</code></td><td><code>POST /v1/transactions</code> (서명+전파+nonce, <code>externalTxId</code> 멱등)</td><td>write</td></tr>
+<tr><td><code>getStatus</code></td><td><code>GET /v1/transactions/{txId}</code></td><td>read</td></tr>
+<tr><td><code>bumpFee</code></td><td><code>POST /v1/transactions/{txId}/drop</code> (boost/RBF)</td><td>write</td></tr>
+<tr><td>(수수료 추정)</td><td><code>POST /v1/transactions/estimate_fee</code></td><td>write*</td></tr>
+<tr><td rowspan="2"><strong>IndexerPort</strong></td><td><code>onChainEvent</code></td><td>webhook 등록 <code>POST /v1/webhooks</code> → <code>TRANSACTION_STATUS_UPDATED</code> push</td><td>event</td></tr>
+<tr><td><code>query</code> · 이력</td><td><code>GET /v1/transactions</code> · <code>GET /v1/vault/accounts/{vaultAccountId}/{assetId}</code> (내 vault 한정)</td><td>read</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>*</strong> <code>estimate_fee</code> 는 POST 지만 상태를 바꾸지 않는다(전송 전 모의 추정). <strong>IndexerPort 는 Fireblocks 가 내 vault 범위만 커버</strong> — 임의 주소·과거 이력·커스텀 가공이 필요하면 이 포트만 자체 인덱서/Alchemy 로 교체한다 (<a href="abstraction.html">10.4</a>).</p>
+
 <p>같은 포트를 Fireblocks 없이 직접 구현하면 어떻게 달라지는지는 — <a href="example-selfbuild.html"><strong>12. 자체 구축 어댑터</strong></a>.</p>
 
 </section>
