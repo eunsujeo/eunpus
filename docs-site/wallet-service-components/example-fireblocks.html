@@ -104,7 +104,7 @@ flowchart TB
 
   // 수신 트랜잭션 · 확정 : Fireblocks 가 webhook 으로 push
   onChainEvent(handler) {
-    webhooks.on('TRANSACTION_STATUS_UPDATED', e =&gt; handler(toChainEvent(e)))
+    webhooks.on('transaction.status.updated', e =&gt; handler(toChainEvent(e)))  // Webhooks v2
     // 우리 vault 로 들어온 트랜잭션은 INCOMING 이벤트로 push
   }
 }</code></pre>
@@ -171,13 +171,18 @@ sequenceDiagram
 <tr><td><code>getStatus</code></td><td><code>GET /v1/transactions/{txId}</code></td><td>read</td></tr>
 <tr><td><code>bumpFee</code></td><td><code>POST /v1/transactions/{txId}/drop</code> (boost/RBF)</td><td>write</td></tr>
 <tr><td>(수수료 추정)</td><td><code>POST /v1/transactions/estimate_fee</code></td><td>write*</td></tr>
-<tr><td rowspan="2"><strong>IndexerPort</strong></td><td><code>onChainEvent</code></td><td>webhook 등록 <code>POST /v1/webhooks</code> → <code>TRANSACTION_STATUS_UPDATED</code> push</td><td>event</td></tr>
+<tr><td rowspan="2"><strong>IndexerPort</strong></td><td><code>onChainEvent</code></td><td>webhook 등록 <code>POST /v1/webhooks</code> → <code>transaction.status.updated</code> push</td><td>event</td></tr>
 <tr><td><code>query</code> · 이력</td><td><code>GET /v1/transactions</code> · <code>GET /v1/vault/accounts/{vaultAccountId}/{assetId}</code> (내 vault 한정)</td><td>read</td></tr>
 </tbody>
 </table>
 </div>
 
 <p><strong>*</strong> <code>estimate_fee</code> 는 POST 지만 상태를 바꾸지 않는다(전송 전 모의 추정). <strong>IndexerPort 는 Fireblocks 가 내 vault 범위만 커버</strong> — 임의 주소·과거 이력·커스텀 가공이 필요하면 이 포트만 자체 인덱서/Alchemy 로 교체한다 (<a href="abstraction.html">10.4</a>).</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">Webhooks 는 v2 로 — v1 은 2026-06-15 EOL</div>
+<p>신규 구축은 <strong>Webhooks v2</strong>(<code>POST /v1/webhooks</code> 로 등록)를 쓴다. v1 은 2026-06-15 지원 종료이고 신규 이벤트는 v2 만 지원한다. v2 는 이벤트 이름이 <strong>점 표기</strong>로 바뀐 점에 주의 — <code>TRANSACTION_STATUS_UPDATED</code>(v1) → <code>transaction.status.updated</code>(v2), <code>TRANSACTION_CREATED</code> → <code>transaction.created</code>, <code>TRANSACTIONS_APPROVAL_STATUS_UPDATED</code> → <code>transaction.approval_status.updated</code>. 그 외 v2 는 다중 webhook·이벤트 구독·30일 재전송을 제공한다.</p>
+</div>
 
 <p>같은 포트를 Fireblocks 없이 직접 구현하면 어떻게 달라지는지는 — <a href="example-selfbuild.html"><strong>12. 자체 구축 어댑터</strong></a>.</p>
 

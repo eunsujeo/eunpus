@@ -331,8 +331,18 @@ ApprovalStatus.approval: "PENDING_AUTHORIZATION" | "APPROVED" | "REJECTED" | "NA
 | ○ `GET /v1/webhooks` · `GET /v1/webhooks/{id}` | webhook 조회 |
 | ○ `GET /v1/webhooks/{id}/notifications` (· `/{notificationId}` · `/attempts`) | 전송 이력·재시도 |
 
-- 수신 핵심 event type: `TRANSACTION_CREATED` / `TRANSACTION_STATUS_UPDATED` (INCOMING · CONFIRMING · COMPLETED) — `reference-webhooks-structures-eventtypes.md`, [[vendors/fireblocks/lifecycle-events]]. 입금 감지·DCCP 확정이 여기로 push.
+- 수신 핵심 event type (**v2 점 표기**): `transaction.created` / `transaction.status.updated` (INCOMING · CONFIRMING · COMPLETED) / `transaction.approval_status.updated` — `reference-webhooks-structures-eventtypes.md`, [[vendors/fireblocks/lifecycle-events]]. 입금 감지·DCCP 확정이 여기로 push.
 - 요청 검증(서명) + IP allowlist — `reference-webhooks-ip-allowlisting.md`.
+
+**★ v1 → v2 (Q-2026-06-08-A15 ANSWERED, web fetch 2026-06-08)**: Webhooks **v1 은 2026-06-15 EOL** (그 후 미지원), 신규 이벤트는 v2 만 지원 → **신규 구축은 v2 전제**. v2 = 다중 webhook + 이벤트 구독 + 30일 재전송 + v1 의 10s ordering delay 제거. 이벤트명이 UPPER_SNAKE → 점 표기로 변경:
+
+| v1 | v2 |
+|---|---|
+| `TRANSACTION_CREATED` | `transaction.created` |
+| `TRANSACTION_STATUS_UPDATED` | `transaction.status.updated` |
+| `TRANSACTIONS_APPROVAL_STATUS_UPDATED` | `transaction.approval_status.updated` |
+
+(source: `reference-webhook-v2-migration-guide.md` — developers.fireblocks.com, 2026-06-08 web fetch)
 
 ### read/write 본질 (지갑 매니저 매핑)
 
@@ -349,7 +359,7 @@ ApprovalStatus.approval: "PENDING_AUTHORIZATION" | "APPROVED" | "REJECTED" | "NA
 
 - **Q-2026-06-08-A13**: Policies(TAP) · Network Connection · Exchange endpoint group — 매니저 범위 밖이나 governance plane 보강 시 필요.
 - **Q-2026-06-08-A14**: `set_confirmation_threshold` (tx ID / tx hash 두 변종) 과 DCCP(default deposit confirmation) 의 관계 — 건별 override 인가?
-- **Q-2026-06-08-A15**: webhook v1 → v2 migration 상태 — 신규 구축 시 v2(POST /v1/webhooks) 전제 맞나? (`reference-webhook-v2-migration-guide.md` 추가 ingest)
+- ~~**Q-2026-06-08-A15**~~ **ANSWERED (Stage 50)**: v1 은 2026-06-15 EOL, 신규 구축은 v2(`POST /v1/webhooks`) 전제. 이벤트명 점 표기 (위 Webhooks 섹션 매핑표 참조).
 
 ## Sources (Stage 50 추가)
 

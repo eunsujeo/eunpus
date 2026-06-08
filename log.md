@@ -6910,5 +6910,5 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 경로 직접 확인(✅): POST /v1/transactions, POST /v1/transactions/{txId}/drop, POST /v1/transactions/estimate_fee, GET /v1/transactions/{txId}, POST /v1/vault/accounts, POST /v1/vault/accounts/{id}/{asset}/addresses, POST /v1/webhooks, GET /v1/vault/accounts_paged. 나머지(○)는 reference 페이지 존재 + REST 표준 경로
 - read/write 본질: WRITE=상태변경(생성·drop·cancel·webhook 설정), READ=조회, event=webhook push. estimate_fee 는 POST지만 read 성격
 - docs-site wallet-service-components 11장(AccountPort/TransferPort/IndexerPort) 의 실제 endpoint 근거로 연계
-- 신규 Q: Q-2026-06-08-A13(Policies/Network/Exchange endpoint) · A14(set_confirmation_threshold↔DCCP) · A15(webhook v1→v2 migration 상태)
+- 신규 Q: Q-2026-06-08-A13(Policies/Network/Exchange endpoint) · A14(set_confirmation_threshold↔DCCP). A15(webhook v1→v2)=ANSWERED 동일 Stage: v1 2026-06-15 EOL, 신규=v2, 이벤트 점표기(transaction.status.updated)
 - 신규 entity: 0, 신규 page: 0 (기존 vendor-hub api.md 흡수, streak 39)
