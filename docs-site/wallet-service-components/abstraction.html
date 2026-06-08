@@ -162,7 +162,34 @@ interface IndexerPort {                  // 읽기 (조회 · 수신 이벤트)
 <p>"Fireblocks" 행은 <strong>본 위키의 검증된 사실</strong>이다(Fireblocks 의 IndexerPort 가 내 vault 범위 — webhook + 잔액·이력 조회 — 이고 임의 주소·커스텀 가공은 자체인 점 포함). 그 외 벤더·자체 구축 행은 <strong>공개 문서·설계 판단</strong>이다.</p>
 </div>
 
-<h3>10.5 서명·nonce·전파·멀티체인은 어디에 — 포트 "안" 의 메커니즘</h3>
+<h3>10.5 제도에 따라 custody 를 통째 교체 (Fireblocks ↔ 자체 HSM/MPC)</h3>
+
+<p>수탁형이라도 <strong>제도(법)가 custody 주체를 가른다</strong> — 적격 custodian 위탁이 허용되면 Fireblocks, 자가 수탁을 요구하면 자체 HSM/MPC. 둘 다 <strong>같은 세 포트를 구현</strong>하므로, 코어(지갑 서비스 백엔드)는 그대로 두고 <strong>주입하는 어댑터만 바꾼다.</strong></p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">항목</th><th>옵션 1 — Fireblocks (벤더 custody)</th><th>옵션 2 — 자체 custody</th></tr></thead>
+<tbody>
+<tr><td>키·서명 (custody)</td><td>Fireblocks MPC</td><td><strong>자체 HSM / MPC</strong></td></tr>
+<tr><td>노드·전파</td><td>Fireblocks</td><td>Infura 등 공용 RPC</td></tr>
+<tr><td>인덱서</td><td>vault webhook (부분)</td><td>자체 인덱서 (Infura RPC)</td></tr>
+<tr><td>구현 포트</td><td>Account · Transfer · Indexer(부분)</td><td>Account · Transfer · Indexer</td></tr>
+<tr><td>코어(지갑 서비스 백엔드)</td><td colspan="2" style="text-align:center"><strong>동일 — 포트만 의존, 어댑터 주입만 교체</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout callout-success">
+<div class="callout-title">교체를 가능케 하는 한 가지 — submitTransaction(묶음)</div>
+<p><code>TransferPort.submitTransaction</code> 이 "서명+전파를 합쳐서" 받기 때문에 양쪽이 같은 메서드로 들어온다 — Fireblocks 는 <code>createTransaction</code> 한 번으로, 자체 custody 는 내부에서 <strong>자체 HSM/MPC 서명 → Infura 전파</strong>로 채운다. 만약 포트가 <code>sign()</code>/<code>broadcast()</code> 를 따로 노출했다면 Fireblocks(묶임)가 안 맞아 이 교체가 깨진다.</p>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">두 옵션 모두 "수탁 등급" 을 지키려면</div>
+<p>옵션 2 의 서명은 반드시 <strong>자체 HSM/MPC</strong> 다 — raw 개인키를 앱이 들면 수탁 등급이 아니라 hot-wallet 이다. 그리고 Fireblocks 특화(<code>externalTxId</code>·vault id)나 Infura 엔드포인트 같은 건 <strong>어댑터 안에 캡슐화</strong>하고 코어로 누출하지 않는다 — 그래야 제도가 바뀌어도 코어 무수정으로 옵션을 바꾼다.</p>
+</div>
+
+<h3>10.6 서명·nonce·전파·멀티체인은 어디에 — 포트 "안" 의 메커니즘</h3>
 
 <p>이들은 별도 포트가 아니라 <strong>TransferPort·AccountPort 안의 메커니즘</strong>이다. 같은 <code>submitTransaction</code> 을 —</p>
 <ul>
@@ -176,7 +203,7 @@ interface IndexerPort {                  // 읽기 (조회 · 수신 이벤트)
 <p>포트를 더 잘게(예: TransferPort → SignerPort + BroadcastPort) 나누는 건 <strong>그 기능을 정말로 따로 갈아끼울 때만</strong>이다 — 예: "키는 자체 HSM 으로 서명하되 전파는 외부 노드 서비스로". 그런 실제 요구가 생기기 전에 미리 쪼개면 다시 leaky 추상화가 된다.</p>
 </div>
 
-<h3>10.6 Fireblocks 를 써도 지갑 서비스 백엔드는 남는다</h3>
+<h3>10.7 Fireblocks 를 써도 지갑 서비스 백엔드는 남는다</h3>
 
 <p>Fireblocks 가 세 포트를 거의 다 채워도, 그 <strong>위층은 그대로 우리가 만든다.</strong></p>
 <ul>
