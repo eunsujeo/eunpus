@@ -72,7 +72,7 @@
 ├─ build.gradle.kts             # 공통 플러그인 · Spring Boot BOM
 ├─ gradle/libs.versions.toml    # 버전 카탈로그
 │
-├─ domain/                      # ★ 순수 Kotlin (Spring 의존 X) — 모델 + 포트 (안쪽 핵)
+├─ domain/                      # 순수 Kotlin (Spring 의존 X) — 모델 + 포트 (안쪽 핵)
 │  └─ src/main/kotlin/…/domain/
 │     ├─ model/                 # Transaction · Account · Address · Amount + sealed ChainSpecific(Evm|Utxo|Canton)
 │     ├─ port/                  # AccountPort · TransactionPort · ChainQueryPort (interface)
@@ -97,7 +97,7 @@
 │  ├─ solana/                   #    NodeWallet SDK 경유(raw 는 solanaj) · blockhash · commitment
 │  └─ canton/                   #    DAML Ledger API(gRPC·Java codegen) · 2-step · PartyId · ACS · traffic
 │
-├─ adapters/                    # ★ custody 어댑터 = 교체 축 (포트 구현)
+├─ adapters/                    # custody 어댑터 = 교체 축 (포트 구현)
 │  ├─ fireblocks/               # 14 Fireblocks Java SDK — Account+Transaction (REST/webhook v2) · 현재 기본
 │  ├─ self-build/               # 15 engine+chains 조립, 세 포트
 │  ├─ nodewallet/               # 16 NodeWallet Java/Spring SDK (온프렘 · Solana 전용)

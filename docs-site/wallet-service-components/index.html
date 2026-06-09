@@ -153,10 +153,12 @@ flowchart TB
 
 <ul>
 <li><strong>1. 컴포넌트 개요</strong> — 7 컴포넌트(블록체인 매니저 엔진 4 + 지갑 서비스 백엔드 3) 한눈에 + 책임 경계 매트릭스.</li>
-<li><strong>2~6. 컴포넌트 상세</strong> — 멀티체인 어댑터 · 인덱서 · 트랜잭션/Nonce/Broadcast · 서명 · 온체인 정합성 — 각 컴포넌트의 "왜 필요 / 어떻게 동작 / 내부 flow / 다른 컴포넌트가 어떻게 쓰는지".</li>
-<li><strong>7~10. 시나리오</strong> — 계정·주소 발급(온보딩) / 입금 / 출금 / 온·오프램프에서 컴포넌트가 어떻게 협력하는지.</li>
+<li><strong>2~5. 블록체인 매니저</strong> — 멀티체인 어댑터 · 인덱서 · 트랜잭션/Nonce/Broadcast · 서명 — 각 컴포넌트의 "왜 필요 / 어떻게 동작 / 코드로 보면 / 다른 컴포넌트가 어떻게 쓰는지".</li>
+<li><strong>6~8. 지갑 서비스 백엔드</strong> — API 게이트웨이 · 온체인 정합성·추적 · 이벤트/알림 (벤더 무관, 항상 우리 것).</li>
+<li><strong>9~12. 시나리오</strong> — 계정·주소 발급(온보딩) / 입금 / 출금 / 온·오프램프에서 컴포넌트가 어떻게 협력하는지.</li>
 <li><strong>13. 추상화</strong> — 매니저를 통째로가 아니라 <strong>기능별 포트</strong>(Account·Transaction·ChainQuery)로 자른다. 한 어댑터가 여러 포트를 채우고(Fireblocks), 약한 포트만 갈아끼운다(인덱서는 자체/Alchemy).</li>
-<li><strong>12~14. 구현 예시</strong> — 같은 포트의 세 구현 (custody 축): Fireblocks(SaaS 위탁) / 자체 구축(직접 빌드) / NodeWallet(온프렘 custody 제품 도입). 출금·입금 코드 포함.</li>
+<li><strong>14~16. 구현 예시</strong> — 같은 포트의 세 구현 (custody 축): Fireblocks(SaaS 위탁) / 자체 구축(직접 빌드) / NodeWallet(온프렘 custody 제품 도입). 출금·입금 코드 포함.</li>
+<li><strong>17. 프로젝트 구조</strong> — 2층·3포트·어댑터 교체를 Kotlin+Spring Gradle 멀티모듈로 매핑.</li>
 </ul>
 
 <p>다음 — <a href="components.html"><strong>1. 컴포넌트 개요</strong></a>.</p>

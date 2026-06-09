@@ -102,7 +102,11 @@ flowchart TB
     })
   }
   getStatus(txRef) { return nw.tx(txRef).status }
-  // boost? 미구현 — Solana 전용이라 fee-boost 없음. stuck 은 제품/어댑터 auto-retry(blockhash 만료 재제출). cancel 도 제품 정책 (4.4)
+  cancel(txRef) { return nw.cancelTransfer(txRef) }                 // 제품 정책 (Solana blockhash 만료 모델)
+  // boost? 미구현 — Solana 전용이라 fee-boost 없음. stuck 은 제품/어댑터 auto-retry(blockhash 만료 재제출) (4.4)
+
+  // 수신·확정 이벤트 — NodeWallet 자체 원장·입금 검증으로 감지해 push
+  onChainEvent(handler) { nw.onLedgerEvent(e =&gt; handler(toChainEvent(e))) }
 }</code></pre>
 
 <p>내 지갑 수신·확정 이벤트는? NodeWallet 이 자체 원장·입금 검증으로 감지해 <strong>TransactionPort 의 <code>onChainEvent</code></strong> 로 준다. 다만 <strong>임의 외부 주소·커스텀 조회(ChainQueryPort)는 Fireblocks 와 마찬가지로 ✗</strong> — 필요하면 그 포트만 자체 인덱서로 따로 붙인다(13.4). 즉 NodeWallet 도 Account·Transaction 두 포트를 채우는 custody 제품이다.</p>
