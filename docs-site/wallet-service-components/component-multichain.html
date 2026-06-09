@@ -20,26 +20,33 @@
 <div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
 <li><a href="components.html">1. 컴포넌트 개요</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">B. 컴포넌트 상세</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">B. 블록체인 매니저</h3><ul>
 <li><a class="active" href="component-multichain.html">2. 멀티체인 어댑터</a></li>
 <li><a href="component-indexer.html">3. 인덱서</a></li>
 <li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
 <li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
-<li><a href="component-ledger.html">6. 온체인 정합성 · 추적</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
-<li><a href="scenario-provisioning.html">7. 계정·주소 발급</a></li>
-<li><a href="scenario-deposit.html">8. 입금</a></li>
-<li><a href="scenario-withdrawal.html">9. 출금</a></li>
-<li><a href="scenario-onofframp.html">10. 온·오프램프</a></li>
+<div class="nav-section"><h3 class="nav-section-title">C. 지갑 서비스 백엔드</h3><ul>
+<li><a href="component-gateway.html">6. API 게이트웨이</a></li>
+<li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
+<li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
-<li><a href="abstraction.html">11. 벤더 추상화 (기능별 포트)</a></li>
+<div class="nav-section"><h3 class="nav-section-title">D. 시나리오</h3><ul>
+<li><a href="scenario-provisioning.html">9. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">10. 입금</a></li>
+<li><a href="scenario-withdrawal.html">11. 출금</a></li>
+<li><a href="scenario-onofframp.html">12. 온·오프램프</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
-<li><a href="example-fireblocks.html">12. Fireblocks 어댑터</a></li>
-<li><a href="example-selfbuild.html">13. 자체 구축 어댑터</a></li>
-<li><a href="example-nodewallet.html">14. NodeWallet 어댑터</a></li>
+<div class="nav-section"><h3 class="nav-section-title">E. 추상화</h3><ul>
+<li><a href="abstraction.html">13. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">15. 자체 구축 어댑터</a></li>
+<li><a href="example-nodewallet.html">16. NodeWallet 어댑터</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
+<li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -64,19 +71,24 @@
 
 <div class="table-wrap">
 <table>
-<thead><tr><th style="width:22%">관심사</th><th>계정 모델 (EVM 등)</th><th>UTXO<span class="g" data-tip="비트코인식 모델 — 잔액이 아니라 사용하지 않은 출력(Unspent Tx Output)들의 집합">?</span> 모델 (비트코인 등)</th></tr></thead>
+<thead><tr><th style="width:16%">관심사</th><th>계정 모델 (EVM 등)</th><th>UTXO<span class="g" data-tip="비트코인식 모델 — 잔액이 아니라 사용하지 않은 출력(Unspent Tx Output)들의 집합">?</span> 모델 (비트코인 등)</th><th>2-step<span class="g" data-tip="송금이 몇 단계로 완료되나. 1-step(이더리움 등)=보내면 끝. 2-step(Canton 기본)=보내는 쪽이 OFFER 를 만들고(자금 locked) 받는 쪽이 ACCEPT 해야 완료(거절·회수 가능). Canton Coin 은 pre-approval 로 1-step.">?</span> 모델 (Canton 등)</th></tr></thead>
 <tbody>
-<tr><td>잔액 표현</td><td>주소별 잔액 + nonce</td><td>사용하지 않은 출력(UTXO) 집합</td></tr>
-<tr><td>순서 보장</td><td>주소별 nonce 순차</td><td>입력(UTXO) 선택 · 체인 길이 제한</td></tr>
-<tr><td>확정 판단</td><td>N 블록 확인 (또는 commitment<span class="g" data-tip="솔라나의 확정 단계 — processed/confirmed/finalized 로 신뢰 수준 구분">?</span> 단계)</td><td>N 블록 확인</td></tr>
-<tr><td>수수료</td><td>gas × gasPrice (EIP-1559<span class="g" data-tip="이더리움 수수료 방식 — 기본료(base fee)+우선료(priority fee) 구조">?</span> base+priority)</td><td>byte 당 fee rate</td></tr>
-<tr><td>재전송</td><td>같은 nonce + 수수료 인상 (replace)</td><td>RBF<span class="g" data-tip="Replace-By-Fee — 같은 순번 트랜잭션을 더 높은 수수료로 교체해 재전송">?</span> 또는 CPFP<span class="g" data-tip="Child-Pays-For-Parent — 막힌 부모 트랜잭션을 높은 수수료의 자식 트랜잭션으로 끌어 확정">?</span></tr>
-<tr><td>주소 파생</td><td>BIP-32/44 경로 + coin type</td><td>BIP-32/44 + 스크립트 유형</td></tr>
+<tr><td>잔액 표현</td><td>주소별 잔액 + nonce</td><td>사용하지 않은 출력(UTXO) 집합</td><td>active contract 집합(ACS<span class="g" data-tip="Active Contract Set — party 가 보유한 활성 contract 집합. Canton 의 원장 상태 표현">?</span>) + 토큰 holdings 는 UTXO(가용/locked)</td></tr>
+<tr><td>순서 보장</td><td>주소별 nonce 순차</td><td>입력(UTXO) 선택 · 체인 길이 제한</td><td>Synchronizer 의 Sequencer 가 메시지 순서·timestamp 부여 (계정 nonce 없음)</td></tr>
+<tr><td>확정 판단</td><td>N 블록 확인 (또는 commitment<span class="g" data-tip="솔라나의 확정 단계 — processed/confirmed/finalized 로 신뢰 수준 구분">?</span> 단계)</td><td>N 블록 확인</td><td>Synchronizer<span class="g" data-tip="Sequencer(순서화)+Mediator(확인 집계). Mediator 가 validator confirmation 을 2-phase commit 으로 승인/거절">?</span> 2-phase commit (finality 수 초, 수치 확인 필요)</td></tr>
+<tr><td>수수료</td><td>gas × gasPrice (EIP-1559<span class="g" data-tip="이더리움 수수료 방식 — 기본료(base fee)+우선료(priority fee) 구조">?</span> base+priority)</td><td>byte 당 fee rate</td><td>traffic<span class="g" data-tip="traffic = 미리 충전해 둔 대역폭 잔고(byte). Canton Coin 을 소각(burn)하면 traffic 잔고가 충전되고, 거래할 때 소비되는 traffic 이 곧 수수료. 10분마다 소량은 무료 충전.">?</span> 차감 — Canton Coin 소각으로 traffic(byte) 잔고 충전 → 거래 시 소비분이 수수료 (+ 보유세 ~$1/년)</td></tr>
+<tr><td>재전송</td><td>같은 nonce + 수수료 인상 (replace)</td><td>RBF<span class="g" data-tip="Replace-By-Fee — 같은 순번 트랜잭션을 더 높은 수수료로 교체해 재전송">?</span> 또는 CPFP<span class="g" data-tip="Child-Pays-For-Parent — 막힌 부모 트랜잭션을 높은 수수료의 자식 트랜잭션으로 끌어 확정">?</span></td><td>nonce-replace 아님 — 송신자 <code>Withdraw</code> 로 locked 자금 회수</td></tr>
+<tr><td>주소 파생</td><td>BIP-32/44 경로 + coin type</td><td>BIP-32/44 + 스크립트 유형</td><td>PartyId = <code>hint::fingerprint</code> (fingerprint = 서명 공개키 sha256), allocation 으로 생성</td></tr>
 </tbody>
 </table>
 </div>
 
 <p>어댑터는 이 모든 차이를 감추고, 위쪽 컴포넌트에는 다음과 같은 <strong>공통 동사</strong>만 노출한다 — "주소 파생해라", "잔액 알려줘", "이 이체를 트랜잭션으로 조립해라", "수수료 추정해라", "전파해라", "확정됐는지 판정해라", "막혔으면 재전송해라".</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">Canton(2-step) 이 어댑터에 주는 핵심 차이</div>
+<p>위 표의 셋째 열이 핵심이다 — Canton 은 DAML active contract 원장 위에 UTXO형 holdings 를 두되, 전송이 <strong>권한 기반 2-step</strong>(기본값)이라는 게 결정적 차이다. 어댑터가 흡수해야 할 가장 큰 차이는 <strong>"제출=완료" 가 아니라는 것</strong> — 출금이 <code>OFFER</code> 제출로 시작해 "상대 수락(<code>ACCEPT</code>) 대기" 상태에 머물 수 있고, 그동안 송신 자금은 locked UTXO 로 묶인다(<a href="scenario-withdrawal.html">11. 출금</a> 참조). Canton Coin 은 pre-approval 로 1-step. 어댑터는 이 lifecycle 을 공통 동사 뒤로 숨긴다. <em>(Fireblocks 가 Canton 지원 — 정확한 상태 매핑·timeout 은 적용 전 확인 필요.)</em></p>
+</div>
 
 <h3>2.3 어떻게 동작하는가</h3>
 
@@ -88,24 +100,89 @@ flowchart TB
     EVM["EVM 어댑터<br/>nonce · gas · RBF"]
     BTC["UTXO 어댑터<br/>coin 선택 · feerate · RBF/CPFP"]
     SOL["Solana 어댑터<br/>commitment · 병렬 tx"]
+    CANTON["Canton 어댑터<br/>2-step OFFER/ACCEPT · PartyId · traffic"]
     NORM["정규화된 결과<br/>(체인 무관 형태)"]
 
     REQ --> IFACE --> SEL
     SEL --> EVM --> NORM
     SEL --> BTC --> NORM
     SEL --> SOL --> NORM
+    SEL --> CANTON --> NORM
 
     classDef special fill:#e0e7ff,stroke:#6366f1;
     classDef chain fill:#dbeafe,stroke:#2563eb;
     classDef good fill:#dcfce7,stroke:#16a34a;
     class IFACE,SEL special;
-    class EVM,BTC,SOL chain;
+    class EVM,BTC,SOL,CANTON chain;
     class NORM good;
     class REQ good;
 </pre></div>
-<p class="diagram-caption">Figure 2-1. 어댑터 동작. 위쪽 컴포넌트는 공통 인터페이스(보라)만 호출하고, chainId 로 체인별 구현(파랑)이 선택되며, 결과는 항상 체인 무관 형태(초록)로 정규화되어 돌아온다. 핵심: 차이는 파랑 안에만 갇혀 있다.</p>
+<p class="diagram-caption">Figure 2-1. 어댑터 동작. 위쪽 컴포넌트는 공통 인터페이스(보라)만 호출하고, chainId 로 체인별 구현(파랑)이 선택되며, 결과는 항상 체인 무관 형태(초록)로 정규화되어 돌아온다. 핵심: 차이는 파랑 안에만 갇혀 있다 — 단 Canton 의 2-step 처럼 "상대 수락 대기" 같은 상태가 늘어나는 건 정규화된 상태값으로 표면화된다(메커니즘은 숨겨도 lifecycle 은 노출).</p>
 
-<h3>2.4 다른 컴포넌트가 어떻게 쓰는가</h3>
+<h3>2.4 코드로 보면</h3>
+
+<p>설명용 의사코드다. Figure 2-1 을 코드로 옮기면 ① <strong>공통 인터페이스</strong>(2.2 의 공통 동사) ② <strong>chainId 로 구현 선택</strong> ③ <strong>체인별 어댑터</strong> 셋이다. 위 컴포넌트는 ①만 호출하고, 체인 분기는 ②·③ 안에 갇힌다.</p>
+
+<pre><code>// ① 공통 인터페이스 — 위 컴포넌트가 보는 유일한 것 (= 2.2 의 공통 동사)
+interface ChainAdapter {
+  deriveAddress(account, asset): Address
+  getBalance(address, asset): Amount
+  buildTransaction(transfer): UnsignedTx   // 조립 — nonce/UTXO/2-step 차이를 흡수
+  estimateFee(unsignedTx): Fee
+  broadcast(signedTx): TxRef               // 전파
+  confirmations(txRef): Confirmation       // 확정 판정 — 체인별 기준
+  resend(txRef, bump): TxRef               // 막힌 tx 재전송
+}
+
+// ② chainId 로 구현 선택 (Figure 2-1 의 SEL)
+const ADAPTERS: Record&lt;ChainId, ChainAdapter&gt; = {
+  ethereum: new EvmAdapter(node, nonceMgr),
+  bitcoin:  new UtxoAdapter(node),
+  solana:   new SolanaAdapter(node),
+  canton:   new CantonAdapter(participant),
+}
+function pickAdapter(chainId): ChainAdapter {
+  const a = ADAPTERS[chainId]
+  if (!a) throw new UnsupportedChain(chainId)   // 새 체인 = 여기 한 줄 + 어댑터 하나
+  return a
+}</code></pre>
+
+<p>③ 같은 인터페이스를 체인마다 <strong>다르게</strong> 채운다. 차이가 큰 <code>buildTransaction</code>·<code>confirmations</code>·<code>resend</code> 만 추리면:</p>
+
+<pre><code>class EvmAdapter implements ChainAdapter {
+  buildTransaction(t) { const nonce = this.nonceMgr.reserve(t.from)
+                        return { ...t, nonce, fee: eip1559(t) } }   // 계정 nonce
+  confirmations(ref)  { return blocksSince(ref) }                   // N 블록
+  resend(ref, bump)   { return rebroadcast(sameNonce(ref), bump) }  // 같은 nonce + fee↑ (RBF)
+}
+
+class UtxoAdapter implements ChainAdapter {
+  buildTransaction(t) { const ins = coinSelect(t.from, t.amount)    // UTXO 선택
+                        return { ins, outs: [t.to, change], feeRate } }
+  confirmations(ref)  { return blocksSince(ref) }
+  resend(ref, bump)   { return rbfOrCpfp(ref, bump) }               // RBF / CPFP
+}
+
+class SolanaAdapter implements ChainAdapter {
+  buildTransaction(t) { return { ...t, recentBlockhash: node.blockhash() } }  // nonce 없음
+  confirmations(ref)  { return commitmentOf(ref) }   // processed/confirmed/finalized
+  resend(ref)         { return reassemble(ref) }     // blockhash 만료 → 재조립
+}
+
+class CantonAdapter implements ChainAdapter {
+  // 2-step: 제출=OFFER, 완료는 상대 ACCEPT
+  buildTransaction(t) { return { transferInstruction: offer(t) } }
+  broadcast(tx)       { return submitOffer(tx) }     // OFFER 제출 → traceableId
+  confirmations(ref)  { return status2step(ref) }    // OFFER→ACCEPT/REJECT/WITHDRAW
+  resend(ref)         { return withdrawAndReoffer(ref) }  // nonce-replace 아님
+}</code></pre>
+
+<div class="callout">
+<div class="callout-title">코드가 말하는 것</div>
+<p>코어는 <code>pickAdapter(chainId).buildTransaction(...)</code> 처럼 <strong>공통 동사만</strong> 부른다. 체인 분기는 <code>pickAdapter</code> 와 각 어댑터 <code>{ }</code> 안에만 있다. <strong>Canton 은 <code>broadcast</code> 가 OFFER 제출</strong>이라 <code>confirmations</code> 에 "상대 수락 대기" 상태가 추가되는 게 눈에 띈다 — 메커니즘은 어댑터가 숨겨도 그 상태값은 표면화된다(2.3 캡션·<a href="scenario-withdrawal.html">11. 출금</a>). 참고로 이 <code>ChainAdapter</code> 는 <a href="abstraction.html">13장</a>의 포트보다 한 겹 아래다 — <code>TransactionPort.submitTransaction</code> 한 번이 자체 구축에선 이 어댑터의 <code>buildTransaction</code>→서명→<code>broadcast</code> 로 펼쳐진다(<a href="example-selfbuild.html">15장</a>).</p>
+</div>
+
+<h3>2.5 다른 컴포넌트가 어떻게 쓰는가</h3>
 
 <div class="table-wrap">
 <table>
@@ -124,11 +201,11 @@ flowchart TB
 <ul>
 <li><strong>차이는 어댑터 안에만</strong> — 위 컴포넌트에 체인 분기 코드가 새면 추상화 실패 신호.</li>
 <li><strong>능력 노출(capability)</strong> — 어떤 체인은 RBF 가 없거나 확정 단계가 다르다. 어댑터가 "이 체인이 지원하는 능력" 을 함께 알려 위 컴포넌트가 분기 없이 적응하게 한다.</li>
-<li><strong>SaaS 도 결국 어댑터 뒤로</strong> — Fireblocks·Alchemy 같은 SaaS 를 쓰더라도 그들을 "또 다른 어댑터 구현" 으로 두면 벤더 교체가 쉬워진다. (<a href="abstraction.html">10. 추상화</a>)</li>
+<li><strong>SaaS 도 결국 어댑터 뒤로</strong> — Fireblocks·Alchemy 같은 SaaS 를 쓰더라도 그들을 "또 다른 어댑터 구현" 으로 두면 벤더 교체가 쉬워진다. (<a href="abstraction.html">13. 추상화</a>)</li>
 </ul>
 </div>
 
-<h3>2.5 노드/RPC 접근 — 엔드포인트 풀과 장애 전환</h3>
+<h3>2.6 노드/RPC 접근 — 엔드포인트 풀과 장애 전환</h3>
 
 <p>어댑터가 실제로 체인과 대화하려면 그 아래에 <strong>블록체인 노드 · RPC 엔드포인트</strong>가 있어야 한다(0. Overview 의 파랑 계층). 엔드포인트가 하나뿐이면 그 노드가 죽거나 느려지는 순간 해당 체인의 읽기·쓰기가 전부 멈춘다 — 단일 장애점<span class="g" data-tip="single point of failure — 한 곳이 죽으면 전체가 멈추는 지점">?</span>이다.</p>
 
@@ -141,12 +218,12 @@ flowchart TB
 
 <div class="callout callout-warn">
 <div class="callout-title">엔드포인트마다 체인 헤드가 다를 수 있다</div>
-<p>풀 안의 노드들은 블록 높이가 미세하게 어긋날 수 있어, 방금 전파한 트랜잭션을 다른 엔드포인트로 조회하면 "아직 없음" 으로 보이는 read-after-write 불일치가 생긴다. 같은 트랜잭션의 조립·전파·조회는 <strong>되도록 같은 엔드포인트로 고정(sticky)</strong> 하고, 확정 판정은 <a href="component-ledger.html">6. 온체인 정합성·추적</a> 의 as-of-block 기준으로 본다.</p>
+<p>풀 안의 노드들은 블록 높이가 미세하게 어긋날 수 있어, 방금 전파한 트랜잭션을 다른 엔드포인트로 조회하면 "아직 없음" 으로 보이는 read-after-write 불일치가 생긴다. 같은 트랜잭션의 조립·전파·조회는 <strong>되도록 같은 엔드포인트로 고정(sticky)</strong> 하고, 확정 판정은 <a href="component-ledger.html">7. 온체인 정합성·추적</a> 의 as-of-block 기준으로 본다.</p>
 </div>
 
 <div class="callout">
 <div class="callout-title">누가 이 풀을 운영하나 — 전제에 따라 다르다</div>
-<p>이 풀·failover 는 <strong>자체 구축일 때만 우리 책임</strong>이다. 수탁+Fireblocks 경로에선 노드 인프라·엔드포인트 가용성을 <strong>Fireblocks 가 내부에서 처리</strong>하므로 우리 매니저의 컴포넌트가 아니다. GCP Blockchain Node Engine·Alchemy·QuickNode 같은 관리형 노드를 쓰면 그 일부(가용성)를 제공자에게 위임하고, 멀티 제공자 failover 만 우리가 얹는 식도 가능하다. 그래서 본 가이드는 이를 별도 컴포넌트가 아니라 <strong>멀티체인 어댑터 아래의 노드 접근 계층</strong>으로 둔다. 자체 구축에서의 위치는 <a href="example-selfbuild.html">13. 자체 구축</a> 의 <code>NodeRpc</code> 부품에 해당한다.</p>
+<p>이 풀·failover 는 <strong>자체 구축일 때만 우리 책임</strong>이다. 수탁+Fireblocks 경로에선 노드 인프라·엔드포인트 가용성을 <strong>Fireblocks 가 내부에서 처리</strong>하므로 우리 매니저의 컴포넌트가 아니다. GCP Blockchain Node Engine·Alchemy·QuickNode 같은 관리형 노드를 쓰면 그 일부(가용성)를 제공자에게 위임하고, 멀티 제공자 failover 만 우리가 얹는 식도 가능하다. 그래서 본 가이드는 이를 별도 컴포넌트가 아니라 <strong>멀티체인 어댑터 아래의 노드 접근 계층</strong>으로 둔다. 자체 구축에서의 위치는 <a href="example-selfbuild.html">15. 자체 구축</a> 의 <code>NodeRpc</code> 부품에 해당한다.</p>
 </div>
 
 <p>다음 — <a href="component-indexer.html"><strong>3. 인덱서</strong></a>.</p>
@@ -157,6 +234,7 @@ flowchart TB
 
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>

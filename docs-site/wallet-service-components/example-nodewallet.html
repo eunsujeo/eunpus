@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>14. NodeWallet 어댑터 — 블록체인 매니저 컴포넌트 가이드</title>
+<title>16. NodeWallet 어댑터 — 블록체인 매니저 컴포넌트 가이드</title>
 <meta content="NodeWallet 어댑터 — 옵션 2(자체 custody)를 직접 구축하는 대신 기성 온프렘 custody 제품으로. Fireblocks 와 같은 custody 제품 자리지만 키는 고객 보유(HSM+SGX 3-키 다중서명), Solana 전용." name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
@@ -20,33 +20,40 @@
 <div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
 <li><a href="components.html">1. 컴포넌트 개요</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">B. 컴포넌트 상세</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">B. 블록체인 매니저</h3><ul>
 <li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
 <li><a href="component-indexer.html">3. 인덱서</a></li>
 <li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
 <li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
-<li><a href="component-ledger.html">6. 온체인 정합성 · 추적</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
-<li><a href="scenario-provisioning.html">7. 계정·주소 발급</a></li>
-<li><a href="scenario-deposit.html">8. 입금</a></li>
-<li><a href="scenario-withdrawal.html">9. 출금</a></li>
-<li><a href="scenario-onofframp.html">10. 온·오프램프</a></li>
+<div class="nav-section"><h3 class="nav-section-title">C. 지갑 서비스 백엔드</h3><ul>
+<li><a href="component-gateway.html">6. API 게이트웨이</a></li>
+<li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
+<li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
-<li><a href="abstraction.html">11. 벤더 추상화 (기능별 포트)</a></li>
+<div class="nav-section"><h3 class="nav-section-title">D. 시나리오</h3><ul>
+<li><a href="scenario-provisioning.html">9. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">10. 입금</a></li>
+<li><a href="scenario-withdrawal.html">11. 출금</a></li>
+<li><a href="scenario-onofframp.html">12. 온·오프램프</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
-<li><a href="example-fireblocks.html">12. Fireblocks 어댑터</a></li>
-<li><a href="example-selfbuild.html">13. 자체 구축 어댑터</a></li>
-<li><a class="active" href="example-nodewallet.html">14. NodeWallet 어댑터</a></li>
+<div class="nav-section"><h3 class="nav-section-title">E. 추상화</h3><ul>
+<li><a href="abstraction.html">13. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">15. 자체 구축 어댑터</a></li>
+<li><a class="active" href="example-nodewallet.html">16. NodeWallet 어댑터</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
+<li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
 </ul></div>
 </nav>
 </aside>
 
 <main class="content">
 <section id="example-nodewallet">
-<h2>14. NodeWallet 어댑터 (온프렘 custody 제품)</h2>
+<h2>16. NodeWallet 어댑터 (온프렘 custody 제품)</h2>
 <span class="section-subtitle">옵션 2(자체 custody)를 직접 짓는 대신 기성 제품으로 — Fireblocks 와 같은 custody 자리, 키는 고객 보유</span>
 
 <div class="callout">
@@ -54,9 +61,9 @@
 <p>설명용 의사코드다. <strong>NodeWallet 의 기능 범위는 벤더(NodeInfra) 공개·gated 문서의 자체 주장</strong>이며(독립 검증 아님), 메서드 이름은 형태 참고용이다. <strong>Solana 전용</strong> 제품인 점에 유의. 적용 전 최신 문서로 확인하라.</p>
 </div>
 
-<h3>14.1 큰 그림 — Fireblocks 와 같은 자리, 다른 custody 모델</h3>
+<h3>16.1 큰 그림 — Fireblocks 와 같은 자리, 다른 custody 모델</h3>
 
-<p>NodeWallet 은 <a href="abstraction.html">11.5</a> 의 <strong>옵션 2(자체 custody)를 "직접 구축(13장)" 하지 않고 기성 제품으로 도입</strong>하는 길이다. 구조적으로는 <a href="example-fireblocks.html">12. Fireblocks</a> 와 같다 — <strong>custody 제품의 SDK 를 얇게 감싸 AccountPort·TransactionPort 를 채우는 어댑터</strong>. 다른 건 <strong>custody 모델</strong>이다.</p>
+<p>NodeWallet 은 <a href="abstraction.html">13.5</a> 의 <strong>옵션 2(자체 custody)를 "직접 구축(15장)" 하지 않고 기성 제품으로 도입</strong>하는 길이다. 구조적으로는 <a href="example-fireblocks.html">14. Fireblocks</a> 와 같다 — <strong>custody 제품의 SDK 를 얇게 감싸 AccountPort·TransactionPort 를 채우는 어댑터</strong>. 다른 건 <strong>custody 모델</strong>이다.</p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart TB
@@ -74,16 +81,18 @@ flowchart TB
     class NWP adp;
     class NW ext;
 </pre></div>
-<p class="diagram-caption">Figure 14-1. NodeWallet 구현. Fireblocks 와 똑같이 <strong>custody 제품을 얇게 감싼 어댑터</strong>(파랑)가 Account·Transaction 포트를 채운다. 차이는 그 뒤 — Fireblocks 는 SaaS MPC(벤더 클라우드·벤더 샤드), NodeWallet 은 <strong>온프렘 HSM+SGX(망분리 IDC·키 고객 보유)</strong>. 키 소유권과 정책 실행 위치가 고객 쪽이라는 게 옵션 2 의 핵심.</p>
+<p class="diagram-caption">Figure 16-1. NodeWallet 구현. Fireblocks 와 똑같이 <strong>custody 제품을 얇게 감싼 어댑터</strong>(파랑)가 Account·Transaction 포트를 채운다. 차이는 그 뒤 — Fireblocks 는 SaaS MPC(벤더 클라우드·벤더 샤드), NodeWallet 은 <strong>온프렘 HSM+SGX(망분리 IDC·키 고객 보유)</strong>. 키 소유권과 정책 실행 위치가 고객 쪽이라는 게 옵션 2 의 핵심.</p>
 
-<h3>14.2 어댑터 코드</h3>
+<h3>16.2 어댑터 코드</h3>
 
 <pre><code>class NodeWalletProvider implements AccountPort, TransactionPort {
   constructor(private nw: NodeWalletSDK) {}        // Java/Spring SDK
 
-  createAccount(ref)        = nw.createWallet(ref, Chain.SOLANA)   // Solana 전용
-  deriveAddress(wallet, _)  = nw.address(wallet)
-  getBalance(wallet, asset) = nw.balance(wallet, asset)
+  createAccount(ref) { return nw.createWallet(ref, Chain.SOLANA) }   // Solana 전용
+  deriveAddress(wallet, _) { return nw.address(wallet) }
+  getBalance(wallet, asset) { return nw.balance(wallet, asset) }
+  validateAddress(_, addr) { return nw.isValidAddress(addr) }        // Solana 주소 검증
+  estimateFee(req) { return nw.estimateFee(req) }                    // Solana fee (제품 산정)
 
   // 제출 한 번 — 내부에서 3-키 다중서명(개시 → 승인 → 실행 SGX)
   submitTransaction(req) {
@@ -92,13 +101,38 @@ flowchart TB
       idempotencyKey: req.idempotencyKey,          // 코어 멱등 키
     })
   }
-  getStatus(txRef) = nw.tx(txRef).status
-  // bumpFee: Solana 는 EVM nonce 가 없어 재전송 모델이 다름(blockhash 만료) → 제품 정책 따름
+  getStatus(txRef) { return nw.tx(txRef).status }
+  // boost? 미구현 — Solana 전용이라 fee-boost 없음. stuck 은 제품/어댑터 auto-retry(blockhash 만료 재제출). cancel 도 제품 정책 (4.4)
 }</code></pre>
 
-<p>내 지갑 수신·확정 이벤트는? NodeWallet 이 자체 원장·입금 검증으로 감지해 <strong>TransactionPort 의 <code>onChainEvent</code></strong> 로 준다. 다만 <strong>임의 외부 주소·커스텀 조회(ChainQueryPort)는 Fireblocks 와 마찬가지로 ✗</strong> — 필요하면 그 포트만 자체 인덱서로 따로 붙인다(11.4). 즉 NodeWallet 도 Account·Transaction 두 포트를 채우는 custody 제품이다.</p>
+<p>내 지갑 수신·확정 이벤트는? NodeWallet 이 자체 원장·입금 검증으로 감지해 <strong>TransactionPort 의 <code>onChainEvent</code></strong> 로 준다. 다만 <strong>임의 외부 주소·커스텀 조회(ChainQueryPort)는 Fireblocks 와 마찬가지로 ✗</strong> — 필요하면 그 포트만 자체 인덱서로 따로 붙인다(13.4). 즉 NodeWallet 도 Account·Transaction 두 포트를 채우는 custody 제품이다.</p>
 
-<h3>14.3 송신 트랜잭션 — 내부 3-키 다중서명</h3>
+<h3>16.3 계정·주소 발급 단계별 흐름</h3>
+
+<p>NodeWallet 도 발급은 SDK 두 호출이다 — <strong>지갑 생성 → 주소 조회</strong>. 키는 NodeWallet 온프렘 HSM 안에서 만들어지고(고객 보유), Solana 단일 체인이라 주소도 하나다.</p>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BIZ as 비즈니스 레이어
+    participant GW as API 게이트웨이
+    participant ACC as AccountPort (NodeWalletProvider)
+    participant NW as NodeWallet (온프렘 · HSM+SGX)
+
+    BIZ->>GW: 지갑 개설 (고객 ref) + 멱등 키
+    GW->>ACC: createAccount(ref)
+    ACC->>NW: nw.createWallet(ref, Chain.SOLANA)
+    Note over NW: HSM 안에서 키 생성 (고객 보유)
+    NW-->>ACC: wallet
+    GW->>ACC: deriveAddress(wallet)
+    ACC->>NW: nw.address(wallet)
+    NW-->>ACC: address (Solana 단일)
+    ACC-->>GW: wallet · 주소
+    GW-->>BIZ: 계정 · 입금 주소
+</pre></div>
+<p class="diagram-caption">Figure 16-2. NodeWallet 계정·주소 발급. Fireblocks 와 같은 두 호출(<code>createAccount</code>·<code>deriveAddress</code>) 형태지만, 키는 고객 온프렘 HSM 안에서 생성된다. Solana 전용이라 체인 선택지가 없다 — 이더리움·Canton 은 16.7 참조.</p>
+
+<h3>16.4 송신 트랜잭션 — 내부 3-키 다중서명</h3>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -118,18 +152,18 @@ sequenceDiagram
     CO-->>NWP: txRef
     NWP-->>CORE: txRef
 </pre></div>
-<p class="diagram-caption">Figure 14-2. NodeWallet 송신. 어댑터엔 <strong>submitTransaction 한 번</strong>이지만, 제품 내부에서 <strong>개시(코디네이터) → 승인(정책 엔진, 승인 키 co-sign) → 실행(SGX 실행 키 서명)</strong> 3-키 의식이 일어난다. 키는 분리된 HSM 파티션/SGX 엔클레이브에 있어 한 서비스가 뚫려도 단독 서명이 안 된다.</p>
+<p class="diagram-caption">Figure 16-3. NodeWallet 송신. 어댑터엔 <strong>submitTransaction 한 번</strong>이지만, 제품 내부에서 <strong>개시(코디네이터) → 승인(정책 엔진, 승인 키 co-sign) → 실행(SGX 실행 키 서명)</strong> 3-키 의식이 일어난다. 키는 분리된 HSM 파티션/SGX 엔클레이브에 있어 한 서비스가 뚫려도 단독 서명이 안 된다.</p>
 
 <div class="callout callout-warn">
 <div class="callout-title">정책 엔진이 제품에 내장 — 승인 게이트 중첩 주의</div>
 <p>NodeWallet 의 <strong>승인자(정책 엔진)</strong>가 한도·트래블룰 등 컴플라이언스 정책과 승인 단계(approval tier)를 <strong>제품 안에서</strong> 집행한다. 우리 상위 <strong>비즈니스 레이어의 승인</strong>과 역할이 겹칠 수 있으니, "어디서 무엇을 승인하는지" 경계를 한 번 정리해야 한다(이중 승인/공백 방지).</p>
 </div>
 
-<h3>14.4 Fireblocks(12) 대비 — 둘 다 custody 제품, 축이 다르다</h3>
+<h3>16.5 Fireblocks(14) 대비 — 둘 다 custody 제품, 축이 다르다</h3>
 
 <div class="table-wrap">
 <table>
-<thead><tr><th style="width:24%">항목</th><th>Fireblocks (12)</th><th>NodeWallet (이 장)</th></tr></thead>
+<thead><tr><th style="width:24%">항목</th><th>Fireblocks (14)</th><th>NodeWallet (이 장)</th></tr></thead>
 <tbody>
 <tr><td>제품 형태</td><td>SaaS</td><td><strong>설치형(온프렘) SW</strong></td></tr>
 <tr><td>키 소유권</td><td>벤더 샤드 보관</td><td><strong>고객 직접 보유</strong></td></tr>
@@ -142,19 +176,26 @@ sequenceDiagram
 </table>
 </div>
 
-<h3>14.5 주의</h3>
+<h3>16.6 주의</h3>
 
 <div class="callout callout-warn">
 <div class="callout-title">NodeWallet 을 택할 때</div>
 <ul>
-<li><strong>Solana 전용</strong> — 멀티체인 지갑이면 NodeWallet 만으론 EVM/BTC 미커버. 체인별로 어댑터를 달리 둬야 함.</li>
-<li><strong>승인 중첩</strong> — 제품 내장 정책 엔진과 우리 비즈 레이어 승인의 경계 정리(14.3).</li>
+<li><strong>Solana 전용</strong> — <strong>이더리움·Canton 등 다른 체인은 NodeWallet 으론 미커버</strong>(EVM/BTC/Canton 불가). 그 체인은 Fireblocks(이더리움·Canton 둘 다 지원) 또는 자체 구축 어댑터를 별도로 두어야 함.</li>
+<li><strong>승인 중첩</strong> — 제품 내장 정책 엔진과 우리 비즈 레이어 승인의 경계 정리(16.4).</li>
 <li><strong>운영 복잡도</strong> — 망분리 IDC·HSM·SGX 운영 부담을 고객이 진다(벤더 무의존의 대가).</li>
 <li><strong>근거 tier</strong> — 기능은 벤더 자체 주장(독립 검증 아님). 인증(ISMS 등) 상태·범위 확인.</li>
 </ul>
 </div>
 
-<p>정리하면 — NodeWallet 어댑터는 <strong>옵션 2(자체 custody)를 "사서" 채우는</strong> 길이다. custody 축에서 보면 <a href="example-fireblocks.html">12. Fireblocks</a>(SaaS 위탁) · <a href="example-selfbuild.html">13. 자체 구축</a>(직접 빌드) · <strong>14. NodeWallet(온프렘 제품 도입)</strong> 세 점이고, 매니저 코어는 <strong>어느 쪽이든 같은 포트만 의존</strong>한다. 처음으로 — <a href="index.html"><strong>0. Overview</strong></a>.</p>
+<h3>16.7 Canton 에서는 — 미지원</h3>
+
+<div class="callout callout-warn">
+<div class="callout-title">NodeWallet 은 Canton 을 커버하지 못한다</div>
+<p>NodeWallet 은 <strong>Solana 전용</strong> 제품이라 이더리움·Canton 자산은 이 어댑터로 만들 수 없다. 따라서 Canton 은 <a href="example-fireblocks.html">14. Fireblocks</a>(Canton 지원) 또는 <a href="example-selfbuild.html">15. 자체 구축</a>(validator node 운영) 어댑터로 처리해야 한다. 매니저 코어는 포트만 의존하므로, <strong>Solana = NodeWallet · Canton = Fireblocks/자체 구축</strong> 식으로 체인별 어댑터를 병행 배치하면 된다 (<a href="abstraction.html">13.4</a> 어댑터 커버리지).</p>
+</div>
+
+<p>정리하면 — NodeWallet 어댑터는 <strong>옵션 2(자체 custody)를 "사서" 채우는</strong> 길이다. custody 축에서 보면 <a href="example-fireblocks.html">14. Fireblocks</a>(SaaS 위탁) · <a href="example-selfbuild.html">15. 자체 구축</a>(직접 빌드) · <strong>16. NodeWallet(온프렘 제품 도입)</strong> 세 점이고, 매니저 코어는 <strong>어느 쪽이든 같은 포트만 의존</strong>한다. 처음으로 — <a href="index.html"><strong>0. Overview</strong></a>.</p>
 
 </section>
 </main>
@@ -162,6 +203,7 @@ sequenceDiagram
 
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>

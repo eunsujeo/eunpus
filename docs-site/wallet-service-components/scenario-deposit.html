@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>8. 입금 시나리오 — 블록체인 매니저 컴포넌트 가이드</title>
+<title>10. 입금 시나리오 — 블록체인 매니저 컴포넌트 가이드</title>
 <meta content="크립토 입금 시나리오에서 인덱서·멀티체인 어댑터·온체인 정합성·알림 컴포넌트가 협력하는 흐름과 confirmation·reorg 처리." name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
@@ -20,38 +20,45 @@
 <div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
 <li><a href="components.html">1. 컴포넌트 개요</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">B. 컴포넌트 상세</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">B. 블록체인 매니저</h3><ul>
 <li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
 <li><a href="component-indexer.html">3. 인덱서</a></li>
 <li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
 <li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
-<li><a href="component-ledger.html">6. 온체인 정합성 · 추적</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
-<li><a href="scenario-provisioning.html">7. 계정·주소 발급</a></li>
-<li><a class="active" href="scenario-deposit.html">8. 입금</a></li>
-<li><a href="scenario-withdrawal.html">9. 출금</a></li>
-<li><a href="scenario-onofframp.html">10. 온·오프램프</a></li>
+<div class="nav-section"><h3 class="nav-section-title">C. 지갑 서비스 백엔드</h3><ul>
+<li><a href="component-gateway.html">6. API 게이트웨이</a></li>
+<li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
+<li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
-<li><a href="abstraction.html">11. 벤더 추상화 (기능별 포트)</a></li>
+<div class="nav-section"><h3 class="nav-section-title">D. 시나리오</h3><ul>
+<li><a href="scenario-provisioning.html">9. 계정·주소 발급</a></li>
+<li><a class="active" href="scenario-deposit.html">10. 입금</a></li>
+<li><a href="scenario-withdrawal.html">11. 출금</a></li>
+<li><a href="scenario-onofframp.html">12. 온·오프램프</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
-<li><a href="example-fireblocks.html">12. Fireblocks 어댑터</a></li>
-<li><a href="example-selfbuild.html">13. 자체 구축 어댑터</a></li>
-<li><a href="example-nodewallet.html">14. NodeWallet 어댑터</a></li>
+<div class="nav-section"><h3 class="nav-section-title">E. 추상화</h3><ul>
+<li><a href="abstraction.html">13. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">15. 자체 구축 어댑터</a></li>
+<li><a href="example-nodewallet.html">16. NodeWallet 어댑터</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
+<li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
 </ul></div>
 </nav>
 </aside>
 
 <main class="content">
 <section id="deposit">
-<h2>8. 입금 시나리오</h2>
+<h2>10. 입금 시나리오</h2>
 <span class="section-subtitle">외부에서 우리 주소로 들어오는 크립토 입금 — 감지부터 확정·알림까지</span>
 
 <p class="lead">입금은 우리가 체인에 무엇을 쓰는 게 아니라 <strong>체인에서 일어난 일을 읽어 인지</strong>하는 흐름이다. 따라서 주연은 <strong>인덱서</strong>이고, 멀티체인 어댑터(확정 기준)·온체인 정합성·알림이 보조한다. 쓰기 쪽(트랜잭션 빌더·서명)은 등장하지 않는다.</p>
 
-<h3>8.1 표준 흐름</h3>
+<h3>10.1 표준 흐름</h3>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -85,9 +92,9 @@ sequenceDiagram
     IDX->>NT: 입금 확정(CONFIRMED) 알림
     NT-->>U: "입금 완료, 사용 가능" webhook
 </pre></div>
-<p class="diagram-caption">Figure 8-1. 입금 표준 흐름. 두 번의 알림 — 감지(PENDING, 사용 불가) → 확정(CONFIRMED, 사용 가능) — 이 핵심이다. 확정 기준은 멀티체인 어댑터가 체인별로 정한다(예: EVM N 블록, Solana commitment 단계). 자금 사용 가능 판정은 반드시 확정 이후.</p>
+<p class="diagram-caption">Figure 10-1. 입금 표준 흐름. 두 번의 알림 — 감지(PENDING, 사용 불가) → 확정(CONFIRMED, 사용 가능) — 이 핵심이다. 확정 기준은 멀티체인 어댑터가 체인별로 정한다(예: EVM N 블록, Solana commitment 단계). 자금 사용 가능 판정은 반드시 확정 이후.</p>
 
-<h3>8.2 confirmation 상태 전이</h3>
+<h3>10.2 confirmation 상태 전이</h3>
 
 <p>입금은 "감지" 와 "확정" 이 다르다. 감지 즉시 잔액으로 인정하면 재구성(reorg<span class="g" data-tip="체인의 끝부분이 다른 블록들로 교체되는 현상. 이미 본 거래가 사라지거나 순서가 바뀔 수 있다">?</span>) 때 없는 돈을 쓰게 된다.</p>
 
@@ -108,9 +115,9 @@ flowchart LR
     class CONF good;
     class ORPH bad;
 </pre></div>
-<p class="diagram-caption">Figure 8-2. 입금 상태 전이. 노랑 = 감지(보류), 초록 = 확정(사용 가능), 빨강 = reorg 무효화. 주의: 무효화된 tx 가 mempool 을 거쳐 새 블록에 다시 들어올 수 있으므로 영구 삭제 금지 — 다시 감지 상태로 돌아갈 수 있다.</p>
+<p class="diagram-caption">Figure 10-2. 입금 상태 전이. 노랑 = 감지(보류), 초록 = 확정(사용 가능), 빨강 = reorg 무효화. 주의: 무효화된 tx 가 mempool 을 거쳐 새 블록에 다시 들어올 수 있으므로 영구 삭제 금지 — 다시 감지 상태로 돌아갈 수 있다.</p>
 
-<h3>8.3 컴포넌트별 역할 요약</h3>
+<h3>10.3 컴포넌트별 역할 요약</h3>
 
 <div class="table-wrap">
 <table>
@@ -134,7 +141,7 @@ flowchart LR
 </ul>
 </div>
 
-<p>다음 — <a href="scenario-withdrawal.html"><strong>9. 출금 시나리오</strong></a> 에서 체인에 쓰는 흐름(트랜잭션 빌더·서명)을 본다.</p>
+<p>다음 — <a href="scenario-withdrawal.html"><strong>11. 출금 시나리오</strong></a> 에서 체인에 쓰는 흐름(트랜잭션 빌더·서명)을 본다.</p>
 
 </section>
 </main>
@@ -142,6 +149,7 @@ flowchart LR
 
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>

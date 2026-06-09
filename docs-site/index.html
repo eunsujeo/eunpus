@@ -333,7 +333,7 @@
       <p class="doc-summary">
         지갑 서비스 백엔드를 <strong>두 층</strong>으로 분해 — 체인과 직접 대화하는 <strong>블록체인 매니저(체인 엔진)</strong>(멀티체인·인덱서·Tx/Nonce·서명)와,
         그것을 감싸는 <strong>지갑 서비스 백엔드</strong>(게이트웨이·멱등·온체인 정합성·알림).
-        핵심 5 컴포넌트는 <strong>왜 필요/어떻게 동작/내부 flow</strong> 를 전용 페이지로, <strong>입금·출금·온오프램프</strong> 시나리오는 mermaid 로,
+        7 컴포넌트는 <strong>왜 필요/어떻게 동작/코드</strong> 를 전용 페이지로, <strong>입금·출금·온오프램프</strong> 시나리오는 mermaid 로,
         그리고 <strong>블록체인 매니저를 기능별 포트(Account·Transaction·ChainQuery)로 추상화</strong> — 한 어댑터가 여러 포트를 채우고(Fireblocks) 약한 포트만 갈아끼우는(인덱서는 자체/Alchemy) 설계, 세 구현 예시(Fireblocks·자체 구축·NodeWallet 온프렘)까지.
         정책·컴플라이언스·준비자산 운용은 의도적으로 범위 밖(상위 평면 위임).
         <em>vendor-neutral 설계 참고안.</em>
@@ -341,7 +341,7 @@
       <div class="doc-meta">
         <span class="doc-meta-item"><span class="badge badge-pending-review">리뷰 전</span></span>
         <span class="doc-meta-item"><strong>업데이트</strong> 2026-06-04</span>
-        <span class="doc-meta-item"><strong>Pages</strong> 15 (Overview + 컴포넌트 개요 + 상세 5 + 시나리오 4 + 추상화 + 구현 예시 3)</span>
+        <span class="doc-meta-item"><strong>Pages</strong> 18 (Overview + 컴포넌트 개요 + 블록체인 매니저 4 + 지갑 서비스 백엔드 3 + 시나리오 4 + 추상화 + 구현 예시 3 + 프로젝트 구조 1)</span>
         <span class="doc-meta-item"><strong>Source</strong> 저자 설계 (지갑 인프라 패턴 + 공개 SaaS API 참고)</span>
       </div>
       <div class="doc-path">wallet-service-components/</div>

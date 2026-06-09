@@ -20,26 +20,33 @@
 <div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
 <li><a href="components.html">1. 컴포넌트 개요</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">B. 컴포넌트 상세</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">B. 블록체인 매니저</h3><ul>
 <li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
 <li><a href="component-indexer.html">3. 인덱서</a></li>
 <li><a class="active" href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
 <li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
-<li><a href="component-ledger.html">6. 온체인 정합성 · 추적</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
-<li><a href="scenario-provisioning.html">7. 계정·주소 발급</a></li>
-<li><a href="scenario-deposit.html">8. 입금</a></li>
-<li><a href="scenario-withdrawal.html">9. 출금</a></li>
-<li><a href="scenario-onofframp.html">10. 온·오프램프</a></li>
+<div class="nav-section"><h3 class="nav-section-title">C. 지갑 서비스 백엔드</h3><ul>
+<li><a href="component-gateway.html">6. API 게이트웨이</a></li>
+<li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
+<li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
-<li><a href="abstraction.html">11. 벤더 추상화 (기능별 포트)</a></li>
+<div class="nav-section"><h3 class="nav-section-title">D. 시나리오</h3><ul>
+<li><a href="scenario-provisioning.html">9. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">10. 입금</a></li>
+<li><a href="scenario-withdrawal.html">11. 출금</a></li>
+<li><a href="scenario-onofframp.html">12. 온·오프램프</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
-<li><a href="example-fireblocks.html">12. Fireblocks 어댑터</a></li>
-<li><a href="example-selfbuild.html">13. 자체 구축 어댑터</a></li>
-<li><a href="example-nodewallet.html">14. NodeWallet 어댑터</a></li>
+<div class="nav-section"><h3 class="nav-section-title">E. 추상화</h3><ul>
+<li><a href="abstraction.html">13. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">15. 자체 구축 어댑터</a></li>
+<li><a href="example-nodewallet.html">16. NodeWallet 어댑터</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
+<li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -112,7 +119,110 @@ flowchart TB
 </pre></div>
 <p class="diagram-caption">Figure 4-2. stuck 재전송. 막히면 <strong>같은 순번</strong>으로 수수료를 (양 필드 동시에) 올려 다시 보낸다. 순번을 건너뛰면 안 된다. 규칙: 가장 오래된 막힌 순번부터, 수수료는 상한을 두고 단계적으로, 그래도 안 되면 알림.</p>
 
-<h3>4.3 다른 컴포넌트와의 관계</h3>
+<h3>4.3 코드로 보면</h3>
+
+<p>설명용 의사코드다. 핵심은 두 겹이다 — <strong>"순번/직렬화" 메커니즘은 체인마다 다르므로</strong> 멀티체인 어댑터(<a href="component-multichain.html">2</a>)의 <code>buildTransaction</code> 안에 두고, <strong>멱등·순서·재전송 "정책" 은 체인 무관</strong>이라 파이프라인이 쥔다. (그래서 공통 파이프라인엔 <code>NonceMgr</code> 가 없다 — nonce 는 EVM 어댑터 소관이다.)</p>
+
+<pre><code>// ── 공통 오케스트레이터 — 체인 무관 (멱등 · 순서 · 재전송 정책 · 추적) ──
+class TxPipeline {
+  constructor(adapters, signer, store) {}   // adapters[chainId] = 체인별 제출 전략(어댑터 2)
+
+  async submit(req) {
+    const seen = await this.store.byIdempotencyKey(req.idemKey)
+    if (seen) return seen.txRef                          // 멱등 — 같은 요청 재제출 방지
+
+    const adapter = this.adapters[req.chainId]
+    const tx      = await adapter.buildTransaction(req)  // 조립 = 체인별 "직렬화" 를 흡수
+    const signed  = await this.signer.sign(tx)           // 서명 (공통 포트, 5)
+    const txRef   = await adapter.broadcast(signed)      // 전파 (체인별)
+    await this.store.record(req.idemKey, req, txRef, 'submitted')
+    return txRef
+  }
+
+  async resend(txRef) {                                  // 재전송 "정책" 은 공통, "방식" 은 어댑터
+    const t = await this.store.get(txRef)
+    const bumped = this.adapters[t.chainId].resend(txRef, nextFeeStep(t))
+    await this.store.bump(txRef, bumped)
+    return bumped
+  }
+}
+
+// ── "순번/직렬화" 는 체인별 — buildTransaction 안(어댑터 2) ──
+//  EVM    : 계정별 nonce 점유 (lock + local counter)   ← 이 컴포넌트 이름의 그 nonce
+//  UTXO   : coin 선택 + 선택된 UTXO lock (동시 제출 이중지불 방지)
+//  Solana : recentBlockhash (nonce 없음 · blockhash 만료로 자연 직렬화)
+//  Canton : 없음 — OFFER 제출, 순서는 Synchronizer 의 Sequencer
+
+// 상시 감시 — 정책(오래된 것부터 · 상한 · 알림)은 공통, 판정·bump 는 어댑터
+async function watchStuck(pipeline, store) {
+  for (const t of await store.oldestPending()) {
+    if (!isStuck(t)) continue
+    if (t.feeStep &lt; MAX_STEP) await pipeline.resend(t.txRef)        // 단계적 fee 인상
+    else alert(t)                                                   // 상한 도달 → 사람에게
+  }
+}</code></pre>
+
+<div class="callout">
+<div class="callout-title">코드가 말하는 것</div>
+<ul>
+<li><strong>직렬화 메커니즘은 체인별 → 어댑터로</strong> — nonce(EVM)·coin lock(UTXO)·blockhash(Solana)·없음(Canton)은 <code>buildTransaction</code> 안에 산다. 공통 파이프라인은 <code>adapter.buildTransaction(req)</code> 만 부르니, 체인이 늘어도 파이프라인 코드는 안 바뀐다(2장 EvmAdapter 가 nonce 를 가진 것과 일관).</li>
+<li><strong>공통은 정책</strong> — 멱등(<code>idemKey</code>), "오래된 것부터·상한 두고·초과 시 알림" 같은 재전송/에스컬레이션 정책은 체인 무관이라 여기 둔다. 멱등 키는 게이트웨이(<a href="abstraction.html">13.7</a>)에서 내려와 Fireblocks <code>externalTxId</code> dedup 으로 이어진다.</li>
+<li><strong>"순서가 불변식" 은 여전</strong> — 다만 그 순서를 보장하는 <em>방법</em>이 체인별이다. EVM 은 nonce gap 금지, UTXO 는 같은 UTXO 재사용 금지, Canton 은 Sequencer 가 순서를 줌.</li>
+<li><strong>SaaS(Fireblocks)면 직렬화+전파가 createTransaction 한 번에 내장</strong> — 자체 nonce 를 또 돌리면 Fireblocks 내부 순번과 <strong>충돌</strong>(4.5). SaaS 경로에선 이 컴포넌트가 "트랜잭션 요청" 단위로 얇아진다(<a href="example-fireblocks.html">14장</a>).</li>
+</ul>
+<p>즉 Canton 처럼 nonce 가 아예 없는 체인이 와도, 다른 건 어댑터의 <code>buildTransaction</code>·<code>resend</code> 뿐이고 <code>TxPipeline</code> 본체는 그대로다 — 3.4 인덱서의 "수집은 체인별, 가공·제공은 공통" 과 같은 분리다.</p>
+</div>
+
+<h3>4.4 stuck 해소는 체인별로 다르다 — boost 는 EVM/UTXO 전용</h3>
+
+<p>Figure 4-2 의 "같은 순번 + 수수료 인상" 은 사실 <strong>EVM 얘기</strong>다. <strong>boost(수수료 올려 재촉)는 EVM·UTXO 고유 동작</strong>이고, 다른 체인의 stuck 은 길이 다르다 — 그래서 <code>boost?</code> 는 <strong>선택 capability</strong>(<a href="abstraction.html">13.3</a>)이고, 코어는 fee-boostable 한 체인에만 부른다. Solana 는 boost 가 아니라 <strong>어댑터가 auto-retry</strong>, Canton 은 fee 문제가 아니라 <strong>cancel(OFFER withdraw)</strong> 영역이다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    STUCK["막힌 / 미확정 tx"]
+    Q{"체인 유형?"}
+    EVMUTXO["EVM · UTXO<br/>operator 가 boost(txRef)<br/>RBF / CPFP (수수료↑)"]
+    SOL["Solana<br/>어댑터 auto-retry<br/>resubmit (만료 시 재조립)"]
+    CANTON["Canton<br/>fee 문제 아님 (수락 대기)<br/>멈추려면 cancel = OFFER withdraw"]
+
+    STUCK --> Q
+    Q -->|EVM/UTXO| EVMUTXO
+    Q -->|Solana| SOL
+    Q -->|Canton| CANTON
+
+    classDef wait fill:#fef3c7,stroke:#d97706;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef chain fill:#dbeafe,stroke:#2563eb;
+    class STUCK wait;
+    class Q special;
+    class EVMUTXO,SOL,CANTON chain;
+</pre></div>
+<p class="diagram-caption">Figure 4-3. stuck 해소는 체인별로 다르다. <strong>boost(operator 가 수수료 올려 재촉)는 EVM·UTXO 전용 capability</strong>(RBF/CPFP). Solana 는 boost 가 아니라 <strong>어댑터가 auto-retry</strong>(만료 전 재전송, 만료 시 새 blockhash 로 재조립)하고, Canton 은 저수수료가 아니라 <strong>수락 대기</strong>라 멈추려면 <code>cancel</code>(OFFER withdraw)이다. 그래서 코어는 모든 체인에 boost 를 부르지 않는다 — fee-boostable 체인에만.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:14%">체인</th><th>stuck 해소 방식</th><th style="width:14%">boost capability</th></tr></thead>
+<tbody>
+<tr><td><strong>EVM</strong></td><td><code>boost</code>: 같은 nonce + gas 인상 재서명·재전파 (RBF)</td><td>✅</td></tr>
+<tr><td><strong>UTXO</strong></td><td><code>boost</code>: RBF(수수료 교체) 또는 CPFP(자식 tx 견인)</td><td>✅</td></tr>
+<tr><td><strong>Solana</strong></td><td>어댑터 <strong>auto-retry</strong> — 만료 전 재전송, 만료 시 재조립·재제출 (operator boost 아님)</td><td>✗</td></tr>
+<tr><td><strong>Canton</strong></td><td>fee 문제 아님(수락 대기) → 멈추려면 <code>cancel</code>(OFFER <code>WITHDRAW</code>)</td><td>✗</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">Fireblocks 도 boost 는 EVM/UTXO 만</div>
+<p>Fireblocks 도 같다 — 공식 문서가 <strong>"Boost EVM tx"(gas)·"Boost UTXO tx" 를 따로 두고 RBF 는 EVM 전용</strong>이라 명시하며, Solana·Canton 엔 fee-boost 가 없다. 즉 <a href="example-fireblocks.html">14. Fireblocks</a> 어댑터도 <code>boost</code> 를 <strong>EVM/UTXO tx 에만</strong> 제공하고, Solana 는 내부 재제출, Canton 은 해당 없음이다. <strong>Solana 전용</strong>인 <a href="example-nodewallet.html">16. NodeWallet</a> 어댑터는 <code>boost</code> 를 아예 구현하지 않는다(<code>boost?</code> 부재). <em>(Fireblocks 의 Solana/Canton 재제출·취소 방식은 적용 전 확인.)</em></p>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">boost 하면 tx "신원" 이 바뀐다 — 추적은 논리 단위로</div>
+<p>맞다 — boost 는 서명 payload 를 바꾸므로 <strong>매번 새 tx 신원</strong>이 생긴다. EVM 은 같은 nonce 라도 gas 가 달라 새 hash, UTXO 는 새 txid, <strong>Solana·Canton 은 데이터까지 재조립</strong>(새 signature / 새 traceableId)된다. 그래서 <code>boost(txRef)</code> 는 <strong>새 TxRef 를 반환</strong>한다(현 시그니처 그대로).</p>
+<p>단 <strong>바뀌면 안 되는 건 지급 의도(받는 주소·금액)</strong> — boost 는 수수료·신원만 바꾸고 <code>to</code>/<code>amount</code> 는 보존해야 한다. 그리고 신원이 매번 바뀌니 추적은 on-chain hash 가 아니라 <strong>논리 단위(correlationId·멱등 키)</strong>로 하고, <code>old txRef → new txRef</code> 를 한 출금으로 매핑한다(4.3 의 <code>store.bump</code>). 정확히 <strong>하나만 확정</strong>돼야 하며(EVM=같은 nonce, Solana=옛 것 만료, Canton=withdraw 로 명시 취소), <a href="component-ledger.html">7. 온체인 정합성</a>이 "옛 hash dropped + 새 hash confirmed = 같은 출금" 으로 한 번만 계상한다.</p>
+</div>
+
+<h3>4.5 다른 컴포넌트와의 관계</h3>
 
 <div class="table-wrap">
 <table>
@@ -127,16 +237,16 @@ flowchart TB
 </table>
 </div>
 
-<h3>4.4 자체 구축 vs SaaS 위임 (Fireblocks 등)</h3>
+<h3>4.6 자체 구축 vs SaaS 위임 (Fireblocks 등)</h3>
 
 <div class="callout callout-warn">
 <div class="callout-title">중요 — Fireblocks 같은 풀 트랜잭션 SaaS 를 쓰면 이 컴포넌트의 대부분이 위임된다</div>
-<p>Fireblocks 같은 플랫폼은 단순한 키 보관소가 아니라 <strong>트랜잭션 전 과정(순번 직렬화 · 전파 · 수수료 재책정/boost · 재시도)을 내부에서 처리</strong>한다. 그래서 이 경우 직접 <strong>raw 순번 카운터(예: Redis nonce 매니저)를 돌리면 오히려 플랫폼의 내부 순번 할당과 충돌</strong>한다. 애플리케이션이 보는 단위는 "순번" 이 아니라 "트랜잭션 요청" 이다.</p>
+<p>Fireblocks 같은 플랫폼은 단순한 키 보관소가 아니라 <strong>트랜잭션 전 과정(순번 직렬화 · 전파 · 수수료 재책정/부스트 · 재시도)을 내부에서 처리</strong>한다. 그래서 이 경우 직접 <strong>raw 순번 카운터(예: Redis nonce 매니저)를 돌리면 오히려 플랫폼의 내부 순번 할당과 충돌</strong>한다. 애플리케이션이 보는 단위는 "순번" 이 아니라 "트랜잭션 요청" 이다.</p>
 <p>SaaS 위임 시 우리가 여전히 짓는 것은:</p>
 <ul>
 <li><strong>출금 요청 큐 + 멱등성</strong> — 같은 요청이 두 번 실행되지 않게 (여기에 Redis 를 쓰면 타당)</li>
 <li><strong>출금 지갑 분산(round-robin) 라우팅</strong> — 한 지갑이 막혀도 다른 지갑으로 (순번 직렬화가 지갑 단위로 일어나므로)</li>
-<li><strong>상태 모니터링 + boost/재전송 트리거</strong> — 막힘을 감지해 플랫폼의 boost/재전송 기능을 호출</li>
+<li><strong>상태 모니터링 + 부스트/재전송 트리거</strong> — 막힘을 감지해 플랫폼의 부스트/재전송 기능을 호출</li>
 </ul>
 <p>즉 "stuck 은 SaaS 를 써도 발생한다" 는 맞지만, 대응은 raw 순번 매니저가 아니라 <strong>요청 큐 · 지갑 라우팅 · 플랫폼 API 활용</strong>이다. 직접 구축(자체 노드)일 때만 4.2 의 raw 순번 관리를 우리가 전부 진다.</p>
 </div>
@@ -154,6 +264,7 @@ flowchart TB
 
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>

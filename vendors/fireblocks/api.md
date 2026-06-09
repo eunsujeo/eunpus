@@ -68,6 +68,7 @@ _REST endpoint surface 는 Stage 50 섹션 참조 (Vault / Transactions / Webhoo
 - [[entities/fireblocks/csr]] · [[entities/fireblocks/api-key]] · [[entities/fireblocks/ip-allowlist]]
 - [[entities/fireblocks/api-co-signer]] · [[entities/fireblocks/callback-handler]]
 - [[entities/fireblocks/transaction]] · [[entities/fireblocks/workspace]]
+- [[entities/canton/canton-network]] — Canton 체인 모델 (2-step transfer·traffic 수수료·PartyId). transactionType·traceableId 의 원본 (Stage 52)
 
 ## Sources
 

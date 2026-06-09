@@ -85,6 +85,7 @@ Owner/Admin Quorum approval 흐름과 시간 경합 가능.
 - [[entities/fireblocks/user-roles/approver]]
 - [[vendors/fireblocks/tap]]
 - [[docs/architecture/nonce-management-reference]] — EVM 트랜잭션 nonce 운영 (failOnLowFee 의 stuck-cascade 맥락) (Stage 46)
+- [[entities/canton/canton-network]] — Canton 2-step transfer 모델 (transactionType OFFER/ACCEPT/REJECT/WITHDRAW/PRE_APPROVAL 의 원본 체인) (Stage 52)
 
 ## Sources
 

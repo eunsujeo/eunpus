@@ -155,7 +155,7 @@ relevant = dictionary.blocks_with_events(
 for block in relevant:  // 10-100배 적음
   process(block)</code></pre>
 
-<p>SubQuery 공개 문서 — worker thread 와 dictionary 조합으로 <strong>최대 4 배 가속</strong>.</p>
+<p>SubQuery 공개 문서 — worker thread 와 dictionary 조합으로 <strong>최대 4 배 부스트</strong>.</p>
 
 <h4>(b) Parallel workers — block range 별 병렬</h4>
 <p>백필 시 block range 를 N 등분해서 worker N 개가 병렬 처리. ordering 이 필요한 projection (예: 잔고) 은 마지막에 sequential merge.</p>
@@ -392,7 +392,7 @@ while (true) {
 
 <p>이 표가 보여주는 — <strong>single worker 로는 절대 안 됨</strong>. 백필은 항상 병렬 + filter + bulk write.</p>
 
-<h4>백필 가속 전술</h4>
+<h4>백필 부스트 전술</h4>
 
 <ol>
   <li><strong>Range 분할 + 병렬 worker</strong> — 10-100 worker 동시 처리. Ethereum 백필 ~ 1 일.</li>
@@ -471,7 +471,7 @@ while (true) {
 <tr><td>NEAR Lake</td><td>응답 6-8s avg, 인프라 $20/월 vs Indexer $500+</td><td>NEAR docs (Lake deprecated 2026-03-24)</td></tr>
 <tr><td>SubQuery</td><td>worker thread 사용 시 최대 4x</td><td><a href="https://subquery.network/doc/indexer/run_publish/optimisation.html" target="_blank" rel="noopener">SubQuery docs</a></td></tr>
 <tr><td>Firehose</td><td>sub-second live streaming</td><td><a href="https://firehose.streamingfast.io/firehose/architecture" target="_blank" rel="noopener">Firehose docs</a></td></tr>
-<tr><td>The Graph Substreams</td><td>일부 subgraph 100x+ sync 가속</td><td><a href="https://thegraph.com/blog/substreams-parallel-processing/" target="_blank" rel="noopener">The Graph blog</a></td></tr>
+<tr><td>The Graph Substreams</td><td>일부 subgraph 100x+ sync 부스트</td><td><a href="https://thegraph.com/blog/substreams-parallel-processing/" target="_blank" rel="noopener">The Graph blog</a></td></tr>
 <tr><td>Coinbase ChainStorage</td><td>AWS Ethereum 1-2s freshness, 실험적 ~1000 blocks/sec</td><td><a href="https://www.coinbase.com/blog/part-1-chainstorage-the-enterprise-blockchain-data-availability-layer" target="_blank" rel="noopener">Coinbase blog Part 1</a></td></tr>
 <tr><td>CDP Webhooks (Coinbase)</td><td>at-least-once delivery, 최대 60 retry, &lt;500ms freshness</td><td><a href="https://docs.cdp.coinbase.com/data/get-started/quickstart" target="_blank" rel="noopener">Coinbase CDP docs</a></td></tr>
 <tr><td>Solana</td><td>slot 400-600ms</td><td><a href="https://docs.anza.xyz/validator/geyser" target="_blank" rel="noopener">Anza docs</a></td></tr>

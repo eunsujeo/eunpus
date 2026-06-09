@@ -20,26 +20,33 @@
 <div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
 <li><a href="components.html">1. 컴포넌트 개요</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">B. 컴포넌트 상세</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">B. 블록체인 매니저</h3><ul>
 <li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
 <li><a href="component-indexer.html">3. 인덱서</a></li>
 <li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
 <li><a class="active" href="component-signing.html">5. 서명 오케스트레이션</a></li>
-<li><a href="component-ledger.html">6. 온체인 정합성 · 추적</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
-<li><a href="scenario-provisioning.html">7. 계정·주소 발급</a></li>
-<li><a href="scenario-deposit.html">8. 입금</a></li>
-<li><a href="scenario-withdrawal.html">9. 출금</a></li>
-<li><a href="scenario-onofframp.html">10. 온·오프램프</a></li>
+<div class="nav-section"><h3 class="nav-section-title">C. 지갑 서비스 백엔드</h3><ul>
+<li><a href="component-gateway.html">6. API 게이트웨이</a></li>
+<li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
+<li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
-<li><a href="abstraction.html">11. 벤더 추상화 (기능별 포트)</a></li>
+<div class="nav-section"><h3 class="nav-section-title">D. 시나리오</h3><ul>
+<li><a href="scenario-provisioning.html">9. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">10. 입금</a></li>
+<li><a href="scenario-withdrawal.html">11. 출금</a></li>
+<li><a href="scenario-onofframp.html">12. 온·오프램프</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
-<li><a href="example-fireblocks.html">12. Fireblocks 어댑터</a></li>
-<li><a href="example-selfbuild.html">13. 자체 구축 어댑터</a></li>
-<li><a href="example-nodewallet.html">14. NodeWallet 어댑터</a></li>
+<div class="nav-section"><h3 class="nav-section-title">E. 추상화</h3><ul>
+<li><a href="abstraction.html">13. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">15. 자체 구축 어댑터</a></li>
+<li><a href="example-nodewallet.html">16. NodeWallet 어댑터</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
+<li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -91,7 +98,62 @@ sequenceDiagram
 <p>이름은 같지만 정반대다. 트랜잭션 재전송 로직(같은 순번 유지)과 서명 재시도 로직(매번 새 난수)을 절대 한데 묶지 말 것.</p>
 </div>
 
-<h3>5.4 다른 컴포넌트와의 관계</h3>
+<h3>5.4 코드로 보면</h3>
+
+<p>설명용 의사코드다. 같은 두 겹이다 — <strong>"무엇을 서명할지"(직렬화·sighash·알고리즘·인코딩)는 체인마다 다르므로</strong> 멀티체인 어댑터(<a href="component-multichain.html">2</a>)에, <strong>준비 → 서명 → 검증 오케스트레이션은 체인 무관</strong>이라 여기 둔다. 실제 서명은 <code>Signer</code> 포트(자체 HSM/MPC, 또는 Fireblocks 내부) 뒤에서 일어나고 <strong>키는 그 뒤를 벗어나지 않는다.</strong></p>
+
+<pre><code>// 실제 서명 주체 — 키는 이 뒤에만 존재
+interface Signer {
+  sign(sighash, keyRef): Signature
+  pubkey(keyRef): PublicKey
+}
+
+// ── 서명 오케스트레이터 — 체인 무관 (준비 → 서명 → 검증) ──
+class SigningOrchestrator {
+  constructor(adapters, signer, store) {}   // adapters[chainId] = 직렬화·해시 규칙(2)
+
+  async sign(unsignedTx) {
+    const adapter = this.adapters[unsignedTx.chainId]
+
+    // 1) "무엇을 서명할지" — 체인별 직렬화 → sighash (어댑터)
+    const { sighash } = adapter.toSigningPayload(unsignedTx)   // EVM keccak / BTC per-input / ed25519 …
+
+    // 2) 비멱등 가드 (5.3) — 이미 서명 시도가 있으면 재서명 금지, 있으면 재사용
+    const prior = await this.store.signingAttempt(unsignedTx.id)
+    if (prior?.signature) return adapter.attach(unsignedTx, prior.signature)
+    await this.store.markAttempt(unsignedTx.id)               // 시도를 먼저 기록 (재서명 방지)
+
+    // 3) 실제 서명 — 외부 서명자 (키는 그 뒤)
+    const sig = await this.signer.sign(sighash, unsignedTx.keyRef)
+
+    // 4) 검증 — 서명자가 바로 그 sighash 를, 기대한 키로 서명했나
+    if (!adapter.verify(sighash, sig, this.signer.pubkey(unsignedTx.keyRef)))
+      throw new SignatureMismatch(unsignedTx.id)
+
+    await this.store.saveSignature(unsignedTx.id, sig)
+    return adapter.attach(unsignedTx, sig)    // 체인별 인코딩으로 부착 → signed tx
+  }
+}
+
+// ── "무엇을·어떻게 서명할지" 는 체인별 — 어댑터(2) 안 ──
+//  EVM    : RLP/EIP-1559 직렬화 → keccak256 sighash · secp256k1 · RSV 인코딩
+//  UTXO   : 입력마다 sighash(SIGHASH_ALL 등) · secp256k1 · DER 인코딩
+//  Solana : message 직렬화 · ed25519 (sighash 개념이 다름)
+//  Canton : topology/transfer 서명 · PartyId fingerprint 의 그 키</code></pre>
+
+<div class="callout">
+<div class="callout-title">코드가 말하는 것</div>
+<ul>
+<li><strong>"무엇을 서명할지" 는 체인별 → 어댑터로</strong> — 직렬화·sighash·서명 알고리즘(secp256k1/ed25519)·인코딩(RSV/DER)이 다 다르다. 오케스트레이터는 <code>adapter.toSigningPayload</code>·<code>adapter.verify</code>·<code>adapter.attach</code> 만 부르니 체인이 늘어도 본체는 안 바뀐다.</li>
+<li><strong>키는 Signer 뒤를 안 떠난다</strong> — 매니저는 sighash 를 넘기고 서명만 돌려받는다. HSM/MPC/Fireblocks 어느 것이든 같은 <code>Signer</code> 포트.</li>
+<li><strong>서명은 멱등이 아니다(5.3) → 가드가 필수</strong> — <code>markAttempt</code> 를 먼저 남기고, 재시도 시엔 재서명하지 않고 기존 서명을 재사용한다(중복 서명·이중 전파 방지).</li>
+<li><strong>반드시 검증</strong> — 서명자가 엉뚱한 sighash 를 서명했거나 키가 어긋나지 않았는지 기대 pubkey 로 확인한 뒤에만 부착한다.</li>
+<li><strong>SaaS(Fireblocks)면 이 전부가 createTransaction 안에 묶임</strong> — sighash 직렬화·서명·검증을 우리가 만지지 않는다(<a href="example-fireblocks.html">14장</a>, 5.6).</li>
+</ul>
+<p>3.4 인덱서·4.3 트랜잭션과 같은 분리 — <strong>메커니즘(직렬화·알고리즘)은 체인별(어댑터), 오케스트레이션(준비→서명→검증·비멱등)은 공통</strong>이다.</p>
+</div>
+
+<h3>5.5 다른 컴포넌트와의 관계</h3>
 
 <div class="table-wrap">
 <table>
@@ -105,11 +167,11 @@ sequenceDiagram
 </table>
 </div>
 
-<h3>5.5 SaaS 와의 관계</h3>
+<h3>5.6 SaaS 와의 관계</h3>
 
-<p>Fireblocks 같은 플랫폼을 쓰면 이 컴포넌트가 곧 <strong>그 플랫폼의 서명 API 호출 경계</strong>가 된다. 키는 플랫폼의 MPC/HSM 안에만 있고, 매니저는 "이 트랜잭션 서명해 달라" 만 호출한다. 직접 구축이면 자체 HSM·MPC 클러스터가 외부 서명자 자리에 온다. 어느 쪽이든 <strong>매니저 코드가 개인키를 만지지 않는다</strong>는 원칙은 동일하다. (벤더 추상화는 <a href="abstraction.html">10. 추상화</a>)</p>
+<p>Fireblocks 같은 플랫폼을 쓰면 이 컴포넌트가 곧 <strong>그 플랫폼의 서명 API 호출 경계</strong>가 된다. 키는 플랫폼의 MPC/HSM 안에만 있고, 매니저는 "이 트랜잭션 서명해 달라" 만 호출한다. 직접 구축이면 자체 HSM·MPC 클러스터가 외부 서명자 자리에 온다. 어느 쪽이든 <strong>매니저 코드가 개인키를 만지지 않는다</strong>는 원칙은 동일하다. (벤더 추상화는 <a href="abstraction.html">13. 추상화</a>)</p>
 
-<p>다음 — <a href="component-ledger.html"><strong>6. 온체인 정합성 · 추적</strong></a>.</p>
+<p>다음 — <a href="component-ledger.html"><strong>7. 온체인 정합성 · 추적</strong></a>.</p>
 
 </section>
 </main>
@@ -117,6 +179,7 @@ sequenceDiagram
 
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>

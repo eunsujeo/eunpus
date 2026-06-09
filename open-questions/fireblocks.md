@@ -974,3 +974,34 @@
 - **신규 Q 3건**: FB01 / FB02 / FB03 (모두 open)
 - **신규 entity 0건**: Thales Luna HSM → vendors/fireblocks/security 의 HSM 항목에 흡수. **연속 30 stage 신규 entity 0** 유지
 - **영향 페이지**: vendors/fireblocks/security · risks + docs-site 의 cold-wallet-bank-design/signing-flow + risks-open-questions + kr-vasp-compliance/deployment-checklist
+
+## Stage 52 (2026-06-09) — Canton ingest (중앙 등록)
+
+> Canton 관련 Q 가 vendors/fireblocks/api.md · entities/fireblocks/transaction.md 에 인라인으로만 있어 중앙 미등록 상태였음. Canton 엔티티 신설(entities/canton/canton-network.md) 계기로 중앙 등록.
+
+#### Q-2026-05-22-A11: Canton 2-step transferType ↔ Fireblocks transaction status 매핑
+
+- **Why it matters**: Canton transactionType(OFFER / ACCEPT / REJECT / WITHDRAW / PRE_APPROVAL)이 Fireblocks 의 어느 transaction status 에 대응하는지, OFFER 후 상대 수락 대기의 timeout 처리가 어떤지 명시 없음. 출금 상태머신 설계에 직접 영향.
+- **Where this came up**: vendors/fireblocks/api.md:246, entities/fireblocks/transaction.md:305
+- **Cross-cut**: [[canton-network]], docs-site/wallet-service-components (2 멀티체인 · 9 출금)
+- **Status**: open
+
+#### Q-2026-06-09-C01: Canton finality 정확 수치
+
+- **Why it matters**: Synchronizer Mediator 의 2-phase commit 확정 시점.
+- **확인 결과 (Stage 52)**: 1차 페이지 3곳(subnet overview · integrate canton-network-overview · docs.sync.global FAQ) 모두 수치 명시 없음. "3-10초" 는 검색엔진 요약에만 등장 → 1차 미확정. 메커니즘(2-phase commit)만 확정.
+- **Sources to check**: Splice/Digital Asset 의 performance·SLA 문서 (별도)
+- **Status**: open
+
+#### Q-2026-06-09-C02: tx 당 traffic 비용 산정식 — **ANSWERED (Stage 52)**
+
+- **Why it matters**: traffic(byte) 비용의 구체적 tx 단위 산정.
+- **답**: `총비용 = base_event_cost + Σ(envelope 비용)`. envelope 비용 = storage(payload byte) + network(`writeCost × #recipients × costMultiplier / 10_000`). group address 는 계산 전 member 수로 resolve. confirmation·topology·time proof 모두 과금(time proof 는 base 만). 실무 estimate 는 `/v2/interactive-submission/prepare` Ledger API, 실측은 participant 로그 `EventCost`. 단 절대 byte↔금액 환율은 synchronizer config 에 따라 가변.
+- **source**: docs.digitalasset.com traffic-management, docs.sync.global FAQ/deployment-traffic (Stage 52 ingest)
+- **Status**: ANSWERED
+
+### Stage 52 Summary
+
+- **신규 Q 중앙 등록 3건**: A11(기존 인라인 → 중앙) · C01 · C02 — **C02 ANSWERED(traffic 산정식)**, A11·C01 open
+- **신규 entity +1**: entities/canton/canton-network.md — Canton 은 Fireblocks 아닌 독립 체인이라 흡수 불가(범주). **연속 0-streak 종료**
+- **영향 페이지**: entities/canton/canton-network · index.md · docs-site/wallet-service-components(2·9·11·14)

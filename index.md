@@ -72,6 +72,11 @@ _9 role 별 권한 정의 — Owner / Admin / NSA / Signer / Approver / Editor /
 - [Signer (Fireblocks user role)](entities/fireblocks/user-roles/signer.md) — 트랜잭션을 initiate / approve / sign 모두 수행할 수 있는 핵심 서명자 role. Console과 mobile 또는 API Co-signer와 Callback Handler를 통해 programmatic하게 동작 가능하다 (s...
 - [Viewer (Fireblocks user role)](entities/fireblocks/user-roles/viewer.md) — Workspace activity 전반에 대한 view-only 권한만 가지는 role. Settings 접근, 신규 트랜잭션 제출, connection 승인 제출 모두 불가. Console과 API를 통한 감사 용도에 적합 (source: 20...
 
+### Entities (entities/canton/) — 1 doc
+_Fireblocks 외 체인. 사용자 고려 네트워크(이더리움+Canton) 중 Canton 모델 (Stage 52 ingest)_
+
+- [Canton Network](entities/canton/canton-network.md) — DAML active contract(ACS) 원장 + UTXO형 holdings + 권한 기반 2-step 전송(OFFER/ACCEPT/REJECT/WITHDRAW, Canton Coin 은 pre-approval 1-step). traffic(byte) 수수료, PartyId=hint::fingerprint, Synchronizer 2-phase commit finality. Fireblocks 가 Canton 지원 ([[entities/fireblocks/transaction]] 매핑). status: draft.
+
 ### Open Questions (open-questions/)
 _확정 불가 fact 의 격리 영역. 71 Q-number pending (status 통일은 Plan 4 진행 예정)_
 
@@ -225,6 +230,7 @@ _자동 trigger 정의 — wiki query / source ingest / 새 entity 요청 시 �
 - **Markdown (변환본)**: 118 files — [sources/fireblocks/markdown/](sources/fireblocks/markdown/)
 - **Webpages (meta.yml)**: 5 files — [sources/fireblocks/webpages/](sources/fireblocks/webpages/)
 - **NodeInfra**: secondary vendor (Stage ingest 진행분) — [sources/nodeinfra/](sources/nodeinfra/)
+- **Canton**: 4 sources (homepage·Musubi·Fireblocks recover-CC·Digital Asset docs v3.4) — [sources/canton/](sources/canton/) (Stage 52)
 
 ## Stage Log
 

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>8. 이벤트 · 알림 — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="이벤트·알림 — 수신·확정·송신 완료 같은 트랜잭션 상태 변화를 외부(비즈니스 레이어·클라이언트)에 push 하는 지갑 서비스 백엔드 컴포넌트. 전달 보장·재시도·dedup·webhook 서명." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 블록체인 매니저</h3><ul>
+<li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
+<li><a href="component-indexer.html">3. 인덱서</a></li>
+<li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
+<li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 지갑 서비스 백엔드</h3><ul>
+<li><a href="component-gateway.html">6. API 게이트웨이</a></li>
+<li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
+<li><a class="active" href="component-alerts.html">8. 이벤트 · 알림</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 시나리오</h3><ul>
+<li><a href="scenario-provisioning.html">9. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">10. 입금</a></li>
+<li><a href="scenario-withdrawal.html">11. 출금</a></li>
+<li><a href="scenario-onofframp.html">12. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 추상화</h3><ul>
+<li><a href="abstraction.html">13. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">15. 자체 구축 어댑터</a></li>
+<li><a href="example-nodewallet.html">16. NodeWallet 어댑터</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
+<li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="alerts">
+<h2>8. 이벤트 · 알림</h2>
+<span class="section-subtitle">상태 변화를 외부로 push — 입금 감지·확정·출금 완료를 비즈니스 레이어·클라이언트에 알린다</span>
+
+<h3>8.1 왜 필요한가</h3>
+
+<p>온체인 세계는 <strong>비동기</strong>다. 출금을 전파해도 확정은 나중에 나고, 입금은 우리가 부르지 않아도 어느 순간 들어온다. 이 "상태 변화" 를 외부(비즈니스 레이어·클라이언트·은행 코어)가 알아야 후속 처리(잔액 반영·고객 알림·회계)를 할 수 있다. 폴링으로 계속 물어보게 두면 비효율적이고 누락이 생긴다.</p>
+
+<p>이벤트·알림은 <a href="component-indexer.html">3. 인덱서</a>가 감지한 상태 변화(<code>onChainEvent</code>)와 <a href="component-ledger.html">7. 정합성</a>의 예외를 받아, <strong>외부 구독자에게 push</strong>(webhook<span class="g" data-tip="상태 변화가 생기면 서버가 구독자의 URL 로 직접 HTTP 요청을 보내 알리는 방식 — 구독자가 계속 물어볼 필요가 없다">?</span>·스트림)한다. 핵심 난점은 "<strong>빠짐 없이, 중복 없이, 검증 가능하게</strong>" 전달하는 것이다.</p>
+
+<div class="callout">
+<div class="callout-title">한 문장 요약</div>
+<p>이벤트·알림 = "매니저 안의 상태 변화를 외부로 신뢰성 있게 흘려보내는 출구". 인덱서의 감지를 받아 외부로 push 한다.</p>
+</div>
+
+<h3>8.2 어떻게 동작하는가</h3>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    IDX["인덱서 onChainEvent<br/>(입금·확정·송신 완료)"]
+    REC["정합성 예외<br/>(7. 불일치)"]
+    FAN["① 팬아웃<br/>dedup · 구독자 매칭"]
+    DELIV["② 전달<br/>서명 · 재시도/backoff"]
+    SUB["외부 구독자<br/>(비즈 레이어 · 클라이언트)"]
+
+    IDX --> FAN
+    REC --> FAN
+    FAN --> DELIV --> SUB
+
+    classDef svc fill:#dcfce7,stroke:#16a34a;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    class IDX,REC svc;
+    class FAN,DELIV special;
+    class SUB ext;
+</pre></div>
+<p class="diagram-caption">Figure 8-1. 알림 흐름. 인덱서의 감지(0.2 의 "② 감지")와 정합성 예외를 받아, 팬아웃(dedup·구독자 매칭) → 전달(서명·재시도)로 외부에 push 한다. 전달 보장이 핵심 — 빠지면 입금 누락, 중복되면 이중 처리가 된다. 게이트웨이(6)와 마찬가지로 벤더·체인 무관 백엔드 층.</p>
+
+<h3>8.3 코드로 보면</h3>
+
+<p>설명용 의사코드다. 인덱서 이벤트를 구독해, <strong>at-least-once<span class="g" data-tip="최소 한 번은 반드시 전달 — 실패하면 재시도하므로 중복될 수 있고, 그래서 받는 쪽 또는 보내는 쪽에서 dedup 이 필요하다">?</span> + dedup</strong> 으로 외부에 흘려보낸다.</p>
+
+<pre><code>class AlertDispatcher {
+  constructor(indexer, subscribers, store) {}
+
+  start() {
+    this.indexer.onChainEvent(ev =&gt; this.fanout(toNotification(ev)))  // 인덱서(3) 구독
+  }
+
+  // 팬아웃 — dedup 후 구독자별 전달
+  async fanout(note) {
+    if (await this.store.delivered(note.id)) return        // dedup (이미 보냄 → skip)
+    for (const sub of this.subscribers.for(note))          // 관심 있는 구독자만 매칭
+      await this.deliver(sub, note)
+    await this.store.markDelivered(note.id)
+  }
+
+  // 전달 — 서명 + 실패 시 backoff 재시도 (at-least-once)
+  async deliver(sub, note) {
+    const body = sign(note, sub.secret)                    // webhook 서명 (위변조 방지)
+    await retryWithBackoff<span class="g" data-tip="실패하면 점점 간격을 늘려 가며 다시 시도하는 방식 — 1초·2초·4초… 상대 서버 과부하를 피한다">?</span>(() =&gt; httpPost(sub.url, body))   // 실패 시 점증 재시도
+  }
+}</code></pre>
+
+<div class="callout callout-warn">
+<div class="callout-title">전달 보장은 양날 — at-least-once 면 중복은 불가피</div>
+<p>실패 재시도를 넣으면 같은 알림이 <strong>두 번 갈 수</strong> 있다(at-least-once). 그래서 (1) 보내는 쪽은 <code>note.id</code> 로 dedup 하고, (2) <strong>받는 쪽도 멱등하게</strong> 처리하도록 알림에 안정적인 ID 를 실어 준다 — 6. 게이트웨이의 멱등 키와 같은 원리다. 또 입금·확정의 <strong>순서</strong>가 뒤바뀌어 도착할 수 있으니, 상태는 절대 시각(블록 높이·as-of-block)으로 판단하고 도착 순서에 의존하지 않는다.</p>
+</div>
+
+<h3>8.4 다른 컴포넌트와의 관계</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">관계</th><th>내용</th></tr></thead>
+<tbody>
+<tr><td>← <a href="component-indexer.html">3. 인덱서</a></td><td>수신·확정·송신 완료 이벤트(<code>onChainEvent</code>, TransactionPort 뒷면)를 받는다.</td></tr>
+<tr><td>← <a href="component-ledger.html">7. 온체인 정합성</a></td><td>불일치·예외를 받아 운영자에게 알린다.</td></tr>
+<tr><td>→ 비즈니스 레이어 · 클라이언트</td><td>webhook·스트림으로 push (잔액 반영·고객 알림·회계 트리거).</td></tr>
+<tr><td>↔ <a href="component-gateway.html">6. API 게이트웨이</a></td><td>같은 "신뢰성 있는 전달" 문제의 짝 — 게이트웨이는 들어오는 중복을, 알림은 나가는 중복을 다룬다.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">설계 포인트</div>
+<ul>
+<li><strong>벤더·체인 무관</strong> — 게이트웨이와 함께 지갑 서비스 백엔드 층. Fireblocks 가 webhook 을 주더라도, 그걸 비즈 레이어·클라이언트로 팬아웃하는 건 우리다(<a href="abstraction.html">13.7</a>).</li>
+<li><strong>순서에 의존 금지</strong> — 알림은 뒤바뀌어 올 수 있다. 상태 판단은 as-of-block 기준(<a href="component-ledger.html">7</a>).</li>
+<li><strong>서명·재생 방지</strong> — webhook 에 서명을 실어 위변조를 막고, 타임스탬프·ID 로 재생(replay)을 거른다.</li>
+</ul>
+</div>
+
+<p>처음으로 — <a href="index.html"><strong>0. Overview</strong></a> 의 컴포넌트 맵에서 두 층(블록체인 매니저 · 지갑 서비스 백엔드)을 다시 보면 전체가 맞춰진다.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

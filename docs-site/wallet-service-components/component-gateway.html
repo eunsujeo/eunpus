@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>6. API 게이트웨이 — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="API 게이트웨이 — 외부 요청을 인증하고 멱등 키를 부여해 같은 요청이 두 번 실행되지 않게 하는 지갑 서비스 백엔드 컴포넌트. 되돌릴 수 없는 온체인 트랜잭션의 이중 실행·이중 지급 방지." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 블록체인 매니저</h3><ul>
+<li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
+<li><a href="component-indexer.html">3. 인덱서</a></li>
+<li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
+<li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 지갑 서비스 백엔드</h3><ul>
+<li><a class="active" href="component-gateway.html">6. API 게이트웨이</a></li>
+<li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
+<li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 시나리오</h3><ul>
+<li><a href="scenario-provisioning.html">9. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">10. 입금</a></li>
+<li><a href="scenario-withdrawal.html">11. 출금</a></li>
+<li><a href="scenario-onofframp.html">12. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 추상화</h3><ul>
+<li><a href="abstraction.html">13. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">15. 자체 구축 어댑터</a></li>
+<li><a href="example-nodewallet.html">16. NodeWallet 어댑터</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
+<li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="gateway">
+<h2>6. API 게이트웨이</h2>
+<span class="section-subtitle">외부 요청의 단일 입구 — 인증하고, 멱등 키를 부여해 "같은 요청이 두 번 실행되지 않게" 한다</span>
+
+<h3>6.1 왜 필요한가</h3>
+
+<p>매니저가 하는 일은 대부분 <strong>되돌릴 수 없다</strong> — 한 번 전파된 출금 트랜잭션은 취소가 안 된다. 그런데 외부 채널(앱·PG·은행 코어)은 네트워크 오류나 타임아웃 때 <strong>같은 요청을 재시도</strong>하고, 사용자는 버튼을 두 번 누른다. 이 중복이 그대로 실행되면 <strong>이중 출금·이중 지급</strong>이 된다.</p>
+
+<p>API 게이트웨이는 모든 외부 요청이 지나는 <strong>단일 입구</strong>로서 (1) 누구의 요청인지 <strong>인증</strong>하고, (2) 요청마다 <strong>멱등<span class="g" data-tip="같은 요청을 여러 번 보내도 실행은 한 번만 — 재시도·중복 클릭이 와도 결과가 한 번만 반영되는 성질">?</span> 키</strong>를 붙여 같은 요청이 두 번 집행되지 않게 막은 뒤, (3) 적절한 포트로 <strong>라우팅</strong>한다.</p>
+
+<div class="callout">
+<div class="callout-title">한 문장 요약</div>
+<p>API 게이트웨이 = "외부의 중복·재시도를 흡수해, 되돌릴 수 없는 작업이 정확히 한 번만 실행되게 하는 입구". 멱등이 곧 이중 지급 방지다.</p>
+</div>
+
+<h3>6.2 어떻게 동작하는가</h3>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    REQ["외부 요청<br/>(앱 · PG · 은행 코어)"]
+    AUTH["① 인증<br/>누구의 요청인가"]
+    IDEM{"② 멱등 키 확인<br/>처음인가?"}
+    CACHE["✅ 이미 처리됨<br/>저장된 결과 그대로 반환"]
+    ROUTE["③ 라우팅<br/>→ 포트 호출"]
+    PORT["블록체인 매니저 포트<br/>(submitTransaction 등)"]
+
+    REQ --> AUTH --> IDEM
+    IDEM -->|중복| CACHE
+    IDEM -->|처음| ROUTE --> PORT
+
+    classDef svc fill:#dcfce7,stroke:#16a34a;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    class AUTH,ROUTE svc;
+    class IDEM special;
+    class REQ ext;
+    class CACHE svc;
+    class PORT ext;
+</pre></div>
+<p class="diagram-caption">Figure 6-1. 게이트웨이 흐름. 인증(①) → 멱등 키 확인(②) → 라우팅(③). 같은 멱등 키가 다시 오면 포트를 또 호출하지 않고 <strong>저장된 결과를 그대로</strong> 돌려준다 — 그래서 되돌릴 수 없는 작업이 정확히 한 번만 실행된다. 게이트웨이는 벤더·체인과 무관한 지갑 서비스 백엔드 층이다.</p>
+
+<h3>6.3 코드로 보면</h3>
+
+<p>설명용 의사코드다. 핵심은 <strong>멱등 저장소</strong> — 요청 키별로 "진행 중 / 완료(결과)" 상태를 기록해, 중복·동시 요청을 한 번으로 모은다.</p>
+
+<pre><code>class ApiGateway {
+  constructor(auth, idem, manager) {}   // manager = 포트(Account/Transaction)
+
+  async handle(req) {
+    const who = await this.auth.verify(req)            // ① 인증 (실패면 거절)
+    const key = req.idempotencyKey ?? derive(req)      // ② 멱등 키 = 요청 ID
+
+    const prior = await this.idem.get(key)
+    if (prior?.done)     return prior.result           // 이미 처리 → 같은 결과 반환
+    if (prior?.inflight) return await this.idem.join(key)  // 동시 중복 → single-flight<span class="g" data-tip="같은 키의 동시 요청을 하나로 묶어, 실제 실행은 한 번만 하고 나머지는 그 결과를 기다리게 하는 기법">?</span> 로 합류
+
+    await this.idem.start(key)                         // 진행 중 표시 (경합 차단)
+    try {
+      const result = await this.route(who, req)        // ③ 포트 호출 (예: submitTransaction(req))
+      await this.idem.complete(key, result)            // 결과 저장 (이후 중복은 캐시 반환)
+      return result
+    } catch (e) {
+      await this.idem.fail(key, e)                     // 실패도 기록 (무한 재시도 방지)
+      throw e
+    }
+  }
+}</code></pre>
+
+<div class="callout callout-warn">
+<div class="callout-title">멱등 키는 게이트웨이에서 끝나지 않는다 — 끝까지 따라간다</div>
+<p>게이트웨이가 부여한 멱등 키는 <strong>아래로 계속 전달</strong>된다 — <a href="component-tx-nonce.html">4. 트랜잭션</a>의 <code>store.byIdempotencyKey</code> 로, 다시 어댑터를 거쳐 Fireblocks 의 <code>externalTxId</code> 같은 dedup 키로 이어진다(<a href="abstraction.html">13.7</a>). 그래서 게이트웨이에서 한 번 막아도, 그 키가 체인 제출 단계까지 살아 있어야 "정확히 한 번" 이 끝까지 보장된다.</p>
+</div>
+
+<h3>6.4 다른 컴포넌트와의 관계</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">관계</th><th>내용</th></tr></thead>
+<tbody>
+<tr><td>← 비즈니스 레이어 · 클라이언트</td><td>모든 외부 요청을 여기로 받는다 (인증·멱등의 단일 입구).</td></tr>
+<tr><td>→ 블록체인 매니저 포트</td><td>인증·멱등을 통과한 요청만 <a href="abstraction.html">13. 포트</a>(AccountPort·TransactionPort)로 라우팅.</td></tr>
+<tr><td>→ <a href="component-tx-nonce.html">4. 트랜잭션</a></td><td>멱등 키를 넘겨 체인 제출 단계의 dedup(externalTxId)으로 잇는다.</td></tr>
+<tr><td>↔ <a href="component-ledger.html">7. 온체인 정합성</a></td><td>같은 요청 ID(correlationId)로 처리 상태·정합성 조회를 제공·연결.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">설계 포인트</div>
+<ul>
+<li><strong>벤더·체인 무관</strong> — 게이트웨이는 지갑 서비스 백엔드 층이라 Fireblocks 든 자체 구축이든 그대로 우리 것이다(<a href="abstraction.html">13.7</a>).</li>
+<li><strong>멱등 키 정책</strong> — 클라이언트가 주거나(권장), 없으면 요청 내용으로 안정적으로 파생. 같은 의미의 요청이 같은 키가 되도록.</li>
+<li><strong>실패도 기록</strong> — 실패를 멱등 저장소에 남겨, 같은 키의 무한 재시도와 "실패인데 또 실행" 을 막는다.</li>
+</ul>
+</div>
+
+<p>다음 — 게이트웨이가 막은 요청이 체인까지 가는 쓰기 경로는 <a href="component-tx-nonce.html"><strong>4. 트랜잭션 · Nonce · Broadcast</strong></a>, 처리 결과를 외부에 알리는 건 <a href="component-alerts.html"><strong>8. 이벤트 · 알림</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

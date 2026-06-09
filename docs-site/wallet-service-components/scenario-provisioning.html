@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>7. 계정·주소 발급 — 블록체인 매니저 컴포넌트 가이드</title>
+<title>9. 계정·주소 발급 — 블록체인 매니저 컴포넌트 가이드</title>
 <meta content="온보딩 시 계정·주소 발급(createAccount·deriveAddress) 시나리오 — 비즈니스 레이어가 게이트웨이를 거쳐 AccountPort 를 호출, Fireblocks/자체/NodeWallet 어댑터가 vault·HD 파생으로 채운다." name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
@@ -20,38 +20,45 @@
 <div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
 <li><a href="components.html">1. 컴포넌트 개요</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">B. 컴포넌트 상세</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">B. 블록체인 매니저</h3><ul>
 <li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
 <li><a href="component-indexer.html">3. 인덱서</a></li>
 <li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
 <li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
-<li><a href="component-ledger.html">6. 온체인 정합성 · 추적</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
-<li><a class="active" href="scenario-provisioning.html">7. 계정·주소 발급</a></li>
-<li><a href="scenario-deposit.html">8. 입금</a></li>
-<li><a href="scenario-withdrawal.html">9. 출금</a></li>
-<li><a href="scenario-onofframp.html">10. 온·오프램프</a></li>
+<div class="nav-section"><h3 class="nav-section-title">C. 지갑 서비스 백엔드</h3><ul>
+<li><a href="component-gateway.html">6. API 게이트웨이</a></li>
+<li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
+<li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
-<li><a href="abstraction.html">11. 벤더 추상화 (기능별 포트)</a></li>
+<div class="nav-section"><h3 class="nav-section-title">D. 시나리오</h3><ul>
+<li><a class="active" href="scenario-provisioning.html">9. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">10. 입금</a></li>
+<li><a href="scenario-withdrawal.html">11. 출금</a></li>
+<li><a href="scenario-onofframp.html">12. 온·오프램프</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
-<li><a href="example-fireblocks.html">12. Fireblocks 어댑터</a></li>
-<li><a href="example-selfbuild.html">13. 자체 구축 어댑터</a></li>
-<li><a href="example-nodewallet.html">14. NodeWallet 어댑터</a></li>
+<div class="nav-section"><h3 class="nav-section-title">E. 추상화</h3><ul>
+<li><a href="abstraction.html">13. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">15. 자체 구축 어댑터</a></li>
+<li><a href="example-nodewallet.html">16. NodeWallet 어댑터</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
+<li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
 </ul></div>
 </nav>
 </aside>
 
 <main class="content">
 <section id="provisioning">
-<h2>7. 계정·주소 발급 (온보딩)</h2>
+<h2>9. 계정·주소 발급 (온보딩)</h2>
 <span class="section-subtitle">고객 온보딩 시 createAccount · deriveAddress — 입금·출금에 앞선 사전 단계</span>
 
-<p class="lead">입금(8)·출금(9)은 <strong>주소가 이미 있다는 전제</strong>로 시작한다. 그 주소를 만드는 게 이 단계 — 고객 온보딩(또는 새 자산 추가) 때 <strong>계정을 만들고(createAccount) 자산별 주소를 파생(deriveAddress)</strong> 한다. <a href="abstraction.html">11. 추상화</a> 의 <strong>AccountPort</strong> 가 하는 일이다.</p>
+<p class="lead">입금(10)·출금(11)은 <strong>주소가 이미 있다는 전제</strong>로 시작한다. 그 주소를 만드는 게 이 단계 — 고객 온보딩(또는 새 자산 추가) 때 <strong>계정을 만들고(createAccount) 자산별 주소를 파생(deriveAddress)</strong> 한다. <a href="abstraction.html">13. 추상화</a> 의 <strong>AccountPort</strong> 가 하는 일이다.</p>
 
-<h3>7.1 표준 흐름</h3>
+<h3>9.1 표준 흐름</h3>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -74,9 +81,9 @@ sequenceDiagram
     GW-->>BIZ: accountId · 입금 주소
     BIZ-->>U: 지갑·입금 주소 표시
 </pre></div>
-<p class="diagram-caption">Figure 7-1. 계정·주소 발급. 클라이언트 → 비즈니스 레이어(인증·KYC 판단) → 게이트웨이(멱등 키) → <strong>AccountPort.createAccount → deriveAddress</strong> → 어댑터가 백엔드(Fireblocks vault / 자체 HD / NodeWallet)로 번역. 발급된 주소로 받는 입금은 <a href="scenario-deposit.html">8. 입금</a>. 이는 0.2 의 <strong>① 호출(inbound)</strong> — 비즈 레이어가 게이트웨이를 부른다.</p>
+<p class="diagram-caption">Figure 9-1. 계정·주소 발급. 클라이언트 → 비즈니스 레이어(인증·KYC 판단) → 게이트웨이(멱등 키) → <strong>AccountPort.createAccount → deriveAddress</strong> → 어댑터가 백엔드(Fireblocks vault / 자체 HD / NodeWallet)로 번역. 발급된 주소로 받는 입금은 <a href="scenario-deposit.html">10. 입금</a>. 이는 0.2 의 <strong>① 호출(inbound)</strong> — 비즈 레이어가 게이트웨이를 부른다.</p>
 
-<h3>7.2 어댑터별 구현</h3>
+<h3>9.2 어댑터별 구현</h3>
 
 <p>같은 <code>createAccount</code>·<code>deriveAddress</code> 가 어댑터마다 이렇게 채워진다:</p>
 
@@ -84,14 +91,14 @@ sequenceDiagram
 <table>
 <thead><tr><th style="width:24%">어댑터</th><th>createAccount</th><th>deriveAddress</th></tr></thead>
 <tbody>
-<tr><td><a href="example-fireblocks.html">Fireblocks (12)</a></td><td><code>fb.createVaultAccount(ref)</code></td><td><code>fb.generateNewAddress(vaultId, asset)</code> (멀티체인 흡수)</td></tr>
-<tr><td><a href="example-selfbuild.html">자체 구축 (13)</a></td><td>HD 지갑 account index 할당</td><td><code>bip32.derive(xpub, path)</code> — 우리가 파생</td></tr>
-<tr><td><a href="example-nodewallet.html">NodeWallet (14)</a></td><td><code>nw.createWallet(ref, Chain.SOLANA)</code></td><td><code>nw.address(wallet)</code> (Solana 단일)</td></tr>
+<tr><td><a href="example-fireblocks.html">Fireblocks (14)</a></td><td><code>fb.createVaultAccount(ref)</code></td><td><code>fb.generateNewAddress(vaultId, asset)</code> (멀티체인 흡수)</td></tr>
+<tr><td><a href="example-selfbuild.html">자체 구축 (15)</a></td><td>HD 지갑 account index 할당</td><td><code>bip32.derive(xpub, path)</code> — 우리가 파생</td></tr>
+<tr><td><a href="example-nodewallet.html">NodeWallet (16)</a></td><td><code>nw.createWallet(ref, Chain.SOLANA)</code></td><td><code>nw.address(wallet)</code> (Solana 단일)</td></tr>
 </tbody>
 </table>
 </div>
 
-<h3>7.3 주의</h3>
+<h3>9.3 주의</h3>
 
 <ul>
 <li><strong>승인 게이트가 아님(보통)</strong> — 계정·주소 발급은 프로비저닝이라 출금 같은 다자 승인이 보통 필요 없다. 단 <strong>인증·KYC</strong>(비즈 레이어)와 <strong>멱등 키</strong>(같은 온보딩 요청이 계정을 두 번 만들지 않게)는 필수.</li>
@@ -100,7 +107,7 @@ sequenceDiagram
 <li><strong>수탁 구조 선택은 비즈/회계</strong> — "고객마다 별도 계정" vs "공용(omnibus) + 내부 장부 attribution" 은 업무·회계 설계다. 매니저는 계정/주소 발급 primitive 만 제공.</li>
 </ul>
 
-<p>다음 — 발급된 주소로 외부 입금을 받는 <a href="scenario-deposit.html"><strong>8. 입금</strong></a>.</p>
+<p>다음 — 발급된 주소로 외부 입금을 받는 <a href="scenario-deposit.html"><strong>10. 입금</strong></a>.</p>
 
 </section>
 </main>
@@ -108,6 +115,7 @@ sequenceDiagram
 
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>

@@ -6925,3 +6925,17 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 정합: 본 wiki 의 custody 옵션 1(Fireblocks SaaS MPC) / 옵션 2(자체 custody=NodeWallet 류) 축과 연결
 - 신규 Q: N01(4축 명칭) N02(멀티체인 로드맵) N03(ISMS 상태) N04(다이어그램 미수집)
 - 신규 entity: 0, 신규 vendor page: +1 (사유: 사용자 promote 승인, 옵션 2 레퍼런스). entity-min streak 는 Fireblocks 도메인 기준 유지
+
+## Stage 52 (2026-06-09) — Canton ingest → 신규 Canton 엔티티 + docs-site 멀티체인 모델 반영
+- 계기: 사용자 고려 네트워크 = 이더리움 + Canton. docs.digitalasset.com(v3.4) 1차 문서 promote 승인
+- source: sources/canton/ 4건 — homepage(Mode B) · Musubi intro(활용사례) · Fireblocks recover-CC(복구 운영) · **신규 digitalasset-docs-canton-model(2026-06-09, token-standard/traffic/parties/synchronizer)**
+- 신규 entity +1: entities/canton/canton-network.md (status=draft) — **Canton 은 Fireblocks 아닌 독립 체인이라 흡수 시 범주 오류 → 신설**. entity-min 0-streak 종료(사유 명시)
+  - 원장 = ACS active contract, 토큰 holdings = UTXO(가용/locked) — **"nonce·UTXO 둘 다 아님" 초기 추정 정정**
+  - 전송 기본 2-step(TransferInstruction: Accept/Reject/Withdraw), Canton Coin 은 Transfer Pre-approval=1-step → Fireblocks PRE_APPROVAL 과 정합
+  - PartyId = hint::fingerprint(서명 pubkey sha256), traffic(byte) 수수료(CC burn 선구매), Synchronizer 2-phase commit finality
+- 중앙 등록: Q-2026-05-22-A11(기존 api.md/transaction.md 인라인 → open-questions/fireblocks.md), 신규 C01(finality 수치)·C02(traffic 산정식)
+- 추가 fetch(docs.digitalasset.com traffic-management + docs.sync.global FAQ/deployment): **C02 ANSWERED** — traffic 산정식 `base_event_cost + Σ(storage + writeCost×#recipients×costMultiplier/10000)`, estimate=`/v2/interactive-submission/prepare`
+- 양방향 wikilink: entities/fireblocks/transaction · vendors/fireblocks/api ↔ [[entities/canton/canton-network]]
+- index.md: entities/canton 섹션 + Source Lake canton 4소스 카탈로그
+- docs-site wallet-service-components: 2(멀티체인) 2.2 표에 Canton 3번째 열 완전 충전 + 콜아웃 "account/UTXO 아님" 정정 / 9(출금)·11(추상화) 2-step 정합
+- ANSWERED: Q-2026-06-09-C02 (traffic 산정식). A11(Fireblocks status 매핑)·C01(finality 정확 수치, 1차 페이지 3곳 모두 수치 없음)은 open 유지
