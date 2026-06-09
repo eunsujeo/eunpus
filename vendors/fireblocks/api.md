@@ -292,7 +292,7 @@ ApprovalStatus.approval: "PENDING_AUTHORIZATION" | "APPROVED" | "REJECTED" | "NA
 
 → [[entities/fireblocks/vault-account]]. 8 destination type · vault schema 는 Stage 36 object catalog.
 
-### Transactions (TransferPort — 제출·상태·가속)
+### Transactions (TransactionPort — 제출·상태·가속)
 
 **WRITE**
 
@@ -314,7 +314,7 @@ ApprovalStatus.approval: "PENDING_AUTHORIZATION" | "APPROVED" | "REJECTED" | "NA
 
 → [[entities/fireblocks/transaction]]. tx schema·status·chain-specific 필드는 Stage 36 object catalog.
 
-### Webhooks v2 (수신 트랜잭션·확정 = event push, "② 감지")
+### Webhooks v2 (수신 트랜잭션·확정 = event push, "② 감지" — TransactionPort.onChainEvent)
 
 **WRITE (설정·운영)**
 
@@ -349,11 +349,11 @@ ApprovalStatus.approval: "PENDING_AUTHORIZATION" | "APPROVED" | "REJECTED" | "NA
 - **WRITE = 상태 변경**: 계정·자산·주소 생성, 트랜잭션 생성·drop·cancel, webhook 설정. (`estimate_fee` 는 POST지만 사실상 read)
 - **READ = 조회**: 계정·잔액·주소·tx 상태/이력, webhook 조회.
 - **event(push) = webhook** — read API 가 아니라 Fireblocks 가 밀어줌.
-- IndexerPort 관점: Fireblocks 는 **내 vault 범위** (위 tx 이력·잔액 + webhook) 만 커버 — 임의 주소·과거 이력·커스텀 가공은 자체 인덱서/Alchemy. (docs-site `wallet-service-components` 10.4 IndexerPort 교체)
+- 포트 매핑: 내 지갑 수신·확정 webhook + tx 상태·잔액·이력 = **TransactionPort·AccountPort** 로 제공. **ChainQueryPort(임의 외부 주소·커스텀 조회)는 Fireblocks ✗** → 자체 인덱서/Alchemy 로 별도 추가. (docs-site 10.4)
 
 ### docs-site 연계
 
-이 표면이 docs-site `wallet-service-components` 의 **11. Fireblocks 어댑터** 의 AccountPort / TransferPort / IndexerPort 실제 endpoint 근거다 (그 페이지 의사코드의 `fb.createTransaction` 등 → 위 `POST /v1/transactions`).
+이 표면이 docs-site `wallet-service-components` 의 **11. Fireblocks 어댑터** 의 AccountPort / TransactionPort(수신 이벤트 webhook 포함) 실제 endpoint 근거다 (그 페이지 의사코드의 `fb.createTransaction` 등 → 위 `POST /v1/transactions`). ChainQueryPort 는 Fireblocks 미제공.
 
 ### Stage 50 신규 Q
 

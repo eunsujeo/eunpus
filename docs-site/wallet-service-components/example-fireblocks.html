@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>11. Fireblocks 어댑터 — 블록체인 매니저 컴포넌트 가이드</title>
-<meta content="Fireblocks 한 어댑터가 AccountPort·TransferPort 를 채우고 IndexerPort 는 일부(vault webhook)만 — createTransaction 이 서명+전파+nonce 를 묶고, webhook 이 수신 트랜잭션·확정을 전달. externalTxId 로 트랜잭션 멱등." name="description"/>
+<title>12. Fireblocks 어댑터 — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="Fireblocks 한 어댑터가 AccountPort·TransactionPort 를 채운다 — createTransaction 이 서명+전파+nonce 를 묶고, webhook(transaction.status.updated)이 내 지갑 수신·확정 이벤트를 전달. 임의 외부 주소·커스텀 조회(ChainQueryPort)는 ✗." name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
 </head>
@@ -28,23 +28,25 @@
 <li><a href="component-ledger.html">6. 온체인 정합성 · 추적</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
-<li><a href="scenario-deposit.html">7. 입금</a></li>
-<li><a href="scenario-withdrawal.html">8. 출금</a></li>
-<li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
+<li><a href="scenario-provisioning.html">7. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">8. 입금</a></li>
+<li><a href="scenario-withdrawal.html">9. 출금</a></li>
+<li><a href="scenario-onofframp.html">10. 온·오프램프</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
-<li><a href="abstraction.html">10. 벤더 추상화 (기능별 포트)</a></li>
+<li><a href="abstraction.html">11. 벤더 추상화 (기능별 포트)</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
-<li><a class="active" href="example-fireblocks.html">11. Fireblocks 어댑터</a></li>
-<li><a href="example-selfbuild.html">12. 자체 구축 어댑터</a></li>
+<li><a class="active" href="example-fireblocks.html">12. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">13. 자체 구축 어댑터</a></li>
+<li><a href="example-nodewallet.html">14. NodeWallet 어댑터</a></li>
 </ul></div>
 </nav>
 </aside>
 
 <main class="content">
 <section id="example-fireblocks">
-<h2>11. Fireblocks 어댑터 — 세 포트 구현 예시</h2>
+<h2>12. Fireblocks 어댑터 — Account·Transaction 두 포트 구현</h2>
 <span class="section-subtitle">FireblocksProvider 는 얇은 어댑터 — 트랜잭션 제출은 createTransaction 한 번, 수신은 webhook</span>
 
 <div class="callout">
@@ -52,14 +54,14 @@
 <p>설명용 의사코드다. 메서드 이름은 Fireblocks 공개 API 형태를 참고했으나 실제 SDK 와 다를 수 있다. Fireblocks 기능 범위(서명·전파·nonce·webhook·DCCP·externalTxId·vault)는 본 위키의 검증된 사실에 근거한다.</p>
 </div>
 
-<h3>11.1 큰 그림</h3>
+<h3>12.1 큰 그림</h3>
 
-<p>Fireblocks 한 어댑터가 매니저의 세 기능 포트 중 <strong>AccountPort·TransferPort 를 채우고, IndexerPort 는 일부(자기 vault webhook)</strong>만 채운다. 위층 <strong>지갑 서비스 백엔드</strong>(멱등·팬아웃·정합성·오케스트레이션)는 그대로 두고, 어댑터가 계정·트랜잭션·조회 동작을 Fireblocks API·webhook 으로 번역한다. (임의 주소 조회·이력이 더 필요하면 <strong>IndexerPort 만 자체 인덱서로</strong> 교체 — <a href="abstraction.html">10.4</a>)</p>
+<p>Fireblocks 한 어댑터가 <strong>AccountPort·TransactionPort 를 채운다 — 내 지갑 수신·확정 이벤트(webhook)까지 TransactionPort 로 제공</strong>. 위층 <strong>지갑 서비스 백엔드</strong>(멱등·팬아웃·정합성·오케스트레이션)는 그대로 두고, 어댑터가 계정·트랜잭션 동작을 Fireblocks API·webhook 으로 번역한다. 다만 <strong>임의 외부 주소·커스텀 조회(ChainQueryPort)는 Fireblocks 가 ✗</strong> — 필요하면 그 포트만 자체 인덱서/Alchemy 로 따로 붙인다 (<a href="abstraction.html">11.4</a>).</p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart TB
     CORE["지갑 서비스 백엔드<br/>(포트에만 의존)"]
-    FBP["FireblocksProvider<br/>(Account·Transfer 포트 구현)"]
+    FBP["FireblocksProvider<br/>(Account·Transaction 포트 구현)"]
     FB["Fireblocks<br/>createTransaction · webhook · vault · fee"]
 
     CORE -->|"submitTransaction · getStatus · onChainEvent …"| FBP
@@ -73,11 +75,11 @@ flowchart TB
     class FBP adp;
     class FB ext;
 </pre></div>
-<p class="diagram-caption">Figure 11-1. Fireblocks 구현. FireblocksProvider(파랑 어댑터)가 Account·Transfer 포트를 채운다(Indexer 는 webhook 일부). 쓰기 쪽 <code>submitTransaction</code> 은 Fireblocks 의 <strong>createTransaction 한 번</strong>(서명+전파+nonce)으로, 수신 트랜잭션은 Fireblocks 가 <strong>webhook 으로 push</strong> 한다.</p>
+<p class="diagram-caption">Figure 12-1. Fireblocks 구현. FireblocksProvider(파랑 어댑터)가 Account·Transaction 포트를 채운다(수신 이벤트 webhook 포함 — 임의 조회 ChainQueryPort 는 별도 인덱서). 쓰기 쪽 <code>submitTransaction</code> 은 Fireblocks 의 <strong>createTransaction 한 번</strong>(서명+전파+nonce)으로, 수신 트랜잭션은 Fireblocks 가 <strong>webhook 으로 push</strong> 한다.</p>
 
-<h3>11.2 provider 코드</h3>
+<h3>12.2 provider 코드</h3>
 
-<pre><code>class FireblocksProvider implements AccountPort, TransferPort, IndexerPort {
+<pre><code>class FireblocksProvider implements AccountPort, TransactionPort {
 
   constructor(private fb: FireblocksSDK, private webhooks: WebhookBus) {}
 
@@ -109,9 +111,9 @@ flowchart TB
   }
 }</code></pre>
 
-<p>세 포트의 메서드가 거의 그대로 Fireblocks 호출 하나씩으로 매핑된다 — 그래서 <strong>얇은 어댑터</strong>다. 같은 포트를 Fireblocks 없이 직접 구현하면 어떻게 달라지는지는 <a href="example-selfbuild.html">12. 자체 구축</a>.</p>
+<p>두 포트(Account·Transaction)의 메서드가 거의 그대로 Fireblocks 호출 하나씩으로 매핑된다 — 그래서 <strong>얇은 어댑터</strong>다. 같은 포트를 Fireblocks 없이 직접 구현하면 어떻게 달라지는지는 <a href="example-selfbuild.html">13. 자체 구축</a>.</p>
 
-<h3>11.3 송신 트랜잭션 단계별 흐름</h3>
+<h3>12.3 송신 트랜잭션 단계별 흐름</h3>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -129,9 +131,9 @@ sequenceDiagram
     end
     Note over CORE,FB: 막히면 CORE→FBP.bumpFee(txRef) → FB.rbf (boost)
 </pre></div>
-<p class="diagram-caption">Figure 11-2. Fireblocks 송신 트랜잭션. 코어는 <strong>submitTransaction 한 번</strong>이면 끝 — 빌드·서명·전파·nonce 를 Fireblocks 가 처리한다. 상태는 webhook 으로 받고, stuck 시 bumpFee(RBF/boost)만 호출. 멱등 키는 <code>externalTxId</code> 로 넘겨 중복 제출을 Fireblocks 측에서도 막는다.</p>
+<p class="diagram-caption">Figure 12-2. Fireblocks 송신 트랜잭션. 코어는 <strong>submitTransaction 한 번</strong>이면 끝 — 빌드·서명·전파·nonce 를 Fireblocks 가 처리한다. 상태는 webhook 으로 받고, stuck 시 bumpFee(RBF/boost)만 호출. 멱등 키는 <code>externalTxId</code> 로 넘겨 중복 제출을 Fireblocks 측에서도 막는다.</p>
 
-<h3>11.4 수신 트랜잭션 단계별 흐름</h3>
+<h3>12.4 수신 트랜잭션 단계별 흐름</h3>
 
 <ol>
 <li>외부에서 우리 vault 주소로 트랜잭션이 들어옴</li>
@@ -140,14 +142,14 @@ sequenceDiagram
 </ol>
 <p>즉 수신 트랜잭션은 코어가 무엇을 호출해서가 아니라 <strong>Fireblocks 가 push 한 webhook</strong> 으로 시작된다 (0.2 의 "② 감지"). 이를 "입금" 으로 해석하는 건 비즈 레이어의 몫이다.</p>
 
-<h3>11.5 그래서 지갑 서비스 백엔드가 직접 짜는 것</h3>
+<h3>12.5 그래서 지갑 서비스 백엔드가 직접 짜는 것</h3>
 
 <div class="callout callout-warn">
 <div class="callout-title">서명·전파가 한 호출로 묶인다</div>
 <p>Fireblocks 에선 서명과 전파가 <strong><code>createTransaction</code> 하나</strong>로 합쳐진다(빌드·nonce 포함). 그래서 자체 구축처럼 "조립 → 서명 → 전파" 3단계를 코어가 밟지 않고, <strong>submitTransaction 한 번 + 상태 추적</strong>이다. raw nonce 를 직접 돌리면 Fireblocks 내부 nonce 와 충돌하니 만들지 않는다.</p>
 </div>
 
-<p>Fireblocks 가 백엔드를 채워줘도, <strong>지갑 서비스 백엔드가 반드시 갖는 것</strong>(10.7)은 그대로 남는다:</p>
+<p>Fireblocks 가 백엔드를 채워줘도, <strong>지갑 서비스 백엔드가 반드시 갖는 것</strong>(11.7)은 그대로 남는다:</p>
 <ul>
 <li><strong>게이트웨이 멱등</strong> — 인바운드 요청에 우리 멱등 키 부여 → <code>externalTxId</code> 로 매핑. (externalTxId 만으로는 트랜잭션 한정 dedup)</li>
 <li><strong>vault 라우팅</strong> — EVM nonce 직렬화가 vault 단위라, 한 vault 가 막혀도 다른 vault 로 (출금 전용 vault 를 여러 개 두고 번갈아 쓰는 multiple withdrawal vault round-robin)</li>
@@ -156,7 +158,7 @@ sequenceDiagram
 <li><strong>상태 모니터링 + bumpFee 트리거</strong> — stuck 감지 시 RBF/boost 호출</li>
 </ul>
 
-<h3>11.6 포트 메서드 → 실제 Fireblocks REST API</h3>
+<h3>12.6 포트 메서드 → 실제 Fireblocks REST API</h3>
 
 <p>위 의사코드의 <code>fb.*</code> 호출은 실제로 다음 Fireblocks REST 엔드포인트로 매핑된다. 경로는 <a href="https://developers.fireblocks.com/">Fireblocks 공식 API reference</a> 기준이며, base URL 은 <code>https://api.fireblocks.io</code>, 모든 요청은 JWT(API Key + RSA) 서명이다. (적용 전 최신 문서로 재확인 권장)</p>
 
@@ -167,24 +169,24 @@ sequenceDiagram
 <tr><td rowspan="3"><strong>AccountPort</strong></td><td><code>createAccount</code></td><td><code>POST /v1/vault/accounts</code></td><td>write</td></tr>
 <tr><td><code>deriveAddress</code></td><td><code>POST /v1/vault/accounts/{vaultAccountId}/{assetId}/addresses</code></td><td>write</td></tr>
 <tr><td><code>getBalance</code></td><td><code>GET /v1/vault/accounts/{vaultAccountId}/{assetId}</code></td><td>read</td></tr>
-<tr><td rowspan="4"><strong>TransferPort</strong></td><td><code>submitTransaction</code></td><td><code>POST /v1/transactions</code> (서명+전파+nonce, <code>externalTxId</code> 멱등)</td><td>write</td></tr>
+<tr><td rowspan="5"><strong>TransactionPort</strong></td><td><code>submitTransaction</code></td><td><code>POST /v1/transactions</code> (서명+전파+nonce, <code>externalTxId</code> 멱등)</td><td>write</td></tr>
 <tr><td><code>getStatus</code></td><td><code>GET /v1/transactions/{txId}</code></td><td>read</td></tr>
 <tr><td><code>bumpFee</code></td><td><code>POST /v1/transactions/{txId}/drop</code> (boost/RBF)</td><td>write</td></tr>
 <tr><td>(수수료 추정)</td><td><code>POST /v1/transactions/estimate_fee</code></td><td>write*</td></tr>
-<tr><td rowspan="2"><strong>IndexerPort</strong></td><td><code>onChainEvent</code></td><td>webhook 등록 <code>POST /v1/webhooks</code> → <code>transaction.status.updated</code> push</td><td>event</td></tr>
-<tr><td><code>query</code> · 이력</td><td><code>GET /v1/transactions</code> · <code>GET /v1/vault/accounts/{vaultAccountId}/{assetId}</code> (내 vault 한정)</td><td>read</td></tr>
+<tr><td><code>onChainEvent</code></td><td>webhook 등록 <code>POST /v1/webhooks</code> → <code>transaction.status.updated</code> push (내 지갑 수신·확정)</td><td>event</td></tr>
+<tr><td><strong>ChainQueryPort</strong></td><td>(Fireblocks 미제공)</td><td>임의 외부 주소·커스텀 조회 ✗ → 자체 인덱서·Alchemy 를 ChainQueryPort 로 추가</td><td>—</td></tr>
 </tbody>
 </table>
 </div>
 
-<p><strong>*</strong> <code>estimate_fee</code> 는 POST 지만 상태를 바꾸지 않는다(전송 전 모의 추정). <strong>IndexerPort 는 Fireblocks 가 내 vault 범위만 커버</strong> — 임의 주소·과거 이력·커스텀 가공이 필요하면 이 포트만 자체 인덱서/Alchemy 로 교체한다 (<a href="abstraction.html">10.4</a>).</p>
+<p><strong>*</strong> <code>estimate_fee</code> 는 POST 지만 상태를 바꾸지 않는다(전송 전 모의 추정). 내 지갑 수신·확정 이벤트와 내 거래 상태는 <strong>TransactionPort</strong> 로 Fireblocks 가 준다. 반면 <strong>임의 외부 주소·deep history·커스텀 집계(ChainQueryPort)는 Fireblocks 가 ✗</strong> — 필요하면 자체 인덱서/Alchemy 를 ChainQueryPort 로 추가한다 (<a href="abstraction.html">11.4</a>).</p>
 
 <div class="callout callout-warn">
 <div class="callout-title">Webhooks 는 v2 로 — v1 은 2026-06-15 EOL</div>
 <p>신규 구축은 <strong>Webhooks v2</strong>(<code>POST /v1/webhooks</code> 로 등록)를 쓴다. v1 은 2026-06-15 지원 종료이고 신규 이벤트는 v2 만 지원한다. v2 는 이벤트 이름이 <strong>점 표기</strong>로 바뀐 점에 주의 — <code>TRANSACTION_STATUS_UPDATED</code>(v1) → <code>transaction.status.updated</code>(v2), <code>TRANSACTION_CREATED</code> → <code>transaction.created</code>, <code>TRANSACTIONS_APPROVAL_STATUS_UPDATED</code> → <code>transaction.approval_status.updated</code>. 그 외 v2 는 다중 webhook·이벤트 구독·30일 재전송을 제공한다.</p>
 </div>
 
-<p>같은 포트를 Fireblocks 없이 직접 구현하면 어떻게 달라지는지는 — <a href="example-selfbuild.html"><strong>12. 자체 구축 어댑터</strong></a>.</p>
+<p>같은 포트를 Fireblocks 없이 직접 구현하면 어떻게 달라지는지는 — <a href="example-selfbuild.html"><strong>13. 자체 구축 어댑터</strong></a>.</p>
 
 </section>
 </main>

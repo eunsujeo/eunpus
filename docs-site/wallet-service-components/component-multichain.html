@@ -28,16 +28,18 @@
 <li><a href="component-ledger.html">6. 온체인 정합성 · 추적</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
-<li><a href="scenario-deposit.html">7. 입금</a></li>
-<li><a href="scenario-withdrawal.html">8. 출금</a></li>
-<li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
+<li><a href="scenario-provisioning.html">7. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">8. 입금</a></li>
+<li><a href="scenario-withdrawal.html">9. 출금</a></li>
+<li><a href="scenario-onofframp.html">10. 온·오프램프</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
-<li><a href="abstraction.html">10. 벤더 추상화 (기능별 포트)</a></li>
+<li><a href="abstraction.html">11. 벤더 추상화 (기능별 포트)</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
-<li><a href="example-fireblocks.html">11. Fireblocks 어댑터</a></li>
-<li><a href="example-selfbuild.html">12. 자체 구축 어댑터</a></li>
+<li><a href="example-fireblocks.html">12. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">13. 자체 구축 어댑터</a></li>
+<li><a href="example-nodewallet.html">14. NodeWallet 어댑터</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -144,7 +146,7 @@ flowchart TB
 
 <div class="callout">
 <div class="callout-title">누가 이 풀을 운영하나 — 전제에 따라 다르다</div>
-<p>이 풀·failover 는 <strong>자체 구축일 때만 우리 책임</strong>이다. 수탁+Fireblocks 경로에선 노드 인프라·엔드포인트 가용성을 <strong>Fireblocks 가 내부에서 처리</strong>하므로 우리 매니저의 컴포넌트가 아니다. GCP Blockchain Node Engine·Alchemy·QuickNode 같은 관리형 노드를 쓰면 그 일부(가용성)를 제공자에게 위임하고, 멀티 제공자 failover 만 우리가 얹는 식도 가능하다. 그래서 본 가이드는 이를 별도 컴포넌트가 아니라 <strong>멀티체인 어댑터 아래의 노드 접근 계층</strong>으로 둔다. 자체 구축에서의 위치는 <a href="example-selfbuild.html">12. 자체 구축</a> 의 <code>NodeRpc</code> 부품에 해당한다.</p>
+<p>이 풀·failover 는 <strong>자체 구축일 때만 우리 책임</strong>이다. 수탁+Fireblocks 경로에선 노드 인프라·엔드포인트 가용성을 <strong>Fireblocks 가 내부에서 처리</strong>하므로 우리 매니저의 컴포넌트가 아니다. GCP Blockchain Node Engine·Alchemy·QuickNode 같은 관리형 노드를 쓰면 그 일부(가용성)를 제공자에게 위임하고, 멀티 제공자 failover 만 우리가 얹는 식도 가능하다. 그래서 본 가이드는 이를 별도 컴포넌트가 아니라 <strong>멀티체인 어댑터 아래의 노드 접근 계층</strong>으로 둔다. 자체 구축에서의 위치는 <a href="example-selfbuild.html">13. 자체 구축</a> 의 <code>NodeRpc</code> 부품에 해당한다.</p>
 </div>
 
 <p>다음 — <a href="component-indexer.html"><strong>3. 인덱서</strong></a>.</p>

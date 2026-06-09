@@ -6912,3 +6912,16 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - docs-site wallet-service-components 11장(AccountPort/TransferPort/IndexerPort) 의 실제 endpoint 근거로 연계
 - 신규 Q: Q-2026-06-08-A13(Policies/Network/Exchange endpoint) · A14(set_confirmation_threshold↔DCCP). A15(webhook v1→v2)=ANSWERED 동일 Stage: v1 2026-06-15 EOL, 신규=v2, 이벤트 점표기(transaction.status.updated)
 - 신규 entity: 0, 신규 page: 0 (기존 vendor-hub api.md 흡수, streak 39)
+
+## Stage 51 (2026-06-09) — NodeWallet (NodeInfra) promote → 신규 vendor 페이지 + docs-site 옵션2 기성품 반영
+- source: sources/nodeinfra/ (Stage 35 gated-docs ingest). 사용자 promote 승인 후 curated 진입
+- 신규 page +1: vendors/nodeinfra/nodewallet.md (vendor-hub, status=draft) — 벤더 주장 tier 명시
+  - 온프렘 스테이블코인 수탁(은행·카드사·PG·증권·공공), Solana 전용, 망분리 IDC, 벤더 무의존
+  - HSM(FIPS 140-3)+SGX TEE, 3-키 다중서명(개시/승인/실행), 코디네이터·승인자·원장 아키텍처
+  - 4-축 격리, trust boundaries(DCAP 원격증명·MRENCLAVE), 컴플라이언스 정책 룰, Java/Spring SDK
+  - NodeInfra 자체 비교표(VASP/Cloud MPC/NodeWallet) 흡수 — 키 소유권·정책 실행 위치 차이
+- docs-site wallet-service-components 10.5 에 "옵션 2 기성품 = NodeWallet" 한 단락 (custody 옵션 2 archetype)
+- docs-site 신규 13. NodeWallet 어댑터 페이지 (옵션2 custody 제품, Fireblocks 대비·3-키 의식 다이어그램) + 사이드바 14곳·overview·root 반영
+- 정합: 본 wiki 의 custody 옵션 1(Fireblocks SaaS MPC) / 옵션 2(자체 custody=NodeWallet 류) 축과 연결
+- 신규 Q: N01(4축 명칭) N02(멀티체인 로드맵) N03(ISMS 상태) N04(다이어그램 미수집)
+- 신규 entity: 0, 신규 vendor page: +1 (사유: 사용자 promote 승인, 옵션 2 레퍼런스). entity-min streak 는 Fireblocks 도메인 기준 유지

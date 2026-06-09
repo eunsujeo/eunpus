@@ -28,16 +28,18 @@
 <li><a href="component-ledger.html">6. 온체인 정합성 · 추적</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
-<li><a href="scenario-deposit.html">7. 입금</a></li>
-<li><a href="scenario-withdrawal.html">8. 출금</a></li>
-<li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
+<li><a href="scenario-provisioning.html">7. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">8. 입금</a></li>
+<li><a href="scenario-withdrawal.html">9. 출금</a></li>
+<li><a href="scenario-onofframp.html">10. 온·오프램프</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
-<li><a href="abstraction.html">10. 벤더 추상화 (기능별 포트)</a></li>
+<li><a href="abstraction.html">11. 벤더 추상화 (기능별 포트)</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
-<li><a href="example-fireblocks.html">11. Fireblocks 어댑터</a></li>
-<li><a href="example-selfbuild.html">12. 자체 구축 어댑터</a></li>
+<li><a href="example-fireblocks.html">12. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">13. 자체 구축 어댑터</a></li>
+<li><a href="example-nodewallet.html">14. NodeWallet 어댑터</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -145,7 +147,7 @@ flowchart LR
     class IDX special;
     class NOTIF,TX,LED,GW good;
 </pre></div>
-<p class="diagram-caption">Figure 3-3. 인덱서는 매니저 안에서 가장 많이 참조되는 컴포넌트다. 입금 흐름의 시작(감지→알림), 출금 흐름의 끝(확정 역확인), 대사의 근거(체인 사실), 조회의 원천(잔액/이력)을 제공한다. (온/오프램프 같은 내부 현금↔코인 전환은 매니저 밖 — 9. 온·오프램프 참조)</p>
+<p class="diagram-caption">Figure 3-3. 인덱서는 매니저 안에서 가장 많이 참조되는 컴포넌트다. 입금 흐름의 시작(감지→알림), 출금 흐름의 끝(확정 역확인), 대사의 근거(체인 사실), 조회의 원천(잔액/이력)을 제공한다. (온/오프램프 같은 내부 현금↔코인 전환은 매니저 밖 — 10. 온·오프램프 참조)</p>
 
 <div class="table-wrap">
 <table>

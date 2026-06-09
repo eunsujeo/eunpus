@@ -28,16 +28,18 @@
 <li><a href="component-ledger.html">6. 온체인 정합성 · 추적</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">C. 시나리오</h3><ul>
-<li><a href="scenario-deposit.html">7. 입금</a></li>
-<li><a href="scenario-withdrawal.html">8. 출금</a></li>
-<li><a href="scenario-onofframp.html">9. 온·오프램프</a></li>
+<li><a href="scenario-provisioning.html">7. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">8. 입금</a></li>
+<li><a href="scenario-withdrawal.html">9. 출금</a></li>
+<li><a href="scenario-onofframp.html">10. 온·오프램프</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">D. 추상화</h3><ul>
-<li><a href="abstraction.html">10. 벤더 추상화 (기능별 포트)</a></li>
+<li><a href="abstraction.html">11. 벤더 추상화 (기능별 포트)</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. 구현 예시</h3><ul>
-<li><a href="example-fireblocks.html">11. Fireblocks 어댑터</a></li>
-<li><a href="example-selfbuild.html">12. 자체 구축 어댑터</a></li>
+<li><a href="example-fireblocks.html">12. Fireblocks 어댑터</a></li>
+<li><a href="example-selfbuild.html">13. 자체 구축 어댑터</a></li>
+<li><a href="example-nodewallet.html">14. NodeWallet 어댑터</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -55,7 +57,7 @@
 <li><strong>블록체인 매니저 (체인 엔진)</strong> — 멀티체인 어댑터 · 인덱서 · 트랜잭션/Nonce/Broadcast · 서명. 체인과 직접 대화하는 부분으로, <strong>Fireblocks 가 통째로 제공하거나 자체 구축</strong>한다.</li>
 <li><strong>지갑 서비스 백엔드 (벤더 무관 · 항상 내 것)</strong> — API 게이트웨이 · 온체인 정합성·추적 · 이벤트/알림. 블록체인 특화가 아닌 서비스 로직.</li>
 </ul>
-<p>이 두 층을 가르는 경계가 <a href="abstraction.html">10. 추상화</a> 의 기능별 포트(AccountPort·TransferPort·IndexerPort)다.</p>
+<p>이 두 층을 가르는 경계가 <a href="abstraction.html">10. 추상화</a> 의 기능별 포트(AccountPort·TransactionPort·ChainQueryPort)다.</p>
 </div>
 
 <h3>1.1 컴포넌트 한눈에 보기</h3>
@@ -77,7 +79,7 @@
 </table>
 </div>
 
-<p>무게가 큰 5 컴포넌트(멀티체인 어댑터 · 인덱서 · 트랜잭션/Nonce/Broadcast · 서명 · 온체인 정합성)는 전용 상세 페이지에서 "왜 필요 / 어떻게 동작 / 내부 flow / 다른 컴포넌트가 어떻게 쓰는지" 를 깊게 다룬다. 나머지 둘(API 게이트웨이 · 이벤트/알림)은 비교적 얇고 시나리오에서 동작이 드러나므로 여기서 짧게 정리한다. (현금↔코인 전환인 온/오프램프는 수탁 지갑에선 은행 앱의 내부 작업이라 매니저 컴포넌트가 아니다 — <a href="scenario-onofframp.html">9. 온·오프램프</a> 참조)</p>
+<p>무게가 큰 5 컴포넌트(멀티체인 어댑터 · 인덱서 · 트랜잭션/Nonce/Broadcast · 서명 · 온체인 정합성)는 전용 상세 페이지에서 "왜 필요 / 어떻게 동작 / 내부 flow / 다른 컴포넌트가 어떻게 쓰는지" 를 깊게 다룬다. 나머지 둘(API 게이트웨이 · 이벤트/알림)은 비교적 얇고 시나리오에서 동작이 드러나므로 여기서 짧게 정리한다. (현금↔코인 전환인 온/오프램프는 수탁 지갑에선 은행 앱의 내부 작업이라 매니저 컴포넌트가 아니다 — <a href="scenario-onofframp.html">10. 온·오프램프</a> 참조)</p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart TB
