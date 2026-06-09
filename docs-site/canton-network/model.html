@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>1. 원장 모델 — Canton 네트워크 지갑 연동 가이드</title>
+<meta content="Canton 의 원장 모델 — 활성 contract 집합(ACS)과 Holding UTXO 가 EVM 의 계정+nonce 모델과 어떻게 다른지, 잔액과 locked 를 어떻게 읽는지." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Canton 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 원장 모델</h3><ul>
+<li><a class="active" href="model.html">1. 원장 모델 — ACS · Holding UTXO</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 네트워크 동작</h3><ul>
+<li><a href="validator.html">2. Validator · Synchronizer · 확정</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 자산 동작</h3><ul>
+<li><a href="operations.html">3. mint · burn · transfer · fee · cancel</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 인덱서</h3><ul>
+<li><a href="indexer.html">4. 인덱서 구현</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 운영</h3><ul>
+<li><a href="integration.html">5. 직접 구현 vs 운영형(Nodeinfra)</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="model">
+<h2>1. 원장 모델 — ACS · Holding UTXO</h2>
+<span class="section-subtitle">계정 잔액이 아니라 "내가 보유한 활성 contract 집합" 이다 — EVM 과의 첫 번째 큰 차이</span>
+
+<h3>1.1 EVM 의 계정 모델부터</h3>
+
+<p>EVM 에서 잔액은 단순하다. 각 주소마다 "현재 잔액" 이라는 숫자 하나와 "다음 트랜잭션 순번(nonce)" 하나가 글로벌 상태에 들어 있다. 송금은 그 숫자를 깎고 상대 숫자를 올린다. 잔액을 알고 싶으면 노드에 <code>eth_getBalance(주소)</code> 한 번 물으면 끝이다.</p>
+
+<p>Canton 은 이 그림이 통째로 다르다. <strong>"잔액" 이라는 글로벌 숫자가 없다.</strong> 대신 party 가 보유한 <strong>활성 contract 들의 집합</strong>이 곧 상태이고, 토큰 잔액은 그 집합 안의 holding contract 들을 합산해서 얻는다.</p>
+
+<h3>1.2 ACS — 활성 contract 집합이 곧 상태</h3>
+
+<p>Canton 의 원장 상태는 <strong>ACS(Active Contract Set)</strong>다 — 어떤 party 가 현재 보유한 활성 contract 전체의 집합. contract 가 생성되면 ACS 에 들어오고, 소비(archive)되면 ACS 에서 빠진다. 토큰 잔액, 진행 중인 전송, 권한 설정 같은 모든 상태가 contract 형태로 ACS 안에 있다.</p>
+
+<div class="callout">
+<div class="callout-title">한 문장 요약</div>
+<p>EVM: "주소의 잔액 = 글로벌 상태에 적힌 숫자". Canton: "party 의 상태 = 그 party 가 stakeholder 인 활성 contract 들의 집합(ACS)". 잔액은 그 집합에서 <strong>합산해서 도출</strong>하는 값이지, 어딘가 적혀 있는 숫자가 아니다.</p>
+</div>
+
+<p>이 차이는 복구·인덱싱에서 그대로 드러난다. EVM 노드를 잃으면 체인을 다시 동기화하면 잔액이 복원되지만, Canton 에서 validator 를 잃으면 <strong>그 party 의 ACS 를 새 validator 로 가져와(import) re-host</strong> 해야 한다 — 잔액이라는 숫자가 아니라 contract 집합 자체를 옮기는 일이다. (<a href="integration.html">5. 운영</a>의 복구 절차)</p>
+
+<h3>1.3 Holding UTXO — 토큰 잔액의 표현</h3>
+
+<p>토큰 잔액은 ACS 안에서 <strong>Holding<span class="g" data-tip="party 가 보유한 토큰 단위를 나타내는 contract. 잔액은 이 holding 들의 합이다">?</span> contract 들</strong>로 표현된다. 그리고 이 holding 은 비트코인과 같은 <strong>UTXO<span class="g" data-tip="Unspent Tx Output — 잔액을 하나의 숫자가 아니라 '쓰지 않은 출력' 조각들의 집합으로 보는 모델. 비트코인이 대표적">?</span> 모델</strong>이다. 즉 "100 USDCx" 가 한 칸에 적힌 게 아니라, 예컨대 60 + 40 처럼 여러 holding 조각으로 나뉘어 있을 수 있고, 잔액은 그 조각들의 합이다.</p>
+
+<p>각 holding 은 <strong>가용(available)</strong>이거나 <strong>잠김(locked)</strong> 상태다. 전송을 개시하면 해당 자금 holding 이 locked 로 묶인다(<a href="operations.html">3. 자산 동작</a>의 2-step transfer). 조회할 때 이 둘을 구분해서 봐야 한다.</p>
+
+<pre><code>// holdings 조회 — 가용분만
+sdk.token.utxos.list({ partyId, includeLocked: false })   // 지금 쓸 수 있는 holding
+
+// locked 포함 전체
+sdk.token.utxos.list({ partyId, includeLocked: true })    // 진행 중 전송에 묶인 것까지
+
+// "잔액" 은 조회 결과를 합산해 도출하는 값이다 (글로벌 숫자가 아님)
+const available = sum(list({ includeLocked: false }))
+const total     = sum(list({ includeLocked: true }))
+const locked    = total - available</code></pre>
+
+<div class="callout callout-warn">
+<div class="callout-title">"잔액" 을 단일 숫자로 캐싱하면 틀린다</div>
+<p>EVM 처럼 "주소→잔액 숫자" 를 캐싱하는 모델을 그대로 옮기면, Canton 의 <strong>가용/locked 구분</strong>과 <strong>UTXO 조각 구조</strong>를 잃는다. 출금 가능액은 <code>includeLocked:false</code> 의 합이지 전체 합이 아니며, 큰 출금은 여러 holding 조각을 모아야 할 수 있다. 인덱서는 잔액을 숫자가 아니라 <strong>holding 집합</strong>으로 들고 있어야 한다. (<a href="indexer.html">4. 인덱서</a>)</p>
+</div>
+
+<h3>1.4 한 눈 비교 — EVM 계정 vs Canton ACS/UTXO</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:20%">관심사</th><th>EVM 계정 모델</th><th>Canton (ACS + Holding UTXO)</th></tr></thead>
+<tbody>
+<tr><td>잔액의 정체</td><td>글로벌 상태의 숫자 하나</td><td>holding 조각들의 합 (도출값)</td></tr>
+<tr><td>잔액 조회</td><td><code>eth_getBalance(주소)</code> 1회</td><td>holding 목록 조회 후 합산 (가용/locked 구분)</td></tr>
+<tr><td>송금 직렬화</td><td>주소별 nonce 순번</td><td>nonce 없음 — Synchronizer Sequencer 가 순서화 (<a href="validator.html">2장</a>)</td></tr>
+<tr><td>"묶인 돈" 개념</td><td>없음 (보내면 즉시 차감)</td><td>locked holding — 진행 중 2-step 전송에 묶임</td></tr>
+<tr><td>큰 금액 보내기</td><td>잔액만 충분하면 한 번에</td><td>여러 holding 조각을 모아야 할 수 있음 (UTXO)</td></tr>
+<tr><td>상태 복구</td><td>체인 재동기화</td><td>party 의 ACS import + 새 validator 에 re-host</td></tr>
+<tr><td>프라이버시</td><td>전체 공개 (누구나 잔액 조회)</td><td>stakeholder 만 해당 contract 가시 (sub-transaction privacy)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>1.5 코드로 보면 — 잔액을 holding 집합으로</h3>
+
+<p>설명용 의사코드다. 멀티체인 어댑터가 Canton 을 흡수할 때, EVM 어댑터가 <code>getBalance → 숫자</code> 를 돌려주는 것과 달리 Canton 어댑터는 내부적으로 holding 집합을 다뤄 정규화한다.</p>
+
+<pre><code>class CantonLedgerModel {
+  // 잔액은 조회가 아니라 합산 — 가용/locked 를 함께 돌려줘 위 컴포넌트가 출금 가능액을 안다
+  getBalance(partyId, asset) {
+    const all       = ledger.holdings(partyId, asset, { includeLocked: true })
+    const available = all.filter(h =&gt; !h.locked)
+    return {
+      total:     sum(all),
+      available: sum(available),    // 출금 가능액 = 이 값
+      locked:    sum(all) - sum(available),
+      utxos:     available,          // 조각 목록 — 큰 출금 시 coin-select 대상
+    }
+  }
+
+  // 큰 금액 = 여러 holding 조각을 모음 (UTXO coin-select 와 같은 발상)
+  selectHoldings(partyId, asset, amount) {
+    const utxos = this.getBalance(partyId, asset).utxos
+    return coinSelect(utxos, amount)   // 합이 amount 이상이 되도록 조각 선택
+  }
+}</code></pre>
+
+<div class="callout">
+<div class="callout-title">설계 포인트</div>
+<ul>
+<li><strong>잔액 = {total, available, locked, utxos}</strong> — 단일 숫자로 축약하지 말 것. 출금 판단은 <code>available</code> 로, 조립은 <code>utxos</code> 로 한다.</li>
+<li><strong>locked 는 일시적 상태</strong> — 진행 중인 2-step 전송이 ACCEPT/REJECT/WITHDRAW 로 끝나면 풀린다. 인덱서는 이 전이를 추적해 locked 를 갱신한다(<a href="indexer.html">4. 인덱서</a>).</li>
+<li><strong>PartyId 는 파싱하지 말 것</strong> — <code>hint::fingerprint</code> 형식이지만 opaque identifier 다. 주소처럼 조립·해석하지 말고 allocation 결과를 그대로 키로 쓴다(<a href="validator.html">2장</a>).</li>
+</ul>
+</div>
+
+<p>다음 — <a href="validator.html"><strong>2. Validator · Synchronizer · 확정</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

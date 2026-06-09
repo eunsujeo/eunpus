@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>2. Validator · Synchronizer · 확정 — Canton 네트워크 지갑 연동 가이드</title>
+<meta content="Canton 의 네트워크 동작 — party 와 participant(validator) 의 관계, Synchronizer(Sequencer+Mediator) 가 거래를 순서화·확정하는 2-phase commit 흐름, 확정을 언제로 봐야 하는가." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Canton 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 원장 모델</h3><ul>
+<li><a href="model.html">1. 원장 모델 — ACS · Holding UTXO</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 네트워크 동작</h3><ul>
+<li><a class="active" href="validator.html">2. Validator · Synchronizer · 확정</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 자산 동작</h3><ul>
+<li><a href="operations.html">3. mint · burn · transfer · fee · cancel</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 인덱서</h3><ul>
+<li><a href="indexer.html">4. 인덱서 구현</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 운영</h3><ul>
+<li><a href="integration.html">5. 직접 구현 vs 운영형(Nodeinfra)</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="validator">
+<h2>2. Validator · Synchronizer · 확정</h2>
+<span class="section-subtitle">누가 거래를 검증하고, 무엇이 순서를 정하며, 확정은 언제인가 — EVM 의 "블록 N개 확인" 과 다른 그림</span>
+
+<h3>2.1 party · participant · validator — 셋의 관계</h3>
+
+<p>Canton 의 등장인물부터 정리한다. EVM 의 "주소 = 키쌍" 단순함과 달리 Canton 은 세 층위가 있다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:22%">개념</th><th>무엇</th><th>EVM 대응(억지로 비유하면)</th></tr></thead>
+<tbody>
+<tr><td><strong>party</strong></td><td>거래 주체(논리적 신원). 자산을 보유하고 전송을 개시·수락하는 단위. PartyId = <code>hint::fingerprint</code></td><td>"계정 주소" 에 가깝지만 키가 아니라 신원</td></tr>
+<tr><td><strong>participant node</strong></td><td>party 를 host 하는 실제 노드. Ledger API 를 제공하고 거래를 검증한다. <strong>= validator</strong></td><td>"내가 운영하는 풀노드" 에 가까움</td></tr>
+<tr><td><strong>Synchronizer</strong></td><td>모든 participant 가 공유하는 동기화 계층. Sequencer + Mediator</td><td>"합의 계층" 에 해당하지만 검증은 안 함</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>핵심: <strong>한 party 는 하나 이상의 participant 에 host 된다.</strong> 우리가 수탁 지갑으로 어떤 고객의 party 를 다룬다는 건, 그 party 가 우리(또는 우리가 위탁한) participant node 에 host 되어 있다는 뜻이다. validator 를 잃으면 그 party 의 ACS 를 새 participant 로 옮겨 re-host 해야 하는 이유가 여기 있다(<a href="integration.html">5. 운영</a>).</p>
+
+<div class="callout">
+<div class="callout-title">PartyId 는 키가 아니라 신원이다</div>
+<p>PartyId 의 <code>fingerprint</code> 부분은 그 party 의 topology 변경을 authorize 하는 <strong>공개키의 fingerprint(sha256)</strong>다. 즉 신원과 서명 권한이 묶여 있다. 하지만 PartyId 자체는 <strong>opaque identifier</strong> — 앱이 <code>hint</code> 와 <code>fingerprint</code> 를 파싱·조립하면 안 되고, allocation 으로만 생성한다(주소 발급은 <a href="operations.html">3. 자산 동작</a>).</p>
+</div>
+
+<h3>2.2 Synchronizer — Sequencer 와 Mediator</h3>
+
+<p>EVM 에서는 채굴자/검증자가 트랜잭션을 모아 블록을 만들고, 그 블록이 쌓이며 확정된다. Canton 에는 그런 "블록 생산자" 가 없다. 대신 <strong>Synchronizer</strong> 가 두 가지 일을 한다.</p>
+
+<ul>
+<li><strong>Sequencer(순서화)</strong> — participant 노드들 사이의 통신을 <strong>순서화·기밀</strong>로 중계한다. atomic multicast 로 메시지를 전달하고, 일관된 순서와 timestamp 를 부여한다. "누가 먼저 보냈나" 를 정하는 게 이 역할이다. <strong>거래 내용을 검증하지는 않는다.</strong></li>
+<li><strong>Mediator(확정 집계)</strong> — 해당 거래의 이해관계자(stakeholder) participant 들이 보낸 <strong>confirmation 을 집계</strong>해 <strong>2-phase commit</strong> 으로 거래를 승인하거나 거절한다. 원자성과 프라이버시를 보장한다.</li>
+</ul>
+
+<p>검증 책임은 <strong>거래의 이해관계자 participant(validator)에게</strong> 있다 — Synchronizer 자체는 검증하지 않는다. 이게 프라이버시의 핵심이다: 무관한 노드는 거래 내용을 받지도, 검증하지도 않는다.</p>
+
+<h3>2.3 거래 확정 흐름 — 2-phase commit</h3>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    SUB["① 송신 participant<br/>거래 제출<br/>(submission request)"]
+    SEQ["② Sequencer<br/>순서화 + timestamp<br/>관련 participant 에게 전달"]
+    CONF["③ 이해관계자 participant 들<br/>각자 거래 검증<br/>confirmation 응답"]
+    MED{"④ Mediator<br/>confirmation 집계<br/>2-phase commit"}
+    OK["✅ 확정<br/>(committed)<br/>ACS 갱신 · 자금 이동"]
+    NG["❌ 거절<br/>(rejected)<br/>상태 변화 없음"]
+
+    SUB --> SEQ --> CONF --> MED
+    MED -->|모든 confirmation 충족| OK
+    MED -->|불충족 · 충돌 · 권한 실패| NG
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+    classDef wait fill:#fef3c7,stroke:#d97706;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    class SUB,SEQ wait;
+    class CONF wait;
+    class MED special;
+    class OK good;
+    class NG bad;
+</pre></div>
+<p class="diagram-caption">Figure 2-1. 거래 확정 흐름. <strong>노랑 = 진행 중</strong>(제출 → Sequencer 순서화 → 이해관계자 검증). <strong>보라 = Mediator 의 2-phase commit 판정</strong>. <strong>초록 = 확정</strong>(committed — ACS 가 갱신되고 자금이 실제로 이동), <strong>빨강 = 거절</strong>(rejected — 상태 변화 없음). EVM 의 "블록에 들어가고 N개 더 쌓이면 확정" 과 달리, Canton 은 <strong>Mediator 가 commit 을 내는 순간이 확정 지점</strong>이다. 단 이 한 번의 확정이 끝났다고 2-step 전송 전체가 끝난 건 아니다 — 이건 "OFFER 가 원장에 올라간" 확정일 수 있고, 자금이 수신자에게 가려면 별도의 ACCEPT 거래가 또 한 번 이 흐름을 탄다(<a href="operations.html">3. 자산 동작</a>).</p>
+
+<h3>2.4 확정을 언제로 봐야 하는가</h3>
+
+<p>EVM 에서는 "몇 블록 확인(confirmation)을 기다릴지" 를 우리가 정한다(예: 12블록). Canton 은 다르다 — <strong>Mediator 가 commit 을 내면 그 거래는 확정</strong>이고, 재구성(reorg)으로 뒤집히는 모델이 아니다. 그래서 "N블록 대기" 라는 개념 자체가 없다.</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">확정까지 걸리는 정확한 시간 — 확인 필요</div>
+<p>메커니즘(Mediator 2-phase commit)은 1차 문서로 확정했지만, <strong>확정까지 걸리는 정확한 시간 수치</strong>는 직접 확인한 공식 페이지(subnet overview · canton-network-overview · sync.global FAQ) 어디에도 명시돼 있지 않다. "수 초" 규모라는 인상은 검색 요약과 활용 사례(Musubi 의 약 15초 end-to-end 결제 등)에서 오는 것이고, 네트워크/구성에 따라 달라진다. <strong>실제 적용 환경에서 직접 측정</strong>해 SLA 를 잡는 것을 권한다.</p>
+</div>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">관심사</th><th>EVM</th><th>Canton</th></tr></thead>
+<tbody>
+<tr><td>"블록" 의 정체</td><td>트랜잭션 묶음, 일정 간격 생산</td><td>명시적 블록 생산자 없음 — Sequencer 가 순서·timestamp 부여</td></tr>
+<tr><td>확정 판단</td><td>N 블록 더 쌓일 때까지 대기</td><td>Mediator 가 commit 내는 순간</td></tr>
+<tr><td>재구성(reorg)</td><td>가능 — 그래서 N블록 대기</td><td>해당 모델 아님 — commit = 확정</td></tr>
+<tr><td>검증 주체</td><td>모든 검증자가 모든 거래</td><td>거래의 이해관계자 participant 만</td></tr>
+<tr><td>확정 시간</td><td>체인별 알려진 값</td><td><strong>확인 필요</strong> — 환경에서 측정 권장</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">설계 포인트</div>
+<ul>
+<li><strong>"N블록 대기" 로직을 Canton 어댑터에 넣지 말 것</strong> — 확정은 commit 이벤트로 온다. 인덱서는 블록 높이를 세는 게 아니라 Ledger API 의 거래 완료 이벤트를 받는다(<a href="indexer.html">4. 인덱서</a>).</li>
+<li><strong>commit ≠ 전송 완료</strong> — 2-step 전송에서는 OFFER commit, ACCEPT commit 이 각각 따로 확정된다. "확정됐다" 를 "돈이 상대에게 갔다" 로 착각하지 말 것(<a href="operations.html">3. 자산 동작</a>).</li>
+<li><strong>확정 시간은 측정값으로</strong> — 코드/문서에 임의 수치를 박지 말고, 운영 환경에서 측정한 값으로 SLA·타임아웃을 잡는다.</li>
+</ul>
+</div>
+
+<p>다음 — <a href="operations.html"><strong>3. mint · burn · transfer · fee · cancel</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

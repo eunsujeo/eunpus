@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>4. 인덱서 구현 — Canton 네트워크 지갑 연동 가이드</title>
+<meta content="Canton 인덱서 구현 — ACS/Holding UTXO 를 어떻게 읽고, Ledger API 거래 스트림으로 2-step 전송 lifecycle 과 입금을 어떻게 추적하는지. EVM 인덱서와의 차이." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Canton 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 원장 모델</h3><ul>
+<li><a href="model.html">1. 원장 모델 — ACS · Holding UTXO</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 네트워크 동작</h3><ul>
+<li><a href="validator.html">2. Validator · Synchronizer · 확정</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 자산 동작</h3><ul>
+<li><a href="operations.html">3. mint · burn · transfer · fee · cancel</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 인덱서</h3><ul>
+<li><a class="active" href="indexer.html">4. 인덱서 구현</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 운영</h3><ul>
+<li><a href="integration.html">5. 직접 구현 vs 운영형(Nodeinfra)</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="indexer">
+<h2>4. 인덱서 구현</h2>
+<span class="section-subtitle">블록 높이를 세는 게 아니라, Ledger API 거래 스트림으로 ACS 변화와 2-step lifecycle 을 따라간다</span>
+
+<h3>4.1 EVM 인덱서와 무엇이 다른가</h3>
+
+<p>EVM 인덱서는 보통 이렇게 동작한다 — 블록을 높이 순으로 가져와, 우리 주소가 관련된 트랜잭션·로그를 디코딩하고, N블록 확인을 기다려 입금을 확정한다. 핵심은 "블록 높이를 따라가며 폴링" 이다.</p>
+
+<p>Canton 인덱서는 전제가 다르다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">관심사</th><th>EVM 인덱서</th><th>Canton 인덱서</th></tr></thead>
+<tbody>
+<tr><td>데이터 출처</td><td>블록·로그 (RPC <code>eth_getLogs</code> 등)</td><td>Ledger API 의 거래·이벤트 스트림 (offset 기반)</td></tr>
+<tr><td>진행 위치</td><td>블록 높이(block number)</td><td>ledger offset</td></tr>
+<tr><td>확정 판단</td><td>N블록 확인 대기</td><td>거래 완료(commit) 이벤트 = 확정 (<a href="validator.html">2장</a>)</td></tr>
+<tr><td>"내 거래만"</td><td>주소 필터로 로그 스캔</td><td>프라이버시 — 우리 party 가 stakeholder 인 것만 애초에 보임</td></tr>
+<tr><td>잔액 산출</td><td>주소 잔액 숫자</td><td>Holding UTXO 집합 합산 (가용/locked)</td></tr>
+<tr><td>추적 대상</td><td>tx 성공/실패</td><td>+ 2-step lifecycle (OFFER→ACCEPT/REJECT/WITHDRAW)</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">한 문장 요약</div>
+<p>EVM 인덱서 = "블록 높이를 따라가며 우리 주소 로그를 줍는다". Canton 인덱서 = "<strong>ledger offset 을 따라가며, 우리 party 가 stakeholder 인 거래 스트림을 받아 ACS 변화와 2-step 상태를 갱신한다</strong>". 프라이버시 덕에 남의 거래를 필터링할 필요가 애초에 없다.</p>
+</div>
+
+<h3>4.2 무엇을 읽는가 — 두 갈래</h3>
+
+<p>Canton 인덱서가 다루는 입력은 크게 둘이다.</p>
+
+<ul>
+<li><strong>ACS 스냅샷</strong> — 특정 시점 우리 party 의 활성 contract 전체. 시작·복구 시 기준선(baseline)을 잡는다(<a href="model.html">1. 원장 모델</a>).</li>
+<li><strong>거래 스트림(updates)</strong> — 그 이후의 변화를 ledger offset 순서로 받는다. 각 거래는 어떤 contract 가 생성(created)되고 archive 됐는지를 담는다. 여기서 입금·전송 상태 전이를 읽는다.</li>
+</ul>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    BASE["① ACS 스냅샷<br/>(기준선)<br/>현재 holding 집합"]
+    STREAM["② 거래 스트림<br/>(offset 순)<br/>created / archived"]
+    APPLY["③ 상태 적용<br/>holding 갱신<br/>2-step 상태 전이"]
+    STORE["④ 인덱스 저장소<br/>holding 집합 · 전송 lifecycle<br/>last offset"]
+    EMIT["⑤ 이벤트 emit<br/>입금 확정 · 전송 완료<br/>→ 지갑 백엔드"]
+
+    BASE --> APPLY
+    STREAM --> APPLY --> STORE
+    APPLY --> EMIT
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef adp fill:#dbeafe,stroke:#2563eb;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    class BASE,STREAM adp;
+    class APPLY special;
+    class STORE,EMIT good;
+</pre></div>
+<p class="diagram-caption">Figure 4-1. Canton 인덱싱 흐름. <strong>파랑 = 입력</strong>(ACS 스냅샷으로 기준선, 거래 스트림으로 변화). <strong>보라 = 상태 적용</strong>(created/archived 를 holding 집합에 반영, OFFER→ACCEPT 같은 2-step 전이 추적). <strong>초록 = 출력</strong>(인덱스 저장 + last offset 체크포인트, 그리고 입금 확정·전송 완료를 지갑 백엔드로 emit). EVM 의 "블록 높이 체크포인트" 자리에 <strong>ledger offset 체크포인트</strong>가 들어간다 — 재시작하면 마지막 offset 부터 이어 받는다.</p>
+
+<h3>4.3 코드로 보면 — offset 스트림 + holding/lifecycle 갱신</h3>
+
+<p>설명용 의사코드다. 두 단계 — ① 기준선 ACS, ② offset 순 스트림을 받아 holding 과 2-step 상태를 갱신한다.</p>
+
+<pre><code>class CantonIndexer {
+  async start(partyId) {
+    // ① 기준선 — 현재 holding 집합 (가용/locked)
+    const acs = await ledger.activeContracts(partyId)
+    this.holdings = indexHoldings(acs)              // assetId → Holding UTXO 집합
+    let offset = await store.lastOffset(partyId) ?? acs.offset
+
+    // ② 그 이후 변화를 offset 순으로 스트림
+    for await (const update of ledger.updates(partyId, { fromOffset: offset })) {
+      this.apply(update)
+      await store.saveOffset(partyId, update.offset)  // 체크포인트 (재시작 안전)
+    }
+  }
+
+  apply(update) {
+    for (const ev of update.events) {
+      if (ev.kind === "created"  &amp;&amp; isHolding(ev))  this.addHolding(ev)      // 입금/mint
+      if (ev.kind === "archived" &amp;&amp; isHolding(ev))  this.removeHolding(ev)   // 출금/burn/소비
+      if (isTransferInstruction(ev)) this.applyTransferLifecycle(ev)         // 2-step
+    }
+  }
+
+  // 2-step 상태기계 — 제출(Pending)이 완료가 아님 (3. 자산 동작)
+  applyTransferLifecycle(ev) {
+    switch (ev.choice) {
+      case "Offer":    this.markPending(ev);   this.lockHolding(ev) ; break  // 송신 자금 locked
+      case "Accept":   this.markCompleted(ev); this.emit("transfer_completed", ev); break
+      case "Reject":   this.markReturned(ev);  this.unlockHolding(ev); break
+      case "Withdraw": this.markWithdrawn(ev);  this.unlockHolding(ev); break
+    }
+  }
+}</code></pre>
+
+<div class="callout callout-warn">
+<div class="callout-title">입금 감지 = created holding 이벤트</div>
+<p>EVM 입금은 "우리 주소로 들어온 Transfer 로그" 지만, Canton 입금은 <strong>우리 party 를 stakeholder 로 하는 holding contract 가 created</strong> 되는 사건이다. 단 2-step 이라, 들어오는 전송은 먼저 OFFER(Pending)로 보이고 <strong>우리가(또는 pre-approval 이) ACCEPT 해야 실제 holding 이 created</strong> 된다. "OFFER 가 보였다 = 입금 확정" 으로 착각하면 안 된다 — 확정은 ACCEPT 후 holding created 시점이다.</p>
+</div>
+
+<h3>4.4 멱등·재시작·잔액 산출</h3>
+
+<ul>
+<li><strong>offset 체크포인트로 재시작 안전.</strong> 마지막 처리 offset 을 저장하고, 재시작 시 그 다음부터 받는다. 같은 거래를 두 번 받아도 contract id 기준으로 멱등 처리한다(이미 반영한 created/archived 는 무시).</li>
+<li><strong>잔액은 숫자가 아니라 holding 집합.</strong> 인덱스 저장소는 assetId 별 Holding UTXO 집합을 들고, 가용/locked 를 구분한다. 출금 가능액은 가용 holding 합, 큰 출금은 조각을 모은다(<a href="model.html">1. 원장 모델</a>).</li>
+<li><strong>2-step 상태를 1급 시민으로.</strong> 전송 lifecycle(Pending/Completed/Rejected/Withdrawn)을 인덱스에 저장해, "묶인 돈" 과 "대기 중 전송" 을 지갑 백엔드가 조회할 수 있게 한다.</li>
+<li><strong>확정 = 완료 이벤트.</strong> N블록 대기 로직은 없다. commit 된 거래 이벤트가 곧 확정이다(<a href="validator.html">2장</a>).</li>
+</ul>
+
+<div class="callout">
+<div class="callout-title">설계 포인트 — 멀티체인 인덱서에 끼워 넣기</div>
+<p>여러 체인을 다루는 인덱서라면, Canton 은 "블록 폴링" 계열이 아니라 <strong>"offset 스트림" 계열의 소스</strong>로 따로 둔다. 공통 인덱서 코어가 "입금 확정 / 전송 완료 / 잔액 변동" 같은 정규화된 이벤트만 받게 하고, ACS·offset·2-step 같은 Canton 특유의 메커니즘은 <code>CantonSource</code> 안에 가둔다. EVM 의 <code>blockNumber</code> 자리에 Canton 은 <code>offset</code> 을, "N블록 확인" 자리에 "commit 이벤트" 를 매핑하는 식이다.</p>
+</div>
+
+<p>다음 — <a href="integration.html"><strong>5. 직접 구현 vs 운영형(Nodeinfra)</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
