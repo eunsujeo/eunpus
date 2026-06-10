@@ -54,3 +54,5 @@ note: 500+ 페이지 중 수탁형 Canton 위키 관련 묶음만 추적. Daml s
 ## 진행 로그
 - **Stage 57 (batch1, 수탁직결 6)** ✅ crypto-schemes · external-signing · external-signing-hashing-algorithm · exchange-integration · proof-of-transfer · wallet-gateway/signing-providers
   - 신규: 알고리즘 1차 확정(Ed25519/ECDSA-SHA256/SHA-256) · 외부서명 해시식(sha256(0x00000030‖0x03‖…)) · 서명 프로바이더(Fireblocks/Dfns/Blockdaemon) · proof-of-transfer+pruning(UpdateID 영속화 필수) · 거래소 omnibus(treasuryParty, <100 UTXO/transfer)
+- **Stage 58 (batch2, 운영 6)** ✅ key-management · kms-operations · party-management · multi-sig · node-backup-restore · exchanges/guidance
+  - 신규: root/intermediate 키 계층(root offline/air-gap) · KMS(AWS/GCP/Driver, envelope vs full) · n-of-m 멀티시그(3-of-5 PartyToParticipant, multi-host threshold, decentralized namespace) · PartyToParticipant permission(Submission/Confirmation/Observation) · 백업 순서(participant 먼저)·synchronous replication

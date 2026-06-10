@@ -120,6 +120,22 @@
 </div>
 
 <div class="callout">
+<div class="callout-title">루트 키는 오프라인, 운영 키는 KMS — CA 식 계층</div>
+<p>키는 평면적이지 않다. <strong>root namespace key</strong> 는 신원의 뿌리라 <strong>오프라인(air-gap) 또는 KMS 로 격리</strong>해 두고, 평소 topology 변경은 그 아래 <strong>intermediate key</strong>(노드에 두고 root 없이 교체 가능)로 서명한다 — 루트 CA 는 금고에, 발급용 중간 인증서는 온라인에 두는 PKI 와 같은 발상이다. KMS 는 <strong>AWS·GCP·드라이버(HSM)</strong> 를 지원하고, <strong>envelope</strong>(키는 Canton 이 만들고 KMS 가 감싸 보관) 와 <strong>full KMS</strong>(키 생성·보관 전부 KMS, <strong>Canton 이 원본 개인키를 못 봄</strong>) 두 모드가 있다.</p>
+</div>
+
+<div class="callout">
+<div class="callout-title">n-of-m 다중서명 — 수탁 승인 정족수</div>
+<p>은행 수탁이라면 "한 키 = 한 서명" 이 아니라 <strong>여러 키의 정족수(quorum)</strong>로 자금을 움직이고 싶을 것이다. Canton 은 세 층위로 이를 지원한다.</p>
+<ul>
+<li><strong>제출 키 임계값</strong> — <code>PartyToParticipant</code> 에 Protocol Signing Key 목록과 임계값(예: <strong>3 of 5</strong>)을 둬, 제출 노드가 서명을 모아 임계값을 채워야 거래가 나간다.</li>
+<li><strong>다중 host 확인 임계값</strong> — party 를 여러 validator 에 host 하고, 그 중 임계값(>1) 이상이 확인해야 그 party 의 확인으로 친다(탈중앙 party).</li>
+<li><strong>탈중앙 namespace</strong> — N개 키 중 T개(T≤N) 서명으로 신원 권한을 행사.</li>
+</ul>
+<p>Fireblocks 의 TAP·승인 정족수(quorum) 같은 거버넌스를 Canton 에선 <strong>키 분산 + 임계값</strong>으로 구현하는 셈이다.</p>
+</div>
+
+<div class="callout">
 <div class="callout-title">party 는 계정당 하나 — 입금마다 새로 만들지 말 것</div>
 <p>EVM 수탁 지갑은 흔히 "사용자(또는 입금)마다 새 주소" 를 발급한다. Canton 에서는 이 습관을 버려야 한다. party allocation 에는 비용이 따르므로, 공식 가이드는 <strong>"계정/지갑당 party 하나(one Party per account/wallet)"</strong> 를 안정적으로 두라고 권한다 — <strong>입금 건마다 임시 party 를 만들지 말 것</strong>. 입금자 구분은 별도 주소가 아니라 memo 태그로 한다(<a href="indexer.html">4. 인덱서</a>). PartyId 는 <code>name::fingerprint</code> 형식에 최대 185자다. 백업·이중화를 위해 같은 party 를 여러 validator 에 multi-host 할 수 있다(<a href="integration.html">5. 운영</a>).</p>
 </div>

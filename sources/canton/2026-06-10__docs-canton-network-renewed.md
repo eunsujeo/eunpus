@@ -241,3 +241,14 @@ source: docs.canton.network/overview/understand/core-concepts · overview/learn/
 - **D. Canton Console** (console-overview): participant/sequencer/mediator 프로세스에 직접 붙는
   **운영자 CLI**(debugging·disaster recovery·repair). `enable-preview/testing/repair-commands` 플래그.
   런타임 Ledger API 와 별개 — 5장 복구 절차가 도는 도구.
+
+## (13) 운영 batch (key-management·kms-operations·party-management·multi-sig·node-backup-restore·exchanges/guidance) — Stage 58
+
+source: global-synchronizer/production-operations/{key-management,kms-operations,party-management,multi-sig,node-backup-restore} · integrations/exchanges/guidance
+
+- **키 계층 (key-management)**: 4종(signing·encryption·**namespace**·session). **root-intermediate 계층** — root namespace key 는 primary identity, **offline/air-gap 또는 KMS 격리 가능**(`init.identity.type=manual`, `scripts/offline-root-key`); intermediate key 는 노드에서 topology authorize, root 없이 rotation. **delegation restriction** 으로 intermediate key 가 서명 가능한 topology mapping 종류 제한(blast-radius↓). signing key usage = Namespace/SequencerAuthentication/Protocol(생성 시 고정·immutable). rotation = 신규 활성→구 비활성, namespace 제외, backup 과 interleave. session key: enc 10s·sign(KMS) 5min.
+- **KMS (kms-operations)**: 프로바이더 **AWS KMS · GCP KMS · Driver(커스텀 KMS/HSM)**. AWS/GCP 는 Enterprise Edition. 2 모드: **envelope**(Canton 이 키 생성, KMS 가 at-rest wrapper 로만 보호, DB 에 암호화 저장) vs **full KMS**(`crypto.provider=kms`, 키 생성·저장 전부 KMS, **Canton 이 raw private key 를 못 봄**). rotation rotate_wrapper_key()/rotate_kms_node_key().
+- **party-management**: allocate(`parties.allocate()`/`enable()`). **PartyToParticipant permission = Submission/Confirmation/Observation**. replication 2종: simple(미거래 party, 양측 PartyToParticipant 상호 authorize) vs **offline**(거래 이력 있으면 ACS export→disconnect→import→reconnect = 복구 흐름). decentralized party = PartyToKey + DecentralizedNamespaceDefinition. cmd: export/import_party_acs, clear_party_onboarding_flag.
+- **multi-sig (수탁 quorum)**: 3 층 — ① decentralized namespace(N keys, threshold T≤N) ② multi-hosted party confirmation threshold(>1) ③ **external multi-sig: PartyToParticipant 에 Protocol Signing Keys 목록 + threshold(예 3 of 5), submitting node 가 서명 모아 threshold 충족 시 제출**. → Fireblocks TAP/quorum 류 n-of-m 승인과 매핑.
+- **node-backup-restore**: DB(Postgres/Oracle, 키 포함) 백업. **순서: mediator/participant 를 synchronizer 보다 먼저**(아니면 ForkHappened 재연결 불가), app state 는 participant 보다 먼저. 복구 후 caveat: command dedup 불완전(synchronizer timestamp > stop+tolerance 까지 재제출 위험), app state reset, local config(연결·user·party replication) 수동 재적용. **synchronous replication 강력 권장**(offsite, failover 무손실).
+- **exchanges/guidance**: batch1 exchange-integration 과 대부분 중복 확정(<100 UTXO·memo·treasuryParty·TransferFactory_Transfer·trecTgt·/v2/updates/flats). 신규: integration DB 가 latest update-id/recordTime/offset/synchronizerId·pending/완료 withdrawal·reserved UTXO·customer-holding 매핑·registry URL 보관. 1-step 파싱 = `meta.splice.lfdecentralizedtrust.org/tx-kind:"transfer"`.
