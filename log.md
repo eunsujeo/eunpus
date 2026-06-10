@@ -7034,3 +7034,8 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
   - "조립은 utxos 로" 불명 → 설계 포인트 bullet 평이하게 재서술(판단=available 합계, 조립=조각 골라 씀, 비트코인 coin-select 예)
   - 2.1 셋의 관계 감 안 잡힘 → Figure 2-0 + 국내은행 A ↔ 해외은행 B 예시 + "셋의 관계 한 줄" 콜아웃
 - presentation only(사실 변경 없음), check-consistency PASS. model.html 첫 mermaid·애니메이션 도입
+
+## Stage 69 (2026-06-10) — 0. Canton 개요 리뷰: "용어 먼저" 프라이머 추가
+- 사용자 리뷰: Canton 모르는 상태에서 party/participant/Synchronizer 가 정의 없이 나와 어려움 + "UTXO 형 holdings"·"contract" 가 뭔지 불명
+- 0.1 에 **"먼저 — 용어 6개 (1분)" 콜아웃** 추가: contract(상태 한 조각, created/archived) · ACS(보유 contract 묶음=현재 상태) · holding(UTXO형, 잔액=조각 합) · party(신원) · participant=validator(검증 노드) · Synchronizer(공용 합의). 각 항목에 1·2장 포인터. "구조 요약" 문장을 프라이머 뒤로 배치 + holding tooltip 보강
+- presentation only, check PASS
