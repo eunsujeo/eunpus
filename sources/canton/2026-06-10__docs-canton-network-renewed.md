@@ -195,3 +195,17 @@ source: https://docs.canton.network/integrations/wallet/guidance.md
 - **운영**: DevNet/TestNet/MainNet **3 환경** 운영(업그레이드 테스트). 로컬은 `/v2/state/ledger-end`,
   파트너 대사는 synchronizer `recordTime`. prepare 응답을 서명 전 독립적으로 hash 재계산해 검증.
   멱등 retry 는 submission ID dedup.
+
+## (11) Architecture (overview/learn/architecture) — 검증 + 소량 신규 — Stage 55
+
+source: https://docs.canton.network/overview/learn/architecture.md
+
+- 대부분 기존 promote 와 중복(participant=validator·Sequencer/Mediator·party·Daml·local 원장·
+  coordination vs storage 분리 모두 재확인). 신규 2건만:
+- **프라이버시 작동 방식 = sub-transaction "views"**: "Transaction is decomposed into **views**, each
+  party sees only their view". Synchronizer 는 내용을 복호화하지 않고 암호화 메시지만 순환 — 우리가
+  담았던 "당사자만 본다" 결론의 *메커니즘*. party = "Canton's on-ledger identities, analogous to
+  addresses or externally owned accounts".
+- **Synchronizer 토폴로지 옵션**: single synchronizer / multiple synchronizers / global synchronizer
+  구성 모두 지원(우리는 global synchronizer 만 다뤘음).
+- finality/throughput 수치: 이 페이지에도 없음(일관).

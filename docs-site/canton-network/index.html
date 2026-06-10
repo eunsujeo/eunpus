@@ -32,6 +32,9 @@
 <div class="nav-section"><h3 class="nav-section-title">E. 운영</h3><ul>
 <li><a href="integration.html">5. 직접 구현 vs 운영형(Nodeinfra)</a></li>
 </ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 수탁 통합</h3><ul>
+<li><a href="custody.html">6. 수탁 통합 — wallet/guidance</a></li>
+</ul></div>
 </nav>
 </aside>
 
@@ -129,6 +132,7 @@ flowchart TB
 <li><strong>3. mint · burn · transfer · fee · cancel</strong> — 자산이 생기고(mint) 사라지고(burn) 옮겨지는(transfer 2-step) 동작, traffic 수수료, 취소(Withdraw) — 각각 EVM 대비.</li>
 <li><strong>4. 인덱서 구현</strong> — ACS/UTXO 를 어떻게 읽고, Ledger API 이벤트 스트림으로 2-step lifecycle 을 어떻게 추적하는지. EVM 인덱서와의 차이.</li>
 <li><strong>5. 직접 구현 vs 운영형(Nodeinfra)</strong> — validator participant 를 직접 운영할 때와 관리형으로 위탁할 때의 책임·복구·trade-off.</li>
+<li><strong>6. 수탁 통합 — wallet/guidance</strong> — 공식 지갑 통합 가이드의 수탁 요건을 한 데 모은 체크리스트. 입금(memo 태그)·party 운용·전송 API·입금 확인·운영을 앞 장들과 연결.</li>
 </ul>
 
 <p>다음 — <a href="model.html"><strong>1. 원장 모델 — ACS · Holding UTXO</strong></a>.</p>

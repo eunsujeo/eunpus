@@ -6964,3 +6964,13 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 갱신: source append(섹션 6~10), entity(2/3 BFT·SV/Validator·tokenomics·finality·수탁 통합 Details, last_updated 54), open-questions C01 ANSWERED
 - docs-site canton-network: page0/2(2/3 BFT·SV/Validator·finality 3-10초 확정) / page2(party-per-account) / page3(burn-mint) / page4(memo-tag 입금·TransferIn·recordTime 대사) / page5(multi-host·3환경)
 - 신규 entity: 0 (canton-network 갱신만). ANSWERED: **C01** (Canton open Q 전부 해소 — A11 만 Fireblocks 매핑으로 open 유지)
+
+## Stage 55 (2026-06-10) — Canton architecture 검증 + 6.수탁통합 페이지 신설
+- 계기: 사용자 — overview/learn/architecture 도 promote 됐는지 검증 요청 → 핵심 개념 대부분 기존 promote 와 중복 확인, 소량 신규 2건만 promote
+- 신규 2건 (둘 다 개념적, 충돌 없음):
+  - **프라이버시 메커니즘 = sub-transaction views**: 트랜잭션이 view 로 분해, 각 party 는 자기 view 만, Synchronizer 는 복호화 안 함(coordination vs storage 분리). 기존 "당사자만 본다" 결론의 메커니즘. party = on-ledger 신원(주소/EOA 해당)
+  - **Synchronizer 토폴로지 옵션**: single/multiple/global 구성 지원(본 위키는 global 중심)
+  - architecture 페이지에도 finality 수치 없음(일관)
+- 사이드바: 사용자 요청으로 **신규 "6. 수탁 통합 — wallet/guidance" 페이지(custody.html)** 신설 — Stage 54 의 wallet/guidance 수탁 사실(memo-tag 입금·party 운용·prepare/sign/execute API·TransferIn·운영·EVM→Canton 체크리스트)을 한 페이지로 통합(요약+딥페이지 링크). 7개 페이지 사이드바에 "F. 수탁 통합" 추가, page0 읽기순서·page5 footer·루트 허브 카드 Pages 6→7 반영
+- 갱신: source append(섹션 11), entity(프라이버시 view·토폴로지, last_updated 55), docs-site page2(views 메커니즘·토폴로지 콜아웃) + 신규 custody.html
+- check-consistency PASS(7페이지). 신규 entity: 0. Canton open Q: A11 만 open(C01·C02 ANSWERED 유지)

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>6. 수탁 통합 — Canton 네트워크 지갑 연동 가이드</title>
+<meta content="Canton 공식 wallet 통합 가이드를 수탁 관점으로 정리 — 입금 식별(memo tag), party 운용(계정당 1개), 전송·서명 API, 입금 관찰(TransferIn), 운영·대사. 앞 장들의 핵심을 한 데 모은 통합 체크리스트." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Canton 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 원장 모델</h3><ul>
+<li><a href="model.html">1. 원장 모델 — ACS · Holding UTXO</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 네트워크 동작</h3><ul>
+<li><a href="validator.html">2. Validator · Synchronizer · 확정</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 자산 동작</h3><ul>
+<li><a href="operations.html">3. mint · burn · transfer · fee · cancel</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 인덱서</h3><ul>
+<li><a href="indexer.html">4. 인덱서 구현</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 운영</h3><ul>
+<li><a href="integration.html">5. 직접 구현 vs 운영형(Nodeinfra)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 수탁 통합</h3><ul>
+<li><a class="active" href="custody.html">6. 수탁 통합 — wallet/guidance</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="custody">
+<h2>6. 수탁 통합 — wallet/guidance</h2>
+<span class="section-subtitle">공식 지갑 통합 가이드의 수탁 요건을 한 데 모은 체크리스트 — 앞 장들의 핵심을 연결한다</span>
+
+<p class="lead">
+이 장은 Canton 공식 문서의 <strong>지갑 통합 가이드(integrations/wallet/guidance)</strong>를 수탁 관점에서 정리한 것이다. 앞의 1~5장이 "Canton 이 EVM 과 왜 다른가" 를 설명했다면, 이 장은 그 차이가 <strong>수탁 지갑 구현에서 실제로 어떤 결정을 강제하는가</strong>를 한눈에 모은다. 각 항목의 깊은 설명은 해당 장으로 링크한다.
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">EVM 수탁 경험에서 가장 크게 바뀌는 세 가지</div>
+<ul>
+<li><strong>입금주소가 없다</strong> — 사용자별 입금주소 대신 <strong>memo 태그</strong>로 입금자를 구분한다(6.1).</li>
+<li><strong>party 를 남발하지 않는다</strong> — 입금/사용자마다 주소를 찍던 습관 대신 <strong>계정당 party 하나</strong>를 고정한다(6.2).</li>
+<li><strong>제출이 완료가 아니다</strong> — 2-step 전송이라 입금은 <strong>"TransferIn" + 수락</strong>까지 봐야 확정이다(6.4).</li>
+</ul>
+</div>
+
+<h3>6.1 입금 식별 — memo tag (별도 입금주소 없음)</h3>
+
+<p>EVM·비트코인 수탁 지갑은 사용자마다 입금주소를 발급해 "어느 주소로 들어왔나" 로 입금자를 구분한다. <strong>Canton 은 이 방식을 쓰지 않는다.</strong> 공식 가이드는 별도 입금주소 없이 <strong>전송 metadata 의 memo 태그</strong>로 입금을 추적하라고 안내한다(거래소 입금도 동일).</p>
+
+<pre><code>"meta": { "values": { "splice.lfdecentralizedtrust.org/reason": "memo-ref" } }</code></pre>
+
+<p>리플(XRP)·스텔라(XLM)의 destination tag 와 같은 발상이다. 따라서 수탁 백엔드는 <strong>"입금주소 → 사용자" 가 아니라 "memo-ref → 사용자" 매핑</strong>으로 입금을 귀속시킨다. 인덱서가 이 memo 를 읽어 사용자에 연결하는 방식은 <a href="indexer.html">4. 인덱서</a>에서 다룬다.</p>
+
+<h3>6.2 party 운용 — 계정당 하나, 임시 발급 금지</h3>
+
+<p>party allocation 에는 비용이 따른다. 그래서 공식 권고는 <strong>"계정/지갑당 party 하나(one Party per account/wallet)"</strong> 를 안정적으로 두는 것이다.</p>
+
+<ul>
+<li><strong>입금 건마다 임시 party 를 만들지 말 것</strong> — 입금자 구분은 party 가 아니라 memo 태그로 한다(6.1).</li>
+<li><strong>PartyId 형식</strong> = <code>name::fingerprint</code>, 최대 185자. allocation 으로만 생성하고 파싱하지 않는다(<a href="validator.html">2. Validator</a>).</li>
+<li><strong>multi-host</strong> — 백업·이중화를 위해 같은 party 를 여러 validator 에 host 한다. 노드 하나를 잃어도 다른 노드가 계속 서비스한다(<a href="integration.html">5. 운영</a>).</li>
+<li><strong>external party 로</strong> — 키를 우리가 쥐는 external party 가 수탁의 기본형이다. participant 는 우리 서명 없이는 원장에서 움직일 수 없다(<a href="validator.html">2. Validator</a>).</li>
+</ul>
+
+<h3>6.3 전송·서명 — prepare → sign → execute</h3>
+
+<p>출금(전송)은 <strong>준비·서명·실행</strong> 세 단계로 일어난다 — external party 의 외부 서명 모델(<a href="validator.html">2. Validator</a>)이 그대로 API 에 드러난다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    PREP["① prepare<br/>/v2/interactive-submission/prepare<br/>명령 → Daml tx, hash 산출"]
+    SIGN["② sign<br/>tx-tree hash 를 우리 키로 서명<br/>(MPC·HSM)"]
+    EXEC["③ execute<br/>/v2/interactive-submission/execute<br/>서명 붙여 제출"]
+    DONE["✅ 제출됨<br/>(2-step 이면 상대 수락 대기)"]
+
+    PREP --> SIGN --> EXEC --> DONE
+
+    classDef wait fill:#fef3c7,stroke:#d97706;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    class PREP,EXEC wait;
+    class SIGN special;
+    class DONE good;
+</pre></div>
+<p class="diagram-caption">Figure 6-1. 전송 3단계. <strong>노랑 = participant 가 하는 준비·실행</strong>, <strong>보라 = 우리 키로만 하는 서명</strong>(participant 는 이 서명 없이 진행 불가), <strong>초록 = 제출 완료</strong>. 단 2-step 전송이면 제출이 곧 완료가 아니라 "상대 수락 대기" 다(<a href="operations.html">3. 자산 동작</a>). 서명 전에는 prepare 응답의 hash 를 <strong>독립적으로 재계산해 검증</strong>하는 것이 권장된다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:34%">용도</th><th>엔드포인트 / 호출</th></tr></thead>
+<tbody>
+<tr><td>트랜잭션 준비</td><td><code>/v2/interactive-submission/prepare</code></td></tr>
+<tr><td>트랜잭션 실행</td><td><code>/v2/interactive-submission/execute</code></td></tr>
+<tr><td>holding(UTXO) 조회</td><td><code>/v2/state/active-contracts</code></td></tr>
+<tr><td>현재 offset</td><td><code>/v2/state/ledger-end</code> (prepare 전 호출, contract id 고정)</td></tr>
+<tr><td>수수료(traffic) 추정</td><td>prepare 응답의 traffic estimate (<a href="operations.html">3. 자산 동작</a>)</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Canton Coin 은 <strong>pre-approval</strong> 을 설정하면 수신이 자동 수락돼 1-step 이 된다(수신자 측 grant). 그 외 토큰은 기본 2-step 이다(<a href="operations.html">3. 자산 동작</a>).</p>
+
+<h3>6.4 입금 관찰 — "TransferIn" + 수락까지</h3>
+
+<p>입금은 <strong>"TransferIn" 이벤트</strong>로 감시한다. 단 2-step 이라 들어오는 전송은 먼저 대기(Pending)로 보이고, <strong>우리가(또는 pre-approval 이) 수락(Accept)해야</strong> 실제 holding 이 생긴다.</p>
+
+<ul>
+<li><strong>pre-approval 켜짐</strong> — 들어오는 전송이 자동 수락돼 바로 holding 으로 들어온다.</li>
+<li><strong>pre-approval 꺼짐(기본)</strong> — 전송 instruction 의 pending/completed 상태를 보고, 수동으로 <code>TransferInstruction_Accept</code>(수령) 또는 <code>TransferInstruction_Reject</code>(반환)한다.</li>
+<li><strong>"전송이 보였다 ≠ 입금 확정"</strong> — 확정은 수락 후 holding 이 생긴 시점이다. 상세 상태 추적은 <a href="indexer.html">4. 인덱서</a>.</li>
+</ul>
+
+<h3>6.5 운영 · 대사</h3>
+
+<ul>
+<li><strong>진행 위치 = offset, 대사 = recordTime.</strong> 우리 인덱스 진행은 <code>/v2/state/ledger-end</code> 의 offset 으로 잡지만, <strong>외부 파트너와의 대사</strong>는 synchronizer 가 매기는 <code>recordTime</code> 으로 맞춘다 — offset 은 우리 노드 로컬 값이라 상대와 공유되지 않는다.</li>
+<li><strong>UTXO 조각 관리.</strong> holding 조각은 보관·연산 비용이 있어 <strong>사용자당 약 10개</strong> 수준으로 병합(merge)한다. 큰 출금은 여러 조각을 모으고, 거스름 조각을 최소화한다(<a href="model.html">1. 원장 모델</a>).</li>
+<li><strong>3 환경 운영.</strong> DevNet · TestNet · MainNet 을 함께 운영해, 프로토콜 업그레이드를 운영에 적용하기 전 하위 환경에서 검증한다(<a href="integration.html">5. 운영</a>).</li>
+<li><strong>registry 조회.</strong> 자산 발행자 정보·instrument·transfer factory 는 registry 엔드포인트(<code>/registry/metadata/v1/info</code>·<code>/instruments</code>·<code>/registry/transfer-instruction/v1/transfer-factory</code>)로 얻는다.</li>
+<li><strong>확정 시간.</strong> 보통 3-10초(<a href="validator.html">2. Validator</a>). 멱등 재시도는 submission ID 로 중복 제거한다.</li>
+</ul>
+
+<h3>6.6 한 눈 체크리스트 — EVM 가정 → Canton 정정</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:42%">EVM 수탁에서 익숙한 가정</th><th>Canton 에서</th></tr></thead>
+<tbody>
+<tr><td>사용자마다 입금주소 발급</td><td>입금주소 없음 — memo 태그로 귀속 (6.1)</td></tr>
+<tr><td>입금/사용자마다 키·주소 생성</td><td>계정당 party 하나, 임시 발급 금지 (6.2)</td></tr>
+<tr><td>broadcast 하면 입금/출금 끝</td><td>2-step — 수락(TransferIn·Accept)까지 (6.4)</td></tr>
+<tr><td>gas 후불</td><td>traffic 선충전 잔고(CC 소각) (<a href="operations.html">3</a>)</td></tr>
+<tr><td>막히면 nonce 교체(RBF)로 가속</td><td>가속 없음 — 미수락 OFFER 는 Withdraw (<a href="operations.html">3</a>)</td></tr>
+<tr><td>N블록 확인 후 확정</td><td>commit = 확정, 보통 3-10초 (<a href="validator.html">2</a>)</td></tr>
+<tr><td>잔액 = 숫자 하나</td><td>holding 조각 합(가용/locked), ~10개로 병합 (<a href="model.html">1</a>)</td></tr>
+<tr><td>키는 노드/지갑이 보유</td><td>external party — 키는 우리만, participant 는 서명 없이 불가 (<a href="validator.html">2</a>)</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>처음으로 — <a href="index.html"><strong>0. Canton 개요</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
