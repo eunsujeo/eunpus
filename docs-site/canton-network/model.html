@@ -105,7 +105,7 @@ flowchart LR
 </tbody>
 </table>
 </div>
-<p>②에서 <code>[60]</code> 을 골라 써(coin-select) <code>[60]</code> archive·거스름 <code>[10]</code> create·<code>TransferInstruction</code> create 로 <strong>집합이 재구성</strong>되고, ③에서 그 <code>TransferInstruction</code> 이 archive 되며 <strong>B 의 ACS 에 <code>Holding[50]</code> 이 create</strong> 된다. 자금은 늘 보존(40+10+50=100)된다. EVM 이면 A 잔액 <code>100→50</code>·B <code>+50</code> 숫자만 바뀌지만, Canton 은 <strong>contract 를 만들고 없애며</strong> 진행되고 2-step 이라 ②~③ 사이 "진행 중 전송" 이 ACS 에 잠깐 존재한다(<a href="operations.html">3. 자산 동작</a>).</p>
+<p>②에서 <code>[10]·[40]</code> 은 일부러 나눈 게 아니다 — 50 을 덮는 조각을 고르는 <strong>coin-selection</strong> 결과다: <code>[40]</code> 은 부족(40&lt;50)이라 안 쓰고 그대로, <code>[60]</code> 하나를 골라 50 보내고 <strong>남은 60−50=10 이 거스름</strong>. 이때 소비된 <code>[60]</code> 은 <strong>archive = 더는 active 아님 = ACS 에서 빠진다(inactive)</strong>. <code>[40]</code> 은 그대로 active. 즉 <code>[60]</code> archive·거스름 <code>[10]</code> create·<code>TransferInstruction</code> create 로 <strong>집합이 재구성</strong>되고(party 전체가 아니라 쓴 조각만 빠짐), ③에서 그 <code>TransferInstruction</code> 이 archive 되며 <strong>B 의 ACS 에 <code>Holding[50]</code> 이 create</strong> 된다. 자금은 늘 보존(40+10+50=100)된다. EVM 이면 A 잔액 <code>100→50</code>·B <code>+50</code> 숫자만 바뀌지만, Canton 은 <strong>contract 를 만들고 없애며</strong> 진행되고 2-step 이라 ②~③ 사이 "진행 중 전송" 이 ACS 에 잠깐 존재한다(<a href="operations.html">3. 자산 동작</a>).</p>
 </div>
 
 <p>이 차이는 복구·인덱싱에서 그대로 드러난다. EVM 노드를 잃으면 체인을 다시 동기화하면 잔액이 복원되지만, Canton 에서 validator 를 잃으면 <strong>그 party 의 ACS 를 새 validator 로 가져와(import) re-host</strong> 해야 한다 — 잔액이라는 숫자가 아니라 contract 집합 자체를 옮기는 일이다. (<a href="integration.html">5. 운영</a>의 복구 절차)</p>
