@@ -110,7 +110,13 @@
 
 <div class="callout">
 <div class="callout-title">키를 어디에 보관하나 — 수탁의 핵심 결정</div>
-<p>키 저장 옵션은 <strong>DB(평문) · 메모리 · offline · KMS(envelope/full)</strong> 가 있다. 수탁 지갑이라면 <strong>party 서명키</strong>(자금을 움직이는 키)를 <strong>offline 또는 KMS·HSM·MPC</strong> 로 보관하는 것이 정석이다 — 공식 가이드도 external party 서명키의 권장 저장을 <strong>offline</strong> 으로 든다. 이렇게 두면 validator(participant)는 운영용 node 키만 쥐고, <strong>자금 권한 키는 우리 통제 경계 안</strong>에 남는다(앞의 external party 구조와 같은 결론). 알고리즘 측면에선 Fireblocks 의 Canton 복구 절차가 EdDSA(Ed25519) Raw Signing 을 쓴다.</p>
+<p>키 저장 옵션은 <strong>DB(평문) · 메모리 · offline · KMS(envelope/full)</strong> 가 있다. 수탁 지갑이라면 <strong>party 서명키</strong>(자금을 움직이는 키)를 <strong>offline 또는 KMS·HSM·MPC</strong> 로 보관하는 것이 정석이다 — 공식 가이드도 external party 서명키의 권장 저장을 <strong>offline</strong> 으로 든다. 이렇게 두면 validator(participant)는 운영용 node 키만 쥐고, <strong>자금 권한 키는 우리 통제 경계 안</strong>에 남는다(앞의 external party 구조와 같은 결론).</p>
+</div>
+
+<div class="callout">
+<div class="callout-title">서명 알고리즘과 "무엇을 서명하나"</div>
+<p>공식 crypto-schemes 기준 서명 알고리즘은 <strong>Ed25519</strong><span class="g" data-tip="EdDSA 의 한 곡선. Canton 의 소프트웨어(JCE) 기본 서명 알고리즘">?</span>(소프트웨어 기본) 와 <strong>ECDSA-SHA256</strong>(EC-P256·secp256k1, KMS 기본)·ECDSA-SHA384(P-384)이고, 해시는 <strong>SHA-256</strong>(유일)이다. 그래서 Fireblocks 등으로 외부 서명할 때 EdDSA(Ed25519) Raw Signing 을 쓰는 것과 정확히 맞는다.</p>
+<p>서명하는 대상은 거래 전체에 대한 <strong>결정적 해시</strong>다 — 대략 <code>SHA-256( 용도prefix ‖ 버전 ‖ hash(거래) ‖ hash(메타데이터) )</code> 꼴이고, protobuf 가 비결정적이라 Canton 은 별도의 결정적 인코딩 규칙으로 직렬화한 뒤 해시한다. 덕분에 <strong>MPC·HSM 이 서명 직전에 이 해시를 독립적으로 다시 계산해 "맞는 거래인지" 검증</strong>할 수 있다(validator 가 거래를 몰래 바꾸면 해시가 어긋나 서명이 무효).</p>
 </div>
 
 <div class="callout">

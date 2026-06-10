@@ -112,6 +112,18 @@ flowchart LR
 
 <p>Canton Coin 은 <strong>pre-approval</strong> 을 설정하면 수신이 자동 수락돼 1-step 이 된다(수신자 측 grant). 그 외 토큰은 기본 2-step 이다(<a href="operations.html">3. 자산 동작</a>).</p>
 
+<div class="callout">
+<div class="callout-title">MPC·HSM 은 어떻게 붙나 — 서명 프로바이더</div>
+<p>"②번 서명" 을 어디서 하느냐가 custody 전략이다. Canton 의 Wallet Gateway 는 서명을 <strong>외부 프로바이더에 위임</strong>할 수 있고, 공식 지원 목록에 우리에게 익숙한 이름들이 있다:</p>
+<ul>
+<li><strong>Fireblocks</strong> — HSM 기반 엔터프라이즈 키관리·서명(API 키·환경변수 구성).</li>
+<li><strong>Dfns</strong> — MPC 기반, 정책 제어·다자 승인 워크플로. validator 통합으로 wallet 생성·broadcast 까지.</li>
+<li><strong>Blockdaemon</strong> — 관리형 인프라 서명.</li>
+<li><strong>participant 기반</strong>(노드가 키 보관) · <strong>internal</strong>(개발용 DB 보관).</li>
+</ul>
+<p><strong>party 별로 프로바이더를 섞을 수 있어</strong>, 일부 계정은 Fireblocks(HSM), 일부는 Dfns(MPC) 식의 혼합 custody 가 한 게이트웨이에서 가능하다. 우리 수탁 스택이 이미 Fireblocks·MPC 라면 그대로 Canton 서명에 연결된다.</p>
+</div>
+
 <h3>6.4 입금 관찰 — "TransferIn" + 수락까지</h3>
 
 <p>입금은 <strong>"TransferIn" 이벤트</strong>로 감시한다. 단 2-step 이라 들어오는 전송은 먼저 대기(Pending)로 보이고, <strong>우리가(또는 pre-approval 이) 수락(Accept)해야</strong> 실제 holding 이 생긴다.</p>
@@ -132,7 +144,20 @@ flowchart LR
 <li><strong>확정 시간.</strong> 보통 3-10초(<a href="validator.html">2. Validator</a>). 멱등 재시도는 submission ID 로 중복 제거한다.</li>
 </ul>
 
-<h3>6.6 한 눈 체크리스트 — EVM 가정 → Canton 정정</h3>
+<h3>6.6 전송 증명 · 원장 pruning · 거래소 변형</h3>
+
+<div class="callout callout-warn">
+<div class="callout-title">원장은 pruning 된다 — 증빙을 우리 DB 에 보관해야 한다</div>
+<p>EVM 은 과거 트랜잭션을 언제든 체인에서 다시 조회할 수 있다고 가정하지만, <strong>Canton 원장은 pruning(과거 데이터 정리)된다.</strong> 공식 가이드는 전송 증명을 위해 <strong>Transfer Object 와 UpdateID</strong>(원장 거래 고유 id)를 <strong>지갑 백엔드 DB 에 직접 영속화하라</strong>고 못 박는다 — pruning 이후엔 원장 과거 조회가 실패하기 때문이다. 감사·대사·분쟁 대응을 원장에만 의존하면 안 되고, <strong>우리 DB 가 1차 증빙 보관처</strong>여야 한다.</p>
+<p>증명 조회: <code>GET /v2/updates/update-by-id</code>(완료 전송), 거절·철회는 <code>/v2/events/events-by-contract-id</code>. 이 값을 받아 두는 게 핵심이다.</p>
+</div>
+
+<div class="callout">
+<div class="callout-title">거래소(omnibus) 는 패턴이 다르다 — 단일 treasuryParty</div>
+<p>지금까지는 "계정당 party 하나"(6.2) 를 전제했지만, <strong>거래소형</strong>은 보통 단일 <strong><code>treasuryParty</code></strong> 가 입금 수령·자금 통제·출금 집행을 모두 맡는 <strong>omnibus</strong> 구조다. 입금자 구분은 여전히 memo 태그(6.1)로 한다. 출금 시에는 입력 holding 을 골라 target recordTime 까지 잠그는데, 공식 가이드는 <strong>한 전송에 UTXO 100개 미만</strong>으로 제한하고, 동시 출금 k건을 위해 <strong>큰 금액 UTXO k개 풀</strong>을 유지하라고 권한다(거래 이력은 <code>/v2/updates/flats</code>, 출금은 <code>TransferFactory_Transfer</code> choice). 은행 수탁이 계정 분리형이라면 6.2 를, 거래소형이라면 이 omnibus 를 택한다.</p>
+</div>
+
+<h3>6.7 한 눈 체크리스트 — EVM 가정 → Canton 정정</h3>
 
 <div class="table-wrap">
 <table>
