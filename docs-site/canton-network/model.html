@@ -53,6 +53,8 @@
 
 <p>Canton 의 원장 상태는 <strong>ACS(Active Contract Set)</strong>다 — 어떤 party 가 현재 보유한 활성 contract 전체의 집합. contract 가 생성되면 ACS 에 들어오고, 소비(archive)되면 ACS 에서 빠진다. 토큰 잔액, 진행 중인 전송, 권한 설정 같은 모든 상태가 contract 형태로 ACS 안에 있다.</p>
 
+<p>contract 자체는 <strong>불변(immutable)</strong>이다 — 수정이 없고 <strong>생성(created)되거나 아카이브(archived)될 뿐</strong>이다. "상태 변경" 은 곧 옛 contract 를 archive 하고 새 contract 를 create 하는 일이다. contract 에 정의된 동작을 <strong>choice</strong> 라 하는데, 행사하면 그 contract 를 소비(archive)하는 <strong>consuming</strong> choice 와, contract 를 그대로 두는 <strong>non-consuming</strong> choice 로 나뉜다. 그리고 한 contract 를 볼 수 있는 party 들 — <strong>stakeholder = signatory(서명자) + observer(관찰자)</strong> — 만 그 contract 를 본다(프라이버시의 단위, <a href="validator.html">2. Validator</a>).</p>
+
 <div class="callout">
 <div class="callout-title">한 문장 요약</div>
 <p>EVM: "주소의 잔액 = 글로벌 상태에 적힌 숫자". Canton: "party 의 상태 = 그 party 가 stakeholder 인 활성 contract 들의 집합(ACS)". 잔액은 그 집합에서 <strong>합산해서 도출</strong>하는 값이지, 어딘가 적혀 있는 숫자가 아니다.</p>

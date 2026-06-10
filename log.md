@@ -6974,3 +6974,14 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 사이드바: 사용자 요청으로 **신규 "6. 수탁 통합 — wallet/guidance" 페이지(custody.html)** 신설 — Stage 54 의 wallet/guidance 수탁 사실(memo-tag 입금·party 운용·prepare/sign/execute API·TransferIn·운영·EVM→Canton 체크리스트)을 한 페이지로 통합(요약+딥페이지 링크). 7개 페이지 사이드바에 "F. 수탁 통합" 추가, page0 읽기순서·page5 footer·루트 허브 카드 Pages 6→7 반영
 - 갱신: source append(섹션 11), entity(프라이버시 view·토폴로지, last_updated 55), docs-site page2(views 메커니즘·토폴로지 콜아웃) + 신규 custody.html
 - check-consistency PASS(7페이지). 신규 entity: 0. Canton open Q: A11 만 open(C01·C02 ANSWERED 유지)
+
+## Stage 56 (2026-06-10) — Canton 6 페이지 추가 검증 → 암호키 모델 등 신규 promote
+- 계기: 사용자 무작위 6 링크 검증 요청(core-concepts·how-transactions-work·cryptographic-keys·console-overview·gs-introduction·validator-roles)
+- 대조 결과: 핵심 개념 대부분 기존 promote 와 중복(party·validator·synchronizer·ACS·views+2PC·SV/Validator·CC). 모순 없음. finality 수치 6페이지 모두 없음(일관). 신규 4건만:
+  - **A 암호키 모델**(cryptographic-keys, 가장 실질적·수탁 직결): namespace root key(namespace=root key hash) / external party 서명키(권장 저장 offline) / node signing key(sequencer 인증·ACS commitment) / encryption key(asymmetric+session symmetric). 저장 옵션 DB/in-memory/offline/KMS. (알고리즘명 없음 — EdDSA 는 fireblocks 근거 유지)
+  - **B stakeholder/choice**(core-concepts): stakeholder = signatory+observer, contract immutable(created/archived), choice = consuming(archive)/non-consuming(유지)
+  - **C 운영 구체치**: 환경 4단계 LocalNet→DevNet→TestNet→MainNet(DevNet secret 1h·sponsor 제공), validator SLA 99%+·패치 1주/마이너 2주
+  - **D Canton Console**: 운영자 CLI(복구·repair), Ledger API 와 별개
+- 갱신: source append(섹션 12), entity(암호키·stakeholder/choice·4환경 Details, last_updated 56)
+- docs-site: page2(키 모델 표+보관 콜아웃) / page1(stakeholder·choice·immutable) / page5(4환경·SLA·Console) / custody(4환경)
+- check-consistency PASS(7페이지). 신규 entity 0. Canton open Q: A11 만 open

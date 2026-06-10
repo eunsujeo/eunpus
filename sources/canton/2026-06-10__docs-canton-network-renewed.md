@@ -209,3 +209,35 @@ source: https://docs.canton.network/overview/learn/architecture.md
 - **Synchronizer 토폴로지 옵션**: single synchronizer / multiple synchronizers / global synchronizer
   구성 모두 지원(우리는 global synchronizer 만 다뤘음).
 - finality/throughput 수치: 이 페이지에도 없음(일관).
+
+## (12) 6 페이지 추가 검증 (core-concepts·how-transactions-work·cryptographic-keys·console·gs-intro·validator-roles) — Stage 56
+
+source: docs.canton.network/overview/understand/core-concepts · overview/learn/how-transactions-work
+       · overview/learn/cryptographic-keys · global-synchronizer/canton-console/console-overview
+       · global-synchronizer/understand/introduction · global-synchronizer/understand/validator-roles
+
+- 대부분 기존 promote 와 중복(party·validator·synchronizer·Sequencer/Mediator·ACS·SV/Validator 분담·
+  views+2PC·CC 수수료 재확인). finality 수치 6페이지 모두 없음(일관). 모순 없음. 신규만:
+- **A. 암호키 모델** (cryptographic-keys):
+  - **namespace root key** = public signing key, namespace = root key 의 hash. private 으로 topology
+    tx 권한.
+  - **node signing key** — sequencer client/server 인증, tx 프로토콜 메시지 인증, ACS commitment 서명.
+    저장 = DB / offline / KMS.
+  - **encryption key** — participant 의 asymmetric encryption key. 큰 데이터는 symmetric, session
+    key 는 asymmetric(session encryption key 로 비용 절감).
+  - **external party signing key** — submitting party 가 직접 tx authorize. **권장 저장 = "offline"**.
+  - 저장 옵션 전반: plaintext(DB/file) / in-memory / offline / KMS(envelope) / full KMS.
+  - (이 페이지엔 Ed25519/ECDSA 등 알고리즘명 없음 — EdDSA 는 fireblocks-recover-canton-coin 근거로만.)
+- **B. 원장 모델 보강** (core-concepts):
+  - **stakeholder = signatories + observers** — contract 를 볼 수 있는 모든 party.
+  - **choice = Consuming(행사 시 contract archive) / Non-consuming(유지)**.
+  - contract(template instance)는 immutable — created 또는 archived 만.
+- **C. 운영 구체치** (gs-introduction · validator-roles):
+  - 환경 **4단계: LocalNet(개발) → DevNet → TestNet → MainNet**. DevNet secret 은 API 로 취득,
+    **1시간** 유효. TestNet/MainNet 은 sponsor 가 수동 제공.
+  - validator SLA: **99%+ 가용성**, 보안 패치 **1주 내**, 마이너 업데이트 **2주 내**, DB·identity 정기
+    백업, party 키 보관·rotation.
+  - GSF = "non-profit foundation that governs the Global Synchronizer".
+- **D. Canton Console** (console-overview): participant/sequencer/mediator 프로세스에 직접 붙는
+  **운영자 CLI**(debugging·disaster recovery·repair). `enable-preview/testing/repair-commands` 플래그.
+  런타임 Ledger API 와 별개 — 5장 복구 절차가 도는 도구.

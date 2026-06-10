@@ -92,6 +92,27 @@
 <p>external party 에서는 <strong>private signing key 를 party(=우리)만 통제·사용</strong>하고, participant node 는 <strong>party 의 명시적 승인(서명) 없이는 원장에서 아무것도 할 수 없다</strong>. 즉 validator 를 운영사에 맡기더라도(<a href="integration.html">5. 운영</a>) 자금을 움직이는 권한은 우리 키에 남는다. 이 구조는 <strong>MPC·HSM 으로 키를 보관하고 participant 는 준비·실행만 하는</strong> 수탁 모델과 정확히 맞아떨어진다. Fireblocks 의 Canton 복구 절차가 Raw Signing(EdDSA)으로 topology 해시를 외부 서명하는 것도 같은 그림이다.</p>
 </div>
 
+<h4>키 모델 — 무엇을, 어디에 두나</h4>
+
+<p>Canton 은 한 종류의 키만 쓰는 게 아니다. 수탁 설계에서 "무엇을 우리가 쥐고, 무엇을 노드가 쥐는가" 를 가르려면 키 종류를 구분해야 한다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:26%">키</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><strong>namespace root key</strong></td><td>namespace 의 뿌리 — namespace 는 이 키의 hash 다. topology 변경(누가 어느 노드에 host 되는가 등)을 authorize</td></tr>
+<tr><td><strong>external party 서명키</strong></td><td>party 가 거래를 직접 authorize 하는 키 — <strong>수탁에서 우리가 쥐는 핵심 키</strong>. 권장 저장은 <strong>offline</strong></td></tr>
+<tr><td>node signing key</td><td>노드 운영용 — sequencer 인증, ACS 상태 서명 등 (운영 인프라 키)</td></tr>
+<tr><td>encryption key</td><td>view 암호화용 — 큰 데이터는 대칭키, 그 대칭 세션키만 비대칭키로 보호</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">키를 어디에 보관하나 — 수탁의 핵심 결정</div>
+<p>키 저장 옵션은 <strong>DB(평문) · 메모리 · offline · KMS(envelope/full)</strong> 가 있다. 수탁 지갑이라면 <strong>party 서명키</strong>(자금을 움직이는 키)를 <strong>offline 또는 KMS·HSM·MPC</strong> 로 보관하는 것이 정석이다 — 공식 가이드도 external party 서명키의 권장 저장을 <strong>offline</strong> 으로 든다. 이렇게 두면 validator(participant)는 운영용 node 키만 쥐고, <strong>자금 권한 키는 우리 통제 경계 안</strong>에 남는다(앞의 external party 구조와 같은 결론). 알고리즘 측면에선 Fireblocks 의 Canton 복구 절차가 EdDSA(Ed25519) Raw Signing 을 쓴다.</p>
+</div>
+
 <div class="callout">
 <div class="callout-title">party 는 계정당 하나 — 입금마다 새로 만들지 말 것</div>
 <p>EVM 수탁 지갑은 흔히 "사용자(또는 입금)마다 새 주소" 를 발급한다. Canton 에서는 이 습관을 버려야 한다. party allocation 에는 비용이 따르므로, 공식 가이드는 <strong>"계정/지갑당 party 하나(one Party per account/wallet)"</strong> 를 안정적으로 두라고 권한다 — <strong>입금 건마다 임시 party 를 만들지 말 것</strong>. 입금자 구분은 별도 주소가 아니라 memo 태그로 한다(<a href="indexer.html">4. 인덱서</a>). PartyId 는 <code>name::fingerprint</code> 형식에 최대 185자다. 백업·이중화를 위해 같은 party 를 여러 validator 에 multi-host 할 수 있다(<a href="integration.html">5. 운영</a>).</p>

@@ -148,7 +148,9 @@ flowchart LR
 <li><strong>어댑터는 Ledger API 경계로</strong> — 직접/운영형 전환이 어댑터 안쪽 한 겹(노드 접근)만 바뀌도록 설계하면, 운영형으로 시작해 직접 운영으로 옮기는 경로가 열린다(또는 반대).</li>
 <li><strong>복구 리허설</strong> — 직접 운영을 택하면 5.3 절차를 실제로 리허설해 두어야 한다. ACS import·키 재구성은 사고 당일 처음 해보면 늦는다.</li>
 <li><strong>party 를 여러 validator 에 multi-host</strong> — 공식 가이드는 백업·이중화를 위해 같은 party 를 둘 이상의 validator participant 에 host 하라고 권한다. 한 노드를 잃어도 다른 노드가 같은 party 를 계속 서비스해, 5.3 의 전면 복구로 가기 전 1차 방어선이 된다.</li>
-<li><strong>3 환경 운영</strong> — DevNet · TestNet · MainNet 세 환경을 함께 운영해, 네트워크 프로토콜 업그레이드를 운영(MainNet)에 적용하기 전에 하위 환경에서 먼저 검증한다.</li>
+<li><strong>4 환경 운영</strong> — <strong>LocalNet(로컬 개발) · DevNet · TestNet · MainNet</strong> 을 함께 두고, 프로토콜 업그레이드를 운영(MainNet)에 올리기 전 하위 환경에서 검증한다. DevNet 접속 시크릿은 API 로 받아 약 1시간 유효하고, TestNet·MainNet 은 sponsor 가 수동으로 내준다.</li>
+<li><strong>운영 SLA 기준</strong> — 공식 validator 운영 기준은 <strong>99%+ 가용성</strong>, 보안 패치 <strong>1주 이내</strong>·마이너 업데이트 <strong>2주 이내</strong> 적용, DB·identity 정기 백업, party 키 보관·교체다. 직접 운영을 택하면 이 수준을 우리가 맞춰야 한다(운영형이면 운영사 몫).</li>
+<li><strong>운영은 Canton Console 로</strong> — 5.3 의 복구·repair 같은 작업은 participant/sequencer/mediator 프로세스에 직접 붙는 <strong>운영자 CLI(Canton Console)</strong>에서 실행한다. 이는 앱이 쓰는 런타임 Ledger API 와는 별개의 관리 도구다.</li>
 <li><strong>SaaS 도 같은 그림</strong> — Fireblocks 처럼 Canton 을 지원하는 SaaS 를 쓰면 "운영형" 의 극단으로, 노드·복구 상당 부분을 벤더가 처리한다. 단 상태 매핑·timeout 등 적용 세부는 확인 필요(<a href="operations.html">3. 자산 동작</a>).</li>
 </ul>
 </div>

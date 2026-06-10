@@ -4,7 +4,7 @@ vendor: canton
 status: draft
 tags: [architecture, transaction, integration, stablecoin, identity, recovery]
 stage_introduced: 52
-last_updated_stage: 55
+last_updated_stage: 56
 source_count: 5
 related: [transaction, api]
 ---
@@ -22,6 +22,8 @@ Canton 은 DAML 스마트컨트랙트 기반 privacy-enabled 퍼블릭 블록체
 - **Synchronizer / 합의** — **2-layer**: ordering layer(synchronizer) + validation layer(participant). Sequencer(순서화·timestamp·sender identity 제거) + Mediator(confirmation 집계·2-phase commit verdict). Global Synchronizer = **2/3 majority BFT consensus** (native BFT orderer: ISS+Narwhal 영향, `Mempool→Availability→Consensus→Output` 4-모듈, <1/3 fault 허용 = 2/3 honest majority 동치). **Super Validator** = Global Synchronizer infra·sequencing·CC tx 검증·거버넌스. **Validator** = party host·tx 검증·연결. 거버넌스 = GSF + Linux Foundation. **finality "usually 3-10s"** (★ Stage 54 C01 ANSWERED). (source: docs-canton-network-renewed)
 - **Canton Coin = burn-mint equilibrium** (★ Stage 54) — 수수료(USD 표시·CC 지불)는 **소각=유통에서 제거**(중앙으로 안 감), validator/super validator 는 infra·앱·사용량·liveness 로 **mint 보상**. 공급-소각 균형으로 환율 안정. → "CC 소각=traffic=수수료" 모델 확정. (source: docs-canton-network-renewed)
 - **프라이버시 메커니즘 = sub-transaction views** (★ Stage 55) — 트랜잭션은 **view 들로 분해**되어 각 party 는 자기 view 만 본다. Synchronizer 는 내용을 복호화하지 않고 암호화 메시지만 순환시킨다("coordination vs storage 분리"). party = "on-ledger identity, analogous to addresses/EOA". **Synchronizer 토폴로지**는 single/multiple/global 구성 모두 지원(본 위키는 global synchronizer 중심). (source: docs-canton-network-renewed architecture)
+- **암호키 모델** (★ Stage 56) — **namespace root key**(namespace = root key 의 hash, topology tx authorize) · **node signing key**(sequencer 인증·ACS commitment 서명) · **encryption key**(asymmetric + session symmetric) · **external party 서명키**(party 가 직접 tx authorize, **권장 저장 = offline**). 키 저장 옵션 = DB / in-memory / offline / KMS(envelope·full). 수탁 키관리(MPC/HSM·offline)와 직결. (알고리즘명은 이 페이지에 없음; EdDSA 는 [[fireblocks-recover-canton-coin]] 근거) (source: docs-canton-network-renewed cryptographic-keys)
+- **stakeholder / choice** (★ Stage 56) — **stakeholder = signatories + observers**(contract 를 볼 수 있는 모든 party). contract(template instance)는 immutable — created/archived 만. **choice = Consuming**(행사 시 contract archive) **/ Non-consuming**(유지). (source: docs-canton-network-renewed core-concepts)
 - **수수료 = traffic (구체 수치 ★ Stage 53)** — traffic 은 byte 단위 **선충전 대역폭 잔고**(거래마다 후불 아님). **Canton Coin 소비로 구매**, on-ledger `MemberTraffic` 갱신. 비용 = `메시지크기 × (1 + recipients × readVsWriteScalingFactor/10000)` — 예 1MB·10수신·factor4 = `1,000,000×(1+10×0.004)=1,040,000` byte. 파라미터(all networks): **무료 base 400,000 byte/20분 window**(선형 회복), **추가 traffic $60/MB**(CC 환산), **factor 4 bp(0.004)**, **최소 top-up 200,000 byte**. validator 앱 built-in auto top-up. (source: docs-canton-network-renewed)
 - **Token Registrar** — native token(예: USDCx=Circle)은 registrar 가 별도 관리. Canton Coin(CC) recovery 와 token recovery 분리. (source: fireblocks-recover-canton-coin)
 
@@ -39,7 +41,7 @@ docs.canton.network/integrations/wallet/guidance 1차 출처. 수탁 설계에 �
 - **API**: tx = `/v2/interactive-submission/{prepare,execute}`, ACS/UTXO = `/v2/state/active-contracts`(`sdk.ledger.acsReader.read()`), offset = `/v2/state/ledger-end`(prepare 전 호출, contract id pin). transfer = prepare→`signTransactionHash(hash,privateKey)`→execute.
 - **입금 관찰** = ledger event 의 **"TransferIn"** 감시(pending/completed). pre-approval = `sdk.amulet.featuredApp.grant()` 로 auto-accept, 아니면 수동 `TransferInstruction_Accept`/`_Reject`. locked UTXO 는 "owned by sender, **locked by DSO**".
 - **UTXO 관리** = self-transfer split, change 최소화, `sdk.token.transfer.create({inputUtxos:[...]})`. (지갑당 ~10 UTXO 권장과 연결)
-- **운영** = DevNet/TestNet/MainNet 3 환경. 로컬은 ledger-end offset, **파트너 대사는 synchronizer `recordTime`**. registry endpoint: `/registry/metadata/v1/{info,instruments}`, `/registry/transfer-instruction/v1/transfer-factory`.
+- **운영** = **LocalNet→DevNet→TestNet→MainNet 4 환경**(★ Stage 56; DevNet secret API 취득·1시간 유효, TestNet/MainNet 은 sponsor 수동 제공). validator SLA: 99%+ 가용성, 보안 패치 1주·마이너 2주 내, DB·identity 정기 백업. 로컬은 ledger-end offset, **파트너 대사는 synchronizer `recordTime`**. registry endpoint: `/registry/metadata/v1/{info,instruments}`, `/registry/transfer-instruction/v1/transfer-factory`. 복구·repair 는 **Canton Console**(운영자 CLI, Ledger API 와 별개)에서 실행.
 
 ## Related Pages
 - [[transaction]] (Fireblocks) — Canton transactionType·2-step lifecycle 매핑
