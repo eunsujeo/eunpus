@@ -1,0 +1,65 @@
+h1. 4 시나리오 — 계정 발급 · 입금 · 출금 · 온/오프램프
+
+{info:title=이 문서의 성격}
+저자가 일반적인 지갑 인프라 패턴을 바탕으로 정리한 설계 참고안이다. Fireblocks 를 언급한 부분은 해당 벤더의 공식 문서에서 확인한 사실이고, 그 외는 저자 추정이므로 실제 적용 전 검증이 필요하다.
+{info}
+
+h2. 1. 계정·주소 발급 (온보딩)
+
+입금·출금은 주소가 이미 있다는 전제로 시작한다. 그 주소를 만드는 것이 이 단계 — 고객 온보딩 때 *계정을 만들고(createAccount) 자산별 주소를 파생(deriveAddress)* 한다. 클라이언트 → 비즈니스 레이어(인증·KYC 판단) → 게이트웨이 → AccountPort 순으로 흐르고, 두 호출 묶음 전체에 멱등 키 하나가 걸려 재시도가 와도 계정·주소가 두 번 만들어지지 않는다. 주소 파생은 로컬 키 연산(또는 vault 내부)이라 온체인 트랜잭션이 아니다 — 전파·수수료가 없다. 키는 어댑터 뒤(Fireblocks MPC / 자체 HSM)에 있고 매니저는 만지지 않는다. "고객마다 별도 계정 vs 공용(omnibus)+내부 장부 귀속" 선택은 업무·회계 설계이고, 매니저는 발급 기본 동작만 제공한다.
+
+h2. 2. 입금 — 호출이 아니라 감지
+
+입금은 체인에서 일어난 일을 *읽어 인지*하는 흐름이라 주연은 인덱서이고, 쓰기 쪽(트랜잭션 빌더·서명)은 등장하지 않는다. 핵심은 두 번의 알림 — 감지(PENDING, 사용 불가) → 확정(CONFIRMED, 사용 가능).
+
+{plantuml}
+@startuml
+participant "블록체인" as CH
+participant "인덱서" as IDX
+participant "이벤트 · 알림" as NT
+participant "비즈니스 레이어" as BIZ
+
+CH -> IDX : 새 블록 · 로그 수집
+IDX -> IDX : 우리 주소로의 transfer 감지 (PENDING)
+IDX -> NT : 입금 감지 알림
+NT --> BIZ : PENDING webhook ("입금 확인 중")
+CH -> IDX : 후속 블록 (confirmation 누적)
+IDX -> IDX : 체인별 확정 기준 충족 (CONFIRMED)
+IDX -> NT : 입금 확정 알림
+NT --> BIZ : CONFIRMED webhook ("입금 완료 · 사용 가능")
+@enduml
+{plantuml}
+
+감지 즉시 잔액으로 인정하면 reorg(체인 끝부분이 교체되는 현상) 때 없는 돈을 쓰게 된다 — 자금 사용 가능 판정은 반드시 확정 이후. 무효화된 트랜잭션이 새 블록에 다시 들어올 수 있으므로 영구 삭제는 금지하고, 같은 입금 이벤트를 두 번 처리해도 장부가 두 번 늘지 않게 (tx 해시 + logIndex) 를 멱등 키로 쓴다.
+
+h2. 3. 출금 — 가장 많은 컴포넌트가 맞물리는 쓰기 흐름
+
+출금 승인 자체는 비즈니스 레이어에서 끝난 뒤, 매니저는 승인된 지시만 받아 집행한다.
+
+{plantuml}
+@startuml
+participant "비즈니스 레이어" as BIZ
+participant "게이트웨이" as GW
+participant "트랜잭션 빌더 · Nonce" as TX
+participant "서명 오케스트레이션" as SIG
+participant "어댑터 → 블록체인" as ADP
+participant "인덱서" as IDX
+
+BIZ -> GW : 승인된 출금 지시 (+멱등 키)
+GW -> TX : 라우팅
+TX -> TX : 조립 · 순번(nonce) 점유
+TX -> SIG : 서명 요청
+SIG --> TX : 서명된 tx (키는 외부 서명자에만)
+TX -> ADP : 전파 (체인 제출)
+IDX --> TX : 확정(CONFIRMED) 역확인
+TX -> BIZ : 출금 완료 webhook
+@enduml
+{plantuml}
+
+순번 점유 → 서명 → 전파 → 확정 순서가 깨지지 않는 것이 안전성의 핵심이다. 전파한 트랜잭션이 수수료 부족으로 막히면(stuck) 같은 순번 + 수수료 인상으로 재전송하고, 중단하려면 같은 순번으로 0원 self-send 를 더 높은 수수료로 보내 덮어쓴다(EVM 기준 — 항상 가장 오래된 막힌 순번부터, 수수료는 상한을 두고 단계적으로). 참고로 Canton 같은 2-step 체인은 "제출=완료" 가 아니다 — 우리가 보내는 건 OFFER 이고 받는 쪽이 ACCEPT 해야 완료라, 출금 상태머신에 "상대 수락 대기" 단계가 추가된다.
+
+h2. 4. 온/오프램프 — 은행 내부 DB 작업, 매니저는 온체인 가장자리만
+
+수탁(custodial) 지갑에서 고객 코인 잔액은 은행 앱 안의 내부 장부(DB)로 관리된다. 그래서 현금↔코인 전환(온/오프램프)은 *코어뱅킹 잔액과 수탁 코인 잔액(DB)의 조정*으로 끝나고, 온체인 트랜잭션도 블록체인 매니저 호출도 없다 — 코인은 은행이 보관 중인 준비자산 안에서 장부상 배정될 뿐이다. 따라서 "온/오프램프 커넥터" 는 매니저의 컴포넌트가 아니다. 매니저는 자산이 실제로 체인을 건너는 순간 — *외부 입금*(인덱서가 감지) · *외부 출금*(트랜잭션 빌더·서명) · *준비자산 온체인 이동* — 에만 호출된다. 이는 개요 문서의 두 트리거(① 호출 = 외부 출금, ② 감지 = 외부 입금)와 정확히 같다.
+
+더 보기: 원본 가이드 9~12장 — https://wiki-docs.pages.dev/wallet-service-components/scenario-provisioning.html · scenario-deposit.html · scenario-withdrawal.html · scenario-onofframp.html

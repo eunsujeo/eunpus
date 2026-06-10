@@ -1,0 +1,60 @@
+h1. 벤더 추상화 — 기능별 3 포트와 어댑터 비교
+
+{info:title=이 문서의 성격}
+아래 인터페이스는 설명용 의사코드다. Fireblocks 의 기능 범위(서명·전파·nonce·webhook·externalTxId·vault)는 Fireblocks 공식 문서에서 확인한 사실에 근거하며, 그 외 벤더·자체 구축 진술은 공개 문서와 일반 설계 패턴이므로 적용 전 검증이 필요하다. NodeWallet 의 기능 범위는 벤더(NodeInfra) 자체 주장이며 독립 검증된 것이 아니다.
+{info}
+
+h2. 1. 핵심 — 매니저를 통째로가 아니라 기능별 포트로 자른다
+
+"블록체인 매니저" 를 인터페이스 하나로 통째 추상화하면 교체 단위가 "전부 Fireblocks 냐, 전부 자체냐" 둘뿐이 되어 섞을 수가 없다. 그래서 기능(capability)마다 포트를 두고, 두 가지 규칙만 지킨다.
+
+* *한 어댑터가 여러 포트를 채울 수 있다* — Fireblocks 는 여러 기능을 묶어 주니 여러 포트를 한꺼번에 구현한다. Alchemy 는 조회 포트만.
+* *포트마다 따로 갈아끼운다* — 한 벤더가 약한 포트만 다른 어댑터로 교체한다.
+
+h2. 2. 세 기능 포트
+
+{code:kotlin}
+interface AccountPort {                       // 계정·주소 (키가 있는 곳)
+    fun createAccount(ref): Account           // 고객 계정(vault) 생성
+    fun deriveAddress(account, asset): Address
+    fun getBalance(account, asset): Amount
+    fun validateAddress(asset, addr): Boolean // 출금 대상 주소 형식·체크섬 검증 — 로컬 체인 규칙으로 구현 (벤더 API 불요)
+}
+
+interface TransactionPort {                   // 트랜잭션 쓰기 + 상태 + 내 지갑 이벤트
+    fun estimateFee(req): Fee                 // 제출 전 수수료 추정 (low/med/high)
+    fun submitTransaction(req): TxRef         // 서명+전파 묶음
+    fun getStatus(txRef): TxStatus            // pending / confirmed / stuck
+    fun boost(txRef): TxRef                   // 선택 capability — EVM/UTXO 전용 수수료 인상 재촉
+    fun cancel(txRef): TxRef                  // 대기·막힌 tx 중단
+    fun onChainEvent(handler): Subscription   // 내 지갑 수신·확정 push
+}
+
+interface ChainQueryPort {                    // (선택) 임의·커스텀 조회 — custody 가 안 주는 것
+    fun query(filter): Records                // 임의 외부 주소 · deep history · 집계
+}
+{code}
+
+포트엔 "입금하다/출금하다" 가 없다 — 출금 = 우리가 만든 송신 트랜잭션, 입금 = onChainEvent 로 들어오는 수신 트랜잭션이고, 업무 의미는 비즈니스 레이어가 붙인다. {{submitTransaction}} 이 서명+전파를 *묶어서* 받는 것이 교체 가능성의 핵심이다 — Fireblocks 는 createTransaction 한 번으로, 자체 구축은 내부에서 조립→HSM 서명→전파로 채운다. 포트가 sign()/broadcast() 를 따로 노출했다면 Fireblocks(묶음형)가 안 맞아 교체가 깨진다. 포트를 더 잘게 쪼개는 것은 그 기능을 정말로 따로 갈아끼울 실제 요구가 생겼을 때만 한다.
+
+h2. 3. 어댑터 비교 — Fireblocks · 자체 구축 · NodeWallet
+
+||항목||Fireblocks (SaaS 위탁)||자체 구축 (직접 빌드)||NodeWallet (온프렘 제품 도입)||
+|AccountPort|(/) vault 생성·주소 파생|(/) HD 지갑 + 자체 파생|(/) 지갑 생성 (Solana 전용)|
+|TransactionPort|(/) createTransaction 한 번(서명+전파+nonce 묶음) + webhook 이벤트|(/) 조립→서명(HSM)→전파를 내부에서 직접 조립|(/) 내부 3-키 다중서명 (HSM+SGX)|
+|ChainQueryPort|(x) 임의 외부 주소·커스텀 조회 미지원 → 자체 인덱서/Alchemy 추가|(/) 자체 인덱서|(x) 자체 인덱서 별도|
+|키 소유권|벤더 샤드 보관 (MPC)|자체 HSM/MPC 운영|고객 직접 보유 (온프렘 HSM+SGX)|
+|수신 감지|webhook push (벤더가 인덱싱)|자체 인덱서 상시 운영 (수집·projection·reorg)|제품 자체 원장·입금 검증 push|
+|nonce·stuck 대응|플랫폼 내부 처리 — 자체 nonce 돌리면 충돌. boost API 호출만|직접 — 계정별 lock·직렬화·fee bump|제품 처리 (Solana 라 fee-boost 없음)|
+|지원 체인|멀티체인 (Canton 포함)|만드는 만큼|*Solana 전용* — 이더리움·Canton 불가|
+|제도 적합|적격 custodian 위탁 허용 시|규제·요건 따라|자가 수탁·망분리·데이터 국외 미이전 요구 시|
+
+{note:title=ChainQuery 는 Fireblocks 가 안 준다 → 하이브리드가 정답}
+Fireblocks 로 Account·Transaction 포트(내 지갑 계정·트랜잭션·수신 이벤트)를 쓰되, 임의 외부 주소 조회나 커스텀 가공·집계가 필요하면 ChainQueryPort 만 자체 인덱서(또는 Alchemy·The Graph) 로 추가한다. 매니저를 통째로 추상화했다면 불가능했을 조합 — 기능별 포트라서 없는 포트만 따로 붙일 수 있다. 같은 원리로 체인별 병행 배치도 된다: Solana = NodeWallet · 이더리움/Canton = Fireblocks 또는 자체 구축. 코어(지갑 서비스 백엔드)는 포트만 의존하므로 어느 조합이든 그대로다.
+{note}
+
+h2. 4. 어느 쪽을 골라도 남는 것 · 설계 자세
+
+Fireblocks 가 포트를 거의 다 채워도 위층은 그대로 우리가 만든다 — 멱등 게이트웨이(우리 멱등 키 → externalTxId 매핑), 이벤트 팬아웃, 온체인 정합성·추적, 요청 큐·상태머신·vault 라우팅. 그리고 포트는 벤더 API 모양이 아니라 *우리 업무 언어*로 정의하되("도메인 우선"), 설계 단계에서 벤더가 실제로 무엇을 주는지 검증해 추상화가 거짓말하지 않게 한다 — _"Fireblocks 가 설계를 정하게 두지 말되, 설계가 Fireblocks 를 무시하게도 두지 말라."_ 이 비용은 벤더·체인을 실제로 갈아탈 가능성이 있을 때 정당화되며, 벤더 한 곳만 영원히 쓸 거면 순수 오버헤드일 수 있다.
+
+더 보기: 원본 가이드 13~16장 — https://wiki-docs.pages.dev/wallet-service-components/abstraction.html · example-fireblocks.html · example-selfbuild.html · example-nodewallet.html

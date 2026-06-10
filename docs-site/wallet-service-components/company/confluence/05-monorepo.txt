@@ -1,0 +1,70 @@
+h1. 프로젝트 구조 — 모노레포로 설계 경계를 강제한다
+
+{info:title=이 문서의 성격}
+저자가 일반적인 지갑 인프라 패턴을 바탕으로 정리한 설계 참고안이다. Fireblocks·Canton 등 특정 벤더·체인을 언급한 부분은 공식 문서에서 확인한 사실이고, 그 외는 저자 추정이므로 실제 적용 전 검증이 필요하다.
+{info}
+
+앞 문서들의 설계(두 층 · 3 포트 · 어댑터 교체 · 체인별 분리)를 코드로 옮기면 *경계가 패키지 경계*가 되어야 흐트러지지 않는다. 모노레포(여러 패키지를 한 저장소에서 함께 버전·빌드 관리하는 방식)로 두면 도메인·포트가 안쪽 핵으로 고정되고, 어댑터를 패키지 단위로 넣고 빼며, 한 번에 빌드·테스트할 수 있다. 스택은 Kotlin + Spring (Gradle 멀티모듈) — Canton 이 JVM 네이티브이고 NodeWallet SDK 가 Java/Spring, Fireblocks 도 Java SDK 라 이 조합에 JVM 이 1급이다.
+
+h2. 1. 디렉터리 구조
+
+{code}
+custodial-wallet/                # Gradle 멀티모듈 (각 디렉터리 = 서브프로젝트)
+├─ settings.gradle.kts           # 모듈 include 선언
+├─ gradle/libs.versions.toml     # 버전 카탈로그
+│
+├─ domain/                       # 순수 Kotlin (Spring 의존 X) — 모델 + 포트 (안쪽 핵)
+│   ├─ model/                    # Transaction · Account 등 + sealed ChainSpecific(Evm|Utxo|Canton)
+│   └─ port/                     # AccountPort · TransactionPort · ChainQueryPort
+│
+├─ backend/                      # Spring Boot — 지갑 서비스 백엔드 (벤더 무관 · 항상 우리 것)
+│   ├─ gateway/                  # 인증 · 멱등 키 · 라우팅
+│   ├─ directory/                # 계정·주소 디렉터리 — 발급 결과 저장 + 계정 해석 (우리 데이터)
+│   ├─ orchestration/            # 요청 큐 · 상태머신 · vault 라우팅
+│   ├─ reconciliation/           # 온체인 정합성 · 추적
+│   └─ alerts/                   # 이벤트 · 알림 팬아웃
+│
+├─ engine/                       # 블록체인 매니저 공통 부품 (자체 구축 엔진)
+│   ├─ multichain/  ├─ indexer/  ├─ tx-pipeline/  └─ signing/
+│
+├─ chains/                       # 체인 프로토콜별 구현
+│   ├─ evm/  ├─ utxo/  ├─ solana/  └─ canton/
+│
+├─ adapters/                     # custody 어댑터 = 교체 축 (포트 구현)
+│   ├─ fireblocks/               # Account+Transaction (REST/webhook) — 현재 기본
+│   ├─ self-build/               # engine+chains 조립, 세 포트
+│   ├─ nodewallet/               # 온프렘 · Solana 전용
+│   └─ chainquery-alchemy/       # ChainQueryPort 만
+│
+├─ shared/                       # config · logging · idempotency store
+│
+└─ apps/                         # 실행 모듈 (@SpringBootApplication · 어댑터 wiring)
+    ├─ api/                      # HTTP 진입점 — 어떤 어댑터를 쓸지 여기서 결정
+    ├─ indexer-worker/           # 상시 수집 worker + 정합성 주기 sweep
+    └─ webhook-receiver/         # Fireblocks webhook → onChainEvent
+{code}
+
+h2. 2. 의존 방향 규칙 — 안쪽으로만
+
+패키지 경계가 의미 있으려면 화살표(의존)가 한 방향이어야 한다. *{{domain}} 은 누구도 의존하지 않고, 모두가 {{domain}} 을 의존한다.* 흐름: apps → adapters → engine/chains → domain, 그리고 backend → domain. 단 컴파일 의존 하나는 주의 — {{ChainAdapter}} 인터페이스(SPI)가 engine/multichain 에 있어 chains 가 engine/multichain 을 의존한다(구현이 인터페이스 쪽으로 의존). 바깥(어댑터·체인)을 바꿔도 안쪽(도메인·백엔드)은 안 바뀐다.
+
+* *어댑터 교체 = 모듈 교체* — Fireblocks 만 쓰면 self-build·nodewallet 모듈은 빌드·배포에서 빠진다. apps/api 의 wiring 한 줄({{@Profile}} 또는 {{@ConditionalOnProperty}})만 바꾸면 되고 domain·backend 코드는 그대로.
+* *포트는 한 곳(domain)* — 어댑터·앱이 전부 같은 포트 타입을 import 하니, 시그니처가 어긋나면 컴파일에서 잡힌다.
+* *체인 추가 = chains 모듈 하나* — engine·backend·domain 은 안 바뀐다.
+* *강제 수단* — domain 은 순수 Kotlin(Spring 의존 금지), 의존 방향은 Gradle 모듈 그래프 + ArchUnit(아키텍처 규칙을 테스트로 검증하는 JVM 라이브러리)/Konsist 로 CI 에서 검사.
+
+h2. 3. 시작 셋 — 처음부터 전부 만들지 않는다
+
+||구분||모듈||비고||
+|*필수*|{{domain}} · {{backend}} · {{adapters/fireblocks}} · {{chains/canton}} · {{apps/api}} · {{apps/webhook-receiver}}|이더리움+Canton, 현재 Fireblocks 기준|
+|*선택 · 나중*|{{engine/*}} · {{chains/evm}} · {{adapters/self-build}}|자체 구축 전환 대비 자리만 비워 둠. 도메인 포트는 그대로 두므로 전환 시 새 어댑터 패키지만 추가|
+
+{note:title=Fireblocks 를 써도 chains 가 비어 있지 않은 이유}
+Fireblocks 가 멀티체인·서명·nonce 를 다 흡수하므로 초기엔 engine 이 거의 비어도 된다. 단 Canton 의 2-step 전송이나 임의 조회(ChainQuery)처럼 *벤더가 안 주거나 다르게 주는 부분*이 chains/canton·chainquery 어댑터에 들어간다. "벤더가 다 해준다" 가 깨지는 자리가 곧 chains 모듈의 존재 이유다.
+{note}
+
+h2. 4. 구현 스켈레톤
+
+이 구조의 구현 스켈레톤은 저장소 {{company/custodial-wallet/}} 에 있다 — {{CLAUDE.md}} 가 진입점이다.
+
+더 보기: 원본 가이드 17. 프로젝트 구조 (모노레포) — https://wiki-docs.pages.dev/wallet-service-components/project-structure.html
