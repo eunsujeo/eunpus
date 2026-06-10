@@ -157,6 +157,11 @@ flowchart LR
 <li><strong>대사 기준 시각.</strong> 우리 인덱스 진행은 ledger offset(<code>/v2/state/ledger-end</code>)으로 잡지만, <strong>외부 파트너와의 대사</strong>는 synchronizer 가 매기는 <code>recordTime</code> 을 기준으로 맞춘다 — offset 은 우리 노드 로컬 값이라 상대와 공유되지 않기 때문이다.</li>
 </ul>
 
+<div class="callout callout-warn">
+<div class="callout-title">순서·시간은 "전역 단일" 이 아니다 — partial ordering</div>
+<p>EVM 은 블록 번호로 전역 단일 순서가 잡히지만, Canton 은 <strong>부분 순서(partial ordering)</strong>다 — 서로 다른 party 가 두 거래를 <strong>다른 순서로</strong> 관찰할 수 있다(인과관계가 있는 것만 순서가 보장된다). 또 시간이 둘이다: <strong>ledger time</strong>(제출자가 매김)과 <strong>record time</strong>(저장 시점)이며 약간의 오차를 허용하고 <strong>둘 다 엄격히 단조증가하지 않는다</strong>. 그래서 인덱서·대사 로직은 "타임스탬프 순 = 인과 순" 으로 가정하면 안 되고, 특히 <strong>참조(divulgence)로 흘러든 정보에는 순서 보장이 없다</strong> — 정식 원장에 반영되기 전 divulged 정보로 자금을 움직이면 안 된다(같은 party 를 multi-host 하면 같은 거래를 노드마다 다른 순서로 받을 수도 있으나 결국 수렴한다).</p>
+</div>
+
 <div class="callout">
 <div class="callout-title">설계 포인트 — 멀티체인 인덱서에 끼워 넣기</div>
 <p>여러 체인을 다루는 인덱서라면, Canton 은 "블록 폴링" 계열이 아니라 <strong>"offset 스트림" 계열의 소스</strong>로 따로 둔다. 공통 인덱서 코어가 "입금 확정 / 전송 완료 / 잔액 변동" 같은 정규화된 이벤트만 받게 하고, ACS·offset·2-step 같은 Canton 특유의 메커니즘은 <code>CantonSource</code> 안에 가둔다. EVM 의 <code>blockNumber</code> 자리에 Canton 은 <code>offset</code> 을, "N블록 확인" 자리에 "commit 이벤트" 를 매핑하는 식이다.</p>

@@ -63,3 +63,9 @@ note: 500+ 페이지 중 수탁형 Canton 위키 관련 묶음만 추적. Daml s
 - **Stage 61 (batch5/6 core)** ✅ glossary · use-cases · command-deduplication · explicit-contract-disclosure · multi-hosting · external-signing-onboarding
   - 신규: external party 온보딩 API(/v2/parties/external/generate-topology→allocate, MPC/HSM 키) · disclosed_contracts(created_event_blob) · dedup 정정(command ID vs submission ID) · multi-hosting≠multi-sig 구분 · Amulet=CC·DSO·Splice 용어
   - 🔲 잔여: canton-protocol-specification · ledger-causality · decentralization · external-signing-topology/transactions · five-minute/the-problem/cantons-solution/cips-introduction (저수확 예상)
+- **Stage 62 (batch7 잔여 + API/stdlib 표본)** ✅ external-signing-transactions · ledger-causality · decentralization · admin-api(표본) · da-list(표본)
+  - 신규: ledger causality(partial ordering·fuzzy time·divulgence 순서무보장 수탁 리스크) · submission_id 재서명 불필요 · admin-api "never expose to public internet"
+  - **판정: API Reference(~250)+Daml stdlib(~120)+언어 ref = 기계적, promote 가능 서술 없음 → sweep 종료.** 수탁/아키텍처 content 페이지 전수 커버 완료.
+
+## SWEEP 완료 (Stage 57~62)
+content 페이지(Overview/Integrations/GS 운영·개념/관련 deep-dive) 전수 검증. 자동생성 ref(API/gRPC/Java/JSON/Daml stdlib)는 표본 점검 후 일괄 범위 밖 확정. Canton open Q: A11(Fireblocks status 매핑)만 open, 나머지 ANSWERED.

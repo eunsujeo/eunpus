@@ -6985,3 +6985,14 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 갱신: source append(섹션 12), entity(암호키·stakeholder/choice·4환경 Details, last_updated 56)
 - docs-site: page2(키 모델 표+보관 콜아웃) / page1(stakeholder·choice·immutable) / page5(4환경·SLA·Console) / custody(4환경)
 - check-consistency PASS(7페이지). 신규 entity 0. Canton open Q: A11 만 open
+
+## Stage 57-62 (2026-06-10) — docs.canton.network 사이드바 전수 sweep (배치 1~7)
+- 계기: 사용자 — "왼쪽 사이드바 전부 재확인". llms.txt 로 500+ 페이지 인벤토리 추출, sources/canton/_coverage.md 체크리스트로 추적. content 페이지 전수 검증 + 신규만 promote, 자동생성 ref 는 표본 후 일괄 범위 밖.
+- **Stage 57 (batch1 수탁직결)** 734dc13 — 암호 알고리즘 1차 확정(Ed25519/ECDSA-SHA256/SHA-256) · 외부서명 해시식 · 서명 프로바이더(Fireblocks/Dfns/Blockdaemon) · proof-of-transfer+pruning(UpdateID 영속화) · 거래소 omnibus(treasuryParty, <100 UTXO/transfer)
+- **Stage 58 (batch2 운영)** 90bf6fc — root/intermediate 키 계층(root offline/air-gap) · KMS(AWS/GCP/Driver, envelope vs full) · n-of-m multi-sig(3-of-5) · PartyToParticipant permission · 백업 순서·synchronous replication
+- **Stage 59 (batch3 개념)** 5bbbd3c — eUTXO·stakeholder 3역할 · divulgence 주의 · trust model(자가호스팅=validator 신뢰 제거) · topology 매핑 정정 · 5-phase lifecycle·decisionTimeout
+- **Stage 60 (batch4 개념/토큰)** 8a83c9a — pruning 심화(PQS·ACS commitment·30일) · CNS(이름→party) · 토큰경제 수치(10분 라운드/52,560yr·dev fund 5%·$2.85 liveness·median SV rate) · reassignment scope-out
+- **Stage 61 (batch5/6 deep-dive)** 375adb2 — external party 온보딩 API(generate-topology→allocate) · disclosed_contracts · dedup 정정(command ID) · multi-hosting≠multi-sig · Amulet=CC·DSO·Splice
+- **Stage 62 (batch7 잔여+API 표본)** — ledger causality(partial ordering·fuzzy time·divulgence 순서무보장 수탁 리스크) · submission_id 재서명 불필요 · **API/stdlib ~370 자동생성 ref 일괄 범위 밖 확정**
+- 영향: source(섹션 11~17 append) · entity/canton/canton-network(Key Concepts 대폭 확충, last_updated 62) · docs-site canton-network 전 페이지(page1~5·custody) · _coverage.md 체크리스트
+- 신규 entity: 0. Canton open Q: A11 만 open(C01·C02 ANSWERED). 사실 모순 0건, finality 외 추정 promote 0건(evidence isolation 유지)

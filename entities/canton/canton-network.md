@@ -4,7 +4,7 @@ vendor: canton
 status: draft
 tags: [architecture, transaction, integration, stablecoin, identity, recovery]
 stage_introduced: 52
-last_updated_stage: 61
+last_updated_stage: 62
 source_count: 5
 related: [transaction, api]
 ---
@@ -32,6 +32,7 @@ Canton 은 DAML 스마트컨트랙트 기반 privacy-enabled 퍼블릭 블록체
 - **external party 온보딩 API (★ Stage 61, MPC/HSM party 생성)** — ① 오프라인 keygen(HSM/MPC)·pubkey DER→base64 → ② `/v2/parties/external/generate-topology` → PartyToParticipant topology + multi-hash commitment → ③ **custody 키로 서명** → ④ `/v2/parties/external/allocate`. multi-host = otherConfirmingParticipantUids. **키는 HSM/MPC 밖으로 안 나감**. = Fireblocks/MPC 키로 Canton party 를 만드는 실제 절차. (source: docs-canton-network-renewed external-signing-onboarding)
 - **explicit contract disclosure (★ Stage 61)** — 못 보는 contract 를 command 의 `disclosed_contracts`(template_id·contract_id·**created_event_blob**, off-ledger 공유)로 첨부해 사용. transfer factory/registry 를 이렇게 disclose → stakeholder 아니어도 exercise. hash 기반 contract-id 라 위변조 탐지. (wallet prepare 의 "disclosed contracts" 정체). command dedup 기준은 **command ID**(change ID, 재시도 동일), submission ID 는 매번 fresh. (source: docs-canton-network-renewed explicit-contract-disclosure·command-deduplication)
 - **용어 (★ Stage 61)** — **Amulet = Canton Coin 의 구 명칭**(API `amulet*` 에 잔존), DSO = Super Validator 집합, Splice = synchronizer 운영 오픈소스(Hyperledger Labs). (source: docs-canton-network-renewed glossary)
+- **causality·시간 (★ Stage 62, 수탁 리스크)** — Canton 은 **partial ordering**(total 아님) — party 마다 두 tx 관찰 순서 다를 수 있음(causality graph 로 정합). **ledger time(submitter) vs record time(storage)**, bounded skew, **둘 다 단조증가 아님(fuzzy)**. **divulged 정보엔 순서 보장 없음** → 정식 원장 반영 전 divulged 정보로 행동 금지, multi-host party 는 동일 tx 를 다른 순서로 받을 수 있음(결국 수렴). external signing tx: `submission_id` 로 **재서명 없이 재시도** 가능. (source: docs-canton-network-renewed ledger-causality·external-signing-transactions)
 - **stakeholder / choice** (★ Stage 56, 56→59 정정) — Canton = **eUTXO**. contract = tx 로 created·immutable·고유 ID·archive 까지. action = Create/Exercise/Fetch. **stakeholder 3역할: signatory**(생성 authorize·항상 가시)/**observer**(가시·행사 불가)/**controller**(자신 통제 choice 행사). **choice = Consuming**(행사 시 archive)**/Non-consuming**(유지). (source: docs-canton-network-renewed core-concepts·ledger-model)
 - **privacy divulgence 주의 (★ Stage 59)** — tx 에서 contract 를 **fetch 하면 그 tx 당사자에게 observer 아니어도 자동 노출(divulgence)** — 의도치 않은 정보 누출 가능. 컴플라이언스·프라이버시 설계 시 주의. (3자 체인 Alice→Bob→Charlie: Alice 는 Charlie 미가시, Charlie 는 Alice 미가시) (source: docs-canton-network-renewed privacy-model)
 - **trust model = selective trust (★ Stage 59, 자가호스팅 판단)** — 5 도메인: validator(데이터·가용성; external party 면 **서명은 안 믿음**; 자가호스팅 시 신뢰 제거) / counterparty(내 validator 정직하면 invalid tx 확정 불가) / synchronizer(내용 못 읽음·위조 못함·invalid 승인 못함, **delay 만 가능**, BFT 2/3 honest) / app provider / governance. **자가호스팅 = validator 신뢰 제거, synchronizer 는 BFT·multi-sync 로 완화**. (source: docs-canton-network-renewed trust-model)
