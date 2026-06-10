@@ -58,3 +58,5 @@ note: 500+ 페이지 중 수탁형 Canton 위키 관련 묶음만 추적. Daml s
   - 신규: root/intermediate 키 계층(root offline/air-gap) · KMS(AWS/GCP/Driver, envelope vs full) · n-of-m 멀티시그(3-of-5 PartyToParticipant, multi-host threshold, decentralized namespace) · PartyToParticipant permission(Submission/Confirmation/Observation) · 백업 순서(participant 먼저)·synchronous replication
 - **Stage 59 (batch3, 개념 6)** ✅ ledger-model · privacy-model · trust-model · two-layer-consensus · topology · transaction-lifecycle
   - 신규: eUTXO·stakeholder 3역할(signatory/observer/controller)·Create/Exercise/Fetch · divulgence 주의 · trust model selective(자가호스팅=validator 신뢰 제거) · topology 매핑 정정(PartyToParticipant/OwnerToKeyMapping/PartyToKey/NamespaceDelegation, perm Observation/Confirmation/Submission) · 5-phase lifecycle·decisionTimeout
+- **Stage 60 (batch4, 개념/토큰 6)** ✅ reassignment-protocol · pruning · canton-name-service · rewards-minting · validator-liveness · tokenomics-of-gs
+  - 신규: pruning 심화(PQS·ACS commitment·30일 retention) · CNS(이름→party, DSO·소각) · 토큰경제 수치(10분 라운드/52,560yr·dev fund 5%·$2.85 liveness·median SV rate) · reassignment scope-out(단일 synchronizer)
