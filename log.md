@@ -6996,3 +6996,9 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - **Stage 62 (batch7 잔여+API 표본)** — ledger causality(partial ordering·fuzzy time·divulgence 순서무보장 수탁 리스크) · submission_id 재서명 불필요 · **API/stdlib ~370 자동생성 ref 일괄 범위 밖 확정**
 - 영향: source(섹션 11~17 append) · entity/canton/canton-network(Key Concepts 대폭 확충, last_updated 62) · docs-site canton-network 전 페이지(page1~5·custody) · _coverage.md 체크리스트
 - 신규 entity: 0. Canton open Q: A11 만 open(C01·C02 ANSWERED). 사실 모순 0건, finality 외 추정 promote 0건(evidence isolation 유지)
+
+## Stage 63 (2026-06-10) — docs-site/canton-network 재검토 정리 (구조)
+- 사용자 재검토 요청. 자동 점검 PASS·잔재 0·링크 정상 확인. 실질 이슈 2건 수정:
+  - model.html: `choice` 정의 한 문단 내 중복 서술 제거
+  - validator.html 과적재 해소: sweep 중 2.1(행위자)에 쌓인 키·서명·멀티시그를 **신규 "2.2 키·서명·정족수" 절로 분리**(Synchronizer→2.3, 거래확정→2.4, 확정시간→2.5), 겹치던 키보관 callout 2개→1개 병합, party-per-account 는 2.1 로 이동
+- 사실 변경 없음(presentation only), check-consistency PASS

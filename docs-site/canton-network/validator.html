@@ -65,6 +65,15 @@
 <p>PartyId 의 <code>fingerprint</code> 부분은 그 party 의 topology 변경을 authorize 하는 <strong>공개키의 fingerprint(sha256)</strong>다. 즉 신원과 서명 권한이 묶여 있다. 하지만 PartyId 자체는 <strong>opaque identifier</strong> — 앱이 <code>hint</code> 와 <code>fingerprint</code> 를 파싱·조립하면 안 되고, allocation 으로만 생성한다(주소 발급은 <a href="operations.html">3. 자산 동작</a>).</p>
 </div>
 
+<div class="callout">
+<div class="callout-title">party 는 계정당 하나 — 입금마다 새로 만들지 말 것</div>
+<p>EVM 수탁 지갑은 흔히 "사용자(또는 입금)마다 새 주소" 를 발급한다. Canton 에서는 이 습관을 버려야 한다. party allocation 에는 비용이 따르므로, 공식 가이드는 <strong>"계정/지갑당 party 하나(one Party per account/wallet)"</strong> 를 안정적으로 두라고 권한다 — <strong>입금 건마다 임시 party 를 만들지 말 것</strong>. 입금자 구분은 별도 주소가 아니라 memo 태그로 한다(<a href="indexer.html">4. 인덱서</a>). PartyId 는 <code>name::fingerprint</code> 형식에 최대 185자다. 백업·이중화를 위해 같은 party 를 여러 validator 에 multi-host 할 수 있다(<a href="integration.html">5. 운영</a>).</p>
+</div>
+
+<h3>2.2 키 · 서명 · 정족수 — external party · 키 모델 · 다중서명</h3>
+
+<p>여기서부터는 <strong>"누가 거래를 서명하고, 키를 어디에 두는가"</strong> 다 — 수탁 설계에서 가장 중요한 부분이다. 앞 2.1 이 "행위자가 누구인가" 였다면, 이 절은 그 행위자의 <strong>서명 권한과 키</strong>를 다룬다.</p>
+
 <h4>external party — 키를 우리가 쥐는 신원 (수탁에 핵심)</h4>
 
 <p>수탁 지갑에서 가장 중요한 구분이 <strong>external party</strong>다. party 가 participant 에 host 되는 방식은 둘로 나뉜다.</p>
@@ -109,19 +118,15 @@
 </div>
 
 <div class="callout">
-<div class="callout-title">키를 어디에 보관하나 — 수탁의 핵심 결정</div>
-<p>키 저장 옵션은 <strong>DB(평문) · 메모리 · offline · KMS(envelope/full)</strong> 가 있다. 수탁 지갑이라면 <strong>party 서명키</strong>(자금을 움직이는 키)를 <strong>offline 또는 KMS·HSM·MPC</strong> 로 보관하는 것이 정석이다 — 공식 가이드도 external party 서명키의 권장 저장을 <strong>offline</strong> 으로 든다. 이렇게 두면 validator(participant)는 운영용 node 키만 쥐고, <strong>자금 권한 키는 우리 통제 경계 안</strong>에 남는다(앞의 external party 구조와 같은 결론).</p>
+<div class="callout-title">키를 어디에 두나 — 루트는 오프라인, 운영 키는 KMS</div>
+<p>키 저장 옵션은 <strong>DB(평문)·메모리·offline·KMS(envelope/full)</strong> 다. 수탁이라면 <strong>party 서명키</strong>(자금을 움직이는 키)를 <strong>offline 또는 KMS·HSM·MPC</strong> 로 둔다 — 공식 가이드의 권장도 external party 서명키 = <strong>offline</strong> 이다. 그러면 validator 는 운영용 node 키만 쥐고 <strong>자금 권한 키는 우리 통제 경계 안</strong>에 남는다.</p>
+<p>키는 계층적이기도 하다 — <strong>root namespace key</strong> 는 신원의 뿌리라 <strong>오프라인(air-gap)·KMS 로 격리</strong>하고, 평소 topology 변경은 그 아래 <strong>intermediate key</strong>(노드에 두고 root 없이 교체)로 한다(루트 CA 는 금고에, 발급용 중간 인증서는 온라인에 두는 PKI 와 같은 발상). KMS 는 <strong>AWS·GCP·드라이버(HSM)</strong> 를 지원하고, <strong>envelope</strong>(Canton 이 키 생성·KMS 가 감싸 보관) 와 <strong>full KMS</strong>(생성·보관 전부 KMS, <strong>Canton 이 원본 개인키를 못 봄</strong>) 두 모드가 있다.</p>
 </div>
 
 <div class="callout">
 <div class="callout-title">서명 알고리즘과 "무엇을 서명하나"</div>
 <p>공식 crypto-schemes 기준 서명 알고리즘은 <strong>Ed25519</strong><span class="g" data-tip="EdDSA 의 한 곡선. Canton 의 소프트웨어(JCE) 기본 서명 알고리즘">?</span>(소프트웨어 기본) 와 <strong>ECDSA-SHA256</strong>(EC-P256·secp256k1, KMS 기본)·ECDSA-SHA384(P-384)이고, 해시는 <strong>SHA-256</strong>(유일)이다. 그래서 Fireblocks 등으로 외부 서명할 때 EdDSA(Ed25519) Raw Signing 을 쓰는 것과 정확히 맞는다.</p>
 <p>서명하는 대상은 거래 전체에 대한 <strong>결정적 해시</strong>다 — 대략 <code>SHA-256( 용도prefix ‖ 버전 ‖ hash(거래) ‖ hash(메타데이터) )</code> 꼴이고, protobuf 가 비결정적이라 Canton 은 별도의 결정적 인코딩 규칙으로 직렬화한 뒤 해시한다. 덕분에 <strong>MPC·HSM 이 서명 직전에 이 해시를 독립적으로 다시 계산해 "맞는 거래인지" 검증</strong>할 수 있다(validator 가 거래를 몰래 바꾸면 해시가 어긋나 서명이 무효).</p>
-</div>
-
-<div class="callout">
-<div class="callout-title">루트 키는 오프라인, 운영 키는 KMS — CA 식 계층</div>
-<p>키는 평면적이지 않다. <strong>root namespace key</strong> 는 신원의 뿌리라 <strong>오프라인(air-gap) 또는 KMS 로 격리</strong>해 두고, 평소 topology 변경은 그 아래 <strong>intermediate key</strong>(노드에 두고 root 없이 교체 가능)로 서명한다 — 루트 CA 는 금고에, 발급용 중간 인증서는 온라인에 두는 PKI 와 같은 발상이다. KMS 는 <strong>AWS·GCP·드라이버(HSM)</strong> 를 지원하고, <strong>envelope</strong>(키는 Canton 이 만들고 KMS 가 감싸 보관) 와 <strong>full KMS</strong>(키 생성·보관 전부 KMS, <strong>Canton 이 원본 개인키를 못 봄</strong>) 두 모드가 있다.</p>
 </div>
 
 <div class="callout">
@@ -136,12 +141,7 @@
 <p><strong>다중 host 와 다중 서명은 다른 층</strong>임을 유의하자 — party 를 여러 validator 에 두는 <strong>multi-hosting</strong> 은 가용성(HA)·즉시 failover·악성 validator 방어를 위한 <em>토폴로지</em> 분산이고, 위 ①의 <strong>키 임계값(multi-sig)</strong> 은 <em>거래 서명</em>을 n-of-m 으로 요구하는 것이다. 둘은 함께 쓸 수 있다.</p>
 </div>
 
-<div class="callout">
-<div class="callout-title">party 는 계정당 하나 — 입금마다 새로 만들지 말 것</div>
-<p>EVM 수탁 지갑은 흔히 "사용자(또는 입금)마다 새 주소" 를 발급한다. Canton 에서는 이 습관을 버려야 한다. party allocation 에는 비용이 따르므로, 공식 가이드는 <strong>"계정/지갑당 party 하나(one Party per account/wallet)"</strong> 를 안정적으로 두라고 권한다 — <strong>입금 건마다 임시 party 를 만들지 말 것</strong>. 입금자 구분은 별도 주소가 아니라 memo 태그로 한다(<a href="indexer.html">4. 인덱서</a>). PartyId 는 <code>name::fingerprint</code> 형식에 최대 185자다. 백업·이중화를 위해 같은 party 를 여러 validator 에 multi-host 할 수 있다(<a href="integration.html">5. 운영</a>).</p>
-</div>
-
-<h3>2.2 Synchronizer — Sequencer 와 Mediator</h3>
+<h3>2.3 Synchronizer — Sequencer 와 Mediator</h3>
 
 <p>EVM 에서는 채굴자/검증자가 트랜잭션을 모아 블록을 만들고, 그 블록이 쌓이며 확정된다. Canton 에는 그런 "블록 생산자" 가 없다. 대신 <strong>Synchronizer</strong> 가 두 가지 일을 한다.</p>
 
@@ -169,7 +169,7 @@
 <p>이 순서화·검증을 떠받치는 노드도 둘로 나뉜다. <strong>Super Validator</strong> 가 Global Synchronizer 인프라를 운영하며 <strong>트랜잭션 순서화(sequencing)·Canton Coin 거래 검증·거버넌스</strong>를 맡고, 일반 <strong>Validator</strong> 는 자신이 host 한 party 의 거래를 검증하고 연결을 제공한다. 거버넌스는 Global Synchronizer Foundation 과 Linux Foundation 이 함께 감독한다.</p>
 </div>
 
-<h3>2.3 거래 확정 흐름 — 2-phase commit</h3>
+<h3>2.4 거래 확정 흐름 — 2-phase commit</h3>
 
 <div class="diagram"><pre class="mermaid">
 flowchart TB
@@ -196,7 +196,7 @@ flowchart TB
 </pre></div>
 <p class="diagram-caption">Figure 2-1. 거래 확정 흐름. <strong>노랑 = 진행 중</strong>(제출 → Sequencer 순서화 → 이해관계자 검증). <strong>보라 = Mediator 의 2-phase commit 판정</strong>. <strong>초록 = 확정</strong>(committed — ACS 가 갱신되고 자금이 실제로 이동), <strong>빨강 = 거절</strong>(rejected — 상태 변화 없음). EVM 의 "블록에 들어가고 N개 더 쌓이면 확정" 과 달리, Canton 은 <strong>Mediator 가 commit 을 내는 순간이 확정 지점</strong>이다. 단 이 한 번의 확정이 끝났다고 2-step 전송 전체가 끝난 건 아니다 — 이건 "OFFER 가 원장에 올라간" 확정일 수 있고, 자금이 수신자에게 가려면 별도의 ACCEPT 거래가 또 한 번 이 흐름을 탄다(<a href="operations.html">3. 자산 동작</a>).</p>
 
-<h3>2.4 확정을 언제로 봐야 하는가</h3>
+<h3>2.5 확정을 언제로 봐야 하는가</h3>
 
 <p>EVM 에서는 "몇 블록 확인(confirmation)을 기다릴지" 를 우리가 정한다(예: 12블록). Canton 은 다르다 — <strong>Mediator 가 commit 을 내면 그 거래는 확정</strong>이고, 재구성(reorg)으로 뒤집히는 모델이 아니다. 그래서 "N블록 대기" 라는 개념 자체가 없다.</p>
 
