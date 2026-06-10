@@ -7065,3 +7065,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 1차 확정: canton-network/wallet = 공식 **TypeScript** 프레임워크(Wallet Gateway+dApp SDK+Wallet SDK). 서명 드라이버 core-signing-{internal(Ed25519)/participant/fireblocks/blockdaemon}. **core-signing-fireblocks** = SigningDriverInterface(@canton-network/core-signing-lib) 구현, Fireblocks API 서명. 셋업 RSA-4096(FIREBLOCKS_SECRET)·API User(CSR)·API Key — API 인증용(온원장 서명과 별개 층). Wallet SDK = synchronizer 인증·external keypair party allocate·ACS·prepared tx 검증·서명/제출
 - 정정: 기존 "Fireblocks Java SDK" → Canton wallet SDK 의 fireblocks 드라이버는 TS
 - 신규 source canton-wallet-sdk-github(1차). entity(source 7→8, 서명 SDK 드라이버 bullet, last_updated 73) + custody 6.3(공식 core-signing-* 드라이버·Java SDK 정정)
+
+## Stage 74 (2026-06-10) — canton-network/wallet core 모듈·Gateway·SigningDriverInterface 이어서 promote
+- 사용자: 같은 레포 다른 모듈 이어서 확인
+- 신규: core 36모듈 중 수탁 관련(acs-reader·ledger-client±types/proto·token-standard±service·tx-parser/visualizer·wallet-auth·wallet-store inmemory/sql·splice·amulet). **서명 드라이버 5종**(internal/participant/fireblocks/blockdaemon/**dfns**+lib+store-sql) — Stage 73 의 4종 표기 보강(dfns)
+- SigningDriverInterface = {partyMode, signingProvider, controller(authContext?)→Methods(OpenRPC)} — Fireblocks/Dfns/HSM 구현 지점
+- Wallet SDK = @canton-network/wallet-sdk(NodeJS). Wallet Gateway(remote) = RPC 서버 :3030, /api/v0/{dapp,user}, 서명을 드라이버로 라우팅, Postgres(wallet/signing-credential 분리), Canton+CantonTestnet
+- source(canton-wallet-sdk-github) 섹션 4 append, entity(드라이버 5종·인터페이스·Gateway·building blocks, last_updated 74), custody 6.3(dfns 추가 + '공식 SDK 가 주는 것' callout)

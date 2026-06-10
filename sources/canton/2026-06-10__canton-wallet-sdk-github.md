@@ -52,3 +52,22 @@ source: README
 ## Source
 
 GitHub canton-network/wallet — <https://github.com/canton-network/wallet> · core/signing-fireblocks
+
+## (4) core 모듈 맵 + Gateway + SigningDriverInterface (이어서 확인, Stage 74)
+
+source: /tree/main/core · sdk/wallet-sdk · core/signing-lib · wallet-gateway/remote
+
+- **core 모듈(36개) 중 수탁 관련**: `acs-reader`(ACS 읽기) · `ledger-client`(+`ledger-client-types`/`ledger-proto`, Ledger API 클라이언트) · `token-standard`(+`token-standard-service`) · `tx-parser`·`tx-visualizer` · `wallet-auth` · `wallet-store`(+`inmemory`/`sql`) · `splice-client`/`splice-provider` · `amulet-service` · **서명 드라이버 5종** `signing-{internal,participant,fireblocks,blockdaemon,dfns}` + `signing-lib` + `signing-store-sql`.
+  - ★ **Dfns 도 레포 드라이버**(`signing-dfns`) — Stage 73 에서 "internal/participant/fireblocks/blockdaemon" 만 적은 것 보강(5종).
+  - 즉 수탁사가 ACS 읽기·Ledger 클라이언트·token-standard·tx 파싱·store 를 **직접 안 만들고 SDK 모듈로** 쓸 수 있다.
+- **Wallet SDK**(`sdk/wallet-sdk`): "TypeScript SDK … making wallet integrations easy." `npm i @canton-network/wallet-sdk`, **NodeJS 전용**. 능력 = synchronizer 인증·external keypair party allocate·ACS 읽기·prepared tx decode/validate·서명/제출.
+- **SigningDriverInterface**(`core/signing-lib`):
+  ```ts
+  export interface SigningDriverInterface {
+    partyMode: PartyMode
+    signingProvider: SigningProvider
+    controller: (authContext?: AuthContext) => Methods   // buildController, Methods 는 OpenRPC 생성
+  }
+  ```
+  Fireblocks/Dfns/HSM 가 이 인터페이스를 구현해 끼워진다. 실제 sign 메서드는 OpenRPC 로 생성된 `Methods` 에.
+- **Wallet Gateway(remote)**: RPC 서버, **기본 port 3030**. 엔드포인트 `/`(user web UI) · **`/api/v0/dapp`**(dApp JSON-RPC) · **`/api/v0/user`**(user JSON-RPC). 서명 요청을 **드라이버 백엔드(Fireblocks·Dfns)로 라우팅**, wallet provisioning/activation/signing 관리(Canton + CantonTestnet). **Postgres** 로 wallet store·signing credential store 분리 보관. JSON config. JSON-RPC 메서드는 API spec 에서 strongly-typed 생성.
