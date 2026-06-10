@@ -213,6 +213,39 @@ flowchart LR
 
 <p>5.1~5.4 가 "노드를 누가 운영하나" 라면, 이건 다른 축이다 — <strong>Canton 위에 이미 올라간 응용 네트워크에 합류할 것인가, 아니면 Canton 에 직접 붙어 우리 앱을 만들 것인가</strong>. 대표 사례가 <strong>Musubi</strong>(Canton 기반 <strong>한·일 cross-border FX 결제 네트워크</strong>)다 — 우리 가이드의 "국내은행 ↔ 해외은행 송금" 시나리오와 정확히 겹친다.</p>
 
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    SI["Sender Institution<br/>(송금 은행 — 주문·견적 선택)"]
+    SC["Sender Custodian<br/>(우리 — 자산 보유·co-sign)"]
+    MK["Market Makers<br/>(익명 RFQ 경쟁 견적)"]
+    RC["Receiver Custodian<br/>(수신·co-sign)"]
+    OP["Musubi<br/>(결제 조율 · 자산 미보유)"]
+    DVP{"4자 서명 atomic DvP<br/>Operator + Sender Cust + MM + Receiver Cust"}
+    OK["✅ 동시 결제 ~15초<br/>JPYSC0 ↔ USDCx<br/>전부 or 전무 (Herstatt 0)"]
+    NG["❌ 하나라도 불응<br/>→ 전체 roll back"]
+
+    SI -->|① FX 주문| OP
+    MK -->|② 익명 RFQ 견적| SI
+    SI -->|③ 견적 선택| SC
+    SC -->|④ co-sign| DVP
+    OP --> DVP
+    MK --> DVP
+    RC --> DVP
+    DVP -->|4자 모두 서명| OK
+    DVP -->|불응| NG
+
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+    class SI,MK,RC ext;
+    class SC good;
+    class OP,DVP special;
+    class OK good;
+    class NG bad;
+</pre></div>
+<p class="diagram-caption">Figure 5-2. Musubi 사용 흐름. <strong>초록 = 우리(Sender Custodian — 자산 보유·co-sign)</strong>, 회색 = 다른 참여자(송금 은행·market maker·수신 custodian), <strong>보라 = Musubi 조율·4자 atomic DvP</strong>. ① 송금 은행이 FX 주문 → ② market maker 가 <strong>익명 RFQ</strong> 견적(신원 안 보임 — sub-transaction privacy) → ③ 은행이 견적 선택 → ④ 우리(Sender Custodian)가 <strong>co-sign</strong> 해야 자금이 풀린다(maker-checker). 이후 <strong>Operator+양 Custodian+Market Maker 4자가 모두 서명</strong>해야 atomic DvP(JPYSC0↔USDCx, ~15초)가 발사되고, <strong>하나라도 불응하면 전체 roll back</strong>(전부 or 전무 — Herstatt risk 0). Musubi 는 <strong>조율만</strong> 하고 자산은 custodian 이 보유한다(CLS 식). ⚠️ 2차 출처·testnet POC.</p>
+
 <div class="table-wrap">
 <table>
 <thead><tr><th style="width:16%">관점</th><th>Musubi 사용 (기성 네트워크 합류)</th><th>Musubi 미사용 (직접 Canton)</th></tr></thead>
