@@ -4,8 +4,8 @@ vendor: canton
 status: draft
 tags: [architecture, transaction, integration, stablecoin, identity, recovery]
 stage_introduced: 52
-last_updated_stage: 62
-source_count: 5
+last_updated_stage: 65
+source_count: 6
 related: [transaction, api]
 ---
 
@@ -16,6 +16,8 @@ Canton 은 DAML 스마트컨트랙트 기반 privacy-enabled 퍼블릭 블록체
 
 ## Key Concepts
 - **원장 = ACS, holdings = UTXO** — party 자산/상태 = active contract 집합(ACS). 토큰 holdings 는 `Holding` interface 구현 active contract = **Canton 의 UTXO 등가물**(`includeLocked` 로 locked/가용 구분). active Holding 은 storage+compute 비용 발생 → **지갑당 ~10 UTXO 유지 권장**. 복구 시 새 validator 에 party re-host + ACS import. (source: digitalasset-docs-canton-model, docs-canton-network-renewed, fireblocks-recover-canton-coin)
+- **allowance/approve 패턴 없음 (★ Stage 65)** — Canton holding 은 **소유자가 sole signatory** 이고, ERC-20 식 approve/allowance(제3자에 사용권 위임)가 **없다** — 전송은 소유자의 직접 서명으로만. → infinite-approval 류 공격면이 구조적으로 부재(수탁 보안 이점). (source: musubi-custodian-track; Canton fact)
+- **named-role 다중서명 (★ Stage 65)** — Canton 의 다자 서명은 EVM 처럼 익명 interchangeable n-of-m 이 아니라 **지정 party 의 named-role 서명**(DAML **choice-level granularity**)이고, 동시 집계가 아니라 **순차 rolling approval(DAML choice exercise)**다. maker-checker/four-eyes 를 절차가 아니라 **암호학적으로 강제**. [[multi-sig 항목]]을 이렇게 읽을 것. (source: musubi-custodian-track; Canton fact, [[transaction]])
 - **2-step 전송 / CIP-0056** — token standard 명세 = **CIP-0056**. 송신 시 `TransferInstruction`(factory 생성) → 수신자 **Accept**(완료)/**Reject**(반환) 또는 송신자 **Withdraw**(locked 자금 회수). FOP(Free of Payment) 전송 가능. 신규 인터페이스 `TransferFactory`/`AllocationFactory`/`BatchMergeUtility`/`MergeDelegation`. Canton Coin 은 **Transfer Pre-approval = 1-step**. Fireblocks transactionType(OFFER/ACCEPT/REJECT/WITHDRAW/PRE_APPROVAL)와 정합. (★ Stage 53: v3.4 는 "2-step = 모든 토큰 기본값" 단정, 리뉴얼본은 구현 옵션 톤 — 함께 볼 것) (source: digitalasset-docs-canton-model, docs-canton-network-renewed; 매핑 [[transaction]])
 - **PartyId = hint::fingerprint** — fingerprint = 이 party 의 topology transaction 을 authorize 하는 공개키의 sha256. namespace 는 root signing key 에서 도출. opaque identifier 라 파싱 금지, allocation 으로만 생성. (source: digitalasset-docs-canton-model)
 - **external party = 외부 서명 신원** (★ Stage 53) — external party = "submission key holder, no SPN, 자체 namespace, 자체 signing key 통제". external signing 2-step: **Preparing Participant Node**(Ledger API command→Daml tx) + **Executing Participant Node**(party 서명 부착). party 가 "transaction tree 의 hash" 명시 서명, **private key 는 party 만 통제 → participant 는 party 승인 없이 원장 행동 불가**. MPC/HSM 수탁 모델과 정합. (source: docs-canton-network-renewed)
@@ -42,7 +44,9 @@ Canton 은 DAML 스마트컨트랙트 기반 privacy-enabled 퍼블릭 블록체
 
 ## Details
 ### Musubi Network (Canton 기반 활용 사례)
-한·일 cross-border FX/결제 네트워크 — atomic DvP(4 settlement legs + signatory closure, Allocation contract 기반), ~15초 결제, JPYSC0·USDCx 스테이블코인, 현재 testnet POC. 참여자 = Institutions / Custodians(cryptographic dual-control authorize) / Market Makers + Operator(Startale+Nodeinfra) / Settlement mediator. (source: musubi-network-introduction) [[stablecoin]] 맥락과 연결.
+한·일 cross-border FX/결제 네트워크 — atomic DvP(4 settlement legs + signatory closure, Allocation contract 기반), ~15초 결제, JPYSC0·USDCx 스테이블코인, 현재 **testnet POC**. 참여자 = Institutions / Custodians(cryptographic dual-control authorize) / Market Makers + **Operator = Startale·Nodeinfra(공식 문구 "operated by", 운영 범위는 미상 — Canton validator 운영 여부 명시 없음)** / Settlement mediator. (source: musubi-network-introduction) [[stablecoin]] 맥락과 연결.
+
+**Musubi 가 보여주는 Canton 수탁 패턴 (★ Stage 65)**: custodian 이 signing key·backend·DB 모두 자가 보유(타 참여자 접근 불가), **delegated custody**(institution→custodian 위임, 예 Zodia Custody·KODA 거론, Musubi 는 자산 미보유·CLS 식 조율만), 컴플라이언스-as-precondition(`ExecuteSettlement` 이 attestation 검증 후에만 DvP), sub-transaction privacy 로 IVMS 101 등 PII 온원장. 거론된 실제 Canton 배포(2차 인용): DTCC·Goldman Sachs·HSBC·Deutsche Börse·Progmat. **Musubi 도 finality 수치 명시 안 함**(C01 재확인). (source: musubi-custodian-track; ⚠️ 2차 출처·testnet POC)
 
 ### 수탁 지갑 관점
 Canton 어댑터가 흡수해야 할 핵심 = **"제출=완료" 가 아니다** — 전송이 기본 2-step 이라 OFFER/TransferInstruction 제출 후 상대 수락 대기 상태가 존재하고, 송신자 자금이 locked UTXO 로 묶인다. account/nonce 모델이 아니라 DAML active contract 원장 + UTXO형 holdings + 권한 기반 전송이 구별점. Fireblocks 가 Canton 지원(transactionType, traceableId). [[api]] 참조.
@@ -69,6 +73,7 @@ docs.canton.network/integrations/wallet/guidance 1차 출처. 수탁 설계에 �
 - fireblocks-recover-canton-coin (2026-05-19) — Fireblocks Help Center 추출본
 - digitalasset-docs-canton-model (2026-06-09) — <https://docs.digitalasset.com/> v3.4
 - docs-canton-network-renewed (2026-06-10) — <https://docs.canton.network/> (digitalasset.com 후속 리뉴얼본)
+- musubi-custodian-track (2026-06-10) — <https://musubinetwork.com/> Custodian/Institution Track (⚠️ 2차 출처·Canton 위 app·testnet POC)
 
 ## Open Questions
 - **Q-2026-05-22-A11**: Canton transactionType(OFFER/ACCEPT/REJECT/WITHDRAW/PRE_APPROVAL) ↔ Fireblocks transaction status 매핑 + timeout 처리 (open)

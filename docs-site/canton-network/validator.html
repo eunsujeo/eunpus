@@ -137,7 +137,7 @@
 <li><strong>다중 host 확인 임계값</strong> — party 를 여러 validator 에 host 하고, 그 중 임계값(>1) 이상이 확인해야 그 party 의 확인으로 친다(탈중앙 party).</li>
 <li><strong>탈중앙 namespace</strong> — N개 키 중 T개(T≤N) 서명으로 신원 권한을 행사.</li>
 </ul>
-<p>Fireblocks 의 TAP·승인 정족수(quorum) 같은 거버넌스를 Canton 에선 <strong>키 분산 + 임계값</strong>으로 구현하는 셈이다.</p>
+<p>Fireblocks 의 TAP·승인 정족수(quorum) 같은 거버넌스를 Canton 에선 <strong>키 분산 + 임계값</strong>으로 구현하는 셈이다. 단 <strong>EVM 멀티시그와 결이 다르다</strong> — EVM 은 익명의 서명자가 교체 가능한 n-of-m 이지만, Canton 은 <strong>지정된 party 의 "named-role" 서명</strong>(DAML choice 단위)이고, 동시 집계가 아니라 <strong>순차(rolling) 승인</strong>이다. "특정한 그 party 의 서명" 을 요구하므로 maker-checker·four-eyes 를 절차가 아니라 <strong>암호학적으로</strong> 강제한다(Canton 위 수탁 구현 Musubi 가 이 방식을 쓴다).</p>
 <p><strong>다중 host 와 다중 서명은 다른 층</strong>임을 유의하자 — party 를 여러 validator 에 두는 <strong>multi-hosting</strong> 은 가용성(HA)·즉시 failover·악성 validator 방어를 위한 <em>토폴로지</em> 분산이고, 위 ①의 <strong>키 임계값(multi-sig)</strong> 은 <em>거래 서명</em>을 n-of-m 으로 요구하는 것이다. 둘은 함께 쓸 수 있다.</p>
 </div>
 

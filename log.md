@@ -7007,3 +7007,14 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 사용자 지적: NodeInfra 의 NodeWallet 은 Solana 전용(vendors/nodeinfra/nodewallet.md:67 "EVM/BTC 커버 불가") → Canton 미지원인데 page5 "운영형(Nodeinfra)" 로 박은 게 오류. Canton 맥락 Nodeinfra 언급은 Musubi operator 한 줄뿐(모호)
 - 정정: page5 제목 "직접 구현 vs 운영형(Nodeinfra)" → **"직접 운영 vs 위탁 운영"**(7 사이드바·h2·title·meta·index 0.4·indexer 다음·루트 허브 카드 일괄), 5.1 bullet 일반화, **"벤더가 Canton 지원하는지 먼저 확인" caveat 추가**(NodeWallet=Solana 전용 명시, Canton 서명 위탁은 Wallet Gateway 서명 프로바이더 Fireblocks/Dfns 가 직접 경로). entity Musubi 라인(Startale+Nodeinfra operator)은 source 충실 인용이라 유지
 - evidence isolation: 약근거(Musubi 1줄) 벤더를 수탁 관리형 예시로 단정하지 않음. check PASS
+
+## Stage 65 (2026-06-10) — musubinetwork Custodian Track 검토·promote
+- 사용자: musubinetwork 검토. Custodian/Institution Track + why-canton·ethereum-comparison fetch
+- Startale·Nodeinfra 역할 재확인: 공식 문구 "operated by Startale and Nodeinfra" 한 줄, **운영 범위 미상**(Canton validator 운영 명시 없음) → Stage 64 정정 타당성 확정, entity Musubi 라인에 "(운영 범위 미상)" 보강
+- Canton-레벨 fact promote (Musubi 가 corroborate):
+  - **allowance/approve 패턴 없음** — holding 은 owner sole signatory, ERC-20 approve/allowance 부재 → infinite-approval 공격면 구조적 부재(수탁 보안 이점)
+  - **named-role 다중서명** — EVM 익명 interchangeable n-of-m 이 아니라 지정 party named-role 서명(DAML choice-level)·순차 rolling approval·maker-checker 암호학적 강제
+- Musubi 사례(2차·POC 라벨): delegated custody(institution→custodian, Zodia·KODA 거론, Musubi 자산 미보유=CLS 식), 컴플라이언스-as-precondition(ExecuteSettlement), sub-tx privacy PII 온원장, 실배포 거론(DTCC·Goldman·HSBC·Deutsche Börse·Progmat). **Musubi 도 finality 수치 없음 → C01 재확인**
+- 신규 source: musubi-custodian-track(2차 출처·testnet POC 명시). entity source_count 5→6, last_updated 65
+- docs-site: operations(allowance/approve 없음 콜아웃) + validator 2.2(named-role/순차/maker-checker 보강)
+- evidence isolation: Canton fact vs Musubi 고유설계(4-leg FX DvP·FXOrder·JWT) 분리, 후자는 사례로만

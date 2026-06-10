@@ -96,6 +96,11 @@ flowchart TB
 
 <p>모든 전송이 2-step 인 건 아니다. <strong>Canton Coin(CC)</strong> 은 <strong>Transfer Pre-approval</strong> 로 수신을 자동 수락하게 설정할 수 있어, 송신자 입장에서 "보내면 끝" 인 1-step 경험이 된다. 단 pre-approval 은 설정 대상이고, validator 복구 후에는 기존 pre-approval 을 취소·재생성해야 한다(<a href="integration.html">5. 운영</a>).</p>
 
+<div class="callout">
+<div class="callout-title">Canton 엔 ERC-20 식 allowance/approve 가 없다 — 수탁 보안 이점</div>
+<p>EVM 토큰은 <code>approve(spender, amount)</code> 로 제3자(컨트랙트)에 사용권을 미리 위임하고, 그 spender 가 <code>transferFrom</code> 으로 빼간다 — 무한 승인(infinite approval) 방치가 대표적 탈취 경로다. <strong>Canton 에는 이 패턴이 없다.</strong> holding 은 <strong>소유자가 sole signatory</strong> 라, 자금은 <strong>소유자의 직접 서명으로만</strong> 움직인다(미리 위임해 둔 spender 가 없다). 그래서 "승인 권한이 새어 털리는" 공격면이 구조적으로 존재하지 않는다 — 수탁 관점에서 분명한 이점이다. <em>(이 패턴은 Canton 위 실제 수탁 구현 Musubi 의 custodian 모델에서도 "sole signatory, no allowance/approval pattern" 으로 확인된다.)</em></p>
+</div>
+
 <h3>3.3 fee — traffic 모델</h3>
 
 <p>EVM gas 와 가장 다른 점: <strong>수수료가 후불이 아니라 선충전 잔고</strong>다.</p>
