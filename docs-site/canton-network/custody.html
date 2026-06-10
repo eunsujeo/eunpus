@@ -76,6 +76,18 @@
 <li><strong>이름 표시(CNS)</strong> — PartyId 는 사람이 못 읽으니, Canton Name Service(<code>alice.unverified.cns</code> 식, DNS/ENS 류)로 읽을 수 있는 이름을 매핑해 UI 에 표시하거나 이름으로 송금할 수 있다(등록 시 CC 결제·소각). 내부 귀속 키는 여전히 PartyId·memo 다.</li>
 </ul>
 
+<div class="callout">
+<div class="callout-title">MPC/HSM 키로 party 만드는 절차 (external party 온보딩)</div>
+<p>키를 custody(HSM·MPC) 안에 둔 채로 party 를 만드는 흐름은 명확하다 — <strong>키가 custody 밖으로 나오지 않는다.</strong></p>
+<ol>
+<li>custody 에서 키 생성, <strong>공개키만</strong> 추출(DER→base64).</li>
+<li><code>/v2/parties/external/generate-topology</code> 호출(synchronizer·이름 hint·공개키) → PartyToParticipant topology 와 <strong>서명할 multi-hash</strong> 를 돌려받음.</li>
+<li>그 hash 를 <strong>custody 키로 서명</strong>(MPC/HSM 내부).</li>
+<li><code>/v2/parties/external/allocate</code> 에 topology + 서명 제출 → party 등록 완료.</li>
+</ol>
+<p>다중 host 로 두려면 <code>otherConfirmingParticipantUids</code> 에 참여 participant 를 추가하고 같은 온보딩 트랜잭션을 각 participant 에 올린다.</p>
+</div>
+
 <h3>6.3 전송·서명 — prepare → sign → execute</h3>
 
 <p>출금(전송)은 <strong>준비·서명·실행</strong> 세 단계로 일어난다 — external party 의 외부 서명 모델(<a href="validator.html">2. Validator</a>)이 그대로 API 에 드러난다.</p>
@@ -125,6 +137,11 @@ flowchart LR
 <p><strong>party 별로 프로바이더를 섞을 수 있어</strong>, 일부 계정은 Fireblocks(HSM), 일부는 Dfns(MPC) 식의 혼합 custody 가 한 게이트웨이에서 가능하다. 우리 수탁 스택이 이미 Fireblocks·MPC 라면 그대로 Canton 서명에 연결된다.</p>
 </div>
 
+<div class="callout">
+<div class="callout-title">전송에 "안 보이는 contract" 가 필요할 때 — disclosed contracts</div>
+<p>토큰 전송은 발행자/레지스트리의 <strong>transfer factory contract</strong> 를 참조하는데, 그 contract 는 우리가 stakeholder 가 아니라 우리 노드에서 안 보일 수 있다. 이때 <code>prepare</code> 호출에 <strong><code>disclosed_contracts</code></strong>(template_id·contract_id·<code>created_event_blob</code>)를 함께 넘기면, 보이지 않는 contract 라도 거래에 쓸 수 있다(레지스트리가 off-ledger 로 그 blob 을 제공). contract-id 가 해시 기반이라 위변조하면 id 가 달라져 자동 탐지된다. 6.3 의 prepare 단계에서 "disclosed contracts" 를 넘기는 게 바로 이것이다.</p>
+</div>
+
 <h3>6.4 입금 관찰 — "TransferIn" + 수락까지</h3>
 
 <p>입금은 <strong>"TransferIn" 이벤트</strong>로 감시한다. 단 2-step 이라 들어오는 전송은 먼저 대기(Pending)로 보이고, <strong>우리가(또는 pre-approval 이) 수락(Accept)해야</strong> 실제 holding 이 생긴다.</p>
@@ -142,7 +159,8 @@ flowchart LR
 <li><strong>UTXO 조각 관리.</strong> holding 조각은 보관·연산 비용이 있어 <strong>사용자당 약 10개</strong> 수준으로 병합(merge)한다. 큰 출금은 여러 조각을 모으고, 거스름 조각을 최소화한다(<a href="model.html">1. 원장 모델</a>).</li>
 <li><strong>4 환경 운영.</strong> LocalNet · DevNet · TestNet · MainNet 을 함께 운영해, 업그레이드를 운영에 올리기 전 하위 환경에서 검증한다(DevNet 시크릿은 API·1시간, TestNet/MainNet 은 sponsor 제공). 운영 SLA·복구는 <a href="integration.html">5. 운영</a>.</li>
 <li><strong>registry 조회.</strong> 자산 발행자 정보·instrument·transfer factory 는 registry 엔드포인트(<code>/registry/metadata/v1/info</code>·<code>/instruments</code>·<code>/registry/transfer-instruction/v1/transfer-factory</code>)로 얻는다.</li>
-<li><strong>확정 시간.</strong> 보통 3-10초(<a href="validator.html">2. Validator</a>). 멱등 재시도는 submission ID 로 중복 제거한다.</li>
+<li><strong>확정 시간.</strong> 보통 3-10초(<a href="validator.html">2. Validator</a>).</li>
+<li><strong>멱등 재시도.</strong> 중복 제거 기준은 <strong>command ID</strong>(=change ID; 같은 작업의 재시도엔 동일 값을 유지)이고, <strong>submission ID 는 시도마다 새 값(UUID)</strong>을 쓴다. 중복 제거 기간은 처리시간 상한 B 로 명시하는 게 안전하다.</li>
 </ul>
 
 <h3>6.6 전송 증명 · 원장 pruning · 거래소 변형</h3>

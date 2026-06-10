@@ -133,6 +133,7 @@
 <li><strong>탈중앙 namespace</strong> — N개 키 중 T개(T≤N) 서명으로 신원 권한을 행사.</li>
 </ul>
 <p>Fireblocks 의 TAP·승인 정족수(quorum) 같은 거버넌스를 Canton 에선 <strong>키 분산 + 임계값</strong>으로 구현하는 셈이다.</p>
+<p><strong>다중 host 와 다중 서명은 다른 층</strong>임을 유의하자 — party 를 여러 validator 에 두는 <strong>multi-hosting</strong> 은 가용성(HA)·즉시 failover·악성 validator 방어를 위한 <em>토폴로지</em> 분산이고, 위 ①의 <strong>키 임계값(multi-sig)</strong> 은 <em>거래 서명</em>을 n-of-m 으로 요구하는 것이다. 둘은 함께 쓸 수 있다.</p>
 </div>
 
 <div class="callout">

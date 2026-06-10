@@ -60,3 +60,6 @@ note: 500+ 페이지 중 수탁형 Canton 위키 관련 묶음만 추적. Daml s
   - 신규: eUTXO·stakeholder 3역할(signatory/observer/controller)·Create/Exercise/Fetch · divulgence 주의 · trust model selective(자가호스팅=validator 신뢰 제거) · topology 매핑 정정(PartyToParticipant/OwnerToKeyMapping/PartyToKey/NamespaceDelegation, perm Observation/Confirmation/Submission) · 5-phase lifecycle·decisionTimeout
 - **Stage 60 (batch4, 개념/토큰 6)** ✅ reassignment-protocol · pruning · canton-name-service · rewards-minting · validator-liveness · tokenomics-of-gs
   - 신규: pruning 심화(PQS·ACS commitment·30일 retention) · CNS(이름→party, DSO·소각) · 토큰경제 수치(10분 라운드/52,560yr·dev fund 5%·$2.85 liveness·median SV rate) · reassignment scope-out(단일 synchronizer)
+- **Stage 61 (batch5/6 core)** ✅ glossary · use-cases · command-deduplication · explicit-contract-disclosure · multi-hosting · external-signing-onboarding
+  - 신규: external party 온보딩 API(/v2/parties/external/generate-topology→allocate, MPC/HSM 키) · disclosed_contracts(created_event_blob) · dedup 정정(command ID vs submission ID) · multi-hosting≠multi-sig 구분 · Amulet=CC·DSO·Splice 용어
+  - 🔲 잔여: canton-protocol-specification · ledger-causality · decentralization · external-signing-topology/transactions · five-minute/the-problem/cantons-solution/cips-introduction (저수확 예상)
