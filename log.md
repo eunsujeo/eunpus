@@ -7099,3 +7099,8 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 신규 source fireblocks/2026-06-10__canton-transaction-objects. open-questions A11 ANSWERED, entities/canton/canton-network(A11·2-step bullet·source 8→9·last_updated 78), entities/fireblocks/transaction(A11 ANSWERED), vendors/fireblocks/api A11 ANSWERED
 - docs-site: canton-network(operations 3.2·custody 6.3 Fireblocks)·wallet-service-components(example-fireblocks 14.8 '확인 필요'→해소, abstraction 156·256, multichain 90) 의 A11 '미확정' 콜아웃 전부 해소로 갱신
 - **Canton open Q 전부 ANSWERED**(A11·C01·C02). check PASS(양 사이트)
+
+## Stage 79 (2026-06-10) — canton-network 5.5 Musubi 사용 vs 미사용 비교
+- 사용자: canton-network 에 Musubi 사용/미사용 정리. page5 에 "5.5 (참고) 응용 네트워크 — Musubi 를 쓸 것인가" 추가(5.1~5.4 노드운영 축과 구분 — 응용 네트워크 합류 축)
+- 비교표(무엇·결제 atomic 4-leg DvP·RFQ 유동성·컴플라이언스 on-ledger·수탁/키·통제·범위 VASP FX 특화·성숙도 testnet POC) + 언제 무엇(한일 FX 결제=Musubi, 일반 수탁/전송=직접 Canton). 우리 국내↔해외은행 송금 시나리오와 연결
+- 기존 promote 사실(Stage 65 musubi-custodian-track)의 presentation. 2차·POC caveat 명시. check PASS

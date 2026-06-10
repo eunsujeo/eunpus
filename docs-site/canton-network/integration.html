@@ -209,6 +209,35 @@ flowchart LR
 </ul>
 </div>
 
+<h3>5.5 (참고) 응용 네트워크 — Musubi 를 쓸 것인가</h3>
+
+<p>5.1~5.4 가 "노드를 누가 운영하나" 라면, 이건 다른 축이다 — <strong>Canton 위에 이미 올라간 응용 네트워크에 합류할 것인가, 아니면 Canton 에 직접 붙어 우리 앱을 만들 것인가</strong>. 대표 사례가 <strong>Musubi</strong>(Canton 기반 <strong>한·일 cross-border FX 결제 네트워크</strong>)다 — 우리 가이드의 "국내은행 ↔ 해외은행 송금" 시나리오와 정확히 겹친다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:16%">관점</th><th>Musubi 사용 (기성 네트워크 합류)</th><th>Musubi 미사용 (직접 Canton)</th></tr></thead>
+<tbody>
+<tr><td>무엇</td><td>기성 FX 결제 네트워크에 참여자(Institution·Custodian)로 합류</td><td>Canton 에 직접 연동해 우리 앱(수탁·전송)을 직접 구축</td></tr>
+<tr><td>결제</td><td><strong>atomic 4-leg DvP</strong>(FX 양다리 동시, ~15초, Herstatt risk 제거) — 이미 구현됨</td><td>atomic 결제가 필요하면 <strong>직접 설계</strong>(Allocation contract 등)</td></tr>
+<tr><td>상대방·유동성</td><td><strong>RFQ market maker</strong> 풀에 연결(경쟁 견적·익명)</td><td>counterparty·유동성 <strong>직접 확보</strong></td></tr>
+<tr><td>컴플라이언스</td><td>IVMS 101·KYC·제재가 <strong>on-ledger·결제 전 강제</strong>(ExecuteSettlement) — 내장</td><td>컴플라이언스 게이팅 <strong>직접 구현</strong></td></tr>
+<tr><td>수탁·키</td><td>custodian dual-control 등 네트워크 규약(단 키는 custodian 보유)</td><td>custody 모델 자유(external party·Fireblocks 등, <a href="custody.html">6장</a>)</td></tr>
+<tr><td>통제·유연성</td><td>네트워크 규약·로드맵·FXOrder 스키마에 종속</td><td>완전한 자유 — 단 전부 우리 책임</td></tr>
+<tr><td>적합 범위</td><td><strong>VASP-to-VASP cross-border FX 특화</strong> — 일반 수탁/전송엔 과함</td><td>임의 용도(수탁 지갑·자체 전송·다른 결제)</td></tr>
+<tr><td>성숙도</td><td><strong>testnet POC</strong>(2026 기준, 한·일 기관)</td><td>Canton 자체는 메인넷 production, 앱은 우리 몫</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">언제 무엇을</div>
+<ul>
+<li><strong>Musubi 사용</strong> — <strong>한·일(혹은 유사 corridor) 기관 간 cross-border FX 결제</strong>가 핵심 업무이고, 그 네트워크 참여사가 우리 카운터파티일 때. 결제·RFQ·컴플라이언스 게이팅을 직접 안 짜도 된다.</li>
+<li><strong>직접 Canton</strong> — 일반 <strong>수탁 지갑·자체 전송·다른 용도</strong>이거나, Musubi 가 커버하지 않는 corridor·자산일 때. 본 가이드 1~4·6장이 그 직접 구축 경로다.</li>
+</ul>
+<p>⚠️ Musubi 정보는 <strong>2차 출처·testnet POC</strong> 기준이다. 실제 채택 전 현황(메인넷 여부·참여 조건·지원 corridor)을 직접 확인해야 한다. 한 줄 — <strong>"기성 FX 결제망이 필요하면 Musubi 합류, 그 외 수탁/전송은 직접 Canton."</strong></p>
+</div>
+
 <p>다음 — <a href="custody.html"><strong>6. 수탁 통합 — wallet/guidance</strong></a>.</p>
 
 </section>
