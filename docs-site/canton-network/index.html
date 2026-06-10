@@ -68,7 +68,7 @@
 <li><strong>contract</strong> — Canton 원장에 올라가는 <strong>상태 한 조각</strong>. "누가 토큰 얼마 보유", "전송 진행 중", "이 권한 있음" 이 <strong>전부 contract</strong>(DAML 스마트컨트랙트의 인스턴스)다. 한 번 생기면 못 고치고 <strong>생성(created)되거나 소멸(archived)될 뿐</strong>이다. (자세히 <a href="model.html">1장</a>)</li>
 <li><strong>ACS (활성 contract 집합)</strong> — 한 party 가 지금 보유한 contract 전부의 묶음 = 그 party 의 <strong>현재 상태</strong>. (<a href="model.html">1장</a>)</li>
 <li><strong>holding (UTXO<span class="g" data-tip="Unspent Tx Output — 잔액을 숫자 하나가 아니라 '쓰지 않은 출력' 조각들의 집합으로 보는 모델. 비트코인이 대표적">?</span> 형)</strong> — <strong>토큰 잔액을 나타내는 contract</strong>. 비트코인 UTXO 처럼 "100" 이 한 칸이 아니라 <strong>[50][30][20] 조각</strong>으로 쪼개져 있고, <strong>잔액 = 조각들의 합</strong>이다. (<a href="model.html">1장</a>)</li>
-<li><strong>party</strong> — 거래 주체(<strong>신원</strong>). 은행·계좌처럼 "누구" 에 해당 — 주소가 아니라 신원이다. (<a href="validator.html">2장</a>)</li>
+<li><strong>party</strong> — 거래 주체(<strong>신원</strong>). 은행·계좌처럼 "누구" 에 해당 — 주소가 아니라 신원이다. 단순 요청자가 아니라, <strong>그 party 의 키로 서명해야 거래가 성립</strong>하는 <strong>승인자</strong>다. 수탁(external party)이면 그 키는 participant 가 아니라 <strong>우리가 HSM/MPC·offline 에 보관·통제</strong>한다. (<a href="validator.html">2장</a>)</li>
 <li><strong>participant node (= validator)</strong> — party 를 담고 거래를 <strong>검증하는 노드</strong>. 보통 각 기관의 인프라다. (<a href="validator.html">2장</a>)</li>
 <li><strong>Synchronizer</strong> — 노드들을 잇는 <strong>공용 합의 계층</strong>. 거래 <strong>순서·확정</strong>을 맡는다(우리가 운영하지 않는다). (<a href="validator.html">2장</a>)</li>
 </ul>
