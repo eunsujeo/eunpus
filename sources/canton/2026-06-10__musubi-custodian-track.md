@@ -63,3 +63,12 @@ source: why-canton · ethereum-comparison
 ## Source
 
 Musubi Network docs — <https://musubinetwork.com/> (Custodian/Institution Track, why-canton, ethereum-comparison)
+
+## (5) Musubi 나머지 페이지 sweep — 범위 밖 확정 (Stage 65 검증)
+
+source: how-it-works · compliance/privacy · compliance/trust-model · glossary · tradfi-comparison (+ 미fetch: API Reference·Console·Deploy·Onboard·Market Maker track·FXOrder·compliance/reporting/licensing 등)
+
+- 위 5개(Canton 개념을 다룰 법한 후보) 검증 결과 **전부 Musubi-FX 앱 고유, 새 Canton 레벨 fact 없음**:
+  - how-it-works = Musubi FX 흐름만. privacy = 앱 가시성 정책(Canton view/divulgence 메커니즘 서술 없음). trust-model = 4자 서명·dual-control(앱; Canton validator/synchronizer 신뢰 미언급). glossary = DvP 외 Canton 네이티브 용어 없음. tradfi-comparison = CLS vs Musbi 상품 비교.
+  - tradfi-comparison 의 "~4-second atomic DvP" 는 **Musbi 앱 결제 주장**(app-level) — Canton finality 수치로 promote 안 함(evidence isolation; C01 은 여전히 1차 출처 "usually 3-10s" 만).
+- **결론**: Musubi 에서 Canton 위키로 promote 할 사실은 Stage 65 ((2)·(4))에서 전부 반영 완료. 나머지 ~30 페이지(앱 API/console/deploy/market-maker/FXOrder/compliance-reporting)는 Canton 프로토콜 사실이 아니라 **범위 밖**(canton.network 자동생성 ref 와 동일 처리). **Musubi sweep 종료.**
