@@ -107,18 +107,20 @@
 
 <div class="diagram"><pre class="mermaid">
 flowchart TB
-    subgraph APP["우리 지갑 서비스"]
+    subgraph APP["우리 지갑 서비스 (Canton 밖 — 우리 것)"]
       WALLET["수탁 지갑 백엔드<br/>(Canton 어댑터)"]
     end
-    subgraph PART["participant 계층 (validator 노드)"]
-      LAPI["Ledger API<br/>(participant node 가 노출)<br/>submit · stream · ACS 조회"]
-      PNODE["participant node<br/>= validator<br/>party host · 거래 검증"]
+    subgraph CANTON["Canton 네트워크 = privacy-enabled 퍼블릭 블록체인 (노드들 + Synchronizer 전체)"]
+      subgraph PART["participant 계층 (validator 노드)"]
+        LAPI["Ledger API<br/>(participant node 가 노출)<br/>submit · stream · ACS 조회"]
+        PNODE["participant node<br/>= validator<br/>party host · 거래 검증"]
+      end
+      subgraph SYNC["Synchronizer (글로벌 동기화 계층)"]
+        SEQ["Sequencer<br/>순서화 · timestamp"]
+        MED["Mediator<br/>confirmation 집계<br/>2-phase commit"]
+      end
+      SV["Super Validator<br/>CC↔USD·USD↔byte 환율 게시<br/>traffic 운영"]
     end
-    subgraph SYNC["Synchronizer (글로벌 동기화 계층)"]
-      SEQ["Sequencer<br/>순서화 · timestamp"]
-      MED["Mediator<br/>confirmation 집계<br/>2-phase commit"]
-    end
-    SV["Super Validator<br/>CC↔USD·USD↔byte 환율 게시<br/>traffic 운영"]
 
     WALLET --> LAPI --> PNODE
     PNODE -->|거래 제출| SEQ
@@ -135,7 +137,7 @@ flowchart TB
     class SEQ,MED special;
     class SV ext;
 </pre></div>
-<p class="diagram-caption">Figure 0-1. Canton 구성. <strong>초록 = 우리 지갑 서비스</strong>(Canton 어댑터를 통해 연동). <strong>파랑 = participant 계층</strong> — 우리가 붙는 Ledger API 와 그 뒤의 participant node(=validator). validator 는 party 를 host 하고 자신이 이해관계자인 거래를 검증한다. <strong>보라 = Synchronizer</strong>(Sequencer 가 순서·timestamp 를, Mediator 가 confirmation 집계 후 2-phase commit 으로 확정). <strong>회색 = Super Validator</strong> — CC↔USD·USD↔byte 환율을 게시해 traffic 가격을 정한다(직접 운영 대상 아님). 우리가 코드로 닿는 면은 거의 항상 <strong>Ledger API</strong> 한 겹이다 — validator 를 직접 운영하든(<a href="integration.html">5. 운영</a>) 관리형으로 위탁하든. <strong>이 Ledger API 는 누구의 API 인가 — participant node(=validator)가 노출하는 API</strong>다. 우리가 직접 운영한 노드든, 위탁한 노드든, 그 노드가 제공하는 창구가 Ledger API 이고 우리 지갑 백엔드는 거기에 붙는다.</p>
+<p class="diagram-caption">Figure 0-1. Canton 구성. <strong>바깥의 큰 박스 "Canton 네트워크" 가 곧 privacy-enabled 퍼블릭 블록체인</strong>이다 — participant 계층(파랑) + Synchronizer(보라) + Super Validator(회색) <strong>전체</strong>가 Canton 이고, 그 밖의 <strong>초록(우리 지갑 서비스)만 Canton 이 아니라 우리 것</strong>이다(Canton 어댑터를 통해 연동). "privacy" 는 그림의 특정 영역이 아니라 거래가 흐르는 방식(view 분해, <a href="model.html">1장</a>·<a href="validator.html">2장</a>)의 성질이다. <strong>파랑 = participant 계층</strong> — 우리가 붙는 Ledger API 와 그 뒤의 participant node(=validator). validator 는 party 를 host 하고 자신이 이해관계자인 거래를 검증한다. <strong>보라 = Synchronizer</strong>(Sequencer 가 순서·timestamp 를, Mediator 가 confirmation 집계 후 2-phase commit 으로 확정). <strong>회색 = Super Validator</strong> — CC↔USD·USD↔byte 환율을 게시해 traffic 가격을 정한다(직접 운영 대상 아님). 우리가 코드로 닿는 면은 거의 항상 <strong>Ledger API</strong> 한 겹이다 — validator 를 직접 운영하든(<a href="integration.html">5. 운영</a>) 관리형으로 위탁하든. <strong>이 Ledger API 는 누구의 API 인가 — participant node(=validator)가 노출하는 API</strong>다. 우리가 직접 운영한 노드든, 위탁한 노드든, 그 노드가 제공하는 창구가 Ledger API 이고 우리 지갑 백엔드는 거기에 붙는다.</p>
 
 <h3>0.4 읽는 법</h3>
 
