@@ -83,3 +83,20 @@ source: musubinetwork.com/introduction 의 outbound 링크 4개 — compliance/c
 - **market-maker/overview**: MM 은 **재고를 자기 Canton Holding 에 보유**(거래소 예치 안 함), RFQ·익명 flow·USDCx↔JPYSC0. "atomic 4-leg DvP ~4초"(앱 결제 주장; Canton finality 로 promote 안 함 — C01 은 1차 3-10s 유지).
 - **compliant-payments**: 5 design choice(custodian stack·on-chain enforcement·Travel Rule discharge·규제 dossier·stablecoin-only) + Japan/Korea/FATF — Musubi-FX 컴플라이언스 정책(앱).
 - **결론**: introduction 링크 전수 검토 완료. Canton 위키 promote 분은 Stage 65 에서 종결됨을 재확인. 본 절은 Musubi 사례 기록.
+
+## (7) 각 track API Reference + 통합 문서 — 전수 검토 (Stage 67)
+
+source: custodian/api-reference · institution/api-reference · market-maker/api-reference · custodian/integration/{programmatic-access,overview}
+
+- **새 Canton 프로토콜 fact 없음** — 전부 Musubi-FX 상품 REST/SSE API. 단 실제 custody 통합 패턴이 우리 promote 분을 corroborate(아래, 사례 기록).
+- **API 표면(Musubi-FX, app)**: orders/quotes/settlements CRUD + SSE event stream.
+  - custodian: `GET/POST /api/v1/orders[/{intent_id}][/accept]` · `/quotes[/{quote_id}]/accept` · `GET /api/v1/orders/events`(SSE) · `/dashboard/stats`
+  - institution: `POST /api/v1/orders`(party id 들·intent signature 포함) · cancel · quotes/accept · events
+  - market-maker: `/api/v1/quote-requests[/{id}/quotes]` · `/quotes` · `/settlements` · events (Party ID·서명 미노출 — 순수 quoting/RFQ)
+- **Canton-relevant 통합 패턴(app-level, 우리 promote 와 정합)**:
+  - **Party ID 가 식별자로 API 에 흐름** — `sender_custodian_party_id`·`market_maker_party_id`·`receiver_party_id`. (external party 신원 = PartyId 재확인)
+  - **co-sign = 원자적 `AcceptQuote` DAML 트랜잭션** — "winner accept + losers reject + request 비활성" 을 한 tx 로. → named-role/순차 choice-exercise(Stage 65) 의 실제 예.
+  - **정산 = SSE event(`order_updated`, status=SETTLED)**, 필드 `intentId·transactionHash·settledAt·fxRate`. 멱등 = **"key by intentId + transactionHash"**. → 자체 DB 영속화·tx hash 키 대사(Stage 57·62) 의 실제 예.
+  - **JWT 1h(`POST /auth/token`)**, 401→refresh·409 conflict·422 validation. SDK: Java WebClient·Node fetch+EventSource·Python httpx/sseclient·Kotlin ktor.
+  - **통합 형태(integration/overview)**: custodian 이 자기 인프라에 **① Canton participant(자기 Party ID) + ② Musubi backend** 배포(Canton 프로토콜로 settlement net 연결) + Console + Audit Exports. **Canton Party ID 키는 custodian 의 기존 HSM/KMS 가 보호**(→ external party 자가 custody 재확인). 컴플라이언스 attestation 은 order 생성 시 기존 시스템에서 snapshot, Musubi 는 재검증 안 함. baseline=Deploy+Console+Audit, 고급=REST+SSE.
+- **결론**: track API Reference 전수 확인. Canton 위키 신규 promote 0(Stage 65 에서 종결). 본 절은 통합 API 패턴 사례 보존. **Musubi 전체 sweep 최종 종결.**
