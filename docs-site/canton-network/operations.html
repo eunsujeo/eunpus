@@ -108,6 +108,7 @@ flowchart TB
 <div class="callout">
 <div class="callout-title">"Canton Coin 을 소각하면 traffic 이라는 수수료가 생긴다" 를 정확히</div>
 <p>소각 자체가 수수료가 아니다. <strong>① Canton Coin 을 소각(burn) → ② traffic(byte) 잔고가 충전됨 → ③ 거래를 보낼 때 소비되는 traffic 이 곧 그 거래의 수수료.</strong> EVM 처럼 거래마다 즉석에서 빠지는 후불이 아니라, "대역폭을 미리 사 두고 거래가 그걸 쓰는" 선불 모델이다. 잔고가 마르면 충전 전까지 거래가 막힌다.</p>
+<p>토큰경제 관점에서 이 소각은 <strong>burn-mint 균형</strong>의 한 축이다 — 수수료로 쓴 Canton Coin 은 <strong>유통에서 제거(burn)</strong>되고(중앙 주체로 가지 않음), 반대편에서 validator·super validator 가 인프라 운영·사용량·가동(liveness) 기여로 Canton Coin 을 <strong>새로 발행(mint)</strong>받는다. 소각과 발행이 균형을 이루며 가치를 안정시키는 구조다.</p>
 </div>
 
 <h4>거래 1건의 traffic 비용 산정식</h4>

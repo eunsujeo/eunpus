@@ -89,6 +89,11 @@
 <p>external party 에서는 <strong>private signing key 를 party(=우리)만 통제·사용</strong>하고, participant node 는 <strong>party 의 명시적 승인(서명) 없이는 원장에서 아무것도 할 수 없다</strong>. 즉 validator 를 운영사에 맡기더라도(<a href="integration.html">5. 운영</a>) 자금을 움직이는 권한은 우리 키에 남는다. 이 구조는 <strong>MPC·HSM 으로 키를 보관하고 participant 는 준비·실행만 하는</strong> 수탁 모델과 정확히 맞아떨어진다. Fireblocks 의 Canton 복구 절차가 Raw Signing(EdDSA)으로 topology 해시를 외부 서명하는 것도 같은 그림이다.</p>
 </div>
 
+<div class="callout">
+<div class="callout-title">party 는 계정당 하나 — 입금마다 새로 만들지 말 것</div>
+<p>EVM 수탁 지갑은 흔히 "사용자(또는 입금)마다 새 주소" 를 발급한다. Canton 에서는 이 습관을 버려야 한다. party allocation 에는 비용이 따르므로, 공식 가이드는 <strong>"계정/지갑당 party 하나(one Party per account/wallet)"</strong> 를 안정적으로 두라고 권한다 — <strong>입금 건마다 임시 party 를 만들지 말 것</strong>. 입금자 구분은 별도 주소가 아니라 memo 태그로 한다(<a href="indexer.html">4. 인덱서</a>). PartyId 는 <code>name::fingerprint</code> 형식에 최대 185자다. 백업·이중화를 위해 같은 party 를 여러 validator 에 multi-host 할 수 있다(<a href="integration.html">5. 운영</a>).</p>
+</div>
+
 <h3>2.2 Synchronizer — Sequencer 와 Mediator</h3>
 
 <p>EVM 에서는 채굴자/검증자가 트랜잭션을 모아 블록을 만들고, 그 블록이 쌓이며 확정된다. Canton 에는 그런 "블록 생산자" 가 없다. 대신 <strong>Synchronizer</strong> 가 두 가지 일을 한다.</p>
@@ -102,7 +107,9 @@
 
 <div class="callout">
 <div class="callout-title">순서화 계층의 BFT 합의</div>
-<p>Sequencer 의 순서화 자체도 단일 신뢰점이 아니다. Canton 은 <strong>자체 BFT<span class="g" data-tip="Byzantine Fault Tolerant — 일부 노드가 임의로(악의적으로 포함) 오작동해도 전체 합의가 유지되는 성질">?</span> ordering service</strong>를 둔다 — <code>Mempool → Availability → Consensus → Output</code> 4단계 파이프라인으로, <strong>동시 비잔틴 장애가 전체의 1/3 미만</strong>이면 정상 동작한다. 즉 Canton 의 합의는 <strong>두 층</strong>이다: 순서화 계층(Synchronizer)이 "무엇이 먼저인가" 를 BFT 로 정하고, 그 위에서 이해관계자 participant 들이 "이 거래가 옳은가" 를 검증한다.</p>
+<p>Sequencer 의 순서화 자체도 단일 신뢰점이 아니다. 글로벌 동기화 계층(Global Synchronizer)은 <strong>2/3 다수결 BFT<span class="g" data-tip="Byzantine Fault Tolerant — 일부 노드가 임의로(악의적으로 포함) 오작동해도 합의가 유지되는 성질. 2/3 다수가 정직하면 동작 = 장애 노드가 1/3 미만이면 정상">?</span> 합의 프로토콜</strong>로 운영된다 — <code>Mempool → Availability → Consensus → Output</code> 4단계 파이프라인으로, <strong>장애 노드가 전체의 1/3 미만</strong>이면 정상 동작한다. 즉 Canton 의 합의는 <strong>두 층</strong>이다: 순서화 계층(Synchronizer)이 "무엇이 먼저인가" 를 BFT 로 정하고, 그 위에서 이해관계자 participant 들이 "이 거래가 옳은가" 를 검증한다.</p>
+
+<p>이 순서화·검증을 떠받치는 노드도 둘로 나뉜다. <strong>Super Validator</strong> 가 Global Synchronizer 인프라를 운영하며 <strong>트랜잭션 순서화(sequencing)·Canton Coin 거래 검증·거버넌스</strong>를 맡고, 일반 <strong>Validator</strong> 는 자신이 host 한 party 의 거래를 검증하고 연결을 제공한다. 거버넌스는 Global Synchronizer Foundation 과 Linux Foundation 이 함께 감독한다.</p>
 </div>
 
 <h3>2.3 거래 확정 흐름 — 2-phase commit</h3>
@@ -136,9 +143,9 @@ flowchart TB
 
 <p>EVM 에서는 "몇 블록 확인(confirmation)을 기다릴지" 를 우리가 정한다(예: 12블록). Canton 은 다르다 — <strong>Mediator 가 commit 을 내면 그 거래는 확정</strong>이고, 재구성(reorg)으로 뒤집히는 모델이 아니다. 그래서 "N블록 대기" 라는 개념 자체가 없다.</p>
 
-<div class="callout callout-warn">
-<div class="callout-title">확정까지 걸리는 정확한 시간 — 확인 필요</div>
-<p>메커니즘(Mediator 2-phase commit + BFT 순서화)은 1차 문서로 확정했지만, <strong>확정까지 걸리는 정확한 시간 수치</strong>는 공식 문서 어디에도 명시돼 있지 않다 — 리뉴얼된 공식 문서(ordering-consensus 페이지)도 "latency·finality·throughput 수치 없음" 을 그대로 확인해 준다. "수 초" 규모라는 인상은 활용 사례(Musubi 의 약 15초 end-to-end 결제 등)에서 오는 것이고, 네트워크/구성에 따라 달라진다. <strong>실제 적용 환경에서 직접 측정</strong>해 SLA 를 잡는 것을 권한다.</p>
+<div class="callout">
+<div class="callout-title">확정 시간 — 공식 문서 기준 "보통 3-10초"</div>
+<p>공식 지갑 통합 가이드는 <strong>"Finality usually takes 3-10s"</strong> 라고 명시한다 — 확정(Mediator 2-phase commit)까지 보통 3~10초가 걸린다는 뜻이다. 단 "보통(usually)" 이라는 표현대로 네트워크·구성에 따라 편차가 있을 수 있으니, 엄격한 SLA 를 잡을 때는 <strong>운영 환경에서 직접 측정</strong>해 확정 짓는 것을 권한다. 참고로 합의 메커니즘 페이지에는 별도의 latency/throughput 벤치마크 수치는 제시돼 있지 않다.</p>
 </div>
 
 <div class="table-wrap">
@@ -149,7 +156,7 @@ flowchart TB
 <tr><td>확정 판단</td><td>N 블록 더 쌓일 때까지 대기</td><td>Mediator 가 commit 내는 순간</td></tr>
 <tr><td>재구성(reorg)</td><td>가능 — 그래서 N블록 대기</td><td>해당 모델 아님 — commit = 확정</td></tr>
 <tr><td>검증 주체</td><td>모든 검증자가 모든 거래</td><td>거래의 이해관계자 participant 만</td></tr>
-<tr><td>확정 시간</td><td>체인별 알려진 값</td><td><strong>확인 필요</strong> — 환경에서 측정 권장</td></tr>
+<tr><td>확정 시간</td><td>체인별 알려진 값</td><td>보통 3-10초("usually") — 환경별 편차 가능</td></tr>
 </tbody>
 </table>
 </div>

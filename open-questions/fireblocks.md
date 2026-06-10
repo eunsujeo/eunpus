@@ -986,13 +986,13 @@
 - **Cross-cut**: [[canton-network]], docs-site/wallet-service-components (2 멀티체인 · 9 출금)
 - **Status**: open
 
-#### Q-2026-06-09-C01: Canton finality 정확 수치
+#### Q-2026-06-09-C01: Canton finality 정확 수치 — **ANSWERED (Stage 54)**
 
 - **Why it matters**: Synchronizer Mediator 의 2-phase commit 확정 시점.
-- **확인 결과 (Stage 52)**: 1차 페이지 3곳(subnet overview · integrate canton-network-overview · docs.sync.global FAQ) 모두 수치 명시 없음. "3-10초" 는 검색엔진 요약에만 등장 → 1차 미확정. 메커니즘(2-phase commit)만 확정.
-- **재확인 (Stage 53)**: 리뉴얼 1차 출처 docs.canton.network/overview/reference/ordering-consensus 도 "no specified latency, finality time, or throughput numbers" — 수치 여전히 없음. 단 메커니즘은 보강: **native BFT orderer**(ISS+Narwhal 영향, `Mempool→Availability→Consensus→Output` 4-모듈, **<1/3 Byzantine fault 허용**), 2-layer(ordering=synchronizer / validation=participant). 절대 수치만 미확정.
-- **Sources to check**: Splice/Digital Asset performance·SLA 문서 또는 운영 환경 실측
-- **Status**: open (메커니즘 확정, 수치 미확정)
+- **경과 (Stage 52~53)**: 1차 페이지 5곳+(subnet · canton-network-overview · sync.global FAQ · ordering-consensus · global-synchronizer overview) 모두 수치 없음. "3-10초" 는 검색 요약에만 → 격리. 메커니즘만 확정(2/3 BFT orderer + Mediator 2-phase commit).
+- **답 (Stage 54)**: docs.canton.network/**integrations/wallet/guidance** 에 문자 그대로 **"Finality usually takes 3-10s."** verbatim 재확인(WebFetch 요약 주입 아님 — 별도 prompt 로 검증). 그동안 검색 요약에만 있던 "3-10초" 가 1차 출처(수탁 통합 가이드)에서 확인됨. "usually" 라 환경별 편차 여지.
+- **source**: docs-canton-network-renewed (wallet/guidance)
+- **Status**: ANSWERED
 
 #### Q-2026-06-09-C02: tx 당 traffic 비용 산정식 — **ANSWERED (Stage 52, 구체화 Stage 53)**
 

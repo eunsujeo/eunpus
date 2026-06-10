@@ -6952,3 +6952,15 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 갱신: entities/canton/canton-network.md(source_count 4→5, last_updated_stage 53), open-questions C01(메커니즘 보강·수치 open)·C02(구체 수치)
 - docs-site canton-network: page2(BFT 콜아웃·external party 표/서명 2-step·finality 재확인) / page3(traffic 공식·파라미터 표 정정·~10 UTXO·$60/MB) / page1(~10 UTXO 병합 콜아웃) / page5(3 복구 경로·external party 별도 복구)
 - 신규 entity: 0 (기존 canton-network 엔티티 갱신만). ANSWERED 진전: C02 구체화. C01 메커니즘 보강(수치 open)
+
+## Stage 54 (2026-06-10) — Canton 4 페이지 + wallet/guidance 대조 → C01 ANSWERED + 수탁 통합 핵심 promote
+- 계기: 사용자 — what-is-canton · choose-your-path · global-synchronizer/overview · integrations/overview 체크 요청 → integrations 가 안내한 **integrations/wallet/guidance** 추가 fetch
+- **C01 ANSWERED**: wallet/guidance 에 문자 그대로 **"Finality usually takes 3-10s."** — verbatim 재확인(별도 prompt 로 WebFetch 요약 주입 아님 검증, evidence isolation 준수). 그간 "검색 요약 only" 로 격리하던 3-10초가 1차 출처로 확정
+- 신규 사실:
+  - Global Synchronizer = **2/3 majority BFT**(기존 <1/3 fault 와 동치). **Super Validator**(인프라·sequencing·CC 검증·거버넌스) vs **Validator**(party host·검증). 거버넌스 = GSF + Linux Foundation
+  - Canton Coin **burn-mint equilibrium**: 수수료 CC 는 소각=유통 제거, validator 는 infra/사용량/liveness 로 mint 보상 → burn 모델 확정
+  - **수탁 통합(wallet/guidance)**: 입금 식별 = **memo tag**(`splice.lfdecentralizedtrust.org/reason`), **별도 입금주소 없음**(XRP destination-tag 류) / **party = 계정당 1개, ephemeral 금지**(`name::fingerprint` max185) / 입금 = **"TransferIn"** 이벤트 / API `/v2/interactive-submission/{prepare,execute}`·`/v2/state/{active-contracts,ledger-end}` / 대사는 synchronizer `recordTime` / multi-host party / DevNet·TestNet·MainNet 3환경 / locked UTXO "locked by DSO"
+  - choose-your-path 에 EVM 개발자 경로 존재 → 우리 EVM-대비 서술 방식 공식 권장과 일치
+- 갱신: source append(섹션 6~10), entity(2/3 BFT·SV/Validator·tokenomics·finality·수탁 통합 Details, last_updated 54), open-questions C01 ANSWERED
+- docs-site canton-network: page0/2(2/3 BFT·SV/Validator·finality 3-10초 확정) / page2(party-per-account) / page3(burn-mint) / page4(memo-tag 입금·TransferIn·recordTime 대사) / page5(multi-host·3환경)
+- 신규 entity: 0 (canton-network 갱신만). ANSWERED: **C01** (Canton open Q 전부 해소 — A11 만 Fireblocks 매핑으로 open 유지)

@@ -110,3 +110,88 @@ source: https://docs.canton.network/global-synchronizer/production-operations/va
 
 Canton Network 공식 docs (리뉴얼) — <https://docs.canton.network/> · 진입 <https://docs.canton.network/llms.txt>
 (docs.digitalasset.com 후속)
+
+---
+
+# 추가 확인 (2026-06-10, 4 페이지 + wallet guidance) — Stage 54
+
+> 사용자 지정 4 페이지(what-is-canton · choose-your-path · global-synchronizer/understand/overview ·
+> integrations/overview) 대조 + integrations/overview 가 안내한 **integrations/wallet/guidance** 추가
+> fetch. 핵심: **finality 수치 1차 출처 확보(C01 ANSWERED)** + 수탁 통합 구체 요건.
+
+## (6) Global Synchronizer — 2/3 BFT · Super Validator · 거버넌스
+
+source: https://docs.canton.network/global-synchronizer/understand/overview.md
+       + https://docs.canton.network/overview/understand/what-is-canton.md
+
+- Global Synchronizer = "a decentrally operated service, using a **2/3 majority Byzantine Fault
+  Tolerant (BFT) consensus protocol**" — sovereign blockchain 간 atomic 트랜잭션, 프라이버시 보존.
+  (우리 기존 "<1/3 fault 허용" 과 동치 — BFT 정의상 2/3 honest majority = f<n/3.)
+- **Super Validator**: Global Synchronizer infra 운영, **트랜잭션 sequencing**, Canton Coin tx 검증,
+  거버넌스 참여. **Validator**: tx 검증·활동 기록, 사용자/앱 연결, 업그레이드 조정.
+- **거버넌스**: Global Synchronizer Foundation(GSF) + **Linux Foundation** 파트너십, SV 운영 투명성.
+- **node 역할(what-is-canton)**: Synchronizer = "coordinate consensus without storing state",
+  participant node(validator) = "receive and store only the data relevant to their hosted parties".
+  "Horizontal scalability: Add nodes to scale, without global state replication". finality/throughput
+  수치는 이 두 페이지엔 없음(아래 wallet guidance 에서 확보).
+
+## (7) Canton Coin — burn-mint equilibrium (tokenomics)
+
+source: https://docs.canton.network/global-synchronizer/understand/overview.md
+
+- **Burn**: 수수료(USD 표시·Canton Coin 으로 지불)는 **유통에서 제거(burn)** — 중앙 주체로 가지 않음.
+- **Mint 보상**: validator·super validator 가 infra 운영·앱 서비스·사용량·liveness 인센티브로 CC 획득.
+- **동적 균형**: 공급과 소각이 시간에 따라 균형 → 환율을 network intrinsic value 근처로 안정.
+- → 우리 page3 "Canton Coin 소각 = traffic 충전 = 수수료" 모델 정면 확정(소각 = circulation 제거).
+
+## (8) Developer paths — EVM 개발자 경로 존재
+
+source: https://docs.canton.network/appdev/get-started/choose-your-path.md
+
+- 4 학습 경로 중 하나가 **"Ethereum/Solidity 개발자 → Canton 의 privacy/authorization 모델 매핑"**.
+  → 우리 docs-site 의 EVM-대비 서술 방식이 공식 권장 접근과 일치.
+
+## (9) Integrations overview — 수탁 안내 포인터
+
+source: https://docs.canton.network/integrations/overview.md
+
+- wallets·exchanges·token standard 대상. 명시 표준 = **CIP-0056**(GSF cips repo).
+- "Balances are private — wallets show holdings only to entitled parties, not the public."
+- 수탁 구체 요건은 **/integrations/wallet/guidance** 로 안내 → (10).
+
+## (10) Wallet Integration Guidance — 수탁 핵심 (대량)
+
+source: https://docs.canton.network/integrations/wallet/guidance.md
+
+- **finality (C01 ANSWERED)**: 페이지에 문자 그대로 **"Finality usually takes 3-10s."** 존재.
+  (verbatim 재확인 — WebFetch 요약 주입 아님. 그간 "검색 요약 only" 격리 해제.) 멱등: "you are
+  guaranteed some response, and you can keep retrying; signed transactions are idempotent."
+- **API (concrete)**:
+  - tx: `/v2/interactive-submission/prepare` + `/v2/interactive-submission/execute`.
+  - ACS/UTXO 조회: `/v2/state/active-contracts` (Wallet SDK `sdk.ledger.acsReader.read()`).
+  - offset: `/v2/state/ledger-end` — prepare 전 호출, contract id 를 prepare 동안 pin.
+- **Party (수탁)**:
+  - `sdk.party.external.create(publicKey, {partyHint})`. 형식 `name::fingerprint`, **max 185 chars**
+    `[a-zA-Z0-9:-_]`.
+  - **"For custodians, it's suggested aiming for one Party per account/wallet"**.
+  - **"Avoid ephemeral party creation"** — allocation 비용 있음, **deposit 마다 party 만들지 말고**
+    account 당 stable party.
+  - backup/redundancy 위해 **여러 validator 에 party multi-host**(confirmed participant endpoint).
+  - topology tx: `PartyToParticipant`, `ParticipantToParty`, `KeyToParty`.
+- **Token standard**: CIP-0056 필수. CC(preinstalled) + USDCx(Digital Asset Registry). transfer =
+  prepare(`sdk.ledger.prepare()`) → sign(`signTransactionHash(hash, privateKey)`) → execute.
+- **입금 관찰**: ledger event 의 **"TransferIn"** 감시(pending vs completed). pre-approval 켜져 있으면
+  auto-accept, 아니면 수동 accept/reject.
+- **2-step**: pre-approval 없으면 송신자가 **locked UTXO 생성("owned by sender, locked by DSO")**,
+  수신자가 `TransferInstruction_Accept` 로 수락 / `TransferInstruction_Reject` 로 반환. pre-approval:
+  단일 tx 즉시 완료, `sdk.amulet.featuredApp.grant()` 로 auto-accept.
+- **UTXO 관리**: self-transfer 로 split, change UTXO 최소화. `sdk.token.transfer.create({inputUtxos:[...]})`.
+- **입금 식별 = memo tag(주소 아님)**: deposit 은 별도 입금주소가 아니라 transfer metadata 의 memo 로
+  추적 — `"meta":{"values":{"splice.lfdecentralizedtrust.org/reason":"memo-ref"}}`. "allows deposits
+  to be sent to exchanges" without separate deposit addresses. (XRP/XLM destination-tag 류 모델.)
+- **Scan/registry endpoint**: `/registry/metadata/v1/info`(admin party id) ·
+  `/registry/metadata/v1/instruments`(instrument id) ·
+  `/registry/transfer-instruction/v1/transfer-factory`(factory + choice context).
+- **운영**: DevNet/TestNet/MainNet **3 환경** 운영(업그레이드 테스트). 로컬은 `/v2/state/ledger-end`,
+  파트너 대사는 synchronizer `recordTime`. prepare 응답을 서명 전 독립적으로 hash 재계산해 검증.
+  멱등 retry 는 submission ID dedup.

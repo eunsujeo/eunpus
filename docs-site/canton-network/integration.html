@@ -144,6 +144,8 @@ flowchart LR
 <li><strong>키 통제는 분리해서 보유</strong> — 운영형이라도 party 키·서명 권한은 우리가 통제하는 구성을 권한다. validator 운영과 키 통제를 같은 곳에 두면 복구·감사에서 위험이 커진다.</li>
 <li><strong>어댑터는 Ledger API 경계로</strong> — 직접/운영형 전환이 어댑터 안쪽 한 겹(노드 접근)만 바뀌도록 설계하면, 운영형으로 시작해 직접 운영으로 옮기는 경로가 열린다(또는 반대).</li>
 <li><strong>복구 리허설</strong> — 직접 운영을 택하면 5.3 절차를 실제로 리허설해 두어야 한다. ACS import·키 재구성은 사고 당일 처음 해보면 늦는다.</li>
+<li><strong>party 를 여러 validator 에 multi-host</strong> — 공식 가이드는 백업·이중화를 위해 같은 party 를 둘 이상의 validator participant 에 host 하라고 권한다. 한 노드를 잃어도 다른 노드가 같은 party 를 계속 서비스해, 5.3 의 전면 복구로 가기 전 1차 방어선이 된다.</li>
+<li><strong>3 환경 운영</strong> — DevNet · TestNet · MainNet 세 환경을 함께 운영해, 네트워크 프로토콜 업그레이드를 운영(MainNet)에 적용하기 전에 하위 환경에서 먼저 검증한다.</li>
 <li><strong>SaaS 도 같은 그림</strong> — Fireblocks 처럼 Canton 을 지원하는 SaaS 를 쓰면 "운영형" 의 극단으로, 노드·복구 상당 부분을 벤더가 처리한다. 단 상태 매핑·timeout 등 적용 세부는 확인 필요(<a href="operations.html">3. 자산 동작</a>).</li>
 </ul>
 </div>
