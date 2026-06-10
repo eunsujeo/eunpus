@@ -85,7 +85,7 @@
 <thead><tr><th style="width:16%">관심사</th><th>EVM (이더리움 등)</th><th>Canton</th></tr></thead>
 <tbody>
 <tr><td>상태 표현<span class="g" data-tip="원장이 '지금 누가 무엇을 보유했나'(현재 상태)를 어떤 자료구조로 저장하는가 — EVM 은 주소별 숫자, Canton 은 contract 집합">?</span></td><td>주소별 잔액 + nonce<span class="g" data-tip="계정의 트랜잭션 순번. EVM 은 주소마다 nonce 를 1씩 올리며 순서를 보장한다">?</span></td><td>party 의 활성 contract 집합(ACS<span class="g" data-tip="Active Contract Set — party 가 현재 보유한 활성 contract 전체. Canton 의 원장 상태">?</span>) + 토큰은 Holding UTXO</td></tr>
-<tr><td>주체 식별</td><td>0x… 주소 (공개키 해시)</td><td>PartyId = <code>hint::fingerprint</code> (allocation 으로 생성, 파싱 금지)</td></tr>
+<tr><td>주체 식별</td><td>0x… 주소 (공개키 해시)</td><td>PartyId = <code>hint::fingerprint</code><span class="g" data-tip="hint=allocation 때 붙이는 사람이 읽는 라벨, fingerprint=승인 공개키의 sha256. allocation(등록) 작업으로만 생성되고(오프라인 계산 불가), 쪼개거나 손으로 조립하지 말고 opaque 한 손잡이로 통째로 쓴다">?</span> (allocation 으로 생성, 파싱 금지)</td></tr>
 <tr><td>전송 단계</td><td>1-step — 보내면 끝</td><td>기본 2-step<span class="g" data-tip="송신자가 OFFER(TransferInstruction)를 만들고 자금이 잠긴 뒤, 수신자가 ACCEPT 해야 완료. 거절(Reject)·회수(Withdraw) 가능. Canton Coin 은 pre-approval 로 1-step">?</span> (송신 OFFER → 수신 ACCEPT). Canton Coin 은 pre-approval 로 1-step</td></tr>
 <tr><td>확정</td><td>N 블록 확인</td><td>Synchronizer 의 Mediator 2-phase commit (2/3 BFT, 보통 3-10초)</td></tr>
 <tr><td>수수료</td><td>gas × gasPrice (거래마다 후불)</td><td>traffic<span class="g" data-tip="미리 충전해 둔 대역폭 잔고(byte). Canton Coin 을 소각하면 traffic 이 충전되고, 거래 시 소비되는 traffic 이 곧 수수료다">?</span> — Canton Coin 소각으로 미리 충전, 거래 시 소비분이 수수료</td></tr>

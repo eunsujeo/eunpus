@@ -89,8 +89,13 @@ flowchart LR
 </div>
 
 <div class="callout">
-<div class="callout-title">PartyId 는 키가 아니라 신원이다</div>
-<p>PartyId 의 <code>fingerprint</code> 부분은 그 party 의 topology 변경을 authorize 하는 <strong>공개키의 fingerprint(sha256)</strong>다. 즉 신원과 서명 권한이 묶여 있다. 하지만 PartyId 자체는 <strong>opaque identifier</strong> — 앱이 <code>hint</code> 와 <code>fingerprint</code> 를 파싱·조립하면 안 되고, allocation 으로만 생성한다(주소 발급은 <a href="operations.html">3. 자산 동작</a>).</p>
+<div class="callout-title">PartyId = hint::fingerprint — 키가 아니라 신원</div>
+<p>PartyId 는 <code>::</code> 로 나뉜 두 부분이다. 예: <code>BankA-Treasury::1220f2fe29…</code></p>
+<ul>
+<li><strong>hint</strong>(앞) = allocation 할 때 우리가 붙이는 <strong>사람이 읽는 라벨</strong>(예 <code>BankA-Treasury</code>). 안 주면 <code>party-{UUID}</code> 로 자동 생성되고, namespace 안에서 유일해야 한다.</li>
+<li><strong>fingerprint</strong>(뒤) = 이 party 의 topology 변경을 authorize 하는 <strong>공개키의 sha256</strong> — 신원과 서명 권한을 묶는다.</li>
+</ul>
+<p><strong>"allocation 으로 생성"</strong> = EVM 처럼 키에서 주소를 오프라인으로 계산하는 게 아니라, <strong>allocation(party 등록) 작업을 호출해야 PartyId 가 나온다</strong> — 그래서 발급에 비용이 있고 미리 대량으로 못 찍는다(계정당 하나만, 아래 2.2). <strong>"파싱 금지"</strong> = 이 문자열을 잘라 hint·fingerprint 를 빼 쓰거나 손으로 PartyId 를 조립하지 말 것. <strong>opaque 한 손잡이(handle)</strong>로 보고 통째로 저장·전달만 한다.</p>
 </div>
 
 <div class="callout">
