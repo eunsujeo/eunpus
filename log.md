@@ -7072,3 +7072,9 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - SigningDriverInterface = {partyMode, signingProvider, controller(authContext?)→Methods(OpenRPC)} — Fireblocks/Dfns/HSM 구현 지점
 - Wallet SDK = @canton-network/wallet-sdk(NodeJS). Wallet Gateway(remote) = RPC 서버 :3030, /api/v0/{dapp,user}, 서명을 드라이버로 라우팅, Postgres(wallet/signing-credential 분리), Canton+CantonTestnet
 - source(canton-wallet-sdk-github) 섹션 4 append, entity(드라이버 5종·인터페이스·Gateway·building blocks, last_updated 74), custody 6.3(dfns 추가 + '공식 SDK 가 주는 것' callout)
+
+## Stage 75 (2026-06-10) — signing-fireblocks 구현 코드 + acs-reader 확정
+- raw fireblocks.ts: **EdDSA Ed25519**(PublicKeyInformationAlgorithmEnum.EddsaEd25519) + **Fireblocks Raw Signing**(createTransaction operation:'RAW')로 prepared tx hash(content:txHash) 서명, 공개키 getPublicKeyInfo. → "Fireblocks EdDSA Raw Signing" 을 공식 드라이버 코드로 확정(PartyId fingerprint Ed25519 와 정합)
+- acs-reader: ACSReader.read()/readJsContracts()/paginated.read(), 필터 templateIds/parties(filterByParty)/interfaceIds, caching. (includeLocked 문서 API 엔 없음)
+- token-standard README=TBD, ledger-client README 미노출 — 보류
+- source 섹션 5 append, entity(Fireblocks 서명 구현 코드 확정·last_updated 75), custody 6.3 Fireblocks callout 한 줄

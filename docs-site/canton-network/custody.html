@@ -168,7 +168,7 @@ flowchart LR
 
 <div class="callout">
 <div class="callout-title">Fireblocks 로 Canton 수탁 — 우리 주력 경로</div>
-<p>우리 수탁 스택이 Fireblocks 라면 Canton 도 같은 방식으로 붙는다 — <strong>키는 Fireblocks(MPC/HSM)에 남고</strong>, Canton external party 거래를 <strong>Fireblocks Raw Signing(EdDSA·Ed25519)</strong> 으로 서명한다(공식 Canton Coin 복구 절차가 이 EdDSA Raw Signing 을 쓴다). 흐름은 6.3 그대로: participant 가 <code>prepare</code> 로 해시를 만들면 → <strong>Fireblocks 가 서명</strong> → <code>execute</code>. participant 는 우리(Fireblocks) 서명 없이 원장에서 움직일 수 없다.</p>
+<p>우리 수탁 스택이 Fireblocks 라면 Canton 도 같은 방식으로 붙는다 — <strong>키는 Fireblocks(MPC/HSM)에 남고</strong>, Canton external party 거래를 <strong>Fireblocks Raw Signing(EdDSA·Ed25519)</strong> 으로 서명한다(공식 Canton Coin 복구 절차가 이 EdDSA Raw Signing 을 쓴다). 흐름은 6.3 그대로: participant 가 <code>prepare</code> 로 해시를 만들면 → <strong>Fireblocks 가 서명</strong> → <code>execute</code>. participant 는 우리(Fireblocks) 서명 없이 원장에서 움직일 수 없다. 공식 드라이버(<code>core-signing-fireblocks</code>) 코드 기준, <strong>EdDSA Ed25519</strong> 키로 <strong>Fireblocks Raw Signing</strong>(<code>createTransaction</code> operation <code>RAW</code>)을 써서 prepared tx 의 <strong>hash</strong> 를 서명하고, party 공개키는 <code>getPublicKeyInfo(EddsaEd25519)</code> 로 가져온다.</p>
 <ul>
 <li><strong>2-step 매핑</strong> — Fireblocks 는 Canton transactionType(OFFER·ACCEPT·REJECT·WITHDRAW·PRE_APPROVAL)을 다룬다. 단 <strong>정확한 Fireblocks 거래 상태 매핑·수락 대기 timeout 처리는 적용 전 확인 필요</strong>(현재 미확정 항목).</li>
 <li><strong>복구·사후처리</strong> — Fireblocks 는 Canton Coin 복구를 문서화한다(topology tx 외부 서명 → ACS import, <a href="integration.html">5. 운영</a>의 복구). 복구 후 <strong>pre-approval 재설정·contract id 갱신</strong>이 필요하고, <strong>토큰(USDCx 등)은 Circle 같은 Registrar 와 별도</strong> 절차다.</li>

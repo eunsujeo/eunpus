@@ -71,3 +71,14 @@ source: /tree/main/core · sdk/wallet-sdk · core/signing-lib · wallet-gateway/
   ```
   Fireblocks/Dfns/HSM 가 이 인터페이스를 구현해 끼워진다. 실제 sign 메서드는 OpenRPC 로 생성된 `Methods` 에.
 - **Wallet Gateway(remote)**: RPC 서버, **기본 port 3030**. 엔드포인트 `/`(user web UI) · **`/api/v0/dapp`**(dApp JSON-RPC) · **`/api/v0/user`**(user JSON-RPC). 서명 요청을 **드라이버 백엔드(Fireblocks·Dfns)로 라우팅**, wallet provisioning/activation/signing 관리(Canton + CantonTestnet). **Postgres** 로 wallet store·signing credential store 분리 보관. JSON config. JSON-RPC 메서드는 API spec 에서 strongly-typed 생성.
+
+## (5) signing-fireblocks 구현 + acs-reader (raw 파일, Stage 75)
+
+source: raw core/signing-fireblocks/src/fireblocks.ts · core/acs-reader README
+
+- **Fireblocks 서명 알고리즘 = EdDSA Ed25519** (코드 상수 `PublicKeyInformationAlgorithmEnum.EddsaEd25519`). → 기존 "EdDSA Raw Signing"(CC 복구 문서)을 **공식 드라이버 코드로 확정**, PartyId fingerprint(Ed25519 pubkey)와 정합.
+- **Fireblocks Raw Signing 사용**: `client.transactions.createTransaction({ transactionRequest:{ operation:'RAW', ... rawMessageData.messages:[{ content: txHash, derivationPath }] }})` — prepared transaction **hash(`txHash`)를 RAW 로 직접 서명**.
+- **공개키**: `client.vaults.getPublicKeyInfo({ algorithm: EddsaEd25519, derivationPath })` → `keyInfoByPublicKey` 캐시.
+- 파일: `fireblocks.ts`·`index.ts`(+ `.test.ts`).
+- **acs-reader**(`@canton-network/core-acs-reader`): `ACSReader` 클래스 — `read()`(필터 옵션)·`readJsContracts()`(JS 형태)·`paginated.read()`(대량). 필터 = `templateIds`·`parties`(+`filterByParty:true`)·`interfaceIds`. caching 내장. 반환 = createdEvent 전 필드 + `synchronizerId` → holdings/잔액 판단. (문서 API 엔 `includeLocked` 미언급 — locked 구분은 holding 필드/template 로.)
+- token-standard README = "TBD"(미문서화), ledger-client README 미노출 — src 직접 확인 필요(보류).
