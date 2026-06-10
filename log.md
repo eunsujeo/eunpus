@@ -7084,3 +7084,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 두 API 면: Ledger JSON /v2(party/user/onboarding/state) + token-standard registry OpenAPI(전송/holding/allocation)
 - **wallet SDK sweep 종료**: 수탁/Canton 관련 모듈 전수, 나머지 36모듈 plumbing/codegen 은 범위 밖
 - 대부분 기존(Stage 53·61) 코드 확정. 새 개념 없어 docs-site 무변경, source 섹션 6·7 + entity(두 API 면·interface ID, last_updated 76)
+
+## Stage 77 (2026-06-10) — wallet-service-components: Canton 지식으로 정정·크로스링크
+- @docs-site/wallet-service-components 점검: Canton 깊이 추가 대신 그동안 확정된 사실로 정정 4건
+  - example-fireblocks 14.8: "서명 알고리즘 적용 전 확인" → **EdDSA Ed25519 Raw Signing** 해소(공식 core-signing-fireblocks 드라이버·CC 복구) + 14.8 에 공식 드라이버·canton-network 크로스링크
+  - project-structure: 공식 Canton wallet SDK·Gateway 는 **TypeScript(NodeJS)** — JVM 스택은 DAML Java Ledger API(gRPC) 직접/Gateway 별도 (nuance)
+  - multichain 2.2 traffic tooltip: "10분 무료 충전" → "20분 window/400,000 byte"
+  - multichain·fireblocks: **canton-network 심화 가이드 크로스링크** 추가(기존 없음)
+- A11(transactionType↔Fireblocks 상태·timeout)은 여전히 open → "확인 필요" 유지. check PASS

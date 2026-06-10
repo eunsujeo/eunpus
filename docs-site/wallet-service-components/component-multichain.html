@@ -76,7 +76,7 @@
 <tr><td>잔액 표현</td><td>주소별 잔액 + nonce</td><td>사용하지 않은 출력(UTXO) 집합</td><td>active contract 집합(ACS<span class="g" data-tip="Active Contract Set — party 가 보유한 활성 contract 집합. Canton 의 원장 상태 표현">?</span>) + 토큰 holdings 는 UTXO(가용/locked)</td></tr>
 <tr><td>순서 보장</td><td>주소별 nonce 순차</td><td>입력(UTXO) 선택 · 체인 길이 제한</td><td>Synchronizer 의 Sequencer 가 메시지 순서·timestamp 부여 (계정 nonce 없음)</td></tr>
 <tr><td>확정 판단</td><td>N 블록 확인 (또는 commitment<span class="g" data-tip="솔라나의 확정 단계 — processed/confirmed/finalized 로 신뢰 수준 구분">?</span> 단계)</td><td>N 블록 확인</td><td>Synchronizer<span class="g" data-tip="Sequencer(순서화)+Mediator(확인 집계). Mediator 가 validator confirmation 을 2-phase commit 으로 승인/거절">?</span> 2-phase commit (finality 수 초, 수치 확인 필요)</td></tr>
-<tr><td>수수료</td><td>gas × gasPrice (EIP-1559<span class="g" data-tip="이더리움 수수료 방식 — 기본료(base fee)+우선료(priority fee) 구조">?</span> base+priority)</td><td>byte 당 fee rate</td><td>traffic<span class="g" data-tip="traffic = 미리 충전해 둔 대역폭 잔고(byte). Canton Coin 을 소각(burn)하면 traffic 잔고가 충전되고, 거래할 때 소비되는 traffic 이 곧 수수료. 10분마다 소량은 무료 충전.">?</span> 차감 — Canton Coin 소각으로 traffic(byte) 잔고 충전 → 거래 시 소비분이 수수료 (+ 보유세 ~$1/년)</td></tr>
+<tr><td>수수료</td><td>gas × gasPrice (EIP-1559<span class="g" data-tip="이더리움 수수료 방식 — 기본료(base fee)+우선료(priority fee) 구조">?</span> base+priority)</td><td>byte 당 fee rate</td><td>traffic<span class="g" data-tip="traffic = 미리 충전해 둔 대역폭 잔고(byte). Canton Coin 을 소각(burn)하면 traffic 잔고가 충전되고, 거래할 때 소비되는 traffic 이 곧 수수료. 무료 base 는 20분 window 당 약 400,000 byte.">?</span> 차감 — Canton Coin 소각으로 traffic(byte) 잔고 충전 → 거래 시 소비분이 수수료 (+ 보유세 ~$1/년)</td></tr>
 <tr><td>재전송</td><td>같은 nonce + 수수료 인상 (replace)</td><td>RBF<span class="g" data-tip="Replace-By-Fee — 같은 순번 트랜잭션을 더 높은 수수료로 교체해 재전송">?</span> 또는 CPFP<span class="g" data-tip="Child-Pays-For-Parent — 막힌 부모 트랜잭션을 높은 수수료의 자식 트랜잭션으로 끌어 확정">?</span></td><td>nonce-replace 아님 — 송신자 <code>Withdraw</code> 로 locked 자금 회수</td></tr>
 <tr><td>주소 파생</td><td>BIP-32/44 경로 + coin type</td><td>BIP-32/44 + 스크립트 유형</td><td>PartyId = <code>hint::fingerprint</code> (fingerprint = 서명 공개키 sha256), allocation 으로 생성</td></tr>
 </tbody>
@@ -87,7 +87,7 @@
 
 <div class="callout callout-warn">
 <div class="callout-title">Canton(2-step) 이 어댑터에 주는 핵심 차이</div>
-<p>위 표의 셋째 열이 핵심이다 — Canton 은 DAML active contract 원장 위에 UTXO형 holdings 를 두되, 전송이 <strong>권한 기반 2-step</strong>(기본값)이라는 게 결정적 차이다. 어댑터가 흡수해야 할 가장 큰 차이는 <strong>"제출=완료" 가 아니라는 것</strong> — 출금이 <code>OFFER</code> 제출로 시작해 "상대 수락(<code>ACCEPT</code>) 대기" 상태에 머물 수 있고, 그동안 송신 자금은 locked UTXO 로 묶인다(<a href="scenario-withdrawal.html">11. 출금</a> 참조). Canton Coin 은 pre-approval 로 1-step. 어댑터는 이 lifecycle 을 공통 동사 뒤로 숨긴다. <em>(Fireblocks 가 Canton 지원 — 정확한 상태 매핑·timeout 은 적용 전 확인 필요.)</em></p>
+<p>위 표의 셋째 열이 핵심이다 — Canton 은 DAML active contract 원장 위에 UTXO형 holdings 를 두되, 전송이 <strong>권한 기반 2-step</strong>(기본값)이라는 게 결정적 차이다. 어댑터가 흡수해야 할 가장 큰 차이는 <strong>"제출=완료" 가 아니라는 것</strong> — 출금이 <code>OFFER</code> 제출로 시작해 "상대 수락(<code>ACCEPT</code>) 대기" 상태에 머물 수 있고, 그동안 송신 자금은 locked UTXO 로 묶인다(<a href="scenario-withdrawal.html">11. 출금</a> 참조). Canton Coin 은 pre-approval 로 1-step. 어댑터는 이 lifecycle 을 공통 동사 뒤로 숨긴다. <em>(Fireblocks 가 Canton 지원 — 정확한 상태 매핑·timeout 은 적용 전 확인 필요.)</em> Canton 의 원장 모델(ACS·Holding UTXO)·확정·수수료·수탁 통합 깊은 내용은 별도 <a href="../canton-network/">Canton 네트워크 가이드</a>에 있다.</p>
 </div>
 
 <h3>2.3 어떻게 동작하는가</h3>

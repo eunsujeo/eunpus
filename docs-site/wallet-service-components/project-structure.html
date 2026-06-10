@@ -62,7 +62,7 @@
 
 <div class="callout callout-success">
 <div class="callout-title">스택: Kotlin + Spring (JVM) 이 이 조합엔 특히 잘 맞는다</div>
-<p>Canton 이 <strong>JVM 네이티브</strong>(Scala · DAML Java Ledger API), <strong>NodeWallet SDK 가 Java/Spring</strong>, Fireblocks 는 Java SDK, EVM 은 web3j — 이더리움+Canton 스택에 JVM 이 1급이다. 포트도 Kotlin 에 자연스럽다: <code>interface</code> 포트, <code>chainSpecific</code> 은 <code>sealed</code> 로(<code>when</code> 망라), 어댑터 wiring 은 Spring DI. 유의점은 <strong>Solana raw JVM 툴링(solanaj)이 얕은 것</strong> 정도인데, Solana 는 NodeWallet SDK·Fireblocks 뒤로 가려져 직접 만질 일이 적다.</p>
+<p>Canton 이 <strong>JVM 네이티브</strong>(Scala · DAML Java Ledger API), <strong>NodeWallet SDK 가 Java/Spring</strong>, Fireblocks 는 Java SDK, EVM 은 web3j — 이더리움+Canton 스택에 JVM 이 1급이다. 포트도 Kotlin 에 자연스럽다: <code>interface</code> 포트, <code>chainSpecific</code> 은 <code>sealed</code> 로(<code>when</code> 망라), 어댑터 wiring 은 Spring DI. 유의점은 <strong>Solana raw JVM 툴링(solanaj)이 얕은 것</strong> 정도인데, Solana 는 NodeWallet SDK·Fireblocks 뒤로 가려져 직접 만질 일이 적다. 한 가지 더 — Canton 의 <strong>공식 wallet SDK·Wallet Gateway(<code>canton-network/wallet</code>)는 TypeScript(NodeJS) 전용</strong>이다. JVM 스택이면 <code>chains/canton</code> 은 <strong>DAML Java Ledger API(gRPC)로 직접</strong> 붙이거나(Canton 자체는 JVM 네이티브라 가능), TS Gateway 를 별도 서비스로 띄워 호출하는 식으로 간다(<a href="../canton-network/">Canton 가이드</a>).</p>
 </div>
 
 <h3>17.2 디렉터리 구조</h3>

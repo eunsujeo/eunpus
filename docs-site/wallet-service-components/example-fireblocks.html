@@ -228,13 +228,13 @@ sequenceDiagram
 
 <h3>14.8 Canton 에서는</h3>
 
-<p>Fireblocks 가 Canton 을 지원하므로 <strong>같은 어댑터·같은 포트로 Canton 도 처리</strong>한다. 달라지는 건 Canton 의 2-step 전송이 포트 메서드의 의미에 비치는 부분이다 — 메커니즘은 Fireblocks 가 감추지만, "상대 수락 대기" 같은 lifecycle 은 상태값으로 드러난다.</p>
+<p>Fireblocks 가 Canton 을 지원하므로 <strong>같은 어댑터·같은 포트로 Canton 도 처리</strong>한다. 달라지는 건 Canton 의 2-step 전송이 포트 메서드의 의미에 비치는 부분이다 — 메커니즘은 Fireblocks 가 감추지만, "상대 수락 대기" 같은 lifecycle 은 상태값으로 드러난다. (Fireblocks 는 공식 Canton Wallet SDK 의 <code>core-signing-fireblocks</code> 서명 드라이버로도 제공된다. Canton 원장 모델·확정·수수료·수탁 통합의 깊은 내용은 별도 <a href="../canton-network/">Canton 네트워크 가이드</a> 참조.)</p>
 
 <div class="table-wrap">
 <table>
 <thead><tr><th style="width:26%">포트 동작</th><th>Canton 에서</th></tr></thead>
 <tbody>
-<tr><td><code>createAccount</code> · <code>deriveAddress</code></td><td>Fireblocks 가 Canton <strong>party 발급·주소(PartyId)</strong>를 대신한다. party 키는 Fireblocks MPC 가 관리(서명 알고리즘은 적용 전 확인)</td></tr>
+<tr><td><code>createAccount</code> · <code>deriveAddress</code></td><td>Fireblocks 가 Canton <strong>party 발급·주소(PartyId)</strong>를 대신한다. party 키는 Fireblocks MPC 가 관리, 서명은 <strong>EdDSA Ed25519 Raw Signing</strong>(공식 <code>core-signing-fireblocks</code> 드라이버·Canton Coin 복구 절차로 확인)</td></tr>
 <tr><td><code>submitTransaction</code></td><td>Canton 에선 <strong>OFFER 제출(전송 제안)</strong> — 즉시 완료가 아니다. Canton Coin 은 pre-approval 로 1-step 처럼 동작</td></tr>
 <tr><td><code>getStatus</code> · <code>onChainEvent</code></td><td><code>transactionType</code>(OFFER / ACCEPT / REJECT / WITHDRAW / PRE_APPROVAL)와 <code>traceableId</code> 로 추적 — "상대 수락 대기" 상태가 보인다</td></tr>
 <tr><td>traffic(수수료) · validator node</td><td>Fireblocks 가 추상화 → 우리는 직접 만지지 않는다</td></tr>
