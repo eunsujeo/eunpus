@@ -7052,3 +7052,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 2. tooltip: 변환 때 버려지던 glossary(data-tip)을 모아 문서 끝 {info:title=용어 풀이} 패널로(term — 정의). hover 없는 Confluence 대체
 3. 네비 링크: "다음/이전/처음으로 — …" 문단을 변환 시 제거
 - canton-network + wallet-service-components 동기, node --check + 정규식 테스트
+
+## Stage 72 (2026-06-10) — Super Validator 명단·거버넌스 1차 확정(Figure 0-1 "실제로 누구")
+- 사용자: 0.3 구성도의 각 박스가 어떤 기관인지. canton.foundation(구 sync.global, 301)·press 1차 확인
+- 확정: **54 SV 노드**, 거버넌스 **Canton Foundation**(구 GSF, 2025-09-22 개명, Linux Foundation 파트너십 출범). Premier Members: 5North·7Ridge·Broadridge·Cumberland·Gas Station·Digital Asset·Euroclear·Liberty City Ventures·Obsidian Systems·SBI Digital Asset·T-RIZE·Tradeweb. 2025-03-19 Goldman Sachs·HK FMI·Moody's 합류
+- 매핑: 초록=우리 은행/수탁사, 파랑=우리/위탁 운영사(서명위탁=Fireblocks/Dfns), 보라=Global Synchronizer, 회색=SV(위 기관들)
+- 신규 source canton-foundation-supervalidators(1차). entity(source 6→7, SV 거버넌스 정정, last_updated 72) + docs-site Figure 0-1 "실제로 누구인가" callout
+- evidence isolation: SV 명단은 추측 안 하고 1차 확인 후만 기재. 명단/노드수는 시점 가변 명시

@@ -4,8 +4,8 @@ vendor: canton
 status: draft
 tags: [architecture, transaction, integration, stablecoin, identity, recovery]
 stage_introduced: 52
-last_updated_stage: 66
-source_count: 6
+last_updated_stage: 72
+source_count: 7
 related: [transaction, api]
 ---
 
@@ -21,7 +21,7 @@ Canton 은 DAML 스마트컨트랙트 기반 privacy-enabled 퍼블릭 블록체
 - **2-step 전송 / CIP-0056** — token standard 명세 = **CIP-0056**. 송신 시 `TransferInstruction`(factory 생성) → 수신자 **Accept**(완료)/**Reject**(반환) 또는 송신자 **Withdraw**(locked 자금 회수). FOP(Free of Payment) 전송 가능. 신규 인터페이스 `TransferFactory`/`AllocationFactory`/`BatchMergeUtility`/`MergeDelegation`. Canton Coin 은 **Transfer Pre-approval = 1-step**. Fireblocks transactionType(OFFER/ACCEPT/REJECT/WITHDRAW/PRE_APPROVAL)와 정합. (★ Stage 53: v3.4 는 "2-step = 모든 토큰 기본값" 단정, 리뉴얼본은 구현 옵션 톤 — 함께 볼 것) (source: digitalasset-docs-canton-model, docs-canton-network-renewed; 매핑 [[transaction]])
 - **PartyId = hint::fingerprint** — fingerprint = 이 party 의 topology transaction 을 authorize 하는 공개키의 sha256. namespace 는 root signing key 에서 도출. opaque identifier 라 파싱 금지, allocation 으로만 생성. (source: digitalasset-docs-canton-model)
 - **external party = 외부 서명 신원** (★ Stage 53) — external party = "submission key holder, no SPN, 자체 namespace, 자체 signing key 통제". external signing 2-step: **Preparing Participant Node**(Ledger API command→Daml tx) + **Executing Participant Node**(party 서명 부착). party 가 "transaction tree 의 hash" 명시 서명, **private key 는 party 만 통제 → participant 는 party 승인 없이 원장 행동 불가**. MPC/HSM 수탁 모델과 정합. (source: docs-canton-network-renewed)
-- **Synchronizer / 합의** — **2-layer**: ordering layer(synchronizer) + validation layer(participant). Sequencer(순서화·timestamp·sender identity 제거) + Mediator(confirmation 집계·2-phase commit verdict). Global Synchronizer = **2/3 majority BFT consensus** (native BFT orderer: ISS+Narwhal 영향, `Mempool→Availability→Consensus→Output` 4-모듈, <1/3 fault 허용 = 2/3 honest majority 동치). **Super Validator** = Global Synchronizer infra·sequencing·CC tx 검증·거버넌스. **Validator** = party host·tx 검증·연결. 거버넌스 = GSF + Linux Foundation. **finality "usually 3-10s"** (★ Stage 54 C01 ANSWERED). (source: docs-canton-network-renewed)
+- **Synchronizer / 합의** — **2-layer**: ordering layer(synchronizer) + validation layer(participant). Sequencer(순서화·timestamp·sender identity 제거) + Mediator(confirmation 집계·2-phase commit verdict). Global Synchronizer = **2/3 majority BFT consensus** (native BFT orderer: ISS+Narwhal 영향, `Mempool→Availability→Consensus→Output` 4-모듈, <1/3 fault 허용 = 2/3 honest majority 동치). **Super Validator** = Global Synchronizer infra·sequencing·CC tx 검증·거버넌스(**54 SV 노드**가 공동 운영, ★ Stage 72). **Validator** = party host·tx 검증·연결. 거버넌스 = **Canton Foundation**(구 Global Synchronizer Foundation, 2025-09-22 개명; Linux Foundation 파트너십 출범). SV 예(Premier Members): Goldman Sachs·SBI Digital Asset·Euroclear·Broadridge·Tradeweb·Digital Asset·Moody's·Cumberland 등(2025-03 Goldman·HK FMI·Moody's 합류). **finality "usually 3-10s"** (★ Stage 54 C01 ANSWERED). (source: docs-canton-network-renewed)
 - **Canton Coin = burn-mint equilibrium** (★ Stage 54, 수치 60) — 수수료(USD 표시·CC 지불)는 **소각=유통에서 제거**, validator/SV 는 infra·사용량·liveness 로 **mint 보상**. **라운드 10분(연 ~52,560), 라운드마다 dev fund 5% 선차감 후 validator/app/SV 배분**, unclaimed cascade. **CC-USD = 라운드별 SV 게시율 median**, **per-validator liveness faucet cap 기본 $2.85/라운드**. → burn 모델 확정. (source: docs-canton-network-renewed tokenomics-of-gs)
 - **pruning + 비반박(non-repudiation) (★ Stage 60)** — participant 는 과거 tx prune(active contract 는 절대 안 함), BFT orderer 기본 30일 retention. **PQS(Participant Query Store)** = distilled 장기 보관소. **ACS commitment** = counter-participant 와 active contract 암호서명 요약 주기 교환(fork 탐지·합의 증명) — 전원 matching 후 prune. → 감사·대사는 원장 아닌 **자체 DB** 가 1차 보관처. (source: docs-canton-network-renewed pruning)
 - **Canton Name Service(CNS) (★ Stage 60)** — 사람이 읽는 이름→party id(DNS/ENS 류), `<name>.unverified.cns`, DSO governed. 등록 = `/v0/entry/create`→CC 결제(DSO 로 소각)→AnsEntry, 만료·갱신. wallet 은 Scan API 로 이름 표시·이름 송금. reassignment(synchronizer 간 contract 이동)은 **단일 synchronizer 수탁엔 비적용**(scope-out). (source: docs-canton-network-renewed canton-name-service·reassignment-protocol)
@@ -74,6 +74,7 @@ docs.canton.network/integrations/wallet/guidance 1차 출처. 수탁 설계에 �
 - digitalasset-docs-canton-model (2026-06-09) — <https://docs.digitalasset.com/> v3.4
 - docs-canton-network-renewed (2026-06-10) — <https://docs.canton.network/> (digitalasset.com 후속 리뉴얼본)
 - musubi-custodian-track (2026-06-10) — <https://musubinetwork.com/> Custodian/Institution Track (⚠️ 2차 출처·Canton 위 app·testnet POC)
+- canton-foundation-supervalidators (2026-06-10) — <https://canton.foundation/> (구 sync.global) Super Validator 명단·거버넌스 (1차)
 
 ## Open Questions
 - **Q-2026-05-22-A11**: Canton transactionType(OFFER/ACCEPT/REJECT/WITHDRAW/PRE_APPROVAL) ↔ Fireblocks transaction status 매핑 + timeout 처리 (open)

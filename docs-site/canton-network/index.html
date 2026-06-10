@@ -139,6 +139,17 @@ flowchart TB
 </pre></div>
 <p class="diagram-caption">Figure 0-1. Canton 구성. <strong>바깥의 큰 박스 "Canton 네트워크" 가 곧 privacy-enabled 퍼블릭 블록체인</strong>이다 — participant 계층(파랑) + Synchronizer(보라) + Super Validator(회색) <strong>전체</strong>가 Canton 이고, 그 밖의 <strong>초록(우리 지갑 서비스)만 Canton 이 아니라 우리 것</strong>이다(Canton 어댑터를 통해 연동). "privacy" 는 그림의 특정 영역이 아니라 거래가 흐르는 방식(view 분해, <a href="model.html">1장</a>·<a href="validator.html">2장</a>)의 성질이다. <strong>파랑 = participant 계층</strong> — 우리가 붙는 Ledger API 와 그 뒤의 participant node(=validator). validator 는 party 를 host 하고 자신이 이해관계자인 거래를 검증한다. <strong>보라 = Synchronizer</strong>(Sequencer 가 순서·timestamp 를, Mediator 가 confirmation 집계 후 2-phase commit 으로 확정). <strong>회색 = Super Validator</strong> — CC↔USD·USD↔byte 환율을 게시해 traffic 가격을 정한다(직접 운영 대상 아님). 우리가 코드로 닿는 면은 거의 항상 <strong>Ledger API</strong> 한 겹이다 — validator 를 직접 운영하든(<a href="integration.html">5. 운영</a>) 관리형으로 위탁하든. <strong>이 Ledger API 는 누구의 API 인가 — participant node(=validator)가 노출하는 API</strong>다. 우리가 직접 운영한 노드든, 위탁한 노드든, 그 노드가 제공하는 창구가 Ledger API 이고 우리 지갑 백엔드는 거기에 붙는다.</p>
 
+<div class="callout">
+<div class="callout-title">실제로 누구인가 — 박스별 기관</div>
+<ul>
+<li>🟩 <strong>우리 지갑 서비스</strong> = <strong>우리 은행·수탁사</strong>(우리가 만드는 것).</li>
+<li>🟦 <strong>participant node = validator</strong> = <strong>우리(직접 운영)</strong> 또는 <strong>위탁 운영사</strong>. 서명만 위탁하면 Fireblocks·Dfns 같은 custody 제공자(<a href="custody.html">6. 수탁 통합</a>).</li>
+<li>🟪 <strong>Synchronizer</strong> = 우리가 운영하지 않는 <strong>공용 Global Synchronizer</strong> — 아래 Super Validator 들이 공동 운영.</li>
+<li>⬜ <strong>Super Validator</strong> = <strong>주요 금융·핀테크 기관들</strong>. 공식 재단(<strong>Canton Foundation</strong>, 구 Global Synchronizer Foundation) 회원 기준 <strong>Goldman Sachs · SBI Digital Asset · Euroclear · Broadridge · Tradeweb · Digital Asset · Moody's · Cumberland</strong> 등으로, 현재 <strong>54개 SV 노드</strong>가 Global Synchronizer 를 공동 운영한다.</li>
+</ul>
+<p>요점: <strong>우리(은행)는 초록 + (직접 운영 시) 파랑까지</strong>가 우리 몫이고, <strong>보라·회색은 우리가 운영하지 않는 공용 글로벌 계층</strong>이다. (출처: Canton Foundation, 2026-06 기준 — 명단·노드 수는 시점에 따라 변함.)</p>
+</div>
+
 <h3>0.4 읽는 법</h3>
 
 <ul>
