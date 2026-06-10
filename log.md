@@ -7078,3 +7078,9 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - acs-reader: ACSReader.read()/readJsContracts()/paginated.read(), 필터 templateIds/parties(filterByParty)/interfaceIds, caching. (includeLocked 문서 API 엔 없음)
 - token-standard README=TBD, ledger-client README 미노출 — 보류
 - source 섹션 5 append, entity(Fireblocks 서명 구현 코드 확정·last_updated 75), custody 6.3 Fireblocks callout 한 줄
+
+## Stage 76 (2026-06-10) — token-standard·ledger-client src 확정 + wallet SDK sweep 종료
+- raw src 확인: CIP-0056 interface ID 정확값(Holding/TransferInstruction/TransferFactory/Allocation*/Metadata/MergeDelegation/BatchMergeUtility), token-standard-client=Splice OpenAPI 4종 래퍼(전송/holding 은 registry API 경유), ledger-client=JSON /v2(allocateExternalParty·generateTopology·connected-synchronizers — Stage 61 온보딩 엔드포인트 코드 확정)
+- 두 API 면: Ledger JSON /v2(party/user/onboarding/state) + token-standard registry OpenAPI(전송/holding/allocation)
+- **wallet SDK sweep 종료**: 수탁/Canton 관련 모듈 전수, 나머지 36모듈 plumbing/codegen 은 범위 밖
+- 대부분 기존(Stage 53·61) 코드 확정. 새 개념 없어 docs-site 무변경, source 섹션 6·7 + entity(두 API 면·interface ID, last_updated 76)

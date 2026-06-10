@@ -82,3 +82,20 @@ source: raw core/signing-fireblocks/src/fireblocks.ts · core/acs-reader README
 - 파일: `fireblocks.ts`·`index.ts`(+ `.test.ts`).
 - **acs-reader**(`@canton-network/core-acs-reader`): `ACSReader` 클래스 — `read()`(필터 옵션)·`readJsContracts()`(JS 형태)·`paginated.read()`(대량). 필터 = `templateIds`·`parties`(+`filterByParty:true`)·`interfaceIds`. caching 내장. 반환 = createdEvent 전 필드 + `synchronizerId` → holdings/잔액 판단. (문서 API 엔 `includeLocked` 미언급 — locked 구분은 holding 필드/template 로.)
 - token-standard README = "TBD"(미문서화), ledger-client README 미노출 — src 직접 확인 필요(보류).
+
+## (6) token-standard·ledger-client src 확정 (Stage 76)
+
+source: raw core/token-standard/src/{interface-ids.const.ts,token-standard-client.ts} · core/ledger-client/src/ledger-client.ts (README 들은 TBD/미노출)
+
+- **CIP-0056 interface ID (정확값, interface-ids.const.ts)**:
+  - `HOLDING_INTERFACE_ID` = `#splice-api-token-holding-v1:Splice.Api.Token.HoldingV1:Holding`
+  - `TRANSFER_INSTRUCTION_INTERFACE_ID` / `TRANSFER_FACTORY_INTERFACE_ID` = `#splice-api-token-transfer-instruction-v1:Splice.Api.Token.TransferInstructionV1:{TransferInstruction,TransferFactory}`
+  - `ALLOCATION_{FACTORY,INSTRUCTION,REQUEST,}_INTERFACE_ID`(allocation=DvP), `METADATA_INTERFACE_ID`
+  - `MERGE_DELEGATION_*`·`..._BATCH_MERGE_UTILITY`(UTXO 병합 ~10), `FEATURED_APP_DELEGATE_PROXY`
+- **token-standard-client** = 제네릭 HTTP 래퍼. 4 Splice OpenAPI(Token **Allocation**·Allocation **Instruction**·**Metadata**·**Transfer Instruction**) 위. → 전송/holding/allocation 은 **registry 의 token-standard API**(Splice) 경유(exchange-integration 의 "Registry API Server" 와 정합).
+- **ledger-client = JSON /v2 API**(gRPC 아님). 메서드: `checkIfPartyExists`(`/v2/parties/{party}`)·`createUser`(`/v2/users`)·`grantRights`(`/v2/users/{id}/rights`)·**`allocateExternalParty`(`/v2/parties/external/allocate`)**·**`generateTopology`(`/v2/parties/external/generate-topology`)**·`getSynchronizerId`(`/v2/state/connected-synchronizers`). → Stage 61 external party 온보딩 엔드포인트 **코드 확정**. (interactive-submission prepare/execute·active-contracts 는 이 파일 밖 — acs-reader/별도 모듈)
+- **두 API 면 정리**: ① **Ledger JSON API /v2** (party/user/onboarding/state) ② **token-standard registry OpenAPI**(Splice — 전송/holding/allocation). 수탁 백엔드는 둘 다 호출.
+
+## (7) 범위 정리 — wallet SDK sweep 종료
+
+core 36 모듈 중 수탁/Canton 관련(signing-*·acs-reader·ledger-client·token-standard·tx-parser·wallet-store·auth·splice·amulet) 확인 완료. 나머지(rpc-generator·rpc-transport·asyncapi-client·daml-codegen-helpers·types·ui-components·wallet-discovery·*-rpc-client 등)는 **프레임워크 plumbing/codegen 으로 promote 대상 아님**(canton.network API/stdlib ref 와 동일 처리). **canton-network/wallet sweep 종료.**
