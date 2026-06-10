@@ -56,6 +56,11 @@
 <h2>17. 프로젝트 구조 (모노레포)</h2>
 <span class="section-subtitle">2층·3포트·어댑터 교체·체인별 분리를 그대로 디렉터리로 — 의존성은 안쪽(도메인·포트)으로만</span>
 
+<div class="callout">
+<div class="callout-title">본 페이지의 출처</div>
+<p>여기 담긴 설계·코드는 <strong>저자가 일반적인 지갑 인프라 패턴을 바탕으로 정리한 설계 참고안</strong>(의사코드)이다. 본문에서 "Fireblocks 가 …" 처럼 특정 벤더의 동작을 언급한 부분은 해당 벤더의 공식 문서에서 확인한 사실이고, 그 외는 저자 추정이므로 실제 적용 전 자신의 환경에서 검증이 필요하다.</p>
+</div>
+
 <h3>17.1 왜 모노레포인가</h3>
 
 <p>지금까지의 설계(<a href="abstraction.html">13. 포트</a>·두 층·어댑터 교체·체인별 분리)를 코드로 옮기면, <strong>경계가 패키지 경계</strong>가 되어야 흐트러지지 않는다. 모노레포<span class="g" data-tip="여러 패키지(앱·라이브러리)를 한 저장소에서 함께 버전·빌드 관리하는 방식. 패키지 간 경계를 명확히 두되 한 번에 빌드·테스트한다">?</span>로 두면 (1) <strong>도메인·포트가 안쪽 핵</strong>으로 고정되고 (2) 어댑터를 <strong>패키지 단위로 넣고 빼며</strong> (3) 한 번에 빌드·테스트·타입체크할 수 있다. 핵심 규칙은 하나 — <strong>의존성은 항상 안쪽(domain)으로만 흐른다</strong>(헥사고날<span class="g" data-tip="포트(인터페이스)를 중심에 두고, 바깥 어댑터가 안쪽으로 의존하게 하는 구조. 클린 아키텍처와 같은 결">?</span> · 클린 아키텍처).</p>
@@ -68,7 +73,7 @@
 <h3>17.2 디렉터리 구조</h3>
 
 <pre><code>custodial-wallet/                # Gradle 멀티모듈 (각 디렉터리 = 서브프로젝트 + build.gradle.kts)
-├─ settings.gradle.kts          # include(":domain", ":backend", ":engine:*", ":chains:*", ":adapters:*", ":apps:*")
+├─ settings.gradle.kts          # include(":domain", ":backend", ":engine:*", ":chains:*", ":adapters:*", ":apps:*") — * 는 축약 표기 (Gradle 은 와일드카드 미지원 — 실제로는 모듈명을 각각 나열)
 ├─ build.gradle.kts             # 공통 플러그인 · Spring Boot BOM
 ├─ gradle/libs.versions.toml    # 버전 카탈로그
 │
@@ -81,6 +86,7 @@
 ├─ backend/                     # Spring Boot — 지갑 서비스 백엔드 (벤더 무관 · 항상 우리 것) → domain
 │  └─ src/main/kotlin/…/backend/
 │     ├─ gateway/               # 6  인증 · 멱등 키 · 라우팅 (@RestController · 멱등 store)
+│     ├─ directory/             # 9  계정·주소 디렉터리 — 발급 결과 저장 + "계정 id → 계정" 해석 (우리 데이터)
 │     ├─ orchestration/         #    요청 큐 · 상태머신 · vault 라우팅
 │     ├─ reconciliation/        # 7  온체인 정합성 · 추적 (correlationId · @Scheduled sweep)
 │     └─ alerts/                # 8  이벤트 · 알림 팬아웃 (webhook/스트림)
@@ -91,7 +97,7 @@
 │  ├─ tx-pipeline/              # 4  TxPipeline (멱등·순서·재전송 정책; boost 는 capability)
 │  └─ signing/                  # 5  SigningOrchestrator (sighash·검증, 키는 Signer 뒤)
 │
-├─ chains/                      # 체인 프로토콜별 구현 (ChainAdapter + ChainSource) → domain
+├─ chains/                      # 체인 프로토콜별 구현 (ChainAdapter + ChainSource) → engine/multichain(SPI) → domain
 │  ├─ evm/                      #    web3j · nonce · EIP-1559 · RBF · keccak · secp256k1  (이더리움)
 │  ├─ utxo/                     #    coin 선택 · RBF/CPFP · DER
 │  ├─ solana/                   #    NodeWallet SDK 경유(raw 는 solanaj) · blockhash · commitment
@@ -110,6 +116,8 @@
    ├─ indexer-worker/           # 상시 수집 worker + 정합성 주기 sweep
    └─ webhook-receiver/         # Fireblocks webhook → onChainEvent</code></pre>
 
+<p>한 가지 예외 — <code>chains/solana</code> 는 "체인 프로토콜별 구현" 이라는 <code>chains/*</code> 정의와 달리 <strong>프로토콜 구현을 벤더 SDK(NodeWallet)에 위임</strong>한다. 포트 구현이라는 교체 축은 여전히 <code>adapters/nodewallet</code> 몫이고, <code>chains/solana</code> 에는 blockhash·commitment 같은 체인 특성 처리만 남는다 — 의존 방향(adapters → chains → domain)은 다른 체인과 동일하다.</p>
+
 <h3>17.3 의존성 규칙 — 안쪽으로만</h3>
 
 <p>패키지 경계가 의미 있으려면 <strong>화살표(의존)가 한 방향</strong>이어야 한다. <code>domain</code> 은 누구도 의존하지 않고 모두가 <code>domain</code> 을 의존한다.</p>
@@ -127,7 +135,7 @@ flowchart TB
     APPS --> BACKEND
     ADP --> ENGINE
     ADP --> CHAINS
-    ENGINE --> CHAINS
+    CHAINS -->|"ChainAdapter SPI 구현"| ENGINE
     BACKEND --> DOMAIN
     ENGINE --> DOMAIN
     CHAINS --> DOMAIN
@@ -137,12 +145,12 @@ flowchart TB
     classDef svc fill:#dcfce7,stroke:#16a34a;
     classDef adp fill:#dbeafe,stroke:#2563eb;
     classDef port fill:#e0e7ff,stroke:#6366f1;
-    class APPS ext;
+    class APPS svc;
     class BACKEND svc;
     class ADP,ENGINE,CHAINS adp;
     class DOMAIN port;
 </pre></div>
-<p class="diagram-caption">Figure 17-1. 의존성은 안쪽으로만. <strong>domain(보라)=포트·모델</strong>이 핵이고 누구도 의존하지 않는다. apps(회색)가 어댑터·백엔드를 wiring 하고, adapters(파랑)가 engine·chains 를 조립한다. backend(초록)는 domain 만 의존해 어떤 어댑터든 그대로다. <strong>화살표가 안쪽으로만</strong> 향하면 — 바깥(어댑터·체인)을 바꿔도 안쪽(도메인·백엔드)은 안 바뀐다.</p>
+<p class="diagram-caption">Figure 17-1. 의존성은 안쪽으로만. <strong>domain(보라)=포트·모델</strong>이 핵이고 누구도 의존하지 않는다. apps(초록 — 우리 실행 모듈)가 어댑터·백엔드를 wiring 하고, adapters(파랑)가 engine·chains 를 조립한다. backend(초록)는 domain 만 의존해 어떤 어댑터든 그대로다. <strong>화살표가 안쪽으로만</strong> 향하면 — 바깥(어댑터·체인)을 바꿔도 안쪽(도메인·백엔드)은 안 바뀐다. 한 가지 주의 — <code>ChainAdapter</code> 인터페이스(SPI)는 <code>engine/multichain</code> 에 있으므로, 컴파일 의존은 <strong>chains → engine/multichain</strong> 방향이다(구현이 인터페이스 쪽으로 의존하는 SPI 역전). engine 의 나머지(indexer·tx-pipeline·signing)는 chains 를 모르고 SPI(레지스트리)만 보며, engine 과 chains 를 함께 조립하는 것은 adapters/self-build 다.</p>
 
 <div class="callout">
 <div class="callout-title">이게 "교체 가능" 의 실체</div>
@@ -172,8 +180,8 @@ flowchart TB
 
 <p>처음부터 전부 만들 필요 없다. 지금 필요한 것만:</p>
 <ul>
-<li><strong>필수</strong>: <code>domain</code> · <code>backend</code> · <code>adapters/fireblocks</code> · <code>chains/evm</code> · <code>chains/canton</code> · <code>apps/api</code> · <code>apps/webhook-receiver</code></li>
-<li><strong>나중(자체 구축 전환 대비)</strong>: <code>engine/*</code> · <code>adapters/self-build</code> 자리만 비워두고, <strong>도메인 포트는 그대로</strong> 둔다 → 전환 시 새 어댑터 패키지만 추가하면 <code>backend</code>·<code>apps</code> 는 거의 그대로.</li>
+<li><strong>필수</strong>: <code>domain</code> · <code>backend</code> · <code>adapters/fireblocks</code> · <code>chains/canton</code> · <code>apps/api</code> · <code>apps/webhook-receiver</code></li>
+<li><strong>선택·나중(자체 구축 전환 대비)</strong>: <code>engine/*</code> · <code>chains/evm</code> · <code>adapters/self-build</code> 자리만 비워두고, <strong>도메인 포트는 그대로</strong> 둔다 → 전환 시 새 어댑터 패키지만 추가하면 <code>backend</code>·<code>apps</code> 는 거의 그대로. 이더리움 쪽은 Fireblocks 가 nonce·수수료·전파를 모두 흡수하므로 <code>chains/evm</code> 도 자체 구축 전환 때 채우면 된다.</li>
 </ul>
 
 <div class="callout callout-warn">

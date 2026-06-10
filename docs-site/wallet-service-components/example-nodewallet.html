@@ -81,7 +81,7 @@ flowchart TB
     class NWP adp;
     class NW ext;
 </pre></div>
-<p class="diagram-caption">Figure 16-1. NodeWallet 구현. Fireblocks 와 똑같이 <strong>custody 제품을 얇게 감싼 어댑터</strong>(파랑)가 Account·Transaction 포트를 채운다. 차이는 그 뒤 — Fireblocks 는 SaaS MPC(벤더 클라우드·벤더 샤드), NodeWallet 은 <strong>온프렘 HSM+SGX(망분리 IDC·키 고객 보유)</strong>. 키 소유권과 정책 실행 위치가 고객 쪽이라는 게 옵션 2 의 핵심.</p>
+<p class="diagram-caption">Figure 16-1. NodeWallet 구현. Fireblocks 와 똑같이 <strong>custody 제품을 얇게 감싼 어댑터</strong>(파랑)가 Account·Transaction 포트를 채운다. 차이는 그 뒤 — Fireblocks 는 SaaS MPC(벤더 클라우드·벤더 샤드), NodeWallet 은 <strong>온프렘 HSM+SGX(망분리 IDC·키 고객 보유)</strong> — SGX 는 Intel CPU 의 신뢰실행환경(메모리를 격리해 실행하는 하드웨어 보안 기능)이고, 엔클레이브는 그 격리 실행 영역이다. 키 소유권과 정책 실행 위치가 고객 쪽이라는 게 옵션 2 의 핵심.</p>
 
 <h3>16.2 어댑터 코드</h3>
 
@@ -128,7 +128,7 @@ sequenceDiagram
     ACC->>NW: nw.createWallet(ref, Chain.SOLANA)
     Note over NW: HSM 안에서 키 생성 (고객 보유)
     NW-->>ACC: wallet
-    GW->>ACC: deriveAddress(wallet)
+    GW->>ACC: deriveAddress(wallet, _)
     ACC->>NW: nw.address(wallet)
     NW-->>ACC: address (Solana 단일)
     ACC-->>GW: wallet · 주소
@@ -175,7 +175,7 @@ sequenceDiagram
 <tr><td>정책 실행 위치</td><td>벤더 클라우드</td><td><strong>고객 인프라(망분리 IDC)</strong></td></tr>
 <tr><td>지원 체인</td><td>멀티체인</td><td><strong>Solana 전용</strong></td></tr>
 <tr><td>제도 적합</td><td>적격 custodian 위탁 허용 시</td><td><strong>자가 수탁·망분리·데이터 국외 미이전 요구 시</strong></td></tr>
-<tr><td>매니저 입장</td><td colspan="2" style="text-align:center"><strong>같은 포트(Account·Transaction) — 어댑터만 교체</strong></td></tr>
+<tr><td>코어(지갑 서비스 백엔드) 입장</td><td colspan="2" style="text-align:center"><strong>같은 포트(Account·Transaction) — 어댑터만 교체</strong></td></tr>
 </tbody>
 </table>
 </div>
@@ -196,10 +196,10 @@ sequenceDiagram
 
 <div class="callout callout-warn">
 <div class="callout-title">NodeWallet 은 Canton 을 커버하지 못한다</div>
-<p>NodeWallet 은 <strong>Solana 전용</strong> 제품이라 이더리움·Canton 자산은 이 어댑터로 만들 수 없다. 따라서 Canton 은 <a href="example-fireblocks.html">14. Fireblocks</a>(Canton 지원) 또는 <a href="example-selfbuild.html">15. 자체 구축</a>(validator node 운영) 어댑터로 처리해야 한다. 매니저 코어는 포트만 의존하므로, <strong>Solana = NodeWallet · Canton = Fireblocks/자체 구축</strong> 식으로 체인별 어댑터를 병행 배치하면 된다 (<a href="abstraction.html">13.4</a> 어댑터 커버리지).</p>
+<p>NodeWallet 은 <strong>Solana 전용</strong> 제품이라 이더리움·Canton 자산은 이 어댑터로 만들 수 없다. 따라서 Canton 은 <a href="example-fireblocks.html">14. Fireblocks</a>(Canton 지원) 또는 <a href="example-selfbuild.html">15. 자체 구축</a>(validator node 운영) 어댑터로 처리해야 한다. 코어(지갑 서비스 백엔드)는 포트만 의존하므로, <strong>Solana = NodeWallet · Canton = Fireblocks/자체 구축</strong> 식으로 체인별 어댑터를 병행 배치하면 된다 (<a href="abstraction.html">13.4</a> 어댑터 커버리지).</p>
 </div>
 
-<p>정리하면 — NodeWallet 어댑터는 <strong>옵션 2(자체 custody)를 "사서" 채우는</strong> 길이다. custody 축에서 보면 <a href="example-fireblocks.html">14. Fireblocks</a>(SaaS 위탁) · <a href="example-selfbuild.html">15. 자체 구축</a>(직접 빌드) · <strong>16. NodeWallet(온프렘 제품 도입)</strong> 세 점이고, 매니저 코어는 <strong>어느 쪽이든 같은 포트만 의존</strong>한다. 처음으로 — <a href="index.html"><strong>0. Overview</strong></a>.</p>
+<p>정리하면 — NodeWallet 어댑터는 <strong>옵션 2(자체 custody)를 "사서" 채우는</strong> 길이다. custody 축에서 보면 <a href="example-fireblocks.html">14. Fireblocks</a>(SaaS 위탁) · <a href="example-selfbuild.html">15. 자체 구축</a>(직접 빌드) · <strong>16. NodeWallet(온프렘 제품 도입)</strong> 세 점이고, 코어는 <strong>어느 쪽이든 같은 포트만 의존</strong>한다. 처음으로 — <a href="index.html"><strong>0. Overview</strong></a>.</p>
 
 </section>
 </main>

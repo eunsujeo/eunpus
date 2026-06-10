@@ -83,12 +83,14 @@ flowchart LR
 
     classDef svc fill:#dcfce7,stroke:#16a34a;
     classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef chain fill:#dbeafe,stroke:#2563eb;
     classDef ext fill:#f5f5f7,stroke:#86868b;
-    class IDX,REC svc;
+    class IDX chain;
+    class REC svc;
     class FAN,DELIV special;
     class SUB ext;
 </pre></div>
-<p class="diagram-caption">Figure 8-1. 알림 흐름. 인덱서의 감지(0.2 의 "② 감지")와 정합성 예외를 받아, 팬아웃(dedup·구독자 매칭) → 전달(서명·재시도)로 외부에 push 한다. 전달 보장이 핵심 — 빠지면 입금 누락, 중복되면 이중 처리가 된다. 게이트웨이(6)와 마찬가지로 벤더·체인 무관 백엔드 층.</p>
+<p class="diagram-caption">Figure 8-1. 알림 흐름. 블록체인 매니저 쪽 인덱서의 감지(파랑, 0.2 의 "② 감지")와 백엔드의 정합성 예외(초록)를 받아, 팬아웃<span class="g" data-tip="하나의 이벤트를 여러 구독자에게 나눠 보내는 것">?</span>(dedup·구독자 매칭) → 전달(서명·재시도)로 외부에 push 한다. 전달 보장이 핵심 — 빠지면 입금 누락, 중복되면 이중 처리가 된다. 게이트웨이(6)와 마찬가지로 벤더·체인 무관 백엔드 층.</p>
 
 <h3>8.3 코드로 보면</h3>
 
@@ -101,12 +103,17 @@ flowchart LR
     this.indexer.onChainEvent(ev =&gt; this.fanout(toNotification(ev)))  // 인덱서(3) 구독
   }
 
-  // 팬아웃 — dedup 후 구독자별 전달
+  // 팬아웃 — 구독자별 dedup · 실패 격리
   async fanout(note) {
-    if (await this.store.delivered(note.id)) return        // dedup (이미 보냄 → skip)
-    for (const sub of this.subscribers.for(note))          // 관심 있는 구독자만 매칭
-      await this.deliver(sub, note)
-    await this.store.markDelivered(note.id)
+    for (const sub of this.subscribers.for(note)) {        // 관심 있는 구독자만 매칭
+      if (await this.store.delivered(note.id, sub.id)) continue  // 구독자별 dedup (이미 받은 구독자만 skip)
+      try {
+        await this.deliver(sub, note)
+        await this.store.markDelivered(note.id, sub.id)    // 구독자별 전달 기록
+      } catch (e) {
+        await this.store.markFailed(note.id, sub.id, e)    // 실패 격리 — 이 구독자만 나중에 재시도, 나머지는 계속
+      }
+    }
   }
 
   // 전달 — 서명 + 실패 시 backoff 재시도 (at-least-once)
@@ -118,7 +125,7 @@ flowchart LR
 
 <div class="callout callout-warn">
 <div class="callout-title">전달 보장은 양날 — at-least-once 면 중복은 불가피</div>
-<p>실패 재시도를 넣으면 같은 알림이 <strong>두 번 갈 수</strong> 있다(at-least-once). 그래서 (1) 보내는 쪽은 <code>note.id</code> 로 dedup 하고, (2) <strong>받는 쪽도 멱등하게</strong> 처리하도록 알림에 안정적인 ID 를 실어 준다 — 6. 게이트웨이의 멱등 키와 같은 원리다. 또 입금·확정의 <strong>순서</strong>가 뒤바뀌어 도착할 수 있으니, 상태는 절대 시각(블록 높이·as-of-block)으로 판단하고 도착 순서에 의존하지 않는다.</p>
+<p>실패 재시도를 넣으면 같은 알림이 <strong>두 번 갈 수</strong> 있다(at-least-once). 그래서 (1) 보내는 쪽은 <code>note.id</code> 로 dedup 하고, (2) <strong>받는 쪽도 멱등하게</strong> 처리하도록 알림에 안정적인 ID 를 실어 준다 — 6. 게이트웨이의 멱등 키와 같은 원리다. 또 입금·확정의 <strong>순서</strong>가 뒤바뀌어 도착할 수 있으니, 상태는 절대 기준(블록 높이 · as-of-block)으로 판단하고 도착 순서에 의존하지 않는다.</p>
 </div>
 
 <h3>8.4 다른 컴포넌트와의 관계</h3>
@@ -144,7 +151,7 @@ flowchart LR
 </ul>
 </div>
 
-<p>처음으로 — <a href="index.html"><strong>0. Overview</strong></a> 의 컴포넌트 맵에서 두 층(블록체인 매니저 · 지갑 서비스 백엔드)을 다시 보면 전체가 맞춰진다.</p>
+<p>여기까지가 컴포넌트 상세다. 다음 — <a href="scenario-provisioning.html"><strong>9. 계정·주소 발급</strong></a> 부터 컴포넌트들이 실제로 협력하는 흐름을 본다.</p>
 
 </section>
 </main>

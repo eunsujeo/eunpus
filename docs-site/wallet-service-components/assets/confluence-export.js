@@ -36,18 +36,19 @@
   function seqToPlantuml(src) {
     var lines = src.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
     var out = ['@startuml'], m;
+    function br(s) { return s.replace(/<br\s*\/?>/gi, '\\n'); }   // mermaid <br/> → PlantUML 줄바꿈
     lines.forEach(function (l) {
       if (/^sequenceDiagram/.test(l)) return;
       if (/^autonumber/.test(l)) { out.push('autonumber'); return; }
-      if ((m = l.match(/^participant\s+(\S+)\s+as\s+(.+)$/))) { out.push('participant "' + m[2].trim() + '" as ' + m[1]); return; }
-      if ((m = l.match(/^Note over\s+([^:]+):\s*(.+)$/i))) { out.push('note over ' + m[1].split(',').map(function (s) { return s.trim(); }).join(', ') + ' : ' + m[2].trim()); return; }
+      if ((m = l.match(/^participant\s+(\S+)\s+as\s+(.+)$/))) { out.push('participant "' + br(m[2].trim()) + '" as ' + m[1]); return; }
+      if ((m = l.match(/^Note over\s+([^:]+):\s*(.+)$/i))) { out.push('note over ' + m[1].split(',').map(function (s) { return s.trim(); }).join(', ') + ' : ' + br(m[2].trim())); return; }
       if ((m = l.match(/^loop\s+(.+)$/))) { out.push('loop ' + m[1].trim()); return; }
       if ((m = l.match(/^(alt|opt|par)\s+(.+)$/))) { out.push(m[1] + ' ' + m[2].trim()); return; }
       if (/^else\b/.test(l)) { out.push(l); return; }
       if (/^end$/.test(l)) { out.push('end'); return; }
       if ((m = l.match(/^(\S+)\s*(--?>>?|-->>|->>)\s*(\S+)\s*:\s*(.*)$/))) {
         var arrow = m[2].indexOf('--') === 0 ? '-->' : '->';
-        out.push(m[1] + ' ' + arrow + ' ' + m[3] + ' : ' + m[4].trim()); return;
+        out.push(m[1] + ' ' + arrow + ' ' + m[3] + ' : ' + br(m[4].trim())); return;
       }
       out.push("' ⚠ 수동: " + l);   // ⚠ 수동
     });
@@ -172,6 +173,15 @@
     }
     if (tag === 'ul') return Array.prototype.map.call(el.children, function (li) { return '* ' + inline(li).trim(); }).join('\n');
     if (tag === 'ol') return Array.prototype.map.call(el.children, function (li) { return '# ' + inline(li).trim(); }).join('\n');
+    if (tag === 'dl') {                                            // 정의 목록 (chain-rr 등) — dt 굵게 + dd 들여쓰기
+      var rows = [];
+      Array.prototype.forEach.call(el.children, function (c) {
+        var t = c.tagName.toLowerCase();
+        if (t === 'dt') rows.push('* *' + inline(c).trim() + '*');
+        else if (t === 'dd') rows.push('** ' + inline(c).trim());
+      });
+      return rows.join('\n');
+    }
     if (tag === 'pre') { var code = el.textContent.replace(/ /g, ' '); return '{code}\n' + code.replace(/\s+$/, '') + '\n{code}'; }
     if (el.classList.contains('callout')) return panelMacro(el);
     if (el.classList.contains('table-wrap')) return tableMarkup(el);

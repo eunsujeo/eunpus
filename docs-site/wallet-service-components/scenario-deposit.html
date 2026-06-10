@@ -64,23 +64,21 @@
 sequenceDiagram
     autonumber
     participant U as 사용자
-    participant GW as API 게이트웨이
+    participant BIZ as 비즈니스 레이어
     participant IDX as 인덱서
     participant CH as 블록체인
     participant ADP as 멀티체인 어댑터
     participant LED as 온체인 정합성 · 추적
     participant NT as 이벤트 · 알림
 
-    U->>GW: 입금 주소 요청
-    GW->>ADP: 주소 파생(체인별 규칙)
-    ADP-->>GW: 입금 주소
-    GW-->>U: 입금 주소 발급
+    Note over U,IDX: 입금 주소는 계정·주소 발급(9장)에서 이미 발급된 상태
 
     Note over CH: 외부 송신자가 그 주소로 전송
     CH->>IDX: 새 블록 · 로그 수집
     IDX->>IDX: 우리 주소로의 transfer 감지<br/>projection 에 pending +금액
     IDX->>NT: 입금 감지(PENDING) 알림
-    NT-->>U: "입금 확인 중" webhook
+    NT-->>BIZ: 입금 감지(PENDING) webhook
+    BIZ-->>U: "입금 확인 중" 표시
 
     loop 확정 대기
         CH->>IDX: 후속 블록(confirmation 누적)
@@ -88,15 +86,16 @@ sequenceDiagram
     end
     ADP-->>IDX: 확정(finality) 도달
     IDX->>LED: 입금 확정 · 온체인 정합성 확인
-    LED->>LED: 검증 사실 회계 평면 제공
+    Note over LED: 검증 사실을 회계 평면에 제공 (이 도식 범위 밖)
     IDX->>NT: 입금 확정(CONFIRMED) 알림
-    NT-->>U: "입금 완료, 사용 가능" webhook
+    NT-->>BIZ: 입금 확정(CONFIRMED) webhook
+    BIZ-->>U: "입금 완료, 사용 가능" 표시
 </pre></div>
-<p class="diagram-caption">Figure 10-1. 입금 표준 흐름. 두 번의 알림 — 감지(PENDING, 사용 불가) → 확정(CONFIRMED, 사용 가능) — 이 핵심이다. 확정 기준은 멀티체인 어댑터가 체인별로 정한다(예: EVM N 블록, Solana commitment 단계). 자금 사용 가능 판정은 반드시 확정 이후.</p>
+<p class="diagram-caption">Figure 10-1. 입금 표준 흐름. 입금 주소는 <a href="scenario-provisioning.html">9. 계정·주소 발급</a>에서 이미 발급된 상태로 시작한다. 두 번의 알림 — 감지(PENDING, 사용 불가) → 확정(CONFIRMED, 사용 가능) — 이 핵심이며, webhook 은 비즈니스 레이어가 받아 사용자에게 전달한다(0.2 — 클라이언트는 비즈니스 레이어를 거친다). 확정 기준은 멀티체인 어댑터가 체인별로 정한다(예: EVM N 블록, Solana commitment 단계). 자금 사용 가능 판정은 반드시 확정 이후. 도식의 projection 은 인덱서가 가공해 둔 조회용 상태(주소별 잔액·입금 내역)를 말한다.</p>
 
 <h3>10.2 confirmation 상태 전이</h3>
 
-<p>입금은 "감지" 와 "확정" 이 다르다. 감지 즉시 잔액으로 인정하면 재구성(reorg<span class="g" data-tip="체인의 끝부분이 다른 블록들로 교체되는 현상. 이미 본 거래가 사라지거나 순서가 바뀔 수 있다">?</span>) 때 없는 돈을 쓰게 된다.</p>
+<p>입금은 "감지" 와 "확정" 이 다르다 — 확정 여부는 confirmation(확정 — 트랜잭션이 담긴 블록 위에 쌓인 블록 수)이 체인별 기준만큼 쌓였는지로 판단한다. 감지 즉시 잔액으로 인정하면 재구성(reorg<span class="g" data-tip="체인의 끝부분이 다른 블록들로 교체되는 현상. 이미 본 거래가 사라지거나 순서가 바뀔 수 있다">?</span>) 때 없는 돈을 쓰게 된다.</p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart LR
@@ -115,7 +114,7 @@ flowchart LR
     class CONF good;
     class ORPH bad;
 </pre></div>
-<p class="diagram-caption">Figure 10-2. 입금 상태 전이. 노랑 = 감지(보류), 초록 = 확정(사용 가능), 빨강 = reorg 무효화. 주의: 무효화된 tx 가 mempool 을 거쳐 새 블록에 다시 들어올 수 있으므로 영구 삭제 금지 — 다시 감지 상태로 돌아갈 수 있다.</p>
+<p class="diagram-caption">Figure 10-2. 입금 상태 전이. 노랑 = 감지(보류), 초록 = 확정(사용 가능), 빨강 = reorg 무효화. 주의: 무효화된 tx 가 mempool(블록에 담기기 전 트랜잭션 대기열)을 거쳐 새 블록에 다시 들어올 수 있으므로 영구 삭제 금지 — 다시 감지 상태로 돌아갈 수 있다.</p>
 
 <h3>10.3 컴포넌트별 역할 요약</h3>
 
@@ -126,8 +125,8 @@ flowchart LR
 <tr><td><a href="component-indexer.html"><strong>인덱서</strong></a></td><td>주연. transfer 감지, confirmation 누적 추적, reorg 시 projection 롤백.</td></tr>
 <tr><td><a href="component-multichain.html"><strong>멀티체인 어댑터</strong></a></td><td>주소 파생 규칙 + <strong>확정 기준</strong> 제공(체인별로 다름).</td></tr>
 <tr><td><a href="component-ledger.html"><strong>온체인 정합성 · 추적</strong></a></td><td>확정 입금의 온체인 정합성 확인 후 회계 평면에 제공.</td></tr>
-<tr><td><strong>이벤트 · 알림</strong></td><td>감지·확정·무효화 각각을 외부에 push.</td></tr>
-<tr><td><strong>API 게이트웨이</strong></td><td>입금 주소 발급, 입금 내역 조회.</td></tr>
+<tr><td><a href="component-alerts.html"><strong>이벤트 · 알림</strong></a></td><td>감지·확정·무효화 각각을 외부에 push.</td></tr>
+<tr><td><a href="component-gateway.html"><strong>API 게이트웨이</strong></a></td><td>입금 주소 발급, 입금 내역 조회.</td></tr>
 </tbody>
 </table>
 </div>

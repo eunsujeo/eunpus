@@ -58,17 +58,13 @@
 
 <p class="lead">출금은 체인에 <strong>쓰는</strong> 흐름이라 가장 많은 컴포넌트가 맞물린다. 핵심 주연은 <strong>트랜잭션 빌더 · Nonce/Broadcast</strong>이고, 서명·멀티체인 어댑터·인덱서(확정 감지)가 협력한다. 단 <strong>출금 승인 자체는 본 가이드 범위 밖</strong>에서 끝난 뒤, 매니저는 승인된 지시만 받아 집행한다.</p>
 
-<div class="callout callout-warn">
-<div class="callout-title">Canton 같은 체인은 "제출=완료" 가 아니다 (2-step 전송)</div>
-<p>EVM 출금은 "조립→서명→전파→확정" 으로 끝나지만, <strong>Canton 은 2-step</strong>이다 — 우리가 보내는 건 <code>OFFER</code> 이고, <strong>받는 쪽이 ACCEPT 해야 완료</strong>(REJECT/WITHDRAW 로 끝날 수도). 그래서 출금 상태머신에 "offer 제출 → 상대 수락 대기" 단계가 추가된다. 멀티체인 어댑터(<a href="component-multichain.html">2</a>)가 이 차이를 흡수하고, <code>getStatus</code>·<code>onChainEvent</code> 가 OFFER/ACCEPT/REJECT/WITHDRAW 를 다룬다. (상대 사전승인 시 PRE_APPROVAL 로 1-step. Fireblocks 지원 — 정확한 상태 매핑·timeout 은 적용 전 확인 필요.)</p>
-</div>
-
 <h3>11.1 표준 흐름</h3>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
     participant U as 사용자
+    participant BIZ as 비즈니스 레이어
     participant GW as API 게이트웨이
     participant TX as 트랜잭션 빌더 · Nonce
     participant SIG as 서명 오케스트레이션
@@ -79,7 +75,9 @@ sequenceDiagram
     participant LED as 온체인 정합성
     participant NT as 이벤트 · 알림
 
-    U->>GW: 출금 요청(+멱등 키)
+    U->>BIZ: 출금 요청
+    Note over BIZ: 출금 요청·승인 완료 (승인 절차는 범위 밖)
+    BIZ->>GW: 승인된 출금 지시(+멱등 키)
     GW->>TX: 승인된 출금 지시
     TX->>ADP: 체인 규칙 조회(순번/UTXO·수수료)
     ADP-->>TX: 순번·수수료 파라미터
@@ -100,9 +98,15 @@ sequenceDiagram
     TX->>LED: 출금 확정 · 온체인 정합성 확인
     LED->>LED: 검증 사실 회계 평면 제공
     TX->>NT: 출금 완료 알림
-    NT-->>U: "출금 완료" webhook
+    NT-->>BIZ: 출금 완료 webhook
+    BIZ-->>U: "출금 완료" 표시
 </pre></div>
-<p class="diagram-caption">Figure 11-1. 출금 표준 흐름. 출금 요청은 승인이 끝난 상태로 들어온다(승인 절차는 본 가이드 범위 밖). 키는 외부 서명자(SG)에만 있고 서명 오케스트레이션은 호출 경계일 뿐이다. 순번 점유 → 서명 → 전파 → 확정 순서가 깨지지 않는 것이 안전성의 핵심.</p>
+<p class="diagram-caption">Figure 11-1. 출금 표준 흐름. 출금 요청·승인은 <strong>비즈니스 레이어에서 완료된 상태</strong>로, 비즈니스 레이어가 승인된 지시를 게이트웨이에 넘긴다(승인 절차 자체는 본 가이드 범위 밖). 키는 외부 서명자(SG)에만 있고 서명 오케스트레이션은 호출 경계일 뿐이다. 순번 점유 → 서명 → 전파 → 확정 순서가 깨지지 않는 것이 안전성의 핵심.</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">Canton 같은 체인은 "제출=완료" 가 아니다 (2-step 전송)</div>
+<p>EVM 출금은 "조립→서명→전파→확정" 으로 끝나지만, <strong>Canton 은 2-step</strong>이다 — 우리가 보내는 건 <code>OFFER</code> 이고, <strong>받는 쪽이 ACCEPT 해야 완료</strong>(REJECT/WITHDRAW 로 끝날 수도). 그래서 출금 상태머신에 "offer 제출 → 상대 수락 대기" 단계가 추가된다. 멀티체인 어댑터(<a href="component-multichain.html">2</a>)가 이 차이를 흡수하고, <code>getStatus</code>·<code>onChainEvent</code> 가 OFFER/ACCEPT/REJECT/WITHDRAW 를 다룬다. (상대 사전승인 시 PRE_APPROVAL 로 1-step. Fireblocks 도 지원하는 것으로 공식 문서에 표기되어 있다 — 정확한 상태 매핑·timeout 은 적용 전 확인 필요.)</p>
+</div>
 
 <h3>11.2 막힌 트랜잭션(stuck) 재전송</h3>
 
@@ -131,7 +135,7 @@ flowchart TB
     class CANCEL bad;
     class REPL special;
 </pre></div>
-<p class="diagram-caption">Figure 11-2. stuck 재전송. 노랑 = 대기/막힘, 초록 = 확정, 보라 = 재전송(같은 순번 + 수수료 양 필드 동시 인상), 빨강 = 취소(같은 순번으로 0원 self-send). 규칙: 항상 가장 오래된 막힌 순번부터 처리하고, 수수료는 상한(ceiling)을 두고 단계적으로 올린다. 자세히는 <a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a>.</p>
+<p class="diagram-caption">Figure 11-2. stuck 재전송. 노랑 = 대기/막힘, 초록 = 확정, 보라 = 재전송(같은 순번 + 수수료 양 필드 동시 인상), 빨강 = 취소(같은 순번으로 0원 self-send — 자기 주소로 0원을 보내 같은 순번을 덮어쓴다. 기존 tx 보다 수수료를 올려야 교체된다). EVM 의 수수료 교체는 두 수수료 필드 — 기본 수수료 상한(maxFeePerGas)과 우선 수수료(maxPriorityFeePerGas) — 를 모두, 노드가 요구하는 최소 인상률(통상 10%) 이상 올려야 받아들여진다. 규칙: 항상 가장 오래된 막힌 순번부터 처리하고, 수수료는 상한(ceiling)을 두고 단계적으로 올린다. 자세히는 <a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a>.</p>
 
 <h3>11.3 컴포넌트별 역할 요약</h3>
 
@@ -139,7 +143,7 @@ flowchart TB
 <table>
 <thead><tr><th style="width:30%">컴포넌트</th><th>출금에서의 역할</th></tr></thead>
 <tbody>
-<tr><td><a href="component-tx-nonce.html"><strong>트랜잭션 빌더 · Nonce/Broadcast</strong></a></td><td>주연. 조립·순번 점유·전파·확정 추적·stuck 재전송. 지갑별 직렬화로 순번 충돌 방지.</td></tr>
+<tr><td><a href="component-tx-nonce.html"><strong>트랜잭션 · Nonce · Broadcast</strong></a></td><td>주연. 조립·순번 점유·전파·확정 추적·stuck 재전송. 지갑별 직렬화로 순번 충돌 방지.</td></tr>
 <tr><td><a href="component-signing.html"><strong>서명 오케스트레이션</strong></a></td><td>외부 서명자 호출 경계. 키 미보관.</td></tr>
 <tr><td><a href="component-multichain.html"><strong>멀티체인 어댑터</strong></a></td><td>체인별 순번/UTXO<span class="g" data-tip="비트코인식 모델 — 잔액이 아니라 사용하지 않은 출력(Unspent Tx Output)들의 집합">?</span>·수수료·재전송 규칙 제공.</td></tr>
 <tr><td><a href="component-indexer.html"><strong>인덱서</strong></a></td><td>전파한 tx 의 확정 여부 역방향 확인.</td></tr>
@@ -153,7 +157,7 @@ flowchart TB
 <p>출금에서 가장 위험한 실수는 <strong>순서 역전</strong>이다. 승인 전 전파, 서명 전 장부 차감, 확정 전 "완료" 통지는 모두 사고로 이어진다. 각 단계는 직전 단계의 확정을 전제로만 진행하고, 모든 전이는 요청 ID + 멱등 키로 추적되어 재처리에도 한 번만 실행되어야 한다.</p>
 </div>
 
-<p>다음 — <a href="scenario-onofframp.html"><strong>12. 온·오프램프 시나리오</strong></a> 에서 fiat 경계가 끼는 흐름을 본다.</p>
+<p>다음 — <a href="scenario-onofframp.html"><strong>12. 온·오프램프 시나리오</strong></a> 에서 fiat(법정화폐) 경계가 끼는 흐름을 본다.</p>
 
 </section>
 </main>

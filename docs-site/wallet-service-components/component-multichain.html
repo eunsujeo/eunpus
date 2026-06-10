@@ -56,6 +56,11 @@
 <h2>2. 멀티체인 어댑터</h2>
 <span class="section-subtitle">체인마다 다른 규칙을 한 가지 인터페이스로 — 다른 모든 컴포넌트가 체인 차이를 모르게 한다</span>
 
+<div class="callout">
+<div class="callout-title">본 페이지의 출처</div>
+<p>여기 담긴 설계·코드는 <strong>저자가 일반적인 지갑 인프라 패턴을 바탕으로 정리한 설계 참고안</strong>(의사코드)이다. 본문에서 "Fireblocks 가 …" 처럼 특정 벤더의 동작을 언급한 부분은 해당 벤더의 공식 문서에서 확인한 사실이고, 그 외는 저자 추정이므로 실제 적용 전 자신의 환경에서 검증이 필요하다.</p>
+</div>
+
 <h3>2.1 왜 필요한가</h3>
 
 <p>체인은 저마다 규칙이 다르다. 이더리움은 계정마다 순번(nonce)으로 트랜잭션을 직렬화하고, 비트코인은 UTXO 를 골라 쓰며, 솔라나는 또 다르다. 확정(finality<span class="g" data-tip="이 거래가 더는 뒤집히지 않는다고 볼 수 있는 상태. 체인마다 판단 기준과 시간이 다르다">?</span>) 판단 기준도, 수수료 매기는 법도, 막힌 트랜잭션을 바꾸는 방법도 전부 다르다.</p>
@@ -76,8 +81,8 @@
 <tr><td>잔액 표현</td><td>주소별 잔액 + nonce</td><td>사용하지 않은 출력(UTXO) 집합</td><td>active contract 집합(ACS<span class="g" data-tip="Active Contract Set — party 가 보유한 활성 contract 집합. Canton 의 원장 상태 표현">?</span>) + 토큰 holdings 는 UTXO(가용/locked)</td></tr>
 <tr><td>순서 보장</td><td>주소별 nonce 순차</td><td>입력(UTXO) 선택 · 체인 길이 제한</td><td>Synchronizer 의 Sequencer 가 메시지 순서·timestamp 부여 (계정 nonce 없음)</td></tr>
 <tr><td>확정 판단</td><td>N 블록 확인 (또는 commitment<span class="g" data-tip="솔라나의 확정 단계 — processed/confirmed/finalized 로 신뢰 수준 구분">?</span> 단계)</td><td>N 블록 확인</td><td>Synchronizer<span class="g" data-tip="Sequencer(순서화)+Mediator(확인 집계). Mediator 가 validator confirmation 을 2-phase commit 으로 승인/거절">?</span> 2-phase commit (finality 수 초, 수치 확인 필요)</td></tr>
-<tr><td>수수료</td><td>gas × gasPrice (EIP-1559<span class="g" data-tip="이더리움 수수료 방식 — 기본료(base fee)+우선료(priority fee) 구조">?</span> base+priority)</td><td>byte 당 fee rate</td><td>traffic<span class="g" data-tip="traffic = 미리 충전해 둔 대역폭 잔고(byte). Canton Coin 을 소각(burn)하면 traffic 잔고가 충전되고, 거래할 때 소비되는 traffic 이 곧 수수료. 무료 base 는 20분 window 당 약 400,000 byte.">?</span> 차감 — Canton Coin 소각으로 traffic(byte) 잔고 충전 → 거래 시 소비분이 수수료 (+ 보유세 ~$1/년)</td></tr>
-<tr><td>재전송</td><td>같은 nonce + 수수료 인상 (replace)</td><td>RBF<span class="g" data-tip="Replace-By-Fee — 같은 순번 트랜잭션을 더 높은 수수료로 교체해 재전송">?</span> 또는 CPFP<span class="g" data-tip="Child-Pays-For-Parent — 막힌 부모 트랜잭션을 높은 수수료의 자식 트랜잭션으로 끌어 확정">?</span></td><td>nonce-replace 아님 — 송신자 <code>Withdraw</code> 로 locked 자금 회수</td></tr>
+<tr><td>수수료</td><td>gas × gasPrice (EIP-1559<span class="g" data-tip="이더리움 수수료 방식 — 기본료(base fee)+우선료(priority fee) 구조">?</span> base+priority)</td><td>byte 당 fee rate</td><td>traffic<span class="g" data-tip="traffic = 미리 충전해 둔 대역폭 잔고(byte). Canton Coin 을 소각(burn)하면 traffic 잔고가 충전되고, 거래할 때 소비되는 traffic 이 곧 수수료. 무료 base 는 20분 window 당 약 400,000 byte (공식 문서 수치 — 변동 가능, 적용 전 확인).">?</span> 차감 — Canton Coin 소각으로 traffic(byte) 잔고 충전 → 거래 시 소비분이 수수료 (+ 보유세 ~$1/년 — 공식 문서 수치, 변동 가능·적용 전 확인)</td></tr>
+<tr><td>재전송</td><td>같은 nonce + 수수료 인상 (replace)</td><td>RBF<span class="g" data-tip="Replace-By-Fee — 확정 전 트랜잭션을 더 높은 수수료의 새 트랜잭션으로 교체해 재전송. EVM 은 같은 순번(nonce), UTXO(비트코인 계열)는 같은 입력을 쓰는 트랜잭션으로 교체">?</span> 또는 CPFP<span class="g" data-tip="Child-Pays-For-Parent — 막힌 부모 트랜잭션을 높은 수수료의 자식 트랜잭션으로 끌어 확정">?</span></td><td>nonce-replace 아님 — 송신자 <code>Withdraw</code> 로 locked 자금 회수</td></tr>
 <tr><td>주소 파생</td><td>BIP-32/44 경로 + coin type</td><td>BIP-32/44 + 스크립트 유형</td><td>PartyId = <code>hint::fingerprint</code> (fingerprint = 서명 공개키 sha256), allocation 으로 생성</td></tr>
 </tbody>
 </table>
@@ -112,12 +117,13 @@ flowchart TB
     classDef special fill:#e0e7ff,stroke:#6366f1;
     classDef chain fill:#dbeafe,stroke:#2563eb;
     classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
     class IFACE,SEL special;
     class EVM,BTC,SOL,CANTON chain;
     class NORM good;
-    class REQ good;
+    class REQ ext;
 </pre></div>
-<p class="diagram-caption">Figure 2-1. 어댑터 동작. 위쪽 컴포넌트는 공통 인터페이스(보라)만 호출하고, chainId 로 체인별 구현(파랑)이 선택되며, 결과는 항상 체인 무관 형태(초록)로 정규화되어 돌아온다. 핵심: 차이는 파랑 안에만 갇혀 있다 — 단 Canton 의 2-step 처럼 "상대 수락 대기" 같은 상태가 늘어나는 건 정규화된 상태값으로 표면화된다(메커니즘은 숨겨도 lifecycle 은 노출).</p>
+<p class="diagram-caption">Figure 2-1. 어댑터 동작. 위쪽 컴포넌트의 요청(회색)은 공통 인터페이스(보라)만 호출하고, chainId 로 체인별 구현(파랑)이 선택되며, 결과는 항상 체인 무관 형태(초록)로 정규화되어 돌아온다. 핵심: 차이는 파랑 안에만 갇혀 있다 — 단 Canton 의 2-step 처럼 "상대 수락 대기" 같은 상태가 늘어나는 건 정규화된 상태값으로 표면화된다(메커니즘은 숨겨도 lifecycle 은 노출).</p>
 
 <h3>2.4 코드로 보면</h3>
 
@@ -128,7 +134,7 @@ interface ChainAdapter {
   deriveAddress(account, asset): Address
   getBalance(address, asset): Amount
   buildTransaction(transfer): UnsignedTx   // 조립 — nonce/UTXO/2-step 차이를 흡수
-  estimateFee(unsignedTx): Fee
+  estimateFee(transfer): Fee               // 점유 없는 추정 — 조립과 달리 nonce/UTXO 를 점유하지 않는다 (견적마다 순번이 소모되면 안 됨)
   broadcast(signedTx): TxRef               // 전파
   confirmations(txRef): Confirmation       // 확정 판정 — 체인별 기준
   resend(txRef, bump): TxRef               // 막힌 tx 재전송
@@ -147,24 +153,28 @@ function pickAdapter(chainId): ChainAdapter {
   return a
 }</code></pre>
 
-<p>③ 같은 인터페이스를 체인마다 <strong>다르게</strong> 채운다. 차이가 큰 <code>buildTransaction</code>·<code>confirmations</code>·<code>resend</code> 만 추리면:</p>
+<p>③ 같은 인터페이스를 체인마다 <strong>다르게</strong> 채운다. 차이가 큰 <code>buildTransaction</code>·<code>confirmations</code>·<code>resend</code> 위주로 추렸다 — <code>broadcast</code> 는 EVM·UTXO·Solana 모두 "서명본을 노드에 제출" 한 줄로 같고, <strong>Canton 만 OFFER 제출이라 의미가 다르다</strong>:</p>
 
 <pre><code>class EvmAdapter implements ChainAdapter {
   buildTransaction(t) { const nonce = this.nonceMgr.reserve(t.from)
                         return { ...t, nonce, fee: eip1559(t) } }   // 계정 nonce
+  broadcast(signed)   { return node.sendRawTransaction(signed) }    // 서명본을 노드에 그대로 제출
   confirmations(ref)  { return blocksSince(ref) }                   // N 블록
-  resend(ref, bump)   { return rebroadcast(sameNonce(ref), bump) }  // 같은 nonce + fee↑ (RBF)
+  resend(ref, bump)   { const tx = bumpFee(sameNonce(ref), bump)    // 같은 nonce + fee↑ (RBF)
+                        return broadcast(requestSign(tx)) }         // fee 변경 = 서명 무효 → 재서명 후 재전파
 }
 
 class UtxoAdapter implements ChainAdapter {
   buildTransaction(t) { const ins = coinSelect(t.from, t.amount)    // UTXO 선택
                         return { ins, outs: [t.to, change], feeRate } }
+  broadcast(signed)   { return node.sendRawTransaction(signed) }    // EVM 과 동일 — 서명본 제출
   confirmations(ref)  { return blocksSince(ref) }
   resend(ref, bump)   { return rbfOrCpfp(ref, bump) }               // RBF / CPFP
 }
 
 class SolanaAdapter implements ChainAdapter {
   buildTransaction(t) { return { ...t, recentBlockhash: node.blockhash() } }  // nonce 없음
+  broadcast(signed)   { return node.sendTransaction(signed) }       // 동일 — 서명본 제출
   confirmations(ref)  { return commitmentOf(ref) }   // processed/confirmed/finalized
   resend(ref)         { return reassemble(ref) }     // blockhash 만료 → 재조립
 }
@@ -189,7 +199,7 @@ class CantonAdapter implements ChainAdapter {
 <thead><tr><th style="width:30%">사용하는 컴포넌트</th><th>어댑터에 무엇을 요청하나</th></tr></thead>
 <tbody>
 <tr><td><a href="component-indexer.html">인덱서</a></td><td>"이 체인의 블록을 어떻게 수집·디코딩하나", "확정 기준은 몇 블록인가"</td></tr>
-<tr><td><a href="component-tx-nonce.html">트랜잭션 빌더 · Nonce/Broadcast</a></td><td>"이 이체를 조립해라(nonce/UTXO 포함)", "수수료 추정", "전파", "막혔으니 재전송 규칙대로 바꿔라"</td></tr>
+<tr><td><a href="component-tx-nonce.html">트랜잭션 · Nonce · Broadcast</a></td><td>"이 이체를 조립해라(nonce/UTXO 포함)", "수수료 추정", "전파", "막혔으니 재전송 규칙대로 바꿔라"</td></tr>
 <tr><td><a href="component-signing.html">서명 오케스트레이션</a></td><td>"이 체인은 어떤 서명 알고리즘·해시 방식인가"(서명 전 직렬화)</td></tr>
 <tr><td><a href="component-ledger.html">온체인 정합성 · 추적</a></td><td>"이 체인의 자산 단위·소수점·주소 정규화 규칙"</td></tr>
 </tbody>

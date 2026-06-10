@@ -70,6 +70,7 @@ flowchart TB
     CORE["지갑 서비스 백엔드<br/>(포트에만 의존)"]
     subgraph SBP["SelfBuiltProvider (세 포트 구현)"]
       direction LR
+      HD["HD 지갑<br/>account · 주소 파생"]
       NONCE["nonce 매니저<br/>+ tx 빌더"]
       HSM["자체 HSM · MPC<br/>서명"]
       NODE["자체 노드 · GCP BNE<br/>전파 · 체인 RPC"]
@@ -85,10 +86,10 @@ flowchart TB
     classDef adp fill:#dbeafe,stroke:#2563eb;
     classDef ext fill:#f5f5f7,stroke:#86868b;
     class CORE mgr;
-    class NONCE,HSM,NODE,IDXA adp;
+    class HD,NONCE,HSM,NODE,IDXA adp;
     class CHAIN ext;
 </pre></div>
-<p class="diagram-caption">Figure 15-1. 자체 구축. 코어는 여전히 <strong>같은 세 포트</strong>만 호출한다. 그 구현인 SelfBuiltProvider(파랑 박스) 안에서 nonce·서명(HSM)·전파(노드)·수집(인덱서) 네 부품을 직접 엮는다. Fireblocks 와 달리 서명과 전파가 <strong>다른 부품</strong>이라 provider 내부에서 둘을 따로 호출한다.</p>
+<p class="diagram-caption">Figure 15-1. 자체 구축. 코어는 여전히 <strong>같은 세 포트</strong>만 호출한다. 그 구현인 SelfBuiltProvider(파랑 박스) 안에서 HD 지갑·nonce·서명(HSM)·전파(노드)·수집(인덱서) 부품을 직접 엮는다. Fireblocks 와 달리 서명과 전파가 <strong>다른 부품</strong>이라 provider 내부에서 둘을 따로 호출한다.</p>
 
 <h3>15.2 provider 코드 — 내부에서 부품을 조립</h3>
 
@@ -100,11 +101,12 @@ flowchart TB
     private hsm: Hsm,             // 5 서명 : 자체 HSM · MPC
     private nonceMgr: NonceMgr,   // 4 nonce : 계정별 lock · local counter
     private indexer: SelfIndexer, // 3 인덱서 : 수집 · projection · reorg
+    private hd: HdWallet,         // HD 지갑 : account index 할당 · xpub 파생
   ) {}
 
-  createAccount(ref) { return hd.allocateAccount(ref) }                    // HD account index 할당
+  createAccount(ref) { return this.hd.allocateAccount(ref) }               // HD account index 할당
   deriveAddress(acct, asset) { return bip32.derive(this.node.xpub(asset), acct) }  // 우리가 파생
-  getBalance(addr, asset) { return this.indexer.balanceOf(addr, asset) }        // projection 조회
+  getBalance(acct, asset) { return this.indexer.balanceOf(this.deriveAddress(acct, asset), asset) }  // 계정→주소 해석 후 projection 조회
   validateAddress(asset, addr) { return isValidForChain(asset, addr) }          // 체인별 형식·체크섬 (로컬)
   estimateFee(req) { return this.node.estimateFee(req) }                        // 노드/체인 수수료 추정
 
@@ -116,6 +118,7 @@ flowchart TB
     return this.node.sendRawTransaction(signed)            // 전파 → TxRef(hash)
   }
   getStatus(txRef) { return this.indexer.confirmationOf(txRef) }    // as-of-block 확정수
+  query(filter) { return this.indexer.query(filter) }               // ChainQueryPort : 임의·커스텀 조회 — 인덱서 projection 경유
   boost(txRef) {                                         // EVM/UTXO 만 — 같은 nonce + fee↑ 재서명·재전파 (RBF). Solana 는 submit 뒤 auto-retry
     return this.node.sendRawTransaction(this.hsm.sign(reFee(txRef)))
   }
@@ -151,7 +154,7 @@ sequenceDiagram
     ACC-->>GW: accountId · 주소
     GW-->>BIZ: 계정 · 입금 주소
 </pre></div>
-<p class="diagram-caption">Figure 15-2. 자체 구축 계정·주소 발급. <code>createAccount</code> 는 HD account index 할당, <code>deriveAddress</code> 는 우리가 직접 BIP-32/44 파생 — 키는 HSM 밖으로 나오지 않는다. Fireblocks 와 달리 vault SaaS 호출이 없는 로컬 연산이다. Canton 은 15.9 처럼 party allocation 으로 대체된다.</p>
+<p class="diagram-caption">Figure 15-2. 자체 구축 계정·주소 발급. <code>createAccount</code> 는 HD account index 할당, <code>deriveAddress</code> 는 우리가 직접 BIP-32/44(하나의 시드에서 계층적으로 키를 파생하는 표준) 파생 — 파생에는 xpub(공개키만으로 주소를 파생할 수 있는 확장 공개키)을 쓰므로 키는 HSM 밖으로 나오지 않는다. Fireblocks 와 달리 vault SaaS 호출이 없는 로컬 연산이다. Canton 은 15.9 처럼 party allocation 으로 대체된다.</p>
 
 <h3>15.4 송신 트랜잭션 단계별 흐름 — provider 내부에서 3단계가 다 보인다</h3>
 
@@ -257,7 +260,7 @@ flowchart LR
 
 <h3>15.9 Canton 에서는</h3>
 
-<p>자체 구축은 Canton 도 직접 진다 — 세 어댑터 중 <strong>가장 무겁다</strong>. EVM 의 RPC 노드 대신 <strong>Canton validator(participant) node</strong> 를 운영해 Global Synchronizer 에 연결해야 한다.</p>
+<p>자체 구축은 Canton 도 직접 진다 — 세 어댑터 중 <strong>가장 무겁다</strong>. EVM 의 RPC 노드 대신 <strong>Canton validator(participant) node</strong> 를 운영해 Global Synchronizer 에 연결해야 한다. 이 절의 Canton 동작은 Canton 공식 문서(docs.canton.network) 기준이다.</p>
 
 <div class="table-wrap">
 <table>
@@ -265,7 +268,7 @@ flowchart LR
 <tbody>
 <tr><td>노드</td><td><strong>Canton validator/participant node</strong> 운영 + Synchronizer 연결 (RPC 풀이 아니라 네트워크에 참여하는 노드)</td></tr>
 <tr><td><code>createAccount</code> · 주소</td><td><strong>party allocation</strong> — PartyId(<code>hint::fingerprint</code>) 발급, participant 에 host. 주소 = PartyId</td></tr>
-<tr><td>서명</td><td>party 의 topology·전송을 <strong>자체 HSM 키로 서명</strong> (Ledger API <code>/v2/interactive-submission/prepare</code> → 서명 → submit)</td></tr>
+<tr><td>서명</td><td>party 의 topology·전송을 <strong>자체 HSM 키로 서명</strong> (Ledger API <code>/v2/interactive-submission/prepare</code> → 서명 → <code>execute</code>)</td></tr>
 <tr><td><code>submitTransaction</code> · 상태</td><td><strong>TransferInstruction 생성 = OFFER</strong>. ACS·participant 이벤트에서 OFFER/ACCEPT/REJECT/WITHDRAW 추적</td></tr>
 <tr><td>수수료</td><td><strong>traffic 관리</strong> — Canton Coin 보유·소각으로 traffic 잔고 충전 (EVM gas 와 다른 운영 부담)</td></tr>
 <tr><td><code>ChainQueryPort</code></td><td>ACS·participant 조회를 직접 구현</td></tr>

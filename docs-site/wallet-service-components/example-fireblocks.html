@@ -58,7 +58,7 @@
 
 <div class="callout">
 <div class="callout-title">본 페이지의 성격</div>
-<p>설명용 의사코드다. 메서드 이름은 Fireblocks 공개 API 형태를 참고했으나 실제 SDK 와 다를 수 있다. Fireblocks 기능 범위(서명·전파·nonce·webhook·DCCP·externalTxId·vault)는 본 위키의 검증된 사실에 근거한다.</p>
+<p>설명용 의사코드다. 메서드 이름은 Fireblocks 공개 API 형태를 참고했으나 실제 SDK 와 다를 수 있다. Fireblocks 기능 범위(서명·전파·nonce·webhook·DCCP·externalTxId·vault)는 Fireblocks 공식 개발자 문서에서 확인한 사실에 근거한다.</p>
 </div>
 
 <h3>14.1 큰 그림</h3>
@@ -91,34 +91,34 @@ flowchart TB
   constructor(private fb: FireblocksSDK, private webhooks: WebhookBus) {}
 
   // 계정(vault) 생성 — 고객 온보딩 시
-  createAccount(ref) { return fb.createVaultAccount(ref) }
+  createAccount(ref) { return this.fb.createVaultAccount(ref) }
 
   // 주소 · 잔액 — Fireblocks 가 멀티체인 차이까지 흡수
-  deriveAddress(vaultId, asset) { return fb.generateNewAddress(vaultId, asset) }
-  getBalance(vaultId, asset) { return fb.getVaultAccountAsset(vaultId, asset).total }
-  validateAddress(asset, addr) { return fb.validateAddress(asset, addr).isValid }  // 주소 형식·체크섬
+  deriveAddress(vaultId, asset) { return this.fb.generateNewAddress(vaultId, asset) }
+  getBalance(vaultId, asset) { return this.fb.getVaultAccountAsset(vaultId, asset).total }
+  validateAddress(asset, addr) { return addressRules.validate(asset, addr) }  // 로컬 형식·체크섬 검증 — 미확정 벤더 엔드포인트에 의존하지 않는다
 
   // 수수료 추정 — 제출 전 (POST 지만 상태 변경 X)
-  estimateFee(req) { return fb.estimateFeeForTransaction(req) }   // low / medium / high
+  estimateFee(req) { return this.fb.estimateFeeForTransaction(req) }   // low / medium / high
 
   // 트랜잭션 제출 : 서명+전파+nonce 가 createTransaction 한 번으로 묶임
   submitTransaction(req) {
-    const { id } = fb.createTransaction({       // build + MPC서명 + 전파 + nonce
+    const { id } = this.fb.createTransaction({       // build + MPC서명 + 전파 + nonce
       assetId: req.asset,
-      source:      { type:'VAULT_ACCOUNT', id: req.vaultId },
+      source:      { type:'VAULT_ACCOUNT', id: this.vaultOf(req.accountRef) },  // vault id 매핑은 어댑터 안에 캡슐화 (13.5)
       destination: { type:'ONE_TIME_ADDRESS', oneTimeAddress:{ address: req.to } },
       amount: req.amount,
       externalTxId: req.idempotencyKey,         // 코어의 멱등 키를 tx dedup 으로 전달
     })
     return id                                   // = TxRef
   }
-  getStatus(txRef) { return fb.getTransactionById(txRef).status }   // SUBMITTED/CONFIRMING/COMPLETED
-  boost(txRef) { return fb.boostTransaction(txRef) }            // EVM/UTXO tx 만 (gas/RBF · UTXO boost) — Solana/Canton 은 throw, 4.4
-  cancel(txRef) { return fb.dropTransaction(txRef) }              // drop (replace 없이 취소)
+  getStatus(txRef) { return this.fb.getTransactionById(txRef).status }   // SUBMITTED/CONFIRMING/COMPLETED (주요 상태 예)
+  boost(txRef) { return this.fb.boostTransaction(txRef) }            // EVM/UTXO tx 만 (gas/RBF · UTXO boost) — Solana/Canton 은 throw, 4.4
+  cancel(txRef) { return this.fb.cancelTransaction(txRef) }            // 취소 — drop(교체/드롭) 과 별도 엔드포인트
 
   // 수신 트랜잭션 · 확정 : Fireblocks 가 webhook 으로 push
   onChainEvent(handler) {
-    webhooks.on('transaction.status.updated', e =&gt; handler(toChainEvent(e)))  // Webhooks v2
+    this.webhooks.on('transaction.status.updated', e =&gt; handler(toChainEvent(e)))  // Webhooks v2
     // 우리 vault 로 들어온 트랜잭션은 INCOMING 이벤트로 push
   }
 }</code></pre>
@@ -127,7 +127,7 @@ flowchart TB
 
 <h3>14.3 계정·주소 발급 단계별 흐름</h3>
 
-<p>온보딩 때 <code>createAccount</code> → <code>deriveAddress</code> 가 Fireblocks 에선 <strong>vault 계정 생성 → 자산별 주소 발급</strong> 두 번의 호출로 끝난다. 키 생성(MPC 키 share 분산)·체인별 주소 파생을 Fireblocks 가 감춘다. 온체인 트랜잭션이 아니라 전파·수수료가 없다.</p>
+<p>온보딩 때 <code>createAccount</code> → <code>deriveAddress</code> 가 Fireblocks 에선 <strong>vault 계정 생성 → 자산별 주소 발급</strong> 두 번의 호출로 끝난다. 주소는 workspace 의 MPC 키에서 BIP44 로 파생되며, 그 체인별 파생을 Fireblocks 가 감춘다 (MPC 키 share 분산은 vault 생성 이벤트가 아니라 workspace·디바이스·co-signer 단위의 lifecycle 이벤트다). 온체인 트랜잭션이 아니라 전파·수수료가 없다.</p>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -140,7 +140,7 @@ sequenceDiagram
     BIZ->>GW: 지갑 개설 (고객 ref) + 멱등 키
     GW->>ACC: createAccount(ref)
     ACC->>FB: POST /v1/vault/accounts
-    Note over FB: vault 계정 생성 + MPC 키 share 분산
+    Note over FB: vault 계정 생성 — 주소는 workspace MPC 키에서 BIP44 파생
     FB-->>ACC: vaultAccountId
     GW->>ACC: deriveAddress(account, asset)
     ACC->>FB: POST /v1/vault/accounts/{id}/{asset}/addresses
@@ -149,7 +149,7 @@ sequenceDiagram
     ACC-->>GW: vaultAccountId · 주소
     GW-->>BIZ: 계정 · 입금 주소
 </pre></div>
-<p class="diagram-caption">Figure 14-2. Fireblocks 계정·주소 발급. 코어는 <code>createAccount</code>·<code>deriveAddress</code> 두 번만 부르고, vault 생성·MPC 키 분산·체인별 주소 파생은 Fireblocks 가 처리한다. 전파·수수료가 없는 발급 단계다. REST 매핑 상세는 14.7 표 참조.</p>
+<p class="diagram-caption">Figure 14-2. Fireblocks 계정·주소 발급. 코어는 <code>createAccount</code>·<code>deriveAddress</code> 두 번만 부르고, vault 생성·체인별 주소 파생(workspace MPC 키에서 BIP44)은 Fireblocks 가 처리한다. 전파·수수료가 없는 발급 단계다. REST 매핑 상세는 14.7 표 참조.</p>
 
 <h3>14.4 송신 트랜잭션 단계별 흐름</h3>
 
@@ -167,7 +167,7 @@ sequenceDiagram
         FB-->>FBP: webhook(상태 변화)
         FBP-->>CORE: onChainEvent: SUBMITTED → CONFIRMING → COMPLETED
     end
-    Note over CORE,FB: 막히면 CORE→FBP.boost(txRef) → FB.rbf (부스트)
+    Note over CORE,FB: 막히면 CORE→FBP.boost(txRef) → FB.drop & replace (boost)
 </pre></div>
 <p class="diagram-caption">Figure 14-3. Fireblocks 송신 트랜잭션. 코어는 <strong>submitTransaction 한 번</strong>이면 끝 — 빌드·서명·전파·nonce 를 Fireblocks 가 처리한다. 상태는 webhook 으로 받고, stuck 시 boost(RBF/부스트)만 호출. 멱등 키는 <code>externalTxId</code> 로 넘겨 중복 제출을 Fireblocks 측에서도 막는다.</p>
 
@@ -175,7 +175,7 @@ sequenceDiagram
 
 <ol>
 <li>외부에서 우리 vault 주소로 트랜잭션이 들어옴</li>
-<li>Fireblocks 가 감지 → <strong>webhook</strong> 으로 INCOMING + 상태(CONFIRMING → COMPLETED, DCCP) push</li>
+<li>Fireblocks 가 감지 → <strong>webhook</strong> 으로 INCOMING + 상태(CONFIRMING → COMPLETED) push — 확정 기준은 DCCP(입금 확정 정책, Deposit Control and Confirmation Policy)</li>
 <li>지갑 서비스 백엔드가 등록한 <code>onChainEvent</code> 핸들러가 수신 → 비즈 레이어로 팬아웃</li>
 </ol>
 <p>즉 수신 트랜잭션은 코어가 무엇을 호출해서가 아니라 <strong>Fireblocks 가 push 한 webhook</strong> 으로 시작된다 (0.2 의 "② 감지"). 이를 "입금" 으로 해석하는 건 비즈 레이어의 몫이다.</p>
@@ -207,12 +207,12 @@ sequenceDiagram
 <tr><td rowspan="4"><strong>AccountPort</strong></td><td><code>createAccount</code></td><td><code>POST /v1/vault/accounts</code></td><td>write</td></tr>
 <tr><td><code>deriveAddress</code></td><td><code>POST /v1/vault/accounts/{vaultAccountId}/{assetId}/addresses</code></td><td>write</td></tr>
 <tr><td><code>getBalance</code></td><td><code>GET /v1/vault/accounts/{vaultAccountId}/{assetId}</code></td><td>read</td></tr>
-<tr><td><code>validateAddress</code></td><td>주소 형식·체크섬 검증 (공식 엔드포인트는 적용 전 확인)</td><td>read</td></tr>
+<tr><td><code>validateAddress</code></td><td>로컬 체인 규칙으로 검증 — 벤더 엔드포인트 불요 (해당 공식 API 가 미확정이라 의존을 제거)</td><td>local</td></tr>
 <tr><td rowspan="6"><strong>TransactionPort</strong></td><td><code>estimateFee</code></td><td><code>POST /v1/transactions/estimate_fee</code> (low/medium/high)</td><td>write*</td></tr>
 <tr><td><code>submitTransaction</code></td><td><code>POST /v1/transactions</code> (서명+전파+nonce, <code>externalTxId</code> 멱등)</td><td>write</td></tr>
 <tr><td><code>getStatus</code></td><td><code>GET /v1/transactions/{txId}</code></td><td>read</td></tr>
 <tr><td><code>boost</code></td><td><code>POST /v1/transactions/{txId}/drop</code> (부스트/RBF, drop &amp; replace)</td><td>write</td></tr>
-<tr><td><code>cancel</code></td><td><code>POST /v1/transactions/{txId}/drop</code> (replace 없이 취소)</td><td>write</td></tr>
+<tr><td><code>cancel</code></td><td><code>POST /v1/transactions/{txId}/cancel</code> (취소 — drop 과 별도 엔드포인트)</td><td>write</td></tr>
 <tr><td><code>onChainEvent</code></td><td>webhook 등록 <code>POST /v1/webhooks</code> → <code>transaction.status.updated</code> push (내 지갑 수신·확정)</td><td>event</td></tr>
 <tr><td><strong>ChainQueryPort</strong></td><td>(Fireblocks 미제공)</td><td>임의 외부 주소·커스텀 조회 ✗ → 자체 인덱서·Alchemy 를 ChainQueryPort 로 추가</td><td>—</td></tr>
 </tbody>
@@ -234,10 +234,10 @@ sequenceDiagram
 <table>
 <thead><tr><th style="width:26%">포트 동작</th><th>Canton 에서</th></tr></thead>
 <tbody>
-<tr><td><code>createAccount</code> · <code>deriveAddress</code></td><td>Fireblocks 가 Canton <strong>party 발급·주소(PartyId)</strong>를 대신한다. party 키는 Fireblocks MPC 가 관리, 서명은 <strong>EdDSA Ed25519 Raw Signing</strong>(공식 <code>core-signing-fireblocks</code> 드라이버·Canton Coin 복구 절차로 확인)</td></tr>
+<tr><td><code>createAccount</code> · <code>deriveAddress</code></td><td>Canton <strong>party 발급(allocation)은 Canton Wallet SDK(<code>allocateExternalParty</code>)가 수행</strong>하고, Fireblocks 는 그 <strong>서명 드라이버(<code>core-signing-fireblocks</code>)</strong>로 참여한다. party 키는 Fireblocks MPC 가 관리, 서명은 <strong>EdDSA Ed25519 Raw Signing</strong>(공식 드라이버·Canton Coin 복구 절차로 확인)</td></tr>
 <tr><td><code>submitTransaction</code></td><td>Canton 에선 <strong>OFFER 제출(전송 제안)</strong> — 즉시 완료가 아니다. Canton Coin 은 pre-approval 로 1-step 처럼 동작</td></tr>
 <tr><td><code>getStatus</code> · <code>onChainEvent</code></td><td><code>transactionType</code>(OFFER / ACCEPT / REJECT / WITHDRAW / PRE_APPROVAL)와 <code>traceableId</code> 로 추적 — "상대 수락 대기" 상태가 보인다</td></tr>
-<tr><td>traffic(수수료) · validator node</td><td>Fireblocks 가 추상화 → 우리는 직접 만지지 않는다</td></tr>
+<tr><td>traffic(수수료) · validator node</td><td>Fireblocks 가 추상화 → 우리는 직접 만지지 않는다 <em>(저자 추정 — 공식 문서에서 운영 범위 미확인, 적용 전 확인)</em></td></tr>
 </tbody>
 </table>
 </div>

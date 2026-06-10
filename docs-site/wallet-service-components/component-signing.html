@@ -56,6 +56,11 @@
 <h2>5. 서명 오케스트레이션</h2>
 <span class="section-subtitle">외부 서명자 호출 경계 — 키는 보관하지 않는다</span>
 
+<div class="callout">
+<div class="callout-title">본 페이지의 출처</div>
+<p>여기 담긴 설계·코드는 <strong>저자가 일반적인 지갑 인프라 패턴을 바탕으로 정리한 설계 참고안</strong>(의사코드)이다. 본문에서 "Fireblocks 가 …" 처럼 특정 벤더의 동작을 언급한 부분은 해당 벤더의 공식 문서에서 확인한 사실이고, 그 외는 저자 추정이므로 실제 적용 전 자신의 환경에서 검증이 필요하다.</p>
+</div>
+
 <h3>5.1 왜 필요한가</h3>
 
 <p>개인키는 시스템에서 가장 민감한 자산이다. 매니저가 키를 직접 들고 있으면, <strong>매니저가 침해당하는 순간 키도 샌다</strong>. 그래서 키 보관·서명은 전용 외부 서명자 — MPC<span class="g" data-tip="여러 참가자가 키 조각을 나눠 갖고, 임계 수 이상이 모여야 서명이 만들어지는 방식. 단일 개인키가 한 곳에 존재하지 않는다">?</span> 임계 서명·HSM<span class="g" data-tip="키를 하드웨어 안에서만 다루고 밖으로 꺼내지 않는 보안 장치">?</span>·co-signer<span class="g" data-tip="공동 서명자 — 정책 검증을 거쳐 서명에 함께 참여하는 별도 구성요소">?</span> — 에 맡기고, 매니저는 그 <strong>호출 경계</strong>만 둔다.</p>
@@ -117,11 +122,14 @@ class SigningOrchestrator {
 
     // 1) "무엇을 서명할지" — 체인별 직렬화 → sighash (어댑터)
     const { sighash } = adapter.toSigningPayload(unsignedTx)   // EVM keccak / BTC per-input / ed25519 …
+                                                  // (단순화 — UTXO 는 실제로는 입력별 sighash 마다 서명을 반복)
 
-    // 2) 비멱등 가드 (5.3) — 이미 서명 시도가 있으면 재서명 금지, 있으면 재사용
+    // 2) 중복 서명 가드 — 기존 서명이 있으면 재서명하지 않고 재사용 (유효 서명 2개 → 이중 전파 방지)
     const prior = await this.store.signingAttempt(unsignedTx.id)
     if (prior?.signature) return adapter.attach(unsignedTx, prior.signature)
-    await this.store.markAttempt(unsignedTx.id)               // 시도를 먼저 기록 (재서명 방지)
+    if (prior) await this.recoverDangling(prior)  // 시도 기록만 있음 = 직전 시도가 결과를 못 받고 끊김
+                                                  //   → 서명자 쪽에 이미 유효 서명이 있는지 회수 후 진행
+    await this.store.markAttempt(unsignedTx.id)   // 시도를 먼저 기록 — 여기서 중단돼도 위 분기가 잡는다
 
     // 3) 실제 서명 — 외부 서명자 (키는 그 뒤)
     const sig = await this.signer.sign(sighash, unsignedTx.keyRef)
@@ -146,7 +154,7 @@ class SigningOrchestrator {
 <ul>
 <li><strong>"무엇을 서명할지" 는 체인별 → 어댑터로</strong> — 직렬화·sighash·서명 알고리즘(secp256k1/ed25519)·인코딩(RSV/DER)이 다 다르다. 오케스트레이터는 <code>adapter.toSigningPayload</code>·<code>adapter.verify</code>·<code>adapter.attach</code> 만 부르니 체인이 늘어도 본체는 안 바뀐다.</li>
 <li><strong>키는 Signer 뒤를 안 떠난다</strong> — 매니저는 sighash 를 넘기고 서명만 돌려받는다. HSM/MPC/Fireblocks 어느 것이든 같은 <code>Signer</code> 포트.</li>
-<li><strong>서명은 멱등이 아니다(5.3) → 가드가 필수</strong> — <code>markAttempt</code> 를 먼저 남기고, 재시도 시엔 재서명하지 않고 기존 서명을 재사용한다(중복 서명·이중 전파 방지).</li>
+<li><strong>가드가 막는 건 키 유출이 아니라 이중 전파다</strong> — 5.3 의 난수 재사용 키 유출은 "서로 다른 메시지에 같은 난수" 가 쓰일 때, 즉 MPC 프로토콜 <em>내부에서</em> 같은 서명 라운드를 재개할 때의 문제다. 오케스트레이터가 <code>sign</code> 을 다시 부르면 어차피 새 라운드(새 난수)가 도니 그 위험은 해당 없다. 위 가드가 실제로 막는 것은 별개의 사고 — <strong>유효 서명이 2개 생겨 같은 출금이 이중 전파</strong>되는 것이다. 그래서 <code>markAttempt</code> 를 먼저 남기고, 기존 서명이 있으면 재서명하지 않고 재사용한다.</li>
 <li><strong>반드시 검증</strong> — 서명자가 엉뚱한 sighash 를 서명했거나 키가 어긋나지 않았는지 기대 pubkey 로 확인한 뒤에만 부착한다.</li>
 <li><strong>SaaS(Fireblocks)면 이 전부가 createTransaction 안에 묶임</strong> — sighash 직렬화·서명·검증을 우리가 만지지 않는다(<a href="example-fireblocks.html">14장</a>, 5.6).</li>
 </ul>
@@ -171,7 +179,7 @@ class SigningOrchestrator {
 
 <p>Fireblocks 같은 플랫폼을 쓰면 이 컴포넌트가 곧 <strong>그 플랫폼의 서명 API 호출 경계</strong>가 된다. 키는 플랫폼의 MPC/HSM 안에만 있고, 매니저는 "이 트랜잭션 서명해 달라" 만 호출한다. 직접 구축이면 자체 HSM·MPC 클러스터가 외부 서명자 자리에 온다. 어느 쪽이든 <strong>매니저 코드가 개인키를 만지지 않는다</strong>는 원칙은 동일하다. (벤더 추상화는 <a href="abstraction.html">13. 추상화</a>)</p>
 
-<p>다음 — <a href="component-ledger.html"><strong>7. 온체인 정합성 · 추적</strong></a>.</p>
+<p>다음 — <a href="component-gateway.html"><strong>6. API 게이트웨이</strong></a>.</p>
 
 </section>
 </main>

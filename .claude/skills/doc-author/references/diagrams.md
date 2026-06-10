@@ -17,6 +17,19 @@ classDef stuck fill:#fef3c7,stroke:#d97706;                   /* 정체된 노�
 
 색이 표현하는 의미가 도식마다 흔들리지 않도록 (good 이 어디서는 초록, 어디서는 파랑이 되지 않도록) 위 표준을 따른다.
 
+### 층(layer) 구분 변형 — 컴포넌트 맵 도식 한정
+
+state machine 이 아니라 **컴포넌트/아키텍처 맵** 도식에서는 같은 hex 를 "층 소속" 의미로 전용한다 (`docs-site/wallet-service-components/` 가 이 관례를 사이트 전체에서 일관 사용):
+
+```
+classDef ext fill:#f5f5f7,stroke:#86868b;   /* 외부 시스템 (클라이언트·노드·외부 서명자 등) — 회색 */
+classDef svc fill:#dcfce7,stroke:#16a34a;   /* 우리 것 (지갑 서비스 백엔드 등 벤더 무관 층) — 초록 */
+classDef adp fill:#dbeafe,stroke:#2563eb;   /* 벤더가 채우는 층 (체인 엔진·어댑터) — 파랑 */
+classDef port fill:#e0e7ff,stroke:#6366f1;  /* 인터페이스/포트 — 인디고 */
+```
+
+한 사이트 안에서는 상태 팔레트든 층 팔레트든 **하나의 의미 체계로 일관**해야 하고, 두 의미를 같은 도식에 섞지 않는다. 캡션에 색 분류 설명을 반드시 단다.
+
 ## Direction
 
 - **단일 흐름 (state machine, lifecycle)**: `direction LR` — 왼쪽에서 오른쪽으로 읽음

@@ -78,7 +78,7 @@
 <tr><td><strong>API 게이트웨이</strong></td><td>서비스 백엔드</td><td>외부 요청을 받아 인증하고, 같은 요청이 두 번 실행되지 않게 멱등 키<span class="g" data-tip="같은 요청 ID 로 두 번 들어와도 실행은 한 번만 — 재시도·장애 시 중복 실행/이중 지급 방지">?</span>를 부여해 내부로 라우팅</td><td><a href="component-gateway.html">6. 상세</a></td></tr>
 <tr><td><strong>멀티체인 어댑터</strong></td><td>매니저(엔진)</td><td>체인마다 다른 규칙(계정/UTXO<span class="g" data-tip="비트코인식 모델 — 잔액이 아니라 사용하지 않은 출력(Unspent Tx Output)들의 집합으로 자산을 표현">?</span>, 확정 방식, 수수료)을 한 가지 인터페이스로 정규화</td><td><a href="component-multichain.html">2. 상세</a></td></tr>
 <tr><td><strong>인덱서</strong></td><td>매니저(엔진)</td><td>체인 데이터를 수집·가공(projection<span class="g" data-tip="원시 블록/로그를 그대로 두고, 조회하기 쉬운 형태로 따로 만든 가공본. 재구성 가능하므로 언제든 다시 만들 수 있음">?</span>)해 수신 트랜잭션 감지(입금)·확정 판단·조회의 근거를 만든다</td><td><a href="component-indexer.html">3. 상세</a></td></tr>
-<tr><td><strong>트랜잭션 빌더 · Nonce/Broadcast</strong></td><td>매니저(엔진)</td><td>송신 트랜잭션(출금)을 조립하고, 순번(nonce<span class="g" data-tip="계정 기반 체인에서 한 주소의 트랜잭션 순번 카운터. 순차적이어야 하고 비면 뒤 트랜잭션이 모두 막힌다">?</span>·UTXO)을 관리하며, 전파하고, 막히면(stuck) 재전송</td><td><a href="component-tx-nonce.html">4. 상세</a></td></tr>
+<tr><td><strong>트랜잭션 · Nonce · Broadcast</strong></td><td>매니저(엔진)</td><td>송신 트랜잭션(출금)을 조립하고, 순번(nonce<span class="g" data-tip="계정 기반 체인에서 한 주소의 트랜잭션 순번 카운터. 순차적이어야 하고 비면 뒤 트랜잭션이 모두 막힌다">?</span>·UTXO)을 관리하며, 전파하고, 막히면(stuck) 재전송</td><td><a href="component-tx-nonce.html">4. 상세</a></td></tr>
 <tr><td><strong>서명 오케스트레이션</strong></td><td>매니저(엔진)</td><td>조립된 트랜잭션을 외부 서명자(MPC/HSM/co-signer)에게 보내 서명을 받아오는 경계. <strong>키 자체는 보관하지 않는다</strong></td><td><a href="component-signing.html">5. 상세</a></td></tr>
 <tr><td><strong>온체인 정합성 · 추적</strong></td><td>서비스 백엔드</td><td>체인 사실 확정 · 요청 ID 연결 · 예외 감지 (회계 원장 대사는 회계 평면에 위임)</td><td><a href="component-ledger.html">7. 상세</a></td></tr>
 <tr><td><strong>이벤트 · 알림</strong></td><td>서비스 백엔드</td><td>수신·확정·송신 완료 등 트랜잭션 상태 변화를 외부에 push(webhook/스트림)</td><td><a href="component-alerts.html">8. 상세</a></td></tr>
@@ -115,7 +115,7 @@ flowchart TB
     class GW,LED,NOTIF svc;
     class ADP,IDX,TX,SIG adp;
 </pre></div>
-<p class="diagram-caption">Figure 1-1. 7 컴포넌트를 두 층으로. <strong>초록 = 지갑 서비스 백엔드</strong>(게이트웨이·온체인 정합성·알림 — 벤더 무관). <strong>파랑 = 블록체인 매니저</strong>(체인 엔진: 멀티체인·인덱서·트랜잭션/Nonce·서명 — Fireblocks 또는 자체 구축으로 통째 교체). 비즈니스 레이어 → 게이트웨이 → 엔진(기능 포트) → 정합성·알림. 트리거로 보면 — <strong>① 호출(inbound)</strong> 은 게이트웨이로, <strong>② 감지(event-driven)</strong> 는 인덱서로 (0.2 절 참조).</p>
+<p class="diagram-caption">Figure 1-1. 7 컴포넌트를 두 층으로. <strong>초록 = 지갑 서비스 백엔드</strong>(게이트웨이·온체인 정합성·알림 — 벤더 무관). <strong>파랑 = 블록체인 매니저</strong>(체인 엔진: 멀티체인·인덱서·트랜잭션/Nonce·서명 — Fireblocks 또는 자체 구축으로 통째 교체). 비즈니스 레이어 → 게이트웨이 → 엔진(기능 포트) → 정합성·알림. 트리거로 보면 — <strong>① 호출(inbound)</strong> 은 게이트웨이로, <strong>② 감지(event-driven)</strong> 는 인덱서로 (0.2 절 참조). 감지의 입력원인 노드/RPC 는 이 도식에 없다 — Figure 0-1 참조.</p>
 
 <h3>1.2 책임 경계 매트릭스</h3>
 
@@ -130,7 +130,7 @@ flowchart TB
 <tr><td>요청 진입 · 멱등</td><td>API 게이트웨이</td><td>집행(X)</td></tr>
 <tr><td>체인 규칙 정규화</td><td>멀티체인 어댑터</td><td>결정(D) — 체인 semantic 한정</td></tr>
 <tr><td>수신 트랜잭션 감지 · 확정 판단</td><td>인덱서</td><td>결정(D) — 확정 정책 적용</td></tr>
-<tr><td>nonce · 전파 · 재전송</td><td>트랜잭션 빌더 · Nonce/Broadcast</td><td>결정(D) — 체인 쓰기 전략</td></tr>
+<tr><td>nonce · 전파 · 재전송</td><td>트랜잭션 · Nonce · Broadcast</td><td>결정(D) — 체인 쓰기 전략</td></tr>
 <tr><td>서명</td><td>서명 오케스트레이션 → 외부 서명자</td><td>외부(E) — 키 위임</td></tr>
 <tr><td>온체인 정합성 · 추적</td><td>온체인 정합성 · 추적</td><td>집행(X) — 사실 비교</td></tr>
 <tr><td>상태 변화 알림</td><td>이벤트 · 알림</td><td>집행(X) — 전달만</td></tr>
@@ -138,7 +138,7 @@ flowchart TB
 </table>
 </div>
 
-<h3 id="light-backend">1.3 백엔드 두 컴포넌트 — 상세는 <a href="component-gateway.html">6. API 게이트웨이</a> · <a href="component-alerts.html">8. 이벤트·알림</a></h3>
+<h3 id="light-backend">1.3 백엔드 컴포넌트 — <a href="component-gateway.html">6. API 게이트웨이</a> · <a href="component-alerts.html">8. 이벤트·알림</a> (온체인 정합성 · 추적은 <a href="component-ledger.html">7장</a>에서 별도 상세)</h3>
 
 <h4>API 게이트웨이</h4>
 <dl class="chain-rr">

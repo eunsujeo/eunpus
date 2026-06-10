@@ -56,6 +56,11 @@
 <h2>3. 인덱서</h2>
 <span class="section-subtitle">체인 데이터를 어떻게 수집하고 · 가공하고 · 보여주는가 — 모든 읽기의 토대</span>
 
+<div class="callout">
+<div class="callout-title">본 페이지의 출처</div>
+<p>여기 담긴 설계·코드는 <strong>저자가 일반적인 지갑 인프라 패턴을 바탕으로 정리한 설계 참고안</strong>(의사코드)이다. 본문에서 "Fireblocks 가 …" 처럼 특정 벤더의 동작을 언급한 부분은 해당 벤더의 공식 문서에서 확인한 사실이고, 그 외는 저자 추정이므로 실제 적용 전 자신의 환경에서 검증이 필요하다.</p>
+</div>
+
 <h3>3.1 왜 필요한가</h3>
 
 <p>노드와 RPC 만으로는 지갑 서비스가 필요한 질문에 잘 답하지 못한다. RPC 는 "이 tx 해시의 내용" 은 주지만, <strong>"이 주소가 받은 입금 목록", "지금 잔액", "과거 어느 시점 잔액", "방금 입금 들어왔다는 알림"</strong> 은 그대로 주지 못하거나 너무 느리다.</p>
@@ -127,12 +132,12 @@ flowchart TB
     classDef good fill:#dcfce7,stroke:#16a34a;
     classDef bad fill:#fee2e2,stroke:#dc2626;
     classDef special fill:#e0e7ff,stroke:#6366f1;
-    class NEW,DETECT wait;
-    class CONF,HEAD good;
+    class HEAD,NEW,DETECT wait;
+    class CONF good;
     class ORPH bad;
     class ROLLBACK,REBUILD special;
 </pre></div>
-<p class="diagram-caption">Figure 3-2. 확정 · reorg 처리. 감지(노랑)와 확정(초록)을 분리하고, reorg 시 보존된 원시 로그로 분기 지점까지 롤백 후 재적용한다. 무효화된 tx 가 새 블록에 다시 들어올 수 있으니 영구 삭제 금지.</p>
+<p class="diagram-caption">Figure 3-2. 확정 · reorg 처리. 진행 중인 추적·감지(노랑)와 확정(초록)을 분리하고, reorg 시 보존된 원시 로그로 분기 지점까지 롤백 후 재적용한다. 무효화의 일반 경로는 확정 전(PENDING) 단계다 — N 블록 확정 기준 자체가 얕은 reorg 를 흡수하려고 두는 것이라, 그림의 "확정(CONFIRMED) 후 무효화" 는 확정 깊이를 넘는 깊은 reorg 에서만 나타나는 예외 경로다. 무효화된 tx 가 새 블록에 다시 들어올 수 있으니 영구 삭제 금지.</p>
 
 <h3>3.4 코드로 보면</h3>
 
@@ -146,7 +151,8 @@ interface ChainSource {
 }
 //  EvmSource    : 블록 폴링, parentHash 불일치로 reorg 판정
 //  UtxoSource   : 블록 폴링(+mempool), 동일 reorg 모델
-//  SolanaSource : slot 구독 + commitment(processed→confirmed→finalized), reorg 거의 없음
+//  SolanaSource : slot 구독 + commitment(processed→confirmed→finalized)
+//                 finalized 기준이면 reorg 없음 — confirmed 이하 레벨로 인덱싱하면 롤백 가능
 //  CantonSource : participant/ACS 업데이트 구독 — 블록·nonce·reorg 개념 자체가 없음
 
 // ── ② 가공·projection·제공은 체인 무관 — 인덱서 본체 ──
@@ -157,6 +163,7 @@ class SelfIndexer {
   async run(chainId) {
     const source = this.sources[chainId]
     for await (const ev of source.stream(await this.proj.cursor(chainId))) {
+      await this.raw.append(ev.raw)           // ② 원시 보존 — 모든 수신 이벤트 (append-only)
       switch (ev.kind) {
         case 'tx':      await this.ingest(ev); break
         case 'confirm': await this.proj.mark(ev.ref, ev.level); break   // 확정 기준은 source 가 판정
@@ -167,7 +174,6 @@ class SelfIndexer {
 
   // 가공 — 정규화된 ev 만 본다 (체인 무관)
   async ingest(ev) {
-    await this.raw.append(ev.raw)             // ② 원시 보존 (append-only)
     if (!this.isOurs(ev.tx)) return
     await this.proj.upsert(ev.tx, 'pending')
     this.bus.emit(toChainEvent(ev.tx))        // onChainEvent (감지 → 코어로 push)
@@ -274,6 +280,7 @@ flowchart LR
 <li><strong>원시는 불변</strong> — append-only, 삭제 금지. projection 은 재구성 가능한 캐시로 취급.</li>
 <li><strong>확정을 계약으로</strong> — "이 데이터가 어느 확정 수준인지" 를 조회/알림에 함께 노출해 소비자가 판단하게 한다.</li>
 <li><strong>질의 분리</strong> — 수집과 질의를 분리해 한쪽 부하가 다른 쪽을 무너뜨리지 않게.</li>
+<li><strong>후속 이벤트는 감지 시점 상태로 보강</strong> — 확정·reorg 같은 후속 이벤트에는 tx 참조만 실려 온다. 알림에 필요한 주소·금액은 인덱서가 감지(PENDING) 시점에 적어 둔 상태로 보강하며, 재기동 후에는 원시 보존분(raw) 재적용으로 그 상태를 복원할 수 있어야 한다 — 원시 불변 원칙이 복구의 전제다.</li>
 </ul>
 </div>
 

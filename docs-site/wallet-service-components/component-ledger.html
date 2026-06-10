@@ -57,8 +57,8 @@
 <span class="section-subtitle">체인 사실을 확정하고 요청 ID 로 끝까지 추적한다 — 회계 원장 대사는 회계 평면에 위임</span>
 
 <div class="callout callout-warn">
-<div class="callout-title">범위 조정 (이전 "원장 정합성·대사" 에서)</div>
-<p>이 컴포넌트는 <strong>체인 측 진실(온체인 정합성)만</strong> 책임진다. <strong>내부 회계 원장(double-entry)·잔액 진실원천과의 대사 및 기표·공시는 매니저 범위 밖(회계/원장 평면)</strong>으로 분리했다. 매니저는 검증된 체인 사실을 요청 ID 로 회계 평면에 <strong>제공</strong>할 뿐, 회계 장부를 소유하지 않는다. (준비자산을 범위 밖으로 둔 것과 같은 논리)</p>
+<div class="callout-title">범위 — 체인 측 진실만 책임진다</div>
+<p>이 컴포넌트는 <strong>체인 측 진실(온체인 정합성)만</strong> 책임진다. <strong>내부 회계 원장(double-entry)·잔액 진실원천과의 대사 및 기표·공시는 매니저 범위 밖(회계/원장 평면)</strong>이다. 매니저는 검증된 체인 사실을 요청 ID 로 회계 평면에 <strong>제공</strong>할 뿐, 회계 장부를 소유하지 않는다. (준비자산을 범위 밖으로 둔 것과 같은 논리)</p>
 </div>
 
 <h3>7.1 왜 필요한가</h3>
@@ -96,15 +96,18 @@ flowchart LR
     classDef wait fill:#fef3c7,stroke:#d97706;
     classDef bad fill:#fee2e2,stroke:#dc2626;
     classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef chain fill:#dbeafe,stroke:#2563eb;
     classDef out fill:#f5f5f7,stroke:#86868b;
-    class REQ,OFF,ON,OPS good;
+    class REQ good;
+    class OFF out;
+    class ON,OPS chain;
     class MATCH special;
     class OK good;
     class CHK wait;
     class BAD bad;
     class ACC out;
 </pre></div>
-<p class="diagram-caption">Figure 7-1. 온체인 정합성 대조. 한 요청 ID 에 묶인 기록(채널 요청·오프체인 지급·온체인 결과·매니저 운영 기록)을 대조해 정상/확인 필요/불일치로 분류한다. 검증된 사실은 <strong>회계·원장 평면(회색 = 범위 밖)</strong>에 제공되며, 복식부기 기표·잔액 대사는 그 평면이 한다.</p>
+<p class="diagram-caption">Figure 7-1. 온체인 정합성 대조. 한 요청 ID 에 묶인 기록(채널 요청·오프체인 지급·온체인 결과·매니저 운영 기록)을 대조해 정상/확인 필요/불일치로 분류한다. 입력 4종은 출처대로 색을 입혔다 — 채널 요청은 지갑 서비스 백엔드(초록), 은행·PG 결과는 외부 시스템(회색), 인덱서 결과·운영 기록은 블록체인 매니저(파랑). 검증된 사실은 <strong>회계·원장 평면(회색 = 범위 밖)</strong>에 제공되며, 복식부기 기표·잔액 대사는 그 평면이 한다. 오프체인 지급 기록(은행·PG 결과)은 매니저가 <strong>대조를 위한 입력으로 받기만</strong> 하는 것으로, 차이가 났을 때의 회계적 판단·기표는 회계 평면의 몫이다 — "체인 측 진실만 책임진다" 는 범위는 그대로다.</p>
 
 <p>최소 산출물은 셋이다 — ① 각 요청 ID 의 <strong>온체인 정합성 상태</strong>(정상/확인 필요/불일치), ② 예외 건의 <strong>원인 유형</strong>(온체인 미반영·지급 지연·운영 기록 누락 등), ③ 운영 콘솔·알림·회계 평면으로 잇는 <strong>예외 목록 + 검증 사실</strong>.</p>
 
@@ -137,12 +140,15 @@ flowchart LR
       op:          await this.sources.opLog.byId(correlationId),          // 매니저 운영 기록
     }
 
+    // 온체인 미반영(아직 안 옴)이면 정규화·대조 자체가 불가 — 먼저 분기
+    if (!rec.onchain) return 'NEEDS_REVIEW'          // 지연·미반영 — sweep 이 다시 잡는다(7.5 ②)
+
     // 체인별 단위·소수점·주소를 "비교 가능한 정규형" 으로 (어댑터)
-    const a = this.adapters[rec.onchain?.chainId]
+    const a = this.adapters[rec.onchain.chainId]
     const norm = {
       amount:  a.normalizeAmount(rec.onchain),       // wei/satoshi/lamport → 정규 단위
-      address: a.normalizeAddress(rec.onchain?.to),
-      status:  rec.onchain?.status,
+      address: a.normalizeAddress(rec.onchain.to),
+      status:  rec.onchain.status,
     }
 
     // 대조 — 요청·지시·온체인·운영 기록이 한 사실로 모이나
@@ -150,7 +156,6 @@ flowchart LR
       amountMatch:  eq(norm.amount,  rec.instruction?.amount),
       addressMatch: eq(norm.address, a.normalizeAddress(rec.instruction?.to)),
       confirmed:    norm.status === 'confirmed',
-      hasOnchain:   !!rec.onchain,
     })   // → 'MATCHED' | 'NEEDS_REVIEW' | 'MISMATCH'
 
     if (verdict === 'MISMATCH') this.alerts.raise(correlationId, rec)         // 멈추고 사람에게
@@ -195,16 +200,19 @@ flowchart LR
     classDef wait fill:#fef3c7,stroke:#d97706;
     classDef bad fill:#fee2e2,stroke:#dc2626;
     classDef special fill:#e0e7ff,stroke:#6366f1;
-    class EV,SWEEP,OD good;
+    classDef chain fill:#dbeafe,stroke:#2563eb;
+    classDef out fill:#f5f5f7,stroke:#86868b;
+    class EV,SWEEP chain;
+    class OD out;
     class REC special;
     class OK good;
     class CHK wait;
     class BAD bad;
 </pre></div>
-<p class="diagram-caption">Figure 7-2. 대조의 트리거. 같은 reconcile() 를 ① 인덱서 confirm 이벤트(건별) ② 주기 sweep(배치) ③ 온디맨드 세 경로가 부른다 — 함수는 같고 호출 시점만 다르다. 쓰기 경로와 분리된 사후 동작.</p>
+<p class="diagram-caption">Figure 7-2. 대조의 트리거. 같은 reconcile() 를 ① 인덱서 confirm 이벤트(건별) ② 주기 sweep(배치) ③ 온디맨드 세 경로가 부른다 — 함수는 같고 호출 시점만 다르다. 인덱서 이벤트·주기 sweep 은 매니저 안에서 도는 트리거(파랑), 온디맨드는 회계 마감·예외 조사 등 바깥에서 들어오는 요청(회색)이다. 쓰기 경로와 분리된 사후 동작.</p>
 
 <ul>
-<li><strong>① 이벤트 기반(건별)</strong> — 인덱서(<a href="component-indexer.html">3</a>)의 <code>onChainEvent</code> 가 "이 요청의 온체인 결과 확정" 을 알리면 그 건을 즉시 대조. 입금 감지 직후(<a href="scenario-deposit.html">8</a>), 출금 확정 직후(<a href="scenario-withdrawal.html">9</a>).</li>
+<li><strong>① 이벤트 기반(건별)</strong> — 인덱서(<a href="component-indexer.html">3</a>)의 <code>onChainEvent</code> 가 "이 요청의 온체인 결과 확정" 을 알리면 그 건을 즉시 대조. 입금 감지 직후(<a href="scenario-deposit.html">10</a>), 출금 확정 직후(<a href="scenario-withdrawal.html">11</a>).</li>
 <li><strong>② 주기 sweep(완전성 안전망)</strong> — 시간별·일마감 등으로 열린/최근 ID 를 훑는다. <strong>"와야 하는데 안 온 것"</strong>(stuck·미반영·지급 지연)은 이벤트가 <em>없어서</em> 이벤트론 안 잡힌다 → sweep 이 잡는다. Figure 7-1 의 🟡 확인 필요가 여기서 나온다.</li>
 <li><strong>③ 온디맨드</strong> — 회계 마감 전 정합성 확인, 예외 조사 시 수동 트리거.</li>
 </ul>
@@ -234,12 +242,12 @@ flowchart LR
 <ul>
 <li><strong>요청 ID 단일 축</strong> — 모든 기록을 한 ID 로 꿰어야 종단 추적·검증이 가능.</li>
 <li><strong>멱등 처리</strong> — 같은 결과를 두 번 처리해도 상태가 두 번 바뀌지 않게.</li>
-<li><strong>as-of-block<span class="g" data-tip="어느 블록 시점 기준의 값인지 — 확정 수준을 함께 표기">?</span> 인식</strong> — 인덱서가 준 사실의 확정 수준을 함께 보고, reorg 로 뒤집히면 제공한 사실도 정정 통지.</li>
+<li><strong>as-of-block<span class="g" data-tip="어느 블록 시점 기준의 값인지 — 확정 수준을 함께 표기">?</span> 인식</strong> — 인덱서가 준 사실의 확정 수준을 함께 보고, reorg<span class="g" data-tip="블록 재구성 — 한 번 체인에 들어간 블록이 더 긴 체인으로 대체되어 그 안의 거래가 뒤집히는 일">?</span> 로 뒤집히면 제공한 사실도 정정 통지.</li>
 <li><strong>회계 장부 미소유</strong> — 매니저는 검증 사실 제공까지. 잔액 진실원천·기표는 회계 평면.</li>
 </ul>
 </div>
 
-<p>여기까지가 컴포넌트 상세다. 다음 — <a href="scenario-provisioning.html"><strong>9. 계정·주소 발급</strong></a> 부터 컴포넌트들이 실제로 협력하는 흐름을 본다.</p>
+<p>다음 — 대조에서 나온 예외와 상태 변화를 외부로 push 하는 <a href="component-alerts.html"><strong>8. 이벤트 · 알림</strong></a>.</p>
 
 </section>
 </main>
