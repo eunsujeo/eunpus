@@ -91,6 +91,23 @@ flowchart LR
 </pre></div>
 <p class="diagram-caption">Figure 1-1. 같은 "잔액" 을 저장하는 두 방식. <strong>왼쪽 EVM(회색)</strong>: 주소 아래 <strong>숫자 하나</strong>(잔액+nonce). <strong>오른쪽 Canton</strong>: party 아래 <strong>활성 contract 들의 집합(ACS)</strong> — 토큰 잔액은 Holding 조각들(초록)의 합이고, 일부는 전송 중이라 <strong>locked</strong>(노랑), 진행 중인 전송은 별도 contract(보라)로 남는다. 즉 Canton 잔액 100 = 50+30+20(조각) 이고, "100" 이라는 칸은 어디에도 없다.</p>
 
+<div class="callout">
+<div class="callout-title">해외송금으로 보는 ACS 변화 — 국내은행 A → 해외은행 B, 50 USDCx</div>
+<p>A 가 100 보유(<code>[60]+[40]</code> 조각). "상태" 는 잔액 숫자가 아니라 <strong>A 의 활성 contract 집합(ACS)</strong>이고, 송금하면 그 집합 안 contract 가 생기고/사라지며 바뀐다.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:14%">단계</th><th>A 의 ACS (활성 contract 집합)</th><th style="width:16%">A 가용 잔액</th></tr></thead>
+<tbody>
+<tr><td>① 처음</td><td><code>Holding[60]</code>, <code>Holding[40]</code></td><td>100</td></tr>
+<tr><td>② 송금 개시(50→B)</td><td><code>Holding[40]</code>, <code>Holding[10]</code>(거스름), <code>TransferInstruction[50→B, 대기]</code>(여기 50 locked)</td><td>50 (+50 잠김)</td></tr>
+<tr><td>③ B 수락(Accept)</td><td><code>Holding[40]</code>, <code>Holding[10]</code></td><td>50 (그 50 은 B 로)</td></tr>
+<tr><td>③' A 회수/B 거절</td><td><code>Holding[40]</code>, <code>Holding[10]</code>, <code>Holding[50]</code></td><td>100 (원복)</td></tr>
+</tbody>
+</table>
+</div>
+<p>②에서 <code>[60]</code> 을 골라 써(coin-select) <code>[60]</code> archive·거스름 <code>[10]</code> create·<code>TransferInstruction</code> create 로 <strong>집합이 재구성</strong>되고, ③에서 그 <code>TransferInstruction</code> 이 archive 되며 <strong>B 의 ACS 에 <code>Holding[50]</code> 이 create</strong> 된다. 자금은 늘 보존(40+10+50=100)된다. EVM 이면 A 잔액 <code>100→50</code>·B <code>+50</code> 숫자만 바뀌지만, Canton 은 <strong>contract 를 만들고 없애며</strong> 진행되고 2-step 이라 ②~③ 사이 "진행 중 전송" 이 ACS 에 잠깐 존재한다(<a href="operations.html">3. 자산 동작</a>).</p>
+</div>
+
 <p>이 차이는 복구·인덱싱에서 그대로 드러난다. EVM 노드를 잃으면 체인을 다시 동기화하면 잔액이 복원되지만, Canton 에서 validator 를 잃으면 <strong>그 party 의 ACS 를 새 validator 로 가져와(import) re-host</strong> 해야 한다 — 잔액이라는 숫자가 아니라 contract 집합 자체를 옮기는 일이다. (<a href="integration.html">5. 운영</a>의 복구 절차)</p>
 
 <h3>1.3 Holding UTXO — 토큰 잔액의 표현</h3>
