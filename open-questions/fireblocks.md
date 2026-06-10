@@ -979,12 +979,13 @@
 
 > Canton 관련 Q 가 vendors/fireblocks/api.md · entities/fireblocks/transaction.md 에 인라인으로만 있어 중앙 미등록 상태였음. Canton 엔티티 신설(entities/canton/canton-network.md) 계기로 중앙 등록.
 
-#### Q-2026-05-22-A11: Canton 2-step transferType ↔ Fireblocks transaction status 매핑
+#### Q-2026-05-22-A11: Canton 2-step transferType ↔ Fireblocks transaction status 매핑 — **ANSWERED (Stage 78)**
 
-- **Why it matters**: Canton transactionType(OFFER / ACCEPT / REJECT / WITHDRAW / PRE_APPROVAL)이 Fireblocks 의 어느 transaction status 에 대응하는지, OFFER 후 상대 수락 대기의 timeout 처리가 어떤지 명시 없음. 출금 상태머신 설계에 직접 영향.
-- **Where this came up**: vendors/fireblocks/api.md:246, entities/fireblocks/transaction.md:305
-- **Cross-cut**: [[canton-network]], docs-site/wallet-service-components (2 멀티체인 · 9 출금)
-- **Status**: open
+- **Why it matters**: Canton transactionType(OFFER / ACCEPT / REJECT / WITHDRAW / PRE_APPROVAL)이 Fireblocks 의 어느 transaction status 에 대응하는지, OFFER 후 상대 수락 대기의 timeout 처리가 어떤지. 출금 상태머신 설계에 직접 영향.
+- **답 (Stage 78, developers.fireblocks.com/reference/transaction-objects)**: Fireblocks 는 generic status 로 collapse 하지 않고 **전용 `transactionType` 필드**로 동일 이름(OFFER/ACCEPT/REJECT/WITHDRAW/PRE_APPROVAL)을 노출. `traceableId` = 원 OFFER UpdateId, **`CantonHashes`**(offer/accept/reject/withdraw/preApprovalUpdateId)로 OFFER↔후속 연결("offerUpdateId links back … enabling full lifecycle tracking"). 일반 NetworkStatus(BROADCASTING/CONFIRMING/CONFIRMED/FAILED/DROPPED)는 별도. → 출금 상태머신은 transactionType=OFFER 를 "수락 대기" 로 두고 ACCEPT/REJECT/WITHDRAW 전이.
+- **timeout**: Fireblocks 강제 아님 = 수락 안 되면 송신자가 `WITHDRAW`(언제는 앱 정책).
+- **source**: developers.fireblocks.com transaction-objects (sources/fireblocks/2026-06-10__canton-transaction-objects)
+- **Status**: ANSWERED (매핑 확정; timeout=앱 정책)
 
 #### Q-2026-06-09-C01: Canton finality 정확 수치 — **ANSWERED (Stage 54)**
 

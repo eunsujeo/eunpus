@@ -303,7 +303,9 @@ Stage 7 의 chain-specific quirk 가 API contract level 까지 침투:
 | **DOT** | `substrateExtrinsicId` | Polkadot extrinsic ID |
 | **SUI** | `gasUsed` breakdown: `storageCost` / `storageRebate` / `computationCost` / `nonRefundableStorageFee` | Sui 의 storage rebate 모델 |
 
-→ ★ **Canton 의 2-step transfer protocol** 은 Stage 9 의 outgoing tx flow 와 **다른 lifecycle** — Q-2026-05-22-A11 신규 등록.
+→ ★ **Canton 의 2-step transfer protocol** 은 Stage 9 의 outgoing tx flow 와 **다른 lifecycle** — Q-2026-05-22-A11.
+
+★ **A11 ANSWERED (Stage 78)** — developers.fireblocks.com/reference/transaction-objects 확인: Fireblocks 는 Canton 2-step 을 generic status 로 collapse 하지 않고 **전용 `transactionType`** 으로 노출(`OFFER`=전송 개시·2-step 1단계 / `ACCEPT`=수신자 수락·완료 / `REJECT`=수신자 거절 / `WITHDRAW`=송신자 취소 / `PRE_APPROVAL`=사전승인 1-step 즉시완료). `traceableId`=원 OFFER UpdateId, **`CantonHashes`**(`offer/accept/reject/withdraw/preApprovalUpdateId`) — "for ACCEPT/REJECT/WITHDRAW, `offerUpdateId` links back to the original OFFER … full lifecycle tracking". 일반 NetworkStatus(BROADCASTING/CONFIRMING/CONFIRMED/FAILED/DROPPED)는 별도. timeout = 수락 안 되면 송신자 `WITHDRAW`(앱 정책). (source: developers.fireblocks.com transaction-objects)
 
 ### Node Routing — NODE_ROUTER vs MEV (★ Stage 36 신규 plane)
 

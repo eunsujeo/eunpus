@@ -7092,3 +7092,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
   - multichain 2.2 traffic tooltip: "10분 무료 충전" → "20분 window/400,000 byte"
   - multichain·fireblocks: **canton-network 심화 가이드 크로스링크** 추가(기존 없음)
 - A11(transactionType↔Fireblocks 상태·timeout)은 여전히 open → "확인 필요" 유지. check PASS
+
+## Stage 78 (2026-06-10) — A11 ANSWERED: Fireblocks Canton transactionType (마지막 Canton open Q 해소)
+- 사용자 지목 developers.fireblocks.com/reference/{transaction-objects,monitoring-transaction-status} 확인
+- A11 해소: Fireblocks 가 Canton 2-step 을 generic status 로 collapse 안 하고 **전용 transactionType**(OFFER/ACCEPT/REJECT/WITHDRAW/PRE_APPROVAL)로 노출 + traceableId·CantonHashes(offer/accept/reject/withdraw/preApprovalUpdateId, offerUpdateId 로 연결) lifecycle 추적. NetworkStatus(BROADCASTING/CONFIRMING/CONFIRMED/FAILED/DROPPED) 별도. timeout=송신자 WITHDRAW(앱 정책)
+- 신규 source fireblocks/2026-06-10__canton-transaction-objects. open-questions A11 ANSWERED, entities/canton/canton-network(A11·2-step bullet·source 8→9·last_updated 78), entities/fireblocks/transaction(A11 ANSWERED), vendors/fireblocks/api A11 ANSWERED
+- docs-site: canton-network(operations 3.2·custody 6.3 Fireblocks)·wallet-service-components(example-fireblocks 14.8 '확인 필요'→해소, abstraction 156·256, multichain 90) 의 A11 '미확정' 콜아웃 전부 해소로 갱신
+- **Canton open Q 전부 ANSWERED**(A11·C01·C02). check PASS(양 사이트)

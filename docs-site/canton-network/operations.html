@@ -89,7 +89,7 @@ flowchart TB
 
 <div class="callout callout-warn">
 <div class="callout-title">수탁 지갑이 흡수해야 할 핵심 — "제출 = 완료" 아님</div>
-<p>EVM 어댑터는 broadcast 후 영수증(receipt)을 기다리면 끝이지만, Canton 출금은 OFFER 제출 후 <strong>"수신자 수락 대기" 라는 중간 상태</strong>가 존재한다. 이 동안 송신 자금은 locked 라 잔액에서 빠진 것처럼 보이지만 아직 상대에게 간 게 아니다. 어댑터·인덱서는 이 상태를 명시적으로 추적해야 하고(<a href="indexer.html">4. 인덱서</a>), "언제까지 수락 안 하면 회수할지" 같은 타임아웃 정책이 필요하다. <em>(OFFER/ACCEPT/REJECT/WITHDRAW 상태를 Fireblocks 같은 SaaS 의 거래 상태로 매핑할 때 timeout 처리는 적용 전 확인 필요.)</em></p>
+<p>EVM 어댑터는 broadcast 후 영수증(receipt)을 기다리면 끝이지만, Canton 출금은 OFFER 제출 후 <strong>"수신자 수락 대기" 라는 중간 상태</strong>가 존재한다. 이 동안 송신 자금은 locked 라 잔액에서 빠진 것처럼 보이지만 아직 상대에게 간 게 아니다. 어댑터·인덱서는 이 상태를 명시적으로 추적해야 하고(<a href="indexer.html">4. 인덱서</a>), "언제까지 수락 안 하면 회수할지" 같은 타임아웃 정책이 필요하다. <em>(Fireblocks 의 경우 이 상태들을 전용 <code>transactionType</code> 필드 OFFER/ACCEPT/REJECT/WITHDRAW/PRE_APPROVAL 로 그대로 노출한다 — <code>CantonHashes.offerUpdateId</code> 로 연결. timeout 은 수락 안 되면 송신자 WITHDRAW(앱 정책).)</em></p>
 </div>
 
 <h4>Canton Coin 은 1-step (pre-approval)</h4>

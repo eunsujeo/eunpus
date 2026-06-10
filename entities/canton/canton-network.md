@@ -4,8 +4,8 @@ vendor: canton
 status: draft
 tags: [architecture, transaction, integration, stablecoin, identity, recovery]
 stage_introduced: 52
-last_updated_stage: 76
-source_count: 8
+last_updated_stage: 78
+source_count: 9
 related: [transaction, api]
 ---
 
@@ -18,7 +18,7 @@ Canton 은 DAML 스마트컨트랙트 기반 privacy-enabled 퍼블릭 블록체
 - **원장 = ACS, holdings = UTXO** — party 자산/상태 = active contract 집합(ACS). 토큰 holdings 는 `Holding` interface 구현 active contract = **Canton 의 UTXO 등가물**(`includeLocked` 로 locked/가용 구분). active Holding 은 storage+compute 비용 발생 → **지갑당 ~10 UTXO 유지 권장**. 복구 시 새 validator 에 party re-host + ACS import. (source: digitalasset-docs-canton-model, docs-canton-network-renewed, fireblocks-recover-canton-coin)
 - **allowance/approve 패턴 없음 (★ Stage 65)** — Canton holding 은 **소유자가 sole signatory** 이고, ERC-20 식 approve/allowance(제3자에 사용권 위임)가 **없다** — 전송은 소유자의 직접 서명으로만. → infinite-approval 류 공격면이 구조적으로 부재(수탁 보안 이점). (source: musubi-custodian-track; Canton fact)
 - **named-role 다중서명 (★ Stage 65)** — Canton 의 다자 서명은 EVM 처럼 익명 interchangeable n-of-m 이 아니라 **지정 party 의 named-role 서명**(DAML **choice-level granularity**)이고, 동시 집계가 아니라 **순차 rolling approval(DAML choice exercise)**다. maker-checker/four-eyes 를 절차가 아니라 **암호학적으로 강제**. [[multi-sig 항목]]을 이렇게 읽을 것. (source: musubi-custodian-track; Canton fact, [[transaction]])
-- **2-step 전송 / CIP-0056** — token standard 명세 = **CIP-0056**. 송신 시 `TransferInstruction`(factory 생성) → 수신자 **Accept**(완료)/**Reject**(반환) 또는 송신자 **Withdraw**(locked 자금 회수). FOP(Free of Payment) 전송 가능. 신규 인터페이스 `TransferFactory`/`AllocationFactory`/`BatchMergeUtility`/`MergeDelegation`. Canton Coin 은 **Transfer Pre-approval = 1-step**. Fireblocks transactionType(OFFER/ACCEPT/REJECT/WITHDRAW/PRE_APPROVAL)와 정합. (★ Stage 53: v3.4 는 "2-step = 모든 토큰 기본값" 단정, 리뉴얼본은 구현 옵션 톤 — 함께 볼 것) (source: digitalasset-docs-canton-model, docs-canton-network-renewed; 매핑 [[transaction]])
+- **2-step 전송 / CIP-0056** — token standard 명세 = **CIP-0056**. 송신 시 `TransferInstruction`(factory 생성) → 수신자 **Accept**(완료)/**Reject**(반환) 또는 송신자 **Withdraw**(locked 자금 회수). FOP(Free of Payment) 전송 가능. 신규 인터페이스 `TransferFactory`/`AllocationFactory`/`BatchMergeUtility`/`MergeDelegation`. Canton Coin 은 **Transfer Pre-approval = 1-step**. **Fireblocks 는 이를 전용 `transactionType` 필드(OFFER/ACCEPT/REJECT/WITHDRAW/PRE_APPROVAL) + `traceableId`/`CantonHashes`(offerUpdateId 로 OFFER↔후속 연결)로 노출**(★ Stage 78, A11 해소 — generic status collapse 아님). timeout=수락 안 되면 송신자 WITHDRAW(앱 정책). (★ Stage 53: v3.4 는 "2-step = 모든 토큰 기본값" 단정, 리뉴얼본은 구현 옵션 톤 — 함께 볼 것) (source: digitalasset-docs-canton-model, docs-canton-network-renewed; 매핑 [[transaction]])
 - **PartyId = hint::fingerprint** — fingerprint = 이 party 의 topology transaction 을 authorize 하는 공개키의 sha256. namespace 는 root signing key 에서 도출. opaque identifier 라 파싱 금지, allocation 으로만 생성. (source: digitalasset-docs-canton-model)
 - **external party = 외부 서명 신원** (★ Stage 53) — external party = "submission key holder, no SPN, 자체 namespace, 자체 signing key 통제". external signing 2-step: **Preparing Participant Node**(Ledger API command→Daml tx) + **Executing Participant Node**(party 서명 부착). party 가 "transaction tree 의 hash" 명시 서명, **private key 는 party 만 통제 → participant 는 party 승인 없이 원장 행동 불가**. MPC/HSM 수탁 모델과 정합. (source: docs-canton-network-renewed)
 - **Synchronizer / 합의** — **2-layer**: ordering layer(synchronizer) + validation layer(participant). Sequencer(순서화·timestamp·sender identity 제거) + Mediator(confirmation 집계·2-phase commit verdict). Global Synchronizer = **2/3 majority BFT consensus** (native BFT orderer: ISS+Narwhal 영향, `Mempool→Availability→Consensus→Output` 4-모듈, <1/3 fault 허용 = 2/3 honest majority 동치). **Super Validator** = Global Synchronizer infra·sequencing·CC tx 검증·거버넌스(**54 SV 노드**가 공동 운영, ★ Stage 72). **Validator** = party host·tx 검증·연결. 거버넌스 = **Canton Foundation**(구 Global Synchronizer Foundation, 2025-09-22 개명; Linux Foundation 파트너십 출범). SV 예(Premier Members): Goldman Sachs·SBI Digital Asset·Euroclear·Broadridge·Tradeweb·Digital Asset·Moody's·Cumberland 등(2025-03 Goldman·HK FMI·Moody's 합류). **finality "usually 3-10s"** (★ Stage 54 C01 ANSWERED). (source: docs-canton-network-renewed)
@@ -79,8 +79,9 @@ docs.canton.network/integrations/wallet/guidance 1차 출처. 수탁 설계에 �
 - musubi-custodian-track (2026-06-10) — <https://musubinetwork.com/> Custodian/Institution Track (⚠️ 2차 출처·Canton 위 app·testnet POC)
 - canton-foundation-supervalidators (2026-06-10) — <https://canton.foundation/> (구 sync.global) Super Validator 명단·거버넌스 (1차)
 - canton-wallet-sdk-github (2026-06-10) — <https://github.com/canton-network/wallet> 공식 TS Wallet SDK·core-signing-fireblocks (1차 코드)
+- fireblocks-canton-transaction-objects (2026-06-10) — <https://developers.fireblocks.com/reference/transaction-objects> Canton transactionType·CantonHashes (1차, A11 해소)
 
 ## Open Questions
-- **Q-2026-05-22-A11**: Canton transactionType(OFFER/ACCEPT/REJECT/WITHDRAW/PRE_APPROVAL) ↔ Fireblocks transaction status 매핑 + timeout 처리 (open)
+- **Q-2026-05-22-A11**: Canton transactionType ↔ Fireblocks 매핑 + timeout — **ANSWERED (Stage 78)**. Fireblocks 가 전용 `transactionType` 필드(동일 이름) + `CantonHashes`(offerUpdateId 연결)로 노출, timeout=송신자 WITHDRAW(앱 정책). (source: fireblocks-canton-transaction-objects)
 - **Q-2026-06-09-C01**: Canton finality 정확 수치 — **ANSWERED (Stage 54)**. docs.canton.network/integrations/wallet/guidance 에 문자 그대로 **"Finality usually takes 3-10s."** (verbatim 재확인, 요약 주입 아님). 그간 "검색 요약 only" 격리했으나 1차 출처 확보로 해제. 메커니즘 = 2/3 BFT + Mediator 2-phase commit. 단 "usually" 라 환경별 편차 가능.
 - **Q-2026-06-09-C02**: tx 당 traffic 비용 산정식 — **ANSWERED (Stage 52, 구체화 Stage 53)**. 비용 = `메시지크기 × (1 + recipients × readVsWriteScalingFactor/10000)`. 파라미터: 무료 400,000 byte/20분, 추가 $60/MB, factor 4bp, 최소 top-up 200,000 byte. estimate = `/v2/interactive-submission/prepare`. (source: docs-canton-network-renewed synchronizer-traffic)

@@ -242,9 +242,9 @@ sequenceDiagram
 </table>
 </div>
 
-<div class="callout callout-warn">
-<div class="callout-title">확인 필요</div>
-<p>Canton <code>transactionType</code> 이 Fireblocks 의 어느 transaction status 로 매핑되는지, OFFER 후 수락 대기의 timeout 처리가 어떤지는 Fireblocks 공식 문서에 명시가 없다(미해결). <a href="scenario-withdrawal.html">11. 출금</a> 의 상태머신에 "수락 대기" 단계를 둘 때 적용 전 Fireblocks 와 확인하라.</p>
+<div class="callout">
+<div class="callout-title">Canton 2-step 매핑 — Fireblocks 가 전용 필드로 노출 (확인됨)</div>
+<p>Fireblocks 는 Canton 2-step 을 generic status 로 뭉개지 않고 <strong>전용 <code>transactionType</code> 필드</strong>로 그대로 노출한다 — <code>OFFER</code>(전송 개시·1단계) / <code>ACCEPT</code>(수신자 수락·완료) / <code>REJECT</code>(거절) / <code>WITHDRAW</code>(송신자 취소) / <code>PRE_APPROVAL</code>(사전승인 1-step). <code>traceableId</code> = 원 OFFER UpdateId, <code>CantonHashes</code>(<code>offer/accept/reject/withdraw/preApprovalUpdateId</code>)로 <strong>OFFER↔후속을 연결해 lifecycle 추적</strong>(일반 NetworkStatus 와 별개). 그러니 <a href="scenario-withdrawal.html">11. 출금</a> 상태머신은 <code>transactionType=OFFER</code> 를 "수락 대기" 로 두고 ACCEPT/REJECT/WITHDRAW 로 전이하면 된다. <strong>timeout</strong> 은 Fireblocks 가 강제하지 않으므로, 수락 안 될 때 송신자가 <code>WITHDRAW</code> 하는 시점을 앱 정책으로 정한다. <em>(출처: developers.fireblocks.com/reference/transaction-objects)</em></p>
 </div>
 
 <p>같은 포트를 Fireblocks 없이 직접 구현하면 어떻게 달라지는지는 — <a href="example-selfbuild.html"><strong>15. 자체 구축 어댑터</strong></a>.</p>

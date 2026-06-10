@@ -244,7 +244,7 @@ ApprovalStatus.approval: "PENDING_AUTHORIZATION" | "APPROVED" | "REJECTED" | "NA
 
 - **Q-2026-05-22-A09**: `MPC_ECDSA_SECP256R1` algorithm 의 chain 매트릭스 — 어느 chain 이 secp256r1 사용? Key Link 의 algorithm 매트릭스 와의 차이?
 - **Q-2026-05-22-A10**: `NodeControls.MEV` routing 의 정확한 mechanism — Flashbots private mempool? builder integration? supported chain?
-- **Q-2026-05-22-A11**: Canton 2-step transfer protocol 의 Stage 9 transaction state machine 매핑 — `OFFER` / `ACCEPT` / `REJECT` / `WITHDRAW` / `PRE_APPROVAL` 각각이 어느 Fireblocks status 에 대응? Timeout 처리?
+- **Q-2026-05-22-A11 — ANSWERED (Stage 78)**: Canton 2-step ↔ Fireblocks 매핑. developers.fireblocks.com/reference/transaction-objects 확인 — Fireblocks 는 generic status 로 collapse 하지 않고 **전용 `transactionType`**(OFFER/ACCEPT/REJECT/WITHDRAW/PRE_APPROVAL)로 그대로 노출, `traceableId`·`CantonHashes`(offerUpdateId 로 OFFER↔후속 연결)로 lifecycle 추적. 일반 NetworkStatus(BROADCASTING/CONFIRMING/CONFIRMED/FAILED/DROPPED) 별도. Timeout=수락 안 되면 송신자 WITHDRAW(앱 정책). (source: sources/fireblocks/2026-06-10__canton-transaction-objects.md)
 - **Q-2026-05-22-A12**: Cross-Border Settlement (Payments) plane 의 entity 정의 — corridor, steps 의 의미, 본 wiki 의 transaction lifecycle 과의 관계
 
 ## Sources (Stage 36 추가)
