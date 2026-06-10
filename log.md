@@ -7059,3 +7059,9 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 매핑: 초록=우리 은행/수탁사, 파랑=우리/위탁 운영사(서명위탁=Fireblocks/Dfns), 보라=Global Synchronizer, 회색=SV(위 기관들)
 - 신규 source canton-foundation-supervalidators(1차). entity(source 6→7, SV 거버넌스 정정, last_updated 72) + docs-site Figure 0-1 "실제로 누구인가" callout
 - evidence isolation: SV 명단은 추측 안 하고 1차 확인 후만 기재. 명단/노드수는 시점 가변 명시
+
+## Stage 73 (2026-06-10) — 공식 Canton Wallet SDK(canton-network/wallet) Fireblocks 드라이버 promote
+- 사용자: github.com/canton-network/wallet · core/signing-fireblocks promote 여부 → 미promote 였음, 확인 후 반영
+- 1차 확정: canton-network/wallet = 공식 **TypeScript** 프레임워크(Wallet Gateway+dApp SDK+Wallet SDK). 서명 드라이버 core-signing-{internal(Ed25519)/participant/fireblocks/blockdaemon}. **core-signing-fireblocks** = SigningDriverInterface(@canton-network/core-signing-lib) 구현, Fireblocks API 서명. 셋업 RSA-4096(FIREBLOCKS_SECRET)·API User(CSR)·API Key — API 인증용(온원장 서명과 별개 층). Wallet SDK = synchronizer 인증·external keypair party allocate·ACS·prepared tx 검증·서명/제출
+- 정정: 기존 "Fireblocks Java SDK" → Canton wallet SDK 의 fireblocks 드라이버는 TS
+- 신규 source canton-wallet-sdk-github(1차). entity(source 7→8, 서명 SDK 드라이버 bullet, last_updated 73) + custody 6.3(공식 core-signing-* 드라이버·Java SDK 정정)

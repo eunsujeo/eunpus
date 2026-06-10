@@ -163,7 +163,7 @@ flowchart LR
 <li><strong>Blockdaemon</strong> — 관리형 인프라 서명.</li>
 <li><strong>participant 기반</strong>(노드가 키 보관) · <strong>internal</strong>(개발용 DB 보관).</li>
 </ul>
-<p><strong>party 별로 프로바이더를 섞을 수 있어</strong>, 일부 계정은 Fireblocks(HSM), 일부는 Dfns(MPC) 식의 혼합 custody 가 한 게이트웨이에서 가능하다. 우리 수탁 스택이 이미 Fireblocks·MPC 라면 그대로 Canton 서명에 연결된다.</p>
+<p><strong>party 별로 프로바이더를 섞을 수 있어</strong>, 일부 계정은 Fireblocks(HSM), 일부는 Dfns(MPC) 식의 혼합 custody 가 한 게이트웨이에서 가능하다. 우리 수탁 스택이 이미 Fireblocks·MPC 라면 그대로 Canton 서명에 연결된다. 이 프로바이더들은 추상 개념이 아니라 <strong>공식 Canton Wallet SDK</strong>(<a href="https://github.com/canton-network/wallet">canton-network/wallet</a>, TypeScript)의 <code>core-signing-*</code> 드라이버로 제공된다 — <code>internal</code>(Ed25519)·<code>participant</code>·<strong><code>fireblocks</code></strong>·<code>blockdaemon</code>.</p>
 </div>
 
 <div class="callout">
@@ -172,7 +172,7 @@ flowchart LR
 <ul>
 <li><strong>2-step 매핑</strong> — Fireblocks 는 Canton transactionType(OFFER·ACCEPT·REJECT·WITHDRAW·PRE_APPROVAL)을 다룬다. 단 <strong>정확한 Fireblocks 거래 상태 매핑·수락 대기 timeout 처리는 적용 전 확인 필요</strong>(현재 미확정 항목).</li>
 <li><strong>복구·사후처리</strong> — Fireblocks 는 Canton Coin 복구를 문서화한다(topology tx 외부 서명 → ACS import, <a href="integration.html">5. 운영</a>의 복구). 복구 후 <strong>pre-approval 재설정·contract id 갱신</strong>이 필요하고, <strong>토큰(USDCx 등)은 Circle 같은 Registrar 와 별도</strong> 절차다.</li>
-<li>연동은 <strong>Java SDK</strong>·API 키 구성으로 한다.</li>
+<li><strong>연동</strong> — 공식 Canton Wallet SDK(TypeScript)의 <strong><code>core-signing-fireblocks</code></strong> 드라이버(<code>SigningDriverInterface</code> 구현)로 붙는다. Fireblocks API 인증은 <strong>RSA-4096 키(<code>FIREBLOCKS_SECRET</code>)·API User(CSR)·API Key</strong> 구성(이 RSA 는 API 인증용 — 온원장 서명 알고리즘과 별개 층). (<a href="https://github.com/canton-network/wallet">canton-network/wallet</a>)</li>
 </ul>
 </div>
 
