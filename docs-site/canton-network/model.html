@@ -96,12 +96,12 @@ flowchart LR
 <p>A 가 100 보유(<code>[60]+[40]</code> 조각). "상태" 는 잔액 숫자가 아니라 <strong>A 의 활성 contract 집합(ACS)</strong>이고, 송금하면 그 집합 안 contract 가 생기고/사라지며 바뀐다.</p>
 <div class="table-wrap">
 <table>
-<thead><tr><th style="width:14%">단계</th><th>A 의 ACS (활성 contract 집합)</th><th style="width:16%">A 가용 잔액</th></tr></thead>
+<thead><tr><th style="width:11%">단계</th><th>A 의 ACS (활성 = 현재 상태)</th><th>이 단계 변화 (⊖ archive · ⊕ create)</th><th style="width:12%">A 가용</th></tr></thead>
 <tbody>
-<tr><td>① 처음</td><td><code>Holding[60]</code>, <code>Holding[40]</code></td><td>100</td></tr>
-<tr><td>② 송금 개시(50→B)</td><td><code>Holding[40]</code>, <code>Holding[10]</code>(거스름), <code>TransferInstruction[50→B, 대기]</code>(여기 50 locked)</td><td>50 (+50 잠김)</td></tr>
-<tr><td>③ B 수락(Accept)</td><td><code>Holding[40]</code>, <code>Holding[10]</code></td><td>50 (그 50 은 B 로)</td></tr>
-<tr><td>③' A 회수/B 거절</td><td><code>Holding[40]</code>, <code>Holding[10]</code>, <code>Holding[50]</code></td><td>100 (원복)</td></tr>
+<tr><td>① 처음</td><td><code>[60]</code>, <code>[40]</code></td><td>—</td><td>100</td></tr>
+<tr><td>② 개시 50→B</td><td><code>[40]</code>, <code>[10]</code>, <code>TransferInstruction[50→B, 대기]</code></td><td>⊖ <code>[60]</code> · ⊕ <code>[10]</code>(거스름) · ⊕ <code>TransferInstruction</code>(50 잠김)</td><td>50 (+50 잠김)</td></tr>
+<tr><td>③ B 수락</td><td><code>[40]</code>, <code>[10]</code></td><td>⊖ <code>TransferInstruction</code> → 50 은 <strong>B 의 ACS 에 ⊕ <code>[50]</code></strong></td><td>50</td></tr>
+<tr><td>③' 회수/거절</td><td><code>[40]</code>, <code>[10]</code>, <code>[50]</code></td><td>⊖ <code>TransferInstruction</code> · ⊕ <code>[50]</code>(원복)</td><td>100</td></tr>
 </tbody>
 </table>
 </div>
