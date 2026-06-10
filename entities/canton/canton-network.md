@@ -4,7 +4,7 @@ vendor: canton
 status: draft
 tags: [architecture, transaction, integration, stablecoin, identity, recovery]
 stage_introduced: 52
-last_updated_stage: 65
+last_updated_stage: 66
 source_count: 6
 related: [transaction, api]
 ---
@@ -46,7 +46,7 @@ Canton 은 DAML 스마트컨트랙트 기반 privacy-enabled 퍼블릭 블록체
 ### Musubi Network (Canton 기반 활용 사례)
 한·일 cross-border FX/결제 네트워크 — atomic DvP(4 settlement legs + signatory closure, Allocation contract 기반), ~15초 결제, JPYSC0·USDCx 스테이블코인, 현재 **testnet POC**. 참여자 = Institutions / Custodians(cryptographic dual-control authorize) / Market Makers + **Operator = Startale·Nodeinfra(공식 문구 "operated by", 운영 범위는 미상 — Canton validator 운영 여부 명시 없음)** / Settlement mediator. (source: musubi-network-introduction) [[stablecoin]] 맥락과 연결.
 
-**Musubi 가 보여주는 Canton 수탁 패턴 (★ Stage 65)**: custodian 이 signing key·backend·DB 모두 자가 보유(타 참여자 접근 불가), **delegated custody**(institution→custodian 위임, 예 Zodia Custody·KODA 거론, Musubi 는 자산 미보유·CLS 식 조율만), 컴플라이언스-as-precondition(`ExecuteSettlement` 이 attestation 검증 후에만 DvP), sub-transaction privacy 로 IVMS 101 등 PII 온원장. 거론된 실제 Canton 배포(2차 인용): DTCC·Goldman Sachs·HSBC·Deutsche Börse·Progmat. **Musubi 도 finality 수치 명시 안 함**(C01 재확인). (source: musubi-custodian-track; ⚠️ 2차 출처·testnet POC)
+**Musubi 가 보여주는 Canton 수탁 패턴 (★ Stage 65)**: custodian 이 signing key·backend·DB 모두 자가 보유(타 참여자 접근 불가), **delegated custody**(institution→custodian 위임, 예 Zodia Custody·KODA 거론, Musubi 는 자산 미보유·CLS 식 조율만), 컴플라이언스-as-precondition(`ExecuteSettlement` 이 attestation 검증 후에만 DvP), sub-transaction privacy 로 IVMS 101 등 PII 온원장. 거론된 실제 Canton 배포(2차 인용): DTCC·Goldman Sachs·HSBC·Deutsche Börse·Progmat. **Musubi 도 finality 수치 명시 안 함**(C01 재확인). custody 통합 형태(참고): ① Canton Party ID 로 custodian 백엔드 자가 배포 ② 견적 co-sign UI 연결 ③ settlement event stream 구독→tx hash 를 컴플라이언스 아카이브로 bridge(KYC·제재·Travel Rule 은 기존 스택 유지). introduction 링크(institution/custodian/market-maker/compliant-payments overview) 전수 검토 결과 새 Canton 프로토콜 fact 없음(Stage 66). (source: musubi-custodian-track; ⚠️ 2차 출처·testnet POC)
 
 ### 수탁 지갑 관점
 Canton 어댑터가 흡수해야 할 핵심 = **"제출=완료" 가 아니다** — 전송이 기본 2-step 이라 OFFER/TransferInstruction 제출 후 상대 수락 대기 상태가 존재하고, 송신자 자금이 locked UTXO 로 묶인다. account/nonce 모델이 아니라 DAML active contract 원장 + UTXO형 holdings + 권한 기반 전송이 구별점. Fireblocks 가 Canton 지원(transactionType, traceableId). [[api]] 참조.

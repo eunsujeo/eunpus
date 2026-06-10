@@ -72,3 +72,14 @@ source: how-it-works · compliance/privacy · compliance/trust-model · glossary
   - how-it-works = Musubi FX 흐름만. privacy = 앱 가시성 정책(Canton view/divulgence 메커니즘 서술 없음). trust-model = 4자 서명·dual-control(앱; Canton validator/synchronizer 신뢰 미언급). glossary = DvP 외 Canton 네이티브 용어 없음. tradfi-comparison = CLS vs Musbi 상품 비교.
   - tradfi-comparison 의 "~4-second atomic DvP" 는 **Musbi 앱 결제 주장**(app-level) — Canton finality 수치로 promote 안 함(evidence isolation; C01 은 여전히 1차 출처 "usually 3-10s" 만).
 - **결론**: Musubi 에서 Canton 위키로 promote 할 사실은 Stage 65 ((2)·(4))에서 전부 반영 완료. 나머지 ~30 페이지(앱 API/console/deploy/market-maker/FXOrder/compliance-reporting)는 Canton 프로토콜 사실이 아니라 **범위 밖**(canton.network 자동생성 ref 와 동일 처리). **Musubi sweep 종료.**
+
+## (6) introduction 페이지의 모든 링크 — 전수 검토 (Stage 66)
+
+source: musubinetwork.com/introduction 의 outbound 링크 4개 — compliance/compliant-payments · institution/overview · custodian/overview · market-maker/overview
+
+- **새 Canton 프로토콜 사실 없음** — 4개 모두 Stage 65 promote 분(holding sole-signatory·no-allowance, sub-tx privacy, named-role) 재확인 또는 Musubi-FX 앱 고유. 아래는 사례 기록용(앱-레벨).
+- **참여자 역할(institution/overview)**: Sender Institution(견적 선택)·Receiver Institution(수동 수신). "CLS-style PvP, ~15초, Herstatt risk 제거, nostro/vostro 불필요". custodian 이 stablecoin 직접 보유.
+- **custodian 통합 3 seam(custodian/overview)**: ① **Canton Party ID 로 Musubi custodian 백엔드를 자기 인프라에 배포**(Canton participant) ② 견적 검토·co-sign 을 ops UI 에 연결 ③ **settlement event stream 구독 → tx hash 를 컴플라이언스 아카이브로 bridge**. KYC·제재·Travel Rule·STR·whitelisting 은 기존 그대로. Receiver custodian 은 입금이 **pending 아니라 atomic DvP 로 이미 settled** 도착. ("Canton Holding sole-signatory·no allowance" = pure Canton infra 재확인)
+- **market-maker/overview**: MM 은 **재고를 자기 Canton Holding 에 보유**(거래소 예치 안 함), RFQ·익명 flow·USDCx↔JPYSC0. "atomic 4-leg DvP ~4초"(앱 결제 주장; Canton finality 로 promote 안 함 — C01 은 1차 3-10s 유지).
+- **compliant-payments**: 5 design choice(custodian stack·on-chain enforcement·Travel Rule discharge·규제 dossier·stablecoin-only) + Japan/Korea/FATF — Musubi-FX 컴플라이언스 정책(앱).
+- **결론**: introduction 링크 전수 검토 완료. Canton 위키 promote 분은 Stage 65 에서 종결됨을 재확인. 본 절은 Musubi 사례 기록.

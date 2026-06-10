@@ -7018,3 +7018,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 신규 source: musubi-custodian-track(2차 출처·testnet POC 명시). entity source_count 5→6, last_updated 65
 - docs-site: operations(allowance/approve 없음 콜아웃) + validator 2.2(named-role/순차/maker-checker 보강)
 - evidence isolation: Canton fact vs Musubi 고유설계(4-leg FX DvP·FXOrder·JWT) 분리, 후자는 사례로만
+
+## Stage 66 (2026-06-10) — musubinetwork introduction 링크 전수 promote
+- 사용자: introduction 의 모든 링크 promote. introduction outbound = 4개(compliance/compliant-payments·institution/overview·custodian/overview·market-maker/overview) 전수 fetch
+- 결과: **새 Canton 프로토콜 fact 없음** — 전부 Stage 65 promote 분(holding sole-signatory·no-allowance, sub-tx privacy, named-role) 재확인 또는 Musubi-FX 앱 고유
+- 기록(사례): 참여자 역할, custodian 통합 3 seam(Party ID 백엔드 배포·견적 co-sign·settlement stream→컴플라이언스 bridge), MM 재고 자기 Canton Holding 보유, compliant-payments 5 choice. "~4초 atomic DvP"는 앱 주장이라 Canton finality 로 promote 안 함(C01 유지)
+- source 섹션 6 append, entity Musubi 사례에 통합 패턴 1줄 + last_updated 66. docs-site 변경 없음(배포 없음)
+- Musubi 검토 최종 종결: Canton-레벨 promote 는 Stage 65, introduction 링크 전수 확인은 Stage 66
