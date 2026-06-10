@@ -99,9 +99,10 @@ flowchart TB
 
 <ul>
 <li><strong>traffic = byte 단위 대역폭 잔고.</strong> validator 가 Synchronizer 와 통신(거래 broadcast·합의 메시지)할 때 차감된다.</li>
-<li><strong>충전은 Canton Coin 소각으로.</strong> CC 를 burn 하면 그 대가로 traffic 잔고가 충전된다. Super Validator 가 CC↔USD, USD↔byte 환율을 게시해 CC↔byte 환산이 동적으로 정해진다.</li>
-<li><strong>무료 trickle.</strong> 약 10분(mining round)마다 소량의 traffic 이 무료로 충전된다. 소진되면 거래가 막히지만 시간이 지나면 회복되고, CC 잔액이 있으면 자동 top-up 도 가능하다.</li>
-<li><strong>보유세(holding fee).</strong> Holding UTXO 당 연 약 $1 의 보유 비용이 있다. 보유 비용이 가치를 넘는 dust 조각은 archive 가 허용된다.</li>
+<li><strong>충전은 Canton Coin 소비로.</strong> CC 를 써서 traffic 을 구매하면 원장의 <code>MemberTraffic</code> 잔고가 갱신된다. 추가 traffic 가격은 <strong>약 $60 USD / MB</strong>(구매 시점 환율로 CC 환산)다.</li>
+<li><strong>무료 base 잔고.</strong> <strong>20분 window 당 400,000 byte</strong> 의 무료 잔고가 있고, 거래를 보내지 않으면 선형으로 회복된다(한 window 가 다 지나면 완전 회복). 소진되면 충전 전까지 거래가 막힌다.</li>
+<li><strong>자동 top-up.</strong> validator 앱에 목표 처리량·최소 구매 간격을 설정하면, 필요한 만큼 traffic 을 자동으로 사들이는 기능이 내장돼 있다(최소 top-up 단위 약 200,000 byte).</li>
+<li><strong>보유세(holding fee).</strong> Holding 조각 보유에는 storage·compute 비용이 따른다(연 단위 보유 비용). 보유 비용이 가치를 넘는 dust 조각은 archive 가 허용된다. 그래서 지갑은 조각 수를 <strong>사용자당 약 10개</strong> 수준으로 유지하도록 병합(merge)하는 게 권장된다.</li>
 </ul>
 
 <div class="callout">
@@ -111,17 +112,28 @@ flowchart TB
 
 <h4>거래 1건의 traffic 비용 산정식</h4>
 
-<p>한 거래가 소비하는 traffic 은 다음으로 계산된다.</p>
+<p>한 메시지가 소비하는 traffic 은 <strong>크기 × (수신자 수에 따른 가중치)</strong> 로 계산된다.</p>
 
-<pre><code>총비용 = base_event_cost + Σ(envelope 별 비용)
+<pre><code>메시지 비용(byte) = 메시지크기 × (1 + 수신자수 × readVsWriteScalingFactor / 10000)
 
-envelope 별 비용 = storage_cost + network_cost
-  storage_cost = payload 크기(byte)
-  network_cost = writeCost × #recipients × costMultiplier / 10000
-                 // costMultiplier 는 보통 1/10000 order — 대역폭 비용을 낮춤
-                 // group address 는 계산 전에 실제 member 수로 resolve</code></pre>
+// 예: scaling factor = 4, 1 MB 메시지, 수신자 10명
+//   1,000,000 × (1 + 10 × 0.004) = 1,040,000 byte</code></pre>
 
-<p>confirmation 요청/응답, topology 요청, time proof 모두 과금 대상이다(time proof 는 빈 메시지라 base 만). 절대 byte↔금액 환율은 Synchronizer 구성에 따라 가변이라 고정값이 아니다. <strong>실무 산정</strong>은 Ledger API 의 <code>/v2/interactive-submission/prepare</code> 가 submission·confirmation 의 traffic estimate 를 돌려주고, participant 로그의 <code>EventCost</code> 로 실측한다.</p>
+<p>현재 네트워크 공통 파라미터(고정값이 아니라 구성에 따라 바뀔 수 있음):</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:38%">파라미터</th><th>값</th></tr></thead>
+<tbody>
+<tr><td>무료 base 잔고</td><td>400,000 byte / 20분 window (선형 회복)</td></tr>
+<tr><td>추가 traffic 가격</td><td>약 $60 USD / MB (CC 로 환산 청구)</td></tr>
+<tr><td>read-vs-write scaling factor</td><td>4 basis points (0.004)</td></tr>
+<tr><td>최소 top-up 단위</td><td>약 200,000 byte</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>confirmation 요청/응답, topology 요청 등 Synchronizer 로 가는 메시지가 과금 대상이다. 절대 byte↔금액 환율은 Synchronizer 구성에 따라 가변이라 고정값이 아니다. <strong>실무 산정</strong>은 Ledger API 의 <code>/v2/interactive-submission/prepare</code> 가 submission·confirmation 의 traffic estimate 를 돌려주고, participant 로그의 <code>EventCost</code> 로 실측한다.</p>
 
 <pre><code>// 수수료 추정 — EVM 의 estimateGas 대응
 const est = await ledger.prepare(unsignedTx)   // /v2/interactive-submission/prepare

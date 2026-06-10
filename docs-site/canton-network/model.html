@@ -63,6 +63,11 @@
 
 <p>각 holding 은 <strong>가용(available)</strong>이거나 <strong>잠김(locked)</strong> 상태다. 전송을 개시하면 해당 자금 holding 이 locked 로 묶인다(<a href="operations.html">3. 자산 동작</a>의 2-step transfer). 조회할 때 이 둘을 구분해서 봐야 한다.</p>
 
+<div class="callout">
+<div class="callout-title">조각은 무한정 늘리면 안 된다 — 사용자당 약 10개로 병합</div>
+<p>holding 조각(UTXO)은 각각 활성 contract 라 <strong>보관·연산 비용</strong>이 따른다. 비트코인 지갑이 잔돈 UTXO 가 너무 많아지면 합치는(consolidate) 것처럼, Canton 지갑도 조각을 주기적으로 <strong>병합(merge)</strong>해 <strong>사용자당 약 10개</strong> 수준으로 유지하는 것이 권장된다. 인덱서·지갑 백엔드가 조각 수를 모니터링하고 병합 트랜잭션을 거는 운영이 필요하다.</p>
+</div>
+
 <pre><code>// holdings 조회 — 가용분만
 sdk.token.utxos.list({ partyId, includeLocked: false })   // 지금 쓸 수 있는 holding
 

@@ -73,7 +73,22 @@
 
 <h3 id="dr">5.3 복구가 직접 운영의 가장 무거운 책임</h3>
 
-<p>Canton 의 복구는 EVM 의 "노드 재동기화" 와 차원이 다르다. <a href="model.html">1장</a>에서 봤듯 상태가 글로벌 잔액이 아니라 <strong>party 의 ACS</strong>라, validator 를 잃으면 그 ACS 를 새 validator 로 옮겨 re-host 해야 한다. Fireblocks 가 문서화한 Canton Coin 복구 절차는 이 일이 얼마나 무거운지 보여준다.</p>
+<p>Canton 의 복구는 EVM 의 "노드 재동기화" 와 차원이 다르다. <a href="model.html">1장</a>에서 봤듯 상태가 글로벌 잔액이 아니라 <strong>party 의 ACS</strong>라, validator 를 잃으면 그 ACS 를 새 validator 로 옮겨 re-host 해야 한다.</p>
+
+<p>공식 문서는 장애 정도에 따라 <strong>세 가지 복구 경로</strong>를 둔다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:26%">장애 정도</th><th>복구 방법</th></tr></thead>
+<tbody>
+<tr><td>단일 노드 장애</td><td>DB 백업에서 복원 → 컴포넌트 0으로 줄였다 복원 후 1로 → 백업 이후 추가된 사용자만 재온보딩</td></tr>
+<tr><td>광범위 장애</td><td><strong>identities 백업</strong>으로 원래 namespace 키를 통제하는 새 validator 배포 → Canton Coin 잔액·CNS 복구 (party id hint 보존, participant id 는 새 것)</td></tr>
+<tr><td>Synchronizer 장애</td><td>roll-forward 논리적 synchronizer 업그레이드(<code>perform_manual_lsu()</code>)</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>복구가 가능하려면 <strong>최소 하나</strong>는 있어야 한다 — 최근 DB 백업(30일 이내) <em>또는</em> 현재 identities 백업 <em>또는</em> validator 키를 보유한 외부 KMS. 아래 그림은 자산을 키·ACS 로부터 되살리는 경로(특히 external party)를 요약한 것이다.</p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart LR
@@ -95,7 +110,12 @@ flowchart LR
 <p class="diagram-caption">Figure 5-1. Canton Coin 복구 흐름(요약). <strong>노랑 = 준비·검증</strong>(party 를 새 participant 로 onboarding 하는 topology 변경 생성 → 복구 키로 서명 → 게시·매핑 확인). <strong>보라 = 핵심</strong>(party 의 ACS 스냅샷을 받아 새 노드로 import). <strong>초록 = 재개</strong>(onboarding flag 해제 후 거래 재개). 실제 절차는 더 세분(노드 disconnect·DB 스냅샷 등)되고, 키 재구성을 수반해 워크스페이스 복구와 동일한 보안 등급으로 다뤄야 한다. <em>이게 직접 운영을 택했을 때 우리가 떠안는 절차다.</em></p>
 
 <div class="callout callout-warn">
-<div class="callout-title">복구 후 두 가지 사후 처리를 잊지 말 것</div>
+<div class="callout-title">external party 는 복구 경로가 다르다</div>
+<p>키를 우리가 쥐는 <strong>external party</strong>(<a href="validator.html">2장</a>)는 기본 복구에 <strong>자동 포함되지 않는다</strong> — 별도 절차가 필요하다. <strong>완전히 새 validator</strong>(깨끗한 identity·DB)를 배포하고, topology 트랜잭션을 만들어 <strong>외부 서명</strong>으로 party 를 host 한 뒤, <strong>CC Scan endpoint 에서 ACS 를 import</strong> 하고 표준 API 로 onboarding 을 마친다. 수탁 지갑은 거의 external party 이므로, 이 별도 경로가 사실상 우리의 주 복구 시나리오가 된다.</p>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">복구 후 사후 처리를 잊지 말 것</div>
 <ul>
 <li><strong>pre-approval 재설정</strong> — Canton Coin 의 1-step 경험을 주던 transfer pre-approval(<a href="operations.html">3. 자산 동작</a>)은 복구 후 기존 것을 취소하고 새로 만들어야 한다.</li>
 <li><strong>contract id 변경</strong> — 마이그레이션 후 contract id 가 바뀐다. 인덱서·지갑 백엔드가 들고 있던 contract id 참조를 새 값으로 갱신해야 한다.</li>

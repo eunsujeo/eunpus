@@ -990,14 +990,16 @@
 
 - **Why it matters**: Synchronizer Mediator 의 2-phase commit 확정 시점.
 - **확인 결과 (Stage 52)**: 1차 페이지 3곳(subnet overview · integrate canton-network-overview · docs.sync.global FAQ) 모두 수치 명시 없음. "3-10초" 는 검색엔진 요약에만 등장 → 1차 미확정. 메커니즘(2-phase commit)만 확정.
-- **Sources to check**: Splice/Digital Asset 의 performance·SLA 문서 (별도)
-- **Status**: open
+- **재확인 (Stage 53)**: 리뉴얼 1차 출처 docs.canton.network/overview/reference/ordering-consensus 도 "no specified latency, finality time, or throughput numbers" — 수치 여전히 없음. 단 메커니즘은 보강: **native BFT orderer**(ISS+Narwhal 영향, `Mempool→Availability→Consensus→Output` 4-모듈, **<1/3 Byzantine fault 허용**), 2-layer(ordering=synchronizer / validation=participant). 절대 수치만 미확정.
+- **Sources to check**: Splice/Digital Asset performance·SLA 문서 또는 운영 환경 실측
+- **Status**: open (메커니즘 확정, 수치 미확정)
 
-#### Q-2026-06-09-C02: tx 당 traffic 비용 산정식 — **ANSWERED (Stage 52)**
+#### Q-2026-06-09-C02: tx 당 traffic 비용 산정식 — **ANSWERED (Stage 52, 구체화 Stage 53)**
 
 - **Why it matters**: traffic(byte) 비용의 구체적 tx 단위 산정.
-- **답**: `총비용 = base_event_cost + Σ(envelope 비용)`. envelope 비용 = storage(payload byte) + network(`writeCost × #recipients × costMultiplier / 10_000`). group address 는 계산 전 member 수로 resolve. confirmation·topology·time proof 모두 과금(time proof 는 base 만). 실무 estimate 는 `/v2/interactive-submission/prepare` Ledger API, 실측은 participant 로그 `EventCost`. 단 절대 byte↔금액 환율은 synchronizer config 에 따라 가변.
-- **source**: docs.digitalasset.com traffic-management, docs.sync.global FAQ/deployment-traffic (Stage 52 ingest)
+- **답 (Stage 52)**: `총비용 = base_event_cost + Σ(envelope 비용)`. envelope 비용 = storage(payload byte) + network(`writeCost × #recipients × costMultiplier / 10_000`). 실무 estimate = `/v2/interactive-submission/prepare`, 실측 = participant 로그 `EventCost`.
+- **구체 수치 (Stage 53, docs.canton.network synchronizer-traffic)**: 메시지 비용 = `메시지크기 × (1 + recipients × readVsWriteScalingFactor/10000)`. 예) factor4·1MB·10수신 = `1,000,000×(1+10×0.004)=1,040,000` byte. 파라미터(all networks): 무료 base **400,000 byte/20분 window**(선형 회복), 추가 traffic **$60 USD/MB**(CC 환산), readVsWrite **4 bp(0.004)**, 최소 top-up **200,000 byte**, validator 앱 built-in auto top-up. (★ 기존 "10분 mining round" → "20분 window" 로 정정)
+- **source**: docs.digitalasset.com traffic-management + docs.canton.network synchronizer-traffic (Stage 52·53)
 - **Status**: ANSWERED
 
 ### Stage 52 Summary

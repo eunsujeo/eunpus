@@ -6939,3 +6939,16 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - index.md: entities/canton 섹션 + Source Lake canton 4소스 카탈로그
 - docs-site wallet-service-components: 2(멀티체인) 2.2 표에 Canton 3번째 열 완전 충전 + 콜아웃 "account/UTXO 아님" 정정 / 9(출금)·11(추상화) 2-step 정합
 - ANSWERED: Q-2026-06-09-C02 (traffic 산정식). A11(Fireblocks status 매핑)·C01(finality 정확 수치, 1차 페이지 3곳 모두 수치 없음)은 open 유지
+
+## Stage 53 (2026-06-10) — Canton 공식 문서 리뉴얼본(docs.canton.network) promote
+- 계기: 사용자 — "docs.canton.network 캔톤 문서 리뉴얼됨, promote". llms.txt 로 docs.digitalasset.com **후속 사이트** 확인
+- source: sources/canton/ +1 — **신규 docs-canton-network-renewed(2026-06-10)**: ordering-consensus · token-standard(CIP-0056) · synchronizer-traffic · external-party · validator-disaster-recovery
+- 신규/정밀화 사실 5건:
+  - **BFT orderer**(C01 메커니즘 보강): native BFT(ISS+Narwhal, `Mempool→Availability→Consensus→Output`, <1/3 Byzantine fault), 2-layer 합의. **finality 수치는 리뉴얼본에도 없음 확인** → C01 수치 open 유지
+  - **traffic 구체 수치**(C02 구체화): `메시지크기×(1+recipients×factor/10000)`, 무료 400,000 byte/20분, 추가 $60/MB, factor 4bp, 최소 top-up 200,000 byte. **기존 "10분 mining round" → "20분 window" 정정**
+  - **CIP-0056** token standard + 신규 인터페이스(TransferFactory/AllocationFactory/BatchMergeUtility/MergeDelegation), **지갑당 ~10 UTXO 유지 권장**(Holding storage+compute 비용)
+  - **external party** = 자체 namespace·자체 signing key, no SPN. external signing 2-step(Preparing PN + Executing PN), party 가 tx-tree hash 서명, **키는 party 만 통제 → MPC/HSM 수탁 모델과 정합**
+  - **disaster recovery 1차 출처화**: 3 경로(단일노드 DB복원 / 광범위 identities 재온보딩 / synchronizer roll-forward LSU), external party 별도 절차(완전 새 validator + CC Scan ACS import)
+- 갱신: entities/canton/canton-network.md(source_count 4→5, last_updated_stage 53), open-questions C01(메커니즘 보강·수치 open)·C02(구체 수치)
+- docs-site canton-network: page2(BFT 콜아웃·external party 표/서명 2-step·finality 재확인) / page3(traffic 공식·파라미터 표 정정·~10 UTXO·$60/MB) / page1(~10 UTXO 병합 콜아웃) / page5(3 복구 경로·external party 별도 복구)
+- 신규 entity: 0 (기존 canton-network 엔티티 갱신만). ANSWERED 진전: C02 구체화. C01 메커니즘 보강(수치 open)
