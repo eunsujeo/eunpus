@@ -7025,3 +7025,12 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 기록(사례): 참여자 역할, custodian 통합 3 seam(Party ID 백엔드 배포·견적 co-sign·settlement stream→컴플라이언스 bridge), MM 재고 자기 Canton Holding 보유, compliant-payments 5 choice. "~4초 atomic DvP"는 앱 주장이라 Canton finality 로 promote 안 함(C01 유지)
 - source 섹션 6 append, entity Musubi 사례에 통합 패턴 1줄 + last_updated 66. docs-site 변경 없음(배포 없음)
 - Musubi 검토 최종 종결: Canton-레벨 promote 는 Stage 65, introduction 링크 전수 확인은 Stage 66
+
+## Stage 68 (2026-06-10) — canton-network 가독성 보강(질문 대응): 비교 그림·애니메이션·은행 예시
+- 사용자 질문 5건 대응:
+  - 0.2 "상태 표현" 의미 불명 → glossary tooltip 추가(원장이 현재 상태를 어떤 자료구조로 저장하나)
+  - 0.3 "API 는 누구 것" → Ledger API 노드 라벨 "participant node 가 노출" + 캡션에 명시
+  - 원장 모델 어려움 → model.html Figure 1-1(EVM 숫자 vs Canton ACS/Holding 구조 mermaid) + Figure 1-2(순수 CSS 애니메이션: 40 송금 시 EVM 숫자 100→60 vs Canton 조각 [30][20] 소비→거스름 [10] 생성)
+  - "조립은 utxos 로" 불명 → 설계 포인트 bullet 평이하게 재서술(판단=available 합계, 조립=조각 골라 씀, 비트코인 coin-select 예)
+  - 2.1 셋의 관계 감 안 잡힘 → Figure 2-0 + 국내은행 A ↔ 해외은행 B 예시 + "셋의 관계 한 줄" 콜아웃
+- presentation only(사실 변경 없음), check-consistency PASS. model.html 첫 mermaid·애니메이션 도입

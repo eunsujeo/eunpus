@@ -65,6 +65,32 @@
 <p>EVM: "주소의 잔액 = 글로벌 상태에 적힌 숫자". Canton: "party 의 상태 = 그 party 가 stakeholder 인 활성 contract 들의 집합(ACS)". 잔액은 그 집합에서 <strong>합산해서 도출</strong>하는 값이지, 어딘가 적혀 있는 숫자가 아니다.</p>
 </div>
 
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    subgraph EVM["EVM 계정 모델"]
+      direction TB
+      ADDR["주소 0xABC…"] --> BAL["잔액 = 100<br/>nonce = 7<br/>(숫자 하나)"]
+    end
+    subgraph CANTON["Canton — party 의 ACS"]
+      direction TB
+      PARTY["party Alice"] --> ACS["ACS<br/>(활성 contract 집합)"]
+      ACS --> H1["Holding 50"]
+      ACS --> H2["Holding 30"]
+      ACS --> H3["Holding 20<br/>(locked)"]
+      ACS --> TI["TransferInstruction<br/>(전송 대기)"]
+    end
+
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef wait fill:#fef3c7,stroke:#d97706;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    class ADDR,BAL ext;
+    class PARTY,ACS,H1,H2 good;
+    class H3 wait;
+    class TI special;
+</pre></div>
+<p class="diagram-caption">Figure 1-1. 같은 "잔액" 을 저장하는 두 방식. <strong>왼쪽 EVM(회색)</strong>: 주소 아래 <strong>숫자 하나</strong>(잔액+nonce). <strong>오른쪽 Canton</strong>: party 아래 <strong>활성 contract 들의 집합(ACS)</strong> — 토큰 잔액은 Holding 조각들(초록)의 합이고, 일부는 전송 중이라 <strong>locked</strong>(노랑), 진행 중인 전송은 별도 contract(보라)로 남는다. 즉 Canton 잔액 100 = 50+30+20(조각) 이고, "100" 이라는 칸은 어디에도 없다.</p>
+
 <p>이 차이는 복구·인덱싱에서 그대로 드러난다. EVM 노드를 잃으면 체인을 다시 동기화하면 잔액이 복원되지만, Canton 에서 validator 를 잃으면 <strong>그 party 의 ACS 를 새 validator 로 가져와(import) re-host</strong> 해야 한다 — 잔액이라는 숫자가 아니라 contract 집합 자체를 옮기는 일이다. (<a href="integration.html">5. 운영</a>의 복구 절차)</p>
 
 <h3>1.3 Holding UTXO — 토큰 잔액의 표현</h3>
@@ -72,6 +98,48 @@
 <p>토큰 잔액은 ACS 안에서 <strong>Holding<span class="g" data-tip="party 가 보유한 토큰 단위를 나타내는 contract. 잔액은 이 holding 들의 합이다">?</span> contract 들</strong>로 표현된다. 그리고 이 holding 은 비트코인과 같은 <strong>UTXO<span class="g" data-tip="Unspent Tx Output — 잔액을 하나의 숫자가 아니라 '쓰지 않은 출력' 조각들의 집합으로 보는 모델. 비트코인이 대표적">?</span> 모델</strong>이다. 즉 "100 USDCx" 가 한 칸에 적힌 게 아니라, 예컨대 60 + 40 처럼 여러 holding 조각으로 나뉘어 있을 수 있고, 잔액은 그 조각들의 합이다.</p>
 
 <p>각 holding 은 <strong>가용(available)</strong>이거나 <strong>잠김(locked)</strong> 상태다. 전송을 개시하면 해당 자금 holding 이 locked 로 묶인다(<a href="operations.html">3. 자산 동작</a>의 2-step transfer). 조회할 때 이 둘을 구분해서 봐야 한다.</p>
+
+<div class="diagram">
+<style>
+.la-wrap{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;margin:6px 0}
+.la-col{flex:1 1 280px;border:1px solid #d2d2d7;border-radius:10px;padding:16px;min-width:260px}
+.la-h{font-weight:600;margin-bottom:14px;text-align:center}
+.la-evm{position:relative;height:60px;display:flex;align-items:center;justify-content:center}
+.la-num{position:absolute;font-size:20px;font-weight:700;padding:10px 18px;border-radius:8px;background:#f5f5f7;border:1px solid #86868b}
+.la-n1{animation:laEvm1 9s infinite}
+.la-n2{animation:laEvm2 9s infinite;opacity:0}
+@keyframes laEvm1{0%,40%{opacity:1}50%,90%{opacity:0}100%{opacity:1}}
+@keyframes laEvm2{0%,40%{opacity:0}50%,90%{opacity:1}100%{opacity:0}}
+.la-chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;min-height:60px}
+.la-chip{font-weight:700;padding:10px 14px;border-radius:8px;background:#dcfce7;border:2px solid #16a34a}
+.la-spend{animation:laSpend 9s infinite}
+.la-change{border-style:dashed;animation:laChange 9s infinite;opacity:0}
+@keyframes laSpend{0%,18%{background:#dcfce7;border-color:#16a34a;opacity:1;transform:none}20%,38%{background:#fef3c7;border-color:#d97706}46%{opacity:0;transform:translateY(-12px)}46.01%,88%{opacity:0}100%{opacity:1;background:#dcfce7;border-color:#16a34a;transform:none}}
+@keyframes laChange{0%,46%{opacity:0}55%,88%{opacity:1}100%{opacity:0}}
+.la-cap{margin-top:12px;font-size:13px;color:#515154;text-align:center}
+</style>
+<div class="la-wrap">
+  <div class="la-col">
+    <div class="la-h">EVM — 숫자가 그 자리에서 바뀐다</div>
+    <div class="la-evm">
+      <span class="la-num la-n1">잔액 100</span>
+      <span class="la-num la-n2">잔액 60</span>
+    </div>
+    <div class="la-cap">40 보내기 → 같은 칸의 숫자가 100 → 60 으로 갱신</div>
+  </div>
+  <div class="la-col">
+    <div class="la-h">Canton — 조각을 쓰고 새로 만든다</div>
+    <div class="la-chips">
+      <span class="la-chip">50</span>
+      <span class="la-chip la-spend">30</span>
+      <span class="la-chip la-spend">20</span>
+      <span class="la-chip la-change">10</span>
+    </div>
+    <div class="la-cap">40 보내기 → [30]+[20] 골라 소비(노랑→사라짐), 거스름 [10] 새 조각 생성</div>
+  </div>
+</div>
+</div>
+<p class="diagram-caption">Figure 1-2 (애니메이션). 같은 "40 송금" 이 두 모델에서 어떻게 다른가. <strong>EVM</strong>은 잔액이라는 숫자 하나가 제자리에서 100→60 으로 바뀐다. <strong>Canton</strong>은 잔액이 조각(UTXO)들의 합이라, 보낼 만큼을 골라([30]+[20]=50) 소비하고 거스름([10])을 새 조각으로 만든다 — 비트코인 coin-select 와 같다. 그래서 "조립은 utxos 로"(1.5) 한다. (애니메이션이 안 보이면 정지 상태로도 같은 구성을 읽을 수 있다.)</p>
 
 <div class="callout">
 <div class="callout-title">조각은 무한정 늘리면 안 된다 — 사용자당 약 10개로 병합</div>
@@ -138,7 +206,7 @@ const locked    = total - available</code></pre>
 <div class="callout">
 <div class="callout-title">설계 포인트</div>
 <ul>
-<li><strong>잔액 = {total, available, locked, utxos}</strong> — 단일 숫자로 축약하지 말 것. 출금 판단은 <code>available</code> 로, 조립은 <code>utxos</code> 로 한다.</li>
+<li><strong>잔액 = {total, available, locked, utxos}</strong> — 단일 숫자로 축약하지 말 것. <strong>"얼마 보낼 수 있나"(출금 가능 판단)</strong>는 가용 합계 <code>available</code> 로 보고, <strong>실제 트랜잭션을 만들 때(조립)</strong>는 그 합계 숫자가 아니라 <strong>holding 조각들(<code>utxos</code>)을 골라서</strong> 쓴다 — 비트코인이 잔돈 UTXO 를 골라 쓰는 것과 같다(예: 40 을 보낼 때 [30]+[20] 조각을 골라 합 50 을 쓰고 거스름 10 은 새 조각으로).</li>
 <li><strong>locked 는 일시적 상태</strong> — 진행 중인 2-step 전송이 ACCEPT/REJECT/WITHDRAW 로 끝나면 풀린다. 인덱서는 이 전이를 추적해 locked 를 갱신한다(<a href="indexer.html">4. 인덱서</a>).</li>
 <li><strong>PartyId 는 파싱하지 말 것</strong> — <code>hint::fingerprint</code> 형식이지만 opaque identifier 다. 주소처럼 조립·해석하지 말고 allocation 결과를 그대로 키로 쓴다(<a href="validator.html">2장</a>).</li>
 </ul>

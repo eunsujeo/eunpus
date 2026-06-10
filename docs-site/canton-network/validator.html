@@ -60,6 +60,34 @@
 
 <p>핵심: <strong>한 party 는 하나 이상의 participant 에 host 된다.</strong> 우리가 수탁 지갑으로 어떤 고객의 party 를 다룬다는 건, 그 party 가 우리(또는 우리가 위탁한) participant node 에 host 되어 있다는 뜻이다. validator 를 잃으면 그 party 의 ACS 를 새 participant 로 옮겨 re-host 해야 하는 이유가 여기 있다(<a href="integration.html">5. 운영</a>).</p>
 
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    subgraph A["국내은행 A (수탁)"]
+      direction TB
+      PA["participant node A<br/>= validator<br/>(A 인프라)"] --> PtA["party<br/>BankA-Treasury"]
+    end
+    subgraph B["해외은행 B"]
+      direction TB
+      PB["participant node B<br/>= validator<br/>(B 인프라)"] --> PtB["party<br/>BankB-Treasury"]
+    end
+    SY["Synchronizer (공용)<br/>순서·확정<br/>※ 우리가 운영 안 함"]
+    PA <-->|Ledger API 로 제출·구독| SY
+    SY <--> PB
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef adp fill:#dbeafe,stroke:#2563eb;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    class PtA,PtB good;
+    class PA,PB adp;
+    class SY special;
+</pre></div>
+<p class="diagram-caption">Figure 2-0. 국내은행 A ↔ 해외은행 B 예시. <strong>party</strong>(초록) = "누구"(은행·계좌 같은 신원, 예: BankA-Treasury). <strong>participant node = validator</strong>(파랑) = 그 party 를 담고 거래를 검증하는 노드(보통 각 은행 인프라). <strong>Synchronizer</strong>(보라) = 두 노드를 잇는 공용 합의 계층(우리가 운영하지 않는다). A 가 B 에게 송금하면, A 는 자기 participant 의 Ledger API 로 전송을 제출하고, A·B 의 participant 가 각자 자기 party 몫을 검증하며, Synchronizer 가 순서·확정을 맡는다.</p>
+
+<div class="callout">
+<div class="callout-title">셋의 관계 한 줄</div>
+<p><strong>party 는 "누구"</strong>(신원·계좌), <strong>participant node(=validator)는 "그 누구를 담고 거래를 검증하는 노드"</strong>(보통 은행 인프라, 직접 운영하거나 위탁), <strong>Synchronizer 는 "노드들을 잇는 공용 합의 계층"</strong>이다. 은행 A 는 자기 participant 에 자기 party 를 host 하고(키는 A 가 통제 — 아래 2.2 의 external party), B 도 마찬가지다. 둘은 같은 Synchronizer 에 연결돼야 서로 거래할 수 있다.</p>
+</div>
+
 <div class="callout">
 <div class="callout-title">PartyId 는 키가 아니라 신원이다</div>
 <p>PartyId 의 <code>fingerprint</code> 부분은 그 party 의 topology 변경을 authorize 하는 <strong>공개키의 fingerprint(sha256)</strong>다. 즉 신원과 서명 권한이 묶여 있다. 하지만 PartyId 자체는 <strong>opaque identifier</strong> — 앱이 <code>hint</code> 와 <code>fingerprint</code> 를 파싱·조립하면 안 되고, allocation 으로만 생성한다(주소 발급은 <a href="operations.html">3. 자산 동작</a>).</p>
