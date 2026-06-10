@@ -30,7 +30,7 @@
 <li><a class="active" href="indexer.html">4. 인덱서 구현</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. 운영</h3><ul>
-<li><a href="integration.html">5. 직접 구현 vs 운영형(Nodeinfra)</a></li>
+<li><a href="integration.html">5. 직접 운영 vs 위탁 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. 수탁 통합</h3><ul>
 <li><a href="custody.html">6. 수탁 통합 — wallet/guidance</a></li>
@@ -167,7 +167,7 @@ flowchart LR
 <p>여러 체인을 다루는 인덱서라면, Canton 은 "블록 폴링" 계열이 아니라 <strong>"offset 스트림" 계열의 소스</strong>로 따로 둔다. 공통 인덱서 코어가 "입금 확정 / 전송 완료 / 잔액 변동" 같은 정규화된 이벤트만 받게 하고, ACS·offset·2-step 같은 Canton 특유의 메커니즘은 <code>CantonSource</code> 안에 가둔다. EVM 의 <code>blockNumber</code> 자리에 Canton 은 <code>offset</code> 을, "N블록 확인" 자리에 "commit 이벤트" 를 매핑하는 식이다.</p>
 </div>
 
-<p>다음 — <a href="integration.html"><strong>5. 직접 구현 vs 운영형(Nodeinfra)</strong></a>.</p>
+<p>다음 — <a href="integration.html"><strong>5. 직접 운영 vs 위탁 운영</strong></a>.</p>
 
 </section>
 </main>

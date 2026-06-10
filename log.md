@@ -7002,3 +7002,8 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
   - model.html: `choice` 정의 한 문단 내 중복 서술 제거
   - validator.html 과적재 해소: sweep 중 2.1(행위자)에 쌓인 키·서명·멀티시그를 **신규 "2.2 키·서명·정족수" 절로 분리**(Synchronizer→2.3, 거래확정→2.4, 확정시간→2.5), 겹치던 키보관 callout 2개→1개 병합, party-per-account 는 2.1 로 이동
 - 사실 변경 없음(presentation only), check-consistency PASS
+
+## Stage 64 (2026-06-10) — canton-network 사실 정정: "Nodeinfra" 운영형 예시 제거
+- 사용자 지적: NodeInfra 의 NodeWallet 은 Solana 전용(vendors/nodeinfra/nodewallet.md:67 "EVM/BTC 커버 불가") → Canton 미지원인데 page5 "운영형(Nodeinfra)" 로 박은 게 오류. Canton 맥락 Nodeinfra 언급은 Musubi operator 한 줄뿐(모호)
+- 정정: page5 제목 "직접 구현 vs 운영형(Nodeinfra)" → **"직접 운영 vs 위탁 운영"**(7 사이드바·h2·title·meta·index 0.4·indexer 다음·루트 허브 카드 일괄), 5.1 bullet 일반화, **"벤더가 Canton 지원하는지 먼저 확인" caveat 추가**(NodeWallet=Solana 전용 명시, Canton 서명 위탁은 Wallet Gateway 서명 프로바이더 Fireblocks/Dfns 가 직접 경로). entity Musubi 라인(Startale+Nodeinfra operator)은 source 충실 인용이라 유지
+- evidence isolation: 약근거(Musubi 1줄) 벤더를 수탁 관리형 예시로 단정하지 않음. check PASS

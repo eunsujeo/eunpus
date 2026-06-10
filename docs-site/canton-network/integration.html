@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>5. 직접 구현 vs 운영형(Nodeinfra) — Canton 네트워크 지갑 연동 가이드</title>
-<meta content="Canton validator participant 를 직접 운영할 때와 관리형(Nodeinfra 등)으로 위탁할 때의 차이 — 책임 분담, 복구 절차, 키 관리, trade-off." name="description"/>
+<title>5. 직접 운영 vs 위탁 운영 — Canton 네트워크 지갑 연동 가이드</title>
+<meta content="Canton validator participant 를 직접 운영할 때와 관리형으로 위탁할 때의 차이 — 책임 분담, 복구 절차, 키 관리, trade-off." name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
 </head>
@@ -30,7 +30,7 @@
 <li><a href="indexer.html">4. 인덱서 구현</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">E. 운영</h3><ul>
-<li><a class="active" href="integration.html">5. 직접 구현 vs 운영형(Nodeinfra)</a></li>
+<li><a class="active" href="integration.html">5. 직접 운영 vs 위탁 운영</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. 수탁 통합</h3><ul>
 <li><a href="custody.html">6. 수탁 통합 — wallet/guidance</a></li>
@@ -40,7 +40,7 @@
 
 <main class="content">
 <section id="integration">
-<h2>5. 직접 구현 vs 운영형(Nodeinfra)</h2>
+<h2>5. 직접 운영 vs 위탁 운영</h2>
 <span class="section-subtitle">validator participant 를 직접 돌릴 것인가, 관리형으로 위탁할 것인가 — 책임·복구·trade-off</span>
 
 <h3>5.1 갈림길은 "participant node 를 누가 운영하나"</h3>
@@ -49,8 +49,13 @@
 
 <ul>
 <li><strong>직접 구현</strong> — 우리가 participant node 를 직접 구축·운영한다. Ledger API 도, 그 아래 노드 인프라도, 키도, 복구도 전부 우리 책임.</li>
-<li><strong>운영형(관리형 validator)</strong> — Nodeinfra 같은 운영사가 validator participant 를 운영해 주고, 우리는 그 위의 Ledger API(또는 SaaS API)에 붙는다. Musubi 네트워크도 Operator 로 Startale·Nodeinfra 가 참여한다.</li>
+<li><strong>위탁 운영(관리형 validator)</strong> — 관리형 validator 운영사가 participant 를 운영해 주고, 우리는 그 위의 Ledger API(또는 SaaS API)에 붙는다.</li>
 </ul>
+
+<div class="callout callout-warn">
+<div class="callout-title">"그 custody 벤더가 Canton 을 지원하나?" 를 먼저 확인</div>
+<p>위탁을 택하기 전에 <strong>그 벤더가 Canton 을 실제로 지원하는지</strong>부터 확인해야 한다. 많은 수탁/지갑 제품이 EVM·Solana 등 특정 체인 전용이라 Canton 을 못 다룬다 — 예컨대 국내 <strong>NodeInfra 의 NodeWallet</strong> 은 현재 <strong>Solana 전용</strong>이라 Canton 수탁에는 쓸 수 없다. (Canton 위에서 일부 사업자가 네트워크 Operator 로 참여한 사례는 있으나, 그것이 곧 "수탁용 관리형 Canton validator 제공" 을 뜻하지는 않는다.) Canton 서명 위탁은 오히려 <strong>Wallet Gateway 가 지원하는 서명 프로바이더</strong>(Fireblocks·Dfns 등, <a href="custody.html">6. 수탁 통합</a>) 쪽이 더 직접적인 경로다.</p>
+</div>
 
 <div class="callout">
 <div class="callout-title">공통점부터 — 우리가 닿는 면은 거의 항상 Ledger API 한 겹</div>
