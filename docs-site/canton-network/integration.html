@@ -57,6 +57,17 @@
 <p>어느 쪽이든 우리 지갑 백엔드가 코드로 닿는 면은 <strong>Ledger API</strong>(또는 그 위의 SaaS API)다(<a href="index.html">0. 개요</a>의 Figure). 그래서 어댑터 코드(<a href="operations.html">3</a>·<a href="indexer.html">4</a>) 자체는 두 방식에서 크게 다르지 않다 — <strong>달라지는 것은 그 아래 노드의 운영 책임</strong>이다.</p>
 </div>
 
+<div class="callout">
+<div class="callout-title">신뢰 모델로 보는 직접 vs 위탁 — "무엇을 누구에게 맡기나"</div>
+<p>Canton 은 "전부 믿기/아무도 안 믿기" 가 아니라 <strong>선택적 신뢰(selective trust)</strong> 모델이다. 자가호스팅 결정에 직접 영향을 주는 부분만 추리면:</p>
+<ul>
+<li><strong>validator</strong> — 데이터 보관·가용성은 맡기지만, <strong>external party 를 쓰면 "서명" 은 맡기지 않는다</strong>(키는 우리 것). <strong>직접 운영하면 validator 신뢰 자체가 사라진다</strong> — 운영사를 위협 모델에서 제거.</li>
+<li><strong>counterparty</strong> — 거의 안 믿어도 된다. <strong>내 validator 가 정직한 한, 상대가 나를 끼운 invalid 거래를 확정시킬 수 없다.</strong></li>
+<li><strong>synchronizer</strong> — 거래 내용을 못 읽고·위조 못하고·invalid 를 승인 못한다. 다만 <strong>메시지를 지연</strong>시킬 수는 있어 가용성은 신뢰 대상이다 — BFT(2/3 정직) 또는 multi-synchronizer 로 완화.</li>
+</ul>
+<p>즉 <strong>직접 구현</strong>은 validator 신뢰를 없애 통제권을 최대화하고, <strong>운영형</strong>은 그 신뢰를 운영사에 맡기되 external party·키 분리로 자금 권한은 지킨다. 어느 쪽이든 synchronizer 신뢰는 남는다.</p>
+</div>
+
 <h3>5.2 책임 분담 비교</h3>
 
 <div class="table-wrap">
