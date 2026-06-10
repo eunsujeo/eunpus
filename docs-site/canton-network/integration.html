@@ -81,6 +81,37 @@
 
 <h3>5.2 책임 분담 비교</h3>
 
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    subgraph DIRECT["직접 운영 — 노드·키 모두 우리"]
+      direction TB
+      DW["우리 지갑 백엔드"]
+      DN["participant node = validator<br/>(우리가 운영)"]
+      DK["키·서명 HSM/MPC<br/>(우리)"]
+      DW --> DN
+      DK -.서명.-> DN
+    end
+    subgraph MANAGED["위탁 운영 — 노드는 운영사, 키는 우리"]
+      direction TB
+      MW["우리 지갑 백엔드"]
+      MN["participant node = validator<br/>(운영사가 운영)"]
+      MK["키·서명 Fireblocks/MPC<br/>(우리)"]
+      MW --> MN
+      MK -.서명.-> MN
+    end
+    SYNC["공용 Global Synchronizer<br/>(Super Validator 운영 · 우리 아님)"]
+    DN --> SYNC
+    MN --> SYNC
+
+    classDef us fill:#dcfce7,stroke:#16a34a;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    class DW,DN,DK,MW,MK us;
+    class MN ext;
+    class SYNC special;
+</pre></div>
+<p class="diagram-caption">Figure 5-0. 직접 vs 위탁. <strong>초록 = 우리 것, 회색 = 운영사</strong>. 직접 운영은 participant 노드까지 우리(초록), 위탁은 <strong>노드만 운영사(회색)</strong>다 — 그러나 <strong>키·서명은 두 경우 모두 우리(초록)</strong>이고(external party·Fireblocks/MPC), 자금 권한은 넘기지 않는다. 즉 "노드 운영" 과 "키·서명" 은 별개 축이다. 둘 다 공용 <strong>Global Synchronizer(보라)</strong> 위에서 동작하고, 그건 어느 쪽도 우리가 운영하지 않는다.</p>
+
 <div class="table-wrap">
 <table>
 <thead><tr><th style="width:24%">항목</th><th>직접 구현</th><th>운영형(관리형 validator)</th></tr></thead>

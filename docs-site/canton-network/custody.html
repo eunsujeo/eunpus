@@ -56,6 +56,35 @@
 </ul>
 </div>
 
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    subgraph US["우리 수탁 스택"]
+      direction TB
+      BE["지갑 백엔드<br/>memo→사용자 귀속 · UpdateID DB 영속화"]
+      FB["서명 프로바이더<br/>Fireblocks·MPC (키)"]
+    end
+    LAPI["Ledger API<br/>(participant)"]
+    NET["Canton 원장"]
+
+    NET -->|"입금: TransferIn 이벤트"| LAPI
+    LAPI -->|"이벤트 전달"| BE
+    BE -->|"출금 ① prepare"| LAPI
+    LAPI -->|"② 서명할 hash"| FB
+    FB -->|"③ 서명"| LAPI
+    LAPI -->|"④ execute"| NET
+    NET -->|"정산 이벤트(UpdateID)"| BE
+
+    classDef us fill:#dcfce7,stroke:#16a34a;
+    classDef adp fill:#dbeafe,stroke:#2563eb;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    class BE us;
+    class FB special;
+    class LAPI adp;
+    class NET ext;
+</pre></div>
+<p class="diagram-caption">Figure 6-0. 수탁 통합 한눈에. <strong>초록 = 지갑 백엔드</strong>(입금은 memo 로 사용자에 귀속(6.1), 정산 증빙 UpdateID 는 우리 DB 에 영속화(6.6)). <strong>보라 = 서명 프로바이더</strong>(Fireblocks·MPC — 키는 여기, 6.3). <strong>파랑 = Ledger API</strong>(participant 창구). <strong>회색 = Canton 원장</strong>. <strong>입금</strong>: 원장의 TransferIn 이벤트를 받아 귀속(6.4). <strong>출금</strong>: 백엔드가 prepare → 서명할 hash 를 Fireblocks 가 서명 → execute(6.3). 자금 권한 키는 우리(서명 프로바이더)에 남고, participant 는 우리 서명 없이 못 움직인다.</p>
+
 <h3>6.1 입금 식별 — memo tag (별도 입금주소 없음)</h3>
 
 <p>EVM·비트코인 수탁 지갑은 사용자마다 입금주소를 발급해 "어느 주소로 들어왔나" 로 입금자를 구분한다. <strong>Canton 은 이 방식을 쓰지 않는다.</strong> 공식 가이드는 별도 입금주소 없이 <strong>전송 metadata 의 memo 태그</strong>로 입금을 추적하라고 안내한다(거래소 입금도 동일).</p>
