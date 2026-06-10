@@ -90,6 +90,7 @@ flowchart LR
 
 <div class="callout">
 <div class="callout-title">PartyId = hint::fingerprint — 키가 아니라 신원</div>
+<p><strong>쉽게:</strong> PartyId 는 <strong>party 의 고유 ID</strong>(계좌번호 같은 것)다 — party 를 만들 때 받아서 그대로 쓰면 된다. 아래는 그 ID 가 어떻게 생겼는지(속 구조)인데, <strong>실무에선 몰라도 된다.</strong></p>
 <p>PartyId 는 <code>::</code> 로 나뉜 두 부분이다. 예: <code>BankA-Treasury::1220f2fe29…</code></p>
 <ul>
 <li><strong>hint</strong>(앞) = allocation 할 때 우리가 붙이는 <strong>사람이 읽는 라벨</strong>(예 <code>BankA-Treasury</code>). 안 주면 <code>party-{UUID}</code> 로 자동 생성되고, namespace 안에서 유일해야 한다.</li>
