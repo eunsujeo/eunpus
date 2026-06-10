@@ -54,8 +54,14 @@
 <tr><td><strong>party</strong></td><td>거래 주체(논리적 신원). 자산을 보유하고 전송을 개시·수락하는 단위. PartyId = <code>hint::fingerprint</code></td><td>"계정 주소" 에 가깝지만 키가 아니라 신원</td></tr>
 <tr><td><strong>participant node</strong></td><td>party 를 host 하는 실제 노드. Ledger API 를 제공하고 거래를 검증한다. <strong>= validator</strong></td><td>"내가 운영하는 풀노드" 에 가까움</td></tr>
 <tr><td><strong>Synchronizer</strong></td><td>모든 participant 가 공유하는 동기화 계층. Sequencer + Mediator</td><td>"합의 계층" 에 해당하지만 검증은 안 함</td></tr>
+<tr><td><strong>Super Validator</strong></td><td>공용 Global Synchronizer 인프라를 운영하는 소수 기관. sequencing·Canton Coin 검증·거버넌스. <strong>우리가 운영하지 않음</strong></td><td>(EVM 엔 정확한 대응 없음 — 공용 인프라 운영 주체)</td></tr>
 </tbody>
 </table>
+</div>
+
+<div class="callout">
+<div class="callout-title">(일반) Validator 와 Super Validator 는 다르다 — 헷갈리지 말 것</div>
+<p>둘 다 "validator" 가 들어가 헷갈리지만 다르다. <strong>(일반) Validator = participant node</strong> = 우리 party 를 host 하고 우리 거래를 검증하는 노드(우리가 직접 또는 위탁 운영) — <strong>본 장의 주인공</strong>이다. 반면 <strong>Super Validator</strong> 는 공용 <strong>Global Synchronizer</strong> 를 운영하는 소수 기관(현재 54 노드; Goldman Sachs·SBI Digital Asset·Euroclear 등 — <a href="index.html">0.3</a>)으로 <strong>우리가 운영하지 않는다.</strong> 그래서 수탁 지갑 관점에선 <strong>(일반) Validator 가 핵심</strong>이고, Super Validator·Synchronizer 는 우리가 올라타는 공용 계층일 뿐이다(그 합의 역할은 아래 2.3).</p>
 </div>
 
 <p>핵심: <strong>한 party 는 하나 이상의 participant 에 host<span class="g" data-tip="host = 그 party 의 상태(ACS·키 권한)를 participant 노드가 맡아 저장하고 그 party 의 거래를 대신 검증·제출해 주는 것. 이메일 주소가 메일 서버에 올라가야 작동하는 것과 비슷">?</span> 된다.</strong> 우리가 수탁 지갑으로 어떤 고객의 party 를 다룬다는 건, 그 party 가 우리(또는 우리가 위탁한) participant node 에 host 되어 있다는 뜻이다. validator 를 잃으면 그 party 의 ACS 를 새 participant 로 옮겨 re-host 해야 하는 이유가 여기 있다(<a href="integration.html">5. 운영</a>).</p>
@@ -200,7 +206,7 @@ flowchart LR
 <div class="callout-title">순서화 계층의 BFT 합의</div>
 <p>Sequencer 의 순서화 자체도 단일 신뢰점이 아니다. 글로벌 동기화 계층(Global Synchronizer)은 <strong>2/3 다수결 BFT<span class="g" data-tip="Byzantine Fault Tolerant — 일부 노드가 임의로(악의적으로 포함) 오작동해도 합의가 유지되는 성질. 2/3 다수가 정직하면 동작 = 장애 노드가 1/3 미만이면 정상">?</span> 합의 프로토콜</strong>로 운영된다 — <code>Mempool → Availability → Consensus → Output</code> 4단계 파이프라인으로, <strong>장애 노드가 전체의 1/3 미만</strong>이면 정상 동작한다. 즉 Canton 의 합의는 <strong>두 층</strong>이다: 순서화 계층(Synchronizer)이 "무엇이 먼저인가" 를 BFT 로 정하고, 그 위에서 이해관계자 participant 들이 "이 거래가 옳은가" 를 검증한다.</p>
 
-<p>이 순서화·검증을 떠받치는 노드도 둘로 나뉜다. <strong>Super Validator</strong> 가 Global Synchronizer 인프라를 운영하며 <strong>트랜잭션 순서화(sequencing)·Canton Coin 거래 검증·거버넌스</strong>를 맡고, 일반 <strong>Validator</strong> 는 자신이 host 한 party 의 거래를 검증하고 연결을 제공한다. 거버넌스는 Global Synchronizer Foundation 과 Linux Foundation 이 함께 감독한다.</p>
+<p>이 순서화·검증을 떠받치는 노드도 둘로 나뉜다. <strong>Super Validator</strong> 가 Global Synchronizer 인프라를 운영하며 <strong>트랜잭션 순서화(sequencing)·Canton Coin 거래 검증·거버넌스</strong>를 맡고, 일반 <strong>Validator</strong> 는 자신이 host 한 party 의 거래를 검증하고 연결을 제공한다(2.1 의 구분 참조). 거버넌스는 <strong>Canton Foundation</strong>(구 Global Synchronizer Foundation; Linux Foundation 파트너십)이 감독한다(<a href="index.html">0.3</a>).</p>
 </div>
 
 <h3>2.4 거래 확정 흐름 — 2-phase commit</h3>
