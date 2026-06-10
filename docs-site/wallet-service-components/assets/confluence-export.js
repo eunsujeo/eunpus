@@ -4,6 +4,8 @@
 (function () {
   'use strict';
 
+  var glossary = null;   // 변환 1회 동안 모으는 용어(tooltip) 목록
+
   // ---------- 인라인 텍스트 ----------
   function inline(node) {
     var out = '';
@@ -15,7 +17,14 @@
       else if (tag === 'em' || tag === 'i') out += '_' + inline(n).trim() + '_';
       else if (tag === 'code') out += '{{' + n.textContent + '}}';
       else if (tag === 'br') out += ' ';
-      else if (n.classList && n.classList.contains('g')) { /* glossary 마커 drop */ }
+      else if (n.classList && n.classList.contains('g')) {     // glossary(?) — tip 을 모아 문서 끝 패널로
+        var tip = n.getAttribute('data-tip');
+        if (tip && glossary) {
+          var mt = out.match(/([^\s>*_{}().,·]+)\s*$/);          // 바로 앞 단어 = 용어
+          var term = mt ? mt[1] : '';
+          if (!glossary.some(function (g) { return g.term === term && g.tip === tip; })) glossary.push({ term: term, tip: tip });
+        }
+      }
       else if (tag === 'a') out += inline(n);            // 링크 텍스트만 (cross-page 링크는 수동)
       else out += inline(n);
     });
@@ -155,7 +164,12 @@
     if (tag === 'h3') return 'h3. ' + txt(el);
     if (tag === 'h4') return 'h4. ' + txt(el);
     if (tag === 'span' && el.classList.contains('section-subtitle')) return '_' + txt(el) + '_';
-    if (tag === 'p') return (el.classList.contains('diagram-caption') ? '_' + inline(el).trim() + '_' : inline(el).trim());
+    if (tag === 'p') {
+      if (el.classList.contains('diagram-caption')) return '_' + inline(el).trim() + '_';
+      var ptxt = inline(el).trim();
+      if (/^(다음|이전|처음으로)\s*[—–-]/.test(ptxt)) return '';   // 페이지 네비 링크 제거 (요청 3)
+      return ptxt;
+    }
     if (tag === 'ul') return Array.prototype.map.call(el.children, function (li) { return '* ' + inline(li).trim(); }).join('\n');
     if (tag === 'ol') return Array.prototype.map.call(el.children, function (li) { return '# ' + inline(li).trim(); }).join('\n');
     if (tag === 'pre') { var code = el.textContent.replace(/ /g, ' '); return '{code}\n' + code.replace(/\s+$/, '') + '\n{code}'; }
@@ -174,8 +188,14 @@
   function convert(doc) {
     var sec = doc.querySelector('main.content section') || doc.querySelector('.content section');
     if (!sec) return '(변환 실패: section 못 찾음)';
+    glossary = [];
     var parts = [];
     Array.prototype.forEach.call(sec.children, function (c) { var b = blockOf(c); if (b) parts.push(b); });
+    if (glossary.length) {                                       // 용어 풀이 패널 (tooltip 대체, 요청 2)
+      parts.push('{info:title=용어 풀이}\n' + glossary.map(function (g) {
+        return '* ' + (g.term ? '*' + g.term + '* — ' : '') + g.tip;
+      }).join('\n') + '\n{info}');
+    }
     return parts.join('\n\n');
   }
 

@@ -7046,3 +7046,9 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
   - alias(n_<id>/cluster_<id>)로 예약어 회피 / scale max 1000·nodesep·ranksep 로 크기 / classDef→노드별 hex 색(#back;line) / skinparam linetype ortho 로 선 정리
   - 부수 버그 수정(기존 Graphviz도 있던): classDef/class 의 `;` 미처리로 색 누락 / 단독 노드선언이 ⚠수동 / cluster id 가 phantom 노드 / A-->B-->C 체인·{decision}·<--> 미지원 → 모두 처리
 - node --check + 함수 단위 변환 테스트로 검증(중첩 subgraph·색·체인·cluster 엣지 정상)
+
+## Stage 71 (2026-06-10) — Confluence export: 용어패널 + 네비링크 제거 (사용자 3요청)
+1. 미리보기: 렌더링 미리보기는 Confluence 엔진 필요라 미구현(마크업 복사 방식 유지). 다이어그램 PlantUML 서버 미리보기는 외부전송이라 보류(옵션 제안만)
+2. tooltip: 변환 때 버려지던 glossary(data-tip)을 모아 문서 끝 {info:title=용어 풀이} 패널로(term — 정의). hover 없는 Confluence 대체
+3. 네비 링크: "다음/이전/처음으로 — …" 문단을 변환 시 제거
+- canton-network + wallet-service-components 동기, node --check + 정규식 테스트
