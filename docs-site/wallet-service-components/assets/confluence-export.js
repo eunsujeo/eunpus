@@ -1,5 +1,5 @@
 /* Confluence 변환 버튼 — 이 페이지의 raw HTML 을 Confluence 위키 마크업으로 변환해 복사창에 띄운다.
- * 다이어그램: sequenceDiagram → {plantuml}, flowchart → {graphviz}. 변환 애매하면 ⚠ 수동 표시.
+ * 다이어그램: sequenceDiagram → {plantuml}, flowchart → {plantuml}. 변환 애매하면 ⚠ 수동 표시.
  * (작성자 전용 유틸. 공개 배포 시 빼고 싶으면 이 스크립트 태그만 제거.) */
 (function () {
   'use strict';
@@ -46,69 +46,82 @@
     return out.join('\n');
   }
 
-  // ---------- mermaid flowchart → Graphviz DOT ----------
-  function flowToGraphviz(src) {
+  // ---------- mermaid flowchart → PlantUML ----------
+  // Graphviz 의 4 이슈(예약어 NODE·크기·색·선) 회피: alias(n_/cluster_) · scale/skinparam · 노드별 hex 색 · linetype ortho
+  function flowToPlantuml(src) {
     var lines = src.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
     var rankdir = 'TB', nodes = {}, order = [], edges = [], classes = {}, clusters = [], stack = [], manual = [], m;
+    function clean(s) { return s.replace(/<br\s*\/?>/g, '\\n').replace(/"/g, ''); }
     function reg(id, label) {
+      if (clusters.some(function (c) { return c.id === id; })) return;   // 클러스터 id 는 노드로 만들지 않음
       if (!nodes[id]) { nodes[id] = { label: label || id, cluster: stack[stack.length - 1] || null }; order.push(id); }
       else if (label) nodes[id].label = label;
     }
-    function stripDefs(line) {                                   // 인라인 노드 정의 추출 → id 만 남김
-      return line.replace(/(\b[A-Za-z_]\w*)\[("?)([^\]]*?)\2\]/g, function (_, id, q, lbl) {
-        reg(id, lbl.replace(/<br\s*\/?>/g, '\\n')); return id;
-      });
+    function stripDefs(line) {                                   // 인라인 노드 정의 [ ] { } ( ) ([ ]) → id
+      return line
+        .replace(/(\b[A-Za-z_]\w*)\(\[("?)([^\]]*?)\2\]\)/g, function (_, id, q, l) { reg(id, clean(l)); return id; })
+        .replace(/(\b[A-Za-z_]\w*)\[("?)([^\]]*?)\2\]/g, function (_, id, q, l) { reg(id, clean(l)); return id; })
+        .replace(/(\b[A-Za-z_]\w*)\{("?)([^}]*?)\2\}/g, function (_, id, q, l) { reg(id, clean(l)); return id; })
+        .replace(/(\b[A-Za-z_]\w*)\(("?)([^)]*?)\2\)/g, function (_, id, q, l) { reg(id, clean(l)); return id; });
     }
     lines.forEach(function (raw) {
       var l = raw;
       if ((m = l.match(/^flowchart\s+(TB|BT|LR|RL|TD)/))) { rankdir = m[1] === 'TD' ? 'TB' : m[1]; return; }
       if (/^direction\s/.test(l)) return;
-      if ((m = l.match(/^subgraph\s+(\w+)\s*\[("?)(.*?)\2\]\s*$/))) { var c = { id: m[1], label: m[3].replace(/<br\s*\/?>/g, '\\n'), first: null }; clusters.push(c); stack.push(c); return; }
-      if (/^subgraph\s+/.test(l)) { var c2 = { id: 'g' + clusters.length, label: l.replace(/^subgraph\s+/, ''), first: null }; clusters.push(c2); stack.push(c2); return; }
+      if ((m = l.match(/^subgraph\s+(\w+)\s*\[("?)(.*?)\2\]\s*$/))) { var c = { id: m[1], label: clean(m[3]), parent: stack[stack.length - 1] || null }; clusters.push(c); stack.push(c); return; }
+      if ((m = l.match(/^subgraph\s+"?([^"\[]+?)"?\s*$/))) { var c2 = { id: 'g' + clusters.length, label: clean(m[1]), parent: stack[stack.length - 1] || null }; clusters.push(c2); stack.push(c2); return; }
       if (/^end$/.test(l)) { stack.pop(); return; }
-      if ((m = l.match(/^classDef\s+(\w+)\s+(.+)$/))) { var p = {}; m[2].split(',').forEach(function (kv) { var x = kv.split(':'); p[x[0].trim()] = (x[1] || '').trim(); }); classes[m[1]] = p; return; }
-      if ((m = l.match(/^class\s+([\w,]+)\s+(\w+)$/))) { var cl = classes[m[2]] || {}; m[1].split(',').forEach(function (id) { id = id.trim(); reg(id); if (cl.fill) nodes[id].fill = cl.fill; if (cl.stroke) nodes[id].stroke = cl.stroke; }); return; }
-      // 엣지 라인
+      if ((m = l.match(/^classDef\s+(\w+)\s+(.+)$/))) { var p = {}; m[2].replace(/;+$/, '').split(',').forEach(function (kv) { var x = kv.split(':'); p[x[0].trim()] = (x[1] || '').trim().replace(/;/g, ''); }); classes[m[1]] = p; return; }
+      if ((m = l.match(/^class\s+([\w,]+)\s+(\w+);?$/))) { var cl = classes[m[2]] || {}; m[1].split(',').forEach(function (id) { id = id.trim(); if (clusters.some(function (c) { return c.id === id; })) return; reg(id); if (nodes[id]) { if (cl.fill) nodes[id].fill = cl.fill; if (cl.stroke) nodes[id].stroke = cl.stroke; } }); return; }
       l = stripDefs(l);
       var em;
-      if ((em = l.match(/^(\w+)\s*-->\s*\|"?(.+?)"?\|\s*(\w+)$/))) { reg(em[1]); reg(em[3]); edges.push({ a: em[1], b: em[3], label: em[2], dashed: false }); return; }
-      if ((em = l.match(/^(\w+)\s*-\.(.+?)\.->\s*(\w+)$/)))      { reg(em[1]); reg(em[3]); edges.push({ a: em[1], b: em[3], label: em[2], dashed: true }); return; }
-      if ((em = l.match(/^(\w+)\s*-\.->\s*(\w+)$/)))             { reg(em[1]); reg(em[2]); edges.push({ a: em[1], b: em[2], label: '', dashed: true }); return; }
-      if ((em = l.match(/^(\w+)\s*-->\s*(\w+)$/)))               { reg(em[1]); reg(em[2]); edges.push({ a: em[1], b: em[2], label: '', dashed: false }); return; }
+      if ((em = l.match(/^(\w+)\s*<-->\s*\|"?(.+?)"?\|\s*(\w+)$/))) { reg(em[1]); reg(em[3]); edges.push({ a: em[1], b: em[3], label: em[2], arr: '<-->' }); return; }
+      if ((em = l.match(/^(\w+)\s*<-->\s*(\w+)$/)))                { reg(em[1]); reg(em[2]); edges.push({ a: em[1], b: em[2], label: '', arr: '<-->' }); return; }
+      if ((em = l.match(/^(\w+)\s*-\.(.+?)\.->\s*(\w+)$/)))        { reg(em[1]); reg(em[3]); edges.push({ a: em[1], b: em[3], label: em[2], arr: '..>' }); return; }
+      if ((em = l.match(/^(\w+)\s*-\.->\s*(\w+)$/)))               { reg(em[1]); reg(em[2]); edges.push({ a: em[1], b: em[2], label: '', arr: '..>' }); return; }
+      if ((em = l.match(/^(\w+)\s*-->\s*\|"?(.+?)"?\|\s*(\w+)$/)))  { reg(em[1]); reg(em[3]); edges.push({ a: em[1], b: em[3], label: em[2], arr: '-->' }); return; }
+      if (/^(\w+)(\s*-->\s*\w+)+$/.test(l)) {                       // 체인 A --> B --> C
+        var seq = l.split('-->').map(function (s) { return s.trim(); });
+        for (var i = 0; i < seq.length - 1; i++) { reg(seq[i]); reg(seq[i + 1]); edges.push({ a: seq[i], b: seq[i + 1], label: '', arr: '-->' }); }
+        return;
+      }
+      if (/^\w+$/.test(l)) return;                  // 단독 노드 선언(이미 등록됨) — 무시
       if (l) manual.push(l);
     });
-    // 클러스터 첫 노드 (cluster 로 향하는 엣지용)
-    order.forEach(function (id) { var c = nodes[id].cluster; if (c && !c.first) c.first = id; });
     var clusterId = {}; clusters.forEach(function (c) { clusterId[c.id] = c; });
-    function endpoint(id) {                                       // 엣지 끝이 subgraph id 면 첫 노드 + lhead/ltail
-      if (clusterId[id]) return { node: clusterId[id].first, cluster: 'cluster_' + id };
-      return { node: id, cluster: null };
+    function ref(id) { return clusterId[id] ? 'cluster_' + id : 'n_' + id; }   // alias — 예약어(NODE 등) 회피
+    function colorOf(n) {
+      var fill = (n.fill || '').replace('#', ''), stroke = (n.stroke || '').replace('#', '');
+      if (fill && stroke) return ' #back:' + fill + ';line:' + stroke;
+      if (fill) return ' #' + fill;
+      return '';
     }
-    var dot = ['digraph G {', '  rankdir=' + rankdir + '; compound=true;', '  node [shape=box, style="rounded,filled", fontname="sans-serif"];'];
-    clusters.forEach(function (c) {
-      dot.push('  subgraph cluster_' + c.id + ' {');
-      dot.push('    label="' + c.label + '"; style="rounded";');
-      order.forEach(function (id) { if (nodes[id].cluster === c) dot.push('    ' + nodeLine(id)); });
-      dot.push('  }');
-    });
-    order.forEach(function (id) { if (!nodes[id].cluster) dot.push('  ' + nodeLine(id)); });
+    function nodeDecl(id, ind) { var n = nodes[id]; return ind + 'rectangle "' + n.label + '" as n_' + id + colorOf(n); }
+    var out = ['@startuml'];
+    out.push('skinparam linetype ortho');           // 선 직각 정리 (이슈 4)
+    out.push('skinparam nodesep 12');                // 간격 축소 (이슈 2)
+    out.push('skinparam ranksep 28');
+    out.push('skinparam shadowing false');
+    out.push('skinparam defaultFontName sans-serif');
+    out.push('skinparam defaultFontSize 12');
+    out.push('scale max 1000 width');                // 폭 상한 (이슈 2)
+    if (rankdir === 'LR' || rankdir === 'RL') out.push('left to right direction');
+    function emitCluster(c, ind) {
+      out.push(ind + 'rectangle "' + c.label + '" as cluster_' + c.id + ' {');
+      clusters.forEach(function (ch) { if (ch.parent === c) emitCluster(ch, ind + '  '); });
+      order.forEach(function (id) { if (nodes[id].cluster === c) out.push(nodeDecl(id, ind + '  ')); });
+      out.push(ind + '}');
+    }
+    clusters.forEach(function (c) { if (!c.parent) emitCluster(c, ''); });
+    order.forEach(function (id) { if (!nodes[id].cluster) out.push(nodeDecl(id, '')); });
     edges.forEach(function (e) {
-      var s = endpoint(e.a), t = endpoint(e.b), attrs = [];
-      if (e.label) attrs.push('label="' + e.label.trim() + '"');
-      if (e.dashed) attrs.push('style=dashed');
-      if (s.cluster) attrs.push('ltail=' + s.cluster);
-      if (t.cluster) attrs.push('lhead=' + t.cluster);
-      dot.push('  ' + s.node + ' -> ' + t.node + (attrs.length ? ' [' + attrs.join(', ') + ']' : '') + ';');
+      var line = ref(e.a) + ' ' + e.arr + ' ' + ref(e.b);
+      if (e.label) line += ' : ' + e.label.trim();
+      out.push(line);
     });
-    manual.forEach(function (l) { dot.push('  // ⚠ 수동: ' + l); });
-    dot.push('}');
-    function nodeLine(id) {
-      var n = nodes[id], a = ['label="' + n.label + '"'];
-      if (n.fill) a.push('fillcolor="' + n.fill + '"');
-      if (n.stroke) a.push('color="' + n.stroke + '"');
-      return id + ' [' + a.join(', ') + '];';
-    }
-    return dot.join('\n');
+    manual.forEach(function (l) { out.push("' ⚠ 수동: " + l); });
+    out.push('@enduml');
+    return out.join('\n');
   }
 
   // ---------- 블록 → 위키 마크업 ----------
@@ -152,7 +165,7 @@
       var pre = el.querySelector('pre.mermaid'); if (!pre) return '';
       var src = pre.textContent.trim();
       if (/^sequenceDiagram/.test(src)) return '{plantuml}\n' + seqToPlantuml(src) + '\n{plantuml}';
-      if (/^flowchart/.test(src)) return '{graphviz}\n' + flowToGraphviz(src) + '\n{graphviz}';
+      if (/^flowchart/.test(src)) return '{plantuml}\n' + flowToPlantuml(src) + '\n{plantuml}';
       return '{code}\n' + src + '\n{code}';
     }
     return '';

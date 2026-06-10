@@ -7039,3 +7039,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 사용자 리뷰: Canton 모르는 상태에서 party/participant/Synchronizer 가 정의 없이 나와 어려움 + "UTXO 형 holdings"·"contract" 가 뭔지 불명
 - 0.1 에 **"먼저 — 용어 6개 (1분)" 콜아웃** 추가: contract(상태 한 조각, created/archived) · ACS(보유 contract 묶음=현재 상태) · holding(UTXO형, 잔액=조각 합) · party(신원) · participant=validator(검증 노드) · Synchronizer(공용 합의). 각 항목에 1·2장 포인터. "구조 요약" 문장을 프라이머 뒤로 배치 + holding tooltip 보강
 - presentation only, check PASS
+
+## Stage 70 (2026-06-10) — Confluence export: flowchart 변환 Graphviz → PlantUML
+- 사용자 Confluence 이슈 4건(Graphviz): NODE 예약어 충돌·크기 과대·색 없음·선 지저분
+- confluence-export.js 의 flowToGraphviz → flowToPlantuml 교체(canton-network + wallet-service-components 동기):
+  - alias(n_<id>/cluster_<id>)로 예약어 회피 / scale max 1000·nodesep·ranksep 로 크기 / classDef→노드별 hex 색(#back;line) / skinparam linetype ortho 로 선 정리
+  - 부수 버그 수정(기존 Graphviz도 있던): classDef/class 의 `;` 미처리로 색 누락 / 단독 노드선언이 ⚠수동 / cluster id 가 phantom 노드 / A-->B-->C 체인·{decision}·<--> 미지원 → 모두 처리
+- node --check + 함수 단위 변환 테스트로 검증(중첩 subgraph·색·체인·cluster 엣지 정상)
