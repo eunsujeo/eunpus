@@ -74,7 +74,7 @@
 </ul>
 </div>
 
-<p>이 용어로 구조를 한 줄로 요약하면: <strong>party(거래 주체)</strong>가 <strong>participant(=validator 노드)</strong>에 host 되고, 거래는 <strong>Synchronizer</strong>(Sequencer + Mediator)를 통해 순서화·확정된다. 자산 상태는 계정 잔액이 아니라 <strong>party 가 보유한 활성 contract 집합(ACS)</strong>으로 표현되고, 토큰 잔액은 그 위에서 <strong>UTXO 형 holdings(잔액 = 조각들의 합)</strong>로 다뤄진다.</p>
+<p>이 용어로 구조를 한 줄로 요약하면: <strong>party(거래 주체)</strong>가 <strong>participant(=validator 노드)</strong>에 host<span class="g" data-tip="host = 그 party 의 상태(ACS·키 권한)를 어느 participant 노드가 맡아 저장하고, 그 party 의 거래를 대신 검증·제출해 주는 것. 이메일 주소가 메일 서버에 올라가야 작동하는 것과 비슷. 한 party 를 여러 노드가 맡으면 multi-host(백업)">?</span> 되고, 거래는 <strong>Synchronizer</strong>(Sequencer + Mediator)를 통해 순서화·확정된다. 자산 상태는 계정 잔액이 아니라 <strong>party 가 보유한 활성 contract 집합(ACS)</strong>으로 표현되고, 토큰 잔액은 그 위에서 <strong>UTXO 형 holdings(잔액 = 조각들의 합)</strong>로 다뤄진다.</p>
 
 <h3>0.2 EVM 과 한 눈 대비</h3>
 
