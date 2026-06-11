@@ -153,43 +153,57 @@ function pickAdapter(chainId): ChainAdapter {
   return a
 }</code></pre>
 
-<p>③ 같은 인터페이스를 체인마다 <strong>다르게</strong> 채운다. 차이가 큰 <code>buildTransaction</code>·<code>confirmations</code>·<code>resend</code> 위주로 추렸다 — <code>broadcast</code> 는 EVM·UTXO·Solana 모두 "서명본을 노드에 제출" 한 줄로 같고, <strong>Canton 만 OFFER 제출이라 의미가 다르다</strong>:</p>
+<p>③ 같은 인터페이스를 체인마다 <strong>다르게</strong> 채운다 — 네 어댑터 모두 <strong>인터페이스의 일곱 동사를 전부 구현</strong>한다(부분 구현이 아니다). <code>broadcast</code> 는 EVM·UTXO·Solana 모두 "서명본을 노드에 제출" 한 줄로 같고 <strong>Canton 만 OFFER 제출이라 의미가 다르며</strong>, <code>deriveAddress</code> 는 곡선·파생 표준이 갈린다(<a href="scenario-provisioning.html">9.2</a>):</p>
 
 <pre><code>class EvmAdapter implements ChainAdapter {
-  buildTransaction(t) { const nonce = this.nonceMgr.reserve(t.from)
-                        return { ...t, nonce, fee: eip1559(t) } }   // 계정 nonce
-  broadcast(signed)   { return node.sendRawTransaction(signed) }    // 서명본을 노드에 그대로 제출
-  confirmations(ref)  { return blocksSince(ref) }                   // N 블록
-  resend(ref, bump)   { const tx = bumpFee(sameNonce(ref), bump)    // 같은 nonce + fee↑ (RBF)
-                        return broadcast(requestSign(tx)) }         // fee 변경 = 서명 무효 → 재서명 후 재전파
+  deriveAddress(acct)  { return eip55(last20(keccak(pubkeyOf(acct)))) }   // secp256k1 · BIP-44 m/44'/60' — xpub 공개 파생 가능 (9.2)
+  getBalance(addr, a)  { return isNative(a) ? node.getBalance(addr)      // 네이티브 / ERC-20 분기 —
+                                            : erc20(a).balanceOf(addr) } //   토큰은 컨트랙트 조회, 주소는 동일 (9.2)
+  estimateFee(t)       { return eip1559(node.feeHistory()) }             // base+priority — 점유 없는 추정
+  buildTransaction(t)  { const nonce = this.nonceMgr.reserve(t.from)
+                         return { ...t, nonce, fee: eip1559(t) } }   // 계정 nonce
+  broadcast(signed)    { return node.sendRawTransaction(signed) }    // 서명본을 노드에 그대로 제출
+  confirmations(ref)   { return blocksSince(ref) }                   // N 블록
+  resend(ref, bump)    { const tx = bumpFee(sameNonce(ref), bump)    // 같은 nonce + fee↑ (RBF)
+                         return broadcast(requestSign(tx)) }         // fee 변경 = 서명 무효 → 재서명 후 재전파
 }
 
 class UtxoAdapter implements ChainAdapter {
-  buildTransaction(t) { const ins = coinSelect(t.from, t.amount)    // UTXO 선택
-                        return { ins, outs: [t.to, change], feeRate } }
-  broadcast(signed)   { return node.sendRawTransaction(signed) }    // EVM 과 동일 — 서명본 제출
-  confirmations(ref)  { return blocksSince(ref) }
-  resend(ref, bump)   { return rbfOrCpfp(ref, bump) }               // RBF / CPFP
+  deriveAddress(acct)  { return encode(hash160(pubkeyOf(acct)), scriptType) }  // BIP-44/49/84/86 — 스크립트 유형별 · base58/bech32
+  getBalance(addr)     { return sum(utxoSetOf(addr)) }               // 잔액 = 미사용 출력(UTXO)의 합
+  estimateFee(t)       { return node.estimateSmartFee() * vsizeOf(t) }  // sat/vByte × 예상 크기
+  buildTransaction(t)  { const ins = coinSelect(t.from, t.amount)    // UTXO 선택
+                         return { ins, outs: [t.to, change], feeRate } }
+  broadcast(signed)    { return node.sendRawTransaction(signed) }    // EVM 과 동일 — 서명본 제출
+  confirmations(ref)   { return blocksSince(ref) }
+  resend(ref, bump)    { return rbfOrCpfp(ref, bump) }               // RBF / CPFP
 }
 
 class SolanaAdapter implements ChainAdapter {
-  buildTransaction(t) { return { ...t, recentBlockhash: node.blockhash() } }  // nonce 없음
-  broadcast(signed)   { return node.sendTransaction(signed) }       // 동일 — 서명본 제출
-  confirmations(ref)  { return commitmentOf(ref) }   // processed/confirmed/finalized
-  resend(ref)         { return reassemble(ref) }     // blockhash 만료 → 재조립
+  deriveAddress(acct)  { return base58(hsm.derivePubkey(acct)) }     // ed25519 hardened-only — 파생은 키 쪽(HSM)에서 (9.2) · 주소 = pubkey
+  getBalance(addr, a)  { return isNative(a) ? node.getBalance(addr)
+                                            : splTokenAccountOf(addr, a).amount }  // SPL 토큰은 별도 token account
+  estimateFee(t)       { return baseFee + priorityFee(node.recentPrioritizationFees()) }
+  buildTransaction(t)  { return { ...t, recentBlockhash: node.blockhash() } }  // nonce 없음
+  broadcast(signed)    { return node.sendTransaction(signed) }       // 동일 — 서명본 제출
+  confirmations(ref)   { return commitmentOf(ref) }   // processed/confirmed/finalized
+  resend(ref)          { return reassemble(ref) }     // blockhash 만료 → 재조립
 }
 
 class CantonAdapter implements ChainAdapter {
   // 2-step: 제출=OFFER, 완료는 상대 ACCEPT
-  buildTransaction(t) { return { transferInstruction: offer(t) } }
-  broadcast(tx)       { return submitOffer(tx) }     // OFFER 제출 → traceableId
-  confirmations(ref)  { return status2step(ref) }    // OFFER→ACCEPT/REJECT/WITHDRAW
-  resend(ref)         { return withdrawAndReoffer(ref) }  // nonce-replace 아님
+  deriveAddress(acct)  { return allocateParty(hintOf(acct)) }        // 파생 없음 — party allocation · PartyId = hint::fingerprint (9.2)
+  getBalance(party, a) { return sum(acs.holdingsOf(party, a)) }      // ACS holdings 합 — 가용/locked 구분 (11.1)
+  estimateFee(t)       { return trafficCostOf(byteSizeOf(t)) }       // traffic(byte) 소비 추정 (2.2 표)
+  buildTransaction(t)  { return { transferInstruction: offer(t) } }
+  broadcast(tx)        { return submitOffer(tx) }     // OFFER 제출 → traceableId
+  confirmations(ref)   { return status2step(ref) }    // OFFER→ACCEPT/REJECT/WITHDRAW
+  resend(ref)          { return withdrawAndReoffer(ref) }  // nonce-replace 아님
 }</code></pre>
 
 <div class="callout">
 <div class="callout-title">코드가 말하는 것</div>
-<p>코어는 <code>pickAdapter(chainId).buildTransaction(...)</code> 처럼 <strong>공통 동사만</strong> 부른다. 체인 분기는 <code>pickAdapter</code> 와 각 어댑터 <code>{ }</code> 안에만 있다. <strong>Canton 은 <code>broadcast</code> 가 OFFER 제출</strong>이라 <code>confirmations</code> 에 "상대 수락 대기" 상태가 추가되는 게 눈에 띈다 — 메커니즘은 어댑터가 숨겨도 그 상태값은 표면화된다(2.3 캡션·<a href="scenario-withdrawal.html">11. 출금</a>). 참고로 이 <code>ChainAdapter</code> 는 <a href="abstraction.html">13장</a>의 포트보다 한 겹 아래다 — <code>TransactionPort.submitTransaction</code> 한 번이 자체 구축에선 이 어댑터의 <code>buildTransaction</code>→서명→<code>broadcast</code> 로 펼쳐진다(<a href="example-selfbuild.html">15장</a>).</p>
+<p>코어는 <code>pickAdapter(chainId).buildTransaction(...)</code> 처럼 <strong>공통 동사만</strong> 부른다. 체인 분기는 <code>pickAdapter</code> 와 각 어댑터 <code>{ }</code> 안에만 있다. <strong>Canton 은 <code>broadcast</code> 가 OFFER 제출</strong>이라 <code>confirmations</code> 에 "상대 수락 대기" 상태가 추가되는 게 눈에 띈다 — 메커니즘은 어댑터가 숨겨도 그 상태값은 표면화된다(2.3 캡션·<a href="scenario-withdrawal.html">11. 출금</a>). 읽기 쪽 세 동사도 2.2 표의 차이를 그대로 반영한다 — <code>deriveAddress</code> 는 곡선·파생 표준(secp256k1 xpub 공개 파생 / ed25519 HSM 내부 파생 / Canton party allocation, <a href="scenario-provisioning.html">9.2</a>), <code>getBalance</code> 는 잔액 모델(계정 잔액 / UTXO 합 / ACS holdings), <code>estimateFee</code> 는 수수료 모델(EIP-1559 / sat/vByte / priority fee / traffic). 참고로 이 <code>ChainAdapter</code> 는 <a href="abstraction.html">13장</a>의 포트보다 한 겹 아래다 — <code>TransactionPort.submitTransaction</code> 한 번이 자체 구축에선 이 어댑터의 <code>buildTransaction</code>→서명→<code>broadcast</code> 로 펼쳐진다(<a href="example-selfbuild.html">15장</a>).</p>
 </div>
 
 <h3>2.5 다른 컴포넌트가 어떻게 쓰는가</h3>
