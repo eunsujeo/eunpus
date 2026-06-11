@@ -268,7 +268,7 @@ flowchart TB
 <ul>
 <li><strong>Musubi 에 party 발급(allocate) API 는 없다</strong> — Musubi-FX API 표면은 orders / quotes / settlements CRUD + SSE 이벤트 스트림 + JWT 인증이 전부다. PartyId 는 발급 대상이 아니라 <strong>이미 발급된 식별자로 API 에 흐른다</strong>(<code>sender_custodian_party_id</code>·<code>market_maker_party_id</code>·<code>receiver_party_id</code> 필드).</li>
 <li><strong>배포 형태</strong> — custodian 이 자기 인프라에 <strong>① Canton participant(자기 PartyId 보유) + ② Musubi backend</strong> 를 배포하고, Canton 프로토콜로 settlement 망에 연결한다. <strong>PartyId 의 키는 custodian 의 기존 HSM/KMS 가 보호</strong>한다 — party 발급은 자기 participant 에서 <a href="custody.html">6장</a>의 절차(<code>generate-topology</code> → 서명 → <code>allocate</code>)로 직접 한다.</li>
-<li><strong>정산 통지</strong> — SSE 이벤트(<code>order_updated</code>, status=SETTLED, 필드 <code>intentId·transactionHash·settledAt·fxRate</code>)로 받고, 멱등 키는 <strong>intentId + transactionHash</strong> — 자체 DB 영속화·tx hash 대사 패턴(<a href="operations.html">5. 운영</a>·<a href="indexer.html">4. 인덱서</a>)이 여기서도 그대로다.</li>
+<li><strong>정산 통지</strong> — SSE 이벤트(<code>order_updated</code>, status=SETTLED, 필드 <code>intentId·transactionHash·settledAt·fxRate</code>)로 받고, 멱등 키는 <strong>intentId + transactionHash</strong> — 자체 DB 영속화·tx hash 대사 패턴(<a href="custody.html">6. 수탁 통합</a>·<a href="indexer.html">4. 인덱서</a>)이 여기서도 그대로다.</li>
 <li><strong>미확인 — onboarding 절차</strong>: 우리가 발급한 PartyId 를 Musubi 운영자에 등록하는 절차(승인·화이트리스트 여부)는 공개 자료에서 확인되지 않았다. 참여 검토 시 직접 확인할 항목이다.</li>
 </ul>
 </div>
