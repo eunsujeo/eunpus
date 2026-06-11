@@ -146,9 +146,9 @@ interface ChainAdapter {
 }
 
 // ② chainId 로 구현 선택 (Figure 2-1 의 SEL)
-const ADAPTERS: Record&lt;ChainId, ChainAdapter&gt; = {
-  ethereum: new EvmAdapter(node, nonceMgr),
-  bitcoin:  new UtxoAdapter(node),
+const ADAPTERS: Record&lt;ChainId, ChainAdapter&gt; = {   // 체인당 singleton — 대부분 무상태 번역기지만
+  ethereum: new EvmAdapter(node, nonceMgr),         //   EvmAdapter 만 예외로 상태(nonce lock) 보유 (4.2)
+  bitcoin:  new UtxoAdapter(node),                  //   → 인스턴스 공유 + 내부 직렬화가 전제다
   solana:   new SolanaAdapter(node),
   canton:   new CantonAdapter(participant),
 }
@@ -158,7 +158,7 @@ function pickAdapter(chainId): ChainAdapter {
   return a
 }</code></pre>
 
-<p>③ 같은 인터페이스를 체인마다 <strong>다르게</strong> 채운다 — 네 어댑터 모두 <strong>인터페이스의 일곱 동사를 전부 구현</strong>한다(부분 구현이 아니다). <code>broadcast</code> 는 EVM·UTXO·Solana 모두 "서명본을 노드에 제출" 한 줄로 같고 <strong>Canton 만 OFFER 제출이라 의미가 다르며</strong>, <code>addressOf</code> 는 같은 "조회" 라도 곡선·메커니즘이 갈린다(<a href="scenario-provisioning.html">9.2</a>):</p>
+<p>③ 같은 인터페이스를 체인마다 <strong>다르게</strong> 채운다 — 네 어댑터 모두 <strong>인터페이스의 일곱 동사를 전부 구현</strong>한다(부분 구현이 아니다 — 단 이는 공통 7동사 기준이고, 어댑터 모듈의 전체 표면은 코드 아래 범위 정리 참조). <code>broadcast</code> 는 EVM·UTXO·Solana 모두 "서명본을 노드에 제출" 한 줄로 같고 <strong>Canton 만 OFFER 제출이라 의미가 다르며</strong>, <code>addressOf</code> 는 같은 "조회" 라도 곡선·메커니즘이 갈린다(<a href="scenario-provisioning.html">9.2</a>):</p>
 
 <pre><code>// account = 9장 createAccount 가 만들어 계정 디렉터리에 저장된 우리 계정 핸들 (자체 구축에선 HD account index)
 class EvmAdapter implements ChainAdapter {
@@ -217,6 +217,13 @@ class CantonAdapter implements ChainAdapter {
 <div class="callout-title">코드가 말하는 것</div>
 <p>코어는 <code>pickAdapter(chainId).buildTransaction(...)</code> 처럼 <strong>공통 동사만</strong> 부른다. 체인 분기는 <code>pickAdapter</code> 와 각 어댑터 <code>{ }</code> 안에만 있다. <strong>Canton 은 <code>broadcast</code> 가 OFFER 제출</strong>이라 <code>confirmations</code> 에 "상대 수락 대기" 상태가 추가되는 게 눈에 띈다 — 메커니즘은 어댑터가 숨겨도 그 상태값은 표면화된다(2.3 캡션·<a href="scenario-withdrawal.html">11. 출금</a>). 읽기 쪽 세 동사도 2.2 표의 차이를 그대로 반영한다 — <code>addressOf</code> 는 전 체인 공통의 <strong>멱등 조회</strong>이되 그 메커니즘이 곡선별로 갈리고(secp256k1<span class="g" data-tip="비트코인·이더리움 계열이 쓰는 타원곡선 서명 방식. 확장 공개키(xpub)만으로, 개인키 없이 자식 주소를 계산하는 공개 파생이 가능하다">?</span> xpub 재계산 / ed25519<span class="g" data-tip="솔라나 등이 쓰는 타원곡선 서명 방식. 공개키만으로는 자식 키를 파생할 수 없어, 파생에 항상 개인키가 필요하다">?</span> HSM 재계산 / Canton 은 계정 생성 때 만들어진 PartyId 반환 — 주소 <strong>발급</strong>은 <code>issueDepositAddress?</code> capability 로 분리돼 있어 Canton 처럼 없는 체인은 미구현, <a href="abstraction.html">13.3</a>·<a href="scenario-provisioning.html">9.2</a>), <code>getBalance</code> 는 잔액 모델(계정 잔액 / UTXO 합 / ACS holdings), <code>estimateFee</code> 는 수수료 모델(EIP-1559 / sat/vByte / priority fee / traffic). 참고로 이 <code>ChainAdapter</code> 는 <a href="abstraction.html">13장</a>의 포트보다 한 겹 아래다 — <code>TransactionPort.submitTransaction</code> 한 번이 자체 구축에선 이 어댑터의 <code>buildTransaction</code>→서명→<code>broadcast</code> 로 펼쳐진다(<a href="example-selfbuild.html">15장</a>).</p>
 </div>
+
+<div class="callout callout-warn">
+<div class="callout-title">어댑터는 실패도 번역한다 — 오류 정규화</div>
+<p>어댑터가 결과만 번역하고 오류를 체인 원문 그대로 올리면, 공통 파이프라인(<a href="component-tx-nonce.html">4</a>)이 결국 체인별 오류 문자열을 분기하게 된다 — 체인 분기가 어댑터 밖으로 새는 자리다. 그래서 <code>broadcast</code>·<code>resend</code> 의 실패는 어댑터가 <strong>공통 분류로 번역해서</strong> 올린다 — 예: <strong>이미 반영됨</strong>(EVM "nonce too low" 재전파 → 성공 취급 가능) / <strong>수수료 부족</strong>(boost 대상, 4.4) / <strong>재조립 필요</strong>(Solana blockhash 만료) / <strong>영구 실패</strong>(Canton REJECT). 4.3 의 intent 상태머신이 "같은 서명본 재전파" 를 안전하게 반복할 수 있는 것도 이 분류 덕이다 — 재전파해도 되는 오류와 새로 조립해야 하는 오류를, 파이프라인이 체인 지식 없이 구분할 수 있어야 하므로.</p>
+</div>
+
+<p>범위 정리 — 위 인터페이스의 공통 7동사가 어댑터 <strong>모듈</strong>의 전부는 아니다. 같은 모듈에 체인별 조각이 세 묶음 더 산다: <strong>서명 규칙 3동사</strong>(<code>toSigningPayload</code>·<code>verify</code>·<code>attach</code> — <a href="component-signing.html">5.2</a>), <strong>수집 source</strong>(<code>ChainSource</code> — <a href="component-indexer.html">3.4</a>), <strong>선택 capability</strong>(주소 파생·Canton 온장 등록 — 위 주석·15.2). 공통 7동사는 네 체인 전부 구현이지만 선택 조각들은 체인 따라 있고 없으며, 그 유무는 위 컴포넌트가 문자열 분기 대신 <strong>어댑터가 노출하는 능력(capability)으로 판정</strong>한다(2.5 의 "능력 노출").</p>
 
 <h3>2.5 다른 컴포넌트가 어떻게 쓰는가</h3>
 

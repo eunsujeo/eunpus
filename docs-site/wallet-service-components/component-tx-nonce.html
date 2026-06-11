@@ -181,7 +181,8 @@ class TxPipeline {
 async function watchStuck(pipeline, store) {
   for (const t of await store.oldestPending()) {
     if (!isStuck(t)) continue
-    if (!canBoost(t.chainId)) continue                              // boost 불가 체인(4.4)은 skip — 어댑터가 자체 처리
+    if (!canBoost(t.chainId)) continue                              // boost 불가 체인(4.4)은 skip — 능력 여부는 어댑터가 노출한다
+                                                                    //   (2.5 "능력 노출" — 파이프라인이 체인 이름·오류 문자열로 분기하지 않게)
     if (t.feeStep &lt; MAX_STEP) await pipeline.resend(t.txRef)        // 단계적 fee 인상
     else alert(t)                                                   // 상한 도달 → 사람에게
   }
