@@ -174,10 +174,10 @@ class SelfIndexer {
 
   // 가공 — 정규화된 ev 만 본다 (체인 무관)
   async ingest(ev) {
-    if (!this.isOurs(ev.tx)) return
+    if (!this.isOurs(ev.tx)) return           // "우리 주소" 집합 — 발급(9.4) 때 watch-list 등록으로 생긴다
     await this.proj.upsert(ev.tx, 'pending')
     this.bus.emit(toChainEvent(ev.tx))        // onChainEvent (감지 → 코어로 push)
-  }
+  }                                           //   upsert↔emit 사이 사망 = 알림 유실 가능 — 아래 bullet
 
   // ── 읽기/구독 = 13장 포트의 뒷면 (체인 무관) ──
   balanceOf(addr, asset) { return this.proj.balance(addr, asset) }      // AccountPort.getBalance
@@ -193,6 +193,8 @@ class SelfIndexer {
 <li><strong>reorg 는 감지(체인별)와 처리(공통)가 갈린다</strong> — parentHash·slot 으로 분기를 알아채는 건 source, 알아챈 뒤 <code>proj.rollbackTo</code> 로 projection 만 되감고 보존된 raw 로 재적용하는 건 공통(영구 삭제 금지, 3.3).</li>
 <li><strong>확정 기준도 인덱서가 정하지 않는다</strong> — N블록/commitment/2-step 판정은 source(어댑터)가 <code>confirm</code> 이벤트로 알려주고, 인덱서는 mark 만 한다.</li>
 <li><strong>수집 루프는 상시 worker</strong> — 아무도 안 불러도 계속 돈다(0.2 의 "감지"). 끊기면 입금·확정을 놓친다.</li>
+<li><strong>"우리 주소" 는 등록의 산물</strong> — <code>isOurs</code> 의 주소 집합은 발급(<a href="scenario-provisioning.html">9.4</a>) 때 watch-list 등록으로 채워지고, 등록 지연·이전 입금은 backfill 재스캔으로 메운다. 이 등록 경로가 빠지면 인덱서는 멀쩡히 돌면서 입금만 놓친다.</li>
+<li><strong>발행 유실 주의</strong> — <code>proj.upsert</code> 와 <code>bus.emit</code> 사이에 죽으면 projection 엔 있는데 알림만 안 나간 건이 생긴다. 엄밀히 가려면 projection 쓰기와 이벤트 기록을 한 트랜잭션에 묶는 <strong>outbox</strong> 패턴을 쓰고, 그게 아니면 최소한 <a href="component-ledger.html">7.5</a> 의 주기 sweep 이 "알림 안 나간 확정 건" 을 다시 잡는 안전망임을 운영 계약으로 명시한다.</li>
 <li><strong>읽기 4개가 포트 뒷면</strong> — <code>balanceOf</code>·<code>confirmationOf</code>·<code>query</code>·<code>subscribe</code> 가 <a href="abstraction.html">13장</a>의 getBalance·getStatus·ChainQuery.query·onChainEvent 를 받친다(자체 구축 <a href="example-selfbuild.html">15장</a> Figure 15-4).</li>
 </ul>
 <p>즉 Canton 처럼 블록도 nonce 도 reorg 도 없는 체인이 와도, 다른 건 <code>CantonSource</code> 하나뿐이고 <code>SelfIndexer</code> 본체는 그대로다 — 이게 "수집은 체인별, 가공·제공은 공통" 의 핵심.</p>

@@ -95,7 +95,7 @@ flowchart TB
 
   // 주소 · 잔액 — Fireblocks 가 멀티체인 차이까지 흡수
   deriveAddress(vaultId, asset) { return this.fb.generateNewAddress(vaultId, asset) }
-  getBalance(vaultId, asset) { return this.fb.getVaultAccountAsset(vaultId, asset).total }
+  getBalance(vaultId, asset) { return toBalance(this.fb.getVaultAccountAsset(vaultId, asset)) }  // available·pending·locked 구분 응답 → 13.3 Balance
   validateAddress(asset, addr) { return addressRules.validate(asset, addr) }  // 로컬 형식·체크섬 검증 — 미확정 벤더 엔드포인트에 의존하지 않는다
 
   // 수수료 추정 — 제출 전 (POST 지만 상태 변경 X)

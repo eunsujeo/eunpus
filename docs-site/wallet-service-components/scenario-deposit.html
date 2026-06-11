@@ -137,8 +137,26 @@ flowchart LR
 <li><strong>감지 ≠ 확정</strong> — 두 단계를 분리하고, 잔액 사용 가능 판정은 확정 이후로 미룬다.</li>
 <li><strong>reorg 안전</strong> — projection 에 "어느 블록 기준" 인지(as-of-block)를 남기고, 원시 로그는 지우지 않는다.</li>
 <li><strong>멱등</strong> — 같은 입금 이벤트를 두 번 처리해도 장부가 두 번 늘지 않도록 (tx 해시 + logIndex) 를 키로.</li>
+<li><strong>알림 ≠ 검증</strong> — CONFIRMED webhook 은 인덱서 판정이고, 온체인 정합성 검증(<a href="component-ledger.html">7</a>)은 사후·배경으로 따라온다. 검증에서 뒤집히면 정정 이벤트가 같은 채널로 온다(<a href="component-alerts.html">8</a>) — 비즈 레이어는 반영 철회를 처리할 수 있어야 한다.</li>
 </ul>
 </div>
+
+<h3>10.4 입금 다음 — 집금(sweep)으로 출금 지갑에 모은다</h3>
+
+<p>입금은 고객별 입금 주소에 떨어지지만, 출금은 출금 전용 지갑(vault)에서 나간다(<a href="example-fireblocks.html">14.6</a> 의 vault 라우팅). 그 사이를 잇는 게 <strong>집금(sweep)</strong> — 입금 주소들에 쌓인 자금을 주기적으로 출금·treasury 지갑으로 모으는 내부 온체인 이동이다. 실제 수탁 지갑 운영에서 트랜잭션 볼륨의 상당 몫이 이 sweep 이고, 이게 안 돌면 출금 유동성이 마른다.</p>
+
+<p>매니저 입장에서 sweep 은 <strong>새 컴포넌트가 아니라 또 하나의 송신 트랜잭션</strong>이다 — <a href="component-tx-nonce.html">4. 트랜잭션 파이프라인</a>(조립·서명·전파·확정·멱등)을 출금(11장)과 똑같이 탄다. 보내는 곳과 받는 곳이 둘 다 우리 주소라는 점만 다르다. 단 sweep 고유의 난제가 셋 있다.</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">sweep 의 세 가지 난제</div>
+<ul>
+<li><strong>ERC-20 가스 충전 역설(gas station)</strong> — 토큰만 들어온 입금 주소는 <strong>가스용 네이티브 코인이 없어서</strong> 토큰을 내보낼 수 없다. 그래서 sweep 전에 그 주소로 가스비만큼 네이티브 코인을 먼저 보내는 충전 트랜잭션이 필요하고, 이 충전 자체도 같은 파이프라인을 타는 송신이다 — "토큰 1번 옮기는 데 tx 2개" 가 기본형이다.</li>
+<li><strong>임계값·배치 정책</strong> — 소액까지 매번 쓸면 수수료가 입금액을 잡아먹는다. 자산별 임계값(모일 때까지 대기), 수수료가 낮은 시간대 배치, UTXO 는 통합(consolidation) 겸용 같은 정책이 필요하다 — 이 정책(언제·얼마·어디로)은 자금 운용 평면과 걸친 결정이고, 매니저는 집행만 한다(0.3 과 같은 경계).</li>
+<li><strong>멱등·추적</strong> — sweep 도 중복 실행되면 이중 이동이다. 출금과 동일하게 멱등 키·correlationId 로 추적하고(<a href="component-ledger.html">7</a>), "입금 N 건 → sweep 1 건" 의 다대일 매핑을 대사가 따라갈 수 있게 남긴다.</li>
+</ul>
+</div>
+
+<p>Fireblocks 경로에선 vault 간 이동도 같은 <code>createTransaction</code>(source/destination 이 둘 다 vault)이고, 자체 구축에선 입금 주소 키로 서명하는 일반 전송이다. 어느 쪽이든 <strong>트리거·정책·추적은 우리 몫</strong>으로 남는다 — 12.2 표의 "준비자산 온체인 이동" 이 바로 이 자리다.</p>
 
 <p>다음 — <a href="scenario-withdrawal.html"><strong>11. 출금 시나리오</strong></a> 에서 체인에 쓰는 흐름(트랜잭션 빌더·서명)을 본다.</p>
 

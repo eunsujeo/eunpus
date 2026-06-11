@@ -125,7 +125,16 @@ flowchart LR
 
 <div class="callout callout-warn">
 <div class="callout-title">전달 보장은 양날 — at-least-once 면 중복은 불가피</div>
-<p>실패 재시도를 넣으면 같은 알림이 <strong>두 번 갈 수</strong> 있다(at-least-once). 그래서 (1) 보내는 쪽은 <code>note.id</code> 로 dedup 하고, (2) <strong>받는 쪽도 멱등하게</strong> 처리하도록 알림에 안정적인 ID 를 실어 준다 — 6. 게이트웨이의 멱등 키와 같은 원리다. 또 입금·확정의 <strong>순서</strong>가 뒤바뀌어 도착할 수 있으니, 상태는 절대 기준(블록 높이 · as-of-block)으로 판단하고 도착 순서에 의존하지 않는다.</p>
+<p>실패 재시도를 넣으면 같은 알림이 <strong>두 번 갈 수</strong> 있다(at-least-once). 그래서 (1) 보내는 쪽은 <code>note.id</code> 로 dedup 하고, (2) <strong>받는 쪽도 멱등하게</strong> 처리하도록 알림에 안정적인 ID 를 실어 준다 — 6. 게이트웨이의 멱등 키와 같은 원리다. 또 입금·확정의 <strong>순서</strong>가 뒤바뀌어 도착할 수 있으니, 상태는 절대 기준(블록 높이 · as-of-block)으로 판단하고 도착 순서에 의존하지 않는다. 그리고 at-least-once 는 <strong>발행 자체가 됐을 때</strong> 얘기다 — 인덱서가 projection 을 쓰고 알림을 내보내는 사이에 죽으면 이벤트가 아예 안 생긴다. projection 쓰기와 이벤트 기록을 한 트랜잭션에 묶는 outbox 패턴, 또는 <a href="component-ledger.html">7.5</a> sweep 안전망으로 막는다(<a href="component-indexer.html">3.4</a>).</p>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">알림은 "미검증 신호" 다 — 정합성 검증과의 계약</div>
+<p>여기서 push 하는 감지·확정 알림은 <strong>인덱서 판정</strong> 기준이고, <a href="component-ledger.html">7. 온체인 정합성</a> 검증은 쓰기 경로 밖에서 사후·배경으로 돈다(7.5). 즉 <strong>CONFIRMED 알림이 먼저 가고 검증이 따라온다</strong> — 빠름을 위한 의도적 선택이다. 그래서 두 가지 계약이 필요하다.</p>
+<ul>
+<li><strong>정정 이벤트도 같은 채널로</strong> — reorg 무효화(인덱서)만이 아니라 <strong>정합성 불일치(MISMATCH) 판정도 비즈 레이어로 push</strong> 해, 이미 반영한 잔액·통지를 철회(보상)할 수 있게 한다. 운영자 알림만으로는 비즈 레이어의 반영이 안 되돌아간다.</li>
+<li><strong>소비자는 정정 가능성을 전제로</strong> — 알림은 후속 처리의 트리거이고, 잔액의 최종 확정 반영은 정합성 검증을 통과한 사실(회계 평면 제공분, 7.2) 기준으로 잡는다.</li>
+</ul>
 </div>
 
 <h3>8.4 다른 컴포넌트와의 관계</h3>
@@ -135,7 +144,7 @@ flowchart LR
 <thead><tr><th style="width:30%">관계</th><th>내용</th></tr></thead>
 <tbody>
 <tr><td>← <a href="component-indexer.html">3. 인덱서</a></td><td>수신·확정·송신 완료 이벤트(<code>onChainEvent</code>, TransactionPort 뒷면)를 받는다.</td></tr>
-<tr><td>← <a href="component-ledger.html">7. 온체인 정합성</a></td><td>불일치·예외를 받아 운영자에게 알린다.</td></tr>
+<tr><td>← <a href="component-ledger.html">7. 온체인 정합성</a></td><td>불일치·예외·정정을 받아 운영자 <strong>와 비즈 레이어</strong>에 알린다 — 이미 통지한 사실의 철회(보상) 트리거 포함.</td></tr>
 <tr><td>→ 비즈니스 레이어 · 클라이언트</td><td>webhook·스트림으로 push (잔액 반영·고객 알림·회계 트리거).</td></tr>
 <tr><td>↔ <a href="component-gateway.html">6. API 게이트웨이</a></td><td>같은 "신뢰성 있는 전달" 문제의 짝 — 게이트웨이는 들어오는 중복을, 알림은 나가는 중복을 다룬다.</td></tr>
 </tbody>

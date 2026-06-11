@@ -109,7 +109,8 @@ flowchart TB
     if (prior?.done)     return prior.result           // 이미 처리 → 같은 결과 반환
     if (prior?.inflight) return await this.idem.join(key)  // 동시 중복 → single-flight<span class="g" data-tip="같은 키의 동시 요청을 하나로 묶어, 실제 실행은 한 번만 하고 나머지는 그 결과를 기다리게 하는 기법">?</span> 로 합류
 
-    await this.idem.start(key)                         // 진행 중 표시 (경합 차단)
+    await this.idem.start(key, LEASE_TTL)              // 진행 중 표시 — 원자적 조건부 insert (경합 차단)
+                                                       //   + lease(TTL): 처리하던 인스턴스가 죽어도 영구 inflight 로 고착되지 않게
     try {
       const result = await this.route(who, req)        // ③ 포트 호출 (예: submitTransaction(req))
       await this.idem.complete(key, result)            // 결과 저장 (이후 중복은 캐시 반환)
@@ -145,7 +146,8 @@ flowchart TB
 <ul>
 <li><strong>벤더·체인 무관</strong> — 게이트웨이는 지갑 서비스 백엔드 층이라 Fireblocks 든 자체 구축이든 그대로 우리 것이다(<a href="abstraction.html">13.7</a>).</li>
 <li><strong>멱등 키 정책</strong> — 클라이언트가 주거나(권장), 없으면 요청 내용으로 안정적으로 파생. 같은 의미의 요청이 같은 키가 되도록.</li>
-<li><strong>점유는 원자적으로</strong> — 조회(get)와 진행 중 표시(start) 사이에 다른 요청이 끼지 않도록, start 는 멱등 저장소의 <strong>원자 연산</strong>이어야 한다. 그래야 동시 중복이 정말로 한 번으로 모인다.</li>
+<li><strong>점유는 원자적으로</strong> — 조회(get)와 진행 중 표시(start) 사이에 다른 요청이 끼지 않도록, start 는 멱등 저장소의 <strong>원자 연산</strong>(DB unique 제약·조건부 insert)이어야 한다. 게이트웨이는 보통 여러 인스턴스로 뜨므로 멱등 저장소도 <strong>인스턴스 간 공유 저장소</strong>여야 하고, 인메모리 single-flight 만으로는 인스턴스를 넘는 중복을 못 막는다.</li>
+<li><strong>inflight 는 임대(lease)로</strong> — start 직후 그 인스턴스가 죽으면 키가 영원히 "진행 중" 으로 남아 정당한 재시도까지 막힌다. inflight 표시에 TTL 을 둬 만료 후 재실행을 허용하되, 재실행 전 <a href="component-tx-nonce.html">4.3</a> 의 intent 기록을 먼저 확인한다 — "이미 전파됐을 수 있음" 단계라면 새로 만들지 않고 거기서 이어간다.</li>
 <li><strong>실패도 기록</strong> — 실패를 멱등 저장소에 남겨, 같은 키의 무한 재시도와 "실패인데 또 실행" 을 막는다. 이때 타임아웃 같은 일시 오류(재시도 가능)와 검증 실패 같은 확정 실패(재시도해도 같은 결과)를 구분해 기록한다 — 전자는 정당한 재시도를 허용하고, 후자만 같은 키의 재실행을 차단한다.</li>
 </ul>
 </div>

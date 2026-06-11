@@ -125,10 +125,15 @@ class SigningOrchestrator {
                                                   // (단순화 — UTXO 는 실제로는 입력별 sighash 마다 서명을 반복)
 
     // 2) 중복 서명 가드 — 기존 서명이 있으면 재서명하지 않고 재사용 (유효 서명 2개 → 이중 전파 방지)
+    //    ★ unsignedTx.id 는 서명 payload(sighash) 파생이어야 한다 — fee bump 재전송(4.3)은 payload 가
+    //      바뀌므로 자연히 새 id 가 되어 이 가드에 안 걸린다. 출금 "논리 id" 를 그대로 쓰면
+    //      boost 재서명이 가드에 걸려 옛(낮은 fee) 서명을 재사용해 버린다
     const prior = await this.store.signingAttempt(unsignedTx.id)
     if (prior?.signature) return adapter.attach(unsignedTx, prior.signature)
     if (prior) await this.recoverDangling(prior)  // 시도 기록만 있음 = 직전 시도가 결과를 못 받고 끊김
-                                                  //   → 서명자 쪽에 이미 유효 서명이 있는지 회수 후 진행
+                                                  //   → 상태를 가진 서명자(Fireblocks 등)는 기존 서명 조회·회수,
+                                                  //     stateless HSM 은 그런 API 가 없다 — 체인·mempool 조회로
+                                                  //     이미 전파됐는지 확인한 뒤 새 라운드로 진행
     await this.store.markAttempt(unsignedTx.id)   // 시도를 먼저 기록 — 여기서 중단돼도 위 분기가 잡는다
 
     // 3) 실제 서명 — 외부 서명자 (키는 그 뒤)
@@ -155,13 +160,24 @@ class SigningOrchestrator {
 <li><strong>"무엇을 서명할지" 는 체인별 → 어댑터로</strong> — 직렬화·sighash·서명 알고리즘(secp256k1/ed25519)·인코딩(RSV/DER)이 다 다르다. 오케스트레이터는 <code>adapter.toSigningPayload</code>·<code>adapter.verify</code>·<code>adapter.attach</code> 만 부르니 체인이 늘어도 본체는 안 바뀐다.</li>
 <li><strong>키는 Signer 뒤를 안 떠난다</strong> — 매니저는 sighash 를 넘기고 서명만 돌려받는다. HSM/MPC/Fireblocks 어느 것이든 같은 <code>Signer</code> 포트.</li>
 <li><strong>가드가 막는 건 키 유출이 아니라 이중 전파다</strong> — 5.3 의 난수 재사용 키 유출은 "서로 다른 메시지에 같은 난수" 가 쓰일 때, 즉 MPC 프로토콜 <em>내부에서</em> 같은 서명 라운드를 재개할 때의 문제다. 오케스트레이터가 <code>sign</code> 을 다시 부르면 어차피 새 라운드(새 난수)가 도니 그 위험은 해당 없다. 위 가드가 실제로 막는 것은 별개의 사고 — <strong>유효 서명이 2개 생겨 같은 출금이 이중 전파</strong>되는 것이다. 그래서 <code>markAttempt</code> 를 먼저 남기고, 기존 서명이 있으면 재서명하지 않고 재사용한다.</li>
+<li><strong>가드의 키는 payload 파생</strong> — <code>unsignedTx.id</code> 를 출금 논리 ID 로 잡으면 fee bump 재전송(payload 변경)까지 가드에 걸려 옛 서명을 돌려준다. id = sighash 파생으로 두면 "같은 payload 만 재사용, 바뀐 payload 는 새 서명" 이 자동으로 성립한다.</li>
+<li><strong>recoverDangling 은 서명자 종류에 따라 다르다</strong> — 트랜잭션 상태를 가진 서명자(Fireblocks)는 기존 결과를 조회할 수 있지만, stateless HSM 은 "이미 서명했는지" 물을 데가 없다. 그땐 체인·mempool 조회로 전파 여부를 확인하는 게 현실적인 복구다(4.3 의 SIGNED 복구와 같은 원리).</li>
 <li><strong>반드시 검증</strong> — 서명자가 엉뚱한 sighash 를 서명했거나 키가 어긋나지 않았는지 기대 pubkey 로 확인한 뒤에만 부착한다.</li>
-<li><strong>SaaS(Fireblocks)면 이 전부가 createTransaction 안에 묶임</strong> — sighash 직렬화·서명·검증을 우리가 만지지 않는다(<a href="example-fireblocks.html">14장</a>, 5.6).</li>
+<li><strong>SaaS(Fireblocks)면 이 전부가 createTransaction 안에 묶임</strong> — sighash 직렬화·서명·검증을 우리가 만지지 않는다(<a href="example-fireblocks.html">14장</a>, 5.7).</li>
 </ul>
 <p>3.4 인덱서·4.3 트랜잭션과 같은 분리 — <strong>메커니즘(직렬화·알고리즘)은 체인별(어댑터), 오케스트레이션(준비→서명→검증·비멱등)은 공통</strong>이다.</p>
 </div>
 
-<h3>5.5 다른 컴포넌트와의 관계</h3>
+<h3>5.5 서명자 측 인가 — 키 보관만으로는 수탁 등급이 아니다</h3>
+
+<p>위 모델은 서명자에게 <strong>sighash(해시)만</strong> 넘긴다. 키 <em>보관</em>은 안전하지만, 이대로면 키의 <em>사용 권한</em>은 매니저가 다 쥔다 — 매니저(또는 sighash 를 만드는 어댑터)가 침해되면 공격자는 키를 훔칠 필요 없이 <strong>임의의 sighash 를 들이밀면</strong> 된다. 서명자는 자기가 무엇에 서명하는지 모른다(blind signing — 원문을 못 보고 해시만 보고 서명하는 상태).</p>
+
+<div class="callout callout-danger">
+<div class="callout-title">2차 방어 — 서명자 곁에서 원문을 다시 검증한다</div>
+<p>그래서 수탁 등급 구성은 상위 승인(비즈 레이어, 범위 밖)과 <strong>별개로</strong>, 서명자 측에서 트랜잭션을 독립적으로 재검증하는 게이트를 둔다 — 서명 요청에 sighash 만이 아니라 <strong>원문(unsigned tx)과 맥락</strong>을 함께 보내고, 서명자 쪽 정책 엔진이 원문을 직접 파싱해 (1) 원문↔sighash 일치 (2) 목적지 화이트리스트 (3) 금액·횟수 한도를 확인한 뒤에만 서명한다. Fireblocks 의 co-signer+정책 엔진, NodeWallet 의 승인자(<a href="example-nodewallet.html">16.4</a>)가 정확히 이 자리다. <strong>자체 구축(<a href="example-selfbuild.html">15장</a>)에서 이 층을 생략하면</strong> — "키는 HSM 안" 이라도 실질 보안 경계는 매니저 서버 한 겹이 된다. HSM 앞에 별도 신뢰 경계의 정책 검증 게이트를 직접 만들어야 옵션 2(<a href="abstraction.html">13.5</a>)가 수탁 등급이라는 주장이 성립한다. 승인은 위에서 한 번, 검증은 키 곁에서 한 번 더 — 심층 방어(defense in depth)다.</p>
+</div>
+
+<h3>5.6 다른 컴포넌트와의 관계</h3>
 
 <div class="table-wrap">
 <table>
@@ -175,7 +191,7 @@ class SigningOrchestrator {
 </table>
 </div>
 
-<h3>5.6 SaaS 와의 관계</h3>
+<h3>5.7 SaaS 와의 관계</h3>
 
 <p>Fireblocks 같은 플랫폼을 쓰면 이 컴포넌트가 곧 <strong>그 플랫폼의 서명 API 호출 경계</strong>가 된다. 키는 플랫폼의 MPC/HSM 안에만 있고, 매니저는 "이 트랜잭션 서명해 달라" 만 호출한다. 직접 구축이면 자체 HSM·MPC 클러스터가 외부 서명자 자리에 온다. 어느 쪽이든 <strong>매니저 코드가 개인키를 만지지 않는다</strong>는 원칙은 동일하다. (벤더 추상화는 <a href="abstraction.html">13. 추상화</a>)</p>
 

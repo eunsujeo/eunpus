@@ -106,15 +106,17 @@ flowchart TB
 
   createAccount(ref) { return this.hd.allocateAccount(ref) }               // HD account index 할당
   deriveAddress(acct, asset) { return bip32.derive(this.node.xpub(asset), acct) }  // 우리가 파생
-  getBalance(acct, asset) { return this.indexer.balanceOf(this.deriveAddress(acct, asset), asset) }  // 계정→주소 해석 후 projection 조회
+  getBalance(acct, asset) { return this.indexer.balanceOf(this.deriveAddress(acct, asset), asset) }  // projection 이 confirmed/pending/locked 구분 보유 → 13.3 Balance
   validateAddress(asset, addr) { return isValidForChain(asset, addr) }          // 체인별 형식·체크섬 (로컬)
   estimateFee(req) { return this.node.estimateFee(req) }                        // 노드/체인 수수료 추정
 
   // 트랜잭션 제출 : Fireblocks 가 한 번에 하던 것을 내부에서 3단계로
+  //   ★ 실제 구현은 단계 사이 사망에 대비해 4.3 의 intent 상태머신(BUILT→SIGNED→BROADCAST)을
+  //     이 안에서 그대로 밟는다 — 전파 전에 의도·서명본 영속화, 복구는 같은 서명본 재전파
   submitTransaction(req) {
-    const nonce  = this.nonceMgr.reserve(req.from)         // 계정별 순번 점유
+    const nonce  = this.nonceMgr.reserve(req.from)         // 계정별 순번 점유 (점유 기록도 영속화 — gap 복구 근거)
     const raw    = assembleUnsignedTx({ ...req, nonce })   // 조립
-    const signed = this.hsm.sign(raw)                      // 서명 (HSM, 실패 시 비멱등)
+    const signed = this.hsm.sign(raw)                      // 서명 (HSM 앞 정책 게이트 경유 — 5.5, 실패 시 비멱등)
     return this.node.sendRawTransaction(signed)            // 전파 → TxRef(hash)
   }
   getStatus(txRef) { return this.indexer.confirmationOf(txRef) }    // as-of-block 확정수
@@ -122,7 +124,7 @@ flowchart TB
   boost(txRef) {                                         // EVM/UTXO 만 — 같은 nonce + fee↑ 재서명·재전파 (RBF). Solana 는 submit 뒤 auto-retry
     return this.node.sendRawTransaction(this.hsm.sign(reFee(txRef)))
   }
-  cancel(txRef) { return this.node.sendRawTransaction(this.hsm.sign(zeroSelfSend(txRef))) }  // 같은 nonce 0원 self-send
+  cancel(txRef) { return this.node.sendRawTransaction(this.hsm.sign(zeroSelfSend(txRef))) }  // EVM 예 — 같은 nonce 0원 self-send (cancel 도 capability, 13.3 — Solana 는 부재)
 
   // 수신 트랜잭션 · 확정 : webhook 이 없으니 인덱서를 직접 운영
   onChainEvent(handler) {
@@ -243,7 +245,8 @@ flowchart LR
 <thead><tr><th style="width:24%">항목</th><th>Fireblocks (14장)</th><th>자체 구축 (이 장)</th></tr></thead>
 <tbody>
 <tr><td>키 관리·서명</td><td>Fireblocks MPC</td><td><strong>자체 HSM/MPC 운영</strong></td></tr>
-<tr><td>서명+전파</td><td>createTransaction 한 번(묶임)</td><td><strong>분리</strong> — 조립·서명·전파 각각</td></tr>
+<tr><td>서명 인가(정책 검증)</td><td>co-signer + 정책 엔진 내장</td><td><strong>직접</strong> — HSM 앞 정책 게이트(원문 재검증·화이트리스트·한도, <a href="component-signing.html">5.5</a>) 없으면 수탁 등급 아님</td></tr>
+<tr><td>서명+전파</td><td>createTransaction 한 번(묶임)</td><td><strong>분리</strong> — 조립·서명·전파 각각 (+ 4.3 intent 상태머신)</td></tr>
 <tr><td>nonce</td><td>Fireblocks 내부</td><td><strong>직접</strong> — 계정별 lock·local counter·직렬화</td></tr>
 <tr><td>stuck 재전송</td><td>boost(RBF/부스트) 호출만</td><td><strong>직접</strong> — 같은 nonce 재서명·fee bump</td></tr>
 <tr><td>수신 트랜잭션 감지</td><td>webhook 수신</td><td><strong>자체 인덱서</strong> — 수집·projection·reorg</td></tr>

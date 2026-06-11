@@ -122,7 +122,7 @@ flowchart TB
     class CANCEL bad;
     class REPL special;
 </pre></div>
-<p class="diagram-caption">Figure 4-2. stuck 재전송. 막히면 <strong>같은 순번</strong>으로 수수료를 (양 필드 동시에) 올려 다시 보낸다. EVM 의 수수료 교체는 두 수수료 필드 — 기본 수수료 상한(maxFeePerGas)과 우선 수수료(maxPriorityFeePerGas) — 를 모두, 노드가 요구하는 최소 인상률(통상 10%) 이상 올려야 받아들여진다. 순번을 건너뛰면 안 된다. 취소(0원 self-send)도 같은 순번의 기존 트랜잭션보다 수수료를 올려야 교체된다. 규칙: 가장 오래된 막힌 순번부터, 수수료는 상한을 두고 단계적으로, 그래도 안 되면 알림.</p>
+<p class="diagram-caption">Figure 4-2. stuck 재전송. 막히면 <strong>같은 순번</strong>으로 수수료를 (양 필드 동시에) 올려 다시 보낸다. EVM 의 수수료 교체는 두 수수료 필드 — 기본 수수료 상한(maxFeePerGas)과 우선 수수료(maxPriorityFeePerGas) — 를 모두, 노드가 요구하는 최소 인상률(통상 10%) 이상 올려야 받아들여진다. 순번을 건너뛰면 안 된다. 취소(0원 self-send)도 같은 순번의 기존 트랜잭션보다 수수료를 올려야 교체된다. 규칙: 가장 오래된 막힌 순번부터, 수수료는 상한을 두고 단계적으로, 그래도 안 되면 알림. 한 가지 더 — ✅ 확정(CONFIRMED)도 절대 종착은 아니다. 확정 깊이를 넘는 깊은 reorg(3.3)면 드물게 dropped 로 되돌아올 수 있으므로, 그 경우 <a href="component-ledger.html">7. 온체인 정합성</a>의 정정 통지가 해당 출금 건을 재검토 상태로 되돌린다(입금 Figure 10-2 의 무효화 경로와 대칭).</p>
 
 <h3>4.3 코드로 보면</h3>
 
@@ -134,14 +134,27 @@ class TxPipeline {
 
   async submit(req) {
     const seen = await this.store.byIdempotencyKey(req.idemKey)
-    if (seen) return seen.txRef                          // 멱등 — 같은 요청 재제출 방지
+    if (seen) return this.resume(seen)                   // 멱등 + 중단 복구 — 같은 요청도, 중간에 죽었던 요청도 여기로
 
     const adapter = this.adapters[req.chainId]
     const tx      = await adapter.buildTransaction(req)  // 조립 = 체인별 "직렬화" 를 흡수
+    await this.store.intent(req.idemKey, req, tx)        // ★ 전파 "전" 에 의도 기록 (BUILT) — 아래 callout
     const signed  = await this.signer.sign(tx)           // 서명 (공통 포트, 5)
+    await this.store.markSigned(req.idemKey, signed)     // SIGNED — 이 순간부터 "이미 전파됐을 수 있음" 으로 취급
     const txRef   = await adapter.broadcast(signed)      // 전파 (체인별)
-    await this.store.record(req.idemKey, req, txRef, 'submitted')
+    await this.store.markBroadcast(req.idemKey, txRef)   // BROADCAST
     return txRef
+  }
+
+  // 재기동·재시도 복구 — 기록된 단계에서 "이어간다". 처음부터 다시 만들지 않는다
+  async resume(rec) {
+    switch (rec.state) {
+      case 'BROADCAST': return rec.txRef                 // 이미 전파됨 — 그대로 반환
+      case 'SIGNED':    return this.adapters[rec.chainId].broadcast(rec.signed)
+                        // 전파 직전·직후 사망 — 이미 나갔을 수 있다. "같은 서명본" 재전파는 안전
+                        // (같은 nonce·같은 입력이라 체인이 dedup). 새로 조립·재서명하면 안 된다!
+      case 'BUILT':     return this.signAndBroadcast(rec) // 같은 tx(같은 nonce)로 서명부터 재개
+    }
   }
 
   async resend(txRef) {                                  // 재전송 "정책" 은 공통, "방식" 은 어댑터
@@ -170,6 +183,11 @@ async function watchStuck(pipeline, store) {
     else alert(t)                                                   // 상한 도달 → 사람에게
   }
 }</code></pre>
+
+<div class="callout callout-danger">
+<div class="callout-title">기록은 전파 "전" 에 — 순서를 바꾸면 이중 출금 창이 열린다</div>
+<p>흔한 실수는 <code>broadcast</code> 성공 후에야 저장소에 기록하는 것이다. 전파 직후·기록 직전에 프로세스가 죽으면 저장소엔 흔적이 없으므로, 재시도가 멱등 가드를 그대로 통과해 <strong>새 nonce 로 새 트랜잭션</strong>을 만든다 — 옛 것과 새 것은 nonce 가 달라 <strong>둘 다 유효</strong>하고, EVM 의 "같은 nonce 하나만 확정" 보호도 작동하지 않는다(UTXO 도 재조립이 다른 입력을 고르면 같다). 그대로 이중 출금이다. 그래서 위 코드는 <strong>전파 전에 의도(intent)와 서명본을 먼저 영속화</strong>하고(BUILT → SIGNED → BROADCAST 상태머신), 복구는 기록된 단계에서 <strong>같은 서명본으로만</strong> 이어간다. nonce 점유도 같은 이유로 영속화한다 — 점유만 하고 죽으면 순번에 gap 이 생기는데, 기록이 있어야 "내가 만든 gap" 을 구분해 메울 수 있다(4.2 재동기화). 같은 규율이 서명 단계에선 5.4 의 <code>markAttempt</code> 선기록이다. 외부 재시도(멱등 키)만 막고 <strong>자기 자신의 중간 사망</strong>을 안 막으면 절반만 막은 것이다.</p>
+</div>
 
 <div class="callout">
 <div class="callout-title">코드가 말하는 것</div>
