@@ -145,27 +145,27 @@ flowchart TB
 
 <h3>15.3 계정·주소 발급 단계별 흐름</h3>
 
-<p>자체 구축은 발급도 직접 한다 — Fireblocks 가 해주던 vault 생성·주소 파생을 <strong>우리 HD 지갑·HSM 으로</strong> 수행한다. 다만 9.2 에서 본 대로 <strong>곡선·체인에 따라 발급 흐름 자체가 세 갈래</strong>라서, 그림도 체인별로 나눠 그린다. 진입(비즈니스 레이어 → 게이트웨이(인증·멱등), 지갑 개설(고객 ref · asset) + 멱등 키 — 이 한 요청을 게이트웨이 뒤의 <strong>지갑 서비스(유스케이스)</strong>가 아래 포트 호출들로 푼다, <a href="scenario-provisioning.html">9.1</a>)과 마무리(계정 디렉터리 저장 + 인덱서 watch-list 등록, <a href="scenario-provisioning.html">9.4</a>)는 세 갈래 공통이므로 지갑 서비스부터 그린다. 각 그림에 등장하는 <strong>참가자 수 자체가 비용 차이</strong>다 — secp256k1<span class="g" data-tip="비트코인·이더리움 계열이 쓰는 타원곡선 서명 방식. 확장 공개키(xpub)만으로, 개인키 없이 자식 주소를 계산하는 공개 파생이 가능하다">?</span> 은 둘(HSM 없음), ed25519<span class="g" data-tip="솔라나 등이 쓰는 타원곡선 서명 방식. 공개키만으로는 자식 키를 파생할 수 없어, 파생에 항상 개인키가 필요하다">?</span> 는 셋(HSM 내부 파생), Canton 은 넷(participant node 까지 가는 유료 온장 등록). 그림의 파란 상자는 한 프로세스(우리 서버)다 — 상자 <strong>밖</strong>(HSM·participant node·인덱서)으로 나가는 화살표만 네트워크/장비 호출이고, 상자 안은 메서드 호출이다. 레이어로는 어댑터(AccountPort 구현)부터 블록체인 매니저 영역(9.1·13.1).</p>
+<p>자체 구축은 발급도 직접 한다 — Fireblocks 가 해주던 vault 생성·주소 파생을 <strong>우리 HD 지갑·HSM 으로</strong> 수행한다. 다만 9.2 에서 본 대로 <strong>곡선·체인에 따라 발급 흐름 자체가 세 갈래</strong>라서, 그림도 체인별로 나눠 그린다. 진입(비즈니스 레이어 → 지갑 서비스 백엔드, 지갑 개설(고객 ref · asset) + 멱등 키 — 이 한 요청을 백엔드가 아래 포트 호출들로 푼다. 내부 역할 분담은 <a href="scenario-provisioning.html">9.1</a>)과 마무리(계정 디렉터리 저장 + 인덱서 watch-list 등록, <a href="scenario-provisioning.html">9.4</a>)는 세 갈래 공통이므로 백엔드부터 그린다. 각 그림에 등장하는 <strong>참가자 수 자체가 비용 차이</strong>다 — secp256k1<span class="g" data-tip="비트코인·이더리움 계열이 쓰는 타원곡선 서명 방식. 확장 공개키(xpub)만으로, 개인키 없이 자식 주소를 계산하는 공개 파생이 가능하다">?</span> 은 둘(HSM 없음), ed25519<span class="g" data-tip="솔라나 등이 쓰는 타원곡선 서명 방식. 공개키만으로는 자식 키를 파생할 수 없어, 파생에 항상 개인키가 필요하다">?</span> 는 셋(HSM 내부 파생), Canton 은 넷(participant node 까지 가는 유료 온장 등록). 그림의 파란 상자는 한 프로세스(우리 서버)다 — 상자 <strong>밖</strong>(HSM·participant node·인덱서)으로 나가는 화살표만 네트워크/장비 호출이고, 상자 안은 메서드 호출이다. 레이어로는 어댑터(AccountPort 구현)부터 블록체인 매니저 영역(9.1·13.1).</p>
 
-<p><strong>① secp256k1 (EVM·BTC) — 로컬 공개 파생.</strong> 참가자가 지갑 서비스와 AccountPort 둘뿐이다.</p>
+<p><strong>① secp256k1 (EVM·BTC) — 로컬 공개 파생.</strong> 참가자가 지갑 서비스 백엔드와 AccountPort 둘뿐이다.</p>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
     box rgb(239,246,255) 우리 서버 — 한 프로세스 (배포 단위)
-    participant SVC as 지갑 서비스 (유스케이스)
+    participant BE as 지갑 서비스 백엔드
     participant ACC as AccountPort (SelfBuiltProvider)
     end
 
-    SVC->>ACC: createAccount(ref)
+    BE->>ACC: createAccount(ref)
     ACC->>ACC: HD account index 할당 (내부 장부)
-    ACC-->>SVC: accountId
-    SVC->>ACC: issueDepositAddress(account, asset) — 첫 주소 발급
+    ACC-->>BE: accountId
+    BE->>ACC: issueDepositAddress(account, asset) — 첫 주소 발급
     ACC->>ACC: address index 0 소비
     ACC->>ACC: bip32.derive(xpub, path) — 로컬 계산
     Note over ACC: xpub 만으로 주소 계산 — 개인키도 HSM 도 이 그림에 등장하지 않는다
     ACC->>ACC: 계정 디렉터리 저장 + watch-list 등록 (9.4)
-    ACC-->>SVC: 주소 — 이후 조회는 addressOf
+    ACC-->>BE: 주소 — 이후 조회는 addressOf
 </pre></div>
 <p class="diagram-caption">Figure 15-2a. secp256k1 첫 주소 발급 — 주소가 태어나는 동사는 <code>issueDepositAddress</code> 다. 계산은 xpub(공개키만으로 하위 주소를 파생할 수 있는 확장 공개키)만으로 로컬에서 끝난다 — 온체인 트랜잭션도, HSM 호출도 없다. <code>addressOf</code> 는 이렇게 등록된 주소를 돌려주는 조회일 뿐, 절대 새 주소를 만들지 않는다.</p>
 
@@ -177,21 +177,21 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     box rgb(239,246,255) 우리 서버 — 한 프로세스 (배포 단위)
-    participant SVC as 지갑 서비스 (유스케이스)
+    participant BE as 지갑 서비스 백엔드
     participant ACC as AccountPort (SelfBuiltProvider)
     end
     participant HSM as 자체 HSM · HD 지갑
 
-    SVC->>ACC: createAccount(ref)
+    BE->>ACC: createAccount(ref)
     ACC->>ACC: HD account index 할당 (내부 장부)
-    ACC-->>SVC: accountId
-    SVC->>ACC: issueDepositAddress(account, asset) — 첫 주소 발급
+    ACC-->>BE: accountId
+    BE->>ACC: issueDepositAddress(account, asset) — 첫 주소 발급
     ACC->>ACC: address index 0 소비
     ACC->>HSM: derivePubkey(path) — hardened 파생
     Note over HSM: hardened-only 라 파생도 키 곁에서 — 공개키만 반환
     HSM-->>ACC: pubkey (= base58 주소)
     ACC->>ACC: 계정 디렉터리 저장 + watch-list 등록 (9.4)
-    ACC-->>SVC: 주소 — 이후 조회는 addressOf
+    ACC-->>BE: 주소 — 이후 조회는 addressOf
 </pre></div>
 <p class="diagram-caption">Figure 15-2b. ed25519 첫 주소 발급 — 동사는 ①과 같고(issueDepositAddress) 계산 위치만 다르다: 파생이 HSM 안에서 일어나고 밖으로는 공개키만 나온다. 역시 온체인 트랜잭션은 아니다.</p>
 
@@ -201,23 +201,23 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     box rgb(239,246,255) 우리 서버 — 한 프로세스 (배포 단위)
-    participant SVC as 지갑 서비스 (유스케이스)
+    participant BE as 지갑 서비스 백엔드
     participant ACC as AccountPort (SelfBuiltProvider)
     end
     participant HSM as 자체 HSM · HD 지갑
     participant PN as Canton participant node
 
-    SVC->>ACC: createAccount(ref)
+    BE->>ACC: createAccount(ref)
     ACC->>PN: generate-topology(공개키 · hint)
     PN-->>ACC: topology + 서명할 multi-hash
     ACC->>HSM: hash 서명 (키 반출 없음)
     HSM-->>ACC: 서명
     ACC->>PN: allocate(topology + 서명)
     PN-->>ACC: PartyId 발행 (= 주소) — 유료 온장 등록
-    ACC-->>SVC: accountId
-    SVC->>ACC: addressOf(account, asset)
+    ACC-->>BE: accountId
+    BE->>ACC: addressOf(account, asset)
     ACC->>ACC: 디렉터리의 PartyId 반환 — 조회만 (2.4)
-    ACC-->>SVC: 주소
+    ACC-->>BE: 주소
 </pre></div>
 <p class="diagram-caption">Figure 15-2c. Canton 발급 — generate-topology → HSM 으로 hash 서명 → allocate 의 party allocation 이 <code>createAccount</code> 단계에서 일어난다. 세 갈래 중 유일한 온체인 등록(비용 발생).</p>
 
@@ -229,18 +229,18 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     box rgb(239,246,255) 우리 서버 — 한 프로세스 (배포 단위)
-    participant SVC as 지갑 서비스 (유스케이스)
+    participant BE as 지갑 서비스 백엔드
     participant ACC as AccountPort (SelfBuiltProvider)
     end
     participant IDX as 인덱서 (watch-list)
 
-    SVC->>ACC: issueDepositAddress(account, asset)
+    BE->>ACC: issueDepositAddress(account, asset)
     ACC->>ACC: 다음 address index 할당 — 비멱등, 부를 때마다 새 주소
     ACC->>ACC: 주소 계산 — 곡선별 ①② 와 같은 메커니즘 (secp256k1 로컬 · ed25519 HSM)
     ACC->>ACC: 계정 디렉터리에 저장
     ACC->>IDX: watch-list 등록 (gap limit 관리, 9.4)
     Note over ACC,IDX: 등록 실패 = 발급 실패 — 등록 안 된 주소로 들어온 입금은 인덱서가 놓친다
-    ACC-->>SVC: 새 주소
+    ACC-->>BE: 새 주소
 </pre></div>
 <p class="diagram-caption">Figure 15-2d. 추가 입금 주소 발급(issueDepositAddress) — 첫 주소(①②)와 같은 동사, secp256k1·ed25519 용 capability. 다음 index 소비 → 곡선별 주소 계산 → 디렉터리 저장 → watch-list 등록까지가 한 번의 발급이다(9.4). Canton 은 부재(추가 주소 개념 없음 — memo-ref), 그래서 포트에서 boost?·cancel? 과 같은 <strong>선택 capability</strong> 다(<a href="abstraction.html">13.3</a>).</p>
 

@@ -167,7 +167,7 @@
 </div>
 <p class="anim-steplist" id="animStepList"></p>
 
-<p class="diagram-caption">Figure 18-1. 지갑 생성 인터랙티브 흐름. <strong>⓪ 셋업</strong>은 시스템 수명에서 1회 — master seed 는 HSM 안에서 태어나 안에 머물고 xpub 만 반출된다. <strong>①②③</strong>은 고객 온보딩마다 — 같은 두 포트 호출(createAccount → 첫 주소 확보)이지만 주소가 태어나는 방식이 곡선·체인별로 다르다(<a href="scenario-provisioning.html">9.2 표</a>·<a href="example-selfbuild.html">15.3</a>). 색 분류: 파랑=지갑 서비스/포트(우리 백엔드), 호박=HSM(키 보관처), 회색=외부 시스템, 초록=장부(디렉터리·watch-list).</p>
+<p class="diagram-caption">Figure 18-1. 지갑 생성 인터랙티브 흐름. <strong>⓪ 셋업</strong>은 시스템 수명에서 1회 — master seed 는 HSM 안에서 태어나 안에 머물고 xpub 만 반출된다. <strong>①②③</strong>은 고객 온보딩마다 — 같은 두 포트 호출(createAccount → 첫 주소 확보)이지만 주소가 태어나는 방식이 곡선·체인별로 다르다(<a href="scenario-provisioning.html">9.2 표</a>·<a href="example-selfbuild.html">15.3</a>). 색 분류: 파랑=지갑 서비스 백엔드/포트, 호박=HSM(키 보관처), 회색=외부 시스템, 초록=장부(디렉터리·watch-list).</p>
 
 <h3>18.3 세 갈래를 한 줄씩 비교</h3>
 
@@ -200,7 +200,7 @@
   // 참가자 정의 — 색은 Figure 18-1 캡션의 분류와 일치
   var ACTORS = {
     ops: { label: '운영자', sub: '셋업 세리머니', role: 'ext' },
-    svc: { label: '지갑 서비스', sub: '유스케이스 (9.1)', role: 'svc' },
+    svc: { label: '지갑 서비스 백엔드', sub: '게이트웨이·유스케이스 (9.1)', role: 'svc' },
     acc: { label: 'AccountPort', sub: 'SelfBuiltProvider', role: 'port' },
     hsm: { label: '자체 HSM', sub: '키 보관처', role: 'hsm' },
     pn:  { label: 'participant node', sub: 'Canton', role: 'ext' },

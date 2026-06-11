@@ -66,7 +66,7 @@
 <ol>
 <li><strong>비즈니스 레이어</strong> — 인증·KYC·자격 확인(업무 판단) 후 게이트웨이에 <strong>"지갑 개설 (고객 ref · asset)" 한 요청 + 멱등 키</strong>. 비즈 레이어는 업무 언어 한 문장만 말한다.</li>
 <li><strong>게이트웨이 (인증·멱등)</strong> — 호출 시스템 인증과 멱등 키 확인. 처리된 키면 저장된 결과를 즉시 반환한다.</li>
-<li><strong>지갑 서비스 (유스케이스)</strong> — 그 한 요청을 두 포트 호출로 푼다: <code>createAccount(ref)</code> → <strong>첫 주소 확보</strong>(발급 capability 가 있으면 <code>issueDepositAddress</code>, 주소가 계정과 함께 태어나는 Canton·NodeWallet 은 <code>addressOf</code> 조회 — 9.2 표).</li>
+<li><strong>유스케이스 서비스</strong> — 그 한 요청을 두 포트 호출로 푼다: <code>createAccount(ref)</code> → <strong>첫 주소 확보</strong>(발급 capability 가 있으면 <code>issueDepositAddress</code>, 주소가 계정과 함께 태어나는 Canton·NodeWallet 은 <code>addressOf</code> 조회 — 9.2 표).</li>
 <li><strong>계정 디렉터리 저장 + 인덱서 watch-list 등록</strong>(9.4) — 여기까지가 발급이다.</li>
 <li>결과를 <strong>멱등 레코드에 저장</strong>하고 비즈 레이어로 반환 — 재시도가 와도 계정·주소가 두 번 만들어지지 않는다.</li>
 </ol>
