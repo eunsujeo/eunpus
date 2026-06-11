@@ -11,6 +11,7 @@ import com.company.wallet.domain.model.TransactionRequest
 import com.company.wallet.domain.model.TxRef
 import com.company.wallet.domain.model.TxStatus
 import com.company.wallet.engine.multichain.ChainAdapter
+import com.company.wallet.engine.multichain.DepositAddressDerivationCapability
 import com.company.wallet.engine.multichain.Confirmation
 import com.company.wallet.engine.multichain.SignedTx
 import com.company.wallet.engine.multichain.UnsignedTx
@@ -28,7 +29,7 @@ class EvmChainAdapter(
     private val node: EvmNodeClient,
     private val nonceManager: LocalNonceManager,
     override val chainId: ChainId = ChainId.ETHEREUM,
-) : ChainAdapter {
+) : ChainAdapter, DepositAddressDerivationCapability {
     /** EVM 은 같은 nonce 의 수수료 교체(RBF)가 가능하다 — StuckWatcher 자동 재전송 대상 (가이드 4.4). */
     override val supportsFeeBump: Boolean = true
 
@@ -167,4 +168,10 @@ class EvmChainAdapter(
         /** N 블록 확정 기준 — 운영 정책·자산 가치에 따라 조정 (가이드 3.3). */
         const val FINAL_DEPTH = 12
     }
+
+    /** 곡선별 결정적 계산만 — index 소비·디렉터리·watch-list 등록은 포트 소관 (가이드 15.2 issueDepositAddress). */
+    override suspend fun deriveAddress(
+        account: Account,
+        index: Int,
+    ): Address = TODO("bip32 공개 파생 m/44'/60'/.../index → keccak/EIP-55 — xpub 만으로, HSM 호출 없음 (가이드 15-2a)")
 }

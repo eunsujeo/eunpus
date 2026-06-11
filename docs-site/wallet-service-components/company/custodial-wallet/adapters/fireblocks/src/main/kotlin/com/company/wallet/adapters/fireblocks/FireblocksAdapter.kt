@@ -5,6 +5,8 @@ import com.company.wallet.domain.model.AccountRef
 import com.company.wallet.domain.model.Address
 import com.company.wallet.domain.model.Amount
 import com.company.wallet.domain.model.Asset
+import com.company.wallet.domain.model.BlockRange
+import com.company.wallet.domain.model.Transfer
 import com.company.wallet.domain.model.Balance
 import com.company.wallet.domain.model.ChainEvent
 import com.company.wallet.domain.model.ChainEventHandler
@@ -112,6 +114,12 @@ class FireblocksAdapter(
             traceableId = tx.traceableId,
         )
     }
+
+    /** 내 거래 이력 — Fireblocks 거래 목록 API (목록 엔드포인트는 적용 전 확인, 가이드 14.2 · 13.3). */
+    override suspend fun transactionsOf(
+        account: Account,
+        range: BlockRange,
+    ): List<Transfer> = TODO("vault 기준 거래 목록 조회 — 임의 주소 이력은 ChainQueryPort 소관 (가이드 13.3)")
 
     /** 취소(CancelCapability) — drop(boost) 과 별도 엔드포인트 (가이드 14.7). */
     override suspend fun cancel(txRef: TxRef): TxRef {

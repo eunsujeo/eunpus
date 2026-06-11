@@ -22,11 +22,12 @@ import com.company.wallet.shared.idempotency.IdempotencyStore
 import org.springframework.stereotype.Service
 
 /**
- * API 게이트웨이 — 모든 외부 요청의 단일 입구 (가이드 6).
+ * 게이트웨이(인증·멱등) + 유스케이스 오케스트레이션 — 가이드 9.1 의 두 역할을 한 클래스가 겸한다.
  *
- * 하는 일은 셋뿐이다: ① 인증 ② 멱등 키 확인(같은 요청이 두 번 실행되지 않게) ③ 포트로 라우팅.
- * 비즈니스 판단(승인·한도·수수료 정책)은 하지 않는다 — 그건 비즈니스 레이어 몫이고,
- * 게이트웨이는 벤더·체인과 무관한 지갑 서비스 백엔드 층이다 (가이드 6.2).
+ * 하는 일: ① 호출 시스템 인증(최종 사용자 인증·KYC 는 비즈 레이어 몫 — 두 "인증" 은 다른 것)
+ * ② 멱등 키 확인(같은 요청이 두 번 실행되지 않게) ③ 유스케이스 — 한 요청을 포트 호출 순서로
+ * 풀고 중단 시 재개한다([openWallet] 참조). 비즈니스 판단(승인·한도·수수료 정책)은 하지 않으며,
+ * 벤더·체인과 무관한 지갑 서비스 백엔드 층이다 (가이드 6.2).
  *
  * 생성자 주입은 포트 타입만 받는다 — 어떤 custody 어댑터(Fireblocks/자체/NodeWallet)가 꽂히는지
  * 게이트웨이는 모른다 (가이드 13 · 17.3).
@@ -50,6 +51,31 @@ class WalletGatewayService(
         authenticate(credentials)
         return withIdempotency(idempotencyKey ?: "create-account:${ref.value}") {
             accounts.createAccount(ref).also { directory.save(it) }
+        }
+    }
+
+    /**
+     * "지갑 개설" 유스케이스 — 비즈 레이어의 한 요청을 두 포트 호출로 푼다 (가이드 9.1):
+     * createAccount → 첫 주소 확보(발급 capability 가 있으면 issueDepositAddress, 없는 체인은 addressOf 조회).
+     * 묶음 전체에 멱등 키 하나 — 계정만 생기고 중단돼도 같은 키 재시도가 이어서 재개한다.
+     */
+    suspend fun openWallet(
+        credentials: String?,
+        idempotencyKey: String?,
+        ref: AccountRef,
+        asset: Asset,
+    ): OpenedWallet {
+        authenticate(credentials)
+        return withIdempotency(
+            idempotencyKey ?: "open-wallet:${ref.value}:${asset.chainId.value}:${asset.symbol}",
+        ) {
+            val account = accounts.createAccount(ref).also { directory.save(it) }
+            val address =
+                (accounts as? DepositAddressIssuanceCapability)
+                    ?.issueDepositAddress(account, asset)
+                    ?: accounts.addressOf(account, asset)
+            directory.saveAddress(account, address)
+            OpenedWallet(account, address)
         }
     }
 
@@ -211,3 +237,9 @@ class WalletGatewayService(
             else -> FailureKind.RETRYABLE
         }
 }
+
+/** 지갑 개설 유스케이스 결과 — 계정 + 첫 입금 주소 (가이드 9.1). */
+data class OpenedWallet(
+    val account: Account,
+    val address: Address,
+)

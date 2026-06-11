@@ -1,9 +1,12 @@
 package com.company.wallet.domain.port
 
+import com.company.wallet.domain.model.Account
+import com.company.wallet.domain.model.BlockRange
 import com.company.wallet.domain.model.ChainEventHandler
 import com.company.wallet.domain.model.FeeEstimate
 import com.company.wallet.domain.model.Subscription
 import com.company.wallet.domain.model.TransactionRequest
+import com.company.wallet.domain.model.Transfer
 import com.company.wallet.domain.model.TxRef
 import com.company.wallet.domain.model.TxStatus
 
@@ -24,6 +27,15 @@ interface TransactionPort {
     suspend fun submitTransaction(request: TransactionRequest): TxRef
 
     suspend fun getStatus(txRef: TxRef): TxStatus
+
+    /**
+     * 내 계정의 송수신 이력 — custody 가 준다 (가이드 13.3, 전 구현 가능 — capability 아님).
+     * 임의 "외부" 주소의 이력은 [ChainQueryPort.transfersOf] 소관 — 동사의 자리는 데이터의 주인이 정한다.
+     */
+    suspend fun transactionsOf(
+        account: Account,
+        range: BlockRange,
+    ): List<Transfer>
 
     /** 내 지갑 수신·확정 push 구독 (custody 백엔드가 줌). */
     fun onChainEvent(handler: ChainEventHandler): Subscription

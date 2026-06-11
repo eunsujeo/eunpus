@@ -11,6 +11,7 @@ import com.company.wallet.domain.model.TransactionRequest
 import com.company.wallet.domain.model.TxRef
 import com.company.wallet.domain.model.TxStatus
 import com.company.wallet.engine.multichain.ChainAdapter
+import com.company.wallet.engine.multichain.DepositAddressDerivationCapability
 import com.company.wallet.engine.multichain.Confirmation
 import com.company.wallet.engine.multichain.SignedTx
 import com.company.wallet.engine.multichain.UnsignedTx
@@ -27,7 +28,7 @@ import java.math.BigInteger
 class UtxoChainAdapter(
     private val node: UtxoNodeClient,
     override val chainId: ChainId = ChainId.BITCOIN,
-) : ChainAdapter {
+) : ChainAdapter, DepositAddressDerivationCapability {
     /** RBF(수수료 교체) 또는 CPFP(자식 tx 견인)가 가능하다 — StuckWatcher 자동 재전송 대상 (가이드 4.4). */
     override val supportsFeeBump: Boolean = true
 
@@ -182,6 +183,12 @@ class UtxoChainAdapter(
         /** N 블록 확정 기준 — BTC 통상 3~6, 운영 정책에 따라 조정 (가이드 3.3). */
         const val FINAL_DEPTH = 6
     }
+
+    /** 곡선별 결정적 계산만 — index 소비·디렉터리·watch-list 등록은 포트 소관 (가이드 15.2 issueDepositAddress). */
+    override suspend fun deriveAddress(
+        account: Account,
+        index: Int,
+    ): Address = TODO("bip32 공개 파생 + 스크립트 유형별 경로·인코딩 (BIP-44/49/84/86 · base58/bech32, 가이드 9.2)")
 }
 
 /** coin 선택 결과 — RBF 재조립이 같은 입력을 재사용하기 위한 기록. */

@@ -26,6 +26,21 @@ data class AccountResponse(
     val ref: String,
 )
 
+/** 지갑 개설 유스케이스 요청 — 고객 ref + 첫 자산 (가이드 9.1). */
+data class OpenWalletRequest(
+    val ref: String,
+    val symbol: String,
+    val chainId: String,
+)
+
+/** 지갑 개설 결과 — 계정 + 첫 입금 주소. */
+data class OpenedWalletResponse(
+    val accountId: String,
+    val ref: String,
+    val address: String,
+    val memoTag: String?,
+)
+
 /** 주소 확보(addressOf)·발급(issueDepositAddress) 공용 요청 본문. */
 data class AddressRequest(
     val symbol: String,
@@ -67,6 +82,9 @@ data class TxStatusResponse(
 )
 
 internal fun Account.toResponse(): AccountResponse = AccountResponse(id = id, ref = ref.value)
+
+internal fun OpenedWallet.toResponse(): OpenedWalletResponse =
+    OpenedWalletResponse(accountId = account.id, ref = account.ref.value, address = address.value, memoTag = address.memoTag)
 
 internal fun Address.toResponse(): AddressResponse = AddressResponse(address = value, memoTag = memoTag)
 

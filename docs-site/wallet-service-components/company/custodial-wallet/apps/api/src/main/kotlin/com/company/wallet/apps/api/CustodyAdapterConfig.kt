@@ -11,6 +11,7 @@ import com.company.wallet.adapters.selfbuild.InMemoryProjectionStore
 import com.company.wallet.adapters.selfbuild.InMemoryRawEventStore
 import com.company.wallet.adapters.selfbuild.InMemorySignatureStore
 import com.company.wallet.adapters.selfbuild.InMemorySubmissionStore
+import com.company.wallet.adapters.selfbuild.IndexerQueryAdapter
 import com.company.wallet.adapters.selfbuild.SelfBuildAdapter
 import com.company.wallet.backend.directory.AccountDirectory
 import com.company.wallet.backend.directory.InMemoryAccountDirectory
@@ -37,7 +38,7 @@ import org.springframework.context.annotation.Configuration
 /**
  * custody 어댑터 wiring — 교체는 `custody.provider` 설정 한 줄 (가이드 17.6).
  *
- * 어댑터 빈 하나가 AccountPort·TransactionPort(자체 구축은 ChainQueryPort 까지)를 함께 구현하므로,
+ * 어댑터 빈 하나가 custody 두 포트(AccountPort·TransactionPort)를 함께 구현하고, ChainQueryPort 는 별개 슬롯(인덱서/Alchemy 어댑터)이므로,
  * backend(게이트웨이)는 포트 타입으로 그 빈을 주입받는다 — 어떤 벤더인지 모른 채 (가이드 13 · 17.3).
  */
 @Configuration
@@ -105,4 +106,12 @@ class CustodyAdapterConfig {
     @Bean
     @ConditionalOnProperty("chainquery.provider", havingValue = "alchemy")
     fun alchemyChainQueryAdapter(): AlchemyChainQueryAdapter = AlchemyChainQueryAdapter()
+
+    /**
+     * (선택) 자체 인덱서로 ChainQuery — custody 와 별개 슬롯, 하이브리드와 같은 클래스 한 벌 (가이드 15.2 · 13.4).
+     * 이 빈을 켜는 순간 인덱서 상시 job 운영은 우리 몫이다 (가이드 15.6).
+     */
+    @Bean
+    @ConditionalOnProperty("chainquery.provider", havingValue = "indexer")
+    fun indexerQueryAdapter(): IndexerQueryAdapter = IndexerQueryAdapter(InMemoryProjectionStore())
 }

@@ -14,6 +14,8 @@ import com.company.wallet.domain.model.Subscription
 import com.company.wallet.domain.model.TransactionRequest
 import com.company.wallet.domain.model.TxRef
 import com.company.wallet.domain.model.TxStatus
+import com.company.wallet.domain.model.BlockRange
+import com.company.wallet.domain.model.Transfer
 import com.company.wallet.domain.model.Balance
 import com.company.wallet.domain.port.AccountPort
 import com.company.wallet.domain.port.CancelCapability
@@ -94,6 +96,12 @@ class NodeWalletAdapter(
         requireSolana(txRef.chainId, "getStatus")
         return toTxStatus(client.getTransfer(txRef.value))
     }
+
+    /** 내 거래 이력 — NodeWallet 제품 자체 원장 (벤더 주장, 적용 전 확인 — 가이드 16.2 · 13.3). */
+    override suspend fun transactionsOf(
+        account: Account,
+        range: BlockRange,
+    ): List<Transfer> = TODO("제품 원장 이력 조회 — Solana 단일 (가이드 16.2)")
 
     /**
      * 취소(CancelCapability) — 제품 정책에 위임 (가이드 16.2). Solana 특성상 이미 전파된 트랜잭션의

@@ -30,6 +30,24 @@ class AccountController(
         @RequestBody body: CreateAccountRequest,
     ): AccountResponse = gateway.createAccount(authorization, idempotencyKey, AccountRef(body.ref)).toResponse()
 
+    /**
+     * 지갑 개설 유스케이스 — 한 요청 = createAccount + 첫 주소 확보, 멱등 키 하나 (가이드 9.1).
+     * (가이드의 "POST /wallets" 에 해당 — 본 컨트롤러 루트가 /accounts 라 /accounts/open 으로 노출.)
+     */
+    @PostMapping("/open")
+    suspend fun openWallet(
+        @RequestHeader(name = "Authorization", required = false) authorization: String?,
+        @RequestHeader(name = "X-Idempotency-Key", required = false) idempotencyKey: String?,
+        @RequestBody body: OpenWalletRequest,
+    ): OpenedWalletResponse =
+        gateway
+            .openWallet(
+                credentials = authorization,
+                idempotencyKey = idempotencyKey,
+                ref = AccountRef(body.ref),
+                asset = Asset(symbol = body.symbol, chainId = ChainId(body.chainId)),
+            ).toResponse()
+
     /** 수신 주소 확보(조회) — 온보딩의 두 번째 호출 (가이드 9.1). */
     @PostMapping("/{id}/addresses")
     suspend fun addressOf(

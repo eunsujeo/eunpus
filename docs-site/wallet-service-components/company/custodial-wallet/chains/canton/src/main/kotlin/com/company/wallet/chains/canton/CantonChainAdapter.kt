@@ -12,6 +12,7 @@ import com.company.wallet.domain.model.TransactionRequest
 import com.company.wallet.domain.model.TxRef
 import com.company.wallet.domain.model.TxStatus
 import com.company.wallet.engine.multichain.ChainAdapter
+import com.company.wallet.engine.multichain.OnLedgerAccountRegistrationCapability
 import com.company.wallet.engine.multichain.Confirmation
 import com.company.wallet.engine.multichain.SignedTx
 import com.company.wallet.engine.multichain.UnsignedTx
@@ -33,7 +34,7 @@ import java.util.concurrent.atomic.AtomicLong
 class CantonChainAdapter(
     private val participant: CantonParticipantClient,
     override val chainId: ChainId = ChainId.CANTON,
-) : ChainAdapter {
+) : ChainAdapter, OnLedgerAccountRegistrationCapability {
     /**
      * fee boost 없음 — stuck 의 원인이 수수료가 아니라 상대 수락 대기다 (가이드 4.4).
      * StuckWatcher 는 이 false 를 보고 자동 재전송을 건너뛴다 — OFFER 자동 재제출 금지 (가이드 4.3).
@@ -130,4 +131,13 @@ class CantonChainAdapter(
         TODO("DAML TransferInstruction OFFER 직렬화 — topology/transfer 서명 대상 (가이드 5.4)")
 
     private fun encodeSubmission(signedTx: SignedTx): ByteArray = TODO("서명 부착 command submission 직렬화 (가이드 5.4)")
+
+    /**
+     * Canton 만의 온장 등록 — 가이드 15-2c: generate-topology → HSM hash 서명 → allocate → PartyId.
+     * 호출처는 포트의 createAccount (가이드 15.2) — addressOf 는 이렇게 태어난 PartyId 의 조회만 한다.
+     */
+    override suspend fun registerAccount(
+        account: Account,
+        pubkey: ByteArray,
+    ): Address = TODO("generate-topology(공개키·hint) → multi-hash HSM 서명 → allocate (가이드 15.9 · 15-2c)")
 }

@@ -10,6 +10,7 @@ import com.company.wallet.domain.model.TransactionRequest
 import com.company.wallet.domain.model.TxRef
 import com.company.wallet.domain.model.TxStatus
 import com.company.wallet.engine.multichain.ChainAdapter
+import com.company.wallet.engine.multichain.DepositAddressDerivationCapability
 import com.company.wallet.engine.multichain.Confirmation
 import com.company.wallet.engine.multichain.SignedTx
 import com.company.wallet.engine.multichain.UnsignedTx
@@ -26,7 +27,7 @@ import kotlinx.coroutines.sync.withLock
 class SolanaChainAdapter(
     private val node: SolanaNodeClient,
     override val chainId: ChainId = ChainId.SOLANA,
-) : ChainAdapter {
+) : ChainAdapter, DepositAddressDerivationCapability {
     /** operator boost 없음 — Solana 의 재제출은 어댑터 내부 auto-retry (가이드 4.4 Figure 4-3). */
     override val supportsFeeBump: Boolean = false
 
@@ -100,4 +101,10 @@ class SolanaChainAdapter(
     ): ByteArray = TODO("message 직렬화 — ed25519 서명 대상 (가이드 5.4 — sighash 개념이 다름)")
 
     private fun encodeRawTransaction(signedTx: SignedTx): ByteArray = TODO("서명 부착 wire format 직렬화 (가이드 5.4)")
+
+    /** 곡선별 결정적 계산만 — index 소비·디렉터리·watch-list 등록은 포트 소관 (가이드 15.2 issueDepositAddress). */
+    override suspend fun deriveAddress(
+        account: Account,
+        index: Int,
+    ): Address = TODO("SLIP-0010 hardened 파생 — HSM 안에서, 공개키(=주소)만 반환 (가이드 15-2b)")
 }

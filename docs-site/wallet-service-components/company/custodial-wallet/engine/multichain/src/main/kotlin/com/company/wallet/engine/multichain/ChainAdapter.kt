@@ -85,3 +85,30 @@ data class Confirmation(
     val finalized: Boolean,
     val status: TxStatus,
 )
+
+/**
+ * 선택 capability — 입금 주소의 곡선별 결정적 "계산" (가이드 15.2 · 2.4 범위 정리).
+ *
+ * 포트의 발급(issueDepositAddress)이 index 를 정해 호출한다 — index 소비·디렉터리 저장·
+ * watch-list 등록은 포트 소관이고 여기는 계산만. EVM·UTXO(xpub 공개 파생) ·
+ * Solana(HSM 내 hardened 파생)가 구현, Canton 부재(주소 추가 개념 없음 — memo-ref).
+ */
+interface DepositAddressDerivationCapability {
+    suspend fun deriveAddress(
+        account: Account,
+        index: Int,
+    ): Address
+}
+
+/**
+ * 선택 capability — 계정 생성에 온장(on-ledger) 등록이 필요한 체인 (가이드 15.2 createAccount · 15-2c).
+ *
+ * Canton 만: generate-topology → HSM hash 서명(키 반출 없음) → allocate → PartyId. 유료·비멱등.
+ * 호출처는 포트의 createAccount — 주소(PartyId)가 계정과 함께 태어나는 체인의 그 "탄생" 조각이다.
+ */
+interface OnLedgerAccountRegistrationCapability {
+    suspend fun registerAccount(
+        account: Account,
+        pubkey: ByteArray,
+    ): Address
+}

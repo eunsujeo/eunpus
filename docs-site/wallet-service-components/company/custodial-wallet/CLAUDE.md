@@ -120,3 +120,14 @@
 
 구현 의도가 궁금하면 코드 주석의 "가이드 N장" 표기를 따라 `docs-site/wallet-service-components/` 의
 해당 페이지를 본다. 핵심: 0(두 층) · 4(쓰기 순서) · 13(포트) · 17(이 구조).
+
+## 8. 2026-06-11 동기화 — "주소 탄생" 모델 · ChainQuery 분리 · 유스케이스
+
+가이드의 설계 진화(commit 896789c 까지)를 코드에 반영한 결정들:
+
+- **addressOf 는 절대 새 주소를 만들지 않는다** (가이드 9.1 불변식) — `HdWallet.issuedAddressOf` 는 발급 장부 조회만. 재계산(bip32)은 검증·복구용. 첫 주소부터 `issueDepositAddress`(= `HdWallet.deriveNextAddress` + 디렉터리 + watch-list 등록).
+- **custody 는 두 포트** — `SelfBuildAdapter` 에서 ChainQueryPort 분리 → `IndexerQueryAdapter` (custody 와 별개 슬롯, 하이브리드와 같은 클래스 한 벌. `chainquery.provider=indexer|alchemy`).
+- **SPI 선택 capability 2종** (engine/multichain) — `DepositAddressDerivationCapability.deriveAddress(account, index)` (EVM·UTXO·Solana, 곡선별 계산만) / `OnLedgerAccountRegistrationCapability.registerAccount(account, pubkey)` (Canton: generate-topology→HSM 서명→allocate, 호출처는 포트 createAccount).
+- **`TransactionPort.transactionsOf(account, range)`** — 내 거래 이력은 custody 가 준다(전 구현). 임의 "외부" 주소만 ChainQueryPort. 동사의 자리는 데이터의 주인이 정한다 (가이드 13.3).
+- **`WalletGatewayService.openWallet`** — "지갑 개설" 한 요청 = createAccount → 첫 주소 확보, 멱등 키 하나 (가이드 9.1, `POST /accounts/open`). 클래스 kdoc 도 "게이트웨이(인증·멱등)+유스케이스" 로 정렬.
+- ⚠ 본 동기화는 **컴파일 미검증** (환경에 gradle 없음) — 툴체인 확보 시 `./gradlew build` + `ktlintFormat` 필요.

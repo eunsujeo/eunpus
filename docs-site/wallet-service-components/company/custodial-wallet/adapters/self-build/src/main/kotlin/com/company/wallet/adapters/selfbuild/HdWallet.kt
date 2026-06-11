@@ -16,8 +16,17 @@ interface HdWallet {
     /** 고객 계정 발급 — HD account index 할당 (내부 장부). 온체인 트랜잭션이 아니다 (전파·수수료 없음). */
     suspend fun allocateAccount(ref: AccountRef): Account
 
-    /** 자산별 주소 파생 — BIP-32/44, xpub 기반 (체인별 정규화 포함). */
-    suspend fun addressOf(
+    /**
+     * 발급(등록)된 주소의 조회 — 발급 장부에서 읽기만 한다, 절대 새 주소를 만들지 않는다 (가이드 9.1 불변식).
+     * 재계산(bip32)은 검증·복구용으로만 — 등록 안 된 주소가 나가면 인덱서가 입금을 놓친다 (가이드 9.4).
+     */
+    suspend fun issuedAddressOf(
+        account: Account,
+        asset: Asset,
+    ): Address
+
+    /** 발급용 — 다음 address index 를 소비해 곡선별로 계산 (가이드 15.3 ④). 디렉터리·watch-list 등록은 호출자(포트) 소관. */
+    suspend fun deriveNextAddress(
         account: Account,
         asset: Asset,
     ): Address
@@ -27,8 +36,13 @@ interface HdWallet {
 class Bip44HdWallet : HdWallet {
     override suspend fun allocateAccount(ref: AccountRef): Account = TODO("HD account index 할당 — 영속 디렉터리 경계 (가이드 15.2)")
 
-    override suspend fun addressOf(
+    override suspend fun issuedAddressOf(
         account: Account,
         asset: Asset,
-    ): Address = TODO("BIP-32/44 xpub 파생 — 키는 HSM 밖으로 나오지 않는다 (가이드 15.3)")
+    ): Address = TODO("발급 장부(디렉터리) 조회 — 가이드 15.2 addressOf")
+
+    override suspend fun deriveNextAddress(
+        account: Account,
+        asset: Asset,
+    ): Address = TODO("다음 index 소비 + 곡선별 계산 — 2.4 DepositAddressDerivationCapability 경유 (가이드 15.3)")
 }

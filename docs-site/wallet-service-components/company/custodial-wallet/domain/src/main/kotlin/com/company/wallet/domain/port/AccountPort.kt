@@ -17,9 +17,10 @@ interface AccountPort {
     suspend fun createAccount(ref: AccountRef): Account
 
     /**
-     * 이 계정의 수신 주소 — 멱등 "조회" (가이드 13.3). EVM/BTC=HD 결정적 재계산,
-     * Canton=계정 생성(party allocation) 때 만들어진 PartyId 반환. 상태를 바꾸지 않는다 —
-     * 추가 주소 "발급" 은 [DepositAddressIssuanceCapability].
+     * 이 계정의 수신 주소 — 멱등 "조회" (가이드 13.3). 발급(등록)된 주소만 반환하며
+     * **절대 새 주소를 만들지 않는다** — 주소는 watch-list 등록까지 끝나야 존재한다 (가이드 9.1 불변식).
+     * 첫 주소부터 발급은 [DepositAddressIssuanceCapability], 발급 동사가 없는 체인(Canton·NodeWallet)은
+     * 계정 생성 때 태어난 주소(PartyId 등)를 반환한다.
      */
     suspend fun addressOf(
         account: Account,
@@ -43,7 +44,7 @@ interface AccountPort {
 }
 
 /**
- * 선택 capability — 추가 입금 주소 "발급" (가이드 13.3 · 9.3). 상태를 바꾼다.
+ * 선택 capability — 입금 주소 "발급", 첫 주소부터 이 동사다 (가이드 13.3 · 9.1 · 9.3). 상태를 바꾼다.
  *
  * UTXO(다음 index)·Fireblocks(generateNewAddress — 부를 때마다 새 주소) 가 구현한다.
  * Canton 은 주소 추가 개념이 없어 부재 — 입금 구분은 memo-ref. NodeWallet 은 지갑당 주소 1개라 부재.
