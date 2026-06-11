@@ -3,9 +3,12 @@ package com.company.wallet.engine.indexer
 import com.company.wallet.domain.model.Address
 import com.company.wallet.domain.model.Amount
 import com.company.wallet.domain.model.Asset
+import com.company.wallet.domain.model.Balance
+import com.company.wallet.domain.model.BlockRange
 import com.company.wallet.domain.model.ChainId
 import com.company.wallet.domain.model.ChainRecord
 import com.company.wallet.domain.model.QueryFilter
+import com.company.wallet.domain.model.Transfer
 import com.company.wallet.domain.model.TxRef
 import com.company.wallet.engine.multichain.ChainSource
 import com.company.wallet.engine.multichain.SourceEvent
@@ -102,6 +105,17 @@ private class JournalingProjectionStore(
     override suspend fun balanceOf(
         address: Address,
         asset: Asset,
+    ): Balance = Balance.zero(0)
+
+    override suspend fun transfersOf(
+        address: Address,
+        range: BlockRange,
+    ): List<Transfer> = emptyList()
+
+    override suspend fun balanceAt(
+        address: Address,
+        asset: Asset,
+        block: Long,
     ): Amount = Amount.zero(0)
 
     override suspend fun query(filter: QueryFilter): List<ChainRecord> = emptyList()

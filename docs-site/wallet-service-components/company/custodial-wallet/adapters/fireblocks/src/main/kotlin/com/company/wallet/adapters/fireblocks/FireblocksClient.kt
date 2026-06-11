@@ -14,8 +14,14 @@ data class FireblocksAddress(
     val tag: String? = null,
 )
 
-/** vault 의 자산 잔액 (GET /v1/vault/accounts/{id}/{asset} 응답 발췌) — 금액은 최소 단위 정수. */
+/**
+ * vault 의 자산 잔액 (GET /v1/vault/accounts/{id}/{asset} 응답 발췌) — 금액은 최소 단위 정수.
+ * Fireblocks 응답은 available/pending/lockedAmount/total 을 구분해 준다 — 13.3 Balance 로 매핑.
+ */
 data class FireblocksVaultAsset(
+    val availableMinorUnits: BigInteger,
+    val pendingMinorUnits: BigInteger,
+    val lockedMinorUnits: BigInteger,
     val totalMinorUnits: BigInteger,
     val decimals: Int,
 )

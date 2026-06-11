@@ -25,12 +25,6 @@ interface TransactionPort {
 
     suspend fun getStatus(txRef: TxRef): TxStatus
 
-    /**
-     * 대기·막힌 트랜잭션 중단 — EVM 은 같은 순번의 0원 self-send 를 더 높은 수수료로 보내 덮어쓰고,
-     * Canton 은 OFFER withdraw (가이드 13.3).
-     */
-    suspend fun cancel(txRef: TxRef): TxRef
-
     /** 내 지갑 수신·확정 push 구독 (custody 백엔드가 줌). */
     fun onChainEvent(handler: ChainEventHandler): Subscription
 }
@@ -44,4 +38,16 @@ interface TransactionPort {
  */
 interface FeeBoostCapability {
     suspend fun boost(txRef: TxRef): TxRef
+}
+
+/**
+ * 선택 capability — 대기·막힌 트랜잭션 중단 (가이드 13.3).
+ *
+ * EVM 은 같은 순번의 0원 self-send 를 더 높은 수수료로 보내 덮어쓰고, Canton 은 OFFER withdraw.
+ * Solana 는 이미 전파된 트랜잭션의 취소를 보장할 수 없다(blockhash 만료 대기) — 부재 가능.
+ * [FeeBoostCapability] 와 같은 패턴 — "미지원은 부재" 를 타입으로 표현하고,
+ * 호출 측은 `adapter is CancelCapability` 로 분기한다.
+ */
+interface CancelCapability {
+    suspend fun cancel(txRef: TxRef): TxRef
 }

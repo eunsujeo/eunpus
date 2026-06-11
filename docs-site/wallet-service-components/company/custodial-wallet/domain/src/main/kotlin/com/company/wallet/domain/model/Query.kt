@@ -19,3 +19,19 @@ data class ChainRecord(
     val blockNumber: Long,
     val payload: Map<String, String> = emptyMap(),
 )
+
+/** 블록 범위 — ChainQueryPort.transfersOf 의 조회 구간. null 경계 = 열린 구간. */
+data class BlockRange(
+    val fromBlock: Long? = null,
+    val toBlock: Long? = null,
+)
+
+/** 임의(외부 포함) 주소의 이체 한 건 — ChainQueryPort 도메인 동사의 반환 단위 (가이드 13.3). */
+data class Transfer(
+    val txRef: TxRef,
+    val asset: Asset,
+    val amount: Amount,
+    val from: Address?,
+    val to: Address,
+    val blockNumber: Long,
+)

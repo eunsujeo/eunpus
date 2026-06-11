@@ -3,8 +3,8 @@ package com.company.wallet.domain.port
 import com.company.wallet.domain.model.Account
 import com.company.wallet.domain.model.AccountRef
 import com.company.wallet.domain.model.Address
-import com.company.wallet.domain.model.Amount
 import com.company.wallet.domain.model.Asset
+import com.company.wallet.domain.model.Balance
 
 /**
  * 계정·주소 포트 — 키가 있는 곳 (가이드 13.3).
@@ -22,10 +22,14 @@ interface AccountPort {
         asset: Asset,
     ): Address
 
+    /**
+     * 잔액 — 단일 숫자가 아니라 [Balance](available·pending·locked) 로 (가이드 13.3).
+     * 자금 사용 가능 판정은 available 만 본다.
+     */
     suspend fun getBalance(
         account: Account,
         asset: Asset,
-    ): Amount
+    ): Balance
 
     /** 출금 대상 주소의 형식·체크섬 검증. */
     suspend fun validateAddress(

@@ -17,7 +17,7 @@ h2. 2. 세 기능 포트
 interface AccountPort {                       // 계정·주소 (키가 있는 곳)
     fun createAccount(ref): Account           // 고객 계정(vault) 생성
     fun deriveAddress(account, asset): Address
-    fun getBalance(account, asset): Amount
+    fun getBalance(account, asset): Balance   // 단일 숫자 아님 — available/pending/locked 구분 (사용 가능 판정은 available 만)
     fun validateAddress(asset, addr): Boolean // 출금 대상 주소 형식·체크섬 검증 — 로컬 체인 규칙으로 구현 (벤더 API 불요)
 }
 
@@ -26,12 +26,14 @@ interface TransactionPort {                   // 트랜잭션 쓰기 + 상태 + 
     fun submitTransaction(req): TxRef         // 서명+전파 묶음
     fun getStatus(txRef): TxStatus            // pending / confirmed / stuck
     fun boost(txRef): TxRef                   // 선택 capability — EVM/UTXO 전용 수수료 인상 재촉
-    fun cancel(txRef): TxRef                  // 대기·막힌 tx 중단
+    fun cancel(txRef): TxRef                  // 선택 capability — EVM=0원 self-send 덮어쓰기 · Canton=OFFER withdraw · Solana 는 보장 불가(부재 가능)
     fun onChainEvent(handler): Subscription   // 내 지갑 수신·확정 push
 }
 
 interface ChainQueryPort {                    // (선택) 임의·커스텀 조회 — custody 가 안 주는 것
-    fun query(filter): Records                // 임의 외부 주소 · deep history · 집계
+    fun transfersOf(addr, range): List<Transfer>  // 임의 외부 주소의 이체 이력 — 도메인 동사
+    fun balanceAt(addr, asset, block): Amount     // as-of-block 시점 잔액
+    fun query(filter): Records                // 탈출구 — 동사로 못 담는 커스텀·집계 (반복되면 동사로 승격)
 }
 {code}
 

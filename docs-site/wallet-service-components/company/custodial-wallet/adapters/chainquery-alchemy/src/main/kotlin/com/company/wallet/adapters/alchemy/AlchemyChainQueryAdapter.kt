@@ -1,7 +1,12 @@
 package com.company.wallet.adapters.alchemy
 
+import com.company.wallet.domain.model.Address
+import com.company.wallet.domain.model.Amount
+import com.company.wallet.domain.model.Asset
+import com.company.wallet.domain.model.BlockRange
 import com.company.wallet.domain.model.ChainRecord
 import com.company.wallet.domain.model.QueryFilter
+import com.company.wallet.domain.model.Transfer
 import com.company.wallet.domain.port.ChainQueryPort
 
 /**
@@ -12,6 +17,17 @@ import com.company.wallet.domain.port.ChainQueryPort
  * Account/Transaction 포트는 채우지 않는다 — 키·서명과 무관한 읽기 전용 어댑터.
  */
 class AlchemyChainQueryAdapter : ChainQueryPort {
+    override suspend fun transfersOf(
+        address: Address,
+        range: BlockRange,
+    ): List<Transfer> = TODO("Alchemy Transfers API — 임의 주소 이체 이력 → Transfer 정규화 (가이드 13.3)")
+
+    override suspend fun balanceAt(
+        address: Address,
+        asset: Asset,
+        block: Long,
+    ): Amount = TODO("Alchemy as-of-block 잔액 조회 (가이드 2.6 · 13.3)")
+
     override suspend fun query(filter: QueryFilter): List<ChainRecord> =
-        TODO("Alchemy API 호출 — 임의 주소·deep history·as-of-block 조회 후 ChainRecord 정규화 (가이드 13.4)")
+        TODO("Alchemy API 호출 — 동사로 못 담는 커스텀·집계 조회 (가이드 13.4)")
 }

@@ -30,7 +30,7 @@
 
 | 모듈 | 가이드 | 핵심 타입 |
 |---|---|---|
-| `domain` | 13 | `AccountPort` · `TransactionPort` · `FeeBoostCapability` · `ChainQueryPort` / `TransactionRequest` · `TxRef` · `TxStatus`(sealed) · `ChainSpecific`(sealed) · `ChainEvent`(sealed) · `Amount` · `ChainId`(value class) |
+| `domain` | 13 | `AccountPort` · `TransactionPort` · `FeeBoostCapability` · `CancelCapability` · `ChainQueryPort`(`transfersOf`/`balanceAt`/`query`) / `TransactionRequest` · `TxRef` · `TxStatus`(sealed) · `ChainSpecific`(sealed) · `ChainEvent`(sealed) · `Amount` · `Balance`(available/pending/locked) · `Transfer` · `ChainId`(value class) |
 | `shared` | — | `IdempotencyStore`(인터페이스) · `InMemoryIdempotencyStore` / `address/AddressRules`(로컬 주소 검증) |
 | `backend` | 6·7·8·9 | `gateway/WalletGatewayService` · `gateway/AccountController` · `gateway/TransactionController` / `directory/AccountDirectory`(계정·주소 발급 결과 저장·소유) / `reconciliation/ReconciliationService` / `alerts/NotificationFanout` · `alerts/Subscriber` · `alerts/DeliveryStore` / `orchestration/WithdrawalOrchestrator` |
 | `engine/multichain` | 2 | **체인 SPI**: `ChainAdapter` · `ChainSource` · `SourceEvent` · `UnsignedTx` · `SignedTx` · `Confirmation` + `ChainAdapterRegistry`(`pickAdapter`) |
@@ -56,9 +56,10 @@
    `apps/* → adapters/* + backend`. **`apps/api` 의 ArchUnit 테스트가 이 규칙을 검사한다 — 깨면 빌드 실패.**
 2. **domain 은 순수 Kotlin** — Spring·벤더 SDK import 금지 (`build.gradle.kts` 에 coroutines 외 의존 없음).
 3. **포트 시그니처 변경은 설계 변경** — 가이드 13.3 과 동기화해서만 수정. 함수명은 가이드와 1:1
-   (`createAccount`/`deriveAddress`/`getBalance`/`validateAddress`/`estimateFee`/`submitTransaction`/`getStatus`/`cancel`/`onChainEvent`/`boost`/`query`).
-4. **capability 는 타입으로** — fee boost 는 `FeeBoostCapability` 별도 인터페이스. `TxStatus`·`ChainSpecific` 은
-   sealed — 새 상태/체인 특화는 추가만 하고 의미 변경 금지.
+   (`createAccount`/`deriveAddress`/`getBalance`→`Balance`/`validateAddress`/`estimateFee`/`submitTransaction`/`getStatus`/`onChainEvent`/`boost`/`cancel`/`transfersOf`/`balanceAt`/`query`).
+4. **capability 는 타입으로** — fee boost 는 `FeeBoostCapability`, cancel 은 `CancelCapability` 별도
+   인터페이스 (Solana 처럼 보장 못 하는 어댑터는 미구현 허용 — 호출 측은 `is` 분기). `TxStatus`·`ChainSpecific` 은
+   sealed — 새 상태/체인 특화는 추가만 하고 의미 변경 금지. 잔액 사용 가능 판정은 `Balance.available` 만.
 5. **쓰기 파이프라인 순서 불변** (가이드 4 · 11): 멱등 확인 → 조립(순번 점유) → 서명 → 전파 → 기록.
    수수료를 바꾸면 **재서명 필수**. 재전송 자동화는 **fee-boostable 체인에만** (Canton OFFER 자동 재제출 금지).
 6. **인덱서**: 모든 수신 이벤트는 가공 전에 `RawEventStore.append`(append-only) 먼저 (가이드 3.2).
@@ -93,10 +94,6 @@
   확인 못 한 것은 "적용 전 확인" 을 명시한다. LLM 일반 지식으로 벤더 API 이름·동작을 단정하지 않는다.
 - **의사코드 ↔ Kotlin 이름 1:1** — 가이드 의사코드의 메서드·클래스명과 이 저장소의 이름을 일치시켜
   "가이드 N장" 주석만으로 상호 추적이 되게 유지한다.
-- **가이드 13.3 변경 동기화 대기 (다음 코드 세션)** — 가이드 쪽이 먼저 갱신된 항목:
-  `getBalance` 반환을 `Balance`(available/pending/locked 구분)로, `cancel` 을 capability
-  (별도 인터페이스, NodeWallet/Solana 부재 허용)로, `ChainQueryPort` 에 도메인 동사
-  (`transfersOf`/`balanceAt`) 추가. domain 포트·어댑터·ArchUnit 까지 함께 반영할 것.
 
 ## 5. 설계 원본과 다른 결정 (의도적 — 바꾸지 말 것)
 

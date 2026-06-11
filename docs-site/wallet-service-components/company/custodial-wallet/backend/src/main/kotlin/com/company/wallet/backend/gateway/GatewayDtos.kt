@@ -5,6 +5,7 @@ import com.company.wallet.domain.model.AccountRef
 import com.company.wallet.domain.model.Address
 import com.company.wallet.domain.model.Amount
 import com.company.wallet.domain.model.Asset
+import com.company.wallet.domain.model.Balance
 import com.company.wallet.domain.model.ChainId
 import com.company.wallet.domain.model.TransactionRequest
 import com.company.wallet.domain.model.TxRef
@@ -35,8 +36,11 @@ data class AddressResponse(
     val memoTag: String?,
 )
 
+/** 잔액 — available/pending/locked 구분 (가이드 13.3). 사용 가능 판정은 available 만. */
 data class BalanceResponse(
-    val minorUnits: String,
+    val availableMinorUnits: String,
+    val pendingMinorUnits: String,
+    val lockedMinorUnits: String,
     val decimals: Int,
 )
 
@@ -65,10 +69,12 @@ internal fun Account.toResponse(): AccountResponse = AccountResponse(id = id, re
 
 internal fun Address.toResponse(): AddressResponse = AddressResponse(address = value, memoTag = memoTag)
 
-internal fun Amount.toResponse(): BalanceResponse =
+internal fun Balance.toResponse(): BalanceResponse =
     BalanceResponse(
-        minorUnits = minorUnits.toString(),
-        decimals = decimals,
+        availableMinorUnits = available.minorUnits.toString(),
+        pendingMinorUnits = pending.minorUnits.toString(),
+        lockedMinorUnits = locked.minorUnits.toString(),
+        decimals = available.decimals,
     )
 
 internal fun TxRef.toResponse(): TxRefResponse = TxRefResponse(txRef = value, chainId = chainId.value)

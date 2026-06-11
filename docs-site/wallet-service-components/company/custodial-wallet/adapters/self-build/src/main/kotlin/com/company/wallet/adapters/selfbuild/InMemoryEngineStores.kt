@@ -3,8 +3,11 @@ package com.company.wallet.adapters.selfbuild
 import com.company.wallet.domain.model.Address
 import com.company.wallet.domain.model.Amount
 import com.company.wallet.domain.model.Asset
+import com.company.wallet.domain.model.Balance
+import com.company.wallet.domain.model.BlockRange
 import com.company.wallet.domain.model.ChainRecord
 import com.company.wallet.domain.model.QueryFilter
+import com.company.wallet.domain.model.Transfer
 import com.company.wallet.domain.model.TxRef
 import com.company.wallet.engine.indexer.ProjectionStore
 import com.company.wallet.engine.indexer.RawEventStore
@@ -122,18 +125,50 @@ class InMemoryProjectionStore : ProjectionStore {
         rows.remove(txRef)
     }
 
-    /** 확정(confirmed)된 수신만 합산 — pending 자금은 사용 불가 (가이드 10). */
+    /** confirmed=available · 미확정=pending 으로 구분해 [Balance] 로 (가이드 13.3 · 10.2). */
     override suspend fun balanceOf(
         address: Address,
         asset: Asset,
-    ): Amount {
+    ): Balance {
         val matching =
             rows.values.filter {
-                it.confirmed && it.address.value == address.value && it.asset == asset
+                it.address.value == address.value && it.asset == asset
             }
-        val sum = matching.fold(BigInteger.ZERO) { acc, row -> acc + row.amount.minorUnits }
-        return Amount(minorUnits = sum, decimals = matching.firstOrNull()?.amount?.decimals ?: 0)
+        val decimals = matching.firstOrNull()?.amount?.decimals ?: 0
+        val (confirmed, pending) = matching.partition { it.confirmed }
+        fun sum(list: List<Row>) = list.fold(BigInteger.ZERO) { acc, row -> acc + row.amount.minorUnits }
+        return Balance(
+            available = Amount(minorUnits = sum(confirmed), decimals = decimals),
+            pending = Amount(minorUnits = sum(pending), decimals = decimals),
+            // 스켈레톤 단순화 — 2-step locked(송신 OFFER 묶임) 추적은 영속 구현에서 (가이드 11.1)
+            locked = Amount.zero(decimals),
+        )
     }
+
+    /** 임의 주소 이체 이력 — 도메인 동사의 뒷면 (가이드 13.3). */
+    override suspend fun transfersOf(
+        address: Address,
+        range: BlockRange,
+    ): List<Transfer> =
+        rows.values
+            .filter { it.address.value == address.value }
+            // 스켈레톤 단순화 — 블록 높이 미추적이라 range 미적용·blockNumber=0 (영속 구현에서)
+            .map { row ->
+                Transfer(
+                    txRef = row.txRef,
+                    asset = row.asset,
+                    amount = row.amount,
+                    from = null,
+                    to = row.address,
+                    blockNumber = 0L,
+                )
+            }
+
+    override suspend fun balanceAt(
+        address: Address,
+        asset: Asset,
+        block: Long,
+    ): Amount = TODO("as-of-block 잔액 — 블록 높이 추적이 필요해 영속 구현에서 (가이드 2.6)")
 
     override suspend fun query(filter: QueryFilter): List<ChainRecord> {
         val addressFilter = filter.address

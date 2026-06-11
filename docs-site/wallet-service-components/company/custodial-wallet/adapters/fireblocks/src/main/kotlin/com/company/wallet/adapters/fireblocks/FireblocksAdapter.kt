@@ -5,6 +5,7 @@ import com.company.wallet.domain.model.AccountRef
 import com.company.wallet.domain.model.Address
 import com.company.wallet.domain.model.Amount
 import com.company.wallet.domain.model.Asset
+import com.company.wallet.domain.model.Balance
 import com.company.wallet.domain.model.ChainEvent
 import com.company.wallet.domain.model.ChainEventHandler
 import com.company.wallet.domain.model.ChainSpecific
@@ -14,6 +15,7 @@ import com.company.wallet.domain.model.TransactionRequest
 import com.company.wallet.domain.model.TxRef
 import com.company.wallet.domain.model.TxStatus
 import com.company.wallet.domain.port.AccountPort
+import com.company.wallet.domain.port.CancelCapability
 import com.company.wallet.domain.port.FeeBoostCapability
 import com.company.wallet.domain.port.TransactionPort
 import com.company.wallet.shared.address.AddressRules
@@ -33,7 +35,7 @@ import java.util.concurrent.CopyOnWriteArrayList
  */
 class FireblocksAdapter(
     private val client: FireblocksClient,
-) : AccountPort, TransactionPort, FeeBoostCapability {
+) : AccountPort, TransactionPort, FeeBoostCapability, CancelCapability {
     /** ref → vault id 매핑 캐시. TODO: 영속 매핑 저장소에서 로드 (재기동 생존). */
     private val vaultIdsByRef = ConcurrentHashMap<AccountRef, String>()
     private val handlers = CopyOnWriteArrayList<ChainEventHandler>()
@@ -52,12 +54,17 @@ class FireblocksAdapter(
         return Address(value = derived.address, asset = asset, memoTag = derived.tag)
     }
 
+    /** 잔액 — Fireblocks 의 available/pending/locked 구분 응답을 그대로 [Balance] 로 (가이드 13.3 · 14.2). */
     override suspend fun getBalance(
         account: Account,
         asset: Asset,
-    ): Amount {
+    ): Balance {
         val vaultAsset = client.getVaultAccountAsset(vaultAccountId = account.id, assetId = assetIdOf(asset))
-        return Amount(minorUnits = vaultAsset.totalMinorUnits, decimals = vaultAsset.decimals)
+        return Balance(
+            available = Amount(vaultAsset.availableMinorUnits, vaultAsset.decimals),
+            pending = Amount(vaultAsset.pendingMinorUnits, vaultAsset.decimals),
+            locked = Amount(vaultAsset.lockedMinorUnits, vaultAsset.decimals),
+        )
     }
 
     /** 로컬 체인 규칙으로 검증 — 벤더 API 를 호출하지 않는다 (가이드 13.3 · 14). */
@@ -95,7 +102,7 @@ class FireblocksAdapter(
         )
     }
 
-    /** 취소 — drop(boost) 과 별도 엔드포인트 (가이드 14.7). */
+    /** 취소(CancelCapability) — drop(boost) 과 별도 엔드포인트 (가이드 14.7). */
     override suspend fun cancel(txRef: TxRef): TxRef {
         client.cancelTransaction(txRef.value)
         return txRef

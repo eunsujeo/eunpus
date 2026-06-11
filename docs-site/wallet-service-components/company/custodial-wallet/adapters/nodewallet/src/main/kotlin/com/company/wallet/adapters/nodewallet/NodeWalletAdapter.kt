@@ -14,7 +14,9 @@ import com.company.wallet.domain.model.Subscription
 import com.company.wallet.domain.model.TransactionRequest
 import com.company.wallet.domain.model.TxRef
 import com.company.wallet.domain.model.TxStatus
+import com.company.wallet.domain.model.Balance
 import com.company.wallet.domain.port.AccountPort
+import com.company.wallet.domain.port.CancelCapability
 import com.company.wallet.domain.port.TransactionPort
 import com.company.wallet.shared.address.AddressRules
 
@@ -36,7 +38,7 @@ private const val LAMPORT_DECIMALS = 9
  */
 class NodeWalletAdapter(
     private val client: NodeWalletClient,
-) : AccountPort, TransactionPort {
+) : AccountPort, TransactionPort, CancelCapability {
     override suspend fun createAccount(ref: AccountRef): Account {
         val wallet = client.createWallet(ref.value)
         return Account(id = wallet.walletId, ref = ref)
@@ -50,12 +52,18 @@ class NodeWalletAdapter(
         return Address(value = client.address(account.id), asset = asset)
     }
 
+    /**
+     * 잔액 — 제품 원장 잔액 단일값을 보수적으로 available 로 둔다 (가이드 13.3 Balance).
+     * TODO: NodeWallet SDK 가 pending/locked 구분을 주는지 확인 후 매핑 (적용 전 확인).
+     */
     override suspend fun getBalance(
         account: Account,
         asset: Asset,
-    ): Amount {
+    ): Balance {
         requireSolana(asset.chainId, "getBalance")
-        return Amount(minorUnits = client.balance(account.id, asset.symbol), decimals = LAMPORT_DECIMALS)
+        return Balance.availableOnly(
+            Amount(minorUnits = client.balance(account.id, asset.symbol), decimals = LAMPORT_DECIMALS),
+        )
     }
 
     /** 로컬 체인 규칙으로 검증 — 벤더 API 를 호출하지 않는다 (가이드 13.3 · 16.2). */
@@ -86,6 +94,10 @@ class NodeWalletAdapter(
         return toTxStatus(client.getTransfer(txRef.value))
     }
 
+    /**
+     * 취소(CancelCapability) — 제품 정책에 위임 (가이드 16.2). Solana 특성상 이미 전파된 트랜잭션의
+     * 취소는 보장되지 않는다(blockhash 만료 모델) — 제품이 거절하면 그대로 실패로 전달한다.
+     */
     override suspend fun cancel(txRef: TxRef): TxRef {
         requireSolana(txRef.chainId, "cancel")
         client.cancelTransfer(txRef.value)

@@ -3,15 +3,17 @@ package com.company.wallet.backend.gateway
 import com.company.wallet.backend.directory.AccountDirectory
 import com.company.wallet.backend.directory.AccountNotFoundException
 import com.company.wallet.domain.error.DuplicateRequestException
+import com.company.wallet.domain.error.UnsupportedForChainException
 import com.company.wallet.domain.model.Account
 import com.company.wallet.domain.model.AccountRef
 import com.company.wallet.domain.model.Address
-import com.company.wallet.domain.model.Amount
 import com.company.wallet.domain.model.Asset
+import com.company.wallet.domain.model.Balance
 import com.company.wallet.domain.model.TransactionRequest
 import com.company.wallet.domain.model.TxRef
 import com.company.wallet.domain.model.TxStatus
 import com.company.wallet.domain.port.AccountPort
+import com.company.wallet.domain.port.CancelCapability
 import com.company.wallet.domain.port.TransactionPort
 import com.company.wallet.shared.idempotency.FailureKind
 import com.company.wallet.shared.idempotency.IdempotencyRecord
@@ -66,12 +68,12 @@ class WalletGatewayService(
         }
     }
 
-    /** 잔액 조회 — 읽기 전용이라 멱등 wrap 이 필요 없다. */
+    /** 잔액 조회 — 읽기 전용이라 멱등 wrap 이 필요 없다. available/pending/locked 구분 (가이드 13.3). */
     suspend fun getBalance(
         credentials: String?,
         accountId: String,
         asset: Asset,
-    ): Amount {
+    ): Balance {
         authenticate(credentials)
         return accounts.getBalance(resolveAccount(accountId), asset)
     }
@@ -106,15 +108,22 @@ class WalletGatewayService(
         return transactions.getStatus(txRef)
     }
 
-    /** 대기·막힌 트랜잭션 중단 — 역시 쓰기이므로 멱등 wrap. */
+    /**
+     * 대기·막힌 트랜잭션 중단 — 역시 쓰기이므로 멱등 wrap.
+     * cancel 은 capability 다 (가이드 13.3) — 어댑터가 [CancelCapability] 를 구현하지 않으면
+     * (예: 취소를 보장 못 하는 체인) 명시적 거절로 끝낸다.
+     */
     suspend fun cancel(
         credentials: String?,
         idempotencyKey: String?,
         txRef: TxRef,
     ): TxRef {
         authenticate(credentials)
+        val cancellable =
+            transactions as? CancelCapability
+                ?: throw UnsupportedForChainException("cancel", txRef.chainId)
         return withIdempotency(idempotencyKey ?: "cancel:${txRef.chainId.value}:${txRef.value}") {
-            transactions.cancel(txRef)
+            cancellable.cancel(txRef)
         }
     }
 
