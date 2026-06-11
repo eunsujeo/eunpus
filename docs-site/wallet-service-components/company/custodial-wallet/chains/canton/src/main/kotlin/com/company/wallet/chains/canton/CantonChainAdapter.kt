@@ -48,10 +48,16 @@ class CantonChainAdapter(
     /** 재조립 신원 구분용 시퀀스 — Canton 엔 nonce·blockhash 같은 자연 신원 축이 없다. */
     private val buildSeq = AtomicLong()
 
+    /**
+     * 파생·발급 없음 — "조회만" (가이드 2.4 · 9.2). PartyId(hint::fingerprint)는 계정 생성 단계의
+     * party allocation(topology 서명 필요·비멱등·유료 온장 등록, 가이드 15.9) 때 이미 만들어졌다.
+     * ★ 여기서 allocation 을 호출하지 말 것 — 읽기 동사 뒤에 온장 쓰기를 숨기게 된다.
+     * asset 무관(자산별 주소 없음) — 입금 구분은 주소가 아니라 memo-ref.
+     */
     override suspend fun deriveAddress(
         account: Account,
         asset: Asset,
-    ): Address = TODO("PartyId allocation — hint::fingerprint (fingerprint = 서명 공개키 sha256, 가이드 2.2)")
+    ): Address = TODO("계정 디렉터리에서 account 의 PartyId 조회·반환 (allocation 아님)")
 
     override suspend fun getBalance(
         address: Address,
