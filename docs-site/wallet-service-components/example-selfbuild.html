@@ -142,7 +142,7 @@ flowchart TB
 
 <h3>15.3 계정·주소 발급 단계별 흐름</h3>
 
-<p>자체 구축은 발급도 직접 한다 — Fireblocks 가 해주던 vault 생성·주소 파생을 <strong>우리 HD 지갑·HSM 으로</strong> 수행한다. 다만 9.2 에서 본 대로 <strong>곡선·체인에 따라 발급 흐름 자체가 세 갈래</strong>라서, 그림도 체인별로 나눠 그린다. 진입(비즈니스 레이어 → 게이트웨이, 지갑 개설 + 멱등 키)과 마무리(계정 디렉터리 저장 + 인덱서 watch-list 등록, <a href="scenario-provisioning.html">9.4</a>)는 세 갈래 공통이므로 게이트웨이부터 그린다. 각 그림에 등장하는 <strong>참가자 수 자체가 비용 차이</strong>다 — secp256k1<span class="g" data-tip="비트코인·이더리움 계열이 쓰는 타원곡선 서명 방식. 확장 공개키(xpub)만으로, 개인키 없이 자식 주소를 계산하는 공개 파생이 가능하다">?</span> 은 둘(HSM 없음), ed25519<span class="g" data-tip="솔라나 등이 쓰는 타원곡선 서명 방식. 공개키만으로는 자식 키를 파생할 수 없어, 파생에 항상 개인키가 필요하다">?</span> 는 셋(HSM 내부 파생), Canton 은 넷(participant node 까지 가는 유료 온장 등록).</p>
+<p>자체 구축은 발급도 직접 한다 — Fireblocks 가 해주던 vault 생성·주소 파생을 <strong>우리 HD 지갑·HSM 으로</strong> 수행한다. 다만 9.2 에서 본 대로 <strong>곡선·체인에 따라 발급 흐름 자체가 세 갈래</strong>라서, 그림도 체인별로 나눠 그린다. 진입(비즈니스 레이어 → 게이트웨이, 지갑 개설(고객 ref · asset) + 멱등 키 — 이 한 요청을 게이트웨이가 아래 포트 호출들로 푼다, <a href="scenario-provisioning.html">9.1</a>)과 마무리(계정 디렉터리 저장 + 인덱서 watch-list 등록, <a href="scenario-provisioning.html">9.4</a>)는 세 갈래 공통이므로 게이트웨이부터 그린다. 각 그림에 등장하는 <strong>참가자 수 자체가 비용 차이</strong>다 — secp256k1<span class="g" data-tip="비트코인·이더리움 계열이 쓰는 타원곡선 서명 방식. 확장 공개키(xpub)만으로, 개인키 없이 자식 주소를 계산하는 공개 파생이 가능하다">?</span> 은 둘(HSM 없음), ed25519<span class="g" data-tip="솔라나 등이 쓰는 타원곡선 서명 방식. 공개키만으로는 자식 키를 파생할 수 없어, 파생에 항상 개인키가 필요하다">?</span> 는 셋(HSM 내부 파생), Canton 은 넷(participant node 까지 가는 유료 온장 등록).</p>
 
 <p><strong>① secp256k1 (EVM·BTC) — 로컬 공개 파생.</strong> 참가자가 게이트웨이와 AccountPort 둘뿐이다.</p>
 
