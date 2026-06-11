@@ -45,7 +45,7 @@ h2. 3. 어댑터 비교 — Fireblocks · 자체 구축 · NodeWallet
 ||항목||Fireblocks (SaaS 위탁)||자체 구축 (직접 빌드)||NodeWallet (온프렘 제품 도입)||
 |AccountPort|(/) vault 생성·주소 파생|(/) HD 지갑 + 자체 파생|(/) 지갑 생성 (Solana 전용)|
 |TransactionPort|(/) createTransaction 한 번(서명+전파+nonce 묶음) + webhook 이벤트|(/) 조립→서명(HSM)→전파를 내부에서 직접 조립|(/) 내부 3-키 다중서명 (HSM+SGX)|
-|ChainQueryPort|(x) 임의 외부 주소·커스텀 조회 미지원 → 자체 인덱서/Alchemy 추가|(/) 자체 인덱서|(x) 자체 인덱서 별도|
+|ChainQueryPort|(x) 임의 외부 주소·커스텀 조회 미지원 → 자체 인덱서/Alchemy 추가|(/) 자체 인덱서 — custody 와 별개의 인덱서 어댑터(하이브리드와 같은 클래스)|(x) 자체 인덱서 별도|
 |키 소유권|벤더 샤드 보관 (MPC)|자체 HSM/MPC 운영|고객 직접 보유 (온프렘 HSM+SGX)|
 |수신 감지|webhook push (벤더가 인덱싱)|자체 인덱서 상시 운영 (수집·projection·reorg)|제품 자체 원장·입금 검증 push|
 |nonce·stuck 대응|플랫폼 내부 처리 — 자체 nonce 돌리면 충돌. boost API 호출만|직접 — 계정별 lock·직렬화·fee bump|제품 처리 (Solana 라 fee-boost 없음)|

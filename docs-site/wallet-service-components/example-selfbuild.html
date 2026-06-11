@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>15. 자체 구축 어댑터 — 블록체인 매니저 컴포넌트 가이드</title>
-<meta content="SelfBuiltProvider 가 같은 세 포트(Account·Transaction·ChainQuery)를 구현하되, 내부에서 nonce·서명(HSM)·전파(노드/GCP BNE)·자체 인덱서를 직접 조립한다. 트랜잭션 제출 시 조립→서명→전파 분리." name="description"/>
+<meta content="SelfBuiltProvider 가 Account·Transaction 포트를 구현하고 ChainQuery 는 인덱서 어댑터가 채운다 — 내부에서 멀티체인 어댑터·서명(HSM)·자체 인덱서를 직접 조립. 트랜잭션 제출 시 조립→서명→전파 분리." name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
 </head>
@@ -56,7 +56,7 @@
 
 <main class="content">
 <section id="example-selfbuild">
-<h2>15. 자체 구축 어댑터 — 세 포트 구현 예시</h2>
+<h2>15. 자체 구축 어댑터 — 포트 구현 예시</h2>
 <span class="section-subtitle">같은 포트, 내부만 다름 — SelfBuiltProvider 가 nonce·서명·전파·인덱서를 직접 조립한다</span>
 
 <div class="callout">
@@ -66,12 +66,12 @@
 
 <h3>15.1 큰 그림 — provider 는 하나, 내부에 부품이 여럿</h3>
 
-<p>자체 구축은 <strong>블록체인 매니저(체인 엔진)를 직접 만드는</strong> 길이다 — Fireblocks 가 관리형으로 주던 엔진을 우리가 짓는다. 지갑 서비스 백엔드가 보는 것은 여전히 <strong>같은 세 포트</strong>지만, Fireblocks 가 통째로 해주던 트랜잭션 제출을 <strong>SelfBuiltProvider 가 내부에서 여러 부품으로 직접 조립</strong>한다. Fireblocks 가 묶어주던 <strong>서명·전파·nonce 가 다시 분리</strong>되지만, 그 분리는 provider <em>내부</em>에서만 보이고 코어에는 노출되지 않는다.</p>
+<p>자체 구축은 <strong>블록체인 매니저(체인 엔진)를 직접 만드는</strong> 길이다 — Fireblocks 가 관리형으로 주던 엔진을 우리가 짓는다. 지갑 서비스 백엔드가 보는 것은 여전히 <strong>같은 세 포트</strong>지만 — custody 두 포트(Account·Transaction)는 <strong>SelfBuiltProvider</strong> 가, ChainQuery 는 <strong>인덱서를 감싼 별도 어댑터</strong>(13.4 하이브리드와 같은 클래스)가 채운다 — Fireblocks 가 통째로 해주던 트랜잭션 제출을 <strong>SelfBuiltProvider 가 내부에서 여러 부품으로 직접 조립</strong>한다. Fireblocks 가 묶어주던 <strong>서명·전파·nonce 가 다시 분리</strong>되지만, 그 분리는 provider <em>내부</em>에서만 보이고 코어에는 노출되지 않는다.</p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart TB
     CORE["지갑 서비스 백엔드<br/>(포트에만 의존)"]
-    subgraph SBP["SelfBuiltProvider (세 포트 구현)"]
+    subgraph SBP["SelfBuiltProvider (Account·Transaction 포트 구현)"]
       direction LR
       HD["HD 지갑<br/>account · 주소 파생"]
       NONCE["nonce 매니저<br/>+ tx 빌더"]
@@ -92,56 +92,74 @@ flowchart TB
     class HD,NONCE,HSM,NODE,IDXA adp;
     class CHAIN ext;
 </pre></div>
-<p class="diagram-caption">Figure 15-1. 자체 구축. 코어는 여전히 <strong>같은 세 포트</strong>만 호출한다. 그 구현인 SelfBuiltProvider(파랑 박스) 안에서 HD 지갑·nonce·서명(HSM)·전파(노드)·수집(인덱서) 부품을 직접 엮는다. Fireblocks 와 달리 서명과 전파가 <strong>다른 부품</strong>이라 provider 내부에서 둘을 따로 호출한다.</p>
+<p class="diagram-caption">Figure 15-1. 자체 구축. 코어는 여전히 <strong>같은 세 포트</strong>만 호출한다. custody 두 포트의 구현인 SelfBuiltProvider(파랑 박스) 안에서 HD 지갑·nonce·서명(HSM)·전파(노드)·수집(인덱서) 부품을 직접 엮고, <strong>ChainQueryPort 는 같은 인덱서를 감싼 별도 어댑터</strong>가 채운다(15.2 코드 끝·13.4). Fireblocks 와 달리 서명과 전파가 <strong>다른 부품</strong>이라 provider 내부에서 둘을 따로 호출한다.</p>
 
 <h3>15.2 provider 코드 — 내부에서 부품을 조립</h3>
 
-<pre><code>class SelfBuiltProvider implements AccountPort, TransactionPort, ChainQueryPort {
+<pre><code>// ── 부품 조립 (앱 기동 시점, 17장 DI) — 체인별 부품(노드·nonce)은 어댑터 "안"으로 들어간다 ──
+const adapters = chainAdapters({                  // 2.4 의 레지스트리 그대로
+  ethereum: new EvmAdapter(node, nonceMgr),       // nonce 는 EVM 어댑터 소관 (4.3)
+  bitcoin:  new UtxoAdapter(node),
+  solana:   new SolanaAdapter(node),
+  canton:   new CantonAdapter(participant),
+})
+const provider   = new SelfBuiltProvider(adapters, hsm, indexer, hd)  // custody — Account·Transaction 두 포트
+const chainQuery = new IndexerQueryAdapter(indexer)                   // ChainQuery — custody 와 별개 슬롯 (13.4)
+
+class SelfBuiltProvider implements AccountPort, TransactionPort {
 
   // 내부 부품 (코어에는 안 보임) — 각각 별도 컴포넌트
   constructor(
-    private node: NodeRpc,        // 2·4 멀티체인/전파 : 노드 · GCP BNE
-    private hsm: Hsm,             // 5 서명 : 자체 HSM · MPC
-    private nonceMgr: NonceMgr,   // 4 nonce : 계정별 lock · local counter — 직접 안 부른다, 2.4 EvmAdapter 에 주입
-    private indexer: SelfIndexer, // 3 인덱서 : 수집 · projection · reorg
-    private hd: HdWallet,         // HD 지갑 : account index 할당 · xpub 파생
+    private adapters: ChainAdapters, // 2 멀티체인 : 체인 분기 전체가 이 안 (노드·nonce 포함, 2.4)
+    private hsm: Hsm,                // 5 서명 : 자체 HSM · MPC
+    private indexer: SelfIndexer,    // 3 인덱서 : 수집 · projection · reorg — 14.2 의 WebhookBus 와 같은 슬롯(이벤트 소스)
+    private hd: HdWallet,            // HD 지갑 : account index 할당 · xpub 보관·파생
   ) {}
 
   createAccount(ref) { return this.hd.allocateAccount(ref) }               // HD account index 할당 (Canton 만 party allocation, 15.9)
   addressOf(acct, asset) { return this.hd.issuedAddressOf(acct, asset) }      // 조회 — "발급(등록)된" 주소만 반환, 절대 새 주소를 만들지 않는다 (15.3)
                                 // ★ 재계산(bip32.derive)은 검증·복구용으로만 — 등록 안 된 주소가 고객에게 나가면
                                 //   인덱서 watch-list 에 없어 입금을 놓친다 (9.4). Canton 은 createAccount 때 만들어진 PartyId 반환 (15.9)
-  issueDepositAddress(acct, asset) { return bip32.derive(this.node.xpub(asset), nextIndex(acct)) }
+  issueDepositAddress(acct, asset) { return bip32.derive(this.hd.xpub(asset), nextIndex(acct)) }   // xpub 은 HD 지갑 소유 (노드 아님)
                                 // 발급 capability (13.3) — 첫 주소부터 이 동사다. 다음 index 소비 + 계정 디렉터리·인덱서 watch-list 등록(9.4)까지가 발급.
                                 // ★ 계산은 곡선별 — secp256k1(EVM·BTC)은 xpub 공개 파생(위 코드), ed25519(Solana)는 SLIP-0010
                                 //   hardened-only 라 HSM "안에서" 파생. Canton 은 미구현 — 입금 구분은 memo-ref. 경로·인코딩도 체인별 (2.2 표)
                                 //   이 곡선별 계산 조각은 실제 구현에선 boost? 처럼 어댑터 쪽 선택 capability 로 — 여기선 secp256k1 만 인라인 예시
   getBalance(acct, asset) { return this.indexer.balanceOf(this.addressOf(acct, asset), asset) }  // projection 이 confirmed/pending/locked 구분 보유 → 13.3 Balance
   validateAddress(asset, addr) { return isValidForChain(asset, addr) }          // 체인별 형식·체크섬 (로컬)
-  estimateFee(req) { return pickAdapter(req.chainId).estimateFee(req) }         // 체인별 수수료 모델은 어댑터가 흡수 (2.4)
+  estimateFee(req) { return this.adapters.pick(req.chainId).estimateFee(req) }  // 체인별 수수료 모델은 어댑터가 흡수 (2.4)
 
   // 트랜잭션 제출 : Fireblocks 가 한 번에 하던 것을 내부에서 3단계로 — 체인별 차이는 2.4 어댑터 경유
   //   ★ 실제 구현은 단계 사이 사망에 대비해 4.3 의 intent 상태머신(BUILT→SIGNED→BROADCAST)을
   //     이 안에서 그대로 밟는다 — 전파 전에 의도·서명본 영속화, 복구는 같은 서명본 재전파
   submitTransaction(req) {
-    const adapter = pickAdapter(req.chainId)               // 체인 분기는 어댑터 안에만 (2.4)
+    const adapter = this.adapters.pick(req.chainId)        // 체인 분기는 어댑터 안에만 (2.4)
     const raw     = adapter.buildTransaction(req)          // 조립 — 순번/UTXO/blockhash 점유도 이 안 (4.3, 점유 기록 영속화)
     const signed  = this.hsm.sign(raw)                     // 서명 (HSM 앞 정책 게이트 경유 — 5.5, 실패 시 비멱등)
     return adapter.broadcast(signed)                       // 전파 → TxRef(hash)
   }
   getStatus(txRef) { return this.indexer.confirmationOf(txRef) }    // as-of-block 확정수
-  transfersOf(addr, range) { return this.indexer.transfersOf(addr, range) }   // ChainQueryPort — 임의 주소의 이체 이력 (projection)
-  balanceAt(addr, asset, block) { return this.indexer.balanceAt(addr, asset, block) }  // ChainQueryPort — as-of-block 잔액
-  query(filter) { return this.indexer.query(filter) }               // ChainQueryPort — 탈출구: 커스텀·집계 (13.3)
   boost(txRef) {                                         // EVM/UTXO 만 — 같은 순번 + fee↑ (RBF). Solana 는 submit 뒤 auto-retry
-    return pickAdapter(chainOf(txRef)).resend(txRef, bump)          // 재서명·재전파도 어댑터 안 (2.4 resend)
+    return this.adapters.pick(chainOf(txRef)).resend(txRef, bump)   // 재서명·재전파도 어댑터 안 (2.4 resend)
   }
-  cancel(txRef) { return this.node.sendRawTransaction(this.hsm.sign(zeroSelfSend(txRef))) }  // EVM 예 — 같은 nonce 0원 self-send (cancel 도 capability, 13.3 — Solana 는 부재)
+  cancel(txRef) {                                        // EVM 예 — 같은 nonce 0원 self-send (cancel 도 capability, 13.3 — Solana 는 부재)
+    return this.adapters.pick(chainOf(txRef)).broadcast(this.hsm.sign(zeroSelfSend(txRef)))
+  }
 
-  // 수신 트랜잭션 · 확정 : webhook 이 없으니 인덱서를 직접 운영
+  // 수신 트랜잭션 · 확정 : webhook 이 없으니 인덱서를 직접 운영 — 자체 구축의 "이벤트 소스" 는 인덱서다
   onChainEvent(handler) {
     this.indexer.subscribe(ourAddrs, ev =&gt; handler(ev))    // RPC 폴링/스트림 → 우리 주소 필터
   }
+}
+
+// ── ChainQueryPort 는 custody provider 가 아니라 "인덱서 어댑터" 가 채운다 (13.4 의 별개 슬롯) ──
+//    하이브리드와 같은 클래스 — custody 가 Fireblocks 여도 이 어댑터만 붙이면 ChainQuery 가 생기고,
+//    Alchemy 어댑터로 교체할 수도 있다. 그래서 custody 선택과 무관하게 한 벌만 존재한다.
+class IndexerQueryAdapter implements ChainQueryPort {
+  constructor(private indexer: SelfIndexer) {}
+  transfersOf(addr, range) { return this.indexer.transfersOf(addr, range) }          // 임의 주소의 이체 이력 (projection)
+  balanceAt(addr, asset, block) { return this.indexer.balanceAt(addr, asset, block) } // as-of-block 잔액
+  query(filter) { return this.indexer.query(filter) }                                 // 탈출구 — 커스텀·집계 (13.3)
 }</code></pre>
 
 <p>코어가 호출하는 <strong>시그니처는 14장과 글자 그대로 같다</strong>(submitTransaction·getStatus·boost·onChainEvent…). 달라진 것은 오직 <code>{ }</code> 안 — Fireblocks 의 한 줄이 여기서는 "조립→서명→전파" 와 "인덱서 운영" 으로 펼쳐진다.</p>
