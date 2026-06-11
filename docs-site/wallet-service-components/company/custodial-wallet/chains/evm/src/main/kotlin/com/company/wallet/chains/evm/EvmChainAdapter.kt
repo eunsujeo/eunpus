@@ -40,10 +40,7 @@ class EvmChainAdapter(
     /** txRef.value → 전파한 원본 — 재전송 시 같은 nonce·같은 지급 의도를 복원한다 (가이드 4.4). */
     private val broadcastIndex = mutableMapOf<String, UnsignedTx>()
 
-    override suspend fun addressOf(
-        account: Account,
-        asset: Asset,
-    ): Address = TODO("BIP-32/44 경로 + coin type 파생 — 키 트리는 HD 지갑·외부 서명자 소관 (가이드 2.2 · 9)")
+    override suspend fun addressOf(account: Account): Address = TODO("BIP-32/44 경로 + coin type 파생 — 키 트리는 HD 지갑·외부 서명자 소관 (가이드 2.2 · 9)")
 
     override suspend fun getBalance(
         address: Address,

@@ -131,7 +131,9 @@ flowchart TB
 
 <pre><code>// ① 공통 인터페이스 — 위 컴포넌트가 보는 유일한 것 (= 2.2 의 공통 동사)
 interface ChainAdapter {
-  addressOf(account, asset): Address       // 멱등 조회 — 발급(추가 입금 주소)은 포트 capability 로 분리 (13.3)
+  addressOf(account): Address              // 멱등 조회 — 포트(13.3)와 달리 asset 인자가 없다: 어댑터는 체인 고정이라
+                                           //   asset 의 일(체인 라우팅·xpub/coin type 선택)은 포트에서 이미 끝났고,
+                                           //   한 체인 안에서 주소는 계정만의 함수다 (ERC-20=ETH 주소 · SPL=owner · Canton 무관)
   getBalance(address, asset): Amount
   buildTransaction(transfer): UnsignedTx   // 조립 — nonce/UTXO/2-step 차이를 흡수
   estimateFee(transfer): Fee               // 점유 없는 추정 — 조립과 달리 nonce/UTXO 를 점유하지 않는다 (견적마다 순번이 소모되면 안 됨)
@@ -157,8 +159,8 @@ function pickAdapter(chainId): ChainAdapter {
 
 <pre><code>// account = 9장 createAccount 가 만들어 계정 디렉터리에 저장된 우리 계정 핸들 (자체 구축에선 HD account index)
 class EvmAdapter implements ChainAdapter {
-  addressOf(account, _)        { return eip55(last20(keccak(pubkeyOf(account)))) }  // 조회 = HD 결정적 재계산 (secp256k1 · BIP-44 m/44'/60', 9.2)
-                                                                     // asset 무관 — ERC-20 도 같은 주소
+  addressOf(account)           { return eip55(last20(keccak(pubkeyOf(account)))) }  // 조회 = HD 결정적 재계산 (secp256k1 · BIP-44 m/44'/60', 9.2)
+                                                                     // ERC-20 도 같은 주소 — asset 인자가 없는 이유
   getBalance(address, asset)   { return isNative(asset) ? node.getBalance(address)        // 네이티브 / ERC-20 분기 —
                                                         : erc20(asset).balanceOf(address) } // 토큰은 컨트랙트 조회, 주소는 동일
   estimateFee(t)       { return eip1559(node.feeHistory()) }             // base+priority — 점유 없는 추정
@@ -171,7 +173,7 @@ class EvmAdapter implements ChainAdapter {
 }
 
 class UtxoAdapter implements ChainAdapter {
-  addressOf(account, _)        { return encode(hash160(pubkeyOf(account)), scriptType) }  // 조회 = HD 재계산 (BIP-44/49/84/86 스크립트 유형별 · base58/bech32)
+  addressOf(account)           { return encode(hash160(pubkeyOf(account)), scriptType) }  // 조회 = HD 재계산 (BIP-44/49/84/86 스크립트 유형별 · base58/bech32)
   getBalance(address, _)       { return sum(utxoSetOf(address)) }    // 잔액 = 미사용 출력(UTXO)의 합
   estimateFee(t)       { return node.estimateSmartFee() * vsizeOf(t) }  // sat/vByte × 예상 크기
   buildTransaction(t)  { const ins = coinSelect(t.from, t.amount)    // UTXO 선택
@@ -182,7 +184,7 @@ class UtxoAdapter implements ChainAdapter {
 }
 
 class SolanaAdapter implements ChainAdapter {
-  addressOf(account, _)        { return base58(hsm.derivePubkey(account)) }  // 조회 — ed25519 hardened-only 라 재계산도 키 쪽(HSM)에서 (9.2) · 주소 = pubkey
+  addressOf(account)           { return base58(hsm.derivePubkey(account)) }  // 조회 — ed25519 hardened-only 라 재계산도 키 쪽(HSM)에서 (9.2) · 주소 = pubkey
   getBalance(address, asset)   { return isNative(asset) ? node.getBalance(address)
                                                         : splTokenAccountOf(address, asset).amount }  // SPL 토큰은 별도 token account
   estimateFee(t)       { return baseFee + priorityFee(node.recentPrioritizationFees()) }
@@ -194,7 +196,7 @@ class SolanaAdapter implements ChainAdapter {
 
 class CantonAdapter implements ChainAdapter {
   // 2-step: 제출=OFFER, 완료는 상대 ACCEPT
-  addressOf(account, _)        { return partyIdOf(account) }         // 조회 — PartyId 는 계정 생성(=party allocation, topology 서명
+  addressOf(account)           { return partyIdOf(account) }         // 조회 — PartyId 는 계정 생성(=party allocation, topology 서명
                                                                      //   필요·비멱등·유료) 때 이미 만들어졌다 (9.2 · 15.9).
                                                                      //   발급(issueDepositAddress)은 Canton 에 없음 — 입금 구분은 memo-ref
   getBalance(party, asset)     { return sum(acs.holdingsOf(party, asset)) }  // ACS holdings 합 — 가용/locked 구분 (11.1)

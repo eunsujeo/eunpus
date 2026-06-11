@@ -35,10 +35,7 @@ class SolanaChainAdapter(
     /** txRef.value → 전파한 원본 — blockhash 만료 시 같은 지급 의도로 재조립하기 위한 기록. */
     private val broadcastIndex = mutableMapOf<String, UnsignedTx>()
 
-    override suspend fun addressOf(
-        account: Account,
-        asset: Asset,
-    ): Address = TODO("ed25519 키 기반 주소(+SPL ATA) 파생 — 키 트리는 외부 서명자 소관 (가이드 2.2)")
+    override suspend fun addressOf(account: Account): Address = TODO("ed25519 키 기반 주소(+SPL ATA) 파생 — 키 트리는 외부 서명자 소관 (가이드 2.2)")
 
     override suspend fun getBalance(
         address: Address,

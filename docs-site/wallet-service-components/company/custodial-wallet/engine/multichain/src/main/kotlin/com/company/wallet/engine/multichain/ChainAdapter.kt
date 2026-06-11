@@ -27,10 +27,13 @@ interface ChainAdapter {
      */
     val supportsFeeBump: Boolean
 
-    suspend fun addressOf(
-        account: Account,
-        asset: Asset,
-    ): Address
+    /**
+     * 수신 주소 — 멱등 조회. 포트(가이드 13.3)와 달리 asset 인자가 없다: 어댑터는 체인 고정이라
+     * asset 의 일(체인 라우팅·xpub/coin type 선택)은 포트에서 끝났고, 한 체인 안에서 주소는
+     * 계정만의 함수다 (ERC-20=ETH 주소 · SPL=owner · Canton 무관). 반환 [Address] 의 asset
+     * 스탬프는 포트 구현(custody 어댑터)이 찍는다 (가이드 2.4 · 9.2).
+     */
+    suspend fun addressOf(account: Account): Address
 
     suspend fun getBalance(
         address: Address,

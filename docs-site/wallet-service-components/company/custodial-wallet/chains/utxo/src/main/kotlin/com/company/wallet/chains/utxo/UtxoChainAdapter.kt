@@ -42,10 +42,7 @@ class UtxoChainAdapter(
     /** txRef.value → 전파한 원본 — 재전송 시 지급 의도·입력 복원 (가이드 4.4). */
     private val broadcastIndex = mutableMapOf<String, UnsignedTx>()
 
-    override suspend fun addressOf(
-        account: Account,
-        asset: Asset,
-    ): Address = TODO("BIP-32/44 + 스크립트 유형(P2WPKH 등) 파생 — 키 트리는 HD 지갑·외부 서명자 소관 (가이드 2.2)")
+    override suspend fun addressOf(account: Account): Address = TODO("BIP-32/44 + 스크립트 유형(P2WPKH 등) 파생 — 키 트리는 HD 지갑·외부 서명자 소관 (가이드 2.2)")
 
     override suspend fun getBalance(
         address: Address,

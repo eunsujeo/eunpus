@@ -102,6 +102,10 @@
   캡션에도 동일하게 명시됨). `engine/indexer·tx-pipeline·signing` 은 chains 를 모르고 SPI(레지스트리)만
   보며, engine 과 chains 를 함께 조립하는 것은 adapters/self-build 다.
 - **ChainId 는 enum 이 아니라 value class** — "체인 추가가 domain 을 바꾸지 않는다"(17.3)를 지키기 위해.
+- **SPI `ChainAdapter.addressOf(account)` 에는 asset 인자가 없다** (포트 `AccountPort.addressOf(account, asset)` 와 다름) —
+  어댑터는 체인 고정이라 asset 의 일(체인 라우팅·xpub/coin type 선택)은 포트에서 끝나고, 한 체인 안에서
+  주소는 계정만의 함수다 (ERC-20=ETH 주소·SPL=owner·Canton 무관). 반환 `Address` 의 asset 스탬프는
+  포트 구현이 찍는다. 자산별 주소가 다른 체인이 실제로 오면 그때 인자를 되살린다 (가이드 2.4 · 9.2).
 
 ## 6. 흔한 작업 가이드
 

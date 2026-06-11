@@ -99,7 +99,7 @@ sequenceDiagram
 </table>
 </div>
 
-<p>표의 용어 — HD(하나의 시드에서 여러 주소를 계층적으로 파생하는 지갑 방식), xpub(개인키 없이 공개키만으로 하위 주소를 파생할 수 있는 확장 공개키), bip32(이 HD 파생 규칙을 정의한 표준, BIP-32). 경로(coin type · 비트코인 스크립트 유형별 BIP-44/49/84/86)와 주소 인코딩(keccak/EIP-55 · hash160/bech32 · base58)도 체인별이다. 그리고 ERC-20 토큰은 ETH 와 <strong>같은 주소</strong>를 쓴다 — 파생의 실제 단위는 asset 이 아니라 <strong>chain</strong> 이고, <code>addressOf(account, asset)</code> 구현은 asset→chain 매핑 후 체인 단위로 파생한다. 이 차이는 전부 멀티체인 어댑터(<a href="component-multichain.html">2.2 표 주소 파생 행</a>)가 흡수한다.</p>
+<p>표의 용어 — HD(하나의 시드에서 여러 주소를 계층적으로 파생하는 지갑 방식), xpub(개인키 없이 공개키만으로 하위 주소를 파생할 수 있는 확장 공개키), bip32(이 HD 파생 규칙을 정의한 표준, BIP-32). 경로(coin type · 비트코인 스크립트 유형별 BIP-44/49/84/86)와 주소 인코딩(keccak/EIP-55 · hash160/bech32 · base58)도 체인별이다. 그리고 ERC-20 토큰은 ETH 와 <strong>같은 주소</strong>를 쓴다 — 파생의 실제 단위는 asset 이 아니라 <strong>chain</strong> 이고, 포트의 <code>addressOf(account, asset)</code> 구현은 asset→chain 매핑·xpub(coin type) 선택을 끝낸 뒤 체인 단위로 파생한다. 그래서 한 겹 아래의 <strong>체인 어댑터 SPI(2.4)에는 asset 인자가 아예 없다</strong> — 어댑터는 체인 고정이라, 한 체인 안에서 주소는 계정만의 함수다. 이 차이는 전부 멀티체인 어댑터(<a href="component-multichain.html">2.2 표 주소 파생 행</a>)가 흡수한다.</p>
 
 <h3>9.3 주의</h3>
 
