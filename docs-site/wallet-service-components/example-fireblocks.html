@@ -150,6 +150,7 @@ sequenceDiagram
     Note over FB: 자산별 주소 파생 (멀티체인 흡수)
     FB-->>ACC: address
     ACC-->>SVC: vaultAccountId · 주소
+    SVC->>SVC: 계정 디렉터리 저장 (9.3) — watch-list 등록은 불요 (vault 가 곧 감시 범위, 9.4)
     SVC-->>GW: 결과 — 멱등 레코드에 저장
     GW-->>BIZ: 계정 · 입금 주소
 </pre></div>
