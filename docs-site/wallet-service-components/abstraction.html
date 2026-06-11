@@ -128,8 +128,8 @@ flowchart TB
 
 <pre><code>interface AccountPort {                  // 계정·주소 (키가 있는 곳)
   createAccount(ref): Promise&lt;Account&gt;     // 고객 계정(vault) 생성 — Canton 은 이때 party allocation (9.2)
-  addressOf(account, asset): Promise&lt;Address&gt;     // 멱등 "조회" — 이 계정의 수신 주소. EVM=HD 결정적 계산 · Canton=PartyId 반환
-  issueDepositAddress?(account, asset): Promise&lt;Address&gt;  // (capability) 추가 입금 주소 "발급" — 상태 변경
+  addressOf(account, asset): Promise&lt;Address&gt;     // 멱등 "조회" — 발급(등록)된 주소 반환. 절대 새 주소를 만들지 않는다
+  issueDepositAddress?(account, asset): Promise&lt;Address&gt;  // (capability) 입금 주소 "발급" — 첫 주소부터. 상태 변경 (Canton·NodeWallet 부재 — 주소가 계정과 함께 탄생)
                                             //   UTXO·Fireblocks(generateNewAddress) ✅ · Canton ✗(주소 추가 개념 없음 — 입금 구분은 memo-ref)
   getBalance(account, asset): Promise&lt;Balance&gt;   // 단일 숫자 아님 — available(사용 가능)·pending(미확정 입금)·locked(2-step 등 묶임) 구분
   validateAddress(asset, addr): Promise&lt;boolean&gt;  // 출금 대상 주소 형식·체크섬 검증 — 로컬 체인 규칙으로 구현 (벤더 API 불요)
@@ -153,7 +153,7 @@ interface ChainQueryPort {                  // (선택) 임의·커스텀 조회
 
 <div class="callout">
 <div class="callout-title">주소는 "조회(addressOf)" 와 "발급(issueDepositAddress)" 을 가른다</div>
-<p>예전 이름 <code>deriveAddress</code>(파생)는 <strong>secp256k1<span class="g" data-tip="비트코인·이더리움 계열이 쓰는 타원곡선 서명 방식. 확장 공개키(xpub)만으로, 개인키 없이 자식 주소를 계산하는 공개 파생이 가능하다">?</span> HD 메커니즘 어휘가 포트 이름으로 샌 것</strong>이었다 — EVM/BTC 에선 파생이 순수 함수(상태 변경·비용 없음, 몇 번 불러도 같은 값)라 무해했지만, 주소 만들기가 <strong>상태 있는 작업인 체인</strong>이 오자 모순이 드러난다: Canton 은 주소(PartyId)가 계정 생성 때의 party allocation(유료·서명 필요)으로 이미 만들어지고, Fireblocks 의 <code>generateNewAddress</code> 는 부를 때마다 새 주소를 만든다. 그래서 의도 기준으로 가른다 — <strong><code>addressOf</code> = 멱등 조회(전 체인 구현)</strong>, <strong><code>issueDepositAddress?</code> = 추가 입금 주소 발급(capability — boost?/cancel? 과 같은 패턴, Canton 부재)</strong>. 13.8 의 "도메인 우선" 을 포트 이름에도 적용한 것이다.</p>
+<p>예전 이름 <code>deriveAddress</code>(파생)는 <strong>secp256k1<span class="g" data-tip="비트코인·이더리움 계열이 쓰는 타원곡선 서명 방식. 확장 공개키(xpub)만으로, 개인키 없이 자식 주소를 계산하는 공개 파생이 가능하다">?</span> HD 메커니즘 어휘가 포트 이름으로 샌 것</strong>이었다 — EVM/BTC 에선 파생이 순수 함수(상태 변경·비용 없음, 몇 번 불러도 같은 값)라 무해했지만, 주소 만들기가 <strong>상태 있는 작업인 체인</strong>이 오자 모순이 드러난다: Canton 은 주소(PartyId)가 계정 생성 때의 party allocation(유료·서명 필요)으로 이미 만들어지고, Fireblocks 의 <code>generateNewAddress</code> 는 부를 때마다 새 주소를 만든다. 그래서 의도 기준으로 가른다 — <strong><code>addressOf</code> = 멱등 조회(전 체인 구현)</strong>, <strong><code>issueDepositAddress?</code> = 입금 주소 발급(capability — boost?/cancel? 과 같은 패턴, Canton 부재)</strong>. 13.8 의 "도메인 우선" 을 포트 이름에도 적용한 것이다. 운영 불변식도 이 분리를 요구한다 — 주소는 인덱서 watch-list 등록까지 끝나야 존재하므로(9.4), <strong>새 주소가 태어나는 길은 상태 있는 동사뿐</strong>이다: 첫 주소부터 issueDepositAddress(발급 capability 가 없는 Canton·NodeWallet 은 createAccount/createWallet 때 탄생). addressOf 는 등록된 주소만 반환하고 절대 새 주소를 만들지 않는다(9.1).</p>
 </div>
 
 <div class="callout">

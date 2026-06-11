@@ -159,7 +159,8 @@ function pickAdapter(chainId): ChainAdapter {
 
 <pre><code>// account = 9장 createAccount 가 만들어 계정 디렉터리에 저장된 우리 계정 핸들 (자체 구축에선 HD account index)
 class EvmAdapter implements ChainAdapter {
-  addressOf(account)           { return eip55(last20(keccak(pubkeyOf(account)))) }  // 조회 = HD 결정적 재계산 (secp256k1 · BIP-44 m/44'/60', 9.2)
+  addressOf(account)           { return eip55(last20(keccak(pubkeyOf(account)))) }  // 결정적 재계산 (secp256k1 · BIP-44 m/44'/60') — 체인 수준 순수 함수.
+                                                                     // 고객에게 나가는 주소는 포트가 발급·등록(9.4)을 거쳐 내준다 (15.3)
                                                                      // ERC-20 도 같은 주소 — asset 인자가 없는 이유
   getBalance(address, asset)   { return isNative(asset) ? node.getBalance(address)        // 네이티브 / ERC-20 분기 —
                                                         : erc20(asset).balanceOf(address) } // 토큰은 컨트랙트 조회, 주소는 동일
@@ -173,7 +174,7 @@ class EvmAdapter implements ChainAdapter {
 }
 
 class UtxoAdapter implements ChainAdapter {
-  addressOf(account)           { return encode(hash160(pubkeyOf(account)), scriptType) }  // 조회 = HD 재계산 (BIP-44/49/84/86 스크립트 유형별 · base58/bech32)
+  addressOf(account)           { return encode(hash160(pubkeyOf(account)), scriptType) }  // 결정적 재계산 (BIP-44/49/84/86 스크립트 유형별 · base58/bech32) — 발급·등록은 포트 소관(15.3)
   getBalance(address, _)       { return sum(utxoSetOf(address)) }    // 잔액 = 미사용 출력(UTXO)의 합
   estimateFee(t)       { return node.estimateSmartFee() * vsizeOf(t) }  // sat/vByte × 예상 크기
   buildTransaction(t)  { const ins = coinSelect(t.from, t.amount)    // UTXO 선택
@@ -184,7 +185,7 @@ class UtxoAdapter implements ChainAdapter {
 }
 
 class SolanaAdapter implements ChainAdapter {
-  addressOf(account)           { return base58(hsm.derivePubkey(account)) }  // 조회 — ed25519 hardened-only 라 재계산도 키 쪽(HSM)에서 (9.2) · 주소 = pubkey
+  addressOf(account)           { return base58(hsm.derivePubkey(account)) }  // 결정적 재계산 — ed25519 hardened-only 라 키 쪽(HSM)에서 (9.2) · 주소 = pubkey · 발급·등록은 포트 소관(15.3)
   getBalance(address, asset)   { return isNative(asset) ? node.getBalance(address)
                                                         : splTokenAccountOf(address, asset).amount }  // SPL 토큰은 별도 token account
   estimateFee(t)       { return baseFee + priorityFee(node.recentPrioritizationFees()) }

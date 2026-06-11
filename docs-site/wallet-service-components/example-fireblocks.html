@@ -128,7 +128,7 @@ flowchart TB
 
 <h3>14.3 계정·주소 발급 단계별 흐름</h3>
 
-<p>온보딩 때 <code>createAccount</code> → <code>issueDepositAddress</code>(첫 주소 발급) 가 Fireblocks 에선 <strong>vault 계정 생성 → 자산별 주소 발급</strong> 두 번의 호출로 끝난다 — 이후의 <code>addressOf</code> 는 그 주소를 조회만 한다. 비즈 레이어의 "지갑 개설(고객 ref · asset)" <strong>한 요청</strong>을 게이트웨이(인증·멱등) 뒤의 <strong>지갑 서비스(유스케이스)가 두 포트 호출로 푸는 구조는 9.1 과 같다</strong> — 묶음 전체에 멱등 키 하나가 걸려, vault 만 생기고 중단돼도 같은 키 재시도가 이어서 재개한다. 다만 9.1 의 두 번째 호출이 <code>addressOf</code> 인 것과 달리 여기선 <code>issueDepositAddress</code> 다 — Fireblocks 는 첫 주소도 조회로 만들 수 없는 <strong>벤더 측 쓰기(발급)</strong>이기 때문이다. 주소는 workspace 의 MPC 키에서 BIP44 로 파생되며, 그 체인별 파생을 Fireblocks 가 감춘다 (MPC 키 share 분산은 vault 생성 이벤트가 아니라 workspace·디바이스·co-signer 단위의 lifecycle 이벤트다). 온체인 트랜잭션이 아니라 전파·수수료가 없다.</p>
+<p>온보딩 때 <code>createAccount</code> → <code>issueDepositAddress</code>(첫 주소 발급) 가 Fireblocks 에선 <strong>vault 계정 생성 → 자산별 주소 발급</strong> 두 번의 호출로 끝난다 — 이후의 <code>addressOf</code> 는 그 주소를 조회만 한다. 비즈 레이어의 "지갑 개설(고객 ref · asset)" <strong>한 요청</strong>을 게이트웨이(인증·멱등) 뒤의 <strong>지갑 서비스(유스케이스)가 두 포트 호출로 푸는 구조도, 첫 주소가 발급 동사(issueDepositAddress)로 태어나는 것도 9.1 표준 흐름 그대로다</strong> — 묶음 전체에 멱등 키 하나가 걸려, vault 만 생기고 중단돼도 같은 키 재시도가 이어서 재개한다. Fireblocks 에서 발급은 <strong>벤더 측 쓰기</strong>(generateNewAddress)이고, <code>addressOf</code> 는 그렇게 만들어진 주소의 조회일 뿐 절대 새 주소를 만들지 않는다. 주소는 workspace 의 MPC 키에서 BIP44 로 파생되며, 그 체인별 파생을 Fireblocks 가 감춘다 (MPC 키 share 분산은 vault 생성 이벤트가 아니라 workspace·디바이스·co-signer 단위의 lifecycle 이벤트다). 온체인 트랜잭션이 아니라 전파·수수료가 없다.</p>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
