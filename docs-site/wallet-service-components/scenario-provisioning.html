@@ -65,24 +65,28 @@ sequenceDiagram
     autonumber
     participant U as 클라이언트
     participant BIZ as 비즈니스 레이어
-    participant GW as API 게이트웨이
+    participant GW as 게이트웨이 (인증·멱등)
+    participant SVC as 지갑 서비스 (유스케이스)
     participant ACC as AccountPort (어댑터)
     participant BK as 백엔드(Fireblocks/자체/NodeWallet)
 
     U->>BIZ: 지갑 개설 요청 (온보딩 · 자산 지정)
     Note over BIZ: 인증·KYC·자격 확인 (업무 판단)
-    BIZ->>GW: createAccount(고객 ref, asset) + 멱등 키
-    GW->>ACC: createAccount(ref)
+    BIZ->>GW: 지갑 개설 (고객 ref · asset) + 멱등 키
+    Note over GW: 멱등 키 확인 — 처리된 키면 저장된 결과 즉시 반환
+    GW->>SVC: 지갑 개설 유스케이스 실행
+    SVC->>ACC: createAccount(ref)
     ACC->>BK: 계정 생성 (vault / HD account)
     BK-->>ACC: accountId
-    GW->>ACC: addressOf(account, asset)
+    SVC->>ACC: addressOf(account, asset)
     ACC->>BK: 주소 파생 (자산별)
     BK-->>ACC: address
-    Note over GW,BK: 자체·하이브리드 인덱서 운용 시 — 발급 주소를 watch-list 에 등록 (9.4)
+    Note over SVC,BK: 자체·하이브리드 인덱서 운용 시 — 발급 주소를 watch-list 에 등록 (9.4)
+    SVC-->>GW: accountId · 주소 — 멱등 레코드에 결과 저장
     GW-->>BIZ: accountId · 입금 주소
     BIZ-->>U: 지갑·입금 주소 표시
 </pre></div>
-<p class="diagram-caption">Figure 9-1. 계정·주소 발급. 클라이언트 → 비즈니스 레이어(인증·KYC 판단) → 게이트웨이(멱등 키) → <strong>AccountPort.createAccount → addressOf</strong> → 어댑터가 백엔드(Fireblocks vault / 자체 HD / NodeWallet)로 번역. 발급된 주소로 받는 입금은 <a href="scenario-deposit.html">10. 입금</a>. 이는 0.2 의 <strong>① 호출(inbound)</strong> — 비즈 레이어가 게이트웨이를 부른다. 게이트웨이는 이 한 요청을 createAccount → addressOf 두 포트 호출로 풀어 부르는데(요청 라우팅의 연장), <strong>두 호출 묶음 전체에 멱등 키 하나가 걸린다</strong> — 재시도가 와도 계정·주소가 두 번 만들어지지 않는다.</p>
+<p class="diagram-caption">Figure 9-1. 계정·주소 발급. 클라이언트 → 비즈니스 레이어(인증·KYC 판단) → 게이트웨이(인증·멱등) → 지갑 서비스(유스케이스) → <strong>AccountPort.createAccount → addressOf</strong> → 어댑터가 백엔드(Fireblocks vault / 자체 HD / NodeWallet)로 번역. 발급된 주소로 받는 입금은 <a href="scenario-deposit.html">10. 입금</a>. 이는 0.2 의 <strong>① 호출(inbound)</strong> — 비즈 레이어가 게이트웨이를 부른다. 역할이 셋으로 갈린다 — 비즈 레이어는 업무 언어 한 문장("지갑 개설")만 말하고, 게이트웨이는 인증과 멱등(중복 차단)만 하며, 그 한 요청을 createAccount → addressOf <strong>두 포트 호출로 푸는 오케스트레이션은 게이트웨이 뒤의 지갑 서비스(유스케이스)</strong>가 쥔다. <strong>두 호출 묶음 전체에 멱등 키 하나가 걸린다</strong> — 계정만 생기고 중단돼도 같은 키 재시도가 이어서 재개하고, 계정·주소가 두 번 만들어지지 않는다.</p>
 
 <h3>9.2 어댑터별 구현</h3>
 
