@@ -123,9 +123,11 @@ flowchart TB
 sequenceDiagram
     autonumber
     participant BIZ as 비즈니스 레이어
+    box rgb(239,246,255) 지갑 서비스 백엔드 — 한 프로세스
     participant GW as 게이트웨이 (인증·멱등)
     participant SVC as 지갑 서비스 (유스케이스)
     participant ACC as AccountPort (NodeWalletProvider)
+    end
     participant NW as NodeWallet (온프렘 · HSM+SGX)
 
     BIZ->>GW: 지갑 개설 (고객 ref) + 멱등 키
@@ -141,7 +143,7 @@ sequenceDiagram
     SVC-->>GW: 결과 — 멱등 레코드에 저장
     GW-->>BIZ: 계정 · 입금 주소
 </pre></div>
-<p class="diagram-caption">Figure 16-2. NodeWallet 계정·주소 발급. 14장과 같은 "두 호출" 형태지만 두 번째 동사가 다르다 — NodeWallet 은 발급 동사(issueDepositAddress)가 없어, <code>createWallet</code> 때 태어난 주소를 <code>addressOf</code> 로 <strong>조회</strong>한다. 키는 고객 온프렘 HSM 안에서 생성된다. Solana 전용이라 체인 선택지가 없고 지갑당 주소 1개라 발급 capability(issueDepositAddress)도 없다 — 이더리움·Canton 은 16.7 참조.</p>
+<p class="diagram-caption">Figure 16-2. NodeWallet 계정·주소 발급. 14장과 같은 "두 호출" 형태지만 두 번째 동사가 다르다 — NodeWallet 은 발급 동사(issueDepositAddress)가 없어, <code>createWallet</code> 때 태어난 주소를 <code>addressOf</code> 로 <strong>조회</strong>한다. 키는 고객 온프렘 HSM 안에서 생성된다. 파란 상자는 한 프로세스(지갑 서비스 백엔드) — 상자를 넘는 화살표만 네트워크/SDK 호출이다(9.1). Solana 전용이라 체인 선택지가 없고 지갑당 주소 1개라 발급 capability(issueDepositAddress)도 없다 — 이더리움·Canton 은 16.7 참조.</p>
 
 <h3>16.4 송신 트랜잭션 — 내부 3-키 다중서명</h3>
 

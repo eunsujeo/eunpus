@@ -68,9 +68,11 @@ sequenceDiagram
     autonumber
     participant U as 클라이언트
     participant BIZ as 비즈니스 레이어
+    box rgb(239,246,255) 지갑 서비스 백엔드 — 한 프로세스
     participant GW as 게이트웨이 (인증·멱등)
     participant SVC as 지갑 서비스 (유스케이스)
     participant ACC as AccountPort (어댑터)
+    end
     participant BK as 백엔드(Fireblocks/자체/NodeWallet)
 
     U->>BIZ: 지갑 개설 요청 (온보딩 · 자산 지정)
@@ -90,7 +92,7 @@ sequenceDiagram
     GW-->>BIZ: accountId · 입금 주소
     BIZ-->>U: 지갑·입금 주소 표시
 </pre></div>
-<p class="diagram-caption">Figure 9-1. 계정·주소 발급. 클라이언트 → 비즈니스 레이어(인증·KYC 판단) → 게이트웨이(인증·멱등) → 지갑 서비스(유스케이스) → <strong>AccountPort.createAccount → 첫 주소 확보(issueDepositAddress 발급 — Canton·NodeWallet 만 addressOf 조회)</strong> → 어댑터가 백엔드(Fireblocks vault / 자체 HD / NodeWallet)로 번역. 발급된 주소로 받는 입금은 <a href="scenario-deposit.html">10. 입금</a>. 이는 0.2 의 <strong>① 호출(inbound)</strong> — 비즈 레이어가 게이트웨이를 부른다. 역할이 셋으로 갈린다 — 비즈 레이어는 업무 언어 한 문장("지갑 개설")만 말하고, 게이트웨이는 인증과 멱등(중복 차단)만 하며, 그 한 요청을 createAccount → 첫 주소 확보 <strong>두 포트 호출로 푸는 오케스트레이션은 게이트웨이 뒤의 지갑 서비스(유스케이스)</strong>가 쥔다. <strong>두 호출 묶음 전체에 멱등 키 하나가 걸린다</strong> — 계정만 생기고 중단돼도 같은 키 재시도가 이어서 재개하고, 계정·주소가 두 번 만들어지지 않는다.</p>
+<p class="diagram-caption">Figure 9-1. 계정·주소 발급. 클라이언트 → 비즈니스 레이어(인증·KYC 판단) → 게이트웨이(인증·멱등) → 지갑 서비스(유스케이스) → <strong>AccountPort.createAccount → 첫 주소 확보(issueDepositAddress 발급 — Canton·NodeWallet 만 addressOf 조회)</strong> → 어댑터가 백엔드(Fireblocks vault / 자체 HD / NodeWallet)로 번역. 발급된 주소로 받는 입금은 <a href="scenario-deposit.html">10. 입금</a>. 이는 0.2 의 <strong>① 호출(inbound)</strong> — 비즈 레이어가 게이트웨이를 부른다. 역할이 셋으로 갈린다 — 비즈 레이어는 업무 언어 한 문장("지갑 개설")만 말하고, 게이트웨이는 인증과 멱등(중복 차단)만 하며, 그 한 요청을 createAccount → 첫 주소 확보 <strong>두 포트 호출로 푸는 오케스트레이션은 게이트웨이 뒤의 지갑 서비스(유스케이스)</strong>가 쥔다. <strong>두 호출 묶음 전체에 멱등 키 하나가 걸린다</strong> — 계정만 생기고 중단돼도 같은 키 재시도가 이어서 재개하고, 계정·주소가 두 번 만들어지지 않는다. 마지막으로 <strong>파란 상자는 한 프로세스(지갑 서비스 백엔드)</strong>다 — 상자 경계를 <strong>넘는</strong> 화살표만 네트워크 호출이라 부분 실패·중복·타임아웃이 생기고, 멱등이 의미 있는 곳도 거기뿐이다. 상자 <strong>안</strong> 화살표(게이트웨이→유스케이스→포트)는 메서드 호출 — 함께 살고 함께 죽는다. 단 마지막 경계(어댑터→백엔드)는 어댑터마다 성격이 다르다: Fireblocks=REST 왕복 / 자체 구축 secp256k1=로컬 계산(외부 왕복 없음, <a href="example-selfbuild.html">15-2a</a>) / NodeWallet=SDK.</p>
 
 <h3>9.2 어댑터별 구현</h3>
 

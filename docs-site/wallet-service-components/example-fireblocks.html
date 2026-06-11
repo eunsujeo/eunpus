@@ -137,9 +137,11 @@ flowchart TB
 sequenceDiagram
     autonumber
     participant BIZ as 비즈니스 레이어
+    box rgb(239,246,255) 지갑 서비스 백엔드 — 한 프로세스
     participant GW as 게이트웨이 (인증·멱등)
     participant SVC as 지갑 서비스 (유스케이스)
     participant ACC as AccountPort (FireblocksProvider)
+    end
     participant FB as Fireblocks (SaaS · MPC)
 
     BIZ->>GW: 지갑 개설 (고객 ref · asset) + 멱등 키
@@ -157,7 +159,7 @@ sequenceDiagram
     SVC-->>GW: 결과 — 멱등 레코드에 저장
     GW-->>BIZ: 계정 · 입금 주소
 </pre></div>
-<p class="diagram-caption">Figure 14-2a. Fireblocks 계정·주소 발급. 지갑 서비스(유스케이스)는 <code>createAccount</code>·<code>issueDepositAddress</code>(첫 주소) 두 번만 부르고, vault 생성·체인별 주소 파생(workspace MPC 키에서 BIP44)은 Fireblocks 가 처리한다 — 이후 조회는 <code>addressOf</code>. 전파·수수료가 없는 발급 단계다. REST 매핑 상세는 14.7 표 참조.</p>
+<p class="diagram-caption">Figure 14-2a. Fireblocks 계정·주소 발급. 지갑 서비스(유스케이스)는 <code>createAccount</code>·<code>issueDepositAddress</code>(첫 주소) 두 번만 부르고, vault 생성·체인별 주소 파생(workspace MPC 키에서 BIP44)은 Fireblocks 가 처리한다 — 이후 조회는 <code>addressOf</code>. 전파·수수료가 없는 발급 단계다. 파란 상자는 한 프로세스(지갑 서비스 백엔드) — 상자를 넘는 화살표(비즈→게이트웨이, 어댑터→Fireblocks)만 네트워크 호출이고, 상자 안은 메서드 호출이다(9.1). REST 매핑 상세는 14.7 표 참조.</p>
 
 <p>발급이 끝난 뒤의 <strong>조회(addressOf)</strong> 는 별개의 흐름이다 — 입금 화면을 띄울 때마다 불리는 읽기 경로로, 상태를 바꾸지 않으니 멱등 키도 발급 부수효과도 없다.</p>
 
@@ -165,9 +167,11 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant BIZ as 비즈니스 레이어
+    box rgb(239,246,255) 지갑 서비스 백엔드 — 한 프로세스
     participant GW as 게이트웨이 (인증·멱등)
     participant SVC as 지갑 서비스 (유스케이스)
     participant ACC as AccountPort (FireblocksProvider)
+    end
     participant FB as Fireblocks (SaaS · MPC)
 
     BIZ->>GW: 입금 주소 조회 (고객 ref · asset)
