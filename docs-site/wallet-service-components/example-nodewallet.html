@@ -106,6 +106,7 @@ flowchart TB
     })
   }
   getStatus(txRef) { return nw.tx(txRef).status }
+  transactionsOf(wallet, range) { return nw.transfers(wallet, range) }   // 내 거래 이력 — 제품 자체 원장 (벤더 주장, 적용 전 확인)
   cancel(txRef) { return nw.cancelTransfer(txRef) }                 // 제품 정책 (Solana blockhash 만료 모델)
   // boost? 미구현 — Solana 전용이라 fee-boost 없음. stuck 은 제품/어댑터 auto-retry(blockhash 만료 재제출) (4.4)
 

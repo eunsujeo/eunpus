@@ -32,7 +32,7 @@ custodial-wallet/                # Gradle 멀티모듈 (각 디렉터리 = 서�
 │
 ├─ adapters/                     # custody 어댑터 = 교체 축 (포트 구현)
 │   ├─ fireblocks/               # Account+Transaction (REST/webhook) — 현재 기본
-│   ├─ self-build/               # engine+chains 조립, 세 포트
+│   ├─ self-build/               # engine+chains 조립 — custody 두 포트 (ChainQuery 는 인덱서 어댑터)
 │   ├─ nodewallet/               # 온프렘 · Solana 전용
 │   └─ chainquery-alchemy/       # ChainQueryPort 만
 │

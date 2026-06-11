@@ -26,6 +26,7 @@ interface TransactionPort {                   // 트랜잭션 쓰기 + 상태 + 
     fun estimateFee(req): Fee                 // 제출 전 수수료 추정 (low/med/high)
     fun submitTransaction(req): TxRef         // 서명+전파 묶음
     fun getStatus(txRef): TxStatus            // pending / confirmed / stuck
+    fun transactionsOf(account, range): List<Transfer>  // 내 계정 송수신 이력 — custody 가 줌. 임의 "외부" 주소는 ChainQueryPort.transfersOf
     fun boost(txRef): TxRef                   // 선택 capability — EVM/UTXO 전용 수수료 인상 재촉
     fun cancel(txRef): TxRef                  // 선택 capability — EVM=0원 self-send 덮어쓰기 · Canton=OFFER withdraw · Solana 는 보장 불가(부재 가능)
     fun onChainEvent(handler): Subscription   // 내 지갑 수신·확정 push

@@ -116,7 +116,15 @@ class SelfBuiltProvider implements AccountPort, TransactionPort {
     private hd: HdWallet,            // HD 지갑 : account index 할당 · xpub 보관·파생
   ) {}
 
-  createAccount(ref) { return this.hd.allocateAccount(ref) }               // HD account index 할당 (Canton 만 party allocation, 15.9)
+  createAccount(ref) {
+    const acct = this.hd.allocateAccount(ref)               // 전 체인 공통 — 계정 장부에 줄 하나 (HD account index)
+    for (const chain of chainsOf(ref)) {                    // 온보딩 요청의 asset → 체인 (9.1)
+      const a = this.adapters.pick(chain)
+      if (a.registersAccountOnLedger)                       // Canton 만 — 주소(PartyId)가 계정과 함께 태어나는 체인 (9.2 · 15.9)
+        a.registerAccount(acct, this.hsm.pubkeyOf(acct))    // generate-topology → HSM hash 서명 → allocate (15-2c 의 그 화살표들)
+    }
+    return acct
+  }
   addressOf(acct, asset) { return this.hd.issuedAddressOf(acct, asset) }      // 조회 — "발급(등록)된" 주소만 반환, 절대 새 주소를 만들지 않는다 (15.3)
                                 // ★ 재계산(bip32.derive)은 검증·복구용으로만 — 등록 안 된 주소가 고객에게 나가면
                                 //   인덱서 watch-list 에 없어 입금을 놓친다 (9.4). Canton 은 createAccount 때 만들어진 PartyId 반환 (15.9)
@@ -139,6 +147,9 @@ class SelfBuiltProvider implements AccountPort, TransactionPort {
     return adapter.broadcast(signed)                       // 전파 → TxRef(hash)
   }
   getStatus(txRef) { return this.indexer.confirmationOf(txRef) }    // as-of-block 확정수
+  transactionsOf(acct, range) { return this.indexer.transactionsOf(this.hd.issuedAddressesOf(acct), range) }
+                                // 내 거래 이력 — 수신은 projection, 송신은 intent 저장소(4.3)가 합쳐 진실원천.
+                                //   임의 "외부" 주소 이력은 아래 IndexerQueryAdapter.transfersOf (다른 포트)
   boost(txRef) {                                         // EVM/UTXO 만 — 같은 순번 + fee↑ (RBF). Solana 는 submit 뒤 auto-retry
     return this.adapters.pick(chainOf(txRef)).resend(txRef, bump)   // 재서명·재전파도 어댑터 안 (2.4 resend)
   }
