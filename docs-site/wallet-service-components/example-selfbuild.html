@@ -105,7 +105,10 @@ flowchart TB
   ) {}
 
   createAccount(ref) { return this.hd.allocateAccount(ref) }               // HD account index 할당
-  deriveAddress(acct, asset) { return bip32.derive(this.node.xpub(asset), acct) }  // 우리가 파생
+  deriveAddress(acct, asset) { return bip32.derive(this.node.xpub(asset), acct) }
+                                // ★ secp256k1 체인(EVM·BTC) 한정 — xpub 만으로 non-hardened 공개 파생이 가능.
+                                //   ed25519(Solana)는 SLIP-0010 hardened-only 라 xpub 파생 불가 → HSM "안에서" 파생,
+                                //   Canton 은 파생이 아니라 party allocation (15.9). 경로·주소 인코딩도 체인별 (2.2 표)
   getBalance(acct, asset) { return this.indexer.balanceOf(this.deriveAddress(acct, asset), asset) }  // projection 이 confirmed/pending/locked 구분 보유 → 13.3 Balance
   validateAddress(asset, addr) { return isValidForChain(asset, addr) }          // 체인별 형식·체크섬 (로컬)
   estimateFee(req) { return this.node.estimateFee(req) }                        // 노드/체인 수수료 추정
@@ -156,7 +159,7 @@ sequenceDiagram
     ACC-->>GW: accountId · 주소
     GW-->>BIZ: 계정 · 입금 주소
 </pre></div>
-<p class="diagram-caption">Figure 15-2. 자체 구축 계정·주소 발급. <code>createAccount</code> 는 HD account index 할당, <code>deriveAddress</code> 는 우리가 직접 BIP-32/44(하나의 시드에서 계층적으로 키를 파생하는 표준) 파생 — 파생에는 xpub(공개키만으로 주소를 파생할 수 있는 확장 공개키)을 쓰므로 키는 HSM 밖으로 나오지 않는다. Fireblocks 와 달리 vault SaaS 호출이 없는 로컬 연산이다. Canton 은 15.9 처럼 party allocation 으로 대체된다.</p>
+<p class="diagram-caption">Figure 15-2. 자체 구축 계정·주소 발급. <code>createAccount</code> 는 HD account index 할당, <code>deriveAddress</code> 는 우리가 직접 BIP-32/44(하나의 시드에서 계층적으로 키를 파생하는 표준) 파생 — 파생에는 xpub(공개키만으로 주소를 파생할 수 있는 확장 공개키)을 쓰므로 키는 HSM 밖으로 나오지 않는다. Fireblocks 와 달리 vault SaaS 호출이 없는 로컬 연산이다. 단 <strong>xpub 공개 파생은 secp256k1 체인(EVM·비트코인) 한정</strong>이다 — ed25519 체인(Solana)은 hardened 파생만 지원해 xpub 만으로는 주소를 못 만들고 HSM 안에서 파생해야 하며, Canton 은 15.9 처럼 party allocation 으로 대체된다. 경로(coin type·스크립트 유형)와 주소 인코딩도 체인별이다 — 이 차이는 멀티체인 어댑터(<a href="component-multichain.html">2.2 표 주소 파생 행</a>)가 흡수한다.</p>
 
 <h3>15.4 송신 트랜잭션 단계별 흐름 — provider 내부에서 3단계가 다 보인다</h3>
 
