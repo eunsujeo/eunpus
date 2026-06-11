@@ -57,42 +57,30 @@
 <main class="content">
 <section id="provisioning">
 <h2>9. 계정·주소 발급 (온보딩)</h2>
-<span class="section-subtitle">고객 온보딩 시 createAccount · addressOf — 입금·출금에 앞선 사전 단계</span>
+<span class="section-subtitle">고객 온보딩 시 createAccount · 첫 주소 확보 — 입금·출금에 앞선 사전 단계</span>
 
 <p class="lead">입금(10)·출금(11)은 <strong>주소가 이미 있다는 전제</strong>로 시작한다. 그 주소를 만드는 게 이 단계 — 고객 온보딩(또는 새 자산 추가) 때 <strong>계정을 만들고(createAccount) 자산별 수신 주소를 확보</strong>한다. 확보의 동사는 체인이 정한다 — 발급 capability 가 있으면 <strong>첫 주소부터 발급(issueDepositAddress)</strong>, 주소가 계정과 함께 태어나는 체인(Canton·NodeWallet)이면 <strong>조회(addressOf)</strong>. 조회와 발급은 다른 동사고(<a href="abstraction.html">13.3</a>), <strong>addressOf 는 절대 새 주소를 만들지 않는다</strong> — 등록(9.4)까지 끝난 주소를 반환할 뿐이다. <a href="abstraction.html">13. 추상화</a> 의 <strong>AccountPort</strong> 가 하는 일이다.</p>
 
 <h3>9.1 표준 흐름</h3>
 
-<div class="diagram"><pre class="mermaid">
-sequenceDiagram
-    autonumber
-    participant U as 클라이언트
-    participant BIZ as 비즈니스 레이어
-    box rgb(239,246,255) 우리 서버 — 한 프로세스 (배포 단위)
-    participant GW as 게이트웨이 (인증·멱등)
-    participant SVC as 지갑 서비스 (유스케이스)
-    participant ACC as AccountPort (어댑터)
-    end
-    participant BK as 백엔드(Fireblocks/자체/NodeWallet)
+<ol>
+<li><strong>비즈니스 레이어</strong> — 인증·KYC·자격 확인(업무 판단) 후 게이트웨이에 <strong>"지갑 개설 (고객 ref · asset)" 한 요청 + 멱등 키</strong>. 비즈 레이어는 업무 언어 한 문장만 말한다.</li>
+<li><strong>게이트웨이 (인증·멱등)</strong> — 호출 시스템 인증과 멱등 키 확인. 처리된 키면 저장된 결과를 즉시 반환한다.</li>
+<li><strong>지갑 서비스 (유스케이스)</strong> — 그 한 요청을 두 포트 호출로 푼다: <code>createAccount(ref)</code> → <strong>첫 주소 확보</strong>(발급 capability 가 있으면 <code>issueDepositAddress</code>, 주소가 계정과 함께 태어나는 Canton·NodeWallet 은 <code>addressOf</code> 조회 — 9.2 표).</li>
+<li><strong>계정 디렉터리 저장 + 인덱서 watch-list 등록</strong>(9.4) — 여기까지가 발급이다.</li>
+<li>결과를 <strong>멱등 레코드에 저장</strong>하고 비즈 레이어로 반환 — 재시도가 와도 계정·주소가 두 번 만들어지지 않는다.</li>
+</ol>
 
-    U->>BIZ: 지갑 개설 요청 (온보딩 · 자산 지정)
-    Note over BIZ: 인증·KYC·자격 확인 (업무 판단)
-    BIZ->>GW: 지갑 개설 (고객 ref · asset) + 멱등 키
-    Note over GW: 멱등 키 확인 — 처리된 키면 저장된 결과 즉시 반환
-    GW->>SVC: 지갑 개설 유스케이스 실행
-    SVC->>ACC: createAccount(ref)
-    ACC->>BK: 계정 생성 (vault / HD account)
-    BK-->>ACC: accountId
-    SVC->>ACC: issueDepositAddress(account, asset) — 첫 주소 발급
-    Note over ACC: 발급 capability 없는 체인(Canton·NodeWallet)은<br/>createAccount 때 태어난 주소를 addressOf 로 조회
-    ACC->>BK: 주소 발급 (자산별 파생·생성)
-    BK-->>ACC: address
-    Note over SVC,BK: 자체·하이브리드 인덱서 운용 시 — 발급 주소를 watch-list 에 등록 (9.4)
-    SVC-->>GW: accountId · 주소 — 멱등 레코드에 결과 저장
-    GW-->>BIZ: accountId · 입금 주소
-    BIZ-->>U: 지갑·입금 주소 표시
-</pre></div>
-<p class="diagram-caption">Figure 9-1. 계정·주소 발급. 클라이언트 → 비즈니스 레이어(인증·KYC 판단) → 게이트웨이(인증·멱등) → 지갑 서비스(유스케이스) → <strong>AccountPort.createAccount → 첫 주소 확보(issueDepositAddress 발급 — Canton·NodeWallet 만 addressOf 조회)</strong> → 어댑터가 백엔드(Fireblocks vault / 자체 HD / NodeWallet)로 번역. 발급된 주소로 받는 입금은 <a href="scenario-deposit.html">10. 입금</a>. 이는 0.2 의 <strong>① 호출(inbound)</strong> — 비즈 레이어가 게이트웨이를 부른다. 역할이 셋으로 갈린다 — 비즈 레이어는 업무 언어 한 문장("지갑 개설")만 말하고, 게이트웨이는 인증과 멱등(중복 차단)만 하며, 그 한 요청을 createAccount → 첫 주소 확보 <strong>두 포트 호출로 푸는 오케스트레이션은 게이트웨이 뒤의 지갑 서비스(유스케이스)</strong>가 쥔다. <strong>두 호출 묶음 전체에 멱등 키 하나가 걸린다</strong> — 계정만 생기고 중단돼도 같은 키 재시도가 이어서 재개하고, 계정·주소가 두 번 만들어지지 않는다. 마지막으로 <strong>파란 상자는 한 프로세스(우리 서버, 배포 단위)</strong>다 — 상자 경계를 <strong>넘는</strong> 화살표만 네트워크 호출이라 부분 실패·중복·타임아웃이 생기고, 멱등이 의미 있는 곳도 거기뿐이다. 상자 <strong>안</strong> 화살표(게이트웨이→유스케이스→포트)는 메서드 호출 — 함께 살고 함께 죽는다. 주의 — <strong>이 상자는 레이어 경계가 아니다</strong>: 레이어로는 AccountPort 어댑터부터 <strong>블록체인 매니저 영역</strong>(<a href="abstraction.html">13.1</a>)이고, 그 첫 조각(어댑터)이 우리 프로세스에 탑재돼 있을 뿐이다. 교체 경계(레이어, 13장)와 실패 경계(프로세스, 이 상자)는 서로 다른 두 경계다. 그리고 마지막 경계(어댑터→백엔드)는 어댑터마다 성격이 다르다: Fireblocks=REST 왕복 / 자체 구축 secp256k1=로컬 계산(외부 왕복 없음, <a href="example-selfbuild.html">15-2a</a>) / NodeWallet=SDK.</p>
+<div class="callout">
+<div class="callout-title">이 흐름의 불변식 3개</div>
+<ul>
+<li><strong>묶음 멱등</strong> — 두 포트 호출 묶음 전체에 <strong>멱등 키 하나</strong>가 걸린다. 계정만 생기고 중단돼도 같은 키 재시도가 이어서 재개한다.</li>
+<li><strong>역할 분담</strong> — 비즈 레이어 = 업무 언어·KYC / 게이트웨이 = 인증·멱등(중복 차단)만 / 유스케이스 = 포트 호출 순서·재개의 오케스트레이션.</li>
+<li><strong>등록까지가 발급</strong> — watch-list 등록 실패면 발급도 실패다. 감시 안 되는 주소를 고객에게 주지 않는다(9.4).</li>
+</ul>
+</div>
+
+<p>구체 시퀀스 그림은 어댑터 장에 있다 — <a href="example-fireblocks.html">Figure 14-2a</a>(Fireblocks) · <a href="example-selfbuild.html">Figure 15-2a~d</a>(자체 구축, 체인별) · <a href="example-nodewallet.html">Figure 16-2</a>(NodeWallet). 그 그림들의 파란 상자는 <strong>프로세스(실패) 경계</strong>고 — 상자를 넘는 화살표에서만 부분 실패·중복이 생겨 멱등이 필요하다 — <strong>레이어(교체) 경계</strong>는 AccountPort 어댑터부터 블록체인 매니저 영역(<a href="abstraction.html">13.1</a>)이다. 서로 다른 두 경계다.</p>
 
 <h3>9.2 어댑터별 구현</h3>
 
@@ -133,7 +121,7 @@ sequenceDiagram
 <div class="callout callout-warn">
 <div class="callout-title">등록 갭 방어 3종</div>
 <ul>
-<li><strong>등록을 발급 흐름 안에</strong> — issueDepositAddress(또는 주소가 계정과 함께 태어나는 Canton 의 createAccount)로 주소가 만들어지면 같은 흐름에서 인덱서 watch-list 에 등록하고, <strong>등록 시점의 블록 높이</strong>를 함께 기록한다(Figure 9-1 의 Note). 등록 실패면 발급도 실패로 취급한다 — 감시 안 되는 주소를 고객에게 주지 않는다.</li>
+<li><strong>등록을 발급 흐름 안에</strong> — issueDepositAddress(또는 주소가 계정과 함께 태어나는 Canton 의 createAccount)로 주소가 만들어지면 같은 흐름에서 인덱서 watch-list 에 등록하고, <strong>등록 시점의 블록 높이</strong>를 함께 기록한다(9.1 의 4단계). 등록 실패면 발급도 실패로 취급한다 — 감시 안 되는 주소를 고객에게 주지 않는다.</li>
 <li><strong>backfill 재스캔</strong> — 등록 높이 이전 블록에 이미 입금이 있었을 수 있다(고객이 주소를 미리 받아 두거나, 등록 지연·장애 구간). 등록 시 해당 주소에 대해 과거 구간을 한 번 재스캔해 메운다 — 원시 로그를 보존하는 이유(3.2)가 여기서도 쓰인다.</li>
 <li><strong>xpub gap-limit 선파생</strong> — 자체 HD 지갑(15장)이면 비트코인 지갑들의 관행처럼 아직 발급 안 한 주소를 gap limit 만큼 미리 파생해 감시 목록에 올려 둘 수도 있다 — 등록 타이밍 의존이 사라진다.</li>
 </ul>
