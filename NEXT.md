@@ -202,3 +202,11 @@
 - docs-site/index.html 신규 카드 1 (4 → 5 카드)
 - consistency check 4/4 PASS
 - log.md Stage 39 entry (optional) — Key Link docs-site 신규 작성
+
+## 12. (별건) wallet-service-components 리뷰 백로그 — 2026-06-11
+
+온보딩 흐름 게이트웨이/유스케이스 분리 작업(commit 6d7d912) 후 검토에서 발견, 사용자 지시로 백로그 보류:
+
+1. **스켈레톤 ↔ 가이드 9-1 어긋남**: 스켈레톤(company/custodial-wallet)엔 "지갑 개설" 묶음 유스케이스가 없음 — `AccountController` 가 createAccount/addressOf 를 별개 엔드포인트·별개 멱등 키로 노출. 제안: `openWallet(ref, asset)` 묶음 메서드 + `POST /wallets` (멱등 키 하나) 추가, `WalletGatewayService` kdoc 의 "API 게이트웨이" 역할 명칭을 가이드 어휘(유스케이스)와 정렬.
+2. **멱등 레코드 저장 주체 모호**: 9-1·14-2·16-2 의 `SVC-->GW: … 멱등 레코드에 결과 저장` 라벨 — 저장은 멱등 소유자인 GW 의 Note 로 옮길 것.
+3. **인증 이중 표기**: BIZ(최종 사용자 인증·KYC) vs GW(호출 시스템 인증) 구분을 9-1 캡션 한 줄로. 같은 캡션에 "게이트웨이·지갑 서비스 모두 지갑 서비스 백엔드 소속 — 교체 가능 층은 어댑터 뒤부터" 추가.
