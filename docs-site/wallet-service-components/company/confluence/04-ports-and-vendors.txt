@@ -16,7 +16,8 @@ h2. 2. 세 기능 포트
 {code:kotlin}
 interface AccountPort {                       // 계정·주소 (키가 있는 곳)
     fun createAccount(ref): Account           // 고객 계정(vault) 생성
-    fun deriveAddress(account, asset): Address
+    fun addressOf(account, asset): Address    // 멱등 "조회" — EVM=HD 재계산 · Canton=PartyId 반환 (allocation 은 createAccount 때)
+    fun issueDepositAddress(account, asset): Address  // 선택 capability — 추가 입금 주소 "발급" (UTXO·Fireblocks ✅ · Canton ✗→memo)
     fun getBalance(account, asset): Balance   // 단일 숫자 아님 — available/pending/locked 구분 (사용 가능 판정은 available 만)
     fun validateAddress(asset, addr): Boolean // 출금 대상 주소 형식·체크섬 검증 — 로컬 체인 규칙으로 구현 (벤더 API 불요)
 }

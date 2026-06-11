@@ -44,11 +44,12 @@ class NodeWalletAdapter(
         return Account(id = wallet.walletId, ref = ref)
     }
 
-    override suspend fun deriveAddress(
+    /** 조회 — Solana 단일 주소. 발급 capability(DepositAddressIssuance)는 미구현 — 지갑당 주소 1개 모델 (가이드 16.2). */
+    override suspend fun addressOf(
         account: Account,
         asset: Asset,
     ): Address {
-        requireSolana(asset.chainId, "deriveAddress")
+        requireSolana(asset.chainId, "addressOf")
         return Address(value = client.address(account.id), asset = asset)
     }
 

@@ -26,7 +26,8 @@ data class AccountResponse(
     val ref: String,
 )
 
-data class DeriveAddressRequest(
+/** 주소 확보(addressOf)·발급(issueDepositAddress) 공용 요청 본문. */
+data class AddressRequest(
     val symbol: String,
     val chainId: String,
 )

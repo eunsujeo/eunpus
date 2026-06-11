@@ -30,16 +30,32 @@ class AccountController(
         @RequestBody body: CreateAccountRequest,
     ): AccountResponse = gateway.createAccount(authorization, idempotencyKey, AccountRef(body.ref)).toResponse()
 
-    /** 자산별 입금 주소 파생 (가이드 9). */
+    /** 수신 주소 확보(조회) — 온보딩의 두 번째 호출 (가이드 9.1). */
     @PostMapping("/{id}/addresses")
-    suspend fun deriveAddress(
+    suspend fun addressOf(
         @RequestHeader(name = "Authorization", required = false) authorization: String?,
         @RequestHeader(name = "X-Idempotency-Key", required = false) idempotencyKey: String?,
         @PathVariable id: String,
-        @RequestBody body: DeriveAddressRequest,
+        @RequestBody body: AddressRequest,
     ): AddressResponse =
         gateway
-            .deriveAddress(
+            .addressOf(
+                credentials = authorization,
+                idempotencyKey = idempotencyKey,
+                accountId = id,
+                asset = Asset(symbol = body.symbol, chainId = ChainId(body.chainId)),
+            ).toResponse()
+
+    /** 추가 입금 주소 발급 — capability, 미지원 체인(Canton 등)은 명시 거절 (가이드 13.3 · 9.3). */
+    @PostMapping("/{id}/addresses/issue")
+    suspend fun issueDepositAddress(
+        @RequestHeader(name = "Authorization", required = false) authorization: String?,
+        @RequestHeader(name = "X-Idempotency-Key", required = false) idempotencyKey: String?,
+        @PathVariable id: String,
+        @RequestBody body: AddressRequest,
+    ): AddressResponse =
+        gateway
+            .issueDepositAddress(
                 credentials = authorization,
                 idempotencyKey = idempotencyKey,
                 accountId = id,

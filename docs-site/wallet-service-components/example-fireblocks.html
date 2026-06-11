@@ -93,8 +93,9 @@ flowchart TB
   // 계정(vault) 생성 — 고객 온보딩 시
   createAccount(ref) { return this.fb.createVaultAccount(ref) }
 
-  // 주소 · 잔액 — Fireblocks 가 멀티체인 차이까지 흡수
-  deriveAddress(vaultId, asset) { return this.fb.generateNewAddress(vaultId, asset) }
+  // 주소 · 잔액 — Fireblocks 가 멀티체인 차이까지 흡수. 조회(addressOf)와 발급(issueDepositAddress)은 다른 동사 (13.3)
+  addressOf(vaultId, asset) { return this.fb.getDepositAddresses(vaultId, asset).first }  // 조회 — 기존(기본) 주소 (조회 엔드포인트는 적용 전 확인)
+  issueDepositAddress(vaultId, asset) { return this.fb.generateNewAddress(vaultId, asset) }  // 발급 capability — 부를 때마다 새 주소
   getBalance(vaultId, asset) { return toBalance(this.fb.getVaultAccountAsset(vaultId, asset)) }  // available·pending·locked 구분 응답 → 13.3 Balance
   validateAddress(asset, addr) { return addressRules.validate(asset, addr) }  // 로컬 형식·체크섬 검증 — 미확정 벤더 엔드포인트에 의존하지 않는다
 
@@ -127,7 +128,7 @@ flowchart TB
 
 <h3>14.3 계정·주소 발급 단계별 흐름</h3>
 
-<p>온보딩 때 <code>createAccount</code> → <code>deriveAddress</code> 가 Fireblocks 에선 <strong>vault 계정 생성 → 자산별 주소 발급</strong> 두 번의 호출로 끝난다. 주소는 workspace 의 MPC 키에서 BIP44 로 파생되며, 그 체인별 파생을 Fireblocks 가 감춘다 (MPC 키 share 분산은 vault 생성 이벤트가 아니라 workspace·디바이스·co-signer 단위의 lifecycle 이벤트다). 온체인 트랜잭션이 아니라 전파·수수료가 없다.</p>
+<p>온보딩 때 <code>createAccount</code> → <code>issueDepositAddress</code>(첫 주소 발급) 가 Fireblocks 에선 <strong>vault 계정 생성 → 자산별 주소 발급</strong> 두 번의 호출로 끝난다 — 이후의 <code>addressOf</code> 는 그 주소를 조회만 한다. 주소는 workspace 의 MPC 키에서 BIP44 로 파생되며, 그 체인별 파생을 Fireblocks 가 감춘다 (MPC 키 share 분산은 vault 생성 이벤트가 아니라 workspace·디바이스·co-signer 단위의 lifecycle 이벤트다). 온체인 트랜잭션이 아니라 전파·수수료가 없다.</p>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -142,14 +143,14 @@ sequenceDiagram
     ACC->>FB: POST /v1/vault/accounts
     Note over FB: vault 계정 생성 — 주소는 workspace MPC 키에서 BIP44 파생
     FB-->>ACC: vaultAccountId
-    GW->>ACC: deriveAddress(account, asset)
+    GW->>ACC: issueDepositAddress(account, asset)
     ACC->>FB: POST /v1/vault/accounts/{id}/{asset}/addresses
     Note over FB: 자산별 주소 파생 (멀티체인 흡수)
     FB-->>ACC: address
     ACC-->>GW: vaultAccountId · 주소
     GW-->>BIZ: 계정 · 입금 주소
 </pre></div>
-<p class="diagram-caption">Figure 14-2. Fireblocks 계정·주소 발급. 코어는 <code>createAccount</code>·<code>deriveAddress</code> 두 번만 부르고, vault 생성·체인별 주소 파생(workspace MPC 키에서 BIP44)은 Fireblocks 가 처리한다. 전파·수수료가 없는 발급 단계다. REST 매핑 상세는 14.7 표 참조.</p>
+<p class="diagram-caption">Figure 14-2. Fireblocks 계정·주소 발급. 코어는 <code>createAccount</code>·<code>issueDepositAddress</code>(첫 주소) 두 번만 부르고, vault 생성·체인별 주소 파생(workspace MPC 키에서 BIP44)은 Fireblocks 가 처리한다 — 이후 조회는 <code>addressOf</code>. 전파·수수료가 없는 발급 단계다. REST 매핑 상세는 14.7 표 참조.</p>
 
 <h3>14.4 송신 트랜잭션 단계별 흐름</h3>
 
@@ -204,8 +205,9 @@ sequenceDiagram
 <table>
 <thead><tr><th style="width:14%">포트</th><th style="width:22%">메서드</th><th>Fireblocks REST</th><th style="width:12%">read/write</th></tr></thead>
 <tbody>
-<tr><td rowspan="4"><strong>AccountPort</strong></td><td><code>createAccount</code></td><td><code>POST /v1/vault/accounts</code></td><td>write</td></tr>
-<tr><td><code>deriveAddress</code></td><td><code>POST /v1/vault/accounts/{vaultAccountId}/{assetId}/addresses</code></td><td>write</td></tr>
+<tr><td rowspan="5"><strong>AccountPort</strong></td><td><code>createAccount</code></td><td><code>POST /v1/vault/accounts</code></td><td>write</td></tr>
+<tr><td><code>addressOf</code></td><td>vault 자산의 기존 주소 조회 (조회 엔드포인트는 적용 전 확인)</td><td>read</td></tr>
+<tr><td><code>issueDepositAddress</code></td><td><code>POST /v1/vault/accounts/{vaultAccountId}/{assetId}/addresses</code> — 새 입금 주소 발급</td><td>write</td></tr>
 <tr><td><code>getBalance</code></td><td><code>GET /v1/vault/accounts/{vaultAccountId}/{assetId}</code></td><td>read</td></tr>
 <tr><td><code>validateAddress</code></td><td>로컬 체인 규칙으로 검증 — 벤더 엔드포인트 불요 (해당 공식 API 가 미확정이라 의존을 제거)</td><td>local</td></tr>
 <tr><td rowspan="6"><strong>TransactionPort</strong></td><td><code>estimateFee</code></td><td><code>POST /v1/transactions/estimate_fee</code> (low/medium/high)</td><td>write*</td></tr>
@@ -234,7 +236,7 @@ sequenceDiagram
 <table>
 <thead><tr><th style="width:26%">포트 동작</th><th>Canton 에서</th></tr></thead>
 <tbody>
-<tr><td><code>createAccount</code> · <code>deriveAddress</code></td><td>Canton <strong>party 발급(allocation)은 Canton Wallet SDK(<code>allocateExternalParty</code>)가 수행</strong>하고, Fireblocks 는 그 <strong>서명 드라이버(<code>core-signing-fireblocks</code>)</strong>로 참여한다. party 키는 Fireblocks MPC 가 관리, 서명은 <strong>EdDSA Ed25519 Raw Signing</strong>(공식 드라이버·Canton Coin 복구 절차로 확인)</td></tr>
+<tr><td><code>createAccount</code> · <code>addressOf</code></td><td>Canton <strong>party 발급(allocation)은 Canton Wallet SDK(<code>allocateExternalParty</code>)가 수행</strong>하고, Fireblocks 는 그 <strong>서명 드라이버(<code>core-signing-fireblocks</code>)</strong>로 참여한다. party 키는 Fireblocks MPC 가 관리, 서명은 <strong>EdDSA Ed25519 Raw Signing</strong>(공식 드라이버·Canton Coin 복구 절차로 확인)</td></tr>
 <tr><td><code>submitTransaction</code></td><td>Canton 에선 <strong>OFFER 제출(전송 제안)</strong> — 즉시 완료가 아니다. Canton Coin 은 pre-approval 로 1-step 처럼 동작</td></tr>
 <tr><td><code>getStatus</code> · <code>onChainEvent</code></td><td><code>transactionType</code>(OFFER / ACCEPT / REJECT / WITHDRAW / PRE_APPROVAL)와 <code>traceableId</code> 로 추적 — "상대 수락 대기" 상태가 보인다</td></tr>
 <tr><td>traffic(수수료) · validator node</td><td>Fireblocks 가 추상화 → 우리는 직접 만지지 않는다 <em>(저자 추정 — 공식 문서에서 운영 범위 미확인, 적용 전 확인)</em></td></tr>

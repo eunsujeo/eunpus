@@ -131,7 +131,7 @@ flowchart TB
 
 <pre><code>// ① 공통 인터페이스 — 위 컴포넌트가 보는 유일한 것 (= 2.2 의 공통 동사)
 interface ChainAdapter {
-  deriveAddress(account, asset): Address
+  addressOf(account, asset): Address       // 멱등 조회 — 발급(추가 입금 주소)은 포트 capability 로 분리 (13.3)
   getBalance(address, asset): Amount
   buildTransaction(transfer): UnsignedTx   // 조립 — nonce/UTXO/2-step 차이를 흡수
   estimateFee(transfer): Fee               // 점유 없는 추정 — 조립과 달리 nonce/UTXO 를 점유하지 않는다 (견적마다 순번이 소모되면 안 됨)
@@ -153,11 +153,11 @@ function pickAdapter(chainId): ChainAdapter {
   return a
 }</code></pre>
 
-<p>③ 같은 인터페이스를 체인마다 <strong>다르게</strong> 채운다 — 네 어댑터 모두 <strong>인터페이스의 일곱 동사를 전부 구현</strong>한다(부분 구현이 아니다). <code>broadcast</code> 는 EVM·UTXO·Solana 모두 "서명본을 노드에 제출" 한 줄로 같고 <strong>Canton 만 OFFER 제출이라 의미가 다르며</strong>, <code>deriveAddress</code> 는 곡선·파생 표준이 갈린다(<a href="scenario-provisioning.html">9.2</a>):</p>
+<p>③ 같은 인터페이스를 체인마다 <strong>다르게</strong> 채운다 — 네 어댑터 모두 <strong>인터페이스의 일곱 동사를 전부 구현</strong>한다(부분 구현이 아니다). <code>broadcast</code> 는 EVM·UTXO·Solana 모두 "서명본을 노드에 제출" 한 줄로 같고 <strong>Canton 만 OFFER 제출이라 의미가 다르며</strong>, <code>addressOf</code> 는 같은 "조회" 라도 곡선·메커니즘이 갈린다(<a href="scenario-provisioning.html">9.2</a>):</p>
 
 <pre><code>// account = 9장 createAccount 가 만들어 계정 디렉터리에 저장된 우리 계정 핸들 (자체 구축에선 HD account index)
 class EvmAdapter implements ChainAdapter {
-  deriveAddress(account, _)    { return eip55(last20(keccak(pubkeyOf(account)))) }  // secp256k1 · BIP-44 m/44'/60' — xpub 공개 파생 (9.2)
+  addressOf(account, _)        { return eip55(last20(keccak(pubkeyOf(account)))) }  // 조회 = HD 결정적 재계산 (secp256k1 · BIP-44 m/44'/60', 9.2)
                                                                      // asset 무관 — ERC-20 도 같은 주소
   getBalance(address, asset)   { return isNative(asset) ? node.getBalance(address)        // 네이티브 / ERC-20 분기 —
                                                         : erc20(asset).balanceOf(address) } // 토큰은 컨트랙트 조회, 주소는 동일
@@ -171,7 +171,7 @@ class EvmAdapter implements ChainAdapter {
 }
 
 class UtxoAdapter implements ChainAdapter {
-  deriveAddress(account, _)    { return encode(hash160(pubkeyOf(account)), scriptType) }  // BIP-44/49/84/86 — 스크립트 유형별 · base58/bech32
+  addressOf(account, _)        { return encode(hash160(pubkeyOf(account)), scriptType) }  // 조회 = HD 재계산 (BIP-44/49/84/86 스크립트 유형별 · base58/bech32)
   getBalance(address, _)       { return sum(utxoSetOf(address)) }    // 잔액 = 미사용 출력(UTXO)의 합
   estimateFee(t)       { return node.estimateSmartFee() * vsizeOf(t) }  // sat/vByte × 예상 크기
   buildTransaction(t)  { const ins = coinSelect(t.from, t.amount)    // UTXO 선택
@@ -182,7 +182,7 @@ class UtxoAdapter implements ChainAdapter {
 }
 
 class SolanaAdapter implements ChainAdapter {
-  deriveAddress(account, _)    { return base58(hsm.derivePubkey(account)) }  // ed25519 hardened-only — 파생은 키 쪽(HSM)에서 (9.2) · 주소 = pubkey
+  addressOf(account, _)        { return base58(hsm.derivePubkey(account)) }  // 조회 — ed25519 hardened-only 라 재계산도 키 쪽(HSM)에서 (9.2) · 주소 = pubkey
   getBalance(address, asset)   { return isNative(asset) ? node.getBalance(address)
                                                         : splTokenAccountOf(address, asset).amount }  // SPL 토큰은 별도 token account
   estimateFee(t)       { return baseFee + priorityFee(node.recentPrioritizationFees()) }
@@ -194,10 +194,9 @@ class SolanaAdapter implements ChainAdapter {
 
 class CantonAdapter implements ChainAdapter {
   // 2-step: 제출=OFFER, 완료는 상대 ACCEPT
-  deriveAddress(account, _)    { return partyIdOf(account) }         // 파생·발급 없음 — "조회만". PartyId 는 계정 생성(=party allocation,
-                                                                     //   topology 서명 필요·비멱등·유료) 때 이미 만들어졌다 (9.2 · 15.9).
-                                                                     //   allocation 을 여기 넣으면 읽기 동사 뒤에 온장 쓰기를 숨기는 것.
-                                                                     //   추가 입금 주소 개념도 없음 — 입금 구분은 memo-ref
+  addressOf(account, _)        { return partyIdOf(account) }         // 조회 — PartyId 는 계정 생성(=party allocation, topology 서명
+                                                                     //   필요·비멱등·유료) 때 이미 만들어졌다 (9.2 · 15.9).
+                                                                     //   발급(issueDepositAddress)은 Canton 에 없음 — 입금 구분은 memo-ref
   getBalance(party, asset)     { return sum(acs.holdingsOf(party, asset)) }  // ACS holdings 합 — 가용/locked 구분 (11.1)
   estimateFee(t)       { return trafficCostOf(byteSizeOf(t)) }       // traffic(byte) 소비 추정 (2.2 표)
   buildTransaction(t)  { return { transferInstruction: offer(t) } }
@@ -208,7 +207,7 @@ class CantonAdapter implements ChainAdapter {
 
 <div class="callout">
 <div class="callout-title">코드가 말하는 것</div>
-<p>코어는 <code>pickAdapter(chainId).buildTransaction(...)</code> 처럼 <strong>공통 동사만</strong> 부른다. 체인 분기는 <code>pickAdapter</code> 와 각 어댑터 <code>{ }</code> 안에만 있다. <strong>Canton 은 <code>broadcast</code> 가 OFFER 제출</strong>이라 <code>confirmations</code> 에 "상대 수락 대기" 상태가 추가되는 게 눈에 띈다 — 메커니즘은 어댑터가 숨겨도 그 상태값은 표면화된다(2.3 캡션·<a href="scenario-withdrawal.html">11. 출금</a>). 읽기 쪽 세 동사도 2.2 표의 차이를 그대로 반영한다 — <code>deriveAddress</code> 는 곡선·파생 표준(secp256k1 xpub 공개 파생 / ed25519 HSM 내부 파생 / <strong>Canton 은 조회만</strong> — 발급은 계정 생성 때의 party allocation이고, 비용·서명이 따르는 그 등록 작업을 읽기 동사 안에 넣으면 추상화가 거짓말한다, <a href="scenario-provisioning.html">9.2</a>), <code>getBalance</code> 는 잔액 모델(계정 잔액 / UTXO 합 / ACS holdings), <code>estimateFee</code> 는 수수료 모델(EIP-1559 / sat/vByte / priority fee / traffic). 참고로 이 <code>ChainAdapter</code> 는 <a href="abstraction.html">13장</a>의 포트보다 한 겹 아래다 — <code>TransactionPort.submitTransaction</code> 한 번이 자체 구축에선 이 어댑터의 <code>buildTransaction</code>→서명→<code>broadcast</code> 로 펼쳐진다(<a href="example-selfbuild.html">15장</a>).</p>
+<p>코어는 <code>pickAdapter(chainId).buildTransaction(...)</code> 처럼 <strong>공통 동사만</strong> 부른다. 체인 분기는 <code>pickAdapter</code> 와 각 어댑터 <code>{ }</code> 안에만 있다. <strong>Canton 은 <code>broadcast</code> 가 OFFER 제출</strong>이라 <code>confirmations</code> 에 "상대 수락 대기" 상태가 추가되는 게 눈에 띈다 — 메커니즘은 어댑터가 숨겨도 그 상태값은 표면화된다(2.3 캡션·<a href="scenario-withdrawal.html">11. 출금</a>). 읽기 쪽 세 동사도 2.2 표의 차이를 그대로 반영한다 — <code>addressOf</code> 는 전 체인 공통의 <strong>멱등 조회</strong>이되 그 메커니즘이 곡선별로 갈리고(secp256k1 xpub 재계산 / ed25519 HSM 재계산 / Canton 은 계정 생성 때 만들어진 PartyId 반환 — 주소 <strong>발급</strong>은 <code>issueDepositAddress?</code> capability 로 분리돼 있어 Canton 처럼 없는 체인은 미구현, <a href="abstraction.html">13.3</a>·<a href="scenario-provisioning.html">9.2</a>), <code>getBalance</code> 는 잔액 모델(계정 잔액 / UTXO 합 / ACS holdings), <code>estimateFee</code> 는 수수료 모델(EIP-1559 / sat/vByte / priority fee / traffic). 참고로 이 <code>ChainAdapter</code> 는 <a href="abstraction.html">13장</a>의 포트보다 한 겹 아래다 — <code>TransactionPort.submitTransaction</code> 한 번이 자체 구축에선 이 어댑터의 <code>buildTransaction</code>→서명→<code>broadcast</code> 로 펼쳐진다(<a href="example-selfbuild.html">15장</a>).</p>
 </div>
 
 <h3>2.5 다른 컴포넌트가 어떻게 쓰는가</h3>

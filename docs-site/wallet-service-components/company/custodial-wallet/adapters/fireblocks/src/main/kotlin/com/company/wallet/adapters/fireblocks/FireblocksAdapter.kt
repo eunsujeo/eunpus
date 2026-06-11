@@ -16,6 +16,7 @@ import com.company.wallet.domain.model.TxRef
 import com.company.wallet.domain.model.TxStatus
 import com.company.wallet.domain.port.AccountPort
 import com.company.wallet.domain.port.CancelCapability
+import com.company.wallet.domain.port.DepositAddressIssuanceCapability
 import com.company.wallet.domain.port.FeeBoostCapability
 import com.company.wallet.domain.port.TransactionPort
 import com.company.wallet.shared.address.AddressRules
@@ -35,7 +36,7 @@ import java.util.concurrent.CopyOnWriteArrayList
  */
 class FireblocksAdapter(
     private val client: FireblocksClient,
-) : AccountPort, TransactionPort, FeeBoostCapability, CancelCapability {
+) : AccountPort, TransactionPort, FeeBoostCapability, CancelCapability, DepositAddressIssuanceCapability {
     /** ref → vault id 매핑 캐시. TODO: 영속 매핑 저장소에서 로드 (재기동 생존). */
     private val vaultIdsByRef = ConcurrentHashMap<AccountRef, String>()
     private val handlers = CopyOnWriteArrayList<ChainEventHandler>()
@@ -46,12 +47,22 @@ class FireblocksAdapter(
         return Account(id = vault.id, ref = ref)
     }
 
-    override suspend fun deriveAddress(
+    /** 조회 — vault 자산의 기존(기본) 입금 주소 (가이드 13.3 addressOf). 상태를 바꾸지 않는다. */
+    override suspend fun addressOf(
         account: Account,
         asset: Asset,
     ): Address {
-        val derived = client.generateNewAddress(vaultAccountId = account.id, assetId = assetIdOf(asset))
-        return Address(value = derived.address, asset = asset, memoTag = derived.tag)
+        val existing = client.listDepositAddresses(vaultAccountId = account.id, assetId = assetIdOf(asset)).first()
+        return Address(value = existing.address, asset = asset, memoTag = existing.tag)
+    }
+
+    /** 발급 capability — generateNewAddress 는 부를 때마다 새 주소를 만든다 (가이드 14.2 · 9.3). */
+    override suspend fun issueDepositAddress(
+        account: Account,
+        asset: Asset,
+    ): Address {
+        val issued = client.generateNewAddress(vaultAccountId = account.id, assetId = assetIdOf(asset))
+        return Address(value = issued.address, asset = asset, memoTag = issued.tag)
     }
 
     /** 잔액 — Fireblocks 의 available/pending/locked 구분 응답을 그대로 [Balance] 로 (가이드 13.3 · 14.2). */

@@ -14,6 +14,7 @@ import com.company.wallet.domain.model.TxRef
 import com.company.wallet.domain.model.TxStatus
 import com.company.wallet.domain.port.AccountPort
 import com.company.wallet.domain.port.CancelCapability
+import com.company.wallet.domain.port.DepositAddressIssuanceCapability
 import com.company.wallet.domain.port.TransactionPort
 import com.company.wallet.shared.idempotency.FailureKind
 import com.company.wallet.shared.idempotency.IdempotencyRecord
@@ -52,8 +53,11 @@ class WalletGatewayService(
         }
     }
 
-    /** 자산별 입금 주소 파생 — 발급된 주소도 디렉터리에 기록한다 (가이드 9.3). */
-    suspend fun deriveAddress(
+    /**
+     * 수신 주소 확보(조회) — 포트의 addressOf 는 멱등 조회지만, 처음 확보한 주소를 디렉터리에
+     * 기록하고 watch-list 등록(가이드 9.4)과 한 흐름으로 묶기 위해 멱등 wrap 을 유지한다 (가이드 9.3).
+     */
+    suspend fun addressOf(
         credentials: String?,
         idempotencyKey: String?,
         accountId: String,
@@ -62,9 +66,31 @@ class WalletGatewayService(
         authenticate(credentials)
         val account = resolveAccount(accountId)
         return withIdempotency(
-            idempotencyKey ?: "derive-address:${account.id}:${asset.chainId.value}:${asset.symbol}",
+            idempotencyKey ?: "address-of:${account.id}:${asset.chainId.value}:${asset.symbol}",
         ) {
-            accounts.deriveAddress(account, asset).also { directory.saveAddress(account, it) }
+            accounts.addressOf(account, asset).also { directory.saveAddress(account, it) }
+        }
+    }
+
+    /**
+     * 추가 입금 주소 "발급" — capability (가이드 13.3 · 9.3). 어댑터가
+     * [DepositAddressIssuanceCapability] 를 구현하지 않으면(Canton·NodeWallet) 명시적 거절로 끝낸다.
+     */
+    suspend fun issueDepositAddress(
+        credentials: String?,
+        idempotencyKey: String?,
+        accountId: String,
+        asset: Asset,
+    ): Address {
+        authenticate(credentials)
+        val account = resolveAccount(accountId)
+        val issuer =
+            accounts as? DepositAddressIssuanceCapability
+                ?: throw UnsupportedForChainException("issueDepositAddress", asset.chainId)
+        return withIdempotency(
+            idempotencyKey ?: "issue-address:${account.id}:${asset.chainId.value}:${asset.symbol}",
+        ) {
+            issuer.issueDepositAddress(account, asset).also { directory.saveAddress(account, it) }
         }
     }
 

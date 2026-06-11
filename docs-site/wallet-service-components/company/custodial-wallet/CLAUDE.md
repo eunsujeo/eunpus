@@ -30,7 +30,7 @@
 
 | 모듈 | 가이드 | 핵심 타입 |
 |---|---|---|
-| `domain` | 13 | `AccountPort` · `TransactionPort` · `FeeBoostCapability` · `CancelCapability` · `ChainQueryPort`(`transfersOf`/`balanceAt`/`query`) / `TransactionRequest` · `TxRef` · `TxStatus`(sealed) · `ChainSpecific`(sealed) · `ChainEvent`(sealed) · `Amount` · `Balance`(available/pending/locked) · `Transfer` · `ChainId`(value class) |
+| `domain` | 13 | `AccountPort` · `TransactionPort` · `FeeBoostCapability` · `CancelCapability` · `DepositAddressIssuanceCapability` · `ChainQueryPort`(`transfersOf`/`balanceAt`/`query`) / `TransactionRequest` · `TxRef` · `TxStatus`(sealed) · `ChainSpecific`(sealed) · `ChainEvent`(sealed) · `Amount` · `Balance`(available/pending/locked) · `Transfer` · `ChainId`(value class) |
 | `shared` | — | `IdempotencyStore`(인터페이스) · `InMemoryIdempotencyStore` / `address/AddressRules`(로컬 주소 검증) |
 | `backend` | 6·7·8·9 | `gateway/WalletGatewayService` · `gateway/AccountController` · `gateway/TransactionController` / `directory/AccountDirectory`(계정·주소 발급 결과 저장·소유) / `reconciliation/ReconciliationService` / `alerts/NotificationFanout` · `alerts/Subscriber` · `alerts/DeliveryStore` / `orchestration/WithdrawalOrchestrator` |
 | `engine/multichain` | 2 | **체인 SPI**: `ChainAdapter` · `ChainSource` · `SourceEvent` · `UnsignedTx` · `SignedTx` · `Confirmation` + `ChainAdapterRegistry`(`pickAdapter`) |
@@ -41,9 +41,9 @@
 | `chains/utxo` | 2.4 | `UtxoChainAdapter`(coin 선택 · RBF/CPFP) · `UtxoChainSource` |
 | `chains/solana` | 2.4 | `SolanaChainAdapter`(blockhash · commitment · auto-retry, boost 없음) |
 | `chains/canton` | 2.4 | `CantonChainAdapter`(broadcast=OFFER 제출 · 2-step 상태 · withdrawAndReoffer) |
-| `adapters/fireblocks` | 14 | `FireblocksAdapter`(AccountPort+TransactionPort+FeeBoostCapability) · `FireblocksClient`(SDK 경계 스텁) · `FireblocksWebhookMapper` |
-| `adapters/self-build` | 15 | `SelfBuildAdapter`(세 포트 전부 — engine+chains 조립) · `HdWallet` |
-| `adapters/nodewallet` | 16 | `NodeWalletAdapter`(Solana 전용 · FeeBoostCapability 미구현) · `NodeWalletClient` |
+| `adapters/fireblocks` | 14 | `FireblocksAdapter`(AccountPort+TransactionPort + FeeBoost/Cancel/DepositAddressIssuance capability) · `FireblocksClient`(SDK 경계 스텁) · `FireblocksWebhookMapper` |
+| `adapters/self-build` | 15 | `SelfBuildAdapter`(세 포트 전부 + 세 capability — engine+chains 조립) · `HdWallet` |
+| `adapters/nodewallet` | 16 | `NodeWalletAdapter`(Solana 전용 · FeeBoost/DepositAddressIssuance 미구현, Cancel 은 제품 위임) · `NodeWalletClient` |
 | `adapters/chainquery-alchemy` | 13.4 | `AlchemyChainQueryAdapter`(ChainQueryPort 만) |
 | `apps/api` | 17 | `ApiApplication` · `CustodyAdapterConfig`(@ConditionalOnProperty `custody.provider`) · **ArchUnit 테스트** |
 | `apps/indexer-worker` | 3·7 | `IndexerWorkerApplication`(상시 수집 + 정합성 sweep) |
@@ -56,7 +56,7 @@
    `apps/* → adapters/* + backend`. **`apps/api` 의 ArchUnit 테스트가 이 규칙을 검사한다 — 깨면 빌드 실패.**
 2. **domain 은 순수 Kotlin** — Spring·벤더 SDK import 금지 (`build.gradle.kts` 에 coroutines 외 의존 없음).
 3. **포트 시그니처 변경은 설계 변경** — 가이드 13.3 과 동기화해서만 수정. 함수명은 가이드와 1:1
-   (`createAccount`/`deriveAddress`/`getBalance`→`Balance`/`validateAddress`/`estimateFee`/`submitTransaction`/`getStatus`/`onChainEvent`/`boost`/`cancel`/`transfersOf`/`balanceAt`/`query`).
+   (`createAccount`/`addressOf`(조회)/`issueDepositAddress`(발급 capability)/`getBalance`→`Balance`/`validateAddress`/`estimateFee`/`submitTransaction`/`getStatus`/`onChainEvent`/`boost`/`cancel`/`transfersOf`/`balanceAt`/`query`).
 4. **capability 는 타입으로** — fee boost 는 `FeeBoostCapability`, cancel 은 `CancelCapability` 별도
    인터페이스 (Solana 처럼 보장 못 하는 어댑터는 미구현 허용 — 호출 측은 `is` 분기). `TxStatus`·`ChainSpecific` 은
    sealed — 새 상태/체인 특화는 추가만 하고 의미 변경 금지. 잔액 사용 가능 판정은 `Balance.available` 만.
@@ -78,7 +78,7 @@
     단일 인스턴스용. inflight 고착 방지를 위해 lease 만료 후 재실행을 허용하되, 재실행 전
     tx-pipeline 의 intent 기록을 먼저 확인한다.
 14. **주소 발급 = watch-list 등록과 한 흐름** (가이드 9.4) — self-build/하이브리드에서
-    `deriveAddress` 성공 시 인덱서 감시 등록(등록 높이 기록)까지가 발급이다. 등록 실패 = 발급 실패.
+    `addressOf`/`issueDepositAddress` 로 주소가 확보되면 인덱서 감시 등록(등록 높이 기록)까지가 한 흐름이다. 등록 실패 = 발급 실패.
     등록 높이 이전 구간은 backfill 로 메운다.
 15. **알림은 미검증 신호** (가이드 8.3) — CONFIRMED 알림은 인덱서 판정 기준. 정합성 MISMATCH·
     reorg 무효화의 **정정 이벤트 타입을 제거하지 말 것** — 비즈 레이어의 반영 철회(보상) 경로다.

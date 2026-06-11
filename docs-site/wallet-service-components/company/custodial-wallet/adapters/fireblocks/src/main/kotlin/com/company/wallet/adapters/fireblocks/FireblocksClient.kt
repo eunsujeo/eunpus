@@ -73,7 +73,13 @@ interface FireblocksClient {
     /** POST /v1/vault/accounts — vault 계정 생성. */
     suspend fun createVaultAccount(name: String): FireblocksVaultAccount
 
-    /** POST /v1/vault/accounts/{vaultAccountId}/{assetId}/addresses — 자산별 주소 파생. */
+    /** vault 자산의 기존 입금 주소 목록 조회 — addressOf 의 뒷면 (조회 엔드포인트는 적용 전 확인). */
+    suspend fun listDepositAddresses(
+        vaultAccountId: String,
+        assetId: String,
+    ): List<FireblocksAddress>
+
+    /** POST /v1/vault/accounts/{vaultAccountId}/{assetId}/addresses — 새 입금 주소 "발급" (부를 때마다 새 주소). */
     suspend fun generateNewAddress(
         vaultAccountId: String,
         assetId: String,
@@ -117,6 +123,11 @@ interface FireblocksClient {
 class RestFireblocksClient : FireblocksClient {
     override suspend fun createVaultAccount(name: String): FireblocksVaultAccount =
         TODO("Fireblocks REST POST /v1/vault/accounts (가이드 14.7)")
+
+    override suspend fun listDepositAddresses(
+        vaultAccountId: String,
+        assetId: String,
+    ): List<FireblocksAddress> = TODO("Fireblocks REST 주소 목록 조회 — 엔드포인트는 적용 전 확인 (가이드 14.7)")
 
     override suspend fun generateNewAddress(
         vaultAccountId: String,

@@ -72,7 +72,7 @@ private class FakeChainAdapter(
         return TxRef("tx-$broadcastCount", chainId)
     }
 
-    override suspend fun deriveAddress(
+    override suspend fun addressOf(
         account: Account,
         asset: Asset,
     ): Address = error("not used")

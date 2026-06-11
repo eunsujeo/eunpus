@@ -19,6 +19,7 @@ import com.company.wallet.domain.model.TxStatus
 import com.company.wallet.domain.port.AccountPort
 import com.company.wallet.domain.port.CancelCapability
 import com.company.wallet.domain.port.ChainQueryPort
+import com.company.wallet.domain.port.DepositAddressIssuanceCapability
 import com.company.wallet.domain.port.FeeBoostCapability
 import com.company.wallet.domain.port.TransactionPort
 import com.company.wallet.engine.indexer.ProjectionStore
@@ -44,15 +45,21 @@ class SelfBuildAdapter(
     private val indexer: SelfIndexer,
     private val projections: ProjectionStore,
     private val adapters: ChainAdapterRegistry,
-) : AccountPort, TransactionPort, ChainQueryPort, FeeBoostCapability, CancelCapability {
+) : AccountPort, TransactionPort, ChainQueryPort, FeeBoostCapability, CancelCapability, DepositAddressIssuanceCapability {
     /** HD account index 할당 — vault SaaS 호출이 없는 로컬 연산 (가이드 15.3). */
     override suspend fun createAccount(ref: AccountRef): Account = hd.allocateAccount(ref)
 
-    /** xpub 파생 — 우리가 직접 (가이드 15.2). */
-    override suspend fun deriveAddress(
+    /** 조회 = HD 결정적 재계산 (xpub, 순수 함수 — 가이드 15.2). Canton 은 PartyId 반환으로 갈린다 (15.9). */
+    override suspend fun addressOf(
         account: Account,
         asset: Asset,
     ): Address = hd.addressOf(account, asset)
+
+    /** 발급 capability — 다음 index 파생 + 디렉터리·인덱서 watch-list 등록까지가 발급 (가이드 9.3 · 9.4). */
+    override suspend fun issueDepositAddress(
+        account: Account,
+        asset: Asset,
+    ): Address = TODO("HD 다음 index 파생 + 계정 디렉터리 저장 + watch-list 등록 (가이드 9.4) — Canton 은 미지원(memo-ref)")
 
     /**
      * 계정 → 주소 해석 후 인덱서 projection 조회 (가이드 15.2 getBalance) —
@@ -61,7 +68,7 @@ class SelfBuildAdapter(
     override suspend fun getBalance(
         account: Account,
         asset: Asset,
-    ): Balance = projections.balanceOf(hd.addressOf(account, asset), asset)
+    ): Balance = projections.balanceOf(addressOf(account, asset), asset)
 
     /** 체인별 주소 형식·체크섬 검증 — 벤더 API 없는 로컬 연산 (가이드 13.3 · 15.2). */
     override suspend fun validateAddress(

@@ -89,7 +89,8 @@ flowchart TB
   constructor(private nw: NodeWalletSDK) {}        // Java/Spring SDK
 
   createAccount(ref) { return nw.createWallet(ref, Chain.SOLANA) }   // Solana 전용
-  deriveAddress(wallet, _) { return nw.address(wallet) }
+  addressOf(wallet, _) { return nw.address(wallet) }       // 조회 — Solana 단일 주소
+  // issueDepositAddress? 미구현 — 지갑당 주소 1개 모델 (capability 부재, 13.3)
   getBalance(wallet, asset) { return nw.balance(wallet, asset) }
   validateAddress(_, addr) { return nw.isValidAddress(addr) }        // Solana 주소 검증
   estimateFee(req) { return nw.estimateFee(req) }                    // Solana fee (제품 산정)
@@ -128,13 +129,13 @@ sequenceDiagram
     ACC->>NW: nw.createWallet(ref, Chain.SOLANA)
     Note over NW: HSM 안에서 키 생성 (고객 보유)
     NW-->>ACC: wallet
-    GW->>ACC: deriveAddress(wallet, _)
+    GW->>ACC: addressOf(wallet, _)
     ACC->>NW: nw.address(wallet)
     NW-->>ACC: address (Solana 단일)
     ACC-->>GW: wallet · 주소
     GW-->>BIZ: 계정 · 입금 주소
 </pre></div>
-<p class="diagram-caption">Figure 16-2. NodeWallet 계정·주소 발급. Fireblocks 와 같은 두 호출(<code>createAccount</code>·<code>deriveAddress</code>) 형태지만, 키는 고객 온프렘 HSM 안에서 생성된다. Solana 전용이라 체인 선택지가 없다 — 이더리움·Canton 은 16.7 참조.</p>
+<p class="diagram-caption">Figure 16-2. NodeWallet 계정·주소 발급. Fireblocks 와 같은 두 호출(<code>createAccount</code>·<code>addressOf</code>) 형태지만, 키는 고객 온프렘 HSM 안에서 생성된다. Solana 전용이라 체인 선택지가 없고 지갑당 주소 1개라 발급 capability(issueDepositAddress)도 없다 — 이더리움·Canton 은 16.7 참조.</p>
 
 <h3>16.4 송신 트랜잭션 — 내부 3-키 다중서명</h3>
 

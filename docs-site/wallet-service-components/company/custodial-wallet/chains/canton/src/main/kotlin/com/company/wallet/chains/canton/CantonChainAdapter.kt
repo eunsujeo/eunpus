@@ -54,7 +54,7 @@ class CantonChainAdapter(
      * ★ 여기서 allocation 을 호출하지 말 것 — 읽기 동사 뒤에 온장 쓰기를 숨기게 된다.
      * asset 무관(자산별 주소 없음) — 입금 구분은 주소가 아니라 memo-ref.
      */
-    override suspend fun deriveAddress(
+    override suspend fun addressOf(
         account: Account,
         asset: Asset,
     ): Address = TODO("계정 디렉터리에서 account 의 PartyId 조회·반환 (allocation 아님)")

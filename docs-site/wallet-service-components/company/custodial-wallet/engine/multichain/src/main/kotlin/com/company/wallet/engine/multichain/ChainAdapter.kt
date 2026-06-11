@@ -27,7 +27,7 @@ interface ChainAdapter {
      */
     val supportsFeeBump: Boolean
 
-    suspend fun deriveAddress(
+    suspend fun addressOf(
         account: Account,
         asset: Asset,
     ): Address
