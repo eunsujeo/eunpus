@@ -142,47 +142,71 @@ flowchart TB
 
 <h3>15.3 계정·주소 발급 단계별 흐름</h3>
 
-<p>자체 구축은 발급도 직접 한다 — Fireblocks 가 해주던 vault 생성·주소 파생을 <strong>우리 HD 지갑·HSM 으로</strong> 수행한다. 다만 9.2 에서 본 대로 <strong>곡선·체인에 따라 발급 흐름 자체가 세 갈래</strong>다 — secp256k1 은 로컬 공개 파생(HSM 호출조차 불필요), ed25519 는 HSM 내부 파생, Canton 만 유료 온장 등록(party allocation).</p>
+<p>자체 구축은 발급도 직접 한다 — Fireblocks 가 해주던 vault 생성·주소 파생을 <strong>우리 HD 지갑·HSM 으로</strong> 수행한다. 다만 9.2 에서 본 대로 <strong>곡선·체인에 따라 발급 흐름 자체가 세 갈래</strong>라서, 그림도 체인별로 나눠 그린다. 진입(비즈니스 레이어 → 게이트웨이, 지갑 개설 + 멱등 키)과 마무리(계정 디렉터리 저장 + 인덱서 watch-list 등록, <a href="scenario-provisioning.html">9.4</a>)는 세 갈래 공통이므로 게이트웨이부터 그린다. 각 그림에 등장하는 <strong>참가자 수 자체가 비용 차이</strong>다 — secp256k1 은 둘(HSM 없음), ed25519 는 셋(HSM 내부 파생), Canton 은 넷(participant node 까지 가는 유료 온장 등록).</p>
+
+<p><strong>① secp256k1 (EVM·BTC) — 로컬 공개 파생.</strong> 참가자가 게이트웨이와 AccountPort 둘뿐이다.</p>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
-    participant BIZ as 비즈니스 레이어
+    participant GW as API 게이트웨이
+    participant ACC as AccountPort (SelfBuiltProvider)
+
+    GW->>ACC: createAccount(ref)
+    ACC->>ACC: HD account index 할당 (내부 장부)
+    ACC-->>GW: accountId
+    GW->>ACC: addressOf(account, asset)
+    ACC->>ACC: bip32.derive(xpub, path)
+    Note over ACC: xpub 만으로 주소 계산 — 개인키도 HSM 도 이 그림에 등장하지 않는다
+    ACC-->>GW: 주소
+</pre></div>
+<p class="diagram-caption">Figure 15-2a. secp256k1 발급 — xpub(공개키만으로 하위 주소를 파생할 수 있는 확장 공개키)으로 <code>addressOf</code> 가 로컬에서 끝나는 순수 계산. 온체인 트랜잭션도, HSM 호출도 없다.</p>
+
+<p><strong>② ed25519 (Solana) — HSM 내부 파생.</strong> SLIP-0010 hardened-only 라 파생 자체를 키가 있는 곳에서 해야 해서, HSM 이 참가자로 추가된다.</p>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant GW as API 게이트웨이
+    participant ACC as AccountPort (SelfBuiltProvider)
+    participant HSM as 자체 HSM · HD 지갑
+
+    GW->>ACC: createAccount(ref)
+    ACC->>ACC: HD account index 할당 (내부 장부)
+    ACC-->>GW: accountId
+    GW->>ACC: addressOf(account, asset)
+    ACC->>HSM: derivePubkey(account) — hardened 파생
+    Note over HSM: hardened-only 라 파생도 키 곁에서 — 공개키만 반환
+    HSM-->>ACC: pubkey (= base58 주소)
+    ACC-->>GW: 주소
+</pre></div>
+<p class="diagram-caption">Figure 15-2b. ed25519 발급 — 파생이 HSM 안에서 일어나고 밖으로는 공개키만 나온다. 역시 온체인 트랜잭션은 아니다.</p>
+
+<p><strong>③ Canton — createAccount 가 곧 party allocation.</strong> 세 갈래 중 유일하게 <strong>온장(on-ledger) 등록</strong>이라 participant node 가 참가자로 추가되고, 발급 작업이 전부 <code>createAccount</code> 쪽에서 일어난다. <code>addressOf</code> 는 디렉터리 조회만(2.4).</p>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
     participant GW as API 게이트웨이
     participant ACC as AccountPort (SelfBuiltProvider)
     participant HSM as 자체 HSM · HD 지갑
     participant PN as Canton participant node
 
-    BIZ->>GW: 지갑 개설 (고객 ref · asset) + 멱등 키
     GW->>ACC: createAccount(ref)
-
-    alt secp256k1 (EVM·BTC) — 로컬 공개 파생
-        ACC->>ACC: HD account index 할당 (내부 장부)
-        GW->>ACC: addressOf(account, asset)
-        ACC->>ACC: bip32.derive(xpub, path)
-        Note over ACC: xpub 만으로 주소 계산 — 개인키·HSM 접근 자체가 없다
-    else ed25519 (Solana) — HSM 내부 파생
-        ACC->>ACC: HD account index 할당
-        GW->>ACC: addressOf(account, asset)
-        ACC->>HSM: derivePubkey(account) — hardened 파생
-        Note over HSM: hardened-only 라 파생도 키 곁에서 — 공개키만 반환
-        HSM-->>ACC: pubkey (= base58 주소)
-    else Canton — createAccount 가 곧 party allocation (유료 온장 등록)
-        ACC->>PN: generate-topology(공개키 · hint)
-        PN-->>ACC: topology + 서명할 multi-hash
-        ACC->>HSM: hash 서명 (키 반출 없음)
-        HSM-->>ACC: 서명
-        ACC->>PN: allocate(topology + 서명)
-        PN-->>ACC: PartyId 발행 (= 주소)
-        GW->>ACC: addressOf(account, asset)
-        ACC->>ACC: 디렉터리의 PartyId 반환 — 조회만 (2.4)
-    end
-
-    Note over GW,ACC: 공통 마무리 — 계정 디렉터리 저장 + 인덱서 watch-list 등록 (9.4)
-    ACC-->>GW: accountId · 주소
-    GW-->>BIZ: 계정 · 입금 주소
+    ACC->>PN: generate-topology(공개키 · hint)
+    PN-->>ACC: topology + 서명할 multi-hash
+    ACC->>HSM: hash 서명 (키 반출 없음)
+    HSM-->>ACC: 서명
+    ACC->>PN: allocate(topology + 서명)
+    PN-->>ACC: PartyId 발행 (= 주소) — 유료 온장 등록
+    ACC-->>GW: accountId
+    GW->>ACC: addressOf(account, asset)
+    ACC->>ACC: 디렉터리의 PartyId 반환 — 조회만 (2.4)
+    ACC-->>GW: 주소
 </pre></div>
-<p class="diagram-caption">Figure 15-2. 자체 구축 계정·주소 발급 — 체인별 세 갈래. <strong>secp256k1</strong>(EVM·BTC)은 xpub(공개키만으로 하위 주소를 파생할 수 있는 확장 공개키)으로 <code>addressOf</code> 가 로컬에서 끝난다 — 개인키도 HSM 호출도 필요 없는 순수 계산. <strong>ed25519</strong>(Solana)는 SLIP-0010 hardened-only 라 파생을 키가 있는 HSM 안에서 하고 공개키만 받는다. <strong>Canton</strong> 은 발급이 <code>createAccount</code> 단계의 party allocation(generate-topology → HSM 으로 hash 서명 → allocate, 비용 있는 온장 등록)으로 일어나고, <code>addressOf</code> 는 그렇게 만들어진 PartyId 를 디렉터리에서 반환하는 조회다. 어느 갈래든 <strong>개인키는 HSM 밖으로 나오지 않고</strong>, 마무리는 공통 — 계정 디렉터리 저장과 watch-list 등록(9.4)까지가 발급이다. 앞 두 갈래는 온체인 트랜잭션이 아니지만(전파·수수료 없음) <strong>Canton 만 예외</strong>다. 경로(coin type·스크립트 유형)·인코딩 차이는 멀티체인 어댑터(<a href="component-multichain.html">2.2 표 주소 파생 행</a>)가 흡수한다.</p>
+<p class="diagram-caption">Figure 15-2c. Canton 발급 — generate-topology → HSM 으로 hash 서명 → allocate 의 party allocation 이 <code>createAccount</code> 단계에서 일어난다. 세 갈래 중 유일한 온체인 등록(비용 발생).</p>
+
+<p>세 갈래 모두 <strong>개인키는 HSM 밖으로 나오지 않고</strong>, 마무리는 공통이다 — 계정 디렉터리 저장과 인덱서 watch-list 등록(<a href="scenario-provisioning.html">9.4</a>)까지 끝나야 발급 완료다. 경로(coin type·스크립트 유형)·인코딩 차이는 멀티체인 어댑터(<a href="component-multichain.html">2.2 표 주소 파생 행</a>)가 흡수한다.</p>
 
 <h3>15.4 송신 트랜잭션 단계별 흐름 — provider 내부에서 3단계가 다 보인다</h3>
 
