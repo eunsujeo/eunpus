@@ -202,7 +202,9 @@ class CantonAdapter implements ChainAdapter {
   // 2-step: 제출=OFFER, 완료는 상대 ACCEPT
   addressOf(account)           { return partyIdOf(account) }         // 조회 — PartyId 는 계정 생성(=party allocation, topology 서명
                                                                      //   필요·비멱등·유료) 때 이미 만들어졌다 (9.2 · 15.9).
-                                                                     //   발급(issueDepositAddress)은 Canton 에 없음 — 입금 구분은 memo-ref
+                                                                     //   발급(issueDepositAddress)은 Canton 에 없음 — 입금 구분은 memo-ref.
+                                                                     //   allocation 의 체인별 조각(generate-topology→서명→allocate, 15-2c)은
+                                                                     //   실제 구현에선 어댑터 쪽 선택 capability — 본 가이드는 생략
   getBalance(party, asset)     { return sum(acs.holdingsOf(party, asset)) }  // ACS holdings 합 — 가용/locked 구분 (11.1)
   estimateFee(t)       { return trafficCostOf(byteSizeOf(t)) }       // traffic(byte) 소비 추정 (2.2 표)
   buildTransaction(t)  { return { transferInstruction: offer(t) } }
