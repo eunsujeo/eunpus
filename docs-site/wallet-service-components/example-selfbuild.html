@@ -164,6 +164,8 @@ sequenceDiagram
 </pre></div>
 <p class="diagram-caption">Figure 15-2a. secp256k1 첫 주소 발급 — 주소가 태어나는 동사는 <code>issueDepositAddress</code> 다. 계산은 xpub(공개키만으로 하위 주소를 파생할 수 있는 확장 공개키)만으로 로컬에서 끝난다 — 온체인 트랜잭션도, HSM 호출도 없다. <code>addressOf</code> 는 이렇게 등록된 주소를 돌려주는 조회일 뿐, 절대 새 주소를 만들지 않는다.</p>
 
+<p>"개인키도 HSM 호출도 없다"가 가능한 이유 — <strong>이 흐름에서 키는 만들어지지 않기 때문</strong>이다. master seed(부모 개인키)는 시스템 셋업 때 HSM 안에서 한 번 생성되고 <strong>xpub 만 반출</strong>돼 있다. 지갑 생성은 그 키 트리에서 다음 가지 번호를 집는 일(index 할당)일 뿐이라 고객이 100만 명이어도 키는 여전히 master seed 하나다. 출금 때는 HSM 이 <strong>자기 안에서</strong> 같은 path 로 자식 <strong>개인키</strong>를 파생해 서명한다(<a href="component-signing.html">5. 서명</a>) — secp256k1 non-hardened 파생은 공개키 쪽(밖, xpub)과 개인키 쪽(HSM 안)이 수학적으로 평행이라, 발급 때 계산한 주소와 서명 때 파생한 개인키가 항상 한 쌍으로 맞아떨어진다. 대가도 있다: xpub 이 유출된 상태에서 자식 개인키가 하나라도 새면 <strong>부모 개인키가 역산</strong>되므로(BIP-32 non-hardened 의 알려진 성질), xpub 은 이름과 달리 수탁 운영에선 비밀급으로 다룬다.</p>
+
 <p><strong>② ed25519 (Solana) — HSM 내부 파생.</strong> SLIP-0010 hardened-only<span class="g" data-tip="ed25519 에 HD(계층 결정적) 파생을 적용하는 표준. 부모 개인키가 있어야만 자식 키를 만들 수 있는 hardened 경로만 허용한다 — 파생이 늘 키 보관처(HSM)에서 일어나는 이유">?</span> 라 파생 자체를 키가 있는 곳에서 해야 해서, HSM 이 참가자로 추가된다.</p>
 
 <div class="diagram"><pre class="mermaid">
