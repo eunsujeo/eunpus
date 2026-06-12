@@ -18,7 +18,10 @@
 
 <p><b>무엇·언제</b>: 업무 승인이 끝난 출금 지시를 백엔드가 매니저에 넘깁니다. 모든 분면 공통의 위험은 <b>중복 실행</b> — 같은 출금이 두 번 나가면 체인엔 되돌리기가 없습니다. 그래서 호출에는 항상 멱등 키가 붙고, 자체 분면에선 한 가지 규칙이 더 붙습니다: <b>전파(체인에 쓰기) 전에 먼저 기록한다</b> — 전파 직후 프로세스가 죽고 기록이 없으면, 재시도가 새 트랜잭션을 만들어 둘 다 나가기 때문입니다.</p>
 
-<pre><code>submitTransaction(출금 지시 + 멱등 키) → TxRef    // 이후 상태는 getStatus · 이벤트로 추적</code></pre>
+<pre><code>estimateFee(출금 지시) → { low · medium · high }   // 제출 전 견적 — 점유 없는 읽기, 추정이지 보장 아님
+submitTransaction(출금 지시 + 멱등 키) → TxRef    // 이후 상태는 getStatus · 이벤트로 추적</code></pre>
+
+<p>제출 전에는 <b>견적(estimateFee)</b>이 있습니다 — 조립과 달리 순번·UTXO 를 <b>점유하지 않는 읽기</b>라 출금 화면에서 수시로 불러도 되고, 추정이지 보장이 아니므로 실제 수수료는 조립 단계에서 다시 계산합니다. 등급(low/med/high)의 정체는 이더리움에선 노드의 최근 수수료 이력 <b>백분위수</b> + 모의 실행(가스량)이고, Canton 은 수수료 시장이 없어 비용이 <b>제출물 크기의 함수</b>(traffic)라 등급 개념이 퇴화합니다 — 견적이 안정적이라는 뜻이기도 합니다.</p>
 
 <h2>▸ 자체 × 이더리움 — 조립→서명→전파, 단계마다 기록</h2>
 
@@ -109,6 +112,7 @@ sequenceDiagram
 <table>
 <thead><tr><th style="width:18%"></th><th>자체 × 이더리움</th><th>자체 × Canton</th><th>FB × 이더리움</th><th>FB × Canton</th></tr></thead>
 <tbody>
+<tr><td><b>수수료 견적</b></td><td>노드 fee 이력 백분위수 + 모의 실행(가스량)</td><td>크기 함수 (traffic) — 시장 없음, 견적 안정</td><td>벤더 API (low/med/high)</td><td>벤더 API (traffic)</td></tr>
 <tr><td><b>조립·서명·전파</b></td><td>우리 파이프라인 (3단 기록)</td><td>우리 파이프라인 (순번 없음)</td><td>벤더 한 줄</td><td>벤더 한 줄</td></tr>
 <tr><td><b>서명 직전 검증</b></td><td>우리 정책 게이트</td><td>우리 정책 게이트</td><td>벤더 정책 (TAP)</td><td>벤더 정책</td></tr>
 <tr><td><b>제출 후</b></td><td>블록 확정 대기</td><td><b>상대 수락 대기 (자금 잠김)</b></td><td>webhook 추적</td><td>수락 대기 (잠김)</td></tr>
