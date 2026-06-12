@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>3. 포트 두 개 — 매트릭스가 인터페이스가 되는 과정</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
+<div class="progress">
+<a href="01-inventory.html">1</a><a href="02-price-of-one-line.html">2</a><span class="cur">3</span><a href="04-invariants.html">4</a><a href="05-accounts.html">5</a><a href="06-withdrawal.html">6</a><a href="07-deposit.html">7</a><a href="08-trust-boundary.html">8</a><a href="09-switch-proof.html">9</a><a href="10-extension.html">10</a>
+</div>
+<h1>포트 두 개 — 매트릭스가 인터페이스가 되는 과정</h1>
+<p class="subtitle">동사는 벤더가 아니라 우리 업무 언어가 정한다</p>
+
+<div class="hook">
+<b>익숙한 것 ↔ 깨지는 지점</b>
+인터페이스 추출은 늘 하는 일입니다. 깨지는 지점은 <b>동사를 누가 정하느냐</b> — 벤더 메서드명을 그대로 옮기면 그 벤더 모양의 포트가 되어, 두 번째 구현(자체)이 들어올 자리가 없어집니다.
+</div>
+
+<p>1페이지 매트릭스의 마지막 열(도메인 동사)을 그대로 묶으면 포트가 됩니다. 묶는 기준은 <b>"부르는 쪽이 누구인가"</b> — 온보딩·입금 화면이 부르는 계정·주소 동사와, 출금 흐름이 부르는 트랜잭션 동사는 소비자가 다릅니다:</p>
+
+<pre><code>interface AccountPort {                    // 온보딩·입금이 부른다 — 키가 있는 곳
+  createAccount(ref): Account
+  addressOf(account, asset): Address       // 멱등 "조회" — 4p 불변식 ①
+  issueDepositAddress?(account, asset)     // 선택 capability — "발급"은 다른 동사
+  getBalance(account, asset): Balance      // 단일 숫자 아님 — available·pending·locked
+  validateAddress(asset, addr): Boolean
+}
+interface TransactionPort {                // 출금 흐름·운영이 부른다
+  estimateFee / submitTransaction / getStatus / transactionsOf
+  boost? / cancel?                         // 선택 capability
+  onChainEvent(handler)                    // 수신·확정 push
+}</code></pre>
+
+<p>읽는 법 세 가지. <b>① <code>?</code> 가 붙은 동사는 "선택 capability"</b> — 체인·벤더에 따라 없는 기능은 없는 척 구현하지 않고 <b>타입 자체를 안 가집니다</b>(미지원은 throw 가 아니라 부재). <b>② 두 포트는 함께 교체됩니다</b> — 주소를 만든 키와 서명하는 키는 같아야 하므로 "계정은 Fireblocks, 서명은 자체" 같은 조합은 성립하지 않습니다. 나눈 이유는 교체가 아니라 <b>소비자가 달라서</b>입니다(온보딩 코드가 submitTransaction 에 의존할 이유가 없으므로). <b>③ 매트릭스에 없던 임의 외부 주소 조회</b>는 이 두 포트 어디에도 없습니다 — custody 와 별개 슬롯(자체 인덱서)이고, 그 함의는 9페이지에서 다시 만납니다.</p>
+
+<div class="callout">
+<div class="callout-title">전환 가능성의 물리적 근거</div>
+<p style="margin:0">이 시그니처들은 Fireblocks 구현과 자체 구현에서 <b>글자 그대로 같습니다</b>. 달라지는 것은 <code>{ }</code> 안뿐 — 그래서 호출하는 쪽(코어·비즈)은 어느 구현이 꽂혔는지 모릅니다. 단, 시그니처가 같다는 것만으로는 부족합니다 — 다음 페이지가 그 얘기입니다.</p>
+</div>
+
+<p class="foot">깊이 보기: 포트 전체 정의와 동사 기준("데이터의 주인") — <a href="../wallet-service-components/abstraction.html">가이드 13.3</a> · 두 포트 분리의 근거 callout — 13.2 · 두 구현의 코드 — <a href="../wallet-service-components/example-fireblocks.html">14.2</a>·<a href="../wallet-service-components/example-selfbuild.html">15.2</a>.</p>
+
+<div class="pager">
+<a href="02-price-of-one-line.html">← 2. 한 줄의 가격</a>
+<a href="04-invariants.html">4. 불변식 →</a>
+</div>
+</div>
+</body>
+</html>

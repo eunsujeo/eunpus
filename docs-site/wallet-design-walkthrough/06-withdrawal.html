@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>6. 출금 — exactly-once 의 진짜 적</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
+<div class="progress">
+<a href="01-inventory.html">1</a><a href="02-price-of-one-line.html">2</a><a href="03-ports.html">3</a><a href="04-invariants.html">4</a><a href="05-accounts.html">5</a><span class="cur">6</span><a href="07-deposit.html">7</a><a href="08-trust-boundary.html">8</a><a href="09-switch-proof.html">9</a><a href="10-extension.html">10</a>
+</div>
+<h1>출금 — exactly-once 의 진짜 적</h1>
+<p class="subtitle">매트릭스 6~9행: estimateFee · submitTransaction · getStatus · boost/cancel</p>
+
+<div class="hook">
+<b>익숙한 것 ↔ 깨지는 지점</b>
+중복 요청은 멱등 키로 막는다 — 여기까진 늘 하던 일입니다. 깨지는 지점: 멱등 키는 <b>외부의 재시도</b>만 막습니다. 진짜 적은 <b>자기 자신의 중간 사망</b>이고, 체인에는 rollback 이 없어서 그 사고는 되돌릴 수 없습니다.
+</div>
+
+<p>사고를 먼저 봅니다. 트랜잭션을 <b>전파한 직후, 기록하기 직전</b>에 프로세스가 죽었습니다. 저장소엔 흔적이 없으니 재시도가 멱등 가드를 그대로 통과하고, 새 순번(nonce)으로 새 트랜잭션을 만듭니다 — 옛것과 새것은 순번이 달라 <b>둘 다 유효</b>하고, 같은 출금이 두 번 나갑니다. DB 였다면 트랜잭션 롤백으로 끝날 일이, 체인에선 고객 자금 사고입니다.</p>
+
+<p>해법은 백엔드 개발자에게 익숙한 모양입니다 — <b>WAL(write-ahead log)</b>. 단 로그의 위치가 생명입니다: <b>기록은 전파 "전"</b>(불변식 ③)이어야 하고, 복구는 기록된 단계에서 <b>같은 서명본으로만</b> 이어갑니다(새로 조립하면 새 순번 = 같은 사고):</p>
+
+<pre><code>// BUILT → SIGNED → BROADCAST — 단계마다 영속화하고 다음으로
+resume(rec) {                          // 재기동 시 미완 건 복구
+  switch (rec.state) {
+    case 'BROADCAST': return            // 이미 전파됨 — 인덱서가 확정을 추적
+    case 'SIGNED':    return broadcast(rec.signedTx)   // 같은 서명본 재전파만!
+    case 'BUILT':     return signAndBroadcast(rec)     // 같은 tx(같은 순번)로 재개
+  }
+}</code></pre>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    B["📝 BUILT<br/>조립 · 순번 점유<br/>(영속화)"] --> S["✍️ SIGNED<br/>서명본 저장<br/>(영속화)"] --> X["📡 BROADCAST<br/>전파 완료"] --> C["✅ CONFIRMED<br/>(인덱서가 판정 — 7p)"]
+    X -. "막힘(stuck)" .-> R["♻️ boost<br/>같은 순번 + 수수료↑<br/>(이더리움)"]
+    R --> X
+
+    classDef wait fill:#fef3c7,stroke:#d97706;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    class B,S,X,R wait;
+    class C good;
+</pre></div>
+<p class="diagram-caption">출금 상태머신. 어느 단계에서 죽어도 "그 단계부터, 같은 산출물로" 재개된다. 순번(nonce)은 계정별로 직렬화해 점유 — 분산 락의 체인 버전인데, 막히면 뒤 순번 전체가 멈추므로 막힌 트랜잭션은 같은 순번에 수수료만 올려 덮어쓴다(boost). Canton 은 이 그림이 달라진다 — 순번도 수수료 시장도 없고, "전파"가 OFFER 제출이라 <b>상대가 수락해야 완료</b>되며 그동안 자금이 잠긴다(locked). 멈추려면 boost 가 아니라 cancel(WITHDRAW)이다.</p>
+
+<p>1페이지 매트릭스의 "재촉·취소" 행에 <code>?</code> 가 붙어 있던 이유가 여기서 풀립니다 — boost 는 수수료 시장이 있는 체인(이더리움)의 동사라서, Canton 구현에는 <b>타입부터 없습니다</b>(불변식 ⑥). Fireblocks 를 쓰면 이 페이지 전체가 <code>createTransaction</code> 한 줄 뒤로 들어가지만 — 자체 nonce 관리를 병행하면 벤더 내부 순번과 충돌하므로, 전환 후엔 이 파이프라인을 "끄는" 것까지가 설계입니다.</p>
+
+<p class="foot">깊이 보기: intent 상태머신·순번 재동기화 — <a href="../wallet-service-components/component-tx-nonce.html">가이드 4장</a> · 체인별 stuck 해소 표 — 4.4 · Canton 2-step 시퀀스 — <a href="../wallet-service-components/example-selfbuild.html">15.4 Figure 15-3b</a>.</p>
+
+<div class="pager">
+<a href="05-accounts.html">← 5. 계정·주소</a>
+<a href="07-deposit.html">7. 입금 →</a>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true });</script>
+</body>
+</html>

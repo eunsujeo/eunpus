@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>4. 불변식 — 시그니처가 같아도 의미가 같아야 한다</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
+<div class="progress">
+<a href="01-inventory.html">1</a><a href="02-price-of-one-line.html">2</a><a href="03-ports.html">3</a><span class="cur">4</span><a href="05-accounts.html">5</a><a href="06-withdrawal.html">6</a><a href="07-deposit.html">7</a><a href="08-trust-boundary.html">8</a><a href="09-switch-proof.html">9</a><a href="10-extension.html">10</a>
+</div>
+<h1>불변식 — 시그니처가 같아도 의미가 같아야 한다</h1>
+<p class="subtitle">컴파일러는 타입만 검사한다 — 약속의 의미는 우리가 적고, 테스트가 지킨다</p>
+
+<div class="hook">
+<b>익숙한 것 ↔ 깨지는 지점</b>
+인터페이스만 맞추면 구현은 자유 — 평소엔 맞는 말입니다. 그런데 한 구현의 <code>addressOf</code> 는 조회를 하고 다른 구현은 몰래 새 주소를 만든다면? 컴파일은 통과하고, <b>전환하는 날 사고가 납니다</b>. 그래서 포트에는 시그니처와 함께 의미의 약속 — 불변식 — 이 필요합니다.
+</div>
+
+<p>이 설계가 모든 구현에 요구하는 약속은 여섯 개입니다. 각각은 "안 지키면 어떤 사고가 나는가"로 기억하는 게 빠릅니다:</p>
+
+<table>
+<thead><tr><th style="width:36%">불변식</th><th>안 지키면 나는 사고</th><th style="width:10%">상세</th></tr></thead>
+<tbody>
+<tr><td>① <b>addressOf 는 절대 새 주소를 만들지 않는다</b> — 발급(등록)된 주소의 조회만</td><td>감시(watch-list) 안 되는 주소가 고객에게 나감 → 그 주소로 온 입금을 놓침</td><td class="c">5p</td></tr>
+<tr><td>② <b>등록까지가 발급이다</b> — 주소는 watch-list 등록이 끝나야 존재</td><td>발급-등록 사이 입금 누락 — 입금 사고의 최다 유형</td><td class="c">5·7p</td></tr>
+<tr><td>③ <b>기록은 전파 전이다</b> — 의도·서명본을 영속화한 뒤에만 체인에 쓴다</td><td>전파 직후 사망 → 재시도가 새 트랜잭션 → <b>이중 출금</b></td><td class="c">6p</td></tr>
+<tr><td>④ <b>알림은 미검증 신호다</b> — webhook·이벤트는 힌트, 진실원천은 원장</td><td>위·변조/누락된 통지를 그대로 잔액에 반영</td><td class="c">7·8p</td></tr>
+<tr><td>⑤ <b>잔액은 단일 숫자가 아니다</b> — 사용 가능 판정은 available 만</td><td>미확정(pending)·잠김(locked) 자금을 출금에 사용</td><td class="c">7p</td></tr>
+<tr><td>⑥ <b>미지원은 타입 부재다</b> — 없는 기능은 throw 가 아니라 capability 없음</td><td>호출부가 런타임에야 미지원을 발견 — 체인 추가 때마다 분기 수색</td><td class="c">3p</td></tr>
+</tbody>
+</table>
+
+<p>중요한 건 이 표의 지위입니다. 이것은 코딩 컨벤션이 아니라 <b>포트 계약의 일부</b>이고 — 그래서 9페이지의 계약 테스트는 정확히 이 여섯 줄을 시험 문제로 씁니다. 자체 구현이 통과하고 Fireblocks 구현이 통과하면, "전환해도 의미가 보존된다"가 주장이 아니라 측정이 됩니다.</p>
+
+<div class="callout">
+<div class="callout-title">불변식은 어디서 왔나</div>
+<p style="margin:0">여섯 개 모두 사고에서 역산된 것입니다 — ①②는 "놓친 입금"에서, ③은 "이중 출금"에서, ④⑤는 "없는 돈을 쓴 사고"에서. 3막(5~8p)은 이 불변식들이 각 흐름 안에서 <i>어떻게 구현되는지</i>의 이야기입니다.</p>
+</div>
+
+<p class="foot">깊이 보기: ①② — <a href="../wallet-service-components/scenario-provisioning.html">가이드 9.1·9.4</a> · ③ — <a href="../wallet-service-components/component-tx-nonce.html">4.3</a> · ④ — <a href="../wallet-service-components/component-alerts.html">8장</a> · ⑤ — 13.3 Balance · ⑥ — 13.3 capability.</p>
+
+<div class="pager">
+<a href="03-ports.html">← 3. 포트 두 개</a>
+<a href="05-accounts.html">5. 계정·주소 →</a>
+</div>
+</div>
+</body>
+</html>

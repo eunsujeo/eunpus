@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>7. 입금 — 커밋이 롤백되는 DB</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
+<div class="progress">
+<a href="01-inventory.html">1</a><a href="02-price-of-one-line.html">2</a><a href="03-ports.html">3</a><a href="04-invariants.html">4</a><a href="05-accounts.html">5</a><a href="06-withdrawal.html">6</a><span class="cur">7</span><a href="08-trust-boundary.html">8</a><a href="09-switch-proof.html">9</a><a href="10-extension.html">10</a>
+</div>
+<h1>입금 — 커밋이 롤백되는 DB</h1>
+<p class="subtitle">매트릭스 4·10행: getBalance · onChainEvent — 그리고 인덱서라는 상시 worker</p>
+
+<div class="hook">
+<b>익숙한 것 ↔ 깨지는 지점</b>
+입금 감지는 이벤트 컨슈머처럼 보입니다 — 큐를 구독하고 메시지를 처리하면 끝. 깨지는 지점이 둘입니다: <b>아무도 push 해 주지 않는다</b>(자체 구축엔 큐가 없다 — 우리가 체인을 긁어야 한다), 그리고 <b>읽은 것이 취소될 수 있다</b>(reorg — 커밋된 줄 알았던 블록이 교체된다).
+</div>
+
+<p>그래서 입금의 첫 번째 규칙은 <b>감지와 확정의 분리</b>입니다. 트랜잭션을 본 순간(감지)과 믿어도 되는 순간(확정 — 충분한 블록이 쌓인 뒤)은 다른 사건이고, 잔액의 <code>available</code> 은 확정 후에만 움직입니다(불변식 ⑤). 확정 전에 입금을 인정하면 reorg 때 <b>없는 돈을 이미 쓴</b> 상태가 됩니다:</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    DET["🟡 감지 (PENDING)<br/>잔액 반영 안 함"] -->|"확정 기준 충족<br/>(체인별 — N블록 등)"| CONF["✅ 확정 (CONFIRMED)<br/>available 반영"]
+    DET -->|"reorg — 블록 교체"| ORPH["❌ 무효화<br/>projection 롤백<br/>(원본은 보존 — 재포함 가능)"]
+    ORPH -. 같은 tx 가 새 블록에 .-> DET
+
+    classDef wait fill:#fef3c7,stroke:#d97706;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+    class DET wait; class CONF good; class ORPH bad;
+</pre></div>
+<p class="diagram-caption">입금 상태 전이. 무효화 경로가 "커밋이 롤백되는 DB"의 실체다 — 그래서 인덱서는 원시 로그를 영구 보존하고 가공본(projection)만 되감는다. 이 빨간 경로는 확률적 finality 체인(이더리움)의 것이고, <b>Canton 은 결정적이라 없다</b> — 대신 Canton 입금은 감지가 아니라 <b>수락 행위</b>다: 상대의 OFFER 를 우리가 검토(8p 정책 게이트)하고 ACCEPT 서명해야 비로소 들어오며, 고객 귀속도 주소가 아니라 memo 참조로 한다.</p>
+
+<p>두 번째 규칙은 5페이지에서 이미 깔았습니다 — <b>등록까지가 발급</b>(불변식 ②). 인덱서는 "우리 주소 집합"을 아는 만큼만 감지하므로, 그 집합(watch-list)에 늦게 오른 주소의 입금은 그냥 사라집니다. 발급 흐름 안에서 등록하고, 등록 시점 이전 블록은 한 번 재스캔(backfill)해 메웁니다.</p>
+
+<p>마지막으로 구조적 특이점 하나 — 이 페이지의 주인공인 <b>인덱서만 요청-응답이 아닙니다</b>. 출금(6p)은 요청이 올 때 도는 코드지만, 수집은 체인이 흐르는 한 계속 도는 <b>상시 worker</b>입니다. Fireblocks 를 쓰면 이 worker 가 통째로 사라지고 webhook push 로 대체됩니다 — 전환에서 가장 크게 변하는 운영 항목이고, 그 webhook 을 얼마나 믿을지는 다음 페이지의 주제입니다.</p>
+
+<p class="foot">깊이 보기: 수집·projection·reorg — <a href="../wallet-service-components/component-indexer.html">가이드 3장</a> · 입금 시나리오·체인별 표·Canton 수락 시퀀스 — <a href="../wallet-service-components/scenario-deposit.html">10장 (Figure 10-1b)</a> · watch-list 3종 방어 — 9.4.</p>
+
+<div class="pager">
+<a href="06-withdrawal.html">← 6. 출금</a>
+<a href="08-trust-boundary.html">8. 신뢰 경계 →</a>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true });</script>
+</body>
+</html>
