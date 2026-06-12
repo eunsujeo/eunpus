@@ -40,10 +40,30 @@ flowchart LR
 
 <p>마지막으로 구조적 특이점 하나 — 이 페이지의 주인공인 <b>인덱서만 요청-응답이 아닙니다</b>. 출금(6p)은 요청이 올 때 도는 코드지만, 수집은 체인이 흐르는 한 계속 도는 <b>상시 worker</b>입니다. Fireblocks 를 쓰면 이 worker 가 통째로 사라지고 webhook push 로 대체됩니다 — 전환에서 가장 크게 변하는 운영 항목이고, 그 webhook 을 얼마나 믿을지는 다음 페이지의 주제입니다.</p>
 
+<h2>고객 입금·출금 내역 조회는 어디서 오나</h2>
+
+<p>"내역 화면" 은 새 기능이 아니라 <b>이 페이지와 6페이지의 부산물</b>입니다 — 매트릭스의 <code>transactionsOf</code> 행이 그것입니다. 자체 구현에서 내역은 두 저장소의 병합입니다: <b>수신은 인덱서의 projection</b>(이 페이지가 만든 것), <b>송신은 출금 파이프라인의 intent 저장소</b>(6p 가 만든 것 — 전파 전 기록했으므로 "보내는 중"까지 보입니다):</p>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as 지갑 백엔드
+    participant SELF as 자체 구현 (TransactionPort)
+    participant PJ as projection (수신 — 7p)
+    participant IT as intent 저장소 (송신 — 6p)
+
+    BE->>SELF: transactionsOf(account, 기간)
+    SELF->>PJ: 이 계정 주소들의 확정 입금
+    SELF->>IT: 이 계정의 출금 (BUILT~CONFIRMED 전 단계 포함)
+    SELF-->>BE: 병합·시간순 정렬 — 입금은 확정만, 출금은 진행 중도
+</pre></div>
+<p class="diagram-caption">자체 구현의 내역 조회. 따로 만드는 게 아니라 두 흐름이 이미 영속화한 기록을 합쳐 읽는다 — 입금은 확정(available 반영분)만, 출금은 intent 기록 덕에 "보내는 중" 상태까지 보여줄 수 있다. Fireblocks 구현은 같은 호출이 <b>거래 목록 API 한 번</b>으로 끝난다(벤더가 양방향을 다 기록하므로). 어느 쪽이든 <b>내 계정의 내역은 custody 포트가 준다</b> — 임의 외부 주소의 이력(우리 고객이 아닌 주소)은 다른 슬롯의 일이다(1p 매트릭스에 없던 그 기능).</p>
+
 <p class="foot">깊이 보기: 수집·projection·reorg — <a href="../wallet-service-components/component-indexer.html">가이드 3장</a> · 입금 시나리오·체인별 표·Canton 수락 시퀀스 — <a href="../wallet-service-components/scenario-deposit.html">10장 (Figure 10-1b)</a> · watch-list 3종 방어 — 9.4.</p>
 
 <div class="pager">
 <a href="06-withdrawal.html">← 6. 출금</a>
+<a href="index.html">목차</a>
 <a href="08-trust-boundary.html">8. 신뢰 경계 →</a>
 </div>
 </div>

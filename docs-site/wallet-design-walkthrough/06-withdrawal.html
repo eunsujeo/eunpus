@@ -47,12 +47,55 @@ flowchart LR
 </pre></div>
 <p class="diagram-caption">출금 상태머신. 어느 단계에서 죽어도 "그 단계부터, 같은 산출물로" 재개된다. 순번(nonce)은 계정별로 직렬화해 점유 — 분산 락의 체인 버전인데, 막히면 뒤 순번 전체가 멈추므로 막힌 트랜잭션은 같은 순번에 수수료만 올려 덮어쓴다(boost). Canton 은 이 그림이 달라진다 — 순번도 수수료 시장도 없고, "전파"가 OFFER 제출이라 <b>상대가 수락해야 완료</b>되며 그동안 자금이 잠긴다(locked). 멈추려면 boost 가 아니라 cancel(WITHDRAW)이다.</p>
 
-<p>1페이지 매트릭스의 "재촉·취소" 행에 <code>?</code> 가 붙어 있던 이유가 여기서 풀립니다 — boost 는 수수료 시장이 있는 체인(이더리움)의 동사라서, Canton 구현에는 <b>타입부터 없습니다</b>(불변식 ⑥). Fireblocks 를 쓰면 이 페이지 전체가 <code>createTransaction</code> 한 줄 뒤로 들어가지만 — 자체 nonce 관리를 병행하면 벤더 내부 순번과 충돌하므로, 전환 후엔 이 파이프라인을 "끄는" 것까지가 설계입니다.</p>
+<p>1페이지 매트릭스의 "재촉·취소" 행에 <code>?</code> 가 붙어 있던 이유가 여기서 풀립니다 — boost 는 수수료 시장이 있는 체인(이더리움)의 동사라서, Canton 구현에는 <b>타입부터 없습니다</b>(불변식 ⑥).</p>
+
+<h2>같은 동사, 두 구현 — submitTransaction 을 나란히</h2>
+
+<p><b>자체 구현</b> — 위 상태머신이 실제로 도는 모습입니다:</p>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as 지갑 백엔드
+    participant SELF as 자체 구현 (TransactionPort)
+    participant HSM as 정책 게이트 + HSM (8p)
+    participant CH as 이더리움 노드
+    participant IDX as 인덱서 (7p)
+
+    BE->>SELF: submitTransaction(승인된 출금 + 멱등 키)
+    SELF->>SELF: 조립 — nonce 점유 · BUILT 영속화
+    SELF->>HSM: 서명 요청 (게이트 검증 통과 후)
+    HSM-->>SELF: 서명본 — SIGNED 영속화
+    SELF->>CH: 전파 — BROADCAST 기록
+    CH-->>SELF: txRef(hash)
+    SELF-->>BE: txRef
+    IDX-->>BE: 확정(CONFIRMED) 은 인덱서가 push
+</pre></div>
+<p class="diagram-caption">자체 구현. 단계마다 영속화(BUILT→SIGNED→BROADCAST)가 끼어 있는 게 핵심 — 어디서 죽어도 같은 산출물로 재개된다. Canton 이면 5번이 OFFER 제출이 되고, 8번 앞에 "상대 수락 대기"(자금 잠김)가 끼어든다.</p>
+
+<p><b>Fireblocks 구현</b> — 2페이지에서 해부했던 그 한 줄입니다:</p>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as 지갑 백엔드
+    participant FBI as Fireblocks 구현 (TransactionPort)
+    participant FB as Fireblocks (SaaS)
+
+    BE->>FBI: submitTransaction(승인된 출금 + 멱등 키)
+    FBI->>FB: createTransaction(…, externalTxId = 멱등 키)
+    Note over FB: 조립 + MPC 서명 + 전파 + nonce — 전부 벤더 내부<br/>(TAP·co-signer 정책이 8p 게이트의 자리)
+    FB-->>FBI: 트랜잭션 id (= txRef)
+    FBI-->>BE: txRef
+    FB-->>BE: 상태 변화는 webhook push (확정 포함)
+</pre></div>
+<p class="diagram-caption">Fireblocks 구현. 자체 그림의 2~6번이 벤더 안으로 들어가고, 우리 멱등 키는 externalTxId 로 이어진다. 그래서 전환 후 자체 nonce 관리를 병행하면 벤더 내부 순번과 충돌한다 — 이 파이프라인을 "끄는" 것까지가 설계다.</p>
 
 <p class="foot">깊이 보기: intent 상태머신·순번 재동기화 — <a href="../wallet-service-components/component-tx-nonce.html">가이드 4장</a> · 체인별 stuck 해소 표 — 4.4 · Canton 2-step 시퀀스 — <a href="../wallet-service-components/example-selfbuild.html">15.4 Figure 15-3b</a>.</p>
 
 <div class="pager">
 <a href="05-accounts.html">← 5. 계정·주소</a>
+<a href="index.html">목차</a>
 <a href="07-deposit.html">7. 입금 →</a>
 </div>
 </div>
