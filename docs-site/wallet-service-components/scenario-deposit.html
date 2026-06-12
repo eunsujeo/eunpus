@@ -96,6 +96,48 @@ sequenceDiagram
 </pre></div>
 <p class="diagram-caption">Figure 10-1. 입금 표준 흐름. 입금 주소는 <a href="scenario-provisioning.html">9. 계정·주소 발급</a>에서 이미 발급된 상태로 시작한다. 두 번의 알림 — 감지(PENDING, 사용 불가) → 확정(CONFIRMED, 사용 가능) — 이 핵심이며, webhook 은 비즈니스 레이어가 받아 사용자에게 전달한다(0.2 — 클라이언트는 비즈니스 레이어를 거친다). 확정 기준은 멀티체인 어댑터가 체인별로 정한다(예: EVM N 블록, Solana commitment 단계). 자금 사용 가능 판정은 반드시 확정 이후. 도식의 projection 은 인덱서가 가공해 둔 조회용 상태(주소별 잔액·입금 내역)를 말한다.</p>
 
+<p>이 그림의 모양(감지 → 확정 2단 알림)은 체인 공통이지만, <strong>각 단계의 속은 체인별</strong>이다:</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:13%">단계</th><th>EVM</th><th>BTC (UTXO)</th><th>Solana</th><th>Canton</th></tr></thead>
+<tbody>
+<tr><td><strong>감지 대상</strong></td><td>native transfer + ERC-20 Transfer 로그 (+컨트랙트 경유 internal transfer)</td><td>tx <strong>출력</strong>의 주소 매칭 (한 tx 에 다출력)</td><td>SPL 은 owner 주소가 아니라 <strong>token account</strong> 단위</td><td>ACS holdings 변화</td></tr>
+<tr><td><strong>고객 귀속</strong></td><td>주소</td><td>주소</td><td>주소 (token account→owner)</td><td><strong>주소 없음 — memo-ref</strong> (9.2)</td></tr>
+<tr><td><strong>입금의 성립</strong></td><td>수동 감지로 끝</td><td>수동 감지로 끝</td><td>수동 감지로 끝</td><td><strong>상대의 OFFER 를 우리가 ACCEPT 해야</strong> 들어옴 — 감지가 아니라 행위 (아래 10-1b)</td></tr>
+<tr><td><strong>확정 / reorg</strong></td><td>N confirmations · reorg 가능</td><td>N confirmations · reorg 가능</td><td>commitment(finalized)</td><td><strong>결정적 — reorg 없음</strong>, 확정 대기 loop 무의미</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>가장 큰 갈래가 셋째 줄이다 — <strong>Canton 입금은 2-step 의 수신측</strong>이라, 우리가 수신 custodian 이면 상대의 OFFER 에 우리 party 가 ACCEPT 서명을 해야 자산이 들어온다(Canton Coin 은 pre-approval 로 1-step). 즉 입금 경로에도 <strong>서명 지점이 생기고, 5.5 의 정책 게이트가 거기에도 선다</strong> — 모르는 자산의 OFFER 를 blind ACCEPT 하면 더스팅·컴플라이언스 문제가 그대로 들어온다:</p>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant CP as 외부 송신자
+    participant PN as Canton participant node
+    box rgb(239,246,255) 우리 서버 — 한 프로세스 (배포 단위)
+    participant IDX as 인덱서 (ACS 구독)
+    participant BE as 지갑 서비스 백엔드
+    end
+    participant HSM as 자체 HSM
+
+    CP->>PN: 우리 party 앞 OFFER (memo-ref 포함)
+    PN->>IDX: ACS 변화 — 수락 대기 OFFER 감지
+    IDX->>BE: 입금 OFFER 알림 (PENDING — 아직 우리 것 아님)
+    BE->>BE: 정책 게이트 — 자산·발행자·memo-ref 검증 (5.5)
+    alt 정책 통과
+        BE->>HSM: ACCEPT 서명
+        BE->>PN: ACCEPT 제출 — 이때 비로소 입금 성립
+        PN-->>IDX: holdings 반영 (결정적 — 확정 대기 없음)
+        IDX->>BE: 입금 확정(CONFIRMED) — memo-ref 로 고객 귀속
+    else 정책 거절
+        BE->>PN: REJECT — 받지 않는다
+    end
+</pre></div>
+<p class="diagram-caption">Figure 10-1b. Canton 입금 — 세 체인과 달리 <strong>감지가 아니라 수락 행위</strong>다. 상대의 OFFER 는 ACCEPT 전까지 우리 자산이 아니고, ACCEPT 는 우리 party 의 서명이므로 입금 경로에도 정책 게이트(5.5)가 선다. 수락 즉시 결정적으로 확정되어(reorg 없음) 감지/확정 2단이 사실상 한 점으로 합쳐지고, 고객 귀속은 주소가 아니라 memo-ref 다(9.2). <strong>Canton Coin 은 pre-approval 로 1-step</strong> — 그 경우만 위 표준 흐름(수동 감지)에 가까워진다(2.2).</p>
+
 <h3>10.2 confirmation 상태 전이</h3>
 
 <p>입금은 "감지" 와 "확정" 이 다르다 — 확정 여부는 confirmation(확정 — 트랜잭션이 담긴 블록 위에 쌓인 블록 수)이 체인별 기준만큼 쌓였는지로 판단한다. 감지 즉시 잔액으로 인정하면 재구성(reorg<span class="g" data-tip="체인의 끝부분이 다른 블록들로 교체되는 현상. 이미 본 거래가 사라지거나 순서가 바뀔 수 있다">?</span>) 때 없는 돈을 쓰게 된다.</p>
@@ -117,7 +159,7 @@ flowchart LR
     class CONF good;
     class ORPH bad;
 </pre></div>
-<p class="diagram-caption">Figure 10-2. 입금 상태 전이. 노랑 = 감지(보류), 초록 = 확정(사용 가능), 빨강 = reorg 무효화. 주의: 무효화된 tx 가 mempool(블록에 담기기 전 트랜잭션 대기열)을 거쳐 새 블록에 다시 들어올 수 있으므로 영구 삭제 금지 — 다시 감지 상태로 돌아갈 수 있다.</p>
+<p class="diagram-caption">Figure 10-2. 입금 상태 전이. 노랑 = 감지(보류), 초록 = 확정(사용 가능), 빨강 = reorg 무효화. 주의: 무효화된 tx 가 mempool(블록에 담기기 전 트랜잭션 대기열)을 거쳐 새 블록에 다시 들어올 수 있으므로 영구 삭제 금지 — 다시 감지 상태로 돌아갈 수 있다. 이 무효화 경로는 <strong>확률적 finality 체인(EVM·BTC) 전용</strong>이다 — Canton 은 결정적이라 ORPHANED 가 없고, Solana 도 finalized 이후엔 없다.</p>
 
 <h3>10.3 컴포넌트별 역할 요약</h3>
 

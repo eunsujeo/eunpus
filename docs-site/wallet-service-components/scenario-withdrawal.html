@@ -108,7 +108,7 @@ sequenceDiagram
 
 <div class="callout callout-warn">
 <div class="callout-title">Canton 같은 체인은 "제출=완료" 가 아니다 (2-step 전송)</div>
-<p>EVM 출금은 "조립→서명→전파→확정" 으로 끝나지만, <strong>Canton 은 2-step</strong>이다 — 우리가 보내는 건 <code>OFFER</code> 이고, <strong>받는 쪽이 ACCEPT 해야 완료</strong>(REJECT/WITHDRAW 로 끝날 수도). 그래서 출금 상태머신에 "offer 제출 → 상대 수락 대기" 단계가 추가된다. 멀티체인 어댑터(<a href="component-multichain.html">2</a>)가 이 차이를 흡수하고, <code>getStatus</code>·<code>onChainEvent</code> 가 OFFER/ACCEPT/REJECT/WITHDRAW 를 다룬다. (상대 사전승인 시 PRE_APPROVAL 로 1-step. Fireblocks 도 지원하는 것으로 공식 문서에 표기되어 있다 — 정확한 상태 매핑·timeout 은 적용 전 확인 필요.)</p>
+<p>EVM 출금은 "조립→서명→전파→확정" 으로 끝나지만, <strong>Canton 은 2-step</strong>이다 — 우리가 보내는 건 <code>OFFER</code> 이고, <strong>받는 쪽이 ACCEPT 해야 완료</strong>(REJECT/WITHDRAW 로 끝날 수도). 그래서 출금 상태머신에 "offer 제출 → 상대 수락 대기" 단계가 추가되고, <strong>수락 대기 동안 송신 자금은 locked UTXO 로 묶인다</strong>(2.2) — 잔액의 locked 구분(13.3 Balance)이 사용자에게 보여야 하는 이유다. 멀티체인 어댑터(<a href="component-multichain.html">2</a>)가 이 차이를 흡수하고, <code>getStatus</code>·<code>onChainEvent</code> 가 OFFER/ACCEPT/REJECT/WITHDRAW 를 다룬다. 시퀀스로는 <a href="example-selfbuild.html">Figure 15-3b</a>, 입금(수신측) 거울상은 <a href="scenario-deposit.html">Figure 10-1b</a>. (상대 사전승인 시 PRE_APPROVAL 로 1-step. Fireblocks 도 지원하는 것으로 공식 문서에 표기되어 있다 — 정확한 상태 매핑·timeout 은 적용 전 확인 필요.)</p>
 </div>
 
 <h3>11.2 막힌 트랜잭션(stuck) 재전송</h3>
@@ -138,7 +138,7 @@ flowchart TB
     class CANCEL bad;
     class REPL special;
 </pre></div>
-<p class="diagram-caption">Figure 11-2. stuck 재전송. 노랑 = 대기/막힘, 초록 = 확정, 보라 = 재전송(같은 순번 + 수수료 양 필드 동시 인상), 빨강 = 취소(같은 순번으로 0원 self-send — 자기 주소로 0원을 보내 같은 순번을 덮어쓴다. 기존 tx 보다 수수료를 올려야 교체된다). EVM 의 수수료 교체는 두 수수료 필드 — 기본 수수료 상한(maxFeePerGas)과 우선 수수료(maxPriorityFeePerGas) — 를 모두, 노드가 요구하는 최소 인상률(통상 10%) 이상 올려야 받아들여진다. 규칙: 항상 가장 오래된 막힌 순번부터 처리하고, 수수료는 상한(ceiling)을 두고 단계적으로 올린다. 자세히는 <a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a>.</p>
+<p class="diagram-caption">Figure 11-2. stuck 재전송. 노랑 = 대기/막힘, 초록 = 확정, 보라 = 재전송(같은 순번 + 수수료 양 필드 동시 인상), 빨강 = 취소(같은 순번으로 0원 self-send — 자기 주소로 0원을 보내 같은 순번을 덮어쓴다. 기존 tx 보다 수수료를 올려야 교체된다). EVM 의 수수료 교체는 두 수수료 필드 — 기본 수수료 상한(maxFeePerGas)과 우선 수수료(maxPriorityFeePerGas) — 를 모두, 노드가 요구하는 최소 인상률(통상 10%) 이상 올려야 받아들여진다. 규칙: 항상 가장 오래된 막힌 순번부터 처리하고, 수수료는 상한(ceiling)을 두고 단계적으로 올린다. 단 이 그림 전체가 <strong>EVM·UTXO(fee 시장 체인) 얘기</strong>다 — Solana 는 boost 가 아니라 어댑터 auto-retry(blockhash 만료 시 재조립), Canton 의 멈춤은 수수료 문제가 아니라 수락 대기라 길이 다르다(위 callout · <a href="component-tx-nonce.html">4.4 의 체인별 표</a>).</p>
 
 <h3>11.3 컴포넌트별 역할 요약</h3>
 
