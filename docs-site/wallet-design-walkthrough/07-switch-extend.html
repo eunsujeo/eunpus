@@ -40,6 +40,66 @@ class FireblocksContractTest : AccountPortContractTest()   // FB — 샌드박�
 
 <p>정직하게 — 약속 전부가 이 시험지에 들어가지는 않습니다. 계약 테스트의 몫은 <b>포트 밖에서 관찰 가능한 약속</b>(조회는 만들지 않는다 · 등록까지가 발급 · 없는 기능은 타입 부재 · 멱등)이고, "기록은 전파 전"은 자체 파이프라인의 단위 테스트가, "판정은 가용만"은 백엔드 테스트가 나눠 집니다 — 세 겹이 합쳐져야 전환 증거가 완성됩니다.</p>
 
+<h2>코드 구조 — 이 문서를 모노레포로 옮기면</h2>
+
+<p>지금까지의 등장인물(0p)과 약속이 코드에서 강제되려면 <b>모듈 경계가 곧 설계 경계</b>여야 합니다. 한 저장소(모노레포) 안에서 이렇게 자릅니다:</p>
+
+<pre><code>wallet/
+├─ domain/                # 포트 + 값 객체 (0p "도메인 한 장") — 순수 코드, 아무것도 의존하지 않음
+├─ backend/               # 지갑 백엔드 — 유스케이스 · 계정 디렉터리 · API (1~6p 의 "사용 코드"가 사는 곳)
+├─ engine/                # 자체 매니저의 부품 (0p 등장인물)
+│   ├─ multichain/        #   체인 어댑터 인터페이스 + 레지스트리
+│   ├─ pipeline/          #   트랜잭션 파이프라인 — 조립→서명→전파, 단계 기록 (5p)
+│   ├─ signing/           #   HSM 연동 + 정책 게이트 (5p)
+│   └─ indexer/           #   인덱서 — 감지·확정·watch-list (4p)
+├─ chains/
+│   ├─ ethereum/          #   ETH 어댑터 — 노드 RPC · nonce · ERC-20 · 수수료 백분위수
+│   └─ canton/            #   Canton 어댑터 — participant · party 등록 · OFFER/ACCEPT · traffic
+├─ adapters/
+│   ├─ self-build/        #   자체 매니저 = engine + chains 조립 → 포트 구현
+│   └─ fireblocks/        #   Fireblocks SDK 래핑 → "같은" 포트 구현
+└─ apps/
+    ├─ api/               #   서버 — DI 가 여기: custody=selfbuild|fireblocks 설정 한 줄
+    └─ indexer-worker/    #   상시 worker (자체 분면에서만 가동, 4p)</code></pre>
+
+<p>모듈 사이의 <b>의존 방향</b>이 이 문서의 주장들을 컴파일 타임에 강제합니다 — 화살표는 "의존한다"이고, 전부 안쪽(domain)을 향합니다:</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    API["apps/api<br/>(DI — 설정 한 줄)"]
+    WORKER["apps/indexer-worker"]
+    BE["backend<br/>지갑 백엔드"]
+    SELF["adapters/self-build"]
+    FBA["adapters/fireblocks"]
+    ENG["engine/*<br/>pipeline · signing · indexer · multichain"]
+    ETH["chains/ethereum"]
+    CTN["chains/canton"]
+    DOM["domain<br/>포트 + 값 객체 — 의존 0"]
+    SDK["Fireblocks SDK (외부)"]
+
+    API --> BE
+    API -.택일 주입.-> SELF
+    API -.택일 주입.-> FBA
+    WORKER --> ENG
+    BE --> DOM
+    SELF --> DOM
+    SELF --> ENG
+    FBA --> DOM
+    FBA --> SDK
+    ENG --> DOM
+    ETH --> ENG
+    CTN --> ENG
+    SELF --> ETH
+    SELF --> CTN
+
+    classDef mine fill:#dcfce7,stroke:#16a34a;
+    classDef impl fill:#dbeafe,stroke:#2563eb;
+    classDef core fill:#e0e7ff,stroke:#6366f1;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    class BE mine; class SELF,FBA,ENG,ETH,CTN impl; class DOM core; class API,WORKER,SDK ext;
+</pre></div>
+<p class="diagram-caption">의존 그래프에서 읽히는 규칙 셋. <b>① backend → domain 뿐</b> — 백엔드는 adapters 를 모르므로(화살표 없음) "분면을 모른다"가 컴파일 타임 사실이 된다. 두 어댑터를 아는 곳은 apps/api 의 DI(점선) 하나. <b>② chains 끼리는 서로 모른다</b> — 새 체인 = chains/ 폴더 하나 추가, 다른 모듈 0줄(확장 증명의 물리형). <b>③ Fireblocks SDK 는 adapters/fireblocks 안에 격리</b> — 벤더 타입이 그 밖으로 새면 전환이 깨지므로, 이 경계는 빌드 규칙(의존 검사)으로 막는다.</p>
+
 <h2>전환 — 코드는 한 줄, 자금은 이사</h2>
 
 <p>코드의 전환은 설정 한 줄입니다(<code>custody: selfbuild → fireblocks</code>) — 1~6페이지에서 백엔드가 분면을 모르고 동작했으니 당연한 귀결입니다. 체크리스트도 이미 본 것들입니다: 멱등 키 → externalTxId 연결(5p), 자체 파이프라인·인덱서 끄기(5p — 순번 충돌·4p — webhook 대체). 단 <b>임의 외부 주소 조회용</b> 인덱서를 따로 쓰고 있었다면 그것은 custody 와 별개 축이라 그대로 둔다(6p). 그리고 <b>정책 게이트의 규칙은 데이터다</b> — 화이트리스트·한도·일일 누적을 Fireblocks 의 거버넌스 정책(TAP)으로 이관하고 동등성을 검증하는 것까지가 전환이다(5p). 그런데 <b>한 가지는 설정으로 안 됩니다</b>: 자체 주소는 우리 키에서, Fireblocks 주소는 벤더 키에서 나왔으므로(2p) — <b>주소와 그 위의 잔액은 이전되지 않습니다</b>:</p>
