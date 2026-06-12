@@ -11,7 +11,7 @@
 <div class="wrap">
 <p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
 <div class="progress">
-<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><span class="cur">4</span><a href="05-withdrawal.html">5</a><a href="06-balance-history.html">6</a><a href="07-switch-extend.html">7</a>
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><span class="cur">4</span><a href="05-estimate-fee.html">5</a><a href="06-withdrawal.html">6</a><a href="07-balance-history.html">7</a><a href="08-switch-extend.html">8</a>
 </div>
 <h1>입금 — 감지에서 확정까지</h1>
 <p class="subtitle">외부에서 돈이 들어왔다는 걸 우리는 어떻게 아는가 — 그리고 언제부터 믿는가</p>
@@ -70,7 +70,7 @@ sequenceDiagram
         BE->>PN: 거절(REJECT) — 받지 않는다
     end
 </pre></div>
-<p class="diagram-caption">Canton 입금은 우리의 <b>서명 행위</b>가 있어야 성립한다 — 모르는 자산·이상한 송신자의 제안을 "장님으로" 수락하면 안 되므로 수락 전에 검증이 선다(5p 의 정책 게이트와 같은 자리). 대신 수락되면 <b>즉시 확정</b>이고 reorg 가 없다 — 이더리움의 "기다림"과 Canton 의 "행위"가 정확히 반대 비용이다.</p>
+<p class="diagram-caption">Canton 입금은 우리의 <b>서명 행위</b>가 있어야 성립한다 — 모르는 자산·이상한 송신자의 제안을 "장님으로" 수락하면 안 되므로 수락 전에 검증이 선다(6p 의 정책 게이트와 같은 자리). 대신 수락되면 <b>즉시 확정</b>이고 reorg 가 없다 — 이더리움의 "기다림"과 Canton 의 "행위"가 정확히 반대 비용이다.</p>
 
 <h2>▸ Fireblocks × 이더리움 — 벤더가 감지해서 알려준다</h2>
 
@@ -91,7 +91,7 @@ sequenceDiagram
     Note over FB,BE: 통지는 서명 검증을 하더라도 "힌트"로 취급 —<br/>누락·지연 가능. 잔액·회계 판정은 확정 통지 기준 +<br/>주기적 대사(벤더 잔액 vs 우리 기록)로 닫는다
     BE->>BE: available 반영 + 고객 통지
 </pre></div>
-<p class="diagram-caption">상시 worker(인덱서)가 통째로 사라지고 webhook 수신으로 바뀐다 — 전환(7p)에서 운영이 가장 크게 바뀌는 지점. 단 "감지 ≠ 확정" 규칙은 그대로다 — 벤더도 PENDING/CONFIRMED 를 구분해서 보내고, 우리는 확정만 잔액에 쓴다.</p>
+<p class="diagram-caption">상시 worker(인덱서)가 통째로 사라지고 webhook 수신으로 바뀐다 — 전환(8p)에서 운영이 가장 크게 바뀌는 지점. 단 "감지 ≠ 확정" 규칙은 그대로다 — 벤더도 PENDING/CONFIRMED 를 구분해서 보내고, 우리는 확정만 잔액에 쓴다.</p>
 
 <h2>▸ Fireblocks × Canton — 통지 모양은 webhook, 성질은 Canton</h2>
 
@@ -144,7 +144,7 @@ transactions.onChainEvent { ev ->
 <div class="pager">
 <a href="03-address-of.html">← 3. 입금 주소 조회</a>
 <a href="index.html">목차</a>
-<a href="05-withdrawal.html">5. 출금 →</a>
+<a href="05-estimate-fee.html">5. 수수료 견적 →</a>
 </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>

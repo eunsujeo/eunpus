@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>5. 출금 — 제출에서 확정까지, 막혔을 때</title>
+<title>6. 출금 — 제출에서 확정까지, 막혔을 때</title>
 <meta content="noindex" name="robots"/>
 <link href="assets/walkthrough.css" rel="stylesheet"/>
 </head>
@@ -11,35 +11,17 @@
 <div class="wrap">
 <p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
 <div class="progress">
-<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><span class="cur">5</span><a href="06-balance-history.html">6</a><a href="07-switch-extend.html">7</a>
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-estimate-fee.html">5</a><span class="cur">6</span><a href="07-balance-history.html">7</a><a href="08-switch-extend.html">8</a>
 </div>
 <h1>출금 — 제출에서 확정까지, 막혔을 때</h1>
 <p class="subtitle">고객 자금이 나가는 길 — 이 문서에서 사고가 가장 비싼 페이지</p>
 
 <p><b>무엇·언제</b>: 업무 승인이 끝난 출금 지시를 백엔드가 매니저에 넘깁니다. 모든 분면 공통의 위험은 <b>중복 실행</b> — 같은 출금이 두 번 나가면 체인엔 되돌리기가 없습니다. 그래서 호출에는 항상 멱등 키가 붙고, 자체 분면에선 한 가지 규칙이 더 붙습니다: <b>전파(체인에 쓰기) 전에 먼저 기록한다</b> — 전파 직후 프로세스가 죽고 기록이 없으면, 재시도가 새 트랜잭션을 만들어 둘 다 나가기 때문입니다.</p>
 
-<pre><code>estimateFee(출금 지시) → { low · medium · high }   // 제출 전 견적 — 점유 없는 읽기, 추정이지 보장 아님
-submitTransaction(출금 지시 + 멱등 키) → TxRef    // 이후 상태는 getStatus · 이벤트로 추적</code></pre>
+<pre><code>submitTransaction(출금 지시 + 멱등 키) → TxRef    // 이후 상태는 getStatus · 이벤트로 추적</code></pre>
 
-<p>제출 전에는 <b>견적(estimateFee)</b>이 있습니다 — 조립과 달리 순번·UTXO 를 <b>점유하지 않는 읽기</b>라 출금 화면에서 수시로 불러도 되고, 추정이지 보장이 아니므로 실제 수수료는 조립 단계에서 다시 계산합니다. 등급(low/med/high)의 정체는 이더리움에선 노드의 최근 수수료 이력 <b>백분위수</b> + 모의 실행(가스량)이고, Canton 은 수수료 시장이 없어 비용이 <b>제출물 크기의 함수</b>(traffic)라 등급 개념이 퇴화합니다 — 견적이 안정적이라는 뜻이기도 합니다.</p>
+<p>제출 전의 <b>견적(estimateFee)</b>은 5페이지에서 봤습니다 — 견적은 보장이 아니므로, 실제 수수료는 이 페이지의 <b>조립 단계에서 재계산</b>해 확정합니다.</p>
 
-<div class="diagram"><pre class="mermaid">
-sequenceDiagram
-    autonumber
-    participant BE as 지갑 백엔드
-    box rgb(239,246,255) 블록체인 매니저
-    participant MGR as 자체 매니저
-    end
-    participant CH as 이더리움 노드
-
-    BE->>MGR: estimateFee(출금 지시)
-    MGR->>CH: 최근 블록 수수료 이력 조회 (feeHistory)
-    MGR->>CH: 모의 실행 (estimateGas) — 가스 사용량 산출
-    Note over BE,CH: 순번·UTXO 점유 없음 — 읽기뿐이라 출금 화면에서 수시 호출해도 안전
-    MGR->>MGR: 이력의 백분위수로 등급 산출
-    MGR-->>BE: low · medium · high (보장 아님 — 실제 수수료는 조립 때 재계산)
-</pre></div>
-<p class="diagram-caption">estimateFee 의 동작(자체 × 이더리움). 단가(이력 백분위수)와 사용량(모의 실행) 두 재료의 곱이 견적이다. <b>Canton</b> 은 노드 왕복이 더 단순하다 — 수수료 시장이 없어 제출물 크기로 traffic 비용을 계산하면 끝(견적이 안정적). <b>Fireblocks</b> 분면은 이 전체가 벤더 API 한 번으로 접힌다.</p>
 
 <h2>▸ 자체 × 이더리움 — 조립→서명→전파, 단계마다 기록</h2>
 
@@ -84,7 +66,7 @@ sequenceDiagram
     BE->>PIPE: submitTransaction(승인된 출금 + 멱등 키)
     PIPE->>HSM: 전송 제안 조립 · 검증 · 서명 (순번 없음)
     PIPE->>PN: 제안(OFFER) 제출
-    Note over PIPE,CP: 송신 자금이 "잠김(locked)" 으로 묶인다 — 빠진 것도 남은 것도 아닌 제3의 상태 (6p)
+    Note over PIPE,CP: 송신 자금이 "잠김(locked)" 으로 묶인다 — 빠진 것도 남은 것도 아닌 제3의 상태 (7p)
     PN->>CP: 수락 요청 전달
     alt 상대가 수락
         CP-->>PN: ACCEPT
@@ -113,7 +95,7 @@ sequenceDiagram
     FBI-->>BE: TxRef
     FB-->>BE: 상태 변화 webhook (확정 포함) — 막히면 boost API 호출만
 </pre></div>
-<p class="diagram-caption">자체 분면의 파이프라인 전체가 벤더 안으로 들어간다. 우리 멱등 키를 externalTxId 로 넘겨 중복 차단이 벤더 쪽에서도 이어지는 것, 그리고 <b>자체 순번 관리를 병행하면 벤더 내부 순번과 충돌</b>하므로 전환 시 우리 파이프라인을 꺼야 한다는 것 — 이 두 줄이 전환 체크리스트(7p)에 들어간다.</p>
+<p class="diagram-caption">자체 분면의 파이프라인 전체가 벤더 안으로 들어간다. 우리 멱등 키를 externalTxId 로 넘겨 중복 차단이 벤더 쪽에서도 이어지는 것, 그리고 <b>자체 순번 관리를 병행하면 벤더 내부 순번과 충돌</b>하므로 전환 시 우리 파이프라인을 꺼야 한다는 것 — 이 두 줄이 전환 체크리스트(8p)에 들어간다.</p>
 
 <h2>▸ Fireblocks × Canton — 한 줄이어도 수락 대기는 그대로</h2>
 
@@ -138,7 +120,6 @@ sequenceDiagram
 <table>
 <thead><tr><th style="width:18%"></th><th>자체 × 이더리움</th><th>자체 × Canton</th><th>FB × 이더리움</th><th>FB × Canton</th></tr></thead>
 <tbody>
-<tr><td><b>수수료 견적</b></td><td>노드 fee 이력 백분위수 + 모의 실행(가스량)</td><td>크기 함수 (traffic) — 시장 없음, 견적 안정</td><td>벤더 API (low/med/high)</td><td>벤더 API (traffic)</td></tr>
 <tr><td><b>조립·서명·전파</b></td><td>우리 파이프라인 (3단 기록)</td><td>우리 파이프라인 (순번 없음)</td><td>벤더 한 줄</td><td>벤더 한 줄</td></tr>
 <tr><td><b>서명 직전 검증</b></td><td>우리 정책 게이트</td><td>우리 정책 게이트</td><td>벤더 정책 (TAP)</td><td>벤더 정책</td></tr>
 <tr><td><b>제출 후</b></td><td>블록 확정 대기</td><td><b>상대 수락 대기 (자금 잠김)</b></td><td>webhook 추적</td><td>수락 대기 (잠김)</td></tr>
@@ -182,9 +163,9 @@ fun stuckActions(): List<Action> = buildList {
 <p class="foot">더 깊이: 파이프라인 기록·복구·순번 — <a href="../wallet-service-components/component-tx-nonce.html">가이드 4장</a> · 서명 직전 검증 — <a href="../wallet-service-components/component-signing.html">5.5</a> · 출금 시나리오 — <a href="../wallet-service-components/scenario-withdrawal.html">11장</a>.</p>
 
 <div class="pager">
-<a href="04-deposit.html">← 4. 입금</a>
+<a href="05-estimate-fee.html">← 5. 수수료 견적</a>
 <a href="index.html">목차</a>
-<a href="06-balance-history.html">6. 잔액과 내역 →</a>
+<a href="07-balance-history.html">7. 잔액과 내역 →</a>
 </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>

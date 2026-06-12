@@ -11,7 +11,7 @@
 <div class="wrap">
 <p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
 <div class="progress">
-<span class="cur">0</span><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-withdrawal.html">5</a><a href="06-balance-history.html">6</a><a href="07-switch-extend.html">7</a>
+<span class="cur">0</span><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-estimate-fee.html">5</a><a href="06-withdrawal.html">6</a><a href="07-balance-history.html">7</a><a href="08-switch-extend.html">8</a>
 </div>
 <h1>읽는 법 + 등장인물</h1>
 <p class="subtitle">이후 모든 페이지가 같은 형식으로 반복됩니다 — 여기만 차근히 읽으면 나머지가 빨라집니다</p>
@@ -53,9 +53,9 @@ flowchart TB
 <thead><tr><th style="width:26%">부품</th><th>역할 (한 줄)</th><th style="width:14%">주 등장</th></tr></thead>
 <tbody>
 <tr><td><b>멀티체인 어댑터</b></td><td>체인별 규칙(주소 계산법·수수료·전파·확정 기준)을 공통 동사로 번역 — 체인 분기는 전부 이 안. 1~3p 그림의 <b>"자체 매니저" 상자가 이 어댑터(+키 트리)를 합쳐 단순화한 것</b></td><td class="c">그림 속 "자체 매니저" 안</td></tr>
-<tr><td><b>인덱서</b></td><td>체인을 읽어 입금 감지·확정 판정. <b>유일한 상시 worker</b> — 다른 부품은 요청 올 때 돌지만 이건 체인이 흐르는 한 계속 돈다</td><td class="c">4·5·6p</td></tr>
-<tr><td><b>트랜잭션 파이프라인</b></td><td>출금의 조립→서명→전파를 순서대로, <b>단계마다 기록하며</b> 진행 — 중간에 죽어도 같은 지점부터 재개</td><td class="c">5p</td></tr>
-<tr><td><b>HSM + 정책 게이트</b></td><td>HSM(키를 가두고 서명만 해주는 장비)이 키를 보관하고, 게이트가 <b>서명 직전에</b> 수신처·한도를 재검증 — 마지막 방어선</td><td class="c">1·2·5p</td></tr>
+<tr><td><b>인덱서</b></td><td>체인을 읽어 입금 감지·확정 판정. <b>유일한 상시 worker</b> — 다른 부품은 요청 올 때 돌지만 이건 체인이 흐르는 한 계속 돈다</td><td class="c">4·6·7p</td></tr>
+<tr><td><b>트랜잭션 파이프라인</b></td><td>출금의 조립→서명→전파를 순서대로, <b>단계마다 기록하며</b> 진행 — 중간에 죽어도 같은 지점부터 재개</td><td class="c">6p</td></tr>
+<tr><td><b>HSM + 정책 게이트</b></td><td>HSM(키를 가두고 서명만 해주는 장비)이 키를 보관하고, 게이트가 <b>서명 직전에</b> 수신처·한도를 재검증 — 마지막 방어선</td><td class="c">1·2·6p</td></tr>
 <tr><td><b>계정 디렉터리 + watch-list</b></td><td>디렉터리 = 고객↔계정↔주소 매핑을 담는 <b>우리 DB</b> / watch-list = 인덱서가 감시할 우리 주소 목록</td><td class="c">전 페이지</td></tr>
 </tbody>
 </table>
@@ -99,16 +99,16 @@ flowchart LR
 <tr><td>입금 주소 <b>조회</b></td><td>주소 목록 조회</td><td class="c"></td><td class="c">●</td><td class="c"></td><td class="c">●</td><td><code>addressOf</code></td><td class="c">3p</td></tr>
 <tr><td>수신·확정 이벤트</td><td>webhook</td><td class="c"></td><td class="c">●</td><td class="c">●</td><td class="c"></td><td><code>onChainEvent</code></td><td class="c">4p</td></tr>
 <tr><td>수수료 추정</td><td>estimateFee</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c"></td><td><code>estimateFee</code></td><td class="c">5p</td></tr>
-<tr><td>주소 형식 검증</td><td>(로컬 규칙)</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c"></td><td><code>validateAddress</code></td><td class="c">5p</td></tr>
-<tr><td>출금 제출</td><td><b>createTransaction</b></td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c"></td><td><code>submitTransaction</code></td><td class="c">5p</td></tr>
-<tr><td>상태 조회</td><td>getTransactionById</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td><code>getStatus</code></td><td class="c">5p</td></tr>
-<tr><td>막힌 출금 재촉·취소</td><td>boost / cancel</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td><code>boost</code> <code>cancel</code></td><td class="c">5p</td></tr>
-<tr><td>잔액 (가용·대기·잠김)</td><td>getVaultAccountAsset</td><td class="c"></td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td><code>getBalance</code></td><td class="c">6p</td></tr>
-<tr><td>내 거래 이력</td><td>거래 목록 조회</td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c">●</td><td><code>transactionsOf</code></td><td class="c">6p</td></tr>
-<tr><td>서명 정책 (한도·화이트리스트)</td><td>TAP(거버넌스 정책) · co-signer</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td>(동사 없음 — 정책 게이트)</td><td class="c">5p</td></tr>
+<tr><td>주소 형식 검증</td><td>(로컬 규칙)</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c"></td><td><code>validateAddress</code></td><td class="c">6p</td></tr>
+<tr><td>출금 제출</td><td><b>createTransaction</b></td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c"></td><td><code>submitTransaction</code></td><td class="c">6p</td></tr>
+<tr><td>상태 조회</td><td>getTransactionById</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td><code>getStatus</code></td><td class="c">6p</td></tr>
+<tr><td>막힌 출금 재촉·취소</td><td>boost / cancel</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td><code>boost</code> <code>cancel</code></td><td class="c">6p</td></tr>
+<tr><td>잔액 (가용·대기·잠김)</td><td>getVaultAccountAsset</td><td class="c"></td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td><code>getBalance</code></td><td class="c">7p</td></tr>
+<tr><td>내 거래 이력</td><td>거래 목록 조회</td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c">●</td><td><code>transactionsOf</code></td><td class="c">7p</td></tr>
+<tr><td>서명 정책 (한도·화이트리스트)</td><td>TAP(거버넌스 정책) · co-signer</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td>(동사 없음 — 정책 게이트)</td><td class="c">6p</td></tr>
 </tbody>
 </table>
-<p class="table-note">● = 그 장면이 이 기능을 호출한다. Fireblocks 표면은 공식 문서에서 확인한 범위(일부 조회 엔드포인트는 적용 전 확인). 마지막 행(서명 정책)만 동사가 없다 — 화면이 부르는 기능이 아니라 모든 출금 뒤에 서는 기능이라서, 포트가 아니라 정책 게이트(5p)로 존재한다.</p>
+<p class="table-note">● = 그 장면이 이 기능을 호출한다. Fireblocks 표면은 공식 문서에서 확인한 범위(일부 조회 엔드포인트는 적용 전 확인). 마지막 행(서명 정책)만 동사가 없다 — 화면이 부르는 기능이 아니라 모든 출금 뒤에 서는 기능이라서, 포트가 아니라 정책 게이트(6p)로 존재한다.</p>
 
 <h2>도메인 한 장 — 매트릭스를 코드로 적으면</h2>
 
@@ -120,20 +120,20 @@ data class Account(val id: String, val ref: AccountRef)  // 1p 에서 생성되�
 data class Asset(val symbol: String, val chainId: ChainId)   // 예: ETH×ethereum · JPYSC0×canton
                                                               //   ERC-20 토큰도 Asset 하나 — chainId 가 같으니 주소는 ETH 와 같다
 data class Address(val value: String, val memoTag: String?)  // Canton 이면 value = PartyId
-data class Balance(val available: Amount, val pending: Amount, val locked: Amount)  // 6p — 세 칸
+data class Balance(val available: Amount, val pending: Amount, val locked: Amount)  // 7p — 세 칸
 data class TxRef(val value: String, val chainId: ChainId)    // 제출된 출금의 추적 핸들
-enum TxStatus { SUBMITTED, AWAITING_ACCEPT, CONFIRMED, FAILED }  // 출금 공통 상태 — 5p "상태 한 장"
+enum TxStatus { SUBMITTED, AWAITING_ACCEPT, CONFIRMED, FAILED }  // 출금 공통 상태 — 6p "상태 한 장"
 // (ChainId · Amount · Transfer · TransactionRequest · ChainEvent 등 부속 타입은 생략)
 
 // ── 포트 둘 — 매니저(자체/FB)가 구현하는 면 ──
-interface AccountPort {                                  // 1·2·3·6p
+interface AccountPort {                                  // 1·2·3·7p
     suspend fun createAccount(ref: AccountRef): Account
     suspend fun issueDepositAddress(account: Account, asset: Asset): Address  // "입금 식별자" 발급 — 2p
     suspend fun addressOf(account: Account, asset: Asset): Address
     suspend fun getBalance(account: Account, asset: Asset): Balance
-    // estimateFee · validateAddress 생략 (5p)
+    // estimateFee(5p) · validateAddress(6p) 생략
 }
-interface TransactionPort {                              // 4·5·6p
+interface TransactionPort {                              // 4·6·7p
     suspend fun submitTransaction(request: TransactionRequest): TxRef
     suspend fun transactionsOf(account: Account, range: BlockRange): List&lt;Transfer&gt;
     fun onChainEvent(handler: (ChainEvent) -&gt; Unit)
@@ -141,15 +141,15 @@ interface TransactionPort {                              // 4·5·6p
 }
 
 // ── 선택 capability — "있는 분면"만 타입을 가진다 ──
-interface FeeBoostCapability { suspend fun boost(txRef: TxRef): TxRef }    // 이더리움 분면만 (5p)
-interface CancelCapability   { suspend fun cancel(txRef: TxRef): TxRef }   // 철회 (5p)</code></pre>
+interface FeeBoostCapability { suspend fun boost(txRef: TxRef): TxRef }    // 이더리움 분면만 (6p)
+interface CancelCapability   { suspend fun cancel(txRef: TxRef): TxRef }   // 철회 (6p)</code></pre>
 <p class="diagram-caption">자체 매니저도 Fireblocks 구현도 이 인터페이스를 구현한다 — "어느 구현인지 백엔드가 모른다"는 이 문서의 모든 주장이 이 한 장 위에 서 있다. 멱등 키는 시그니처가 아니라 호출을 감싸는 래퍼(<code>withIdempotency</code>)로 들어간다(1p 코드).</p>
 
 <p>마지막으로 어휘 두 개만: <b>키 트리</b> — 키는 고객마다 만들지 않고, 셋업 때 HSM 안에서 <b>한 번</b> 만든 뿌리 키에서 가지(번호)를 늘려 갑니다(2페이지에서 동작으로 확인). <b>멱등 키</b> — 같은 요청의 재시도가 두 번 실행되지 않게 백엔드가 모든 쓰기 요청에 붙이는 고유 키입니다.</p>
 
 <div class="callout">
 <div class="callout-title">이 문서가 다루지 않는 것</div>
-<p style="margin:0">업무 승인 절차(누가 출금을 승인하나) · 수수료의 <b>운영·정산</b>(출금용 가스 잔고 충전·고객 과금·실비 차액·Canton traffic 충전) · 회계 기표·시세 — 별도 설계의 몫입니다. 단 수수료의 <b>메커니즘</b>(추정 estimateFee · 조립 시 설정 · 인상 재전송 boost)은 매니저가 하며 5p 에서 다룹니다.</p>
+<p style="margin:0">업무 승인 절차(누가 출금을 승인하나) · 수수료의 <b>운영·정산</b>(출금용 가스 잔고 충전·고객 과금·실비 차액·Canton traffic 충전) · 회계 기표·시세 — 별도 설계의 몫입니다. 단 수수료의 <b>메커니즘</b>(추정 estimateFee · 조립 시 설정 · 인상 재전송 boost)은 매니저가 하며 5p(견적)·6p(조립 시 설정·boost) 에서 다룹니다.</p>
 </div>
 
 <p class="foot">더 깊이: 컴포넌트별 상세는 <a href="../wallet-service-components/">블록체인 매니저 컴포넌트 가이드</a> (참고용 — 본 워크스루는 가이드 없이 읽힙니다).</p>

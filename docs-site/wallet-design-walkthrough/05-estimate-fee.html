@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>5. 수수료 견적 — estimateFee</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
+<div class="progress">
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><span class="cur">5</span><a href="06-withdrawal.html">6</a><a href="07-balance-history.html">7</a><a href="08-switch-extend.html">8</a>
+</div>
+<h1>수수료 견적 — estimateFee</h1>
+<p class="subtitle">제출 전의 읽기 — 아무것도 점유하지 않고, 추정이지 보장이 아니다</p>
+
+<p><b>무엇·언제</b>: 출금 화면이 금액 입력 때마다 부르는 동사입니다. 조립과 달리 순번·UTXO 를 <b>점유하지 않는 읽기</b>라 수시로 불러도 되고, 추정이지 보장이 아니므로 실제 수수료는 출금(6p)의 조립 단계에서 다시 계산합니다.</p>
+
+<pre><code>estimateFee(출금 지시) → { low · medium · high }   // 점유 없는 읽기 — 추정이지 보장 아님</code></pre>
+
+<p>등급(low/med/high)의 정체는 이더리움에선 노드의 최근 수수료 이력 <b>백분위수</b>(단가) + 모의 실행(사용량)이고, Canton 은 수수료 시장이 없어 비용이 <b>제출물 크기의 함수</b>(traffic)라 등급 개념이 퇴화합니다 — 견적이 안정적이라는 뜻이기도 합니다.</p>
+
+<h2>▸ 자체 × 이더리움 — 단가(이력 백분위수) × 사용량(모의 실행)</h2>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as 지갑 백엔드
+    box rgb(239,246,255) 블록체인 매니저
+    participant MGR as 자체 매니저
+    end
+    participant CH as 이더리움 노드
+
+    BE->>MGR: estimateFee(출금 지시)
+    MGR->>CH: 최근 블록 수수료 이력 조회 (feeHistory)
+    MGR->>CH: 모의 실행 (estimateGas) — 가스 사용량 산출
+    Note over BE,CH: 순번·UTXO 점유 없음 — 읽기뿐이라 출금 화면에서 수시 호출해도 안전
+    MGR->>MGR: 이력의 백분위수로 등급 산출
+    MGR-->>BE: low · medium · high (보장 아님 — 실제 수수료는 조립 때 재계산)
+</pre></div>
+<p class="diagram-caption">단가(이력 백분위수)와 사용량(모의 실행) 두 재료의 곱이 견적이다. 둘 다 체인에 아무 흔적을 남기지 않는다 — 견적 백 번에 출금 0건이어도 비용이 없다.</p>
+
+<h2>나머지 세 분면 — 표로 충분</h2>
+
+<table>
+<thead><tr><th style="width:18%"></th><th>자체 × 이더리움</th><th>자체 × Canton</th><th>FB × 이더리움</th><th>FB × Canton</th></tr></thead>
+<tbody>
+<tr><td><b>견적 재료</b></td><td>fee 이력 백분위수 + 모의 실행</td><td><b>제출물 크기 함수 (traffic)</b> — 시장 없음</td><td>벤더 API 한 번</td><td>벤더 API 한 번 (traffic)</td></tr>
+<tr><td><b>등급의 의미</b></td><td>확정 속도 선택지 (시장가)</td><td>퇴화 — 등급 간 차이 거의 없음</td><td>벤더가 산출한 low/med/high</td><td>퇴화</td></tr>
+<tr><td><b>견적의 안정성</b></td><td>시장 따라 출렁임</td><td><b>안정</b> — 크기가 같으면 값도 같음</td><td>출렁임 (시장은 그대로)</td><td>안정</td></tr>
+</tbody>
+</table>
+
+<p>읽을 것: 견적이 출렁이는가는 <b>체인 축</b>(수수료 시장의 유무)으로 갈리고, 누가 계산하나만 <b>custody 축</b>으로 갈립니다 — Fireblocks 로 바꿔도 이더리움 견적이 안정해지지는 않습니다.</p>
+
+<p>견적 다음은 실행입니다 — 수수료가 실제로 <b>확정</b>되는 곳은 출금(6p)의 조립 단계이고, 확정한 수수료가 낮아 막히면 같은 페이지의 boost 가 잇습니다. 수수료의 <b>운영·정산</b>(가스 잔고 충전·고객 과금)은 이 문서 범위 밖입니다(0p).</p>
+
+<p class="foot">더 깊이: 조립 시 수수료 설정·인상 재전송 — <a href="../wallet-service-components/component-tx-nonce.html">가이드 4장</a>.</p>
+
+<div class="pager">
+<a href="04-deposit.html">← 4. 입금</a>
+<a href="index.html">목차</a>
+<a href="06-withdrawal.html">6. 출금 →</a>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, sequence: { wrap: true, useMaxWidth: true, actorMargin: 90, messageMargin: 36 }, flowchart: { useMaxWidth: true } });</script>
+</body>
+</html>

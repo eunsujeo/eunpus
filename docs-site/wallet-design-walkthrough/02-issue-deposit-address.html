@@ -11,7 +11,7 @@
 <div class="wrap">
 <p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
 <div class="progress">
-<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><span class="cur">2</span><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-withdrawal.html">5</a><a href="06-balance-history.html">6</a><a href="07-switch-extend.html">7</a>
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><span class="cur">2</span><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-estimate-fee.html">5</a><a href="06-withdrawal.html">6</a><a href="07-balance-history.html">7</a><a href="08-switch-extend.html">8</a>
 </div>
 <h1>입금 주소 발급 — issueDepositAddress</h1>
 <p class="subtitle">발급되는 것은 "주소"가 아니라 입금 식별자 — 주소+memo 쌍이다</p>
@@ -28,14 +28,14 @@ sequenceDiagram
     participant BE as 지갑 백엔드
     box rgb(239,246,255) 블록체인 매니저
     participant MGR as 자체 매니저
+    participant WL as watch-list (인덱서의 감시 목록)
     end
     participant DIR as 계정 디렉터리(우리 DB)
-    participant WL as watch-list (인덱서의 감시 목록)
 
     BE->>MGR: issueDepositAddress(계정 1024번, ETH)
     MGR->>MGR: 다음 주소 번호 소비 — 3번째
     MGR->>MGR: xpub 로 주소 계산 (로컬)
-    Note over BE,WL: xpub(공개키 쪽 사본)만으로 자식 주소가 계산된다 — HSM 호출 없음. 개인키는 출금 서명 때 HSM 안에서 같은 번호로 파생 (5p)
+    Note over BE,WL: xpub(공개키 쪽 사본)만으로 자식 주소가 계산된다 — HSM 호출 없음. 개인키는 출금 서명 때 HSM 안에서 같은 번호로 파생 (6p)
     MGR->>DIR: 주소 저장 (계정 1024번 · 3번째)
     MGR->>WL: 감시 목록 등록 — 등록 실패면 발급도 실패
     MGR-->>BE: 주소 (0xAb3…)
@@ -50,9 +50,9 @@ sequenceDiagram
     participant BE as 지갑 백엔드
     box rgb(239,246,255) 블록체인 매니저
     participant MGR as 자체 매니저
+    participant WL as memo 귀속표 (인덱서)
     end
     participant DIR as 계정 디렉터리(우리 DB)
-    participant WL as memo 귀속표 (인덱서)
 
     BE->>MGR: issueDepositAddress(계정 1024번, Canton 자산)
     MGR->>MGR: 새 memo 채번 — 체인 호출 없음 (장부 작업)
@@ -82,7 +82,7 @@ sequenceDiagram
     FBI->>DIR: 식별자 저장 — 감시·귀속은 벤더 몫 (vault 가 곧 감시 범위)
     FBI-->>BE: 식별자
 </pre></div>
-<p class="diagram-caption">벤더 호출은 양 체인에서 같은 한 줄이고, 무엇이 새로워지는지(주소 vs memo)는 벤더가 체인에 맞춰 정한다 — 자체 분면의 두 그림이 벤더 안으로 접힌 모양. 식별자가 <b>Fireblocks 키·채번</b>에서 나온다는 사실은 7p(전환 — 자금은 이사)에서 비용으로 돌아온다.</p>
+<p class="diagram-caption">벤더 호출은 양 체인에서 같은 한 줄이고, 무엇이 새로워지는지(주소 vs memo)는 벤더가 체인에 맞춰 정한다 — 자체 분면의 두 그림이 벤더 안으로 접힌 모양. 식별자가 <b>Fireblocks 키·채번</b>에서 나온다는 사실은 8p(전환 — 자금은 이사)에서 비용으로 돌아온다.</p>
 
 <h2>4분면 비교</h2>
 
@@ -96,7 +96,7 @@ sequenceDiagram
 </tbody>
 </table>
 
-<p>표에서 읽을 것: "새로워지는 것" 행은 <b>체인 축</b>으로, "누가 만들고 누가 감시하나"는 <b>custody 축</b>으로 갈립니다 — 1페이지의 패턴 그대로. 참고로 이 페이지엔 원래 "Canton 은 발급이 없다(타입 부재)"는 분면이 있었는데, Fireblocks 콘솔이 memo 를 자동 발급하는 것을 확인하면서 <b>식별자 재정의로 분면이 합쳐졌습니다</b> — "기능 부재(타입 없음)" 패턴은 출금의 boost 에서 만납니다(5p).</p>
+<p>표에서 읽을 것: "새로워지는 것" 행은 <b>체인 축</b>으로, "누가 만들고 누가 감시하나"는 <b>custody 축</b>으로 갈립니다 — 1페이지의 패턴 그대로. 참고로 이 페이지엔 원래 "Canton 은 발급이 없다(타입 부재)"는 분면이 있었는데, Fireblocks 콘솔이 memo 를 자동 발급하는 것을 확인하면서 <b>식별자 재정의로 분면이 합쳐졌습니다</b> — "기능 부재(타입 없음)" 패턴은 출금의 boost 에서 만납니다(6p).</p>
 
 <h2>백엔드에서 이렇게 부른다 — 분기가 없다</h2>
 

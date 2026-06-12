@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>6. 잔액과 내역 조회 — getBalance · transactionsOf</title>
+<title>7. 잔액과 내역 조회 — getBalance · transactionsOf</title>
 <meta content="noindex" name="robots"/>
 <link href="assets/walkthrough.css" rel="stylesheet"/>
 </head>
@@ -11,12 +11,12 @@
 <div class="wrap">
 <p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
 <div class="progress">
-<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-withdrawal.html">5</a><span class="cur">6</span><a href="07-switch-extend.html">7</a>
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-estimate-fee.html">5</a><a href="06-withdrawal.html">6</a><span class="cur">7</span><a href="08-switch-extend.html">8</a>
 </div>
 <h1>잔액과 내역 조회 — getBalance · transactionsOf</h1>
 <p class="subtitle">고객 화면의 두 숫자 — 그런데 잔액은 숫자 하나가 아니다</p>
 
-<p><b>무엇·언제</b>: 고객 홈 화면(잔액)과 거래내역 화면이 부르는 읽기 동사 둘입니다. 잔액의 규칙부터 — <b>잔액은 세 칸입니다</b>: <b>가용</b>(available — 출금에 쓸 수 있는 돈) / <b>대기</b>(pending — 들어왔지만 아직 확정 전, 4p) / <b>잠김</b>(locked — 나가는 중인데 상대 수락 대기, 5p). 출금 가능 판정은 <b>가용만</b> 봅니다 — 대기·잠김을 합쳐 보여주는 화면은 자유지만, 합쳐서 <b>판정</b>하는 순간 없는 돈을 쓰게 됩니다.</p>
+<p><b>무엇·언제</b>: 고객 홈 화면(잔액)과 거래내역 화면이 부르는 읽기 동사 둘입니다. 잔액의 규칙부터 — <b>잔액은 세 칸입니다</b>: <b>가용</b>(available — 출금에 쓸 수 있는 돈) / <b>대기</b>(pending — 들어왔지만 아직 확정 전, 4p) / <b>잠김</b>(locked — 나가는 중인데 상대 수락 대기, 6p). 출금 가능 판정은 <b>가용만</b> 봅니다 — 대기·잠김을 합쳐 보여주는 화면은 자유지만, 합쳐서 <b>판정</b>하는 순간 없는 돈을 쓰게 됩니다.</p>
 
 <pre><code>getBalance(account, asset) → { available, pending, locked }
 transactionsOf(account, 기간) → 입출금 내역 (시간순)</code></pre>
@@ -30,7 +30,7 @@ sequenceDiagram
     box rgb(239,246,255) 블록체인 매니저
     participant MGR as 자체 매니저
     participant PJ as 인덱서 기록 (수신 — 4p)
-    participant TX as 파이프라인 기록 (송신 — 5p)
+    participant TX as 파이프라인 기록 (송신 — 6p)
     end
 
     BE->>MGR: getBalance(계정, 자산)
@@ -43,7 +43,7 @@ sequenceDiagram
     MGR->>TX: 송신 내역 — "보내는 중"(전파 전 기록 덕) 포함
     MGR-->>BE: 병합·시간순 정렬
 </pre></div>
-<p class="diagram-caption">따로 만드는 기능이 아니다 — 입금(4p)이 쌓은 기록과 출금(5p)이 단계마다 남긴 기록을 합쳐 읽을 뿐이다. 출금을 전파 <b>전에</b> 기록한 덕에 내역에 "보내는 중" 상태까지 보여줄 수 있다. 체인 차이는 둘 — 잔액의 원천(이더리움은 인덱서 기록 합산, Canton 은 노드의 보유 자산 합산)과 잠김의 출처: 이더리움은 잠김이 거의 없고(전파 후 곧 확정 추적), <b>Canton 은 수락 대기 출금이 잠김 칸에 그대로 나타난다</b> — 고객이 "내 돈 어디 갔어요?"라고 물을 때 보여줄 칸이 있어야 한다.</p>
+<p class="diagram-caption">따로 만드는 기능이 아니다 — 입금(4p)이 쌓은 기록과 출금(6p)이 단계마다 남긴 기록을 합쳐 읽을 뿐이다. 출금을 전파 <b>전에</b> 기록한 덕에 내역에 "보내는 중" 상태까지 보여줄 수 있다. 체인 차이는 둘 — 잔액의 원천(이더리움은 인덱서 기록 합산, Canton 은 노드의 보유 자산 합산)과 잠김의 출처: 이더리움은 잠김이 거의 없고(전파 후 곧 확정 추적), <b>Canton 은 수락 대기 출금이 잠김 칸에 그대로 나타난다</b> — 고객이 "내 돈 어디 갔어요?"라고 물을 때 보여줄 칸이 있어야 한다.</p>
 
 <h2>▸ Fireblocks 분면 — 두 호출 다 벤더 API 한 번</h2>
 
@@ -72,13 +72,13 @@ sequenceDiagram
 <thead><tr><th style="width:18%"></th><th>자체 × 이더리움</th><th>자체 × Canton</th><th>FB × 이더리움</th><th>FB × Canton</th></tr></thead>
 <tbody>
 <tr><td><b>잔액 출처</b></td><td>인덱서 기록 합산</td><td>노드 보유 자산 합산</td><td>벤더 API</td><td>벤더 API</td></tr>
-<tr><td><b>잠김의 의미</b></td><td>거의 없음</td><td><b>수락 대기 출금 (5p)</b></td><td>벤더 정의</td><td>수락 대기 (표현 확인)</td></tr>
+<tr><td><b>잠김의 의미</b></td><td>거의 없음</td><td><b>수락 대기 출금 (6p)</b></td><td>벤더 정의</td><td>수락 대기 (표현 확인)</td></tr>
 <tr><td><b>내역 출처</b></td><td>수신+송신 기록 병합</td><td>병합 (memo 귀속 포함)</td><td>목록 API 한 번</td><td>목록 API 한 번</td></tr>
 <tr><td><b>"보내는 중" 표시</b></td><td>가능 (전파 전 기록 덕)</td><td>가능 + 수락 대기 상태</td><td>벤더 상태 그대로</td><td>벤더 상태 그대로</td></tr>
 </tbody>
 </table>
 
-<p>한 가지 경계만 분명히 — 이 동사들은 <b>우리 고객 계정</b>의 조회입니다. 임의 외부 주소(우리 고객이 아닌 지갑)의 잔액·이력 조회는 Fireblocks 가 주지 않는 별개 기능으로, 필요해지면 자체 인덱서를 그 용도로 따로 둡니다 — custody 와 독립적인 선택이라 전환(7p)과도 무관합니다.</p>
+<p>한 가지 경계만 분명히 — 이 동사들은 <b>우리 고객 계정</b>의 조회입니다. 임의 외부 주소(우리 고객이 아닌 지갑)의 잔액·이력 조회는 Fireblocks 가 주지 않는 별개 기능으로, 필요해지면 자체 인덱서를 그 용도로 따로 둡니다 — custody 와 독립적인 선택이라 전환(8p)과도 무관합니다.</p>
 
 <h2>백엔드에서 이렇게 부른다 — 판정은 가용만</h2>
 
@@ -108,9 +108,9 @@ suspend fun historyScreen(account: Account, range: BlockRange): List<Transfer> =
 <p class="foot">더 깊이: 잔액 3분류 — <a href="../wallet-service-components/abstraction.html">가이드 13.3</a> · 내역 동사의 위치("동사의 자리는 데이터의 주인이 정한다") — 13.3.</p>
 
 <div class="pager">
-<a href="05-withdrawal.html">← 5. 출금</a>
+<a href="06-withdrawal.html">← 6. 출금</a>
 <a href="index.html">목차</a>
-<a href="07-switch-extend.html">7. 전환과 확장 →</a>
+<a href="08-switch-extend.html">8. 전환과 확장 →</a>
 </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>

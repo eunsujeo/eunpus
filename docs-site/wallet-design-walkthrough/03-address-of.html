@@ -11,7 +11,7 @@
 <div class="wrap">
 <p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
 <div class="progress">
-<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><span class="cur">3</span><a href="04-deposit.html">4</a><a href="05-withdrawal.html">5</a><a href="06-balance-history.html">6</a><a href="07-switch-extend.html">7</a>
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><span class="cur">3</span><a href="04-deposit.html">4</a><a href="05-estimate-fee.html">5</a><a href="06-withdrawal.html">6</a><a href="07-balance-history.html">7</a><a href="08-switch-extend.html">8</a>
 </div>
 <h1>입금 주소 조회 — addressOf</h1>
 <p class="subtitle">이 페이지의 메시지는 "네 분면이 같다"입니다 — 그리고 같아야만 하는 이유</p>
@@ -67,7 +67,7 @@ sequenceDiagram
 </tbody>
 </table>
 
-<p>"네 분면이 같다"는 것이 왜 중요한가 — <b>호출 빈도가 가장 높은 동사가 분면과 무관</b>하므로, 입금 화면·고객센터·정산 어디에서 쓰든 전환(7p)의 영향이 0입니다. 차이를 만들 이유가 없는 곳에서 차이를 안 만드는 것도 설계입니다.</p>
+<p>"네 분면이 같다"는 것이 왜 중요한가 — <b>호출 빈도가 가장 높은 동사가 분면과 무관</b>하므로, 입금 화면·고객센터·정산 어디에서 쓰든 전환(8p)의 영향이 0입니다. 차이를 만들 이유가 없는 곳에서 차이를 안 만드는 것도 설계입니다.</p>
 
 <h2>백엔드에서 이렇게 부른다 — 읽기라서 더 단순하다</h2>
 
