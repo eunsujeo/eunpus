@@ -60,7 +60,7 @@ sequenceDiagram
 </pre></div>
 <p class="diagram-caption">Canton 에는 이더리움식 주소가 없다 — 대신 PartyId(체인 위의 신원)가 있고, 그것은 <b>온장(on-ledger) 등록</b>으로만 생긴다. 등록에는 서명이 필요하고 네트워크 비용이 든다. 즉 같은 createAccount 가 이더리움에선 공짜 장부 작업, Canton 에선 <b>유료 체인 트랜잭션</b>이다 — 주소가 계정과 함께 태어나므로, 다음 페이지의 "주소 발급"이 Canton 엔 없다. 그리고 이 분면은 <b>온장 쓰기</b>라 출금(5p)의 규칙이 여기에도 적용된다 — <b>등록 시도를 먼저 기록</b>하고, 재시도는 "이미 등록됐나"부터 조회한다(유료·비멱등이라 이중 등록을 막아야 하므로). 어느 고객에게 이 분면이 필요한지는 온보딩 요청의 asset 이 정한다 — 아래 사용 코드의 <code>openWallet(ref, asset)</code>.</p>
 
-<h2>▸ Fireblocks × 이더리움 — vault 생성 API 한 번</h2>
+<h2>▸ Fireblocks — vault 생성 API 한 번 (양 체인 공통)</h2>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -72,45 +72,26 @@ sequenceDiagram
 
     BE->>FBI: createAccount(고객 ref)
     FBI->>FB: vault 계정 생성 API
-    Note over FBI,FB: vault = Fireblocks 의 계정 단위 — 키는 Fireblocks MPC 가 보관
-    FB-->>FBI: vaultId
-    FBI->>DIR: 계정 저장 (ref ↔ vaultId)
+    Note over FBI,DIR: vault = Fireblocks 의 계정 단위, 키는 Fireblocks MPC 보관. Canton 자산이면 party 등록 절차가 더해진다 — 전용 SDK 가 수행하고 FB 가 서명 (상세는 적용 전 확인)
+    FB-->>FBI: vaultId (+ Canton 이면 PartyId)
+    FBI->>DIR: 계정 저장 (ref ↔ vaultId · PartyId)
     FBI-->>BE: Account
 </pre></div>
-<p class="diagram-caption">자체 분면의 "번호 할당"이 "벤더 API 호출"로 바뀌었을 뿐, 백엔드가 본 것은 동일하다. 디렉터리 저장이 여기서도 빠지지 않는 것에 주목 — 이후 모든 요청의 "고객 → 계정" 해석은 벤더에 묻지 않고 우리 DB 로 푼다(벤더를 바꿔도 남는 데이터).</p>
-
-<h2>▸ Fireblocks × Canton — vault + 전용 절차</h2>
-
-<div class="diagram"><pre class="mermaid">
-sequenceDiagram
-    autonumber
-    participant BE as 지갑 백엔드
-    participant FBI as Fireblocks 구현
-    participant FB as Fireblocks (SaaS)
-    participant DIR as 계정 디렉터리(우리 DB)
-
-    BE->>FBI: createAccount(고객 ref)
-    FBI->>FB: vault 생성 + Canton party 절차
-    Note over FBI,FB: party 등록은 전용 SDK 가 수행, Fireblocks 가 서명 담당 (키는 FB MPC) — 상세 절차는 적용 전 공식 문서 확인
-    FB-->>FBI: vaultId + PartyId
-    FBI->>DIR: 계정 + PartyId 저장
-    FBI-->>BE: Account
-</pre></div>
-<p class="diagram-caption">Fireblocks 도 Canton 의 "온장 등록" 성질을 피해 갈 수 없다 — 누가 서명하느냐(우리 HSM → Fireblocks MPC)만 바뀐다. 체인의 성질은 custody 를 바꿔도 따라온다는 첫 사례.</p>
+<p class="diagram-caption">우리 쪽 동작은 체인과 무관하게 하나다 — 자체 분면에서 갈라졌던 "번호 할당 vs 온장 등록"의 차이를 벤더가 흡수하기 때문. 단 차이가 <b>사라지는 건 아니다</b>: Canton 의 온장 등록·비용·party 는 벤더 안에서 여전히 일어난다(서명 주체만 우리 HSM → Fireblocks MPC). 디렉터리 저장은 여기서도 빠지지 않는다 — 이후 "고객 → 계정" 해석은 벤더에 묻지 않는 우리 데이터.</p>
 
 <h2>4분면 비교</h2>
 
 <table>
-<thead><tr><th style="width:18%"></th><th>자체 × 이더리움</th><th>자체 × Canton</th><th>FB × 이더리움</th><th>FB × Canton</th></tr></thead>
+<thead><tr><th style="width:18%"></th><th>자체 × 이더리움</th><th>자체 × Canton</th><th>Fireblocks (양 체인)</th></tr></thead>
 <tbody>
-<tr><td><b>실체</b></td><td>장부에 번호 하나</td><td>온장 신원 등록</td><td>vault 생성 API</td><td>vault + party 절차</td></tr>
-<tr><td><b>체인에 가나</b></td><td>아니오</td><td><b>예 (유료)</b></td><td>아니오</td><td><b>예 (유료)</b></td></tr>
-<tr><td><b>서명 주체</b></td><td>— (서명 없음)</td><td>우리 HSM</td><td>—</td><td>Fireblocks MPC</td></tr>
-<tr><td><b>우리 책임</b></td><td>번호 관리·디렉터리</td><td>키·서명·비용·디렉터리</td><td>디렉터리</td><td>디렉터리 (절차 확인)</td></tr>
+<tr><td><b>실체</b></td><td>장부에 번호 하나</td><td>온장 신원 등록</td><td>vault 생성 API (Canton 이면 +party 절차)</td></tr>
+<tr><td><b>체인에 가나</b></td><td>아니오</td><td><b>예 (유료)</b></td><td>Canton 만 <b>예 (유료)</b> — 벤더 안에서</td></tr>
+<tr><td><b>서명 주체</b></td><td>— (서명 없음)</td><td>우리 HSM</td><td>— (Canton 은 Fireblocks MPC)</td></tr>
+<tr><td><b>우리 책임</b></td><td>번호 관리·디렉터리</td><td>키·서명·비용·디렉터리</td><td>디렉터리 (Canton 절차는 확인)</td></tr>
 </tbody>
 </table>
 
-<p>표에서 읽을 것: 갈라지는 축은 custody(자체/FB)가 아니라 <b>체인</b>입니다 — "체인에 가나" 행이 세로(custody)가 아니라 가로(체인)로 갈립니다. 그리고 네 분면 모두 마지막 줄이 같습니다: <b>디렉터리는 항상 우리 것.</b></p>
+<p>표에서 읽을 것: 갈라지는 축은 custody(자체/FB)가 아니라 <b>체인</b>입니다 — 그래서 Fireblocks 쪽은 열 하나로 합쳐집니다(체인 차이를 벤더가 흡수하므로 우리 동작이 같음). 그리고 어느 열이든 마지막 줄이 같습니다: <b>디렉터리는 항상 우리 것.</b></p>
 
 <h2>백엔드에서 이렇게 부른다 — 네 분면 공통</h2>
 
