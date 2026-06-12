@@ -30,7 +30,7 @@ sequenceDiagram
     participant DIR as 계정 디렉터리(우리 DB)
 
     BE->>MGR: createAccount(고객 ref)
-    MGR->>MGR: 키 트리의 다음 가지 번호 할당 (예 — 계정 #1024)
+    MGR->>MGR: 다음 가지 번호 할당 — 계정 #1024
     Note over MGR: 체인 호출 없음 · 키 생성 없음 · 비용 0<br/>키는 셋업 때 만든 그 하나, 번호만 늘어난다
     MGR->>DIR: 계정 저장 (ref ↔ #1024)
     MGR-->>BE: Account(#1024)
@@ -133,6 +133,6 @@ suspend fun openWallet(ref: AccountRef, asset: Asset): OpenedWallet =
 </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
-<script>mermaid.initialize({ startOnLoad: true });</script>
+<script>mermaid.initialize({ startOnLoad: true, sequence: { wrap: true, useMaxWidth: true }, flowchart: { useMaxWidth: true } });</script>
 </body>
 </html>
