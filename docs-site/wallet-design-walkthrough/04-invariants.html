@@ -27,7 +27,7 @@
 <thead><tr><th style="width:36%">불변식</th><th>안 지키면 나는 사고</th><th style="width:10%">상세</th></tr></thead>
 <tbody>
 <tr><td>① <b>addressOf 는 절대 새 주소를 만들지 않는다</b> — 발급(등록)된 주소의 조회만</td><td>감시(watch-list) 안 되는 주소가 고객에게 나감 → 그 주소로 온 입금을 놓침</td><td class="c">5p</td></tr>
-<tr><td>② <b>등록까지가 발급이다</b> — 주소는 watch-list 등록이 끝나야 존재</td><td>발급-등록 사이 입금 누락 — 입금 사고의 최다 유형</td><td class="c">5·7p</td></tr>
+<tr><td>② <b>등록까지가 발급이다</b> — 주소는 watch-list(인덱서가 감시하는 우리 주소 목록) 등록이 끝나야 존재</td><td>발급-등록 사이 입금 누락 — 입금 사고의 최다 유형</td><td class="c">5·7p</td></tr>
 <tr><td>③ <b>기록은 전파 전이다</b> — 의도·서명본을 영속화한 뒤에만 체인에 쓴다</td><td>전파 직후 사망 → 재시도가 새 트랜잭션 → <b>이중 출금</b></td><td class="c">6p</td></tr>
 <tr><td>④ <b>알림은 미검증 신호다</b> — webhook·이벤트는 힌트, 진실원천은 원장</td><td>위·변조/누락된 통지를 그대로 잔액에 반영</td><td class="c">7·8p</td></tr>
 <tr><td>⑤ <b>잔액은 단일 숫자가 아니다</b> — 사용 가능 판정은 available 만</td><td>미확정(pending)·잠김(locked) 자금을 출금에 사용</td><td class="c">7p</td></tr>

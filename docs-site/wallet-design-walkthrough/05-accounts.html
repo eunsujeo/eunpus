@@ -21,7 +21,7 @@
 "고객 지갑 생성 API" 라고 하면 리소스를 하나 만드는 POST 가 떠오릅니다. 실제로는 — <b>키는 시스템 셋업 때 단 한 번 만들어지고</b>, 고객 100만 명의 지갑 생성은 키 트리의 가지 번호를 집는 장부 작업입니다. 키 100만 개를 상상했다면 비용 모델 전체가 틀어집니다.
 </div>
 
-<p>구조는 둘뿐입니다 — <b>키 트리 하나</b>(HSM 안의 master seed, 셋업 때 1회 생성·확장 공개키 xpub 만 반출)와 <b>장부</b>(고객 ref → 가지 번호 → 발급된 주소). 그 위에서 이더리움과 Canton 이 정반대로 갈라집니다:</p>
+<p>구조는 둘뿐입니다 — <b>키 트리 하나</b>(HSM 안의 master seed, 셋업 때 1회 생성·확장 공개키 xpub 만 반출)와 <b>장부</b>. 장부는 실제로 두 부품입니다: <b>계정 디렉터리</b> — "고객 ref → 가지 번호 → 발급된 주소" 매핑을 담는 <i>우리 DB</i>(벤더를 바꿔도 남는 우리 데이터), 그리고 <b>watch-list</b> — 인덱서(7p)에게 "이 주소들로 오는 입금을 감시하라"고 알려주는 우리 주소 목록. 이 둘 위에서 이더리움과 Canton 이 정반대로 갈라집니다:</p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart TB
@@ -52,11 +52,11 @@ sequenceDiagram
     autonumber
     participant BE as 지갑 백엔드
     participant SELF as 자체 구현 (AccountPort)
-    participant DIR as 디렉터리 + watch-list
+    participant DIR as 계정 디렉터리(우리 DB) + watch-list(감시 목록)
 
     BE->>SELF: issueDepositAddress(account, asset) — 발급
     SELF->>SELF: 다음 번호 소비 + xpub 로컬 계산 (이더리움 — HSM 호출 없음)
-    SELF->>DIR: 주소 저장 + watch-list 등록 (실패 = 발급 실패)
+    SELF->>DIR: 디렉터리에 주소 저장 + 감시 목록 등록 (등록 실패 = 발급 실패)
     DIR-->>SELF: 등록 완료
     SELF-->>BE: 주소
 
@@ -75,12 +75,12 @@ sequenceDiagram
     participant BE as 지갑 백엔드
     participant FBI as Fireblocks 구현 (AccountPort)
     participant FB as Fireblocks (SaaS)
-    participant DIR as 디렉터리
+    participant DIR as 계정 디렉터리(우리 DB)
 
     BE->>FBI: issueDepositAddress(account, asset) — 발급
     FBI->>FB: 새 주소 생성 API (generateNewAddress)
     FB-->>FBI: 주소 (Fireblocks 키에서 파생)
-    FBI->>DIR: 주소 저장 — watch-list 는 불요 (vault 가 곧 감시 범위)
+    FBI->>DIR: 주소 저장 — 감시 목록(watch-list)은 불요 (vault 가 곧 감시 범위)
     FBI-->>BE: 주소
 
     BE->>FBI: addressOf(account, asset) — 조회
