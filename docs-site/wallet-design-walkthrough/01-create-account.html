@@ -100,8 +100,8 @@ suspend fun openWallet(ref: AccountRef, asset: Asset): OpenedWallet =
     withIdempotency("open-wallet:$ref:$asset") {           // 같은 요청 재시도 안전
         val account = accounts.createAccount(ref)           // ← 이 페이지의 4분면
         directory.save(account)                             // 결과는 항상 우리 DB 에
-        val address = acquireFirstAddress(account, asset)   // 첫 주소 확보 — 2p 에서
-        OpenedWallet(account, address)
+        val id = accounts.issueDepositAddress(account, asset)  // 첫 입금 식별자 — 2p 에서
+        OpenedWallet(account, id)
     }</code></pre>
 <p class="diagram-caption">백엔드는 매니저가 자체인지 Fireblocks 인지, 자산이 이더리움인지 Canton 인지 모른 채 이 코드를 실행한다 — 4분면은 전부 포트 아래의 일이다.</p>
 

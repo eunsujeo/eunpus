@@ -61,7 +61,7 @@ sequenceDiagram
         BE->>HSM: 수락(ACCEPT) 서명
         BE->>PN: 수락 제출 — 이 순간 입금 성립
         PN-->>IDX: 보유 반영 (즉시 확정 — 되돌림 없음)
-        IDX->>BE: CONFIRMED + memo 로 고객 귀속
+        IDX->>BE: CONFIRMED + memo 귀속표(2p)로 고객 귀속
     else 거절
         BE->>PN: 거절(REJECT) — 받지 않는다
     end

@@ -14,13 +14,13 @@
 <a href="00-cast.html">0</a><a href="01-create-account.html">1</a><span class="cur">2</span><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-withdrawal.html">5</a><a href="06-balance-history.html">6</a><a href="07-switch-extend.html">7</a>
 </div>
 <h1>입금 주소 발급 — issueDepositAddress</h1>
-<p class="subtitle">고객에게 건넬 입금 주소를 만든다 — 그리고 "만들기"의 끝은 감시 등록이다</p>
+<p class="subtitle">발급되는 것은 "주소"가 아니라 입금 식별자 — 주소+memo 쌍이다</p>
 
-<p><b>무엇·언제</b>: 온보딩의 두 번째 호출(첫 주소)이자, 운영 중 추가 주소가 필요할 때마다 다시 불립니다. 발급의 규칙 하나를 먼저 박아두면 — <b>주소는 감시 목록(watch-list)에 올라가야 비로소 "존재"합니다.</b> 감시 안 되는 주소를 고객에게 주면, 그 주소로 온 입금을 우리만 모릅니다(입금 사고의 최다 유형). 그래서 모든 분면에서 등록까지가 발급입니다.</p>
+<p><b>무엇·언제</b>: 온보딩의 두 번째 호출(첫 식별자)이자, 운영 중 추가 식별자가 필요할 때마다 다시 불립니다. 핵심 재정의 하나 — 발급되는 것은 <b>입금 식별자(주소 + memo 쌍)</b>입니다: 이더리움은 memo 가 빈 채 <b>주소가</b> 새로워지고, Canton 은 주소(PartyId)가 고정된 채 <b>memo 가</b> 새로워집니다(Fireblocks 콘솔·문서로 확인 — 같은 온체인 주소를 tag/memo 로 구분하는 모델). 그리고 규칙 하나 — <b>식별자는 감시(귀속) 등록까지 끝나야 "존재"합니다.</b> 등록 안 된 식별자로 온 입금은 우리만 모릅니다(입금 사고의 최다 유형).</p>
 
-<pre><code>issueDepositAddress(account, asset) → Address   // 부를 때마다 새 주소 — 같은 요청의 재시도만 멱등 키로 차단</code></pre>
+<pre><code>issueDepositAddress(account, asset) → Address(주소, memo?)   // 부를 때마다 새 식별자 — 재시도만 멱등 키로 차단</code></pre>
 
-<h2>▸ 자체 × 이더리움 — 키 트리에서 계산 + 등록</h2>
+<h2>▸ 자체 × 이더리움 — 새로워지는 것: 주소</h2>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -40,7 +40,7 @@ sequenceDiagram
 </pre></div>
 <p class="diagram-caption">이더리움 발급 = 번호 소비 + 공개키 수학 + 등록. 계산 자체는 공짜·즉시지만, 디렉터리 저장과 감시 등록이라는 <b>상태 변경</b>이 본질이다 — 그래서 발급은 쓰기 동작이고 멱등 키로 감싼다. 보안 단서 하나 — <b>xpub 은 이름과 달리 비밀급으로 다룬다</b>: xpub 이 유출된 상태에서 자식 개인키가 하나라도 새면 부모 키가 역산되는 알려진 성질이 있다.</p>
 
-<h2>▸ 자체 × Canton — 이 기능이 "없다" (없음도 동작이다)</h2>
+<h2>▸ 자체 × Canton — 새로워지는 것: memo</h2>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -48,17 +48,18 @@ sequenceDiagram
     participant BE as 지갑 백엔드
     participant MGR as 자체 매니저
     participant DIR as 계정 디렉터리(우리 DB)
+    participant WL as memo 귀속표 (인덱서)
 
-    BE->>MGR: issueDepositAddress(계정, Canton 자산)?
-    Note over BE,MGR: 호출 자체가 일어나지 않는다 — Canton 구현은<br/>이 기능(capability)을 타입부터 갖지 않아서,<br/>백엔드가 컴파일 시점에 "없음"을 안다
-    BE->>DIR: 대신 — 이 계정의 PartyId 조회 (1p 에서 탄생한 그 주소)
-    DIR-->>BE: PartyId
-    BE->>BE: 고객 안내 = PartyId + memo
-    Note over BE,DIR: 고객마다 주소를 늘리는 대신 주소(PartyId)는 하나 — 입금마다 memo 코드로 "누구 돈인지" 구분
+    BE->>MGR: issueDepositAddress(계정 1024번, Canton 자산)
+    MGR->>MGR: 새 memo 채번 — 체인 호출 없음 (장부 작업)
+    Note over BE,WL: 주소(PartyId)는 1p 에서 태어난 그대로 — 새로워지는 건 memo 뿐. 은행의 가상계좌 대신 입금자 코드를 늘리는 모양
+    MGR->>DIR: 식별자 저장 (PartyId + 새 memo)
+    MGR->>WL: memo 귀속표 등록 — watch-list 의 memo 판, 등록 실패면 발급도 실패
+    MGR-->>BE: Address(PartyId, 새 memo)
 </pre></div>
-<p class="diagram-caption">Canton 은 "계정당 입금 주소를 계속 발급"하는 모델이 아니다 — 주소(PartyId)는 1페이지의 계정 생성 때 하나 태어나고 끝. 추가 입금의 구분은 주소가 아니라 <b>memo 코드</b>가 한다(은행 가상계좌 대신 입금자 코드를 쓰는 것과 같은 모양). "지원 안 함"을 throw 로 구현하지 않고 <b>기능 부재(타입 없음)</b>로 두는 것이 설계 규칙 — 호출부가 런타임이 아니라 컴파일에 안다.</p>
+<p class="diagram-caption">이더리움과 같은 동사, 같은 골격(채번 → 디렉터리 → 감시·귀속 등록)이고 새로워지는 칸만 다르다. memo 채번은 체인 호출이 없는 장부 작업이지만 — "입금 식별자 발급" 이라는 도메인 동사로 묶으면 백엔드는 그 차이조차 모른다. 인덱서(4p)는 watch-list 대신 이 <b>memo 귀속표</b>로 "누구 돈인지"를 가른다.</p>
 
-<h2>▸ Fireblocks × 이더리움 — 벤더가 만들어 준다</h2>
+<h2>▸ Fireblocks (양 체인) — 벤더가 발급한다</h2>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -68,55 +69,37 @@ sequenceDiagram
     participant FB as Fireblocks (SaaS)
     participant DIR as 계정 디렉터리(우리 DB)
 
-    BE->>FBI: issueDepositAddress(계정, ETH)
-    FBI->>FB: 새 입금 주소 생성 API
-    Note over FBI,FB: 주소는 Fireblocks 키에서 파생 — 감시도 Fireblocks 몫 (vault 가 곧 감시 범위라 watch-list 등록 단계가 없다)
-    FB-->>FBI: 주소
-    FBI->>DIR: 주소 저장 (벤더를 바꿔도 남는 우리 기록)
-    FBI-->>BE: 주소
+    BE->>FBI: issueDepositAddress(계정, 자산)
+    FBI->>FB: 새 입금 주소 생성 API (generateNewAddress)
+    Note over FBI,DIR: 이더리움 = 새 주소 / Canton = 같은 PartyId + 새 memo 자동 생성 — 콘솔·문서로 확인, memo 생성 보장 규칙은 적용 전 통합 테스트로
+    FB-->>FBI: Address(주소, memo?)
+    FBI->>DIR: 식별자 저장 — 감시·귀속은 벤더 몫 (vault 가 곧 감시 범위)
+    FBI-->>BE: 식별자
 </pre></div>
-<p class="diagram-caption">자체 분면의 "계산+등록"이 "벤더 API 한 번"으로 줄었다 — 감시 등록이 사라진 것은 생략이 아니라 <b>책임 이동</b>이다(벤더 vault 안의 주소는 벤더가 감시·통지한다, 4p). 단 주소가 <b>Fireblocks 키</b>에서 나온다는 사실은 7페이지(전환)에서 비용으로 돌아온다.</p>
-
-<h2>▸ Fireblocks × Canton — 역시 "없다"</h2>
-
-<div class="diagram"><pre class="mermaid">
-sequenceDiagram
-    autonumber
-    participant BE as 지갑 백엔드
-    participant FBI as Fireblocks 구현
-    participant DIR as 계정 디렉터리(우리 DB)
-
-    BE->>FBI: issueDepositAddress(계정, Canton 자산)?
-    Note over BE,FBI: 마찬가지로 호출이 일어나지 않는다 —<br/>추가 주소가 없는 것은 벤더가 아니라 "체인의 성질"이라서,<br/>custody 를 바꿔도 이 분면은 그대로다
-    BE->>DIR: PartyId 조회 → 고객 안내 = PartyId + memo
-    DIR-->>BE: PartyId
-</pre></div>
-<p class="diagram-caption">1페이지에 이어 두 번째 확인 — <b>가로(체인) 차이는 custody 를 바꿔도 따라온다.</b> 백엔드의 "Canton 입금 안내 = PartyId + memo" 로직은 자체든 Fireblocks 든 동일하게 동작하므로, 전환 때 손댈 일이 없다.</p>
+<p class="diagram-caption">벤더 호출은 양 체인에서 같은 한 줄이고, 무엇이 새로워지는지(주소 vs memo)는 벤더가 체인에 맞춰 정한다 — 자체 분면의 두 그림이 벤더 안으로 접힌 모양. 식별자가 <b>Fireblocks 키·채번</b>에서 나온다는 사실은 7p(전환 — 자금은 이사)에서 비용으로 돌아온다.</p>
 
 <h2>4분면 비교</h2>
 
 <table>
-<thead><tr><th style="width:18%"></th><th>자체 × 이더리움</th><th>자체 × Canton</th><th>FB × 이더리움</th><th>FB × Canton</th></tr></thead>
+<thead><tr><th style="width:18%"></th><th>자체 × 이더리움</th><th>자체 × Canton</th><th>Fireblocks (양 체인)</th></tr></thead>
 <tbody>
-<tr><td><b>기능 존재</b></td><td>예</td><td><b>없음 — memo 방식</b></td><td>예</td><td><b>없음 — memo 방식</b></td></tr>
-<tr><td><b>주소의 출처</b></td><td>우리 키 트리(xpub 계산)</td><td>— (PartyId 는 1p)</td><td>Fireblocks 키</td><td>—</td></tr>
-<tr><td><b>감시 책임</b></td><td><b>우리</b> (watch-list 등록 = 발급의 일부)</td><td>우리 (PartyId 구독, 4p)</td><td>벤더 (vault 범위)</td><td>벤더</td></tr>
-<tr><td><b>우리 책임</b></td><td>번호·계산·등록·디렉터리</td><td>memo 채번·디렉터리</td><td>디렉터리</td><td>memo 채번·디렉터리</td></tr>
+<tr><td><b>새로워지는 것</b></td><td><b>주소</b> (memo 없음)</td><td><b>memo</b> (주소 = PartyId 고정)</td><td>체인 따라 — 주소 / memo (자동)</td></tr>
+<tr><td><b>식별자의 출처</b></td><td>우리 키 트리(xpub 계산)</td><td>우리 memo 채번 (장부)</td><td>Fireblocks 키·채번</td></tr>
+<tr><td><b>감시·귀속 등록</b></td><td><b>우리</b> — watch-list</td><td><b>우리</b> — memo 귀속표</td><td>벤더 (vault 범위)</td></tr>
+<tr><td><b>우리 책임</b></td><td>번호·계산·등록·디렉터리</td><td>채번·등록·디렉터리</td><td>디렉터리</td></tr>
 </tbody>
 </table>
 
-<p>표에서 읽을 것: "기능 존재" 행이 또 <b>가로(체인)로</b> 갈립니다. 그리고 감시 책임 행은 <b>세로(custody)로</b> 갈리죠 — 두 축이 서로 다른 것을 결정한다는 패턴이 이 문서 내내 반복됩니다.</p>
+<p>표에서 읽을 것: "새로워지는 것" 행은 <b>체인 축</b>으로, "누가 만들고 누가 감시하나"는 <b>custody 축</b>으로 갈립니다 — 1페이지의 패턴 그대로. 참고로 이 페이지엔 원래 "Canton 은 발급이 없다(타입 부재)"는 분면이 있었는데, Fireblocks 콘솔이 memo 를 자동 발급하는 것을 확인하면서 <b>식별자 재정의로 분면이 합쳐졌습니다</b> — "기능 부재(타입 없음)" 패턴은 출금의 boost 에서 만납니다(5p).</p>
 
-<h2>백엔드에서 이렇게 부른다 — "없음" 분면이 코드에서 갈리는 모습</h2>
+<h2>백엔드에서 이렇게 부른다 — 분기가 없다</h2>
 
-<pre><code>// 첫 주소 확보 — 1p 의 openWallet 이 부르는 그 함수
-suspend fun acquireFirstAddress(account: Account, asset: Asset): Address =
-    when (val issuer = accounts as? DepositAddressIssuanceCapability) {
-        null -> accounts.addressOf(account, asset)            // Canton — 발급이 타입부터 없다
-                                                              //   → 계정과 함께 태어난 PartyId 조회 (안내엔 memo 동봉)
-        else -> issuer.issueDepositAddress(account, asset)    // 이더리움 — 발급 (등록까지)
-    }</code></pre>
-<p class="diagram-caption">"없음" 분면의 처리가 capability 형변환 한 번이다 — 런타임 예외를 기다리지 않고, 컴파일 타입이 분기를 만든다. 이 함수도 custody 가 무엇인지는 모른다.</p>
+<pre><code>// 입금 안내 화면까지 — 한 동사, 분기 없음
+suspend fun issueAndGuide(account: Account, asset: Asset): DepositGuide {
+    val id = accounts.issueDepositAddress(account, asset)  // 이더리움 = 새 주소 · Canton = 새 memo
+    return DepositGuide(address = id.value, memo = id.memoTag)   // memo 가 null 이면 화면에서 생략
+}</code></pre>
+<p class="diagram-caption">식별자 재정의의 코드 효과 — 예전엔 "Canton 은 발급이 없다"는 capability 분기가 여기 있었지만, 발급물을 주소+memo 쌍으로 일반화하자 분기 자체가 소멸했다. 백엔드는 무엇이 새로워졌는지도 모른다.</p>
 
 <p class="foot">더 깊이: 발급·등록·놓친 입금 방어 — <a href="../wallet-service-components/scenario-provisioning.html">가이드 9장</a> · 키 트리가 움직이는 모습 — <a href="../wallet-service-components/wallet-creation-animated.html">지갑 생성 애니메이션</a>.</p>
 

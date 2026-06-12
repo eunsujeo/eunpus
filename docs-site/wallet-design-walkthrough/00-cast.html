@@ -127,6 +127,7 @@ data class TxRef(val value: String, val chainId: ChainId)    // 제출된 출금
 // ── 포트 둘 — 매니저(자체/FB)가 구현하는 면 ──
 interface AccountPort {                                  // 1·2·3·6p
     suspend fun createAccount(ref: AccountRef): Account
+    suspend fun issueDepositAddress(account: Account, asset: Asset): Address  // "입금 식별자" 발급 — 2p
     suspend fun addressOf(account: Account, asset: Asset): Address
     suspend fun getBalance(account: Account, asset: Asset): Balance
     // estimateFee · validateAddress 생략 (5p)
@@ -139,9 +140,6 @@ interface TransactionPort {                              // 4·5·6p
 }
 
 // ── 선택 capability — "있는 분면"만 타입을 가진다 ──
-interface DepositAddressIssuanceCapability {             // 이더리움 분면만 (2p)
-    suspend fun issueDepositAddress(account: Account, asset: Asset): Address
-}
 interface FeeBoostCapability { suspend fun boost(txRef: TxRef): TxRef }    // 이더리움 분면만 (5p)
 interface CancelCapability   { suspend fun cancel(txRef: TxRef): TxRef }   // 철회 (5p)</code></pre>
 <p class="diagram-caption">자체 매니저도 Fireblocks 구현도 이 인터페이스를 구현한다 — "어느 구현인지 백엔드가 모른다"는 이 문서의 모든 주장이 이 한 장 위에 서 있다. 멱등 키는 시그니처가 아니라 호출을 감싸는 래퍼(<code>withIdempotency</code>)로 들어간다(1p 코드).</p>

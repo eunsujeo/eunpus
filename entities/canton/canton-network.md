@@ -60,6 +60,8 @@ Canton 은 DAML 스마트컨트랙트 기반 privacy-enabled 퍼블릭 블록체
 ### 수탁 지갑 관점
 Canton 어댑터가 흡수해야 할 핵심 = **"제출=완료" 가 아니다** — 전송이 기본 2-step 이라 OFFER/TransferInstruction 제출 후 상대 수락 대기 상태가 존재하고, 송신자 자금이 locked UTXO 로 묶인다. account/nonce 모델이 아니라 DAML active contract 원장 + UTXO형 holdings + 권한 기반 전송이 구별점. Fireblocks 가 Canton 지원(transactionType, traceableId). [[api]] 참조.
 
+**Fireblocks 의 Canton 입금 주소 모델 (★ Stage 81)** — Fireblocks 는 Canton 을 **tag/memo 형 자산**으로 취급한다: ① 공식 dev 문서 "각 deposit address 는 같은 온체인 주소를 갖고 tag/memo 로만 구분"(direct-custody-wallets) ② create-deposit-address 엔드포인트는 "UTXO 또는 Tag/Memo 기반 자산 전용"(계정형 실패) ③ **콘솔 1차 관찰**(사용자 워크스페이스, 2026-06-12): Canton 자산에 PERMANENT ADDRESS(PartyId 형식, 불변) + Memo 가 있고, "+ Add" 로 **새 memo 가 자동 생성**됨(hex 형식). 즉 generateNewAddress 의 Canton 동작 = (같은 PartyId, 새 memo) 발급 — "Canton 은 발급 불가·memo 채번은 백엔드 몫" 이던 기존 모델의 정정 근거. ⚠️ memo 자동 생성의 보장·유일성 규칙은 문서 미명시 — 적용 전 통합 테스트로 확정.
+
 ### 수탁 통합 핵심 — wallet/guidance (★ Stage 54)
 docs.canton.network/integrations/wallet/guidance 1차 출처. 수탁 설계에 직결되는 구체 요건:
 - **입금 식별 = memo tag (별도 입금주소 아님)** — Canton 은 deposit 마다 입금주소를 따로 두지 않고 transfer metadata 의 memo 로 추적: `"meta":{"values":{"splice.lfdecentralizedtrust.org/reason":"memo-ref"}}`. XRP/XLM destination-tag 류. 거래소 입금도 이 방식. **EVM 식 "사용자별 입금주소" 가정이 깨지는 지점**.

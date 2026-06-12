@@ -7100,6 +7100,12 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - docs-site: canton-network(operations 3.2·custody 6.3 Fireblocks)·wallet-service-components(example-fireblocks 14.8 '확인 필요'→해소, abstraction 156·256, multichain 90) 의 A11 '미확정' 콜아웃 전부 해소로 갱신
 - **Canton open Q 전부 ANSWERED**(A11·C01·C02). check PASS(양 사이트)
 
+## Stage 81 (2026-06-12) — Fireblocks 의 Canton = tag/memo 형 자산 (콘솔 1차 증거 + dev 문서)
+- source: 사용자 FB 콘솔 스크린샷(1차 — Canton 자산 PERMANENT ADDRESS+Memo, +Add 로 memo 자동 생성) + developers.fireblocks.com (direct-custody-wallets: 같은 온체인 주소+tag 구분 / create-deposit-address: UTXO·tag 형 전용)
+- 함의: issueDepositAddress 의 Canton 동작 = (같은 PartyId, 새 memo) — "발급 없음·memo 는 백엔드" 모델 정정. 발급물 재정의 = 입금 식별자(주소+memo 쌍)
+- 영향: entities/canton(Stage 81 블록), wallet-design-walkthrough 0~4p 피벗. 가이드(13.3·9.x·14·15)·스켈레톤 동기화는 NEXT.md 백로그
+- 신규 entity: 0 · ⚠️ memo 생성 보장 규칙 미명시 — 통합 테스트 확정 항목
+
 ## Stage 80 (2026-06-12) — Musubi institution 측 10페이지 웹 검토 → 승인 2층·상태 모델 promote
 - source: musubinetwork.com/institution/* (api-reference·integration 4종·compliance·security·custody-and-trust·settlement-flow·overview) — 웹 확인, ⚠️ 2차·testnet POC·WebFetch 요약 기반
 - 신규 fact: 승인 2층(intent_signature=기관 개인키 주문 서명 / custodian co-sign 별도) · 상태 enum(PENDING→QUOTED→EXECUTING→SETTLED + EXPIRED·FAILED, 사유 5종) · cancel=PENDING/QUOTED 만 · 4-leg 경로에 "Musubi 결제 주소" 경유(화이트리스트 대상) · institution 은 custodian Canton 인프라 활용 가능(자체 노드 불요) · kyc_aml_ref 검증 모델 · JP/KR 보고 임계 · Travel Rule 등 roadmap · 페이지 간 불일치 기록(~15초 vs ≈4초, 보존기간)
