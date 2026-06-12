@@ -30,8 +30,8 @@ sequenceDiagram
     participant DIR as 계정 디렉터리(우리 DB)
 
     BE->>MGR: createAccount(고객 ref)
-    MGR->>MGR: 다음 가지 번호 할당 — 계정 #1024
-    Note over MGR: 체인 호출 없음 · 키 생성 없음 · 비용 0<br/>키는 셋업 때 만든 그 하나, 번호만 늘어난다
+    MGR->>MGR: 번호 할당 — 계정 #1024
+    Note over BE,DIR: 체인 호출 없음 · 키 생성 없음 · 비용 0 — 키는 셋업 때 만든 그 하나, 번호만 늘어난다
     MGR->>DIR: 계정 저장 (ref ↔ #1024)
     MGR-->>BE: Account(#1024)
 </pre></div>
@@ -72,7 +72,7 @@ sequenceDiagram
 
     BE->>FBI: createAccount(고객 ref)
     FBI->>FB: vault 계정 생성 API
-    Note over FB: vault = Fireblocks 의 계정 단위<br/>키는 Fireblocks MPC 가 보관
+    Note over FBI,FB: vault = Fireblocks 의 계정 단위 — 키는 Fireblocks MPC 가 보관
     FB-->>FBI: vaultId
     FBI->>DIR: 계정 저장 (ref ↔ vaultId)
     FBI-->>BE: Account
@@ -91,7 +91,7 @@ sequenceDiagram
 
     BE->>FBI: createAccount(고객 ref)
     FBI->>FB: vault 생성 + Canton party 절차
-    Note over FB: party 등록은 전용 SDK 가 수행하고<br/>Fireblocks 는 그 서명을 담당 (키는 FB MPC)<br/>— 상세 절차는 적용 전 공식 문서 확인
+    Note over FBI,FB: party 등록은 전용 SDK 가 수행, Fireblocks 가 서명 담당 (키는 FB MPC) — 상세 절차는 적용 전 공식 문서 확인
     FB-->>FBI: vaultId + PartyId
     FBI->>DIR: 계정 + PartyId 저장
     FBI-->>BE: Account
@@ -133,6 +133,6 @@ suspend fun openWallet(ref: AccountRef, asset: Asset): OpenedWallet =
 </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
-<script>mermaid.initialize({ startOnLoad: true, sequence: { wrap: true, useMaxWidth: true }, flowchart: { useMaxWidth: true } });</script>
+<script>mermaid.initialize({ startOnLoad: true, sequence: { wrap: true, useMaxWidth: true, actorMargin: 90, messageMargin: 36 }, flowchart: { useMaxWidth: true } });</script>
 </body>
 </html>

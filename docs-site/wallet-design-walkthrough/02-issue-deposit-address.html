@@ -31,9 +31,9 @@ sequenceDiagram
     participant WL as watch-list (인덱서의 감시 목록)
 
     BE->>MGR: issueDepositAddress(계정 #1024, ETH)
-    MGR->>MGR: 이 계정의 다음 주소 번호 소비 (예 — 3번째 주소)
-    MGR->>MGR: 공개키 트리(xpub)로 주소 계산 — 로컬 수학, HSM 호출 없음
-    Note over MGR: 셋업 때 HSM 이 만든 키 트리의 "공개키 쪽 사본(xpub)"<br/>만으로 자식 주소가 계산된다 — 개인키는 출금 서명 때<br/>HSM 안에서 같은 번호로 파생 (5p)
+    MGR->>MGR: 다음 주소 번호 소비 (#3)
+    MGR->>MGR: xpub 로 주소 계산 (로컬)
+    Note over BE,WL: xpub(공개키 쪽 사본)만으로 자식 주소가 계산된다 — HSM 호출 없음. 개인키는 출금 서명 때 HSM 안에서 같은 번호로 파생 (5p)
     MGR->>DIR: 주소 저장 (계정 #1024 · 3번째)
     MGR->>WL: 감시 목록 등록 — 등록 실패면 발급도 실패
     MGR-->>BE: 주소 (0xAb3…)
@@ -53,8 +53,8 @@ sequenceDiagram
     Note over BE,MGR: 호출 자체가 일어나지 않는다 — Canton 구현은<br/>이 기능(capability)을 타입부터 갖지 않아서,<br/>백엔드가 컴파일 시점에 "없음"을 안다
     BE->>DIR: 대신 — 이 계정의 PartyId 조회 (1p 에서 탄생한 그 주소)
     DIR-->>BE: PartyId
-    BE->>BE: 고객 안내 = PartyId + 입금 구분 코드(memo)
-    Note over BE: 고객마다 주소를 늘리는 대신, 주소(PartyId)는 하나 두고<br/>입금마다 memo 코드로 "누구 돈인지" 구분한다
+    BE->>BE: 고객 안내 = PartyId + memo
+    Note over BE,DIR: 고객마다 주소를 늘리는 대신 주소(PartyId)는 하나 — 입금마다 memo 코드로 "누구 돈인지" 구분
 </pre></div>
 <p class="diagram-caption">Canton 은 "계정당 입금 주소를 계속 발급"하는 모델이 아니다 — 주소(PartyId)는 1페이지의 계정 생성 때 하나 태어나고 끝. 추가 입금의 구분은 주소가 아니라 <b>memo 코드</b>가 한다(은행 가상계좌 대신 입금자 코드를 쓰는 것과 같은 모양). "지원 안 함"을 throw 로 구현하지 않고 <b>기능 부재(타입 없음)</b>로 두는 것이 설계 규칙 — 호출부가 런타임이 아니라 컴파일에 안다.</p>
 
@@ -70,7 +70,7 @@ sequenceDiagram
 
     BE->>FBI: issueDepositAddress(계정, ETH)
     FBI->>FB: 새 입금 주소 생성 API
-    Note over FB: 주소는 Fireblocks 키에서 파생 —<br/>감시도 Fireblocks 몫 (vault 가 곧 감시 범위라<br/>watch-list 등록 단계가 없다)
+    Note over FBI,FB: 주소는 Fireblocks 키에서 파생 — 감시도 Fireblocks 몫 (vault 가 곧 감시 범위라 watch-list 등록 단계가 없다)
     FB-->>FBI: 주소
     FBI->>DIR: 주소 저장 (벤더를 바꿔도 남는 우리 기록)
     FBI-->>BE: 주소
@@ -127,6 +127,6 @@ suspend fun acquireFirstAddress(account: Account, asset: Asset): Address =
 </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
-<script>mermaid.initialize({ startOnLoad: true, sequence: { wrap: true, useMaxWidth: true }, flowchart: { useMaxWidth: true } });</script>
+<script>mermaid.initialize({ startOnLoad: true, sequence: { wrap: true, useMaxWidth: true, actorMargin: 90, messageMargin: 36 }, flowchart: { useMaxWidth: true } });</script>
 </body>
 </html>

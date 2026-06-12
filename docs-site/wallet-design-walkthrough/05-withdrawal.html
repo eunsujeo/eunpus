@@ -36,9 +36,9 @@ sequenceDiagram
     participant IDX as 인덱서
 
     BE->>PIPE: submitTransaction(승인된 출금 + 멱등 키)
-    PIPE->>PIPE: 조립 — 계정의 순번(nonce) 점유 · 기록 ①
+    PIPE->>PIPE: 조립 — nonce 점유 · 기록 ①
     PIPE->>GATE: 서명 요청
-    GATE->>GATE: 직전 재검증 — 수신처 화이트리스트 · 한도
+    GATE->>GATE: 재검증 — 화이트리스트 · 한도
     GATE->>HSM: 통과한 것만 서명 (키는 안 나옴)
     HSM-->>PIPE: 서명본 · 기록 ②
     PIPE->>CH: 전파 · 기록 ③
@@ -62,7 +62,7 @@ sequenceDiagram
     BE->>PIPE: submitTransaction(승인된 출금 + 멱등 키)
     PIPE->>HSM: 전송 제안 조립 · 검증 · 서명 (순번 없음)
     PIPE->>PN: 제안(OFFER) 제출
-    Note over PN: 송신 자금이 "잠김(locked)" 상태로 묶인다 —<br/>잔액에서 빠진 것도, 남은 것도 아닌 제3의 상태 (6p)
+    Note over PIPE,CP: 송신 자금이 "잠김(locked)" 으로 묶인다 — 빠진 것도 남은 것도 아닌 제3의 상태 (6p)
     PN->>CP: 수락 요청 전달
     alt 상대가 수락
         CP-->>PN: ACCEPT
@@ -84,7 +84,7 @@ sequenceDiagram
 
     BE->>FBI: submitTransaction(승인된 출금 + 멱등 키)
     FBI->>FB: createTransaction(…, externalTxId = 멱등 키)
-    Note over FB: 조립·순번·MPC 서명·전파를 벤더가 한 번에 —<br/>정책 게이트의 자리는 벤더의 거버넌스 정책(TAP)이 잇는다
+    Note over FBI,FB: 조립·순번·MPC 서명·전파를 벤더가 한 번에 — 정책 게이트의 자리는 벤더의 거버넌스 정책(TAP)이 잇는다
     FB-->>FBI: 트랜잭션 id (= TxRef)
     FBI-->>BE: TxRef
     FB-->>BE: 상태 변화 webhook (확정 포함) — 막히면 boost API 호출만
@@ -147,6 +147,6 @@ fun stuckActions(): List<Action> = buildList {
 </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
-<script>mermaid.initialize({ startOnLoad: true, sequence: { wrap: true, useMaxWidth: true }, flowchart: { useMaxWidth: true } });</script>
+<script>mermaid.initialize({ startOnLoad: true, sequence: { wrap: true, useMaxWidth: true, actorMargin: 90, messageMargin: 36 }, flowchart: { useMaxWidth: true } });</script>
 </body>
 </html>

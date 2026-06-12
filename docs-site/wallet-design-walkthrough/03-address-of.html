@@ -46,7 +46,7 @@ sequenceDiagram
     participant WL as watch-list (감시 목록)
 
     BE->>MGR: addressOf(계정 #1024, ETH)
-    MGR->>MGR: ❌ 키 트리에서 "그때그때 계산"해 반환
+    MGR->>MGR: ❌ 즉석 계산해 반환
     Note over MGR,WL: 계산된 주소가 감시 목록에 없을 수 있다 —<br/>고객이 그 주소로 입금하면 우리만 모른다 (2p 의 규칙 위반)
     MGR-->>BE: 등록 안 된 주소 ⚠️
 </pre></div>
@@ -84,6 +84,6 @@ suspend fun depositScreen(accountId: String, asset: Asset): DepositInfo {
 </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
-<script>mermaid.initialize({ startOnLoad: true, sequence: { wrap: true, useMaxWidth: true }, flowchart: { useMaxWidth: true } });</script>
+<script>mermaid.initialize({ startOnLoad: true, sequence: { wrap: true, useMaxWidth: true, actorMargin: 90, messageMargin: 36 }, flowchart: { useMaxWidth: true } });</script>
 </body>
 </html>

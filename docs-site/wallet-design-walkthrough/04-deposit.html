@@ -34,9 +34,9 @@ sequenceDiagram
     loop 블록마다
         IDX->>CH: 새 블록 읽기
     end
-    IDX->>IDX: 감시 목록(watch-list)과 대조 — 우리 주소다!
+    IDX->>IDX: watch-list 대조 — 우리 주소!
     IDX->>BE: 입금 감지 (PENDING) — 잔액 반영 안 함
-    Note over IDX: 블록이 쌓이길 기다린다 — 체인 끝은<br/>드물게 교체(reorg)되어 "본 입금"이 사라질 수 있다
+    Note over CH,BE: 블록이 쌓이길 기다린다 — 체인 끝은 드물게 교체(reorg)되어 "본 입금"이 사라질 수 있다
     IDX->>BE: 확정 (CONFIRMED) — 이제 available 반영
     Note over IDX,BE: reorg 로 무효화되면 가공본만 되감는다 —<br/>원본 기록은 영구 보존 (같은 입금이 재등장 가능)
 </pre></div>
@@ -56,7 +56,7 @@ sequenceDiagram
     EXT->>PN: 우리 PartyId 앞으로 전송 제안 (OFFER + memo)
     PN->>IDX: 수락 대기 건 감지
     IDX->>BE: "입금 제안 도착" — 아직 우리 돈 아님
-    BE->>BE: 검증 — 아는 자산인가? memo 가 유효한 고객 코드인가?
+    BE->>BE: 검증 — 자산 · memo 확인
     alt 통과
         BE->>HSM: 수락(ACCEPT) 서명
         BE->>PN: 수락 제출 — 이 순간 입금 성립
@@ -140,6 +140,6 @@ transactions.onChainEvent { ev ->
 </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
-<script>mermaid.initialize({ startOnLoad: true, sequence: { wrap: true, useMaxWidth: true }, flowchart: { useMaxWidth: true } });</script>
+<script>mermaid.initialize({ startOnLoad: true, sequence: { wrap: true, useMaxWidth: true, actorMargin: 90, messageMargin: 36 }, flowchart: { useMaxWidth: true } });</script>
 </body>
 </html>
