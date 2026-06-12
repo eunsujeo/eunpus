@@ -9,29 +9,27 @@
 </head>
 <body>
 <div class="wrap">
-<p class="series">설계 워크스루 · 10년차 백엔드 개발자 대상 · 비공개 (URL 공유)</p>
+<p class="series">설계 워크스루 · 백엔드 개발자 대상 · 비공개 (URL 공유)</p>
 <h1>자체 블록체인 매니저 설계 워크스루</h1>
-<p class="subtitle">Fireblocks 해부에서 전환 증명까지 — 페이지 순서대로 읽도록 설계되었습니다</p>
+<p class="subtitle">기능 하나마다 네 가지 조합 — 자체/Fireblocks × 이더리움/Canton — 의 동작을 전부 보여줍니다</p>
 
 <div class="callout">
 <div class="callout-title">전제 (합의 완료)</div>
 <p style="margin:0">Fireblocks 를 분석해 <b>자체 블록체인 매니저</b>를 만든다. 처음에는 자체 매니저로 테스트하고, 이후 Fireblocks 로 전환해도 <b>다른 시스템에 영향이 없어야</b> 한다. 체인은 이더리움·Canton 으로 시작하고, 나중에 다른 체인이 붙어도 마찬가지다.</p>
 </div>
 
-<ol class="toc">
-<li><a href="01-inventory.html"><span class="num">1</span>Fireblocks 해부 — 기능 인벤토리와 사용처 매트릭스<span class="act">이 문서의 지도</span></a></li>
-<li><a href="02-price-of-one-line.html"><span class="num">2</span>한 줄의 가격 — createTransaction 해부<span class="act">해부</span></a></li>
-<li><a href="03-ports.html"><span class="num">3</span>포트 두 개 — 매트릭스가 인터페이스가 되는 과정<span class="act">경계</span></a></li>
-<li><a href="04-invariants.html"><span class="num">4</span>불변식 — 시그니처가 같아도 의미가 같아야 한다<span class="act">경계</span></a></li>
-<li><a href="05-accounts.html"><span class="num">5</span>계정·주소 — 지갑 생성은 키 생성이 아니다<span class="act">자체 구축</span></a></li>
-<li><a href="06-withdrawal.html"><span class="num">6</span>출금 — exactly-once 의 진짜 적<span class="act">자체 구축</span></a></li>
-<li><a href="07-deposit.html"><span class="num">7</span>입금 — 커밋이 롤백되는 DB<span class="act">자체 구축</span></a></li>
-<li><a href="08-trust-boundary.html"><span class="num">8</span>신뢰 경계 — 서명자는 장님이면 안 된다<span class="act">자체 구축</span></a></li>
-<li><a href="09-switch-proof.html"><span class="num">9</span>전환 증명 — 코드·데이터·자금은 다른 경계다<span class="act">이 문서의 심장</span></a></li>
-<li><a href="10-extension.html"><span class="num">10</span>확장 증명 — N번째 체인은 어댑터 하나다<span class="act">마무리</span></a></li>
+<ol class="toc" start="0">
+<li><a href="00-cast.html"><span class="num">0</span>읽는 법 + 등장인물 — 두 층, 4분면, 그리고 부품들<span class="act">먼저 읽기</span></a></li>
+<li><a href="01-create-account.html"><span class="num">1</span>계정 생성 — createAccount<span class="act">온보딩</span></a></li>
+<li><a href="02-issue-deposit-address.html"><span class="num">2</span>입금 주소 발급 — issueDepositAddress<span class="act">온보딩·운영</span></a></li>
+<li><span class="todo"><span class="num">3</span>입금 주소 조회 — addressOf<span class="act">집필 예정</span></span></li>
+<li><span class="todo"><span class="num">4</span>입금 — 감지에서 확정까지<span class="act">집필 예정</span></span></li>
+<li><span class="todo"><span class="num">5</span>출금 — 제출에서 확정까지, 막혔을 때<span class="act">집필 예정</span></span></li>
+<li><span class="todo"><span class="num">6</span>잔액과 내역 조회 — getBalance · transactionsOf<span class="act">집필 예정</span></span></li>
+<li><span class="todo"><span class="num">7</span>전환과 확장 — 이 4분면이 가능한 이유<span class="act">집필 예정</span></span></li>
 </ol>
 
-<p class="foot">상세 레퍼런스: <a href="../wallet-service-components/">블록체인 매니저 컴포넌트 가이드</a> — 각 페이지 하단의 "깊이 보기" 가 해당 장으로 연결됩니다.</p>
+<p class="foot">상세 레퍼런스: <a href="../wallet-service-components/">블록체인 매니저 컴포넌트 가이드</a> — 본문은 가이드 없이 읽히도록 썼고, 더 깊은 내용만 페이지 하단에서 연결합니다.</p>
 </div>
 </body>
 </html>

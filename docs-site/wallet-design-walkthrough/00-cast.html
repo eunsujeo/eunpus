@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>0. 읽는 법 + 등장인물</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
+<div class="progress">
+<span class="cur">0</span><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><span class="todo">3</span><span class="todo">4</span><span class="todo">5</span><span class="todo">6</span><span class="todo">7</span>
+</div>
+<h1>읽는 법 + 등장인물</h1>
+<p class="subtitle">5분 — 이후 모든 페이지가 같은 형식으로 반복됩니다</p>
+
+<h2>구조는 두 층입니다</h2>
+
+<p>우리 시스템은 두 층으로 나뉩니다. <b>지갑 백엔드</b>는 API·계정 관리·업무 규칙을 담당하고 항상 우리가 만듭니다. 그 아래 <b>블록체인 매니저</b>는 체인과 실제로 대화하는 층 — 주소를 만들고, 트랜잭션에 서명·전파하고, 입금을 감지합니다. 이 매니저 층이 <b>교체 대상</b>입니다: 자체 구축으로 시작해서 Fireblocks 로 바꿔도, 백엔드는 매니저를 <b>포트(인터페이스)</b>로만 부르기 때문에 코드가 바뀌지 않습니다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    BE["지갑 백엔드 — 항상 우리 것<br/>(API · 계정 관리 · 업무 규칙)"]
+    PORT["포트 (인터페이스)<br/>createAccount · issueDepositAddress · addressOf<br/>submitTransaction · getBalance · transactionsOf …"]
+    SELF["자체 매니저<br/>(우리가 만든다)"]
+    FB["Fireblocks<br/>(벤더 SaaS)"]
+    ETH["이더리움"]
+    CTN["Canton"]
+
+    BE --> PORT
+    PORT --> SELF
+    PORT --> FB
+    SELF --> ETH
+    SELF --> CTN
+    FB --> ETH
+    FB --> CTN
+
+    classDef mine fill:#dcfce7,stroke:#16a34a;
+    classDef port fill:#e0e7ff,stroke:#6366f1;
+    classDef impl fill:#dbeafe,stroke:#2563eb;
+    classDef chain fill:#f5f5f7,stroke:#86868b;
+    class BE mine; class PORT port; class SELF,FB impl; class ETH,CTN chain;
+</pre></div>
+<p class="diagram-caption">두 층과 4분면. 포트 아래의 매니저(자체/Fireblocks)와 그 아래의 체인(이더리움/Canton)이 각각 둘씩 — 조합하면 네 가지 동작 경로가 나온다. 이 문서는 기능마다 그 네 경로를 전부 그린다.</p>
+
+<h2>4분면 읽는 법</h2>
+
+<p>1~6페이지는 전부 같은 형식입니다: <b>① 이 기능이 무엇이고 언제 불리나 → ② 포트 호출 (네 분면 공통, 글자 그대로 같음) → ③ 네 분면의 동작 다이어그램 — ▸자체×이더리움 / ▸자체×Canton / ▸Fireblocks×이더리움 / ▸Fireblocks×Canton → ④ 4분면 비교표.</b> 어떤 분면에서 기능이 "없으면", 없는 채로 그립니다 — 없음도 동작이기 때문입니다(2페이지에서 바로 보게 됩니다).</p>
+
+<h2>등장인물 — 다이어그램에 나올 부품들</h2>
+
+<p>자체 분면의 다이어그램에는 우리가 만들 부품들이 등장합니다. <b>이 표가 곧 자체 구축의 작업 범위</b>이기도 합니다:</p>
+
+<table>
+<thead><tr><th style="width:26%">부품</th><th>역할 (한 줄)</th><th style="width:14%">주 등장</th></tr></thead>
+<tbody>
+<tr><td><b>멀티체인 어댑터</b></td><td>체인별 규칙(주소 계산법·수수료·전파·확정 기준)을 공통 동사로 번역 — 체인 분기는 전부 이 안</td><td class="c">1·2·5p</td></tr>
+<tr><td><b>인덱서</b></td><td>체인을 읽어 입금 감지·확정 판정. <b>유일한 상시 worker</b> — 다른 부품은 요청 올 때 돌지만 이건 체인이 흐르는 한 계속 돈다</td><td class="c">4·5·6p</td></tr>
+<tr><td><b>트랜잭션 파이프라인</b></td><td>출금의 조립→서명→전파를 순서대로, <b>단계마다 기록하며</b> 진행 — 중간에 죽어도 같은 지점부터 재개</td><td class="c">5p</td></tr>
+<tr><td><b>HSM + 정책 게이트</b></td><td>HSM(키를 가두고 서명만 해주는 장비)이 키를 보관하고, 게이트가 <b>서명 직전에</b> 수신처·한도를 재검증 — 마지막 방어선</td><td class="c">1·2·5p</td></tr>
+<tr><td><b>계정 디렉터리 + watch-list</b></td><td>디렉터리 = 고객↔계정↔주소 매핑을 담는 <b>우리 DB</b> / watch-list = 인덱서가 감시할 우리 주소 목록</td><td class="c">전 페이지</td></tr>
+</tbody>
+</table>
+
+<p>Fireblocks 분면에서는 이 부품들이 어떻게 될까요 — <b>대부분 벤더 상자 안으로 들어가고, 둘만 남습니다</b>:</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    subgraph S["자체 분면 — 우리가 만들어 운영"]
+      direction TB
+      A1["멀티체인 어댑터"]
+      A2["인덱서 (상시 worker)"]
+      A3["트랜잭션 파이프라인"]
+      A4["HSM + 정책 게이트"]
+    end
+    subgraph F["Fireblocks 분면 — 벤더 안으로"]
+      direction TB
+      B1["createTransaction · webhook ·<br/>vault · MPC 서명 · TAP 정책<br/>(벤더가 운영)"]
+    end
+    KEEP["전환해도 남는 우리 것<br/>지갑 백엔드 · 계정 디렉터리(+watch-list)"]
+
+    S -.전환.-> F
+    S --- KEEP
+    F --- KEEP
+
+    classDef mine fill:#dbeafe,stroke:#2563eb;
+    classDef vendor fill:#f5f5f7,stroke:#86868b;
+    classDef keep fill:#dcfce7,stroke:#16a34a;
+    class A1,A2,A3,A4 mine; class B1 vendor; class KEEP keep;
+</pre></div>
+<p class="diagram-caption">전환의 예고편. 자체 분면의 부품 넷은 Fireblocks 로 가면 벤더 기능으로 대체되고, 지갑 백엔드와 계정 디렉터리는 어느 분면에서든 우리 것으로 남는다 — "다른 시스템에 영향이 없어야 한다"는 전제가 성립하는 물리적 이유. 상세는 7페이지.</p>
+
+<p>마지막으로 어휘 두 개만: <b>키 트리</b> — 키는 고객마다 만들지 않고, 셋업 때 HSM 안에서 <b>한 번</b> 만든 뿌리 키에서 가지(번호)를 늘려 갑니다(2페이지에서 동작으로 확인). <b>멱등 키</b> — 같은 요청의 재시도가 두 번 실행되지 않게 백엔드가 모든 쓰기 요청에 붙이는 고유 키입니다.</p>
+
+<p class="foot">더 깊이: 컴포넌트별 상세는 <a href="../wallet-service-components/">블록체인 매니저 컴포넌트 가이드</a> (참고용 — 본 워크스루는 가이드 없이 읽힙니다).</p>
+
+<div class="pager">
+<a href="index.html">← 목차</a>
+<a href="01-create-account.html">1. 계정 생성 →</a>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true });</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>1. 계정 생성 — createAccount</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
+<div class="progress">
+<a href="00-cast.html">0</a><span class="cur">1</span><a href="02-issue-deposit-address.html">2</a><span class="todo">3</span><span class="todo">4</span><span class="todo">5</span><span class="todo">6</span><span class="todo">7</span>
+</div>
+<h1>계정 생성 — createAccount</h1>
+<p class="subtitle">고객 온보딩의 첫 호출 — "이 고객의 자산을 담을 자리"를 만든다</p>
+
+<p><b>무엇·언제</b>: 고객이 가입하면 백엔드가 매니저에 계정 하나를 요청합니다. 계정은 주소가 아닙니다 — 한 고객의 여러 자산·여러 주소를 묶는 <b>상위 핸들</b>이고, 주소는 다음 페이지(발급)에서 이 계정 밑에 생깁니다. 네 분면 공통의 포트 호출은 한 줄입니다:</p>
+
+<pre><code>createAccount(고객 ref) → Account     // 결과는 항상 계정 디렉터리(우리 DB)에 저장</code></pre>
+
+<h2>▸ 자체 × 이더리움 — 장부에 줄 하나 (체인에 안 간다)</h2>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as 지갑 백엔드
+    participant MGR as 자체 매니저
+    participant DIR as 계정 디렉터리(우리 DB)
+
+    BE->>MGR: createAccount(고객 ref)
+    MGR->>MGR: 키 트리의 다음 가지 번호 할당 (예 — 계정 #1024)
+    Note over MGR: 체인 호출 없음 · 키 생성 없음 · 비용 0<br/>키는 셋업 때 만든 그 하나, 번호만 늘어난다
+    MGR->>DIR: 계정 저장 (ref ↔ #1024)
+    MGR-->>BE: Account(#1024)
+</pre></div>
+<p class="diagram-caption">이더리움 쪽 계정 생성은 순수 장부 작업이다 — 고객이 100만 명이어도 키는 하나, 계정은 번호 100만 개. 그래서 공짜고, 실패할 외부 요인도 없다.</p>
+
+<h2>▸ 자체 × Canton — 계정 생성이 곧 "주소의 탄생" (체인에 간다)</h2>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as 지갑 백엔드
+    participant MGR as 자체 매니저
+    participant HSM as HSM (키 보관)
+    participant PN as Canton 노드
+    participant DIR as 계정 디렉터리(우리 DB)
+
+    BE->>MGR: createAccount(고객 ref)
+    MGR->>HSM: 이 계정용 공개키 준비
+    MGR->>PN: 신원 등록 요청 (공개키 제출)
+    PN-->>MGR: 등록 문서 + 서명할 해시
+    MGR->>HSM: 해시 서명 (키는 HSM 밖으로 안 나옴)
+    MGR->>PN: 서명 제출 → 등록 확정
+    PN-->>MGR: PartyId 발급 — 이것이 곧 이 계정의 "주소"
+    MGR->>DIR: 계정 + PartyId 저장
+    MGR-->>BE: Account
+</pre></div>
+<p class="diagram-caption">Canton 에는 이더리움식 주소가 없다 — 대신 PartyId(체인 위의 신원)가 있고, 그것은 <b>온장(on-ledger) 등록</b>으로만 생긴다. 등록에는 서명이 필요하고 네트워크 비용이 든다. 즉 같은 createAccount 가 이더리움에선 공짜 장부 작업, Canton 에선 <b>유료 체인 트랜잭션</b>이다 — 주소가 계정과 함께 태어나므로, 다음 페이지의 "주소 발급"이 Canton 엔 없다.</p>
+
+<h2>▸ Fireblocks × 이더리움 — vault 생성 API 한 번</h2>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as 지갑 백엔드
+    participant FBI as Fireblocks 구현
+    participant FB as Fireblocks (SaaS)
+    participant DIR as 계정 디렉터리(우리 DB)
+
+    BE->>FBI: createAccount(고객 ref)
+    FBI->>FB: vault 계정 생성 API
+    Note over FB: vault = Fireblocks 의 계정 단위<br/>키는 Fireblocks MPC 가 보관
+    FB-->>FBI: vaultId
+    FBI->>DIR: 계정 저장 (ref ↔ vaultId)
+    FBI-->>BE: Account
+</pre></div>
+<p class="diagram-caption">자체 분면의 "번호 할당"이 "벤더 API 호출"로 바뀌었을 뿐, 백엔드가 본 것은 동일하다. 디렉터리 저장이 여기서도 빠지지 않는 것에 주목 — 이후 모든 요청의 "고객 → 계정" 해석은 벤더에 묻지 않고 우리 DB 로 푼다(벤더를 바꿔도 남는 데이터).</p>
+
+<h2>▸ Fireblocks × Canton — vault + 전용 절차</h2>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as 지갑 백엔드
+    participant FBI as Fireblocks 구현
+    participant FB as Fireblocks (SaaS)
+    participant DIR as 계정 디렉터리(우리 DB)
+
+    BE->>FBI: createAccount(고객 ref)
+    FBI->>FB: vault 생성 + Canton party 절차
+    Note over FB: party 등록은 전용 SDK 가 수행하고<br/>Fireblocks 는 그 서명을 담당 (키는 FB MPC)<br/>— 상세 절차는 적용 전 공식 문서 확인
+    FB-->>FBI: vaultId + PartyId
+    FBI->>DIR: 계정 + PartyId 저장
+    FBI-->>BE: Account
+</pre></div>
+<p class="diagram-caption">Fireblocks 도 Canton 의 "온장 등록" 성질을 피해 갈 수 없다 — 누가 서명하느냐(우리 HSM → Fireblocks MPC)만 바뀐다. 체인의 성질은 custody 를 바꿔도 따라온다는 첫 사례.</p>
+
+<h2>4분면 비교</h2>
+
+<table>
+<thead><tr><th style="width:18%"></th><th>자체 × 이더리움</th><th>자체 × Canton</th><th>FB × 이더리움</th><th>FB × Canton</th></tr></thead>
+<tbody>
+<tr><td><b>실체</b></td><td>장부에 번호 하나</td><td>온장 신원 등록</td><td>vault 생성 API</td><td>vault + party 절차</td></tr>
+<tr><td><b>체인에 가나</b></td><td>아니오</td><td><b>예 (유료)</b></td><td>아니오</td><td><b>예 (유료)</b></td></tr>
+<tr><td><b>서명 주체</b></td><td>— (서명 없음)</td><td>우리 HSM</td><td>—</td><td>Fireblocks MPC</td></tr>
+<tr><td><b>우리 책임</b></td><td>번호 관리·디렉터리</td><td>키·서명·비용·디렉터리</td><td>디렉터리</td><td>디렉터리 (절차 확인)</td></tr>
+</tbody>
+</table>
+
+<p>표에서 읽을 것: 갈라지는 축은 custody(자체/FB)가 아니라 <b>체인</b>입니다 — "체인에 가나" 행이 세로(custody)가 아니라 가로(체인)로 갈립니다. 그리고 네 분면 모두 마지막 줄이 같습니다: <b>디렉터리는 항상 우리 것.</b></p>
+
+<p class="foot">더 깊이: 계정·주소 발급 시나리오 — <a href="../wallet-service-components/scenario-provisioning.html">가이드 9장</a> · Canton 등록 절차 상세 — <a href="../wallet-service-components/example-selfbuild.html">15.3</a>.</p>
+
+<div class="pager">
+<a href="00-cast.html">← 0. 읽는 법</a>
+<a href="index.html">목차</a>
+<a href="02-issue-deposit-address.html">2. 입금 주소 발급 →</a>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true });</script>
+</body>
+</html>
