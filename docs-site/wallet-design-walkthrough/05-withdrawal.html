@@ -23,6 +23,22 @@ submitTransaction(출금 지시 + 멱등 키) → TxRef    // 이후 상태는 g
 
 <p>제출 전에는 <b>견적(estimateFee)</b>이 있습니다 — 조립과 달리 순번·UTXO 를 <b>점유하지 않는 읽기</b>라 출금 화면에서 수시로 불러도 되고, 추정이지 보장이 아니므로 실제 수수료는 조립 단계에서 다시 계산합니다. 등급(low/med/high)의 정체는 이더리움에선 노드의 최근 수수료 이력 <b>백분위수</b> + 모의 실행(가스량)이고, Canton 은 수수료 시장이 없어 비용이 <b>제출물 크기의 함수</b>(traffic)라 등급 개념이 퇴화합니다 — 견적이 안정적이라는 뜻이기도 합니다.</p>
 
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as 지갑 백엔드
+    participant MGR as 자체 매니저
+    participant CH as 이더리움 노드
+
+    BE->>MGR: estimateFee(출금 지시)
+    MGR->>CH: 최근 블록 수수료 이력 조회 (feeHistory)
+    MGR->>CH: 모의 실행 (estimateGas) — 가스 사용량 산출
+    Note over BE,CH: 순번·UTXO 점유 없음 — 읽기뿐이라 출금 화면에서 수시 호출해도 안전
+    MGR->>MGR: 이력의 백분위수로 등급 산출
+    MGR-->>BE: low · medium · high (보장 아님 — 실제 수수료는 조립 때 재계산)
+</pre></div>
+<p class="diagram-caption">estimateFee 의 동작(자체 × 이더리움). 단가(이력 백분위수)와 사용량(모의 실행) 두 재료의 곱이 견적이다. <b>Canton</b> 은 노드 왕복이 더 단순하다 — 수수료 시장이 없어 제출물 크기로 traffic 비용을 계산하면 끝(견적이 안정적). <b>Fireblocks</b> 분면은 이 전체가 벤더 API 한 번으로 접힌다.</p>
+
 <h2>▸ 자체 × 이더리움 — 조립→서명→전파, 단계마다 기록</h2>
 
 <div class="diagram"><pre class="mermaid">
