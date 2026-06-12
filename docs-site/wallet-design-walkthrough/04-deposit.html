@@ -119,6 +119,18 @@ sequenceDiagram
 
 <p>두 축이 또 다른 것을 결정합니다 — <b>감지 주체는 custody 축</b>(우리 인덱서 vs 벤더 webhook), <b>성립·확정·귀속은 체인 축</b>. 그리고 네 분면 공통의 규칙 하나: <b>감지(또는 통지)는 힌트고, 잔액은 확정으로만 움직인다.</b></p>
 
+<h2>백엔드에서 이렇게 받는다 — 출처와 무관한 한 핸들러</h2>
+
+<pre><code>// 이벤트 구독 — 인덱서가 보내든(자체) webhook 이 보내든(FB) 핸들러는 하나
+transactions.onChainEvent { ev ->
+    when (ev.status) {
+        PENDING   -> notify(ev.account, "입금 확인 중")              // 잔액 반영 금지
+        CONFIRMED -> { ledger.credit(ev); notify(ev.account, "입금 완료") }
+        ORPHANED  -> ledger.revert(ev)                               // reorg 무효화 — 이더리움 분면만 발생
+    }
+}</code></pre>
+<p class="diagram-caption">분면이 바꾸는 것은 이 핸들러에 이벤트를 "누가 넣어주느냐"뿐이다. Canton 의 수락(ACCEPT) 결정 로직만 별도 훅으로 추가된다 — 그것은 체인 고유의 업무 단계라서.</p>
+
 <p class="foot">더 깊이: 인덱서 수집·reorg 처리 — <a href="../wallet-service-components/component-indexer.html">가이드 3장</a> · 입금 시나리오 — <a href="../wallet-service-components/scenario-deposit.html">10장</a>.</p>
 
 <div class="pager">

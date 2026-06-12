@@ -107,6 +107,17 @@ sequenceDiagram
 
 <p>표에서 읽을 것: "기능 존재" 행이 또 <b>가로(체인)로</b> 갈립니다. 그리고 감시 책임 행은 <b>세로(custody)로</b> 갈리죠 — 두 축이 서로 다른 것을 결정한다는 패턴이 이 문서 내내 반복됩니다.</p>
 
+<h2>백엔드에서 이렇게 부른다 — "없음" 분면이 코드에서 갈리는 모습</h2>
+
+<pre><code>// 첫 주소 확보 — 1p 의 openWallet 이 부르는 그 함수
+suspend fun acquireFirstAddress(account: Account, asset: Asset): Address =
+    when (val issuer = accounts as? DepositAddressIssuanceCapability) {
+        null -> accounts.addressOf(account, asset)            // Canton — 발급이 타입부터 없다
+                                                              //   → 계정과 함께 태어난 PartyId 조회 (안내엔 memo 동봉)
+        else -> issuer.issueDepositAddress(account, asset)    // 이더리움 — 발급 (등록까지)
+    }</code></pre>
+<p class="diagram-caption">"없음" 분면의 처리가 capability 형변환 한 번이다 — 런타임 예외를 기다리지 않고, 컴파일 타입이 분기를 만든다. 이 함수도 custody 가 무엇인지는 모른다.</p>
+
 <p class="foot">더 깊이: 발급·등록·놓친 입금 방어 — <a href="../wallet-service-components/scenario-provisioning.html">가이드 9장</a> · 키 트리가 움직이는 모습 — <a href="../wallet-service-components/wallet-creation-animated.html">지갑 생성 애니메이션</a>.</p>
 
 <div class="pager">

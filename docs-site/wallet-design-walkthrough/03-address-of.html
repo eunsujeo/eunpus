@@ -65,6 +65,16 @@ sequenceDiagram
 
 <p>"네 분면이 같다"는 것이 왜 중요한가 — <b>호출 빈도가 가장 높은 동사가 분면과 무관</b>하므로, 입금 화면·고객센터·정산 어디에서 쓰든 전환(7p)의 영향이 0입니다. 차이를 만들 이유가 없는 곳에서 차이를 안 만드는 것도 설계입니다.</p>
 
+<h2>백엔드에서 이렇게 부른다 — 읽기라서 더 단순하다</h2>
+
+<pre><code>// 입금 화면 핸들러 — 멱등 키 없음 (읽기)
+suspend fun depositScreen(accountId: String, asset: Asset): DepositInfo {
+    val account = directory.resolve(accountId)            // 고객 → 계정은 우리 DB 로 (벤더에 안 묻는다)
+    val address = accounts.addressOf(account, asset)      // 몇 번 불러도 같은 값
+    return DepositInfo(address, memoFor(account, asset))  // Canton 자산이면 memo 코드 동봉
+}</code></pre>
+<p class="diagram-caption">화면이 1초에 수백 번 불러도 되는 코드 — 상태 변경이 없고, 네 분면 어디서도 같다.</p>
+
 <p class="foot">더 깊이: 조회/발급 분리의 근거 — <a href="../wallet-service-components/abstraction.html">가이드 13.3</a>.</p>
 
 <div class="pager">

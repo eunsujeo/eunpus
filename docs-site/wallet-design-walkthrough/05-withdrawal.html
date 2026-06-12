@@ -119,6 +119,21 @@ sequenceDiagram
 
 <p>읽을 것: "막혔을 때" 행이 <b>체인 축</b>으로 갈리고(수수료의 문제 vs 상대의 문제), "누가 하나"는 전부 <b>custody 축</b>으로 갈립니다. 그리고 수락 대기·기한·철회라는 <b>업무 정책은 네 분면 어디서도 사라지지 않습니다</b> — 매니저가 흡수 못 하는, 백엔드(우리)의 몫.</p>
 
+<h2>백엔드에서 이렇게 부른다 — 제출은 한 줄, 막힘 대응은 capability</h2>
+
+<pre><code>// 출금 유스케이스 — 업무 승인은 비즈 레이어에서 끝난 뒤
+suspend fun withdraw(order: ApprovedWithdrawal): TxRef =
+    withIdempotency("withdraw:${order.id}") {
+        transactions.submitTransaction(order.toRequest())   // 4분면의 그림은 전부 이 한 줄 아래
+    }
+
+// 막힌 출금 화면 — 분면이 지원하는 버튼만 자연히 노출된다
+fun stuckActions(): List<Action> = buildList {
+    (transactions as? FeeBoostCapability)?.let { add(BoostAction(it)) }   // 이더리움 분면만
+    (transactions as? CancelCapability)?.let { add(CancelAction(it)) }    // 철회 — Canton 필수
+}</code></pre>
+<p class="diagram-caption">운영 화면조차 분면을 하드코딩하지 않는다 — capability 가 있으면 버튼이 생기고, 없으면 처음부터 없다.</p>
+
 <p class="foot">더 깊이: 파이프라인 기록·복구·순번 — <a href="../wallet-service-components/component-tx-nonce.html">가이드 4장</a> · 서명 직전 검증 — <a href="../wallet-service-components/component-signing.html">5.5</a> · 출금 시나리오 — <a href="../wallet-service-components/scenario-withdrawal.html">11장</a>.</p>
 
 <div class="pager">

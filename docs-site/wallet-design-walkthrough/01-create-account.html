@@ -112,6 +112,18 @@ sequenceDiagram
 
 <p>표에서 읽을 것: 갈라지는 축은 custody(자체/FB)가 아니라 <b>체인</b>입니다 — "체인에 가나" 행이 세로(custody)가 아니라 가로(체인)로 갈립니다. 그리고 네 분면 모두 마지막 줄이 같습니다: <b>디렉터리는 항상 우리 것.</b></p>
 
+<h2>백엔드에서 이렇게 부른다 — 네 분면 공통</h2>
+
+<pre><code>// 온보딩 유스케이스 — 어느 분면이 꽂혀 있든 이 코드는 같다
+suspend fun openWallet(ref: AccountRef, asset: Asset): OpenedWallet =
+    withIdempotency("open-wallet:$ref:$asset") {           // 같은 요청 재시도 안전
+        val account = accounts.createAccount(ref)           // ← 이 페이지의 4분면
+        directory.save(account)                             // 결과는 항상 우리 DB 에
+        val address = acquireFirstAddress(account, asset)   // 첫 주소 확보 — 2p 에서
+        OpenedWallet(account, address)
+    }</code></pre>
+<p class="diagram-caption">백엔드는 매니저가 자체인지 Fireblocks 인지, 자산이 이더리움인지 Canton 인지 모른 채 이 코드를 실행한다 — 4분면은 전부 포트 아래의 일이다.</p>
+
 <p class="foot">더 깊이: 계정·주소 발급 시나리오 — <a href="../wallet-service-components/scenario-provisioning.html">가이드 9장</a> · Canton 등록 절차 상세 — <a href="../wallet-service-components/example-selfbuild.html">15.3</a>.</p>
 
 <div class="pager">
