@@ -139,6 +139,21 @@ transactions.onChainEvent { ev ->
 }</code></pre>
 <p class="diagram-caption">분면이 바꾸는 것은 이 핸들러에 이벤트를 "누가 넣어주느냐"뿐이다. Canton 의 수락(ACCEPT) 결정 로직만 별도 훅으로 추가된다 — 그것은 체인 고유의 업무 단계라서.</p>
 
+<h2>AML 스크리닝 — 확정과 잔액 반영 사이</h2>
+
+<p>출금에 서명 직전의 정책 게이트(6p)가 있다면, 입금에는 <b>잔액 반영 직전의 AML 스크리닝</b>이 있습니다. 결정적 차이는 — 출금은 우리 서명 없이는 못 나가니 <b>문 앞에서 차단</b>할 수 있지만, 입금은 우리 서명 없이 체인에 이미 들어와 버립니다. 그래서 입금 쪽은 거절이 아니라 <b>격리</b>입니다: 체인이 확정(CONFIRMED)했어도 송신 주소가 위험(제재 목록·해킹 자금 등)하면 available 에 반영하지 않고 보류시켜 사람 심사로 넘깁니다.</p>
+
+<table>
+<thead><tr><th style="width:18%"></th><th>자체 × 이더리움</th><th>자체 × Canton</th><th>FB × 이더리움</th><th>FB × Canton</th></tr></thead>
+<tbody>
+<tr><td><b>스크리닝 자리</b></td><td>확정 후 — 잔액 반영 전 (인덱서 훅)</td><td><b>수락 전</b> — OFFER 검증에 포함</td><td>벤더 정책 (AML Transaction Screening Policy)</td><td>벤더 정책 + 수락 전</td></tr>
+<tr><td><b>걸리면</b></td><td>격리 — 잔액 미반영 + 심사</td><td><b>사전 거절 (WITHDRAW)</b> 가능</td><td>벤더 룰에 따라 보류 (상세는 적용 전 확인)</td><td>거절 또는 보류</td></tr>
+<tr><td><b>위험 판정</b></td><td>외부 KYT 벤더 조회 (위험 DB 를 직접 만들지 않는다)</td><td>외부 KYT 벤더 조회</td><td>벤더 통합</td><td>벤더 통합</td></tr>
+</tbody>
+</table>
+
+<p>읽을 것: "걸리면" 행이 <b>체인 축</b>으로 갈립니다 — 입금이 수락 행위인 Canton 만 <b>받기 전에 거절</b>할 수 있고(위의 "수락 전 검증"에 AML 이 들어간다), 이더리움은 사후 격리뿐입니다. 도메인은 바뀌지 않습니다 — 입금 상태 셋(감지/확정/무효화)은 그대로고, 스크리닝은 "확정 ≠ 잔액 반영" 이라는 게이트로 존재합니다. 걸린 뒤의 절차(심사·동결·신고)는 업무의 몫 — 범위 밖(0p)입니다.</p>
+
 <p class="foot">더 깊이: 인덱서 수집·reorg 처리 — <a href="../wallet-service-components/component-indexer.html">가이드 3장</a> · 입금 시나리오 — <a href="../wallet-service-components/scenario-deposit.html">10장</a>.</p>
 
 <div class="pager">
