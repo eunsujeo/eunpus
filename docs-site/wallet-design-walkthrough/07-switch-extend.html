@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>7. 전환과 확장 — 이 4분면이 가능한 이유</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
+<div class="progress">
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-withdrawal.html">5</a><a href="06-balance-history.html">6</a><span class="cur">7</span>
+</div>
+<h1>전환과 확장 — 이 4분면이 가능한 이유</h1>
+<p class="subtitle">1~6페이지가 보여준 것의 회수 — 그리고 전제의 세 문장을 증명으로 닫기</p>
+
+<h2>1~6페이지에서 반복된 패턴 둘</h2>
+
+<p>모든 기능 페이지에서 같은 일이 일어났습니다. <b>① 포트 호출은 네 분면에서 글자 그대로 같았다</b> — 그래서 백엔드 코드는 어느 분면에서도 같다. <b>② 두 축은 서로 다른 것을 결정했다</b> — custody 축은 "누가 실행하나"(우리 부품 vs 벤더), 체인 축은 "무엇이 일어나나"(주소의 탄생 방식·수락 행위·잠김·확정 성질). 이 분리가 유지된 것은 우연이 아니라 두 가지 약속 덕입니다:</p>
+
+<table>
+<thead><tr><th style="width:30%">약속</th><th>내용 — 1~6페이지에서 본 그 규칙들</th></tr></thead>
+<tbody>
+<tr><td><b>같은 동사</b> (포트)</td><td>매니저는 포트로만 호출된다 — 구현이 갈려도 시그니처는 하나 (모든 페이지의 "공통 호출" 코드 한 줄)</td></tr>
+<tr><td><b>같은 의미</b> (불변식)</td><td>조회는 새 주소를 만들지 않는다(3p) · 등록까지가 발급(2p) · 기록은 전파 전(5p) · 통지는 힌트(4p) · 판정은 가용만(6p) · 없는 기능은 타입 부재(2p) — 어느 구현이든 지켜야 하는 약속</td></tr>
+</tbody>
+</table>
+
+<p>그리고 이 약속은 주장이 아니라 <b>시험</b>입니다 — 포트별 계약 테스트 한 벌을 두 구현(자체=테스트넷, Fireblocks=샌드박스)이 똑같이 통과하게 하면, "전환해도 의미가 보존된다"가 측정이 됩니다:</p>
+
+<pre><code>abstract class AccountPortContractTest {        // 시험지는 하나
+    abstract fun port(): AccountPort            // 응시자만 바뀐다
+    @Test fun `조회는 절대 새 주소를 만들지 않는다`() { … }
+    @Test fun `같은 멱등 키 재시도는 두 번 실행되지 않는다`() { … }
+}
+class SelfBuildContractTest : AccountPortContractTest()    // 자체 — 테스트넷
+class FireblocksContractTest : AccountPortContractTest()   // FB — 샌드박스</code></pre>
+
+<h2>전환 — 코드는 한 줄, 자금은 이사</h2>
+
+<p>코드의 전환은 설정 한 줄입니다(<code>custody: selfbuild → fireblocks</code>) — 1~6페이지에서 백엔드가 분면을 모르고 동작했으니 당연한 귀결입니다. 체크리스트도 이미 본 것들입니다: 멱등 키 → externalTxId 연결(5p), 자체 파이프라인·인덱서 끄기(5p — 순번 충돌·4p — webhook 대체). 그런데 <b>한 가지는 설정으로 안 됩니다</b>: 자체 주소는 우리 키에서, Fireblocks 주소는 벤더 키에서 나왔으므로(2p) — <b>주소와 그 위의 잔액은 이전되지 않습니다</b>:</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    A["전환 시점<br/>설정 한 줄 변경<br/>신규 발급부터 새(FB) 주소"] --> B["이중 감시 기간<br/>구 주소 watch-list 유지<br/>(늦은 입금 수용)"]
+    B --> C["이사 (sweep)<br/>구 주소 잔액을<br/>새 vault 로 출금"]
+    C --> D["종료<br/>구 주소 안내 중단<br/>디렉터리에 세대 기록"]
+
+    classDef step fill:#dbeafe,stroke:#2563eb;
+    classDef warn fill:#fef3c7,stroke:#d97706;
+    class A,D step; class B,C warn;
+</pre></div>
+<p class="diagram-caption">전환 운영 타임라인 — 노랑 구간이 비용의 전부고, 그 비용은 <b>구 주소 수와 잔액에 비례</b>한다. "자체로 테스트부터, 전환은 나중에"라는 우리 순서의 논리가 여기 있다: 테스트 단계의 구 주소·잔액은 거의 0이라, <b>전환이 가장 쌀 때 전환 가능성을 증명</b>해 두는 것이다.</p>
+
+<h2>확장 — N번째 체인은 어댑터 하나</h2>
+
+<p>1~6페이지의 4분면 표에서 체인 열을 비교해 보면, 이더리움과 Canton 은 거의 모든 축에서 반대편이었습니다 — 주소(계산 vs 등록)·순번(있음 vs 없음)·제출(끝 vs 시작)·확정(대기 vs 즉시)·귀속(주소 vs memo). <b>설계 공간의 양 극단을 같은 포트 뒤에서 소화했다</b>는 것이 확장의 증명입니다: 비트코인이든 솔라나든 이 두 극단의 <i>사이</i>에 있지 바깥에 있지 않으므로, 추가 작업은 체인 어댑터 한 개 + 등록 한 줄이고 백엔드·파이프라인·인덱서 가공부는 0줄입니다. 전제 조건 둘만 지키면 — 어댑터는 <b>실패도 공통 분류로 번역</b>해야 하고(재전송 안전/재조립 필요/영구 실패), 체인이 못 하는 일은 <b>기능 부재로 선언</b>해야 합니다(2p) — 이 둘이 새면 체인 분기가 백엔드로 스며들어 "0줄"이 거짓이 됩니다.</p>
+
+<div class="callout">
+<div class="callout-title">마무리 — 전제의 세 문장이 증명으로</div>
+<p style="margin:0"><b>"자체로 테스트한다"</b> — 1~6의 자체 분면이 그 동작 전부다. <b>"Fireblocks 로 전환해도 다른 시스템 무영향"</b> — 같은 포트 호출(전 페이지) + 계약 테스트 + 설정 한 줄, 자금 이사만 운영 절차로. <b>"체인이 늘어도 무영향"</b> — 양 극단(이더리움·Canton)을 이미 같은 포트 뒤에서 소화했고, 새 체인은 어댑터 하나다.</p>
+</div>
+
+<p class="foot">더 깊이: 포트별 택일·교체 구조 — <a href="../wallet-service-components/abstraction.html">가이드 13장</a> · DI 한 줄 교체 — <a href="../wallet-service-components/project-structure.html">17장</a> · 계약 테스트 구성은 본 워크스루의 제안(스켈레톤 미반영).</p>
+
+<div class="pager">
+<a href="06-balance-history.html">← 6. 잔액과 내역</a>
+<a href="index.html">목차로 →</a>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true });</script>
+</body>
+</html>

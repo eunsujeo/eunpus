@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>5. 출금 — 제출에서 확정까지, 막혔을 때</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
+<div class="progress">
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><span class="cur">5</span><a href="06-balance-history.html">6</a><a href="07-switch-extend.html">7</a>
+</div>
+<h1>출금 — 제출에서 확정까지, 막혔을 때</h1>
+<p class="subtitle">고객 자금이 나가는 길 — 이 문서에서 사고가 가장 비싼 페이지</p>
+
+<p><b>무엇·언제</b>: 업무 승인이 끝난 출금 지시를 백엔드가 매니저에 넘깁니다. 모든 분면 공통의 위험은 <b>중복 실행</b> — 같은 출금이 두 번 나가면 체인엔 되돌리기가 없습니다. 그래서 호출에는 항상 멱등 키가 붙고, 자체 분면에선 한 가지 규칙이 더 붙습니다: <b>전파(체인에 쓰기) 전에 먼저 기록한다</b> — 전파 직후 프로세스가 죽고 기록이 없으면, 재시도가 새 트랜잭션을 만들어 둘 다 나가기 때문입니다.</p>
+
+<pre><code>submitTransaction(출금 지시 + 멱등 키) → TxRef    // 이후 상태는 getStatus · 이벤트로 추적</code></pre>
+
+<h2>▸ 자체 × 이더리움 — 조립→서명→전파, 단계마다 기록</h2>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as 지갑 백엔드
+    participant PIPE as 트랜잭션 파이프라인
+    participant GATE as 정책 게이트
+    participant HSM as HSM
+    participant CH as 이더리움
+    participant IDX as 인덱서
+
+    BE->>PIPE: submitTransaction(승인된 출금 + 멱등 키)
+    PIPE->>PIPE: 조립 — 계정의 순번(nonce) 점유 · 기록 ①
+    PIPE->>GATE: 서명 요청
+    GATE->>GATE: 직전 재검증 — 수신처 화이트리스트 · 한도
+    GATE->>HSM: 통과한 것만 서명 (키는 안 나옴)
+    HSM-->>PIPE: 서명본 · 기록 ②
+    PIPE->>CH: 전파 · 기록 ③
+    CH-->>PIPE: txRef
+    PIPE-->>BE: txRef
+    IDX-->>BE: 블록 누적 → 확정(CONFIRMED) push
+</pre></div>
+<p class="diagram-caption">기록 ①②③ 이 생명선이다 — 어느 사이에서 죽어도 "그 단계부터, <b>같은 서명본으로</b>" 재개한다(새로 조립하면 새 순번 = 이중 출금). 순번(nonce)은 계정별 일련번호라 동시 출금은 줄을 세우고, 수수료가 낮아 <b>막히면</b> 같은 순번에 수수료만 올려 다시 보낸다(boost) — 순번을 건너뛰면 뒤 출금이 전부 멈추기 때문.</p>
+
+<h2>▸ 자체 × Canton — 제출이 끝이 아니다, 상대가 받아야 끝</h2>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as 지갑 백엔드
+    participant PIPE as 트랜잭션 파이프라인
+    participant HSM as 정책 게이트 + HSM
+    participant PN as Canton 노드
+    participant CP as 수신 상대방
+
+    BE->>PIPE: submitTransaction(승인된 출금 + 멱등 키)
+    PIPE->>HSM: 전송 제안 조립 · 검증 · 서명 (순번 없음)
+    PIPE->>PN: 제안(OFFER) 제출
+    Note over PN: 송신 자금이 "잠김(locked)" 상태로 묶인다 —<br/>잔액에서 빠진 것도, 남은 것도 아닌 제3의 상태 (6p)
+    PN->>CP: 수락 요청 전달
+    alt 상대가 수락
+        CP-->>PN: ACCEPT
+        PN-->>BE: 확정 — 즉시, 되돌림 없음
+    else 기한 내 미수락
+        BE->>PN: cancel — 철회(WITHDRAW)로 잠금 해제
+    end
+</pre></div>
+<p class="diagram-caption">이더리움의 "전파=거의 끝"이 Canton 에선 "제출=시작"이다 — 상대 수락까지 자금이 잠기고, 막힘의 원인이 수수료가 아니라 <b>상대의 침묵</b>이라 boost 가 무의미하다(이 분면엔 boost 가 타입부터 없다). 대응 동사는 cancel(철회) 하나.</p>
+
+<h2>▸ Fireblocks × 이더리움 — 한 줄 뒤로 들어간 파이프라인</h2>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as 지갑 백엔드
+    participant FBI as Fireblocks 구현
+    participant FB as Fireblocks (SaaS)
+
+    BE->>FBI: submitTransaction(승인된 출금 + 멱등 키)
+    FBI->>FB: createTransaction(…, externalTxId = 멱등 키)
+    Note over FB: 조립·순번·MPC 서명·전파를 벤더가 한 번에 —<br/>정책 게이트의 자리는 벤더의 거버넌스 정책(TAP)이 잇는다
+    FB-->>FBI: 트랜잭션 id (= TxRef)
+    FBI-->>BE: TxRef
+    FB-->>BE: 상태 변화 webhook (확정 포함) — 막히면 boost API 호출만
+</pre></div>
+<p class="diagram-caption">자체 분면의 파이프라인 전체가 벤더 안으로 들어간다. 우리 멱등 키를 externalTxId 로 넘겨 중복 차단이 벤더 쪽에서도 이어지는 것, 그리고 <b>자체 순번 관리를 병행하면 벤더 내부 순번과 충돌</b>하므로 전환 시 우리 파이프라인을 꺼야 한다는 것 — 이 두 줄이 전환 체크리스트(7p)에 들어간다.</p>
+
+<h2>▸ Fireblocks × Canton — 한 줄이어도 수락 대기는 그대로</h2>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as 지갑 백엔드
+    participant FBI as Fireblocks 구현
+    participant FB as Fireblocks (SaaS)
+
+    BE->>FBI: submitTransaction(승인된 출금 + 멱등 키)
+    FBI->>FB: createTransaction — Canton 전용 거래 유형으로 제출
+    FB-->>BE: webhook — 상태에 OFFER → 수락 대기 → ACCEPT 가 그대로 노출
+    Note over FB,BE: 자금 잠김·상대 수락 대기는 체인의 성질이라 벤더도 못 없앤다 —<br/>기한 내 미수락 시 철회(cancel) 호출은 우리 몫 (상세는 적용 전 확인)
+</pre></div>
+<p class="diagram-caption">네 번째 확인 — custody 는 "누가 실행하나"를 바꾸고, 체인은 "무엇이 일어나나"를 바꾼다. 백엔드의 "수락 대기 화면·기한 정책·철회 버튼"은 자체든 Fireblocks 든 똑같이 필요하다.</p>
+
+<h2>4분면 비교</h2>
+
+<table>
+<thead><tr><th style="width:18%"></th><th>자체 × 이더리움</th><th>자체 × Canton</th><th>FB × 이더리움</th><th>FB × Canton</th></tr></thead>
+<tbody>
+<tr><td><b>조립·서명·전파</b></td><td>우리 파이프라인 (3단 기록)</td><td>우리 파이프라인 (순번 없음)</td><td>벤더 한 줄</td><td>벤더 한 줄</td></tr>
+<tr><td><b>서명 직전 검증</b></td><td>우리 정책 게이트</td><td>우리 정책 게이트</td><td>벤더 정책 (TAP)</td><td>벤더 정책</td></tr>
+<tr><td><b>제출 후</b></td><td>블록 확정 대기</td><td><b>상대 수락 대기 (자금 잠김)</b></td><td>webhook 추적</td><td>수락 대기 (잠김)</td></tr>
+<tr><td><b>막혔을 때</b></td><td>boost (수수료↑ 재전송)</td><td>cancel (철회) 만</td><td>boost API 호출</td><td>cancel</td></tr>
+<tr><td><b>우리 책임</b></td><td>전부 (기록·복구·순번)</td><td>전부 + 기한·철회 정책</td><td>멱등 키 전달·상태 처리</td><td>+ 기한·철회 정책</td></tr>
+</tbody>
+</table>
+
+<p>읽을 것: "막혔을 때" 행이 <b>체인 축</b>으로 갈리고(수수료의 문제 vs 상대의 문제), "누가 하나"는 전부 <b>custody 축</b>으로 갈립니다. 그리고 수락 대기·기한·철회라는 <b>업무 정책은 네 분면 어디서도 사라지지 않습니다</b> — 매니저가 흡수 못 하는, 백엔드(우리)의 몫.</p>
+
+<p class="foot">더 깊이: 파이프라인 기록·복구·순번 — <a href="../wallet-service-components/component-tx-nonce.html">가이드 4장</a> · 서명 직전 검증 — <a href="../wallet-service-components/component-signing.html">5.5</a> · 출금 시나리오 — <a href="../wallet-service-components/scenario-withdrawal.html">11장</a>.</p>
+
+<div class="pager">
+<a href="04-deposit.html">← 4. 입금</a>
+<a href="index.html">목차</a>
+<a href="06-balance-history.html">6. 잔액과 내역 →</a>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true });</script>
+</body>
+</html>

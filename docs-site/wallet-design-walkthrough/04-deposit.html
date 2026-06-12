@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>4. 입금 — 감지에서 확정까지</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
+<div class="progress">
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><span class="cur">4</span><a href="05-withdrawal.html">5</a><a href="06-balance-history.html">6</a><a href="07-switch-extend.html">7</a>
+</div>
+<h1>입금 — 감지에서 확정까지</h1>
+<p class="subtitle">외부에서 돈이 들어왔다는 걸 우리는 어떻게 아는가 — 그리고 언제부터 믿는가</p>
+
+<p><b>무엇·언제</b>: 출금과 달리 입금은 우리가 시작하지 않습니다 — 외부 송신자가 보내고, 우리는 알아채야 합니다. 그래서 핵심 질문이 둘입니다: <b>누가 감지하나</b>(분면마다 다름), 그리고 <b>언제부터 잔액으로 믿나</b>(감지 ≠ 확정 — 모든 분면 공통). 백엔드는 매니저의 이벤트 구독 하나로 받습니다:</p>
+
+<pre><code>onChainEvent(handler)   // 입금 감지(PENDING)·확정(CONFIRMED) 이벤트가 push 된다</code></pre>
+
+<h2>▸ 자체 × 이더리움 — 인덱서가 체인을 긁어서 안다</h2>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant EXT as 외부 송신자
+    participant CH as 이더리움
+    participant IDX as 인덱서 (상시 worker)
+    participant BE as 지갑 백엔드
+
+    EXT->>CH: 우리 고객 주소로 송금
+    loop 블록마다
+        IDX->>CH: 새 블록 읽기
+    end
+    IDX->>IDX: 감시 목록(watch-list)과 대조 — 우리 주소다!
+    IDX->>BE: 입금 감지 (PENDING) — 잔액 반영 안 함
+    Note over IDX: 블록이 쌓이길 기다린다 — 체인 끝은<br/>드물게 교체(reorg)되어 "본 입금"이 사라질 수 있다
+    IDX->>BE: 확정 (CONFIRMED) — 이제 available 반영
+    Note over IDX,BE: reorg 로 무효화되면 가공본만 되감는다 —<br/>원본 기록은 영구 보존 (같은 입금이 재등장 가능)
+</pre></div>
+<p class="diagram-caption">아무도 알려주지 않으므로 인덱서가 24시간 체인을 읽는다(0p — 유일한 상시 worker). 감지 즉시 잔액을 올리면 reorg 때 "없는 돈을 이미 쓴" 상태가 되므로, 고객에겐 "확인 중"을 보여주고 <b>확정 후에만 사용 가능</b> 처리한다.</p>
+
+<h2>▸ 자체 × Canton — 입금은 감지가 아니라 "수락"이다</h2>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant EXT as 외부 송신자
+    participant PN as Canton 노드
+    participant IDX as 인덱서 (노드 구독)
+    participant BE as 지갑 백엔드
+    participant HSM as HSM
+
+    EXT->>PN: 우리 PartyId 앞으로 전송 제안 (OFFER + memo)
+    PN->>IDX: 수락 대기 건 감지
+    IDX->>BE: "입금 제안 도착" — 아직 우리 돈 아님
+    BE->>BE: 검증 — 아는 자산인가? memo 가 유효한 고객 코드인가?
+    alt 통과
+        BE->>HSM: 수락(ACCEPT) 서명
+        BE->>PN: 수락 제출 — 이 순간 입금 성립
+        PN-->>IDX: 보유 반영 (즉시 확정 — 되돌림 없음)
+        IDX->>BE: CONFIRMED + memo 로 고객 귀속
+    else 거절
+        BE->>PN: 거절(REJECT) — 받지 않는다
+    end
+</pre></div>
+<p class="diagram-caption">Canton 입금은 우리의 <b>서명 행위</b>가 있어야 성립한다 — 모르는 자산·이상한 송신자의 제안을 "장님으로" 수락하면 안 되므로 수락 전에 검증이 선다(5p 의 정책 게이트와 같은 자리). 대신 수락되면 <b>즉시 확정</b>이고 reorg 가 없다 — 이더리움의 "기다림"과 Canton 의 "행위"가 정확히 반대 비용이다.</p>
+
+<h2>▸ Fireblocks × 이더리움 — 벤더가 감지해서 알려준다</h2>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant EXT as 외부 송신자
+    participant CH as 이더리움
+    participant FB as Fireblocks (SaaS)
+    participant BE as 지갑 백엔드
+
+    EXT->>CH: 우리 vault 주소로 송금
+    CH->>FB: Fireblocks 가 자기 vault 범위를 감지
+    FB->>BE: webhook — 입금 감지 (PENDING)
+    FB->>BE: webhook — 확정 (CONFIRMED)
+    Note over FB,BE: 통지는 서명 검증을 하더라도 "힌트"로 취급 —<br/>누락·지연 가능. 잔액·회계 판정은 확정 통지 기준 +<br/>주기적 대사(벤더 잔액 vs 우리 기록)로 닫는다
+    BE->>BE: available 반영 + 고객 통지
+</pre></div>
+<p class="diagram-caption">상시 worker(인덱서)가 통째로 사라지고 webhook 수신으로 바뀐다 — 전환(7p)에서 운영이 가장 크게 바뀌는 지점. 단 "감지 ≠ 확정" 규칙은 그대로다 — 벤더도 PENDING/CONFIRMED 를 구분해서 보내고, 우리는 확정만 잔액에 쓴다.</p>
+
+<h2>▸ Fireblocks × Canton — 통지 모양은 webhook, 성질은 Canton</h2>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant EXT as 외부 송신자
+    participant FB as Fireblocks (SaaS)
+    participant BE as 지갑 백엔드
+
+    EXT->>FB: 우리 PartyId 앞 전송 제안 (OFFER)
+    FB->>BE: webhook — 상태에 OFFER/ACCEPT 단계가 노출된다
+    Note over FB,BE: "수락해야 들어온다"는 Canton 의 성질은 그대로 —<br/>수락의 실행·정책 연동 방식은 적용 전 공식 문서 확인
+    FB->>BE: webhook — 수락 완료 → 확정 (즉시)
+    BE->>BE: memo 로 고객 귀속 + available 반영
+</pre></div>
+<p class="diagram-caption">custody 를 바꿔도 체인의 성질(수락 행위·즉시 확정·memo 귀속)은 따라온다 — 1·2페이지에서 본 패턴의 세 번째 확인. 바뀌는 것은 "누가 감지·실행하나"뿐이다.</p>
+
+<h2>4분면 비교</h2>
+
+<table>
+<thead><tr><th style="width:18%"></th><th>자체 × 이더리움</th><th>자체 × Canton</th><th>FB × 이더리움</th><th>FB × Canton</th></tr></thead>
+<tbody>
+<tr><td><b>감지 주체</b></td><td>우리 인덱서 (상시)</td><td>우리 인덱서 (노드 구독)</td><td>벤더 → webhook</td><td>벤더 → webhook</td></tr>
+<tr><td><b>입금의 성립</b></td><td>감지로 충분</td><td><b>우리가 수락 서명해야</b></td><td>감지로 충분</td><td>수락 필요 (실행 방식 확인)</td></tr>
+<tr><td><b>확정</b></td><td>블록 누적 대기</td><td>수락 즉시</td><td>벤더 확정 통지</td><td>수락 즉시</td></tr>
+<tr><td><b>되돌림(reorg)</b></td><td><b>가능 — 롤백 설계 필수</b></td><td>없음</td><td>벤더가 흡수</td><td>없음</td></tr>
+<tr><td><b>고객 귀속</b></td><td>주소로</td><td>memo 로</td><td>주소로</td><td>memo 로</td></tr>
+</tbody>
+</table>
+
+<p>두 축이 또 다른 것을 결정합니다 — <b>감지 주체는 custody 축</b>(우리 인덱서 vs 벤더 webhook), <b>성립·확정·귀속은 체인 축</b>. 그리고 네 분면 공통의 규칙 하나: <b>감지(또는 통지)는 힌트고, 잔액은 확정으로만 움직인다.</b></p>
+
+<p class="foot">더 깊이: 인덱서 수집·reorg 처리 — <a href="../wallet-service-components/component-indexer.html">가이드 3장</a> · 입금 시나리오 — <a href="../wallet-service-components/scenario-deposit.html">10장</a>.</p>
+
+<div class="pager">
+<a href="03-address-of.html">← 3. 입금 주소 조회</a>
+<a href="index.html">목차</a>
+<a href="05-withdrawal.html">5. 출금 →</a>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true });</script>
+</body>
+</html>
