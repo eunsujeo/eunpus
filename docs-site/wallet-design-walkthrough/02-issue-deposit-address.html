@@ -30,11 +30,11 @@ sequenceDiagram
     participant DIR as 계정 디렉터리(우리 DB)
     participant WL as watch-list (인덱서의 감시 목록)
 
-    BE->>MGR: issueDepositAddress(계정 #1024, ETH)
-    MGR->>MGR: 다음 주소 번호 소비 (#3)
+    BE->>MGR: issueDepositAddress(계정 1024번, ETH)
+    MGR->>MGR: 다음 주소 번호 소비 — 3번째
     MGR->>MGR: xpub 로 주소 계산 (로컬)
     Note over BE,WL: xpub(공개키 쪽 사본)만으로 자식 주소가 계산된다 — HSM 호출 없음. 개인키는 출금 서명 때 HSM 안에서 같은 번호로 파생 (5p)
-    MGR->>DIR: 주소 저장 (계정 #1024 · 3번째)
+    MGR->>DIR: 주소 저장 (계정 1024번 · 3번째)
     MGR->>WL: 감시 목록 등록 — 등록 실패면 발급도 실패
     MGR-->>BE: 주소 (0xAb3…)
 </pre></div>

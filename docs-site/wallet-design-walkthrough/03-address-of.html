@@ -29,7 +29,7 @@ sequenceDiagram
     participant MGR as 매니저 (자체든 Fireblocks 든)
     participant DIR as 계정 디렉터리(우리 DB)
 
-    BE->>MGR: addressOf(계정 #1024, 자산)
+    BE->>MGR: addressOf(계정 1024번, 자산)
     MGR->>DIR: 이 계정에 "발급(등록)된" 주소 읽기
     DIR-->>MGR: 주소 (이더리움 = 0xAb3… · Canton = PartyId)
     MGR-->>BE: 같은 주소 — 몇 번을 불러도
@@ -45,7 +45,7 @@ sequenceDiagram
     participant MGR as 잘못된 구현
     participant WL as watch-list (감시 목록)
 
-    BE->>MGR: addressOf(계정 #1024, ETH)
+    BE->>MGR: addressOf(계정 1024번, ETH)
     MGR->>MGR: ❌ 즉석 계산해 반환
     Note over MGR,WL: 계산된 주소가 감시 목록에 없을 수 있다 —<br/>고객이 그 주소로 입금하면 우리만 모른다 (2p 의 규칙 위반)
     MGR-->>BE: 등록 안 된 주소 ⚠️

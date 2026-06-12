@@ -30,10 +30,10 @@ sequenceDiagram
     participant DIR as 계정 디렉터리(우리 DB)
 
     BE->>MGR: createAccount(고객 ref)
-    MGR->>MGR: 번호 할당 — 계정 #1024
+    MGR->>MGR: 번호 할당 — 계정 1024번
     Note over BE,DIR: 체인 호출 없음 · 키 생성 없음 · 비용 0 — 키는 셋업 때 만든 그 하나, 번호만 늘어난다
-    MGR->>DIR: 계정 저장 (ref ↔ #1024)
-    MGR-->>BE: Account(#1024)
+    MGR->>DIR: 계정 저장 (ref ↔ 1024번)
+    MGR-->>BE: Account(1024번)
 </pre></div>
 <p class="diagram-caption">이더리움 쪽 계정 생성은 순수 장부 작업이다 — 고객이 100만 명이어도 키는 하나, 계정은 번호 100만 개. 그래서 공짜고, 실패할 외부 요인도 없다.</p>
 
