@@ -123,7 +123,7 @@ flowchart LR
 <thead><tr><th style="width:24%">항목</th><th>local party</th><th>external party</th></tr></thead>
 <tbody>
 <tr><td>키 통제</td><td>topology 관리를 host node 에 위임</td><td><strong>자체 signing key 로 자체 통제</strong></td></tr>
-<tr><td>namespace</td><td>host(SPN<span class="g" data-tip="Super-Party-Node 류의 submission node — local party 의 제출을 대행하는 노드">?</span>)와 공유</td><td>자체 고유 namespace</td></tr>
+<tr><td>namespace</td><td>host node 와 공유 (제출을 host 노드에 의존)</td><td>자체 고유 namespace</td></tr>
 <tr><td>제출 노드</td><td>최소 1개 필요</td><td>없음 (submission key holder)</td></tr>
 <tr><td>확인 노드</td><td>임의 수</td><td>최소 1개 필요</td></tr>
 </tbody>

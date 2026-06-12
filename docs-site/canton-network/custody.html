@@ -201,6 +201,7 @@ flowchart LR
 <li><strong>pre-approval 켜짐</strong> — 들어오는 전송이 자동 수락돼 바로 holding 으로 들어온다.</li>
 <li><strong>pre-approval 꺼짐(기본)</strong> — 전송 instruction 의 pending/completed 상태를 보고, 수동으로 <code>TransferInstruction_Accept</code>(수령) 또는 <code>TransferInstruction_Reject</code>(반환)한다.</li>
 <li><strong>"전송이 보였다 ≠ 입금 확정"</strong> — 확정은 수락 후 holding 이 생긴 시점이다. 상세 상태 추적은 <a href="indexer.html">4. 인덱서</a>.</li>
+<li><strong>위탁(Fireblocks) 경로</strong> — Fireblocks 수탁이면 이 관찰을 Fireblocks 가 대신해 <code>transactionType</code> webhook(OFFER/ACCEPT/…)으로 통지받을 수 있다. 자체 participant 의 Ledger API "TransferIn" 을 직접 구독하는 건 직접 운영 경로다 — 어느 쪽인지는 통합 방식에 따라 갈린다(<a href="integration.html">5. 운영</a>).</li>
 </ul>
 
 <h3>6.5 운영 · 대사</h3>

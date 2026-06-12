@@ -4,8 +4,8 @@ vendor: canton
 status: draft
 tags: [architecture, transaction, integration, stablecoin, identity, recovery]
 stage_introduced: 52
-last_updated_stage: 78
-source_count: 9
+last_updated_stage: 82
+source_count: 10
 related: [transaction, api]
 ---
 
@@ -62,6 +62,20 @@ Canton 어댑터가 흡수해야 할 핵심 = **"제출=완료" 가 아니다** 
 
 **Fireblocks 의 Canton 입금 주소 모델 (★ Stage 81)** — Fireblocks 는 Canton 을 **tag/memo 형 자산**으로 취급한다: ① 공식 dev 문서 "각 deposit address 는 같은 온체인 주소를 갖고 tag/memo 로만 구분"(direct-custody-wallets) ② create-deposit-address 엔드포인트는 "UTXO 또는 Tag/Memo 기반 자산 전용"(계정형 실패) ③ **콘솔 1차 관찰**(사용자 워크스페이스, 2026-06-12): Canton 자산에 PERMANENT ADDRESS(PartyId 형식, 불변) + Memo 가 있고, "+ Add" 로 **새 memo 가 자동 생성**됨(hex 형식). 즉 generateNewAddress 의 Canton 동작 = (같은 PartyId, 새 memo) 발급 — "Canton 은 발급 불가·memo 채번은 백엔드 몫" 이던 기존 모델의 정정 근거. ⚠️ memo 자동 생성의 보장·유일성 규칙은 문서 미명시 — 적용 전 통합 테스트로 확정.
 
+### Fireblocks 의 Canton 통합 — node 운영 경계 (★ Stage 82)
+"입금 OFFER 를 알려면 node 를 구독해야 하나 / node 는 누가 운영하나" 의 해소. Fireblocks 는 Canton 에서 **세 층의 역할**을 갖고, 그에 따라 **두 통합 경로**로 갈린다.
+
+**세 역할 (확정)**
+- **Super Validator 운영** — Global Synchronizer infra·CC tx 검증·거버넌스 참여. ★ 이건 **network 층** 역할이지, 개별 고객 party 의 입금을 관찰하는 node 와는 **다른 층**이다. (source: fireblocks-canton-launch — ⚠️ 2차 출처 종합 2026-02)
+- **Fireblocks Trust Company (NYDFS qualified custodian)** — Canton Coin 수탁. (source: fireblocks-canton-launch PRNewswire)
+- **서명 프로바이더** — 공식 Wallet SDK `core-signing-fireblocks` (Raw Signing·EdDSA Ed25519). (source: canton-wallet-sdk-github, ★ Stage 73-75)
+
+**두 통합 경로 — 입금 OFFER 감지 주체가 갈린다**
+- **Path A — Fireblocks-native 수탁**: Fireblocks 가 validator infra 를 운영하고 입금/확정을 **transactionType webhook**(OFFER/ACCEPT/…)으로 push → **고객은 자체 node 불요**. 감지 주체 = Fireblocks. (⚠️ Fireblocks 가 고객 party-hosting participant 를 **직접 운영**하는지는 공식 문서 미명시 — Super Validator 운영 + 풀 custody + webhook 노출에서의 **강한 추론**. Q-2026-06-12-C03)
+- **Path B — 서명만 위탁**: 고객이 **자체 participant node + Ledger API** 를 운영하고 입금은 그 **ledger event("TransferIn") 구독**으로 감지, Fireblocks 는 `core-signing-fireblocks` 로 **서명만**. 감지 주체 = 고객. (source: canton-wallet-sdk-github)
+
+→ 정리: **"node 구독이 필요한가" 는 경로에 달렸다.** Path A 면 Fireblocks webhook(node 불요), Path B 면 자체 node 의 ledger event 구독 필수. **Super Validator 운영(Fireblocks 확정)** 은 어느 경로에서도 "고객 입금 관찰 node" 를 자동으로 뜻하지 않는다 — 별도 층.
+
 ### 수탁 통합 핵심 — wallet/guidance (★ Stage 54)
 docs.canton.network/integrations/wallet/guidance 1차 출처. 수탁 설계에 직결되는 구체 요건:
 - **입금 식별 = memo tag (별도 입금주소 아님)** — Canton 은 deposit 마다 입금주소를 따로 두지 않고 transfer metadata 의 memo 로 추적: `"meta":{"values":{"splice.lfdecentralizedtrust.org/reason":"memo-ref"}}`. XRP/XLM destination-tag 류. 거래소 입금도 이 방식. **EVM 식 "사용자별 입금주소" 가정이 깨지는 지점**.
@@ -91,8 +105,10 @@ docs.canton.network/integrations/wallet/guidance 1차 출처. 수탁 설계에 �
 - canton-foundation-supervalidators (2026-06-10) — <https://canton.foundation/> (구 sync.global) Super Validator 명단·거버넌스 (1차)
 - canton-wallet-sdk-github (2026-06-10) — <https://github.com/canton-network/wallet> 공식 TS Wallet SDK·core-signing-fireblocks (1차 코드)
 - fireblocks-canton-transaction-objects (2026-06-10) — <https://developers.fireblocks.com/reference/transaction-objects> Canton transactionType·CantonHashes (1차, A11 해소)
+- fireblocks-canton-launch (2026-02) — Fireblocks Canton 지원 출시: **Super Validator 운영** + **Fireblocks Trust Company(NYDFS) CC 수탁** (⚠️ 2차 출처 종합) — <https://www.prnewswire.com/news-releases/fireblocks-launches-canton-support-to-expand-its-regulated-tokenization-and-settlement-infrastructure-302677536.html> · <https://www.kucoin.com/news/flash/fireblocks-integrates-canton-network-to-enable-regulated-on-chain-settlement>
 
 ## Open Questions
 - **Q-2026-05-22-A11**: Canton transactionType ↔ Fireblocks 매핑 + timeout — **ANSWERED (Stage 78)**. Fireblocks 가 전용 `transactionType` 필드(동일 이름) + `CantonHashes`(offerUpdateId 연결)로 노출, timeout=송신자 WITHDRAW(앱 정책). (source: fireblocks-canton-transaction-objects)
 - **Q-2026-06-09-C01**: Canton finality 정확 수치 — **ANSWERED (Stage 54)**. docs.canton.network/integrations/wallet/guidance 에 문자 그대로 **"Finality usually takes 3-10s."** (verbatim 재확인, 요약 주입 아님). 그간 "검색 요약 only" 격리했으나 1차 출처 확보로 해제. 메커니즘 = 2/3 BFT + Mediator 2-phase commit. 단 "usually" 라 환경별 편차 가능.
 - **Q-2026-06-09-C02**: tx 당 traffic 비용 산정식 — **ANSWERED (Stage 52, 구체화 Stage 53)**. 비용 = `메시지크기 × (1 + recipients × readVsWriteScalingFactor/10000)`. 파라미터: 무료 400,000 byte/20분, 추가 $60/MB, factor 4bp, 최소 top-up 200,000 byte. estimate = `/v2/interactive-submission/prepare`. (source: docs-canton-network-renewed synchronizer-traffic)
+- **Q-2026-06-12-C03**: Fireblocks-native Canton 수탁에서 **고객 party 를 host 하는 participant node 를 Fireblocks 가 직접 운영**하는지(= 입금 OFFER 관찰·webhook push 의 주체) — **공식 문서 미명시**. 확정: Fireblocks 의 **Super Validator 운영**(Global Synchronizer/CC 검증/거버넌스 — network infra) + **Trust Company CC 수탁** + **Wallet SDK 서명 드라이버**. Super Validator 는 network 층이라 per-customer deposit 관찰 node 와 다른 층 — 강한 추론은 Path A(Fireblocks 운영·webhook)이나 1차 확인 필요. (source: fireblocks-canton-launch 2차 종합)

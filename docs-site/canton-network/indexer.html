@@ -137,7 +137,7 @@ flowchart LR
 
 <div class="callout callout-warn">
 <div class="callout-title">입금 감지 = created holding 이벤트 (공식 "TransferIn")</div>
-<p>EVM 입금은 "우리 주소로 들어온 Transfer 로그" 지만, Canton 입금은 <strong>우리 party 를 stakeholder 로 하는 holding contract 가 created</strong> 되는 사건이다 — 공식 가이드는 이를 <strong>"TransferIn"</strong> 이벤트로 감시하라고 안내한다. 단 2-step 이라, 들어오는 전송은 먼저 Pending 으로 보이고 <strong>우리가(또는 pre-approval 이) ACCEPT 해야 실제 holding 이 created</strong> 된다. "전송이 보였다 = 입금 확정" 으로 착각하면 안 된다 — 확정은 ACCEPT 후 holding created 시점이다. (전송 instruction 의 pending/completed 상태를 함께 조회한다.)</p>
+<p>EVM 입금은 "우리 주소로 들어온 Transfer 로그" 지만, Canton 입금은 <strong>우리 party 를 stakeholder 로 하는 holding contract 가 created</strong> 되는 사건이다 — 공식 가이드는 이를 <strong>"TransferIn"</strong> 이벤트로 감시하라고 안내한다. 단 2-step 이라, 들어오는 전송은 먼저 Pending 으로 보이고 <strong>우리가(또는 pre-approval 이) ACCEPT 해야 실제 holding 이 created</strong> 된다. "전송이 보였다 = 입금 확정" 으로 착각하면 안 된다 — 확정은 ACCEPT 후 holding created 시점이다. (전송 instruction 의 pending/completed 상태를 함께 조회한다.) <em>(Fireblocks 등 관리형 수탁을 쓰면 이 감지를 벤더가 대신해 webhook 으로 통지받는다 — 직접 Ledger API 스트림을 구독하는 건 자체 운영 경로다.)</em></p>
 </div>
 
 <div class="callout callout-warn">

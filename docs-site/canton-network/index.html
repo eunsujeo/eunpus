@@ -59,7 +59,7 @@
 
 <h3>0.1 Canton 이란</h3>
 
-<p>Canton 은 <strong>DAML<span class="g" data-tip="Digital Asset Modeling Language — Canton 의 스마트컨트랙트 언어. 자산·권한·전송 규칙을 contract 로 표현한다">?</span> 스마트컨트랙트 기반의 privacy-enabled 퍼블릭 블록체인</strong>이다. 기관 금융·자산 토큰화·국가 간 결제를 주 대상으로 설계됐다. 다른 퍼블릭 체인과 가장 다른 점은 <strong>프라이버시</strong>다 — 거래 당사자만 해당 거래 데이터를 보고, 무관한 참여자에게는 노출되지 않는다.</p>
+<p>Canton 은 <strong>DAML<span class="g" data-tip="Digital Asset Modeling Language — Canton 의 스마트컨트랙트 언어. 자산·권한·전송 규칙을 contract 로 표현한다">?</span> 스마트컨트랙트 기반의 privacy-enabled 퍼블릭 블록체인</strong>이다(참여는 허가형 — permissioned — 이라 "오픈 퍼블릭" 과는 다르다). 기관 금융·자산 토큰화·국가 간 결제를 주 대상으로 설계됐다. 다른 퍼블릭 체인과 가장 다른 점은 <strong>프라이버시</strong>다 — 거래 당사자만 해당 거래 데이터를 보고, 무관한 참여자에게는 노출되지 않는다.</p>
 
 <div class="callout">
 <div class="callout-title">먼저 — 이 가이드에 계속 나오는 용어 6개 (1분)</div>
@@ -119,7 +119,7 @@ flowchart TB
         SEQ["Sequencer<br/>순서화 · timestamp"]
         MED["Mediator<br/>confirmation 집계<br/>2-phase commit"]
       end
-      SV["Super Validator<br/>CC↔USD·USD↔byte 환율 게시<br/>traffic 운영"]
+      SV["Super Validator<br/>Global Synchronizer 운영<br/>(sequencing·CC 검증·거버넌스)<br/>+ CC-USD 환율 게시"]
     end
 
     WALLET --> LAPI --> PNODE
@@ -137,7 +137,7 @@ flowchart TB
     class SEQ,MED special;
     class SV ext;
 </pre></div>
-<p class="diagram-caption">Figure 0-1. Canton 구성. <strong>바깥의 큰 박스 "Canton 네트워크" 가 곧 privacy-enabled 퍼블릭 블록체인</strong>이다 — participant 계층(파랑) + Synchronizer(보라) + Super Validator(회색) <strong>전체</strong>가 Canton 이고, 그 밖의 <strong>초록(우리 지갑 서비스)만 Canton 이 아니라 우리 것</strong>이다(Canton 어댑터를 통해 연동). "privacy" 는 그림의 특정 영역이 아니라 거래가 흐르는 방식(view 분해, <a href="model.html">1장</a>·<a href="validator.html">2장</a>)의 성질이다. <strong>파랑 = participant 계층</strong> — 우리가 붙는 Ledger API 와 그 뒤의 participant node(=validator). validator 는 party 를 host 하고 자신이 이해관계자인 거래를 검증한다. <strong>보라 = Synchronizer</strong>(Sequencer 가 순서·timestamp 를, Mediator 가 confirmation 집계 후 2-phase commit 으로 확정). <strong>회색 = Super Validator</strong> — CC↔USD·USD↔byte 환율을 게시해 traffic 가격을 정한다(직접 운영 대상 아님). 우리가 코드로 닿는 면은 거의 항상 <strong>Ledger API<span class="g" data-tip="앱이 Canton 원장과 대화하는 participant node 의 API. EVM 의 JSON-RPC(eth_*)에 해당. gRPC(com.daml.ledger.api.v2) + JSON/HTTP(/v2/…) 두 형태. ACS 조회·command 제출(prepare→execute)·update 스트림을 한다 (구체 엔드포인트는 6장)">?</span></strong> 한 겹이다 — validator 를 직접 운영하든(<a href="integration.html">5. 운영</a>) 관리형으로 위탁하든. <strong>이 Ledger API 는 누구의 API 인가 — participant node(=validator)가 노출하는 API</strong>다. 우리가 직접 운영한 노드든, 위탁한 노드든, 그 노드가 제공하는 창구가 Ledger API 이고 우리 지갑 백엔드는 거기에 붙는다.</p>
+<p class="diagram-caption">Figure 0-1. Canton 구성. <strong>바깥의 큰 박스 "Canton 네트워크" 가 곧 privacy-enabled 퍼블릭 블록체인</strong>이다 — participant 계층(파랑) + Synchronizer(보라) + Super Validator(회색) <strong>전체</strong>가 Canton 이고, 그 밖의 <strong>초록(우리 지갑 서비스)만 Canton 이 아니라 우리 것</strong>이다(Canton 어댑터를 통해 연동). "privacy" 는 그림의 특정 영역이 아니라 거래가 흐르는 방식(view 분해, <a href="model.html">1장</a>·<a href="validator.html">2장</a>)의 성질이다. <strong>파랑 = participant 계층</strong> — 우리가 붙는 Ledger API 와 그 뒤의 participant node(=validator). validator 는 party 를 host 하고 자신이 이해관계자인 거래를 검증한다. <strong>보라 = Synchronizer</strong>(Sequencer 가 순서·timestamp 를, Mediator 가 confirmation 집계 후 2-phase commit 으로 확정). <strong>회색 = Super Validator</strong> — 공용 Global Synchronizer 를 운영(sequencing·CC 검증·거버넌스)하고 CC-USD 환율도 게시한다(traffic 가격의 기준). 직접 운영 대상 아님. 우리가 코드로 닿는 면은 거의 항상 <strong>Ledger API<span class="g" data-tip="앱이 Canton 원장과 대화하는 participant node 의 API. EVM 의 JSON-RPC(eth_*)에 해당. gRPC(com.daml.ledger.api.v2) + JSON/HTTP(/v2/…) 두 형태. ACS 조회·command 제출(prepare→execute)·update 스트림을 한다 (구체 엔드포인트는 6장)">?</span></strong> 한 겹이다 — validator 를 직접 운영하든(<a href="integration.html">5. 운영</a>) 관리형으로 위탁하든. <strong>이 Ledger API 는 누구의 API 인가 — participant node(=validator)가 노출하는 API</strong>다. 우리가 직접 운영한 노드든, 위탁한 노드든, 그 노드가 제공하는 창구가 Ledger API 이고 우리 지갑 백엔드는 거기에 붙는다.</p>
 
 <div class="callout">
 <div class="callout-title">실제로 누구인가 — 박스별 기관</div>
@@ -145,7 +145,7 @@ flowchart TB
 <li>🟩 <strong>우리 지갑 서비스</strong> = <strong>우리 은행·수탁사</strong>(우리가 만드는 것).</li>
 <li>🟦 <strong>participant node = validator</strong> = <strong>우리(직접 운영)</strong> 또는 <strong>위탁 운영사</strong>. 서명만 위탁하면 Fireblocks·Dfns 같은 custody 제공자(<a href="custody.html">6. 수탁 통합</a>).</li>
 <li>🟪 <strong>Synchronizer</strong> = 우리가 운영하지 않는 <strong>공용 Global Synchronizer</strong> — 아래 Super Validator 들이 공동 운영.</li>
-<li>⬜ <strong>Super Validator</strong> = <strong>주요 금융·핀테크 기관들</strong>. 공식 재단(<strong>Canton Foundation</strong>, 구 Global Synchronizer Foundation) 회원 기준 <strong>Goldman Sachs · SBI Digital Asset · Euroclear · Broadridge · Tradeweb · Digital Asset · Moody's · Cumberland</strong> 등으로, 현재 <strong>54개 SV 노드</strong>가 Global Synchronizer 를 공동 운영한다.</li>
+<li>⬜ <strong>Super Validator</strong> = <strong>주요 금융·핀테크 기관들</strong>. 공식 재단(<strong>Canton Foundation</strong>, 구 Global Synchronizer Foundation) 회원 기준 <strong>Goldman Sachs · SBI Digital Asset · Euroclear · Broadridge · Tradeweb · Digital Asset · Moody's · Cumberland</strong> 등으로, 현재 <strong>54개 SV 노드</strong>가 Global Synchronizer 를 공동 운영한다. <strong>Fireblocks</strong> 도 Super Validator 를 운영한다(2026-02 Canton 지원 출시).</li>
 </ul>
 <p>요점: <strong>우리(은행)는 초록 + (직접 운영 시) 파랑까지</strong>가 우리 몫이고, <strong>보라·회색은 우리가 운영하지 않는 공용 글로벌 계층</strong>이다. (출처: Canton Foundation, 2026-06 기준 — 명단·노드 수는 시점에 따라 변함.)</p>
 </div>
