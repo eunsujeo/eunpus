@@ -60,7 +60,8 @@ class FireblocksContractTest : AccountPortContractTest()   // FB — 샌드박�
 │   └─ fireblocks/        #   Fireblocks SDK 래핑 → "같은" 포트 구현
 └─ apps/
     ├─ api/               #   서버 — DI 가 여기: custody=selfbuild|fireblocks 설정 한 줄
-    └─ indexer-worker/    #   상시 worker (자체 분면에서만 가동, 4p)</code></pre>
+    ├─ indexer-worker/    #   상시 worker (자체 분면에서만 가동, 4p)
+    └─ webhook-receiver/  #   webhook 수신 엔드포인트 (FB 분면에서만 가동 — 아래 인프라 그림)</code></pre>
 
 <p>모듈 사이의 <b>의존 방향</b>이 이 문서의 주장들을 컴파일 타임에 강제합니다 — 화살표는 "의존한다"이고, 전부 안쪽(domain)을 향합니다:</p>
 
