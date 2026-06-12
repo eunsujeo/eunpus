@@ -26,7 +26,9 @@
 sequenceDiagram
     autonumber
     participant BE as 지갑 백엔드
+    box rgb(239,246,255) 블록체인 매니저
     participant MGR as 자체 매니저
+    end
     participant DIR as 계정 디렉터리(우리 DB)
 
     BE->>MGR: createAccount(고객 ref)
@@ -43,8 +45,10 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant BE as 지갑 백엔드
+    box rgb(239,246,255) 블록체인 매니저
     participant MGR as 자체 매니저
     participant HSM as HSM (키 보관)
+    end
     participant PN as Canton 노드
     participant DIR as 계정 디렉터리(우리 DB)
 
@@ -66,8 +70,10 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant BE as 지갑 백엔드
+    box rgb(239,246,255) 블록체인 매니저
     participant FBI as Fireblocks 구현
     participant FB as Fireblocks (SaaS)
+    end
     participant DIR as 계정 디렉터리(우리 DB)
 
     BE->>FBI: createAccount(고객 ref)

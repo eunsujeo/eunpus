@@ -122,6 +122,7 @@ data class Asset(val symbol: String, val chainId: ChainId)   // 예: ETH×ethere
 data class Address(val value: String, val memoTag: String?)  // Canton 이면 value = PartyId
 data class Balance(val available: Amount, val pending: Amount, val locked: Amount)  // 6p — 세 칸
 data class TxRef(val value: String, val chainId: ChainId)    // 제출된 출금의 추적 핸들
+enum TxStatus { SUBMITTED, AWAITING_ACCEPT, CONFIRMED, FAILED }  // 출금 공통 상태 — 5p "상태 한 장"
 // (ChainId · Amount · Transfer · TransactionRequest · ChainEvent 등 부속 타입은 생략)
 
 // ── 포트 둘 — 매니저(자체/FB)가 구현하는 면 ──

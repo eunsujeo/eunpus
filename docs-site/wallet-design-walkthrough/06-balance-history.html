@@ -27,9 +27,11 @@ transactionsOf(account, 기간) → 입출금 내역 (시간순)</code></pre>
 sequenceDiagram
     autonumber
     participant BE as 지갑 백엔드
+    box rgb(239,246,255) 블록체인 매니저
     participant MGR as 자체 매니저
     participant PJ as 인덱서 기록 (수신 — 4p)
     participant TX as 파이프라인 기록 (송신 — 5p)
+    end
 
     BE->>MGR: getBalance(계정, 자산)
     MGR->>PJ: 확정 입금 합산 (+ 대기분 별도)
@@ -49,8 +51,10 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant BE as 지갑 백엔드
+    box rgb(239,246,255) 블록체인 매니저
     participant FBI as Fireblocks 구현
     participant FB as Fireblocks (SaaS)
+    end
 
     BE->>FBI: getBalance(계정, 자산)
     FBI->>FB: vault 잔액 API — 가용·대기·잠김을 구분해 준다
@@ -86,6 +90,20 @@ suspend fun canWithdraw(account: Account, asset: Asset, amount: Amount): Boolean
 suspend fun historyScreen(account: Account, range: BlockRange): List<Transfer> =
     transactions.transactionsOf(account, range)    // 자체 분면이면 "보내는 중" 상태까지 포함</code></pre>
 <p class="diagram-caption">판정 코드에 available 만 쓰는 것 — 6페이지 규칙이 코드 한 줄로 강제되는 자리다.</p>
+
+<h2>대사 — 두 장부를 주기적으로 맞춘다</h2>
+
+<p>잔액·내역의 숫자는 결국 <b>두 장부</b>에서 나옵니다 — 우리 기록(디렉터리·파이프라인·projection)과 바깥의 진실(온체인 / 벤더). 통지·조회가 아무리 잘 와도 누락·지연·버그는 생기므로, <b>주기적으로 둘을 직접 대조</b>합니다:</p>
+
+<table>
+<thead><tr><th style="width:16%"></th><th>자체 분면</th><th>Fireblocks 분면</th></tr></thead>
+<tbody>
+<tr><td><b>무엇을</b></td><td>우리 projection·기록 vs <b>노드의 온체인 잔액·tx</b></td><td>우리 기록 vs <b>벤더 잔액·거래 목록 API</b> (+표본은 온체인 탐색기)</td></tr>
+<tr><td><b>언제</b></td><td colspan="2">주기(예: 시간 단위) + 일마감 — 회계 기표 전 필수</td></tr>
+<tr><td><b>어긋나면</b></td><td colspan="2"><b>자동 보정 금지</b> — 정정 이벤트를 만들어 사람이 본다 (없는 돈을 만들거나 지우는 코드가 가장 위험)</td></tr>
+</tbody>
+</table>
+<p class="table-note">4p 의 "통지는 힌트" 규칙의 회계 버전이다 — 화면은 통지로 빠르게, 장부는 대조로 정확하게.</p>
 
 <p class="foot">더 깊이: 잔액 3분류 — <a href="../wallet-service-components/abstraction.html">가이드 13.3</a> · 내역 동사의 위치("동사의 자리는 데이터의 주인이 정한다") — 13.3.</p>
 

@@ -27,7 +27,9 @@ submitTransaction(출금 지시 + 멱등 키) → TxRef    // 이후 상태는 g
 sequenceDiagram
     autonumber
     participant BE as 지갑 백엔드
+    box rgb(239,246,255) 블록체인 매니저
     participant MGR as 자체 매니저
+    end
     participant CH as 이더리움 노드
 
     BE->>MGR: estimateFee(출금 지시)
@@ -45,9 +47,11 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant BE as 지갑 백엔드
+    box rgb(239,246,255) 블록체인 매니저
     participant PIPE as 트랜잭션 파이프라인
     participant GATE as 정책 게이트
     participant HSM as HSM
+    end
     participant CH as 이더리움
     participant IDX as 인덱서
 
@@ -70,8 +74,10 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant BE as 지갑 백엔드
+    box rgb(239,246,255) 블록체인 매니저
     participant PIPE as 트랜잭션 파이프라인
     participant HSM as 정책 게이트 + HSM
+    end
     participant PN as Canton 노드
     participant CP as 수신 상대방
 
@@ -95,8 +101,10 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant BE as 지갑 백엔드
+    box rgb(239,246,255) 블록체인 매니저
     participant FBI as Fireblocks 구현
     participant FB as Fireblocks (SaaS)
+    end
 
     BE->>FBI: submitTransaction(승인된 출금 + 멱등 키)
     FBI->>FB: createTransaction(…, externalTxId = 멱등 키)
@@ -113,8 +121,10 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant BE as 지갑 백엔드
+    box rgb(239,246,255) 블록체인 매니저
     participant FBI as Fireblocks 구현
     participant FB as Fireblocks (SaaS)
+    end
 
     BE->>FBI: submitTransaction(승인된 출금 + 멱등 키)
     FBI->>FB: createTransaction — Canton 전용 거래 유형으로 제출
@@ -153,6 +163,21 @@ fun stuckActions(): List<Action> = buildList {
     (transactions as? CancelCapability)?.let { add(CancelAction(it)) }    // 철회 — Canton 필수
 }</code></pre>
 <p class="diagram-caption">운영 화면조차 분면을 하드코딩하지 않는다 — capability 가 있으면 버튼이 생기고, 없으면 처음부터 없다.</p>
+
+<h2>상태 한 장 — 흩어진 상태를 공통 어휘로</h2>
+
+<p>체인·벤더마다 상태 이름이 다르지만(이더리움 pending, Canton OFFER, FB SUBMITTED…), 백엔드가 보는 것은 <b>어댑터가 번역한 공통 상태</b> 하나입니다 — "실패도 번역한다"의 상태 버전:</p>
+
+<table>
+<thead><tr><th style="width:22%">공통 상태 (TxStatus)</th><th>뜻</th><th style="width:30%">원어 (어댑터가 번역)</th></tr></thead>
+<tbody>
+<tr><td><b>SUBMITTED</b></td><td>체인에 제출됨 — 확정 대기</td><td>ETH pending · FB SUBMITTED/CONFIRMING</td></tr>
+<tr><td><b>AWAITING_ACCEPT</b></td><td>상대 수락 대기 (자금 잠김) — Canton 전용 표면화</td><td>Canton OFFER · FB Canton 거래 유형</td></tr>
+<tr><td><b>CONFIRMED</b></td><td>확정 — 이후 불변 (Canton 은 즉시)</td><td>N블록 충족 · ACCEPT · FB COMPLETED</td></tr>
+<tr><td><b>FAILED</b></td><td>영구 실패 — 사유 동반 (수수료 부족·거절·철회 등)</td><td>revert · REJECT/WITHDRAW · FB FAILED</td></tr>
+</tbody>
+</table>
+<p class="table-note">출금의 내부 단계(BUILT→SIGNED→BROADCAST)는 파이프라인의 기록용이고 밖으로는 위 4개만 나간다. 입금의 상태는 별도 셋 — 감지(PENDING)/확정(CONFIRMED)/무효화(ORPHANED), 4p.</p>
 
 <p class="foot">더 깊이: 파이프라인 기록·복구·순번 — <a href="../wallet-service-components/component-tx-nonce.html">가이드 4장</a> · 서명 직전 검증 — <a href="../wallet-service-components/component-signing.html">5.5</a> · 출금 시나리오 — <a href="../wallet-service-components/scenario-withdrawal.html">11장</a>.</p>
 

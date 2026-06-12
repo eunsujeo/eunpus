@@ -27,7 +27,9 @@ sequenceDiagram
     autonumber
     participant EXT as 외부 송신자
     participant CH as 이더리움
+    box rgb(239,246,255) 블록체인 매니저
     participant IDX as 인덱서 (상시 worker)
+    end
     participant BE as 지갑 백엔드
 
     EXT->>CH: 우리 고객 주소로 송금
@@ -49,7 +51,9 @@ sequenceDiagram
     autonumber
     participant EXT as 외부 송신자
     participant PN as Canton 노드
+    box rgb(239,246,255) 블록체인 매니저
     participant IDX as 인덱서 (노드 구독)
+    end
     participant BE as 지갑 백엔드
     participant HSM as HSM
 
@@ -75,7 +79,9 @@ sequenceDiagram
     autonumber
     participant EXT as 외부 송신자
     participant CH as 이더리움
+    box rgb(239,246,255) 블록체인 매니저
     participant FB as Fireblocks (SaaS)
+    end
     participant BE as 지갑 백엔드
 
     EXT->>CH: 우리 vault 주소로 송금
@@ -93,7 +99,9 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant EXT as 외부 송신자
+    box rgb(239,246,255) 블록체인 매니저
     participant FB as Fireblocks (SaaS)
+    end
     participant BE as 지갑 백엔드
 
     EXT->>FB: 우리 PartyId 앞 전송 제안 (OFFER)

@@ -26,7 +26,9 @@
 sequenceDiagram
     autonumber
     participant BE as 지갑 백엔드
+    box rgb(239,246,255) 블록체인 매니저
     participant MGR as 자체 매니저
+    end
     participant DIR as 계정 디렉터리(우리 DB)
     participant WL as watch-list (인덱서의 감시 목록)
 
@@ -46,7 +48,9 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant BE as 지갑 백엔드
+    box rgb(239,246,255) 블록체인 매니저
     participant MGR as 자체 매니저
+    end
     participant DIR as 계정 디렉터리(우리 DB)
     participant WL as memo 귀속표 (인덱서)
 
@@ -65,8 +69,10 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant BE as 지갑 백엔드
+    box rgb(239,246,255) 블록체인 매니저
     participant FBI as Fireblocks 구현
     participant FB as Fireblocks (SaaS)
+    end
     participant DIR as 계정 디렉터리(우리 DB)
 
     BE->>FBI: issueDepositAddress(계정, 자산)

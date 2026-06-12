@@ -26,7 +26,9 @@
 sequenceDiagram
     autonumber
     participant BE as 지갑 백엔드
+    box rgb(239,246,255) 블록체인 매니저
     participant MGR as 매니저 (자체든 Fireblocks 든)
+    end
     participant DIR as 계정 디렉터리(우리 DB)
 
     BE->>MGR: addressOf(계정 1024번, 자산)
@@ -42,8 +44,10 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant BE as 지갑 백엔드
+    box rgb(239,246,255) 블록체인 매니저
     participant MGR as 잘못된 구현
     participant WL as watch-list (감시 목록)
+    end
 
     BE->>MGR: addressOf(계정 1024번, ETH)
     MGR->>MGR: ❌ 즉석 계산해 반환
