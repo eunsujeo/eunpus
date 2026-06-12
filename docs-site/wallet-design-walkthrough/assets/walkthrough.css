@@ -49,6 +49,11 @@ pre {
   background: #1d1d1f; color: #f5f5f7; border-radius: 12px;
   padding: 14px 16px; overflow-x: auto; font-size: 13px; line-height: 1.6;
 }
+/* mermaid 도식은 코드 블록 스타일에서 제외 — 어두운 배경이면 SVG 의 검은 라벨이 안 보인다 */
+pre.mermaid {
+  background: #fff; color: #1d1d1f; padding: 0; border-radius: 0;
+  display: flex; justify-content: center;
+}
 code { font-family: "SF Mono", Menlo, Consolas, monospace; }
 p > code, li > code, td > code { background: #f5f5f7; padding: 1px 5px; border-radius: 5px; font-size: .88em; }
 
