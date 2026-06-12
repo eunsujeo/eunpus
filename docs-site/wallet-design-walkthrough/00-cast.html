@@ -128,24 +128,24 @@ data class TxRef(val value: String, val chainId: ChainId)    // 제출된 출금
 
 // ── 포트 둘 — 매니저(자체/FB)가 구현하는 면 ──
 interface AccountPort {                                  // 1·2·3·6p
-    fun createAccount(ref: AccountRef): Account
-    fun addressOf(account: Account, asset: Asset): Address
-    fun getBalance(account: Account, asset: Asset): Balance
+    suspend fun createAccount(ref: AccountRef): Account
+    suspend fun addressOf(account: Account, asset: Asset): Address
+    suspend fun getBalance(account: Account, asset: Asset): Balance
     // estimateFee · validateAddress 생략 (5p)
 }
 interface TransactionPort {                              // 4·5·6p
-    fun submitTransaction(request: TransactionRequest): TxRef
-    fun transactionsOf(account: Account, range: BlockRange): List&lt;Transfer&gt;
+    suspend fun submitTransaction(request: TransactionRequest): TxRef
+    suspend fun transactionsOf(account: Account, range: BlockRange): List&lt;Transfer&gt;
     fun onChainEvent(handler: (ChainEvent) -&gt; Unit)
     // getStatus 생략
 }
 
 // ── 선택 capability — "있는 분면"만 타입을 가진다 ──
 interface DepositAddressIssuanceCapability {             // 이더리움 분면만 (2p)
-    fun issueDepositAddress(account: Account, asset: Asset): Address
+    suspend fun issueDepositAddress(account: Account, asset: Asset): Address
 }
-interface FeeBoostCapability { fun boost(txRef: TxRef): TxRef }    // 이더리움 분면만 (5p)
-interface CancelCapability   { fun cancel(txRef: TxRef): TxRef }   // 철회 (5p)</code></pre>
+interface FeeBoostCapability { suspend fun boost(txRef: TxRef): TxRef }    // 이더리움 분면만 (5p)
+interface CancelCapability   { suspend fun cancel(txRef: TxRef): TxRef }   // 철회 (5p)</code></pre>
 <p class="diagram-caption">자체 매니저도 Fireblocks 구현도 이 인터페이스를 구현한다 — "어느 구현인지 백엔드가 모른다"는 이 문서의 모든 주장이 이 한 장 위에 서 있다. 멱등 키는 시그니처가 아니라 호출을 감싸는 래퍼(<code>withIdempotency</code>)로 들어간다(1p 코드).</p>
 
 <p>마지막으로 어휘 두 개만: <b>키 트리</b> — 키는 고객마다 만들지 않고, 셋업 때 HSM 안에서 <b>한 번</b> 만든 뿌리 키에서 가지(번호)를 늘려 갑니다(2페이지에서 동작으로 확인). <b>멱등 키</b> — 같은 요청의 재시도가 두 번 실행되지 않게 백엔드가 모든 쓰기 요청에 붙이는 고유 키입니다.</p>

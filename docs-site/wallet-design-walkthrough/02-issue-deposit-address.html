@@ -110,7 +110,7 @@ sequenceDiagram
 <h2>백엔드에서 이렇게 부른다 — "없음" 분면이 코드에서 갈리는 모습</h2>
 
 <pre><code>// 첫 주소 확보 — 1p 의 openWallet 이 부르는 그 함수
-fun acquireFirstAddress(account: Account, asset: Asset): Address =
+suspend fun acquireFirstAddress(account: Account, asset: Asset): Address =
     when (val issuer = accounts as? DepositAddressIssuanceCapability) {
         null -> accounts.addressOf(account, asset)            // Canton — 발급이 타입부터 없다
                                                               //   → 계정과 함께 태어난 PartyId 조회 (안내엔 memo 동봉)

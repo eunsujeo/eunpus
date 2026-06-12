@@ -115,7 +115,7 @@ sequenceDiagram
 <h2>백엔드에서 이렇게 부른다 — 네 분면 공통</h2>
 
 <pre><code>// 온보딩 유스케이스 — 어느 분면이 꽂혀 있든 이 코드는 같다
-fun openWallet(ref: AccountRef, asset: Asset): OpenedWallet =
+suspend fun openWallet(ref: AccountRef, asset: Asset): OpenedWallet =
     withIdempotency("open-wallet:$ref:$asset") {           // 같은 요청 재시도 안전
         val account = accounts.createAccount(ref)           // ← 이 페이지의 4분면
         directory.save(account)                             // 결과는 항상 우리 DB 에

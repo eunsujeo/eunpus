@@ -68,7 +68,7 @@ sequenceDiagram
 <h2>백엔드에서 이렇게 부른다 — 읽기라서 더 단순하다</h2>
 
 <pre><code>// 입금 화면 핸들러 — 멱등 키 없음 (읽기)
-fun depositScreen(accountId: String, asset: Asset): DepositInfo {
+suspend fun depositScreen(accountId: String, asset: Asset): DepositInfo {
     val account = directory.resolve(accountId)            // 고객 → 계정은 우리 DB 로 (벤더에 안 묻는다)
     val address = accounts.addressOf(account, asset)      // 몇 번 불러도 같은 값
     return DepositInfo(address, memoFor(account, asset))  // Canton 자산이면 memo 코드 동봉
