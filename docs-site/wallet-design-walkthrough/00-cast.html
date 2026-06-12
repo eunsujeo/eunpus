@@ -79,7 +79,7 @@ flowchart LR
       direction TB
       B1["createTransaction · webhook ·<br/>vault · MPC 서명 · TAP 정책<br/>(벤더가 운영)"]
     end
-    KEEP["전환해도 남는 우리 것<br/>지갑 백엔드 · 계정 디렉터리(+watch-list)"]
+    KEEP["전환해도 남는 우리 것<br/>지갑 백엔드 · 계정 디렉터리(우리 DB)"]
 
     S -.전환.-> F
     S --- KEEP
@@ -90,7 +90,7 @@ flowchart LR
     classDef keep fill:#dcfce7,stroke:#16a34a;
     class A1,A2,A3,A4 mine; class B1 vendor; class KEEP keep;
 </pre></div>
-<p class="diagram-caption">전환의 예고편. 자체 분면의 부품 넷은 Fireblocks 로 가면 벤더 기능으로 대체되고, 지갑 백엔드와 계정 디렉터리는 어느 분면에서든 우리 것으로 남는다 — "다른 시스템에 영향이 없어야 한다"는 전제가 성립하는 물리적 이유. 상세는 7페이지.</p>
+<p class="diagram-caption">전환의 예고편. 자체 분면의 부품 넷은 Fireblocks 로 가면 벤더 기능으로 대체되고, 지갑 백엔드와 계정 디렉터리는 어느 분면에서든 우리 것으로 남는다 — "다른 시스템에 영향이 없어야 한다"는 전제가 성립하는 물리적 이유. watch-list 는 남는 쪽이 아니라 <b>자체 분면 전용</b>이다 — 전환하면 벤더 감시(vault)로 대체되고, 과도기에만 잠시 유지된다(7p). 상세는 7페이지.</p>
 
 <h2>Fireblocks 해부 — 기능 × 사용처 매트릭스</h2>
 
