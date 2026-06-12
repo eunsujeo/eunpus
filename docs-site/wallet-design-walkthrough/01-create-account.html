@@ -18,7 +18,7 @@
 
 <p><b>무엇·언제</b>: 고객이 가입하면 백엔드가 매니저에 계정 하나를 요청합니다. 계정은 주소가 아닙니다 — 한 고객의 여러 자산·여러 주소를 묶는 <b>상위 핸들</b>이고, 주소는 다음 페이지(발급)에서 이 계정 밑에 생깁니다. 네 분면 공통의 포트 호출은 한 줄입니다:</p>
 
-<pre><code>createAccount(고객 ref) → Account     // 결과는 항상 계정 디렉터리(우리 DB)에 저장</code></pre>
+<pre><code>createAccount(고객 ref) → Account     // 결과는 항상 계정 디렉터리(블록체인 매니저 DB)에 저장</code></pre>
 
 <h2>▸ 자체 × 이더리움 — 장부에 줄 하나 (체인에 안 간다)</h2>
 
@@ -29,7 +29,7 @@ sequenceDiagram
     box rgb(239,246,255) 블록체인 매니저
     participant MGR as 자체 매니저
     end
-    participant DIR as 계정 디렉터리(우리 DB)
+    participant DIR as 계정 디렉터리(블록체인 매니저 DB)
 
     BE->>MGR: createAccount(고객 ref)
     MGR->>MGR: 번호 할당 — 계정 1024번
@@ -50,7 +50,7 @@ sequenceDiagram
     participant HSM as HSM (키 보관)
     end
     participant PN as Canton 노드
-    participant DIR as 계정 디렉터리(우리 DB)
+    participant DIR as 계정 디렉터리(블록체인 매니저 DB)
 
     BE->>MGR: createAccount(고객 ref)
     MGR->>HSM: 이 계정용 공개키 준비
@@ -74,7 +74,7 @@ sequenceDiagram
     participant FBI as Fireblocks 구현
     participant FB as Fireblocks (SaaS)
     end
-    participant DIR as 계정 디렉터리(우리 DB)
+    participant DIR as 계정 디렉터리(블록체인 매니저 DB)
 
     BE->>FBI: createAccount(고객 ref)
     FBI->>FB: vault 계정 생성 API
@@ -105,7 +105,7 @@ sequenceDiagram
 suspend fun openWallet(ref: AccountRef, asset: Asset): OpenedWallet =
     withIdempotency("open-wallet:$ref:$asset") {           // 같은 요청 재시도 안전
         val account = accounts.createAccount(ref)           // ← 이 페이지의 4분면
-        directory.save(account)                             // 결과는 항상 우리 DB 에
+        directory.save(account)                             // 결과는 항상 블록체인 매니저 DB 에
         val id = accounts.issueDepositAddress(account, asset)  // 첫 입금 식별자 — 2p 에서
         OpenedWallet(account, id)
     }</code></pre>

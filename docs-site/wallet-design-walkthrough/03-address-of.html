@@ -20,7 +20,7 @@
 
 <pre><code>addressOf(account, asset) → Address   // 읽기 — 멱등 키 불요, 발급 부수효과 없음</code></pre>
 
-<h2>▸ 네 분면 공통 — 디렉터리(우리 DB)에서 읽는다</h2>
+<h2>▸ 네 분면 공통 — 디렉터리(블록체인 매니저 DB)에서 읽는다</h2>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -29,7 +29,7 @@ sequenceDiagram
     box rgb(239,246,255) 블록체인 매니저
     participant MGR as 매니저 (자체든 Fireblocks 든)
     end
-    participant DIR as 계정 디렉터리(우리 DB)
+    participant DIR as 계정 디렉터리(블록체인 매니저 DB)
 
     BE->>MGR: addressOf(계정 1024번, 자산)
     MGR->>DIR: 이 계정에 "발급(등록)된" 주소 읽기
@@ -73,7 +73,7 @@ sequenceDiagram
 
 <pre><code>// 입금 화면 핸들러 — 멱등 키 없음 (읽기)
 suspend fun depositScreen(accountId: String, asset: Asset): DepositInfo {
-    val account = directory.resolve(accountId)            // 고객 → 계정은 우리 DB 로 (벤더에 안 묻는다)
+    val account = directory.resolve(accountId)            // 고객 → 계정은 블록체인 매니저 DB 로 (벤더에 안 묻는다)
     val id = accounts.addressOf(account, asset)           // 몇 번 불러도 같은 값
     return DepositInfo(id.value, id.memoTag)              // Canton 이면 memoTag 가 채워져 온다 (2p)
 }</code></pre>

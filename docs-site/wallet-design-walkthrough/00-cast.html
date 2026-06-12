@@ -56,7 +56,7 @@ flowchart TB
 <tr><td><b>인덱서</b></td><td>체인을 읽어 입금 감지·확정 판정. <b>유일한 상시 worker</b> — 다른 부품은 요청 올 때 돌지만 이건 체인이 흐르는 한 계속 돈다</td><td class="c">4·6·7p</td></tr>
 <tr><td><b>트랜잭션 파이프라인</b></td><td>출금의 조립→서명→전파를 순서대로, <b>단계마다 기록하며</b> 진행 — 중간에 죽어도 같은 지점부터 재개</td><td class="c">6p</td></tr>
 <tr><td><b>HSM + 정책 게이트</b></td><td>HSM(키를 가두고 서명만 해주는 장비)이 키를 보관하고, 게이트가 <b>서명 직전에</b> 수신처·한도를 재검증 — 마지막 방어선</td><td class="c">1·2·6p</td></tr>
-<tr><td><b>계정 디렉터리 + watch-list</b></td><td>디렉터리 = 고객↔계정↔주소 매핑을 담는 <b>우리 DB</b> / watch-list = 인덱서가 감시할 우리 주소 목록</td><td class="c">전 페이지</td></tr>
+<tr><td><b>계정 디렉터리 + watch-list</b></td><td>디렉터리 = 고객↔계정↔주소 매핑을 담는 <b>블록체인 매니저 DB</b> / watch-list = 인덱서가 감시할 우리 주소 목록</td><td class="c">전 페이지</td></tr>
 </tbody>
 </table>
 
