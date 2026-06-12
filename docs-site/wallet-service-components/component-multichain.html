@@ -202,7 +202,7 @@ class CantonAdapter implements ChainAdapter {
   // 2-step: 제출=OFFER, 완료는 상대 ACCEPT
   addressOf(account)           { return partyIdOf(account) }         // 조회 — PartyId 는 계정 생성(=party allocation, topology 서명
                                                                      //   필요·비멱등·유료) 때 이미 만들어졌다 (9.2 · 15.9).
-                                                                     //   발급(issueDepositAddress)은 Canton 에 없음 — 입금 구분은 memo-ref.
+                                                                     //   발급(issueDepositAddress)은 "새 memo 채번"(주소 고정, 포트가 구현 ★ Stage 81) — 곡선 파생 capability 와는 별개.
                                                                      //   allocation 의 체인별 조각은 아래 registerAccount 가 진다
   registersAccountOnLedger = true                   // 선택 capability 표지 — 네 어댑터 중 Canton 뿐. 15.2 createAccount 가 판정해 호출
   registerAccount(account, pubkey) {                // 온장 등록 (유료·비멱등) — 주소(PartyId)의 "탄생" (15-2c)
