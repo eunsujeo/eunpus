@@ -7100,6 +7100,12 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - docs-site: canton-network(operations 3.2·custody 6.3 Fireblocks)·wallet-service-components(example-fireblocks 14.8 '확인 필요'→해소, abstraction 156·256, multichain 90) 의 A11 '미확정' 콜아웃 전부 해소로 갱신
 - **Canton open Q 전부 ANSWERED**(A11·C01·C02). check PASS(양 사이트)
 
+## Stage 80 (2026-06-12) — Musubi institution 측 10페이지 웹 검토 → 승인 2층·상태 모델 promote
+- source: musubinetwork.com/institution/* (api-reference·integration 4종·compliance·security·custody-and-trust·settlement-flow·overview) — 웹 확인, ⚠️ 2차·testnet POC·WebFetch 요약 기반
+- 신규 fact: 승인 2층(intent_signature=기관 개인키 주문 서명 / custodian co-sign 별도) · 상태 enum(PENDING→QUOTED→EXECUTING→SETTLED + EXPIRED·FAILED, 사유 5종) · cancel=PENDING/QUOTED 만 · 4-leg 경로에 "Musubi 결제 주소" 경유(화이트리스트 대상) · institution 은 custodian Canton 인프라 활용 가능(자체 노드 불요) · kyc_aml_ref 검증 모델 · JP/KR 보고 임계 · Travel Rule 등 roadmap · 페이지 간 불일치 기록(~15초 vs ≈4초, 보존기간)
+- 영향받은 페이지: entities/canton/canton-network.md (Stage 80 블록), docs-site/canton-network/integration.html 5.5 (승인 2층·상태 모델·onboarding 부분 확인 — 기존 '미확인' 1건을 '부분 확인' 으로 격하)
+- 신규 entity: 0 (canton-network 흡수)
+
 ## Stage 79 (2026-06-10) — canton-network 5.5 Musubi 사용 vs 미사용 비교
 - 사용자: canton-network 에 Musubi 사용/미사용 정리. page5 에 "5.5 (참고) 응용 네트워크 — Musubi 를 쓸 것인가" 추가(5.1~5.4 노드운영 축과 구분 — 응용 네트워크 합류 축)
 - 비교표(무엇·결제 atomic 4-leg DvP·RFQ 유동성·컴플라이언스 on-ledger·수탁/키·통제·범위 VASP FX 특화·성숙도 testnet POC) + 언제 무엇(한일 FX 결제=Musubi, 일반 수탁/전송=직접 Canton). 우리 국내↔해외은행 송금 시나리오와 연결
