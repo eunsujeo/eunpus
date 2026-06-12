@@ -21,7 +21,7 @@
 <pre><code>getBalance(account, asset) → { available, pending, locked }
 transactionsOf(account, 기간) → 입출금 내역 (시간순)</code></pre>
 
-<h2>▸ 자체 분면 — 잔액·내역은 4·5페이지의 부산물이다</h2>
+<h2>▸ 자체 분면 — 잔액·내역은 4·6페이지의 부산물이다</h2>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -89,7 +89,7 @@ suspend fun canWithdraw(account: Account, asset: Asset, amount: Amount): Boolean
 // 내역 화면 — 입출금이 합쳐진 한 목록
 suspend fun historyScreen(account: Account, range: BlockRange): List<Transfer> =
     transactions.transactionsOf(account, range)    // 자체 분면이면 "보내는 중" 상태까지 포함</code></pre>
-<p class="diagram-caption">판정 코드에 available 만 쓰는 것 — 6페이지 규칙이 코드 한 줄로 강제되는 자리다.</p>
+<p class="diagram-caption">판정 코드에 available 만 쓰는 것 — 이 페이지 첫 단락의 규칙이 코드 한 줄로 강제되는 자리다.</p>
 
 <h2>대사 — 두 장부를 주기적으로 맞춘다</h2>
 

@@ -62,7 +62,7 @@ sequenceDiagram
     MGR->>DIR: 계정 + PartyId 저장
     MGR-->>BE: Account
 </pre></div>
-<p class="diagram-caption">Canton 에는 이더리움식 주소가 없다 — 대신 PartyId(체인 위의 신원)가 있고, 그것은 <b>온장(on-ledger) 등록</b>으로만 생긴다. 등록에는 서명이 필요하고 네트워크 비용이 든다. 즉 같은 createAccount 가 이더리움에선 공짜 장부 작업, Canton 에선 <b>유료 체인 트랜잭션</b>이다 — 주소가 계정과 함께 태어나므로, 다음 페이지의 "주소 발급"이 Canton 엔 없다. 그리고 이 분면은 <b>온장 쓰기</b>라 출금(6p)의 규칙이 여기에도 적용된다 — <b>등록 시도를 먼저 기록</b>하고, 재시도는 "이미 등록됐나"부터 조회한다(유료·비멱등이라 이중 등록을 막아야 하므로). 어느 고객에게 이 분면이 필요한지는 온보딩 요청의 asset 이 정한다 — 아래 사용 코드의 <code>openWallet(ref, asset)</code>.</p>
+<p class="diagram-caption">Canton 에는 이더리움식 주소가 없다 — 대신 PartyId(체인 위의 신원)가 있고, 그것은 <b>온장(on-ledger) 등록</b>으로만 생긴다. 등록에는 서명이 필요하고 네트워크 비용이 든다. 즉 같은 createAccount 가 이더리움에선 공짜 장부 작업, Canton 에선 <b>유료 체인 트랜잭션</b>이다 — 주소가 계정과 함께 태어나므로, 다음 페이지의 발급에서 Canton 이 새로 만드는 것은 주소가 아니라 memo 다(2p). 그리고 이 분면은 <b>온장 쓰기</b>라 출금(6p)의 규칙이 여기에도 적용된다 — <b>등록 시도를 먼저 기록</b>하고, 재시도는 "이미 등록됐나"부터 조회한다(유료·비멱등이라 이중 등록을 막아야 하므로). 어느 고객에게 이 분면이 필요한지는 온보딩 요청의 asset 이 정한다 — 아래 사용 코드의 <code>openWallet(ref, asset)</code>.</p>
 
 <h2>▸ Fireblocks — vault 생성 API 한 번 (양 체인 공통)</h2>
 
