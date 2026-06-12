@@ -40,7 +40,7 @@ class FireblocksContractTest : AccountPortContractTest()   // FB — 샌드박�
 
 <h2>전환 — 코드는 한 줄, 자금은 이사</h2>
 
-<p>코드의 전환은 설정 한 줄입니다(<code>custody: selfbuild → fireblocks</code>) — 1~6페이지에서 백엔드가 분면을 모르고 동작했으니 당연한 귀결입니다. 체크리스트도 이미 본 것들입니다: 멱등 키 → externalTxId 연결(5p), 자체 파이프라인·인덱서 끄기(5p — 순번 충돌·4p — webhook 대체). 그런데 <b>한 가지는 설정으로 안 됩니다</b>: 자체 주소는 우리 키에서, Fireblocks 주소는 벤더 키에서 나왔으므로(2p) — <b>주소와 그 위의 잔액은 이전되지 않습니다</b>:</p>
+<p>코드의 전환은 설정 한 줄입니다(<code>custody: selfbuild → fireblocks</code>) — 1~6페이지에서 백엔드가 분면을 모르고 동작했으니 당연한 귀결입니다. 체크리스트도 이미 본 것들입니다: 멱등 키 → externalTxId 연결(5p), 자체 파이프라인·인덱서 끄기(5p — 순번 충돌·4p — webhook 대체). 단 <b>임의 외부 주소 조회용</b> 인덱서를 따로 쓰고 있었다면 그것은 custody 와 별개 축이라 그대로 둔다(6p). 그런데 <b>한 가지는 설정으로 안 됩니다</b>: 자체 주소는 우리 키에서, Fireblocks 주소는 벤더 키에서 나왔으므로(2p) — <b>주소와 그 위의 잔액은 이전되지 않습니다</b>:</p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart LR

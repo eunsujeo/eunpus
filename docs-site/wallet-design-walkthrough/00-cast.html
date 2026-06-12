@@ -47,7 +47,7 @@ flowchart TB
 
 <h2>4분면 읽는 법</h2>
 
-<p>1~6페이지는 전부 같은 형식입니다: <b>① 이 기능이 무엇이고 언제 불리나 → ② 포트 호출 (네 분면 공통, 글자 그대로 같음) → ③ 네 분면의 동작 다이어그램 — ▸자체×이더리움 / ▸자체×Canton / ▸Fireblocks×이더리움 / ▸Fireblocks×Canton → ④ 4분면 비교표.</b> 어떤 분면에서 기능이 "없으면", 없는 채로 그립니다 — 없음도 동작이기 때문입니다(2페이지에서 바로 보게 됩니다).</p>
+<p>1~6페이지는 전부 같은 형식입니다: <b>① 이 기능이 무엇이고 언제 불리나 → ② 포트 호출 (네 분면 공통, 글자 그대로 같음) → ③ 네 분면의 동작 다이어그램 — ▸자체×이더리움 / ▸자체×Canton / ▸Fireblocks×이더리움 / ▸Fireblocks×Canton → ④ 4분면 비교표.</b> 어떤 분면에서 기능이 "없으면", 없는 채로 그립니다 — 없음도 동작이기 때문입니다(2p). 반대로 네 분면이 <b>같으면 합쳐서</b> 그립니다(3·6p) — 같다는 것도 결론이기 때문입니다.</p>
 
 <h2>등장인물 — 다이어그램에 나올 부품들</h2>
 
@@ -56,7 +56,7 @@ flowchart TB
 <table>
 <thead><tr><th style="width:26%">부품</th><th>역할 (한 줄)</th><th style="width:14%">주 등장</th></tr></thead>
 <tbody>
-<tr><td><b>멀티체인 어댑터</b></td><td>체인별 규칙(주소 계산법·수수료·전파·확정 기준)을 공통 동사로 번역 — 체인 분기는 전부 이 안</td><td class="c">1·2·5p</td></tr>
+<tr><td><b>멀티체인 어댑터</b></td><td>체인별 규칙(주소 계산법·수수료·전파·확정 기준)을 공통 동사로 번역 — 체인 분기는 전부 이 안. 1~3p 그림의 <b>"자체 매니저" 상자가 이 어댑터(+키 트리)를 합쳐 단순화한 것</b></td><td class="c">그림 속 "자체 매니저" 안</td></tr>
 <tr><td><b>인덱서</b></td><td>체인을 읽어 입금 감지·확정 판정. <b>유일한 상시 worker</b> — 다른 부품은 요청 올 때 돌지만 이건 체인이 흐르는 한 계속 돈다</td><td class="c">4·5·6p</td></tr>
 <tr><td><b>트랜잭션 파이프라인</b></td><td>출금의 조립→서명→전파를 순서대로, <b>단계마다 기록하며</b> 진행 — 중간에 죽어도 같은 지점부터 재개</td><td class="c">5p</td></tr>
 <tr><td><b>HSM + 정책 게이트</b></td><td>HSM(키를 가두고 서명만 해주는 장비)이 키를 보관하고, 게이트가 <b>서명 직전에</b> 수신처·한도를 재검증 — 마지막 방어선</td><td class="c">1·2·5p</td></tr>
@@ -122,9 +122,11 @@ flowchart LR
 data class AccountRef(val value: String)                 // 고객 식별자 (우리가 발급)
 data class Account(val id: String, val ref: AccountRef)  // 1p 에서 생성되는 계정 핸들
 data class Asset(val symbol: String, val chainId: ChainId)   // 예: ETH×ethereum · JPYSC0×canton
+                                                              //   ERC-20 토큰도 Asset 하나 — chainId 가 같으니 주소는 ETH 와 같다
 data class Address(val value: String, val memoTag: String?)  // Canton 이면 value = PartyId
 data class Balance(val available: Amount, val pending: Amount, val locked: Amount)  // 6p — 세 칸
 data class TxRef(val value: String, val chainId: ChainId)    // 제출된 출금의 추적 핸들
+// (ChainId · Amount · Transfer · TransactionRequest · ChainEvent 등 부속 타입은 생략)
 
 // ── 포트 둘 — 매니저(자체/FB)가 구현하는 면 ──
 interface AccountPort {                                  // 1·2·3·6p
