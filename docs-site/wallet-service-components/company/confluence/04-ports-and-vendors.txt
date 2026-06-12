@@ -17,7 +17,7 @@ h2. 2. 세 기능 포트
 interface AccountPort {                       // 계정·주소 (키가 있는 곳)
     fun createAccount(ref): Account           // 고객 계정(vault) 생성
     fun addressOf(account, asset): Address    // 멱등 "조회" — 발급(등록)된 주소 반환, 절대 새 주소를 만들지 않음 · Canton=PartyId (allocation 은 createAccount 때)
-    fun issueDepositAddress(account, asset): Address  // 선택 capability — 입금 식별자(주소+memo) "발급", 첫 식별자부터 (Canton ✅ = PartyId 고정+새 memo, Stage 81 · NodeWallet ✗)
+    fun issueDepositAddress(account, asset): Address  // 선택 capability — 입금 식별자(주소+memo) "발급", 첫 식별자부터 (Canton ✅ = PartyId 고정+새 memo — FB 확인 · NodeWallet ✗)
     fun getBalance(account, asset): Balance   // 단일 숫자 아님 — available/pending/locked 구분 (사용 가능 판정은 available 만)
     fun validateAddress(asset, addr): Boolean // 출금 대상 주소 형식·체크섬 검증 — 로컬 체인 규칙으로 구현 (벤더 API 불요)
 }
