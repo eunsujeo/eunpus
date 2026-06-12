@@ -112,7 +112,7 @@ sequenceDiagram
 <tr><td><b>감지 주체</b></td><td>우리 인덱서 (상시)</td><td>우리 인덱서 (노드 구독)</td><td>벤더 → webhook</td><td>벤더 → webhook</td></tr>
 <tr><td><b>입금의 성립</b></td><td>감지로 충분</td><td><b>우리가 수락 서명해야</b></td><td>감지로 충분</td><td>수락 필요 (실행 방식 확인)</td></tr>
 <tr><td><b>확정</b></td><td>블록 누적 대기</td><td>수락 즉시</td><td>벤더 확정 통지</td><td>수락 즉시</td></tr>
-<tr><td><b>되돌림(reorg)</b></td><td><b>가능 — 롤백 설계 필수</b></td><td>없음</td><td>벤더가 흡수</td><td>없음</td></tr>
+<tr><td><b>되돌림(reorg)</b></td><td><b>가능 — 롤백 설계 필수</b></td><td>없음</td><td>벤더가 처리해 통지 — 우리는 확정 통지 기준</td><td>없음</td></tr>
 <tr><td><b>고객 귀속</b></td><td>주소로</td><td>memo 로</td><td>주소로</td><td>memo 로</td></tr>
 </tbody>
 </table>

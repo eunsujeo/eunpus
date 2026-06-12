@@ -38,9 +38,11 @@
 class SelfBuildContractTest : AccountPortContractTest()    // 자체 — 테스트넷
 class FireblocksContractTest : AccountPortContractTest()   // FB — 샌드박스</code></pre>
 
+<p>정직하게 — 약속 전부가 이 시험지에 들어가지는 않습니다. 계약 테스트의 몫은 <b>포트 밖에서 관찰 가능한 약속</b>(조회는 만들지 않는다 · 등록까지가 발급 · 없는 기능은 타입 부재 · 멱등)이고, "기록은 전파 전"은 자체 파이프라인의 단위 테스트가, "판정은 가용만"은 백엔드 테스트가 나눠 집니다 — 세 겹이 합쳐져야 전환 증거가 완성됩니다.</p>
+
 <h2>전환 — 코드는 한 줄, 자금은 이사</h2>
 
-<p>코드의 전환은 설정 한 줄입니다(<code>custody: selfbuild → fireblocks</code>) — 1~6페이지에서 백엔드가 분면을 모르고 동작했으니 당연한 귀결입니다. 체크리스트도 이미 본 것들입니다: 멱등 키 → externalTxId 연결(5p), 자체 파이프라인·인덱서 끄기(5p — 순번 충돌·4p — webhook 대체). 단 <b>임의 외부 주소 조회용</b> 인덱서를 따로 쓰고 있었다면 그것은 custody 와 별개 축이라 그대로 둔다(6p). 그런데 <b>한 가지는 설정으로 안 됩니다</b>: 자체 주소는 우리 키에서, Fireblocks 주소는 벤더 키에서 나왔으므로(2p) — <b>주소와 그 위의 잔액은 이전되지 않습니다</b>:</p>
+<p>코드의 전환은 설정 한 줄입니다(<code>custody: selfbuild → fireblocks</code>) — 1~6페이지에서 백엔드가 분면을 모르고 동작했으니 당연한 귀결입니다. 체크리스트도 이미 본 것들입니다: 멱등 키 → externalTxId 연결(5p), 자체 파이프라인·인덱서 끄기(5p — 순번 충돌·4p — webhook 대체). 단 <b>임의 외부 주소 조회용</b> 인덱서를 따로 쓰고 있었다면 그것은 custody 와 별개 축이라 그대로 둔다(6p). 그리고 <b>정책 게이트의 규칙은 데이터다</b> — 화이트리스트·한도·일일 누적을 Fireblocks 의 거버넌스 정책(TAP)으로 이관하고 동등성을 검증하는 것까지가 전환이다(5p). 그런데 <b>한 가지는 설정으로 안 됩니다</b>: 자체 주소는 우리 키에서, Fireblocks 주소는 벤더 키에서 나왔으므로(2p) — <b>주소와 그 위의 잔액은 이전되지 않습니다</b>:</p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart LR
