@@ -16,7 +16,7 @@
 <h1>입금 주소 발급 — issueDepositAddress</h1>
 <p class="subtitle">발급되는 것은 "주소"가 아니라 입금 식별자 — 주소+memo 쌍이다</p>
 
-<p><b>무엇·언제</b>: 온보딩의 두 번째 호출(첫 식별자)이자, 운영 중 추가 식별자가 필요할 때마다 다시 불립니다. 핵심 재정의 하나 — 발급되는 것은 <b>입금 식별자(주소 + memo 쌍)</b>입니다: 이더리움은 memo 가 빈 채 <b>주소가</b> 새로워지고, Canton 은 주소(PartyId)가 고정된 채 <b>memo 가</b> 새로워집니다(Fireblocks 콘솔·문서로 확인 — 같은 온체인 주소를 tag/memo 로 구분하는 모델). 그리고 규칙 하나 — <b>식별자는 감시(귀속) 등록까지 끝나야 "존재"합니다.</b> 등록 안 된 식별자로 온 입금은 우리만 모릅니다(입금 사고의 최다 유형).</p>
+<p><b>무엇·언제</b>: 온보딩의 두 번째 호출(첫 식별자)이자, 운영 중 추가 식별자가 필요할 때마다 다시 불립니다. 핵심 재정의 하나 — 발급되는 것은 <b>입금 식별자(주소 + memo 쌍)</b>입니다: 이더리움은 memo 가 빈 채 <b>주소가</b> 새로워지고, Canton 은 주소(PartyId)가 고정된 채 <b>memo 가</b> 새로워집니다(Fireblocks 콘솔·문서로 확인 — 같은 온체인 주소를 tag/memo 로 구분하는 모델). 단 그 고정 PartyId 는 거저 있는 게 아니라 <b>이 계정의 첫 Canton 발급 때 여기서 선발급</b>됩니다(1p 아님) — 아래 자체×Canton 흐름의 첫 분기. 그리고 규칙 하나 — <b>식별자는 감시(귀속) 등록까지 끝나야 "존재"합니다.</b> 등록 안 된 식별자로 온 입금은 우리만 모릅니다(입금 사고의 최다 유형).</p>
 
 <pre><code>issueDepositAddress(account, asset) → Address(주소, memo?)   // 부를 때마다 새 식별자 — 재시도만 멱등 키로 차단</code></pre>
 
@@ -42,7 +42,7 @@ sequenceDiagram
 </pre></div>
 <p class="diagram-caption">이더리움 발급 = 번호 소비 + 공개키 수학 + 등록. 계산 자체는 공짜·즉시지만, 디렉터리 저장과 감시 등록이라는 <b>상태 변경</b>이 본질이다 — 그래서 발급은 쓰기 동작이고 멱등 키로 감싼다. 보안 단서 하나 — <b>xpub 은 이름과 달리 비밀급으로 다룬다</b>: xpub 이 유출된 상태에서 자식 개인키가 하나라도 새면 부모 키가 역산되는 알려진 성질이 있다.</p>
 
-<h2>▸ 자체 × Canton — 새로워지는 것: memo</h2>
+<h2>▸ 자체 × Canton — PartyId 선발급(첫 1회) + memo 채번(매번)</h2>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -50,18 +50,28 @@ sequenceDiagram
     participant BE as 지갑 백엔드
     box rgb(239,246,255) 블록체인 매니저
     participant MGR as 자체 매니저
+    participant HSM as HSM (키 보관)
     participant WL as memo 귀속표 (인덱서)
     end
+    participant PN as Canton 노드
     participant DIR as 계정 디렉터리(블록체인 매니저 DB)
 
     BE->>MGR: issueDepositAddress(계정 1024번, Canton 자산)
+    alt PartyId 미발급 — 이 계정의 첫 Canton 식별자
+        MGR->>HSM: 이 계정용 공개키 준비
+        MGR->>PN: 신원 등록 (공개키 제출) → 서명할 해시
+        MGR->>HSM: 해시 서명 (키는 HSM 밖으로 안 나옴)
+        MGR->>PN: 서명 제출 → PartyId 발급 (선발급 · 유료 · 1회)
+        MGR->>DIR: PartyId 저장 — 등록 시도는 선기록 (이중 등록 방지)
+    else 이미 발급됨
+        Note over MGR,DIR: 디렉터리의 PartyId 재사용 — 온장 호출 없음
+    end
     MGR->>MGR: 새 memo 채번 — 체인 호출 없음 (장부 작업)
-    Note over BE,WL: 주소(PartyId)는 1p 에서 태어난 그대로 — 새로워지는 건 memo 뿐. 은행의 가상계좌 대신 입금자 코드를 늘리는 모양
     MGR->>DIR: 식별자 저장 (PartyId + 새 memo)
-    MGR->>WL: memo 귀속표 등록 — watch-list 의 memo 판, 등록 실패면 발급도 실패
+    MGR->>WL: memo 귀속표 등록 — 등록 실패면 발급도 실패
     MGR-->>BE: Address(PartyId, 새 memo)
 </pre></div>
-<p class="diagram-caption">이더리움과 같은 동사, 같은 골격(채번 → 디렉터리 → 감시·귀속 등록)이고 새로워지는 칸만 다르다. memo 채번은 체인 호출이 없는 장부 작업이지만 — "입금 식별자 발급" 이라는 도메인 동사로 묶으면 백엔드는 그 차이조차 모른다. 인덱서(4p)는 watch-list 대신 이 <b>memo 귀속표</b>로 "누구 돈인지"를 가른다.</p>
+<p class="diagram-caption">두 단계로 읽는다. <b>선발급(첫 1회)</b> — PartyId 가 없으면 먼저 온장 등록해 PartyId 를 만든다. memo 는 PartyId <b>위에 붙는 라우팅 태그</b>라 PartyId 가 먼저 존재해야 하기 때문에 "선발급"이다. 유료·비멱등이라 출금(6p)처럼 등록 시도를 선기록하고 재시도는 "PartyId 있나"부터 조회한다. <b>채번(매번)</b> — 이후 모든 발급은 그 PartyId 를 재사용하며 memo 만 늘린다(체인 호출 없는 장부 작업). 이더리움의 "주소가 매번 새로"와 정확히 대칭이다: Canton 은 신원(PartyId)이 고정이고 입금자 코드(memo)가 매번 새로. 인덱서(4p)는 watch-list 대신 이 <b>memo 귀속표</b>로 "누구 돈인지"를 가른다.</p>
 
 <h2>▸ Fireblocks (양 체인) — 벤더가 발급한다</h2>
 
@@ -77,7 +87,7 @@ sequenceDiagram
 
     BE->>FBI: issueDepositAddress(계정, 자산)
     FBI->>FB: 새 입금 주소 생성 API (generateNewAddress)
-    Note over FBI,DIR: 이더리움 = 새 주소 / Canton = 같은 PartyId + 새 memo 자동 생성 — 콘솔·문서로 확인, memo 생성 보장 규칙은 적용 전 통합 테스트로
+    Note over FBI,DIR: 이더리움 = 새 주소 / Canton = PartyId(첫 1회 벤더가 등록) + 새 memo 자동 — 콘솔·문서로 확인, memo 생성 보장 규칙은 적용 전 통합 테스트로
     FB-->>FBI: Address(주소, memo?)
     FBI->>DIR: 식별자 저장 — 감시·귀속은 벤더 몫 (vault 가 곧 감시 범위)
     FBI-->>BE: 식별자
@@ -89,8 +99,8 @@ sequenceDiagram
 <table>
 <thead><tr><th style="width:18%"></th><th>자체 × 이더리움</th><th>자체 × Canton</th><th>Fireblocks (양 체인)</th></tr></thead>
 <tbody>
-<tr><td><b>새로워지는 것</b></td><td><b>주소</b> (memo 없음)</td><td><b>memo</b> (주소 = PartyId 고정)</td><td>체인 따라 — 주소 / memo (자동)</td></tr>
-<tr><td><b>식별자의 출처</b></td><td>우리 키 트리(xpub 계산)</td><td>우리 memo 채번 (장부)</td><td>Fireblocks 키·채번</td></tr>
+<tr><td><b>새로워지는 것</b></td><td><b>주소</b> (memo 없음)</td><td><b>memo</b> (PartyId 첫 1회 선발급 후 고정)</td><td>체인 따라 — 주소 / memo (자동)</td></tr>
+<tr><td><b>식별자의 출처</b></td><td>우리 키 트리(xpub 계산)</td><td>PartyId=온장 등록(1회) · memo=채번</td><td>Fireblocks 키·채번</td></tr>
 <tr><td><b>감시·귀속 등록</b></td><td><b>우리</b> — watch-list</td><td><b>우리</b> — memo 귀속표</td><td>벤더 (vault 범위)</td></tr>
 <tr><td><b>우리 책임</b></td><td>번호·계산·등록·디렉터리</td><td>채번·등록·디렉터리</td><td>디렉터리</td></tr>
 </tbody>
