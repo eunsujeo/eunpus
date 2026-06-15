@@ -44,16 +44,12 @@ class SelfBuildAdapter(
     private val adapters: ChainAdapterRegistry,
 ) : AccountPort, TransactionPort, FeeBoostCapability, CancelCapability, DepositAddressIssuanceCapability {
     /**
-     * HD account index 할당 — 로컬 연산 (가이드 15.3). 단 Canton 자산 온보딩이면
-     * 온장 등록(party allocation)까지가 계정 생성이다 — 주소(PartyId)가 계정과 함께 태어나는 체인 (가이드 15-2c).
+     * 계정(vault) 생성 — HD account index 할당, 순수 로컬 장부 연산 (가이드 15.3). **체인 무관**:
+     * 어떤 체인을 쓸지 아직 모르므로 온체인 호출이 없다 — 이더리움 주소도 Canton PartyId 도 여기서 안 만든다.
+     * createAccount(ref) 에 asset 이 없는 것이 그 증거다. 체인 위 신원은 asset 을 처음 아는
+     * issueDepositAddress 에서 태어난다 — Canton PartyId 는 거기서 선발급한다 (가이드 9.2 · 15-2c).
      */
-    override suspend fun createAccount(ref: AccountRef): Account {
-        val account = hd.allocateAccount(ref)
-        // TODO: 온보딩 요청의 체인에 대해 adapters.pickAdapter(chain) 이
-        //   OnLedgerAccountRegistrationCapability 면 registerAccount(account, pubkey) 호출 (가이드 15.2)
-        //   — AccountRef 에 온보딩 체인 정보가 실리면 활성화 (가이드 9.1 의 asset)
-        return account
-    }
+    override suspend fun createAccount(ref: AccountRef): Account = hd.allocateAccount(ref)
 
     /** 조회 — 발급(등록)된 주소만 반환, 절대 새 주소를 만들지 않는다 (가이드 9.1 불변식 · 15.2). */
     override suspend fun addressOf(
@@ -61,11 +57,20 @@ class SelfBuildAdapter(
         asset: Asset,
     ): Address = hd.issuedAddressOf(account, asset)
 
-    /** 발급 capability — 다음 index 파생 + 디렉터리·인덱서 watch-list 등록까지가 발급 (가이드 9.3 · 9.4). */
+    /**
+     * 발급 capability — 첫 식별자부터 이 동사 (가이드 9.3 · 9.4). 체인에 따라 "새로워지는 것"이 다르다:
+     * EVM·UTXO·Solana 는 다음 index 파생으로 **주소**가, Canton 은 고정 PartyId 위에 **memo** 가 새로워진다.
+     * Canton 의 PartyId 자체는 이 계정의 첫 Canton 발급 때 여기서 **선발급**한다(온장 등록·1회·유료) —
+     * createAccount 가 아니다(asset 을 처음 아는 자리, 가이드 9.2 · 15-2c).
+     * 어느 경로든 디렉터리 저장 + 인덱서 등록(watch-list / Canton 은 memo 귀속표)까지가 발급이다 — 등록 실패 = 발급 실패.
+     */
     override suspend fun issueDepositAddress(
         account: Account,
         asset: Asset,
-    ): Address = TODO("첫 주소부터 이 동사 — hd.deriveNextAddress + 계정 디렉터리 저장 + watch-list 등록(등록 실패 = 발급 실패, 가이드 9.4) — Canton 은 미지원(memo-ref)")
+    ): Address = TODO(
+        "체인 분기 — Canton(OnLedgerAccountRegistrationCapability): PartyId 없으면 선발급(registerAccount, 선기록·재시도는 조회 먼저) + 새 memo 채번; " +
+            "그 외: hd.deriveNextAddress. 공통 후처리: 계정 디렉터리 저장 + watch-list/memo 귀속표 등록 (가이드 9.4)",
+    )
 
     /**
      * 계정 → 주소 해석 후 인덱서 projection 조회 (가이드 15.2 getBalance) —

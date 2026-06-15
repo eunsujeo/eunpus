@@ -100,7 +100,7 @@ class WalletGatewayService(
 
     /**
      * 추가 입금 주소 "발급" — capability (가이드 13.3 · 9.3). 어댑터가
-     * [DepositAddressIssuanceCapability] 를 구현하지 않으면(Canton·NodeWallet) 명시적 거절로 끝낸다.
+     * [DepositAddressIssuanceCapability] 를 구현하지 않으면(NodeWallet 등 지갑당 주소 1개 체인) 명시적 거절로 끝낸다.
      */
     suspend fun issueDepositAddress(
         credentials: String?,

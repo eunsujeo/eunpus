@@ -127,7 +127,16 @@
 
 - **addressOf 는 절대 새 주소를 만들지 않는다** (가이드 9.1 불변식) — `HdWallet.issuedAddressOf` 는 발급 장부 조회만. 재계산(bip32)은 검증·복구용. 첫 주소부터 `issueDepositAddress`(= `HdWallet.deriveNextAddress` + 디렉터리 + watch-list 등록).
 - **custody 는 두 포트** — `SelfBuildAdapter` 에서 ChainQueryPort 분리 → `IndexerQueryAdapter` (custody 와 별개 슬롯, 하이브리드와 같은 클래스 한 벌. `chainquery.provider=indexer|alchemy`).
-- **SPI 선택 capability 2종** (engine/multichain) — `DepositAddressDerivationCapability.deriveAddress(account, index)` (EVM·UTXO·Solana, 곡선별 계산만) / `OnLedgerAccountRegistrationCapability.registerAccount(account, pubkey)` (Canton: generate-topology→HSM 서명→allocate, 호출처는 포트 createAccount).
+- **SPI 선택 capability 2종** (engine/multichain) — `DepositAddressDerivationCapability.deriveAddress(account, index)` (EVM·UTXO·Solana, 곡선별 계산만) / `OnLedgerAccountRegistrationCapability.registerAccount(account, pubkey)` (Canton: generate-topology→HSM 서명→allocate, 호출처는 포트 issueDepositAddress 첫 Canton 호출 — PartyId 선발급, createAccount 아님).
 - **`TransactionPort.transactionsOf(account, range)`** — 내 거래 이력은 custody 가 준다(전 구현). 임의 "외부" 주소만 ChainQueryPort. 동사의 자리는 데이터의 주인이 정한다 (가이드 13.3).
 - **`WalletGatewayService.openWallet`** — "지갑 개설" 한 요청 = createAccount → 첫 주소 확보, 멱등 키 하나 (가이드 9.1, `POST /accounts/open`). 클래스 kdoc 도 "게이트웨이(인증·멱등)+유스케이스" 로 정렬.
 - ⚠ 본 동기화는 **컴파일 미검증** (환경에 gradle 없음) — 툴체인 확보 시 `./gradlew build` + `ktlintFormat` 필요.
+
+## 9. 2026-06-15 동기화 — createAccount = 체인 무관 vault · Canton PartyId 선발급 이전
+
+워크스루(`docs-site/wallet-design-walkthrough/`)의 설계 정정을 코드에 반영. 근거: `AccountPort.createAccount(ref)` 에 asset 인자가 없으므로 특정 체인의 일(Canton PartyId 온장 등록)을 할 수 없다 — 시그니처가 곧 증거.
+
+- **PartyId 온장 등록을 createAccount → issueDepositAddress 첫 Canton 호출로 이전** (선발급). `OnLedgerAccountRegistrationCapability` 의 호출처가 바뀌었다 — `SelfBuildAdapter.createAccount` 는 순수 vault(`hd.allocateAccount`)만, 온장 등록 TODO 제거. `issueDepositAddress` 가 체인 분기: Canton 은 PartyId 없으면 선발급(재사용·선기록) + memo 채번, 그 외는 `hd.deriveNextAddress`.
+- **선발급의 근거**: memo 는 PartyId 위에 붙는 라우팅 태그라 PartyId 가 먼저 존재해야 한다. ETH-only 계정엔 PartyId 를 만들지 않아(첫 Canton 발급 때만) 불필요한 유료 등록을 피한다.
+- 영향 파일: `engine/multichain/ChainAdapter.kt`(SPI doc) · `chains/canton/CantonChainAdapter.kt`(addressOf·registerAccount doc) · `adapters/self-build/SelfBuildAdapter.kt`(createAccount·issueDepositAddress) · `domain/port/AccountPort.kt`(doc) · `backend/gateway/WalletGatewayService.kt`(stale "Canton 발급 미구현" 정정 — Canton 은 Stage 81 이후 발급 구현).
+- ⚠ 컴파일 미검증 — 8절과 동일.

@@ -101,10 +101,11 @@ interface DepositAddressDerivationCapability {
 }
 
 /**
- * 선택 capability — 계정 생성에 온장(on-ledger) 등록이 필요한 체인 (가이드 15.2 createAccount · 15-2c).
+ * 선택 capability — 입금 식별자 발급에 온장(on-ledger) 등록이 선행돼야 하는 체인 (가이드 9.2 · 15-2c).
  *
  * Canton 만: generate-topology → HSM hash 서명(키 반출 없음) → allocate → PartyId. 유료·비멱등.
- * 호출처는 포트의 createAccount — 주소(PartyId)가 계정과 함께 태어나는 체인의 그 "탄생" 조각이다.
+ * 호출처는 포트의 issueDepositAddress 첫 Canton 호출 — PartyId 를 한 번 선발급하고(이후 memo 만 채번),
+ * createAccount 가 아니다(그건 asset 무관 vault 라 어느 체인일지 모른다, 가이드 9.2).
  */
 interface OnLedgerAccountRegistrationCapability {
     suspend fun registerAccount(

@@ -50,8 +50,9 @@ class CantonChainAdapter(
     private val buildSeq = AtomicLong()
 
     /**
-     * 파생·발급 없음 — "조회만" (가이드 2.4 · 9.2). PartyId(hint::fingerprint)는 계정 생성 단계의
-     * party allocation(topology 서명 필요·비멱등·유료 온장 등록, 가이드 15.9) 때 이미 만들어졌다.
+     * 파생·발급 없음 — "조회만" (가이드 2.4 · 9.2). PartyId(hint::fingerprint)는 이 계정의
+     * 첫 Canton 입금 식별자 발급(issueDepositAddress) 때 party allocation 으로 선발급돼 있다
+     * (topology 서명 필요·비멱등·유료 온장 등록, 가이드 15.9).
      * ★ 여기서 allocation 을 호출하지 말 것 — 읽기 동사 뒤에 온장 쓰기를 숨기게 된다.
      * asset 무관(자산별 주소 없음) — 입금 구분은 주소가 아니라 memo-ref.
      */
@@ -134,7 +135,8 @@ class CantonChainAdapter(
 
     /**
      * Canton 만의 온장 등록 — 가이드 15-2c: generate-topology → HSM hash 서명 → allocate → PartyId.
-     * 호출처는 포트의 createAccount (가이드 15.2) — addressOf 는 이렇게 태어난 PartyId 의 조회만 한다.
+     * 호출처는 포트의 issueDepositAddress 첫 Canton 호출 — PartyId 를 선발급한다(가이드 9.2). 이후
+     * 발급은 이 PartyId 를 재사용하며 memo 만 늘리고, addressOf 는 선발급된 PartyId 의 조회만 한다.
      */
     override suspend fun registerAccount(
         account: Account,
