@@ -187,7 +187,7 @@ Sandbox workspace는 무료, 개발용으로 다음 특성을 갖는다 (p.8):
 - Q-2026-05-18-G02 — Q+O 라벨의 정확한 의미 (Owner가 Quorum count에 포함되는가?)
 - Q-2026-05-18-G03 — Approval group과 Admin Quorum의 멤버십·우선순위 관계?
 - Q-2026-05-18-G04 — Admin Quorum 멤버 자격: O/A/NSA/SecAdmin이 자동 가입인지 별도 지정인지?
-- Q-2026-05-18-P01 — designated signer / second authorizer의 룰 표현 문법?
+- Q-2026-05-18-P01 — designated signer / second authorizer의 룰 표현 문법? — **부분 해소 (Stage 51)**: 한 Policy rule 에서 **Source=특정 vault + Designated Signer=특정 API user 결합 가능**(콘솔 1차 확인 2026-06-16). designated signer(API user)가 곧 호출될 Callback Handler 를 결정 → vault 별 CH 라우팅 가능 ([[entities/fireblocks/api-co-signer]] §"Stage 51"). 잔존: 연산자·우선순위 등 정밀 문법.
 - Q-2026-05-18-P02 — NSA·Editor의 NS 라벨이 "internal exchange transfer 제외"인데, 그 외 트랜잭션 타입의 정의 위치?
 - Q-2026-05-18-P03 — "Smart transfer ticket"과 "Automation rule"의 정의·차이?
 - Q-2026-05-18-O01 — TL이 ALGO/XRP/SOL/XLM에만 적용되는 이유?

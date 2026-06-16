@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>1. proxy 다단 · L4/L7 · passthrough — Co-signer ↔ Callback Handler 망 경로 가이드</title>
+<meta content="Co-signer 와 Callback Handler 사이에 proxy 가 여러 단 낄 때 — L4(투명 전달) vs L7(TLS 종료)의 차이, SSL pinning 이 깨지는 조건, Squid CONNECT 터널 passthrough 구성, timeout 누적." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. 개요 · 통신 모델</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 망 경로</h3><ul>
+<li><a class="active" href="proxy.html">1. proxy 다단 · L4/L7 · passthrough</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 운영</h3><ul>
+<li><a href="operations.html">2. 책임 분담 · 운영</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="proxy">
+<h2>1. proxy 다단 · L4/L7 · passthrough</h2>
+<span class="section-subtitle">proxy 가 여러 단일 때 무엇이 동작하고 무엇이 깨지나 — 핵심은 "TLS 를 푸느냐"</span>
+
+<h3>1.1 proxy 가 끼는 지점</h3>
+
+<p>은행 망 분리 환경에서는 Co-signer 가 Callback Handler 를 바로 호출하지 못하고, <strong>중간 벤더 proxy → 은행 proxy</strong> 처럼 여러 단을 거치게 되는 경우가 흔하다. 통신 방향은 <a href="index.html">0장</a>에서 봤듯 Co-signer 가 client 이므로, proxy 들은 그 egress(나가는) 경로에 일렬로 놓인다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    CS["Co-signer<br/>(client)"]
+    P1["proxy ①<br/>(Co-signer 측)"]
+    P2["proxy ②<br/>(중간 벤더)"]
+    P3["proxy ③<br/>(은행)"]
+    CB["Callback Handler<br/>(server)"]
+
+    CS --> P1 --> P2 --> P3 --> CB
+
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    class CS special;
+    class P1,P2,P3 ext;
+    class CB good;
+</pre></div>
+<p class="diagram-caption">Figure 1-1. proxy 다단 경로 예. 각 단이 무엇을 하느냐(투명 전달 vs TLS 종료)에 따라 통신 성패가 갈린다. 단 수가 늘수록 응답 왕복 지연이 누적된다(1.5).</p>
+
+<h3>1.2 L4 vs L7 — "봉투만 보나, 편지를 여나"</h3>
+
+<p>proxy 의 동작은 <strong>OSI 계층</strong>으로 갈린다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:18%">구분</th><th>L4 proxy (전송 계층)</th><th>L7 proxy (응용 계층)</th></tr></thead>
+<tbody>
+<tr><td>보는 것</td><td>IP + 포트 (봉투의 주소)</td><td>HTTP 경로·헤더·본문 (편지 내용)</td></tr>
+<tr><td>TLS(암호화)</td><td><strong>안 풂</strong> — 암호문 그대로 전달(passthrough)</td><td><strong>푼다(terminate)</strong> — 복호화·재암호화</td></tr>
+<tr><td>할 수 있는 일</td><td>단순 전달, 포트 기반 분산</td><td>경로 라우팅, 헤더 수정, 캐싱, WAF, 검사</td></tr>
+<tr><td>대표 예</td><td>TCP 로드밸런서, NLB, SNI 기반 전달</td><td>nginx/Envoy reverse proxy, ALB, API gateway</td></tr>
+<tr><td>비유</td><td><strong>우체부</strong> — 봉투 주소만 보고 배달</td><td><strong>비서</strong> — 편지를 열어 읽고 분류·가공</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>핵심 한 가지만 기억하면 된다 — <strong>"TLS 를 푸느냐(terminate)"</strong>. 이게 pinning 의 생사를 가른다.</p>
+
+<h3>1.3 pinning 이 깨지는 조건</h3>
+
+<p><a href="index.html">0.3</a>에서 본 대로 Co-signer 는 Callback Handler 서버의 SSL 공개키를 <strong>pin</strong> 한다. 그래서 경로 중 누군가 TLS 를 푸느냐에 따라 두 결과로 갈린다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    subgraph L4P["L4 (passthrough) — 암호 안 풂"]
+      direction LR
+      A1["Co-signer"] -->|"암호문 그대로"| A2["proxy"] -->|"그대로"| A3["Callback Handler"]
+    end
+    subgraph L7P["L7 (terminate) — 중간에서 암호 풂"]
+      direction LR
+      B1["Co-signer"] -->|"TLS ①"| B2["proxy<br/>(자기 인증서로 재암호화)"] -->|"TLS ② 새로 맺음"| B3["Callback Handler"]
+    end
+    OK["✅ 은행 인증서가 끝까지 도달<br/>→ pin 일치 → 동작"]
+    NG["❌ Co-signer 가 proxy 인증서를 봄<br/>→ pin 불일치 → 실패"]
+    A3 --> OK
+    B2 --> NG
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    class A1,B1 special;
+    class A2,A3,B2,B3 ext;
+    class OK good;
+    class NG bad;
+</pre></div>
+<p class="diagram-caption">Figure 1-2. pinning 의 생사. <strong>L4 passthrough(위)</strong> — proxy 가 암호를 안 풀어 은행 Callback Handler 의 진짜 인증서가 Co-signer 까지 도달 → pin 일치 → 동작(초록). <strong>L7 terminate(아래)</strong> — proxy 가 TLS 를 끊고 자기 인증서로 다시 맺어, Co-signer 가 보는 건 proxy 인증서 → pin 불일치 → 실패(빨강). 메시지 서명 인증(Public key JWT)을 쓰면 payload 에 서명이 실려 이 경로 문제에서 자유롭다(0.3).</p>
+
+<div class="callout">
+<div class="callout-title">정리 — 다단이어도 되는 조건</div>
+<ul>
+<li>경로의 <strong>모든 proxy 가 L4 passthrough</strong> 면 → pin 유지 → 단 수와 무관하게 동작.</li>
+<li>중간에 <strong>L7 로 TLS 를 끊는 proxy 가 하나라도</strong> 있으면 → pin 깨짐. 이때는 인증을 <strong>메시지 서명(Public key JWT)</strong> 으로 바꾸거나, 그 proxy 인증서를 pin 대상으로 조정해야 한다.</li>
+<li>L7 은 헤더·경로 검사(WAF·감사)가 필요할 때 쓰게 되는데, 그게 바로 pinning 과 충돌하는 지점이다 — <strong>"검사하고 싶다(L7) vs 끝단 인증서를 지키고 싶다(pinning)"</strong> 의 trade-off.</li>
+</ul>
+</div>
+
+<h3>1.4 passthrough 구성 — Squid CONNECT 터널</h3>
+
+<p>현장에서 흔히 쓰는 forward proxy 인 <strong>Squid</strong> 로 이 경로를 구성할 수 있다. Squid 는 HTTPS 요청에 대해 기본적으로 <strong>HTTP <code>CONNECT</code> 메서드로 TCP 터널만 뚫고 바이트를 그대로 흘려보낸다</strong> — 즉 TLS 를 풀지 않는 passthrough 다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    CS["Co-signer"]
+    SQ["Squid<br/>CONNECT 터널만<br/>(목적지 host:port 만 봄)"]
+    CB["Callback Handler"]
+
+    CS -->|"CONNECT callback.bank:443"| SQ
+    SQ -->|"TCP 터널 — 암호문 중계"| CB
+    CB -.->|"TLS 는 Co-signer ↔ Callback 끝단끼리"| CS
+
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    class CS special;
+    class SQ ext;
+    class CB good;
+</pre></div>
+<p class="diagram-caption">Figure 1-3. Squid 의 CONNECT 터널. Squid 는 목적지 host:port(CONNECT 줄·SNI)만 보고 본문은 못 본다 — TLS 는 Co-signer ↔ Callback Handler 끝단끼리 end-to-end 라 pin 이 유지된다. 여러 단 Squid 라도 전부 CONNECT 터널이면 TLS 는 끝단끼리이므로 동작한다.</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ 단 하나의 함정 — SSL Bump</div>
+<p>Squid 에는 <strong><code>ssl_bump</code>(SSL Bump)</strong> 기능이 있는데, 켜면 Squid 가 TLS 를 <strong>중간에서 가로채 복호화(MITM)</strong> 한다 — 이게 바로 L7 terminate 다. 이 모드면 Co-signer 가 보는 인증서가 Squid 가 만든 가짜 인증서라 <strong>pin 이 깨진다.</strong> 즉 <strong>"Squid 는 되지만 SSL Bump 를 켜는 순간 안 된다."</strong> 지금 동작 중이라면 Bump 가 꺼진 순수 CONNECT 터널 구성일 것이다 — 보안팀이 트래픽 검사 목적으로 나중에 Bump 를 켜면 서명 전체가 멈출 수 있으니 그 구성을 <strong>고정·통지 대상</strong>으로 둔다.</p>
+</div>
+
+<h4>Squid 구성 점검표</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">항목</th><th>확인할 것</th></tr></thead>
+<tbody>
+<tr><td>SSL Bump</td><td><code>ssl_bump</code> 비활성 (또는 해당 host 는 bump 제외) — pinning 유지의 핵심</td></tr>
+<tr><td>CONNECT 허용</td><td>Callback Handler host:port 가 <code>acl</code> 에서 CONNECT 허용 대상인지</td></tr>
+<tr><td>Co-signer proxy 설정</td><td>Co-signer 가 <code>http_proxy</code>/<code>https_proxy</code> 로 Squid 를 바라보게 구성됐는지</td></tr>
+<tr><td>목적지 allowlist</td><td>Callback Handler 외 임의 목적지 CONNECT 는 차단(보안)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>1.5 timeout 누적 — 다단의 진짜 비용</h3>
+
+<p>pinning 이 살아 있어도, proxy 가 많으면 <strong>응답 왕복 지연이 누적</strong>된다. Callback Handler 가 제때 응답해야 Co-signer 가 서명을 진행하므로, hop 이 많을수록 <strong>응답 timeout 위험</strong>이 커진다.</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">timeout 규격은 공식 미명세 — 측정·합의 영역</div>
+<p>Callback 의 <strong>timeout·retry·idempotency 규격은 Fireblocks 공식 문서로 확정돼 있지 않다.</strong> 즉 "몇 초 안에 응답해야 하는지" 를 문서로 단정할 수 없어, <strong>운영 환경에서 직접 측정</strong>하고 각 proxy 구간의 지연 예산을 <strong>합의</strong>해야 한다. proxy 다단이면 이 여유가 빠르게 잠식되므로, hop 별 latency 예산(예: p99 상한)을 명시적으로 잡아 두는 것이 안전하다.</p>
+</div>
+
+<h3>1.6 인증 방식으로 경로 내성 높이기</h3>
+
+<p>경로가 길거나 L7 검사를 피할 수 없다면, <a href="index.html">0.3</a>의 인증 옵션 선택으로 완화한다.</p>
+
+<ul>
+<li><strong>Public key (JWT) — 메시지 서명</strong>: 서명이 payload 에 실려 전송 경로(proxy 단수·종류)와 무관하게 검증된다. <strong>proxy 다단에 가장 강함.</strong></li>
+<li><strong>Root-CA</strong>: 중간 proxy 가 유효한 CA 체인 인증서를 제시하면 통과 — L7 종료가 불가피한 환경의 절충.</li>
+<li><strong>Self-Signed Cert pin</strong>: 가장 단순하지만 경로에 민감 — 전 구간 L4 passthrough 가 보장될 때만.</li>
+</ul>
+
+<div class="callout">
+<div class="callout-title">설계 포인트</div>
+<ul>
+<li><strong>전 구간 L4 passthrough 가 가능하면</strong> → pinning(Self-Signed Cert) 그대로 두는 게 가장 단순.</li>
+<li><strong>중간 L7 검사가 불가피하면</strong> → 인증을 메시지 서명(JWT)으로 바꿔 경로 독립적으로.</li>
+<li><strong>어느 쪽이든 timeout 예산을 hop 별로 수치화</strong> — 규격이 미명세라 보수적으로 잡는다.</li>
+<li><strong>proxy 수 자체를 줄이는 토폴로지</strong>를 우선 검토 — Co-signer 배포 위치를 Callback Handler 에 가깝게 두면 중간 단을 없앨 수 있다.</li>
+</ul>
+</div>
+
+<p>다음 — <a href="operations.html"><strong>2. 책임 분담 · 운영</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

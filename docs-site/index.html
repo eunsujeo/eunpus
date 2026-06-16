@@ -368,6 +368,26 @@
       <div class="doc-path">canton-network/</div>
     </a>
 
+    <a class="doc-card" href="cosigner-callback-network/">
+      <div class="doc-title">
+        Fireblocks Co-signer ↔ Callback Handler 망 경로 <span class="badge badge-new">NEW</span>
+        <span class="arrow">→</span>
+      </div>
+      <p class="doc-summary">
+        Co-signer 가 서명 전 <strong>Callback Handler(정책 게이트)</strong> 를 호출하는 통신 경로를, <strong>은행 망 분리</strong>처럼 그 사이에 <strong>proxy 가 여러 단</strong> 낄 때 어떻게 설계하나.
+        <strong>통신 모델</strong>(Co-signer=client, SSL pinning + 메시지 서명, 5 인증 옵션) · <strong>L4/L7</strong>(투명 전달 vs TLS 종료)과 pinning 이 깨지는 조건 · <strong>Squid CONNECT passthrough</strong>(SSL Bump 금지) · timeout 누적 ·
+        <strong>책임 분담(RACI)</strong>(Co-signer 운영자 · 중간 벤더 · 은행)까지.
+        <em>Fireblocks 공식 사실 / 일반 네트워크 지식 / 설계 판단을 구분 · timeout 규격은 "측정·합의" 로 격리.</em>
+      </p>
+      <div class="doc-meta">
+        <span class="doc-meta-item"><span class="badge badge-pending-review">리뷰 전</span></span>
+        <span class="doc-meta-item"><strong>업데이트</strong> 2026-06-16</span>
+        <span class="doc-meta-item"><strong>Pages</strong> 3 (개요·통신 모델 + proxy 다단·L4/L7·passthrough + 책임 분담·운영)</span>
+        <span class="doc-meta-item"><strong>Source</strong> Fireblocks 공식(Co-signer·Callback Handler) · 일반 네트워크(L4/L7·Squid) · 설계 판단</span>
+      </div>
+      <div class="doc-path">cosigner-callback-network/</div>
+    </a>
+
     <a class="doc-card" href="fireblocks-custodial-wallet-db-design/">
       <div class="doc-title">
         Fireblocks 도입 수탁형 지갑 — 인프라 · 규제 · DB · 상태 흐름 종합

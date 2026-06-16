@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>0. 개요 · 통신 모델 — Co-signer ↔ Callback Handler 망 경로 가이드</title>
+<meta content="Fireblocks Co-signer 가 Callback Handler 를 호출하는 통신 모델과, 그 사이에 proxy 가 여러 단 낄 때(은행 망분리 등)의 설계 — SSL pinning·메시지 서명·5 인증 옵션·L4/L7·passthrough·책임 분담." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a class="active" href="index.html">0. 개요 · 통신 모델</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 망 경로</h3><ul>
+<li><a href="proxy.html">1. proxy 다단 · L4/L7 · passthrough</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 운영</h3><ul>
+<li><a href="operations.html">2. 책임 분담 · 운영</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="overview">
+<h2>0. 개요 · 통신 모델</h2>
+<span class="section-subtitle">Co-signer 가 Callback Handler 를 어떻게 호출하나, 그리고 그 사이에 proxy 가 여러 단 낄 때 무엇이 문제인가</span>
+
+<p class="lead">
+이 가이드는 <strong>Fireblocks Co-signer 가 서명 전에 Callback Handler 를 호출하는 통신 경로</strong>를 다룬다. 특히 은행처럼 <strong>망 분리</strong>가 엄격한 환경에서 그 사이에 <strong>proxy 가 여러 단(중간 벤더·은행 등)</strong> 끼게 될 때, 무엇이 동작하고 무엇이 깨지는지, 그리고 각 주체의 책임을 어떻게 나눌지를 정리한다. 특정 기관이 아니라 <strong>"Co-signer 운영자 · 중간 벤더 · 은행"</strong> 역할 단위의 일반 reference 다.
+</p>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처 — 셋으로 나눠 읽기</div>
+<ul>
+<li><strong>Fireblocks 공식 사실 (그대로 받아도 안전)</strong> — Co-signer 가 Callback Handler 서버의 SSL 공개키를 pin 한다는 점, 5가지 인증 옵션, Callback Handler 미설정 시 자동 서명(외부 검증 없음), 인증서 변경이 재페어링을 유발한다는 점. Fireblocks 공식 문서에서 확인된 내용.</li>
+<li><strong>일반 네트워크 지식</strong> — L4/L7 의 차이, TLS 종료(terminate)가 pinning 을 깨는 원리, Squid 의 CONNECT 터널 동작. 표준 네트워킹 개념.</li>
+<li><strong>저자의 설계 판단 (본인 환경 검증 권장)</strong> — 책임 분담(RACI)·운영 체크리스트·권고 토폴로지. "설계 포인트", "권고" 로 묶은 부분.</li>
+</ul>
+<p>아직 공식 문서로 확정 못 한 항목(특히 <strong>Callback 응답 timeout·retry·idempotency 규격</strong>)은 <strong>"측정·합의 영역"</strong> 으로 분리한다 — 추정으로 메우지 않는다.</p>
+</div>
+
+<h3>0.1 왜 Callback Handler 를 거치나 — 서명 전 정책 게이트</h3>
+
+<p>Co-signer 는 트랜잭션에 자동 서명하는 컴포넌트다(MPC key share 보유). 하지만 "무엇이든 자동으로" 서명하면 위험하므로, <strong>서명을 진행하기 전에 Callback Handler 에게 "이 거래를 서명해도 되는가" 를 물어</strong> 외부 정책 검증을 받는다. Callback Handler 가 승인하면 서명이 진행되고, 거부하면 멈춘다.</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ Callback Handler 를 안 붙이면 — 무검증 자동 서명</div>
+<p>Callback Handler 를 설정하지 <strong>않으면</strong> Co-signer 는 외부 검증 없이 <strong>자동으로 sign/approve</strong> 한다(기본 동작). 즉 Callback Handler 는 "출금 정책(금액·주소·속도 제한)을 강제하는 관문" 이고, 수탁 지갑이라면 사실상 필수다. 그래서 이 통신 경로의 안정성이 곧 서명 파이프라인의 안정성이 된다.</p>
+</div>
+
+<h3>0.2 통신 방향 — Co-signer 가 "클라이언트"</h3>
+
+<p>가장 먼저 잡아야 할 그림: <strong>Co-signer 가 요청을 보내는 쪽(client), Callback Handler 가 받는 쪽(server)</strong> 이다. 그래서 그 사이에 끼는 proxy 들은 <strong>Co-signer 에서 나가는(egress) 경로</strong>에 놓인다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    CS["Co-signer<br/>(MPC share 보유)<br/>= 요청하는 쪽 (client)"]
+    PX["proxy (한 단 이상)<br/>중간 벤더 · 은행 망"]
+    CB["Callback Handler<br/>(정책 서버)<br/>= 받는 쪽 (server)"]
+
+    CS -->|"① 서명해도 되나? (HTTPS 요청)"| PX --> CB
+    CB -->|"② 승인 / 거부 (응답)"| PX2["proxy"] --> CS
+
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    class CS special;
+    class PX,PX2 ext;
+    class CB good;
+</pre></div>
+<p class="diagram-caption">Figure 0-1. Co-signer 가 client, Callback Handler 가 server. Co-signer 가 서명 전 "이 거래 OK?" 를 HTTPS 로 묻고(①), Callback Handler 가 승인/거부로 답하면(②) 그 결과로 서명이 진행된다. 그 사이 proxy 들은 egress 경로에 놓인다 — proxy 가 많아질수록 이 왕복이 길어진다(<a href="proxy.html">1장</a>).</p>
+
+<h3>0.3 통신을 지키는 두 겹 — pinning + 메시지 서명</h3>
+
+<p>이 경로는 두 겹의 보안으로 보호된다. proxy 설계를 이해하려면 둘을 구분해야 한다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">보호 장치</th><th>무엇</th><th>proxy 경로와의 관계</th></tr></thead>
+<tbody>
+<tr><td><strong>SSL 공개키 pinning</strong></td><td>Co-signer 가 Callback Handler 서버의 SSL 공개키를 <strong>고정(pin)</strong> — 다른 인증서면 통신 실패</td><td><strong>경로에 민감</strong> — 중간 proxy 가 TLS 를 풀면(terminate) 깨진다 (<a href="proxy.html">1장</a>)</td></tr>
+<tr><td><strong>메시지 서명</strong></td><td>Co-signer 가 요청 메시지를 자기 private key 로 서명, Callback Handler 가 검증</td><td><strong>경로에 둔감</strong> — 서명이 payload 에 실려, 전송 경로(proxy 단수)와 무관하게 검증</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>그리고 이 둘을 어떻게 묶을지가 <strong>5가지 인증 옵션</strong>으로 제공된다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">인증 옵션</th><th>성격</th><th>proxy 다단 내성</th></tr></thead>
+<tbody>
+<tr><td><strong>Public key (JWT)</strong></td><td>메시지(payload) 서명 검증</td><td><strong>높음</strong> — 경로 독립적</td></tr>
+<tr><td><strong>Self-Signed Cert pin</strong></td><td>SSL 공개키 pinning</td><td><strong>낮음</strong> — TLS 종료에 취약</td></tr>
+<tr><td><strong>Root-CA</strong></td><td>CA 체인 검증</td><td>중간 — 유효 체인 제시 시 통과</td></tr>
+<tr><td><strong>Hybrid (2종)</strong></td><td>위 조합</td><td>구성에 따라</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">버전 의존성</div>
+<p>인증 옵션 중 일부는 Co-signer 버전·환경 제약이 있다 — Root-CA·Hybrid 계열은 <strong>비교적 최신 Co-signer 버전</strong>이 필요하고, 일부 옵션은 <strong>SGX cosigner 전용</strong>이다. 옵션을 고르기 전에 운영 중인 Co-signer 의 버전·배포 형태(SGX/Nitro/GCP 등)를 먼저 확인하라.</p>
+</div>
+
+<h3>0.4 이 가이드 읽는 법</h3>
+
+<ul>
+<li><strong>1. proxy 다단 · L4/L7 · passthrough</strong> — proxy 가 여러 단일 때 무엇이 깨지나. L4(투명 전달) vs L7(TLS 종료)의 차이, pinning 이 깨지는 조건, Squid 의 CONNECT 터널로 passthrough 하는 법, timeout 누적.</li>
+<li><strong>2. 책임 분담 · 운영</strong> — Co-signer 운영자 · 중간 벤더 · 은행의 RACI, 중간 벤더가 지켜야 할 것/하지 말 것, 운영 체크리스트와 모니터링 지표, 인증서 교체·timeout 같은 장애·변경 시나리오.</li>
+</ul>
+
+<p>다음 — <a href="proxy.html"><strong>1. proxy 다단 · L4/L7 · passthrough</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

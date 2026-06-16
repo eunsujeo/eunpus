@@ -4,7 +4,7 @@ vendor: fireblocks
 status: stable
 tags: [signing, integration, api, identity]
 stage_introduced: 1
-last_updated_stage: 24
+last_updated_stage: 51
 source_count: 5
 related:
   - api-key
@@ -83,6 +83,19 @@ Callback Handler 미설정 = **Co-signer 자동 sign/approve** (default behavior
 - timeout / retry / idempotency / 실패 시 트랜잭션 처리 — 본 자료 외 필요 (Q-C01 잔존)
 - 내부 cryptographic 메커니즘 (키 share 보관, mutual authentication 형태) — 별도 (Q-A05 ANSWERED Stage 8)
 
+## Stage 51 — Callback Handler 라우팅 = designated signer (★)
+
+vault 별로 다른 Callback Handler 를 호출하는 구성("vault 별 CH 라우팅")의 메커니즘 확인.
+
+- **Callback Handler 는 API user 단위 설정** — 한 Co-signer 안에서도 API user 마다 Callback Handler 를 다르게(또는 없이) 둘 수 있다. 직접 인용: *"Within a single Co-signer, some API users can operate with a configured Callback Handler, while others can function without it."* (source: `developers.fireblocks.com/docs/cosigner-architecture-overview`)
+- **designated signer 가 라우팅 결정** — *"If an API user paired with the API Co-signer is configured in the Policy as a designated signer, the transaction will be sent to the API Co-signer associated with that API user."* → 어느 API user 가 서명하느냐 = 어느 Callback Handler 가 호출되느냐.
+- **vault 별 CH 라우팅 레시피**: Policy rule 의 Source 를 특정 vault 로 좁히고(Source = vault account/group, [[vendors/fireblocks/blockchains]]) 그 rule 의 Designated Signer 를 특정 API user 로 지정 → 그 API user 의 Callback Handler 가 호출된다.
+- ★ **한 rule 에서 Source=특정 vault + Designated Signer=특정 API user 결합 가능** — **콘솔 1차 확인 (2026-06-16, 사용자 워크스페이스)**.
+- ★ **다중 Co-signer 불필요** — 한 Co-signer + API user 별 Callback Handler 로 충분. 단 서명 key share 는 workspace 단위 하나(모든 vault 가 동일 마스터에서 파생)라 키 자체는 공유 — 키 분리는 별도 workspace 필요.
+- docs-site 연계: `docs-site/cosigner-callback-network/operations.html` 2.6 절.
+
+→ [[vendors/fireblocks/user-management]] 의 Q-2026-05-18-P01(designated signer 룰 문법) **부분 해소**: Source 조건 + Designated Signer 를 한 rule 에 결합 가능(콘솔 확인). 정밀 문법(연산자·우선순위)은 잔존.
+
 ## Related Pages
 
 - [[entities/fireblocks/callback-handler]]
@@ -100,6 +113,8 @@ Callback Handler 미설정 = **Co-signer 자동 sign/approve** (default behavior
 - `2026-05-18__support-fireblocks-io__re-enrolling-api-users.md`, p.1–2
 - `2026-05-18__support-fireblocks-io__rename-and-delete-api-users.md`, p.2
 - `2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app.md`, p.2 (Stage 5: mobile app 대체)
+- `developers.fireblocks.com/docs/cosigner-architecture-overview` (2026-06-16 web) — Callback Handler per API user, designated signer 라우팅 (Stage 51)
+- 콘솔 1차 관찰 (2026-06-16, 사용자 워크스페이스) — Policy rule 에서 Source=vault + Designated Signer 결합 가능 (Stage 51)
 
 ## Mobile app의 대체 옵션 (Stage 5)
 
