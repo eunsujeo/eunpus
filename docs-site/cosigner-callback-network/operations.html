@@ -152,6 +152,12 @@ Policy rule:  Source = Vault B  →  Designated Signer = API user 2   ⟹ Callba
 <p>vault 별로 Co-signer 를 따로 깔 필요가 없다. <strong>한 Co-signer 안에서 API user 마다 Callback Handler 를 다르게(또는 없이) 둘 수 있기</strong> 때문이다. 서명 key share 는 어차피 <strong>workspace 단위로 하나</strong>라(모든 vault 가 같은 마스터 키에서 파생), 여러 API user 가 같은 Co-signer 를 공유한다. 즉 <strong>"Callback Handler 는 갈라도 서명 엔진(키)은 공유"</strong> 다 — 키까지 분리하려면 별도 workspace 가 필요하다.</p>
 </div>
 
+<div class="callout">
+<div class="callout-title">쉬운 비유 — 메타마스크의 "계정 추가"</div>
+<p>(공식 사실이 아니라 이해를 돕는 비유다.) 메타마스크는 <strong>시크릿 복구 구문(시드) 하나</strong>로 Account 1·2·3… 을 끝없이 만든다 — 계정을 늘려도 백업하는 건 시드 하나뿐이고, 각 계정은 "시드 + 경로 번호" 로 다시 계산된다. Fireblocks 도 똑같다 — <strong>Workspace 키 = 시드</strong>, <strong>Vault A·B = "계정 추가" 로 만든 Account 1·2</strong>. 시드 하나로 모든 계정을 서명하듯, Workspace 키로 모든 vault 를 서명한다. 그래서 vault 를 나눠도 <strong>Co-signer(서명 엔진)는 하나로 충분</strong>하다. 다른 점은 그 시드가 메타마스크처럼 한 곳에 있지 않고 <strong>MPC 로 여러 share 에 쪼개져</strong> 있다는 것뿐이다(어느 한 share 만으로는 서명 불가).</p>
+<p>참고 — 이 "시드 → 계정" 파생은 표준 <strong>BIP44 derivation path</strong> 방식이다(경로 구조와 Fireblocks 대입은 아래 2.7 참고).</p>
+</div>
+
 <div class="callout callout-warn">
 <div class="callout-title">대가 — 망 경로가 Callback Handler 수만큼 늘어난다</div>
 <p>Callback Handler X·Y 의 운영 주체·서버가 실제로 다르면, <a href="proxy.html">1장</a>의 passthrough·pinning·timeout 설계를 <strong>경로마다 한 벌씩</strong> 적용해야 한다. 운영 주체가 같다면 굳이 이 방식으로 가지 말고, <strong>하나의 Callback Handler 가 거래 payload 의 source vault 를 보고 내부에서 분기</strong>하는 편이 훨씬 단순하다(Fireblocks 의 plugin 기반 Callback Handler 보일러플레이트가 이 방식을 돕는다). <strong>vault 별 Callback Handler 의 운영 주체·망이 실제로 분리될 때만</strong> 이 라우팅의 값어치가 있다.</p>
@@ -160,6 +166,49 @@ Policy rule:  Source = Vault B  →  Designated Signer = API user 2   ⟹ Callba
 <div class="callout">
 <div class="callout-title">근거 구분</div>
 <p>"Callback Handler = API user 단위", "designated signer 가 라우팅을 결정" 은 <strong>Fireblocks 공식 개발자 문서</strong>(Co-signer 아키텍처)에서 확인된 사실이다. Policy 의 Source 조건이 vault account/group 을 받고, <strong>한 rule 에서 Source=특정 vault + Designated Signer=특정 API user 를 함께 지정할 수 있음</strong> 은 <strong>콘솔에서 직접 확인(2026-06)</strong>한 1차 관찰이다. 따라서 이 라우팅은 구현 가능하다.</p>
+</div>
+
+<h3>2.7 (참고) BIP44 파생 — 키 하나로 모든 vault·주소</h3>
+
+<p>(Fireblocks 공식 명세가 아니라, "Co-signer 하나로 모든 vault" 가 왜 성립하는지의 <strong>배경 개념</strong>이다. BIP44/HD 파생은 표준 암호 지식.)</p>
+
+<p>BIP44<span class="g" data-tip="Bitcoin 계열에서 시작된 HD 지갑 파생 표준(BIP=Bitcoin Improvement Proposal). 시드 하나에서 정해진 경로 규칙으로 키·주소를 파생한다">?</span> 는 <strong>HD(계층결정적, Hierarchical Deterministic) 지갑</strong> 표준이다. 핵심은 <strong>마스터 키(시드) 하나 + 경로(path) 숫자만으로 무수한 키·주소를 결정적으로 다시 만들어내는 것</strong> — 주소마다 키를 따로 저장하지 않는다. 시드 문구 하나만 백업하면 모든 계정·주소가 재생성되는 메타마스크가 바로 이 방식이다.</p>
+
+<h4>경로 구조</h4>
+<pre><code>m / 44' / coin_type' / account' / change / address_index
+│    │        │           │         │         └ 몇 번째 주소 (입금주소 채번)
+│    │        │           │         └ 0 = 입금 / 1 = 잔돈(change)
+│    │        │           └ 몇 번째 계정 (account 단위)
+│    │        └ 어느 체인 (BTC=0, ETH=60 …)
+│    └ 목적 (BIP44 고정)
+└ 마스터 키 (= 시드)</code></pre>
+
+<p>각 칸은 <strong>비밀이 아니라 그냥 색인(번호)</strong>이다 — 비밀은 오직 마스터 키 하나. 같은 마스터라도 <code>account'</code> 를 0→1 로 바꾸면 완전히 다른 키 묶음이 나오고, <code>address_index</code> 를 +1 하면 새 입금주소가 나온다. 그래서 키 하나로 사실상 무한한 계정·주소를 가진다.</p>
+
+<h4>Fireblocks 대입</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:34%">BIP44 경로 칸</th><th>Fireblocks 계층</th></tr></thead>
+<tbody>
+<tr><td><code>m</code> (마스터)</td><td><strong>Workspace 키</strong> (MPC share 로 분산)</td></tr>
+<tr><td><code>account'</code></td><td><strong>Vault Account</strong> (Vault A=0, Vault B=1 …)</td></tr>
+<tr><td><code>coin_type'</code></td><td><strong>Asset Wallet</strong> (체인별 — BTC / ETH …)</td></tr>
+<tr><td><code>address_index</code></td><td>입금 <strong>Address</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<p>그래서 — <strong>Vault A 와 Vault B 는 "다른 키" 가 아니라 "같은 Workspace 마스터 키의 다른 가지(account 번호)"</strong> 다. 새 vault 를 만드는 건 새 키를 만드는 게 아니라 경로의 account 번호를 하나 더 쓰는 것이고, 새 입금주소는 address index 를 +1 하는 것이다. 마스터(Workspace 키)는 하나뿐이므로 <strong>그 키를 쥔 Co-signer 하나가 모든 vault·주소를 서명</strong>한다 — 이것이 2.6 "다중 Co-signer 불필요" 의 근거다.</p>
+
+<div class="callout">
+<div class="callout-title">정확도 주의 — 세그먼트 매핑은 표준 패턴 기준</div>
+<p>위 "Fireblocks 대입" 표 중 <strong>주소가 BIP44 로 파생된다는 점(address index)</strong>은 Fireblocks 가 확인한 사실이지만, <strong>vault account 가 BIP44 의 정확히 어느 경로 칸(<code>account'</code>)에 대응하는지</strong>의 세부 매핑은 Fireblocks 가 공개 명세하지 않았다. 위 표는 <strong>표준 BIP44 패턴에 비춘 설명</strong>이며, 정확한 경로 포맷이 필요하면 Fireblocks derivation 문서를 별도로 확인해야 한다.</p>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">Fireblocks 의 한 겹 차이 — MPC</div>
+<p>일반 HD 지갑은 마스터 키(시드)가 한 곳에 있지만, Fireblocks 는 그 마스터를 <strong>MPC 로 여러 share 에 쪼개</strong> 둔다 — 파생도 share 위에서 일어나(MPC derivation) 자식 키도 통째로 조립되지 않는다. 논리적 구조(마스터 하나 → 경로로 파생)는 같고, "그 마스터를 어떻게 보관·서명하나" 만 MPC 로 다르다. <em>파생의 정확한 cryptographic 절차(Owner key set → user key set)는 Fireblocks 공식 문서에 미명세 영역이다.</em></p>
 </div>
 
 <div class="callout">
