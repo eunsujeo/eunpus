@@ -37,7 +37,7 @@
   "balance": 5000
 }</code></pre></td></tr>
 <tr><td><b>델타 원장</b><br/>delta_ledger</td><td>아직 정산 안 된 <b>미정산 차액</b>. 시점차를 메우는 임시 다리. 〈카드 승인 미정산〉</td><td><pre style="margin:0;padding:10px 12px;font-size:12px;line-height:1.5"><code>{
-  "delta_id": "d1",
+  "delta_id": "delta-1",
   "delta_type": "ONRAMP",
   "asset_id": "KRWK_ETH",
   "amount": -1000,
@@ -90,8 +90,8 @@
 <thead><tr><th>시점</th><th>row (delta_type · asset · amount · status)</th></tr></thead>
 <tbody>
 <tr><td>처음</td><td>(없음)</td></tr>
-<tr><td><b>1단계 후</b></td><td><code>d1 · ONRAMP · KRWK · −1,000 · pending</code> ← 곧 올, 아직 없는 코인</td></tr>
-<tr><td><b>2단계 후</b></td><td><code>d1 · ONRAMP · KRWK · −1,000 · settled</code> ← amount 그대로, status 만 닫힘</td></tr>
+<tr><td><b>1단계 후</b></td><td><code>delta-1 · ONRAMP · KRWK · −1,000 · pending</code> ← 곧 올, 아직 없는 코인</td></tr>
+<tr><td><b>2단계 후</b></td><td><code>delta-1 · ONRAMP · KRWK · −1,000 · settled</code> ← amount 그대로, status 만 닫힘</td></tr>
 </tbody>
 </table></div>
 <p class="table-note">pending 이 오래 머물면 정산이 막혔다는 신호다. 대사 L3 가 바로 이 status 를 감시한다(<a href="04-failure-reconciliation.html">4장</a>).</p>
@@ -159,8 +159,8 @@
 <div class="table-wrap"><table>
 <thead><tr><th>시점</th><th>row</th></tr></thead>
 <tbody>
-<tr><td><b>1단계 후</b></td><td><code>d1 · SWAP_OUT · KRWK · +1,300 · pending</code><br/><code>d2 · SWAP_IN · USDC · −1 · pending</code></td></tr>
-<tr><td><b>2단계 후</b></td><td>d1 · settled · / · d2 · settled</td></tr>
+<tr><td><b>1단계 후</b></td><td><code>delta-1 · SWAP_OUT · KRWK · +1,300 · pending</code><br/><code>delta-2 · SWAP_IN · USDC · −1 · pending</code></td></tr>
+<tr><td><b>2단계 후</b></td><td>delta-1 · settled · / · delta-2 · settled</td></tr>
 </tbody>
 </table></div>
 
