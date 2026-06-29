@@ -18,7 +18,7 @@
 
 <p><b>무엇·언제</b>: 고객이 가입하면 백엔드가 매니저에 계정 하나를 요청합니다. 계정은 주소가 아닙니다. 한 고객의 여러 자산·여러 주소를 묶는 <b>상위 핸들(vault)</b>이며, 주소·신원은 다음 페이지(발급)에서 이 계정 밑에 생깁니다. 중요한 건 호출이 <b>고객당 한 번</b>이라는 점입니다. 시그니처에 asset 이 없어(<code>createAccount(ref)</code>) 이더리움용·Canton용을 따로 부르지 않습니다. 그래서 이 페이지는 custody 축으로만 갈립니다:</p>
 
-<pre><code>createAccount(고객 ref) → Account     // 결과는 항상 계정 디렉터리(블록체인 매니저 DB)에 저장</code></pre>
+<pre><code>createAccount(고객 ref) → Account     // 결과는 항상 블록체인 매니저 DB에 저장</code></pre>
 
 <h2>▸ 자체 (양 체인 공통) — 장부에 vault 한 줄 (체인에 안 간다)</h2>
 
@@ -29,10 +29,10 @@ sequenceDiagram
     box rgb(239,246,255) 블록체인 매니저
     participant MGR as 자체 매니저
     end
-    participant DIR as 계정 디렉터리(블록체인 매니저 DB)
+    participant DIR as 블록체인 매니저 DB
 
     BE->>MGR: createAccount(고객 ref)
-    MGR->>MGR: 번호 할당 — 계정 1024번 (체인 무관)
+    MGR->>MGR: 번호 할당 — 계정 1024번
     Note over BE,DIR: 체인 호출 없음 · 키 생성 없음 · 비용 0 — 어떤 체인을 쓸지 아직 모른다. 키는 셋업 때 만든 그 하나, 번호만 늘어난다
     MGR->>DIR: 계정 저장 (ref ↔ 1024번)
     MGR-->>BE: Account(1024번)
@@ -49,11 +49,11 @@ sequenceDiagram
     participant FBI as Fireblocks 구현
     participant FB as Fireblocks (SaaS)
     end
-    participant DIR as 계정 디렉터리(블록체인 매니저 DB)
+    participant DIR as 블록체인 매니저 DB
 
     BE->>FBI: createAccount(고객 ref)
     FBI->>FB: vault 계정 생성 API
-    Note over FBI,DIR: vault = Fireblocks 의 계정 단위, 키는 Fireblocks MPC 보관. 체인 무관 — Canton PartyId 등록도 여기가 아니라 입금 식별자 발급 때 벤더가 수행 (2p · 상세는 적용 전 확인)
+    Note over FBI,DIR: vault = Fireblocks 의 계정 단위, 키는 Fireblocks MPC 보관. Canton PartyId 등록도 여기가 아니라 입금 식별자 발급 때 벤더가 수행 (2p · 상세는 적용 전 확인)
     FB-->>FBI: vaultId
     FBI->>DIR: 계정 저장 (ref ↔ vaultId)
     FBI-->>BE: Account

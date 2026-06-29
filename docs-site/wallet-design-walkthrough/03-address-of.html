@@ -20,7 +20,7 @@
 
 <pre><code>addressOf(account, asset) → Address   // 읽기 — 멱등 키 불요, 발급 부수효과 없음</code></pre>
 
-<h2>▸ 네 분면 공통 — 디렉터리(블록체인 매니저 DB)에서 읽는다</h2>
+<h2>▸ 네 분면 공통 — 블록체인 매니저 DB 에서 읽는다</h2>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -29,7 +29,7 @@ sequenceDiagram
     box rgb(239,246,255) 블록체인 매니저
     participant MGR as 매니저 (자체든 Fireblocks 든)
     end
-    participant DIR as 계정 디렉터리(블록체인 매니저 DB)
+    participant DIR as 블록체인 매니저 DB
 
     BE->>MGR: addressOf(계정 1024번, 자산)
     MGR->>DIR: 이 계정에 "발급(등록)된" 주소 읽기

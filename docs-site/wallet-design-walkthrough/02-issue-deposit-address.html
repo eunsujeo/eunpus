@@ -30,7 +30,7 @@ sequenceDiagram
     participant MGR as 자체 매니저
     participant WL as watch-list (인덱서의 감시 목록)
     end
-    participant DIR as 계정 디렉터리(블록체인 매니저 DB)
+    participant DIR as 블록체인 매니저 DB
 
     BE->>MGR: issueDepositAddress(계정 1024번, ETH)
     MGR->>MGR: 다음 주소 번호 소비 — 3번째
@@ -54,7 +54,7 @@ sequenceDiagram
     participant WL as memo 귀속표 (인덱서)
     end
     participant PN as Canton 노드
-    participant DIR as 계정 디렉터리(블록체인 매니저 DB)
+    participant DIR as 블록체인 매니저 DB
 
     BE->>MGR: issueDepositAddress(계정 1024번, Canton 자산)
     alt PartyId 미발급 — 이 계정의 첫 Canton 식별자
@@ -83,7 +83,7 @@ sequenceDiagram
     participant FBI as Fireblocks 구현
     participant FB as Fireblocks (SaaS)
     end
-    participant DIR as 계정 디렉터리(블록체인 매니저 DB)
+    participant DIR as 블록체인 매니저 DB
 
     BE->>FBI: issueDepositAddress(계정, 자산)
     FBI->>FB: 새 입금 주소 생성 API (generateNewAddress)
