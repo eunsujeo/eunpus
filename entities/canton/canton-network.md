@@ -4,8 +4,8 @@ vendor: canton
 status: draft
 tags: [architecture, transaction, integration, stablecoin, identity, recovery]
 stage_introduced: 52
-last_updated_stage: 82
-source_count: 10
+last_updated_stage: 85
+source_count: 12
 related: [transaction, api]
 ---
 
@@ -70,11 +70,68 @@ Canton 어댑터가 흡수해야 할 핵심 = **"제출=완료" 가 아니다** 
 - **Fireblocks Trust Company (NYDFS qualified custodian)** — Canton Coin 수탁. (source: fireblocks-canton-launch PRNewswire)
 - **서명 프로바이더** — 공식 Wallet SDK `core-signing-fireblocks` (Raw Signing·EdDSA Ed25519). (source: canton-wallet-sdk-github, ★ Stage 73-75)
 
+※ **(별개 접점, 2024-11 ★ Stage 85) Ownera 라우터 연결성** — 위 3역할과 다른 층이다. Fireblocks Network 에서 **Ownera 라우터**로 Canton·R3 Corda 의 토큰화 자산(초기 토큰화 MMF)에 연결: *"Ownera's routers allow Fireblocks to connect to assets … providing access for the first time to financial institutions using the Canton Network and R3 Corda."* 수탁/서명이 아니라 **토큰자산 유통 경로**라 PoC 수탁 흐름과는 거리가 있다(맥락 보존). 2026-02 native Canton 수탁 출시보다 앞선다. (source: fireblocks-ownera-canton-connectivity, 2024-11-15)
+
 **두 통합 경로 — 입금 OFFER 감지 주체가 갈린다**
 - **Path A — Fireblocks-native 수탁**: Fireblocks 가 validator infra 를 운영하고 입금/확정을 **transactionType webhook**(OFFER/ACCEPT/…)으로 push → **고객은 자체 node 불요**. 감지 주체 = Fireblocks. (⚠️ Fireblocks 가 고객 party-hosting participant 를 **직접 운영**하는지는 공식 문서 미명시 — Super Validator 운영 + 풀 custody + webhook 노출에서의 **강한 추론**. Q-2026-06-12-C03)
 - **Path B — 서명만 위탁**: 고객이 **자체 participant node + Ledger API** 를 운영하고 입금은 그 **ledger event("TransferIn") 구독**으로 감지, Fireblocks 는 `core-signing-fireblocks` 로 **서명만**. 감지 주체 = 고객. (source: canton-wallet-sdk-github)
 
 → 정리: **"node 구독이 필요한가" 는 경로에 달렸다.** Path A 면 Fireblocks webhook(node 불요), Path B 면 자체 node 의 ledger event 구독 필수. **Super Validator 운영(Fireblocks 확정)** 은 어느 경로에서도 "고객 입금 관찰 node" 를 자동으로 뜻하지 않는다 — 별도 층.
+
+### Fireblocks Raw Signing 서명 시퀀스 + fund-drain 방어 (★ Stage 84)
+external party 전송 1건의 end-to-end 흐름. `prepare`/`execute` 가 분리된 이유와, Fireblocks 가 hash 만 받기 때문에 **의미 검증(목적지·금액)이 서명 전 백엔드 책임**이 되는 지점을 명시. (source: docs-canton-network-renewed wallet/guidance; canton-wallet-sdk-github ★ Stage 75; entities/fireblocks/policy.md)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant App as 백엔드/주문 App<br/>(Client)
+    participant PN as Canton Participant Node<br/>(Ledger JSON API /v2)
+    participant Dec as tx-decode 검증<br/>(tx-parser / visualizer)
+    participant FB as Fireblocks<br/>(core-signing-fireblocks · MPC/HSM)
+    participant Sync as Canton Synchronizer<br/>(Sequencer + Mediator, 2/3 BFT)
+
+    Note over App,Sync: 사전 준비 (1회) — external party 온보딩
+    App->>FB: getPublicKeyInfo(EddsaEd25519) — party 공개키 취득
+    FB-->>App: Ed25519 public key
+    App->>PN: POST /v2/parties/external/generate-topology
+    PN-->>App: PartyToParticipant topology + multi-hash
+    App->>FB: Raw Sign(topology hash)
+    FB-->>App: signature
+    App->>PN: POST /v2/parties/external/allocate → PartyId(name::fingerprint)
+
+    Note over App,Sync: 전송 1건 (반복)
+    App->>PN: POST /v2/state/ledger-end — offset 획득(contract-id pin)
+    PN-->>App: ledger-end offset
+    App->>PN: POST /v2/interactive-submission/prepare<br/>("Alice 에게 100 USDC")
+    PN-->>App: prepared tx + txHash (결정적 hash)
+
+    rect rgb(255, 244, 230)
+    Note over App,Dec: ★ fund-drain 방어 지점 — 서명 전 의미 검증
+    App->>Dec: prepared tx 디코딩(목적지·금액 확인)
+    Dec-->>App: 의도와 일치? OK / REJECT
+    end
+
+    alt 검증 통과
+        App->>FB: createTransaction operation:'RAW'<br/>content = txHash (EdDSA Ed25519)
+        Note right of FB: TAP 정책 검사<br/>(Raw Signing = hash 만 보임 · 제한된 정보)
+        FB-->>App: signature
+        App->>PN: POST /v2/interactive-submission/execute<br/>(서명 부착)
+        PN->>Sync: tx 제출
+        Sync->>Sync: 2-phase commit<br/>(Sequencer 순서화 → Mediator 집계)
+        Sync-->>PN: finality (usually 3-10s)
+        PN-->>App: 확정 / ledger event
+    else 검증 실패(바꿔치기 탐지)
+        App->>App: 서명 요청 중단 — drain tx 차단
+    end
+
+    Note over App,Sync: ※ Canton 토큰 전송은 기본 2-step —<br/>위 tx 가 OFFER 면 수신자 ACCEPT 후 완료<br/>(Canton Coin 은 Pre-approval = 1-step)
+```
+
+읽는 법 — 핵심 3가지:
+- **prepare / execute 분리** — external party 서명 모델 때문에 participant 가 tx 를 만들어 hash 까지 뽑고(`prepare`), 서명은 외부 키(Fireblocks)가 붙여 다시 제출(`execute`). (source: docs-canton-network-renewed wallet/guidance)
+- **★ 주황 박스 = fund-drain 방어 지점** — Fireblocks 는 이후 단계에서 **hash 만** 받아 의미를 못 보므로, "이 hash 가 정말 100 USDC→Alice 인가" 는 서명 전에 `tx-parser`/`tx-visualizer` 로 검증해야 한다. 여기서 바꿔치기가 걸린다. (source: canton-wallet-sdk-github ★ Stage 74)
+- **Raw / EdDSA Ed25519** — TAP 정책은 hash 만 보여 목적지·금액 기반 차단을 못 하므로(=제한된 정보), 보안 통제 무게중심이 Fireblocks 가 아니라 **백엔드(검증 박스)** 로 이동. (source: entities/fireblocks/policy.md; canton-network ★ Stage 75)
+- **권한위임형 drain 은 구조적 부재** — Canton holding 은 소유자 sole signatory, approve/allowance 없음 → EVM 식 infinite-approval drain 은 원천 차단. 남는 위험은 직접전송형뿐이고 그건 위 검증 박스로 통제. (source: ★ Stage 65)
 
 ### 수탁 통합 핵심 — wallet/guidance (★ Stage 54)
 docs.canton.network/integrations/wallet/guidance 1차 출처. 수탁 설계에 직결되는 구체 요건:
@@ -106,9 +163,11 @@ docs.canton.network/integrations/wallet/guidance 1차 출처. 수탁 설계에 �
 - canton-wallet-sdk-github (2026-06-10) — <https://github.com/canton-network/wallet> 공식 TS Wallet SDK·core-signing-fireblocks (1차 코드)
 - fireblocks-canton-transaction-objects (2026-06-10) — <https://developers.fireblocks.com/reference/transaction-objects> Canton transactionType·CantonHashes (1차, A11 해소)
 - fireblocks-canton-launch (2026-02) — Fireblocks Canton 지원 출시: **Super Validator 운영** + **Fireblocks Trust Company(NYDFS) CC 수탁** (⚠️ 2차 출처 종합) — <https://www.prnewswire.com/news-releases/fireblocks-launches-canton-support-to-expand-its-regulated-tokenization-and-settlement-infrastructure-302677536.html> · <https://www.kucoin.com/news/flash/fireblocks-integrates-canton-network-to-enable-regulated-on-chain-settlement>
+- fireblocks-canton-launch-prnewswire (2026-06-24 수집, 발행 2026-02-03) — PRNewswire **공지 전문**(CSO·Canton Foundation ED 인용 포함, node 운영 서술 부재 확인). 1차 벤더 진술 tier. `sources/canton/2026-06-24__fireblocks-canton-launch-prnewswire.md`
+- fireblocks-ownera-canton-connectivity (2026-06-24 수집, 발행 2024-11-15) — Fireblocks Network × Ownera 라우터로 Canton·R3 Corda 토큰자산 연결(토큰화 MMF 유통). 수탁/SV 와 다른 4번째 접점. `sources/canton/2026-06-24__fireblocks-ownera-canton-connectivity.md`
 
 ## Open Questions
 - **Q-2026-05-22-A11**: Canton transactionType ↔ Fireblocks 매핑 + timeout — **ANSWERED (Stage 78)**. Fireblocks 가 전용 `transactionType` 필드(동일 이름) + `CantonHashes`(offerUpdateId 연결)로 노출, timeout=송신자 WITHDRAW(앱 정책). (source: fireblocks-canton-transaction-objects)
 - **Q-2026-06-09-C01**: Canton finality 정확 수치 — **ANSWERED (Stage 54)**. docs.canton.network/integrations/wallet/guidance 에 문자 그대로 **"Finality usually takes 3-10s."** (verbatim 재확인, 요약 주입 아님). 그간 "검색 요약 only" 격리했으나 1차 출처 확보로 해제. 메커니즘 = 2/3 BFT + Mediator 2-phase commit. 단 "usually" 라 환경별 편차 가능.
 - **Q-2026-06-09-C02**: tx 당 traffic 비용 산정식 — **ANSWERED (Stage 52, 구체화 Stage 53)**. 비용 = `메시지크기 × (1 + recipients × readVsWriteScalingFactor/10000)`. 파라미터: 무료 400,000 byte/20분, 추가 $60/MB, factor 4bp, 최소 top-up 200,000 byte. estimate = `/v2/interactive-submission/prepare`. (source: docs-canton-network-renewed synchronizer-traffic)
-- **Q-2026-06-12-C03**: Fireblocks-native Canton 수탁에서 **고객 party 를 host 하는 participant node 를 Fireblocks 가 직접 운영**하는지(= 입금 OFFER 관찰·webhook push 의 주체) — **공식 문서 미명시**. 확정: Fireblocks 의 **Super Validator 운영**(Global Synchronizer/CC 검증/거버넌스 — network infra) + **Trust Company CC 수탁** + **Wallet SDK 서명 드라이버**. Super Validator 는 network 층이라 per-customer deposit 관찰 node 와 다른 층 — 강한 추론은 Path A(Fireblocks 운영·webhook)이나 1차 확인 필요. (source: fireblocks-canton-launch 2차 종합)
+- **Q-2026-06-12-C03**: Fireblocks-native Canton 수탁에서 **고객 party 를 host 하는 participant node 를 Fireblocks 가 직접 운영**하는지(= 입금 OFFER 관찰·webhook push 의 주체) — **공식 문서 미명시**. 확정: Fireblocks 의 **Super Validator 운영**(Global Synchronizer/CC 검증/거버넌스 — network infra) + **Trust Company CC 수탁** + **Wallet SDK 서명 드라이버**. Super Validator 는 network 층이라 per-customer deposit 관찰 node 와 다른 층 — 강한 추론은 Path A(Fireblocks 운영·webhook)이나 1차 확인 필요. (source: fireblocks-canton-launch 2차 종합) **(★ Stage 85 negative finding)**: ① Fireblocks dev docs 인덱스(llms.txt, 743행) 전수 검색 결과 **Canton 전용 개발자 문서 페이지 부재** — 1차 기술 출처는 `transaction-objects`(transactionType) + `wallet SDK`(core-signing-fireblocks) 가 전부. ② PRNewswire 공지 **전문 확인**(2026-02-03) 결과 SV 운영·Trust Company CC 수탁·MPC 언급뿐, **node/participant 운영 서술 없음**. → C03 은 공개 1차 출처로는 **답할 수 없음이 확정**, PoC 통합 테스트로만 해소 가능. (source: fireblocks-canton-launch-prnewswire, fireblocks dev docs llms.txt)

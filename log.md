@@ -7116,3 +7116,23 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 사용자: canton-network 에 Musubi 사용/미사용 정리. page5 에 "5.5 (참고) 응용 네트워크 — Musubi 를 쓸 것인가" 추가(5.1~5.4 노드운영 축과 구분 — 응용 네트워크 합류 축)
 - 비교표(무엇·결제 atomic 4-leg DvP·RFQ 유동성·컴플라이언스 on-ledger·수탁/키·통제·범위 VASP FX 특화·성숙도 testnet POC) + 언제 무엇(한일 FX 결제=Musubi, 일반 수탁/전송=직접 Canton). 우리 국내↔해외은행 송금 시나리오와 연결
 - 기존 promote 사실(Stage 65 musubi-custodian-track)의 presentation. 2차·POC caveat 명시. check PASS
+
+## Stage 83 (2026-06-24) — 직접 구축 멀티체인 매니저 참조도 catalog (Mode A)
+- source: sources/bank/2026-06.md (general-knowledge 다이어그램 — vendor evidence 아님). provenance 헤더 부착(evidence_class·absorption map)
+- 흡수: persistence-architecture 02·04·06·07·13 / reference-architecture recurring-patterns·index §3.1 — 전 구성요소(Indexer·Re-org·Nonce·Gas Bump·Adapter·RPC Pool·KMS/Vault Signer)가 기존 direct-build reference 에 이미 존재
+- 결정: Mode C(full ingest) 부적합 → Mode A(catalog-only). 신규 fact 0 이라 curated 본문 주입 시 중복 누적 우려 → 본문 미주입, source 라벨 + 본 log 기록만
+- 신규 entity: 0 (전량 흡수)
+
+## Stage 84 (2026-06-24) — Canton+Fireblocks Raw Signing 서명 시퀀스 다이어그램 문서화
+- 계기: 무스비 PoC 대화에서 "악의적 fund-drain tx 를 byte[] 로 사인하는 게 막아지나" 질문 → external-signing end-to-end 흐름을 mermaid 시퀀스로 정리
+- 추가: entities/canton/canton-network.md "### Fireblocks Raw Signing 서명 시퀀스 + fund-drain 방어 (★ Stage 84)" — prepare/execute 분리, 서명 전 tx-decode 검증 박스(fund-drain 방어 지점), Raw/EdDSA Ed25519, TAP 제한 정보, approve/allowance 부재
+- 근거: 기존 1차 source 조합(docs-canton-network-renewed wallet/guidance, canton-wallet-sdk-github ★ Stage 73-75, policy.md, ★ Stage 65) — 신규 source 0
+- frontmatter last_updated_stage 82→84. 신규 entity: 0
+- docs-site 공개: 사용자 명시 지시로 canton-network/custody.html 6.3 에 Figure 6-2(전체 호출 시퀀스) + "blind signing 과 fund-drain — 백엔드 탈취/다중서명 방어" callout 추가. 검증 스크립트 PASS. wrangler deploy(docs-site/, 1 file 변경, 총 287) → https://wiki-docs.pages.dev/canton-network/custody.html
+- 보강 사실(백엔드 탈취 single point): 단일 백엔드+Raw Signing 의 신뢰점 한계 → multi-sig n-of-m(★ Stage 58)·독립 승인 평면(policy.md)·결정적 hash 재계산(★ Stage 57)이 본질 방어. approve/allowance 부재(★ Stage 65)로 권한위임형 drain 은 구조적 차단
+
+## Stage 85 (2026-06-24) — Fireblocks-Canton 추가 수집 (Mode B) + C03 negative finding
+- 계기: 사용자 "fireblocks canton 자료 좀더 수집". Fireblocks dev docs 인덱스(llms.txt 743행) 전수 → **Canton 전용 dev doc 부재** 확인(1차 기술 출처 = transaction-objects + wallet SDK 가 전부)
+- 신규 source 2 (Mode B, sources/canton/): ① 2026-06-24__fireblocks-canton-launch-prnewswire (공지 전문, 발행 2026-02-03 — SV·Trust Company CC 수탁·MPC, node 운영 서술 부재 / CSO·Canton Foundation ED 인용) ② 2026-06-24__fireblocks-ownera-canton-connectivity (발행 2024-11-15 — Ownera 라우터로 FN↔Canton·Corda 토큰자산 유통, 4번째 접점)
+- canton-network.md: Stage 82 세 역할 절에 Ownera 별개 접점(★ Stage 85) 추가 · Q-C03 에 negative finding(공개 1차로 답 불가 확정, PoC 테스트로만 해소) · Sources +2 · frontmatter source_count 10→12, last_updated_stage 84→85
+- 신규 entity: 0 (canton-network 흡수). docs-site 미반영(curated only)
