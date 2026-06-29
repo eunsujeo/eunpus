@@ -11,7 +11,7 @@
 <div class="wrap">
 <p class="series"><a href="index.html">온·오프램프·스왑 정산 워크스루</a></p>
 <div class="progress">
-<a href="index.html">목차</a><a href="01-onramp.html">1</a><span class="cur">2</span><a href="03-swap.html">3</a><a href="04-failure-reconciliation.html">4</a><a href="05-db-changes.html">5</a>
+<a href="index.html">목차</a><a href="01-onramp.html">1</a><span class="cur">2</span><a href="03-swap.html">3</a><a href="04-failure-reconciliation.html">4</a><a href="05-db-changes.html">5</a><a href="06-reconciliation.html">6</a>
 </div>
 <h1>오프램프 — 코인 → 법정통화 (환전)</h1>
 <p class="subtitle">온램프를 거꾸로 돌린 흐름이다. 코인을 소각/처분하고 원화를 입금하는데, 나가는 쪽이라 1단계에서 곧바로 잠근다</p>
@@ -53,6 +53,7 @@ sequenceDiagram
     rect rgb(220,252,231)
     Note over JV,BL: ★ 2단계 — 소각 + 지갑 출금 + 원화 입금
     App->>JV: KRWK 1,000 전송 + 소각 요청
+    JV-->>App: 소각 접수
     JV->>FB: 지갑에서 KRWK 1,000 차감 (발행사로 송금)
     FB-->>App: 지갑 출금 통지 (KRWK −1,000)
     JV->>JV: KRWK 1,000 소각
@@ -96,9 +97,11 @@ sequenceDiagram
     Note over Src,BL: ★ 2단계 — 처분 + 지갑 출금 + 원화 입금
     alt (a) Circle 상환
         App->>Src: Circle 상환 요청 (USDC 1 → KRW + 수수료)
+        Src-->>App: 상환 접수
         Src->>FB: USDC 1 지갑 출금
     else (b) 거래소 매도
         App->>Src: 거래소 USDC 1 매도 (시세 1,310 · 스프레드)
+        Src-->>App: 매도 접수
         Src->>FB: USDC 1 지갑 출금
     end
     FB-->>App: 지갑 출금 통지 (USDC −1)

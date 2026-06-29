@@ -59,9 +59,13 @@ sequenceDiagram
     BE->>MGR: issueDepositAddress(계정 1024번, Canton 자산)
     alt PartyId 미발급 — 이 계정의 첫 Canton 식별자
         MGR->>HSM: 이 계정용 공개키 준비
+        HSM-->>MGR: 공개키
         MGR->>PN: 신원 등록 (공개키 제출) → 서명할 해시
+        PN-->>MGR: 서명할 해시
         MGR->>HSM: 해시 서명 (키는 HSM 밖으로 안 나옴)
+        HSM-->>MGR: 서명
         MGR->>PN: 서명 제출 → PartyId 발급 (선발급 · 유료 · 1회)
+        PN-->>MGR: PartyId
         MGR->>DIR: PartyId 저장 — 등록 시도는 선기록 (이중 등록 방지)
     else 이미 발급됨
         Note over MGR,DIR: DB의 PartyId 재사용 — 온장 호출 없음

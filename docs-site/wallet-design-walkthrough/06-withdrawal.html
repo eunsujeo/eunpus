@@ -65,6 +65,7 @@ sequenceDiagram
 
     BE->>PIPE: submitTransaction(승인된 출금 + 멱등 키)
     PIPE->>HSM: 전송 제안 조립 · 검증 · 서명 (순번 없음)
+    HSM-->>PIPE: 서명본
     PIPE->>PN: 제안(OFFER) 제출
     Note over PIPE,CP: 송신 자금이 "잠김(locked)" 으로 묶인다 — 빠진 것도 남은 것도 아닌 제3의 상태 (7p)
     PN->>CP: 수락 요청 전달
@@ -73,6 +74,7 @@ sequenceDiagram
         PN-->>BE: 확정 — 즉시, 되돌림 없음
     else 기한 내 미수락
         BE->>PN: cancel — 철회(WITHDRAW)로 잠금 해제
+        PN-->>BE: 철회 완료 — 잠금 해제
     end
 </pre></div>
 <p class="diagram-caption">이더리움의 "전파=거의 끝"이 Canton 에선 "제출=시작"이다. 상대 수락까지 자금이 잠기고, 막힘의 원인이 수수료가 아니라 <b>상대의 침묵</b>이라 boost 가 무의미하다. 이 분면엔 boost 가 타입부터 없다. 대응 동사는 cancel(철회) 하나뿐.</p>
@@ -110,6 +112,8 @@ sequenceDiagram
 
     BE->>FBI: submitTransaction(승인된 출금 + 멱등 키)
     FBI->>FB: createTransaction — Canton 전용 거래 유형으로 제출
+    FB-->>FBI: 트랜잭션 id (= TxRef)
+    FBI-->>BE: TxRef
     FB-->>BE: webhook — 상태에 OFFER → 수락 대기 → ACCEPT 가 그대로 노출
     Note over FB,BE: 자금 잠김·상대 수락 대기는 체인의 성질이라 벤더도 못 없앤다 —<br/>기한 내 미수락 시 철회(cancel) 호출은 우리 몫 (상세는 적용 전 확인)
 </pre></div>

@@ -11,7 +11,7 @@
 <div class="wrap">
 <p class="series"><a href="index.html">온·오프램프·스왑 정산 워크스루</a></p>
 <div class="progress">
-<a href="index.html">목차</a><span class="cur">1</span><a href="02-offramp.html">2</a><a href="03-swap.html">3</a><a href="04-failure-reconciliation.html">4</a><a href="05-db-changes.html">5</a>
+<a href="index.html">목차</a><span class="cur">1</span><a href="02-offramp.html">2</a><a href="03-swap.html">3</a><a href="04-failure-reconciliation.html">4</a><a href="05-db-changes.html">5</a><a href="06-reconciliation.html">6</a>
 </div>
 <h1>온램프 — 법정통화 → 코인 (충전)</h1>
 <p class="subtitle">원화를 차감하고 코인을 받는 충전. 발행 권한은 발행사에만 있고 은행은 요청만 한다</p>
@@ -55,6 +55,7 @@ sequenceDiagram
     App->>Acct: KRW 1,000 차감
     Acct-->>App: 차감 완료
     App->>JV: KRWK 1,000 발행 요청 (받는 곳: 은행 지갑)
+    JV-->>App: 발행 접수
     JV->>FB: KRWK 1,000 발행 → 은행 지갑
     FB-->>App: 지갑 입금 통지 (KRWK +1,000)
     App->>BL: KRWK 지갑자산 +1,000 (실제 도착)
@@ -97,9 +98,11 @@ sequenceDiagram
     Acct-->>App: 완료
     alt (a) Circle 직접
         App->>Src: Circle 발행 요청 (USDC 1 → 은행 지갑)
+        Src-->>App: 발행 접수
         Src->>FB: USDC 1 발행
     else (b) 외부 거래소
         App->>Src: 거래소 USDC 1 매입 (KRW 1,300 + 스프레드)
+        Src-->>App: 매입 체결
         Src->>FB: USDC 1 전송 → 은행 지갑
     end
     FB-->>App: 지갑 입금 통지 (USDC +1)

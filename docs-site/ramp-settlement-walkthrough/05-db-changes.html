@@ -11,7 +11,7 @@
 <div class="wrap">
 <p class="series"><a href="index.html">온·오프램프·스왑 정산 워크스루</a></p>
 <div class="progress">
-<a href="index.html">목차</a><a href="01-onramp.html">1</a><a href="02-offramp.html">2</a><a href="03-swap.html">3</a><a href="04-failure-reconciliation.html">4</a><span class="cur">5</span>
+<a href="index.html">목차</a><a href="01-onramp.html">1</a><a href="02-offramp.html">2</a><a href="03-swap.html">3</a><a href="04-failure-reconciliation.html">4</a><span class="cur">5</span><a href="06-reconciliation.html">6</a>
 </div>
 <h1>DB 상태 변화 — row 단위로 따라가기</h1>
 <p class="subtitle">앞 페이지의 다이어그램이 "흐름"이라면, 이 페이지는 <b>실제 테이블 row 가 단계마다 어떻게 바뀌는지</b> 보여줍니다</p>
@@ -132,6 +132,16 @@
 <h2>② 오프램프 — 온램프의 역방향 (KRWK 1,000 → KRW 1,000)</h2>
 <p>방향만 반대입니다. 보내는 쪽이라 이중사용을 막으려고 <b>1단계에 사용가능을 즉시 차감</b>하고, 미정산은 "곧 나갈 자산"으로 잡습니다.</p>
 
+<h3>delta_ledger — 1줄 INSERT 후 settled</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>row</th></tr></thead>
+<tbody>
+<tr><td><b>1단계 후</b></td><td><code>delta-1 · OFFRAMP · KRWK_ETH · +1,000 · pending</code> ← 곧 나갈, 아직 지갑에 있는 코인</td></tr>
+<tr><td><b>2단계 후</b></td><td><code>delta-1 · OFFRAMP · KRWK_ETH · +1,000 · settled</code></td></tr>
+</tbody>
+</table></div>
+<p class="table-note">부호가 온램프(<code>−</code>)와 반대인 <code>+</code> 다 — 들어올 게 아니라 곧 나갈 코인이라서다(미출금).</p>
+
 <h3>customer_ledger — 1단계에 confirmed 즉시 차감</h3>
 <div class="table-wrap"><table>
 <thead><tr><th>시점</th><th>asset_id</th><th>confirmed</th><th>pending_in</th><th>pending_out</th></tr></thead>
@@ -152,8 +162,19 @@
 </table></div>
 <p class="table-note">온램프와 차/대가 반대다. 충전은 부채↑·자산 도착이고, 환전은 부채↓·자산 출금이다. 델타가 시점차를 메우는 방식은 양쪽 모두 같다.</p>
 
+<h3>bank_ledger — 2단계에 지갑 출금</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>VAULT.KRWK_ETH 잔액</th></tr></thead>
+<tbody>
+<tr><td>처음</td><td>V₀</td></tr>
+<tr><td>1단계 후</td><td>V₀ <span style="color:var(--muted)">(변동 없음 — 코인은 아직 지갑에 있음)</span></td></tr>
+<tr><td><b>2단계 후</b></td><td><b>V₀ − 1,000</b> (소각 위해 발행사로 송금)</td></tr>
+</tbody>
+</table></div>
+<p class="table-note">온램프와 달리 지갑 잔액이 <b>줄어든다</b>. 1단계엔 안 바뀌고(델타가 미출금으로 표시) 실제 출금이 일어나는 2단계에 갱신된다.</p>
+
 <h2>③ 스왑 — 델타 2줄, 총계정 4줄 (KRWK 1,300 → USDC 1)</h2>
-<p>스왑은 한쪽이 빠지고 다른 쪽이 들어오는 거래라 <b>미정산이 양쪽에</b> 생깁니다. 온램프와 달라지는 두 테이블만 보겠습니다.</p>
+<p>스왑은 한쪽이 빠지고 다른 쪽이 들어오는 거래라 <b>미정산이 양쪽에</b> 생깁니다. 온램프와 달라지는 테이블 위주로 보겠습니다.</p>
 
 <h3>delta_ledger — 1단계에 2줄 INSERT</h3>
 <div class="table-wrap"><table>
@@ -175,17 +196,59 @@
 </table></div>
 <p class="table-note">총계정도 1단계에 4줄(고객측 2줄 + 미정산 2줄)이 들어가고, 2단계에 미정산 2줄을 닫으면서 지갑자산 KRWK↓·USDC↑ 로 정산된다. 매매 스프레드가 있으면 손익 row 가 하나 더 붙는다.</p>
 
+<h3>bank_ledger — 2단계에 지갑 두 자산 동시 변동</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>VAULT.KRWK_ETH</th><th>VAULT.USDC_ETH</th></tr></thead>
+<tbody>
+<tr><td>처음</td><td>K₀</td><td>U₀</td></tr>
+<tr><td>1단계 후</td><td>K₀ <span style="color:var(--muted)">(변동 없음)</span></td><td>U₀ <span style="color:var(--muted)">(변동 없음)</span></td></tr>
+<tr><td><b>2단계 후</b></td><td><b>K₀ − 1,300</b></td><td><b>U₀ + 1</b></td></tr>
+</tbody>
+</table></div>
+<p class="table-note">스왑은 지갑에서 한 자산이 나가고 다른 자산이 들어오므로 두 자산 행이 2단계에 함께 바뀐다(온램프·오프램프는 한 자산만).</p>
+
+<h2>④ 실패 되돌리기 — 1단계를 거꾸로 (충전 실패 예시)</h2>
+<p>1단계까지 반영됐는데 2단계 정산이 실패하면, 델타 미정산 줄을 기준으로 1단계를 <b>정확히 거꾸로</b> 풉니다(흐름 다이어그램은 <a href="04-failure-reconciliation.html">4장</a>). 온램프(충전)가 1단계 후 실패한 경우의 row 변화입니다.</p>
+
+<h3>customer_ledger — 처리중 원복</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>asset_id</th><th>confirmed</th><th>pending_in</th><th>pending_out</th></tr></thead>
+<tbody>
+<tr><td>1단계 후</td><td>KRWK_ETH</td><td>0</td><td>1,000</td><td>0</td></tr>
+<tr><td><b>실패 → 원복</b></td><td>KRWK_ETH</td><td>0</td><td><b>0</b></td><td>0</td></tr>
+</tbody>
+</table></div>
+<p class="table-note">받는 거래였으니 pending_in 을 0 으로 되돌린다(보내는 거래였다면 1단계에 차감했던 confirmed 를 다시 +복원).</p>
+
+<h3>delta_ledger — settled 가 아니라 cancelled 로 닫음</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>row</th></tr></thead>
+<tbody>
+<tr><td>1단계 후</td><td><code>delta-1 · ONRAMP · KRWK_ETH · −1,000 · pending</code></td></tr>
+<tr><td><b>실패</b></td><td><code>delta-1 · ONRAMP · KRWK_ETH · −1,000 · cancelled</code> ← 정상 마감(settled)이 아니라 취소</td></tr>
+</tbody>
+</table></div>
+
+<h3>general_ledger_entry — 정정(reverse) 분개를 새로 INSERT</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>단계</th><th>INSERT 되는 row</th></tr></thead>
+<tbody>
+<tr><td><b>실패 정정</b></td><td><code>e5 · KRWK 반환채무 · 차 · 1,000 · req_123</code><br/><code>e6 · KRWK 미정산자산 · 대 · 1,000 · req_123</code> ← 1단계(e1·e2)의 차/대를 뒤집음</td></tr>
+</tbody>
+</table></div>
+<p class="table-note">총계정은 append-only라 1단계 분개를 <b>지우지 않고</b>, 차/대를 뒤집은 정정 분개를 새로 INSERT 해 상쇄한다. 결과적으로 미정산자산·반환채무 모두 0 으로 복귀하고, 같은 <code>source_ref(req_123)</code> 로 묶여 한 거래의 시작·취소가 한눈에 보인다.</p>
+
 <div class="callout">
 <div class="callout-title">한 줄로</div>
 <p style="margin:0">움직이는 row 는 매번 같다. <b>customer_ledger 잔액(UPDATE)</b> · <b>delta_ledger 미정산(INSERT→status UPDATE)</b> · <b>bank_ledger 지갑(2단계 UPDATE)</b> · <b>general_ledger_entry 분개(append-only INSERT)</b>. 거래마다 갈리는 건 델타가 1줄이냐 2줄이냐, 차/대 방향이 어디로 가느냐 정도다.</p>
 </div>
 
-<p class="foot">스키마·분개 상세: <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a> · 대사 4단계: <a href="04-failure-reconciliation.html">4장</a>.</p>
+<p class="foot">스키마·분개 상세: <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a> · 대사 4단계: <a href="06-reconciliation.html">6장</a>.</p>
 
 <div class="pager">
-<a href="04-failure-reconciliation.html">← 4. 실패·대사</a>
+<a href="04-failure-reconciliation.html">← 4. 실패 되돌리기</a>
 <a href="index.html">목차</a>
-<a href="index.html">처음으로</a>
+<a href="06-reconciliation.html">6. 대사·결산 →</a>
 </div>
 </div>
 </body>

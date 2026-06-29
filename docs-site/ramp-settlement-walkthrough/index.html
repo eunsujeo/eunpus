@@ -23,9 +23,11 @@
 <li><a href="01-onramp.html"><span class="num">1</span>온램프 — 법정통화 → 코인 (충전)<span class="act">발행/조달</span></a></li>
 <li><a href="02-offramp.html"><span class="num">2</span>오프램프 — 코인 → 법정통화 (환전)<span class="act">소각/처분</span></a></li>
 <li><a href="03-swap.html"><span class="num">3</span>스왑 — 코인 ↔ 코인 (KRWK → USDC)<span class="act">델타 2줄</span></a></li>
-<li><a href="04-failure-reconciliation.html"><span class="num">4</span>실패 되돌리기 + 대사 4단계<span class="act">안전장치</span></a></li>
+<li><a href="04-failure-reconciliation.html"><span class="num">4</span>실패 되돌리기 — 정산 실패 rollback<span class="act">되돌리기</span></a></li>
 <li><a href="05-db-changes.html"><span class="num">5</span>DB 상태 변화 — row 단위로 따라가기<span class="act">테이블</span></a></li>
+<li><a href="06-reconciliation.html"><span class="num">6</span>대사·결산 — 어긋남을 잡는 4단계 그물<span class="act">정합성</span></a></li>
 </ol>
+<p class="table-note" style="margin-top:10px"><b>부록</b> · <a href="manager-boundary.html">정산 흐름과 블록체인 매니저의 경계</a> — 이 2단계 흐름이 자체/Fireblocks 매니저와 어디서 맞물리는지, <a href="../wallet-design-walkthrough/index.html">지갑 매니저 워크스루</a>와 겹쳐 본다.</p>
 
 <h2>공통 골격 — 모든 거래가 똑같은 2단계</h2>
 <p>온램프·오프램프·스왑은 정산 상대(발행사·거래소)만 다를 뿐 <b>흐름은 동일한 2단계</b>입니다. 이 그림이 세 거래 전체의 뼈대이고, 각 페이지는 여기에 살을 붙입니다.</p>
@@ -61,6 +63,7 @@ sequenceDiagram
     rect rgb(220,252,231)
     Note over Set,BL: ★ 2단계 — 정산 (수 분 ~ 수 시간 뒤)
     App->>Set: 발행 / 소각 / 매매 요청
+    Set-->>App: 접수
     Set->>FB: 지갑 입금 또는 출금
     FB-->>App: 지갑 변동 통지(webhook)
     App->>BL: 지갑 자산 실제 변동
@@ -79,7 +82,7 @@ sequenceDiagram
 <pre style="margin:0 0 8px"><code>(차) 코인 미정산 자산 +1,000   ← 곧 올, 아직 없는 코인
 (대) 코인 반환채무     +1,000   ← 고객에게 줄 빚
 → 자산(+1,000) = 부채(+1,000), 균형 유지</code></pre>
-<p style="margin:0">2단계에서 코인이 실제 도착하면 <b>미정산 자산을 닫고(−1,000) 진짜 지갑 자산(+1,000)으로 교체</b>합니다. "임시"라 부르는 이유는 미정산 계정이 정산되면 반드시 0으로 닫혀야 하기 때문입니다. 오래 안 닫히면 정산이 막힌 신호이고, 대사 단계(<a href="04-failure-reconciliation.html">4장</a>)가 이를 감시합니다.</p>
+<p style="margin:0">2단계에서 코인이 실제 도착하면 <b>미정산 자산을 닫고(−1,000) 진짜 지갑 자산(+1,000)으로 교체</b>합니다. "임시"라 부르는 이유는 미정산 계정이 정산되면 반드시 0으로 닫혀야 하기 때문입니다. 오래 안 닫히면 정산이 막힌 신호이고, 대사 단계(<a href="06-reconciliation.html">6장</a>)가 이를 감시합니다.</p>
 </div>
 
 <h2>세 거래 한눈 비교</h2>

@@ -35,7 +35,9 @@ sequenceDiagram
 
     BE->>MGR: estimateFee(출금 지시)
     MGR->>CH: 최근 블록 수수료 이력 조회 (feeHistory)
+    CH-->>MGR: 수수료 이력 데이터
     MGR->>CH: 모의 실행 (estimateGas) — 가스 사용량 산출
+    CH-->>MGR: 예상 가스 사용량
     Note over BE,CH: 순번·UTXO 점유 없음 — 읽기뿐이라 출금 화면에서 수시 호출해도 안전
     MGR->>MGR: 이력의 백분위수로 등급 산출
     MGR-->>BE: low · medium · high (보장 아님 — 실제 수수료는 조립 때 재계산)
