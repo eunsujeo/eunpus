@@ -48,7 +48,7 @@
   "account_code": "KRWK_미정산자산",
   "debit_credit": "차",
   "amount": 1000,
-  "source_ref": "req#123"
+  "source_ref": "req_123"
 }</code></pre></td></tr>
 </tbody>
 </table></div>
@@ -108,13 +108,13 @@
 
 <h3>general_ledger_entry — append-only, row 가 쌓이기만</h3>
 <div class="table-wrap"><table>
-<thead><tr><th>단계</th><th>INSERT 되는 row (account_code · 차/대 · amount)</th></tr></thead>
+<thead><tr><th>단계</th><th>INSERT 되는 row (account_code · 차/대 · amount · source_ref)</th></tr></thead>
 <tbody>
-<tr><td><b>1단계</b></td><td><code>e1 · KRWK 미정산자산 · 차 · 1,000</code><br/><code>e2 · KRWK 반환채무 · 대 · 1,000</code></td></tr>
-<tr><td><b>2단계</b></td><td><code>e3 · KRWK 지갑자산 · 차 · 1,000</code><br/><code>e4 · KRWK 미정산자산 · 대 · 1,000</code> ← 미정산 계정 닫음</td></tr>
+<tr><td><b>1단계</b></td><td><code>e1 · KRWK 미정산자산 · 차 · 1,000 · req_123</code><br/><code>e2 · KRWK 반환채무 · 대 · 1,000 · req_123</code></td></tr>
+<tr><td><b>2단계</b></td><td><code>e3 · KRWK 지갑자산 · 차 · 1,000 · req_123</code><br/><code>e4 · KRWK 미정산자산 · 대 · 1,000 · req_123</code> ← 미정산 계정 닫음</td></tr>
 </tbody>
 </table></div>
-<p class="table-note">4개 row 가 누적(수정·삭제 없음). 같은 거래는 source_ref(예: req#123)로 묶인다.</p>
+<p class="table-note">4개 row 가 누적(수정·삭제 없음). 네 줄 모두 <code>source_ref = req_123</code> 으로 같은 거래임을 표시 — 1·2단계에 걸쳐 들어간 분개를 이 값으로 한데 묶는다.</p>
 
 <h3>이 row 들로 항등식이 어떻게 유지되나</h3>
 <p>차변 합 − 대변 합으로 계정 잔액을 계산하면:</p>
