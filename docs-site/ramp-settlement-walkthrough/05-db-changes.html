@@ -11,7 +11,7 @@
 <div class="wrap">
 <p class="series"><a href="index.html">온·오프램프·스왑 정산 워크스루</a></p>
 <div class="progress">
-<a href="index.html">목차</a><a href="01-swap.html">1</a><a href="02-onramp.html">2</a><a href="03-offramp.html">3</a><a href="04-failure-reconciliation.html">4</a><span class="cur">5</span>
+<a href="index.html">목차</a><a href="01-onramp.html">1</a><a href="02-offramp.html">2</a><a href="03-swap.html">3</a><a href="04-failure-reconciliation.html">4</a><span class="cur">5</span>
 </div>
 <h1>DB 상태 변화 — row 단위로 따라가기</h1>
 <p class="subtitle">앞 페이지의 다이어그램이 "흐름"이라면, 이 페이지는 <b>실제 테이블 row 가 단계마다 어떻게 바뀌는지</b> 보여줍니다</p>
@@ -129,30 +129,7 @@
 </table></div>
 <p>1단계에는 <b>미정산자산</b>이 자산 자리를 채워 균형을 맞추고, 2단계에는 그게 <b>지갑자산</b>으로 바뀌며 다시 균형을 맞춥니다. 두 시점 어디서도 균형이 깨지지 않습니다. 이것이 "미정산 분개 — 항등식 임시 균형"의 실제 모습입니다.</p>
 
-<h2>② 스왑 — 델타 2줄, 총계정 4줄 (KRWK 1,300 → USDC 1)</h2>
-<p>스왑은 한쪽이 빠지고 다른 쪽이 들어오는 거래라 <b>미정산이 양쪽에</b> 생깁니다. 온램프와 달라지는 두 테이블만 보겠습니다.</p>
-
-<h3>delta_ledger — 1단계에 2줄 INSERT</h3>
-<div class="table-wrap"><table>
-<thead><tr><th>시점</th><th>row</th></tr></thead>
-<tbody>
-<tr><td><b>1단계 후</b></td><td><code>d1 · SWAP_OUT · KRWK · +1,300 · pending</code><br/><code>d2 · SWAP_IN · USDC · −1 · pending</code></td></tr>
-<tr><td><b>2단계 후</b></td><td>d1 · settled · / · d2 · settled</td></tr>
-</tbody>
-</table></div>
-
-<h3>customer_ledger — KRWK 잠금 + USDC 처리중</h3>
-<div class="table-wrap"><table>
-<thead><tr><th>시점</th><th>KRWK (conf · in · out)</th><th>USDC (conf · in · out)</th></tr></thead>
-<tbody>
-<tr><td>처음</td><td>1,300 · 0 · 0</td><td>0 · 0 · 0</td></tr>
-<tr><td><b>1단계 후</b></td><td>0 · 0 · <b>1,300</b></td><td>0 · <b>1</b> · 0</td></tr>
-<tr><td><b>2단계 후</b></td><td>0 · 0 · 0</td><td><b>1</b> · 0 · 0</td></tr>
-</tbody>
-</table></div>
-<p class="table-note">총계정도 1단계에 4줄(고객측 2줄 + 미정산 2줄)이 들어가고, 2단계에 미정산 2줄을 닫으면서 지갑자산 KRWK↓·USDC↑ 로 정산된다. 매매 스프레드가 있으면 손익 row 가 하나 더 붙는다.</p>
-
-<h2>③ 오프램프 — 온램프의 거울상 (KRWK 1,000 → KRW 1,000)</h2>
+<h2>② 오프램프 — 온램프의 거울상 (KRWK 1,000 → KRW 1,000)</h2>
 <p>방향만 반대입니다. 보내는 쪽이라 이중사용을 막으려고 <b>1단계에 사용가능을 즉시 차감</b>하고, 미정산은 "곧 나갈 자산"으로 잡습니다.</p>
 
 <h3>customer_ledger — 1단계에 confirmed 즉시 차감</h3>
@@ -174,6 +151,29 @@
 </tbody>
 </table></div>
 <p class="table-note">온램프와 차/대가 반대다. 충전은 부채↑·자산 도착이고, 환전은 부채↓·자산 출금이다. 델타가 시점차를 메우는 방식은 양쪽 모두 같다.</p>
+
+<h2>③ 스왑 — 델타 2줄, 총계정 4줄 (KRWK 1,300 → USDC 1)</h2>
+<p>스왑은 한쪽이 빠지고 다른 쪽이 들어오는 거래라 <b>미정산이 양쪽에</b> 생깁니다. 온램프와 달라지는 두 테이블만 보겠습니다.</p>
+
+<h3>delta_ledger — 1단계에 2줄 INSERT</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>row</th></tr></thead>
+<tbody>
+<tr><td><b>1단계 후</b></td><td><code>d1 · SWAP_OUT · KRWK · +1,300 · pending</code><br/><code>d2 · SWAP_IN · USDC · −1 · pending</code></td></tr>
+<tr><td><b>2단계 후</b></td><td>d1 · settled · / · d2 · settled</td></tr>
+</tbody>
+</table></div>
+
+<h3>customer_ledger — KRWK 잠금 + USDC 처리중</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>KRWK (conf · in · out)</th><th>USDC (conf · in · out)</th></tr></thead>
+<tbody>
+<tr><td>처음</td><td>1,300 · 0 · 0</td><td>0 · 0 · 0</td></tr>
+<tr><td><b>1단계 후</b></td><td>0 · 0 · <b>1,300</b></td><td>0 · <b>1</b> · 0</td></tr>
+<tr><td><b>2단계 후</b></td><td>0 · 0 · 0</td><td><b>1</b> · 0 · 0</td></tr>
+</tbody>
+</table></div>
+<p class="table-note">총계정도 1단계에 4줄(고객측 2줄 + 미정산 2줄)이 들어가고, 2단계에 미정산 2줄을 닫으면서 지갑자산 KRWK↓·USDC↑ 로 정산된다. 매매 스프레드가 있으면 손익 row 가 하나 더 붙는다.</p>
 
 <div class="callout">
 <div class="callout-title">한 줄로</div>
