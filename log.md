@@ -7136,3 +7136,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 신규 source 2 (Mode B, sources/canton/): ① 2026-06-24__fireblocks-canton-launch-prnewswire (공지 전문, 발행 2026-02-03 — SV·Trust Company CC 수탁·MPC, node 운영 서술 부재 / CSO·Canton Foundation ED 인용) ② 2026-06-24__fireblocks-ownera-canton-connectivity (발행 2024-11-15 — Ownera 라우터로 FN↔Canton·Corda 토큰자산 유통, 4번째 접점)
 - canton-network.md: Stage 82 세 역할 절에 Ownera 별개 접점(★ Stage 85) 추가 · Q-C03 에 negative finding(공개 1차로 답 불가 확정, PoC 테스트로만 해소) · Sources +2 · frontmatter source_count 10→12, last_updated_stage 84→85
 - 신규 entity: 0 (canton-network 흡수). docs-site 미반영(curated only)
+
+## Stage 86 (2026-06-25) — NodeWallet Canton 지원 deep-research 반영 (Q-N02)
+- 계기: NodeInfra 담당자 "Canton 네이티브 + VerifyVASP Canton 트래블룰" 구두 주장 검증. prompts/collect-nodewallet-canton.md 로 deep-research 실행(99 agent·587 tool·3-vote 검증)
+- 결과: **Canton 네이티브·VerifyVASP Canton 트래블룰 모두 공개 1차 미입증(영업화법)**. NodeInfra=Canton 에 NaaS 호스팅으로만 등재(canton.foundation/validators), 공식 custody 디렉터리(cantonecosystem.com) 부재, 자사 홈페이지 Canton/Solana/VerifyVASP 무언급, VerifyVASP=체인 비종속 off-chain 메시징. Solana POC 만 정합
+- ★ evidence-of-absence 아님 — closed/gated 라 비공개 PoC 배제 불가, "공개 1차 미입증" 한정
+- 부수확: Canton external-signing 프로토콜은 decode+hash 독립 재계산(verified hash-signing, blind 아님)로 문서화 — 기존 blind-signing 논의 정밀화 근거(canton-network 미반영, 백로그)
+- 반영: vendors/nodeinfra/nodewallet.md Q-N02 부분진전·§제약 caveat·last_updated_stage 51→86. 신규 entity: 0. gated docs.nodeinfra.com 재크롤 안 함(공개 경로만)

@@ -4,7 +4,7 @@ vendor: nodeinfra
 status: draft
 tags: [custody, security, hsm, mpc, compliance, architecture, signing, stablecoin]
 stage_introduced: 51
-last_updated_stage: 51
+last_updated_stage: 86
 source_count: 8
 related:
   - fireblocks
@@ -64,7 +64,7 @@ approval-tier(SINGLE_APPROVE / QUORUM_2_OF_3, 3-키 의식과 독립된 추가 �
 
 ### 제약
 
-- **Solana 전용** (`Chain.SOLANA`, `dev__quickstart.md`) — 멀티체인 미지원. EVM/BTC 커버 불가.
+- **Solana 전용** (`Chain.SOLANA`, `dev__quickstart.md`) — 멀티체인 미지원. EVM/BTC 커버 불가. (★ 2026-06-25 재확인: 문서 42→94p 확장, `chain_id`+EVM groundwork 등장하나 구체 체인은 여전히 Solana 유일, **Canton 0건** — 담당자 "Canton 네이티브" 주장은 공개 1차 미입증, Q-N02)
 - **입금 차단 불가** — 입금은 이미 체인에 실행된 사건. `flow_type=deposit` 규칙은 입금 후 스윕에만 적용 (`compliance__architecture.md`, p.71)
 - 인증: ISMS (예정) — VASP/SOC 2 와 다른 트랙 (`ROOT.md` 비교표)
 
@@ -89,6 +89,11 @@ approval-tier(SINGLE_APPROVE / QUORUM_2_OF_3, 3-키 의식과 독립된 추가 �
 ## Open Questions
 
 - Q-2026-06-09-N01 — 4-축 격리의 정확한 4개 축 명칭/정의 (현재 축1=서비스 격리, 축4=시간·증거 격리만 확인; 축2·3 미상)
-- Q-2026-06-09-N02 — 멀티체인 로드맵 (Solana 외 EVM/BTC 지원 계획?)
+- Q-2026-06-09-N02 — 멀티체인 로드맵 (Solana 외 지원 계획?). **부분 진전 (★ Stage 86, 2026-06-25)**:
+  - gated docs 재확인(94p): `chain_id` 파라미터 + 값 인코딩의 "per-chain … EVM" 언급 = **멀티체인 groundwork 등장**. 단 구체 지원 체인은 **여전히 Solana 유일**(`Chain.SOLANA`, `chain_id: solana-localnet`, `SolanaAddress`).
+  - 영업 담당자 구두 주장(2026-06): "Canton 네이티브 기능 + VerifyVASP Canton 트래블룰 + 국내 10개+ 은행/PG/카드사 Solana POC".
+  - ⚠️ **deep-research(공개 1차 전수 + 3-vote 적대 검증)**: **Canton 네이티브·VerifyVASP Canton 트래블룰 모두 미입증(영업화법)**. ① NodeInfra 는 Canton 에 **NaaS 호스팅 제공자로만** 등재(canton.foundation/validators), custody/wallet 서비스 설명 없음 ② Canton 공식 custody/wallet 디렉터리(cantonecosystem.com: BitGo·Copper·Dfns·Bron·Console·C8)에 **부재** ③ 자사 홈페이지(© 2026)도 Canton/Solana/VerifyVASP 무언급 ④ VerifyVASP = **체인 비종속 off-chain P2P 메시징(FATF R.16)**, Canton/DAML on-chain 아님. Solana POC 만 baseline 과 정합.
+  - ★ **한정**: evidence-of-absence 아님 — NodeWallet 은 closed/gated 라 비공개 PoC 배제 불가. "공개 1차로 미입증" 까지만. (남은 미확인: 비공개 NDA Canton PoC 여부, "10개+ 은행 Solana POC" 실제 단계)
+  - source: deep-research 2026-06-25 (cantonecosystem.com · canton.foundation/validators · canton.network/blog · github.com/nodeinfra · nodeinfra.com · verifyvasp.com)
 - Q-2026-06-09-N03 — ISMS "예정" 의 실제 인증 상태·시점
 - Q-2026-06-09-N04 — 다이어그램/이미지 미수집 (mintcdn.com/nodewallet/) — 아키텍처 도식 추가 ingest 필요
