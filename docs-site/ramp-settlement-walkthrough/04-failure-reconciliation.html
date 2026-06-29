@@ -50,7 +50,7 @@ sequenceDiagram
 <table>
 <thead><tr><th style="width:10%">단계</th><th style="width:26%">무엇을 대조</th><th style="width:14%">주기</th><th>델타 원장의 역할</th></tr></thead>
 <tbody>
-<tr><td><b>L1</b></td><td>잔액 대사 — 고객 원장 합 = 총계정 잔액</td><td>실시간</td><td>"고객 원장 합 ≠ 보관 지갑 합"일 때, 그 차이가 <b>델타 미정산 합과 일치</b>하면 정상</td></tr>
+<tr><td><b>L1</b></td><td>잔액 대사 — 고객 원장 합 = 총계정 잔액</td><td>실시간</td><td>고객 원장 합과 총계정이 어긋날 때, 그 차이가 <b>델타 미정산 합과 일치</b>하면 정상(시점차 때문)</td></tr>
 <tr><td><b>L2</b></td><td>건별 대조 — 거래내역 1:1 매칭</td><td>5분</td><td>—</td></tr>
 <tr><td><b>L3</b></td><td>정산 검증 — 미정산이 제때 닫혔는지</td><td>정산 시</td><td><b>델타 원장의 정산완료(settled) 확인</b> — 오래 pending 인 줄(stuck) 탐지</td></tr>
 <tr><td><b>L4</b></td><td>온체인 검증 — 블록체인 = 장부</td><td>일 단위</td><td><b>블록체인 잔액 = 고객/은행 원장 + 델타 미정산</b> 식으로 균형 확인</td></tr>

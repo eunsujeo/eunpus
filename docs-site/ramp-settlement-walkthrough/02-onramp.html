@@ -26,7 +26,7 @@
 </div>
 
 <h2>▸ Case A — 원화 → 원화코인 (발행사 발행, 1:1)</h2>
-<p style="color:var(--text-secondary);font-size:13px">예시: 1 KRW = 1 KRWK 로 1:1 고정. 사용자가 1,000 KRW 를 충전하면 KRWK 1,000 을 받고, 시세 변동은 없습니다.</p>
+<p style="color:var(--muted);font-size:13px">예시: 1 KRW = 1 KRWK 로 1:1 고정. 사용자가 1,000 KRW 를 충전하면 KRWK 1,000 을 받고, 시세 변동은 없습니다.</p>
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
@@ -67,7 +67,7 @@ sequenceDiagram
 <p class="diagram-caption">Figure 2-A. 원화코인 충전. 1:1 고정이라 시세 변동이 없고, 은행 원장은 코인이 실제 도착한 2단계에서만 갱신된다.</p>
 
 <h2>▸ Case B — 원화 → 달러코인 (Circle 또는 거래소)</h2>
-<p style="color:var(--text-secondary);font-size:13px">예시: 시세는 1,300 KRW/USD. 사용자가 1,300 KRW 를 내면 USDC 1 을 받습니다. 조달 채널은 둘인데, Circle 직접 발행은 시세가 고정돼 안정적이고 거래소 매입은 스프레드가 붙습니다.</p>
+<p style="color:var(--muted);font-size:13px">예시: 시세는 1,300 KRW/USD. 사용자가 1,300 KRW 를 내면 USDC 1 을 받습니다. 조달 채널은 둘인데, Circle 직접 발행은 시세가 고정돼 안정적이고 거래소 매입은 스프레드가 붙습니다.</p>
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
