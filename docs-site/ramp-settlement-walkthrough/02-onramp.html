@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>2. 온램프 — 법정통화 → 코인</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">온·오프램프·스왑 정산 워크스루</a></p>
+<div class="progress">
+<a href="index.html">목차</a><a href="01-swap.html">1</a><span class="cur">2</span><a href="03-offramp.html">3</a><a href="04-failure-reconciliation.html">4</a>
+</div>
+<h1>온램프 — 법정통화 → 코인 (충전)</h1>
+<p class="subtitle">원화를 차감하고 코인을 받는 충전 — 발행 권한은 발행사에만, 은행은 요청만 한다</p>
+
+<p><b>무엇·언제</b>: 사용자가 원화(KRW)로 스테이블코인을 충전합니다. 받는 코인은 1단계에서 "처리중"으로만 잡고, 발행사/조달처가 실제 코인을 보관 지갑에 넣어준 2단계에서 "사용가능"이 됩니다. 충전이라 <b>총계정상 부채가 늘어납니다</b>(고객에게 돌려줄 코인이 늘어남).</p>
+
+<div class="callout">
+<div class="callout-title">발행(mint) 권한은 누구에게</div>
+<p style="margin:0 0 6px"><b>원화코인(KRWK)</b> 발행 = 발행사(원화 스테이블코인 발행 컨소시엄)에 발행 요청.</p>
+<p style="margin:0 0 6px"><b>달러코인(USDC)</b> 조달 = Circle 직접 발행(1차 시장) <b>또는</b> 외부 거래소 매입(2차 시장).</p>
+<p style="margin:0">보관 지갑(Fireblocks)은 <b>보관자</b>일 뿐 — 발행 권한이 없고, 결과 코인을 받기만 합니다.</p>
+</div>
+
+<h2>▸ Case A — 원화 → 원화코인 (발행사 발행, 1:1)</h2>
+<p style="color:var(--text-secondary);font-size:13px">예시: 1 KRW = 1 KRWK(1:1 고정). 사용자가 1,000 KRW 충전 → KRWK 1,000. 시세 변동 없음.</p>
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Cust as 👤 고객
+    participant App as 🏢 은행 App
+    participant Acct as 🏦 계정계(원화)
+    participant CL as 고객 원장
+    participant DL as 델타 원장
+    participant GLE as 총계정 원장
+    participant JV as 🏛 발행사
+    participant FB as ☁️ 보관 지갑
+    participant BL as 은행 원장
+
+    rect rgb(254,243,199)
+    Note over Cust,GLE: ★ 1단계 — 즉시
+    Cust->>App: 온램프 요청 KRW 1,000 → KRWK 1,000
+    App->>App: 검증 (본인확인 · 한도 · 계정계 잔액)
+    App->>CL: KRWK 처리중(in) +1,000 (화면: 처리중 +1,000)
+    App->>DL: 미정산 1줄 — (KRWK −1,000 pending · 지갑 미수)
+    App->>GLE: 미정산 분개 — KRWK 미정산자산↑ · 반환채무↑
+    App-->>Cust: "충전 처리중" 알림
+    end
+
+    rect rgb(220,252,231)
+    Note over Acct,FB: ★ 2단계 — 원화 차감 + 발행 + 지갑 도착
+    App->>Acct: KRW 1,000 차감
+    Acct-->>App: 차감 완료
+    App->>JV: KRWK 1,000 발행 요청 (받는 곳: 은행 지갑)
+    JV->>FB: KRWK 1,000 발행 → 은행 지갑
+    FB-->>App: 지갑 입금 통지 (KRWK +1,000)
+    App->>BL: KRWK 지갑자산 +1,000 (실제 도착)
+    App->>CL: KRWK 처리중 −1,000 · 사용가능 +1,000 (화면: 사용 가능)
+    App->>DL: settled
+    App->>GLE: 정산 분개 — KRWK 지갑자산↑ · 미정산자산 마감
+    App-->>Cust: "충전 완료" 알림
+    end
+</pre></div>
+<p class="diagram-caption">Figure 2-A. 원화코인 충전. 1:1 고정이라 시세 변동이 없다. 은행 원장은 코인이 실제 도착한 2단계에서만 갱신된다.</p>
+
+<h2>▸ Case B — 원화 → 달러코인 (Circle 또는 거래소)</h2>
+<p style="color:var(--text-secondary);font-size:13px">예시: 시세 1,300 KRW/USD. 사용자가 1,300 KRW → USDC 1. 조달 채널 (a) Circle 직접(고정 안정) (b) 거래소 매입(스프레드 발생).</p>
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Cust as 👤 고객
+    participant App as 🏢 은행 App
+    participant Acct as 🏦 계정계(원화)
+    participant CL as 고객 원장
+    participant DL as 델타 원장
+    participant GLE as 총계정 원장
+    participant Src as 🏛 Circle / 거래소
+    participant FB as ☁️ 보관 지갑
+    participant BL as 은행 원장
+
+    rect rgb(254,243,199)
+    Note over Cust,GLE: ★ 1단계 — 즉시
+    Cust->>App: 온램프 요청 KRW 1,300 → USDC 1
+    App->>App: 검증 (시세 1,300원/USD)
+    App->>CL: USDC 처리중(in) +1 (화면: 처리중 +1)
+    App->>DL: 미정산 1줄 — (USDC −1 pending · 지갑 미수)
+    App->>GLE: 미정산 분개 — USDC 미정산자산↑ · 반환채무↑(1,300원)
+    App-->>Cust: "충전 처리중" 알림
+    end
+
+    rect rgb(220,252,231)
+    Note over Acct,FB: ★ 2단계 — 원화 차감 + 조달 + 지갑 도착
+    App->>Acct: KRW 1,300 차감
+    Acct-->>App: 완료
+    alt (a) Circle 직접
+        App->>Src: Circle 발행 요청 (USDC 1 → 은행 지갑)
+        Src->>FB: USDC 1 발행
+    else (b) 외부 거래소
+        App->>Src: 거래소 USDC 1 매입 (KRW 1,300 + 스프레드)
+        Src->>FB: USDC 1 전송 → 은행 지갑
+    end
+    FB-->>App: 지갑 입금 통지 (USDC +1)
+    App->>BL: USDC 지갑자산 +1
+    App->>CL: USDC 처리중 −1 · 사용가능 +1 (화면: 사용 가능)
+    App->>DL: settled
+    App->>GLE: 정산 분개 — USDC 지갑자산↑ · 미정산자산 마감
+    opt 거래소 채널 — 스프레드
+        App->>GLE: 손익 분개 (외환매매수익/손실)
+    end
+    App-->>Cust: "충전 완료" 알림
+    end
+</pre></div>
+<p class="diagram-caption">Figure 2-B. 달러코인 충전. 두 조달 채널의 회계 구조는 같고, 거래소 채널만 스프레드 손익이 추가된다.</p>
+
+<h2>핵심 포인트</h2>
+<ul>
+<li><b>받는 쪽이라 1단계는 "처리중"만</b> — 사용가능 잔액은 코인이 실제 도착한 2단계에서 올라갑니다.</li>
+<li><b>계정계(원화)는 2단계에서 차감</b> — 화면 응답(1단계)과 분리해 비동기로 처리합니다.</li>
+<li><b>은행 원장은 2단계에서만</b> — 지갑에 실제 도착한 뒤 자산을 인식합니다.</li>
+</ul>
+
+<p class="foot">분개 상세: <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a>.</p>
+
+<div class="pager">
+<a href="01-swap.html">← 1. 스왑</a>
+<a href="index.html">목차</a>
+<a href="03-offramp.html">3. 오프램프 →</a>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, sequence: { wrap: true, useMaxWidth: true, actorMargin: 60, messageMargin: 32 }, flowchart: { useMaxWidth: true } });</script>
+</body>
+</html>

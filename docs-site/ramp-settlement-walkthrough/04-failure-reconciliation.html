@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>4. 실패 되돌리기 + 대사 4단계</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">온·오프램프·스왑 정산 워크스루</a></p>
+<div class="progress">
+<a href="index.html">목차</a><a href="01-swap.html">1</a><a href="02-onramp.html">2</a><a href="03-offramp.html">3</a><span class="cur">4</span>
+</div>
+<h1>실패 되돌리기 + 대사 4단계</h1>
+<p class="subtitle">2단계 정산이 실패하면 어떻게 되돌리는가, 그리고 델타 원장이 대사에서 하는 역할</p>
+
+<h2>▸ 정산 실패 시 되돌리기 (rollback)</h2>
+<p>1단계는 이미 화면·장부에 반영됐는데 2단계 정산이 실패(발행사 거절·전송 실패·시간 초과)하면, 1단계를 <b>정확히 거꾸로</b> 풀어야 합니다. 델타 원장의 미정산 줄이 "무엇을 되돌릴지"의 기준입니다.</p>
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Set as 🏛 정산처 / 보관 지갑
+    participant App as 🏢 은행 App
+    participant CL as 고객 원장
+    participant DL as 델타 원장
+    participant GLE as 총계정 원장
+    participant Cust as 👤 고객
+
+    rect rgb(254,226,226)
+    Note over Set,GLE: ★ 2단계 정산 실패
+    Set-->>App: 실패 통지 (거절 / 전송 실패 / 시간 초과)
+    App->>CL: 처리중 잠금 해제 — 사용가능 원복<br/>(나가는 쪽은 차감했던 사용가능을 +복원)
+    App->>DL: 미정산 줄 → cancelled
+    App->>GLE: 정정 분개 — 1단계 미정산 분개를 반대로 (reverse)
+    App-->>Cust: "처리 실패 — 잔액 원복" 알림
+    end
+</pre></div>
+<p class="diagram-caption">Figure 4. 정산 실패 rollback. <b>빨강 = 실패 경로</b>. 델타 줄을 cancelled 로 닫고, 1단계 분개를 반대로 정정해 항등식을 원상복구한다. 잠갔던 사용가능 잔액은 고객에게 되돌려준다.</p>
+
+<div class="callout">
+<div class="callout-title">왜 "기록 먼저, 정산 나중"이 안전한가</div>
+<p style="margin:0">1단계에서 델타 미정산 줄을 먼저 남기기 때문에, 2단계가 어디서 멈추든 "무엇이 미정산 상태로 떠 있는지"가 장부에 남습니다. 그래서 실패를 깔끔히 되돌릴 수도 있고, 오래 떠 있는(stuck) 미정산을 <b>감시</b>할 수도 있습니다.</p>
+</div>
+
+<h2>▸ 대사 4단계 — 어긋남을 잡는 그물</h2>
+<p>장부가 서로 맞는지 4개 층위로 검증합니다. 델타 원장은 특히 L3·L4 에서 핵심 역할을 합니다.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:10%">단계</th><th style="width:26%">무엇을 대조</th><th style="width:14%">주기</th><th>델타 원장의 역할</th></tr></thead>
+<tbody>
+<tr><td><b>L1</b></td><td>잔액 대사 — 고객 원장 합 = 총계정 잔액</td><td>실시간</td><td>"고객 원장 합 ≠ 보관 지갑 합"일 때, 그 차이가 <b>델타 미정산 합과 일치</b>하면 정상</td></tr>
+<tr><td><b>L2</b></td><td>건별 대조 — 거래내역 1:1 매칭</td><td>5분</td><td>—</td></tr>
+<tr><td><b>L3</b></td><td>정산 검증 — 미정산이 제때 닫혔는지</td><td>정산 시</td><td><b>델타 원장의 정산완료(settled) 확인</b> — 오래 pending 인 줄(stuck) 탐지</td></tr>
+<tr><td><b>L4</b></td><td>온체인 검증 — 블록체인 = 장부</td><td>일 단위</td><td><b>블록체인 잔액 = 고객/은행 원장 + 델타 미정산</b> 식으로 균형 확인</td></tr>
+</tbody>
+</table>
+</div>
+<p class="table-note">L4 의 핵심 등식: <b>블록체인 실제 잔액 = (오프체인 장부 잔액) + (델타 미정산 합)</b>. 델타가 "아직 체인에 반영 안 된 차액"을 설명하므로, 시점차가 있어도 등식이 맞아야 한다.</p>
+
+<div class="callout">
+<div class="callout-title">stuck 미정산 감시</div>
+<p style="margin:0">델타 원장의 각 줄에는 정산 상태가 있어, <b>오래 pending 으로 남은 줄</b>(예: 발행사 응답 지연, 거래소 체결 지연)을 나이(ageing)로 모니터링합니다. 일정 시간을 넘기면 운영자 알림·자동 재시도·거래 보류 같은 처리로 이어집니다.</p>
+</div>
+
+<p class="foot">대사·결산 상세: <a href="../fireblocks-custodial-wallet-db-design/reconciliation-close.html">대사·결산·마감</a> · 원장·분개: <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a>.</p>
+
+<div class="pager">
+<a href="03-offramp.html">← 3. 오프램프</a>
+<a href="index.html">목차</a>
+<a href="index.html">처음으로</a>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, sequence: { wrap: true, useMaxWidth: true, actorMargin: 70, messageMargin: 34 }, flowchart: { useMaxWidth: true } });</script>
+</body>
+</html>

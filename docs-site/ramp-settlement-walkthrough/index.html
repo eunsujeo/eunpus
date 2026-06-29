@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>온·오프램프·스왑 정산 워크스루 — 델타 원장</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series">정산 워크스루 · 백엔드/회계 담당자 대상 · 비공개 (URL 공유)</p>
+<h1>온·오프램프·스왑 정산 워크스루</h1>
+<p class="subtitle">"오프체인 즉시 반영"과 "온체인/외부 정산 지연"의 시점차를 <b>델타 원장</b>이 어떻게 메우는지 — 거래 한 건을 단계별로 따라갑니다</p>
+
+<div class="callout">
+<div class="callout-title">먼저 한 가지 — "델타 원장"이 무엇인가</div>
+<p style="margin:0 0 8px">사용자가 스왑·충전·환전을 요청하면 화면에는 <b>즉시</b> 잔액이 바뀝니다. 하지만 실제 자산(블록체인 지갑·발행사·거래소)은 <b>수 분~수 시간 뒤</b>에야 움직입니다. 이 시점차 동안 "이미 사용자에겐 반영됐지만 아직 실제로는 정산 안 된 차액"을 따로 적어두는 장부가 <b>델타 원장(delta_ledger)</b>입니다.</p>
+<p style="margin:0">없으면 <b>자산 = 부채 + 자기자본</b>(회계 항등식)이 시점차 동안 깨집니다. 델타 원장의 "미정산(pending)" 항목이 그 빈틈을 임시로 메우고, 실제 정산이 끝나면 "정산완료(settled)"로 닫힙니다.</p>
+</div>
+
+<ol class="toc" start="1">
+<li><a href="01-swap.html"><span class="num">1</span>스왑 — 코인 ↔ 코인 (KRWK → USDC)<span class="act">델타 2줄</span></a></li>
+<li><a href="02-onramp.html"><span class="num">2</span>온램프 — 법정통화 → 코인 (충전)<span class="act">발행/조달</span></a></li>
+<li><a href="03-offramp.html"><span class="num">3</span>오프램프 — 코인 → 법정통화 (환전)<span class="act">소각/처분</span></a></li>
+<li><a href="04-failure-reconciliation.html"><span class="num">4</span>실패 되돌리기 + 대사 4단계<span class="act">안전장치</span></a></li>
+</ol>
+
+<h2>공통 골격 — 모든 거래가 똑같은 2단계</h2>
+<p>스왑·온램프·오프램프는 정산 상대(발행사·거래소)만 다를 뿐, <b>흐름은 동일한 2단계</b>입니다. 이 그림이 세 거래 전체의 뼈대이고, 각 페이지는 여기에 살을 붙입니다.</p>
+
+<div class="callout">
+<div class="callout-title">왜 한 번에 안 하고 둘로 쪼개나</div>
+<p style="margin:0 0 8px"><b>화면 반영은 즉시, 실제 자산 이동은 느리기 때문</b>입니다. 코인 발행·소각, 거래소 체결, 블록체인 확정은 <b>수 분~수 시간</b> 걸리고 외부에 달려 있어 우리가 당길 수 없습니다. 그렇다고 둘을 하나로 묶으면 나쁜 선택지만 남습니다 — (A) 정산을 기다렸다 화면을 바꾸면 사용자가 한참 대기(UX 붕괴), (B) 안 기다리고 즉시 "완료"로 적으면 아직 없는 자산을 있다고 기록(장부가 거짓).</p>
+<p style="margin:0"><b>카드 결제의 "승인 ↔ 정산"과 같습니다</b> — 긁으면 즉시 승인(=1단계, 화면 즉시 반영), 실제 돈은 며칠 뒤 정산(=2단계). 그 사이의 "승인됐지만 정산 안 된 금액"을 잡아두는 것이 <b>델타 원장</b>입니다.</p>
+</div>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Cust as 👤 고객
+    participant App as 🏢 은행 App
+    participant CL as 고객 원장<br/>(customer_ledger)
+    participant DL as 델타 원장<br/>(delta_ledger)
+    participant GLE as 총계정 원장<br/>(general_ledger)
+    participant Set as 정산처<br/>(발행사 · 거래소)
+    participant FB as ☁️ 보관 지갑<br/>(Fireblocks vault)
+    participant BL as 은행 원장<br/>(bank_ledger)
+
+    rect rgb(254,243,199)
+    Note over Cust,GLE: ★ 1단계 — 즉시 (화면 응답)
+    Cust->>App: 요청 (스왑 / 충전 / 환전)
+    App->>App: 검증 (본인확인 · 한도 · 잔액 · 시세)
+    App->>CL: 처리중 잔액 표시<br/>(pending_in / pending_out)
+    App->>DL: 미정산 줄 기록 (status = pending)
+    App->>GLE: 미정산 분개 — 항등식 임시 균형
+    App-->>Cust: "처리중" 알림
+    end
+
+    rect rgb(220,252,231)
+    Note over Set,BL: ★ 2단계 — 정산 (수 분 ~ 수 시간 뒤)
+    App->>Set: 발행 / 소각 / 매매 요청
+    Set->>FB: 지갑 입금 또는 출금
+    FB-->>App: 지갑 변동 통지(webhook)
+    App->>BL: 지갑 자산 실제 변동
+    App->>CL: 처리중 → 사용가능 전환
+    App->>DL: status = settled (마감)
+    App->>GLE: 정산 분개 — 미정산 계정을 실제 계정으로
+    App-->>Cust: "완료" 알림
+    end
+</pre></div>
+<p class="diagram-caption">Figure 0. 세 거래의 공통 2단계. <b>노랑 = 즉시(화면 응답)</b>, <b>초록 = 정산(실제 자산 이동)</b>. 1단계에서 델타 원장이 "미정산"을 잡아 항등식을 지키고, 2단계에서 정산되면 닫힌다.</p>
+
+<div class="callout">
+<div class="callout-title">"미정산 분개 — 항등식 임시 균형"이 무슨 뜻인가</div>
+<p style="margin:0 0 8px">회계 장부는 <b>자산 = 부채 + 자기자본</b>이 항상 맞아야 합니다. 그런데 1단계에선 사용자에게 줄 빚(부채)은 이미 늘었는데 실제 자산(코인)은 아직 안 왔습니다. 그대로 두면 등식이 깨집니다. 그래서 아직 안 온 자산 자리에 <b>"미정산 자산"이라는 임시 계정</b>을 같은 금액으로 놓아 등식을 임시로 맞춥니다.</p>
+<p style="margin:0 0 8px">예: 충전(KRW 1,000 → 코인 1,000)의 1단계 —</p>
+<pre style="margin:0 0 8px"><code>(차) 코인 미정산 자산 +1,000   ← 곧 올, 아직 없는 코인
+(대) 코인 반환채무     +1,000   ← 고객에게 줄 빚
+→ 자산(+1,000) = 부채(+1,000), 균형 유지</code></pre>
+<p style="margin:0">2단계에서 코인이 실제 도착하면 <b>미정산 자산을 닫고(−1,000) 진짜 지갑 자산(+1,000)으로 교체</b>합니다. "임시"인 이유는 미정산 계정이 정산되면 반드시 0으로 닫혀야 하기 때문 — 오래 안 닫히면 정산이 막힌 신호이고, 대사 단계(<a href="04-failure-reconciliation.html">4장</a>)가 이를 감시합니다.</p>
+</div>
+
+<h2>세 거래 한눈 비교</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:14%">항목</th><th>스왑</th><th>온램프</th><th>오프램프</th></tr></thead>
+<tbody>
+<tr><td><b>방향</b></td><td>코인 ↔ 코인</td><td>법정통화 → 코인</td><td>코인 → 법정통화</td></tr>
+<tr><td><b>정산처</b></td><td>발행사 소각+발행 또는 거래소 매매</td><td>원화코인=발행사 발행 / 달러코인=Circle 발행·거래소 매입</td><td>원화코인=발행사 소각 / 달러코인=Circle 상환·거래소 매도</td></tr>
+<tr><td><b>계정계(법정)</b></td><td>관여 없음</td><td>원화 <b>차감</b></td><td>원화 <b>입금</b></td></tr>
+<tr><td><b>델타 1단계</b></td><td>2줄 (보내는 코인 +pending, 받는 코인 −pending)</td><td>1줄 (코인 −, 지갑 미수)</td><td>1줄 (코인 +, 지갑 미출금)</td></tr>
+<tr><td><b>총계정 변화</b></td><td>없음 (형태만 바뀜)</td><td>부채 ↑</td><td>부채 ↓</td></tr>
+<tr><td><b>손익</b></td><td>매매 차익(스프레드)</td><td>거래소 채널이면 스프레드</td><td>매도·상환 수수료·스프레드</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">기억할 두 규칙</div>
+<p style="margin:0 0 8px"><b>나가는 쪽은 즉시 잠근다</b> — 오프램프·스왑의 보내는 코인은 1단계에서 사용가능 잔액을 곧바로 차감(+처리중 표시)해, 같은 잔액이 두 번 쓰이는 일을 막습니다.</p>
+<p style="margin:0"><b>받는 쪽은 처리중으로만 잡는다</b> — 온램프·스왑의 받는 코인은 1단계에선 "처리중"으로만 두고, 실제 지갑에 도착한 2단계에서 "사용가능"으로 바꿉니다.</p>
+</div>
+
+<p class="foot">상세 회계 설계: <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a>(4 원장·분개·매트릭스) · 대사/마감: <a href="../fireblocks-custodial-wallet-db-design/reconciliation-close.html">대사·결산·마감</a>.</p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, sequence: { wrap: true, useMaxWidth: true, actorMargin: 70, messageMargin: 34 }, flowchart: { useMaxWidth: true } });</script>
+</body>
+</html>

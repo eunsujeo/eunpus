@@ -1,0 +1,86 @@
+/* 워크스루 전용 — 단일 컬럼·발표 보조용. 팔레트는 본 가이드와 동일 */
+* { box-sizing: border-box; }
+body {
+  margin: 0; color: #1d1d1f; background: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  font-size: 16px; line-height: 1.7;
+}
+.wrap { max-width: 760px; margin: 0 auto; padding: 28px 20px 80px; }
+
+/* 상단 진행 내비 */
+.series { font-size: 13px; color: #6e6e73; letter-spacing: .02em; }
+.series a { color: #6e6e73; text-decoration: none; }
+.progress { display: flex; gap: 6px; margin: 10px 0 6px; flex-wrap: wrap; }
+.progress a, .progress span {
+  width: 26px; height: 26px; border-radius: 50%; font-size: 12.5px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid #d2d2d7; color: #6e6e73; text-decoration: none;
+}
+.progress a:hover { border-color: #1d1d1f; color: #1d1d1f; }
+.progress .cur { background: #1d1d1f; border-color: #1d1d1f; color: #fff; }
+.progress .todo { opacity: .35; cursor: default; }
+
+h1 { font-size: 27px; line-height: 1.35; margin: 18px 0 4px; letter-spacing: -0.01em; }
+.subtitle { color: #6e6e73; font-size: 15px; margin: 0 0 22px; }
+h2 { font-size: 19px; margin: 34px 0 10px; }
+
+/* "익숙한 것 ↔ 깨지는 지점" 머리 박스 */
+.hook {
+  border-left: 3px solid #1d1d1f; background: #f5f5f7;
+  padding: 12px 16px; border-radius: 0 10px 10px 0; margin: 0 0 24px;
+  font-size: 15px;
+}
+.hook b { display: block; margin-bottom: 2px; }
+
+.callout {
+  border: 1px solid #d2d2d7; border-radius: 12px; padding: 14px 18px; margin: 20px 0;
+  background: #fafafa; font-size: 15px;
+}
+.callout.warn { background: #fffbeb; border-color: #f59e0b; }
+.callout-title { font-weight: 700; margin-bottom: 6px; }
+
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; margin: 14px 0; }
+th, td { border: 1px solid #e5e5ea; padding: 7px 9px; text-align: left; vertical-align: top; }
+th { background: #f5f5f7; font-weight: 600; white-space: nowrap; }
+td.c { text-align: center; }
+.table-note { font-size: 13px; color: #6e6e73; margin: 6px 0 0; }
+
+pre {
+  background: #1d1d1f; color: #f5f5f7; border-radius: 12px;
+  padding: 14px 16px; overflow-x: auto; font-size: 13px; line-height: 1.6;
+}
+/* mermaid 도식은 코드 블록 스타일에서 제외 — 어두운 배경이면 SVG 의 검은 라벨이 안 보인다 */
+/* flex 중앙 정렬 금지 — SVG 가 넓어지면 양끝이 잘린다. margin auto 로 중앙 + 넘치면 스크롤 */
+pre.mermaid {
+  background: #fff; color: #1d1d1f; padding: 0; border-radius: 0;
+  white-space: normal; overflow: visible;
+}
+pre.mermaid svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+code { font-family: "SF Mono", Menlo, Consolas, monospace; }
+p > code, li > code, td > code { background: #f5f5f7; padding: 1px 5px; border-radius: 5px; font-size: .88em; }
+
+.diagram { border: 1px solid #e5e5ea; border-radius: 12px; padding: 12px; margin: 16px 0; overflow-x: auto; }
+.diagram-caption { font-size: 13.5px; color: #6e6e73; margin: 8px 2px 0; line-height: 1.6; }
+
+/* 하단 — 각주·딥링크·prev/next */
+.foot { margin-top: 44px; border-top: 1px solid #e5e5ea; padding-top: 14px; font-size: 13px; color: #6e6e73; }
+.foot a { color: #0066cc; text-decoration: none; }
+.pager { display: flex; justify-content: space-between; margin-top: 22px; }
+.pager a, .pager span {
+  border: 1px solid #d2d2d7; border-radius: 10px; padding: 10px 16px;
+  text-decoration: none; color: #1d1d1f; font-size: 14px;
+}
+.pager .disabled { opacity: .35; }
+.pager a:hover { border-color: #1d1d1f; }
+
+/* 목차 페이지 */
+.toc { list-style: none; padding: 0; margin: 18px 0; }
+.toc li { margin: 8px 0; }
+.toc a, .toc .todo {
+  display: flex; gap: 12px; align-items: baseline; padding: 12px 16px;
+  border: 1px solid #e5e5ea; border-radius: 12px; text-decoration: none; color: #1d1d1f;
+}
+.toc a:hover { border-color: #1d1d1f; }
+.toc .todo { color: #a1a1a6; }
+.toc .num { font-size: 13px; color: #6e6e73; min-width: 18px; }
+.toc .act { font-size: 12px; color: #6e6e73; margin-left: auto; white-space: nowrap; }
