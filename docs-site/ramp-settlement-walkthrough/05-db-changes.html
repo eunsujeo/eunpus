@@ -24,10 +24,32 @@
 <div class="table-wrap"><table>
 <thead><tr><th style="width:21%">테이블</th><th style="width:31%">무엇인가 (누구 것 · 비유)</th><th>row 예시 (JSON)</th></tr></thead>
 <tbody>
-<tr><td><b>고객 원장</b><br/>customer_ledger</td><td>고객이 맡긴 잔액. 우리가 갚을 <b>빚(부채)</b>. 〈통장 잔액〉</td><td><code>{"user_id":"u_42","asset_id":"KRWK","confirmed":1000,"pending_in":0,"pending_out":0}</code></td></tr>
-<tr><td><b>은행 원장</b><br/>bank_ledger</td><td>은행 자신이 가진 <b>자산</b>(treasury·가스·수수료). 〈회사 금고〉</td><td><code>{"account_type":"VAULT","asset_id":"KRWK","balance":5000}</code></td></tr>
-<tr><td><b>델타 원장</b><br/>delta_ledger</td><td>아직 정산 안 된 <b>미정산 차액</b>. 시점차를 메우는 임시 다리. 〈카드 승인 미정산〉</td><td><code>{"delta_id":"d1","delta_type":"ONRAMP","asset_id":"KRWK","amount":-1000,"settlement_status":"settled"}</code></td></tr>
-<tr><td><b>총계정 원장</b><br/>general_ledger_entry</td><td>모든 거래를 차변=대변으로 적는 <b>이중부기 본체</b>(불변 증적). 〈분개장〉</td><td><code>{"entry_id":"e1","account_code":"KRWK_미정산자산","debit_credit":"차","amount":1000,"source_ref":"req#123"}</code></td></tr>
+<tr><td><b>고객 원장</b><br/>customer_ledger</td><td>고객이 맡긴 잔액. 우리가 갚을 <b>빚(부채)</b>. 〈통장 잔액〉</td><td><pre style="margin:0;padding:10px 12px;font-size:12px;line-height:1.5"><code>{
+  "user_id": "u_42",
+  "asset_id": "KRWK",
+  "confirmed": 1000,
+  "pending_in": 0,
+  "pending_out": 0
+}</code></pre></td></tr>
+<tr><td><b>은행 원장</b><br/>bank_ledger</td><td>은행 자신이 가진 <b>자산</b>(treasury·가스·수수료). 〈회사 금고〉</td><td><pre style="margin:0;padding:10px 12px;font-size:12px;line-height:1.5"><code>{
+  "account_type": "VAULT",
+  "asset_id": "KRWK",
+  "balance": 5000
+}</code></pre></td></tr>
+<tr><td><b>델타 원장</b><br/>delta_ledger</td><td>아직 정산 안 된 <b>미정산 차액</b>. 시점차를 메우는 임시 다리. 〈카드 승인 미정산〉</td><td><pre style="margin:0;padding:10px 12px;font-size:12px;line-height:1.5"><code>{
+  "delta_id": "d1",
+  "delta_type": "ONRAMP",
+  "asset_id": "KRWK",
+  "amount": -1000,
+  "settlement_status": "settled"
+}</code></pre></td></tr>
+<tr><td><b>총계정 원장</b><br/>general_ledger_entry</td><td>모든 거래를 차변=대변으로 적는 <b>이중부기 본체</b>(불변 증적). 〈분개장〉</td><td><pre style="margin:0;padding:10px 12px;font-size:12px;line-height:1.5"><code>{
+  "entry_id": "e1",
+  "account_code": "KRWK_미정산자산",
+  "debit_credit": "차",
+  "amount": 1000,
+  "source_ref": "req#123"
+}</code></pre></td></tr>
 </tbody>
 </table></div>
 <p style="margin:10px 0 0">앞의 셋은 "지금 상태"를 보여주는 잔액 캐시이고, 총계정 원장은 그 상태가 된 이유를 남기는 불변 기록입니다. <b>자산 = 부채 + 자기자본</b> 항등식이 성립하는 곳도 총계정 원장입니다. 아래 ①~③에서 이 row 들이 단계마다 어떻게 바뀌는지 따라갑니다.</p>
