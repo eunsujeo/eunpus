@@ -45,6 +45,12 @@ flowchart TB
 </pre></div>
 <p class="diagram-caption">두 층과 4분면. 포트 아래의 매니저(자체/Fireblocks)와 그 아래의 체인(이더리움/Canton)이 각각 둘씩 — 조합하면 네 가지 동작 경로가 나온다. 이 문서는 기능마다 그 네 경로를 전부 그린다.</p>
 
+<div class="callout">
+<div class="callout-title">왜 하필 이더리움과 Canton 인가</div>
+<p style="margin:0 0 8px">두 체인은 <b>일부러 가장 다른 둘</b>로 골랐다 — 이더리움은 <b>개방형·account 기반·공개 mempool·reorg</b>, Canton 은 <b>기관용·privacy·eUTXO·2-step 수락·즉시 확정·party 기반</b>. 추상(포트)이 이 <b>양 극단</b>에서 버티면 그 사이의 체인들은 자연히 들어온다 — 비슷한 체인 둘로 보여주면 추상화 증명이 시시해지기 때문이다. 그래서 매 페이지에서 체인 축이 갈릴 때마다 둘의 차이(주소 vs PartyId+memo, 감지 vs 수락, reorg vs 즉시 확정)가 드러난다.</p>
+<p style="margin:0">한 가지 짚을 것 — <b>Canton 도 퍼블릭 네트워크다</b>(permissionless Global Synchronizer). 다만 privacy-enabled·기관 지향이라 <b>종류가 다른 퍼블릭</b>이다. 그래서 Canton 도입은 단순 "체인 추가"가 아니라 <b>participant 노드 운영·party 신원·sub-transaction privacy</b> 같은 운영 패러다임 차이를 동반한다 — 그 깊은 내용은 <a href="../canton-network/">Canton 네트워크 가이드</a>에서 다룬다.</p>
+</div>
+
 <h2>등장인물 — 다이어그램에 나올 부품들</h2>
 
 <p>자체 분면의 다이어그램에는 우리가 만들 부품들이 등장합니다. <b>이 표가 곧 자체 구축의 작업 범위</b>이기도 합니다:</p>
