@@ -50,29 +50,42 @@ flowchart TB
 
 <div class="diagram"><pre class="mermaid">
 flowchart LR
-    subgraph OUR["우리 인프라"]
-      API["api 서버<br/>(지갑 백엔드 + 매니저)"]
-      WORKER["인덱서 worker<br/>(상시 — 4p)"]
-      DB[("블록체인 매니저 DB")]
-      HSM["HSM<br/>(키 · 서명)"]
-      NODE["체인 노드<br/>(이더리움 · Canton participant)"]
+    subgraph OUR["우리 인프라 (망분리 IDC)"]
+      subgraph APPS["애플리케이션"]
+        BE["지갑 백엔드<br/>API · 유스케이스 · 멱등"]
+        MGR["블록체인 매니저<br/>멀티체인 · Tx/Nonce · 라우팅"]
+        WORKER["인덱서 worker<br/>상시 — 입금 감지 (4p)"]
+      end
+      DB[("블록체인 매니저 DB<br/>계정 매핑 · 단계 기록 · 멱등")]
+      subgraph SEC["보안 존"]
+        GATE["정책 게이트<br/>서명 직전 재검증 (6p)"]
+        HSM["HSM<br/>키 보관 · 서명"]
+      end
+      ETHN["이더리움 노드"]
+      PN["Canton participant 노드<br/>우리 party 신원 보유 · 백업 대상"]
     end
-    CHAIN["블록체인 네트워크"]
+    ETH["이더리움 네트워크"]
+    CN["Canton 네트워크"]
 
-    API --- DB
-    API -->|서명 요청| HSM
-    API -->|전파 · 제출| NODE
-    WORKER -->|수집 · 구독| NODE
+    BE -->|포트 호출| MGR
+    BE --- DB
+    MGR --> GATE
+    GATE -->|통과분만 서명| HSM
+    MGR -->|전파| ETHN
+    MGR -->|제출 · ACCEPT| PN
+    WORKER -->|블록 수집| ETHN
+    WORKER -->|ACS 구독| PN
     WORKER --- DB
-    NODE --- CHAIN
+    ETHN --- ETH
+    PN --- CN
 
     classDef app fill:#dbeafe,stroke:#2563eb;
     classDef data fill:#dcfce7,stroke:#16a34a;
     classDef sec fill:#fef3c7,stroke:#d97706;
     classDef ext fill:#f5f5f7,stroke:#86868b;
-    class API,WORKER,NODE app; class DB data; class HSM sec; class CHAIN ext;
+    class BE,MGR,WORKER,ETHN,PN app; class DB data; class GATE,HSM sec; class ETH,CN ext;
 </pre></div>
-<p class="diagram-caption">자체 구축 기준 운영 부품 다섯. <b>api 서버</b>(백엔드+매니저), <b>인덱서 worker</b>(상시 — 입금 감지, 4p), <b>블록체인 매니저 DB</b>(계정 매핑·단계 기록·멱등), <b>HSM</b>(키·서명), <b>체인 노드</b>(이더리움·Canton participant — Canton 노드는 우리 party 신원을 보유해 백업 대상). 1~7페이지에 나오는 worker·HSM·노드·DB 가 전부 여기서 돈다. 분면별 상세 배치와 전환 시 네트워크 방향 변화(outbound→inbound)는 <a href="08-switch-extend.html">8p</a>.</p>
+<p class="diagram-caption">자체 구축 기준 배치. <b>지갑 백엔드</b>가 <b>블록체인 매니저</b>를 포트로 부르고, 매니저는 출금 시 <b>정책 게이트</b>(서명 직전 재검증, 6p)를 거쳐 <b>HSM</b>으로 서명한 뒤 <b>이더리움 노드</b>·<b>Canton participant 노드</b>로 전파·제출한다. <b>인덱서 worker</b>(상시)는 두 노드에서 입금을 수집·구독해 <b>블록체인 매니저 DB</b>(계정 매핑·단계 기록·멱등)에 쌓는다. HSM·정책 게이트는 <b>보안 존</b>에 격리돼 서명 요청만 드나들고, 모든 연결이 <b>밖으로 나가는 방향</b>(outbound)이라 inbound 포트가 없다 — 망분리에 유리한 성질이다. 1~7페이지의 worker·HSM·노드·DB 가 전부 여기서 돈다. Fireblocks 로 바꾸면 노드·HSM·worker 가 벤더 안으로 들어가고 webhook 수신이 새로 생기는데, 그 분면별 대조와 전환은 <a href="08-switch-extend.html">8p</a>.</p>
 
 <div class="callout">
 <div class="callout-title">왜 하필 이더리움과 Canton 인가</div>
