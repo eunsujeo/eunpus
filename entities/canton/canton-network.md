@@ -4,7 +4,7 @@ vendor: canton
 status: draft
 tags: [architecture, transaction, integration, stablecoin, identity, recovery]
 stage_introduced: 52
-last_updated_stage: 85
+last_updated_stage: 86
 source_count: 12
 related: [transaction, api]
 ---
@@ -132,6 +132,7 @@ sequenceDiagram
 - **★ 주황 박스 = fund-drain 방어 지점** — Fireblocks 는 이후 단계에서 **hash 만** 받아 의미를 못 보므로, "이 hash 가 정말 100 USDC→Alice 인가" 는 서명 전에 `tx-parser`/`tx-visualizer` 로 검증해야 한다. 여기서 바꿔치기가 걸린다. (source: canton-wallet-sdk-github ★ Stage 74)
 - **Raw / EdDSA Ed25519** — TAP 정책은 hash 만 보여 목적지·금액 기반 차단을 못 하므로(=제한된 정보), 보안 통제 무게중심이 Fireblocks 가 아니라 **백엔드(검증 박스)** 로 이동. (source: entities/fireblocks/policy.md; canton-network ★ Stage 75)
 - **권한위임형 drain 은 구조적 부재** — Canton holding 은 소유자 sole signatory, approve/allowance 없음 → EVM 식 infinite-approval drain 은 원천 차단. 남는 위험은 직접전송형뿐이고 그건 위 검증 박스로 통제. (source: ★ Stage 65)
+- **프로토콜은 "verified hash-signing" — blind 아님 (★ Stage 86)** — Canton interactive-submission 은 본래 prepared tx(protobuf)를 **decode 하고 서명자가 hash 를 독립 재계산해 검증한 뒤 서명**하도록 설계됐다 — *"participant(PPN)가 신뢰되지 않으면 제공된 hash 는 무시"* 명시. 즉 **Canton 자체는 blind signing 을 전제하지 않는다.** ★ 다만 **Fireblocks Raw Signing 경로**는 hash 만 받으므로(2절 참조), 이 verified 단계(decode+재계산)를 **우리가 SDK `tx-parser`/`tx-visualizer` 로 붙여야** 프로토콜의 설계 의도가 실현된다. → "Raw Signing=무조건 blind" 가 아니라 "**프로토콜은 verified, 그러나 Raw Signing 으로 끼우면 검증 책임이 우리 쪽으로 이동**" 이 정확한 진술. (source: docs.digitalasset.com interactive-submission; deep-research 2026-06-25)
 
 ### 수탁 통합 핵심 — wallet/guidance (★ Stage 54)
 docs.canton.network/integrations/wallet/guidance 1차 출처. 수탁 설계에 직결되는 구체 요건:
