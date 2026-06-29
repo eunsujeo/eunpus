@@ -76,11 +76,11 @@
 
 <h3>customer_ledger — pending 으로 잡았다가 confirmed 로</h3>
 <div class="table-wrap"><table>
-<thead><tr><th>시점</th><th>confirmed</th><th>pending_in</th><th>pending_out</th></tr></thead>
+<thead><tr><th>시점</th><th>asset_id</th><th>confirmed</th><th>pending_in</th><th>pending_out</th></tr></thead>
 <tbody>
-<tr><td>처음</td><td>0</td><td>0</td><td>0</td></tr>
-<tr><td><b>1단계 후</b></td><td>0</td><td><b>1,000</b></td><td>0</td></tr>
-<tr><td><b>2단계 후</b></td><td><b>1,000</b></td><td>0</td><td>0</td></tr>
+<tr><td>처음</td><td>KRWK</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td><b>1단계 후</b></td><td>KRWK</td><td>0</td><td><b>1,000</b></td><td>0</td></tr>
+<tr><td><b>2단계 후</b></td><td>KRWK</td><td><b>1,000</b></td><td>0</td><td>0</td></tr>
 </tbody>
 </table></div>
 <p class="table-note">1단계에는 "처리중(pending_in)"으로만 올려두고, 코인이 실제로 도착하는 2단계에 pending_in 을 confirmed 로 넘긴다. 이 세 칸은 지갑 매니저의 잔액 조회가 보여주는 <b>가용·대기·잠김</b>과 같은 버킷이다(confirmed=가용, pending_in=대기, pending_out=잠김 — <a href="../wallet-design-walkthrough/07-balance-history.html">지갑 매니저 워크스루의 잔액 조회</a>).</p>
@@ -134,11 +134,11 @@
 
 <h3>customer_ledger — 1단계에 confirmed 즉시 차감</h3>
 <div class="table-wrap"><table>
-<thead><tr><th>시점</th><th>confirmed</th><th>pending_in</th><th>pending_out</th></tr></thead>
+<thead><tr><th>시점</th><th>asset_id</th><th>confirmed</th><th>pending_in</th><th>pending_out</th></tr></thead>
 <tbody>
-<tr><td>처음</td><td>1,000</td><td>0</td><td>0</td></tr>
-<tr><td><b>1단계 후</b></td><td><b>0</b></td><td>0</td><td><b>1,000</b></td></tr>
-<tr><td><b>2단계 후</b></td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td>처음</td><td>KRWK</td><td>1,000</td><td>0</td><td>0</td></tr>
+<tr><td><b>1단계 후</b></td><td>KRWK</td><td><b>0</b></td><td>0</td><td><b>1,000</b></td></tr>
+<tr><td><b>2단계 후</b></td><td>KRWK</td><td>0</td><td>0</td><td>0</td></tr>
 </tbody>
 </table></div>
 
