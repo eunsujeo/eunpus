@@ -111,7 +111,7 @@
 <thead><tr><th>단계</th><th>INSERT 되는 row (account_code · 차/대 · amount · source_ref)</th></tr></thead>
 <tbody>
 <tr><td><b>1단계</b></td><td><code>e1 · KRWK 미정산자산 · 차 · 1,000 · req_123</code><br/><code>e2 · KRWK 반환채무 · 대 · 1,000 · req_123</code></td></tr>
-<tr><td><b>2단계</b></td><td><code>e3 · KRWK 지갑자산 · 차 · 1,000 · req_123</code><br/><code>e4 · KRWK 미정산자산 · 대 · 1,000 · req_123</code> ← 미정산 계정 닫음</td></tr>
+<tr><td><b>2단계</b></td><td><code>e3 · KRWK 지갑자산 · 차 · 1,000 · req_123</code><br/><code>e4 · KRWK 미정산자산 · 대 · 1,000 · req_123</code> ← 미정산자산 −1,000 (1단계 +1,000 과 상쇄돼 잔액 0)</td></tr>
 </tbody>
 </table></div>
 <p class="table-note">4개 row 가 누적(수정·삭제 없음). 네 줄 모두 <code>source_ref = req_123</code> 으로 같은 거래임을 표시 — 1·2단계에 걸쳐 들어간 분개를 이 값으로 한데 묶는다.</p>
@@ -147,7 +147,7 @@
 <thead><tr><th>단계</th><th>INSERT 되는 row</th></tr></thead>
 <tbody>
 <tr><td><b>1단계</b></td><td><code>KRWK 반환채무 · 차 · 1,000</code> (빚 감소)<br/><code>KRWK 미정산자산 · 대 · 1,000</code> (곧 나갈 자산)</td></tr>
-<tr><td><b>2단계</b></td><td><code>KRWK 미정산자산 · 차 · 1,000</code> (닫음)<br/><code>KRWK 지갑자산 · 대 · 1,000</code> (실제 출금)</td></tr>
+<tr><td><b>2단계</b></td><td><code>KRWK 미정산자산 · 차 · 1,000</code> (미정산자산 +1,000, 1단계분과 상쇄돼 잔액 0)<br/><code>KRWK 지갑자산 · 대 · 1,000</code> (실제 출금)</td></tr>
 </tbody>
 </table></div>
 <p class="table-note">온램프와 차/대가 반대다. 충전은 부채↑·자산 도착이고, 환전은 부채↓·자산 출금이다. 델타가 시점차를 메우는 방식은 양쪽 모두 같다.</p>
