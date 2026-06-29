@@ -18,6 +18,8 @@
 
 <p><b>네 개의 테이블</b>이 움직입니다 — <b>고객 원장</b>(customer_ledger) · <b>델타 원장</b>(delta_ledger) · <b>은행 원장</b>(bank_ledger) · <b>총계정 원장</b>(general_ledger_entry). 컬럼명은 <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a>의 스키마를 따릅니다.</p>
 
+<p class="table-note"><b>asset_id 주의</b> — asset_id 는 토큰만이 아니라 <b>토큰 + 네트워크</b>가 묶인 식별자다(예: <code>USDC_ETH</code> = 이더리움 위 USDC). 같은 토큰이라도 체인이 다르면 다른 asset_id(<code>USDC_ETH</code> ≠ Polygon USDC). 이 페이지에선 가독성을 위해 <code>KRWK</code>·<code>USDC</code> 로 체인 접미사를 생략했다.</p>
+
 <div class="callout">
 <div class="callout-title">테이블별 쓰기 규율 — 먼저 알아둘 것</div>
 <div class="table-wrap"><table>
