@@ -20,28 +20,17 @@
 
 <div class="callout">
 <div class="callout-title">네 원장이 각각 무엇인가 — row 를 보기 전에</div>
-<p style="margin:0 0 10px">크게 둘로 나뉩니다. 셋은 "지금 잔액이 얼마"를 빠르게 보는 <b>캐시</b>이고, 하나는 "왜 그렇게 됐나"를 영구히 적는 <b>증적</b>입니다.</p>
+<p style="margin:0 0 10px">크게 둘로 나뉩니다. 셋은 "지금 잔액이 얼마"를 빠르게 보는 <b>캐시</b>이고, 하나는 "왜 그렇게 됐나"를 영구히 적는 <b>증적</b>입니다. 아래 JSON 은 사용자 u_42 가 KRWK 1,000 을 충전 완료한 시점의 실제 row 한 줄입니다.</p>
 <div class="table-wrap"><table>
-<thead><tr><th style="width:24%">테이블</th><th>한 줄 정체성</th><th style="width:20%">누구 것</th><th style="width:20%">비유</th></tr></thead>
+<thead><tr><th style="width:21%">테이블</th><th style="width:31%">무엇인가 (누구 것 · 비유)</th><th>row 예시 (JSON)</th></tr></thead>
 <tbody>
-<tr><td><b>고객 원장</b><br/>customer_ledger</td><td>고객이 맡긴 잔액. 사용자별·자산별로 얼마를 들고 있나</td><td>고객 것 = 우리가 갚을 <b>빚(부채)</b></td><td>통장 잔액</td></tr>
-<tr><td><b>은행 원장</b><br/>bank_ledger</td><td>은행 자신이 가진 자산(treasury·가스·수수료 수익·지갑 운영분)</td><td>은행 것 = <b>자산/자기자본</b></td><td>회사 금고</td></tr>
-<tr><td><b>델타 원장</b><br/>delta_ledger</td><td>아직 정산 안 된 미정산 차액. 시점차를 메우는 임시 다리</td><td>누구 것도 아닌 <b>중간</b></td><td>카드 승인 미정산</td></tr>
-<tr><td><b>총계정 원장</b><br/>general_ledger_entry</td><td>회계 본체. 모든 거래를 차변=대변 이중부기로 영구 기록</td><td>전체 통합</td><td>분개장·감사로그</td></tr>
+<tr><td><b>고객 원장</b><br/>customer_ledger</td><td>고객이 맡긴 잔액. 우리가 갚을 <b>빚(부채)</b>. 〈통장 잔액〉</td><td><code>{"user_id":"u_42","asset_id":"KRWK","confirmed":1000,"pending_in":0,"pending_out":0}</code></td></tr>
+<tr><td><b>은행 원장</b><br/>bank_ledger</td><td>은행 자신이 가진 <b>자산</b>(treasury·가스·수수료). 〈회사 금고〉</td><td><code>{"account_type":"VAULT","asset_id":"KRWK","balance":5000}</code></td></tr>
+<tr><td><b>델타 원장</b><br/>delta_ledger</td><td>아직 정산 안 된 <b>미정산 차액</b>. 시점차를 메우는 임시 다리. 〈카드 승인 미정산〉</td><td><code>{"delta_id":"d1","delta_type":"ONRAMP","asset_id":"KRWK","amount":-1000,"settlement_status":"settled"}</code></td></tr>
+<tr><td><b>총계정 원장</b><br/>general_ledger_entry</td><td>모든 거래를 차변=대변으로 적는 <b>이중부기 본체</b>(불변 증적). 〈분개장〉</td><td><code>{"entry_id":"e1","account_code":"KRWK_미정산자산","debit_credit":"차","amount":1000,"source_ref":"req#123"}</code></td></tr>
 </tbody>
 </table></div>
-<p style="margin:10px 0 0">앞의 셋은 "지금 상태"를 빠르게 보여주는 잔액 캐시이고, 총계정 원장은 그 상태가 된 이유를 남기는 불변 기록입니다. <b>자산 = 부채 + 자기자본</b> 항등식이 성립하는 곳도 이 총계정 원장입니다.</p>
-<p style="margin:14px 0 6px"><b>실제 row 한 줄 예시</b> (사용자 u_42 가 KRWK 1,000 을 충전 완료한 시점)</p>
-<div class="table-wrap"><table>
-<thead><tr><th style="width:22%">테이블</th><th>row 한 줄 (컬럼 = 값)</th></tr></thead>
-<tbody>
-<tr><td>고객 원장<br/>customer_ledger</td><td><code>user_id=u_42 · asset_id=KRWK · confirmed=1,000 · pending_in=0 · pending_out=0</code></td></tr>
-<tr><td>은행 원장<br/>bank_ledger</td><td><code>account_type=VAULT · asset_id=KRWK · balance=5,000</code> <span style="color:var(--muted)">(별도 row: <code>account_type=수수료수익 · asset_id=USDC · balance=12.5</code>)</span></td></tr>
-<tr><td>델타 원장<br/>delta_ledger</td><td><code>delta_id=d1 · delta_type=ONRAMP · asset_id=KRWK · amount=−1,000 · settlement_status=settled</code></td></tr>
-<tr><td>총계정 원장<br/>general_ledger_entry</td><td><code>entry_id=e1 · account_code=KRWK_미정산자산 · debit_credit=차 · amount=1,000 · source_ref=req#123</code></td></tr>
-</tbody>
-</table></div>
-<p class="table-note">한 거래(req#123)가 끝나면 고객 원장은 confirmed 1,000 으로, 은행 원장은 지갑 잔액에 1,000 더해진 상태로 남고, 델타 원장의 그 줄은 settled 로 닫히며, 총계정 원장에는 분개 row 들이 그대로 쌓여 있습니다. 아래 ①~③에서 이 row 들이 단계마다 어떻게 바뀌는지 따라갑니다.</p>
+<p style="margin:10px 0 0">앞의 셋은 "지금 상태"를 보여주는 잔액 캐시이고, 총계정 원장은 그 상태가 된 이유를 남기는 불변 기록입니다. <b>자산 = 부채 + 자기자본</b> 항등식이 성립하는 곳도 총계정 원장입니다. 아래 ①~③에서 이 row 들이 단계마다 어떻게 바뀌는지 따라갑니다.</p>
 </div>
 
 <p class="table-note"><b>asset_id 주의</b> — asset_id 는 토큰만 가리키지 않고 <b>토큰 + 네트워크</b>를 한데 묶은 식별자다. 가령 <code>USDC_ETH</code> 는 이더리움 위의 USDC 다. 같은 토큰이라도 체인이 다르면 asset_id 도 달라진다(<code>USDC_ETH</code> ≠ Polygon USDC). 이 페이지에서는 읽기 편하도록 <code>KRWK</code>·<code>USDC</code> 처럼 체인 접미사를 생략했다.</p>
