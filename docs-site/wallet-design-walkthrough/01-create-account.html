@@ -16,7 +16,7 @@
 <h1>계정 생성 — createAccount</h1>
 <p class="subtitle">고객 한 명당 한 번 — 체인과 무관한 "그릇(vault)"을 만든다</p>
 
-<p><b>무엇·언제</b>: 고객이 가입하면 백엔드가 매니저에 계정 하나를 요청합니다. 계정은 주소가 아닙니다 — 한 고객의 여러 자산·여러 주소를 묶는 <b>상위 핸들(vault)</b>이고, 주소·신원은 다음 페이지(발급)에서 이 계정 밑에 생깁니다. 중요한 건 호출이 <b>고객당 한 번</b>이라는 점입니다 — 시그니처에 asset 이 없어(<code>createAccount(ref)</code>) 이더리움용·Canton용을 따로 부르지 않습니다. 그래서 이 페이지는 custody 축으로만 갈립니다:</p>
+<p><b>무엇·언제</b>: 고객이 가입하면 백엔드가 매니저에 계정 하나를 요청합니다. 계정은 주소가 아닙니다. 한 고객의 여러 자산·여러 주소를 묶는 <b>상위 핸들(vault)</b>이며, 주소·신원은 다음 페이지(발급)에서 이 계정 밑에 생깁니다. 중요한 건 호출이 <b>고객당 한 번</b>이라는 점입니다. 시그니처에 asset 이 없어(<code>createAccount(ref)</code>) 이더리움용·Canton용을 따로 부르지 않습니다. 그래서 이 페이지는 custody 축으로만 갈립니다:</p>
 
 <pre><code>createAccount(고객 ref) → Account     // 결과는 항상 계정 디렉터리(블록체인 매니저 DB)에 저장</code></pre>
 
@@ -37,7 +37,7 @@ sequenceDiagram
     MGR->>DIR: 계정 저장 (ref ↔ 1024번)
     MGR-->>BE: Account(1024번)
 </pre></div>
-<p class="diagram-caption">이더리움이든 Canton 이든 동작이 같아 자체 분면이 하나로 합쳐졌다 — createAccount 는 순수 장부 작업이라서다. 고객이 100만 명이어도 키는 하나, 계정은 번호 100만 개. 공짜고 실패할 외부 요인도 없다. <b>체인 위의 신원(이더리움 주소·Canton PartyId)은 여기서 만들지 않는다</b> — asset 을 처음 아는 2p 발급에서 태어난다. <code>createAccount(ref)</code> 에 asset 인자가 없다는 것이 그 증거다 — 인자로 받지 않은 체인의 일(PartyId 등록)을 할 수는 없다. Canton PartyId 가 여기가 아니라 2p 에서 선발급되는 이유다.</p>
+<p class="diagram-caption">createAccount 는 순수 장부 작업이라 이더리움이든 Canton 이든 동작이 같고, 그래서 자체 분면이 하나로 합쳐졌다. 고객이 100만 명이어도 키는 하나, 계정은 번호 100만 개다. 공짜고 실패할 외부 요인도 없다. <b>체인 위의 신원(이더리움 주소·Canton PartyId)은 여기서 만들지 않는다.</b> asset 을 처음 아는 2p 발급에서 태어난다. <code>createAccount(ref)</code> 에 asset 인자가 없다는 것이 그 증거다. 인자로 받지 않은 체인의 일(PartyId 등록)을 할 수는 없다. Canton PartyId 가 여기가 아니라 2p 에서 선발급되는 이유다.</p>
 
 <h2>▸ Fireblocks — vault 생성 API 한 번 (양 체인 공통)</h2>
 
@@ -58,7 +58,7 @@ sequenceDiagram
     FBI->>DIR: 계정 저장 (ref ↔ vaultId)
     FBI-->>BE: Account
 </pre></div>
-<p class="diagram-caption">자체든 Fireblocks 든 createAccount 는 체인을 모른다 — 둘의 차이는 vault 가 <b>우리 장부냐 벤더 장부냐</b>뿐이다. Canton 의 온장 PartyId 등록·비용은 자체든 벤더든 발생하지만, 그것이 일어나는 자리는 createAccount 가 아니라 입금 식별자 발급(2p)이다 — asset 을 처음 아는 곳. 디렉터리 저장은 여기서도 빠지지 않는다 — "고객 → 계정" 해석은 벤더에 묻지 않는 우리 데이터.</p>
+<p class="diagram-caption">자체든 Fireblocks 든 createAccount 는 체인을 모른다. 둘의 차이는 vault 가 <b>우리 장부냐 벤더 장부냐</b>뿐이다. Canton 의 온장 PartyId 등록·비용은 자체든 벤더든 발생하지만, 그것이 일어나는 자리는 createAccount 가 아니라 asset 을 처음 아는 입금 식별자 발급(2p)이다. 디렉터리 저장은 여기서도 빠지지 않는다. "고객 → 계정" 해석은 벤더에 묻지 않는 우리 데이터다.</p>
 
 <h2>비교 — 체인 축이 사라지는 유일한 페이지</h2>
 
@@ -72,7 +72,7 @@ sequenceDiagram
 </tbody>
 </table>
 
-<p>표에서 읽을 것: 이 문서에서 <b>유일하게 체인 축이 사라지는 페이지</b>입니다 — <code>createAccount(ref)</code> 에 asset 인자가 없으니 이더리움이냐 Canton 이냐가 동작을 가를 수 없습니다(그래서 4분면이 아니라 custody 2분면). 고객이 한 명이면 createAccount 도 한 번 — 체인 수만큼 부르지 않습니다. 체인 축은 다음 페이지(발급)에서 되살아납니다: 거기서 이더리움은 주소를, Canton 은 PartyId(첫 1회 선발급)+memo 를 만듭니다. 그리고 어느 쪽이든 마지막 줄은 같습니다: <b>디렉터리는 항상 우리 것.</b></p>
+<p>표에서 읽을 것은 이렇습니다. 이 문서에서 <b>유일하게 체인 축이 사라지는 페이지</b>입니다. <code>createAccount(ref)</code> 에 asset 인자가 없으니 이더리움이냐 Canton 이냐가 동작을 가를 수 없습니다(그래서 4분면이 아니라 custody 2분면). 고객이 한 명이면 createAccount 도 한 번이고, 체인 수만큼 부르지 않습니다. 체인 축은 다음 페이지(발급)에서 되살아납니다. 거기서 이더리움은 주소를, Canton 은 PartyId(첫 1회 선발급)+memo 를 만듭니다. 어느 쪽이든 마지막 줄은 같습니다. <b>디렉터리는 항상 우리 것.</b></p>
 
 <h2>백엔드에서 이렇게 부른다 — 네 분면 공통</h2>
 
@@ -84,7 +84,7 @@ suspend fun openWallet(ref: AccountRef, asset: Asset): OpenedWallet =
         val id = accounts.issueDepositAddress(account, asset)  // 첫 입금 식별자 — 2p (Canton 이면 PartyId 선발급 포함)
         OpenedWallet(account, id)
     }</code></pre>
-<p class="diagram-caption">백엔드는 매니저가 자체인지 Fireblocks 인지, 자산이 이더리움인지 Canton 인지 모른 채 이 코드를 실행한다 — 4분면은 전부 포트 아래의 일이다.</p>
+<p class="diagram-caption">백엔드는 매니저가 자체인지 Fireblocks 인지, 자산이 이더리움인지 Canton 인지 모른 채 이 코드를 실행한다. 4분면은 전부 포트 아래의 일이다.</p>
 
 <p class="foot">더 깊이: 계정·주소 발급 시나리오 — <a href="../wallet-service-components/scenario-provisioning.html">가이드 9장</a> · Canton 등록 절차 상세 — <a href="../wallet-service-components/example-selfbuild.html">15.3</a>.</p>
 

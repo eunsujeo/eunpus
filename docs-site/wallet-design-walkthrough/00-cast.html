@@ -14,11 +14,11 @@
 <span class="cur">0</span><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-estimate-fee.html">5</a><a href="06-withdrawal.html">6</a><a href="07-balance-history.html">7</a><a href="08-switch-extend.html">8</a>
 </div>
 <h1>읽는 법 + 등장인물</h1>
-<p class="subtitle">이후 모든 페이지가 같은 형식으로 반복됩니다 — 여기만 차근히 읽으면 나머지가 빨라집니다</p>
+<p class="subtitle">이후 모든 페이지가 같은 형식으로 반복됩니다. 여기만 차근히 읽어두면 나머지가 빨라집니다</p>
 
 <h2>구조는 두 층입니다</h2>
 
-<p>우리 시스템은 두 층으로 나뉩니다. <b>지갑 백엔드</b>는 API·계정 관리·업무 규칙을 담당하고 항상 우리가 만듭니다. 그 아래 <b>블록체인 매니저</b>는 체인과 실제로 대화하는 층 — 주소를 만들고, 트랜잭션에 서명·전파하고, 입금을 감지합니다. 이 매니저 층이 <b>교체 대상</b>입니다: 자체 구축으로 시작해서 Fireblocks 로 바꿔도, 백엔드는 매니저를 <b>포트(인터페이스)</b>로만 부르기 때문에 코드가 바뀌지 않습니다.</p>
+<p>우리 시스템은 두 층으로 나뉩니다. <b>지갑 백엔드</b>는 API·계정 관리·업무 규칙을 담당하고 항상 우리가 만듭니다. 그 아래 <b>블록체인 매니저</b>는 체인과 실제로 대화하는 층입니다. 주소를 만들고, 트랜잭션에 서명·전파하고, 입금을 감지하죠. <b>교체 대상</b>은 바로 이 매니저 층입니다. 자체 구축으로 시작했다가 Fireblocks 로 바꿔도 백엔드 코드는 그대로입니다. 백엔드가 매니저를 <b>포트(인터페이스)</b>로만 부르기 때문입니다.</p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart TB
@@ -43,17 +43,17 @@ flowchart TB
     classDef chain fill:#f5f5f7,stroke:#86868b;
     class BE mine; class PORT port; class SELF,FB impl; class ETH,CTN chain;
 </pre></div>
-<p class="diagram-caption">두 층과 4분면. 포트 아래의 매니저(자체/Fireblocks)와 그 아래의 체인(이더리움/Canton)이 각각 둘씩 — 조합하면 네 가지 동작 경로가 나온다. 이 문서는 기능마다 그 네 경로를 전부 그린다.</p>
+<p class="diagram-caption">두 층과 4분면. 포트 아래의 매니저(자체/Fireblocks)와 그 아래의 체인(이더리움/Canton)이 각각 둘씩이고, 조합하면 네 가지 동작 경로가 나온다. 이 문서는 기능마다 그 네 경로를 전부 그린다.</p>
 
 <div class="callout">
 <div class="callout-title">왜 하필 이더리움과 Canton 인가</div>
-<p style="margin:0 0 8px">두 체인은 <b>일부러 가장 다른 둘</b>로 골랐다 — 이더리움은 <b>개방형·account 기반·공개 mempool·reorg</b>, Canton 은 <b>기관용·privacy·eUTXO·2-step 수락·즉시 확정·party 기반</b>. 추상(포트)이 이 <b>양 극단</b>에서 버티면 그 사이의 체인들은 자연히 들어온다 — 비슷한 체인 둘로 보여주면 추상화 증명이 시시해지기 때문이다. 그래서 매 페이지에서 체인 축이 갈릴 때마다 둘의 차이(주소 vs PartyId+memo, 감지 vs 수락, reorg vs 즉시 확정)가 드러난다.</p>
-<p style="margin:0">한 가지 짚을 것 — <b>Canton 도 퍼블릭 네트워크다</b>(permissionless Global Synchronizer). 다만 privacy-enabled·기관 지향이라 <b>종류가 다른 퍼블릭</b>이다. 그래서 Canton 도입은 단순 "체인 추가"가 아니라 <b>participant 노드 운영·party 신원·sub-transaction privacy</b> 같은 운영 패러다임 차이를 동반한다 — 그 깊은 내용은 <a href="../canton-network/">Canton 네트워크 가이드</a>에서 다룬다.</p>
+<p style="margin:0 0 8px">두 체인은 <b>일부러 가장 다른 둘</b>로 골랐다. 이더리움은 <b>개방형·account 기반·공개 mempool·reorg</b>, Canton 은 <b>기관용·privacy·eUTXO·2-step 수락·즉시 확정·party 기반</b>이다. 추상(포트)이 이 <b>양 극단</b>에서 버티면 그 사이의 체인들은 자연히 들어온다. 비슷한 체인 둘로 보여줘 봐야 추상화 증명이 시시해질 뿐이다. 그래서 매 페이지에서 체인 축이 갈릴 때마다 둘의 차이(주소 vs PartyId+memo, 감지 vs 수락, reorg vs 즉시 확정)가 드러난다.</p>
+<p style="margin:0">한 가지 짚어둘 것은 <b>Canton 도 퍼블릭 네트워크</b>라는 점이다(permissionless Global Synchronizer). 다만 privacy-enabled·기관 지향이라 <b>종류가 다른 퍼블릭</b>이다. 그래서 Canton 도입은 단순 "체인 추가"가 아니라 <b>participant 노드 운영·party 신원·sub-transaction privacy</b> 같은 운영 패러다임 차이를 동반한다. 그 깊은 내용은 <a href="../canton-network/">Canton 네트워크 가이드</a>에서 다룬다.</p>
 </div>
 
 <h2>등장인물 — 다이어그램에 나올 부품들</h2>
 
-<p>자체 분면의 다이어그램에는 우리가 만들 부품들이 등장합니다. <b>이 표가 곧 자체 구축의 작업 범위</b>이기도 합니다:</p>
+<p>자체 분면의 다이어그램에는 우리가 만들 부품들이 등장합니다. <b>이 표가 곧 자체 구축의 작업 범위</b>이기도 하죠.</p>
 
 <table>
 <thead><tr><th style="width:26%">부품</th><th>역할 (한 줄)</th><th style="width:14%">주 등장</th></tr></thead>
@@ -66,7 +66,7 @@ flowchart TB
 </tbody>
 </table>
 
-<p>Fireblocks 분면에서는 이 부품들이 어떻게 될까요 — <b>대부분 벤더 상자 안으로 들어가고, 둘만 남습니다</b>:</p>
+<p>Fireblocks 분면에서는 이 부품들이 어떻게 될까요. <b>대부분 벤더 상자 안으로 들어가고 둘만 남습니다.</b></p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart LR
@@ -87,11 +87,11 @@ flowchart LR
     classDef vendor fill:#f5f5f7,stroke:#86868b;
     class A1,A2,A3,A4 mine; class B1 vendor;
 </pre></div>
-<p class="diagram-caption">전환의 예고편 — 자체 분면의 부품 넷은 Fireblocks 로 가면 벤더 기능으로 대체된다. 상세는 8페이지.</p>
+<p class="diagram-caption">전환의 예고편. 자체 분면의 부품 넷은 Fireblocks 로 가면 벤더 기능으로 대체된다. 상세는 8페이지.</p>
 
 <h2>Fireblocks 해부 — 기능 × 사용처 매트릭스</h2>
 
-<p>그런데 포트의 동사들은 어디서 왔을까요 — <b>Fireblocks 의 API 표면을 분석해서</b>입니다. 가장 묶음이 큰 벤더가 제공하는 것의 전체가 곧 "수탁 지갑에 필요한 기능의 전집"에 가깝고, 그것을 벤더 메서드명이 아니라 우리 업무 언어(도메인 동사)로 바꿔 적은 것이 포트입니다. 각 기능이 우리 서비스의 어느 장면에서 쓰이는지까지 묶으면 — <b>이 표가 곧 이 문서의 목차</b>가 됩니다:</p>
+<p>그런데 포트의 동사들은 어디서 왔을까요. <b>Fireblocks 의 API 표면을 분석한 결과</b>입니다. 가장 묶음이 큰 벤더가 제공하는 것의 전체가 곧 "수탁 지갑에 필요한 기능의 전집"에 가깝고, 그것을 벤더 메서드명이 아니라 우리 업무 언어(도메인 동사)로 바꿔 적은 것이 포트입니다. 각 기능이 우리 서비스의 어느 장면에서 쓰이는지까지 묶으면 <b>이 표가 곧 이 문서의 목차</b>가 됩니다.</p>
 
 <table>
 <thead><tr>
@@ -114,11 +114,11 @@ flowchart LR
 <tr><td>서명 정책 (한도·화이트리스트)</td><td>TAP(거버넌스 정책) · co-signer</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td>(동사 없음 — 정책 게이트)</td><td class="c">6p</td></tr>
 </tbody>
 </table>
-<p class="table-note">● = 그 장면이 이 기능을 호출한다. Fireblocks 표면은 공식 문서에서 확인한 범위(일부 조회 엔드포인트는 적용 전 확인). 마지막 행만 동사가 없다 — 화면이 부르는 기능이 아니라 흐름 뒤에 서는 기능이라서다: 나가는 돈 뒤엔 서명 정책(정책 게이트 — 6p)이 선다.</p>
+<p class="table-note">● = 그 장면이 이 기능을 호출한다. Fireblocks 표면은 공식 문서에서 확인한 범위다(일부 조회 엔드포인트는 적용 전 확인). 마지막 행만 동사가 없는데, 화면이 부르는 기능이 아니라 흐름 뒤에 서는 기능이라 그렇다. 나가는 돈 뒤엔 서명 정책(정책 게이트, 6p)이 선다.</p>
 
 <h2>도메인 한 장 — 매트릭스를 코드로 적으면</h2>
 
-<p>매트릭스의 동사 열을 타입과 함께 적으면 아래 한 장입니다 — <b>이후 모든 페이지의 다이어그램과 사용 코드가 이 도메인 위에서 움직입니다</b>:</p>
+<p>매트릭스의 동사 열을 타입과 함께 적으면 아래 한 장이 됩니다. <b>이후 모든 페이지의 다이어그램과 사용 코드가 이 도메인 위에서 움직입니다.</b></p>
 
 <pre><code>// ── 값 객체 — 체인·custody 와 무관한 우리 업무 언어 ──
 data class AccountRef(val value: String)                 // 고객 식별자 (우리가 발급)
@@ -149,13 +149,13 @@ interface TransactionPort {                              // 4·6·7p
 // ── 선택 capability — "있는 분면"만 타입을 가진다 ──
 interface FeeBoostCapability { suspend fun boost(txRef: TxRef): TxRef }    // 이더리움 분면만 (6p)
 interface CancelCapability   { suspend fun cancel(txRef: TxRef): TxRef }   // 철회 (6p)</code></pre>
-<p class="diagram-caption">자체 매니저도 Fireblocks 구현도 이 인터페이스를 구현한다 — "어느 구현인지 백엔드가 모른다"는 이 문서의 모든 주장이 이 한 장 위에 서 있다. 멱등 키는 시그니처가 아니라 호출을 감싸는 래퍼(<code>withIdempotency</code>)로 들어간다(1p 코드).</p>
+<p class="diagram-caption">자체 매니저도 Fireblocks 구현도 이 인터페이스를 구현한다. "어느 구현인지 백엔드가 모른다"는 이 문서의 모든 주장이 이 한 장 위에 서 있다. 멱등 키는 시그니처가 아니라 호출을 감싸는 래퍼(<code>withIdempotency</code>)로 들어간다(1p 코드).</p>
 
-<p>마지막으로 어휘 두 개만: <b>키 트리</b> — 키는 고객마다 만들지 않고, 셋업 때 HSM 안에서 <b>한 번</b> 만든 뿌리 키에서 가지(번호)를 늘려 갑니다(2페이지에서 동작으로 확인). <b>멱등 키</b> — 같은 요청의 재시도가 두 번 실행되지 않게 백엔드가 모든 쓰기 요청에 붙이는 고유 키입니다.</p>
+<p>마지막으로 어휘 두 개만 짚겠습니다. <b>키 트리</b>는 고객마다 키를 만들지 않고 셋업 때 HSM 안에서 <b>한 번</b> 만든 뿌리 키에서 가지(번호)를 늘려 가는 방식입니다(2페이지에서 동작으로 확인). <b>멱등 키</b>는 같은 요청의 재시도가 두 번 실행되지 않게 백엔드가 모든 쓰기 요청에 붙이는 고유 키입니다.</p>
 
 <div class="callout">
 <div class="callout-title">이 문서가 다루지 않는 것</div>
-<p style="margin:0">업무 승인 절차(누가 출금을 승인하나) · 수수료의 <b>운영·정산</b>(출금용 가스 잔고 충전·고객 과금·실비 차액·Canton traffic 충전) · 회계 기표·시세 — 별도 설계의 몫입니다(그 회계·정산 층은 <a href="../ramp-settlement-walkthrough/">온·오프램프·스왑 정산 워크스루</a>에서 다룬다). 단 수수료의 <b>메커니즘</b>(추정 estimateFee · 조립 시 설정 · 인상 재전송 boost)은 매니저가 하며 5p(견적)·6p(조립 시 설정·boost) 에서 다룹니다.</p>
+<p style="margin:0">업무 승인 절차(누가 출금을 승인하나) · 수수료의 <b>운영·정산</b>(출금용 가스 잔고 충전·고객 과금·실비 차액·Canton traffic 충전) · 회계 기표·시세는 별도 설계의 몫입니다(그 회계·정산 층은 <a href="../ramp-settlement-walkthrough/">온·오프램프·스왑 정산 워크스루</a>에서 다룬다). 다만 수수료의 <b>메커니즘</b>(추정 estimateFee · 조립 시 설정 · 인상 재전송 boost)은 매니저가 맡으며 5p(견적)·6p(조립 시 설정·boost) 에서 다룹니다.</p>
 </div>
 
 <p class="foot">더 깊이: 컴포넌트별 상세는 <a href="../wallet-service-components/">블록체인 매니저 컴포넌트 가이드</a> (참고용 — 본 워크스루는 가이드 없이 읽힙니다).</p>

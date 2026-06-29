@@ -14,9 +14,9 @@
 <a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-estimate-fee.html">5</a><a href="06-withdrawal.html">6</a><span class="cur">7</span><a href="08-switch-extend.html">8</a>
 </div>
 <h1>잔액과 내역 조회 — getBalance · transactionsOf</h1>
-<p class="subtitle">고객 화면의 두 숫자 — 그런데 잔액은 숫자 하나가 아니다</p>
+<p class="subtitle">고객 화면의 두 숫자, 그런데 잔액은 숫자 하나가 아니다</p>
 
-<p><b>무엇·언제</b>: 고객 홈 화면(잔액)과 거래내역 화면이 부르는 읽기 동사 둘입니다. 잔액의 규칙부터 — <b>잔액은 세 칸입니다</b>: <b>가용</b>(available — 출금에 쓸 수 있는 돈) / <b>대기</b>(pending — 들어왔지만 아직 확정 전, 4p) / <b>잠김</b>(locked — 나가는 중인데 상대 수락 대기, 6p). 출금 가능 판정은 <b>가용만</b> 봅니다 — 대기·잠김을 합쳐 보여주는 화면은 자유지만, 합쳐서 <b>판정</b>하는 순간 없는 돈을 쓰게 됩니다.</p>
+<p><b>무엇·언제</b>: 고객 홈 화면의 잔액과 거래내역 화면이 부르는 읽기 동사 둘입니다. 먼저 잔액의 규칙. <b>잔액은 세 칸입니다.</b> <b>가용</b>(available — 출금에 쓸 수 있는 돈), <b>대기</b>(pending — 들어왔지만 아직 확정 전, 4p), <b>잠김</b>(locked — 나가는 중인데 상대 수락 대기, 6p). 출금 가능 판정은 <b>가용만</b> 봅니다. 대기·잠김을 합쳐 보여주는 화면이야 자유지만, 합쳐서 <b>판정</b>하는 순간 없는 돈을 쓰게 됩니다.</p>
 
 <pre><code>getBalance(account, asset) → { available, pending, locked }
 transactionsOf(account, 기간) → 입출금 내역 (시간순)</code></pre>
@@ -43,7 +43,7 @@ sequenceDiagram
     MGR->>TX: 송신 내역 — "보내는 중"(전파 전 기록 덕) 포함
     MGR-->>BE: 병합·시간순 정렬
 </pre></div>
-<p class="diagram-caption">따로 만드는 기능이 아니다 — 입금(4p)이 쌓은 기록과 출금(6p)이 단계마다 남긴 기록을 합쳐 읽을 뿐이다. 출금을 전파 <b>전에</b> 기록한 덕에 내역에 "보내는 중" 상태까지 보여줄 수 있다. 체인 차이는 둘 — 잔액의 원천(이더리움은 인덱서 기록 합산, Canton 은 노드의 보유 자산 합산)과 잠김의 출처: 이더리움은 잠김이 거의 없고(전파 후 곧 확정 추적), <b>Canton 은 수락 대기 출금이 잠김 칸에 그대로 나타난다</b> — 고객이 "내 돈 어디 갔어요?"라고 물을 때 보여줄 칸이 있어야 한다.</p>
+<p class="diagram-caption">따로 만드는 기능이 아니다. 입금(4p)이 쌓은 기록과 출금(6p)이 단계마다 남긴 기록을 합쳐 읽을 뿐이다. 출금을 전파 <b>전에</b> 기록해 둔 덕에 내역에 "보내는 중" 상태까지 보여줄 수 있다. 체인 차이는 둘이다. 하나는 잔액의 원천으로, 이더리움은 인덱서 기록을 합산하고 Canton 은 노드의 보유 자산을 합산한다. 다른 하나는 잠김의 출처다. 이더리움은 전파 후 곧 확정을 추적하므로 잠김이 거의 없는 반면, <b>Canton 은 수락 대기 출금이 잠김 칸에 그대로 나타난다.</b> 고객이 "내 돈 어디 갔어요?"라고 물을 때 보여줄 칸이 있어야 한다.</p>
 
 <p class="table-note">이 <b>가용·대기·잠김</b> 세 칸은 회계 층의 <b>confirmed·pending_in·pending_out</b> 과 같은 버킷이다(가용=confirmed, 대기=pending_in, 잠김=pending_out). 회계 원장에서 어떻게 채워지는지는 <a href="../ramp-settlement-walkthrough/05-db-changes.html">정산 워크스루의 DB 상태 변화</a> 참고.</p>
 
@@ -66,7 +66,7 @@ sequenceDiagram
     FBI->>FB: 거래 목록 API (벤더가 입·출금 양방향 기록)
     FB-->>BE: 내역
 </pre></div>
-<p class="diagram-caption">벤더가 양방향을 다 기록하므로 병합이 필요 없다. 단 회계가 걸리는 숫자는 주기적으로 대조한다 — 벤더 잔액 vs 우리 기록(4p 의 "통지는 힌트" 규칙이 잔액에도 적용된다). Canton 자산의 잠김(수락 대기)이 벤더 응답에 어떻게 표현되는지는 적용 전 확인.</p>
+<p class="diagram-caption">벤더가 양방향을 다 기록하므로 병합이 필요 없다. 단 회계가 걸리는 숫자는 벤더 잔액과 우리 기록을 주기적으로 대조한다. 4p 의 "통지는 힌트" 규칙이 잔액에도 적용되는 셈이다. Canton 자산의 잠김(수락 대기)이 벤더 응답에 어떻게 표현되는지는 적용 전 확인.</p>
 
 <h2>4분면 비교</h2>
 
@@ -80,7 +80,7 @@ sequenceDiagram
 </tbody>
 </table>
 
-<p>한 가지 경계만 분명히 — 이 동사들은 <b>우리 고객 계정</b>의 조회입니다. 임의 외부 주소(우리 고객이 아닌 지갑)의 잔액·이력 조회는 Fireblocks 가 주지 않는 별개 기능으로, 필요해지면 자체 인덱서를 그 용도로 따로 둡니다 — custody 와 독립적인 선택이라 전환(8p)과도 무관합니다.</p>
+<p>경계 하나만 분명히 해 둡니다. 이 동사들은 <b>우리 고객 계정</b>을 조회합니다. 임의 외부 주소(우리 고객이 아닌 지갑)의 잔액·이력 조회는 Fireblocks 가 주지 않는 별개 기능이라, 필요해지면 자체 인덱서를 그 용도로 따로 둡니다. custody 와 독립적인 선택이므로 전환(8p)과도 무관합니다.</p>
 
 <h2>백엔드에서 이렇게 부른다 — 판정은 가용만</h2>
 
@@ -91,11 +91,11 @@ suspend fun canWithdraw(account: Account, asset: Asset, amount: Amount): Boolean
 // 내역 화면 — 입출금이 합쳐진 한 목록
 suspend fun historyScreen(account: Account, range: BlockRange): List<Transfer> =
     transactions.transactionsOf(account, range)    // 자체 분면이면 "보내는 중" 상태까지 포함</code></pre>
-<p class="diagram-caption">판정 코드에 available 만 쓰는 것 — 이 페이지 첫 단락의 규칙이 코드 한 줄로 강제되는 자리다.</p>
+<p class="diagram-caption">판정 코드에 available 만 쓴다. 이 페이지 첫 단락의 규칙이 코드 한 줄로 강제되는 자리다.</p>
 
 <h2>대사 — 두 장부를 주기적으로 맞춘다</h2>
 
-<p>잔액·내역의 숫자는 결국 <b>두 장부</b>에서 나옵니다 — 우리 기록(디렉터리·파이프라인·projection)과 바깥의 진실(온체인 / 벤더). 통지·조회가 아무리 잘 와도 누락·지연·버그는 생기므로, <b>주기적으로 둘을 직접 대조</b>합니다:</p>
+<p>잔액·내역의 숫자는 결국 <b>두 장부</b>에서 나옵니다. 우리 기록(디렉터리·파이프라인·projection), 그리고 바깥의 진실(온체인 / 벤더). 통지·조회가 아무리 잘 와도 누락·지연·버그는 생기게 마련이라 <b>주기적으로 둘을 직접 대조</b>합니다.</p>
 
 <table>
 <thead><tr><th style="width:16%"></th><th>자체 분면</th><th>Fireblocks 분면</th></tr></thead>
@@ -105,7 +105,7 @@ suspend fun historyScreen(account: Account, range: BlockRange): List<Transfer> =
 <tr><td><b>어긋나면</b></td><td colspan="2"><b>자동 보정 금지</b> — 정정 이벤트를 만들어 사람이 본다 (없는 돈을 만들거나 지우는 코드가 가장 위험)</td></tr>
 </tbody>
 </table>
-<p class="table-note">4p 의 "통지는 힌트" 규칙의 회계 버전이다 — 화면은 통지로 빠르게, 장부는 대조로 정확하게.</p>
+<p class="table-note">4p 의 "통지는 힌트" 규칙을 회계로 옮긴 버전이다. 화면은 통지로 빠르게, 장부는 대조로 정확하게.</p>
 
 <p class="foot">더 깊이: 잔액 3분류 — <a href="../wallet-service-components/abstraction.html">가이드 13.3</a> · 내역 동사의 위치("동사의 자리는 데이터의 주인이 정한다") — 13.3.</p>
 

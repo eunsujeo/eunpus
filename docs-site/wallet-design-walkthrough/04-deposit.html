@@ -16,7 +16,7 @@
 <h1>입금 — 감지에서 확정까지</h1>
 <p class="subtitle">외부에서 돈이 들어왔다는 걸 우리는 어떻게 아는가 — 그리고 언제부터 믿는가</p>
 
-<p><b>무엇·언제</b>: 출금과 달리 입금은 우리가 시작하지 않습니다 — 외부 송신자가 보내고, 우리는 알아채야 합니다. 그래서 핵심 질문이 둘입니다: <b>누가 감지하나</b>(분면마다 다름), 그리고 <b>언제부터 잔액으로 믿나</b>(감지 ≠ 확정 — 모든 분면 공통). 백엔드는 매니저의 이벤트 구독 하나로 받습니다:</p>
+<p><b>무엇·언제</b>: 출금과 달리 입금은 우리가 시작하지 않습니다. 외부 송신자가 보내고 우리는 그걸 알아채야 합니다. 핵심 질문은 둘입니다. <b>누가 감지하나</b>는 분면마다 다르고, <b>언제부터 잔액으로 믿나</b>는 모든 분면이 똑같이 감지 ≠ 확정입니다. 백엔드는 매니저의 이벤트 구독 하나로 받습니다.</p>
 
 <pre><code>onChainEvent(handler)   // 입금 감지(PENDING)·확정(CONFIRMED) 이벤트가 push 된다</code></pre>
 
@@ -42,7 +42,7 @@ sequenceDiagram
     IDX->>BE: 확정 (CONFIRMED) — 이제 available 반영
     Note over IDX,BE: reorg 로 무효화되면 가공본만 되감는다 —<br/>원본 기록은 영구 보존 (같은 입금이 재등장 가능)
 </pre></div>
-<p class="diagram-caption">아무도 알려주지 않으므로 인덱서가 24시간 체인을 읽는다(0p — 유일한 상시 worker). ERC-20 토큰 입금도 같은 주소로 온다 — 별도 주소가 아니라 <b>같은 주소의 토큰 전송 이벤트(로그)</b>를 감시 대상에 더하는 것. 감지 즉시 잔액을 올리면 reorg 때 "없는 돈을 이미 쓴" 상태가 되므로, 고객에겐 "확인 중"을 보여주고 <b>확정 후에만 사용 가능</b> 처리한다.</p>
+<p class="diagram-caption">아무도 알려주지 않으니 인덱서가 24시간 체인을 읽는다. 0p 에서 유일한 상시 worker 다. ERC-20 토큰 입금도 같은 주소로 오는데, 별도 주소가 생기는 게 아니라 <b>같은 주소의 토큰 전송 이벤트(로그)</b>를 감시 대상에 더하는 것이다. 감지하자마자 잔액을 올리면 reorg 때 "없는 돈을 이미 쓴" 상태가 되므로 고객에겐 "확인 중"을 보여주고 <b>확정 후에만 사용 가능</b>으로 처리한다.</p>
 
 <h2>▸ 자체 × Canton — 입금은 감지가 아니라 "수락"이다</h2>
 
@@ -70,11 +70,11 @@ sequenceDiagram
         BE->>PN: 거절(REJECT) — 받지 않는다
     end
 </pre></div>
-<p class="diagram-caption">Canton 입금은 우리의 <b>서명 행위</b>가 있어야 성립한다 — 모르는 자산이나 잘못된 memo 의 제안을 "장님으로" 수락하면 안 되므로 수락 전에 검증이 선다(6p 의 정책 게이트와 같은 자리). 대신 수락되면 <b>즉시 확정</b>이고 reorg 가 없다 — 이더리움의 "기다림"과 Canton 의 "행위"가 정확히 반대 비용이다.</p>
+<p class="diagram-caption">Canton 입금은 우리의 <b>서명 행위</b>가 있어야 성립한다. 모르는 자산이나 잘못된 memo 의 제안을 "장님으로" 수락하면 안 되므로 수락 전에 검증이 선다. 6p 의 정책 게이트와 같은 자리다. 대신 수락되면 <b>즉시 확정</b>이고 reorg 가 없다. 이더리움의 "기다림"과 Canton 의 "행위"가 정확히 반대 비용인 셈이다.</p>
 
 <h2>인덱서의 가공 — 체인 데이터가 입금 이벤트가 되기까지</h2>
 
-<p>위 두 그림에서 인덱서는 화살표 몇 개지만, 그 안은 <b>다섯 단계의 가공</b>입니다 — 수집 → 선별 → 해석 → 기록 → 판정. 단계의 틀은 두 체인이 같고, <b>각 단계의 내용이 체인마다 다릅니다</b>:</p>
+<p>위 두 그림에서 인덱서는 화살표 몇 개로 그려지지만 그 안은 <b>다섯 단계의 가공</b>입니다. 수집 → 선별 → 해석 → 기록 → 판정으로 이어지죠. 단계의 틀은 두 체인이 같고 <b>각 단계의 내용이 체인마다 다릅니다</b>.</p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart TB
@@ -91,7 +91,7 @@ flowchart TB
         C4 --> C5["⑤ 판정 — 수락 즉시 확정<br/>카운트·되감기 단계 없음"]
     end
 </pre></div>
-<p class="diagram-caption">무게가 실리는 단계가 반대다 — 이더리움은 <b>②선별·⑤판정</b>이 무겁고(체인 전체라는 소방호스에서 우리 것을 골라내고, 확정을 우리가 세고, reorg 를 우리가 되감는다), Canton 은 ②⑤가 거의 사라지는 대신 <b>③해석(memo 귀속)</b>이 핵심이다 — Canton 의 프라이버시 모델에선 participant 노드가 애초에 우리 관련 거래만 보여주기 때문. ④기록만 두 체인이 완전히 같다: <b>원본은 영구, 되감는 건 가공본뿐</b>. 이 5단계 틀이 체인 추가의 틀이기도 하다 — 새 체인은 다섯 칸을 채워 넣는 일이고(8p), Fireblocks 분면엔 이 절이 통째로 없다 — 다섯 단계 전부가 벤더 안에 있다.</p>
+<p class="diagram-caption">무게가 실리는 단계가 반대다. 이더리움은 <b>②선별·⑤판정</b>이 무겁다. 체인 전체라는 소방호스에서 우리 것을 골라내고, 확정을 우리가 세고, reorg 를 우리가 되감아야 한다. Canton 은 ②⑤가 거의 사라지는 대신 <b>③해석(memo 귀속)</b>이 핵심이다. Canton 의 프라이버시 모델에선 participant 노드가 애초에 우리 관련 거래만 보여주기 때문이다. ④기록만 두 체인이 완전히 같다. <b>원본은 영구, 되감는 건 가공본뿐</b>이다. 이 5단계 틀은 체인 추가의 틀이기도 하다. 새 체인을 붙이는 건 다섯 칸을 채워 넣는 일이고(8p), Fireblocks 분면엔 이 절이 통째로 없다. 다섯 단계 전부가 벤더 안에 있다.</p>
 
 <h2>▸ Fireblocks × 이더리움 — 벤더가 감지해서 알려준다</h2>
 
@@ -112,7 +112,7 @@ sequenceDiagram
     Note over FB,BE: 통지는 서명 검증을 하더라도 "힌트"로 취급 —<br/>누락·지연 가능. 잔액·회계 판정은 확정 통지 기준 +<br/>주기적 대사(벤더 잔액 vs 우리 기록)로 닫는다
     BE->>BE: available 반영 + 고객 통지
 </pre></div>
-<p class="diagram-caption">상시 worker(인덱서)가 통째로 사라지고 webhook 수신으로 바뀐다 — 전환(8p)에서 운영이 가장 크게 바뀌는 지점. 단 "감지 ≠ 확정" 규칙은 그대로다 — 벤더도 PENDING/CONFIRMED 를 구분해서 보내고, 우리는 확정만 잔액에 쓴다.</p>
+<p class="diagram-caption">상시 worker(인덱서)가 통째로 사라지고 webhook 수신으로 바뀐다. 전환(8p)에서 운영이 가장 크게 바뀌는 지점이다. 단 "감지 ≠ 확정" 규칙은 그대로다. 벤더도 PENDING/CONFIRMED 를 구분해서 보내고 우리는 확정만 잔액에 쓴다.</p>
 
 <h2>▸ Fireblocks × Canton — 통지 모양은 webhook, 성질은 Canton</h2>
 
@@ -131,7 +131,7 @@ sequenceDiagram
     FB->>BE: webhook — 수락 완료 → 확정 (즉시)
     BE->>BE: memo 로 고객 귀속 + available 반영
 </pre></div>
-<p class="diagram-caption">custody 를 바꿔도 체인의 성질(수락 행위·즉시 확정·memo 귀속)은 따라온다 — 1·2페이지에서 본 패턴의 세 번째 확인. 바뀌는 것은 "누가 감지·실행하나"뿐이다.</p>
+<p class="diagram-caption">custody 를 바꿔도 체인의 성질, 즉 수락 행위·즉시 확정·memo 귀속은 그대로 따라온다. 1·2페이지에서 본 패턴을 세 번째로 확인하는 셈이다. 바뀌는 것은 "누가 감지·실행하나"뿐이다.</p>
 
 <h2>4분면 비교</h2>
 
@@ -146,7 +146,7 @@ sequenceDiagram
 </tbody>
 </table>
 
-<p>두 축이 또 다른 것을 결정합니다 — <b>감지 주체는 custody 축</b>(우리 인덱서 vs 벤더 webhook), <b>성립·확정·귀속은 체인 축</b>. 그리고 네 분면 공통의 규칙 하나: <b>감지(또는 통지)는 힌트고, 잔액은 확정으로만 움직인다.</b></p>
+<p>두 축이 또 다른 것을 결정합니다. <b>감지 주체는 custody 축</b>으로 우리 인덱서냐 벤더 webhook 이냐가 갈리고, <b>성립·확정·귀속은 체인 축</b>입니다. 네 분면 공통의 규칙도 하나 있습니다. <b>감지(또는 통지)는 힌트고, 잔액은 확정으로만 움직인다.</b></p>
 
 <h2>백엔드에서 이렇게 받는다 — 출처와 무관한 한 핸들러</h2>
 
@@ -158,9 +158,9 @@ transactions.onChainEvent { ev ->
         ORPHANED  -> ledger.revert(ev)                               // reorg 무효화 — 이더리움 분면만 발생
     }
 }</code></pre>
-<p class="diagram-caption">분면이 바꾸는 것은 이 핸들러에 이벤트를 "누가 넣어주느냐"뿐이다. Canton 의 수락(ACCEPT) 결정 로직만 별도 훅으로 추가된다 — 그것은 체인 고유의 업무 단계라서.</p>
+<p class="diagram-caption">분면이 바꾸는 것은 이 핸들러에 이벤트를 "누가 넣어주느냐"뿐이다. Canton 의 수락(ACCEPT) 결정 로직만 별도 훅으로 추가되는데, 이건 체인 고유의 업무 단계이기 때문이다.</p>
 
-<p class="foot">더 깊이: 인덱서 수집·reorg 처리 — <a href="../wallet-service-components/component-indexer.html">가이드 3장</a> · 입금 시나리오 — <a href="../wallet-service-components/scenario-deposit.html">10장</a>.</p>
+<p class="foot">더 깊이: 인덱서 수집·reorg 처리는 <a href="../wallet-service-components/component-indexer.html">가이드 3장</a>, 입금 시나리오는 <a href="../wallet-service-components/scenario-deposit.html">10장</a>.</p>
 
 <div class="pager">
 <a href="03-address-of.html">← 3. 입금 주소 조회</a>

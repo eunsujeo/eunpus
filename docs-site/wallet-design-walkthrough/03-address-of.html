@@ -14,9 +14,9 @@
 <a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><span class="cur">3</span><a href="04-deposit.html">4</a><a href="05-estimate-fee.html">5</a><a href="06-withdrawal.html">6</a><a href="07-balance-history.html">7</a><a href="08-switch-extend.html">8</a>
 </div>
 <h1>입금 주소 조회 — addressOf</h1>
-<p class="subtitle">이 페이지의 메시지는 "네 분면이 같다"입니다 — 그리고 같아야만 하는 이유</p>
+<p class="subtitle">이 페이지가 전하려는 건 "네 분면이 같다"는 것, 그리고 같아야만 하는 이유입니다</p>
 
-<p><b>무엇·언제</b>: 고객이 입금 화면을 열 때마다 불리는, 이 문서에서 가장 호출 빈도가 높은 동사입니다. 발급(2p)과 정반대의 성질을 가집니다 — <b>읽기 전용이고, 몇 번을 불러도 같은 주소가 나오며, 절대 새 주소를 만들지 않습니다.</b></p>
+<p><b>무엇·언제</b>: 고객이 입금 화면을 열 때마다 불리는, 이 문서에서 가장 호출 빈도가 높은 동사입니다. 성질은 발급(2p)과 정반대입니다. <b>읽기 전용이고, 몇 번을 불러도 같은 주소가 나오며, 절대 새 주소를 만들지 않습니다.</b></p>
 
 <pre><code>addressOf(account, asset) → Address   // 읽기 — 멱등 키 불요, 발급 부수효과 없음</code></pre>
 
@@ -36,7 +36,7 @@ sequenceDiagram
     DIR-->>MGR: 식별자 (이더리움 = 0xAb3… · Canton = PartyId + memo)
     MGR-->>BE: 같은 주소 — 몇 번을 불러도
 </pre></div>
-<p class="diagram-caption">네 분면의 동작이 같다 — 2페이지에서 발급해 디렉터리에 저장한 식별자를 돌려줄 뿐이다(계정 자체는 1페이지). 체인 차이는 반환물의 모양(이더리움 주소 vs PartyId)뿐이고, custody 차이는 없다(Fireblocks 분면도 발급 때 저장해 둔 우리 기록을 읽으면 같은 값 — 매 조회가 벤더 왕복일 필요가 없다).</p>
+<p class="diagram-caption">네 분면의 동작이 같다. 2페이지에서 발급해 디렉터리에 저장한 식별자를 돌려줄 뿐이다(계정 자체는 1페이지). 체인에 따라 달라지는 건 반환물의 모양(이더리움 주소 vs PartyId)뿐이고 custody 차이는 없다. Fireblocks 분면도 발급 때 저장해 둔 우리 기록을 읽으면 같은 값이 나오므로, 매 조회마다 벤더를 왕복할 필요가 없다.</p>
 
 <h2>▸ 반례 — 이렇게 구현하면 안 된다</h2>
 
@@ -54,7 +54,7 @@ sequenceDiagram
     Note over MGR,WL: 계산된 주소가 감시 목록에 없을 수 있다 —<br/>고객이 그 주소로 입금하면 우리만 모른다 (2p 의 규칙 위반)
     MGR-->>BE: 등록 안 된 주소 ⚠️
 </pre></div>
-<p class="diagram-caption">이더리움은 공개키 수학으로 주소를 즉석 계산할 수 있어서(2p) 조회를 "재계산"으로 구현하고 싶어진다 — 편하지만, <b>등록(감시) 안 된 주소가 고객에게 나가는 경로</b>를 만든다. 그래서 규칙: <b>주소·신원(Canton PartyId 포함)이 태어나는 길은 발급(2p)뿐이고, 조회는 등록된 것만 읽는다.</b> 재계산은 검증·복구용 내부 도구로만 쓴다.</p>
+<p class="diagram-caption">이더리움은 공개키 수학으로 주소를 즉석 계산할 수 있어서(2p) 조회를 "재계산"으로 구현하고 싶어진다. 편하긴 하지만 이렇게 하면 <b>등록(감시) 안 된 주소가 고객에게 나가는 경로</b>가 생긴다. 그래서 규칙을 둔다. <b>주소·신원(Canton PartyId 포함)이 태어나는 길은 발급(2p)뿐이고, 조회는 등록된 것만 읽는다.</b> 재계산은 검증·복구용 내부 도구로만 쓴다.</p>
 
 <h2>4분면 비교</h2>
 
@@ -67,7 +67,7 @@ sequenceDiagram
 </tbody>
 </table>
 
-<p>"네 분면이 같다"는 것이 왜 중요한가 — <b>호출 빈도가 가장 높은 동사가 분면과 무관</b>하므로, 입금 화면·고객센터·정산 어디에서 쓰든 전환(8p)의 영향이 0입니다. 차이를 만들 이유가 없는 곳에서 차이를 안 만드는 것도 설계입니다.</p>
+<p>"네 분면이 같다"는 것이 왜 중요할까요. <b>호출 빈도가 가장 높은 동사가 분면과 무관</b>하므로, 입금 화면이든 고객센터든 정산이든 어디에서 쓰든 전환(8p)의 영향이 0입니다. 차이를 만들 이유가 없는 곳에서 차이를 안 만드는 것도 설계입니다.</p>
 
 <h2>백엔드에서 이렇게 부른다 — 읽기라서 더 단순하다</h2>
 
@@ -77,7 +77,7 @@ suspend fun depositScreen(accountId: String, asset: Asset): DepositInfo {
     val id = accounts.addressOf(account, asset)           // 몇 번 불러도 같은 값
     return DepositInfo(id.value, id.memoTag)              // Canton 이면 memoTag 가 채워져 온다 (2p)
 }</code></pre>
-<p class="diagram-caption">화면이 1초에 수백 번 불러도 되는 코드 — 상태 변경이 없고, 네 분면 어디서도 같다.</p>
+<p class="diagram-caption">화면이 1초에 수백 번 불러도 되는 코드다. 상태 변경이 없고, 네 분면 어디서도 같다.</p>
 
 <p class="foot">더 깊이: 조회/발급 분리의 근거 — <a href="../wallet-service-components/abstraction.html">가이드 13.3</a>.</p>
 

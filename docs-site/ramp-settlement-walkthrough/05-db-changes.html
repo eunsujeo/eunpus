@@ -18,7 +18,7 @@
 
 <p><b>네 개의 테이블</b>이 움직입니다 — <b>고객 원장</b>(customer_ledger) · <b>델타 원장</b>(delta_ledger) · <b>은행 원장</b>(bank_ledger) · <b>총계정 원장</b>(general_ledger_entry). 컬럼명은 <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a>의 스키마를 따릅니다.</p>
 
-<p class="table-note"><b>asset_id 주의</b> — asset_id 는 토큰만이 아니라 <b>토큰 + 네트워크</b>가 묶인 식별자다(예: <code>USDC_ETH</code> = 이더리움 위 USDC). 같은 토큰이라도 체인이 다르면 다른 asset_id(<code>USDC_ETH</code> ≠ Polygon USDC). 이 페이지에선 가독성을 위해 <code>KRWK</code>·<code>USDC</code> 로 체인 접미사를 생략했다.</p>
+<p class="table-note"><b>asset_id 주의</b> — asset_id 는 토큰만 가리키지 않고 <b>토큰 + 네트워크</b>를 한데 묶은 식별자다. 가령 <code>USDC_ETH</code> 는 이더리움 위의 USDC 다. 같은 토큰이라도 체인이 다르면 asset_id 도 달라진다(<code>USDC_ETH</code> ≠ Polygon USDC). 이 페이지에서는 읽기 편하도록 <code>KRWK</code>·<code>USDC</code> 처럼 체인 접미사를 생략했다.</p>
 
 <div class="callout">
 <div class="callout-title">테이블별 쓰기 규율 — 먼저 알아둘 것</div>
@@ -31,7 +31,7 @@
 <tr><td>general_ledger_entry (총계정)</td><td><b>append-only (INSERT만)</b></td><td>회계 증적 불변 · 감사</td></tr>
 </tbody>
 </table></div>
-<p style="margin:8px 0 0">즉 총계정 원장은 <b>한 번 적은 row 를 절대 고치지 않습니다</b> — 정정도 새 row 로. 계정 잔액은 "차변 합 − 대변 합"으로 <b>계산</b>합니다.</p>
+<p style="margin:8px 0 0">즉 총계정 원장은 <b>한 번 적은 row 를 절대 고치지 않습니다</b>. 정정할 때도 새 row 를 하나 더 답니다. 계정 잔액은 "차변 합 − 대변 합"으로 <b>계산</b>합니다.</p>
 </div>
 
 <h2>① 온램프 — 가장 단순한 형태 (KRW 1,000 → KRWK 1,000, 1:1)</h2>
@@ -46,7 +46,7 @@
 <tr><td><b>2단계 후</b></td><td><b>1,000</b></td><td>0</td><td>0</td></tr>
 </tbody>
 </table></div>
-<p class="table-note">1단계엔 "처리중(pending_in)"으로만 올리고, 코인이 실제 도착한 2단계에 pending_in → confirmed 전환. 이 세 칸은 지갑 매니저의 잔액 조회가 보여주는 <b>가용·대기·잠김</b>과 같은 버킷이다(confirmed=가용, pending_in=대기, pending_out=잠김 — <a href="../wallet-design-walkthrough/07-balance-history.html">지갑 매니저 워크스루의 잔액 조회</a>).</p>
+<p class="table-note">1단계에는 "처리중(pending_in)"으로만 올려두고, 코인이 실제로 도착하는 2단계에 pending_in 을 confirmed 로 넘긴다. 이 세 칸은 지갑 매니저의 잔액 조회가 보여주는 <b>가용·대기·잠김</b>과 같은 버킷이다(confirmed=가용, pending_in=대기, pending_out=잠김 — <a href="../wallet-design-walkthrough/07-balance-history.html">지갑 매니저 워크스루의 잔액 조회</a>).</p>
 
 <h3>delta_ledger — INSERT 후 status 만 닫힘</h3>
 <div class="table-wrap"><table>
@@ -57,7 +57,7 @@
 <tr><td><b>2단계 후</b></td><td><code>d1 · ONRAMP · KRWK · −1,000 · settled</code> ← amount 그대로, status 만 닫힘</td></tr>
 </tbody>
 </table></div>
-<p class="table-note">오래 pending 이면 정산이 막힌 신호 — 대사 L3 가 이 status 를 감시한다(<a href="04-failure-reconciliation.html">4장</a>).</p>
+<p class="table-note">pending 이 오래 머물면 정산이 막혔다는 신호다. 대사 L3 가 바로 이 status 를 감시한다(<a href="04-failure-reconciliation.html">4장</a>).</p>
 
 <h3>bank_ledger — 지갑 실제 자산, 2단계에만 변함</h3>
 <div class="table-wrap"><table>
@@ -90,10 +90,10 @@
 <tr><td><b>항등식 (자산 = 부채)</b></td><td>1,000 = 1,000 ✓</td><td>1,000 = 1,000 ✓</td></tr>
 </tbody>
 </table></div>
-<p>1단계엔 <b>미정산자산</b>이 자산 자리를 채워 균형, 2단계엔 그게 <b>지갑자산</b>으로 교체되며 균형. 두 시점 모두 안 깨진다 — 이것이 "미정산 분개 — 항등식 임시 균형"의 실제 모습이다.</p>
+<p>1단계에는 <b>미정산자산</b>이 자산 자리를 채워 균형을 맞추고, 2단계에는 그게 <b>지갑자산</b>으로 바뀌며 다시 균형을 맞춥니다. 두 시점 어디서도 균형이 깨지지 않습니다. 이것이 "미정산 분개 — 항등식 임시 균형"의 실제 모습입니다.</p>
 
 <h2>② 스왑 — 델타 2줄, 총계정 4줄 (KRWK 1,300 → USDC 1)</h2>
-<p>스왑은 한쪽이 빠지고 다른 쪽이 들어오므로 <b>미정산이 양쪽에</b> 생깁니다. 온램프와 달라지는 두 테이블만 봅니다.</p>
+<p>스왑은 한쪽이 빠지고 다른 쪽이 들어오는 거래라 <b>미정산이 양쪽에</b> 생깁니다. 온램프와 달라지는 두 테이블만 보겠습니다.</p>
 
 <h3>delta_ledger — 1단계에 2줄 INSERT</h3>
 <div class="table-wrap"><table>
@@ -113,10 +113,10 @@
 <tr><td><b>2단계 후</b></td><td>0 · 0 · 0</td><td><b>1</b> · 0 · 0</td></tr>
 </tbody>
 </table></div>
-<p class="table-note">총계정도 4줄(고객측 2줄 + 미정산 2줄)이 1단계에 들어가고, 2단계에 미정산 2줄을 닫으며 지갑자산 KRWK↓·USDC↑ 로 정산. 매매 스프레드가 있으면 손익 row 가 추가된다.</p>
+<p class="table-note">총계정도 1단계에 4줄(고객측 2줄 + 미정산 2줄)이 들어가고, 2단계에 미정산 2줄을 닫으면서 지갑자산 KRWK↓·USDC↑ 로 정산된다. 매매 스프레드가 있으면 손익 row 가 하나 더 붙는다.</p>
 
 <h2>③ 오프램프 — 온램프의 거울상 (KRWK 1,000 → KRW 1,000)</h2>
-<p>방향만 반대입니다 — 보내는 쪽이라 <b>1단계에 사용가능을 즉시 차감</b>하고(이중사용 방지), 미정산은 "곧 나갈 자산"으로 잡습니다.</p>
+<p>방향만 반대입니다. 보내는 쪽이라 이중사용을 막으려고 <b>1단계에 사용가능을 즉시 차감</b>하고, 미정산은 "곧 나갈 자산"으로 잡습니다.</p>
 
 <h3>customer_ledger — 1단계에 confirmed 즉시 차감</h3>
 <div class="table-wrap"><table>
@@ -136,11 +136,11 @@
 <tr><td><b>2단계</b></td><td><code>KRWK 미정산자산 · 차 · 1,000</code> (닫음)<br/><code>KRWK 지갑자산 · 대 · 1,000</code> (실제 출금)</td></tr>
 </tbody>
 </table></div>
-<p class="table-note">온램프와 차/대가 반대다 — 충전은 부채↑·자산 도착, 환전은 부채↓·자산 출금. 델타가 메우는 시점차는 동일.</p>
+<p class="table-note">온램프와 차/대가 반대다. 충전은 부채↑·자산 도착이고, 환전은 부채↓·자산 출금이다. 델타가 시점차를 메우는 방식은 양쪽 모두 같다.</p>
 
 <div class="callout">
 <div class="callout-title">한 줄로</div>
-<p style="margin:0">움직이는 row 는 매번 같다 — <b>customer_ledger 잔액(UPDATE)</b> · <b>delta_ledger 미정산(INSERT→status UPDATE)</b> · <b>bank_ledger 지갑(2단계 UPDATE)</b> · <b>general_ledger_entry 분개(append-only INSERT)</b>. 거래마다 다른 건 델타가 1줄이냐 2줄이냐, 차/대 방향이 어디냐뿐이다.</p>
+<p style="margin:0">움직이는 row 는 매번 같다. <b>customer_ledger 잔액(UPDATE)</b> · <b>delta_ledger 미정산(INSERT→status UPDATE)</b> · <b>bank_ledger 지갑(2단계 UPDATE)</b> · <b>general_ledger_entry 분개(append-only INSERT)</b>. 거래마다 갈리는 건 델타가 1줄이냐 2줄이냐, 차/대 방향이 어디로 가느냐 정도다.</p>
 </div>
 
 <p class="foot">스키마·분개 상세: <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a> · 대사 4단계: <a href="04-failure-reconciliation.html">4장</a>.</p>
