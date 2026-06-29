@@ -74,7 +74,7 @@
       var btn = document.createElement('button');
       btn.className = 'diagram-zoom-btn';
       btn.type = 'button';
-      btn.textContent = '⛶ 크게 보기';
+      btn.textContent = '크게 보기';
       btn.addEventListener('click', function () { openModal(src, title); });
       dg.appendChild(btn);
     });
