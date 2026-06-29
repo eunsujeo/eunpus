@@ -46,7 +46,7 @@ class FireblocksContractTest : AccountPortContractTest()   // FB — 샌드박�
 
 <pre><code>wallet/
 ├─ domain/                # 포트 + 값 객체 (0p "도메인 한 장") — 순수 코드, 아무것도 의존하지 않음
-├─ backend/               # 지갑 백엔드 — 유스케이스 · 계정 디렉터리 · API (1~7p 의 "사용 코드"가 사는 곳)
+├─ backend/               # 지갑 백엔드 — 유스케이스 · DB · API (1~7p 의 "사용 코드"가 사는 곳)
 ├─ engine/                # 자체 매니저의 부품 (0p 등장인물)
 │   ├─ multichain/        #   체인 어댑터 인터페이스 + 레지스트리
 │   ├─ pipeline/          #   트랜잭션 파이프라인 — 조립→서명→전파, 단계 기록 (6p)
@@ -110,7 +110,7 @@ flowchart LR
     subgraph IDC["우리 인프라"]
       API["api 서버<br/>(backend + self-build)"]
       WORKER["indexer-worker<br/>(상시 — 4p)"]
-      DB[("DB<br/>디렉터리 · 단계 기록 · 멱등")]
+      DB[("DB<br/>계정 매핑 · 단계 기록 · 멱등")]
       subgraph SEC["보안 존"]
         HSM["HSM 장비<br/>+ 정책 게이트"]
       end
@@ -145,7 +145,7 @@ flowchart LR
     subgraph IDC["우리 인프라"]
       API["api 서버<br/>(backend + fireblocks 어댑터)"]
       HOOK["webhook 수신 엔드포인트<br/>(inbound — 새로 필요)"]
-      DB[("DB<br/>디렉터리 · 멱등")]
+      DB[("DB<br/>계정 매핑 · 멱등")]
     end
     FB["Fireblocks SaaS<br/>(vault · MPC 서명 · TAP · 감지)"]
     ETH["이더리움 네트워크"]
@@ -173,7 +173,7 @@ flowchart LR
 flowchart LR
     A["전환 시점<br/>설정 한 줄 변경<br/>신규 발급부터 새(FB) 주소"] --> B["이중 감시 기간<br/>구 주소 watch-list 유지<br/>(늦은 입금 수용)"]
     B --> C["이사 (sweep)<br/>구 주소 잔액을<br/>새 vault 로 출금"]
-    C --> D["종료<br/>구 주소 안내 중단<br/>디렉터리에 세대 기록"]
+    C --> D["종료<br/>구 주소 안내 중단<br/>DB에 세대 기록"]
 
     classDef step fill:#dbeafe,stroke:#2563eb;
     classDef warn fill:#fef3c7,stroke:#d97706;

@@ -58,7 +58,7 @@ sequenceDiagram
     FBI->>DIR: 계정 저장 (ref ↔ vaultId)
     FBI-->>BE: Account
 </pre></div>
-<p class="diagram-caption">자체든 Fireblocks 든 createAccount 는 체인을 모른다. 둘의 차이는 vault 가 <b>우리 장부냐 벤더 장부냐</b>뿐이다. Canton 의 온장 PartyId 등록·비용은 자체든 벤더든 발생하지만, 그것이 일어나는 자리는 createAccount 가 아니라 asset 을 처음 아는 입금 식별자 발급(2p)이다. 디렉터리 저장은 여기서도 빠지지 않는다. "고객 → 계정" 해석은 벤더에 묻지 않는 우리 데이터다.</p>
+<p class="diagram-caption">자체든 Fireblocks 든 createAccount 는 체인을 모른다. 둘의 차이는 vault 가 <b>우리 장부냐 벤더 장부냐</b>뿐이다. Canton 의 온장 PartyId 등록·비용은 자체든 벤더든 발생하지만, 그것이 일어나는 자리는 createAccount 가 아니라 asset 을 처음 아는 입금 식별자 발급(2p)이다. DB 저장은 여기서도 빠지지 않는다. "고객 → 계정" 해석은 벤더에 묻지 않는 우리 데이터다.</p>
 
 <h2>비교 — 체인 축이 사라지는 유일한 페이지</h2>
 
@@ -68,11 +68,11 @@ sequenceDiagram
 <tr><td><b>실체</b></td><td>우리 장부에 번호 하나</td><td>벤더 vault 생성 API 한 번</td></tr>
 <tr><td><b>체인에 가나</b></td><td>아니오 — 어느 체인도</td><td>아니오</td></tr>
 <tr><td><b>체인 위 신원 생성</b></td><td colspan="2" class="c">여기서 안 함 — 이더리움 주소·Canton PartyId 는 2p 발급에서</td></tr>
-<tr><td><b>우리 책임</b></td><td>번호 관리·디렉터리</td><td>디렉터리</td></tr>
+<tr><td><b>우리 책임</b></td><td>번호 관리·DB</td><td>DB</td></tr>
 </tbody>
 </table>
 
-<p>표에서 읽을 것은 이렇습니다. 이 문서에서 <b>유일하게 체인 축이 사라지는 페이지</b>입니다. <code>createAccount(ref)</code> 에 asset 인자가 없으니 이더리움이냐 Canton 이냐가 동작을 가를 수 없습니다(그래서 4분면이 아니라 custody 2분면). 고객이 한 명이면 createAccount 도 한 번이고, 체인 수만큼 부르지 않습니다. 체인 축은 다음 페이지(발급)에서 되살아납니다. 거기서 이더리움은 주소를, Canton 은 PartyId(첫 1회 선발급)+memo 를 만듭니다. 어느 쪽이든 마지막 줄은 같습니다. <b>디렉터리는 항상 우리 것.</b></p>
+<p>표에서 읽을 것은 이렇습니다. 이 문서에서 <b>유일하게 체인 축이 사라지는 페이지</b>입니다. <code>createAccount(ref)</code> 에 asset 인자가 없으니 이더리움이냐 Canton 이냐가 동작을 가를 수 없습니다(그래서 4분면이 아니라 custody 2분면). 고객이 한 명이면 createAccount 도 한 번이고, 체인 수만큼 부르지 않습니다. 체인 축은 다음 페이지(발급)에서 되살아납니다. 거기서 이더리움은 주소를, Canton 은 PartyId(첫 1회 선발급)+memo 를 만듭니다. 어느 쪽이든 마지막 줄은 같습니다. <b>DB는 항상 우리 것.</b></p>
 
 <h2>백엔드에서 이렇게 부른다 — 네 분면 공통</h2>
 

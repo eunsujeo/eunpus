@@ -40,7 +40,7 @@ sequenceDiagram
     MGR->>WL: 감시 목록 등록 — 등록 실패면 발급도 실패
     MGR-->>BE: 주소 (0xAb3…)
 </pre></div>
-<p class="diagram-caption">이더리움 발급은 번호 소비, 공개키 수학, 등록의 세 가지다. 계산 자체는 공짜에 즉시지만 본질은 디렉터리 저장과 감시 등록이라는 <b>상태 변경</b>이다. 그래서 발급은 쓰기 동작이고 멱등 키로 감싼다. 보안 단서도 하나 있다. <b>xpub 은 이름과 달리 비밀급으로 다룬다.</b> xpub 이 유출된 상태에서 자식 개인키가 하나라도 새면 부모 키가 역산되는 알려진 성질 때문이다.</p>
+<p class="diagram-caption">이더리움 발급은 번호 소비, 공개키 수학, 등록의 세 가지다. 계산 자체는 공짜에 즉시지만 본질은 DB 저장과 감시 등록이라는 <b>상태 변경</b>이다. 그래서 발급은 쓰기 동작이고 멱등 키로 감싼다. 보안 단서도 하나 있다. <b>xpub 은 이름과 달리 비밀급으로 다룬다.</b> xpub 이 유출된 상태에서 자식 개인키가 하나라도 새면 부모 키가 역산되는 알려진 성질 때문이다.</p>
 
 <h2>▸ 자체 × Canton — PartyId 선발급(첫 1회) + memo 채번(매번)</h2>
 
@@ -64,7 +64,7 @@ sequenceDiagram
         MGR->>PN: 서명 제출 → PartyId 발급 (선발급 · 유료 · 1회)
         MGR->>DIR: PartyId 저장 — 등록 시도는 선기록 (이중 등록 방지)
     else 이미 발급됨
-        Note over MGR,DIR: 디렉터리의 PartyId 재사용 — 온장 호출 없음
+        Note over MGR,DIR: DB의 PartyId 재사용 — 온장 호출 없음
     end
     MGR->>MGR: 새 memo 채번 — 체인 호출 없음 (장부 작업)
     MGR->>DIR: 식별자 저장 (PartyId + 새 memo)
@@ -102,7 +102,7 @@ sequenceDiagram
 <tr><td><b>새로워지는 것</b></td><td><b>주소</b> (memo 없음)</td><td><b>memo</b> (PartyId 첫 1회 선발급 후 고정)</td><td>체인 따라 — 주소 / memo (자동)</td></tr>
 <tr><td><b>식별자의 출처</b></td><td>우리 키 트리(xpub 계산)</td><td>PartyId=온장 등록(1회) · memo=채번</td><td>Fireblocks 키·채번</td></tr>
 <tr><td><b>감시·귀속 등록</b></td><td><b>우리</b> — watch-list</td><td><b>우리</b> — memo 귀속표</td><td>벤더 (vault 범위)</td></tr>
-<tr><td><b>우리 책임</b></td><td>번호·계산·등록·디렉터리</td><td>채번·등록·디렉터리</td><td>디렉터리</td></tr>
+<tr><td><b>우리 책임</b></td><td>번호·계산·등록·DB</td><td>채번·등록·DB</td><td>DB</td></tr>
 </tbody>
 </table>
 

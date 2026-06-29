@@ -95,7 +95,7 @@ suspend fun historyScreen(account: Account, range: BlockRange): List<Transfer> =
 
 <h2>대사 — 두 장부를 주기적으로 맞춘다</h2>
 
-<p>잔액·내역의 숫자는 결국 <b>두 장부</b>에서 나옵니다. 우리 기록(디렉터리·파이프라인·projection), 그리고 바깥의 진실(온체인 / 벤더). 통지·조회가 아무리 잘 와도 누락·지연·버그는 생기게 마련이라 <b>주기적으로 둘을 직접 대조</b>합니다.</p>
+<p>잔액·내역의 숫자는 결국 <b>두 장부</b>에서 나옵니다. 우리 기록(DB·파이프라인·projection), 그리고 바깥의 진실(온체인 / 벤더). 통지·조회가 아무리 잘 와도 누락·지연·버그는 생기게 마련이라 <b>주기적으로 둘을 직접 대조</b>합니다.</p>
 
 <table>
 <thead><tr><th style="width:16%"></th><th>자체 분면</th><th>Fireblocks 분면</th></tr></thead>

@@ -36,7 +36,7 @@ sequenceDiagram
     DIR-->>MGR: 식별자 (이더리움 = 0xAb3… · Canton = PartyId + memo)
     MGR-->>BE: 같은 주소 — 몇 번을 불러도
 </pre></div>
-<p class="diagram-caption">네 분면의 동작이 같다. 2페이지에서 발급해 디렉터리에 저장한 식별자를 돌려줄 뿐이다(계정 자체는 1페이지). 체인에 따라 달라지는 건 반환물의 모양(이더리움 주소 vs PartyId)뿐이고 custody 차이는 없다. Fireblocks 분면도 발급 때 저장해 둔 우리 기록을 읽으면 같은 값이 나오므로, 매 조회마다 벤더를 왕복할 필요가 없다.</p>
+<p class="diagram-caption">네 분면의 동작이 같다. 2페이지에서 발급해 DB에 저장한 식별자를 돌려줄 뿐이다(계정 자체는 1페이지). 체인에 따라 달라지는 건 반환물의 모양(이더리움 주소 vs PartyId)뿐이고 custody 차이는 없다. Fireblocks 분면도 발급 때 저장해 둔 우리 기록을 읽으면 같은 값이 나오므로, 매 조회마다 벤더를 왕복할 필요가 없다.</p>
 
 <h2>▸ 반례 — 이렇게 구현하면 안 된다</h2>
 
@@ -61,7 +61,7 @@ sequenceDiagram
 <table>
 <thead><tr><th style="width:18%"></th><th>자체 × 이더리움</th><th>자체 × Canton</th><th>FB × 이더리움</th><th>FB × Canton</th></tr></thead>
 <tbody>
-<tr><td><b>동작</b></td><td colspan="4" class="c"><b>동일 — 디렉터리에서 등록된 주소 읽기</b></td></tr>
+<tr><td><b>동작</b></td><td colspan="4" class="c"><b>동일 — DB에서 등록된 주소 읽기</b></td></tr>
 <tr><td><b>반환물</b></td><td>이더리움 주소</td><td>PartyId + 발급된 memo (2p)</td><td>이더리움 주소 (FB 키 유래)</td><td>PartyId</td></tr>
 <tr><td><b>벤더 왕복</b></td><td>—</td><td>—</td><td>불요 (우리 기록으로 충분)</td><td>불요</td></tr>
 </tbody>
