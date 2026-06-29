@@ -149,7 +149,7 @@ interface CancelCapability   { suspend fun cancel(txRef: TxRef): TxRef }   // �
 
 <div class="callout">
 <div class="callout-title">이 문서가 다루지 않는 것</div>
-<p style="margin:0">업무 승인 절차(누가 출금을 승인하나) · 수수료의 <b>운영·정산</b>(출금용 가스 잔고 충전·고객 과금·실비 차액·Canton traffic 충전) · 회계 기표·시세 — 별도 설계의 몫입니다. 단 수수료의 <b>메커니즘</b>(추정 estimateFee · 조립 시 설정 · 인상 재전송 boost)은 매니저가 하며 5p(견적)·6p(조립 시 설정·boost) 에서 다룹니다.</p>
+<p style="margin:0">업무 승인 절차(누가 출금을 승인하나) · 수수료의 <b>운영·정산</b>(출금용 가스 잔고 충전·고객 과금·실비 차액·Canton traffic 충전) · 회계 기표·시세 — 별도 설계의 몫입니다(그 회계·정산 층은 <a href="../ramp-settlement-walkthrough/">온·오프램프·스왑 정산 워크스루</a>에서 다룬다). 단 수수료의 <b>메커니즘</b>(추정 estimateFee · 조립 시 설정 · 인상 재전송 boost)은 매니저가 하며 5p(견적)·6p(조립 시 설정·boost) 에서 다룹니다.</p>
 </div>
 
 <p class="foot">더 깊이: 컴포넌트별 상세는 <a href="../wallet-service-components/">블록체인 매니저 컴포넌트 가이드</a> (참고용 — 본 워크스루는 가이드 없이 읽힙니다).</p>

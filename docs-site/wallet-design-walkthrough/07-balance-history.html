@@ -45,6 +45,8 @@ sequenceDiagram
 </pre></div>
 <p class="diagram-caption">따로 만드는 기능이 아니다 — 입금(4p)이 쌓은 기록과 출금(6p)이 단계마다 남긴 기록을 합쳐 읽을 뿐이다. 출금을 전파 <b>전에</b> 기록한 덕에 내역에 "보내는 중" 상태까지 보여줄 수 있다. 체인 차이는 둘 — 잔액의 원천(이더리움은 인덱서 기록 합산, Canton 은 노드의 보유 자산 합산)과 잠김의 출처: 이더리움은 잠김이 거의 없고(전파 후 곧 확정 추적), <b>Canton 은 수락 대기 출금이 잠김 칸에 그대로 나타난다</b> — 고객이 "내 돈 어디 갔어요?"라고 물을 때 보여줄 칸이 있어야 한다.</p>
 
+<p class="table-note">이 <b>가용·대기·잠김</b> 세 칸은 회계 층의 <b>confirmed·pending_in·pending_out</b> 과 같은 버킷이다(가용=confirmed, 대기=pending_in, 잠김=pending_out). 회계 원장에서 어떻게 채워지는지는 <a href="../ramp-settlement-walkthrough/05-db-changes.html">정산 워크스루의 DB 상태 변화</a> 참고.</p>
+
 <h2>▸ Fireblocks 분면 — 두 호출 다 벤더 API 한 번</h2>
 
 <div class="diagram"><pre class="mermaid">

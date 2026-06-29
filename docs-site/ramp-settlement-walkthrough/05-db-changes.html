@@ -46,7 +46,7 @@
 <tr><td><b>2단계 후</b></td><td><b>1,000</b></td><td>0</td><td>0</td></tr>
 </tbody>
 </table></div>
-<p class="table-note">1단계엔 "처리중(pending_in)"으로만 올리고, 코인이 실제 도착한 2단계에 pending_in → confirmed 전환.</p>
+<p class="table-note">1단계엔 "처리중(pending_in)"으로만 올리고, 코인이 실제 도착한 2단계에 pending_in → confirmed 전환. 이 세 칸은 지갑 매니저의 잔액 조회가 보여주는 <b>가용·대기·잠김</b>과 같은 버킷이다(confirmed=가용, pending_in=대기, pending_out=잠김 — <a href="../wallet-design-walkthrough/07-balance-history.html">지갑 매니저 워크스루의 잔액 조회</a>).</p>
 
 <h3>delta_ledger — INSERT 후 status 만 닫힘</h3>
 <div class="table-wrap"><table>
