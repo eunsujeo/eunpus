@@ -96,12 +96,14 @@ pre {
   border: 1px solid #0d1a2b;
 }
 /* mermaid 도식은 코드 블록 스타일에서 제외 — 어두운 배경이면 SVG 의 검은 라벨이 안 보인다 */
-/* flex 중앙 정렬 금지 — SVG 가 넓어지면 양끝이 잘린다. margin auto 로 중앙 + 넘치면 스크롤 */
+/* 고정 높이 뷰포트 + 확대/축소/이동(svg-pan-zoom). 넘쳐도 잘리지 않고 드래그로 이동한다 */
 pre.mermaid {
-  background: #fff; color: var(--ink); padding: 0; border-radius: 0; border: 0;
-  white-space: normal; overflow: visible;
+  background: #fff; color: var(--ink); padding: 0; border: 0;
+  white-space: normal; height: 440px; overflow: hidden; cursor: grab; border-radius: 8px;
 }
-pre.mermaid svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+pre.mermaid:active { cursor: grabbing; }
+pre.mermaid svg { display: block; width: 100%; height: 100%; }
+@media (max-width: 560px) { pre.mermaid { height: 320px; } }
 code { font-family: var(--mono); }
 p > code, li > code, td > code, dd > code, dt > code {
   background: #fff; border: 1px solid var(--line); padding: 1px 5px; border-radius: 4px; font-size: .86em; color: var(--navy);
