@@ -11,109 +11,237 @@
 <div class="wrap">
 <p class="series"><a href="index.html">온·오프램프·스왑 정산 워크스루</a> · 부록</p>
 <h1>기관간 정산·해외송금(Canton)으로 확장하면 DB 는?</h1>
-<p class="subtitle">retail 온·오프램프·스왑용으로 설계한 4원장이 Canton 식 기관간 atomic 정산·국경 간 FX 로 가면 어디까지 그대로 쓰고, 무엇만 바꾸면 되는가</p>
+<p class="subtitle">개인 거래(retail) 온·오프램프·스왑용으로 설계한 4원장이 Canton 식 기관간 원자적 정산·국경 간(해외) FX 로 가면 어디까지 그대로 쓰고, 무엇만 바꾸면 되는가</p>
 
-<p><b>왜 이 페이지</b>: 본문(1~6장)의 DB 설계는 retail 충전·환전·스왑을 전제로 합니다. 같은 설계를 Canton 의 <b>기관간 정산(atomic DvP)</b>·<b>국경 간 FX 결제</b>에 쓰면 무엇이 달라지는지를 한 장에 정리합니다. 결론부터: <b>core 골격은 대부분 그대로</b>이고, 바뀌는 건 4가지로 좁혀집니다.</p>
+<p><b>왜 이 페이지</b>: 본문(1~6장)의 DB 설계는 개인 거래(retail) 충전·환전·스왑을 전제로 합니다. 같은 설계를 Canton 의 <b>기관간 정산(원자적 동시결제 · atomic DvP)</b>·<b>국경 간(해외) FX 결제</b>에 쓰면 무엇이 달라지는지를 한 장에 정리합니다. 결론부터: <b>핵심 골격은 대부분 그대로</b>이고, 실제로 손대는 건 둘뿐입니다 — <code>customer_ledger</code> 에 컬럼 하나, 기존 <code>transaction</code> 레코드에 필드 몇 개.</p>
 
 <div class="callout">
 <div class="callout-title">한 줄로</div>
-<p style="margin:0">4원장(customer·bank·delta·general) + 이중부기 + delta(transit) + fx 테이블은 <b>custody·네트워크 무관</b>하게 설계됐다. Canton 기관간/cross-border 로 가도 <b>구조 변경은 거의 없고</b>, ① 계정 주체 차원 ② delta 의 lifecycle ③ 컴플라이언스 참조 ④ account_code 확장 — 이 넷만 손대면 된다.</p>
+<p style="margin:0">4원장(customer·bank·delta·general) + 이중부기 + fx 테이블은 <b>수탁·네트워크 무관</b>하게 설계됐다. Canton 기관간/국경 간(해외) 으로 가도 <b>실제로 손대는 건 둘뿐</b> — ① <code>customer_ledger</code> 에 <code>holder_type</code> 한 칸 ② 기존 <code>transaction</code> 레코드에 거래상대·증명·<code>intent_id</code>(자산·금액은 <code>transaction_leg</code>). <b>총계정 GL 과 delta 는 안 건드린다</b>(delta 는 atomic 정산엔 아예 안 생김).</p>
 </div>
 
 <h2>왜 대부분 안 바뀌나</h2>
 <ul>
-<li><b>이중부기 총계정은 거래 형태를 가리지 않는다</b> — 차변=대변만 맞으면 retail 충전이든 기관간 DvP든 같은 방식으로 적힌다.</li>
-<li><b>delta = 미정산 transit 계정</b>도 보편이다 — "아직 정산 안 된 차액"은 어떤 정산 모델에도 있다(다만 닫히는 방식이 다르다, 아래 참조).</li>
-<li><b><a href="manager-boundary.html">매니저 경계</a> 명제 그대로</b> — 네트워크·정산 형태(Canton participant·external signing·atomic DvP)는 <b>블록체인 매니저 층</b>이 흡수하고, 회계 DB 는 그 <b>위</b>에 있다. 매니저를 자체→Canton 으로 바꿔도 회계 스키마는 위층이라 흔들리지 않는다.</li>
+<li><b>이중부기 총계정은 거래 형태를 가리지 않는다</b> — 차변=대변만 맞으면 개인 거래 충전이든 기관간 동시결제(DvP)든 같은 방식으로 적힌다.</li>
+<li><b>delta(미정산 차액)</b>는 보편 개념이다 — "아직 정산 안 된 차액"은 어떤 정산 모델에도 있다. 다만 <b>atomic 정산엔 시점차가 없어 거의 안 쓰인다</b>(아래 참조).</li>
+<li><b><a href="manager-boundary.html">매니저 경계</a> 명제 그대로</b> — 네트워크·정산 형태(Canton 참여 노드 · 외부 서명 · 원자적 동시결제)는 <b>블록체인 매니저 층</b>이 흡수하고, 회계 DB 는 그 <b>위</b>에 있다. 매니저를 자체→Canton 으로 바꿔도 회계 스키마는 위층이라 흔들리지 않는다.</li>
 </ul>
 
-<h2>핵심 차이 — delta 가 닫히는 방식</h2>
-<p>가장 크게 바뀌는 건 <b>delta 의 lifecycle</b>입니다. retail 은 "화면 먼저, 정산 나중"이라 <b>낙관적 선반영 + 실패 시 rollback</b>이지만, 기관간 atomic DvP 는 <b>전부 한 번에 확정되거나 전부 무산</b>이라 선반영이 필요 없습니다.</p>
+<h2>핵심 차이 — 미리 반영하나, 안 하나</h2>
+<p><b>먼저 짚을 것</b>: Canton 은 <b>기관간 전용</b> 블록체인이라 개인 거래는 Canton 을 쓰지 않습니다. 아래 두 다이어그램에서 "개인 거래"는 Canton 이 아니라 <b>비교 기준점인 기존 설계(이더리움 등 retail 체인)</b>이고, "기관간(Canton)"이 실제로 Canton 위에서 도는 모습입니다.</p>
+<p>이 둘에서 가장 크게 갈리는 건 <b>미리 반영하느냐</b>입니다. 개인 거래는 "화면 먼저, 정산 나중"이라 <b>1단계에 미리 반영하고 실패하면 되돌리지만</b>, 기관간 원자적 동시결제(atomic DvP)는 <b>전부 한 번에 확정되거나 전부 무산</b>이라 미리 반영할 필요가 없습니다(그래서 미정산 다리도 거의 필요 없습니다).</p>
 
-<h3>retail (본문) — 낙관적 2-step</h3>
+<h3>기존 설계 · 개인 거래 — 화면 먼저, 정산 나중 (2단계) <span style="color:var(--muted);font-weight:normal">· Canton 아님</span></h3>
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
-    participant Cust as 👤 고객 (앱)
-    participant App as 🏢 백엔드
+    participant Cust as 고객 (앱)
+    participant App as 백엔드
     participant L as 4원장 (CL·DL·GLE)
     participant Set as 정산처 / 체인
-    Note over Cust,Set: 고객 앱에서 시작 · 화면 먼저 · 정산 나중 (낙관적)
+    rect rgb(254,243,199)
+    Note over Cust,Set: ★ 1단계 — 즉시 · 선반영 (고객 앱에서 시작)
     Cust->>App: 충전/환전/스왑 요청
-    App->>L: 1단계 — 선반영 (confirmed 표시 · delta pending)
+    App->>L: 선반영 (confirmed 표시 · delta pending)
     App-->>Cust: "처리중"
+    end
+    rect rgb(220,252,231)
+    Note over Cust,Set: ★ 2단계 — 정산 (나중) · 실패 시 되돌리기
     App->>Set: 정산 요청
     Set-->>App: 완료 또는 실패
     alt 성공
-        App->>L: 2단계 — delta settled · 실계정 확정
+        App->>L: delta settled · 실계정 확정
         App-->>Cust: "완료"
     else 실패
-        App->>L: rollback — delta cancelled · 선반영 원복(정정 분개)
+        App->>L: 되돌리기 — delta cancelled · 선반영 원복(정정 분개)
         App-->>Cust: "실패 · 잔액 원복"
     end
+    end
 </pre></div>
-<p class="diagram-caption">retail 은 <b>고객 앱</b>에서 시작한다. 사용자 UX 때문에 1단계에 미리 반영하고, 실패하면 되돌린다. delta 가 그 시점차와 되돌림의 근거가 된다.</p>
+<p class="diagram-caption">이건 <b>기존 설계(이더리움 등 retail 체인) · Canton 아님</b> — 비교 기준점이다. 개인 거래는 <b>고객 앱</b>에서 시작하고, 사용자 경험 때문에 1단계에 미리 반영하고 실패하면 되돌린다. delta 가 그 시점차와 되돌림의 근거가 된다.</p>
 
-<h3>기관간 (Canton) — atomic, 선반영 없음</h3>
+<h3>기관간 (Canton · Musubi) — 첨부 정산 시나리오에 맞춘 흐름</h3>
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
-    participant Ops as 🖥 운영 콘솔 (Initiator·Approver)
-    participant App as 🏢 백엔드
-    participant L as 4원장 (+counterparty · instruction)
-    participant DvP as Canton atomic DvP
-    Note over Ops,DvP: 운영 콘솔에서 시작 · dual control · 전부 확정 또는 전부 무산 (원자)
-    Ops->>App: 정산 지시 생성 (Initiator)
-    App->>L: instruction 기록 (PENDING · 아직 미반영)
-    App-->>Ops: instruction id · 상태 PENDING
-    Ops->>App: 승인 (Approver · dual control)
-    App-->>Ops: 승인 접수
-    App->>DvP: ExecuteSettlement (attestation 검증 후에만)
-    DvP-->>App: 원자 확정 (N-leg 전부) 또는 전체 실패
-    alt 원자 성공
-        App->>L: 1회 기록 — N-leg delta 전부 settled · 실계정 확정
-        App-->>Ops: SETTLED (대시보드 갱신)
-    else 실패 / 만료
-        App->>L: instruction FAILED — 기록만 (선반영 없어 원복 불필요)
-        App-->>Ops: FAILED / EXPIRED (대시보드 갱신)
+    participant INST as 국내은행 (송신 기관)
+    box transparent 우리 = 송신 Custodian
+    participant CUST as 백엔드 (노드월렛)
+    participant L as 4원장 (우리 DB)
+    end
+    participant CORE as 무스비 Core
+    participant MM as Market Maker
+    participant RCUST as 수신 Custodian (해외은행)
+    Note over INST,RCUST: 모든 메시지는 Canton Synchronizer 경유 · 상태는 SSE(intent_id)로 수신
+    rect rgb(254,243,199)
+    Note over INST,RCUST: ★ 1단계 — 주문·견적 (우리 4원장 미변동)
+    INST->>CORE: FX order 생성 (KRWK→JPYSC · cost guard)
+    CORE-->>INST: intentId 발급 (PENDING)
+    CORE->>MM: 익명 견적요청 (통화쌍·금액·만료)
+    MM-->>CORE: 경쟁 견적 (quoteId)
+    CORE-->>INST: 견적 제시
+    INST->>CORE: best 견적 수락 (QUOTED · cost guard 검증)
+    Note over CUST,L: 우리는 co-sign만 · 장부는 아직 안 적음
+    end
+    rect rgb(220,252,231)
+    Note over INST,RCUST: ★ 2단계 — 원자적 DvP (단일 트랜잭션 4 leg · EXECUTING)
+    CUST->>CORE: KRWK (source)
+    MM->>CORE: JPYSC (target)
+    CORE->>RCUST: JPYSC (target) → 해외은행
+    CORE->>MM: KRWK (source)
+    CORE-->>CUST: SETTLED (intentId) · txHash
+    CUST->>L: 1회 기록 — 우리 leg(KRWK)만: 반환채무↓ · 지갑자산↓
+    Note over CUST,L: JPYSC(target)는 수신 Custodian 장부 · 우리는 KRWK out 만
+    CUST-->>INST: SETTLED 통지
     end
 </pre></div>
-<p class="diagram-caption">기관간은 고객 앱이 아니라 <b>운영 콘솔(대시보드)</b>에서 운영자가 시작하고 <b>Initiator·Approver dual control</b>을 거친다. atomic finality 전엔 미리 반영하지 않으며, N 개 leg 가 한 instruction 으로 묶여 동시에 settled 되거나 동시에 무산되므로 부분 정산도 rollback 도 없다. (Musubi PoC: 콘솔 역할 Initiator/Approver/Observer · 주문 상태 PENDING→QUOTED→EXECUTING→SETTLED · EXECUTING 후 불가역 · attestation 선조건)</p>
+<p class="diagram-caption">첨부된 Musubi "정산 시나리오"에 맞춘 흐름이다. 우리(송신 Custodian) 관점이 핵심 — 1단계의 주문·견적 동안 <b>우리 4원장은 안 건드리고</b>, 원자적 DvP 가 SETTLED 되면 <b>우리 leg(KRWK)만 1회 기록</b>한다. <b>JPYSC(target)는 수신 Custodian(해외은행) 장부</b>에 잡히지 우리 books 엔 없다 — swap 이 아니라 cross-border 결제다. (Musubi PoC · testnet · 2차 출처: 주문 상태 PENDING→QUOTED→EXECUTING→SETTLED · 단일 트랜잭션 4 leg 해시 = 정산 증빙)</p>
 
-<h2>바뀌어야 할 4가지</h2>
+<h2>바뀌는 것 — 테이블별 (개인 거래 → 기관간)</h2>
+<p>핵심 골격은 그대로다. 아래 표시한 것만 바뀐다 — 예제는 첨부 Musubi 시나리오의 <b>한·일 FX 결제</b>(송신 기관이 KRWK→JPYSC, 우리는 송신 Custodian). 우리 books 엔 <b>KRWK(우리 leg)만</b> 잡히고 JPYSC 는 수신 Custodian 장부다. 수치는 예시.</p>
+
+<div class="callout">
+<div class="callout-title">거래상대·증명은 어디에 두나 — 총계정 GL 말고 거래 레코드(transaction)에</div>
+<p style="margin:0 0 8px">개인 거래(<a href="05-db-changes.html">5장</a>)에서 분개를 묶던 <code>source_ref</code>(예: <code>req_123</code>)가 가리키는 게 바로 <b>거래 레코드(<code>transaction</code>)</b>입니다 — 개인·기관 모두 쓰는, 회계 GL 과 별개인 우리 거래 도메인 테이블이죠(5장에선 따로 설명만 안 했을 뿐).</p>
+<p style="margin:0">기관간은 이 <b>기존 <code>transaction</code> 레코드</b>에 거래상대·사전 증명·외부 Canton intent 링크(<code>intent_id</code>)만 더합니다. 거래당 한 번만 있으면 되는 값이라 거기 두고, 불변 증적인 <b>총계정 GL 은 손대지 않습니다</b> — 그래서 회계 변경이 거의 없습니다.</p>
+</div>
+
 <div class="table-wrap"><table>
-<thead><tr><th style="width:16%">항목</th><th style="width:30%">현재 (retail ramp)</th><th>Canton 기관간 / cross-border</th><th style="width:16%">변경 성격</th></tr></thead>
+<thead><tr><th style="width:15%">테이블</th><th style="width:33%">개인 거래 대비 변화</th><th>row 예시 (JSON)</th></tr></thead>
 <tbody>
-<tr><td><b>① 계정 주체</b></td><td>customer_ledger = 고객(B2C) 부채</td><td>기관/party 서브원장 + <b>counterparty master</b> + <code>party_id</code>/<code>counterparty_id</code> 차원 (delegated custody: 보유 주체 = 기관)</td><td>스키마 add (차원 1개)</td></tr>
-<tr><td><b>② delta lifecycle</b></td><td><code>pending→settled</code>, 실패 시 rollback</td><td>DvP instruction lifecycle. EXECUTING 후 <b>원자·불가역</b>, N-leg 가 한 instruction 으로 묶여 <b>동시 settled/cancelled</b></td><td>status enum·grouping 의미 + <code>settlement_instruction_id</code> 차원</td></tr>
-<tr><td><b>③ 선반영 정책</b></td><td>1단계 즉시 confirmed 표시(UX)</td><td>atomic finality <b>전엔 선반영 안 함</b>(hard 정산·법적 booking)</td><td>정책 (스키마 무관)</td></tr>
-<tr><td><b>④ 컴플라이언스</b></td><td>(retail KYC)</td><td><code>kyc_aml_ref</code> 처럼 <b>attestation / Travel Rule(IVMS 101) 참조 FK</b> — Canton 은 attestation 검증 후에만 정산 실행</td><td>compliance 도메인(이미 격리)에 add, 회계 DB 는 FK만</td></tr>
-<tr><td>멀티커런시·FX</td><td>fx_rate_history·fx_revaluation_log 이미 있음</td><td>거의 그대로 + account_code 에 <b>통화별 정산계정</b>(nostro/vostro 류) 추가</td><td>데이터(차트오브어카운트)</td></tr>
+<tr><td><b>고객 원장</b><br/>customer_ledger <span style="color:var(--muted)">(개인·기관 공용)</span></td><td>기존 <code>user_id</code> 는 그대로 두고 <code>holder_type</code>(개인/기관) 한 칸만 추가. 별도 기관 원장 안 만듦 — 은행 입장에선 둘 다 같은 반환채무.<br/><b>〔컬럼 1개 추가〕</b></td><td><pre style="margin:0;padding:10px 12px;font-size:12px;line-height:1.5"><code>{
+  "user_id": "inst_A",
+  "holder_type": "INSTITUTION",
+  "asset_id": "KRWK_CANTON",
+  "confirmed": 1500000
+}</code></pre></td></tr>
+<tr><td><b>델타 원장</b><br/>delta_ledger</td><td>개인 거래의 <b>미정산 다리 역할이 사라진다</b> — 미리 반영을 안 해 메울 차액이 없어서. <b>이 케이스(atomic)에선 delta 행을 안 만든다.</b> 필요하면 in-flight 모니터링용으로만 둘 수 있다.<br/><b>〔이 케이스 미사용〕</b></td><td><span style="color:var(--muted)">이 케이스에선 row 안 생김 (미정산 차액이 없음)</span></td></tr>
+<tr><td><b>거래 레코드</b><br/><code>transaction</code> <span style="color:var(--muted)">(header · 우리 거래 도메인 · 회계 GL 아님 · 기존)</span></td><td>개인·기관 공용 header(5장 <code>req_123</code> 도 이 레코드). <code>source_ref = transaction_id</code>. 자산·금액은 안 들고 <code>type</code>·상태만. 기관간 행만 <b>거래상대·증명·외부 intent 링크</b>가 더해진다(주문 금액·rate 는 외부 intent 상세). 총계정 GL 은 불변.<br/><b>〔generic header〕</b></td><td><pre style="margin:0;padding:10px 12px;font-size:12px;line-height:1.5"><code>{
+  "transaction_id": "txn_900",
+  "type": "FX_SETTLE",
+  "user_id": "inst_A",
+  "counterparty_id": "mm_1",
+  "attestation_ref": "att_77",
+  "intent_id": "si_900",
+  "status": "PENDING"
+}</code></pre></td></tr>
+<tr><td><b>거래 leg</b><br/><code>transaction_leg</code> <span style="color:var(--muted)">(자산 이동 1건 = 1행 · 모든 type 공용)</span></td><td>거래의 <b>자산 이동을 행으로</b> 푼다 — 충전 1(IN) · 출금 1(OUT) · 스왑 2 · DvP 4 를 <b>한 모델로</b>. <b>자산·금액이 여기 산다</b>(GL posting 과 1:1). 기관간이라 특별히 더할 구조는 없고, FX 도 우리 books 엔 <b>KRWK out 1행</b>뿐(JPYSC 는 수신 Custodian 의 leg).<br/><b>〔header+leg 모델〕</b></td><td><pre style="margin:0;padding:10px 12px;font-size:12px;line-height:1.5"><code>{
+  "leg_id": "leg-1",
+  "transaction_id": "txn_900",
+  "asset_id": "KRWK_CANTON",
+  "amount": 1500000,
+  "direction": "OUT"
+}</code></pre></td></tr>
+<tr><td><b>총계정 원장</b><br/>general_ledger_entry <span style="color:var(--muted)">(변경 없음)</span></td><td><b>없음.</b> append-only·해시체인 불변 증적이라 손대지 않는다 — <code>source_ref</code> 포함 <b>5장과 동일한 필드</b>. 그 <code>source_ref</code> 가 (5장에서 <code>req_123</code> 가리키듯) 정산 엔진/Canton 주문을 가리킬 뿐이다.<br/><b>〔불변〕</b></td><td><pre style="margin:0;padding:10px 12px;font-size:12px;line-height:1.5"><code>{
+  "entry_id": "e1",
+  "source_ref": "txn_900",
+  "account_code": "KRWK_반환채무",
+  "debit_credit": "차",
+  "amount": 1500000
+}</code></pre></td></tr>
+<tr><td><b>은행 원장</b><br/>bank_ledger</td><td><code>account_code</code> 에 <b>통화별 정산계정</b>(상대 은행 계정 류) 추가. 다중통화·FX(<code>fx_rate_history</code> 등)는 이미 있어 그대로.<br/><b>〔데이터 · 계정과목표〕</b></td><td><pre style="margin:0;padding:10px 12px;font-size:12px;line-height:1.5"><code>{
+  "account_type": "SETTLEMENT",
+  "counterparty_id": "mm_1",
+  "asset_id": "KRWK_CANTON",
+  "balance": 0
+}</code></pre></td></tr>
 </tbody>
 </table></div>
 
+<p class="table-note"><b>표에 없는 한 가지 — 선반영 정책(테이블 아님).</b> 개인 거래는 1단계에 즉시 confirmed 표시(미리 반영)하지만, 기관간은 원자적 최종 확정 후 <b>1회만 기록</b>(미리 반영 안 함). 스키마가 아니라 <b>쓰기 시점 정책</b>의 변화이고, 위 두 다이어그램이 그 차이를 보여준다.</p>
+
+<h2>흐름에 따라 row 가 어떻게 바뀌나 — 기관간 동시결제</h2>
+<p>예시: 송신 기관(inst_A)이 <b>KRWK 1,500,000 을 보내는</b> 한·일 FX 결제(KRWK→JPYSC · 우리는 송신 Custodian · 수치는 예시). 우리 books 엔 <b>KRWK(우리 leg)만</b> 잡히고 JPYSC(target)는 수신 Custodian 장부다. 개인 거래(<a href="05-db-changes.html">5장</a>)와 가장 다른 점은 <b>1단계엔 거래 레코드(transaction)만 PENDING 으로 두고 회계 장부는 안 건드린다</b>는 것 — 미리 반영을 안 하니 2단계 원자 확정에 <b>한 번에</b> 적는다.</p>
+
+<h3>거래 레코드(transaction) — PENDING 에서 SETTLED 로 <span style="color:var(--muted);font-weight:normal">· 우리 거래 도메인 (회계 GL 아님)</span></h3>
+<div class="table-wrap"><table>
+<thead><tr><th style="width:22%">시점</th><th>row</th></tr></thead>
+<tbody>
+<tr><td>처음</td><td>(없음)</td></tr>
+<tr><td><b>1단계 후</b> (지시·승인)</td><td><pre style="margin:0;padding:10px 12px;font-size:12px;line-height:1.5"><code>{
+  "transaction_id": "txn_900",
+  "type": "FX_SETTLE",
+  "user_id": "inst_A",
+  "counterparty_id": "mm_1",
+  "attestation_ref": "att_77",
+  "intent_id": "si_900",
+  "status": "PENDING"
+}</code></pre></td></tr>
+<tr><td><b>2단계 후</b> (원자 확정)</td><td>같은 row 에서 <code>status</code> 만 <code>PENDING → SETTLED</code> · 다른 필드는 그대로</td></tr>
+</tbody>
+</table></div>
+<p class="table-note"><b>실제 이동액·자산은 header 가 아니라 <code>transaction_leg</code> 에</b> 산다(<code>asset_id · amount · direction</code>). 충전 1 leg(IN) · 출금 1 leg(OUT) · 스왑 2 · DvP 4 — 우리 leg 은 KRWK out 1행뿐. 한편 <b>주문 금액·통화쌍·rate·cost guard 는 외부 intent</b> 상세다 — 정리하면 <b>"주문한 금액 = intent · 실제 움직인 금액 = leg"</b>.</p>
+
+<h3>customer_ledger (기관 A) — 1단계 미변동, 2단계에 한 번에</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>KRWK_CANTON (confirmed) — 송신 기관 inst_A</th></tr></thead>
+<tbody>
+<tr><td>처음</td><td>1,500,000</td></tr>
+<tr><td><b>1단계 후</b></td><td>1,500,000 <span style="color:var(--muted)">(변동 없음 — 선반영 안 함)</span></td></tr>
+<tr><td><b>2단계 후</b></td><td><b>0</b> (KRWK 송금 완료)</td></tr>
+</tbody>
+</table></div>
+<p class="table-note">행의 고정 필드는 <code>user_id=inst_A · holder_type=INSTITUTION</code>. 우리(송신 측) books 엔 <b>KRWK 만</b> 잡히고 JPYSC(target)는 수신 Custodian 장부다. 잠금은 <b>Canton 의 동시결제 계약이 온체인에서</b> 처리하므로(자산이 그 계약에 묶임), 우리 원장은 1단계에 미리 잠그거나 반영할 필요 없이 <b>확정 시 한 번에</b> 바꾼다.</p>
+
+<h3>general_ledger_entry — 2단계에 실계정으로 직접 분개 (미정산 분개 없음)</h3>
+<div class="table-wrap"><table>
+<thead><tr><th style="width:22%">단계</th><th>INSERT 되는 row (account_code · debit_credit · amount · source_ref)</th></tr></thead>
+<tbody>
+<tr><td><b>1단계</b></td><td>(없음 — 분개하지 않음)</td></tr>
+<tr><td><b>2단계</b></td><td><code>KRWK_반환채무 · 차 · 1,500,000 · txn_900</code> ← 송신 기관에 줄 빚 감소<br/><code>KRWK_지갑자산 · 대 · 1,500,000 · txn_900</code> ← 지갑에서 KRWK 송금</td></tr>
+</tbody>
+</table></div>
+<p class="table-note">개인 거래(5장)는 1단계에 <b>미정산자산</b>이라는 임시 계정으로 항등식을 임시로 맞췄지만, 기관간 atomic 은 <b>시점차가 없어 미정산 분개 자체가 불필요</b>하다 — 확정 시 실계정으로 바로 적는다. 그래서 <b>delta(미정산) 원장도 거의 안 쓰인다</b>(메울 차액이 없으므로). 그리고 <b>JPYSC(target) 분개는 수신 Custodian 장부</b>에 잡힌다 — 원자적 DvP 에서 각 Custodian 은 자기 leg 만 기록한다.</p>
+
+<div class="callout">
+<div class="callout-title">개인 거래와 한눈 비교</div>
+<div class="table-wrap"><table>
+<thead><tr><th style="width:20%"></th><th>개인 거래 (기존)</th><th>기관간 (Canton)</th></tr></thead>
+<tbody>
+<tr><td><b>1단계</b></td><td>customer·총계정·delta 미리 반영(pending)</td><td>거래 레코드(transaction) PENDING · 회계 장부 미변동</td></tr>
+<tr><td><b>2단계</b></td><td>미정산 닫고 실계정으로 정산</td><td>실계정으로 <b>한 번에</b> 기록</td></tr>
+<tr><td><b>미정산(delta)</b></td><td>시점차 메우는 다리 — 필수</td><td>시점차 없음 — 거의 불필요</td></tr>
+<tr><td><b>실패 시</b></td><td>rollback(되돌리기)</td><td>아무것도 안 적었으니 <b>되돌릴 것 없음</b></td></tr>
+</tbody>
+</table></div>
+</div>
+
 <h2>확정 vs 가설</h2>
 <ul>
-<li><b>확정 (회계 보편)</b> — 이중부기 GL · delta transit · 다중통화 fx 는 이미 일반화돼 있어 구조 변경 불요.</li>
-<li><b>근거 있는 추론 (Musubi PoC 기준 · 2차 출처 · testnet)</b> — atomic DvP · 주문 상태 모델 · attestation 선조건 · delegated custody. ②④의 근거.</li>
-<li><b>순수 설계 가설</b> — counterparty 차원 추가, 선반영 정책 제거, 네팅용 <code>counterparty_position</code>(기존 <code>customer_position</code> 확장).</li>
+<li><b>확정 (회계 보편)</b> — 이중부기 총계정 · delta(미정산 차액) · 다중통화 fx 는 이미 일반화돼 있어 구조 변경 불요.</li>
+<li><b>근거 있는 추론 (Musubi PoC 기준 · 2차 출처 · 테스트넷)</b> — 원자적 동시결제(atomic DvP) · 주문 상태 모델 · 사전 증명 선조건 · 위임 수탁(delegated custody). 미리 반영 안 함·delta 축소·컴플라이언스 판단의 근거.</li>
+<li><b>순수 설계 가설</b> — 거래상대(counterparty) 차원 추가, 선반영 정책 제거, 네팅용 <code>counterparty_position</code>(기존 <code>customer_position</code> 확장).</li>
 </ul>
 
 <div class="callout">
 <div class="callout-title">아직 모르는 것 (적용 전 확인)</div>
-<p style="margin:0">Canton 실제 <b>정산 finality 시점·법적 booking timing·기관 간 네팅 규칙</b>은 확인되지 않았다(Musubi 도 finality 수치를 명시하지 않았고, 문서 간 "≈4초 vs ~15초" 불일치가 기록돼 있다). 위 lifecycle·네팅 판단은 실제 정산망 스킴을 확인한 뒤 확정해야 한다.</p>
+<p style="margin:0">Canton 실제 <b>정산 최종 확정 시점 · 법적 장부 기재 시점 · 기관 간 네팅 규칙</b>은 확인되지 않았다(Musubi 도 최종 확정 수치를 명시하지 않았고, 문서 간 "≈4초 vs ~15초" 불일치가 기록돼 있다). 위 상태 흐름·네팅 판단은 실제 정산망 스킴을 확인한 뒤 확정해야 한다.</p>
 </div>
 
 <h2>추천</h2>
-<p>core 스키마는 유지하고 딱 3개만 선반영하면 Canton 기관간/cross-border 로 확장됩니다.</p>
+<p>핵심 스키마는 거의 그대로다. 실제로 손대는 건 둘뿐이고, 나머지는 안 건드린다.</p>
 <ul>
-<li><code>counterparty_id</code>/<code>party_id</code> 차원 + counterparty master</li>
-<li>delta 에 <code>settlement_instruction_id</code> (N-leg 원자 묶음)</li>
-<li>compliance attestation FK (Travel Rule / IVMS 101)</li>
+<li><code>customer_ledger</code> 는 <b>기존 <code>user_id</code> 그대로</b> + <code>holder_type</code>(개인/기관) 한 칸 추가 — 개인·기관 한 원장</li>
+<li><b>거래 레코드는 header + leg</b> — <code>transaction</code>(header: type·상태·<code>intent_id</code> 등 generic) + <code>transaction_leg</code>(자산·금액: 충전1·스왑2·DvP4). 기관간은 header 에 거래상대·증명만 더할 뿐, 총계정 GL 은 불변</li>
+<li><b>안 건드림</b>: 총계정 GL(불변 증적) · <code>delta</code>(atomic 엔 미정산 자체가 안 생김)</li>
 </ul>
-<p>그리고 <b>낙관적 선반영(즉시 confirmed)은 기관간 정산에선 끄는 쪽</b>이 안전합니다 — retail 의 "화면 즉시 반영" UX 동기가 기관간엔 없고, 오히려 atomic finality 후 1회 기록(hard 정산)이 맞기 때문입니다.</p>
+<p>그리고 <b>미리 반영(즉시 confirmed 표시)은 기관간 정산에선 끄는 쪽</b>이 안전합니다 — 개인 거래의 "화면 즉시 반영" 편의는 기관간엔 필요 없고, 오히려 최종 확정 후 1회만 기록하는 편이 맞기 때문입니다.</p>
 
-<p class="foot">DB row 변화 본문: <a href="05-db-changes.html">5장</a> · 매니저 경계: <a href="manager-boundary.html">부록</a> · 회계·원장 스키마: <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a>.</p>
+<h2>참고 — 원자적 DvP 의 4 leg</h2>
+<p><b>leg 이란</b> 한 거래 안에서 일어나는 <b>개별 자산 이동 1건</b>을 말합니다 — 이 워크스루의 <b>4원장</b>(우리 회계 테이블 4개)과는 전혀 다른 개념입니다. 거래 type 마다 leg 수가 다릅니다: 충전·입금은 1 leg(받기), 출금은 1 leg(보내기), 스왑·FX 는 2 leg(주고+받고). 이번 기관간 정산은 한 <b>Canton 트랜잭션 안에 4 leg</b>가 묶입니다(첨부 시나리오 7~10번).</p>
+<p>그 넷이 <b>전부 함께 확정되거나 전부 무산</b>되고, 그 트랜잭션의 <code>txHash</code> 가 정산 증빙이 됩니다.</p>
+<div class="table-wrap"><table>
+<thead><tr><th style="width:8%">leg</th><th style="width:42%">이동</th><th>의미</th></tr></thead>
+<tbody>
+<tr><td><b>1</b></td><td>송신 Custodian(우리) → Core · <b>KRWK</b>(source)</td><td>송신 기관이 낼 KRWK 를 정산에 내놓음</td></tr>
+<tr><td><b>2</b></td><td>Market Maker → Core · <b>JPYSC</b>(target)</td><td>MM 이 FX 대가로 JPYSC 를 공급</td></tr>
+<tr><td><b>3</b></td><td>Core → 수신 Custodian(해외은행) · <b>JPYSC</b>(target)</td><td>수신측에 JPYSC 전달</td></tr>
+<tr><td><b>4</b></td><td>Core → Market Maker · <b>KRWK</b>(source)</td><td>MM 에게 KRWK 지급 (FX 의 반대쪽)</td></tr>
+</tbody>
+</table></div>
+<p class="table-note">결과적으로 <b>송신 기관은 KRWK 를 내고</b>, <b>수신측은 JPYSC 를 받고</b>, <b>Market Maker 는 KRWK↔JPYSC 를 맞바꾸며 스프레드를 가진다</b>. 우리(송신 Custodian) books 에 잡히는 건 <b>leg 1(KRWK out)뿐</b> — leg 2~4 는 MM·수신 Custodian 의 몫이다. 네 leg 가 한 트랜잭션이라 "KRWK 만 나가고 JPYSC 는 안 오는" 부분 정산이 원천적으로 불가능하다. (이 4 leg 는 <b>Canton 정산 트랜잭션 = 네트워크 전체</b>의 자산 이동이고, 우리 <code>transaction_leg</code> 엔 그중 <b>leg 1(KRWK out) 1행만</b> 남는다.)</p>
+
+<p class="foot">DB 상태 변화 본문: <a href="05-db-changes.html">5장</a> · 매니저 경계: <a href="manager-boundary.html">부록</a> · 회계·원장 스키마: <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a>.</p>
 
 <div class="pager">
 <a href="index.html">← 정산 워크스루 목차</a>

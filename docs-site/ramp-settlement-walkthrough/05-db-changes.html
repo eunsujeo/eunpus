@@ -71,7 +71,7 @@
 <p style="margin:8px 0 0">즉 총계정 원장은 <b>한 번 적은 row 를 절대 고치지 않습니다</b>. 정정할 때도 새 row 를 하나 더 답니다. 계정 잔액은 "차변 합 − 대변 합"으로 <b>계산</b>합니다.</p>
 </div>
 
-<h2>① 온램프 — 가장 단순한 형태 (KRW 1,000 → KRWK 1,000, 1:1)</h2>
+<h2 id="onramp">① 온램프 — 가장 단순한 형태 (KRW 1,000 → KRWK 1,000, 1:1)</h2>
 <p>사용자 X 가 KRWK 0 에서 시작해 1,000 을 충전합니다. 네 테이블을 <b>처음 / 1단계 후 / 2단계 후</b> 세 시점으로 추적합니다.</p>
 
 <h3>customer_ledger — pending 으로 잡았다가 confirmed 로</h3>
@@ -129,7 +129,7 @@
 </table></div>
 <p>1단계에는 <b>미정산자산</b>이 자산 자리를 채워 균형을 맞추고, 2단계에는 그게 <b>지갑자산</b>으로 바뀌며 다시 균형을 맞춥니다. 두 시점 어디서도 균형이 깨지지 않습니다. 이것이 "미정산 분개 — 항등식 임시 균형"의 실제 모습입니다.</p>
 
-<h2>② 오프램프 — 온램프의 역방향 (KRWK 1,000 → KRW 1,000)</h2>
+<h2 id="offramp">② 오프램프 — 온램프의 역방향 (KRWK 1,000 → KRW 1,000)</h2>
 <p>방향만 반대입니다. 보내는 쪽이라 이중사용을 막으려고 <b>1단계에 사용가능을 즉시 차감</b>하고, 미정산은 "곧 나갈 자산"으로 잡습니다.</p>
 
 <h3>delta_ledger — 1줄 INSERT 후 settled</h3>
@@ -173,7 +173,7 @@
 </table></div>
 <p class="table-note">온램프와 달리 지갑 잔액이 <b>줄어든다</b>. 1단계엔 안 바뀌고(델타가 미출금으로 표시) 실제 출금이 일어나는 2단계에 갱신된다.</p>
 
-<h2>③ 스왑 — 델타 2줄, 총계정 4줄 (KRWK 1,300 → USDC 1)</h2>
+<h2 id="swap">③ 스왑 — 델타 2줄, 총계정 4줄 (KRWK 1,300 → USDC 1)</h2>
 <p>스왑은 한쪽이 빠지고 다른 쪽이 들어오는 거래라 <b>미정산이 양쪽에</b> 생깁니다. 온램프와 달라지는 테이블 위주로 보겠습니다.</p>
 
 <h3>delta_ledger — 1단계에 2줄 INSERT</h3>
@@ -181,7 +181,7 @@
 <thead><tr><th>시점</th><th>row</th></tr></thead>
 <tbody>
 <tr><td><b>1단계 후</b></td><td><code>delta-1 · SWAP_OUT · KRWK_ETH · +1,300 · pending</code><br/><code>delta-2 · SWAP_IN · USDC_ETH · −1 · pending</code></td></tr>
-<tr><td><b>2단계 후</b></td><td>delta-1 · settled · / · delta-2 · settled</td></tr>
+<tr><td><b>2단계 후</b></td><td><code>delta-1 · SWAP_OUT · KRWK_ETH · +1,300 · settled</code><br/><code>delta-2 · SWAP_IN · USDC_ETH · −1 · settled</code></td></tr>
 </tbody>
 </table></div>
 
@@ -194,7 +194,15 @@
 <tr><td><b>2단계 후</b></td><td>0 · 0 · 0</td><td><b>1</b> · 0 · 0</td></tr>
 </tbody>
 </table></div>
-<p class="table-note">총계정도 1단계에 4줄(고객측 2줄 + 미정산 2줄)이 들어가고, 2단계에 미정산 2줄을 닫으면서 지갑자산 KRWK↓·USDC↑ 로 정산된다. 매매 스프레드가 있으면 손익 row 가 하나 더 붙는다.</p>
+<h3>general_ledger_entry — 1단계 4줄 · 2단계 4줄 (KRWK·USDC 각자 균형)</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>단계</th><th>INSERT 되는 row (account_code · 차/대 · amount · source_ref)</th></tr></thead>
+<tbody>
+<tr><td><b>1단계</b></td><td><code>KRWK 반환채무 · 차 · 1,300 · req_789</code> (KRWK 빚↓)<br/><code>KRWK 미정산자산 · 대 · 1,300 · req_789</code> (곧 나갈)<br/><code>USDC 미정산자산 · 차 · 1 · req_789</code> (곧 올)<br/><code>USDC 반환채무 · 대 · 1 · req_789</code> (USDC 빚↑)</td></tr>
+<tr><td><b>2단계</b></td><td><code>KRWK 미정산자산 · 차 · 1,300 · req_789</code> (1단계분과 상쇄돼 0)<br/><code>KRWK 지갑자산 · 대 · 1,300 · req_789</code> (실제 출금)<br/><code>USDC 지갑자산 · 차 · 1 · req_789</code> (실제 입금)<br/><code>USDC 미정산자산 · 대 · 1 · req_789</code> (1단계분과 상쇄돼 0)</td></tr>
+</tbody>
+</table></div>
+<p class="table-note"><b>두 자산이 각자 따로 균형</b>이다 — KRWK(1,300)와 USDC(1)는 금액·단위가 다르지만, 차변=대변은 <b>같은 account_code(자산) 네임스페이스 안에서 각각</b> 맞는다(교차 균형 아님). 미정산자산은 양쪽 모두 2단계에 상쇄돼 0 으로 닫힌다. 매매 스프레드가 있으면 손익 분개(GLE) 한 줄이 더 붙는다.</p>
 
 <h3>bank_ledger — 2단계에 지갑 두 자산 동시 변동</h3>
 <div class="table-wrap"><table>
@@ -207,7 +215,7 @@
 </table></div>
 <p class="table-note">스왑은 지갑에서 한 자산이 나가고 다른 자산이 들어오므로 두 자산 행이 2단계에 함께 바뀐다(온램프·오프램프는 한 자산만).</p>
 
-<h2>④ 실패 되돌리기 — 1단계를 거꾸로 (충전 실패 예시)</h2>
+<h2 id="failure">④ 실패 되돌리기 — 1단계를 거꾸로 (충전 실패 예시)</h2>
 <p>1단계까지 반영됐는데 2단계 정산이 실패하면, 델타 미정산 줄을 기준으로 1단계를 <b>정확히 거꾸로</b> 풉니다(흐름 다이어그램은 <a href="04-failure-reconciliation.html">4장</a>). 온램프(충전)가 1단계 후 실패한 경우의 row 변화입니다.</p>
 
 <h3>customer_ledger — 처리중 원복</h3>

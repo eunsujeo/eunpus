@@ -18,6 +18,8 @@
 
 <p><b>무엇·언제</b>: 사용자가 스테이블코인을 원화로 환전합니다. 코인을 내보내는 쪽이라 1단계에서 <b>사용가능 잔액을 곧바로 차감</b>하면서 처리중으로 표시하고, 실제 코인 소각/처분과 원화 입금은 2단계로 미룹니다. 환전이므로 <b>총계정상 부채가 줄어듭니다</b>.</p>
 
+<p><b>실무 기본형은 사전 민팅 재고 풀입니다.</b> 소각이 느려서(수 분~수십 분+), 보통은 고객 코인을 <b>풀로 회수만</b> 하고 원화를 지급합니다 — DB-only · 거의 즉시 · 미출금(delta) 불필요. 회수한 코인은 다음 온램프에 재사용됩니다. 아래 소각/처분 흐름은 <b>풀을 줄이는 rebalance(또는 재고 과다 시)</b>의 실제 소각 경로입니다 (→ <a href="index.html#pool">공통 골격: 사전 민팅 재고 풀</a>).</p>
+
 <div class="callout">
 <div class="callout-title">소각(burn)·처분 권한은 누구에게</div>
 <p style="margin:0 0 6px"><b>원화코인(KRWK)</b> 소각 = 발행사에 소각 요청(지갑 → 발행사로 코인 송금 후 소각).</p>
@@ -30,14 +32,14 @@
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
-    participant Cust as 👤 고객
-    participant App as 🏢 은행 App
+    participant Cust as 고객
+    participant App as 은행 App
     participant CL as 고객 원장
     participant DL as 델타 원장
     participant GLE as 총계정 원장
-    participant JV as 🏛 발행사
-    participant FB as ☁️ 보관 지갑
-    participant Acct as 🏦 계정계(원화)
+    participant JV as 발행사
+    participant FB as 보관 지갑
+    participant Acct as 계정계(원화)
     participant BL as 은행 원장
 
     rect rgb(254,243,199)
@@ -62,25 +64,25 @@ sequenceDiagram
     App->>BL: KRWK 지갑자산 −1,000 (실제 출금)
     App->>CL: KRWK 처리중 −1,000 (사용가능은 1단계에 차감 끝 · 화면: 완료)
     App->>DL: settled
-    App->>GLE: 정산 분개 — 미정산자산↑마감 · KRWK 지갑자산↓
+    App->>GLE: 정산 분개 — 미정산자산 마감 · KRWK 지갑자산↓
     App-->>Cust: "환전 완료" 알림
     end
 </pre></div>
-<p class="diagram-caption">Figure 3-A. 원화코인 환전. 1단계에서 사용가능을 즉시 차감해 이중사용을 막고, 2단계에서 소각·원화입금으로 마감한다.</p>
+<p class="diagram-caption">Figure 2-A. 원화코인 환전. 1단계에서 사용가능을 즉시 차감해 이중사용을 막고, 2단계에서 소각·원화입금으로 마감한다.</p>
 
 <h2>▸ Case B — 달러코인 → 원화 (Circle 상환 또는 거래소)</h2>
 <p style="color:var(--muted);font-size:13px">예시: 시세 1,310 KRW/USD. 사용자가 USDC 1 → KRW. 처분 채널 (a) Circle 상환 (b) 거래소 매도(스프레드).</p>
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
-    participant Cust as 👤 고객
-    participant App as 🏢 은행 App
+    participant Cust as 고객
+    participant App as 은행 App
     participant CL as 고객 원장
     participant DL as 델타 원장
     participant GLE as 총계정 원장
-    participant Src as 🏛 Circle / 거래소
-    participant FB as ☁️ 보관 지갑
-    participant Acct as 🏦 계정계(원화)
+    participant Src as Circle / 거래소
+    participant FB as 보관 지갑
+    participant Acct as 계정계(원화)
     participant BL as 은행 원장
 
     rect rgb(254,243,199)
@@ -105,19 +107,20 @@ sequenceDiagram
         Src->>FB: USDC 1 지갑 출금
     end
     FB-->>App: 지갑 출금 통지 (USDC −1)
-    Src->>Acct: KRW (약 1,310 − 수수료) 입금 (고객 계좌)
+    Src-->>App: 자금 도착 통지 (KRW 약 1,310 − 수수료)
+    App->>Acct: KRW 입금 (고객 계좌)
     Acct-->>App: 입금 완료
     App->>BL: USDC 지갑자산 −1 (실제 출금)
     App->>CL: USDC 처리중 −1 (사용가능은 1단계에 차감 끝 · 화면: 완료)
     App->>DL: settled
-    App->>GLE: 정산 분개 — 미정산자산↑마감 · USDC 지갑자산↓
+    App->>GLE: 정산 분개 — 미정산자산 마감 · USDC 지갑자산↓
     opt 매도 스프레드/수수료
         App->>GLE: 손익 분개 (외환매매수익 / 수수료수익)
     end
     App-->>Cust: "환전 완료" 알림
     end
 </pre></div>
-<p class="diagram-caption">Figure 3-B. 달러코인 환전. 두 처분 채널의 구조는 똑같다. 다만 거래소 매도에는 스프레드·수수료 손익이 붙는다.</p>
+<p class="diagram-caption">Figure 2-B. 달러코인 환전. 두 처분 채널의 구조는 똑같다. 다만 거래소 매도에는 스프레드·수수료 손익이 붙는다.</p>
 
 <h2>핵심 포인트</h2>
 <ul>
@@ -126,7 +129,7 @@ sequenceDiagram
 <li><b>온램프의 역방향</b> — 부채가 줄고(↓), 발행 대신 소각/처분이 일어납니다.</li>
 </ul>
 
-<p class="foot">분개 상세: <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a>.</p>
+<p class="foot">이 거래의 DB row 변화: <a href="05-db-changes.html#offramp">5장 ② 오프램프</a> · 분개 상세: <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a>.</p>
 
 <div class="pager">
 <a href="01-onramp.html">← 1. 온램프</a>

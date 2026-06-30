@@ -27,7 +27,7 @@
 <tr><td>App (은행 App)</td><td><b>코인계 백엔드</b> — 매니저의 호출자<br/>(옆 워크스루의 <code>BE 지갑 백엔드</code>)</td><td>—</td></tr>
 <tr><td>CL · DL · GLE · BL (4원장)</td><td><b>코인계 회계 도메인</b> (매니저 밖)</td><td>—</td></tr>
 <tr><td><code>App→Set</code> 발행/소각/매매 · 정산처(발행사·거래소)</td><td><b>비즈니스 통합</b> (매니저 아님)</td><td>—</td></tr>
-<tr><td><code>FB ☁️ 보관 지갑</code> · 지갑 입금/출금 · webhook 통지</td><td><b>블록체인 매니저 경계</b></td><td>입금 = <code>onChainEvent</code><br/>출금 = 서명·broadcast</td></tr>
+<tr><td><code>FB 보관 지갑</code> · 지갑 입금/출금 · webhook 통지</td><td><b>블록체인 매니저 경계</b></td><td>입금 = <code>onChainEvent</code><br/>출금 = 서명·broadcast</td></tr>
 <tr><td>1단계 검증의 "시세·실비"</td><td>매니저 read-only</td><td><code>estimateFee</code></td></tr>
 </tbody>
 </table></div>
@@ -36,19 +36,21 @@
 <h2>겹쳐 본 2단계 — 세 거래</h2>
 <p>세 다이어그램 모두 참가자를 두 그룹(<b>코인계 백엔드</b> · <b>블록체인 매니저</b>)으로 <b>묶기만</b> 했습니다(색 없음). 노랑은 1단계(즉시), 초록은 2단계(정산)입니다. 매니저가 닿는 화살표만 눈으로 따라가면 됩니다.</p>
 
+<p class="table-note"><b>재고 풀(실무 기본형)에선 온램프·오프램프가 매니저를 아예 안 부릅니다.</b> 코인이 이미 vault 에 있어 <b>순수 DB 할당/회수</b>로 끝나기 때문입니다(<a href="index.html#pool">공통 골격: 사전 민팅 재고 풀</a>). 매니저는 <b>풀 rebalance(batch mint/burn)나 외부 정산이 필요한 경우</b>에만 들어옵니다. 아래 ①②의 발행/출금·<code>onChainEvent</code> 흐름은 바로 그 rebalance(또는 재고가 비었을 때의 온디맨드) 경로입니다.</p>
+
 <h3>① 온램프 — 입금 감지만 (출금 없음)</h3>
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
-    participant Cust as 👤 고객
+    participant Cust as 고객
     box transparent 코인계 백엔드 · 회계 도메인
-    participant App as 🏢 백엔드
+    participant App as 백엔드
     participant L as 4원장 CL·DL·GLE·BL
     end
-    participant ISS as 🏛 정산처 · 발행사/거래소
+    participant ISS as 정산처 · 발행사/거래소
     box transparent 블록체인 매니저 · 자체↔Fireblocks
     participant MGR as 매니저
-    participant CH as ⛓ 체인 / vault
+    participant CH as 체인 / vault
     end
 
     rect rgb(254,243,199)
@@ -78,15 +80,15 @@ sequenceDiagram
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
-    participant Cust as 👤 고객
+    participant Cust as 고객
     box transparent 코인계 백엔드 · 회계 도메인
-    participant App as 🏢 백엔드
+    participant App as 백엔드
     participant L as 4원장 CL·DL·GLE·BL
     end
-    participant ISS as 🏛 정산처 · 발행사/거래소
+    participant ISS as 정산처 · 발행사/거래소
     box transparent 블록체인 매니저 · 자체↔Fireblocks
     participant MGR as 매니저
-    participant CH as ⛓ 체인 / vault
+    participant CH as 체인 / vault
     end
 
     rect rgb(254,243,199)
@@ -117,15 +119,15 @@ sequenceDiagram
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
-    participant Cust as 👤 고객
+    participant Cust as 고객
     box transparent 코인계 백엔드 · 회계 도메인
-    participant App as 🏢 백엔드
+    participant App as 백엔드
     participant L as 4원장 CL·DL·GLE·BL
     end
-    participant ISS as 🏛 정산처 · 발행사/거래소
+    participant ISS as 정산처 · 발행사/거래소
     box transparent 블록체인 매니저 · 자체↔Fireblocks
     participant MGR as 매니저
-    participant CH as ⛓ 체인 / vault
+    participant CH as 체인 / vault
     end
 
     rect rgb(254,243,199)

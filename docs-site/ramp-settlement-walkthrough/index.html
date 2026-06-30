@@ -42,13 +42,13 @@
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
-    participant Cust as 👤 고객
-    participant App as 🏢 은행 App
+    participant Cust as 고객
+    participant App as 은행 App
     participant CL as 고객 원장<br/>(customer_ledger)
     participant DL as 델타 원장<br/>(delta_ledger)
     participant GLE as 총계정 원장<br/>(general_ledger)
     participant Set as 정산처<br/>(발행사 · 거래소)
-    participant FB as ☁️ 보관 지갑<br/>(Fireblocks vault)
+    participant FB as 보관 지갑<br/>(Fireblocks vault)
     participant BL as 은행 원장<br/>(bank_ledger)
 
     rect rgb(254,243,199)
@@ -86,6 +86,19 @@ sequenceDiagram
 <p style="margin:0">2단계에서 코인이 실제 도착하면 <b>미정산 자산을 닫고(−1,000) 진짜 지갑 자산(+1,000)으로 교체</b>합니다. "임시"라 부르는 이유는 미정산 계정이 정산되면 반드시 0으로 닫혀야 하기 때문입니다. 오래 안 닫히면 정산이 막힌 신호이고, 대사 단계(<a href="06-reconciliation.html">6장</a>)가 이를 감시합니다.</p>
 </div>
 
+<h2 id="pool">실무 기본형 — 사전 민팅 재고 풀 (mint/burn 이 느리기 때문)</h2>
+<p>위 2단계의 "발행사 발행 / 소각"은 <b>수 분~수십 분 이상</b> 걸립니다. 그래서 <b>건별로 발행·소각하지 않고</b>, 코인을 미리 대량 민팅해 <b>재고 풀(pool)</b>로 들고 있다가 거래마다 <b>풀에서 넣고 빼기만</b> 하는 방식이 실무에서 가장 많이 쓰입니다. 발행사/Circle/거래소를 매 건 부르지 않으니 거래가 <b>거의 즉시</b> 끝납니다.</p>
+<div class="table-wrap"><table>
+<thead><tr><th style="width:16%">거래</th><th>풀 동작 (DB-only · 온체인 이동 없음)</th></tr></thead>
+<tbody>
+<tr><td><b>온램프</b></td><td>풀에서 고객에게 <b>할당(out)</b> — customer_ledger 반환채무↑ · bank_ledger 재고↓. 코인이 이미 있으니 <b>즉시 confirmed</b> (코인 미수 delta 불필요).</td></tr>
+<tr><td><b>오프램프</b></td><td>고객 코인을 풀로 <b>회수(in)</b> — customer_ledger 반환채무↓ · bank_ledger 재고↑. 물리적 출금이 없어 <b>즉시</b> (미출금 delta 불필요).</td></tr>
+<tr><td><b>스왑</b></td><td><b>양쪽 모두 풀</b> — 보내는 코인은 회수(in), 받는 코인은 할당(out). 둘 다 DB-only·즉시. 단 <b>두 자산 재고가 다 있어야</b> 하고, 거래 뒤 재고가 한쪽으로 쏠려 <b>FX/재고 위험을 은행이 진다</b>(그게 곧 매매차익·스프레드의 원천 · 실제 FX 는 rebalance 때 정산).</td></tr>
+</tbody>
+</table></div>
+<p>회수한 코인은 다음 거래에 <b>재사용</b>되어 풀이 순환합니다. 느린 <b>민팅·소각은 풀이 상·하한을 벗어날 때만 묶어서(batch rebalance)</b> 일어나고, 그때만 발행사/Circle/거래소를 부릅니다 — <b>아래 1·2·3장의 발행사/Circle/거래소 흐름이 바로 그 rebalance(또는 재고가 비었을 때의 온디맨드) 경로</b>입니다.</p>
+<p class="table-note"><b>트레이드오프</b>: 즉시성·건별 발행 호출/수수료 절감 ↔ 재고에 자본이 묶이고, 풀 상·하한·rebalance·소진 시 fallback(온디맨드)을 관리해야 한다. 스왑은 여기에 <b>두 자산 재고 + 재고 FX 위험</b>이 더해진다. <b>delta(미정산)</b>는 이 방식에선 코인 쪽에선 거의 안 생기고, 외부 정산(법정통화 입출금 등) 타이밍에만 남는다.</p>
+
 <h2>세 거래 한눈 비교</h2>
 <div class="table-wrap">
 <table>
@@ -96,7 +109,7 @@ sequenceDiagram
 <tr><td><b>계정계(법정)</b></td><td>원화 <b>차감</b></td><td>원화 <b>입금</b></td><td>관여 없음</td></tr>
 <tr><td><b>델타 1단계</b></td><td>1줄 (코인 −, 지갑 미수)</td><td>1줄 (코인 +, 지갑 미출금)</td><td>2줄 (보내는 코인 +pending, 받는 코인 −pending)</td></tr>
 <tr><td><b>총계정 변화</b></td><td>부채 ↑</td><td>부채 ↓</td><td>없음 (형태만 바뀜)</td></tr>
-<tr><td><b>손익</b></td><td>거래소 채널이면 스프레드</td><td>매도·상환 수수료·스프레드</td><td>매매 차익(스프레드)</td></tr>
+<tr><td><b>손익</b></td><td>고정 수수료수익 (+ 거래소 채널이면 스프레드)</td><td>고정 수수료수익 + 매도·상환 스프레드</td><td>매매 차익(스프레드) + 고정 수수료수익</td></tr>
 </tbody>
 </table>
 </div>

@@ -18,6 +18,8 @@
 
 <p><b>무엇·언제</b>: 사용자가 가진 스테이블코인을 다른 스테이블코인으로 바꿉니다. 화면에는 "KRWK 줄고 USDC 늘었다"가 곧바로 보이지만, 은행이 실제로 코인을 재조달하는 것은 그 뒤입니다(발행사 소각+발행 또는 거래소 매매). 예시로 <b>시세 1,300 KRWK = 1 USDC</b>, 사용자가 KRWK 1,300 을 USDC 1 로 스왑한다고 하겠습니다.</p>
 
+<p><b>실무 기본형은 사전 민팅 재고 풀입니다.</b> 스왑은 <b>양쪽 모두 풀</b>에서 처리합니다 — KRWK 를 풀로 <b>회수</b>하고 USDC 를 풀에서 <b>할당</b>(DB-only · 즉시 · delta 불필요). 단 두 자산 재고가 다 있어야 하고, 거래 뒤 재고 쏠림으로 <b>FX/재고 위험을 은행이 지며 그게 스프레드(매매차익)</b>가 됩니다. 아래 소각+발행/거래소 매매 흐름은 <b>풀 rebalance(또는 재고 소진)</b> 경로입니다 (→ <a href="index.html#pool">공통 골격: 사전 민팅 재고 풀</a>).</p>
+
 <div class="callout">
 <div class="callout-title">왜 델타가 "두 줄"인가</div>
 <p style="margin:0">스왑은 한쪽 코인 KRWK 가 빠지고 다른 쪽 USDC 가 들어오는 거래입니다. 그래서 미정산 항목이 <b>보내는 코인(KRWK +pending)</b>과 <b>받는 코인(USDC −pending)</b> 양쪽에 한꺼번에 생깁니다. 온·오프램프가 한 줄인 것과 다른 점입니다.</p>
@@ -27,13 +29,13 @@
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
-    participant Cust as 👤 고객
-    participant App as 🏢 은행 App
+    participant Cust as 고객
+    participant App as 은행 App
     participant CL as 고객 원장
     participant DL as 델타 원장
     participant GLE as 총계정 원장
     participant Wk as 정산 워커<br/>(거래소 / 발행사)
-    participant FB as ☁️ 보관 지갑
+    participant FB as 보관 지갑
     participant BL as 은행 원장
 
     rect rgb(254,243,199)
@@ -43,7 +45,7 @@ sequenceDiagram
     App->>CL: KRWK 사용가능 −1,300 · 처리중(out) +1,300
     App->>CL: USDC 처리중(in) +1<br/>(화면: KRWK −1,300 / USDC +1)
     App->>DL: 미정산 2줄 — (KRWK +1,300 pending) · (USDC −1 pending)
-    App->>GLE: 미정산 분개 — KRWK 부채↓ · USDC 부채↑ · 미정산 자산/부채로 균형
+    App->>GLE: 미정산 분개 — KRWK 부채↓(미정산자산 대) · USDC 부채↑(미정산자산 차)로 양쪽 균형
     App-->>Cust: "스왑 처리중" 알림
     end
 
@@ -54,11 +56,12 @@ sequenceDiagram
     App->>CL: KRWK 처리중 −1,300 · USDC 처리중 −1 · USDC 사용가능 +1<br/>(화면: 스왑 완료)
     App->>DL: 미정산 2줄 → settled
     App->>GLE: 정산 분개 — USDC 지갑자산↑ · KRWK 지갑자산↓ · 미정산 계정 마감
-    App->>BL: (스프레드/수수료 있으면) 매매차익 인식
+    App->>BL: 지갑 자산 캐시 갱신 (KRWK↓ · USDC↑)
+    App->>GLE: (스프레드/수수료 있으면) 매매차익/손실 분개
     App-->>Cust: "스왑 완료" 알림
     end
 </pre></div>
-<p class="diagram-caption">Figure 1. 스왑 흐름. 1단계에서 델타 2줄이 KRWK·USDC 양쪽 미정산을 잡아 항등식을 유지하고, 2단계 정산에서 둘 다 마감된다. 보관 지갑(Fireblocks)은 받기/보내기만 하고, 발행·소각 권한은 발행사에 있다.</p>
+<p class="diagram-caption">Figure 3. 스왑 흐름. 1단계에서 델타 2줄이 KRWK·USDC 양쪽 미정산을 잡아 항등식을 유지하고, 2단계 정산에서 둘 다 마감된다. 보관 지갑(Fireblocks)은 받기/보내기만 하고, 발행·소각 권한은 발행사에 있다.</p>
 
 <h2>핵심 포인트</h2>
 <ul>
@@ -67,7 +70,7 @@ sequenceDiagram
 <li><b>손익은 2단계에서</b> — 거래소 매매 채널을 쓰면 시세 스프레드가 생겨 매매차익이나 손실을 따로 분개합니다.</li>
 </ul>
 
-<p class="foot">분개(차변·대변) 상세: <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a>.</p>
+<p class="foot">이 거래의 DB row 변화: <a href="05-db-changes.html#swap">5장 ③ 스왑</a> · 분개(차변·대변) 상세: <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a>.</p>
 
 <div class="pager">
 <a href="02-offramp.html">← 2. 오프램프</a>

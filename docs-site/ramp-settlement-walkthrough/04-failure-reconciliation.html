@@ -21,12 +21,12 @@
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
-    participant Set as 🏛 정산처 / 보관 지갑
-    participant App as 🏢 은행 App
+    participant Set as 정산처 / 보관 지갑
+    participant App as 은행 App
     participant CL as 고객 원장
     participant DL as 델타 원장
     participant GLE as 총계정 원장
-    participant Cust as 👤 고객
+    participant Cust as 고객
 
     rect rgb(254,226,226)
     Note over Set,GLE: ★ 2단계 정산 실패
@@ -49,7 +49,7 @@ sequenceDiagram
 <p style="margin:0">되돌리기는 <b>한 건</b>을 원상복구하는 일입니다. 그렇게 처리한 장부 전체가 서로 맞는지, stuck 미정산이 떠 있지 않은지 주기적으로 검증하는 <b>대사 4단계</b>는 다음 장에서 다룹니다 — 델타 원장이 거기서 핵심 역할을 합니다(<a href="06-reconciliation.html">6장. 대사·결산</a>).</p>
 </div>
 
-<p class="foot">DB row 변화로 보는 되돌리기: <a href="05-db-changes.html">5장 ④</a> · 원장·분개: <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a>.</p>
+<p class="foot">DB row 변화로 보는 되돌리기: <a href="05-db-changes.html#failure">5장 ④ (충전 실패 예시)</a> · 원장·분개: <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a>.</p>
 
 <div class="pager">
 <a href="03-swap.html">← 3. 스왑</a>

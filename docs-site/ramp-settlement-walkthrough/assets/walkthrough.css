@@ -61,6 +61,7 @@ h2 {
   letter-spacing: -0.01em; border-top: 1px solid var(--line);
 }
 h3 { font-size: 16.5px; margin: 26px 0 8px; color: var(--navy); }
+h2[id], h3[id] { scroll-margin-top: 16px; }
 
 /* "익숙한 것 ↔ 깨지는 지점" 머리 박스 */
 .hook {
