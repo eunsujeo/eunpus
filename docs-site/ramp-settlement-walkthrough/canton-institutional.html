@@ -34,39 +34,51 @@
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
+    participant Cust as 👤 고객 (앱)
     participant App as 🏢 백엔드
     participant L as 4원장 (CL·DL·GLE)
     participant Set as 정산처 / 체인
-    Note over App,Set: 화면 먼저 · 정산 나중 (낙관적)
+    Note over Cust,Set: 고객 앱에서 시작 · 화면 먼저 · 정산 나중 (낙관적)
+    Cust->>App: 충전/환전/스왑 요청
     App->>L: 1단계 — 선반영 (confirmed 표시 · delta pending)
+    App-->>Cust: "처리중"
     App->>Set: 정산 요청
     Set-->>App: 완료 또는 실패
     alt 성공
         App->>L: 2단계 — delta settled · 실계정 확정
+        App-->>Cust: "완료"
     else 실패
         App->>L: rollback — delta cancelled · 선반영 원복(정정 분개)
+        App-->>Cust: "실패 · 잔액 원복"
     end
 </pre></div>
-<p class="diagram-caption">retail 은 사용자 UX 때문에 1단계에 미리 반영하고, 실패하면 되돌린다. delta 가 그 시점차와 되돌림의 근거가 된다.</p>
+<p class="diagram-caption">retail 은 <b>고객 앱</b>에서 시작한다. 사용자 UX 때문에 1단계에 미리 반영하고, 실패하면 되돌린다. delta 가 그 시점차와 되돌림의 근거가 된다.</p>
 
 <h3>기관간 (Canton) — atomic, 선반영 없음</h3>
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
+    participant Ops as 🖥 운영 콘솔 (Initiator·Approver)
     participant App as 🏢 백엔드
     participant L as 4원장 (+counterparty · instruction)
     participant DvP as Canton atomic DvP
-    Note over App,DvP: 전부 확정 또는 전부 무산 (원자)
+    Note over Ops,DvP: 운영 콘솔에서 시작 · dual control · 전부 확정 또는 전부 무산 (원자)
+    Ops->>App: 정산 지시 생성 (Initiator)
     App->>L: instruction 기록 (PENDING · 아직 미반영)
+    App-->>Ops: instruction id · 상태 PENDING
+    Ops->>App: 승인 (Approver · dual control)
+    App-->>Ops: 승인 접수
     App->>DvP: ExecuteSettlement (attestation 검증 후에만)
     DvP-->>App: 원자 확정 (N-leg 전부) 또는 전체 실패
     alt 원자 성공
         App->>L: 1회 기록 — N-leg delta 전부 settled · 실계정 확정
+        App-->>Ops: SETTLED (대시보드 갱신)
     else 실패 / 만료
         App->>L: instruction FAILED — 기록만 (선반영 없어 원복 불필요)
+        App-->>Ops: FAILED / EXPIRED (대시보드 갱신)
     end
 </pre></div>
-<p class="diagram-caption">기관간은 atomic finality 전에 미리 반영하지 않는다. N 개 leg 가 한 instruction 으로 묶여 동시에 settled 되거나 동시에 무산되므로, 부분 정산도 rollback 도 없다. (Musubi PoC: 주문 상태 PENDING→QUOTED→EXECUTING→SETTLED, EXECUTING 진입 후 불가역 · attestation 선조건)</p>
+<p class="diagram-caption">기관간은 고객 앱이 아니라 <b>운영 콘솔(대시보드)</b>에서 운영자가 시작하고 <b>Initiator·Approver dual control</b>을 거친다. atomic finality 전엔 미리 반영하지 않으며, N 개 leg 가 한 instruction 으로 묶여 동시에 settled 되거나 동시에 무산되므로 부분 정산도 rollback 도 없다. (Musubi PoC: 콘솔 역할 Initiator/Approver/Observer · 주문 상태 PENDING→QUOTED→EXECUTING→SETTLED · EXECUTING 후 불가역 · attestation 선조건)</p>
 
 <h2>바뀌어야 할 4가지</h2>
 <div class="table-wrap"><table>
