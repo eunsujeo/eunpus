@@ -14,11 +14,11 @@
 <a href="index.html">목차</a><span class="cur">1</span><a href="02-offramp.html">2</a><a href="03-swap.html">3</a><a href="04-failure-reconciliation.html">4</a><a href="05-db-changes.html">5</a><a href="06-reconciliation.html">6</a>
 </div>
 <h1>온램프 — 법정통화 → 코인 (충전)</h1>
-<p class="subtitle">원화를 차감하고 코인을 받는 충전. 발행 권한은 발행사에만 있고 은행은 요청만 한다</p>
+<p class="subtitle">원화를 차감하고 코인을 받는 충전. 은행 풀에서 고객으로 코인이 옮겨 가며, DB 는 즉시·블록체인 전송은 15분 배치로 처리한다</p>
 
-<p><b>무엇·언제</b>: 사용자가 원화(KRW)로 스테이블코인을 충전합니다. 받는 코인은 1단계에서 "처리중"으로만 잡아 두고, 발행사나 조달처가 실제 코인을 보관 지갑에 넣어주는 2단계에 와서야 "사용가능"이 됩니다. 충전은 고객에게 돌려줄 코인이 늘어나는 일이므로 <b>총계정상 부채가 늘어납니다</b>.</p>
+<p><b>무엇·언제</b>: 사용자가 원화(KRW)로 스테이블코인을 충전합니다. 충전은 <b>은행 풀에서 고객으로</b> 코인이 옮겨 가는 일입니다. DB 는 1단계에서 즉시 반영하고, 같은 코인이 풀과 고객 사이에서 실제로 옮겨 가는 <b>블록체인 전송은 15분 배치</b>로 모아서 처리합니다. 충전은 고객에게 돌려줄 코인이 늘어나는 일이므로 <b>총계정상 부채가 늘어납니다</b>.</p>
 
-<p><b>실무 기본형은 사전 민팅 재고 풀입니다.</b> 발행이 느려서(수 분~수십 분+), 보통은 미리 민팅해 둔 <b>재고에서 고객에게 할당만</b> 합니다 — DB-only · 거의 즉시 · 코인 미수(delta) 불필요. 아래 발행사 흐름은 <b>재고를 보충(rebalance)하거나 재고가 비었을 때</b>의 실제 발행 경로입니다 (→ <a href="index.html#pool">공통 골격: 사전 민팅 재고 풀</a>).</p>
+<p><b>실무 기본형은 사전 민팅 재고 풀입니다.</b> 발행이 느려서(수 분~수십 분+), 평상시에는 미리 민팅해 둔 <b>재고 풀에서 고객에게 할당만</b> 합니다 — 발행사·Circle·거래소는 끼지 않습니다. 발행사/Circle/거래소가 등장하는 것은 <b>풀을 다시 채우는 rebalance(또는 재고가 비었을 때)</b> 뿐입니다. 아래 다이어그램의 발행사·조달처 흐름은 그 <b>재고 보충 경로</b>입니다 (→ <a href="index.html#pool">공통 골격: 사전 민팅 재고 풀</a>).</p>
 
 <div class="callout">
 <div class="callout-title">발행(mint) 권한은 누구에게</div>
@@ -38,39 +38,35 @@ sequenceDiagram
     participant CL as 고객 원장
     participant DL as 델타 원장
     participant GLE as 총계정 원장
-    participant JV as 발행사
-    participant FB as 보관 지갑
+    participant FB as 보관 지갑(풀·고객)
     participant BL as 은행 원장
 
     rect rgb(254,243,199)
-    Note over Cust,GLE: ★ 1단계 — 즉시
+    Note over Cust,GLE: ★ 1단계 — DB 즉시 (델타 PENDING 적재)
     Cust->>App: 온램프 요청 KRW 1,000 → KRWK 1,000
-    App->>App: 검증 (본인확인 · 한도 · 계정계 잔액)
-    App->>CL: KRWK 처리중(in) +1,000 (화면: 처리중 +1,000 KRWK)
-    App->>DL: 미정산 1줄 — (KRWK −1,000 pending · 지갑 미수)
-    App->>GLE: 미정산 분개 — KRWK 미정산자산↑ · 반환채무↑
-    App-->>Cust: "충전 처리중" 알림
+    App->>App: 검증 (본인확인 · 한도 · 계정계 잔액 · 풀 가용)
+    App->>Acct: KRW 1,000 차감
+    Acct-->>App: 차감 완료
+    App->>CL: KRWK 사용가능 +1,000 (화면: 즉시 +1,000 KRWK)
+    App->>DL: 델타 PENDING 1줄 — 은행 풀 → 고객 KRWK 1,000 (블록체인 전송 전)
+    App->>GLE: 미정산 분개 — KRWK 전송전자산↑ · 반환채무↑
+    App-->>Cust: "충전 완료 (전송 정산 대기)" 알림
     end
 
     rect rgb(220,252,231)
-    Note over Acct,FB: ★ 2단계 — 원화 차감 + 발행 + 지갑 도착
-    App->>Acct: KRW 1,000 차감
-    Acct-->>App: 차감 완료
-    App->>JV: KRWK 1,000 발행 요청 (받는 곳: 은행 지갑)
-    JV-->>App: 발행 접수
-    JV->>FB: KRWK 1,000 발행 → 은행 지갑
-    FB-->>App: 지갑 입금 통지 (KRWK +1,000)
-    App->>BL: KRWK 지갑자산 +1,000 (실제 도착)
-    App->>CL: KRWK 처리중 −1,000 · 사용가능 +1,000 (화면: 사용 가능)
-    App->>DL: settled
-    App->>GLE: 정산 분개 — KRWK 지갑자산↑ · 미정산자산 마감
-    App-->>Cust: "충전 완료" 알림
+    Note over App,BL: ★ 2단계 — 15분 블록체인 배치 (풀 → 고객 전송)
+    App->>FB: 15분 배치 — 은행 풀 지갑 → 고객 지갑 KRWK 1,000 전송
+    FB-->>App: 온체인 전송 확정 통지 (KRWK +1,000)
+    App->>BL: KRWK 풀 지갑자산 −1,000 · 고객 지갑자산 +1,000 (온체인 반영)
+    App->>DL: 델타 settled (PENDING 마감)
+    App->>GLE: 정산 분개 — KRWK 전송전자산 마감
+    App-->>Cust: "전송 정산 완료" 알림
     end
 </pre></div>
-<p class="diagram-caption">Figure 1-A. 원화코인 충전. 1:1 고정이라 시세 변동이 없고, 은행 원장은 코인이 실제 도착한 2단계에서만 갱신된다.</p>
+<p class="diagram-caption">Figure 1-A. 원화코인 충전. 1단계에서 DB·고객 잔액은 즉시 반영하고 델타를 PENDING 으로 적재하며, 2단계 15분 배치가 은행 풀 → 고객 지갑 온체인 전송을 마쳐 settled 한다. 1:1 고정이라 시세 변동은 없다. 발행사 발행은 풀을 다시 채우는 rebalance 경로로 이 흐름에는 등장하지 않는다.</p>
 
 <h2>▸ Case B — 원화 → 달러코인 (Circle 또는 거래소)</h2>
-<p style="color:var(--muted);font-size:13px">예시: 시세는 1,300 KRW/USD. 사용자가 1,300 KRW 를 내면 USDC 1 을 받습니다. 조달 채널은 둘인데, Circle 직접 발행은 시세가 고정돼 안정적이고 거래소 매입은 스프레드가 붙습니다.</p>
+<p style="color:var(--muted);font-size:13px">예시: 시세는 1,300 KRW/USD. 사용자가 1,300 KRW 를 내면 USDC 1 을 받습니다. 평상시 충전은 미리 확보해 둔 풀에서 할당하므로 흐름은 원화코인과 같습니다. 풀을 채우는 조달 채널(Circle 직접 발행 · 거래소 매입, 스프레드)은 별도의 rebalance 경로입니다.</p>
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
@@ -80,51 +76,38 @@ sequenceDiagram
     participant CL as 고객 원장
     participant DL as 델타 원장
     participant GLE as 총계정 원장
-    participant Src as Circle / 거래소
-    participant FB as 보관 지갑
+    participant FB as 보관 지갑(풀·고객)
     participant BL as 은행 원장
 
     rect rgb(254,243,199)
-    Note over Cust,GLE: ★ 1단계 — 즉시
+    Note over Cust,GLE: ★ 1단계 — DB 즉시 (델타 PENDING 적재)
     Cust->>App: 온램프 요청 KRW 1,300 → USDC 1
-    App->>App: 검증 (시세 1,300원/USD)
-    App->>CL: USDC 처리중(in) +1 (화면: 처리중 +1)
-    App->>DL: 미정산 1줄 — (USDC −1 pending · 지갑 미수)
-    App->>GLE: 미정산 분개 — USDC 미정산자산↑ · 반환채무↑(1,300원)
-    App-->>Cust: "충전 처리중" 알림
+    App->>App: 검증 (시세 1,300원/USD · 풀 가용)
+    App->>Acct: KRW 1,300 차감
+    Acct-->>App: 차감 완료
+    App->>CL: USDC 사용가능 +1 (화면: 즉시 +1)
+    App->>DL: 델타 PENDING 1줄 — 은행 풀 → 고객 USDC 1 (블록체인 전송 전)
+    App->>GLE: 미정산 분개 — USDC 전송전자산↑ · 반환채무↑(1,300원)
+    App-->>Cust: "충전 완료 (전송 정산 대기)" 알림
     end
 
     rect rgb(220,252,231)
-    Note over Acct,FB: ★ 2단계 — 원화 차감 + 조달 + 지갑 도착
-    App->>Acct: KRW 1,300 차감
-    Acct-->>App: 완료
-    alt (a) Circle 직접
-        App->>Src: Circle 발행 요청 (USDC 1 → 은행 지갑)
-        Src-->>App: 발행 접수
-        Src->>FB: USDC 1 발행
-    else (b) 외부 거래소
-        App->>Src: 거래소 USDC 1 매입 (KRW 1,300 + 스프레드)
-        Src-->>App: 매입 체결
-        Src->>FB: USDC 1 전송 → 은행 지갑
-    end
-    FB-->>App: 지갑 입금 통지 (USDC +1)
-    App->>BL: USDC 지갑자산 +1
-    App->>CL: USDC 처리중 −1 · 사용가능 +1 (화면: 사용 가능)
-    App->>DL: settled
-    App->>GLE: 정산 분개 — USDC 지갑자산↑ · 미정산자산 마감
-    opt 거래소 채널 — 스프레드
-        App->>GLE: 손익 분개 (외환매매수익/손실)
-    end
-    App-->>Cust: "충전 완료" 알림
+    Note over App,BL: ★ 2단계 — 15분 블록체인 배치 (풀 → 고객 전송)
+    App->>FB: 15분 배치 — 은행 풀 지갑 → 고객 지갑 USDC 1 전송
+    FB-->>App: 온체인 전송 확정 통지 (USDC +1)
+    App->>BL: USDC 풀 지갑자산 −1 · 고객 지갑자산 +1 (온체인 반영)
+    App->>DL: 델타 settled (PENDING 마감)
+    App->>GLE: 정산 분개 — USDC 전송전자산 마감
+    App-->>Cust: "전송 정산 완료" 알림
     end
 </pre></div>
-<p class="diagram-caption">Figure 1-B. 달러코인 충전. 두 조달 채널의 회계 구조는 같으며, 거래소 채널에만 스프레드 손익이 더해진다.</p>
+<p class="diagram-caption">Figure 1-B. 달러코인 충전. 평상시 흐름은 원화코인과 동일하다 — 1단계 DB 즉시 + 델타 PENDING, 2단계 15분 배치로 풀 → 고객 온체인 전송 후 settled. Circle 발행·거래소 매입은 풀을 채우는 rebalance 경로라 이 흐름에는 등장하지 않으며, 스프레드 손익도 그쪽에서 발생한다.</p>
 
 <h2>핵심 포인트</h2>
 <ul>
-<li><b>받는 쪽이라 1단계는 "처리중"만</b> — 사용가능 잔액은 코인이 실제 도착하는 2단계에서 올라갑니다.</li>
-<li><b>계정계(원화)는 2단계에서 차감</b> — 1단계의 화면 응답과 분리해 비동기로 처리합니다.</li>
-<li><b>은행 원장은 2단계에서만</b> — 지갑에 코인이 실제 도착한 뒤에 자산을 인식합니다.</li>
+<li><b>1단계 = DB 즉시 + 델타 PENDING</b> — 고객 사용가능 잔액은 1단계에서 바로 올라가고, 풀에서 고객으로의 이동은 "DB 는 됐지만 블록체인 전송 전" 상태로 델타 큐에 PENDING 으로 쌓입니다.</li>
+<li><b>2단계 = 15분 블록체인 배치</b> — 모아 둔 PENDING 을 은행 풀 지갑 → 고객 지갑 온체인 전송으로 처리한 뒤 settled 로 마감합니다.</li>
+<li><b>풀 가용 = 실제 잔액 − 미정산 PENDING</b> — 나가는 거래는 이 가용분 안에서만 승인해, 아직 전송 전인 코인을 중복 사용하지 않습니다. 델타는 계정계와 무관합니다.</li>
 </ul>
 
 <p class="foot">이 거래의 DB row 변화: <a href="05-db-changes.html#onramp">5장 ① 온램프</a> · 분개 상세: <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a>.</p>

@@ -9,84 +9,91 @@
 </head>
 <body>
 <div class="wrap">
-<p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
+<p class="series"><a href="index.html">지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</a></p>
 <div class="progress">
 <a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-estimate-fee.html">5</a><a href="06-withdrawal.html">6</a><span class="cur">7</span><a href="08-switch-extend.html">8</a>
 </div>
 <h1>잔액과 내역 조회 — getBalance · transactionsOf</h1>
 <p class="subtitle">고객 화면의 두 숫자, 그런데 잔액은 숫자 하나가 아니다</p>
 
-<p><b>무엇·언제</b>: 고객 홈 화면의 잔액과 거래내역 화면이 부르는 읽기 동사 둘입니다. 먼저 잔액의 규칙. <b>잔액은 세 칸입니다.</b> <b>가용</b>(available — 출금에 쓸 수 있는 돈), <b>대기</b>(pending — 들어왔지만 아직 확정 전, 4p), <b>잠김</b>(locked — 나가는 중인데 상대 수락 대기, 6p). 출금 가능 판정은 <b>가용만</b> 봅니다. 대기·잠김을 합쳐 보여주는 화면이야 자유지만, 합쳐서 <b>판정</b>하는 순간 없는 돈을 쓰게 됩니다.</p>
+<p><b>무엇·언제</b>: 고객 홈 화면의 잔액과 거래내역 화면이 부르는 읽기 동사 둘입니다. 먼저 잔액의 규칙. <b>잔액은 세 칸입니다.</b> <b>가용</b>(available — 출금에 쓸 수 있는 돈), <b>대기</b>(pending — 들어왔지만 아직 확정 전, 4p), <b>잠김</b>(locked — 나가는 중이거나 정책상 묶인 돈, 6p). 출금 가능 판정은 <b>가용만</b> 봅니다. 대기·잠김을 합쳐 보여주는 화면이야 자유지만, 합쳐서 <b>판정</b>하는 순간 없는 돈을 쓰게 됩니다.</p>
 
-<pre><code>getBalance(account, asset) → { available, pending, locked }
+<pre><code>getBalance(account, asset) → Balance(available, pending, locked)
 transactionsOf(account, 기간) → 입출금 내역 (시간순)</code></pre>
 
-<h2>▸ 자체 분면 — 잔액·내역은 4·6페이지의 부산물이다</h2>
+<div class="callout">
+<div class="callout-title">잔액은 우리가 계산하지 않는다 — 벤더가 주는 값을 읽고 대사한다</div>
+<p style="margin:0 0 8px">Fireblocks 를 매니저로 채택했으므로 <b>우리는 인덱서도 잔액 파이프라인도 만들지 않습니다.</b> 잔액은 Fireblocks 의 <code>getVaultAccountAsset</code> 이 돌려주는 값이고, 우리 포트는 그 응답을 우리 업무 타입 <code>Balance(available, pending, locked)</code> 로 옮겨 담을 뿐입니다. 내역도 마찬가지로 Fireblocks 거래 목록 조회를 부릅니다.</p>
+<p style="margin:0">그래서 이 페이지의 핵심은 "어떻게 계산하나"가 아니라 <b>"벤더가 준 세 값을 어떻게 읽고, 우리 기록과 어떻게 맞추나"</b>입니다. 값은 벤더의 것이되, 회계가 걸리는 숫자는 <b>주기적으로 우리 기록과 대사</b>합니다(이 페이지 마지막 절).</p>
+</div>
+
+<h2>세 칸은 어디서 오나 — 벤더 응답을 우리 타입으로</h2>
+
+<p>Fireblocks 의 <code>getVaultAccountAsset</code> 응답에는 자산별로 여러 필드가 들어 있습니다. 그중 우리가 쓰는 세 칸으로 이렇게 접습니다.</p>
+
+<table>
+<thead><tr><th style="width:16%">우리 칸</th><th style="width:30%">Fireblocks 필드</th><th>뜻</th></tr></thead>
+<tbody>
+<tr><td><b>가용</b> (available)</td><td><code>available</code></td><td>확정되어 지금 출금에 쓸 수 있는 잔액 (= 블록체인 잔액 − 잠김분)</td></tr>
+<tr><td><b>대기</b> (pending)</td><td><code>pending</code></td><td>들어오는 중이지만 아직 확정 전 — 확정 임계에 도달하면 가용으로 옮겨간다</td></tr>
+<tr><td><b>잠김</b> (locked)</td><td><code>lockedAmount</code> + <code>frozen</code></td><td>나가는 중(전파 전 출금)이거나 정책상 묶인(AML freeze) 돈</td></tr>
+</tbody>
+</table>
+<p class="table-note">Fireblocks 응답 필드는 <code>available</code> / <code>pending</code> / <code>frozen</code>(AML freeze) / <code>lockedAmount</code>(전파 전 출금) / <code>staked</code>(일부 체인 전용) 등이다. 우리는 이 중 <b>가용·대기·잠김</b> 세 칸만 업무 타입으로 노출하고, 잠김은 <code>lockedAmount</code> 와 <code>frozen</code> 을 합쳐 본다. (source: vault-account API contract) EVM(이더리움·Base)에는 staking 칸이 없어 세 칸으로 충분하다.</p>
+
+<h2>세 칸을 가르는 선 — confirm 과 finality</h2>
+
+<p>대기와 가용을 나누는 것은 <b>확정</b>입니다. 4·6페이지에서 본 규칙 그대로예요. 돈이 체인에 <b>등장(confirm)</b>했다고 곧바로 쓸 수 있는 게 아니라, 확정 정책이 정한 임계 confirmation 수에 <b>도달(finality)</b>해야 가용이 됩니다. Fireblocks 는 이 전이를 상태와 confirmation 카운트로 드러냅니다.</p>
 
 <div class="diagram"><pre class="mermaid">
-sequenceDiagram
-    autonumber
-    participant BE as 지갑 백엔드
-    box rgb(239,246,255) 블록체인 매니저
-    participant MGR as 자체 매니저
-    participant PJ as 인덱서 기록 (수신 — 4p)
-    participant TX as 파이프라인 기록 (송신 — 6p)
-    end
+flowchart LR
+    IN["입금 등장<br/>confirm — 체인에 올라옴"]
+    PEND["대기 (pending)<br/>Fireblocks CONFIRMING<br/>numOfConfirmations &lt; 임계"]
+    AVAIL["가용 (available)<br/>Fireblocks COMPLETED<br/>임계 도달 = finality"]
+    LOCK["잠김 (locked)<br/>나가는 중 · 정책 보류"]
 
-    BE->>MGR: getBalance(계정, 자산)
-    MGR->>PJ: 확정 입금 합산 (+ 대기분 별도)
-    PJ-->>MGR: 입금 합계
-    MGR->>TX: 나가는 중·잠김 차감 반영
-    TX-->>MGR: 송신 차감분
-    MGR-->>BE: { 가용, 대기, 잠김 }
+    IN --> PEND
+    PEND -->|"confirmation 누적<br/>임계 도달"| AVAIL
+    AVAIL -->|"출금 제출 (6p)"| LOCK
 
-    BE->>MGR: transactionsOf(계정, 기간)
-    MGR->>PJ: 수신 내역
-    PJ-->>MGR: 수신 목록
-    MGR->>TX: 송신 내역 — "보내는 중"(전파 전 기록 덕) 포함
-    TX-->>MGR: 송신 목록
-    MGR-->>BE: 병합·시간순 정렬
+    classDef pend fill:#fef3c7,stroke:#d97706;
+    classDef avail fill:#dcfce7,stroke:#16a34a;
+    classDef lock fill:#eef2ff,stroke:#818cf8;
+    classDef neutral fill:#f5f5f7,stroke:#86868b;
+    class PEND pend; class AVAIL avail; class LOCK lock; class IN neutral;
 </pre></div>
-<p class="diagram-caption">따로 만드는 기능이 아니다. 입금(4p)이 쌓은 기록과 출금(6p)이 단계마다 남긴 기록을 합쳐 읽을 뿐이다. 출금을 전파 <b>전에</b> 기록해 둔 덕에 내역에 "보내는 중" 상태까지 보여줄 수 있다. 체인 차이는 둘이다. 하나는 잔액의 원천으로, 이더리움은 인덱서 기록을 합산하고 Canton 은 노드의 보유 자산을 합산한다. 다른 하나는 잠김의 출처다. 이더리움은 전파 후 곧 확정을 추적하므로 잠김이 거의 없는 반면, <b>Canton 은 수락 대기 출금이 잠김 칸에 그대로 나타난다.</b> 고객이 "내 돈 어디 갔어요?"라고 물을 때 보여줄 칸이 있어야 한다.</p>
+<p class="diagram-caption">세 칸을 가르는 건 <b>confirm(체인 등장) → finality(임계 도달)</b> 전이 하나다. "곧 들어올 입금"은 대기 칸에 머물다가, 확정 정책 임계에 도달해 finality 가 나면 가용으로 옮겨간다. Fireblocks 상태로는 <b>CONFIRMING</b>(대기) 에서 <b>COMPLETED</b>(가용) 로의 전이이고, 그 경계 판단은 <b>numOfConfirmations</b> 가 확정 정책 임계를 넘었는지로 한다. 출금을 제출하면 그만큼이 가용에서 <b>잠김</b>으로 빠진다.</p>
 
-<p class="table-note">이 <b>가용·대기·잠김</b> 세 칸은 회계 층의 <b>confirmed·pending_in·pending_out</b> 과 같은 버킷이다(가용=confirmed, 대기=pending_in, 잠김=pending_out). 회계 원장에서 어떻게 채워지는지는 <a href="../ramp-settlement-walkthrough/05-db-changes.html">정산 워크스루의 DB 상태 변화</a> 참고.</p>
+<div class="callout">
+<div class="callout-title">확정 임계는 정책(DCCP)이 정한다 — 대부분 1, 예외가 있다</div>
+<p style="margin:0 0 8px">Fireblocks 거래 상태는 전파 뒤 <b>BROADCASTING → CONFIRMING → COMPLETED</b> 로 흐릅니다. <b>COMPLETED = 확정 정책이 정한 임계 confirmation 수에 도달</b>한 상태이고, 그때가 우리 기준의 finality 입니다. 그 임계는 확정 정책(Fireblocks 의 DCCP)이 체인별로 정하는데, <b>기본값은 대부분 1 confirmation</b>입니다. 예외로 이더리움 클래식은 372, 컨트랙트 호출은 3 confirmation 을 권장 최소로 둡니다. (source: transaction / DCCP)</p>
+<p style="margin:0">그래서 대기↔가용 경계는 우리가 블록을 세서 정하는 게 아니라 <b>벤더가 정책대로 계산해 상태로 알려주는</b> 값입니다. 우리는 상태(CONFIRMING/COMPLETED)와 numOfConfirmations 를 <b>읽어서</b> 세 칸에 반영합니다. 이더리움과 Base 는 같은 EVM 이라 이 흐름이 동일합니다.</p>
+</div>
 
-<h2>▸ Fireblocks 분면 — 두 호출 다 벤더 API 한 번</h2>
+<h2>두 호출 다 벤더 API 한 번</h2>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
     participant BE as 지갑 백엔드
     box rgb(239,246,255) 블록체인 매니저
-    participant FBI as Fireblocks 구현
+    participant FBI as Fireblocks 구현 (포트)
     participant FB as Fireblocks (SaaS)
     end
 
     BE->>FBI: getBalance(계정, 자산)
-    FBI->>FB: vault 잔액 API — 가용·대기·잠김을 구분해 준다
-    FB-->>FBI: 잔액
-    FB-->>BE: { 가용, 대기, 잠김 }
+    FBI->>FB: getVaultAccountAsset — 가용·대기·잠김 필드를 준다
+    FB-->>FBI: 자산 잔액 (available · pending · lockedAmount · frozen …)
+    FBI-->>BE: Balance(가용, 대기, 잠김)
 
     BE->>FBI: transactionsOf(계정, 기간)
-    FBI->>FB: 거래 목록 API (벤더가 입·출금 양방향 기록)
-    FB-->>FBI: 내역
-    FB-->>BE: 내역
+    FBI->>FB: 거래 목록 조회 (입·출금 양방향, 상태 포함)
+    FB-->>FBI: 내역 (상태 · numOfConfirmations 포함)
+    FBI-->>BE: 시간순 내역
 </pre></div>
-<p class="diagram-caption">벤더가 양방향을 다 기록하므로 병합이 필요 없다. 단 회계가 걸리는 숫자는 벤더 잔액과 우리 기록을 주기적으로 대조한다. 4p 의 "통지는 힌트" 규칙이 잔액에도 적용되는 셈이다. Canton 자산의 잠김(수락 대기)이 벤더 응답에 어떻게 표현되는지는 적용 전 확인.</p>
+<p class="diagram-caption">벤더가 입·출금을 다 기록하므로 우리 쪽 병합이 필요 없다. 포트 구현이 하는 일은 벤더 필드를 우리 세 칸으로 <b>접는 것</b>과, 벤더 상태(CONFIRMING/COMPLETED)를 4·6페이지의 공통 어휘로 <b>번역하는 것</b>뿐이다. 단 회계가 걸리는 숫자는 벤더 잔액과 우리 기록을 <b>주기적으로 대조</b>한다 — 4p 의 "통지는 힌트" 규칙이 잔액에도 적용되는 셈이다.</p>
 
-<h2>4분면 비교</h2>
-
-<table>
-<thead><tr><th style="width:18%"></th><th>자체 × 이더리움</th><th>자체 × Canton</th><th>FB × 이더리움</th><th>FB × Canton</th></tr></thead>
-<tbody>
-<tr><td><b>잔액 출처</b></td><td>인덱서 기록 합산</td><td>노드 보유 자산 합산</td><td>벤더 API</td><td>벤더 API</td></tr>
-<tr><td><b>잠김의 의미</b></td><td>거의 없음</td><td><b>수락 대기 출금 (6p)</b></td><td>벤더 정의</td><td>수락 대기 (표현 확인)</td></tr>
-<tr><td><b>내역 출처</b></td><td>수신+송신 기록 병합</td><td>병합 (memo 귀속 포함)</td><td>목록 API 한 번</td><td>목록 API 한 번</td></tr>
-<tr><td><b>"보내는 중" 표시</b></td><td>가능 (전파 전 기록 덕)</td><td>가능 + 수락 대기 상태</td><td>벤더 상태 그대로</td><td>벤더 상태 그대로</td></tr>
-</tbody>
-</table>
-
-<p>경계 하나만 분명히 해 둡니다. 이 동사들은 <b>우리 고객 계정</b>을 조회합니다. 임의 외부 주소(우리 고객이 아닌 지갑)의 잔액·이력 조회는 Fireblocks 가 주지 않는 별개 기능이라, 필요해지면 자체 인덱서를 그 용도로 따로 둡니다. custody 와 독립적인 선택이므로 전환(8p)과도 무관합니다.</p>
+<p>경계 하나만 분명히 해 둡니다. 이 동사들은 <b>우리 고객 계정(vault)</b>을 조회합니다. 우리 고객이 아닌 임의 외부 주소의 잔액·이력 조회는 Fireblocks 가 이 API 로 주는 기능이 아니라, 정말 필요해지면 그 용도의 조회 수단을 따로 둡니다. 고객 계정 조회와는 별개의 선택입니다.</p>
 
 <h2>백엔드에서 이렇게 부른다 — 판정은 가용만</h2>
 
@@ -94,31 +101,49 @@ sequenceDiagram
 suspend fun canWithdraw(account: Account, asset: Asset, amount: Amount): Boolean =
     accounts.getBalance(account, asset).available >= amount
 
-// 내역 화면 — 입출금이 합쳐진 한 목록
-suspend fun historyScreen(account: Account, range: BlockRange): List<Transfer> =
-    transactions.transactionsOf(account, range)    // 자체 분면이면 "보내는 중" 상태까지 포함</code></pre>
-<p class="diagram-caption">판정 코드에 available 만 쓴다. 이 페이지 첫 단락의 규칙이 코드 한 줄로 강제되는 자리다.</p>
+// 잔액 화면 — 세 칸을 그대로 보여준다 (합쳐 보여주더라도 판정엔 안 쓴다)
+suspend fun balanceScreen(account: Account, asset: Asset): Balance =
+    accounts.getBalance(account, asset)              // 벤더 값을 읽어 온 그대로
+
+// 내역 화면 — 입출금이 합쳐진 한 목록 (벤더가 양방향 기록)
+suspend fun historyScreen(account: Account, range: BlockRange): List&lt;Transfer&gt; =
+    transactions.transactionsOf(account, range)</code></pre>
+<p class="diagram-caption">판정 코드에 available 만 쓴다. 이 페이지 첫 단락의 규칙이 코드 한 줄로 강제되는 자리다. "곧 들어올" 대기분은 화면엔 보여도 판정엔 절대 들어가지 않는다 — finality 전이라 아직 우리 돈이 아니기 때문이다.</p>
+
+<h2>두 백엔드가 각각 부른다 — 화면은 Service, 대사는 Service·Admin</h2>
+
+<p>같은 두 동사라도 <b>부르는 백엔드</b>가 갈립니다(0p 의 매트릭스). 고객 화면이 부르는 조회는 <b>Service 백엔드</b>이고, 회계·대사를 위한 조회는 <b>Service·Admin</b> 양쪽에서 씁니다.</p>
+
+<table>
+<thead><tr><th style="width:26%">쓰임</th><th style="width:14%">백엔드</th><th>무엇</th></tr></thead>
+<tbody>
+<tr><td>고객 잔액·내역 화면</td><td class="c">Service</td><td>홈 화면의 세 칸, 거래내역 목록 — 고객 런타임</td></tr>
+<tr><td>회계·대사용 조회</td><td class="c">Service·Admin</td><td>벤더 잔액·거래 목록을 우리 기록과 맞추는 주기 작업 — 운영·감사</td></tr>
+</tbody>
+</table>
+<p class="table-note">고객 런타임의 조회는 Service, 회계·대사처럼 운영·감사에 걸리는 조회는 Admin 도 함께 부른다 — 두 백엔드는 같은 포트를 쓰되 배포·권한·감사 경계가 다르다(0p).</p>
 
 <h2>대사 — 두 장부를 주기적으로 맞춘다</h2>
 
-<p>잔액·내역의 숫자는 결국 <b>두 장부</b>에서 나옵니다. 우리 기록(DB·파이프라인·projection), 그리고 바깥의 진실(온체인 / 벤더). 통지·조회가 아무리 잘 와도 누락·지연·버그는 생기게 마련이라 <b>주기적으로 둘을 직접 대조</b>합니다.</p>
+<p>잔액·내역의 숫자는 결국 <b>두 장부</b>에서 나옵니다. 하나는 우리 기록(DB), 다른 하나는 바깥의 진실인 <b>Fireblocks 의 값</b>입니다. 벤더 조회가 아무리 정확해도 통지 누락·지연·우리 쪽 반영 버그는 생기게 마련이라, 회계가 걸리는 숫자는 <b>주기적으로 둘을 직접 대조</b>합니다.</p>
 
 <table>
-<thead><tr><th style="width:16%"></th><th>자체 분면</th><th>Fireblocks 분면</th></tr></thead>
+<thead><tr><th style="width:16%"></th><th>대사</th></tr></thead>
 <tbody>
-<tr><td><b>무엇을</b></td><td>우리 projection·기록 vs <b>노드의 온체인 잔액·tx</b></td><td>우리 기록 vs <b>벤더 잔액·거래 목록 API</b> (+표본은 온체인 탐색기)</td></tr>
-<tr><td><b>언제</b></td><td colspan="2">주기(예: 시간 단위) + 일마감 — 회계 기표 전 필수</td></tr>
-<tr><td><b>어긋나면</b></td><td colspan="2"><b>자동 보정 금지</b> — 정정 이벤트를 만들어 사람이 본다 (없는 돈을 만들거나 지우는 코드가 가장 위험)</td></tr>
+<tr><td><b>무엇을</b></td><td>우리 기록 vs <b>Fireblocks 잔액·거래 목록</b> (표본은 온체인 탐색기로 교차 확인)</td></tr>
+<tr><td><b>언제</b></td><td>주기(예: 시간 단위) + 일마감 — 회계 기표 전 필수</td></tr>
+<tr><td><b>누가</b></td><td>운영·감사 경계라 <b>Admin</b> 도 함께 조회 (Service·Admin)</td></tr>
+<tr><td><b>어긋나면</b></td><td><b>자동 보정 금지</b> — 정정 이벤트를 만들어 사람이 본다 (없는 돈을 만들거나 지우는 코드가 가장 위험)</td></tr>
 </tbody>
 </table>
-<p class="table-note">4p 의 "통지는 힌트" 규칙을 회계로 옮긴 버전이다. 화면은 통지로 빠르게, 장부는 대조로 정확하게.</p>
+<p class="table-note">4p 의 "통지는 힌트" 규칙을 회계로 옮긴 버전이다. 화면은 벤더 값으로 빠르게, 장부는 대조로 정확하게. 대기↔가용이 벤더 상태(CONFIRMING/COMPLETED)로 움직이므로, 대사도 그 상태 기준으로 우리 기록과 맞춘다.</p>
 
-<p class="foot">더 깊이: 잔액 3분류 — <a href="../wallet-service-components/abstraction.html">가이드 13.3</a> · 내역 동사의 위치("동사의 자리는 데이터의 주인이 정한다") — 13.3.</p>
+<p class="foot">더 깊이: 확정 정책(DCCP)과 confirmation lifecycle · 잔액 필드 계약은 컴포넌트 가이드의 <a href="../wallet-service-components/abstraction.html">추상화 편</a> 참고 (본 워크스루는 가이드 없이 읽힙니다). <span style="color:var(--muted)">(가이드는 자체 구축·Canton 전제 — 개념만 참고, 개편 예정)</span></p>
 
 <div class="pager">
 <a href="06-withdrawal.html">← 6. 출금</a>
 <a href="index.html">목차</a>
-<a href="08-switch-extend.html">8. 전환과 확장 →</a>
+<a href="08-switch-extend.html">8. 확장 →</a>
 </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>

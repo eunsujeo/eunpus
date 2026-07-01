@@ -7143,3 +7143,12 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - ★ evidence-of-absence 아님 — closed/gated 라 비공개 PoC 배제 불가, "공개 1차 미입증" 한정
 - 부수확 반영: Canton external-signing 프로토콜은 decode+hash 독립 재계산(verified hash-signing, blind 아님)로 문서화 — canton-network.md Stage 84 시퀀스 절에 ★ Stage 86 bullet 추가("프로토콜은 verified, Raw Signing 으로 끼우면 검증 책임이 우리 쪽" 정정). last_updated_stage 85→86
 - 반영: vendors/nodeinfra/nodewallet.md Q-N02 부분진전·§제약 caveat·last_updated_stage 51→86. 신규 entity: 0. gated docs.nodeinfra.com 재크롤 안 함(공개 경로만)
+
+## Stage 87 (2026-07-01) — wallet-design-walkthrough Fireblocks 채택 전면 개편 (Canton 제거)
+- 계기: 사용자 전제 변경 6건 — ① Fireblocks 채택(자체 매니저 아님) ② FB API confirm↔finality 분리 질문 ③ Canton 은 FB 미지원 → 처음엔 2차 트랙 분리, 이후 "Canton 완전 제거"로 재지시 ④ 지갑백엔드↔블록체인매니저 통로(포트)가 1차 목표 ⑤ Admin/Service 물리 분리 ⑥ 지원 네트워크에 Base 추가
+- 새 척추: 지갑 백엔드(Service·Admin 물리 분리, 별도 배포·권한·감사 경계) ↔ Fireblocks 매니저 통로(포트) · 체인 = EVM(이더리움·Base) 단일 · 4분면/자체 매니저/전환 서사 전면 폐기
+- confirm/finality (질문 ②, docs-site 반영): FB status BROADCASTING→CONFIRMING(체인 등장·미확정)→COMPLETED(DCCP 임계 도달=finality), numOfConfirmations 로 confirm↔finality 판별, networkStatus 하위값, zero-conf 다중 webhook caveat, reorg=ORPHANED(EVM 속성). 근거: entities/fireblocks/transaction.md(:104-121·:289·:443-460)·reference-transaction-objects.md:151·default-deposit-control-and-confirmation-policy.md (ETC 372·contract call 최소 3·대부분 1)
+- 영향: docs-site/wallet-design-walkthrough/ 9페이지 전면 — index·00-cast(앵커, 직접) + 01-03(FB×EVM 단일·Service) + 04(FB webhook+DCCP, DCCP=Admin/webhook=Service) + 05-06(estimateFee·createTransaction·"상태 한 장" FB 리맵·boost/cancel/TAP=Admin) + 07(잔액 3칸→FB finality) + 08("전환"→"확장"·monorepo·인프라 FB-primary·sweep 재프레이밍). 서브에이전트 5그룹 병렬
+- 검증 통과: Canton 잔재 0(Canton·PartyId·OFFER/ACCEPT·party·traffic·4분면·전환) · 제목 통일 9/9 · mermaid endpoint 미선언 0 · AWAITING_ACCEPT 0 · Service/Admin 일관(01-03=Service 전용) · 진짜 이모지 0 · § 0 · 깨진 링크·canton-track 링크 0
+- 판단 보류 5건(사용자 확인 대기): 07 잠김=lockedAmount+AML frozen 합산 / 03 안티패턴 "벤더 왕복 금지"로 치환 / 01 "비용 0" 헤드라인 제거 / 06 FB 내부 상태명은 대표값("어댑터가 번역") / 08 링크 대상 wallet-service-components 가이드는 옛 모델 가능성(범위 밖)
+- 신규 entity: 0. docs-site 미배포(로컬만 — no-auto-deploy)

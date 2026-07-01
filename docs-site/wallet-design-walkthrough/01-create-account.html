@@ -9,84 +9,71 @@
 </head>
 <body>
 <div class="wrap">
-<p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
+<p class="series"><a href="index.html">지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</a></p>
 <div class="progress">
 <a href="00-cast.html">0</a><span class="cur">1</span><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-estimate-fee.html">5</a><a href="06-withdrawal.html">6</a><a href="07-balance-history.html">7</a><a href="08-switch-extend.html">8</a>
 </div>
 <h1>계정 생성 — createAccount</h1>
-<p class="subtitle">고객 한 명당 한 번 — 체인과 무관한 "그릇(vault)"을 만든다</p>
+<p class="subtitle">고객 한 명당 한 번 — 체인과 무관한 "그릇(vault)"을 만든다. <b>Service 백엔드</b>가 부른다</p>
 
-<p><b>무엇·언제</b>: 고객이 가입하면 백엔드가 매니저에 계정 하나를 요청합니다. 계정은 주소가 아닙니다. 한 고객의 여러 자산·여러 주소를 묶는 <b>상위 핸들(vault)</b>이며, 주소·신원은 다음 페이지(발급)에서 이 계정 밑에 생깁니다. 중요한 건 호출이 <b>고객당 한 번</b>이라는 점입니다. 시그니처에 asset 이 없어(<code>createAccount(ref)</code>) 이더리움용·Canton용을 따로 부르지 않습니다. 그래서 이 페이지는 custody 축으로만 갈립니다:</p>
+<p><b>무엇·언제</b>: 고객이 가입하면 <b>Service 백엔드</b>가 Fireblocks 매니저에 계정 하나를 요청합니다. 계정은 주소가 아닙니다. 한 고객의 여러 자산·여러 주소를 묶는 <b>상위 핸들(vault)</b>이며, 주소는 다음 페이지(발급)에서 이 계정 밑에 생깁니다. 여기서 vault 는 <b>Fireblocks 가 제공하는 계정 단위</b>입니다 — 우리는 이 매니저를 채택했으므로 vault 를 우리 개념이 아니라 벤더 개념으로 받아들입니다. 중요한 건 호출이 <b>고객당 한 번</b>이라는 점입니다. 시그니처에 asset 이 없어(<code>createAccount(ref)</code>) 이더리움용·Base용을 따로 부르지 않습니다.</p>
 
-<pre><code>createAccount(고객 ref) → Account     // 결과는 항상 블록체인 매니저 DB에 저장</code></pre>
+<pre><code>createAccount(고객 ref) → Account     // 결과는 항상 우리 매핑 DB 에 저장 (ref ↔ vaultId)</code></pre>
 
-<h2>▸ 자체 (양 체인 공통) — 장부에 vault 한 줄 (체인에 안 간다)</h2>
-
-<div class="diagram"><pre class="mermaid">
-sequenceDiagram
-    autonumber
-    participant BE as 지갑 백엔드
-    box rgb(239,246,255) 블록체인 매니저
-    participant MGR as 자체 매니저
-    end
-    participant DIR as 블록체인 매니저 DB
-
-    BE->>MGR: createAccount(고객 ref)
-    MGR->>MGR: 번호 할당 — 계정 1024번
-    Note over BE,DIR: 체인 호출 없음 · 키 생성 없음 · 비용 0 — 어떤 체인을 쓸지 아직 모른다. 키는 셋업 때 만든 그 하나, 번호만 늘어난다
-    MGR->>DIR: 계정 저장 (ref ↔ 1024번)
-    MGR-->>BE: Account(1024번)
-</pre></div>
-<p class="diagram-caption">createAccount 는 순수 장부 작업이라 이더리움이든 Canton 이든 동작이 같고, 그래서 자체 분면이 하나로 합쳐졌다. 고객이 100만 명이어도 키는 하나, 계정은 번호 100만 개다. 공짜고 실패할 외부 요인도 없다. <b>체인 위의 신원(이더리움 주소·Canton PartyId)은 여기서 만들지 않는다.</b> asset 을 처음 아는 2p 발급에서 태어난다. <code>createAccount(ref)</code> 에 asset 인자가 없다는 것이 그 증거다. 인자로 받지 않은 체인의 일(PartyId 등록)을 할 수는 없다. Canton PartyId 가 여기가 아니라 2p 에서 선발급되는 이유다.</p>
-
-<h2>▸ Fireblocks — vault 생성 API 한 번 (양 체인 공통)</h2>
+<h2>▸ Fireblocks — vault 생성 API 한 번 (EVM 공통)</h2>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
-    participant BE as 지갑 백엔드
+    participant BE as Service 백엔드
     box rgb(239,246,255) 블록체인 매니저
-    participant FBI as Fireblocks 구현
-    participant FB as Fireblocks (SaaS)
+    participant FBI as Fireblocks 구현 · 포트
+    participant FB as Fireblocks SaaS
     end
-    participant DIR as 블록체인 매니저 DB
+    participant DIR as 우리 매핑 DB
 
     BE->>FBI: createAccount(고객 ref)
-    FBI->>FB: vault 계정 생성 API
-    Note over FBI,DIR: vault = Fireblocks 의 계정 단위, 키는 Fireblocks MPC 보관. Canton PartyId 등록도 여기가 아니라 입금 식별자 발급 때 벤더가 수행 (2p · 상세는 적용 전 확인)
+    FBI->>FB: createVaultAccount
+    Note over FBI,DIR: vault = Fireblocks 의 논리적 계정 단위. 키는 Fireblocks vault·MPC 가 보관. 체인 호출 없음 · 주소 생성 없음 — 어떤 EVM 체인을 쓸지 아직 모른다
     FB-->>FBI: vaultId
     FBI->>DIR: 계정 저장 (ref ↔ vaultId)
     FBI-->>BE: Account
 </pre></div>
-<p class="diagram-caption">자체든 Fireblocks 든 createAccount 는 체인을 모른다. 둘의 차이는 vault 가 <b>우리 장부냐 벤더 장부냐</b>뿐이다. Canton 의 온장 PartyId 등록·비용은 자체든 벤더든 발생하지만, 그것이 일어나는 자리는 createAccount 가 아니라 asset 을 처음 아는 입금 식별자 발급(2p)이다. DB 저장은 여기서도 빠지지 않는다. "고객 → 계정" 해석은 벤더에 묻지 않는 우리 데이터다.</p>
+<p class="diagram-caption">createAccount 는 Fireblocks 의 <code>createVaultAccount</code> 한 번이다. vault 는 <b>논리적 컨테이너</b>라서 이 단계는 체인에 나가지 않고 주소도 만들지 않는다 — 그래서 이더리움이든 Base 든 동작이 같다. 고객이 100만 명이어도 vault 는 번호 100만 개일 뿐, 키는 Fireblocks vault·MPC 안에 있다. <b>체인 위의 주소는 여기서 만들지 않는다</b> — asset 을 처음 아는 2p 발급에서 태어난다. <code>createAccount(ref)</code> 에 asset 인자가 없다는 것이 그 증거다. "고객 → 계정" 해석은 벤더에 묻지 않는 <b>우리 매핑 DB</b> 의 데이터다.</p>
+
+<div class="callout">
+<div class="callout-title">계정은 주소가 아니라 vault 핸들 — 그리고 그 vault 는 Fireblocks 것</div>
+<p style="margin:0">이 페이지에서 붙잡을 개념은 하나다. <b>계정 = vault = 여러 주소·자산을 묶는 상위 핸들</b>이고, 주소가 아니다. 우리가 직접 vault 를 구현하지 않는다 — Fireblocks 를 채택했으므로 vault 는 벤더가 관리하고, 우리는 <b>그 vaultId 를 고객 ref 에 이어 붙인 참조 한 줄</b>만 매핑 DB 에 들고 있다. 키·서명·주소 파생은 전부 Fireblocks vault·MPC 안에서 일어난다. 우리 쪽엔 키 트리도, HSM 도 없다.</p>
+</div>
 
 <h2>비교 — 체인 축이 사라지는 유일한 페이지</h2>
 
 <table>
-<thead><tr><th style="width:22%"></th><th>자체 (양 체인 공통)</th><th>Fireblocks (양 체인 공통)</th></tr></thead>
+<thead><tr><th style="width:34%"></th><th>Fireblocks × EVM (이더리움·Base 공통)</th></tr></thead>
 <tbody>
-<tr><td><b>실체</b></td><td>우리 장부에 번호 하나</td><td>벤더 vault 생성 API 한 번</td></tr>
-<tr><td><b>체인에 가나</b></td><td>아니오 — 어느 체인도</td><td>아니오</td></tr>
-<tr><td><b>체인 위 신원 생성</b></td><td colspan="2" class="c">여기서 안 함 — 이더리움 주소·Canton PartyId 는 2p 발급에서</td></tr>
-<tr><td><b>우리 책임</b></td><td>번호 관리·DB</td><td>DB</td></tr>
+<tr><td><b>실체</b></td><td>벤더 <code>createVaultAccount</code> 한 번</td></tr>
+<tr><td><b>체인에 가나</b></td><td>아니오 — 이더리움도 Base 도 안 감 (vault 는 논리 컨테이너)</td></tr>
+<tr><td><b>키 생성</b></td><td>여기서 안 함 — 키는 Fireblocks vault·MPC 소관</td></tr>
+<tr><td><b>체인 위 주소 생성</b></td><td>여기서 안 함 — 이더리움·Base 주소는 2p 발급에서</td></tr>
+<tr><td><b>우리 책임</b></td><td>매핑 DB (ref ↔ vaultId)</td></tr>
 </tbody>
 </table>
 
-<p>표에서 읽을 것은 이렇습니다. 이 문서에서 <b>유일하게 체인 축이 사라지는 페이지</b>입니다. <code>createAccount(ref)</code> 에 asset 인자가 없으니 이더리움이냐 Canton 이냐가 동작을 가를 수 없습니다(그래서 4분면이 아니라 custody 2분면). 고객이 한 명이면 createAccount 도 한 번이고, 체인 수만큼 부르지 않습니다. 체인 축은 다음 페이지(발급)에서 되살아납니다. 거기서 이더리움은 주소를, Canton 은 PartyId(첫 1회 선발급)+memo 를 만듭니다. 어느 쪽이든 마지막 줄은 같습니다. <b>DB는 항상 우리 것.</b></p>
+<p>표에서 읽을 것은 이렇습니다. 이 문서에서 <b>유일하게 체인 축이 사라지는 페이지</b>입니다. <code>createAccount(ref)</code> 에 asset 인자가 없으니 이더리움이냐 Base 냐가 동작을 가를 수 없습니다. 고객이 한 명이면 createAccount 도 한 번이고, 체인 수만큼 부르지 않습니다. 체인 축은 다음 페이지(발급)에서 되살아납니다 — 거기서 Fireblocks 가 EVM 주소를 만듭니다. 어느 쪽이든 마지막 줄은 같습니다. <b>매핑 DB(ref ↔ vaultId)는 항상 우리 것.</b></p>
 
-<h2>백엔드에서 이렇게 부른다 — 네 분면 공통</h2>
+<h2>백엔드에서 이렇게 부른다 — Service 백엔드</h2>
 
-<pre><code>// 온보딩 유스케이스 — 어느 분면이 꽂혀 있든 이 코드는 같다
+<pre><code>// 온보딩 유스케이스 — Service 백엔드. 매니저가 무엇이든 이 코드는 같다
 suspend fun openWallet(ref: AccountRef, asset: Asset): OpenedWallet =
     withIdempotency("open-wallet:$ref:$asset") {           // 같은 요청 재시도 안전
-        val account = accounts.createAccount(ref)           // ← 이 페이지의 4분면
-        directory.save(account)                             // 결과는 항상 블록체인 매니저 DB 에
-        val id = accounts.issueDepositAddress(account, asset)  // 첫 입금 식별자 — 2p (Canton 이면 PartyId 선발급 포함)
+        val account = accounts.createAccount(ref)           // ← Fireblocks createVaultAccount
+        directory.save(account)                             // 결과는 항상 우리 매핑 DB 에 (ref ↔ vaultId)
+        val id = accounts.issueDepositAddress(account, asset)  // 첫 입금 주소 — 2p
         OpenedWallet(account, id)
     }</code></pre>
-<p class="diagram-caption">백엔드는 매니저가 자체인지 Fireblocks 인지, 자산이 이더리움인지 Canton 인지 모른 채 이 코드를 실행한다. 4분면은 전부 포트 아래의 일이다.</p>
+<p class="diagram-caption">Service 백엔드는 자산이 이더리움인지 Base 인지 모른 채 이 코드를 실행한다. 포트가 체인 분기를 감추고, 그 아래에서 Fireblocks 가 vault 를 만든다. <b>멱등 키</b>는 재시도가 vault 를 두 번 만들지 않게 막는 래퍼다.</p>
 
-<p class="foot">더 깊이: 계정·주소 발급 시나리오 — <a href="../wallet-service-components/scenario-provisioning.html">가이드 9장</a> · Canton 등록 절차 상세 — <a href="../wallet-service-components/example-selfbuild.html">15.3</a>.</p>
+<p class="foot">더 깊이: 계정·주소 발급 시나리오 — <a href="../wallet-service-components/scenario-provisioning.html">가이드 9장</a>. <span style="color:var(--muted)">(가이드는 자체 구축·Canton 전제 — 개념만 참고, 개편 예정)</span></p>
 
 <div class="pager">
 <a href="00-cast.html">← 0. 읽는 법</a>

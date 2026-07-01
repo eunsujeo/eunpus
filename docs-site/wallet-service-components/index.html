@@ -59,6 +59,11 @@
 <h2>0. Overview</h2>
 <span class="section-subtitle">블록체인 매니저가 무엇이고, 어떤 컴포넌트로 나뉘며, 무엇을 다루지 않는가</span>
 
+<div class="callout" style="border-left:4px solid #d97706;background:#fffbeb">
+<div class="callout-title">모델 갱신 안내 — 이 가이드는 자체 구축·Canton 전제입니다</div>
+<p>본 가이드는 <strong>자체 블록체인 매니저 구축</strong>과 <strong>이더리움·Canton</strong>을 전제로 쓰였습니다. 이후 설계 방향이 <strong>Fireblocks 채택 · EVM(이더리움·Base) · Canton 제외 · Service/Admin 백엔드 물리 분리</strong>로 바뀌었으므로, 최신 모델은 <a href="../wallet-design-walkthrough/">지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</a>를 보세요. 이 가이드는 <strong>컴포넌트 개념 참고용</strong>이며 개편 예정입니다.</p>
+</div>
+
 <p class="lead">
 본 가이드는 블록체인 지갑 서비스의 백엔드를 <strong>두 층</strong>으로 나눠 본다 — 체인과 직접 대화하는 <strong>블록체인 매니저(체인 엔진)</strong> 와, 그것을 감싸는 <strong>지갑 서비스 백엔드</strong>. 각 층의 컴포넌트, 입금·출금·온·오프램프 시나리오, 그리고 <strong>블록체인 매니저를 벤더에 묶이지 않게 추상화</strong>(Fireblocks 를 사서 쓰거나 직접 짓거나)하는 법을 보여주는 설계 참고 문서다.
 </p>

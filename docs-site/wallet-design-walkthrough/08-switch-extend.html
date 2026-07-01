@@ -3,175 +3,91 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>8. 전환과 확장 — 이 4분면이 가능한 이유</title>
+<title>8. 확장 — 포트가 EVM 체인 확장·매니저 교체를 흡수하는 법</title>
 <meta content="noindex" name="robots"/>
 <link href="assets/walkthrough.css" rel="stylesheet"/>
 </head>
 <body>
 <div class="wrap">
-<p class="series"><a href="index.html">자체 블록체인 매니저 설계 워크스루</a></p>
+<p class="series"><a href="index.html">지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</a></p>
 <div class="progress">
 <a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-estimate-fee.html">5</a><a href="06-withdrawal.html">6</a><a href="07-balance-history.html">7</a><span class="cur">8</span>
 </div>
-<h1>전환과 확장 — 이 4분면이 가능한 이유</h1>
-<p class="subtitle">1~7페이지가 보여준 것을 거둬들이고, 전제의 세 문장을 증명으로 닫는다</p>
+<h1>확장 — 포트가 EVM 체인 확장·매니저 교체를 흡수하는 법</h1>
+<p class="subtitle">1~7페이지가 보여준 것을 거둬들이고, 포트 하나가 벤더와 체인의 변화를 흡수한다는 전제를 증명으로 닫는다</p>
 
-<h2>1~7페이지에서 반복된 패턴 둘</h2>
+<h2>포트가 이룬 것 — 1~7페이지를 거둬들이면</h2>
 
-<p>모든 기능 페이지에서 같은 일이 일어났습니다. <b>① 포트 호출은 네 분면에서 글자 그대로 같았다.</b> 그래서 백엔드 코드는 어느 분면에서도 같다. <b>② 두 축은 서로 다른 것을 결정했다.</b> custody 축은 "누가 실행하나"를 가르고(우리 부품이냐 벤더냐), 체인 축은 "무엇이 일어나나"를 가른다(주소의 탄생 방식, 수락 행위, 잠김, 확정 성질). 이 분리가 유지된 건 우연이 아니라 두 가지 약속 덕입니다.</p>
+<p>1~7페이지 내내 두 백엔드는 Fireblocks 를 <b>포트로만</b> 불렀습니다. 벤더 SDK 타입도, 체인 분기도 업무 로직에 새지 않았죠. 이 한 가지 규율이 세 가지 성질을 만들었습니다 — 그리고 이 세 성질이 이 페이지가 증명할 전부입니다.</p>
 
 <table>
-<thead><tr><th style="width:30%">약속</th><th>내용 — 1~7페이지에서 본 그 규칙들</th></tr></thead>
+<thead><tr><th style="width:22%">성질</th><th>1~7페이지에서 본 근거</th></tr></thead>
 <tbody>
-<tr><td><b>같은 동사</b> (포트)</td><td>매니저는 포트로만 호출된다 — 구현이 갈려도 시그니처는 하나 (모든 페이지의 "공통 호출" 코드 한 줄)</td></tr>
-<tr><td><b>같은 의미</b> (불변식)</td><td>조회는 새 주소를 만들지 않는다(3p) · 등록까지가 발급(2p) · 기록은 전파 전(6p) · 통지는 힌트(4p) · 판정은 가용만(7p) · 없는 기능은 타입 부재(2p) — 어느 구현이든 지켜야 하는 약속</td></tr>
+<tr><td><b>벤더 독립</b></td><td>백엔드는 <code>createAccount</code>·<code>submitTransaction</code>·<code>getBalance</code> 같은 업무 동사만 부른다. Fireblocks 의 <code>createVaultAccount</code>·<code>createTransaction</code> 은 어댑터 안에만 있다(0p 매트릭스). 벤더를 바꿔도 백엔드 코드는 그대로다.</td></tr>
+<tr><td><b>다중 EVM 체인</b></td><td>이더리움과 Base 는 같은 EVM 이라 포트 표면·동사·페이지가 동일하다 — 체인만 바뀐다(0p). 체인 분기는 포트 뒤 어댑터에 갇힌다.</td></tr>
+<tr><td><b>테스트 가능</b></td><td>포트를 가짜 구현으로 바꾸면 벤더 없이 백엔드를 검증할 수 있다(0p 도메인 한 장). 포트 밖에서 관찰 가능한 약속은 계약 테스트로 못 박는다.</td></tr>
 </tbody>
 </table>
 
-<p>이 약속은 주장이 아니라 <b>시험</b>입니다. 포트별 계약 테스트 한 벌을 두 구현(자체=테스트넷, Fireblocks=샌드박스)이 똑같이 통과하게 만들면, "전환해도 의미가 보존된다"가 측정 가능한 사실이 됩니다.</p>
+<p>세 번째 성질은 주장이 아니라 <b>시험</b>입니다. 포트별 계약 테스트 한 벌을 만들어 실제 Fireblocks 어댑터(샌드박스)와 가짜 구현이 <b>똑같이 통과</b>하게 하면, "포트의 의미가 구현과 무관하게 보존된다"가 측정 가능한 사실이 됩니다.</p>
 
-<pre><code>abstract class AccountPortContractTest {        // 시험지는 하나
-    abstract fun port(): AccountPort            // 응시자만 바뀐다
-    @Test fun `조회는 절대 새 주소를 만들지 않는다`() { … }
-    @Test fun `같은 멱등 키 재시도는 두 번 실행되지 않는다`() { … }
+<pre><code>abstract class AccountPortContractTest {          // 시험지는 하나
+    abstract fun port(): AccountPort              // 응시자만 바뀐다
+    @Test fun `조회는 절대 새 주소를 만들지 않는다`() { … }   // 3p 불변식
+    @Test fun `등록까지가 발급이다`() { … }                  // 2p 불변식
+    @Test fun `같은 멱등 키 재시도는 두 번 실행되지 않는다`() { … } // 0p 멱등
+    @Test fun `없는 기능은 타입 부재로 드러난다`() { … }        // 2p capability
 }
-class SelfBuildContractTest : AccountPortContractTest()    // 자체 — 테스트넷
-class FireblocksContractTest : AccountPortContractTest()   // FB — 샌드박스</code></pre>
+class FireblocksContractTest : AccountPortContractTest()   // Fireblocks — 샌드박스
+class FakePortContractTest    : AccountPortContractTest()   // 가짜 구현 — 벤더 없이 백엔드 검증용</code></pre>
 
-<p>다만 약속 전부가 이 시험지에 들어가지는 않습니다. 계약 테스트가 맡는 건 <b>포트 밖에서 관찰 가능한 약속</b>입니다(조회는 만들지 않는다, 등록까지가 발급, 없는 기능은 타입 부재, 멱등). "기록은 전파 전"은 자체 파이프라인의 단위 테스트가, "판정은 가용만"은 백엔드 테스트가 나눠 맡습니다. 이 세 겹이 합쳐져야 전환 증거가 완성됩니다.</p>
+<p>다만 약속 전부가 이 시험지에 들어가지는 않습니다. 계약 테스트가 맡는 건 <b>포트 밖에서 관찰 가능한 약속</b>입니다(조회는 만들지 않는다, 등록까지가 발급, 없는 기능은 타입 부재, 멱등). "기록은 전파 전"(6p) 같은 내부 순서 약속은 백엔드 단위 테스트가, "판정은 가용만"(7p) 은 잔액 로직 테스트가 나눠 맡습니다. 이 세 겹이 합쳐져야 "포트가 변화를 흡수한다"는 증거가 완성됩니다.</p>
 
-<h2>코드 구조 — 이 문서를 모노레포로 옮기면</h2>
+<h2>EVM 체인 확장 — Base 는 이미 붙었다</h2>
 
-<p>지금까지의 등장인물(0p)과 약속이 코드에서 강제되려면 <b>모듈 경계가 곧 설계 경계</b>여야 합니다. 한 저장소(모노레포) 안에서 이렇게 자릅니다.</p>
+<p>확장의 첫 축은 <b>체인</b>입니다. 그런데 우리에게 이건 이미 <b>과거형</b>입니다. Base 는 이더리움과 같은 EVM(account 기반·공개 mempool·reorg·동일 주소 체계·같은 확정 모델)이라, 이더리움을 붙인 어댑터가 <b>그대로 Base 도 태웁니다</b>. 0p 매트릭스에서 Base 가 이더리움과 표면·동사·페이지를 공유한 것이 그 결과였죠.</p>
 
-<pre><code>wallet/
-├─ domain/                # 포트 + 값 객체 (0p "도메인 한 장") — 순수 코드, 아무것도 의존하지 않음
-├─ backend/               # 지갑 백엔드 — 유스케이스 · DB · API (1~7p 의 "사용 코드"가 사는 곳)
-├─ engine/                # 자체 매니저의 부품 (0p 등장인물)
-│   ├─ multichain/        #   체인 어댑터 인터페이스 + 레지스트리
-│   ├─ pipeline/          #   트랜잭션 파이프라인 — 조립→서명→전파, 단계 기록 (6p)
-│   ├─ signing/           #   HSM 연동 + 정책 게이트 (6p)
-│   └─ indexer/           #   인덱서 — 감지·확정·watch-list (4p)
-├─ chains/
-│   ├─ ethereum/          #   ETH 어댑터 — 노드 RPC · nonce · ERC-20 · 수수료 백분위수
-│   └─ canton/            #   Canton 어댑터 — participant · party 등록 · OFFER/ACCEPT · traffic
-├─ adapters/
-│   ├─ self-build/        #   자체 매니저 = engine + chains 조립 → 포트 구현
-│   └─ fireblocks/        #   Fireblocks SDK 래핑 → "같은" 포트 구현
-└─ apps/
-    ├─ api/               #   서버 — DI 가 여기: custody=selfbuild|fireblocks 설정 한 줄
-    ├─ indexer-worker/    #   상시 worker (자체 분면에서만 가동, 4p)
-    └─ webhook-receiver/  #   webhook 수신 엔드포인트 (FB 분면에서만 가동 — 아래 인프라 그림)</code></pre>
-
-<p>모듈 사이의 <b>의존 방향</b>이 이 문서의 주장들을 컴파일 타임에 강제합니다. 화살표는 "의존한다"라는 뜻이고, 전부 안쪽(domain)을 향합니다.</p>
-
-<div class="diagram"><pre class="mermaid">
-flowchart TB
-    API["apps/api<br/>(DI — 설정 한 줄)"]
-    WORKER["apps/indexer-worker"]
-    BE["backend<br/>지갑 백엔드"]
-    SELF["adapters/self-build"]
-    FBA["adapters/fireblocks"]
-    ENG["engine/*<br/>pipeline · signing · indexer · multichain"]
-    ETH["chains/ethereum"]
-    CTN["chains/canton"]
-    DOM["domain<br/>포트 + 값 객체 — 의존 0"]
-    SDK["Fireblocks SDK (외부)"]
-
-    API --> BE
-    API -.택일 주입.-> SELF
-    API -.택일 주입.-> FBA
-    WORKER --> ENG
-    BE --> DOM
-    SELF --> DOM
-    SELF --> ENG
-    FBA --> DOM
-    FBA --> SDK
-    ENG --> DOM
-    ETH --> ENG
-    CTN --> ENG
-    SELF --> ETH
-    SELF --> CTN
-
-    classDef mine fill:#dcfce7,stroke:#16a34a;
-    classDef impl fill:#dbeafe,stroke:#2563eb;
-    classDef core fill:#e0e7ff,stroke:#6366f1;
-    classDef ext fill:#f5f5f7,stroke:#86868b;
-    class BE mine; class SELF,FBA,ENG,ETH,CTN impl; class DOM core; class API,WORKER,SDK ext;
-</pre></div>
-<p class="diagram-caption">의존 그래프에서 규칙 셋이 읽힙니다. <b>① backend → domain 뿐.</b> 백엔드는 adapters 를 모르므로(화살표가 없다) "분면을 모른다"가 컴파일 타임의 사실이 된다. 두 어댑터를 아는 곳은 apps/api 의 DI(점선) 하나뿐이다. <b>② chains 끼리는 서로 모른다.</b> 새 체인이란 곧 chains/ 폴더 하나를 더하는 일이고, 다른 모듈은 0줄이다(확장 증명의 물리적 형태). <b>③ Fireblocks SDK 는 adapters/fireblocks 안에 격리된다.</b> 벤더 타입이 그 밖으로 새면 전환이 깨지므로, 이 경계는 빌드 규칙(의존 검사)으로 막는다.</p>
-
-<h2>인프라 — 무엇이 어디서 도는가</h2>
-
-<p>0p 에서 본 기본 배치를 분면별로 갈라 보는 자리입니다. 같은 코드가 분면에 따라 <b>다른 배치</b>로 풀립니다. 먼저 자체 분면을 보면, 모노레포의 apps 둘에 더해 <b>장비와 노드가 우리 운영 범위</b>로 들어옵니다.</p>
+<p>그래서 "다른 L2 가 하나 더 붙는다"는 일은 두 백엔드에게 <b>0줄</b>입니다. 늘어나는 건 포트 뒤 어댑터가 인식하는 <b>체인·자산 등록</b>뿐입니다.</p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart LR
-    subgraph IDC["우리 인프라"]
-      API["api 서버<br/>(backend + self-build)"]
-      WORKER["indexer-worker<br/>(상시 — 4p)"]
-      DB[("DB<br/>계정 매핑 · 단계 기록 · 멱등")]
-      subgraph SEC["보안 존"]
-        HSM["HSM 장비<br/>+ 정책 게이트"]
-      end
-      ETHN["이더리움 노드"]
-      PN["Canton participant 노드<br/>(우리 신원 보유 — 백업 대상)"]
-    end
-    ETH["이더리움 네트워크"]
-    CN["Canton 네트워크"]
+    SVC["Service 백엔드<br/>변경 0줄"]
+    ADM["Admin 백엔드<br/>변경 0줄"]
+    PORT["포트 (통로)<br/>같은 동사 · 체인 분기 숨김"]
+    ADP["Fireblocks 어댑터<br/>체인·자산 등록만 추가"]
+    ETH["이더리움<br/>(붙어 있음)"]
+    BASE["Base<br/>(이미 붙음 — 같은 EVM 어댑터)"]
+    L2["다른 EVM L2<br/>(등록 한 줄이면 태운다)"]
 
-    API --- DB
-    API -->|서명 요청| HSM
-    API -->|전파| ETHN
-    API -->|제출 · ACCEPT| PN
-    WORKER -->|수집| ETHN
-    WORKER -->|ACS 구독| PN
-    WORKER --- DB
-    ETHN --- ETH
-    PN --- CN
+    SVC --> PORT
+    ADM --> PORT
+    PORT --> ADP
+    ADP --> ETH
+    ADP --> BASE
+    ADP -.등록만 추가.-> L2
 
-    classDef app fill:#dbeafe,stroke:#2563eb;
-    classDef data fill:#dcfce7,stroke:#16a34a;
-    classDef sec fill:#fef3c7,stroke:#d97706;
-    classDef ext fill:#f5f5f7,stroke:#86868b;
-    class API,WORKER app; class DB data; class HSM sec; class ETHN,PN app; class ETH,CN ext;
+    classDef be fill:#dbeafe,stroke:#2563eb;
+    classDef port fill:#e0e7ff,stroke:#6366f1;
+    classDef impl fill:#dcfce7,stroke:#16a34a;
+    classDef chain fill:#eef2ff,stroke:#818cf8;
+    class SVC,ADM be; class PORT port; class ADP impl; class ETH,BASE,L2 chain;
 </pre></div>
-<p class="diagram-caption">자체 분면 배치. 운영 대상이 다섯입니다. api 서버, 상시 worker, DB, HSM(보안 존에 격리되어 서명 요청만 드나든다), 그리고 <b>노드 둘</b>. Canton participant 는 단순 노드가 아니라 우리 party 신원을 호스팅하는 장비라, 백업과 복구가 워크스페이스급 보안 사안이다. 모든 연결이 <b>우리가 밖으로 나가는 방향</b>(outbound)이라 inbound 포트가 필요 없다. 망분리 환경에 유리한 성질이다.</p>
+<p class="diagram-caption">EVM 체인 확장의 형태. 새 EVM 체인이 붙어도 파랑(두 백엔드)은 <b>0줄</b>, 초록(어댑터)에 <b>체인·자산 등록</b>만 는다. Base 가 이미 이 방식으로 붙었다(이더리움과 같은 EVM 어댑터). 전제는 둘 — 어댑터가 체인별 실패를 <b>공통 분류로 번역</b>하고(재전송 안전 / 재조립 필요 / 영구 실패), 체인이 못 하는 일을 <b>기능 부재로 선언</b>해야 한다(2p). 이 둘이 새면 체인 분기가 백엔드로 스며들어 "0줄"이 거짓이 된다.</p>
 
-<p>Fireblocks 분면에서는 노드와 HSM, worker 가 벤더 안으로 들어가고, 대신 <b>새 연결 둘</b>이 생깁니다.</p>
+<div class="callout">
+<div class="callout-title">확장의 검증 지점 — 계약 테스트를 샌드박스로 돌린다</div>
+<p style="margin:0">새 EVM 체인을 등록하면, 그 체인을 대상으로 <b>같은 계약 테스트 한 벌을 Fireblocks 샌드박스에서</b> 다시 돌립니다. 조회가 새 주소를 만들지 않는지, 없는 기능이 타입 부재로 드러나는지, 멱등이 지켜지는지를 체인마다 확인하는 거죠. 자체 테스트넷을 운영할 필요가 없습니다 — 검증은 <b>벤더 샌드박스</b>가 제공하는 EVM 환경에서 이뤄집니다.</p>
+</div>
+
+<h2>매니저(벤더) 교체 — 코드는 어댑터, 비용은 자금 이전</h2>
+
+<p>확장의 둘째 축은 <b>매니저(벤더)</b>입니다. 지금 매니저는 Fireblocks 이지만, 포트로 감쌌으므로 <b>다른 벤더로 바꾸거나 vault 구성을 재편해도</b> 두 백엔드는 그대로여야 합니다. 코드 관점에서 벤더 교체는 <b>어댑터를 하나 더 만들고 주입을 바꾸는 설정 수준</b>의 일입니다.</p>
+
+<p>그런데 <b>한 가지는 설정으로 안 됩니다.</b> 벤더 A 의 주소는 A 의 키에서, 벤더 B 의 주소는 B 의 키에서 나옵니다(2p). 그래서 <b>주소와 그 위의 잔액은 이전되지 않습니다.</b> 이건 vault 를 재구성할 때도 마찬가지입니다 — 새 vault 의 주소는 새 키에서 나오니까요. 즉 <b>코드 교체는 싸고, 자금 이전(sweep)이 비용의 전부</b>입니다.</p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart LR
-    subgraph IDC["우리 인프라"]
-      API["api 서버<br/>(backend + fireblocks 어댑터)"]
-      HOOK["webhook 수신 엔드포인트<br/>(inbound — 새로 필요)"]
-      DB[("DB<br/>계정 매핑 · 멱등")]
-    end
-    FB["Fireblocks SaaS<br/>(vault · MPC 서명 · TAP · 감지)"]
-    ETH["이더리움 네트워크"]
-    CN["Canton 네트워크"]
-
-    API --- DB
-    API -->|REST + API 키| FB
-    FB -->|상태 push| HOOK
-    HOOK --- DB
-    FB --- ETH
-    FB --- CN
-
-    classDef app fill:#dbeafe,stroke:#2563eb;
-    classDef data fill:#dcfce7,stroke:#16a34a;
-    classDef ext fill:#f5f5f7,stroke:#86868b;
-    class API,HOOK app; class DB data; class FB,ETH,CN ext;
-</pre></div>
-<p class="diagram-caption">Fireblocks 분면 배치. 운영 대상이 둘(api·DB)로 줄지만 새로 생기는 것도 있다. <b>벤더 API 자격증명 관리</b>, 그리고 <b>inbound webhook 엔드포인트</b>다(자체 분면엔 없던 공인 수신 지점으로, 방화벽과 서명 검증, 가용성이 새 운영 항목이 된다, 4p). 전환은 코드만의 일이 아니라 <b>네트워크 방향의 변화</b>이기도 하다. outbound-only 에서 inbound 허용으로 바뀐다.</p>
-
-<h2>전환 — 코드는 한 줄, 자금은 이사</h2>
-
-<p>코드의 전환은 설정 한 줄입니다(<code>custody: selfbuild → fireblocks</code>). 1~7페이지에서 백엔드가 분면을 모르고 동작했으니 당연한 귀결입니다. 체크리스트도 이미 본 것들입니다. 멱등 키를 externalTxId 에 연결하고(6p), 자체 파이프라인과 인덱서를 끈다(순번 충돌은 6p, webhook 대체는 4p). 단 <b>임의 외부 주소 조회용</b> 인덱서를 따로 쓰고 있었다면 그것은 custody 와 별개 축이니 그대로 둔다(7p). 또 <b>정책 게이트의 규칙은 데이터다.</b> 화이트리스트와 한도, 일일 누적을 Fireblocks 의 거버넌스 정책(TAP)으로 이관하고 동등성을 검증하는 것까지가 전환이다(6p). 그런데 <b>한 가지는 설정으로 안 됩니다.</b> 자체 주소는 우리 키에서, Fireblocks 주소는 벤더 키에서 나왔으므로(2p) <b>주소와 그 위의 잔액은 이전되지 않습니다.</b></p>
-
-<div class="diagram"><pre class="mermaid">
-flowchart LR
-    A["전환 시점<br/>설정 한 줄 변경<br/>신규 발급부터 새(FB) 주소"] --> B["이중 감시 기간<br/>구 주소 watch-list 유지<br/>(늦은 입금 수용)"]
+    A["교체 시점<br/>어댑터·주입 변경<br/>신규 발급부터 새 주소"] --> B["이중 감시 기간<br/>구 주소 watch-list 유지<br/>(늦은 입금 수용)"]
     B --> C["이사 (sweep)<br/>구 주소 잔액을<br/>새 vault 로 출금"]
     C --> D["종료<br/>구 주소 안내 중단<br/>DB에 세대 기록"]
 
@@ -179,18 +95,110 @@ flowchart LR
     classDef warn fill:#fef3c7,stroke:#d97706;
     class A,D step; class B,C warn;
 </pre></div>
-<p class="diagram-caption">전환 운영 타임라인. 노랑 구간이 비용의 전부고, 그 비용은 <b>구 주소 수와 잔액에 비례</b>한다. "자체로 테스트부터, 전환은 나중에"라는 우리 순서의 논리가 여기 있다. 테스트 단계의 구 주소와 잔액은 거의 0이라, <b>전환이 가장 쌀 때 전환 가능성을 증명</b>해 두는 셈이다.</p>
+<p class="diagram-caption">벤더 교체(또는 vault 재구성) 운영 타임라인. 파랑은 값싼 코드·설정 작업, <b>노랑 구간이 비용의 전부</b>다. 그 비용은 <b>구 주소 수와 잔액에 비례</b>한다 — 옮길 돈이 많을수록 sweep 출금 건수·수수료가 는다. 늦은 입금을 놓치지 않도록 구 주소 watch-list 를 한동안 유지하다가, 잔액을 새 vault 로 출금(6p 출금 그대로)하고, DB 에 주소의 세대를 기록해 닫는다. 정책 게이트의 규칙(화이트리스트·한도·일일 누적)도 새 벤더의 거버넌스 정책으로 이관하고 동등성을 검증하는 것까지가 교체다(6p).</p>
 
-<h2>확장 — N번째 체인은 어댑터 하나</h2>
+<h2>Service·Admin 물리 분리가 확장·감사에 주는 이점</h2>
 
-<p>1~7페이지의 4분면 표에서 체인 열을 비교해 보면, 이더리움과 Canton 은 거의 모든 축에서 반대편이었습니다. 주소는 계산이냐 등록이냐, 순번은 있느냐 없느냐, 제출은 끝이냐 시작이냐, 확정은 대기냐 즉시냐, 귀속은 주소냐 memo 냐. <b>설계 공간의 양 극단을 같은 포트 뒤에서 소화했다</b>는 것이 확장의 증명입니다. 비트코인이든 솔라나든 이 두 극단의 <i>사이</i>에 있지 바깥에 있지 않으므로, 추가 작업은 체인 어댑터 한 개와 등록 한 줄이고 백엔드와 파이프라인, 인덱서 가공부는 0줄입니다. 전제 조건은 둘입니다. 어댑터는 <b>실패도 공통 분류로 번역</b>해야 하고(재전송 안전/재조립 필요/영구 실패), 체인이 못 하는 일은 <b>기능 부재로 선언</b>해야 합니다(2p). 이 둘이 새면 체인 분기가 백엔드로 스며들어 "0줄"이 거짓이 됩니다.</p>
+<p>확장과 교체를 안전하게 만드는 밑바탕이 <b>두 백엔드의 물리 분리</b>입니다(0p). Service(고객 런타임)와 Admin(운영·거버넌스)이 별도 배포·권한·감사 경계로 나뉘어 있어서:</p>
+
+<ul>
+<li><b>운영 변경이 런타임을 안 건드린다.</b> 벤더 교체의 정책 이관, 새 체인의 자산 등록, sweep 출금 같은 <b>운영 액션은 Admin 쪽</b>에서 일어납니다. 고객이 쓰는 Service 백엔드의 배포를 흔들지 않고 확장 작업을 진행할 수 있습니다.</li>
+<li><b>권한 경계가 명확하다.</b> 자금을 옮기는 sweep, 정책을 바꾸는 이관은 Admin 권한이라, "누가 확장 중에 자금을 움직였나"가 감사 경계 안에서 그대로 남습니다. Service 자격증명으로는 이 동작을 할 수 없습니다.</li>
+<li><b>감사가 쉬워진다.</b> 두 경계가 분리돼 있어 확장·교체 기간의 운영 로그(Admin)와 고객 트래픽(Service)이 섞이지 않습니다.</li>
+</ul>
+
+<h2>코드 구조 — 이 문서를 모노레포로 옮기면</h2>
+
+<p>지금까지의 등장인물(0p)과 성질이 코드에서 강제되려면 <b>모듈 경계가 곧 설계 경계</b>여야 합니다. 한 저장소(모노레포) 안에서 이렇게 자릅니다.</p>
+
+<pre><code>wallet/
+├─ domain/                # 포트 + 값 객체 (0p "도메인 한 장") — 순수 코드, 아무것도 의존하지 않음
+├─ backend/
+│   ├─ service/           # Service 백엔드 — 고객 런타임 유스케이스 (1~7p "사용 코드")
+│   └─ admin/             # Admin 백엔드 — 정책·승인·키 운영·동결·rebalance·sweep
+├─ adapters/
+│   ├─ fireblocks/        #   주 구현 — Fireblocks SDK 래핑 → 포트 구현 · 체인·자산 등록
+│   └─ fake/              #   가짜 구현 (테스트용) — 벤더 없이 계약 테스트·백엔드 검증
+└─ apps/
+    ├─ service-api/       #   Service 서버 — DI 로 fireblocks 어댑터 주입
+    ├─ admin-api/         #   Admin 서버 — 정책·운영·sweep
+    └─ webhook-receiver/  #   Fireblocks webhook 수신 엔드포인트 (4·6p)</code></pre>
+
+<p>모듈 사이의 <b>의존 방향</b>이 이 문서의 성질들을 컴파일 타임에 강제합니다. 화살표는 "의존한다"라는 뜻이고, 전부 안쪽(domain)을 향합니다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    SAPI["apps/service-api<br/>(DI — 어댑터 주입)"]
+    AAPI["apps/admin-api<br/>(DI — 어댑터 주입)"]
+    HOOK["apps/webhook-receiver"]
+    SBE["backend/service"]
+    ABE["backend/admin"]
+    FBA["adapters/fireblocks<br/>주 구현"]
+    FAKE["adapters/fake<br/>테스트용"]
+    DOM["domain<br/>포트 + 값 객체 — 의존 0"]
+    SDK["Fireblocks SDK (외부)"]
+
+    SAPI --> SBE
+    AAPI --> ABE
+    SAPI -.주입.-> FBA
+    AAPI -.주입.-> FBA
+    SBE --> DOM
+    ABE --> DOM
+    FBA --> DOM
+    FAKE --> DOM
+    FBA --> SDK
+    HOOK --> DOM
+
+    classDef mine fill:#dcfce7,stroke:#16a34a;
+    classDef impl fill:#dbeafe,stroke:#2563eb;
+    classDef core fill:#e0e7ff,stroke:#6366f1;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    class SBE,ABE mine; class FBA,FAKE impl; class DOM core; class SAPI,AAPI,HOOK,SDK ext;
+</pre></div>
+<p class="diagram-caption">의존 그래프에서 성질 셋이 읽힙니다. <b>① 두 backend → domain 뿐.</b> 백엔드는 adapters 를 모르므로(화살표가 없다) "어느 벤더인지 모른다"가 컴파일 타임의 사실이 된다. 어댑터를 아는 곳은 apps 의 DI(점선)뿐이다. <b>② adapters/fireblocks 가 주 구현이고, fake 는 테스트용 가짜 구현이다.</b> 벤더를 바꾸려면 새 어댑터를 이 자리에 더하고 주입만 바꾼다 — backend 는 0줄. <b>③ Fireblocks SDK 는 adapters/fireblocks 안에 격리된다.</b> 벤더 타입이 그 밖으로 새면 교체가 깨지므로, 이 경계는 빌드 규칙(의존 검사)으로 막는다. Service·Admin 이 별도 backend·apps 모듈인 것이 곧 물리 분리다.</p>
+
+<h2>인프라 — 무엇이 어디서 도는가</h2>
+
+<p>0p 에서 본 배치를 확장 관점으로 다시 봅니다. Fireblocks 채택 기준이라 서명·키·노드·전파는 <b>벤더 안</b>이고, 우리 쪽엔 <b>두 백엔드와 webhook 수신기, 매핑 DB</b>만 남습니다. 우리가 직접 노드·HSM·인덱서를 운영하지 않으므로, 새 EVM 체인이 붙어도 <b>우리 인프라 배치는 그대로</b>입니다 — 벤더가 그 체인을 지원하기만 하면 됩니다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    subgraph OUR["우리 인프라 (망분리 IDC)"]
+      subgraph SVCZ["Service 존"]
+        SAPI["Service 백엔드<br/>고객 런타임 · 멱등"]
+        HOOK["webhook 수신기<br/>입금·상태 이벤트 (4·6p)"]
+      end
+      subgraph ADMZ["Admin 존 — 권한·감사 경계"]
+        AAPI["Admin 백엔드<br/>정책·승인·sweep·rebalance"]
+      end
+      DB[("공유 매핑 DB<br/>계정↔주소 · 세대 · 멱등 · 이벤트")]
+    end
+    FB["Fireblocks (벤더 SaaS)<br/>vault · MPC 서명 · TAP 정책 · 노드·전파 · webhook 발신"]
+    EVM["EVM 네트워크<br/>이더리움 · Base · (다른 L2)"]
+
+    SAPI -->|포트 호출| FB
+    AAPI -->|정책·운영·sweep 호출| FB
+    SAPI --- DB
+    AAPI --- DB
+    HOOK --- DB
+    FB -->|webhook| HOOK
+    FB --> EVM
+
+    classDef svc fill:#dbeafe,stroke:#2563eb;
+    classDef adm fill:#fef3c7,stroke:#d97706;
+    classDef data fill:#dcfce7,stroke:#16a34a;
+    classDef vendor fill:#f5f5f7,stroke:#86868b;
+    classDef ext fill:#eef2ff,stroke:#818cf8;
+    class SAPI,HOOK svc; class AAPI adm; class DB data; class FB vendor; class EVM ext;
+</pre></div>
+<p class="diagram-caption">Fireblocks 채택 기준 배치(0p 와 일관). 우리 운영 대상은 셋 — <b>두 백엔드(물리 분리)와 webhook 수신기·매핑 DB</b>. 서명·MPC·TAP·노드·전파는 벤더 안에서 돈다. 새 EVM 체인은 <b>벤더 쪽(EVM 네트워크)과 어댑터의 등록</b>에서만 늘 뿐, 이 그림의 우리 쪽 구성은 그대로다. 노드·HSM·인덱서를 직접 두지 않는 대신 <b>webhook 이라는 inbound 경로</b>가 유일한 수신 지점이라, 방화벽·서명 검증·가용성이 운영 항목이 된다(4p). 벤더 교체 시엔 이 그림의 <b>Fireblocks 상자만</b> 다른 벤더로 바뀌고, 우리 쪽 상자들은 자금 sweep 을 제외하면 그대로다.</p>
 
 <div class="callout">
-<div class="callout-title">마무리 — 전제의 세 문장이 증명으로</div>
-<p style="margin:0"><b>"자체로 테스트한다."</b> 1~7의 자체 분면이 그 동작 전부다. <b>"Fireblocks 로 전환해도 다른 시스템에 영향이 없다."</b> 같은 포트 호출(전 페이지)에 계약 테스트, 설정 한 줄이면 되고, 자금 이사만 운영 절차로 남는다. <b>"체인이 늘어도 영향이 없다."</b> 양 극단인 이더리움과 Canton 을 이미 같은 포트 뒤에서 소화했고, 새 체인은 어댑터 하나다.</p>
+<div class="callout-title">마무리 — 포트 하나가 두 축의 변화를 흡수한다</div>
+<p style="margin:0"><b>"매니저를 바꿔도 두 백엔드는 그대로다."</b> 1~7페이지의 모든 포트 호출이 그 근거이고, 계약 테스트로 못 박은 뒤 어댑터를 더하고 주입만 바꾼다 — 남는 건 자금 sweep 운영뿐이다. <b>"EVM 체인이 늘어도 영향이 없다."</b> Base 가 이미 이더리움과 같은 EVM 어댑터로 붙었고, 다른 L2 는 어댑터의 등록 한 줄이다. <b>"운영이 런타임을 안 건드린다."</b> 확장·교체·sweep 은 Admin 경계 안에서 일어나 고객 런타임(Service)과 분리된다. 포트 하나가 벤더와 체인, 두 축의 변화를 모두 흡수한다 — 그것이 이 문서의 1차 목표였다.</p>
 </div>
 
-<p class="foot">더 깊이: 포트별 택일·교체 구조 — <a href="../wallet-service-components/abstraction.html">가이드 13장</a> · DI 한 줄 교체 — <a href="../wallet-service-components/project-structure.html">17장</a> · 계약 테스트 구성은 본 워크스루의 제안(스켈레톤 미반영).</p>
+<p class="foot">더 깊이: 포트별 교체 구조 — <a href="../wallet-service-components/abstraction.html">가이드 13장</a> · DI 어댑터 주입 — <a href="../wallet-service-components/project-structure.html">17장</a> · 계약 테스트 구성은 본 워크스루의 제안(스켈레톤 미반영). <span style="color:var(--muted)">(가이드는 자체 구축·Canton 전제 — 개념만 참고, 개편 예정)</span></p>
 
 <div class="pager">
 <a href="07-balance-history.html">← 7. 잔액과 내역</a>

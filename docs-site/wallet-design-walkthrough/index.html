@@ -3,19 +3,20 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>자체 블록체인 매니저 설계 워크스루</title>
+<title>지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</title>
 <meta content="noindex" name="robots"/>
 <link href="assets/walkthrough.css" rel="stylesheet"/>
 </head>
 <body>
 <div class="wrap">
 <p class="series">설계 워크스루 · 백엔드 개발자 대상 · 비공개 (URL 공유)</p>
-<h1>자체 블록체인 매니저 설계 워크스루</h1>
-<p class="subtitle">기능 하나마다 자체/Fireblocks × 이더리움/Canton, 이 네 가지 조합이 어떻게 동작하는지 전부 보여줍니다</p>
+<h1>지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</h1>
+<p class="subtitle">1차 목표는 이 통로(포트) 하나입니다. 그 뒤 구현은 <b>Fireblocks</b> — 이더리움·Base(EVM)를 한 포트로 태웁니다</p>
 
 <div class="callout">
 <div class="callout-title">전제 (합의 완료)</div>
-<p style="margin:0">Fireblocks 를 분석해 <b>자체 블록체인 매니저</b>를 만든다. 처음에는 자체 매니저로 테스트한 뒤 Fireblocks 로 전환해도 <b>다른 시스템에 영향이 없어야</b> 한다. 체인은 이더리움·Canton 으로 시작한다. 나중에 다른 체인이 붙어도 마찬가지다.</p>
+<p style="margin:0 0 8px"><b>Fireblocks 를 채택한다.</b> 1차 목표는 우리 두 백엔드가 Fireblocks 매니저를 부르는 <b>통로(포트) 하나</b>를 EVM(이더리움·Base) 위에 세우는 것이다. 두 백엔드는 <b>물리적으로 분리</b>한다 — <b>Service 백엔드</b>(고객 런타임: 입금·출금·잔액)와 <b>Admin 백엔드</b>(운영·거버넌스: 정책·승인·키·동결·rebalance)가 별도 배포·권한·감사 경계로 나뉜다.</p>
+<p style="margin:0">포트로 추상화하므로 <b>매니저를 바꿔도 두 백엔드 코드는 그대로</b>다. EVM 체인이 늘어도(이더리움·Base, 이후 다른 L2) 백엔드는 안 바뀐다 — 체인 분기는 포트 뒤에 갇힌다. 훗날 매니저(벤더)를 교체해도 같은 포트가 그 변화를 흡수한다.</p>
 </div>
 
 <ol class="toc" start="0">
@@ -27,11 +28,11 @@
 <li><a href="05-estimate-fee.html"><span class="num">5</span>수수료 견적 — estimateFee<span class="act">출금 준비</span></a></li>
 <li><a href="06-withdrawal.html"><span class="num">6</span>출금 — 제출에서 확정까지, 막혔을 때<span class="act">자금 유출</span></a></li>
 <li><a href="07-balance-history.html"><span class="num">7</span>잔액과 내역 조회 — getBalance · transactionsOf<span class="act">고객 화면</span></a></li>
-<li><a href="08-switch-extend.html"><span class="num">8</span>전환과 확장 — 이 4분면이 가능한 이유<span class="act">마무리</span></a></li>
+<li><a href="08-switch-extend.html"><span class="num">8</span>확장 — 포트가 EVM 체인 확장·매니저 교체를 흡수하는 법<span class="act">마무리</span></a></li>
 </ol>
 <p class="table-note" style="margin-top:10px"><b>관련</b> · <a href="../ramp-settlement-walkthrough/manager-boundary.html">정산 흐름과 블록체인 매니저의 경계</a> — 이 매니저가 온·오프램프·스왑 정산 흐름과 어디서 맞물리는지, <a href="../ramp-settlement-walkthrough/index.html">정산 워크스루</a>와 겹쳐 본다.</p>
 
-<p class="foot">상세 레퍼런스: <a href="../wallet-service-components/">블록체인 매니저 컴포넌트 가이드</a> — 본문은 가이드 없이도 읽히도록 썼습니다. 더 깊은 내용만 페이지 하단에서 연결합니다.</p>
+<p class="foot">상세 레퍼런스: <a href="../wallet-service-components/">블록체인 매니저 컴포넌트 가이드</a> — 본문은 가이드 없이도 읽히도록 썼습니다. 더 깊은 내용만 페이지 하단에서 연결합니다. <b>단 이 가이드는 자체 구축·Canton 전제라</b> 본 문서의 Fireblocks·EVM 모델과 다릅니다(개념 참고용 · 개편 예정).</p>
 </div>
 </body>
 </html>
