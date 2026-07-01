@@ -10,7 +10,6 @@ import com.company.wallet.domain.model.Transfer
 import com.company.wallet.domain.model.Balance
 import com.company.wallet.domain.model.ChainEvent
 import com.company.wallet.domain.model.ChainEventHandler
-import com.company.wallet.domain.model.ChainSpecific
 import com.company.wallet.domain.model.FeeEstimate
 import com.company.wallet.domain.model.Subscription
 import com.company.wallet.domain.model.TransactionRequest
@@ -29,9 +28,10 @@ import java.util.concurrent.CopyOnWriteArrayList
  * Fireblocks custody 어댑터 — Account·Transaction 두 포트 + fee boost (가이드 14).
  *
  * 얇은 어댑터다 — 포트 메서드가 거의 그대로 Fireblocks 호출 하나씩으로 매핑된다 (가이드 14.2).
- * [submitTransaction] 은 `createTransaction` 한 번으로 끝난다 — 빌드·MPC 서명·전파·nonce 가
+ * [submitTransaction] 은 `createTransaction` 한 번으로 끝난다 — 빌드·MPC 서명(+온프렘 API Co-signer)·전파·nonce 가
  * Fireblocks 안에 묶여 있어, 자체 구축처럼 "조립 → 서명 → 전파" 3단계를 밟지 않는다.
  * raw nonce 를 직접 돌리면 Fireblocks 내부 nonce 와 충돌하므로 만들지 않는다 (가이드 14.6).
+ * 서명 직전 승인·거부 게이트(온프렘 Co-signer Callback Handler)는 벤더에 위임되지 않는 우리 몫이다 (가이드 5).
  *
  * 임의 외부 주소·커스텀 조회(ChainQueryPort)는 Fireblocks 가 주지 않는다 — 필요하면
  * 자체 인덱서·Alchemy 어댑터를 그 포트만 따로 붙인다 (가이드 13.4 하이브리드).
@@ -98,7 +98,6 @@ class FireblocksAdapter(
     /**
      * 서명+전파 묶음 — `createTransaction` 한 번 (가이드 14.2).
      * 게이트웨이의 멱등 키를 `externalTxId` 로 넘겨 Fireblocks 측 중복 제출도 막는다 (가이드 6.3).
-     * Canton 에선 이 호출이 OFFER 제출이다 — 이후 상태는 [getStatus] 의 AwaitingCounterparty (가이드 14.8).
      */
     override suspend fun submitTransaction(request: TransactionRequest): TxRef {
         val tx = client.createTransaction(toCreateParams(request))
@@ -110,8 +109,6 @@ class FireblocksAdapter(
         return fireblocksStatusToTxStatus(
             status = tx.status,
             numOfConfirmations = tx.numOfConfirmations,
-            cantonTransactionType = tx.cantonTransactionType,
-            traceableId = tx.traceableId,
         )
     }
 
@@ -127,7 +124,7 @@ class FireblocksAdapter(
         return txRef
     }
 
-    /** 부스트(RBF/drop & replace) — EVM/UTXO 만, Solana/Canton 은 Fireblocks 가 거절 (가이드 4.4). */
+    /** 부스트(drop & replace) — EVM 트랜잭션만 (가이드 4.4). */
     override suspend fun boost(txRef: TxRef): TxRef {
         val replaced = client.boostTransaction(txRef.value)
         return TxRef(value = replaced.id, chainId = txRef.chainId)
@@ -161,16 +158,13 @@ class FireblocksAdapter(
     /** 우리 자산 → Fireblocks assetId. TODO: 자산 사전 매핑 (예: ETH ↔ ETH_TEST5 환경별 id). */
     private fun assetIdOf(asset: Asset): String = asset.symbol
 
-    private fun toCreateParams(request: TransactionRequest): FireblocksCreateTransactionParams {
-        val canton = request.chainSpecific as? ChainSpecific.Canton
-        return FireblocksCreateTransactionParams(
+    private fun toCreateParams(request: TransactionRequest): FireblocksCreateTransactionParams =
+        FireblocksCreateTransactionParams(
             assetId = assetIdOf(request.asset),
             sourceVaultId = vaultOf(request.account),
             destinationAddress = request.to.value,
             destinationTag = request.to.memoTag,
             amountMinorUnits = request.amount.minorUnits,
             externalTxId = request.idempotencyKey,
-            cantonTransactionType = canton?.transactionType?.name,
         )
-    }
 }

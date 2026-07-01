@@ -3,9 +3,9 @@ package com.company.wallet.domain.model
 /**
  * 잔액 — 단일 숫자가 아니다 (가이드 13.3).
  *
- * available(사용 가능) · pending(미확정 입금) · locked(2-step OFFER 등으로 묶임) 을 구분한다.
+ * available(사용 가능) · pending(미확정 입금) · locked(송신 대기 등으로 묶임) 을 구분한다.
  * 수탁의 "사용 가능 판정" 은 [available] 만 본다 — 감지(PENDING) 자금을 쓰게 하면
- * reorg 때 없는 돈을 쓰는 사고가 된다 (가이드 10.2), Canton 송신 대기 자금은 locked (가이드 11.1).
+ * reorg 때 없는 돈을 쓰는 사고가 된다 (가이드 10.2 · 11.1).
  */
 data class Balance(
     val available: Amount,

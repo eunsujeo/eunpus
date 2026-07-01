@@ -2,8 +2,8 @@ package com.company.wallet.apps.webhookreceiver
 
 import com.company.wallet.adapters.fireblocks.FireblocksWebhookMapper
 import com.company.wallet.adapters.fireblocks.FireblocksWebhookPayload
-import com.company.wallet.backend.alerts.Notification
-import com.company.wallet.backend.alerts.NotificationFanout
+import com.company.wallet.backend.service.alerts.Notification
+import com.company.wallet.backend.service.alerts.NotificationFanout
 import com.company.wallet.domain.model.ChainEvent
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.PostMapping

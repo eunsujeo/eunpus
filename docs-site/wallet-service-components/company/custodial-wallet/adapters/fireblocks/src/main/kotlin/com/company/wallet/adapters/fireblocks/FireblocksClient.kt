@@ -38,8 +38,6 @@ data class FireblocksCreateTransactionParams(
     val destinationTag: String? = null,
     val amountMinorUnits: BigInteger,
     val externalTxId: String,
-    /** Canton 전용 — OFFER / ACCEPT / REJECT / WITHDRAW / PRE_APPROVAL (가이드 14.8). */
-    val cantonTransactionType: String? = null,
 )
 
 /** 수수료 추정 응답 — low / medium / high (POST /v1/transactions/estimate_fee). */
@@ -57,10 +55,6 @@ data class FireblocksTransaction(
     val status: String,
     val txHash: String? = null,
     val numOfConfirmations: Int = 0,
-    /** Canton 2-step lifecycle — 전용 필드로 노출된다 (가이드 14.8, generic status 와 별개). */
-    val cantonTransactionType: String? = null,
-    /** Canton OFFER↔후속 연결용 원 OFFER UpdateId (가이드 14.8). */
-    val traceableId: String? = null,
 )
 
 /**
@@ -110,8 +104,8 @@ interface FireblocksClient {
     suspend fun cancelTransaction(txId: String): Boolean
 
     /**
-     * POST /v1/transactions/{txId}/drop — 부스트/RBF (drop & replace).
-     * EVM/UTXO 트랜잭션만 — Solana/Canton 은 Fireblocks 가 거절한다 (가이드 4.4).
+     * POST /v1/transactions/{txId}/drop — 부스트 (drop & replace).
+     * EVM 트랜잭션만 (가이드 4.4).
      */
     suspend fun boostTransaction(txId: String): FireblocksTransaction
 }

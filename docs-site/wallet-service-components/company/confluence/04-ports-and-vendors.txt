@@ -1,35 +1,46 @@
-h1. 벤더 추상화 — 기능별 3 포트와 어댑터 비교
+h1. 벤더 추상화 — 기능별 3 포트와 Fireblocks 어댑터
 
 {info:title=이 문서의 성격}
-아래 인터페이스는 설명용 의사코드다. Fireblocks 의 기능 범위(서명·전파·nonce·webhook·externalTxId·vault)는 Fireblocks 공식 문서에서 확인한 사실에 근거하며, 그 외 벤더·자체 구축 진술은 공개 문서와 일반 설계 패턴이므로 적용 전 검증이 필요하다. NodeWallet 의 기능 범위는 벤더(NodeInfra) 자체 주장이며 독립 검증된 것이 아니다.
+매니저로 *Fireblocks 를 채택* 했다. 아래 인터페이스는 설명용 의사코드이고, Fireblocks 의 기능 범위(서명·전파·nonce·webhook·DCCP·externalTxId·vault·수수료)는 Fireblocks 공식 문서에서 확인한 사실에 근거한다. 그 외 조회 벤더(Alchemy 등) 진술은 공개 문서와 일반 설계 패턴이므로 적용 전 검증이 필요하다. 태우는 체인은 EVM — 이더리움·Base 다.
 {info}
 
 h2. 1. 핵심 — 매니저를 통째로가 아니라 기능별 포트로 자른다
 
-"블록체인 매니저" 를 인터페이스 하나로 통째 추상화하면 교체 단위가 "전부 Fireblocks 냐, 전부 자체냐" 둘뿐이 되어 섞을 수가 없다. 그래서 기능(capability)마다 포트를 두고, 두 가지 규칙만 지킨다.
+Fireblocks 를 채택했는데도 코드 곳곳에서 직접 부르지 않고 *포트(통로)로 한 겹 감싸는* 이유는 셋이다.
+
+* *① 벤더 독립* — 벤더 타입·SDK 가 업무 로직에 새지 않아, 훗날 매니저(벤더)를 바꿔도 우리 백엔드는 그대로다.
+* *② 다중 EVM 체인 (이더리움·Base)* — 이더리움과 Base 는 같은 EVM(account 기반·공개 mempool·reorg·동일 주소 체계)이라 *포트 하나로 여러 체인* 을 태운다. 다른 L2 가 붙어도 백엔드 코드는 안 바뀐다.
+* *③ 테스트 가능* — 포트를 가짜 구현으로 바꿔 벤더 없이 백엔드를 검증한다.
+
+*Base 는 이더리움 L2(OP-Stack)* 라 주소·상태·수수료·boost/RBF·확정(DCCP) 모델이 이더리움과 사실상 같다. 그래서 둘을 'EVM' 으로 묶어 한 번에 다루고, 체인이 갈리는 지점(가스 시세·L2 특유의 확정 지연 등)만 따로 짚는다.
+
+그리고 매니저를 인터페이스 하나로 통째 추상화하면 교체 단위가 "전부 Fireblocks 냐, 전부 조회벤더냐" 가 되어 섞을 수가 없다 — 예컨대 "계정·트랜잭션은 Fireblocks, 임의 외부 주소 조회는 자체 인덱서" 같은 현실적 조합이 표현되지 않는다. Fireblocks 는 이 임의 조회를 주지 않기 때문에 실제로 마주치는 조합이다. 그래서 기능(capability)마다 포트를 두고, 두 가지 규칙만 지킨다.
 
 * *한 어댑터가 여러 포트를 채울 수 있다* — Fireblocks 는 여러 기능을 묶어 주니 여러 포트를 한꺼번에 구현한다. Alchemy 는 조회 포트만.
-* *포트마다 따로 갈아끼운다* — 한 벤더가 약한 포트만 다른 어댑터로 교체한다. 단 이 교체 경계가 실존하는 곳은 custody ↔ ChainQuery 하나다 — Account 와 Transaction 은 키가 있는 곳에 묶여 늘 한 몸으로 교체되며, 둘을 나눈 이유는 교체가 아니라 부르는 쪽이 달라서다(온보딩은 Account 만, 출금은 Transaction 만 의존).
+* *포트마다 따로 갈아끼운다* — Fireblocks 가 안 주는 포트만 다른 어댑터로 붙인다. 단 이 교체 경계가 실존하는 곳은 custody ↔ ChainQuery 하나다 — Account 와 Transaction 은 키가 있는 곳에 묶여 늘 한 몸으로 구현되며(계정·주소를 만든 키와 트랜잭션에 서명하는 키가 같아야 하므로), 둘을 나눈 이유는 교체가 아니라 부르는 쪽이 달라서다(온보딩은 Account 만, 출금은 Transaction 만 의존).
+
+또한 우리 백엔드는 *Service*(고객 런타임)와 *Admin*(운영·거버넌스)으로 물리 분리된다 — 두 백엔드가 같은 포트를 부르되 부르는 메서드 묶음과 권한이 다르다. 나가는 돈의 정책·승인·개입(TAP·boost·cancel·동결)은 Admin, 고객 런타임(계정·주소·입금·출금 제출·조회)은 Service 다.
 
 h2. 2. 세 기능 포트
 
 {code:kotlin}
 interface AccountPort {                       // 계정·주소 (키가 있는 곳)
-    fun createAccount(ref): Account           // 고객 계정(vault) 생성
-    fun addressOf(account, asset): Address    // 멱등 "조회" — 발급(등록)된 주소 반환, 절대 새 주소를 만들지 않음 · Canton=PartyId (allocation 은 createAccount 때)
-    fun issueDepositAddress(account, asset): Address  // 선택 capability — 입금 식별자(주소+memo) "발급", 첫 식별자부터 (Canton ✅ = PartyId 고정+새 memo — FB 확인 · NodeWallet ✗)
+    fun createAccount(ref): Account           // 고객 계정(vault) 생성 = Fireblocks createVaultAccount
+    fun addressOf(account, asset): Address    // 멱등 "조회" — 발급(등록)된 주소 반환, 절대 새 주소를 만들지 않음
+    fun issueDepositAddress(account, asset): Address  // 선택 capability — 입금 주소 "발급", 첫 주소부터 상태 변경
+                                              //   = Fireblocks generateNewAddress (부를 때마다 새 EVM 주소)
     fun getBalance(account, asset): Balance   // 단일 숫자 아님 — available/pending/locked 구분 (사용 가능 판정은 available 만)
-    fun validateAddress(asset, addr): Boolean // 출금 대상 주소 형식·체크섬 검증 — 로컬 체인 규칙으로 구현 (벤더 API 불요)
+    fun validateAddress(asset, addr): Boolean // 출금 대상 주소 형식·체크섬 검증 — 로컬 EVM 규칙으로 구현 (벤더 API 불요)
 }
 
 interface TransactionPort {                   // 트랜잭션 쓰기 + 상태 + 내 지갑 이벤트
     fun estimateFee(req): Fee                 // 제출 전 수수료 추정 (low/med/high)
-    fun submitTransaction(req): TxRef         // 서명+전파 묶음
-    fun getStatus(txRef): TxStatus            // pending / confirmed / stuck
+    fun submitTransaction(req): TxRef         // 서명+전파 묶음 = Fireblocks createTransaction
+    fun getStatus(txRef): TxStatus            // SUBMITTED / CONFIRMING / COMPLETED / FAILED
     fun transactionsOf(account, range): List<Transfer>  // 내 계정 송수신 이력 — custody 가 줌. 임의 "외부" 주소는 ChainQueryPort.transfersOf
-    fun boost(txRef): TxRef                   // 선택 capability — EVM/UTXO 전용 수수료 인상 재촉
-    fun cancel(txRef): TxRef                  // 선택 capability — EVM=0원 self-send 덮어쓰기 · Canton=OFFER withdraw · Solana 는 보장 불가(부재 가능)
-    fun onChainEvent(handler): Subscription   // 내 지갑 수신·확정 push
+    fun boost(txRef): TxRef                   // 선택 capability — EVM RBF 수수료 인상 재전송 — Admin 운영
+    fun cancel(txRef): TxRef                   // 선택 capability — EVM=같은 순번 0원 self-send 덮어쓰기 — Admin 운영
+    fun onChainEvent(handler): Subscription   // 내 지갑 수신·확정 push — Fireblocks webhook 이 줌
 }
 
 interface ChainQueryPort {                    // (선택) 임의·커스텀 조회 — custody 가 안 주는 것
@@ -39,26 +50,50 @@ interface ChainQueryPort {                    // (선택) 임의·커스텀 조�
 }
 {code}
 
-포트엔 "입금하다/출금하다" 가 없다 — 출금 = 우리가 만든 송신 트랜잭션, 입금 = onChainEvent 로 들어오는 수신 트랜잭션이고, 업무 의미는 비즈니스 레이어가 붙인다. {{submitTransaction}} 이 서명+전파를 *묶어서* 받는 것이 교체 가능성의 핵심이다 — Fireblocks 는 createTransaction 한 번으로, 자체 구축은 내부에서 조립→HSM 서명→전파로 채운다. 포트가 sign()/broadcast() 를 따로 노출했다면 Fireblocks(묶음형)가 안 맞아 교체가 깨진다. 포트를 더 잘게 쪼개는 것은 그 기능을 정말로 따로 갈아끼울 실제 요구가 생겼을 때만 한다.
+포트엔 "입금하다/출금하다" 가 없다 — 출금 = 우리가 만든 송신 트랜잭션, 입금 = onChainEvent 로 들어오는 수신 트랜잭션이고, 업무 의미는 비즈니스 레이어가 붙인다. {{submitTransaction}} 이 서명+전파를 *묶어서* 받는 것이 핵심이다 — Fireblocks 는 createTransaction 한 번으로 조립·nonce·MPC 서명(우리 온프렘 co-signer 공동서명)·전파를 채운다. 포트가 sign()/broadcast() 를 따로 노출했다면 Fireblocks(묶음형)가 안 맞아 어긋난다. 포트를 더 잘게 쪼개는 것은 그 기능을 정말로 따로 갈아끼울 실제 요구가 생겼을 때만 한다.
 
-h2. 3. 어댑터 비교 — Fireblocks · 자체 구축 · NodeWallet
-
-||항목||Fireblocks (SaaS 위탁)||자체 구축 (직접 빌드)||NodeWallet (온프렘 제품 도입)||
-|AccountPort|(/) vault 생성·주소 파생|(/) HD 지갑 + 자체 파생|(/) 지갑 생성 (Solana 전용)|
-|TransactionPort|(/) createTransaction 한 번(서명+전파+nonce 묶음) + webhook 이벤트|(/) 조립→서명(HSM)→전파를 내부에서 직접 조립|(/) 내부 3-키 다중서명 (HSM+SGX)|
-|ChainQueryPort|(x) 임의 외부 주소·커스텀 조회 미지원 → 자체 인덱서/Alchemy 추가|(/) 자체 인덱서 — custody 와 별개의 인덱서 어댑터(하이브리드와 같은 클래스)|(x) 자체 인덱서 별도|
-|키 소유권|벤더 샤드 보관 (MPC)|자체 HSM/MPC 운영|고객 직접 보유 (온프렘 HSM+SGX)|
-|수신 감지|webhook push (벤더가 인덱싱)|자체 인덱서 상시 운영 (수집·projection·reorg)|제품 자체 원장·입금 검증 push|
-|nonce·stuck 대응|플랫폼 내부 처리 — 자체 nonce 돌리면 충돌. boost API 호출만|직접 — 계정별 lock·직렬화·fee bump|제품 처리 (Solana 라 fee-boost 없음)|
-|지원 체인|멀티체인 (Canton 포함)|만드는 만큼|*Solana 전용* — 이더리움·Canton 불가|
-|제도 적합|적격 custodian 위탁 허용 시|규제·요건 따라|자가 수탁·망분리·데이터 국외 미이전 요구 시|
-
-{note:title=ChainQuery 는 Fireblocks 가 안 준다 → 하이브리드가 정답}
-Fireblocks 로 Account·Transaction 포트(내 지갑 계정·트랜잭션·수신 이벤트)를 쓰되, 임의 외부 주소 조회나 커스텀 가공·집계가 필요하면 ChainQueryPort 만 자체 인덱서(또는 Alchemy·The Graph) 로 추가한다. 매니저를 통째로 추상화했다면 불가능했을 조합 — 기능별 포트라서 없는 포트만 따로 붙일 수 있다. 같은 원리로 체인별 병행 배치도 된다: Solana = NodeWallet · 이더리움/Canton = Fireblocks 또는 자체 구축. 코어(지갑 서비스 백엔드)는 포트만 의존하므로 어느 조합이든 그대로다.
+{note:title=주소는 "조회(addressOf)" 와 "발급(issueDepositAddress)" 을 가른다}
+EVM 에서 파생은 순수 함수처럼 보이지만, Fireblocks 의 {{generateNewAddress}} 는 부를 때마다 *새 주소를 발급하는 상태 있는 작업* 이다 — 벤더 안에서 vault 에 주소가 등록된다. 그래서 의도 기준으로 가른다: {{addressOf}} = 멱등 조회, {{issueDepositAddress}} = 입금 주소 발급(capability, 상태 변경). 새 주소가 태어나는 길은 상태 있는 동사(issueDepositAddress)뿐이고, addressOf 는 등록된 주소만 반환한다.
 {note}
 
-h2. 4. 어느 쪽을 골라도 남는 것 · 설계 자세
+{warning:title=submitTransaction 은 "서명 완료" 가 아니라 "확정 대기 시작" 이다}
+EVM 에서 submitTransaction 은 전파까지만 묶는다 — 그 뒤 getStatus 는 SUBMITTED → CONFIRMING(체인 등장, 아직 미확정) → COMPLETED(DCCP 임계 confirmation 도달 = finality) 로 흐른다. {{numOfConfirmations}} 로 "confirm(체인 등장) ↔ finality(임계 도달)" 를 가른다. 임계값은 DCCP 가 정하며 대부분 1, ETC 372, contract call 은 3 이상 — DCCP 는 *Admin 백엔드* 가 소유한다.
+{warning}
 
-Fireblocks 가 포트를 거의 다 채워도 위층은 그대로 우리가 만든다 — 멱등 게이트웨이(우리 멱등 키 → externalTxId 매핑), 이벤트 팬아웃, 온체인 정합성·추적, 요청 큐·상태머신·vault 라우팅. 그리고 포트는 벤더 API 모양이 아니라 *우리 업무 언어*로 정의하되("도메인 우선"), 설계 단계에서 벤더가 실제로 무엇을 주는지 검증해 추상화가 거짓말하지 않게 한다 — _"Fireblocks 가 설계를 정하게 두지 말되, 설계가 Fireblocks 를 무시하게도 두지 말라."_ 이 비용은 벤더·체인을 실제로 갈아탈 가능성이 있을 때 정당화되며, 벤더 한 곳만 영원히 쓸 거면 순수 오버헤드일 수 있다.
+h2. 3. 어댑터 — Fireblocks 가 유일한 라이브 구현
 
-더 보기: 원본 가이드 13~16장 — https://wiki-docs.pages.dev/wallet-service-components/abstraction.html · example-fireblocks.html · example-selfbuild.html · example-nodewallet.html
+매니저로 Fireblocks 를 채택했으므로, Account·Transaction 두 포트를 채우는 유일한 라이브 구현은 Fireblocks 어댑터 하나다 — 자체 구축은 테스트용 가짜 구현({{adapters/fake}})으로만 남는다. 반면 임의 외부 주소·커스텀 조회(ChainQueryPort)는 Fireblocks 가 미제공이라, 필요할 때만 그 포트를 조회 벤더로 따로 붙인다.
+
+|| 포트 || Fireblocks (채택 · 유일한 라이브 구현) || Alchemy · The Graph · SQD (선택) ||
+| AccountPort | (/) vault 생성·EVM 주소 발급·잔액 | (x) |
+| TransactionPort | (/) createTransaction 한 번(조립+MPC 서명+전파+nonce 묶음) + webhook 이벤트 | (x) |
+| ChainQueryPort | (x) 임의 외부 주소·커스텀 조회 미지원 → 조회 제공자 필요 | (/) 임의 조회·이력 |
+
+{code:kotlin}
+class FireblocksProvider : AccountPort, TransactionPort {
+    fun createAccount(ref) = fb.createVaultAccount(ref)                 // vault 생성
+    fun addressOf(vaultId, asset) = fb.getDepositAddresses(vaultId, asset).first  // 조회 — 새 주소 안 만듦
+    fun issueDepositAddress(vaultId, asset) = fb.generateNewAddress(vaultId, asset)  // 발급 — 부를 때마다 새 EVM 주소
+    fun submitTransaction(req) = fb.createTransaction(                  // 조립+nonce+MPC서명(온프렘 co-signer 공동서명)+전파
+        source = VaultAccount(vaultOf(req.accountRef)),
+        destination = OneTimeAddress(req.to),
+        amount = req.amount,
+        externalTxId = req.idempotencyKey)                             // 코어 멱등 키를 tx dedup 으로 전달
+    fun onChainEvent(handler) =
+        webhooks.on("transaction.status.updated") { handler(toChainEvent(it)) }  // Webhooks v2 — 내 vault 수신·확정 push
+}
+{code}
+
+메서드가 거의 그대로 Fireblocks 호출 하나씩으로 매핑되는 *얇은 어댑터* 다. 서명은 Fireblocks MPC 클라우드 share 와 우리 온프렘 *API Co-signer(SGX/TEE)* 가 공동으로 하고, Co-signer 는 서명 직전 우리 *Callback Handler* 에 승인·거부를 물어 목적지·금액을 재검증한다 — 나가는 돈의 마지막 자동 관문이 우리 인프라 안에 선다. 없는 포트는 손대지 않고 옆에 하나 더 꽂는다 — ChainQueryPort 가 필요하면 Alchemy 등을 별도 어댑터로 붙인다.
+
+{note:title=하이브리드의 비용 — 확정 판정 기준이 둘이 된다}
+Fireblocks 로 Account·Transaction 포트를 쓰되 임의 외부 주소 조회·커스텀 집계가 필요하면 ChainQueryPort 만 자체 인덱서(또는 Alchemy·The Graph)로 추가한다 — Fireblocks 가 이 포트를 안 주기 때문. 매니저를 통째로 추상화했다면 불가능했을 조합이다. 다만 이 조합에선 같은 체인을 두 시스템이 서로 다른 확정 정책으로 본다(Fireblocks 는 DCCP, 조회 벤더는 우리 기준). 그래서 *자금 사용·잔액 판정은 custody 포트(Account·Transaction) 기준 하나로 고정* 하고, ChainQueryPort 는 조회·분석·대사 입력으로 한정한다. 어긋나는 건은 온체인 정합성의 예외로 사람이 본다.
+{note}
+
+포트 메서드는 실제 Fireblocks REST 로 매핑된다 — createAccount = {{POST /v1/vault/accounts}}, issueDepositAddress = {{POST /v1/vault/accounts/{id}/{asset}/addresses}}, submitTransaction = {{POST /v1/transactions}}(externalTxId 멱등), boost = {{POST /v1/transactions/{id}/drop}}(RBF), onChainEvent = webhook 등록 {{POST /v1/webhooks}} → {{transaction.status.updated}}(Webhooks v2, v1 은 2026-06-15 EOL). base URL 은 {{https://api.fireblocks.io}}, 모든 요청은 JWT(API Key + RSA) 서명이다.
+
+h2. 4. Fireblocks 를 써도 우리 백엔드는 남는다 · 설계 자세
+
+Fireblocks 가 custody 두 포트를 다 채워도 위층은 그대로 우리가 만든다 — 멱등 게이트웨이(우리 멱등 키 → externalTxId 매핑), 이벤트 팬아웃, 온체인 정합성·추적, 요청 큐·상태머신·vault 라우팅. 그리고 포트는 벤더 API 모양이 아니라 *우리 업무 언어* 로 정의하되("도메인 우선"), 설계 단계에서 벤더가 실제로 무엇을 주는지 검증해 추상화가 거짓말하지 않게 한다 — _"Fireblocks 가 설계를 정하게 두지 말되, 설계가 Fireblocks 를 무시하게도 두지 말라."_ 이 비용은 다중 EVM 체인(이더리움·Base, 이후 다른 L2)을 한 모델로 태우고 훗날 매니저(벤더)를 교체할 가능성에 대비할 때 정당화되며, 벤더 한 곳·체인 하나만 영원히 쓸 거면 순수 오버헤드일 수 있다.
+
+더 보기: 원본 가이드 13~14장 — https://wiki-docs.pages.dev/wallet-service-components/abstraction.html · example-fireblocks.html

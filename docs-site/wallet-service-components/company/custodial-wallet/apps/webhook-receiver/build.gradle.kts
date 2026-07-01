@@ -12,7 +12,7 @@ kotlin {
 dependencies {
     implementation(platform(libs.spring.boot.bom))
     implementation(project(":domain"))
-    implementation(project(":backend"))
+    implementation(project(":backend:service"))
     implementation(project(":adapters:fireblocks"))
     implementation(libs.spring.boot.starter.webflux)
     implementation(libs.kotlinx.coroutines.core)

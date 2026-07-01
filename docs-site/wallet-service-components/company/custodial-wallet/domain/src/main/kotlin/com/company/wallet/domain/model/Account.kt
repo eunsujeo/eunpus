@@ -7,7 +7,7 @@ package com.company.wallet.domain.model
 @JvmInline
 value class AccountRef(val value: String)
 
-/** custody 계정 (Fireblocks vault account · 자체 HD account 등의 정규화 표현). */
+/** custody 계정 (Fireblocks vault account 의 정규화 표현). */
 data class Account(
     val id: String,
     val ref: AccountRef,

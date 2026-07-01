@@ -26,8 +26,6 @@ data class FireblocksWebhookPayload(
     val amountMinorUnits: BigInteger,
     val decimals: Int,
     val numOfConfirmations: Int = 0,
-    val cantonTransactionType: String? = null,
-    val traceableId: String? = null,
 )
 
 /**
@@ -64,8 +62,6 @@ class FireblocksWebhookMapper {
                         fireblocksStatusToTxStatus(
                             status = payload.status,
                             numOfConfirmations = payload.numOfConfirmations,
-                            cantonTransactionType = payload.cantonTransactionType,
-                            traceableId = payload.traceableId,
                         ),
                 )
             else -> null

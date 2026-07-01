@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>18. 지갑 생성 애니메이션 — 블록체인 매니저 컴포넌트 가이드</title>
-<meta content="지갑이란 무엇인가(키 트리 + 장부), 그리고 시스템 셋업부터 EVM(secp256k1) 계정·주소 발급까지를 단계 애니메이션으로 본다." name="description"/>
+<meta content="지갑이란 무엇인가(키 하나 + 장부), 그리고 Fireblocks 워크스페이스·MPC 셋업부터 EVM(secp256k1) 계정·주소 발급까지를 단계 애니메이션으로 본다. 키는 Fireblocks 클라우드 share 와 우리 온프렘 co-signer share 로 나뉜다." name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
 <style>
@@ -136,20 +136,20 @@
 
 <p class="lead">9장(발급 시나리오)의 내용을 <strong>한 화면에서 단계 재생</strong>으로 본다. 새 사실은 없다 — 글로 읽은 것을 움직임으로 다시 보는 페이지다. 매니저는 Fireblocks, 태우는 체인은 EVM(이더리움·Base)이므로, 아래 발급 흐름은 EVM(secp256k1)을 기준으로 본다.</p>
 
-<h3>18.1 지갑이란 — 키 트리 하나 + 장부</h3>
+<h3>18.1 지갑이란 — 키 하나 + 장부</h3>
 
 <p>수탁 서비스에서 "지갑" 은 흔한 오해와 달리 <strong>고객마다 만들어지는 키가 아니다</strong>. 실체는 둘뿐이다:</p>
 
 <ul>
-<li><strong>키 트리 하나</strong> — 시스템 셋업 때 HSM<span class="g" data-tip="Hardware Security Module — 개인키를 물리적으로 가두고, 키를 꺼내지 않은 채 서명·파생 연산만 수행하는 장비">?</span> 안에서 <strong>한 번</strong> 생성되는 master seed(부모 개인키). 고객이 100만 명이어도 키는 이 하나다.</li>
-<li><strong>장부(계정 디렉터리 + watch-list)</strong> — "고객 ref → 트리의 가지 번호(index) → 발급된 주소" 매핑. 지갑 "생성" 은 키 생성이 아니라 <strong>이 장부에 줄을 하나 늘리는 일</strong>이다.</li>
+<li><strong>서명 키 하나</strong> — 시스템 셋업 때 <strong>한 번</strong> 준비되는 서명 키. 매니저로 Fireblocks 를 채택했으므로 이 키는 어느 한 곳에 통째로 있지 않고 <strong>MPC<span class="g" data-tip="Multi-Party Computation — 개인키를 통째로 만들지 않고 여러 조각(share)으로 나눠 각자 보관한 뒤, 조각을 합치지 않고도 함께 서명하는 방식. 어느 한 곳도 전체 키를 갖지 않는다">?</span> 키 조각(share)</strong>으로 쪼개져 <strong>Fireblocks 클라우드</strong>와 <strong>우리 온프렘 API Co-signer</strong>(SGX/TEE<span class="g" data-tip="Secure Enclave / Trusted Execution Environment — 하드웨어로 격리된 실행 영역. 그 안의 키 조각은 밖으로 꺼낼 수 없고, 안에서만 서명 연산이 이뤄진다">?</span>)에 나뉘어 있다. 고객이 100만 명이어도 이 키 하나로 모든 지갑을 다룬다 — 우리는 master seed 를 쥐지 않는다.</li>
+<li><strong>장부(계정 디렉터리)</strong> — "고객 ref → vault → 발급된 주소" 매핑. 지갑 "생성" 은 키 생성이 아니라 <strong>이 장부에 줄을 하나 늘리는 일</strong>이다.</li>
 </ul>
 
-<p>그래서 동사가 갈린다(<a href="abstraction.html">13.3</a>) — 주소가 <strong>태어나는</strong> 길은 상태 있는 동사(<code>issueDepositAddress</code>)뿐이고, <code>addressOf</code> 는 장부에 등록된 주소를 <strong>읽기만</strong> 한다. 발급의 끝은 언제나 <strong>디렉터리 저장 + watch-list 등록</strong>(<a href="scenario-provisioning.html">9.4</a>) — 등록 실패 = 발급 실패다. (Fireblocks 채택 기준에선 vault 가 곧 감시 범위라 별도 watch-list 등록이 불요할 수 있다 — 개념상 "발급의 끝 = 장부 확정"은 같다.)</p>
+<p>그래서 동사가 갈린다(<a href="abstraction.html">13.3</a>) — 주소가 <strong>태어나는</strong> 길은 상태 있는 동사(<code>issueDepositAddress</code>)뿐이고, <code>addressOf</code> 는 장부에 등록된 주소를 <strong>읽기만</strong> 한다. 발급의 끝은 <strong>계정 디렉터리 저장</strong>(<a href="scenario-provisioning.html">9.4</a>) — 저장 실패 = 발급 실패다. Fireblocks 채택 경로에선 <strong>vault 가 곧 감시 범위</strong>라 우리가 따로 watch-list 를 돌려 등록하지 않는다 — 발급된 주소로의 입금은 Fireblocks 가 자동 감지해 webhook 으로 알린다(<a href="scenario-provisioning.html">9.4</a>). 개념상 "발급의 끝 = 장부 확정" 은 같다.</p>
 
-<h3>18.2 단계별 애니메이션 — 셋업 1회, 그 뒤 체인별 발급</h3>
+<h3>18.2 단계별 애니메이션 — 셋업 1회, 그 뒤 발급</h3>
 
-<p>탭을 고르고 <strong>다음</strong>(또는 자동재생)으로 단계를 진행한다. 상자 위에 쌓이는 칩이 그 시점까지 만들어진 것들이다. EVM 발급 갈래에서 HSM(또는 벤더 MPC 키)이 흐려져 있는 것이 핵심 — secp256k1 발급은 <strong>서명 키를 깨우지 않는다</strong>(이유는 ⓪ 셋업). Fireblocks 채택 기준에선 이 키 곁 연산이 벤더 MPC 안에서 일어나지만, "주소는 공개키 파생으로 로컬 계산되고 서명 키는 잠들어 있다"는 성질은 같다.</p>
+<p>탭을 고르고 <strong>다음</strong>(또는 자동재생)으로 단계를 진행한다. 상자 위에 쌓이는 칩이 그 시점까지 만들어진 것들이다. EVM 발급 갈래에서 Fireblocks 는 vault 밑 주소를 만들어 돌려주지만 <strong>MPC 서명 키는 깨우지 않는다</strong>는 것이 핵심 — 주소 발급은 서명이 아니다. MPC 조각(Fireblocks 클라우드 + 우리 온프렘 co-signer)이 공동으로 깨어나는 것은 <strong>출금 서명 때뿐</strong>이다. "발급 때 서명 키는 잠들어 있다" 는 성질은 그대로다.</p>
 
 <div class="anim-tabs" id="animTabs"></div>
 <div class="anim-stage-wrap"><div class="anim-stage" id="animStage">
@@ -165,27 +165,32 @@
 </div>
 <p class="anim-steplist" id="animStepList"></p>
 
-<p class="diagram-caption">Figure 18-1. 지갑 생성 인터랙티브 흐름(EVM 기준). <strong>⓪ 셋업</strong>은 시스템 수명에서 1회 — master seed 는 키 보관처(HSM/벤더 MPC) 안에서 태어나 안에 머물고 공개키(xpub)만 반출된다. <strong>① EVM 발급</strong>은 고객 온보딩마다 — 두 포트 호출(createAccount → 첫 주소 확보)로, secp256k1 주소는 xpub 만으로 로컬 계산된다(<a href="scenario-provisioning.html">9.2 표</a>). 색 분류: 파랑=지갑 서비스 백엔드/포트, 호박=키 보관처, 회색=외부 시스템, 초록=장부(디렉터리·watch-list).</p>
+<p class="diagram-caption">Figure 18-1. 지갑 생성 인터랙티브 흐름(EVM 기준). <strong>⓪ 셋업</strong>은 시스템 수명에서 1회 — Fireblocks 워크스페이스·vault 와 MPC 키 조각이 한 번 마련되고, 조각 하나를 우리 온프렘 API Co-signer(SGX/TEE)가 넘겨받아 짝을 맺는다. 어느 한 곳도 키 전체를 갖지 않는다. <strong>① EVM 발급</strong>은 고객 온보딩마다 — 두 포트 호출(createAccount → 첫 주소 확보)로, Fireblocks 가 vault 밑 순수 EVM 주소를 만들어 돌려준다(<a href="scenario-provisioning.html">9.2 표</a>). 색 분류: 파랑=지갑 서비스 백엔드/포트, 호박=서명 키(MPC 조각), 회색=외부 시스템(Fireblocks·온프렘 co-signer), 초록=장부(계정 디렉터리).</p>
 
 <h3>18.3 EVM 발급을 한 줄로</h3>
 
 <div class="table-wrap">
 <table>
-<thead><tr><th style="width:18%">갈래</th><th>주소가 태어나는 방식</th><th style="width:26%">서명 키의 역할</th></tr></thead>
+<thead><tr><th style="width:18%">갈래</th><th>주소가 태어나는 방식</th><th style="width:30%">서명 키의 역할</th></tr></thead>
 <tbody>
-<tr><td><strong>EVM (secp256k1)</strong><br/>이더리움 · Base</td><td><code>issueDepositAddress</code> 가 xpub(공개키)만으로 <strong>로컬 계산</strong> — non-hardened 공개 파생. 이더리움과 Base 는 같은 EVM·같은 주소 체계라 갈래가 하나다.</td><td>발급 때는 없음(잠들어 있음) — 개인키는 <strong>출금 서명 때만</strong> 키 보관처 안에서 파생·서명. Fireblocks 채택 기준에선 이 서명이 벤더 MPC + 우리 온프렘 co-signer 공동서명이다 (<a href="component-signing.html">5장</a>).</td></tr>
+<tr><td><strong>EVM (secp256k1)</strong><br/>이더리움 · Base</td><td><code>issueDepositAddress</code>(= Fireblocks <code>generateNewAddress</code>)가 vault 밑에 <strong>순수 EVM 주소</strong> 하나를 발급 — 곡선·파생·인코딩은 Fireblocks 가 흡수하고, 우리 쪽엔 주소 문자열만 온다(<code>Address(value, memoTag=null)</code>). 이더리움과 Base 는 같은 EVM·같은 주소 체계라 갈래가 하나다.</td><td>발급 때는 없음(잠들어 있음) — 서명 키는 <strong>출금 때만</strong> 깨어난다. 그 키는 어느 한 곳에 통째로 있지 않고 <strong>MPC 조각으로 나뉘어</strong> Fireblocks 클라우드와 우리 온프렘 API Co-signer(SGX/TEE)에 있으며, 출금 서명은 이 조각들의 <strong>공동서명</strong>이다 — 그 직전 우리 <strong>Callback Handler</strong>가 마지막 승인·거부 관문에 선다(<a href="component-signing.html">5장</a>).</td></tr>
 </tbody>
 </table>
 </div>
 
-<p>발급 단계에서 서명 키를 건드리지 않는다는 점이 핵심이다 — 주소는 공개키 파생만으로 나오고, 개인키(또는 MPC share)는 나중에 출금할 때 처음 깨어난다. 이 성질 덕에 "지갑 100만 개를 만든다"가 곧 "장부에 줄 100만 개를 늘린다"이지 "키 100만 개를 만든다"가 아니다.</p>
+<p>발급 단계에서 서명 키를 건드리지 않는다는 점이 핵심이다 — 주소는 vault 밑에서 발급돼 돌아오고, MPC 조각은 나중에 출금할 때 처음 깨어난다. 이 성질 덕에 "지갑 100만 개를 만든다"가 곧 "장부에 줄 100만 개를 늘린다"이지 "키 100만 개를 만든다"가 아니다.</p>
+
+<div class="callout">
+<div class="callout-title">키를 통째로 쥔 곳이 없다 — MPC 의 성질</div>
+<p>self-managed HD 지갑이라면 "xpub 유출 + 자식 개인키 하나 = 부모 키 역산" 같은 공개키 파생의 함정을 우리가 직접 방어해야 한다. Fireblocks 채택 경로엔 그 함정이 없다 — 우리는 xpub 도 master seed 도 쥐지 않기 때문이다. 대신 성질이 바뀐다: 서명 키는 <strong>MPC 조각</strong>으로 쪼개져 <strong>어느 한 곳(우리도, Fireblocks 도)도 전체 키를 갖지 못한다</strong>. 출금 서명은 Fireblocks 클라우드 조각과 <strong>우리 온프렘 API Co-signer</strong> 조각의 공동서명이라야 성립하고, co-signer 는 서명 직전 <strong>Callback Handler</strong>(우리 정책 훅)에 승인을 묻는다 — 그래서 나가는 돈의 마지막 자동 관문이 <strong>우리 인프라 안</strong>에 선다(<a href="component-signing.html">5. 서명 · co-signer</a>).</p>
+</div>
 
 <h3>18.4 더 읽을 것</h3>
 
 <ul>
-<li><a href="scenario-provisioning.html">9. 계정·주소 발급</a> — 표준 흐름(게이트웨이·유스케이스 분리)과 9.4 watch-list 등록 갭 방어.</li>
+<li><a href="scenario-provisioning.html">9. 계정·주소 발급</a> — 표준 흐름(게이트웨이·유스케이스 분리)과 9.4 vault 가 곧 감시 범위.</li>
 <li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a> — 이 발급 흐름을 실제로 채우는 유일한 라이브 구현(createAccount → issueDepositAddress → addressOf).</li>
-<li><a href="component-signing.html">5. 서명 · co-signer</a> — 셋업 때 가둔 개인키(또는 MPC share)가 출금 때 어떻게 쓰이는지, 온프렘 co-signer 공동서명.</li>
+<li><a href="component-signing.html">5. 서명 · co-signer</a> — MPC 조각(Fireblocks 클라우드 + 온프렘 co-signer)이 출금 때 어떻게 공동서명하는지, Callback Handler 승인 관문.</li>
 </ul>
 
 </section>
@@ -200,36 +205,39 @@
     ops: { label: '운영자', sub: '셋업 세리머니', role: 'ext' },
     svc: { label: '지갑 서비스 백엔드', sub: '게이트웨이·유스케이스 (9.1)', role: 'svc' },
     acc: { label: 'AccountPort', sub: 'FireblocksProvider', role: 'port' },
-    hsm: { label: '키 보관처', sub: 'HSM / 벤더 MPC', role: 'hsm' },
-    dir: { label: '계정 디렉터리', sub: '+ watch-list (9.4)', role: 'dir' }
+    fb:  { label: 'Fireblocks', sub: 'vault · MPC 클라우드 share', role: 'hsm' },
+    cos: { label: 'API Co-signer', sub: '온프렘 MPC share (SGX/TEE)', role: 'hsm' },
+    dir: { label: '계정 디렉터리', sub: '계정↔주소 매핑 (9.4)', role: 'dir' }
   };
 
   // 시나리오 — 내용은 전부 9장·14장의 사실 (EVM 기준)
   var SCENARIOS = [
     {
       key: 'setup', tab: '⓪ 시스템 셋업 (1회)',
-      actors: ['ops', 'hsm', 'svc'],
+      actors: ['ops', 'fb', 'cos'],
       steps: [
-        { kind: 'call', from: 'ops', to: 'hsm', text: '키 세리머니 — master seed 생성 지시 (시스템 수명에서 단 1회)' },
-        { kind: 'self', at: 'hsm', text: 'master seed(부모 개인키) 생성 — 키는 HSM 안에서 태어나 안에 머문다',
-          gain: [{ at: 'hsm', chip: 'master seed (반출 불가)' }] },
-        { kind: 'ret', from: 'hsm', to: 'svc', text: 'xpub 반출 — 밖으로 나가는 건 공개키뿐',
-          gain: [{ at: 'svc', chip: 'xpub 보관' }] },
-        { kind: 'self', at: 'svc', text: '주의: xpub 도 비밀급 — 자식 개인키 1개 + xpub 유출 = 부모 키 역산 (BIP-32 non-hardened 의 성질)', warn: true },
-        { kind: 'self', at: 'svc', text: '셋업 끝. 이후 모든 고객 지갑은 이 키 트리의 가지 — "지갑 생성" 은 키 생성이 아니다' }
+        { kind: 'call', from: 'ops', to: 'fb', text: '워크스페이스·vault 개설 — MPC 키 조각을 프로비저닝 (시스템 수명에서 단 1회)' },
+        { kind: 'self', at: 'fb', text: 'MPC 키 조각 생성 — 키를 통째로 만들지 않고 조각으로 나눈다. Fireblocks 클라우드가 자기 조각을 보관',
+          gain: [{ at: 'fb', chip: '클라우드 share' }] },
+        { kind: 'ret', from: 'fb', to: 'cos', text: '조각 하나를 우리 온프렘 API Co-signer 로 — co-signer 페어링',
+          gain: [{ at: 'cos', chip: '온프렘 share' }] },
+        { kind: 'self', at: 'cos', text: 'co-signer 는 자기 조각을 SGX/TEE 안에 가둔다 — 밖으로 꺼낼 수 없다. 어느 한 곳도 키 전체를 갖지 않는다',
+          gain: [{ at: 'cos', chip: 'SGX/TEE 봉인' }] },
+        { kind: 'self', at: 'cos', text: '셋업 끝. 이후 모든 고객 지갑은 이 한 키로 다룬다 — "지갑 생성" 은 키 생성이 아니다' }
       ]
     },
     {
       key: 'secp', tab: 'EVM 발급 (secp256k1 · 이더리움·Base)',
-      actors: ['svc', 'acc', 'hsm', 'dir'], dim: ['hsm'],
+      actors: ['svc', 'acc', 'fb', 'dir'],
       steps: [
-        { kind: 'call', from: 'svc', to: 'acc', text: 'createAccount(ref) — HD account index 할당 (장부에 줄 하나)',
-          gain: [{ at: 'acc', chip: 'account #n' }] },
+        { kind: 'call', from: 'svc', to: 'acc', text: 'createAccount(ref) = Fireblocks createVaultAccount — vault 하나 (장부에 줄 하나)',
+          gain: [{ at: 'acc', chip: 'vault #n' }] },
         { kind: 'call', from: 'svc', to: 'acc', text: 'issueDepositAddress(account, asset) — 첫 주소 발급' },
-        { kind: 'self', at: 'acc', text: 'bip32.derive(xpub, path) — 로컬 계산. HSM 은 잠든 채다: 셋업 때 받은 xpub 만으로 충분',
-          gain: [{ at: 'acc', chip: '주소 계산됨' }] },
-        { kind: 'call', from: 'acc', to: 'dir', text: '디렉터리 저장 + watch-list 등록 — 등록 실패 = 발급 실패 (9.4)',
-          gain: [{ at: 'dir', chip: '✓ 주소 등록' }] },
+        { kind: 'call', from: 'acc', to: 'fb', text: 'generateNewAddress — vault 밑 순수 EVM 주소 발급. MPC 키 조각은 잠든 채다 (서명 아님)',
+          gain: [{ at: 'fb', chip: '주소 발급됨' }] },
+        { kind: 'ret', from: 'fb', to: 'acc', text: '주소 반환 — Address(value, memoTag=null). EVM 은 memoTag 없음' },
+        { kind: 'call', from: 'acc', to: 'dir', text: '계정 디렉터리 저장 (계정↔vault↔주소) — 저장 실패 = 발급 실패 (9.4)',
+          gain: [{ at: 'dir', chip: '주소 등록' }] },
         { kind: 'ret', from: 'acc', to: 'svc', text: '주소 반환 — 이후 조회는 addressOf (절대 새 주소를 만들지 않는다)' }
       ]
     }

@@ -22,8 +22,8 @@ data class TxRef(
 )
 
 /**
- * 정규화된 트랜잭션 상태. 메커니즘은 어댑터가 숨겨도 lifecycle 은 표면화된다 (가이드 2.3) —
- * Canton 2-step 의 "상대 수락 대기" 가 [AwaitingCounterparty] 로 노출되는 이유.
+ * 정규화된 트랜잭션 상태. 메커니즘은 어댑터가 숨겨도 lifecycle 은 표면화된다 (가이드 2.3).
+ * EVM(이더리움·Base)만 태우므로 상태 집합은 전파→확정 단선형이다.
  */
 sealed interface TxStatus {
     /** 전파됨 — 확정 대기 (BROADCAST). */
@@ -32,11 +32,8 @@ sealed interface TxStatus {
     /** 확정 기준 충족 (CONFIRMED). */
     data class Confirmed(val confirmations: Int) : TxStatus
 
-    /** 수수료 부족·혼잡으로 막힘 — 재전송 대상 (가이드 4.4). */
+    /** 수수료 부족·혼잡으로 막힘 — 재전송(fee boost) 대상 (가이드 4.4). */
     data object Stuck : TxStatus
-
-    /** Canton 2-step: OFFER 제출 후 상대 ACCEPT 대기 (가이드 13.3). */
-    data class AwaitingCounterparty(val traceableId: String) : TxStatus
 
     data class Failed(val reason: String) : TxStatus
 
@@ -45,19 +42,9 @@ sealed interface TxStatus {
 
 /**
  * 체인 특화 파라미터 — sealed 라서 when 분기가 컴파일 시점에 망라된다 (가이드 17.1).
- * 새 체인의 특화 표현이 필요할 때만 추가한다.
+ * 새 체인의 특화 표현이 필요할 때만 추가한다. 현재는 EVM 뿐이다.
  */
 sealed interface ChainSpecific {
-    /** 계정 기반 — 순번(nonce). 보통 엔진/벤더가 채우므로 null 이 기본. */
+    /** 계정 기반(EVM) — 순번(nonce). 보통 벤더(Fireblocks)가 채우므로 null 이 기본. */
     data class Evm(val nonce: Long? = null) : ChainSpecific
-
-    data class Utxo(val feeRatePerVByte: Long? = null) : ChainSpecific
-
-    data class Canton(
-        val transactionType: CantonTransactionType? = null,
-        val traceableId: String? = null,
-    ) : ChainSpecific
 }
-
-/** Canton 전송 lifecycle (가이드 2.3 · 14.8 — Fireblocks 는 전용 transactionType 필드로 노출). */
-enum class CantonTransactionType { OFFER, ACCEPT, REJECT, WITHDRAW, PRE_APPROVAL }

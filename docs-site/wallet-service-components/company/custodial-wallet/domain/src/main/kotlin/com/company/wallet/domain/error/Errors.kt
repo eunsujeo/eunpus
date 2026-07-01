@@ -1,14 +1,14 @@
 package com.company.wallet.domain.error
 
-import com.company.wallet.domain.model.ChainId
-
-/** 등록되지 않은 체인 — 새 체인 = chains/<new> 모듈 하나 + 레지스트리 한 줄 (가이드 2.4). */
-class UnsupportedChainException(chainId: ChainId) :
-    IllegalArgumentException("unsupported chain: ${chainId.value}")
-
-/** 해당 체인이 지원하지 않는 동작 (가이드 4.4 capability — 예: Canton 에 fee boost). */
-class UnsupportedForChainException(operation: String, chainId: ChainId) :
-    UnsupportedOperationException("$operation is not supported on chain: ${chainId.value}")
+/**
+ * 어댑터가 지원하지 않는 선택 capability 를 호출했을 때 (가이드 13.3 capability).
+ *
+ * 예: 지갑당 주소가 하나인 어댑터에 [com.company.wallet.domain.port.DepositAddressIssuanceCapability]
+ * 를 요구하는 경우. 호출 측이 `adapter is XxxCapability` 로 먼저 분기하는 것이 정석이고,
+ * 이 예외는 그 분기를 건너뛴 경로의 명시적 거절이다.
+ */
+class UnsupportedCapabilityException(capability: String) :
+    UnsupportedOperationException("capability not supported by this adapter: $capability")
 
 /** 같은 멱등 키로 처리 중 충돌 — 멱등 저장소가 동시 중복 실행을 차단할 때 (가이드 6.3). */
 class DuplicateRequestException(idempotencyKey: String) :

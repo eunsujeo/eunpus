@@ -21,8 +21,8 @@ interface TransactionPort {
     suspend fun estimateFee(request: TransactionRequest): FeeEstimate
 
     /**
-     * 서명+전파 묶음. Canton 같은 2-step 체인에선 "전송 완료" 가 아니라 OFFER 제출이다 —
-     * 이후 상태는 [getStatus] 의 [TxStatus.AwaitingCounterparty] 로 표면화된다 (가이드 13.3).
+     * 서명+전파 묶음. EVM 에선 Fireblocks 의 `createTransaction` 한 번이 build+MPC 서명+전파+nonce 를
+     * 모두 묶는다 — 이후 상태는 [getStatus] 로 조회한다 (가이드 13.3 · 14.2).
      */
     suspend fun submitTransaction(request: TransactionRequest): TxRef
 
@@ -44,9 +44,8 @@ interface TransactionPort {
 /**
  * 선택 capability — 수수료를 올려 막힌 트랜잭션을 재촉(boost).
  *
- * EVM/UTXO 전용 (가이드 4.4): Solana 는 어댑터 내부 auto-retry, Canton 은 해당 없음.
- * "미지원 체인은 부재" 를 타입으로 표현한다 — 호출 측은 `adapter is FeeBoostCapability` 로
- * 분기하고, 미지원 어댑터에 대고 호출하는 코드는 컴파일되지 않는다.
+ * EVM 전용 (가이드 4.4). "미지원 체인은 부재" 를 타입으로 표현한다 — 호출 측은
+ * `adapter is FeeBoostCapability` 로 분기하고, 미지원 어댑터에 대고 호출하는 코드는 컴파일되지 않는다.
  */
 interface FeeBoostCapability {
     suspend fun boost(txRef: TxRef): TxRef
@@ -55,8 +54,7 @@ interface FeeBoostCapability {
 /**
  * 선택 capability — 대기·막힌 트랜잭션 중단 (가이드 13.3).
  *
- * EVM 은 같은 순번의 0원 self-send 를 더 높은 수수료로 보내 덮어쓰고, Canton 은 OFFER withdraw.
- * Solana 는 이미 전파된 트랜잭션의 취소를 보장할 수 없다(blockhash 만료 대기) — 부재 가능.
+ * EVM 은 같은 순번의 0원 self-send 를 더 높은 수수료로 보내 덮어쓴다(drop & replace).
  * [FeeBoostCapability] 와 같은 패턴 — "미지원은 부재" 를 타입으로 표현하고,
  * 호출 측은 `adapter is CancelCapability` 로 분기한다.
  */
