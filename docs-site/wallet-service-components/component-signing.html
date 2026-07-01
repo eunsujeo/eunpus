@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>5. 서명 오케스트레이션 — 블록체인 매니저 컴포넌트 가이드</title>
-<meta content="서명 오케스트레이션 — 외부 서명자(MPC/HSM/co-signer) 호출 경계. 키 미보관 원칙, 서명 재시도의 비멱등성, 서명 nonce 와 트랜잭션 nonce 의 차이." name="description"/>
+<title>5. 서명 — MPC + co-signer 공동서명 — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="서명 — Fireblocks MPC 클라우드 share + 우리 온프렘 API Co-signer(SGX/TEE) 공동서명. co-signer 가 Callback Handler(정책 훅)에 물어본 뒤 서명. 마지막 서명 관문이 우리 인프라 안에 선다." name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
 </head>
@@ -20,13 +20,13 @@
 <div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
 <li><a href="components.html">1. 컴포넌트 개요</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">B. 블록체인 매니저</h3><ul>
-<li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
-<li><a href="component-indexer.html">3. 인덱서</a></li>
-<li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
-<li><a class="active" href="component-signing.html">5. 서명 오케스트레이션</a></li>
+<div class="nav-section"><h3 class="nav-section-title">B. Fireblocks 매니저 (벤더 안)</h3><ul>
+<li><a href="component-multichain.html">2. 체인 차이 흡수 — EVM</a></li>
+<li><a href="component-indexer.html">3. 입금 감지 (webhook)</a></li>
+<li><a href="component-tx-nonce.html">4. 출금 파이프라인</a></li>
+<li><a class="active" href="component-signing.html">5. 서명 · co-signer</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">C. 지갑 서비스 백엔드</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">C. 우리 백엔드 (Service·Admin)</h3><ul>
 <li><a href="component-gateway.html">6. API 게이트웨이</a></li>
 <li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
 <li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
@@ -42,8 +42,6 @@
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
 <li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
-<li><a href="example-selfbuild.html">15. 자체 구축 어댑터</a></li>
-<li><a href="example-nodewallet.html">16. NodeWallet 어댑터</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
 <li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
@@ -56,128 +54,110 @@
 
 <main class="content">
 <section id="signing">
-<h2>5. 서명 오케스트레이션</h2>
-<span class="section-subtitle">외부 서명자 호출 경계 — 키는 보관하지 않는다</span>
+<h2>5. 서명 — MPC + co-signer 공동서명</h2>
+<span class="section-subtitle">키는 한 곳에 모이지 않는다 — 마지막 서명 관문이 우리 인프라 안에 선다</span>
 
 <div class="callout">
 <div class="callout-title">본 페이지의 출처</div>
 <p>여기 담긴 설계·코드는 <strong>저자가 일반적인 지갑 인프라 패턴을 바탕으로 정리한 설계 참고안</strong>(의사코드)이다. 본문에서 "Fireblocks 가 …" 처럼 특정 벤더의 동작을 언급한 부분은 해당 벤더의 공식 문서에서 확인한 사실이고, 그 외는 저자 추정이므로 실제 적용 전 자신의 환경에서 검증이 필요하다.</p>
 </div>
 
-<h3>5.1 왜 필요한가</h3>
+<div class="callout callout-warn">
+<div class="callout-title">여기가 co-signer 가 사는 자리</div>
+<p>서명은 이 시리즈에서 <strong>유일하게 서명이 온전히 벤더 안에서 끝나지 않는</strong> 대목이다. Fireblocks 채택 기준 서명은 <strong>MPC 공동서명</strong>이다 — Fireblocks 의 <strong>MPC 클라우드 key share</strong> 와, 우리 <strong>보안 존(SGX/TEE)에 설치한 API Co-signer</strong> 가 든 <strong>또 하나의 key share</strong> 가 함께 서명해야 트랜잭션이 완성된다. 게다가 co-signer 는 서명 직전 <strong>Callback Handler</strong>(우리 정책 훅)에 승인·거부를 물어본다. 그래서 <strong>키는 어느 한 곳에도 온전히 모이지 않고</strong>, 나가는 돈의 <strong>마지막 자동 서명 관문이 우리 인프라 안</strong>에 선다. 이 장은 자체 HSM 구축이 아니라 이 <strong>co-signer 모델</strong>을 그린다.</p>
+</div>
 
-<p>개인키는 시스템에서 가장 민감한 자산이다. 매니저가 키를 직접 들고 있으면, <strong>매니저가 침해당하는 순간 키도 샌다</strong>. 그래서 키 보관·서명은 전용 외부 서명자 — MPC<span class="g" data-tip="여러 참가자가 키 조각을 나눠 갖고, 임계 수 이상이 모여야 서명이 만들어지는 방식. 단일 개인키가 한 곳에 존재하지 않는다">?</span> 임계 서명·HSM<span class="g" data-tip="키를 하드웨어 안에서만 다루고 밖으로 꺼내지 않는 보안 장치">?</span>·co-signer<span class="g" data-tip="공동 서명자 — 정책 검증을 거쳐 서명에 함께 참여하는 별도 구성요소">?</span> — 에 맡기고, 매니저는 그 <strong>호출 경계</strong>만 둔다.</p>
+<h3>5.1 왜 공동서명인가</h3>
+
+<p>개인키는 시스템에서 가장 민감한 자산이다. 어느 한 곳이 키를 통째로 들고 있으면, <strong>그곳이 침해당하는 순간 키가 샌다</strong>. MPC<span class="g" data-tip="여러 참가자가 키 조각(share)을 나눠 갖고, 임계 수 이상이 모여야 서명이 만들어지는 방식. 단일 개인키가 한 곳에 존재하지 않는다">?</span>(다자 계산 임계 서명)는 이 문제를 키를 <strong>여러 share 로 쪼개</strong> 푼다 — 어느 한 share 만으로는 서명도 키 복원도 불가능하다.</p>
+
+<p>Fireblocks 채택 기준 그 share 가 두 곳에 나뉜다. 하나는 <strong>Fireblocks 클라우드</strong>에, 다른 하나는 <strong>우리 보안 존의 API Co-signer<span class="g" data-tip="Fireblocks 의 온프렘 공동 서명자. MPC key share 하나를 SGX/TEE 안에서 들고, 매 서명마다 Fireblocks 와 함께 서명한다">?</span></strong>에 있다. 서명을 만들려면 <strong>둘의 share 가 함께</strong> 계산에 참여해야 한다 — 즉 우리 co-signer 가 참여하지 않으면 어떤 출금도 서명되지 않는다. 매니저 서버가 키를 "보관" 하는 옛 모델과 달리, 여기서는 아무도 키를 온전히 들지 않는다.</p>
 
 <div class="callout">
 <div class="callout-title">한 문장 요약</div>
-<p>서명 오케스트레이션 = "서명해 달라고 요청하고 결과를 받아오는 얇은 경계". 키 생성·보관은 절대 이 컴포넌트(매니저)의 일이 아니다.</p>
+<p>서명 = <strong>Fireblocks MPC 클라우드 share + 우리 온프렘 co-signer share 의 공동서명</strong>. 키는 한 곳에 모이지 않고, co-signer 가 <strong>Callback Handler</strong>(우리 정책 훅)의 승인을 받은 뒤에만 자기 share 로 서명한다 — 마지막 관문이 우리 인프라 안이다.</p>
 </div>
 
-<h3>5.2 어떻게 동작하는가</h3>
+<h3>5.2 어떻게 동작하는가 — co-signer 공동서명</h3>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
-    participant TX as 트랜잭션 빌더
-    participant SIG as 서명 오케스트레이션
-    participant ADP as 멀티체인 어댑터
-    participant SG as 외부 서명자<br/>MPC · HSM
+    participant FB as Fireblocks<br/>MPC 클라우드 share
+    box rgb(254,226,226) 우리 보안 존 · SGX/TEE
+    participant COS as API Co-signer<br/>온프렘 key share
+    participant CB as Callback Handler<br/>우리 정책 훅
+    end
+    participant CH as EVM · 이더리움·Base
 
-    TX->>SIG: 서명 요청(트랜잭션 + 맥락)
-    SIG->>ADP: 체인별 직렬화 · 서명 해시 규칙
-    ADP-->>SIG: 서명 대상 payload
-    SIG->>SG: 서명 요청(키는 외부에)
-    SG-->>SIG: 서명 결과
-    SIG->>SIG: 서명 검증(주소·해시 일치)
-    SIG-->>TX: 서명된 트랜잭션
+    FB->>COS: 서명 요청 (원문 목적지·금액 동반)
+    COS->>CB: 승인 질의 — 한도·화이트리스트 재검증
+    CB-->>COS: approve / deny
+    COS-->>FB: MPC 서명 share (approve) · deny 면 서명 거부
+    Note over FB,COS: 두 share 가 함께 계산해야 서명이 완성된다 — 키는 어느 쪽에도 온전히 없다
+    FB->>CH: 전파 — 벤더 cloud share + 우리 share 로 서명 완료
 </pre></div>
-<p class="diagram-caption">Figure 5-1. 서명 흐름. 매니저는 "무엇을 서명할지" 만 만들고, 실제 서명은 외부 서명자(SG)에서 일어난다. 어댑터가 체인별 직렬화·해시 규칙을 제공한다. 서명 결과는 기대 주소·해시와 일치하는지 검증 후 돌려준다.</p>
+<p class="diagram-caption">Figure 5-1. co-signer 공동서명. Fireblocks 가 서명을 요청하면, 우리 보안 존(SGX/TEE, 빨강)의 <strong>API Co-signer</strong> 가 먼저 <strong>Callback Handler</strong>(우리 정책 훅)에 목적지·금액을 재검증받고 approve 일 때만 자기 <strong>key share</strong> 로 서명에 참여한다. 벤더 클라우드 share 와 우리 share 가 <strong>함께 계산해야</strong> 서명이 완성되므로 키는 어느 쪽에도 온전히 없다. 백엔드가 침해돼 "승인된 척" 지시가 와도 이 관문이 <strong>우리 인프라 안</strong>에서 막는다.</p>
 
-<h3>5.3 서명 재시도는 멱등이 아니다 (주의)</h3>
+<h3>5.3 Callback Handler — 서명 직전, 우리 정책 훅</h3>
 
-<p>트랜잭션 전송은 "같은 순번이면 같은 결과" 라 재시도가 비교적 안전하지만, <strong>MPC 서명 재시도는 다르다</strong>. 서명 과정에는 일회용 난수(서명 nonce)가 쓰이는데, <strong>이 값을 재사용하면 개인키가 수학적으로 노출</strong>될 수 있다. 그래서 서명이 실패/타임아웃하면 같은 시도를 반복하는 게 아니라 <strong>새 서명 라운드(새 난수)로 다시</strong> 해야 한다.</p>
+<p>공동서명의 핵심은 co-signer 가 <strong>기계적으로 서명하지 않는다</strong>는 점이다. 서명 직전, co-signer 는 <strong>Callback Handler<span class="g" data-tip="Fireblocks co-signer 가 서명 전에 호출하는 우리 측 훅. 서명 요청을 approve/deny 로 판정한다">?</span></strong> 라는 우리 측 훅을 호출해 이 서명 요청을 승인할지 묻는다. Callback Handler 는 원문(목적지·금액)을 직접 보고 우리 정책 — 수신처 화이트리스트, 건당 한도, 일일 누적 — 을 확인한 뒤 <strong>approve / deny</strong> 를 돌려준다. deny 면 co-signer 는 자기 share 로 서명하지 않고, 서명은 완성되지 않는다.</p>
+
+<div class="callout callout-danger">
+<div class="callout-title">서명자는 백엔드를 신뢰하지 않는다</div>
+<p>업무 승인이 끝난 출금만 매니저에 온다고 해도, 서명 직전에 <strong>또</strong> 검증하는 이유는 하나다 — 백엔드가 침해당하면 "승인된 척하는" 출금 지시가 내려올 수 있다. 그때 키 앞을 지키는 마지막 방어선이 필요하다. 그 방어선이 <strong>Callback Handler + co-signer</strong> 이고, 결정적으로 이 관문은 벤더 클라우드가 아니라 <strong>우리 보안 존 안</strong>에 있다. 그래서 상위 업무 승인(비즈 레이어)과 <strong>별개로</strong>, 키 곁에서 원문을 한 번 더 검증하는 <strong>심층 방어(defense in depth)</strong>가 성립한다. 규칙(화이트리스트·한도)은 코드가 아니라 데이터이며, 이 규칙을 관리·승인하는 것은 <strong>Admin 백엔드</strong>의 거버넌스 몫이다(벤더의 거버넌스 정책 TAP 과 함께).</p>
+</div>
+
+<h3>5.4 서명 재시도는 멱등이 아니다 (주의)</h3>
+
+<p>출금 제출은 "같은 멱등 키면 같은 결과" 라 재시도가 비교적 안전하지만(<a href="component-tx-nonce.html">4장</a>), <strong>MPC 서명 재시도는 다르다</strong>. 서명 과정에는 일회용 난수(서명 nonce)가 쓰이는데, <strong>이 값을 재사용하면 개인키(정확히는 share)가 수학적으로 노출</strong>될 수 있다. 그래서 서명이 실패·타임아웃하면 같은 시도를 반복하는 게 아니라 <strong>새 서명 라운드(새 난수)로 다시</strong> 해야 한다. MPC 프로토콜 안에서 이 규율은 벤더·co-signer 구현이 지키지만, 개념은 알아 둘 값어치가 있다.</p>
 
 <div class="callout callout-danger">
 <div class="callout-title">"nonce" 두 가지를 혼동하지 말 것</div>
 <ul>
-<li><strong>트랜잭션 nonce</strong> (<a href="component-tx-nonce.html">4번 컴포넌트</a>) — 계정의 트랜잭션 순번. 같은 값 재사용 = 같은 트랜잭션(재전송). 멱등.</li>
-<li><strong>서명 nonce</strong> (이 컴포넌트) — 서명에 쓰는 일회용 난수. 같은 값 재사용 = <strong>키 유출</strong>. 비멱등.</li>
+<li><strong>트랜잭션 nonce</strong> (<a href="component-tx-nonce.html">4장</a>, 벤더 안) — 계정의 트랜잭션 순번. 같은 값 재사용 = 같은 트랜잭션(재전송). 멱등.</li>
+<li><strong>서명 nonce</strong> (이 장, MPC 내부) — 서명에 쓰는 일회용 난수. 같은 값 재사용 = <strong>키 유출</strong>. 비멱등.</li>
 </ul>
-<p>이름은 같지만 정반대다. 트랜잭션 재전송 로직(같은 순번 유지)과 서명 재시도 로직(매번 새 난수)을 절대 한데 묶지 말 것.</p>
+<p>이름은 같지만 정반대다. 출금 재제출 로직(같은 멱등 키 유지)과 서명 재시도 로직(매번 새 난수)을 절대 한데 묶지 말 것.</p>
 </div>
 
-<h3>5.4 코드로 보면</h3>
+<h3>5.5 우리 몫과 벤더 몫 — 이음매(seam)의 위치</h3>
 
-<p>설명용 의사코드다. 같은 두 겹이다 — <strong>"무엇을 서명할지"(직렬화·sighash·알고리즘·인코딩)는 체인마다 다르므로</strong> 멀티체인 어댑터(<a href="component-multichain.html">2</a>)에, <strong>준비 → 서명 → 검증 오케스트레이션은 체인 무관</strong>이라 여기 둔다. 실제 서명은 <code>Signer</code> 포트(자체 HSM/MPC, 또는 Fireblocks 내부) 뒤에서 일어나고 <strong>키는 그 뒤를 벗어나지 않는다.</strong></p>
+<p>Fireblocks 채택 기준, 서명의 <strong>메커니즘</strong>(체인별 직렬화·sighash·MPC 프로토콜)은 벤더 안이다. 우리가 sighash 를 만들거나 서명 알고리즘(secp256k1 등)을 구현하지 않는다. 우리 몫은 <strong>co-signer 설치·운영과 Callback Handler 정책</strong>이다.</p>
 
-<pre><code>// 실제 서명 주체 — 키는 이 뒤에만 존재
-interface Signer {
-  sign(sighash, keyRef): Signature
-  pubkey(keyRef): PublicKey
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">구성요소</th><th>누구 몫 · 무엇을</th></tr></thead>
+<tbody>
+<tr><td>MPC 클라우드 share</td><td><strong>Fireblocks</strong> — vault 안 key share, 서명 프로토콜 실행</td></tr>
+<tr><td>체인별 직렬화·sighash</td><td><strong>Fireblocks</strong> — EVM RLP/keccak256 등, 벤더가 처리</td></tr>
+<tr><td>API Co-signer (SGX/TEE)</td><td><strong>우리</strong> — 보안 존에 설치·운영, 온프렘 key share 보유</td></tr>
+<tr><td>Callback Handler (정책 훅)</td><td><strong>우리</strong> — 서명 직전 approve/deny 판정 (화이트리스트·한도)</td></tr>
+<tr><td>정책 규칙 관리·승인</td><td><strong>Admin 백엔드</strong> — 화이트리스트·한도를 데이터로 관리·승인</td></tr>
+</tbody>
+</table>
+</div>
+
+<pre><code>// 우리가 짓는 건 서명 오케스트레이터가 아니라 Callback Handler 다 (개념 의사코드)
+// Fireblocks co-signer 가 서명 직전 이 훅을 호출한다 — 우리 보안 존 안에서 돈다
+fun onSigningRequest(req: SigningRequest): Decision {
+    val order = req.decodedPayload           // 원문 — 목적지·금액 (벤더가 함께 보냄)
+    if (order.to !in whitelist(order.asset))        return Decision.DENY   // 화이트리스트
+    if (order.amount &gt; perTxLimit(order.asset))      return Decision.DENY   // 건당 한도
+    if (dailyTotal(order.account) + order.amount &gt; dailyLimit) return Decision.DENY  // 일일 누적
+    return Decision.APPROVE                   // approve 여야 co-signer 가 자기 share 로 서명
 }
-
-// ── 서명 오케스트레이터 — 체인 무관 (준비 → 서명 → 검증) ──
-class SigningOrchestrator {
-  constructor(adapters, signer, store) {}   // adapters[chainId] = 직렬화·해시 규칙(2)
-
-  async sign(unsignedTx) {
-    const adapter = this.adapters[unsignedTx.chainId]
-
-    // 1) "무엇을 서명할지" — 체인별 직렬화 → sighash (어댑터)
-    const { sighash } = adapter.toSigningPayload(unsignedTx)   // EVM keccak / BTC per-input / ed25519 …
-                                                  // (단순화 — UTXO 는 실제로는 입력별 sighash 마다 서명을 반복)
-
-    // 2) 중복 서명 가드 — 기존 서명이 있으면 재서명하지 않고 재사용 (유효 서명 2개 → 이중 전파 방지)
-    //    ★ unsignedTx.id 는 서명 payload(sighash) 파생이어야 한다 — fee bump 재전송(4.3)은 payload 가
-    //      바뀌므로 자연히 새 id 가 되어 이 가드에 안 걸린다. 출금 "논리 id" 를 그대로 쓰면
-    //      boost 재서명이 가드에 걸려 옛(낮은 fee) 서명을 재사용해 버린다
-    const prior = await this.store.signingAttempt(unsignedTx.id)
-    if (prior?.signature) return adapter.attach(unsignedTx, prior.signature)
-    if (prior) await this.recoverDangling(prior)  // 시도 기록만 있음 = 직전 시도가 결과를 못 받고 끊김
-                                                  //   → 상태를 가진 서명자(Fireblocks 등)는 기존 서명 조회·회수,
-                                                  //     stateless HSM 은 그런 API 가 없다 — 체인·mempool 조회로
-                                                  //     이미 전파됐는지 확인한 뒤 새 라운드로 진행
-    await this.store.markAttempt(unsignedTx.id)   // 시도를 먼저 기록 — 여기서 중단돼도 위 분기가 잡는다
-
-    // 3) 실제 서명 — 외부 서명자 (키는 그 뒤)
-    const sig = await this.signer.sign(sighash, unsignedTx.keyRef)
-
-    // 4) 검증 — 서명자가 바로 그 sighash 를, 기대한 키로 서명했나
-    if (!adapter.verify(sighash, sig, this.signer.pubkey(unsignedTx.keyRef)))
-      throw new SignatureMismatch(unsignedTx.id)
-
-    await this.store.saveSignature(unsignedTx.id, sig)
-    return adapter.attach(unsignedTx, sig)    // 체인별 인코딩으로 부착 → signed tx
-  }
-}
-
-// ── "무엇을·어떻게 서명할지" 는 체인별 — 어댑터(2) 안 ──
-//  EVM    : RLP/EIP-1559 직렬화 → keccak256 sighash · secp256k1 · RSV 인코딩
-//  UTXO   : 입력마다 sighash(SIGHASH_ALL 등) · secp256k1 · DER 인코딩
-//  Solana : message 직렬화 · ed25519 (sighash 개념이 다름)
-//  Canton : topology/transfer 서명 · PartyId fingerprint 의 그 키</code></pre>
+// whitelist·perTxLimit·dailyLimit 은 코드가 아니라 데이터 — Admin 이 관리·승인 (거버넌스)
+// 벤더 쪽 MPC 프로토콜·sighash·서명 재시도(비멱등) 규율은 이 훅 밖(벤더 안)에서 처리된다</code></pre>
 
 <div class="callout">
 <div class="callout-title">코드가 말하는 것</div>
 <ul>
-<li><strong>"무엇을 서명할지" 는 체인별 → 어댑터로</strong> — 직렬화·sighash·서명 알고리즘(secp256k1/ed25519)·인코딩(RSV/DER)이 다 다르다. 오케스트레이터는 <code>adapter.toSigningPayload</code>·<code>adapter.verify</code>·<code>adapter.attach</code> 만 부르니 체인이 늘어도 본체는 안 바뀐다.</li>
-<li><strong>키는 Signer 뒤를 안 떠난다</strong> — 매니저는 sighash 를 넘기고 서명만 돌려받는다. HSM/MPC/Fireblocks 어느 것이든 같은 <code>Signer</code> 포트.</li>
-<li><strong>가드가 막는 건 키 유출이 아니라 이중 전파다</strong> — 5.3 의 난수 재사용 키 유출은 "서로 다른 메시지에 같은 난수" 가 쓰일 때, 즉 MPC 프로토콜 <em>내부에서</em> 같은 서명 라운드를 재개할 때의 문제다. 오케스트레이터가 <code>sign</code> 을 다시 부르면 어차피 새 라운드(새 난수)가 도니 그 위험은 해당 없다. 위 가드가 실제로 막는 것은 별개의 사고 — <strong>유효 서명이 2개 생겨 같은 출금이 이중 전파</strong>되는 것이다. 그래서 <code>markAttempt</code> 를 먼저 남기고, 기존 서명이 있으면 재서명하지 않고 재사용한다.</li>
-<li><strong>가드의 키는 payload 파생</strong> — <code>unsignedTx.id</code> 를 출금 논리 ID 로 잡으면 fee bump 재전송(payload 변경)까지 가드에 걸려 옛 서명을 돌려준다. id = sighash 파생으로 두면 "같은 payload 만 재사용, 바뀐 payload 는 새 서명" 이 자동으로 성립한다.</li>
-<li><strong>recoverDangling 은 서명자 종류에 따라 다르다</strong> — 트랜잭션 상태를 가진 서명자(Fireblocks)는 기존 결과를 조회할 수 있지만, stateless HSM 은 "이미 서명했는지" 물을 데가 없다. 그땐 체인·mempool 조회로 전파 여부를 확인하는 게 현실적인 복구다(4.3 의 SIGNED 복구와 같은 원리).</li>
-<li><strong>반드시 검증</strong> — 서명자가 엉뚱한 sighash 를 서명했거나 키가 어긋나지 않았는지 기대 pubkey 로 확인한 뒤에만 부착한다.</li>
-<li><strong>SaaS(Fireblocks)면 이 전부가 createTransaction 안에 묶임</strong> — sighash 직렬화·서명·검증을 우리가 만지지 않는다(<a href="example-fireblocks.html">14장</a>, 5.7).</li>
+<li><strong>우리가 만드는 건 Callback Handler</strong> — 서명 알고리즘·sighash 가 아니라, "이 서명 요청을 승인하나" 를 판정하는 정책 훅이다. 서명의 수학은 벤더·co-signer 안이다.</li>
+<li><strong>키는 두 share 로 갈려 아무도 온전히 안 든다</strong> — 벤더 클라우드 share + 우리 온프렘 share. 우리 co-signer 가 approve 하고 서명에 참여해야만 트랜잭션이 완성된다.</li>
+<li><strong>마지막 관문이 우리 인프라 안</strong> — Callback Handler 는 우리 보안 존(SGX/TEE)에서 돌므로, 벤더가 아니라 우리가 나가는 돈의 최종 자동 게이트를 쥔다.</li>
+<li><strong>규칙은 데이터, 관리는 Admin</strong> — 화이트리스트·한도는 하드코딩이 아니라 Admin 이 관리·승인하는 설정이다. co-signer 승인도 Admin 거버넌스에 포함된다.</li>
 </ul>
-<p>3.4 인덱서·4.3 트랜잭션과 같은 분리 — <strong>메커니즘(직렬화·알고리즘)은 체인별(어댑터), 오케스트레이션(준비→서명→검증·비멱등)은 공통</strong>이다.</p>
-</div>
-
-<h3>5.5 서명자 측 인가 — 키 보관만으로는 수탁 등급이 아니다</h3>
-
-<p>위 모델은 서명자에게 <strong>sighash(해시)만</strong> 넘긴다. 키 <em>보관</em>은 안전하지만, 이대로면 키의 <em>사용 권한</em>은 매니저가 다 쥔다 — 매니저(또는 sighash 를 만드는 어댑터)가 침해되면 공격자는 키를 훔칠 필요 없이 <strong>임의의 sighash 를 들이밀면</strong> 된다. 서명자는 자기가 무엇에 서명하는지 모른다(blind signing — 원문을 못 보고 해시만 보고 서명하는 상태).</p>
-
-<div class="callout callout-danger">
-<div class="callout-title">2차 방어 — 서명자 곁에서 원문을 다시 검증한다</div>
-<p>그래서 수탁 등급 구성은 상위 승인(비즈 레이어, 범위 밖)과 <strong>별개로</strong>, 서명자 측에서 트랜잭션을 독립적으로 재검증하는 게이트를 둔다 — 서명 요청에 sighash 만이 아니라 <strong>원문(unsigned tx)과 맥락</strong>을 함께 보내고, 서명자 쪽 정책 엔진이 원문을 직접 파싱해 (1) 원문↔sighash 일치 (2) 목적지 화이트리스트 (3) 금액·횟수 한도를 확인한 뒤에만 서명한다. Fireblocks 의 co-signer+정책 엔진, NodeWallet 의 승인자(<a href="example-nodewallet.html">16.4</a>)가 정확히 이 자리다. <strong>자체 구축(<a href="example-selfbuild.html">15장</a>)에서 이 층을 생략하면</strong> — "키는 HSM 안" 이라도 실질 보안 경계는 매니저 서버 한 겹이 된다. HSM 앞에 별도 신뢰 경계의 정책 검증 게이트를 직접 만들어야 옵션 2(<a href="abstraction.html">13.5</a>)가 수탁 등급이라는 주장이 성립한다. 승인은 위에서 한 번, 검증은 키 곁에서 한 번 더 — 심층 방어(defense in depth)다.</p>
 </div>
 
 <h3>5.6 다른 컴포넌트와의 관계</h3>
@@ -186,17 +166,17 @@ class SigningOrchestrator {
 <table>
 <thead><tr><th style="width:30%">관계</th><th>내용</th></tr></thead>
 <tbody>
-<tr><td>← <a href="component-tx-nonce.html">트랜잭션 빌더</a></td><td>조립된 트랜잭션의 서명 요청을 받는다.</td></tr>
-<tr><td>→ <a href="component-multichain.html">멀티체인 어댑터</a></td><td>체인별 서명 알고리즘·직렬화·해시 규칙을 받는다.</td></tr>
-<tr><td>→ 외부 서명자</td><td>실제 서명. 키 보관·생성은 전적으로 여기.</td></tr>
-<tr><td>← 승인 절차 (범위 밖)</td><td>공동 승인(다자 서명 정족수)이 필요하면, 승인 결과가 서명 진행의 전제.</td></tr>
+<tr><td>← <a href="component-tx-nonce.html">출금 파이프라인</a></td><td>제출된 출금이 벤더 안에서 서명 단계로 진입 — 여기서 공동서명이 일어난다.</td></tr>
+<tr><td>→ Fireblocks MPC 클라우드</td><td>클라우드 key share 로 서명 프로토콜에 함께 참여.</td></tr>
+<tr><td>→ Callback Handler (우리)</td><td>서명 직전 approve/deny 판정. 우리 보안 존 안.</td></tr>
+<tr><td>← Admin 백엔드 (거버넌스)</td><td>화이트리스트·한도·co-signer 승인 정책을 관리·승인.</td></tr>
 </tbody>
 </table>
 </div>
 
-<h3>5.7 SaaS 와의 관계</h3>
+<h3>5.7 벤더 안 서명과의 관계 정리</h3>
 
-<p>Fireblocks 같은 플랫폼을 쓰면 이 컴포넌트가 곧 <strong>그 플랫폼의 서명 API 호출 경계</strong>가 된다. 키는 플랫폼의 MPC/HSM 안에만 있고, 매니저는 "이 트랜잭션 서명해 달라" 만 호출한다. 직접 구축이면 자체 HSM·MPC 클러스터가 외부 서명자 자리에 온다. 어느 쪽이든 <strong>매니저 코드가 개인키를 만지지 않는다</strong>는 원칙은 동일하다. (벤더 추상화는 <a href="abstraction.html">13. 추상화</a>)</p>
+<p>Fireblocks 를 채택하면 서명의 대부분 — 체인별 직렬화, sighash 계산, MPC 프로토콜, 클라우드 key share — 이 <strong>벤더 안</strong>에 있다. 하지만 서명이 온전히 벤더 안에서 끝나지는 않는다는 게 이 장의 요지다. <strong>우리 온프렘 co-signer 의 share 와 Callback Handler 의 approve 없이는 어떤 서명도 완성되지 않는다.</strong> 즉 co-signer 설치·운영과 정책 훅 작성이 우리 몫으로 남는다 — 이것이 "키는 벤더가 다 들고 우리는 API 만 부른다" 는 순진한 그림과 다른 지점이고, <strong>나가는 돈의 마지막 관문을 우리 인프라 안에 두는</strong> 수탁 등급의 핵심이다. (벤더 추상화는 <a href="abstraction.html">13. 추상화</a>)</p>
 
 <p>다음 — <a href="component-gateway.html"><strong>6. API 게이트웨이</strong></a>.</p>
 

@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>10. 입금 시나리오 — 블록체인 매니저 컴포넌트 가이드</title>
-<meta content="크립토 입금 시나리오에서 인덱서·멀티체인 어댑터·온체인 정합성·알림 컴포넌트가 협력하는 흐름과 confirmation·reorg 처리." name="description"/>
+<meta content="크립토 입금 시나리오 — Fireblocks 가 vault 범위를 감지해 webhook 으로 push, CONFIRMING→COMPLETED 는 DCCP 임계로 갈리고 numOfConfirmations 로 confirm 과 finality 를 가른다. reorg 는 ORPHANED." name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
 </head>
@@ -20,13 +20,13 @@
 <div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
 <li><a href="components.html">1. 컴포넌트 개요</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">B. 블록체인 매니저</h3><ul>
-<li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
-<li><a href="component-indexer.html">3. 인덱서</a></li>
-<li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
-<li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
+<div class="nav-section"><h3 class="nav-section-title">B. Fireblocks 매니저 (벤더 안)</h3><ul>
+<li><a href="component-multichain.html">2. 체인 차이 흡수 — EVM</a></li>
+<li><a href="component-indexer.html">3. 입금 감지 (webhook)</a></li>
+<li><a href="component-tx-nonce.html">4. 출금 파이프라인</a></li>
+<li><a href="component-signing.html">5. 서명 · co-signer</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">C. 지갑 서비스 백엔드</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">C. 우리 백엔드 (Service·Admin)</h3><ul>
 <li><a href="component-gateway.html">6. API 게이트웨이</a></li>
 <li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
 <li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
@@ -42,8 +42,6 @@
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
 <li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
-<li><a href="example-selfbuild.html">15. 자체 구축 어댑터</a></li>
-<li><a href="example-nodewallet.html">16. NodeWallet 어댑터</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
 <li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
@@ -57,98 +55,73 @@
 <main class="content">
 <section id="deposit">
 <h2>10. 입금 시나리오</h2>
-<span class="section-subtitle">외부에서 우리 주소로 들어오는 크립토 입금 — 감지부터 확정·알림까지</span>
+<span class="section-subtitle">외부에서 우리 주소로 들어오는 크립토 입금 — 감지부터 확정·알림까지. Service 백엔드가 webhook 을 받는다</span>
 
-<p class="lead">입금은 우리가 체인에 무엇을 쓰는 게 아니라 <strong>체인에서 일어난 일을 읽어 인지</strong>하는 흐름이다. 따라서 주연은 <strong>인덱서</strong>이고, 멀티체인 어댑터(확정 기준)·온체인 정합성·알림이 보조한다. 쓰기 쪽(트랜잭션 빌더·서명)은 등장하지 않는다.</p>
+<p class="lead">입금은 우리가 체인에 무엇을 쓰는 게 아니라 <strong>외부에서 일어난 일을 알아채는</strong> 흐름이다. 매니저로 <strong>Fireblocks 를 채택</strong>했으므로 우리 쪽에 상시 인덱서는 없다 — <strong>Fireblocks 가 자기 vault 범위를 감지</strong>해 <strong>webhook</strong> 으로 알려주고, 우리 쪽 <strong>webhook 수신기(Service 백엔드)</strong>가 받아 매핑 DB 에 기록한다. 쓰기 쪽(출금 파이프라인·서명)은 등장하지 않는다. 그래서 이 시나리오의 핵심 질문은 하나로 좁혀진다 — <strong>언제부터 잔액으로 믿는가</strong>. 답은 "감지 ≠ 확정" 이고, Fireblocks 는 이 둘을 상태값으로 갈라 준다.</p>
 
 <h3>10.1 표준 흐름</h3>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
-    participant U as 사용자
-    participant BIZ as 비즈니스 레이어
-    participant IDX as 인덱서
-    participant CH as 블록체인
-    participant ADP as 멀티체인 어댑터
-    participant LED as 온체인 정합성 · 추적
-    participant NT as 이벤트 · 알림
-
-    Note over U,IDX: 입금 주소는 계정·주소 발급(9장)에서 이미 발급된 상태
-
-    Note over CH: 외부 송신자가 그 주소로 전송
-    CH->>IDX: 새 블록 · 로그 수집
-    IDX->>IDX: 우리 주소로의 transfer 감지<br/>projection 에 pending +금액
-    IDX->>NT: 입금 감지(PENDING) 알림
-    NT-->>BIZ: 입금 감지(PENDING) webhook
-    BIZ-->>U: "입금 확인 중" 표시
-
-    loop 확정 대기
-        CH->>IDX: 후속 블록(confirmation 누적)
-        IDX->>ADP: 확정 기준 충족?
+    participant EXT as 외부 송신자
+    participant CH as EVM 체인 · 이더리움·Base
+    box rgb(220,252,231) 블록체인 매니저
+    participant FB as Fireblocks (SaaS)
     end
-    ADP-->>IDX: 확정(finality) 도달
-    IDX->>LED: 입금 확정 · 온체인 정합성 확인
-    Note over LED: 검증 사실을 회계 평면에 제공 (이 도식 범위 밖)
-    IDX->>NT: 입금 확정(CONFIRMED) 알림
-    NT-->>BIZ: 입금 확정(CONFIRMED) webhook
-    BIZ-->>U: "입금 완료, 사용 가능" 표시
+    participant WH as webhook 수신기 (Service)
+    participant DB as 매핑 DB
+    participant BIZ as 비즈니스 레이어
+
+    Note over EXT,DB: 입금 주소는 계정·주소 발급(9장)에서 이미 발급된 상태
+
+    EXT->>CH: 우리 vault 주소로 송금
+    CH-->>FB: Fireblocks 가 자기 vault 범위를 감지
+    FB->>WH: webhook — status CONFIRMING (체인 등장·미확정)
+    WH->>DB: 기록만 — 잔액 반영 안 함 (available 불변)
+    WH-->>BIZ: 입금 확인 중 통지
+    Note over CH,FB: confirmation 이 쌓인다 — numOfConfirmations 가 DCCP 임계에 닿을 때까지
+    FB->>WH: webhook — status COMPLETED (DCCP 임계 도달 = finality)
+    WH->>DB: available 반영 + 고객 통지
+    WH-->>BIZ: 입금 완료 · 사용 가능 통지
 </pre></div>
-<p class="diagram-caption">Figure 10-1. 입금 표준 흐름. 입금 주소는 <a href="scenario-provisioning.html">9. 계정·주소 발급</a>에서 이미 발급된 상태로 시작한다. 두 번의 알림 — 감지(PENDING, 사용 불가) → 확정(CONFIRMED, 사용 가능) — 이 핵심이며, webhook 은 비즈니스 레이어가 받아 사용자에게 전달한다(0.2 — 클라이언트는 비즈니스 레이어를 거친다). 확정 기준은 멀티체인 어댑터가 체인별로 정한다(예: EVM N 블록, Solana commitment 단계). 자금 사용 가능 판정은 반드시 확정 이후. 도식의 projection 은 인덱서가 가공해 둔 조회용 상태(주소별 잔액·입금 내역)를 말한다.</p>
+<p class="diagram-caption">Figure 10-1. 입금 표준 흐름. 입금 주소는 <a href="scenario-provisioning.html">9. 계정·주소 발급</a>에서 이미 발급된 상태로 시작한다. 우리 쪽에 상시 인덱서는 없다 — Fireblocks 가 감지·통지를 맡고, 우리 몫은 <strong>webhook 수신기(Service)</strong>가 받아 <strong>매핑 DB</strong> 에 기록하는 inbound 경로 하나다. 두 통지의 성격 차이가 핵심 — <strong>CONFIRMING</strong>(체인 등장·미확정)에서는 기록만 하고, <strong>COMPLETED</strong>(DCCP 임계 confirmation 도달 = finality)에서만 available 잔액을 올린다. ERC-20 토큰 입금도 별도 주소가 아니라 <strong>같은 주소로 오는 토큰 전송</strong>이라 같은 경로를 탄다. webhook 은 비즈니스 레이어를 거쳐 사용자에게 전달된다(0.2).</p>
 
-<p>이 그림의 모양(감지 → 확정 2단 알림)은 체인 공통이지만, <strong>각 단계의 속은 체인별</strong>이다:</p>
-
-<div class="table-wrap">
-<table>
-<thead><tr><th style="width:13%">단계</th><th>EVM</th><th>BTC (UTXO)</th><th>Solana</th><th>Canton</th></tr></thead>
-<tbody>
-<tr><td><strong>감지 대상</strong></td><td>native transfer + ERC-20 Transfer 로그 (+컨트랙트 경유 internal transfer)</td><td>tx <strong>출력</strong>의 주소 매칭 (한 tx 에 다출력)</td><td>SPL 은 owner 주소가 아니라 <strong>token account</strong> 단위</td><td>ACS holdings 변화</td></tr>
-<tr><td><strong>고객 귀속</strong></td><td>주소</td><td>주소</td><td>주소 (token account→owner)</td><td><strong>주소 없음 — memo-ref</strong> (9.2)</td></tr>
-<tr><td><strong>입금의 성립</strong></td><td>수동 감지로 끝</td><td>수동 감지로 끝</td><td>수동 감지로 끝</td><td><strong>상대의 OFFER 를 우리가 ACCEPT 해야</strong> 들어옴 — 감지가 아니라 행위 (아래 10-1b)</td></tr>
-<tr><td><strong>확정 / reorg</strong></td><td>N confirmations · reorg 가능</td><td>N confirmations · reorg 가능</td><td>commitment(finalized)</td><td><strong>결정적 — reorg 없음</strong>, 확정 대기 loop 무의미</td></tr>
-</tbody>
-</table>
+<div class="callout callout-warn">
+<div class="callout-title">webhook 은 힌트, 대사가 최종 근거</div>
+<p>webhook 은 누락·지연·중복이 가능하므로 통지는 <strong>힌트로만</strong> 보고, 회계의 최종 근거는 주기적 <strong>대사</strong>(벤더 잔액과 우리 기록의 대조, <a href="component-ledger.html">7. 온체인 정합성 · 추적</a>)가 닫는다. 그리고 같은 입금 이벤트를 두 번 받아도 장부가 두 번 늘지 않도록 (tx 해시 + logIndex) 를 멱등 키로 둔다.</p>
 </div>
 
-<p>가장 큰 갈래가 셋째 줄이다 — <strong>Canton 입금은 2-step 의 수신측</strong>이라, 우리가 수신 custodian 이면 상대의 OFFER 에 우리 party 가 ACCEPT 서명을 해야 자산이 들어온다(Canton Coin 은 pre-approval 로 1-step). 즉 입금 경로에도 <strong>서명 지점이 생기고, 5.5 의 정책 게이트가 거기에도 선다</strong> — 모르는 자산의 OFFER 를 blind ACCEPT 하면 더스팅·컴플라이언스 문제가 그대로 들어온다:</p>
+<h3>10.2 CONFIRMING → COMPLETED — DCCP 가 무엇을 확정으로 바꾸나</h3>
 
-<div class="diagram"><pre class="mermaid">
-sequenceDiagram
-    autonumber
-    participant CP as 외부 송신자
-    participant PN as Canton participant node
-    box rgb(239,246,255) 우리 서버 — 한 프로세스 (배포 단위)
-    participant IDX as 인덱서 (ACS 구독)
-    participant BE as 지갑 서비스 백엔드
-    end
-    participant HSM as 자체 HSM
+<p>입금은 "감지" 와 "확정" 이 다르다. Fireblocks 는 입금 하나의 상태를 <strong>CONFIRMING → COMPLETED</strong> 로 흘려보내고, 이 둘을 가르는 것이 <strong>DCCP(Deposit Control and Confirmation Policy)</strong> — CONFIRMING 을 COMPLETED 로 넘기는 <strong>임계 confirmation 수를 정하는 정책</strong>이다. 즉 이 문서가 말하는 "finality" 는 체인이 자연히 주는 성질이 아니라 <strong>DCCP 가 정의하는 확정 기준</strong>이다. DCCP 는 거버넌스 영역이라 <strong>설정·임계값 관리는 Admin 백엔드</strong>의 몫이고, 실제 입금 이벤트를 받아 잔액에 반영하는 런타임은 <strong>Service 백엔드</strong>의 몫이다 — 정하는 쪽과 쓰는 쪽이 갈린다.</p>
 
-    CP->>PN: 우리 party 앞 OFFER (memo-ref 포함)
-    PN->>IDX: ACS 변화 — 수락 대기 OFFER 감지
-    IDX->>BE: 입금 OFFER 알림 (PENDING — 아직 우리 것 아님)
-    BE->>BE: 정책 게이트 — 자산·발행자·memo-ref 검증 (5.5)
-    alt 정책 통과
-        BE->>HSM: ACCEPT 서명
-        BE->>PN: ACCEPT 제출 — 이때 비로소 입금 성립
-        PN-->>IDX: holdings 반영 (결정적 — 확정 대기 없음)
-        IDX->>BE: 입금 확정(CONFIRMED) — memo-ref 로 고객 귀속
-    else 정책 거절
-        BE->>PN: REJECT — 받지 않는다
-    end
-</pre></div>
-<p class="diagram-caption">Figure 10-1b. Canton 입금 — 세 체인과 달리 <strong>감지가 아니라 수락 행위</strong>다. 상대의 OFFER 는 ACCEPT 전까지 우리 자산이 아니고, ACCEPT 는 우리 party 의 서명이므로 입금 경로에도 정책 게이트(5.5)가 선다. 수락 즉시 결정적으로 확정되어(reorg 없음) 감지/확정 2단이 사실상 한 점으로 합쳐지고, 고객 귀속은 주소가 아니라 memo-ref 다(9.2). <strong>Canton Coin 은 pre-approval 로 1-step</strong> — 그 경우만 위 표준 흐름(수동 감지)에 가까워진다(2.2).</p>
+<div class="callout">
+<div class="callout-title">DCCP 기본 임계값 (설정 주체 = Admin)</div>
+<ul>
+<li><strong>대부분의 체인 = 1</strong> — 블록 하나면 확정으로 본다.</li>
+<li><strong>ETC(이더리움 클래식) = 372</strong> — 과거 reorg 리스크가 커 임계가 매우 높다.</li>
+<li><strong>컨트랙트 호출(contract call) = 최소 3 권장</strong> — 단순 전송보다 보수적으로.</li>
+</ul>
+<p>이 값은 <strong>커스텀 DCCP</strong> 로 조정할 수 있고, 조정 권한과 책임은 <strong>Admin</strong> 에 둔다. 우리 EVM 대상(이더리움·Base)에서 어떤 임계를 쓸지는 자산·리스크 정책에 따라 Admin 이 정하고, Service 는 그 결과로 도착한 COMPLETED 만 신뢰하면 된다.</p>
+</div>
 
-<h3>10.2 confirmation 상태 전이</h3>
+<div class="callout callout-warn">
+<div class="callout-title">함정 — 첫 COMPLETED 를 곧 finality 로 단정하지 말 것 (zero-confirmation)</div>
+<p>Deposit Policy 를 <strong>zero-confirmation</strong> 으로 두면 COMPLETED 가 블록에 등장하는 시점에 먼저 뜰 수 있고 이후 webhook 이 여러 번 더 올 수 있다. 즉 이 설정에서는 "COMPLETED webhook 을 처음 받았다" 가 곧 "충분한 confirmation 이 쌓였다" 를 뜻하지 않는다. 그래서 잔액 반영 판정은 status 만 보지 말고 tx 객체의 <strong><code>numOfConfirmations</code>(실제 누적 confirmation 수)</strong> 를 우리 finality 임계값(DCCP)과 <strong>직접 비교</strong>하는 편이 안전하다 — <code>numOfConfirmations</code> 가 "confirm(체인 등장) ↔ finality(임계 도달)" 를 가르는 눈금이다.</p>
+</div>
 
-<p>입금은 "감지" 와 "확정" 이 다르다 — 확정 여부는 confirmation(확정 — 트랜잭션이 담긴 블록 위에 쌓인 블록 수)이 체인별 기준만큼 쌓였는지로 판단한다. 감지 즉시 잔액으로 인정하면 재구성(reorg<span class="g" data-tip="체인의 끝부분이 다른 블록들로 교체되는 현상. 이미 본 거래가 사라지거나 순서가 바뀔 수 있다">?</span>) 때 없는 돈을 쓰게 된다.</p>
+<h3>10.3 입금 상태 전이 — CONFIRMING · COMPLETED · ORPHANED</h3>
+
+<p>Fireblocks 가 감지·통지를 대신해도 <strong>체인 자체의 성질</strong>은 사라지지 않는다. 이더리움과 Base 는 둘 다 EVM 이라 <strong>체인 끝이 드물게 교체(reorg<span class="g" data-tip="체인의 끝부분이 다른 블록들로 교체되는 현상. 이미 본 거래가 사라지거나 순서가 바뀔 수 있다">?</span>)</strong>될 수 있다. reorg 가 일어나면 한 번 본 입금이 무효화될 수 있고, 이때 tx 의 <code>networkStatus</code> 하위값이 <strong>ORPHANED(고아 블록에 실려 무효화)</strong> 로 바뀐다.</p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart LR
-    DET["🟡 감지<br/>(PENDING)<br/>confirmation=1<br/>사용 불가"]
-    CONF["✅ 확정<br/>(CONFIRMED)<br/>기준 충족<br/>사용 가능"]
-    ORPH["❌ 무효화<br/>(ORPHANED)<br/>reorg 로 사라짐<br/>pending 롤백"]
+    DET["감지 · CONFIRMING<br/>체인 등장·미확정<br/>사용 불가"]
+    CONF["확정 · COMPLETED<br/>DCCP 임계 도달<br/>사용 가능"]
+    ORPH["무효화 · ORPHANED<br/>reorg 로 사라짐<br/>가공본만 롤백"]
 
-    DET -->|확정 기준 충족| CONF
+    DET -->|numOfConfirmations 가 DCCP 임계 도달| CONF
     DET -->|reorg 발생| ORPH
     ORPH -.같은 tx 재포함 가능.-> DET
 
@@ -159,18 +132,32 @@ flowchart LR
     class CONF good;
     class ORPH bad;
 </pre></div>
-<p class="diagram-caption">Figure 10-2. 입금 상태 전이. 노랑 = 감지(보류), 초록 = 확정(사용 가능), 빨강 = reorg 무효화. 주의: 무효화된 tx 가 mempool(블록에 담기기 전 트랜잭션 대기열)을 거쳐 새 블록에 다시 들어올 수 있으므로 영구 삭제 금지 — 다시 감지 상태로 돌아갈 수 있다. 이 무효화 경로는 <strong>확률적 finality 체인(EVM·BTC) 전용</strong>이다 — Canton 은 결정적이라 ORPHANED 가 없고, Solana 도 finalized 이후엔 없다.</p>
+<p class="diagram-caption">Figure 10-2. 입금 상태 전이. 노랑 = 감지(CONFIRMING·보류), 초록 = 확정(COMPLETED·사용 가능), 빨강 = reorg 무효화(ORPHANED). 우리 핸들러는 ORPHANED 신호를 받아 <strong>가공본(잔액 반영분)만 되감고 원본 기록은 영구 보존</strong>한다 — 같은 입금이 재편입되면 다시 등장(CONFIRMING)할 수 있기 때문이다. tx 의 <code>networkStatus</code> 하위값(DROPPED · BROADCASTING · CONFIRMING · CONFIRMED · FAILED)이 상위 <code>status</code> 를 뒷받침하는 보조 신호다. <strong>Base 는 L2(OP-Stack)</strong> 라 소프트 확정과 L1 최종성 사이에 시차가 있어, 같은 EVM 이라 경로는 같아도 어느 시점을 finality 로 볼지의 여유(DCCP 임계)를 이더리움과 다르게 둘 수 있다 — 이 판단도 Admin 의 DCCP 설정에 담긴다.</p>
 
-<h3>10.3 컴포넌트별 역할 요약</h3>
+<h3>10.4 백엔드에서 이렇게 받는다 — 한 핸들러, 세 상태</h3>
+
+<pre><code>// Fireblocks webhook 수신기(Service)가 받는 상태 이벤트 — 핸들러는 하나
+transactions.onChainEvent { ev -&gt;
+    when (ev.status) {
+        CONFIRMING -&gt; notify(ev.account, "입금 확인 중")                 // 체인 등장·미확정 — 잔액 반영 금지
+        COMPLETED  -&gt; if (ev.numOfConfirmations &gt;= finalityThreshold(ev.asset)) {
+                          ledger.credit(ev); notify(ev.account, "입금 완료")  // DCCP 임계 도달 = finality
+                      }
+        ORPHANED   -&gt; ledger.revert(ev)                                // reorg 무효화 — 가공본만 되감기
+    }
+}</code></pre>
+<p class="diagram-caption">핵심은 세 상태의 의미 분리다 — <strong>CONFIRMING</strong> 은 confirm(체인 등장)일 뿐 아직 finality 가 아니라 잔액을 건드리지 않고, <strong>COMPLETED</strong> 여도 zero-confirmation 함정 때문에 <code>numOfConfirmations</code> 를 finality 임계(DCCP, Admin 설정)와 비교한 뒤에만 credit 한다. <code>finalityThreshold</code> 는 Admin 이 관리하는 DCCP 값을 Service 가 읽어 온 것이고, <strong>ORPHANED</strong> 는 이더리움·Base 공통의 EVM 속성이라 반드시 처리한다.</p>
+
+<h3>10.5 컴포넌트별 역할 요약</h3>
 
 <div class="table-wrap">
 <table>
 <thead><tr><th style="width:28%">컴포넌트</th><th>입금에서의 역할</th></tr></thead>
 <tbody>
-<tr><td><a href="component-indexer.html"><strong>인덱서</strong></a></td><td>주연. transfer 감지, confirmation 누적 추적, reorg 시 projection 롤백.</td></tr>
-<tr><td><a href="component-multichain.html"><strong>멀티체인 어댑터</strong></a></td><td>주소 파생 규칙 + <strong>확정 기준</strong> 제공(체인별로 다름).</td></tr>
-<tr><td><a href="component-ledger.html"><strong>온체인 정합성 · 추적</strong></a></td><td>확정 입금의 온체인 정합성 확인 후 회계 평면에 제공.</td></tr>
-<tr><td><a href="component-alerts.html"><strong>이벤트 · 알림</strong></a></td><td>감지·확정·무효화 각각을 외부에 push.</td></tr>
+<tr><td><a href="component-indexer.html"><strong>입금 감지 (webhook)</strong></a></td><td>주연. Fireblocks 가 vault 범위를 감지해 CONFIRMING·COMPLETED·ORPHANED 를 webhook 으로 push, 수신기가 받아 매핑 DB 에 기록.</td></tr>
+<tr><td><a href="component-multichain.html"><strong>체인 차이 흡수 — EVM</strong></a></td><td>이더리움·Base 의 주소 체계·ERC-20 로그·reorg 성질을 매니저 안에서 흡수.</td></tr>
+<tr><td><a href="component-ledger.html"><strong>온체인 정합성 · 추적</strong></a></td><td>확정 입금의 정합성 확인 + 벤더 잔액 대사 후 회계 평면에 제공.</td></tr>
+<tr><td><a href="component-alerts.html"><strong>이벤트 · 알림</strong></a></td><td>감지(CONFIRMING)·확정(COMPLETED)·무효화(ORPHANED) 각각을 외부에 push.</td></tr>
 <tr><td><a href="component-gateway.html"><strong>API 게이트웨이</strong></a></td><td>입금 주소 발급, 입금 내역 조회.</td></tr>
 </tbody>
 </table>
@@ -179,18 +166,18 @@ flowchart LR
 <div class="callout">
 <div class="callout-title">설계 포인트</div>
 <ul>
-<li><strong>감지 ≠ 확정</strong> — 두 단계를 분리하고, 잔액 사용 가능 판정은 확정 이후로 미룬다.</li>
-<li><strong>reorg 안전</strong> — projection 에 "어느 블록 기준" 인지(as-of-block)를 남기고, 원시 로그는 지우지 않는다.</li>
+<li><strong>감지 ≠ 확정</strong> — CONFIRMING 과 COMPLETED 를 분리하고, 잔액 사용 가능 판정은 DCCP 임계 도달(COMPLETED + numOfConfirmations) 이후로 미룬다.</li>
+<li><strong>reorg 안전</strong> — ORPHANED 는 가공본(잔액 반영분)만 되감고 원본 기록은 지우지 않는다 — 재편입되면 다시 CONFIRMING 으로 돌아올 수 있다.</li>
 <li><strong>멱등</strong> — 같은 입금 이벤트를 두 번 처리해도 장부가 두 번 늘지 않도록 (tx 해시 + logIndex) 를 키로.</li>
-<li><strong>알림 ≠ 검증</strong> — CONFIRMED webhook 은 인덱서 판정이고, 온체인 정합성 검증(<a href="component-ledger.html">7</a>)은 사후·배경으로 따라온다. 검증에서 뒤집히면 정정 이벤트가 같은 채널로 온다(<a href="component-alerts.html">8</a>) — 비즈 레이어는 반영 철회를 처리할 수 있어야 한다.</li>
+<li><strong>알림 ≠ 검증</strong> — COMPLETED webhook 은 벤더 통지이고, 온체인 정합성·대사(<a href="component-ledger.html">7</a>)는 사후·배경으로 따라온다. 검증에서 뒤집히면 정정 이벤트가 같은 채널로 온다(<a href="component-alerts.html">8</a>) — 비즈 레이어는 반영 철회를 처리할 수 있어야 한다.</li>
 </ul>
 </div>
 
-<h3>10.4 입금 다음 — 집금(sweep)으로 출금 지갑에 모은다</h3>
+<h3>10.6 입금 다음 — 집금(sweep)으로 출금 지갑에 모은다</h3>
 
 <p>입금은 고객별 입금 주소에 떨어지지만, 출금은 출금 전용 지갑(vault)에서 나간다(<a href="example-fireblocks.html">14.6</a> 의 vault 라우팅). 그 사이를 잇는 게 <strong>집금(sweep)</strong> — 입금 주소들에 쌓인 자금을 주기적으로 출금·treasury 지갑으로 모으는 내부 온체인 이동이다. 실제 수탁 지갑 운영에서 트랜잭션 볼륨의 상당 몫이 이 sweep 이고, 이게 안 돌면 출금 유동성이 마른다.</p>
 
-<p>매니저 입장에서 sweep 은 <strong>새 컴포넌트가 아니라 또 하나의 송신 트랜잭션</strong>이다 — <a href="component-tx-nonce.html">4. 트랜잭션 파이프라인</a>(조립·서명·전파·확정·멱등)을 출금(11장)과 똑같이 탄다. 보내는 곳과 받는 곳이 둘 다 우리 주소라는 점만 다르다. 단 sweep 고유의 난제가 셋 있다.</p>
+<p>매니저 입장에서 sweep 은 <strong>새 컴포넌트가 아니라 또 하나의 송신 트랜잭션</strong>이다 — <a href="component-tx-nonce.html">4. 출금 파이프라인</a>(조립·서명·전파·확정·멱등)을 출금(11장)과 똑같이 탄다. 보내는 곳과 받는 곳이 둘 다 우리 주소라는 점만 다르다. 단 sweep 고유의 난제가 셋 있다.</p>
 
 <div class="callout callout-warn">
 <div class="callout-title">sweep 의 세 가지 난제</div>
@@ -201,9 +188,9 @@ flowchart LR
 </ul>
 </div>
 
-<p>Fireblocks 경로에선 vault 간 이동도 같은 <code>createTransaction</code>(source/destination 이 둘 다 vault)이고, 자체 구축에선 입금 주소 키로 서명하는 일반 전송이다. 어느 쪽이든 <strong>트리거·정책·추적은 우리 몫</strong>으로 남는다 — 12.2 표의 "준비자산 온체인 이동" 이 바로 이 자리다.</p>
+<p>Fireblocks 경로에선 vault 간 이동도 같은 <code>createTransaction</code>(source·destination 이 둘 다 vault)이라 출금과 같은 파이프라인·서명(co-signer 공동서명)을 탄다. <strong>트리거·정책·추적은 우리 몫</strong>으로 남는다 — 12.2 표의 "준비자산 온체인 이동" 이 바로 이 자리다.</p>
 
-<p>다음 — <a href="scenario-withdrawal.html"><strong>11. 출금 시나리오</strong></a> 에서 체인에 쓰는 흐름(트랜잭션 빌더·서명)을 본다.</p>
+<p>다음 — <a href="scenario-withdrawal.html"><strong>11. 출금 시나리오</strong></a> 에서 체인에 쓰는 흐름(제출·co-signer 공동서명·확정)을 본다.</p>
 
 </section>
 </main>

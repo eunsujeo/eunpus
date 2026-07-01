@@ -73,7 +73,7 @@ suspend fun openWallet(ref: AccountRef, asset: Asset): OpenedWallet =
     }</code></pre>
 <p class="diagram-caption">Service 백엔드는 자산이 이더리움인지 Base 인지 모른 채 이 코드를 실행한다. 포트가 체인 분기를 감추고, 그 아래에서 Fireblocks 가 vault 를 만든다. <b>멱등 키</b>는 재시도가 vault 를 두 번 만들지 않게 막는 래퍼다.</p>
 
-<p class="foot">더 깊이: 계정·주소 발급 시나리오 — <a href="../wallet-service-components/scenario-provisioning.html">가이드 9장</a>. <span style="color:var(--muted)">(가이드는 자체 구축·Canton 전제 — 개념만 참고, 개편 예정)</span></p>
+<p class="foot">더 깊이: 계정·주소 발급 시나리오 — <a href="../wallet-service-components/scenario-provisioning.html">가이드 9장</a>.</p>
 
 <div class="pager">
 <a href="00-cast.html">← 0. 읽는 법</a>

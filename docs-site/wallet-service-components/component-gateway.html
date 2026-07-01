@@ -20,13 +20,13 @@
 <div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
 <li><a href="components.html">1. 컴포넌트 개요</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">B. 블록체인 매니저</h3><ul>
-<li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
-<li><a href="component-indexer.html">3. 인덱서</a></li>
-<li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
-<li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
+<div class="nav-section"><h3 class="nav-section-title">B. Fireblocks 매니저 (벤더 안)</h3><ul>
+<li><a href="component-multichain.html">2. 체인 차이 흡수 — EVM</a></li>
+<li><a href="component-indexer.html">3. 입금 감지 (webhook)</a></li>
+<li><a href="component-tx-nonce.html">4. 출금 파이프라인</a></li>
+<li><a href="component-signing.html">5. 서명 · co-signer</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">C. 지갑 서비스 백엔드</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">C. 우리 백엔드 (Service·Admin)</h3><ul>
 <li><a class="active" href="component-gateway.html">6. API 게이트웨이</a></li>
 <li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
 <li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
@@ -42,8 +42,6 @@
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
 <li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
-<li><a href="example-selfbuild.html">15. 자체 구축 어댑터</a></li>
-<li><a href="example-nodewallet.html">16. NodeWallet 어댑터</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
 <li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
@@ -59,50 +57,71 @@
 <h2>6. API 게이트웨이</h2>
 <span class="section-subtitle">외부 요청의 단일 입구 — 인증하고, 멱등 키를 부여해 "같은 요청이 두 번 실행되지 않게" 한다</span>
 
+<div class="callout">
+<div class="callout-title">이 페이지의 전제 — Fireblocks 채택 · EVM · 두 백엔드</div>
+<p>블록체인 매니저로 <strong>Fireblocks 를 채택</strong>했고, 태우는 체인은 <strong>EVM(이더리움·Base)</strong>이다. 우리 쪽 백엔드는 <strong>물리적으로 분리된 둘</strong>이다 — <strong>Service 백엔드</strong>는 고객 런타임(계정·주소·입금·출금·잔액 조회)을, <strong>Admin 백엔드</strong>는 운영·거버넌스(정책·승인·키 운영·동결·rebalance)를 맡는다. 두 백엔드는 별도 배포·권한·감사 경계다. 게이트웨이는 벤더가 무엇이든 우리가 만드는 <strong>우리 쪽 컴포넌트</strong>다.</p>
+</div>
+
 <h3>6.1 왜 필요한가</h3>
 
 <p>매니저가 하는 일은 대부분 <strong>되돌릴 수 없다</strong> — 한 번 전파된 출금 트랜잭션은 취소가 안 된다. 그런데 외부 채널(앱·PG<span class="g" data-tip="결제대행사 (Payment Gateway) — 카드·계좌 결제를 대신 처리해 주는 사업자">?</span>·은행 코어)은 네트워크 오류나 타임아웃 때 <strong>같은 요청을 재시도</strong>하고, 사용자는 버튼을 두 번 누른다. 이 중복이 그대로 실행되면 <strong>이중 출금·이중 지급</strong>이 된다.</p>
 
 <p>API 게이트웨이는 모든 외부 요청이 지나는 <strong>단일 입구</strong>로서 (1) 누구의 요청인지 <strong>인증</strong>하고, (2) 요청마다 <strong>멱등<span class="g" data-tip="같은 요청을 여러 번 보내도 실행은 한 번만 — 재시도·중복 클릭이 와도 결과가 한 번만 반영되는 성질">?</span> 키</strong>를 붙여 같은 요청이 두 번 집행되지 않게 막은 뒤, (3) 적절한 포트로 <strong>라우팅</strong>한다.</p>
 
+<p>단 입구는 하나가 아니라 <strong>둘</strong>이다. 고객 런타임 트래픽은 <strong>Service 게이트웨이</strong>로, 운영·거버넌스 조작(정책 변경·승인·동결·rebalance)은 <strong>Admin 게이트웨이</strong>로 들어온다. 둘은 별도 배포·인증·감사 경계이지만 <strong>멱등 저장소만은 공유</strong>한다 — 되돌릴 수 없는 작업이 어느 입구로 들어와도 "정확히 한 번" 이 성립해야 하기 때문이다.</p>
+
 <div class="callout">
 <div class="callout-title">한 문장 요약</div>
-<p>API 게이트웨이 = "외부의 중복·재시도를 흡수해, 되돌릴 수 없는 작업이 정확히 한 번만 실행되게 하는 입구". 멱등이 곧 이중 지급 방지다.</p>
+<p>API 게이트웨이 = "외부의 중복·재시도를 흡수해, 되돌릴 수 없는 작업이 정확히 한 번만 실행되게 하는 입구". 멱등이 곧 이중 지급 방지다. 입구는 Service·Admin 둘로 갈리되 멱등 저장소는 중앙 하나다.</p>
 </div>
 
 <h3>6.2 어떻게 동작하는가</h3>
 
 <div class="diagram"><pre class="mermaid">
 flowchart TB
-    REQ["외부 요청<br/>(앱 · PG · 은행 코어)"]
-    AUTH["① 인증<br/>누구의 요청인가"]
-    IDEM{"② 멱등 키 확인<br/>처음인가?"}
-    CACHE["✅ 이미 처리됨<br/>저장된 결과 그대로 반환"]
-    ROUTE["③ 라우팅<br/>→ 포트 호출"]
-    PORT["블록체인 매니저 포트<br/>(submitTransaction 등)"]
+    CREQ["고객 요청<br/>(앱 · PG · 은행 코어)"]
+    OREQ["운영 요청<br/>(운영 콘솔 · 거버넌스)"]
 
-    REQ --> AUTH --> IDEM
+    subgraph SVCG["Service 게이트웨이 — 고객 런타임 경계"]
+      SAUTH["① 인증<br/>누구의 요청인가"]
+      SROUTE["③ 라우팅<br/>→ 포트 호출"]
+    end
+    subgraph ADMG["Admin 게이트웨이 — 운영·감사 경계"]
+      AAUTH["① 인증·권한<br/>운영자·정족수"]
+      AROUTE["③ 라우팅<br/>→ 정책·승인·운영 호출"]
+    end
+
+    IDEM{"② 멱등 키 확인<br/>처음인가 · 공유 저장소"}
+    CACHE["이미 처리됨<br/>저장된 결과 그대로 반환"]
+    PORT["Fireblocks 포트<br/>(submitTransaction · 정책·운영 등)"]
+
+    CREQ --> SAUTH --> IDEM
+    OREQ --> AAUTH --> IDEM
     IDEM -->|중복| CACHE
-    IDEM -->|처음| ROUTE
-    ROUTE --> PORT
+    IDEM -->|처음 · 고객| SROUTE
+    IDEM -->|처음 · 운영| AROUTE
+    SROUTE --> PORT
+    AROUTE --> PORT
 
     classDef svc fill:#dcfce7,stroke:#16a34a;
+    classDef adm fill:#fef3c7,stroke:#d97706;
     classDef special fill:#e0e7ff,stroke:#6366f1;
     classDef ext fill:#f5f5f7,stroke:#86868b;
-    class AUTH,ROUTE svc;
+    class SAUTH,SROUTE svc;
+    class AAUTH,AROUTE adm;
     class IDEM special;
-    class REQ ext;
+    class CREQ,OREQ ext;
     class CACHE svc;
     class PORT ext;
 </pre></div>
-<p class="diagram-caption">Figure 6-1. 게이트웨이 흐름. 인증(①) → 멱등 키 확인(②) → 라우팅(③). 같은 멱등 키가 다시 오면 포트를 또 호출하지 않고 <strong>저장된 결과를 그대로</strong> 돌려준다 — 그래서 되돌릴 수 없는 작업이 정확히 한 번만 실행된다. 게이트웨이는 벤더·체인과 무관한 지갑 서비스 백엔드 층이다.</p>
+<p class="diagram-caption">Figure 6-1. 게이트웨이 흐름 — 입구는 둘, 멱등 저장소는 하나. 고객 트래픽은 <strong>Service 게이트웨이</strong>(초록), 운영·거버넌스 조작은 <strong>Admin 게이트웨이</strong>(노랑)로 들어와 각자 인증(①)한다. 두 입구는 <strong>중앙 멱등 저장소</strong>(②, 보라)를 공유하므로, 같은 멱등 키가 어느 입구로 다시 와도 포트를 또 호출하지 않고 <strong>저장된 결과를 그대로</strong> 돌려준다 — 되돌릴 수 없는 작업이 정확히 한 번만 실행된다. 통과한 요청만 Fireblocks 포트(③)로 라우팅된다. 게이트웨이는 벤더·체인과 무관한 우리 쪽 백엔드 층이다.</p>
 
 <h3>6.3 코드로 보면</h3>
 
 <p>설명용 의사코드다. 핵심은 <strong>멱등 저장소</strong> — 요청 키별로 "진행 중 / 완료(결과)" 상태를 기록해, 중복·동시 요청을 한 번으로 모은다.</p>
 
 <pre><code>class ApiGateway {
-  constructor(auth, idem, manager) {}   // manager = 포트(Account/Transaction)
+  constructor(auth, idem, manager) {}   // manager = Fireblocks 포트(Account/Transaction)
 
   async handle(req) {
     const who = await this.auth.verify(req)            // ① 인증 (실패면 거절)
@@ -136,9 +155,10 @@ flowchart TB
 <table>
 <thead><tr><th style="width:30%">관계</th><th>내용</th></tr></thead>
 <tbody>
-<tr><td>← 비즈니스 레이어 · 클라이언트</td><td>모든 외부 요청을 여기로 받는다 (인증·멱등의 단일 입구).</td></tr>
-<tr><td>→ 블록체인 매니저 포트</td><td>인증·멱등을 통과한 요청만 <a href="abstraction.html">13. 포트</a>(AccountPort·TransactionPort)로 라우팅.</td></tr>
-<tr><td>→ <a href="component-tx-nonce.html">4. 트랜잭션</a></td><td>멱등 키를 넘겨 체인 제출 단계의 dedup(externalTxId)으로 잇는다.</td></tr>
+<tr><td>← 고객 채널 (앱·PG·은행 코어)</td><td>고객 런타임 요청을 <strong>Service 게이트웨이</strong>로 받는다 (인증·멱등 입구).</td></tr>
+<tr><td>← 운영 콘솔 · 거버넌스</td><td>정책·승인·동결·rebalance 조작을 <strong>Admin 게이트웨이</strong>로 받는다 (별도 인증·감사 경계).</td></tr>
+<tr><td>→ Fireblocks 포트</td><td>인증·멱등을 통과한 요청만 <a href="abstraction.html">13. 포트</a>(AccountPort·TransactionPort)로 라우팅. Service·Admin 이 <strong>같은 포트</strong>를 부르되 부르는 메서드 묶음과 권한이 다르다.</td></tr>
+<tr><td>→ <a href="component-tx-nonce.html">4. 출금 파이프라인</a></td><td>멱등 키를 넘겨 체인 제출 단계의 dedup(Fireblocks <code>externalTxId</code>)으로 잇는다.</td></tr>
 <tr><td>↔ <a href="component-ledger.html">7. 온체인 정합성</a></td><td>같은 요청 ID(correlationId)로 처리 상태·정합성 조회를 제공·연결.</td></tr>
 </tbody>
 </table>
@@ -147,7 +167,8 @@ flowchart TB
 <div class="callout">
 <div class="callout-title">설계 포인트</div>
 <ul>
-<li><strong>벤더·체인 무관</strong> — 게이트웨이는 지갑 서비스 백엔드 층이라 Fireblocks 든 자체 구축이든 그대로 우리 것이다(<a href="abstraction.html">13.7</a>).</li>
+<li><strong>벤더·체인 무관</strong> — 게이트웨이는 우리 쪽 백엔드 층이라 벤더가 Fireblocks 여도 게이트웨이는 그대로 우리 것이다. 벤더 교체 시에도 이 층은 안 바뀐다(<a href="abstraction.html">13.7</a>).</li>
+<li><strong>입구는 둘, 멱등은 하나</strong> — Service·Admin 게이트웨이는 <strong>별도 배포·인증·감사 경계</strong>지만 <strong>멱등 저장소는 공유</strong>한다. 경계를 나누는 것은 인증·권한·감사이지 "정확히 한 번" 보장이 아니다 — 되돌릴 수 없는 작업은 어느 입구로 와도 한 번만 실행돼야 하므로 dedup 키 공간을 쪼개면 안 된다.</li>
 <li><strong>멱등 키 정책</strong> — 클라이언트가 주거나(권장), 없으면 요청 내용으로 안정적으로 파생. 같은 의미의 요청이 같은 키가 되도록.</li>
 <li><strong>점유는 원자적으로</strong> — 조회(get)와 진행 중 표시(start) 사이에 다른 요청이 끼지 않도록, start 는 멱등 저장소의 <strong>원자 연산</strong>(DB unique 제약·조건부 insert)이어야 한다. 게이트웨이는 보통 여러 인스턴스로 뜨므로 멱등 저장소도 <strong>인스턴스 간 공유 저장소</strong>여야 하고, 인메모리 single-flight 만으로는 인스턴스를 넘는 중복을 못 막는다.</li>
 <li><strong>inflight 는 임대(lease)로</strong> — start 직후 그 인스턴스가 죽으면 키가 영원히 "진행 중" 으로 남아 정당한 재시도까지 막힌다. inflight 표시에 TTL 을 둬 만료 후 재실행을 허용하되, 재실행 전 <a href="component-tx-nonce.html">4.3</a> 의 intent 기록을 먼저 확인한다 — "이미 전파됐을 수 있음" 단계라면 새로 만들지 않고 거기서 이어간다.</li>

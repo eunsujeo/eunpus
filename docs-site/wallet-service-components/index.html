@@ -20,13 +20,13 @@
 <div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
 <li><a href="components.html">1. 컴포넌트 개요</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">B. 블록체인 매니저</h3><ul>
-<li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
-<li><a href="component-indexer.html">3. 인덱서</a></li>
-<li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
-<li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
+<div class="nav-section"><h3 class="nav-section-title">B. Fireblocks 매니저 (벤더 안)</h3><ul>
+<li><a href="component-multichain.html">2. 체인 차이 흡수 — EVM</a></li>
+<li><a href="component-indexer.html">3. 입금 감지 (webhook)</a></li>
+<li><a href="component-tx-nonce.html">4. 출금 파이프라인</a></li>
+<li><a href="component-signing.html">5. 서명 · co-signer</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">C. 지갑 서비스 백엔드</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">C. 우리 백엔드 (Service·Admin)</h3><ul>
 <li><a href="component-gateway.html">6. API 게이트웨이</a></li>
 <li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
 <li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
@@ -42,8 +42,6 @@
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
 <li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
-<li><a href="example-selfbuild.html">15. 자체 구축 어댑터</a></li>
-<li><a href="example-nodewallet.html">16. NodeWallet 어댑터</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
 <li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
@@ -59,33 +57,32 @@
 <h2>0. Overview</h2>
 <span class="section-subtitle">블록체인 매니저가 무엇이고, 어떤 컴포넌트로 나뉘며, 무엇을 다루지 않는가</span>
 
-<div class="callout" style="border-left:4px solid #d97706;background:#fffbeb">
-<div class="callout-title">모델 갱신 안내 — 이 가이드는 자체 구축·Canton 전제입니다</div>
-<p>본 가이드는 <strong>자체 블록체인 매니저 구축</strong>과 <strong>이더리움·Canton</strong>을 전제로 쓰였습니다. 이후 설계 방향이 <strong>Fireblocks 채택 · EVM(이더리움·Base) · Canton 제외 · Service/Admin 백엔드 물리 분리</strong>로 바뀌었으므로, 최신 모델은 <a href="../wallet-design-walkthrough/">지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</a>를 보세요. 이 가이드는 <strong>컴포넌트 개념 참고용</strong>이며 개편 예정입니다.</p>
-</div>
-
 <p class="lead">
-본 가이드는 블록체인 지갑 서비스의 백엔드를 <strong>두 층</strong>으로 나눠 본다 — 체인과 직접 대화하는 <strong>블록체인 매니저(체인 엔진)</strong> 와, 그것을 감싸는 <strong>지갑 서비스 백엔드</strong>. 각 층의 컴포넌트, 입금·출금·온·오프램프 시나리오, 그리고 <strong>블록체인 매니저를 벤더에 묶이지 않게 추상화</strong>(Fireblocks 를 사서 쓰거나 직접 짓거나)하는 법을 보여주는 설계 참고 문서다.
+본 가이드는 블록체인 지갑 서비스의 백엔드를 <strong>두 층</strong>으로 나눠 본다 — 체인과 직접 대화하는 <strong>블록체인 매니저(체인 엔진)</strong> 와, 그것을 감싸는 <strong>우리 백엔드</strong>. 매니저로는 <strong>Fireblocks 를 채택</strong>했고, 태우는 체인은 <strong>EVM — 이더리움과 Base</strong> 다. 각 층의 컴포넌트, 입금·출금·온·오프램프 시나리오, 그리고 <strong>Fireblocks 를 코드에 직접 묶지 않도록 기능별 포트로 추상화</strong>하는 법을 보여주는 설계 참고 문서다.
 </p>
 
 <div class="callout">
 <div class="callout-title">본 페이지의 성격</div>
-<p>여기 담긴 컴포넌트 구분과 다이어그램은 <strong>특정 제품의 공식 명세가 아니라, 저자가 일반적인 지갑 인프라 패턴과 공개된 SaaS API 형태를 바탕으로 정리한 설계 참고안</strong>이다. 실제 시스템에 적용할 때는 자신의 요구사항·규제 환경에서 다시 검증하는 것을 전제로 읽어야 한다.</p>
+<p>여기 담긴 컴포넌트 구분과 다이어그램은 <strong>특정 제품의 공식 명세가 아니라, 저자가 일반적인 지갑 인프라 패턴과 Fireblocks 공개 문서를 바탕으로 정리한 설계 참고안</strong>이다. 실제 시스템에 적용할 때는 자신의 요구사항·규제 환경에서 다시 검증하는 것을 전제로 읽어야 한다. 기능 흐름을 처음부터 따라가려면 <a href="../wallet-design-walkthrough/">지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</a>를 함께 본다.</p>
 </div>
 
 <h3>0.1 블록체인 매니저란</h3>
 
-<p>지갑 서비스 백엔드에는 "사람·정책·돈" 을 다루는 부분과 "블록체인" 을 다루는 부분이 섞여 있다. <strong>블록체인 매니저는 그 중 체인과 직접 대화하는 엔진</strong>이다 — 멀티체인·인덱서·nonce(체인이 요구하는 트랜잭션 순번)/트랜잭션·서명·전파. 즉 다음을 책임진다.</p>
+<p>지갑 서비스의 백엔드에는 "사람·정책·돈" 을 다루는 부분과 "블록체인" 을 다루는 부분이 섞여 있다. <strong>블록체인 매니저는 그 중 체인과 직접 대화하는 엔진</strong>이다 — 체인 차이 흡수·입금 감지·출금 파이프라인·서명. 즉 다음을 책임진다.</p>
 
 <ul>
-<li>체인에서 일어난 일을 <strong>읽어 들이고</strong> (인덱싱·수신 트랜잭션 감지·확정 판단)</li>
-<li>우리가 원하는 일을 체인에 <strong>써 넣는다</strong> (트랜잭션 조립·서명 요청·전파·재전송)</li>
-<li>체인마다 다른 규칙을 <strong>한 가지 방식으로 정규화</strong>한다 (멀티체인)</li>
+<li>체인에서 일어난 일을 <strong>읽어 들이고</strong> (수신 트랜잭션 감지·확정 판단)</li>
+<li>우리가 원하는 일을 체인에 <strong>써 넣는다</strong> (트랜잭션 조립·서명·전파·재전송)</li>
+<li>체인마다 다른 규칙을 <strong>한 가지 방식으로 정규화</strong>한다 — 여기서는 이더리움과 Base 를 같은 EVM 으로 묶어 태운다</li>
 </ul>
 
-<p>이 엔진이 바로 <strong>Fireblocks 가 통째로 제공하거나(관리형), 자체 구축으로 직접 만드는 대상</strong>이다. 그 바깥 — API 게이트웨이·멱등(같은 요청이 중복 도착해도 한 번만 실행되게 하는 성질)·요청 오케스트레이션·이벤트 팬아웃(하나의 이벤트를 여러 구독자에게 나눠 보내는 것)·온체인 정합성 · 추적 — 은 블록체인 특화가 아닌 <strong>지갑 서비스 백엔드</strong>이고, 어떤 벤더를 써도 남는다. (<a href="abstraction.html">13. 추상화</a>)</p>
+<p>이 엔진을 <strong>우리는 Fireblocks 로 채택</strong>했다. 서명·키·노드·인덱싱·전파·정책 엔진이 대부분 벤더 안으로 들어간다. 그 바깥 — API 게이트웨이·멱등(같은 요청이 중복 도착해도 한 번만 실행되게 하는 성질)·요청 오케스트레이션·이벤트 팬아웃(하나의 이벤트를 여러 구독자에게 나눠 보내는 것)·온체인 정합성·추적 — 은 블록체인 특화가 아닌 <strong>우리 백엔드</strong>이고, 벤더 안으로 들어가지 않는다. (<a href="abstraction.html">13. 추상화</a>)</p>
 
-<p>또한 출금 승인이나 준비자산 운용·회계 같은 판단은 어느 층도 직접 내리지 않는다 — 비즈니스 레이어가 결정하고, <strong>승인이 끝난 요청을 받아 집행</strong>한다. (0.3 절 참조)</p>
+<p>우리 백엔드는 다시 <strong>물리적으로 분리된 두 개</strong>다. <strong>Service 백엔드</strong>는 고객 런타임(계정·주소·입금·출금 제출·잔액)을, <strong>Admin 백엔드</strong>는 운영·거버넌스(TAP 정책·승인·키 운영·boost·cancel·동결·rebalance)를 맡고, 별도 배포·권한·감사 경계로 나뉜다.</p>
+
+<p>또한 서명이 온전히 벤더 안에서 끝나지는 않는다. <strong>MPC 키 share 하나는 우리 보안 존(SGX/TEE)에 설치한 API Co-signer</strong> 가 들고, 매 서명마다 Fireblocks 와 <strong>공동서명</strong>한다. Co-signer 는 서명 직전 <strong>Callback Handler</strong>(우리 정책 훅)에 승인·거부를 물으므로, 나가는 돈의 마지막 자동 관문이 <strong>우리 인프라 안</strong>에 선다. (<a href="component-signing.html">5. 서명 · co-signer</a>)</p>
+
+<p>출금 승인이나 준비자산 운용·회계 같은 판단은 어느 층도 직접 내리지 않는다 — 상위 비즈니스 레이어가 결정하고, <strong>승인이 끝난 요청을 받아 집행</strong>한다. (0.3 절 참조)</p>
 
 <p><strong>전제</strong>: 본 가이드는 <strong>은행이 만드는 수탁(custodial) 지갑 앱</strong>을 가정한다. 그래서 현금↔코인 전환(온/오프램프)은 은행 앱 내부 DB 작업이고, 블록체인 매니저는 온체인 입출금 가장자리에서만 쓰인다. (12. 온·오프램프 참조)</p>
 
@@ -93,57 +90,57 @@
 
 <div class="diagram"><pre class="mermaid">
 flowchart TB
-    subgraph EXT[외부 경계]
-      CLIENT["지갑 프론트 앱<br/>(클라이언트)"]
-      BIZ["비즈니스 레이어<br/>인증 · 승인 · 온/오프램프"]
-      NODE["블록체인 노드 · RPC 접근<br/>자체 · GCP BNE · Alchemy · QuickNode"]
-      NET["블록체인 네트워크<br/>(체인 · 합의)"]
-      SIGNER["서명자<br/>MPC · HSM · co-signer"]
+    CLIENT["지갑 프론트 앱 · 클라이언트"]
+    BIZ["비즈니스 레이어<br/>인증 · 승인 · 온·오프램프"]
+    subgraph SVC["우리 백엔드 — Service·Admin 물리 분리"]
+      SVCBE["Service 백엔드<br/>게이트웨이·멱등 · 정합성 · 알림<br/>계정·주소·입금·출금 제출·잔액"]
+      ADMBE["Admin 백엔드<br/>TAP 정책·승인·키 운영<br/>boost·cancel·동결·rebalance"]
     end
-    subgraph SVC["지갑 서비스 백엔드 (벤더 무관 · 항상 내 것)"]
-      GW["API 게이트웨이 · 멱등"]
-      LED["온체인 정합성 · 추적"]
-      NOTIF["이벤트 · 알림"]
-    end
-    subgraph MGR["블록체인 매니저 (체인 엔진 — Fireblocks 또는 자체 구축)"]
-      TX["트랜잭션 빌더<br/>Nonce · Broadcast"]
+    subgraph MGR["Fireblocks 매니저 — 채택 · 벤더 안"]
+      ADP["체인 차이 흡수 — EVM"]
+      IDX["입금 감지 — webhook"]
+      TX["출금 파이프라인<br/>조립 · nonce · 전파 · boost"]
       SIG["서명 오케스트레이션"]
-      ADP["멀티체인 어댑터"]
-      IDX["인덱서"]
     end
+    subgraph SEC["보안 존 — 우리 인프라 · SGX/TEE"]
+      COS["API Co-signer<br/>MPC 온프렘 키 share"]
+      CB["Callback Handler<br/>서명 승인·거부 훅"]
+    end
+    NET["EVM 네트워크<br/>이더리움 · Base"]
 
     CLIENT --> BIZ
-    BIZ -->|① 호출: 트랜잭션·주소·조회| GW
-    GW --> TX
+    BIZ -->|호출 · 출금·주소·조회| SVCBE
+    BIZ -->|정책·승인·운영| ADMBE
+    SVCBE --> ADP
+    SVCBE --> TX
+    ADMBE --> SIG
     TX -->|서명 요청| SIG
-    SIG --> SIGNER
-    SIGNER -.서명본.-> TX
-    TX -->|조립·전파| ADP
-    ADP -->|제출| NODE
-    NODE --> NET
-    NET -->|블록 · 이벤트| NODE
-    IDX -.폴링·구독.-> NODE
-    NODE -->|"② 블록·로그 수집 → 수신 tx 감지"| IDX
-    IDX --> LED
-    IDX --> NOTIF
-    NOTIF -->|알림 push| BIZ
-    LED -->|검증된 체인 사실| GW
+    SIG -->|서명 요청| COS
+    COS -->|승인 질의| CB
+    COS -->|MPC 서명 share| SIG
+    ADP -->|전파| NET
+    NET -->|"블록·로그 수집 · 입금 감지"| IDX
+    IDX -->|webhook| SVCBE
 
     classDef ext fill:#f5f5f7,stroke:#86868b;
     classDef svc fill:#dcfce7,stroke:#16a34a;
+    classDef adm fill:#fef3c7,stroke:#d97706;
     classDef adp fill:#dbeafe,stroke:#2563eb;
-    class CLIENT,BIZ,NODE,NET,SIGNER ext;
-    class GW,LED,NOTIF svc;
-    class TX,SIG,ADP,IDX adp;
+    classDef sec fill:#fee2e2,stroke:#dc2626;
+    class CLIENT,BIZ,NET ext;
+    class SVCBE svc;
+    class ADMBE adm;
+    class ADP,IDX,TX,SIG adp;
+    class COS,CB sec;
 </pre></div>
-<p class="diagram-caption">Figure 0-1. 두 층. <strong>초록 = 지갑 서비스 백엔드</strong>(게이트웨이·멱등, 온체인 정합성 · 추적, 알림 — 벤더 무관, 항상 내 것), <strong>파랑 = 블록체인 매니저</strong>(체인 엔진: 멀티체인·인덱서·트랜잭션/Nonce·서명 — Fireblocks 가 통째로 제공하거나 자체 구축), 회색 = 외부(클라이언트·비즈니스 레이어·노드/RPC·네트워크·서명자). <strong>쓰기 경로</strong>: 클라이언트가 비즈니스 레이어를 거쳐 게이트웨이를 호출하면, 엔진이 서명받아 노드 → 네트워크로 전파한다. <strong>읽기 경로</strong>: 인덱서가 노드를 폴링·구독해 블록·로그를 수집하고, 그 안에서 수신 트랜잭션을 감지 → 정합성·알림. 노드/RPC 접근은 자체 구축일 때 엔드포인트 풀·장애 전환(failover)을 직접 운영하지만 Fireblocks 경로에선 벤더가 처리한다(2.6 절 참조).</p>
+<p class="diagram-caption">Figure 0-1. 두 층 + 채택 매니저 + 보안 존. <strong>초록 = Service 백엔드</strong>(게이트웨이·멱등, 정합성·추적, 알림 — 고객 런타임), <strong>노랑 = Admin 백엔드</strong>(정책·승인·키 운영·boost·cancel·동결·rebalance — 운영·거버넌스). 둘은 <strong>물리적으로 분리</strong>돼 별도 배포·권한·감사 경계로 나뉜다. <strong>파랑 = Fireblocks 매니저</strong>(채택 · 벤더 안: 체인 차이 흡수·입금 감지·출금 파이프라인·서명). <strong>빨강 = 보안 존</strong>(우리 인프라의 SGX/TEE — API Co-signer 가 MPC 키 share 하나를 들고, Callback Handler 에 승인을 물은 뒤 공동서명). <strong>쓰기 경로</strong>: 비즈니스 레이어가 Service 를 호출하면 출금 파이프라인이 서명을 요청하고, Fireblocks MPC 와 우리 Co-signer 가 <strong>공동서명</strong>한 뒤 EVM 으로 전파한다 — 마지막 서명 관문이 우리 보안 존 안에 선다. <strong>읽기 경로</strong>: 입금 감지가 체인 이벤트를 webhook 으로 Service 에 밀어 넣는다. 노드·인덱싱·전파는 벤더가 처리하고, 우리는 Co-signer·webhook 수신·매핑 DB 를 운영한다(2.6 절 참조).</p>
 
 <div class="callout">
 <div class="callout-title">매니저를 움직이는 두 가지 트리거</div>
 <p>이 백엔드는 두 방식으로 움직인다. 이 둘을 섞으면 "입금도 누가 호출하나?" 같은 혼동이 생긴다 — <strong>입금은 호출이 아니라 감지</strong>다. 그리고 매니저가 실제로 다루는 것은 <strong>트랜잭션</strong>이다 — "입금" 은 수신 트랜잭션, "출금" 은 송신 트랜잭션이고, 그 업무 의미는 비즈니스 레이어가 붙인다 (<a href="abstraction.html">13. 추상화</a>).</p>
 <ul>
-<li><strong>① 호출 (inbound)</strong> — 상위 <strong>비즈니스 레이어</strong>가 <strong>API 게이트웨이</strong>를 호출(클라이언트는 이 레이어를 거친다 — 매니저를 직접 부르지 않는다). <strong>송신 트랜잭션(출금) · 주소 발급 · 잔액/상태 조회</strong>가 여기. 매니저는 "호출당하는" 쪽.</li>
-<li><strong>② 감지 (event-driven)</strong> — 아무도 호출하지 않는다. <strong>인덱서가 노드/RPC 를 폴링·구독해 수신 트랜잭션(입금)을 스스로 감지</strong>하고, 결과를 알림(push)으로 내보낸다. <strong>수신 트랜잭션 인지(입금)</strong>가 여기.</li>
+<li><strong>① 호출 (inbound)</strong> — 상위 <strong>비즈니스 레이어</strong>가 우리 백엔드를 호출(클라이언트는 이 레이어를 거친다 — 매니저를 직접 부르지 않는다). <strong>송신 트랜잭션(출금) · 주소 발급 · 잔액/상태 조회</strong>가 여기. 매니저는 "호출당하는" 쪽.</li>
+<li><strong>② 감지 (event-driven)</strong> — 아무도 호출하지 않는다. <strong>Fireblocks 가 체인에서 수신 트랜잭션(입금)을 감지</strong>해 webhook 으로 밀어 넣고, 우리 백엔드가 이를 받아 알림(push)으로 내보낸다. <strong>수신 트랜잭션 인지(입금)</strong>가 여기.</li>
 </ul>
 <p>온/오프램프(현금↔코인)는 매니저를 거의 거치지 않는다(0.1 전제 참조) — 매니저는 외부 입금(②)·외부 출금(①)에서만 호출된다.</p>
 </div>
@@ -163,13 +160,13 @@ flowchart TB
 <h3>0.4 읽는 법</h3>
 
 <ul>
-<li><strong>1. 컴포넌트 개요</strong> — 7 컴포넌트(블록체인 매니저 엔진 4 + 지갑 서비스 백엔드 3) 한눈에 + 책임 경계 매트릭스.</li>
-<li><strong>2~5. 블록체인 매니저</strong> — 멀티체인 어댑터 · 인덱서 · 트랜잭션/Nonce/Broadcast · 서명 — 각 컴포넌트의 "왜 필요 / 어떻게 동작 / 코드로 보면 / 다른 컴포넌트가 어떻게 쓰는지".</li>
-<li><strong>6~8. 지갑 서비스 백엔드</strong> — API 게이트웨이 · 온체인 정합성·추적 · 이벤트/알림 (벤더 무관, 항상 우리 것).</li>
+<li><strong>1. 컴포넌트 개요</strong> — 7 컴포넌트(Fireblocks 매니저 4 + 우리 백엔드 3) 한눈에 + 책임 경계 매트릭스.</li>
+<li><strong>2~5. Fireblocks 매니저 (벤더 안)</strong> — 체인 차이 흡수(EVM) · 입금 감지(webhook) · 출금 파이프라인 · 서명(co-signer) — 각 컴포넌트의 "왜 필요 / 어떻게 동작 / 코드로 보면 / 다른 컴포넌트가 어떻게 쓰는지".</li>
+<li><strong>6~8. 우리 백엔드 (Service·Admin)</strong> — API 게이트웨이 · 온체인 정합성·추적 · 이벤트/알림.</li>
 <li><strong>9~12. 시나리오</strong> — 계정·주소 발급(온보딩) / 입금 / 출금 / 온·오프램프에서 컴포넌트가 어떻게 협력하는지.</li>
-<li><strong>13. 추상화</strong> — 매니저를 통째로가 아니라 <strong>기능별 포트</strong>(Account·Transaction·ChainQuery)로 자른다. 한 어댑터가 여러 포트를 채우고(Fireblocks), 약한 포트만 갈아끼운다(인덱서는 자체/Alchemy).</li>
-<li><strong>14~16. 구현 예시</strong> — 같은 포트의 세 구현 (custody 축): Fireblocks(SaaS 위탁) / 자체 구축(직접 빌드) / NodeWallet(온프렘 custody 제품 도입). 출금·입금 코드 포함.</li>
-<li><strong>17. 프로젝트 구조</strong> — 2층·3포트·어댑터 교체를 Kotlin+Spring Gradle 멀티모듈로 매핑.</li>
+<li><strong>13. 추상화</strong> — 매니저를 통째로가 아니라 <strong>기능별 포트</strong>(AccountPort·TransactionPort·ChainQueryPort)로 자른다. 벤더 독립·다중 EVM 체인(이더리움·Base)·테스트 가능성을 위해 포트로 감싼다.</li>
+<li><strong>14. Fireblocks 어댑터</strong> — 포트를 채우는 구체 구현 (출금·입금 코드 포함).</li>
+<li><strong>17. 프로젝트 구조</strong> — 2층·3포트·어댑터 주입을 Kotlin+Spring Gradle 멀티모듈로 매핑.</li>
 </ul>
 
 <p>다음 — <a href="components.html"><strong>1. 컴포넌트 개요</strong></a>.</p>

@@ -64,7 +64,7 @@ suspend fun issueAndGuide(account: Account, asset: Asset): DepositGuide {
 }</code></pre>
 <p class="diagram-caption">Service 백엔드는 자산이 이더리움인지 Base 인지 모른 채 이 한 동사를 부른다. 반환 타입은 <code>Address(value, memoTag?)</code> 그대로지만 EVM 에서는 memoTag 가 null 이라 화면에서 생략된다 — 도메인 타입은 memoTag 를 자리로만 남겨두고, 실제로 채우는 체인은 이 문서 범위에 없다.</p>
 
-<p class="foot">더 깊이: 발급·등록·놓친 입금 방어 — <a href="../wallet-service-components/scenario-provisioning.html">가이드 9장</a>. <span style="color:var(--muted)">(가이드는 자체 구축·Canton 전제 — 개념만 참고, 개편 예정)</span></p>
+<p class="foot">더 깊이: 발급·등록·놓친 입금 방어 — <a href="../wallet-service-components/scenario-provisioning.html">가이드 9장</a>.</p>
 
 <div class="pager">
 <a href="01-create-account.html">← 1. 계정 생성</a>

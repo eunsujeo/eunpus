@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>18. 지갑 생성 애니메이션 — 블록체인 매니저 컴포넌트 가이드</title>
-<meta content="지갑이란 무엇인가(키 트리 + 장부), 그리고 시스템 셋업부터 체인별(secp256k1·ed25519·Canton) 계정·주소 발급까지를 단계 애니메이션으로 본다." name="description"/>
+<meta content="지갑이란 무엇인가(키 트리 + 장부), 그리고 시스템 셋업부터 EVM(secp256k1) 계정·주소 발급까지를 단계 애니메이션으로 본다." name="description"/>
 <meta content="noindex" name="robots"/>
 <link href="assets/styles.css" rel="stylesheet"/>
 <style>
@@ -97,13 +97,13 @@
 <div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
 <li><a href="components.html">1. 컴포넌트 개요</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">B. 블록체인 매니저</h3><ul>
-<li><a href="component-multichain.html">2. 멀티체인 어댑터</a></li>
-<li><a href="component-indexer.html">3. 인덱서</a></li>
-<li><a href="component-tx-nonce.html">4. 트랜잭션 · Nonce · Broadcast</a></li>
-<li><a href="component-signing.html">5. 서명 오케스트레이션</a></li>
+<div class="nav-section"><h3 class="nav-section-title">B. Fireblocks 매니저 (벤더 안)</h3><ul>
+<li><a href="component-multichain.html">2. 체인 차이 흡수 — EVM</a></li>
+<li><a href="component-indexer.html">3. 입금 감지 (webhook)</a></li>
+<li><a href="component-tx-nonce.html">4. 출금 파이프라인</a></li>
+<li><a href="component-signing.html">5. 서명 · co-signer</a></li>
 </ul></div>
-<div class="nav-section"><h3 class="nav-section-title">C. 지갑 서비스 백엔드</h3><ul>
+<div class="nav-section"><h3 class="nav-section-title">C. 우리 백엔드 (Service·Admin)</h3><ul>
 <li><a href="component-gateway.html">6. API 게이트웨이</a></li>
 <li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
 <li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
@@ -119,8 +119,6 @@
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
 <li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
-<li><a href="example-selfbuild.html">15. 자체 구축 어댑터</a></li>
-<li><a href="example-nodewallet.html">16. NodeWallet 어댑터</a></li>
 </ul></div>
 <div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
 <li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
@@ -136,7 +134,7 @@
 <h2>18. 지갑 생성 애니메이션</h2>
 <span class="section-subtitle">지갑이란 무엇인가 — 그리고 시스템 셋업부터 체인별 발급까지, 단계별로 움직여 보기</span>
 
-<p class="lead">9장(발급 시나리오)·15.3(자체 구축 체인별 흐름)의 내용을 <strong>한 화면에서 단계 재생</strong>으로 본다. 새 사실은 없다 — 글로 읽은 것을 움직임으로 다시 보는 페이지다.</p>
+<p class="lead">9장(발급 시나리오)의 내용을 <strong>한 화면에서 단계 재생</strong>으로 본다. 새 사실은 없다 — 글로 읽은 것을 움직임으로 다시 보는 페이지다. 매니저는 Fireblocks, 태우는 체인은 EVM(이더리움·Base)이므로, 아래 발급 흐름은 EVM(secp256k1)을 기준으로 본다.</p>
 
 <h3>18.1 지갑이란 — 키 트리 하나 + 장부</h3>
 
@@ -147,11 +145,11 @@
 <li><strong>장부(계정 디렉터리 + watch-list)</strong> — "고객 ref → 트리의 가지 번호(index) → 발급된 주소" 매핑. 지갑 "생성" 은 키 생성이 아니라 <strong>이 장부에 줄을 하나 늘리는 일</strong>이다.</li>
 </ul>
 
-<p>그래서 동사가 갈린다(<a href="abstraction.html">13.3</a>) — 주소가 <strong>태어나는</strong> 길은 상태 있는 동사(<code>issueDepositAddress</code>, 또는 주소가 계정과 함께 태어나는 Canton 의 <code>createAccount</code>)뿐이고, <code>addressOf</code> 는 장부에 등록된 주소를 <strong>읽기만</strong> 한다. 발급의 끝은 언제나 <strong>디렉터리 저장 + 인덱서 watch-list 등록</strong>(<a href="scenario-provisioning.html">9.4</a>) — 등록 실패 = 발급 실패다.</p>
+<p>그래서 동사가 갈린다(<a href="abstraction.html">13.3</a>) — 주소가 <strong>태어나는</strong> 길은 상태 있는 동사(<code>issueDepositAddress</code>)뿐이고, <code>addressOf</code> 는 장부에 등록된 주소를 <strong>읽기만</strong> 한다. 발급의 끝은 언제나 <strong>디렉터리 저장 + watch-list 등록</strong>(<a href="scenario-provisioning.html">9.4</a>) — 등록 실패 = 발급 실패다. (Fireblocks 채택 기준에선 vault 가 곧 감시 범위라 별도 watch-list 등록이 불요할 수 있다 — 개념상 "발급의 끝 = 장부 확정"은 같다.)</p>
 
 <h3>18.2 단계별 애니메이션 — 셋업 1회, 그 뒤 체인별 발급</h3>
 
-<p>탭을 고르고 <strong>▶ 다음</strong>(또는 자동재생)으로 단계를 진행한다. 상자 위에 쌓이는 칩이 그 시점까지 만들어진 것들이다. ①에서 HSM 이 흐려져 있는 것이 핵심 — secp256k1 발급은 <strong>HSM 을 깨우지 않는다</strong>(이유는 ⓪).</p>
+<p>탭을 고르고 <strong>다음</strong>(또는 자동재생)으로 단계를 진행한다. 상자 위에 쌓이는 칩이 그 시점까지 만들어진 것들이다. EVM 발급 갈래에서 HSM(또는 벤더 MPC 키)이 흐려져 있는 것이 핵심 — secp256k1 발급은 <strong>서명 키를 깨우지 않는다</strong>(이유는 ⓪ 셋업). Fireblocks 채택 기준에선 이 키 곁 연산이 벤더 MPC 안에서 일어나지만, "주소는 공개키 파생으로 로컬 계산되고 서명 키는 잠들어 있다"는 성질은 같다.</p>
 
 <div class="anim-tabs" id="animTabs"></div>
 <div class="anim-stage-wrap"><div class="anim-stage" id="animStage">
@@ -167,27 +165,27 @@
 </div>
 <p class="anim-steplist" id="animStepList"></p>
 
-<p class="diagram-caption">Figure 18-1. 지갑 생성 인터랙티브 흐름. <strong>⓪ 셋업</strong>은 시스템 수명에서 1회 — master seed 는 HSM 안에서 태어나 안에 머물고 xpub 만 반출된다. <strong>①②③</strong>은 고객 온보딩마다 — 같은 두 포트 호출(createAccount → 첫 주소 확보)이지만 주소가 태어나는 방식이 곡선·체인별로 다르다(<a href="scenario-provisioning.html">9.2 표</a>·<a href="example-selfbuild.html">15.3</a>). 색 분류: 파랑=지갑 서비스 백엔드/포트, 호박=HSM(키 보관처), 회색=외부 시스템, 초록=장부(디렉터리·watch-list).</p>
+<p class="diagram-caption">Figure 18-1. 지갑 생성 인터랙티브 흐름(EVM 기준). <strong>⓪ 셋업</strong>은 시스템 수명에서 1회 — master seed 는 키 보관처(HSM/벤더 MPC) 안에서 태어나 안에 머물고 공개키(xpub)만 반출된다. <strong>① EVM 발급</strong>은 고객 온보딩마다 — 두 포트 호출(createAccount → 첫 주소 확보)로, secp256k1 주소는 xpub 만으로 로컬 계산된다(<a href="scenario-provisioning.html">9.2 표</a>). 색 분류: 파랑=지갑 서비스 백엔드/포트, 호박=키 보관처, 회색=외부 시스템, 초록=장부(디렉터리·watch-list).</p>
 
-<h3>18.3 세 갈래를 한 줄씩 비교</h3>
+<h3>18.3 EVM 발급을 한 줄로</h3>
 
 <div class="table-wrap">
 <table>
-<thead><tr><th style="width:18%">갈래</th><th>주소가 태어나는 방식</th><th style="width:22%">HSM 의 역할</th></tr></thead>
+<thead><tr><th style="width:18%">갈래</th><th>주소가 태어나는 방식</th><th style="width:26%">서명 키의 역할</th></tr></thead>
 <tbody>
-<tr><td><strong>① secp256k1</strong> (EVM·BTC)</td><td><code>issueDepositAddress</code> 가 xpub 만으로 <strong>로컬 계산</strong> — non-hardened 공개 파생</td><td>없음 (잠들어 있음) — 개인키는 출금 서명 때 HSM 안에서 파생 (<a href="component-signing.html">5</a>)</td></tr>
-<tr><td><strong>② ed25519</strong> (Solana)</td><td><code>issueDepositAddress</code> 가 <strong>HSM 안에서</strong> 파생 — SLIP-0010 hardened-only, 공개키만 반환</td><td>파생 1회 왕복</td></tr>
-<tr><td><strong>③ Canton</strong></td><td><code>createAccount</code> 가 곧 <strong>party allocation</strong>(유료 온장 등록) — 발급 동사 없음, 이후는 조회</td><td>topology hash 서명 (키 반출 없음)</td></tr>
+<tr><td><strong>EVM (secp256k1)</strong><br/>이더리움 · Base</td><td><code>issueDepositAddress</code> 가 xpub(공개키)만으로 <strong>로컬 계산</strong> — non-hardened 공개 파생. 이더리움과 Base 는 같은 EVM·같은 주소 체계라 갈래가 하나다.</td><td>발급 때는 없음(잠들어 있음) — 개인키는 <strong>출금 서명 때만</strong> 키 보관처 안에서 파생·서명. Fireblocks 채택 기준에선 이 서명이 벤더 MPC + 우리 온프렘 co-signer 공동서명이다 (<a href="component-signing.html">5장</a>).</td></tr>
 </tbody>
 </table>
 </div>
+
+<p>발급 단계에서 서명 키를 건드리지 않는다는 점이 핵심이다 — 주소는 공개키 파생만으로 나오고, 개인키(또는 MPC share)는 나중에 출금할 때 처음 깨어난다. 이 성질 덕에 "지갑 100만 개를 만든다"가 곧 "장부에 줄 100만 개를 늘린다"이지 "키 100만 개를 만든다"가 아니다.</p>
 
 <h3>18.4 더 읽을 것</h3>
 
 <ul>
 <li><a href="scenario-provisioning.html">9. 계정·주소 발급</a> — 표준 흐름(게이트웨이·유스케이스 분리)과 9.4 watch-list 등록 갭 방어.</li>
-<li><a href="example-selfbuild.html">15. 자체 구축 어댑터</a> — 15.3 의 정적 시퀀스 다이어그램(이 페이지의 원본)과 xpub 보안 주의.</li>
-<li><a href="component-signing.html">5. 서명 오케스트레이션</a> — 셋업 때 가둔 개인키가 출금 때 어떻게 쓰이는지.</li>
+<li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a> — 이 발급 흐름을 실제로 채우는 유일한 라이브 구현(createAccount → issueDepositAddress → addressOf).</li>
+<li><a href="component-signing.html">5. 서명 · co-signer</a> — 셋업 때 가둔 개인키(또는 MPC share)가 출금 때 어떻게 쓰이는지, 온프렘 co-signer 공동서명.</li>
 </ul>
 
 </section>
@@ -201,13 +199,12 @@
   var ACTORS = {
     ops: { label: '운영자', sub: '셋업 세리머니', role: 'ext' },
     svc: { label: '지갑 서비스 백엔드', sub: '게이트웨이·유스케이스 (9.1)', role: 'svc' },
-    acc: { label: 'AccountPort', sub: 'SelfBuiltProvider', role: 'port' },
-    hsm: { label: '자체 HSM', sub: '키 보관처', role: 'hsm' },
-    pn:  { label: 'participant node', sub: 'Canton', role: 'ext' },
+    acc: { label: 'AccountPort', sub: 'FireblocksProvider', role: 'port' },
+    hsm: { label: '키 보관처', sub: 'HSM / 벤더 MPC', role: 'hsm' },
     dir: { label: '계정 디렉터리', sub: '+ watch-list (9.4)', role: 'dir' }
   };
 
-  // 시나리오 — 내용은 전부 9장·15.3·15-2a~d 의 사실
+  // 시나리오 — 내용은 전부 9장·14장의 사실 (EVM 기준)
   var SCENARIOS = [
     {
       key: 'setup', tab: '⓪ 시스템 셋업 (1회)',
@@ -215,15 +212,15 @@
       steps: [
         { kind: 'call', from: 'ops', to: 'hsm', text: '키 세리머니 — master seed 생성 지시 (시스템 수명에서 단 1회)' },
         { kind: 'self', at: 'hsm', text: 'master seed(부모 개인키) 생성 — 키는 HSM 안에서 태어나 안에 머문다',
-          gain: [{ at: 'hsm', chip: '🔑 master seed (반출 불가)' }] },
+          gain: [{ at: 'hsm', chip: 'master seed (반출 불가)' }] },
         { kind: 'ret', from: 'hsm', to: 'svc', text: 'xpub 반출 — 밖으로 나가는 건 공개키뿐',
           gain: [{ at: 'svc', chip: 'xpub 보관' }] },
-        { kind: 'self', at: 'svc', text: '⚠ xpub 도 비밀급 — 자식 개인키 1개 + xpub 유출 = 부모 키 역산 (BIP-32 non-hardened 의 성질)', warn: true },
+        { kind: 'self', at: 'svc', text: '주의: xpub 도 비밀급 — 자식 개인키 1개 + xpub 유출 = 부모 키 역산 (BIP-32 non-hardened 의 성질)', warn: true },
         { kind: 'self', at: 'svc', text: '셋업 끝. 이후 모든 고객 지갑은 이 키 트리의 가지 — "지갑 생성" 은 키 생성이 아니다' }
       ]
     },
     {
-      key: 'secp', tab: '① EVM·BTC (secp256k1)',
+      key: 'secp', tab: 'EVM 발급 (secp256k1 · 이더리움·Base)',
       actors: ['svc', 'acc', 'hsm', 'dir'], dim: ['hsm'],
       steps: [
         { kind: 'call', from: 'svc', to: 'acc', text: 'createAccount(ref) — HD account index 할당 (장부에 줄 하나)',
@@ -234,36 +231,6 @@
         { kind: 'call', from: 'acc', to: 'dir', text: '디렉터리 저장 + watch-list 등록 — 등록 실패 = 발급 실패 (9.4)',
           gain: [{ at: 'dir', chip: '✓ 주소 등록' }] },
         { kind: 'ret', from: 'acc', to: 'svc', text: '주소 반환 — 이후 조회는 addressOf (절대 새 주소를 만들지 않는다)' }
-      ]
-    },
-    {
-      key: 'ed', tab: '② Solana (ed25519)',
-      actors: ['svc', 'acc', 'hsm', 'dir'],
-      steps: [
-        { kind: 'call', from: 'svc', to: 'acc', text: 'createAccount(ref) — HD account index 할당',
-          gain: [{ at: 'acc', chip: 'account #n' }] },
-        { kind: 'call', from: 'svc', to: 'acc', text: 'issueDepositAddress(account, asset) — 첫 주소 발급' },
-        { kind: 'call', from: 'acc', to: 'hsm', text: 'derivePubkey(path) — SLIP-0010 hardened-only 라 파생을 키 곁에서' },
-        { kind: 'ret', from: 'hsm', to: 'acc', text: 'pubkey 반환 (= base58 주소) — 나오는 건 이번에도 공개키뿐',
-          gain: [{ at: 'acc', chip: '주소(=pubkey)' }] },
-        { kind: 'call', from: 'acc', to: 'dir', text: '디렉터리 저장 + watch-list 등록 (9.4)',
-          gain: [{ at: 'dir', chip: '✓ 주소 등록' }] },
-        { kind: 'ret', from: 'acc', to: 'svc', text: '주소 반환 — 이후 조회는 addressOf' }
-      ]
-    },
-    {
-      key: 'canton', tab: '③ Canton (party allocation)',
-      actors: ['svc', 'acc', 'hsm', 'pn', 'dir'],
-      steps: [
-        { kind: 'call', from: 'svc', to: 'acc', text: 'createAccount(ref) — Canton 은 이 단계가 곧 party allocation (발급 동사 없음)' },
-        { kind: 'call', from: 'acc', to: 'pn', text: 'generate-topology(공개키 · hint)' },
-        { kind: 'ret', from: 'pn', to: 'acc', text: 'topology + 서명할 multi-hash' },
-        { kind: 'call', from: 'acc', to: 'hsm', text: 'hash 서명 — 키 반출 없음' },
-        { kind: 'ret', from: 'hsm', to: 'acc', text: '서명 반환' },
-        { kind: 'call', from: 'acc', to: 'pn', text: 'allocate(topology + 서명) — 유료 온장 등록 (세 갈래 중 유일한 온체인 등록)' },
-        { kind: 'ret', from: 'pn', to: 'acc', text: 'PartyId 발행 (= 주소)', gain: [{ at: 'acc', chip: 'PartyId' }] },
-        { kind: 'call', from: 'acc', to: 'dir', text: '디렉터리 저장 (9.4)', gain: [{ at: 'dir', chip: '✓ PartyId 등록' }] },
-        { kind: 'ret', from: 'acc', to: 'svc', text: 'addressOf 는 이 PartyId 의 조회만. 추가 입금 주소 개념 없음 — 입금 구분은 memo-ref' }
       ]
     }
   ];
