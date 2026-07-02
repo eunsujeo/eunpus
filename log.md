@@ -7195,3 +7195,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 미확정 유지: opaque page 커서 제공 여부(주면 같은-ms 경계에서 더 안전) — T02/PoC
 - 영향받은 페이지: docs-site/wallet-design-walkthrough/04-deposit
 - 신규 entity: 0
+
+## Stage 93 (2026-07-03) — 04-deposit: 폴링 메인·웹훅 서브 재구성 + !dest 로직 정정
+- 계기: 사용자 결정 — "우리는 웹훅 안 쓰고 폴링. 폴링 메인, 웹훅 서브" + "우리 주소 아닌 게 올 수 있나?" 질문(코드 !dest 단일 스킵의 오류)
+- 재구성(폴링 메인): 무엇·언제=폴링 outbound 감지·webhook 은 보조 명시 / 메인 다이어그램 webhook 시퀀스 → 폴링 워커 시퀀스(POLL→FB 조회, webhook 은 Note 로 보조) / warn callout "인바운드 막는 환경" → 일반 callout "웹훅은 보조 — 왜 폴링이 주 경로인가" / 개요 표 제목·순서 "폴링(주)·웹훅(보조)·대사(안전망)" / 상세 절 제목 "webhook 없이 —" → "폴링 감지 상세 흐름"
+- !dest 정정(fact 근거: List Transactions 워크스페이스 스코프·양방향, 8 destination type VAULT_ACCOUNT/EXTERNAL/OTA — api.md:121-132,314,353): 코드·다이어그램에서 단일 `if(!dest)skip` → ① 방향 판정(destination.type=VAULT_ACCOUNT & source≠VAULT_ACCOUNT 만 입금) ② vaultAccountId 로 계정 귀속(주소 문자열 아님) ③ 주소 미매핑(out-of-band)=스킵 아님, 계정 귀속+경보 ④ ORPHANED 되돌림 우선 분기
+- 확정 vs 추정: 스코프·양방향·destination type=확정 / "vaultId 귀속+미등록 경보" 분기=설계 권고
+- 영향받은 페이지: docs-site/wallet-design-walkthrough/04-deposit
+- 신규 entity: 0 · 미배포(로컬만)

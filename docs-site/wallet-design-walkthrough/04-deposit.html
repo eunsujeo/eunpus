@@ -16,9 +16,9 @@
 <h1>입금 — 감지에서 확정까지</h1>
 <p class="subtitle">외부에서 돈이 들어왔다는 걸 어떻게 아는가 — 그리고 언제부터 믿는가</p>
 
-<p><b>무엇·언제</b>: 출금과 달리 입금은 직접 시작하지 않습니다. 외부 송신자가 보내고 그걸 알아채야 합니다. 직접 노드를 긁는 인덱서는 없습니다 — <b>Fireblocks 가 자기 vault 범위를 감지</b>해서 <b>webhook</b> 으로 알려주고, 이쪽 <b>webhook 수신기(Service 백엔드)</b>가 받아 DB 에 기록합니다. 그래서 이 페이지의 핵심 질문은 하나로 좁혀집니다 — <b>언제부터 잔액으로 믿는가</b>. 답은 "감지 ≠ 확정"이고, Fireblocks 는 이 둘을 상태값으로 명확히 갈라 줍니다.</p>
+<p><b>무엇·언제</b>: 출금과 달리 입금은 직접 시작하지 않습니다. 외부 송신자가 보내고 그걸 알아채야 합니다. 직접 노드를 긁는 인덱서는 없습니다 — <b>Fireblocks 가 자기 vault 범위를 감지</b>해 두고, <b>우리는 주기적으로 Fireblocks 로 나가는 폴링(outbound)으로 그 변경을 당겨</b> DB 에 기록합니다. <b>webhook(인바운드 push)은 주 경로로 쓰지 않습니다</b> — 은행·규제망이 외부에서 들어오는 연결을 막기 때문이고, 환경이 허용하면 폴 사이 지연을 줄이는 <b>보조</b>로만 붙입니다. 그래서 이 페이지의 핵심 질문은 하나로 좁혀집니다 — <b>언제부터 잔액으로 믿는가</b>. 답은 "감지 ≠ 확정"이고, Fireblocks 는 이 둘을 상태값으로 명확히 갈라 줍니다.</p>
 
-<pre><code>onChainEvent(handler)   // handler 가 받음: ChainEvent { status, numOfConfirmations, networkStatus }</code></pre>
+<pre><code>onChainEvent(handler)   // 어댑터가 폴링으로 채워 handler 에 전달: ChainEvent { status, numOfConfirmations, networkStatus }</code></pre>
 
 <div class="callout">
 <div class="callout-title">이 페이지가 붙잡는 구분 — confirm(체인 등장) vs finality(확정)</div>
@@ -27,7 +27,7 @@
 <p style="margin:0"><b>COMPLETED = finality 상태.</b> confirmation 이 <b>DCCP<span class="g" data-tip="Deposit Control and Confirmation Policy — 입금을 몇 confirmation 에서 확정(finality)으로 볼지 체인별로 정하는 Fireblocks 정책 (설정은 Admin)" tabindex="0">?</span>(확정 정책)가 정한 임계 수</b>에 도달했다는 뜻이고, 이때부터 이 입금을 <b>확정(finality)</b>으로 보고 available 에 반영한다. 둘을 프로그램으로 가르는 방법은 두 가지다 — <code>status</code> 값(CONFIRMING 인지 COMPLETED 인지)으로 갈리거나, tx 객체의 <code>numOfConfirmations</code>(실제 누적 confirmation 수)를 finality 임계값과 비교한다.</p>
 </div>
 
-<h2>입금 한 건이 흐르는 길 — webhook 에서 확정까지</h2>
+<h2>입금 한 건이 흐르는 길 — 폴링으로 감지, 확정까지</h2>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -37,25 +37,27 @@ sequenceDiagram
     box rgb(220,252,231) 블록체인 매니저
     participant FB as Fireblocks (SaaS)
     end
-    participant WH as webhook 수신기 (Service)
+    participant POLL as 폴링 워커 (Service)
     participant DB as DB
 
     EXT->>CH: vault 주소로 송금
     CH-->>FB: Fireblocks 가 자기 vault 범위를 감지
-    FB->>WH: webhook — status CONFIRMING (체인 등장·미확정)
-    WH->>DB: 기록만 — 잔액 반영 안 함 (available 불변)
+    Note over POLL,FB: 우리가 주기마다 나가서 조회 — outbound (GET /v1/transactions · 변경분만)
+    POLL->>FB: 폴 — 변경된 tx 조회
+    FB-->>POLL: status CONFIRMING (체인 등장·미확정)
+    POLL->>DB: 기록만 — 잔액 반영 안 함 (available 불변)
     Note over CH,FB: confirmation 이 쌓인다 — numOfConfirmations 가 DCCP 임계에 닿을 때까지
-    FB->>WH: webhook — status COMPLETED (DCCP 임계 도달 = finality)
-    WH->>DB: available 반영 + 고객 통지
-    Note over FB,WH: webhook 은 누락·지연·중복 가능 — "힌트"로 취급하고<br/>주기적 대사(벤더 잔액 vs 기록)로 최종적으로 닫는다
+    POLL->>FB: 폴 — 변경된 tx 조회
+    FB-->>POLL: status COMPLETED (DCCP 임계 도달 = finality)
+    POLL->>DB: available 반영 + 고객 통지
+    Note over POLL,DB: webhook 은 보조 — 환경이 허용하면 폴 사이 지연을 줄이는 힌트로만<br/>그 누락·지연은 다음 폴이 어차피 메운다
 </pre></div>
-<p class="diagram-caption">이쪽에 상시 인덱서는 없다. Fireblocks 가 감지·통지를 맡고, 이쪽 몫은 <b>webhook 수신기(Service)</b>가 받아 <b>DB</b> 에 기록하는 inbound 경로 하나다. 핵심은 두 통지의 성격 차이다 — <b>CONFIRMING</b>(체인에 등장, confirmation 누적 중, 아직 미확정)에서는 기록만 하고, <b>COMPLETED</b>(DCCP 임계 confirmation 도달 = finality)에서만 available 잔액을 올린다. ERC-20 토큰 입금도 별도 주소가 생기는 게 아니라 <b>같은 주소로 오는 토큰 전송</b>이라 같은 경로를 탄다. webhook 은 누락·지연·중복이 가능하므로 통지는 힌트로만 보고, 회계의 최종 근거는 주기적 대사(벤더 잔액과 기록의 대조)가 닫는다.</p>
+<p class="diagram-caption">감지는 <b>우리가 Fireblocks 로 나가서 당겨오는 폴링</b>이 주 경로다(인바운드 push 인 webhook 은 은행망에서 막히므로 보조). 상시 인덱서는 없고, 폴링 워커가 주기마다 변경된 tx 를 조회해 <b>DB</b> 에 반영한다. 핵심은 두 상태의 성격 차이다 — <b>CONFIRMING</b>(체인에 등장, confirmation 누적 중, 아직 미확정)에서는 기록만 하고, <b>COMPLETED</b>(DCCP 임계 confirmation 도달 = finality)에서만 available 잔액을 올린다. ERC-20 토큰 입금도 별도 주소가 생기는 게 아니라 <b>같은 주소로 오는 토큰 전송</b>이라 같은 경로를 탄다. 통지가 아니라 조회라 유실이 없고, 회계의 최종 근거는 주기적 대사(벤더 잔액과 기록의 대조)가 닫는다.</p>
 
-<div class="callout warn">
-<div class="callout-title">인바운드를 막는 환경(은행 등) — 그러면 webhook 대신 polling 이 주 경로</div>
-<p style="margin:0 0 8px">위 그림은 Fireblocks 가 우리 <b>webhook 수신기로 밀어주는(인바운드) 전송</b>을 전제한다. 그런데 은행·규제망은 <b>외부 SaaS 가 내부로 들어오는 인바운드 연결을 차단</b>하는 경우가 많다 — 그러면 <b>webhook 자체를 못 받는다</b>(Fireblocks→우리 호출이 방화벽에 막힘).</p>
-<p style="margin:0 0 8px">이때 감지는 방향을 뒤집어 <b>우리가 Fireblocks 로 나가는 outbound 조회</b>로 한다 — <code>GET /v1/transactions</code> 를 <code>orderBy=lastUpdated</code> · <code>after=커서</code> · 상태 필터로 주기 폴링(아래 절). 은행이 통제하는 <b>egress(나가는 방향)</b>는 열려 있어 Fireblocks IP 로의 아웃바운드만 허용하면 된다. 서명 경로도 같은 원리다 — Fireblocks Agent 가 서명 요청을 <b>폴링으로 당겨</b> 오지 밀어넣지 않는다.</p>
-<p style="margin:0"><b>바뀌는 건 전송 방향(push→pull)뿐, 상태·확정 판정은 동일하다.</b> CONFIRMING/COMPLETED·DCCP·numOfConfirmations 로직은 그대로이고, 폴링으로 받은 tx 에도 같은 상태·confirmation 이 실려 온다. 대신 감지 지연이 <b>폴링 주기</b>만큼 생긴다.</p>
+<div class="callout">
+<div class="callout-title">웹훅은 보조 — 왜 폴링이 주 경로인가</div>
+<p style="margin:0 0 8px">webhook 은 <b>Fireblocks 가 우리 안으로 들어오는(인바운드) push</b> 다. 은행·규제망은 외부 SaaS 의 인바운드 연결을 막는 경우가 많아, 여기서는 <b>webhook 을 주 경로로 쓰지 않는다</b> — 대신 <b>우리가 Fireblocks 로 나가는 outbound 폴링</b>으로 감지한다. 은행이 통제하는 egress 만 열면 되고, 서명 경로도 같은 원리다(Fireblocks Agent 가 서명 요청을 폴링으로 당겨 온다).</p>
+<p style="margin:0"><b>webhook 을 쓸 수 있는 환경이면</b> 폴 주기 사이의 지연을 줄이는 <b>보조</b>로 붙일 수 있다. 다만 webhook 은 누락·지연·중복이 가능하므로 신뢰의 근거는 어디까지나 폴링·대사에 두고, webhook 은 "빨리 알려주는 힌트"로만 취급한다 — 그 누락은 다음 폴이 어차피 메운다. 전송 방향(push↔pull)만 다를 뿐 <b>상태·확정 판정(CONFIRMING/COMPLETED·DCCP·numOfConfirmations)은 동일</b>하다.</p>
 </div>
 
 <h2>DCCP — 무엇이 CONFIRMING 을 COMPLETED 로 바꾸는가 (설정=Admin)</h2>
@@ -90,23 +92,23 @@ sequenceDiagram
 </div>
 
 
-<h2>webhook 이 없거나 놓쳤을 때 — polling·재전송·대사</h2>
+<h2>감지 경로 — 폴링(주) · 웹훅(보조) · 대사(안전망)</h2>
 
-<p>두 경우를 함께 다룹니다 — webhook 을 쓰지만 <b>일부를 놓친</b> 경우, 그리고 위처럼 인바운드가 막혀 <b>webhook 을 아예 못 쓰는</b> 경우. 공통 원칙은 <b>주소를 하나씩 조회하지 않는다</b>는 점입니다 — 아래는 모두 워크스페이스·시간 범위 기준이라, 주소가 천만 개여도 부하는 <b>놓친 트랜잭션 수에 비례할 뿐 주소 수와 무관</b>합니다.</p>
+<p>세 수단을 겹쳐 둡니다. <b>폴링이 주 경로</b>, 웹훅은 환경이 허용할 때 지연을 줄이는 보조, 대사는 최종 안전망입니다. 공통 원칙은 <b>주소를 하나씩 조회하지 않는다</b>는 점입니다 — 아래는 모두 워크스페이스·시간 범위 기준이라, 주소가 천만 개여도 부하는 <b>놓친 트랜잭션 수에 비례할 뿐 주소 수와 무관</b>합니다.</p>
 
 <table>
 <thead><tr><th style="width:22%">수단</th><th>무엇을</th></tr></thead>
 <tbody>
-<tr><td><b>polling</b> (주 경로 겸 백업)</td><td>트랜잭션 목록을 <b>갱신 시각 커서</b>로 당겨 온다 — <code>GET /v1/transactions</code> 에 <code>orderBy=lastUpdated</code> · <code>after=마지막 커서</code> · 상태 필터. webhook 이 아예 없으면 이것이 <b>주 감지 경로</b>, 있으면 놓친 전이를 따라잡는 <b>백업</b>이다(7p 의 "상태로 걸러 조회").</td></tr>
-<tr><td><b>재전송</b> (webhook 쓸 때만)</td><td>webhook 을 쓰는 환경에서 <b>실패분만 다시 밀어달라</b>고 요청 — <code>POST /v1/webhooks/{id}/notifications/resend_failed</code>, v2 는 <b>30일 재전송 창</b>. 인바운드가 막힌 환경엔 해당 없음.</td></tr>
+<tr><td><b>폴링</b> (주 경로)</td><td>트랜잭션 목록을 <b>갱신 시각 커서</b>로 당겨 온다 — <code>GET /v1/transactions</code> 에 <code>orderBy=lastUpdated</code> · <code>after=마지막 커서</code> · 상태 필터. 이게 감지의 기본이다(상세는 아래 절, 7p 의 "상태로 걸러 조회"도 같은 수단).</td></tr>
+<tr><td><b>웹훅</b> (보조 · 환경 허용 시)</td><td>인바운드가 열린 환경이면 push 로 지연을 줄인다. 놓친 알림은 <code>POST /v1/webhooks/{id}/notifications/resend_failed</code> 로 재전송(v2 는 30일 창). 누락·지연이 있어도 폴링이 메우므로 <b>신뢰의 근거는 아니다</b>.</td></tr>
 <tr><td><b>대사</b> (최종 안전망)</td><td>그래도 어긋나면 주기 대사가 벤더 값과 기록을 맞춰 닫는다(회계 걸리는 숫자만).</td></tr>
 </tbody>
 </table>
-<p class="table-note">여러 경로가 같은 입금을 중복 전달하므로, 반영은 <b>tx id(또는 externalTxId) 기준 멱등 upsert</b> 로 한 번만 건다 — 없는 돈을 두 번 반영하는 것이 가장 비싼 사고다. <code>status=COMPLETED</code> 로 거를 땐 <code>numOfConfirmations</code> 가 확정 임계 이상인지 함께 본다(위 zero-confirmation 함정). polling 만 쓰면 감지 지연이 <b>폴링 주기</b>만큼 생기므로 주기는 확정 요건과 맞춰 정한다.</p>
+<p class="table-note">여러 경로가 같은 입금을 중복 전달하므로, 반영은 <b>tx id(또는 externalTxId) 기준 멱등 upsert</b> 로 한 번만 건다 — 없는 돈을 두 번 반영하는 것이 가장 비싼 사고다. <code>status=COMPLETED</code> 로 거를 땐 <code>numOfConfirmations</code> 가 확정 임계 이상인지 함께 본다(위 zero-confirmation 함정). 폴링만으로도 완결되며, 감지 지연은 <b>폴링 주기</b>만큼이다.</p>
 
-<h2>webhook 없이 — 폴링으로 감지하는 상세 흐름</h2>
+<h2>폴링 감지 상세 흐름</h2>
 
-<p>인바운드가 막힌 환경을 가정하고, 폴링만으로 입금을 감지하는 실제 루프를 펼칩니다. 뼈대는 <b>커서</b> 하나입니다 — 마지막으로 처리한 트랜잭션의 <code>lastUpdated</code>(Unix 밀리초 시간값)를 DB 에 커서로 저장해 두고, 주기마다 그 이후 갱신된 트랜잭션만 당겨 옵니다. 커서가 <b>시간값</b>이라 같은 밀리초를 가진 tx 를 놓치지 않게 <b>커서를 조금 겹쳐 받고 tx id 로 멱등 처리</b>합니다. 상태 필터는 서버에서 한 번에 하나만 걸리므로, <b>모든 상태 전이를 빠짐없이 받으려면 상태 필터 없이 커서로</b> 훑고 받은 tx 를 이쪽에서 분류합니다 — 상태 필터는 대사·표적 조회(7p)에서 씁니다.</p>
+<p>폴링으로 입금을 감지하는 실제 루프를 펼칩니다. 뼈대는 <b>커서</b> 하나입니다 — 마지막으로 처리한 트랜잭션의 <code>lastUpdated</code>(Unix 밀리초 시간값)를 DB 에 커서로 저장해 두고, 주기마다 그 이후 갱신된 트랜잭션만 당겨 옵니다. 커서가 <b>시간값</b>이라 같은 밀리초를 가진 tx 를 놓치지 않게 <b>커서를 조금 겹쳐 받고 tx id 로 멱등 처리</b>합니다. 상태 필터는 서버에서 한 번에 하나만 걸리므로, <b>모든 상태 전이를 빠짐없이 받으려면 상태 필터 없이 커서로</b> 훑고 받은 tx 를 이쪽에서 분류합니다 — 상태 필터는 대사·표적 조회(7p)에서 씁니다.</p>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -125,22 +127,25 @@ sequenceDiagram
     end
 
     loop 받은 tx 각각 — lastUpdated 오름차순
-        SUB->>DB: dest 주소 → (accountId, asset) 역참조
-        alt 우리 주소 아님
-            Note over SUB: 스킵 · 필요 시 미등록 입금 경보
-        else CONFIRMING — 체인 등장·미확정
+        SUB->>DB: 방향 판정 + 목적지 vault → accountId 귀속
+        alt 출금·내부 이동 — 입금 아님
+            Note over SUB: 스킵 — 출금 경로가 처리
+        else 입금 · CONFIRMING
             SUB->>DB: tx id 멱등 upsert → 대기(pending) · available 불변
-        else COMPLETED 이고 임계 도달
+        else 입금 · COMPLETED 이고 임계 도달
             SUB->>DB: tx id 멱등 upsert → 가용(available) + 고객 통지
-        else COMPLETED 임계 미달 또는 ORPHANED
+        else 입금 · 임계 미달 또는 ORPHANED
             SUB->>DB: 대기 유지 / 가공분 되감기 — 다음 폴 재평가
+        end
+        opt 입금인데 주소가 매핑에 없음
+            SUB->>DB: 미등록 입금 경보 — 계정엔 vaultId 로 귀속
         end
     end
 
     SUB->>DB: 커서 전진 = 처리분의 max(lastUpdated) · 원자적 저장
     Note over SUB,DB: 처리 실패 시 커서 미전진 → 다음 폴에서 재처리(멱등이라 중복 무해)
 </pre></div>
-<p class="diagram-caption">폴링 워커가 <b>커서 이후 갱신된 tx</b>만 페이지 단위로 당겨, 각 tx 의 목적지 주소를 <b>백엔드 DB 의 주소 매핑</b>으로 (accountId, asset)에 역참조한 뒤 상태에 따라 원장을 움직인다. <b>CONFIRMING 은 대기, COMPLETED + 임계 도달만 가용</b>이라는 판정은 webhook 방식과 완전히 같다 — 바뀐 건 "받는 방법"뿐이다. 커서는 <b>처리에 성공한 뒤에만</b> 전진하고, tx id 기준 멱등 upsert 라 경계에서 겹쳐 받아도 중복 반영되지 않는다.</p>
+<p class="diagram-caption">폴링 워커가 <b>커서 이후 갱신된 tx</b>만 페이지 단위로 당겨, <b>입금만 골라</b>(출금·내부이동은 스킵) 목적지 vault 로 <b>계정에 귀속</b>한 뒤 상태에 따라 원장을 움직인다. <b>CONFIRMING 은 대기, COMPLETED + 임계 도달만 가용</b>이라는 판정은 webhook 방식과 완전히 같다 — 바뀐 건 "받는 방법"뿐이다. 커서는 <b>처리에 성공한 뒤에만</b> 전진하고, tx id 기준 멱등 upsert 라 경계에서 겹쳐 받아도 중복 반영되지 않는다. 우리 vault 로 온 입금인데 <b>주소가 매핑에 없으면</b>(Console 직접 생성 등 out-of-band) 스킵하지 않고 계정엔 귀속하되 <b>경보</b>한다.</p>
 
 <p>같은 흐름을 코드로 옮기면 이렇습니다. <b>커서는 <code>lastUpdated</code>(Unix 밀리초)</b>이고, 같은 밀리초 경계를 놓치지 않도록 <b>조금 겹쳐 읽은 뒤 tx id 로 멱등 처리</b>하는 게 급소입니다.</p>
 
@@ -163,18 +168,27 @@ while (true) {
   if (txs.length === 0) break
 
   for (const tx of txs) {                          // lastUpdated 오름차순
-    const dest = db.resolveAddress(tx.destAddress) // → (accountId, asset)
-    if (!dest) continue                            // 우리 주소 아님 → 스킵
+    // 1) 방향 판정 — 입금만 크레딧 (출금·내부이동은 각자 경로가 처리)
+    if (tx.destination?.type !== "VAULT_ACCOUNT") continue   // 우리 vault 로 온 게 아님(출금 등)
+    if (tx.source?.type === "VAULT_ACCOUNT")      continue   // 우리 vault 간 내부 이동 → 스킵
 
-    // tx.id 기준 멱등 upsert — 겹쳐 받아도 상태 전이만 반영, 이중 반영 없음
-    if (tx.status === "CONFIRMING") {
-      ledger.upsertPending(tx.id, dest, tx.amount)           // 대기(pending)
+    // 2) 목적지 vault 로 계정 귀속 — 주소 문자열이 아니라 vaultAccountId 기준
+    const account = db.accountByVault(tx.destination.id)     // → accountId
+    if (!account) continue                                   // 우리 vault 아님(이론상 없음)
+
+    // 3) 주소가 (계정, 자산) 매핑에 있나 — 없으면 우리 돈이나 out-of-band 주소
+    if (!db.addressKnown(account, tx.assetId, tx.destAddress))
+      alert.unmappedDeposit(account, tx)                     // 경보 — 스킵 아님, 계정엔 귀속
+
+    // 4) tx.id 기준 멱등 upsert — 겹쳐 받아도 상태 전이만 반영, 이중 반영 없음
+    if (tx.networkStatus === "ORPHANED") {                   // reorg — 되돌림 우선
+      ledger.revert(tx.id)                                   //   가공분만 되감고 원본 보존
+    } else if (tx.status === "CONFIRMING") {
+      ledger.upsertPending(tx.id, account, tx.assetId, tx.amount)     // 대기(pending)
     } else if (tx.status === "COMPLETED") {
-      if (tx.numOfConfirmations ≥ dccpThreshold(tx.asset))
-        ledger.upsertAvailable(tx.id, dest, tx.amount)       // 가용 + 고객 통지
+      if (tx.numOfConfirmations ≥ dccpThreshold(tx.assetId))
+        ledger.upsertAvailable(tx.id, account, tx.assetId, tx.amount) // 가용 + 고객 통지
       // 임계 미달(zero-conf)이면 대기 유지 — 다음 폴에서 재평가
-    } else if (tx.networkStatus === "ORPHANED") {
-      ledger.revert(tx.id)                                   // reorg — 가공분 되감기
     }
     maxSeen = Math.max(maxSeen, tx.lastUpdated)
   }
