@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>2. 입금 주소 발급 — issueDepositAddress</title>
+<title>2. 입금 주소 생성 — createDepositAddress</title>
 <meta content="noindex" name="robots"/>
 <link href="assets/walkthrough.css" rel="stylesheet"/>
 </head>
@@ -11,63 +11,42 @@
 <div class="wrap">
 <p class="series"><a href="index.html">지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</a></p>
 <div class="progress">
-<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><span class="cur">2</span><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-estimate-fee.html">5</a><a href="06-withdrawal.html">6</a><a href="07-balance-history.html">7</a><a href="08-switch-extend.html">8</a>
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><span class="cur">2</span><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-estimate-fee.html">5</a><a href="06-withdrawal.html">6</a><a href="07-balance-history.html">7</a><a href="08-switch-extend.html">8</a><a href="09-ramp-swap.html">9</a>
 </div>
-<h1>입금 주소 발급 — issueDepositAddress</h1>
-<p class="subtitle">EVM 에서 발급되는 것은 순수 "주소" — memoTag 는 null 이다. <b>Service 백엔드</b>가 부른다</p>
+<h1>입금 주소 생성 — createDepositAddress</h1>
+<p class="subtitle">고객·자산당 하나, 없으면 만들고 있으면 그대로(get-or-create). EVM 주소는 memoTag 가 null</p>
 
-<p><b>무엇·언제</b>: 온보딩의 두 번째 호출이자 첫 주소이며, 운영 중 추가 주소가 필요할 때마다 <b>Service 백엔드</b>가 다시 부릅니다. 발급되는 것은 <b>입금 주소</b>입니다 — 우리 도메인 타입으로는 <code>Address(value, memoTag?)</code>인데, <b>EVM(이더리움·Base)에서는 memoTag 가 항상 null</b> 이라 사실상 주소값 하나입니다. 부를 때마다 <b>새 주소</b>가 나오고, Fireblocks 가 vault 밑에서 채번합니다. 규칙도 하나 짚어두면, <b>주소는 감시(귀속) 등록까지 끝나야 비로소 "존재"합니다.</b> Fireblocks 를 채택하면 이 감시·귀속은 <b>벤더 몫</b>입니다 — vault 가 곧 감시 범위라, 발급된 주소로 온 입금은 벤더가 잡아 webhook 으로 알려줍니다(4p). 등록 안 된 주소로 온 입금은 우리만 모르는데, 이것이 입금 사고의 최다 유형입니다.</p>
+<p><b>무엇·언제</b>: Service 백엔드가 <code>createDepositAddress(accountId, asset)</code> 를 부릅니다. <b>입금주소는 고객·자산당 하나로 재사용</b>합니다 — (accountId, asset) 주소가 이미 있으면 <b>그대로</b> 돌려주고(멱등), 없으면 Fireblocks 가 vault 밑에서 <b>새 주소를 채번</b>합니다(계정 vault 는 1페이지에서 이미 생성). 발급되는 것은 <b>입금 주소</b>(<b>EVM 에서는 memoTag 가 항상 null</b>). 규칙 하나, <b>주소는 감시(귀속) 등록까지 끝나야 "존재"합니다</b> — 이 감시·귀속은 <b>벤더 몫</b>(vault 가 곧 감시 범위, webhook 통지 4p)입니다. 등록 안 된 주소로 온 입금은 감지하지 못하는데, 이것이 입금 사고의 최다 유형입니다.</p>
 
-<pre><code>issueDepositAddress(account, asset) → Address(주소, memoTag=null)   // EVM — 부를 때마다 새 주소, 재시도만 멱등 키로 차단</code></pre>
+<pre><code>createDepositAddress(accountId, asset) → Address { value, memoTag? }   // EVM: memoTag=null · 고객·자산당 1개(get-or-create)</code></pre>
 
-<h2>▸ Fireblocks × EVM — 벤더가 새 주소를 채번한다</h2>
+<h2>▸ get-or-create — 없으면 채번, 있으면 그대로</h2>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
-    participant BE as Service 백엔드
-    box rgb(239,246,255) 블록체인 매니저
-    participant FBI as Fireblocks 구현 · 포트
-    participant FB as Fireblocks SaaS
+    box rgb(219,234,254) Service 백엔드 — 어댑터 포함·한 프로세스
+    participant BE as 유스케이스
+    participant FBI as 블록체인 매니저 어댑터·포트
     end
-    participant DIR as 우리 매핑 DB
+    participant BDB as 백엔드 DB
+    participant FB as Fireblocks SaaS · 벤더
 
-    BE->>FBI: issueDepositAddress(계정 1024번, ETH·이더리움)
-    FBI->>FB: generateNewAddress
-    Note over FBI,DIR: EVM = 순수 주소 하나 (memoTag 없음). 키·주소 파생은 Fireblocks vault·MPC 안에서. 감시·귀속은 벤더 몫 — vault 가 곧 감시 범위
+    BE->>FBI: createDepositAddress(accountId, asset)
+    FBI->>BDB: (accountId, asset) 주소 조회
+    Note over FBI,BDB: 있으면 → 그대로 반환 (재사용·멱등, 여기서 끝)
+    FBI->>FB: 없으면 → generateNewAddress
+    Note over FBI,FB: EVM = 순수 주소 (memoTag 없음). 키·주소 파생은 vault·MPC 안. 감시·귀속은 벤더 몫
     FB-->>FBI: Address(0xAb3…, memoTag=null)
-    FBI->>DIR: 주소 저장 (계정 1024번 ↔ 0xAb3…)
+    FBI->>BDB: 주소 저장 (accountId + asset ↔ 0xAb3…)
     FBI-->>BE: 주소 (0xAb3…)
 </pre></div>
-<p class="diagram-caption">발급은 Fireblocks 의 <code>generateNewAddress</code> 한 줄이다. EVM 에서는 <b>순수 주소</b>가 새로 나오고 memoTag 는 null 이다. 이더리움과 Base 는 같은 EVM(account 기반·동일 주소 체계)이라 이 호출이 동일하다 — <code>asset</code> 의 chainId 만 다를 뿐이다. 키·주소 파생은 <b>Fireblocks vault·MPC 안</b>에서 일어나고, 우리 쪽엔 키 트리도 xpub 도 없다. 발급은 그래도 <b>쓰기 동작</b>이다 — 우리 매핑 DB 에 "계정 ↔ 주소" 한 줄이 남는 상태 변경이라, 재시도가 주소를 두 번 만들지 않게 멱등 키로 감싼다. 감시·귀속(누구 돈인지 가르기)은 벤더가 vault 범위로 처리하므로 우리가 watch-list 를 운영하지 않는다.</p>
-
-<h2>식별자의 출처 — EVM 은 순수 주소 하나</h2>
-
-<table>
-<thead><tr><th style="width:26%"></th><th>Fireblocks × EVM (이더리움·Base)</th></tr></thead>
-<tbody>
-<tr><td><b>발급되는 것</b></td><td><b>새 주소</b> (memoTag = null)</td></tr>
-<tr><td><b>식별자의 출처</b></td><td>Fireblocks vault 채번 (키·MPC 는 벤더 안)</td></tr>
-<tr><td><b>감시·귀속 등록</b></td><td>벤더 (vault 범위 — webhook 으로 통지, 4p)</td></tr>
-<tr><td><b>우리 책임</b></td><td>매핑 DB (계정 ↔ 주소)</td></tr>
-</tbody>
-</table>
-
-<p>표에서 읽을 것은 이렇습니다. EVM 에서 입금 식별자는 <b>주소값 하나</b>이고, memoTag 는 채우지 않습니다(null). 식별자의 출처는 <b>Fireblocks vault 채번</b> 한 곳뿐이라 우리가 키를 파생하거나 xpub 을 다루지 않습니다. 감시·귀속도 벤더가 vault 범위로 처리하므로 우리 몫은 <b>매핑 DB 한 줄</b>로 줄어듭니다. 부를 때마다 새 주소가 나온다는 성질만, 다음 페이지(조회)의 "같은 주소가 나온다"와 대비해 기억해 두면 됩니다.</p>
-
-<h2>백엔드에서 이렇게 부른다 — 분기가 없다</h2>
-
-<pre><code>// 입금 안내 화면까지 — Service 백엔드, 한 동사, 분기 없음
-suspend fun issueAndGuide(account: Account, asset: Asset): DepositGuide {
-    val id = accounts.issueDepositAddress(account, asset)  // EVM = 새 주소 (memoTag=null)
-    return DepositGuide(address = id.value, memo = id.memoTag)   // EVM 은 memoTag 가 null 이라 화면에서 생략
-}</code></pre>
-<p class="diagram-caption">Service 백엔드는 자산이 이더리움인지 Base 인지 모른 채 이 한 동사를 부른다. 반환 타입은 <code>Address(value, memoTag?)</code> 그대로지만 EVM 에서는 memoTag 가 null 이라 화면에서 생략된다 — 도메인 타입은 memoTag 를 자리로만 남겨두고, 실제로 채우는 체인은 이 문서 범위에 없다.</p>
+<p class="diagram-caption">매니저가 백엔드 DB 에서 <b>(accountId, asset) 주소가 있으면 그대로</b> 돌려주고, 없을 때만 Fireblocks 의 <code>generateNewAddress</code> 로 새로 채번한다. EVM 은 <b>순수 주소</b>(memoTag=null), 이더리움·Base 는 <code>asset</code> 의 chainId 만 다르다. 키·주소 파생은 <b>vault·MPC 안</b>, 감시·귀속도 벤더 몫. <b>매니저가 (accountId+asset ↔ 주소) 를 백엔드 DB 에 저장</b>하고, 다음부터 재사용한다.</p>
 
 <p class="foot">더 깊이: 발급·등록·놓친 입금 방어 — <a href="../wallet-service-components/scenario-provisioning.html">가이드 9장</a>.</p>
 
 <div class="pager">
-<a href="01-create-account.html">← 1. 계정 생성</a>
+<a href="01-create-account.html">← 1. 계정(vault)</a>
 <a href="index.html">목차</a>
 <a href="03-address-of.html">3. 입금 주소 조회 →</a>
 </div>

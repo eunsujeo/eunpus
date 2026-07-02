@@ -1008,3 +1008,49 @@
 - **신규 Q 중앙 등록 3건**: A11(기존 인라인 → 중앙) · C01 · C02 — **C02 ANSWERED(traffic 산정식)**, A11·C01 open
 - **신규 entity +1**: entities/canton/canton-network.md — Canton 은 Fireblocks 아닌 독립 체인이라 흡수 불가(범주). **연속 0-streak 종료**
 - **영향 페이지**: entities/canton/canton-network · index.md · docs-site/wallet-service-components(2·9·11·14)
+
+### Q-2026-07-02-T01: List Transactions 엔드포인트가 status/statuses 로 서버측 필터를 지원하는가
+
+- **Why it matters**: confirming / finality(COMPLETED) 상태별로 트랜잭션 목록을 조회하려 할 때, 서버가 상태로 필터해 주면(쿼리 파라미터) 클라이언트가 전체를 받아 거르지 않아도 돼 트래픽·페이지네이션 부담이 준다. 지갑 백엔드의 `transactionsOf` 조회 설계에 직접 영향.
+- **Where this came up**: docs-site/wallet-design-walkthrough/07-balance-history.html — `transactionsOf(account, 기간)` 목록 조회. **응답에 상태·`numOfConfirmations` 가 실린다는 점은 확정** (source: `primary-transaction-statuses.md` 17 primary status; docs-site 07-balance-history), **서버측 status 필터 파라미터 여부는 미확인**.
+- **Hypotheses (unverified)**: Fireblocks List Transactions(`GET /v1/transactions`)가 `status`/`statuses` 계열 쿼리 파라미터로 서버측 필터를 지원한다고 일반적으로 알려져 있으나 — unverified, 1차 자료로 확인 필요.
+- **Sources to check**: developers.fireblocks.com List Transactions endpoint reference (query params: status/statuses/orderBy/before/after), api-reference/transactions
+- **답 (Stage 88, `fireblocks/fireblocks-openapi-spec` → `open_api_spec.yml` · `GET /transactions` "List transaction history")**: 서버측 status 필터 **지원 확정**. 파라미터명은 **`status`(단수 · 한 번에 하나)** — *"You can filter by one of the statuses."* (복수 `statuses` 아님). 함께: `before`/`after`(Unix ms), `orderBy`(createdAt|lastUpdated), `sort`(ASC|DESC), `limit`(기본 200), `sourceType`/`sourceId`, `destType`/`destId`, `assets`(콤마 구분), `txHash`. SDK: `fireblocks.get_transactions(status, after)` / `getTransactions({status})`. 다중 상태는 호출 분리 또는 클라이언트 필터. finality 판정은 status=COMPLETED + `numOfConfirmations ≥ DCCP 임계`(zero-conf 대비).
+- **Status**: ANSWERED
+
+### Stage 88 Summary
+
+- **신규 Q 중앙 등록 1건**: T01 (List Transactions status 서버측 필터) — **ANSWERED (1차 자료: fireblocks-openapi-spec `GET /transactions`, `status` 단수 파라미터)**. 카테고리 **T (Transaction API)** 신설
+- **출처 트리거**: docs-site 07-balance-history `transactionsOf` 상태별 조회 설계 검토 중 fact query
+- **신규 entity 0**
+
+### Q-2026-07-02-T02: webhook notifications 조회·재전송의 페이지네이션·rate limit (대량 실패 시)
+
+- **Why it matters**: 천만 개 규모 주소의 워크스페이스에서 webhook 이 대량 실패·지연했을 때, 복구 1차 수단인 재전송(`POST /v1/webhooks/{id}/notifications/resend_failed`)과 전송 이력 조회(`GET /v1/webhooks/{id}/notifications`)의 **배치 크기·페이지네이션·rate limit** 이 실제 운영 처리량을 좌우한다. 수천+ 실패 알림을 한 번에 재전송할 수 있는지, 커서·limit 규약이 무엇인지가 backfill 설계에 직접 영향.
+- **Where this came up**: docs-site/wallet-design-walkthrough/04-deposit.html — "webhook 놓쳤을 때" 복구 3단(재전송·polling·대사) 설계 중 fact query. **재전송·notifications 이력 endpoint 존재는 확정** (source: `vendors/fireblocks/api.md` Webhooks v2 · `reference-webhook-v2-migration-guide.md`, v2 = 30일 재전송 창), **페이지네이션·rate limit 수치는 미확인**.
+- **Hypotheses (unverified)**: `GET /v1/webhooks/{id}/notifications` 가 표준 cursor/limit 페이지네이션을 따르고 resend 계열에 별도 rate limit 이 있을 것으로 추정 — 1차 자료(openapi-spec Webhooks v2 경로 · rate limit 문서)로 확인 필요.
+- **Sources to check**: `fireblocks/fireblocks-openapi-spec` open_api_spec.yml 의 `/webhooks/{id}/notifications*` · developers.fireblocks.com rate-limits 페이지
+- **Status**: open
+
+### Stage 89 Summary
+
+- **신규 Q 중앙 등록 1건**: T02 (webhook notifications 조회·재전송의 페이지네이션·rate limit) — **open**. 카테고리 T (Transaction/Webhook API)
+- **출처 트리거**: docs-site 04-deposit "webhook 놓쳤을 때" 복구 절 설계 중 fact query (천만 주소 규모 webhook 실패 대응)
+- **확정 재확인**: resend/resend_failed·notifications 이력 endpoint 존재 + v2 30일 재전송 창 (api.md) · List Transactions `orderBy=lastUpdated`+`after` backfill (T01 ANSWERED)
+- **신규 entity 0**
+
+### Q-2026-07-02-T03: 인바운드 차단 환경에서 폴링이 webhook 이벤트를 완전 대체하는가
+
+- **Why it matters**: 은행·규제망은 외부 SaaS 의 인바운드 연결을 차단하는 경우가 많아 **webhook(Fireblocks→우리 push) 자체를 못 쓸 수 있다**. 이때 감지는 아웃바운드 폴링(`GET /v1/transactions`)으로 뒤집는데, 폴링이 webhook 이벤트 전체를 빠짐없이 대체하는지가 이 환경의 감지 설계 완결성을 좌우한다. 특히 ① 초기 INCOMING 감지 시점(첫 mempool/등장 이벤트)이 폴링으로도 동일 시점에 관찰되는지 ② `transaction.approval_status.updated` 같은 승인 상태 전이가 tx 조회 응답에 실려 폴링만으로 추적 가능한지 ③ webhook 으로만 오고 조회로는 안 오는 이벤트 유형이 있는지.
+- **Where this came up**: docs-site/wallet-design-walkthrough/04-deposit.html — "인바운드를 막는 환경" callout + "webhook 이 없거나 놓쳤을 때" polling-primary 절 설계. **폴링 감지 자체는 확정**(List Transactions status/커서, T01 ANSWERED; 서명 경로 Fireblocks Agent 폴링, `vendors/fireblocks/architecture.md:319·342`; egress whitelist `architecture.md:152`; webhook 발신 IP `architecture.md:158`). **폴링이 push 이벤트를 100% 커버하는지는 미확인**.
+- **Hypotheses (unverified)**: 입·출금 상태·confirmation·승인 상태는 tx 객체(`GET /v1/transactions`, `GET /v1/transactions/{txId}`)에 실려 폴링으로 관찰 가능하고, 폴링 주기만큼 감지 지연이 생길 뿐 이벤트 유실은 없다고 추정 — 단, 초기 감지 지연·webhook 전용 이벤트 존재 여부는 1차 자료 확인 필요.
+- **Sources to check**: `fireblocks/fireblocks-openapi-spec` open_api_spec.yml 의 `GET /transactions` 응답 스키마(approvalStatus·createdAt vs lastUpdated) vs Webhooks v2 event type 목록(`reference-webhooks-structures-eventtypes.md`) 대조 · developers.fireblocks.com polling vs webhook 가이드
+- **Status**: open
+
+### Stage 90 Summary
+
+- **신규 Q 중앙 등록 1건**: T03 (인바운드 차단 환경 폴링이 webhook 이벤트를 완전 대체하는가) — **open**. 카테고리 T
+- **출처 트리거**: 사용자 환경 제약 — webhook(Fireblocks→은행 인바운드) 차단 가능 → 폴링 primary 재프레이밍
+- **확정 재확인**: outbound 폴링 감지(List Transactions, T01) + Fireblocks Agent 폴링 선례(architecture.md:319·342) + egress whitelist(architecture.md:152) — Fireblocks 통합을 아웃바운드 전용으로 운영 가능
+- **영향 페이지**: docs-site/wallet-design-walkthrough/04-deposit (인바운드 차단 callout + polling-primary 절)
+- **신규 entity 0**

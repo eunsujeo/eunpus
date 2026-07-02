@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>3. 입금 주소 조회 — addressOf</title>
+<title>3. 입금 주소 조회 — getDepositAddress</title>
 <meta content="noindex" name="robots"/>
 <link href="assets/walkthrough.css" rel="stylesheet"/>
 </head>
@@ -11,79 +11,38 @@
 <div class="wrap">
 <p class="series"><a href="index.html">지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</a></p>
 <div class="progress">
-<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><span class="cur">3</span><a href="04-deposit.html">4</a><a href="05-estimate-fee.html">5</a><a href="06-withdrawal.html">6</a><a href="07-balance-history.html">7</a><a href="08-switch-extend.html">8</a>
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><span class="cur">3</span><a href="04-deposit.html">4</a><a href="05-estimate-fee.html">5</a><a href="06-withdrawal.html">6</a><a href="07-balance-history.html">7</a><a href="08-switch-extend.html">8</a><a href="09-ramp-swap.html">9</a>
 </div>
-<h1>입금 주소 조회 — addressOf</h1>
-<p class="subtitle">발급과 정반대인 읽기 전용 동사 — 몇 번을 불러도 같은 주소. <b>Service 백엔드</b>가 부른다</p>
+<h1>입금 주소 조회 — getDepositAddress</h1>
+<p class="subtitle">생성과 정반대인 읽기 전용 — 매니저가 백엔드 DB 에서 (accountId, asset)로 그 주소를 읽는다</p>
 
-<p><b>무엇·언제</b>: 고객이 입금 화면을 열 때마다 <b>Service 백엔드</b>가 부르는, 이 문서에서 가장 호출 빈도가 높은 동사입니다. 성질은 발급(2p)과 정반대입니다. <b>읽기 전용이고, 몇 번을 불러도 같은 주소가 나오며, 절대 새 주소를 만들지 않습니다.</b></p>
+<p><b>무엇·언제</b>: 고객이 입금 화면을 열 때마다 <b>Service 백엔드</b>가 부르는, 이 문서에서 가장 호출 빈도가 높은 동사입니다. 성질은 생성(2p)과 정반대입니다. <b>읽기 전용이고, (accountId, asset)로 저장된 그 주소를 그대로 읽으며, 새 주소를 만들지 않습니다.</b></p>
 
-<pre><code>addressOf(account, asset) → Address   // 읽기 — 멱등 키 불요, 발급 부수효과 없음</code></pre>
+<pre><code>getDepositAddress(accountId, asset) → Address { value, memoTag? }   // 읽기, 백엔드 DB 에 저장된 그 값</code></pre>
 
-<h2>▸ Fireblocks × EVM — 우리 매핑 DB 에서 읽는다</h2>
-
-<div class="diagram"><pre class="mermaid">
-sequenceDiagram
-    autonumber
-    participant BE as Service 백엔드
-    box rgb(239,246,255) 블록체인 매니저
-    participant FBI as Fireblocks 구현 · 포트
-    end
-    participant DIR as 우리 매핑 DB
-
-    BE->>FBI: addressOf(계정 1024번, 자산)
-    FBI->>DIR: 이 계정에 "발급(등록)된" 주소 읽기
-    DIR-->>FBI: 주소 (이더리움·Base = 0xAb3… · memoTag null)
-    FBI-->>BE: 같은 주소 — 몇 번을 불러도
-</pre></div>
-<p class="diagram-caption">2페이지에서 발급해 매핑 DB 에 저장한 주소를 돌려줄 뿐이다(계정 자체는 1페이지). 이더리움이든 Base 든 반환물의 모양은 같은 EVM 주소이고, memoTag 는 null 이다. 발급 때 저장해 둔 <b>우리 기록</b>을 읽으므로 <b>매 조회마다 벤더(Fireblocks)를 왕복할 필요가 없다</b> — 호출 빈도가 가장 높은 동사가 벤더 API 한도·지연에 묶이지 않는다.</p>
-
-<h2>▸ 반례 — 이렇게 구현하면 안 된다</h2>
+<h2>▸ 매니저가 백엔드 DB 에서 읽는다 — 벤더 왕복 없음</h2>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
-    participant BE as Service 백엔드
-    box rgb(239,246,255) 블록체인 매니저
-    participant MGR as 잘못된 구현
+    box rgb(219,234,254) Service 백엔드 — 어댑터 포함·한 프로세스
+    participant BE as 유스케이스
+    participant FBI as 블록체인 매니저 어댑터·포트
     end
-    participant FB as Fireblocks SaaS
+    participant BDB as 백엔드 DB
 
-    BE->>MGR: addressOf(계정 1024번, ETH)
-    MGR->>FB: 매 조회마다 벤더에 주소 목록 재조회
-    Note over MGR,FB: 조회 폭주 시 벤더 API 한도·지연에 묶인다 —<br/>발급 때 이미 우리 DB 에 저장한 값을 두고 왕복 (불필요)
-    FB-->>MGR: 주소 목록
-    MGR-->>BE: 느리고 한도에 걸리는 조회 (안티패턴)
+    BE->>FBI: getDepositAddress(accountId, asset)
+    FBI->>BDB: (accountId, asset)↔주소 읽기
+    BDB-->>FBI: 주소 (이더리움·Base = 0xAb3… · memoTag null)
+    FBI-->>BE: 주소
+    Note over FBI,BDB: 벤더(Fireblocks)를 거치지 않는다 — 백엔드 DB 만 읽는다
 </pre></div>
-<p class="diagram-caption">조회를 "매번 벤더 재조회"로 구현하고 싶어진다. 편하긴 하지만 가장 자주 불리는 동사가 <b>벤더 API 한도·지연에 묶이는 경로</b>가 생긴다. 그래서 규칙을 둔다. <b>주소가 태어나는 길은 발급(2p)뿐이고, 조회는 그때 우리 매핑 DB 에 저장한 것을 읽는다.</b> 벤더 재조회는 정합성 점검·복구용 내부 도구로만 쓴다.</p>
-
-<h2>정리 — 조회는 우리 DB 읽기</h2>
-
-<table>
-<thead><tr><th style="width:26%"></th><th>Fireblocks × EVM (이더리움·Base)</th></tr></thead>
-<tbody>
-<tr><td><b>동작</b></td><td><b>매핑 DB 에서 등록된 주소 읽기</b></td></tr>
-<tr><td><b>반환물</b></td><td>EVM 주소 (memoTag null · Fireblocks 채번 유래)</td></tr>
-<tr><td><b>벤더 왕복</b></td><td>불요 — 우리 기록으로 충분</td></tr>
-</tbody>
-</table>
-
-<p>이 설계가 왜 중요할까요. <b>호출 빈도가 가장 높은 동사</b>가 벤더 왕복 없이 우리 DB 한 번으로 끝나므로, 입금 화면이든 고객센터든 정산이든 어디에서 쓰든 빠르고 벤더 한도에 안 걸립니다. 차이를 만들 이유가 없는 곳에서 차이를 안 만드는 것도 설계입니다.</p>
-
-<h2>백엔드에서 이렇게 부른다 — 읽기라서 더 단순하다</h2>
-
-<pre><code>// 입금 화면 핸들러 — Service 백엔드, 멱등 키 없음 (읽기)
-suspend fun depositScreen(accountId: String, asset: Asset): DepositInfo {
-    val account = directory.resolve(accountId)            // 고객 → 계정은 우리 매핑 DB 로 (벤더에 안 묻는다)
-    val id = accounts.addressOf(account, asset)           // 몇 번 불러도 같은 값
-    return DepositInfo(id.value, id.memoTag)              // EVM 은 memoTag 가 null 이라 화면에서 생략
-}</code></pre>
-<p class="diagram-caption">화면이 1초에 수백 번 불러도 되는 코드다. 상태 변경이 없고 벤더 왕복도 없다 — 우리 매핑 DB 한 번으로 끝난다.</p>
+<p class="diagram-caption">2페이지에서 백엔드 DB 에 저장한 주소를 (accountId, asset)로 읽어 돌려줄 뿐이다. 이더리움이든 Base 든 반환물은 같은 EVM 주소이고, memoTag 는 null 이다. <b>백엔드 DB 를 읽으므로 매 조회마다 벤더(Fireblocks)를 왕복할 필요가 없다</b> — 호출 빈도가 가장 높은 동사가 벤더 API 한도·지연에 묶이지 않는다.</p>
 
 <p class="foot">더 깊이: 조회/발급 분리의 근거 — <a href="../wallet-service-components/abstraction.html">가이드 13.3</a>.</p>
 
 <div class="pager">
-<a href="02-issue-deposit-address.html">← 2. 입금 주소 발급</a>
+<a href="02-issue-deposit-address.html">← 2. 입금 주소 생성</a>
 <a href="index.html">목차</a>
 <a href="04-deposit.html">4. 입금 →</a>
 </div>

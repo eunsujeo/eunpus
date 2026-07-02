@@ -7152,3 +7152,38 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 검증 통과: Canton 잔재 0(Canton·PartyId·OFFER/ACCEPT·party·traffic·4분면·전환) · 제목 통일 9/9 · mermaid endpoint 미선언 0 · AWAITING_ACCEPT 0 · Service/Admin 일관(01-03=Service 전용) · 진짜 이모지 0 · § 0 · 깨진 링크·canton-track 링크 0
 - 판단 보류 5건(사용자 확인 대기): 07 잠김=lockedAmount+AML frozen 합산 / 03 안티패턴 "벤더 왕복 금지"로 치환 / 01 "비용 0" 헤드라인 제거 / 06 FB 내부 상태명은 대표값("어댑터가 번역") / 08 링크 대상 wallet-service-components 가이드는 옛 모델 가능성(범위 밖)
 - 신규 entity: 0. docs-site 미배포(로컬만 — no-auto-deploy)
+
+## Stage 88 (2026-07-02) — open-Q promote: Transactions status 서버측 필터
+- source: docs-site 07-balance-history `transactionsOf` 상태별 조회 설계 검토 중 fact query
+- 신규 Q: Q-2026-07-02-T01 (List Transactions 가 status 로 서버측 필터를 지원하는가) — 카테고리 **T (Transaction API)** 신설, **즉시 ANSWERED**
+- 답 (1차 자료: `fireblocks/fireblocks-openapi-spec` open_api_spec.yml · `GET /transactions`): 서버측 status 필터 지원 = **`status` 단수 파라미터**("filter by one of the statuses"). 함께 before/after(Unix ms)·orderBy(createdAt|lastUpdated)·sort(ASC|DESC)·limit(기본200)·sourceType/destType·assets·txHash. 다중 상태=호출 분리, finality=COMPLETED+numOfConfirmations≥DCCP
+- ANSWERED: Q-2026-07-02-T01
+- 영향받은 페이지: open-questions/fireblocks.md
+- 신규 entity: 0
+
+## Stage 89 (2026-07-02) — wallet-design-walkthrough 정리 + webhook 복구 절 + T02
+- 계기: 사용자 리뷰 5건 — ① 1p "무엇·언제"·시그니처 주석·"비교" 섹션 제거 ② 2·3p "정리/식별자의 출처" 재진술 표+뒤 문단 제거(다이어그램 캡션과 중복) ③ `createDepositAddress`/`getDepositAddress` 인자 `ref`→`accountId`(주소는 계정 밑에 생김·FB generateNewAddress 는 vaultAccountId 기준·7p `getBalance(계정)` 과 일관) ④ 7p "두 백엔드가 각각 부른다" 표 제거(위 문단 재진술, note 정보는 문단에 흡수) ⑤ webhook 실패 대응 fact query
+- 포트 표면 확정: `ref` 를 받는 동사는 `createAccount` 하나뿐(name=ref get-or-create 지점), 이후 createDepositAddress/getDepositAddress/getBalance/transactionsOf 는 accountId(계정) 기준
+- webhook 복구 (fact query, evidence isolation): 4p 에 "webhook 놓쳤을 때 — 재전송·polling·대사 3단" 절 추가. 확정 근거 = ① resend/resend_failed·notifications 이력 endpoint + v2 30일 재전송 창(vendors/fireblocks/api.md Webhooks v2·reference-webhook-v2-migration-guide.md) ② List Transactions `orderBy=lastUpdated`+`after`+status backfill(T01 ANSWERED). 핵심 = 워크스페이스·시간 범위 기준이라 부하가 주소 수 아닌 놓친 tx 수에 비례 + tx id/externalTxId 멱등 upsert
+- 신규 Q: Q-2026-07-02-T02 (webhook notifications 조회·재전송의 페이지네이션·rate limit, 대량 실패 시) — open. 페이지네이션·rate limit 수치는 1차 자료 미확인
+- ANSWERED: (없음) · 재확인: Q-2026-07-02-T01
+- 영향받은 페이지: docs-site/wallet-design-walkthrough/ 01·02·03·04·07 + open-questions/fireblocks.md
+- 신규 entity: 0 · docs-site 미배포(로컬만 — no-auto-deploy)
+
+## Stage 90 (2026-07-02) — 인바운드 차단 환경: webhook 불가 → polling primary
+- 계기: 사용자 환경 제약 — "webhook 이용 못 하는 조건이 있다, Fireblocks→은행 호출이 안 될 수 있다" (은행·규제망 인바운드 차단)
+- 판단: webhook = Fireblocks→우리 인바운드 → 방화벽에 막힐 수 있음. 해법 = 방향 반전, 우리가 Fireblocks 로 나가는 outbound 폴링(GET /v1/transactions, orderBy=lastUpdated+after+status). egress 만 열면 됨
+- 근거(1차): webhook 발신 IP=Fireblocks(architecture.md:158) · Customer Egress Plane whitelist(architecture.md:152) · Fireblocks Agent 서명 요청 폴링 선례(architecture.md:319·342) · List Transactions status/커서(T01 ANSWERED). 전송 방향만 push→pull, 상태·확정 판정 동일(감지 지연=폴링 주기)
+- 반영: 04-deposit 에 "인바운드를 막는 환경(은행 등)" warn callout 추가 + 복구 절을 "webhook 이 없거나 놓쳤을 때 — polling·재전송·대사"로 재구성(polling=주 경로 겸 백업, resend=webhook 쓸 때만). resend_failed 는 인바운드 막힌 환경엔 무용 명시
+- 신규 Q: Q-2026-07-02-T03 (폴링이 webhook 이벤트를 완전 대체하는가 — 초기 INCOMING 감지 시점·approval_status·webhook 전용 이벤트 유무) — open
+- ANSWERED: (없음) · 재확인: Q-2026-07-02-T01
+- 영향받은 페이지: docs-site/wallet-design-walkthrough/04-deposit + open-questions/fireblocks.md
+- 신규 entity: 0 · docs-site 미배포(로컬만 — no-auto-deploy)
+
+## Stage 91 (2026-07-02) — 04-deposit 하단: webhook 없이 폴링 감지 상세 흐름
+- 계기: 사용자 지시 — "webhook 사용 못 해"를 가정하고 입금 페이지 하단에 flow 까지 상세 작성
+- 추가: 04-deposit "webhook 없이 — 폴링으로 감지하는 상세 흐름" 절 — 커서(lastUpdated) 기반 폴링 루프 sequenceDiagram(페이지네이션·상태 분류·커서 전진·멱등 upsert·reorg) + "루프의 급소" 표(커서/빠짐 방지/페이지네이션/멱등/reorg/감지 지연)
+- 설계 요지: 상태 필터 없이 커서로 훑어 모든 전이 수신 → dest 주소를 백엔드 DB 매핑으로 (accountId,asset) 역참조 → CONFIRMING=대기·COMPLETED+임계=가용, 판정 로직은 webhook 과 동일(받는 방법만 다름). 커서는 처리 성공 후 전진 + 경계 겹쳐받기, tx id 멱등 upsert 로 중복 무해. 부하는 주소 수 아닌 갱신 tx 수에 비례
+- 미확정 유지: 폴링의 push 이벤트 100% 대체 여부(초기 감지 시점·승인 상태 이벤트) = Q-2026-07-02-T03
+- 영향받은 페이지: docs-site/wallet-design-walkthrough/04-deposit
+- 신규 entity: 0

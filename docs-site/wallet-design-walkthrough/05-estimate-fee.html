@@ -11,16 +11,16 @@
 <div class="wrap">
 <p class="series"><a href="index.html">지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</a></p>
 <div class="progress">
-<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><span class="cur">5</span><a href="06-withdrawal.html">6</a><a href="07-balance-history.html">7</a><a href="08-switch-extend.html">8</a>
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><span class="cur">5</span><a href="06-withdrawal.html">6</a><a href="07-balance-history.html">7</a><a href="08-switch-extend.html">8</a><a href="09-ramp-swap.html">9</a>
 </div>
 <h1>수수료 견적 — estimateFee</h1>
 <p class="subtitle">제출 전에 한 번 읽어 보는 동사. 아무것도 점유하지 않으며, 추정일 뿐 보장은 아니다</p>
 
 <p><b>무엇·언제</b>: 출금 화면에서 금액을 입력할 때마다 부르는 동사입니다. 실제 출금 제출과 달리 순번(nonce)을 <b>점유하지 않는 읽기</b>라 수시로 불러도 되고, 어디까지나 추정이라 실제 수수료는 출금(6장)의 제출 단계에서 벤더가 다시 확정합니다. 이 동사는 고객 런타임에서 부르는 <b>Service 백엔드</b>의 호출입니다.</p>
 
-<pre><code>estimateFee(출금 지시) → { low · medium · high }   // 점유 없는 읽기 — 추정이지 보장 아님</code></pre>
+<pre><code>estimateFee(출금 지시) → FeeEstimate { low, medium, high }</code></pre>
 
-<p>등급(low/med/high)의 정체는 이렇습니다. EVM(이더리움·Base)에선 노드의 최근 수수료 이력 <b>백분위수</b>가 단가를, 모의 실행이 사용량을 책임집니다. Fireblocks 를 채택하면 이 계산을 벤더가 대신하고, 우리는 estimateFee 한 번으로 low/med/high 를 돌려받습니다. 두 재료(단가·사용량)의 곱이 곧 견적입니다.</p>
+<p>등급(low/med/high)의 정체는 이렇습니다. EVM(이더리움·Base)에선 노드의 최근 수수료 이력 <b>백분위수</b>가 단가를, 모의 실행이 사용량을 책임집니다. 이 계산은 벤더가 대신하고, estimateFee 한 번으로 low/med/high 를 돌려받습니다. 두 재료(단가·사용량)의 곱이 곧 견적입니다.</p>
 
 <h2>estimateFee — 단가(이력 백분위수) × 사용량(모의 실행)</h2>
 
@@ -46,7 +46,7 @@ sequenceDiagram
 
 <div class="callout">
 <div class="callout-title">Base 는 왜 별도 항목이 없나 — 그리고 L2 가스 한 가지</div>
-<p style="margin:0 0 8px">Base 는 이더리움 L2(OP-Stack)라 <b>같은 EVM 가스 모델</b>을 씁니다. estimateFee 의 재료도 이력 백분위수 + 모의 실행으로 동일해, 이 페이지는 둘을 'EVM' 으로 묶어 한 번에 다룹니다. 등급의 의미(확정 속도 선택지)도, 시세를 따라 견적이 출렁이는 성질도 두 체인이 같습니다.</p>
+<p style="margin:0 0 8px">Base 는 이더리움 위에 얹은 L2 라 <b>같은 EVM 가스 모델</b>을 씁니다. estimateFee 의 재료도 이력 백분위수 + 모의 실행으로 동일해, 이 페이지는 둘을 'EVM' 으로 묶어 한 번에 다룹니다. 등급의 의미(확정 속도 선택지)도, 시세를 따라 견적이 출렁이는 성질도 두 체인이 같습니다.</p>
 <p style="margin:0">한 가지만 다릅니다. L2 의 실제 비용은 <b>L2 실행분 + L1 데이터 비용</b>의 합입니다. Base 에서 낸 트랜잭션은 L2 에서 실행되지만 그 데이터가 이더리움 L1 에 올라가야 확정되므로, 견적에는 L1 데이터 게시 비용이 얹힙니다. estimateFee 는 이 두 성분을 합쳐 돌려주지만, L1 혼잡 때 L2 견적이 함께 오르는 이유가 여기 있습니다.</p>
 </div>
 
@@ -54,11 +54,11 @@ sequenceDiagram
 
 <p>견적 다음은 실행입니다. 수수료가 실제로 <b>확정</b>되는 곳은 출금(6장)의 제출 단계이고(벤더가 조립하며 확정), 확정한 수수료가 너무 낮아 막히면 같은 페이지의 boost(수수료 인상 재전송)가 뒤를 잇습니다. estimateFee 는 그 변동 실비를 <b>추정</b>할 뿐입니다.</p>
 
-<p>여기서 메커니즘과 운영을 갈라 둡니다. estimateFee 라는 <b>메커니즘</b>은 Service 백엔드가 부르는 매니저 기능입니다. 반면 출금용 <b>가스 잔고 충전</b>, 고객 과금, 변동 실비와의 <b>차액 정산</b> 같은 <b>운영</b>은 이 문서의 범위 밖이고, 나가는 돈을 관리하는 <b>Admin 백엔드</b>와 회계·비즈니스 층의 몫입니다. 견적은 실비를 미리 고정하지 않으므로, 고객에게 고정값을 보여줄지는 그 위층의 정책입니다.</p>
+<p>여기서 메커니즘과 운영을 갈라 둡니다. estimateFee 라는 <b>메커니즘</b>은 Service 백엔드가 부르는 매니저 기능입니다. 반면 출금용 <b>가스 잔고 충전</b>, 고객 과금, 변동 실비와의 <b>차액 정산</b> 같은 <b>운영</b>은 이 문서의 범위 밖이고, 나가는 돈을 관리하는 <b>Admin 백엔드</b>와 회계·비즈니스 층의 몫입니다. 견적은 변동 실비를 추정할 뿐 미리 고정하지 않습니다. 반면 <b>고객에게 보여주는 수수료</b>는 그 위층(회계·비즈니스)이 <b>선계산해 고정한 값</b>이고, 변동 실비와의 차액은 그 층이 수수료수익/손익으로 흡수합니다.</p>
 
 <div class="callout">
 <div class="callout-title">거래소식 "미리 계산된 고정 수수료"는 어느 층인가</div>
-<p style="margin:0">거래소가 출금·매매에 보여주는 고정 수수료는 여기서 다루는 <b>네트워크 실비</b>가 아닙니다. 그것은 <b>고객 과금</b>(자산별 고정 출금 수수료·% 매매 요율)으로, <b>회계·비즈니스 층</b>이 고정 스케줄로 정하고 변동 실비와의 차액을 <b>수수료수익/손익</b>으로 흡수합니다. 거래소가 고객에게 고정값을 보여줄 수 있는 건 뒤에서 변동 실비를 떠안기 때문입니다. 매니저 층의 이 견적은 그 변동 실비를 추정할 뿐, 실비를 미리 고정하려 들면 가스 급등 때 미수·손실이 납니다. 고객에게 고정값을 보여줄지는 그 위층의 정책이고, 정산·회계 처리는 <a href="../ramp-settlement-walkthrough/">정산 워크스루</a>에서 다룹니다.</p>
+<p style="margin:0">거래소가 출금·매매에 보여주는 고정 수수료는 여기서 다루는 <b>네트워크 실비</b>가 아니라 <b>고객 과금</b>(자산별 고정 출금 수수료·% 매매 요율)입니다 — <b>회계·비즈니스 층</b>이 고정 스케줄로 정하고, 매니저 층 견적이 추정한 변동 실비와의 차액을 <b>수수료수익/손익</b>으로 흡수합니다. 실비를 미리 고정하려 들면 가스 급등 때 미수·손실이 납니다. 정산·회계 처리는 <a href="../ramp-settlement-walkthrough/">정산 워크스루</a>에서 다룹니다.</p>
 </div>
 
 <p class="foot">더 깊이 보려면, 조립 시 수수료 설정과 인상 재전송을 다룬 <a href="../wallet-service-components/component-tx-nonce.html">가이드 4장</a>을 참고하세요.</p>
