@@ -106,7 +106,7 @@ sequenceDiagram
 
 <h2>webhook 없이 — 폴링으로 감지하는 상세 흐름</h2>
 
-<p>인바운드가 막힌 환경을 가정하고, 폴링만으로 입금을 감지하는 실제 루프를 펼칩니다. 뼈대는 <b>커서</b> 하나입니다 — 마지막으로 처리한 트랜잭션의 <code>lastUpdated</code> 를 DB 에 커서로 저장해 두고, 주기마다 그 이후 갱신된 트랜잭션만 당겨 옵니다. 상태 필터는 서버에서 한 번에 하나만 걸리므로, <b>모든 상태 전이를 빠짐없이 받으려면 상태 필터 없이 커서로</b> 훑고 받은 tx 를 이쪽에서 분류합니다 — 상태 필터는 대사·표적 조회(7p)에서 씁니다.</p>
+<p>인바운드가 막힌 환경을 가정하고, 폴링만으로 입금을 감지하는 실제 루프를 펼칩니다. 뼈대는 <b>커서</b> 하나입니다 — 마지막으로 처리한 트랜잭션의 <code>lastUpdated</code>(Unix 밀리초 시간값)를 DB 에 커서로 저장해 두고, 주기마다 그 이후 갱신된 트랜잭션만 당겨 옵니다. 커서가 <b>시간값</b>이라 같은 밀리초를 가진 tx 를 놓치지 않게 <b>커서를 조금 겹쳐 받고 tx id 로 멱등 처리</b>합니다. 상태 필터는 서버에서 한 번에 하나만 걸리므로, <b>모든 상태 전이를 빠짐없이 받으려면 상태 필터 없이 커서로</b> 훑고 받은 tx 를 이쪽에서 분류합니다 — 상태 필터는 대사·표적 조회(7p)에서 씁니다.</p>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -116,7 +116,7 @@ sequenceDiagram
     participant FB as Fireblocks (SaaS)
 
     Note over SUB,FB: 주기(예: 15~30초)마다 실행 · 전부 outbound(egress 허용분)
-    SUB->>DB: 커서 읽기 = 마지막 처리 lastUpdated (T)
+    SUB->>DB: 커서 읽기 = 마지막 처리 lastUpdated (T · Unix ms)
     DB-->>SUB: T
 
     loop 페이지네이션 — limit 200, 다음 페이지 남으면 반복
@@ -141,6 +141,52 @@ sequenceDiagram
     Note over SUB,DB: 처리 실패 시 커서 미전진 → 다음 폴에서 재처리(멱등이라 중복 무해)
 </pre></div>
 <p class="diagram-caption">폴링 워커가 <b>커서 이후 갱신된 tx</b>만 페이지 단위로 당겨, 각 tx 의 목적지 주소를 <b>백엔드 DB 의 주소 매핑</b>으로 (accountId, asset)에 역참조한 뒤 상태에 따라 원장을 움직인다. <b>CONFIRMING 은 대기, COMPLETED + 임계 도달만 가용</b>이라는 판정은 webhook 방식과 완전히 같다 — 바뀐 건 "받는 방법"뿐이다. 커서는 <b>처리에 성공한 뒤에만</b> 전진하고, tx id 기준 멱등 upsert 라 경계에서 겹쳐 받아도 중복 반영되지 않는다.</p>
+
+<p>같은 흐름을 코드로 옮기면 이렇습니다. <b>커서는 <code>lastUpdated</code>(Unix 밀리초)</b>이고, 같은 밀리초 경계를 놓치지 않도록 <b>조금 겹쳐 읽은 뒤 tx id 로 멱등 처리</b>하는 게 급소입니다.</p>
+
+<pre><code>// 커서 = 마지막으로 처리한 tx 의 lastUpdated (Unix ms)
+let cursor = db.readCursor()               // 예: 1720000000000
+
+// 경계 겹침 — 같은 밀리초를 가진 tx 를 놓치지 않도록 조금 이전부터
+const OVERLAP_MS = 2000
+let after   = cursor - OVERLAP_MS
+let maxSeen = cursor
+
+// 한 주기: after 이후 '갱신된(lastUpdated)' tx 를 페이지 단위로 모두 소진
+while (true) {
+  const txs = fb.getTransactions({
+    orderBy: "lastUpdated",   // 갱신 시각 기준 정렬
+    after,                    // Unix ms — 이 시각 이후 변경분만
+    limit:   200,
+    sort:    "ASC",           // 오래된 것부터 → 커서 단조 전진
+  })
+  if (txs.length === 0) break
+
+  for (const tx of txs) {                          // lastUpdated 오름차순
+    const dest = db.resolveAddress(tx.destAddress) // → (accountId, asset)
+    if (!dest) continue                            // 우리 주소 아님 → 스킵
+
+    // tx.id 기준 멱등 upsert — 겹쳐 받아도 상태 전이만 반영, 이중 반영 없음
+    if (tx.status === "CONFIRMING") {
+      ledger.upsertPending(tx.id, dest, tx.amount)           // 대기(pending)
+    } else if (tx.status === "COMPLETED") {
+      if (tx.numOfConfirmations ≥ dccpThreshold(tx.asset))
+        ledger.upsertAvailable(tx.id, dest, tx.amount)       // 가용 + 고객 통지
+      // 임계 미달(zero-conf)이면 대기 유지 — 다음 폴에서 재평가
+    } else if (tx.networkStatus === "ORPHANED") {
+      ledger.revert(tx.id)                                   // reorg — 가공분 되감기
+    }
+    maxSeen = Math.max(maxSeen, tx.lastUpdated)
+  }
+
+  if (txs.length &lt; 200) break                    // 마지막 페이지
+  after = txs[txs.length - 1].lastUpdated          // 다음 페이지: 시간 커서 전진
+  // (API 가 opaque page 커서를 준다면 그걸 쓰는 편이 같은-ms 경계에서 더 안전)
+}
+
+// 처리 성공 후에만 커서 전진 — 실패 시 미전진, 다음 주기에 멱등 재처리
+db.commitCursor(maxSeen)
+// 다음 실행은 주기(예: 15~30s) 뒤 — 감지 지연 = 이 주기</code></pre>
 
 <table>
 <thead><tr><th style="width:22%">루프의 급소</th><th>어떻게</th></tr></thead>

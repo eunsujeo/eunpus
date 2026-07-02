@@ -7187,3 +7187,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 미확정 유지: 폴링의 push 이벤트 100% 대체 여부(초기 감지 시점·승인 상태 이벤트) = Q-2026-07-02-T03
 - 영향받은 페이지: docs-site/wallet-design-walkthrough/04-deposit
 - 신규 entity: 0
+
+## Stage 92 (2026-07-03) — 04-deposit 폴링 흐름: 시간 커서 명시 + 코드 블록
+- 계기: 사용자 질문 "마지막 커서가 시간이야?" → 확정: 커서 = lastUpdated(Unix ms) 시간값. 한 줄 명시로 부족, 코드로도 설명 요청
+- 추가: 04-deposit 상세 흐름 절에 ① 커서=lastUpdated(Unix ms) 명시 + 같은-ms 경계 → 겹쳐 받기+멱등 서술 ② 폴링 루프 pseudocode 블록(getTransactions orderBy=lastUpdated·after·limit200·sort ASC / 페이지네이션 / 주소 역참조 / CONFIRMING=pending·COMPLETED+임계=available·ORPHANED=revert / maxSeen 커서 성공후 전진 / OVERLAP_MS 겹침)
+- 다이어그램 커서 읽기 라인에 (T · Unix ms) 주석
+- 미확정 유지: opaque page 커서 제공 여부(주면 같은-ms 경계에서 더 안전) — T02/PoC
+- 영향받은 페이지: docs-site/wallet-design-walkthrough/04-deposit
+- 신규 entity: 0
