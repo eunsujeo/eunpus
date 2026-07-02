@@ -67,7 +67,7 @@ flowchart LR
     FBV <-->|서명 요청 · MPC share| COS
     COS -->|승인 질의| CB
     POLL -->|주기 조회 · outbound| FBV
-    FBV -.->|webhook (보조·옵션)| POLL
+    FBV -.->|webhook · 보조| POLL
     FBV --> EVM
 
     classDef svc fill:#dbeafe,stroke:#2563eb;

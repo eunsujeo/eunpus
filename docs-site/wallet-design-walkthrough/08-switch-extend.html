@@ -155,7 +155,7 @@ flowchart LR
     AAPI --- DB
     HOOK --- DB
     HOOK -->|주기 조회 · outbound| FB
-    FB -.->|webhook (보조)| HOOK
+    FB -.->|webhook · 보조| HOOK
     FB --> EVM
 
     classDef svc fill:#dbeafe,stroke:#2563eb;
