@@ -57,6 +57,8 @@
 
 <p class="table-note"><b>asset_id 주의</b> — asset_id 는 토큰만 가리키지 않고 <b>토큰 + 네트워크</b>를 한데 묶은 식별자다. 가령 <code>USDC_ETH</code> 는 이더리움 위의 USDC 다. 같은 토큰이라도 체인이 다르면 asset_id 도 달라진다(<code>USDC_ETH</code> ≠ Polygon USDC). 그래서 JSON 예시도 아래 추적 표의 asset_id 도 모두 실제 형태인 <code>KRWK_ETH</code>·<code>USDC_ETH</code> 로 적는다. (단 회계 계정명 <code>account_code</code> 는 네트워크와 무관한 토큰 단위로 둔다 — 예: <code>KRWK_전송전자산</code>.)</p>
 
+<p class="table-note"><b>온체인은 옴니버스, 개인 귀속은 DB</b> — 위 <code>u_42</code> 처럼 "누가 얼마"는 <b>customer_ledger(DB)에만</b> 있다. 온체인에는 고객마다의 개인 지갑이 없고, 전 고객 코인이 <b>고객 옴니버스 지갑 1개</b>에 섞여 있다(은행 자산도 별도 옴니버스 1개). 그래서 아래 bank_ledger 표의 "고객 옴니버스"·"은행 옴니버스"는 각각 <b>지갑 1개의 총 잔액</b>이고, 15분 배치의 온체인 전송은 그 두 지갑 사이에서 <b>전 거래를 네팅한 순액</b>으로 오간다 — 단일 거래의 ±1,000 은 그 배치에 더해지는 몫이다.</p>
+
 <div class="callout">
 <div class="callout-title">테이블별 쓰기 규율 — 먼저 알아둘 것</div>
 <div class="table-wrap"><table>
@@ -96,16 +98,16 @@
 </table></div>
 <p class="table-note">pending 이 오래 머물면 정산이 막혔다는 신호다. 정산이 제때 닫혔는지 보는 대사 단계가 바로 이 status 를 감시한다(<a href="04-failure-reconciliation.html">4장</a>).</p>
 
-<h3>bank_ledger — 풀 지갑·고객 지갑 두 wallet, 2단계에만 변함</h3>
+<h3>bank_ledger — 은행 옴니버스·고객 옴니버스 두 지갑, 2단계에만 변함</h3>
 <div class="table-wrap"><table>
-<thead><tr><th>시점</th><th>풀 지갑 KRWK_ETH</th><th>고객 지갑 KRWK_ETH</th></tr></thead>
+<thead><tr><th>시점</th><th>은행 옴니버스 KRWK_ETH</th><th>고객 옴니버스 KRWK_ETH</th></tr></thead>
 <tbody>
 <tr><td>처음</td><td>P₀</td><td>C₀</td></tr>
 <tr><td>1단계 후</td><td>P₀ <span style="color:var(--muted)">(변동 없음 — 아직 블록체인 전송 전)</span></td><td>C₀ <span style="color:var(--muted)">(변동 없음)</span></td></tr>
 <tr><td><b>2단계 후</b></td><td><b>P₀ − 1,000</b></td><td><b>C₀ + 1,000</b></td></tr>
 </tbody>
 </table></div>
-<p class="table-note">온체인 전송은 15분 블록체인 배치(2단계)에 일어난다 — 풀 지갑에서 빠져 고객 지갑으로 들어간다(풀 −1,000 / 고객 +1,000). 두 wallet 의 <b>총량은 불변, 내부 이동</b>일 뿐이라 per-wallet 잔액만 바뀐다.</p>
+<p class="table-note">온체인 전송은 15분 블록체인 배치(2단계)에 일어난다 — 은행 옴니버스에서 빠져 고객 옴니버스로 들어간다(은행 −1,000 / 고객 +1,000). 실제로는 그 배치의 <b>전 거래를 네팅한 순액</b>이 한 번 오가고, 이 건의 1,000 은 거기 더해지는 몫이다. 두 옴니버스 지갑의 <b>총량은 불변, 내부 이동</b>일 뿐이라 지갑별 잔액만 바뀐다.</p>
 
 <h3>general_ledger_entry — append-only, row 가 쌓이기만</h3>
 <div class="table-wrap"><table>
@@ -164,16 +166,16 @@
 </table></div>
 <p class="table-note">온램프와 차/대가 반대다. 충전은 부채↑·은행풀→고객, 환전은 부채↓·고객→은행풀이다. 델타가 "DB 즉시 반영 후 15분 블록체인 배치 전까지 PENDING"으로 잡는 방식은 양쪽 모두 같다.</p>
 
-<h3>bank_ledger — 2단계에 고객→풀 내부 이동</h3>
+<h3>bank_ledger — 2단계에 고객 옴니버스 → 은행 옴니버스 내부 이동</h3>
 <div class="table-wrap"><table>
-<thead><tr><th>시점</th><th>풀 지갑 KRWK_ETH</th><th>고객 지갑 KRWK_ETH</th></tr></thead>
+<thead><tr><th>시점</th><th>은행 옴니버스 KRWK_ETH</th><th>고객 옴니버스 KRWK_ETH</th></tr></thead>
 <tbody>
 <tr><td>처음</td><td>P₀</td><td>C₀</td></tr>
 <tr><td>1단계 후</td><td>P₀ <span style="color:var(--muted)">(변동 없음 — 아직 블록체인 전송 전)</span></td><td>C₀ <span style="color:var(--muted)">(변동 없음)</span></td></tr>
 <tr><td><b>2단계 후</b></td><td><b>P₀ + 1,000</b></td><td><b>C₀ − 1,000</b></td></tr>
 </tbody>
 </table></div>
-<p class="table-note">온램프와 방향이 반대다 — 2단계에 고객 지갑에서 빠져 풀 지갑으로 돌아간다(고객 −1,000 / 풀 +1,000). 1단계엔 안 바뀌고(델타가 미출금 PENDING 으로 표시) 15분 블록체인 배치가 실제 전송하는 2단계에 갱신된다. 두 wallet 의 <b>총량은 불변·내부 이동</b>일 뿐이라 per-wallet 잔액만 바뀐다.</p>
+<p class="table-note">온램프와 방향이 반대다 — 2단계에 고객 옴니버스에서 빠져 은행 옴니버스로 돌아간다(고객 −1,000 / 은행 +1,000). 1단계엔 안 바뀌고(델타가 미출금 PENDING 으로 표시) 15분 블록체인 배치가 실제 전송(전 거래 네팅 순액)하는 2단계에 갱신된다. 두 옴니버스 지갑의 <b>총량은 불변·내부 이동</b>일 뿐이라 지갑별 잔액만 바뀐다.</p>
 
 <h2 id="swap">③ 스왑 — 델타 2줄, 총계정 4줄 (KRWK 1,300 → USDC 1)</h2>
 <p>스왑은 한쪽이 빠지고 다른 쪽이 들어오는 거래라 <b>미정산이 양쪽에</b> 생깁니다. 온램프와 달라지는 테이블 위주로 보겠습니다.</p>
@@ -209,14 +211,14 @@
 
 <h3>bank_ledger — 2단계에 두 자산 모두 풀↔고객 이동</h3>
 <div class="table-wrap"><table>
-<thead><tr><th>시점</th><th>풀 KRWK_ETH</th><th>고객 KRWK_ETH</th><th>풀 USDC_ETH</th><th>고객 USDC_ETH</th></tr></thead>
+<thead><tr><th>시점</th><th>은행 옴니버스 KRWK_ETH</th><th>고객 옴니버스 KRWK_ETH</th><th>은행 옴니버스 USDC_ETH</th><th>고객 옴니버스 USDC_ETH</th></tr></thead>
 <tbody>
 <tr><td>처음</td><td>PK₀</td><td>CK₀</td><td>PU₀</td><td>CU₀</td></tr>
 <tr><td>1단계 후</td><td>PK₀ <span style="color:var(--muted)">(변동 없음)</span></td><td>CK₀</td><td>PU₀ <span style="color:var(--muted)">(변동 없음)</span></td><td>CU₀</td></tr>
 <tr><td><b>2단계 후</b></td><td><b>PK₀ + 1,300</b></td><td><b>CK₀ − 1,300</b></td><td><b>PU₀ − 1</b></td><td><b>CU₀ + 1</b></td></tr>
 </tbody>
 </table></div>
-<p class="table-note">스왑은 두 자산이 모두 풀↔고객으로 움직인다 — KRWK 는 고객→풀(고객 −1,300 / 풀 +1,300), USDC 는 풀→고객(풀 −1 / 고객 +1). 각 자산별로 <b>총량은 불변·내부 이동</b>일 뿐이라 per-wallet 잔액만 바뀐다. 1단계 승인은 <b>풀 가용분(실제 wallet 잔액 − 미정산 PENDING 유출)</b> 안에서만 허용한다 — 아직 전송 전인 PENDING 을 미리 빼두어야 풀이 오버할당되지 않는다.</p>
+<p class="table-note">스왑은 두 자산이 모두 은행 옴니버스↔고객 옴니버스로 움직인다 — KRWK 는 고객→은행(고객 −1,300 / 은행 +1,300), USDC 는 은행→고객(은행 −1 / 고객 +1). 각 자산별로 <b>총량은 불변·내부 이동</b>일 뿐이라 지갑별 잔액만 바뀐다. 1단계 승인은 <b>풀 가용분(실제 wallet 잔액 − 미정산 PENDING 유출)</b> 안에서만 허용한다 — 아직 전송 전인 PENDING 을 미리 빼두어야 풀이 오버할당되지 않는다.</p>
 
 <h2 id="failure">④ 실패 되돌리기 — 1단계를 거꾸로 (충전 실패 예시)</h2>
 <p>1단계까지 반영됐는데 2단계(15분 블록체인 배치)가 실패하면, 델타 미정산 줄을 기준으로 1단계를 <b>정확히 거꾸로</b> 풉니다(흐름 다이어그램은 <a href="04-failure-reconciliation.html">4장</a>). 온램프(충전)가 1단계 후 실패한 경우의 row 변화입니다.</p>

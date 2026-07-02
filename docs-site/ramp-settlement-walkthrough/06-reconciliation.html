@@ -43,7 +43,7 @@ flowchart TB
 <tr><td><b>L1</b><br/>잔액 대사</td><td>고객 원장 합 = 총계정의 부채 잔액</td><td>실시간<br/>(쓰기마다)</td><td>즉시 알림 · 해당 쓰기 보류 · 조사 큐로</td><td>둘이 어긋나도 그 차이가 <b>델타 미정산 합과 같으면 정상</b>(전송 전 PENDING)</td></tr>
 <tr><td><b>L2</b><br/>건별 대조</td><td>거래내역 ↔ 총계정 분개 1:1 매칭</td><td>5분</td><td>누락·중복 건 격리 후 재처리 · source_ref 로 추적</td><td>—</td></tr>
 <tr><td><b>L3</b><br/>정산 검증</td><td>PENDING 이 15분 배치로 제때 settled 됐나</td><td>배치 후 · 주기 스윕</td><td>ageing 초과분 운영자 알림 · 자동 재시도 · 거래 보류</td><td><b>델타 status 확인이 곧 이 검사</b> — 배치를 놓치고 오래 pending 인 줄(stuck) 탐지</td></tr>
-<tr><td><b>L4</b><br/>온체인 검증</td><td>총량: 체인 = 장부 (델타 내부 상쇄) · wallet별: 체인 = 장부 ∓ 미정산</td><td>일 단위</td><td>차이 원인 분석 · 정정 분개 · 필요 시 자산 동결</td><td>풀↔고객 내부 전송이라 총량엔 안 남고, <b>wallet별 어긋남</b>을 PENDING 으로 설명</td></tr>
+<tr><td><b>L4</b><br/>온체인 검증</td><td>총량: 체인 = 장부 (델타 내부 상쇄) · 지갑별: 옴니버스 체인 = 장부 ∓ 미정산</td><td>일 단위</td><td>차이 원인 분석 · 정정 분개 · 필요 시 자산 동결</td><td>은행↔고객 옴니버스 내부 전송이라 총량엔 안 남고, <b>옴니버스별 어긋남</b>을 PENDING 으로 설명</td></tr>
 </tbody>
 </table></div>
 
@@ -60,11 +60,11 @@ flowchart TB
 <p>마지막 그물입니다. 우리 장부가 자기들끼리 맞아도, 블록체인 실제 잔액과 어긋나면 어딘가 샌 것입니다. 하루 한 번 다음 등식으로 대조합니다.</p>
 
 <div class="callout">
-<div class="callout-title">L4 핵심 등식 — 총량은 그대로, wallet 별로만 어긋난다</div>
-<p style="margin:0 0 8px">정상 거래(온/오프/스왑)는 <b>우리 두 wallet(은행 풀 ↔ 고객) 사이의 내부 전송</b>입니다. 그래서 보는 범위에 따라 등식이 둘로 갈립니다.</p>
-<p style="margin:0 0 6px;text-align:center;font-size:14px"><b>총량: 블록체인 총 잔액 = 장부 총 잔액</b> (델타는 풀↔고객 내부라 상쇄 → 항 없음)</p>
-<p style="margin:0 0 8px;text-align:center;font-size:14px"><b>wallet별: 각 wallet 체인 = 장부 ∓ 그 wallet 미정산</b> (받을 건 <code>−</code>, 보낼 건 <code>+</code>)</p>
-<p style="margin:0">예) 온램프 1,000 이 PENDING 일 때 — 고객 wallet 체인 = 장부 <b>− 1,000</b>(아직 안 옴), 은행 풀 wallet 체인 = 장부 <b>+ 1,000</b>(아직 안 나감). 둘을 합치면 0(내부 이동이라 총량 불변). <b>총량이 안 맞으면</b> 그건 내부 큐가 아니라 <b>외부 유출·누락·이중 전송</b> 사고입니다(또는 rebalance 의 mint/burn 이 in-flight). 이 한 줄이 그걸 잡습니다.</p>
+<div class="callout-title">L4 핵심 등식 — 총량은 그대로, 옴니버스 지갑별로만 어긋난다</div>
+<p style="margin:0 0 8px">정상 거래(온/오프/스왑)는 <b>우리 두 옴니버스 지갑(은행 ↔ 고객) 사이의 내부 전송</b>입니다. 고객 옴니버스의 "장부"는 곧 <code>customer_ledger</code> 전 고객 잔액의 합입니다. 그래서 보는 범위에 따라 등식이 둘로 갈립니다.</p>
+<p style="margin:0 0 6px;text-align:center;font-size:14px"><b>총량: 블록체인 총 잔액 = 장부 총 잔액</b> (델타는 은행↔고객 내부라 상쇄 → 항 없음)</p>
+<p style="margin:0 0 8px;text-align:center;font-size:14px"><b>지갑별: 각 옴니버스 체인 = 장부 ∓ 그 옴니버스 미정산</b> (받을 건 <code>−</code>, 보낼 건 <code>+</code>)</p>
+<p style="margin:0">예) 온램프 1,000 이 PENDING 일 때 — 고객 옴니버스 체인 = 장부 <b>− 1,000</b>(아직 안 옴), 은행 옴니버스 체인 = 장부 <b>+ 1,000</b>(아직 안 나감). 둘을 합치면 0(내부 이동이라 총량 불변). <b>총량이 안 맞으면</b> 그건 내부 큐가 아니라 <b>외부 유출·누락·이중 전송</b> 사고입니다(또는 rebalance 의 mint/burn 이 in-flight). 이 한 줄이 그걸 잡습니다.</p>
 </div>
 
 <div class="callout">

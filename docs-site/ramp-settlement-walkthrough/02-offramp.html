@@ -27,6 +27,11 @@
 <p style="margin:0">보관 지갑(Fireblocks)은 코인을 발행사/거래소로 <b>내보내기만</b> 할 뿐, 소각 권한은 없습니다.</p>
 </div>
 
+<div class="callout">
+<div class="callout-title">"고객 지갑"은 고객마다 있는 게 아니다 — 옴니버스 1개</div>
+<p style="margin:0">고객 자산은 <b>고객 옴니버스 지갑 1개</b>에 전 고객 코인이 섞여 보관됩니다. 개인 지갑·개인 주소는 없고, "누가 얼마"는 <b>DB(<code>customer_ledger</code>)에만</b> 있습니다. 은행 자산도 별도 옴니버스 1개입니다. 그래서 아래 2단계 온체인 전송은 <b>고객 옴니버스 ↔ 은행 옴니버스</b> 사이에서 일어나고, 실제로는 그 15분 창의 <b>전 거래를 네팅한 순액</b>이 한 번 오갑니다 — 아래 "KRWK 1,000"은 이 거래가 그 배치에 더하는 몫입니다.</p>
+</div>
+
 <h2>▸ Case A — 원화코인 → 원화 (발행사 소각, 1:1)</h2>
 <p style="color:var(--muted);font-size:13px">예시: 1:1 고정. 사용자가 KRWK 1,000 → KRW 1,000 환전.</p>
 <div class="diagram"><pre class="mermaid">
@@ -37,7 +42,7 @@ sequenceDiagram
     participant CL as 고객 원장
     participant DL as 델타 원장
     participant GLE as 총계정 원장
-    participant FB as 보관 지갑(고객·풀)
+    participant FB as 보관 지갑<br/>(고객·은행 옴니버스)
     participant Acct as 계정계(원화)
     participant BL as 은행 원장
 
@@ -55,15 +60,15 @@ sequenceDiagram
 
     rect rgb(220,252,231)
     Note over App,BL: ★ 2단계 — 15분 블록체인 배치 (고객 → 풀 전송)
-    App->>FB: 15분 배치 — 고객 지갑 → 은행 풀 지갑 KRWK 1,000 전송
+    App->>FB: 15분 배치 — 고객 옴니버스 → 은행 옴니버스 (이 건 몫 KRWK 1,000, 배치 네팅에 합산)
     FB-->>App: 온체인 전송 확정 통지 (KRWK −1,000)
-    App->>BL: KRWK 고객 지갑자산 −1,000 · 풀 지갑자산 +1,000 (온체인 반영)
+    App->>BL: KRWK 고객 옴니버스 −1,000 · 은행 옴니버스 +1,000 (온체인 반영)
     App->>DL: 델타 settled (PENDING 마감)
     App->>GLE: 정산 분개 — 전송전자산 마감
     App-->>Cust: "전송 정산 완료" 알림
     end
 </pre></div>
-<p class="diagram-caption">Figure 2-A. 원화코인 환전. 1단계에서 사용가능을 즉시 차감하고 원화도 입금하며 델타를 PENDING 으로 적재하고, 2단계 15분 배치가 고객 지갑 → 은행 풀 온체인 전송을 마쳐 settled 한다. 발행사 소각은 풀을 줄이는 rebalance 경로로 이 흐름에는 등장하지 않는다.</p>
+<p class="diagram-caption">Figure 2-A. 원화코인 환전. 1단계에서 사용가능을 즉시 차감하고 원화도 입금하며 델타를 PENDING 으로 적재하고, 2단계 15분 배치가 고객 옴니버스 → 은행 옴니버스 온체인 전송(전 거래 네팅 순액, 이 건은 +1,000 기여)을 마쳐 settled 한다. 발행사 소각은 풀을 줄이는 rebalance 경로로 이 흐름에는 등장하지 않는다.</p>
 
 <h2>▸ Case B — 달러코인 → 원화 (Circle 상환 또는 거래소)</h2>
 <p style="color:var(--muted);font-size:13px">예시: 시세 1,310 KRW/USD. 사용자가 USDC 1 → KRW. 평상시 환전은 코인을 풀로 회수하므로 흐름은 원화코인과 같습니다. 풀을 줄이는 처분 채널(Circle 상환 · 거래소 매도, 스프레드)은 별도의 rebalance 경로입니다.</p>
@@ -75,7 +80,7 @@ sequenceDiagram
     participant CL as 고객 원장
     participant DL as 델타 원장
     participant GLE as 총계정 원장
-    participant FB as 보관 지갑(고객·풀)
+    participant FB as 보관 지갑<br/>(고객·은행 옴니버스)
     participant Acct as 계정계(원화)
     participant BL as 은행 원장
 
@@ -93,20 +98,21 @@ sequenceDiagram
 
     rect rgb(220,252,231)
     Note over App,BL: ★ 2단계 — 15분 블록체인 배치 (고객 → 풀 전송)
-    App->>FB: 15분 배치 — 고객 지갑 → 은행 풀 지갑 USDC 1 전송
+    App->>FB: 15분 배치 — 고객 옴니버스 → 은행 옴니버스 (이 건 몫 USDC 1, 배치 네팅에 합산)
     FB-->>App: 온체인 전송 확정 통지 (USDC −1)
-    App->>BL: USDC 고객 지갑자산 −1 · 풀 지갑자산 +1 (온체인 반영)
+    App->>BL: USDC 고객 옴니버스 −1 · 은행 옴니버스 +1 (온체인 반영)
     App->>DL: 델타 settled (PENDING 마감)
     App->>GLE: 정산 분개 — 전송전자산 마감
     App-->>Cust: "전송 정산 완료" 알림
     end
 </pre></div>
-<p class="diagram-caption">Figure 2-B. 달러코인 환전. 평상시 흐름은 원화코인과 동일하다 — 1단계 DB 즉시(사용가능 차감 + 원화 입금) + 델타 PENDING, 2단계 15분 배치로 고객 → 풀 온체인 전송 후 settled. Circle 상환·거래소 매도는 풀을 줄이는 rebalance 경로라 이 흐름에는 등장하지 않으며, 스프레드·수수료 손익도 그쪽에서 발생한다.</p>
+<p class="diagram-caption">Figure 2-B. 달러코인 환전. 평상시 흐름은 원화코인과 동일하다 — 1단계 DB 즉시(사용가능 차감 + 원화 입금) + 델타 PENDING, 2단계 15분 배치로 고객 옴니버스 → 은행 옴니버스 온체인 전송(네팅 순액) 후 settled. Circle 상환·거래소 매도는 풀을 줄이는 rebalance 경로라 이 흐름에는 등장하지 않으며, 스프레드·수수료 손익도 그쪽에서 발생한다.</p>
 
 <h2>핵심 포인트</h2>
 <ul>
 <li><b>1단계 = DB 즉시 + 델타 PENDING</b> — 사용가능을 바로 줄여 같은 코인이 두 번 환전되는 일을 막고, 원화도 즉시 입금합니다. 고객에서 풀로의 이동은 "DB 는 됐지만 블록체인 전송 전" 상태로 델타 큐에 PENDING 으로 쌓입니다.</li>
-<li><b>2단계 = 15분 블록체인 배치</b> — 모아 둔 PENDING 을 고객 지갑 → 은행 풀 지갑 온체인 전송으로 처리한 뒤 settled 로 마감합니다.</li>
+<li><b>2단계 = 15분 블록체인 배치</b> — 모아 둔 PENDING 을 고객 옴니버스 → 은행 옴니버스 온체인 전송으로 처리한 뒤 settled 로 마감합니다. 전송은 <b>전 거래를 네팅한 순액 한 번</b>이고, 이 건의 1,000 은 거기 더해지는 몫입니다.</li>
+<li><b>고객 지갑은 옴니버스 1개</b> — 고객마다 개인 온체인 지갑이 있는 게 아니라 전 고객 코인이 옴니버스 1개에 섞여 있고, 개인 귀속은 <code>customer_ledger</code>(DB)에만 있습니다.</li>
 <li><b>충전의 역방향</b> — 코인이 고객에서 풀로 돌아오고(부채 ↓), 델타 방향만 뒤집힐 뿐 구조는 같습니다. 델타는 계정계와 무관합니다.</li>
 </ul>
 
