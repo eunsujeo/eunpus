@@ -46,7 +46,7 @@ sequenceDiagram
     CB-->>COS: approve / deny
     COS-->>FB: MPC 서명 share (approve) · deny 면 서명 거부
     FB->>CH: 전파 — 벤더 cloud share + co-signer share 로 서명 완료
-    FB-->>BE: 상태 변화 webhook — 전파·누적·확정까지 push
+    FB-->>BE: 상태 변화 — 폴링으로 조회 (전파·누적·확정까지)
     CH-->>FB: 블록 누적 → 확정
 </pre></div>
 <p class="diagram-caption">조립·순번·전파는 <b>벤더 안 블랙박스</b>지만, <b>MPC 서명은 보안 존의 co-signer 와 공동</b>으로 이뤄진다 — Fireblocks 가 서명을 요청하면 co-signer 가 <b>Callback Handler</b>(정책 훅)에 목적지·금액을 재검증받고 approve 일 때만 자기 key share 로 서명한다. 백엔드가 침해돼 "승인된 척" 지시가 와도 이 관문이 <b>인프라 안</b>에서 막는다. 순번(nonce)은 벤더가 관리하고, 이쪽 몫은 <b>제출·상태 추적·co-signer 운영</b>이다.</p>

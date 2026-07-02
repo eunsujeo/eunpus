@@ -7203,3 +7203,14 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 확정 vs 추정: 스코프·양방향·destination type=확정 / "vaultId 귀속+미등록 경보" 분기=설계 권고
 - 영향받은 페이지: docs-site/wallet-design-walkthrough/04-deposit
 - 신규 entity: 0 · 미배포(로컬만)
+
+## Stage 94 (2026-07-03) — 폴링 메인·웹훅 서브 전 페이지 전파 (00·02·06·07·08)
+- 계기: 사용자 "4페이지 기준에 맞춰 반영" — 4p 의 폴링 메인·웹훅 서브 결정이 다른 페이지에 미반영이라 webhook 을 주/유일 경로로 서술한 곳 정정
+- 00-cast: 물리 다이어그램 webhook 수신기 → 폴링 워커(POLL), 화살표 FBV→WH(webhook) → POLL→FBV(주기 조회 outbound) + FBV-.->POLL(webhook 보조·옵션), FBV 라벨 "webhook 발신" 제거, 캡션에 폴링 감지 문장 추가, "직접 만드는 것" M3 webhook 수신·정합 → 폴링 감지·정합, 매트릭스 수신·확정 이벤트 표면 webhook → 거래 조회 폴링(webhook 옵션), 구성요소 문장 webhook 수신기 → 폴링 워커
+- 08-switch-extend: 인프라 다이어그램 동일 패턴(HOOK=폴링 워커, HOOK→FB outbound + FB-.->HOOK 보조), 모듈 apps/webhook-receiver → apps/poller, "webhook 이 유일한 수신 지점" → "폴링 워커 outbound 조회가 주 수신 경로(webhook 보조)", 문장·캡션 webhook 수신기 → 폴링 워커
+- 07-balance-history: "주 경로인 webhook" → "주 감지 경로인 폴링", 표 행 "webhook 보완" → "실시간 감지(주 경로)", table-note "실시간 감지는 webhook 몫" → "폴링이 주 경로", "통지" 표현 3곳 → 조회/폴링/대사 중립화
+- 06-withdrawal: 출금 상태 추적 다이어그램 "상태 변화 webhook push" → "폴링으로 조회"
+- 02: "webhook 통지 4p" → "입금 감지 4p"
+- 변경 불필요 확인: 09(onChainEvent=포트 추상, 폴링으로 채움) · index(webhook 무관) · 상태어휘/DCCP/대사 로직(전송 방향 무관)
+- 영향받은 페이지: 00·02·06·07·08 (+ 04 는 Stage 93)
+- 신규 entity: 0 · 미배포(로컬만)

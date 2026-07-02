@@ -16,7 +16,7 @@
 <h1>입금 주소 생성 — createDepositAddress</h1>
 <p class="subtitle">고객·자산당 하나, 없으면 만들고 있으면 그대로(get-or-create). EVM 주소는 memoTag 가 null</p>
 
-<p><b>무엇·언제</b>: Service 백엔드가 <code>createDepositAddress(accountId, asset)</code> 를 부릅니다. <b>입금주소는 고객·자산당 하나로 재사용</b>합니다 — (accountId, asset) 주소가 이미 있으면 <b>그대로</b> 돌려주고(멱등), 없으면 Fireblocks 가 vault 밑에서 <b>새 주소를 채번</b>합니다(계정 vault 는 1페이지에서 이미 생성). 발급되는 것은 <b>입금 주소</b>(<b>EVM 에서는 memoTag 가 항상 null</b>). 규칙 하나, <b>주소는 감시(귀속) 등록까지 끝나야 "존재"합니다</b> — 이 감시·귀속은 <b>벤더 몫</b>(vault 가 곧 감시 범위, webhook 통지 4p)입니다. 등록 안 된 주소로 온 입금은 감지하지 못하는데, 이것이 입금 사고의 최다 유형입니다.</p>
+<p><b>무엇·언제</b>: Service 백엔드가 <code>createDepositAddress(accountId, asset)</code> 를 부릅니다. <b>입금주소는 고객·자산당 하나로 재사용</b>합니다 — (accountId, asset) 주소가 이미 있으면 <b>그대로</b> 돌려주고(멱등), 없으면 Fireblocks 가 vault 밑에서 <b>새 주소를 채번</b>합니다(계정 vault 는 1페이지에서 이미 생성). 발급되는 것은 <b>입금 주소</b>(<b>EVM 에서는 memoTag 가 항상 null</b>). 규칙 하나, <b>주소는 감시(귀속) 등록까지 끝나야 "존재"합니다</b> — 이 감시·귀속은 <b>벤더 몫</b>(vault 가 곧 감시 범위, 입금 감지 4p)입니다. 등록 안 된 주소로 온 입금은 감지하지 못하는데, 이것이 입금 사고의 최다 유형입니다.</p>
 
 <pre><code>createDepositAddress(accountId, asset) → Address { value, memoTag? }   // EVM: memoTag=null · 고객·자산당 1개(get-or-create)</code></pre>
 

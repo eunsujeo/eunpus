@@ -91,7 +91,7 @@ sequenceDiagram
     FB-->>FBI: 내역 (상태 · numOfConfirmations 포함)
     FBI-->>BE: 시간순 내역
 </pre></div>
-<p class="diagram-caption">벤더가 입·출금을 다 기록하므로 이쪽 병합이 필요 없다. 포트 구현이 하는 일은 벤더 필드를 세 칸으로 <b>접는 것</b>과, 벤더 상태(CONFIRMING/COMPLETED)를 4·6페이지의 공통 어휘로 <b>번역하는 것</b>뿐이다. 단 회계가 걸리는 숫자는 벤더 잔액과 기록을 <b>주기적으로 대조</b>한다 — 4p 의 "통지는 힌트" 규칙이 잔액에도 적용되는 셈이다.</p>
+<p class="diagram-caption">벤더가 입·출금을 다 기록하므로 이쪽 병합이 필요 없다. 포트 구현이 하는 일은 벤더 필드를 세 칸으로 <b>접는 것</b>과, 벤더 상태(CONFIRMING/COMPLETED)를 4·6페이지의 공통 어휘로 <b>번역하는 것</b>뿐이다. 단 회계가 걸리는 숫자는 벤더 잔액과 기록을 <b>주기적으로 대조</b>한다 — 4p 의 "조회가 정확해도 대사로 닫는다" 규칙이 잔액에도 적용되는 셈이다.</p>
 
 <p>경계 하나만 분명히 해 둡니다. 이 동사들은 <b>서비스 고객 계정(vault)</b>을 조회합니다. 서비스 고객이 아닌 임의 외부 주소의 잔액·이력 조회는 Fireblocks 가 이 API 로 주는 기능이 아니라, 정말 필요해지면 그 용도의 조회 수단을 따로 둡니다. 고객 계정 조회와는 별개의 선택입니다.</p>
 
@@ -102,22 +102,22 @@ sequenceDiagram
 
 <h2>상태로 걸러 조회 — 대사·운영용</h2>
 
-<p><code>transactionsOf</code> 는 기간뿐 아니라 <b>상태로도 걸러</b> 부를 수 있다 — 매니저가 <b>서버측 status 필터</b>를 제공하므로 전체를 받아 거르지 않고 필요한 상태만 받는다(한 번에 한 상태). 주 경로인 webhook(4p)을 대체하는 게 아니라 그 뒤를 받치는 <b>대사·운영 도구</b>다.</p>
+<p><code>transactionsOf</code> 는 기간뿐 아니라 <b>상태로도 걸러</b> 부를 수 있다 — 매니저가 <b>서버측 status 필터</b>를 제공하므로 전체를 받아 거르지 않고 필요한 상태만 받는다(한 번에 한 상태). 주 감지 경로인 폴링(4p)도 이 조회를 쓰며, status 필터는 그중 <b>대사·운영</b>에 특화된 형태다.</p>
 
 <table>
 <thead><tr><th style="width:24%">언제</th><th>무엇을</th></tr></thead>
 <tbody>
 <tr><td><b>대사</b> (Service·Admin)</td><td>COMPLETED 만 기간별로 받아 기록과 대조 — 회계 기표 전</td></tr>
-<tr><td><b>webhook 보완</b> (Service)</td><td>누락·지연 대비 CONFIRMING·COMPLETED 를 주기 폴링해 놓친 전이 backfill</td></tr>
+<tr><td><b>실시간 감지</b> (Service)</td><td>주기 폴링으로 CONFIRMING·COMPLETED 전이를 감지 — 주 경로(4p)</td></tr>
 <tr><td><b>막힌 출금 점검</b> (Admin)</td><td>오래 CONFIRMING 인 건을 뽑아 boost·cancel 판단 (6p)</td></tr>
 <tr><td><b>배치 정산 확인</b></td><td>15분 델타 배치 전송이 COMPLETED 됐는지 확인해 settled 처리 (9p)</td></tr>
 </tbody>
 </table>
-<p class="table-note">실시간 입금 감지는 webhook 몫이고 이 조회는 보조다. finality 로 거를 땐 COMPLETED 여도 <code>numOfConfirmations ≥ 임계</code>를 함께 본다(4p, zero-confirmation 대비).</p>
+<p class="table-note">실시간 입금 감지도 이 폴링이 주 경로다(4p). finality 로 거를 땐 COMPLETED 여도 <code>numOfConfirmations ≥ 임계</code>를 함께 본다(4p, zero-confirmation 대비).</p>
 
 <h2>대사 — 두 장부를 주기적으로 맞춘다</h2>
 
-<p>잔액·내역의 숫자는 결국 <b>두 장부</b>에서 나옵니다. 하나는 기록(DB), 다른 하나는 바깥의 진실인 <b>Fireblocks 의 값</b>입니다. 벤더 조회가 아무리 정확해도 통지 누락·지연·이쪽 반영 버그는 생기게 마련이라, 회계가 걸리는 숫자는 <b>주기적으로 둘을 직접 대조</b>합니다.</p>
+<p>잔액·내역의 숫자는 결국 <b>두 장부</b>에서 나옵니다. 하나는 기록(DB), 다른 하나는 바깥의 진실인 <b>Fireblocks 의 값</b>입니다. 벤더 조회가 아무리 정확해도 폴링 누락·지연·이쪽 반영 버그는 생기게 마련이라, 회계가 걸리는 숫자는 <b>주기적으로 둘을 직접 대조</b>합니다.</p>
 
 <table>
 <thead><tr><th style="width:16%"></th><th>대사</th></tr></thead>
@@ -128,7 +128,7 @@ sequenceDiagram
 <tr><td><b>어긋나면</b></td><td><b>자동 보정 금지</b> — 정정 이벤트를 만들어 사람이 본다 (없는 돈을 만들거나 지우는 코드가 가장 위험)</td></tr>
 </tbody>
 </table>
-<p class="table-note">4p 의 "통지는 힌트" 규칙을 회계로 옮긴 버전이다. 화면은 벤더 값으로 빠르게, 장부는 대조로 정확하게. 대기↔가용이 벤더 상태(CONFIRMING/COMPLETED)로 움직이므로, 대사도 그 상태 기준으로 기록과 맞춘다.</p>
+<p class="table-note">4p 의 "최종 근거는 대사" 규칙을 회계로 옮긴 버전이다. 화면은 벤더 값으로 빠르게, 장부는 대조로 정확하게. 대기↔가용이 벤더 상태(CONFIRMING/COMPLETED)로 움직이므로, 대사도 그 상태 기준으로 기록과 맞춘다.</p>
 
 <p class="foot">더 깊이: 확정 정책(DCCP)과 confirmation lifecycle · 잔액 필드 계약은 컴포넌트 가이드의 <a href="../wallet-service-components/abstraction.html">추상화 편</a> 참고 (본 워크스루는 가이드 없이 읽힙니다).</p>
 

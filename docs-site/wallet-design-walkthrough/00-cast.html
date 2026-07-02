@@ -43,7 +43,7 @@ flowchart TB
 </pre></div>
 
 <h2>어디서 도는가 — 물리 배치</h2>
-<p>위가 논리 구조라면, 구성 요소가 실제로 <b>어디서 도는지</b>도 잡아 두면 1~7페이지가 쉽습니다. Fireblocks 기준 배치는 이렇습니다 — 서명·키·노드·전파는 <b>벤더 안</b>이고, 이쪽엔 <b>두 백엔드(블록체인 매니저 어댑터 포함)·webhook 수신기·백엔드 DB·Co-signer</b>가 남습니다.</p>
+<p>위가 논리 구조라면, 구성 요소가 실제로 <b>어디서 도는지</b>도 잡아 두면 1~7페이지가 쉽습니다. Fireblocks 기준 배치는 이렇습니다 — 서명·키·노드·전파는 <b>벤더 안</b>이고, 이쪽엔 <b>두 백엔드(블록체인 매니저 어댑터 포함)·폴링 워커·백엔드 DB·Co-signer</b>가 남습니다.</p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart LR
@@ -52,21 +52,22 @@ flowchart LR
       SVCBE["Service 백엔드<br/>유스케이스 + 블록체인 매니저 어댑터"]
       ADMBE["Admin 백엔드<br/>정책·승인·키 운영·동결·rebalance"]
       BDB[("백엔드 DB<br/>ref↔vault↔주소 · customer_ledger")]
-      WH["webhook 수신기<br/>입금·상태 이벤트 (4·6p)"]
+      POLL["폴링 워커 (Service)<br/>입금·상태 감지 — 주기 조회 (4·6p)"]
       COS["API Co-signer (SGX/TEE)<br/>MPC 온프렘 키 share · 자동 공동서명"]
       CB["Callback Handler<br/>정책 훅 · 승인·거부"]
     end
-    FBV["Fireblocks (벤더 SaaS)<br/>vault · MPC 클라우드 share · TAP 정책<br/>노드 · 전파 · webhook 발신"]
+    FBV["Fireblocks (벤더 SaaS)<br/>vault · MPC 클라우드 share · TAP 정책<br/>노드 · 전파"]
     EVM["EVM 네트워크<br/>이더리움 · Base"]
 
     SVCBE -->|포트 호출| FBV
     ADMBE -->|정책·승인·운영| FBV
     SVCBE --- BDB
     ADMBE --- BDB
-    WH --- BDB
+    POLL --- BDB
     FBV <-->|서명 요청 · MPC share| COS
     COS -->|승인 질의| CB
-    FBV -->|webhook| WH
+    POLL -->|주기 조회 · outbound| FBV
+    FBV -.->|webhook (보조·옵션)| POLL
     FBV --> EVM
 
     classDef svc fill:#dbeafe,stroke:#2563eb;
@@ -76,9 +77,9 @@ flowchart LR
     classDef vendor fill:#f5f5f7,stroke:#86868b;
     classDef ext fill:#eef2ff,stroke:#818cf8;
     classDef policy fill:#ffedd5,stroke:#ea580c;
-    class SVCBE,WH svc; class ADMBE adm; class COS sec; class CB policy; class BDB data; class FBV vendor; class EVM ext;
+    class SVCBE,POLL svc; class ADMBE adm; class COS sec; class CB policy; class BDB data; class FBV vendor; class EVM ext;
 </pre></div>
-<p class="diagram-caption">Fireblocks 기준 배치. <b>Service</b>·<b>Admin</b> 은 <b>물리적으로 분리</b>돼 각자 포트로 벤더를 부른다 — <b>블록체인 매니저 어댑터는 백엔드 안의 모듈</b>이고, <b>ref↔vault↔주소 매핑과 원장은 백엔드 DB</b>에 둔다. 서명은 <b>벤더 단독이 아니다</b> — MPC 키 share 하나는 <b>보안 존(SGX/TEE)의 API Co-signer</b>가 들고 매 서명마다 <b>공동서명</b>하며, 서명 직전 <b>Callback Handler</b>(정책 훅)가 승인·거부를 건다. vault·MPC 클라우드 share·노드·전파는 벤더 몫이다(4·6p).</p>
+<p class="diagram-caption">Fireblocks 기준 배치. <b>Service</b>·<b>Admin</b> 은 <b>물리적으로 분리</b>돼 각자 포트로 벤더를 부른다 — <b>블록체인 매니저 어댑터는 백엔드 안의 모듈</b>이고, <b>ref↔vault↔주소 매핑과 원장은 백엔드 DB</b>에 둔다. 서명은 <b>벤더 단독이 아니다</b> — MPC 키 share 하나는 <b>보안 존(SGX/TEE)의 API Co-signer</b>가 들고 매 서명마다 <b>공동서명</b>하며, 서명 직전 <b>Callback Handler</b>(정책 훅)가 승인·거부를 건다. vault·MPC 클라우드 share·노드·전파는 벤더 몫이다(4·6p). 입금·상태 <b>감지는 폴링 워커가 벤더로 나가는 주기 조회</b>(outbound)이고, webhook 은 환경이 허용할 때 붙이는 보조다(4p).</p>
 
 <h2>직접 만드는 것 — 넷</h2>
 
@@ -90,7 +91,7 @@ flowchart LR
       direction TB
       M1["두 백엔드 경계<br/>Service / Admin 분리 · 권한·감사"]
       M2["포트 구현 (Fireblocks 어댑터)<br/>SDK 래핑 · 체인 라우팅"]
-      M3["webhook 수신·정합<br/>이벤트→DB · 벤더 잔액 대사"]
+      M3["폴링 감지·정합<br/>변경분 조회→DB · 벤더 잔액 대사"]
       M4["백엔드 DB<br/>ref↔주소 매핑 · 원장"]
     end
     subgraph VENDOR["Fireblocks 가 제공"]
@@ -118,7 +119,7 @@ flowchart LR
 <tr><td>고객 계정 생성</td><td>createVaultAccount</td><td class="c">●</td><td class="c"></td><td class="c"></td><td class="c"></td><td><code>createAccount</code></td><td class="c">S</td><td class="c">1p</td></tr>
 <tr><td>입금 주소 <b>생성</b></td><td>generateNewAddress</td><td class="c">●</td><td class="c">●</td><td class="c"></td><td class="c"></td><td><code>createDepositAddress</code></td><td class="c">S</td><td class="c">2p</td></tr>
 <tr><td>입금 주소 <b>조회</b></td><td>(DB 읽기 · Fireblocks 미사용)</td><td class="c"></td><td class="c">●</td><td class="c"></td><td class="c">●</td><td><code>getDepositAddress</code></td><td class="c">S</td><td class="c">3p</td></tr>
-<tr><td>수신·확정 이벤트</td><td>webhook</td><td class="c"></td><td class="c">●</td><td class="c">●</td><td class="c"></td><td><code>onChainEvent</code></td><td class="c">S</td><td class="c">4p</td></tr>
+<tr><td>수신·확정 이벤트</td><td>거래 조회 폴링 (webhook 옵션)</td><td class="c"></td><td class="c">●</td><td class="c">●</td><td class="c"></td><td><code>onChainEvent</code></td><td class="c">S</td><td class="c">4p</td></tr>
 <tr><td>수수료 추정</td><td>estimateFee</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c"></td><td><code>estimateFee</code></td><td class="c">S</td><td class="c">5p</td></tr>
 <tr><td>주소 형식 검증</td><td>(로컬 규칙)</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c"></td><td><code>validateAddress</code></td><td class="c">S</td><td class="c">6p</td></tr>
 <tr><td>출금 제출</td><td><b>createTransaction</b></td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c"></td><td><code>submitTransaction</code></td><td class="c">S</td><td class="c">6p</td></tr>
