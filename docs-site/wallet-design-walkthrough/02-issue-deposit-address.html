@@ -38,10 +38,10 @@ sequenceDiagram
         BDB-->>FBI: 기존 주소
         FBI-->>BE: 주소 (0xAb3…)
     else 없으면
-        FBI->>FB: 복구 확인 — vault 의 자산 주소 조회 (addresses_paginated)
+        FBI->>FB: 벤더에 있는지 확인 — vault 자산 주소 조회 (addresses_paginated)
         alt 벤더에 있음 — 활성화됐는데 저장 못 한 경우
-            FB-->>FBI: 기존 주소 (복구)
-        else 벤더에도 없음 — 진짜 신규
+            FB-->>FBI: 기존 주소
+        else 벤더에도 없음 — 신규
             FBI->>FB: 자산 지갑 활성화 createVaultAccountAsset · Idempotency-Key=f(accountId,asset)
             FB-->>FBI: 활성화 응답 · address 0xAb3… · memoTag=null
         end
