@@ -7528,3 +7528,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 이동: wallet-design-walkthrough/gas-delegation.html 삭제 → gas-delegation/index.html 로 재작성(출처 callout·문제·선택지 flowchart+표·Gasless 확정 사실+sequence·GSN/Paymaster 저자 정리·결정 포인트). 워크스루 index 관련 링크는 ../gas-delegation/ 으로 원복, Hub 에 doc-card(NEW·리뷰 전·2026-07-03) 추가
 - 영향받은 페이지: docs-site/gas-delegation(신규 사이트)·index.html(Hub)·wallet-design-walkthrough/index
 - 신규 entity: 0 · 미배포(로컬만)
+
+## Stage 136 (2026-07-03) — Gasless Service 11/11 추출 완료 (2차)
+- 계기: 사용자 "다 수집된 건가요?" → 원문 PDF 11/11 보유·추출 6/11(그중 3건 앞부분만) 정직 보고 → 나머지 전부 추출
+- 신규 fact: Fireblocks Relay = "All EVM-compatible blockchains"+전 토큰(일부 non-EVM CSM) · 연결 절차(CSM·서비스 계약) · external relay 의 규제 유연성 사례(US 스테이블만/EU 가 ETH·gas — 벤더 명시) · relay provider 는 API Co-Signer 필수 + Gasless Orchestrator Policy rule 2종 · Vault account upgrade policy 타입 · 건별 gasless on/off · ★ 실패 모드(relay 거절/fuel 불가) · Solana=Fee Payer 공동서명·key set 공유 vault 한정·SOL 제외·Embedded Wallets 미통합
+- extract 문서 2차 절 보강. 인접 tokenization 4건은 미추출로 명시
+- 영향받은 페이지: sources/...gasless-service-extract.md
+- 신규 entity: 0
