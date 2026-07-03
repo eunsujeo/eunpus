@@ -87,7 +87,7 @@ sequenceDiagram
 </tbody>
 </table>
 
-<p>각 status 는 <code>subStatus</code> 로 사유가 세분됩니다 — 폴링 코드가 분기하는 <code>status</code>·<code>numOfConfirmations</code> 에 사유를 더해주는 필드입니다. 입금 관련은 아래가 전부이고, 특히 <b>REJECTED 의 동결 3종은 Admin 의 unfreeze 운영</b>이 걸립니다.</p>
+<p>각 status 는 <code>subStatus</code> 로 사유가 세분됩니다 — 폴링 워커가 분기하는 <code>status</code>·<code>numOfConfirmations</code> 에 사유를 더해주는 필드입니다. 입금 관련은 아래가 전부이고, 특히 <b>REJECTED 의 동결 3종은 Admin 의 unfreeze 운영</b>이 걸립니다.</p>
 
 <table>
 <thead><tr><th style="width:18%">상위</th><th style="width:38%">subStatus</th><th>뜻</th></tr></thead>
@@ -158,61 +158,6 @@ sequenceDiagram
     SUB->>DB: 커서 전진 = 처리분의 max(lastUpdated) · 원자적 저장
     Note over SUB,DB: 처리 실패 시 커서 미전진 → 다음 폴에서 재처리(멱등이라 중복 무해)
 </pre></div>
-<p>같은 흐름을 코드로 옮기면 이렇습니다.</p>
-
-<pre><code>// 커서 = 마지막으로 처리한 tx 의 lastUpdated (Unix ms)
-let cursor = db.readCursor()               // 예: 1720000000000
-
-// 경계 겹침 — 같은 밀리초를 가진 tx 를 놓치지 않도록 조금 이전부터
-const OVERLAP_MS = 2000
-let after   = cursor - OVERLAP_MS
-let maxSeen = cursor
-
-// 한 주기: after 이후 '갱신된(lastUpdated)' tx 를 페이지 단위로 모두 소진
-while (true) {
-  const txs = fb.getTransactions({
-    orderBy: "lastUpdated",   // 갱신 시각 기준 정렬
-    after,                    // Unix ms — 이 시각 이후 변경분만
-    limit:   200,
-    sort:    "ASC",           // 오래된 것부터 → 커서 단조 전진
-  })
-  if (txs.length === 0) break
-
-  for (const tx of txs) {                          // lastUpdated 오름차순
-    // 1) 방향 판정 — 입금만 크레딧 (출금·내부이동은 각자 경로가 처리)
-    if (tx.destination?.type !== "VAULT_ACCOUNT") continue   // 우리 vault 로 온 게 아님(출금 등)
-    if (tx.source?.type === "VAULT_ACCOUNT")      continue   // 우리 vault 간 내부 이동 → 스킵
-
-    // 2) 목적지 vault 로 계정 귀속 — 주소 문자열이 아니라 vaultAccountId 기준
-    const account = db.accountByVault(tx.destination.id)     // → accountId
-    if (!account) continue                                   // 우리 vault 아님(이론상 없음)
-
-    // 3) 주소가 (계정, 자산) 매핑에 있나 — 없으면 우리 돈이나 out-of-band 주소
-    if (!db.addressKnown(account, tx.assetId, tx.destAddress))
-      alert.unmappedDeposit(account, tx)                     // 경보 — 스킵 아님, 계정엔 귀속
-
-    // 4) tx.id 기준 멱등 upsert — 겹쳐 받아도 상태 전이만 반영, 이중 반영 없음
-    if (isInvalidated(tx)) {                                 // reorg 무효화 — 벤더 신호는 확인 중
-      ledger.revert(tx.id)                                   //   가공분만 취소하고 원본 보존
-    } else if (tx.status === "CONFIRMING") {
-      ledger.upsertPending(tx.id, account, tx.assetId, tx.amount)     // 대기(pending)
-    } else if (tx.status === "COMPLETED") {
-      if (tx.numOfConfirmations ≥ dccpThreshold(tx.assetId))
-        ledger.upsertAvailable(tx.id, account, tx.assetId, tx.amount) // 대기 → 가용 이동
-      // 임계 미달(zero-conf)이면 대기 유지 — 다음 폴에서 재평가
-    }
-    maxSeen = Math.max(maxSeen, tx.lastUpdated)
-  }
-
-  if (txs.length &lt; 200) break                    // 마지막 페이지
-  after = txs[txs.length - 1].lastUpdated          // 다음 페이지: 시간 커서 전진
-  // (API 가 opaque page 커서를 준다면 그걸 쓰는 편이 같은-ms 경계에서 더 안전)
-}
-
-// 처리 성공 후에만 커서 전진 — 실패 시 미전진, 다음 주기에 멱등 재처리
-db.commitCursor(maxSeen)
-// 다음 실행은 주기(예: 15~30s) 뒤 — 감지 지연 = 이 주기</code></pre>
-
 <table>
 <thead><tr><th style="width:22%">빠뜨리면 사고 나는 지점</th><th>어떻게</th></tr></thead>
 <tbody>
