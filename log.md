@@ -7295,3 +7295,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 반영: 시그니처 `→ Address?  // 없으면 null (만들지 않는다 — 생성은 2p)` + 다이어그램 alt(있으면 주소 / 없으면 null·생성 여부는 유스케이스 결정)
 - 영향받은 페이지: docs-site 03
 - 신규 entity: 0
+
+## Stage 105 (2026-07-03) — 컴포넌트 가이드 13.10: 포트 동사의 반환 계약
+- 계기: 사용자 — verb 반환 계약(반복=return-existing·없음=null·예외=불변식 위반만)을 워크스루 밖 어딘가에 기록
+- 위치: docs-site/wallet-service-components/abstraction.html 13장에 13.10 신설 (워크스루 3p foot 이 이미 이 페이지를 링크)
+- 내용: 3행 계약 표(create 재호출=기존 값 멱등 반환·유일성은 DB UNIQUE·경합=read-back / get 없음=null·read-through 금지·후속은 유스케이스 / 에러=불변식 위반 전용·에러 채널 오염 방지) + 갈림 기준 "없음이 정상이면 null, 없음이 사고면 NotFound"(사전 전량 발급 불변식이면 NotFound) + HTTP null→404 번역은 별개 층
+- 영향받은 페이지: docs-site/wallet-service-components/abstraction
+- 신규 entity: 0
