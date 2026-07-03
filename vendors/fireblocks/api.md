@@ -315,6 +315,8 @@ ApprovalStatus.approval: "PENDING_AUTHORIZATION" | "APPROVED" | "REJECTED" | "NA
 
 → [[entities/fireblocks/transaction]]. tx schema·status·chain-specific 필드는 Stage 36 object catalog.
 
+→ **Gasless(meta-tx) 전송 경로** 존재 — error `1455` "Missing Gasless configuration (relayer/fee payer)". 제품 상세(relay 3형태·ERC-3009/2771/EIP-7702·Universal Gasless)는 [[entities/fireblocks/vault-account]] §"Stage 131 — Gasless Service". (★ Stage 131)
+
 ### Webhooks v2 (수신 트랜잭션·확정 = event push, "② 감지" — TransactionPort.onChainEvent)
 
 **WRITE (설정·운영)**
