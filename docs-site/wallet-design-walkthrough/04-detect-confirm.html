@@ -20,48 +20,6 @@
 
 <p><b>폴링 스트림 하나</b>가 워크스페이스의 입·출금 변경을 전부 나릅니다. 이 페이지는 그 스트림과 확정 기준(언제부터 믿는가)을 정의하고, <b>입금(5장)·출금(7장)이 이것을 소비</b>합니다.</p>
 
-<div class="callout">
-<div class="callout-title">이 문서가 붙잡는 구분 — confirm(체인 등장) vs finality(확정)</div>
-<p style="margin:0 0 8px">트랜잭션 하나의 상태는 Fireblocks 안에서 <b>BROADCASTING → CONFIRMING → COMPLETED</b> 순으로 흐른다. 이 중 직접 잔액을 움직일 때 붙잡아야 할 두 지점이 <b>CONFIRMING</b> 과 <b>COMPLETED</b> 다.</p>
-<p style="margin:0 0 8px"><b>CONFIRMING = confirm 상태.</b> 트랜잭션이 체인에 올라가 블록에 담겼고, 그 위로 confirmation 이 쌓이는 중이다 — 하지만 <b>아직 확정 아님</b>. 이 단계의 자금은 고객에게 "확인 중"으로만 보여주고 available 잔액에는 넣지 않는다.</p>
-<p style="margin:0"><b>COMPLETED = finality 상태.</b> confirmation 이 <b>DCCP<span class="g" data-tip="Deposit Control and Confirmation Policy — 입·출금이 몇 confirmation 에서 확정(clear)될지 체인별로 정하는 Fireblocks 정책 (커스텀 변경은 Fireblocks Support 제출·승인)" tabindex="0">?</span>(확정 정책)가 정한 임계 수</b>에 도달했다는 뜻이고, 이때부터 이 자금을 <b>확정(finality)</b>으로 보고 available 에 반영한다. 둘을 프로그램으로 가르는 방법은 두 가지다 — <code>status</code> 값(CONFIRMING 인지 COMPLETED 인지)으로 갈리거나, tx 객체의 <code>numOfConfirmations</code>(실제 누적 confirmation 수)를 finality 임계값과 비교한다.</p>
-</div>
-
-<h2>DCCP — 무엇이 CONFIRMING 을 COMPLETED 로 바꾸는가</h2>
-
-<p>CONFIRMING 에서 COMPLETED 로 넘어가는 <b>임계 confirmation 수를 정하는 정책</b>이 <b>DCCP(Deposit Control and Confirmation Policy)</b> 입니다. "finality"는 체인이 자연히 주는 성질이 아니라 DCCP 가 정의하는 확정 기준입니다. 커스텀 DCCP 는 <b>Console 에서 직접 설정하는 게 아니라</b>, 정책 템플릿을 작성해 <b>Fireblocks Support 에 제출 → 검토·승인 후 반영</b>됩니다. 어떤 임계를 요청할지 정하는 책임은 <b>Admin(운영)</b>, 이벤트를 받아 잔액에 반영하는 런타임은 <b>Service</b> 의 몫입니다.</p>
-
-<div class="callout">
-<div class="callout-title">DCCP 임계값 — 기본값과 커스텀</div>
-<p style="margin:0 0 8px">Fireblocks 의 DCCP 기본 임계 confirmation 수는 체인마다 다르다.</p>
-<ul style="margin:0 0 8px">
-<li><b>대부분의 체인 = 1</b> — 블록 하나면 확정으로 본다.</li>
-<li><b>ETC(이더리움 클래식) = 372</b> — 과거 reorg 리스크가 커 임계가 매우 높다.</li>
-<li><b>finality 속성을 가진 체인</b> — 체인별로 고정(rigid)된 값을 쓴다.</li>
-<li><b>컨트랙트 호출(contract call) = 최소 3 권장</b> — 단순 전송보다 보수적으로.</li>
-</ul>
-<p style="margin:0">이 값은 <b>커스텀 DCCP</b> 로 조정할 수 있는데, 직접 설정이 아니라 <b>템플릿 작성 → Fireblocks Support 제출 → 검토·승인 후 반영</b>이다. EVM 대상(이더리움·Base)에서 어떤 임계를 요청할지는 자산·리스크 정책에 따라 Admin 이 정하고, Service 는 그 결과로 도착한 COMPLETED 만 신뢰하면 된다.</p>
-</div>
-
-<div class="callout warn">
-<div class="callout-title">함정 — 첫 COMPLETED 를 곧 finality 로 단정하지 말 것 (zero-confirmation)</div>
-<p style="margin:0">Deposit Policy 를 <b>zero-confirmation</b> 으로 두면, COMPLETED 가 <b>블록에 등장하는 시점에 먼저</b> 뜰 수 있고 이후 폴마다 관찰값(등장 + 1차 confirm + 추가 confirm)이 계속 갱신될 수 있다. 즉 이 설정에서는 "COMPLETED 를 처음 관찰했다"가 곧 "충분한 confirmation 이 쌓였다"를 뜻하지 않는다. 그래서 잔액 반영 판정은 status 만 보지 말고 <b><code>numOfConfirmations</code> 를 finality 임계값과 직접 비교</b>하는 편이 안전하다. 어떤 임계를 finality 로 볼지는 위 DCCP 와 한 몸이다.</p>
-</div>
-
-<h2>감지 경로 — 폴링(주) · 웹훅(보조) · 대사(안전망)</h2>
-
-<p>세 수단을 겹쳐 둡니다. 공통 원칙은 <b>주소를 하나씩 조회하지 않는다</b>는 점입니다 — 아래는 모두 워크스페이스·시간 범위 기준이라, 주소가 천만 개여도 부하는 <b>놓친 트랜잭션 수에 비례할 뿐 주소 수와 무관</b>합니다.</p>
-
-<table>
-<thead><tr><th style="width:22%">수단</th><th>무엇을</th></tr></thead>
-<tbody>
-<tr><td><b>폴링</b> (주 경로)</td><td>트랜잭션 목록을 <b>갱신 시각 커서로 변경분만</b> 당겨 온다 — 감지의 기본. 루프 상세는 아래 절.</td></tr>
-<tr><td><b>웹훅</b> (보조 · 환경 허용 시)</td><td>인바운드가 열린 환경이면 push 로 지연을 줄인다. 놓친 알림은 <code>POST /v1/webhooks/{id}/notifications/resend_failed</code> 로 재전송(v2 는 30일 창). 누락·지연이 있어도 폴링이 메우므로 <b>신뢰의 근거는 아니다</b>.</td></tr>
-<tr><td><b>대사</b> (최종 안전망)</td><td>그래도 어긋나면 주기 대사가 벤더 값과 기록을 맞춰 닫는다(회계 걸리는 숫자만).</td></tr>
-</tbody>
-</table>
-<p class="table-note">여러 경로가 같은 입금을 중복 전달하므로, 반영은 <b>tx id(또는 externalTxId) 기준 멱등 upsert</b> 로 한 번만 건다 — 없는 돈을 두 번 반영하는 것이 가장 비싼 사고다. <code>status=COMPLETED</code> 로 거를 땐 <code>numOfConfirmations</code> 가 확정 임계 이상인지 함께 본다(위 zero-confirmation 함정). 폴링만으로도 완결되며, 감지 지연은 <b>폴링 주기</b>만큼이다.</p>
-
 <h2>폴링 상세 흐름 — 커서 하나로 입·출금을 다 나른다</h2>
 
 <p>실제 루프를 펼칩니다. 뼈대는 <b>커서</b> 하나입니다 — 마지막으로 처리한 트랜잭션의 <code>lastUpdated</code>(Unix 밀리초 시간값)를 DB 에 커서로 저장해 두고, 주기마다 그 이후 갱신된 트랜잭션만 당겨 옵니다. 커서가 <b>시간값</b>이라 같은 밀리초를 가진 tx 를 놓치지 않게 <b>커서를 조금 겹쳐 받고 tx id 로 멱등 처리</b>합니다. 상태 필터는 서버에서 한 번에 하나만 걸리므로, <b>모든 상태 전이를 빠짐없이 받으려면 상태 필터 없이 커서로</b> 훑고 받은 tx 를 이쪽에서 분류합니다 — 루프가 방향을 갈라 <b>입금은 원장 반영(5장), 출금은 상태 추적(7장)</b>으로 넘깁니다. 상태 필터는 대사·표적 조회(8p)에서 씁니다.</p>
@@ -84,8 +42,8 @@ sequenceDiagram
 
     loop 받은 tx 각각 — lastUpdated 오름차순
         SUB->>DB: 방향 판정 + 목적지 vault → accountId 귀속
-        alt 출금 — 상태 추적(7장)이 소비 · 내부 이동 — 운영 경로
-            Note over SUB: 이 절에서는 다루지 않음
+        alt 출금 · 내부 이동
+            Note over SUB: 출금은 상태 추적(7장)이, 내부 이동은 운영 경로가 소비 — 아래는 입금 분기
         else 입금 · CONFIRMING
             SUB->>DB: tx id 멱등 upsert → 대기(pending) · available 불변
         else 입금 · COMPLETED 이고 임계 도달
@@ -128,7 +86,7 @@ sequenceDiagram
     DB-->>SW: 임계 초과 건 목록
     alt 없음
         Note over SW: 끝 — 다음 주기
-    else 있음 — tx id 로 기존 경보 확인 후 (재경보 억제)
+    else 있음 — 이미 경보한 tx 는 건너뜀 (중복 경보 방지)
         alt 입금 건
             SW->>DB: 경보 기록 — 수신자는 개입 수단 없음 · 고객 안내 + 대사 대기
         else 출금 건
@@ -146,9 +104,53 @@ sequenceDiagram
 <tr><td><b>막힘 판정</b></td><td>체류 시간이 <b>체인별 임계</b> 초과. 임계는 평시 confirmation 소요를 감안해 정한다.</td></tr>
 <tr><td><b>입금이 막히면</b></td><td>수신자라 개입 수단이 없다 — <b>경보 + 고객 "확인 중" 안내</b>가 전부이고, 해소는 체인 혼잡 해소 또는 대사가 잡는다.</td></tr>
 <tr><td><b>출금이 막히면</b></td><td>Admin 의 <b>boost(수수료 인상 재전송)·cancel</b> 판단 대상으로 넘긴다(7p).</td></tr>
-<tr><td><b>재경보 억제</b></td><td>경보한 tx id 를 기록해 두고, 해소(COMPLETED/FAILED 전이)되면 닫는다.</td></tr>
+<tr><td><b>같은 건 중복 경보 방지</b></td><td>경보한 tx id 를 기록해 두고 다음 주기엔 건너뛴다. 해소(COMPLETED/FAILED 전이)되면 닫는다.</td></tr>
 </tbody>
 </table>
+
+<h2>감지 경로 — 폴링(주) · 웹훅(보조) · 대사(안전망)</h2>
+
+<p>세 수단을 겹쳐 둡니다. 공통 원칙은 <b>주소를 하나씩 조회하지 않는다</b>는 점입니다 — 아래는 모두 워크스페이스·시간 범위 기준이라, 주소가 천만 개여도 부하는 <b>놓친 트랜잭션 수에 비례할 뿐 주소 수와 무관</b>합니다.</p>
+
+<table>
+<thead><tr><th style="width:22%">수단</th><th>무엇을</th></tr></thead>
+<tbody>
+<tr><td><b>폴링</b> (주 경로)</td><td>트랜잭션 목록을 <b>갱신 시각 커서로 변경분만</b> 당겨 온다 — 감지의 기본. 루프 상세는 맨 위 절.</td></tr>
+<tr><td><b>웹훅</b> (보조 · 환경 허용 시)</td><td>인바운드가 열린 환경이면 push 로 지연을 줄인다. 놓친 알림은 <code>POST /v1/webhooks/{id}/notifications/resend_failed</code> 로 재전송(v2 는 30일 창). 누락·지연이 있어도 폴링이 메우므로 <b>신뢰의 근거는 아니다</b>.</td></tr>
+<tr><td><b>대사</b> (최종 안전망)</td><td>그래도 어긋나면 주기 대사가 벤더 값과 기록을 맞춰 닫는다(회계 걸리는 숫자만).</td></tr>
+</tbody>
+</table>
+<p class="table-note">여러 경로가 같은 입금을 중복 전달하므로, 반영은 <b>tx id(또는 externalTxId) 기준 멱등 upsert</b> 로 한 번만 건다 — 없는 돈을 두 번 반영하는 것이 가장 비싼 사고다. <code>status=COMPLETED</code> 로 거를 땐 <code>numOfConfirmations</code> 가 확정 임계 이상인지 함께 본다(위 zero-confirmation 함정). 폴링만으로도 완결되며, 감지 지연은 <b>폴링 주기</b>만큼이다.</p>
+
+<h2>확정 기준 — confirm 과 finality, 그리고 DCCP</h2>
+
+<div class="callout">
+<div class="callout-title">이 문서가 붙잡는 구분 — confirm(체인 등장) vs finality(확정)</div>
+<p style="margin:0 0 8px">트랜잭션 하나의 상태는 Fireblocks 안에서 <b>BROADCASTING → CONFIRMING → COMPLETED</b> 순으로 흐른다. 이 중 직접 잔액을 움직일 때 붙잡아야 할 두 지점이 <b>CONFIRMING</b> 과 <b>COMPLETED</b> 다.</p>
+<p style="margin:0 0 8px"><b>CONFIRMING = confirm 상태.</b> 트랜잭션이 체인에 올라가 블록에 담겼고, 그 위로 confirmation 이 쌓이는 중이다 — 하지만 <b>아직 확정 아님</b>. 이 단계의 자금은 고객에게 "확인 중"으로만 보여주고 available 잔액에는 넣지 않는다.</p>
+<p style="margin:0"><b>COMPLETED = finality 상태.</b> confirmation 이 <b>DCCP<span class="g" data-tip="Deposit Control and Confirmation Policy — 입·출금이 몇 confirmation 에서 확정(clear)될지 체인별로 정하는 Fireblocks 정책 (커스텀 변경은 Fireblocks Support 제출·승인)" tabindex="0">?</span>(확정 정책)가 정한 임계 수</b>에 도달했다는 뜻이고, 이때부터 이 자금을 <b>확정(finality)</b>으로 보고 available 에 반영한다. 둘을 프로그램으로 가르는 방법은 두 가지다 — <code>status</code> 값(CONFIRMING 인지 COMPLETED 인지)으로 갈리거나, tx 객체의 <code>numOfConfirmations</code>(실제 누적 confirmation 수)를 finality 임계값과 비교한다.</p>
+</div>
+
+<h3>DCCP — 무엇이 CONFIRMING 을 COMPLETED 로 바꾸는가</h3>
+
+<p>CONFIRMING 에서 COMPLETED 로 넘어가는 <b>임계 confirmation 수를 정하는 정책</b>이 <b>DCCP(Deposit Control and Confirmation Policy)</b> 입니다. "finality"는 체인이 자연히 주는 성질이 아니라 DCCP 가 정의하는 확정 기준입니다. 커스텀 DCCP 는 <b>Console 에서 직접 설정하는 게 아니라</b>, 정책 템플릿을 작성해 <b>Fireblocks Support 에 제출 → 검토·승인 후 반영</b>됩니다. 어떤 임계를 요청할지 정하는 책임은 <b>Admin(운영)</b>, 이벤트를 받아 잔액에 반영하는 런타임은 <b>Service</b> 의 몫입니다.</p>
+
+<div class="callout">
+<div class="callout-title">DCCP 임계값 — 기본값과 커스텀</div>
+<p style="margin:0 0 8px">Fireblocks 의 DCCP 기본 임계 confirmation 수는 체인마다 다르다.</p>
+<ul style="margin:0 0 8px">
+<li><b>대부분의 체인 = 1</b> — 블록 하나면 확정으로 본다.</li>
+<li><b>ETC(이더리움 클래식) = 372</b> — 과거 reorg 리스크가 커 임계가 매우 높다.</li>
+<li><b>finality 속성을 가진 체인</b> — 체인별로 고정(rigid)된 값을 쓴다.</li>
+<li><b>컨트랙트 호출(contract call) = 최소 3 권장</b> — 단순 전송보다 보수적으로.</li>
+</ul>
+<p style="margin:0">이 값은 <b>커스텀 DCCP</b> 로 조정할 수 있는데, 직접 설정이 아니라 <b>템플릿 작성 → Fireblocks Support 제출 → 검토·승인 후 반영</b>이다. EVM 대상(이더리움·Base)에서 어떤 임계를 요청할지는 자산·리스크 정책에 따라 Admin 이 정하고, Service 는 그 결과로 도착한 COMPLETED 만 신뢰하면 된다.</p>
+</div>
+
+<div class="callout warn">
+<div class="callout-title">함정 — 첫 COMPLETED 를 곧 finality 로 단정하지 말 것 (zero-confirmation)</div>
+<p style="margin:0">Deposit Policy 를 <b>zero-confirmation</b> 으로 두면, COMPLETED 가 <b>블록에 등장하는 시점에 먼저</b> 뜰 수 있고 이후 폴마다 관찰값(등장 + 1차 confirm + 추가 confirm)이 계속 갱신될 수 있다. 즉 이 설정에서는 "COMPLETED 를 처음 관찰했다"가 곧 "충분한 confirmation 이 쌓였다"를 뜻하지 않는다. 그래서 잔액 반영 판정은 status 만 보지 말고 <b><code>numOfConfirmations</code> 를 finality 임계값과 직접 비교</b>하는 편이 안전하다. 어떤 임계를 finality 로 볼지는 위 DCCP 와 한 몸이다.</p>
+</div>
 
 <p class="foot">이 기준을 소비하는 쪽 — 입금의 잔액 반영·동결·reorg 는 <a href="05-deposit.html">5. 입금</a>, 출금의 상태 추적·boost·cancel 은 <a href="07-withdrawal.html">7. 출금</a>, 잔액 세 칸과의 맞물림은 <a href="08-balance-history.html">8. 잔액과 내역 조회</a>.</p>
 

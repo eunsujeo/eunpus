@@ -7454,3 +7454,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 검증: 3개 docs-site consistency PASS · 내부/외부(ramp) 링크 깨짐 0 · 구 파일명 잔재 0 · 복합 번호 의심 패턴 0
 - 영향받은 페이지: 워크스루 전체 12파일 + wallet-service-components/project-structure + ramp-settlement 3파일
 - 신규 entity: 0
+
+## Stage 126 (2026-07-03) — 4장 감지와 확정: 다이어그램 우선 재배치 + 문구 정정
+- 계기: 사용자 리뷰 3건 — ① 독자 대부분이 개념을 알아 다이어그램이 위가 좋음 ② "재경보 억제" 불명 ③ 상세 다이어그램 "이 절에서는 다루지 않음" 불명
+- 재배치: 폴링 상세 흐름(다이어그램) → 막힘 점검 → 감지 경로 3수단 → 확정 기준(confirm/finality callout + DCCP h3 + 임계·zero-conf) — 제목 순서(폴링·상태 판정·DCCP)와 일치. "루프 상세는 아래 절" → "맨 위 절" 방향 정정
+- 문구: "재경보 억제" → "같은 건 중복 경보 방지"(경보한 tx id 기록·다음 주기 건너뜀) / 출금 분기 Note "이 절에서는 다루지 않음" → "출금은 상태 추적(7장)이, 내부 이동은 운영 경로가 소비 — 아래는 입금 분기"
+- 영향받은 페이지: docs-site 04-detect-confirm
+- 신규 entity: 0
