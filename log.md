@@ -7513,3 +7513,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 내용: 3열 비교표(GSN vs 4337 Paymaster vs Fireblocks Gasless 확정분) — 무엇/전제/어떻게/왜/체인/현황 + 관계 정리 3줄(2771 자체 구현·4337 대신 7702·Gas Station 은 GSN 과 이름만 유사)
 - 영향받은 페이지: entities/fireblocks/vault-account.md
 - 신규 entity: 0
+
+## Stage 134 (2026-07-03) — docs-site 신규 문서: 가스 대납 (gas-delegation.html)
+- 계기: 사용자 — gas 대납 주제를 docs-site 신규 문서로
+- 위치: wallet-design-walkthrough/gas-delegation.html — 번호 밖 별도 문서(진행바 없음, index "관련" 링크). 워크스루 본편 무변경
+- 구성: 출처 분리 callout(공식 확정 vs 저자 정리 vs 미확정) → 문제(EVM gas=발신 차감, sweep·ETH 보유 부담) → 선택지 지형(충전 vs 대납 flowchart+표 5행) → Fireblocks Gasless 확정 사실(메커니즘·Limited/Universal·체인 Base 포함·설정·error 1455) + gasless 거래 sequence 다이어그램 → 운영 caveat(수동 RBF·인보이스=회계 층·MPC↔7702 미확정) → GSN·4337 비교(저자 정리 라벨) → 결정 포인트 표
+- 근거: vault-account §Stage 131 (Gasless extract·index 소스) — wiki 를 canonical 로 두고 public 문서는 wiki 잔재 없이 서술
+- 영향받은 페이지: docs-site gas-delegation(신규)·index
+- 신규 entity: 0 · 미배포(로컬만)
