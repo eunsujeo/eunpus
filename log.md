@@ -7549,3 +7549,13 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 추가: ① 확정 사실 표 2행(Fireblocks Relay 지원 범위="모든 EVM+전 토큰"·도입 절차 CSM 협의→서비스 계약) ② caveat 에 새 실패 모드(relay 거절/fuel 불가 — 서명·생성 단계, relay 잔고·정책 모니터링 대상) ③ "도입 시 붙는 거버넌스·구현 요건" 표 6행(TAP 2종·API Co-Signer 필수(기존 충족)·승격은 첫 거래 후·건별 제어·external relay 규제 사례 원문·Solana Fee Payer 제약) ④ 결정 포인트에 "도입하면 설계가 어떻게 달라지나" 행(Admin TAP/감지 실패사유/회계 인보이스/sweep 병행/estimateFee 역할 이동)
 - 영향받은 페이지: docs-site/gas-delegation
 - 신규 entity: 0
+
+## Stage 139 (2026-07-03) — 워크스루 수수료 반영: gas 조달 결정 = 대납 기본·충전 보완
+- 계기: 사용자 결정 — 우선순위는 대납(Gasless), 대납이 안 되면 충전(Gas Station)
+- 06-estimate-fee: ① "그 실비를 누가 내는가" 문단 신설 — 대납 기본·ETH 자체 이동만 충전, 대납 구성에선 견적 = relay 실비 예측(인보이스 검증) ② 운영 문단 "출금용 가스 잔고 충전" → "gas 조달 운영(대납 인보이스 정산 또는 ETH 충전)"
+- 10-ramp: 배치 전송 gas 도 대납 기본 한 줄(+gas-delegation 링크). 같은 페이지의 "충전"(온램프 의미)과는 Gas Station 한정어로 구분
+- 00-cast 매트릭스: "gas 조달" 행 추가 — Gasless(대납·기본)·Gas Station(충전 — ETH 자체), Admin, 문서 링크. note "마지막 행" → "마지막 두 행"
+- gas-delegation 결정 포인트: "무엇을 고르나" → 결정 기록(대납 기본·ETH 자체만 충전·병존)
+- 검토: consistency 2사이트 PASS · 워크스루 잔여 gas 표현 정합 확인(온램프 "충전" 동음이의는 한정어로 구분)
+- 영향받은 페이지: docs-site 00·06·10·gas-delegation
+- 신규 entity: 0
