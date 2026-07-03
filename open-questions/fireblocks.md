@@ -1054,3 +1054,30 @@
 - **확정 재확인**: outbound 폴링 감지(List Transactions, T01) + Fireblocks Agent 폴링 선례(architecture.md:319·342) + egress whitelist(architecture.md:152) — Fireblocks 통합을 아웃바운드 전용으로 운영 가능
 - **영향 페이지**: docs-site/wallet-design-walkthrough/04-deposit (인바운드 차단 callout + polling-primary 절)
 - **신규 entity 0**
+
+### Q-2026-07-03-V01: Vault·Address 생성 API 의 유일성·멱등·검색 semantics (createAccount / createDepositAddress get-or-create 실현 전제)
+
+- **Why it matters**: 지갑 백엔드의 `createAccount`(vault) 와 `createDepositAddress`(주소) 를 get-or-create/재시도 복구로 설계하려면 벤더 API 가 유일성·멱등·이름 검색을 어디까지 보장하는지가 전제다. 특히 ① 계정은 벤더가 유일성을 **안** 보장해 우리 DB UNIQUE + 복구가 필요하고 ② 복구를 name 검색으로 하려면 `accounts_paged` 가 name 필터를 지원해야 하는데 미확인. 이 API 세부가 1·2페이지 설계의 실현 가능성을 좌우.
+- **Where this came up**: docs-site/wallet-design-walkthrough/01-create-account·02-issue-deposit-address — createAccount=create+복구 vs createDepositAddress=get-or-create 계약 구분 검토 중 fact query.
+- **확정 재확인 (wiki 인용)**:
+  - createVaultAccount 요청 = `POST /v1/vault/accounts`, body `name`·`hiddenOnUI`·`customerRefId?`·`autoFuel` (`entities/fireblocks/vault-account.md` VaultAccount schema; `vendors/fireblocks/api.md:370`)
+  - `customerRefId` = **AML funds-owner 귀속용**, 유니크·멱등 키 아님 (`vault-account.md:179·185`)
+  - 멱등 키는 **트랜잭션(externalTxId, max255)·webhook 등록에만** 존재, **vault·주소 생성엔 wiki 상 없음** (`entities/fireblocks/transaction.md:394-406`, `api.md:324`)
+  - **EVM = "1 vault account = 1 deposit address" 단일 강제** — account-based(no tag) 주소 개수 1, end-client별 unique 주소는 vault 분리(intermediate) (`vault-account.md:70-76`, source `account-and-wallet-structure.md` p.1-2). UTXO=N, tag계열=1주소+N tag
+  - `GET /v1/vault/accounts_paged` 존재(paginated 목록) (`api.md:288`); 주소 발급 `POST /v1/vault/accounts/{vaultAccountId}/{assetId}/addresses` (`api.md:281`)
+- **미확인 (openapi-spec 1차 확인 대상)**:
+  1. createVaultAccount 가 **name 중복을 거부**하는가 (유니크 강제 여부) — 없으면 중복 vault 생성 가능 = 크래시 갭 근거
+  2. `accounts_paged` 가 **name/namePrefix 쿼리 필터**를 지원하는가 — 없으면 name 검색 복구는 전 계정 페이지네이션이라 대규모(천만 계정)에 비현실적
+  3. createVaultAccount·주소 발급에 **`Idempotency-Key` 헤더** 지원 여부 (Fireblocks 가 POST 에 24h Idempotency-Key 를 일반 지원한다고 알려짐 = 사전지식, 1차 미확인)
+  4. **generateNewAddress 를 EVM 에서 2차 호출** 시 동작 — 기존 주소 반환 / 에러 / no-op 중 무엇인지 (단일 강제 "제약"만 확정)
+  5. EVM 주소 **생성 시점** — asset wallet 활성화(`POST .../{assetId}`) 시 자동 생성인지, 명시적 generateNewAddress 호출인지
+- **Sources to check**: `fireblocks/fireblocks-openapi-spec` open_api_spec.yml 의 `POST /vault/accounts`(request body·headers·유니크), `GET /vault/accounts_paged`(query params — namePrefix?), `POST /vault/accounts/{id}/{assetId}/addresses`(EVM 동작) · developers.fireblocks.com create-vault-account / create-address reference
+- **Status**: open
+
+### Stage 95 Summary
+
+- **신규 Q 중앙 등록 1건**: V01 (Vault·Address 생성 API 유일성·멱등·검색 semantics) — **open**. 카테고리 **V (Vault/Address API)** 신설
+- **출처 트리거**: docs-site 1·2페이지 createAccount(create+복구) vs createDepositAddress(get-or-create) 계약 구분 검토 중 fact query
+- **확정 재확인**: customerRefId=AML(유니크 아님) · 멱등키는 tx/webhook 전용 · **EVM 1 vault=1 address 단일 강제**(vault-account.md:70-76) · vault name 유니크는 벤더가 보장 안 함(→ 우리 DB UNIQUE 필요)
+- **핵심 발견**: get-or-create 계약 차이의 하드 근거 = **벤더의 유일성 보장 유무** (주소=EVM 1강제 보장 O / vault name=보장 X)
+- **신규 entity 0**

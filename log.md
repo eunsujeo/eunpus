@@ -7214,3 +7214,12 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 변경 불필요 확인: 09(onChainEvent=포트 추상, 폴링으로 채움) · index(webhook 무관) · 상태어휘/DCCP/대사 로직(전송 방향 무관)
 - 영향받은 페이지: 00·02·06·07·08 (+ 04 는 Stage 93)
 - 신규 entity: 0 · 미배포(로컬만)
+
+## Stage 95 (2026-07-03) — open-Q promote: Vault·Address 생성 API semantics (V01)
+- source: docs-site 1·2페이지 createAccount vs createDepositAddress get-or-create 계약 구분 검토 중 fact query
+- 신규 Q: Q-2026-07-03-V01 (Vault·Address 생성 API 유일성·멱등·검색) — 카테고리 **V (Vault/Address API)** 신설, open
+- 확정 재확인 (wiki): createVaultAccount body(name·customerRefId·hiddenOnUI·autoFuel) · customerRefId=AML 귀속(유니크 아님) · 멱등키는 externalTxId(tx)·webhook 전용, vault/주소 생성엔 없음 · **EVM 1 vault=1 address 단일 강제**(vault-account.md:70-76) · accounts_paged 존재(api.md:288)
+- 미확인(openapi-spec 확인 대상): ① createVaultAccount name 중복 거부 여부 ② accounts_paged name/namePrefix 필터 ③ Idempotency-Key 헤더(vault·주소) ④ generateNewAddress EVM 2차 호출 동작 ⑤ EVM 주소 생성 시점(asset 활성화 vs 명시 호출)
+- 핵심 발견: get-or-create 계약 차이의 하드 근거 = 벤더 유일성 보장 유무(주소=EVM 1강제 O / vault name=X)
+- ANSWERED: (없음) · 영향받은 페이지: open-questions/fireblocks.md
+- 신규 entity: 0
