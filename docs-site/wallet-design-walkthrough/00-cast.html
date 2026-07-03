@@ -11,7 +11,7 @@
 <div class="wrap">
 <p class="series"><a href="index.html">지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</a></p>
 <div class="progress">
-<span class="cur">0</span><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-estimate-fee.html">5</a><a href="06-withdrawal.html">6</a><a href="07-balance-history.html">7</a><a href="08-switch-extend.html">8</a><a href="09-ramp-swap.html">9</a>
+<span class="cur">0</span><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-detect-confirm.html">4</a><a href="05-deposit.html">5</a><a href="06-estimate-fee.html">6</a><a href="07-withdrawal.html">7</a><a href="08-balance-history.html">8</a><a href="09-switch-extend.html">9</a><a href="10-ramp-swap.html">10</a>
 </div>
 <h1>구성 요소</h1>
 <p class="subtitle">블록체인 매니저를 포트로 감싼 두 층 구조, 직접 만드는 넷, 그리고 기능 매트릭스</p>
@@ -43,7 +43,7 @@ flowchart TB
 </pre></div>
 
 <h2>어디서 도는가 — 물리 배치</h2>
-<p>위가 논리 구조라면, 구성 요소가 실제로 <b>어디서 도는지</b>도 잡아 두면 1~7페이지가 쉽습니다. Fireblocks 기준 배치는 이렇습니다 — 서명·키·노드·전파는 <b>벤더 안</b>이고, 이쪽엔 <b>두 백엔드(블록체인 매니저 어댑터 포함)·폴링 워커·백엔드 DB·Co-signer</b>가 남습니다.</p>
+<p>위가 논리 구조라면, 구성 요소가 실제로 <b>어디서 도는지</b>도 잡아 두면 1~8페이지가 쉽습니다. Fireblocks 기준 배치는 이렇습니다 — 서명·키·노드·전파는 <b>벤더 안</b>이고, 이쪽엔 <b>두 백엔드(블록체인 매니저 어댑터 포함)·폴링 워커·백엔드 DB·Co-signer</b>가 남습니다.</p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart LR
@@ -52,7 +52,7 @@ flowchart LR
       SVCBE["Service 백엔드<br/>유스케이스 + 블록체인 매니저 어댑터"]
       ADMBE["Admin 백엔드<br/>정책·승인·키 운영·동결·rebalance"]
       BDB[("백엔드 DB<br/>ref↔vault↔주소 · customer_ledger")]
-      POLL["폴링 워커 (Service)<br/>입금·상태 감지 — 주기 조회 (4·6p)"]
+      POLL["폴링 워커 (Service)<br/>입금·상태 감지 — 주기 조회 (4·7p)"]
       COS["API Co-signer (SGX/TEE)<br/>MPC 온프렘 키 share · 자동 공동서명"]
       CB["Callback Handler<br/>정책 훅 · 승인·거부"]
     end
@@ -79,7 +79,7 @@ flowchart LR
     classDef policy fill:#ffedd5,stroke:#ea580c;
     class SVCBE,POLL svc; class ADMBE adm; class COS sec; class CB policy; class BDB data; class FBV vendor; class EVM ext;
 </pre></div>
-<p class="diagram-caption">Fireblocks 기준 배치. <b>Service</b>·<b>Admin</b> 은 <b>물리적으로 분리</b>돼 각자 포트로 벤더를 부른다 — <b>블록체인 매니저 어댑터는 백엔드 안의 모듈</b>이고, <b>ref↔vault↔주소 매핑과 원장은 백엔드 DB</b>에 둔다. 서명은 <b>벤더 단독이 아니다</b> — MPC 키 share 하나는 <b>보안 존(SGX/TEE)의 API Co-signer</b>가 들고 매 서명마다 <b>공동서명</b>하며, 서명 직전 <b>Callback Handler</b>(정책 훅)가 승인·거부를 건다. vault·MPC 클라우드 share·노드·전파는 벤더 몫이다(4·6p). 입금·상태 <b>감지는 폴링 워커가 벤더로 나가는 주기 조회</b>(outbound)이고, webhook 은 환경이 허용할 때 붙이는 보조다(4p).</p>
+<p class="diagram-caption">Fireblocks 기준 배치. <b>Service</b>·<b>Admin</b> 은 <b>물리적으로 분리</b>돼 각자 포트로 벤더를 부른다 — <b>블록체인 매니저 어댑터는 백엔드 안의 모듈</b>이고, <b>ref↔vault↔주소 매핑과 원장은 백엔드 DB</b>에 둔다. 서명은 <b>벤더 단독이 아니다</b> — MPC 키 share 하나는 <b>보안 존(SGX/TEE)의 API Co-signer</b>가 들고 매 서명마다 <b>공동서명</b>하며, 서명 직전 <b>Callback Handler</b>(정책 훅)가 승인·거부를 건다. vault·MPC 클라우드 share·노드·전파는 벤더 몫이다(5·7p). 입금·상태 <b>감지는 폴링 워커가 벤더로 나가는 주기 조회</b>(outbound)이고, webhook 은 환경이 허용할 때 붙이는 보조다(4p).</p>
 
 <h2>직접 만드는 것 — 넷</h2>
 
@@ -120,17 +120,17 @@ flowchart LR
 <tr><td>입금 주소 <b>생성</b></td><td>createVaultAsset · 자산 지갑 활성화 (EVM=단일)</td><td class="c">●</td><td class="c">●</td><td class="c"></td><td class="c"></td><td><code>createDepositAddress</code></td><td class="c">S</td><td class="c">2p</td></tr>
 <tr><td>입금 주소 <b>조회</b></td><td>(DB 읽기 · Fireblocks 미사용)</td><td class="c"></td><td class="c">●</td><td class="c"></td><td class="c">●</td><td><code>getDepositAddress</code></td><td class="c">S</td><td class="c">3p</td></tr>
 <tr><td>수신·확정 이벤트</td><td>거래 조회 폴링 (webhook 옵션)</td><td class="c"></td><td class="c">●</td><td class="c">●</td><td class="c"></td><td><code>onChainEvent</code></td><td class="c">S</td><td class="c">4p</td></tr>
-<tr><td>수수료 추정</td><td>estimateFee</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c"></td><td><code>estimateFee</code></td><td class="c">S</td><td class="c">5p</td></tr>
-<tr><td>주소 형식 검증</td><td>(로컬 규칙)</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c"></td><td><code>validateAddress</code></td><td class="c">S</td><td class="c">6p</td></tr>
-<tr><td>출금 제출</td><td><b>createTransaction</b></td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c"></td><td><code>submitTransaction</code></td><td class="c">S</td><td class="c">6p</td></tr>
-<tr><td>상태 조회</td><td>getTransactionById</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td><code>getStatus</code></td><td class="c">S·A</td><td class="c">6p</td></tr>
-<tr><td>막힌 출금 재촉·취소</td><td>boost / cancel</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td><code>boost</code> <code>cancel</code></td><td class="c">A</td><td class="c">6p</td></tr>
-<tr><td>잔액 (가용·대기·잠김)</td><td>getVaultAccountAsset</td><td class="c"></td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td><code>getBalance</code></td><td class="c">S·A</td><td class="c">7p</td></tr>
-<tr><td>내 거래 이력</td><td>거래 목록 조회</td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c">●</td><td><code>transactionsOf</code></td><td class="c">S·A</td><td class="c">7p</td></tr>
-<tr><td>서명 정책 (한도·화이트리스트)</td><td>TAP(거버넌스 정책) · co-signer</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td>(동사 없음 — 정책 게이트)</td><td class="c">A</td><td class="c">6p</td></tr>
+<tr><td>수수료 추정</td><td>estimateFee</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c"></td><td><code>estimateFee</code></td><td class="c">S</td><td class="c">6p</td></tr>
+<tr><td>주소 형식 검증</td><td>(로컬 규칙)</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c"></td><td><code>validateAddress</code></td><td class="c">S</td><td class="c">7p</td></tr>
+<tr><td>출금 제출</td><td><b>createTransaction</b></td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c"></td><td><code>submitTransaction</code></td><td class="c">S</td><td class="c">7p</td></tr>
+<tr><td>상태 조회</td><td>getTransactionById</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td><code>getStatus</code></td><td class="c">S·A</td><td class="c">7p</td></tr>
+<tr><td>막힌 출금 재촉·취소</td><td>boost / cancel</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td><code>boost</code> <code>cancel</code></td><td class="c">A</td><td class="c">7p</td></tr>
+<tr><td>잔액 (가용·대기·잠김)</td><td>getVaultAccountAsset</td><td class="c"></td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td><code>getBalance</code></td><td class="c">S·A</td><td class="c">8p</td></tr>
+<tr><td>내 거래 이력</td><td>거래 목록 조회</td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c">●</td><td><code>transactionsOf</code></td><td class="c">S·A</td><td class="c">8p</td></tr>
+<tr><td>서명 정책 (한도·화이트리스트)</td><td>TAP(거버넌스 정책) · co-signer</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td>(동사 없음 — 정책 게이트)</td><td class="c">A</td><td class="c">7p</td></tr>
 </tbody>
 </table>
-<p class="table-note">● = 그 장면이 이 기능을 호출한다. <b>백엔드</b> 열 = Service(S)·Admin(A) 중 어디서 부르나 — 나가는 돈의 정책·승인·개입(TAP·boost·cancel·동결)은 <b>Admin</b>, 고객 런타임(계정·주소·입금·출금 제출·조회)은 <b>Service</b>다. Fireblocks 표면은 공식 문서에서 확인한 범위다(일부 조회 엔드포인트는 적용 전 확인). <b>Base 는 이더리움과 같은 EVM</b>이라 표면·페이지·동사가 동일하다 — 체인만 바뀐다. 마지막 행만 동사가 없는데, 화면이 부르는 기능이 아니라 흐름 뒤에 서는 기능이라 그렇다(정책 게이트, 6p).</p>
+<p class="table-note">● = 그 장면이 이 기능을 호출한다. <b>백엔드</b> 열 = Service(S)·Admin(A) 중 어디서 부르나 — 나가는 돈의 정책·승인·개입(TAP·boost·cancel·동결)은 <b>Admin</b>, 고객 런타임(계정·주소·입금·출금 제출·조회)은 <b>Service</b>다. Fireblocks 표면은 공식 문서에서 확인한 범위다(일부 조회 엔드포인트는 적용 전 확인). <b>Base 는 이더리움과 같은 EVM</b>이라 표면·페이지·동사가 동일하다 — 체인만 바뀐다. 마지막 행만 동사가 없는데, 화면이 부르는 기능이 아니라 흐름 뒤에 서는 기능이라 그렇다(정책 게이트, 7p).</p>
 
 <p class="foot">더 깊이: 컴포넌트별 상세는 <a href="../wallet-service-components/">블록체인 매니저 컴포넌트 가이드</a> (참고용 — 본 워크스루는 가이드 없이 읽힙니다).</p>
 

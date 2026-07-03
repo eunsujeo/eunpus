@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>6. 출금 — 제출에서 확정까지, 막혔을 때</title>
+<title>7. 출금 — 제출에서 확정까지, 막혔을 때</title>
 <meta content="noindex" name="robots"/>
 <link href="assets/walkthrough.css" rel="stylesheet"/>
 </head>
@@ -11,7 +11,7 @@
 <div class="wrap">
 <p class="series"><a href="index.html">지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</a></p>
 <div class="progress">
-<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-estimate-fee.html">5</a><span class="cur">6</span><a href="07-balance-history.html">7</a><a href="08-switch-extend.html">8</a><a href="09-ramp-swap.html">9</a>
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-detect-confirm.html">4</a><a href="05-deposit.html">5</a><a href="06-estimate-fee.html">6</a><span class="cur">7</span><a href="08-balance-history.html">8</a><a href="09-switch-extend.html">9</a><a href="10-ramp-swap.html">10</a>
 </div>
 <h1>출금 — 제출에서 확정까지, 막혔을 때</h1>
 <p class="subtitle">고객 자금이 나가는 길, 이 시리즈에서 사고가 가장 비싼 페이지</p>
@@ -20,7 +20,7 @@
 
 <pre><code>submitTransaction(출금 지시) → TxRef { value, chainId }</code></pre>
 
-<p>제출 전의 <b>견적(estimateFee)</b>은 5장에서 봤습니다. 견적은 보장이 아니므로 실제 수수료는 벤더가 <b>제출·조립 단계에서 재확정</b>합니다.</p>
+<p>제출 전의 <b>견적(estimateFee)</b>은 6장에서 봤습니다. 견적은 보장이 아니므로 실제 수수료는 벤더가 <b>제출·조립 단계에서 재확정</b>합니다.</p>
 
 <h2>출금 제출 — 파이프라인이 벤더 안으로 들어간다</h2>
 
@@ -64,7 +64,7 @@ sequenceDiagram
 
 <h2>막혔을 때 — boost 와 cancel (Admin 운영)</h2>
 
-<p>확정한 수수료가 시세보다 낮으면 트랜잭션이 mempool 에 걸려 <b>막힙니다</b>. EVM(이더리움·Base 모두)에선 대응이 둘입니다. <b>boost</b> — 같은 순번에 수수료만 올려 다시 보내는 재전송(RBF). Fireblocks 는 전파(Broadcasting) 중 boost 를 지원합니다. <b>cancel</b> — 출금 자체를 철회. 두 동작 모두 나가는 돈에 개입하는 <b>Admin 백엔드</b>의 운영입니다. Service 는 고객 출금을 제출할 뿐, boost·cancel 은 부르지 않습니다.</p>
+<p>확정한 수수료가 시세보다 낮으면 트랜잭션이 mempool 에 걸려 <b>막힙니다</b>. EVM(이더리움·Base 모두)에선 대응이 둘입니다. <b>boost</b> — 같은 순번에 수수료만 올려 다시 보내는 재전송(RBF). Fireblocks 는 전파(Broadcasting) 중 boost 를 지원합니다. <b>cancel</b> — 출금 자체를 철회. 두 동작 모두 나가는 돈에 개입하는 <b>Admin 백엔드</b>의 운영입니다. Service 는 고객 출금을 제출할 뿐, boost·cancel 은 부르지 않습니다. 막힌 건의 감지(오래 CONFIRMING 인 건 골라내기)는 <b>4장의 막힘 점검</b>이 올립니다.</p>
 
 <h2>상태 한 장 — Fireblocks 필드를 공통 어휘로</h2>
 
@@ -79,16 +79,16 @@ sequenceDiagram
 <tr><td><b>FAILED</b></td><td>영구 실패 — 사유 동반 (수수료 부족·거절·revert 등)</td><td>FAILED · REJECTED · BLOCKED</td></tr>
 </tbody>
 </table>
-<p class="table-note">confirm(체인 등장)과 finality(확정)를 <b>numOfConfirmations</b> 로 가른다. 체인에 올라간 순간이 CONFIRMING 이고, DCCP(확정 정책)가 정한 임계 confirmation 에 도달하면 COMPLETED = finality 다(4·7장과 같은 기준). 이 문서는 이 넷만 밖으로 내보낸다 — 벤더 내부의 세부 단계는 SUBMITTED 로 접어 감춘다. 입금 쪽 상태 흐름은 4장.</p>
+<p class="table-note">confirm(체인 등장)↔finality(확정) 판정 기준은 <b>4장과 같다</b>(numOfConfirmations vs DCCP 임계). 이 문서는 이 넷만 밖으로 내보낸다 — 벤더 내부의 세부 단계는 SUBMITTED 로 접어 감춘다. 입금 쪽 상태 흐름은 5장.</p>
 
 <p>상태 이름과 확정 정책(DCCP)은 벤더 안에 있지만, 그것을 공통 어휘 넷으로 번역하는 어댑터와 막혔을 때의 boost·cancel(Admin) 판단은 이쪽 몫입니다 — 언제 boost 할지, 언제 철회할지 같은 업무 정책은 매니저가 흡수하지 못합니다.</p>
 
 <p class="foot">더 깊이: 조립 시 수수료 설정·인상 재전송 — <a href="../wallet-service-components/component-tx-nonce.html">가이드 4장</a> · 서명 직전 검증 — <a href="../wallet-service-components/component-signing.html">가이드 5.5 절</a> · 출금 시나리오 — <a href="../wallet-service-components/scenario-withdrawal.html">가이드 11장</a>.</p>
 
 <div class="pager">
-<a href="05-estimate-fee.html">← 5. 수수료 견적</a>
+<a href="06-estimate-fee.html">← 6. 수수료 견적</a>
 <a href="index.html">목차</a>
-<a href="07-balance-history.html">7. 잔액과 내역 →</a>
+<a href="08-balance-history.html">8. 잔액과 내역 →</a>
 </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>

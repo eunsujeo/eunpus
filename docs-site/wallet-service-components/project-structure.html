@@ -148,7 +148,7 @@ flowchart TB
 <div class="callout">
 <div class="callout-title">이게 "교체 가능" 의 실체</div>
 <ul>
-<li><strong>어댑터 교체 = 모듈 교체</strong> — 지금은 <code>adapters/fireblocks</code> 하나만 라이브다. 훗날 벤더를 바꾸거나 자체 구축으로 전환하면 새 어댑터 모듈을 이 자리에 더하고 <code>apps/*-api</code> 의 wiring 한 줄만 바꾼다 — <code>domain</code>·<code>backend</code> 코드는 그대로(다만 주소·잔액은 이전되지 않아 자금 sweep 이 별도 비용, <a href="../wallet-design-walkthrough/08-switch-extend.html">워크스루 8p</a>).</li>
+<li><strong>어댑터 교체 = 모듈 교체</strong> — 지금은 <code>adapters/fireblocks</code> 하나만 라이브다. 훗날 벤더를 바꾸거나 자체 구축으로 전환하면 새 어댑터 모듈을 이 자리에 더하고 <code>apps/*-api</code> 의 wiring 한 줄만 바꾼다 — <code>domain</code>·<code>backend</code> 코드는 그대로(다만 주소·잔액은 이전되지 않아 자금 sweep 이 별도 비용, <a href="../wallet-design-walkthrough/09-switch-extend.html">워크스루 8p</a>).</li>
 <li><strong>포트는 한 곳(domain)</strong> — 어댑터·앱이 전부 같은 포트 타입을 import 하니, 시그니처가 어긋나면 컴파일에서 잡힌다.</li>
 <li><strong>EVM 체인 추가 = 어댑터의 체인·자산 등록만</strong> — 이더리움·Base 는 같은 EVM 이라 어댑터가 등록만 늘리면 되고 <code>backend</code>·<code>domain</code> 은 0줄(<a href="component-multichain.html">2</a> "EVM 차이 흡수"). Fireblocks 가 그 체인을 지원하기만 하면 된다.</li>
 </ul>

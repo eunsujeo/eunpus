@@ -171,14 +171,14 @@ sequenceDiagram
 <h2>짚어둘 두 가지</h2>
 <div class="callout">
 <div class="callout-title">① "pending" 이 두 종류다</div>
-<p style="margin:0">회계 1단계 pending(사용자 요청 즉시 — CL/DL 에 기록)과 매니저의 <code>onChainEvent</code> PENDING(온체인 감지 시점)은 서로 다른 사건이다. 처리중을 사용가능(confirmed)으로 넘기는 트리거는 매니저의 <b>CONFIRMED</b> 이벤트다. 감지 ≠ 확정이라, 감지하자마자 잔액을 올리면 reorg 때 "없는 돈을 이미 쓴" 상태가 된다(<a href="../wallet-design-walkthrough/04-deposit.html">매니저 워크스루 4장</a>).</p>
+<p style="margin:0">회계 1단계 pending(사용자 요청 즉시 — CL/DL 에 기록)과 매니저의 <code>onChainEvent</code> PENDING(온체인 감지 시점)은 서로 다른 사건이다. 처리중을 사용가능(confirmed)으로 넘기는 트리거는 매니저의 <b>CONFIRMED</b> 이벤트다. 감지 ≠ 확정이라, 감지하자마자 잔액을 올리면 reorg 때 "없는 돈을 이미 쓴" 상태가 된다(<a href="../wallet-design-walkthrough/04-detect-confirm.html">매니저 워크스루 4장</a>).</p>
 </div>
 <div class="callout">
 <div class="callout-title">② 교체해도 위층은 그대로다</div>
-<p style="margin:0">자체↔Fireblocks 를 바꿔도 갈리는 건 2단계의 <code>onChainEvent</code>·출금 구현뿐이다. 1단계 + 4원장 + 델타 + 대사는 손대지 않는다. "매니저는 swappable primitive 층, 회계는 그 위"라는 명제의 실제 모습이 이 한 장이다(전환의 비용은 <a href="../wallet-design-walkthrough/08-switch-extend.html">매니저 워크스루 8장</a>).</p>
+<p style="margin:0">자체↔Fireblocks 를 바꿔도 갈리는 건 2단계의 <code>onChainEvent</code>·출금 구현뿐이다. 1단계 + 4원장 + 델타 + 대사는 손대지 않는다. "매니저는 swappable primitive 층, 회계는 그 위"라는 명제의 실제 모습이 이 한 장이다(전환의 비용은 <a href="../wallet-design-walkthrough/09-switch-extend.html">매니저 워크스루 9장</a>).</p>
 </div>
 
-<p class="foot">정산 흐름 본문: <a href="index.html">정산 워크스루 목차</a> · 매니저 primitive 상세: <a href="../wallet-design-walkthrough/index.html">자체 블록체인 매니저 설계 워크스루</a>(입금 <a href="../wallet-design-walkthrough/04-deposit.html">4장</a> · 출금 <a href="../wallet-design-walkthrough/06-withdrawal.html">6장</a> · 수수료 <a href="../wallet-design-walkthrough/05-estimate-fee.html">5장</a>).</p>
+<p class="foot">정산 흐름 본문: <a href="index.html">정산 워크스루 목차</a> · 매니저 primitive 상세: <a href="../wallet-design-walkthrough/index.html">자체 블록체인 매니저 설계 워크스루</a>(감지와 확정 <a href="../wallet-design-walkthrough/04-detect-confirm.html">4장</a> · 입금 <a href="../wallet-design-walkthrough/05-deposit.html">5장</a> · 출금 <a href="../wallet-design-walkthrough/07-withdrawal.html">7장</a> · 수수료 <a href="../wallet-design-walkthrough/06-estimate-fee.html">6장</a>).</p>
 
 <div class="pager">
 <a href="index.html">← 정산 워크스루 목차</a>

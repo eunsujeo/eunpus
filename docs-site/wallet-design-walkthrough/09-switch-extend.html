@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>8. 확장 — 포트가 EVM 체인 확장·매니저 교체를 흡수하는 법</title>
+<title>9. 확장 — 포트가 EVM 체인 확장·매니저 교체를 흡수하는 법</title>
 <meta content="noindex" name="robots"/>
 <link href="assets/walkthrough.css" rel="stylesheet"/>
 </head>
@@ -11,17 +11,17 @@
 <div class="wrap">
 <p class="series"><a href="index.html">지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</a></p>
 <div class="progress">
-<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-deposit.html">4</a><a href="05-estimate-fee.html">5</a><a href="06-withdrawal.html">6</a><a href="07-balance-history.html">7</a><span class="cur">8</span><a href="09-ramp-swap.html">9</a>
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-detect-confirm.html">4</a><a href="05-deposit.html">5</a><a href="06-estimate-fee.html">6</a><a href="07-withdrawal.html">7</a><a href="08-balance-history.html">8</a><span class="cur">9</span><a href="10-ramp-swap.html">10</a>
 </div>
 <h1>확장 — 포트가 EVM 체인 확장·매니저 교체를 흡수하는 법</h1>
-<p class="subtitle">1~7페이지가 보여준 것을 거둬들이고, 포트 하나가 벤더와 체인의 변화를 흡수한다는 전제를 증명으로 닫는다</p>
+<p class="subtitle">1~8페이지가 보여준 것을 거둬들이고, 포트 하나가 벤더와 체인의 변화를 흡수한다는 전제를 증명으로 닫는다</p>
 
-<h2>포트가 이룬 것 — 1~7페이지를 거둬들이면</h2>
+<h2>포트가 이룬 것 — 1~8페이지를 거둬들이면</h2>
 
-<p>1~7페이지 내내 두 백엔드는 Fireblocks 를 <b>포트로만</b> 불렀습니다. 벤더 SDK 타입도, 체인 분기도 업무 로직에 새지 않았죠. 이 한 가지 규율이 세 가지 성질을 만들었습니다 — 그리고 이 세 성질이 이 페이지가 증명할 전부입니다.</p>
+<p>1~8페이지 내내 두 백엔드는 Fireblocks 를 <b>포트로만</b> 불렀습니다. 벤더 SDK 타입도, 체인 분기도 업무 로직에 새지 않았죠. 이 한 가지 규율이 세 가지 성질을 만들었습니다 — 그리고 이 세 성질이 이 페이지가 증명할 전부입니다.</p>
 
 <table>
-<thead><tr><th style="width:22%">성질</th><th>1~7페이지에서 본 근거</th></tr></thead>
+<thead><tr><th style="width:22%">성질</th><th>1~8페이지에서 본 근거</th></tr></thead>
 <tbody>
 <tr><td><b>벤더 독립</b></td><td>백엔드는 <code>createDepositAddress</code>·<code>submitTransaction</code>·<code>getBalance</code> 같은 업무 동사만 부른다. Fireblocks 의 <code>createVaultAccount</code>·<code>createTransaction</code> 은 어댑터 안에만 있다(0p 매트릭스). 벤더를 바꿔도 백엔드 코드는 그대로다.</td></tr>
 <tr><td><b>다중 EVM 체인</b></td><td>이더리움과 Base 는 같은 EVM 이라 포트 표면·동사·페이지가 동일하다 — 체인만 바뀐다(0p). 체인 분기는 포트 뒤 어댑터에 갇힌다.</td></tr>
@@ -31,7 +31,7 @@
 
 <p>세 번째 성질은 주장이 아니라 <b>시험</b>입니다. 포트별 계약 테스트 한 벌을 만들어 실제 Fireblocks 어댑터(샌드박스)와 가짜 구현이 <b>똑같이 통과</b>하게 하면, "포트의 의미가 구현과 무관하게 보존된다"가 측정 가능한 사실이 됩니다.</p>
 
-<p>다만 약속 전부가 계약 테스트에 들어가지는 않습니다. 계약 테스트가 맡는 건 <b>포트 밖에서 관찰 가능한 약속</b>입니다(조회는 만들지 않는다, 등록까지가 발급, 없는 기능은 타입 부재). "기록은 전파 전"(6p) 같은 내부 순서 약속은 백엔드 단위 테스트가, "판정은 가용만"(7p) 은 잔액 로직 테스트가 나눠 맡습니다. 이 세 겹이 합쳐져야 "포트가 변화를 흡수한다"는 증거가 완성됩니다.</p>
+<p>다만 약속 전부가 계약 테스트에 들어가지는 않습니다. 계약 테스트가 맡는 건 <b>포트 밖에서 관찰 가능한 약속</b>입니다(조회는 만들지 않는다, 등록까지가 발급, 없는 기능은 타입 부재). "기록은 전파 전"(7p) 같은 내부 순서 약속은 백엔드 단위 테스트가, "판정은 가용만"(8p) 은 잔액 로직 테스트가 나눠 맡습니다. 이 세 겹이 합쳐져야 "포트가 변화를 흡수한다"는 증거가 완성됩니다.</p>
 
 <h2>EVM 체인 확장 — Base 는 이미 붙었다</h2>
 
@@ -85,7 +85,7 @@ flowchart LR
     classDef warn fill:#fef3c7,stroke:#d97706;
     class A,D step; class B,C warn;
 </pre></div>
-<p class="diagram-caption">벤더 교체(또는 vault 재구성) 운영 타임라인. 파랑은 값싼 코드·설정 작업, <b>노랑 구간이 비용의 전부</b>다. 그 비용은 <b>구 주소 수와 잔액에 비례</b>한다 — 옮길 돈이 많을수록 sweep 출금 건수·수수료가 는다. 늦은 입금을 놓치지 않도록 구 주소 watch-list 를 한동안 유지하다가, 잔액을 새 vault 로 출금(6p 출금 그대로)하고, DB 에 주소의 세대를 기록해 닫는다. 정책 게이트의 규칙(화이트리스트·한도·일일 누적)도 새 벤더의 거버넌스 정책으로 이관하고 동등성을 검증하는 것까지가 교체다(6p).</p>
+<p class="diagram-caption">벤더 교체(또는 vault 재구성) 운영 타임라인. 파랑은 값싼 코드·설정 작업, <b>노랑 구간이 비용의 전부</b>다. 그 비용은 <b>구 주소 수와 잔액에 비례</b>한다 — 옮길 돈이 많을수록 sweep 출금 건수·수수료가 는다. 늦은 입금을 놓치지 않도록 구 주소 watch-list 를 한동안 유지하다가, 잔액을 새 vault 로 출금(7p 출금 그대로)하고, DB 에 주소의 세대를 기록해 닫는다. 정책 게이트의 규칙(화이트리스트·한도·일일 누적)도 새 벤더의 거버넌스 정책으로 이관하고 동등성을 검증하는 것까지가 교체다(7p).</p>
 
 <h2>Service·Admin 물리 분리가 확장·감사에 주는 이점</h2>
 
@@ -142,7 +142,7 @@ flowchart TB
 flowchart LR
     subgraph OUR["인프라"]
       SAPI["Service 백엔드<br/>고객 런타임"]
-      HOOK["폴링 워커<br/>입금·상태 감지 — 주기 조회 (4·6p)"]
+      HOOK["폴링 워커<br/>입금·상태 감지 — 주기 조회 (4·7p)"]
       AAPI["Admin 백엔드<br/>정책·승인·sweep·rebalance"]
       DB[("DB<br/>Service·Admin 공용")]
     end
@@ -169,15 +169,15 @@ flowchart LR
 
 <div class="callout">
 <div class="callout-title">마무리 — 포트 하나가 두 축의 변화를 흡수한다</div>
-<p style="margin:0"><b>"매니저를 바꿔도 두 백엔드는 그대로다."</b> 1~7페이지의 모든 포트 호출이 그 근거이고, 계약 테스트로 못 박은 뒤 어댑터를 더하고 주입만 바꾼다 — 남는 건 자금 sweep 운영뿐이다. <b>"EVM 체인이 늘어도 영향이 없다."</b> Base 가 이미 이더리움과 같은 EVM 어댑터로 붙었고, 다른 L2 는 어댑터의 등록 한 줄이다. <b>"운영이 런타임을 안 건드린다."</b> 확장·교체·sweep 은 Admin 경계 안에서 일어나 고객 런타임(Service)과 분리된다. 포트 하나가 벤더와 체인, 두 축의 변화를 모두 흡수한다 — 그것이 이 문서의 1차 목표였다.</p>
+<p style="margin:0"><b>"매니저를 바꿔도 두 백엔드는 그대로다."</b> 1~8페이지의 모든 포트 호출이 그 근거이고, 계약 테스트로 못 박은 뒤 어댑터를 더하고 주입만 바꾼다 — 남는 건 자금 sweep 운영뿐이다. <b>"EVM 체인이 늘어도 영향이 없다."</b> Base 가 이미 이더리움과 같은 EVM 어댑터로 붙었고, 다른 L2 는 어댑터의 등록 한 줄이다. <b>"운영이 런타임을 안 건드린다."</b> 확장·교체·sweep 은 Admin 경계 안에서 일어나 고객 런타임(Service)과 분리된다. 포트 하나가 벤더와 체인, 두 축의 변화를 모두 흡수한다 — 그것이 이 문서의 1차 목표였다.</p>
 </div>
 
 <p class="foot">더 깊이: 포트별 교체 구조 — <a href="../wallet-service-components/abstraction.html">가이드 13장</a> · DI 어댑터 주입 — <a href="../wallet-service-components/project-structure.html">17장</a> · 계약 테스트 구성은 본 워크스루의 제안(스켈레톤 미반영).</p>
 
 <div class="pager">
-<a href="07-balance-history.html">← 7. 잔액과 내역</a>
+<a href="08-balance-history.html">← 8. 잔액과 내역</a>
 <a href="index.html">목차</a>
-<a href="09-ramp-swap.html">9. 온·오프램프·스왑 →</a>
+<a href="10-ramp-swap.html">10. 온·오프램프·스왑 →</a>
 </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>

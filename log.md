@@ -7444,3 +7444,13 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 손실 검토: OVERLAP_MS·sort ASC·방향 판정 등은 상세 다이어그램·급소 표·인트로 문단이 커버, opaque page 커서 주석(미확정)만 소실 — T02 에 이미 기록됨
 - 영향받은 페이지: docs-site 04
 - 신규 entity: 0
+
+## Stage 125 (2026-07-03) — 워크스루 재편: 공통 페이지 "4. 감지와 확정" 신설, 4~9 → 5~10
+- 계기: 입·출금 공유 내용(확정 기준·DCCP·폴링·막힘 점검) 분리 결정 — canonical 참조(C안) 대신 정통 분리(A안), "할려면 제대로"
+- 신설: 04-detect-confirm.html "감지와 확정 — 폴링·상태 판정·DCCP" (입·출금 공통 기준) — onChainEvent 시그니처·confirm/finality callout(트랜잭션 일반화)·DCCP+임계+zero-conf·감지 경로 3수단·폴링 상세 루프(출금 분기 = 7장 소비 명시)·막힘 점검
+- 재편: 04-deposit→05-deposit("입금 — 한 건이 잔액이 되기까지", 입금 고유만: 여정 다이어그램·상태/동결·reorg) · 05→06 estimate-fee · 06→07 withdrawal · 07→08 balance · 08→09 switch · 09→10 ramp
+- 기계 패스: 파일명 href(워크스루+components+ramp-settlement) · 번호 토큰(Np/N장/N페이지, 가이드 N장 제외, 복합 N·Mp) · title 태그 · 진행바 11슬롯 재생성 · pager 재연결 · index 목차 재작성
+- 의미 패스: 이동 내용을 가리키는 참조 → 4장 재지정(00 매트릭스 onChainEvent·POLL 노드·02 입금 감지·08 폴링/대사 규칙 6곳·09 캡션·10 onChainEvent/입금 감지) · 복합 토큰 이중 시프트 복구(4·6p→4·7p 등) · 07 상태 표 note 를 "판정 기준은 4장과 같다"로 축소(중복 제거) + 07 에 "막힘 감지는 4장" 역참조 추가
+- 검증: 3개 docs-site consistency PASS · 내부/외부(ramp) 링크 깨짐 0 · 구 파일명 잔재 0 · 복합 번호 의심 패턴 0
+- 영향받은 페이지: 워크스루 전체 12파일 + wallet-service-components/project-structure + ramp-settlement 3파일
+- 신규 entity: 0
