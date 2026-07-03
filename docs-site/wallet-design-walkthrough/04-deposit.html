@@ -43,11 +43,11 @@ sequenceDiagram
     Note over POLL,FB: 주기 폴링 — outbound · 지난 폴 이후 갱신된 tx 만 받는다
     POLL->>FB: GET /v1/transactions · orderBy=lastUpdated · after=커서 · limit=200
     FB-->>POLL: status CONFIRMING (체인 등장·미확정)
-    POLL->>DB: 대기(pending)로 기록 — 가용(available)엔 아직 안 더한다
+    POLL->>DB: tx 기록 status=CONFIRMING · 금액은 대기(pending) 칸 — 가용엔 아직 안 더한다
     Note over CH,FB: confirmation 이 쌓인다 — numOfConfirmations 가 DCCP 임계에 닿을 때까지
     POLL->>FB: GET /v1/transactions · 같은 조회, 다음 주기
     FB-->>POLL: status COMPLETED (DCCP 임계 도달 = finality)
-    POLL->>DB: 대기 → 가용(available) 이동
+    POLL->>DB: tx 기록 status=COMPLETED · 금액은 대기 → 가용(available) 이동
 </pre></div>
 <h2>DCCP — 무엇이 CONFIRMING 을 COMPLETED 로 바꾸는가</h2>
 

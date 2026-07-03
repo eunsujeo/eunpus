@@ -7392,3 +7392,9 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 고객 통지 제거(3곳: 메인·상세 다이어그램·코드 주석) — 통지는 폴링 워커(원장 반영)가 아니라 상위 레이어(알림 채널) 몫, 계층 혼합 정정
 - 영향받은 페이지: docs-site 04
 - 신규 entity: 0
+
+## Stage 117 (2026-07-03) — 4페이지 메인 다이어그램: tx 상태 평면·잔액 칸 평면 분리 표기
+- 계기: 사용자 질문 "왜 pending 으로 기록? CONFIRMING 이 아니라" → 두 어휘가 다른 층(CONFIRMING=벤더 tx 상태 / pending=원장 잔액 칸)임을 다이어그램에 표기
+- DB 화살표 2곳: "tx 기록 status=CONFIRMING · 금액은 대기(pending) 칸" / "tx 기록 status=COMPLETED · 금액은 대기 → 가용(available) 이동"
+- 영향받은 페이지: docs-site 04
+- 신규 entity: 0
