@@ -7311,3 +7311,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 유지: confirm/finality·DCCP·reorg·networkStatus·웹훅은 보조 callout(canonical)·3수단 표·코드·급소 표(요약 레퍼런스)
 - 영향받은 페이지: docs-site 04
 - 신규 entity: 0
+
+## Stage 107 (2026-07-03) — DCCP "설정=Admin" 정정: Support 제출·승인 (셀프서비스 불가)
+- 계기: 사용자 지적 — DCCP 는 Admin 이 설정하는 게 아닌데 tooltip 이 "(설정은 Admin)"
+- 근거(1차): build-a-custom-deposit-control-and-confirmation-policy.md — "template download → modify → Fireblocks Support 제출 → review/approval/implementation. Customer self-service 불가"
+- 정정: DCCP tooltip 3곳(04·06·07) "(설정은 Admin)" → "(커스텀 변경은 Fireblocks Support 제출·승인)" · 04 본문 5곳 — h2 괄호 제거, 절차(템플릿→Support 제출→검토·승인 반영) 명시, "조정 권한과 책임은 Admin" → "어떤 임계를 요청할지는 Admin(운영)"으로 역할 재정의(판단·요청=Admin, 반영=Support)
+- 영향받은 페이지: docs-site 04·06·07
+- 신규 entity: 0

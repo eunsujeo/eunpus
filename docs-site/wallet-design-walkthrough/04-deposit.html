@@ -22,7 +22,7 @@
 <div class="callout-title">이 페이지가 붙잡는 구분 — confirm(체인 등장) vs finality(확정)</div>
 <p style="margin:0 0 8px">입금 하나의 상태는 Fireblocks 안에서 <b>BROADCASTING → CONFIRMING → COMPLETED</b> 순으로 흐른다. 이 중 직접 잔액을 움직일 때 붙잡아야 할 두 지점이 <b>CONFIRMING</b> 과 <b>COMPLETED</b> 다.</p>
 <p style="margin:0 0 8px"><b>CONFIRMING = confirm 상태.</b> 트랜잭션이 체인에 올라가 블록에 담겼고, 그 위로 confirmation 이 쌓이는 중이다 — 하지만 <b>아직 확정 아님</b>. 이 단계의 자금은 고객에게 "확인 중"으로만 보여주고 available 잔액에는 넣지 않는다.</p>
-<p style="margin:0"><b>COMPLETED = finality 상태.</b> confirmation 이 <b>DCCP<span class="g" data-tip="Deposit Control and Confirmation Policy — 입금을 몇 confirmation 에서 확정(finality)으로 볼지 체인별로 정하는 Fireblocks 정책 (설정은 Admin)" tabindex="0">?</span>(확정 정책)가 정한 임계 수</b>에 도달했다는 뜻이고, 이때부터 이 입금을 <b>확정(finality)</b>으로 보고 available 에 반영한다. 둘을 프로그램으로 가르는 방법은 두 가지다 — <code>status</code> 값(CONFIRMING 인지 COMPLETED 인지)으로 갈리거나, tx 객체의 <code>numOfConfirmations</code>(실제 누적 confirmation 수)를 finality 임계값과 비교한다.</p>
+<p style="margin:0"><b>COMPLETED = finality 상태.</b> confirmation 이 <b>DCCP<span class="g" data-tip="Deposit Control and Confirmation Policy — 입금을 몇 confirmation 에서 확정(finality)으로 볼지 체인별로 정하는 Fireblocks 정책 (커스텀 변경은 Fireblocks Support 제출·승인)" tabindex="0">?</span>(확정 정책)가 정한 임계 수</b>에 도달했다는 뜻이고, 이때부터 이 입금을 <b>확정(finality)</b>으로 보고 available 에 반영한다. 둘을 프로그램으로 가르는 방법은 두 가지다 — <code>status</code> 값(CONFIRMING 인지 COMPLETED 인지)으로 갈리거나, tx 객체의 <code>numOfConfirmations</code>(실제 누적 confirmation 수)를 finality 임계값과 비교한다.</p>
 </div>
 
 <h2>입금 한 건이 흐르는 길 — 폴링으로 감지, 확정까지</h2>
@@ -58,12 +58,12 @@ sequenceDiagram
 <p style="margin:0"><b>webhook 을 쓸 수 있는 환경이면</b> 폴 주기 사이의 지연을 줄이는 <b>보조</b>로 붙일 수 있다. 다만 webhook 은 누락·지연·중복이 가능하므로 신뢰의 근거는 어디까지나 폴링·대사에 두고, webhook 은 "빨리 알려주는 힌트"로만 취급한다 — 그 누락은 다음 폴이 어차피 메운다. 전송 방향(push↔pull)만 다를 뿐 <b>상태·확정 판정(CONFIRMING/COMPLETED·DCCP·numOfConfirmations)은 동일</b>하다.</p>
 </div>
 
-<h2>DCCP — 무엇이 CONFIRMING 을 COMPLETED 로 바꾸는가 (설정=Admin)</h2>
+<h2>DCCP — 무엇이 CONFIRMING 을 COMPLETED 로 바꾸는가</h2>
 
-<p>CONFIRMING 에서 COMPLETED 로 넘어가는 <b>임계 confirmation 수를 정하는 정책</b>이 <b>DCCP(Deposit Control and Confirmation Policy)</b> 입니다. "finality"는 체인이 자연히 주는 성질이 아니라 DCCP 가 정의하는 확정 기준입니다. <b>설정·임계값 관리는 Admin</b>, 이벤트를 받아 잔액에 반영하는 런타임은 <b>Service</b> 의 몫입니다.</p>
+<p>CONFIRMING 에서 COMPLETED 로 넘어가는 <b>임계 confirmation 수를 정하는 정책</b>이 <b>DCCP(Deposit Control and Confirmation Policy)</b> 입니다. "finality"는 체인이 자연히 주는 성질이 아니라 DCCP 가 정의하는 확정 기준입니다. 커스텀 DCCP 는 <b>Console 에서 직접 설정하는 게 아니라</b>, 정책 템플릿을 작성해 <b>Fireblocks Support 에 제출 → 검토·승인 후 반영</b>됩니다. 어떤 임계를 요청할지 정하는 책임은 <b>Admin(운영)</b>, 이벤트를 받아 잔액에 반영하는 런타임은 <b>Service</b> 의 몫입니다.</p>
 
 <div class="callout">
-<div class="callout-title">DCCP 임계값 — 기본값과 커스텀 (설정 주체 = Admin)</div>
+<div class="callout-title">DCCP 임계값 — 기본값과 커스텀</div>
 <p style="margin:0 0 8px">Fireblocks 의 DCCP 기본 임계 confirmation 수는 체인마다 다르다.</p>
 <ul style="margin:0 0 8px">
 <li><b>대부분의 체인 = 1</b> — 블록 하나면 확정으로 본다.</li>
@@ -71,12 +71,12 @@ sequenceDiagram
 <li><b>finality 속성을 가진 체인</b> — 체인별로 고정(rigid)된 값을 쓴다.</li>
 <li><b>컨트랙트 호출(contract call) = 최소 3 권장</b> — 단순 전송보다 보수적으로.</li>
 </ul>
-<p style="margin:0">이 값은 <b>커스텀 DCCP</b> 로 조정할 수 있고, 조정 권한과 책임은 <b>Admin</b> 에 둔다. EVM 대상(이더리움·Base)에서 어떤 임계를 쓸지는 자산·리스크 정책에 따라 Admin 이 정하고, Service 는 그 결과로 도착한 COMPLETED 만 신뢰하면 된다.</p>
+<p style="margin:0">이 값은 <b>커스텀 DCCP</b> 로 조정할 수 있는데, 직접 설정이 아니라 <b>템플릿 작성 → Fireblocks Support 제출 → 검토·승인 후 반영</b>이다. EVM 대상(이더리움·Base)에서 어떤 임계를 요청할지는 자산·리스크 정책에 따라 Admin 이 정하고, Service 는 그 결과로 도착한 COMPLETED 만 신뢰하면 된다.</p>
 </div>
 
 <div class="callout warn">
 <div class="callout-title">함정 — 첫 COMPLETED 를 곧 finality 로 단정하지 말 것 (zero-confirmation)</div>
-<p style="margin:0">Deposit Policy 를 <b>zero-confirmation</b> 으로 두면, COMPLETED 가 <b>블록에 등장하는 시점에 먼저</b> 뜰 수 있고 이후 폴마다 관찰값(등장 + 1차 confirm + 추가 confirm)이 계속 갱신될 수 있다. 즉 이 설정에서는 "COMPLETED 를 처음 관찰했다"가 곧 "충분한 confirmation 이 쌓였다"를 뜻하지 않는다. 그래서 잔액 반영 판정은 status 만 보지 말고 <b><code>numOfConfirmations</code> 를 finality 임계값과 직접 비교</b>하는 편이 안전하다. 어떤 임계를 finality 로 볼지는 위 DCCP(Admin 설정)와 한 몸이다.</p>
+<p style="margin:0">Deposit Policy 를 <b>zero-confirmation</b> 으로 두면, COMPLETED 가 <b>블록에 등장하는 시점에 먼저</b> 뜰 수 있고 이후 폴마다 관찰값(등장 + 1차 confirm + 추가 confirm)이 계속 갱신될 수 있다. 즉 이 설정에서는 "COMPLETED 를 처음 관찰했다"가 곧 "충분한 confirmation 이 쌓였다"를 뜻하지 않는다. 그래서 잔액 반영 판정은 status 만 보지 말고 <b><code>numOfConfirmations</code> 를 finality 임계값과 직접 비교</b>하는 편이 안전하다. 어떤 임계를 finality 로 볼지는 위 DCCP 와 한 몸이다.</p>
 </div>
 
 <h2>되돌림(reorg) — EVM 이라 남는 속성</h2>
@@ -86,7 +86,7 @@ sequenceDiagram
 <div class="callout">
 <div class="callout-title">networkStatus — CONFIRMING/COMPLETED 를 뒷받침하는 하위 신호</div>
 <p style="margin:0 0 8px">tx 객체의 <code>networkStatus</code> 하위값은 <b>DROPPED · BROADCASTING · CONFIRMING · CONFIRMED · FAILED</b> 를 취한다. 상위 <code>status</code>(CONFIRMING/COMPLETED)가 잔액 판정의 1차 기준이라면, <code>networkStatus</code> 는 체인 레벨에서 실제로 무슨 일이 있었는지(전파됐는지·확정됐는지·떨어졌는지)를 보여주는 보조 신호다.</p>
-<p style="margin:0"><b>Base 는 이더리움 위에 얹은 L2</b> 라 소프트 확정(시퀀서 수용)과 L1 최종성 사이에 시차가 있다 — 같은 EVM 이라 처리 경로는 동일하지만, 어느 시점을 finality 로 볼지의 여유(DCCP 임계)를 이더리움과 다르게 둘 수 있다. 이 판단도 Admin 의 DCCP 설정에 담긴다.</p>
+<p style="margin:0"><b>Base 는 이더리움 위에 얹은 L2</b> 라 소프트 확정(시퀀서 수용)과 L1 최종성 사이에 시차가 있다 — 같은 EVM 이라 처리 경로는 동일하지만, 어느 시점을 finality 로 볼지의 여유(DCCP 임계)를 이더리움과 다르게 둘 수 있다. 이 판단도 Admin 이 정해 Support 에 요청하는 DCCP 임계에 담긴다.</p>
 </div>
 
 

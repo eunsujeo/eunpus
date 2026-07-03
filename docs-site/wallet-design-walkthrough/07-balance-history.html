@@ -66,7 +66,7 @@ flowchart LR
 
 <div class="callout">
 <div class="callout-title">확정 임계는 정책(DCCP)이 정한다 — 대부분 1, 예외가 있다</div>
-<p style="margin:0 0 8px">Fireblocks 거래 상태는 전파 뒤 <b>BROADCASTING → CONFIRMING → COMPLETED</b> 로 흐릅니다. <b>COMPLETED = 확정 정책이 정한 임계 confirmation 수에 도달</b>한 상태이고, 그때가 곧 finality 입니다. 그 임계는 확정 정책(Fireblocks 의 DCCP<span class="g" data-tip="Deposit Control and Confirmation Policy — 입금을 몇 confirmation 에서 확정(finality)으로 볼지 체인별로 정하는 Fireblocks 정책 (설정은 Admin)" tabindex="0">?</span>)이 체인별로 정하는데, <b>기본값은 대부분 1 confirmation</b>입니다. 예외로 이더리움 클래식은 372, 컨트랙트 호출은 3 confirmation 을 권장 최소로 둡니다. (source: transaction / DCCP)</p>
+<p style="margin:0 0 8px">Fireblocks 거래 상태는 전파 뒤 <b>BROADCASTING → CONFIRMING → COMPLETED</b> 로 흐릅니다. <b>COMPLETED = 확정 정책이 정한 임계 confirmation 수에 도달</b>한 상태이고, 그때가 곧 finality 입니다. 그 임계는 확정 정책(Fireblocks 의 DCCP<span class="g" data-tip="Deposit Control and Confirmation Policy — 입금을 몇 confirmation 에서 확정(finality)으로 볼지 체인별로 정하는 Fireblocks 정책 (커스텀 변경은 Fireblocks Support 제출·승인)" tabindex="0">?</span>)이 체인별로 정하는데, <b>기본값은 대부분 1 confirmation</b>입니다. 예외로 이더리움 클래식은 372, 컨트랙트 호출은 3 confirmation 을 권장 최소로 둡니다. (source: transaction / DCCP)</p>
 <p style="margin:0">그래서 대기↔가용 경계는 직접 블록을 세서 정하는 게 아니라 <b>벤더가 정책대로 계산해 상태로 알려주는</b> 값입니다. 상태(CONFIRMING/COMPLETED)와 numOfConfirmations 를 <b>읽어서</b> 세 칸에 반영합니다. 이더리움과 Base 는 같은 EVM 이라 이 흐름이 동일합니다.</p>
 </div>
 
