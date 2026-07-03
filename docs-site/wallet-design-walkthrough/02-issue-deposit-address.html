@@ -16,8 +16,6 @@
 <h1>입금 주소 생성 — createDepositAddress</h1>
 <p class="subtitle">(account, asset)당 한 번 — 자산 지갑을 활성화해 단일 주소를 얻는다. EVM 주소는 memoTag 가 null</p>
 
-<p><b>무엇·언제</b>: Service 백엔드가 <code>createDepositAddress(accountId, asset)</code> 를 부릅니다 — <b>(account, asset)당 한 번</b>, 그 자산의 지갑을 활성화해 단일 주소를 얻습니다(1페이지 <code>createAccount</code> 와 같은 <b>create-once</b>). EVM 은 vault·자산당 주소가 <b>하나뿐</b>이라(같은 자산의 추가 주소가 필요하면 vault account 를 더 만들어야 함), 활성화가 곧 그 주소의 발급입니다(<b>EVM 은 memoTag 가 항상 null</b>). 이후 그 주소를 다시 부르는 <b>조회는 getDepositAddress(3페이지, 읽기)</b>가 맡습니다. 규칙 하나, <b>주소는 감시(귀속) 등록까지 끝나야 "존재"합니다</b> — 이 감시·귀속은 <b>벤더 몫</b>(vault 가 곧 감시 범위, 입금 감지 4p)입니다. 등록 안 된 주소로 온 입금은 감지하지 못하는데, 이것이 입금 사고의 최다 유형입니다.</p>
-
 <pre><code>createDepositAddress(accountId, asset) → Address { value, memoTag? }   // EVM: memoTag=null · (account,asset)당 1개 · 활성화 1회(재시도 멱등)</code></pre>
 
 <h2>▸ 자산 지갑 활성화 — (account, asset)당 한 번</h2>
@@ -50,7 +48,13 @@ sequenceDiagram
     end
     Note over FBI,FB: EVM = account·자산당 주소 1개 · 활성화 1회. generateNewAddress 는 UTXO·Tag 전용의 다른 작업. 감시·귀속은 벤더 몫
 </pre></div>
-<p class="diagram-caption">1페이지 <code>createAccount</code> 와 같은 <b>create-once</b> — (account, asset)당 한 번, 없을 때만 <b>자산 지갑을 활성화</b>한다(<code>createVaultAccountAsset</code>). 활성화 응답에 <code>address</code> 가 실려 오고, 그게 EVM 단일 주소다. 재시도는 <b>Idempotency-Key</b> 로 같은 주소, 정합은 <b>(account, asset) UNIQUE</b> 로 잡는다. <code>generateNewAddress</code>(=<code>createVaultAccountAssetAddress</code>)는 <b>UTXO·Tag 자산의 추가 주소</b> 발급이라 EVM 에는 쓰지 않는다(account-based 는 호출 시 실패). EVM 은 <b>순수 주소</b>(memoTag=null), 이더리움·Base 는 <code>asset</code> 의 chainId 만 다르다. 키·주소 파생은 <b>vault·MPC 안</b>, 감시·귀속도 벤더 몫. <b>매니저가 (accountId+asset ↔ 주소) 를 백엔드 DB 에 저장</b>하고, 이후 조회는 <b>getDepositAddress(3p)</b> 가 읽어 재사용한다.</p>
+<div class="callout">
+<div class="callout-title">주소의 두 규칙 (결정)</div>
+<ul style="margin:0">
+<li><b>추가 주소는 vault 추가로</b>: EVM 은 (vault, 자산)당 주소가 <b>하나뿐</b>이라, 같은 자산의 주소가 더 필요하면 <b>vault account 를 더 만든다</b>.</li>
+<li><b>감시 등록까지가 발급</b>: 주소는 감시(귀속) 등록까지 끝나야 "존재"한다 — <b>등록 안 된 주소로 온 입금은 감지하지 못하며, 입금 사고의 최다 유형</b>이다. 이 감시·귀속은 벤더 몫(vault 가 곧 감시 범위, 입금 감지 4p).</li>
+</ul>
+</div>
 
 <p class="foot">더 깊이: 발급·등록·놓친 입금 방어 — <a href="../wallet-service-components/scenario-provisioning.html">가이드 9장</a>.</p>
 
