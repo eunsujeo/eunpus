@@ -7567,3 +7567,8 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 근거: sources/...sweep-funds-omnibus.md (Stage 137 extract)
 - 영향받은 페이지: docs-site 05·10
 - 신규 entity: 0
+
+## Stage 141 (2026-07-03) — docs-site 배포 (사용자 지시)
+- 배포 단위 검증: 허브·워크스루·custodial 모두 wiki-docs.pages.dev 의 동일 로그인 게이트(_worker.js) → docs-site/ 전체가 배포 단위 (site-template 참조 문서의 "custodial 하위폴더" 기록은 허브 이전 구조)
+- 실행: docs-site/ 에서 wrangler pages deploy --project-name=wiki-docs --branch=main (ASCII commit-message) — Uploaded 80 files (184 already), 정상 범위. 이번 세션 변경분(워크스루 재편·04 감지와 확정·05 sweep·gas-delegation 신규·허브 카드) 반영
+- 신규 entity: 0
