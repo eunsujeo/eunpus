@@ -7360,3 +7360,12 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 워크스루 ORPHANED 잔재 0 확인. wallet-service-components(가이드)·Kotlin 스켈레톤엔 ORPHANED 잔존 — 별도 정정 대상
 - 영향받은 페이지: docs-site 04·06
 - 신규 entity: 0
+
+## Stage 113 (2026-07-03) — 컴포넌트 가이드 ORPHANED 정정 (T04 후속)
+- 계기: 사용자 승인 — 워크스루에 이어 wallet-service-components 의 ORPHANED 벤더 fact 주장 정정
+- 정정: scenario-deposit(메타·10.3 제목·본문·상태 다이어그램 노드·캡션·의사코드·역할 표·불변식) · component-indexer(메타·3.4 제목·본문·의사코드·상태 집합·다이어그램 라벨·표 2·운영 체크) · component-tx-nonce(대칭 문구) · confluence txt 3(02·03·06) — "networkStatus=ORPHANED" → "무효화 신호는 문서 미명시·확인 중(그전까지 대사가 안전망)", 상태 나열은 감지/확정/무효화 중립어로
+- 함께: scenario-deposit 캡션의 DCCP "Admin 설정" 잔재 3곳 → "Admin 이 정해 Support 에 요청"(Stage 107 과 정합)
+- 유지(정당): Kotlin 스켈레톤 ChainEvent.Orphaned — 매퍼가 벤더 ORPHANED 를 매칭하지 않고(CANCELLED/FAILED/REJECTED/BLOCKED → Orphaned) 도메인 어휘로만 사용 → 벤더 fact 주장 아님
+- docs-site 전체 ORPHANED 잔여 = Kotlin·CLAUDE.md(도메인 어휘)뿐
+- 영향받은 페이지: docs-site/wallet-service-components scenario-deposit·component-indexer·component-tx-nonce·confluence(02·03·06)
+- 신규 entity: 0

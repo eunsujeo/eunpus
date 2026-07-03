@@ -19,12 +19,12 @@ h2. 1. 구조 결정 — 두 층 · 세 포트 · 두 백엔드 · 모노레포
 h2. 2. 컴포넌트별 사유
 
 * *멀티체인 어댑터 (EVM)* — 체인 차이를 흩어 두면 모든 컴포넌트가 if(chain==...) 로 오염된다. 차이를 어댑터 한 곳에 가두고 공통 동사만 노출. 이더리움·Base 는 같은 EVM 이라 어댑터가 사실상 하나고, 갈리는 지점(가스 시세·L2 확정 지연)만 임계값으로 조정한다. 능력(capability)을 타입으로 노출하는 이유 — boost?(EVM RBF)·cancel? 이 없는 체인이 붙어도 "되는 척" 하지 않게. 최소공통분모로 깎으면 Fireblocks 강점(createTransaction 묶음·RBF·DCCP)을 못 쓰고, 숨기면 추상화가 거짓말한다.
-* *입금 감지 (webhook)* — 매니저로 Fireblocks 를 채택했으므로 우리가 상시 인덱서를 돌리지 않는다. Fireblocks 가 자기 vault 범위를 감지해 CONFIRMING·COMPLETED·ORPHANED 를 webhook 으로 push 하고, 우리 몫은 webhook 수신기(Service)가 받아 매핑 DB 에 기록하는 inbound 경로 하나다. "우리 주소" 집합을 별도 watch-list 로 관리하지 않는 이유 — vault 가 곧 감시 범위라 자체 인덱서 경로의 등록 갭이 구조적으로 없다. 다만 webhook 은 누락·지연·중복이 가능하므로 최종 근거는 주기적 대사가 닫는다.
+* *입금 감지 (webhook)* — 매니저로 Fireblocks 를 채택했으므로 우리가 상시 인덱서를 돌리지 않는다. Fireblocks 가 자기 vault 범위를 감지해 CONFIRMING·COMPLETED·무효화 신호를 webhook 으로 push 하고, 우리 몫은 webhook 수신기(Service)가 받아 매핑 DB 에 기록하는 inbound 경로 하나다. "우리 주소" 집합을 별도 watch-list 로 관리하지 않는 이유 — vault 가 곧 감시 범위라 자체 인덱서 경로의 등록 갭이 구조적으로 없다. 다만 webhook 은 누락·지연·중복이 가능하므로 최종 근거는 주기적 대사가 닫는다.
 * *트랜잭션 · Nonce · Broadcast* — Fireblocks 채택으로 조립·순번(nonce)·전파·복구가 통째로 벤더 안으로 들어간다. 우리가 raw nonce 를 직접 돌리지 않는 이유 — Fireblocks 내부 nonce 할당과 충돌하기 때문(SaaS 경로의 단위는 "트랜잭션 요청"). 재시도 안전장치는 하나 — 같은 externalTxId 로 재제출하면 벤더가 새 tx 를 만들지 않고 기존 것을 돌려준다. 막힘 대응(boost=RBF·cancel=0원 self-send)의 방식은 벤더가 집행하되, 언제 boost·언제 철회할지의 판단은 Admin 운영으로 남는다.
 * *서명 오케스트레이션 — MPC + 온프렘 co-signer* — 키를 매니저(백엔드)가 안 드는 이유: 백엔드 침해 = 키 유출이 되기 때문. Fireblocks MPC 가 키 share 를 분산 보관하되, *share 하나는 우리 보안 존(SGX/TEE)의 API Co-signer* 가 들고 매 서명마다 벤더와 공동서명한다. 키 보관만으로는 부족하다 — sighash 만 넘기면 서명자는 눈 감고 서명(blind signing)하므로, 서명자 곁에서 원문을 재검증하는 정책 게이트를 둔다. 그 자리가 Fireblocks 거버넌스 정책 *TAP*(화이트리스트·건당 한도·일일 누적)과 우리 *Callback Handler*(co-signer 가 서명 직전 approve/deny 를 묻는 훅)다. 백엔드가 "승인된 척" 지시를 보내도 이 관문이 우리 인프라 안에서 막는다. TAP 정책·co-signer 승인의 관리는 Admin 거버넌스 몫이다.
 * *API 게이트웨이* — 멱등이 1급 시민인 이유: 온체인 쓰기는 비가역이라 중복 실행 = 이중 지급. 멱등 키가 게이트웨이에서 끝나지 않고 Fireblocks 의 externalTxId 까지 따라가는 이유: 중간 어느 단계가 재시도돼도 "정확히 한 번" 이 끝까지 보장돼야 해서. externalTxId 만으로는 트랜잭션 한정 dedup 이라, 인바운드 멱등 키 → externalTxId 매핑은 우리 게이트웨이가 소유한다.
 * *온체인 정합성 · 추적* — 회계 원장을 매니저가 안 갖는 이유: 잔액 진실원천·기표는 회계 평면의 책임이고, 매니저는 "검증된 체인 사실" 을 만들어 넘기는 데까지가 경계(준비자산을 범위 밖에 둔 것과 같은 논리). webhook 은 힌트일 뿐이라, 벤더 잔액과 우리 기록을 맞춰보는 대사가 최종 근거를 닫는다. 트리거가 이벤트+주기 sweep 둘인 이유: 이벤트는 "일어난 것" 만 보고, 진짜 위험한 "일어나야 했는데 안 일어난 것"(전파됐는데 확정 없음)은 sweep 으로만 드러난다.
-* *이벤트 · 알림* — at-least-once + dedup 인 이유: 분산 환경의 exactly-once 전달은 환상이라, 재시도(중복 허용)+양쪽 dedup+수신측 멱등이 현실적 구성. 알림이 정합성 검증 *전에* 나가는 이유: 빠름 우선의 의도적 선택 — 대신 정정 이벤트(reorg 무효화 ORPHANED·정합성 MISMATCH)도 같은 채널로 보내 비즈 레이어가 반영을 철회할 수 있게 하고, 잔액의 최종 확정은 정합성 통과 사실 기준으로 잡는 계약을 명시한다.
+* *이벤트 · 알림* — at-least-once + dedup 인 이유: 분산 환경의 exactly-once 전달은 환상이라, 재시도(중복 허용)+양쪽 dedup+수신측 멱등이 현실적 구성. 알림이 정합성 검증 *전에* 나가는 이유: 빠름 우선의 의도적 선택 — 대신 정정 이벤트(reorg 무효화·정합성 MISMATCH)도 같은 채널로 보내 비즈 레이어가 반영을 철회할 수 있게 하고, 잔액의 최종 확정은 정합성 통과 사실 기준으로 잡는 계약을 명시한다.
 
 h2. 3. 시나리오 결정 사유
 
