@@ -31,11 +31,23 @@ sequenceDiagram
     participant FB as Fireblocks SaaS · 벤더
 
     BE->>FBI: createAccount(ref)
-    FBI->>FB: createVaultAccount(name=ref)
+    FBI->>BDB: ref 조회 — 있으면 그대로 (재사용)
+    FBI->>FB: 없으면 createVaultAccount(name=ref) · Idempotency-Key=f(ref)
     FB-->>FBI: vaultId
-    FBI->>BDB: 저장 (ref ↔ vaultId)
+    FBI->>BDB: 저장 (ref ↔ vaultId · ref UNIQUE)
     FBI-->>BE: Account { ref, accountId }
+    Note over FBI,FB: 재시도는 Idempotency-Key 로 24h 같은 vaultId · 영구 유일성은 DB ref UNIQUE
 </pre></div>
+
+<div class="callout">
+<div class="callout-title">한 번만 — 재시도·중복 방어 (결정)</div>
+<ul style="margin:0">
+<li><b>재시도 멱등</b>: createVaultAccount 에 <code>Idempotency-Key=f(ref)</code> — 24시간 내 재시도는 벤더가 <b>같은 vaultId</b> 를 돌려준다(중복 vault 없음).</li>
+<li><b>영구 유일성</b>: <b>백엔드 DB 의 ref UNIQUE</b> — 24시간 밖 재시도·이중 온보딩은 여기서 거른다.</li>
+<li><b>name 은 라벨</b>: 벤더가 vault name 유일성을 강제하지 않으므로(중복 생성 가능), name(namePrefix) 검색은 DB·멱등키가 다 놓친 경우의 <b>복구 fallback</b>일 뿐이다.</li>
+</ul>
+</div>
+
 <p class="foot">더 깊이: 계정·주소 발급 시나리오 — <a href="../wallet-service-components/scenario-provisioning.html">가이드 9장</a>.</p>
 
 <div class="pager">

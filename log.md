@@ -7223,3 +7223,12 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 핵심 발견: get-or-create 계약 차이의 하드 근거 = 벤더 유일성 보장 유무(주소=EVM 1강제 O / vault name=X)
 - ANSWERED: (없음) · 영향받은 페이지: open-questions/fireblocks.md
 - 신규 entity: 0
+
+## Stage 96 (2026-07-03) — V01 ANSWERED (Vault·Address API 1차 확인) + 1페이지 반영
+- source: developers.fireblocks.com llms.txt → api-reference(.md) + fireblocks/fireblocks-openapi-spec open_api_spec.yml (master, 14688행). extract 저장: sources/fireblocks/markdown/2026-07-03__developers-fireblocks-com__vault-address-api-semantics.md
+- V01 5개 전부 확정: ① createVaultAccount name=optional·유니크 없음(중복 vault 가능, name=라벨) ② accounts_paged namePrefix 서버측 필터 지원(prefix, 결과 복수 가능) ③ Idempotency-Key POST/PUT·max40·24h·첫 응답 반환(재실행 없음) ④⑤ 주소 발급은 UTXO/Tag ONLY → EVM(account-based) 실패, EVM 단일 주소는 asset wallet 활성화 유래
+- 설계 확정: createAccount = Idempotency-Key=f(ref)(24h 재시도 멱등) + DB ref UNIQUE(영구) ; name(namePrefix) 검색은 fallback. createDepositAddress(EVM)=create-address 호출 안 함(활성화 단일 주소 재사용)
+- 반영: docs-site 01-create-account 다이어그램(ref 조회→없으면 createVaultAccount+Idempotency-Key→ref UNIQUE 저장→Note) + "한 번만 — 재시도·중복 방어" 결정 callout
+- ANSWERED: Q-2026-07-03-V01
+- 영향받은 페이지: open-questions/fireblocks.md · docs-site/wallet-design-walkthrough/01-create-account · sources/(신규 extract)
+- 신규 entity: 0

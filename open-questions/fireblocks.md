@@ -1072,7 +1072,12 @@
   4. **generateNewAddress 를 EVM 에서 2차 호출** 시 동작 — 기존 주소 반환 / 에러 / no-op 중 무엇인지 (단일 강제 "제약"만 확정)
   5. EVM 주소 **생성 시점** — asset wallet 활성화(`POST .../{assetId}`) 시 자동 생성인지, 명시적 generateNewAddress 호출인지
 - **Sources to check**: `fireblocks/fireblocks-openapi-spec` open_api_spec.yml 의 `POST /vault/accounts`(request body·headers·유니크), `GET /vault/accounts_paged`(query params — namePrefix?), `POST /vault/accounts/{id}/{assetId}/addresses`(EVM 동작) · developers.fireblocks.com create-vault-account / create-address reference
-- **Status**: open
+- **답 (Stage 96, 1차: developers.fireblocks.com llms.txt→api-reference + `fireblocks-openapi-spec` open_api_spec.yml master; extract `sources/fireblocks/markdown/2026-07-03__developers-fireblocks-com__vault-address-api-semantics.md`)**:
+  1. **name = optional, 유니크 강제 없음** — `POST /vault/accounts` requestBody schema(spec L72-114)에 개별 `required` 목록 없음, name/hiddenOnUI/customerRefId/autoFuel 전부 optional, 중복 거부 표현 전무 → **같은 name·무명으로 중복 vault 생성 가능(name=라벨)**.
+  2. **accounts_paged namePrefix 지원** — `GET /vault/accounts_paged`(spec L115~) query param `namePrefix`(+nameSuffix) required:false → **서버측 prefix 필터 가능**(전 계정 페이지네이션 불필요). 단 name 비유니크라 결과 복수 가능 → 정확일치 클라이언트 재확인.
+  3. **Idempotency-Key 지원 확정** — POST·PUT 헤더 `Idempotency-Key`(max 40자), 같은 키는 첫 응답(에러 포함) 그대로 반환·재실행 없음, **24h 보관**(api-idempotency). → createVaultAccount·주소생성 POST 에 적용 가능.
+  4·5. **EVM 주소** — `POST .../{assetId}/addresses` 는 *"UTXO or Tag/Memo ONLY, account based 는 실패"* → **EVM 은 추가 주소 생성 불가, 단일 주소는 asset wallet 활성화 유래**.
+- **Status**: ANSWERED
 
 ### Stage 95 Summary
 
@@ -1080,4 +1085,12 @@
 - **출처 트리거**: docs-site 1·2페이지 createAccount(create+복구) vs createDepositAddress(get-or-create) 계약 구분 검토 중 fact query
 - **확정 재확인**: customerRefId=AML(유니크 아님) · 멱등키는 tx/webhook 전용 · **EVM 1 vault=1 address 단일 강제**(vault-account.md:70-76) · vault name 유니크는 벤더가 보장 안 함(→ 우리 DB UNIQUE 필요)
 - **핵심 발견**: get-or-create 계약 차이의 하드 근거 = **벤더의 유일성 보장 유무** (주소=EVM 1강제 보장 O / vault name=보장 X)
+- **신규 entity 0**
+
+### Stage 96 Summary
+
+- **V01 ANSWERED** (1차: developers.fireblocks.com llms.txt→api-reference + `fireblocks-openapi-spec` open_api_spec.yml master). 5개 항목 전부 확정:
+  - name optional·유니크 없음(중복 vault 가능) · accounts_paged **namePrefix 필터 지원** · **Idempotency-Key**(POST/PUT·40자·24h) · EVM 주소는 **UTXO/Tag only 라 account-based 실패**(단일 주소=wallet 활성화 유래)
+- **소스 저장**: `sources/fireblocks/markdown/2026-07-03__developers-fireblocks-com__vault-address-api-semantics.md` (Mode C extract)
+- **설계 반영**: docs-site 01-create-account 에 Idempotency-Key=f(ref)·ref UNIQUE·name=라벨 fallback 반영(다이어그램 + "재시도·중복 방어" 결정 callout)
 - **신규 entity 0**
