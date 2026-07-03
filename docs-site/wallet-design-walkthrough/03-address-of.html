@@ -36,7 +36,7 @@ sequenceDiagram
         FBI-->>BE: 주소
     else 없으면 — 아직 발급 전
         BDB-->>FBI: 없음
-        FBI-->>BE: null — 만들지 않는다 · 생성은 createDepositAddress(2p), 부를지는 유스케이스가 결정
+        FBI-->>BE: null
     end
     Note over FBI,BDB: 벤더(Fireblocks)를 거치지 않는다 — 백엔드 DB 만 읽는다
 </pre></div>
