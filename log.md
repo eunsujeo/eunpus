@@ -7559,3 +7559,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 검토: consistency 2사이트 PASS · 워크스루 잔여 gas 표현 정합 확인(온램프 "충전" 동음이의는 한정어로 구분)
 - 영향받은 페이지: docs-site 00·06·10·gas-delegation
 - 신규 entity: 0
+
+## Stage 140 (2026-07-03) — 설계 확정: 옴니버스 + sweep — 5장에 sweep 절 신설
+- 계기: 사용자 확정 — 입금 자산을 고객 vault 에 두지 않고 옴니버스로 모은다(sweep). 1·2장(고객별 vault)과 10장(온체인 지갑 둘뿐) 사이의 공백 해소
+- 05-deposit: "입금 다음 — 고객 vault 에서 옴니버스로 (sweep)" 절 — 왜(EVM 1 vault=1 주소 → 식별용 vault·보관은 옴니버스) · 3-vault 역할 표(고객별 intermediate/옴니버스/출금 풀 round-robin — Fireblocks 공식 분류) · sweep sequence 다이어그램(트리거→대상 조회→submitTransaction→폴링 내부 이동 추적, gas=대납 기본) · 결정 표 5행(트리거·gas·Co-Signer 자동화·고객 잔액 불변(회계 이벤트 아님)·관찰=내부 이동 분기 4장). subtitle 확장
+- 10-ramp: "고객 자산이 모인 지갑" 에 "(5장의 sweep 이 채운다)" 연결
+- 근거: sources/...sweep-funds-omnibus.md (Stage 137 extract)
+- 영향받은 페이지: docs-site 05·10
+- 신규 entity: 0

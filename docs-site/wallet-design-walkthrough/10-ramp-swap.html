@@ -68,7 +68,7 @@ sequenceDiagram
 <p class="diagram-caption"><b>노랑 = 1단계</b>는 매니저를 안 부른다 — 순수 DB 반영 + 델타 PENDING 적재이고, <b>가용 확인</b>(실제 풀 잔액 − 미정산 PENDING)이 풀 부족 초과 거래를 막는다. <b>초록 = 2단계</b>에서만 이 문서의 매니저가 등장 — 6·7페이지의 submitTransaction, 4페이지의 입금 감지 그대로다. 발행사·거래소는 이 그림에 없다(풀 rebalance 때만 들어온다). 스왑은 전송이 두 다리라 초록 단계가 두 번 잡힌다.</p>
 
 <h2>배치를 효율적으로 — Service 백엔드가 두 지갑 사이를 상계한다</h2>
-<p>15분 배치는 <b>Service 백엔드(지갑 백엔드)</b>가 돌립니다 — <code>delta_ledger</code>의 PENDING 을 읽어 매니저의 <b>submitTransaction</b>으로 실제 온체인 전송을 냅니다. 여기서 핵심은 <b>온체인에서 움직이는 지갑이 딱 둘</b>이라는 점입니다 — <b>고객 자산이 모인 지갑</b>과 <b>은행 자산(풀)이 모인 지갑</b>. 개별 고객 잔액은 DB(<code>customer_ledger</code>)에서만 쪼개 관리하고, 체인엔 이 두 옴니버스 지갑만 있습니다.</p>
+<p>15분 배치는 <b>Service 백엔드(지갑 백엔드)</b>가 돌립니다 — <code>delta_ledger</code>의 PENDING 을 읽어 매니저의 <b>submitTransaction</b>으로 실제 온체인 전송을 냅니다. 여기서 핵심은 <b>온체인에서 움직이는 지갑이 딱 둘</b>이라는 점입니다 — <b>고객 자산이 모인 지갑</b>(5장의 sweep 이 고객별 vault 에서 모아 온다)과 <b>은행 자산(풀)이 모인 지갑</b>. 개별 고객 잔액은 DB(<code>customer_ledger</code>)에서만 쪼개 관리하고, 체인엔 이 두 옴니버스 지갑만 있습니다.</p>
 <p>그래서 한 윈도에 쌓인 수많은 PENDING 은 <b>전부 이 두 지갑 사이의 이동</b>입니다. 건별로 전송하면 N건이지만, <b>자산별로 방향을 상계(netting)</b>하면 <b>자산당 순증분 1건</b>이면 됩니다.</p>
 
 <div class="diagram"><pre class="mermaid">

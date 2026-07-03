@@ -14,7 +14,7 @@
 <a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-detect-confirm.html">4</a><span class="cur">5</span><a href="06-estimate-fee.html">6</a><a href="07-withdrawal.html">7</a><a href="08-balance-history.html">8</a><a href="09-switch-extend.html">9</a><a href="10-ramp-swap.html">10</a>
 </div>
 <h1>입금 — 한 건이 잔액이 되기까지</h1>
-<p class="subtitle">폴링이 실어 온 입금이 대기를 거쳐 가용이 되기까지 — 감지·판정 기준은 4장</p>
+<p class="subtitle">폴링이 실어 온 입금이 대기를 거쳐 가용이 되고, 고객 vault 에서 옴니버스로 모이기까지 — 감지·판정 기준은 4장</p>
 
 <h2>입금 한 건이 흐르는 길 — 폴링으로 감지, 확정까지</h2>
 
@@ -73,6 +73,48 @@ sequenceDiagram
 <h2>예외 — reorg 로 믿었던 입금이 뒤집히면</h2>
 
 <p>여기까지가 확정으로 가는 정상 경로였고, 예외가 하나 남습니다. 이더리움·Base 는 체인 끝이 드물게 교체(reorg)될 수 있습니다. <b>1차 방어는 4장의 DCCP 임계 그 자체입니다</b> — 임계만큼 confirmation 이 쌓인 뒤에만 가용 처리하므로, 그보다 얕은 reorg 는 잔액에 닿지 못합니다. 임계보다 깊은 reorg(극히 드묾)로 거래가 블록에서 떨어지면 Fireblocks 는 즉시 <b>FAILED(또는 취소·만료) + subStatus <code>DROPPED_BY_BLOCKCHAIN</code></b> 으로 표시합니다 — BROADCASTING 으로 되돌아가지 않습니다(Fireblocks Support 확인). 이 신호를 받으면 <b>가공본(잔액 반영분)만 취소하고 원본 기록은 보존</b>합니다. 잠깐 빠졌다 재편입되는 얕은 reorg 는 CONFIRMING 에 머물며 confirmation 수만 다시 셉니다. 최종 안전망은 여전히 <b>주기 대사</b>입니다.</p>
+
+<h2>입금 다음 — 고객 vault 에서 옴니버스로 (sweep)</h2>
+
+<p>고객별 vault 는 <b>입금 식별용</b>입니다 — EVM 은 vault·자산당 주소가 하나뿐이라(2장), 고객마다 vault 를 만들어야 "누가 보냈나"가 주소로 갈립니다. 하지만 <b>자산을 거기 두지 않습니다</b> — 가용 처리가 끝난 자산은 주기적으로 <b>옴니버스 vault 로 모읍니다(sweep)</b>. 고객별 잔액은 백엔드 DB 원장이 관리하므로, 온체인 보관은 집약할수록 키·운영 관리가 단순해집니다. 10장의 "온체인 지갑은 둘뿐" 모델이 이 sweep 을 전제로 합니다.</p>
+
+<table>
+<thead><tr><th style="width:28%">vault</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><b>고객별 vault</b> (intermediate)</td><td>1·2장에서 만든 고객당 vault — 입금 식별·수신 전용, 보관처 아님.</td></tr>
+<tr><td><b>옴니버스 vault</b> (omnibus deposits)</td><td>sweep 으로 모인 중앙 보관처 — 10장의 "고객 자산 지갑"이 이것.</td></tr>
+<tr><td><b>출금 풀</b> (withdrawal pool)</td><td>출금 전용 vault — EVM 은 vault 당 nonce 가 직렬이라 <b>복수 vault round-robin</b> 으로 병렬화(7장 출금이 여기서 나간다).</td></tr>
+</tbody>
+</table>
+<p class="table-note">세 역할 분류는 Fireblocks 공식 omnibus 구조 그대로다(intermediate / omnibus deposits / withdrawal pool).</p>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant SW as sweep 작업<br/>Service 백엔드 · 주기 실행
+    participant DB as 백엔드 DB<br/>원장 · 대상 목록
+    box rgb(220,252,231) 블록체인 매니저
+    participant FB as Fireblocks (SaaS)
+    end
+
+    Note over SW,DB: 트리거 — 잔액 임계 · 고정 스케줄 · 네트워크 fee 유리할 때
+    SW->>DB: sweep 대상 조회 — 가용 처리 끝난 고객 vault 잔액
+    SW->>FB: submitTransaction — 고객 vault → 옴니버스 (vault 별 1건)
+    Note over FB: gas 는 대납(Gasless relay) 기본 · ETH 자체 이동만 Gas Station
+    FB-->>SW: 제출 접수 — 이후 상태는 폴링이 추적 (4장 · 내부 이동 분기)
+    SW->>DB: sweep 기록 — 고객 잔액 원장은 불변 (온체인 보관 위치만 이동)
+</pre></div>
+
+<table>
+<thead><tr><th style="width:24%">결정</th><th>내용</th></tr></thead>
+<tbody>
+<tr><td><b>트리거</b></td><td>잔액 임계 · 고정 스케줄 · 네트워크 fee 가 유리할 때 — sweep 은 시간에 급하지 않아 <b>낮은 fee 로 보낼 수 있다</b>.</td></tr>
+<tr><td><b>gas</b></td><td><b>대납(Gasless relay)이 기본</b> — 고객 vault 에 ETH 를 배포하지 않는다. ETH 자체의 이동만 충전(Gas Station). 상세는 <a href="../gas-delegation/">가스 대납 문서</a>.</td></tr>
+<tr><td><b>서명 자동화</b></td><td>API Co-Signer — 주기 실행이라 사람 개입 없이 서명까지 자동.</td></tr>
+<tr><td><b>고객 잔액</b></td><td><b>불변</b> — 고객별 잔액은 DB 원장 몫이고, sweep 은 온체인 보관 위치만 옮긴다(회계 이벤트 아님).</td></tr>
+<tr><td><b>관찰·실패</b></td><td>sweep tx 는 폴링에 <b>내부 이동</b>으로 잡혀 같은 경로로 상태 추적·막힘 점검·boost 를 탄다(4장).</td></tr>
+</tbody>
+</table>
 
 <p class="foot">감지·판정 기준(폴링 루프·DCCP·막힘 점검)은 <a href="04-detect-confirm.html">4. 감지와 확정</a>, 잔액의 세 칸(available·pending·locked)과의 맞물림은 <a href="08-balance-history.html">8. 잔액과 내역 조회</a>, 출금 쪽 상태 전이는 <a href="07-withdrawal.html">7. 출금</a> 에서 이어집니다.</p>
 
