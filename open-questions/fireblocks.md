@@ -1101,7 +1101,13 @@
 - **Hypotheses (unverified)**: reorg 무효화는 ORPHANED 가 아니라 ① `networkStatus=DROPPED` ② 상위 status 의 FAILED/REJECTED ③ 별도 이벤트 중 하나로 노출될 가능성. 1차 자료 확인 전까지 docs-site 의 ORPHANED 서술은 미확정 취급.
 - **Sources to check**: developers.fireblocks.com transaction statuses / transaction-objects(networkStatus) · support.fireblocks.io reorg 관련 문서 · Webhooks v2 event types
 - **추가 부정 근거 (Stage 111, 1차 fetch)**: ① `reference/transaction-objects.md` 의 networkStatus enum = DROPPED·BROADCASTING·CONFIRMING·FAILED·CONFIRMED — **ORPHANED 없음** ② `reference-sub-statuses.md` 전체 목록에도 reorg/orphan 항목 없음 ③ `monitoring-transaction-status.md` 에 reorg 언급 없음. → **ORPHANED 는 실재하지 않는 것으로 사실상 확정**(docs-site 서술은 사전학습 혼입 — 정정 필요). 잔여: reorg 무효화 시 실제 신호(DROPPED? status 전이? 이벤트?)는 문서 미명시 — **샌드박스 PoC 또는 Fireblocks Support 질의로만 해소 가능**.
-- **Status**: open (ORPHANED 부재는 확정 · 실제 reorg 신호만 잔여)
+- **답 (Stage 129, Fireblocks Support 확답 — Slack, 백엔드 팀 확인, extract `sources/fireblocks/markdown/2026-07-03__fireblocks-support-slack__reorg-status-semantics.md`)**:
+  1. **CONFIRMING → BROADCASTING 회귀 없음.**
+  2. **reorg 로 거래가 취소(드랍)되면 실패·취소·만료로 표시** — 하위 상태 예시 **`DROPPED_BY_BLOCKCHAIN`**. 즉시 반영(유예 없음).
+  3. 공식 문서 교차 확인: `reference-sub-statuses.md` 의 `DROPPED_BY_BLOCKCHAIN` = "…or that the transaction was **mined but dropped**" — reorg 드랍 커버.
+  4. 얕은 reorg 재편입 케이스는 명시 확답 밖 — 상태 실시간 반영 원칙상 CONFIRMING 유지·confirmation 재계산으로 해석.
+  → 무효화 판정 = **status FAILED(또는 CANCELLED·만료) + subStatus `DROPPED_BY_BLOCKCHAIN`**.
+- **Status**: ANSWERED (Support 확답 + 공식 substatus 교차)
 
 ### Stage 96 Summary
 

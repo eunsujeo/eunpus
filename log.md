@@ -7473,3 +7473,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 내용: 부팅 시 handler 등록 코드(입금→원장 5장 / 출금→상태 추적 7장 분기) + 계약 주석 2줄(멱등 의무 · 실패 시 커서 미전진 = at-least-once)
 - 영향받은 페이지: docs-site 04-detect-confirm
 - 신규 entity: 0
+
+## Stage 129 (2026-07-03) — T04 ANSWERED: reorg 무효화 신호 = FAILED·CANCELLED·만료 + DROPPED_BY_BLOCKCHAIN
+- source: Fireblocks Support 확답 (Slack — Richard Smith, "백엔드 팀에 의해 확인됨" 명시, 사용자 제공). extract: sources/fireblocks/markdown/2026-07-03__fireblocks-support-slack__reorg-status-semantics.md
+- 확답 요지: ① CONFIRMING→BROADCASTING 회귀 없음 ② reorg 로 취소되면 실패·취소·만료 + subStatus DROPPED_BY_BLOCKCHAIN ③ 즉시 반영(유예 없음). 공식 문서 교차: reference-sub-statuses.md 의 DROPPED_BY_BLOCKCHAIN = "mined but dropped" — 정합. 얕은 reorg 재편입은 명시 확답 밖(실시간 반영 원칙상 CONFIRMING 유지·confirmation 재계산 해석)
+- 반영: 05-deposit reorg 문단("지원팀 문의 필요" → 확정 신호·BROADCASTING 회귀 없음·얕은 reorg 는 CONFIRMING 유지) + subStatus 표에 FAILED/DROPPED_BY_BLOCKCHAIN 행 · 04-detect-confirm 급소 표 reorg 행 + 상세 다이어그램 분기 라벨 · scenario-deposit·component-indexer(본문·meta·의사코드) · confluence 02·03
+- ANSWERED: Q-2026-07-03-T04
+- 영향받은 페이지: open-questions · sources(신규 1) · docs-site 04·05·components 2·confluence 2
+- 신규 entity: 0

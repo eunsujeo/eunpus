@@ -62,7 +62,7 @@ sequenceDiagram
             SUB->>DB: tx id 멱등 upsert → 대기(pending) · available 불변
         else 입금 · COMPLETED 이고 임계 도달
             SUB->>DB: tx id 멱등 upsert → 가용(available) 이동
-        else 입금 · 임계 미달 또는 무효화 신호
+        else 입금 · 임계 미달 또는 무효화 (FAILED · DROPPED_BY_BLOCKCHAIN)
             SUB->>DB: 대기 유지 / 가공분 취소 — 다음 폴 재평가
         end
         opt 입금인데 주소가 매핑에 없음
@@ -81,7 +81,7 @@ sequenceDiagram
 <tr><td><b>빠짐 방지</b></td><td>커서는 <b>처리 성공 후에만 전진</b> + 경계를 <b>살짝 겹쳐 받기</b>(after 를 조금 이전으로). 겹침은 멱등 upsert 가 흡수.</td></tr>
 <tr><td><b>페이지네이션</b></td><td><code>limit</code>(기본 200)이 가득 차면 다음 페이지 계속 — 한 주기에 밀린 분을 다 소진.</td></tr>
 <tr><td><b>멱등</b></td><td>tx id(또는 externalTxId) unique. 같은 tx 를 여러 번 받아도 상태 전이만 반영, 잔액 이중 반영 없음.</td></tr>
-<tr><td><b>reorg</b></td><td>확정으로 봤던 입금이 무효화되면 다음 폴에서 잡아 가공분만 취소하고 원본 기록은 보존(reorg 는 5장 — 무효화 신호는 확인 중, 그전까진 대사가 안전망).</td></tr>
+<tr><td><b>reorg</b></td><td>확정으로 봤던 입금이 무효화되면 다음 폴에서 잡아 가공분만 취소하고 원본 기록은 보존 — 신호는 FAILED + subStatus <code>DROPPED_BY_BLOCKCHAIN</code> (reorg 는 5장).</td></tr>
 <tr><td><b>감지 지연</b></td><td>지연 = <b>폴링 주기</b>. 짧게 잡으면 실시간에 근접하고 API 호출이 는다 — 확정 요건과 rate limit 사이에서 정한다.</td></tr>
 </tbody>
 </table>
