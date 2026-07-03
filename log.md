@@ -7521,3 +7521,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 근거: vault-account §Stage 131 (Gasless extract·index 소스) — wiki 를 canonical 로 두고 public 문서는 wiki 잔재 없이 서술
 - 영향받은 페이지: docs-site gas-delegation(신규)·index
 - 신규 entity: 0 · 미배포(로컬만)
+
+## Stage 135 (2026-07-03) — 가스 대납 문서를 독립 사이트로 재배치 (docs-site/gas-delegation/)
+- 계기: 사용자 — 워크스루 폴더가 아니라 docs-site 최상위 Hub 에 등록, 포맷은 wallet-service-components 유사하게
+- 판단: Hub 는 섹션 없는 flat 카드 목록 → 새 섹션 대신 새 doc-card 1장 (선례 유지). 문서는 독립 폴더 사이트(gas-delegation/)로 — cosigner-callback-network 와 같은 사이드바 레이아웃(assets 복사), 단일 페이지 + 앵커 nav 5절
+- 이동: wallet-design-walkthrough/gas-delegation.html 삭제 → gas-delegation/index.html 로 재작성(출처 callout·문제·선택지 flowchart+표·Gasless 확정 사실+sequence·GSN/Paymaster 저자 정리·결정 포인트). 워크스루 index 관련 링크는 ../gas-delegation/ 으로 원복, Hub 에 doc-card(NEW·리뷰 전·2026-07-03) 추가
+- 영향받은 페이지: docs-site/gas-delegation(신규 사이트)·index.html(Hub)·wallet-design-walkthrough/index
+- 신규 entity: 0 · 미배포(로컬만)

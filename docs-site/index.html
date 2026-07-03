@@ -347,6 +347,28 @@
       <div class="doc-path">wallet-service-components/</div>
     </a>
 
+    <a class="doc-card" href="gas-delegation/">
+      <div class="doc-title">
+        가스 대납 — 누가 수수료를 내게 할 것인가 <span class="badge badge-new">NEW</span>
+        <span class="arrow">→</span>
+      </div>
+      <p class="doc-summary">
+        EVM 의 gas 는 <strong>발신 계정의 ETH 에서</strong> 나간다 — 수탁 지갑에서 sweep·운영 ETH 보유가 아픈 이유.
+        해법을 <strong>충전(Fireblocks Gas Station)</strong> 과 <strong>대납(Gasless Service — relay 3형태)</strong> 두 축으로 정리하고,
+        <strong>Fireblocks Relay 는 ETH 0 보유 + 월말 인보이스 정산</strong>이라는 확정 사실(ERC-3009 · 2771 · <strong>EIP-7702</strong>,
+        Universal Gasless 는 vault 를 smart contract wallet 로 자동 승격, Base 포함 6개 mainnet)까지.
+        일반 표준 <strong>GSN · ERC-4337 Paymaster 와의 구분</strong>은 저자 정리로 라벨해 붙였다.
+        <em>공식 문서 확정 사실 + 저자 정리 구분 표기.</em>
+      </p>
+      <div class="doc-meta">
+        <span class="doc-meta-item"><span class="badge badge-pending-review">리뷰 전</span></span>
+        <span class="doc-meta-item"><strong>업데이트</strong> 2026-07-03</span>
+        <span class="doc-meta-item"><strong>Pages</strong> 1 (문제 · 선택지 · Gasless 확정 사실 · GSN·Paymaster 구분 · 결정 포인트)</span>
+        <span class="doc-meta-item"><strong>Source</strong> Fireblocks 공식 문서(헬프센터 Gasless Service·Gas Station) + 일반 표준 저자 정리</span>
+      </div>
+      <div class="doc-path">gas-delegation/</div>
+    </a>
+
     <a class="doc-card" href="canton-network/">
       <div class="doc-title">
         Canton 네트워크 — 수탁 지갑 연동 가이드 <span class="badge badge-new">NEW</span>
