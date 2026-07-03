@@ -7498,3 +7498,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - ANSWERED: Q-2026-07-03-G01
 - 영향받은 페이지: open-questions · sources(신규 extract 1)
 - 신규 entity: 0
+
+## Stage 132 (2026-07-03) — wiki 반영: Gasless Service → entities/fireblocks/vault-account.md 흡수
+- 계기: 사용자 — Gasless 는 워크스루 반영 보류, curated wiki 먼저
+- 흡수 판단: 신규 entity 0 — Gas Station canonical 이 있는 vault-account.md 에 "Stage 131 — Gasless Service" 섹션 추가 (충전 vs 대납 형제 기능 + vault 가 relay·7702 승격 주체)
+- 내용: 별개 제품 명시 인용 · relay 3형태 표(Fireblocks Relay=ETH 불요·월말 인보이스) · 메커니즘 ERC-3009/2771/EIP-7702(4337 아님) · Limited vs Universal · 지원 체인(Base 포함) · caveat(수동 RBF·프리미엄·error 1455·ETH 자체 출금 별도) · 잔여 미확정 → G01 링크
+- frontmatter: last_updated_stage 36→131, source_count 5→7, Sources Stage 131 절 추가
+- 영향받은 페이지: entities/fireblocks/vault-account.md
+- 신규 entity: 0

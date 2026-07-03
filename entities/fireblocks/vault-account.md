@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [workspace, governance, key-link]
 stage_introduced: 1
-last_updated_stage: 36
-source_count: 5
+last_updated_stage: 131
+source_count: 7
 related: [architecture, editor, owner, policy, transaction, workspace]
 ---
 # Entity: Vault Account (Fireblocks)
@@ -237,6 +237,35 @@ GasStationConfiguration {
 
 → Stage 9 의 vault-structure-best-practices.md "Gas Station vault" 의 API contract 명시. **Token transferred + base balance < gasThreshold** → auto-fund tx 발동 trigger.
 
+## Stage 131 — Gasless Service (★ Gas Station 과 별개 제품)
+
+> source: `2026-07-03__support-fireblocks-io__gasless-service-extract.md` (헬프센터 PDF 6건 Mode C 추출) · 인덱스 `2026-07-03__support-fireblocks-io__gasless-service-index.md` (15건 URL). Q-2026-07-03-G01 ANSWERED.
+
+**정의**: 지원 토큰의 **fee 지불을 전용 vault / 제3자 워크스페이스 / Fireblocks 에 위임** — 종속 vault 들이 base asset(ETH) 없이 토큰 전송. 원문 명시: *"Gasless Service is separate from the Fireblocks Gas Station and supports different protocols."* (★ Gas Station = 자기 vault ETH **충전**, Gasless = 남이 **대납** — 두 축이 병존)
+
+**Relay 3형태** (About p.1):
+
+| relay | 누가 gas 를 내나 | ETH 보유 |
+|---|---|---|
+| Local gasless relay | 같은 워크스페이스의 전용 vault | relay vault 1곳엔 필요 (충전 집약) |
+| External workspace relay | 외부 워크스페이스 | 우리 워크스페이스 불요 |
+| **Fireblocks Relay** (프리미엄) | **Fireblocks 선지불 → 월말 통합 인보이스(실비+구독료)** | **불요 — "even if you do not hold any ETH"** |
+
+**메커니즘 = ERC-3009 · ERC-2771 · EIP-7702** (ERC-4337 paymaster 아님):
+- **Limited Gasless (구)**: Ethereum 의 USDC·DAI (EIP-3009) + tokenization mint/burn (EIP-2771)
+- **Universal Gasless (신)**: **EIP-7702** (Pectra) — **첫 gasless tx 때 vault(EOA)가 smart contract wallet 로 자동 승격** → 전 이더리움 자산(ERC-20/721/1155) · Transfer / Contract Call / Mint / Burn
+- Tron 은 별도 **GasFree** (2025.3), Solana Gasless 별도 문서
+
+**Universal Gasless 지원 체인** (integrated-chains): Ethereum(1) · Optimism(10) · **Base(8453)** · Arbitrum(42161) · Polygon PoS(137) · BSC(56) + 각 testnet (Base Sepolia 포함)
+
+**운영 caveat**:
+- ★ *"Gasless Relay does not support auto-boosting for stuck transactions"* — 막힌 tx 는 **수동 RBF boost** 필요
+- Fireblocks Relay 는 **프리미엄** — CSM 경유 활성화, testnet 30일 체험
+- Console: Settings > General > Gasless transactions — relay 3택 + 기본값 3모드(On/Off by default/Off, per-tx 재정의) + Policies 연동
+- API 표면: error **1455** (400, "Transaction, Gasless (meta-tx)") — "Missing Gasless configuration ... Configure Gasless (relayer/fee payer)" (`reference-api-error-codes.md`)
+- "이더 없이"는 **토큰 전송 기준** — ETH 자체 출금은 보내는 자산이 ETH 라 별도. ETH 네이티브 전송 gas 의 gasless 여부는 미확정
+- 잔여 미확정: 인보이스 단가·구독료, MPC 서명 ↔ 7702 위임 내부 동작 → CSM/PoC ([[open-questions/fireblocks#Q-2026-07-03-G01]] 참조)
+
 ### Whitelisted / Internal / External Wallet (`internalexternal-wallet-objects.md`)
 
 3 wallet container 형태 (Stage 9 의 whitelisted address 외부성 cross-ref):
@@ -253,3 +282,7 @@ GasStationConfiguration {
 - `2026-05-22__developers-fireblocks-com__reference-vault-objects.md`, p.1-4 (3 SigningAlgorithm, VaultAccount/Asset/Address schema)
 - `2026-05-22__developers-fireblocks-com__reference-gas-station-objects.md`, p.1 (Gas Station configuration API contract)
 - `2026-05-22__developers-fireblocks-com__reference-internalexternal-wallet-objects.md`, p.1-2 (3 wallet container forms)
+
+## Sources (Stage 131 추가)
+- `2026-07-03__support-fireblocks-io__gasless-service-extract.md` (헬프센터 PDF 6건 — About·Universal Gasless·integrated chains·Configuring·Fireblocks Relay·fee contingencies)
+- `2026-07-03__support-fireblocks-io__gasless-service-index.md` (Gasless 문서 15건 URL 인덱스)
