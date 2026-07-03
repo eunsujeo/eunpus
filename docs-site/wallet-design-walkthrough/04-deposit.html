@@ -16,8 +16,6 @@
 <h1>입금 — 감지에서 확정까지</h1>
 <p class="subtitle">외부에서 돈이 들어왔다는 걸 어떻게 아는가 — 그리고 언제부터 믿는가</p>
 
-<p><b>무엇·언제</b>: 출금과 달리 입금은 직접 시작하지 않습니다. 외부 송신자가 보내고 그걸 알아채야 합니다. 직접 노드를 긁는 인덱서는 없습니다 — <b>Fireblocks 가 자기 vault 범위를 감지</b>해 두고, <b>우리는 주기적으로 Fireblocks 로 나가는 폴링(outbound)으로 그 변경을 당겨</b> DB 에 기록합니다. <b>webhook(인바운드 push)은 주 경로로 쓰지 않습니다</b> — 은행·규제망이 외부에서 들어오는 연결을 막기 때문이고, 환경이 허용하면 폴 사이 지연을 줄이는 <b>보조</b>로만 붙입니다. 그래서 이 페이지의 핵심 질문은 하나로 좁혀집니다 — <b>언제부터 잔액으로 믿는가</b>. 답은 "감지 ≠ 확정"이고, Fireblocks 는 이 둘을 상태값으로 명확히 갈라 줍니다.</p>
-
 <pre><code>onChainEvent(handler)   // 어댑터가 폴링으로 채워 handler 에 전달: ChainEvent { status, numOfConfirmations, networkStatus }</code></pre>
 
 <div class="callout">
@@ -52,7 +50,7 @@ sequenceDiagram
     POLL->>DB: available 반영 + 고객 통지
     Note over POLL,DB: webhook 은 보조 — 환경이 허용하면 폴 사이 지연을 줄이는 힌트로만<br/>그 누락·지연은 다음 폴이 어차피 메운다
 </pre></div>
-<p class="diagram-caption">감지는 <b>우리가 Fireblocks 로 나가서 당겨오는 폴링</b>이 주 경로다(인바운드 push 인 webhook 은 은행망에서 막히므로 보조). 상시 인덱서는 없고, 폴링 워커가 주기마다 변경된 tx 를 조회해 <b>DB</b> 에 반영한다. 핵심은 두 상태의 성격 차이다 — <b>CONFIRMING</b>(체인에 등장, confirmation 누적 중, 아직 미확정)에서는 기록만 하고, <b>COMPLETED</b>(DCCP 임계 confirmation 도달 = finality)에서만 available 잔액을 올린다. ERC-20 토큰 입금도 별도 주소가 생기는 게 아니라 <b>같은 주소로 오는 토큰 전송</b>이라 같은 경로를 탄다. 통지가 아니라 조회라 유실이 없고, 회계의 최종 근거는 주기적 대사(벤더 잔액과 기록의 대조)가 닫는다.</p>
+<p class="diagram-caption">ERC-20 토큰 입금도 별도 주소가 생기는 게 아니라 <b>같은 주소로 오는 토큰 전송</b>이라 같은 경로를 탄다. 통지가 아니라 <b>조회라 유실이 없고</b>, 회계의 최종 근거는 주기적 대사(벤더 잔액과 기록의 대조)가 닫는다.</p>
 
 <div class="callout">
 <div class="callout-title">웹훅은 보조 — 왜 폴링이 주 경로인가</div>
@@ -78,7 +76,7 @@ sequenceDiagram
 
 <div class="callout warn">
 <div class="callout-title">함정 — 첫 COMPLETED 를 곧 finality 로 단정하지 말 것 (zero-confirmation)</div>
-<p style="margin:0">Deposit Policy 를 <b>zero-confirmation</b> 으로 두면, COMPLETED 가 <b>블록에 등장하는 시점에 먼저</b> 뜰 수 있고 이후 webhook 이 여러 번(등장 + 1차 confirm + 추가 confirm) 더 올 수 있다. 즉 이 설정에서는 "COMPLETED webhook 을 처음 받았다"가 곧 "충분한 confirmation 이 쌓였다"를 뜻하지 않는다. 그래서 잔액 반영 판정은 status 만 보지 말고 <b><code>numOfConfirmations</code> 를 finality 임계값과 직접 비교</b>하는 편이 안전하다. 어떤 임계를 finality 로 볼지는 위 DCCP(Admin 설정)와 한 몸이다.</p>
+<p style="margin:0">Deposit Policy 를 <b>zero-confirmation</b> 으로 두면, COMPLETED 가 <b>블록에 등장하는 시점에 먼저</b> 뜰 수 있고 이후 폴마다 관찰값(등장 + 1차 confirm + 추가 confirm)이 계속 갱신될 수 있다. 즉 이 설정에서는 "COMPLETED 를 처음 관찰했다"가 곧 "충분한 confirmation 이 쌓였다"를 뜻하지 않는다. 그래서 잔액 반영 판정은 status 만 보지 말고 <b><code>numOfConfirmations</code> 를 finality 임계값과 직접 비교</b>하는 편이 안전하다. 어떤 임계를 finality 로 볼지는 위 DCCP(Admin 설정)와 한 몸이다.</p>
 </div>
 
 <h2>되돌림(reorg) — EVM 이라 남는 속성</h2>
@@ -94,7 +92,7 @@ sequenceDiagram
 
 <h2>감지 경로 — 폴링(주) · 웹훅(보조) · 대사(안전망)</h2>
 
-<p>세 수단을 겹쳐 둡니다. <b>폴링이 주 경로</b>, 웹훅은 환경이 허용할 때 지연을 줄이는 보조, 대사는 최종 안전망입니다. 공통 원칙은 <b>주소를 하나씩 조회하지 않는다</b>는 점입니다 — 아래는 모두 워크스페이스·시간 범위 기준이라, 주소가 천만 개여도 부하는 <b>놓친 트랜잭션 수에 비례할 뿐 주소 수와 무관</b>합니다.</p>
+<p>세 수단을 겹쳐 둡니다. 공통 원칙은 <b>주소를 하나씩 조회하지 않는다</b>는 점입니다 — 아래는 모두 워크스페이스·시간 범위 기준이라, 주소가 천만 개여도 부하는 <b>놓친 트랜잭션 수에 비례할 뿐 주소 수와 무관</b>합니다.</p>
 
 <table>
 <thead><tr><th style="width:22%">수단</th><th>무엇을</th></tr></thead>
@@ -145,9 +143,7 @@ sequenceDiagram
     SUB->>DB: 커서 전진 = 처리분의 max(lastUpdated) · 원자적 저장
     Note over SUB,DB: 처리 실패 시 커서 미전진 → 다음 폴에서 재처리(멱등이라 중복 무해)
 </pre></div>
-<p class="diagram-caption">폴링 워커가 <b>커서 이후 갱신된 tx</b>만 페이지 단위로 당겨, <b>입금만 골라</b>(출금·내부이동은 스킵) 목적지 vault 로 <b>계정에 귀속</b>한 뒤 상태에 따라 원장을 움직인다. <b>CONFIRMING 은 대기, COMPLETED + 임계 도달만 가용</b>이라는 판정은 webhook 방식과 완전히 같다 — 바뀐 건 "받는 방법"뿐이다. 커서는 <b>처리에 성공한 뒤에만</b> 전진하고, tx id 기준 멱등 upsert 라 경계에서 겹쳐 받아도 중복 반영되지 않는다. 우리 vault 로 온 입금인데 <b>주소가 매핑에 없으면</b>(Console 직접 생성 등 out-of-band) 스킵하지 않고 계정엔 귀속하되 <b>경보</b>한다.</p>
-
-<p>같은 흐름을 코드로 옮기면 이렇습니다. <b>커서는 <code>lastUpdated</code>(Unix 밀리초)</b>이고, 같은 밀리초 경계를 놓치지 않도록 <b>조금 겹쳐 읽은 뒤 tx id 로 멱등 처리</b>하는 게 급소입니다.</p>
+<p>같은 흐름을 코드로 옮기면 이렇습니다.</p>
 
 <pre><code>// 커서 = 마지막으로 처리한 tx 의 lastUpdated (Unix ms)
 let cursor = db.readCursor()               // 예: 1720000000000
@@ -203,7 +199,7 @@ db.commitCursor(maxSeen)
 // 다음 실행은 주기(예: 15~30s) 뒤 — 감지 지연 = 이 주기</code></pre>
 
 <table>
-<thead><tr><th style="width:22%">루프의 급소</th><th>어떻게</th></tr></thead>
+<thead><tr><th style="width:22%">빠뜨리면 사고 나는 지점</th><th>어떻게</th></tr></thead>
 <tbody>
 <tr><td><b>커서</b></td><td><code>lastUpdated</code> 워터마크를 DB 에 영속. 주기마다 <code>after=커서</code>로만 받아 재조회량을 놓친 만큼으로 한정.</td></tr>
 <tr><td><b>빠짐 방지</b></td><td>커서는 <b>처리 성공 후에만 전진</b> + 경계를 <b>살짝 겹쳐 받기</b>(after 를 조금 이전으로). 겹침은 멱등 upsert 가 흡수.</td></tr>
@@ -213,7 +209,7 @@ db.commitCursor(maxSeen)
 <tr><td><b>감지 지연</b></td><td>지연 = <b>폴링 주기</b>. 짧게 잡으면 실시간에 근접하고 API 호출이 는다 — 확정 요건과 rate limit 사이에서 정한다.</td></tr>
 </tbody>
 </table>
-<p class="table-note">이 루프는 <b>주소 수와 무관</b>하다 — 커서가 훑는 것은 "갱신된 트랜잭션"이지 주소 목록이 아니다. 천만 개 주소여도 한 주기의 일감은 그사이 상태가 바뀐 tx 수뿐이다. 다만 폴링이 push 이벤트를 100% 대체하는지 — 초기 감지 시점·승인 상태 이벤트까지 빠짐없이 관찰되는지 — 는 벤더 문서로 확인이 남은 부분이다.</p>
+<p class="table-note">폴링이 push 이벤트를 100% 대체하는지 — 초기 감지 시점·승인 상태 이벤트까지 빠짐없이 관찰되는지 — 는 벤더 문서로 확인이 남은 부분이다.</p>
 
 <p class="foot">더 깊이: 잔액의 세 칸(available·pending·locked)이 이 상태들과 어떻게 맞물리는지는 <a href="07-balance-history.html">7. 잔액과 내역 조회</a>, 출금 쪽 상태 전이(SUBMITTED→CONFIRMING→COMPLETED)는 <a href="06-withdrawal.html">6. 출금</a> 에서 이어집니다.</p>
 

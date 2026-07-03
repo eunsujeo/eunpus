@@ -7302,3 +7302,12 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 내용: 3행 계약 표(create 재호출=기존 값 멱등 반환·유일성은 DB UNIQUE·경합=read-back / get 없음=null·read-through 금지·후속은 유스케이스 / 에러=불변식 위반 전용·에러 채널 오염 방지) + 갈림 기준 "없음이 정상이면 null, 없음이 사고면 NotFound"(사전 전량 발급 불변식이면 NotFound) + HTTP null→404 번역은 별개 층
 - 영향받은 페이지: docs-site/wallet-service-components/abstraction
 - 신규 entity: 0
+
+## Stage 106 (2026-07-03) — 4페이지 리뷰 적용: 중복 축소 + webhook 잔재 정정
+- 계기: 사용자 승인 — 증축 과정에서 쌓인 반복(폴링 주·웹훅 보조 4곳, 커서 설명 3곳, 주소 무관 2곳) 정리
+- 제거: 무엇·언제 문단(폴링 논리=callout·감지≠확정=confirm/finality callout·인덱서 없음=다이어그램 중복) · 상세 다이어그램 캡션(다이어그램+코드+표와 전면 중복, "webhook 방식과 같다" 낡은 프레임)
+- 축소: 메인 캡션 → 유니크 2문장(ERC-20 같은 경로 / 조회라 유실 없음·최종은 대사) · 코드 인트로 한 줄 · "감지 경로" 절 도입의 반복 문장 · table-note 주소 무관 문장(97행에 유지)
+- 정정: zero-conf callout webhook 잔재("COMPLETED webhook 을 받았다"→"COMPLETED 를 관찰했다"·폴마다 갱신) · 표 제목 "루프의 급소"→"빠뜨리면 사고 나는 지점"(평이한 한글)
+- 유지: confirm/finality·DCCP·reorg·networkStatus·웹훅은 보조 callout(canonical)·3수단 표·코드·급소 표(요약 레퍼런스)
+- 영향받은 페이지: docs-site 04
+- 신규 entity: 0
