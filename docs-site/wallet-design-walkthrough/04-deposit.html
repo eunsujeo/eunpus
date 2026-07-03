@@ -48,7 +48,6 @@ sequenceDiagram
     POLL->>FB: 폴 — 변경된 tx 조회
     FB-->>POLL: status COMPLETED (DCCP 임계 도달 = finality)
     POLL->>DB: available 반영 + 고객 통지
-    Note over POLL,DB: webhook 은 보조 — 환경이 허용하면 폴 사이 지연을 줄이는 힌트로만<br/>그 누락·지연은 다음 폴이 어차피 메운다
 </pre></div>
 <h2>DCCP — 무엇이 CONFIRMING 을 COMPLETED 로 바꾸는가</h2>
 
