@@ -7232,3 +7232,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - ANSWERED: Q-2026-07-03-V01
 - 영향받은 페이지: open-questions/fireblocks.md · docs-site/wallet-design-walkthrough/01-create-account · sources/(신규 extract)
 - 신규 entity: 0
+
+## Stage 97 (2026-07-03) — 2페이지 EVM 주소 발급 정정 (활성화 유래) + 00-cast 매트릭스
+- 계기: V01 확정 — EVM 은 create-address(generateNewAddress) 호출이 account-based 실패, 단일 주소는 자산 지갑 활성화(POST .../{assetId}, CreateVaultAssetResponse.address)에서 나옴. 2페이지가 generateNewAddress 채번으로 서술돼 있어 정정
+- 근거 보강: openapi spec L504(POST .../{assetId}=create vault wallet) + L8756 CreateVaultAssetResponse(address·legacyAddress·tag·activationTxId) → source extract 갱신
+- 02-issue-deposit-address: 무엇·언제("채번"→"자산 지갑 활성화해 단일 주소"), h2("없으면 채번"→"없으면 활성화"), 다이어그램(generateNewAddress→자산 지갑 활성화 POST .../{assetId}, Note에 generateNewAddress=UTXO/Tag 전용·EVM 실패 명시, 활성화 응답 address), 캡션 동일 반영
+- 00-cast 매트릭스: 입금 주소 생성 표면 generateNewAddress → createVaultAsset(자산 지갑 활성화, EVM=단일)
+- 영향받은 페이지: docs-site 02·00-cast · sources extract
+- 신규 entity: 0

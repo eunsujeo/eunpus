@@ -32,6 +32,7 @@
 - description: "Should be used for **UTXO or Tag/Memo based assets ONLY. Requests with account based assets will fail.**"
 - → **EVM(account-based)은 이 호출이 실패**. EVM 은 vault·자산당 **단일 주소**이고, 그 주소는 **asset wallet 활성화**(Create/Activate vault wallet)에서 나온다. 추가 주소 생성 불가.
 - "Bulk creation of new deposit addresses" 도 UTXO 전용.
+- **확인(spec L504·8756)**: `POST /vault/accounts/{vaultAccountId}/{assetId}`(create vault wallet) 응답 `CreateVaultAssetResponse` 에 `address`·`legacyAddress`·`tag`·`status`·`activationTxId` 포함 → **자산 지갑 활성화가 곧 EVM 단일 주소 발급**(address 필드).
 
 ## 설계 함의 (docs-site wallet-design-walkthrough)
 

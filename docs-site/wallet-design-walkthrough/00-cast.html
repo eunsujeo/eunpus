@@ -117,7 +117,7 @@ flowchart LR
 </tr></thead>
 <tbody>
 <tr><td>고객 계정 생성</td><td>createVaultAccount</td><td class="c">●</td><td class="c"></td><td class="c"></td><td class="c"></td><td><code>createAccount</code></td><td class="c">S</td><td class="c">1p</td></tr>
-<tr><td>입금 주소 <b>생성</b></td><td>generateNewAddress</td><td class="c">●</td><td class="c">●</td><td class="c"></td><td class="c"></td><td><code>createDepositAddress</code></td><td class="c">S</td><td class="c">2p</td></tr>
+<tr><td>입금 주소 <b>생성</b></td><td>createVaultAsset · 자산 지갑 활성화 (EVM=단일)</td><td class="c">●</td><td class="c">●</td><td class="c"></td><td class="c"></td><td><code>createDepositAddress</code></td><td class="c">S</td><td class="c">2p</td></tr>
 <tr><td>입금 주소 <b>조회</b></td><td>(DB 읽기 · Fireblocks 미사용)</td><td class="c"></td><td class="c">●</td><td class="c"></td><td class="c">●</td><td><code>getDepositAddress</code></td><td class="c">S</td><td class="c">3p</td></tr>
 <tr><td>수신·확정 이벤트</td><td>거래 조회 폴링 (webhook 옵션)</td><td class="c"></td><td class="c">●</td><td class="c">●</td><td class="c"></td><td><code>onChainEvent</code></td><td class="c">S</td><td class="c">4p</td></tr>
 <tr><td>수수료 추정</td><td>estimateFee</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c"></td><td><code>estimateFee</code></td><td class="c">S</td><td class="c">5p</td></tr>
