@@ -78,12 +78,12 @@ sequenceDiagram
 <p>Fireblocks 트랜잭션 상태는 전부 17가지지만 대부분은 출금 쪽 단계(제출·승인·서명·전파)이고 — 그쪽은 6페이지의 "상태 한 장" 표가 맡습니다 — <b>입금이 실제로 지나는 것은 아래 넷</b>입니다.</p>
 
 <table>
-<thead><tr><th style="width:20%">status</th><th>뜻</th><th style="width:22%">잔액 처리</th></tr></thead>
+<thead><tr><th style="width:20%">status</th><th>뜻</th><th style="width:24%">금액이 가는 칸</th></tr></thead>
 <tbody>
 <tr><td><code>CONFIRMING</code></td><td>체인 등장, confirmation 누적 중</td><td>대기(pending)</td></tr>
-<tr><td><code>COMPLETED</code></td><td>DCCP 임계 도달 = finality (final). zero-confirmation 설정이면 여러 번 관찰될 수 있음(위 함정)</td><td>임계 확인 후 가용</td></tr>
-<tr><td><code>REJECTED</code></td><td>AML 거절 또는 동결 — <b>입금은 Admin 이 unfreeze 할 때까지 자산 잠금</b></td><td>반영 안 함 · 운영 처리</td></tr>
-<tr><td><code>FAILED</code></td><td>영구 실패 (final)</td><td>반영 안 함</td></tr>
+<tr><td><code>COMPLETED</code></td><td>DCCP 임계 도달 = finality (final). zero-confirmation 설정이면 여러 번 관찰될 수 있음(위 함정)</td><td>가용(available) — 임계 확인 후</td></tr>
+<tr><td><code>REJECTED</code></td><td>AML 거절 또는 동결 — <b>입금은 Admin 이 unfreeze 할 때까지 자산 잠금</b></td><td>없음 — unfreeze 운영 대기</td></tr>
+<tr><td><code>FAILED</code></td><td>영구 실패 (final)</td><td>없음</td></tr>
 </tbody>
 </table>
 
