@@ -108,6 +108,8 @@ flowchart LR
 <tr><td><strong>지원 체인</strong> (Universal)</td><td>Ethereum(1) · Optimism(10) · <strong>Base(8453)</strong> · Arbitrum(42161) · Polygon PoS(137) · BSC(56) + 각 testnet. Solana·Tron(GasFree)은 별도 메커니즘.</td></tr>
 <tr><td><strong>설정</strong></td><td>Console: Settings → General → Gasless transactions — relay 3택 + 기본값 3모드(On by default / Off by default / Off, 거래별 재정의 가능) + Policies 연동.</td></tr>
 <tr><td><strong>API</strong></td><td>트랜잭션 API 에 Gasless(meta-tx) 경로 존재 — 미설정 시 error 1455 "Missing Gasless configuration (relayer/fee payer)".</td></tr>
+<tr><td><strong>Fireblocks Relay 지원 범위</strong></td><td>위 표(Universal 통합 6체인)와 별개로 Relay 서비스 자체는 <strong>"모든 EVM 호환 체인 + 그 위 모든 토큰"</strong> — 일부 non-EVM(특정 USDC 오퍼레이션 포함)은 CSM 문의.</td></tr>
+<tr><td><strong>도입 절차</strong> (Fireblocks Relay)</td><td>Console 설정(Fireblocks relay 선택) → Support 요청 → CSM 협의(대상 체인 · 월 거래량 · 유스케이스) → <strong>서비스 계약 서명</strong> → 활성화.</td></tr>
 </tbody>
 </table>
 </div>
@@ -134,10 +136,27 @@ sequenceDiagram
 <div class="callout callout-warn">
 <div class="callout-title">운영 caveat — 대납이어도 남는 것</div>
 <ul>
+<li><strong>새 실패 모드가 생긴다</strong> — 공식 문서 명시: <strong>relay 가 요청을 거절하거나 gas 를 대지 못하면 gasless 거래는 실패</strong>한다. relay 상호작용은 서명·거래 생성 단계(체인 전송 전)에 일어나므로, 상태 처리에 "relay 거절" 실패 사유가 추가되고 relay 잔고·정책이 모니터링 대상이 된다.</li>
 <li><strong>막힌 거래의 자동 재촉 없음</strong> — 공식 문서 명시: Gasless Relay 는 stuck 거래 auto-boost 를 지원하지 않는다. <strong>수동 RBF boost</strong> 가 필요하므로, 막힘 점검과 boost·cancel 운영은 대납을 써도 그대로 필요하다.</li>
 <li><strong>비용이 사라지는 게 아니라 지불 수단이 바뀐다</strong> — 온체인 ETH → 월말 청구서(법정화폐). 정산은 회계 층의 일이 된다. 단가·구독료 수준은 미확정(CSM 확인 대상).</li>
 <li><strong>MPC 서명 ↔ EIP-7702 위임의 내부 동작</strong>은 공식 문서에 상세가 없다 — PoC/CSM 확인 대상.</li>
 </ul>
+</div>
+
+<h3>도입 시 붙는 거버넌스·구현 요건</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">요건</th><th>내용</th></tr></thead>
+<tbody>
+<tr><td><strong>TAP 정책 2종</strong> (Admin 몫)</td><td>① <strong>Vault account upgrade policy</strong> — 승격된 vault 의 gasless 발신을 Allow 하는 rule. ② relay 측 Contract call policy 에 <strong>Gasless-Orchestrator 를 initiator 로 명시하는 rule</strong> — anyone initiator rule 이 있어도 별도로 필요하며, initiator 와 signer 는 같을 수 없다.</td></tr>
+<tr><td><strong>API Co-Signer</strong></td><td>relay 역할을 하는 워크스페이스는 <strong>API Co-Signer 필수</strong>. (본 설계는 이미 co-signer 를 운용하므로 충족)</td></tr>
+<tr><td><strong>승격 시점</strong></td><td>vault 의 자산 승격은 <strong>첫 gasless 거래가 완료된 뒤</strong> 적용된다.</td></tr>
+<tr><td><strong>건별 제어</strong></td><td>Transfer 단위로 gasless ↔ direct fee 전환 가능 — 기본값(On/Off by default)과 별개로 거래마다 재정의.</td></tr>
+<tr><td><strong>규제 대응 사례</strong> (external relay)</td><td>공식 문서 명시 사례 — <em>"US 워크스페이스는 스테이블코인만 보유하고, EU 워크스페이스가 ETH 를 보유해 gas 를 지불한다. US 워크스페이스는 컴플라이언스를 유지한다."</em> — "sweeping 워크스페이스의 ETH 보유 금지" 요건 대응 패턴.</td></tr>
+<tr><td><strong>Solana 는 다른 모델</strong></td><td>EIP-7702 가 아니라 <strong>Solana Fee Payer</strong> — local relay 와 token owner 두 vault 가 공동 서명하고, <strong>relay 와 key set 을 공유하는 vault 에서만</strong> 가능. SOL 자체는 제외.</td></tr>
+</tbody>
+</table>
 </div>
 </section>
 
@@ -171,6 +190,7 @@ sequenceDiagram
 <tr><td><strong>ETH 없이 운영이 되나</strong></td><td>Fireblocks Relay 면 <strong>토큰 운영 기준으로 가능</strong> — "even if you do not hold any ETH". ETH 자체 취급 물량은 별도.</td></tr>
 <tr><td><strong>Gas Station 과 무엇을 고르나</strong></td><td>충전(Gas Station·ETH 운영 유지) vs 대납(Gasless·인보이스 정산) — 상호 배타가 아니라 병존 가능한 두 축. ETH 보유 부담과 프리미엄 비용의 트레이드오프.</td></tr>
 <tr><td><strong>기존 설계에서 바뀌는 것</strong></td><td>감지·확정 판정, 막힘 점검·boost 운영은 그대로. 바뀌는 건 <strong>gas 조달 운영 → 월말 인보이스 정산(회계 층)</strong>.</td></tr>
+<tr><td><strong>도입하면 설계가 어떻게 달라지나</strong></td><td>① Admin — TAP 정책 2종(upgrade policy·Orchestrator rule) 운영 추가 ② 감지·상태 — "relay 거절" 실패 사유 추가, relay 잔고 모니터링 ③ 회계 — gas 운영이 월말 인보이스 대사로 이동 ④ sweep — <strong>토큰은 Gasless, ETH 자체는 Gas Station</strong> 병행 ⑤ estimateFee — 우리 비용 추정에서 relay 비용 예측·인보이스 검증으로 역할 이동.</td></tr>
 <tr><td><strong>남은 확인</strong></td><td>인보이스 단가·구독료, MPC↔7702 내부 동작 — CSM/PoC. (ETH 네이티브 전송의 대납 여부는 확정 — 불가, ETH 는 Gas Station 몫)</td></tr>
 </tbody>
 </table>

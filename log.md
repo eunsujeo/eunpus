@@ -7543,3 +7543,9 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 반영: vault-account §Gasless caveat 확정 문구 · open-questions G01 보강 · gas-delegation 문서(table-note·남은 확인)
 - 영향받은 페이지: sources(신규 1)·entities/vault-account·open-questions·docs-site/gas-delegation
 - 신규 entity: 0
+
+## Stage 138 (2026-07-03) — gas-delegation 문서 보강: 도입 요건·실패 모드·설계 변경점
+- 계기: 사용자 "업데이트/추가할 내용? 구현 가능하면 설계가 달라질 수 있어" → 2차 추출·sweep 문서의 설계 영향 사실 반영
+- 추가: ① 확정 사실 표 2행(Fireblocks Relay 지원 범위="모든 EVM+전 토큰"·도입 절차 CSM 협의→서비스 계약) ② caveat 에 새 실패 모드(relay 거절/fuel 불가 — 서명·생성 단계, relay 잔고·정책 모니터링 대상) ③ "도입 시 붙는 거버넌스·구현 요건" 표 6행(TAP 2종·API Co-Signer 필수(기존 충족)·승격은 첫 거래 후·건별 제어·external relay 규제 사례 원문·Solana Fee Payer 제약) ④ 결정 포인트에 "도입하면 설계가 어떻게 달라지나" 행(Admin TAP/감지 실패사유/회계 인보이스/sweep 병행/estimateFee 역할 이동)
+- 영향받은 페이지: docs-site/gas-delegation
+- 신규 entity: 0
