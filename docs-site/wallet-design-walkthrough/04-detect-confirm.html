@@ -22,6 +22,18 @@
 
 <p><b>폴링 스트림 하나</b>가 워크스페이스의 입·출금 변경을 전부 나릅니다. 이 페이지는 그 스트림과 확정 기준(언제부터 믿는가)을 정의하고, <b>입금(5장)·출금(7장)이 이것을 소비</b>합니다.</p>
 
+<p>사용법은 <b>"등록은 한 번, 호출은 어댑터가"</b>입니다 — 부팅 시 handler 를 등록해 두면, 어댑터의 폴링 루프(아래 절)가 이벤트마다 불러줍니다.</p>
+
+<pre><code>// Service 백엔드 부팅 시 1회 — handler 등록
+manager.onChainEvent { event ->
+    when (event.direction) {
+        DEPOSIT    -> depositLedger.apply(event)      // 입금: 대기→가용 (5장)
+        WITHDRAWAL -> withdrawalTracker.apply(event)  // 출금: 상태 추적 (7장)
+    }
+}
+// handler 는 멱등이어야 한다 — 같은 이벤트가 두 번 올 수 있다 (겹쳐 받기·재시도)
+// handler 가 실패하면 커서가 안 전진해 다음 폴에 같은 이벤트가 다시 온다 (at-least-once)</code></pre>
+
 <h2>폴링 상세 흐름 — 커서 하나로 입·출금을 다 나른다</h2>
 
 <p>루프가 방향을 갈라 <b>입금은 원장 반영(5장), 출금은 상태 추적(7장)</b>으로 넘깁니다. 상태 필터는 대사·표적 조회(8p)에서 씁니다.</p>
