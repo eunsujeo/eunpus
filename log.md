@@ -7506,3 +7506,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - frontmatter: last_updated_stage 36→131, source_count 5→7, Sources Stage 131 절 추가
 - 영향받은 페이지: entities/fireblocks/vault-account.md
 - 신규 entity: 0
+
+## Stage 133 (2026-07-03) — wiki: GSN·ERC-4337 Paymaster 인접 개념 구분 추가
+- 계기: 사용자 — GSN·paymaster 도 wiki 에 추가 요청
+- 흡수 판단: 신규 entity 0 — vault-account §Stage 131 Gasless 아래 "인접 개념 구분" 서브섹션. Fireblocks fact 아님 → [unverified — 사전학습 기반] 라벨로 evidence isolation
+- 내용: 3열 비교표(GSN vs 4337 Paymaster vs Fireblocks Gasless 확정분) — 무엇/전제/어떻게/왜/체인/현황 + 관계 정리 3줄(2771 자체 구현·4337 대신 7702·Gas Station 은 GSN 과 이름만 유사)
+- 영향받은 페이지: entities/fireblocks/vault-account.md
+- 신규 entity: 0

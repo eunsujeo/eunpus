@@ -266,6 +266,24 @@ GasStationConfiguration {
 - "이더 없이"는 **토큰 전송 기준** — ETH 자체 출금은 보내는 자산이 ETH 라 별도. ETH 네이티브 전송 gas 의 gasless 여부는 미확정
 - 잔여 미확정: 인보이스 단가·구독료, MPC 서명 ↔ 7702 위임 내부 동작 → CSM/PoC ([[open-questions/fireblocks#Q-2026-07-03-G01]] 참조)
 
+### 인접 개념 구분 — GSN · ERC-4337 Paymaster (일반 지식, Fireblocks fact 아님)
+
+> [unverified — 사전학습 기반. Fireblocks Gasless 가 무엇이 **아닌지** 가르는 비교용. 두 개념의 최신 세부는 1차 자료 확인 필요]
+
+| | **GSN (Gas Station Network)** | **ERC-4337 Paymaster** | Fireblocks Gasless (비교 기준·확정) |
+|---|---|---|---|
+| 무엇 | meta-transaction relay 네트워크 — relayer 가 사용자의 서명 메시지를 대신 온체인 제출하고 gas 부담 | account abstraction 의 gas 대납 컨트랙트 — UserOperation 의 gas 를 스폰서하거나 ERC-20(USDC 등)으로 수취 | 벤더 관리 relay 서비스 (ERC-3009 · 2771 · EIP-7702) |
+| 전제 | **수신 컨트랙트가 ERC-2771**(trusted forwarder)을 지원해야 — 일반 ERC-20 전송엔 못 씀 | 지갑이 **smart account** + EntryPoint·bundler 인프라 | Fireblocks vault — EOA 를 7702 로 자동 승격 |
+| 어떻게 | 사용자 서명 → relayer 제출 → 컨트랙트가 forwarder 를 신뢰해 원 발신자 인식 | UserOp → bundler → EntryPoint → paymaster 가 검증·지불 | 첫 gasless tx 때 vault 승격 → 지정 relay 가 gas 부담 |
+| 왜 쓰나 | ETH 없는 사용자의 온보딩 UX | gasless UX · 토큰으로 수수료 · 신규 사용자 스폰서십 | 수탁 운영의 gas 조달·충전·모니터링 제거 |
+| 체인 | EVM (컨트랙트 지원 시) | EntryPoint 배포된 EVM 전반 — Base 생태계 활발 | ETH·OP·Base·ARB·Polygon·BSC (확정, 위 표) |
+| 현황 | 생태계가 4337 로 이동 — GSN 프로젝트 자체는 쇠퇴 계보 | AA 표준의 주류 | GA (Universal 은 프리미엄 relay 별도) |
+
+관계 정리:
+- Fireblocks 는 **GSN 네트워크를 쓰는 게 아니라 ERC-2771 표준을 자체 relay 로 구현** (Limited Gasless 의 tokenization 경로).
+- **ERC-4337 paymaster 를 채택하지 않고 EIP-7702 로** account abstraction 효과를 얻는 노선 (Universal Gasless).
+- Fireblocks **"Gas Station" 은 GSN 과 이름만 유사, 무관** — 전자는 자기 vault ETH 충전, 후자는 대납 relay 네트워크.
+
 ### Whitelisted / Internal / External Wallet (`internalexternal-wallet-objects.md`)
 
 3 wallet container 형태 (Stage 9 의 whitelisted address 외부성 cross-ref):
