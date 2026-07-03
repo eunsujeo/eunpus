@@ -16,7 +16,7 @@
 <h1>입금 주소 조회 — getDepositAddress</h1>
 <p class="subtitle">생성과 정반대인 읽기 전용 — 매니저가 백엔드 DB 에서 (accountId, asset)로 그 주소를 읽는다</p>
 
-<pre><code>getDepositAddress(accountId, asset) → Address { value, memoTag? }   // 읽기, 백엔드 DB 에 저장된 그 값</code></pre>
+<pre><code>getDepositAddress(accountId, asset) → Address?   // 읽기 · 없으면 null (만들지 않는다 — 생성은 2p)</code></pre>
 
 <h2>▸ 매니저가 백엔드 DB 에서 읽는다 — 벤더 왕복 없음</h2>
 
@@ -31,8 +31,13 @@ sequenceDiagram
 
     BE->>FBI: getDepositAddress(accountId, asset)
     FBI->>BDB: (accountId, asset)↔주소 읽기
-    BDB-->>FBI: 주소 (이더리움·Base = 0xAb3… · memoTag null)
-    FBI-->>BE: 주소
+    alt 있으면
+        BDB-->>FBI: 주소 (이더리움·Base = 0xAb3… · memoTag null)
+        FBI-->>BE: 주소
+    else 없으면 — 아직 발급 전
+        BDB-->>FBI: 없음
+        FBI-->>BE: null — 만들지 않는다 · 생성은 createDepositAddress(2p), 부를지는 유스케이스가 결정
+    end
     Note over FBI,BDB: 벤더(Fireblocks)를 거치지 않는다 — 백엔드 DB 만 읽는다
 </pre></div>
 <div class="callout">
