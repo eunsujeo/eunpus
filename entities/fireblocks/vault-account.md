@@ -263,7 +263,7 @@ GasStationConfiguration {
 - Fireblocks Relay 는 **프리미엄** — CSM 경유 활성화, testnet 30일 체험
 - Console: Settings > General > Gasless transactions — relay 3택 + 기본값 3모드(On/Off by default/Off, per-tx 재정의) + Policies 연동
 - API 표면: error **1455** (400, "Transaction, Gasless (meta-tx)") — "Missing Gasless configuration ... Configure Gasless (relayer/fee payer)" (`reference-api-error-codes.md`)
-- "이더 없이"는 **토큰 전송 기준** — ETH 자체 출금은 보내는 자산이 ETH 라 별도. ETH 네이티브 전송 gas 의 gasless 여부는 미확정
+- "이더 없이"는 **토큰 전송 기준** — ETH 자체 출금은 보내는 자산이 ETH 라 별도. ★ **ETH 네이티브 전송은 gasless 대납 불가(공식 확정)** — "does not relay native ETH transfers — Gas Station remains the right choice for sweeping ETH itself" (source: `2026-07-03__developers-fireblocks-com__sweep-funds-omnibus.md`)
 - 잔여 미확정: 인보이스 단가·구독료, MPC 서명 ↔ 7702 위임 내부 동작 → CSM/PoC ([[open-questions/fireblocks#Q-2026-07-03-G01]] 참조)
 
 ### 인접 개념 구분 — GSN · ERC-4337 Paymaster (일반 지식, Fireblocks fact 아님)

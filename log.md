@@ -7535,3 +7535,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - extract 문서 2차 절 보강. 인접 tokenization 4건은 미추출로 명시
 - 영향받은 페이지: sources/...gasless-service-extract.md
 - 신규 entity: 0
+
+## Stage 137 (2026-07-03) — sweep-funds·sweep-to-omnibus ingest: ETH 네이티브 대납 불가 확정
+- source: developers.fireblocks.com docs/sweep-funds + reference/sweep-to-omnibus-1 (사용자 제공 URL, fetch). extract: sources/...sweep-funds-omnibus.md
+- ★ 확정: Universal Gasless 는 "does not relay native ETH transfers" — ETH 자체 sweep 은 Gas Station 몫 (G01 잔여 미확정 1건 해소). external relay = "sweeping 워크스페이스의 ETH 보유 금지 컴플라이언스" 대응 명시, Fireblocks relay = "no ETH holding required anywhere"
+- sweep 설계 근거: omnibus 3 vault(intermediate/omnibus deposits/withdrawal pool) 공식 분류 · 트리거 전략(잔액·스케줄·fee 임계, estimate_network_fee) · sweep 은 낮은 fee 가능 · UTXO 제한(BTC 250 UTXO·Cardano 16KB·다중 목적지 1tx) vs account-based 는 wallet 별 · API Co-Signer 자동화 권장 · ★ "backend internal ledger 가 ref↔vaultId 상관" 전제 명시 — 우리 1장 설계와 벤더 가이드 일치
+- 반영: vault-account §Gasless caveat 확정 문구 · open-questions G01 보강 · gas-delegation 문서(table-note·남은 확인)
+- 영향받은 페이지: sources(신규 1)·entities/vault-account·open-questions·docs-site/gas-delegation
+- 신규 entity: 0

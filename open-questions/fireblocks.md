@@ -1123,6 +1123,7 @@
   3. **relay 3형태 확정**: local vault / external workspace / **Fireblocks Relay(프리미엄 — Fireblocks 가 gas 선지불, 월말 통합 인보이스 = 실비+구독료, CSM 경유 활성화)**.
   4. **지원 체인**: Ethereum·Optimism·**Base**·Arbitrum·Polygon·BSC (+각 testnet, Base Sepolia 포함). Solana·Tron(GasFree) 은 별도 메커니즘.
   5. **운영 caveat**: Gasless Relay 는 **stuck tx auto-boost 미지원 — 수동 RBF boost 필요**. API 표면: error 1455 "Missing Gasless configuration"(relayer/fee payer 설정). Console: Settings>General>Gasless transactions, 기본값 3모드+per-tx 재정의, Policies 연동.
+- **보강 (Stage 137, `docs/sweep-funds` + `reference/sweep-to-omnibus-1` fetch)**: ★ **ETH 네이티브 전송은 Universal Gasless 대납 불가 공식 확정** — "does not relay native ETH transfers — Gas Station remains the right choice for sweeping ETH itself". external relay 의 컴플라이언스 용도("prohibit holding ETH in the sweeping workspace")·Fireblocks relay 의 "no ETH holding required anywhere" 원문 확보. sweep 가이드가 ref↔vaultId 내부 원장 전제를 명시(우리 1장 설계와 일치).
 - **Status**: ANSWERED (정산 세부 단가·구독료와 MPC↔7702 위임 내부 동작만 CSM/PoC 잔여)
 
 ### Stage 96 Summary

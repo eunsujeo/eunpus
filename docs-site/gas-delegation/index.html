@@ -89,7 +89,7 @@ flowchart LR
 </tbody>
 </table>
 </div>
-<p class="table-note">"ETH 불요"는 <strong>토큰 전송 기준</strong>이다 — 고객이 ETH 자체를 출금하면 보내는 자산이 ETH 라서 그 물량은 별도로 필요하다. 스테이블코인 중심 서비스라면 사실상 ETH-free 운영이 된다.</p>
+<p class="table-note">"ETH 불요"는 <strong>토큰 전송 기준</strong>이다 — 공식 문서가 명시한다: <strong>Universal Gasless 는 ETH 네이티브 전송을 대납하지 않으며, ETH 자체의 이동(sweep)은 Gas Station 몫</strong>이다. 고객이 ETH 자체를 출금하면 보내는 자산이 ETH 라서 그 물량도 별도다. 스테이블코인 중심 서비스라면 사실상 ETH-free 운영이 된다.</p>
 </section>
 
 <section id="gasless">
@@ -171,7 +171,7 @@ sequenceDiagram
 <tr><td><strong>ETH 없이 운영이 되나</strong></td><td>Fireblocks Relay 면 <strong>토큰 운영 기준으로 가능</strong> — "even if you do not hold any ETH". ETH 자체 취급 물량은 별도.</td></tr>
 <tr><td><strong>Gas Station 과 무엇을 고르나</strong></td><td>충전(Gas Station·ETH 운영 유지) vs 대납(Gasless·인보이스 정산) — 상호 배타가 아니라 병존 가능한 두 축. ETH 보유 부담과 프리미엄 비용의 트레이드오프.</td></tr>
 <tr><td><strong>기존 설계에서 바뀌는 것</strong></td><td>감지·확정 판정, 막힘 점검·boost 운영은 그대로. 바뀌는 건 <strong>gas 조달 운영 → 월말 인보이스 정산(회계 층)</strong>.</td></tr>
-<tr><td><strong>남은 확인</strong></td><td>인보이스 단가·구독료, MPC↔7702 내부 동작, ETH 네이티브 전송 gas 의 대납 여부 — CSM/PoC.</td></tr>
+<tr><td><strong>남은 확인</strong></td><td>인보이스 단가·구독료, MPC↔7702 내부 동작 — CSM/PoC. (ETH 네이티브 전송의 대납 여부는 확정 — 불가, ETH 는 Gas Station 몫)</td></tr>
 </tbody>
 </table>
 </div>
