@@ -33,11 +33,16 @@ sequenceDiagram
     participant FB as Fireblocks SaaS · 벤더
 
     BE->>FBI: createDepositAddress(accountId, asset)
-    FBI->>BDB: (accountId, asset) 조회 — 있으면 그대로 (재시도 흡수)
-    FBI->>FB: 없으면 → 자산 지갑 활성화 createVaultAccountAsset · Idempotency-Key=f(accountId,asset)
-    FB-->>FBI: 활성화 응답 · address 0xAb3… · memoTag=null
-    FBI->>BDB: 주소 저장 (accountId+asset ↔ 0xAb3…) · account·asset UNIQUE
-    FBI-->>BE: 주소 (0xAb3…)
+    FBI->>BDB: (accountId, asset) 조회
+    alt 있으면 — 재사용
+        BDB-->>FBI: 기존 주소
+        FBI-->>BE: 주소 (0xAb3…)
+    else 없으면
+        FBI->>FB: 자산 지갑 활성화 createVaultAccountAsset · Idempotency-Key=f(accountId,asset)
+        FB-->>FBI: 활성화 응답 · address 0xAb3… · memoTag=null
+        FBI->>BDB: 주소 저장 (accountId+asset ↔ 0xAb3…) · account·asset UNIQUE
+        FBI-->>BE: 주소 (0xAb3…)
+    end
     Note over FBI,FB: EVM = account·자산당 주소 1개 · 활성화 1회. generateNewAddress 는 UTXO·Tag 전용의 다른 작업. 감시·귀속은 벤더 몫
 </pre></div>
 <p class="diagram-caption">1페이지 <code>createAccount</code> 와 같은 <b>create-once</b> — (account, asset)당 한 번, 없을 때만 <b>자산 지갑을 활성화</b>한다(<code>createVaultAccountAsset</code>). 활성화 응답에 <code>address</code> 가 실려 오고, 그게 EVM 단일 주소다. 재시도는 <b>Idempotency-Key</b> 로 같은 주소, 정합은 <b>(account, asset) UNIQUE</b> 로 잡는다. <code>generateNewAddress</code>(=<code>createVaultAccountAssetAddress</code>)는 <b>UTXO·Tag 자산의 추가 주소</b> 발급이라 EVM 에는 쓰지 않는다(account-based 는 호출 시 실패). EVM 은 <b>순수 주소</b>(memoTag=null), 이더리움·Base 는 <code>asset</code> 의 chainId 만 다르다. 키·주소 파생은 <b>vault·MPC 안</b>, 감시·귀속도 벤더 몫. <b>매니저가 (accountId+asset ↔ 주소) 를 백엔드 DB 에 저장</b>하고, 이후 조회는 <b>getDepositAddress(3p)</b> 가 읽어 재사용한다.</p>

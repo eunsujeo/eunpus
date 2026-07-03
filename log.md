@@ -7249,3 +7249,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - V01 답 #4·5 에 createVaultAccountAsset vs createVaultAccountAssetAddress 구분 + 1차 페이지 출처 보강
 - 영향받은 페이지: docs-site 02 · open-questions · sources(신규 1 + 보강 1)
 - 신규 entity: 0
+
+## Stage 99 (2026-07-03) — createAccount/createDepositAddress 다이어그램: 있으면 return 명시 (alt/else)
+- 계기: 사용자 결정 — 반복 호출 시 "있으면 그대로"는 에러가 아니라 return-existing(멱등). 다이어그램에 명시적 return 화살표로 표현
+- 1·2페이지 다이어그램을 alt/else 로: 조회 → [있으면: 기존 값 read-back → BE 반환] / [없으면: 생성·활성화(Idempotency-Key) → UNIQUE 저장 → BE 반환]. 두 create 동사 대칭
+- 1페이지 callout 정정: "이중 온보딩은 여기서 거른다" → "중복 row 를 막고, 경합 시 이긴 값을 읽어 그대로 반환(에러 아님)"
+- 설계 확정: verb 는 멱등(return-existing), 유일성은 DB 제약이 담당(경합=read-back), 이상 탐지는 상위 업무층. 에러는 같은 키·속성 충돌 시에만(409)
+- 영향받은 페이지: docs-site 01·02
+- 신규 entity: 0
