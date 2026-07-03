@@ -7369,3 +7369,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - docs-site 전체 ORPHANED 잔여 = Kotlin·CLAUDE.md(도메인 어휘)뿐
 - 영향받은 페이지: docs-site/wallet-service-components scenario-deposit·component-indexer·component-tx-nonce·confluence(02·03·06)
 - 신규 entity: 0
+
+## Stage 114 (2026-07-03) — 4페이지: 막힘 점검(오래 CONFIRMING) 절 + 다이어그램
+- 계기: 사용자 지시 — stuck_confirming webhook 경보의 폴링 대체를 다이어그램으로
+- 추가: "막힘 점검 — 오래 CONFIRMING 인 건 골라내기" 절 — sequenceDiagram(status=CONFIRMING 서버측 필터 조회 → 체류시간 = now−createdAt 체인별 임계 초과 선별 → 재경보 억제 → 입금=경보·고객 안내·대사 대기 / 출금=Admin boost·cancel 판단 6p) + 결정 표 5행(조회·막힘 판정·입금/출금 대응·재경보 억제)
+- 근거: status 서버측 필터(T01)·stuck_confirming 은 ATC 경보로 webhook 전용(T03) — 폴링 대체 설계
+- table-note 에 "(아래 절)" 링크 문구
+- 영향받은 페이지: docs-site 04
+- 신규 entity: 0

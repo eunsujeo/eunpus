@@ -194,7 +194,45 @@ db.commitCursor(maxSeen)
 <tr><td><b>감지 지연</b></td><td>지연 = <b>폴링 주기</b>. 짧게 잡으면 실시간에 근접하고 API 호출이 는다 — 확정 요건과 rate limit 사이에서 정한다.</td></tr>
 </tbody>
 </table>
-<p class="table-note">webhook 이벤트 중 폴링으로 못 보는 것은 <b>막힘 경보(stuck_confirming) 하나뿐</b>이고, 그것도 오래 CONFIRMING 인 건을 골라내는 조회로 대체된다. 나머지 이벤트의 payload 는 폴링으로 읽는 tx 객체와 같다. EVM 입금은 <b>mined 시점부터</b> 관찰된다.</p>
+<p class="table-note">webhook 이벤트 중 폴링으로 못 보는 것은 <b>막힘 경보(stuck_confirming) 하나뿐</b>이고, 그것도 오래 CONFIRMING 인 건을 골라내는 조회로 대체된다(아래 절). 나머지 이벤트의 payload 는 폴링으로 읽는 tx 객체와 같다. EVM 입금은 <b>mined 시점부터</b> 관찰된다.</p>
+
+<h2>막힘 점검 — 오래 CONFIRMING 인 건 골라내기</h2>
+
+<p>webhook 의 막힘 경보(stuck_confirming)를 대체하는 별도 점검 루프입니다. 감지 폴링과 달리 <b>서버측 status 필터로 CONFIRMING 만</b> 받아(한 번에 한 상태, 7p), <b>체류 시간이 임계를 넘은 건</b>만 골라 경보합니다. 임계는 체인별로 두고(혼잡 감안), 같은 tx 재경보는 억제합니다.</p>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant SW as 막힘 점검 워커<br/>주기 실행 · 예: 5분
+    participant DB as 백엔드 DB<br/>경보 기록
+    participant FB as Fireblocks (SaaS)
+
+    SW->>FB: GET /v1/transactions · status=CONFIRMING (서버측 필터)
+    FB-->>SW: CONFIRMING 목록 (createdAt · numOfConfirmations)
+    SW->>SW: 체류 시간 = now − createdAt · 체인별 임계 초과만 선별
+    alt 초과 건 없음
+        Note over SW: 끝 — 다음 주기
+    else 초과 건 있음
+        SW->>DB: tx id 로 기존 경보 확인 — 재경보 억제
+        alt 입금 건
+            SW->>DB: 모니터링 경보 — 수신자는 개입 수단 없음 · 고객 안내 + 대사 대기
+        else 출금 건
+            SW->>DB: 경보 + Admin 의 boost·cancel 판단 대상 (6p)
+        end
+    end
+    Note over SW,FB: webhook stuck_confirming 경보의 폴링 대체 — 감지 폴링(위)과 별개의 가벼운 조회
+</pre></div>
+
+<table>
+<thead><tr><th style="width:22%">결정</th><th>어떻게</th></tr></thead>
+<tbody>
+<tr><td><b>조회</b></td><td><code>status=CONFIRMING</code> 서버측 필터 — 전체를 받지 않고 확인 중인 건만. 주기는 감지 폴링보다 느슨하게(예: 5분).</td></tr>
+<tr><td><b>막힘 판정</b></td><td>체류 시간(now − createdAt)이 <b>체인별 임계</b> 초과. 임계는 평시 confirmation 소요를 감안해 정한다.</td></tr>
+<tr><td><b>입금이 막히면</b></td><td>수신자라 개입 수단이 없다 — <b>경보 + 고객 "확인 중" 안내</b>가 전부이고, 해소는 체인 혼잡 해소 또는 대사가 잡는다.</td></tr>
+<tr><td><b>출금이 막히면</b></td><td>Admin 의 <b>boost(수수료 인상 재전송)·cancel</b> 판단 대상으로 넘긴다(6p).</td></tr>
+<tr><td><b>재경보 억제</b></td><td>경보한 tx id 를 기록해 두고, 해소(COMPLETED/FAILED 전이)되면 닫는다.</td></tr>
+</tbody>
+</table>
 
 <p class="foot">더 깊이: 잔액의 세 칸(available·pending·locked)이 이 상태들과 어떻게 맞물리는지는 <a href="07-balance-history.html">7. 잔액과 내역 조회</a>, 출금 쪽 상태 전이(SUBMITTED→CONFIRMING→COMPLETED)는 <a href="06-withdrawal.html">6. 출금</a> 에서 이어집니다.</p>
 
