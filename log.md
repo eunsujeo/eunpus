@@ -7257,3 +7257,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 설계 확정: verb 는 멱등(return-existing), 유일성은 DB 제약이 담당(경합=read-back), 이상 탐지는 상위 업무층. 에러는 같은 키·속성 충돌 시에만(409)
 - 영향받은 페이지: docs-site 01·02
 - 신규 entity: 0
+
+## Stage 100 (2026-07-03) — 1·2페이지 다이어그램에 복구 fallback 분기 추가
+- 계기: 사용자 지시 — 복구 fallback 도 다이어그램에 표현
+- 1페이지: "없으면" 분기 안에 중첩 alt — 벤더 복구 확인(accounts_paged·namePrefix=ref) → [있으면: 고아 vault 기존 vaultId 복구] / [없으면: createVaultAccount+Idempotency-Key]. Note 에 "그 밖 갭은 name 검색 복구" 추가
+- 2페이지: 동일 패턴 — 복구 확인(vault 자산 주소 조회 addresses_paginated) → [있으면: 기존 주소 복구(활성화됐는데 저장 못 한 경우)] / [없으면: createVaultAccountAsset+Idempotency-Key]. 복구 조회는 확정 endpoint(GET addresses_paginated, api.md:291)라 재활성화 semantics 미확정과 무관
+- 두 create 동사 대칭 유지: 조회 → 있으면 return / 없으면 [벤더 복구 → 생성] → UNIQUE 저장 → return
+- 영향받은 페이지: docs-site 01·02
+- 신규 entity: 0
