@@ -7325,3 +7325,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 잔존 커버: 웹훅=보조는 메인 다이어그램 Note + "감지 경로" 표 웹훅 행 / 대사=표 대사 행. ERC-20 같은 주소·같은 경로 fact 는 이 페이지에서 사라짐(필요 시 재배치 후보)
 - 영향받은 페이지: docs-site 04
 - 신규 entity: 0
+
+## Stage 109 (2026-07-03) — 4페이지: networkStatus callout 제거
+- 계기: 사용자 승인 — 검토 결과 ① callout enum(DROPPED·BROADCASTING·CONFIRMING·CONFIRMED·FAILED)에 ORPHANED 가 없어 reorg 본문("networkStatus 가 ORPHANED 로 바뀐다")과 내부 불일치 ② enum 전체 나열은 이 페이지 필요 이상 ③ Base L2 문단은 networkStatus 와 무관한 DCCP 내용(DCCP callout 이 커버)
+- 제거: networkStatus callout 통째(2문단). reorg 본문은 유지(상세 다이어그램 ORPHANED 분기·코드 revert·급소 표가 참조하는 load-bearing)
+- 잔여 확인 대상: ORPHANED 의 정확한 소속 평면(NetworkStatus enum 5개엔 없음) — 별도 확인 필요 시 open-Q 후보
+- 영향받은 페이지: docs-site 04
+- 신규 entity: 0
