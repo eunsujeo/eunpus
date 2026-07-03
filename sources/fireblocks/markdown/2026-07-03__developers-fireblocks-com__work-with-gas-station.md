@@ -15,3 +15,7 @@
 
 - Fireblocks "Gas Station" 은 **GSN(Gas Station Network)과 이름만 유사** — meta-transaction relay / gas 대납(sponsorship)이 아니라 **자기 vault 에 gas 를 미리 채워 주는 운영 자동화**.
 - developers.fireblocks.com **llms.txt 전수(743행)에서 paymaster / ERC-4337 / account abstraction / bundler / UserOperation / gasless / GSN 0건** (2026-07-03) → 공식 개발자 문서 표면에 AA/gas 대납 지원 없음(부정 확인). Embedded Wallets(NCW) 문서군 56건의 본문 내 언급 여부는 미확인.
+
+## ★ 정정 (Stage 130)
+
+위 "경계"의 부정 확인은 **developers.fireblocks.com 인덱스에 한정** — support.fireblocks.io 헬프센터에 **Gasless Service 섹션 실재** 확인(2026-07-03, Q-2026-07-03-G01). "Fireblocks 는 gas 대납 미지원" 으로 읽지 말 것.

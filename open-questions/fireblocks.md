@@ -1109,6 +1109,16 @@
   → 무효화 판정 = **status FAILED(또는 CANCELLED·만료) + subStatus `DROPPED_BY_BLOCKCHAIN`**.
 - **Status**: ANSWERED (Support 확답 + 공식 substatus 교차)
 
+### Q-2026-07-03-G01: Fireblocks Gasless Service 의 정체와 설계 적용 가능성
+
+- **Why it matters**: 수수료 설계(워크스루 6장 estimateFee·출금 gas)에서 GSN/paymaster 계열 gas 대납을 검토 중, **Fireblocks 자체 Gasless Service 가 실재**함을 확인(사용자 스크린샷 + sitemap). 이 기능의 메커니즘에 따라 "고객 vault 에 ETH 없이 sweep/전송" 이 벤더 네이티브로 가능할 수 있어 Gas Station·수수료 설계 전반에 영향.
+- **Where this came up**: GSN/paymaster 리서치(Stage 129) — dev docs llms.txt 0건으로 "미지원" 판정했으나 **범위 오류**: support 헬프센터에 Gasless Service 섹션 존재. 부정 확인 정정.
+- **확정**: 문서 15건 존재(제목·URL — `sources/fireblocks/markdown/2026-07-03__support-fireblocks-io__gasless-service-index.md`). 본문은 Cloudflare 차단(curl·WebFetch 403)으로 미수집.
+- **Hypotheses (제목 기반 추정, unverified)**: ① relay 주체 3형태(local/외부 워크스페이스/Fireblocks Relay)를 고르는 대납 모델 ② Solana Gasless 존재 → ERC-4337 이 아닌 자체 relay 아키텍처 ③ "Universal Gasless" 가 체인 통합판, "integrated chains" 문서가 지원 체인 목록 ④ fee contingencies = 대납 실패·정산 처리.
+- **확인 질문**: 누가 gas 를 내나(relay 워크스페이스의 잔고?) · 발신 vault 에 base asset 없이 ERC-20 전송이 되나(sweep 에 적용 가능?) · 지원 체인(EVM 전반? Base?) · Gas Station 과의 관계(대체? 병행?) · 수수료 정산 방식 · API 표면(createTransaction 옵션?)
+- **Sources to check**: 사용자 브라우저로 본문 제공(About/Universal Gasless/integrated chains 우선) · Fireblocks SA/Support
+- **Status**: open
+
 ### Stage 96 Summary
 
 - **V01 ANSWERED** (1차: developers.fireblocks.com llms.txt→api-reference + `fireblocks-openapi-spec` open_api_spec.yml master). 5개 항목 전부 확정:

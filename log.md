@@ -7481,3 +7481,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - ANSWERED: Q-2026-07-03-T04
 - 영향받은 페이지: open-questions · sources(신규 1) · docs-site 04·05·components 2·confluence 2
 - 신규 entity: 0
+
+## Stage 130 (2026-07-03) — open-Q promote: Fireblocks Gasless Service (G01) + 부정 확인 정정
+- 계기: 사용자 스크린샷 — support.fireblocks.io 에 "Gasless Service" 섹션 실재 → Stage 129 의 "미지원" 판정은 dev docs llms.txt 범위 한정 오류. 정정 보고
+- 수집: 라이브 support sitemap 에서 gasless 문서 15건 URL 확보 → Mode B lightweight-index 저장(sources/...gasless-service-index.md). 본문은 Cloudflare 차단(curl·WebFetch 403)으로 보류
+- 신규 Q: Q-2026-07-03-G01 (Gasless Service 정체 — relay 3형태 추정·Solana 지원→비4337 추정·sweep 적용 가능성·Gas Station 관계·지원 체인) — open, 카테고리 G(Gas/Fee) 신설
+- work-with-gas-station extract 에 정정 주석 추가
+- 영향받은 페이지: open-questions · sources(신규 1·정정 1)
+- 신규 entity: 0
