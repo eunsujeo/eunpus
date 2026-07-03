@@ -7398,3 +7398,9 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - DB 화살표 2곳: "tx 기록 status=CONFIRMING · 금액은 대기(pending) 칸" / "tx 기록 status=COMPLETED · 금액은 대기 → 가용(available) 이동"
 - 영향받은 페이지: docs-site 04
 - 신규 entity: 0
+
+## Stage 118 (2026-07-03) — 문구 순화: "되감기" → "취소"
+- 계기: 사용자 피드백 — 되감기 표현 금지
+- 정정: 04-deposit(reorg 본문·상세 다이어그램·코드 주석·급소 표) + scenario-deposit·component-indexer + confluence txt 2건 — "가공본(잔액 반영분)만 되감고/되감기" → "취소하고/취소". "되돌림(reorg)" 은 reorg 번역어라 유지
+- 영향받은 페이지: docs-site 04 · components(scenario-deposit·component-indexer·confluence 02·03)
+- 신규 entity: 0

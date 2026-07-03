@@ -39,7 +39,7 @@ WH --> BIZ : "입금 완료 · 사용 가능" 통지
 
 *CONFIRMING → COMPLETED 를 가르는 것은 DCCP(Deposit Control and Confirmation Policy)* — CONFIRMING 을 COMPLETED 로 넘기는 임계 confirmation 수를 정하는 정책이다. 즉 여기서 말하는 "finality" 는 체인이 자연히 주는 성질이 아니라 DCCP 가 정의하는 확정 기준이고, DCCP 의 설정·임계값 관리는 거버넌스 영역이라 *Admin 백엔드* 의 몫이다(대부분의 체인 = 1, ETC = 372, 컨트랙트 호출 = 최소 3 권장). 실제 입금 이벤트를 받아 잔액에 반영하는 런타임은 *Service 백엔드* 의 몫이다 — 정하는 쪽(Admin)과 쓰는 쪽(Service)이 갈린다.
 
-감지 즉시 잔액으로 인정하면 reorg(체인 끝부분이 교체되는 현상) 때 없는 돈을 쓰게 된다 — 자금 사용 가능 판정은 반드시 확정(COMPLETED + numOfConfirmations 가 DCCP 임계 도달) 이후다. reorg 로 입금이 무효화되면(벤더가 어떤 상태값으로 노출하는지는 확인 중) 가공본(잔액 반영분)만 되감고 원본 기록은 영구 보존한다 — 무효화된 트랜잭션이 새 블록에 재편입되면 다시 CONFIRMING 으로 돌아올 수 있기 때문이다. 같은 입금 이벤트를 두 번 처리해도 장부가 두 번 늘지 않게 (tx 해시 + logIndex) 를 멱등 키로 쓴다.
+감지 즉시 잔액으로 인정하면 reorg(체인 끝부분이 교체되는 현상) 때 없는 돈을 쓰게 된다 — 자금 사용 가능 판정은 반드시 확정(COMPLETED + numOfConfirmations 가 DCCP 임계 도달) 이후다. reorg 로 입금이 무효화되면(벤더가 어떤 상태값으로 노출하는지는 확인 중) 가공본(잔액 반영분)만 취소하고 원본 기록은 영구 보존한다 — 무효화된 트랜잭션이 새 블록에 재편입되면 다시 CONFIRMING 으로 돌아올 수 있기 때문이다. 같은 입금 이벤트를 두 번 처리해도 장부가 두 번 늘지 않게 (tx 해시 + logIndex) 를 멱등 키로 쓴다.
 
 {warning:title=함정 — 첫 COMPLETED 를 곧 finality 로 단정하지 말 것}
 Deposit Policy 를 zero-confirmation 으로 두면 COMPLETED 가 블록 등장 시점에 먼저 뜨고 이후 webhook 이 여러 번 더 올 수 있다. 그래서 잔액 반영 판정은 status 만 보지 말고 tx 의 {{numOfConfirmations}}(실제 누적 confirmation 수)를 우리 finality 임계값(DCCP, Admin 설정)과 *직접 비교* 하는 편이 안전하다 — numOfConfirmations 가 "confirm(체인 등장) ↔ finality(임계 도달)" 를 가르는 눈금이다. 또한 webhook 은 누락·지연·중복이 가능하므로 통지는 힌트로만 보고, 회계의 최종 근거는 주기적 *대사*(벤더 잔액과 우리 기록의 대조)가 닫는다.
