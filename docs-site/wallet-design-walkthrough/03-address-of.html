@@ -16,8 +16,6 @@
 <h1>입금 주소 조회 — getDepositAddress</h1>
 <p class="subtitle">생성과 정반대인 읽기 전용 — 매니저가 백엔드 DB 에서 (accountId, asset)로 그 주소를 읽는다</p>
 
-<p><b>무엇·언제</b>: 고객이 입금 화면을 열 때마다 <b>Service 백엔드</b>가 부르는, 이 문서에서 가장 호출 빈도가 높은 동사입니다. 성질은 생성(2p)과 정반대입니다. <b>읽기 전용이고, (accountId, asset)로 저장된 그 주소를 그대로 읽으며, 새 주소를 만들지 않습니다.</b></p>
-
 <pre><code>getDepositAddress(accountId, asset) → Address { value, memoTag? }   // 읽기, 백엔드 DB 에 저장된 그 값</code></pre>
 
 <h2>▸ 매니저가 백엔드 DB 에서 읽는다 — 벤더 왕복 없음</h2>
@@ -37,7 +35,10 @@ sequenceDiagram
     FBI-->>BE: 주소
     Note over FBI,BDB: 벤더(Fireblocks)를 거치지 않는다 — 백엔드 DB 만 읽는다
 </pre></div>
-<p class="diagram-caption">2페이지에서 백엔드 DB 에 저장한 주소를 (accountId, asset)로 읽어 돌려줄 뿐이다. 이더리움이든 Base 든 반환물은 같은 EVM 주소이고, memoTag 는 null 이다. <b>백엔드 DB 를 읽으므로 매 조회마다 벤더(Fireblocks)를 왕복할 필요가 없다</b> — 호출 빈도가 가장 높은 동사가 벤더 API 한도·지연에 묶이지 않는다.</p>
+<div class="callout">
+<div class="callout-title">왜 DB 읽기인가 (결정)</div>
+<p style="margin:0">고객이 입금 화면을 열 때마다 불려, 이 문서에서 <b>호출 빈도가 가장 높은</b> 동사다. 백엔드 DB 읽기라 <b>벤더 API 한도·지연에 묶이지 않는다</b> — 벤더를 왕복하는 설계였다면 가장 잦은 호출이 가장 취약한 경로가 된다.</p>
+</div>
 
 <p class="foot">더 깊이: 조회/발급 분리의 근거 — <a href="../wallet-service-components/abstraction.html">가이드 13.3</a>.</p>
 
