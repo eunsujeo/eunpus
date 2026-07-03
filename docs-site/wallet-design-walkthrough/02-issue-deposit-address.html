@@ -16,7 +16,8 @@
 <h1>입금 주소 생성 — createDepositAddress</h1>
 <p class="subtitle">(account, asset)당 한 번 — 자산 지갑을 활성화해 단일 주소를 얻는다. EVM 주소는 memoTag 가 null</p>
 
-<pre><code>createDepositAddress(accountId, asset) → Address { value, memoTag? }   // EVM: memoTag=null · (account,asset)당 1개 · 활성화 1회(재시도 멱등)</code></pre>
+<pre><code>createDepositAddress(accountId, asset) → Address { value, memoTag? }
+// EVM: memoTag=null · (account,asset)당 1개 · 활성화 1회(재시도 멱등)</code></pre>
 
 <h2>▸ 자산 지갑 활성화 — (account, asset)당 한 번</h2>
 

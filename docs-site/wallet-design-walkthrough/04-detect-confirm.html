@@ -16,7 +16,9 @@
 <h1>감지와 확정 — 폴링 · 상태 판정 · DCCP</h1>
 <p class="subtitle">입·출금이 함께 쓰는 공통 기준 — 언제부터 믿는가, 그리고 어떻게 아는가</p>
 
-<pre><code>onChainEvent(handler)   // 어댑터가 폴링으로 채워 handler 에 전달: ChainEvent { status, numOfConfirmations, networkStatus }</code></pre>
+<pre><code>onChainEvent(handler)
+// 어댑터가 폴링으로 채워 handler 에 전달
+// ChainEvent { status, numOfConfirmations, networkStatus }</code></pre>
 
 <p><b>폴링 스트림 하나</b>가 워크스페이스의 입·출금 변경을 전부 나릅니다. 이 페이지는 그 스트림과 확정 기준(언제부터 믿는가)을 정의하고, <b>입금(5장)·출금(7장)이 이것을 소비</b>합니다.</p>
 
