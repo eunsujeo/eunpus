@@ -22,7 +22,7 @@
 
 <h2>폴링 상세 흐름 — 커서 하나로 입·출금을 다 나른다</h2>
 
-<p>실제 루프를 펼칩니다. 뼈대는 <b>커서</b> 하나입니다 — 마지막으로 처리한 트랜잭션의 <code>lastUpdated</code>(Unix 밀리초 시간값)를 DB 에 커서로 저장해 두고, 주기마다 그 이후 갱신된 트랜잭션만 당겨 옵니다. 커서가 <b>시간값</b>이라 같은 밀리초를 가진 tx 를 놓치지 않게 <b>커서를 조금 겹쳐 받고 tx id 로 멱등 처리</b>합니다. 상태 필터는 서버에서 한 번에 하나만 걸리므로, <b>모든 상태 전이를 빠짐없이 받으려면 상태 필터 없이 커서로</b> 훑고 받은 tx 를 이쪽에서 분류합니다 — 루프가 방향을 갈라 <b>입금은 원장 반영(5장), 출금은 상태 추적(7장)</b>으로 넘깁니다. 상태 필터는 대사·표적 조회(8p)에서 씁니다.</p>
+<p>루프가 방향을 갈라 <b>입금은 원장 반영(5장), 출금은 상태 추적(7장)</b>으로 넘깁니다. 상태 필터는 대사·표적 조회(8p)에서 씁니다.</p>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -62,7 +62,8 @@ sequenceDiagram
 <table>
 <thead><tr><th style="width:22%">빠뜨리면 사고 나는 지점</th><th>어떻게</th></tr></thead>
 <tbody>
-<tr><td><b>커서</b></td><td><code>lastUpdated</code> 워터마크를 DB 에 영속. 주기마다 <code>after=커서</code>로만 받아 재조회량을 놓친 만큼으로 한정.</td></tr>
+<tr><td><b>커서</b></td><td>마지막으로 처리한 tx 의 <code>lastUpdated</code>(Unix ms)를 DB 에 영속. 주기마다 <code>after=커서</code>로만 받아 재조회량을 놓친 만큼으로 한정.</td></tr>
+<tr><td><b>필터 없이 훑기</b></td><td>서버측 status 필터는 한 번에 한 상태만 걸린다 — <b>모든 상태 전이를 빠짐없이 받으려면 필터 없이 커서로</b> 훑고, 받은 tx 를 이쪽에서 분류한다.</td></tr>
 <tr><td><b>빠짐 방지</b></td><td>커서는 <b>처리 성공 후에만 전진</b> + 경계를 <b>살짝 겹쳐 받기</b>(after 를 조금 이전으로). 겹침은 멱등 upsert 가 흡수.</td></tr>
 <tr><td><b>페이지네이션</b></td><td><code>limit</code>(기본 200)이 가득 차면 다음 페이지 계속 — 한 주기에 밀린 분을 다 소진.</td></tr>
 <tr><td><b>멱등</b></td><td>tx id(또는 externalTxId) unique. 같은 tx 를 여러 번 받아도 상태 전이만 반영, 잔액 이중 반영 없음.</td></tr>
