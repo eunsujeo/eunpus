@@ -7404,3 +7404,9 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 정정: 04-deposit(reorg 본문·상세 다이어그램·코드 주석·급소 표) + scenario-deposit·component-indexer + confluence txt 2건 — "가공본(잔액 반영분)만 되감고/되감기" → "취소하고/취소". "되돌림(reorg)" 은 reorg 번역어라 유지
 - 영향받은 페이지: docs-site 04 · components(scenario-deposit·component-indexer·confluence 02·03)
 - 신규 entity: 0
+
+## Stage 119 (2026-07-03) — "되돌림" 제거: reorg 그대로 사용
+- 계기: 사용자 피드백 — 억지 번역 금지, reorg 만 사용. (막힘 점검 vs reorg 는 다른 내용 확인: 지연 vs 역전)
+- 정정: 04(h2·본문 안전망 문장) · component-indexer(h3) · scenario-deposit(안전망 문장) · confluence 02 — "되돌림(reorg)/되돌림" → "reorg"
+- 영향받은 페이지: docs-site 04 · components 3
+- 신규 entity: 0
