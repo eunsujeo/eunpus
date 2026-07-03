@@ -7377,3 +7377,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - table-note 에 "(아래 절)" 링크 문구
 - 영향받은 페이지: docs-site 04
 - 신규 entity: 0
+
+## Stage 115 (2026-07-03) — 4페이지: "입금에서 보는 상태·하위 상태" 절 추가
+- 계기: 사용자 승인 — 17개 전체 대신 입금 관찰분만 (출금 단계는 6p "상태 한 장" 몫)
+- 추가: primary 표 4행(CONFIRMING=대기 / COMPLETED=임계 확인 후 가용·zero-conf 다중 관찰 / REJECTED=AML·동결, Admin unfreeze 까지 잠금 / FAILED) + subStatus 표 5행(PENDING_BLOCKCHAIN_CONFIRMATIONS·CONFIRMED·AUTO_FREEZE·FROZEN_MANUALLY·REJECTED_AML_SCREENING) — 동결 3종=Admin unfreeze 운영 강조
+- 근거: primary-transaction-statuses.md(17 status·REJECTED incoming=Admin unfreeze) · reference-sub-statuses.md(CONFIRMING/COMPLETED/REJECTED 절)
+- 위치: reorg 절 뒤 · "감지 경로" 절 앞
+- 영향받은 페이지: docs-site 04
+- 신규 entity: 0
