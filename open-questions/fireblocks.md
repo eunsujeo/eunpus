@@ -1087,6 +1087,16 @@
 - **핵심 발견**: get-or-create 계약 차이의 하드 근거 = **벤더의 유일성 보장 유무** (주소=EVM 1강제 보장 O / vault name=보장 X)
 - **신규 entity 0**
 
+### Q-2026-07-03-T04: reorg 무효화를 Fireblocks 가 어떤 신호로 노출하는가 — "ORPHANED" 는 실재하는가
+
+- **Why it matters**: 입금 페이지(docs-site 04)의 reorg 처리(가공분 되감기)와 폴링 코드가 `networkStatus === "ORPHANED"` 신호에 기대고 있다. 이 신호의 실재·정확한 필드/값이 확인되지 않으면 reorg 감지 로직 자체가 성립하지 않는다.
+- **Where this came up**: docs-site 04-deposit networkStatus callout 검토 중 — callout 의 NetworkStatus enum(DROPPED·BROADCASTING·CONFIRMING·CONFIRMED·FAILED, source: `vendors/fireblocks/api.md:136-140` ← reference-transaction-objects)에 ORPHANED 가 없는 내부 불일치 발견.
+- **★ Evidence 상태 (4-source 전수 + spec, 2026-07-03)**: ORPHANED 는 **curated wiki 0건 · markdown sources 0건 · webpages/sitemap 0건 · PDF 파일명 0건 · `fireblocks-openapi-spec` open_api_spec.yml 0건**. 존재하는 곳은 **우리 docs-site 산출물뿐**(wallet-design-walkthrough 04·06, wallet-service-components 일부, Kotlin 스켈레톤) → **사전학습 지식 혼입(fabrication) 가능성 높음**. log Stage 87 이 근거로 적은 transaction.md:104-121 도 현재 grep 0건.
+- **확정 (wiki)**: `networkStatus` 필드 자체와 enum 5값(DROPPED/BROADCASTING/CONFIRMING/CONFIRMED/FAILED)은 확정 (api.md:136-140). reorg 가 EVM 성질이라는 것도 일반 사실.
+- **Hypotheses (unverified)**: reorg 무효화는 ORPHANED 가 아니라 ① `networkStatus=DROPPED` ② 상위 status 의 FAILED/REJECTED ③ 별도 이벤트 중 하나로 노출될 가능성. 1차 자료 확인 전까지 docs-site 의 ORPHANED 서술은 미확정 취급.
+- **Sources to check**: developers.fireblocks.com transaction statuses / transaction-objects(networkStatus) · support.fireblocks.io reorg 관련 문서 · Webhooks v2 event types
+- **Status**: open
+
 ### Stage 96 Summary
 
 - **V01 ANSWERED** (1차: developers.fireblocks.com llms.txt→api-reference + `fireblocks-openapi-spec` open_api_spec.yml master). 5개 항목 전부 확정:

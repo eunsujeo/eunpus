@@ -7332,3 +7332,12 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 잔여 확인 대상: ORPHANED 의 정확한 소속 평면(NetworkStatus enum 5개엔 없음) — 별도 확인 필요 시 open-Q 후보
 - 영향받은 페이지: docs-site 04
 - 신규 entity: 0
+
+## Stage 110 (2026-07-03) — open-Q promote: ORPHANED 실재 여부 (T04) — fabrication 의심 보고
+- 계기: 04 networkStatus callout 검토에서 enum(5값)에 ORPHANED 부재 발견 → 전수 검색
+- ★ 발견: ORPHANED 는 4-source(curated·markdown·webpages/sitemap·PDF 파일명) + openapi spec 전부 0건. 우리 docs-site 산출물에만 존재 → 사전학습 지식 혼입(fabrication) 가능성 높음. 사용자에게 정직 보고
+- 신규 Q: Q-2026-07-03-T04 (reorg 무효화를 어떤 신호로 노출하는가 — ORPHANED 실재 여부) — open. hypotheses: DROPPED / status FAILED·REJECTED / 별도 이벤트
+- 확정 유지: networkStatus 필드 + enum 5값(api.md:136-140) · reorg=EVM 성질
+- 후속 후보(승인 대기): docs-site 04·06 등의 ORPHANED 서술을 중립 표현("벤더 무효화 신호 — 확인 중")으로 정정
+- 영향받은 페이지: open-questions/fireblocks.md
+- 신규 entity: 0
