@@ -79,7 +79,7 @@ sequenceDiagram
 <tr><td><b>FAILED</b></td><td>영구 실패 — 사유 동반 (수수료 부족·거절·revert 등)</td><td>FAILED · REJECTED · BLOCKED</td></tr>
 </tbody>
 </table>
-<p class="table-note">confirm(체인 등장)과 finality(확정)를 <b>numOfConfirmations</b> 로 가른다. 체인에 올라간 순간이 CONFIRMING 이고, DCCP(확정 정책)가 정한 임계 confirmation 에 도달하면 COMPLETED = finality 다(4·7장과 같은 기준). 이 문서는 이 넷만 밖으로 내보낸다 — 벤더 내부의 세부 단계는 SUBMITTED 로 접어 감춘다. 입금의 상태는 별도 셋으로, 감지(PENDING)/확정(CONFIRMED)/무효화(ORPHANED), 4장.</p>
+<p class="table-note">confirm(체인 등장)과 finality(확정)를 <b>numOfConfirmations</b> 로 가른다. 체인에 올라간 순간이 CONFIRMING 이고, DCCP(확정 정책)가 정한 임계 confirmation 에 도달하면 COMPLETED = finality 다(4·7장과 같은 기준). 이 문서는 이 넷만 밖으로 내보낸다 — 벤더 내부의 세부 단계는 SUBMITTED 로 접어 감춘다. 입금 쪽 상태 흐름은 4장.</p>
 
 <p>상태 이름과 확정 정책(DCCP)은 벤더 안에 있지만, 그것을 공통 어휘 넷으로 번역하는 어댑터와 막혔을 때의 boost·cancel(Admin) 판단은 이쪽 몫입니다 — 언제 boost 할지, 언제 철회할지 같은 업무 정책은 매니저가 흡수하지 못합니다.</p>
 

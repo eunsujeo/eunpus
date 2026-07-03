@@ -7351,3 +7351,12 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - ANSWERED: Q-2026-07-02-T03
 - 영향받은 페이지: open-questions/fireblocks.md · sources(신규 extract 1)
 - 신규 entity: 0
+
+## Stage 112 (2026-07-03) — ORPHANED 서술 정정 + T03 결과 반영 (04·06)
+- 계기: 사용자 승인 — Stage 110~111 후속
+- 04: reorg 문단 "networkStatus=ORPHANED" → "무효화 신호는 문서 미명시·확인 중(T04), 확인 전까지 대사가 최종 안전망" / 상세 다이어그램 "ORPHANED"→"무효화 신호" / 코드 `tx.networkStatus==="ORPHANED"` → `isInvalidated(tx)`(신호 확인 중 주석) / 급소 표 reorg 행 중립화
+- 04 table-note: "폴링의 100% 대체 미확인" → T03 ANSWERED 결과(못 보는 건 stuck_confirming 경보뿐·조회로 대체·EVM=mined 시점 관찰)
+- 06 table-note: "감지(PENDING)/확정(CONFIRMED)/무효화(ORPHANED)" 셋 나열(근거 없음) → "입금 쪽 상태 흐름은 4장"
+- 워크스루 ORPHANED 잔재 0 확인. wallet-service-components(가이드)·Kotlin 스켈레톤엔 ORPHANED 잔존 — 별도 정정 대상
+- 영향받은 페이지: docs-site 04·06
+- 신규 entity: 0
