@@ -7240,3 +7240,12 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 00-cast 매트릭스: 입금 주소 생성 표면 generateNewAddress → createVaultAsset(자산 지갑 활성화, EVM=단일)
 - 영향받은 페이지: docs-site 02·00-cast · sources extract
 - 신규 entity: 0
+
+## Stage 98 (2026-07-03) — createDepositAddress get-or-create 폐기 → create-once 대칭 (2페이지)
+- 계기: 사용자 제공 1차 페이지 "Create Vault Wallets" — EVM(account-based no-tag)은 (vault account, 자산)당 주소 1개, 추가는 vault account 추가로만. 주소 생성이 두 작업으로 갈림: createVaultAccountAsset(자산 지갑 생성·응답 address=EVM 주소) vs createVaultAccountAssetAddress(generate_new_address, UTXO·Tag 전용)
+- 결론: createDepositAddress(EVM) = createVaultAccountAsset 1회 = create-once(1페이지 createAccount 와 대칭). 반복 조회는 getDepositAddress. "get-or-create" 라벨 폐기
+- 소스 저장: sources/fireblocks/markdown/2026-07-03__developers-fireblocks-com__create-vault-wallets.md (1차 페이지) + vault-address-api-semantics.md 에 두 작업 구분 보강
+- 2페이지 정정: subtitle·무엇·언제·시그니처·h2·다이어그램·캡션에서 get-or-create 제거 → "자산 지갑 활성화 1회 · Idempotency-Key=f(accountId,asset) · (account,asset) UNIQUE", 1페이지와 대칭. generateNewAddress=UTXO/Tag 다른 작업 명시
+- V01 답 #4·5 에 createVaultAccountAsset vs createVaultAccountAssetAddress 구분 + 1차 페이지 출처 보강
+- 영향받은 페이지: docs-site 02 · open-questions · sources(신규 1 + 보강 1)
+- 신규 entity: 0

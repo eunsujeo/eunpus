@@ -1076,7 +1076,7 @@
   1. **name = optional, 유니크 강제 없음** — `POST /vault/accounts` requestBody schema(spec L72-114)에 개별 `required` 목록 없음, name/hiddenOnUI/customerRefId/autoFuel 전부 optional, 중복 거부 표현 전무 → **같은 name·무명으로 중복 vault 생성 가능(name=라벨)**.
   2. **accounts_paged namePrefix 지원** — `GET /vault/accounts_paged`(spec L115~) query param `namePrefix`(+nameSuffix) required:false → **서버측 prefix 필터 가능**(전 계정 페이지네이션 불필요). 단 name 비유니크라 결과 복수 가능 → 정확일치 클라이언트 재확인.
   3. **Idempotency-Key 지원 확정** — POST·PUT 헤더 `Idempotency-Key`(max 40자), 같은 키는 첫 응답(에러 포함) 그대로 반환·재실행 없음, **24h 보관**(api-idempotency). → createVaultAccount·주소생성 POST 에 적용 가능.
-  4·5. **EVM 주소** — `POST .../{assetId}/addresses` 는 *"UTXO or Tag/Memo ONLY, account based 는 실패"* → **EVM 은 추가 주소 생성 불가, 단일 주소는 asset wallet 활성화 유래**.
+  4·5. **EVM 주소** — `POST .../{assetId}/addresses`(`generate_new_address`=`createVaultAccountAssetAddress`) 는 *"UTXO or Tag/Memo ONLY, account based 는 실패"* → **EVM 은 추가 주소 생성 불가, 단일 주소는 자산 지갑 생성(`createVaultAccountAsset`, Create Vault Wallet) 응답의 address**. 추가 주소는 vault account 추가로만. (1차 페이지: `sources/fireblocks/markdown/2026-07-03__developers-fireblocks-com__create-vault-wallets.md`)
 - **Status**: ANSWERED
 
 ### Stage 95 Summary

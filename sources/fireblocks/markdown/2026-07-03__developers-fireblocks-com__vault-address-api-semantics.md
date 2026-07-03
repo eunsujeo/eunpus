@@ -33,6 +33,7 @@
 - → **EVM(account-based)은 이 호출이 실패**. EVM 은 vault·자산당 **단일 주소**이고, 그 주소는 **asset wallet 활성화**(Create/Activate vault wallet)에서 나온다. 추가 주소 생성 불가.
 - "Bulk creation of new deposit addresses" 도 UTXO 전용.
 - **확인(spec L504·8756)**: `POST /vault/accounts/{vaultAccountId}/{assetId}`(create vault wallet) 응답 `CreateVaultAssetResponse` 에 `address`·`legacyAddress`·`tag`·`status`·`activationTxId` 포함 → **자산 지갑 활성화가 곧 EVM 단일 주소 발급**(address 필드).
+- **1차 페이지 확정(2026-07-03, `create-vault-wallets.md`)**: 두 작업이 SDK 레벨에서 갈림 — **`createVaultAccountAsset`(Create Vault Wallet)** = 자산 지갑 생성·응답에 address(EVM 단일 주소 출처) / **`createVaultAccountAssetAddress`=`generate_new_address`(Create Deposit Address)** = UTXO·Tag/Memo 추가 주소 전용. ETH(no tag)는 *"can only generate one deposit address per asset, per vault account"*, 추가 주소는 vault account 추가로만.
 
 ## 설계 함의 (docs-site wallet-design-walkthrough)
 
