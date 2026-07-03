@@ -50,14 +50,6 @@ sequenceDiagram
     POLL->>DB: available 반영 + 고객 통지
     Note over POLL,DB: webhook 은 보조 — 환경이 허용하면 폴 사이 지연을 줄이는 힌트로만<br/>그 누락·지연은 다음 폴이 어차피 메운다
 </pre></div>
-<p class="diagram-caption">ERC-20 토큰 입금도 별도 주소가 생기는 게 아니라 <b>같은 주소로 오는 토큰 전송</b>이라 같은 경로를 탄다. 통지가 아니라 <b>조회라 유실이 없고</b>, 회계의 최종 근거는 주기적 대사(벤더 잔액과 기록의 대조)가 닫는다.</p>
-
-<div class="callout">
-<div class="callout-title">웹훅은 보조 — 왜 폴링이 주 경로인가</div>
-<p style="margin:0 0 8px">webhook 은 <b>Fireblocks 가 우리 안으로 들어오는(인바운드) push</b> 다. 은행·규제망은 외부 SaaS 의 인바운드 연결을 막는 경우가 많아, 여기서는 <b>webhook 을 주 경로로 쓰지 않는다</b> — 대신 <b>우리가 Fireblocks 로 나가는 outbound 폴링</b>으로 감지한다. 은행이 통제하는 egress 만 열면 되고, 서명 경로도 같은 원리다(Fireblocks Agent 가 서명 요청을 폴링으로 당겨 온다).</p>
-<p style="margin:0"><b>webhook 을 쓸 수 있는 환경이면</b> 폴 주기 사이의 지연을 줄이는 <b>보조</b>로 붙일 수 있다. 다만 webhook 은 누락·지연·중복이 가능하므로 신뢰의 근거는 어디까지나 폴링·대사에 두고, webhook 은 "빨리 알려주는 힌트"로만 취급한다 — 그 누락은 다음 폴이 어차피 메운다. 전송 방향(push↔pull)만 다를 뿐 <b>상태·확정 판정(CONFIRMING/COMPLETED·DCCP·numOfConfirmations)은 동일</b>하다.</p>
-</div>
-
 <h2>DCCP — 무엇이 CONFIRMING 을 COMPLETED 로 바꾸는가</h2>
 
 <p>CONFIRMING 에서 COMPLETED 로 넘어가는 <b>임계 confirmation 수를 정하는 정책</b>이 <b>DCCP(Deposit Control and Confirmation Policy)</b> 입니다. "finality"는 체인이 자연히 주는 성질이 아니라 DCCP 가 정의하는 확정 기준입니다. 커스텀 DCCP 는 <b>Console 에서 직접 설정하는 게 아니라</b>, 정책 템플릿을 작성해 <b>Fireblocks Support 에 제출 → 검토·승인 후 반영</b>됩니다. 어떤 임계를 요청할지 정하는 책임은 <b>Admin(운영)</b>, 이벤트를 받아 잔액에 반영하는 런타임은 <b>Service</b> 의 몫입니다.</p>
