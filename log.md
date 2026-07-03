@@ -7489,3 +7489,12 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - work-with-gas-station extract 에 정정 주석 추가
 - 영향받은 페이지: open-questions · sources(신규 1·정정 1)
 - 신규 entity: 0
+
+## Stage 131 (2026-07-03) — G01 ANSWERED: Gasless Service (Source Lake PDF 14건 발견 → Mode C)
+- 계기: 사용자 "파이어블록스 source 에도 없나요?" → PDF 파일명 검색 누락 발견(전수 검색 규율 위반 정정) — 헬프센터 PDF 14건이 이미 Source Lake 에 있었음 (2026-05-18 수집분)
+- 추출: pdftotext 로 6건 chunked (About·Universal Gasless·integrated chains·Configuring·Fireblocks Relay·fee contingencies) → sources/...gasless-service-extract.md
+- G01 ANSWERED: ① Gas Station 과 별개 제품(원문 명시) ② 메커니즘 = ERC-3009·2771·EIP-7702(4337 아님) — Universal Gasless 는 EIP-7702 로 vault(EOA)→smart contract wallet 자동 승격 ③ relay 3형태(local/external/Fireblocks Relay=프리미엄·월말 인보이스) ④ 체인: Ethereum·Optimism·Base·Arbitrum·Polygon·BSC ⑤ stuck auto-boost 미지원(수동 RBF) · API error 1455
+- 설계 함의: 이더리움·Base 에서 sweep/전송 gas 대납 가능 — Gas Station(충전) vs Gasless(대납) 선택지. 막힘 점검·Admin boost 설계는 Gasless 에서도 유효
+- ANSWERED: Q-2026-07-03-G01
+- 영향받은 페이지: open-questions · sources(신규 extract 1)
+- 신규 entity: 0

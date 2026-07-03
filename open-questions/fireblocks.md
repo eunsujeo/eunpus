@@ -1117,7 +1117,13 @@
 - **Hypotheses (제목 기반 추정, unverified)**: ① relay 주체 3형태(local/외부 워크스페이스/Fireblocks Relay)를 고르는 대납 모델 ② Solana Gasless 존재 → ERC-4337 이 아닌 자체 relay 아키텍처 ③ "Universal Gasless" 가 체인 통합판, "integrated chains" 문서가 지원 체인 목록 ④ fee contingencies = 대납 실패·정산 처리.
 - **확인 질문**: 누가 gas 를 내나(relay 워크스페이스의 잔고?) · 발신 vault 에 base asset 없이 ERC-20 전송이 되나(sweep 에 적용 가능?) · 지원 체인(EVM 전반? Base?) · Gas Station 과의 관계(대체? 병행?) · 수수료 정산 방식 · API 표면(createTransaction 옵션?)
 - **Sources to check**: 사용자 브라우저로 본문 제공(About/Universal Gasless/integrated chains 우선) · Fireblocks SA/Support
-- **Status**: open
+- **답 (Stage 131 — Source Lake 의 헬프센터 PDF 14건 발견, 6건 pdftotext Mode C 추출: `2026-07-03__support-fireblocks-io__gasless-service-extract.md`)**:
+  1. **실재 확정** — Gasless Service 는 Gas Station 과 "별개 제품, 다른 프로토콜"(원문 명시). fee 지불을 전용 vault/제3자/Fireblocks 에 위임.
+  2. **메커니즘 = ERC-3009 · ERC-2771 · EIP-7702** (ERC-4337 paymaster 아님). **Universal Gasless = EIP-7702 기반** — 첫 gasless tx 때 vault(EOA)가 smart contract wallet 로 자동 승격, 전 이더리움 자산(ERC-20/721/1155)·Transfer/Contract Call/Mint/Burn 지원. 구 Limited Gasless = Ethereum USDC·DAI(3009)+tokenization(2771).
+  3. **relay 3형태 확정**: local vault / external workspace / **Fireblocks Relay(프리미엄 — Fireblocks 가 gas 선지불, 월말 통합 인보이스 = 실비+구독료, CSM 경유 활성화)**.
+  4. **지원 체인**: Ethereum·Optimism·**Base**·Arbitrum·Polygon·BSC (+각 testnet, Base Sepolia 포함). Solana·Tron(GasFree) 은 별도 메커니즘.
+  5. **운영 caveat**: Gasless Relay 는 **stuck tx auto-boost 미지원 — 수동 RBF boost 필요**. API 표면: error 1455 "Missing Gasless configuration"(relayer/fee payer 설정). Console: Settings>General>Gasless transactions, 기본값 3모드+per-tx 재정의, Policies 연동.
+- **Status**: ANSWERED (정산 세부 단가·구독료와 MPC↔7702 위임 내부 동작만 CSM/PoC 잔여)
 
 ### Stage 96 Summary
 
