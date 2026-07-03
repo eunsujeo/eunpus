@@ -1045,7 +1045,12 @@
 - **Where this came up**: docs-site/wallet-design-walkthrough/04-deposit.html — "인바운드를 막는 환경" callout + "webhook 이 없거나 놓쳤을 때" polling-primary 절 설계. **폴링 감지 자체는 확정**(List Transactions status/커서, T01 ANSWERED; 서명 경로 Fireblocks Agent 폴링, `vendors/fireblocks/architecture.md:319·342`; egress whitelist `architecture.md:152`; webhook 발신 IP `architecture.md:158`). **폴링이 push 이벤트를 100% 커버하는지는 미확인**.
 - **Hypotheses (unverified)**: 입·출금 상태·confirmation·승인 상태는 tx 객체(`GET /v1/transactions`, `GET /v1/transactions/{txId}`)에 실려 폴링으로 관찰 가능하고, 폴링 주기만큼 감지 지연이 생길 뿐 이벤트 유실은 없다고 추정 — 단, 초기 감지 지연·webhook 전용 이벤트 존재 여부는 1차 자료 확인 필요.
 - **Sources to check**: `fireblocks/fireblocks-openapi-spec` open_api_spec.yml 의 `GET /transactions` 응답 스키마(approvalStatus·createdAt vs lastUpdated) vs Webhooks v2 event type 목록(`reference-webhooks-structures-eventtypes.md`) 대조 · developers.fireblocks.com polling vs webhook 가이드
-- **Status**: open
+- **답 (Stage 111, 1차: `reference/webhooks-structures-eventtypes-transaction.md` + `reference/monitoring-transaction-status.md`, 2026-07-03 fetch)**: **사실상 대체 가능 확정.**
+  1. Transaction webhook 이벤트는 5종 — `transaction.created` / `transaction.status.updated` / `transaction.approval_status.updated` / `transaction.network_records.processing_completed` / `transaction.alert.stuck_confirming`.
+  2. **앞 4종의 payload = TransactionDetails** — `GET /v1/transactions` 로 읽는 것과 같은 객체(승인 상태도 tx 객체 필드로 실림) → **폴링으로 전부 관찰 가능**. 이벤트는 "그 객체가 바뀌었다"는 push 일 뿐 별도 정보가 없음.
+  3. 유일한 예외 = `transaction.alert.stuck_confirming` (ATC 경보, 별도 payload·2026-06-07 breaking change 예고) — webhook 전용 알림성 이벤트. 단 기능적으로는 "오래 CONFIRMING 인 tx 를 폴링으로 골라내기"(docs-site 7p 막힌 출금 점검)로 동등 대체.
+  4. **초기 감지 시점 확정**: account-based(EVM) 입금 통지는 **mined 시점**에 생성(UTXO 는 mempool 시점) — 폴링·webhook 이 같은 내부 기록을 읽으므로 차이는 폴 주기뿐. ("best practice = webhook" 은 벤더 권고이나 은행 인바운드 차단 환경에선 폴링으로 동일 정보 관찰.)
+- **Status**: ANSWERED (alert 이벤트 1종만 webhook 전용 — 기능 대체 가능)
 
 ### Stage 90 Summary
 
@@ -1095,7 +1100,8 @@
 - **확정 (wiki)**: `networkStatus` 필드 자체와 enum 5값(DROPPED/BROADCASTING/CONFIRMING/CONFIRMED/FAILED)은 확정 (api.md:136-140). reorg 가 EVM 성질이라는 것도 일반 사실.
 - **Hypotheses (unverified)**: reorg 무효화는 ORPHANED 가 아니라 ① `networkStatus=DROPPED` ② 상위 status 의 FAILED/REJECTED ③ 별도 이벤트 중 하나로 노출될 가능성. 1차 자료 확인 전까지 docs-site 의 ORPHANED 서술은 미확정 취급.
 - **Sources to check**: developers.fireblocks.com transaction statuses / transaction-objects(networkStatus) · support.fireblocks.io reorg 관련 문서 · Webhooks v2 event types
-- **Status**: open
+- **추가 부정 근거 (Stage 111, 1차 fetch)**: ① `reference/transaction-objects.md` 의 networkStatus enum = DROPPED·BROADCASTING·CONFIRMING·FAILED·CONFIRMED — **ORPHANED 없음** ② `reference-sub-statuses.md` 전체 목록에도 reorg/orphan 항목 없음 ③ `monitoring-transaction-status.md` 에 reorg 언급 없음. → **ORPHANED 는 실재하지 않는 것으로 사실상 확정**(docs-site 서술은 사전학습 혼입 — 정정 필요). 잔여: reorg 무효화 시 실제 신호(DROPPED? status 전이? 이벤트?)는 문서 미명시 — **샌드박스 PoC 또는 Fireblocks Support 질의로만 해소 가능**.
+- **Status**: open (ORPHANED 부재는 확정 · 실제 reorg 신호만 잔여)
 
 ### Stage 96 Summary
 

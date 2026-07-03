@@ -7341,3 +7341,13 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 후속 후보(승인 대기): docs-site 04·06 등의 ORPHANED 서술을 중립 표현("벤더 무효화 신호 — 확인 중")으로 정정
 - 영향받은 페이지: open-questions/fireblocks.md
 - 신규 entity: 0
+
+## Stage 111 (2026-07-03) — T03 ANSWERED (문서 대조) + T04 부정 근거 확정
+- 계기: 사용자 "확인을 어떻게 해?" → 방법 3층(① 벤더 문서 대조 ② 샌드박스 PoC ③ Support 질의) 중 ①을 즉시 실행
+- source: developers.fireblocks.com reference/webhooks-structures-eventtypes-transaction.md · monitoring-transaction-status.md · transaction-objects.md · (로컬) reference-sub-statuses.md. extract: sources/fireblocks/markdown/2026-07-03__developers-fireblocks-com__tx-webhook-events-vs-polling.md
+- T03 ANSWERED: tx webhook 5종 중 4종 payload=TransactionDetails(폴링과 같은 객체·승인 상태 포함) → 폴링 대체 성립. 예외 alert.stuck_confirming(ATC 경보)만 webhook 전용 — 폴링의 "오래 CONFIRMING" 검색으로 기능 대체. 감지 시점: EVM=mined·UTXO=mempool(폴링·webhook 동일 기록, 차이=폴 주기)
+- T04 부정 근거: networkStatus enum(1차 재확인)·sub-statuses 전체·monitoring 페이지 모두 ORPHANED/reorg 0건 → ORPHANED 부재 확정. 잔여=실제 reorg 신호(PoC/Support 로만 해소)
+- 후속 대기: docs-site 04·06 ORPHANED 서술 정정(승인 대기)
+- ANSWERED: Q-2026-07-02-T03
+- 영향받은 페이지: open-questions/fireblocks.md · sources(신규 extract 1)
+- 신규 entity: 0
