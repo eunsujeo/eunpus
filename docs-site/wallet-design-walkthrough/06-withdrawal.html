@@ -75,7 +75,7 @@ sequenceDiagram
 <tbody>
 <tr><td><b>SUBMITTED</b></td><td>제출됨 — 벤더가 서명·전파 준비 중, 아직 체인 미등장</td><td>PENDING_SIGNATURE · QUEUED · BROADCASTING</td></tr>
 <tr><td><b>CONFIRMING</b></td><td>전파 후 체인에 등장, confirmation 누적 중 (아직 미확정)</td><td>CONFIRMING (numOfConfirmations 증가 중)</td></tr>
-<tr><td><b>COMPLETED</b></td><td>확정 — DCCP<span class="g" data-tip="Deposit Control and Confirmation Policy — 입금을 몇 confirmation 에서 확정(finality)으로 볼지 체인별로 정하는 Fireblocks 정책 (커스텀 변경은 Fireblocks Support 제출·승인)" tabindex="0">?</span>(확정 정책) 임계 confirmation 도달 = finality, 이후 불변</td><td>COMPLETED</td></tr>
+<tr><td><b>COMPLETED</b></td><td>확정 — DCCP<span class="g" data-tip="Deposit Control and Confirmation Policy — 입·출금이 몇 confirmation 에서 확정(clear)될지 체인별로 정하는 Fireblocks 정책 (커스텀 변경은 Fireblocks Support 제출·승인)" tabindex="0">?</span>(확정 정책) 임계 confirmation 도달 = finality, 이후 불변</td><td>COMPLETED</td></tr>
 <tr><td><b>FAILED</b></td><td>영구 실패 — 사유 동반 (수수료 부족·거절·revert 등)</td><td>FAILED · REJECTED · BLOCKED</td></tr>
 </tbody>
 </table>

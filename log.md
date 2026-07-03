@@ -7410,3 +7410,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 정정: 04(h2·본문 안전망 문장) · component-indexer(h3) · scenario-deposit(안전망 문장) · confluence 02 — "되돌림(reorg)/되돌림" → "reorg"
 - 영향받은 페이지: docs-site 04 · components 3
 - 신규 entity: 0
+
+## Stage 120 (2026-07-03) — 4페이지 구조 정리 + DCCP tooltip 정정
+- 계기: 사용자 "내용이 많아 정리가 안 됨" 리뷰 승인 + "DCCP 가 쓰는 용어야?" 확인
+- DCCP 용어 확정: Fireblocks 공식 약어 (1차 직접 인용 "download the DCCP template"·"The DCCP operates on a first-match basis" — build-a-custom-DCCP). 부수 확인: DCCP 는 incoming+outgoing 모두의 confirmation/clear 정책(about-DCCP p.1) → tooltip 3곳(04·06·07) "입금을…확정(finality)으로 볼지" → "입·출금이…확정(clear)될지"
+- 구조 정리(04): ① 메인 다이어그램 뒤 로드맵 문장("먼저 언제부터 믿는가—확정, 그다음 어떻게 아는가—감지") ② reorg 절을 상태·하위 상태 절 뒤로 이동(DCCP→상태표→reorg→감지 경로→상세→막힘) ③ 감지 경로 표 폴링 행 축소(쿼리 파라미터는 상세 절이 전담)
+- 영향받은 페이지: docs-site 04·06·07
+- 신규 entity: 0
