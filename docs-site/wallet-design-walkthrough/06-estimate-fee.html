@@ -14,15 +14,11 @@
 <a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-detect-confirm.html">4</a><a href="05-deposit.html">5</a><span class="cur">6</span><a href="07-withdrawal.html">7</a><a href="08-balance-history.html">8</a><a href="09-switch-extend.html">9</a><a href="10-ramp-swap.html">10</a>
 </div>
 <h1>수수료 견적 — estimateFee</h1>
-<p class="subtitle">제출 전에 한 번 읽어 보는 동사. 아무것도 점유하지 않으며, 추정일 뿐 보장은 아니다</p>
-
-<p><b>무엇·언제</b>: 출금 화면에서 금액을 입력할 때마다 부르는 동사입니다. 실제 출금 제출과 달리 순번(nonce)을 <b>점유하지 않는 읽기</b>라 수시로 불러도 되고, 어디까지나 추정이라 실제 수수료는 출금(7장)의 제출 단계에서 벤더가 다시 확정합니다. 이 동사는 고객 런타임에서 부르는 <b>Service 백엔드</b>의 호출입니다.</p>
+<p class="subtitle">제출 전에 한 번 읽어 보는 동사. 대납(Universal Gasless) 구성에서 이 값은 "우리가 낼 돈"이 아니라 "relay 가 낼 실비"의 예측이다</p>
 
 <pre><code>estimateFee(출금 지시) → FeeEstimate { low, medium, high }</code></pre>
 
-<p>등급(low/med/high)의 정체는 이렇습니다. EVM(이더리움·Base)에선 노드의 최근 수수료 이력 <b>백분위수</b>가 단가를, 모의 실행이 사용량을 책임집니다. 이 계산은 벤더가 대신하고, estimateFee 한 번으로 low/med/high 를 돌려받습니다. 두 재료(단가·사용량)의 곱이 곧 견적입니다.</p>
-
-<h2>estimateFee — 단가(이력 백분위수) × 사용량(모의 실행)</h2>
+<h2>estimateFee — 단가 × 사용량을 계산하고, 그 돈은 relay 가 낸다</h2>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -32,38 +28,35 @@ sequenceDiagram
     participant FB as Fireblocks
     end
     participant CH as EVM 노드 · 벤더 안
+    participant RL as 지정 relay<br/>(Fireblocks Relay)
 
     BE->>FB: estimateFee(출금 지시)
-    FB->>CH: 최근 블록 수수료 이력 조회 (feeHistory)
+    FB->>CH: 최근 블록 수수료 이력 조회 (feeHistory) — 단가 재료
     CH-->>FB: 수수료 이력 데이터
-    FB->>CH: 모의 실행 (estimateGas) — 가스 사용량 산출
+    FB->>CH: 모의 실행 (estimateGas) — 사용량 재료
     CH-->>FB: 예상 가스 사용량
     Note over BE,CH: 순번 점유 없음 — 읽기뿐이라 출금 화면에서 수시 호출해도 안전
     FB->>FB: 이력의 백분위수로 등급 산출
     FB-->>BE: low · medium · high (보장 아님 — 실제 수수료는 제출 때 재확정)
+    Note over BE,RL: 이 금액은 우리 vault 가 아니라 relay 가 낸다<br/>견적 = relay 실비의 예측 — 제출 시점에 건별 스냅샷으로 기록<br/>인보이스 검증의 최종 근거는 체결 후 온체인 실측이다
 </pre></div>
-<p class="diagram-caption">단가(이력 백분위수)와 사용량(모의 실행), 이 두 재료의 곱이 견적이다. feeHistory·estimateGas 조회와 노드 접근은 <b>벤더 안</b>에서 돌고, Service 백엔드는 estimateFee 한 번만 부른다. 둘 다 체인에 아무 흔적을 남기지 않으므로 견적을 백 번 내고 출금이 0건이어도 비용은 들지 않는다.</p>
 
-<div class="callout">
-<div class="callout-title">Base 는 왜 별도 항목이 없나 — 그리고 L2 가스 한 가지</div>
-<p style="margin:0 0 8px">Base 는 이더리움 위에 얹은 L2 라 <b>같은 EVM 가스 모델</b>을 씁니다. estimateFee 의 재료도 이력 백분위수 + 모의 실행으로 동일해, 이 페이지는 둘을 'EVM' 으로 묶어 한 번에 다룹니다. 등급의 의미(확정 속도 선택지)도, 시세를 따라 견적이 출렁이는 성질도 두 체인이 같습니다.</p>
-<p style="margin:0">한 가지만 다릅니다. L2 의 실제 비용은 <b>L2 실행분 + L1 데이터 비용</b>의 합입니다. Base 에서 낸 트랜잭션은 L2 에서 실행되지만 그 데이터가 이더리움 L1 에 올라가야 확정되므로, 견적에는 L1 데이터 게시 비용이 얹힙니다. estimateFee 는 이 두 성분을 합쳐 돌려주지만, L1 혼잡 때 L2 견적이 함께 오르는 이유가 여기 있습니다.</p>
-</div>
+<h2>언제 부르고, 무엇으로 검증하나</h2>
 
-<h2>견적은 추정, 확정은 제출 — 그리고 운영·정산은 별도</h2>
+<p>gas 는 지정 relay 가 내고, Fireblocks Relay 면 <b>월말 통합 인보이스</b>(gas 실비 + 구독료)로 정산됩니다. 이 구성에서 estimateFee 가 서는 자리는 셋입니다:</p>
 
-<p>견적 다음은 실행입니다. 수수료가 실제로 <b>확정</b>되는 곳은 출금(7장)의 제출 단계이고(벤더가 조립하며 확정), 확정한 수수료가 너무 낮아 막히면 같은 페이지의 boost(수수료 인상 재전송)가 뒤를 잇습니다. estimateFee 는 그 변동 실비를 <b>추정</b>할 뿐입니다.</p>
+<table>
+<thead><tr><th style="width:28%">부르는 시점</th><th>하는 일</th></tr></thead>
+<tbody>
+<tr><td><b>제출 시점</b> — 출금·sweep 매 건</td><td>그 시점의 견적을 <b>건별 스냅샷으로 기록</b>한다. 사전 비용 예측이자, 견적이 비정상적으로 튀는 건을 제출 전에 잡는 이상 감지다.</td></tr>
+<tr><td><b>sweep 타이밍 판단</b></td><td>sweep 은 시간 민감도가 낮아 <b>fee 가 유리할 때 모아 보낼 수 있다</b> — 견적이 그 판단의 입력이다. relay 가 내는 돈도 결국 인보이스로 돌아오므로, 싼 때 보내는 것이 그대로 우리 절감이다.</td></tr>
+<tr><td><b>고객 화면</b> (선택)</td><td>고객에게 보여주는 수수료는 회계 층이 선계산해 고정한 값이라 실시간 견적 표시는 필수가 아니다 — 과금 산정의 참고 재료로만 쓴다. 정산·회계는 <a href="../ramp-settlement-walkthrough/">정산 워크스루</a>.</td></tr>
+</tbody>
+</table>
 
-<p>그 실비를 <b>누가 내는가</b>는 별도 결정입니다 — <b>대납(Gasless relay)이 기본</b>이고, 대납이 안 되는 곳(<b>ETH 자체의 이동</b>)만 충전(Gas Station)으로 보완합니다(선택지·도입 요건은 <a href="../gas-delegation/">가스 대납 문서</a>). 대납 구성에서 이 견적은 "우리 vault 가 낼 돈"이 아니라 <b>relay 가 낼 실비의 예측</b>이 됩니다 — 월말 인보이스 검증·비용 예측에 쓰입니다. ETH 자체의 이동에서는 그대로 우리 비용의 추정입니다.</p>
+<p><b>검증은 실측으로 합니다.</b> 거래가 체결되면 relay 가 실제로 낸 금액은 체인에 정확히 남습니다 — 사용량(gasUsed) × 체결 단가를 receipt 에서 계산할 수 있습니다. 월말 인보이스의 gas 실비는 이 <b>온체인 실측의 합계</b>와 맞추고, 견적 스냅샷은 예측 대비 실측의 편차를 추적하는 보조 자료입니다. 견적으로 인보이스를 검증하면 추정 대 추정이라 오차 시비가 남습니다.</p>
 
-<p>여기서 메커니즘과 운영을 갈라 둡니다. estimateFee 라는 <b>메커니즘</b>은 Service 백엔드가 부르는 매니저 기능입니다. 반면 gas 조달 운영(대납 인보이스 정산 또는 ETH 충전), 고객 과금, 변동 실비와의 <b>차액 정산</b> 같은 <b>운영</b>은 이 문서의 범위 밖이고, 나가는 돈을 관리하는 <b>Admin 백엔드</b>와 회계·비즈니스 층의 몫입니다. 견적은 변동 실비를 추정할 뿐 미리 고정하지 않습니다. 반면 <b>고객에게 보여주는 수수료</b>는 그 위층(회계·비즈니스)이 <b>선계산해 고정한 값</b>이고, 변동 실비와의 차액은 그 층이 수수료수익/손익으로 흡수합니다.</p>
-
-<div class="callout">
-<div class="callout-title">거래소식 "미리 계산된 고정 수수료"는 어느 층인가</div>
-<p style="margin:0">거래소가 출금·매매에 보여주는 고정 수수료는 여기서 다루는 <b>네트워크 실비</b>가 아니라 <b>고객 과금</b>(자산별 고정 출금 수수료·% 매매 요율)입니다 — <b>회계·비즈니스 층</b>이 고정 스케줄로 정하고, 매니저 층 견적이 추정한 변동 실비와의 차액을 <b>수수료수익/손익</b>으로 흡수합니다. 실비를 미리 고정하려 들면 가스 급등 때 미수·손실이 납니다. 정산·회계 처리는 <a href="../ramp-settlement-walkthrough/">정산 워크스루</a>에서 다룹니다.</p>
-</div>
-
-<p class="foot">더 깊이 보려면, 조립 시 수수료 설정과 인상 재전송을 다룬 <a href="../wallet-service-components/component-tx-nonce.html">가이드 4장</a>을 참고하세요.</p>
+<p class="foot">대납의 선택지·도입 요건·메커니즘(EIP-7702)은 <a href="../gas-delegation/">가스 대납 문서</a>, 조립 시 수수료 설정과 인상 재전송은 <a href="../wallet-service-components/component-tx-nonce.html">가이드 4장</a>을 참고하세요.</p>
 
 <div class="pager">
 <a href="05-deposit.html">← 5. 입금</a>

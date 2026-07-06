@@ -128,7 +128,7 @@ flowchart LR
 <tr><td>잔액 (가용·대기·잠김)</td><td>getVaultAccountAsset</td><td class="c"></td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td><code>getBalance</code></td><td class="c">S·A</td><td class="c">8p</td></tr>
 <tr><td>내 거래 이력</td><td>거래 목록 조회</td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c">●</td><td><code>transactionsOf</code></td><td class="c">S·A</td><td class="c">8p</td></tr>
 <tr><td>서명 정책 (한도·화이트리스트)</td><td>TAP(거버넌스 정책) · co-signer</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td>(동사 없음 — 정책 게이트)</td><td class="c">A</td><td class="c">7p</td></tr>
-<tr><td>gas 조달</td><td>Gasless Service (대납 · 기본) · Gas Station (충전 — ETH 자체 이동)</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td>(동사 없음 — 운영·설정)</td><td class="c">A</td><td class="c"><a href="../gas-delegation/">문서</a></td></tr>
+<tr><td>gas 조달</td><td>Universal Gasless (대납 — 스테이블코인 전용이라 ETH 이동 없음)</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td>(동사 없음 — 운영·설정)</td><td class="c">A</td><td class="c"><a href="../gas-delegation/">문서</a></td></tr>
 </tbody>
 </table>
 <p class="table-note">● = 그 장면이 이 기능을 호출한다. <b>백엔드</b> 열 = Service(S)·Admin(A) 중 어디서 부르나 — 나가는 돈의 정책·승인·개입(TAP·boost·cancel·동결)은 <b>Admin</b>, 고객 런타임(계정·주소·입금·출금 제출·조회)은 <b>Service</b>다. Fireblocks 표면은 공식 문서에서 확인한 범위다(일부 조회 엔드포인트는 적용 전 확인). <b>Base 는 이더리움과 같은 EVM</b>이라 표면·페이지·동사가 동일하다 — 체인만 바뀐다. 마지막 두 행은 동사가 없는데, 화면이 부르는 기능이 아니라 흐름 뒤에 서는 기능이라 그렇다(정책 게이트 7p · gas 조달은 <a href="../gas-delegation/">별도 문서</a>).</p>

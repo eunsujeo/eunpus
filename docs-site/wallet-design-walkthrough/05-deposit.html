@@ -96,11 +96,14 @@ sequenceDiagram
     box rgb(220,252,231) 블록체인 매니저
     participant FB as Fireblocks (SaaS)
     end
+    participant RL as 지정 relay<br/>(Fireblocks Relay)
 
     Note over SW,DB: 트리거 — 잔액 임계 · 고정 스케줄 · 네트워크 fee 유리할 때
     SW->>DB: sweep 대상 조회 — 가용 처리 끝난 고객 vault 잔액
-    SW->>FB: submitTransaction — 고객 vault → 옴니버스 (vault 별 1건)
-    Note over FB: gas 는 대납(Gasless relay) 기본 · ETH 자체 이동만 Gas Station
+    SW->>FB: submitTransaction — 고객 vault → 옴니버스 (vault 별 1건 · gasless)
+    Note over FB: 그 vault 의 첫 gasless 거래면 위임 설정(upgrade)이 함께 처리된다 — 주소·키 불변
+    FB->>RL: gas 부담 위임 — 거래 생성·서명 시점 (relay 거절이면 거래 실패)
+    Note over FB,RL: gas 는 relay 가 지불 · 토큰은 고객 vault 에서 이동 — 월말 인보이스 정산
     FB-->>SW: 제출 접수 — 이후 상태는 폴링이 추적 (4장 · 내부 이동 분기)
     SW->>DB: sweep 기록 — 고객 잔액 원장은 불변 (온체인 보관 위치만 이동)
 </pre></div>
@@ -109,7 +112,7 @@ sequenceDiagram
 <thead><tr><th style="width:24%">결정</th><th>내용</th></tr></thead>
 <tbody>
 <tr><td><b>트리거</b></td><td>잔액 임계 · 고정 스케줄 · 네트워크 fee 가 유리할 때 — sweep 은 시간에 급하지 않아 <b>낮은 fee 로 보낼 수 있다</b>.</td></tr>
-<tr><td><b>gas</b></td><td><b>대납(Gasless relay)이 기본</b> — 고객 vault 에 ETH 를 배포하지 않는다. ETH 자체의 이동만 충전(Gas Station). 상세는 <a href="../gas-delegation/">가스 대납 문서</a>.</td></tr>
+<tr><td><b>gas</b></td><td><b>Universal Gasless 로 대납</b> — 고객 vault 에 ETH 를 배포하지 않는다. 스테이블코인 전용이라 ETH 자체의 이동은 없다. 상세는 <a href="../gas-delegation/">가스 대납 문서</a>.</td></tr>
 <tr><td><b>서명 자동화</b></td><td>API Co-Signer — 주기 실행이라 사람 개입 없이 서명까지 자동.</td></tr>
 <tr><td><b>고객 잔액</b></td><td><b>불변</b> — 고객별 잔액은 DB 원장 몫이고, sweep 은 온체인 보관 위치만 옮긴다(회계 이벤트 아님).</td></tr>
 <tr><td><b>관찰·실패</b></td><td>sweep tx 는 폴링에 <b>내부 이동</b>으로 잡혀 같은 경로로 상태 추적·막힘 점검·boost 를 탄다(4장).</td></tr>
