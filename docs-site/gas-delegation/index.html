@@ -21,6 +21,13 @@
 <li><a href="#standards">4. GSN · Paymaster 구분</a></li>
 <li><a href="#decisions">5. 결정 포인트</a></li>
 </ul></div>
+<div class="nav-section"><h3 class="nav-section-title">일반 표준 상세</h3><ul>
+<li><a href="gsn-paymaster.html#lineage">6. 계보 — 서명과 제출의 분리</a></li>
+<li><a href="gsn-paymaster.html#gsn">7. GSN — 구조와 한계</a></li>
+<li><a href="gsn-paymaster.html#erc4337">8. ERC-4337 — Paymaster 정산 구조</a></li>
+<li><a href="gsn-paymaster.html#eip7702">9. EIP-7702 — Fireblocks 가 택한 노선</a></li>
+<li><a href="gsn-paymaster.html#compare">10. 종합 비교 — 수탁 관점</a></li>
+</ul></div>
 </nav>
 </aside>
 
@@ -31,10 +38,10 @@
 
 <div class="callout">
 <div class="callout-title">본 페이지의 출처</div>
-<p style="margin:0">Fireblocks Gasless Service · Gas Station 내용은 <strong>Fireblocks 공식 문서(헬프센터·개발자 문서)에서 확인한 사실</strong>이다. GSN · ERC-4337 Paymaster 절은 <strong>일반 EVM 표준에 대한 저자 정리</strong>로, 본인 환경 적용 전 1차 자료 검증을 권장한다. 미확정으로 표시한 항목(정산 단가 등)은 Fireblocks CSM/Support 확인 대상이다.</p>
+<p style="margin:0">Fireblocks Gasless Service · Gas Station 내용은 <strong>Fireblocks 공식 문서(헬프센터·개발자 문서)에서 확인한 사실</strong>이다. GSN · ERC-4337 Paymaster 절은 <strong>일반 EVM 표준에 대한 저자 정리</strong>로, 본인 환경 적용 전 1차 자료 검증을 권장한다. 미확정으로 표시한 항목(정산 단가 등)은 Fireblocks 담당 매니저(CSM)나 지원팀(Support)에 확인할 대상이다.</p>
 </div>
 
-<p class="lead">EVM 은 토큰(USDC 등)을 보낼 때도 수수료(gas)를 <strong>base asset(ETH)으로, 발신 계정에서</strong> 차감한다. 수탁 지갑에서 이게 아픈 지점은 두 곳이다.</p>
+<p class="lead">EVM 은 토큰(USDC 등)을 보낼 때도 수수료(gas)를 <strong>base asset(ETH)으로, 발신 계정에서</strong> 차감한다.</p>
 
 <div class="table-wrap">
 <table>
@@ -84,12 +91,12 @@ flowchart LR
 <tr><td><strong>직접 충전</strong></td><td>필요 — vault 마다</td><td>조달·모니터링·충전 전부 수동. 규모가 커지면 비현실적.</td></tr>
 <tr><td><strong>Gas Station</strong> (충전 자동화)</td><td>필요 — 단 자동 충전</td><td>vault 입·출금 감지 시 임계(gasThreshold) 밑이면 자동 충전. Gas Station 재원 지갑은 직접 채운다.</td></tr>
 <tr><td><strong>Gasless — Local relay</strong></td><td>relay vault 1곳만</td><td>ETH 운영이 "vault 수만 개"에서 "relay 하나"로 집약. ETH 조달 자체는 남는다.</td></tr>
-<tr><td><strong>Gasless — External workspace</strong></td><td>우리 쪽 불요</td><td>gas 부담이 외부 워크스페이스로 — 그쪽과의 정산은 계약 나름.</td></tr>
-<tr><td><strong>Gasless — Fireblocks Relay</strong></td><td><strong>불요 — ETH 0</strong></td><td>Fireblocks 가 선지불, <strong>월말 통합 인보이스(gas 실비 + 구독료)</strong>. 프리미엄 — CSM 경유 활성화, testnet 30일 체험.</td></tr>
+<tr><td><strong>Gasless — External workspace</strong></td><td>우리 쪽은 필요 없음</td><td>gas 부담이 외부 워크스페이스로 — 그쪽과의 정산은 계약 나름.</td></tr>
+<tr><td><strong>Gasless — Fireblocks Relay</strong></td><td><strong>필요 없음 — ETH 0</strong></td><td>Fireblocks 가 선지불, <strong>월말 통합 인보이스(gas 실비 + 구독료)</strong>. 프리미엄 — CSM 경유 활성화, testnet 30일 체험.</td></tr>
 </tbody>
 </table>
 </div>
-<p class="table-note">"ETH 불요"는 <strong>토큰 전송 기준</strong>이다 — 공식 문서가 명시한다: <strong>Universal Gasless 는 ETH 네이티브 전송을 대납하지 않으며, ETH 자체의 이동(sweep)은 Gas Station 몫</strong>이다. 고객이 ETH 자체를 출금하면 보내는 자산이 ETH 라서 그 물량도 별도다. 스테이블코인 중심 서비스라면 사실상 ETH-free 운영이 된다.</p>
+<p class="table-note">"ETH 필요 없음"은 <strong>토큰 전송 기준</strong>이다 — 공식 문서가 명시한다: <strong>Universal Gasless 는 ETH 네이티브 전송을 대납하지 않으며, ETH 자체의 이동(sweep)은 Gas Station 몫</strong>이다. 고객이 ETH 자체를 출금하면 보내는 자산이 ETH 라서 그 물량도 별도다. 스테이블코인 중심 서비스라면 사실상 ETH-free 운영이 된다.</p>
 </section>
 
 <section id="gasless">
@@ -137,7 +144,7 @@ sequenceDiagram
 <div class="callout-title">운영 caveat — 대납이어도 남는 것</div>
 <ul>
 <li><strong>새 실패 모드가 생긴다</strong> — 공식 문서 명시: <strong>relay 가 요청을 거절하거나 gas 를 대지 못하면 gasless 거래는 실패</strong>한다. relay 상호작용은 서명·거래 생성 단계(체인 전송 전)에 일어나므로, 상태 처리에 "relay 거절" 실패 사유가 추가되고 relay 잔고·정책이 모니터링 대상이 된다.</li>
-<li><strong>막힌 거래의 자동 재촉 없음</strong> — 공식 문서 명시: Gasless Relay 는 stuck 거래 auto-boost 를 지원하지 않는다. <strong>수동 RBF boost</strong> 가 필요하므로, 막힘 점검과 boost·cancel 운영은 대납을 써도 그대로 필요하다.</li>
+<li><strong>제시한 fee 가 낮아 체인에서 처리되지 않고 대기 중인 거래(stuck)를 자동으로 재촉해 주지 않는다</strong> — 공식 문서 명시: Gasless Relay 는 auto-boost 를 지원하지 않는다. <strong>수동 RBF boost</strong> 가 필요하므로, 막힘 점검과 boost·cancel 운영은 대납을 써도 그대로 필요하다.</li>
 <li><strong>비용이 사라지는 게 아니라 지불 수단이 바뀐다</strong> — 온체인 ETH → 월말 청구서(법정화폐). 정산은 회계 층의 일이 된다. 단가·구독료 수준은 미확정(CSM 확인 대상).</li>
 <li><strong>MPC 서명 ↔ EIP-7702 위임의 내부 동작</strong>은 공식 문서에 상세가 없다 — PoC/CSM 확인 대상.</li>
 </ul>
@@ -176,7 +183,7 @@ sequenceDiagram
 </tbody>
 </table>
 </div>
-<p class="table-note">관계 정리 — Fireblocks 는 GSN "네트워크"가 아니라 <strong>ERC-2771 표준을 자체 relay 로 구현</strong>했고, paymaster(4337) 대신 <strong>EIP-7702 노선</strong>을 택했다. Fireblocks 의 "Gas Station"(충전 자동화)은 GSN 과 <strong>이름만 유사할 뿐 무관</strong>하다. 이 두 표준은 사용자가 <strong>자기 지갑에서 직접 거래를 보내는</strong> 모델의 도구라, 모든 거래를 수탁자 vault 가 발신하는 모델에서는 Fireblocks Gasless 가 같은 자리를 대신한다.</p>
+<p class="table-note">관계 정리 — Fireblocks 는 GSN "네트워크"가 아니라 <strong>ERC-2771 표준을 자체 relay 로 구현</strong>했고, paymaster(4337) 대신 <strong>EIP-7702 노선</strong>을 택했다. Fireblocks 의 "Gas Station"(충전 자동화)은 GSN 과 <strong>이름만 유사할 뿐 무관</strong>하다. 이 두 표준은 사용자가 <strong>자기 지갑에서 직접 거래를 보내는</strong> 모델의 도구라, 모든 거래를 수탁자 vault 가 발신하는 모델에서는 Fireblocks Gasless 가 같은 자리를 대신한다. 두 표준의 구성요소·흐름·정산 구조는 <a href="gsn-paymaster.html">6~10장 일반 표준 상세</a>에 있다.</p>
 </section>
 
 <section id="decisions">

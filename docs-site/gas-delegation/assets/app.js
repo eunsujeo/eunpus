@@ -20,6 +20,58 @@
     });
   }
 
+  function setupScrollSpy() {
+    var sections = Array.prototype.slice.call(
+      document.querySelectorAll('main.content section[id]')
+    );
+    if (!sections.length) return;
+
+    /* 현재 페이지의 섹션을 가리키는 사이드바 링크만 수집
+       (href="#id" 또는 href="현재파일명#id") */
+    var currentFile = location.pathname.split('/').pop();
+    var linkById = {};
+    document.querySelectorAll('.sidebar a[href*="#"]').forEach(function (a) {
+      var href = a.getAttribute('href');
+      var hashIdx = href.indexOf('#');
+      var path = href.slice(0, hashIdx);
+      if (path !== '' && path !== currentFile) return;
+      linkById[href.slice(hashIdx + 1)] = a;
+    });
+    if (!Object.keys(linkById).length) return;
+
+    var ticking = false;
+    function update() {
+      ticking = false;
+      var currentId = sections[0].id;
+      sections.forEach(function (s) {
+        if (s.getBoundingClientRect().top <= 120) currentId = s.id;
+      });
+      /* 페이지 끝에 닿으면 마지막 섹션 */
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) {
+        currentId = sections[sections.length - 1].id;
+      }
+      var target = linkById[currentId];
+      if (!target || target.classList.contains('active')) return;
+      document.querySelectorAll('.sidebar a.active').forEach(function (a) {
+        a.classList.remove('active');
+      });
+      target.classList.add('active');
+      scrollActiveSidebarIntoView();
+    }
+
+    window.addEventListener(
+      'scroll',
+      function () {
+        if (!ticking) {
+          ticking = true;
+          window.requestAnimationFrame(update);
+        }
+      },
+      { passive: true }
+    );
+    update();
+  }
+
   function scrollActiveSidebarIntoView() {
     var active = document.querySelector('.sidebar a.active');
     if (!active) return;
@@ -169,6 +221,7 @@
   function init() {
     setupSidebarToggle();
     scrollActiveSidebarIntoView();
+    setupScrollSpy();
     initMermaid();
   }
 
