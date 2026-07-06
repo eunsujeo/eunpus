@@ -4,7 +4,7 @@ vendor: fireblocks
 status: draft
 tags: [architecture, transaction, policy]
 source_count: 12
-last_updated_stage: 40
+last_updated_stage: 142
 related:
   - api
   - architecture
@@ -21,7 +21,7 @@ related:
 
 ## Summary
 
-Fireblocks는 다중 체인 custody·transfer 플랫폼이며, 100+ 체인을 지원한다. 본 도메인의 자료는 크게 다음 카테고리:
+Fireblocks는 다중 체인 custody·transfer 플랫폼이며, 100+ 체인을 지원한다. (★ Stage 142) 카탈로그 스냅샷(2026-05-18) 기준 **135개 체인** — 유형 집계: EVM account-based 90 · Account-based(non-EVM) 27 · UTXO-based 14 · Cosmos SDK-compatible 3 · Permissioned DLT 1. 전체 명단은 `supported-blockchain-networks.md` §"2차 추출 (Stage 142)". 본 도메인의 자료는 크게 다음 카테고리:
 
 - **카탈로그·메타** (8 자료 / full ingest): supported networks, data sheets, SLA, node router, minimums, internal transactions, about
 - **체인별 quirks** (12 자료 / placeholder): Algorand · Tezos · Filecoin · Flare · Stellar · Kusama · Moonbeam/Moonriver · Near · Polkadot · Ripple · Solana · Songbird
@@ -34,8 +34,9 @@ Fireblocks는 다중 체인 custody·transfer 플랫폼이며, 100+ 체인을 �
 
 - **EVM-compatible account-based** — 가장 흔함 (Ethereum, Arbitrum, Base, Avalanche C-Chain 등 100+)
 - **Non-EVM account-based** — Algorand, Solana, Stellar, Near, Tezos 등
-- **UTXO-based** — Bitcoin, Bitcoin Cash, Litecoin, Cardano, Axelar (특이) 등
-- **Cosmos SDK-based account-based** — Zigchain, Pocket Network 등 (신규 추가는 대부분 이 패턴, `blockchain-data-sheets.md`)
+- **UTXO-based** — Bitcoin, Bitcoin Cash, Litecoin, Cardano 등. (★ Stage 142) 카탈로그가 **Cosmos 생태 체인 다수를 UTXO-based 로 분류**: Axelar · dYdX · Injective · Noble · Thorchain — 일반 통념과 다르나 원문 표기 그대로.
+- **Cosmos SDK-based account-based** — Zigchain, Pocket Network 등 (신규 추가는 대부분 이 패턴, `blockchain-data-sheets.md`). 카탈로그 내 Cosmos SDK-compatible 표기는 Osmosis · Provenance · Xion 3개.
+- (★ Stage 142) **Permissioned DLT (DAML)** — 5번째 유형, Canton 단독: "requires enablement", Supported networks = Consortium networks (by Fireblocks approval).
 
 ### Node infrastructure 모델
 

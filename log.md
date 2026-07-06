@@ -7572,3 +7572,9 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 배포 단위 검증: 허브·워크스루·custodial 모두 wiki-docs.pages.dev 의 동일 로그인 게이트(_worker.js) → docs-site/ 전체가 배포 단위 (site-template 참조 문서의 "custodial 하위폴더" 기록은 허브 이전 구조)
 - 실행: docs-site/ 에서 wrangler pages deploy --project-name=wiki-docs --branch=main (ASCII commit-message) — Uploaded 80 files (184 already), 정상 범위. 이번 세션 변경분(워크스루 재편·04 감지와 확정·05 sweep·gas-delegation 신규·허브 카드) 반영
 - 신규 entity: 0
+
+## Stage 142 (2026-07-06) — supported-blockchain-networks 전량 추출 (Mode C promote)
+- source: 2026-05-18__support-fireblocks-io__supported-blockchain-networks.pdf (22p) → pdftotext 전량, 기존 markdown 에 2차 추출 append
+- 결과: 카탈로그 135 체인 확정 (EVM 90 · non-EVM account 27 · UTXO 14 · Cosmos SDK 3 · Permissioned DLT 1). quirk: Cosmos 생태 5개 체인이 UTXO-based 로 분류(Axelar·dYdX·Injective·Noble·Thorchain), Canton = 5번째 유형(DAML consortium), Noble fee=USDC, ETH testnet=Sepolia+Hoodi
+- 영향받은 페이지: vendors/fireblocks/blockchains.md (Summary 집계 + 체인 종류 vocabulary 보강, last_updated_stage 142)
+- 신규 entity: 0
