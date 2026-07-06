@@ -102,6 +102,19 @@ flowchart LR
 </table>
 </div>
 
+<p><strong>거래의 to 는 "받는 사람"이 아니다 — "이 거래로 깨울 코드가 있는 곳"이다.</strong> to = 받는 사람이라는 직관은 ETH 전송에서만 참이다(코드가 없어 송금만 일어나므로 우연히 일치). USDC 전송의 to 는 받는 사람이 아니라 <strong>USDC 컨트랙트</strong>고, 받는 사람은 calldata 안의 인자다. gasless 전송(9장)은 한 단계 더 가서 to = <strong>보내는 쪽 vault(위임된 EOA)</strong> 가 된다 — 깨워야 할 코드(지갑 구현)가 거기 있기 때문이다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">전송 종류</th><th style="width:32%">봉투의 to</th><th>받는 사람은 어디에</th></tr></thead>
+<tbody>
+<tr><td>ETH 전송</td><td><strong>받는 사람</strong> — 직관 그대로</td><td>to 그 자체</td></tr>
+<tr><td>보통의 USDC 전송</td><td><strong>USDC 컨트랙트</strong></td><td>calldata 안 — <code>transfer(받는사람, 100)</code> 의 인자</td></tr>
+<tr><td>gasless USDC 전송 (7702)</td><td><strong>보내는 쪽 vault(EOA)</strong> — 지갑 코드를 깨우려고</td><td>calldata 안의 서명된 요청 속 인자</td></tr>
+</tbody>
+</table>
+</div>
+
 <p><strong>토큰 잔액은 내 주소에 있지 않다.</strong> USDC 100개를 "가지고 있다"는 것의 실체는 — USDC 컨트랙트의 <strong>스토리지 안 장부에 "내 주소: 100" 이라고 적혀 있는 것</strong>이다. 그래서 토큰 전송은 내 계정에서 뭔가가 빠져나가는 게 아니라, 토큰 컨트랙트를 호출해서 그 장부의 두 줄을 고치는 일이다:</p>
 
 <div class="diagram"><pre class="mermaid">

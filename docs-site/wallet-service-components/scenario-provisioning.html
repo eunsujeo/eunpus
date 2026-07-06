@@ -103,7 +103,7 @@
 <li><strong>승인 게이트가 아님(보통)</strong> — 계정·주소 발급은 프로비저닝이라 출금 같은 다자 승인이 보통 필요 없다. 단 <strong>인증·KYC</strong>(비즈 레이어)와 <strong>멱등 키</strong>(같은 온보딩 요청이 계정을 두 번 만들지 않게)는 필수.</li>
 <li><strong>온체인 트랜잭션이 아님</strong> — vault 생성도 EVM 주소 발급도 <strong>Fireblocks vault 내부 연산</strong>이라 체인에 tx 를 쓰지 않는다(전파·수수료 없음). EVM 주소는 순수 주소라 tag/memo 구분자가 필요 없다 — <code>Address(value, memoTag=null)</code>.</li>
 <li><strong>키는 어디에</strong> — createAccount 가 키를 만들지만, 키 자체는 <strong>Fireblocks vault·MPC 안</strong>에 있고 매니저·게이트웨이는 만지지 않는다 (<a href="component-signing.html">5. 서명 · co-signer</a>).</li>
-<li><strong>수탁 구조 선택은 비즈/회계</strong> — "고객마다 별도 계정" vs "공용(omnibus) + 내부 장부 attribution(누구 몫인지 귀속)" 은 업무·회계 설계다. 매니저는 계정/주소 발급 primitive(기본 동작)만 제공. 단 규모는 매니저 설계에도 닿는다 — 은행 리테일처럼 고객이 수십만~수백만이면 "고객 1명 = vault 1개"(9.2 표의 <code>createVaultAccount</code> 1:1) 는 vault 수 폭발로 비용·rate limit·운영 부담이 커지므로, 대규모에선 <strong>공용 vault + 고객별 입금 주소 + 내부 attribution</strong> 구성을 함께 검토한다. 어느 쪽이든 매니저 쪽 차이는 계정·주소 매핑(계정 디렉터리)뿐이다.</li>
+<li><strong>수탁 구조 선택은 비즈/회계</strong> — "고객마다 별도 계정" vs "공용(omnibus) + 내부 장부 attribution(누구 몫인지 귀속)" 은 업무·회계 설계다. 매니저는 계정/주소 발급이라는 기본 동사만 제공. 단 규모는 매니저 설계에도 닿는다 — 은행 리테일처럼 고객이 수십만~수백만이면 "고객 1명 = vault 1개"(9.2 표의 <code>createVaultAccount</code> 1:1) 는 vault 수 폭발로 비용·rate limit·운영 부담이 커지므로, 대규모에선 <strong>공용 vault + 고객별 입금 주소 + 내부 attribution</strong> 구성을 함께 검토한다. 어느 쪽이든 매니저 쪽 차이는 계정·주소 매핑(계정 디렉터리)뿐이다.</li>
 <li><strong>발급 결과는 백엔드의 계정 디렉터리에</strong> — createAccount·issueDepositAddress/addressOf 의 결과(계정↔vaultId↔주소 매핑)는 지갑 서비스 백엔드가 <strong>계정 디렉터리</strong>로 저장·소유한다. 이후 모든 요청의 "계정 id → 계정" 해석은 게이트웨이가 이 디렉터리로 풀고, 벤더에 다시 물어보지 않는다 — 벤더를 교체해도 남는 우리 데이터다 (<a href="project-structure.html">17. 프로젝트 구조</a> 의 backend/directory).</li>
 </ul>
 

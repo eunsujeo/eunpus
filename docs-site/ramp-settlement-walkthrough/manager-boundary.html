@@ -13,7 +13,7 @@
 <h1>정산 흐름과 블록체인 매니저의 경계</h1>
 <p class="subtitle">이 워크스루의 2단계 흐름이 <b>자체/Fireblocks 블록체인 매니저</b>와 어디서 맞물리는가 — 두 워크스루를 잇는 한 장</p>
 
-<p><b>왜 이 페이지</b>: 본문(1~6장)은 정산을 <b>회계 도메인</b> 관점에서 봅니다. 옆 워크스루(<a href="../wallet-design-walkthrough/index.html">자체 블록체인 매니저 설계</a>)는 같은 거래를 <b>매니저(입금·출금·서명 primitive)</b> 관점에서 봅니다. 둘이 어디서 만나는지를 한 장에 겹쳐 봅니다.</p>
+<p><b>왜 이 페이지</b>: 본문(1~6장)은 정산을 <b>회계 도메인</b> 관점에서 봅니다. 옆 워크스루(<a href="../wallet-design-walkthrough/index.html">자체 블록체인 매니저 설계</a>)는 같은 거래를 <b>매니저(입금·출금·서명)</b> 관점에서 봅니다. 둘이 어디서 만나는지를 한 장에 겹쳐 봅니다.</p>
 
 <div class="callout">
 <div class="callout-title">한 줄로</div>
@@ -22,7 +22,7 @@
 
 <h2>본문 다이어그램의 각 액터는 어느 계층인가</h2>
 <div class="table-wrap"><table>
-<thead><tr><th style="width:34%">본문(Figure 0)의 액터·화살표</th><th style="width:30%">어느 계층</th><th>매니저 primitive</th></tr></thead>
+<thead><tr><th style="width:34%">본문(Figure 0)의 액터·화살표</th><th style="width:30%">어느 계층</th><th>매니저 동사 (입금·출금)</th></tr></thead>
 <tbody>
 <tr><td>App (은행 App)</td><td><b>코인계 백엔드</b> — 매니저의 호출자<br/>(옆 워크스루의 <code>BE 지갑 백엔드</code>)</td><td>—</td></tr>
 <tr><td>CL · DL · GLE · BL (4원장)</td><td><b>코인계 회계 도메인</b> (매니저 밖)</td><td>—</td></tr>
@@ -160,7 +160,7 @@ sequenceDiagram
 
 <h2>거래별로 매니저가 하는 일 (2단계)</h2>
 <div class="table-wrap"><table>
-<thead><tr><th style="width:16%">거래</th><th>매니저가 하는 일</th><th style="width:28%">primitive</th></tr></thead>
+<thead><tr><th style="width:16%">거래</th><th>매니저가 하는 일</th><th style="width:28%">쓰이는 입금·출금</th></tr></thead>
 <tbody>
 <tr><td><b>온램프</b></td><td>발행사가 vault 로 보낸 코인 <b>입금 감지</b>만 (출금 없음)</td><td><code>onChainEvent</code> (PENDING→CONFIRMED)</td></tr>
 <tr><td><b>오프램프</b></td><td>vault→발행사 주소 <b>출금 실행</b>(HSM/Fireblocks 서명·broadcast) + 출금 확정 감지</td><td>출금 + <code>onChainEvent</code></td></tr>
@@ -175,10 +175,10 @@ sequenceDiagram
 </div>
 <div class="callout">
 <div class="callout-title">② 교체해도 위층은 그대로다</div>
-<p style="margin:0">자체↔Fireblocks 를 바꿔도 갈리는 건 2단계의 <code>onChainEvent</code>·출금 구현뿐이다. 1단계 + 4원장 + 델타 + 대사는 손대지 않는다. "매니저는 swappable primitive 층, 회계는 그 위"라는 명제의 실제 모습이 이 한 장이다(전환의 비용은 <a href="../wallet-design-walkthrough/09-switch-extend.html">매니저 워크스루 9장</a>).</p>
+<p style="margin:0">자체↔Fireblocks 를 바꿔도 갈리는 건 2단계의 <code>onChainEvent</code>·출금 구현뿐이다. 1단계 + 4원장 + 델타 + 대사는 손대지 않는다. "매니저는 교체 가능한 입금·출금 층, 회계는 그 위"라는 명제의 실제 모습이 이 한 장이다(전환의 비용은 <a href="../wallet-design-walkthrough/09-switch-extend.html">매니저 워크스루 9장</a>).</p>
 </div>
 
-<p class="foot">정산 흐름 본문: <a href="index.html">정산 워크스루 목차</a> · 매니저 primitive 상세: <a href="../wallet-design-walkthrough/index.html">자체 블록체인 매니저 설계 워크스루</a>(감지와 확정 <a href="../wallet-design-walkthrough/04-detect-confirm.html">4장</a> · 입금 <a href="../wallet-design-walkthrough/05-deposit.html">5장</a> · 출금 <a href="../wallet-design-walkthrough/07-withdrawal.html">7장</a> · 수수료 <a href="../wallet-design-walkthrough/06-estimate-fee.html">6장</a>).</p>
+<p class="foot">정산 흐름 본문: <a href="index.html">정산 워크스루 목차</a> · 매니저 입금·출금 상세: <a href="../wallet-design-walkthrough/index.html">자체 블록체인 매니저 설계 워크스루</a>(감지와 확정 <a href="../wallet-design-walkthrough/04-detect-confirm.html">4장</a> · 입금 <a href="../wallet-design-walkthrough/05-deposit.html">5장</a> · 출금 <a href="../wallet-design-walkthrough/07-withdrawal.html">7장</a> · 수수료 <a href="../wallet-design-walkthrough/06-estimate-fee.html">6장</a>).</p>
 
 <div class="pager">
 <a href="index.html">← 정산 워크스루 목차</a>

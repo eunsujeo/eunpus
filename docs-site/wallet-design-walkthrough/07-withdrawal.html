@@ -51,11 +51,28 @@ sequenceDiagram
     CB-->>COS: approve / deny
     COS-->>FB: MPC 서명 share (approve) · deny 면 서명 거부
     FB->>RL: gas 부담 위임 — 거래 생성·서명 시점 (relay 거절이면 거래 실패)
+    Note over RL,CH: 여기서부터 온체인 — 앞의 모든 단계(제출·기록·서명·위임)는 오프체인이다
     RL->>CH: 전파 — relay 가 발신자로서 제출하고 gas 를 낸다<br/>vault 몫의 서명(벤더 share + co-signer share)은 그 안의 승인으로 실린다
     CH-->>FB: 블록 누적 → 확정
+    Note over PW,FB: 다시 오프체인 — 폴링은 읽기라 체인에 아무 흔적을 남기지 않는다
     PW->>FB: 폴링 — lastUpdated 커서로 변경된 tx 조회 (4장)
     PW->>DB: 상태 갱신 — TxRef 로 대조, 전파 → 누적 → 확정
 </pre></div>
+
+<h2>서명은 두 겹 — 안쪽 승인(vault)과 바깥 거래(relay)</h2>
+
+<p>다이어그램의 서명 관문(5~8)과 relay 구간(9~10)은 <b>별개의 서명 두 개</b>를 만듭니다:</p>
+
+<table>
+<thead><tr><th style="width:26%">서명</th><th>누가 · 무엇에</th><th>무엇을 막나</th></tr></thead>
+<tbody>
+<tr><td><b>안쪽 — vault 의 승인 서명</b> (5~8)</td><td>출금 vault(옴니버스·출금 pool)의 MPC 서명 — 벤더 share + <b>co-signer share</b>. co-signer 는 Callback Handler 재검증을 통과한 건에만 자기 share 를 보탠다.</td><td>침해된 백엔드의 위조 지시 — 목적지·금액이 정책에 어긋나면 서명 자체가 만들어지지 않는다.</td></tr>
+<tr><td><b>바깥 — relay 의 거래 서명</b> (9~10)</td><td>relay 가 자기 계정으로 바깥 거래를 서명·제출하고 gas 를 낸다.</td><td>relay 가 정할 수 있는 건 "낼지 말지"뿐 — 내용 위조는 불가. 위임된 지갑 코드가 안쪽 서명을 온체인에서 검증하기 때문.</td></tr>
+</tbody>
+</table>
+
+<p>행위자를 우리 모델로 매핑하면 — <b>고객은 온체인에 등장하지 않습니다</b>. 고객의 "출금해 주세요"는 업무 승인 단계에서 끝나고, 온체인의 발신 vault(옴니버스·출금 pool)·키(MPC)·제출자(relay)는 전부 수탁자 쪽입니다. 위임·실행 메커니즘의 상세는 <a href="../gas-delegation/gsn-paymaster.html#eip7702">가스 대납 문서 9장</a>.</p>
+
 <h2>정책 게이트 — 마지막 방어선은 TAP</h2>
 
 <p><b>규칙은 코드가 아니라 데이터</b>입니다 — 화이트리스트·한도는 설정이고, 그 관리·승인은 <b>Admin 백엔드</b>의 거버넌스 몫(co-signer 승인 포함)입니다. 방어선이 <b>벤더 안 TAP</b>에 있으므로, 할 일은 게이트를 만드는 게 아니라 TAP 정책을 운영·승인하는 것(Admin)입니다.</p>
