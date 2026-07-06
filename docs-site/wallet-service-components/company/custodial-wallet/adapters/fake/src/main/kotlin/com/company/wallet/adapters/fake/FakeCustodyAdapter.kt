@@ -95,13 +95,13 @@ class FakeCustodyAdapter :
     }
 
     override suspend fun submitTransaction(request: TransactionRequest): TxRef {
-        val txRef = TxRef(value = "fake-tx-${seq.incrementAndGet()}", chainId = request.asset.chainId)
-        statuses[txRef.value] = TxStatus.Pending(confirmations = 0)
+        val txRef = TxRef(id = "fake-tx-${seq.incrementAndGet()}", chainId = request.asset.chainId)
+        statuses[txRef.id] = TxStatus.Pending(confirmations = 0)
         return txRef
     }
 
     override suspend fun getStatus(txRef: TxRef): TxStatus =
-        statuses[txRef.value] ?: TxStatus.Failed(reason = "unknown tx: ${txRef.value}")
+        statuses[txRef.id] ?: TxStatus.Failed(reason = "unknown tx: ${txRef.id}")
 
     override suspend fun transactionsOf(
         account: Account,
@@ -109,12 +109,12 @@ class FakeCustodyAdapter :
     ): List<Transfer> = emptyList()
 
     override suspend fun boost(txRef: TxRef): TxRef {
-        statuses[txRef.value] = TxStatus.Pending(confirmations = 0)
+        statuses[txRef.id] = TxStatus.Pending(confirmations = 0)
         return txRef
     }
 
     override suspend fun cancel(txRef: TxRef): TxRef {
-        statuses[txRef.value] = TxStatus.Cancelled
+        statuses[txRef.id] = TxStatus.Cancelled
         return txRef
     }
 

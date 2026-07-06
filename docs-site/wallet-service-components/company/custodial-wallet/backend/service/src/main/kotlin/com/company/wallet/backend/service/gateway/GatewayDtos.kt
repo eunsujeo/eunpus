@@ -96,7 +96,7 @@ internal fun Balance.toResponse(): BalanceResponse =
         decimals = available.decimals,
     )
 
-internal fun TxRef.toResponse(): TxRefResponse = TxRefResponse(txRef = value, chainId = chainId.value)
+internal fun TxRef.toResponse(): TxRefResponse = TxRefResponse(txRef = id, chainId = chainId.value)
 
 /** [TransactionRequest] 조립 — 멱등 키는 헤더에서 받은 것을 그대로 싣는다 (가이드 6.3). */
 internal fun SubmitTransactionRequest.toDomain(idempotencyKey: String): TransactionRequest {

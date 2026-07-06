@@ -101,11 +101,11 @@ class FireblocksAdapter(
      */
     override suspend fun submitTransaction(request: TransactionRequest): TxRef {
         val tx = client.createTransaction(toCreateParams(request))
-        return TxRef(value = tx.id, chainId = request.asset.chainId)
+        return TxRef(id = tx.id, chainId = request.asset.chainId)
     }
 
     override suspend fun getStatus(txRef: TxRef): TxStatus {
-        val tx = client.getTransaction(txRef.value)
+        val tx = client.getTransaction(txRef.id)
         return fireblocksStatusToTxStatus(
             status = tx.status,
             numOfConfirmations = tx.numOfConfirmations,
@@ -120,14 +120,14 @@ class FireblocksAdapter(
 
     /** 취소(CancelCapability) — drop(boost) 과 별도 엔드포인트 (가이드 14.7). */
     override suspend fun cancel(txRef: TxRef): TxRef {
-        client.cancelTransaction(txRef.value)
+        client.cancelTransaction(txRef.id)
         return txRef
     }
 
     /** 부스트(drop & replace) — EVM 트랜잭션만 (가이드 4.4). */
     override suspend fun boost(txRef: TxRef): TxRef {
-        val replaced = client.boostTransaction(txRef.value)
-        return TxRef(value = replaced.id, chainId = txRef.chainId)
+        val replaced = client.boostTransaction(txRef.id)
+        return TxRef(id = replaced.id, chainId = txRef.chainId)
     }
 
     /**

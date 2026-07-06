@@ -47,7 +47,7 @@ class FireblocksWebhookMapper {
             return null
         }
         val asset = Asset(symbol = payload.assetId, chainId = ChainId(payload.chainId))
-        val txRef = TxRef(value = payload.txId, chainId = asset.chainId)
+        val txRef = TxRef(id = payload.txId, chainId = asset.chainId)
         val address = Address(value = payload.address, asset = asset, memoTag = payload.addressTag)
         val amount = Amount(minorUnits = payload.amountMinorUnits, decimals = payload.decimals)
         return when (payload.direction) {

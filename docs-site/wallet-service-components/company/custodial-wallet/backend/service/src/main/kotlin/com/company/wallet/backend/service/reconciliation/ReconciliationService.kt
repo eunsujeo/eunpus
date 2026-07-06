@@ -77,7 +77,7 @@ class ReconciliationService(
                 mapOf(
                     "amountMatch" to amountMatch.toString(),
                     "addressMatch" to addressMatch.toString(),
-                    "txRef" to (onchain?.txRef?.value ?: ""),
+                    "txRef" to (onchain?.txRef?.id ?: ""),
                 ),
         )
 }

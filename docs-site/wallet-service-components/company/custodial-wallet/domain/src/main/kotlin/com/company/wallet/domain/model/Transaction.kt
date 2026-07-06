@@ -17,7 +17,7 @@ data class TransactionRequest(
 
 /** 제출된 트랜잭션 참조 — 체인 tx hash 또는 custody 의 트랜잭션 id 를 정규화한 것. */
 data class TxRef(
-    val value: String,
+    val id: String,
     val chainId: ChainId,
 )
 

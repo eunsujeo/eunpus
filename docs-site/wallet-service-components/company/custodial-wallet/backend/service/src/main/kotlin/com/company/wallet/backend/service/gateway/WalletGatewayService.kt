@@ -174,7 +174,7 @@ class WalletGatewayService(
         val cancellable =
             transactions as? CancelCapability
                 ?: throw UnsupportedCapabilityException("cancel")
-        return withIdempotency(idempotencyKey ?: "cancel:${txRef.chainId.value}:${txRef.value}") {
+        return withIdempotency(idempotencyKey ?: "cancel:${txRef.chainId.value}:${txRef.id}") {
             cancellable.cancel(txRef)
         }
     }
