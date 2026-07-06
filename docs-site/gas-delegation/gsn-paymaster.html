@@ -14,6 +14,9 @@
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
 <div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">배경지식</h3><ul>
+<li><a href="basics.html">0. EVM 기초 — 계정·호출·거래·mempool</a></li>
+</ul></div>
 <div class="nav-section"><h3 class="nav-section-title">가스 대납</h3><ul>
 <li><a href="index.html#problem">1. 문제 — gas 는 발신 계정에서</a></li>
 <li><a href="index.html#options">2. 선택지 — 충전 vs 대납</a></li>
@@ -49,8 +52,8 @@
 <tbody>
 <tr><td><strong>ERC-3009</strong> (2020)</td><td>토큰 컨트랙트 안</td><td>토큰 자체에 <code>transferWithAuthorization</code> 함수가 있다 — 보유자의 EIP-712 서명을 <strong>아무나 제출하고 gas 를 낼 수 있다</strong>. USDC 가 채택.</td></tr>
 <tr><td><strong>ERC-2771</strong> (2020)</td><td>수신 컨트랙트 + forwarder</td><td>trusted forwarder 가 서명·nonce 를 검증해 대신 제출하고, <strong>원 서명자 주소를 calldata 끝 20바이트에 붙여</strong> 전달한다. 수신 컨트랙트는 <code>msg.sender</code> 대신 <code>_msgSender()</code> 로 읽는다.</td></tr>
-<tr><td><strong>ERC-4337</strong> (2023)</td><td>앱 계층 인프라</td><td>거래 대신 <strong>UserOperation</strong> 객체를 별도 mempool 에 넣고, Bundler 가 묶어 제출한다. gas 는 smart account 본인 또는 <strong>Paymaster</strong> 가 낸다. 컨센서스 변경 없음.</td></tr>
-<tr><td><strong>EIP-7702</strong> (2025, Pectra)</td><td>프로토콜 자체</td><td>새 거래 타입(0x04)으로 <strong>EOA 에 컨트랙트 코드를 위임</strong>한다 — EOA 가 주소를 유지한 채 smart account 처럼 동작하고, 제3자가 제출·gas 지불(sponsorship)할 수 있다.</td></tr>
+<tr><td><strong>ERC-4337</strong> (2023)</td><td>앱 계층 인프라</td><td>거래 대신 <strong>UserOperation</strong> 객체를 별도 mempool 에 넣고, Bundler 가 묶어 제출한다. gas 는 smart account<span class="g" data-tip="지갑 용도로 만든 smart contract — 자산을 보관하고 거래 승인 규칙(멀티시그·한도 등)을 자기 코드로 갖는다. 코드 없는 키 쌍 계정인 EOA 와 대비되는 말. 개념은 이더리움 초기의 멀티시그 지갑부터 있었고, 용어는 ERC-4337 시기에 정착했다">?</span> 본인 또는 <strong>Paymaster</strong> 가 낸다. 컨센서스 변경 없음.</td></tr>
+<tr><td><strong>EIP-7702</strong> (2025, Pectra<span class="g" data-tip="2025년 5월 적용된 이더리움 하드포크 — Prague + Electra 업그레이드의 합성어. EIP-7702 가 여기 포함됐다">?</span>)</td><td>프로토콜 자체</td><td>새 거래 타입(0x04)으로 <strong>EOA 에 컨트랙트 코드를 위임</strong>한다 — EOA 가 주소를 유지한 채 smart account 처럼 동작하고, 제3자가 제출·gas 지불(sponsorship)할 수 있다.</td></tr>
 </tbody>
 </table>
 </div>
@@ -98,7 +101,7 @@ flowchart LR
 </tbody>
 </table>
 </div>
-<p class="table-note">주체를 묶으면 세 부류다 — <strong>배관(Hub·Forwarder·소프트웨어)은 OpenGSN, relay 운영은 제3자, 지불 정책(Paymaster)과 수신 측 2771 지원은 서비스 개발자</strong>. 이 3분할은 ERC-4337 에도 그대로 이어진다: EntryPoint = 커뮤니티 표준 싱글턴, Bundler = 제3자 인프라 사업자, Paymaster = 서비스 구현 또는 상용(8장 Circle).</p>
+<p class="table-note">주체를 묶으면 세 부류다 — <strong>배관(Hub·Forwarder·소프트웨어)은 OpenGSN, relay 운영은 제3자, 지불 정책(Paymaster)과 수신 측 2771 지원은 서비스 개발자</strong>. 이 3분할은 ERC-4337 에도 그대로 이어진다: EntryPoint = 모두가 공유하는 표준 컨트랙트, Bundler = 제3자 인프라 사업자, Paymaster = 서비스 구현 또는 상용(8장 Circle).</p>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
@@ -150,7 +153,7 @@ sequenceDiagram
 <tr><td><strong>Bundler</strong></td><td>UserOperation 여러 건을 시뮬레이션으로 사전 검증한 뒤 <strong>하나의 온체인 거래로 묶어 제출</strong>한다 — 이 거래의 gas 를 선지불하고, EntryPoint 정산에서 돌려받는다.</td><td><strong>제3자 인프라 사업자</strong>(Pimlico·Alchemy 등) — 직접 운영할 수도 있지만 GSN 의 Relay Server 처럼 운영자 층이 이미 있다.</td></tr>
 <tr><td><strong>EntryPoint</strong></td><td><code>handleOps()</code> 한 호출 안에서 건별로 <strong>검증 루프</strong>(계정·paymaster 검증 + 대금 확보)와 <strong>실행 루프</strong>(callData 실행 + 정산)를 돈다.</td><td>표준 팀이 구현·감사해 체인마다 하나씩 배포 — 서비스마다 만들지 않고 <strong>모두가 같은 주소를 공유한다</strong>. 검증·실행·정산이 전부 여기서 일어나는 만남의 장소라서 하나여야 한다(7장 RelayHub 와 같은 이유).</td></tr>
 <tr><td><strong>Smart account</strong></td><td>사용자 지갑 — <code>validateUserOp()</code> 을 구현한 컨트랙트여야 한다. <strong>EOA 는 그대로 못 쓴다</strong> (7702 로 위임하면 가능).</td><td>지갑·서비스 개발자 몫 — 직접 짜기보다 감사된 오픈소스 구현을 가져다 쓰는 게 보통이다.</td></tr>
-<tr><td><strong>Paymaster</strong></td><td>gas 대납자 — 아래 상세.</td><td><strong>서비스가 구현·배포하고 예치금·스테이크를 채우거나</strong>, 상용(아래 Circle Paymaster)을 갖다 쓴다.</td></tr>
+<tr><td><strong>Paymaster</strong></td><td>gas 대납자 — 아래 상세.</td><td><strong>서비스가 구현·배포하고 예치금·stake 를 채우거나</strong>, 상용(아래 Circle Paymaster)을 갖다 쓴다.</td></tr>
 </tbody>
 </table>
 </div>
@@ -190,7 +193,7 @@ sequenceDiagram
 <tbody>
 <tr><td><strong>① 검증 — <code>validatePaymasterUserOp</code></strong></td><td>이 UserOperation 을 대납할지 판단한다 — 대상 사용자·컨트랙트 제한, 오프체인 승인 서명 확인 등 임의 로직. 이때 <strong>EntryPoint 에 예치해 둔 잔고(deposit)가 최대 비용을 감당해야</strong> 통과한다.</td></tr>
 <tr><td><strong>② 정산 — <code>postOp</code></strong></td><td>실행이 끝난 뒤 실제 gas 비용으로 정산한다. 모드가 성공(<code>opSucceeded</code>)이든 <strong>실행 실패(<code>opReverted</code>)든 Paymaster 가 지불한다</strong> — 검증을 통과시킨 순간 비용 책임이 확정된다.</td></tr>
-<tr><td><strong>deposit vs stake</strong></td><td>deposit = gas 를 실제로 내는 잔고. stake = 별도의 잠금 담보 — 벌금으로 몰수되진 않고(명세: 스테이크는 slash 되지 않는다), <strong>DoS 방지·평판용</strong>이다. 스테이크한 paymaster 는 검증 단계의 스토리지 접근 제한이 완화된다.</td></tr>
+<tr><td><strong>deposit vs stake</strong></td><td>deposit = gas 를 실제로 내는 잔고. stake = 별도의 잠금 담보 — 벌금으로 몰수되진 않고(명세: stake 는 slash 되지 않는다), <strong>DoS 방지·평판용</strong>이다. stake 를 건 paymaster 는 검증 단계의 스토리지 접근 제한이 완화된다.</td></tr>
 <tr><td><strong>운영 유형</strong> (실무 관행 정리)</td><td>전액 스폰서형(온보딩·프로모션) / <strong>ERC-20 수취형</strong>(gas 를 USDC 등 토큰으로 되받음 — 상용 사례가 아래 Circle Paymaster 다) / 오프체인 승인형(건별로 서비스 서버가 서명해 준 것만 대납). 명세는 메커니즘만 정의하고 유형은 사업자 구현이다.</td></tr>
 </tbody>
 </table>
@@ -227,7 +230,7 @@ flowchart LR
 
 <div class="callout callout-warn">
 <div class="callout-title">4337 을 직접 운영한다는 것의 무게</div>
-<p style="margin:0">Paymaster 를 자체 운영하면 <strong>예치금 잔고 관리(떨어지면 전 서비스의 대납이 멈춘다) + 스테이크 + Bundler 확보(직접 운영 또는 외부 의존) + 검증 로직의 보안</strong>이 전부 우리 몫이 된다. 그리고 <strong>예치금과 스테이크는 ETH 로 넣는다</strong> — <a href="index.html#problem">1장</a>의 "운영 목적의 ETH 상시 보유" 문제가 그대로 돌아온다는 뜻이다. 사용자에게 gas 를 USDC 로 받는 유형이라도 체인에 내는 건 예치금의 ETH 라서, "USDC 받고 ETH 내는" 환전 재고 운영까지 더해진다. 벤더 relay(3장)가 대신해 주는 것이 정확히 이 운영이다.</p>
+<p style="margin:0">Paymaster 를 자체 운영하면 <strong>예치금 잔고 관리(떨어지면 전 서비스의 대납이 멈춘다) + stake + Bundler 확보(직접 운영 또는 외부 의존) + 검증 로직의 보안</strong>이 전부 우리 몫이 된다. 그리고 <strong>예치금과 stake 는 ETH 로 넣는다</strong> — <a href="index.html#problem">1장</a>의 "운영 목적의 ETH 상시 보유" 문제가 그대로 돌아온다는 뜻이다. 사용자에게 gas 를 USDC 로 받는 유형이라도 체인에 내는 건 예치금의 ETH 라서, "USDC 받고 ETH 내는" 환전 재고 운영까지 더해진다. 벤더 relay(3장)가 대신해 주는 것이 정확히 이 운영이다.</p>
 </div>
 
 <h3>실제 사례 — Circle Paymaster: gas 를 USDC 로 낸다</h3>
@@ -253,7 +256,7 @@ flowchart LR
 <h2>9. EIP-7702 — EOA 에 코드를 위임한다, Fireblocks 가 택한 노선</h2>
 <span class="section-subtitle">주소는 그대로, 동작은 smart account — 새 거래 타입 0x04 와 위임 지정자</span>
 
-<p>2025년 Pectra 업그레이드로 프로토콜에 들어간 방식이다. 4337 이 "지갑을 처음부터 컨트랙트로 만들라"인 것과 달리, 7702 는 <strong>기존 EOA 가 주소를 유지한 채 컨트랙트 코드를 갖게</strong> 한다.</p>
+<p>2025년 Pectra<span class="g" data-tip="2025년 5월 적용된 이더리움 하드포크. 실행 계층 업그레이드 Prague 와 합의 계층 업그레이드 Electra 를 합친 이름이다. EIP-7702 가 여기 포함되면서 프로토콜 기능이 됐다">?</span> 업그레이드로 프로토콜에 들어간 방식이고, <strong>우리 설계가 실제로 올라탈 메커니즘</strong>(Fireblocks Universal Gasless 의 기반)이다. 4337 이 "지갑을 처음부터 컨트랙트로 만들라"인 것과 달리, 7702 는 <strong>기존 EOA 가 주소를 유지한 채 컨트랙트 코드를 갖게</strong> 한다.</p>
 
 <div class="table-wrap">
 <table>
@@ -267,7 +270,104 @@ flowchart LR
 </table>
 </div>
 
-<p class="table-note">Fireblocks 와의 연결 — Universal Gasless 의 "첫 gasless 거래 때 vault(EOA)가 smart contract wallet 로 자동 승격되고 주소·키는 그대로"라는 동작(<a href="index.html#gasless">3장</a>)이 바로 이 메커니즘이다. 위임 코드 선택·relay 운영·정책 연동을 벤더가 감싼 형태고, 그래서 도입 요건에 "Vault account upgrade policy" 같은 위임 통제가 들어간다. MPC 서명과 7702 위임의 내부 결합은 공식 문서에 상세가 없다 — 3장의 확인 대상 그대로.</p>
+<p>구성요소와 주체로 나누면 7·8장과 같은 3분할이 보인다 — 배관은 프로토콜, 운영은 제출자, 정책은 위임 코드 선택:</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:22%">구성요소</th><th>역할</th><th style="width:28%">구현·운영 주체</th></tr></thead>
+<tbody>
+<tr><td><strong>거래 타입 0x04 ·<br/>위임 지정자</strong></td><td>authorization 을 검증하고 EOA 의 코드 자리에 위임을 기록하는 <strong>프로토콜 기능</strong>.</td><td><strong>체인 자체</strong> — Pectra 를 채택한 EVM 이면 내장돼 있다. 만들 것도 배포할 것도 없다 — 7702 에 EntryPoint·RelayHub 같은 공용 컨트랙트가 없는 이유.</td></tr>
+<tr><td><strong>authorization tuple</strong></td><td>"이 컨트랙트 코드로 위임한다"는 EOA 소유자의 서명 — chain_id · 대상 주소 · nonce.</td><td>서명 주체는 <strong>EOA 키 보유자</strong> — 수탁 모델에서는 vault 키, 즉 수탁자다. Fireblocks 는 첫 gasless 거래 때 이걸 자동 처리한다.</td></tr>
+<tr><td><strong>Sponsor</strong> (제출자)</td><td>authorization 을 실은 거래를 제출하고 <strong>gas 를 낸다</strong>.</td><td>아무나 가능 — 자체 relay 를 돌리거나, <strong>벤더 relay(Fireblocks 의 relay 3택)</strong> 또는 paymaster SaaS 를 쓴다.</td></tr>
+<tr><td><strong>위임 대상 컨트랙트</strong></td><td>EOA 가 실행하게 될 지갑 구현 — 배칭·sub-key·거래별 검증 규칙이 여기 들어 있다.</td><td>감사된 지갑 구현을 지정한다 — <strong>무엇을 위임하느냐가 보안의 전부</strong>라서, Fireblocks 는 벤더가 코드를 정하고 Vault account upgrade policy 로 통제한다.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant U as EOA 소유자
+    participant SP as Sponsor — 제출·gas 지불 (relay)
+    participant CH as 체인 (프로토콜)
+    participant EOA as EOA 계정
+    participant W as 위임 대상 컨트랙트 (지갑 구현)
+
+    Note over U,EOA: 위임 설정 — 한 번만 일어난다 (Fireblocks 문서는 이를 "upgrade" 라 부른다)
+    U->>U: authorization tuple 서명 — chain_id · 위임 대상 주소 · nonce
+    U->>SP: 서명한 authorization 전달 — 온체인 거래 아님, 사용자 gas 0
+    SP->>CH: 타입 0x04 거래 제출 — authorization 을 싣고 gas 는 Sponsor 가 지불
+    CH->>CH: authorization 검증 — EOA 소유자의 서명인지 · nonce 재사용이 아닌지
+    CH->>EOA: 코드 자리에 위임 지정자 기록 — 0xef0100 ‖ 대상주소
+    Note over EOA: 계정은 여전히 EOA 다 — 주소·잔액·키 전부 그대로, 코드만 빌려 쓴다<br/>위임 설정과 첫 실행을 한 거래에 묶을 수도 있다
+    Note over U,W: 이후 — 매 거래가 위임 코드로 실행된다
+    SP->>EOA: 거래 호출 — 전송·배칭 등, gas 는 여전히 Sponsor
+    EOA->>W: 위임 대상의 코드 로드
+    W->>W: 지갑 구현의 자체 규칙으로 검증 — 소유자 서명 · 한도 · sub-key 권한
+    W-->>EOA: EOA 본인의 컨텍스트에서 실행 — 잔액·스토리지는 EOA 것
+    Note over EOA,W: 해제는 0 주소로 재위임 — 자동 만료 없음 (영속)
+</pre></div>
+<p class="diagram-caption">EIP-7702 sponsorship 한 사이클의 상세 흐름. 위임 설정(1~5)은 첫 한 번이고, 이후 모든 거래(6~9)가 위임 코드로 실행된다. 계정 종류가 바뀌는 게 아니다 — EOA 가 EOA 인 채로 smart account 의 코드를 빌려 쓰는 것이고, Fireblocks 문서의 "upgrade" 가 이 위임 설정을 가리킨다. authorization 서명자(1)와 거래 제출자(3)가 달라도 되는 것이 대납의 근거다 — 사용자는 처음부터 끝까지 gas 0. 위임 후의 보안은 두 겹이다 — 체인은 위임 자체의 진위만 검증하고(4), 거래별 허용 여부는 위임된 지갑 구현의 규칙이 검증한다(8). GSN 처럼 수신 컨트랙트의 협조가 필요 없고, 4337 정공법처럼 주소를 옮길 필요도 없다 — 코드만 위임되고 주소·잔액은 그대로다.</p>
+
+<p class="table-note">Fireblocks 와의 연결 — Universal Gasless 의 "첫 gasless 거래 때 vault(EOA)가 smart contract wallet 로 자동 upgrade 되고 주소·키는 그대로"라는 동작(<a href="index.html#gasless">3장</a>)이 바로 이 메커니즘이다. 위임 코드 선택·relay 운영·정책 연동을 벤더가 감싼 형태고, 그래서 도입 요건에 "Vault account upgrade policy" 같은 위임 통제가 들어간다. MPC 서명과 7702 위임의 내부 결합은 공식 문서에 상세가 없다 — 3장의 확인 대상 그대로.</p>
+
+<h3>메커니즘 상세 — authorization 과 위임 지정자</h3>
+
+<p>이 표는 두 가지 바탕을 전제한다 — 거래에 "타입(봉투 서식)"이 있다는 것과, 모든 계정 레코드에 "코드 칸"이 있다는 것. 낯설면 <a href="basics.html">0장 EVM 기초</a>를 먼저 읽고 오는 게 빠르다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">항목</th><th>내용</th></tr></thead>
+<tbody>
+<tr><td><strong>authorization tuple 의 필드</strong></td><td><code>[chain_id, address, nonce, y_parity, r, s]</code> — 어느 체인에서 유효한지(chain_id), 어떤 코드로 위임하는지(address), 재사용 차단(nonce — EOA 의 nonce 와 연동), 그리고 EOA 소유자의 서명(y_parity·r·s). 이 여섯 개가 위임 한 건의 전부다.</td></tr>
+<tr><td><strong>위임 지정자가 <code>0xef0100</code> 인 이유</strong></td><td>EOA 코드 자리에 기록되는 값은 <code>0xef0100 ‖ 대상주소</code> 다. 첫 바이트 <code>0xef</code> 는 일반 컨트랙트 코드가 가질 수 없는 <strong>금지 바이트</strong>라서, "진짜 코드"와 "위임 표시"가 온체인에서 절대 섞이지 않는다 — 조회하는 쪽은 이 접두어만 보고 위임 여부를 판별할 수 있다.</td></tr>
+<tr><td><strong>gas 비용</strong> (명세)</td><td>authorization 1건 처리에 <strong>12,500 gas</strong>, 위임받는 계정이 빈 계정이면 <strong>+25,000</strong>. 위임 해석 시 cold access 2,600. 위임 설정은 한 번이라 반복 비용이 아니다.</td></tr>
+<tr><td><strong>한 거래에 여러 건</strong></td><td>타입 0x04 거래는 authorization <strong>목록</strong>을 싣는다 — 여러 EOA 의 위임 설정을 한 거래로 묶을 수 있다. 대량 vault 를 운영하는 수탁 모델에서 의미 있는 형태다.</td></tr>
+<tr><td><strong>의도적으로 뺀 것</strong></td><td>위임 시점의 initcode 실행 없음 · 컨트랙트 생성 없음 · blob 미지원 — 명세가 공격 표면 축소를 이유로 명시한 생략이다. 위임은 "이미 배포·감사된 코드를 가리키는 것"만 할 수 있다.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>깨지는 전제 세 가지 — 명세가 직접 인정한다</h3>
+
+<p>7702 는 이더리움의 오래된 불변식 세 개를 깬다. 명세가 이를 명시적으로 인정하고 "기존 보호 수단으로 감당 가능하다"는 입장을 밝히는데, <strong>이 가정 위에 지어진 우리 쪽 로직이 있는지</strong>가 점검 포인트다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:38%">깨지는 전제</th><th>수탁 관점 함의</th></tr></thead>
+<tbody>
+<tr><td>"EOA 잔액은 <strong>본인이 서명한 거래로만</strong> 줄어든다"</td><td>위임 설정 후에는 위임 코드가 잔액을 움직일 수 있다. 잔액 변화의 근거를 "그 주소가 보낸 거래"에서만 찾는 대사 로직이 있다면 깨진다 — 근거 거래는 항상 온체인 기록·벤더 거래 기록에서 역추적해야 한다.</td></tr>
+<tr><td>"EOA 의 nonce 는 <strong>한 거래에 1씩</strong> 오른다"</td><td>위임 설정 거래에서는 nonce 가 한 번에 여러 번 오를 수 있다. nonce 연속성으로 거래 누락을 검사하는 로직이 있다면 오탐한다.</td></tr>
+<tr><td>"<code>tx.origin == msg.sender</code> 면 <strong>EOA 의 직접 호출</strong>이다"</td><td>이 검사로 "컨트랙트 경유 호출"을 차단해 온 기존 컨트랙트들의 전제가 무너진다. 우리가 만들 로직보다는, 우리가 상호작용할 외부 컨트랙트가 이 가정을 쓰고 있는지가 문제가 된다.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>위임의 수명 — 영속, 해제, 재위임</h3>
+
+<ul>
+<li><strong>만료가 없다</strong> — 위임은 코드 자리의 기록이라 시간이 지나도 그대로다. "한시적으로 빌려 쓰는" 모델이 아니다.</li>
+<li><strong>해제 = 0 주소로 재위임</strong> — 위임 대상을 <code>0x0000…0000</code> 으로 바꾸면 계정이 EOA 상태로 복귀한다. 명세는 잔여 패널티 없이 깨끗하게 돌아온다고 명시한다.</li>
+<li><strong>재위임 = 덮어쓰기</strong> — 새 대상 주소로 authorization 을 다시 처리하면 교체된다. 마지막 위임이 이긴다.</li>
+<li><strong>따라서 위임 상태가 감사 항목이 된다</strong> — "이 vault 가 지금 어떤 코드에 위임돼 있는가"는 잔액처럼 조회·기록할 수 있는 상태다(코드 자리의 <code>0xef0100 ‖ 주소</code> 를 읽으면 됨). Fireblocks 에서 이 통제를 담당하는 것이 Vault account upgrade policy 다.</li>
+</ul>
+
+<h3>도입 전 확인 목록 — Fireblocks 결합 기준</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:34%">항목</th><th style="width:14%">상태</th><th>내용</th></tr></thead>
+<tbody>
+<tr><td><strong>고객 입금 주소 영향</strong></td><td>확정 — 없음</td><td>주소·키 불변이 공식 명시. upgrade 돼도 <strong>입금 주소 재발급·재고지가 필요 없다</strong> — 수탁 모델에서 7702 노선의 최대 이점.</td></tr>
+<tr><td><strong>upgrade 시점</strong></td><td>확정</td><td>vault 자산의 upgrade 는 <strong>첫 gasless 거래가 완료된 뒤</strong> 적용된다.</td></tr>
+<tr><td><strong>TAP 정책 2종</strong></td><td>확정</td><td>Vault account upgrade policy + relay 측 Gasless-Orchestrator rule — Admin 이 미리 넣어야 한다.</td></tr>
+<tr><td><strong>relay 실패 모드</strong></td><td>확정</td><td>relay 가 거절하거나 gas 를 못 대면 거래 실패 — 실패 사유 처리와 relay 잔고 모니터링이 우리 몫.</td></tr>
+<tr><td><strong>ETH 네이티브 전송</strong></td><td>확정 — 제외</td><td>대납 불가(공식). ETH 자체의 이동은 Gas Station 몫 — 제출 경로 분기가 필요하다.</td></tr>
+<tr><td><strong>MPC 서명 ↔ 7702 결합</strong></td><td>미확정</td><td>vault 키(MPC)가 authorization 서명을 어떻게 만드는지 공식 문서에 상세가 없다 — CSM/PoC 확인 대상.</td></tr>
+<tr><td><strong>위임 대상 코드의 정체</strong></td><td>미확정</td><td>Fireblocks 가 위임시키는 지갑 구현의 공개 여부·감사 리포트, 그리고 upgrade 된 vault 의 <strong>위임 상태 조회·해제 수단</strong> — 공식 문서에 없다. CSM 확인 대상.</td></tr>
+</tbody>
+</table>
+</div>
 </section>
 
 <section id="compare">
@@ -281,7 +381,7 @@ flowchart LR
 <tr><td><strong>지갑 전제</strong></td><td>EOA 그대로 가능</td><td><strong>smart account 필수</strong></td><td>EOA 그대로 — 코드 위임만</td></tr>
 <tr><td><strong>수신 컨트랙트 전제</strong></td><td><strong>ERC-2771 지원 필수</strong> — 일반 ERC-20 전송 불가</td><td>없음 — callData 로 아무 호출이나</td><td>없음 — 위임 코드가 아무 호출이나</td></tr>
 <tr><td><strong>gas 최종 부담</strong></td><td>Paymaster 예치금 (RelayHub 가 상환 보증)</td><td>Paymaster 예치금 (EntryPoint 가 정산)</td><td>제출한 sponsor</td></tr>
-<tr><td><strong>필요 인프라</strong></td><td>relay 네트워크 + forwarder 신뢰</td><td>Bundler + EntryPoint + paymaster 운영(예치금·스테이크)</td><td>프로토콜 내장 — relay 만 있으면 됨</td></tr>
+<tr><td><strong>필요 인프라</strong></td><td>relay 네트워크 + forwarder 신뢰</td><td>Bundler + EntryPoint + paymaster 운영(예치금·stake)</td><td>프로토콜 내장 — relay 만 있으면 됨</td></tr>
 <tr><td><strong>현황</strong></td><td>쇠퇴 — 문서 갱신 2023년 정지, v3 beta</td><td>account abstraction 주류 — Base 생태계 활발</td><td>Pectra 로 프로토콜 채택 — 4337 과 수렴</td></tr>
 </tbody>
 </table>
@@ -295,7 +395,7 @@ flowchart LR
 <table>
 <thead><tr><th style="width:34%">질문</th><th>답</th></tr></thead>
 <tbody>
-<tr><td><strong>이 표준으로 직접 구축할 수 있나</strong></td><td>가능은 하다 — 7702 sponsorship 용 relay 를 직접 운영하거나 4337 paymaster 를 세우는 것. 단 8장 callout 의 운영(예치금·스테이크·Bundler·위임 코드 보안)이 전부 우리 몫이 된다. 중간 경로도 있다 — paymaster 운영을 <strong>Circle Paymaster 같은 외부 인프라</strong>에 맡기고 4337 파이프라인만 붙이는 것(8장 실제 사례). 이 경우에도 수탁 vault 발신 모델과의 결합은 별개 검토가 필요하다.</td></tr>
+<tr><td><strong>이 표준으로 직접 구축할 수 있나</strong></td><td>가능은 하다 — 7702 sponsorship 용 relay 를 직접 운영하거나 4337 paymaster 를 세우는 것. 단 8장 callout 의 운영(예치금·stake·Bundler·위임 코드 보안)이 전부 우리 몫이 된다. 중간 경로도 있다 — paymaster 운영을 <strong>Circle Paymaster 같은 외부 인프라</strong>에 맡기고 4337 파이프라인만 붙이는 것(8장 실제 사례). 이 경우에도 수탁 vault 발신 모델과의 결합은 별개 검토가 필요하다.</td></tr>
 <tr><td><strong>그런데 왜 벤더 relay 인가</strong></td><td>Fireblocks Universal Gasless 가 <strong>같은 7702 메커니즘을 이미 감싸서 제공</strong>한다 — 위임 코드·relay 운영·TAP 정책 연동 포함. 직접 구축은 벤더에 없는 체인·요건이 생겼을 때의 대안으로 남긴다.</td></tr>
 <tr><td><strong>결정</strong></td><td><a href="index.html#decisions">5장</a> 그대로 — <strong>대납(Gasless)이 기본, ETH 자체 이동만 충전(Gas Station)</strong>. 본 페이지는 그 결정의 배경 지식이다.</td></tr>
 </tbody>

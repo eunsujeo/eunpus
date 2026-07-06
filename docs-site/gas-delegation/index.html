@@ -14,6 +14,9 @@
 <aside aria-label="Table of contents" class="sidebar">
 <nav>
 <div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">배경지식</h3><ul>
+<li><a href="basics.html">0. EVM 기초 — 계정·호출·거래·mempool</a></li>
+</ul></div>
 <div class="nav-section"><h3 class="nav-section-title">가스 대납</h3><ul>
 <li><a class="active" href="#problem">1. 문제 — gas 는 발신 계정에서</a></li>
 <li><a href="#options">2. 선택지 — 충전 vs 대납</a></li>
@@ -101,7 +104,7 @@ flowchart LR
 
 <section id="gasless">
 <h2>3. Fireblocks Gasless Service — 확정 사실</h2>
-<span class="section-subtitle">Gas Station 과 별개 제품 · ERC-3009 / ERC-2771 / EIP-7702 · Universal Gasless 는 vault 를 smart contract wallet 로 승격</span>
+<span class="section-subtitle">Gas Station 과 별개 제품 · ERC-3009 / ERC-2771 / EIP-7702 · Universal Gasless 는 vault 를 smart contract wallet 로 upgrade</span>
 
 <p>지원 토큰의 fee 지불을 <strong>전용 vault / 외부 워크스페이스 / Fireblocks 에 위임</strong>하는 서비스다. 공식 문서가 명시한다 — <strong>"Gasless Service 는 Gas Station 과 별개 제품이고, 다른 프로토콜을 쓴다."</strong></p>
 
@@ -111,7 +114,7 @@ flowchart LR
 <tbody>
 <tr><td><strong>메커니즘</strong></td><td><strong>ERC-3009 · ERC-2771 · EIP-7702</strong> — ERC-4337 paymaster 가 아니다.</td></tr>
 <tr><td><strong>Limited Gasless</strong> (구)</td><td>이더리움의 USDC·DAI(ERC-3009) + tokenization mint/burn(ERC-2771)에 한정.</td></tr>
-<tr><td><strong>Universal Gasless</strong> (신)</td><td><strong>EIP-7702</strong>(Pectra) 기반 — <strong>첫 gasless 거래 때 vault(EOA)가 smart contract wallet 로 자동 승격</strong>된다. 이후 모든 이더리움 자산(ERC-20/721/1155)의 Transfer · Contract Call · Mint · Burn 을 지원.</td></tr>
+<tr><td><strong>Universal Gasless</strong> (신)</td><td><strong>EIP-7702</strong>(Pectra<span class="g" data-tip="2025년 5월 적용된 이더리움 하드포크 — Prague + Electra 업그레이드의 합성어. EIP-7702 가 여기 포함됐다">?</span>) 기반 — <strong>첫 gasless 거래 때 vault(EOA)가 smart contract wallet<span class="g" data-tip="지갑 용도로 만든 smart contract — 자산을 보관하고 거래 승인 규칙을 자기 코드로 갖는다. 코드 없는 키 쌍 계정인 EOA 와 대비되는 말. smart account 라고도 부른다">?</span> 로 자동 upgrade</strong> 된다. 이후 모든 이더리움 자산(ERC-20/721/1155)의 Transfer · Contract Call · Mint · Burn 을 지원.</td></tr>
 <tr><td><strong>지원 체인</strong> (Universal)</td><td>Ethereum(1) · Optimism(10) · <strong>Base(8453)</strong> · Arbitrum(42161) · Polygon PoS(137) · BSC(56) + 각 testnet. Solana·Tron(GasFree)은 별도 메커니즘.</td></tr>
 <tr><td><strong>설정</strong></td><td>Console: Settings → General → Gasless transactions — relay 3택 + 기본값 3모드(On by default / Off by default / Off, 거래별 재정의 가능) + Policies 연동.</td></tr>
 <tr><td><strong>API</strong></td><td>트랜잭션 API 에 Gasless(meta-tx) 경로 존재 — 미설정 시 error 1455 "Missing Gasless configuration (relayer/fee payer)".</td></tr>
@@ -132,7 +135,7 @@ sequenceDiagram
     participant CH as EVM 체인 (이더리움·Base)
 
     BE->>FB: 토큰 전송 제출 — 발신 vault 에 ETH 없음
-    Note over FB: 첫 gasless 거래면 vault 를 EIP-7702 로 smart contract wallet 승격
+    Note over FB: 첫 gasless 거래면 vault 를<br/>EIP-7702 로 smart contract wallet 로 upgrade
     FB->>RL: gas 부담 위임
     RL->>CH: gas 는 relay 가 지불 · 토큰은 발신 vault 에서 이동
     CH-->>FB: 상태 전이 (CONFIRMING → COMPLETED) — 감지·판정은 평소와 동일
@@ -156,9 +159,9 @@ sequenceDiagram
 <table>
 <thead><tr><th style="width:30%">요건</th><th>내용</th></tr></thead>
 <tbody>
-<tr><td><strong>TAP 정책 2종</strong> (Admin 몫)</td><td>① <strong>Vault account upgrade policy</strong> — 승격된 vault 의 gasless 발신을 Allow 하는 rule. ② relay 측 Contract call policy 에 <strong>Gasless-Orchestrator 를 initiator 로 명시하는 rule</strong> — anyone initiator rule 이 있어도 별도로 필요하며, initiator 와 signer 는 같을 수 없다.</td></tr>
+<tr><td><strong>TAP 정책 2종</strong> (Admin 몫)</td><td>① <strong>Vault account upgrade policy</strong> — upgrade 된 vault 의 gasless 발신을 Allow 하는 rule. ② relay 측 Contract call policy 에 <strong>Gasless-Orchestrator 를 initiator 로 명시하는 rule</strong> — anyone initiator rule 이 있어도 별도로 필요하며, initiator 와 signer 는 같을 수 없다.</td></tr>
 <tr><td><strong>API Co-Signer</strong></td><td>relay 역할을 하는 워크스페이스는 <strong>API Co-Signer 필수</strong>. (본 설계는 이미 co-signer 를 운용하므로 충족)</td></tr>
-<tr><td><strong>승격 시점</strong></td><td>vault 의 자산 승격은 <strong>첫 gasless 거래가 완료된 뒤</strong> 적용된다.</td></tr>
+<tr><td><strong>upgrade 시점</strong></td><td>vault 자산의 upgrade 는 <strong>첫 gasless 거래가 완료된 뒤</strong> 적용된다.</td></tr>
 <tr><td><strong>건별 제어</strong></td><td>Transfer 단위로 gasless ↔ direct fee 전환 가능 — 기본값(On/Off by default)과 별개로 거래마다 재정의.</td></tr>
 <tr><td><strong>규제 대응 사례</strong> (external relay)</td><td>공식 문서 명시 사례 — <em>"US 워크스페이스는 스테이블코인만 보유하고, EU 워크스페이스가 ETH 를 보유해 gas 를 지불한다. US 워크스페이스는 컴플라이언스를 유지한다."</em> — "sweeping 워크스페이스의 ETH 보유 금지" 요건 대응 패턴.</td></tr>
 <tr><td><strong>Solana 는 다른 모델</strong></td><td>EIP-7702 가 아니라 <strong>Solana Fee Payer</strong> — local relay 와 token owner 두 vault 가 공동 서명하고, <strong>relay 와 key set 을 공유하는 vault 에서만</strong> 가능. SOL 자체는 제외.</td></tr>

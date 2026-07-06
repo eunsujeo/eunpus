@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EVM 기초 — gas 대납을 읽기 위한 배경지식</title>
+<meta content="이 사이트를 읽는 데 필요한 EVM 기초 — 계정 레코드(코드 칸), 주소 호출의 의미, msg.sender 와 calldata, 거래 봉투와 타입(0x04 포함), gas 와 opcode, mempool. 각 개념이 본문 어느 장에서 쓰이는지 매핑." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">배경지식</h3><ul>
+<li><a class="active" href="#accounts">0.1 계정 — 네 칸 레코드</a></li>
+<li><a href="#calls">0.2 호출 — 코드 실행과 msg.sender</a></li>
+<li><a href="#transactions">0.3 거래 — 봉투·타입·gas</a></li>
+<li><a href="#mempool">0.4 mempool — 온체인 이전의 대기줄</a></li>
+<li><a href="#map">0.5 본문과의 연결</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">가스 대납</h3><ul>
+<li><a href="index.html#problem">1. 문제 — gas 는 발신 계정에서</a></li>
+<li><a href="index.html#options">2. 선택지 — 충전 vs 대납</a></li>
+<li><a href="index.html#gasless">3. Fireblocks Gasless Service</a></li>
+<li><a href="index.html#standards">4. GSN · Paymaster 구분</a></li>
+<li><a href="index.html#decisions">5. 결정 포인트</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">일반 표준 상세</h3><ul>
+<li><a href="gsn-paymaster.html#lineage">6. 계보 — 서명과 제출의 분리</a></li>
+<li><a href="gsn-paymaster.html#gsn">7. GSN — 구조와 한계</a></li>
+<li><a href="gsn-paymaster.html#erc4337">8. ERC-4337 — Paymaster 정산 구조</a></li>
+<li><a href="gsn-paymaster.html#eip7702">9. EIP-7702 — Fireblocks 가 택한 노선</a></li>
+<li><a href="gsn-paymaster.html#compare">10. 종합 비교 — 수탁 관점</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="accounts">
+<h2>0.1 계정 — 모든 주소는 네 칸짜리 레코드다</h2>
+<span class="section-subtitle">EOA 와 컨트랙트의 차이는 "코드 칸이 비어 있는가" 하나다</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처와 용도</div>
+<p style="margin:0">이더리움 프로토콜의 공개 기초에 대한 <strong>저자 정리</strong>다. 본편(1~10장)이 전제하고 있는 개념들을 여기 모았다 — 본편을 읽다가 걸리면 이 페이지로 돌아오면 된다. 각 개념이 본문 어디에서 쓰이는지는 <a href="#map">0.5</a>에 모아 두었다.</p>
+</div>
+
+<p class="lead">이더리움의 상태(state)는 <strong>주소별 레코드 장부</strong>다. 어떤 주소든 — 개인 지갑이든 토큰 컨트랙트든 — 레코드의 모양은 같다. 네 칸이다:</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:18%">칸</th><th>내용</th></tr></thead>
+<tbody>
+<tr><td><strong>nonce</strong></td><td>이 계정이 지금까지 보낸 거래 수 — 재사용·순서 제어에 쓰인다.</td></tr>
+<tr><td><strong>잔액</strong></td><td>ETH 잔액. (토큰 잔액이 아니다 — 토큰은 0.2 에서)</td></tr>
+<tr><td><strong>코드</strong></td><td>이 주소가 호출됐을 때 실행할 바이트코드. <strong>EOA 는 이 칸이 비어 있고, 컨트랙트는 배포 때 채워진다.</strong></td></tr>
+<tr><td><strong>스토리지</strong></td><td>코드가 쓰는 영구 저장 공간 — 토큰 컨트랙트라면 보유자별 잔액 장부가 여기 있다.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    E["EOA (개인키 계정)<br/>nonce · 잔액<br/>코드: (비어 있음)<br/>스토리지: (비어 있음)"]
+    C["컨트랙트 계정<br/>nonce · 잔액<br/>코드: 배포된 바이트코드<br/>스토리지: 코드가 쓰는 데이터"]
+    D["위임된 EOA — EIP-7702<br/>nonce · 잔액<br/>코드: 0xef0100 ‖ 대상주소 (푯말 23바이트)<br/>스토리지: EOA 자신의 것"]
+
+    E -->|"컨트랙트 배포 — 새 주소에 코드가 생긴다"| C
+    E -->|"7702 위임 설정 — 코드 칸에 푯말만 적힌다"| D
+
+    classDef eoa fill:#dbeafe,stroke:#2563eb;
+    classDef con fill:#dcfce7,stroke:#16a34a;
+    classDef del fill:#e0e7ff,stroke:#6366f1;
+    class E eoa; class C con; class D del;
+</pre></div>
+<p class="diagram-caption">세 종류처럼 보이지만 레코드 구조는 전부 같다 — 차이는 코드 칸의 내용뿐이다. 비어 있으면 EOA, 바이트코드가 있으면 컨트랙트, <code>0xef0100</code> 푯말이 있으면 위임된 EOA(<a href="gsn-paymaster.html#eip7702">9장</a>)다.</p>
+
+<ul>
+<li><strong>EOA</strong> — 개인키에서 파생된 주소. 코드 칸이 비어 있고, 거래에 서명할 수 있는 건 이 종류뿐이다. 우리 vault 주소들이 EOA 다.</li>
+<li><strong>컨트랙트 계정</strong> — 배포된 코드가 있는 주소. 개인키가 없어서 스스로 거래를 시작하지 못하고, 호출을 받아야 움직인다.</li>
+<li><strong>smart account</strong> — 컨트랙트 계정 중 용도가 "지갑"인 것. 자산을 보관하고 거래 승인 규칙(멀티시그·한도 등)을 자기 코드에 담는다.</li>
+</ul>
+</section>
+
+<section id="calls">
+<h2>0.2 호출 — "주소를 호출한다"의 실제 의미</h2>
+<span class="section-subtitle">코드 칸을 꺼내 실행한다 · calldata 로 요청을 전달한다 · msg.sender 로 발신자를 본다</span>
+
+<p class="lead">"어떤 주소를 호출한다"는 말의 실제 의미는 — <strong>EVM 이 그 주소 레코드의 코드 칸을 꺼내 실행한다</strong>는 것이다. 코드 칸이 비어 있으면(EOA) 실행할 게 없으니 송금만 일어난다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:22%">용어</th><th>뜻</th></tr></thead>
+<tbody>
+<tr><td><strong>calldata</strong></td><td>호출과 함께 전달하는 바이트 — "어떤 함수를 어떤 인자로" 가 인코딩돼 있다. <code>transfer(Bob, 100)</code> 을 호출한다는 건 그 내용이 담긴 calldata 를 보낸다는 것.</td></tr>
+<tr><td><strong>msg.sender</strong></td><td>실행 중인 코드 입장에서 <strong>"나를 직접 호출한 주체"</strong>. 사용자가 토큰 컨트랙트를 직접 호출하면 msg.sender = 사용자. 중간에 다른 컨트랙트가 끼면 msg.sender = 그 컨트랙트다 — GSN 의 발신자 문제(<a href="gsn-paymaster.html#gsn">7장</a>)가 여기서 나온다.</td></tr>
+<tr><td><strong>tx.origin</strong></td><td>호출이 몇 단계를 거쳤든 <strong>"맨 처음 거래에 서명한 EOA"</strong>. EOA→A→B 로 이어지면 B 에서 msg.sender = A, tx.origin = EOA 다.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>토큰 잔액은 내 주소에 있지 않다.</strong> USDC 100개를 "가지고 있다"는 것의 실체는 — USDC 컨트랙트의 <strong>스토리지 안 장부에 "내 주소: 100" 이라고 적혀 있는 것</strong>이다. 그래서 토큰 전송은 내 계정에서 뭔가가 빠져나가는 게 아니라, 토큰 컨트랙트를 호출해서 그 장부의 두 줄을 고치는 일이다:</p>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant U as 사용자 (EOA)
+    participant T as USDC 컨트랙트
+
+    U->>T: 거래 제출 — calldata: transfer(Bob, 100)
+    Note over T: msg.sender = 사용자 주소
+    T->>T: 스토리지 장부 갱신 — 장부[사용자] -= 100, 장부[Bob] += 100
+    Note over U,T: gas 는 발신 계정(사용자)의<br/>ETH 잔액에서 차감 — 1장 문제의 근원
+</pre></div>
+<p class="diagram-caption">토큰 전송 한 건의 실체. 토큰 컨트랙트는 "장부[msg.sender] 에서 빼라"로 동작하므로, <strong>누가 호출했는가(msg.sender)가 곧 누구 잔액이 빠지는가</strong>다. 대납 표준들이 발신자 문제와 싸우는 이유가 이 한 줄에 있다.</p>
+</section>
+
+<section id="transactions">
+<h2>0.3 거래 — 서명된 봉투, 그리고 봉투의 서식(타입)</h2>
+<span class="section-subtitle">거래 = 필드 묶음 + 서명 · 타입은 봉투의 서식 버전 · gas 는 opcode 값의 합</span>
+
+<p class="lead">거래는 <strong>필드들을 담고 서명한 봉투</strong>다 — 받는 주소(to), 보낼 ETH(value), calldata(data), gas 관련 필드, nonce, 그리고 발신 EOA 의 서명. 이 봉투의 <strong>서식이 여러 버전</strong>이고, 첫 바이트의 타입 번호로 구분한다:</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:14%">타입</th><th style="width:16%">EIP</th><th style="width:16%">시기</th><th>추가된 것</th></tr></thead>
+<tbody>
+<tr><td>legacy</td><td>—</td><td>초기</td><td>기본 서식 — to · value · data · gasPrice · nonce · 서명. EIP 이전의 원형이다.</td></tr>
+<tr><td>0x01</td><td>EIP-2930</td><td>2021</td><td>access list 필드 — 거래가 건드릴 주소·스토리지를 미리 신고해 gas 를 아끼는 용도. 실무에선 드물게 쓰인다.</td></tr>
+<tr><td>0x02</td><td>EIP-1559</td><td>2021</td><td>수수료 필드 개편(maxFeePerGas · maxPriorityFeePerGas) — 지금 대부분의 거래가 이 서식이다</td></tr>
+<tr><td>0x03</td><td>EIP-4844</td><td>2024</td><td>blob 데이터 필드 — 롤업용 대용량 첨부</td></tr>
+<tr><td><strong>0x04</strong></td><td><strong>EIP-7702</strong></td><td><strong>2025 (Pectra)</strong></td><td><strong><code>authorization_list</code> 필드</strong> — "이 EOA 의 코드 칸에 위임 푯말을 적어 달라"는 승인 목록을 실을 수 있는 칸이 추가된 서식. <a href="gsn-paymaster.html#eip7702">9장</a>의 그 거래 타입이다.</td></tr>
+</tbody>
+</table>
+</div>
+<p class="table-note">"새 거래 타입"은 새로운 종류의 무언가가 아니라 <strong>필드가 한 칸 더 있는 새 봉투 서식</strong>이다. 노드는 타입 번호를 보고 어떤 필드가 들어 있고 어떻게 처리할지 안다. "타입 번호가 붙은 봉투"라는 틀 자체는 EIP-2718 이 정의했고, 이후의 서식들이 그 틀 위에 하나씩 추가됐다. 봉투가 완성(서명)되면 그 바이트 전체의 해시가 <strong>txHash</strong> — 거래 하나를 가리키는 유일 식별자로, 타입(서식 번호)과는 별개다.</p>
+
+<h3>gas — 실행 비용의 단위</h3>
+
+<ul>
+<li><strong>opcode</strong> — EVM 의 기계어 명령 하나. 컨트랙트 코드는 컴파일되면 opcode 의 나열이 된다 — 더하기(ADD), 저장소 쓰기(SSTORE), 현재 블록 시각 읽기(TIMESTAMP), 다른 컨트랙트 호출(CALL) 같은 것들.</li>
+<li><strong>opcode 마다 정가가 있다</strong> — 계산이 무겁거나 저장 공간을 쓰는 명령일수록 비싸다. 거래의 gas 사용량 = 실행된 opcode 값의 총합.</li>
+<li><strong>수수료 = gas 사용량 × 단가</strong> — 단가(gas price)는 네트워크 혼잡도에 따라 시장에서 정해진다. 이 수수료가 <strong>발신 계정의 ETH 잔액에서 차감</strong>된다 — <a href="index.html#problem">1장</a> 문제의 근원이자, 이 사이트 전체가 다루는 지점이다.</li>
+</ul>
+</section>
+
+<section id="mempool">
+<h2>0.4 mempool — 온체인이 되기 전의 대기줄</h2>
+<span class="section-subtitle">mem = memory. 블록에 들어가기 전까지 거래는 노드의 메모리에서 대기한다</span>
+
+<p class="lead">거래를 제출(브로드캐스트)하면 바로 체인에 기록되는 게 아니다. 각 노드의 메모리에 있는 <strong>대기줄(mempool)</strong> 에 들어가고, 블록 생산자가 수수료 높은 것부터 골라 담는다. <strong>블록에 포함되는 순간부터가 온체인</strong>이다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    S["거래 브로드캐스트"]
+    M["mempool — 각 노드의 메모리 대기줄<br/>(오프체인)"]
+    B["블록 포함<br/>(여기서부터 온체인)"]
+    K["대기 지속 — 제시한 fee 가<br/>시세보다 낮으면 아무도 안 담는다 (stuck)"]
+
+    S --> M
+    M -->|"fee 순으로 선택"| B
+    M -.->|"fee 부족"| K
+    K -.->|"fee 올려 재제출 (RBF) 또는 취소"| M
+
+    classDef wait fill:#fef3c7,stroke:#d97706;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+    class M wait; class B good; class K bad;
+</pre></div>
+<p class="diagram-caption">거래의 대기와 확정. mempool 은 체인이 아니라 노드들의 메모리라서 오프체인이다. fee 를 낮게 내면 대기가 길어지고(stuck), 해결은 같은 nonce 로 fee 를 올려 다시 내는 것(RBF)뿐이다 — Gasless Relay 가 이 재촉을 자동으로 해 주지 않는다는 제약이 <a href="index.html#gasless">3장</a> 운영 caveat 에 있다.</p>
+
+<p>ERC-4337 의 <strong>UserOperation mempool(<a href="gsn-paymaster.html#erc4337">8장</a>)은 같은 개념의 별도 판</strong>이다 — 일반 노드들이 아니라 Bundler 들끼리의 망에서 UserOperation 이 대기하고, Bundler 가 <code>handleOps</code> 거래를 제출하는 순간부터 온체인이다.</p>
+</section>
+
+<section id="map">
+<h2>0.5 본문과의 연결 — 어느 개념이 어디서 쓰이나</h2>
+<span class="section-subtitle">본편을 읽다가 걸린 지점에서 역으로 찾아오는 표</span>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:26%">이 개념이</th><th>본문 여기서 쓰인다</th></tr></thead>
+<tbody>
+<tr><td><strong>gas 는 발신 계정의 ETH 에서</strong> (0.3)</td><td><a href="index.html#problem">1장</a> — 수탁 지갑의 문제 정의 전체가 이 규칙에서 출발한다.</td></tr>
+<tr><td><strong>msg.sender</strong> (0.2)</td><td><a href="gsn-paymaster.html#gsn">7장</a> — 대납하면 제출자가 바뀌어 msg.sender 가 forwarder 가 되는 것이 GSN 의 발신자 문제. 토큰 장부가 "장부[msg.sender] 에서 빼라"로 동작하기 때문이다.</td></tr>
+<tr><td><strong>calldata</strong> (0.2)</td><td><a href="gsn-paymaster.html#gsn">7장</a> — forwarder 가 원 서명자 주소를 "calldata 끝 20바이트"에 붙이는 자리.</td></tr>
+<tr><td><strong>tx.origin</strong> (0.2)</td><td><a href="gsn-paymaster.html#eip7702">9장</a> — 7702 가 깨는 전제 중 하나(tx.origin == msg.sender).</td></tr>
+<tr><td><strong>opcode 와 gas 정가</strong> (0.3)</td><td><a href="gsn-paymaster.html#erc4337">8장</a> — 4337 검증 단계의 opcode 제한(시뮬레이션과 온체인의 결과가 달라지는 명령 금지), Circle 의 deadline=maxUint256 이 그 흔적.</td></tr>
+<tr><td><strong>거래 타입</strong> (0.3)</td><td><a href="gsn-paymaster.html#eip7702">9장</a> — 0x04 = authorization_list 칸이 추가된 봉투 서식.</td></tr>
+<tr><td><strong>계정의 코드 칸</strong> (0.1)</td><td><a href="gsn-paymaster.html#eip7702">9장</a> — 위임 지정자 <code>0xef0100 ‖ 대상주소</code> 는 빈 코드 칸에 적히는 23바이트 푯말이고, 호출이 오면 EVM 이 푯말을 따라가 그 코드를 EOA 컨텍스트에서 실행한다.</td></tr>
+<tr><td><strong>mempool</strong> (0.4)</td><td><a href="gsn-paymaster.html#erc4337">8장</a> — UserOperation mempool 은 같은 개념의 별도 판. <a href="index.html#gasless">3장</a> — stuck 거래의 수동 RBF caveat.</td></tr>
+<tr><td><strong>smart account</strong> (0.1)</td><td><a href="gsn-paymaster.html#erc4337">8장</a> — 4337 의 sender 전제. <a href="gsn-paymaster.html#eip7702">9장</a> — 7702 는 EOA 가 EOA 인 채로 그 코드를 빌려 쓰는 길.</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
