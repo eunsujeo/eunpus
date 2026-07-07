@@ -52,7 +52,6 @@ sequenceDiagram
     rect rgb(220,252,231)
     Note over App,MGR: 2단계 — 15분 배치 (Service 백엔드가 실행)
     App->>DL: 윈도 PENDING 조회 → 자산별 상계(netting)
-    App->>MGR: estimateFee — 그 시점의 견적을 건별 스냅샷으로 기록 (7장)
     App->>MGR: 자산당 순증분 1건 submitTransaction<br/>(고객 자산 지갑 ↔ 은행 자산 지갑)
     MGR-->>App: onChainEvent (전송 확정)
     App->>DL: 해당 PENDING 일괄 settled

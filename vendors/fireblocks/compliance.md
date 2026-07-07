@@ -4,8 +4,8 @@ vendor: fireblocks
 status: draft
 tags: [compliance, aml]
 stage_introduced: 1
-last_updated_stage: 143
-source_count: 7
+last_updated_stage: 144
+source_count: 26
 related:
   - overview
   - policy
@@ -64,7 +64,43 @@ _TODO: SOC 2, ISO 27001, KYT/외부 파트너 통합 등은 추후 자료. 본 �
 
 Stage 6 `security-checklist.md` p.1에서 **AML Transaction Screening Policy**가 Transaction security 카테고리의 명시적 항목 — 즉 일반 Policy rule과 별개의 Policy 종류로 운영됨. 정확한 동작·룰 표현은 본 자료에 없음 → Q-S03.
 
-### Travel Rule (★ Stage 143 — support PDF 3종 deep ingest + developers 3건 Mode B)
+### 컴플라이언스 검사 순서 (★ Stage 144)
+
+거래 한 건이 지나는 검사 순서가 문서로 확정됨:
+
+1. **OFAC 백엔드 차단** — Fireblocks(미국 법인)가 SDN 리스트 제재 주소로의 outbound 를 **사용자 Policy 규칙보다 먼저** 백엔드 리스트와 대조·차단. Console: `Blocked by Policy`, API: `BLOCKED`/`BLOCKED_BY_POLICY`. incoming 은 수신 자체를 못 막음 — freeze/isolate 로 대응 (source: global-policy-ofac-sanctions-compliance.md, p.1–2)
+2. **AML 스크리닝** — Travel Rule 스크리닝보다 먼저 수행. 상대방이 이미 high-risk 플래그면 Travel Rule 데이터 교환은 보통 진행되지 않음 (source: compliance-integrations.md, p.1–2)
+3. **Travel Rule 스크리닝** — AML 이후
+
+**Address Registry** 는 무료 네이티브 기능 (상대방 식별만, 위험 평가 없음). 연결 가능 제공자 목록: **Chainalysis · Notabene · Sumsub · Elliptic** (source: compliance-integrations.md, p.1, p.3).
+
+### AML Transaction Screening (★ Stage 144 — Q-S03 ANSWERED)
+
+**성격**: premium opt-in (추가 구매·CSM). 제공자는 **Chainalysis · Elliptic** — workspace 당 **동시 1개만**, 교체는 Support (source: aml-transaction-screening-and-monitoring.md, p.1–2).
+
+**공유 데이터**: Asset · Amount · Origin/Beneficiary 주소 · blockchain hash. **입금은 첫 confirmation 후에** 스크리닝. 다중 목적지 출금은 목적지별 검사 후 **최고 위험 기준으로 전체 승인/거절** (source: 같은 문서, p.3–4).
+
+**Screening Policy** (무엇을 검사): default 는 **내부 거래 포함 전량** — Travel Rule 판과 달리 규칙 불일치 시 "스크리닝 없이 자동 수락". Action = Pass / Screen / Freeze (source: aml-transaction-screening-policy.md, p.2–4).
+- 미지원 라우트: Vault→Vault, Vault→Exchange, Gas Station→Vault — 사전 검사는 안 되지만 **전송 후 제공자에 등록되어 사용 쿼터를 소모** → 해당 라우트는 PASS 규칙 권장. NFT 미지원 (source: aml-transaction-screening-and-monitoring.md, p.6)
+
+**Post-Screening Policy** (결과별 조치): 조치는 **Accept / Reject / Alert 3종** (Travel Rule 판의 Freeze·Wait·Cancel 없음). Reject — 입금 = 동결·Admin unfreeze, 출금 = 차단·Admin 우회 가능. 규칙 파라미터 (source: aml-post-screening-policy.md, p.3–9):
+- Chainalysis: Risk Score(Low/Medium/High/Severe — Medium·Severe 는 V2 전용) · Category(ID 1–47 + 999: sanctioned entity 3 · ransomware 12 · mixing 13 · scam 18 · terrorist financing 23 등) · Exposure(Direct/Indirect, V2)
+- Elliptic: Risk Score 0.0–10.0 (선택 점수 이상에 적용)
+- **Unknown/N-A 점수 거래는 alert 도 reject 도 불가**
+
+**Advanced settings 기본값** (제공자 무관, source: aml-advanced-configuration-settings.md, p.2–5):
+| 항목 | 기본값 |
+|---|---|
+| Skip on failure (장애 시 우회) | **On** — 장애·기한 내 무응답이면 통과 (Off 면 실패·입금 동결) |
+| Admin unfreeze 허용 | On |
+| Admin 의 정책 우회 출금 | On |
+| P2P Network 우회 | Off (= P2P 도 검사) |
+| Inbound delay | **30초** (Chainalysis V2 는 10분) · 최대 7일 |
+| Outbound delay | **0초** (즉시 응답 사용) · 최대 90분 (연장은 JWT lifetime 변경, Support) |
+
+Pending 은 최대 6시간 폴링. **정책 반영 절차에 Fireblocks Support 개입** — CSV 업로드 후 Support 가 검토·활성화 (source: changing-your-aml-policy.md, p.1). 제공자 해제·정책 삭제도 Support 경유.
+
+### Travel Rule (★ Stage 143 — support PDF 3종 deep ingest + developers 3건 Mode B · Stage 144 보강)
 
 **성격**: premium **opt-in 기능 — 추가 구매 필요, CSM 문의** (source: setting-up-travel-rule-integration.md, p.1).
 
@@ -87,7 +123,15 @@ Stage 6 `security-checklist.md` p.1에서 **AML Transaction Screening Policy**�
 
 **출금 API 흐름** (Notabene 경로): `POST /v1/screening/travel-rule/validate` (임계값·주소 유형 — type: BELOW_THRESHOLD/NON_CUSTODIAL/TRAVELRULE) → 정보 수집 → `validate/full` → isValid 후 `POST /v1/transactions` 에 travelRuleMessage(PII SDK 암호화) 동봉. 검사 제외 경로: Gas Station→Vault, Vault→Network Connection, Vault→Exchange, Vault→Vault (source: webpages/developers/reference/validate-travel-rule.meta.yml).
 
-**미확인**: TAP 과의 직접 상호작용 명세, 관할권별 임계값 적용(한국 기준), Blocking Time 기본값 → Q-2026-07-07-C02.
+**Stage 144 보강**:
+- **입금 흐름**: 첫 blockchain confirmation 후 Screening Policy 통과 → Notabene 전송. 원 거래에 Travel Rule 메시지가 없으면 **Fireblocks 가 빈 메시지를 생성해 스크리닝 가능하게 함** (source: about-travel-rule-transaction-screening.md, p.3)
+- **delay 기본값** (제공자 무관): Inbound **30초**(최대 7일) · Outbound **0초**(최대 90분 — JWT lifetime, Support). 장애 우회 On·Admin unfreeze On·Admin 우회 On·P2P 우회 Off — AML 판과 동일 구조 (source: travel-rule-advanced-configuration-settings.md, p.2–4)
+- Pending 최대 4시간 후 스크리닝 취소 (source: about-travel-rule-transaction-screening.md, p.5)
+- 지원 자산: Notabene 은 대체로 CoinGecko 등재 자산 전반 (같은 문서, p.4)
+- 데이터 보관: 암호화되어 Notabene 저장, **Fireblocks 는 복호화 키를 보유하지 않음** (source: about-the-travel-rule.md, p.1)
+- 거래소 트래블룰(별개 흐름): Binance·Bitstamp·Bitfinex 등이 입출금 PII 를 요구 — Console/API 의 PII 설문으로 제공하거나 생략(차단 위험 감수) (source: travel-rule-compliance-for-exchange-transactions.md, p.1–4)
+
+**미확인**: TAP 과의 직접 상호작용 명세(19개 문서 전체에 TAP 용어 부재 — OFAC 대조가 "사용자 Policy 규칙보다 먼저"라는 순서만 확정), 관할권별 임계값 수치(문서는 "관할권이 결정"만) → Q-2026-07-07-C02 partial.
 
 ### FSPM (cross-ref)
 
@@ -114,12 +158,15 @@ _TODO: SOC 2 / ISO 27001 / 보험 / 라이선스 — 추후 자료_
 - `2026-05-19__support-fireblocks-io__travel-rule-transaction-screening-policy.md`, p.1–4 (Stage 143: 스크리닝 대상 규칙)
 - `2026-05-19__support-fireblocks-io__setting-up-travel-rule-integration.md`, p.1–3 (Stage 143: Notabene 연동·VASP 구조)
 - `sources/fireblocks/webpages/developers/` — define-travel-rule-policies · validate-travel-rule · travel-rule-link-integration meta (Stage 143, Mode B)
+- `2026-05-19__support-fireblocks-io__aml-*.md` 9종 (Stage 144: 제공자·정책·기본값)
+- `2026-05-19__support-fireblocks-io__about-the-travel-rule.md` · `about-travel-rule-transaction-screening.md` · `travel-rule-advanced-configuration-settings.md` · `travel-rule-policy-templates.md` · `changing/deleting-your-travel-rule-policy.md` · `disconnecting-your-travel-rule-provider.md` · `travel-rule-compliance-for-exchange-transactions.md` (Stage 144)
+- `2026-05-19__support-fireblocks-io__compliance-integrations.md` p.1–3 · `global-policy-ofac-sanctions-compliance.md` p.1–2 (Stage 144: 검사 순서·OFAC·제공자 목록)
 
 ## Open Questions
 
-- Q-2026-05-18-S03 — AML Transaction Screening Policy 정확한 동작 (★ Stage 143 partial — Travel Rule 쪽 정책 구조는 확정, AML 쪽 룰 표현은 `aml-*` PDF 미추출)
-- Q-2026-07-07-C01 — Notabene 통합 vs TRLink 의 관계 (병행? 세대교체?)
-- Q-2026-07-07-C02 — TAP 상호작용 명세 · 관할권별 임계값(한국) · Blocking Time 기본값
+- Q-2026-05-18-S03 — AML Transaction Screening Policy 정확한 동작 (★ Stage 144 ANSWERED — 본 페이지 AML 절)
+- Q-2026-07-07-C01 — Notabene 통합 vs TRLink 의 관계 (★ Stage 144 partial — compliance-integrations 의 연결 가능 목록에 Notabene·Sumsub 병렬 등재 → 병행 시사, 명시 없음)
+- Q-2026-07-07-C02 — TAP 상호작용 명세 · 관할권별 임계값(한국) (★ Stage 144 partial — delay 기본값 30초/0초 확정, TAP 용어는 문서군에 부재, 임계값은 "관할권이 결정"만)
 - Q-2026-05-18-S07 — FSPM entity-grade 명세
 - Q-2026-05-18-A07 — 부분 답; audit log API endpoint·retention·외부 forwarding 잔존
 - (SOC 2 / ISO 27001 / 보험 / 라이선스는 외부 자료 필요)

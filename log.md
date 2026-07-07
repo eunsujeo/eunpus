@@ -7586,3 +7586,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 신규 Q: Q-2026-07-07-C01 (Notabene vs TRLink 관계) · Q-2026-07-07-C02 (TAP 상호작용·한국 임계값·Blocking Time 기본값)
 - 영향받은 페이지: vendors/fireblocks/compliance.md (Travel Rule 절 신설, last_updated_stage 143)
 - 신규 entity: 0 (compliance hub 흡수)
+
+## Stage 144 (2026-07-07) — compliance 클러스터 전량 추출 (Mode C promote 19건)
+- source: 2026-05-19__support-fireblocks-io__ 트래블룰 잔여 8종 + AML 9종 + compliance-integrations + global-policy-ofac → pdftotext 전량 추출, 요점은 병렬 서브에이전트로 수집
+- 확정: 검사 순서(OFAC 백엔드 → AML → Travel Rule · high-risk 면 TR 교환 중단) · AML 제공자 Chainalysis/Elliptic(동시 1개) · AML Post-Screening = Accept/Reject/Alert 3종(Chainalysis Risk Score·Category 1–47·Exposure, Elliptic 0–10) · advanced 기본값(Skip on failure On · inbound 30초/Chainalysis V2 10분 · outbound 0초) · 입금은 첫 confirmation 후 스크리닝 · 미지원 라우트도 등록·쿼터 소모 · TR 입금은 빈 메시지 생성 · 정책 반영은 Support 검토 경유 · Address Registry 무료 네이티브
+- ANSWERED: Q-2026-05-18-S03 (AML 정책 구조·파라미터·기본값)
+- partial: Q-2026-07-07-C01 (Notabene·Sumsub 병렬 등재 — 병행 시사) · Q-2026-07-07-C02 (delay 기본값 확정, TAP 용어 부재 확인, 한국 임계값 잔여)
+- 영향받은 페이지: vendors/fireblocks/compliance.md (검사 순서 절 + AML 절 신설, Travel Rule 절 보강, last_updated_stage 144)
+- 신규 entity: 0 (compliance hub 흡수)

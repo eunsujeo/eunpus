@@ -1,30 +1,81 @@
-<!--
-source_url: https://support.fireblocks.io/hc/en-us/articles/about-the-travel-rule
-downloaded_at: 2026-05-19
-status: lightweight-index (Stage 14, v3.1)
-priority: TIER1
-domain: Governance + Security-Access (Travel Rule plane)
--->
+26. 5. 19. 오전 9:47                                                        About the Travel Rule – Fireblocks Help Center
 
-# About the Travel Rule
 
-**LIGHTWEIGHT INDEX (Stage 14, v3.1)** — PDF 본문 미로드.
+                     Don't see what you're looking for? Log in for the full Help Center experience
 
-## Why TIER 1
-Travel Rule plane meta — FATF Travel Rule regulatory compliance spine. AML 과 별개 plane 이지만 architecture 측에서는 동일 Screening Service plane (Stage 9 Step 5c).
+                                                                            Fireblocks Help Center Search the Help Center /
 
-## Cross-cut Signal
-- Stage 9 14-step Step 5c (Screening Service → Travel Rule Provider)
-- Stage 9 `transaction-lifecycle.md` 의 outgoing/incoming 양쪽 flowchart 에 "Transaction Travel Rule Screening" 단계 존재
-- Stage 9 `primary-transaction-statuses.md` 의 PENDING_AML_SCREENING 의 sibling: Travel Rule status
-- TRUST platform (별도 file) = Notabene 의 Travel Rule provider 후보
-- AML 과 비교 spine: 둘 다 outgoing tx 의 compliance gate, 단 Travel Rule = originator/beneficiary 메타데이터 교환 (PII), AML = address/destination risk scoring
 
-## Promote Condition
-Travel Rule compliance 가 active operational priority 일 때 (regulated jurisdiction 운영).
 
-## Related
-- [[vendors/fireblocks/compliance]] §"Travel Rule"
-- [[entities/fireblocks/policy]] §"Travel Rule configuration"
-- [[entities/fireblocks/transaction]] §"Travel Rule screening states"
-- [[sources/fireblocks/markdown/2026-05-19__support-fireblocks-io__aml-compliance-cluster-catalog]]
+        Fireblocks Help Center              Identity & Compliance              Travel Rule: Notabene
+
+
+        About the Travel Rule
+
+             Note
+                The Travel Rule integration is a premium, opt-in feature that requires an
+                additional purchase. Contact your Customer Success Manager for more
+                information.
+                The Compliance Policy Editor workflow is a new feature that will be available
+                to all customers soon. Contact your Customer Success Manager to enable it in
+                your Fireblocks workspace and for assistance with setting up the integration.
+
+
+        The Financial Action Task Force (FATF) recommended the Travel Rule in order to combat
+        money laundering and terrorist trafficking activity. The rule states that Virtual Asset Service
+        Providers (VASPs), which include businesses that exchange virtual assets, must provide
+        additional data on the senders and recipients of certain transactions. Each jurisdiction
+        decides which transactions must adhere to the Travel Rule and what data must be included.
+
+             Important
+             Fireblocks does not permanently store any transaction data needed specifically for
+             the Travel Rule. All Travel Rule data is encrypted and stored with Notabene if needed.
+             Fireblocks does not hold the keys for decrypting the information.
+
+        To help you comply with the Travel Rule, Fireblocks provides integration with Travel Rule
+        provider Notabene. Notabene analyzes your incoming and outgoing transactions in real
+        time and screens them based on your workspace’s Travel Rule policy. After Notabene
+        screens a transaction and determines its compliance with the Travel Rule, the appropriate
+        action can be taken automatically.
+        After integrating Notabene with your Fireblocks workspace, you can configure and manage
+        various settings and policies. In your Notabene dashboard, you can configure settings
+https://support.fireblocks.io/hc/en-us/articles/8271585394076-About-the-Travel-Rule                                           1/2
+26. 5. 19. 오전 9:47                                                        About the Travel Rule – Fireblocks Help Center
+
+        related to your Notabene account. In your Fireblocks workspace, you can create a Travel
+                Don't see what you're looking for? Log in for the full Help Center experience
+        Rule policy to determine which transactions should be screened and what post-screening
+        actions should be taken based on the screening status.
+                                                                            Fireblocks Help Center                         /
+        You can read Notabene's documentation for more information on how they integrate with
+        Fireblocks.
+
+
+
+                                                              Was this article helpful?
+                                                                        Yes             No
+
+
+
+              Related Articles
+                     Address Registry
+                     Travel Rule Support Overview
+                     401 Error, “Unauthorized: Access Denied”
+                     Travel Rule Transaction Screening Policy
+                     Setting up Travel Rule integration
+
+
+
+
+      fireblocks.com           Status        API Docs          Console         info@fireblocks.com
+
+
+
+      Fireblocks © 2026. All Rights Reserved. NMLS Registration Number: 2066055
+      Privacy Policy
+
+
+
+
+https://support.fireblocks.io/hc/en-us/articles/8271585394076-About-the-Travel-Rule                                            2/2
+

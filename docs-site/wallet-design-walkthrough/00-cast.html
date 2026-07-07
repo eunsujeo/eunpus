@@ -121,7 +121,6 @@ flowchart LR
 <tr><td>입금 주소 <b>조회</b></td><td>(DB 읽기 · Fireblocks 미사용)</td><td class="c"></td><td class="c">●</td><td class="c"></td><td class="c">●</td><td><code>depositAddressOf</code></td><td class="c">S</td><td class="c">3장</td></tr>
 <tr><td>수신·확정 이벤트</td><td>거래 조회 폴링 (webhook 옵션)</td><td class="c"></td><td class="c">●</td><td class="c">●</td><td class="c"></td><td><code>onChainEvent</code></td><td class="c">S</td><td class="c">4장</td></tr>
 <tr><td>수수료 추정</td><td>estimateFee</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c"></td><td><code>estimateFee</code></td><td class="c">S</td><td class="c">7장</td></tr>
-<tr><td>주소 형식 검증</td><td>(로컬 규칙)</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c"></td><td><code>validateAddress</code></td><td class="c">S</td><td class="c">6장</td></tr>
 <tr><td>출금 제출</td><td><b>createTransaction</b></td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c"></td><td><code>submitTransaction</code></td><td class="c">S</td><td class="c">6장</td></tr>
 <tr><td>상태 조회</td><td>getTransactionById</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td><code>statusOf</code></td><td class="c">S·A</td><td class="c">6장</td></tr>
 <tr><td>막힌 출금 재촉·취소</td><td>boost / cancel</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td><code>boost</code> <code>cancel</code></td><td class="c">A</td><td class="c">6장</td></tr>

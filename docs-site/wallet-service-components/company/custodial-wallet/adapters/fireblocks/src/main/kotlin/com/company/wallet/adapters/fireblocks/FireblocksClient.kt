@@ -30,14 +30,21 @@ data class FireblocksVaultAsset(
  * createTransaction / estimateFee 공용 파라미터 (가이드 14.2).
  *
  * [externalTxId] 가 핵심 — 게이트웨이의 멱등 키를 Fireblocks 측 트랜잭션 dedup 으로 잇는다 (가이드 6.3 · 13.7).
+ * destination 은 벤더 표면의 유형 그대로 — TransferPeerPathType: ONE_TIME_ADDRESS(주소) · VAULT_ACCOUNT(id) · EXTERNAL_WALLET(등록 id).
  */
 data class FireblocksCreateTransactionParams(
     val assetId: String,
     val sourceVaultId: String,
-    val destinationAddress: String,
+    /** TransferPeerPathType 값. */
+    val destinationType: String,
+    /** VAULT_ACCOUNT · EXTERNAL_WALLET 일 때 — 벤더 측 id. */
+    val destinationId: String? = null,
+    /** ONE_TIME_ADDRESS 일 때. */
+    val destinationAddress: String? = null,
     val destinationTag: String? = null,
     val amountMinorUnits: BigInteger,
     val externalTxId: String,
+    val note: String? = null,
 )
 
 /** 수수료 추정 응답 — low / medium / high (POST /v1/transactions/estimate_fee). */

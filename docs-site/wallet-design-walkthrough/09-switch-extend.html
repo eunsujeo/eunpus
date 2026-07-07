@@ -46,7 +46,7 @@ flowchart LR
 <table>
 <thead><tr><th style="width:22%">다시 봐야 하는 것</th><th style="width:32%">EVM 전제</th><th>Solana 를 붙일 때의 결정</th></tr></thead>
 <tbody>
-<tr><td><b>주소 형식 검증</b> (6장 validateAddress)</td><td>0x + 체크섬 — 로컬 규칙 하나</td><td>주소 형식이 다르다 — 로컬 규칙(AddressRules)에 그 체인의 형식을 추가해야 검증이 선다</td></tr>
+<tr><td><b>주소 형식 검증</b> (validateAddress)</td><td>0x + 체크섬 — 로컬 규칙 하나</td><td>주소 형식이 다르다 — 로컬 규칙(AddressRules)에 그 체인의 형식을 추가해야 검증이 선다</td></tr>
 <tr><td><b>체인 특화 파라미터</b></td><td>ChainSpecific = Evm(nonce) 하나</td><td>새 타입을 추가한다 — sealed 라 추가만 하고 기존 EVM 의미는 안 바뀐다</td></tr>
 <tr><td><b>막힘 대응</b> (6장 boost·cancel)</td><td>같은 순번 재전송(RBF) 전제</td><td>같은 의미의 동작이 그 체인에 있는지부터 확인 — 없으면 <b>기능 부재로 선언</b>(capability 미구현)하고 막힘 운영 절차를 따로 설계</td></tr>
 <tr><td><b>확정 판정</b> (4장)</td><td>confirmation 누적 ≥ DCCP 임계</td><td>그 체인의 확정 개념을 벤더가 어떤 상태·카운트로 번역해 주는지 확인하고 임계를 다시 정한다</td></tr>

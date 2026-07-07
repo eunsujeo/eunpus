@@ -1140,12 +1140,13 @@
 - **확정**: Notabene 통합 = 기본 파트너십, `/v1/screening/travel-rule/*` (validate·validate/full·vasp). TRLink = 제공자 중립 레이어, 명시 파트너 Sumsub·GTR, `/v1/screening/trlink/*`, 법적 실체 단위 설정 (Stage 143 — developers reference 2건 + support PDF).
 - **확인 질문**: 신규 도입 권장 경로는? Notabene 을 TRLink 파트너로도 붙일 수 있나? 기능 차이(정책 3단 vs 2단)?
 - **Sources to check**: CSM · developers.fireblocks.com Travel Rule 섹션 잔여 페이지
-- **Status**: open
+- **보강 (Stage 144)**: compliance-integrations.md p.3 의 연결 가능 제공자 목록에 Chainalysis·Notabene·Sumsub·Elliptic 이 병렬 등재 — Notabene(직접 통합)과 Sumsub(TRLink 파트너)가 같은 목록에 있어 병행을 시사하나 명시는 없음.
+- **Status**: open (partial)
 
 ### Q-2026-07-07-C02: Travel Rule 의 TAP 상호작용 · 관할권 임계값 · Blocking Time 기본값
 
 - **Why it matters**: 출금 파이프라인(워크스루 6장)에서 스크리닝 게이트의 정확한 위치(서명 전 어느 단계, TAP 과의 선후)와 한국 임계값(원화 100만원 기준 적용 방식)이 설계·정책 작성에 필요.
 - **확정 (Stage 143)**: Post-Screening Accept 의 출금 설명 "you can now sign them" → 스크리닝은 서명 전 게이트 (travel-rule-post-screening-policy.md, p.3). Wait 은 Pending 최대 4시간. Blocking Time 은 in/out 별 advanced settings 로 조정 가능 — 기본값은 미확인.
 - **확인 질문**: TAP 평가와 Travel Rule 스크리닝의 순서? 한국 관할 임계값 설정 방법(AmountUSD 만 지원?)? Blocking Time 기본값?
-- **Sources to check**: travel-rule-advanced-configuration-settings.pdf (미추출) · about-the-travel-rule.pdf (미추출) · CSM
-- **Status**: open
+- **답 (Stage 144 — advanced-configuration·about 등 잔여 전량 추출)**: ① delay 기본값 확정 — Inbound 30초(최대 7일)·Outbound 0초(최대 90분, JWT lifetime)·Pending 최대 4시간. ② TAP 용어는 compliance 문서군 19종 전체에 부재 — 확정된 순서는 OFAC 백엔드 대조가 "사용자 Policy 규칙보다 먼저"(global-policy-ofac, p.1), AML → Travel Rule(compliance-integrations, p.1–2)뿐. ③ 임계값은 "관할권이 결정"만 — 한국 수치 적용 방법 미확정.
+- **Status**: open (partial — 한국 임계값·TAP 명세만 잔여, CSM 대상)

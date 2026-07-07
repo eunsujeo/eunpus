@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>트래블룰 — Fireblocks · Notabene 연동</title>
+<meta content="Fireblocks 트래블룰 — Notabene 연동의 설정과 동작: 검사 순서(OFAC→AML→트래블룰), 정책 2단(Screening·Post-Screening), 출금 사전 검증 API, 입금 사후 대조, 기본값과 결정 포인트." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">트래블룰</h3><ul>
+<li><a class="active" href="#what">1. 트래블룰이 무엇인가</a></li>
+<li><a href="#order">2. 검사 순서 — OFAC → AML → 트래블룰</a></li>
+<li><a href="#setup">3. 설정 — Notabene 연동 5단계</a></li>
+<li><a href="#outbound">4. 동작 — 출금 (우리 코드가 주도)</a></li>
+<li><a href="#inbound">5. 동작 — 입금 (벤더가 주도)</a></li>
+<li><a href="#policy">6. 정책 2단 — 무엇을 검사하고, 무엇을 하나</a></li>
+<li><a href="#defaults">7. 시간 규칙과 기본값</a></li>
+<li><a href="#design">8. 우리 설계와의 접점</a></li>
+<li><a href="#open">9. 미확정 — CSM 확인 목록</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="what">
+<h2>1. 트래블룰이 무엇인가</h2>
+<span class="section-subtitle">VASP 간 이전에 송·수신자 정보를 함께 보내라는 규제 — 온체인이 아니라 별도 채널로 오간다</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처</div>
+<p style="margin:0">전 내용이 <strong>Fireblocks 공식 문서(헬프센터 컴플라이언스 문서군·개발자 문서)에서 확인한 사실</strong>이다. "우리 설계와의 접점" 절만 저자 판단이며, 미확정으로 표시한 항목은 Fireblocks 담당 매니저(CSM)에 확인할 대상이다.</p>
+</div>
+
+<p class="lead">트래블룰은 FATF 권고에 따라 VASP(가상자산사업자)가 특정 거래의 <strong>송신자·수신자 정보를 상대 VASP 와 교환</strong>해야 하는 의무다. 어떤 거래가 대상이고 어떤 데이터가 필요한지는 <strong>각 관할권이 정한다</strong>.</p>
+
+<p>핵심 성질 하나: 온체인 거래 자체에는 송신자 정보가 실려 있지 않다. 그래서 트래블룰 정보는 <strong>체인 밖의 별도 채널</strong>로 오가고, 이 채널을 제공하는 것이 트래블룰 제공자다. Fireblocks 는 <strong>Notabene</strong> 과 연동한다 — premium opt-in 기능(추가 구매·CSM 문의)이고, 트래블룰 데이터는 암호화되어 Notabene 에 보관되며 <strong>Fireblocks 는 복호화 키를 갖지 않는다</strong>.</p>
+</section>
+
+<section id="order">
+<h2>2. 검사 순서 — OFAC → AML → 트래블룰</h2>
+<span class="section-subtitle">거래 한 건이 지나는 컴플라이언스 관문 셋. 트래블룰은 마지막이다</span>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    TX["거래 제출/수신"]
+    OFAC["① OFAC 백엔드 차단<br/>제재 주소 outbound 차단<br/>(사용자 정책보다 먼저 · 우회 불가)"]
+    AML["② AML 스크리닝<br/>Chainalysis · Elliptic<br/>상대방 위험 평가"]
+    TR["③ 트래블룰 스크리닝<br/>Notabene<br/>송·수신자 정보 교환"]
+    GO["진행"]
+
+    TX --> OFAC --> AML --> TR --> GO
+
+    classDef gate fill:#fef3c7,stroke:#d97706;
+    classDef hard fill:#fee2e2,stroke:#dc2626;
+    classDef ok fill:#dcfce7,stroke:#16a34a;
+    class OFAC hard; class AML,TR gate; class GO ok;
+</pre></div>
+<p class="diagram-caption">순서는 공식 문서로 확정 — OFAC 백엔드 대조는 사용자 Policy 규칙보다 먼저 돌고(차단되면 BLOCKED/Blocked By Policy), AML 스크리닝이 트래블룰보다 먼저다. 상대방이 이미 AML 에서 high-risk 로 플래그되면 트래블룰 데이터 교환은 보통 진행되지 않는다. AML 과 트래블룰은 각각 별도 premium 통합이고, 상대방 신원 식별용 Address Registry 는 전 워크스페이스 무료 네이티브 기능이다.</p>
+</section>
+
+<section id="setup">
+<h2>3. 설정 — Notabene 연동 5단계</h2>
+<span class="section-subtitle">Console 연결·정책은 Admin 운영 작업(코드 0줄), 개발 작업은 4장의 출금 경로 하나</span>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:6%"></th><th style="width:26%">단계</th><th>내용</th></tr></thead>
+<tbody>
+<tr><td>0</td><td><strong>사전 준비</strong></td><td>Notabene 계정 생성·설정 + Fireblocks Compliance 탭 활성화(premium 구매, Support/CSM 경유). production↔production, sandbox↔sandbox 로 기본 연결.</td></tr>
+<tr><td>1</td><td><strong>Console 연결</strong></td><td><code>Settings &gt; Compliance &gt; Travel rule &gt; Connect provider</code> 에 Notabene 대시보드의 <strong>API key · Secret key · VASP DID</strong> 입력. 승인되면 이메일 통지.</td></tr>
+<tr><td>2</td><td><strong>암호화 키 등록</strong></td><td>Notabene CLI(<code>npm i -g @notabene/cli</code>)로 <strong>Ed25519 키 생성</strong> → JSON DID 키를 <code>PUT /v1/screening/travel-rule/vasp/update</code> 로 등록. SDK 에 travelRuleOptions 구성, 개인정보 암호화는 Notabene PII SDK 담당.</td></tr>
+<tr><td>3</td><td><strong>(다중 법인) VASP 매핑</strong></td><td>Gateway VASP(부모)–subsidiary 구조를 Notabene 쪽에 만들고, Fireblocks API 로 vault account↔VASP 연결. <strong>vault 는 단일 VASP 에만</strong>(VASP 는 복수 vault 가능). 입금 검사는 수신 vault 의 VASP 기준, 미지정 시 Gateway. 단일 법인이면 이 단계 없음.</td></tr>
+<tr><td>4</td><td><strong>정책</strong></td><td>연결 즉시 <strong>default 정책 2종 자동 적용</strong>(6장). custom 은 CSV 템플릿 작성 → Console 업로드 → <strong>Fireblocks Support 검토 후 활성화</strong>.</td></tr>
+<tr><td>5</td><td><strong>테스트</strong></td><td>Notabene <strong>RoboVASPs</strong> 로 테스트 거래 — 별도 상대 VASP 없이 검증 가능.</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section id="outbound">
+<h2>4. 동작 — 출금 (우리 코드가 주도)</h2>
+<span class="section-subtitle">제출 전에 두 번 검증하고, 암호화한 정보를 거래에 실어 보낸다</span>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as Service 백엔드
+    box rgb(220,252,231) Fireblocks
+    participant FB as Fireblocks API
+    end
+    participant NB as Notabene
+
+    BE->>FB: validate — 임계값·수취 주소 유형 판별
+    FB-->>BE: type: BELOW_THRESHOLD / NON_CUSTODIAL / TRAVELRULE
+    Note over BE: BELOW_THRESHOLD·NON_CUSTODIAL 이면 정보 교환 불필요 — 바로 제출<br/>TRAVELRULE 이면 계속
+    BE->>BE: 수취인 정보 수집 — 수취 VASP DID · 이름 · 계좌
+    BE->>FB: validate/full — isValid 확인
+    BE->>BE: PII SDK 로 개인정보 암호화 → travelRuleMessage
+    BE->>FB: createTransaction (travelRuleMessage 동봉)
+    FB->>NB: 거래 상세 전송 — Asset · Amount · 주소 · hash
+    NB-->>FB: 트래블룰 상태 판정
+    Note over FB: Post-Screening Policy 가 조치 (6장)<br/>Accept 후에야 서명이 진행된다 — 스크리닝은 서명 전 게이트
+</pre></div>
+<p class="diagram-caption">출금 사전 검증 두 번(1·5) 뒤에 암호화 메시지를 동봉해 제출한다(7). outgoing 에 트래블룰 메시지가 없으면 스크리닝을 우회하므로, 동봉은 우리 백엔드의 책임이다. Outbound delay 기본 0초 — 제공자의 즉시 응답을 쓴다.</p>
+</section>
+
+<section id="inbound">
+<h2>5. 동작 — 입금 (벤더가 주도)</h2>
+<span class="section-subtitle">우리 코드는 없다 — 벤더가 검사하고, 우리는 폴링으로 결과 상태를 받는다</span>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    box rgb(220,252,231) Fireblocks
+    participant FB as Fireblocks
+    end
+    participant NB as Notabene
+    participant PW as 우리 폴링 워커
+
+    FB->>FB: 입금 감지 → 첫 blockchain confirmation 대기
+    FB->>FB: Screening Policy 통과 판정
+    Note over FB,NB: 원 거래에 트래블룰 메시지가 없으면<br/>Fireblocks 가 빈 메시지를 생성해 스크리닝을 가능하게 한다
+    FB->>NB: 거래 상세 전송
+    NB-->>FB: 상태 판정 — Inbound delay 기본 30초 대기
+    FB->>FB: Post-Screening Policy 조치<br/>Accept = 통과 · Reject/Freeze = 자금 동결
+    PW->>FB: 폴링 — 동결이면 REJECTED 계열 상태로 나타난다
+    Note over PW: 이후는 기존 입금 처리 그대로 — 동결 건은 잔액 미반영 · Admin unfreeze 로 해제
+</pre></div>
+<p class="diagram-caption">입금 트래블룰은 벤더 안에서 끝나고, 우리 쪽에는 폴링이 받는 상태(REJECTED·동결)로만 나타난다 — 기존 입금 파이프라인(감지·동결·Admin unfreeze)이 그대로 흡수한다. Inbound delay(기본 30초) 안에 판정이 안 나면 기본 설정에서는 통과(자금 방출)된다 — 7장.</p>
+</section>
+
+<section id="policy">
+<h2>6. 정책 2단 — 무엇을 검사하고, 무엇을 하나</h2>
+<span class="section-subtitle">Screening Policy 가 대상을 거르고, Post-Screening Policy 가 결과별 조치를 정한다 — 둘 다 first-match</span>
+
+<p><strong>① Transaction Screening Policy — 무엇을 검사할지.</strong> default 는 전량 검사(예외: 미지원 경로·미지원 자산·초기 정보 없음·AML 미활성). 규칙 = Source/Destination × Amount/AmountUSD × Asset × Action(<strong>Screen / Bypass / Freeze</strong>).</p>
+
+<p><strong>② Post-Screening Policy — 결과에 무엇을 할지.</strong> Notabene 판정 상태별로 조치를 사전에 정해 둔다:</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:22%">조치</th><th>입금이면</th><th>출금이면</th></tr></thead>
+<tbody>
+<tr><td><strong>Accept</strong></td><td>자금 즉시 사용 가능</td><td>서명 진행 가능</td></tr>
+<tr><td><strong>Reject</strong></td><td><strong>자금 동결 — Admin unfreeze 필요</strong></td><td>전송 차단 — Admin 은 우회 가능(기본값 On)</td></tr>
+<tr><td><strong>Alert</strong></td><td colspan="2">승인 + Audit Log·승인자 모바일 알림</td></tr>
+<tr><td><strong>Freeze</strong></td><td>동결 (입금 전용)</td><td>—</td></tr>
+<tr><td><strong>Wait</strong></td><td colspan="2">Pending 상태 전용 — 최대 4시간 대기 후 스크리닝 취소</td></tr>
+<tr><td><strong>Cancel</strong></td><td>—</td><td>Blocking Time Expired 전용 — 거래 취소</td></tr>
+</tbody>
+</table>
+</div>
+<p class="diagram-caption">판정 상태는 7종 — Completed · Pending · Saved(임계값 미만/non-custodial/동일 VASP 내부 — 기록만 하고 미전송) · Rejected(상대 VASP 거절 등) · Failed · Blocking Time Expired · Canceled. 규칙은 first-match — 첫 일치 규칙의 조치가 적용되고, custom 정책을 올려도 default 규칙이 맨 아래 남아 모든 거래가 어느 규칙엔가 걸리게 한다.</p>
+</section>
+
+<section id="defaults">
+<h2>7. 시간 규칙과 기본값</h2>
+<span class="section-subtitle">기본값 하나가 규제 태도를 정한다 — "장애 시 통과"</span>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:36%">설정</th><th style="width:22%">기본값</th><th>뜻</th></tr></thead>
+<tbody>
+<tr><td><strong>Skip on failure</strong> (장애 시 우회)</td><td><strong>On</strong></td><td>제공자 장애·기한 내 무응답이면 <strong>검사 없이 통과</strong>. Off 로 바꾸면 해당 출금은 실패, 입금은 동결.</td></tr>
+<tr><td>Inbound delay</td><td><strong>30초</strong> (최대 7일)</td><td>입금 판정을 기다리는 시간 — 초과 시 기본 설정에선 자금 방출.</td></tr>
+<tr><td>Outbound delay</td><td><strong>0초</strong> (최대 90분)</td><td>출금은 즉시 응답 사용. 연장은 Support(JWT lifetime 변경).</td></tr>
+<tr><td>Pending 대기</td><td>최대 4시간</td><td>이후 스크리닝 취소.</td></tr>
+<tr><td>Admin unfreeze 허용</td><td>On</td><td>동결 자금을 Admin 이 Console/API 로 해제. Off 는 Support 경유.</td></tr>
+<tr><td>Admin 의 정책 우회 출금</td><td>On</td><td>Reject 된 출금을 Admin 이 우회 전송 가능. Off 는 Support 경유.</td></tr>
+<tr><td>P2P Network 우회</td><td>Off</td><td>Fireblocks P2P Network 거래도 검사한다.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">결정 포인트 — Skip on failure 를 끌 것인가</div>
+<p style="margin:0">기본값 On 은 "제공자가 죽으면 검사 없이 흘려보낸다"는 뜻이다. 규제 요구가 엄격하면 Off 가 맞지만, 그 대가는 장애 중 <strong>출금 실패·입금 동결</strong>이다. Admin 우회·unfreeze 기본값(둘 다 On)도 감사 관점에서 함께 결정할 대상이다.</p>
+</div>
+</section>
+
+<section id="design">
+<h2>8. 우리 설계와의 접점</h2>
+<span class="section-subtitle">입금은 이미 흡수돼 있고, 출금만 단계가 하나 생긴다 — 저자 판단</span>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:28%">우리 흐름</th><th>트래블룰 도입 시</th></tr></thead>
+<tbody>
+<tr><td><strong>내부 이동 — sweep · 델타 배치</strong></td><td><strong>비대상.</strong> Vault→Vault·Vault→Exchange·Gas Station→Vault 는 트래블룰 스크리닝 미적용 경로로 공식 명시 — 설계 변경 없음.</td></tr>
+<tr><td><strong>입금 (워크스루 4·5장)</strong></td><td><strong>변경 없음.</strong> Post-Screening 의 동결이 폴링이 받는 REJECTED 계열 상태로 나타나고, Admin unfreeze 흐름도 기존 그대로. 할 일은 정책 작성뿐.</td></tr>
+<tr><td><strong>출금 (워크스루 6장)</strong></td><td><strong>제출 앞에 3단계 추가</strong> — validate → 수취인 정보 수집 → validate/full, 그리고 createTransaction 에 travelRuleMessage 동봉. 수취인 정보(수취 VASP·이름)를 어디서 받을지가 화면·업무 설계 대상.</td></tr>
+<tr><td><strong>고객 사이 이동 (DB 장부 이체)</strong></td><td>온체인이 없어 벤더 스크리닝 <strong>비대상</strong> — 트래블룰 판단까지 업무 층 몫이다 (한도·AML 과 같은 자리).</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section id="open">
+<h2>9. 미확정 — CSM 확인 목록</h2>
+<span class="section-subtitle">공식 문서에 없는 것들 — 도입 전 확인 대상</span>
+
+<ul>
+<li><strong>한국 관할 임계값</strong> — 문서는 "관할권이 결정"까지만. 원화 기준 적용 방법(AmountUSD 만 지원하는지) 확인 필요.</li>
+<li><strong>TAP(거래 승인 정책)과의 선후</strong> — 컴플라이언스 문서군 19종 전체에 TAP 언급이 없다. 확정된 순서는 "OFAC 이 사용자 정책보다 먼저" · "AML 이 트래블룰보다 먼저" 뿐.</li>
+<li><strong>Notabene 직접 통합 vs TRLink</strong> — Fireblocks 에는 제공자 중립 레이어(TRLink — Sumsub·GTR 파트너)도 있다. 연결 가능 목록에 Notabene·Sumsub 이 병렬로 있어 병행으로 보이지만 명시가 없다.</li>
+<li><strong>가격·SLA</strong> — premium 구독 조건, Notabene 측 계약. Notabene API 문서는 비공개(CSM 경유 접근).</li>
+</ul>
+
+<p class="diagram-caption">관련 문서: 출금 파이프라인은 <a href="../wallet-design-walkthrough/06-withdrawal.html">지갑 설계 워크스루 6장</a> · 입금·동결은 <a href="../wallet-design-walkthrough/05-deposit.html">5장</a> · gas 대납은 <a href="../gas-delegation/">가스 대납 문서</a>.</p>
+</section>
+
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

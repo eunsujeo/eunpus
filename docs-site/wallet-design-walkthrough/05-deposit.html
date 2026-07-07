@@ -102,7 +102,6 @@ sequenceDiagram
 
     Note over SW,DB: 트리거 — 잔액 임계 · 고정 스케줄 · 네트워크 fee 유리할 때
     SW->>DB: sweep 대상 조회 — 가용 처리 끝난 고객 vault 잔액
-    SW->>FB: estimateFee — 그 시점의 견적을 건별 스냅샷으로 기록 (7장)
     SW->>FB: submitTransaction — 고객 vault → 옴니버스 (vault 별 1건 · gasless)
     Note over FB: 그 vault 의 첫 gasless 거래면 위임 설정(upgrade)이 함께 처리된다 — 주소·키 불변
     FB->>RL: gas 부담 위임 — 거래 생성·서명 시점 (relay 거절이면 거래 실패)

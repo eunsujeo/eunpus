@@ -9,6 +9,7 @@ import com.company.wallet.domain.model.Transfer
 import com.company.wallet.domain.model.Balance
 import com.company.wallet.domain.model.ChainEvent
 import com.company.wallet.domain.model.ChainEventHandler
+import com.company.wallet.domain.model.Destination
 import com.company.wallet.domain.model.FeeEstimate
 import com.company.wallet.domain.model.Subscription
 import com.company.wallet.domain.model.TransactionRequest
@@ -160,13 +161,33 @@ class FireblocksAdapter(
     /** 우리 자산 → Fireblocks assetId. TODO: 자산 사전 매핑 (예: ETH ↔ ETH_TEST5 환경별 id). */
     private fun assetIdOf(asset: Asset): String = asset.symbol
 
+    /** 목적지 유형별 매핑 — 외부 주소 = ONE_TIME_ADDRESS · 우리 계정 = VAULT_ACCOUNT · 등록 지갑 = EXTERNAL_WALLET (가이드 14.2). */
     private fun toCreateParams(request: TransactionRequest): FireblocksCreateTransactionParams =
+        when (val to = request.to) {
+            is Destination.ExternalAddress ->
+                baseParams(request, destinationType = "ONE_TIME_ADDRESS", destinationAddress = to.address.value, destinationTag = to.address.memoTag)
+            is Destination.OurAccount ->
+                baseParams(request, destinationType = "VAULT_ACCOUNT", destinationId = vaultOf(to.account))
+            is Destination.WhitelistedWallet ->
+                baseParams(request, destinationType = "EXTERNAL_WALLET", destinationId = to.walletId)
+        }
+
+    private fun baseParams(
+        request: TransactionRequest,
+        destinationType: String,
+        destinationId: String? = null,
+        destinationAddress: String? = null,
+        destinationTag: String? = null,
+    ): FireblocksCreateTransactionParams =
         FireblocksCreateTransactionParams(
             assetId = assetIdOf(request.asset),
-            sourceVaultId = vaultOf(request.from),
-            destinationAddress = request.to.value,
-            destinationTag = request.to.memoTag,
+            sourceVaultId = vaultOf(request.fromAccount),
+            destinationType = destinationType,
+            destinationId = destinationId,
+            destinationAddress = destinationAddress,
+            destinationTag = destinationTag,
             amountMinorUnits = request.amount.minorUnits,
             externalTxId = request.externalTxId,
+            note = request.note,
         )
 }

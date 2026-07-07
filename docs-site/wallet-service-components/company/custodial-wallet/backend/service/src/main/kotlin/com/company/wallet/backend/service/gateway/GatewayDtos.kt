@@ -7,6 +7,7 @@ import com.company.wallet.domain.model.Amount
 import com.company.wallet.domain.model.Asset
 import com.company.wallet.domain.model.Balance
 import com.company.wallet.domain.model.ChainId
+import com.company.wallet.domain.model.Destination
 import com.company.wallet.domain.model.TransactionRequest
 import com.company.wallet.domain.model.TxRef
 import com.company.wallet.domain.model.TxStatus
@@ -103,8 +104,8 @@ internal fun SubmitTransactionRequest.toDomain(idempotencyKey: String): Transact
     val asset = Asset(symbol = symbol, chainId = ChainId(chainId))
     return TransactionRequest(
         externalTxId = idempotencyKey,
-        from = AccountRef(from),
-        to = Address(value = toAddress, asset = asset, memoTag = memoTag),
+        fromAccount = AccountRef(from),
+        to = Destination.ExternalAddress(Address(value = toAddress, asset = asset, memoTag = memoTag)),
         asset = asset,
         amount = Amount(minorUnits = BigInteger(amountMinorUnits), decimals = decimals),
     )

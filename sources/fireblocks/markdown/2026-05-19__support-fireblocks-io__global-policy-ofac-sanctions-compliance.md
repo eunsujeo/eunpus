@@ -1,36 +1,137 @@
-<!--
-source_url: https://support.fireblocks.io/hc/en-us/articles/global-policy-ofac-sanctions-compliance
-downloaded_at: 2026-05-19
-status: lightweight-index (Stage 14, v3.1)
-priority: TIER1
-domain: Governance + Security-Access (Global compliance enforcement)
--->
+26. 5. 19. 오전 9:45                                Global Policy: How Fireblocks ensures OFAC sanctions compliance – Fireblocks Help Center
 
-# Global Policy: How Fireblocks ensures OFAC sanctions compliance
 
-**LIGHTWEIGHT INDEX (Stage 14, v3.1)** — PDF 본문 미로드.
+                     Don't see what you're looking for? Log in for the full Help Center experience
 
-## Why TIER 1
-**Global compliance enforcement** — Customer 의 Policy 와 별개로 Fireblocks platform 이 OFAC sanctions 를 강제하는 plane. **Stage 10 의 Policy 의 "Block-all default" + Stage 8 의 FSPM "SOC2 compliance violation" 과 별도 평면**.
+                                                                          Fireblocks Help Center Search the Help Center /
 
-## Cross-cut Signal
-- **Customer Policy vs Fireblocks Global Policy 2 평면 분리** (★ 새로운 spine 후보)
-  - Customer Policy: Stage 10 의 user-defined rule (allow/block/approval)
-  - Global Policy: Fireblocks platform-wide enforcement (OFAC sanctions list)
-- Stage 9 `transaction-lifecycle.md` 의 어느 step 에서 enforcement 가 일어나는가? (Step 5b/5c 의 Screening Service 와는 다른 layer 가능성)
-- Stage 8 의 audit log Compliance category 의 OFAC violation 이벤트 (존재 여부 본문 미확인)
-- Stage 9 의 dApp Protection 의 "sanctioned destination" 알림과 cross-cut
 
-## Promote Condition
-- Regulatory compliance review 시점
-- OFAC sanctions enforcement 의 architecture 위치 / bypass 가능성 검증 필요시
 
-## Potential New Q
-- Q: Customer 가 OFAC global policy 를 disable / override 할 수 있는가? (Risk-G 카테고리 후보)
-- Q: Global Policy 는 14-step schematic 의 어디서 enforce 되는가?
+        Fireblocks Help Center            Identity & Compliance             About Compliance
 
-## Related
-- [[vendors/fireblocks/compliance]]
-- [[vendors/fireblocks/risks]] — Global Policy bypass 가능성 검토 시 (Risk-G 후보)
-- [[entities/fireblocks/policy]] §"Global Policy vs Customer Policy"
-- [[vendors/fireblocks/security]] §"FSPM compliance scope"
+
+        Global Policy: How Fireblocks
+        ensures OFAC sanctions compliance
+        Overview
+        Fireblocks blocks outbound transactions to wallet addresses that are sanctioned by the U.S.
+        Department of the Treasury’s Office of Foreign Assets Control (OFAC). Fireblocks’ Legal
+        and Compliance team subscribes to OFAC’s public Specially Designated Nationals (SDN)
+        list updates and adds OFAC-sanctioned addresses to our backend systems to block
+        outgoing transactions to those addresses.
+        You can familiarize yourself with OFAC’s sanctions program on OFAC’s FAQ page, including
+        its 2022 guidance related to Tornado Cash. All sanctioned addresses linked to Tornado
+        Cash are on OFAC’s SDN list and have been added to the Fireblocks backend system as
+        blocked addresses.
+
+
+
+        Blocking of outgoing transfers to sanctioned
+        addresses
+        When you submit a transfer request to a deposit address that is flagged on OFAC’s SDN list
+        of sanctioned parties, Fireblocks will recognize the address from the corresponding list we
+        update in our backend and automatically block the transfer.
+        The Fireblocks Policy Engine first checks your submitted transfer against the list in our
+        backend, even before checking it against your Policy rules. You can read more about the
+        transaction flow for outgoing transfers here.
+        When a transaction is blocked because the destination is a sanctioned deposit address,
+        your transaction will fail. The reason for the failure message looks slightly different if you
+        are using the Console or API.
+https://support.fireblocks.io/hc/en-us/articles/6312767745820-Global-Policy-How-Fireblocks-ensures-OFAC-sanctions-compliance                 1/4
+26. 5. 19. 오전 9:45                                Global Policy: How Fireblocks ensures OFAC sanctions compliance – Fireblocks Help Center
+
+
+              Don't see what you're looking for? Log in for the full Help Center experience
+        When you attempt to transfer to a sanctioned address through the Fireblocks Console:
+              In your transaction panel, the failed transaction willCenter
+                                                    Fireblocks Help  show:                                                                   /
+                       Reason: Blocked by Policy
+              In your transaction history, it will show:
+                       Main status: BLOCKED
+                       Sub-status: Blocked By Policy
+        When you attempt to transfer to a sanctioned address through Fireblocks API:
+              The response of the transaction details at your relevant endpoint will show:
+                      Status field: BLOCKED
+                      subStatus field: BLOCKED_BY_POLICY
+
+
+
+        Blocking incoming transfers from sanctioned
+        addresses
+        While it is not possible to prevent receiving an incoming transaction to your wallet due to
+        the nature of the blockchain, you can take steps to remain compliant if you receive funds
+        from a sanctioned address.
+        You can freeze funds received from sanctioned addresses or isolate them based on your
+        internal compliance policies. Fireblocks recommends deploying a KYT/AML solution (we
+        have native integrations with Chainalysis and Elliptic) that can automatically detect such
+        high-risk transactions and take appropriate action based on your policies.
+
+
+
+        How can I check if an address is sanctioned by
+        OFAC?
+        OFAC’s Specially Designated Nationals (SDN) database is public. You can download the
+        latest list any time and search for an address.
+
+
+
+        LEGAL DISCLAIMER
+
+https://support.fireblocks.io/hc/en-us/articles/6312767745820-Global-Policy-How-Fireblocks-ensures-OFAC-sanctions-compliance                     2/4
+26. 5. 19. 오전 9:45                                Global Policy: How Fireblocks ensures OFAC sanctions compliance – Fireblocks Help Center
+
+
+                  Don't see what you're looking for? Log in for the full Help Center experience
+            Important
+            While Fireblocks maintains compliance with US OFAC (as defined above) sanctions as
+            stated, each customer must comply with      all applicable
+                                                     Fireblocks        export controls and trade
+                                                                 Help Center                     /
+            sanctions laws, rules, and regulations. Attempts to send assets to sanctioned
+            addresses violate the Fireblocks Master Services Agreement ("Agreement") and may
+            result in the termination of your agreement. Fireblocks takes no responsibility for
+            customers' sanctions compliance. It is each customer's obligation to comply with
+            their jurisdiction's laws.
+
+
+
+
+                                                            Was this article helpful?
+                                                                     Yes              No
+
+        ON THIS PAGE
+              Overview
+              Blocking of outgoing transfers to sanctioned addresses
+              Blocking incoming transfers from sanctioned addresses
+              How can I check if an address is sanctioned by OFAC?
+              LEGAL DISCLAIMER
+
+
+             Related Articles
+                     Set up an Elliptic integration
+                     Customer Reference ID
+                     AML Post-Screening Policy
+                     AML Advanced Configuration settings
+                     AML Transaction Screening & Monitoring
+                     Set up a Chainalysis integration
+                     AML Transaction Screening Policy
+
+
+
+
+https://support.fireblocks.io/hc/en-us/articles/6312767745820-Global-Policy-How-Fireblocks-ensures-OFAC-sanctions-compliance                 3/4
+26. 5. 19. 오전 9:45                                Global Policy: How Fireblocks ensures OFAC sanctions compliance – Fireblocks Help Center
+
+
+                     Don't see what you're looking for? Log in for the full Help Center experience
+      fireblocks.com          Status        API Docs         Console        info@fireblocks.com                                              /
+                                                                          Fireblocks Help Center
+
+
+      Fireblocks © 2026. All Rights Reserved. NMLS Registration Number: 2066055
+      Privacy Policy
+
+
+
+
+https://support.fireblocks.io/hc/en-us/articles/6312767745820-Global-Policy-How-Fireblocks-ensures-OFAC-sanctions-compliance                     4/4
+
