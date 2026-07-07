@@ -31,9 +31,9 @@
 <table>
 <thead><tr><th style="width:16%">거래</th><th>매니저(이 문서의 포트)가 하는 일</th><th style="width:26%">쓰이는 입금·출금</th></tr></thead>
 <tbody>
-<tr><td><b>온램프</b><br/>법정통화→코인</td><td>풀→고객 wallet 코인 <b>전송(출금 실행)</b>을 15분 배치로. 재고 보충(rebalance)이면 발행사가 vault 로 보낸 코인의 <b>입금 감지</b>도.</td><td>submitTransaction(6p) · onChainEvent(4p)</td></tr>
-<tr><td><b>오프램프</b><br/>코인→법정통화</td><td>고객→풀 wallet 코인 <b>회수 전송</b>을 15분 배치로. rebalance 면 vault→발행사 주소 <b>출금 실행</b>.</td><td>submitTransaction(6p) · onChainEvent(4p)</td></tr>
-<tr><td><b>스왑</b><br/>코인↔코인</td><td>고객↔은행 풀 사이 <b>양방향 전송</b>(회수+할당) 2건을 15분 배치로. 두 자산 재고가 다 있어야 함.</td><td>submitTransaction ×2(6p) · onChainEvent(4p)</td></tr>
+<tr><td><b>온램프</b><br/>법정통화→코인</td><td>풀→고객 wallet 코인 <b>전송(출금 실행)</b>을 15분 배치로. 재고 보충(rebalance)이면 발행사가 vault 로 보낸 코인의 <b>입금 감지</b>도.</td><td>submitTransaction(6장) · onChainEvent(4장)</td></tr>
+<tr><td><b>오프램프</b><br/>코인→법정통화</td><td>고객→풀 wallet 코인 <b>회수 전송</b>을 15분 배치로. rebalance 면 vault→발행사 주소 <b>출금 실행</b>.</td><td>submitTransaction(6장) · onChainEvent(4장)</td></tr>
+<tr><td><b>스왑</b><br/>코인↔코인</td><td>고객↔은행 풀 사이 <b>양방향 전송</b>(회수+할당) 2건을 15분 배치로. 두 자산 재고가 다 있어야 함.</td><td>submitTransaction ×2(6장) · onChainEvent(4장)</td></tr>
 </tbody>
 </table>
 <p class="table-note">즉 세 거래에서 매니저가 새로 배우는 동사는 없습니다 — 6페이지의 <b>submitTransaction</b>(출금 실행)과 4페이지의 <b>입금 감지</b>를 조합할 뿐입니다. 스왑만 전송이 두 다리(보내는 코인·받는 코인)라 델타가 두 줄로 잡힙니다.</p>

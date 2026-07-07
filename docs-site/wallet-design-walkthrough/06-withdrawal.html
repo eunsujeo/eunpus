@@ -73,6 +73,46 @@ sequenceDiagram
 
 <p>행위자를 우리 모델로 매핑하면 — <b>고객은 온체인에 등장하지 않습니다</b>. 고객의 "출금해 주세요"는 업무 승인 단계에서 끝나고, 온체인의 발신 vault(옴니버스·출금 pool)·키(MPC)·제출자(relay)는 전부 수탁자 쪽입니다. 위임·실행 메커니즘의 상세는 <a href="../gas-delegation/gsn-paymaster.html#eip7702">가스 대납 문서 9장</a>.</p>
 
+<h2>내부 전송 — 우리 vault 사이의 이동</h2>
+
+<p>같은 submitTransaction 인데 <b>목적지가 외부 주소가 아니라 우리 vault</b> 인 경우입니다. 이 설계에서 세 곳이 이 이동을 씁니다 — <b>sweep</b>(고객 vault → 옴니버스, 5장), <b>출금 풀 보충</b>(옴니버스 → 출금 풀), <b>배치 정산</b>(고객 자산 지갑 ↔ 은행 자산 지갑, 10장).</p>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as Service·Admin 백엔드
+    participant DB as 백엔드 DB
+    participant PW as 폴링 워커 (4장)
+    box rgb(254,226,226) 보안 존 · SGX/TEE
+    participant COS as API Co-signer
+    end
+    box rgb(220,252,231) 블록체인 매니저
+    participant FB as Fireblocks
+    end
+    participant RL as 지정 relay<br/>(Fireblocks Relay)
+
+    BE->>FB: submitTransaction — source·dest 둘 다 우리 vault (gasless)
+    FB-->>BE: TxRef
+    BE->>DB: 이동 기록 — 고객 잔액 원장은 불변 (온체인 보관 위치만 이동)
+    FB->>COS: 서명 요청 — 관문은 외부 출금과 동일 (Callback Handler 재검증)
+    COS-->>FB: MPC share 서명
+    FB->>RL: gas 부담 위임 — 내부 전송도 온체인 거래라 gas 가 든다
+    Note over RL: 전파·확정은 외부 출금과 동일 — relay 가 발신자로 제출·지불
+    PW->>FB: 폴링 — 같은 스트림에 잡힌다
+    PW->>DB: 내부 이동 분기(4장)로 상태 갱신 — 입금도 출금도 아닌 제3 분기
+</pre></div>
+
+<table>
+<thead><tr><th style="width:24%">외부 출금과 다른 것</th><th>내용</th></tr></thead>
+<tbody>
+<tr><td><b>목적지</b></td><td>우리 워크스페이스의 vault — 외부 주소처럼 <b>화이트리스트에 등록할 필요가 없다</b>.</td></tr>
+<tr><td><b>고객 잔액</b></td><td><b>불변</b> — 회계 이벤트가 아니라 온체인 보관 위치의 이동이다. DB 원장은 이동 사실만 기록한다.</td></tr>
+<tr><td><b>폴링 분기</b></td><td>source·dest 가 둘 다 우리라서 <b>입금도 출금도 아닌 내부 이동</b>으로 갈린다(4장).</td></tr>
+<tr><td><b>같은 것</b></td><td>나머지 전부 — 온체인 거래이고, gas 는 relay 가 내고(Universal Gasless), 서명 관문·상태 추적·막힘·boost 는 아래 절 그대로다.</td></tr>
+</tbody>
+</table>
+<p class="table-note">용어 주의 — Fireblocks 문서의 "internal transactions" 는 다른 뜻이다(컨트랙트 실행 중 발생하는 네이티브 자산 이동의 알림 지원). 이 절의 내부 전송은 <b>vault 사이의 이동</b>을 말한다.</p>
+
 <h2>정책 게이트 — 마지막 방어선은 TAP</h2>
 
 <p><b>규칙은 코드가 아니라 데이터</b>입니다 — 화이트리스트·한도는 설정이고, 그 관리·승인은 <b>Admin 백엔드</b>의 거버넌스 몫(co-signer 승인 포함)입니다. 방어선이 <b>벤더 안 TAP</b>에 있으므로, 할 일은 게이트를 만드는 게 아니라 TAP 정책을 운영·승인하는 것(Admin)입니다.</p>
