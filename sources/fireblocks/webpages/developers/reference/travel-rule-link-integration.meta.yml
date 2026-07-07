@@ -1,0 +1,15 @@
+url: https://developers.fireblocks.com/reference/travel-rule-link-integration
+fetched_at: 2026-07-07
+source_type: webpage
+domain: compliance / travel-rule / api-reference
+tier: 1
+title: "Travel Rule Support (TRLink) Integration"
+crawl_status: summary-fetched (WebFetch 상세 요약 — 본문 원문 미보존)
+key_facts: |
+  - TRLink = 제공자 중립 통합 레이어. 명시 파트너: Sumsub(JWT/RSA), GTR(Curve25519)
+  - 3단계 정책: 스크리닝 정책 → 누락 TRM 정책 → 포스트스크리닝 정책
+  - 법적 실체(legal entity) 단위 설정 — 실체당 복수 TRP 연동 가능
+  - 출금: assess → 공개키 → IVMS 암호화 → createTRLinkTrm (거래 전) → 거래 생성 → TRM id 연결
+  - 입금: 거래 수신 → assess(txId) → TRM 생성·연결 (사후 대조)
+  - 엔드포인트 프리픽스: /v1/screening/trlink/*
+promote_condition: "TRLink 채택 검토 시 (Notabene 직접 통합과의 관계 확인 필요)"

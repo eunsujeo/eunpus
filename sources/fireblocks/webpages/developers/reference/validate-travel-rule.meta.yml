@@ -1,0 +1,17 @@
+url: https://developers.fireblocks.com/reference/validate-travel-rule
+fetched_at: 2026-07-07
+source_type: webpage
+domain: compliance / travel-rule / api-reference
+tier: 1
+title: "Travel Rule with Notabene — validate API"
+crawl_status: summary-fetched (WebFetch 상세 요약 — 본문 원문 미보존)
+key_facts: |
+  - 출금 사전 검증 2단계: POST /v1/screening/travel-rule/validate (임계값·주소 유형 판별)
+    → 정보 수집 → POST /v1/screening/travel-rule/validate/full (수취 VASP·수취인)
+  - validate 응답 type: NON_CUSTODIAL | BELOW_THRESHOLD | TRAVELRULE
+    beneficiaryAddressType: UNKNOWN | HOSTED | UNHOSTED
+  - isValid 확인 후 POST /v1/transactions 에 travelRuleMessage(PII SDK 암호화) 동봉 제출
+  - 사전 조건: Notabene VASP 계정, Notabene CLI 로 Ed25519 키 생성
+    → PUT /v1/screening/travel-rule/vasp/update 로 DID 키 등록
+  - 검사 제외 경로: Gas Station→Vault, Vault→Network Connection, Vault→Exchange, Vault→Vault
+promote_condition: "트래블룰 출금 검증 구현 착수 시"

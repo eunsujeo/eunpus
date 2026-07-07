@@ -1133,3 +1133,19 @@
 - **소스 저장**: `sources/fireblocks/markdown/2026-07-03__developers-fireblocks-com__vault-address-api-semantics.md` (Mode C extract)
 - **설계 반영**: docs-site 01-create-account 에 Idempotency-Key=f(ref)·ref UNIQUE·name=라벨 fallback 반영(다이어그램 + "재시도·중복 방어" 결정 callout)
 - **신규 entity 0**
+
+### Q-2026-07-07-C01: Notabene 통합 vs TRLink(Travel Rule Support) 의 관계
+
+- **Why it matters**: 트래블룰 도입 시 어느 통합 경로를 쓸지가 첫 결정. 두 문서군이 서로를 언급하지 않아 병행인지 세대교체인지 불명.
+- **확정**: Notabene 통합 = 기본 파트너십, `/v1/screening/travel-rule/*` (validate·validate/full·vasp). TRLink = 제공자 중립 레이어, 명시 파트너 Sumsub·GTR, `/v1/screening/trlink/*`, 법적 실체 단위 설정 (Stage 143 — developers reference 2건 + support PDF).
+- **확인 질문**: 신규 도입 권장 경로는? Notabene 을 TRLink 파트너로도 붙일 수 있나? 기능 차이(정책 3단 vs 2단)?
+- **Sources to check**: CSM · developers.fireblocks.com Travel Rule 섹션 잔여 페이지
+- **Status**: open
+
+### Q-2026-07-07-C02: Travel Rule 의 TAP 상호작용 · 관할권 임계값 · Blocking Time 기본값
+
+- **Why it matters**: 출금 파이프라인(워크스루 6장)에서 스크리닝 게이트의 정확한 위치(서명 전 어느 단계, TAP 과의 선후)와 한국 임계값(원화 100만원 기준 적용 방식)이 설계·정책 작성에 필요.
+- **확정 (Stage 143)**: Post-Screening Accept 의 출금 설명 "you can now sign them" → 스크리닝은 서명 전 게이트 (travel-rule-post-screening-policy.md, p.3). Wait 은 Pending 최대 4시간. Blocking Time 은 in/out 별 advanced settings 로 조정 가능 — 기본값은 미확인.
+- **확인 질문**: TAP 평가와 Travel Rule 스크리닝의 순서? 한국 관할 임계값 설정 방법(AmountUSD 만 지원?)? Blocking Time 기본값?
+- **Sources to check**: travel-rule-advanced-configuration-settings.pdf (미추출) · about-the-travel-rule.pdf (미추출) · CSM
+- **Status**: open

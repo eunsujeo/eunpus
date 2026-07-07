@@ -7578,3 +7578,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 결과: 카탈로그 135 체인 확정 (EVM 90 · non-EVM account 27 · UTXO 14 · Cosmos SDK 3 · Permissioned DLT 1). quirk: Cosmos 생태 5개 체인이 UTXO-based 로 분류(Axelar·dYdX·Injective·Noble·Thorchain), Canton = 5번째 유형(DAML consortium), Noble fee=USDC, ETH testnet=Sepolia+Hoodi
 - 영향받은 페이지: vendors/fireblocks/blockchains.md (Summary 집계 + 체인 종류 vocabulary 보강, last_updated_stage 142)
 - 신규 entity: 0
+
+## Stage 143 (2026-07-07) — Travel Rule deep ingest (support PDF 3종 Mode C + developers 3건 Mode B)
+- source: 2026-05-19__support-fireblocks-io__{travel-rule-post-screening-policy, travel-rule-transaction-screening-policy, setting-up-travel-rule-integration}.pdf → pdftotext 추출 + developers.fireblocks.com 3 URL (define-travel-rule-policies · validate-travel-rule · travel-rule-link-integration) meta 등록
+- 확정: premium opt-in(CSM) · Notabene 연동(VASP DID) · Gateway–subsidiary VASP(vault 당 단일 VASP) · 정책 2단(Screening: Screen/Bypass/Freeze · Post-Screening: 결과 7종 × 조치 6종 first-match) · 입금 Reject/Freeze = 동결+Admin unfreeze · 출금 Accept 후 서명 가능(스크리닝 = 서명 전 게이트) · 출금 API validate→validate/full→travelRuleMessage 동봉 · TRLink(Sumsub·GTR) 별도 레이어
+- ANSWERED: Q-2026-05-18-S03 partial (Travel Rule 쪽 정책 구조 확정, AML 쪽 잔여)
+- 신규 Q: Q-2026-07-07-C01 (Notabene vs TRLink 관계) · Q-2026-07-07-C02 (TAP 상호작용·한국 임계값·Blocking Time 기본값)
+- 영향받은 페이지: vendors/fireblocks/compliance.md (Travel Rule 절 신설, last_updated_stage 143)
+- 신규 entity: 0 (compliance hub 흡수)
