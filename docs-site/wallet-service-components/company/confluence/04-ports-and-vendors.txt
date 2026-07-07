@@ -36,8 +36,8 @@ interface AccountPort {                       // 계정·주소 (키가 있는 �
 interface TransactionPort {                   // 트랜잭션 쓰기 + 상태 + 내 지갑 이벤트
     fun estimateFee(req): Fee                 // 제출 전 수수료 추정 (low/med/high)
     fun submitTransaction(req): TxRef         // 서명+전파 묶음 = Fireblocks createTransaction
-    fun getStatus(txRef): TxStatus            // SUBMITTED / CONFIRMING / COMPLETED / FAILED
-    fun transactionsOf(account, range): List<Transfer>  // 내 계정 송수신 이력 — custody 가 줌. 임의 "외부" 주소는 ChainQueryPort.transfersOf
+    fun statusOf(txRef): TxStatus            // SUBMITTED / CONFIRMING / COMPLETED / FAILED
+    fun transactionsOf(account, after, before, status?): List<Transfer>  // 내 계정 송수신 이력 (after/before = Unix ms · status = 한 번에 한 상태). 임의 "외부" 주소는 ChainQueryPort.transfersOf
     fun boost(txRef): TxRef                   // 선택 capability — EVM RBF 수수료 인상 재전송 — Admin 운영
     fun cancel(txRef): TxRef                   // 선택 capability — EVM=같은 순번 0원 self-send 덮어쓰기 — Admin 운영
     fun onChainEvent(handler): Subscription   // 내 지갑 수신·확정 push — Fireblocks webhook 이 줌
@@ -57,7 +57,7 @@ EVM 에서 파생은 순수 함수처럼 보이지만, Fireblocks 의 {{generate
 {note}
 
 {warning:title=submitTransaction 은 "서명 완료" 가 아니라 "확정 대기 시작" 이다}
-EVM 에서 submitTransaction 은 전파까지만 묶는다 — 그 뒤 getStatus 는 SUBMITTED → CONFIRMING(체인 등장, 아직 미확정) → COMPLETED(DCCP 임계 confirmation 도달 = finality) 로 흐른다. {{numOfConfirmations}} 로 "confirm(체인 등장) ↔ finality(임계 도달)" 를 가른다. 임계값은 DCCP 가 정하며 대부분 1, ETC 372, contract call 은 3 이상 — DCCP 는 *Admin 백엔드* 가 소유한다.
+EVM 에서 submitTransaction 은 전파까지만 묶는다 — 그 뒤 statusOf 는 SUBMITTED → CONFIRMING(체인 등장, 아직 미확정) → COMPLETED(DCCP 임계 confirmation 도달 = finality) 로 흐른다. {{numOfConfirmations}} 로 "confirm(체인 등장) ↔ finality(임계 도달)" 를 가른다. 임계값은 DCCP 가 정하며 대부분 1, ETC 372, contract call 은 3 이상 — DCCP 는 *Admin 백엔드* 가 소유한다.
 {warning}
 
 h2. 3. 어댑터 — Fireblocks 가 유일한 라이브 구현

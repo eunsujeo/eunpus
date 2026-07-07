@@ -51,12 +51,12 @@ class FireblocksWebhookController(
                 is ChainEvent.OutgoingStatusChanged -> "withdrawal.status-changed"
             }
         return Notification(
-            id = "${txRef.chainId.value}:${txRef.id}:$type",
+            id = "${asset.chainId.value}:${txRef.id}:$type",
             type = type,
             payload =
                 mapOf(
                     "txRef" to txRef.id,
-                    "chainId" to txRef.chainId.value,
+                    "chainId" to asset.chainId.value,
                     "address" to address.value,
                     "asset" to asset.symbol,
                     "amountMinorUnits" to amount.minorUnits.toString(),

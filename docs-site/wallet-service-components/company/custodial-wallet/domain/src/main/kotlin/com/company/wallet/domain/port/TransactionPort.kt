@@ -1,7 +1,6 @@
 package com.company.wallet.domain.port
 
 import com.company.wallet.domain.model.Account
-import com.company.wallet.domain.model.BlockRange
 import com.company.wallet.domain.model.ChainEventHandler
 import com.company.wallet.domain.model.FeeEstimate
 import com.company.wallet.domain.model.Subscription
@@ -9,6 +8,7 @@ import com.company.wallet.domain.model.TransactionRequest
 import com.company.wallet.domain.model.Transfer
 import com.company.wallet.domain.model.TxRef
 import com.company.wallet.domain.model.TxStatus
+import com.company.wallet.domain.model.TxStatusFilter
 
 /**
  * 트랜잭션 포트 — 쓰기 + 상태 + 내 지갑 이벤트 (가이드 13.3).
@@ -22,19 +22,24 @@ interface TransactionPort {
 
     /**
      * 서명+전파 묶음. EVM 에선 Fireblocks 의 `createTransaction` 한 번이 build+MPC 서명+전파+nonce 를
-     * 모두 묶는다 — 이후 상태는 [getStatus] 로 조회한다 (가이드 13.3 · 14.2).
+     * 모두 묶는다 — 이후 상태는 [statusOf] 로 조회한다 (가이드 13.3 · 14.2).
      */
     suspend fun submitTransaction(request: TransactionRequest): TxRef
 
-    suspend fun getStatus(txRef: TxRef): TxStatus
+    suspend fun statusOf(txRef: TxRef): TxStatus
 
     /**
      * 내 계정의 송수신 이력 — custody 가 준다 (가이드 13.3, 전 구현 가능 — capability 아님).
      * 임의 "외부" 주소의 이력은 [ChainQueryPort.transfersOf] 소관 — 동사의 자리는 데이터의 주인이 정한다.
+     *
+     * after/before 는 Unix ms — 벤더 목록 API 의 시간 필터 그대로 (워크스루 4장 커서와 같은 형식).
+     * status 는 서버측 필터라 한 번에 한 상태만 걸린다 (워크스루 8장).
      */
     suspend fun transactionsOf(
         account: Account,
-        range: BlockRange,
+        after: Long,
+        before: Long,
+        status: TxStatusFilter? = null,
     ): List<Transfer>
 
     /** 내 지갑 수신·확정 push 구독 (custody 백엔드가 줌). */

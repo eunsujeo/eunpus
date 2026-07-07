@@ -35,7 +35,7 @@
 |---|---|---|
 | `domain` | 13 | `AccountPort` · `TransactionPort` · `FeeBoostCapability` · `CancelCapability` · `DepositAddressIssuanceCapability` · `ChainQueryPort`(`transfersOf`/`balanceAt`/`query`) / `TransactionRequest` · `TxRef` · `TxStatus`(sealed) · `ChainSpecific`(sealed — `Evm` 만) · `ChainEvent`(sealed) · `Amount` · `Balance`(available/pending/locked) · `Transfer` · `ChainId`(value class — `ETHEREUM`·`BASE`) · `error/`(`UnsupportedCapabilityException`·`DuplicateRequestException`) |
 | `shared` | — | `IdempotencyStore`(인터페이스) · `InMemoryIdempotencyStore` / `address/AddressRules`(로컬 EVM 주소 검증) |
-| `backend/service` | 6·7·8·9 | Service 백엔드(고객 런타임) — `gateway/WalletGatewayService` · `gateway/AccountController` · `gateway/TransactionController` / `directory/AccountDirectory`(계정·주소 발급 결과 저장·소유) / `orchestration/WithdrawalOrchestrator` / `reconciliation/ReconciliationService`(정합성·@Scheduled sweep) / `alerts/NotificationFanout` · `alerts/Subscriber` · `alerts/DeliveryStore` |
+| `backend/service` | 6·7·8·9 | Service 백엔드(고객 런타임) — `gateway/WalletGatewayService` · `gateway/AccountController` · `gateway/TransactionController` / `directory/AccountDirectory`(계정·주소 발급 결과 저장·소유) / `ledger/CustomerLedger`(고객 잔액 세 칸·내역 원장 — 고객별 진실은 DB, 워크스루 8장 · 인메모리 구현 포함) / `orchestration/WithdrawalOrchestrator` / `reconciliation/ReconciliationService`(정합성·@Scheduled sweep) / `alerts/NotificationFanout` · `alerts/Subscriber` · `alerts/DeliveryStore` |
 | `backend/admin` | 17.2 | Admin 백엔드(운영·거버넌스 · 권한·감사 경계) — `policy/PolicyAdminService`(화이트리스트·한도·동결) / `sweep/SweepService`(sweep·rebalance). 스텁. 모듈 의존은 domain 만 |
 | `adapters/fireblocks` | 14 | **유일한 라이브 어댑터**. `FireblocksAdapter`(AccountPort+TransactionPort + FeeBoost/Cancel/DepositAddressIssuance capability) · `FireblocksClient`(SDK 경계 스텁) · `FireblocksWebhookMapper` |
 | `adapters/fake` | 17.2 | `FakeCustodyAdapter`(인메모리 — 벤더 없이 계약 테스트·백엔드 검증). 자체 구축 HD/인덱서/HSM 내부는 담지 않는다 |
@@ -52,7 +52,7 @@
    Fireblocks SDK 타입은 `adapters/fireblocks` 밖으로 새면 안 된다. **`apps/service-api` 의 ArchUnit 테스트가 이 규칙들을 검사한다 — 깨면 빌드 실패.**
 2. **domain 은 순수 Kotlin** — Spring·벤더 SDK import 금지 (`build.gradle.kts` 에 coroutines 외 의존 없음).
 3. **포트 시그니처 변경은 설계 변경** — 가이드 13.3 과 동기화해서만 수정. 함수명은 가이드와 1:1
-   (`createAccount`/`addressOf`(조회)/`issueDepositAddress`(발급 capability)/`getBalance`→`Balance`/`validateAddress`/`estimateFee`/`submitTransaction`/`getStatus`/`onChainEvent`/`boost`/`cancel`/`transfersOf`/`balanceAt`/`query`).
+   (`createAccount`/`addressOf`(조회)/`issueDepositAddress`(발급 capability)/`balanceOf`→`Balance`/`validateAddress`/`estimateFee`/`submitTransaction`/`statusOf`/`onChainEvent`/`boost`/`cancel`/`transfersOf`/`balanceAt`/`query`).
 4. **capability 는 타입으로** — fee boost 는 `FeeBoostCapability`, cancel 은 `CancelCapability` 별도
    인터페이스 (보장 못 하는 어댑터는 미구현 허용 — 호출 측은 `is` 분기, 미구현 시 `UnsupportedCapabilityException`). `TxStatus`·`ChainSpecific` 은
    sealed — 새 상태/체인 특화는 추가만 하고 의미 변경 금지. 잔액 사용 가능 판정은 `Balance.available` 만.

@@ -15,16 +15,6 @@
 </div>
 <h1>온·오프램프·스왑 — 입금·출금 조합으로 보기</h1>
 <p class="subtitle">충전·환전·스왑도 이 지갑 백엔드의 흐름이다. 다만 새 매니저 기능이 아니라 1~8페이지의 <b>입금·출금</b>이 <b>사전 민팅 재고 풀 · 델타 원장</b>과 만나 조립된 것 — 그 조립에서 매니저가 어디에 들어오는지만 요약한다. 원장·회계·대사 상세는 <a href="../ramp-settlement-walkthrough/index.html">정산 워크스루</a>.</p>
-<p class="who-line"><span class="who svc">Service</span> 1~8장의 입금·출금 조립이라 부르는 곳도 같다<span class="sep">·</span><span class="who adm">Admin</span> 재고 풀 정책과 리밸런싱</p>
-
-<h2>왜 여기서 요약하나</h2>
-<p>1~8페이지는 매니저 포트의 <b>기본 동사</b>만 다뤘습니다 — 계정·주소·입금·출금·잔액·수수료 견적. 온램프(법정통화→코인)·오프램프(코인→법정통화)·스왑(코인↔코인)은 그 <b>입금·출금 위에 얹힌 상위 흐름</b>이지, 매니저가 새로 주는 기능이 아닙니다. 그래서 이 페이지는 <b>매니저 경계에서 본 요약</b>만 잡습니다 — "이 세 거래에서 포트는 실제로 무엇을 부르는가". 그 뒤의 델타 원장·분개·대사는 <a href="../ramp-settlement-walkthrough/index.html">정산 워크스루</a>가 거래 한 건씩 따라갑니다.</p>
-
-<div class="callout">
-<div class="callout-title">핵심 하나 — 평상시엔 발행사·거래소가 끼지 않는다</div>
-<p style="margin:0 0 8px">실무 기본형은 <b>사전 민팅 재고 풀</b>입니다. 발행사 mint/burn 이 느려서(수 분~수십 분+), 코인을 미리 대량 민팅해 <b>재고 풀(은행 자산)</b>로 들고 있다가 거래마다 <b>풀에서 고객에게 넣고 빼기만</b> 합니다. 그래서 <b>충전·환전·스왑 한 건은 발행사·Circle·거래소를 부르지 않습니다</b> — 순수 DB 할당/회수 + 델타 배치로 끝납니다.</p>
-<p style="margin:0">발행사·거래소가 등장하는 건 <b>풀 재고가 상·하한을 벗어났을 때 다시 채우는 rebalance</b>(또는 재고가 비었을 때의 온디맨드)뿐입니다. 즉 "온/오프램프·스왑 = 발행사·거래소 거래"가 아니라, 발행사·거래소는 <b>풀 보충 경로</b>에만 있습니다.</p>
-</div>
 
 <h2>매니저가 실제로 하는 일 — 세 거래</h2>
 <p>세 거래 모두 <b>DB 는 즉시, 블록체인 전송은 15분 배치</b>라는 2단계로 돕니다. 매니저(포트)는 <b>2단계의 블록체인 전송·감지</b>에서만 등장합니다. 1단계(DB 반영)엔 매니저 호출이 없습니다.</p>
@@ -52,7 +42,8 @@ sequenceDiagram
     rect rgb(254,243,199)
     Note over Cust,DL: 1단계 — 즉시 (DB 반영 · 매니저 호출 없음)
     Cust->>App: 온/오프램프·스왑 요청
-    App->>App: 가용 확인 (풀 잔액 − 미정산 PENDING ≥ 요청?)
+    App->>DB: 고객 가용 확인 — DB 조회 (오프램프·스왑: 고객이 내놓는 코인이 있는가)
+    App->>App: 풀 재고 확인 (풀 잔액 − 미정산 PENDING ≥ 요청?)
     App->>DB: 고객·은행 자산 이동 즉시 반영
     App->>DL: 델타 PENDING 기록 (전송 대기)
     App-->>Cust: 잔액 즉시 반영
@@ -61,16 +52,16 @@ sequenceDiagram
     rect rgb(220,252,231)
     Note over App,MGR: 2단계 — 15분 배치 (Service 백엔드가 실행)
     App->>DL: 윈도 PENDING 조회 → 자산별 상계(netting)
+    App->>MGR: estimateFee — 그 시점의 견적을 건별 스냅샷으로 기록 (7장)
     App->>MGR: 자산당 순증분 1건 submitTransaction<br/>(고객 자산 지갑 ↔ 은행 자산 지갑)
     MGR-->>App: onChainEvent (전송 확정)
     App->>DL: 해당 PENDING 일괄 settled
     end
 </pre></div>
-<p class="diagram-caption"><b>노랑 = 1단계</b>는 매니저를 안 부른다 — 순수 DB 반영 + 델타 PENDING 적재이고, <b>가용 확인</b>(실제 풀 잔액 − 미정산 PENDING)이 풀 부족 초과 거래를 막는다. <b>초록 = 2단계</b>에서만 이 문서의 매니저가 등장 — 6페이지의 submitTransaction, 4페이지의 입금 감지 그대로다. 발행사·거래소는 이 그림에 없다(풀 rebalance 때만 들어온다). 스왑은 전송이 두 다리라 초록 단계가 두 번 잡힌다.</p>
+<p class="diagram-caption"><b>노랑 = 1단계</b>는 매니저를 안 부른다 — 순수 DB 반영 + 델타 PENDING 적재이고, 확인이 두 겹이다: <b>고객 가용</b>(DB 조회 — 오프램프·스왑에서 고객이 내놓는 코인)과 <b>풀 재고</b>(실제 풀 잔액 − 미정산 PENDING)가 각각 없는 돈 거래와 풀 부족 초과 거래를 막는다. <b>초록 = 2단계</b>에서만 이 문서의 매니저가 등장 — 6페이지의 submitTransaction, 4페이지의 입금 감지 그대로다. 발행사·거래소는 이 그림에 없다(풀 rebalance 때만 들어온다). 스왑은 전송이 두 다리라 초록 단계가 두 번 잡힌다.</p>
 
 <h2>배치를 효율적으로 — Service 백엔드가 두 지갑 사이를 상계한다</h2>
-<p>15분 배치는 <b>Service 백엔드(지갑 백엔드)</b>가 돌립니다 — <code>delta_ledger</code>의 PENDING 을 읽어 매니저의 <b>submitTransaction</b>으로 실제 온체인 전송을 냅니다. 여기서 핵심은 <b>온체인에서 움직이는 지갑이 딱 둘</b>이라는 점입니다 — <b>고객 자산이 모인 지갑</b>(5장의 sweep 이 고객별 vault 에서 모아 온다)과 <b>은행 자산(풀)이 모인 지갑</b>. 개별 고객 잔액은 DB(<code>customer_ledger</code>)에서만 쪼개 관리하고, 체인엔 이 두 옴니버스 지갑만 있습니다.</p>
-<p>그래서 한 윈도에 쌓인 수많은 PENDING 은 <b>전부 이 두 지갑 사이의 이동</b>입니다. 건별로 전송하면 N건이지만, <b>자산별로 방향을 상계(netting)</b>하면 <b>자산당 순증분 1건</b>이면 됩니다.</p>
+<p>건별로 전송하면 N건이지만, <b>자산별로 방향을 상계(netting)</b>하면 <b>자산당 순증분 1건</b>이면 됩니다.</p>
 
 <div class="diagram"><pre class="mermaid">
 flowchart LR
@@ -107,7 +98,7 @@ flowchart LR
 
 <div class="callout">
 <div class="callout-title">이 페이지의 경계 — 요약까지, 상세는 정산 워크스루</div>
-<p style="margin:0">여기서는 <b>매니저가 어디에 들어오는지</b>까지만 봤습니다. 고객/은행 자산 분리(분별관리), 델타 원장의 부호 규약, 총계정 변화, rebalance 조달 채널(발행사·Circle·거래소), 실패·대사(reconciliation)는 <a href="../ramp-settlement-walkthrough/index.html">정산 워크스루</a>가 온램프·오프램프·스왑을 거래 한 건씩 따라가며 다룹니다. 매니저 경계 자체는 <a href="../ramp-settlement-walkthrough/manager-boundary.html">정산 흐름과 블록체인 매니저의 경계</a>가 표로 정리합니다.</p>
+<p style="margin:0">여기서는 <b>매니저가 어디에 들어오는지</b>까지만 봤습니다. 고객/은행 자산 분리(분별관리), 델타 원장의 부호 규약, 총계정 변화, rebalance 조달 채널(발행사·Circle·거래소), 실패·대사는 <a href="../ramp-settlement-walkthrough/index.html">정산 워크스루</a>가 온램프·오프램프·스왑을 거래 한 건씩 따라가며 다룹니다. 매니저 경계 자체는 <a href="../ramp-settlement-walkthrough/manager-boundary.html">정산 흐름과 블록체인 매니저의 경계</a>가 표로 정리합니다.</p>
 </div>
 
 <p class="foot">더 깊이: <a href="../ramp-settlement-walkthrough/index.html">정산 워크스루</a>(델타 원장 · 사전 민팅 재고 풀 · 세 거래 상세) · <a href="../ramp-settlement-walkthrough/manager-boundary.html">매니저 경계 표</a></p>

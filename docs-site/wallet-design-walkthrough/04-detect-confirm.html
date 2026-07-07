@@ -15,7 +15,6 @@
 </div>
 <h1>감지와 확정 — 폴링 · 상태 판정 · DCCP</h1>
 <p class="subtitle">입·출금이 함께 쓰는 공통 기준 — 언제부터 믿는가, 그리고 어떻게 아는가</p>
-<p class="who-line"><span class="who svc">Service</span> 폴링 워커가 주기로 부른다 — 입금·출금이 같은 판정을 쓴다</p>
 
 <pre><code>onChainEvent(handler)
 // 어댑터가 폴링으로 채워 handler 에 전달
@@ -69,7 +68,7 @@ sequenceDiagram
             SUB->>DB: 반영해 둔 잔액을 되돌린다 — 입금 기록은 남긴다
         end
         opt 입금인데 주소가 우리 매핑에 없음
-            SUB->>DB: 어느 고객인지 모름 — 경보를 올린다<br/>기록은 tx 에 실린 vaultId 앞으로 남긴다 (고객 잔액 반영 보류)
+            SUB->>DB: 어느 고객인지 모름 — 알림을 보낸다<br/>기록은 tx 에 실린 vaultId 앞으로 남긴다 (고객 잔액 반영 보류)
         end
     end
 

@@ -15,7 +15,6 @@
 </div>
 <h1>입금 — 한 건이 잔액이 되기까지</h1>
 <p class="subtitle">폴링이 실어 온 입금이 대기를 거쳐 가용이 되고, 고객 vault 에서 옴니버스로 모이기까지 — 감지·판정 기준은 4장</p>
-<p class="who-line"><span class="who svc">Service</span> 폴링으로 입금을 반영하고 sweep 배치를 실행한다<span class="sep">·</span><span class="who adm">Admin</span> AML 동결 건의 unfreeze 를 승인한다</p>
 
 <h2>입금 한 건이 흐르는 길 — 폴링으로 감지, 확정까지</h2>
 
@@ -68,14 +67,14 @@ sequenceDiagram
 <tr><td>REJECTED</td><td><code>AUTO_FREEZE</code></td><td>스크리닝 정책이 자동 동결 — Admin unfreeze 까지 잠금</td></tr>
 <tr><td>REJECTED</td><td><code>FROZEN_MANUALLY</code></td><td>Console/API 사용자가 수동 동결 — 동일</td></tr>
 <tr><td>REJECTED</td><td><code>REJECTED_AML_SCREENING</code></td><td>AML 고위험 판정 — 동일</td></tr>
-<tr><td>FAILED</td><td><code>DROPPED_BY_BLOCKCHAIN</code></td><td>블록에 실렸다가 떨어짐(깊은 reorg 등) — 가공본 취소 대상(아래 절)</td></tr>
+<tr><td>FAILED</td><td><code>DROPPED_BY_BLOCKCHAIN</code></td><td>블록에 실렸다가 떨어짐(깊은 reorg 등) — 반영해 둔 잔액을 되돌린다(아래 절)</td></tr>
 </tbody>
 </table>
 <p class="table-note">전체 subStatus(실패 사유 수십 종)는 출금·운영 영역이라 벤더 레퍼런스의 몫이고, 여기엔 입금에서 관찰되는 것만 실었다.</p>
 
 <h2>예외 — reorg 로 믿었던 입금이 뒤집히면</h2>
 
-<p>여기까지가 확정으로 가는 정상 경로였고, 예외가 하나 남습니다. 이더리움·Base 는 체인 끝이 드물게 교체(reorg)될 수 있습니다. <b>1차 방어는 4장의 DCCP 임계 그 자체입니다</b> — 임계만큼 confirmation 이 쌓인 뒤에만 가용 처리하므로, 그보다 얕은 reorg 는 잔액에 닿지 못합니다. 임계보다 깊은 reorg(극히 드묾)로 거래가 블록에서 떨어지면 Fireblocks 는 즉시 <b>FAILED(또는 취소·만료) + subStatus <code>DROPPED_BY_BLOCKCHAIN</code></b> 으로 표시합니다 — BROADCASTING 으로 되돌아가지 않습니다(Fireblocks Support 확인). 이 신호를 받으면 <b>가공본(잔액 반영분)만 취소하고 원본 기록은 보존</b>합니다. 잠깐 빠졌다 재편입되는 얕은 reorg 는 CONFIRMING 에 머물며 confirmation 수만 다시 셉니다. 최종 안전망은 여전히 <b>주기 대사</b>입니다.</p>
+<p>여기까지가 확정으로 가는 정상 경로였고, 예외가 하나 남습니다. 이더리움·Base 는 체인 끝이 드물게 교체(reorg)될 수 있습니다. <b>1차 방어는 4장의 DCCP 임계 그 자체입니다</b> — 임계만큼 confirmation 이 쌓인 뒤에만 가용 처리하므로, 그보다 얕은 reorg 는 잔액에 닿지 못합니다. 임계보다 깊은 reorg(극히 드묾)로 거래가 블록에서 떨어지면 Fireblocks 는 즉시 <b>FAILED(또는 취소·만료) + subStatus <code>DROPPED_BY_BLOCKCHAIN</code></b> 으로 표시합니다 — BROADCASTING 으로 되돌아가지 않습니다(Fireblocks Support 확인). 이 신호를 받으면 <b>반영해 둔 잔액만 되돌리고 입금 기록은 보존</b>합니다. 잠깐 빠졌다 재편입되는 얕은 reorg 는 CONFIRMING 에 머물며 confirmation 수만 다시 셉니다. 최종 안전망은 여전히 <b>주기 대사</b>입니다.</p>
 
 <h2>입금 다음 — 고객 vault 에서 옴니버스로 (sweep)</h2>
 
@@ -103,6 +102,7 @@ sequenceDiagram
 
     Note over SW,DB: 트리거 — 잔액 임계 · 고정 스케줄 · 네트워크 fee 유리할 때
     SW->>DB: sweep 대상 조회 — 가용 처리 끝난 고객 vault 잔액
+    SW->>FB: estimateFee — 그 시점의 견적을 건별 스냅샷으로 기록 (7장)
     SW->>FB: submitTransaction — 고객 vault → 옴니버스 (vault 별 1건 · gasless)
     Note over FB: 그 vault 의 첫 gasless 거래면 위임 설정(upgrade)이 함께 처리된다 — 주소·키 불변
     FB->>RL: gas 부담 위임 — 거래 생성·서명 시점 (relay 거절이면 거래 실패)

@@ -5,7 +5,6 @@ import com.company.wallet.domain.model.AccountRef
 import com.company.wallet.domain.model.Address
 import com.company.wallet.domain.model.Amount
 import com.company.wallet.domain.model.Asset
-import com.company.wallet.domain.model.BlockRange
 import com.company.wallet.domain.model.Transfer
 import com.company.wallet.domain.model.Balance
 import com.company.wallet.domain.model.ChainEvent
@@ -15,6 +14,7 @@ import com.company.wallet.domain.model.Subscription
 import com.company.wallet.domain.model.TransactionRequest
 import com.company.wallet.domain.model.TxRef
 import com.company.wallet.domain.model.TxStatus
+import com.company.wallet.domain.model.TxStatusFilter
 import com.company.wallet.domain.port.AccountPort
 import com.company.wallet.domain.port.CancelCapability
 import com.company.wallet.domain.port.DepositAddressIssuanceCapability
@@ -68,7 +68,7 @@ class FireblocksAdapter(
     }
 
     /** 잔액 — Fireblocks 의 available/pending/locked 구분 응답을 그대로 [Balance] 로 (가이드 13.3 · 14.2). */
-    override suspend fun getBalance(
+    override suspend fun balanceOf(
         account: Account,
         asset: Asset,
     ): Balance {
@@ -101,10 +101,10 @@ class FireblocksAdapter(
      */
     override suspend fun submitTransaction(request: TransactionRequest): TxRef {
         val tx = client.createTransaction(toCreateParams(request))
-        return TxRef(id = tx.id, chainId = request.asset.chainId)
+        return TxRef(id = tx.id)
     }
 
-    override suspend fun getStatus(txRef: TxRef): TxStatus {
+    override suspend fun statusOf(txRef: TxRef): TxStatus {
         val tx = client.getTransaction(txRef.id)
         return fireblocksStatusToTxStatus(
             status = tx.status,
@@ -112,10 +112,12 @@ class FireblocksAdapter(
         )
     }
 
-    /** 내 거래 이력 — Fireblocks 거래 목록 API (목록 엔드포인트는 적용 전 확인, 가이드 14.2 · 13.3). */
+    /** 내 거래 이력 — GET /v1/transactions (after/before = Unix ms · status 서버측 필터, 가이드 14.2 · 13.3). */
     override suspend fun transactionsOf(
         account: Account,
-        range: BlockRange,
+        after: Long,
+        before: Long,
+        status: TxStatusFilter?,
     ): List<Transfer> = TODO("vault 기준 거래 목록 조회 — 임의 주소 이력은 ChainQueryPort 소관 (가이드 13.3)")
 
     /** 취소(CancelCapability) — drop(boost) 과 별도 엔드포인트 (가이드 14.7). */
@@ -127,7 +129,7 @@ class FireblocksAdapter(
     /** 부스트(drop & replace) — EVM 트랜잭션만 (가이드 4.4). */
     override suspend fun boost(txRef: TxRef): TxRef {
         val replaced = client.boostTransaction(txRef.id)
-        return TxRef(id = replaced.id, chainId = txRef.chainId)
+        return TxRef(id = replaced.id)
     }
 
     /**
@@ -161,10 +163,10 @@ class FireblocksAdapter(
     private fun toCreateParams(request: TransactionRequest): FireblocksCreateTransactionParams =
         FireblocksCreateTransactionParams(
             assetId = assetIdOf(request.asset),
-            sourceVaultId = vaultOf(request.account),
+            sourceVaultId = vaultOf(request.from),
             destinationAddress = request.to.value,
             destinationTag = request.to.memoTag,
             amountMinorUnits = request.amount.minorUnits,
-            externalTxId = request.idempotencyKey,
+            externalTxId = request.externalTxId,
         )
 }

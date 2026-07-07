@@ -7,18 +7,19 @@ package com.company.wallet.domain.model
  * 승인은 이 요청이 만들어지기 전에 끝나 있어야 한다. 매니저는 승인된 지시만 받아 집행한다 (가이드 11).
  */
 data class TransactionRequest(
-    val idempotencyKey: String,
-    val account: AccountRef,
+    /** 벤더에 남기는 우리 쪽 거래 식별자 — 벤더 측 중복 제출 차단 + 우리 키로 벤더 거래 조회 (가이드 6.3). */
+    val externalTxId: String,
+    /** 보내는 vault 계정 — 고객 vault 뿐 아니라 옴니버스·풀 같은 운영 vault 도 이 자리다. */
+    val from: AccountRef,
     val to: Address,
     val asset: Asset,
     val amount: Amount,
     val chainSpecific: ChainSpecific? = null,
 )
 
-/** 제출된 트랜잭션 참조 — 체인 tx hash 또는 custody 의 트랜잭션 id 를 정규화한 것. */
+/** 제출된 트랜잭션 참조 — custody 의 트랜잭션 id 를 정규화한 것. 체인은 요청의 asset 이 이미 안다. */
 data class TxRef(
     val id: String,
-    val chainId: ChainId,
 )
 
 /**

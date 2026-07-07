@@ -30,7 +30,7 @@ interface AccountPort {
      * 잔액 — 단일 숫자가 아니라 [Balance](available·pending·locked) 로 (가이드 13.3).
      * 자금 사용 가능 판정은 available 만 본다.
      */
-    suspend fun getBalance(
+    suspend fun balanceOf(
         account: Account,
         asset: Asset,
     ): Balance

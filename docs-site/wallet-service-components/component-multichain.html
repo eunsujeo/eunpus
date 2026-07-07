@@ -108,7 +108,7 @@
 <div class="diagram"><pre class="mermaid">
 flowchart TB
     SVC["우리 백엔드 · Service·Admin<br/>도메인 동사만 부른다"]
-    PORT["포트 · 통로<br/>createAccount · issueDepositAddress · submitTransaction · getBalance …"]
+    PORT["포트 · 통로<br/>createAccount · issueDepositAddress · submitTransaction · balanceOf …"]
     FB["Fireblocks · 벤더 안<br/>체인 규칙 정규화 · nonce · gas · 확정 · RBF"]
     ETH["이더리움"]
     BASE["Base"]
@@ -135,7 +135,7 @@ interface AccountPort {
   createAccount(ref): Account                       // 고객 계정 생성 (Service)
   issueDepositAddress(account, asset): Address      // 입금 주소 발급 — EVM 은 memoTag 불필요 (Service)
   addressOf(account, asset): Address                // 발급된 주소 조회 (Service)
-  getBalance(account, asset): Balance               // 가용·대기·잠김 세 칸 (Service·Admin)
+  balanceOf(account, asset): Balance               // 가용·대기·잠김 세 칸 (Service·Admin)
 }
 interface TransactionPort {
   submitTransaction(request): TxRef                 // 출금 제출 — 멱등 키 동반 (Service · 4장)
@@ -153,7 +153,7 @@ interface CancelCapability   { cancel(txRef): TxRef }  // 철회 (4장)
 
 <div class="callout">
 <div class="callout-title">코드가 말하는 것</div>
-<p>우리 백엔드는 <code>submitTransaction(...)</code>·<code>getBalance(...)</code> 처럼 <strong>도메인 동사만</strong> 부른다. EVM 의 nonce 점유, EIP-1559 수수료 책정, 확정 판정(numOfConfirmations vs DCCP), RBF 재전송은 전부 <strong>벤더 안</strong>에서 일어나고 포트 시그니처에는 새지 않는다. "어느 구현인지 우리 백엔드가 모른다" — 이 성질 덕에 EVM 체인이 늘어도(이더리움→Base), 훗날 벤더를 바꿔도 백엔드 코드는 그대로다. <code>boost</code>·<code>cancel</code> 은 EVM 이 제공하는 <strong>선택 capability</strong>라 있을 때만 노출되고, 나가는 돈에 개입하는 동작이라 <strong>Admin</strong> 운영이다(4장).</p>
+<p>우리 백엔드는 <code>submitTransaction(...)</code>·<code>balanceOf(...)</code> 처럼 <strong>도메인 동사만</strong> 부른다. EVM 의 nonce 점유, EIP-1559 수수료 책정, 확정 판정(numOfConfirmations vs DCCP), RBF 재전송은 전부 <strong>벤더 안</strong>에서 일어나고 포트 시그니처에는 새지 않는다. "어느 구현인지 우리 백엔드가 모른다" — 이 성질 덕에 EVM 체인이 늘어도(이더리움→Base), 훗날 벤더를 바꿔도 백엔드 코드는 그대로다. <code>boost</code>·<code>cancel</code> 은 EVM 이 제공하는 <strong>선택 capability</strong>라 있을 때만 노출되고, 나가는 돈에 개입하는 동작이라 <strong>Admin</strong> 운영이다(4장).</p>
 </div>
 
 <h3>2.5 우리 쪽에 남는 것 — 벤더가 흡수하지 못하는 이음매</h3>

@@ -14,15 +14,21 @@
 <a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-detect-confirm.html">4</a><a href="05-deposit.html">5</a><span class="cur">6</span><a href="07-estimate-fee.html">7</a><a href="08-balance-history.html">8</a><a href="09-switch-extend.html">9</a><a href="10-ramp-swap.html">10</a>
 </div>
 <h1>출금 — 제출에서 확정까지, 막혔을 때</h1>
-<p class="subtitle">출금 요청의 두 갈래 — 목적지가 내부면 장부 이체, 외부면 온체인 제출·확정·막힘. 이 시리즈에서 사고가 가장 비싼 페이지</p>
-<p class="who-line"><span class="who svc">Service</span> 접수·장부 이체·온체인 제출과 상태 추적<span class="sep">·</span><span class="who adm">Admin</span> TAP 승인 정책과 막힌 건의 boost·cancel</p>
+<p class="subtitle">출금 요청은 목적지에 따라 둘로 갈린다 — 내부면 장부 이체, 외부면 온체인 제출·확정·막힘</p>
 
-<p><b>무엇·언제</b>: 업무 승인이 끝난 출금 지시를 <b>Service 백엔드</b>가 매니저에 넘깁니다(제출). 조립·순번·전파는 벤더 안에서 <b>블랙박스로</b> 돌지만, <b>MPC 서명만은 보안 존의 co-signer key share 가 있어야</b> 완성됩니다 — 나가는 돈의 마지막 서명 관문이 인프라 안에 섭니다. 제출·상태 추적과 co-signer 운영을 맡습니다.</p>
+<p>업무 승인이 끝난 출금 지시를 <b>Service 백엔드</b>가 매니저에 넘깁니다(제출).</p>
 
-<pre><code>submitTransaction(TransactionRequest { idempotencyKey, account, to, asset, amount })
-  → TxRef { id — 벤더 트랜잭션 id, chainId }</code></pre>
+<pre><code>submitTransaction(TransactionRequest {
+    externalTxId,  // 벤더에 남기는 우리 쪽 거래 식별자 — 재제출 중복 차단 · 우리 키로 벤더 거래 조회
+    from,          // 보내는 vault 의 accountId
+    to,            // 받는 온체인 주소
+    asset,
+    amount
+}) → TxRef { id — 벤더 트랜잭션 id }
 
-<p>제출 전의 <b>견적(estimateFee)</b>은 7장이 다룹니다. 견적은 보장이 아니므로 실제 수수료는 벤더가 <b>제출·조립 단계에서 재확정</b>합니다.</p>
+// to 는 제출 전에 확인한다
+//   ① 형식 검증 — validateAddress (로컬 규칙)
+//   ② 내부/외부 판별 (3장 매핑) — 우리 주소면 온체인에 내지 않고 장부 이체로 전환</code></pre>
 
 <h2>출금 제출 — 파이프라인이 벤더 안으로 들어간다</h2>
 
@@ -42,74 +48,80 @@ sequenceDiagram
     participant RL as 지정 relay<br/>(Fireblocks Relay)
     participant CH as EVM · 이더리움·Base
 
-    BE->>FB: submitTransaction(승인된 출금 · gasless)
-    FB->>FB: createTransaction(…)
-    FB-->>BE: 트랜잭션 id (= TxRef)
-    BE->>DB: 출금 기록 — TxRef 저장, 상태 추적 시작
-    Note over COS,CH: 조립·순번은 벤더가, 전파는 relay 가 — 다만 MPC 서명엔 co-signer share 가 필요하다
-    FB->>COS: 서명 요청 (원문 목적지·금액 동반)
-    COS->>CB: 승인 질의 — 한도·화이트리스트 재검증
-    CB-->>COS: approve / deny
-    COS-->>FB: MPC 서명 share (approve) · deny 면 서명 거부
-    FB->>RL: gas 부담 위임 — 거래 생성·서명 시점 (relay 거절이면 거래 실패)
-    Note over RL,CH: 여기서부터 온체인 — 앞의 모든 단계(제출·기록·서명·위임)는 오프체인이다
-    RL->>CH: 전파 — relay 가 발신자로서 제출하고 gas 를 낸다<br/>vault 몫의 서명(벤더 share + co-signer share)은 그 안의 승인으로 실린다
-    CH-->>FB: 블록 누적 → 확정
-    Note over PW,FB: 다시 오프체인 — 폴링은 읽기라 체인에 아무 흔적을 남기지 않는다
-    PW->>FB: 폴링 — lastUpdated 커서로 변경된 tx 조회 (4장)
-    PW->>DB: 상태 갱신 — TxRef 로 대조, 전파 → 누적 → 확정
+    BE->>BE: to 형식 검증 — validateAddress (로컬 규칙)
+    BE->>DB: to 내부/외부 판별 — 주소 매핑 조회 (3장)
+    alt 내부 — 목적지가 우리 고객의 입금 주소 (장부 이체)
+        Note over BE,DB: 체인에 나갈 이유가 없다 — 자산은 같은 옴니버스 안, 옮길 것은 장부뿐
+        BE->>DB: 원장 이체 — 보낸 고객 차감 · 받는 고객 증가<br/>(한 DB 트랜잭션 — 같은 요청 재시도는 한 번만 반영)
+        Note over BE,DB: 즉시 완료 — 벤더 호출 0 · gas 0 · 확정 대기 없음<br/>서명 관문 미관여 — 한도·AML 검증은 업무 층에 외부 출금과 같은 수준으로
+    else 외부 주소 — 온체인 출금
+        BE->>FB: estimateFee — 그 시점의 견적을 건별 스냅샷으로 기록 (7장)
+        BE->>FB: submitTransaction(승인된 출금 · gasless)<br/>from = 출금 풀 vault — 출금 전용 · round-robin (5장)
+        FB->>FB: createTransaction(…)
+        FB-->>BE: 트랜잭션 id (= TxRef)
+        BE->>DB: 출금 기록 — TxRef 저장, 상태 추적 시작
+        Note over COS,CH: 조립·순번은 벤더가, 전파는 relay 가 — 다만 MPC 서명엔 co-signer share 가 필요하다
+        FB->>COS: 서명 요청 (원문 목적지·금액 동반)
+        COS->>CB: 승인 질의 — 한도·화이트리스트 재검증
+        CB-->>COS: approve / deny
+        COS-->>FB: MPC 서명 share (approve) · deny 면 서명 거부
+        FB->>RL: gas 부담 위임 — 거래 생성·서명 시점 (relay 거절이면 거래 실패)
+        Note over RL,CH: 여기서부터 온체인 — 앞의 모든 단계(제출·기록·서명·위임)는 오프체인이다
+        RL->>CH: 전파 — relay 가 발신자로서 제출하고 gas 를 낸다<br/>vault 몫의 서명(벤더 share + co-signer share)은 그 안의 승인으로 실린다
+        CH-->>FB: 블록 누적 → 확정
+        Note over PW,FB: 다시 오프체인 — 폴링은 읽기라 체인에 아무 흔적을 남기지 않는다
+        PW->>FB: 폴링 — lastUpdated 커서로 변경된 tx 조회 (4장)
+        PW->>DB: 상태 갱신 — TxRef 로 대조, 전파 → 누적 → 확정
+    end
 </pre></div>
 
 <h2>서명은 두 겹 — 안쪽 승인(vault)과 바깥 거래(relay)</h2>
 
-<p>다이어그램의 서명 관문(5~8)과 relay 구간(9~10)은 <b>별개의 서명 두 개</b>를 만듭니다:</p>
+<p>다이어그램의 서명 관문(9~12)과 relay 구간(13~14)은 <b>별개의 서명 두 개</b>를 만듭니다:</p>
 
 <table>
 <thead><tr><th style="width:26%">서명</th><th>누가 · 무엇에</th><th>무엇을 막나</th></tr></thead>
 <tbody>
-<tr><td><b>안쪽 — vault 의 승인 서명</b> (5~8)</td><td>출금 vault(옴니버스·출금 pool)의 MPC 서명 — 벤더 share + <b>co-signer share</b>. co-signer 는 Callback Handler 재검증을 통과한 건에만 자기 share 를 보탠다.</td><td>침해된 백엔드의 위조 지시 — 목적지·금액이 정책에 어긋나면 서명 자체가 만들어지지 않는다.</td></tr>
-<tr><td><b>바깥 — relay 의 거래 서명</b> (9~10)</td><td>relay 가 자기 계정으로 바깥 거래를 서명·제출하고 gas 를 낸다.</td><td>relay 가 정할 수 있는 건 "낼지 말지"뿐 — 내용 위조는 불가. 위임된 지갑 코드가 안쪽 서명을 온체인에서 검증하기 때문.</td></tr>
+<tr><td><b>안쪽 — vault 의 승인 서명</b> (9~12)</td><td>출금 vault(옴니버스·출금 pool)의 MPC 서명 — 벤더 share + <b>co-signer share</b>. co-signer 는 Callback Handler 재검증을 통과한 건에만 자기 share 를 보탠다.</td><td>침해된 백엔드의 위조 지시 — 목적지·금액이 정책에 어긋나면 서명 자체가 만들어지지 않는다.</td></tr>
+<tr><td><b>바깥 — relay 의 거래 서명</b> (13~14)</td><td>relay 가 자기 계정으로 바깥 거래를 서명·제출하고 gas 를 낸다.</td><td>relay 가 정할 수 있는 건 "낼지 말지"뿐 — 내용 위조는 불가. 위임된 지갑 코드가 안쪽 서명을 온체인에서 검증하기 때문.</td></tr>
 </tbody>
 </table>
 
 <p>행위자를 우리 모델로 매핑하면 — <b>고객은 온체인에 등장하지 않습니다</b>. 고객의 "출금해 주세요"는 업무 승인 단계에서 끝나고, 온체인의 발신 vault(옴니버스·출금 pool)·키(MPC)·제출자(relay)는 전부 수탁자 쪽입니다. 위임·실행 메커니즘의 상세는 <a href="../gas-delegation/gsn-paymaster.html#eip7702">가스 대납 문서 9장</a>.</p>
 
-<h2>고객 사이의 이동 — 체인에 나가지 않는다</h2>
+<h2>막혔을 때 — boost 와 cancel (Admin 운영)</h2>
 
-<p>출금 요청의 목적지가 <b>우리 서비스 고객의 입금 주소</b>일 수 있습니다. 이때는 온체인 출금이 아닙니다 — 자산은 어차피 같은 옴니버스 안에 있으므로, <b>DB 원장에서 보낸 고객을 차감하고 받는 고객을 증가</b>시키면 끝입니다. 벤더 호출도, gas 도, 확정 대기도 없습니다.</p>
+<p>확정한 수수료가 시세보다 낮으면 거래가 mempool 에 걸려 <b>막힙니다</b>. 대응은 둘입니다 — <b>boost</b>(같은 순번에 수수료만 올려 재전송 · RBF)와 <b>cancel</b>(철회). 나가는 돈에 개입하는 일이라 <b>Admin 운영</b>이고, Gasless Relay 는 <b>auto-boost 를 지원하지 않아</b> 감지·지시는 우리 몫입니다. gasless 거래에 대한 boost·cancel API 의 정확한 동작은 CSM/PoC 확인 대상입니다.</p>
 
 <div class="diagram"><pre class="mermaid">
 sequenceDiagram
     autonumber
-    participant CU as 고객 A
-    participant BE as Service 백엔드
-    participant DB as 백엔드 DB (원장)
+    participant PW as 막힘 점검<br/>Service · 4장
+    participant DB as 백엔드 DB
+    participant ADM as Admin 백엔드
+    box rgb(220,252,231) 블록체인 매니저
+    participant FB as Fireblocks
+    end
+    participant RL as 지정 relay
+    participant CH as EVM · 이더리움·Base
 
-    CU->>BE: 출금 요청 — 목적지 주소
-    BE->>DB: 목적지 판별 — 우리 고객의 입금 주소인가 (주소↔계정 매핑, 3장)
-    Note over BE,DB: 내부면 체인에 나갈 이유가 없다 — 자산은 같은 옴니버스 안, 옮길 것은 장부뿐
-    BE->>DB: 원장 이체 — A 차감 · B 증가 (한 DB 트랜잭션 · 멱등 키)
-    BE-->>CU: 즉시 완료 — 벤더 호출 0 · gas 0 · 확정 대기 없음
+    Note over PW,DB: 막힌 거래는 변화가 없어 폴링 커서에 다시 안 잡힌다 — 그래서 DB 쪽에서 골라낸다
+    PW->>DB: 오래 CONFIRMING 인 건 조회 (벤더 호출 없음)
+    PW->>ADM: 막힌 건 보고 — 개입 판단 대상
+    ADM->>FB: statusOf(txRef) — 개입 전 단건 확인 (아직 CONFIRMING 인가)
+    alt boost — 재촉
+        ADM->>FB: boost(txRef) — 벤더 API 로 지시
+        FB->>RL: 대체 거래 생성 — 발신자가 relay 라 relay 만 만들 수 있다
+        RL->>CH: 같은 순번 · fee 올린 대체 거래 전파 — gas 도 relay 부담 (인보이스 정산)
+    else cancel — 철회
+        ADM->>FB: cancel(txRef)
+        FB->>RL: 취소용 대체 거래 생성 — 같은 순번을 덮어쓴다
+        RL->>CH: 전파 — 원래 건은 무효가 된다
+    end
+    CH-->>FB: 대체 거래 확정
+    Note over PW,FB: 이후는 다시 4장 폴링 — 원래 건의 종결과 대체 건의 확정을 실어 온다<br/>auto-boost 미지원이라 감지·지시는 우리 몫이다
 </pre></div>
-
-<table>
-<thead><tr><th style="width:24%">외부 출금과 다른 것</th><th>내용</th></tr></thead>
-<tbody>
-<tr><td><b>온체인 사건 없음</b></td><td>거래가 체인에 나가지 않는다 — gas 0, 즉시 확정, 폴링·reorg·막힘과 무관.</td></tr>
-<tr><td><b>서명 관문 미관여</b></td><td>서명할 거래 자체가 없어 TAP·co-signer 가 서지 않는다 — <b>방어선은 업무 승인과 원장 규칙뿐</b>이므로, 한도·AML 검증을 외부 출금과 같은 수준으로 업무 층에 걸어야 한다.</td></tr>
-<tr><td><b>대사 영향 없음</b></td><td>A 차감 = B 증가라 고객 잔액 합계가 불변이고, 옴니버스 온체인 잔액도 그대로 — 8장의 대사 공식(합계 = 옴니버스 잔액)이 유지된다. 기록은 원장 이벤트로 남긴다.</td></tr>
-</tbody>
-</table>
-
-<h2>정책 게이트 — 마지막 방어선은 TAP</h2>
-
-<p><b>규칙은 코드가 아니라 데이터</b>입니다 — 화이트리스트·한도는 설정이고, 그 관리·승인은 <b>Admin 백엔드</b>의 거버넌스 몫(co-signer 승인 포함)입니다. 방어선이 <b>벤더 안 TAP</b>에 있으므로, 할 일은 게이트를 만드는 게 아니라 TAP 정책을 운영·승인하는 것(Admin)입니다.</p>
-
-<h2>막혔을 때 — boost 와 cancel (Admin 운영)</h2>
-
-<p>확정한 수수료가 시세보다 낮으면 트랜잭션이 mempool 에 걸려 <b>막힙니다</b>. EVM(이더리움·Base 모두)에선 대응이 둘입니다. <b>boost</b> — 같은 순번에 수수료만 올려 다시 보내는 재전송(RBF). Fireblocks 는 전파(Broadcasting) 중 boost 를 지원합니다. <b>cancel</b> — 출금 자체를 철회. 두 동작 모두 나가는 돈에 개입하는 <b>Admin 백엔드</b>의 운영입니다. Service 는 고객 출금을 제출할 뿐, boost·cancel 은 부르지 않습니다. 막힌 건의 감지(오래 CONFIRMING 인 건 골라내기)는 <b>4장의 막힘 점검</b>이 올립니다.</p>
-
-<p>relay 구성(Universal Gasless)에서도 이 운영은 그대로 필요합니다 — 공식 문서 명시로 <b>Gasless Relay 는 auto-boost 를 지원하지 않아</b>, 막힘 감지와 boost 지시는 우리 몫입니다. 실행 경로만 다릅니다: 막힌 바깥 거래의 발신자가 relay 라서 <b>같은 순번의 대체 거래는 relay 만 만들 수 있고</b>, 우리가 벤더 API 로 지시하면 relay 가 fee 를 올린 대체 거래를 다시 냅니다 — 그 gas 도 relay 부담이고 인보이스로 정산됩니다. gasless 거래에 대한 boost·cancel API 의 정확한 동작은 CSM/PoC 확인 대상입니다.</p>
+<p class="diagram-caption">막힌 출금의 처리 한 사이클. 감지(1~2)는 Service 의 막힘 점검이 DB 에서 골라내고, 개입(3~)은 나가는 돈에 손대는 일이라 Admin 몫이다 — statusOf 로 그 건의 현재 상태를 확인한 뒤 boost(수수료 올려 재전송) 또는 cancel(철회)을 벤더 API 로 지시한다. 실제 대체 거래는 발신자인 relay 가 만들어 전파한다.</p>
 
 <h2>상태 한 장 — Fireblocks 필드를 공통 어휘로</h2>
 

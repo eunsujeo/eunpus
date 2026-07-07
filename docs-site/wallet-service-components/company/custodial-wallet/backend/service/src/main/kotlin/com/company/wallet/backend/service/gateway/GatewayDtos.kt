@@ -61,7 +61,8 @@ data class BalanceResponse(
 )
 
 data class SubmitTransactionRequest(
-    val accountRef: String,
+    /** 보내는 vault 계정의 ref — 고객 vault·옴니버스·풀 모두 이 자리 (가이드 13.3). */
+    val from: String,
     val toAddress: String,
     val memoTag: String? = null,
     val symbol: String,
@@ -72,7 +73,6 @@ data class SubmitTransactionRequest(
 
 data class TxRefResponse(
     val txRef: String,
-    val chainId: String,
 )
 
 data class TxStatusResponse(
@@ -96,14 +96,14 @@ internal fun Balance.toResponse(): BalanceResponse =
         decimals = available.decimals,
     )
 
-internal fun TxRef.toResponse(): TxRefResponse = TxRefResponse(txRef = id, chainId = chainId.value)
+internal fun TxRef.toResponse(): TxRefResponse = TxRefResponse(txRef = id)
 
-/** [TransactionRequest] 조립 — 멱등 키는 헤더에서 받은 것을 그대로 싣는다 (가이드 6.3). */
+/** [TransactionRequest] 조립 — 헤더의 멱등 키가 벤더에 남는 우리 측 식별자(externalTxId)가 된다 (가이드 6.3). */
 internal fun SubmitTransactionRequest.toDomain(idempotencyKey: String): TransactionRequest {
     val asset = Asset(symbol = symbol, chainId = ChainId(chainId))
     return TransactionRequest(
-        idempotencyKey = idempotencyKey,
-        account = AccountRef(accountRef),
+        externalTxId = idempotencyKey,
+        from = AccountRef(from),
         to = Address(value = toAddress, asset = asset, memoTag = memoTag),
         asset = asset,
         amount = Amount(minorUnits = BigInteger(amountMinorUnits), decimals = decimals),

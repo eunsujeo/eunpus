@@ -82,14 +82,14 @@ class AccountController(
 
     /** 잔액 조회 — custody(포트)가 주는 정규화 잔액. */
     @GetMapping("/{id}/balance")
-    suspend fun getBalance(
+    suspend fun balanceOf(
         @RequestHeader(name = "Authorization", required = false) authorization: String?,
         @PathVariable id: String,
         @RequestParam symbol: String,
         @RequestParam chainId: String,
     ): BalanceResponse =
         gateway
-            .getBalance(
+            .balanceOf(
                 credentials = authorization,
                 accountId = id,
                 asset = Asset(symbol = symbol, chainId = ChainId(chainId)),

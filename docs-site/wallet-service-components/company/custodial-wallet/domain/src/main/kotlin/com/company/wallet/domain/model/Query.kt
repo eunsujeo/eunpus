@@ -26,6 +26,17 @@ data class BlockRange(
     val toBlock: Long? = null,
 )
 
+/**
+ * TransactionPort.transactionsOf 의 상태 필터 — 벤더 목록 API 의 서버측 status 필터를
+ * 그대로 태운 것이라 한 번에 한 상태만 걸린다 (워크스루 8장).
+ */
+enum class TxStatusFilter {
+    SUBMITTED,
+    CONFIRMING,
+    COMPLETED,
+    FAILED,
+}
+
 /** 임의(외부 포함) 주소의 이체 한 건 — ChainQueryPort 도메인 동사의 반환 단위 (가이드 13.3). */
 data class Transfer(
     val txRef: TxRef,

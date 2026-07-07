@@ -56,16 +56,6 @@ h1::after {
 }
 .subtitle { color: var(--muted); font-size: 15.5px; margin: 16px 0 26px; line-height: 1.6; }
 
-/* 호출 주체 — 이 장의 동사를 어느 백엔드가 부르는지 (0장 기능 표의 백엔드 열과 동일) */
-.who-line { margin: -16px 0 30px; font-size: 13.5px; color: var(--muted); line-height: 2; }
-.who {
-  display: inline-block; padding: 1px 9px; border-radius: 999px; margin-right: 3px;
-  font-family: var(--mono); font-size: 11.5px; font-weight: 600; vertical-align: 1px;
-}
-.who.svc { background: #dbeafe; color: #1e40af; }
-.who.adm { background: #fef3c7; color: #92400e; }
-.who-line .sep { margin: 0 7px; color: var(--line); }
-
 h2 {
   font-size: 19.5px; margin: 40px 0 12px; padding-top: 16px; color: var(--navy);
   letter-spacing: -0.01em; border-top: 1px solid var(--line);

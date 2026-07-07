@@ -121,13 +121,13 @@ class WalletGatewayService(
     }
 
     /** 잔액 조회 — 읽기 전용이라 멱등 wrap 이 필요 없다. available/pending/locked 구분 (가이드 13.3). */
-    suspend fun getBalance(
+    suspend fun balanceOf(
         credentials: String?,
         accountId: String,
         asset: Asset,
     ): Balance {
         authenticate(credentials)
-        return accounts.getBalance(resolveAccount(accountId), asset)
+        return accounts.balanceOf(resolveAccount(accountId), asset)
     }
 
     /**
@@ -146,18 +146,18 @@ class WalletGatewayService(
         request: TransactionRequest,
     ): TxRef {
         authenticate(credentials)
-        return withIdempotency(request.idempotencyKey) {
+        return withIdempotency(request.externalTxId) {
             transactions.submitTransaction(request)
         }
     }
 
     /** 트랜잭션 상태 조회 — 읽기 전용. */
-    suspend fun getStatus(
+    suspend fun statusOf(
         credentials: String?,
         txRef: TxRef,
     ): TxStatus {
         authenticate(credentials)
-        return transactions.getStatus(txRef)
+        return transactions.statusOf(txRef)
     }
 
     /**
@@ -174,7 +174,7 @@ class WalletGatewayService(
         val cancellable =
             transactions as? CancelCapability
                 ?: throw UnsupportedCapabilityException("cancel")
-        return withIdempotency(idempotencyKey ?: "cancel:${txRef.chainId.value}:${txRef.id}") {
+        return withIdempotency(idempotencyKey ?: "cancel:${txRef.id}") {
             cancellable.cancel(txRef)
         }
     }

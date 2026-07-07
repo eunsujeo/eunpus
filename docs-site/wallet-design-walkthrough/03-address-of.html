@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>3. 입금 주소 조회 — getDepositAddress</title>
+<title>3. 입금 주소 조회 — depositAddressOf</title>
 <meta content="noindex" name="robots"/>
 <link href="assets/walkthrough.css" rel="stylesheet"/>
 </head>
@@ -13,11 +13,10 @@
 <div class="progress">
 <a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><span class="cur">3</span><a href="04-detect-confirm.html">4</a><a href="05-deposit.html">5</a><a href="06-withdrawal.html">6</a><a href="07-estimate-fee.html">7</a><a href="08-balance-history.html">8</a><a href="09-switch-extend.html">9</a><a href="10-ramp-swap.html">10</a>
 </div>
-<h1>입금 주소 조회 — getDepositAddress</h1>
+<h1>입금 주소 조회 — depositAddressOf</h1>
 <p class="subtitle">생성과 정반대인 읽기 전용 — 매니저가 백엔드 DB 에서 (accountId, asset)로 그 주소를 읽는다</p>
-<p class="who-line"><span class="who svc">Service</span> 고객 화면과 CS 조회에서 부른다 — DB 읽기라 벤더 호출이 없다</p>
 
-<pre><code>getDepositAddress(accountId, asset) → Address?
+<pre><code>depositAddressOf(accountId, asset) → Address?
 // 읽기 · 없으면 null (만들지 않는다 — 생성은 2장)</code></pre>
 
 <h2>▸ 매니저가 백엔드 DB 에서 읽는다 — 벤더 왕복 없음</h2>
@@ -31,7 +30,7 @@ sequenceDiagram
     end
     participant BDB as 백엔드 DB
 
-    BE->>FBI: getDepositAddress(accountId, asset)
+    BE->>FBI: depositAddressOf(accountId, asset)
     FBI->>BDB: (accountId, asset)↔주소 읽기
     alt 있으면
         BDB-->>FBI: 주소 (이더리움·Base = 0xAb3… · memoTag null)

@@ -6,7 +6,6 @@ import com.company.wallet.domain.model.Address
 import com.company.wallet.domain.model.Amount
 import com.company.wallet.domain.model.Asset
 import com.company.wallet.domain.model.Balance
-import com.company.wallet.domain.model.BlockRange
 import com.company.wallet.domain.model.ChainEvent
 import com.company.wallet.domain.model.ChainEventHandler
 import com.company.wallet.domain.model.FeeEstimate
@@ -15,6 +14,7 @@ import com.company.wallet.domain.model.TransactionRequest
 import com.company.wallet.domain.model.Transfer
 import com.company.wallet.domain.model.TxRef
 import com.company.wallet.domain.model.TxStatus
+import com.company.wallet.domain.model.TxStatusFilter
 import com.company.wallet.domain.port.AccountPort
 import com.company.wallet.domain.port.CancelCapability
 import com.company.wallet.domain.port.DepositAddressIssuanceCapability
@@ -72,7 +72,7 @@ class FakeCustodyAdapter :
         return next
     }
 
-    override suspend fun getBalance(
+    override suspend fun balanceOf(
         account: Account,
         asset: Asset,
     ): Balance =
@@ -95,17 +95,19 @@ class FakeCustodyAdapter :
     }
 
     override suspend fun submitTransaction(request: TransactionRequest): TxRef {
-        val txRef = TxRef(id = "fake-tx-${seq.incrementAndGet()}", chainId = request.asset.chainId)
+        val txRef = TxRef(id = "fake-tx-${seq.incrementAndGet()}")
         statuses[txRef.id] = TxStatus.Pending(confirmations = 0)
         return txRef
     }
 
-    override suspend fun getStatus(txRef: TxRef): TxStatus =
+    override suspend fun statusOf(txRef: TxRef): TxStatus =
         statuses[txRef.id] ?: TxStatus.Failed(reason = "unknown tx: ${txRef.id}")
 
     override suspend fun transactionsOf(
         account: Account,
-        range: BlockRange,
+        after: Long,
+        before: Long,
+        status: TxStatusFilter?,
     ): List<Transfer> = emptyList()
 
     override suspend fun boost(txRef: TxRef): TxRef {
