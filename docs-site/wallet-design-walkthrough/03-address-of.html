@@ -15,6 +15,7 @@
 </div>
 <h1>입금 주소 조회 — getDepositAddress</h1>
 <p class="subtitle">생성과 정반대인 읽기 전용 — 매니저가 백엔드 DB 에서 (accountId, asset)로 그 주소를 읽는다</p>
+<p class="who-line"><span class="who svc">Service</span> 고객 화면과 CS 조회에서 부른다 — DB 읽기라 벤더 호출이 없다</p>
 
 <pre><code>getDepositAddress(accountId, asset) → Address?
 // 읽기 · 없으면 null (만들지 않는다 — 생성은 2장)</code></pre>

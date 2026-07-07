@@ -107,7 +107,7 @@ flowchart LR
 
 <h2>Fireblocks 해부 — 기능 × 사용처 매트릭스</h2>
 
-<p>포트의 동사들은 어디서 왔을까요. <b>Fireblocks 의 API 표면을 분석한 결과</b>입니다. 가장 묶음이 큰 벤더가 제공하는 것의 전체가 곧 "수탁 지갑에 필요한 기능의 전집"에 가깝고, 그것을 벤더 메서드명이 아니라 업무 언어(도메인 동사)로 바꿔 적은 것이 포트입니다. 각 기능이 <b>어느 백엔드(Service·Admin)</b>에서, 서비스의 어느 장면에서 쓰이는지까지 묶으면 <b>이 표가 곧 이 문서의 목차</b>가 됩니다.</p>
+<p>포트의 동사들은 어디서 왔을까요. <b>Fireblocks 의 API 표면을 분석한 결과</b>입니다.</p>
 
 <table>
 <thead><tr>
@@ -131,7 +131,6 @@ flowchart LR
 <tr><td>gas 조달</td><td>Universal Gasless (대납 — 스테이블코인 전용이라 ETH 이동 없음)</td><td class="c"></td><td class="c"></td><td class="c">●</td><td class="c">●</td><td>(동사 없음 — 운영·설정)</td><td class="c">A</td><td class="c"><a href="../gas-delegation/">문서</a></td></tr>
 </tbody>
 </table>
-<p class="table-note">● = 그 장면이 이 기능을 호출한다. <b>백엔드</b> 열 = Service(S)·Admin(A) 중 어디서 부르나 — 나가는 돈의 정책·승인·개입(TAP·boost·cancel·동결)은 <b>Admin</b>, 고객 런타임(계정·주소·입금·출금 제출·조회)은 <b>Service</b>다. Fireblocks 표면은 공식 문서에서 확인한 범위다(일부 조회 엔드포인트는 적용 전 확인). <b>Base 는 이더리움과 같은 EVM</b>이라 표면·페이지·동사가 동일하다 — 체인만 바뀐다. 마지막 두 행은 동사가 없는데, 화면이 부르는 기능이 아니라 흐름 뒤에 서는 기능이라 그렇다(정책 게이트 6장 · gas 조달은 <a href="../gas-delegation/">별도 문서</a>).</p>
 
 <p class="foot">더 깊이: 컴포넌트별 상세는 <a href="../wallet-service-components/">블록체인 매니저 컴포넌트 가이드</a> (참고용 — 본 워크스루는 가이드 없이 읽힙니다).</p>
 
