@@ -11,7 +11,7 @@
 <div class="wrap">
 <p class="series"><a href="index.html">지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</a></p>
 <div class="progress">
-<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-detect-confirm.html">4</a><span class="cur">5</span><a href="06-estimate-fee.html">6</a><a href="07-withdrawal.html">7</a><a href="08-balance-history.html">8</a><a href="09-switch-extend.html">9</a><a href="10-ramp-swap.html">10</a>
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-detect-confirm.html">4</a><span class="cur">5</span><a href="06-withdrawal.html">6</a><a href="07-estimate-fee.html">7</a><a href="08-balance-history.html">8</a><a href="09-switch-extend.html">9</a><a href="10-ramp-swap.html">10</a>
 </div>
 <h1>입금 — 한 건이 잔액이 되기까지</h1>
 <p class="subtitle">폴링이 실어 온 입금이 대기를 거쳐 가용이 되고, 고객 vault 에서 옴니버스로 모이기까지 — 감지·판정 기준은 4장</p>
@@ -45,7 +45,7 @@ sequenceDiagram
 
 <h2>입금에서 보는 상태·하위 상태</h2>
 
-<p>Fireblocks 트랜잭션 상태는 전부 17가지지만 대부분은 출금 쪽 단계(제출·승인·서명·전파)이고 — 그쪽은 7페이지의 "상태 한 장" 표가 맡습니다 — <b>입금이 실제로 지나는 것은 아래 넷</b>입니다.</p>
+<p>Fireblocks 트랜잭션 상태는 전부 17가지지만 대부분은 출금 쪽 단계(제출·승인·서명·전파)이고 — 그쪽은 6페이지의 "상태 한 장" 표가 맡습니다 — <b>입금이 실제로 지나는 것은 아래 넷</b>입니다.</p>
 
 <table>
 <thead><tr><th style="width:20%">status</th><th>뜻</th><th style="width:30%">고객 잔액에는</th></tr></thead>
@@ -85,7 +85,7 @@ sequenceDiagram
 <tbody>
 <tr><td><b>고객별 vault</b> (intermediate)</td><td>1·2장에서 만든 고객당 vault — 입금 식별·수신 전용, 보관처 아님.</td></tr>
 <tr><td><b>옴니버스 vault</b> (omnibus deposits)</td><td>sweep 으로 모인 중앙 보관처 — 10장의 "고객 자산 지갑"이 이것.</td></tr>
-<tr><td><b>출금 풀</b> (withdrawal pool)</td><td>출금 전용 vault — EVM 은 vault 당 nonce 가 직렬이라 <b>복수 vault round-robin</b> 으로 병렬화(7장 출금이 여기서 나간다).</td></tr>
+<tr><td><b>출금 풀</b> (withdrawal pool)</td><td>출금 전용 vault — EVM 은 vault 당 nonce 가 직렬이라 <b>복수 vault round-robin</b> 으로 병렬화(6장 출금이 여기서 나간다).</td></tr>
 </tbody>
 </table>
 <p class="table-note">세 역할 분류는 Fireblocks 공식 omnibus 구조 그대로다(intermediate / omnibus deposits / withdrawal pool).</p>
@@ -122,25 +122,25 @@ sequenceDiagram
 <tr><td><b>지정 relay</b></td><td>바깥 거래의 발신자 — 제출하고 gas 를 낸다(월말 인보이스). 내용은 위조하지 못한다 — vault 서명의 검증은 위임된 지갑 코드가 온체인에서 한다.</td></tr>
 </tbody>
 </table>
-<p class="table-note">서명이 두 겹이다 — vault 몫의 승인 서명(안쪽)과 relay 의 바깥 거래 서명. 이 구조는 출금(7장)과 같고, 메커니즘 상세는 <a href="../gas-delegation/gsn-paymaster.html#eip7702">가스 대납 문서 9장</a>.</p>
+<p class="table-note">서명이 두 겹이다 — vault 몫의 승인 서명(안쪽)과 relay 의 바깥 거래 서명. 이 구조는 출금(6장)과 같고, 메커니즘 상세는 <a href="../gas-delegation/gsn-paymaster.html#eip7702">가스 대납 문서 9장</a>.</p>
 
 <table>
 <thead><tr><th style="width:24%">결정</th><th>내용</th></tr></thead>
 <tbody>
 <tr><td><b>트리거</b></td><td>잔액 임계 · 고정 스케줄 · 네트워크 fee 가 유리할 때 — sweep 은 시간에 급하지 않아 <b>낮은 fee 로 보낼 수 있다</b>.</td></tr>
-<tr><td><b>gas</b></td><td><b>Universal Gasless 로 대납</b> — 고객 vault 에 ETH 를 배포하지 않는다. 스테이블코인 전용이라 ETH 자체의 이동은 없다. 상세는 <a href="../gas-delegation/">가스 대납 문서</a>.</td></tr>
+<tr><td><b>gas</b></td><td><b>Universal Gasless 로 대납</b> — 고객 vault 에 ETH 를 배포하지 않는다. 상세는 <a href="../gas-delegation/">가스 대납 문서</a>.</td></tr>
 <tr><td><b>서명 자동화</b></td><td>API Co-Signer — 주기 실행이라 사람 개입 없이 서명까지 자동.</td></tr>
 <tr><td><b>고객 잔액</b></td><td><b>불변</b> — 고객별 잔액은 DB 원장 몫이고, sweep 은 온체인 보관 위치만 옮긴다(회계 이벤트 아님).</td></tr>
 <tr><td><b>관찰·실패</b></td><td>sweep tx 는 폴링에 <b>내부 이동</b>으로 잡혀 같은 경로로 상태 추적·막힘 점검·boost 를 탄다(4장).</td></tr>
 </tbody>
 </table>
 
-<p class="foot">감지·판정 기준(폴링 루프·DCCP·막힘 점검)은 <a href="04-detect-confirm.html">4. 감지와 확정</a>, 잔액의 세 칸(available·pending·locked)과의 맞물림은 <a href="08-balance-history.html">8. 잔액과 내역 조회</a>, 출금 쪽 상태 전이는 <a href="07-withdrawal.html">7. 출금</a> 에서 이어집니다.</p>
+<p class="foot">감지·판정 기준(폴링 루프·DCCP·막힘 점검)은 <a href="04-detect-confirm.html">4. 감지와 확정</a>, 잔액의 세 칸(available·pending·locked)과의 맞물림은 <a href="08-balance-history.html">8. 잔액과 내역 조회</a>, 출금 쪽 상태 전이는 <a href="06-withdrawal.html">6. 출금</a> 에서 이어집니다.</p>
 
 <div class="pager">
 <a href="04-detect-confirm.html">← 4. 감지와 확정</a>
 <a href="index.html">목차</a>
-<a href="06-estimate-fee.html">6. 수수료 견적 →</a>
+<a href="06-withdrawal.html">6. 출금 →</a>
 </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>

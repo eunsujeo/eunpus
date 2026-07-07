@@ -99,7 +99,7 @@ flowchart LR
 </tbody>
 </table>
 </div>
-<p class="table-note">"ETH 필요 없음"은 <strong>토큰 전송 기준</strong>이다 — 공식 문서가 명시한다: <strong>Universal Gasless 는 ETH 네이티브 전송을 대납하지 않으며, ETH 자체의 이동(sweep)은 Gas Station 몫</strong>이다. 우리 서비스는 <strong>스테이블코인 전용</strong>이라 ETH 자체를 취급하지 않으므로, ETH-free 운영이 된다.</p>
+<p class="table-note">"ETH 필요 없음"은 <strong>토큰 전송 기준</strong>이다 — 공식 문서가 명시한다: <strong>Universal Gasless 는 ETH 네이티브 전송을 대납하지 않는다</strong>. 우리 서비스는 <strong>스테이블코인 전용</strong>이라 ETH 자체를 취급하지 않으므로, ETH-free 운영이 된다.</p>
 </section>
 
 <section id="gasless">
@@ -197,7 +197,7 @@ sequenceDiagram
 <table>
 <thead><tr><th style="width:34%">질문</th><th>답</th></tr></thead>
 <tbody>
-<tr><td><strong>ETH 없이 운영이 되나</strong></td><td>Fireblocks Relay 면 <strong>토큰 운영 기준으로 가능</strong> — "even if you do not hold any ETH". ETH 자체 취급 물량은 별도.</td></tr>
+<tr><td><strong>ETH 없이 운영이 되나</strong></td><td>Fireblocks Relay 면 <strong>가능</strong> — "even if you do not hold any ETH". 스테이블코인 전용이라 토큰 운영이 전부다.</td></tr>
 <tr><td><strong>충전(Gas Station)은 왜 안 쓰나</strong></td><td><strong>결정: Universal Gasless 단일.</strong> 서비스가 <strong>스테이블코인 전용</strong>이라 대납이 안 되는 자산(ETH 자체의 이동)이 애초에 없다 — 충전 경로를 두지 않는다.</td></tr>
 <tr><td><strong>기존 설계에서 바뀌는 것</strong></td><td>감지·확정 판정, 막힘 점검·boost 운영은 그대로. 바뀌는 건 <strong>gas 조달 운영 → 월말 인보이스 정산(회계 층)</strong>.</td></tr>
 <tr><td><strong>도입하면 설계가 어떻게 달라지나</strong></td><td>① Admin — TAP 정책 2종(upgrade policy·Orchestrator rule) 운영 추가 ② 감지·상태 — "relay 거절" 실패 사유 추가, relay 잔고 모니터링 ③ 회계 — gas 운영이 월말 인보이스 대사로 이동 ④ sweep — <strong>전량 Gasless</strong> (스테이블코인 전용) ⑤ estimateFee — 우리 비용 추정에서 relay 비용 예측·인보이스 검증으로 역할 이동.</td></tr>
@@ -206,7 +206,7 @@ sequenceDiagram
 </table>
 </div>
 
-<p>관련 문서 — 감지·확정 기준은 <a href="../wallet-design-walkthrough/04-detect-confirm.html">지갑 설계 워크스루 4장</a>, 수수료 견적은 <a href="../wallet-design-walkthrough/06-estimate-fee.html">6장</a>, 출금·boost 는 <a href="../wallet-design-walkthrough/07-withdrawal.html">7장</a>.</p>
+<p>관련 문서 — 감지·확정 기준은 <a href="../wallet-design-walkthrough/04-detect-confirm.html">지갑 설계 워크스루 4장</a>, 출금·boost 는 <a href="../wallet-design-walkthrough/06-withdrawal.html">6장</a>, 수수료 견적은 <a href="../wallet-design-walkthrough/07-estimate-fee.html">7장</a>.</p>
 
 </section>
 </main>

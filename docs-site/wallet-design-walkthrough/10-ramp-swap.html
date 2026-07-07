@@ -11,7 +11,7 @@
 <div class="wrap">
 <p class="series"><a href="index.html">지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</a></p>
 <div class="progress">
-<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-detect-confirm.html">4</a><a href="05-deposit.html">5</a><a href="06-estimate-fee.html">6</a><a href="07-withdrawal.html">7</a><a href="08-balance-history.html">8</a><a href="09-switch-extend.html">9</a><span class="cur">10</span>
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-detect-confirm.html">4</a><a href="05-deposit.html">5</a><a href="06-withdrawal.html">6</a><a href="07-estimate-fee.html">7</a><a href="08-balance-history.html">8</a><a href="09-switch-extend.html">9</a><span class="cur">10</span>
 </div>
 <h1>온·오프램프·스왑 — 입금·출금 조합으로 보기</h1>
 <p class="subtitle">충전·환전·스왑도 이 지갑 백엔드의 흐름이다. 다만 새 매니저 기능이 아니라 1~8페이지의 <b>입금·출금</b>이 <b>사전 민팅 재고 풀 · 델타 원장</b>과 만나 조립된 것 — 그 조립에서 매니저가 어디에 들어오는지만 요약한다. 원장·회계·대사 상세는 <a href="../ramp-settlement-walkthrough/index.html">정산 워크스루</a>.</p>
@@ -31,12 +31,12 @@
 <table>
 <thead><tr><th style="width:16%">거래</th><th>매니저(이 문서의 포트)가 하는 일</th><th style="width:26%">쓰이는 입금·출금</th></tr></thead>
 <tbody>
-<tr><td><b>온램프</b><br/>법정통화→코인</td><td>풀→고객 wallet 코인 <b>전송(출금 실행)</b>을 15분 배치로. 재고 보충(rebalance)이면 발행사가 vault 로 보낸 코인의 <b>입금 감지</b>도.</td><td>submitTransaction(7p) · onChainEvent(4p)</td></tr>
-<tr><td><b>오프램프</b><br/>코인→법정통화</td><td>고객→풀 wallet 코인 <b>회수 전송</b>을 15분 배치로. rebalance 면 vault→발행사 주소 <b>출금 실행</b>.</td><td>submitTransaction(7p) · onChainEvent(4p)</td></tr>
-<tr><td><b>스왑</b><br/>코인↔코인</td><td>고객↔은행 풀 사이 <b>양방향 전송</b>(회수+할당) 2건을 15분 배치로. 두 자산 재고가 다 있어야 함.</td><td>submitTransaction ×2(7p) · onChainEvent(4p)</td></tr>
+<tr><td><b>온램프</b><br/>법정통화→코인</td><td>풀→고객 wallet 코인 <b>전송(출금 실행)</b>을 15분 배치로. 재고 보충(rebalance)이면 발행사가 vault 로 보낸 코인의 <b>입금 감지</b>도.</td><td>submitTransaction(6p) · onChainEvent(4p)</td></tr>
+<tr><td><b>오프램프</b><br/>코인→법정통화</td><td>고객→풀 wallet 코인 <b>회수 전송</b>을 15분 배치로. rebalance 면 vault→발행사 주소 <b>출금 실행</b>.</td><td>submitTransaction(6p) · onChainEvent(4p)</td></tr>
+<tr><td><b>스왑</b><br/>코인↔코인</td><td>고객↔은행 풀 사이 <b>양방향 전송</b>(회수+할당) 2건을 15분 배치로. 두 자산 재고가 다 있어야 함.</td><td>submitTransaction ×2(6p) · onChainEvent(4p)</td></tr>
 </tbody>
 </table>
-<p class="table-note">즉 세 거래에서 매니저가 새로 배우는 동사는 없습니다 — 7페이지의 <b>submitTransaction</b>(출금 실행)과 4페이지의 <b>입금 감지</b>를 조합할 뿐입니다. 스왑만 전송이 두 다리(보내는 코인·받는 코인)라 델타가 두 줄로 잡힙니다.</p>
+<p class="table-note">즉 세 거래에서 매니저가 새로 배우는 동사는 없습니다 — 6페이지의 <b>submitTransaction</b>(출금 실행)과 4페이지의 <b>입금 감지</b>를 조합할 뿐입니다. 스왑만 전송이 두 다리(보내는 코인·받는 코인)라 델타가 두 줄로 잡힙니다.</p>
 
 <h2>2단계 골격 — 매니저는 초록 단계에만</h2>
 <div class="diagram"><pre class="mermaid">
@@ -65,7 +65,7 @@ sequenceDiagram
     App->>DL: 해당 PENDING 일괄 settled
     end
 </pre></div>
-<p class="diagram-caption"><b>노랑 = 1단계</b>는 매니저를 안 부른다 — 순수 DB 반영 + 델타 PENDING 적재이고, <b>가용 확인</b>(실제 풀 잔액 − 미정산 PENDING)이 풀 부족 초과 거래를 막는다. <b>초록 = 2단계</b>에서만 이 문서의 매니저가 등장 — 6·7페이지의 submitTransaction, 4페이지의 입금 감지 그대로다. 발행사·거래소는 이 그림에 없다(풀 rebalance 때만 들어온다). 스왑은 전송이 두 다리라 초록 단계가 두 번 잡힌다.</p>
+<p class="diagram-caption"><b>노랑 = 1단계</b>는 매니저를 안 부른다 — 순수 DB 반영 + 델타 PENDING 적재이고, <b>가용 확인</b>(실제 풀 잔액 − 미정산 PENDING)이 풀 부족 초과 거래를 막는다. <b>초록 = 2단계</b>에서만 이 문서의 매니저가 등장 — 6페이지의 submitTransaction, 4페이지의 입금 감지 그대로다. 발행사·거래소는 이 그림에 없다(풀 rebalance 때만 들어온다). 스왑은 전송이 두 다리라 초록 단계가 두 번 잡힌다.</p>
 
 <h2>배치를 효율적으로 — Service 백엔드가 두 지갑 사이를 상계한다</h2>
 <p>15분 배치는 <b>Service 백엔드(지갑 백엔드)</b>가 돌립니다 — <code>delta_ledger</code>의 PENDING 을 읽어 매니저의 <b>submitTransaction</b>으로 실제 온체인 전송을 냅니다. 여기서 핵심은 <b>온체인에서 움직이는 지갑이 딱 둘</b>이라는 점입니다 — <b>고객 자산이 모인 지갑</b>(5장의 sweep 이 고객별 vault 에서 모아 온다)과 <b>은행 자산(풀)이 모인 지갑</b>. 개별 고객 잔액은 DB(<code>customer_ledger</code>)에서만 쪼개 관리하고, 체인엔 이 두 옴니버스 지갑만 있습니다.</p>
@@ -102,7 +102,7 @@ flowchart LR
 <p>이 배치 전송의 gas 는 <b>Universal Gasless 로 대납</b>한다 — 선택지·도입 요건은 <a href="../gas-delegation/">가스 대납 문서</a>.</p>
 
 <h2>수수료 — 고객에게 보여주는 값은 선계산 고정값</h2>
-<p>수수료는 두 층으로 갈립니다. <b>매니저 층</b>의 estimateFee(6페이지)는 <b>변동 네트워크 실비</b>를 추정할 뿐, 실비를 미리 고정하지 않습니다. 반면 <b>고객에게 보여주는 수수료</b>는 그 위층(회계·비즈니스)이 <b>선계산해 고정한 값</b>입니다 — 자산별 고정 출금 수수료·% 매매 요율 같은 고정 스케줄이죠. 위층이 고정값을 약속할 수 있는 건, 변동 실비와의 <b>차액을 수수료수익/손익으로 흡수</b>하기 때문입니다. 정산·회계 처리는 <a href="../ramp-settlement-walkthrough/index.html">정산 워크스루</a>에서 다룹니다.</p>
+<p>수수료는 두 층으로 갈립니다. <b>매니저 층</b>의 estimateFee(7페이지)는 <b>변동 네트워크 실비</b>를 추정할 뿐, 실비를 미리 고정하지 않습니다. 반면 <b>고객에게 보여주는 수수료</b>는 그 위층(회계·비즈니스)이 <b>선계산해 고정한 값</b>입니다 — 자산별 고정 출금 수수료·% 매매 요율 같은 고정 스케줄이죠. 위층이 고정값을 약속할 수 있는 건, 변동 실비와의 <b>차액을 수수료수익/손익으로 흡수</b>하기 때문입니다. 정산·회계 처리는 <a href="../ramp-settlement-walkthrough/index.html">정산 워크스루</a>에서 다룹니다.</p>
 
 <div class="callout">
 <div class="callout-title">이 페이지의 경계 — 요약까지, 상세는 정산 워크스루</div>
