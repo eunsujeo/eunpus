@@ -47,25 +47,51 @@ body {
   letter-spacing: 0.5px;
 }
 .brand-name { font-size: 16px; font-weight: 600; color: #fff; }
-.filters { display: flex; gap: 6px; margin-left: 8px; }
-.filter-chip {
-  font-size: 12px;
+.brand-mark { cursor: pointer; }
+
+/* ---- breadcrumb ---- */
+.crumbs { display: flex; align-items: center; gap: 4px; }
+.crumb {
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 14px;
   font-weight: 500;
   color: var(--muted-strong);
-  background: none;
-  border: 1px solid var(--hairline);
-  border-radius: 9999px;
-  padding: 3px 12px;
   cursor: pointer;
-  font-family: inherit;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
-.filter-chip:hover { color: #fff; }
-.filter-chip.active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--ink);
-  font-weight: 600;
+.crumb:hover { color: #fff; background: var(--surface); }
+.crumb.current { color: #fff; font-weight: 600; cursor: default; }
+.crumb-sep { color: var(--muted); font-size: 13px; }
+
+/* ---- views ---- */
+.view { padding: 24px; min-height: calc(100vh - 64px); }
+
+/* 카테고리 선택 그리드 */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  align-content: start;
 }
+.cat-tile {
+  background: var(--surface);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 24px 20px;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 110px;
+}
+.cat-tile:hover { border-color: var(--primary); }
+.cat-tile-name { color: #fff; font-size: 16px; font-weight: 600; }
+.cat-tile-meta { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .topbar-right { display: flex; align-items: center; gap: 16px; }
 .board-meta { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 
@@ -87,9 +113,7 @@ body {
   display: grid;
   grid-template-columns: repeat(4, minmax(240px, 1fr));
   gap: 16px;
-  padding: 24px;
   align-items: start;
-  min-height: calc(100vh - 64px);
 }
 .board-status {
   grid-column: 1 / -1;

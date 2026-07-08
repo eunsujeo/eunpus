@@ -9,6 +9,7 @@ import {
   requireEnv,
 } from './_lib.js';
 
+// docs/<대카테고리>/<중카테고리>/*.md — 폴더가 카테고리의 source of truth
 export async function onRequestGet({ env }) {
   const bad = requireEnv(env);
   if (bad) return bad;
@@ -18,30 +19,41 @@ export async function onRequestGet({ env }) {
   const branch = env.GITHUB_BRANCH || 'main';
   const docsPath = env.DOCS_PATH.replace(/\/+$/, '');
 
-  try {
-    const rootList = await gh(
+  const list = (path) =>
+    gh(
       env,
-      `/repos/${owner}/${repo}/contents/${encodePath(docsPath)}?ref=${encodeURIComponent(branch)}`
-    );
-    const entries = Array.isArray(rootList) ? rootList : [];
-    const isMd = (f) => f.type === 'file' && f.name.endsWith('.md');
+      `/repos/${owner}/${repo}/contents/${encodePath(path)}?ref=${encodeURIComponent(branch)}`
+    ).then((r) => (Array.isArray(r) ? r : []));
 
-    // 1단계 하위 폴더 = 중카테고리. docs/ 직속 .md 는 중카테고리 없음.
-    const rootFiles = entries.filter(isMd).map((f) => ({ ...f, subcategory: '' }));
-    const dirs = entries.filter((e) => e.type === 'dir');
-    const nested = await Promise.all(
-      dirs.map((d) =>
-        gh(
-          env,
-          `/repos/${owner}/${repo}/contents/${encodePath(d.path)}?ref=${encodeURIComponent(branch)}`
-        ).then((list) =>
-          (Array.isArray(list) ? list : [])
-            .filter(isMd)
-            .map((f) => ({ ...f, subcategory: d.name }))
-        )
-      )
+  const isMd = (f) => f.type === 'file' && f.name.endsWith('.md');
+
+  try {
+    const root = await list(docsPath);
+    const catDirs = root.filter((e) => e.type === 'dir');
+
+    const tree = {}; // { 대카테고리: [중카테고리...] } — 문서가 없어도 폴더면 노출
+    const files = []; // { ...entry, category, subcategory }
+
+    await Promise.all(
+      catDirs.map(async (cat) => {
+        const inCat = await list(cat.path);
+        tree[cat.name] = inCat.filter((e) => e.type === 'dir').map((e) => e.name).sort();
+        // 대카테고리 직속 .md 는 중카테고리 없음으로 취급
+        for (const f of inCat.filter(isMd)) {
+          files.push({ ...f, category: cat.name, subcategory: '' });
+        }
+        await Promise.all(
+          inCat
+            .filter((e) => e.type === 'dir')
+            .map(async (sub) => {
+              const inSub = await list(sub.path);
+              for (const f of inSub.filter(isMd)) {
+                files.push({ ...f, category: cat.name, subcategory: sub.name });
+              }
+            })
+        );
+      })
     );
-    const files = [...rootFiles, ...nested.flat()];
 
     const cards = await Promise.all(
       files.map(async (f) => {
@@ -64,8 +76,8 @@ export async function onRequestGet({ env }) {
           path: f.path,
           name: f.name,
           title: meta.title || f.name.replace(/\.md$/, ''),
-          category: meta.category || '',
-          subcategory: f.subcategory || meta.subcategory || '',
+          category: f.category,
+          subcategory: f.subcategory,
           status: normalizeStatus(meta.status),
           summary,
           updatedAt: commits[0]?.commit?.committer?.date || null,
@@ -74,7 +86,7 @@ export async function onRequestGet({ env }) {
     );
 
     cards.sort((a, b) => a.name.localeCompare(b.name));
-    return json({ cards });
+    return json({ tree, cards });
   } catch (e) {
     const status = e instanceof GhError ? 502 : 500;
     return json({ error: String(e.message || e) }, status);

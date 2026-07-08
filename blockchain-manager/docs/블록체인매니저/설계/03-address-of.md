@@ -1,6 +1,5 @@
 ---
 title: 3. 입금 주소 조회 — depositAddressOf
-category: 블록체인매니저
 status: To Do
 ---
 

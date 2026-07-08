@@ -19,8 +19,9 @@ blockchain-manager/
   DESIGN.md                  ← Binance 디자인 시스템 추출본. 앱 UI 스타일의 근거.
   claude-code-loops-guide.md ← 참고 문서 (칸반 관리 대상 아님)
   docs/                      ← 칸반이 관리하는 문서. 마크다운 + frontmatter 필수.
-    설계/                    ← 1단계 하위 폴더 = 중카테고리 (폴더명이 source of truth)
-    (캔톤네트워크/ 등 추가 예정 — 폴더만 만들면 보드 필터에 자동 반영)
+    <대카테고리>/<중카테고리>/*.md   ← 2단계 폴더 = 대·중카테고리 (폴더명이 source of truth)
+    블록체인매니저/설계/     ← 첫 문서 세트
+    트래블룰/ 캔톤네트워크/ 무스비 PoC/  ← 대카테고리 예약 (분류 폴더 만들면 UI 에 자동 반영)
   app/                       ← 웹앱. Cloudflare Pages 프로젝트 루트.
     public/                  ← 정적 프론트엔드 (빌드 스텝 없음)
     functions/api/           ← Pages Functions. GitHub API 프록시 (토큰은 서버사이드만)
@@ -34,13 +35,12 @@ blockchain-manager/
 ```yaml
 ---
 title: <카드에 표시될 제목>
-category: 블록체인매니저        # 대카테고리
 status: To Do                   # To Do | In Progress | Done | 아카이브
 ---
 ```
 
-- **중카테고리는 frontmatter 가 아니라 폴더 구조** — `docs/<중카테고리>/<file>.md`.
-  새 중카테고리는 폴더만 만들면 보드가 자동 인식한다 (예: `docs/캔톤네트워크/`).
+- **대·중카테고리는 frontmatter 가 아니라 폴더 구조** — `docs/<대카테고리>/<중카테고리>/<file>.md`.
+  새 카테고리는 폴더만 만들면 UI(홈 → 대카테고리 → 중카테고리 → 칸반)가 자동 인식한다.
 - `status` 값은 위 4개 문자열만 유효. **필드가 없으면 "To Do" 로 분류**된다.
 - 카드 요약은 frontmatter 다음 본문 첫 2줄에서 자동 추출 — 문서 첫 단락을 요약답게 쓸 것.
 - 마지막 수정일은 GitHub 커밋 이력에서 가져온다 (문서에 날짜를 적지 않는다).

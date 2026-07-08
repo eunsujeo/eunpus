@@ -1,6 +1,5 @@
 ---
 title: 4. 감지와 확정 — 폴링 · 상태 판정 · DCCP
-category: 블록체인매니저
 status: To Do
 ---
 

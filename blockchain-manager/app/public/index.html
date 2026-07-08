@@ -9,9 +9,8 @@
 <body>
   <header class="topbar">
     <div class="brand">
-      <span class="brand-mark">BM</span>
-      <span class="brand-name">블록체인매니저</span>
-      <nav id="filters" class="filters"></nav>
+      <span class="brand-mark" id="brand-home" role="button" tabindex="0">DOCS</span>
+      <nav id="crumbs" class="crumbs"></nav>
     </div>
     <div class="topbar-right">
       <span id="board-meta" class="board-meta"></span>
@@ -19,8 +18,8 @@
     </div>
   </header>
 
-  <main id="board" class="board" aria-busy="true">
-    <div id="board-status" class="board-status">보드를 불러오는 중…</div>
+  <main id="view" class="view" aria-busy="true">
+    <div id="board-status" class="board-status">불러오는 중…</div>
   </main>
 
   <div id="modal" class="modal hidden" role="dialog" aria-modal="true">

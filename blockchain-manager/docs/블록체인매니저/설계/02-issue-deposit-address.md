@@ -1,6 +1,5 @@
 ---
 title: 2. 입금 주소 생성 — createDepositAddress
-category: 블록체인매니저
 status: To Do
 ---
 

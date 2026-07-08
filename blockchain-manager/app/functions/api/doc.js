@@ -32,12 +32,13 @@ export async function onRequestGet({ request, env }) {
       `/repos/${owner}/${repo}/contents/${encodePath(path)}?ref=${encodeURIComponent(branch)}`
     );
     const { meta, body } = parseFrontmatter(raw);
-    // DOCS_PATH 와 파일명 사이의 폴더명 = 중카테고리
+    // docs/<대카테고리>/<중카테고리>/<file>.md — 폴더가 카테고리의 source of truth
     const rel = path.slice(env.DOCS_PATH.replace(/\/+$/, '').length + 1).split('/');
-    const subcategory = rel.length > 1 ? rel[0] : meta.subcategory || '';
+    const category = rel.length > 1 ? rel[0] : '';
+    const subcategory = rel.length > 2 ? rel[1] : '';
     return json({
       path,
-      meta: { ...meta, subcategory, status: normalizeStatus(meta.status) },
+      meta: { ...meta, category, subcategory, status: normalizeStatus(meta.status) },
       body,
       raw, // 복사·다운로드용 원문 (frontmatter 포함)
     });

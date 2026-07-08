@@ -1,6 +1,5 @@
 ---
 title: 1. 계정 생성 — createAccount
-category: 블록체인매니저
 status: In Progress
 ---
 

@@ -1,6 +1,5 @@
 ---
 title: 7. 수수료 견적 — estimateFee
-category: 블록체인매니저
 status: To Do
 ---
 

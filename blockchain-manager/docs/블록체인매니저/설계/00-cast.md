@@ -1,6 +1,5 @@
 ---
 title: 0. 구성 요소
-category: 블록체인매니저
 status: In Progress
 ---
 

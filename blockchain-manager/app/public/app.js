@@ -4,7 +4,8 @@ const { esc, renderMarkdown } = window.MD;
 
 const STATUSES = ['To Do', 'In Progress', 'Done', '아카이브'];
 
-const board = document.getElementById('board');
+const view = document.getElementById('view');
+const crumbs = document.getElementById('crumbs');
 const boardMeta = document.getElementById('board-meta');
 const modal = document.getElementById('modal');
 const modalTitle = document.getElementById('modal-title');
@@ -12,8 +13,9 @@ const modalChips = document.getElementById('modal-chips');
 const modalBody = document.getElementById('modal-body');
 const toast = document.getElementById('toast');
 
+let tree = {};   // { 대카테고리: [중카테고리...] }
 let cards = [];
-let activeFilter = '전체';
+let nav = { cat: null, sub: null }; // 현재 위치
 let toastTimer = null;
 
 /* ---------- utils ---------- */
@@ -38,53 +40,111 @@ async function api(url, init) {
   return data;
 }
 
-/* ---------- board rendering ---------- */
+/* ---------- navigation ---------- */
 
-function renderFilters() {
-  const filters = document.getElementById('filters');
-  const subs = [...new Set(cards.map((c) => c.subcategory).filter(Boolean))].sort();
-  filters.innerHTML = '';
-  if (!subs.length) return;
-  for (const label of ['전체', ...subs]) {
-    const btn = document.createElement('button');
-    btn.className = 'filter-chip' + (label === activeFilter ? ' active' : '');
-    btn.type = 'button';
-    btn.textContent = label;
-    btn.addEventListener('click', () => {
-      activeFilter = label;
-      render();
-    });
-    filters.appendChild(btn);
+function goTo(cat, sub, push = true) {
+  nav = { cat: cat || null, sub: sub || null };
+  if (push) {
+    const q = new URLSearchParams();
+    if (nav.cat) q.set('cat', nav.cat);
+    if (nav.sub) q.set('sub', nav.sub);
+    history.pushState(nav, '', q.toString() ? `?${q}` : location.pathname);
   }
+  render();
 }
 
-function visibleCards() {
-  return activeFilter === '전체'
-    ? cards
-    : cards.filter((c) => c.subcategory === activeFilter);
+function readURL() {
+  const q = new URLSearchParams(location.search);
+  nav = { cat: q.get('cat') || null, sub: q.get('sub') || null };
 }
+
+window.addEventListener('popstate', () => { readURL(); render(); });
+
+function renderCrumbs() {
+  const parts = [`<button type="button" class="crumb" data-cat="" data-sub="">홈</button>`];
+  if (nav.cat) parts.push(`<button type="button" class="crumb" data-cat="${esc(nav.cat)}" data-sub="">${esc(nav.cat)}</button>`);
+  if (nav.sub) parts.push(`<span class="crumb current">${esc(nav.sub)}</span>`);
+  crumbs.innerHTML = parts.join('<span class="crumb-sep">›</span>');
+  crumbs.querySelectorAll('button.crumb').forEach((b) =>
+    b.addEventListener('click', () => goTo(b.dataset.cat || null, null))
+  );
+}
+
+/* ---------- views ---------- */
 
 function render() {
-  board.innerHTML = '';
-  board.removeAttribute('aria-busy');
-  renderFilters();
+  view.innerHTML = '';
+  view.removeAttribute('aria-busy');
+  renderCrumbs();
+
+  if (!nav.cat) renderHome();
+  else if (!nav.sub) renderCatView();
+  else renderBoard();
+}
+
+function tile(label, metaText, onClick) {
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.className = 'cat-tile';
+  el.innerHTML = `<span class="cat-tile-name">${esc(label)}</span><span class="cat-tile-meta">${esc(metaText)}</span>`;
+  el.addEventListener('click', onClick);
+  return el;
+}
+
+function renderHome() {
+  view.className = 'view cat-grid';
+  const cats = Object.keys(tree).sort();
+  if (!cats.length) {
+    view.innerHTML = '<div class="board-status">카테고리가 없습니다.</div>';
+    return;
+  }
+  for (const cat of cats) {
+    const n = cards.filter((c) => c.category === cat).length;
+    const subs = tree[cat].length;
+    view.appendChild(tile(cat, `${subs}개 분류 · 문서 ${n}건`, () => goTo(cat, null)));
+  }
+  boardMeta.textContent = `문서 ${cards.length}건`;
+}
+
+function renderCatView() {
+  view.className = 'view cat-grid';
+  const subs = tree[nav.cat] || [];
+  if (!subs.length) {
+    view.innerHTML = `<div class="board-status">"${esc(nav.cat)}" 에 아직 분류가 없습니다 — docs/${esc(nav.cat)}/&lt;분류&gt;/ 폴더를 만들면 나타납니다.</div>`;
+    boardMeta.textContent = '';
+    return;
+  }
+  for (const sub of subs) {
+    const n = cards.filter((c) => c.category === nav.cat && c.subcategory === sub).length;
+    view.appendChild(tile(sub, `문서 ${n}건`, () => goTo(nav.cat, sub)));
+  }
+  boardMeta.textContent = `문서 ${cards.filter((c) => c.category === nav.cat).length}건`;
+}
+
+function boardCards() {
+  return cards.filter((c) => c.category === nav.cat && c.subcategory === nav.sub);
+}
+
+function renderBoard() {
+  view.className = 'view board';
+  const items = boardCards();
 
   for (const status of STATUSES) {
     const col = document.createElement('section');
     col.className = 'column';
     col.dataset.status = status;
 
-    const items = visibleCards().filter((c) => c.status === status);
+    const inCol = items.filter((c) => c.status === status);
     col.innerHTML = `
       <div class="column-head">
         <span class="column-dot"></span>
         <span class="column-title">${esc(status)}</span>
-        <span class="column-count">${items.length}</span>
+        <span class="column-count">${inCol.length}</span>
       </div>
       <div class="column-body"></div>`;
 
     const bodyEl = col.querySelector('.column-body');
-    for (const c of items) bodyEl.appendChild(cardEl(c));
+    for (const c of inCol) bodyEl.appendChild(cardEl(c));
 
     col.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -98,10 +158,10 @@ function render() {
       if (path) moveCard(path, status);
     });
 
-    board.appendChild(col);
+    view.appendChild(col);
   }
 
-  boardMeta.textContent = `문서 ${visibleCards().length}건`;
+  boardMeta.textContent = `문서 ${items.length}건`;
 }
 
 function cardEl(c) {
@@ -130,14 +190,17 @@ function cardEl(c) {
 /* ---------- actions ---------- */
 
 async function loadBoard() {
-  board.setAttribute('aria-busy', 'true');
-  board.innerHTML = '<div class="board-status">보드를 불러오는 중…</div>';
+  view.setAttribute('aria-busy', 'true');
+  view.className = 'view';
+  view.innerHTML = '<div class="board-status">불러오는 중…</div>';
   try {
     const data = await api('/api/board');
-    cards = data.cards;
+    tree = data.tree || {};
+    cards = data.cards || [];
+    readURL();
     render();
   } catch (e) {
-    board.innerHTML = `<div class="board-status error">불러오기 실패: ${esc(e.message)}</div>`;
+    view.innerHTML = `<div class="board-status error">불러오기 실패: ${esc(e.message)}</div>`;
   }
 }
 
@@ -148,7 +211,7 @@ async function moveCard(path, nextStatus) {
   const prevStatus = card.status;
   card.status = nextStatus; // 낙관적 이동
   render();
-  const el = board.querySelector(`.card[data-path="${CSS.escape(path)}"]`);
+  const el = view.querySelector(`.card[data-path="${CSS.escape(path)}"]`);
   if (el) el.classList.add('pending');
 
   try {
@@ -196,6 +259,12 @@ async function openPreview(c) {
 /* ---------- wiring ---------- */
 
 window.MD.initMermaid();
+
+const goHome = () => goTo(null, null);
+document.getElementById('brand-home').addEventListener('click', goHome);
+document.getElementById('brand-home').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') goHome();
+});
 
 document.getElementById('open-page').addEventListener('click', () => {
   if (!currentDoc) return;
