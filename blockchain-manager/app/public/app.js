@@ -51,9 +51,27 @@ function renderMarkdown(md) {
   const out = [];
   let inCode = false;
   let listTag = null;
+  let tableRows = null; // 연속된 | 행 버퍼
 
   const closeList = () => {
     if (listTag) { out.push(`</${listTag}>`); listTag = null; }
+  };
+
+  const splitRow = (line) =>
+    line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+
+  const flushTable = () => {
+    if (!tableRows) return;
+    const rows = tableRows;
+    tableRows = null;
+    if (!rows.length) return;
+    const sepIdx = rows.findIndex((r) => r.every((c) => /^:?-{2,}:?$/.test(c)));
+    const head = sepIdx > 0 ? rows[0] : null;
+    const body = sepIdx > 0 ? rows.slice(sepIdx + 1) : rows;
+    let html = '<table>';
+    if (head) html += '<thead><tr>' + head.map((c) => `<th>${c}</th>`).join('') + '</tr></thead>';
+    html += '<tbody>' + body.map((r) => '<tr>' + r.map((c) => `<td>${c}</td>`).join('') + '</tr>').join('') + '</tbody></table>';
+    out.push(html);
   };
 
   const inline = (s) =>
@@ -70,11 +88,20 @@ function renderMarkdown(md) {
   for (const line of lines) {
     if (line.trim().startsWith('```')) {
       closeList();
+      flushTable();
       out.push(inCode ? '</code></pre>' : '<pre><code>');
       inCode = !inCode;
       continue;
     }
     if (inCode) { out.push(esc(line)); continue; }
+
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      closeList();
+      if (!tableRows) tableRows = [];
+      tableRows.push(splitRow(line).map((c) => inline(c)));
+      continue;
+    }
+    flushTable();
 
     const h = /^(#{1,3})\s+(.*)$/.exec(line);
     if (h) { closeList(); out.push(`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`); continue; }
@@ -97,6 +124,7 @@ function renderMarkdown(md) {
     out.push(`<p>${inline(line)}</p>`);
   }
   closeList();
+  flushTable();
   if (inCode) out.push('</code></pre>');
   return out.join('\n');
 }

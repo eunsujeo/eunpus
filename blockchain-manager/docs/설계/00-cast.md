@@ -4,8 +4,121 @@ category: 블록체인매니저
 status: In Progress
 ---
 
-블록체인 매니저를 포트로 감싼 두 층 구조, 직접 만드는 넷(포트·어댑터·백엔드 DB·폴러), 그리고 기능 × 사용처 매트릭스를 한 장에 정리한다.
+블록체인 매니저를 포트로 감싼 두 층 구조, 직접 만드는 넷, 그리고 기능 × 사용처 표를 한 장에 정리한다.
+워크스루 전체의 등장인물표로, 이후 모든 장은 이 구성 요소 이름을 그대로 쓴다.
 
-워크스루 전체의 등장인물표. 이후 모든 장은 이 구성 요소 이름을 그대로 쓴다.
+## 구조는 두 층입니다
 
-원본 문서: [0. 구성 요소](https://wiki-docs.pages.dev/wallet-design-walkthrough/00-cast.html)
+이 시스템은 두 층입니다. 위는 **지갑 백엔드** — 항상 직접 만들고, 여기서는 **물리적으로 분리된 두 개**입니다. **Service 백엔드**는 고객 런타임(계정·주소·입금·출금·잔액)을, **Admin 백엔드**는 운영·거버넌스(정책·승인·키 운영·동결·rebalance)를 맡고, 별도 배포·권한·감사 경계로 나뉩니다.
+
+```mermaid
+flowchart TB
+    SVC["Service 백엔드<br/>고객 런타임 · 입금·출금·잔액"]
+    ADM["Admin 백엔드<br/>운영·거버넌스 · 정책·승인·키·동결"]
+    PORT["포트 (통로) — 1차 목표<br/>createAccount · createDepositAddress · depositAddressOf<br/>submitTransaction · balanceOf · transactionsOf …"]
+    FB["Fireblocks 매니저"]
+    ETH["이더리움"]
+    BASE["Base"]
+
+    SVC --> PORT
+    ADM --> PORT
+    PORT --> FB
+    FB --> ETH
+    FB --> BASE
+
+    classDef be fill:#dbeafe,stroke:#2563eb;
+    classDef port fill:#e0e7ff,stroke:#6366f1;
+    classDef vendor fill:#dcfce7,stroke:#16a34a;
+    classDef chain fill:#eef2ff,stroke:#818cf8;
+    class SVC,ADM be; class PORT port; class FB vendor; class ETH,BASE chain;
+```
+
+## 어디서 도는가 — 물리 배치
+
+위가 논리 구조라면, 구성 요소가 실제로 **어디서 도는지**도 잡아 두면 1~8페이지가 쉽습니다. Fireblocks 기준 배치는 이렇습니다 — 서명·키·노드·전파는 **벤더 안**이고, 이쪽엔 **두 백엔드(블록체인 매니저 어댑터 포함)·폴링 워커·백엔드 DB·Co-signer**가 남습니다.
+
+```mermaid
+flowchart LR
+    subgraph OUR["인프라"]
+      direction TB
+      SVCBE["Service 백엔드<br/>유스케이스 + 블록체인 매니저 어댑터"]
+      ADMBE["Admin 백엔드<br/>정책·승인·키 운영·동결·rebalance"]
+      BDB[("백엔드 DB<br/>ref↔vault↔주소 · customer_ledger")]
+      POLL["폴링 워커 (Service)<br/>입금·상태 감지 — 주기 조회 (4·6장)"]
+      COS["API Co-signer (SGX/TEE)<br/>MPC 온프렘 키 share · 자동 공동서명"]
+      CB["Callback Handler<br/>정책 훅 · 승인·거부"]
+    end
+    FBV["Fireblocks (벤더 SaaS)<br/>vault · MPC 클라우드 share · TAP 정책<br/>노드 · 전파"]
+    EVM["EVM 네트워크<br/>이더리움 · Base"]
+
+    SVCBE -->|포트 호출| FBV
+    ADMBE -->|정책·승인·운영| FBV
+    SVCBE --- BDB
+    ADMBE --- BDB
+    POLL --- BDB
+    FBV <-->|서명 요청 · MPC share| COS
+    COS -->|승인 질의| CB
+    POLL -->|주기 조회 · outbound| FBV
+    FBV -.->|webhook · 보조| POLL
+    FBV --> EVM
+
+    classDef svc fill:#dbeafe,stroke:#2563eb;
+    classDef adm fill:#fef3c7,stroke:#d97706;
+    classDef sec fill:#fee2e2,stroke:#dc2626;
+    classDef data fill:#dcfce7,stroke:#16a34a;
+    classDef vendor fill:#f5f5f7,stroke:#86868b;
+    classDef ext fill:#eef2ff,stroke:#818cf8;
+    classDef policy fill:#ffedd5,stroke:#ea580c;
+    class SVCBE,POLL svc; class ADMBE adm; class COS sec; class CB policy; class BDB data; class FBV vendor; class EVM ext;
+```
+
+Fireblocks 기준 배치. **Service**·**Admin** 은 **물리적으로 분리**돼 각자 포트로 벤더를 부른다 — **블록체인 매니저 어댑터는 백엔드 안의 모듈**이고, **ref↔vault↔주소 매핑과 원장은 백엔드 DB**에 둔다. 서명은 **벤더 단독이 아니다** — MPC 키 share 하나는 **보안 존(SGX/TEE)의 API Co-signer**가 들고 매 서명마다 **공동서명**하며, 서명 직전 **Callback Handler**(정책 훅)가 승인·거부를 건다. vault·MPC 클라우드 share·노드·전파는 벤더 몫이다(5·6장). 입금·상태 **감지는 폴링 워커가 벤더로 나가는 주기 조회**(outbound)이고, webhook 은 환경이 허용할 때 붙이는 보조다(4장).
+
+## 직접 만드는 것 — 넷
+
+서명·키·노드·인덱싱·전파·정책 엔진은 **대부분 벤더 안**에 있습니다. **직접 만드는 것은 넷**입니다 — 이 넷이 곧 1차 작업 범위입니다.
+
+```mermaid
+flowchart LR
+    subgraph MINE["직접 만든다 — 1차 작업 범위"]
+      direction TB
+      M1["두 백엔드 경계<br/>Service / Admin 분리 · 권한·감사"]
+      M2["포트 구현 (Fireblocks 어댑터)<br/>SDK 래핑 · 체인 라우팅"]
+      M3["폴링 감지·정합<br/>변경분 조회→DB · 벤더 잔액 대사"]
+      M4["백엔드 DB<br/>ref↔주소 매핑 · 원장"]
+    end
+    subgraph VENDOR["Fireblocks 가 제공"]
+      direction TB
+      V1["vault · MPC 서명 · TAP 정책 · co-signer(직접 설치·운영)<br/>노드 · 인덱싱 · 전파 · 수수료"]
+    end
+
+    classDef mine fill:#dbeafe,stroke:#2563eb;
+    classDef vendor fill:#dcfce7,stroke:#16a34a;
+    class M1,M2,M3,M4 mine; class V1 vendor;
+```
+
+이쪽 몫은 넷(파랑) — 나머지 서명·키·노드·전파·정책 엔진은 벤더(초록).
+
+## Fireblocks 기능 × 사용처 표
+
+포트의 동사들은 어디서 왔을까요. **Fireblocks 의 API 표면을 분석한 결과**입니다.
+
+| 기능 | Fireblocks 표면 | 온보딩 | 입금 | 출금 | 운영·CS | 도메인 동사 | 백엔드 | 페이지 |
+|---|---|---|---|---|---|---|---|---|
+| 고객 계정 생성 | createVaultAccount | ● | | | | `createAccount` | S | 1장 |
+| 입금 주소 **생성** | createVaultAsset · 자산 지갑 활성화 (EVM=단일) | ● | ● | | | `createDepositAddress` | S | 2장 |
+| 입금 주소 **조회** | (DB 읽기 · Fireblocks 미사용) | | ● | | ● | `depositAddressOf` | S | 3장 |
+| 수신·확정 이벤트 | 거래 조회 폴링 (webhook 옵션) | | ● | ● | | `onChainEvent` | S | 4장 |
+| 수수료 추정 | estimateFee | | | ● | | `estimateFee` | S | 7장 |
+| 출금 제출 | **createTransaction** | | | ● | | `submitTransaction` | S | 6장 |
+| 상태 조회 | getTransactionById | | | ● | ● | `statusOf` | S·A | 6장 |
+| 막힌 출금 재촉·취소 | boost / cancel | | | ● | ● | `boost` `cancel` | A | 6장 |
+| 잔액 (가용·대기·잠김) | getVaultAccountAsset | | ● | ● | ● | `balanceOf` | S·A | 8장 |
+| 내 거래 이력 | 거래 목록 조회 | | | | ● | `transactionsOf` | S·A | 8장 |
+| 서명 정책 (한도·화이트리스트) | co-signer · Callback Handler — 서명 직전 재검증 | | | ● | ● | (동사 없음 — 서명 관문) | A | 6장 |
+| gas 조달 | Universal Gasless (대납 — 스테이블코인 전용이라 ETH 이동 없음) | | | ● | ● | (동사 없음 — 운영·설정) | A | 문서 |
+
+더 깊이: 컴포넌트별 상세는 블록체인 매니저 컴포넌트 가이드 (참고용 — 본 워크스루는 가이드 없이 읽힙니다).
+
+---
+출처: [wallet-design-walkthrough/00-cast.html](https://wiki-docs.pages.dev/wallet-design-walkthrough/00-cast.html)

@@ -245,6 +245,21 @@ body {
   color: var(--muted-strong);
 }
 .doc-body hr { border: none; border-top: 1px solid var(--hairline); }
+.doc-body table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+  font-size: 13px;
+  display: block;
+  overflow-x: auto;
+}
+.doc-body th, .doc-body td {
+  border: 1px solid var(--hairline);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.doc-body th { color: #fff; background: var(--surface-elevated); font-weight: 600; }
 
 /* ---- toast ---- */
 .toast {
