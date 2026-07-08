@@ -53,7 +53,11 @@ EP->>PM: postOp — 실제 gas 비용으로 정산 (opSucceeded / opReverted 모
 EP-->>BD: Paymaster 예치금에서 수수료 지급 — Bundler 는 선지불 gas + 마진 회수
 ```
 
-Paymaster 가 붙은 UserOperation 한 건의 상세 흐름이다. 사용자의 gas 는 0 이고(1~2), 선지불은 Bundler(4), 최종 부담은 Paymaster 예치금이다(8~9). 핵심은 **검증 루프(5~6)와 실행 루프(7~8)의 분리**다 — 검증을 통과한 순간 지불 책임이 확정되므로, 실행이 revert 해도 Bundler 와 Paymaster 가 gas 를 떼이지 않는다. GSN 과 달리 발신자 문제는 없다 — 실행 주체가 사용자의 smart account 자체라서, 토큰 컨트랙트가 보는 `msg.sender` 가 계정 본인이다. forwarder 도, 수신 컨트랙트의 사전 지원도 필요 없다.
+Paymaster 가 붙은 UserOperation 한 건의 상세 흐름이다. 요약하면:
+
+- **돈의 경로** — 사용자의 gas 는 0 이고(1~2), 선지불은 Bundler(4), 최종 부담은 Paymaster 예치금이다(8~9).
+- **검증 루프(5~6)와 실행 루프(7~8)의 분리** — 검증을 통과한 순간 지불 책임이 확정되므로, 실행이 revert 해도 Bundler 와 Paymaster 가 gas 를 떼이지 않는다.
+- **발신자 문제 없음** — GSN 과 달리 실행 주체가 사용자의 smart account 자체라서, 토큰 컨트랙트가 보는 `msg.sender` 가 계정 본인이다. forwarder 도, 수신 컨트랙트의 사전 지원도 필요 없다.
 
 ## Paymaster — 수락·정산의 2단계
 
@@ -109,7 +113,11 @@ classDef vault fill:#dbeafe,stroke:#2563eb;
 class OP,PAY good; class STOP bad; class ALERT wait; class DEP vault; class CHK wait;
 ```
 
-4337 paymaster 의 돈의 흐름은 선불이다. 예치금을 미리 채워 두고(①) 건마다 확인(②)·차감(③~④)하는 순환이 정상 운영이고, 점선(⑤~⑥)이 그 순환을 유지하는 운영 루프다. 잔고가 바닥나면(③′) 그 순간부터 전 서비스의 대납이 멈춘다. 그래서 잔고 임계 경보와 재충전 운영이 paymaster 운영의 상수가 된다. 건별 제어라는 점은 Fireblocks Gasless 와 같지만 **돈의 시점이 반대**다 — Fireblocks Relay 는 벤더가 신용을 껴주는 후불(gas 선지불 후 월말 통합 인보이스, 3장)이라 예치금 운영이 없다.
+4337 paymaster 의 돈의 흐름은 선불이다. 요약하면:
+
+- **정상 순환** — 예치금을 미리 채워 두고(①) 건마다 확인(②)·차감(③~④)하며, 점선(⑤~⑥)이 그 순환을 유지하는 운영 루프다.
+- **바닥나면 멈춘다** — 잔고가 바닥나면(③′) 그 순간부터 전 서비스의 대납이 멈추므로, 잔고 임계 경보와 재충전 운영이 paymaster 운영의 상수가 된다.
+- **Fireblocks 와 반대인 점** — 건별 제어는 같지만 **돈의 시점이 반대**다. Fireblocks Relay 는 벤더가 신용을 껴주는 후불(gas 선지불 후 월말 통합 인보이스, 3장)이라 예치금 운영이 없다.
 
 ## 4337 을 직접 운영한다는 것의 무게
 

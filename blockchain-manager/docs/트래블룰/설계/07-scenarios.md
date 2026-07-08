@@ -66,7 +66,11 @@ sequenceDiagram
     end
 ```
 
-벤더 게이트형이다 — 검증(1·4~5)과 `travelRuleMessage` 동봉(6)은 우리가 하지만, 판정 후 조치(9~)는 Notabene 의 Post-Screening Policy 가 한다. 첫 `validate` 가 `BELOW_THRESHOLD` 를 돌려주면 정보 교환 없이 곧장 제출로 간다. 임계 이상이면 수취인 정보를 모아 `validate/full` 로 전체 검증을 통과시킨 뒤 `submitTransaction` 에 암호화 메시지를 실어 보낸다. 이후 FB→NB 판정에서 Accept 가 나야 서명이 진행되고, Reject 면 전송이 차단된다(Admin 우회는 가능) — 차단은 폴링으로 확인해 잠김을 풀고 고객에게 안내한다.
+벤더 게이트형이다 — 검증(1·4~5)과 `travelRuleMessage` 동봉(6)은 우리가 하지만, 판정 후 조치(9~)는 Notabene 의 Post-Screening Policy 가 한다.
+
+- 첫 `validate` 가 `BELOW_THRESHOLD` 를 돌려주면 정보 교환 없이 곧장 제출로 간다.
+- 임계 이상이면 수취인 정보를 모아 `validate/full` 로 전체 검증을 통과시킨 뒤 `submitTransaction` 에 암호화 메시지를 실어 보낸다.
+- 이후 FB→NB 판정에서 Accept 가 나야 서명이 진행되고, Reject 면 전송이 차단된다(Admin 우회는 가능) — 차단은 폴링으로 확인해 잠김을 풀고 고객에게 안내한다.
 
 ## 7.3 출금 → 개인지갑 (non-custodial)
 
@@ -114,7 +118,12 @@ sequenceDiagram
     BE->>BE: 사전 요청·tx hash·입금 후보 대조 · 일치 + 확정 임계 도달 → 가용
 ```
 
-요청-응답형이다 — 자금이 오기 전에 우리 수신 API 가 먼저 응답한다(2~3). 송신 VASP 가 전송에 앞서 사전 검증을 요청하면 VerifyVASP 가 우리 수신 API 를 호출하고, 우리는 수취 고객의 실명·계정을 확인해 승인을 돌려준다. 그 승인이 나야 상대가 온체인 전송을 실행한다. 이후 우리 폴링이 입금 후보를 감지하고, 상대가 보고한 tx hash 가 VerifyVASP 를 거쳐 전달된다. 가용 전이는 "온체인 확정 임계 도달 + 사전 요청과의 대조 일치" 둘 다 충족해야 한다 — 대조 실패나 보고 미수신의 처리 기준은 자체 정책 설계 대상이다.
+요청-응답형이다 — 자금이 오기 전에 우리 수신 API 가 먼저 응답한다(2~3).
+
+- 송신 VASP 가 전송에 앞서 사전 검증을 요청하면 VerifyVASP 가 우리 수신 API 를 호출하고, 우리는 수취 고객의 실명·계정을 확인해 승인을 돌려준다.
+- 그 승인이 나야 상대가 온체인 전송을 실행한다.
+- 이후 우리 폴링이 입금 후보를 감지하고, 상대가 보고한 tx hash 가 VerifyVASP 를 거쳐 전달된다.
+- 가용 전이는 "온체인 확정 임계 도달 + 사전 요청과의 대조 일치" 둘 다 충족해야 한다 — 대조 실패나 보고 미수신의 처리 기준은 자체 정책 설계 대상이다.
 
 ## 7.5 입금 ← 해외 VASP (Notabene)
 
@@ -141,7 +150,11 @@ sequenceDiagram
     end
 ```
 
-벤더 안에서 끝나는 형이다 — 우리 코드는 개입하지 않고, 결과가 폴링 상태로만 나타난다. 송신 VASP 의 온체인 전송을 Fireblocks 가 감지해 첫 confirmation 후 Transaction Screening Policy 를 돌리고, FB→NB 로 상세를 넘겨 판정한다(메시지가 없으면 빈 메시지를 만들며, Inbound delay 는 기본 30초). Post-Screening 이 Accept 면 확정 임계 후 가용으로, Reject·Freeze 면 자금이 동결되고 폴링에 REJECTED 계열이 잡혀 잔액에 반영되지 않는다 — 이후는 Admin 이 unfreeze 할지 유지할지 판단한다. 기존 입금 파이프라인(감지·동결·Admin unfreeze)이 이 흐름을 그대로 흡수한다.
+벤더 안에서 끝나는 형이다 — 우리 코드는 개입하지 않고, 결과가 폴링 상태로만 나타난다.
+
+- 송신 VASP 의 온체인 전송을 Fireblocks 가 감지해 첫 confirmation 후 Transaction Screening Policy 를 돌리고, FB→NB 로 상세를 넘겨 판정한다(메시지가 없으면 빈 메시지를 만들며, Inbound delay 는 기본 30초).
+- Post-Screening 이 Accept 면 확정 임계 후 가용으로, Reject·Freeze 면 자금이 동결되고 폴링에 REJECTED 계열이 잡혀 잔액에 반영되지 않는다 — 이후는 Admin 이 unfreeze 할지 유지할지 판단한다.
+- 기존 입금 파이프라인(감지·동결·Admin unfreeze)이 이 흐름을 그대로 흡수한다.
 
 ## 7.6 입금 ← 개인지갑
 

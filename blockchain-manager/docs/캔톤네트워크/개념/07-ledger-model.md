@@ -66,7 +66,15 @@ flowchart TB
     class T1,N ex; class A2,NT cr;
 ```
 
-Transfer 를 실행하면 옛 자산(Asset#1)이 보관되고, 그 연쇄로 새 소유자 앞 자산(Asset#2) 생성과 등록부 알림(Notify) 실행이 갈라져 나오며, Notify 는 다시 Notification 생성을 낳는다 — 이 트리 전체가 하나의 트랜잭션으로 전부 아니면 전무로 커밋된다. 액션은 3종이다: **Create**(생성) · **Exercise**(실행, 소비형이면 보관) · **Fetch**(읽기, 상태 불변). 소비형 choice 는 컨트랙트를 보관하고, **비소비형**(nonconsuming)은 활성으로 남겨 조회·알림에 쓴다.
+Transfer 를 실행하면 옛 자산(Asset#1)이 보관되고, 그 연쇄로 새 소유자 앞 자산(Asset#2) 생성과 등록부 알림(Notify) 실행이 갈라져 나오며, Notify 는 다시 Notification 생성을 낳는다 — 이 트리 전체가 하나의 트랜잭션으로 전부 아니면 전무로 커밋된다.
+
+액션은 3종이다.
+
+- **Create** — 생성.
+- **Exercise** — 실행, 소비형이면 보관.
+- **Fetch** — 읽기, 상태 불변.
+
+소비형 choice 는 컨트랙트를 보관하고, **비소비형**(nonconsuming)은 활성으로 남겨 조회·알림에 쓴다.
 
 ## 개발자 시점 — 컨트랙트 키 & 원장 시간
 

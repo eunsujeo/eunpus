@@ -27,7 +27,13 @@ sequenceDiagram
     Note over PW: 이후는 기존 입금 처리 그대로 —<br/>동결 건은 잔액 미반영 · Admin unfreeze 로 해제
 ```
 
-흐름을 한 문단으로 요약하면 이렇다. Fireblocks 가 입금을 감지해 첫 blockchain confirmation 을 기다린 뒤 Transaction Screening Policy 로 1차 통과 판정을 내린다. 원 거래에 트래블룰 메시지가 실려 있지 않으면 Fireblocks 가 빈 메시지를 만들어 스크리닝이 돌 수 있게 한다. 이어 거래 상세가 Notabene 로 넘어가 상태가 판정되는데, 이때 Inbound delay 기본 30초의 대기가 붙는다. 판정 결과에 따라 Post-Screening Policy 가 조치를 취한다 — Accept 면 통과, Reject·Freeze 면 자금이 동결된다. 우리 폴링 워커는 이 결과를 폴링으로 받을 뿐이고, 동결된 건은 REJECTED 계열 상태로 나타난다.
+요약하면 벤더 안에서 감지·스크리닝·판정·조치가 끝나고, 우리는 결과 상태만 폴링으로 받는다.
+
+- Fireblocks 가 입금을 감지해 첫 blockchain confirmation 을 기다린 뒤 Transaction Screening Policy 로 1차 통과 판정을 내린다.
+- 원 거래에 트래블룰 메시지가 실려 있지 않으면 Fireblocks 가 빈 메시지를 만들어 스크리닝이 돌 수 있게 한다.
+- 이어 거래 상세가 Notabene 로 넘어가 상태가 판정되는데, 이때 Inbound delay 기본 30초의 대기가 붙는다.
+- 판정 결과에 따라 Post-Screening Policy 가 조치를 취한다 — Accept 면 통과, Reject·Freeze 면 자금이 동결된다.
+- 우리 폴링 워커는 이 결과를 폴링으로 받을 뿐이고, 동결된 건은 REJECTED 계열 상태로 나타난다.
 
 ## 이후 — 기존 입금 파이프라인이 그대로 흡수한다
 

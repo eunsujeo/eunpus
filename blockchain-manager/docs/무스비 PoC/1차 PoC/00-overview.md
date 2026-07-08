@@ -37,5 +37,3 @@ status: To Do
 4. **4장** — 외부(Fireblocks) vs 내부(노드월렛) 지갑 비교 + 국내은행→해외은행 시퀀스 차이.
 5. **5장** — AWS Sandbox + DevNet/TestNet 진행·온보딩.
 6. **6장** — 노드인프라에 받아야 할 것 체크리스트.
-
-회의 배경(비즈니스 포함)은 poc 밖 `dev/docs/musubi-poc-meeting-notes.md`.
