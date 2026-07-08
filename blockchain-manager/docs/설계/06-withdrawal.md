@@ -118,7 +118,7 @@ sequenceDiagram
     Note over PW,DB: 막힌 거래는 변화가 없어 매니저 내부 폴링 커서에 다시 안 잡힌다 — 그래서 백엔드 DB 쪽에서 골라낸다
     PW->>DB: 오래 CONFIRMING 인 건 조회 (매니저 호출 없음)
     PW->>ADM: 막힌 건 보고 — 개입 판단 대상
-    ADM->>BM: statusOf(txRef) — API · 개입 전 단건 확인 (아직 CONFIRMING 인가)
+    ADM->>BM: transactionOf(txRef) — API · 개입 전 단건 확인 (아직 CONFIRMING 인가)
     BM->>FB: 벤더 단건 조회
     alt boost — 재촉
         ADM->>BM: boost(txRef) — API 로 지시
@@ -135,11 +135,11 @@ sequenceDiagram
     Note over BM,FB: 이후는 다시 매니저 내부 폴링 (4장) — 원래 건의 종결과 대체 건의 확정을 큐에 publish 해 실어 온다<br/>auto-boost 미지원이라 감지·지시는 우리 몫이다
 ```
 
-막힌 출금의 처리 한 사이클. 감지(1~2)는 Service 의 막힘 점검이 DB 에서 골라내고, 개입(3~)은 나가는 돈에 손대는 일이라 Admin 몫이다 — statusOf 로 그 건의 현재 상태를 확인한 뒤 boost(수수료 올려 재전송) 또는 cancel(철회)을 매니저 API 로 지시한다. 매니저가 벤더 API 를 호출하고 실제 대체 거래는 발신자인 relay 가 만들어 전파한다.
+막힌 출금의 처리 한 사이클. 감지(1~2)는 Service 의 막힘 점검이 DB 에서 골라내고, 개입(3~)은 나가는 돈에 손대는 일이라 Admin 몫이다 — transactionOf 로 그 건의 현재 상태를 확인한 뒤 boost(수수료 올려 재전송) 또는 cancel(철회)을 매니저 API 로 지시한다. 매니저가 벤더 API 를 호출하고 실제 대체 거래는 발신자인 relay 가 만들어 전파한다.
 
 ## 상태 한 장 — Fireblocks 필드를 공통 어휘로
 
-Fireblocks 는 내부 상태를 여러 단계로 보냅니다(PENDING_SIGNATURE, QUEUED, BROADCASTING, CONFIRMING, COMPLETED, FAILED…). 백엔드가 보는 것은 **매니저가 번역한 공통 상태** 하나입니다 — 상태 변경 이벤트(onChainEvent)는 메시지 큐(onchain-events 토픽)에서 consume 하고 statusOf 는 필요할 때 단건 확인하는 API 조회로 남습니다. 아래 넷이 밖으로 나갑니다.
+Fireblocks 는 내부 상태를 여러 단계로 보냅니다(PENDING_SIGNATURE, QUEUED, BROADCASTING, CONFIRMING, COMPLETED, FAILED…). 백엔드가 보는 것은 **매니저가 번역한 공통 상태** 하나입니다 — 상태 변경 이벤트(onChainEvent)는 메시지 큐(onchain-events 토픽)에서 consume 하고 transactionOf 는 필요할 때 단건 확인하는 API 조회로 남습니다. 아래 넷이 밖으로 나갑니다.
 
 | 공통 상태 (TxStatus) | 뜻 | Fireblocks 원어 (매니저가 번역) |
 |---|---|---|
