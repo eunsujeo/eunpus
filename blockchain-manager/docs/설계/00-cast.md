@@ -1,7 +1,7 @@
 ---
 title: 0. 구성 요소
 category: 블록체인매니저
-status: In Progress
+status: To Do
 ---
 
 별도 서비스인 블록체인 매니저를 백엔드가 HTTP API·웹소켓으로 부르는 두 층 구조, 직접 만드는 넷, 그리고 기능 × 사용처 표를 한 장에 정리한다.
