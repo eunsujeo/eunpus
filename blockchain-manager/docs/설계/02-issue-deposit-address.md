@@ -4,12 +4,12 @@ category: 블록체인매니저
 status: To Do
 ---
 
-(account, asset)당 한 번 — 자산 지갑을 활성화해 단일 주소를 얻는다. EVM 주소는 memoTag 가 null 이다.
-주소 발급 실패·저장 못 한 경우의 복구 절차와 주소의 두 규칙(vault 추가·감시 등록)을 함께 다룬다.
+(account, asset)당 한 번 — 백엔드가 블록체인 매니저 API 를 호출하면 매니저가 자산 지갑을 활성화해 단일 주소를 얻는다. EVM 주소는 memoTag 가 null 이다.
+(account, asset)↔주소 매핑은 블록체인 매니저 DB 에 저장하고, 저장 못 한 경우의 복구도 매니저 안에서 처리한다. 주소의 두 규칙(vault 추가·감시 등록)을 함께 다룬다.
 
 ```
 createDepositAddress(accountId, asset) → Address { value, memoTag? }
-// EVM: memoTag=null · (account,asset)당 1개 · 활성화 1회(재시도 멱등)
+// 블록체인 매니저 API 오퍼레이션 · EVM: memoTag=null · (account,asset)당 1개 · 활성화 1회(재시도 멱등)
 ```
 
 ## 자산 지갑 활성화 — (account, asset)당 한 번
@@ -17,30 +17,32 @@ createDepositAddress(accountId, asset) → Address { value, memoTag? }
 ```mermaid
 sequenceDiagram
     autonumber
-    box rgb(219,234,254) Service 백엔드 — 어댑터 포함·한 프로세스
+    box rgb(219,234,254) Service 백엔드
     participant BE as 유스케이스
-    participant FBI as 블록체인 매니저 어댑터·포트
     end
-    participant BDB as 백엔드 DB
+    box rgb(220,252,231) 블록체인 매니저 — 별도 서비스
+    participant BM as 블록체인 매니저 API
+    participant MDB as 블록체인 매니저 DB
+    end
     participant FB as Fireblocks SaaS · 벤더
 
-    BE->>FBI: createDepositAddress(accountId, asset)
-    FBI->>BDB: (accountId, asset) 조회
+    BE->>BM: API · createDepositAddress(accountId, asset)
+    BM->>MDB: (accountId, asset) 조회
     alt 있으면 — 재사용
-        BDB-->>FBI: 기존 주소
-        FBI-->>BE: 주소 (0xAb3…)
+        MDB-->>BM: 기존 주소
+        BM-->>BE: 주소 (0xAb3…)
     else 없으면
-        FBI->>FB: 벤더에 있는지 확인 — vault 자산 주소 조회 (addresses_paginated)
+        BM->>FB: 벤더에 있는지 확인 — vault 자산 주소 조회 (addresses_paginated)
         alt 벤더에 있음 — 활성화됐는데 저장 못 한 경우
-            FB-->>FBI: 기존 주소
+            FB-->>BM: 기존 주소
         else 벤더에도 없음 — 신규
-            FBI->>FB: 자산 지갑 활성화 createVaultAccountAsset · Idempotency-Key=f(accountId,asset)
-            FB-->>FBI: 활성화 응답 · address 0xAb3… · memoTag=null
+            BM->>FB: 자산 지갑 활성화 createVaultAccountAsset · Idempotency-Key=f(accountId,asset)
+            FB-->>BM: 활성화 응답 · address 0xAb3… · memoTag=null
         end
-        FBI->>BDB: 주소 저장 (accountId+asset ↔ 0xAb3…) · account·asset UNIQUE
-        FBI-->>BE: 주소 (0xAb3…)
+        BM->>MDB: 주소 저장 (accountId+asset ↔ 0xAb3…) · account·asset UNIQUE
+        BM-->>BE: 주소 (0xAb3…)
     end
-    Note over FBI,FB: EVM = account·자산당 주소 1개 · 활성화 1회. generateNewAddress 는 UTXO·Tag 전용의 다른 작업. 감시·귀속은 벤더 몫
+    Note over BM,FB: EVM = account·자산당 주소 1개 · 활성화 1회. generateNewAddress 는 UTXO·Tag 전용의 다른 작업. 감시·귀속은 벤더 몫
 ```
 
 ### 주소의 두 규칙 (결정)
