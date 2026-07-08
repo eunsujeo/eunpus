@@ -4,11 +4,7 @@ status: In Progress
 ---
 
 createAccount(ref) 는 블록체인 매니저 API 오퍼레이션 — Service 백엔드가 HTTP API 로 호출하면 매니저가 Fireblocks vault 를 만들고 Account { ref, accountId } 매핑을 블록체인 매니저 DB 에 저장한다.
-고객당 한 번 — 체인과 무관한 vault 를 만들며 재시도는 Idempotency-Key 와 매니저 DB ref UNIQUE 로 중복을 막는다.
-
-# 계정 생성 — createAccount
-
-고객당 한 번 — 체인과 무관한 vault 를 만든다
+고객당 한 번 — 체인과 무관한 vault 를 만들며 재시도는 Idempotency-Key 와 블록체인 매니저 DB ref UNIQUE 로 중복을 막는다.
 
 ```
 createAccount(ref) → Account { ref, accountId }
@@ -45,7 +41,7 @@ sequenceDiagram
         BM->>MDB: 저장 (ref ↔ vaultId · ref UNIQUE)
         BM-->>BE: Account { ref, accountId }
     end
-    Note over BM,FB: 재시도는 Idempotency-Key 로 24h 같은 vaultId · 그 밖 갭은 name 검색으로 벤더 확인 · 영구 유일성은 매니저 DB ref UNIQUE
+    Note over BM,FB: 재시도는 Idempotency-Key 로 24h 같은 vaultId · 그 밖 갭은 name 검색으로 벤더 확인 · 영구 유일성은 블록체인 매니저 DB ref UNIQUE
 ```
 
 ### 한 번만 — 재시도·중복 방어 (결정)

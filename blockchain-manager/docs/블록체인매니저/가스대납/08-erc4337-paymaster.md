@@ -136,10 +136,10 @@ Paymaster 를 자체 운영하면 다음이 전부 우리 몫이 된다.
 
 | 항목 | 내용 |
 |---|---|
-| **지원** | EntryPoint v0.7(Arbitrum·Base) / v0.8(Ethereum·Base·Arbitrum·Optimism·Polygon·Avalanche·Unichain — 7체인 공통 컨트랙트 주소). v0.8 흐름은 EIP-7702 계정 기반 — 9장의 "4337 과 7702 의 수렴"이 상용 제품에서 확인된다. |
-| **과금** | 실제 gas 의 **10% 할증**을 USDC 로 받고, 부담자는 최종 사용자다 — 개발자가 스폰서하는 Circle 의 다른 제품(Gas Station, **5%**)과 대비된다. |
+| **지원** | 여러 EntryPoint 버전(v0.7·v0.8)에 걸쳐 여러 EVM 체인을 지원한다. v0.8 흐름은 EIP-7702 계정 기반 — 9장의 "4337 과 7702 의 수렴"이 상용 제품에서 확인된다. |
+| **과금** | 실제 gas 에 일정 비율의 할증을 USDC 로 받고, 부담자는 최종 사용자다 — 개발자가 gas 를 스폰서하는 Circle 의 다른 제품(Gas Station — Fireblocks 의 Gas Station 과 무관한 동명의 별개 제품)과 대비된다. |
 | **흐름** | 사용자가 EIP-2612 permit(USDC 사용 승인)을 오프체인 서명 → paymasterData 에 인코딩해 UserOperation 에 첨부 → validatePaymasterUserOp 이 permit 을 검증하고 allowance 확보 → postOp 이 실비만큼 USDC 인출. 정산마다 UserOperationSponsored 이벤트(토큰·환율·실비 필드)를 남겨 대사할 수 있다. |
-| **검증 규칙의 실물** | permit 의 deadline 을 `maxUint256` 으로 강제한다 — 검증 단계에서 paymaster 가 `block.timestamp` 에 접근할 수 없다는 4337 opcode 제한 때문이다. 앞서 설명한 검증 규칙이 실제 구현을 어떻게 제약하는지 보여주는 예다. |
+| **검증 규칙의 실물** | permit 의 deadline 을 만료 없는 값으로 둔다 — 검증 단계에서 paymaster 가 `block.timestamp` 에 접근할 수 없다는 4337 opcode 제한 때문이다. 앞서 설명한 검증 규칙이 실제 구현을 어떻게 제약하는지 보여주는 예다. |
 
 ### 수탁 관점의 차이
 

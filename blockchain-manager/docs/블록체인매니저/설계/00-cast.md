@@ -91,7 +91,7 @@ flowchart LR
 위 그림을 요약하면:
 
 - **Service·Admin 은 물리적으로 분리**돼 각자 블록체인 매니저 API 를 부른다. Fireblocks 연동은 매니저 내부 구현이다.
-- DB 는 둘 — **매핑·이벤트 체크포인트는 매니저 DB**, **원장·출금 지시 상태는 백엔드 DB**.
+- DB 는 둘 — **매핑·이벤트 체크포인트는 블록체인 매니저 DB**, **원장·출금 지시 상태는 백엔드 DB**.
 - 서명은 벤더 단독이 아니다. 보안 존(SGX/TEE)의 **API Co-signer** 가 키 share 하나를 들고 공동서명하고, 서명 직전 **Callback Handler** 가 승인·거부를 건다.
 - 입금·상태 감지는 **매니저 내부 폴링**(주기 조회)이고 webhook 은 보조다(4장). 감지 결과는 **메시지 큐(onchain-events)** 로 백엔드에 전달된다.
 
@@ -103,7 +103,7 @@ flowchart LR
 |---|---|---|---|---|---|---|---|---|
 | 고객 계정 생성 | createVaultAccount | ● | | | | `createAccount` | S | 1장 |
 | 입금 주소 **생성** | createVaultAsset · 자산 지갑 활성화 (EVM=단일) | ● | ● | | | `createDepositAddress` | S | 2장 |
-| 입금 주소 **조회** | (매니저 DB 읽기 · Fireblocks 왕복 없음 — API 1홉) | | ● | | ● | `depositAddressOf` | S | 3장 |
+| 입금 주소 **조회** | (블록체인 매니저 DB 읽기 · Fireblocks 왕복 없음 — API 1홉) | | ● | | ● | `depositAddressOf` | S | 3장 |
 | 수신·확정 이벤트 | 매니저 내부 폴링 (webhook 보조) | | ● | ● | | `onChainEvent` — 메시지 큐 publish/consume | S | 4장 |
 | 수수료 추정 | estimateFee | | | ● | | `estimateFee` | S | 7장 |
 | 출금 제출 | **createTransaction** | | | ● | | `submitTransaction` | S | 6장 |

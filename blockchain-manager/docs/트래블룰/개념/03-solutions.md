@@ -56,7 +56,7 @@ flowchart LR
 | TRP(Travel Rule Protocol) | 오픈, 중앙 디렉토리 + E2E API | 중앙 디렉토리 서비스로 VASP 발견 | Coinbase 등 업계 컨소시엄 주도 |
 | OpenVASP | 오픈, 탈중앙 발견 | 공유 인프라 최소화·메시지 표준 중심 | 프라이버시·탈중앙 강조 |
 | TRUST | 폐쇄망(미국 중심) | 멤버 한정 | 미국 거래소 연합 |
-| Sygna Bridge | 상용 | 자체 네트워크 | 2025년 VerifyVASP 가 인수 |
+| Sygna Bridge | 상용 | 자체 네트워크 | — |
 | VerifyVASP | 상용, P2P·E2E, API | 검증된 VASP 네트워크(150여 곳·30여 국) | 한국계 |
 | Shyft / Veriscope | 온체인 접근 | 블록체인 기반 디렉토리 | 프로토콜 자체가 체인 |
 | Notabene | 프로토콜 비종속 게이트웨이 | W3C DID·검증가능자격증명(VC) 으로 기존 프로토콜을 브릿지 | 여러 프로토콜을 한 대시보드로 |

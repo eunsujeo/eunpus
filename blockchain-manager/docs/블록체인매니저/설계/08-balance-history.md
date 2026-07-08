@@ -18,7 +18,7 @@ transactionsOf(accountId, after, before, status?) → List<Transfer>
 //   예: COMPLETED = 대사 · CONFIRMING = 막힌 출금 점검
 ```
 
-after·before 는 벤더 거래 목록 API(`GET /v1/transactions`)의 시간 필터 그대로다 — **Unix 밀리초 타임스탬프**로, 4장 매니저 내부 폴링 커서와 같은 형식이다. 미지정 시 기본 조회 창은 최근 90일이다.
+after·before 는 벤더 거래 목록 API(`GET /v1/transactions`)의 시간 필터 그대로다 — **Unix 밀리초 타임스탬프**로, 4장 매니저 내부 폴링 커서와 같은 형식이다. 미지정 시 벤더 기본 조회 창이 적용된다.
 
 ## 세 칸을 가르는 선 — confirm 과 finality
 

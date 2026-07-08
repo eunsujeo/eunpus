@@ -6,10 +6,6 @@ status: To Do
 블록체인 매니저의 API 계약이 EVM 체인 확장과 매니저 교체를 흡수하는 법 — Service·Admin 백엔드 변경 0줄.
 매니저 내부에 체인·자산 등록만 추가하면 새 L2 를 태운다. 벤더 교체는 코드가 아니라 자금 이전(sweep)이 비용의 전부다.
 
-# 확장 — 매니저 API 계약이 EVM 체인 확장·매니저 교체를 흡수하는 법
-
-체인은 매니저 내부 등록, 벤더는 자금 이사 — 매니저의 API 계약이 두 변화를 흡수한다
-
 ## EVM 체인 확장 — Base 는 이미 붙었다
 
 ```mermaid
@@ -130,20 +126,19 @@ flowchart TB
 flowchart LR
     subgraph OUR["인프라"]
       SAPI["Service 백엔드<br/>고객 런타임 · 큐 컨슈머"]
-      AAPI["Admin 백엔드<br/>정책·승인·sweep·rebalance"]
+      AAPI["Admin 백엔드<br/>정책·승인·rebalance"]
       DB[("백엔드 DB<br/>customer_ledger · 출금 지시 상태")]
       MQ["메시지 큐<br/>onchain-events"]
       BM["블록체인 매니저 — 별도 서비스<br/>내부 Fireblocks 연동 · 내부 폴링 (4·6장)"]
-      BMDB[("매니저 DB<br/>ref↔vault↔주소 매핑 · 체크포인트")]
+      BMDB[("블록체인 매니저 DB<br/>ref↔vault↔주소 매핑 · 체크포인트")]
     end
     FB["Fireblocks (벤더 SaaS)<br/>vault · MPC 서명 · TAP 정책 · 노드·전파"]
     EVM["EVM 네트워크<br/>이더리움 · Base · (다른 L2)"]
 
     SAPI -->|API| BM
-    AAPI -->|API — 정책·운영·sweep| BM
+    AAPI -->|API — 정책·운영| BM
     BM -->|publish| MQ
     MQ -.->|consume| SAPI
-    MQ -.->|consume| AAPI
     SAPI --- DB
     AAPI --- DB
     BM --- BMDB
