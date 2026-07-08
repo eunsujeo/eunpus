@@ -56,6 +56,23 @@ export async function ghRaw(env, path) {
   return res.text();
 }
 
+// GraphQL 은 한 번의 subrequest 로 여러 파일 내용·커밋일을 배치 조회한다.
+// (Workers 무료 플랜의 invocation 당 subrequest 한도를 넘기지 않기 위함)
+export async function ghGraphQL(env, query) {
+  const res = await fetch(API + '/graphql', {
+    method: 'POST',
+    headers: {
+      ...ghHeaders(env, 'application/vnd.github+json'),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query }),
+  });
+  if (!res.ok) throw new GhError(res.status, await res.text());
+  const body = await res.json();
+  if (body.errors) throw new GhError(502, JSON.stringify(body.errors));
+  return body.data;
+}
+
 export function encodePath(path) {
   return path.split('/').map(encodeURIComponent).join('/');
 }

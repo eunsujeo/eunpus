@@ -1,6 +1,6 @@
 import {
   gh,
-  ghRaw,
+  ghGraphQL,
   json,
   GhError,
   encodePath,
@@ -55,36 +55,57 @@ export async function onRequestGet({ env }) {
       })
     );
 
-    const cards = await Promise.all(
-      files.map(async (f) => {
-        const [raw, commits] = await Promise.all([
-          ghRaw(env, `/repos/${owner}/${repo}/contents/${encodePath(f.path)}?ref=${encodeURIComponent(branch)}`),
-          gh(
-            env,
-            `/repos/${owner}/${repo}/commits?path=${encodeURIComponent(f.path)}&sha=${encodeURIComponent(branch)}&per_page=1`
-          ).catch(() => []),
-        ]);
+    // 파일 내용·마지막 커밋일을 GraphQL 로 배치 조회한다.
+    // 파일마다 REST 2회(내용+커밋)를 돌리면 subrequest 한도(무료 50)를 넘으므로,
+    // 20개씩 묶어 chunk 당 1회 GraphQL 로 내려받는다.
+    const CHUNK = 20;
+    const chunks = [];
+    for (let i = 0; i < files.length; i += CHUNK) chunks.push(files.slice(i, i + CHUNK));
 
-        const { meta, body } = parseFrontmatter(raw);
-        const summary = body
-          .split(/\r?\n/)
-          .map((s) => s.trim())
-          .filter((s) => s && !s.startsWith('#'))
-          .slice(0, 2);
+    const cardChunks = await Promise.all(
+      chunks.map(async (chunk) => {
+        const blobs = chunk
+          .map((f, i) => `b${i}: object(expression: ${JSON.stringify(`${branch}:${f.path}`)}) { ... on Blob { text } }`)
+          .join('\n');
+        const hist = chunk
+          .map((f, i) => `h${i}: history(first: 1, path: ${JSON.stringify(f.path)}) { nodes { committedDate } }`)
+          .join('\n');
+        const query = `query {
+  repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(repo)}) {
+    ${blobs}
+    ref(qualifiedName: ${JSON.stringify(`refs/heads/${branch}`)}) {
+      target { ... on Commit { ${hist} } }
+    }
+  }
+}`;
+        const data = await ghGraphQL(env, query);
+        const r = data.repository || {};
+        const commit = r.ref && r.ref.target ? r.ref.target : {};
 
-        return {
-          path: f.path,
-          name: f.name,
-          title: meta.title || f.name.replace(/\.md$/, ''),
-          category: f.category,
-          subcategory: f.subcategory,
-          status: normalizeStatus(meta.status),
-          summary,
-          updatedAt: commits[0]?.commit?.committer?.date || null,
-        };
+        return chunk.map((f, i) => {
+          const raw = (r[`b${i}`] && r[`b${i}`].text) || '';
+          const { meta, body } = parseFrontmatter(raw);
+          const summary = body
+            .split(/\r?\n/)
+            .map((s) => s.trim())
+            .filter((s) => s && !s.startsWith('#'))
+            .slice(0, 2);
+          const node = commit[`h${i}`] && commit[`h${i}`].nodes && commit[`h${i}`].nodes[0];
+          return {
+            path: f.path,
+            name: f.name,
+            title: meta.title || f.name.replace(/\.md$/, ''),
+            category: f.category,
+            subcategory: f.subcategory,
+            status: normalizeStatus(meta.status),
+            summary,
+            updatedAt: node ? node.committedDate : null,
+          };
+        });
       })
     );
 
+    const cards = cardChunks.flat();
     cards.sort((a, b) => a.name.localeCompare(b.name));
     return json({ tree, cards });
   } catch (e) {
