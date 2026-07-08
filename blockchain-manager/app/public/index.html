@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>블록체인매니저 — 설계 보드</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">BM</span>
+      <span class="brand-name">블록체인매니저</span>
+      <span class="brand-sub">설계</span>
+    </div>
+    <div class="topbar-right">
+      <span id="board-meta" class="board-meta"></span>
+      <button id="refresh-btn" class="btn-secondary" type="button">새로고침</button>
+    </div>
+  </header>
+
+  <main id="board" class="board" aria-busy="true">
+    <div id="board-status" class="board-status">보드를 불러오는 중…</div>
+  </main>
+
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="modal-title"></h2>
+          <div id="modal-chips" class="chips"></div>
+        </div>
+        <button class="modal-close" type="button" data-close aria-label="닫기">×</button>
+      </div>
+      <article id="modal-body" class="doc-body"></article>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

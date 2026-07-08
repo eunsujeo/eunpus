@@ -1,0 +1,10 @@
+name = "blockchain-manager"
+compatibility_date = "2026-01-01"
+pages_build_output_dir = "public"
+
+# GITHUB_TOKEN 은 secret 으로만 관리 (dashboard 또는 wrangler pages secret put)
+[vars]
+GITHUB_OWNER = "eunsujeo"
+GITHUB_REPO = "eunpus"
+GITHUB_BRANCH = "main"
+DOCS_PATH = "blockchain-manager/docs"

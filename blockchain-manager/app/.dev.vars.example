@@ -1,0 +1,6 @@
+# cp .dev.vars.example .dev.vars 후 값 채우기 (.dev.vars 는 git 커밋 금지)
+GITHUB_TOKEN=github_pat_xxxxxxxxxxxx
+GITHUB_OWNER=eunsujeo
+GITHUB_REPO=eunpus
+GITHUB_BRANCH=main
+DOCS_PATH=blockchain-manager/docs
