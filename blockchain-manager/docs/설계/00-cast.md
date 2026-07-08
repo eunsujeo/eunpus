@@ -119,6 +119,3 @@ flowchart LR
 | gas 조달 | Universal Gasless (대납 — 스테이블코인 전용이라 ETH 이동 없음) | | | ● | ● | (동사 없음 — 운영·설정) | A | 문서 |
 
 더 깊이: 컴포넌트별 상세는 블록체인 매니저 컴포넌트 가이드 (참고용 — 본 워크스루는 가이드 없이 읽힙니다).
-
----
-출처: [wallet-design-walkthrough/00-cast.html](https://wiki-docs.pages.dev/wallet-design-walkthrough/00-cast.html)

@@ -44,6 +44,3 @@ sequenceDiagram
 고객이 입금 화면을 열 때마다 불려, 이 문서에서 호출 빈도가 가장 높은 동사다. 백엔드 DB 읽기라 벤더 API 한도·지연에 묶이지 않는다 — 벤더를 왕복하는 설계였다면 가장 잦은 호출이 가장 취약한 경로가 된다.
 
 더 깊이: 조회/발급 분리의 근거 — 가이드 13.3.
-
----
-출처: [wallet-design-walkthrough/03-address-of.html](https://wiki-docs.pages.dev/wallet-design-walkthrough/03-address-of.html)

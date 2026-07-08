@@ -115,6 +115,3 @@ sequenceDiagram
 | **관찰·실패** | sweep tx 는 폴링에 **내부 이동**으로 잡혀 같은 경로로 상태 추적·막힘 점검·boost 를 탄다(4장). |
 
 감지·판정 기준(폴링 루프·DCCP·막힘 점검)은 4. 감지와 확정, 잔액의 세 칸(available·pending·locked)과의 맞물림은 8. 잔액과 내역 조회, 출금 쪽 상태 전이는 6. 출금 에서 이어집니다.
-
----
-출처: [wallet-design-walkthrough/05-deposit.html](https://wiki-docs.pages.dev/wallet-design-walkthrough/05-deposit.html)

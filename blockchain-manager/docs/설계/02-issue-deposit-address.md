@@ -49,6 +49,3 @@ sequenceDiagram
 - **감시 등록까지가 발급**: 주소는 감시(귀속) 등록까지 끝나야 "존재"한다 — **등록 안 된 주소로 온 입금은 감지하지 못하며, 입금 사고의 최다 유형**이다. 이 감시·귀속은 벤더 몫(vault 가 곧 감시 범위, 입금 감지 4장).
 
 더 깊이: 발급·등록·놓친 입금 방어 — 가이드 9장.
-
----
-출처: [wallet-design-walkthrough/02-issue-deposit-address.html](https://wiki-docs.pages.dev/wallet-design-walkthrough/02-issue-deposit-address.html)

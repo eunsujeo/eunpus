@@ -176,6 +176,3 @@ CONFIRMING 에서 COMPLETED 로 넘어가는 **임계 confirmation 수를 정하
 > Deposit Policy 를 **zero-confirmation** 으로 두면, COMPLETED 가 **블록에 등장하는 시점에 먼저** 뜰 수 있고 이후 폴마다 관찰값(등장 + 1차 confirm + 추가 confirm)이 계속 갱신될 수 있다. 즉 이 설정에서는 "COMPLETED 를 처음 관찰했다"가 곧 "충분한 confirmation 이 쌓였다"를 뜻하지 않는다. 그래서 잔액 반영 판정은 status 만 보지 말고 **`numOfConfirmations` 를 finality 임계값과 직접 비교**하는 편이 안전하다. 어떤 임계를 finality 로 볼지는 위 DCCP 와 한 몸이다.
 
 이 기준을 소비하는 쪽 — 입금의 잔액 반영·동결·reorg 는 5. 입금, 출금의 상태 추적·boost·cancel 은 6. 출금, 잔액 세 칸과의 맞물림은 8. 잔액과 내역 조회.
-
----
-출처: [wallet-design-walkthrough/04-detect-confirm.html](https://wiki-docs.pages.dev/wallet-design-walkthrough/04-detect-confirm.html)

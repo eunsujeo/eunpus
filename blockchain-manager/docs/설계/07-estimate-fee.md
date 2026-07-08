@@ -47,6 +47,3 @@ gas 는 지정 relay 가 내고, Fireblocks Relay 면 **월말 통합 인보이�
 **검증은 실측으로 합니다.** 거래가 체결되면 relay 가 실제로 낸 금액은 체인에 정확히 남습니다 — 사용량(gasUsed) × 체결 단가를 receipt 에서 계산할 수 있습니다. 월말 인보이스의 gas 실비는 이 **온체인 실측의 합계**와 맞추고, 견적 시계열은 예측 대비 실측의 편차를 추적하는 보조 자료입니다. 견적으로 인보이스를 검증하면 추정 대 추정이라 오차 시비가 남습니다.
 
 대납의 선택지·도입 요건·메커니즘(EIP-7702)은 가스 대납 문서, 조립 시 수수료 설정과 인상 재전송은 가이드 4장을 참고하세요.
-
----
-출처: [wallet-design-walkthrough/07-estimate-fee.html](https://wiki-docs.pages.dev/wallet-design-walkthrough/07-estimate-fee.html)

@@ -54,6 +54,3 @@ sequenceDiagram
 - **name 은 라벨**: 벤더가 vault name 유일성을 강제하지 않으므로(중복 생성 가능), name(namePrefix) 검색은 DB·멱등키가 다 놓친 경우에 **벤더에 있는지 확인하는 fallback**일 뿐이다.
 
 더 깊이: 계정·주소 발급 시나리오 — 가이드 9장.
-
----
-출처: [wallet-design-walkthrough/01-create-account.html](https://wiki-docs.pages.dev/wallet-design-walkthrough/01-create-account.html)

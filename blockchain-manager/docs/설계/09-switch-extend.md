@@ -136,6 +136,3 @@ flowchart LR
     classDef ext fill:#eef2ff,stroke:#818cf8;
     class SAPI,HOOK svc; class AAPI adm; class DB data; class FB vendor; class EVM ext;
 ```
-
----
-출처: [wallet-design-walkthrough/09-switch-extend.html](https://wiki-docs.pages.dev/wallet-design-walkthrough/09-switch-extend.html)
