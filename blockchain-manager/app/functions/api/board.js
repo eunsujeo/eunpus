@@ -19,13 +19,29 @@ export async function onRequestGet({ env }) {
   const docsPath = env.DOCS_PATH.replace(/\/+$/, '');
 
   try {
-    const list = await gh(
+    const rootList = await gh(
       env,
       `/repos/${owner}/${repo}/contents/${encodePath(docsPath)}?ref=${encodeURIComponent(branch)}`
     );
-    const files = (Array.isArray(list) ? list : []).filter(
-      (f) => f.type === 'file' && f.name.endsWith('.md')
+    const entries = Array.isArray(rootList) ? rootList : [];
+    const isMd = (f) => f.type === 'file' && f.name.endsWith('.md');
+
+    // 1단계 하위 폴더 = 중카테고리. docs/ 직속 .md 는 중카테고리 없음.
+    const rootFiles = entries.filter(isMd).map((f) => ({ ...f, subcategory: '' }));
+    const dirs = entries.filter((e) => e.type === 'dir');
+    const nested = await Promise.all(
+      dirs.map((d) =>
+        gh(
+          env,
+          `/repos/${owner}/${repo}/contents/${encodePath(d.path)}?ref=${encodeURIComponent(branch)}`
+        ).then((list) =>
+          (Array.isArray(list) ? list : [])
+            .filter(isMd)
+            .map((f) => ({ ...f, subcategory: d.name }))
+        )
+      )
     );
+    const files = [...rootFiles, ...nested.flat()];
 
     const cards = await Promise.all(
       files.map(async (f) => {
@@ -49,7 +65,7 @@ export async function onRequestGet({ env }) {
           name: f.name,
           title: meta.title || f.name.replace(/\.md$/, ''),
           category: meta.category || '',
-          subcategory: meta.subcategory || '',
+          subcategory: f.subcategory || meta.subcategory || '',
           status: normalizeStatus(meta.status),
           summary,
           updatedAt: commits[0]?.commit?.committer?.date || null,

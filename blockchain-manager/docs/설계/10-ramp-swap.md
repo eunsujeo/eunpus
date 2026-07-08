@@ -1,7 +1,6 @@
 ---
 title: 10. 온·오프램프·스왑 — 입금·출금 조합으로 보기
 category: 블록체인매니저
-subcategory: 설계
 status: To Do
 ---
 

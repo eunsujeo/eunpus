@@ -1,7 +1,6 @@
 ---
 title: 5. 입금 — 한 건이 잔액이 되기까지
 category: 블록체인매니저
-subcategory: 설계
 status: To Do
 ---
 

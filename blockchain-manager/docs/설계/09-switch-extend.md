@@ -1,7 +1,6 @@
 ---
 title: 9. 확장 — EVM 체인 확장·매니저 교체
 category: 블록체인매니저
-subcategory: 설계
 status: To Do
 ---
 

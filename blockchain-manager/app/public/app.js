@@ -11,6 +11,7 @@ const modalBody = document.getElementById('modal-body');
 const toast = document.getElementById('toast');
 
 let cards = [];
+let activeFilter = '전체';
 let toastTimer = null;
 
 /* ---------- utils ---------- */
@@ -102,16 +103,41 @@ function renderMarkdown(md) {
 
 /* ---------- board rendering ---------- */
 
+function renderFilters() {
+  const filters = document.getElementById('filters');
+  const subs = [...new Set(cards.map((c) => c.subcategory).filter(Boolean))].sort();
+  filters.innerHTML = '';
+  if (!subs.length) return;
+  for (const label of ['전체', ...subs]) {
+    const btn = document.createElement('button');
+    btn.className = 'filter-chip' + (label === activeFilter ? ' active' : '');
+    btn.type = 'button';
+    btn.textContent = label;
+    btn.addEventListener('click', () => {
+      activeFilter = label;
+      render();
+    });
+    filters.appendChild(btn);
+  }
+}
+
+function visibleCards() {
+  return activeFilter === '전체'
+    ? cards
+    : cards.filter((c) => c.subcategory === activeFilter);
+}
+
 function render() {
   board.innerHTML = '';
   board.removeAttribute('aria-busy');
+  renderFilters();
 
   for (const status of STATUSES) {
     const col = document.createElement('section');
     col.className = 'column';
     col.dataset.status = status;
 
-    const items = cards.filter((c) => c.status === status);
+    const items = visibleCards().filter((c) => c.status === status);
     col.innerHTML = `
       <div class="column-head">
         <span class="column-dot"></span>
@@ -138,7 +164,7 @@ function render() {
     board.appendChild(col);
   }
 
-  boardMeta.textContent = `문서 ${cards.length}건`;
+  boardMeta.textContent = `문서 ${visibleCards().length}건`;
 }
 
 function cardEl(c) {

@@ -1,7 +1,6 @@
 ---
 title: 6. 출금 — 제출에서 확정까지, 막혔을 때
 category: 블록체인매니저
-subcategory: 설계
 status: To Do
 ---
 

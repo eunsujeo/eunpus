@@ -32,7 +32,14 @@ export async function onRequestGet({ request, env }) {
       `/repos/${owner}/${repo}/contents/${encodePath(path)}?ref=${encodeURIComponent(branch)}`
     );
     const { meta, body } = parseFrontmatter(raw);
-    return json({ path, meta: { ...meta, status: normalizeStatus(meta.status) }, body });
+    // DOCS_PATH 와 파일명 사이의 폴더명 = 중카테고리
+    const rel = path.slice(env.DOCS_PATH.replace(/\/+$/, '').length + 1).split('/');
+    const subcategory = rel.length > 1 ? rel[0] : meta.subcategory || '';
+    return json({
+      path,
+      meta: { ...meta, subcategory, status: normalizeStatus(meta.status) },
+      body,
+    });
   } catch (e) {
     const status = e instanceof GhError ? (e.status === 404 ? 404 : 502) : 500;
     return json({ error: String(e.message || e) }, status);

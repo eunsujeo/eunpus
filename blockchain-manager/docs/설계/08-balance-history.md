@@ -1,7 +1,6 @@
 ---
 title: 8. 잔액과 내역 조회 — balanceOf · transactionsOf
 category: 블록체인매니저
-subcategory: 설계
 status: To Do
 ---
 
