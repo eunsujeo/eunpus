@@ -50,6 +50,8 @@ function renderMarkdown(md) {
   const lines = md.split(/\r?\n/);
   const out = [];
   let inCode = false;
+  let codeLang = '';
+  let codeBuf = [];
   let listTag = null;
   let tableRows = null; // 연속된 | 행 버퍼
 
@@ -89,11 +91,21 @@ function renderMarkdown(md) {
     if (line.trim().startsWith('```')) {
       closeList();
       flushTable();
-      out.push(inCode ? '</code></pre>' : '<pre><code>');
-      inCode = !inCode;
+      if (!inCode) {
+        codeLang = line.trim().slice(3).trim().toLowerCase();
+        codeBuf = [];
+        inCode = true;
+      } else {
+        if (codeLang === 'mermaid') {
+          out.push(`<div class="mermaid">${esc(codeBuf.join('\n'))}</div>`);
+        } else {
+          out.push('<pre><code>' + codeBuf.map(esc).join('\n') + '</code></pre>');
+        }
+        inCode = false;
+      }
       continue;
     }
-    if (inCode) { out.push(esc(line)); continue; }
+    if (inCode) { codeBuf.push(line); continue; }
 
     if (/^\s*\|.*\|\s*$/.test(line)) {
       closeList();
@@ -125,7 +137,7 @@ function renderMarkdown(md) {
   }
   closeList();
   flushTable();
-  if (inCode) out.push('</code></pre>');
+  if (inCode) out.push('<pre><code>' + codeBuf.map(esc).join('\n') + '</code></pre>');
   return out.join('\n');
 }
 
@@ -258,27 +270,58 @@ async function moveCard(path, nextStatus) {
   }
 }
 
+let currentDoc = null; // 복사·다운로드용 { name, raw }
+
 async function openPreview(c) {
   modalTitle.textContent = c.title;
   modalChips.innerHTML = '';
   modalBody.innerHTML = '<p style="color:var(--muted)">불러오는 중…</p>';
   modal.classList.remove('hidden');
+  currentDoc = null;
 
   try {
     const data = await api(`/api/doc?path=${encodeURIComponent(c.path)}`);
     const m = data.meta || {};
+    currentDoc = { name: c.name, raw: data.raw || data.body };
     modalChips.innerHTML = [
       m.status ? `<span class="chip status">${esc(m.status)}</span>` : '',
       m.category ? `<span class="chip">${esc(m.category)}</span>` : '',
       m.subcategory ? `<span class="chip">${esc(m.subcategory)}</span>` : '',
     ].join('');
     modalBody.innerHTML = renderMarkdown(data.body);
+    if (window.mermaid) {
+      await mermaid.run({ querySelector: '#modal-body .mermaid' }).catch(() => {});
+    }
   } catch (e) {
     modalBody.innerHTML = `<p style="color:var(--danger)">미리보기 실패: ${esc(e.message)}</p>`;
   }
 }
 
 /* ---------- wiring ---------- */
+
+if (window.mermaid) {
+  mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'strict' });
+}
+
+document.getElementById('copy-md').addEventListener('click', async () => {
+  if (!currentDoc) return;
+  try {
+    await navigator.clipboard.writeText(currentDoc.raw);
+    showToast('마크다운을 클립보드에 복사했습니다');
+  } catch {
+    showToast('복사 실패 — 브라우저 권한을 확인하세요', true);
+  }
+});
+
+document.getElementById('download-md').addEventListener('click', () => {
+  if (!currentDoc) return;
+  const blob = new Blob([currentDoc.raw], { type: 'text/markdown;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = currentDoc.name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
 
 modal.addEventListener('click', (e) => {
   if (e.target.hasAttribute('data-close')) modal.classList.add('hidden');

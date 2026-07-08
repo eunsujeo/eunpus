@@ -196,6 +196,18 @@ body {
   border-bottom: 1px solid var(--hairline);
 }
 .modal-head h2 { margin: 0 0 8px; font-size: 20px; font-weight: 600; color: #fff; }
+.modal-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.modal-actions .btn-secondary { background: var(--surface-elevated); padding: 6px 12px; }
+.doc-body .mermaid {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 12px 0;
+  overflow-x: auto;
+  text-align: center;
+}
+.doc-body .mermaid svg { max-width: 100%; height: auto; }
 .modal-close {
   background: none;
   border: none;

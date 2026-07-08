@@ -31,7 +31,11 @@
           <h2 id="modal-title"></h2>
           <div id="modal-chips" class="chips"></div>
         </div>
-        <button class="modal-close" type="button" data-close aria-label="닫기">×</button>
+        <div class="modal-actions">
+          <button id="copy-md" class="btn-secondary" type="button">복사</button>
+          <button id="download-md" class="btn-secondary" type="button">.md</button>
+          <button class="modal-close" type="button" data-close aria-label="닫기">×</button>
+        </div>
       </div>
       <article id="modal-body" class="doc-body"></article>
     </div>
@@ -39,6 +43,7 @@
 
   <div id="toast" class="toast hidden"></div>
 
+  <script src="vendor/mermaid.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

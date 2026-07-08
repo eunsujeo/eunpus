@@ -39,6 +39,7 @@ export async function onRequestGet({ request, env }) {
       path,
       meta: { ...meta, subcategory, status: normalizeStatus(meta.status) },
       body,
+      raw, // 복사·다운로드용 원문 (frontmatter 포함)
     });
   } catch (e) {
     const status = e instanceof GhError ? (e.status === 404 ? 404 : 502) : 500;
