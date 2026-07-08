@@ -1,7 +1,7 @@
 ---
 title: 1. 계정 생성 — createAccount
 category: 블록체인매니저
-status: To Do
+status: In Progress
 ---
 
 createAccount(ref) 는 블록체인 매니저 API 오퍼레이션 — Service 백엔드가 HTTP API 로 호출하면 매니저가 Fireblocks vault 를 만들고 Account { ref, accountId } 매핑을 블록체인 매니저 DB 에 저장한다.
