@@ -1,0 +1,12 @@
+url: https://sumsub.com/media/spotlight/travel-rule-transparency/
+fetched_at: 2026-07-08
+source_type: webpage (업계 아티클 — 논문 인용 2차)
+domain: travel-rule / interoperability
+tier: 2
+title: "Has the Travel Rule Delivered on Its Promise of Transparency? (Sumsub)"
+key_facts: |
+  - 직접 인용: "only a subset are truly interoperable (the paper cites Code, GTR, VerifyVASP, and Sumsub)"
+    → GTR·Sumsub 은 Fireblocks TRLink 파트너 — 경로 A′(TRLink 경유 VerifyVASP 도달) 가설의 근거
+  - 프로토콜 파편화(약 10종) + sunrise issue 가 국경 간 이전의 비용·마찰·실패 지점을 키운다는 서술
+  - ⚠ 2차 출처(논문 인용) — 상호운용의 실효(회원별 도달)는 별도 확인 필요
+promote_condition: "경로 A′ 검증 시 원 논문 추적"

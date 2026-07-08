@@ -189,5 +189,6 @@ class FireblocksAdapter(
             amountMinorUnits = request.amount.minorUnits,
             externalTxId = request.externalTxId,
             note = request.note,
+            travelRuleMessage = request.travelRuleMessage,
         )
 }

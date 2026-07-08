@@ -7594,3 +7594,39 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - partial: Q-2026-07-07-C01 (Notabene·Sumsub 병렬 등재 — 병행 시사) · Q-2026-07-07-C02 (delay 기본값 확정, TAP 용어 부재 확인, 한국 임계값 잔여)
 - 영향받은 페이지: vendors/fireblocks/compliance.md (검사 순서 절 + AML 절 신설, Travel Rule 절 보강, last_updated_stage 144)
 - 신규 entity: 0 (compliance hub 흡수)
+
+## Stage 145 (2026-07-08) — VerifyVASP 시나리오 (travel-rule 9장 신설 + Q-C03)
+- 질의: VerifyVASP 사용 시 구조 — 4소스 전수 검색 결과 Fireblocks 문서군에 미등재, Stage 86 의 VerifyVASP 성격(오프체인 P2P 메시징) 재사용
+- docs-site/travel-rule/ 에 9장 "VerifyVASP 를 쓴다면 — 게이트가 우리 쪽으로 온다" 신설 (경로 A: TRLink 파트너 / 경로 B: 업무층 이동 · 병행 라우팅 callout), 미확정 절 10장으로
+- 신규 Q: Q-2026-07-08-C03 (TRLink 파트너 등록 가능성·망 간 상호운용)
+- 신규 entity: 0
+
+## Stage 146 (2026-07-08) — VerifyVASP 공개 리서치 (Mode B 5건 + travel-rule 9장 보강)
+- source: verifyvasp.com · docs.verifyvasp.com(llms.txt — Enclave/VASP API 목록) · Notabene 프로토콜 분석(2차·경쟁사) · Tiger Research(한국 지형) · Sumsub 아티클(상호운용 4종 인용) → sources/verifyvasp/webpages/ 신설 (Mode B)
+- 확정: Enclave(설치형·키·PII)+중앙 API 구조 · 출금 사전 허가형 4단계 · 입금 = 수신 API 구현(요청-응답) · 폐쇄망·non-custodial 미지원 · IVMS101 · 한국 100만원·CODE 상호 통합(2차)
+- 신규 가설: 경로 A′ — TRLink 파트너(Sumsub·GTR) ↔ VerifyVASP 상호운용(2차 출처, 실효 미확인)
+- 영향받은 페이지: docs-site/travel-rule/ 9장(경로 A/A′/B 재편·Enclave 구체화·개인지갑 callout) · open-questions Q-2026-07-08-C03 진전
+- 신규 entity: 0 (vendor 디렉터리 sources/verifyvasp/ 만 신설 — curated 페이지 없음, promote 조건부)
+
+## Stage 147 (2026-07-08) — 설계 확정: 트래블룰 게이트는 블록체인 매니저 밖
+- 전제: 국내 = VerifyVASP · 해외 = Notabene 병행 사용 가능성 높음 (사용자 방향)
+- 결정: 트래블룰은 매니저 포트에 넣지 않는다 — ① 오프체인 규제 메시징(매니저 어휘 아님) ② 제공자 교체 축이 custody 벤더와 독립 ③ 병행 시 상대 망에 따라 벤더 안/밖으로 갈리는 분기는 업무 판단. "트래블룰 게이트" 컴포넌트를 Service 업무층·포트 앞에 둠
+- 매니저 접점 둘만: TransactionRequest.travelRuleMessage?(운반 전용 — externalTxId 와 같은 무늬) · 입금 벤더 동결의 폴링 수신(기존)
+- 영향: docs-site/travel-rule/ 10장 신설(출금 라우팅·입금 합류 다이어그램, 미확정은 11장으로) · 워크스루 6장 시그니처 travelRule? · 리포 TransactionRequest/어댑터/클라이언트 travelRuleMessage
+- 신규 entity: 0
+
+## Stage 148 (2026-07-08) — 트래블룰 도메인 reference (PDF Mode C + 업비트·Chainalysis)
+- source: 가상자산_트래블룰_분석.pdf (2차 합성 리서치·11p·각주 39건, pdftotext 추출) + support.upbit.com 4498679629337 (1차 — Zendesk API 확보, 웹 403) + chainalysis.com/ko/glossary/travel-rule → sources/travel-rule/ 신설 (A안: pdf/·markdown/ 3건·webpages/)
+- 클러스터 이동: sources/verifyvasp/webpages/ 5건 → sources/travel-rule/webpages/ (Stage 146 Mode B 유지) — 참조 경로 갱신 (vendors/fireblocks/compliance.md · open-questions/fireblocks.md)
+- 신규 문서: docs/architecture/travel-rule-kr-reference.md (규제 도메인 reference — krw-stablecoin 선례. FATF R.16 · 특금법 100만원 · 글로벌 임계값 · VV/CODE/Notabene 3-way · 출금 4단계/입금대기·반환 · 개인지갑 화이트리스트 · 2026 개정=2차 격리)
+- 신규 Q: Q-CMP-09 (2026 개정 원문·시행일) · Q-CMP-10 (두나무 판결문 원문) · Q-CMP-11 (VV-CODE 통합 1차 출처)
+- 영향받은 페이지: vendors/fireblocks/compliance.md (Related 추가) · open-questions/compliance.md (+3 Q, Open 11) · index.md catalog
+- 신규 entity: 0 (VerifyVASP vendor hub 는 도입 설계 착수 시 promote 조건 유지)
+
+## Stage 149 (2026-07-08) — 트래블룰 open-Q 3건 1차 추적 (웹 리서치)
+- source: fsc.go.kr/no010101/86209 ('26년 AML 주요 업무 수행계획, 2026-02-05 — 원문 인용 확보) + 언론 교차 (zdnet 20260529 · news1 · ajunews · fnnews · digitaltoday · 코인원 공지 1673 · 한경)
+- Q-CMP-09 partial: ①100만원 미만 확대 ②수신거래소 의무 ③스테이블코인 위험기반 대응조치 = FSC 보도자료 원문 확정 · ④1,000만원 일률 보고 → 각사 관리 완화(언론 교차) · 시행일 2026-08-20(언론 기준). 잔여: 입법예고문·개정령 원문
+- Q-CMP-10 partial: 서울행정법원 행정5부 2026-04-09 두나무 승소 (영업 일부정지 취소). ratio 정정 — "소급 제재 위법"(PDF)이 아니라 "기준 미정비 → 고의·중과실 불인정". 잔여: 사건번호·판결문 원문
+- Q-CMP-11 partial + ★ 정정: VV-CODE 연동 완료 = 2022-04-25 0시 (4대 거래소 입출금 재개, 코인원 공지). "2022-04-25 금융당국 권고"(Stage 146 기록·docs-site 9장)는 미확인 → docs-site/travel-rule 9장·open-questions/fireblocks.md Q-C03 정정
+- 영향받은 페이지: open-questions/compliance.md (3 Q partial-answered) · docs/architecture/travel-rule-kr-reference.md (3·4·8·11절, last_updated_stage 149) · docs-site/travel-rule/index.html 9장 · open-questions/fireblocks.md
+- 신규 entity: 0

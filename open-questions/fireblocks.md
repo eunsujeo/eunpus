@@ -1150,3 +1150,18 @@
 - **확인 질문**: TAP 평가와 Travel Rule 스크리닝의 순서? 한국 관할 임계값 설정 방법(AmountUSD 만 지원?)? Blocking Time 기본값?
 - **답 (Stage 144 — advanced-configuration·about 등 잔여 전량 추출)**: ① delay 기본값 확정 — Inbound 30초(최대 7일)·Outbound 0초(최대 90분, JWT lifetime)·Pending 최대 4시간. ② TAP 용어는 compliance 문서군 19종 전체에 부재 — 확정된 순서는 OFAC 백엔드 대조가 "사용자 Policy 규칙보다 먼저"(global-policy-ofac, p.1), AML → Travel Rule(compliance-integrations, p.1–2)뿐. ③ 임계값은 "관할권이 결정"만 — 한국 수치 적용 방법 미확정.
 - **Status**: open (partial — 한국 임계값·TAP 명세만 잔여, CSM 대상)
+
+### Q-2026-07-08-C03: VerifyVASP(국내 트래블룰 망) 를 Fireblocks 와 함께 쓸 수 있는가
+
+- **Why it matters**: 국내 VASP 상대 트래블룰은 국내 연합망(VerifyVASP 등)이 실무 축이 될 가능성이 큼. Fireblocks 확인 문서(Stage 143·144, 19종 + developers 3건)의 제공자 목록에는 부재 — Notabene(직접)·Sumsub·GTR(TRLink)·Chainalysis·Elliptic 뿐. 지원 여부에 따라 트래블룰 게이트가 벤더 안(정책 틀 유지)이냐 우리 업무층(가용 전이 게이트 자체 설계)이냐가 갈림.
+- **확정**: VerifyVASP = 체인 비종속 오프체인 P2P 메시징(FATF R.16) — Stage 86 deep-research (vendors/nodeinfra/nodewallet.md). TRLink 파트너 목록은 GET /v1/screening/trlink/partners 로 조회 가능.
+- **확인 질문**: TRLink 파트너로 VerifyVASP 등록 가능? Notabene↔VerifyVASP 상호운용? 국내/해외 병행 라우팅 시 벤더 정책 틀과의 관계?
+- **Sources to check**: CSM · GET /v1/screening/trlink/partners 실조회 · VerifyVASP 측 문서
+- **설계 반영**: docs-site/travel-rule/ 9장 "VerifyVASP 를 쓴다면" (경로 A/A′/B)
+- **진전 (Stage 146 — 공개 리서치, sources/travel-rule/webpages/ Mode B 5건 · Stage 148 클러스터 이동)**:
+  1. **구조 확정**: 폐쇄형 연합망(150+ 회원·30+ 관할권) — 설치형 Enclave(Docker, 키·PII 보관) + 중앙 API. IVMS101. 출금 사전 허가형(주소 소유 확인 → PII 전송·사전 승인 → 전송 → tx hash 보고). 입금은 수신용 VASP API(Verify User·Verify User Account·Callback)를 우리가 구현하는 요청-응답. non-custodial 미지원.
+  2. **경로 A′ 가설**: "Code·GTR·VerifyVASP·Sumsub 상호운용"(Sumsub 아티클, 논문 인용 2차) — GTR·Sumsub = Fireblocks TRLink 파트너 → TRLink 경유 도달 가능성. 실효(회원별 도달)는 미확인.
+  3. **국내 맥락**: 임계값 100만원(2022-03-25) · CODE↔VerifyVASP 상호 연동 완료(2022-04-25 0시 — 4대 거래소 입출금 재개. ★ Stage 149 정정: 당초 "금융당국 권고" 로 기록했으나 미확인 — 코인원 공지·언론 교차로는 거래소 간 연동 작업 완료) · VerifyVASP 유료화 후 CODE 병행 사례 (2차 출처).
+  4. Notabene 은 VerifyVASP 지원을 "보안 검토 대기"로 검토 중 — 미완 (Notabene 분석 페이지).
+- **잔여 확인 질문**: 경로 A′ 실효(Sumsub/GTR 고객 ↔ VerifyVASP 회원 실제 도달) · TRLink 파트너 직접 등록 가능성 · Enclave 운영 요건(리소스·보안 요구)·가격 · 해외 상대 커버리지
+- **Status**: open (구조·국내 맥락 확정, 도달 경로 실효만 잔여 — CSM·Sumsub 대상)

@@ -1,0 +1,16 @@
+url: https://docs.verifyvasp.com/llms.txt
+fetched_at: 2026-07-08
+source_type: webpage (docs index)
+domain: travel-rule / developer-docs
+tier: 1
+title: "VerifyVASP Docs — 전체 인덱스 (llms.txt)"
+key_facts: |
+  - 연동 컴포넌트: 설치형 Enclave (Docker) + 전용 DB — 초기화·운영·마이그레이션(1.5.x→2.0.0) 가이드 존재
+  - TravelRule Enclave APIs: Request User Verification · Request User Account Verification ·
+    Check Transaction Status · Get/List Verification Result · Report Transaction Result · Report Error · Get/List VASP
+  - TravelRule VASP APIs (수신측이 구현): Verify User · Verify User Account · Callback · Check Transaction Status · Database Management
+  - VerifyName 프로토콜 별도 (Owner Verification 계열) — 실명 대조
+  - 위험평가 API: Chainalysis KYT · Chainalysis Sanction · Refinitiv WCO
+  - 표준: IVMS101 · ISO20022 · Network/TXID/Wallet Address Format Standard
+  - RobotVASP E2E 테스트 · Deposit/Withdrawal Scenario Test 문서 존재
+promote_condition: "도입 설계 착수 시 Scenarios and Flows · VASP API Implementation 우선 Mode C"

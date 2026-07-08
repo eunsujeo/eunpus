@@ -1,0 +1,19 @@
+file: 가상자산_트래블룰_분석.pdf
+ingested_at: 2026-07-08
+stage: 148
+source_type: pdf (secondary research document)
+origin: 사용자 제공 (Google Docs 산출 PDF — Skia/PDF m151 renderer, 11p, 각주 39개)
+domain: travel-rule / kr-regulation
+tier: 1 (Mode C promote — 사용자 지시)
+evidence_grade: 2차 — deep-research 스타일 합성 문서. 각 fact 는 각주의 1차 출처(FSC·업비트·빗썸·법률신문 등)로 재검증 필요
+title: "가상자산 트래블룰의 법적·기술적 명세와 다차원적 이행 실무 분석"
+key_facts: |
+  - 특금법 시행령 제10조의10, 2022-03-25 시행, 원화 환산 100만원 기준
+  - 솔루션 3-way: VerifyVASP(람다256·E2EE·Enclave) / CODE(빗썸·코인원·코빗 — Corda → 비블록체인 재개발 후 VV 상호연동) / Notabene(글로벌 SaaS)
+  - IVMS101 casing 규약 (Entities UpperCamel · elements lowerCamel · values case-insensitive)
+  - 출금 4단계: 원화 환산 판정 → 수취처 매칭 → IVMS101 상호 조회 → Match 시 온체인 전파
+  - 입금: 미연동·미등록 100만원 이상 = 입금대기 락업, 반환은 FROM 주소로 (가스 차감)
+  - 개인지갑 화이트리스트 5종 (MetaMask·Kaia·Phantom·Polkadot·Keplr), nonce 서명 소유 증명
+  - 2026 개정 추진: 100만원 기준 폐지·수취 VASP 의무·스테이블코인 EDD — DAXA 반발, 두나무 1심 승소 (전부 2차)
+extracted_to: ../markdown/2026-07-08__pdf__travel-rule-analysis-extracted.md
+curated_to: docs/architecture/travel-rule-kr-reference.md

@@ -23,7 +23,10 @@
 <li><a href="#policy">6. 정책 2단 — 무엇을 검사하고, 무엇을 하나</a></li>
 <li><a href="#defaults">7. 시간 규칙과 기본값</a></li>
 <li><a href="#design">8. 우리 설계와의 접점</a></li>
-<li><a href="#open">9. 미확정 — CSM 확인 목록</a></li>
+<li><a href="#verifyvasp">9. VerifyVASP 를 쓴다면</a></li>
+<li><a href="#placement">10. 어디에 두나 — 블록체인 매니저 밖</a></li>
+<li><a href="#scenarios">11. 시나리오 — 여섯 갈래</a></li>
+<li><a href="#open">12. 미확정 — CSM 확인 목록</a></li>
 </ul></div>
 </nav>
 </aside>
@@ -202,14 +205,236 @@ sequenceDiagram
 </div>
 </section>
 
+<section id="verifyvasp">
+<h2>9. VerifyVASP 를 쓴다면 — 게이트가 우리 쪽으로 온다</h2>
+<span class="section-subtitle">Fireblocks 의 제공자 목록에 VerifyVASP 는 없다 — 쓰려면 트래블룰이 벤더 밖으로 나온다</span>
+
+<p><strong>VerifyVASP</strong> 는 Upbit·Chainalysis 합작의 싱가포르 법인이 운영하는 <strong>폐쇄형 트래블룰 연합망</strong>이다 — 150+ 회원 VASP·30+ 관할권, 데이터 표준 IVMS101, 흐름은 <strong>출금 전 사전 허가형</strong>. 구조는 <strong>설치형 Enclave 서버</strong>(Docker — 각 VASP 인프라에서 운영, 암호화 키·개인정보 보관)와 VerifyVASP 운영의 중앙 API 서버로 나뉜다. 비회원과는 통신할 수 없고, <strong>개인지갑(non-custodial)은 미지원</strong>이다. Fireblocks 문서의 제공자 목록(Notabene 직접 · Sumsub·GTR TRLink · Chainalysis·Elliptic)에는 등재돼 있지 않다. 도입 경로는 셋으로 갈린다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:28%">경로</th><th>무엇이 달라지나</th></tr></thead>
+<tbody>
+<tr><td><strong>A. TRLink 파트너로 직접 지원</strong><br/>(CSM 확인 대상)</td><td>벤더 게이트와 정책 틀(6~7장)을 유지한 채 <strong>제공자만 교체</strong> — 가장 싼 경로. 파트너 목록은 API 로 조회된다(<code>GET /v1/screening/trlink/partners</code>).</td></tr>
+<tr><td><strong>A′. TRLink 파트너 경유 상호운용</strong><br/>(Sumsub·GTR ↔ VerifyVASP)</td><td>"CODE·GTR·VerifyVASP·Sumsub 은 상호운용된다"는 업계 서술(2차 출처 — 논문 인용)이 실효라면, <strong>TRLink 의 Sumsub 또는 GTR 를 붙여 벤더 게이트를 유지한 채</strong> VerifyVASP 회원과 통신할 수 있다. 단 프로토콜 상호운용이 곧 자동 도달을 뜻하지 않는다 — 상대 회원별 도달 여부를 Sumsub·CSM 에 확인해야 한다.</td></tr>
+<tr><td><strong>B. 직접 연동</strong><br/>— 트래블룰이 업무층으로 이동</td><td>
+<strong>운영 부담</strong>: Enclave 서버를 우리 인프라에 설치·운영한다(키·개인정보 보관처가 우리 쪽에 생김).<br/>
+<strong>출금</strong>: 제출 전에 수취인 주소 소유 확인(User Account Verification) → 암호화 개인정보 전송·<strong>사전 승인</strong>(User Verification) → 온체인 전송 → tx hash 보고(Transaction Status). 통과 증적을 우리 관문(업무 승인·서명 직전 검증)으로 건다.<br/>
+<strong>입금</strong>: 별도 메시지를 기다렸다 대조하는 게 아니라 <strong>요청-응답</strong>이다 — 송신 VASP 의 사전 검증 요청에 응답하는 <strong>수신용 API(Verify User · Verify User Account · Callback)를 우리가 구현</strong>하고, 응답·승인 뒤 들어온 입금을 인정한다. 가용 전이 게이트(8장)는 전부 우리 몫.<br/>
+<strong>정책 틀</strong>: 벤더 기본값 체계(Skip on failure·delay·Wait)와 대시보드가 없다 — 대기·미수신·동결 규칙과 운영 화면을 자체 설계. AML(Chainalysis·Elliptic)·OFAC 차단은 별개 통합이라 그대로.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">병행 가능성 — 상대가 어느 망에 있느냐로 갈린다</div>
+<p style="margin:0">국내 상대 VASP 는 VerifyVASP(또는 CODE — 2022년 4월 25일부터 두 망 상호 연동 완료), 해외 상대는 Notabene 으로 라우팅하는 병행 구성이 될 가능성이 있다 — 이 경우 입금의 가용 전이 게이트를 처음부터 <strong>복수 망 대조</strong>로 설계하는 편이 재작업을 줄인다. 그리고 VerifyVASP 가 개인지갑을 지원하지 않으므로, <strong>개인지갑 입금의 인정은 별도 통제(주소 등록·소유 인증)</strong>가 필요하다.</p>
+</div>
+</section>
+
+<section id="placement">
+<h2>10. 어디에 두나 — 블록체인 매니저 밖</h2>
+<span class="section-subtitle">국내 VerifyVASP · 해외 Notabene 병행 전제 — 트래블룰 게이트는 매니저 포트 앞의 별도 컴포넌트다</span>
+
+<p>트래블룰을 블록체인 매니저(포트·어댑터)에 넣지 않는다. 이유 셋 — ① 트래블룰은 온체인 사건이 아니라 <strong>VASP 사이의 오프체인 규제 메시징</strong>이라 매니저의 어휘(계정·주소·거래)에 속하지 않고, ② 트래블룰 제공자는 <strong>custody 벤더와 독립적으로</strong> 바뀌며(교체 축이 다르다), ③ 병행 구성에선 한 출금의 처리가 <strong>상대 망에 따라 벤더 안(Notabene)과 벤더 밖(VerifyVASP)으로 갈리는데</strong> 그 분기는 업무 판단이지 체인 통로의 일이 아니다. 그래서 <strong>트래블룰 게이트</strong>를 Service 업무층에 두고, 매니저 포트는 그대로 둔다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    REQ["출금 접수<br/>(업무 승인 완료)"] --> GATE["트래블룰 게이트<br/>상대 판별 — 어느 망의 회원인가"]
+    GATE -->|"국내 (VerifyVASP 회원)"| VV["VerifyVASP Enclave<br/>사전 허가 — 주소 소유 확인 → PII 전송 → 승인"]
+    GATE -->|"해외 (Notabene)"| NB["Fireblocks validate → validate/full<br/>travelRuleMessage 생성"]
+    VV --> SUB["매니저 포트<br/>submitTransaction"]
+    NB -->|"travelRuleMessage 동봉"| SUB
+
+    classDef biz fill:#fef3c7,stroke:#d97706;
+    classDef ext fill:#e0e7ff,stroke:#6366f1;
+    classDef port fill:#dcfce7,stroke:#16a34a;
+    class REQ,GATE biz; class VV,NB ext; class SUB port;
+</pre></div>
+<p class="diagram-caption">출금 — 게이트(노랑)가 상대 망을 판별해 사전 검증을 끝낸 뒤에야 매니저 포트(초록)로 넘긴다. 어느 망이든 포트가 받는 것은 "승인된 이체 지시"로 동일하다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    VVIN["VerifyVASP 수신 API<br/>Verify User · Verify User Account · Callback<br/>(송신 VASP 의 사전 요청에 응답)"] --> AVAIL["가용 전이 게이트 (8장)<br/>확정 + 컴플라이언스 통과 → 가용"]
+    NBIN["Notabene 판정 → 벤더 Post-Screening<br/>동결이면 폴링이 REJECTED 계열로 수신"] --> AVAIL
+
+    classDef biz fill:#fef3c7,stroke:#d97706;
+    classDef ext fill:#e0e7ff,stroke:#6366f1;
+    class VVIN,NBIN ext; class AVAIL biz;
+</pre></div>
+<p class="diagram-caption">입금 — 두 망의 결과가 가용 전이 게이트 한 곳에서 합류한다. VerifyVASP 쪽은 우리가 구현한 수신 API 의 응답·승인 결과, Notabene 쪽은 벤더 동결 상태(기존 폴링 경로 그대로).</p>
+
+<p><strong>매니저와의 접점은 둘뿐이다.</strong> ① 해외(Notabene) 경로에서 게이트가 만든 <code>travelRuleMessage</code> 를 제출 요청의 <strong>옵션 필드로 운반</strong>한다 — externalTxId 처럼 포트는 산출물을 싣기만 하고 내용을 모른다. ② 입금의 벤더 동결 상태를 폴링이 받는다 — 이미 있는 경로다. 망이 추가·교체돼도 게이트만 바뀌고 포트·어댑터는 0줄이다.</p>
+</section>
+
+<section id="scenarios">
+<h2>11. 시나리오 — 여섯 갈래</h2>
+<span class="section-subtitle">출금 셋(국내·해외·개인지갑) × 입금 셋 — 병행 구성에서 실제로 지나가는 길 전부</span>
+
+<h3>11.1 출금 → 국내 VASP (VerifyVASP)</h3>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as Service 백엔드<br/>(트래블룰 게이트)
+    participant VV as VerifyVASP<br/>Enclave + 중앙 API
+    participant RV as 상대 VASP (국내)
+    box rgb(220,252,231) Fireblocks
+    participant FB as Fireblocks
+    end
+
+    BE->>VV: 수취인 주소 소유 확인 — User Account Verification
+    VV->>RV: 회원망 안에서 조회
+    RV-->>VV: 소유·실명 확인 응답
+    VV-->>BE: 확인 결과 회신
+    BE->>VV: 암호화 PII 전송 — User Verification (사전 승인 요청)
+    VV->>RV: 암호화 PII 전달 (사전 승인 요청)
+    RV-->>VV: 승인 / 거절
+    VV-->>BE: 승인 / 거절 회신
+    alt 승인
+        BE->>FB: submitTransaction — 이후는 6장 파이프라인 그대로
+        BE->>VV: 전송 후 tx hash 보고 — Transaction Status
+    else 거절 · 수취인 불일치
+        BE->>BE: 출금 반려 — 잠긴 금액을 가용으로 되돌리고 고객 안내
+    end
+</pre></div>
+<p class="diagram-caption">사전 허가형 — 상대의 승인 회신(7~8)이 나야 제출한다. 거절이면 온체인에 아무것도 나가지 않으므로 되돌릴 것은 원장의 잠김뿐이다.</p>
+
+<h3>11.2 출금 → 해외 VASP (Notabene)</h3>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as Service 백엔드<br/>(트래블룰 게이트)
+    box rgb(220,252,231) Fireblocks
+    participant FB as Fireblocks
+    end
+    participant NB as Notabene
+
+    BE->>FB: validate — 임계값·수취 주소 유형 판별
+    FB-->>BE: type = TRAVELRULE (BELOW_THRESHOLD 면 정보 교환 없이 제출)
+    BE->>BE: 수취인 정보 수집
+    BE->>FB: validate/full — 전체 검증
+    FB-->>BE: isValid
+    BE->>FB: submitTransaction — travelRuleMessage(암호화) 동봉
+    FB->>NB: 거래 상세 전송 → 상태 판정
+    NB-->>FB: Completed / Rejected / Failed …
+    alt Post-Screening = Accept
+        FB->>FB: 서명 진행 — 이후는 6장 파이프라인 그대로
+    else Reject
+        FB->>FB: 전송 차단 (Admin 우회 가능)
+        FB-->>BE: 폴링 — 차단 확인
+        BE->>BE: 잠김 해제·고객 안내
+    end
+</pre></div>
+<p class="diagram-caption">벤더 게이트형 — 검증(1·4~5)과 메시지 동봉(6)은 우리가, 판정 후 조치(9~)는 벤더의 Post-Screening 정책이 한다. Accept 가 나야 서명이 진행된다.</p>
+
+<h3>11.3 출금 → 개인지갑 (non-custodial)</h3>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as Service 백엔드<br/>(트래블룰 게이트)
+    participant WL as 주소 등록부<br/>(whitelist · 소유 인증 증적)
+    box rgb(220,252,231) Fireblocks
+    participant FB as Fireblocks
+    end
+
+    BE->>WL: 목적지가 등록·소유 인증된 개인지갑인가
+    WL-->>BE: 등록 여부 회신
+    alt 등록됨
+        BE->>BE: VASP 간 정보 교환 없음 — 관할 규정에 따른 기록만 남긴다
+        BE->>FB: submitTransaction — 이후는 6장 파이프라인 그대로
+    else 미등록
+        BE->>BE: 출금 반려 — 등록·소유 인증부터
+    end
+</pre></div>
+<p class="diagram-caption">두 망 모두 개인지갑을 다루지 않으므로(VerifyVASP 는 미지원 명시), 방어선은 우리 등록부다 — 등록 시점의 소유 인증(지갑 서명)이 증적이 된다. 등록·인증 절차 자체는 별도 설계 대상.</p>
+
+<h3>11.4 입금 ← 국내 VASP (VerifyVASP)</h3>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant SV as 송신 VASP (국내)
+    participant VV as VerifyVASP
+    participant BE as Service 백엔드<br/>(수신 API + 게이트)
+    box rgb(220,252,231) Fireblocks
+    participant FB as Fireblocks
+    end
+
+    SV->>VV: (전송 전) 사전 검증 요청
+    VV->>BE: 우리 수신 API 호출 — Verify User · Verify User Account
+    BE-->>VV: 수취 고객 실명·계정 확인 응답 (승인)
+    VV-->>SV: 승인 회신
+    SV->>SV: 온체인 전송 실행
+    FB-->>BE: 폴링 감지 — 입금 후보 (4장)
+    SV->>VV: tx hash 보고
+    VV->>BE: tx hash 전달
+    BE->>BE: 사전 요청·tx hash·입금 후보 대조 → 일치 + 확정 임계 도달 → 가용
+</pre></div>
+<p class="diagram-caption">요청-응답형 — 자금이 오기 전에 우리 수신 API 가 먼저 응답한다(2~3). 가용 전이는 "온체인 확정 + 사전 요청과의 대조 일치" 둘 다 충족해야 한다. 대조 실패·보고 미수신의 처리 기준은 자체 정책 설계 대상.</p>
+
+<h3>11.5 입금 ← 해외 VASP (Notabene)</h3>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant SV as 송신 VASP (해외)
+    box rgb(220,252,231) Fireblocks
+    participant FB as Fireblocks
+    end
+    participant NB as Notabene
+    participant BE as Service 백엔드
+
+    SV->>SV: 온체인 전송
+    FB->>FB: 감지 → 첫 confirmation 후 Screening Policy
+    FB->>NB: 상세 전송 (메시지 없으면 빈 메시지 생성) → 판정
+    NB-->>FB: 상태 (Inbound delay 기본 30초 대기)
+    alt Post-Screening = Accept
+        FB-->>BE: 폴링 — 정상 입금, 확정 임계 후 가용 (4·5장 그대로)
+    else Reject · Freeze
+        FB->>FB: 자금 동결
+        FB-->>BE: 폴링 — REJECTED 계열 수신, 잔액 미반영
+        BE->>BE: Admin 판단 → unfreeze 또는 유지 (5장)
+    end
+</pre></div>
+<p class="diagram-caption">벤더 안에서 끝나는 형 — 우리 코드는 없고, 결과가 폴링 상태로만 나타난다. 기존 입금 파이프라인(감지·동결·Admin unfreeze)이 그대로 흡수한다.</p>
+
+<h3>11.6 입금 ← 개인지갑</h3>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant PW as 개인지갑
+    box rgb(220,252,231) Fireblocks
+    participant FB as Fireblocks
+    end
+    participant BE as Service 백엔드
+    participant WL as 주소 등록부
+
+    PW->>PW: 온체인 전송
+    FB-->>BE: 폴링 감지 — 입금 후보 (4장)
+    BE->>WL: source 가 등록·소유 인증된 주소인가
+    WL-->>BE: 등록 여부 회신
+    alt 등록됨
+        BE->>BE: 확정 임계 도달 → 가용 (5장 그대로)
+    else 미등록
+        BE->>BE: 가용 전이 보류 — 알림, 사후 등록·소명 또는 반환 정책으로
+    end
+</pre></div>
+<p class="diagram-caption">망 밖에서 오는 유일한 길 — 판별 재료가 source 주소뿐이라, 등록부(소유 인증 증적)가 곧 인정 기준이 된다. 미등록 입금의 사후 처리(등록 유도·반환)는 자체 정책 설계 대상.</p>
+</section>
+
 <section id="open">
-<h2>9. 미확정 — CSM 확인 목록</h2>
+<h2>12. 미확정 — CSM 확인 목록</h2>
 <span class="section-subtitle">공식 문서에 없는 것들 — 도입 전 확인 대상</span>
 
 <ul>
 <li><strong>한국 관할 임계값</strong> — 문서는 "관할권이 결정"까지만. 원화 기준 적용 방법(AmountUSD 만 지원하는지) 확인 필요.</li>
 <li><strong>TAP(거래 승인 정책)과의 선후</strong> — 컴플라이언스 문서군 19종 전체에 TAP 언급이 없다. 확정된 순서는 "OFAC 이 사용자 정책보다 먼저" · "AML 이 트래블룰보다 먼저" 뿐.</li>
 <li><strong>Notabene 직접 통합 vs TRLink</strong> — Fireblocks 에는 제공자 중립 레이어(TRLink — Sumsub·GTR 파트너)도 있다. 연결 가능 목록에 Notabene·Sumsub 이 병렬로 있어 병행으로 보이지만 명시가 없다.</li>
+<li><strong>VerifyVASP 도달 경로</strong> — TRLink 파트너로 직접 붙일 수 있는지(9장 경로 A), Sumsub·GTR 경유 상호운용의 실효(경로 A′ — 프로토콜 상호운용 ≠ 자동 도달), Enclave 운영 요건·가격.</li>
 <li><strong>가격·SLA</strong> — premium 구독 조건, Notabene 측 계약. Notabene API 문서는 비공개(CSM 경유 접근).</li>
 </ul>
 

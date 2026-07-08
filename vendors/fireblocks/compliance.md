@@ -147,6 +147,7 @@ _TODO: SOC 2 / ISO 27001 / 보험 / 라이선스 — 추후 자료_
 - [[vendors/fireblocks/policy-engine]] — Policy rule 평면
 - [[entities/fireblocks/policy]] — Policy 종류
 - [[entities/fireblocks/user-roles/security-auditor]] · [[entities/fireblocks/user-roles/security-admin]] — Audit log 접근권
+- docs/architecture/travel-rule-kr-reference.md — 트래블룰 규제 도메인 reference (한국 특금법·솔루션 지형·거래소 실무, Stage 148)
 
 ## Sources
 
@@ -167,6 +168,7 @@ _TODO: SOC 2 / ISO 27001 / 보험 / 라이선스 — 추후 자료_
 - Q-2026-05-18-S03 — AML Transaction Screening Policy 정확한 동작 (★ Stage 144 ANSWERED — 본 페이지 AML 절)
 - Q-2026-07-07-C01 — Notabene 통합 vs TRLink 의 관계 (★ Stage 144 partial — compliance-integrations 의 연결 가능 목록에 Notabene·Sumsub 병렬 등재 → 병행 시사, 명시 없음)
 - Q-2026-07-07-C02 — TAP 상호작용 명세 · 관할권별 임계값(한국) (★ Stage 144 partial — delay 기본값 30초/0초 확정, TAP 용어는 문서군에 부재, 임계값은 "관할권이 결정"만)
+- Q-2026-07-08-C03 — VerifyVASP(국내 망) 도달 경로 (★ Stage 146 진전 — 구조·국내 맥락 확정, sources/travel-rule/webpages/ Mode B 5건 (Stage 148 클러스터 이동). 잔여: 경로 A′(TRLink Sumsub·GTR 경유 상호운용) 실효·Enclave 요건·가격 — CSM·Sumsub 대상. docs-site/travel-rule 9장)
 - Q-2026-05-18-S07 — FSPM entity-grade 명세
 - Q-2026-05-18-A07 — 부분 답; audit log API endpoint·retention·외부 forwarding 잔존
 - (SOC 2 / ISO 27001 / 보험 / 라이선스는 외부 자료 필요)

@@ -17,6 +17,11 @@ data class TransactionRequest(
     val amount: Amount,
     /** 벤더 거래 기록에 남는 메모 (Fireblocks note). */
     val note: String? = null,
+    /**
+     * 트래블룰 게이트가 만든 암호화 메시지 — 해외(Notabene) 경로일 때만.
+     * 포트는 운반만 하고 내용을 모른다 (externalTxId 와 같은 무늬 — 산출물의 자리).
+     */
+    val travelRuleMessage: String? = null,
     val chainSpecific: ChainSpecific? = null,
 )
 

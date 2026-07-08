@@ -45,6 +45,8 @@ data class FireblocksCreateTransactionParams(
     val amountMinorUnits: BigInteger,
     val externalTxId: String,
     val note: String? = null,
+    /** 트래블룰 게이트 산출물(암호화) — Notabene 경로일 때만 (Fireblocks travelRuleMessage). */
+    val travelRuleMessage: String? = null,
 )
 
 /** 수수료 추정 응답 — low / medium / high (POST /v1/transactions/estimate_fee). */
