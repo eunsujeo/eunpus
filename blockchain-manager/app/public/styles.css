@@ -199,13 +199,14 @@ body {
 .modal-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .modal-actions .btn-secondary { background: var(--surface-elevated); padding: 6px 12px; }
 .doc-body .mermaid {
-  background: var(--canvas);
+  background: #ffffff; /* 라이트 패널 — 파스텔 classDef 대비 확보 */
   border: 1px solid var(--hairline);
   border-radius: 8px;
   padding: 16px;
   margin: 12px 0;
   overflow-x: auto;
   text-align: center;
+  color: #181a20;
 }
 .doc-body .mermaid svg { max-width: 100%; height: auto; }
 .modal-close {

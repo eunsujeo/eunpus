@@ -300,7 +300,8 @@ async function openPreview(c) {
 /* ---------- wiring ---------- */
 
 if (window.mermaid) {
-  mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'strict' });
+  // 다이어그램 원본이 밝은 파스텔 classDef 를 쓰므로 라이트 테마 + 밝은 패널에 렌더
+  mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'strict' });
 }
 
 document.getElementById('copy-md').addEventListener('click', async () => {
