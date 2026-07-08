@@ -13,7 +13,9 @@ onChainEvent(handler)
 // ChainEvent { status, numOfConfirmations, networkStatus }
 ```
 
-**토픽 하나(`onchain-events`)**가 워크스페이스의 입·출금 변경을 전부 나릅니다 — 입금 감지·확정과 출금 상태 변경 모두 이 채널로 옵니다. 파티션 키는 **accountId** — 같은 계정의 이벤트는 같은 파티션에서 순서가 보장되어 감지 → 확정이 뒤집히지 않습니다. 이 페이지는 그 토픽을 채우는 매니저 내부 폴링과 확정 기준(언제부터 믿는가)을 정의하고 **입금(5장)·출금(6장)이 이것을 소비**합니다.
+**토픽 하나(`onchain-events`)**가 워크스페이스의 입·출금 변경을 전부 나릅니다 — 입금 감지·확정과 출금 상태 변경 모두 이 채널로 옵니다. 파티션 키는 **accountId** — 같은 계정의 이벤트는 같은 파티션에서 순서가 보장되어 감지 → 확정이 뒤집히지 않습니다.
+
+이 페이지는 그 토픽을 채우는 매니저 내부 폴링과 확정 기준(언제부터 믿는가)을 정의하고 **입금(5장)·출금(6장)이 이것을 소비**합니다.
 
 사용법은 **"등록은 한 번, publish 는 매니저가"**입니다 — 부팅 시 큐 컨슈머를 시작해 handler 를 등록해 두면, 매니저의 내부 폴링 루프(아래 절)가 판정한 이벤트를 publish 할 때마다 consume 해 불러줍니다.
 
@@ -38,7 +40,9 @@ manager.onChainEvent { event ->
 
 ## 폴링 상세 흐름 — 커서 하나로 입·출금을 다 나른다
 
-폴링은 **블록체인 매니저 내부 구현**입니다. 매니저가 방향을 갈라 판정하고 **입금은 원장 반영(5장), 출금은 상태 추적(6장)**으로 쓰도록 큐에 publish 합니다. 상태 필터는 대사·표적 조회(8장)에서 씁니다.
+폴링은 **블록체인 매니저 내부 구현**입니다. 매니저가 방향을 갈라 판정하고 **입금은 원장 반영(5장), 출금은 상태 추적(6장)**으로 쓰도록 큐에 publish 합니다.
+
+상태 필터는 대사·표적 조회(8장)에서 씁니다.
 
 ```mermaid
 sequenceDiagram
@@ -97,11 +101,17 @@ sequenceDiagram
 | **reorg** | 확정으로 봤던 입금이 무효화되면 다음 폴에서 잡아 무효화 이벤트를 publish — 백엔드는 **반영해 둔 잔액만 되돌리고** 입금 기록은 보존. 신호는 FAILED + subStatus `DROPPED_BY_BLOCKCHAIN` (reorg 는 5장). |
 | **감지 지연** | 지연 = **폴링 주기**(큐 전달 자체는 즉시). 짧게 잡으면 실시간에 근접하고 API 호출이 는다 — 확정 요건과 rate limit 사이에서 정한다. |
 
-webhook 이벤트 중 폴링으로 못 보는 것은 **막힘 경보(stuck_confirming) 하나뿐**이고 그것도 오래 CONFIRMING 인 건을 골라내는 조회로 대체된다(아래 절). 나머지 이벤트의 payload 는 폴링으로 읽는 tx 객체와 같다. EVM 입금은 **mined 시점부터** 관찰된다.
+webhook 과 견주면:
+
+- 폴링으로 못 보는 webhook 이벤트는 **막힘 경보(stuck_confirming) 하나뿐** — 그것도 오래 CONFIRMING 인 건을 골라내는 조회로 대체된다(아래 절).
+- 나머지 이벤트의 payload 는 폴링으로 읽는 tx 객체와 같다.
+- EVM 입금은 **mined 시점부터** 관찰된다.
 
 ## 막힘 점검 — 오래 CONFIRMING 인 건 골라내기
 
-webhook 의 막힘 경보(stuck_confirming)를 대체합니다. 이것도 **블록체인 매니저 내부**입니다 — 감지 폴링이 모든 CONFIRMING 을 이미 매니저 DB 에 체크포인트로 기록해 두므로, 같은 폴링의 느슨한 주기(예: 5분) 작업이 **자기 DB 에서 오래된 대기 건을 조회**하면 끝입니다(벤더 호출 없음). 골라낸 건은 경보 이벤트로 큐에 publish 합니다. 감지 루프 안에서 못 잡는 이유는 하나 — 막힌 tx 는 **변화가 없어서** lastUpdated 커서에 다시 나타나지 않기 때문입니다.
+webhook 의 막힘 경보(stuck_confirming)를 대체합니다. 이것도 **블록체인 매니저 내부**입니다 — 감지 폴링이 모든 CONFIRMING 을 이미 매니저 DB 에 체크포인트로 기록해 두므로, 같은 폴링의 느슨한 주기(예: 5분) 작업이 **자기 DB 에서 오래된 대기 건을 조회**하면 끝입니다(벤더 호출 없음).
+
+골라낸 건은 경보 이벤트로 큐에 publish 합니다. 감지 루프 안에서 못 잡는 이유는 하나 — 막힌 tx 는 **변화가 없어서** lastUpdated 커서에 다시 나타나지 않기 때문입니다.
 
 ```mermaid
 sequenceDiagram
@@ -139,14 +149,20 @@ sequenceDiagram
 
 ## 폴링 생존 감시 — 죽은 폴링은 자기 죽음을 못 알린다
 
-남은 구멍 하나. 위의 어느 장치도 **매니저 내부 폴링 자체가 죽은 것**은 못 잡습니다 — 막힘 점검은 "tx 가 막힘"을 보지 "폴링이 멈춤"을 보지 않고, 매니저 안에서 올리는 경보는 폴링이 죽는 순간 같이 멈춥니다. 그래서 생존 감시는 **매니저 밖(모니터링 시스템)**이 두 신호를 봅니다.
+남은 구멍 하나. 위의 어느 장치도 **매니저 내부 폴링 자체가 죽은 것**은 못 잡습니다 — 막힘 점검은 "tx 가 막힘"을 보지 "폴링이 멈춤"을 보지 않고, 매니저 안에서 올리는 경보는 폴링이 죽는 순간 같이 멈춥니다.
+
+그래서 생존 감시는 **매니저 밖(모니터링 시스템)**이 두 신호를 봅니다.
 
 | 신호 | 무엇을 말하나 | 판정 |
 |---|---|---|
 | **heartbeat** (매 주기 실행 완료 시각을 매니저 DB 에 기록) | 폴링이 **살아서 주기를 돌고 있나** | now − heartbeat 가 폴 주기의 몇 배(예: 5분)를 넘으면 **폴링 정지 경보**. tx 가 없어도 매 주기 갱신되므로 오경보 없음. |
 | **커서 랙** (now − 커서 lastUpdated) | 처리가 **밀리고 있나** | 임계 초과면 **밀림 경보**. 단 커서는 갱신된 tx 가 있어야 앞으로 가므로, 조용한 시간대엔 자연히 커진다 — **heartbeat 와 함께 봐야** 오경보를 거른다. |
 
-복구는 자동이다 — 매니저(폴링)를 재시작하면 **커서부터 따라잡는다**: 멈춘 동안의 변경분이 페이지네이션으로 전부 소진되고 멱등 upsert 라 겹쳐 받아도 안전하다(위 급소 표). 백엔드 컨슈머가 멈춘 동안도 마찬가지다 — 큐는 durable 해서 이벤트가 큐에 남고, 오프셋은 원장 반영 성공 후에만 커밋되므로 재기동하면 마지막 커밋 지점부터 이어서 소비한다. 즉 정지의 피해는 유실이 아니라 **지연**이고, 생존 감시의 몫은 그 지연을 빨리 아는 것이다.
+복구는 자동이다:
+
+- **매니저(폴링) 재시작 → 커서부터 따라잡는다** — 멈춘 동안의 변경분이 페이지네이션으로 전부 소진되고 멱등 upsert 라 겹쳐 받아도 안전하다(위 급소 표).
+- **백엔드 컨슈머가 멈춘 동안도 마찬가지** — 큐는 durable 해서 이벤트가 큐에 남고, 오프셋은 원장 반영 성공 후에만 커밋되므로 재기동하면 마지막 커밋 지점부터 이어서 소비한다.
+- 즉 정지의 피해는 유실이 아니라 **지연**이고, 생존 감시의 몫은 그 지연을 빨리 아는 것이다.
 
 ## 감지 경로 — 폴링(주) · 웹훅(보조) · 대사(안전망)
 
@@ -158,7 +174,11 @@ sequenceDiagram
 | **웹훅** (보조 · 환경 허용 시 · 매니저가 수신) | 인바운드가 열린 환경이면 push 로 지연을 줄인다. 놓친 알림은 `POST /v1/webhooks/{id}/notifications/resend_failed` 로 재전송(v2 는 30일 창). 누락·지연이 있어도 폴링이 메우므로 **신뢰의 근거는 아니다**. |
 | **대사** (최종 안전망) | 그래도 어긋나면 주기 대사가 벤더 값과 기록을 맞춰 닫는다(회계 걸리는 숫자만 · 8장). |
 
-여러 경로가 같은 입금을 중복 관찰하므로, 매니저의 publish 와 백엔드의 반영 모두 **이벤트 ID = tx id(또는 externalTxId) unique 기준 멱등**으로 한 번만 건다 — 없는 돈을 두 번 반영하는 것이 가장 비싼 사고다. `status=COMPLETED` 로 거를 땐 `numOfConfirmations` 가 확정 임계 이상인지 함께 본다(위 zero-confirmation 함정). 폴링만으로도 완결되며 감지 지연은 **폴링 주기**만큼이다.
+세 경로가 겹칠 때의 규칙:
+
+- 여러 경로가 같은 입금을 중복 관찰하므로, 매니저의 publish 와 백엔드의 반영 모두 **이벤트 ID = tx id(또는 externalTxId) unique 기준 멱등**으로 한 번만 건다 — 없는 돈을 두 번 반영하는 것이 가장 비싼 사고다.
+- `status=COMPLETED` 로 거를 땐 `numOfConfirmations` 가 확정 임계 이상인지 함께 본다(위 zero-confirmation 함정).
+- 폴링만으로도 완결되며 감지 지연은 **폴링 주기**만큼이다.
 
 ## 확정 기준 — confirm 과 finality, 그리고 DCCP
 
@@ -168,11 +188,15 @@ sequenceDiagram
 >
 > **CONFIRMING = confirm 상태.** 트랜잭션이 체인에 올라가 블록에 담겼고 그 위로 confirmation 이 쌓이는 중이다 — 하지만 **아직 확정 아님**. 이 단계의 자금은 고객에게 "확인 중"으로만 보여주고 available 잔액에는 넣지 않는다.
 >
-> **COMPLETED = finality 상태.** confirmation 이 **DCCP(확정 정책)가 정한 임계 수**에 도달했다는 뜻이고 이때부터 이 자금을 **확정(finality)**으로 보고 available 에 반영한다. 둘을 프로그램으로 가르는 방법은 두 가지다 — `status` 값(CONFIRMING 인지 COMPLETED 인지)으로 갈리거나, tx 객체의 `numOfConfirmations`(실제 누적 confirmation 수)를 finality 임계값과 비교한다. 이 판정은 매니저 내부에서 이뤄지고 백엔드는 판정이 끝난 이벤트(감지/확정)를 큐에서 consume 한다.
+> **COMPLETED = finality 상태.** confirmation 이 **DCCP(확정 정책)가 정한 임계 수**에 도달했다는 뜻이고 이때부터 이 자금을 **확정(finality)**으로 보고 available 에 반영한다.
+>
+> 둘을 프로그램으로 가르는 방법은 두 가지다 — `status` 값(CONFIRMING 인지 COMPLETED 인지)으로 갈리거나, tx 객체의 `numOfConfirmations`(실제 누적 confirmation 수)를 finality 임계값과 비교한다. 이 판정은 매니저 내부에서 이뤄지고 백엔드는 판정이 끝난 이벤트(감지/확정)를 큐에서 consume 한다.
 
 ### DCCP — 무엇이 CONFIRMING 을 COMPLETED 로 바꾸는가
 
-CONFIRMING 에서 COMPLETED 로 넘어가는 **임계 confirmation 수를 정하는 정책**이 **DCCP(Deposit Control and Confirmation Policy)** 입니다. "finality"는 체인이 자연히 주는 성질이 아니라 DCCP 가 정의하는 확정 기준입니다. 커스텀 DCCP 는 **Console 에서 직접 설정하는 게 아니라**, 정책 템플릿을 작성해 **Fireblocks Support 에 제출 → 검토·승인 후 반영**됩니다. 어떤 임계를 요청할지 정하는 책임은 **Admin(운영)**, 큐 이벤트를 consume 해 잔액에 반영하는 런타임은 **Service** 의 몫입니다.
+CONFIRMING 에서 COMPLETED 로 넘어가는 **임계 confirmation 수를 정하는 정책**이 **DCCP(Deposit Control and Confirmation Policy)** 입니다. "finality"는 체인이 자연히 주는 성질이 아니라 DCCP 가 정의하는 확정 기준입니다.
+
+커스텀 DCCP 는 **Console 에서 직접 설정하는 게 아니라**, 정책 템플릿을 작성해 **Fireblocks Support 에 제출 → 검토·승인 후 반영**됩니다. 어떤 임계를 요청할지 정하는 책임은 **Admin(운영)**, 큐 이벤트를 consume 해 잔액에 반영하는 런타임은 **Service** 의 몫입니다.
 
 > **DCCP 임계값 — 기본값과 커스텀**
 >
@@ -187,6 +211,8 @@ CONFIRMING 에서 COMPLETED 로 넘어가는 **임계 confirmation 수를 정하
 
 > **함정 — 첫 COMPLETED 를 곧 finality 로 단정하지 말 것 (zero-confirmation)**
 >
-> Deposit Policy 를 **zero-confirmation** 으로 두면, COMPLETED 가 **블록에 등장하는 시점에 먼저** 뜰 수 있고 이후 폴마다 관찰값(등장 + 1차 confirm + 추가 confirm)이 계속 갱신될 수 있다. 이 설정에서는 "COMPLETED 를 처음 관찰했다"가 곧 "충분한 confirmation 이 쌓였다"를 뜻하지 않는다. 그래서 매니저의 확정 판정은 status 만 보지 말고 **`numOfConfirmations` 를 finality 임계값과 직접 비교**하는 편이 안전하다. 어떤 임계를 finality 로 볼지는 위 DCCP 와 한 몸이다.
+> Deposit Policy 를 **zero-confirmation** 으로 두면, COMPLETED 가 **블록에 등장하는 시점에 먼저** 뜰 수 있고 이후 폴마다 관찰값(등장 + 1차 confirm + 추가 confirm)이 계속 갱신될 수 있다. 이 설정에서는 "COMPLETED 를 처음 관찰했다"가 곧 "충분한 confirmation 이 쌓였다"를 뜻하지 않는다.
+>
+> 그래서 매니저의 확정 판정은 status 만 보지 말고 **`numOfConfirmations` 를 finality 임계값과 직접 비교**하는 편이 안전하다. 어떤 임계를 finality 로 볼지는 위 DCCP 와 한 몸이다.
 
 이 기준을 소비하는 쪽 — 입금의 잔액 반영·동결·reorg 는 5. 입금, 출금의 상태 추적·boost·cancel 은 6. 출금, 잔액 세 칸과의 맞물림은 8. 잔액과 내역 조회.
