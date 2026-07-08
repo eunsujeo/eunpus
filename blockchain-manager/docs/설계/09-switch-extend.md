@@ -54,7 +54,7 @@ flowchart LR
 
 ## 매니저(벤더) 교체 — 코드는 매니저 구현, 비용은 자금 이전
 
-지금 매니저 내부 연동은 Fireblocks 이지만, 두 백엔드는 매니저의 API·웹소켓 계약만 보므로 **다른 벤더로 바꾸거나 vault 구성을 재편해도** 두 백엔드는 그대로여야 합니다. 코드 관점에서 벤더 교체는 **같은 API·웹소켓 계약을 지키는 다른 매니저 구현으로 바꾸는 배포 수준**의 일입니다.
+지금 매니저 내부 연동은 Fireblocks 이지만, 두 백엔드는 매니저의 API·큐 이벤트 스키마 계약만 보므로 **다른 벤더로 바꾸거나 vault 구성을 재편해도** 두 백엔드는 그대로여야 합니다. 코드 관점에서 벤더 교체는 **같은 API 계약을 지키고 같은 토픽(onchain-events)에 같은 이벤트 스키마를 publish 하는 다른 매니저 구현으로 바꾸는 배포 수준**의 일입니다.
 
 그런데 **한 가지는 설정으로 안 됩니다.** 벤더 A 의 주소는 A 의 키에서, 벤더 B 의 주소는 B 의 키에서 나옵니다(2장). 그래서 **주소와 그 위의 잔액은 이전되지 않습니다.** 이건 vault 를 재구성할 때도 마찬가지입니다 — 새 vault 의 주소는 새 키에서 나오니까요. 즉 **코드 교체는 싸고, 자금 이전(sweep)이 비용의 전부**입니다.
 
@@ -75,28 +75,30 @@ flowchart LR
 
 지금까지의 구성 요소(0장)와 성질이 코드에서 강제되려면 **서비스 경계가 곧 설계 경계**여야 합니다.
 
-백엔드 안에서는 **의존 방향**이 전부 안쪽(domain)을 향합니다. 백엔드와 블록체인 매니저 사이에는 모듈 의존이 없습니다 — 경계는 **HTTP API·웹소켓 계약**이고, Fireblocks SDK 는 매니저 안에만 있습니다.
+백엔드 안에서는 **의존 방향**이 전부 안쪽(domain)을 향합니다. 백엔드와 블록체인 매니저 사이에는 모듈 의존이 없습니다 — 경계는 **HTTP API·큐 이벤트 스키마 계약**이고, Fireblocks SDK 는 매니저 안에만 있습니다.
 
 ```mermaid
 flowchart TB
     SAPI["apps/service-api"]
     AAPI["apps/admin-api"]
-    WSC["apps/ws-consumer<br/>웹소켓 컨슈머"]
+    QC["apps/queue-consumer<br/>큐 컨슈머"]
     SBE["backend/service"]
     ABE["backend/admin"]
     DOM["domain<br/>값 객체 — 의존 0"]
+    MQ["메시지 큐<br/>onchain-events"]
     BM["블록체인 매니저 — 별도 서비스<br/>내부 Fireblocks 연동 · 내부 폴링"]
-    FAKE["fake 매니저<br/>테스트용 — 같은 API·웹소켓 계약"]
+    FAKE["fake 매니저<br/>테스트용 — 같은 API·큐 이벤트 계약"]
     SDK["Fireblocks SDK (외부)"]
 
     SAPI --> SBE
     AAPI --> ABE
-    WSC --> SBE
+    QC --> SBE
     SBE --> DOM
     ABE --> DOM
     SBE -->|API| BM
     ABE -->|API| BM
-    BM -->|WS push| WSC
+    BM -->|publish| MQ
+    MQ -->|consume| QC
     SBE -.테스트 시 API.-> FAKE
     BM --> SDK
 
@@ -104,19 +106,21 @@ flowchart TB
     classDef impl fill:#dbeafe,stroke:#2563eb;
     classDef core fill:#e0e7ff,stroke:#6366f1;
     classDef ext fill:#f5f5f7,stroke:#86868b;
-    class SBE,ABE mine; class BM,FAKE impl; class DOM core; class SAPI,AAPI,WSC,SDK ext;
+    classDef mq fill:#fef9c3,stroke:#ca8a04;
+    class SBE,ABE mine; class BM,FAKE impl; class DOM core; class SAPI,AAPI,QC,SDK ext; class MQ mq;
 ```
 
 ## 인프라 — 무엇이 어디서 도는가
 
-0장 에서 본 배치를 확장 관점으로 다시 봅니다. Fireblocks 기준이라 서명·키·노드·전파는 **벤더 안**이고, 이쪽엔 **두 백엔드와 블록체인 매니저, 둘로 나뉜 DB**만 남습니다. Fireblocks 주기 조회(폴링)·webhook 보조·상태 판정은 전부 매니저 내부이고, 백엔드는 매니저의 웹소켓 push 를 받습니다. 직접 노드·HSM·인덱서를 운영하지 않으므로, 새 EVM 체인이 붙어도 **인프라 배치는 그대로**입니다 — 벤더가 그 체인을 지원하기만 하면 됩니다.
+0장 에서 본 배치를 확장 관점으로 다시 봅니다. Fireblocks 기준이라 서명·키·노드·전파는 **벤더 안**이고, 이쪽엔 **두 백엔드와 블록체인 매니저, 둘로 나뉜 DB**만 남습니다. Fireblocks 주기 조회(폴링)·webhook 보조·상태 판정은 전부 매니저 내부이고, 매니저가 메시지 큐(onchain-events)에 publish 한 이벤트를 백엔드가 consume 합니다. 직접 노드·HSM·인덱서를 운영하지 않으므로, 새 EVM 체인이 붙어도 **인프라 배치는 그대로**입니다 — 벤더가 그 체인을 지원하기만 하면 됩니다.
 
 ```mermaid
 flowchart LR
     subgraph OUR["인프라"]
-      SAPI["Service 백엔드<br/>고객 런타임 · 웹소켓 컨슈머"]
+      SAPI["Service 백엔드<br/>고객 런타임 · 큐 컨슈머"]
       AAPI["Admin 백엔드<br/>정책·승인·sweep·rebalance"]
       DB[("백엔드 DB<br/>customer_ledger · 출금 지시 상태")]
+      MQ["메시지 큐<br/>onchain-events"]
       BM["블록체인 매니저 — 별도 서비스<br/>내부 Fireblocks 연동 · 내부 폴링 (4·6장)"]
       BMDB[("매니저 DB<br/>ref↔vault↔주소 매핑 · 체크포인트")]
     end
@@ -125,8 +129,9 @@ flowchart LR
 
     SAPI -->|API| BM
     AAPI -->|API — 정책·운영·sweep| BM
-    BM -.->|WS push| SAPI
-    BM -.->|WS push| AAPI
+    BM -->|publish| MQ
+    MQ -.->|consume| SAPI
+    MQ -.->|consume| AAPI
     SAPI --- DB
     AAPI --- DB
     BM --- BMDB
@@ -140,5 +145,6 @@ flowchart LR
     classDef mgr fill:#e0e7ff,stroke:#6366f1;
     classDef vendor fill:#f5f5f7,stroke:#86868b;
     classDef ext fill:#eef2ff,stroke:#818cf8;
-    class SAPI svc; class AAPI adm; class DB,BMDB data; class BM mgr; class FB vendor; class EVM ext;
+    classDef mq fill:#fef9c3,stroke:#ca8a04;
+    class SAPI svc; class AAPI adm; class DB,BMDB data; class BM mgr; class FB vendor; class EVM ext; class MQ mq;
 ```

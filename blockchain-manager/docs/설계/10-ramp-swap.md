@@ -13,11 +13,11 @@ status: To Do
 
 | 거래 | 매니저(별도 서비스)가 하는 일 | 쓰이는 입금·출금 |
 |---|---|---|
-| **온램프** (법정통화→코인) | 풀→고객 wallet 코인 **전송(출금 실행)**을 15분 배치로. 재고 보충(rebalance)이면 발행사가 vault 로 보낸 코인의 **입금 감지**도. | submitTransaction API 호출(6장) · onChainEvent 웹소켓 push(4장) |
-| **오프램프** (코인→법정통화) | 고객→풀 wallet 코인 **회수 전송**을 15분 배치로. rebalance 면 vault→발행사 주소 **출금 실행**. | submitTransaction API 호출(6장) · onChainEvent 웹소켓 push(4장) |
-| **스왑** (코인↔코인) | 고객↔은행 풀 사이 **양방향 전송**(회수+할당) 2건을 15분 배치로. 두 자산 재고가 다 있어야 함. | submitTransaction API ×2(6장) · onChainEvent 웹소켓 push(4장) |
+| **온램프** (법정통화→코인) | 풀→고객 wallet 코인 **전송(출금 실행)**을 15분 배치로. 재고 보충(rebalance)이면 발행사가 vault 로 보낸 코인의 **입금 감지**도. | submitTransaction API 호출(6장) · onChainEvent 큐 consume(4장) |
+| **오프램프** (코인→법정통화) | 고객→풀 wallet 코인 **회수 전송**을 15분 배치로. rebalance 면 vault→발행사 주소 **출금 실행**. | submitTransaction API 호출(6장) · onChainEvent 큐 consume(4장) |
+| **스왑** (코인↔코인) | 고객↔은행 풀 사이 **양방향 전송**(회수+할당) 2건을 15분 배치로. 두 자산 재고가 다 있어야 함. | submitTransaction API ×2(6장) · onChainEvent 큐 consume(4장) |
 
-즉 세 거래에서 매니저가 새로 배우는 API 오퍼레이션은 없습니다 — 6페이지의 **submitTransaction**(출금 실행) API 호출과 4페이지의 **입금 감지** 웹소켓 이벤트를 조합할 뿐입니다. 스왑만 전송이 두 다리(보내는 코인·받는 코인)라 델타가 두 줄로 잡힙니다.
+즉 세 거래에서 매니저가 새로 배우는 API 오퍼레이션은 없습니다 — 6페이지의 **submitTransaction**(출금 실행) API 호출과 4페이지의 **입금 감지** 큐 이벤트 consume 을 조합할 뿐입니다. 스왑만 전송이 두 다리(보내는 코인·받는 코인)라 델타가 두 줄로 잡힙니다.
 
 ## 2단계 골격 — 매니저는 초록 단계에만
 
@@ -29,6 +29,9 @@ sequenceDiagram
     participant DB as 고객·은행 자산 · (customer/bank_ledger)
     participant DL as 델타 원장 · (delta_ledger)
     participant BM as 블록체인 매니저 API · (별도 서비스)
+    box rgb(254,249,195) 메시지 큐
+    participant MQ as onchain-events
+    end
 
     rect rgb(254,243,199)
     Note over Cust,DL: 1단계 — 즉시 (DB 반영 · 매니저 호출 없음)
@@ -41,15 +44,16 @@ sequenceDiagram
     end
 
     rect rgb(220,252,231)
-    Note over App,BM: 2단계 — 15분 배치 (Service 백엔드가 실행)
+    Note over App,MQ: 2단계 — 15분 배치 (Service 백엔드가 실행)
     App->>DL: 윈도 PENDING 조회 → 자산별 상계(netting)
     App->>BM: API — 자산당 순증분 1건 submitTransaction · (고객 자산 지갑 ↔ 은행 자산 지갑)
-    BM-->>App: WS push — onChainEvent (전송 확정)
+    BM->>MQ: publish — onChainEvent (전송 확정)
+    MQ-->>App: consume — onChainEvent
     App->>DL: 해당 PENDING 일괄 settled
     end
 ```
 
-**노랑 = 1단계**는 매니저를 안 부른다 — 순수 DB 반영 + 델타 PENDING 적재이고, 확인이 두 겹이다: **고객 가용**(DB 조회 — 오프램프·스왑에서 고객이 내놓는 코인)과 **풀 재고**(실제 풀 잔액 − 미정산 PENDING)가 각각 없는 돈 거래와 풀 부족 초과 거래를 막는다. **초록 = 2단계**에서만 이 문서의 매니저가 등장 — 6페이지의 submitTransaction API 호출, 4페이지의 웹소켓 입금 감지 그대로다. 발행사·거래소는 이 그림에 없다(풀 rebalance 때만 들어온다). 스왑은 전송이 두 다리라 초록 단계가 두 번 잡힌다.
+**노랑 = 1단계**는 매니저를 안 부른다 — 순수 DB 반영 + 델타 PENDING 적재이고, 확인이 두 겹이다: **고객 가용**(DB 조회 — 오프램프·스왑에서 고객이 내놓는 코인)과 **풀 재고**(실제 풀 잔액 − 미정산 PENDING)가 각각 없는 돈 거래와 풀 부족 초과 거래를 막는다. **초록 = 2단계**에서만 이 문서의 매니저가 등장 — 6페이지의 submitTransaction API 호출, 4페이지의 onChainEvent 큐 consume 그대로다. 발행사·거래소는 이 그림에 없다(풀 rebalance 때만 들어온다). 스왑은 전송이 두 다리라 초록 단계가 두 번 잡힌다.
 
 ## 배치를 효율적으로 — Service 백엔드가 두 지갑 사이를 상계한다
 

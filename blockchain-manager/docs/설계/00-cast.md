@@ -4,25 +4,27 @@ category: 블록체인매니저
 status: To Do
 ---
 
-별도 서비스인 블록체인 매니저를 백엔드가 HTTP API·웹소켓으로 부르는 두 층 구조, 직접 만드는 넷, 그리고 기능 × 사용처 표를 한 장에 정리한다.
+별도 서비스인 블록체인 매니저를 백엔드가 HTTP API 로 부르고 온체인 이벤트는 메시지 큐로 받는 두 층 구조, 직접 만드는 넷, 그리고 기능 × 사용처 표를 한 장에 정리한다.
 워크스루 전체의 등장인물표로, 이후 모든 장은 이 구성 요소 이름을 그대로 쓴다.
 
 ## 구조는 두 층입니다
 
-이 시스템은 두 층입니다. 위는 **지갑 백엔드** — 항상 직접 만들고, 여기서는 **물리적으로 분리된 두 개**입니다. **Service 백엔드**는 고객 런타임(계정·주소·입금·출금·잔액)을, **Admin 백엔드**는 운영·거버넌스(정책·승인·키 운영·동결·rebalance)를 맡고, 별도 배포·권한·감사 경계로 나뉩니다. 아래는 **블록체인 매니저** — 별도 배포되는 독립 서비스로, 두 백엔드가 **HTTP API** 로 부르고 온체인 이벤트는 **웹소켓으로 push** 받습니다.
+이 시스템은 두 층입니다. 위는 **지갑 백엔드** — 항상 직접 만들고, 여기서는 **물리적으로 분리된 두 개**입니다. **Service 백엔드**는 고객 런타임(계정·주소·입금·출금·잔액)을, **Admin 백엔드**는 운영·거버넌스(정책·승인·키 운영·동결·rebalance)를 맡고, 별도 배포·권한·감사 경계로 나뉩니다. 아래는 **블록체인 매니저** — 별도 배포되는 독립 서비스로, 두 백엔드가 **HTTP API** 로 부르고, 온체인 이벤트는 매니저가 **메시지 큐에 publish** 하고 백엔드가 **consume** 합니다.
 
 ```mermaid
 flowchart TB
     SVC["Service 백엔드<br/>고객 런타임 · 입금·출금·잔액"]
     ADM["Admin 백엔드<br/>운영·거버넌스 · 정책·승인·키·동결"]
-    BM["블록체인 매니저 — 별도 서비스 · 1차 목표<br/>HTTP API: createAccount · createDepositAddress · depositAddressOf<br/>submitTransaction · balanceOf · transactionsOf …<br/>웹소켓: onChainEvent push"]
+    BM["블록체인 매니저 — 별도 서비스 · 1차 목표<br/>HTTP API: createAccount · createDepositAddress · depositAddressOf<br/>submitTransaction · balanceOf · transactionsOf …<br/>이벤트: onChainEvent → 메시지 큐 publish"]
+    MQ["메시지 큐<br/>onchain-events"]
     FB["Fireblocks"]
     ETH["이더리움"]
     BASE["Base"]
 
     SVC -->|API| BM
     ADM -->|API| BM
-    BM -.->|WS push| SVC
+    BM -.->|publish| MQ
+    MQ -.->|consume| SVC
     BM --> FB
     FB --> ETH
     FB --> BASE
@@ -31,7 +33,8 @@ flowchart TB
     classDef port fill:#e0e7ff,stroke:#6366f1;
     classDef vendor fill:#dcfce7,stroke:#16a34a;
     classDef chain fill:#eef2ff,stroke:#818cf8;
-    class SVC,ADM be; class BM port; class FB vendor; class ETH,BASE chain;
+    classDef mq fill:#fef9c3,stroke:#ca8a04;
+    class SVC,ADM be; class BM port; class FB vendor; class ETH,BASE chain; class MQ mq;
 ```
 
 ## 어디서 도는가 — 물리 배치
@@ -42,9 +45,10 @@ flowchart TB
 flowchart LR
     subgraph OUR["인프라"]
       direction TB
-      SVCBE["Service 백엔드<br/>유스케이스 · 웹소켓 컨슈머"]
+      SVCBE["Service 백엔드<br/>유스케이스 · 큐 컨슈머"]
       ADMBE["Admin 백엔드<br/>정책·승인·키 운영·동결·rebalance"]
-      BM["블록체인 매니저 — 별도 서비스<br/>API·웹소켓 제공 · Fireblocks 연동 (SDK 래핑·체인 라우팅)<br/>내부 폴링 — 입금·상태 감지 (4·6장)"]
+      BM["블록체인 매니저 — 별도 서비스<br/>API·메시지 큐 제공 · Fireblocks 연동 (SDK 래핑·체인 라우팅)<br/>내부 폴링 — 입금·상태 감지 (4·6장)"]
+      MQ["메시지 큐<br/>onchain-events"]
       BDB[("백엔드 DB<br/>customer_ledger · 출금 지시 상태")]
       MDB[("블록체인 매니저 DB<br/>ref↔vault↔주소 매핑 · 이벤트 체크포인트")]
       COS["API Co-signer (SGX/TEE)<br/>MPC 온프렘 키 share · 자동 공동서명"]
@@ -55,7 +59,8 @@ flowchart LR
 
     SVCBE -->|API| BM
     ADMBE -->|API| BM
-    BM -.->|WS push| SVCBE
+    BM -.->|publish| MQ
+    MQ -.->|consume| SVCBE
     ADMBE -->|정책·승인·운영| FBV
     SVCBE --- BDB
     ADMBE --- BDB
@@ -73,10 +78,11 @@ flowchart LR
     classDef vendor fill:#f5f5f7,stroke:#86868b;
     classDef ext fill:#eef2ff,stroke:#818cf8;
     classDef policy fill:#ffedd5,stroke:#ea580c;
-    class SVCBE,BM svc; class ADMBE adm; class COS sec; class CB policy; class BDB,MDB data; class FBV vendor; class EVM ext;
+    classDef mq fill:#fef9c3,stroke:#ca8a04;
+    class SVCBE,BM svc; class ADMBE adm; class COS sec; class CB policy; class BDB,MDB data; class FBV vendor; class EVM ext; class MQ mq;
 ```
 
-Fireblocks 기준 배치. **Service**·**Admin** 은 **물리적으로 분리**돼 각자 **블록체인 매니저 API** 를 부른다 — **블록체인 매니저는 별도 배포되는 독립 서비스**이고, Fireblocks 연동(SDK 래핑·체인 라우팅)은 매니저 내부 구현이다. **ref↔vault↔주소 매핑과 이벤트 체크포인트는 블록체인 매니저 DB**, **원장(customer_ledger·귀속·잔액)과 출금 지시 상태는 백엔드 DB**에 둔다. 서명은 **벤더 단독이 아니다** — MPC 키 share 하나는 **보안 존(SGX/TEE)의 API Co-signer**가 들고 매 서명마다 **공동서명**하며, 서명 직전 **Callback Handler**(정책 훅)가 승인·거부를 건다. vault·MPC 클라우드 share·노드·전파는 벤더 몫이다(5·6장). 입금·상태 **감지는 매니저 내부 폴링이 벤더로 나가는 주기 조회**(outbound)이고, webhook 은 환경이 허용할 때 붙이는 보조다(4장). 감지 결과는 매니저가 **웹소켓으로 백엔드에 push** 하고, 백엔드의 웹소켓 컨슈머가 받는다.
+Fireblocks 기준 배치. **Service**·**Admin** 은 **물리적으로 분리**돼 각자 **블록체인 매니저 API** 를 부른다 — **블록체인 매니저는 별도 배포되는 독립 서비스**이고, Fireblocks 연동(SDK 래핑·체인 라우팅)은 매니저 내부 구현이다. **ref↔vault↔주소 매핑과 이벤트 체크포인트는 블록체인 매니저 DB**, **원장(customer_ledger·귀속·잔액)과 출금 지시 상태는 백엔드 DB**에 둔다. 서명은 **벤더 단독이 아니다** — MPC 키 share 하나는 **보안 존(SGX/TEE)의 API Co-signer**가 들고 매 서명마다 **공동서명**하며, 서명 직전 **Callback Handler**(정책 훅)가 승인·거부를 건다. vault·MPC 클라우드 share·노드·전파는 벤더 몫이다(5·6장). 입금·상태 **감지는 매니저 내부 폴링이 벤더로 나가는 주기 조회**(outbound)이고, webhook 은 환경이 허용할 때 붙이는 보조다(4장). 감지 결과는 매니저가 **메시지 큐(onchain-events 토픽)에 publish** 하고, 백엔드의 큐 컨슈머가 consume 한다.
 
 ## 직접 만드는 것 — 넷
 
@@ -87,7 +93,7 @@ flowchart LR
     subgraph MINE["직접 만든다 — 1차 작업 범위"]
       direction TB
       M1["두 백엔드 경계<br/>Service / Admin 분리 · 권한·감사"]
-      M2["블록체인 매니저 서비스<br/>API·웹소켓 제공 · Fireblocks 연동 (SDK 래핑·체인 라우팅) · 내부 폴링"]
+      M2["블록체인 매니저 서비스<br/>API·메시지 큐 제공 · Fireblocks 연동 (SDK 래핑·체인 라우팅) · 내부 폴링"]
       M3["감지·정합 로직 (매니저 내부)<br/>변경분 조회→DB · 벤더 잔액 대사"]
       M4["DB 2개<br/>매니저 매핑 DB (ref↔vault↔주소) · 백엔드 원장"]
     end
@@ -112,7 +118,7 @@ flowchart LR
 | 고객 계정 생성 | createVaultAccount | ● | | | | `createAccount` | S | 1장 |
 | 입금 주소 **생성** | createVaultAsset · 자산 지갑 활성화 (EVM=단일) | ● | ● | | | `createDepositAddress` | S | 2장 |
 | 입금 주소 **조회** | (매니저 DB 읽기 · Fireblocks 왕복 없음 — API 1홉) | | ● | | ● | `depositAddressOf` | S | 3장 |
-| 수신·확정 이벤트 | 매니저 내부 폴링 (webhook 보조) | | ● | ● | | `onChainEvent` — 웹소켓 push | S | 4장 |
+| 수신·확정 이벤트 | 매니저 내부 폴링 (webhook 보조) | | ● | ● | | `onChainEvent` — 메시지 큐 publish/consume | S | 4장 |
 | 수수료 추정 | estimateFee | | | ● | | `estimateFee` | S | 7장 |
 | 출금 제출 | **createTransaction** | | | ● | | `submitTransaction` | S | 6장 |
 | 상태 조회 | getTransactionById | | | ● | ● | `statusOf` | S·A | 6장 |
