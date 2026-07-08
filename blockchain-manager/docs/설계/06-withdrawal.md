@@ -81,7 +81,7 @@ sequenceDiagram
 | **안쪽 — vault 의 승인 서명** (6~9) | 출금 vault(옴니버스·출금 pool)의 MPC 서명 — 벤더 share + **co-signer share**. co-signer 는 Callback Handler 재검증을 통과한 건에만 자기 share 를 보탠다. | 침해된 백엔드의 위조 지시 — 목적지·금액이 정책에 어긋나면 서명 자체가 만들어지지 않는다. |
 | **바깥 — relay 의 거래 서명** (10~11) | relay 가 자기 계정으로 바깥 거래를 서명·제출하고 gas 를 낸다. | relay 가 정할 수 있는 건 "낼지 말지"뿐 — 내용 위조는 불가. 위임된 지갑 코드가 안쪽 서명을 온체인에서 검증하기 때문. |
 
-행위자를 우리 모델로 매핑하면 — **고객은 온체인에 등장하지 않습니다**. 고객의 "출금해 주세요"는 업무 승인 단계에서 끝나고, 온체인의 발신 vault(옴니버스·출금 pool)·키(MPC)·제출자(relay)는 전부 수탁자 쪽입니다. 위임·실행 메커니즘의 상세는 가스 대납 문서 9장.
+행위자를 우리 모델로 매핑하면 — **고객은 온체인에 등장하지 않습니다**. 고객의 "출금해 주세요"는 업무 승인 단계에서 끝나고 온체인의 발신 vault(옴니버스·출금 pool)·키(MPC)·제출자(relay)는 전부 수탁자 쪽입니다. 위임·실행 메커니즘의 상세는 가스 대납 문서 9장.
 
 ## 서명 직전 검증 — Callback Handler 가 보는 것
 
@@ -100,7 +100,7 @@ sequenceDiagram
 
 ## 막혔을 때 — boost 와 cancel (Admin 운영)
 
-확정한 수수료가 시세보다 낮으면 거래가 mempool 에 걸려 **막힙니다**. 대응은 둘입니다 — **boost**(같은 순번에 수수료만 올려 재전송 · RBF)와 **cancel**(철회). 나가는 돈에 개입하는 일이라 **Admin 운영**이고, Gasless Relay 는 **auto-boost 를 지원하지 않아** 감지·지시는 우리 몫입니다. gasless 거래에 대한 boost·cancel API 의 정확한 동작은 CSM/PoC 확인 대상입니다.
+확정한 수수료가 시세보다 낮으면 거래가 mempool 에 걸려 **막힙니다**. 대응은 둘입니다 — **boost**(같은 순번에 수수료만 올려 재전송 · RBF)와 **cancel**(철회). 나가는 돈에 개입하는 일이라 **Admin 운영**이고, Gasless Relay 는 **auto-boost 를 지원하지 않아** 감지·지시는 우리 몫입니다. boost·cancel API 가 gasless 거래에서 정확히 어떻게 동작하는지는 CSM/PoC 확인 대상입니다.
 
 ```mermaid
 sequenceDiagram
@@ -135,11 +135,11 @@ sequenceDiagram
     Note over BM,FB: 이후는 다시 매니저 내부 폴링 (4장) — 원래 건의 종결과 대체 건의 확정을 큐에 publish 해 실어 온다<br/>auto-boost 미지원이라 감지·지시는 우리 몫이다
 ```
 
-막힌 출금의 처리 한 사이클. 감지(1~2)는 Service 의 막힘 점검이 DB 에서 골라내고, 개입(3~)은 나가는 돈에 손대는 일이라 Admin 몫이다 — statusOf 로 그 건의 현재 상태를 확인한 뒤 boost(수수료 올려 재전송) 또는 cancel(철회)을 매니저 API 로 지시한다. 매니저가 벤더 API 를 호출하고, 실제 대체 거래는 발신자인 relay 가 만들어 전파한다.
+막힌 출금의 처리 한 사이클. 감지(1~2)는 Service 의 막힘 점검이 DB 에서 골라내고, 개입(3~)은 나가는 돈에 손대는 일이라 Admin 몫이다 — statusOf 로 그 건의 현재 상태를 확인한 뒤 boost(수수료 올려 재전송) 또는 cancel(철회)을 매니저 API 로 지시한다. 매니저가 벤더 API 를 호출하고 실제 대체 거래는 발신자인 relay 가 만들어 전파한다.
 
 ## 상태 한 장 — Fireblocks 필드를 공통 어휘로
 
-Fireblocks 는 내부 상태를 여러 단계로 보냅니다(PENDING_SIGNATURE, QUEUED, BROADCASTING, CONFIRMING, COMPLETED, FAILED…). 백엔드가 보는 것은 **매니저가 번역한 공통 상태** 하나입니다 — 상태 변경 이벤트(onChainEvent)는 메시지 큐(onchain-events 토픽)에서 consume 하고, statusOf 는 필요할 때 단건 확인하는 API 조회로 남습니다. 아래 넷이 밖으로 나갑니다.
+Fireblocks 는 내부 상태를 여러 단계로 보냅니다(PENDING_SIGNATURE, QUEUED, BROADCASTING, CONFIRMING, COMPLETED, FAILED…). 백엔드가 보는 것은 **매니저가 번역한 공통 상태** 하나입니다 — 상태 변경 이벤트(onChainEvent)는 메시지 큐(onchain-events 토픽)에서 consume 하고 statusOf 는 필요할 때 단건 확인하는 API 조회로 남습니다. 아래 넷이 밖으로 나갑니다.
 
 | 공통 상태 (TxStatus) | 뜻 | Fireblocks 원어 (매니저가 번역) |
 |---|---|---|
@@ -150,4 +150,4 @@ Fireblocks 는 내부 상태를 여러 단계로 보냅니다(PENDING_SIGNATURE,
 
 confirm(체인 등장)↔finality(확정) 판정 기준은 **4장과 같다**(numOfConfirmations vs DCCP 임계). 이 문서는 이 넷만 밖으로 내보낸다 — 벤더 내부의 세부 단계는 SUBMITTED 로 접어 감춘다. 입금 쪽 상태 흐름은 5장.
 
-상태 이름과 확정 정책(DCCP)은 벤더 안에 있고, 그것을 공통 어휘 넷으로 번역하는 것은 매니저 내부입니다. 막혔을 때의 boost·cancel 판단은 Admin 몫입니다 — 언제 boost 할지, 언제 철회할지 같은 업무 정책은 매니저가 흡수하지 못합니다.
+상태 이름과 확정 정책(DCCP)은 벤더 안에 있고 그것을 공통 어휘 넷으로 번역하는 것은 매니저 내부입니다. 막혔을 때의 boost·cancel 판단은 Admin 몫입니다 — 언제 boost 할지, 언제 철회할지 같은 업무 정책은 매니저가 흡수하지 못합니다.

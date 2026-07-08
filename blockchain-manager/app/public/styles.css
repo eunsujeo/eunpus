@@ -274,6 +274,70 @@ body {
 }
 .doc-body th { color: #fff; background: var(--surface-elevated); font-weight: 600; }
 
+/* ---- 문서 전용 페이지 ---- */
+.doc-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+.doc-page h1 { color: #fff; font-size: 26px; margin: 0 0 10px; }
+.doc-page .chips { margin-bottom: 20px; }
+.doc-page .doc-body { padding: 0; overflow: visible; }
+a.brand-mark { text-decoration: none; }
+.btn-link { text-decoration: none; display: inline-flex; align-items: center; }
+
+/* ---- 다이어그램 뷰어 (확대·이동·전체화면) ---- */
+.dviewer { position: relative; margin: 12px 0; }
+.dviewer .doc-body, .dviewer .mermaid { margin: 0; }
+.dviewer-stage {
+  overflow: hidden;
+  border-radius: 8px;
+  cursor: grab;
+  touch-action: none;
+}
+.dviewer-stage.dragging { cursor: grabbing; }
+.dviewer-stage .mermaid { margin: 0; transition: none; }
+.dviewer-bar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 0.35;
+  transition: opacity 0.15s;
+}
+.dviewer:hover .dviewer-bar { opacity: 1; }
+.dviewer-bar button {
+  width: 30px;
+  height: 28px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--surface-elevated);
+  color: var(--body);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.dviewer-bar button:hover { color: #fff; border-color: #4a525b; }
+.dviewer.fs, .dviewer.fs-fallback {
+  background: var(--canvas);
+}
+.dviewer.fs-fallback {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  margin: 0;
+}
+.dviewer.fs .dviewer-stage, .dviewer.fs-fallback .dviewer-stage {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+}
+.dviewer.fs .mermaid, .dviewer.fs-fallback .mermaid { max-height: none; }
+
 /* ---- toast ---- */
 .toast {
   position: fixed;

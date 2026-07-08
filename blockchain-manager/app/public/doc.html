@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>문서 — 블록체인매니저</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <a class="brand-mark" href="./" title="보드로">BM</a>
+      <span class="brand-name" id="doc-title-top">문서</span>
+    </div>
+    <div class="topbar-right">
+      <button id="copy-md" class="btn-secondary" type="button">복사</button>
+      <button id="download-md" class="btn-secondary" type="button">.md</button>
+      <a class="btn-secondary btn-link" href="./">보드로</a>
+    </div>
+  </header>
+
+  <main class="doc-page">
+    <h1 id="doc-title"></h1>
+    <div id="doc-chips" class="chips"></div>
+    <article id="doc-body" class="doc-body"></article>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="vendor/mermaid.min.js"></script>
+  <script src="md.js"></script>
+  <script src="doc.js"></script>
+</body>
+</html>

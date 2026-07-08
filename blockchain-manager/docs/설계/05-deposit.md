@@ -4,7 +4,7 @@ category: 블록체인매니저
 status: To Do
 ---
 
-큐에 publish 된 입금 이벤트가 대기를 거쳐 가용이 되고, 고객 vault 에서 옴니버스로 모이기까지를 다룬다.
+큐에 publish 된 입금 이벤트가 대기를 거쳐 가용이 되고 고객 vault 에서 옴니버스로 모이기까지를 다룬다.
 감지는 블록체인 매니저 내부 폴링, 원장 반영은 백엔드 큐 컨슈머의 일이다. 감지·판정 기준은 4장을 그대로 쓴다. 입금이 지나는 상태 넷, reorg 예외, 스위핑과 원장 반영 순서를 정리한다.
 
 ## 입금 한 건이 흐르는 길 — 매니저가 감지해 큐에 publish, 백엔드가 consume 해 확정까지
@@ -46,7 +46,7 @@ sequenceDiagram
     QC->>MQ: 오프셋 커밋 — 원장 반영 성공 후에만
 ```
 
-오프셋 커밋이 원장 반영 뒤라 실패한 이벤트는 커밋되지 않고 재소비된다(at-least-once) — 중복 소비는 원장 반영의 이벤트 ID unique 제약으로 걸러지고, 같은 계정의 이벤트는 파티션 키가 accountId 라 감지 → 확정 순서가 뒤집히지 않는다.
+오프셋 커밋이 원장 반영 뒤라 실패한 이벤트는 커밋되지 않고 재소비된다(at-least-once) — 중복 소비는 원장 반영의 이벤트 ID unique 제약으로 걸러진다. 같은 계정의 이벤트는 파티션 키가 accountId 라 감지 → 확정 순서가 뒤집히지 않는다.
 
 ## 입금에서 보는 상태·하위 상태
 
@@ -59,7 +59,7 @@ Fireblocks 트랜잭션 상태는 전부 17가지지만 대부분은 출금 쪽 
 | `REJECTED` | AML 거절 또는 동결 — **입금은 Admin 이 unfreeze 할 때까지 자산 잠금** | 반영하지 않는다 — Admin unfreeze 대기 |
 | `FAILED` | 영구 실패 (final) | 반영하지 않는다 |
 
-각 status 는 `subStatus` 로 사유가 세분됩니다 — 매니저 내부 폴링이 분기하는 `status`·`numOfConfirmations` 에 사유를 더해주는 필드이고, 큐 이벤트에 함께 실려 옵니다. 입금 관련은 아래가 전부이고, 특히 **REJECTED 의 동결 3종은 Admin 의 unfreeze 운영**이 걸립니다.
+각 status 는 `subStatus` 로 사유가 세분됩니다 — 매니저 내부 폴링이 분기하는 `status`·`numOfConfirmations` 에 사유를 더해주는 필드이고 큐 이벤트에 함께 실려 옵니다. 입금 관련은 아래가 전부이고, 특히 **REJECTED 의 동결 3종은 Admin 의 unfreeze 운영**이 걸립니다.
 
 | 상위 | subStatus | 뜻 |
 |---|---|---|
@@ -70,11 +70,11 @@ Fireblocks 트랜잭션 상태는 전부 17가지지만 대부분은 출금 쪽 
 | REJECTED | `REJECTED_AML_SCREENING` | AML 고위험 판정 — 동일 |
 | FAILED | `DROPPED_BY_BLOCKCHAIN` | 블록에 실렸다가 떨어짐(깊은 reorg 등) — 반영해 둔 잔액을 되돌린다(아래 절) |
 
-전체 subStatus(실패 사유 수십 종)는 출금·운영 영역이라 벤더 레퍼런스의 몫이고, 여기엔 입금에서 관찰되는 것만 실었다.
+전체 subStatus(실패 사유 수십 종)는 출금·운영 영역이라 벤더 레퍼런스의 몫이고 여기엔 입금에서 관찰되는 것만 실었다.
 
 ## 예외 — reorg 로 믿었던 입금이 뒤집히면
 
-여기까지가 확정으로 가는 정상 경로였고, 예외가 하나 남습니다. 이더리움·Base 는 체인 끝이 드물게 교체(reorg)될 수 있습니다. **1차 방어는 4장의 DCCP 임계 그 자체입니다** — 임계만큼 confirmation 이 쌓인 뒤에만 가용 처리하므로, 그보다 얕은 reorg 는 잔액에 닿지 못합니다. 임계보다 깊은 reorg(극히 드묾)로 거래가 블록에서 떨어지면 Fireblocks 는 즉시 **FAILED(또는 취소·만료) + subStatus `DROPPED_BY_BLOCKCHAIN`** 으로 표시합니다 — BROADCASTING 으로 되돌아가지 않습니다(Fireblocks Support 확인). 매니저가 이 신호를 큐에 publish 하면 백엔드는 **반영해 둔 잔액만 되돌리고 입금 기록은 보존**합니다. 잠깐 빠졌다 재편입되는 얕은 reorg 는 CONFIRMING 에 머물며 confirmation 수만 다시 셉니다. 최종 안전망은 여전히 **주기 대사**입니다.
+여기까지가 확정으로 가는 정상 경로였고 예외가 하나 남습니다. 이더리움·Base 는 체인 끝이 드물게 교체(reorg)될 수 있습니다. **1차 방어는 4장의 DCCP 임계 그 자체입니다** — 임계만큼 confirmation 이 쌓인 뒤에만 가용 처리하므로, 그보다 얕은 reorg 는 잔액에 닿지 못합니다. 임계보다 깊은 reorg(극히 드묾)로 거래가 블록에서 떨어지면 Fireblocks 는 즉시 **FAILED(또는 취소·만료) + subStatus `DROPPED_BY_BLOCKCHAIN`** 으로 표시합니다 — BROADCASTING 으로 되돌아가지 않습니다(Fireblocks Support 확인). 매니저가 이 신호를 큐에 publish 하면 백엔드는 **반영해 둔 잔액만 되돌리고 입금 기록은 보존**합니다. 잠깐 빠졌다 재편입되는 얕은 reorg 는 CONFIRMING 에 머물며 confirmation 수만 다시 셉니다. 최종 안전망은 여전히 **주기 대사**입니다.
 
 ## 입금 다음 — 고객 vault 에서 옴니버스로 (sweep)
 
@@ -122,7 +122,7 @@ sequenceDiagram
 | **고객별 vault (EOA)** | 토큰이 빠져나가는 발신 계정. **키는 수탁자 몫**(MPC — 벤더 share + co-signer share)이다. 첫 gasless 거래면 이 vault 의 위임 설정(upgrade)이 함께 처리된다. |
 | **지정 relay** | 바깥 거래의 발신자 — 제출하고 gas 를 낸다(월말 인보이스). 내용은 위조하지 못한다 — vault 서명의 검증은 위임된 지갑 코드가 온체인에서 한다. |
 
-서명이 두 겹이다 — vault 몫의 승인 서명(안쪽)과 relay 의 바깥 거래 서명. 이 구조는 출금(6장)과 같고, 메커니즘 상세는 가스 대납 문서 9장.
+서명이 두 겹이다 — vault 몫의 승인 서명(안쪽)과 relay 의 바깥 거래 서명. 이 구조는 출금(6장)과 같고 메커니즘 상세는 가스 대납 문서 9장.
 
 | 결정 | 내용 |
 |---|---|

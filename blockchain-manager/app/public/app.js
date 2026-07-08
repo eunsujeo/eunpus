@@ -1,5 +1,7 @@
 'use strict';
 
+const { esc, renderMarkdown } = window.MD;
+
 const STATUSES = ['To Do', 'In Progress', 'Done', '아카이브'];
 
 const board = document.getElementById('board');
@@ -15,14 +17,6 @@ let activeFilter = '전체';
 let toastTimer = null;
 
 /* ---------- utils ---------- */
-
-function esc(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 function fmtDate(iso) {
   if (!iso) return '';
@@ -42,103 +36,6 @@ async function api(url, init) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
-}
-
-/* ---------- 간이 마크다운 렌더러 (미리보기용) ---------- */
-
-function renderMarkdown(md) {
-  const lines = md.split(/\r?\n/);
-  const out = [];
-  let inCode = false;
-  let codeLang = '';
-  let codeBuf = [];
-  let listTag = null;
-  let tableRows = null; // 연속된 | 행 버퍼
-
-  const closeList = () => {
-    if (listTag) { out.push(`</${listTag}>`); listTag = null; }
-  };
-
-  const splitRow = (line) =>
-    line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
-
-  const flushTable = () => {
-    if (!tableRows) return;
-    const rows = tableRows;
-    tableRows = null;
-    if (!rows.length) return;
-    const sepIdx = rows.findIndex((r) => r.every((c) => /^:?-{2,}:?$/.test(c)));
-    const head = sepIdx > 0 ? rows[0] : null;
-    const body = sepIdx > 0 ? rows.slice(sepIdx + 1) : rows;
-    let html = '<table>';
-    if (head) html += '<thead><tr>' + head.map((c) => `<th>${c}</th>`).join('') + '</tr></thead>';
-    html += '<tbody>' + body.map((r) => '<tr>' + r.map((c) => `<td>${c}</td>`).join('') + '</tr>').join('') + '</tbody></table>';
-    out.push(html);
-  };
-
-  const inline = (s) =>
-    esc(s)
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, t, href) =>
-        /^https?:\/\//.test(href)
-          ? `<a href="${href}" target="_blank" rel="noopener">${t}</a>`
-          : t
-      );
-
-  for (const line of lines) {
-    if (line.trim().startsWith('```')) {
-      closeList();
-      flushTable();
-      if (!inCode) {
-        codeLang = line.trim().slice(3).trim().toLowerCase();
-        codeBuf = [];
-        inCode = true;
-      } else {
-        if (codeLang === 'mermaid') {
-          out.push(`<div class="mermaid">${esc(codeBuf.join('\n'))}</div>`);
-        } else {
-          out.push('<pre><code>' + codeBuf.map(esc).join('\n') + '</code></pre>');
-        }
-        inCode = false;
-      }
-      continue;
-    }
-    if (inCode) { codeBuf.push(line); continue; }
-
-    if (/^\s*\|.*\|\s*$/.test(line)) {
-      closeList();
-      if (!tableRows) tableRows = [];
-      tableRows.push(splitRow(line).map((c) => inline(c)));
-      continue;
-    }
-    flushTable();
-
-    const h = /^(#{1,3})\s+(.*)$/.exec(line);
-    if (h) { closeList(); out.push(`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`); continue; }
-
-    if (/^\s*[-*]\s+/.test(line)) {
-      if (listTag !== 'ul') { closeList(); out.push('<ul>'); listTag = 'ul'; }
-      out.push(`<li>${inline(line.replace(/^\s*[-*]\s+/, ''))}</li>`);
-      continue;
-    }
-    if (/^\s*\d+\.\s+/.test(line)) {
-      if (listTag !== 'ol') { closeList(); out.push('<ol>'); listTag = 'ol'; }
-      out.push(`<li>${inline(line.replace(/^\s*\d+\.\s+/, ''))}</li>`);
-      continue;
-    }
-
-    closeList();
-    if (/^\s*(---|\*\*\*)\s*$/.test(line)) { out.push('<hr>'); continue; }
-    if (/^>\s?/.test(line)) { out.push(`<blockquote>${inline(line.replace(/^>\s?/, ''))}</blockquote>`); continue; }
-    if (line.trim() === '') continue;
-    out.push(`<p>${inline(line)}</p>`);
-  }
-  closeList();
-  flushTable();
-  if (inCode) out.push('<pre><code>' + codeBuf.map(esc).join('\n') + '</code></pre>');
-  return out.join('\n');
 }
 
 /* ---------- board rendering ---------- */
@@ -270,7 +167,7 @@ async function moveCard(path, nextStatus) {
   }
 }
 
-let currentDoc = null; // 복사·다운로드용 { name, raw }
+let currentDoc = null; // 복사·다운로드·새창용 { name, path, raw }
 
 async function openPreview(c) {
   modalTitle.textContent = c.title;
@@ -282,16 +179,15 @@ async function openPreview(c) {
   try {
     const data = await api(`/api/doc?path=${encodeURIComponent(c.path)}`);
     const m = data.meta || {};
-    currentDoc = { name: c.name, raw: data.raw || data.body };
+    currentDoc = { name: c.name, path: c.path, raw: data.raw || data.body };
     modalChips.innerHTML = [
       m.status ? `<span class="chip status">${esc(m.status)}</span>` : '',
       m.category ? `<span class="chip">${esc(m.category)}</span>` : '',
       m.subcategory ? `<span class="chip">${esc(m.subcategory)}</span>` : '',
     ].join('');
     modalBody.innerHTML = renderMarkdown(data.body);
-    if (window.mermaid) {
-      await mermaid.run({ querySelector: '#modal-body .mermaid' }).catch(() => {});
-    }
+    await window.MD.runMermaid('#modal-body .mermaid');
+    window.MD.enhanceDiagrams(modalBody);
   } catch (e) {
     modalBody.innerHTML = `<p style="color:var(--danger)">미리보기 실패: ${esc(e.message)}</p>`;
   }
@@ -299,10 +195,12 @@ async function openPreview(c) {
 
 /* ---------- wiring ---------- */
 
-if (window.mermaid) {
-  // 다이어그램 원본이 밝은 파스텔 classDef 를 쓰므로 라이트 테마 + 밝은 패널에 렌더
-  mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'strict' });
-}
+window.MD.initMermaid();
+
+document.getElementById('open-page').addEventListener('click', () => {
+  if (!currentDoc) return;
+  window.open(`doc?path=${encodeURIComponent(currentDoc.path)}`, '_blank');
+});
 
 document.getElementById('copy-md').addEventListener('click', async () => {
   if (!currentDoc) return;
