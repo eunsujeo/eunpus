@@ -1,6 +1,6 @@
 ---
 title: 0. Canton 개요 — 데이터는 당사자에게만
-status: In Progress
+status: To Do
 ---
 
 Canton은 공개-허가형 프라이버시 보존 네트워크로, 한 거래를 그 거래의 당사자에게만 전달한다.
