@@ -17,6 +17,7 @@
   --border-hover: #3a4149;
   --code-bg: #0b0e11;
   --code-inline-bg: #2b3139;
+  --diagram-bg: #f7f8fa; /* 다크: 순백 대신 살짝 톤다운해 눈부심 완화 */
 }
 
 /* 라이트 테마 — DESIGN.md 의 transactional(light) 팔레트. 옐로 액센트·ink 는 공유 */
@@ -32,6 +33,7 @@
   --border-hover: #cdd1d6;
   --code-bg: #f0f2f5;
   --code-inline-bg: #eaecef;
+  --diagram-bg: #ffffff; /* 라이트: 순백 유지 */
 }
 
 * { box-sizing: border-box; }
@@ -259,7 +261,7 @@ body {
 .modal-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .modal-actions .btn-secondary { background: var(--surface-elevated); padding: 6px 12px; }
 .doc-body .mermaid {
-  background: #ffffff; /* 라이트 패널 — 파스텔 classDef 대비 확보 */
+  background: var(--diagram-bg); /* 파스텔 classDef 대비용 밝은 패널 (다크는 살짝 톤다운) */
   border: 1px solid var(--hairline);
   border-radius: 8px;
   padding: 16px;
