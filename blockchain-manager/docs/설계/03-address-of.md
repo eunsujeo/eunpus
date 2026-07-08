@@ -1,7 +1,7 @@
 ---
 title: 3. 입금 주소 조회 — depositAddressOf
 category: 블록체인매니저
-status: To Do
+status: Done
 ---
 
 생성과 정반대인 읽기 전용 동사 — 매니저가 백엔드 DB 에서 (accountId, asset)로 저장된 주소를 읽는다.
