@@ -263,10 +263,9 @@ body {
   padding: 12px 14px;
   cursor: grab;
   border: 1px solid var(--hairline);
-  border-left: 3px solid var(--col); /* 컬럼 상태 색 — 스캔용 */
-  transition: border-color 0.12s, transform 0.12s;
+  transition: border-color 0.12s;
 }
-.card:hover { border-color: var(--border-hover); border-left-color: var(--col); transform: translateY(-1px); }
+.card:hover { border-color: var(--border-hover); }
 .card:active { cursor: grabbing; }
 .card.dragging { opacity: 0.4; }
 .card.pending { opacity: 0.6; pointer-events: none; }
