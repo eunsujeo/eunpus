@@ -249,7 +249,6 @@ function cardEl(c) {
     <h3 class="card-title">${esc(c.title)}</h3>
     <p class="card-summary">${esc(c.summary.join(' '))}</p>
     <div class="card-foot">
-      ${c.subcategory ? `<span class="card-badge">${esc(c.subcategory)}</span>` : ''}
       <span class="card-date">${fmtDate(c.updatedAt)}</span>
     </div>`;
 
