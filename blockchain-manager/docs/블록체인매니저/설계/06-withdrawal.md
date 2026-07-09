@@ -109,7 +109,7 @@ sequenceDiagram
 확정한 수수료가 시세보다 낮으면 거래가 mempool 에 걸려 **막힙니다**. Gasless Relay 는 stuck 을 스스로 bump 하지 않으므로(auto-boost 미지원), 감지·재촉이 우리 몫입니다.
 
 - **자동 boost** — 막힘 점검(4장)이 오래 CONFIRMING 인 건을 잡으면 매니저가 **Admin 정책(대기 임계·최대 시도) 안에서 자동으로 boost**(같은 순번, 수수료만 올린 재전송 · RBF)한다. 인상된 gas 는 **relay 가 부담**하고, 인상 폭·상한은 relay 설정이다.
-- **cancel(철회)** — 기본 흐름에선 쓰지 않는다. 자동 boost 가 정책을 소진해도 못 살린 예외에서만 **수동 최후수단**으로 판단한다.
+- **cancel(철회)** — 기본 흐름에선 쓰지 않는다. 자동 boost 를 최대 시도까지 해도 못 살린 예외에서만 **수동 최후수단**으로 판단한다.
 
 fee 부족이 아니라 **relay 가 gas 를 못 대거나 거절**(잔고 소진 등)이면 boost 로 안 풀리므로, 경보를 올려 사람이 relay 급유·복구로 넘긴다. relay 가 stuck 을 자동 처리하는지 등 벤더 확인 항목은 11장.
 
@@ -131,7 +131,7 @@ sequenceDiagram
         FB->>RL: 대체 거래 생성 — 발신자가 relay 라 relay 만 만든다
         RL->>CH: 같은 순번 · fee 올린 대체 거래 전파 — gas 는 relay 부담
         CH-->>FB: 대체 거래 확정
-    else relay 가 gas 못 댐 또는 정책 소진
+    else relay 가 gas 못 댐 또는 최대 시도까지 해도 안 풀림
         Note over SW: 경보 — 사람이 relay 급유·복구 또는 수동 cancel 판단
     end
     Note over BM,FB: 이후 매니저 내부 폴링(4장)이 원래 건 종결·대체 건 확정을 큐에 publish
@@ -141,7 +141,7 @@ sequenceDiagram
 
 - **감지** — 매니저 내부 폴링의 막힘 점검이 매니저 DB 에서 골라낸다(4장).
 - **자동 boost** — fee 부족이면 정책 내에서 매니저가 boost 를 자동 트리거한다. 대체 거래는 발신자인 relay 가 만들어 전파하고 gas 도 relay 가 낸다.
-- **예외** — relay 가 gas 를 못 대거나(거절 포함) 정책을 소진하면 boost 로 못 살리므로 경보한다 — 사람이 relay 복구·수동 처리. cancel 은 이때의 최후수단이다.
+- **예외** — relay 가 gas 를 못 대거나(거절 포함), boost 를 최대 시도까지 해도 안 풀리면 경보한다 — 사람이 relay 복구·수동 처리. cancel 은 이때의 최후수단이다.
 
 ## 상태 한 장 — Fireblocks 필드를 공통 어휘로
 
