@@ -8,6 +8,7 @@ import {
   parseFrontmatter,
   normalizeStatus,
   requireEnv,
+  readState,
 } from './_lib.js';
 
 // order 배열 기준으로 정렬 — order 에 없는 항목은 뒤에 가나다순.
@@ -41,12 +42,16 @@ export async function onRequestGet({ env }) {
   const isMd = (f) => f.type === 'file' && f.name.endsWith('.md');
 
   try {
-    const [root, order] = await Promise.all([
+    const [root, state, gitOrder] = await Promise.all([
       list(docsPath),
+      readState(env),
       ghRaw(env, `/repos/${owner}/${repo}/contents/${encodePath(docsPath + '/.board-order.json')}?ref=${encodeURIComponent(branch)}`)
         .then((t) => JSON.parse(t))
-        .catch(() => ({ categories: [], subcategories: {} })),
+        .catch(() => null),
     ]);
+    // 순서: KV 우선, 없으면 git .board-order.json(seed), 없으면 가나다
+    const order = state.order || gitOrder || { categories: [], subcategories: {} };
+    const statuses = state.statuses || {};
     const catDirs = root.filter((e) => e.type === 'dir');
 
     const rawTree = {}; // { 대카테고리: [중카테고리...] } — 문서가 없어도 폴더면 노출
@@ -118,7 +123,7 @@ export async function onRequestGet({ env }) {
             title: meta.title || f.name.replace(/\.md$/, ''),
             category: f.category,
             subcategory: f.subcategory,
-            status: normalizeStatus(meta.status),
+            status: normalizeStatus(statuses[f.path] || meta.status),
             summary,
             updatedAt: node ? node.committedDate : null,
           };

@@ -1,5 +1,4 @@
 import {
-  gh,
   ghRaw,
   json,
   GhError,
@@ -7,11 +6,10 @@ import {
   parseFrontmatter,
   normalizeStatus,
   validDocPath,
-  b64decodeUtf8,
-  b64encodeUtf8,
   requireEnv,
   STATUSES,
-  STATUS_SLUG,
+  readState,
+  putState,
 } from './_lib.js';
 
 export async function onRequestGet({ request, env }) {
@@ -27,18 +25,20 @@ export async function onRequestGet({ request, env }) {
   const branch = env.GITHUB_BRANCH || 'main';
 
   try {
-    const raw = await ghRaw(
-      env,
-      `/repos/${owner}/${repo}/contents/${encodePath(path)}?ref=${encodeURIComponent(branch)}`
-    );
+    const [raw, state] = await Promise.all([
+      ghRaw(env, `/repos/${owner}/${repo}/contents/${encodePath(path)}?ref=${encodeURIComponent(branch)}`),
+      readState(env),
+    ]);
     const { meta, body } = parseFrontmatter(raw);
     // docs/<대카테고리>/<중카테고리>/<file>.md — 폴더가 카테고리의 source of truth
     const rel = path.slice(env.DOCS_PATH.replace(/\/+$/, '').length + 1).split('/');
     const category = rel.length > 1 ? rel[0] : '';
     const subcategory = rel.length > 2 ? rel[1] : '';
+    // 상태는 KV 오버레이 우선, 없으면 frontmatter seed
+    const status = normalizeStatus(state.statuses[path] || meta.status);
     return json({
       path,
-      meta: { ...meta, category, subcategory, status: normalizeStatus(meta.status) },
+      meta: { ...meta, category, subcategory, status },
       body,
       raw, // 복사·다운로드용 원문 (frontmatter 포함)
     });
@@ -48,6 +48,7 @@ export async function onRequestGet({ request, env }) {
   }
 }
 
+// 상태 변경은 git 커밋이 아니라 KV(BOARD) 오버레이에 기록한다 — 커밋 노이즈 0.
 export async function onRequestPatch({ request, env }) {
   const bad = requireEnv(env);
   if (bad) return bad;
@@ -65,55 +66,13 @@ export async function onRequestPatch({ request, env }) {
     return json({ error: `status 는 ${STATUSES.join(' | ')} 중 하나` }, 400);
   }
 
-  const owner = env.GITHUB_OWNER;
-  const repo = env.GITHUB_REPO;
-  const branch = env.GITHUB_BRANCH || 'main';
-
   try {
-    const cur = await gh(
-      env,
-      `/repos/${owner}/${repo}/contents/${encodePath(path)}?ref=${encodeURIComponent(branch)}`
-    );
-    const text = b64decodeUtf8(cur.content);
-    const fm = parseFrontmatter(text);
-
-    if (normalizeStatus(fm.meta.status) === status) {
-      return json({ ok: true, path, status, unchanged: true });
-    }
-
-    let next;
-    if (fm.raw) {
-      let block = fm.raw;
-      if (/^status:.*$/m.test(block)) {
-        block = block.replace(/^status:.*$/m, `status: ${status}`);
-      } else {
-        block = block.replace(/\r?\n---\r?\n?$/, (end) => `\nstatus: ${status}${end}`);
-      }
-      next = block + fm.body;
-    } else {
-      next = `---\nstatus: ${status}\n---\n\n${text}`;
-    }
-
-    const name = path.split('/').pop();
-    const put = await gh(env, `/repos/${owner}/${repo}/contents/${encodePath(path)}`, {
-      method: 'PUT',
-      body: JSON.stringify({
-        message: `kanban: ${name} -> ${STATUS_SLUG[status]}`,
-        content: b64encodeUtf8(next),
-        sha: cur.sha,
-        branch,
-      }),
-    });
-
-    return json({
-      ok: true,
-      path,
-      status,
-      commit: put.commit?.sha || null,
-      updatedAt: put.commit?.committer?.date || null,
-    });
+    const state = await readState(env);
+    state.statuses = state.statuses || {};
+    state.statuses[path] = status;
+    await putState(env, state);
+    return json({ ok: true, path, status });
   } catch (e) {
-    const code = e instanceof GhError ? (e.status === 409 ? 409 : 502) : 500;
-    return json({ error: String(e.message || e) }, code);
+    return json({ error: String(e.message || e) }, 500);
   }
 }

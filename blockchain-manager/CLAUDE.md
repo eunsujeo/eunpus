@@ -44,28 +44,33 @@ status: To Do                   # To Do | In Progress | Done | 아카이브
 - `status` 값은 위 4개 문자열만 유효. **필드가 없으면 "To Do" 로 분류**된다.
 - 카드 요약은 frontmatter 다음 본문 첫 2줄에서 자동 추출 — 문서 첫 단락을 요약답게 쓸 것.
 - 마지막 수정일은 GitHub 커밋 이력에서 가져온다 (문서에 날짜를 적지 않는다).
-- status 변경은 칸반 UI 드래그 → GitHub API 커밋 경로가 정상 경로. 파일을 직접 고쳐도 되지만
-  커밋해야 보드에 반영된다.
+- **status 는 git 이 아니라 KV 오버레이에 저장된다** (Stage: KV 전환). frontmatter 의 status 는
+  **초기값(seed)** — KV 에 값이 있으면 그것이 이긴다. 드래그·순서변경은 커밋을 만들지 않는다.
+  문서 파일의 frontmatter status 를 직접 고쳐도 KV 오버레이가 있으면 화면엔 KV 값이 뜬다.
 
 ## 4. 앱 아키텍처
 
 - **프론트**: 프레임워크 없는 정적 HTML/JS/CSS. 4컬럼 (To Do / In Progress / Done / 아카이브),
   HTML5 드래그앤드롭, 카드 클릭 시 마크다운 미리보기 모달.
 - **API (Pages Functions)**:
-  - `GET /api/board` — docs/ 목록 + frontmatter + 파일별 마지막 커밋일
-  - `GET /api/doc?path=<file>` — 문서 원문 (미리보기)
-  - `PATCH /api/doc` — status 필드만 교체해 GitHub Contents API 로 커밋
+  - `GET /api/board` — docs/ 트리 + 카드(제목·요약·수정일) + KV 상태·순서 오버레이 적용
+  - `GET /api/doc?path=<file>` — 문서 원문 (미리보기). status 는 KV 오버레이 적용
+  - `PATCH /api/doc` — status 를 **KV(BOARD)** 에 기록 (커밋 없음)
+  - `PUT /api/order` — 대·중카테고리 순서를 **KV(BOARD)** 에 기록 (커밋 없음)
+- **상태·순서 저장 = KV 오버레이.** 단일 키 `state` = `{ statuses: {<path>: status}, order: {categories, subcategories} }`.
+  문서 마크다운은 git 이 정본, 자주 바뀌는 상태만 KV. 순서는 KV → git `.board-order.json`(seed) → 가나다 순 fallback.
 - **GitHub 토큰은 브라우저에 절대 노출하지 않는다.** 모든 GitHub 호출은 Functions 가 대행.
 
-### 환경변수 (Cloudflare Pages 설정 / 로컬 .dev.vars)
+### 환경변수 / 바인딩 (Cloudflare Pages 설정 / 로컬 .dev.vars·플래그)
 
-| 변수 | 값 예시 | 설명 |
+| 변수·바인딩 | 값 예시 | 설명 |
 |---|---|---|
 | `GITHUB_TOKEN` | (secret) | Fine-grained PAT. 대상 저장소 Contents Read/Write 권한만 |
 | `GITHUB_OWNER` | `eunsujeo` | 저장소 소유자 |
 | `GITHUB_REPO` | `eunpus` | 저장소 이름 |
-| `GITHUB_BRANCH` | `main` | 커밋 대상 브랜치 |
+| `GITHUB_BRANCH` | `main` | 대상 브랜치 |
 | `DOCS_PATH` | `blockchain-manager/docs` | 문서 폴더 경로 |
+| `BOARD` (KV) | (namespace) | 상태·순서 오버레이. 로컬 `--kv BOARD`, 배포 시 KV namespace 바인딩 |
 
 ## 5. 스타일 규약
 
@@ -84,17 +89,20 @@ status: To Do                   # To Do | In Progress | Done | 아카이브
   wiki raw source 전체가 유출된다.
 - ★ **wrangler 커밋 메시지는 ASCII 만** — `--commit-message="<ASCII-only>"` 필수 (한글 시 Invalid UTF-8 거절).
 - ★ **`.dev.vars` (실제 토큰) 은 git 에 커밋 금지** — `.gitignore` 로 차단.
-- 칸반 API 가 만드는 커밋 메시지도 ASCII 로 통일: `kanban: <file> -> <status>` 형식.
+- 상태·순서는 KV 에 저장되므로 칸반 조작이 더는 git 커밋을 만들지 않는다. 문서 내용 편집만 커밋 대상.
+- `.wrangler/` 로컬 상태가 깨지면(예: `_cf_ALARM` SQLite 오류) `rm -rf .wrangler` 후 재기동.
 
 ## 7. 로컬 개발 / 배포 빠른 참조
 
 ```bash
 cd blockchain-manager/app
 cp .dev.vars.example .dev.vars   # 토큰 채우기
-npx wrangler pages dev public    # http://localhost:8788
+npx wrangler pages dev public --kv BOARD    # http://localhost:8788 (KV 로컬 네임스페이스)
 
 # 배포 (사용자 지시 후에만)
+npx wrangler kv namespace create BOARD      # 최초 1회 — 출력된 id 를 Pages KV 바인딩에 연결
 npx wrangler pages deploy public --project-name=blockchain-manager \
   --commit-message="deploy blockchain manager kanban"
 npx wrangler pages secret put GITHUB_TOKEN --project-name=blockchain-manager
+# Pages 대시보드 Settings > Functions > KV namespace bindings 에 BOARD 바인딩 확인
 ```

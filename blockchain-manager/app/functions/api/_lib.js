@@ -122,3 +122,27 @@ export function requireEnv(env) {
   }
   return null;
 }
+
+// ── KV 오버레이 ──────────────────────────────────────────────
+// 문서 마크다운은 git 이 정본. 자주 바뀌는 상태·순서만 KV(BOARD)에 둔다.
+// 단일 키 'state' = { statuses: { <path>: status }, order: { categories, subcategories } }.
+// git frontmatter status 는 초기값(seed) — KV 에 값이 있으면 그것이 이긴다.
+
+export function kvNs(env) {
+  return env.BOARD || null;
+}
+
+export async function readState(env) {
+  const ns = kvNs(env);
+  const empty = { statuses: {}, order: null };
+  if (!ns) return empty;
+  const s = await ns.get('state', 'json');
+  if (!s || typeof s !== 'object') return empty;
+  return { statuses: s.statuses || {}, order: s.order || null };
+}
+
+export async function putState(env, state) {
+  const ns = kvNs(env);
+  if (!ns) throw new Error('KV(BOARD) 바인딩이 없습니다 — wrangler --kv BOARD 또는 Pages KV 바인딩 필요');
+  await ns.put('state', JSON.stringify(state));
+}
