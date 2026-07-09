@@ -13,22 +13,26 @@ import {
 } from './_lib.js';
 
 export async function onRequestGet({ request, env }) {
-  const bad = requireEnv(env);
-  if (bad) return bad;
-
   const url = new URL(request.url);
   const path = url.searchParams.get('path');
   if (!validDocPath(env, path)) return json({ error: '잘못된 path' }, 400);
 
-  const owner = env.GITHUB_OWNER;
-  const repo = env.GITHUB_REPO;
-  const branch = env.GITHUB_BRANCH || 'main';
-
   try {
-    const [raw, state] = await Promise.all([
-      ghRaw(env, `/repos/${owner}/${repo}/contents/${encodePath(path)}?ref=${encodeURIComponent(branch)}`),
-      readState(env),
-    ]);
+    let raw;
+    if (env.LOCAL_DOCS_URL) {
+      // 로컬 모드: 사이드카가 파일시스템에서 읽은 원문을 쓴다 (push 불필요)
+      const r = await fetch(`${env.LOCAL_DOCS_URL}/doc?path=${encodeURIComponent(path)}`);
+      if (!r.ok) throw new GhError(r.status, await r.text());
+      raw = await r.text();
+    } else {
+      const bad = requireEnv(env);
+      if (bad) return bad;
+      const owner = env.GITHUB_OWNER;
+      const repo = env.GITHUB_REPO;
+      const branch = env.GITHUB_BRANCH || 'main';
+      raw = await ghRaw(env, `/repos/${owner}/${repo}/contents/${encodePath(path)}?ref=${encodeURIComponent(branch)}`);
+    }
+    const state = await readState(env);
     const { meta, body } = parseFrontmatter(raw);
     // docs/<대카테고리>/<중카테고리>/<file>.md — 폴더가 카테고리의 source of truth
     const rel = path.slice(env.DOCS_PATH.replace(/\/+$/, '').length + 1).split('/');

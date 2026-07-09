@@ -129,23 +129,30 @@ async function buildBase(env) {
 
 // docs/<대카테고리>/<중카테고리>/*.md — 폴더가 카테고리의 source of truth
 export async function onRequestGet({ env }) {
-  const bad = requireEnv(env);
-  if (bad) return bad;
-
   try {
     const ns = kvNs(env);
-    const [state, sha] = await Promise.all([readState(env), headSha(env).catch(() => null)]);
-
-    // SHA 캐시 히트면 GitHub 대량 호출을 건너뛴다. status·order 는 매 요청 KV 로 덧씌운다.
     let base = null;
-    if (ns && sha) base = await ns.get(`cache:base:${sha}`, 'json').catch(() => null);
-    if (!base) {
-      base = await buildBase(env);
-      if (ns && sha) {
-        await ns.put(`cache:base:${sha}`, JSON.stringify(base), { expirationTtl: 86400 }).catch(() => {});
+
+    if (env.LOCAL_DOCS_URL) {
+      // 로컬 모드: 사이드카가 파일시스템에서 읽은 board 를 쓴다 (GitHub·SHA 캐시 건너뜀 → push 불필요)
+      const r = await fetch(`${env.LOCAL_DOCS_URL}/board`);
+      if (!r.ok) throw new Error(`local-docs ${r.status}`);
+      base = await r.json();
+    } else {
+      const bad = requireEnv(env);
+      if (bad) return bad;
+      const sha = await headSha(env).catch(() => null);
+      // SHA 캐시 히트면 GitHub 대량 호출을 건너뛴다. status·order 는 매 요청 KV 로 덧씌운다.
+      if (ns && sha) base = await ns.get(`cache:base:${sha}`, 'json').catch(() => null);
+      if (!base) {
+        base = await buildBase(env);
+        if (ns && sha) {
+          await ns.put(`cache:base:${sha}`, JSON.stringify(base), { expirationTtl: 86400 }).catch(() => {});
+        }
       }
     }
 
+    const state = await readState(env);
     const order = state.order || base.gitOrder || { categories: [], subcategories: {} };
     const statuses = state.statuses || {};
 
