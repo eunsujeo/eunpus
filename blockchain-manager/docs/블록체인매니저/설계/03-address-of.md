@@ -1,6 +1,6 @@
 ---
 title: 3. 입금 주소 조회 — depositAddressOf
-status: To Do
+status: Done
 ---
 
 생성과 정반대인 읽기 전용 오퍼레이션 — 매니저가 블록체인 매니저 DB 에서 (accountId, asset)로 저장된 주소를 읽는다.

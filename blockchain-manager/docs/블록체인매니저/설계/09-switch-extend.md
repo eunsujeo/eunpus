@@ -1,6 +1,6 @@
 ---
 title: 9. 확장 — EVM 체인 확장·매니저 교체
-status: To Do
+status: Done
 ---
 
 블록체인 매니저의 API 계약이 EVM 체인 확장과 매니저 교체를 흡수하는 법 — Service·Admin 백엔드 변경 0줄.

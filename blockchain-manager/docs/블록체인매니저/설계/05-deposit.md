@@ -1,6 +1,6 @@
 ---
 title: 5. 입금 — 한 건이 잔액이 되기까지
-status: To Do
+status: Done
 ---
 
 큐에 publish 된 입금 이벤트가 대기를 거쳐 가용이 되고 고객 vault 에서 옴니버스로 모이기까지를 다룬다.

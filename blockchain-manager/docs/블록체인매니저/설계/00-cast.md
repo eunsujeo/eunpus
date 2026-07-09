@@ -1,6 +1,6 @@
 ---
 title: 0. 구성 요소
-status: In Progress
+status: Done
 ---
 
 별도 서비스인 블록체인 매니저를 백엔드가 HTTP API 로 부르고 온체인 이벤트는 메시지 큐로 받는 두 층 구조와 기능 × 사용처 표를 한 장에 정리한다.

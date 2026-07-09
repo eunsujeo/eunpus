@@ -1,6 +1,6 @@
 ---
 title: 11. 확인·정합 목록
-status: To Do
+status: Done
 ---
 
 설계 전반에서 빌드 전 확정해야 할 항목을 모은다 — 벤더(Fireblocks)·relay 로 검증할 것과, 백엔드와 계약으로 합의할 것.

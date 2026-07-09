@@ -1,6 +1,6 @@
 ---
 title: 8. 잔액과 내역 조회 — balanceOf · transactionsOf
-status: To Do
+status: Done
 ---
 
 고객 화면의 두 숫자 — 고객별 진실(잔액·귀속)은 백엔드 DB 원장에, 온체인 사건의 진실은 벤더 기록에 있고 매니저 API 로 읽는다.

@@ -1,6 +1,6 @@
 ---
 title: 7. 수수료 견적 — estimateFee
-status: To Do
+status: Done
 ---
 
 제출 전에 한 번 읽어 보는 매니저 API 오퍼레이션. 대납(Universal Gasless) 구성에서 이 값은 "우리가 낼 돈"이 아니라 "relay 가 낼 실비"의 예측이다.
