@@ -127,7 +127,7 @@ flowchart LR
     subgraph OUR["인프라"]
       SAPI["Service 백엔드<br/>고객 런타임 · 큐 컨슈머"]
       AAPI["Admin 백엔드<br/>정책·승인·rebalance"]
-      DB[("백엔드 DB<br/>customer_ledger · 출금 지시 상태")]
+      DB[("백엔드 DB<br/>고객 원장 · 출금 지시 상태")]
       MQ["메시지 큐<br/>onchain-events"]
       BM["블록체인 매니저 — 별도 서비스<br/>내부 Fireblocks 연동 · 내부 폴링 (4·6장)"]
       BMDB[("블록체인 매니저 DB<br/>ref↔vault↔주소 매핑 · 체크포인트")]
