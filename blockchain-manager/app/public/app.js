@@ -72,29 +72,38 @@ function renderCrumbs() {
 
 /* ---------- reorderable tiles (드래그로 순서 변경) ---------- */
 
-function makeReorderable(itemEls, arr, onReorder) {
-  let from = null;
-  itemEls.forEach((el, i) => {
+// 드래그하는 동안 다른 타일이 실시간으로 비켜나는 sortable.
+// 놓는 순간의 DOM 순서를 읽어 확정한다.
+function makeReorderable(container, itemEls, arr, onReorder) {
+  let dragEl = null;
+  itemEls.forEach((el) => {
     el.draggable = true;
     el.addEventListener('dragstart', (e) => {
-      from = i;
-      el.classList.add('dragging');
+      dragEl = el;
       e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', String(i));
+      e.dataTransfer.setData('text/plain', el.dataset.key || '');
+      // 브라우저가 dragstart 직후 스냅샷을 뜨므로, 클래스는 다음 틱에 붙인다
+      setTimeout(() => el.classList.add('dragging'), 0);
     });
-    el.addEventListener('dragend', () => { from = null; el.classList.remove('dragging'); });
-    el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('drop-target'); });
-    el.addEventListener('dragleave', () => el.classList.remove('drop-target'));
-    el.addEventListener('drop', (e) => {
+    el.addEventListener('dragend', () => {
+      el.classList.remove('dragging');
+      dragEl = null;
+      const next = [...container.querySelectorAll('.cat-tile')].map((t) => t.dataset.key);
+      if (next.length === arr.length && next.some((k, i) => k !== arr[i])) onReorder(next);
+    });
+    el.addEventListener('dragover', (e) => {
       e.preventDefault();
-      el.classList.remove('drop-target');
-      const src = from != null ? from : parseInt(e.dataTransfer.getData('text/plain'), 10);
-      if (Number.isNaN(src) || src === i) return;
-      const next = arr.slice();
-      const [moved] = next.splice(src, 1);
-      next.splice(i, 0, moved);
-      onReorder(next);
+      e.dataTransfer.dropEffect = 'move';
+      if (!dragEl || dragEl === el) return;
+      const r = el.getBoundingClientRect();
+      const before = e.clientX < r.left + r.width / 2;
+      container.insertBefore(dragEl, before ? el : el.nextSibling);
     });
+  });
+  // 빈 공간(맨 끝)에 떨어뜨리면 마지막으로
+  container.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (dragEl && e.target === container) container.appendChild(dragEl);
   });
 }
 
@@ -126,6 +135,7 @@ function render() {
 function tile(label, metaText, onClick) {
   const el = document.createElement('div');
   el.className = 'cat-tile';
+  el.dataset.key = label;
   el.setAttribute('role', 'button');
   el.tabIndex = 0;
   el.innerHTML = `<span class="cat-tile-name">${esc(label)}</span><span class="cat-tile-meta">${esc(metaText)}</span><span class="cat-tile-grip" title="드래그로 순서 변경">⠿</span>`;
@@ -146,7 +156,7 @@ function renderHome() {
     return tile(cat, `${tree[cat].length}개 분류 · 문서 ${n}건`, () => goTo(cat, null));
   });
   els.forEach((el) => view.appendChild(el));
-  makeReorderable(els, catOrder, (next) => { catOrder = next; persistOrder(); render(); });
+  makeReorderable(view, els, catOrder, (next) => { catOrder = next; persistOrder(); render(); });
   boardMeta.textContent = `문서 ${cards.length}건`;
 }
 
@@ -163,7 +173,7 @@ function renderCatView() {
     return tile(sub, `문서 ${n}건`, () => goTo(nav.cat, sub));
   });
   els.forEach((el) => view.appendChild(el));
-  makeReorderable(els, subs, (next) => { tree[nav.cat] = next; persistOrder(); render(); });
+  makeReorderable(view, els, subs, (next) => { tree[nav.cat] = next; persistOrder(); render(); });
   boardMeta.textContent = `문서 ${cards.filter((c) => c.category === nav.cat).length}건`;
 }
 
