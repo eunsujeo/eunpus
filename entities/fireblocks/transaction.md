@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [transaction, key-link]
 stage_introduced: 5
-last_updated_stage: 36
-source_count: 8
+last_updated_stage: 150
+source_count: 9
 related: [approver, designated-signer, policy, signer, tap, vault-account]
 ---
 # Entity: Transaction (Fireblocks)
@@ -290,6 +290,14 @@ Stage 9 의 transaction lifecycle 의 destination 분류가 API schema level 까
 
 → Stage 9 의 17 primary status 와 다른 plane — **blockchain network 자체의 tx 상태**. DROPPED 는 Fireblocks 의 Failed 상태 의 한 원인 (mempool dropping → tx replay 또는 boost 필요).
 
+### reorg 시 상태 전이 (Stage 150 — Fireblocks Support 확답)
+
+CONFIRMING 트랜잭션은 reorg 가 나도 **BROADCASTING 으로 회귀하지 않는다**. reorg 로 거래가 블록에서 드랍되면 Fireblocks 는 **실패·취소·만료로 표시**하고 하위 상태로 **`DROPPED_BY_BLOCKCHAIN`** 을 붙인다 — 즉시 반영(유예 없음). 즉 무효화 판정 = **status FAILED(또는 CANCELLED·만료) + subStatus `DROPPED_BY_BLOCKCHAIN`**. 공식 substatus 문서상 `DROPPED_BY_BLOCKCHAIN` = "mined but dropped" 라 reorg 드랍을 커버한다.
+
+얕은 reorg 로 잠깐 빠졌다 재편입되는 케이스나 confirmation 수 감소(예: 1→0)는 확답 밖 — 상태 실시간 반영 원칙상 CONFIRMING 유지·confirmation 재계산으로 해석(미확정). "ORPHANED" 같은 별도 신호는 없다 (Q-2026-07-03-T04 ANSWERED).
+
+(source: `2026-07-03__fireblocks-support-slack__reorg-status-semantics.md` = raw `sources/fireblocks/csm.txt` — Fireblocks CSM Richard Smith · 백엔드 팀 확인)
+
 ### Chain-Specific Blockchain Info (p.BlockchainInfo)
 
 Stage 7 의 chain-specific quirk 가 API contract level 까지 침투:
@@ -370,6 +378,7 @@ ApprovalStatus: "PENDING_AUTHORIZATION" | "APPROVED" | "REJECTED" | "NA"
 - `2026-05-22__developers-fireblocks-com__reference-raw-signing-objects.md`, p.1-2 (Typed messages + Cold Wallet PreHash)
 - `2026-05-22__developers-fireblocks-com__reference-transaction-screening-objects.md`, p.1-2 (Travel Rule verdicts)
 - `2026-05-22__developers-fireblocks-com__reference-fee-estimation-objects.md`, p.1-2 (EIP-1559 + Solana rent)
+- `2026-07-03__fireblocks-support-slack__reorg-status-semantics.md` (= raw `sources/fireblocks/csm.txt`) — reorg 시 CONFIRMING↛BROADCASTING · 드랍 = FAILED + `DROPPED_BY_BLOCKCHAIN` (Stage 150, Fireblocks Support 백엔드 팀 확답)
 
 ## Stage 36 — Create Transaction API Contract (`create-transactions.md`)
 

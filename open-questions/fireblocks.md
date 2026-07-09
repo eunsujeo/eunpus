@@ -1107,7 +1107,7 @@
   3. 공식 문서 교차 확인: `reference-sub-statuses.md` 의 `DROPPED_BY_BLOCKCHAIN` = "…or that the transaction was **mined but dropped**" — reorg 드랍 커버.
   4. 얕은 reorg 재편입 케이스는 명시 확답 밖 — 상태 실시간 반영 원칙상 CONFIRMING 유지·confirmation 재계산으로 해석.
   → 무효화 판정 = **status FAILED(또는 CANCELLED·만료) + subStatus `DROPPED_BY_BLOCKCHAIN`**.
-- **Status**: ANSWERED (Support 확답 + 공식 substatus 교차)
+- **Status**: ANSWERED (Support 확답 + 공식 substatus 교차) · 정본 반영: [[entities/fireblocks/transaction]] "reorg 시 상태 전이" 절 (Stage 150, raw `sources/fireblocks/csm.txt`)
 
 ### Q-2026-07-03-G01: Fireblocks Gasless Service 의 정체와 설계 적용 가능성
 

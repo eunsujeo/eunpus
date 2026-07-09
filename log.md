@@ -7630,3 +7630,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - Q-CMP-11 partial + ★ 정정: VV-CODE 연동 완료 = 2022-04-25 0시 (4대 거래소 입출금 재개, 코인원 공지). "2022-04-25 금융당국 권고"(Stage 146 기록·docs-site 9장)는 미확인 → docs-site/travel-rule 9장·open-questions/fireblocks.md Q-C03 정정
 - 영향받은 페이지: open-questions/compliance.md (3 Q partial-answered) · docs/architecture/travel-rule-kr-reference.md (3·4·8·11절, last_updated_stage 149) · docs-site/travel-rule/index.html 9장 · open-questions/fireblocks.md
 - 신규 entity: 0
+
+## Stage 150 (2026-07-09) — reorg 상태 semantics 정본 promote (Fireblocks Support Slack)
+- source: sources/fireblocks/csm.txt (= 기존 extract 2026-07-03__fireblocks-support-slack__reorg-status-semantics.md · Fireblocks CSM Richard Smith · 백엔드 팀 확인)
+- ANSWERED 재확인: Q-2026-07-03-T04 — reorg 시 CONFIRMING↛BROADCASTING, 드랍 = status FAILED(또는 CANCELLED·만료) + subStatus DROPPED_BY_BLOCKCHAIN. "ORPHANED" 신호는 없음. 얕은 reorg 재편입·confirmation 감소(1→0)는 확답 밖(미확정)
+- 정본 promote: open-Q 에만 있던 확답을 entities/fireblocks/transaction.md 본문("reorg 시 상태 전이" 절)으로 올림 — 그간 정본 페이지에 누락돼 있었음
+- 영향받은 페이지: entities/fireblocks/transaction.md (frontmatter last_updated_stage 150·source_count 9 · reorg 절·Sources 추가) · open-questions/fireblocks.md (Q-T04 정본 링크)
+- 신규 entity: 0
