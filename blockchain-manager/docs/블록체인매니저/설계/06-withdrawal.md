@@ -20,7 +20,7 @@ data class TransactionRequest(
   val asset: Asset,
   val amount: BigDecimal,
   val note: String? = null,             // 벤더 거래 기록에 남는 메모
-  val travelRule: TravelRule? = null,   // 해외(Notabene) 경로 — 게이트가 만든 암호화 메시지. 매니저는 운반만, 내용은 모름
+  val travelRule: TravelRule? = null,   // 트래블룰 — 게이트(매니저 밖)가 만든 암호화 메시지. 매니저는 운반만, 내용은 모름
 )
 
 data class Destination(
@@ -106,7 +106,7 @@ sequenceDiagram
 
 ## 막혔을 때 — 자동 boost
 
-확정한 수수료가 시세보다 낮으면 거래가 mempool 에 걸려 **막힙니다**. Gasless Relay 는 stuck 을 스스로 bump 하지 않으므로(auto-boost 미지원), 감지·재촉이 우리 몫입니다.
+확정한 수수료가 시세보다 낮으면 거래가 mempool 에 걸려 **막힙니다**. Gasless Relay 가 stuck 을 스스로 bump 하는지는 미확인이라(11장), **우리가 감지·재촉하는 전제**로 둔다 — 자동 처리로 확인되면 이 트리거는 불필요해진다.
 
 - **자동 boost** — 막힘 점검(4장)이 오래 CONFIRMING 인 건을 잡으면 매니저가 **Admin 정책(대기 임계·최대 시도) 안에서 자동으로 boost**(같은 순번, 수수료만 올린 재전송 · RBF)한다. 인상된 gas 는 **relay 가 부담**하고, 인상 폭·상한은 relay 설정이다.
 - **cancel(철회)** — 기본 흐름에선 쓰지 않는다. 자동 boost 를 최대 시도까지 해도 못 살린 예외에서만 **수동 최후수단**으로 판단한다.
@@ -153,7 +153,7 @@ Fireblocks 는 내부 상태를 여러 단계로 보냅니다. 백엔드가 보�
 |---|---|---|
 | **SUBMITTED** | 제출됨 — 벤더가 서명·전파 준비 중, 아직 체인 미등장 | PENDING_SIGNATURE · QUEUED · BROADCASTING |
 | **CONFIRMING** | 전파 후 체인에 등장, confirmation 누적 중 (아직 미확정) | CONFIRMING (numOfConfirmations 증가 중) |
-| **COMPLETED** | 확정 — DCCP(확정 정책) 임계 confirmation 도달 = finality, 이후 불변 | COMPLETED |
+| **COMPLETED** | 확정 — DCCP(확정 정책) 임계 confirmation 도달 = finality | COMPLETED |
 | **REJECTED** | 거부·차단 — 정책·스크리닝에 막힘. 영구 기술 실패가 아니라 사람 개입 여지 (입금 동결은 Admin unfreeze 대기 · 5장) | REJECTED · BLOCKED |
 | **FAILED** | 영구 실패 — 사유 동반 (수수료 부족·revert 등) | FAILED |
 

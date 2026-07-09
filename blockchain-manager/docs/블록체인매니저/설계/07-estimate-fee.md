@@ -7,7 +7,7 @@ status: To Do
 언제 부르는지(주기 관측 · sweep 타이밍 · 고객 화면)와 무엇으로 검증하는지(온체인 실측)를 정리한다.
 
 ```kotlin
-fun estimateFee(request: WithdrawalRequest): FeeEstimate {
+fun estimateFee(request: TransactionRequest): FeeEstimate {
   return FeeEstimate(low, medium, high)
 }
 ```
@@ -52,4 +52,4 @@ gas 는 지정 relay 가 내고 Fireblocks Relay 면 **월말 통합 인보이�
 
 월말 인보이스의 gas 실비는 이 **온체인 실측의 합계**와 맞추고, 견적 시계열은 예측 대비 실측의 편차를 추적하는 보조 자료입니다. 견적으로 인보이스를 검증하면 추정 대 추정이라 오차 시비가 남습니다.
 
-대납의 선택지·도입 요건·메커니즘(EIP-7702)은 가스 대납 문서, 조립 시 수수료 설정과 인상 재전송은 가이드 4장을 참고하세요.
+대납의 선택지·도입 요건·메커니즘(EIP-7702)은 가스 대납 문서, 막힘 시 인상 재전송(boost)은 6장을 참고하세요.

@@ -77,13 +77,12 @@ Fireblocks 트랜잭션 상태는 전부 17가지지만 대부분은 출금 쪽 
 
 ## 예외 — reorg 로 믿었던 입금이 뒤집히면
 
-여기까지가 확정으로 가는 정상 경로였고 예외가 하나 남습니다. 이더리움·Base 는 체인 끝이 드물게 교체(reorg)될 수 있습니다.
+이더리움·Base 는 체인 끝이 드물게 교체(reorg)될 수 있다. Fireblocks 의 reorg 거동은 확답으로 정리됐다.
 
-- **1차 방어는 4장의 DCCP 임계 그 자체입니다** — 임계만큼 confirmation 이 쌓인 뒤에만 가용 처리하므로, 그보다 얕은 reorg 는 잔액에 닿지 못합니다.
-- 임계보다 깊은 reorg(극히 드묾)로 거래가 블록에서 떨어지면 Fireblocks 는 즉시 **FAILED(또는 취소·만료) + subStatus `DROPPED_BY_BLOCKCHAIN`** 으로 표시합니다 — BROADCASTING 으로 되돌아가지 않습니다(Fireblocks Support 확인).
-- 매니저가 이 신호를 큐에 publish 하면 백엔드는 **반영해 둔 잔액만 되돌리고 입금 기록은 보존**합니다.
-- 잠깐 빠졌다 재편입되는 얕은 reorg 는 CONFIRMING 에 머물며 confirmation 수만 다시 셉니다.
-- 최종 안전망은 여전히 **주기 대사**입니다.
+- **1차 방어는 4장의 DCCP 임계(finality)** — 임계만큼 confirmation 이 쌓인 뒤에만 확정으로 본다. 그보다 얕은 reorg 는 확정 판정에 닿지 못한다.
+- **CONFIRMING 은 BROADCASTING 으로 되돌아가지 않는다** — reorg 가 나도 마찬가지다. reorg 로 거래가 블록에서 빠져 취소되면 Fireblocks 는 broadcasting 회귀가 아니라 **FAILED(또는 취소·만료) + subStatus `DROPPED_BY_BLOCKCHAIN`** 으로 표시한다(Fireblocks Support 백엔드 팀 확답).
+- 매니저는 이 신호를 큐에 publish 하고, 무효화 처리는 백엔드 몫이다(원장 반영은 상태표·8장).
+- 최종 안전망은 **주기 대사**.
 
 ## 입금 다음 — 고객 vault 에서 옴니버스로 (sweep)
 
