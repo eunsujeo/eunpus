@@ -300,7 +300,7 @@ async function moveCard(path, nextStatus) {
     });
     if (res.updatedAt) card.updatedAt = res.updatedAt;
     render();
-    showToast(`"${card.title}" → ${nextStatus} 커밋 완료`);
+    showToast(`"${card.title}" → ${nextStatus} 저장됨`);
   } catch (e) {
     card.status = prevStatus; // 실패 시 원위치
     render();
