@@ -1,6 +1,6 @@
 ---
 title: 2. 입금 주소 생성 — createDepositAddress
-status: To Do
+status: In Progress
 ---
 
 (account, asset)당 한 번 — 백엔드가 블록체인 매니저 API 를 호출하면 매니저가 자산 지갑을 활성화해 단일 주소를 얻는다. EVM 주소는 memoTag 가 null 이다.
