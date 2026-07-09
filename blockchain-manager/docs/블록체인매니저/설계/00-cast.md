@@ -106,8 +106,8 @@ flowchart LR
 | 입금 주소 **조회** | (블록체인 매니저 DB 읽기 · Fireblocks 왕복 없음 — API 1홉) | | ● | | ● | `depositAddressOf` | S | 3장 |
 | 수신·확정 이벤트 | 매니저 내부 폴링 (webhook 보조) | | ● | ● | | `onChainEvent` — 메시지 큐 publish/consume | S | 4장 |
 | 수수료 추정 | estimateFee | | | ● | | `estimateFee` | S | 7장 |
-| 출금 제출 | **createTransaction** | | | ● | | `submitTransaction` | S | 6장 |
-| 상태 조회 | getTransactionById | | | ● | ● | `transactionOf` | S·A | 6장 |
+| 출금 제출 | createTransaction | | | ● | | `submitTransaction` | S | 6장 |
+| 거래 상세 조회 | getTransactionById | | | ● | ● | `transactionOf` | S·A | 6장 |
 | 막힌 출금 재촉·취소 | boost / cancel | | | ● | ● | `boost` `cancel` | A | 6장 |
 | 잔액 (가용·대기·잠김) | getVaultAccountAsset | | ● | ● | ● | `balanceOf` | S·A | 8장 |
 | 내 거래 이력 | 거래 목록 조회 | | | | ● | `transactionsOf` | S·A | 8장 |
