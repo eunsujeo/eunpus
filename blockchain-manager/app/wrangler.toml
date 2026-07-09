@@ -9,9 +9,7 @@ GITHUB_REPO = "eunpus"
 GITHUB_BRANCH = "main"
 DOCS_PATH = "blockchain-manager/docs"
 
-# 상태·순서 오버레이용 KV. 로컬은 `wrangler pages dev public --kv BOARD` 로 대체.
-# 배포 시: `wrangler kv namespace create BOARD` 로 만든 id 를 아래에 넣거나
-#          Pages 대시보드 Settings > Functions > KV bindings 에 BOARD 로 바인딩.
-# [[kv_namespaces]]
-# binding = "BOARD"
-# id = "<KV_NAMESPACE_ID>"
+# 상태·순서 오버레이용 KV. 로컬은 `wrangler pages dev public --kv BOARD` 로 대체 가능.
+[[kv_namespaces]]
+binding = "BOARD"
+id = "6596a99a23af485983828d35c4fea875"

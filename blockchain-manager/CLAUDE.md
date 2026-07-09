@@ -94,15 +94,16 @@ status: To Do                   # To Do | In Progress | Done | 아카이브
 
 ## 7. 로컬 개발 / 배포 빠른 참조
 
+KV 바인딩은 `wrangler.toml` 의 `[[kv_namespaces]] binding = "BOARD"` 로 로컬·배포 공통 적용된다
+(네임스페이스 id `6596a99a23af485983828d35c4fea875` 이미 등록됨).
+
 ```bash
 cd blockchain-manager/app
 cp .dev.vars.example .dev.vars   # 토큰 채우기
-npx wrangler pages dev public --kv BOARD    # http://localhost:8788 (KV 로컬 네임스페이스)
+npx wrangler pages dev public    # http://localhost:8788 (toml 이 BOARD KV 를 로컬 바인딩)
 
-# 배포 (사용자 지시 후에만)
-npx wrangler kv namespace create BOARD      # 최초 1회 — 출력된 id 를 Pages KV 바인딩에 연결
+# 배포 (사용자 지시 후에만) — toml 이 BOARD KV 를 함께 바인딩
 npx wrangler pages deploy public --project-name=blockchain-manager \
   --commit-message="deploy blockchain manager kanban"
 npx wrangler pages secret put GITHUB_TOKEN --project-name=blockchain-manager
-# Pages 대시보드 Settings > Functions > KV namespace bindings 에 BOARD 바인딩 확인
 ```
