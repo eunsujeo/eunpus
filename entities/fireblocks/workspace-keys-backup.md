@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [recovery, backup, security, workspace, governance]
 stage_introduced: 1
-last_updated_stage: 31
-source_count: 2
+last_updated_stage: 153
+source_count: 8
 related:
   - admin-quorum
   - architecture
@@ -276,6 +276,27 @@ RECONSTRUCTION (Stage 31):
 
 → 위 2 항목은 Fireblocks vendor docs 가 아닌 customer org-level 결정. Procedural Q-S09 는 Stage 29 + 30 + 31 paired evidence 로 **answered**.
 
+## Stage 153 — DR/BCP 지표·복구 계층 (CSM 확답)
+
+`sources/fireblocks/csm2_boost.txt` (Fireblocks CSM · Kakao PoC) — DR/백업 확답:
+
+### BCP 지표
+- **RTO 6시간**(통합값) · **RPO 0**(대부분의 DR 시나리오에서 데이터 손실 최소~무) · **SLO/uptime 99.9%**(SLA).
+- 인증: **ISO 22301(BCM)** · **SOC2 Type 2**(연 감사, 백업·복구 포함). 최근 DR 테스트 zero adverse findings.
+
+### 백업
+- **일 단위 백업**(중요 자산은 추가 주기) · at-rest·in-transit 암호화 · **연 1회 이상 복구 테스트**(전용 환경) · 지리적으로 분리된 데이터센터 보관.
+- **Disaster Recovery Kit** — 온보딩 시 제공. 모든 share 를 잃거나 Fireblocks 가 운영을 중단해도 고객이 자체 백업·복구 가능.
+
+### 복구 2계층
+- **Soft Key Recovery** — device/share 단위(예: device 분실). **접근 가능한 share 최소 1개**(기존 Owner/Admin) 필요.
+- **Hard Key Recovery** — 전체 지갑 복원(파국적: 모든 device 접근 불가·Fireblocks 영구 중단). 더 엄격한 절차 — 자체 수행 또는 **Station70·Coin Cover** 등 파트너 위탁.
+
+### Key Share 지리 분산
+서명 device 당 share = 고객 device 1 + Fireblocks SGX 2(multi-cloud geo-redundant) → 지역·클라우드 장애 견딤. 분포 상세는 [[entities/fireblocks/mpc-key-share]].
+
+> 주의: Fireblocks 의 상시 **Disaster Recovery Service**(xprv+fprv 재구성)는 그 자체가 SPOC 경고 대상이다 — [[vendors/fireblocks/risks]] Risk-S09. 위 복구 계층은 정기 백업·BCP 관점이고, DR Service 남용 경고와는 별개 축.
+
 ## Related Pages
 
 - [[entities/fireblocks/recovery-passphrase]] — 암호화 키 (mobile share)
@@ -305,6 +326,9 @@ RECONSTRUCTION (Stage 31):
 
 ## Sources (Stage 31 추가)
 - `2026-05-19__support-fireblocks-io__recovering-private-key-material.md` (Stage 31 Mode C, reconstruction procedure + 4-secret model + auto-passphrase variant)
+
+## Sources (Stage 153 추가)
+- `sources/fireblocks/csm2_boost.txt` — DR/BCP 지표(RTO 6h·RPO 0·SLO 99.9%)·일 단위 백업·DR Kit·Soft/Hard 복구(Station70·Coin Cover)·ISO 22301·SOC2 Type 2·key share 1+2 SGX geo (Fireblocks CSM · Kakao PoC)
 
 ## Open Questions
 

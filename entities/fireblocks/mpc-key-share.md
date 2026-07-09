@@ -4,13 +4,13 @@ vendor: fireblocks
 status: stable
 tags: [mpc, cryptography, key-link]
 stage_introduced: 1
-last_updated_stage: 36
-source_count: 12
-related: [mobile-device, mpc, non-signing-admin, owner, signer]
+last_updated_stage: 153
+source_count: 13
+related: [mobile-device, mpc, non-signing-admin, owner, signer, workspace-keys-backup]
 ---
 # Entity: MPC Key Share (Fireblocks)
 
-> **상태: 부분 정의.** 본 자료에서는 lifecycle 측면(승인·provisioning·일부 role의 보유 여부)만 확인됨. 프로토콜, share 분포, threshold는 추후 ingest 필요.
+> **상태: 부분 정의.** 본 자료에서는 lifecycle 측면(승인·provisioning·일부 role의 보유 여부)만 확인됨. 프로토콜·threshold 는 추후 ingest 필요 (share 분포는 Stage 153 부분 확인 — device 당 1 device + 2 SGX).
 
 ## Summary
 
@@ -300,6 +300,18 @@ Stage 18 catalog 의 Q-2026-05-19-M06 ("Key Link 의 signing flow — MPC 와 �
 
 → Stage 31 의 SaaS MPC backup 4-secret reconstruction 과 다른 trust model — Key Link 는 키 자체가 Fireblocks 측에 존재한 적 없음.
 
+### Stage 153 — Key Share 분포 (CSM 확답 · "share 분포" 부분 해소)
+
+서명 device 1개당 MPC key share 는 **3개**로 나뉜다 (CSM):
+
+- **1개** — 고객 측 device (모바일 device 또는 API Co-signer).
+- **2개** — Fireblocks 관리 **Intel SGX 서버**, geo-redundant **multi-cloud(AWS·Azure·GCP)** 에 분산.
+
+→ 고객 device share + Fireblocks 2 share 조합이라 지역·클라우드 공급자 장애에도 share 가 논리·지리적으로 분리 보존된다. 백업·복구 계층은 [[entities/fireblocks/workspace-keys-backup]]. (threshold 규약 자체는 여전히 미명세.)
+
+(source: `sources/fireblocks/csm2_boost.txt` — Fireblocks CSM · Kakao PoC)
+
 ## Sources (Stage 36 추가)
 - `2026-05-22__support-fireblocks-io__fireblocks-key-link-overview-extracted.txt`, p.1-3 (Stage 36: MPC plane 외부 customer-held)
 - `2026-05-22__support-fireblocks-io__getting-started-with-fireblocks-key-link-extracted.txt`, p.3-6 (Stage 36: Validation/Signing key + PoO 2 methods)
+- `sources/fireblocks/csm2_boost.txt` (Stage 153) — key share 분포 1 device + 2 SGX(geo multi-cloud) (Fireblocks CSM · Kakao PoC)

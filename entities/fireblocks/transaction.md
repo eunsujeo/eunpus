@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [transaction, key-link]
 stage_introduced: 5
-last_updated_stage: 150
-source_count: 9
+last_updated_stage: 152
+source_count: 10
 related: [approver, designated-signer, policy, signer, tap, vault-account]
 ---
 # Entity: Transaction (Fireblocks)
@@ -165,6 +165,12 @@ Start:
 - **Rescreen / bypass AML policy results**
 - **Dismiss** transaction card
 - **Replace-By-Fee (RBF)** for EVM during Broadcasting
+
+### Boost (RBF) 메커니즘 — createTransaction 재사용 (Stage 152, CSM 확답)
+
+- **호출** — boost 는 원 요청과 **같은 파라미터로 `createTransaction` + `replaceTxByHash`**(같은 nonce·fee 만 인상 = RBF). `externalTxId` 는 **원본과 같은 값 사용 가능**(CSM: "you can use the same ID"). low-fee 로 mempool 에 걸린 tx 에만 해당.
+- **결과 tx type** — 공식 문서는 "새 tx 는 TRANSFER 가 된다"지만, 실측상 **CONTRACT_CALL 만 TRANSFER 로 바뀌고** MINT 등 다른 type 은 그대로 유지(CSM 확답: "only for CONTRACT_CALL").
+- **원본 ↔ boost/drop 연결** — boost·drop 모두 **`replacedTxHash` 필드에 이전 tx id** 가 담긴다. 단 이 필드는 **콜백 payload 엔 없고** "Get Transaction by Fireblocks ID" 응답으로만 조회된다 — 승인 단계 연결 제약은 [[entities/fireblocks/callback-handler]].
 
 ### dApp Protection (Pending Security Screening)
 
@@ -379,6 +385,7 @@ ApprovalStatus: "PENDING_AUTHORIZATION" | "APPROVED" | "REJECTED" | "NA"
 - `2026-05-22__developers-fireblocks-com__reference-transaction-screening-objects.md`, p.1-2 (Travel Rule verdicts)
 - `2026-05-22__developers-fireblocks-com__reference-fee-estimation-objects.md`, p.1-2 (EIP-1559 + Solana rent)
 - `2026-07-03__fireblocks-support-slack__reorg-status-semantics.md` (= raw `sources/fireblocks/csm.txt`) — reorg 시 CONFIRMING↛BROADCASTING · 드랍 = FAILED + `DROPPED_BY_BLOCKCHAIN` (Stage 150, Fireblocks Support 백엔드 팀 확답)
+- `sources/fireblocks/csm2_boost.txt` — boost(RBF) = createTransaction + replaceTxByHash · type 변경은 CONTRACT_CALL 만 · externalTxId 재사용 가능 · replacedTxHash(Get Transaction by ID)로 원본 연결 (Stage 152, Fireblocks CSM · Kakao PoC)
 
 ## Stage 36 — Create Transaction API Contract (`create-transactions.md`)
 

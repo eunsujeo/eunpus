@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [signing, integration]
 stage_introduced: 1
-last_updated_stage: 24
-source_count: 4
+last_updated_stage: 152
+source_count: 5
 related: [api-co-signer, api-user, callback-handler, cosigner, transaction]
 ---
 # Entity: Callback Handler (Fireblocks)
@@ -77,10 +77,18 @@ API user를 Co-signer와 페어링할 때 Callback Handler 인증서가 Co-signe
 
 → Co-signer 측 single global key compromise = 모든 API user 의 request 서명 위조 가능. Callback Handler 측 key 는 per-user 격리.
 
+### Stage 152 — 승인 단계 제약: rawTx 없음 · boost 연결 불가 (CSM 확답)
+
+`sources/fireblocks/csm2_boost.txt` (Fireblocks CSM · Kakao PoC):
+
+- **`rawTx` 는 서명 단계에만** 온다 — 승인 단계는 **직렬화(serialize) 이전**이라서다. 승인(특히 수동)은 오래 걸릴 수 있고 그 사이 on-chain fee 가 바뀌므로, Fireblocks 는 **승인 완료 후에야 직렬화**한다. 그래서 승인 콜백엔 rawTx 가 없다.
+- **승인 콜백은 boost/drop 을 원본과 연결할 식별자를 주지 않는다** — `replaceTxByHash`·원 txId·nonce 가 승인 payload 에 없어, **approver-only 주체는 이 요청이 기존 tx 의 boost/drop 인지 결정적으로 판별 불가**. (signer 는 rawTx 의 nonce 로 유추 가능하나 approver 는 rawTx 가 없다.)
+- **RETRY 우회** — 콜백은 cosigner 에 **RETRY 를 최대 20회·~3분 간격(총 ~1시간)** 반환할 수 있다. 그 창 동안 서버측 수동 승인 로직을 돌리는 용도. 단 **두 주체 co-approval(예: JV+은행) 모델엔 부적합** — [[open-questions/fireblocks]] Q-2026-07-09-C02.
+- **현행 연결책** — `replacedTxHash` 는 콜백엔 없지만 "Get Transaction by Fireblocks ID" 로 조회하면 **boost·drop 공통으로 이전 tx id** 를 준다 → 이걸로 원본 연결. 콜백 payload 에 `replaceTxByHash` 포함은 **feature request open**. (internal note 는 고객이 설정 가능 → 침해 시 신뢰 불가라 연결 근거로 부적합.)
+
 ### 잔존 미명세 (본 자료 외 필요)
 
-- timeout / retry / idempotency
-- 실패 시 트랜잭션 처리 (APPROVE/REJECT 외 IGNORE / RETRY 같은 응답 semantics)
+- timeout / idempotency (**RETRY 응답은 Stage 152 확인** — 최대 20회·~3분·~1h; APPROVE/REJECT·RETRY 외 IGNORE 등 나머지 semantics 는 잔존)
 - 5 options 별 SLA 차이 (특히 Hybrid 의 latency)
 
 ## Related Pages
@@ -97,8 +105,10 @@ API user를 Co-signer와 페어링할 때 Callback Handler 인증서가 Co-signe
 - `2026-05-18__support-fireblocks-io__re-enrolling-api-users.md`, p.1–2
 - `sources/fireblocks/webpages/developers/docs/create-api-co-signer-callback-handler.md` (Stage 24 Mode C, 47 lines)
 - `sources/fireblocks/webpages/developers/reference/cosigner-callbackhandler-secure-communication-authentication.md` (Stage 24 Mode C, 185 lines)
+- `sources/fireblocks/csm2_boost.txt` (Stage 152) — 승인 단계 rawTx 부재·boost/drop 연결 불가·RETRY(20회·~3분·~1h)·replacedTxHash 연결책 (Fireblocks CSM · Kakao PoC)
 
 ## Open Questions
 
 - ~~Q-2026-05-18-A04~~ — **ANSWERED (Stage 24)**: 5 named auth options (Public key / Self-Signed Cert pin / Root-CA / 2 Hybrid). 적용처: 본 entity §"Authentication Options".
-- ~~Q-2026-05-18-C01~~ — **partial advanced (Stage 24)**: payload format (JWT vs JSON) + URL convention (/v2 prefix) + key model 비대칭 명세. 잔존: timeout/retry/idempotency.
+- ~~Q-2026-05-18-C01~~ — **partial advanced (Stage 24·152)**: payload format (JWT vs JSON) + URL convention (/v2 prefix) + key model 비대칭 + **RETRY(최대 20회·~3분·~1h, Stage 152)** 명세. 잔존: timeout/idempotency·IGNORE 등 나머지 응답 semantics.
+- **Q-2026-07-09-C02** (신규, Stage 152) — 승인 단계에서 boost/drop 을 원본과 결정적으로 연결(이중 주체 zero-trust). 중앙 등록: [[open-questions/fireblocks]]. 현행 우회 = "Get Transaction by ID" 의 `replacedTxHash`.

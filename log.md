@@ -7644,3 +7644,19 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 명확화: RPC 인터페이스 ≠ 블록 인덱싱. read류는 default 노드 라우팅, 블록단위 전체 수집은 별도 노드+인덱서 영역으로 경계 표기 (→ docs/architecture/blockchain-indexer-architecture-reference)
 - 영향받은 페이지: vendors/fireblocks/api.md (Details "개발자 통합 인터페이스" 서브섹션 + frontmatter last_updated_stage 151·source_count 16·tags +integration + Sources +2)
 - 신규 entity: 0 (api.md hub 흡수, streak 유지)
+
+## Stage 152 (2026-07-09) — boost(RBF) 메커니즘 + 승인 단계 제약 promote (Fireblocks CSM · Kakao PoC)
+- source: sources/fireblocks/csm2_boost.txt (Fireblocks CSM Richard Smith · Kakao 스테이블코인 PoC)
+- boost 메커니즘: createTransaction + replaceTxByHash(RBF·같은 nonce), externalTxId 재사용 가능, 결과 type 변경은 CONTRACT_CALL 만(MINT 등 유지), 원본 연결 = replacedTxHash(Get Transaction by ID · boost·drop 공통)
+- 승인 단계 제약: rawTx 는 서명 단계에만(승인=직렬화 이전), 승인 콜백에 replaceTxByHash·원 txId·nonce 없음 → approver-only 는 boost 판별 불가. RETRY 우회(최대 20회·~3분·~1h)는 이중 주체 co-approval 엔 부적합
+- ANSWERED/advance: Q-C01(callback RETRY 스펙 확인). 신규: Q-2026-07-09-C02(승인 단계 boost 연결 — 이중 주체 zero-trust, feature request open)
+- 영향받은 페이지: entities/fireblocks/transaction.md (Boost(RBF) 메커니즘 절 + frontmatter 152·source_count 10) · entities/fireblocks/callback-handler.md (승인 단계 제약 절 + RETRY + frontmatter 152·source_count 5) · open-questions/fireblocks.md (Q-C02 신규)
+- 미ingest: csm2_boost 의 DR/backup 정보(RTO 6h·RPO 0·MPC 1+2 SGX geo·DR Kit·Soft/Hard recovery·ISO22301/SOC2) → Stage 153 에서 promote
+- 신규 entity: 0
+
+## Stage 153 (2026-07-09) — csm2_boost 의 DR/BCP 정보 promote (Fireblocks CSM · Kakao PoC)
+- source: sources/fireblocks/csm2_boost.txt (Stage 152 미ingest분 — DR/backup)
+- mpc-key-share.md: "Key Share 분포" 절 — device 당 share 3 = 고객 device 1 + Fireblocks SGX 2(multi-cloud AWS·Azure·GCP geo). "share 분포 추후 ingest" TODO 부분 해소. frontmatter 153·source_count 13
+- workspace-keys-backup.md: "DR/BCP 지표·복구 계층" 절 — RTO 6h·RPO 0·SLO 99.9%·ISO22301·SOC2 Type2 · 일 단위 백업·DR Kit · Soft/Hard Key Recovery(Station70·Coin Cover) · Risk-S09(DR Service SPOC) 축 구분. frontmatter 153·source_count 8
+- 영향받은 페이지: entities/fireblocks/mpc-key-share.md · entities/fireblocks/workspace-keys-backup.md
+- 신규 entity: 0
