@@ -18,7 +18,7 @@ data class ChainEvent(
   val to: String,                    // 목적지 주소 — 고객 입금 판별
   val status: TxStatus,              // SUBMITTED · CONFIRMING · COMPLETED · FAILED
   val numOfConfirmations: Int,
-  val subStatus: String? = null,     // 벤더 상세 사유 — 실패 원인·reorg(DROPPED_BY_BLOCKCHAIN) 등
+  val subStatus: String? = null,     // 벤더 상세 사유(수십 종) — 예: CONFIRMED · PENDING_BLOCKCHAIN_CONFIRMATIONS · DROPPED_BY_BLOCKCHAIN · AUTO_FREEZE · FROZEN_MANUALLY · REJECTED_AML_SCREENING
   val networkStatus: String? = null, // 체인 레이어 상태(NetworkStatus) — BROADCASTING · CONFIRMING · CONFIRMED · FAILED · DROPPED
 )
 ```
