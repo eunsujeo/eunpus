@@ -31,7 +31,7 @@ sequenceDiagram
     participant DL as 델타 원장 · (delta_ledger)
     participant BM as 블록체인 매니저 API · (별도 서비스)
     box rgb(254,249,195) 메시지 큐
-    participant MQ as onchain-events
+    participant MQ as internal-events
     end
 
     rect rgb(254,243,199)

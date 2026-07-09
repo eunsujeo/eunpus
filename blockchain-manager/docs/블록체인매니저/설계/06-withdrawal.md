@@ -42,7 +42,7 @@ sequenceDiagram
     end
     participant DB as 백엔드 DB
     box rgb(254,249,195) 메시지 큐
-    participant MQ as onchain-events
+    participant MQ as withdrawal-events
     end
     box rgb(220,252,231) 블록체인 매니저 — 별도 서비스
     participant BM as 블록체인 매니저 API
@@ -71,7 +71,7 @@ sequenceDiagram
     CH-->>FB: 블록 누적 → 확정
     Note over BM,FB: 다시 오프체인 — 매니저 내부 폴링은 읽기라 체인에 아무 흔적을 남기지 않는다
     BM->>FB: 매니저 내부 폴링 — lastUpdated 커서로 변경된 tx 조회 (4장)
-    BM->>MQ: onChainEvent publish — 상태 변경 (파티션 키 = accountId)
+    BM->>MQ: onChainEvent publish → withdrawal-events — 상태 변경 (파티션 키 = 출금 vault 레인 accountId)
     MQ->>QC: consume — 컨슈머 그룹으로 인스턴스 분배
     QC->>DB: 상태 갱신 — TxRef 로 대조, 전파 → 누적 → 확정. 처리 성공 후 오프셋 커밋
 ```
@@ -147,7 +147,7 @@ sequenceDiagram
 
 Fireblocks 는 내부 상태를 여러 단계로 보냅니다. 백엔드가 보는 것은 **매니저가 번역한 공통 상태** 하나입니다 — 아래 넷이 밖으로 나갑니다.
 
-상태 변경 이벤트(onChainEvent)는 메시지 큐(onchain-events 토픽)에서 consume 하고, transactionOf 는 필요할 때 단건 확인하는 API 조회로 남습니다.
+상태 변경 이벤트(onChainEvent)는 메시지 큐(withdrawal-events 토픽)에서 consume 하고, transactionOf 는 필요할 때 단건 확인하는 API 조회로 남습니다.
 
 | 공통 상태 (TxStatus) | 뜻 | Fireblocks 원어 (매니저가 번역) |
 |---|---|---|

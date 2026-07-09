@@ -18,7 +18,7 @@ sequenceDiagram
     participant BM as 매니저 내부 폴링
     end
     box rgb(254,249,195) 메시지 큐
-    participant MQ as onchain-events
+    participant MQ as deposit-events
     end
     box rgb(224,242,254) Service 백엔드
     participant QC as 큐 컨슈머

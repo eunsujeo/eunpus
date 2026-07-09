@@ -4,14 +4,15 @@ status: To Do
 ---
 
 입·출금이 함께 쓰는 공통 기준 — 언제부터 믿는가, 그리고 어떻게 아는가.
-블록체인 매니저(별도 서비스)가 내부 폴링으로 워크스페이스의 입·출금 변경을 전부 판정해 메시지 큐에 publish 하고 확정 기준(DCCP)이 언제부터 잔액에 반영할지를 정한다.
+블록체인 매니저(별도 서비스)가 내부 폴링으로 워크스페이스의 입금·출금·내부 이체 변경을 판정해 세 토픽(deposit·withdrawal·internal)으로 publish 하고 확정 기준(DCCP)이 언제부터 잔액에 반영할지를 정한다.
 
 ```kotlin
-fun onChainEvent(handler: (ChainEvent) -> Unit)
-// 매니저가 내부 폴링으로 판정한 이벤트를 큐(onchain-events)에 publish — 백엔드가 consume
+fun onChainEvent(topic: Topic, handler: (ChainEvent) -> Unit)
+// topic = DEPOSIT · WITHDRAWAL · INTERNAL — 백엔드는 토픽마다 전용 컨슈머로 등록
+// 매니저가 내부 폴링으로 판정한 이벤트를 해당 토픽에 publish — 백엔드가 토픽별로 consume
 
 data class ChainEvent(
-  val type: EventType,               // DEPOSIT · WITHDRAWAL · SWEEP · DELTA · STUCK · UNMAPPED
+  val type: EventType,               // DEPOSIT · UNMAPPED · WITHDRAWAL · INTERNAL · STUCK — 매니저가 체인+매핑으로 판정 가능한 것만 (sweep/delta 구분은 백엔드가 externalTxId 로)
   val txRef: String,                 // 벤더 tx id
   val externalTxId: String? = null,  // 우리 요청 키 (출금·내부이체) — 완료 대응·멱등
   val accountId: AccountId,          // 파티션 키 (내부이체 = 출발 계정)
@@ -19,23 +20,33 @@ data class ChainEvent(
   val to: String,                    // 목적지 주소 — 고객 입금 판별
   val status: TxStatus,              // SUBMITTED · CONFIRMING · COMPLETED · FAILED
   val numOfConfirmations: Int,
-  val subStatus: String? = null,     // 예: DROPPED_BY_BLOCKCHAIN (reorg)
-  val networkStatus: String? = null, // 네트워크 상태 (벤더)
+  val subStatus: String? = null,     // 벤더 상세 사유 — 실패 원인·reorg(DROPPED_BY_BLOCKCHAIN) 등
+  val networkStatus: String? = null, // 체인 레이어 상태(NetworkStatus) — BROADCASTING·CONFIRMING·CONFIRMED·FAILED·DROPPED. status 와 다른 축이고, DROPPED=mempool 누락 → boost·replay 신호
 )
 ```
 
-**토픽 하나(`onchain-events`)**가 워크스페이스의 입·출금 변경을 전부 나릅니다 — 입금 감지·확정과 출금 상태 변경 모두 이 채널로 옵니다. 파티션 키는 **accountId** — 같은 계정의 이벤트는 같은 파티션에서 순서가 보장되어 감지 → 확정이 뒤집히지 않습니다.
+이벤트는 **세 토픽**으로 갈라 publish 합니다 — 매니저가 폴링에서 이벤트 계열을 판정해 해당 토픽에 넣고, 백엔드는 토픽마다 전용 컨슈머를 둡니다.
 
-이 페이지는 그 토픽을 채우는 매니저 내부 폴링과 확정 기준(언제부터 믿는가)을 정의하고 **입금(5장)·출금(6장)이 이것을 소비**합니다.
+| 토픽 | 담는 이벤트 | 파티션 키 | 소비 |
+|---|---|---|---|
+| `deposit-events` | 고객 입금 감지·확정 (DEPOSIT · UNMAPPED) | 고객 accountId — 천만 계정으로 분산 | 입금 컨슈머 (5장) |
+| `withdrawal-events` | 외부 출금 상태 변경 (WITHDRAWAL) | 출금 vault 레인 accountId | 출금 컨슈머 (6장) |
+| `internal-events` | 내부 이체 완료 (INTERNAL — sweep·delta 는 백엔드가 externalTxId 로 구분) | 출발 계정 accountId | 정산 컨슈머 (5·10장) |
 
-사용법은 **"등록은 한 번, publish 는 매니저가"** — 백엔드가 부팅 시 handler 를 한 번 등록하면, 매니저 내부 폴링이 판정한 이벤트를 publish 할 때마다 consume 한다.
+**막힘 경보(STUCK)는 이 세 데이터 토픽에 싣지 않습니다** — 원장·정산 컨슈머가 소비할 상태 이벤트가 아니라 **사람·운영이 받는 신호**라, 별도 경보 채널로 흘립니다. 채널 수단은 확정하지 않고 열어 둡니다(운영 알림·모니터링·별도 큐 등 — 막힘 점검 절 참조). 막힌 tx 가 boost 로 되살아나 다시 움직이면, 그 상태 변경은 정상대로 위 데이터 토픽에 실려 옵니다.
+
+토픽을 나눈 이유는 **소비 쪽**입니다 — 한 토픽에 다 실으면 컨슈머가 매 이벤트를 ①입금 ②출금 ③내부 이체로 분기해야 하지만, 토픽을 가르면 각 컨슈머가 자기 계열만 처리합니다(입금 원장 반영 · 출금 상태 추적 · 정산 닫기). 파티션 키는 세 토픽 모두 **계정 단위**라 같은 계정의 이벤트는 순서가 보장되어 감지 → 확정이 뒤집히지 않습니다.
+
+이 페이지는 그 세 토픽을 채우는 매니저 내부 폴링과 확정 기준(언제부터 믿는가)을 정의하고 **입금(5장)·출금(6장)·내부 이체 정산(10장)이 각 토픽을 소비**합니다.
+
+사용법은 **"등록은 토픽별로 한 번, publish 는 매니저가"** — 백엔드가 부팅 시 토픽마다 handler 를 등록하면, 매니저 내부 폴링이 판정한 이벤트를 해당 토픽에 publish 할 때마다 그 토픽 컨슈머가 consume 한다.
 
 **처리는 백엔드 몫**이고, 계약은 이렇다:
 
-- **라우팅** — ① 우리 거래(출금·sweep·델타 · txRef 대조) → 완료 대응(아래 내부 이체 절·6·10장) · ② 고객 입금(목적지가 입금 주소) → 대기→가용(5장) · ③ 매핑 없는 수신 → 알림. **①을 먼저** 봐 sweep 의 옴니버스 수신을 입금으로 오인하지 않는다.
+- **라우팅은 매니저가 (publish 시점)** — 매니저는 **체인에서 본 것 + 자기 매핑·제출 기록**으로만 판정하므로, 업무 의도가 아니라 아래로 가른다: ① 우리 거래(**txRef 매칭** — 우리가 submit 한 tx) → 목적지가 외부면 `WITHDRAWAL`→`withdrawal-events`, 우리 vault 면 `INTERNAL`→`internal-events` · ② 고객 입금(목적지가 매핑된 입금 주소) → `DEPOSIT`→`deposit-events` · ③ 매핑 없는 수신 → `UNMAPPED`→`deposit-events`(귀속 불명 알림). **①을 먼저** 판정해 sweep 의 옴니버스 수신을 입금으로 오인하지 않는다. **sweep 인지 delta 인지는 매니저가 모른다** — 내부 이체 컨슈머가 externalTxId 로 자기 요청을 찾아 가른다. 백엔드는 토픽별 컨슈머라 자기 계열만 받는다.
 - **멱등** — 같은 이벤트가 두 번 올 수 있다(겹쳐 받기·재시도). 이벤트 ID(tx id·externalTxId) unique 로 상태 전이만 반영한다.
 - **커밋** — 처리 성공 후에만 오프셋 커밋(at-least-once). 실패하면 재소비된다.
-- **컨슈머 그룹 하나** — 인스턴스가 여러 대여도 분배는 큐가 한다.
+- **컨슈머 그룹 — 토픽마다 하나** — 인스턴스가 여러 대여도 분배는 큐가 한다.
 
 ## 내부 이체 — 파티션 키·완료 대응 (결정)
 
@@ -43,15 +54,15 @@ sweep·델타처럼 우리 계정 둘이 얽히는 내부 이체는 **출발 계
 
 이런 이체는 요청·실행·완료가 두 시스템에 걸쳐 대응돼야 한다:
 
-- **요청** — 백엔드가 **externalTxId(우리 요청 키)** 와 **type(출금·sweep·델타)** 을 실어 매니저에 보낸다.
-- **실행** — 매니저는 자기 DB 상태를 **처리중(processing)** 으로 두고 내부 전송을 실행한다.
-- **완료** — 완료·상태 변경 이벤트에 externalTxId·type 이 실려 큐로 오고, 백엔드는 ① 분기에서 type 으로 갈라 externalTxId 로 원래 요청을 찾아 **업무 기록을 닫는다**(예: 델타 배치 완료 → 델타원장 PENDING→완료, 10장).
+- **요청** — 백엔드가 **externalTxId(우리 요청 키)** 를 실어 매니저에 보낸다. sweep 인지 delta 인지 같은 **업무 의도는 백엔드가 externalTxId 기록에 쥐고 있고, 매니저에는 알리지 않는다**.
+- **실행** — 매니저는 자기 DB 상태를 **처리중(processing)** 으로 두고 내부 전송을 실행한다. 매니저가 아는 건 "이건 내부 이체(`INTERNAL`)"까지다.
+- **완료** — 완료·상태 변경 이벤트가 **externalTxId 를 달고** `internal-events` 로 오고, 정산 컨슈머는 externalTxId 로 원래 요청을 찾아 sweep/delta 를 가른 뒤 **업무 기록을 닫는다**(예: 델타 배치 완료 → 델타원장 PENDING→완료, 10장).
 
 상태가 두 곳에 있는 셈이다 — **매니저 DB = 트랜잭션 진행**(processing→완료), **백엔드 DB = 업무 원장**(PENDING→완료). 둘을 잇는 열쇠가 externalTxId 다.
 
 ## 폴링 상세 흐름 — 커서 하나로 입·출금을 다 나른다
 
-폴링은 **블록체인 매니저 내부 구현**입니다. 매니저가 방향을 갈라 판정하고 **입금은 원장 반영(5장), 출금은 상태 추적(6장)**으로 쓰도록 큐에 publish 합니다.
+폴링은 **블록체인 매니저 내부 구현**입니다. 매니저가 계열을 갈라 판정하고 **입금은 `deposit-events`(5장), 외부 출금은 `withdrawal-events`(6장), 내부 이체는 `internal-events`(5·10장)**로 publish 합니다.
 
 상태 필터는 대사·표적 조회(8장)에서 씁니다.
 
@@ -61,10 +72,10 @@ sequenceDiagram
     participant SUB as 매니저 내부 폴링<br/>블록체인 매니저 · 주기 실행
     participant MDB as 블록체인 매니저 DB<br/>커서 · 주소 매핑 · 체크포인트
     participant FB as Fireblocks (SaaS)
-    box rgb(254,249,195) 메시지 큐
-    participant MQ as onchain-events<br/>파티션 키 accountId
+    box rgb(254,249,195) 메시지 큐 — 세 토픽
+    participant MQ as deposit · withdrawal · internal<br/>파티션 키 = 계정 단위
     end
-    participant BE as Service 백엔드<br/>큐 컨슈머 그룹 · 원장
+    participant BE as Service 백엔드<br/>토픽별 컨슈머 그룹 · 원장
 
     Note over SUB,FB: 주기(예: 15~30초)마다 실행 · 전부 outbound(egress 허용분)
     SUB->>MDB: 커서 읽기 = 마지막 처리 lastUpdated (T · Unix ms)
@@ -77,19 +88,19 @@ sequenceDiagram
 
     loop 받은 tx 각각 — lastUpdated 오름차순
         SUB->>MDB: 방향 판정 + 목적지 vault → accountId 귀속 · tx 상태 체크포인트 기록
-        alt 입금이 아닌 건 — 출금 · sweep · 델타 배치
-            SUB-->>MQ: publish — 상태 변경 이벤트<br/>출금은 6장의 상태 추적이, sweep 은 5장의 배치가,<br/>델타 배치 전송은 10장의 정산이 완료 확인에 쓴다
+        alt 입금이 아닌 건 — 외부 출금 · 내부 이체 (우리가 submit·txRef 매칭)
+            SUB-->>MQ: publish — 외부 출금 → withdrawal-events(6장) · 내부 이체 → internal-events(5·10장)
         else 입금 · CONFIRMING
-            SUB-->>MQ: publish — 입금 감지 → 대기(pending) · available 불변
+            SUB-->>MQ: publish → deposit-events — 입금 감지 → 대기(pending) · available 불변
         else 입금 · COMPLETED 이고 임계 도달
-            SUB-->>MQ: publish — 입금 확정 → 가용(available) 이동
+            SUB-->>MQ: publish → deposit-events — 입금 확정 → 가용(available) 이동
         else 입금 · 아직 임계 미달
             Note over SUB: publish 없음 — 대기(pending) 그대로 둔다 · 다음 폴에서 다시 본다
         else 입금 · 무효화 (FAILED · DROPPED_BY_BLOCKCHAIN)
-            SUB-->>MQ: publish — 무효화 · 반영해 둔 잔액을 되돌린다 (입금 기록은 남긴다)
+            SUB-->>MQ: publish → deposit-events — 무효화 · 반영해 둔 잔액을 되돌린다 (입금 기록은 남긴다)
         end
         opt 입금인데 주소가 우리 매핑에 없음
-            SUB-->>MQ: publish — 귀속 불명 · 어느 고객인지 모름 · 알림<br/>기록은 tx 에 실린 vaultId 앞으로 남긴다 (고객 잔액 반영 보류)
+            SUB-->>MQ: publish → deposit-events — 귀속 불명 · 어느 고객인지 모름 · 알림<br/>기록은 tx 에 실린 vaultId 앞으로 남긴다 (고객 잔액 반영 보류)
         end
     end
 
@@ -116,17 +127,15 @@ sequenceDiagram
 
 webhook 의 막힘 경보(stuck_confirming)를 대체합니다 — 감지 폴링이 모든 CONFIRMING 을 이미 블록체인 매니저 DB 에 체크포인트로 기록해 두므로, 같은 폴링의 느슨한 주기(예: 5분) 작업이 **자기 DB 에서 오래된 대기 건을 조회**하면 끝입니다(벤더 호출 없음).
 
-골라낸 건은 경보 이벤트로 큐에 publish 합니다. 감지 루프 안에서 못 잡는 이유는 하나 — 막힌 tx 는 **변화가 없어서** lastUpdated 커서에 다시 나타나지 않기 때문입니다.
+골라낸 건은 **별도 경보 채널**로 보냅니다 — 원장·정산 컨슈머가 소비하는 데이터 토픽(입금·출금·내부)이 아니라, 사람·운영이 받는 신호 경로입니다. 어떤 수단으로 흘릴지(운영 알림·모니터링·별도 큐 등)는 열어 둡니다. 감지 루프 안에서 못 잡는 이유는 하나 — 막힌 tx 는 **변화가 없어서** lastUpdated 커서에 다시 나타나지 않기 때문입니다.
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant SW as 막힘 점검<br/>매니저 내부 폴링의 두 번째 작업 · 예: 5분
     participant MDB as 블록체인 매니저 DB<br/>tx 상태 체크포인트 · 경보 기록
-    box rgb(254,249,195) 메시지 큐
-    participant MQ as onchain-events
-    end
-    participant BE as Service 백엔드<br/>큐 컨슈머
+    participant AL as 별도 경보 채널<br/>운영 알림 · 수단은 열어 둠
+    participant OPS as 운영 · 고객 안내<br/>사람 · 대사
 
     SW->>MDB: 오래된 대기 조회 — status=CONFIRMING 이고 created_at 이 체인별 임계보다 이전
     MDB-->>SW: 임계 초과 건 목록
@@ -134,14 +143,14 @@ sequenceDiagram
         Note over SW: 끝 — 다음 주기
     else 있음 — 이미 경보한 tx 는 건너뜀 (중복 경보 방지)
         alt 입금 건
-            SW-->>MQ: publish — 막힘 경보 · 수신자는 개입 수단 없음 · 고객 안내 + 대사 대기
-        else 출금 건
+            SW-->>AL: 막힘 경보 — 수신자는 개입 수단 없음 · 고객 안내 + 대사 대기
+        else 외부 출금 · 내부 이체 건
             SW->>SW: 정책 내 자동 boost — fee 인상 재전송(RBF) (6장)
-            SW-->>MQ: publish — 경보는 boost 로 못 살릴 때만 (최대 시도까지 해도 안 풀림 · relay 가 gas 못 댐)
+            SW-->>AL: 경보는 boost 로 못 살릴 때만 (최대 시도까지 해도 안 풀림 · relay 가 gas 못 댐)
         end
-        MQ-->>BE: consume — 경보 처리
+        AL-->>OPS: 사람·운영이 받아 처리 (원장·정산 컨슈머 아님)
     end
-    Note over SW,MDB: 벤더 호출 없음 — 막힌 tx 는 변화가 없어 감지 폴링의 커서에는 다시 안 나타난다
+    Note over SW,MDB: 벤더 호출 없음 — 막힌 tx 는 변화가 없어 감지 폴링의 커서에는 다시 안 나타난다<br/>boost 로 되살아난 tx 의 상태 변경은 정상대로 데이터 토픽에 실린다
 ```
 
 | 결정 | 어떻게 |
@@ -149,8 +158,9 @@ sequenceDiagram
 | **배치** | 별도 프로세스 불필요 — 매니저 내부 폴링의 **두 번째 주기 작업**(감지보다 느슨하게, 예: 5분). |
 | **조회** | **블록체인 매니저 DB 쿼리** — `status=CONFIRMING` 이고 기록 시각이 임계보다 이전인 행. 벤더의 `status` 필터 조회는 대사·운영용으로만 남긴다(8장). |
 | **막힘 판정** | 체류 시간이 **체인별 임계** 초과. 임계는 평시 confirmation 소요를 감안해 정한다. |
-| **입금이 막히면** | 수신자라 개입 수단이 없다 — **경보 publish + 고객 "확인 중" 안내**가 전부이고, 해소는 체인 혼잡 해소 또는 대사가 잡는다. |
-| **출금이 막히면** | 매니저가 **정책 내 자동 boost**(수수료 인상 재전송) — gas 는 relay 부담. 자동 boost 로도 못 살리면(최대 시도까지 boost 해도 안 풀리거나, relay 가 gas 를 못 대거나 거절) 경보를 올려 **사람이 relay 복구·수동 처리**한다(cancel 은 예외). 상세 6장. |
+| **입금이 막히면** | 수신자라 개입 수단이 없다 — **별도 경보 채널로 알림 + 고객 "확인 중" 안내**가 전부이고, 해소는 체인 혼잡 해소 또는 대사가 잡는다. |
+| **출금이 막히면** | 매니저가 **정책 내 자동 boost**(수수료 인상 재전송) — gas 는 relay 부담. 자동 boost 로도 못 살리면(최대 시도까지 boost 해도 안 풀리거나, relay 가 gas 를 못 대거나 거절) **별도 경보 채널로 올려** 사람이 relay 복구·수동 처리한다(cancel 은 예외). 상세 6장. |
+| **경보 채널** | 원장·정산 컨슈머가 소비하는 데이터 토픽과 분리한다 — 사람·운영이 받는 신호라서. 구체 수단(운영 알림·모니터링·별도 큐 등)은 운영 설계에서 정한다. |
 | **같은 건 중복 경보 방지** | 경보한 tx id 를 기록해 두고 다음 주기엔 건너뛴다. 해소(COMPLETED/FAILED 전이)되면 닫는다. |
 
 ## 폴링 생존 감시 — 죽은 폴링은 자기 죽음을 못 알린다

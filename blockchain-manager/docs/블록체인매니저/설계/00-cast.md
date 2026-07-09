@@ -22,7 +22,7 @@ flowchart TB
     SVC["Service 백엔드<br/>고객 런타임 · 입금·출금·잔액"]
     ADM["Admin 백엔드<br/>운영·거버넌스 · 정책·승인·키·동결"]
     BM["블록체인 매니저 — 별도 서비스 · 1차 목표<br/>HTTP API: createAccount · createDepositAddress · depositAddressOf<br/>submitTransaction · balanceOf · transactionsOf …<br/>이벤트: onChainEvent → 메시지 큐 publish"]
-    MQ["메시지 큐<br/>onchain-events"]
+    MQ["메시지 큐<br/>deposit·withdrawal·internal"]
     FB["Fireblocks"]
     ETH["이더리움"]
     BASE["Base"]
@@ -54,7 +54,7 @@ flowchart LR
       SVCBE["Service 백엔드<br/>유스케이스 · 큐 컨슈머"]
       ADMBE["Admin 백엔드<br/>정책·승인·키 운영·동결·rebalance"]
       BM["블록체인 매니저 — 별도 서비스<br/>API·메시지 큐 제공 · Fireblocks 연동 (SDK 래핑·체인 라우팅)<br/>내부 폴링 — 입금·상태 감지 (4·6장)"]
-      MQ["메시지 큐<br/>onchain-events"]
+      MQ["메시지 큐<br/>deposit·withdrawal·internal"]
       BDB[("백엔드 DB<br/>고객 원장 · 출금 지시 상태")]
       MDB[("블록체인 매니저 DB<br/>ref↔vault↔주소 매핑 · 이벤트 체크포인트")]
       COS["API Co-signer (SGX/TEE)<br/>MPC 온프렘 키 share · 자동 공동서명"]
@@ -93,7 +93,7 @@ flowchart LR
 - **Service·Admin 은 물리적으로 분리**돼 각자 블록체인 매니저 API 를 부른다. Fireblocks 연동은 매니저 내부 구현이다.
 - DB 는 둘 — **매핑·이벤트 체크포인트는 블록체인 매니저 DB**, **원장·출금 지시 상태는 백엔드 DB**.
 - 서명은 벤더 단독이 아니다. 보안 존(SGX/TEE)의 **API Co-signer** 가 키 share 하나를 들고 공동서명하고, 서명 직전 **Callback Handler** 가 승인·거부를 건다.
-- 입금·상태 감지는 **매니저 내부 폴링**(주기 조회)이고 webhook 은 보조다(4장). 감지 결과는 **메시지 큐(onchain-events)** 로 백엔드에 전달된다.
+- 입금·상태 감지는 **매니저 내부 폴링**(주기 조회)이고 webhook 은 보조다(4장). 감지 결과는 **메시지 큐(deposit·withdrawal·internal)** 로 백엔드에 전달된다.
 
 ### DB 를 둘로 나눈 이유
 
