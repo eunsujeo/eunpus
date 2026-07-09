@@ -8,11 +8,9 @@ status: To Do
 
 ```kotlin
 fun onChainEvent(topic: Topic, handler: (ChainEvent) -> Unit)
-// topic = DEPOSIT · WITHDRAWAL · INTERNAL — 백엔드는 토픽마다 전용 컨슈머로 등록
-// 매니저가 내부 폴링으로 판정한 이벤트를 해당 토픽에 publish — 백엔드가 토픽별로 consume
 
 data class ChainEvent(
-  val type: EventType,               // DEPOSIT · UNMAPPED · WITHDRAWAL · INTERNAL — 매니저가 체인+매핑으로 가르는 tx 분류 (sweep/delta 는 백엔드가 externalTxId 로 · 막힘은 EventType 아님, 별도 경보)
+  val type: EventType,               // DEPOSIT · UNMAPPED · WITHDRAWAL · INTERNAL — 매니저가 체인+매핑으로 가르는 tx 분류 (sweep/delta 는 백엔드가 externalTxId 로)
   val txRef: String,                 // 벤더 tx id
   val externalTxId: String? = null,  // 우리 요청 키 (출금·내부이체) — 완료 대응·멱등
   val accountId: AccountId,          // 파티션 키 (내부이체 = 출발 계정)
@@ -41,10 +39,11 @@ data class ChainEvent(
 
 **처리는 백엔드 몫이고, 계약은 이렇습니다.**
 
-- **라우팅은 매니저가 한다 (publish 시점).** 매니저는 업무 의도를 모르고, **체인에서 본 것 + 자기 매핑·제출 기록**으로만 가른다:
-  - **우리가 낸 거래**(txRef 매칭) — 목적지가 외부 주소면 `WITHDRAWAL`→`withdrawal-events`, 우리 vault 면 `INTERNAL`→`internal-events`. sweep 인지 delta 인지는 매니저가 모른다 — 정산 컨슈머가 externalTxId 로 가른다.
-  - **들어온 입금** — 목적지가 매핑된 입금 주소면 `DEPOSIT`→`deposit-events`. 우리 거래를 먼저 판정해 sweep 의 옴니버스 도착을 입금으로 오인하지 않는다.
-  - **매핑에 없는 수신** — `UNMAPPED`→`deposit-events`. 귀속 불명이라 알림 + 잔액 반영 보류(아래).
+- **라우팅은 매니저가 한다 (publish 시점).** 매니저는 업무 의도를 모르고, 먼저 **발신자(source)가 우리 vault 인지**로 방향을 가른다 — tx 의 source·destination 을 자기 주소 매핑과 대조하면 된다:
+  - **우리 vault 발** (우리가 낸 거래 · txRef 도 매칭) — 목적지가 외부 주소면 `WITHDRAWAL`→`withdrawal-events`, 우리 vault 면 `INTERNAL`→`internal-events`. sweep 인지 delta 인지는 매니저가 모른다 — 정산 컨슈머가 externalTxId 로 가른다.
+  - **외부 발** (우리가 안 만든 수신) — 목적지가 매핑된 입금 주소면 `DEPOSIT`→`deposit-events`, 매핑에 없으면 `UNMAPPED`→`deposit-events`(귀속 불명 · 보류, 아래).
+
+  즉 **입금은 발신자가 외부일 때만** 잡힌다 — sweep 이 옴니버스에 도착한 것(발신자가 우리 고객 vault)은 방향에서 이미 "우리 vault 발"로 갈려 입금으로 오인되지 않는다. 백엔드는 토픽별 컨슈머라 자기 계열만 받는다.
 - **멱등** — 같은 이벤트가 두 번 올 수 있다(겹쳐 받기·재시도). 이벤트 ID(tx id·externalTxId) unique 로 상태 전이만 반영한다.
 - **커밋** — 처리 성공 후에만 오프셋 커밋(at-least-once). 실패하면 재소비된다.
 - **컨슈머 그룹은 토픽마다 하나** — 인스턴스가 여러 대여도 분배는 큐가 한다.
@@ -86,12 +85,12 @@ sequenceDiagram
 
     loop 페이지네이션 — limit 200, 다음 페이지 남으면 반복
         SUB->>FB: GET /v1/transactions · orderBy=lastUpdated · after=T · limit=200
-        FB-->>SUB: 갱신된 tx 목록<br/>각 tx: id · dest 주소 · status · numOfConfirmations · lastUpdated
+        FB-->>SUB: 갱신된 tx 목록<br/>각 tx: id · src·dest 주소 · status · numOfConfirmations · lastUpdated
     end
 
     loop 받은 tx 각각 — lastUpdated 오름차순
-        SUB->>MDB: 방향 판정 + 목적지 vault → accountId 귀속 · tx 상태 체크포인트 기록
-        alt 입금이 아닌 건 — 외부 출금 · 내부 이체 (우리가 submit·txRef 매칭)
+        SUB->>MDB: 방향 판정(발신자가 우리 vault 인지) + accountId 귀속 · tx 상태 체크포인트 기록
+        alt 우리 vault 발 — 외부 출금 · 내부 이체 (txRef 도 매칭)
             SUB-->>MQ: publish — 외부 출금 → withdrawal-events(6장) · 내부 이체 → internal-events(5·10장)
         else 입금 · CONFIRMING
             SUB-->>MQ: publish → deposit-events — 입금 감지 → 대기(pending) · available 불변
