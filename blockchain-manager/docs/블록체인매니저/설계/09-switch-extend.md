@@ -130,7 +130,7 @@ flowchart LR
       DB[("백엔드 DB<br/>customer_ledger · 출금 지시 상태")]
       MQ["메시지 큐<br/>onchain-events"]
       BM["블록체인 매니저 — 별도 서비스<br/>내부 Fireblocks 연동 · 내부 폴링 (4·6장)"]
-      BMDB[("블록체인 매니저 DB<br/>ref↔vault↔주소 매핑 · 체크포인트")]
+      BMDB[("블록체인 매니저 DB<br/>uid↔vault↔주소 매핑 · 체크포인트")]
     end
     FB["Fireblocks (벤더 SaaS)<br/>vault · MPC 서명 · TAP 정책 · 노드·전파"]
     EVM["EVM 네트워크<br/>이더리움 · Base · (다른 L2)"]
