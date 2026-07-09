@@ -18,6 +18,14 @@
   --code-bg: #0b0e11;
   --code-inline-bg: #2b3139;
   --diagram-bg: #f7f8fa; /* 다크: 순백 대신 살짝 톤다운해 눈부심 완화 */
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --th-bg: #2b3139;               /* 표 헤더 */
+  --zebra: rgba(255, 255, 255, 0.03); /* 표 짝수 행 */
+  /* 코드 블록 패널 — 두 테마 공통으로 어둡게 (한눈에 "코드") */
+  --code-panel-bg: #14181d;
+  --code-panel-text: #d6dae0;
+  --code-panel-border: #2b3139;
+  --code-panel-muted: #7d8794;   /* 주석(--) 톤 */
 }
 
 /* 라이트 테마 — DESIGN.md 의 transactional(light) 팔레트. 옐로 액센트·ink 는 공유 */
@@ -34,6 +42,8 @@
   --code-bg: #f0f2f5;
   --code-inline-bg: #eaecef;
   --diagram-bg: #ffffff; /* 라이트: 순백 유지 */
+  --th-bg: #edf0f4;                /* 라이트: 흰 배경과 구분되는 헤더 톤 */
+  --zebra: #f6f7f9;                /* 라이트: 옅은 줄무늬 (흰색과 구분) */
 }
 
 * { box-sizing: border-box; }
@@ -349,12 +359,12 @@ body {
 .doc-body h1 { font-size: 20px; margin: 28px 0 12px; }
 .doc-body h2 {
   font-size: 17px;
-  margin: 32px 0 12px;
-  padding-top: 20px;
+  margin: 40px 0 14px;
+  padding-top: 22px;
   border-top: 1px solid var(--hairline);
 }
 .doc-body h2:first-child, .doc-body h1:first-child { margin-top: 0; padding-top: 0; border-top: none; }
-.doc-body h3 { font-size: 15px; margin: 22px 0 8px; }
+.doc-body h3 { font-size: 15px; margin: 26px 0 8px; }
 .doc-body p { margin: 0 0 14px; }
 .doc-body ul, .doc-body ol { margin: 0 0 14px; padding-left: 22px; }
 .doc-body li { margin: 3px 0; }
@@ -362,18 +372,32 @@ body {
 .doc-body a:hover { color: var(--primary-active); }
 .doc-body code {
   background: var(--code-inline-bg);
+  border: 1px solid var(--hairline);
   border-radius: 4px;
   padding: 1px 5px;
-  font-size: 12.5px;
+  font-size: 0.88em;
+  font-family: var(--mono);
 }
+/* 코드 블록 = 어두운 패널 (두 테마 공통) — 한눈에 코드로 읽힌다 */
 .doc-body pre {
-  background: var(--code-bg);
-  border: 1px solid var(--hairline);
+  background: var(--code-panel-bg);
+  color: var(--code-panel-text);
+  border: 1px solid var(--code-panel-border);
   border-radius: 8px;
-  padding: 12px 14px;
+  padding: 14px 16px;
+  margin: 18px 0;
   overflow-x: auto;
+  font-size: 12.5px;
+  line-height: 1.6;
 }
-.doc-body pre code { background: none; padding: 0; }
+.doc-body pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-family: var(--mono);
+  font-size: inherit;
+}
 .doc-body blockquote {
   margin: 0;
   padding: 4px 16px;
@@ -384,7 +408,7 @@ body {
 .doc-body table {
   border-collapse: collapse;
   width: 100%;
-  margin: 16px 0;
+  margin: 18px 0;
   font-size: 13px;
   line-height: 1.55;
   display: block;
@@ -403,13 +427,15 @@ body {
 .doc-body tbody tr:last-child td { border-bottom: none; }
 .doc-body th {
   color: var(--text-strong);
-  background: var(--surface-elevated);
+  background: var(--th-bg);
   font-weight: 600;
   border-bottom: 2px solid var(--border-hover);
   white-space: nowrap;
 }
-.doc-body tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface-elevated) 45%, transparent); }
+.doc-body tbody tr:nth-child(even) { background: var(--zebra); }
 .doc-body td:first-child { font-weight: 500; color: var(--text-strong); }
+/* 표 셀 안 인라인 코드는 셀 배경 위라 테두리 없이 */
+.doc-body td code, .doc-body th code { border: none; }
 
 /* ---- 문서 전용 페이지 ---- */
 .doc-page {
