@@ -4,16 +4,15 @@ status: In Progress
 ---
 
 (account, asset)당 한 번 — 백엔드가 블록체인 매니저 API 를 호출하면 매니저가 자산 지갑을 활성화해 단일 주소를 얻는다. EVM 주소는 memoTag 가 null 이다.
-(account, asset)↔주소 매핑은 블록체인 매니저 DB 에 저장한다. 저장 못 한 경우의 복구도 매니저 안에서 처리한다. 주소의 두 규칙(vault 추가·감시 등록)을 함께 다룬다.
+(account, asset)↔주소 매핑은 블록체인 매니저 DB 에 저장한다. 저장 못 한 경우의 복구도 매니저 안에서 처리한다.
 
 ```kotlin
-// 블록체인 매니저 API 오퍼레이션 · EVM: memoTag=null · (account,asset)당 1개 · 활성화 1회(재시도 멱등)
 fun createDepositAddress(accountId: AccountId, asset: Asset): Address {
   return Address(value, memoTag)
 }
 ```
 
-## 자산 지갑 활성화 — (account, asset)당 한 번
+## 자산 지갑 활성화
 
 ```mermaid
 sequenceDiagram
