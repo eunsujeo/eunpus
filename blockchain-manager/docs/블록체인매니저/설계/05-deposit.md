@@ -55,7 +55,7 @@ Fireblocks 트랜잭션 상태는 전부 17가지지만 대부분은 출금 쪽 
 |---|---|---|
 | `CONFIRMING` | 체인 등장, confirmation 누적 중 | 대기(pending)로 잡힌다 |
 | `COMPLETED` | DCCP 임계 도달 = finality (final). zero-confirmation 설정이면 여러 번 관찰될 수 있음(4장 함정) | 임계 확인 후 가용(available)에 더해진다 |
-| `REJECTED` | AML 거절 또는 동결 — **입금은 Admin 이 unfreeze 할 때까지 자산 잠금** | 반영하지 않는다 — Admin unfreeze 대기 |
+| `REJECTED` | AML 거절 또는 동결 — 입금은 Admin 이 unfreeze 할 때까지 자산 잠금 | 반영하지 않는다 — Admin unfreeze 대기 |
 | `FAILED` | 영구 실패 (final) | 반영하지 않는다 |
 
 각 status 는 `subStatus` 로 사유가 세분됩니다 — 매니저 내부 폴링이 분기하는 `status`·`numOfConfirmations` 에 사유를 더해주는 필드이고 큐 이벤트에 함께 실려 옵니다. 입금 관련은 아래가 전부이고, 특히 **REJECTED 의 동결 3종은 Admin 의 unfreeze 운영**이 걸립니다.

@@ -8,7 +8,7 @@ EVM 은 토큰을 보낼 때도 수수료(gas)를 base asset 으로, 그 거래�
 
 ## gas 는 어디서 나가는가
 
-EVM 의 수수료는 **거래를 내는 계정의 base asset(이더리움·Base 에서는 ETH)** 에서 나간다. USDC 같은 토큰을 옮기는 거래도 예외가 아니다 — 옮기는 것은 토큰이지만, 그 거래를 처리하는 gas 는 여전히 발신 계정의 ETH 에서 빠진다. 즉 **토큰만 있고 ETH 가 없는 계정은 그 토큰을 스스로 움직이지 못한다.**
+EVM 의 수수료는 거래를 내는 계정의 base asset(이더리움·Base 에서는 ETH) 에서 나간다. USDC 같은 토큰을 옮기는 거래도 예외가 아니다 — 옮기는 것은 토큰이지만, 그 거래를 처리하는 gas 는 여전히 발신 계정의 ETH 에서 빠진다. 즉 토큰만 있고 ETH 가 없는 계정은 그 토큰을 스스로 움직이지 못한다.
 
 ```mermaid
 flowchart LR
@@ -47,4 +47,4 @@ flowchart LR
 
 ---
 
-이 문서 묶음에서 **Fireblocks Gasless Service · Gas Station 은 Fireblocks 공식 문서로 확인한 사실**이다. 뒤에 나오는 GSN · ERC-4337 Paymaster 등 일반 EVM 표준 절은 공개 명세에 대한 저자 정리이므로, 실제 적용 전 1차 자료 검증을 권장한다. 정산 단가처럼 **미확정**으로 표시한 항목은 Fireblocks 담당 매니저(CSM)나 지원팀에 확인할 대상이다.
+이 문서 묶음에서 Fireblocks Gasless Service · Gas Station 은 Fireblocks 공식 문서로 확인한 사실이다. 뒤에 나오는 GSN · ERC-4337 Paymaster 등 일반 EVM 표준 절은 공개 명세에 대한 저자 정리이므로, 실제 적용 전 1차 자료 검증을 권장한다. 정산 단가처럼 **미확정**으로 표시한 항목은 Fireblocks 담당 매니저(CSM)나 지원팀에 확인할 대상이다.

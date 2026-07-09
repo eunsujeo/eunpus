@@ -8,7 +8,7 @@ Universal Gasless 는 첫 거래 때 vault 를 smart contract wallet 로 upgrade
 
 ## 서비스 정의
 
-지원 토큰의 fee 지불을 **전용 vault · 외부 워크스페이스 · Fireblocks** 중 하나에 위임하는 서비스다. 공식 문서가 명시한다 — **"Gasless Service 는 Gas Station 과 별개 제품이고, 다른 프로토콜을 쓴다."** Gas Station 은 발신 계정에 ETH 를 미리 채워 두는 방식(2장의 충전)이고, Gasless Service 는 애초에 발신 계정이 gas 를 낼 필요가 없게 만드는 대납이다.
+지원 토큰의 fee 지불을 **전용 vault · 외부 워크스페이스 · Fireblocks** 중 하나에 위임하는 서비스다. 공식 문서가 명시한다 — "Gasless Service 는 Gas Station 과 별개 제품이고, 다른 프로토콜을 쓴다." Gas Station 은 발신 계정에 ETH 를 미리 채워 두는 방식(2장의 충전)이고, Gasless Service 는 애초에 발신 계정이 gas 를 낼 필요가 없게 만드는 대납이다.
 
 ## 항목별 정리
 
