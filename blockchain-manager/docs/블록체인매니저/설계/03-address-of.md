@@ -8,7 +8,8 @@ status: To Do
 
 ```kotlin
 fun depositAddressOf(accountId: AccountId, asset: Asset): Address? {
-  return address // 읽기 · 없으면 null (만들지 않는다 — 생성은 2장)
+  // accountId 없음 → 에러(AccountNotFound) · 계정 있고 주소 미발급 → null (만들지 않는다, 생성은 2장)
+  return address
 }
 ```
 
@@ -27,14 +28,21 @@ sequenceDiagram
 
     BE->>BM: depositAddressOf(accountId, asset) — API
     BM->>MDB: (accountId, asset)↔주소 읽기
-    alt 있으면
+    alt 주소 있음
         MDB-->>BM: 주소 (이더리움·Base = 0xAb3… · memoTag null)
         BM-->>BE: 주소
-    else 없으면 — 아직 발급 전
-        MDB-->>BM: 없음
+    else 계정 있고 주소 미발급
+        MDB-->>BM: 주소 없음
         BM-->>BE: null
+    else accountId 없음 (미등록 계정)
+        MDB-->>BM: 계정 없음
+        BM-->>BE: 에러 (AccountNotFound)
     end
 ```
+
+### null 과 에러의 구분 (결정)
+
+`null` 은 **계정은 있고 그 자산 주소만 아직 발급 전**이라는 뜻이다. **accountId 자체가 없으면 에러**(AccountNotFound)로 돌려 null 과 구분한다 — 잘못된 accountId 를 "발급 전"으로 오인해 엉뚱하게 새로 발급하는 일을 막는다.
 
 ### 왜 DB 읽기인가 (결정)
 
