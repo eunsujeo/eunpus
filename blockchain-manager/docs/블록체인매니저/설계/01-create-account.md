@@ -11,7 +11,7 @@ createAccount(uid) 리턴 Account { uid, accountId }
 // accountId = vault 매핑 id
 ```
 
-## createAccount — vault 를 만든다 (EVM 공통)
+## createAccount — vault 를 만든다
 
 ```mermaid
 sequenceDiagram
