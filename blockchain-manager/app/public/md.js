@@ -162,6 +162,7 @@ window.MD = (() => {
         else if (act === 'out') zoomAt(0.8);
         else if (act === 'reset') { scale = 1; tx = 0; ty = 0; apply(); }
         else if (act === 'full') {
+          scale = 1; tx = 0; ty = 0; apply(); // 진입 시 초기화 — CSS 가 화면에 맞춰 키운다
           if (document.fullscreenElement === viewer) document.exitFullscreen();
           else viewer.requestFullscreen().catch(() => viewer.classList.toggle('fs-fallback'));
         }

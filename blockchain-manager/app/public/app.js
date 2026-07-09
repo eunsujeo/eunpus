@@ -13,16 +13,16 @@ const modalChips = document.getElementById('modal-chips');
 const modalBody = document.getElementById('modal-body');
 const toast = document.getElementById('toast');
 
-let tree = {};   // { 대카테고리: [중카테고리...] }
+let tree = {};       // { 대카테고리: [중카테고리...] } — 서버 순서 유지
+let catOrder = [];   // 대카테고리 순서 (Object.keys(tree) 미러)
 let cards = [];
-let nav = { cat: null, sub: null }; // 현재 위치
+let nav = { cat: null, sub: null };
 let toastTimer = null;
 
 /* ---------- utils ---------- */
 
 function fmtDate(iso) {
-  if (!iso) return '';
-  return iso.slice(0, 10);
+  return iso ? iso.slice(0, 10) : '';
 }
 
 function showToast(msg, isError) {
@@ -70,6 +70,47 @@ function renderCrumbs() {
   );
 }
 
+/* ---------- reorderable tiles (드래그로 순서 변경) ---------- */
+
+function makeReorderable(itemEls, arr, onReorder) {
+  let from = null;
+  itemEls.forEach((el, i) => {
+    el.draggable = true;
+    el.addEventListener('dragstart', (e) => {
+      from = i;
+      el.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(i));
+    });
+    el.addEventListener('dragend', () => { from = null; el.classList.remove('dragging'); });
+    el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('drop-target'); });
+    el.addEventListener('dragleave', () => el.classList.remove('drop-target'));
+    el.addEventListener('drop', (e) => {
+      e.preventDefault();
+      el.classList.remove('drop-target');
+      const src = from != null ? from : parseInt(e.dataTransfer.getData('text/plain'), 10);
+      if (Number.isNaN(src) || src === i) return;
+      const next = arr.slice();
+      const [moved] = next.splice(src, 1);
+      next.splice(i, 0, moved);
+      onReorder(next);
+    });
+  });
+}
+
+async function persistOrder() {
+  try {
+    await api('/api/order', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categories: catOrder, subcategories: tree }),
+    });
+    showToast('순서 저장됨');
+  } catch (e) {
+    showToast(`순서 저장 실패: ${e.message}`, true);
+  }
+}
+
 /* ---------- views ---------- */
 
 function render() {
@@ -83,26 +124,29 @@ function render() {
 }
 
 function tile(label, metaText, onClick) {
-  const el = document.createElement('button');
-  el.type = 'button';
+  const el = document.createElement('div');
   el.className = 'cat-tile';
-  el.innerHTML = `<span class="cat-tile-name">${esc(label)}</span><span class="cat-tile-meta">${esc(metaText)}</span>`;
+  el.setAttribute('role', 'button');
+  el.tabIndex = 0;
+  el.innerHTML = `<span class="cat-tile-name">${esc(label)}</span><span class="cat-tile-meta">${esc(metaText)}</span><span class="cat-tile-grip" title="드래그로 순서 변경">⠿</span>`;
   el.addEventListener('click', onClick);
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter') onClick(); });
   return el;
 }
 
 function renderHome() {
   view.className = 'view cat-grid';
-  const cats = Object.keys(tree).sort();
-  if (!cats.length) {
+  if (!catOrder.length) {
     view.innerHTML = '<div class="board-status">카테고리가 없습니다.</div>';
+    boardMeta.textContent = '';
     return;
   }
-  for (const cat of cats) {
+  const els = catOrder.map((cat) => {
     const n = cards.filter((c) => c.category === cat).length;
-    const subs = tree[cat].length;
-    view.appendChild(tile(cat, `${subs}개 분류 · 문서 ${n}건`, () => goTo(cat, null)));
-  }
+    return tile(cat, `${tree[cat].length}개 분류 · 문서 ${n}건`, () => goTo(cat, null));
+  });
+  els.forEach((el) => view.appendChild(el));
+  makeReorderable(els, catOrder, (next) => { catOrder = next; persistOrder(); render(); });
   boardMeta.textContent = `문서 ${cards.length}건`;
 }
 
@@ -114,15 +158,19 @@ function renderCatView() {
     boardMeta.textContent = '';
     return;
   }
-  for (const sub of subs) {
+  const els = subs.map((sub) => {
     const n = cards.filter((c) => c.category === nav.cat && c.subcategory === sub).length;
-    view.appendChild(tile(sub, `문서 ${n}건`, () => goTo(nav.cat, sub)));
-  }
+    return tile(sub, `문서 ${n}건`, () => goTo(nav.cat, sub));
+  });
+  els.forEach((el) => view.appendChild(el));
+  makeReorderable(els, subs, (next) => { tree[nav.cat] = next; persistOrder(); render(); });
   boardMeta.textContent = `문서 ${cards.filter((c) => c.category === nav.cat).length}건`;
 }
 
 function boardCards() {
-  return cards.filter((c) => c.category === nav.cat && c.subcategory === nav.sub);
+  return cards
+    .filter((c) => c.category === nav.cat && c.subcategory === nav.sub)
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function renderBoard() {
@@ -146,10 +194,7 @@ function renderBoard() {
     const bodyEl = col.querySelector('.column-body');
     for (const c of inCol) bodyEl.appendChild(cardEl(c));
 
-    col.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      col.classList.add('drag-over');
-    });
+    col.addEventListener('dragover', (e) => { e.preventDefault(); col.classList.add('drag-over'); });
     col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
     col.addEventListener('drop', (e) => {
       e.preventDefault();
@@ -196,6 +241,7 @@ async function loadBoard() {
   try {
     const data = await api('/api/board');
     tree = data.tree || {};
+    catOrder = Object.keys(tree);
     cards = data.cards || [];
     readURL();
     render();
@@ -230,14 +276,32 @@ async function moveCard(path, nextStatus) {
   }
 }
 
-let currentDoc = null; // 복사·다운로드·새창용 { name, path, raw }
+/* ---------- 미리보기 모달 + 이전/다음 ---------- */
 
-async function openPreview(c) {
+let currentDoc = null;   // 복사·다운로드·새창용 { name, path, raw }
+let previewList = [];    // 같은 중카테고리 형제 카드 (순서대로)
+let previewIdx = -1;
+
+function openPreview(c) {
+  // 형제 = 같은 대·중카테고리, 파일명 순
+  previewList = cards
+    .filter((x) => x.category === c.category && x.subcategory === c.subcategory)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  previewIdx = previewList.findIndex((x) => x.path === c.path);
+  modal.classList.remove('hidden');
+  showPreviewAt(previewIdx);
+}
+
+async function showPreviewAt(idx) {
+  if (idx < 0 || idx >= previewList.length) return;
+  previewIdx = idx;
+  const c = previewList[idx];
   modalTitle.textContent = c.title;
   modalChips.innerHTML = '';
   modalBody.innerHTML = '<p style="color:var(--muted)">불러오는 중…</p>';
-  modal.classList.remove('hidden');
+  modalBody.scrollTop = 0;
   currentDoc = null;
+  updatePrevNext();
 
   try {
     const data = await api(`/api/doc?path=${encodeURIComponent(c.path)}`);
@@ -247,6 +311,7 @@ async function openPreview(c) {
       m.status ? `<span class="chip status">${esc(m.status)}</span>` : '',
       m.category ? `<span class="chip">${esc(m.category)}</span>` : '',
       m.subcategory ? `<span class="chip">${esc(m.subcategory)}</span>` : '',
+      previewList.length > 1 ? `<span class="chip">${idx + 1} / ${previewList.length}</span>` : '',
     ].join('');
     modalBody.innerHTML = renderMarkdown(data.body);
     await window.MD.runMermaid('#modal-body .mermaid');
@@ -254,6 +319,11 @@ async function openPreview(c) {
   } catch (e) {
     modalBody.innerHTML = `<p style="color:var(--danger)">미리보기 실패: ${esc(e.message)}</p>`;
   }
+}
+
+function updatePrevNext() {
+  document.getElementById('prev-doc').disabled = previewIdx <= 0;
+  document.getElementById('next-doc').disabled = previewIdx >= previewList.length - 1;
 }
 
 /* ---------- wiring ---------- */
@@ -265,6 +335,9 @@ document.getElementById('brand-home').addEventListener('click', goHome);
 document.getElementById('brand-home').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' || e.key === ' ') goHome();
 });
+
+document.getElementById('prev-doc').addEventListener('click', () => showPreviewAt(previewIdx - 1));
+document.getElementById('next-doc').addEventListener('click', () => showPreviewAt(previewIdx + 1));
 
 document.getElementById('open-page').addEventListener('click', () => {
   if (!currentDoc) return;
@@ -295,7 +368,10 @@ modal.addEventListener('click', (e) => {
   if (e.target.hasAttribute('data-close')) modal.classList.add('hidden');
 });
 document.addEventListener('keydown', (e) => {
+  if (modal.classList.contains('hidden')) return;
   if (e.key === 'Escape') modal.classList.add('hidden');
+  else if (e.key === 'ArrowLeft') showPreviewAt(previewIdx - 1);
+  else if (e.key === 'ArrowRight') showPreviewAt(previewIdx + 1);
 });
 document.getElementById('refresh-btn').addEventListener('click', loadBoard);
 

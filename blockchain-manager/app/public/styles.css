@@ -98,6 +98,7 @@ body {
   align-content: start;
 }
 .cat-tile {
+  position: relative;
   background: var(--surface);
   border: 1px solid transparent;
   border-radius: 12px;
@@ -111,8 +112,21 @@ body {
   min-height: 110px;
 }
 .cat-tile:hover { border-color: var(--primary); }
+.cat-tile.dragging { opacity: 0.4; }
+.cat-tile.drop-target { border-color: var(--primary); border-style: dashed; }
 .cat-tile-name { color: var(--text-strong); font-size: 16px; font-weight: 600; }
 .cat-tile-meta { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.cat-tile-grip {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.cat-tile:hover .cat-tile-grip { opacity: 0.7; }
 .topbar-right { display: flex; align-items: center; gap: 16px; }
 .board-meta { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 
@@ -128,6 +142,7 @@ body {
   cursor: pointer;
 }
 .btn-secondary:hover { background: var(--surface-elevated); }
+.btn-secondary:disabled { opacity: 0.35; cursor: default; }
 
 /* ---- 테마 토글 ---- */
 .theme-toggle {
@@ -243,8 +258,8 @@ body {
   position: relative;
   background: var(--surface);
   border-radius: 12px;
-  width: min(1100px, calc(100vw - 48px));
-  max-height: calc(100vh - 48px);
+  width: min(1400px, 94vw);
+  max-height: calc(100vh - 40px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -292,11 +307,20 @@ body {
 }
 .chip.status { color: var(--ink); background: var(--primary); border-color: var(--primary); font-weight: 600; }
 
-.doc-body { padding: 20px 24px 28px; overflow-y: auto; font-size: 14px; }
+.doc-body { padding: 20px 28px 28px; overflow-y: auto; font-size: 14px; line-height: 1.65; }
 .doc-body h1, .doc-body h2, .doc-body h3 { color: var(--text-strong); line-height: 1.3; }
-.doc-body h1 { font-size: 20px; }
-.doc-body h2 { font-size: 17px; }
-.doc-body h3 { font-size: 15px; }
+.doc-body h1 { font-size: 20px; margin: 28px 0 12px; }
+.doc-body h2 {
+  font-size: 17px;
+  margin: 32px 0 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--hairline);
+}
+.doc-body h2:first-child, .doc-body h1:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+.doc-body h3 { font-size: 15px; margin: 22px 0 8px; }
+.doc-body p { margin: 0 0 14px; }
+.doc-body ul, .doc-body ol { margin: 0 0 14px; padding-left: 22px; }
+.doc-body li { margin: 3px 0; }
 .doc-body a { color: var(--primary); text-decoration: none; }
 .doc-body a:hover { color: var(--primary-active); }
 .doc-body code {
@@ -323,18 +347,32 @@ body {
 .doc-body table {
   border-collapse: collapse;
   width: 100%;
-  margin: 12px 0;
+  margin: 16px 0;
   font-size: 13px;
+  line-height: 1.55;
   display: block;
   overflow-x: auto;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
 }
 .doc-body th, .doc-body td {
-  border: 1px solid var(--hairline);
-  padding: 6px 10px;
+  border-bottom: 1px solid var(--hairline);
+  border-right: 1px solid var(--hairline);
+  padding: 9px 13px;
   text-align: left;
   vertical-align: top;
 }
-.doc-body th { color: var(--text-strong); background: var(--surface-elevated); font-weight: 600; }
+.doc-body tr td:last-child, .doc-body tr th:last-child { border-right: none; }
+.doc-body tbody tr:last-child td { border-bottom: none; }
+.doc-body th {
+  color: var(--text-strong);
+  background: var(--surface-elevated);
+  font-weight: 600;
+  border-bottom: 2px solid var(--border-hover);
+  white-space: nowrap;
+}
+.doc-body tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface-elevated) 45%, transparent); }
+.doc-body td:first-child { font-weight: 500; color: var(--text-strong); }
 
 /* ---- 문서 전용 페이지 ---- */
 .doc-page {
@@ -399,6 +437,46 @@ a.brand-mark { text-decoration: none; }
   border-radius: 0;
 }
 .dviewer.fs .mermaid, .dviewer.fs-fallback .mermaid { max-height: none; }
+/* 전체화면에서는 다이어그램을 화면에 꽉 차게 키운다 */
+.dviewer.fs .mermaid svg, .dviewer.fs-fallback .mermaid svg {
+  width: auto;
+  height: 92vh;
+  max-width: 96vw;
+  max-height: 92vh;
+}
+
+/* ---- 문서 전용 페이지 이전/다음 ---- */
+.doc-nav {
+  display: flex;
+  gap: 12px;
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--hairline);
+}
+.doc-nav-link {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  text-decoration: none;
+  background: var(--surface);
+  min-width: 0;
+}
+.doc-nav-link.empty { visibility: hidden; }
+.doc-nav-link:hover { border-color: var(--primary); }
+.doc-nav-link.next { text-align: right; }
+.doc-nav-dir { color: var(--muted); font-size: 12px; }
+.doc-nav-title {
+  color: var(--text-strong);
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ---- toast ---- */
 .toast {

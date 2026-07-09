@@ -1,5 +1,6 @@
 import {
   gh,
+  ghRaw,
   ghGraphQL,
   json,
   GhError,
@@ -8,6 +9,18 @@ import {
   normalizeStatus,
   requireEnv,
 } from './_lib.js';
+
+// order 배열 기준으로 정렬 — order 에 없는 항목은 뒤에 가나다순.
+function byManifest(items, order) {
+  const idx = (x) => {
+    const i = (order || []).indexOf(x);
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  return [...items].sort((a, b) => {
+    const d = idx(a) - idx(b);
+    return d !== 0 ? d : a.localeCompare(b);
+  });
+}
 
 // docs/<대카테고리>/<중카테고리>/*.md — 폴더가 카테고리의 source of truth
 export async function onRequestGet({ env }) {
@@ -28,16 +41,24 @@ export async function onRequestGet({ env }) {
   const isMd = (f) => f.type === 'file' && f.name.endsWith('.md');
 
   try {
-    const root = await list(docsPath);
+    const [root, order] = await Promise.all([
+      list(docsPath),
+      ghRaw(env, `/repos/${owner}/${repo}/contents/${encodePath(docsPath + '/.board-order.json')}?ref=${encodeURIComponent(branch)}`)
+        .then((t) => JSON.parse(t))
+        .catch(() => ({ categories: [], subcategories: {} })),
+    ]);
     const catDirs = root.filter((e) => e.type === 'dir');
 
-    const tree = {}; // { 대카테고리: [중카테고리...] } — 문서가 없어도 폴더면 노출
+    const rawTree = {}; // { 대카테고리: [중카테고리...] } — 문서가 없어도 폴더면 노출
     const files = []; // { ...entry, category, subcategory }
 
     await Promise.all(
       catDirs.map(async (cat) => {
         const inCat = await list(cat.path);
-        tree[cat.name] = inCat.filter((e) => e.type === 'dir').map((e) => e.name).sort();
+        rawTree[cat.name] = byManifest(
+          inCat.filter((e) => e.type === 'dir').map((e) => e.name),
+          order.subcategories && order.subcategories[cat.name]
+        );
         // 대카테고리 직속 .md 는 중카테고리 없음으로 취급
         for (const f of inCat.filter(isMd)) {
           files.push({ ...f, category: cat.name, subcategory: '' });
@@ -107,6 +128,11 @@ export async function onRequestGet({ env }) {
 
     const cards = cardChunks.flat();
     cards.sort((a, b) => a.name.localeCompare(b.name));
+
+    // 대카테고리도 매니페스트 순서로 (object 삽입 순서 = 응답 순서)
+    const tree = {};
+    for (const cat of byManifest(Object.keys(rawTree), order.categories)) tree[cat] = rawTree[cat];
+
     return json({ tree, cards });
   } catch (e) {
     const status = e instanceof GhError ? 502 : 500;

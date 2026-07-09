@@ -8,6 +8,7 @@ const titleTop = document.getElementById('doc-title-top');
 const titleEl = document.getElementById('doc-title');
 const chipsEl = document.getElementById('doc-chips');
 const bodyEl = document.getElementById('doc-body');
+const navEl = document.getElementById('doc-nav');
 const toast = document.getElementById('toast');
 
 let currentDoc = null;
@@ -49,8 +50,32 @@ async function load() {
     bodyEl.innerHTML = renderMarkdown(data.body);
     await window.MD.runMermaid('#doc-body .mermaid');
     window.MD.enhanceDiagrams(bodyEl);
+    renderNav(path);
   } catch (e) {
     bodyEl.innerHTML = `<p style="color:var(--danger)">불러오기 실패: ${esc(e.message)}</p>`;
+  }
+}
+
+// 같은 중카테고리 형제 문서로 이전/다음 이동
+async function renderNav(path) {
+  try {
+    const board = await fetch('/api/board').then((r) => r.json());
+    const cards = board.cards || [];
+    const cur = cards.find((c) => c.path === path);
+    if (!cur) return;
+    const sibs = cards
+      .filter((c) => c.category === cur.category && c.subcategory === cur.subcategory)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const i = sibs.findIndex((c) => c.path === path);
+    const prev = sibs[i - 1];
+    const next = sibs[i + 1];
+    const link = (c, dir, arrow) =>
+      c
+        ? `<a class="doc-nav-link ${dir}" href="doc?path=${encodeURIComponent(c.path)}"><span class="doc-nav-dir">${arrow}</span><span class="doc-nav-title">${esc(c.title)}</span></a>`
+        : `<span class="doc-nav-link ${dir} empty"></span>`;
+    navEl.innerHTML = link(prev, 'prev', '‹ 이전') + link(next, 'next', '다음 ›');
+  } catch {
+    /* 내비게이션은 보조 — 실패해도 본문은 그대로 */
   }
 }
 
