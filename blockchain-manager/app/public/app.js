@@ -217,7 +217,6 @@ function renderBoard() {
     const inCol = items.filter((c) => c.status === status);
     col.innerHTML = `
       <div class="column-head">
-        <span class="column-dot"></span>
         <span class="column-title">${esc(status)}</span>
         <span class="column-count">${inCol.length}</span>
       </div>
