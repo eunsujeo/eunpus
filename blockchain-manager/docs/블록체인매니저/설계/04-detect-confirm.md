@@ -31,17 +31,13 @@ data class ChainEvent(
 | `withdrawal-events` | 외부 출금 상태 변경 (WITHDRAWAL) | 출금 vault 레인 accountId | 출금 컨슈머 (6장) |
 | `internal-events` | 내부 이체 완료 (INTERNAL — sweep·delta 는 백엔드가 externalTxId 로 구분) | 출발 계정 accountId | 정산 컨슈머 (5·10장) |
 
-**막힘은 세 토픽 어디에도 싣지 않습니다.** 새 거래 종류가 아니라 오래 CONFIRMING 인 tx 의 상태라, 막힘 점검이 별도 경보 채널로 흘립니다(수단은 열어 둠 · 막힘 점검 절). boost 로 되살아나면 그 상태 변경은 데이터 토픽에 정상 실린다.
-
-**토픽을 나눈 이유는 소비 쪽입니다.** 가르면 각 컨슈머가 자기 계열만 맡는다(입금 원장 반영 · 출금 상태 추적 · 정산 닫기). 세 토픽 다 파티션 키가 계정 단위라 같은 계정 이벤트는 순서가 보장된다.
-
 이 페이지는 세 토픽을 채우는 **매니저 내부 폴링과 확정 기준**을 정의하고, 입금(5장)·출금(6장)·내부 이체 정산(10장)이 각 토픽을 소비한다. 등록은 토픽별 한 번, publish 는 매니저가 판정할 때마다.
 
-**처리는 백엔드 몫이고, 계약은 이렇습니다.**
+**처리는 백엔드 몫이고, 지켜야 할 규칙은 이렇습니다.**
 
 - **라우팅은 매니저가 (publish 시점).** 업무 의도는 모르고, **발신자가 우리 vault 인지**로 방향을 가른다(source·dest 를 매핑과 대조):
-  - **우리 vault 발** — 목적지 외부면 `WITHDRAWAL`, 우리 vault 면 `INTERNAL`. sweep/delta 구분은 정산 컨슈머가 externalTxId 로.
-  - **외부 발** — 매핑된 입금 주소면 `DEPOSIT`, 없으면 `UNMAPPED`(귀속 불명 · 보류).
+  - **발신자가 우리 vault** — 목적지 외부면 `WITHDRAWAL`, 우리 vault 면 `INTERNAL`. sweep/delta 구분은 정산 컨슈머가 externalTxId 로.
+  - **발신자가 외부** — 매핑된 입금 주소면 `DEPOSIT`, 없으면 `UNMAPPED`(귀속 불명 · 보류).
 - **멱등** — 같은 이벤트가 두 번 올 수 있다(겹쳐 받기·재시도). 이벤트 ID(tx id·externalTxId) unique 로 상태 전이만 반영한다.
 - **커밋** — 처리 성공 후에만 오프셋 커밋(at-least-once). 실패하면 재소비된다.
 - **컨슈머 그룹은 토픽마다 하나** — 인스턴스가 여러 대여도 분배는 큐가 한다.
@@ -61,8 +57,6 @@ sweep·델타처럼 우리 계정 둘이 얽히는 내부 이체는 **출발 계
 ## 폴링 상세 흐름 — 커서 하나로 입·출금·내부 이체를 다 나른다
 
 폴링은 **블록체인 매니저 내부 구현**입니다. 매니저가 계열을 갈라 판정하고 **입금은 `deposit-events`(5장), 외부 출금은 `withdrawal-events`(6장), 내부 이체는 `internal-events`(5·10장)**로 publish 합니다.
-
-상태 필터는 대사·표적 조회(8장)에서 씁니다.
 
 ```mermaid
 sequenceDiagram
@@ -86,7 +80,7 @@ sequenceDiagram
 
     loop 받은 tx 각각 — lastUpdated 오름차순
         SUB->>MDB: 방향 판정(발신자가 우리 vault 인지) + accountId 귀속 · tx 상태 체크포인트 기록
-        alt 우리 vault 발 — 외부 출금 · 내부 이체 (txRef 도 매칭)
+        alt 발신자가 우리 vault — 외부 출금 · 내부 이체 (txRef 도 매칭)
             SUB-->>MQ: publish — 외부 출금 → withdrawal-events(6장) · 내부 이체 → internal-events(5·10장)
         else 입금 · CONFIRMING
             SUB-->>MQ: publish → deposit-events — 입금 감지 → 대기(pending) · available 불변
@@ -96,8 +90,7 @@ sequenceDiagram
             Note over SUB: publish 없음 — 대기(pending) 그대로 둔다 · 다음 폴에서 다시 본다
         else 입금 · 무효화 (FAILED · DROPPED_BY_BLOCKCHAIN)
             SUB-->>MQ: publish → deposit-events — 무효화 · 반영해 둔 잔액을 되돌린다 (입금 기록은 남긴다)
-        end
-        opt 입금인데 주소가 우리 매핑에 없음
+        else 발신자가 외부인데 주소가 우리 매핑에 없음 — UNMAPPED
             SUB-->>MQ: publish → deposit-events — 귀속 불명 · 어느 고객인지 모름 · 알림<br/>기록은 tx 에 실린 vaultId 앞으로 남긴다 (고객 잔액 반영 보류)
         end
     end
