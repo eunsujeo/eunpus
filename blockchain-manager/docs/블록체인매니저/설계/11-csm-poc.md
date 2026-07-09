@@ -13,9 +13,10 @@ status: To Do
 | 확인 항목 | 왜 중요한가 | 관련 |
 |---|---|---|
 | relay(Gasless-Orchestrator)가 stuck tx 를 스스로 fee-bump 하나 | 지금 설계는 "미지원 → 우리가 감지·자동 boost 트리거" 전제. 자동 처리면 트리거 로직이 불필요해진다 | 4·6장 |
-| gasless 에서 boost·cancel API 동작 방식 | 같은 순번 대체·relay fee 부담·정산이 실제로 어떻게 도는지 | 6장 |
+| gasless 에서 boost·cancel API 동작 방식 | 호출부는 **확인됨**(csm2): `createTransaction`+`replaceTxByHash`(RBF·같은 nonce)·`externalTxId` 재사용 가능·결과 type 변경은 CONTRACT_CALL 만. 잔여 = relay fee 부담·정산 흐름 | 6장 |
 | boost 인상 폭·fee 상한이 relay 설정인지 | 우리가 조절 가능한지, 자동 boost 정책을 어디에 둘지 | 6장 |
 | relay 실패 모드·잔고 모니터링 수단 | 잔고 소진·거절 시 거래 실패 처리와 relay 급유 신호 (boost 로 안 풀리는 막힘) | 6장 |
+| **boost/drop 을 승인 단계에서 원본과 연결** (이중 주체 승인) | 승인 콜백엔 `replaceTxByHash`·원 txId·nonce 가 없어 **approver 가 boost/drop 인지 판별 불가**(csm2). 현행 우회 = "Get Transaction by ID" 의 `replacedTxHash`. 콜백 payload 포함은 **Fireblocks feature request open** | 6장 |
 
 ### 서명 · EIP-7702
 
@@ -44,7 +45,7 @@ status: To Do
 
 | 정합 항목 | 왜 정해야 하나 | 관련 |
 |---|---|---|
-| 공통 상태 4종 의미 | 백엔드가 잔액·화면을 SUBMITTED·CONFIRMING·COMPLETED·FAILED 넷에만 맞춘다 — 특히 **COMPLETED = DCCP 임계 도달(finality)** 이라는 합의 | 4·6장 |
+| 공통 상태 5종 의미 | 백엔드가 잔액·화면을 SUBMITTED·CONFIRMING·COMPLETED·REJECTED·FAILED 다섯에만 맞춘다 — **COMPLETED = DCCP 임계 도달(finality)**, **REJECTED = 임시(unfreeze 대기) ≠ FAILED = 영구** 라는 합의 | 4·5·6장 |
 | status·subStatus·networkStatus 세 축 역할 분담 | 백엔드가 어느 필드로 무엇을 판단할지 — **boost = networkStatus `DROPPED`(mempool 누락)**, **reorg 롤백 = subStatus `DROPPED_BY_BLOCKCHAIN`(블록 이탈)** | 4장 |
 | reorg 무효화 수신 시 원장 롤백 계약 | 무효화 이벤트에 백엔드가 **반영해 둔 잔액만 되돌리고 입금 기록은 보존** — 되돌림 범위·순서 합의 | 5장 |
 | REJECTED 동결 3종의 unfreeze 운영 흐름 | `AUTO_FREEZE`·`FROZEN_MANUALLY`·`REJECTED_AML_SCREENING` 자산 잠금을 백엔드가 어떻게 노출하고 Admin unfreeze 를 어떻게 대기하나 | 5장 |
