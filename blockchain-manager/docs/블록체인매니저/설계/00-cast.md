@@ -56,7 +56,7 @@ flowchart LR
       BM["블록체인 매니저 — 별도 서비스<br/>API·메시지 큐 제공 · Fireblocks 연동 (SDK 래핑·체인 라우팅)<br/>내부 폴링 — 입금·상태 감지 (4·6장)"]
       MQ["메시지 큐<br/>onchain-events"]
       BDB[("백엔드 DB<br/>customer_ledger · 출금 지시 상태")]
-      MDB[("블록체인 매니저 DB<br/>uid↔vault↔주소 매핑 · 이벤트 체크포인트")]
+      MDB[("블록체인 매니저 DB<br/>ref↔vault↔주소 매핑 · 이벤트 체크포인트")]
       COS["API Co-signer (SGX/TEE)<br/>MPC 온프렘 키 share · 자동 공동서명"]
       CB["Callback Handler<br/>정책 훅 · 승인·거부"]
     end
