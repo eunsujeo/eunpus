@@ -23,7 +23,9 @@ submitTransaction(TransactionRequest {
     note?,          // 벤더 거래 기록에 남는 메모
     travelRule?     // 해외(Notabene) 경로일 때 — 트래블룰 게이트가 만든 암호화 메시지.
                     // 매니저는 운반만 하고 내용을 모른다
-}) → TxRef { id — 벤더 트랜잭션 id }
+}) {
+return TxRef { id — 벤더 트랜잭션 id }
+}
 ```
 
 ## 출금 제출 — 파이프라인이 벤더 안으로 들어간다

@@ -7,8 +7,9 @@ status: In Progress
 (account, asset)↔주소 매핑은 블록체인 매니저 DB 에 저장한다. 저장 못 한 경우의 복구도 매니저 안에서 처리한다. 주소의 두 규칙(vault 추가·감시 등록)을 함께 다룬다.
 
 ```
-createDepositAddress(accountId, asset) → Address { value, memoTag? }
-// 블록체인 매니저 API 오퍼레이션 · EVM: memoTag=null · (account,asset)당 1개 · 활성화 1회(재시도 멱등)
+createDepositAddress(accountId, asset) {
+return Address { value, memoTag? } // 블록체인 매니저 API 오퍼레이션 · EVM: memoTag=null · (account,asset)당 1개 · 활성화 1회(재시도 멱등)
+}
 ```
 
 ## 자산 지갑 활성화 — (account, asset)당 한 번

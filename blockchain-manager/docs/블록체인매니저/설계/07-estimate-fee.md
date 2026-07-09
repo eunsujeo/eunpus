@@ -7,7 +7,9 @@ status: To Do
 언제 부르는지(주기 관측 · sweep 타이밍 · 고객 화면)와 무엇으로 검증하는지(온체인 실측)를 정리한다.
 
 ```
-estimateFee(출금 지시) → FeeEstimate { low, medium, high }
+estimateFee(출금 지시) {
+return FeeEstimate { low, medium, high }
+}
 ```
 
 ## estimateFee — 단가 × 사용량을 계산하고, 그 돈은 relay 가 낸다

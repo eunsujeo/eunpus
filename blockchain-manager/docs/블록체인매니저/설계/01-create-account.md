@@ -7,8 +7,9 @@ createAccount(uid) 는 블록체인 매니저 API 오퍼레이션 — Service �
 고객당 한 번 — vault 를 만들며 재시도는 Idempotency-Key 와 블록체인 매니저 DB uid UNIQUE 로 중복을 막는다.
 
 ```
-createAccount(uid) 리턴 Account { uid, accountId }
-// accountId = vault 매핑 id
+createAccount(uid) {
+return Account { uid, accountId } // accountId = vault 매핑 id
+}
 ```
 
 ## createAccount — vault 를 만든다

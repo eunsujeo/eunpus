@@ -11,11 +11,14 @@ status: To Do
 ```
 // 블록체인 매니저 API 오퍼레이션 — 백엔드가 HTTP 로 호출
 // 온체인 지갑(옴니버스 · sweep 전 고객 vault) 조회 — 운영·대사용
-balanceOf(accountId, asset) → Balance { available, pending, locked }
+balanceOf(accountId, asset) {
+return Balance { available, pending, locked }
+}
 // 온체인 내역 — 증빙·대사·운영용. 고객 화면 내역은 백엔드 DB 기록에서 나온다
-transactionsOf(accountId, after, before, status?) → List<Transfer>
-// status? — 상태로 걸러 받기 (한 번에 한 상태 · 아래 절)
+transactionsOf(accountId, after, before, status?) {
+return List<Transfer> // status? — 상태로 걸러 받기 (한 번에 한 상태 · 아래 절)
 //   예: COMPLETED = 대사 · CONFIRMING = 막힌 출금 점검
+}
 ```
 
 after·before 는 벤더 거래 목록 API(`GET /v1/transactions`)의 시간 필터 그대로다 — **Unix 밀리초 타임스탬프**로, 4장 매니저 내부 폴링 커서와 같은 형식이다. 미지정 시 벤더 기본 조회 창이 적용된다.

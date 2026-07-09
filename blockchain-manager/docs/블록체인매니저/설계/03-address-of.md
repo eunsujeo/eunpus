@@ -7,8 +7,9 @@ status: To Do
 벤더 왕복 없이 매니저 자기 DB 만 읽고, 백엔드는 매니저 API 1홉으로 받는 조회 경로의 설계 근거를 정리한다.
 
 ```
-depositAddressOf(accountId, asset) → Address?
-// 읽기 · 없으면 null (만들지 않는다 — 생성은 2장)
+depositAddressOf(accountId, asset) {
+return Address? // 읽기 · 없으면 null (만들지 않는다 — 생성은 2장)
+}
 ```
 
 ## 매니저가 자기 DB 에서 읽는다 — 벤더 왕복 없음
