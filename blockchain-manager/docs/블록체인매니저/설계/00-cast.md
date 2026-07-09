@@ -95,6 +95,11 @@ flowchart LR
 - 서명은 벤더 단독이 아니다. 보안 존(SGX/TEE)의 **API Co-signer** 가 키 share 하나를 들고 공동서명하고, 서명 직전 **Callback Handler** 가 승인·거부를 건다.
 - 입금·상태 감지는 **매니저 내부 폴링**(주기 조회)이고 webhook 은 보조다(4장). 감지 결과는 **메시지 큐(onchain-events)** 로 백엔드에 전달된다.
 
+**DB 를 둘로 나눈 이유:**
+
+- **매니저 DB (벤더 번역·운영 상태)** — vaultId·주소 매핑과 폴링 커서. 백엔드가 vaultId 를 모르게 해 벤더·매니저 교체 시 백엔드 0줄(9장) · 최빈 조회(depositAddressOf)를 벤더 왕복 없이(3장) · 벤더가 24h 뒤 못 지키는 유일성을 DB UNIQUE 로 영구 방어(1·2장).
+- **백엔드 DB (회계 진실)** — customer_ledger·귀속·잔액. 벤더가 바뀌어도 남아야 하는 진실이라 분리.
+
 ## Fireblocks 기능 × 사용처 표
 
 매니저 API 오퍼레이션들은 어디서 왔을까요. **Fireblocks 의 API 표면을 분석한 결과**입니다.
