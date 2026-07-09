@@ -58,7 +58,7 @@ sweep·델타처럼 우리 계정 둘이 얽히는 내부 이체는 **출발 계
 
 상태가 두 곳에 있는 셈이다 — **매니저 DB = 트랜잭션 진행**(processing→완료), **백엔드 DB = 업무 원장**(PENDING→완료). 둘을 잇는 열쇠가 externalTxId 다.
 
-## 폴링 상세 흐름 — 커서 하나로 입·출금을 다 나른다
+## 폴링 상세 흐름 — 커서 하나로 입·출금·내부 이체를 다 나른다
 
 폴링은 **블록체인 매니저 내부 구현**입니다. 매니저가 계열을 갈라 판정하고 **입금은 `deposit-events`(5장), 외부 출금은 `withdrawal-events`(6장), 내부 이체는 `internal-events`(5·10장)**로 publish 합니다.
 
@@ -191,7 +191,7 @@ sequenceDiagram
 세 경로가 겹칠 때의 규칙:
 
 - 여러 경로가 같은 입금을 중복 관찰하므로, 매니저의 publish 와 백엔드의 반영 모두 **이벤트 ID = tx id(또는 externalTxId) unique 기준 멱등**으로 한 번만 건다 — 없는 돈을 두 번 반영하는 것이 가장 비싼 사고다.
-- `status=COMPLETED` 로 거를 땐 `numOfConfirmations` 가 확정 임계 이상인지 함께 본다(위 zero-confirmation 함정).
+- `status=COMPLETED` 로 거를 땐 `numOfConfirmations` 가 확정 임계 이상인지 함께 본다(아래 확정 기준 절의 zero-confirmation 함정).
 - 폴링만으로도 완결되며 감지 지연은 **폴링 주기**만큼이다.
 
 ## 확정 기준 — confirm 과 finality, 그리고 DCCP
