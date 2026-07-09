@@ -8,16 +8,22 @@ status: To Do
 
 **가용**(available — 출금에 쓸 수 있는 돈), **대기**(pending — 들어왔지만 아직 확정 전), **잠김**(locked — 나가는 중이거나 정책상 묶인 돈).
 
-```
+```kotlin
 // 블록체인 매니저 API 오퍼레이션 — 백엔드가 HTTP 로 호출
 // 온체인 지갑(옴니버스 · sweep 전 고객 vault) 조회 — 운영·대사용
-balanceOf(accountId, asset) {
-return Balance { available, pending, locked }
+fun balanceOf(accountId: AccountId, asset: Asset): Balance {
+  return Balance(available, pending, locked)
 }
+
 // 온체인 내역 — 증빙·대사·운영용. 고객 화면 내역은 백엔드 DB 기록에서 나온다
-transactionsOf(accountId, after, before, status?) {
-return List<Transfer> // status? — 상태로 걸러 받기 (한 번에 한 상태 · 아래 절)
-//   예: COMPLETED = 대사 · CONFIRMING = 막힌 출금 점검
+// status 로 걸러 받기(한 번에 한 상태) — 예: COMPLETED = 대사 · CONFIRMING = 막힌 출금 점검
+fun transactionsOf(
+  accountId: AccountId,
+  after: Instant,
+  before: Instant,
+  status: TxStatus? = null,
+): List<Transfer> {
+  return transfers
 }
 ```
 

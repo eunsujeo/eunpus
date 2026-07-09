@@ -8,24 +8,27 @@ status: To Do
 
 업무 승인이 끝난 출금 지시를 Service 백엔드가 매니저 API 로 넘깁니다(제출).
 
-```
-submitTransaction(TransactionRequest {
-    externalTxId,   // 벤더에 남기는 우리 쪽 거래 식별자 — 재제출 중복 차단 · 우리 키로 벤더 거래 조회
-    fromAccountId,  // 보내는 vault — 우리 계정
-    to: {           // 목적지 객체 — type 으로 갈래를 구분 (벤더 TransferPeerPathType 으로 매핑)
-        type,       //   ADDRESS · ACCOUNT · WHITELISTED
-        address?,   //   type=ADDRESS     — 온체인 주소 (외부 출금 → ONE_TIME_ADDRESS)
-        accountId?, //   type=ACCOUNT     — 우리 계정 (sweep 등 내부 이동 → VAULT_ACCOUNT)
-        walletId?   //   type=WHITELISTED — 사전 등록 지갑 (→ EXTERNAL_WALLET)
-    },
-    asset,
-    amount,
-    note?,          // 벤더 거래 기록에 남는 메모
-    travelRule?     // 해외(Notabene) 경로일 때 — 트래블룰 게이트가 만든 암호화 메시지.
-                    // 매니저는 운반만 하고 내용을 모른다
-}) {
-return TxRef { id — 벤더 트랜잭션 id }
+```kotlin
+fun submitTransaction(request: TransactionRequest): TxRef {
+  return TxRef(id) // id = 벤더 트랜잭션 id
 }
+
+data class TransactionRequest(
+  val externalTxId: String,             // 벤더에 남기는 우리 쪽 거래 식별자 — 재제출 중복 차단 · 우리 키로 벤더 거래 조회
+  val fromAccountId: AccountId,         // 보내는 vault — 우리 계정
+  val to: Destination,                  // 목적지 — type 으로 갈래 구분 (벤더 TransferPeerPathType 으로 매핑)
+  val asset: Asset,
+  val amount: BigDecimal,
+  val note: String? = null,             // 벤더 거래 기록에 남는 메모
+  val travelRule: TravelRule? = null,   // 해외(Notabene) 경로 — 게이트가 만든 암호화 메시지. 매니저는 운반만, 내용은 모름
+)
+
+data class Destination(
+  val type: PeerType,                   // ADDRESS · ACCOUNT · WHITELISTED
+  val address: String? = null,          // type=ADDRESS     — 온체인 주소 (외부 출금 → ONE_TIME_ADDRESS)
+  val accountId: AccountId? = null,     // type=ACCOUNT     — 우리 계정 (sweep 등 내부 이동 → VAULT_ACCOUNT)
+  val walletId: WalletId? = null,       // type=WHITELISTED — 사전 등록 지갑 (→ EXTERNAL_WALLET)
+)
 ```
 
 ## 출금 제출 — 파이프라인이 벤더 안으로 들어간다

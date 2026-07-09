@@ -6,9 +6,9 @@ status: In Progress
 createAccount(uid) 는 블록체인 매니저 API 오퍼레이션 — Service 백엔드가 HTTP API 로 호출하면 매니저가 Fireblocks vault 를 만들고 Account { uid, accountId } 매핑을 블록체인 매니저 DB 에 저장한다.
 고객당 한 번 — vault 를 만들며 재시도는 Idempotency-Key 와 블록체인 매니저 DB uid UNIQUE 로 중복을 막는다.
 
-```
-createAccount(uid) {
-return Account { uid, accountId } // accountId = vault 매핑 id
+```kotlin
+fun createAccount(uid: Uid): Account {
+  return Account(uid, accountId) // accountId = vault 매핑 id
 }
 ```
 

@@ -6,9 +6,9 @@ status: To Do
 제출 전에 한 번 읽어 보는 매니저 API 오퍼레이션. 대납(Universal Gasless) 구성에서 이 값은 "우리가 낼 돈"이 아니라 "relay 가 낼 실비"의 예측이다.
 언제 부르는지(주기 관측 · sweep 타이밍 · 고객 화면)와 무엇으로 검증하는지(온체인 실측)를 정리한다.
 
-```
-estimateFee(출금 지시) {
-return FeeEstimate { low, medium, high }
+```kotlin
+fun estimateFee(request: WithdrawalRequest): FeeEstimate {
+  return FeeEstimate(low, medium, high)
 }
 ```
 
