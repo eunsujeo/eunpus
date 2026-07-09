@@ -119,7 +119,7 @@ flowchart LR
 | 수수료 추정 | estimateFee | | | ● | | `estimateFee` | S | 7장 |
 | 출금 제출 | createTransaction | | | ● | | `submitTransaction` | S | 6장 |
 | 거래 상세 조회 | getTransactionById | | | ● | ● | `transactionOf` | S·A | 6장 |
-| 막힌 출금 재촉·취소 | boost / cancel | | | ● | ● | `boost` `cancel` | A | 6장 |
+| 막힌 출금 재촉 | boost (정책 내 자동) | | | ● | ● | `boost`(자동) · `cancel`(예외) | A | 6장 |
 | 잔액 (가용·대기·잠김) | getVaultAccountAsset | | ● | ● | ● | `balanceOf` | S·A | 8장 |
 | 내 거래 이력 | 거래 목록 조회 | | | | ● | `transactionsOf` | S·A | 8장 |
 | 서명 정책 (한도·화이트리스트) | co-signer · Callback Handler — 서명 직전 재검증 | | | ● | ● | (동사 없음 — 서명 관문) | A | 6장 |

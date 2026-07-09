@@ -4,7 +4,7 @@ status: To Do
 ---
 
 승인된 출금 지시가 블록체인 매니저(별도 서비스)를 지나 확정되기까지 — 제출·서명·전파, 메시지 큐 상태 추적, 그리고 막혔을 때.
-서명 두 겹(vault 승인·relay 거래)과 서명 직전 검증, boost·cancel 운영, 공통 상태 번역을 다룬다.
+서명 두 겹(vault 승인·relay 거래)과 서명 직전 검증, 막힘 자동 boost, 공통 상태 번역을 다룬다.
 
 업무 승인이 끝난 출금 지시를 Service 백엔드가 매니저 API 로 넘깁니다(제출).
 
@@ -104,21 +104,19 @@ sequenceDiagram
 
 이 검증의 요점은 규칙 검사가 아니라 **사전 등록 대조**다 — 침해된 백엔드가 임의 거래를 만들어도, 접수·승인 기록에 없는 payload 면 서명이 나오지 않는다. 기대값의 기록·대조·소비 상태는 백엔드 DB 가 아니라 Callback Handler 쪽 저장소에 두어야 방어선이 분리된다.
 
-## 막혔을 때 — boost 와 cancel (Admin 운영)
+## 막혔을 때 — 자동 boost
 
-확정한 수수료가 시세보다 낮으면 거래가 mempool 에 걸려 **막힙니다**. 대응은 둘입니다:
+확정한 수수료가 시세보다 낮으면 거래가 mempool 에 걸려 **막힙니다**. Gasless Relay 는 stuck 을 스스로 bump 하지 않으므로(auto-boost 미지원), 감지·재촉이 우리 몫입니다.
 
-- **boost** — 같은 순번에 수수료만 올려 재전송 (RBF)
-- **cancel** — 철회
+- **자동 boost** — 막힘 점검(4장)이 오래 CONFIRMING 인 건을 잡으면 매니저가 **Admin 정책(대기 임계·최대 시도) 안에서 자동으로 boost**(같은 순번, 수수료만 올린 재전송 · RBF)한다. 인상된 gas 는 **relay 가 부담**하고, 인상 폭·상한은 relay 설정이다.
+- **cancel(철회)** — 기본 흐름에선 쓰지 않는다. 자동 boost 가 정책을 소진해도 못 살린 예외에서만 **수동 최후수단**으로 판단한다.
 
-나가는 돈에 개입하는 일이라 **Admin 운영**이고, Gasless Relay 는 **auto-boost 를 지원하지 않아** 감지·지시는 우리 몫입니다. boost·cancel API 가 gasless 거래에서 정확히 어떻게 동작하는지는 CSM/PoC 확인 대상입니다.
+fee 부족이 아니라 **relay 불건전**(잔고 소진·거절)이면 boost 로 안 풀리므로, 경보를 올려 relay 급유·복구로 넘긴다. relay 가 stuck 을 자동 처리하는지 등 벤더 확인 항목은 11장.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant PW as 막힘 점검<br/>Service · 4장
-    participant DB as 백엔드 DB
-    participant ADM as Admin 백엔드
+    participant SW as 막힘 점검<br/>매니저 내부 폴링 · 4장
     box rgb(220,252,231) 블록체인 매니저 — 별도 서비스
     participant BM as 블록체인 매니저 API
     end
@@ -126,31 +124,24 @@ sequenceDiagram
     participant RL as 지정 relay
     participant CH as EVM · 이더리움·Base
 
-    Note over PW,DB: 막힌 거래는 변화가 없어 매니저 내부 폴링 커서에 다시 안 잡힌다 — 그래서 백엔드 DB 쪽에서 골라낸다
-    PW->>DB: 오래 CONFIRMING 인 건 조회 (매니저 호출 없음)
-    PW->>ADM: 막힌 건 보고 — 개입 판단 대상
-    ADM->>BM: transactionOf(txRef) — API · 개입 전 단건 확인 (아직 CONFIRMING 인가)
-    BM->>FB: 벤더 단건 조회
-    alt boost — 재촉
-        ADM->>BM: boost(txRef) — API 로 지시
+    SW->>SW: 오래 CONFIRMING 인 건 감지 (매니저 DB · 벤더 호출 없음)
+    alt fee 부족 · 정책 내(대기 임계·최대 시도)
+        SW->>BM: 자동 boost(txRef) — 정책이 트리거
         BM->>FB: 벤더 boost 호출
-        FB->>RL: 대체 거래 생성 — 발신자가 relay 라 relay 만 만들 수 있다
-        RL->>CH: 같은 순번 · fee 올린 대체 거래 전파 — gas 도 relay 부담 (인보이스 정산)
-    else cancel — 철회
-        ADM->>BM: cancel(txRef) — API 로 지시
-        BM->>FB: 벤더 cancel 호출
-        FB->>RL: 취소용 대체 거래 생성 — 같은 순번을 덮어쓴다
-        RL->>CH: 전파 — 원래 건은 무효가 된다
+        FB->>RL: 대체 거래 생성 — 발신자가 relay 라 relay 만 만든다
+        RL->>CH: 같은 순번 · fee 올린 대체 거래 전파 — gas 는 relay 부담
+        CH-->>FB: 대체 거래 확정
+    else relay 불건전 또는 정책 소진
+        Note over SW: 경보 — relay 급유·복구 또는 수동 cancel 판단
     end
-    CH-->>FB: 대체 거래 확정
-    Note over BM,FB: 이후는 다시 매니저 내부 폴링 (4장) — 원래 건의 종결과 대체 건의 확정을 큐에 publish 해 실어 온다<br/>auto-boost 미지원이라 감지·지시는 우리 몫이다
+    Note over BM,FB: 이후 매니저 내부 폴링(4장)이 원래 건 종결·대체 건 확정을 큐에 publish
 ```
 
-막힌 출금의 처리 한 사이클을 요약하면:
+막힌 출금의 처리를 요약하면:
 
-- **감지(1~2)** — Service 의 막힘 점검이 DB 에서 골라낸다.
-- **개입(3~)** — 나가는 돈에 손대는 일이라 **Admin 몫**. transactionOf 로 그 건의 현재 상태를 확인한 뒤 boost(수수료 올려 재전송) 또는 cancel(철회)을 매니저 API 로 지시한다.
-- 매니저가 벤더 API 를 호출하고, 실제 대체 거래는 **발신자인 relay** 가 만들어 전파한다.
+- **감지** — 매니저 내부 폴링의 막힘 점검이 매니저 DB 에서 골라낸다(4장).
+- **자동 boost** — fee 부족이면 정책 내에서 매니저가 boost 를 자동 트리거한다. 대체 거래는 발신자인 relay 가 만들어 전파하고 gas 도 relay 가 낸다.
+- **예외** — relay 불건전이나 정책 소진이면 boost 로 못 살리므로 경보한다. cancel 은 이때의 수동 최후수단이다.
 
 ## 상태 한 장 — Fireblocks 필드를 공통 어휘로
 
@@ -169,4 +160,4 @@ Fireblocks 는 내부 상태를 여러 단계로 보냅니다. 백엔드가 보�
 - 이 문서는 이 넷만 밖으로 내보낸다 — 벤더 내부의 세부 단계는 SUBMITTED 로 접어 감춘다.
 - 입금 쪽 상태 흐름은 5장.
 
-상태 이름과 확정 정책(DCCP)은 벤더 안에 있고 그것을 공통 어휘 넷으로 번역하는 것은 매니저 내부입니다. 막혔을 때의 boost·cancel 판단은 Admin 몫입니다 — 언제 boost 할지, 언제 철회할지 같은 업무 정책은 매니저가 흡수하지 못합니다.
+상태 이름과 확정 정책(DCCP)은 벤더 안에 있고 그것을 공통 어휘 넷으로 번역하는 것은 매니저 내부입니다. 막힘 대응의 자동 boost 는 매니저가 실행하되, 어떤 정책(대기 임계·최대 시도)으로 boost 할지는 Admin 이 미리 정합니다 — cancel 은 예외적 수동입니다.

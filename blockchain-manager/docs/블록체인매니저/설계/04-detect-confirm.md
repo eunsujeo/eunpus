@@ -126,7 +126,8 @@ sequenceDiagram
         alt 입금 건
             SW-->>MQ: publish — 막힘 경보 · 수신자는 개입 수단 없음 · 고객 안내 + 대사 대기
         else 출금 건
-            SW-->>MQ: publish — 막힘 경보 · Admin 의 boost·cancel(매니저 API) 판단 대상 (6장)
+            SW->>SW: 정책 내 자동 boost — fee 인상 재전송(RBF) (6장)
+            SW-->>MQ: publish — 정책 소진·relay 불건전 때만 경보
         end
         MQ-->>BE: consume — 경보 처리
     end
@@ -139,7 +140,7 @@ sequenceDiagram
 | **조회** | **블록체인 매니저 DB 쿼리** — `status=CONFIRMING` 이고 기록 시각이 임계보다 이전인 행. 벤더의 `status` 필터 조회는 대사·운영용으로만 남긴다(8장). |
 | **막힘 판정** | 체류 시간이 **체인별 임계** 초과. 임계는 평시 confirmation 소요를 감안해 정한다. |
 | **입금이 막히면** | 수신자라 개입 수단이 없다 — **경보 publish + 고객 "확인 중" 안내**가 전부이고, 해소는 체인 혼잡 해소 또는 대사가 잡는다. |
-| **출금이 막히면** | Admin 의 **boost(수수료 인상 재전송)·cancel** 판단 대상으로 넘긴다 — 실행은 매니저 API 오퍼레이션(6장). |
+| **출금이 막히면** | 매니저가 **정책 내 자동 boost**(수수료 인상 재전송) — gas 는 relay 부담. relay 불건전·정책 소진이면 경보(cancel 은 예외 수동). 상세 6장. |
 | **같은 건 중복 경보 방지** | 경보한 tx id 를 기록해 두고 다음 주기엔 건너뛴다. 해소(COMPLETED/FAILED 전이)되면 닫는다. |
 
 ## 폴링 생존 감시 — 죽은 폴링은 자기 죽음을 못 알린다
