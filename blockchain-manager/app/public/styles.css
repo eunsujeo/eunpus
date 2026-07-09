@@ -504,8 +504,8 @@ a.brand-mark { text-decoration: none; }
 .dviewer.fs .mermaid svg, .dviewer.fs-fallback .mermaid svg {
   width: auto;
   height: 92vh;
-  max-width: 96vw;
-  max-height: 92vh;
+  max-width: 96vw !important;  /* mermaid 인라인 max-width(자연폭)를 이겨 뷰포트 밖으로 안 나가게 */
+  max-height: 92vh !important;
 }
 
 /* ---- 문서 전용 페이지 이전/다음 ---- */
