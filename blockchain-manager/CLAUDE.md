@@ -99,11 +99,16 @@ KV 바인딩은 `wrangler.toml` 의 `[[kv_namespaces]] binding = "BOARD"` 로 �
 
 ```bash
 cd blockchain-manager/app
-cp .dev.vars.example .dev.vars   # 토큰 채우기
-npx wrangler pages dev public    # http://localhost:8788 (toml 이 BOARD KV 를 로컬 바인딩)
+cp .dev.vars.example .dev.vars   # 최초 1회 — 토큰 채우기
+
+./dev.sh          # 로컬 기동 (포트·캐시 정리 포함). http://localhost:8788
+./dev.sh clean    # 캐시 손상(_cf_ALARM·middleware build 오류) 시 .wrangler 전체 초기화 후 기동
 
 # 배포 (사용자 지시 후에만) — toml 이 BOARD KV 를 함께 바인딩
 npx wrangler pages deploy public --project-name=blockchain-manager \
   --commit-message="deploy blockchain manager kanban"
 npx wrangler pages secret put GITHUB_TOKEN --project-name=blockchain-manager
 ```
+
+`dev.sh` 가 하는 일: `.dev.vars` 확인 → 남은 wrangler·포트 점유 정리 → `.wrangler/tmp` 비움
+(로컬 KV state 는 보존; `clean` 인자면 `.wrangler` 전체 삭제) → `wrangler pages dev` 기동.
