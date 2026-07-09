@@ -7,7 +7,7 @@ status: To Do
 블록체인 매니저(별도 서비스)가 내부 폴링으로 워크스페이스의 입·출금 변경을 전부 판정해 메시지 큐에 publish 하고 확정 기준(DCCP)이 언제부터 잔액에 반영할지를 정한다.
 
 ```kotlin
-onChainEvent(handler)
+fun onChainEvent(handler: (ChainEvent) -> Unit)
 // 매니저가 내부 폴링으로 판정한 이벤트를 큐(onchain-events)에 publish — 백엔드의 큐 컨슈머가 handler 에 전달
 // ChainEvent { status, numOfConfirmations, networkStatus }
 ```
