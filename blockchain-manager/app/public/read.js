@@ -135,6 +135,29 @@ function setupTocDrawer() {
   tocEl.onclick = (e) => {
     if (e.target.tagName === 'A' && window.innerWidth < 900) readPage.classList.add('toc-hidden');
   };
+  setupActiveToc();
+}
+
+// 현재 보고 있는 장을 목차에서 강조
+function setupActiveToc() {
+  const links = {};
+  tocEl.querySelectorAll('a').forEach((a) => {
+    links[a.getAttribute('href').slice(1)] = a;
+  });
+  const titles = document.querySelectorAll('.read-ch-title');
+  if (!titles.length || !('IntersectionObserver' in window)) return;
+  const obs = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((en) => {
+        if (!en.isIntersecting) return;
+        Object.values(links).forEach((a) => a.classList.remove('active'));
+        const a = links[en.target.id];
+        if (a) a.classList.add('active');
+      });
+    },
+    { rootMargin: '-15% 0px -75% 0px', threshold: 0 }
+  );
+  titles.forEach((h) => obs.observe(h));
 }
 
 load();
