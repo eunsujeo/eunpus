@@ -100,8 +100,6 @@ sequenceDiagram
 | **reorg** | 확정으로 봤던 입금이 무효화되면 다음 폴에서 잡아 무효화 이벤트를 publish — 백엔드는 **반영해 둔 잔액만 되돌리고** 입금 기록은 보존. 신호는 FAILED + subStatus `DROPPED_BY_BLOCKCHAIN` (reorg 는 5장). |
 | **감지 지연** | 지연 = **폴링 주기**(큐 전달 자체는 즉시). 짧게 잡으면 실시간에 근접하고 API 호출이 는다 — 확정 요건과 rate limit 사이에서 정한다. |
 
-폴링이 못 보는 webhook 이벤트는 **막힘 경보(stuck_confirming) 하나뿐**이고, 그것도 오래 CONFIRMING 인 건을 조회로 골라내면 대체된다(다음 절). EVM 입금은 **mined 시점부터** 관찰된다. 폴링·웹훅·대사 세 경로의 관계는 아래 "감지 경로" 절에서 정리한다.
-
 ## 막힘 점검 — 오래 CONFIRMING 인 건 골라내기
 
 webhook 의 막힘 경보(stuck_confirming)를 대체합니다 — 감지 폴링이 모든 CONFIRMING 을 이미 블록체인 매니저 DB 에 체크포인트로 기록해 두므로, 같은 폴링의 느슨한 주기(예: 5분) 작업이 **자기 DB 에서 오래된 대기 건을 조회**하면 끝입니다(벤더 호출 없음).
@@ -127,7 +125,7 @@ sequenceDiagram
             SW-->>MQ: publish — 막힘 경보 · 수신자는 개입 수단 없음 · 고객 안내 + 대사 대기
         else 출금 건
             SW->>SW: 정책 내 자동 boost — fee 인상 재전송(RBF) (6장)
-            SW-->>MQ: publish — 정책 소진·relay 불건전 때만 경보
+            SW-->>MQ: publish — 경보는 boost 로 못 살릴 때만 (정책 소진 · relay 가 gas 못 댐)
         end
         MQ-->>BE: consume — 경보 처리
     end
@@ -140,7 +138,7 @@ sequenceDiagram
 | **조회** | **블록체인 매니저 DB 쿼리** — `status=CONFIRMING` 이고 기록 시각이 임계보다 이전인 행. 벤더의 `status` 필터 조회는 대사·운영용으로만 남긴다(8장). |
 | **막힘 판정** | 체류 시간이 **체인별 임계** 초과. 임계는 평시 confirmation 소요를 감안해 정한다. |
 | **입금이 막히면** | 수신자라 개입 수단이 없다 — **경보 publish + 고객 "확인 중" 안내**가 전부이고, 해소는 체인 혼잡 해소 또는 대사가 잡는다. |
-| **출금이 막히면** | 매니저가 **정책 내 자동 boost**(수수료 인상 재전송) — gas 는 relay 부담. relay 불건전·정책 소진이면 경보(cancel 은 예외 수동). 상세 6장. |
+| **출금이 막히면** | 매니저가 **정책 내 자동 boost**(수수료 인상 재전송) — gas 는 relay 부담. 자동 boost 로도 못 살리면(정책 소진, 또는 relay 가 gas 를 못 대거나 거절) 경보를 올려 **사람이 relay 복구·수동 처리**한다(cancel 은 예외). 상세 6장. |
 | **같은 건 중복 경보 방지** | 경보한 tx id 를 기록해 두고 다음 주기엔 건너뛴다. 해소(COMPLETED/FAILED 전이)되면 닫는다. |
 
 ## 폴링 생존 감시 — 죽은 폴링은 자기 죽음을 못 알린다
