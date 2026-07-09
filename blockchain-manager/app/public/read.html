@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>읽기 — 블록체인매니저</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t !== 'light' && t !== 'dark') {
+          t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" title="블록체인매니저">BM</span>
+      <span class="brand-name" id="read-title-top">읽기</span>
+    </div>
+    <div class="topbar-right">
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="테마 전환"></button>
+    </div>
+  </header>
+
+  <main class="read-page">
+    <h1 id="read-heading" class="read-heading"></h1>
+    <p id="read-sub" class="read-sub"></p>
+    <nav id="read-toc" class="read-toc"></nav>
+    <article id="read-body" class="doc-body"></article>
+  </main>
+
+  <script src="vendor/mermaid.min.js"></script>
+  <script src="md.js"></script>
+  <script src="theme.js"></script>
+  <script src="read.js"></script>
+</body>
+</html>

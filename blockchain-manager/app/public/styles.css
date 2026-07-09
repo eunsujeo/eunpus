@@ -446,6 +446,27 @@ body {
 .doc-page h1 { color: var(--text-strong); font-size: 26px; margin: 0 0 10px; }
 .doc-page .chips { margin-bottom: 20px; }
 .doc-page .doc-body { padding: 0; overflow: visible; }
+
+/* ---- 공유용 읽기 페이지 (read.html) ---- */
+.read-page { max-width: 1000px; margin: 0 auto; padding: 32px 24px 80px; }
+.read-heading { color: var(--text-strong); font-size: 28px; margin: 0 0 2px; }
+.read-sub { color: var(--muted); margin: 0 0 24px; }
+.read-toc {
+  margin: 0 0 36px;
+  padding: 16px 20px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.read-toc ol { margin: 0; padding-left: 22px; }
+.read-toc li { margin: 5px 0; }
+.read-toc a { color: var(--body); text-decoration: none; }
+.read-toc a:hover { color: var(--text-strong); text-decoration: underline; }
+.read-chapter { padding-top: 32px; margin-top: 32px; border-top: 1px solid var(--hairline); }
+.read-chapter:first-child { padding-top: 0; margin-top: 0; border-top: none; }
+.read-ch-title { color: var(--text-strong); font-size: 23px; margin: 0 0 14px; scroll-margin-top: 72px; }
+.muted { color: var(--muted); }
+
 a.brand-mark { text-decoration: none; }
 .btn-link { text-decoration: none; display: inline-flex; align-items: center; }
 
