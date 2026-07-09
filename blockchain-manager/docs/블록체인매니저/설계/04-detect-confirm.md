@@ -19,7 +19,7 @@ data class ChainEvent(
   val status: TxStatus,              // SUBMITTED · CONFIRMING · COMPLETED · FAILED
   val numOfConfirmations: Int,
   val subStatus: String? = null,     // 벤더 상세 사유 — 실패 원인·reorg(DROPPED_BY_BLOCKCHAIN) 등
-  val networkStatus: String? = null, // 체인 레이어 상태(NetworkStatus) — BROADCASTING·CONFIRMING·CONFIRMED·FAILED·DROPPED. status 와 다른 축이고, DROPPED=mempool 누락 → boost·replay 신호
+  val networkStatus: String? = null, // 체인 레이어 상태(NetworkStatus) — BROADCASTING · CONFIRMING · CONFIRMED · FAILED · DROPPED
 )
 ```
 
