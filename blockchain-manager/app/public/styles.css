@@ -19,8 +19,8 @@
   --code-inline-bg: #2b3139;
   --diagram-bg: #f7f8fa; /* 다크: 순백 대신 살짝 톤다운해 눈부심 완화 */
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  --th-bg: #2b3139;               /* 표 헤더 */
-  --zebra: rgba(255, 255, 255, 0.03); /* 표 짝수 행 */
+  --th-bg: #323a43;               /* 표 헤더 — 표면보다 한 단계 밝게 */
+  --zebra: rgba(255, 255, 255, 0.045); /* 표 짝수 행 */
   /* 코드 블록 패널 — 두 테마 공통으로 어둡게 (한눈에 "코드") */
   --code-panel-bg: #14181d;
   --code-panel-text: #d6dae0;
@@ -42,8 +42,8 @@
   --code-bg: #f0f2f5;
   --code-inline-bg: #eaecef;
   --diagram-bg: #ffffff; /* 라이트: 순백 유지 */
-  --th-bg: #edf0f4;                /* 라이트: 흰 배경과 구분되는 헤더 톤 */
-  --zebra: #f6f7f9;                /* 라이트: 옅은 줄무늬 (흰색과 구분) */
+  --th-bg: #e3e7ee;                /* 라이트: 흰 배경과 확실히 구분되는 헤더 밴드 */
+  --zebra: #eef1f5;                /* 라이트: 눈에 띄는 줄무늬 */
 }
 
 * { box-sizing: border-box; }
