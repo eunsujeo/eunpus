@@ -145,7 +145,7 @@ sequenceDiagram
 
 ## 상태 한 장 — Fireblocks 필드를 공통 어휘로
 
-Fireblocks 는 내부 상태를 여러 단계로 보냅니다. 백엔드가 보는 것은 **매니저가 번역한 공통 상태** 하나입니다 — 아래 넷이 밖으로 나갑니다.
+Fireblocks 는 내부 상태를 여러 단계로 보냅니다. 백엔드가 보는 것은 **매니저가 번역한 공통 상태** 하나입니다 — 아래 다섯이 밖으로 나갑니다.
 
 상태 변경 이벤트(onChainEvent)는 메시지 큐(withdrawal-events 토픽)에서 consume 하고, transactionOf 는 필요할 때 단건 확인하는 API 조회로 남습니다.
 
@@ -154,10 +154,11 @@ Fireblocks 는 내부 상태를 여러 단계로 보냅니다. 백엔드가 보�
 | **SUBMITTED** | 제출됨 — 벤더가 서명·전파 준비 중, 아직 체인 미등장 | PENDING_SIGNATURE · QUEUED · BROADCASTING |
 | **CONFIRMING** | 전파 후 체인에 등장, confirmation 누적 중 (아직 미확정) | CONFIRMING (numOfConfirmations 증가 중) |
 | **COMPLETED** | 확정 — DCCP(확정 정책) 임계 confirmation 도달 = finality, 이후 불변 | COMPLETED |
-| **FAILED** | 영구 실패 — 사유 동반 (수수료 부족·거절·revert 등) | FAILED · REJECTED · BLOCKED |
+| **REJECTED** | 거부·차단 — 정책·스크리닝에 막힘. 영구 기술 실패가 아니라 사람 개입 여지 (입금 동결은 Admin unfreeze 대기 · 5장) | REJECTED · BLOCKED |
+| **FAILED** | 영구 실패 — 사유 동반 (수수료 부족·revert 등) | FAILED |
 
 - confirm(체인 등장)↔finality(확정) 판정 기준은 **4장과 같다**(numOfConfirmations vs DCCP 임계).
-- 이 문서는 이 넷만 밖으로 내보낸다 — 벤더 내부의 세부 단계는 SUBMITTED 로 접어 감춘다.
+- 이 문서는 이 다섯만 밖으로 내보낸다 — 벤더 내부의 세부 단계는 SUBMITTED 로 접어 감춘다.
 - 입금 쪽 상태 흐름은 5장.
 
-상태 이름과 확정 정책(DCCP)은 벤더 안에 있고 그것을 공통 어휘 넷으로 번역하는 것은 매니저 내부입니다. 막힘 대응의 자동 boost 는 매니저가 실행하되, 어떤 정책(대기 임계·최대 시도)으로 boost 할지는 Admin 이 미리 정합니다 — cancel 은 예외적 수동입니다.
+상태 이름과 확정 정책(DCCP)은 벤더 안에 있고 그것을 공통 어휘 다섯으로 번역하는 것은 매니저 내부입니다. 막힘 대응의 자동 boost 는 매니저가 실행하되, 어떤 정책(대기 임계·최대 시도)으로 boost 할지는 Admin 이 미리 정합니다 — cancel 은 예외적 수동입니다.
