@@ -108,8 +108,8 @@ body {
   font: inherit;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-height: 110px;
+  gap: 6px;
+  min-height: 128px;
 }
 .cat-tile:hover { border-color: var(--primary); }
 /* 드래그 중 자리표시 — 유령 복사본이 아니라 "여기 들어갑니다" 빈 슬롯 */
@@ -120,6 +120,20 @@ body {
 .cat-tile.dragging > * { visibility: hidden; }
 .cat-tile-name { color: var(--text-strong); font-size: 16px; font-weight: 600; }
 .cat-tile-meta { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.cat-tile-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--hairline);
+  margin-top: auto;
+}
+.cat-tile-bar .seg { display: block; min-width: 3px; }
+.cat-tile-bar .seg-todo { background: var(--muted); }
+.cat-tile-bar .seg-prog { background: var(--primary); }
+.cat-tile-bar .seg-done { background: var(--accent-done); }
+.cat-tile-bar .seg-arch { background: var(--muted-strong); }
+.cat-tile-counts { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
 .cat-tile-grip {
   position: absolute;
   top: 12px;

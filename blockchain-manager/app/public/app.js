@@ -132,13 +132,35 @@ function render() {
   else renderBoard();
 }
 
-function tile(label, metaText, onClick) {
+// 카드 묶음의 상태 분포 → 세그먼트 바 + 카운트 라벨
+function statusSummary(subset) {
+  const slug = { 'To Do': 'todo', 'In Progress': 'prog', 'Done': 'done', '아카이브': 'arch' };
+  const counts = { 'To Do': 0, 'In Progress': 0, 'Done': 0, '아카이브': 0 };
+  for (const c of subset) counts[c.status] = (counts[c.status] || 0) + 1;
+  const bar = STATUSES
+    .filter((s) => counts[s] > 0)
+    .map((s) => `<span class="seg seg-${slug[s]}" style="flex:${counts[s]}" title="${esc(s)} ${counts[s]}"></span>`)
+    .join('');
+  const label =
+    `할일 ${counts['To Do']} · 진행 ${counts['In Progress']} · 완료 ${counts['Done']}` +
+    (counts['아카이브'] ? ` · 보관 ${counts['아카이브']}` : '');
+  return { bar, label };
+}
+
+function tile(label, metaText, subset, onClick) {
   const el = document.createElement('div');
   el.className = 'cat-tile';
   el.dataset.key = label;
   el.setAttribute('role', 'button');
   el.tabIndex = 0;
-  el.innerHTML = `<span class="cat-tile-name">${esc(label)}</span><span class="cat-tile-meta">${esc(metaText)}</span><span class="cat-tile-grip" title="드래그로 순서 변경">⠿</span>`;
+  const { bar, label: counts } = statusSummary(subset);
+  el.innerHTML =
+    `<span class="cat-tile-name">${esc(label)}</span>` +
+    `<span class="cat-tile-meta">${esc(metaText)}</span>` +
+    (subset.length
+      ? `<div class="cat-tile-bar">${bar}</div><span class="cat-tile-counts">${esc(counts)}</span>`
+      : '<span class="cat-tile-counts">문서 없음</span>') +
+    `<span class="cat-tile-grip" title="드래그로 순서 변경">⠿</span>`;
   el.addEventListener('click', onClick);
   el.addEventListener('keydown', (e) => { if (e.key === 'Enter') onClick(); });
   return el;
@@ -152,8 +174,8 @@ function renderHome() {
     return;
   }
   const els = catOrder.map((cat) => {
-    const n = cards.filter((c) => c.category === cat).length;
-    return tile(cat, `${tree[cat].length}개 분류 · 문서 ${n}건`, () => goTo(cat, null));
+    const subset = cards.filter((c) => c.category === cat);
+    return tile(cat, `${tree[cat].length}개 분류 · 문서 ${subset.length}건`, subset, () => goTo(cat, null));
   });
   els.forEach((el) => view.appendChild(el));
   makeReorderable(view, els, catOrder, (next) => { catOrder = next; persistOrder(); render(); });
@@ -169,8 +191,8 @@ function renderCatView() {
     return;
   }
   const els = subs.map((sub) => {
-    const n = cards.filter((c) => c.category === nav.cat && c.subcategory === sub).length;
-    return tile(sub, `문서 ${n}건`, () => goTo(nav.cat, sub));
+    const subset = cards.filter((c) => c.category === nav.cat && c.subcategory === sub);
+    return tile(sub, `문서 ${subset.length}건`, subset, () => goTo(nav.cat, sub));
   });
   els.forEach((el) => view.appendChild(el));
   makeReorderable(view, els, subs, (next) => { tree[nav.cat] = next; persistOrder(); render(); });
