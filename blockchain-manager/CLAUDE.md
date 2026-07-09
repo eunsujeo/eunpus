@@ -97,6 +97,9 @@ status: To Do                   # To Do | In Progress | Done | 아카이브
 - ○ 카드 = 제목·요약 2줄·tabular 날짜만. 담백하게
 - 새 UI 를 넣기 전에 "이거 AI 가 자주 쓰는 패턴인가 / 문맥과 중복인가" 자문할 것
 
+### mermaid 규약 (docs)
+- ✗ **sequence 다이어그램 alt 분기에 `rect` 배경색 지양** — 참여자 `box` tint 와 겹쳐 지저분해진다. 분기는 alt 라벨로 구분.
+
 ## 6. 운영 규칙
 
 - ★ **자동 배포 금지** — `wrangler pages deploy` 는 사용자 명시 지시 시에만.
