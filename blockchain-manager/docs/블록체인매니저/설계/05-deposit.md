@@ -16,6 +16,7 @@ sequenceDiagram
     participant FB as Fireblocks (SaaS)
     box rgb(220,252,231) 블록체인 매니저 — 별도 서비스
     participant BM as 매니저 내부 폴링
+    participant MDB as 블록체인 매니저 DB<br/>커서 · 주소 매핑 · 체크포인트
     end
     box rgb(254,249,195) 메시지 큐
     participant MQ as deposit-events
@@ -30,8 +31,10 @@ sequenceDiagram
     CH-->>FB: Fireblocks 가 자기 vault 범위를 감지
     Note over FB,DB: 여기서부터는 전부 오프체인 — 감지·폴링은 매니저, 기록·가용 처리는 백엔드 DB 의 일이고,<br/>입금 처리에서 우리는 체인에 아무 거래도 내지 않는다
     Note over BM,FB: 주기 폴링은 매니저 내부 구현 — outbound · 지난 폴 이후 갱신된 tx 만 받는다 (4장)
+    BM->>MDB: 커서 읽기 — 마지막 처리 lastUpdated
     BM->>FB: GET /v1/transactions · orderBy=lastUpdated · after=커서 · limit=200
     FB-->>BM: status CONFIRMING (체인 등장·미확정)
+    BM->>MDB: 목적지 vault → accountId 귀속 (주소 매핑) · tx 체크포인트
     BM->>MQ: publish — 입금 이벤트 status=CONFIRMING · 파티션 키=accountId
     MQ-->>QC: consume — 입금 이벤트 status=CONFIRMING
     QC->>DB: tx 기록 status=CONFIRMING · 금액은 대기(pending) 칸 — 가용엔 아직 안 더한다
@@ -43,20 +46,21 @@ sequenceDiagram
     MQ-->>QC: consume — 입금 이벤트 status=COMPLETED
     QC->>DB: tx 기록 status=COMPLETED · 금액은 대기 → 가용(available) 이동
     QC->>MQ: 오프셋 커밋 — 원장 반영 성공 후에만
+    BM->>MDB: 커서 저장 — 처리 성공분까지, 다음 폴 시작점
 ```
 
-오프셋 커밋이 원장 반영 뒤라 실패한 이벤트는 커밋되지 않고 재소비된다(at-least-once) — 중복 소비는 원장 반영의 이벤트 ID unique 제약으로 걸러진다. 같은 계정의 이벤트는 파티션 키가 accountId 라 감지 → 확정 순서가 뒤집히지 않는다.
+오프셋 커밋을 **원장 반영에 성공한 뒤에만** 하므로, 처리에 실패하면 커밋이 안 되고 큐가 그 이벤트를 다시 보낸다(그래서 최소 한 번은 반영된다 — at-least-once). 같은 이벤트를 두 번 받아도 원장이 **이벤트 ID 에 unique 제약**을 걸어 두 번째는 무시하니 잔액이 이중으로 더해지지 않는다. 같은 계정의 이벤트는 파티션 키가 accountId 라 감지 → 확정 순서도 뒤집히지 않는다.
 
 ## 입금에서 보는 상태·하위 상태
 
 Fireblocks 트랜잭션 상태는 전부 17가지지만 대부분은 출금 쪽 단계(제출·승인·서명·전파)이고 — 그쪽은 6페이지의 "상태 한 장" 표가 맡습니다 — **입금이 실제로 지나는 것은 아래 넷**입니다.
 
-| status | 뜻 | 고객 잔액에는 |
-|---|---|---|
-| `CONFIRMING` | 체인 등장, confirmation 누적 중 | 대기(pending)로 잡힌다 |
-| `COMPLETED` | DCCP 임계 도달 = finality (final). zero-confirmation 설정이면 여러 번 관찰될 수 있음(4장 함정) | 임계 확인 후 가용(available)에 더해진다 |
-| `REJECTED` | AML 거절 또는 동결 — 입금은 Admin 이 unfreeze 할 때까지 자산 잠금 | 반영하지 않는다 — Admin unfreeze 대기 |
-| `FAILED` | 영구 실패 (final) | 반영하지 않는다 |
+| status | 뜻 |
+|---|---|
+| `CONFIRMING` | 체인 등장, confirmation 누적 중 — 대기(pending)로 잡힌다 |
+| `COMPLETED` | DCCP 임계 도달 = finality (final). 임계 확인 후 가용(available)에 더해진다. zero-confirmation 설정이면 여러 번 관찰될 수 있음(4장 함정) |
+| `REJECTED` | AML 거절 또는 동결 — Admin 이 unfreeze 할 때까지 자산 잠금, 잔액 반영 보류 |
+| `FAILED` | 영구 실패 (final) — 반영하지 않는다 |
 
 각 status 는 `subStatus` 로 사유가 세분됩니다 — 매니저 내부 폴링이 분기하는 `status`·`numOfConfirmations` 에 사유를 더해주는 필드이고 큐 이벤트에 함께 실려 옵니다. 입금 관련은 아래가 전부이고, 특히 **REJECTED 의 동결 3종은 Admin 의 unfreeze 운영**이 걸립니다.
 
@@ -99,24 +103,26 @@ Fireblocks 트랜잭션 상태는 전부 17가지지만 대부분은 출금 쪽 
 sequenceDiagram
     autonumber
     participant SW as sweep 작업<br/>Service 백엔드 · 주기 실행
-    participant DB as 백엔드 DB<br/>원장 · 대상 목록
     box rgb(220,252,231) 블록체인 매니저 — 별도 서비스
     participant BM as 블록체인 매니저 API
     end
     participant FB as Fireblocks (SaaS)
     participant RL as 지정 relay<br/>(Fireblocks Relay)
+    box rgb(254,249,195) 메시지 큐
+    participant MQ as internal-events
+    end
 
-    Note over SW,DB: 트리거 — 잔액 임계 · 고정 스케줄 · 네트워크 fee 유리할 때
-    SW->>DB: sweep 대상 조회 — 가용 처리 끝난 고객 vault 잔액
+    Note over SW: 트리거 — 잔액 임계 · 고정 스케줄 · 네트워크 fee 유리할 때<br/>대상 선정(가용 처리 끝난 고객 vault 잔액)은 백엔드 몫 — 자기 DB 조회
     SW->>BM: API — submitTransaction · 고객 vault → 옴니버스 (vault 별 1건 · gasless)
     BM->>FB: 거래 제출 — Fireblocks 연동은 매니저 내부 구현
     Note over FB: 그 vault 의 첫 gasless 거래면 위임 설정(upgrade)이 함께 처리된다 — 주소·키 불변
     FB->>RL: gas 부담 위임 — 거래 생성·서명 시점 (relay 거절이면 거래 실패)
     Note over FB,RL: gas 는 relay 가 지불 · 토큰은 고객 vault 에서 이동 — 월말 인보이스 정산
     FB-->>BM: 제출 접수
-    BM-->>SW: 접수 응답 — 이후 상태는 매니저 내부 폴링이 추적하고 변경은 큐 publish (4장 · 내부 이동 분기)
-    SW->>DB: sweep 기록 — 고객 잔액 원장은 불변 (온체인 보관 위치만 이동)
-    Note over SW,RL: 이 그림은 전부 오프체인이다 — 온체인은 relay 가 전파한 뒤부터고,<br/>그 전파·확정의 추적은 4장의 매니저 내부 폴링이 내부 이동으로 잡는다
+    BM-->>SW: 접수 응답 (txRef)
+    Note over BM,RL: 여기까지 오프체인 — 온체인은 relay 가 전파한 뒤부터
+    BM->>MQ: 매니저 내부 폴링이 내부 이동 완료를 publish → internal-events (4장)
+    MQ-->>SW: consume — 완료 확인 후 sweep 기록 마감 (고객 원장 불변 · 온체인 위치만 이동)
 ```
 
 이 한 건에서 누가 무엇을 하는지 역할로 나누면:
