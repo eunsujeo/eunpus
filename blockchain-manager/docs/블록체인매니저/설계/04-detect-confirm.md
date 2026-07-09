@@ -8,34 +8,34 @@ status: To Do
 
 ```kotlin
 fun onChainEvent(handler: (ChainEvent) -> Unit)
-// 매니저가 내부 폴링으로 판정한 이벤트를 큐(onchain-events)에 publish — 백엔드의 큐 컨슈머가 handler 에 전달
-// ChainEvent { status, numOfConfirmations, networkStatus }
+// 매니저가 내부 폴링으로 판정한 이벤트를 큐(onchain-events)에 publish — 백엔드가 consume
+
+data class ChainEvent(
+  val type: EventType,               // DEPOSIT · WITHDRAWAL · SWEEP · DELTA · STUCK · UNMAPPED
+  val txRef: String,                 // 벤더 tx id
+  val externalTxId: String? = null,  // 우리 요청 키 (출금·내부이체) — 완료 대응·멱등
+  val accountId: AccountId,          // 파티션 키 (내부이체 = 출발 계정)
+  val asset: Asset,
+  val to: String,                    // 목적지 주소 — 고객 입금 판별
+  val status: TxStatus,              // SUBMITTED · CONFIRMING · COMPLETED · FAILED
+  val numOfConfirmations: Int,
+  val subStatus: String? = null,     // 예: DROPPED_BY_BLOCKCHAIN (reorg)
+  val networkStatus: String? = null, // 네트워크 상태 (벤더)
+)
 ```
 
 **토픽 하나(`onchain-events`)**가 워크스페이스의 입·출금 변경을 전부 나릅니다 — 입금 감지·확정과 출금 상태 변경 모두 이 채널로 옵니다. 파티션 키는 **accountId** — 같은 계정의 이벤트는 같은 파티션에서 순서가 보장되어 감지 → 확정이 뒤집히지 않습니다.
 
 이 페이지는 그 토픽을 채우는 매니저 내부 폴링과 확정 기준(언제부터 믿는가)을 정의하고 **입금(5장)·출금(6장)이 이것을 소비**합니다.
 
-사용법은 **"등록은 한 번, publish 는 매니저가"**입니다 — 부팅 시 큐 컨슈머를 시작해 handler 를 등록해 두면, 매니저의 내부 폴링 루프(아래 절)가 판정한 이벤트를 publish 할 때마다 consume 해 불러줍니다.
+사용법은 **"등록은 한 번, publish 는 매니저가"** — 백엔드가 부팅 시 handler 를 한 번 등록하면, 매니저 내부 폴링이 판정한 이벤트를 publish 할 때마다 consume 한다.
 
-```kotlin
-// Service 백엔드 부팅 시 1회 — 큐 컨슈머 시작 + handler 등록
-manager.onChainEvent { event ->
-    when {
-        // ① 우리가 낸 건 — 외부 출금(6장) · sweep(5장) · 델타 배치(10장)
-        //    이 판별이 먼저다: sweep 의 옴니버스 수신이 입금으로 오인되지 않게
-        submitted.contains(event.txRef) -> submittedTracker.apply(event)   // TxRef 로 대조해 상태 갱신
-        // ② 고객 입금 — 목적지가 고객 입금 주소 매핑에 있는 수신
-        depositAddresses.contains(event.to) -> depositLedger.apply(event)  // 대기→가용 (5장)
+**처리는 백엔드 몫**이고, 계약은 이렇다:
 
-        // ③ 그 외 — 매핑 없는 수신
-        else -> alert(event)   // 알림 (아래 절)
-    }
-}
-// handler 는 멱등이어야 한다 — 같은 이벤트가 두 번 올 수 있다 (겹쳐 받기·재시도·재소비)
-// handler 가 실패하면 오프셋을 커밋하지 않아 같은 이벤트가 재소비된다 (at-least-once)
-// 인스턴스가 여러 대여도 컨슈머 그룹 하나로 소비 — 분배는 큐가 한다
-```
+- **라우팅** — ① 우리 거래(출금·sweep·델타 · txRef 대조) → 완료 대응(아래 내부 이체 절·6·10장) · ② 고객 입금(목적지가 입금 주소) → 대기→가용(5장) · ③ 매핑 없는 수신 → 알림. **①을 먼저** 봐 sweep 의 옴니버스 수신을 입금으로 오인하지 않는다.
+- **멱등** — 같은 이벤트가 두 번 올 수 있다(겹쳐 받기·재시도). 이벤트 ID(tx id·externalTxId) unique 로 상태 전이만 반영한다.
+- **커밋** — 처리 성공 후에만 오프셋 커밋(at-least-once). 실패하면 재소비된다.
+- **컨슈머 그룹 하나** — 인스턴스가 여러 대여도 분배는 큐가 한다.
 
 ## 내부 이체 — 파티션 키·완료 대응 (결정)
 
@@ -220,5 +220,3 @@ CONFIRMING 에서 COMPLETED 로 넘어가는 **임계 confirmation 수를 정하
 > Deposit Policy 를 **zero-confirmation** 으로 두면, COMPLETED 가 **블록에 등장하는 시점에 먼저** 뜰 수 있고 이후 폴마다 관찰값(등장 + 1차 confirm + 추가 confirm)이 계속 갱신될 수 있다. 이 설정에서는 "COMPLETED 를 처음 관찰했다"가 곧 "충분한 confirmation 이 쌓였다"를 뜻하지 않는다.
 >
 > 그래서 매니저의 확정 판정은 status 만 보지 말고 **`numOfConfirmations` 를 finality 임계값과 직접 비교**하는 편이 안전하다. 어떤 임계를 finality 로 볼지는 위 DCCP 와 한 몸이다.
-
-이 기준을 소비하는 쪽 — 입금의 잔액 반영·동결·reorg 는 5. 입금, 출금의 상태 추적·boost·cancel 은 6. 출금, 잔액 세 칸과의 맞물림은 8. 잔액과 내역 조회.
