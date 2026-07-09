@@ -29,14 +29,18 @@ sequenceDiagram
     BE->>BM: depositAddressOf(accountId, asset) — API
     BM->>MDB: (accountId, asset)↔주소 읽기
     alt 주소 있음
+        rect rgb(220,252,231)
         MDB-->>BM: 주소 (이더리움·Base = 0xAb3… · memoTag null)
         BM-->>BE: 주소
+        end
     else 계정 있고 주소 미발급
         MDB-->>BM: 주소 없음
         BM-->>BE: null
     else accountId 없음 (미등록 계정)
+        rect rgb(254,226,226)
         MDB-->>BM: 계정 없음
         BM-->>BE: 에러 (AccountNotFound)
+        end
     end
 ```
 
