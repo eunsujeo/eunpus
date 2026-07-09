@@ -112,8 +112,12 @@ body {
   min-height: 110px;
 }
 .cat-tile:hover { border-color: var(--primary); }
-.cat-tile.dragging { opacity: 0.4; }
-.cat-tile.drop-target { border-color: var(--primary); border-style: dashed; }
+/* 드래그 중 자리표시 — 유령 복사본이 아니라 "여기 들어갑니다" 빈 슬롯 */
+.cat-tile.dragging {
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  border: 1px dashed var(--primary);
+}
+.cat-tile.dragging > * { visibility: hidden; }
 .cat-tile-name { color: var(--text-strong); font-size: 16px; font-weight: 600; }
 .cat-tile-meta { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .cat-tile-grip {
