@@ -15,6 +15,8 @@ const headingEl = document.getElementById('read-heading');
 const subEl = document.getElementById('read-sub');
 const tocEl = document.getElementById('read-toc');
 const bodyEl = document.getElementById('read-body');
+const readPage = document.querySelector('.read-page');
+const tocToggle = document.getElementById('toc-toggle');
 
 async function load() {
   window.MD.initMermaid();
@@ -32,6 +34,8 @@ async function renderLanding() {
   headingEl.textContent = '문서 읽기';
   subEl.textContent = '카테고리를 골라 순서대로 읽으세요.';
   tocEl.innerHTML = '';
+  readPage.classList.remove('with-toc', 'toc-hidden');
+  if (tocToggle) tocToggle.style.display = 'none';
   bodyEl.innerHTML = '<p class="muted">불러오는 중…</p>';
   try {
     const board = await fetch('/api/board').then((r) => r.json());
@@ -108,14 +112,29 @@ async function renderCategory() {
       );
     });
 
-    tocEl.innerHTML = `<ol>${toc.join('')}</ol>`;
+    // 목차 — 제목에 이미 번호가 있으므로 자동 번호(ol) 대신 ul
+    tocEl.innerHTML = `<ul>${toc.join('')}</ul>`;
     bodyEl.innerHTML = sections.join('\n');
+    setupTocDrawer();
 
     await window.MD.runMermaid('#read-body .mermaid');
     window.MD.enhanceDiagrams(bodyEl);
   } catch (e) {
     bodyEl.innerHTML = `<p class="muted">불러오기 실패: ${esc(e.message)}</p>`;
   }
+}
+
+// 목차를 사이드 드로어로 — 토글로 슬라이드 인/아웃 (좁은 화면은 기본 닫힘)
+function setupTocDrawer() {
+  readPage.classList.add('with-toc');
+  if (window.innerWidth < 900) readPage.classList.add('toc-hidden');
+  if (tocToggle) {
+    tocToggle.style.display = '';
+    tocToggle.onclick = () => readPage.classList.toggle('toc-hidden');
+  }
+  tocEl.onclick = (e) => {
+    if (e.target.tagName === 'A' && window.innerWidth < 900) readPage.classList.add('toc-hidden');
+  };
 }
 
 load();
