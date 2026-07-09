@@ -7637,3 +7637,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 정본 promote: open-Q 에만 있던 확답을 entities/fireblocks/transaction.md 본문("reorg 시 상태 전이" 절)으로 올림 — 그간 정본 페이지에 누락돼 있었음
 - 영향받은 페이지: entities/fireblocks/transaction.md (frontmatter last_updated_stage 150·source_count 9 · reorg 절·Sources 추가) · open-questions/fireblocks.md (Q-T04 정본 링크)
 - 신규 entity: 0
+
+## Stage 151 (2026-07-09) — 개발자 RPC 인터페이스 promote (JSON-RPC / Web3 Provider)
+- source: reference-evm-local-json-rpc.md, reference-evm-web3-provider.md (Mode B → vendors/fireblocks/api.md 흡수)
+- 계기: "Fireblocks RPC 노드 지원?" + "블록 단위 tx 수집 가능?" 질의 — 개발자 통합 계층이 curated 전체에 부재 확인 (raw source에만 존재)
+- 명확화: RPC 인터페이스 ≠ 블록 인덱싱. read류는 default 노드 라우팅, 블록단위 전체 수집은 별도 노드+인덱서 영역으로 경계 표기 (→ docs/architecture/blockchain-indexer-architecture-reference)
+- 영향받은 페이지: vendors/fireblocks/api.md (Details "개발자 통합 인터페이스" 서브섹션 + frontmatter last_updated_stage 151·source_count 16·tags +integration + Sources +2)
+- 신규 entity: 0 (api.md hub 흡수, streak 유지)

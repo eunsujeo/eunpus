@@ -2,10 +2,10 @@
 type: vendor-hub
 vendor: fireblocks
 status: stable
-tags: [api, identity, data-objects]
+tags: [api, identity, data-objects, integration]
 stage_introduced: 1
-last_updated_stage: 50
-source_count: 14
+last_updated_stage: 151
+source_count: 16
 related:
   - api-co-signer
   - api-key
@@ -59,6 +59,15 @@ _REST endpoint surface 는 Stage 50 섹션 참조 (Vault / Transactions / Webhoo
 
 자세한 lifecycle은 [[vendors/fireblocks/lifecycle-events]] §"API User lifecycle" 참고.
 
+### 개발자 통합 인터페이스 — JSON-RPC / Web3 Provider (EVM)
+
+Fireblocks는 자체 지갑을 EVM 개발 스택에 붙이기 위한 **개발자 통합 계층 2종**을 제공. 둘 다 서명·컨트랙트 배포·tx 전송용이며, **블록체인 노드 자체가 아니라 Fireblocks API를 백엔드로 하는 인터페이스**.
+
+- **Fireblocks JSON-RPC** (`@fireblocks/fireblocks-json-rpc`) — 로컬 커맨드라인 JSON-RPC 서버. Fireblocks API로 EVM 상호작용을 JSON-RPC로 노출. Brownie·Foundry·web3.py 스택에 연결 (source: `reference-evm-local-json-rpc.md`)
+- **Fireblocks Web3 Provider** (`@fireblocks/fireblocks-web3-provider`) — ethers.js·web3.js·viem·Truffle용 EIP-1193 provider (source: `reference-evm-web3-provider.md`)
+
+**범위 한계 (★ Stage 151)**: 이들은 read RPC 엔드포인트 상품이 아님. read류(publicly available operations)는 Fireblocks default 노드로 라우팅되고, 대량 블록 순회/인덱싱 용도로 설계되지 않음. 블록 단위 전체 트랜잭션 수집은 별도 노드+인덱서 영역 → [[docs/architecture/blockchain-indexer-architecture-reference]]. 고객 노드로 tx 라우팅은 [[vendors/fireblocks/blockchains]] §"Node Router".
+
 ## Related Pages
 
 - [[vendors/fireblocks/authentication]]
@@ -76,6 +85,8 @@ _REST endpoint surface 는 Stage 50 섹션 참조 (Vault / Transactions / Webhoo
 - `2026-05-18__support-fireblocks-io__re-enrolling-api-users.md`, p.1–2
 - `2026-05-18__support-fireblocks-io__rename-and-delete-api-users.md`, p.1–2
 - `2026-05-18__support-fireblocks-io__allowlist-ip-addresses-for-api-user-requests.md`, p.1
+- `2026-05-22__developers-fireblocks-com__reference-evm-local-json-rpc.md` (Stage 151: JSON-RPC 서버)
+- `2026-05-22__developers-fireblocks-com__reference-evm-web3-provider.md` (Stage 151: Web3 Provider)
 
 ## Open Questions
 
