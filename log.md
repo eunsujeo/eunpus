@@ -7660,3 +7660,9 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - workspace-keys-backup.md: "DR/BCP 지표·복구 계층" 절 — RTO 6h·RPO 0·SLO 99.9%·ISO22301·SOC2 Type2 · 일 단위 백업·DR Kit · Soft/Hard Key Recovery(Station70·Coin Cover) · Risk-S09(DR Service SPOC) 축 구분. frontmatter 153·source_count 8
 - 영향받은 페이지: entities/fireblocks/mpc-key-share.md · entities/fireblocks/workspace-keys-backup.md
 - 신규 entity: 0
+
+## Stage 154 (2026-07-10) — Plugin-based Callback Handler 검증 항목 promote (official boilerplate)
+- source: github.com/fireblocks/plugin-based-callback-handler (README + src/plugins/*.py raw verify) → sources/fireblocks/markdown/2026-07-10__github-com__fireblocks-plugin-based-callback-handler.md
+- 검증 3계층 확정: (1) 요청 provenance — TxidValidation(txId DB 조회)·ExtraSignature(RSA PKCS1v15+SHA256), (2) 정책 재평가 — TxPolicyValidation(로컬 PolicyEngine, TAP 독립), (3) 서명 대상 무결성 — PSBTValidation(PSBT 해시 대조, ETH getMessageToSign 가이드와 동형)
+- 영향받은 페이지: entities/fireblocks/callback-handler.md (§Stage 154·frontmatter 154·source_count 6·related+policy-engine) · vendors/fireblocks/callback-handler.md (§Stage 154·frontmatter 154·source_count 5) · vendors/fireblocks/policy-engine.md (Related Pages 역링크)
+- 신규 entity: 0 (기존 callback-handler entity 에 흡수)

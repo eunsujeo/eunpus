@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [signing, integration]
 stage_introduced: 24
-last_updated_stage: 24
-source_count: 4
+last_updated_stage: 154
+source_count: 5
 related: [api, api-co-signer, api-user, callback-handler, cosigner, policy-engine]
 ---
 # Fireblocks — Callback Handler
@@ -67,6 +67,19 @@ Co-signer 가 자동 서명 전에 호출하는 외부 검증 훅. **Stage 24** 
 
 Callback Handler 미설정 = Co-signer 자동 sign/approve. 외부 validation 없음 — `vendors/fireblocks/risks.md` §Risk-S16 참조.
 
+### Stage 154 — Plugin-based Callback Handler: 기대 검증 항목 (official boilerplate)
+
+`github.com/fireblocks/plugin-based-callback-handler` (README + `src/plugins/*.py` raw verify). 각 plugin 은 `process_request(data) -> bool` (`True`=approve / `False`=reject), `PLUGINS` 환경변수로 등록.
+
+| plugin | 검증 | 계층 |
+|---|---|---|
+| `TxidValidation` | payload `txId` 를 DB 조회 (우리 발행분 여부) | 요청 provenance |
+| `ExtraSignature` | `extraParameters.extraSignature` RSA verify (PKCS1v15+SHA256) | 요청 provenance (앱 계층 이중 서명) |
+| `TxPolicyValidation` | 로컬 `PolicyEngine.check_tx(tx).allow` | 정책 재평가 (TAP 독립) |
+| `PSBTValidation` | PSBT 서명 해시 vs signature request `content` (BTC/BTC_TEST·VAULT) | 서명 대상 무결성 |
+
+→ Fireblocks 가 기대하는 검증 = (1) 요청 provenance, (2) TAP-독립 정책 재평가, (3) 서명 대상 해시 무결성. PSBT plugin 은 ETH "Validate raw transactions" 가이드의 해시 대조와 동형. 세부: [[entities/fireblocks/callback-handler]] §Stage 154.
+
 ### 재등록 트리거 (Callback Handler 측 변경)
 
 `re-enrolling-api-users.md`, p.1–2:
@@ -90,6 +103,7 @@ Callback Handler 미설정 = Co-signer 자동 sign/approve. 외부 validation �
 - `2026-05-18__support-fireblocks-io__re-enrolling-api-users.md`, p.1–2
 - `sources/fireblocks/webpages/developers/docs/create-api-co-signer-callback-handler.md` (Stage 24 Mode C, setup guide)
 - `sources/fireblocks/webpages/developers/reference/cosigner-callbackhandler-secure-communication-authentication.md` (Stage 24 Mode C, 5 options reference)
+- `sources/fireblocks/markdown/2026-07-10__github-com__fireblocks-plugin-based-callback-handler.md` (Stage 154 Mode C) — 공식 boilerplate 4 plugin 검증 항목
 
 ## Open Questions
 

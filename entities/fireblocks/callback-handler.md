@@ -4,9 +4,9 @@ vendor: fireblocks
 status: stable
 tags: [signing, integration]
 stage_introduced: 1
-last_updated_stage: 152
-source_count: 5
-related: [api-co-signer, api-user, callback-handler, cosigner, transaction]
+last_updated_stage: 154
+source_count: 6
+related: [api-co-signer, api-user, callback-handler, cosigner, policy-engine, transaction]
 ---
 # Entity: Callback Handler (Fireblocks)
 
@@ -86,6 +86,21 @@ API user를 Co-signer와 페어링할 때 Callback Handler 인증서가 Co-signe
 - **RETRY 우회** — 콜백은 cosigner 에 **RETRY 를 최대 20회·~3분 간격(총 ~1시간)** 반환할 수 있다. 그 창 동안 서버측 수동 승인 로직을 돌리는 용도. 단 **두 주체 co-approval(예: JV+은행) 모델엔 부적합** — [[open-questions/fireblocks]] Q-2026-07-09-C02.
 - **현행 연결책** — `replacedTxHash` 는 콜백엔 없지만 "Get Transaction by Fireblocks ID" 로 조회하면 **boost·drop 공통으로 이전 tx id** 를 준다 → 이걸로 원본 연결. 콜백 payload 에 `replaceTxByHash` 포함은 **feature request open**. (internal note 는 고객이 설정 가능 → 침해 시 신뢰 불가라 연결 근거로 부적합.)
 
+### Stage 154 — Plugin-based Callback Handler: 기대 검증 항목 (official boilerplate)
+
+`github.com/fireblocks/plugin-based-callback-handler` (README + `src/plugins/*.py` raw verify):
+
+Fireblocks 공식 boilerplate 가 사전 구성 plugin 4종으로 예시하는 검증 계층. 각 plugin 은 `PluginInterface` 상속, `process_request(data) -> bool` 구현 (`True`=approve / `False`=reject). `PLUGINS` 환경변수로 등록 (snake_case, comma 구분, `name:/path` 로 custom path).
+
+| plugin | 검증 | 반환 True 조건 |
+|---|---|---|
+| `TxidValidation` | payload `txId` 를 DB 조회 | txId 가 DB 에 존재 (우리 발행분) |
+| `ExtraSignature` | `extraParameters.extraSignature` 를 public key 로 RSA verify (PKCS1v15 + SHA256) | 앱 계층 추가 서명 유효 (실패 시 PluginError) |
+| `TxPolicyValidation` | 요청 → `Transaction` 변환 후 로컬 `PolicyEngine.check_tx(tx)` | `result.allow` (TAP 과 독립된 자체 정책 통과) |
+| `PSBTValidation` | PSBT 서명 해시 집합 vs 각 signature request `content` | asset ∈ {BTC, BTC_TEST}·`sourceType==VAULT` + 모든 해시 일치 |
+
+→ 3 검증 계층: (1) **요청 provenance** — txId 가 우리 발행분인가 / 추가 서명이 우리 것인가, (2) **정책 재평가** — Callback Handler 측 TAP-독립 정책 통과, (3) **서명 대상 무결성** — 서명될 해시가 우리가 만든 tx/PSBT 해시와 일치 (PSBT plugin = ETH "Validate raw transactions" 가이드의 `getMessageToSign` 해시 대조와 동형).
+
 ### 잔존 미명세 (본 자료 외 필요)
 
 - timeout / idempotency (**RETRY 응답은 Stage 152 확인** — 최대 20회·~3분·~1h; APPROVE/REJECT·RETRY 외 IGNORE 등 나머지 semantics 는 잔존)
@@ -94,6 +109,7 @@ API user를 Co-signer와 페어링할 때 Callback Handler 인증서가 Co-signe
 ## Related Pages
 
 - [[vendors/fireblocks/callback-handler]]
+- [[vendors/fireblocks/policy-engine]]
 - [[entities/fireblocks/api-co-signer]]
 - [[entities/fireblocks/cosigner]]
 - [[entities/fireblocks/api-user]]
@@ -106,6 +122,7 @@ API user를 Co-signer와 페어링할 때 Callback Handler 인증서가 Co-signe
 - `sources/fireblocks/webpages/developers/docs/create-api-co-signer-callback-handler.md` (Stage 24 Mode C, 47 lines)
 - `sources/fireblocks/webpages/developers/reference/cosigner-callbackhandler-secure-communication-authentication.md` (Stage 24 Mode C, 185 lines)
 - `sources/fireblocks/csm2_boost.txt` (Stage 152) — 승인 단계 rawTx 부재·boost/drop 연결 불가·RETRY(20회·~3분·~1h)·replacedTxHash 연결책 (Fireblocks CSM · Kakao PoC)
+- `sources/fireblocks/markdown/2026-07-10__github-com__fireblocks-plugin-based-callback-handler.md` (Stage 154 Mode C) — 공식 boilerplate 4 plugin 검증 항목 (README + src/plugins/*.py raw verify)
 
 ## Open Questions
 
