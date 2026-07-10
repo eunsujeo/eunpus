@@ -60,7 +60,7 @@ flowchart LR
 ```mermaid
 flowchart LR
     A["교체 시점<br/>매니저 구현 교체<br/>신규 발급부터 새 주소"] --> B["이중 감시 기간<br/>구 주소 watch-list 유지<br/>(늦은 입금 수용)"]
-    B --> C["이사 (sweep)<br/>구 주소 잔액을<br/>새 vault 로 출금"]
+    B --> C["잔액 이전 (sweep)<br/>구 주소 잔액을<br/>새 vault 로 출금"]
     C --> D["종료<br/>구 주소 안내 중단<br/>DB에 세대 기록"]
 
     classDef step fill:#dbeafe,stroke:#2563eb;
@@ -73,7 +73,7 @@ flowchart LR
 - 파랑은 값싼 코드·설정 작업, **노랑 구간이 비용의 전부**다.
 - 그 비용은 **구 주소 수와 잔액에 비례**한다 — 옮길 돈이 많을수록 sweep 출금 건수·수수료가 는다.
 - 늦은 입금을 놓치지 않도록 **구 주소 watch-list 를 한동안 유지**하다가, 잔액을 새 vault 로 출금(6장 출금 그대로)하고 DB 에 주소의 세대를 기록해 닫는다.
-- 서명 관문의 규칙(화이트리스트·한도)도 **새 벤더의 거버넌스 정책으로 이관**하고 동등성을 검증하는 것까지가 교체다(6장).
+- 벤더 정책(TAP)에 있던 화이트리스트·한도도 **새 벤더의 정책 체계로 이관**하고 동등성을 검증하는 것까지가 교체다(6장). 서명 직전 검증(Callback Handler)도 벤더 특화 컴포넌트라 새 벤더의 대응물로 다시 세운다.
 
 ## 코드 구조 — 이 문서를 모노레포로 옮기면
 
@@ -116,7 +116,7 @@ flowchart TB
 
 ## 인프라 — 무엇이 어디서 도는가
 
-0장 에서 본 배치를 확장 관점으로 다시 봅니다.
+0장에서 본 배치를 확장 관점으로 다시 봅니다.
 
 - Fireblocks 기준이라 서명·키·노드·전파는 **벤더 안**이고, 이쪽엔 **두 백엔드와 블록체인 매니저, 둘로 나뉜 DB**만 남습니다.
 - Fireblocks 주기 조회(폴링)·webhook 보조·상태 판정은 전부 매니저 내부이고, 매니저가 메시지 큐(deposit·withdrawal·internal)에 publish 한 이벤트를 백엔드가 consume 합니다.
@@ -130,7 +130,7 @@ flowchart LR
       DB[("백엔드 DB<br/>고객 원장 · 출금 지시 상태")]
       MQ["메시지 큐<br/>deposit·withdrawal·internal"]
       BM["블록체인 매니저 — 별도 서비스<br/>내부 Fireblocks 연동 · 내부 폴링 (4·6장)"]
-      BMDB[("블록체인 매니저 DB<br/>ref↔vault↔주소 매핑 · 체크포인트")]
+      BMDB[("블록체인 매니저 DB<br/>커서 · 주소 매핑 · 체크포인트")]
     end
     FB["Fireblocks (벤더 SaaS)<br/>vault · MPC 서명 · TAP 정책 · 노드·전파"]
     EVM["EVM 네트워크<br/>이더리움 · Base · (다른 L2)"]

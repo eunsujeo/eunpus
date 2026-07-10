@@ -6,49 +6,55 @@ status: Done
 설계 전반에서 빌드 전 확정해야 할 항목을 모은다 — 벤더(Fireblocks)·relay 로 검증할 것과, 백엔드와 계약으로 합의할 것.
 앞 절들은 CSM 문의·PoC 로 검증하고 마지막 절은 백엔드와 정합하며, 답·합의에 따라 관련 장의 설계가 조정된다.
 
-## 벤더 · relay 확정 (CSM/PoC)
+## 벤더 · relay 확정 (CSM/PoC) — 질문 목록
+
+질문문 그대로 CSM 문의에 옮길 수 있게 쓴다. 답이 오면 관련 장에 반영하고 여기서는 지운다.
 
 ### 출금 · relay (Universal Gasless)
 
-| 확인 항목 | 왜 중요한가 | 관련 |
-|---|---|---|
-| relay(Gasless-Orchestrator)가 stuck tx 를 스스로 fee-bump 하나 | 지금 설계는 "미지원 → 우리가 감지·자동 boost 트리거" 전제. 자동 처리면 트리거 로직이 불필요해진다 | 4·6장 |
-| gasless 에서 boost·cancel API 동작 방식 | 호출부는 **확인됨**(csm2): `createTransaction`+`replaceTxByHash`(RBF·같은 nonce)·`externalTxId` 재사용 가능·결과 type 변경은 CONTRACT_CALL 만. 잔여 = relay fee 부담·정산 흐름 | 6장 |
-| boost 인상 폭·fee 상한이 relay 설정인지 | 우리가 조절 가능한지, 자동 boost 정책을 어디에 둘지 | 6장 |
-| relay 실패 모드·잔고 모니터링 수단 | 잔고 소진·거절 시 거래 실패 처리와 relay 급유 신호 (boost 로 안 풀리는 막힘) | 6장 |
-| **boost/drop 을 승인 단계에서 원본과 연결** (이중 주체 승인) | 승인 콜백엔 `replaceTxByHash`·원 txId·nonce 가 없어 **approver 가 boost/drop 인지 판별 불가**(csm2). 현행 우회 = "Get Transaction by ID" 의 `replacedTxHash`. 콜백 payload 포함은 **Fireblocks feature request open** | 6장 |
+**Q1. relay(Gasless-Orchestrator)는 stuck tx 의 수수료를 스스로 올려(fee-bump) 재전송합니까?** (4·6장)
+> 현 설계는 "안 한다" 전제 — 막힘 점검이 감지해 자동 boost 를 트리거한다. 자동 처리로 확인되면 이 트리거를 뺀다.
+
+**Q2. (Q1 후속) 수수료 인상의 폭·상한·주기는 어떻게 정해집니까?** — relay 가 스스로 올린다면 그 정책 값은 무엇이고, 우리가 boost 해야 한다면 조절할 수 있습니까? (6장)
+> Q1 의 답이 어느 쪽이든 이 값이 근거가 된다 — 스스로 올리면 막힘 경보 임계(4장)를, 우리가 올리면 자동 boost 정책(대기 임계·최대 시도)을 이 값으로 정한다.
+
+**Q3. relay 가 전송을 못 하거나 거절하는 경우는 어떤 것들입니까(예: gas 잔고 부족·한도 초과)? 그 상태를 우리가 미리 알 수 있는 조회·경보 수단이 있습니까?** (6장)
+> relay 가 거절하면 boost 로도 안 풀리는 막힘이 된다(6장) — 거래를 실패 처리할지 relay 쪽을 복구할지 판단하려면 원인과 신호가 필요하다.
 
 ### 서명 · EIP-7702
 
-| 확인 항목 | 왜 중요한가 | 관련 |
-|---|---|---|
-| MPC(vault 키)가 7702 authorization 서명을 만드는 방식 | 출금 서명 경로의 핵심인데 공식 문서에 상세가 없다 | 6장 · 가스 대납 문서 |
-| 위임 대상 지갑 코드의 정체·감사·해제 수단 | 위임 코드가 보안의 전부 — 공개 여부·감사 리포트·위임 조회/해제 | 가스 대납 문서 |
+**Q4. 7702 authorization 서명도 일반 거래처럼 TAP 평가·co-signer(Callback) 승인 경로를 지납니까? 만들어지는 절차는 무엇입니까?** (6장 · 가스 대납 문서)
+> 공식 문서에 상세가 없다 — 이 서명이 관문을 우회한다면 서명 직전 검증(6장)에 구멍이 생긴다.
+
+**Q5. vault 가 위임하는 스마트 지갑 코드(7702 위임 대상 컨트랙트)는 어떤 코드입니까? 코드 공개·제3자 감사 리포트가 있습니까? vault 별 위임 상태를 조회하고 해제할 수단이 있습니까?** (가스 대납 문서)
+> gasless 는 vault(EOA)에 스마트 지갑 코드를 위임해 동작하고, relay 의 내용 위조를 막는 검증도 이 코드가 한다(6장 서명 두 겹). 위임하는 순간 이 코드가 vault 를 움직일 수 있으므로, 코드에 결함이 있으면 MPC 키가 안전해도 자금이 위험하다.
 
 ### 다중 vault · nonce
 
-| 확인 항목 | 왜 중요한가 | 관련 |
-|---|---|---|
-| vault(EOA)별 nonce 직렬이 gasless relay 하에서도 유지되나 | 병렬 레인(다중 출금 vault) 전제의 근거. relay 가 vault 간 병렬 제출을 어떻게 다루는지 | 6장 |
+**Q6. vault(EOA)별 nonce 직렬은 gasless relay 에서도 유지됩니까? relay 는 vault 간 병렬 제출을 어떻게 다룹니까?** (6장)
+> 다중 출금 vault 병렬 제출 전제의 근거.
 
 ### 확정 · DCCP
 
-| 확인 항목 | 왜 중요한가 | 관련 |
-|---|---|---|
-| 커스텀 DCCP 임계 제출→검토→승인 절차·소요 | 임계는 Console 직접 설정이 아니라 Fireblocks Support 경유 | 4장 |
-| EVM(이더리움·Base) 기본 임계 confirmation 값 | finality 판정 기준 · zero-confirmation 함정과 직결 | 4장 |
+**Q7. 커스텀 DCCP 임계의 제출→검토→승인 절차와 소요 기간은 어떻게 됩니까?** (4장)
+> 임계는 Console 직접 설정이 아니라 Fireblocks Support 경유다 — 신청부터 반영까지 걸리는 기간이 체인 오픈·정책 변경 일정에 영향을 준다.
+
+### 감지 · 폴링
+
+**Q8. 갱신이 거래 목록에 늦게 나타날 수 있는 최대 지연은 얼마입니까?** (4장)
+> 지연 상한이 폴링 중단 기준의 겹침 폭을 정하는 근거다 — 모르면 폭이 감으로 남는다.
+
+**Q9. 같은 lastUpdated(ms) 를 가진 tx 가 limit 보다 많아도 next-page 로 빠짐없이 이어 받을 수 있습니까? next-page URL 은 언제까지 유효합니까?** (4장)
+> 블록 하나가 확정되며 대량 입금이 일괄 갱신되면 같은 ms 값의 tx 가 한 페이지를 넘을 수 있다 — 4장 페이지네이션은 통과를 전제하지만, 스펙이 보장하는 건 "다음 페이지 URL 제공"까지라 확인 전엔 추정이다. 유효기간은 페이징이 길어졌을 때의 오류 처리(만료면 커서에서 주기 재시작)를 정하는 근거.
+
+**Q10. rate limit 의 실제 한도 값은 얼마입니까? next-page 로 다음 페이지를 받는 호출도 같은 한도에 계산됩니까? 15~30초 주기의 전량 폴링(웹훅 불가 환경)은 허용되는 사용 패턴입니까?** (4장)
+> 공개된 건 단위(API user × 엔드포인트 × 분)뿐이다. 이 값이 클라이언트측 상한(token bucket)·폴링 주기·대사 배치 크기의 근거다. 부하 테스트는 Sandbox 말고 **Testnet**(한도 느슨 — 벤더 안내).
 
 ## 백엔드와 정합 (상태 계약)
 
-매니저가 큐로 흘리는 상태를 백엔드가 어떻게 읽고 원장에 반영할지는 **계약으로 합의**해야 한다 — 벤더 확인과 달리 우리 두 팀 사이의 약속이다.
-확정된 enum·필드 정본은 이후 API 문서에 한 곳으로 모으고, 여기서는 **무엇을 합의할지**만 잡는다.
-
-| 정합 항목 | 왜 정해야 하나 | 관련 |
+| 정합 항목 | 합의할 것 | 관련 |
 |---|---|---|
-| 공통 상태 5종 의미 | 백엔드가 잔액·화면을 SUBMITTED·CONFIRMING·COMPLETED·REJECTED·FAILED 다섯에만 맞춘다 — **COMPLETED = DCCP 임계 도달(finality)**, **REJECTED = 임시(unfreeze 대기) ≠ FAILED = 영구** 라는 합의 | 4·5·6장 |
-| status·subStatus·networkStatus 세 축 역할 분담 | 백엔드가 어느 필드로 무엇을 판단할지 — **boost = networkStatus `DROPPED`(mempool 누락)**, **reorg 롤백 = subStatus `DROPPED_BY_BLOCKCHAIN`(블록 이탈)** | 4장 |
-| reorg 무효화 수신 시 원장 롤백 계약 | 무효화 이벤트에 백엔드가 **반영해 둔 잔액만 되돌리고 입금 기록은 보존** — 되돌림 범위·순서 합의 | 5장 |
-| REJECTED 동결 3종의 unfreeze 운영 흐름 | `AUTO_FREEZE`·`FROZEN_MANUALLY`·`REJECTED_AML_SCREENING` 자산 잠금을 백엔드가 어떻게 노출하고 Admin unfreeze 를 어떻게 대기하나 | 5장 |
-| subStatus 최소 분기 집합 | 수십 종 중 백엔드가 실제로 분기할 것만 정하고 나머지는 로깅 — 분기 대상 목록 합의 | 5·6장 |
-| 내부 이체 sweep/delta 재분류 | 매니저는 `INTERNAL` 까지만 준다(업무 의도 모름) — 정산 컨슈머가 **externalTxId 로 원래 요청을 찾아** sweep·delta 를 가르는 규약 | 4·10장 |
-| 토픽·파티션 키·컨슈머 그룹 + 경보 채널 | `deposit`·`withdrawal`·`internal` 토픽별 이벤트 스키마·파티션 키·컨슈머 그룹, 그리고 막힘 경보를 흘릴 별도 채널 수단 | 4장 |
+| 상태 — [4장 "공통 상태 다섯 (TxStatus)" 정본](04-detect-confirm.md#공통-상태-다섯-txstatus-정본) 그대로 합의 | 다섯 상태의 뜻·보장하는 subStatus 값·세 축(status/subStatus/networkStatus) 분담이 정본 표에 있다 — boost 는 매니저가 원 TxRef 로 접으므로 계약에 없다(6장) | 4·5·6장 |
+| UNMAPPED(귀속 불명) 해소 절차 | 수동 매핑 해소가 **매니저 주소 매핑 갱신**까지 걸친다 — 누가 갱신을 트리거하고, 해소 후 이벤트가 다시 흐르는지 | 4장 |
+| 내부 이체의 externalTxId 규약 | 매니저는 `INTERNAL` 까지만 주고 **요청의 externalTxId 를 완료 이벤트에 실어 준다** — 키 형식·동반 보장 합의 (sweep/delta 재분류는 이 키로) | 4·10장 |
+| 메시지 큐 | ① 세 토픽(`deposit`·`withdrawal`·`internal`)의 이벤트 스키마·파티션 키<br/>② 전달 보장 — **at-least-once**(같은 이벤트가 드물게 중복 — 4장 예외 창) · 이벤트 ID = tx id(또는 externalTxId) unique · **같은 계정 순서는 파티션이 보장**<br/>③ 막힘 경보를 흘릴 별도 채널 수단 | 4장 |

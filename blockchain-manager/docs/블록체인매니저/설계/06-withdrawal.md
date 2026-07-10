@@ -71,7 +71,7 @@ sequenceDiagram
     CH-->>FB: 블록 누적 → 확정
     Note over BM,FB: 다시 오프체인
     BM->>FB: 매니저 내부 폴링 — lastUpdated 커서로 변경된 tx 조회 (4장)
-    BM->>MQ: onChainEvent publish → withdrawal-events — 상태 변경 (파티션 키 = 출금 vault 레인 accountId)
+    BM->>MQ: onChainEvent publish → withdrawal-events — 상태 변경 (파티션 키 = 보내는 출금 풀 vault 의 accountId)
     MQ->>QC: consume — 컨슈머 그룹으로 인스턴스 분배
     QC->>DB: 상태 갱신 — TxRef 로 대조, 전파 → 누적 → 확정. 처리 성공 후 오프셋 커밋
 ```
@@ -126,7 +126,7 @@ sequenceDiagram
 - **백엔드는 boost 를 모른다** — boost 로 벤더 거래가 대체되어도(새 txId) 매니저가 원 TxRef 로 접어 같은 상태 흐름(CONFIRMING → COMPLETED)만 흘린다. 금액·목적지는 그대로고 인상 gas 도 relay 부담이라 원장에 영향이 없다. boost 이력(시도 횟수·대체 txId)은 매니저 DB 에 남고 Admin 이 본다.
 - **cancel(철회)** — 기본 흐름에선 쓰지 않는다. 자동 boost 를 최대 시도까지 해도 못 살린 예외에서만 **수동 최후수단**으로 판단한다.
 
-fee 부족이 아니라 **relay 가 gas 를 못 대거나 거절**(잔고 소진 등)이면 boost 로 안 풀리므로, 경보를 올려 사람이 relay 급유·복구로 넘긴다. relay 가 stuck 을 자동 처리하는지 등 벤더 확인 항목은 12장.
+fee 부족이 아니라 **relay 가 gas 를 못 대거나 거절**(잔고 소진 등)이면 boost 로 안 풀리므로, 경보를 올려 사람이 relay 쪽 복구(gas 잔고 충전 등)로 넘긴다. relay 가 stuck 을 자동 처리하는지 등 벤더 확인 항목은 12장.
 
 ```mermaid
 sequenceDiagram
@@ -147,7 +147,7 @@ sequenceDiagram
         RL->>CH: 같은 순번 · fee 올린 대체 거래 전파 — gas 는 relay 부담
         CH-->>FB: 대체 거래 확정
     else relay 가 gas 못 댐 또는 최대 시도까지 해도 안 풀림
-        Note over SW: 경보 — 사람이 relay 급유·복구 또는 수동 cancel 판단
+        Note over SW: 경보 — 사람이 relay 복구(gas 잔고 충전 등) 또는 수동 cancel 판단
     end
     Note over BM,FB: 이후 매니저 내부 폴링(4장)이 원래 건 종결·대체 건 확정을 큐에 publish
 ```

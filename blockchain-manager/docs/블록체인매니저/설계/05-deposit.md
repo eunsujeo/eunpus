@@ -58,6 +58,8 @@ sequenceDiagram
 - 입금이 실제로 지나는 상태는 다섯 중 **넷** — CONFIRMING(대기 pending 으로 잡힘) · COMPLETED(임계 확인 후 가용 available) · REJECTED · FAILED. SUBMITTED 는 출금 쪽 단계라 입금에선 안 본다.
 - COMPLETED 는 zero-confirmation 설정이면 여러 번 관찰될 수 있다(4장 함정).
 - **REJECTED 의 동결 3종**(`AUTO_FREEZE` · `FROZEN_MANUALLY` · `REJECTED_AML_SCREENING`)은 **Admin 의 unfreeze 운영**이 걸린다 — unfreeze 까지 자산 잠금, 잔액 반영 보류.
+- **동결은 온체인 사건이 아니다** — 돈은 이미 vault 주소에 도착·확정돼 있고(체인 레이어 CONFIRMED), 벤더 장부의 잠금(8장 잔액의 `frozen` 칸)이라 출금에 못 쓸 뿐이다.
+- **해제(unfreeze)는 Admin 이 벤더 콘솔에서 한다** — 콘솔은 벤더 UI 라 매니저를 거치지 않는다. 백엔드의 보류 해제는 Admin 의 해제 처리 자체가 트리거다(자기가 한 행위라 매니저 이벤트를 기다릴 필요 없음). 쓰기는 콘솔이어도 관찰은 그대로 매니저 폴링 — 상태가 바뀌면 평소처럼 잡힌다.
 - FAILED + `DROPPED_BY_BLOCKCHAIN` 은 reorg 증발 — 반영해 둔 잔액을 되돌린다(아래 절).
 
 ## 예외 — reorg 로 믿었던 입금이 뒤집히면

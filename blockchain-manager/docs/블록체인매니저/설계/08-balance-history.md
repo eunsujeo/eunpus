@@ -3,8 +3,8 @@ title: 8. 잔액과 내역 조회 — balanceOf · transactionsOf
 status: Done
 ---
 
-고객 화면의 두 숫자 — 고객별 진실(잔액·귀속)은 백엔드 DB 원장에, 온체인 사건의 진실은 벤더 기록에 있고 매니저 API 로 읽는다.
-가용·대기·잠김 세 칸을 가르는 confirm과 finality, 고객 화면·매니저 API 조회의 역할 분담, 두 장부를 맞추는 대사 절차를 확정한다.
+온체인 사건의 진실은 벤더 기록에 있고 매니저 API 로 읽는다.
+가용·대기·잠김 세 칸을 가르는 confirm 과 finality, 매니저 API 조회의 쓰임, 두 장부를 맞추는 대사 절차를 확정한다.
 
 **가용**(available — 출금에 쓸 수 있는 돈), **대기**(pending — 들어왔지만 아직 확정 전), **잠김**(locked — 나가는 중이거나 정책상 묶인 돈).
 
@@ -25,6 +25,19 @@ fun transactionsOf(
 ): List<Transfer> {
   return transfers
 }
+
+data class Transfer(
+  val txRef: String,                 // 벤더 tx id
+  val externalTxId: String? = null,  // 우리 요청 키 (출금·내부이체) — 기록과 대조용
+  val asset: Asset,
+  val amount: BigDecimal,
+  val from: String,                  // 발신 주소
+  val to: String,                    // 목적지 주소 — 방향은 from·to 로 가른다
+  val status: TxStatus,              // 4장 공통 상태 다섯
+  val numOfConfirmations: Int,
+  val createdAt: Instant,
+  val lastUpdated: Instant,          // 마지막 상태 변경 — after·before 필터의 기준 시각
+)
 ```
 
 after·before 는 벤더 거래 목록 API(`GET /v1/transactions`)의 시간 필터 그대로다 — **Unix 밀리초 타임스탬프**로, 4장 매니저 내부 폴링 커서와 같은 형식이다. 미지정 시 벤더 기본 조회 창이 적용된다.
@@ -58,7 +71,7 @@ flowchart LR
 - 경계 판단은 **numOfConfirmations** 가 확정 정책 임계를 넘었는지로 한다.
 - 출금을 제출하면 그만큼이 가용에서 **잠김**으로 빠진다.
 
-온체인 지갑(옴니버스·재고 풀 등)을 조회할 때 매니저는 `getVaultAccountAsset` 응답 필드를 세 칸으로 접어 돌려준다:
+온체인 지갑(옴니버스·출금 풀 등)을 조회할 때 매니저는 `getVaultAccountAsset` 응답 필드를 세 칸으로 접어 돌려준다:
 
 | 업무 타입 | Fireblocks 필드 | 뜻 |
 |---|---|---|
@@ -69,21 +82,6 @@ flowchart LR
 - Fireblocks 응답 필드는 `available` / `pending` / `frozen`(AML freeze) / `lockedAmount`(전파 전 출금) / `staked`(일부 체인 전용) 등이다.
 - 이 중 **가용·대기·잠김** 세 칸만 업무 타입으로 노출하고, 잠김은 `lockedAmount` 와 `frozen` 을 합쳐 본다.
 - EVM(이더리움·Base)에는 staking 칸이 없어 세 칸으로 충분하다.
-
-## 고객 화면의 경로 — DB 로 끝난다
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant APP as 고객 앱
-    participant BE as Service 백엔드
-    participant DB as 백엔드 DB (고객 원장)
-
-    APP->>BE: 홈 화면 — 잔액 · 거래내역
-    BE->>DB: 고객별 세 칸(가용·대기·잠김) + 원장 이벤트 내역 조회
-    DB-->>BE: 잔액 · 내역
-    BE-->>APP: 응답 — 매니저·벤더 호출 없음
-```
 
 ## 매니저 API 조회의 경로 — 운영·대사·증빙
 
@@ -118,7 +116,7 @@ sequenceDiagram
 | 언제 | 무엇을 | 조회 형태 |
 |---|---|---|
 | **대사** (실행은 Service 배치) | 확정분만 받아 기록과 대조 — 회계 기표 전(아래 절) | `status=COMPLETED` + 기간 |
-| **막힌 출금 점검** (Admin) | 오래 CONFIRMING 인 건을 골라 boost·cancel 판단(6장) — DB 쿼리(4장)와 병행하는 벤더측 교차 확인 | `status=CONFIRMING` + 오래된 것 |
+| **막힌 출금 점검** (Admin) | 자동 boost(매니저)로 안 풀린 건의 수동 처리 판단(6장) — DB 쿼리(4장)와 병행하는 벤더측 교차 확인 | `status=CONFIRMING` + 오래된 것 |
 
 ## 대사 — 두 장부를 주기적으로 맞춘다
 
@@ -128,7 +126,7 @@ sequenceDiagram
 
 |  | 대사 |
 |---|---|
-| **무엇을** | ① **DB 원장의 고객 잔액 합계 vs 온체인 커스터디 총합**(옴니버스 + 이송 중 — 미sweep 고객 vault·출금 풀) — 옴니버스 모델의 대사 공식, 이송 중 계상의 정밀 형태는 정산 워크스루 ② 거래 기록 vs 벤더 거래 목록 (표본은 온체인 탐색기로 교차 확인) |
+| **무엇을** | ① **DB 원장의 고객 잔액 합계 vs 온체인 커스터디 총합**(옴니버스 + 나머지 vault — 미sweep 고객 vault·출금 풀) — 옴니버스 모델의 대사 공식, 나머지 vault 계상의 정밀 형태는 정산 워크스루 ② 거래 기록 vs 벤더 거래 목록 (표본은 온체인 탐색기로 교차 확인) |
 | **언제** | 주기(예: 시간 단위) + 일마감 — 회계 기표 전 필수 |
 | **누가** | **실행(주기 대조 배치)은 Service** — sweep 과 같은 자리의 워커. 벤더측 값은 매니저 API(balanceOf·transactionsOf)로 받는다. **불일치의 판단·정정 승인과 감사·기표 확인은 Admin**. |
 | **어긋나면** | **자동 보정 금지** — 정정 이벤트를 만들어 사람이 본다 (없는 돈을 만들거나 지우는 코드가 가장 위험) |
@@ -137,7 +135,7 @@ sequenceDiagram
 flowchart LR
     T["주기 트리거<br/>시간 단위 + 일마감"]
     L["DB 원장<br/>고객 잔액 합계 · 거래 기록"]
-    V["매니저 API 조회<br/>옴니버스 온체인 잔액 · 거래 목록"]
+    V["매니저 API 조회<br/>온체인 커스터디 잔액(옴니버스 + 나머지 vault) · 거래 목록"]
     C{"대조 —<br/>고객 잔액 합계 = 온체인 커스터디?"}
     OK["일치 — 회계 기표 진행"]
     NG["불일치 — 정정 이벤트 생성<br/>자동 보정 금지 · 사람이 판단"]
@@ -158,6 +156,6 @@ flowchart LR
 
 위 그림(대사 한 사이클)을 요약하면:
 
-- 옴니버스 모델의 공식은 대략 **"DB 원장의 고객 잔액 합계 = 온체인 커스터디(옴니버스 + 이송 중)"**이다 — 이송 중(미sweep vault·출금 풀)까지 계상해야 정밀하고, 상세는 정산 워크스루.
-- 두 장부가 서로 독립적으로 쌓이므로(하나는 큐에서 consume 한 이벤트 반영, 하나는 체인), 일치가 곧 매니저 내부 폴링·큐 publish/consume·백엔드 반영 경로 전체의 **건강 증명**이 된다.
+- 옴니버스 모델의 공식은 대략 **"DB 원장의 고객 잔액 합계 = 온체인 커스터디(옴니버스 + 나머지 vault)"**이다 — 나머지 vault(미sweep 고객 vault·출금 풀)까지 계상해야 정밀하고, 상세는 정산 워크스루.
+- 두 장부가 서로 독립적으로 쌓이므로(하나는 큐에서 consume 한 이벤트 반영, 하나는 체인), 일치하면 매니저 내부 폴링·큐 publish/consume·백엔드 반영 경로 전체가 **정상 동작했다는 뜻**이다.
 - 불일치면 **자동으로 고치지 않는다** — 정정도 반드시 이벤트로 남겨 사람이 판단한다.

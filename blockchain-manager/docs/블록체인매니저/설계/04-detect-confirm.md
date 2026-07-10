@@ -28,7 +28,7 @@ data class ChainEvent(
 | 토픽 | 담는 이벤트 | 파티션 키 | 소비 |
 |---|---|---|---|
 | `deposit-events` | 고객 입금 감지·확정 (DEPOSIT · UNMAPPED) | 고객 accountId — 천만 계정으로 분산 | 입금 컨슈머 (5장) |
-| `withdrawal-events` | 외부 출금 상태 변경 (WITHDRAWAL) | 출금 vault 레인 accountId | 출금 컨슈머 (6장) |
+| `withdrawal-events` | 외부 출금 상태 변경 (WITHDRAWAL) | 보내는 출금 풀 vault 의 accountId | 출금 컨슈머 (6장) |
 | `internal-events` | 내부 이체 완료 (INTERNAL — sweep·delta 는 백엔드가 externalTxId 로 구분) | 출발 계정 accountId | 정산 컨슈머 (5·10장) |
 
 이 장은 세 토픽을 채우는 **매니저 내부 폴링과 확정 기준**을 정의하고, 입금(5장)·출금(6장)·내부 이체 정산(10장)이 각 토픽을 소비한다. 등록은 토픽별 한 번, publish 는 매니저가 판정할 때마다.
@@ -38,7 +38,7 @@ data class ChainEvent(
 - **라우팅은 매니저가 (publish 시점).** 업무 의도는 모르고, **발신자가 우리 vault 인지**로 방향을 가른다(source·dest 를 매핑과 대조):
   - **발신자가 우리 vault** — 목적지 외부면 `WITHDRAWAL`, 우리 vault 면 `INTERNAL`. sweep/delta 구분은 정산 컨슈머가 externalTxId 로.
   - **발신자가 외부** — 매핑된 입금 주소면 `DEPOSIT`, 없으면 `UNMAPPED`(귀속 불명 · 보류).
-- **멱등** — 같은 이벤트가 두 번 올 수 있다(겹쳐 받기·재시도). 이벤트 ID(tx id·externalTxId) unique 로 상태 전이만 반영한다.
+- **멱등** — 매니저가 중복을 억제해도(상태 전이 시만 publish) 같은 이벤트가 드물게 두 번 올 수 있다(publish 직후 죽는 예외 창·재소비). 이벤트 ID(tx id·externalTxId) unique 로 상태 전이만 반영한다.
 - **커밋** — 처리 성공 후에만 오프셋 커밋(at-least-once). 실패하면 재소비된다.
 - **컨슈머 그룹은 토픽마다 하나** — 인스턴스가 여러 대여도 분배는 큐가 한다.
 
@@ -46,17 +46,16 @@ data class ChainEvent(
 
 Fireblocks 는 내부 상태를 여러 단계로 보내지만, 백엔드가 보는 것은 매니저가 번역한 **공통 상태 다섯**입니다. 입금(5장)·출금(6장)이 모두 이 표를 씁니다.
 
-| 공통 상태 (TxStatus) | 뜻 | Fireblocks 원어 (매니저가 번역) | 함께 실리는 subStatus (대표) |
-|---|---|---|---|
-| **SUBMITTED** | 제출됨 — 벤더가 서명·전파 준비 중, 아직 체인 미등장 (출금에서만 관찰) | PENDING_SIGNATURE · QUEUED · BROADCASTING | — (분기할 것 없음) |
-| **CONFIRMING** | 전파 후 체인에 등장, confirmation 누적 중 (아직 미확정) | CONFIRMING (numOfConfirmations 증가 중) | PENDING_BLOCKCHAIN_CONFIRMATIONS |
-| **COMPLETED** | 확정 — DCCP(확정 정책) 임계 confirmation 도달 = finality | COMPLETED | CONFIRMED |
-| **REJECTED** | 거부·차단 — 정책·스크리닝에 막힘. 영구 기술 실패가 아니라 사람 개입 여지 (입금 동결은 Admin unfreeze 대기 · 5장) | REJECTED · BLOCKED | AUTO_FREEZE · FROZEN_MANUALLY · REJECTED_AML_SCREENING — 동결 3종, unfreeze 흐름 분기(5장) |
-| **FAILED** | 영구 실패 — 사유 동반 (수수료 부족·revert 등) | FAILED | DROPPED_BY_BLOCKCHAIN — reorg 증발(5장) · 그 외 실패 사유 |
+| 공통 상태 (TxStatus) | 뜻 | Fireblocks 원어 (매니저가 번역) | 함께 실리는 subStatus (대표) | 체인 레이어 (networkStatus) |
+|---|---|---|---|---|
+| **SUBMITTED** | 제출됨 — 벤더가 서명·전파 준비 중, 아직 체인 미등장 (출금에서만 관찰) | PENDING_SIGNATURE · QUEUED · BROADCASTING | — (분기할 것 없음) | 서명 단계까진 없음 → BROADCASTING (전파 시작) |
+| **CONFIRMING** | 전파 후 체인에 등장, confirmation 누적 중 (아직 미확정) | CONFIRMING (numOfConfirmations 증가 중) | PENDING_BLOCKCHAIN_CONFIRMATIONS | CONFIRMING |
+| **COMPLETED** | 확정 — DCCP(확정 정책) 임계 confirmation 도달 = finality | COMPLETED | CONFIRMED | CONFIRMED |
+| **REJECTED** | 거부·차단 — 정책·스크리닝에 막힘. 영구 기술 실패가 아니라 사람 개입 여지 (입금 동결은 Admin unfreeze 대기 · 5장) | REJECTED · BLOCKED | AUTO_FREEZE · FROZEN_MANUALLY · REJECTED_AML_SCREENING — 동결 3종, unfreeze 흐름 분기(5장) | 차단 시점에 따라 — 출금(전파 전 차단)은 없음 · 입금 동결은 CONFIRMED (돈은 체인에 도착, 업무만 잠김) |
+| **FAILED** | 영구 실패 — 사유 동반 (수수료 부족·revert 등) | FAILED | DROPPED_BY_BLOCKCHAIN — reorg 증발(5장) · 그 외 실패 사유 | FAILED (revert) · DROPPED (mempool 누락·증발) |
 
 - 상태 이벤트에는 TxStatus 만 실리는 게 아니다 — ChainEvent 에 `subStatus`(벤더 상세 사유)·`networkStatus`(체인 레이어)가 함께 온다. **판단은 TxStatus 다섯으로** 하고, subStatus 는 위 대표값처럼 **분기가 필요한 최소 집합만** 백엔드가 보고 나머지는 로깅한다(12장 정합 항목).
 - **REJECTED = 임시**(unfreeze 대기) **≠ FAILED = 영구** — 이 구분이 백엔드 원장·화면 처리를 가른다.
-- **reorg 전용 상태는 없다** — 블록에서 밀려나도 생존하면 **CONFIRMING 그대로**(confirmation 재계산), 증발하면 **FAILED**(subStatus `DROPPED_BY_BLOCKCHAIN`)다 (5장).
 - 벤더 내부의 세부 단계(승인·서명·전파)는 SUBMITTED 로 접어 감춘다 — 이 다섯만 밖으로 나간다.
 
 ## 내부 이체 — 파티션 키·완료 대응 (결정)
@@ -84,52 +83,66 @@ sequenceDiagram
     box rgb(254,249,195) 메시지 큐 — 세 토픽
     participant MQ as deposit · withdrawal · internal<br/>파티션 키 = 계정 단위
     end
-    participant BE as Service 백엔드<br/>토픽별 컨슈머 그룹 · 원장
 
     Note over SUB,FB: 주기(예: 15~30초)마다 실행 · 전부 outbound(egress 허용분)
     SUB->>MDB: 커서 읽기 = 마지막 처리 lastUpdated (T · Unix ms)
     MDB-->>SUB: T
 
-    loop 페이지네이션 — limit 200, 다음 페이지 남으면 반복
-        SUB->>FB: GET /v1/transactions · orderBy=lastUpdated · after=T · limit=200
-        FB-->>SUB: 갱신된 tx 목록<br/>각 tx: id · src·dest 주소 · status · numOfConfirmations · lastUpdated
+    loop 페이지네이션 — 커서(T)보다 겹침 폭 이상 오래된 tx 를 만날 때까지
+        SUB->>FB: GET /v1/transactions · orderBy=lastUpdated · sort=DESC · limit=200<br/>after 는 커서가 아니라 고정 과거값 — 기본 조회 창(90일) 해제용 (12장)<br/>다음 페이지는 응답 헤더 next-page 의 URL 로 (같은 ms 뭉치의 경계 통과 보장은 12장 Q9)
+        FB-->>SUB: 갱신된 tx 목록 (lastUpdated 내림차순) + next-page 헤더<br/>각 tx: id · src·dest 주소 · status · numOfConfirmations · lastUpdated
     end
+    Note over SUB: 커서(T − 겹침 폭)보다 새 것만 남겨 lastUpdated 오름차순 정렬<br/>— 같은 계정의 감지 → 확정 순서 보존
 
     loop 받은 tx 각각 — lastUpdated 오름차순
-        SUB->>MDB: 방향 판정(발신자가 우리 vault 인지) + accountId 귀속 · tx 상태 체크포인트 기록
+        SUB->>MDB: 방향 판정(발신자가 우리 vault 인지) + accountId 귀속 · tx 상태 체크포인트 기록<br/>이전 상태와 같으면 publish 생략 (중복 억제)
         alt 발신자가 우리 vault — 외부 출금 · 내부 이체 (txRef 도 매칭)
             SUB-->>MQ: publish — 외부 출금 → withdrawal-events(6장) · 내부 이체 → internal-events(5·10장)
         else 입금 · CONFIRMING
-            SUB-->>MQ: publish → deposit-events — 입금 감지 → 대기(pending) · available 불변
+            SUB-->>MQ: publish → deposit-events — 입금 감지 (CONFIRMING)
         else 입금 · COMPLETED 이고 임계 도달
-            SUB-->>MQ: publish → deposit-events — 입금 확정 → 가용(available) 이동
+            SUB-->>MQ: publish → deposit-events — 입금 확정 (COMPLETED)
         else 입금 · 아직 임계 미달
-            Note over SUB: publish 없음 — 대기(pending) 그대로 둔다 · 다음 폴에서 다시 본다
-        else 입금 · 무효화 (FAILED · DROPPED_BY_BLOCKCHAIN)
-            SUB-->>MQ: publish → deposit-events — 무효화 · 반영해 둔 잔액을 되돌린다 (입금 기록은 남긴다)
-        else 발신자가 외부인데 주소가 우리 매핑에 없음 — UNMAPPED
-            SUB-->>MQ: publish → deposit-events — 귀속 불명 · 어느 고객인지 모름 · 알림<br/>기록은 tx 에 실린 vaultId 앞으로 남긴다 (고객 잔액 반영 보류)
+            Note over SUB: publish 없음 — 다음 폴에서 다시 본다
+        else 입금 · 무효화
+            SUB-->>MQ: publish → deposit-events — 무효화 (FAILED · DROPPED_BY_BLOCKCHAIN)
+        else 발신자가 외부인데 주소가 우리 매핑에 없음
+            SUB-->>MQ: publish → deposit-events — 귀속 불명 (UNMAPPED)
         end
     end
 
     SUB->>MDB: 커서 저장 — 이번에 처리한 마지막 lastUpdated 를<br/>다음 폴의 시작점으로 기록
-    Note over SUB,MDB: 처리·publish 실패 시 커서를 저장하지 않는다 → 다음 폴이 같은 구간을 다시 받는다(멱등이라 중복 무해)
-
-    MQ-->>BE: consume — 같은 계정은 같은 파티션이라 감지 → 확정 순서 보장
-    BE->>BE: 원장 반영 — 이벤트 ID(tx id) 멱등 upsert
-    BE->>MQ: 오프셋 커밋 — 원장 반영 성공 후에만 · 실패 시 커밋하지 않아 재소비(at-least-once)
+    Note over SUB,MDB: 처리·publish 실패 시 커서를 저장하지 않는다 → 다음 폴이 같은 구간을 다시 받는다(멱등이라 중복 무해)<br/>매니저의 역할은 여기까지 — 큐 이후(consume·원장 반영·오프셋 커밋)는 백엔드 몫 (규칙은 위 목록)
 ```
 
 | 빠뜨리면 사고 나는 지점 | 어떻게 |
 |---|---|
-| **커서** | 마지막으로 처리한 tx 의 `lastUpdated`(Unix ms)를 **블록체인 매니저 DB** 에 영속. 주기마다 `after=커서`로만 받아 재조회량을 놓친 만큼으로 한정. |
+| **커서** | 마지막으로 처리한 tx 의 `lastUpdated`(Unix ms)를 **블록체인 매니저 DB** 에 영속. 커서는 **조회 필터가 아니라 중단 기준** — 최신부터(sort=DESC) 내려가다 커서보다 오래된 tx 를 만나면 그 주기 조회를 끝낸다. 재조회량은 놓친 만큼으로 한정(동일). |
+| **after 를 커서로 쓰지 않는다** | `after` 는 **createdAt 기준**("transactions **created** after" — 스펙) — 커서로 쓰면 오래전 생성된 tx 의 상태 변경(막힘 해소 등)을 영영 놓친다. 그래서 after 는 **기본 조회 창(90일) 해제용 고정 과거값**으로만 쓰고, 변경분 판별은 커서 중단 기준이 한다. |
 | **필터 없이 훑기** | 서버측 status 필터는 한 번에 한 상태만 걸린다 — 모든 상태 전이를 빠짐없이 받으려면 필터 없이 커서로 훑고, 받은 tx 를 매니저가 분류한다. |
-| **빠짐 방지** | 커서는 **처리 성공 후에만 저장** + 경계를 **살짝 겹쳐 받기**(after 를 조금 이전으로). 겹침은 백엔드의 멱등 upsert 가 흡수. |
-| **페이지네이션** | `limit`(기본 200)이 가득 차면 다음 페이지 계속 — 한 주기에 밀린 분을 다 소진. |
+| **빠짐 방지** | 커서가 시각(timestamp)이라 경계가 무르다 — **같은 ms 에 여러 tx** 가 걸리거나, 벤더 목록에 **늦게 나타나는 갱신**이 커서 뒤로 숨을 수 있다. 그래서 커서는 **처리 성공 후에만 저장** + 중단 기준에 **겹침 폭**을 둔다(커서 − 폭 까지 내려가서 멈춤). 겹쳐 받은 분은 아래 중복 억제가 거른다. 겹침 폭을 넘겨 늦게 나타나는 건 대사(8장)가 잡는다. |
+| **페이지네이션** | `limit` 기본 200 · 최대 500 (스펙 확인). 중단 기준을 못 만났으면 **응답 헤더 `next-page` 의 URL 로** 다음 페이지 (스펙 확인) — 같은 lastUpdated(ms) 를 가진 tx 뭉치가 페이지 경계에 걸려도 잘리지 않는다는 전제이며, 이 보장은 벤더 확인 항목이다(12장 Q9). 한 주기에 밀린 분을 다 소진. 역할 분담: **주기 시작·재기동은 우리 timestamp 커서**(영속), **주기 안 페이지 넘김은 next-page**(일시적). 벤더 주의문: lastUpdated 정렬로 페이징 중 갱신된 tx 는 그 순회에서 빠질 수 있다 — 갱신으로 lastUpdated 가 커서보다 새 값이 되므로 **다음 주기 폴이 잡는다**. |
+| **중복 억제 (publish 시점)** | 매니저가 tx 체크포인트의 이전 상태와 비교해 **상태 전이가 있을 때만 publish** — 겹쳐 받기·재폴링으로 같은 tx 를 다시 받아도 상태가 같으면 흘리지 않는다. 그래도 중복이 0 은 안 된다 — publish 성공 직후 죽어 체크포인트를 저장 못 한 창에서 한 번 더 나갈 수 있다(큐와 DB 를 원자적으로 못 묶는다). |
 | **오프셋 커밋** | 백엔드 컨슈머 그룹은 **원장 반영 성공 후에만** 오프셋 커밋. 실패하면 커밋하지 않아 재소비된다(at-least-once) — 중복은 아래 멱등이 흡수. |
-| **멱등** | 이벤트 ID = tx id(또는 externalTxId) unique. 같은 이벤트가 두 번 소비되어도 백엔드는 상태 전이만 반영, 잔액 이중 반영 없음. |
+| **멱등** | 이벤트 ID = tx id(또는 externalTxId) unique. 위 예외 창·재소비로 같은 이벤트가 두 번 와도 백엔드는 상태 전이만 반영, 잔액 이중 반영 없음 — 최후 보루. |
 | **reorg** | 확정으로 봤던 입금이 무효화되면 다음 폴에서 잡아 무효화 이벤트를 publish — 백엔드는 **반영해 둔 잔액만 되돌리고** 입금 기록은 보존. 신호는 FAILED + subStatus `DROPPED_BY_BLOCKCHAIN` (reorg 는 5장). |
 | **감지 지연** | 지연 = **폴링 주기**(큐 전달 자체는 즉시). 짧게 잡으면 실시간에 근접하고 API 호출이 는다 — 확정 요건과 rate limit 사이에서 정한다. |
+| **429 (rate limit)** | 한도는 **API user(키) × 엔드포인트 × 분 단위**이고 구체 값은 비공개 — CSM 문의로 확인·상향(불허 가능·추가 과금 가능, 벤더 rate limiting 문서). 폴링이 429 를 맞아도 **유실이 아니라 지연** — 커서가 안 전진하므로 다음 주기가 따라잡는다. 대응: **지수 백오프**(벤더 권장 · Retry-After 는 문서에 없음), 매니저의 모든 벤더 호출에 **클라이언트측 상한(token bucket) 하나**를 두고 **제출·boost > 감지 폴링 > 대사** 순으로 호출량을 배분(돈 나가는 경로 우선). 제출 재시도는 externalTxId 멱등이라 중복 무해. 429 율은 메트릭으로 내보내 밖에서 경보(11장). |
+
+## 폴링 지연 — 실제로 어디가 얼마나 늦나
+
+폴링의 구조적 단점은 **감지 지연의 상한 = 폴링 주기**라는 것이다. 다만 흐름별로 나누면 무게가 다르다:
+
+| 흐름 | 폴링 지연의 비중 |
+|---|---|
+| **입금 확정** | 총 대기 = confirmation 누적(블록 간격 × DCCP 임계) + 폴링 주기 — 폴링이 지연의 **지배 항이 아니다** |
+| **입금 첫 감지** ("확인 중" 표시) | **가장 아픈 곳** — 웹훅이면 즉시 뜰 표시가 최대 주기만큼 늦다. UX 문제이지 자금 안전 문제가 아니다 |
+| **출금** | 제출은 동기 API 라 지연 없음 — 늦는 건 상태 표시 갱신뿐 |
+
+실질 비용은 "입금 확인 중 표시가 최대 주기만큼 늦게 뜬다" 하나로 수렴한다. 완화 둘:
+
+- **웹훅 보조** (아래 감지 경로) — 인바운드가 열리는 환경이면 첫 감지 지연이 사라지고, 폴링은 신뢰의 근거로 남는다. 벤더도 폴링보다 웹훅을 권장한다(rate limiting 문서).
+- **주기 단축** — 폴링은 주기당 1콜이라 10초로 줄여도 분당 6콜. rate limit 한도 확인(12장) 후 가장 싼 개선이다.
 
 ## 막힘 점검 — 오래 CONFIRMING 인 건 골라내기
 
@@ -210,10 +223,11 @@ CONFIRMING 에서 COMPLETED 로 넘어가는 **임계 confirmation 수를 정하
 >
 > Fireblocks 의 DCCP 기본 임계 confirmation 수는 체인마다 다르다.
 >
-> - **대부분의 체인 = 1** — 블록 하나면 확정으로 본다.
-> - **ETC(이더리움 클래식)** — 과거 reorg 리스크가 커 임계가 매우 높다.
-> - **finality 속성을 가진 체인** — 체인별로 고정(rigid)된 값을 쓴다.
-> - **컨트랙트 호출(contract call)** — 단순 전송보다 보수적으로.
+> - **대부분의 체인 = 1** — 블록 하나면 확정으로 본다. **이더리움·Base 도 기본 1** 에 속한다(공식 기본 정책 문서 — vault↔vault 포함).
+> - **ETC(이더리움 클래식)** — 과거 reorg 리스크로 기본 372.
+> - **finality 속성을 가진 체인** — 체인별로 고정(rigid)된 값을 쓴다 (변경 불가).
+> - **컨트랙트 호출(contract call)** — 3 권장, 단순 전송보다 보수적으로.
+> - 하드 한도: EVM 최소 1(0 불가) · 이더리움 최대 100 · 신규 EVM L2 최대 30.
 >
 > 이 값은 **커스텀 DCCP** 로 조정할 수 있는데, 직접 설정이 아니라 **템플릿 작성 → Fireblocks Support 제출 → 검토·승인 후 반영**이다. EVM 대상(이더리움·Base)에서 어떤 임계를 요청할지는 자산·리스크 정책에 따라 Admin 이 정하고, Service 는 그 결과로 매니저가 publish 한 확정 이벤트만 신뢰하면 된다.
 
