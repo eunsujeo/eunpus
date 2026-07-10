@@ -77,6 +77,18 @@ _Fireblocks 외 체인. 사용자 고려 네트워크(이더리움+Canton) 중 C
 
 - [Canton Network](entities/canton/canton-network.md) — DAML active contract(ACS) 원장 + UTXO형 holdings + 권한 기반 2-step 전송(OFFER/ACCEPT/REJECT/WITHDRAW, Canton Coin 은 pre-approval 1-step). traffic(byte) 수수료, PartyId=hint::fingerprint, Synchronizer 2-phase commit finality. Fireblocks 가 Canton 지원 ([[entities/fireblocks/transaction]] 매핑). status: draft.
 
+### wallet-bank (daw-core) — 은행 자체 코어 (Stage 155 ingest)
+_Fireblocks 벤더 리서치와 별개. 은행 백엔드 팀이 직접 설계한 디지털자산 지갑 코어(daw-core). DB 접두사 `daw_`. Fireblocks 는 커스터디 제공사(01)로만 참조._
+
+- [Overview](vendors/wallet-bank/overview.md) — daw-core 정체성 + 책임 분리(코어/BCM/커스터디/트래블룰 솔루션) + 핵심 설계 사상.
+- [Architecture](vendors/wallet-bank/architecture.md) — Kotlin/Spring Boot 4 멀티모듈·레이어·DIP·도메인 순수성.
+- [Data Model](vendors/wallet-bank/data-model.md) — ~25 테이블 데이터 모델 hub (7 도메인 + 핵심 불변식).
+- [Design Requirements](vendors/wallet-bank/design-requirements.md) — 설계.txt 15 요구항목 + 성숙도(식별/설계/개발).
+- [Ledger & Netting](entities/wallet-bank/ledger-netting.md) — 이중 원장(원장분개+델타원장) + 네팅배치.
+- [Custody Mapping](entities/wallet-bank/custody-mapping.md) — 커스터디 추상화(ADR-006), ext_acnt_id=vaultAccountId.
+- [Travel Rule & VASP Flow](entities/wallet-bank/travel-rule-flow.md) — VASP 이체 5종·순서 강제·fail-close.
+- [Open Questions — wallet-bank](open-questions/wallet-bank.md) — 설계 미확정 11 Q.
+
 ### Open Questions (open-questions/)
 _확정 불가 fact 의 격리 영역. 71 Q-number pending (status 통일은 Plan 4 진행 예정)_
 

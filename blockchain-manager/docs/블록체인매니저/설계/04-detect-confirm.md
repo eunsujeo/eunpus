@@ -12,6 +12,7 @@ fun onChainEvent(topic: Topic, handler: (ChainEvent) -> Unit)
 data class ChainEvent(
   val type: EventType,               // DEPOSIT · UNMAPPED · WITHDRAWAL · INTERNAL — 매니저가 체인+매핑으로 가르는 tx 분류 (sweep/delta 는 백엔드가 externalTxId 로)
   val txRef: String,                 // 벤더 tx id
+  val txHash: String? = null,        // 온체인 거래해시 — 전파 후 채워짐(SUBMITTED 단계엔 없을 수 있음). 백엔드 대사·증빙용
   val externalTxId: String? = null,  // 우리 요청 키 (출금·내부이체) — 완료 대응·멱등
   val accountId: AccountId,          // 파티션 키 (내부이체 = 출발 계정)
   val asset: Asset,

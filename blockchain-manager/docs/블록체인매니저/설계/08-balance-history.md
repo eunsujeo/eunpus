@@ -28,6 +28,7 @@ fun transactionsOf(
 
 data class Transfer(
   val txRef: String,                 // 벤더 tx id
+  val txHash: String? = null,        // 온체인 거래해시 — 전파 후 채워짐. 대사·증빙용 (4장 ChainEvent 와 동일)
   val externalTxId: String? = null,  // 우리 요청 키 (출금·내부이체) — 기록과 대조용
   val asset: Asset,
   val amount: BigDecimal,

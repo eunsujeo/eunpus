@@ -7666,3 +7666,13 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 검증 3계층 확정: (1) 요청 provenance — TxidValidation(txId DB 조회)·ExtraSignature(RSA PKCS1v15+SHA256), (2) 정책 재평가 — TxPolicyValidation(로컬 PolicyEngine, TAP 독립), (3) 서명 대상 무결성 — PSBTValidation(PSBT 해시 대조, ETH getMessageToSign 가이드와 동형)
 - 영향받은 페이지: entities/fireblocks/callback-handler.md (§Stage 154·frontmatter 154·source_count 6·related+policy-engine) · vendors/fireblocks/callback-handler.md (§Stage 154·frontmatter 154·source_count 5) · vendors/fireblocks/policy-engine.md (Related Pages 역링크)
 - 신규 entity: 0 (기존 callback-handler entity 에 흡수)
+
+## Stage 155 (2026-07-10) — wallet-bank (daw-core) 신규 벤더 ingest (은행 자체 코어)
+- source: sources/wallet-bank/{README.md, 아키텍쳐/architecture.md, 설계/설계.txt, db/backend/*.md (7)}
+- 성격: Fireblocks 벤더 리서치와 별개 — 은행 백엔드 팀이 직접 설계한 디지털자산 지갑 코어(daw-core). DB 접두사 daw_. 옵션 A(신규 벤더 namespace) 사용자 승인 후 promote.
+- 신규 페이지: vendors/wallet-bank/{overview, architecture, data-model, design-requirements}.md + entities/wallet-bank/{ledger-netting, custody-mapping, travel-rule-flow}.md + open-questions/wallet-bank.md
+- 양방향 링크: entities/fireblocks/vault-account.md · vendors/fireblocks/overview.md · vendors/fireblocks/compliance.md 에 cross-vendor 역링크 추가
+- index.md: wallet-bank 섹션 신설 (8 페이지)
+- Open Q 신규: Q-2026-07-10-WB01~WB11 (브릿지·가스비 수수료 반영·개인지갑 주소소유·한도 초과·Redis 동기화 주기·네팅 트리거·Outbox 물리명·커스터디 코드체계·확장 P1/P2)
+- 신규 entity: +3 (wallet-bank 신규 벤더 — Fireblocks 0-streak 규칙과 별개 namespace, 최소 분할 유지)
+- 후속: BCM 설계 문서(blockchain-manager/docs/블록체인매니저) vs daw-core DB·설계 교차 검증 진행

@@ -50,10 +50,15 @@ window.MD = (() => {
         .replace(/\*([^*]+)\*/g, '<em>$1</em>')
         .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, t, href) => {
           if (/^https?:\/\//.test(href)) return `<a href="${href}" target="_blank" rel="noopener">${t}</a>`;
-          // 같은 폴더 문서로의 상대 링크(#절 앵커 허용) — 새창으로 doc 페이지를 연다
-          const rel = /^([^#/]+\.md)(#.+)?$/.exec(href);
-          if (docBase && rel) {
-            return `<a href="doc?path=${encodeURIComponent(`${docBase}/${rel[1]}`)}${rel[2] || ''}" target="_blank" rel="noopener">${t}</a>`;
+          // 문서로의 상대 링크(같은 폴더 · ../ 상위 경유, #절 앵커 허용) — 새창으로 doc 페이지를 연다
+          const rel = /^([^#:]+\.md)(#.+)?$/.exec(href);
+          if (docBase && rel && !href.startsWith('/')) {
+            const stack = [];
+            for (const seg of `${docBase}/${rel[1]}`.split('/')) {
+              if (seg === '..') stack.pop();
+              else if (seg && seg !== '.') stack.push(seg);
+            }
+            return `<a href="doc?path=${encodeURIComponent(stack.join('/'))}${rel[2] || ''}" target="_blank" rel="noopener">${t}</a>`;
           }
           return t;
         });

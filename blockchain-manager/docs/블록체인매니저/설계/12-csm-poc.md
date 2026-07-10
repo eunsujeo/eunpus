@@ -57,4 +57,5 @@ status: Done
 | 상태 — [4장 "공통 상태 다섯 (TxStatus)" 정본](04-detect-confirm.md#공통-상태-다섯-txstatus-정본) 그대로 합의 | 다섯 상태의 뜻·보장하는 subStatus 값·세 축(status/subStatus/networkStatus) 분담이 정본 표에 있다 — boost 는 매니저가 원 TxRef 로 접으므로 계약에 없다(6장) | 4·5·6장 |
 | UNMAPPED(귀속 불명) 해소 절차 | 수동 매핑 해소가 **매니저 주소 매핑 갱신**까지 걸친다 — 누가 갱신을 트리거하고, 해소 후 이벤트가 다시 흐르는지 | 4장 |
 | 내부 이체의 externalTxId 규약 | 매니저는 `INTERNAL` 까지만 주고 **요청의 externalTxId 를 완료 이벤트에 실어 준다** — 키 형식·동반 보장 합의 (sweep/delta 재분류는 이 키로) | 4·10장 |
+| 트래블룰 산출물 운반 | 출금 제출의 `travelRule` 필드 — 게이트(백엔드 모듈)가 만든 암호화 산출물을 매니저는 **싣기만 하고 내용을 모른다**(6장). 시나리오별로 싣는 것이 다르다 — 해외(Notabene) = travelRuleMessage · 국내(VerifyVASP)·개인지갑 = 없음: [트래블룰 시나리오](../../트래블룰/설계/07-scenarios.md) · [게이트 설계](../../트래블룰/설계/08-gate-port.md) | 6장 |
 | 메시지 큐 | ① 세 토픽(`deposit`·`withdrawal`·`internal`)의 이벤트 스키마·파티션 키<br/>② 전달 보장 — **at-least-once**(같은 이벤트가 드물게 중복 — 4장 예외 창) · 이벤트 ID = tx id(또는 externalTxId) unique · **같은 계정 순서는 파티션이 보장**<br/>③ 막힘 경보를 흘릴 별도 채널 수단 | 4장 |

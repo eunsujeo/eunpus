@@ -15,21 +15,23 @@ fun submitTransaction(request: TransactionRequest): TxRef {
 
 data class TransactionRequest(
   val externalTxId: String,             // 벤더에 남기는 우리 쪽 거래 식별자 — 재제출 중복 차단 · 우리 키로 벤더 거래 조회
-  val fromAccountId: AccountId,         // 보내는 vault — 우리 계정
-  val to: Destination,                  // 목적지 — type 으로 갈래 구분 (벤더 TransferPeerPathType 으로 매핑)
+  val from: TransferPeer,               // 보내는 쪽 — 우리 vault 라 type=ACCOUNT 만 허용
+  val to: TransferPeer,                 // 목적지 — type 으로 갈래 구분 (벤더 TransferPeerPathType 으로 매핑)
   val asset: Asset,
   val amount: BigDecimal,
   val note: String? = null,             // 벤더 거래 기록에 남는 메모
   val travelRule: TravelRule? = null,   // 트래블룰 — 게이트(매니저 밖)가 만든 암호화 메시지. 매니저는 운반만, 내용은 모름
 )
 
-data class Destination(
+data class TransferPeer(                 // 벤더 TransferPeerPath 와 대응 — from·to 공통
   val type: PeerType,                   // ADDRESS · ACCOUNT · WHITELISTED
   val address: String? = null,          // type=ADDRESS     — 온체인 주소 (외부 출금 → ONE_TIME_ADDRESS)
   val accountId: AccountId? = null,     // type=ACCOUNT     — 우리 계정 (sweep 등 내부 이동 → VAULT_ACCOUNT)
   val walletId: WalletId? = null,       // type=WHITELISTED — 사전 등록 지갑 (→ EXTERNAL_WALLET)
 )
 ```
+
+`from`·`to` 는 같은 `TransferPeer` 다 — 벤더 `createTransaction` 의 source·destination 이 둘 다 같은 타입인 것과 맞춘다. 단 **`from` 은 항상 우리 vault** 라 `type=ACCOUNT` 만 허용한다(검증). 우리는 키를 쥔 vault 에서만 전송하므로 외부 주소·화이트리스트에서 보내는 경우가 없다 — `to` 만 세 갈래를 다 쓴다.
 
 ## 출금 제출 — 파이프라인이 벤더 안으로 들어간다
 

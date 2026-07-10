@@ -69,6 +69,7 @@ _TODO: 회사·제품 라인업, 주요 사용처(거래소·커스터디·핀�
 - [[vendors/fireblocks/blockchains]] — 자산 도메인 (Stage 7, 100+ chain catalog hub)
 - [[entities/fireblocks/workspace]]
 - [[entities/fireblocks/admin-quorum]]
+- [[vendors/wallet-bank/overview]] — Fireblocks 를 커스터디 제공사로 참조하는 은행 자체 코어(daw-core) (cross-vendor)
 
 ## Sources
 

@@ -41,6 +41,7 @@ Fireblocks workspace에서 자산을 보유하는 단위. 본 자료에서 확�
 - [[entities/fireblocks/user-roles/owner]]
 - [[entities/fireblocks/user-roles/editor]]
 - [[vendors/fireblocks/architecture]]
+- [[entities/wallet-bank/custody-mapping]] — daw-core 가 `ext_acnt_id`(vaultAccountId)로 참조 (cross-vendor)
 
 ## Sources
 
