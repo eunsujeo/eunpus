@@ -343,7 +343,7 @@ async function showPreviewAt(idx) {
       m.subcategory ? `<span class="chip">${esc(m.subcategory)}</span>` : '',
       previewList.length > 1 ? `<span class="chip">${idx + 1} / ${previewList.length}</span>` : '',
     ].join('');
-    modalBody.innerHTML = renderMarkdown(data.body);
+    modalBody.innerHTML = renderMarkdown(data.body, { docBase: c.path.split('/').slice(0, -1).join('/') });
     await window.MD.runMermaid('#modal-body .mermaid');
     window.MD.enhanceDiagrams(modalBody);
   } catch (e) {

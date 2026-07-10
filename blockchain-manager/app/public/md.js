@@ -11,7 +11,8 @@ window.MD = (() => {
       .replace(/"/g, '&quot;');
   }
 
-  function renderMarkdown(md) {
+  function renderMarkdown(md, opts = {}) {
+    const docBase = opts.docBase || ''; // 현재 문서의 폴더 경로 — 상대 .md 링크를 doc 페이지 링크로 푼다
     const lines = md.split(/\r?\n/);
     const out = [];
     let inCode = false;
@@ -46,11 +47,15 @@ window.MD = (() => {
         .replace(/`([^`]+)`/g, '<code>$1</code>')
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
         .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-        .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, t, href) =>
-          /^https?:\/\//.test(href)
-            ? `<a href="${href}" target="_blank" rel="noopener">${t}</a>`
-            : t
-        );
+        .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, t, href) => {
+          if (/^https?:\/\//.test(href)) return `<a href="${href}" target="_blank" rel="noopener">${t}</a>`;
+          // 같은 폴더 문서로의 상대 링크(#절 앵커 허용) — 새창으로 doc 페이지를 연다
+          const rel = /^([^#/]+\.md)(#.+)?$/.exec(href);
+          if (docBase && rel) {
+            return `<a href="doc?path=${encodeURIComponent(`${docBase}/${rel[1]}`)}${rel[2] || ''}" target="_blank" rel="noopener">${t}</a>`;
+          }
+          return t;
+        });
 
     for (const line of lines) {
       if (line.trim().startsWith('```')) {
@@ -81,7 +86,13 @@ window.MD = (() => {
       flushTable();
 
       const h = /^(#{1,3})\s+(.*)$/.exec(line);
-      if (h) { closeList(); out.push(`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`); continue; }
+      if (h) {
+        closeList();
+        // 제목에 앵커 id — 다른 문서에서 파일.md#절-제목 으로 바로 이동할 수 있게
+        const id = h[2].toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, '').trim().replace(/\s+/g, '-');
+        out.push(`<h${h[1].length} id="${id}">${inline(h[2])}</h${h[1].length}>`);
+        continue;
+      }
 
       if (/^\s*[-*]\s+/.test(line)) {
         if (listTag !== 'ul') { closeList(); out.push('<ul>'); listTag = 'ul'; }

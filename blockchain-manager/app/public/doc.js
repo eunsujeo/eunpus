@@ -47,10 +47,15 @@ async function load() {
     ].join('');
 
     currentDoc = { name: path.split('/').pop(), raw: data.raw || data.body };
-    bodyEl.innerHTML = renderMarkdown(data.body);
+    bodyEl.innerHTML = renderMarkdown(data.body, { docBase: path.split('/').slice(0, -1).join('/') });
     await window.MD.runMermaid('#doc-body .mermaid');
     window.MD.enhanceDiagrams(bodyEl);
     renderNav(path);
+    // doc?path=...#절-앵커 로 열렸으면 해당 절로 스크롤 (mermaid 렌더 후 — 높이 확정 뒤)
+    if (location.hash) {
+      const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+      if (target) target.scrollIntoView();
+    }
   } catch (e) {
     bodyEl.innerHTML = `<p style="color:var(--danger)">불러오기 실패: ${esc(e.message)}</p>`;
   }

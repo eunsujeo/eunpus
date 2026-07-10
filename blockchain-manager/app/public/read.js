@@ -106,7 +106,10 @@ async function renderCategory() {
       const title = (data && data.meta && data.meta.title) || card.title || card.name;
       const anchor = `ch-${i}`;
       toc.push(`<li><a href="#${anchor}">${esc(title)}</a></li>`);
-      const html = data && data.body ? renderMarkdown(data.body) : '<p class="muted">불러오기 실패</p>';
+      const html =
+        data && data.body
+          ? renderMarkdown(data.body, { docBase: card.path.split('/').slice(0, -1).join('/') })
+          : '<p class="muted">불러오기 실패</p>';
       sections.push(
         `<section class="read-chapter"><h1 id="${anchor}" class="read-ch-title">${esc(title)}</h1>${html}</section>`
       );

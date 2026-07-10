@@ -31,7 +31,6 @@ sequenceDiagram
     CH-->>FB: 수수료 이력 데이터
     FB->>CH: 모의 실행 (estimateGas) — 사용량 재료
     CH-->>FB: 예상 가스 사용량
-    Note over BE,CH: 순번 점유 없음 — 읽기뿐이라 출금 화면에서 수시 호출해도 안전
     FB->>FB: 이력의 백분위수로 등급 산출
     FB-->>BM: low · medium · high
     BM-->>BE: low · medium · high (보장 아님 — 실제 수수료는 제출 때 재확정)

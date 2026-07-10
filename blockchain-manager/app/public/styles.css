@@ -479,13 +479,19 @@ body {
 .read-chapter { padding-top: 52px; margin-top: 52px; border-top: 2px solid var(--hairline); }
 .read-chapter:first-child { padding-top: 0; margin-top: 0; border-top: none; }
 .read-ch-title { color: var(--text-strong); font-size: 26px; margin: 0 0 20px; scroll-margin-top: 76px; letter-spacing: -0.01em; }
+/* 문서 내 절 앵커 이동 시 상단바에 안 가리게 */
+.doc-body h1, .doc-body h2, .doc-body h3 { scroll-margin-top: 76px; }
 .muted { color: var(--muted); }
 
 /* 본문 컨테이너는 자체 padding 을 지우고 read-page 여백에 정렬 (제목·리스트 왼쪽 맞춤) + 읽기 타이포 */
 .read-page .doc-body { padding: 0; font-size: 15px; line-height: 1.78; }
 
 /* 상세 읽기: 읽기 좋은 폭 + 목차를 오른쪽 사이드 드로어로, 토글로 슬라이드 */
-.read-page.with-toc { max-width: 820px; }
+/* 목차 닫힘 = 본문이 폭을 다 씀(넓은 표). 열림 = 드로어 자리를 padding 으로 비워 겹침 방지 */
+.read-page.with-toc { max-width: 1080px; }
+@media (min-width: 1180px) {
+  .read-page.with-toc:not(.toc-hidden) { max-width: 1380px; padding-right: 300px; }
+}
 .read-page.with-toc #read-toc {
   position: fixed;
   top: 56px;

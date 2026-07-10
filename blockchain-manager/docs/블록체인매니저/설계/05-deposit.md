@@ -53,27 +53,12 @@ sequenceDiagram
 
 ## 입금에서 보는 상태·하위 상태
 
-Fireblocks 트랜잭션 상태는 전부 17가지지만 대부분은 출금 쪽 단계(제출·승인·서명·전파)이고 — 그쪽은 6페이지의 "상태 한 장" 표가 맡습니다 — **입금이 실제로 지나는 것은 아래 넷**입니다.
+상태·subStatus 의 정본은 [4장 "공통 상태 다섯 (TxStatus)"](04-detect-confirm.md#공통-상태-다섯-txstatus-정본) 한 곳에 모았다. 여기서는 입금 쪽 특이사항만:
 
-| status | 뜻 |
-|---|---|
-| `CONFIRMING` | 체인 등장, confirmation 누적 중 — 대기(pending)로 잡힌다 |
-| `COMPLETED` | DCCP 임계 도달 = finality (final). 임계 확인 후 가용(available)에 더해진다. zero-confirmation 설정이면 여러 번 관찰될 수 있음(4장 함정) |
-| `REJECTED` | AML 거절 또는 동결 — Admin 이 unfreeze 할 때까지 자산 잠금, 잔액 반영 보류 |
-| `FAILED` | 영구 실패 (final) — 반영하지 않는다 |
-
-각 status 는 `subStatus` 로 사유가 세분됩니다 — 매니저 내부 폴링이 분기하는 `status`·`numOfConfirmations` 에 사유를 더해주는 필드이고 큐 이벤트에 함께 실려 옵니다. 입금 관련은 아래가 전부이고, 특히 **REJECTED 의 동결 3종은 Admin 의 unfreeze 운영**이 걸립니다.
-
-| 상위 | subStatus | 뜻 |
-|---|---|---|
-| CONFIRMING | `PENDING_BLOCKCHAIN_CONFIRMATIONS` | confirmation 대기 중 |
-| COMPLETED | `CONFIRMED` | 필요한 confirmation 도달 |
-| REJECTED | `AUTO_FREEZE` | 스크리닝 정책이 자동 동결 — Admin unfreeze 까지 잠금 |
-| REJECTED | `FROZEN_MANUALLY` | Console/API 사용자가 수동 동결 — 동일 |
-| REJECTED | `REJECTED_AML_SCREENING` | AML 고위험 판정 — 동일 |
-| FAILED | `DROPPED_BY_BLOCKCHAIN` | 블록에 실렸다가 떨어짐(깊은 reorg 등) — 반영해 둔 잔액을 되돌린다(아래 절) |
-
-전체 subStatus(실패 사유 수십 종)는 출금·운영 영역이라 벤더 레퍼런스의 몫이고 여기엔 입금에서 관찰되는 것만 실었다.
+- 입금이 실제로 지나는 상태는 다섯 중 **넷** — CONFIRMING(대기 pending 으로 잡힘) · COMPLETED(임계 확인 후 가용 available) · REJECTED · FAILED. SUBMITTED 는 출금 쪽 단계라 입금에선 안 본다.
+- COMPLETED 는 zero-confirmation 설정이면 여러 번 관찰될 수 있다(4장 함정).
+- **REJECTED 의 동결 3종**(`AUTO_FREEZE` · `FROZEN_MANUALLY` · `REJECTED_AML_SCREENING`)은 **Admin 의 unfreeze 운영**이 걸린다 — unfreeze 까지 자산 잠금, 잔액 반영 보류.
+- FAILED + `DROPPED_BY_BLOCKCHAIN` 은 reorg 증발 — 반영해 둔 잔액을 되돌린다(아래 절).
 
 ## 예외 — reorg 로 믿었던 입금이 뒤집히면
 
@@ -81,7 +66,7 @@ Fireblocks 트랜잭션 상태는 전부 17가지지만 대부분은 출금 쪽 
 
 - **1차 방어는 4장의 DCCP 임계(finality)** — 임계만큼 confirmation 이 쌓인 뒤에만 확정으로 본다. 그보다 얕은 reorg 는 확정 판정에 닿지 못한다.
 - **CONFIRMING 은 BROADCASTING 으로 되돌아가지 않는다** — reorg 가 나도 마찬가지다. reorg 로 거래가 블록에서 빠져 취소되면 Fireblocks 는 broadcasting 회귀가 아니라 **FAILED(또는 취소·만료) + subStatus `DROPPED_BY_BLOCKCHAIN`** 으로 표시한다(Fireblocks Support 백엔드 팀 확답).
-- 매니저는 이 신호를 큐에 publish 하고, 무효화 처리는 백엔드 몫이다(원장 반영은 상태표·8장).
+- 매니저는 이 신호를 큐에 publish 하고, 무효화 처리는 백엔드 몫이다(원장 반영은 8장).
 - 최종 안전망은 **주기 대사**.
 
 ## 입금 다음 — 고객 vault 에서 옴니버스로 (sweep)
@@ -144,4 +129,4 @@ sequenceDiagram
 | **고객 잔액** | **불변** — 고객별 잔액은 백엔드 DB 원장 몫이고, sweep 은 온체인 보관 위치만 옮긴다(회계 이벤트 아님). |
 | **관찰·실패** | sweep tx 는 매니저 내부 폴링에 **내부 이동**으로 잡혀 같은 경로로 상태 추적·막힘 점검·boost 를 타고, 변경은 큐에 publish 된다(4장). |
 
-감지·판정 기준(폴링 루프·DCCP·막힘 점검)은 4. 감지와 확정, 잔액의 세 칸(available·pending·locked)과의 맞물림은 8. 잔액과 내역 조회, 출금 쪽 상태 전이는 6. 출금 에서 이어집니다.
+감지·판정 기준(폴링 루프·DCCP·막힘 점검)은 [4. 감지와 확정](04-detect-confirm.md), 잔액의 세 칸(available·pending·locked)과의 맞물림은 [8. 잔액과 내역 조회](08-balance-history.md), 출금 쪽 상태 전이는 [6. 출금](06-withdrawal.md)에서 이어집니다.
