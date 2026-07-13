@@ -11,7 +11,7 @@ fun onChainEvent(topic: Topic, handler: (ChainEvent) -> Unit)
 
 data class ChainEvent(
   val type: EventType,               // DEPOSIT · UNMAPPED · WITHDRAWAL · INTERNAL — 매니저가 체인+매핑으로 가르는 tx 분류 (sweep/delta 는 백엔드가 externalTxId 로)
-  val txRef: String,                 // 벤더 tx id
+  val txId: String,                 // 벤더 tx id
   val txHash: String? = null,        // 온체인 거래해시 — 전파 후 채워짐(SUBMITTED 단계엔 없을 수 있음). 백엔드 대사·증빙용
   val externalTxId: String? = null,  // 우리 요청 키 (출금·내부이체) — 완료 대응·멱등
   val accountId: AccountId,          // 파티션 키 (내부이체 = 출발 계정)
@@ -43,7 +43,7 @@ data class ChainEvent(
 - **커밋** — 처리 성공 후에만 오프셋 커밋(at-least-once). 실패하면 재소비된다.
 - **컨슈머 그룹은 토픽마다 하나** — 인스턴스가 여러 대여도 분배는 큐가 한다.
 
-## 공통 상태 다섯 (TxStatus) — 정본
+## 공통 상태 다섯 (TxStatus) — 기준
 
 Fireblocks 는 내부 상태를 여러 단계로 보내지만, 백엔드가 보는 것은 매니저가 번역한 **공통 상태 다섯**입니다. 입금(5장)·출금(6장)이 모두 이 표를 씁니다.
 
@@ -97,7 +97,7 @@ sequenceDiagram
 
     loop 받은 tx 각각 — lastUpdated 오름차순
         SUB->>MDB: 방향 판정(발신자가 우리 vault 인지) + accountId 귀속 · tx 상태 체크포인트 기록<br/>이전 상태와 같으면 publish 생략 (중복 억제)
-        alt 발신자가 우리 vault — 외부 출금 · 내부 이체 (txRef 도 매칭)
+        alt 발신자가 우리 vault — 외부 출금 · 내부 이체 (txId 도 매칭)
             SUB-->>MQ: publish — 외부 출금 → withdrawal-events(6장) · 내부 이체 → internal-events(5·10장)
         else 입금 · CONFIRMING
             SUB-->>MQ: publish → deposit-events — 입금 감지 (CONFIRMING)

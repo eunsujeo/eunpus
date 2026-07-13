@@ -27,7 +27,7 @@ fun transactionsOf(
 }
 
 data class Transfer(
-  val txRef: String,                 // 벤더 tx id
+  val txId: String,                 // 벤더 tx id
   val txHash: String? = null,        // 온체인 거래해시 — 전파 후 채워짐. 대사·증빙용 (4장 ChainEvent 와 동일)
   val externalTxId: String? = null,  // 우리 요청 키 (출금·내부이체) — 기록과 대조용
   val asset: Asset,
@@ -36,12 +36,12 @@ data class Transfer(
   val to: String,                    // 목적지 주소 — 방향은 from·to 로 가른다
   val status: TxStatus,              // 4장 공통 상태 다섯
   val numOfConfirmations: Int,
-  val createdAt: Instant,
-  val lastUpdated: Instant,          // 마지막 상태 변경 — after·before 필터의 기준 시각
+  val createdAt: Instant,            // 거래 생성 시각 — after·before 필터의 기준 (벤더 스펙 · 4장)
+  val lastUpdated: Instant,          // 마지막 상태 변경 시각
 )
 ```
 
-after·before 는 벤더 거래 목록 API(`GET /v1/transactions`)의 시간 필터 그대로다 — **Unix 밀리초 타임스탬프**로, 4장 매니저 내부 폴링 커서와 같은 형식이다. 미지정 시 벤더 기본 조회 창이 적용된다.
+after·before 는 벤더 거래 목록 API(`GET /v1/transactions`)의 시간 필터 그대로다 — **거래 생성 시각(createdAt) 기준**, Unix 밀리초 타임스탬프(4장 "after 는 createdAt 기준" 스펙 확인분과 동일). 매니저 내부 폴링이 lastUpdated 커서로 변경분을 잡는 것과는 별개 경로다. 미지정 시 벤더 기본 조회 창이 적용된다.
 
 ## 세 칸을 가르는 선 — confirm 과 finality
 
@@ -62,7 +62,10 @@ flowchart LR
     classDef avail fill:#dcfce7,stroke:#16a34a;
     classDef lock fill:#eef2ff,stroke:#818cf8;
     classDef neutral fill:#f5f5f7,stroke:#86868b;
-    class PEND pend; class AVAIL avail; class LOCK lock; class IN neutral;
+    class PEND pend
+    class AVAIL avail
+    class LOCK lock
+    class IN neutral
 ```
 
 위 그림을 요약하면:
@@ -152,7 +155,10 @@ flowchart LR
     classDef src fill:#dbeafe,stroke:#2563eb;
     classDef good fill:#dcfce7,stroke:#16a34a;
     classDef bad fill:#fee2e2,stroke:#dc2626;
-    class T,C trig; class L,V src; class OK good; class NG bad;
+    class T,C trig
+    class L,V src
+    class OK good
+    class NG bad
 ```
 
 위 그림(대사 한 사이클)을 요약하면:

@@ -32,7 +32,7 @@ sequenceDiagram
     Note over FB,DB: 여기서부터는 전부 오프체인 — 감지·폴링은 매니저, 기록·가용 처리는 백엔드 DB 의 일이고,<br/>입금 처리에서 우리는 체인에 아무 거래도 내지 않는다
     Note over BM,FB: 주기 폴링은 매니저 내부 구현 — outbound · 지난 폴 이후 갱신된 tx 만 받는다 (4장)
     BM->>MDB: 커서 읽기 — 마지막 처리 lastUpdated
-    BM->>FB: GET /v1/transactions · orderBy=lastUpdated · after=커서 · limit=200
+    BM->>FB: GET /v1/transactions · orderBy=lastUpdated · sort=DESC · limit=200<br/>after 는 고정 과거값 — 커서는 중단 기준 (4장)
     FB-->>BM: status CONFIRMING (체인 등장·미확정)
     BM->>MDB: 목적지 vault → accountId 귀속 (주소 매핑) · tx 체크포인트
     BM->>MQ: publish — 입금 이벤트 status=CONFIRMING · 파티션 키=accountId
@@ -53,7 +53,7 @@ sequenceDiagram
 
 ## 입금에서 보는 상태·하위 상태
 
-상태·subStatus 의 정본은 [4장 "공통 상태 다섯 (TxStatus)"](04-detect-confirm.md#공통-상태-다섯-txstatus-정본) 한 곳에 모았다. 여기서는 입금 쪽 특이사항만:
+상태·subStatus 의 기준은 [4장 "공통 상태 다섯 (TxStatus)"](04-detect-confirm.md#공통-상태-다섯-txstatus-기준) 한 곳에 모았다. 여기서는 입금 쪽 특이사항만:
 
 - 입금이 실제로 지나는 상태는 다섯 중 **넷** — CONFIRMING(대기 pending 으로 잡힘) · COMPLETED(임계 확인 후 가용 available) · REJECTED · FAILED. SUBMITTED 는 출금 쪽 단계라 입금에선 안 본다.
 - COMPLETED 는 zero-confirmation 설정이면 여러 번 관찰될 수 있다(4장 함정).
@@ -105,7 +105,7 @@ sequenceDiagram
     FB->>RL: gas 부담 위임 — 거래 생성·서명 시점 (relay 거절이면 거래 실패)
     Note over FB,RL: gas 는 relay 가 지불 · 토큰은 고객 vault 에서 이동 — 월말 인보이스 정산
     FB-->>BM: 제출 접수
-    BM-->>SW: 접수 응답 (txRef)
+    BM-->>SW: 접수 응답 (txId)
     Note over BM,RL: 여기까지 오프체인 — 온체인은 relay 가 전파한 뒤부터
     BM->>MQ: 매니저 내부 폴링이 내부 이동 완료를 publish → internal-events (4장)
     MQ-->>SW: consume — 완료 확인 후 sweep 기록 마감 (고객 원장 불변 · 온체인 위치만 이동)

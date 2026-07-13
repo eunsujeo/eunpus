@@ -10,7 +10,7 @@ status: To Do
 
 ## 상태코드 — 두 어휘를 잇는 매핑이 없다
 
-[4장 공통 상태 다섯(TxStatus) 정본](04-detect-confirm.md#공통-상태-다섯-txstatus-정본)과 daw-core 거래 상태(`daw_tx_l.tx_stcd`)가 서로 다른 말을 쓴다. 둘을 잇는 전이표가 어느 문서에도 없어, 여기서 대응을 그려 본다 — 대부분 접히지만 REJECTED 에서 빈다.
+[4장 공통 상태 다섯(TxStatus) 기준](04-detect-confirm.md#공통-상태-다섯-txstatus-기준)과 daw-core 거래 상태(`daw_tx_l.tx_stcd`)가 서로 다른 말을 쓴다. 둘을 잇는 전이표가 어느 문서에도 없어, 여기서 대응을 그려 본다 — 대부분 접히지만 REJECTED 에서 빈다.
 
 | 매니저 TxStatus (4장) | 뜻 | daw-core `tx_stcd` | 대응 |
 |---|---|---|---|
@@ -87,7 +87,7 @@ SUBMITTED·CONFIRMING 은 tx 레벨에선 모두 PENDING 으로 접힌다 — �
 
 정할 것과 물어볼 것.
 
-1. **어느 방식이 정본인지 정한다** — 충전이냐 대납 단일이냐. 대납이 최종이면 충전 전제의 요구·계정을 정리한다.
+1. **어느 방식이 기준인지 정한다** — 충전이냐 대납 단일이냐. 대납이 최종이면 충전 전제의 요구·계정을 정리한다.
 2. **FEE_MGT 계정의 역할을 코어 팀에 확인한다** — 이 계정이 지금 무엇을 담는 계정인지(가스용 ETH 를 들고 채우는 충전 계정인지, 아니면 다른 용도인지), 대납 단일 아래에서 재정의할지·유지할지·뺄지.
 
 관련: 가스 대납 [5장 결정](../가스대납/05-decision.md) · [9장 EIP-7702](../가스대납/09-eip7702.md)
@@ -122,7 +122,7 @@ SUBMITTED·CONFIRMING 은 tx 레벨에선 모두 PENDING 으로 접힌다 — �
 | **processing** | 배치가 이 델타를 묶어 온체인에 제출하고 확정을 기다리는 상태. 배치 키로 마킹해 이중 제출을 막는다 | 델타에 `nttg_btch_id` 채워짐 + 배치 `nttg_stcd` = 제출·processing |
 | **settled** | 온체인 확정으로 정산 완료. 실패하면 PENDING 으로 되돌린다 | 배치 `nttg_stcd` = 정산완료 + `settl_tmst` 기록 |
 
-processing → settled 전이는 온체인 확정으로 일어난다. 이때 매니저 완료 이벤트(4장 `ChainEvent`)가 실어 주는 건 **벤더 tx id(`txRef`)·우리 요청 키(`externalTxId`)·온체인 거래해시(`txHash`)** 다 — daw-core 는 txRef 를 `bcm_tx_id`, txHash 를 `bcm_tx_hash`·`tx_hash` 에 담고 externalTxId 로 배치를 찾는다. 배치·온체인 매칭과 증빙이 이 값들로 된다.
+processing → settled 전이는 온체인 확정으로 일어난다. 이때 매니저 완료 이벤트(4장 `ChainEvent`)가 실어 주는 건 **벤더 tx id(`txId`)·우리 요청 키(`externalTxId`)·온체인 거래해시(`txHash`)** 다 — daw-core 는 txId 를 `bcm_tx_id`, txHash 를 `bcm_tx_hash`·`tx_hash` 에 담고 externalTxId 로 배치를 찾는다. 배치·온체인 매칭과 증빙이 이 값들로 된다.
 
 어긋난 설계가 아니라 표현이 다른 것이다 — processing 에 해당하는 상태가 델타가 아니라 배치(`nttg_stcd`)로 올라가 있다. 델타는 불변으로 두고, 제출·정산 진행 상태는 배치가 갖는 구조다. 10장 문서를 "델타는 불변, 처리 상태는 배치가 보유"로 맞춰 적으면 된다.
 
@@ -182,9 +182,9 @@ processing → settled 전이는 온체인 확정으로 일어난다. 이때 매
 
 → 대기를 (a) `daw_ast_bal_m` 에 `pend_qty` 로 저장할지, (b) 미확정 입금 기록에서 파생할지 정한다. 파생이면 컬럼은 필요 없지만, 미확정 입금이 어디에 남는지부터 정해야 한다. 관련: [5장 입금](05-deposit.md) · [8장 잔액](08-balance-history.md)
 
-**관련 테이블 — `daw_ast_bal_m` (고객 자산 잔액, DB 정본)**
+**관련 테이블 — `daw_ast_bal_m` (고객 자산 잔액, DB 기준)**
 
-고객 잔액의 정본. 자산 정체성과 1:1 로, 별도 ID 없이 `ast_id` 를 그대로 PK 이자 FK 로 쓴다.
+고객 잔액의 기준. 자산 정체성과 1:1 로, 별도 ID 없이 `ast_id` 를 그대로 PK 이자 FK 로 쓴다.
 
 | 컬럼 | 타입 | 설명 |
 |---|---|---|

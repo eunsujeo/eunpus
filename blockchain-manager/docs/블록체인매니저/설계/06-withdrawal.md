@@ -9,8 +9,8 @@ status: Done
 업무 승인이 끝난 출금 지시를 Service 백엔드가 매니저 API 로 넘깁니다(제출).
 
 ```kotlin
-fun submitTransaction(request: TransactionRequest): TxRef {
-  return TxRef(id) // id = 벤더 트랜잭션 id
+fun submitTransaction(request: TransactionRequest): SubmitResult {
+  return SubmitResult(txId) // txId = 벤더 트랜잭션 id
 }
 
 data class TransactionRequest(
@@ -60,8 +60,8 @@ sequenceDiagram
     BE->>BM: submitTransaction(승인된 출금 · gasless) — API<br/>from = 출금 풀 vault — 출금 전용 · round-robin (5장)
     BM->>FB: createTransaction(…)
     FB-->>BM: 트랜잭션 id
-    BM-->>BE: TxRef — API 응답
-    BE->>DB: 출금 기록 — TxRef 저장, 상태 추적 시작
+    BM-->>BE: txId — API 응답
+    BE->>DB: 출금 기록 — txId 저장, 상태 추적 시작
     Note over COS,CH: 조립·순번은 벤더가, 전파는 relay 가 — 다만 MPC 서명엔 co-signer share 가 필요하다
     FB->>COS: 서명 요청 (원문 목적지·금액 동반)
     COS->>CB: 승인 질의 — 서명 직전 검증 (검증 항목은 아래 표)
@@ -75,7 +75,7 @@ sequenceDiagram
     BM->>FB: 매니저 내부 폴링 — lastUpdated 커서로 변경된 tx 조회 (4장)
     BM->>MQ: onChainEvent publish → withdrawal-events — 상태 변경 (파티션 키 = 보내는 출금 풀 vault 의 accountId)
     MQ->>QC: consume — 컨슈머 그룹으로 인스턴스 분배
-    QC->>DB: 상태 갱신 — TxRef 로 대조, 전파 → 누적 → 확정. 처리 성공 후 오프셋 커밋
+    QC->>DB: 상태 갱신 — txId 로 대조, 전파 → 누적 → 확정. 처리 성공 후 오프셋 커밋
 ```
 
 ## 서명은 두 겹 — 안쪽 승인(vault)과 바깥 거래(relay)
@@ -125,7 +125,7 @@ sequenceDiagram
 제출 때 정한 수수료가 시세보다 낮으면 거래가 mempool 에 걸려 **막힙니다**. Gasless Relay 가 stuck 을 스스로 bump 하는지는 미확인이라(12장), **우리가 감지·재촉하는 전제**로 둔다 — 자동 처리로 확인되면 이 트리거는 불필요해진다.
 
 - **자동 boost** — 막힘 점검(4장)이 오래 CONFIRMING 인 건을 잡으면 매니저가 **Admin 정책(대기 임계·최대 시도) 안에서 자동으로 boost**(같은 순번, 수수료만 올린 재전송 · RBF)한다. 인상된 gas 는 **relay 가 부담**하고, 인상 폭·상한은 relay 설정이다.
-- **백엔드는 boost 를 모른다** — boost 로 벤더 거래가 대체되어도(새 txId) 매니저가 원 TxRef 로 접어 같은 상태 흐름(CONFIRMING → COMPLETED)만 흘린다. 금액·목적지는 그대로고 인상 gas 도 relay 부담이라 원장에 영향이 없다. boost 이력(시도 횟수·대체 txId)은 매니저 DB 에 남고 Admin 이 본다.
+- **백엔드는 boost 를 모른다** — boost 로 벤더 거래가 대체되어도(새 txId) 매니저가 원 txId 로 접어 같은 상태 흐름(CONFIRMING → COMPLETED)만 흘린다. 금액·목적지는 그대로고 인상 gas 도 relay 부담이라 원장에 영향이 없다. boost 이력(시도 횟수·대체 txId)은 매니저 DB 에 남고 Admin 이 본다.
 - **cancel(철회)** — 기본 흐름에선 쓰지 않는다. 자동 boost 를 최대 시도까지 해도 못 살린 예외에서만 **수동 최후수단**으로 판단한다.
 
 fee 부족이 아니라 **relay 가 gas 를 못 대거나 거절**(잔고 소진 등)이면 boost 로 안 풀리므로, 경보를 올려 사람이 relay 쪽 복구(gas 잔고 충전 등)로 넘긴다. relay 가 stuck 을 자동 처리하는지 등 벤더 확인 항목은 12장.
@@ -143,7 +143,7 @@ sequenceDiagram
 
     SW->>SW: 오래 CONFIRMING 인 건 감지 (매니저 DB · 벤더 호출 없음)
     alt fee 부족 · 정책 내(대기 임계·최대 시도)
-        SW->>BM: 자동 boost(txRef) — 정책이 트리거
+        SW->>BM: 자동 boost(txId) — 정책이 트리거
         BM->>FB: 벤더 boost 호출
         FB->>RL: 대체 거래 생성 — 발신자가 relay 라 relay 만 만든다
         RL->>CH: 같은 순번 · fee 올린 대체 거래 전파 — gas 는 relay 부담
@@ -162,10 +162,10 @@ sequenceDiagram
 
 ## 상태 — 공통 어휘로 나간다
 
-상태 다섯(TxStatus)·subStatus 의 정본은 [4장 "공통 상태 다섯 (TxStatus)"](04-detect-confirm.md#공통-상태-다섯-txstatus-정본) 한 곳에 모았다. 여기서는 출금 쪽 특이사항만:
+상태 다섯(TxStatus)·subStatus 의 기준은 [4장 "공통 상태 다섯 (TxStatus)"](04-detect-confirm.md#공통-상태-다섯-txstatus-기준) 한 곳에 모았다. 여기서는 출금 쪽 특이사항만:
 
 - 출금은 다섯을 **전부** 지난다 — 특히 SUBMITTED(서명·전파 준비)는 출금에서만 관찰된다. 벤더 내부의 세부 단계(승인·서명·전파)를 SUBMITTED 로 접는 것이 이 장의 번역이다.
-- 상태 변경 이벤트(onChainEvent)는 메시지 큐(withdrawal-events 토픽)에서 consume 하고, transactionsOf 는 필요할 때 단건 확인하는 API 조회로 남는다.
+- 상태 변경 이벤트(onChainEvent)는 메시지 큐(withdrawal-events 토픽)에서 consume 하고, transactionOf(단건 조회)는 필요할 때 확인하는 API 조회로 남는다.
 - confirm(체인 등장)↔finality(확정) 판정 기준은 4장과 같다(numOfConfirmations vs DCCP 임계).
 
 상태 이름과 확정 정책(DCCP)은 벤더 안에 있고 그것을 공통 어휘 다섯으로 번역하는 것은 매니저 내부입니다. 막힘 대응의 자동 boost 는 매니저가 실행하되, 어떤 정책(대기 임계·최대 시도)으로 boost 할지는 Admin 이 미리 정합니다 — cancel 은 예외적 수동입니다.

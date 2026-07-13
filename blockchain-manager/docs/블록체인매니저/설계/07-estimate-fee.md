@@ -7,7 +7,7 @@ status: Done
 언제 부르는지(주기 관측 · sweep 타이밍 · 고객 화면)와 무엇으로 검증하는지(온체인 실측)를 정리한다.
 
 ```kotlin
-fun estimateFee(request: TransactionRequest): FeeEstimate {
+fun estimateFee(request: FeeEstimateRequest): FeeEstimate {   // from·to·asset·amount 만 — 트래블룰·externalTxId 없음
   return FeeEstimate(low, medium, high)
 }
 ```

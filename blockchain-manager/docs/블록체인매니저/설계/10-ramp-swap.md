@@ -48,8 +48,8 @@ sequenceDiagram
     Note over App,MQ: 2단계 — 15분 배치 (Service 백엔드가 실행)
     App->>DL: 윈도 PENDING 조회 → processing 마킹 (배치 키 = externalTxId) → 자산별 상계(netting)
     App->>BM: API — 자산당 순증분 1건 submitTransaction (externalTxId = 배치 키) · (고객 자산 지갑 ↔ 은행 자산 지갑)
-    alt 성공 — TxRef 응답
-        BM-->>App: TxRef — 배치에 기록 · processing 유지, 확정 이벤트 대기
+    alt 성공 — txId 응답
+        BM-->>App: txId — 배치에 기록 · processing 유지, 확정 이벤트 대기
     else 확정 에러 — 검증 실패 등 · 제출 안 된 게 확실
         BM-->>App: 에러
         App->>DL: processing → PENDING 복귀 (다음 배치에 다시) · 반복 실패면 경보
@@ -73,7 +73,7 @@ sequenceDiagram
 - 스왑은 전송이 두 다리라 초록 단계가 두 번 잡힌다.
 - 완료 대조의 열쇠는 **externalTxId** — 매니저는 이 전송이 델타 배치인 걸 모르고(`INTERNAL` 까지만), 정산 컨슈머가 externalTxId 로 원래 배치를 찾아 닫는다(4장).
 - **processing 마킹이 이중 제출을 막는다** — 전송 확정 전에 다음 윈도가 돌아도 PENDING 만 집으므로 안 겹친다. 재시작 시엔 "processing + 배치 키" 행으로 벤더 제출 여부를 확인해 잇는다 — 애매한 에러(타임아웃)와 같은 복구 경로다.
-- **제출 응답 세 갈래** — 성공(TxRef 기록·이벤트 대기) · 확정 에러(PENDING 복귀 — 안 보내진 게 확실할 때만) · 애매한 에러(벤더 조회 후 대기 또는 같은 키 재제출). 온체인에서 실패(FAILED 이벤트)로 끝난 경우도 확정 에러처럼 PENDING 복귀 또는 경보다.
+- **제출 응답 세 갈래** — 성공(txId 기록·이벤트 대기) · 확정 에러(PENDING 복귀 — 안 보내진 게 확실할 때만) · 애매한 에러(벤더 조회 후 대기 또는 같은 키 재제출). 온체인에서 실패(FAILED 이벤트)로 끝난 경우도 확정 에러처럼 PENDING 복귀 또는 경보다.
 
 ## 배치를 효율적으로 — Service 백엔드가 두 지갑 사이를 상계한다
 
@@ -93,7 +93,9 @@ flowchart LR
     classDef q fill:#fef3c7,stroke:#d97706;
     classDef app fill:#dbeafe,stroke:#2563eb;
     classDef w fill:#dcfce7,stroke:#16a34a;
-    class P q; class NET app; class CW,BW w;
+    class P q
+    class NET app
+    class CW,BW w
 ```
 
 위 그림을 요약하면:
