@@ -336,7 +336,8 @@ async function showPreviewAt(idx) {
   try {
     const data = await api(`/api/doc?path=${encodeURIComponent(c.path)}`);
     const m = data.meta || {};
-    currentDoc = { name: c.name, path: c.path, raw: data.raw || data.body };
+    // 복사·다운로드 = frontmatter 제거 + 제목을 H1 로 (title:/status: 가 텍스트로 새지 않게)
+    currentDoc = { name: c.name, path: c.path, raw: `# ${m.title || c.title || c.name}\n\n${data.body}` };
     modalChips.innerHTML = [
       m.status ? `<span class="chip status">${esc(m.status)}</span>` : '',
       m.category ? `<span class="chip">${esc(m.category)}</span>` : '',
