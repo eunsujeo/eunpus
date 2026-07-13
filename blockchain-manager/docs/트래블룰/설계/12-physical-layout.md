@@ -17,7 +17,7 @@ flowchart TB
     SEC[("시크릿 스토어 · KMS<br/>전용 API user API키·RSA 서명키")]
     RX["트래블룰 수신 컴포넌트<br/>별도 배포·얇게 · 공개 HTTPS 인바운드"]
     EN["우리 Enclave · VerifyVASP<br/>키·PII · 공개 HTTPS · 포트 21117"]
-    CC["CODE-Cipher · CODE<br/>설치형 암호화 모듈"]
+    CC["CODE-Cipher · CODE 직접 시<br/>조건부 설치물 (6장)"]
     AR["Address Registry<br/>개인지갑 등록·소유"]
   end
 
@@ -61,7 +61,7 @@ flowchart TB
 ## 배치의 요점
 
 - **트래블룰 게이트는 Service 백엔드 안 모듈**이다(파랑) — 자산 이동 경로가 아니라 업무층에 둔다(6·8장).
-- **우리가 운영하는 설치물**(노랑) — VerifyVASP `Enclave`(키·PII·공개 HTTPS)·CODE `CODE-Cipher`(암호화 모듈)·트래블룰 `수신 컴포넌트`(별도 배포). 벤더가 강제하는 별도 배포물이라 우리 인프라 안에 새로 생긴다.
+- **우리가 운영하는 설치물**(노랑) — VerifyVASP `Enclave`(키·PII·공개 HTTPS)·트래블룰 `수신 컴포넌트`(별도 배포). 벤더가 강제하는 별도 배포물이라 우리 인프라 안에 새로 생긴다. `CODE-Cipher` 는 **조건부** — 기본은 상호연동 경유라 설치가 없고, CODE 직접 어댑터를 붙일 때만 생긴다(6·13장).
 - **대기함**(초록)은 사전 검증·승인 기록 저장소 — 입금 대조의 재료(7.3·7.5).
 - **외부 중앙**(회색) — VerifyVASP 중앙·CodeVASP·Notabene·Fireblocks. Notabene 는 경유(FB 통해)와 직접(대안) 둘 다 점선.
 - **Fireblocks 스크리닝은 자산 경로 밖** — 트래블룰 검증 호출(`validate` → `validate/full`, 제출 전·자산 불이동)은 제출·전파(자산 이동, 범위 밖)를 타지 않고 전용 경로로 나간다(8장).

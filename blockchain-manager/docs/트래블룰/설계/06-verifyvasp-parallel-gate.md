@@ -127,18 +127,27 @@ flowchart LR
 
 ## 미확정 — 확인 필요
 
-공식 문서에 없어 도입 전 확인해야 하는 것들이다.
+공식 문서에 없어 도입 전 확인해야 하는 것들이다. **누구에게 확인하나**로 묶는다 — 문의 채널이 셋이다.
+
+### Fireblocks (CSM 문의)
 
 - **한국 관할 임계값 적용법** — 원화 기준 적용 방법. `AmountUSD` 만 지원하는지 확인 필요.
 - **TAP(거래 승인 정책)과의 선후** — 문서에 TAP 언급이 없다. 확정된 순서는 "OFAC 이 사용자 정책보다 먼저", "AML 이 트래블룰보다 먼저" 뿐이다.
 - **Notabene 직접 통합 vs TRLink** — 연결 가능 목록에 Notabene·Sumsub 이 병렬로 있어 병행처럼 보이지만 명시가 없다.
-- **VerifyVASP 가격** — 회원 가입·이용 조건.
-- **VerifyVASP↔CODE 상호연동의 실효** — 상호연동 경유로 CODE 회원에 도달할 때 기능 손실이 없는지: TXID 역추적·원화 임계 판정이 경유 경로에서도 동작하는가. 안 되면 CODE 직접 어댑터 추가 판단(위 비교 표).
-- **GTR 상대 커버리지 — 제공자 추가 판단** — Notabene 은 GTR·CODE 를 브릿지하지 않으므로 Binance 글로벌 등 GTR 단독 상대는 Notabene 게이트만으로 도달 못 한다. 열려면 Sumsub(GTR·CODE·Sygna·1,800+ VASP 커버) 또는 GTR 직접 제공자를 Fireblocks TRLink 로 추가한다 — 도달 불가가 아니라 제공자 선택. 확인 필요: Fireblocks 의 GTR 제공자가 globaltravelrule.com 의 GTR 과 동일 망인지, Sumsub 경유 시 원화 임계·역추적 등 망 전용 기능 손실 여부(10장).
-- **게이트웨이 경유 VerifyVASP 도달** — VerifyVASP 를 자체 Enclave 없이 Notabene 게이트웨이로 우회 도달할 수 있는지(직접 연동 B 의 대체). **Notabene 의 VerifyVASP 라이브 지원 여부가 공개 자료로 불확실**(분석 페이지 노후)하므로 벤더 확인이 선결 — 검증 흐름·체크리스트는 9장.
-- **Enclave 운영 요건** — 일부는 공식 문서로 확인됨: AWS ECR Docker 배포 · DB 5종(MySQL 기본) · Enclave 포트 21117 · **공개 HTTPS 엔드포인트 + 중앙 서버발 인바운드 허용 + IP 화이트리스트** · 키는 env 또는 HSM. 잔존 = HA·스케일링·권장 사양(문서에 없음) · 운영 대행(managed) 옵션 존재 여부 — 없으면 경로 B 는 Enclave 자체 운영이 필수(PII 를 회원 인프라에만 두는 망 구조상 대행이 어려울 수 있음). 연동 준비 절차·요건 정리는 13장.
-- **가격·SLA** — premium 구독 조건, Notabene 측 계약. Notabene API 문서는 비공개라 CSM 경유로 접근한다.
+- **outgoing 동봉 누락의 벤더측 차단** — 트래블룰 대상 outgoing 에 `travelRuleMessage` 가 없으면 기본은 스크리닝 우회(통과)다(2장). "메시지 없는 대상 거래를 차단"하는 정책·설정이 벤더에 있는지 — 없으면 강제선은 우리 층 둘(상태 기계·서명 직전 검증)뿐이다.
 - **스크리닝 전용 API user 의 권한 구성** — validate 계열만 가능한 최소 권한 role 이 있는지(8장 전용 API user 전제).
+- **GTR 상대 커버리지 — 제공자 추가 판단** — Notabene 은 GTR·CODE 를 브릿지하지 않으므로 Binance 글로벌 등 GTR 단독 상대는 Notabene 게이트만으로 도달 못 한다. 열려면 Sumsub(GTR·CODE·Sygna·1,800+ VASP 커버) 또는 GTR 직접 제공자를 Fireblocks TRLink 로 추가한다 — 도달 불가가 아니라 제공자 선택. 확인 필요: Fireblocks 의 GTR 제공자가 globaltravelrule.com 의 GTR 과 동일 망인지, Sumsub 경유 시 원화 임계·역추적 등 망 전용 기능 손실 여부(10장).
+- **가격·SLA** — premium 구독 조건, Notabene 측 계약. Notabene API 문서는 비공개라 CSM 경유로 접근한다.
+
+### VerifyVASP (람다256)
+
+- **가격** — 회원 가입·이용 조건.
+- **VerifyVASP↔CODE 상호연동의 실효** — 상호연동 경유로 CODE 회원에 도달할 때 기능 손실이 없는지: TXID 역추적·원화 임계 판정이 경유 경로에서도 동작하는가. 안 되면 CODE 직접 어댑터 추가 판단(위 비교 표).
+- **Enclave 운영 요건** — 일부는 공식 문서로 확인됨: AWS ECR Docker 배포 · DB 5종(MySQL 기본) · Enclave 포트 21117 · **공개 HTTPS 엔드포인트 + 중앙 서버발 인바운드 허용 + IP 화이트리스트** · 키는 env 또는 HSM. 잔존 = HA·스케일링·권장 사양(문서에 없음) · 운영 대행(managed) 옵션 존재 여부 — 없으면 경로 B 는 Enclave 자체 운영이 필수(PII 를 회원 인프라에만 두는 망 구조상 대행이 어려울 수 있음). 연동 준비 절차·요건 정리는 13장.
+
+### Notabene
+
+- **게이트웨이 경유 VerifyVASP 도달** — VerifyVASP 를 자체 Enclave 없이 Notabene 게이트웨이로 우회 도달할 수 있는지(직접 연동 B 의 대체). **Notabene 의 VerifyVASP 라이브 지원 여부가 공개 자료로 불확실**(분석 페이지 노후)하므로 벤더 확인이 선결 — 검증 흐름·체크리스트는 9장.
 
 ## 이어지는 장
 
