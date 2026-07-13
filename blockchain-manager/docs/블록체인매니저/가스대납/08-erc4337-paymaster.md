@@ -110,7 +110,11 @@ classDef good fill:#dcfce7,stroke:#16a34a;
 classDef bad fill:#fee2e2,stroke:#dc2626;
 classDef wait fill:#fef3c7,stroke:#d97706;
 classDef vault fill:#dbeafe,stroke:#2563eb;
-class OP,PAY good; class STOP bad; class ALERT wait; class DEP vault; class CHK wait;
+class OP,PAY good
+class STOP bad
+class ALERT wait
+class DEP vault
+class CHK wait
 ```
 
 4337 paymaster 의 돈의 흐름은 선불이다. 요약하면:

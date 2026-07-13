@@ -48,7 +48,11 @@ flowchart TB
     classDef shard fill:#dcfce7,stroke:#16a34a;
     classDef party fill:#f5f5f7,stroke:#86868b;
     classDef app fill:#dbeafe,stroke:#2563eb;
-    class SEQ,MED coord; class PNA,PNB node; class SHA,SHB shard; class PTA,PTB party; class APPA,APPB app;
+    class SEQ,MED coord
+    class PNA,PNB node
+    class SHA,SHB shard
+    class PTA,PTB party
+    class APPA,APPB app
 ```
 
 조율(Synchronizer)과 저장(밸리데이터)이 갈린다. 각 노드는 자기 **원장 샤드**(내 파티가 이해관계자인 컨트랙트만 · 전체 사본은 어디에도 없음)를 들고, Synchronizer는 암호봉투의 **순서만** 맞춘다. 앱은 Ledger API로 자기 노드에 붙는다. 한 노드가 여러 파티를 호스팅할 수도 있다.
@@ -155,7 +159,12 @@ flowchart LR
     classDef node fill:#fef3c7,stroke:#d97706;
     classDef store fill:#dcfce7,stroke:#16a34a;
     classDef pqs fill:#eef2ff,stroke:#818cf8;
-    class APP app; class APPDB store; class PN,DAML node; class IPG store; class PQS pqs; class QPG store;
+    class APP app
+    class APPDB store
+    class PN,DAML node
+    class IPG store
+    class PQS pqs
+    class QPG store
 ```
 
 앱은 **Ledger API**로 참여자에 커맨드·조회를 보내고, 참여자가 내부 PostgreSQL에 영속한다(비공개 스키마, protobuf blob — Protocol Buffers로 직렬화된 이진 덩어리). **PQS**가 그 트랜잭션 스트림을 구독해 **조회용 PostgreSQL**에 투영하면, 앱이 **SQL(JDBC)**로 조회한다. 내부 DB는 직접 건드리지 않는다.

@@ -45,7 +45,9 @@ flowchart LR
     classDef ax fill:#e0e7ff,stroke:#6366f1;
     classDef old fill:#fef3c7,stroke:#d97706;
     classDef good fill:#dcfce7,stroke:#16a34a;
-    class P ax; class A,B,G old; class C,D good;
+    class P ax
+    class A,B,G old
+    class C,D good
 ```
 
 노랑은 초기 계보로, 개별 컨트랙트가 지원해야 동작한다 — ERC-3009 은 그 함수를 가진 토큰에서만, ERC-2771 과 그 위의 GSN 은 대응하는 수신 컨트랙트가 있어야만 쓸 수 있다. 초록은 현재 주류다. EIP-7702 은 ERC-4337 과 경쟁이 아니라 **수렴**한다 — 위임 대상 코드로 4337 지갑 구현을 그대로 지정할 수 있다고 명세가 밝힌다. 둘은 배타적 선택지가 아니라 겹쳐 쓰는 관계다.

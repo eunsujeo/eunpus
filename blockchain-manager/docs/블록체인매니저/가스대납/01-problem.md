@@ -25,7 +25,9 @@ flowchart LR
     classDef acct fill:#dbeafe,stroke:#2563eb;
     classDef tx fill:#eef2ff,stroke:#818cf8;
     classDef gas fill:#fee2e2,stroke:#dc2626;
-    class EOA,DST acct; class TX tx; class GAS gas;
+    class EOA,DST acct
+    class TX tx
+    class GAS gas
 ```
 
 옮기는 자산이 토큰이어도 gas 는 별도로 ETH 로 나간다 — 그래서 발신 계정에는 옮길 토큰과 별개로 **ETH 잔고가 항상 붙어 있어야** 한다. 수탁 지갑처럼 계정이 수만 개로 늘어나면 이 "ETH 가 항상 붙어 있어야 한다"는 조건이 운영 부담으로 바뀐다.

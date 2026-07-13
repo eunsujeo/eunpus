@@ -65,7 +65,8 @@ flowchart LR
 
     classDef vasp fill:#dbeafe,stroke:#2563eb;
     classDef chain fill:#eef2ff,stroke:#818cf8;
-    class SEND,RECV vasp; class CHAIN chain;
+    class SEND,RECV vasp
+    class CHAIN chain
 ```
 
 트래블룰의 신원정보는 **자산이 흐르는 블록체인과 별개의 오프체인 경로**로 오간다. 온체인에는 가상자산만 이동하고, 송금인·수취인의 신원은 VASP 사이에서 IVMS101(interVASP Messaging Standard)이라는 표준 형식으로 따로 교환된다. 이 두 경로가 어긋나지 않게 묶는 것이 트래블룰 실무의 뼈대다. 신원 메시지 표준의 구조는 1장에서 자세히 다룬다.

@@ -30,7 +30,9 @@ flowchart LR
     classDef ax fill:#e0e7ff,stroke:#6366f1;
     classDef manual fill:#fef3c7,stroke:#d97706;
     classDef good fill:#dcfce7,stroke:#16a34a;
-    class Q,A,B ax; class A1 manual; class A2,B1,B2,B3 good;
+    class Q,A,B ax
+    class A1 manual
+    class A2,B1,B2,B3 good
 ```
 
 노랑은 수동 운영이라 규모가 커지면 비현실적이고, 초록은 벤더 기능이다. 왼쪽 가지(충전)는 ETH 보유가 그대로 남고, 오른쪽 가지(대납)는 relay 를 고를수록 우리가 들고 있어야 할 ETH 가 줄어 Fireblocks Relay 에서 0 이 된다.

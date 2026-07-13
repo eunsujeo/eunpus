@@ -21,7 +21,9 @@ flowchart LR
 
     classDef node fill:#fef3c7,stroke:#d97706;
     classDef sync fill:#f5f5f7,stroke:#86868b;
-    class A node; class B node; class SYNC sync;
+    class A node
+    class B node
+    class SYNC sync
 ```
 
 단일 글로벌 체인이 아니다. 노드마다 자기 파티 것만 저장하고, 그 노드들을 잇는 건 Synchronizer뿐이다. Synchronizer는 거래의 순서와 확정만 담당하고 상태·자산은 쥐지 않는다 — 전체 사본을 든 주체가 어디에도 없다.

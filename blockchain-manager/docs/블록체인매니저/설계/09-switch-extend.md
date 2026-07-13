@@ -31,7 +31,10 @@ flowchart LR
     classDef port fill:#e0e7ff,stroke:#6366f1;
     classDef impl fill:#dcfce7,stroke:#16a34a;
     classDef chain fill:#eef2ff,stroke:#818cf8;
-    class SVC,ADM be; class CONTRACT port; class FBI impl; class ETH,BASE,L2 chain;
+    class SVC,ADM be
+    class CONTRACT port
+    class FBI impl
+    class ETH,BASE,L2 chain
 ```
 
 ## EVM 이 아닐 때 — Solana 를 붙인다면
@@ -65,7 +68,8 @@ flowchart LR
 
     classDef step fill:#dbeafe,stroke:#2563eb;
     classDef warn fill:#fef3c7,stroke:#d97706;
-    class A,D step; class B,C warn;
+    class A,D step
+    class B,C warn
 ```
 
 위 벤더 교체(또는 vault 재구성) 운영 타임라인을 요약하면:
@@ -111,7 +115,11 @@ flowchart TB
     classDef core fill:#e0e7ff,stroke:#6366f1;
     classDef ext fill:#f5f5f7,stroke:#86868b;
     classDef mq fill:#fef9c3,stroke:#ca8a04;
-    class SBE,ABE mine; class BM,FAKE impl; class DOM core; class SAPI,AAPI,QC,SDK ext; class MQ mq;
+    class SBE,ABE mine
+    class BM,FAKE impl
+    class DOM core
+    class SAPI,AAPI,QC,SDK ext
+    class MQ mq
 ```
 
 ## 인프라 — 무엇이 어디서 도는가
@@ -153,5 +161,11 @@ flowchart LR
     classDef vendor fill:#f5f5f7,stroke:#86868b;
     classDef ext fill:#eef2ff,stroke:#818cf8;
     classDef mq fill:#fef9c3,stroke:#ca8a04;
-    class SAPI svc; class AAPI adm; class DB,BMDB data; class BM mgr; class FB vendor; class EVM ext; class MQ mq;
+    class SAPI svc
+    class AAPI adm
+    class DB,BMDB data
+    class BM mgr
+    class FB vendor
+    class EVM ext
+    class MQ mq
 ```

@@ -41,7 +41,8 @@ flowchart LR
 
     classDef vasp fill:#dbeafe,stroke:#2563eb;
     classDef hub fill:#f5f5f7,stroke:#86868b;
-    class SEND,RECV vasp; class HUB hub;
+    class SEND,RECV vasp
+    class HUB hub
 ```
 
 거래가 발생하면 송신 VASP 의 Enclave 가 수신 VASP 로 주소 검증·계정 일치 조회 API 를 보낸다. 이 메시지는 종단간 암호화되어 있어 중앙 서버는 중계 경로에 있으면서도 PII 에 접근하지 못한다. Enclave 를 각 VASP 가 소유하므로 평문 데이터는 양쪽 당사자 인프라 안에서만 열린다.

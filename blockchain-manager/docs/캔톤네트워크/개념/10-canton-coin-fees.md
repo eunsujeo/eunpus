@@ -44,7 +44,10 @@ flowchart LR
     classDef coin fill:#fef9c3,stroke:#ca8a04;
     classDef ext fill:#eef2ff,stroke:#818cf8;
     classDef data fill:#dcfce7,stroke:#16a34a;
-    class USER app; class CC coin; class SYNC ext; class VAL data;
+    class USER app
+    class CC coin
+    class SYNC ext
+    class VAL data
 ```
 
 사용자가 낸 트래픽 수수료가 곧 밸리데이터의 수입이 되어 다시 네트워크로 돈다 — 별도 인플레이션 발행에 기대지 않는 자기완결적 순환이다. 밸리데이터가 CC를 버는 길은 셋이다.

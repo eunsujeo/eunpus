@@ -48,7 +48,10 @@ flowchart TB
     classDef mgr fill:#dbeafe,stroke:#2563eb;
     classDef ext fill:#eef2ff,stroke:#818cf8;
     classDef hold fill:#fee2e2,stroke:#dc2626;
-    class OG,IG gate; class OBM,IBM mgr; class OCHAIN,AVAIL ext; class HOLD hold;
+    class OG,IG gate
+    class OBM,IBM mgr
+    class OCHAIN,AVAIL ext
+    class HOLD hold
 ```
 
 위 그림에서 회색은 Service 층의 트래블룰 게이트, 파랑은 블록체인 매니저다. 출금은 게이트가 먼저 서고 매니저가 뒤따르며, 입금은 매니저가 먼저 감지·확정한 뒤 게이트가 가용 전이를 판정한다. 입금 게이트는 온체인 확정(자산이 실제로 도착했다는 사실)과 별개로 하나의 관문을 더 요구한다 — 컴플라이언스 통과가 있어야만 가용으로 넘어가고, 대조에 실패하면 잔고를 차단해 입금대기로 묶는다. 온체인에서 확정됐다고 곧바로 쓸 수 있는 잔고가 되는 것이 아니다.

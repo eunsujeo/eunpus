@@ -40,7 +40,11 @@ flowchart TB
     classDef vendor fill:#dcfce7,stroke:#16a34a;
     classDef chain fill:#eef2ff,stroke:#818cf8;
     classDef mq fill:#fef9c3,stroke:#ca8a04;
-    class SVC,ADM be; class BM port; class FB vendor; class ETH,BASE chain; class MQ mq;
+    class SVC,ADM be
+    class BM port
+    class FB vendor
+    class ETH,BASE chain
+    class MQ mq
 ```
 
 ## 어디서 도는가 — 물리 배치
@@ -85,7 +89,14 @@ flowchart LR
     classDef ext fill:#eef2ff,stroke:#818cf8;
     classDef policy fill:#ffedd5,stroke:#ea580c;
     classDef mq fill:#fef9c3,stroke:#ca8a04;
-    class SVCBE,BM svc; class ADMBE adm; class COS sec; class CB policy; class BDB,MDB data; class FBV vendor; class EVM ext; class MQ mq;
+    class SVCBE,BM svc
+    class ADMBE adm
+    class COS sec
+    class CB policy
+    class BDB,MDB data
+    class FBV vendor
+    class EVM ext
+    class MQ mq
 ```
 
 위 그림을 요약하면:

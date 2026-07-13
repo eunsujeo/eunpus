@@ -37,7 +37,10 @@ flowchart TB
     classDef ops fill:#fef3c7,stroke:#d97706;
     classDef sec fill:#fee2e2,stroke:#dc2626;
     classDef ok fill:#dcfce7,stroke:#16a34a;
-    class P1 app; class P2 ops; class P3 sec; class OUT ok;
+    class P1 app
+    class P2 ops
+    class P3 sec
+    class OUT ok
 ```
 
 세 기둥은 각자 다른 층을 맡지만 결론은 하나로 모인다 — 프라이버시와 무결성을 함께 세운다. 셋 다 갖춰졌을 때 프라이버시는 운영 정책이나 접근 통제 같은 **약속**이 아니라 **암호학적으로 강제되는 성질**이 된다. 볼 수 없게 막는 게 아니라, 애초에 볼 것이 주어지지 않는다.

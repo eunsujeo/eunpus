@@ -73,7 +73,10 @@ flowchart TB
     classDef partyb fill:#fef3c7,stroke:#d97706;
     classDef reg fill:#dcfce7,stroke:#16a34a;
     classDef out fill:#f5f5f7,stroke:#86868b;
-    class PA,CA partyb; class PB,CB party; class CR reg; class PC,PD,CC,CD out;
+    class PA,CA partyb
+    class PB,CB party
+    class CR reg
+    class PC,PD,CC,CD out
 ```
 
 퍼블릭 체인에서는 기관 A와 B의 거래 한 건이 경쟁사·대중·봇 **누구에게나** 보인다 — 금액·상대·잔액·타이밍이 함께 새어 나간다. Canton에서는 같은 거래를 **당사자 A·B**(와 지정된 감독기관)만 본다. 경쟁사도, 대중도, 봇도 그 거래에 닿지 못한다 — 무관한 제3자가 보는 것은 **0건**이다.

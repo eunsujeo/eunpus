@@ -33,7 +33,12 @@ flowchart TB
     classDef sync fill:#dcfce7,stroke:#16a34a;
     classDef app fill:#eef2ff,stroke:#818cf8;
     classDef gov fill:#fee2e2,stroke:#dc2626;
-    class ME me; class V val; class CP peer; class SY sync; class APP app; class GOV gov;
+    class ME me
+    class V val
+    class CP peer
+    class SY sync
+    class APP app
+    class GOV gov
 ```
 
 내 밸리데이터는 가장 가까이서 가장 많이 본다(그래서 가장 센 신뢰). 상대방·앱·거버넌스는 그보다 얇게, Synchronizer는 암호화된 것만 본다. 아래에서 다섯 영역을 하나씩 — 각 영역을 **[신뢰]** 무엇을 믿어야 하나, **[안 믿어도]** 안 믿어도 되는 것(해당하는 영역만), **[완화]** 신뢰를 줄이는 수단으로 나눈다.

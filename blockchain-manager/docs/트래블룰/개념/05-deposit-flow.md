@@ -68,7 +68,11 @@ flowchart TB
     classDef good fill:#dcfce7,stroke:#16a34a;
     classDef wait fill:#fef3c7,stroke:#d97706;
     classDef bad fill:#fee2e2,stroke:#dc2626;
-    class DET start; class C1,C2,C3 cond; class OK,REL good; class LOCK,REV wait; class RET bad;
+    class DET start
+    class C1,C2,C3 cond
+    class OK,REL good
+    class LOCK,REV wait
+    class RET bad
 ```
 
 입금이 감지되면 세 조건을 순서대로 검사한다. 하나라도 통과하면 곧바로 잔고에 반영해 가용(available) 상태로 만든다. 셋 다 걸리지 않는 100만원 이상 건은 입금대기로 락업되고, 증빙 심사를 거쳐 해제되거나 준수 불가 판정 시 원 송출처로 강제 반환된다.

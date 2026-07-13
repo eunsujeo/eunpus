@@ -83,7 +83,10 @@ flowchart TB
     classDef pkg fill:#dcfce7,stroke:#16a34a;
     classDef node fill:#fef3c7,stroke:#d97706;
     classDef use fill:#eef2ff,stroke:#818cf8;
-    class SRC src; class DAR pkg; class NA,NB,NV node; class USE use;
+    class SRC src
+    class DAR pkg
+    class NA,NB,NV node
+    class USE use
 ```
 
 같은 DAR 을 A·B(·정산 운영자·발행자) 노드가 **모두** 갖고 승인해야, 그 위에서 만든 컨트랙트·choice 가 양쪽에서 동일하게 검증된다. 한 노드만 DAR 을 가지면 나머지 노드가 그 패키지를 몰라 거래가 검증·커밋되지 않는다 — vetting 은 모든 이해관계자가 같은 규칙을 공유한다는 합의다.

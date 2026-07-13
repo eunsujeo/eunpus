@@ -17,7 +17,8 @@ flowchart LR
     OLD -->|송금 실행| NEW
     classDef old fill:#f5f5f7,stroke:#86868b;
     classDef new fill:#dcfce7,stroke:#16a34a;
-    class OLD old; class NEW new;
+    class OLD old
+    class NEW new
 ```
 
 소유 A 의 컨트랙트를 덮어써서 소유 B 로 바꾸는 게 아니다. 옛 컨트랙트는 **보관됨**으로 남고, 같은 잔액을 담은 새 컨트랙트가 소유 B 앞으로 **활성** 상태로 생긴다 — 상태 변경 = 옛것 보관 + 새것 생성이다.
@@ -63,7 +64,8 @@ flowchart TB
     N --> NT
     classDef ex fill:#fef3c7,stroke:#d97706;
     classDef cr fill:#dcfce7,stroke:#16a34a;
-    class T1,N ex; class A2,NT cr;
+    class T1,N ex
+    class A2,NT cr
 ```
 
 Transfer 를 실행하면 옛 자산(Asset#1)이 보관되고, 그 연쇄로 새 소유자 앞 자산(Asset#2) 생성과 등록부 알림(Notify) 실행이 갈라져 나오며, Notify 는 다시 Notification 생성을 낳는다 — 이 트리 전체가 하나의 트랜잭션으로 전부 아니면 전무로 커밋된다.
