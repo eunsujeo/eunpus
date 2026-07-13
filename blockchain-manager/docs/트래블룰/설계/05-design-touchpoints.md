@@ -16,7 +16,7 @@ status: To Do
 |---|---|---|
 | **내부 이동** — sweep · 델타 배치 | 비대상. Vault→Vault · Vault→Exchange · Gas Station→Vault 는 트래블룰 스크리닝 미적용 경로로 공식 명시된다 — **설계 변경 없음**. | 미적용 경로 명시는 사실. "설계 변경 없음" 결론은 판단. |
 | **입금** | **변경 없음**. Post-Screening 의 동결이 폴링이 받는 REJECTED 계열 상태로 나타나고, Admin unfreeze 흐름도 기존 그대로다. 할 일은 정책 작성뿐. | 동결이 REJECTED로 나타난다는 것은 사실. "이미 흡수됐다"는 결론은 판단. |
-| **출금** | 제출 앞에 **3단계 추가** — `validate` → 수취인 정보 수집 → `validate/full`, 그리고 `createTransaction` 에 `travelRuleMessage` 동봉. 수취인 정보(수취 VASP·이름)를 어디서 받을지가 화면·업무 설계 대상. | 3단계·`travelRuleMessage` 동봉은 사실. "여기만 바뀐다"는 배치는 판단. |
+| **출금** | 제출 앞에 **3단계 추가** — `validate` → 수취인 정보 수집 → `validate/full`, 그리고 `createTransaction` 에 `travelRuleMessage` 동봉. 수취인 정보(수취 VASP·이름)를 어디서 받을지가 화면·업무 설계 대상. **해외(Notabene) 경로 기준** — 국내는 3단계가 아니라 사전 허가 왕복(6·7.1장). | 3단계·`travelRuleMessage` 동봉은 사실. "여기만 바뀐다"는 배치는 판단. |
 | **고객 사이 이동** — DB 장부 이체 | 온체인이 없어 벤더 스크리닝 비대상 — 트래블룰 판단까지 **업무 층 몫**이다(한도·AML(자금세탁방지)과 같은 자리). | 온체인 부재로 벤더 스크리닝 비대상은 사실. 업무 층에 두자는 것은 판단. |
 
 ## 흐름별로 보면
