@@ -52,6 +52,14 @@ VerifyVASP 는 람다256(두나무 자회사) 주도의 **폐쇄형 트래블룰
 
 **선택** — 국내 도달은 **VerifyVASP 직접 연동 하나로 간다**. CODE 회원은 두 망의 상호연동(2022-04-25 완료 · VerifyVASP 목록 API 가 protocol=CODE 회원까지 반환)으로 도달하므로 CODE 직접 어댑터는 만들지 않는다. 단 **상호연동 경유의 실효**가 확인 조건이다 — 도달 범위, 그리고 CODE 전용 기능(TXID 역추적·원화 임계 필드)이 상호연동 경로에서도 동작하는지. 안 되는 것이 있으면 그때 CODE 어댑터를 추가한다(8장 구조상 어댑터 1개 — 동기라 오히려 단순).
 
+## 해외 상대는 어느 망에 — 요지
+
+해외 상대가 어느 망에 있고 우리 Notabene 게이트로 도달되는지의 지형·거래소 표는 **10장(해외 망 지형)**에 있다. 병행 구성에 필요한 요지만 옮기면:
+
+- **TRUST·Sygna 등 Notabene 브릿지 망** 상대는 게이트로 도달 ○.
+- **GTR 단독(Binance 글로벌)·CODE 는 Notabene 미브릿지** — 열려면 Sumsub 등 제공자를 Fireblocks TRLink 로 추가한다(도달 불가가 아니라 제공자 선택).
+- **VerifyVASP 는 Notabene 라이브 여부 불확실**(9장). 그래서 국내 도달을 Notabene 에 기대지 않고 직접 연동(경로 B)을 택한다.
+
 ## 병행 구성 — 상대가 어느 망에 있느냐로 갈린다
 
 여기부터는 **설계 판단**이다.
@@ -72,9 +80,10 @@ VerifyVASP 는 람다256(두나무 자회사) 주도의 **폐쇄형 트래블룰
 
 ```mermaid
 flowchart LR
-    REQ["출금 접수<br/>업무 승인 완료"] --> GATE["트래블룰 게이트<br/>상대 판별 — 어느 망의 회원인가"]
+    REQ["출금 접수<br/>업무 승인 완료"] --> GATE["트래블룰 게이트<br/>상대 판별 — 어느 망의 회원인가 · 도달 가능한가"]
     GATE -->|"국내 · VerifyVASP 회원"| VV["VerifyVASP Enclave 서버<br/>사전 허가 — 주소 소유 확인 → PII 전송 → 승인"]
-    GATE -->|"해외 · Notabene"| NB["Fireblocks validate → validate/full<br/>travelRuleMessage 생성"]
+    GATE -->|"해외 · Notabene 브릿지 망"| NB["Fireblocks validate → validate/full<br/>travelRuleMessage 생성"]
+    GATE -->|"설정 제공자로 도달 불가"| BLK["차단 / 수동 심사<br/>제출 전 반려 · 온체인 전파 없음"]
     VV --> SUB["매니저 포트<br/>submitTransaction"]
     NB -->|"travelRuleMessage 동봉"| SUB
 
@@ -82,10 +91,11 @@ flowchart LR
     classDef gate fill:#fef9c3,stroke:#ca8a04;
     classDef ext fill:#eef2ff,stroke:#818cf8;
     classDef port fill:#dcfce7,stroke:#16a34a;
-    class REQ biz; class GATE gate; class VV,NB ext; class SUB port;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+    class REQ biz; class GATE gate; class VV,NB ext; class SUB port; class BLK bad;
 ```
 
-출금 — 게이트(노랑)가 상대 망을 판별해 사전 검증을 끝낸 뒤에야 매니저 포트(초록)로 넘긴다. 어느 망이든 포트가 받는 것은 "승인된 이체 지시"로 동일하다. 국내는 VerifyVASP Enclave 서버가 사전 허가를, 해외는 Fireblocks 의 `validate` → `validate/full` 판정이 `travelRuleMessage` 생성을 맡는다(그 벤더 게이트형 출금 자체는 2장).
+출금 — 게이트(노랑)가 상대 망을 판별해 사전 검증을 끝낸 뒤에야 매니저 포트(초록)로 넘긴다. 어느 망이든 포트가 받는 것은 "승인된 이체 지시"로 동일하다. 국내는 VerifyVASP Enclave 서버가 사전 허가를, 해외는 Fireblocks 의 `validate` → `validate/full` 판정이 `travelRuleMessage` 생성을 맡는다(그 벤더 게이트형 출금 자체는 2장). 현재 설정한 제공자(Notabene)로는 도달할 수 없는 상대(빨강)는 대조 채널이 없어 **제출 전에 차단·수동 심사**로 빠지고 온체인에는 아무것도 나가지 않는다. GTR 단독 상대(Binance 글로벌 등)는 Sumsub 등 제공자를 추가하면 이 분기를 벗어난다(10장).
 
 ```mermaid
 flowchart LR
@@ -119,10 +129,12 @@ flowchart LR
 - **Notabene 직접 통합 vs TRLink** — 연결 가능 목록에 Notabene·Sumsub 이 병렬로 있어 병행처럼 보이지만 명시가 없다.
 - **VerifyVASP 가격** — 회원 가입·이용 조건.
 - **VerifyVASP↔CODE 상호연동의 실효** — 상호연동 경유로 CODE 회원에 도달할 때 기능 손실이 없는지: TXID 역추적·원화 임계 판정이 경유 경로에서도 동작하는가. 안 되면 CODE 직접 어댑터 추가 판단(위 비교 표).
+- **GTR 상대 커버리지 — 제공자 추가 판단** — Notabene 은 GTR·CODE 를 브릿지하지 않으므로 Binance 글로벌 등 GTR 단독 상대는 Notabene 게이트만으로 도달 못 한다. 열려면 Sumsub(GTR·CODE·Sygna·1,800+ VASP 커버) 또는 GTR 직접 제공자를 Fireblocks TRLink 로 추가한다 — 도달 불가가 아니라 제공자 선택. 확인 필요: Fireblocks 의 GTR 제공자가 globaltravelrule.com 의 GTR 과 동일 망인지, Sumsub 경유 시 원화 임계·역추적 등 망 전용 기능 손실 여부(10장).
+- **게이트웨이 경유 VerifyVASP 도달** — VerifyVASP 를 자체 Enclave 없이 Notabene 게이트웨이로 우회 도달할 수 있는지(직접 연동 B 의 대체). **Notabene 의 VerifyVASP 라이브 지원 여부가 공개 자료로 불확실**(분석 페이지 노후)하므로 벤더 확인이 선결 — 검증 흐름·체크리스트는 9장.
 - **Enclave 운영 요건** — 일부는 공식 문서로 확인됨: AWS ECR Docker 배포 · DB 5종(MySQL 기본) · Enclave 포트 21117 · **공개 HTTPS 엔드포인트 + 중앙 서버발 인바운드 허용 + IP 화이트리스트** · 키는 env 또는 HSM. 잔존 = HA·스케일링·권장 사양(문서에 없음) · 운영 대행(managed) 옵션 존재 여부 — 없으면 경로 B 는 Enclave 자체 운영이 필수(PII 를 회원 인프라에만 두는 망 구조상 대행이 어려울 수 있음).
 - **가격·SLA** — premium 구독 조건, Notabene 측 계약. Notabene API 문서는 비공개라 CSM 경유로 접근한다.
 - **스크리닝 전용 API user 의 권한 구성** — validate 계열만 가능한 최소 권한 role 이 있는지(8장 전용 API user 전제).
 
 ## 이어지는 장
 
-벤더 게이트형 **출금**의 동작은 2장, **입금**의 동작은 3장, 게이트가 따르는 **정책·시간 규칙**은 4장이다. 이 병행 구성이 실제로 도는 모습은 7장(출금 둘·입금 둘 — 국내는 왕복이 본체라 따로, 동기 채널은 접음), 채널별로 다른 호출 모양을 한 인터페이스로 접는 것은 [8장 게이트 유연화](08-gate-port.md)에서 이어진다. 게이트를 왜 업무층에 두는지의 배경은 개념 세트의 게이트 위치·Canton 관계와도 맞물린다.
+벤더 게이트형 **출금**의 동작은 2장, **입금**의 동작은 3장, 게이트가 따르는 **정책·시간 규칙**은 4장이다. 이 병행 구성이 실제로 도는 모습은 7장(국내·해외·직접 시나리오), 채널별로 다른 호출 모양을 한 인터페이스로 접는 것은 [8장 게이트 유연화](08-gate-port.md)에서 이어진다. 게이트를 왜 업무층에 두는지의 배경은 개념 세트의 게이트 위치·Canton 관계와도 맞물린다.
