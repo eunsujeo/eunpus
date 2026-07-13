@@ -1,0 +1,1880 @@
+<!doctype html>
+<html lang="ko" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Blockchain Manager API</title>
+    <style>
+      :root {
+        --canvas: #0b0e11;
+        --surface: #12161c;
+        --elevated: #1e2329;
+        --hairline: #2b3139;
+        --ink: #eaecef;
+        --strong: #ffffff;
+        --muted: #848e9c;
+        --muted2: #b7bdc6;
+        --accent: #fcd535;
+        --code-bg: #0b0e11;
+        --code-ink: #d8dde4;
+        --link: #fcd535;
+        --m-get: #0ecb81;
+        --m-post: #4a90e2;
+        --m-put: #fcd535;
+        --m-del: #f6465d;
+        --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+      }
+      :root[data-theme="light"] {
+        --canvas: #ffffff;
+        --surface: #ffffff;
+        --elevated: #f5f6f8;
+        --hairline: #e6e8eb;
+        --ink: #1e2329;
+        --strong: #0b0e11;
+        --muted: #707a8a;
+        --muted2: #474d57;
+        --accent: #f0b90b;
+        --code-bg: #f5f6f8;
+        --code-ink: #1e2329;
+        --link: #a17708;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--canvas);
+        color: var(--ink);
+        font-family: var(--sans);
+        font-size: 14px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      a { color: var(--link); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      code, pre, .mono { font-family: var(--mono); }
+
+      /* layout */
+      .layout { display: flex; min-height: 100vh; }
+      .sidebar {
+        width: 288px; flex: 0 0 288px;
+        border-right: 1px solid var(--hairline);
+        background: var(--surface);
+        position: sticky; top: 0; height: 100vh; overflow-y: auto;
+        padding: 20px 0 60px;
+      }
+      .content { flex: 1 1 auto; min-width: 0; }
+      .content-inner { max-width: 1360px; margin: 0 auto; padding: 40px 48px 120px; }
+
+      /* topbar */
+      .brand { padding: 0 20px 18px; border-bottom: 1px solid var(--hairline); margin-bottom: 14px; }
+      .brand-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 8px; }
+      .brand h1 { font-size: 15px; font-weight: 600; color: var(--strong); margin: 0; letter-spacing: -0.1px; }
+      .brand-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; row-gap: 6px; }
+      .ver { font-family: var(--mono); font-size: 11px; color: var(--muted);
+             border: 1px solid var(--hairline); border-radius: 4px; padding: 1px 6px; }
+      .downloads { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+      .iconbtn {
+        font: inherit; font-size: 11.5px; color: var(--muted2);
+        background: transparent; border: 1px solid var(--hairline); border-radius: 6px;
+        padding: 3px 8px; cursor: pointer; white-space: nowrap;
+      }
+      .iconbtn:hover { color: var(--strong); border-color: var(--muted); }
+
+      /* nav */
+      nav { padding: 0 12px; }
+      .nav-group { margin-top: 18px; }
+      .nav-group > .nav-title {
+        font-size: 11px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase;
+        color: var(--muted); padding: 0 8px 6px;
+      }
+      .nav-link {
+        display: flex; align-items: center; gap: 8px;
+        padding: 6px 8px; border-radius: 6px; color: var(--muted2);
+        cursor: pointer; font-size: 13px;
+      }
+      .nav-link:hover { background: var(--elevated); color: var(--strong); text-decoration: none; }
+      .nav-link.active { color: var(--strong); background: var(--elevated); font-weight: 600; }
+      .nav-link .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+      /* method badge */
+      .m { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 0.3px;
+           padding: 2px 6px; border-radius: 4px; text-transform: uppercase; flex: 0 0 auto; }
+      .m-get { color: var(--m-get); background: color-mix(in srgb, var(--m-get) 15%, transparent); }
+      .m-post { color: var(--m-post); background: color-mix(in srgb, var(--m-post) 16%, transparent); }
+      .m-put, .m-patch { color: var(--m-put); background: color-mix(in srgb, var(--m-put) 16%, transparent); }
+      .m-delete { color: var(--m-del); background: color-mix(in srgb, var(--m-del) 15%, transparent); }
+
+      /* headings / intro */
+      .page-title { font-size: 26px; font-weight: 700; color: var(--strong); letter-spacing: -0.4px; margin: 0 0 6px; }
+      .page-sub { color: var(--muted2); margin: 0 0 8px; }
+      .md h2 { font-size: 19px; font-weight: 600; color: var(--strong); margin: 40px 0 12px;
+               padding-top: 14px; border-top: 1px solid var(--hairline); letter-spacing: -0.2px; }
+      .md h3 { font-size: 15px; font-weight: 600; color: var(--strong); margin: 22px 0 8px; }
+      .md p { margin: 10px 0; }
+      .md ul { margin: 10px 0; padding-left: 20px; }
+      .md li { margin: 4px 0; }
+      .md strong { color: var(--strong); font-weight: 600; }
+      .md code, .prop code, td code, .desc code {
+        font-size: 12.5px; background: var(--elevated); color: var(--code-ink);
+        padding: 1px 5px; border-radius: 4px; border: 1px solid var(--hairline);
+        white-space: nowrap;
+      }
+      pre { background: var(--code-bg); border: 1px solid var(--hairline); border-radius: 8px;
+            padding: 14px 16px; overflow-x: auto; margin: 12px 0; }
+      .md pre code, pre code { font-size: 12.5px; color: var(--code-ink); background: none; border: none; padding: 0; white-space: pre; }
+
+      /* flow diagram */
+      .md .flow, .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0; }
+      .flow-step { background: var(--elevated); border: 1px solid var(--hairline); border-radius: 8px;
+                   padding: 8px 12px; font-size: 12.5px; color: var(--strong); }
+      .flow-arrow { color: var(--muted); font-size: 14px; }
+
+      /* sequence diagram (SVG) */
+      .seq-wrap { overflow-x: auto; margin: 18px 0; }
+      .seq { max-width: 100%; height: auto; font-family: var(--sans); }
+      .seq .life { stroke: var(--hairline); stroke-width: 1; }
+      .seq .pbox { fill: var(--elevated); stroke: var(--hairline); }
+      .seq .pname { fill: var(--strong); font-size: 12px; font-weight: 600; }
+      .seq .msg { stroke: var(--muted2); stroke-width: 1.4; }
+      .seq .mhead { fill: var(--muted2); }
+      .seq .mlabel { fill: var(--muted2); font-size: 11px; }
+
+      /* tables */
+      .table-wrap { overflow-x: auto; margin: 12px 0; }
+      .table-wrap table { margin: 0; }
+      table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13px; }
+      th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--hairline); vertical-align: top; overflow-wrap: anywhere; }
+      th { color: var(--muted); font-weight: 600; font-size: 11px; letter-spacing: 0.4px; text-transform: uppercase; }
+      td { color: var(--ink); }
+      tbody tr:last-child td { border-bottom: none; }
+
+      /* operation */
+      .op { margin-top: 44px; scroll-margin-top: 20px; }
+      .op-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      .op-path { font-family: var(--mono); font-size: 15px; color: var(--strong); word-break: break-all; }
+      .op-title { font-size: 17px; font-weight: 600; color: var(--strong); margin: 12px 0 2px; }
+      .op-desc { color: var(--muted2); margin: 6px 0 4px; }
+      .block-label { font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;
+                     color: var(--muted); margin: 22px 0 4px; }
+      .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; overflow: hidden; margin-top: 6px; }
+      .card table { margin: 0; }
+      .card th, .card td { padding: 9px 14px; }
+      .req { color: var(--m-del); font-size: 11px; font-weight: 600; }
+      .opt { color: var(--muted); font-size: 11px; }
+      .ptype { font-family: var(--mono); font-size: 12.5px; color: var(--m-post); }
+      .enum-vals { margin-top: 4px; }
+      .enum-vals code { margin-right: 4px; }
+      .status { font-family: var(--mono); font-weight: 700; }
+      .status.ok { color: var(--m-get); }
+      .status.err { color: var(--m-del); }
+
+      .group-head { margin-top: 56px; font-size: 12px; font-weight: 700; letter-spacing: 1px;
+                    text-transform: uppercase; color: var(--accent); }
+      .tag-desc { color: var(--muted); margin: 2px 0 0; }
+      .schema-block { margin-top: 30px; scroll-margin-top: 20px; }
+      .schema-name { font-family: var(--mono); font-size: 15px; font-weight: 600; color: var(--strong); }
+      .schema-desc { color: var(--muted2); margin: 4px 0; font-size: 13px; }
+
+      .menu-toggle { display: none; }
+      @media (max-width: 860px) {
+        .sidebar { position: fixed; z-index: 20; transform: translateX(-100%); transition: transform .2s ease; }
+        .sidebar.open { transform: translateX(0); }
+        .content-inner { padding: 24px 20px 100px; }
+        .menu-toggle { display: inline-flex; position: fixed; top: 12px; right: 12px; z-index: 30; }
+      }
+      @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+      :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+      html { scroll-behavior: smooth; }
+
+      /* schema popup */
+      .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; z-index: 50; overflow-y: auto; }
+      .modal-overlay.open { display: block; }
+      .modal { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px;
+               max-width: 720px; margin: 64px auto; padding: 20px 24px 24px; position: relative; }
+      .modal-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+      .modal-head #modalClose { margin-left: auto; }
+      @media (max-width: 860px) { .modal { margin: 24px 12px; } }
+    </style>
+  </head>
+  <body>
+    <button class="iconbtn menu-toggle" id="menuToggle" aria-label="메뉴">☰</button>
+    <div class="layout">
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">
+          <div class="brand-head">
+            <h1 id="brandTitle">API</h1>
+            <button class="iconbtn" id="themeToggle" aria-label="테마 전환">◐</button>
+          </div>
+          <div class="brand-row">
+            <span class="ver" id="brandVer"></span>
+          </div>
+          <div class="downloads">
+          </div>
+        </div>
+        <nav id="nav"></nav>
+      </aside>
+      <main class="content">
+        <div class="content-inner" id="content"></div>
+      </main>
+    </div>
+
+    <div class="modal-overlay" id="modal">
+      <div class="modal">
+        <div class="modal-head">
+          <button class="iconbtn modal-back" id="modalBack" aria-label="뒤로">← 뒤로</button>
+          <button class="iconbtn" id="modalClose" aria-label="닫기">✕</button>
+        </div>
+        <div class="modal-body"></div>
+      </div>
+    </div>
+
+    <script>
+window.OPENAPI = {
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Blockchain Manager API",
+    "version": "0.0.1",
+    "description": "블록체인 매니저는 코어 존의 별도 서비스로, 온체인 거래(노드 연동)를 담당한다.\n백엔드(Service·Admin)는 이 HTTP API 로 계정·주소·잔액·거래를 다루고,\n온체인 상태 변경은 메시지 큐 이벤트로 받는다.\n\n아래 규약은 **모든 엔드포인트에 공통** 적용된다.\n\n## 응답 형식\n\n성공·목록·에러 모두 같은 구조로 돌려준다. `meta.requestId` 로 요청을 추적한다.\n\n단일 리소스:\n\n```json\n{\n  \"data\": {\n    \"ref\": \"ACT-000123\",\n    \"accountId\": \"acct_01H8X\"\n  },\n  \"meta\": {\n    \"requestId\": \"3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f\"\n  }\n}\n```\n\n페이지네이션 목록:\n\n```json\n{\n  \"data\": [\n    { \"txId\": \"tx_9f2a\", \"status\": \"COMPLETED\", \"amount\": \"1.5\" }\n  ],\n  \"meta\": {\n    \"requestId\": \"3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f\"\n  },\n  \"pagination\": {\n    \"nextCursor\": \"eyJsYXN0IjoxNzUxMzM2MDAwMDAwfQ\",\n    \"hasMore\": true\n  }\n}\n```\n\n에러:\n\n```json\n{\n  \"error\": {\n    \"code\": \"ACCOUNT_NOT_FOUND\",\n    \"message\": \"account not found\"\n  },\n  \"meta\": {\n    \"requestId\": \"3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f\"\n  }\n}\n```\n\n## 데이터 포맷\n\n- **시각** — ISO 8601, UTC, 밀리초. 예: `2026-07-13T04:05:06.789Z`\n- **금액** — 문자열(decimal). 예: `\"1.5\"`. float 가 아니라 decimal 로 파싱한다.\n- **필드명** — camelCase (`externalTxId` · `numOfConfirmations`)\n- **요청 추적** — 모든 응답에 `meta.requestId`\n- **온체인 해시** — 전파 후 채워짐(그 전엔 null), `txHash`\n\n## 에러 코드\n\n판단은 `error.code` 로 한다.\n\n| 코드 | HTTP | 뜻 |\n|---|---|---|\n| `VALIDATION_FAILED` | 400 | 요청 형식·값이 규약에 안 맞음 |\n| `ACCOUNT_NOT_FOUND` | 404 | 계정 없음 (주소 미발급과 구분) |\n| `NOT_FOUND` | 404 | 그 밖의 리소스 없음 |\n| `CONFLICT` | 409 | 상태·멱등 충돌 (예: 이미 쓴 externalTxId) |\n| `RELAY_REJECTED` | 502 | 대납 relay 가 전송을 못 대거나 거절 |\n| `INTERNAL` | 500 | 서버 내부 오류 |\n\n`INTERNAL`(500) 은 모든 엔드포인트에서 날 수 있어, 오퍼레이션별 응답 표기에서는 생략한다.\n\n## 페이지네이션\n\n목록은 **커서 방식**이다. `limit`(기본 200, 최대 500)으로 크기를 정하고, 응답 `pagination.nextCursor` 를 다음 요청 `cursor` 로 넘겨 이어받는다. `hasMore` 가 false 면 마지막이다. `cursor`/`nextCursor` 는 **불투명 토큰**이라 파싱·구성 대상이 아니며, 받은 값을 그대로 전달한다(다음 페이지 위치·필터가 토큰에 담겨 있다). 커서 요청에서는 첫 요청의 조회 조건이 토큰으로 이어지므로, 함께 보낸 다른 파라미터는 무시된다.\n\n## 멱등\n\n- **생성** — `createAccount` 는 `ref`, `createDepositAddress` 는 `(accountId, asset)` 로 멱등하다. 같은 값으로 재요청하면 매니저가 같은 결과를 돌려준다(백엔드가 별도 멱등키를 넣지 않는다).\n- **출금 제출** — 본문 `externalTxId` 가 멱등 키다. 같은 키로 재제출해도 중복 전송되지 않는다.\n\n## 이벤트 (메시지 큐)\n\n온체인 상태 변경(입금 감지·출금 확정 등)은 이 HTTP API 가 아니라 **메시지 큐 이벤트**로 온다. 백엔드는 토픽별 컨슈머로 받는다.\n\n```seq\n체인 -> Fireblocks: 온체인 상태 변경\n매니저 -> Fireblocks: 폴링 조회\nFireblocks -> 매니저: 상태 응답\n매니저 -> 큐: publish (3 토픽)\n큐 -> 백엔드: consume\n백엔드 -> 원장: 반영 (멱등)\n백엔드 -> 큐: 오프셋 커밋\n```\n\n| 토픽 | 담는 이벤트 | 파티션 키 |\n|---|---|---|\n| `deposit-events` | 고객 입금 (`DEPOSIT` · `UNMAPPED`) | 고객 accountId |\n| `withdrawal-events` | 외부 출금 (`WITHDRAWAL`) | 출금 풀 vault 의 accountId |\n| `internal-events` | 내부 이체 (`INTERNAL`) | 출발 계정 accountId |\n\n`UNMAPPED`(귀속 불명)은 대응되는 고객 계정이 없어 이벤트의 `accountId` 가 null 일 수 있다.\n\n**ChainEvent** — 큐로 오는 이벤트 형태 (타입 [ChainEvent](#schema-ChainEvent)):\n\n```json\n{\n  \"type\": \"WITHDRAWAL\",\n  \"txId\": \"tx_9f2a\",\n  \"txHash\": \"0x4e1d...ab\",\n  \"externalTxId\": \"wd-260713-0042\",\n  \"accountId\": \"acct_pool_02\",\n  \"asset\": \"ETH_USDC\",\n  \"to\": \"0x9f...E2\",\n  \"status\": \"COMPLETED\",\n  \"numOfConfirmations\": 12,\n  \"subStatus\": \"CONFIRMED\",\n  \"networkStatus\": \"CONFIRMED\"\n}\n```\n\n- [`type`](#schema-EventType) — DEPOSIT · UNMAPPED · WITHDRAWAL · INTERNAL\n- [`status`](#schema-TxStatus) — 공통 상태 다섯 (아래 \"상태 (TxStatus) 기준\")\n- `txHash` — 전파 후 채워짐\n- `subStatus` — 벤더 상세 사유. 분기 필요한 최소 집합만 보고 나머지는 로깅한다\n- `networkStatus` — 체인 레이어 상태\n\n전달 보장:\n\n- **at-least-once** — 같은 이벤트가 드물게 두 번 올 수 있다. 이벤트 ID(`txId` 또는 `externalTxId`) 유일 기준으로 **상태 전이만 반영**한다.\n- **오프셋 커밋** — 원장 반영이 성공한 뒤에만.\n- **순서** — 같은 계정은 파티션 키가 보장.\n- **입금 시작 상태** — 입금은 `SUBMITTED` 없이 `CONFIRMING` 부터 온다 (`SUBMITTED` 는 우리가 제출하는 거래에서만 관찰).\n- `REJECTED`(일시적) ≠ `FAILED`(영구). 확정은 `numOfConfirmations` 를 체인별 임계와 직접 비교한다.\n\n## 상태 (TxStatus) 기준\n\n거래·이벤트의 `status` 는 이 다섯이 기준이다. 벤더 원어는 매니저가 이 다섯으로 번역하고, `subStatus`·`networkStatus` 는 분기 필요한 최소 집합만 본다.\n\n| 공통 상태 | 뜻 | 벤더(Fireblocks) 원어 | 대표 subStatus | networkStatus | daw-core `tx_stcd` |\n|---|---|---|---|---|---|\n| `SUBMITTED` | 제출됨 — 서명·전파 준비 중, 아직 체인 미등장 (출금만 관찰) | PENDING_SIGNATURE · QUEUED · BROADCASTING | — | 서명 단계엔 없음 → BROADCASTING | PENDING |\n| `CONFIRMING` | 전파 후 체인 등장, 컨펌 누적 중 (미확정) | CONFIRMING | PENDING_BLOCKCHAIN_CONFIRMATIONS | CONFIRMING | PENDING |\n| `COMPLETED` | 확정 — 확정 정책(DCCP) 임계 컨펌 도달 = finality | COMPLETED | CONFIRMED | CONFIRMED | CONFIRMED |\n| `REJECTED` | 거부·차단 — 정책·스크리닝에 막힘. 영구 실패가 아니라 사람 개입 여지 | REJECTED · BLOCKED | AUTO_FREEZE · FROZEN_MANUALLY · REJECTED_AML_SCREENING | 출금(전파 전 차단)은 없음 · 입금 동결은 CONFIRMED | — (미정) |\n| `FAILED` | 영구 실패 — 사유 동반 (수수료 부족·revert 등) | FAILED | DROPPED_BY_BLOCKCHAIN (reorg 증발) · 그 외 | FAILED (revert) · DROPPED (mempool 누락) | FAILED |\n\n판단은 다섯(`status`)으로 한다. `REJECTED`(일시적) ≠ `FAILED`(영구) 구분이 원장·화면 처리를 가른다.\n`daw-core tx_stcd` 는 백엔드 상태 대응(제안)이다 — `REJECTED` 는 daw-core 에 짝이 없어 미정, `CHECKING`·`CANCELLED` 는 daw-core 고유 상태.\n"
+  },
+  "servers": [
+    {
+      "url": "https://{baseUrl}/blockchain/manage-api",
+      "description": "매니저 API 베이스 URL",
+      "variables": {
+        "baseUrl": {
+          "default": "api.example.com"
+        }
+      }
+    }
+  ],
+  "tags": [
+    {
+      "name": "Accounts",
+      "description": "계정과 입금 주소"
+    },
+    {
+      "name": "Balances",
+      "description": "잔액 조회"
+    },
+    {
+      "name": "Transactions",
+      "description": "수수료 견적·출금 제출·거래 조회"
+    }
+  ],
+  "paths": {
+    "/accounts": {
+      "post": {
+        "tags": [
+          "Accounts"
+        ],
+        "summary": "계정 생성",
+        "description": "`ref`(우리 참조 키)로 vault 를 만들고 `ref ↔ accountId` 매핑을 반환한다. `ref` 는 daw-core 계정 ID 를 쓴다 — 고객 `ACT-000123`, 운영(관리) `SYS-000001`.\n고객 계정뿐 아니라 운영(관리) 계정도 이 오퍼레이션으로 만든다 — 운영 계정은 역할별로 HOT_OPS(운영)·FEE_MGT(가스비)·RESERVE(준비금)이 있다.\n같은 `ref` 재요청은 같은 `accountId` 를 돌려준다 (매니저가 `ref` 로 멱등 보장).\n",
+        "operationId": "createAccount",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccountRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "생성됨(또는 멱등 재요청)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/accounts/{accountId}/assets/{asset}/address": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/AccountId"
+        },
+        {
+          "$ref": "#/components/parameters/Asset"
+        }
+      ],
+      "post": {
+        "tags": [
+          "Accounts"
+        ],
+        "summary": "입금 주소 발급",
+        "description": "자산 지갑을 활성화하고 입금 주소를 발급한다. EVM 은 자산당 주소 하나다.\n같은 (accountId, asset) 재요청은 같은 주소를 돌려준다 (매니저가 멱등 보장).\n",
+        "operationId": "createDepositAddress",
+        "responses": {
+          "201": {
+            "description": "발급됨(또는 멱등 재요청)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "404": {
+            "$ref": "#/components/responses/AccountNotFound"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Accounts"
+        ],
+        "summary": "입금 주소 조회",
+        "description": "발급된 입금 주소를 조회한다(벤더 왕복 없음).\n- 주소 있음 → `data` 에 주소\n- 계정은 있으나 주소 미발급 → `data: null` (주소를 만들지 않는다)\n- 계정 없음 → `404 ACCOUNT_NOT_FOUND`\n",
+        "operationId": "depositAddressOf",
+        "responses": {
+          "200": {
+            "description": "조회 결과(미발급 시 data=null)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressNullableResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/AccountNotFound"
+          }
+        }
+      }
+    },
+    "/accounts/{accountId}/assets/{asset}/balance": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/AccountId"
+        },
+        {
+          "$ref": "#/components/parameters/Asset"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Balances"
+        ],
+        "summary": "잔액 조회",
+        "description": "vault 단위 잔액을 가용·대기·잠김으로 돌려준다.\n벤더가 보는 vault 잔액이라 대사(reconciliation) 재료다 — 고객별 귀속 잔액이 아니다. 고객별 잔액은 백엔드 원장이 정본이다.\n",
+        "operationId": "balanceOf",
+        "responses": {
+          "200": {
+            "description": "잔액",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BalanceResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/AccountNotFound"
+          }
+        }
+      }
+    },
+    "/transactions/estimate-fee": {
+      "post": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "수수료 견적",
+        "description": "낮음·보통·높음 세 단계 수수료를 추정한다. 실제 수수료는 제출 시점에 정해진다.\n대납 구성에서 이 값은 우리 vault 가 낼 돈이 아니라 relay 가 낼 실비의 예측이다.\n",
+        "operationId": "estimateFee",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeeEstimateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "수수료 견적",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeeEstimateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/transactions": {
+      "post": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "출금 제출",
+        "description": "출금(또는 내부 이체)을 제출한다. `externalTxId` 로 재제출 중복을 차단한다.\n응답은 벤더 tx id(`txId`)이며, 이후 상태 진행은 메시지 큐 이벤트로 따라간다(Events).\n",
+        "operationId": "submitTransaction",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "접수됨(제출)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "502": {
+            "$ref": "#/components/responses/RelayRejected"
+          }
+        }
+      }
+    },
+    "/transactions/{txId}": {
+      "get": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "거래 단건 조회",
+        "description": "벤더 tx id(`txId`)로 거래 1건을 조회한다. `txId` 는 출금 제출 응답이나 큐 이벤트에서 얻는다.",
+        "operationId": "transactionOf",
+        "parameters": [
+          {
+            "name": "txId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "벤더 tx id",
+            "example": "tx_9f2a"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "거래",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/accounts/{accountId}/transactions": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/AccountId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "거래 목록 조회",
+        "description": "거래 이력을 **거래 시각(createdAt) 기준·최신순**으로 조회한다. 기간(`after`/`before`)·상태로 좁히고 커서로 페이지네이션한다.\n상태 변경 실시간 감지는 이 목록이 아니라 이벤트 큐가 담당한다(매니저 내부의 lastUpdated 감지 폴링과 별개).\n",
+        "operationId": "transactionsOf",
+        "parameters": [
+          {
+            "name": "after",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "시작 시각 — 거래 시각(createdAt) 기준 (ISO 8601 UTC)",
+            "example": "2026-07-01T00:00:00.000Z"
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "종료 시각 — 거래 시각(createdAt) 기준 (ISO 8601 UTC)",
+            "example": "2026-07-13T00:00:00.000Z"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TxStatus"
+            },
+            "description": "상태 필터 (선택)",
+            "example": "COMPLETED"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 200
+            },
+            "description": "페이지 크기 — 기본 200, 최대 500 (벤더 한도). 1 미만이거나 500 초과면 `400 VALIDATION_FAILED`.",
+            "example": 200
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "다음 페이지 커서 — 이전 응답의 `pagination.nextCursor` 를 그대로 넣는다. 불투명 토큰이라 직접 만들거나 해석하지 않는다. 첫 요청엔 생략. cursor 가 있으면 조회 조건은 토큰이 우선이라 함께 보낸 `after`/`before`·`status`·`limit` 는 무시된다.",
+            "example": "eyJsYXN0IjoxNzUxMzM2MDAwMDAwfQ"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "거래 목록",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransfersResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "404": {
+            "$ref": "#/components/responses/AccountNotFound"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "AccountId": {
+        "name": "accountId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "매니저가 돌려준 vault 핸들 (daw-core ext_acnt_id = vaultAccountId)",
+        "example": "acct_01H8X"
+      },
+      "Asset": {
+        "name": "asset",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "자산 식별 (체인 × 토큰)",
+        "example": "ETH_USDC"
+      }
+    },
+    "schemas": {
+      "Meta": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "description": "요청 추적 id (모든 응답에 포함)",
+            "example": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+          }
+        },
+        "required": [
+          "requestId"
+        ]
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "다음 페이지 커서 (불투명 토큰) — 다음 요청 `cursor` 로 그대로 전달. null 이면 마지막 페이지.",
+            "example": "eyJsYXN0IjoxNzUxMzM2MDAwMDAwfQ"
+          },
+          "hasMore": {
+            "type": "boolean",
+            "description": "다음 페이지 존재 여부",
+            "example": true
+          }
+        },
+        "required": [
+          "hasMore"
+        ]
+      },
+      "ErrorBody": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "에러 코드 (API Conventions 표 참조)",
+            "example": "ACCOUNT_NOT_FOUND"
+          },
+          "message": {
+            "type": "string",
+            "description": "사람이 읽는 설명 — 분기 판단은 `code` 로 한다",
+            "example": "account not found"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "error",
+          "meta"
+        ]
+      },
+      "Account": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "description": "우리 참조 키 (daw-core 계정 ID) — 고객 ACT-000123, 운영 SYS-000001 (역할 HOT_OPS·FEE_MGT·RESERVE)",
+            "example": "ACT-000123"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "매니저가 돌려주는 vault 핸들 (daw-core ext_acnt_id = vaultAccountId)",
+            "example": "acct_01H8X"
+          }
+        },
+        "required": [
+          "ref",
+          "accountId"
+        ]
+      },
+      "Address": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "입금 주소",
+            "example": "0xAb3...C9"
+          },
+          "memoTag": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "EVM 은 null. Tag/Memo 체인만 사용.",
+            "example": null
+          }
+        },
+        "required": [
+          "address"
+        ]
+      },
+      "Balance": {
+        "type": "object",
+        "description": "금액은 문자열(decimal).",
+        "properties": {
+          "available": {
+            "type": "string",
+            "description": "가용",
+            "example": "10.5"
+          },
+          "pending": {
+            "type": "string",
+            "description": "대기(확정 전)",
+            "example": "1.0"
+          },
+          "locked": {
+            "type": "string",
+            "description": "잠김 — 나가는 중(전파 전) 출금 예약분 + AML 동결분",
+            "example": "0"
+          }
+        },
+        "required": [
+          "available",
+          "pending",
+          "locked"
+        ]
+      },
+      "Transfer": {
+        "type": "object",
+        "description": "거래 1건. 요청의 `from`/`to`(TransferPeer)는 여기선 확정된 온체인 주소 문자열로 나온다.",
+        "properties": {
+          "txId": {
+            "type": "string",
+            "description": "벤더 tx id"
+          },
+          "txHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "온체인 거래해시 — 전파 후 채워짐"
+          },
+          "externalTxId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "우리 요청 키"
+          },
+          "asset": {
+            "type": "string",
+            "description": "자산 식별 (체인 × 토큰)"
+          },
+          "amount": {
+            "type": "string",
+            "description": "금액(문자열)"
+          },
+          "from": {
+            "type": "string",
+            "description": "발신 (확정 온체인 주소)"
+          },
+          "to": {
+            "type": "string",
+            "description": "목적지 (확정 온체인 주소)"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TxStatus"
+          },
+          "numOfConfirmations": {
+            "type": "integer",
+            "description": "누적 컨펌 수"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "거래 생성 시각 (목록 정렬·기간 필터 기준)"
+          },
+          "lastUpdated": {
+            "type": "string",
+            "format": "date-time",
+            "description": "마지막 상태 변경 시각"
+          }
+        },
+        "required": [
+          "txId",
+          "asset",
+          "amount",
+          "from",
+          "to",
+          "status",
+          "numOfConfirmations",
+          "createdAt",
+          "lastUpdated"
+        ],
+        "example": {
+          "txId": "tx_9f2a",
+          "txHash": "0x4e1d...ab",
+          "externalTxId": "wd-260713-0042",
+          "asset": "ETH_USDC",
+          "amount": "1.5",
+          "from": "0xA1...C9",
+          "to": "0x9f...E2",
+          "status": "COMPLETED",
+          "numOfConfirmations": 12,
+          "createdAt": "2026-07-13T04:05:06.789Z",
+          "lastUpdated": "2026-07-13T04:06:10.120Z"
+        }
+      },
+      "ChainEvent": {
+        "type": "object",
+        "description": "큐로 오는 온체인 상태 변경 이벤트 (HTTP 응답이 아니라 메시지 큐로 전달).",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/EventType"
+          },
+          "txId": {
+            "type": "string",
+            "description": "벤더 tx id"
+          },
+          "txHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "온체인 거래해시 — 전파 후 채워짐"
+          },
+          "externalTxId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "우리 요청 키 (출금·내부이체)"
+          },
+          "accountId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "파티션 키 (vault 핸들). UNMAPPED 은 귀속 계정이 없어 null 일 수 있다"
+          },
+          "asset": {
+            "type": "string",
+            "description": "자산 식별 (체인 × 토큰)"
+          },
+          "to": {
+            "type": "string",
+            "description": "목적지 주소 — 입금 판별"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TxStatus"
+          },
+          "numOfConfirmations": {
+            "type": "integer",
+            "description": "누적 컨펌 수"
+          },
+          "subStatus": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "벤더 상세 사유 — 분기 필요한 최소 집합만"
+          },
+          "networkStatus": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "체인 레이어 상태"
+          }
+        },
+        "required": [
+          "type",
+          "txId",
+          "asset",
+          "to",
+          "status",
+          "numOfConfirmations"
+        ],
+        "example": {
+          "type": "WITHDRAWAL",
+          "txId": "tx_9f2a",
+          "txHash": "0x4e1d...ab",
+          "externalTxId": "wd-260713-0042",
+          "accountId": "acct_pool_02",
+          "asset": "ETH_USDC",
+          "to": "0x9f...E2",
+          "status": "COMPLETED",
+          "numOfConfirmations": 12,
+          "subStatus": "CONFIRMED",
+          "networkStatus": "CONFIRMED"
+        }
+      },
+      "TxStatus": {
+        "type": "string",
+        "enum": [
+          "SUBMITTED",
+          "CONFIRMING",
+          "COMPLETED",
+          "REJECTED",
+          "FAILED"
+        ],
+        "description": "공통 상태 다섯.",
+        "x-enumDescriptions": {
+          "SUBMITTED": "제출 — 체인 미등장",
+          "CONFIRMING": "컨펌 누적 (미확정)",
+          "COMPLETED": "확정",
+          "REJECTED": "거부·차단 (일시적)",
+          "FAILED": "영구 실패"
+        }
+      },
+      "EventType": {
+        "type": "string",
+        "enum": [
+          "DEPOSIT",
+          "UNMAPPED",
+          "WITHDRAWAL",
+          "INTERNAL"
+        ],
+        "description": "이벤트 분류. 매니저가 발신자가 우리 vault 인지로 가른다.",
+        "x-enumDescriptions": {
+          "DEPOSIT": "고객 입금 (매핑된 주소로 수신)",
+          "UNMAPPED": "귀속 불명 — 보류",
+          "WITHDRAWAL": "외부 출금",
+          "INTERNAL": "내부 이체 (sweep·정산 등)"
+        }
+      },
+      "Fee": {
+        "type": "object",
+        "description": "수수료 추정 한 단계. 세부(가스 단가·한도 등)는 체인별로 구현에서 정의.",
+        "properties": {
+          "amount": {
+            "type": "string",
+            "description": "예상 수수료(문자열)",
+            "example": "0.0012"
+          }
+        },
+        "required": [
+          "amount"
+        ],
+        "additionalProperties": true
+      },
+      "FeeEstimate": {
+        "type": "object",
+        "properties": {
+          "low": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Fee"
+              }
+            ],
+            "description": "낮음 단계"
+          },
+          "medium": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Fee"
+              }
+            ],
+            "description": "보통 단계"
+          },
+          "high": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Fee"
+              }
+            ],
+            "description": "높음 단계"
+          }
+        },
+        "required": [
+          "low",
+          "medium",
+          "high"
+        ]
+      },
+      "SubmitResult": {
+        "type": "object",
+        "properties": {
+          "txId": {
+            "type": "string",
+            "description": "벤더 tx id",
+            "example": "tx_9f2a"
+          }
+        },
+        "required": [
+          "txId"
+        ]
+      },
+      "CreateAccountRequest": {
+        "type": "object",
+        "required": [
+          "ref"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "description": "우리 참조 키 (영구 유일) — daw-core 계정 ID. 고객 `ACT-000123`, 운영(관리) `SYS-000001` (역할 HOT_OPS·FEE_MGT·RESERVE).",
+            "example": "ACT-000123"
+          }
+        }
+      },
+      "FeeEstimateRequest": {
+        "type": "object",
+        "description": "수수료 추정에 필요한 전송 형태만. 트래블룰·externalTxId·메모는 넣지 않는다.",
+        "properties": {
+          "from": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransferPeer"
+              },
+              {
+                "properties": {
+                  "type": {
+                    "const": "ACCOUNT"
+                  }
+                }
+              }
+            ],
+            "description": "보내는 쪽 — type=ACCOUNT 만 허용"
+          },
+          "to": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransferPeer"
+              }
+            ],
+            "description": "목적지"
+          },
+          "asset": {
+            "type": "string",
+            "description": "자산 식별 (체인 × 토큰)",
+            "example": "ETH_USDC"
+          },
+          "amount": {
+            "type": "string",
+            "description": "금액(문자열)",
+            "example": "1.5"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "asset",
+          "amount"
+        ],
+        "example": {
+          "from": {
+            "type": "ACCOUNT",
+            "accountId": "acct_pool_02"
+          },
+          "to": {
+            "type": "ADDRESS",
+            "address": "0x9f...E2"
+          },
+          "asset": "ETH_USDC",
+          "amount": "1.5"
+        }
+      },
+      "TransactionRequest": {
+        "type": "object",
+        "properties": {
+          "externalTxId": {
+            "type": "string",
+            "description": "우리 요청 키 — 재제출 중복 차단·완료 대응",
+            "example": "wd-260713-0042"
+          },
+          "from": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransferPeer"
+              },
+              {
+                "properties": {
+                  "type": {
+                    "const": "ACCOUNT"
+                  }
+                }
+              }
+            ],
+            "description": "보내는 쪽 — type=ACCOUNT 만 허용"
+          },
+          "to": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransferPeer"
+              }
+            ],
+            "description": "목적지"
+          },
+          "asset": {
+            "type": "string",
+            "description": "자산 식별 (체인 × 토큰)",
+            "example": "ETH_USDC"
+          },
+          "amount": {
+            "type": "string",
+            "description": "금액(문자열 · 부동소수 금지)",
+            "example": "1.5"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "벤더 거래 기록 메모"
+          },
+          "travelRule": {
+            "description": "트래블룰 게이트가 만든 암호화 산출물 — 해외(Notabene) 출금만 싣고, 국내(VerifyVASP)·개인지갑은 null",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TravelRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "externalTxId",
+          "from",
+          "to",
+          "asset",
+          "amount"
+        ],
+        "example": {
+          "externalTxId": "wd-260713-0042",
+          "from": {
+            "type": "ACCOUNT",
+            "accountId": "acct_pool_02"
+          },
+          "to": {
+            "type": "ADDRESS",
+            "address": "0x9f...E2"
+          },
+          "asset": "ETH_USDC",
+          "amount": "1.5",
+          "note": null,
+          "travelRule": null
+        }
+      },
+      "TransferPeer": {
+        "type": "object",
+        "description": "벤더 TransferPeerPath 대응. from·to 공통. type 에 따라 필요한 식별 필드가 정해진다.",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/PeerType"
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "온체인 주소 (type=ADDRESS 일 때 필수)"
+          },
+          "accountId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "우리 계정 (type=ACCOUNT 일 때 필수)"
+          },
+          "walletId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "사전 등록 지갑 id (type=WHITELISTED 일 때 필수)"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "ADDRESS"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "address"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "ACCOUNT"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "accountId"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "WHITELISTED"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "walletId"
+              ]
+            }
+          }
+        ]
+      },
+      "PeerType": {
+        "type": "string",
+        "enum": [
+          "ADDRESS",
+          "ACCOUNT",
+          "WHITELISTED"
+        ],
+        "x-enumDescriptions": {
+          "ADDRESS": "온체인 주소 (외부 출금 → ONE_TIME_ADDRESS)",
+          "ACCOUNT": "우리 계정 (내부 이동 → VAULT_ACCOUNT)",
+          "WHITELISTED": "사전 등록 지갑 (→ EXTERNAL_WALLET)"
+        }
+      },
+      "TravelRule": {
+        "type": "object",
+        "description": "트래블룰 게이트가 만든 **암호화 산출물**이다. 이 API(매니저)는 운반만 하고\n내용을 파싱하지 않으므로, 여기서는 내부 구조를 펼치지 않고 불투명한 객체로 둔다.\n\n- 실제 구조의 기준은 **IVMS101 표준 + 트래블룰 솔루션 스펙**(게이트 쪽 문서)이다.\n- 시나리오별로 실림 여부가 다르다 — 해외(Notabene)=메시지 있음, 국내(VerifyVASP)·개인지갑=없음(`null`).\n",
+        "additionalProperties": true
+      },
+      "AccountResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "AddressResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "AddressNullableResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Address"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "미발급 시 null"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "BalanceResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Balance"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "TransferResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Transfer"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "TransfersResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Transfer"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "required": [
+          "data",
+          "meta",
+          "pagination"
+        ]
+      },
+      "FeeEstimateResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/FeeEstimate"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "SubmitResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SubmitResult"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      }
+    },
+    "responses": {
+      "ValidationFailed": {
+        "description": "요청 검증 실패",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": {
+                "code": "VALIDATION_FAILED",
+                "message": "amount must be a decimal string"
+              },
+              "meta": {
+                "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+              }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "리소스 없음",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": {
+                "code": "NOT_FOUND",
+                "message": "transaction not found"
+              },
+              "meta": {
+                "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+              }
+            }
+          }
+        }
+      },
+      "AccountNotFound": {
+        "description": "계정 없음",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": {
+                "code": "ACCOUNT_NOT_FOUND",
+                "message": "account not found"
+              },
+              "meta": {
+                "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+              }
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "상태·멱등 충돌",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": {
+                "code": "CONFLICT",
+                "message": "externalTxId already used"
+              },
+              "meta": {
+                "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+              }
+            }
+          }
+        }
+      },
+      "RelayRejected": {
+        "description": "relay 가 전송을 대지 못함·거절 (대납 구성)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": {
+                "code": "RELAY_REJECTED",
+                "message": "relay refused to sponsor gas"
+              },
+              "meta": {
+                "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+};
+</script>
+    <script>
+      (function () {
+        const spec = window.OPENAPI;
+        if (!spec) { document.getElementById("content").textContent = "spec.js 를 불러오지 못했습니다."; return; }
+        const serverUrl = (spec.servers && spec.servers[0] && spec.servers[0].url) || "";
+
+        const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
+        const esc = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const inline = (s) => esc(s)
+          .replace(/`([^`]+)`/g, "<code>$1</code>")
+          .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+          .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+        // --- resolve internal $ref ---
+        function resolve(obj) {
+          if (obj && obj.$ref) {
+            const path = obj.$ref.replace(/^#\//, "").split("/");
+            let cur = spec; for (const p of path) cur = cur && cur[p];
+            return cur || {};
+          }
+          return obj || {};
+        }
+        function refName(obj) { return obj && obj.$ref ? obj.$ref.split("/").pop() : null; }
+
+        // --- type label (with schema links) ---
+        function typeLabel(schema) {
+          if (!schema) return "any";
+          if (schema.$ref) { const n = refName(schema); return `<a class="ptype" href="#schema-${n}">${n}</a>`; }
+          if (schema.allOf && schema.allOf.length) return typeLabel(schema.allOf[0]);
+          if (schema.oneOf) return schema.oneOf.map(typeLabel).join(" | ");
+          let t = schema.type;
+          if (Array.isArray(t)) return t.map((x) => (x === "null" ? "null" : x)).join(" | ");
+          if (t === "array") return typeLabel(schema.items) + "[]";
+          if (t === "string" && schema.format === "date-time") return "string&lt;date-time&gt;";
+          return t || (schema.properties ? "object" : "any");
+        }
+
+        // --- property table for an object schema ---
+        function propTable(schema) {
+          schema = schema.$ref ? resolve(schema) : schema;
+          if (schema.allOf) { // shallow merge top-level props + allOf objects
+            const merged = { type: "object", properties: { ...(schema.properties || {}) }, required: [...(schema.required || [])] };
+            schema.allOf.map(resolve).forEach((s) => { Object.assign(merged.properties, s.properties || {}); (s.required || []).forEach((r) => merged.required.push(r)); });
+            schema = merged;
+          }
+          const props = schema.properties;
+          if (!props) return null;
+          const required = new Set(schema.required || []);
+          const card = el("div", "card");
+          const table = el("table");
+          table.innerHTML = "<thead><tr><th>필드</th><th>타입</th><th>필수</th><th>설명</th></tr></thead>";
+          const tb = el("tbody");
+          for (const [key, raw] of Object.entries(props)) {
+            const v = raw || {};
+            let desc = v.description ? inline(v.description) : "";
+            const enumv = (v.enum || (v.$ref && resolve(v).enum));
+            if (enumv) desc += `<div class="enum-vals">${enumv.map((e) => `<code>${esc(e)}</code>`).join("")}</div>`;
+            const tr = el("tr");
+            tr.innerHTML = `<td><code>${esc(key)}</code></td><td>${typeLabel(v)}</td>`
+              + `<td>${required.has(key) ? '<span class="req">필수</span>' : '<span class="opt">-</span>'}</td>`
+              + `<td class="desc">${desc}</td>`;
+            tb.appendChild(tr);
+          }
+          table.appendChild(tb); card.appendChild(table); return card;
+        }
+
+        // --- enum value table ---
+        function enumTable(schema) {
+          const descs = schema["x-enumDescriptions"] || {};
+          const hasDesc = Object.keys(descs).length > 0;
+          const card = el("div", "card"); const t = el("table");
+          t.innerHTML = "<thead><tr><th>값</th>" + (hasDesc ? "<th>설명</th>" : "") + "</tr></thead>";
+          const tb = el("tbody");
+          (schema.enum || []).forEach((v) => {
+            const tr = el("tr");
+            tr.innerHTML = `<td><code>${esc(v)}</code></td>` + (hasDesc ? `<td class="desc">${descs[v] ? inline(descs[v]) : ""}</td>` : "");
+            tb.appendChild(tr);
+          });
+          t.appendChild(tb); card.appendChild(t); return card;
+        }
+
+        // --- sequence diagram (A -> B: label) as SVG ---
+        function renderSeq(codeLines) {
+          const parts = [];
+          const idx = (n) => { let i = parts.indexOf(n); if (i < 0) { parts.push(n); i = parts.length - 1; } return i; };
+          const msgs = [];
+          codeLines.forEach((ln) => {
+            const m = ln.match(/^\s*(.+?)\s*->\s*(.+?)\s*:\s*(.*)$/);
+            if (m) msgs.push({ a: idx(m[1].trim()), b: idx(m[2].trim()), label: m[3].trim() });
+          });
+          if (!parts.length || !msgs.length) return "";
+          const colW = 150, headH = 40, rowH = 48, padX = 20, padTop = 8, padBot = 20;
+          const W = padX * 2 + parts.length * colW, H = padTop + headH + rowH * msgs.length + padBot;
+          const cx = (i) => padX + i * colW + colW / 2;
+          let s = `<div class="seq-wrap"><svg class="seq" viewBox="0 0 ${W} ${H}" width="${W}" role="img" aria-label="이벤트 시퀀스">`;
+          parts.forEach((p, i) => {
+            const x = cx(i);
+            s += `<line class="life" x1="${x}" y1="${padTop + headH}" x2="${x}" y2="${H - padBot}"/>`;
+            s += `<rect class="pbox" x="${x - colW / 2 + 10}" y="${padTop}" width="${colW - 20}" height="${headH - 12}" rx="6"/>`;
+            s += `<text class="pname" x="${x}" y="${padTop + (headH - 12) / 2 + 4}" text-anchor="middle">${esc(p)}</text>`;
+          });
+          msgs.forEach((mm, k) => {
+            const y = padTop + headH + rowH * k + rowH / 2;
+            const x1 = cx(mm.a), x2 = cx(mm.b), dir = x2 >= x1 ? 1 : -1;
+            s += `<text class="mlabel" x="${(x1 + x2) / 2}" y="${y - 8}" text-anchor="middle">${esc(mm.label)}</text>`;
+            s += `<line class="msg" x1="${x1}" y1="${y}" x2="${x2 - dir * 5}" y2="${y}"/>`;
+            s += `<path class="mhead" d="M ${x2} ${y} L ${x2 - dir * 9} ${y - 4} L ${x2 - dir * 9} ${y + 4} Z"/>`;
+          });
+          return s + "</svg></div>";
+        }
+
+        // --- sample JSON from schema (property examples fill in) ---
+        function sample(schema, depth) {
+          depth = depth || 0;
+          if (!schema || depth > 7) return null;
+          if (schema.$ref) schema = resolve(schema);
+          if (schema && Object.prototype.hasOwnProperty.call(schema, "example")) return schema.example;
+          if (schema.allOf) { const o = {}; for (const [k, v] of Object.entries(schema.properties || {})) o[k] = sample(v, depth + 1); schema.allOf.map(resolve).forEach((s) => Object.assign(o, sample(s, depth + 1) || {})); return o; }
+          if (schema.oneOf) return sample(schema.oneOf[0], depth + 1);
+          if (schema.enum) return schema.enum[0];
+          let t = schema.type;
+          if (Array.isArray(t)) t = t.find((x) => x !== "null") || "null";
+          if (t === "object" || schema.properties) { const o = {}; for (const [k, v] of Object.entries(schema.properties || {})) o[k] = sample(v, depth + 1); return o; }
+          if (t === "array") return [sample(schema.items, depth + 1)];
+          if (t === "string") return schema.format === "date-time" ? "2026-07-13T04:05:06.789Z" : "string";
+          if (t === "integer" || t === "number") return 0;
+          if (t === "boolean") return false;
+          return null;
+        }
+        function mediaExample(media) {
+          if (!media) return undefined;
+          return media.example !== undefined ? media.example : sample(media.schema);
+        }
+        function jsonBlock(value) {
+          const pre = el("pre"); const code = el("code");
+          code.textContent = JSON.stringify(value, null, 2);
+          pre.appendChild(code); return pre;
+        }
+
+        // --- mini markdown (subset) ---
+        function markdown(md, headings) {
+          const lines = String(md || "").replace(/\r/g, "").split("\n");
+          let html = "", i = 0;
+          while (i < lines.length) {
+            let line = lines[i];
+            const fence = line.match(/^\s*```(\w*)/);
+            if (fence) { // fenced block
+              const lang = fence[1];
+              i++; let code = [];
+              while (i < lines.length && !/^\s*```/.test(lines[i])) { code.push(lines[i]); i++; }
+              i++;
+              if (lang === "seq") {
+                html += renderSeq(code);
+              } else if (lang === "flow") {
+                const steps = code.map((s) => s.trim()).filter(Boolean);
+                html += '<div class="flow">' + steps.map((s, k) => `<div class="flow-step">${inline(s)}</div>` + (k < steps.length - 1 ? '<span class="flow-arrow">→</span>' : "")).join("") + "</div>";
+              } else {
+                html += `<pre><code>${esc(code.join("\n"))}</code></pre>`;
+              }
+              continue;
+            }
+            const h = line.match(/^(#{2,3})\s+(.*)$/);
+            if (h) {
+              const lvl = h[1].length, text = h[2].trim();
+              if (lvl === 2 && headings) { const id = "sec-" + headings.length; headings.push({ id, text }); html += `<h2 id="${id}">${inline(text)}</h2>`; }
+              else html += `<h${lvl}>${inline(text)}</h${lvl}>`;
+              i++; continue;
+            }
+            if (/^\s*\|/.test(line)) { // table
+              const rows = []; while (i < lines.length && /^\s*\|/.test(lines[i])) { rows.push(lines[i]); i++; }
+              const cells = (r) => r.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+              const head = cells(rows[0]);
+              let t = "<table><thead><tr>" + head.map((c) => `<th>${inline(c)}</th>`).join("") + "</tr></thead><tbody>";
+              for (let r = 2; r < rows.length; r++) t += "<tr>" + cells(rows[r]).map((c) => `<td>${inline(c)}</td>`).join("") + "</tr>";
+              html += '<div class="table-wrap">' + t + "</tbody></table></div>"; continue;
+            }
+            if (/^\s*[-*]\s+/.test(line)) { // list
+              let items = []; while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) { items.push(lines[i].replace(/^\s*[-*]\s+/, "")); i++; }
+              html += "<ul>" + items.map((it) => `<li>${inline(it)}</li>`).join("") + "</ul>"; continue;
+            }
+            if (line.trim() === "") { i++; continue; }
+            let para = []; while (i < lines.length && lines[i].trim() !== "" && !/^\s*(#{2,3}\s|```|\||[-*]\s)/.test(lines[i])) { para.push(lines[i]); i++; }
+            html += `<p>${inline(para.join(" "))}</p>`;
+          }
+          return html;
+        }
+
+        // --- render ---
+        const nav = document.getElementById("nav");
+        const content = document.getElementById("content");
+        document.getElementById("brandTitle").textContent = spec.info.title;
+        document.getElementById("brandVer").textContent = "v" + spec.info.version;
+        document.title = spec.info.title;
+
+        const navSpy = []; // {id, link}
+        function addNav(group, items) {
+          const g = el("div", "nav-group");
+          g.appendChild(el("div", "nav-title", group));
+          items.forEach(({ id, label, method }) => {
+            const a = el("a", "nav-link");
+            a.href = "#" + id;
+            a.innerHTML = (method ? `<span class="m m-${method.toLowerCase()}">${method}</span>` : "") + `<span class="label">${esc(label)}</span>`;
+            g.appendChild(a); navSpy.push({ id, link: a });
+          });
+          nav.appendChild(g);
+        }
+
+        // intro + conventions
+        const title = el("h1", "page-title"); title.textContent = spec.info.title; content.appendChild(title);
+        const descHeadings = [];
+        const md = el("div", "md"); md.innerHTML = markdown(spec.info.description, descHeadings); content.appendChild(md);
+        addNav("개요", descHeadings.map((h) => ({ id: h.id, label: h.text })));
+
+        // operations grouped by tag
+        const tagOrder = (spec.tags || []).map((t) => t.name);
+        const groups = {};
+        for (const [path, item] of Object.entries(spec.paths)) {
+          const common = item.parameters || [];
+          for (const method of ["post", "put", "patch", "delete", "get"]) {
+            const op = item[method]; if (!op) continue;
+            const tag = (op.tags && op.tags[0]) || "기타";
+            (groups[tag] = groups[tag] || []).push({ path, method, op, params: (common.concat(op.parameters || [])) });
+          }
+        }
+        const orderedTags = tagOrder.filter((t) => groups[t]).concat(Object.keys(groups).filter((t) => !tagOrder.includes(t)));
+
+        orderedTags.forEach((tag) => {
+          const tagMeta = (spec.tags || []).find((t) => t.name === tag);
+          const gh = el("div", "group-head"); gh.textContent = tag; content.appendChild(gh);
+          if (tagMeta && tagMeta.description) content.appendChild(el("p", "tag-desc", esc(tagMeta.description)));
+          const navItems = [];
+          groups[tag].forEach(({ path, method, op, params }) => {
+            const id = "op-" + method + "-" + path.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "");
+            navItems.push({ id, label: op.summary || path, method: method.toUpperCase() });
+            const sec = el("section", "op"); sec.id = id;
+            const head = el("div", "op-head");
+            head.innerHTML = `<span class="m m-${method}">${method.toUpperCase()}</span><span class="op-path">${esc(serverUrl + path)}</span>`;
+            sec.appendChild(head);
+            if (op.summary) sec.appendChild(el("div", "op-title", esc(op.summary)));
+            if (op.description) { const d = el("div", "op-desc md"); d.innerHTML = markdown(op.description); sec.appendChild(d); }
+
+            if (params.length) {
+              sec.appendChild(el("div", "block-label", "파라미터"));
+              const card = el("div", "card"); const t = el("table");
+              t.innerHTML = "<thead><tr><th>이름</th><th>위치</th><th>타입</th><th>필수</th><th>예시</th><th>설명</th></tr></thead>";
+              const tb = el("tbody");
+              params.map((p) => (p.$ref ? resolve(p) : p)).forEach((p) => {
+                const sc = p.schema || {};
+                let exv = p.example !== undefined ? p.example : (sc.example !== undefined ? sc.example : sc.default);
+                const exHtml = exv !== undefined ? `<code>${esc(exv)}</code>` : "";
+                const tr = el("tr");
+                tr.innerHTML = `<td><code>${esc(p.name)}</code></td><td>${esc(p.in)}</td><td>${typeLabel(sc)}</td>`
+                  + `<td>${p.required ? '<span class="req">필수</span>' : '<span class="opt">-</span>'}</td>`
+                  + `<td>${exHtml}</td>`
+                  + `<td class="desc">${p.description ? inline(p.description) : ""}</td>`;
+                tb.appendChild(tr);
+              });
+              t.appendChild(tb); card.appendChild(t); sec.appendChild(card);
+            }
+
+            const rb = op.requestBody && resolve(op.requestBody);
+            const rbMedia = rb && rb.content && rb.content["application/json"];
+            const rbSchema = rbMedia && rbMedia.schema;
+            if (rbSchema) {
+              sec.appendChild(el("div", "block-label", "요청 본문"));
+              sec.appendChild(jsonBlock(mediaExample(rbMedia)));
+              const pt = propTable(rbSchema);
+              if (pt) sec.appendChild(pt);
+            }
+
+            if (op.responses) {
+              sec.appendChild(el("div", "block-label", "응답"));
+              for (const [code, rRaw] of Object.entries(op.responses)) {
+                const r = resolve(rRaw);
+                const ok = /^2/.test(code);
+                const row = el("div"); row.style.margin = "10px 0 2px";
+                row.innerHTML = `<span class="status ${ok ? "ok" : "err"}">${code}</span> <span class="desc">${r.description ? inline(r.description) : ""}</span>`;
+                sec.appendChild(row);
+                const media = r.content && r.content["application/json"];
+                if (media && media.schema) {
+                  sec.appendChild(jsonBlock(mediaExample(media)));
+                  const pt = propTable(media.schema); if (pt) sec.appendChild(pt);
+                }
+              }
+            }
+            content.appendChild(sec);
+          });
+          addNav(tag, navItems);
+        });
+
+        // schemas ("타입")
+        const schemas = (spec.components && spec.components.schemas) || {};
+        const schemaNames = Object.keys(schemas);
+        if (schemaNames.length) {
+          const gh = el("div", "group-head"); gh.textContent = "타입"; content.appendChild(gh);
+          const navItems = [];
+          schemaNames.forEach((name) => {
+            const s = schemas[name];
+            const id = "schema-" + name; navItems.push({ id, label: name });
+            const sec = el("section", "schema-block"); sec.id = id;
+            sec.appendChild(el("div", "schema-name", esc(name)));
+            if (s.description) { const d = el("div", "schema-desc md"); d.innerHTML = markdown(s.description); sec.appendChild(d); }
+            const pt = propTable(s);
+            if (pt) sec.appendChild(pt);
+            else if (s.enum) { sec.appendChild(enumTable(s)); }
+            else { const c = el("div", "card"); c.style.padding = "10px 14px"; c.innerHTML = typeLabel(s); sec.appendChild(c); }
+            content.appendChild(sec);
+          });
+          addNav("타입", navItems);
+        }
+
+        // scroll spy
+        const byId = {}; navSpy.forEach((n) => (byId[n.id] = n.link));
+        const obs = new IntersectionObserver((entries) => {
+          entries.forEach((e) => {
+            if (e.isIntersecting) {
+              navSpy.forEach((n) => n.link.classList.remove("active"));
+              const link = byId[e.target.id]; if (link) link.classList.add("active");
+            }
+          });
+        }, { rootMargin: "-10% 0px -80% 0px", threshold: 0 });
+        navSpy.forEach((n) => { const t = document.getElementById(n.id); if (t) obs.observe(t); });
+
+        // theme toggle
+        const root = document.documentElement;
+        let saved = null; try { saved = localStorage.getItem("bcm-api-theme"); } catch (e) {}
+        if (saved) root.setAttribute("data-theme", saved);
+        document.getElementById("themeToggle").addEventListener("click", () => {
+          const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try { localStorage.setItem("bcm-api-theme", next); } catch (e) {}
+        });
+
+        // mobile menu
+        const sidebar = document.getElementById("sidebar");
+        document.getElementById("menuToggle").addEventListener("click", () => sidebar.classList.toggle("open"));
+        nav.addEventListener("click", (e) => { if (e.target.closest(".nav-link")) sidebar.classList.remove("open"); });
+
+        // schema popup — type/enum 링크는 아래로 점프하지 않고 팝업으로 정의를 보여준다
+        const modal = document.getElementById("modal");
+        const modalBody = modal.querySelector(".modal-body");
+        const modalBack = document.getElementById("modalBack");
+        let modalStack = [];   // 방문한 타입 이름 스택 (중첩 탐색)
+        function renderSchema(name) {
+          const s = schemas[name]; if (!s) return;
+          modalBody.innerHTML = "";
+          modalBody.appendChild(el("div", "schema-name", esc(name)));
+          if (s.description) { const d = el("div", "schema-desc md"); d.innerHTML = markdown(s.description); modalBody.appendChild(d); }
+          const pt = propTable(s);
+          if (pt) modalBody.appendChild(pt);
+          else if (s.enum) modalBody.appendChild(enumTable(s));
+          else { const c = el("div", "card"); c.style.padding = "10px 14px"; c.innerHTML = typeLabel(s); modalBody.appendChild(c); }
+          modalBack.style.display = modalStack.length > 1 ? "" : "none";
+          modal.scrollTop = 0;
+        }
+        function openSchemaModal(name) {
+          if (!schemas[name]) return;
+          const wasOpen = modal.classList.contains("open");
+          if (wasOpen) modalStack.push(name); else modalStack = [name];
+          renderSchema(name);
+          modal.classList.add("open");
+          if (!wasOpen) history.pushState({ bcmModal: true }, "");   // 브라우저 뒤로가기로 닫힘
+        }
+        const closeModal = () => { modal.classList.remove("open"); modalStack = []; };
+        const dismiss = () => { if (modal.classList.contains("open")) history.back(); };
+        const goBack = () => {   // 모달 안 "← 뒤로": 중첩이면 이전 타입, 최상위면 닫기
+          if (modalStack.length > 1) { modalStack.pop(); renderSchema(modalStack[modalStack.length - 1]); }
+          else dismiss();
+        };
+        document.addEventListener("click", (e) => {
+          const a = e.target.closest && e.target.closest('a[href^="#schema-"]');
+          if (a && !a.closest(".sidebar")) { e.preventDefault(); openSchemaModal(a.getAttribute("href").slice(8)); }
+        });
+        modalBack.addEventListener("click", goBack);
+        document.getElementById("modalClose").addEventListener("click", dismiss);
+        modal.addEventListener("click", (e) => { if (e.target === modal) dismiss(); });
+        document.addEventListener("keydown", (e) => { if (e.key === "Escape") dismiss(); });
+        window.addEventListener("popstate", () => { if (modal.classList.contains("open")) closeModal(); });
+      })();
+    </script>
+  </body>
+</html>
