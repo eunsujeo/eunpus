@@ -220,8 +220,10 @@ sequenceDiagram
     box rgb(220,252,231) 블록체인 매니저
     participant BM as 폴링 → deposit-events
     end
+    box rgb(224,242,254) 우리 측
     participant BE as Service 백엔드<br/>입금 컨슈머 · 가용 전이 게이트
     participant GT as 게이트 판별<br/>8장 우선순위
+    end
 
     Note over BM: 벤더(Notabene) 동결 건은 REJECTED 계열로 와서 여기 안 온다 — 기존 동결 처리(7.4·블록체인매니저 입금 흐름 연계)
     BM-->>BE: 입금 후보 — 확정 임계 도달

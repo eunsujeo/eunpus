@@ -3,8 +3,8 @@ title: 0. 검사 순서 — OFAC → AML → 트래블룰
 status: To Do
 ---
 
-트래블룰은 VASP(가상자산사업자)끼리 송·수신자 정보를 온체인이 아니라 별도 채널로 주고받는 의무이고, Fireblocks 는 이 채널을 Notabene 연동으로 제공한다.
-이 장은 거래 한 건이 지나는 컴플라이언스 관문 셋의 순서 — OFAC → AML(자금세탁방지) → 트래블룰 — 을 먼저 못 박아 이후 장들이 어디에 무엇을 얹는지의 기준으로 삼는다.
+트래블룰은 VASP(가상자산사업자)끼리 송·수신자 정보를 온체인이 아니라 별도 채널로 주고받는 의무이고, Fireblocks 는 이 채널을 Notabene 연동으로 제공한다. 단 국내(업비트=VerifyVASP, 빗썸·코인원·코빗=CODE)는 Fireblocks 목록 밖 별도 망이라, 이 설계는 **국내(VerifyVASP·CODE) + 해외(Notabene) 병행**이다.
+이 장은 거래 한 건이 지나는 컴플라이언스 관문 셋의 순서 — OFAC(미국 제재 스크리닝) → AML(자금세탁방지) → 트래블룰 — 을 먼저 못 박아 이후 장들이 어디에 무엇을 얹는지의 기준으로 삼는다.
 
 ## 이 세트 구성 — 읽는 순서
 
@@ -12,7 +12,7 @@ status: To Do
 
 | 묶음 | 장 | 무엇 |
 |---|---|---|
-| 기반 | **0** 검사 순서 · **1** Notabene 연동 | 관문 순서, 벤더 붙이기 |
+| 기반 | **0** 검사 순서 · **1** Notabene 연동 · **13** 국내(VerifyVASP) 연동 준비 | 관문 순서 · 해외/국내 연동 붙이기 |
 | 벤더 흐름 | **2** 출금 · **3** 입금 · **4** 정책·시간 규칙 | Notabene·Fireblocks 가 도는 법 |
 | 우리 설계 | **5** 접점 · **6** VerifyVASP·병행·게이트 · **8** 게이트 유연화(포트-어댑터) | 국내 확장과 게이트 설계 — 6·8 을 함께 |
 | 배치 | **12** 물리 배치 | 트래블룰 구성요소가 지갑 기반 배치 위 어디에 앉나 (6·8 결론의 배치도) |
@@ -22,6 +22,8 @@ status: To Do
 | 부록 | **11** 국내 망 흐름 (VerifyVASP × CODE) | 우리 VerifyVASP × 상대 VerifyVASP/CODE(빗썸) 조합·상호연동 경유 흐름 |
 
 게이트 설계(6·8)를 먼저 잡고 7장 시나리오로 확인하는 순서를 권한다 — 번호는 6·7·8 이지만 7 은 6·8 이 정의한 게이트가 실제로 도는 모습이다.
+
+**읽는 방향 주의** — 1–5 는 벤더(Notabene·Fireblocks) 메커니즘 정본이다. 공개 문서가 갖춰져 먼저 다룰 뿐, 우선순위가 아니다. **국내 상대(VerifyVASP·CODE)가 주 트래픽이면 6·11 이 사실상 본체**이고 Notabene(해외)는 보조다.
 
 ## 트래블룰이란 — 체인 밖 채널로 오가는 송·수신자 정보
 
@@ -51,7 +53,9 @@ flowchart LR
     classDef gate fill:#fef3c7,stroke:#d97706;
     classDef hard fill:#fee2e2,stroke:#dc2626;
     classDef ok fill:#dcfce7,stroke:#16a34a;
-    class OFAC hard; class AML,TR gate; class GO ok;
+    class OFAC hard
+    class AML,TR gate
+    class GO ok
 ```
 
 이 순서는 공식 문서로 확정된 사실이다.

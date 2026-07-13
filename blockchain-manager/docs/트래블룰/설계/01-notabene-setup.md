@@ -43,7 +43,11 @@ flowchart LR
     classDef keys fill:#fef3c7,stroke:#d97706;
     classDef map fill:#eef2ff,stroke:#818cf8;
     classDef policy fill:#dcfce7,stroke:#16a34a;
-    class S0 prep; class S1 console; class S2 keys; class S3 map; class S4,S5 policy;
+    class S0 prep
+    class S1 console
+    class S2 keys
+    class S3 map
+    class S4,S5 policy
 ```
 
 0→1→2→4→5 가 모든 법인이 밟는 기본선이고, **3(VASP 매핑)은 다중 법인일 때만** 끼어든다 — 단일 법인은 2에서 4로 바로 건너뛴다. 위 다섯 칸 중 코드가 붙는 것은 하나도 없고, 2단계의 CLI·API 호출도 런타임이 아니라 **일회성 등록**이다.
@@ -65,4 +69,5 @@ vault 하나가 한 VASP 에만 매핑되므로 입금이 들어온 vault 만 �
 
 - **정책 2단(default 2종 + custom)의 상세**는 4장에서 다룬다.
 - **개발이 붙는 유일한 지점인 출금 경로**는 2장에서 다룬다.
+- **국내(VerifyVASP) 연동 준비**(Enclave 설치·수신 컴포넌트)는 13장 — 이 장(Notabene)이 SaaS 연결이라면 그쪽은 자체 인프라 설치·운영이다.
 - 규제·개념 차원의 배경은 트래블룰 개념 세트의 출금 실무를 참고한다.

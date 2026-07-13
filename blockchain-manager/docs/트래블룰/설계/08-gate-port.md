@@ -14,7 +14,7 @@ VerifyVASP 는 사전 허가형(비동기), Notabene 은 벤더 게이트형(동
 
 규제 판단과 온체인 실행은 도메인이 달라 나눈다.
 
-- **판단은 게이트, 실행은 BCM, 순서는 코어.** 게이트(트래블룰 솔루션)가 승인·거부·보류를 판단하고, 코어가 "검증 승인 전엔 못 보낸다"는 순서를 강제하고, BCM 은 전달받은 걸 재검증 없이 실행한다. BCM 을 신뢰 경계 밖 단순 실행기로 두면 "검증 없이 전송" 사고가 구조적으로 막힌다.
+- **판단은 게이트, 실행은 BCM, 순서는 코어(Service 백엔드 유스케이스·상태 기계).** 게이트(트래블룰 솔루션)가 승인·거부·보류를 판단하고, 코어가 "검증 승인 전엔 못 보낸다"는 순서를 강제하고, BCM 은 전달받은 걸 재검증 없이 실행한다. BCM 을 신뢰 경계 밖 단순 실행기로 두면 "검증 없이 전송" 사고가 구조적으로 막힌다.
 - **BCM 은 규제를 모른다 — 운반만.** BCM 은 트래블룰 산출물을 실어 나르기만 하고 내용을 파싱·판단하지 않는다. 규제 로직을 실행 경로에 섞으면 특금법·VASP 마스터가 바뀔 때마다 온체인 컴포넌트를 손봐야 한다.
 - **벤더·장애 격리.** BCM 은 커스터디(Fireblocks), 게이트는 트래블룰 솔루션(VerifyVASP·Notabene)을 각각 추상화한다. 트래블룰 솔루션 장애 시 외부 이체만 fail-close 하고 온체인·내부 거래는 정상 — 장애 도메인이 분리된다.
 
@@ -91,6 +91,17 @@ enum class TrVerdict {
 // 라우터 — ① 상대 판별. 규칙(회원 목록·주소 등록부)은 정책 데이터라 코드 수정 없이 바뀐다
 fun channelOf(counterparty: Destination): TravelRuleChannel
 ```
+
+## 세 어휘 대응 — 원어를 TrVerdict 로 접는다
+
+게이트가 접는 일은 곧 세 어휘(Fireblocks `validate` type·2장 / Notabene 판정 상태·4장 / 망별 원어)를 우리 `TrVerdict` 하나로 번역하는 것이다. 업무 코드는 왼쪽 4개만 본다.
+
+| 우리 `TrVerdict` | Fireblocks validate · Notabene 판정 | VerifyVASP (비동기) | CODE (동기) | 개인지갑 |
+|---|---|---|---|---|
+| `NOT_REQUIRED` | validate `BELOW_THRESHOLD`·`NON_CUSTODIAL` · Notabene `Saved` | 임계 미만·면제 | 임계 미만(원화 판정) | 정보 교환 없음 |
+| `APPROVED` | Notabene `Completed` → Post-Screening Accept | User Verification 승인 (Callback 도착) | Asset Transfer Authorization 승인 | Address Registry 등록·소유 인증 |
+| `PENDING` | Notabene `Pending` (Wait) | UUID 접수 · Callback 대기 | (동기라 드묾) | — |
+| `REJECTED` | Notabene `Rejected`·`Failed`·`Blocking Time Expired` | 상대 거절 · PENDING 만료 | 상대 거절 | 미등록·미인증 |
 
 ## 비동기를 기본으로 — 출금에 "트래블룰 확인 중" 상태 하나
 

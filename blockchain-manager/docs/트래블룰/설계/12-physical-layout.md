@@ -51,7 +51,11 @@ flowchart TB
   classDef selfhost fill:#fef3c7,stroke:#d97706;
   classDef vendor fill:#f5f5f7,stroke:#86868b;
   classDef chain fill:#eef2ff,stroke:#818cf8;
-  class SVC,GATE,FBCLI ours; class WQ,SEC,AR store; class RX,EN,CC selfhost; class HUB,CV,NB,FB vendor; class RVP chain;
+  class SVC,GATE,FBCLI ours
+  class WQ,SEC,AR store
+  class RX,EN,CC selfhost
+  class HUB,CV,NB,FB vendor
+  class RVP chain
 ```
 
 ## 배치의 요점
