@@ -63,6 +63,7 @@ flowchart LR
       MDB[("블록체인 매니저 DB<br/>ref↔vault↔주소 매핑 · 이벤트 체크포인트")]
       COS["API Co-signer (SGX/TEE)<br/>MPC 온프렘 키 share · 자동 공동서명"]
       CB["Callback Handler<br/>정책 훅 · 승인·거부"]
+      PADM["정책 관리 — 별도 서비스<br/>벤더 정책 편집·게시 대행 (이 워크스루 범위 밖)"]
     end
     FBV["Fireblocks (벤더 SaaS)<br/>vault · MPC 클라우드 share · TAP 정책<br/>노드 · 전파"]
     EVM["EVM 네트워크<br/>이더리움 · Base"]
@@ -71,7 +72,8 @@ flowchart LR
     ADMBE -->|API| BM
     BM -.->|publish| MQ
     MQ -.->|consume| SVCBE
-    ADMBE -->|정책·승인·운영| FBV
+    ADMBE -->|정책 편집·게시| PADM
+    PADM -->|Policy Editor API| FBV
     SVCBE --- BDB
     ADMBE --- BDB
     BM --- MDB
@@ -92,7 +94,7 @@ flowchart LR
     class SVCBE,BM svc
     class ADMBE adm
     class COS sec
-    class CB policy
+    class CB,PADM policy
     class BDB,MDB data
     class FBV vendor
     class EVM ext
@@ -104,6 +106,7 @@ flowchart LR
 - **Service·Admin 은 물리적으로 분리**돼 각자 블록체인 매니저 API 를 부른다. Fireblocks 연동은 매니저 내부 구현이다.
 - DB 는 둘 — **매핑·이벤트 체크포인트는 블록체인 매니저 DB**, **원장·출금 지시 상태는 백엔드 DB**.
 - 서명은 벤더 단독이 아니다. 보안 존(SGX/TEE)의 **API Co-signer** 가 키 share 하나를 들고 공동서명하고, 서명 직전 **Callback Handler** 가 승인·거부를 건다.
+- **벤더 정책(TAP)의 편집·게시는 별도의 정책 관리 서비스가 대행한다.** 정책 편집용 벤더 API user 는 매니저의 거래 제출용과 자격부터 분리하고, 게시 발효는 벤더 거버넌스(Admin Quorum + Owner) 승인이 최종 관문이다. 상세는 [정책 관리](../../정책관리/설계/00-scope.md) — 이 워크스루 범위 밖.
 - 입금·상태 감지는 **매니저 내부 폴링**(주기 조회)이고 webhook 은 보조다(4장). 감지 결과는 **메시지 큐(deposit·withdrawal·internal)** 로 백엔드에 전달된다.
 
 ### DB 를 둘로 나눈 이유
@@ -134,4 +137,5 @@ flowchart LR
 | 잔액 (가용·대기·잠김) | getVaultAccountAsset | | ● | ● | ● | `balanceOf` | S·A | 8장 |
 | 내 거래 이력 | 거래 목록 조회 | | | | ● | `transactionsOf` | S·A | 8장 |
 | 서명 정책 (한도·화이트리스트) | co-signer · Callback Handler — 서명 직전 재검증 | | | ● | ● | (동사 없음 — 서명 관문) | A | 6장 |
+| 정책 편집·게시 | Policy Editor — 드래프트·게시 요청 (발효는 Admin Quorum+Owner 승인) | | | | ● | (동사 없음 — 별도 정책 관리 서비스) | A | [정책 관리](../../정책관리/설계/00-scope.md) |
 | gas 조달 | Universal Gasless (대납 — 스테이블코인 전용이라 ETH 이동 없음) | | | ● | ● | (동사 없음 — 운영·설정) | A | 문서 |

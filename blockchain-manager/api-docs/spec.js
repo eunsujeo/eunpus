@@ -856,7 +856,7 @@ window.OPENAPI = {
         "properties": {
           "externalTxId": {
             "type": "string",
-            "description": "우리 요청 키 — 재제출 중복 차단·완료 대응",
+            "description": "우리 요청 키 — 승인 완료된 출금 지시 1건과 1:1. 재제출 중복 차단·완료 대응",
             "example": "wd-260713-0042"
           },
           "from": {

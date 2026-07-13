@@ -537,7 +537,7 @@ _요청 본문_
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `externalTxId` | string | 필수 | 우리 요청 키 — 재제출 중복 차단·완료 대응 |
+| `externalTxId` | string | 필수 | 우리 요청 키 — 승인 완료된 출금 지시 1건과 1:1. 재제출 중복 차단·완료 대응 |
 | `from` | TransferPeer | 필수 | 보내는 쪽 — type=ACCOUNT 만 허용 |
 | `to` | TransferPeer | 필수 | 목적지 |
 | `asset` | string | 필수 | 자산 식별 (체인 × 토큰) |
@@ -959,7 +959,7 @@ _응답_
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `externalTxId` | string | 필수 | 우리 요청 키 — 재제출 중복 차단·완료 대응 |
+| `externalTxId` | string | 필수 | 우리 요청 키 — 승인 완료된 출금 지시 1건과 1:1. 재제출 중복 차단·완료 대응 |
 | `from` | TransferPeer | 필수 | 보내는 쪽 — type=ACCOUNT 만 허용 |
 | `to` | TransferPeer | 필수 | 목적지 |
 | `asset` | string | 필수 | 자산 식별 (체인 × 토큰) |
