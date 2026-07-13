@@ -77,6 +77,8 @@ VerifyVASP 는 국내 3종에도 등장하고 글로벌 표에도 오르는데, 
 
 해법은 둘 중 하나다. VASP 가 여러 프로토콜을 동시에 지원하거나, Notabene 처럼 프로토콜에 종속되지 않는 브릿지/게이트웨이를 쓰는 것이다. Notabene 은 W3C DID·검증가능자격증명(VC) 을 활용해 기존 프로토콜들을 하나의 대시보드로 이어 붙인다.
 
+단 게이트웨이도 모든 망을 브릿지하지는 않는다 — Notabene 공개 목록에 **GTR·CODE 는 없고, VerifyVASP 는 라이브 지원 여부가 불확실**하다(벤더 확인 대상). 어느 상대까지 실제로 닿는지의 도달성은 [설계 10장 해외 망 지형](../설계/10-foreign-network-landscape.md), 게이트웨이 경유 VerifyVASP 의 검증은 [설계 9장](../설계/09-gateway-verifyvasp.md)이 다룬다.
+
 ## Fireblocks 관점 — 게이트가 벤더 밖으로 나온다
 
 Fireblocks 가 공식으로 제공하는 트래블룰 연동 제공자 목록에는 Notabene·Sumsub·GTR(TRLink)·Chainalysis·Elliptic 이 있다. 여기에 VerifyVASP 는 없다.
