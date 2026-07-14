@@ -36,9 +36,10 @@ window.MD = (() => {
       const sepIdx = rows.findIndex((r) => r.every((c) => /^:?-{2,}:?$/.test(c)));
       const head = sepIdx > 0 ? rows[0] : null;
       const body = sepIdx > 0 ? rows.slice(sepIdx + 1) : rows;
-      let html = '<table>';
+      // 스크롤 래퍼 — 표가 좁으면 100% 로 채우고, 넓으면 래퍼 안에서만 가로 스크롤
+      let html = '<div class="table-wrap"><table>';
       if (head) html += '<thead><tr>' + head.map((c) => `<th>${c}</th>`).join('') + '</tr></thead>';
-      html += '<tbody>' + body.map((r) => '<tr>' + r.map((c) => `<td>${c}</td>`).join('') + '</tr>').join('') + '</tbody></table>';
+      html += '<tbody>' + body.map((r) => '<tr>' + r.map((c) => `<td>${c}</td>`).join('') + '</tr>').join('') + '</tbody></table></div>';
       out.push(html);
     };
 

@@ -450,16 +450,18 @@ body {
   color: var(--muted-strong);
 }
 .doc-body hr { border: none; border-top: 1px solid var(--hairline); }
-.doc-body table {
-  border-collapse: collapse;
-  width: 100%;
+.doc-body .table-wrap {
   margin: 18px 0;
-  font-size: 13px;
-  line-height: 1.55;
-  display: block;
   overflow-x: auto;
   border: 1px solid var(--hairline);
   border-radius: 8px;
+}
+.doc-body table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
 }
 .doc-body th, .doc-body td {
   border-bottom: 1px solid var(--hairline);
