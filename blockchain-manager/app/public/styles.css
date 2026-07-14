@@ -355,7 +355,7 @@ body {
 .chip.status { color: var(--ink); background: var(--primary); border-color: var(--primary); font-weight: 600; }
 
 .doc-body { padding: 20px 28px 28px; overflow-y: auto; font-size: 14px; line-height: 1.65; }
-.doc-body h1, .doc-body h2, .doc-body h3 { color: var(--text-strong); line-height: 1.3; }
+.doc-body h1, .doc-body h2, .doc-body h3, .doc-body h4 { color: var(--text-strong); line-height: 1.3; }
 .doc-body h1 { font-size: 20px; margin: 28px 0 12px; }
 .doc-body h2 {
   font-size: 17px;
@@ -365,11 +365,18 @@ body {
 }
 .doc-body h2:first-child, .doc-body h1:first-child { margin-top: 0; padding-top: 0; border-top: none; }
 .doc-body h3 { font-size: 15px; margin: 26px 0 8px; }
+.doc-body h4 { font-size: 14px; margin: 22px 0 8px; }
 .doc-body p { margin: 0 0 14px; }
 .doc-body ul, .doc-body ol { margin: 0 0 14px; padding-left: 22px; }
 .doc-body li { margin: 3px 0; }
-.doc-body a { color: var(--primary); text-decoration: none; }
-.doc-body a:hover { color: var(--primary-active); }
+/* 본문 링크 — 옐로 액센트는 액션용이라 본문에선 과함. 본문색 + 옅은 밑줄로 절제 */
+.doc-body a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+}
+.doc-body a:hover { text-decoration-color: currentColor; }
 .doc-body code {
   background: var(--code-inline-bg);
   border: 1px solid var(--hairline);
@@ -443,6 +450,71 @@ body {
   margin: 0 auto;
   padding: 32px 24px 64px;
 }
+
+/* ---- 원본 뷰어 embed (view: doc + embed) — iframe 이 topbar 아래를 가득 채운다 ---- */
+.view.doc-embed { padding: 0; min-height: 0; }
+.embed-frame {
+  display: block;
+  width: 100%;
+  height: calc(100vh - 65px); /* topbar 64px + 경계선 */
+  border: 0;
+}
+
+/* ---- 원본 문서 뷰 (view: doc) — 목차 사이드바 + 본문 ----
+   사이드바는 api-docs 뷰어의 것을 따른다: surface 패널 + nav-group/nav-link + 메서드 배지 */
+.view.doc-view { display: flex; align-items: flex-start; padding: 0; }
+.doc-side {
+  position: sticky;
+  top: 0;
+  flex: 0 0 288px;
+  width: 288px;
+  max-height: 100vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-right: 1px solid var(--hairline);
+  padding: 20px 12px 60px;
+}
+.doc-col { flex: 1; min-width: 0; }
+.doc-side .nav-group { margin-top: 18px; }
+.doc-side .nav-group:first-child { margin-top: 0; }
+.doc-side .nav-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 8px 6px;
+}
+.doc-side .nav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--muted-strong);
+  text-decoration: none;
+  font-size: 13px;
+}
+.doc-side .nav-link:hover { background: var(--surface-elevated); color: var(--text-strong); }
+.doc-side .nav-link.active { background: var(--surface-elevated); color: var(--text-strong); font-weight: 600; }
+.doc-side .nav-link .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-side .m {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  flex: 0 0 auto;
+}
+.doc-side .m-get { color: #0ecb81; background: color-mix(in srgb, #0ecb81 15%, transparent); }
+.doc-side .m-post { color: #4a90e2; background: color-mix(in srgb, #4a90e2 16%, transparent); }
+.doc-side .m-put, .doc-side .m-patch { color: #fcd535; background: color-mix(in srgb, #fcd535 16%, transparent); }
+.doc-side .m-delete { color: #f6465d; background: color-mix(in srgb, #f6465d 15%, transparent); }
+@media (max-width: 900px) {
+  .doc-side { display: none; }
+}
 .doc-page h1 { color: var(--text-strong); font-size: 26px; margin: 0 0 10px; }
 .doc-page .chips { margin-bottom: 20px; }
 .doc-page .doc-body { padding: 0; overflow: visible; }
@@ -480,7 +552,7 @@ body {
 .read-chapter:first-child { padding-top: 0; margin-top: 0; border-top: none; }
 .read-ch-title { color: var(--text-strong); font-size: 26px; margin: 0 0 20px; scroll-margin-top: 76px; letter-spacing: -0.01em; }
 /* 문서 내 절 앵커 이동 시 상단바에 안 가리게 */
-.doc-body h1, .doc-body h2, .doc-body h3 { scroll-margin-top: 76px; }
+.doc-body h1, .doc-body h2, .doc-body h3, .doc-body h4 { scroll-margin-top: 76px; }
 .muted { color: var(--muted); }
 
 /* 본문 컨테이너는 자체 padding 을 지우고 read-page 여백에 정렬 (제목·리스트 왼쪽 맞춤) + 읽기 타이포 */

@@ -58,7 +58,13 @@ function readURL() {
   nav = { cat: q.get('cat') || null, sub: q.get('sub') || null };
 }
 
-window.addEventListener('popstate', () => { readURL(); render(); });
+window.addEventListener('popstate', () => {
+  // 해시(#절)만 바뀌어도 popstate 가 온다 — 위치(cat/sub)가 실제로 바뀔 때만 다시 그린다
+  // (문서 뷰에서 목차 이동 때 화면이 초기화되는 것 방지)
+  const prev = nav;
+  readURL();
+  if (nav.cat !== prev.cat || nav.sub !== prev.sub) render();
+});
 
 function renderCrumbs() {
   const parts = [`<button type="button" class="crumb" data-cat="" data-sub="">홈</button>`];
@@ -136,7 +142,11 @@ function render() {
 function statusSummary(subset) {
   const slug = { 'To Do': 'todo', 'In Progress': 'prog', 'Done': 'done', '아카이브': 'arch' };
   const counts = { 'To Do': 0, 'In Progress': 0, 'Done': 0, '아카이브': 0 };
-  for (const c of subset) counts[c.status] = (counts[c.status] || 0) + 1;
+  // view: doc 원본 문서는 워크플로우 상태가 없다 — 집계에서 제외
+  for (const c of subset) {
+    if (c.view === 'doc') continue;
+    counts[c.status] = (counts[c.status] || 0) + 1;
+  }
   const bar = STATUSES
     .filter((s) => counts[s] > 0)
     .map((s) => `<span class="seg seg-${slug[s]}" style="flex:${counts[s]}" title="${esc(s)} ${counts[s]}"></span>`)
@@ -154,11 +164,14 @@ function tile(label, metaText, subset, onClick) {
   el.setAttribute('role', 'button');
   el.tabIndex = 0;
   const { bar, label: counts } = statusSummary(subset);
+  const allDoc = subset.length > 0 && subset.every((c) => c.view === 'doc'); // 상태 없는 원본 문서 분류
   el.innerHTML =
     `<span class="cat-tile-name">${esc(label)}</span>` +
     `<span class="cat-tile-meta">${esc(metaText)}</span>` +
     (subset.length
-      ? `<div class="cat-tile-bar">${bar}</div><span class="cat-tile-counts">${esc(counts)}</span>`
+      ? allDoc
+        ? '<span class="cat-tile-counts">원본 문서</span>'
+        : `<div class="cat-tile-bar">${bar}</div><span class="cat-tile-counts">${esc(counts)}</span>`
       : '<span class="cat-tile-counts">문서 없음</span>') +
     `<span class="cat-tile-grip" title="드래그로 순서 변경">⠿</span>`;
   el.addEventListener('click', onClick);
@@ -206,8 +219,17 @@ function boardCards() {
 }
 
 function renderBoard() {
-  view.className = 'view board';
   const items = boardCards();
+
+  // view: doc 문서만 있는 분류는 칸반(4컬럼) 대신 원본 문서를 그대로 보여준다
+  if (items.length && items.every((c) => c.view === 'doc')) {
+    // embed 지정 문서 하나면 원본 뷰어(HTML)를 iframe 으로 그대로 띄운다
+    if (items.length === 1 && items[0].embed) renderDocEmbed(items[0]);
+    else renderDocView(items);
+    return;
+  }
+
+  view.className = 'view board';
 
   for (const status of STATUSES) {
     const col = document.createElement('section');
@@ -238,6 +260,177 @@ function renderBoard() {
   }
 
   boardMeta.textContent = `문서 ${items.length}건`;
+}
+
+// 원본 뷰어 embed — 앱 public/ 안의 자체 HTML 뷰어(예: api.html)를 iframe 으로 그대로 띄운다.
+// 앱 테마(data-theme)를 iframe 문서에 따라 붙여 토글에도 같이 바뀐다 (같은 출처라 접근 가능).
+let embedThemeObserver = null;
+function renderDocEmbed(c) {
+  // 같은 출처의 상대 경로만 허용 (외부 URL·상위 경로 차단)
+  if (!/^[\w][\w./-]*$/.test(c.embed) || c.embed.includes('..')) {
+    renderDocView([c]);
+    return;
+  }
+  view.className = 'view doc-embed';
+  boardMeta.textContent = '문서 1건';
+
+  const frame = document.createElement('iframe');
+  frame.className = 'embed-frame';
+  // 정적 내보내기 파일은 뷰어 HTML 이 내장돼 있다 — srcdoc 으로 띄운다 (파일 하나로 동작)
+  const inlined =
+    window.__STATIC_BOARD__ && window.__STATIC_BOARD__.embeds && window.__STATIC_BOARD__.embeds[c.embed];
+  if (inlined) frame.srcdoc = inlined;
+  else frame.src = c.embed;
+  frame.title = c.title;
+
+  const syncTheme = () => {
+    try {
+      frame.contentDocument.documentElement.setAttribute(
+        'data-theme',
+        document.documentElement.getAttribute('data-theme') || 'dark'
+      );
+    } catch { /* 로드 전이면 다음 이벤트에서 */ }
+  };
+  frame.addEventListener('load', () => {
+    syncTheme();
+    // srcdoc 문서는 base URL 을 부모(내보내기 파일)에서 물려받아, #앵커 클릭이
+    // iframe 을 부모 페이지 전체로 이동시킨다 (상단 바가 겹으로 뜸) — 가로채서 스크롤만 한다
+    if (!inlined) return;
+    const doc = frame.contentDocument;
+    if (!doc) return;
+    doc.addEventListener('click', (e) => {
+      if (e.defaultPrevented) return; // 뷰어 자체 핸들러(예: 스키마 모달)가 처리한 링크는 그대로
+      const a = e.target.closest && e.target.closest('a[href^="#"]');
+      if (!a) return;
+      e.preventDefault();
+      const target = doc.getElementById(decodeURIComponent(a.getAttribute('href').slice(1)));
+      if (target) target.scrollIntoView({ block: 'start' });
+    });
+  });
+  if (embedThemeObserver) embedThemeObserver.disconnect();
+  embedThemeObserver = new MutationObserver(syncTheme);
+  embedThemeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme'],
+  });
+
+  view.appendChild(frame);
+}
+
+// 원본 문서 뷰 — 상태 컬럼 없이 본문을 그대로 렌더 (doc.html 과 같은 지면) + 목차 사이드바
+async function renderDocView(items) {
+  view.className = 'view doc-view';
+  boardMeta.textContent = `문서 ${items.length}건`;
+  view.innerHTML =
+    '<aside class="doc-side"><nav class="doc-side-nav"></nav></aside><div class="doc-col"></div>';
+  const col = view.querySelector('.doc-col');
+
+  const pages = items.map(() => {
+    const page = document.createElement('article');
+    page.className = 'doc-page';
+    page.innerHTML = '<p style="color:var(--muted)">불러오는 중…</p>';
+    col.appendChild(page);
+    return page;
+  });
+
+  await Promise.all(items.map(async (c, i) => {
+    try {
+      const data = await api(`/api/doc?path=${encodeURIComponent(c.path)}`);
+      pages[i].innerHTML =
+        `<article class="doc-body">${renderMarkdown(data.body, { docBase: c.path.split('/').slice(0, -1).join('/') })}</article>`;
+    } catch (e) {
+      pages[i].innerHTML = `<p style="color:var(--danger)">불러오기 실패: ${esc(e.message)}</p>`;
+    }
+  }));
+
+  // 다른 화면으로 이동했으면(view 가 갈렸으면) 렌더 마무리를 건너뛴다
+  if (!pages[0].isConnected) return;
+  buildDocSideNav(view.querySelector('.doc-side'), col);
+  await window.MD.runMermaid('.doc-view .mermaid');
+  window.MD.enhanceDiagrams(view);
+}
+
+// 본문 제목(h2–h4)으로 사이드바 목차를 만들고, 스크롤 위치를 따라 현재 절을 표시한다.
+// 구조·스타일은 api-docs 뷰어의 사이드바(.nav-group / .nav-link / 메서드 배지)를 따른다.
+function buildDocSideNav(side, col) {
+  const navEl = side.querySelector('.doc-side-nav');
+  const hs = [...col.querySelectorAll('h2, h3, h4')];
+  if (!hs.length) {
+    side.remove();
+    return;
+  }
+
+  const seen = new Set();
+  for (const h of hs) {
+    let id = h.id || 'sec';
+    while (seen.has(id)) id += '-';
+    seen.add(id);
+    h.id = id;
+  }
+
+  const lvl = (h) => Number(h.tagName[1]);
+  const links = [];
+  let group = null;
+  const addGroup = (title) => {
+    group = document.createElement('div');
+    group.className = 'nav-group';
+    const t = document.createElement('div');
+    t.className = 'nav-title';
+    t.textContent = title;
+    group.appendChild(t);
+    navEl.appendChild(group);
+  };
+
+  hs.forEach((h, i) => {
+    const next = hs[i + 1];
+    // 다음 제목이 한 단계 깊으면 이 제목은 묶음 라벨 (API → 태그 → 오퍼레이션)
+    if (next && lvl(next) > lvl(h)) {
+      addGroup(h.textContent);
+      return;
+    }
+    if (!group) addGroup('개요');
+    // 오퍼레이션 제목(GET https://…/v1/…)은 메서드 배지 + 경로로 — 서버 URL 은 생략
+    const m = /^(GET|POST|PUT|PATCH|DELETE)\s+(.*)$/.exec(
+      h.textContent.replace(/https?:\/\/[^\s/]+/, '').trim()
+    );
+    const a = document.createElement('a');
+    a.className = 'nav-link';
+    a.href = `#${h.id}`;
+    a.title = h.textContent;
+    a.innerHTML = m
+      ? `<span class="m m-${m[1].toLowerCase()}">${m[1]}</span><span class="label">${esc(m[2])}</span>`
+      : `<span class="label">${esc(h.textContent)}</span>`;
+    // URL 해시를 바꾸지 않고 스크롤만 — 해시 변경은 popstate 를 일으켜 재렌더될 수 있다 (file:// 포함)
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      h.scrollIntoView();
+    });
+    group.appendChild(a);
+    links.push([a, h]);
+  });
+
+  // 항목 없이 라벨만 남은 그룹 제거 (예: 태그 묶음을 다시 감싸는 "API" 상위 제목)
+  for (const g of [...navEl.children]) {
+    if (!g.querySelector('.nav-link')) g.remove();
+  }
+
+  const byId = new Map(links.map(([a, h]) => [h.id, a]));
+  let active = null;
+  const setActive = (id) => {
+    const a = byId.get(id);
+    if (!a || a === active) return;
+    if (active) active.classList.remove('active');
+    active = a;
+    a.classList.add('active');
+  };
+  const obs = new IntersectionObserver(
+    (entries) => {
+      const vis = entries.filter((e) => e.isIntersecting);
+      if (vis.length) setActive(vis[0].target.id);
+    },
+    { rootMargin: '-72px 0px -70% 0px' }
+  );
+  links.forEach(([, h]) => obs.observe(h));
 }
 
 function cardEl(c) {
@@ -352,6 +545,12 @@ async function showPreviewAt(idx) {
   }
 }
 
+// 정적 내보내기(export-board.mjs)에서 문서 간 링크(doc?path=…)를 모달로 열기 위한 훅
+window.__openDocByPath = (path) => {
+  const c = cards.find((x) => x.path === path);
+  if (c) openPreview(c);
+};
+
 function updatePrevNext() {
   document.getElementById('prev-doc').disabled = previewIdx <= 0;
   document.getElementById('next-doc').disabled = previewIdx >= previewList.length - 1;
@@ -405,5 +604,54 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowRight') showPreviewAt(previewIdx + 1);
 });
 document.getElementById('refresh-btn').addEventListener('click', loadBoard);
+
+// 보드 전체 → 단일 HTML 다운로드. 조립은 export.js (scripts/export-board.mjs 와 공용)
+async function exportBoardHtml() {
+  const btn = document.getElementById('export-html');
+  btn.disabled = true;
+  showToast('보드 내보내는 중…');
+  try {
+    const { assembleBoardHtml } = await import('./export.js');
+    const [html, css, mermaid, md, theme, app] = await Promise.all(
+      ['index.html', 'styles.css', 'vendor/mermaid.min.js', 'md.js', 'theme.js', 'app.js'].map((f) =>
+        fetch(f).then((r) => {
+          if (!r.ok) throw new Error(`${f} ${r.status}`);
+          return r.text();
+        })
+      )
+    );
+    const board = await api('/api/board');
+    const docs = {};
+    const paths = board.cards.map((c) => c.path);
+    const CHUNK = 8;
+    for (let i = 0; i < paths.length; i += CHUNK) {
+      await Promise.all(
+        paths.slice(i, i + CHUNK).map(async (p) => {
+          docs[p] = await api(`/api/doc?path=${encodeURIComponent(p)}`);
+        })
+      );
+      showToast(`보드 내보내는 중… ${Math.min(i + CHUNK, paths.length)}/${paths.length}`);
+    }
+    // embed 뷰어(예: api.html)도 내장 — 정적 파일에서 원본 디자인 그대로 뜨게
+    const embeds = {};
+    for (const name of new Set(board.cards.map((c) => c.embed).filter(Boolean))) {
+      const r = await fetch(name);
+      if (r.ok) embeds[name] = await r.text();
+    }
+    const out = assembleBoardHtml({ html, css, mermaid, md, theme, app }, { board, docs, embeds });
+    const blob = new Blob([out], { type: 'text/html;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'board.html';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('board.html 저장됨 — 파일을 더블클릭으로 열면 됩니다');
+  } catch (e) {
+    showToast(`내보내기 실패: ${e.message}`, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+document.getElementById('export-html').addEventListener('click', exportBoardHtml);
 
 loadBoard();

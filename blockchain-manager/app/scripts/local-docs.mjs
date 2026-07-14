@@ -59,6 +59,8 @@ async function card(absFile, category, subcategory) {
     category,
     subcategory,
     seedStatus: norm(meta.status), // frontmatter 기본값 — 라이브 status 는 KV 오버레이
+    view: meta.view || '', // 'doc' = 칸반 대신 원본 문서로 표시
+    embed: meta.embed || '', // 앱 public/ 내 HTML — iframe 으로 원본 뷰어를 그대로 띄운다
     summary,
     updatedAt: st.mtime.toISOString(),
   };

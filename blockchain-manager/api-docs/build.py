@@ -52,6 +52,8 @@ def type_label(s):
         return " \\| ".join(x for x in t)
     if t == "array":
         return type_label(s.get("items") or {}) + "[]"
+    if t == "string" and s.get("format") == "date-time":
+        return "string (ISO 8601)"
     return t or ("object" if s.get("properties") else "any")
 
 
@@ -223,7 +225,31 @@ for name, s in schemas.items():
         else:
             md.append("\n" + table(["값"], [(f"`{v}`",) for v in s["enum"]]))
 
-open(os.path.join(HERE, "api.md"), "w", encoding="utf-8").write("\n".join(md) + "\n")
+api_md = "\n".join(md) + "\n"
+open(os.path.join(HERE, "api.md"), "w", encoding="utf-8").write(api_md)
+
+# ---------- docs/ 칸반 카드 (api.md + frontmatter) ----------
+# 칸반(docs/)이 관리하도록 frontmatter 붙인 복사본을 함께 생성한다.
+# status 는 seed 일 뿐(KV 오버레이가 이긴다) — 그래도 기존 파일의 값은 보존한다.
+KANBAN = os.path.join(HERE, "..", "docs", "블록체인매니저", "API", "api.md")
+kanban_status = "To Do"
+if os.path.exists(KANBAN):
+    m = re.match(r"---\n(.*?)\n---\n", open(KANBAN, encoding="utf-8").read(), re.S)
+    if m:
+        sm = re.search(r"^status:\s*(.+?)\s*$", m.group(1), re.M)
+        if sm:
+            kanban_status = sm.group(1)
+os.makedirs(os.path.dirname(KANBAN), exist_ok=True)
+open(KANBAN, "w", encoding="utf-8").write(
+    "---\n"
+    f"title: {info['title']} v{info['version']}\n"
+    f"status: {kanban_status}\n"
+    "view: doc\n"
+    "embed: api-doc.html\n"
+    "---\n\n"
+    "백엔드(Service·Admin)와 스펙을 맞추는 연동 계약 — HTTP 엔드포인트·공통 규약·메시지 큐 이벤트·타입 전체.\n"
+    "정본은 api-docs/openapi.yaml — 이 문서는 build.py 가 만든 export 라 직접 고치지 않는다.\n\n"
+    + api_md)
 
 # ---------- api.html (단일 HTML export) ----------
 html = open(os.path.join(HERE, "index.html"), encoding="utf-8").read()
@@ -234,5 +260,11 @@ assert "window.OPENAPI" in html, "spec.js 인라인 실패 — index.html 의 sc
 # export 파일에는 다운로드 버튼이 의미 없다(옆에 파일이 없음) — topact 의 anchor 만 제거
 html = re.sub(r'\s*<a class="iconbtn" href="\./[^"]+" download>[^<]*</a>', "", html)
 open(os.path.join(HERE, "api.html"), "w", encoding="utf-8").write(html)
+# 칸반 앱이 iframe(embed: api-doc.html)으로 원본 뷰어를 그대로 띄울 수 있게 public/ 에도 내보낸다.
+# ★ 파일명을 api.html 로 하면 Pages pretty-URL 이 /api 로 리다이렉트해 Functions(/api/*) 네임스페이스와
+#   충돌한다 — 서버 타이밍에 따라 뷰어 대신 SPA fallback(앱 껍데기)이 내려와 embed 가 오염된다.
+# 앱 topbar 에 테마 토글이 이미 있으므로 내부 토글은 숨긴다 (제거하면 init 스크립트가 깨져 CSS 로).
+open(os.path.join(HERE, "..", "app", "public", "api-doc.html"), "w", encoding="utf-8").write(
+    html.replace("</head>", "<style>#themeToggle{display:none}</style></head>", 1))
 
-print(f"spec.js + api.md + api.html 생성 완료 — paths {len(spec['paths'])}, schemas {len(schemas)}")
+print(f"spec.js + api.md + api.html + 칸반 카드 생성 완료 — paths {len(spec['paths'])}, schemas {len(schemas)}")

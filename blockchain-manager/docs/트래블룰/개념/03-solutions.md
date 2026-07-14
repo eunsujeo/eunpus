@@ -83,4 +83,4 @@ VerifyVASP 는 국내 3종에도 등장하고 글로벌 표에도 오르는데, 
 
 Fireblocks 가 공식으로 제공하는 트래블룰 연동 제공자 목록에는 Notabene·Sumsub·GTR(TRLink)·Chainalysis·Elliptic 이 있다. 여기에 VerifyVASP 는 없다.
 
-국내 VASP 가 VerifyVASP·CODE 망을 써야 한다면, 트래블룰 게이트가 Fireblocks 벤더 표면 밖에 놓인다는 뜻이다. 출금·입금 흐름에서 벤더가 대신 처리해 주지 못하는 관문이 하나 생기는 것이고, 이 설계 함의는 8장에서 다룬다.
+국내 VASP 가 VerifyVASP·CODE 망을 써야 한다면, 트래블룰 게이트가 Fireblocks 벤더 표면 밖에 놓인다는 뜻이다. 출금·입금 흐름에서 벤더가 대신 처리해 주지 못하는 관문이 하나 생기는 것이다.

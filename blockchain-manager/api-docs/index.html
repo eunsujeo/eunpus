@@ -265,7 +265,7 @@
           let t = schema.type;
           if (Array.isArray(t)) return t.map((x) => (x === "null" ? "null" : x)).join(" | ");
           if (t === "array") return typeLabel(schema.items) + "[]";
-          if (t === "string" && schema.format === "date-time") return "string&lt;date-time&gt;";
+          if (t === "string" && schema.format === "date-time") return "string (ISO 8601)";
           return t || (schema.properties ? "object" : "any");
         }
 

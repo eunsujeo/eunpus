@@ -1,5 +1,5 @@
 ---
-title: 부록 A — 국내 망 흐름 (VerifyVASP × CODE)
+title: 11. 부록 A — 국내 망 흐름 (VerifyVASP × CODE)
 status: To Do
 ---
 
@@ -14,7 +14,7 @@ status: To Do
 | VerifyVASP | CODE 회원(빗썸) | **A.1** (상호연동 경유) | **A.2** (상호연동 경유) |
 | (대안) CODE 직접 | CODE 회원 | 7.10 | 7.11 |
 
-- **우리 코드는 네 경우 다 VerifyVASP 흐름(7.1/7.3)과 같다.** CODE 상대는 List VASP 가 `protocol:CODE · vaspStatus:INTEROPERATED` 로 반환하고, 상호연동이 프로토콜 차이를 삼킨다.
+- **위 두 행의 네 칸(출금·입금 × 상대 망) 모두 우리 코드는 VerifyVASP 흐름(7.1/7.3)과 같다.** CODE 상대는 List VASP 가 `protocol:CODE · vaspStatus:INTEROPERATED` 로 반환하고, 상호연동이 프로토콜 차이를 삼킨다.
 - CODE 직접(7.10/7.11)은 **상호연동 실효가 부족할 때만** 붙이는 대안이다(아래 "확인할 것").
 
 ## A.1 출금 → 빗썸(CODE), 우리는 VerifyVASP — 상호연동 경유
@@ -24,7 +24,7 @@ sequenceDiagram
     autonumber
     box rgb(224,242,254) 우리 측 · CODE 코드 0줄
     participant BE as Service 백엔드
-    participant GT as 트래블룰 게이트
+    participant GT as 트래블룰 게이트<br/>별도 서비스 · 8장
     participant EN as 우리 Enclave
     end
     participant HUB as VerifyVASP 중앙
@@ -38,6 +38,7 @@ sequenceDiagram
     GT->>EN: 상대 확인 · List VASP
     EN->>HUB: 조회
     HUB-->>EN: 빗썸 = protocol:CODE · vaspStatus:INTEROPERATED · health
+    EN-->>GT: 조회 결과 — 상호연동 도달 가능 · health
     Note over GT: 상호연동으로 도달 가능 — CODE 특화 처리 없음
     GT->>EN: 주소 소유 확인 · User Account Verification
     EN->>HUB: 암호화 조회
@@ -47,14 +48,15 @@ sequenceDiagram
     CV-->>HUB: 회신
     HUB-->>EN: 결과
     EN-->>GT: 소유·실명 확인 결과
-    GT->>EN: PII 사전 승인 · User Verification (비동기 UUID)
+    GT->>EN: PII 사전 승인 · User Verification
+    EN-->>GT: UUID 즉시 반환 — 비동기 접수 · 여기서 흐름이 멈춘다 (PENDING)
     EN->>HUB: 암호화 메시지
     HUB->>CV: VerifyVASP↔CODE 상호연동 브릿지
     CV->>RV: 사전 승인 요청
     RV-->>CV: 승인 · 거절
     CV-->>HUB: 회신 (상호연동)
-    HUB->>EN: Callback — 결과 (UUID 대조)
-    EN-->>GT: APPROVED / REJECTED
+    HUB->>EN: Callback — 결과
+    EN-->>GT: 수신 컴포넌트 경유 · UUID 로 대조
     alt 승인
         GT-->>BE: APPROVED
         BE->>BM: submitTransaction
@@ -76,7 +78,8 @@ sequenceDiagram
     box rgb(224,242,254) 우리 측
     participant EN as 우리 Enclave
     participant RX as 수신 컴포넌트
-    participant BE as Service 백엔드<br/>내부 API
+    participant TR as 트래블룰 서비스<br/>망 연동 · 8장
+    participant BE as 월렛(Service) 백엔드<br/>매칭·귀속 · 가용 전이
     participant WQ as 대기함<br/>사전 검증 기록 저장소
     end
     box rgb(220,252,231) 블록체인 매니저
@@ -87,9 +90,11 @@ sequenceDiagram
     CV->>HUB: VerifyVASP↔CODE 상호연동 브릿지
     HUB->>EN: 사전 검증 요청 (인바운드)
     EN->>RX: Verify User · Verify User Account
-    RX->>BE: 내부 API — 실명·계정 확인
+    RX->>TR: 위임 — 검증·변환만
+    TR->>BE: 주소 귀속·실명 확인 조회 · 기록 전달
     BE->>WQ: 사전 검증 기록 적재
-    BE-->>RX: 확인
+    BE-->>TR: 확인 결과
+    TR-->>RX: 응답
     RX-->>EN: 승인
     EN-->>HUB: 회신
     HUB-->>CV: 상호연동
@@ -100,20 +105,14 @@ sequenceDiagram
     WQ-->>BE: 대조 일치 → 가용
 ```
 
-우리 수신 사슬(Enclave → 수신 컴포넌트 → 내부 API)은 7.3(VerifyVASP 입금)과 동일하다. 빗썸이 CODE 의 동기 절차(Asset Transfer Authorization)를 쓰더라도, 상호연동이 우리에겐 VerifyVASP 인바운드로 변환해 전달한다.
+우리 수신 사슬(Enclave → 수신 컴포넌트 → 트래블룰 서비스 → 월렛 백엔드)은 7.3(VerifyVASP 입금)과 동일하다. 빗썸이 CODE 의 동기 절차(Asset Transfer Authorization)를 쓰더라도, 상호연동이 우리에겐 VerifyVASP 인바운드로 변환해 전달한다. tx hash 보고 수신·미수신(능동 조회) 분기는 7.3 과 동일해 생략했다.
 
 ## 상호연동에서 확인할 것
 
-"우리 코드 = 7.1/7.3"이 성립하려면 상호연동이 **CODE 전용 기능까지** 실어 날라야 한다(6장 미확정).
+"우리 코드 = 7.1/7.3"이 성립하려면 VerifyVASP 절차와 CODE 전용 기능이 **상호연동을 건너서도 동작**해야 한다(6장 미확정).
 
+- **주소 소유 확인** — `User Account Verification`(소유 확인)이 상호연동 경유로 CODE 회원에게도 동작하는가 (A.1).
 - **원화 임계** — 빗썸(CODE)의 `tradePrice·tradeCurrency(KRW)·isExceedingThreshold` 가 상호연동 경유로 우리에게 오는가, 아니면 우리가 `AmountUSD` 로만 판정해야 하는가.
-- **미확인 입금 역추적** — 빗썸발 anonymous 입금 시 CODE 의 `Search VASP by TXID → Asset Transfer Data Request` 가 경유로 동작하는가, 아니면 VerifyVASP 의 `Check Transaction Status`(7.3/8장 판별 5)로 대체되는가.
+- **미확인 입금 역추적** — 사전 통지 기록과 대조되지 않는 입금이 빗썸에서 왔을 때, 어디서 보냈는지 거꾸로 찾아야 한다. CODE 에는 이를 위한 공식 절차가 있다 — tx hash 로 송신 VASP 를 찾고(`Search VASP by TXID`), 이어서 송금인 정보를 요청한다(`Asset Transfer Data Request`). 확인할 것은 상호연동 경유로도 이 절차가 동작하는가다 — 안 되면 VerifyVASP 쪽 도구인 `Check Transaction Status`(7.3/8장 판별 5)로 처리해야 하는데, 이 API 는 입력이 verificationUuid 뿐(공식 명세)이라 사전 검증 기록조차 없는 입금은 txid 로 찾을 방법이 없다.
 
-둘 중 하나라도 경유로 안 되면 → **CODE 직접 어댑터(7.10/7.11)** 추가가 6장의 예비책이다.
-
-## 관련 장
-
-- 같은 망(VerifyVASP ↔ VerifyVASP): **7.1 / 7.3**.
-- CODE 직접 연동(상호연동 실효 부족 시): **7.10 / 7.11**.
-- 두 망 차이 표·상호연동 배경·CODE 직접 판단: **6장**.
-- 입금 합류점·판별 우선순위: **7.5 · 8장**.
+하나라도 경유로 안 되면 → **CODE 직접 어댑터(7.10/7.11)** 추가가 6장의 예비책이다.

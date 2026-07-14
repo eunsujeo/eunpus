@@ -42,6 +42,12 @@ status: To Do                   # To Do | In Progress | Done | 아카이브
 - **대·중카테고리는 frontmatter 가 아니라 폴더 구조** — `docs/<대카테고리>/<중카테고리>/<file>.md`.
   새 카테고리는 폴더만 만들면 UI(홈 → 대카테고리 → 중카테고리 → 칸반)가 자동 인식한다.
 - `status` 값은 위 4개 문자열만 유효. **필드가 없으면 "To Do" 로 분류**된다.
+- `view: doc` (선택) — 이 문서만 있는 중카테고리는 칸반(4컬럼) 대신 **원본 문서를 그대로** 렌더한다.
+  상태 집계에서도 빠진다. 예: `블록체인매니저/API/api.md` (api-docs `build.py` 생성물).
+- `embed: <app/public 내 html>` (선택, view: doc 와 함께) — 마크다운 렌더 대신 **자체 HTML 뷰어를
+  iframe 으로** 띄운다. 예: `embed: api-doc.html` — build.py 가 `app/public/api-doc.html` 로도 내보내는
+  api-docs 원본 뷰어가 디자인 그대로 뜬다. 앱 테마가 iframe 에 동기화된다.
+  ★ embed 파일명은 `/api/*`(Functions) 와 겹치는 `api.html` 같은 이름 금지 — pretty-URL 리다이렉트 충돌.
 - 카드 요약은 frontmatter 다음 본문 첫 2줄에서 자동 추출 — 문서 첫 단락을 요약답게 쓸 것.
 - 마지막 수정일은 GitHub 커밋 이력에서 가져온다 (문서에 날짜를 적지 않는다).
 - **status 는 git 이 아니라 KV 오버레이에 저장된다** (Stage: KV 전환). frontmatter 의 status 는
@@ -121,6 +127,10 @@ cp .dev.vars.example .dev.vars   # 최초 1회 — 토큰 채우기
 
 ./dev.sh          # 로컬 기동 (포트·캐시 정리 포함). http://localhost:8788
 ./dev.sh clean    # 캐시 손상(_cf_ALARM·middleware build 오류) 시 .wrangler 전체 초기화 후 기동
+
+# 보드 전체를 단일 HTML 로 내보내기 (읽기 전용 · 파일 하나로 전달) → ../board.html (커밋 안 함)
+# 앱이 떠 있으면 KV 상태·순서 반영, 아니면 frontmatter seed
+node scripts/export-board.mjs
 
 # 배포 (사용자 지시 후에만) — toml 이 BOARD KV 를 함께 바인딩
 npx wrangler pages deploy public --project-name=blockchain-manager \

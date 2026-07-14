@@ -91,7 +91,7 @@ window.MD = (() => {
       }
       flushTable();
 
-      const h = /^(#{1,3})\s+(.*)$/.exec(line);
+      const h = /^(#{1,6})\s+(.*)$/.exec(line);
       if (h) {
         closeList();
         // 제목에 앵커 id — 다른 문서에서 파일.md#절-제목 으로 바로 이동할 수 있게

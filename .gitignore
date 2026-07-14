@@ -3,3 +3,6 @@
 
 # macOS
 .DS_Store
+
+# 칸반보드 단일 HTML 내보내기 (export-board.mjs 생성물 — 전달용, 커밋 안 함)
+blockchain-manager/board.html

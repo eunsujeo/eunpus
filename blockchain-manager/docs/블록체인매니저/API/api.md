@@ -1,3 +1,13 @@
+---
+title: Blockchain Manager API v0.0.1
+status: To Do
+view: doc
+embed: api-doc.html
+---
+
+백엔드(Service·Admin)와 스펙을 맞추는 연동 계약 — HTTP 엔드포인트·공통 규약·메시지 큐 이벤트·타입 전체.
+정본은 api-docs/openapi.yaml — 이 문서는 build.py 가 만든 export 라 직접 고치지 않는다.
+
 # Blockchain Manager API
 
 `v0.0.1`
