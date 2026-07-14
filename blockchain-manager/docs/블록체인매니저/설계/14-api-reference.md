@@ -50,7 +50,7 @@ fun transactionsOf(                                              // 8장 — 기
 fun transactionOf(txId: String): Transfer?                     // 단건 조회 (벤더 getTransactionById · 00·8장)
 ```
 
-- `balanceOf` 가 주는 값은 **vault 단위 벤더/온체인 잔액**이라 대사(reconciliation) 재료다 — 고객별 귀속 잔액이 아니다. 고객별 잔액·귀속은 백엔드(daw-core)가 원장으로 가진다(8·13장).
+- `balanceOf` 가 주는 값은 **vault 단위 벤더/온체인 잔액**이라 대사(reconciliation) 재료다 — 고객별 귀속 잔액이 아니다. 고객별 잔액·귀속은 백엔드가 원장으로 가진다(8·13장).
 - `after`·`before` 는 **거래 시각(createdAt) 기준** 시간창이다(최신순 이력). 매니저 내부의 lastUpdated 감지 폴링과는 별개 — 목록 조회는 안정적 createdAt 정렬을 쓴다.
 
 ## 출금 · 수수료 API
@@ -175,7 +175,7 @@ enum class Topic { deposit, withdrawal, internal }   // 토픽명은 deposit-eve
 
 - **TxStatus 기준**과 벤더 원어 번역, subStatus·networkStatus 분담은 [4장 공통 상태 다섯](04-detect-confirm.md#공통-상태-다섯-txstatus-기준).
 - **확정 기준(DCCP)** — 체인별 확정 컨펌수 정책은 4장. 첫 COMPLETED 가 곧 finality 는 아니므로 `numOfConfirmations` 를 임계와 직접 비교한다.
-- **백엔드 DB(daw-core) 매핑** — 매니저 TxStatus 를 daw-core 상태로 옮기는 대응·미해결(REJECTED 짝 등)은 [13장 백엔드 DB 정합](13-backend-db-alignment.md).
+- **백엔드 DB 매핑** — 매니저 TxStatus 를 백엔드 DB 상태로 옮기는 대응·미해결(REJECTED 짝 등)은 [13장 DB 스키마 점검](13-backend-db-alignment.md).
 
 ## 오퍼레이션 색인
 

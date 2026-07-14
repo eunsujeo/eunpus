@@ -46,6 +46,7 @@ window.__STATIC_BOARD__ = ${dataJs};
     if (!a) return;
     e.preventDefault();
     var path = new URLSearchParams(a.getAttribute('href').split('?')[1]).get('path');
+    if (path) path = path.split('#')[0]; // 절 앵커가 붙은 링크(doc?path=…#절)도 경로만으로 연다
     if (window.__openDocByPath) window.__openDocByPath(path);
   }, true);
   // "새 창"·"HTML ↓" 버튼은 정적 파일에선 의미 없다 — 숨긴다

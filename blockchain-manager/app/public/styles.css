@@ -26,6 +26,9 @@
   --code-panel-text: #d6dae0;
   --code-panel-border: #2b3139;
   --code-panel-muted: #7d8794;   /* 주석(--) 톤 */
+  /* 문서 사이드바 — api-docs 뷰어와 같은 명암 관계 (패널 위에 hover 가 한 단계 밝게) */
+  --side-bg: #1e2329;
+  --side-hover: #2b3139;
 }
 
 /* 라이트 테마 — DESIGN.md 의 transactional(light) 팔레트. 옐로 액센트·ink 는 공유 */
@@ -44,6 +47,10 @@
   --diagram-bg: #ffffff; /* 라이트: 순백 유지 */
   --th-bg: #e3e7ee;                /* 라이트: 흰 배경과 확실히 구분되는 헤더 밴드 */
   --zebra: #eef1f5;                /* 라이트: 눈에 띄는 줄무늬 */
+  /* 라이트 사이드바 — api-docs 뷰어처럼 흰 패널 + 옅은 회색 hover
+     (--surface(회색)+--surface-elevated(흰색) 조합은 명암이 반대라 쓰지 않는다) */
+  --side-bg: #ffffff;
+  --side-hover: #f5f6f8;
 }
 
 * { box-sizing: border-box; }
@@ -493,7 +500,8 @@ body {
 
 /* ---- 원본 문서 뷰 (view: doc) — 목차 사이드바 + 본문 ----
    사이드바는 api-docs 뷰어의 것을 따른다: surface 패널 + nav-group/nav-link + 메서드 배지 */
-.view.doc-view { display: flex; align-items: flex-start; padding: 0; }
+/* 사이드바+본문 블록을 화면 중앙에 — 본문은 사이드바에 붙는다 */
+.view.doc-view { display: flex; align-items: flex-start; padding: 0; max-width: 1400px; margin: 0 auto; }
 .doc-side {
   position: sticky;
   top: 0;
@@ -501,7 +509,7 @@ body {
   width: 288px;
   max-height: 100vh;
   overflow-y: auto;
-  background: var(--surface);
+  background: var(--side-bg);
   border-right: 1px solid var(--hairline);
   padding: 20px 12px 60px;
 }
@@ -526,8 +534,8 @@ body {
   text-decoration: none;
   font-size: 13px;
 }
-.doc-side .nav-link:hover { background: var(--surface-elevated); color: var(--text-strong); }
-.doc-side .nav-link.active { background: var(--surface-elevated); color: var(--text-strong); font-weight: 600; }
+.doc-side .nav-link:hover { background: var(--side-hover); color: var(--text-strong); }
+.doc-side .nav-link.active { background: var(--side-hover); color: var(--text-strong); font-weight: 600; }
 .doc-side .nav-link .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .doc-side .m {
   font-family: var(--mono);
@@ -550,74 +558,63 @@ body {
 .doc-page .chips { margin-bottom: 20px; }
 .doc-page .doc-body { padding: 0; overflow: visible; }
 
-/* ---- 공유용 읽기 페이지 (read.html) ---- */
-.read-page { max-width: 1000px; margin: 0 auto; padding: 32px 24px 80px; }
-.read-heading { color: var(--text-strong); font-size: 28px; margin: 0 0 2px; }
-.read-sub { color: var(--muted); margin: 0 0 24px; }
-.read-toc {
-  margin: 0 0 36px;
-  padding: 16px 20px;
-  border: 1px solid var(--hairline);
-  border-radius: 10px;
-  background: var(--surface);
-}
-.read-toc:empty { display: none; }
-.read-toc ol { margin: 0; padding-left: 22px; }
-.read-toc li { margin: 5px 0; }
-.read-toc a { color: var(--body); text-decoration: none; }
-.read-toc a:hover { color: var(--text-strong); text-decoration: underline; }
-.read-index { list-style: none; margin: 0; padding: 0; }
-.read-index li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--hairline);
-}
-.read-index li:first-child { border-top: 1px solid var(--hairline); }
-.read-index a { color: var(--text-strong); text-decoration: none; font-weight: 600; font-size: 16px; }
-.read-index a:hover { text-decoration: underline; }
-.read-done { margin-left: auto; font-size: 12px; color: #2dbdb6; border: 1px solid #2dbdb6; border-radius: 999px; padding: 1px 9px; }
-.read-partial { margin-left: auto; font-size: 12px; color: var(--muted); }
-.read-chapter { padding-top: 52px; margin-top: 52px; border-top: 2px solid var(--hairline); }
-.read-chapter:first-child { padding-top: 0; margin-top: 0; border-top: none; }
-.read-ch-title { color: var(--text-strong); font-size: 26px; margin: 0 0 20px; scroll-margin-top: 76px; letter-spacing: -0.01em; }
 /* 문서 내 절 앵커 이동 시 상단바에 안 가리게 */
 .doc-body h1, .doc-body h2, .doc-body h3, .doc-body h4 { scroll-margin-top: 76px; }
 .muted { color: var(--muted); }
 
-/* 본문 컨테이너는 자체 padding 을 지우고 read-page 여백에 정렬 (제목·리스트 왼쪽 맞춤) + 읽기 타이포 */
-.read-page .doc-body { padding: 0; font-size: 15px; line-height: 1.78; }
-
-/* 상세 읽기: 읽기 좋은 폭 + 목차를 오른쪽 사이드 드로어로, 토글로 슬라이드 */
-/* 목차 닫힘 = 본문이 폭을 다 씀(넓은 표). 열림 = 드로어 자리를 padding 으로 비워 겹침 방지 */
-.read-page.with-toc { max-width: 1080px; }
-@media (min-width: 1180px) {
-  .read-page.with-toc:not(.toc-hidden) { max-width: 1380px; padding-right: 300px; }
+/* ---- 정적 내보내기 절 읽기 뷰 (section-reader) ----
+   내보낸 파일에서 칸반 대신 쓰는 지면: 사이드바(문서 > 절 트리) + 절 하나 + 이전/다음.
+   레이아웃·사이드바는 .doc-view / .doc-side 를 그대로 쓰고 여기는 지면 요소만 더한다. */
+.reader-col { flex: 1; min-width: 0; }
+/* 본문은 사이드바에 붙인다(가운데 정렬 금지 — 넓은 화면에서 사이가 벌어진다). 폭은 독서 폭 상한 */
+.reader-page { max-width: 920px; margin: 0; padding: 28px 40px 64px; }
+.reader-stat {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  padding: 0 8px 14px;
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: 16px;
 }
-.read-page.with-toc #read-toc {
-  position: fixed;
-  top: 56px;
-  right: 0;
-  width: 264px;
-  max-height: calc(100vh - 72px);
-  overflow: auto;
-  margin: 0;
-  padding: 14px 18px;
-  background: var(--surface);
-  border: 1px solid var(--hairline);
-  border-right: none;
-  border-radius: 10px 0 0 10px;
-  transform: translateX(0);
-  transition: transform 0.22s ease;
-  z-index: 40;
+.reader-stat b { color: var(--text-strong); font-weight: 600; }
+/* 사이드바 — 문서 단위 아코디언: 읽는 문서만 펼친다.
+   색·명암은 api-docs 뷰어의 nav-title/nav-link 관계를 따른다 (장식 없음) */
+.reader-doc-group { margin-top: 4px; }
+.reader-doc-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  background: none;
+  border-radius: 6px;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  text-align: left;
+  cursor: pointer;
 }
-.read-page.with-toc.toc-hidden #read-toc { transform: translateX(100%); }
-.read-page.with-toc #read-toc ul { list-style: none; margin: 0; padding: 0; }
-.read-page.with-toc #read-toc li { margin: 6px 0; font-size: 13px; line-height: 1.4; }
-.read-page.with-toc #read-toc a { color: var(--muted); text-decoration: none; display: block; padding: 2px 0 2px 10px; border-left: 2px solid transparent; }
-.read-page.with-toc #read-toc a:hover { color: var(--text-strong); }
-.read-page.with-toc #read-toc a.active { color: var(--text-strong); font-weight: 700; border-left-color: #fcd535; }
+.reader-doc-head:hover { background: var(--side-hover); color: var(--text-strong); }
+.reader-doc-group.open .reader-doc-head { color: var(--text-strong); }
+.reader-doc-head .label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reader-doc-count { flex: 0 0 auto; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.reader-sec-list { display: none; margin: 2px 0 12px; padding-left: 10px; }
+.reader-doc-group.open .reader-sec-list { display: block; }
+.reader-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--hairline);
+}
+.reader-doc { color: var(--muted-strong); font-size: 13px; font-weight: 600; }
+.reader-pos { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+.reader-page .doc-body { padding: 0; overflow: visible; font-size: 15px; line-height: 1.75; }
 
 a.brand-mark { text-decoration: none; }
 .btn-link { text-decoration: none; display: inline-flex; align-items: center; }

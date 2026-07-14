@@ -81,6 +81,7 @@ function renderCrumbs() {
 // 드래그하는 동안 다른 타일이 실시간으로 비켜나는 sortable.
 // 놓는 순간의 DOM 순서를 읽어 확정한다.
 function makeReorderable(container, itemEls, arr, onReorder) {
+  if (window.__STATIC_BOARD__) return; // 정적 내보내기 파일은 읽기 전용 — 순서 편집 없음
   let dragEl = null;
   itemEls.forEach((el) => {
     el.draggable = true;
@@ -229,6 +230,13 @@ function renderBoard() {
     return;
   }
 
+  // 정적 내보내기 파일 — 여러 독자에게 전달되는 읽기 전용 문서집이라,
+  // 작업 상태판(칸반) 대신 절 단위 읽기 뷰를 그린다 (상태·드래그 없음)
+  if (window.__STATIC_BOARD__) {
+    renderSectionReader(items);
+    return;
+  }
+
   view.className = 'view board';
 
   for (const status of STATUSES) {
@@ -348,6 +356,7 @@ async function renderDocView(items) {
   buildDocSideNav(view.querySelector('.doc-side'), col);
   await window.MD.runMermaid('.doc-view .mermaid');
   window.MD.enhanceDiagrams(view);
+  items.forEach((c, i) => window.MD.enhanceSectionRefs(pages[i], { docPath: c.path }));
 }
 
 // 본문 제목(h2–h4)으로 사이드바 목차를 만들고, 스크롤 위치를 따라 현재 절을 표시한다.
@@ -431,6 +440,146 @@ function buildDocSideNav(side, col) {
     { rootMargin: '-72px 0px -70% 0px' }
   );
   links.forEach(([, h]) => obs.observe(h));
+}
+
+/* ---------- 정적 내보내기 절 읽기 뷰 ---------- */
+
+// 마크다운을 ## 절 단위로 나눈다 — 코드 펜스 안의 ## 은 제목이 아니다.
+// 첫 ## 앞 도입부는 "개요" 절로 삼고, 내용이 없으면 버린다.
+function splitSections(md) {
+  const lines = md.split('\n');
+  const secs = [];
+  let cur = { title: '개요', body: [] };
+  let fence = null;
+  for (const line of lines) {
+    if (fence) {
+      cur.body.push(line);
+      if (line.trim().startsWith(fence)) fence = null;
+      continue;
+    }
+    const f = /^\s*(```|~~~)/.exec(line);
+    if (f) fence = f[1];
+    const h = !f && /^##\s+(.+)/.exec(line);
+    if (h) {
+      secs.push(cur);
+      cur = { title: h[1].replace(/[`*]/g, '').trim(), body: [] };
+    }
+    cur.body.push(line);
+  }
+  secs.push(cur);
+  if (secs[0].title === '개요' && !secs[0].body.join('').trim()) secs.shift();
+  return secs.map((s) => ({ title: s.title, md: s.body.join('\n') }));
+}
+
+// 사이드바(문서 > 절 트리) + 지면(절 하나 + 이전/다음). 첫 문서 첫 절을 바로 연다.
+async function renderSectionReader(items) {
+  view.className = 'view doc-view section-reader';
+  boardMeta.textContent = `문서 ${items.length}건`;
+  view.innerHTML =
+    '<aside class="doc-side"><div class="reader-stat"></div><nav class="doc-side-nav"></nav></aside>' +
+    '<div class="reader-col"><article class="reader-page"><p style="color:var(--muted)">불러오는 중…</p></article></div>';
+  const navEl = view.querySelector('.doc-side-nav');
+  const pageEl = view.querySelector('.reader-page');
+
+  const docs = await Promise.all(items.map(async (c) => {
+    try {
+      const data = await api(`/api/doc?path=${encodeURIComponent(c.path)}`);
+      return { card: c, sections: splitSections(data.body || '') };
+    } catch (e) {
+      return { card: c, sections: [{ title: '불러오기 실패', md: `불러오기 실패: ${e.message}` }] };
+    }
+  }));
+  if (!pageEl.isConnected) return; // 로드 중 다른 화면으로 이동했으면 중단
+
+  const flat = [];
+  docs.forEach((d, di) => {
+    d.sections.forEach((s, i) => flat.push({ ...s, card: d.card, di, i, n: d.sections.length }));
+  });
+  view.querySelector('.reader-stat').innerHTML = `문서 <b>${docs.length}</b> · 절 <b>${flat.length}</b>`;
+  if (!flat.length) {
+    pageEl.innerHTML = '<p style="color:var(--muted)">문서가 없습니다.</p>';
+    return;
+  }
+
+  const links = flat.map((s, idx) => {
+    const a = document.createElement('a');
+    a.className = 'nav-link';
+    a.href = '#';
+    a.title = s.title;
+    a.innerHTML = `<span class="label">${esc(s.title)}</span>`;
+    // URL 해시를 바꾸지 않는다 — 해시 변경은 popstate 재렌더를 일으킬 수 있다 (file:// 포함)
+    a.addEventListener('click', (e) => { e.preventDefault(); show(idx); });
+    return a;
+  });
+  // 문서 단위 아코디언 — 읽고 있는 문서만 펼쳐 사이드바를 짧게 유지한다
+  const groups = [];
+  let li = 0;
+  docs.forEach((d, di) => {
+    const g = document.createElement('section');
+    g.className = 'reader-doc-group';
+    const head = document.createElement('button');
+    head.type = 'button';
+    head.className = 'reader-doc-head';
+    head.innerHTML =
+      `<span class="label">${esc(d.card.title)}</span>` +
+      `<span class="reader-doc-count">${d.sections.length}</span>`;
+    const list = document.createElement('div');
+    list.className = 'reader-sec-list';
+    const first = li;
+    d.sections.forEach(() => list.appendChild(links[li++]));
+    head.addEventListener('click', () => {
+      // 펼쳐진 문서를 다시 누르면 접기만 한다 (이동 없음)
+      if (g.classList.contains('open')) { g.classList.remove('open'); return; }
+      openGroup(di);
+      if (!flat[cur] || flat[cur].di !== di) show(first);
+    });
+    g.appendChild(head);
+    g.appendChild(list);
+    navEl.appendChild(g);
+    groups.push(g);
+  });
+  function openGroup(di) {
+    groups.forEach((g, i) => g.classList.toggle('open', i === di));
+  }
+
+  // 이전/다음 카드 — 문서 경계를 넘으면 문서 제목까지 보여준다
+  const navLabel = (s, from) => (s.card === from.card ? s.title : `${s.card.title} — ${s.title}`);
+
+  let cur = -1;
+  async function show(idx) {
+    const s = flat[idx];
+    if (!s || idx === cur) return;
+    if (links[cur]) links[cur].classList.remove('active');
+    cur = idx;
+    openGroup(s.di);
+    links[idx].classList.add('active');
+    links[idx].scrollIntoView({ block: 'nearest' });
+
+    const prev = flat[idx - 1];
+    const next = flat[idx + 1];
+    pageEl.innerHTML =
+      `<header class="reader-head"><span class="reader-doc">${esc(s.card.title)}</span>` +
+      `<span class="reader-pos">${s.i + 1} / ${s.n}</span></header>` +
+      `<div class="doc-body">${renderMarkdown(s.md, { docBase: s.card.path.split('/').slice(0, -1).join('/') })}</div>` +
+      '<nav class="doc-nav">' +
+      (prev
+        ? `<a class="doc-nav-link prev" href="#"><span class="doc-nav-dir">← 이전 절</span><span class="doc-nav-title">${esc(navLabel(prev, s))}</span></a>`
+        : '<span class="doc-nav-link empty"></span>') +
+      (next
+        ? `<a class="doc-nav-link next" href="#"><span class="doc-nav-dir">다음 절 →</span><span class="doc-nav-title">${esc(navLabel(next, s))}</span></a>`
+        : '<span class="doc-nav-link empty"></span>') +
+      '</nav>';
+    const pa = pageEl.querySelector('.doc-nav-link.prev');
+    if (pa) pa.addEventListener('click', (e) => { e.preventDefault(); show(idx - 1); });
+    const na = pageEl.querySelector('.doc-nav-link.next');
+    if (na) na.addEventListener('click', (e) => { e.preventDefault(); show(idx + 1); });
+
+    window.scrollTo(0, 0);
+    await window.MD.runMermaid('.section-reader .mermaid');
+    window.MD.enhanceDiagrams(pageEl);
+    window.MD.enhanceSectionRefs(pageEl, { docPath: s.card.path });
+  }
+  show(0);
 }
 
 function cardEl(c) {

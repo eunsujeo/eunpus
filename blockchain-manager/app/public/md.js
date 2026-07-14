@@ -266,6 +266,8 @@ window.MD = (() => {
     document.body.appendChild(peek);
     peek.addEventListener('click', (e) => {
       if (e.target.hasAttribute('data-close')) peek.classList.add('hidden');
+      // "문서 열기"로 원문을 열면 피크는 닫는다 — 정적 내보내기에선 원문이 아래 모달로 뜨므로 겹침 방지
+      if (e.target.id === 'peek-open') peek.classList.add('hidden');
     });
     // Escape 는 아래 깔린 카드 모달보다 피크를 먼저 닫는다 (capture)
     document.addEventListener('keydown', (e) => {

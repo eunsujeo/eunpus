@@ -54,7 +54,8 @@
       code, pre, .mono { font-family: var(--mono); }
 
       /* layout */
-      .layout { display: flex; min-height: 100vh; }
+      /* 사이드바+본문을 한 블록으로 화면 중앙에 — 본문은 사이드바에 붙는다 */
+      .layout { display: flex; min-height: 100vh; max-width: 1840px; margin: 0 auto; }
       .sidebar {
         width: 288px; flex: 0 0 288px;
         border-right: 1px solid var(--hairline);
@@ -63,7 +64,8 @@
         padding: 20px 0 60px;
       }
       .content { flex: 1 1 auto; min-width: 0; }
-      .content-inner { max-width: 1360px; margin: 0 auto; padding: 40px 48px 120px; }
+      /* 본문은 사이드바에 붙인다 — 가운데 정렬이면 넓은 화면에서 사이드바와 본문 사이가 크게 벌어진다 */
+      .content-inner { max-width: 1600px; margin: 0; padding: 40px 48px 120px; }
 
       /* topbar */
       .brand { padding: 0 20px 18px; border-bottom: 1px solid var(--hairline); margin-bottom: 14px; }
