@@ -100,11 +100,16 @@ sequenceDiagram
     end
 
     BE->>GT: 트래블룰 확인 — "트래블룰 확인 중" (동기라 즉시 판정)
-    GT->>FB: validate — 임계값·수취 주소 유형 판별
-    FB-->>GT: type: BELOW_THRESHOLD / NON_CUSTODIAL / TRAVELRULE
+    GT->>FB: validate/full ① — 자산·금액·수취 주소만
+    FB-->>GT: type(대상 여부) · 주소 유형(HOSTED/UNHOSTED/UNKNOWN)<br/>주소가 식별됐으면 수취 VASP DID·이름 동봉
     alt TRAVELRULE — 정보 교환 대상
-        GT->>GT: 수취인 정보 수집 — 수취 VASP DID · 이름 · 계좌
-        GT->>FB: validate/full — isValid 확인
+        opt ① 응답에 DID 없음 — 주소 미식별(UNKNOWN)
+            GT->>FB: VASP 명부 검색 — 사용자가 고른 수취 거래소 이름
+            FB-->>GT: 수취 VASP DID (명부에 없으면 도달 불가 분기 · 6장)
+        end
+        GT->>GT: 수취인 정보 수집 — 이름·계좌 (화면 입력)
+        GT->>FB: validate/full ② — 수취인 정보까지 실어 재호출
+        FB-->>GT: isValid · warnings(부족한 정보 목록)
         GT->>GT: PII SDK 로 암호화 → travelRuleMessage
         GT-->>BE: APPROVED + travelRuleMessage
         BE->>BM: submitTransaction — travelRuleMessage 동봉 (매니저는 운반만)
@@ -119,13 +124,14 @@ sequenceDiagram
     end
 ```
 
+- **수취 VASP DID 는 두 갈래로 확보한다** — ① 응답이 주소를 식별했으면 DID·이름이 응답에 실려 오고, 미식별(UNKNOWN)이면 사용자가 고른 거래소 이름으로 VASP 명부를 검색해 채운다. 명부에도 없는 상대는 도달 불가 분기(제출 전 차단·수동 심사, 6장).
 - 스크리닝은 **서명 앞에 놓인 벤더 게이트**다 — `createTransaction` 으로 넘어간 거래를 Fireblocks 가 Notabene 로 보내 판정받고, Accept 로 떨어져야 서명이 진행된다.
 - `travelRuleMessage` 동봉은 **우리 게이트의 책임**이다 — 안 실리면 Notabene 가 판정할 대상이 없어 게이트가 그대로 열린다. Outbound delay 기본 0초.
 - **우리 측 vs 중앙(벤더)** — 대상 판별·수취인 수집·암호화까지는 우리 게이트, 실제 스크리닝·판정은 벤더 안. VerifyVASP 와 달리 자체 Enclave 로 나눌 것이 없고, 국내와 다른 세 칸은 **확인 방식**(동기)·**동봉물**(travelRuleMessage)·**사후 보고 없음**(벤더가 이미 안다)이다.
 
 ## 7.3 입금 ← 국내 (VerifyVASP) — 자금보다 정보가 먼저 온다
 
-요청-응답형이다 — 자금이 오기 전에 우리 수신 사슬이 먼저 응답하고, 그 기록(대기함)이 도착 후 판별(7.5)의 대조 재료가 된다. 인바운드 사슬은 **중앙 서버 → 우리 Enclave → 수신 컴포넌트 → 트래블룰 서비스 → 월렛 백엔드(귀속 확인·대기함 적재)** 다(8장).
+요청-응답형이다 — 자금이 오기 전에 우리 수신 사슬이 먼저 응답하고, 그 기록(대기함)이 도착 후 판별(7.5)의 대조 재료가 된다. 인바운드 사슬은 **중앙 서버 → 우리 Enclave → 수신 컴포넌트 → 컴플라이언스 서비스 → 월렛 백엔드(귀속 확인·대기함 적재)** 다(8장).
 
 ```mermaid
 sequenceDiagram
@@ -135,7 +141,7 @@ sequenceDiagram
     box rgb(224,242,254) 우리 측
     participant EN as 우리 Enclave<br/>자체 인프라 · 공개 HTTPS 수신
     participant RX as 트래블룰 수신 컴포넌트<br/>별도 배포 · 얇게
-    participant TR as 트래블룰 서비스<br/>망 연동 · 8장
+    participant TR as 컴플라이언스 서비스<br/>망 연동 · 8장
     participant BE as 월렛(Service) 백엔드<br/>매칭·귀속 · 가용 전이
     participant WQ as 대기함<br/>사전 검증 기록 저장소
     end
@@ -176,8 +182,8 @@ sequenceDiagram
     end
 ```
 
-- 승인이 나야 상대가 온체인 전송을 실행한다 — 수신 사슬(**우리 Enclave → 수신 컴포넌트 → 트래블룰 서비스 → 월렛 백엔드**)이 응답을 못 하면 국내 입금 자체가 막히므로, 이 사슬의 가용성이 곧 입금 가용성이다.
-- **수신 컴포넌트는 별도 배포**다 — 트래블룰 서비스의 인바운드 접점. 얇게: 검증·변환만 하고 트래블룰 서비스로 위임하며, 매칭·귀속 판단과 대기함은 월렛 백엔드다(8장).
+- 승인이 나야 상대가 온체인 전송을 실행한다 — 수신 사슬(**우리 Enclave → 수신 컴포넌트 → 컴플라이언스 서비스 → 월렛 백엔드**)이 응답을 못 하면 국내 입금 자체가 막히므로, 이 사슬의 가용성이 곧 입금 가용성이다.
+- **수신 컴포넌트는 별도 배포**다 — 컴플라이언스 서비스의 인바운드 접점. 얇게: 검증·변환만 하고 컴플라이언스 서비스로 위임하며, 매칭·귀속 판단과 대기함은 월렛 백엔드다(8장).
 - **우리 Enclave vs 중앙** — 공개 HTTPS 를 받는 것은 우리 Enclave(벤더 요건)이고 복호화도 여기서 한다. 중앙 서버는 송신측과 우리 Enclave 사이를 중계만 한다.
 - **CODE 회원(빗썸 등) 발 입금**도 상호연동으로 VerifyVASP 인바운드로 도착한다 — 위 흐름 동일. 미확인 입금의 TXID 역추적이 경유 경로에서 되는지는 6장 상호연동 실효 확인 대상(안 되면 CODE 직접 7.11). 상세 시퀀스는 부록 A(11장).
 
@@ -227,7 +233,7 @@ sequenceDiagram
     end
     box rgb(224,242,254) 우리 측
     participant BE as 월렛(Service) 백엔드<br/>매칭·귀속 · 가용 전이
-    participant GT as 트래블룰 서비스<br/>망 조회
+    participant GT as 컴플라이언스 서비스<br/>망 조회
     end
 
     Note over BM: 벤더(Notabene) 동결 건은 REJECTED 계열로 와서 여기 안 온다 — 기존 동결 처리(7.4·블록체인매니저 입금 흐름 연계)
@@ -302,13 +308,13 @@ sequenceDiagram
     end
 ```
 
-- **게이트가 서명 앞단으로 이동** — 7.2 의 `validate`·`createTransaction` 동봉·Post-Screening 경로가 사라지고, 우리 게이트가 Notabene 직접 판정 → APPROVED 여야 매니저 제출. Fireblocks 는 커스터디·서명만 한다.
+- **게이트가 서명 앞단으로 이동** — 7.2 의 `validate/full`·`createTransaction` 동봉·Post-Screening 경로가 사라지고, 우리 게이트가 Notabene 직접 판정 → APPROVED 여야 매니저 제출. Fireblocks 는 커스터디·서명만 한다.
 - **스크리닝 우회 방지 책임이 온전히 우리 것** — 벤더가 빈 메시지를 만들어 주지 않으므로, 대상 판별·메시지 전송 누락이 곧 트래블룰 누락이 된다.
 - **상대 심사면 비동기** — 7.1 VerifyVASP 처럼 수신 웹훅과 PENDING 중단·재개가 필요하다. 벤더주도(7.2) 대비 늘어나는 운영 부담이 여기 있다.
 
 ## 7.7 입금 ← 해외 (Notabene 직접) — 확정은 매니저, 대조는 월렛 백엔드
 
-7.4 는 벤더가 감지·동결까지 했지만, 여기선 **벤더가 동결해 주지 않는다**. 온체인 확정은 블록체인 매니저가, 통지 수신·망 조회는 트래블룰 서비스가, 대조·입금대기(잔고 차단)는 월렛 백엔드가 맡는다.
+7.4 는 벤더가 감지·동결까지 했지만, 여기선 **벤더가 동결해 주지 않는다**. 온체인 확정은 블록체인 매니저가, 통지 수신·망 조회는 컴플라이언스 서비스가, 대조·입금대기(잔고 차단)는 월렛 백엔드가 맡는다.
 
 ```mermaid
 sequenceDiagram
@@ -321,7 +327,7 @@ sequenceDiagram
     participant BM as 폴링 → deposit-events · Fireblocks 커스터디
     end
     box rgb(224,242,254) 우리 측
-    participant GT as 트래블룰 서비스<br/>수신 웹훅 · 망 조회
+    participant GT as 컴플라이언스 서비스<br/>수신 웹훅 · 망 조회
     participant BE as 월렛(Service) 백엔드<br/>매칭·귀속 · 가용 전이
     participant WQ as 대기함<br/>사전 통지 기록 저장소
     end
@@ -367,7 +373,7 @@ sequenceDiagram
     participant BM as submitTransaction
     end
 
-    BE->>GT: 트래블룰 확인 — 수취가 개인지갑 (validate = NON_CUSTODIAL)
+    BE->>GT: 트래블룰 확인 — 수취가 개인지갑 (validate/full = NON_CUSTODIAL)
     GT->>AR: 등록·소유 인증 조회 (정보 교환 상대 없음)
     alt 등록·소유 인증됨
         AR-->>GT: 확인
@@ -461,7 +467,7 @@ sequenceDiagram
     participant CV as CodeVASP 중앙<br/>중계
     box rgb(224,242,254) 우리 측
     participant CC as CODE-Cipher<br/>수신·복호화
-    participant TR as 트래블룰 서비스<br/>망 연동 · 8장
+    participant TR as 컴플라이언스 서비스<br/>망 연동 · 8장
     participant BE as 월렛(Service) 백엔드<br/>매칭·귀속 · 가용 전이
     participant WQ as 대기함<br/>사전 승인 기록 저장소
     end

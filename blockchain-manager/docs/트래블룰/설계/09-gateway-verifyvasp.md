@@ -33,11 +33,11 @@ sequenceDiagram
     end
     participant RV as 수취 VASP<br/>VerifyVASP 회원
 
-    GT->>FB: validate — 수취 VASP DID
+    GT->>FB: validate/full ① — 수취 VASP DID
     FB->>NB: 상대 조회
     NB-->>FB: TRAVELRULE (상대 = VerifyVASP 회원)
     Note over GT,NB: 우리는 "상대가 VerifyVASP" 임을 몰라도 됨 — 게이트웨이가 판별
-    GT->>FB: validate/full + travelRuleMessage(IVMS101)
+    GT->>FB: validate/full ② + travelRuleMessage(IVMS101)
     FB->>NB: createTransaction 동봉분
     NB->>NB: 프로토콜 변환 IVMS101 → VerifyVASP
     NB->>RV: VerifyVASP 프로토콜로 사전 허가 요청
@@ -46,7 +46,7 @@ sequenceDiagram
     Note over FB: Post-Screening Accept → 서명·전파 (4장)
 ```
 
-우리 게이트는 `validate` → `validate/full` → `travelRuleMessage` 동봉까지 7.2 그대로 하고, 그 뒤 **프로토콜 변환·상대 통신은 게이트웨이가 삼킨다**. 7.2 와 유일하게 다른 건 회색 박스 안이고, 우리 코드에는 그 차이가 보이지 않는다.
+우리 게이트는 `validate/full` 판별 → 완전 검증 → `travelRuleMessage` 동봉까지 7.2 그대로 하고, 그 뒤 **프로토콜 변환·상대 통신은 게이트웨이가 삼킨다**. 7.2 와 유일하게 다른 건 회색 박스 안이고, 우리 코드에는 그 차이가 보이지 않는다.
 
 ## 입금 흐름 — VerifyVASP 회원에게서 (게이트웨이 경유)
 
@@ -73,7 +73,7 @@ sequenceDiagram
     PW->>FB: 폴링 — 결과 상태만 수신 → 7.5 합류점
 ```
 
-7.3(직접 연동 입금)이 요구하던 **우리 수신 사슬(Enclave → 수신 컴포넌트 → 트래블룰 서비스)이 사라지고**, 7.4 처럼 폴링으로 결과만 받는다. 송신측의 VerifyVASP 사전 통지는 게이트웨이가 받아 대조 재료로 삼는다.
+7.3(직접 연동 입금)이 요구하던 **우리 수신 사슬(Enclave → 수신 컴포넌트 → 컴플라이언스 서비스)이 사라지고**, 7.4 처럼 폴링으로 결과만 받는다. 송신측의 VerifyVASP 사전 통지는 게이트웨이가 받아 대조 재료로 삼는다.
 
 ## 직접 연동(7.1/7.3)과의 대비
 
@@ -105,4 +105,4 @@ sequenceDiagram
 
 - **주장·상태** — Notabene [SafeGateway](https://notabene.id/solutions/safe-gateway)(공개 웹). 라이브 상태는 벤더 확인 필요.
 - **흐름** — 위 주장을 우리 스택(7.2/7.4)에 대입한 **설계 판단**. 회색 박스 내부 동작은 미검증.
-- **미확정** — ①~④ 는 벤더 확인 전까지 확정 아님. 6장 미확정 "게이트웨이 경유 VerifyVASP 도달"과 같은 항목이다.
+- **미확정** — ①~④ 는 벤더 확인 전까지 확정 아님. 14장 문의 목록의 "게이트웨이 경유 VerifyVASP 도달"과 같은 항목이다.

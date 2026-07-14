@@ -53,20 +53,20 @@ flowchart LR
 
 | 프로토콜/네트워크 | 성격 | 카운터파티 발견·검증 | 비고 |
 |---|---|---|---|
-| TRISA | 오픈소스, P2P 메시징 + 중앙 CA(인증서 권한) | 중앙 CA 가 VASP 공개키 인증서 디렉토리 역할 | PII 는 VASP 끼리 직접 P2P 교환 |
-| TRP(Travel Rule Protocol) | 오픈, 중앙 디렉토리 + E2E API | 중앙 디렉토리 서비스로 VASP 발견 | Coinbase 등 업계 컨소시엄 주도 |
+| TRISA | 오픈소스, P2P 메시징 + 중앙 CA(인증서 권한) | 중앙 CA 가 VASP 공개키 인증서 명부 역할 | PII 는 VASP 끼리 직접 P2P 교환 |
+| TRP(Travel Rule Protocol) | 오픈, 중앙 명부 + E2E API | 중앙 명부 서비스로 VASP 발견 | Coinbase 등 업계 컨소시엄 주도 |
 | OpenVASP | 오픈, 탈중앙 발견 | 공유 인프라 최소화·메시지 표준 중심 | 프라이버시·탈중앙 강조 |
 | TRUST | 폐쇄망(미국 중심) | 멤버 한정 | 미국 거래소 연합 |
 | Sygna Bridge | 상용 | 자체 네트워크 | — |
 | VerifyVASP | 상용, P2P·E2E, API | 검증된 VASP 네트워크(150여 곳·30여 국) | 한국계 |
-| Shyft / Veriscope | 온체인 접근 | 블록체인 기반 디렉토리 | 프로토콜 자체가 체인 |
+| Shyft / Veriscope | 온체인 접근 | 블록체인 기반 명부 | 프로토콜 자체가 체인 |
 | Notabene | 프로토콜 비종속 게이트웨이 | W3C DID·검증가능자격증명(VC) 으로 기존 프로토콜을 브릿지 | 여러 프로토콜을 한 대시보드로 |
 
 ## 공통점과 차이
 
 거의 모든 프로토콜이 IVMS101 데이터 포맷과 E2E 암호화를 쓴다는 점은 같다. 갈리는 지점은 둘이다.
 
-- **카운터파티 발견 방식** — 중앙 디렉토리(TRP)냐, P2P + 중앙 CA(TRISA)냐, 온체인 디렉토리(Shyft·Veriscope)냐.
+- **카운터파티 발견 방식** — 중앙 명부(TRP)냐, P2P + 중앙 CA(TRISA)냐, 온체인 명부(Shyft·Veriscope)냐.
 - **거버넌스·멤버십** — 누구나 참여하는 오픈(TRISA·TRP·OpenVASP)이냐, 멤버만 들어오는 폐쇄망(TRUST)이냐, 상용 네트워크(Sygna Bridge·VerifyVASP)냐.
 
 VerifyVASP 는 국내 3종에도 등장하고 글로벌 표에도 오르는데, 상용 P2P·E2E API 네트워크로서 검증된 VASP 를 150여 곳·30여 국 규모로 묶고 있기 때문이다.

@@ -399,9 +399,17 @@ function buildDocSideNav(side, col) {
     }
     if (!group) addGroup('개요');
     // 오퍼레이션 제목(GET https://…/v1/…)은 메서드 배지 + 경로로 — 서버 URL 은 생략
-    const m = /^(GET|POST|PUT|PATCH|DELETE)\s+(.*)$/.exec(
+    let m = /^(GET|POST|PUT|PATCH|DELETE)\s+(.*)$/.exec(
       h.textContent.replace(/https?:\/\/[^\s/]+/, '').trim()
     );
+    // 제목이 이름이고 메서드·경로가 다음 줄(`POST` `https://…`)인 문서도 배지를 붙인다
+    if (!m) {
+      const sib = h.nextElementSibling;
+      const lead = sib && sib.tagName === 'P' && sib.querySelector('code:first-child');
+      if (lead && /^(GET|POST|PUT|PATCH|DELETE)$/.test(lead.textContent.trim())) {
+        m = [null, lead.textContent.trim(), h.textContent];
+      }
+    }
     const a = document.createElement('a');
     a.className = 'nav-link';
     a.href = `#${h.id}`;

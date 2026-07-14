@@ -3,8 +3,8 @@ title: 0. 전체 배치 — 한 장
 status: To Do
 ---
 
-지갑 기반(블록체인 매니저)과 트래블룰의 배포 단위를 한 장에 모은다. 각 배치의 근거는 해당 시스템 장에 있고, 이 장은 그 결론만 조립한다.
-구역은 사내 인프라와 외부 벤더·망 둘이다 — 트래블룰 구성요소도 지갑 기반과 **같은 망**에 있다.
+지갑 기반(블록체인 매니저)과 컴플라이언스(트래블룰)의 배포 단위를 한 장에 모은다. 각 배치의 근거는 해당 시스템 장에 있고, 이 장은 그 결론만 조립한다.
+구역은 사내 인프라와 외부 벤더·망 둘이다 — 컴플라이언스 구성요소도 지갑 기반과 **같은 망**에 있다.
 
 ## 한 장 그림
 
@@ -21,9 +21,9 @@ flowchart TB
       PADM["정책 관리<br/>별도 서비스"]
       COS["API Co-signer (SGX/TEE)<br/>+ Callback Handler"]
     end
-    subgraph TRZ["트래블룰 — 신원정보 교환(VerifyVASP 등)"]
+    subgraph TRZ["컴플라이언스 — 신원정보 교환(VerifyVASP 등)"]
       direction LR
-      GATE["트래블룰 서비스<br/>라우터 + 어댑터"]
+      GATE["컴플라이언스 서비스<br/>라우터 + 망 어댑터"]
       RX["수신 컴포넌트<br/>공개 HTTPS 인바운드"]
       EN["VerifyVASP Enclave<br/>공개 HTTPS 인바운드"]
       FBCLI["Fireblocks<br/>스크리닝 클라이언트"]
@@ -43,12 +43,12 @@ flowchart TB
   ADM -->|정책 편집·게시| PADM
   SVC --- GATE
   GATE -->|VerifyVASP 아웃바운드| EN
-  GATE -->|validate 요청| FBCLI
+  GATE -->|validate/full 요청| FBCLI
   EN --> RX
   RX -->|위임| GATE
   BM --> FB
   PADM -->|Policy Editor API| FB
-  FBCLI -->|JWT 서명 · validate| FB
+  FBCLI -->|JWT 서명 · validate/full| FB
   COS <-->|서명 요청 · MPC share| FB
   FB --> EVM
   EN <--> TRNET
@@ -65,7 +65,7 @@ flowchart TB
   class EVM chain
 ```
 
-파랑 = 직접 만들고 운영하는 서비스, 노랑 = 벤더가 강제해서 우리 인프라 안에 두는 설치물, 회색 = 외부 벤더·망. 안쪽의 지갑 기반·트래블룰 묶음은 역할 구분일 뿐 망 경계가 아니다 — 둘은 같은 망에 있다.
+파랑 = 직접 만들고 운영하는 서비스, 노랑 = 벤더가 강제해서 우리 인프라 안에 두는 설치물, 회색 = 외부 벤더·망. 안쪽의 지갑 기반·컴플라이언스 묶음은 역할 구분일 뿐 망 경계가 아니다 — 둘은 같은 망에 있다.
 
 ## 배포 단위 목록
 
@@ -77,11 +77,11 @@ flowchart TB
 | 지갑 기반 | 메시지 큐 | 토픽 3개(deposit·withdrawal·internal) + 막힘 경보는 별도 채널 | [블록체인매니저 4장](../../블록체인매니저/설계/04-detect-confirm.md) |
 | 지갑 기반 | 정책 관리 서비스 | 벤더 정책 편집·게시 대행 — 거래 제출 자격과 분리 | [정책관리 0장](../../정책관리/설계/00-scope.md) |
 | 지갑 기반 | API Co-signer + Callback Handler | 보안 존(SGX/TEE) 설치물 — 키 share 공동서명 · 서명 직전 승인·거부 | [블록체인매니저 6장](../../블록체인매니저/설계/06-withdrawal.md) |
-| 트래블룰 | 트래블룰 서비스 | 게이트 — 라우터 + 어댑터, 상대 VASP 와의 신원정보 교환 전담 | [트래블룰 12장](../../트래블룰/설계/12-physical-layout.md) |
-| 트래블룰 | 수신 컴포넌트 | 상대 VASP 발신 수신 — 별도 배포·얇게 · 공개 HTTPS | [트래블룰 12장](../../트래블룰/설계/12-physical-layout.md) |
-| 트래블룰 | VerifyVASP Enclave | 벤더 강제 설치물 — 키·PII · 공개 HTTPS | [트래블룰 12장](../../트래블룰/설계/12-physical-layout.md) |
-| 트래블룰 | Fireblocks 스크리닝 클라이언트 | 전용 API user 로 validate 호출 — 자격은 시크릿 스토어/KMS 격리 | [트래블룰 8장](../../트래블룰/설계/08-gate-port.md) |
-| 트래블룰 | CODE-Cipher | **조건부** — CODE 직접 어댑터를 붙일 때만 설치 | [트래블룰 6장](../../트래블룰/설계/06-verifyvasp-parallel-gate.md) |
+| 컴플라이언스 | 컴플라이언스 서비스 | 신원정보 교환 전담 — 라우터 + 망 어댑터. 트래블룰 게이트가 첫 모듈이고, 매칭·귀속 판단은 월렛 백엔드에 남는다 | [트래블룰 8장](../../트래블룰/설계/08-gate-port.md) · [12장](../../트래블룰/설계/12-physical-layout.md) |
+| 컴플라이언스 | 수신 컴포넌트 | 상대 VASP 발신 수신 — 별도 배포·얇게 · 공개 HTTPS | [트래블룰 12장](../../트래블룰/설계/12-physical-layout.md) |
+| 컴플라이언스 | VerifyVASP Enclave | 벤더 강제 설치물 — 키·PII · 공개 HTTPS | [트래블룰 12장](../../트래블룰/설계/12-physical-layout.md) |
+| 컴플라이언스 | Fireblocks 스크리닝 클라이언트 | 전용 API user 로 validate/full 호출 — 자격은 시크릿 스토어/KMS 격리 | [트래블룰 8장](../../트래블룰/설계/08-gate-port.md) |
+| 컴플라이언스 | CODE-Cipher | **조건부** — CODE 직접 어댑터를 붙일 때만 설치 | [트래블룰 6장](../../트래블룰/설계/06-verifyvasp-parallel-gate.md) |
 
 ## 저장소
 
@@ -94,9 +94,9 @@ flowchart TB
 
 ## 경계의 요점
 
-- **공개 인바운드는 트래블룰 쪽 둘뿐** — VerifyVASP Enclave 와 수신 컴포넌트. 나머지 사내 구성 요소는 전부 아웃바운드만 연다.
-- **벤더 API user 자격은 서비스마다 분리** — 매니저(거래 제출)·정책 관리(정책 편집)·스크리닝 클라이언트(validate). 한 서비스가 장악돼도 다른 자격으로 번지지 않는다.
-- **자산 이동 경로와 트래블룰 검증 경로는 분리** — validate 호출은 제출·전파 경로를 타지 않는다.
+- **공개 인바운드는 컴플라이언스 쪽 둘뿐** — VerifyVASP Enclave 와 수신 컴포넌트. 나머지 사내 구성 요소는 전부 아웃바운드만 연다.
+- **벤더 API user 자격은 서비스마다 분리** — 매니저(거래 제출)·정책 관리(정책 편집)·스크리닝 클라이언트(validate/full). 한 서비스가 장악돼도 다른 자격으로 번지지 않는다.
+- **자산 이동 경로와 트래블룰 검증 경로는 분리** — validate/full 호출은 제출·전파 경로를 타지 않는다.
 
 ## 열린 결정
 

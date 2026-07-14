@@ -27,6 +27,6 @@ status: To Do
 
 Notabene 이 브릿지하는 목록에 **GTR·CODE 는 없다**(TRUST·Sygna 등은 있음). 그래서 우리가 붙인 **Notabene 게이트만으로는 GTR 단독 상대(대표적으로 Binance 글로벌)에 도달하지 못한다.** 다만 이는 도달 불가가 아니라 **제공자 선택 문제**다 — Fireblocks 는 여러 트래블룰 제공자를 **TRLink 프레임워크**로 얹을 수 있고, 그중 **Sumsub 이 GTR·CODE·Sygna 를 포함해 1,800+ VASP 를 커버**한다(GTR 자체도 Fireblocks 연동 확대 중). 즉 GTR 상대까지 열려면 Notabene 외에 **Sumsub(또는 GTR 직접) 제공자를 추가**하면 된다. TRUST 에도 걸친 OKX·Bybit 은 지금도 TRUST 경로로 우회된다.
 
-**TRLink 는 제공자가 아니라 Fireblocks 의 프레임워크**다. Notabene 은 직접 통합이고 GTR·Sumsub 등은 이 TRLink 로 붙는다(6장의 제공자 목록 "Sumsub·GTR(TRLink)" 표기가 이 프레임워크를 가리킨다). 다만 Sumsub 경유로 GTR·CODE 에 도달할 때 원화 임계·역추적 같은 망 전용 기능이 보존되는지는 확인 대상이다(6장 미확정).
+**TRLink 는 제공자가 아니라 Fireblocks 의 프레임워크**다. Notabene 은 직접 통합이고 GTR·Sumsub 등은 이 TRLink 로 붙는다(6장의 제공자 목록 "Sumsub·GTR(TRLink)" 표기가 이 프레임워크를 가리킨다). 다만 Sumsub 경유로 GTR·CODE 에 도달할 때 원화 임계·역추적 같은 망 전용 기능이 보존되는지는 확인 대상이다(14장).
 
 근거(공개 웹): [Binance GTR 가입](https://www.binance.com/en/blog/compliance/binance-joins-the-global-travel-rule-alliance-to-advance-interoperable-compliance-and-strengthen-security-7936965740530669104) · [GTR 얼라이언스](https://www.globaltravelrule.com/en/home) · [TRUST 회원](https://www.coinbase.com/travelrule) · [Notabene 지원 프로토콜](https://notabene.id/travel-rule-messaging-protocols) · [Fireblocks 컴플라이언스·TRLink](https://www.fireblocks.com/platforms/compliance) · [Sumsub×Fireblocks — GTR·CODE·Sygna·1,800+ VASP](https://docs.sumsub.com/docs/fireblocks-integration).

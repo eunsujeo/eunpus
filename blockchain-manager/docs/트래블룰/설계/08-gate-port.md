@@ -3,7 +3,7 @@ title: 8. 게이트 유연화 — 한 인터페이스, 망 어댑터
 status: To Do
 ---
 
-이 장이 정하는 것은 둘이다. **어디에** — 게이트를 별도 트래블룰 서비스로 두고, 매칭·귀속 판단은 월렛 백엔드에 남기는 배치와 경계. **어떻게** — VerifyVASP(승인 왕복·비동기)·Notabene(벤더 게이트·동기)·개인지갑(레지스트리 조회)처럼 망마다 다른 호출을 공통 단계 4개와 판정 어휘 하나로 접는 인터페이스.
+이 장이 정하는 것은 둘이다. **어디에** — 게이트를 별도 컴플라이언스 서비스로 두고, 매칭·귀속 판단은 월렛 백엔드에 남기는 배치와 경계. **어떻게** — VerifyVASP(승인 왕복·비동기)·Notabene(벤더 게이트·동기)·개인지갑(레지스트리 조회)처럼 망마다 다른 호출을 공통 단계 4개와 판정 어휘 하나로 접는 인터페이스.
 
 ## 배치 — 게이트는 어디에, 판단은 누가
 
@@ -23,7 +23,7 @@ status: To Do
 |---|---|---|
 | **① 블록체인 매니저 경유** — 트래블룰 호출을 매니저 오퍼레이션으로 넣거나 프록시 | **아니오** | 위 "왜 매니저(BCM)와 나누나" 그대로 — 더해서 평문 PII 가 매니저를 지나게 되고, VerifyVASP 수신 API 는 **인바운드**라 매니저의 아웃바운드 구조와 맞지 않다 |
 | **② 월렛(Service) 백엔드 안의 모듈** | **아니오** | 망 연동·PII 메시징이 월렛 백엔드 안으로 들어오고, 다른 상품이 트래블룰 스택을 공유할 수 없다 — 아래 근거 |
-| **③ 별도 트래블룰 서비스** | **결정** | 아래 근거 셋 — 단 매칭·귀속 판단은 월렛 백엔드에 남는다 (아래 경계) |
+| **③ 별도 컴플라이언스 서비스** | **결정** | 아래 근거 셋 — 단 매칭·귀속 판단은 월렛 백엔드에 남는다 (아래 경계) |
 
 ③으로 가는 근거 셋:
 
@@ -33,33 +33,35 @@ status: To Do
 
 ### 경계 — 매칭·검증·귀속 판단은 월렛 백엔드
 
-Travel Rule 정보와 입출금 tx 를 맞춰 보는 일(대기함 대조·귀속 판단)은 tx·주소·잔고의 주인인 월렛 백엔드가 맡는다 — 대기함도 월렛 백엔드에 있다. 출금 상태 흐름("접수 → 승인 → 트래블룰 확인 중 → 제출"을 순서대로 밟게 하는 관리)과 잔고 가용 전이도 같은 이유로 월렛 백엔드에 남는다. 트래블룰 서비스는 **망 연동 전담**이다 — 망 왕복을 수행하고, 망 원어를 공통 어휘(TrVerdict·검증 기록)로 번역해 월렛 백엔드에 넘긴다.
+Travel Rule 정보와 입출금 tx 를 맞춰 보는 일(대기함 대조·귀속 판단)은 tx·주소·잔고의 주인인 월렛 백엔드가 맡는다 — 대기함도 월렛 백엔드에 있다. 출금 상태 흐름("접수 → 승인 → 트래블룰 확인 중 → 제출"을 순서대로 밟게 하는 관리)과 잔고 가용 전이도 같은 이유로 월렛 백엔드에 남는다. 컴플라이언스 서비스는 **망 연동 전담**이다 — 망 왕복을 수행하고, 망 원어를 공통 어휘(TrVerdict·검증 기록)로 번역해 월렛 백엔드에 넘긴다.
+
+서비스의 정체성·모듈 구성·범위(왜 이름이 "컴플라이언스"인가, AML·OFAC 의 향후 수용)는 [컴플라이언스 0장](../../컴플라이언스/설계/00-scope.md)이 정본이다. 월렛과의 API·이벤트 계약은 [컴플라이언스 1장](../../컴플라이언스/설계/01-interface.md).
 
 ```
 월렛(Service) 백엔드
 ├─ 출금·입금 유스케이스 — 상태 흐름·잔고 가용 전이의 단일 주인
 ├─ 트래블룰 매칭·검증·귀속 판단 — Travel Rule 정보 ↔ 입출금 tx 대조 · 대기함 보관
-└─ TravelRuleChannel 포트 ──→ 트래블룰 서비스 호출 (아래 인터페이스)
+└─ TravelRuleChannel 포트 ──→ 컴플라이언스 서비스 호출 (아래 인터페이스)
 
-트래블룰 서비스 — 별도 서비스 · 망 연동 전담
+컴플라이언스 서비스 — 별도 서비스 · 망 연동 전담
 ├─ 라우터 + 망 어댑터
 │    ├─ VerifyVASP 어댑터 ──→ Enclave 서버 (벤더 강제 별도 인프라 · PII 는 여기)
-│    ├─ Notabene 어댑터  ──→ Fireblocks validate 계열 (전용 API user — 아래)
+│    ├─ Notabene 어댑터  ──→ Fireblocks validate/full (전용 API user — 아래)
 │    └─ 개인지갑 어댑터   ──→ Address Registry
 └─ 망 원어 → 공통 어휘(TrVerdict·검증 기록) 번역 — 판정 재료를 월렛 백엔드로 넘긴다
 
 트래블룰 수신 컴포넌트 — 별도 배포 (얇게)
 └─ Enclave 가 호출하는 VASP API 구현 (Verify User · Verify User Account · Callback · Check Transaction Status)
-   검증·변환만 하고 트래블룰 서비스로 위임 — 수신 질문(주소 귀속·실명 대조)의 답은 서비스가 월렛 백엔드에 조회해 응답
+   검증·변환만 하고 컴플라이언스 서비스로 위임 — 수신 질문(주소 귀속·실명 대조)의 답은 서비스가 월렛 백엔드에 조회해 응답
 ```
 
-인바운드 사슬은 **중앙 서버 → (우리 인프라의) Enclave → 수신 컴포넌트 → 트래블룰 서비스 → 월렛 백엔드(귀속 확인·대기함 적재)** 다. 아웃바운드에는 대응물이 없다 — 아웃바운드의 관문 역할(키·PII 암호화·중앙 통신)은 **Enclave 가 이미 하므로** 사이에 컴포넌트를 더 끼우지 않는다. 공개 HTTPS 를 받는 것은 Enclave(벤더 요건)이고, 수신 컴포넌트는 트래블룰 서비스의 인바운드 접점으로 **얇게** 둔다 — 검증·변환만 하고 나머지는 서비스로 위임한다. 이 구성요소들이 물리적으로 어디 앉는지는 12장 물리 배치.
+인바운드 사슬은 **중앙 서버 → (우리 인프라의) Enclave → 수신 컴포넌트 → 컴플라이언스 서비스 → 월렛 백엔드(귀속 확인·대기함 적재)** 다. 아웃바운드에는 대응물이 없다 — 아웃바운드의 관문 역할(키·PII 암호화·중앙 통신)은 **Enclave 가 이미 하므로** 사이에 컴포넌트를 더 끼우지 않는다. 공개 HTTPS 를 받는 것은 Enclave(벤더 요건)이고, 수신 컴포넌트는 컴플라이언스 서비스의 인바운드 접점으로 **얇게** 둔다 — 검증·변환만 하고 나머지는 서비스로 위임한다. 이 구성요소들이 물리적으로 어디 앉는지는 12장 물리 배치.
 
 ### Fireblocks 스크리닝 호출 — 전용 API user 로 직접
 
-Notabene 어댑터의 `validate`·`validate/full` 은 Fireblocks API 지만, **블록체인 매니저를 경유하지 않고 트래블룰 서비스가 직접 호출한다**. 관문 원칙은 이렇게 정밀해진다 — **블록체인 매니저 = 자산이 움직이는 경로의 단일 관문**(제출·폴링·조회). 스크리닝 검증은 자산 불이동 + 평문 PII 동반이라 처음부터 그 관문의 일이 아니다.
+Notabene 어댑터의 `validate/full` 은 Fireblocks API 지만, **블록체인 매니저를 경유하지 않고 컴플라이언스 서비스가 직접 호출한다**. 관문 원칙은 이렇게 정밀해진다 — **블록체인 매니저 = 자산이 움직이는 경로의 단일 관문**(제출·폴링·조회). 스크리닝 검증은 자산 불이동 + 평문 PII 동반이라 처음부터 그 관문의 일이 아니다.
 
-- **전용 API user, 스크리닝 권한만** — 만능 자격증명 하나보다 좁은 자격증명 둘이 안전하다. 권한 구성은 확인 항목(6장 미확정).
+- **전용 API user** — 만능 자격증명 하나보다 자격증명을 나누는 것이 안전하다. 단 스크리닝(validate/full)만 가능한 최소 권한 role 은 **없다(벤더 확인)** — 남는 권한은 우리가 좁힌다: 서명 능력 없는 role 로 만들고, TAP 에서 이 user 가 시작한 거래를 전부 차단하고, IP 화이트리스트로 호출원을 컴플라이언스 서비스로 제한한다. validate/full 이 동작하는 가장 낮은 role 은 테스트로 확정.
 - **PII 접촉면 최소화** — validate/full 의 평문 PII 가 블록체인 매니저를 지나지 않는다.
 - **rate limit 은 API user 단위**라 전용 user 는 매니저 폴링과 한도를 나누지 않는다. 429 는 어댑터 자체 백오프.
 
@@ -72,7 +74,7 @@ Notabene 어댑터의 `validate`·`validate/full` 은 Fireblocks API 지만, **�
 | 단계 | VerifyVASP (국내) | Notabene (해외 · 벤더 경유) | 개인지갑 |
 |---|---|---|---|
 | **① 상대 판별** (route) | 회원망 조회 (List VASP API — 공식 확인) | 기본 경로 | Address Registry 에 등록된 주소인가 |
-| **② 사전 확인** (check) | 주소 소유 확인(동기) + PII 사전 승인(User Verification — **비동기**: UUID 즉시, 결과는 Callback) | `validate` → `validate/full` — **동기** | 등록·소유 인증 조회 — **동기** |
+| **② 사전 확인** (check) | 주소 소유 확인(동기) + PII 사전 승인(User Verification — **비동기**: UUID 즉시, 결과는 Callback) | `validate/full` 판별 → 완전 검증 — **동기** | 등록·소유 인증 조회 — **동기** |
 | **③ 제출 동봉물** (attachment) | 없음 — 사전 승인 자체가 통과 증적 | `travelRuleMessage` — 매니저 제출 요청의 `travelRule` 필드에 실림 | 없음 |
 | **④ 사후 보고** (report) | tx hash 보고 (Report Transaction Result — Enclave 가 UUID 에 매핑) | 없음 — 벤더가 이미 안다 | 없음 |
 | **입금 판정** (checkDeposit) | 수신 API 응답·tx hash 대조 기록 | 벤더가 판정 완료 — 동결이면 애초에 REJECTED 계열로 옴 | Address Registry 조회 |
@@ -80,7 +82,7 @@ Notabene 어댑터의 `validate`·`validate/full` 은 Fireblocks API 지만, **�
 ### 포트 하나, 판정 어휘 하나
 
 ```kotlin
-// 트래블룰 서비스의 포트 — 지갑 백엔드가 보는 인터페이스. 서비스 안에서 망 어댑터(VerifyVASP · Notabene · 개인지갑)가 구현
+// 컴플라이언스 서비스의 포트 — 지갑 백엔드가 보는 인터페이스. 서비스 안에서 망 어댑터(VerifyVASP · Notabene · 개인지갑)가 구현
 interface TravelRuleChannel {
   fun checkWithdrawal(w: WithdrawalIntent): TrVerdict   // ② 동기 망은 즉답, 비동기 망은 PENDING 후 콜백·조회로 갱신
   fun attachmentOf(w: WithdrawalIntent): TravelRule?    // ③ 매니저 제출 요청의 travelRule 필드에 실린다 — 없으면 null
@@ -99,18 +101,18 @@ enum class TrVerdict {
 fun channelOf(counterparty: Destination): TravelRuleChannel
 ```
 
-게이트가 접는 일은 곧 세 어휘(Fireblocks `validate` type·2장 / Notabene 판정 상태·4장 / 망별 원어)를 우리 `TrVerdict` 하나로 번역하는 것이다. 업무 코드는 왼쪽 4개만 본다.
+게이트가 접는 일은 곧 세 어휘(Fireblocks `validate/full` type·2장 / Notabene 판정 상태·4장 / 망별 원어)를 우리 `TrVerdict` 하나로 번역하는 것이다. 업무 코드는 왼쪽 4개만 본다.
 
-| 우리 `TrVerdict` | Fireblocks validate · Notabene 판정 | VerifyVASP (비동기) | CODE (동기) | 개인지갑 |
+| 우리 `TrVerdict` | Fireblocks validate/full · Notabene 판정 | VerifyVASP (비동기) | CODE (동기) | 개인지갑 |
 |---|---|---|---|---|
-| `NOT_REQUIRED` | validate `BELOW_THRESHOLD`·`NON_CUSTODIAL` · Notabene `Saved` | 임계 미만·면제 | 임계 미만(원화 판정) | 정보 교환 없음 |
+| `NOT_REQUIRED` | validate/full `BELOW_THRESHOLD`·`NON_CUSTODIAL` · Notabene `Saved` | 임계 미만·면제 | 임계 미만(원화 판정) | 정보 교환 없음 |
 | `APPROVED` | Notabene `Completed` → Post-Screening Accept | User Verification 승인 (Callback 도착) | Asset Transfer Authorization 승인 | Address Registry 등록·소유 인증 |
 | `PENDING` | Notabene `Pending` (Wait) | UUID 접수 · Callback 대기 | (동기라 드묾) | — |
 | `REJECTED` | Notabene `Rejected`·`Failed`·`Blocking Time Expired` | 상대 거절 · PENDING 만료 | 상대 거절 | 미등록·미인증 |
 
 ## 출금 — "트래블룰 확인 중" 상태 하나
 
-VerifyVASP 의 사전 승인은 상대 VASP 의 응답(사람 심사일 수도 있다)을 기다리는 비동기라, 출금 상태에 **트래블룰 확인 중** 단계가 필요하다. 동기 망(Notabene 의 validate·개인지갑 조회)도 같은 상태를 즉시 통과하는 것으로 접는다 — 상태 흐름을 망별로 두 벌 만들지 않는다.
+VerifyVASP 의 사전 승인은 상대 VASP 의 응답(사람 심사일 수도 있다)을 기다리는 비동기라, 출금 상태에 **트래블룰 확인 중** 단계가 필요하다. 동기 망(Notabene 의 validate/full·개인지갑 조회)도 같은 상태를 즉시 통과하는 것으로 접는다 — 상태 흐름을 망별로 두 벌 만들지 않는다.
 
 ```
 출금 접수 → 업무 승인 → 트래블룰 확인 중 ──APPROVED·NOT_REQUIRED──→ 제출 (매니저 submitTransaction)
