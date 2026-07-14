@@ -21,7 +21,7 @@ flowchart TB
       PADM["정책 관리<br/>별도 서비스"]
       COS["API Co-signer (SGX/TEE)<br/>+ Callback Handler"]
     end
-    subgraph TRZ["트래블룰 — 망 연동"]
+    subgraph TRZ["트래블룰 — 신원정보 교환(VerifyVASP 등)"]
       direction LR
       GATE["트래블룰 서비스<br/>라우터 + 어댑터"]
       RX["수신 컴포넌트<br/>공개 HTTPS 인바운드"]
@@ -77,7 +77,7 @@ flowchart TB
 | 지갑 기반 | 메시지 큐 | 토픽 3개(deposit·withdrawal·internal) + 막힘 경보는 별도 채널 | [블록체인매니저 4장](../../블록체인매니저/설계/04-detect-confirm.md) |
 | 지갑 기반 | 정책 관리 서비스 | 벤더 정책 편집·게시 대행 — 거래 제출 자격과 분리 | [정책관리 0장](../../정책관리/설계/00-scope.md) |
 | 지갑 기반 | API Co-signer + Callback Handler | 보안 존(SGX/TEE) 설치물 — 키 share 공동서명 · 서명 직전 승인·거부 | [블록체인매니저 6장](../../블록체인매니저/설계/06-withdrawal.md) |
-| 트래블룰 | 트래블룰 서비스 | 게이트 — 라우터 + 망별 어댑터, 망 연동 전담 | [트래블룰 12장](../../트래블룰/설계/12-physical-layout.md) |
+| 트래블룰 | 트래블룰 서비스 | 게이트 — 라우터 + 어댑터, 상대 VASP 와의 신원정보 교환 전담 | [트래블룰 12장](../../트래블룰/설계/12-physical-layout.md) |
 | 트래블룰 | 수신 컴포넌트 | 상대 VASP 발신 수신 — 별도 배포·얇게 · 공개 HTTPS | [트래블룰 12장](../../트래블룰/설계/12-physical-layout.md) |
 | 트래블룰 | VerifyVASP Enclave | 벤더 강제 설치물 — 키·PII · 공개 HTTPS | [트래블룰 12장](../../트래블룰/설계/12-physical-layout.md) |
 | 트래블룰 | Fireblocks 스크리닝 클라이언트 | 전용 API user 로 validate 호출 — 자격은 시크릿 스토어/KMS 격리 | [트래블룰 8장](../../트래블룰/설계/08-gate-port.md) |
