@@ -217,5 +217,172 @@ window.MD = (() => {
     });
   }
 
-  return { esc, renderMarkdown, initMermaid, runMermaid, enhanceDiagrams };
+  /* ---------- 절 번호 참조 → 피크(peek) 모달 ----------
+     본문 속 "7.1" · "A.1" · "8장" · "6·8장" · "부록 A" 텍스트를 눌러
+     같은 폴더(중카테고리)의 해당 절/장을 작은 모달로 미리 본다. */
+
+  const refState = { boardPromise: null, docCache: new Map() };
+
+  function getCards() {
+    if (!refState.boardPromise)
+      refState.boardPromise = fetch('/api/board').then((r) => r.json()).then((b) => b.cards || []);
+    return refState.boardPromise;
+  }
+
+  function getDoc(path) {
+    if (!refState.docCache.has(path))
+      refState.docCache.set(path, fetch(`/api/doc?path=${encodeURIComponent(path)}`).then((r) => r.json()));
+    return refState.docCache.get(path);
+  }
+
+  function headingId(text) {
+    return text.toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, '').trim().replace(/\s+/g, '-');
+  }
+
+  function sliceSection(body, secId) {
+    const lines = body.split(/\r?\n/);
+    const re = new RegExp('^##\\s+' + secId.replace('.', '\\.') + '(?!\\d)');
+    const s = lines.findIndex((l) => re.test(l));
+    if (s < 0) return null;
+    let e = lines.length;
+    for (let i = s + 1; i < lines.length; i++) if (/^##\s/.test(lines[i])) { e = i; break; }
+    return { heading: lines[s].replace(/^##\s+/, ''), md: lines.slice(s + 1, e).join('\n') };
+  }
+
+  function ensurePeek() {
+    let peek = document.getElementById('peek');
+    if (peek) return peek;
+    peek = document.createElement('div');
+    peek.id = 'peek';
+    peek.className = 'peek hidden';
+    peek.innerHTML =
+      '<div class="peek-backdrop" data-close></div>' +
+      '<div class="peek-card">' +
+      '  <div class="peek-head"><h3 id="peek-title"></h3><div class="peek-actions">' +
+      '    <a id="peek-open" target="_blank" rel="noopener">문서 열기</a>' +
+      '    <button class="modal-close" type="button" data-close aria-label="닫기">×</button></div></div>' +
+      '  <article id="peek-body" class="doc-body"></article>' +
+      '</div>';
+    document.body.appendChild(peek);
+    peek.addEventListener('click', (e) => {
+      if (e.target.hasAttribute('data-close')) peek.classList.add('hidden');
+    });
+    // Escape 는 아래 깔린 카드 모달보다 피크를 먼저 닫는다 (capture)
+    document.addEventListener('keydown', (e) => {
+      if (peek.classList.contains('hidden')) return;
+      if (e.key === 'Escape') { peek.classList.add('hidden'); e.stopImmediatePropagation(); }
+    }, true);
+    return peek;
+  }
+
+  async function openRef(ref, ctx) {
+    const peek = ensurePeek();
+    const titleEl = peek.querySelector('#peek-title');
+    const bodyEl = peek.querySelector('#peek-body');
+    const openEl = peek.querySelector('#peek-open');
+    peek.classList.remove('hidden');
+    titleEl.textContent = ref.label;
+    openEl.removeAttribute('href');
+    bodyEl.innerHTML = '<p style="color:var(--muted)">불러오는 중…</p>';
+    bodyEl.scrollTop = 0;
+    try {
+      const cards = await getCards();
+      const folder = ctx.docPath.split('/').slice(0, -1).join('/');
+      const sibs = cards.filter((c) => c.path.startsWith(folder + '/'));
+      let target = null;
+      if (ref.kind === 'appendix') target = sibs.find((c) => (c.title || '').includes(`부록 ${ref.letter}`));
+      else target = sibs.find((c) => new RegExp('^' + ref.chapter + '\\.(?!\\d)').test(c.title || ''));
+      if (!target && ref.kind === 'section' && /^A$/i.test(String(ref.chapter)))
+        target = sibs.find((c) => (c.title || '').includes('부록 A'));
+      if (!target) throw new Error(`${ref.label} 문서를 이 폴더에서 못 찾았습니다`);
+
+      const data = await getDoc(target.path);
+      if (data.error) throw new Error(data.error);
+      const docBase = target.path.split('/').slice(0, -1).join('/');
+      let md = data.body;
+      let heading = (data.meta && data.meta.title) || target.title;
+      let hash = '';
+      if (ref.kind === 'section') {
+        const slice = sliceSection(data.body, ref.sec);
+        if (slice) { md = slice.md; heading = slice.heading; hash = '#' + headingId(slice.heading); }
+      }
+      titleEl.textContent = heading;
+      openEl.href = `doc?path=${encodeURIComponent(target.path)}${hash}`;
+      bodyEl.innerHTML = renderMarkdown(md, { docBase });
+      await runMermaid('#peek-body .mermaid');
+      enhanceDiagrams(bodyEl);
+      enhanceSectionRefs(bodyEl, { docPath: target.path }); // 피크 안의 참조도 이어서 열 수 있게
+    } catch (e) {
+      bodyEl.innerHTML = `<p style="color:var(--danger)">미리보기 실패: ${esc(e.message)}</p>`;
+    }
+  }
+
+  // "6·8장" 사슬 · "N장" · "N.M" · "A.M" · "부록 A/B" — 코드·링크·제목 밖 텍스트만 감싼다
+  // "개념 (세트) N장"·"블록체인매니저 N장" 은 다른 문서 세트 참조라 제외 (같은 폴더에서만 푼다)
+  const REF_RE = /(?<![\d.·])(?<!개념 )(?<!세트 )(?<!매니저 )(\d{1,2}(?:·\d{1,2})*장)|(?<![\d.])((?:\d{1,2}|A)\.\d{1,2})(?![.\d])|(부록 [AB])(?!\s*[—-])/g;
+
+  function refButton(label, ref) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'sec-ref';
+    b.textContent = label;
+    b.__ref = ref;
+    return b;
+  }
+
+  async function enhanceSectionRefs(root, ctx) {
+    if (!ctx || !ctx.docPath) return;
+    try { if (!(await getCards()).length) return; } catch { return; } // 정적 내보내기 등 API 없는 환경이면 그대로 둔다
+    const SKIP = new Set(['A', 'CODE', 'PRE', 'BUTTON', 'SCRIPT', 'STYLE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode(n) {
+        for (let el = n.parentElement; el && el !== root.parentElement; el = el.parentElement)
+          if (SKIP.has(el.tagName) || el.classList.contains('mermaid')) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      },
+    });
+    const nodes = [];
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n);
+
+    for (const node of nodes) {
+      const text = node.nodeValue;
+      REF_RE.lastIndex = 0;
+      if (!REF_RE.test(text)) continue;
+      REF_RE.lastIndex = 0;
+      const frag = document.createDocumentFragment();
+      let last = 0;
+      let m;
+      while ((m = REF_RE.exec(text))) {
+        frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+        if (m[1]) {
+          // "6·8장" — 숫자마다 버튼, 마지막에 "장"
+          const nums = m[1].slice(0, -1).split('·');
+          nums.forEach((num, i) => {
+            const isLast = i === nums.length - 1;
+            frag.appendChild(refButton(num + (isLast ? '장' : ''), { kind: 'chapter', chapter: num, label: `${num}장` }));
+            if (!isLast) frag.appendChild(document.createTextNode('·'));
+          });
+        } else if (m[2]) {
+          const [ch, sec] = [m[2].split('.')[0], m[2]];
+          frag.appendChild(refButton(m[2], { kind: 'section', chapter: ch, sec, label: sec }));
+        } else if (m[3]) {
+          frag.appendChild(refButton(m[3], { kind: 'appendix', letter: m[3].slice(-1), label: m[3] }));
+        }
+        last = m.index + m[0].length;
+      }
+      frag.appendChild(document.createTextNode(text.slice(last)));
+      node.parentNode.replaceChild(frag, node);
+    }
+
+    root.__secRefCtx = ctx; // 같은 컨테이너로 다른 문서를 다시 열어도 현재 문서 기준으로 푼다
+    if (!root.__secRefWired) {
+      root.__secRefWired = true;
+      root.addEventListener('click', (e) => {
+        const btn = e.target.closest('.sec-ref');
+        if (btn && btn.__ref) openRef(btn.__ref, root.__secRefCtx);
+      });
+    }
+  }
+
+  return { esc, renderMarkdown, initMermaid, runMermaid, enhanceDiagrams, enhanceSectionRefs };
 })();

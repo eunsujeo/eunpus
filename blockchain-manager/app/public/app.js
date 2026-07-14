@@ -540,6 +540,7 @@ async function showPreviewAt(idx) {
     modalBody.innerHTML = renderMarkdown(data.body, { docBase: c.path.split('/').slice(0, -1).join('/') });
     await window.MD.runMermaid('#modal-body .mermaid');
     window.MD.enhanceDiagrams(modalBody);
+    window.MD.enhanceSectionRefs(modalBody, { docPath: c.path });
   } catch (e) {
     modalBody.innerHTML = `<p style="color:var(--danger)">미리보기 실패: ${esc(e.message)}</p>`;
   }

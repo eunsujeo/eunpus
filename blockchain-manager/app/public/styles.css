@@ -369,6 +369,37 @@ body {
 .doc-body p { margin: 0 0 14px; }
 .doc-body ul, .doc-body ol { margin: 0 0 14px; padding-left: 22px; }
 .doc-body li { margin: 3px 0; }
+/* 절 번호 참조 — 눌러서 해당 절/장을 피크 모달로 미리보기 */
+.sec-ref {
+  background: none; border: none; padding: 0; margin: 0;
+  font: inherit; color: inherit; cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+}
+.sec-ref:hover { text-decoration-style: solid; text-decoration-color: currentColor; }
+
+.peek { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; }
+.peek.hidden { display: none; }
+.peek-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.55); }
+.peek-card {
+  position: relative; width: min(1200px, 92vw); max-height: calc(100vh - 64px);
+  display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden;
+}
+.peek-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 18px; border-bottom: 1px solid var(--hairline); flex-shrink: 0;
+}
+.peek-head h3 { margin: 0; font-size: 15px; font-weight: 600; color: var(--text-strong); }
+.peek-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.peek-actions a {
+  font-size: 12.5px; color: var(--muted); text-decoration: none;
+  border: 1px solid var(--hairline); border-radius: 8px; padding: 5px 10px; white-space: nowrap;
+}
+.peek-actions a[href]:hover { color: var(--text-strong); border-color: var(--border-hover); }
+#peek-body { padding: 14px 18px 18px; overflow: auto; }
+
 /* 본문 링크 — 옐로 액센트는 액션용이라 본문에선 과함. 본문색 + 옅은 밑줄로 절제 */
 .doc-body a {
   color: inherit;

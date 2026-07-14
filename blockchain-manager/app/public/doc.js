@@ -51,6 +51,7 @@ async function load() {
     bodyEl.innerHTML = renderMarkdown(data.body, { docBase: path.split('/').slice(0, -1).join('/') });
     await window.MD.runMermaid('#doc-body .mermaid');
     window.MD.enhanceDiagrams(bodyEl);
+    window.MD.enhanceSectionRefs(bodyEl, { docPath: path });
     renderNav(path);
     // doc?path=...#절-앵커 로 열렸으면 해당 절로 스크롤 (mermaid 렌더 후 — 높이 확정 뒤)
     if (location.hash) {
