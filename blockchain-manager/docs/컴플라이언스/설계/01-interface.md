@@ -16,11 +16,11 @@ status: To Do
 
 | # | 엔드포인트 | 무엇 | 요청 요지 | 응답 요지 |
 |---|---|---|---|---|
-| 1 | `GET /compliance/travel-rule/counterparties?query=` | 수취 거래소 검색 — 명부 통합 조회(VerifyVASP 회원 명부 + Notabene VASP 명부) | 거래소 이름 | 후보 목록 — 표시명 · 도달 가능 여부 · 처리 망 표시 |
-| 2 | `POST /compliance/travel-rule/withdrawal-checks` | 출금 확인 개시 | 출금 ID(멱등키) · 자산 · 금액 · 수취 주소 · 수취인 정보(이름·계좌·선택 거래소) | checkId · **verdict** — 동기 망은 즉답(APPROVED 등), 비동기 망은 PENDING |
-| 3 | `GET /compliance/travel-rule/withdrawal-checks/{checkId}` | 판정 조회 (이벤트 유실 대비 폴링 겸용) | — | verdict · APPROVED 면 **동봉물**(`travelRuleMessage` — 없는 망은 null)과 통과 증적 |
-| 4 | `POST /compliance/travel-rule/withdrawal-checks/{checkId}/report` | 온체인 제출 후 tx hash 보고 | tx hash | 접수 — 실패해도 재시도만, 출금을 막지 않는다 |
-| 5 | `POST /compliance/travel-rule/deposit-checks` | 입금 판별의 망 조회 대행 | source 주소 · 금액 · tx hash | 망 조회 결과 — 능동 조회(Check Transaction Status)·등록부 확인·명부 확인. **대기함 대조는 월렛 몫**이라 여기 없다 |
+| 1 | `GET /compliance/travel-rule/counterparties?query=` | **Search Counterparties** — 수취 거래소 검색. **서비스 DB 의 명부 스냅샷**에서 답한다(망 실시간 조회 아님 · 주기 동기화) | 거래소 이름 | 후보 목록 — 표시명 · 도달 가능 여부(동기화 기준) · 처리 망 표시 |
+| 2 | `POST /compliance/travel-rule/withdrawal-checks` | **Create Withdrawal Check** — 출금 확인 개시 | 출금 ID(멱등키) · 자산 · 금액 · 수취 주소 · 수취인 정보(이름·계좌·선택 거래소) | checkId · **verdict** — 동기 망은 즉답(APPROVED 등), 비동기 망은 PENDING |
+| 3 | `GET /compliance/travel-rule/withdrawal-checks/{checkId}` | **Get Withdrawal Check** — 판정·동봉물 수령 (이벤트 유실 대비 폴링 겸용) | — | verdict · APPROVED 면 **동봉물**(`travelRuleMessage` — 없는 망은 null)과 통과 증적 |
+| 4 | `POST /compliance/travel-rule/withdrawal-checks/{checkId}/report` | **Report Withdrawal Result** — 온체인 제출 후 tx hash 보고 | tx hash | 접수 — 실패해도 재시도만, 출금을 막지 않는다 |
+| 5 | `POST /compliance/travel-rule/deposit-checks` | **Create Deposit Check** — 입금 판별의 망 조회 대행 | source 주소 · 금액 · tx hash | 망 조회 결과 — 능동 조회(Check Transaction Status)·등록부 확인·명부 확인. **대기함 대조는 월렛 몫**이라 여기 없다 |
 
 경로를 `/compliance/travel-rule/...` 로 잡는 이유 — 다음 모듈(예: aml)이 생기면 `/compliance/aml/...` 로 나란히 붙는다.
 
@@ -30,7 +30,7 @@ status: To Do
 
 - **토픽**: `compliance`
 - **이벤트**: `withdrawal-check.settled` — checkId · 출금 ID · verdict(APPROVED/REJECTED) · APPROVED 면 동봉물 준비 완료 표시
-- 월렛은 이벤트 수신 시 3번(판정 조회)으로 동봉물·증적을 가져간다. 이벤트가 유실돼도 폴링(3번)과 PENDING 만료 규칙이 흐름을 끝낸다.
+- 월렛은 이벤트 수신 시 Get Withdrawal Check(3번)로 동봉물·증적을 가져간다. 이벤트가 유실돼도 폴링(3번)과 PENDING 만료 규칙이 흐름을 끝낸다.
 - **PENDING 만료의 주인은 이 서비스** — 망별 시간 규칙([트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))을 알고 있는 쪽이 만료를 판정해 REJECTED 로 settled 이벤트를 낸다.
 
 ## 인바운드 내부 API — 월렛이 구현, 컴플라이언스가 호출 (2개)
@@ -107,7 +107,7 @@ sequenceDiagram
 
 | 단계 (월렛 관점) | 국내 VerifyVASP (7.1) | 국내 CODE 직접 (7.10) | 해외 Notabene (7.2) |
 |---|---|---|---|
-| ① 수취 거래소 검색 | 회원 명부에서 반환 | 회원 명부(상호연동)에서 반환 | VASP 명부에서 반환 |
+| ① 수취 거래소 검색 | 스냅샷에서 반환 (원천: 회원 명부) | 스냅샷에서 반환 (원천: 회원 명부·상호연동) | 스냅샷에서 반환 (원천: VASP 명부) |
 | ② 확인 개시 (POST) | **PENDING** — 승인 왕복 진행 | APPROVED — 동기 즉답 | APPROVED — validate/full ①② 즉답 |
 | ③ 판정 대기 | `compliance` 이벤트 수신 후 조회 | 즉시 다음 단계 | 즉시 다음 단계 |
 | ④ 제출 | 동봉물 null — 그대로 제출 | 동봉물 null — 그대로 제출 | **travelRuleMessage 동봉**해 제출 |

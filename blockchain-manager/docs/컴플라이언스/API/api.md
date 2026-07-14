@@ -74,7 +74,7 @@ view: doc
 
 ## 멱등
 
-- **출금 확인 개시** — `withdrawalId` 가 멱등 키다. 같은 키 재요청은 새 확인을 만들지 않고 기존 확인을 `200` 으로 돌려준다. 같은 키에 다른 본문이면 `CONFLICT`(409).
+- **Create Withdrawal Check** — `withdrawalId` 가 멱등 키다. 같은 키 재요청은 새 확인을 만들지 않고 기존 확인을 `200` 으로 돌려준다. 같은 키에 다른 본문이면 `CONFLICT`(409).
 - **제출 결과 보고** — 같은 `txHash` 재보고는 no-op 이다.
 
 ## 이벤트 (메시지 큐)
@@ -82,7 +82,7 @@ view: doc
 비동기 판정의 도착(승인·거절·PENDING 만료)은 이 HTTP API 가 아니라 **메시지 큐 이벤트**로 온다.
 
 - **토픽**: `compliance` · 파티션 키 = `accountId` (기존 큐 규칙과 동일)
-- 월렛은 이벤트 수신 후 판정 조회로 동봉물·증적을 가져간다. 이벤트가 유실돼도 폴링과 PENDING 만료 규칙이 흐름을 끝낸다.
+- 월렛은 이벤트 수신 후 Get Withdrawal Check 로 동봉물·증적을 가져간다. 이벤트가 유실돼도 폴링과 PENDING 만료 규칙이 흐름을 끝낸다.
 - **PENDING 만료의 주인은 이 서비스** — 망별 시간 규칙([트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))을 아는 쪽이 만료를 판정해 `REJECTED` 로 발행한다.
 
 이벤트 본문은 [SettledEvent](#타입) 타입.
@@ -91,12 +91,13 @@ view: doc
 
 ### Counterparties
 
-#### 수취 거래소 검색
+#### Search Counterparties
 
 `GET` `https://{baseUrl}/compliance/travel-rule/counterparties`
 
-명부 통합 조회 — VerifyVASP 회원 명부(상호연동된 CODE 회원 포함)와 Notabene VASP 명부를 한 번에 검색한다.
 출금 화면에서 사용자가 수취 거래소를 고르는 단계에 쓴다.
+검색 대상은 망 실시간 조회가 아니라 **이 서비스 DB 의 명부 스냅샷**이다 — VerifyVASP 회원 명부(상호연동된 CODE 회원 포함)와 Notabene VASP 명부를 주기 동기화해 보관하고, 검색은 자체 DB 에서 답한다. 망 장애·지연이 출금 화면에 번지지 않고, `counterpartyId` 는 스냅샷의 우리 발급 안정 ID 다.
+상대의 현재 상태(health·도달성)는 검색 시점이 아니라 **Create Withdrawal Check 시점에 망에 재확인**한다 — 스냅샷이 동기화 주기만큼 낡아도 판정은 안전하다.
 
 _쿼리 파라미터_
 
@@ -131,7 +132,7 @@ _응답_
 
 ### Withdrawal Checks
 
-#### 출금 확인 개시
+#### Create Withdrawal Check
 
 `POST` `https://{baseUrl}/compliance/travel-rule/withdrawal-checks`
 
@@ -191,7 +192,7 @@ _응답_
 
 `409` — 같은 `withdrawalId` 에 다른 본문
 
-#### 판정 조회
+#### Get Withdrawal Check
 
 `GET` `https://{baseUrl}/compliance/travel-rule/withdrawal-checks/{checkId}`
 
@@ -224,7 +225,7 @@ _응답_
 
 `404` — `CHECK_NOT_FOUND`
 
-#### 제출 결과 보고
+#### Report Withdrawal Result
 
 `POST` `https://{baseUrl}/compliance/travel-rule/withdrawal-checks/{checkId}/report`
 
@@ -260,7 +261,7 @@ _응답_
 
 ### Deposit Checks
 
-#### 입금 판별의 망 조회 대행
+#### Create Deposit Check
 
 `POST` `https://{baseUrl}/compliance/travel-rule/deposit-checks`
 
@@ -312,7 +313,7 @@ _응답_
 
 상대 VASP 의 사전 검증 요청(수신 질문)에 답하기 위한 계약. 응답 형식·에러 형식은 위 공통 규약과 동일하다.
 
-#### 주소 귀속·실명 확인 조회
+#### Verify Address Attribution
 
 `POST` `https://{walletBaseUrl}/internal/compliance/address-attribution`
 
@@ -355,7 +356,7 @@ _응답_
 | `accountId` | string (null 가능) | - | 귀속 계정 |
 | `nameMatched` | boolean (null 가능) | - | 실명 대조 결과 — `name` 이 안 왔으면 null |
 
-#### 사전 검증 기록 전달
+#### Submit Pre-Verification
 
 `POST` `https://{walletBaseUrl}/internal/compliance/pre-verifications`
 
@@ -418,9 +419,9 @@ _응답_
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `counterpartyId` | string | 필수 | 후보 식별자 — 출금 확인 개시에 그대로 넘긴다 |
+| `counterpartyId` | string | 필수 | 후보 식별자 — Create Withdrawal Check 에 그대로 넘긴다 |
 | `name` | string | 필수 | 표시명 |
-| `reachable` | boolean | 필수 | 현재 구성으로 도달 가능한가 |
+| `reachable` | boolean | 필수 | 현재 구성으로 도달 가능한가 — 마지막 동기화 기준. 최종 확인은 Create Withdrawal Check 에서 |
 | `network` | string | 필수 | 처리 망 표시 — `VERIFYVASP` `CODE_INTEROP` `NOTABENE`. 화면 안내·감사용 — 월렛 로직 분기 금지 |
 
 ### Beneficiary
