@@ -7,17 +7,21 @@ status: To Do
 
 도달 가능한 상대 × 방향을 한눈에. 입금 시나리오(7.3·7.4·7.7·7.9·7.11·A.2)는 모두 확정 후 **7.5 도착 후 판별**로 합류한다.
 
-| 상대 유형 | 출금 | 입금 | 채널 |
+| 우리 | 상대 | 출금 | 입금 |
 |---|---|---|---|
-| 국내 VerifyVASP (업비트 등) | 7.1 | 7.3 | VerifyVASP 직접 연동(자체 Enclave) |
-| 국내 CODE (빗썸·코인원·코빗) | A.1 — 우리 코드는 7.1 과 동일 | A.2 — 7.3 과 동일 | 기본 VerifyVASP 상호연동 경유 · 대안 CODE 직접(CODE-Cipher, 7.10/7.11) |
-| 해외 (TRUST·Sygna 등 Notabene 브릿지) | 7.2 | 7.4 | Notabene · Fireblocks 경유 |
-| 해외 (같은 상대 · 대안) | 7.6 | 7.7 | Notabene 직접(Fireblocks 미경유) |
-| 개인지갑(자기수탁) | 7.8 | 7.9 | Address Registry — 정보 교환 상대 없음 |
-| 국내 VerifyVASP (게이트웨이 경유 · 검증) | 9장 | 9장 | Notabene 게이트웨이 — 라이브 여부 미확정 |
-| ~~GTR 단독(Binance 글로벌)~~ | — | — | 제외 — Notabene 미브릿지. 열려면 Sumsub 등 제공자 추가(6장) |
+| **VerifyVASP** (자체 Enclave) | 국내 — 업비트 등 VerifyVASP 회원 | 7.1 | 7.3 |
+| **VerifyVASP** — 상호연동이 CODE 까지 나른다 | 국내 — 빗썸·코인원·코빗 (CODE 회원) | A.1 (7.1 과 동일) | A.2 (7.3 과 동일) |
+| **Notabene** (Fireblocks 경유) | 해외 — TRUST·Sygna 등 Notabene 브릿지 망 | 7.2 | 7.4 |
+| **Address Registry** — 정보 교환 상대 없음 | 본인 개인지갑 (자기수탁) | 7.8 | 7.9 |
 
-국내 VerifyVASP 를 자체 Enclave 없이 **Notabene 게이트웨이로 우회**하는 후보(7.1/7.3 직접 연동의 대체)는 **9장**에서 다룬다 — 단 Notabene 의 VerifyVASP 라이브 지원 여부가 불확실(벤더 확인 대상)이라, 확인 전까지 직접 연동을 기준으로 둔다.
+우리 쪽 창구는 셋뿐이다 — 국내는 상대가 어느 망 회원이든 **우리 VerifyVASP 하나**, 해외는 **Notabene**, 개인지갑은 **Address Registry**.
+
+**대안·미확정·제외** — 본 표의 확정 경로가 아니다:
+
+- **Notabene 직접** (Fireblocks 미경유 대안): 7.6·7.7
+- **CODE 직접** (상호연동 실효 부족 시 대안 · CODE-Cipher): 7.10·7.11
+- **Notabene 게이트웨이로 VerifyVASP 도달** (라이브 여부 미확정 — 확인 전까지 직접 연동이 기준): 9장
+- **GTR 단독 상대** — GTR(Global Travel Rule)은 Binance 계열이 주도하는 해외 트래블룰 얼라이언스로, Notabene 이 브릿지하지 않는다. 여기에만 속한 상대(Binance 글로벌 등)는 제외 — Sumsub 등 제공자 추가로 열림(10장)
 
 ## 그리는 규칙 — 우리 측과 중앙을 나눈다
 
