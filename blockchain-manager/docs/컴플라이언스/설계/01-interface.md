@@ -3,35 +3,103 @@ title: 1. 월렛 ↔ 컴플라이언스 인터페이스 — API·이벤트 계�
 status: To Do
 ---
 
-월렛 백엔드가 컴플라이언스 서비스를 호출하는 계약의 초안이다. 목표는 하나 — **망 세 개(VerifyVASP·CODE·Notabene)의 차이가 이 표면에 새어 나오지 않는 것.**
-월렛은 어느 망으로 처리되는지 몰라도 같은 호출 순서로 끝난다. 필드 타입의 정본은 이 문서가 아니라 API 문서에서 정의한다.
+월렛 백엔드가 컴플라이언스 서비스를 호출하는 계약의 초안이다.
+월렛은 어느 솔루션(VerifyVASP·CODE·Notabene)으로 처리되는지 몰라도 같은 호출 순서로 끝난다. 필드 타입은 이 문서가 아니라 API 문서에서 정의한다.
+
+## Verdict 타입
+
+오른쪽 네 열은 각 솔루션이 돌려주는 상태·응답이고, 그것들이 왼쪽의 verdict 하나로 접혀서 월렛에 도달한다.
+
+| TrVerdict | 뜻 | Notabene (해외 · Fireblocks 경유) | VerifyVASP (국내 · 비동기) | CODE (국내 직접 · 동기) | 개인지갑 |
+|---|---|---|---|---|---|
+| `NOT_REQUIRED` | 트래블룰 대상 아님<br/>· 금액이 한국 기준(원화 100만원) 미만이거나<br/>· 수취가 개인지갑 — 교환할 상대 VASP 없음 | validate/full 이 사유를 반환:<br/>· `BELOW_THRESHOLD` — 보내는 쪽 기준 미만<br/>· `NON_CUSTODIAL` — 개인지갑<br/>위 사유(또는 동일 VASP 내부 이전)로 판정되면<br/>Notabene 에 `Saved` 로 기록 — 전송 없이 사유만 남음 | 한국 기준(100만원) 미만<br/>— 보내는 쪽이 원화 환산가 필드<br/>(tradePrice·KRW)를 채워 보냄 | 한국 기준(100만원) 미만<br/>— 원화 환산가 필드 동일 | 정보 교환 없음 |
+| `APPROVED` | 통과 — 정보 교환·검증이 승인됐다 | 출금 — validate/full 검증 통과(`isValid`)<br/>입금 — 벤더 스크리닝 통과<br/>(`Completed` → Post-Screening Accept)로 도착 | User Verification 승인<br/>— Callback 도착 | Asset Transfer Authorization 승인<br/>— 동기 즉답 | Address Registry(주소 등록부 —<br/>이용자가 사전 등록·소유 인증한<br/>본인 지갑 목록)에 있는 주소 |
+| `PENDING` | 아직 결과가 없다 — 결과가 나면<br/>큐 이벤트(`withdrawal-check.settled`)로 알린다 | —<br/>(동기 즉답이라 없음) | 접수 번호(UUID)만 즉시 반환,<br/>결과는 Callback 대기 | —<br/>(동기 즉답이라 없음) | — |
+| `REJECTED` | 거절 — 상대 거절 또는 PENDING 만료 | — (검증 실패는 요청 오류로 응답)<br/>벤더 게이트의 `Rejected`·`Blocking Time Expired` 는 제출 뒤<br/>블록체인 매니저의 거래 상태 이벤트(REJECTED)로 온다 | 상대 거절<br/>· PENDING 만료 | 상대 거절 | 미등록·미인증 |
 
 ## 설계 원칙
 
-- **비동기가 기본형** — 동기 망(CODE·Notabene)은 "즉시 완료되는 비동기"로 접는다. 월렛의 처리 분기는 verdict 값뿐이다.
-- **판정 어휘는 TrVerdict 넷** — NOT_REQUIRED / APPROVED / PENDING / REJECTED ([트래블룰 8장](../../트래블룰/설계/08-gate-port.md)). 망 원어는 응답에 싣지 않는다 — 감사 조회로만 연다.
-- **멱등** — 월렛의 출금 ID 가 멱등키다. 같은 키 재호출은 새 확인을 만들지 않고 기존 확인을 돌려준다.
+- **비동기가 기본형** — 동기 솔루션(CODE·Notabene)은 "즉시 완료되는 비동기"로 접는다. 월렛의 처리 분기는 verdict 뿐이다.
+- **멱등** — 멱등키는 `externalTxId`, 블록체인 매니저 제출에 쓰는 월렛의 출금 건 식별자 그대로다. 같은 키 재호출은 기존 check 를 돌려준다 (같은 키에 다른 내용이면 409).
 
-## API — 월렛 → 컴플라이언스 (5개)
+## API — 월렛 → 컴플라이언스 (7개)
 
-| # | 엔드포인트 | 무엇 | 요청 요지 | 응답 요지 |
-|---|---|---|---|---|
-| 1 | `GET /compliance/travel-rule/counterparties?query=` | **Search Counterparties** — 수취 거래소 검색. **서비스 DB 의 명부 스냅샷**에서 답한다(망 실시간 조회 아님 · 주기 동기화) | 거래소 이름 | 후보 목록 — 표시명 · 도달 가능 여부(동기화 기준) · 처리 망 표시 |
-| 2 | `POST /compliance/travel-rule/withdrawal-checks` | **Create Withdrawal Check** — 출금 확인 개시 | 출금 ID(멱등키) · 자산 · 금액 · 수취 주소 · 수취인 정보(이름·계좌·선택 거래소) | checkId · **verdict** — 동기 망은 즉답(APPROVED 등), 비동기 망은 PENDING |
-| 3 | `GET /compliance/travel-rule/withdrawal-checks/{checkId}` | **Get Withdrawal Check** — 판정·동봉물 수령 (이벤트 유실 대비 폴링 겸용) | — | verdict · APPROVED 면 **동봉물**(`travelRuleMessage` — 없는 망은 null)과 통과 증적 |
-| 4 | `POST /compliance/travel-rule/withdrawal-checks/{checkId}/report` | **Report Withdrawal Result** — 온체인 제출 후 tx hash 보고 | tx hash | 접수 — 실패해도 재시도만, 출금을 막지 않는다 |
-| 5 | `POST /compliance/travel-rule/deposit-checks` | **Create Deposit Check** — 입금 판별의 망 조회 대행 | source 주소 · 금액 · tx hash | 망 조회 결과 — 능동 조회(Check Transaction Status)·등록부 확인·명부 확인. **대기함 대조는 월렛 몫**이라 여기 없다 |
+출금 확인 한 건은 **check** 리소스(WithdrawalCheck)로 만들어진다 — `checkId` 로 식별되고, 그 안에 verdict·travelRuleMessage·통과 증적이 담긴다. 2~4번이 이 리소스의 생성·조회·보고다.
+
+| # | 엔드포인트 | 무엇 |
+|---|---|---|
+| 1 | `GET /compliance/travel-rule/counterparties` | **List Counterparties** — 출금 화면에서 고객에게 보여줄 수취 거래소 목록. **컴플라이언스 DB 의 목록 스냅샷**에서 답한다(솔루션 실시간 조회 아님 · 주기 동기화) |
+| 2 | `POST /compliance/travel-rule/withdrawal-checks` | **Create Withdrawal Check** — 출금 확인 개시 (`externalTxId` = 멱등키). 동기 솔루션은 최종 verdict·travelRuleMessage 까지 즉답 — 이 응답만으로 제출 가능. 비동기 솔루션은 PENDING |
+| 3 | `GET /compliance/travel-rule/withdrawal-checks/{checkId}` | **Get Withdrawal Check** — PENDING 해소: settled 이벤트 후 verdict·travelRuleMessage 수령 (유실 대비 폴링 겸용). 동기 즉답 건은 불필요 |
+| 4 | `POST /compliance/travel-rule/withdrawal-checks/{checkId}/report` | **Report Withdrawal Result** — 온체인 제출 후 tx hash 보고. 비차단 — 이 호출의 실패는 출금 흐름과 무관(재시도만 하면 된다) |
+| 5 | `POST /compliance/travel-rule/deposit-checks` | **Create Deposit Check** — 입금 판별의 솔루션 조회 대행. **대기함 대조는 월렛 몫**이라 여기 없다 |
+| 6 | `POST /compliance/travel-rule/registered-wallets` | **Register Wallet** — 개인지갑 등록·소유 증명의 벤더(Address Registry) 반영 대행. 등록 화면·소유 인증 UX·등록 유도 정책은 월렛 몫 |
+| 7 | `DELETE /compliance/travel-rule/registered-wallets/{walletId}` | **Deregister Wallet** — 등록 해제의 벤더 반영 대행. 해제된 주소로의 출금은 다시 미등록 개인지갑 취급 |
+
+요청·응답 본문의 모양과 필드는 [API 문서](../API/api.md)에 정의한다.
 
 경로를 `/compliance/travel-rule/...` 로 잡는 이유 — 다음 모듈(예: aml)이 생기면 `/compliance/aml/...` 로 나란히 붙는다.
 
 ## 이벤트 — 컴플라이언스 → 월렛 (큐 · 확정)
 
-비동기 판정의 도착은 **메시지 큐 전용 토픽**으로 알린다 — 매니저→월렛이 큐인 기존 패턴과 동일하고, 파티션 키도 같은 규칙(계정 단위)이다.
+비동기 확인의 결과 도착은 **메시지 큐 전용 토픽**으로 알린다 — 매니저→월렛이 큐인 기존 패턴과 동일하고, 파티션 키도 같은 규칙(계정 단위)이다.
 
 - **토픽**: `compliance`
-- **이벤트**: `withdrawal-check.settled` — checkId · 출금 ID · verdict(APPROVED/REJECTED) · APPROVED 면 동봉물 준비 완료 표시
-- 월렛은 이벤트 수신 시 Get Withdrawal Check(3번)로 동봉물·증적을 가져간다. 이벤트가 유실돼도 폴링(3번)과 PENDING 만료 규칙이 흐름을 끝낸다.
-- **PENDING 만료의 주인은 이 서비스** — 망별 시간 규칙([트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))을 알고 있는 쪽이 만료를 판정해 REJECTED 로 settled 이벤트를 낸다.
+- **이벤트**: `withdrawal-check.settled` — checkId · externalTxId · verdict(APPROVED/REJECTED) · APPROVED 면 travelRuleMessage 준비 완료 표시. settled = check 가 최종 결과(APPROVED·REJECTED — PENDING 만료 포함)에 도달해 더는 바뀌지 않는다
+- 월렛은 이벤트 수신 시 Get Withdrawal Check(3번)로 travelRuleMessage·증적을 가져간다. 이벤트가 유실돼도 폴링(3번)과 PENDING 만료 규칙이 흐름을 끝낸다.
+- **PENDING 만료의 주인은 이 서비스** — 솔루션별 시간 규칙([트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))을 알고 있는 쪽이 만료를 가려 REJECTED 로 settled 이벤트를 낸다.
+
+## 배치 — 서비스가 스스로 도는 두 주기 작업
+
+월렛 호출 없이 서비스가 주기적으로 실행한다.
+
+### 목록 동기화 — List Counterparties 의 스냅샷을 만든다
+
+주기는 미정(0장 미확정). 목록 API 출처 — [VerifyVASP List VASP](https://docs.verifyvasp.com/reference/travelrule-list-vasp-ids)(`GET /v1/vasps` · 상호연동 CODE 회원 포함) · [Fireblocks Get All VASPs](https://developers.fireblocks.com/api-reference/travel-rule/get-all-vasps) · [Fireblocks TRLink List VASPs](https://developers.fireblocks.com/api-reference/trlink/list-vasps)(Notabene VASP 디렉토리 · 페이지네이션).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    box rgb(224,242,254) 컴플라이언스 서비스
+    participant SCH as 배치 스케줄러
+    participant DB as 컴플라이언스 DB
+    end
+    participant VV as VerifyVASP
+    participant FB as Fireblocks<br/>(Notabene)
+
+    loop 주기 실행
+        SCH->>VV: List VASP — GET /v1/vasps (protocol=ALL)
+        VV-->>SCH: 회원 목록 — vaspId · vaspName · health · protocol<br/>(상호연동 CODE 회원은 vaspStatus INTEROPERATED)
+        SCH->>FB: Get All VASPs (페이지네이션 — 끝까지 반복)
+        FB-->>SCH: VASP 목록 — DID · 이름 (Notabene VASP 디렉토리)
+        SCH->>SCH: 병합 — 이름 정규화 · 중복 정리
+        SCH->>DB: 스냅샷 갱신 — 신규는 counterpartyId 발급, 기존은 매핑 유지<br/>reachable 은 health·도달성에서 계산
+        DB-->>SCH: 갱신 결과 — 추가 · 변경 · 제거 건수
+    end
+```
+
+### PENDING 만료 스캔 — settled 이벤트의 REJECTED(만료) 를 만든다
+
+시간 규칙은 [트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    box rgb(224,242,254) 컴플라이언스 서비스
+    participant SCH as 배치 스케줄러
+    participant DB as 컴플라이언스 DB
+    end
+    participant MQ as 큐<br/>compliance 토픽
+
+    loop 주기 실행
+        SCH->>DB: 기한 지난 PENDING check 검색
+        DB-->>SCH: 만료 대상 목록 — checkId · externalTxId · accountId
+        SCH->>DB: REJECTED(만료) 확정 저장
+        DB-->>SCH: 저장 완료
+        SCH->>MQ: withdrawal-check.settled 발행 (만료 건마다)
+        MQ-->>SCH: 발행 확인 (ack)
+    end
+```
 
 ## 인바운드 내부 API — 월렛이 구현, 컴플라이언스가 호출 (2개)
 
@@ -39,8 +107,8 @@ status: To Do
 
 | # | 계약 | 무엇 |
 |---|---|---|
-| 1 | 주소 귀속·실명 확인 조회 | "이 주소가 너희 고객 아무개 소유인가" — 주소↔계정은 월렛이, 실명 대조는 그 데이터를 가진 서비스에 이어 조회 |
-| 2 | 사전 검증 기록 전달 | 수신한 트래블룰 정보(source·수취인·금액·이후 tx hash)를 월렛에 넘긴다 — 월렛이 대기함에 적재하고 도착 후 대조의 재료로 쓴다 |
+| 1 | **Verify Address Attribution** — 주소 귀속·실명 확인 조회 | "이 주소가 너희 고객 아무개 소유인가" — 주소↔계정은 월렛이, 실명 대조는 그 데이터를 가진 서비스에 이어 조회 |
+| 2 | **Submit Pre-Verification** — 사전 검증 기록 전달 | 수신한 트래블룰 정보(source·수취인·금액·이후 tx hash)를 월렛에 넘긴다 — 월렛이 대기함에 적재하고 도착 후 대조에 쓴다 |
 
 ## 시퀀스 — 출금 확인 한 사이클
 
@@ -51,37 +119,48 @@ sequenceDiagram
     participant BE as 출금 유스케이스<br/>상태 흐름
     end
     box rgb(224,242,254) 컴플라이언스 서비스
-    participant CP as 트래블룰 게이트<br/>라우터 + 망 어댑터
+    participant CP as 트래블룰 게이트<br/>라우터 + 솔루션 어댑터
+    participant DB as 컴플라이언스 DB
     end
     participant MQ as 큐<br/>compliance 토픽
-    participant NET as 망<br/>VerifyVASP · CODE · Notabene
+    participant NET as 솔루션<br/>VerifyVASP · CODE · Notabene
 
-    BE->>CP: ② POST withdrawal-checks — 출금 ID(멱등키)·자산·금액·수취 정보
-    CP->>NET: 망 왕복 — 어댑터가 망 차이 흡수
-    alt 동기 망 (CODE · Notabene)
+    BE->>CP: ② POST withdrawal-checks — externalTxId(멱등키)·자산·금액·수취 정보
+    CP->>DB: check 생성 — externalTxId·요청 본문 해시 저장 (멱등·409 대조의 근거)
+    CP->>NET: 솔루션 왕복 — 어댑터가 솔루션 차이 흡수
+    alt 동기 솔루션 (CODE · Notabene)
         NET-->>CP: 즉답
-        CP-->>BE: verdict 즉시 (APPROVED · NOT_REQUIRED · REJECTED)
-    else 비동기 망 (VerifyVASP)
+        CP->>DB: 최종 verdict·travelRuleMessage·증적 저장
+        CP-->>BE: verdict·travelRuleMessage·증적 즉시 — 이 응답만으로 제출 가능
+    else 비동기 솔루션 (VerifyVASP)
+        CP->>DB: PENDING·접수 번호(UUID) 저장
         CP-->>BE: PENDING — 월렛은 "트래블룰 확인 중"으로 대기
         NET-->>CP: 승인·거절 도착 (Callback)
+        CP->>DB: 최종 verdict·증적 저장
         CP-->>MQ: withdrawal-check.settled 발행
         MQ-->>BE: 이벤트 수신
+        BE->>CP: ③ GET withdrawal-checks/{checkId}
+        CP->>DB: check 조회
+        CP-->>BE: verdict · travelRuleMessage(또는 null) · 통과 증적
     end
-    BE->>CP: ③ GET withdrawal-checks/{checkId}
-    CP-->>BE: verdict · 동봉물(travelRuleMessage 또는 null) · 통과 증적
-    BE->>BE: APPROVED → 동봉물 실어 매니저에 제출
-    BE->>CP: ④ POST report — tx hash
-    CP->>NET: 사후 보고 (필요한 망만 · 아니면 no-op)
+    alt APPROVED · NOT_REQUIRED
+        BE->>BE: travelRuleMessage 실어 매니저에 제출
+        BE->>CP: ④ POST report — tx hash
+        CP->>DB: tx hash 기록
+        CP->>NET: 사후 보고 (필요한 솔루션만 · 아니면 no-op)
+    else REJECTED — 즉답 또는 settled
+        BE->>BE: 반려 — 잠긴 금액 가용 복귀 (8장 상태 흐름)
+    end
 ```
 
-월렛이 아는 것은 API 5개와 verdict 넷뿐이다 — 분기(동기/비동기)는 그림에 있지만 월렛 코드에는 없다: 즉답이면 이벤트를 기다리지 않을 뿐, 이후 단계(③→제출→④)는 동일하다.
+월렛이 아는 것은 API 7개와 verdict 넷뿐이다. ②(Create)와 ③(Get)의 응답은 같은 모양(WithdrawalCheck)이라 — **동기 즉답이면 ② 응답으로 바로 제출**하고, **③ 은 PENDING 해소·이벤트 유실 대비 전용**이다.
 
 ## 시퀀스 — 입금 쪽 두 계약
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant NET as 망<br/>상대 VASP 발 사전 검증
+    participant NET as 솔루션<br/>상대 VASP 발 사전 검증
     box rgb(224,242,254) 컴플라이언스 서비스
     participant CP as 트래블룰 게이트
     end
@@ -96,27 +175,31 @@ sequenceDiagram
     CP-->>NET: 응답 회신
     Note over BE: (자금 도착 · 확정 — 매니저 deposit-events)
     BE->>BE: 대기함 대조 — 매칭·귀속 판단은 월렛 몫
-    opt 대조 재료 없음
+    opt 대조할 기록 없음
         BE->>CP: ⑤ POST deposit-checks — source·금액·tx hash
         CP->>NET: 능동 조회 (Check Transaction Status 등)
-        CP-->>BE: 망 조회 결과 — 판정 재료
+        CP-->>BE: 솔루션 조회 결과 — 월렛 판단에 쓸 정보
     end
 ```
 
-## 시나리오 워크스루 — 월렛의 호출 순서는 세 망 모두 같다
+## 시나리오 워크스루 — 월렛의 호출 순서는 세 솔루션 모두 같다
 
 | 단계 (월렛 관점) | 국내 VerifyVASP (7.1) | 국내 CODE 직접 (7.10) | 해외 Notabene (7.2) |
 |---|---|---|---|
-| ① 수취 거래소 검색 | 스냅샷에서 반환 (원천: 회원 명부) | 스냅샷에서 반환 (원천: 회원 명부·상호연동) | 스냅샷에서 반환 (원천: VASP 명부) |
-| ② 확인 개시 (POST) | **PENDING** — 승인 왕복 진행 | APPROVED — 동기 즉답 | APPROVED — validate/full ①② 즉답 |
-| ③ 판정 대기 | `compliance` 이벤트 수신 후 조회 | 즉시 다음 단계 | 즉시 다음 단계 |
-| ④ 제출 | 동봉물 null — 그대로 제출 | 동봉물 null — 그대로 제출 | **travelRuleMessage 동봉**해 제출 |
-| ⑤ 보고 (report) | tx hash 보고 실행 | 실행 | no-op — 벤더가 이미 안다 |
+| 목록 (List Counterparties) | 스냅샷에서 반환 (원천: 회원 목록) | 스냅샷에서 반환 (원천: 회원 목록·상호연동) | 스냅샷에서 반환 (원천: VASP 목록) |
+| 개시 (Create Withdrawal Check) | **PENDING** — 승인 왕복 진행 | APPROVED — 동기 즉답 | APPROVED — validate/full 판별·검증 즉답 |
+| 결과 대기 (Get Withdrawal Check) | `compliance` 이벤트 수신 후 Get 으로 수령 | 불필요 — 개시 응답으로 바로 | 불필요 — 개시 응답으로 바로 |
+| 제출 | travelRuleMessage null — 그대로 제출 | travelRuleMessage null — 그대로 제출 | **travelRuleMessage 동봉**해 제출 |
+| 보고 (Report Withdrawal Result) | tx hash 보고 실행 | 실행 | no-op — 벤더가 이미 안다 |
 
-월렛 코드는 ②~⑤ 를 망 구분 없이 같은 순서로 탄다 — 다른 것은 verdict 가 즉답이냐 PENDING 이냐, 동봉물이 null 이냐뿐이고 둘 다 값의 차이지 흐름의 차이가 아니다.
+가운데 열(CODE 직접)은 상호연동 실효 부족 시의 **대안**이다 — 빗썸 등 CODE 회원의 기본 경로는 상호연동(A.1)이라 왼쪽 VerifyVASP 열과 동일하게 돈다.
+
+Notabene(Fireblocks) 경로 하나만 의미가 다른 지점 — **최종 게이트(Post-Screening)는 제출 뒤 벤더 안에서 한 번 더 돈다**([트래블룰 2장](../../트래블룰/설계/02-withdrawal.md)). 이 경로의 APPROVED 는 "검증 통과·travelRuleMessage 준비 완료"라는 뜻이고, 벤더 스크리닝에서 거절되면 그 결과는 컴플라이언스가 아니라 **매니저의 거래 상태(REJECTED)** 로 온다 — 기존 출금 실패 처리와 같은 자리다.
+
+월렛 코드는 개시→제출→보고를 솔루션 구분 없이 같은 순서로 탄다 — 다른 것은 verdict 가 즉답이냐 PENDING 이냐, travelRuleMessage 가 null 이냐뿐이고 둘 다 값의 차이지 흐름의 차이가 아니다.
 
 ## 미확정 — 이 계약에 걸리는 것
 
-- **원화 임계 판정의 위치** — 벤더가 원화 기준을 지원하는지 미확정([트래블룰 14장](../../트래블룰/설계/14-fireblocks-questions.md) 문의 1). 어느 쪽이든 판정은 이 서비스 안에서 흡수하고, 월렛 표면(verdict)은 바뀌지 않는다.
+- **원화 임계 판단의 위치** — 벤더가 원화 기준을 지원하는지 미확정([트래블룰 14장](../../트래블룰/설계/14-fireblocks-questions.md) 문의 1). 어느 쪽이든 이 서비스 안에서 흡수하고, 월렛 표면(verdict)은 바뀌지 않는다.
 - **validate/full 1차 호출** — 수취인 정보 없이 `type` 판별을 돌려주는지 테스트로 확정([트래블룰 2장](../../트래블룰/설계/02-withdrawal.md)).
-- **타입 정본** — 요청/응답 필드는 [API 문서](../API/api.md)에 한 곳에 정의한다. 이 문서는 계약의 모양까지만.
+- **타입 정의** — 요청/응답 필드는 [API 문서](../API/api.md)에 한 곳에 정의한다. 이 문서는 계약의 모양까지만.

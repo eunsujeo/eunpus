@@ -53,34 +53,34 @@ flowchart LR
 
 | 프로토콜/네트워크 | 성격 | 카운터파티 발견·검증 | 비고 |
 |---|---|---|---|
-| TRISA | 오픈소스, P2P 메시징 + 중앙 CA(인증서 권한) | 중앙 CA 가 VASP 공개키 인증서 명부 역할 | PII 는 VASP 끼리 직접 P2P 교환 |
-| TRP(Travel Rule Protocol) | 오픈, 중앙 명부 + E2E API | 중앙 명부 서비스로 VASP 발견 | Coinbase 등 업계 컨소시엄 주도 |
+| TRISA | 오픈소스, P2P 메시징 + 중앙 CA(인증서 권한) | 중앙 CA 가 VASP 공개키 인증서 목록 역할 | PII 는 VASP 끼리 직접 P2P 교환 |
+| TRP(Travel Rule Protocol) | 오픈, 중앙 목록 + E2E API | 중앙 목록 서비스로 VASP 발견 | Coinbase 등 업계 컨소시엄 주도 |
 | OpenVASP | 오픈, 탈중앙 발견 | 공유 인프라 최소화·메시지 표준 중심 | 프라이버시·탈중앙 강조 |
-| TRUST | 폐쇄망(미국 중심) | 멤버 한정 | 미국 거래소 연합 |
+| TRUST | 폐쇄형(미국 중심) | 멤버 한정 | 미국 거래소 연합 |
 | Sygna Bridge | 상용 | 자체 네트워크 | — |
 | VerifyVASP | 상용, P2P·E2E, API | 검증된 VASP 네트워크(150여 곳·30여 국) | 한국계 |
-| Shyft / Veriscope | 온체인 접근 | 블록체인 기반 명부 | 프로토콜 자체가 체인 |
+| Shyft / Veriscope | 온체인 접근 | 블록체인 기반 목록 | 프로토콜 자체가 체인 |
 | Notabene | 프로토콜 비종속 게이트웨이 | W3C DID·검증가능자격증명(VC) 으로 기존 프로토콜을 브릿지 | 여러 프로토콜을 한 대시보드로 |
 
 ## 공통점과 차이
 
 거의 모든 프로토콜이 IVMS101 데이터 포맷과 E2E 암호화를 쓴다는 점은 같다. 갈리는 지점은 둘이다.
 
-- **카운터파티 발견 방식** — 중앙 명부(TRP)냐, P2P + 중앙 CA(TRISA)냐, 온체인 명부(Shyft·Veriscope)냐.
-- **거버넌스·멤버십** — 누구나 참여하는 오픈(TRISA·TRP·OpenVASP)이냐, 멤버만 들어오는 폐쇄망(TRUST)이냐, 상용 네트워크(Sygna Bridge·VerifyVASP)냐.
+- **카운터파티 발견 방식** — 중앙 목록(TRP)냐, P2P + 중앙 CA(TRISA)냐, 온체인 목록(Shyft·Veriscope)냐.
+- **거버넌스·멤버십** — 누구나 참여하는 오픈(TRISA·TRP·OpenVASP)이냐, 멤버만 들어오는 폐쇄형(TRUST)이냐, 상용 네트워크(Sygna Bridge·VerifyVASP)냐.
 
 VerifyVASP 는 국내 3종에도 등장하고 글로벌 표에도 오르는데, 상용 P2P·E2E API 네트워크로서 검증된 VASP 를 150여 곳·30여 국 규모로 묶고 있기 때문이다.
 
 ## 상호운용 문제
 
-핵심 난제는 단일 프로토콜이 모든 상대를 덮지 못한다는 것이다. 내가 어느 망에 속하든 상대 VASP 가 다른 망에 있으면 트래블룰 데이터를 주고받을 수 없다. TRISA 가 TRP·OpenVASP·Sygna Bridge 와 일부 상호운용을 달성한 것처럼 진영 간 다리를 놓는 시도가 있지만 완전하지 않다.
+핵심 난제는 단일 프로토콜이 모든 상대를 덮지 못한다는 것이다. 내가 어느 솔루션에 속하든 상대 VASP 가 다른 솔루션에 있으면 트래블룰 데이터를 주고받을 수 없다. TRISA 가 TRP·OpenVASP·Sygna Bridge 와 일부 상호운용을 달성한 것처럼 진영 간 다리를 놓는 시도가 있지만 완전하지 않다.
 
 해법은 둘 중 하나다. VASP 가 여러 프로토콜을 동시에 지원하거나, Notabene 처럼 프로토콜에 종속되지 않는 브릿지/게이트웨이를 쓰는 것이다. Notabene 은 W3C DID·검증가능자격증명(VC) 을 활용해 기존 프로토콜들을 하나의 대시보드로 이어 붙인다.
 
-단 게이트웨이도 모든 망을 브릿지하지는 않는다 — Notabene 공개 목록에 **GTR·CODE 는 없고, VerifyVASP 는 라이브 지원 여부가 불확실**하다(벤더 확인 대상). 어느 상대까지 실제로 닿는지의 도달성은 [설계 10장 해외 망 지형](../설계/10-foreign-network-landscape.md), 게이트웨이 경유 VerifyVASP 의 검증은 [설계 9장](../설계/09-gateway-verifyvasp.md)이 다룬다.
+단 게이트웨이도 모든 솔루션을 브릿지하지는 않는다 — Notabene 공개 목록에 **GTR·CODE 는 없고, VerifyVASP 는 라이브 지원 여부가 불확실**하다(벤더 확인 대상). 어느 상대까지 실제로 닿는지의 도달성은 [설계 10장 해외 솔루션 지형](../설계/10-foreign-network-landscape.md), 게이트웨이 경유 VerifyVASP 의 검증은 [설계 9장](../설계/09-gateway-verifyvasp.md)이 다룬다.
 
 ## Fireblocks 관점 — 게이트가 벤더 밖으로 나온다
 
 Fireblocks 가 공식으로 제공하는 트래블룰 연동 제공자 목록에는 Notabene·Sumsub·GTR(TRLink)·Chainalysis·Elliptic 이 있다. 여기에 VerifyVASP 는 없다.
 
-국내 VASP 가 VerifyVASP·CODE 망을 써야 한다면, 트래블룰 게이트가 Fireblocks 벤더 표면 밖에 놓인다는 뜻이다. 출금·입금 흐름에서 벤더가 대신 처리해 주지 못하는 관문이 하나 생기는 것이다.
+국내 VASP 가 VerifyVASP·CODE 솔루션을 써야 한다면, 트래블룰 게이트가 Fireblocks 벤더 표면 밖에 놓인다는 뜻이다. 출금·입금 흐름에서 벤더가 대신 처리해 주지 못하는 관문이 하나 생기는 것이다.

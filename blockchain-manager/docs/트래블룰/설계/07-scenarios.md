@@ -11,10 +11,10 @@ status: To Do
 |---|---|---|---|
 | **VerifyVASP** (자체 Enclave) | 국내 — 업비트 등 VerifyVASP 회원 | 7.1 | 7.3 |
 | **VerifyVASP** — 상호연동이 CODE 까지 나른다 | 국내 — 빗썸·코인원·코빗 (CODE 회원) | A.1 (7.1 과 동일) | A.2 (7.3 과 동일) |
-| **Notabene** (Fireblocks 경유) | 해외 — TRUST·Sygna 등 Notabene 브릿지 망 | 7.2 | 7.4 |
+| **Notabene** (Fireblocks 경유) | 해외 — TRUST·Sygna 등 Notabene 브릿지 솔루션 | 7.2 | 7.4 |
 | **Address Registry** — 정보 교환 상대 없음 | 본인 개인지갑 (자기수탁) | 7.8 | 7.9 |
 
-우리 쪽 창구는 셋뿐이다 — 국내는 상대가 어느 망 회원이든 **우리 VerifyVASP 하나**, 해외는 **Notabene**, 개인지갑은 **Address Registry**.
+우리 쪽 창구는 셋뿐이다 — 국내는 상대가 어느 솔루션 회원이든 **우리 VerifyVASP 하나**, 해외는 **Notabene**, 개인지갑은 **Address Registry**.
 
 **대안·미확정·제외** — 본 표의 확정 경로가 아니다:
 
@@ -52,7 +52,7 @@ sequenceDiagram
     BE->>GT: 트래블룰 확인 — "트래블룰 확인 중" 상태로
     GT->>EN: 상대 확인 · 주소 소유 확인 (List VASP · User Account Verification)
     EN->>HUB: 암호화 조회 중계
-    HUB->>RV: 회원망 조회
+    HUB->>RV: 회원 목록 조회
     RV-->>HUB: 소유·실명 확인
     HUB-->>EN: 결과 중계
     EN-->>GT: health · 소유·실명 확인 결과
@@ -104,8 +104,8 @@ sequenceDiagram
     FB-->>GT: type(대상 여부) · 주소 유형(HOSTED/UNHOSTED/UNKNOWN)<br/>주소가 식별됐으면 수취 VASP DID·이름 동봉
     alt TRAVELRULE — 정보 교환 대상
         opt ① 응답에 DID 없음 — 주소 미식별(UNKNOWN)
-            GT->>FB: VASP 명부 검색 — 사용자가 고른 수취 거래소 이름
-            FB-->>GT: 수취 VASP DID (명부에 없으면 도달 불가 분기 · 6장)
+            GT->>FB: VASP 목록 검색 — 사용자가 고른 수취 거래소 이름
+            FB-->>GT: 수취 VASP DID (목록에 없으면 도달 불가 분기 · 6장)
         end
         GT->>GT: 수취인 정보 수집 — 이름·계좌 (화면 입력)
         GT->>FB: validate/full ② — 수취인 정보까지 실어 재호출
@@ -124,14 +124,14 @@ sequenceDiagram
     end
 ```
 
-- **수취 VASP DID 는 두 갈래로 확보한다** — ① 응답이 주소를 식별했으면 DID·이름이 응답에 실려 오고, 미식별(UNKNOWN)이면 사용자가 고른 거래소 이름으로 VASP 명부를 검색해 채운다. 명부에도 없는 상대는 도달 불가 분기(제출 전 차단·수동 심사, 6장).
+- **수취 VASP DID 는 두 갈래로 확보한다** — ① 응답이 주소를 식별했으면 DID·이름이 응답에 실려 오고, 미식별(UNKNOWN)이면 사용자가 고른 거래소 이름으로 VASP 목록을 검색해 채운다. 목록에도 없는 상대는 도달 불가 분기(제출 전 차단·수동 심사, 6장).
 - 스크리닝은 **서명 앞에 놓인 벤더 게이트**다 — `createTransaction` 으로 넘어간 거래를 Fireblocks 가 Notabene 로 보내 판정받고, Accept 로 떨어져야 서명이 진행된다.
 - `travelRuleMessage` 동봉은 **우리 게이트의 책임**이다 — 안 실리면 Notabene 가 판정할 대상이 없어 게이트가 그대로 열린다. Outbound delay 기본 0초.
-- **우리 측 vs 중앙(벤더)** — 대상 판별·수취인 수집·암호화까지는 우리 게이트, 실제 스크리닝·판정은 벤더 안. VerifyVASP 와 달리 자체 Enclave 로 나눌 것이 없고, 국내와 다른 세 칸은 **확인 방식**(동기)·**동봉물**(travelRuleMessage)·**사후 보고 없음**(벤더가 이미 안다)이다.
+- **우리 측 vs 중앙(벤더)** — 대상 판별·수취인 수집·암호화까지는 우리 게이트, 실제 스크리닝·판정은 벤더 안. VerifyVASP 와 달리 자체 Enclave 로 나눌 것이 없고, 국내와 다른 세 칸은 **확인 방식**(동기)·**travelRuleMessage 동봉**·**사후 보고 없음**(벤더가 이미 안다)이다.
 
 ## 7.3 입금 ← 국내 (VerifyVASP) — 자금보다 정보가 먼저 온다
 
-요청-응답형이다 — 자금이 오기 전에 우리 수신 사슬이 먼저 응답하고, 그 기록(대기함)이 도착 후 판별(7.5)의 대조 재료가 된다. 인바운드 사슬은 **중앙 서버 → 우리 Enclave → 수신 컴포넌트 → 컴플라이언스 서비스 → 월렛 백엔드(귀속 확인·대기함 적재)** 다(8장).
+요청-응답형이다 — 자금이 오기 전에 우리 수신 사슬이 먼저 응답하고, 그 기록(대기함)을 도착 후 판별(7.5)에서 대조에 쓴다. 인바운드 사슬은 **중앙 서버 → 우리 Enclave → 수신 컴포넌트 → 컴플라이언스 서비스 → 월렛 백엔드(귀속 확인·대기함 적재)** 다(8장).
 
 ```mermaid
 sequenceDiagram
@@ -141,7 +141,7 @@ sequenceDiagram
     box rgb(224,242,254) 우리 측
     participant EN as 우리 Enclave<br/>자체 인프라 · 공개 HTTPS 수신
     participant RX as 트래블룰 수신 컴포넌트<br/>별도 배포 · 얇게
-    participant TR as 컴플라이언스 서비스<br/>망 연동 · 8장
+    participant TR as 컴플라이언스 서비스<br/>솔루션 연동 · 8장
     participant BE as 월렛(Service) 백엔드<br/>매칭·귀속 · 가용 전이
     participant WQ as 대기함<br/>사전 검증 기록 저장소
     end
@@ -233,12 +233,12 @@ sequenceDiagram
     end
     box rgb(224,242,254) 우리 측
     participant BE as 월렛(Service) 백엔드<br/>매칭·귀속 · 가용 전이
-    participant GT as 컴플라이언스 서비스<br/>망 조회
+    participant GT as 컴플라이언스 서비스<br/>솔루션 조회
     end
 
     Note over BM: 벤더(Notabene) 동결 건은 REJECTED 계열로 와서 여기 안 온다 — 기존 동결 처리(7.4·블록체인매니저 입금 흐름 연계)
     BM-->>BE: 입금 후보 — 확정 임계 도달
-    BE->>BE: 입금 판별 — source · 대조 재료 (8장 우선순위)
+    BE->>BE: 입금 판별 — source 를 보관된 기록과 대조 (8장 우선순위)
     alt VerifyVASP 사전 요청 대기함과 대조 일치 — 국내
         BE->>BE: APPROVED
     else source 가 Address Registry 등록 주소 — 개인지갑
@@ -314,7 +314,7 @@ sequenceDiagram
 
 ## 7.7 입금 ← 해외 (Notabene 직접) — 확정은 매니저, 대조는 월렛 백엔드
 
-7.4 는 벤더가 감지·동결까지 했지만, 여기선 **벤더가 동결해 주지 않는다**. 온체인 확정은 블록체인 매니저가, 통지 수신·망 조회는 컴플라이언스 서비스가, 대조·입금대기(잔고 차단)는 월렛 백엔드가 맡는다.
+7.4 는 벤더가 감지·동결까지 했지만, 여기선 **벤더가 동결해 주지 않는다**. 온체인 확정은 블록체인 매니저가, 통지 수신·솔루션 조회는 컴플라이언스 서비스가, 대조·입금대기(잔고 차단)는 월렛 백엔드가 맡는다.
 
 ```mermaid
 sequenceDiagram
@@ -327,7 +327,7 @@ sequenceDiagram
     participant BM as 폴링 → deposit-events · Fireblocks 커스터디
     end
     box rgb(224,242,254) 우리 측
-    participant GT as 컴플라이언스 서비스<br/>수신 웹훅 · 망 조회
+    participant GT as 컴플라이언스 서비스<br/>수신 웹훅 · 솔루션 조회
     participant BE as 월렛(Service) 백엔드<br/>매칭·귀속 · 가용 전이
     participant WQ as 대기함<br/>사전 통지 기록 저장소
     end
@@ -341,10 +341,10 @@ sequenceDiagram
     SV->>SV: 온체인 전송 실행
     BM->>BM: 온체인 감지 → 확정 임계 도달
     BM-->>BE: 입금 후보 (확정 이벤트)
-    BE->>WQ: 대조 조회 — source · 대조 재료
+    BE->>WQ: 대조 조회 — source ↔ 대기함 기록
     alt 대기함 대조 일치
         WQ-->>BE: 일치 → APPROVED → 가용 전이
-    else 대조 재료 없음
+    else 대조할 기록 없음
         WQ-->>BE: 없음
         BE->>GT: 송신측 트래블룰 상태 조회 요청
         GT->>NB: 직접 조회
@@ -354,7 +354,7 @@ sequenceDiagram
 ```
 
 - **동결 주체가 바뀐다** — 7.4 는 Notabene·Fireblocks 가 동결해 REJECTED 계열로 넘겨줬지만, 여기선 벤더 동결이 없으므로 **입금대기(잔고 차단)가 우리 자체 상태**다. 개념 5장(입금 실무)의 입금대기·강제 반환 경로를 우리가 직접 운영한다.
-- **수신 웹훅이 필요** — 7.3 VerifyVASP 의 수신 컴포넌트와 같은 역할이되 Enclave 는 없다(Notabene SaaS 보관). 사전 통지가 자금보다 먼저 오면 대기함이 도착 후 대조 재료가 된다.
+- **수신 웹훅이 필요** — 7.3 VerifyVASP 의 수신 컴포넌트와 같은 역할이되 Enclave 는 없다(Notabene SaaS 보관). 사전 통지가 자금보다 먼저 오면 대기함에 쌓아 두었다가 도착 후 대조에 쓴다.
 - **합류점(7.5)과의 관계** — 7.5 의 "벤더 스크리닝 통과로 도착" 분기가 여기선 "Notabene 직접 조회로 대조" 분기로 바뀐다. 나머지 판별·가용 전이 규칙은 8장 그대로.
 
 ## 7.8 출금 → 개인지갑(자기수탁) — 등록·소유 인증만
@@ -386,7 +386,7 @@ sequenceDiagram
 ```
 
 - **정보 교환이 없다** — 수취인이 VASP 가 아니라 IVMS101 을 주고받을 상대가 없다. 관할권 규정에 따라 기록만 남긴다.
-- **VerifyVASP 는 개인지갑 미지원**(6장)이라, 개인지갑 상대는 망과 무관하게 이 Address Registry 통제로만 처리한다.
+- **VerifyVASP 는 개인지갑 미지원**(6장)이라, 개인지갑 상대는 솔루션과 무관하게 이 Address Registry 통제로만 처리한다.
 - 7.2·7.6 의 `NON_CUSTODIAL` 분기가 이 흐름을 가리킨다 — 여기서 단독으로 펼친다.
 
 ## 7.9 입금 ← 개인지갑(자기수탁) — source 가 등록 주소인가
@@ -458,7 +458,7 @@ sequenceDiagram
 
 ## 7.11 입금 ← 국내 CODE (직접 연동) — 미확인은 TXID 역추적
 
-입금도 동기 요청-응답이다. 자금 전 사전 승인을 받아 대기함에 쌓고, 도착 후 7.5 합류점에서 대조한다. 대조 재료가 없으면 TXID 로 역추적한다.
+입금도 동기 요청-응답이다. 자금 전 사전 승인을 받아 대기함에 쌓고, 도착 후 7.5 합류점에서 대조한다. 대조할 기록이 없으면 TXID 로 역추적한다.
 
 ```mermaid
 sequenceDiagram
@@ -467,7 +467,7 @@ sequenceDiagram
     participant CV as CodeVASP 중앙<br/>중계
     box rgb(224,242,254) 우리 측
     participant CC as CODE-Cipher<br/>수신·복호화
-    participant TR as 컴플라이언스 서비스<br/>망 연동 · 8장
+    participant TR as 컴플라이언스 서비스<br/>솔루션 연동 · 8장
     participant BE as 월렛(Service) 백엔드<br/>매칭·귀속 · 가용 전이
     participant WQ as 대기함<br/>사전 승인 기록 저장소
     end
@@ -489,7 +489,7 @@ sequenceDiagram
     BE->>WQ: 폴링 입금 후보로 대조 조회 (7.5)
     alt 대기함 대조 일치
         WQ-->>BE: 일치 → APPROVED → 가용
-    else 미확인 (대조 재료 없음)
+    else 미확인 (대조할 기록 없음)
         BE->>TR: TXID 역추적 요청
         TR->>CV: Search VASP by TXID (비동기)
         CV-->>TR: 송신 VASP 식별
@@ -499,5 +499,5 @@ sequenceDiagram
 ```
 
 - **요청-응답(동기)** — 사전 승인을 받고 대기함 적재, 도착 후 7.5 합류점에서 대조. VerifyVASP 입금(7.3)과 같은 자리로 합류한다.
-- **미확인 입금 역추적** — 대조 재료가 없으면 Search VASP by TXID(비동기) → Asset Transfer Data Request 로 사후 정보 교환. 공식화된 anonymous tx 절차이며, VerifyVASP 의 Check Transaction Status(7.3)에 대응한다.
+- **미확인 입금 역추적** — 대조할 기록이 없으면 Search VASP by TXID(비동기) → Asset Transfer Data Request 로 사후 정보 교환. 공식화된 anonymous tx 절차이며, VerifyVASP 의 Check Transaction Status(7.3)에 대응한다.
 - **포트-어댑터(8장) 관점** — CODE 는 동기라 어댑터 1개 추가로 끝난다(유스케이스·매니저 포트 0줄). "다 해야 하는" 최악(VerifyVASP+CODE+Notabene)에도 어댑터만 는다.

@@ -110,7 +110,7 @@ sequenceDiagram
 
 | 단계 | 무슨 뜻인가 |
 |---|---|
-| **Membership** | 누가 이 네트워크의 멤버인가 — 가입 기관 명부 |
+| **Membership** | 누가 이 네트워크의 멤버인가 — 가입 기관 목록 |
 | **Mandate** | 각 멤버가 무엇을 할 수 있는가 — 역할·권한(institution·custodian·market-maker 등) |
 | **Rulebook** | 멤버들이 합의한 규칙 — 정산·거버넌스 규칙 |
 

@@ -106,7 +106,7 @@ sequenceDiagram
     BE->>BM: API — transactionsOf(accountId, after·before)
     BM->>FB: GET /v1/transactions — 입금·출금이 한 목록에 (방향은 source·dest 로 구분)
     FB-->>BM: 내역 — 건마다 status · numOfConfirmations 동반
-    BM-->>BE: 시간순 Transfer 목록 — 증빙·대사 재료
+    BM-->>BE: 시간순 Transfer 목록 — 증빙·대사에 쓴다
 ```
 
 위 그림을 요약하면:

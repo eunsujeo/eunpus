@@ -1,9 +1,9 @@
 ---
-title: 8. 게이트 유연화 — 한 인터페이스, 망 어댑터
+title: 8. 게이트 유연화 — 한 인터페이스, 솔루션 어댑터
 status: To Do
 ---
 
-이 장이 정하는 것은 둘이다. **어디에** — 게이트를 별도 컴플라이언스 서비스로 두고, 매칭·귀속 판단은 월렛 백엔드에 남기는 배치와 경계. **어떻게** — VerifyVASP(승인 왕복·비동기)·Notabene(벤더 게이트·동기)·개인지갑(레지스트리 조회)처럼 망마다 다른 호출을 공통 단계 4개와 판정 어휘 하나로 접는 인터페이스.
+이 장이 정하는 것은 둘이다. **어디에** — 게이트를 별도 컴플라이언스 서비스로 두고, 매칭·귀속 판단은 월렛 백엔드에 남기는 배치와 경계. **어떻게** — VerifyVASP(승인 왕복·비동기)·Notabene(벤더 게이트·동기)·개인지갑(레지스트리 조회)처럼 솔루션마다 다른 호출을 공통 단계 4개와 판정 어휘 하나로 접는 인터페이스.
 
 ## 배치 — 게이트는 어디에, 판단은 누가
 
@@ -22,7 +22,7 @@ status: To Do
 | 안 | 결정 | 이유 |
 |---|---|---|
 | **① 블록체인 매니저 경유** — 트래블룰 호출을 매니저 오퍼레이션으로 넣거나 프록시 | **아니오** | 위 "왜 매니저(BCM)와 나누나" 그대로 — 더해서 평문 PII 가 매니저를 지나게 되고, VerifyVASP 수신 API 는 **인바운드**라 매니저의 아웃바운드 구조와 맞지 않다 |
-| **② 월렛(Service) 백엔드 안의 모듈** | **아니오** | 망 연동·PII 메시징이 월렛 백엔드 안으로 들어오고, 다른 상품이 트래블룰 스택을 공유할 수 없다 — 아래 근거 |
+| **② 월렛(Service) 백엔드 안의 모듈** | **아니오** | 솔루션 연동·PII 메시징이 월렛 백엔드 안으로 들어오고, 다른 상품이 트래블룰 스택을 공유할 수 없다 — 아래 근거 |
 | **③ 별도 컴플라이언스 서비스** | **결정** | 아래 근거 셋 — 단 매칭·귀속 판단은 월렛 백엔드에 남는다 (아래 경계) |
 
 ③으로 가는 근거 셋:
@@ -33,7 +33,7 @@ status: To Do
 
 ### 경계 — 매칭·검증·귀속 판단은 월렛 백엔드
 
-Travel Rule 정보와 입출금 tx 를 맞춰 보는 일(대기함 대조·귀속 판단)은 tx·주소·잔고의 주인인 월렛 백엔드가 맡는다 — 대기함도 월렛 백엔드에 있다. 출금 상태 흐름("접수 → 승인 → 트래블룰 확인 중 → 제출"을 순서대로 밟게 하는 관리)과 잔고 가용 전이도 같은 이유로 월렛 백엔드에 남는다. 컴플라이언스 서비스는 **망 연동 전담**이다 — 망 왕복을 수행하고, 망 원어를 공통 어휘(TrVerdict·검증 기록)로 번역해 월렛 백엔드에 넘긴다.
+Travel Rule 정보와 입출금 tx 를 맞춰 보는 일(대기함 대조·귀속 판단)은 tx·주소·잔고의 주인인 월렛 백엔드가 맡는다 — 대기함도 월렛 백엔드에 있다. 출금 상태 흐름("접수 → 승인 → 트래블룰 확인 중 → 제출"을 순서대로 밟게 하는 관리)과 잔고 가용 전이도 같은 이유로 월렛 백엔드에 남는다. 컴플라이언스 서비스는 **솔루션 연동 전담**이다 — 솔루션 왕복을 수행하고, 솔루션 원어를 공통 어휘(TrVerdict·검증 기록)로 번역해 월렛 백엔드에 넘긴다.
 
 서비스의 정체성·모듈 구성·범위(왜 이름이 "컴플라이언스"인가, AML·OFAC 의 향후 수용)는 [컴플라이언스 0장](../../컴플라이언스/설계/00-scope.md)이 정본이다. 월렛과의 API·이벤트 계약은 [컴플라이언스 1장](../../컴플라이언스/설계/01-interface.md).
 
@@ -43,12 +43,12 @@ Travel Rule 정보와 입출금 tx 를 맞춰 보는 일(대기함 대조·귀�
 ├─ 트래블룰 매칭·검증·귀속 판단 — Travel Rule 정보 ↔ 입출금 tx 대조 · 대기함 보관
 └─ TravelRuleChannel 포트 ──→ 컴플라이언스 서비스 호출 (아래 인터페이스)
 
-컴플라이언스 서비스 — 별도 서비스 · 망 연동 전담
-├─ 라우터 + 망 어댑터
+컴플라이언스 서비스 — 별도 서비스 · 솔루션 연동 전담
+├─ 라우터 + 솔루션 어댑터
 │    ├─ VerifyVASP 어댑터 ──→ Enclave 서버 (벤더 강제 별도 인프라 · PII 는 여기)
 │    ├─ Notabene 어댑터  ──→ Fireblocks validate/full (전용 API user — 아래)
 │    └─ 개인지갑 어댑터   ──→ Address Registry
-└─ 망 원어 → 공통 어휘(TrVerdict·검증 기록) 번역 — 판정 재료를 월렛 백엔드로 넘긴다
+└─ 솔루션 원어 → 공통 어휘(TrVerdict·검증 기록) 번역 — verdict 와 검증 기록을 월렛 백엔드로 넘긴다
 
 트래블룰 수신 컴포넌트 — 별도 배포 (얇게)
 └─ Enclave 가 호출하는 VASP API 구현 (Verify User · Verify User Account · Callback · Check Transaction Status)
@@ -65,29 +65,29 @@ Notabene 어댑터의 `validate/full` 은 Fireblocks API 지만, **블록체인 
 - **PII 접촉면 최소화** — validate/full 의 평문 PII 가 블록체인 매니저를 지나지 않는다.
 - **rate limit 은 API user 단위**라 전용 user 는 매니저 폴링과 한도를 나누지 않는다. 429 는 어댑터 자체 백오프.
 
-## 인터페이스 — 망마다 다른 호출을 하나로 접는다
+## 인터페이스 — 솔루션마다 다른 호출을 하나로 접는다
 
-국내·해외·개인지갑을 업무 코드가 직접 분기하면(if 국내 … else if 해외 … else 개인지갑 …), 망이 추가되거나 연동 방식이 바뀔 때마다 출금 유스케이스를 고치게 된다. 매니저가 벤더 원어를 TxStatus 다섯으로 번역해 백엔드를 보호하는 것과 같은 원리로 — **게이트도 망 원어를 공통 어휘로 번역해 업무 코드를 보호한다**.
+국내·해외·개인지갑을 업무 코드가 직접 분기하면(if 국내 … else if 해외 … else 개인지갑 …), 솔루션이 추가되거나 연동 방식이 바뀔 때마다 출금 유스케이스를 고치게 된다. 매니저가 벤더 원어를 TxStatus 다섯으로 번역해 백엔드를 보호하는 것과 같은 원리로 — **게이트도 솔루션 원어를 공통 어휘로 번역해 업무 코드를 보호한다**.
 
-### 공통 단계 4개 — 모든 망이 이 틀에 들어간다
+### 공통 단계 4개 — 모든 솔루션이 이 틀에 들어간다
 
 | 단계 | VerifyVASP (국내) | Notabene (해외 · 벤더 경유) | 개인지갑 |
 |---|---|---|---|
-| **① 상대 판별** (route) | 회원망 조회 (List VASP API — 공식 확인) | 기본 경로 | Address Registry 에 등록된 주소인가 |
+| **① 상대 판별** (route) | 회원 목록 조회 ([List VASP API](https://docs.verifyvasp.com/reference/travelrule-list-vasp-ids) — 공식 확인) | 기본 경로 — VASP 목록 조회는 [Get All VASPs](https://developers.fireblocks.com/api-reference/travel-rule/get-all-vasps) | Address Registry 에 등록된 주소인가 |
 | **② 사전 확인** (check) | 주소 소유 확인(동기) + PII 사전 승인(User Verification — **비동기**: UUID 즉시, 결과는 Callback) | `validate/full` 판별 → 완전 검증 — **동기** | 등록·소유 인증 조회 — **동기** |
-| **③ 제출 동봉물** (attachment) | 없음 — 사전 승인 자체가 통과 증적 | `travelRuleMessage` — 매니저 제출 요청의 `travelRule` 필드에 실림 | 없음 |
+| **③ travelRuleMessage** (제출 시 실어 보내는 것) | 없음 — 사전 승인 자체가 통과 증적 | `travelRuleMessage` — 매니저 제출 요청의 `travelRule` 필드에 실림 | 없음 |
 | **④ 사후 보고** (report) | tx hash 보고 (Report Transaction Result — Enclave 가 UUID 에 매핑) | 없음 — 벤더가 이미 안다 | 없음 |
 | **입금 판정** (checkDeposit) | 수신 API 응답·tx hash 대조 기록 | 벤더가 판정 완료 — 동결이면 애초에 REJECTED 계열로 옴 | Address Registry 조회 |
 
 ### 포트 하나, 판정 어휘 하나
 
 ```kotlin
-// 컴플라이언스 서비스의 포트 — 지갑 백엔드가 보는 인터페이스. 서비스 안에서 망 어댑터(VerifyVASP · Notabene · 개인지갑)가 구현
+// 컴플라이언스 서비스의 포트 — 지갑 백엔드가 보는 인터페이스. 서비스 안에서 솔루션 어댑터(VerifyVASP · Notabene · 개인지갑)가 구현
 interface TravelRuleChannel {
-  fun checkWithdrawal(w: WithdrawalIntent): TrVerdict   // ② 동기 망은 즉답, 비동기 망은 PENDING 후 콜백·조회로 갱신
-  fun attachmentOf(w: WithdrawalIntent): TravelRule?    // ③ 매니저 제출 요청의 travelRule 필드에 실린다 — 없으면 null
-  fun reportSubmitted(w: WithdrawalIntent, txHash: String)  // ④ 필요 없는 망은 아무것도 안 한다
-  fun checkDeposit(d: DepositCandidate): TrVerdict      // 입금 가용 전이 게이트의 판정 재료
+  fun checkWithdrawal(w: WithdrawalIntent): TrVerdict   // ② 동기 솔루션은 즉답, 비동기 솔루션은 PENDING 후 콜백·조회로 갱신
+  fun travelRuleMessageOf(w: WithdrawalIntent): TravelRuleMessage?  // ③ 매니저 제출 요청의 travelRule 필드에 실린다 — 없으면 null
+  fun reportSubmitted(w: WithdrawalIntent, txHash: String)  // ④ 필요 없는 솔루션은 아무것도 안 한다
+  fun checkDeposit(d: DepositCandidate): TrVerdict      // 입금 가용 전이 게이트가 쓸 verdict
 }
 
 enum class TrVerdict {
@@ -101,18 +101,18 @@ enum class TrVerdict {
 fun channelOf(counterparty: Destination): TravelRuleChannel
 ```
 
-게이트가 접는 일은 곧 세 어휘(Fireblocks `validate/full` type·2장 / Notabene 판정 상태·4장 / 망별 원어)를 우리 `TrVerdict` 하나로 번역하는 것이다. 업무 코드는 왼쪽 4개만 본다.
+게이트가 접는 일은 곧 세 어휘(Fireblocks `validate/full` type·2장 / Notabene 판정 상태·4장 / 솔루션별 원어)를 우리 `TrVerdict` 하나로 번역하는 것이다. 업무 코드는 왼쪽 4개만 본다.
 
 | 우리 `TrVerdict` | Fireblocks validate/full · Notabene 판정 | VerifyVASP (비동기) | CODE (동기) | 개인지갑 |
 |---|---|---|---|---|
-| `NOT_REQUIRED` | validate/full `BELOW_THRESHOLD`·`NON_CUSTODIAL` · Notabene `Saved` | 임계 미만·면제 | 임계 미만(원화 판정) | 정보 교환 없음 |
-| `APPROVED` | Notabene `Completed` → Post-Screening Accept | User Verification 승인 (Callback 도착) | Asset Transfer Authorization 승인 | Address Registry 등록·소유 인증 |
-| `PENDING` | Notabene `Pending` (Wait) | UUID 접수 · Callback 대기 | (동기라 드묾) | — |
-| `REJECTED` | Notabene `Rejected`·`Failed`·`Blocking Time Expired` | 상대 거절 · PENDING 만료 | 상대 거절 | 미등록·미인증 |
+| `NOT_REQUIRED` | validate/full `BELOW_THRESHOLD`·`NON_CUSTODIAL` · Notabene `Saved` | 한국 기준(100만원) 미만 — 보내는 쪽이 원화 환산가 필드(tradePrice·KRW)를 채워 보냄 | 한국 기준(100만원) 미만 — 원화 환산가 필드 동일 | 정보 교환 없음 |
+| `APPROVED` | 출금 — validate/full 검증 통과(`isValid`) · 입금 — 벤더 스크리닝 통과(`Completed` → Post-Screening Accept)로 도착 | User Verification 승인 (Callback 도착) | Asset Transfer Authorization 승인 — 동기 즉답 | Address Registry 등록·소유 인증 |
+| `PENDING` | — 출금 검증은 동기 즉답이라 없음. 벤더 안 `Pending`(Wait)의 결과는 블록체인 매니저의 거래 상태 이벤트로 온다 | 접수 번호(UUID) 반환 · Callback 대기 | — (동기 즉답이라 없음) | — |
+| `REJECTED` | — 검증 실패는 요청 오류로 응답. 벤더 게이트의 `Rejected`·`Blocking Time Expired` 는 제출 뒤 블록체인 매니저의 거래 상태 이벤트(REJECTED)로 온다 | 상대 거절 · PENDING 만료 | 상대 거절 | 미등록·미인증 |
 
 ## 출금 — "트래블룰 확인 중" 상태 하나
 
-VerifyVASP 의 사전 승인은 상대 VASP 의 응답(사람 심사일 수도 있다)을 기다리는 비동기라, 출금 상태에 **트래블룰 확인 중** 단계가 필요하다. 동기 망(Notabene 의 validate/full·개인지갑 조회)도 같은 상태를 즉시 통과하는 것으로 접는다 — 상태 흐름을 망별로 두 벌 만들지 않는다.
+VerifyVASP 의 사전 승인은 상대 VASP 의 응답(사람 심사일 수도 있다)을 기다리는 비동기라, 출금 상태에 **트래블룰 확인 중** 단계가 필요하다. 동기 솔루션(Notabene 의 validate/full·개인지갑 조회)도 같은 상태를 즉시 통과하는 것으로 접는다 — 상태 흐름을 솔루션별로 두 벌 만들지 않는다.
 
 ```
 출금 접수 → 업무 승인 → 트래블룰 확인 중 ──APPROVED·NOT_REQUIRED──→ 제출 (매니저 submitTransaction)
@@ -126,16 +126,16 @@ VerifyVASP 의 사전 승인은 상대 VASP 의 응답(사람 심사일 수도 �
 
 ## 입금 — 합류점 하나, 판별은 역방향
 
-6장의 "복수 망 대조" 합류점을 이 어휘로 확정한다. 가용 전이 조건은 망과 무관하게 하나다:
+6장의 "복수 솔루션 대조" 합류점을 이 어휘로 확정한다. 가용 전이 조건은 솔루션과 무관하게 하나다:
 
 ```
 가용 전이 = 확정 임계 도달 (매니저 이벤트 · 블록체인매니저 4장)
           AND 입금 판별 = APPROVED 또는 NOT_REQUIRED
 ```
 
-입금은 출금과 판별 방향이 반대다 — 출금은 목적지를 미리 알고 망을 고르지만(라우터), 입금은 **도착한 뒤 source 와 대조 재료로 역판별**한다. 우선순위로 가른다:
+입금은 출금과 판별 방향이 반대다 — 출금은 목적지를 미리 알고 솔루션을 고르지만(라우터), 입금은 **도착한 뒤 source 를 보관된 기록과 대조해 역판별**한다. 우선순위로 가른다:
 
-| 순서 | 판별 재료 | 판정 |
+| 순서 | 판별 기준 | 판정 |
 |---|---|---|
 | 1 | 벤더 동결(REJECTED 계열)로 도착 | 게이트에 안 온다 — 기존 동결 처리(블록체인매니저 5장) |
 | 2 | **VerifyVASP 사전 요청 대기함**과 대조 일치 — 수신 API 가 쌓아 둔 사전 요청·tx hash 보고와 주소·금액 매칭 (7.3) | 국내 — APPROVED |
@@ -150,9 +150,9 @@ VerifyVASP 의 사전 승인은 상대 VASP 의 응답(사람 심사일 수도 �
 
 | 바뀌는 일 | 손대는 곳 |
 |---|---|
-| 망 추가 (예: **CODE 직접 연동** — 상호연동 실효가 부족하면 · 6장 비교 표) | 어댑터 1개 + 라우팅 규칙 — CODE 는 사전 승인이 동기라 어댑터가 오히려 단순 |
+| 솔루션 추가 (예: **CODE 직접 연동** — 상호연동 실효가 부족하면 · 6장 비교 표) | 어댑터 1개 + 라우팅 규칙 — CODE 는 사전 승인이 동기라 어댑터가 오히려 단순 |
 | VerifyVASP 연동 방식 변화 (직접 연동 B 확정 — 6장) | VerifyVASP 어댑터 내부만 |
-| 같은 상대가 두 망 모두 회원 — 우선순위 변경 | 라우터 정책 데이터만 |
+| 같은 상대가 두 솔루션 모두 회원 — 우선순위 변경 | 라우터 정책 데이터만 |
 | 임계·면제 기준 변경 | 어댑터의 NOT_REQUIRED 판정만 |
 
 출금·입금 유스케이스, 매니저 포트·어댑터는 전부 0줄 — 매니저와의 접점이 둘뿐(6장: travelRule 운반 · 동결 상태 수신)인 것도 그대로다.

@@ -50,7 +50,7 @@ fun transactionsOf(                                              // 8장 — 기
 fun transactionOf(txId: String): Transfer?                     // 단건 조회 (벤더 getTransactionById · 00·8장)
 ```
 
-- `balanceOf` 가 주는 값은 **vault 단위 벤더/온체인 잔액**이라 대사(reconciliation) 재료다 — 고객별 귀속 잔액이 아니다. 고객별 잔액·귀속은 백엔드가 원장으로 가진다(8·13장).
+- `balanceOf` 가 주는 값은 **vault 단위 벤더/온체인 잔액**이라 대사(reconciliation)에 쓰는 값이다 — 고객별 귀속 잔액이 아니다. 고객별 잔액·귀속은 백엔드가 원장으로 가진다(8·13장).
 - `after`·`before` 는 **거래 시각(createdAt) 기준** 시간창이다(최신순 이력). 매니저 내부의 lastUpdated 감지 폴링과는 별개 — 목록 조회는 안정적 createdAt 정렬을 쓴다.
 
 ## 출금 · 수수료 API
