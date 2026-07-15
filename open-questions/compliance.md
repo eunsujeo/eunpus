@@ -94,10 +94,18 @@
 - **★ 정정**: "2022-04-25 금융당국 권고" (Stage 146 기록·docs-site 9장) 는 확인 안 됨 — 4-25 는 권고일이 아니라 **연동 완료일**. 언론·공지는 거래소 간 연동 작업 완료로 서술. docs-site 9장·Q-C03 진전 항목 정정 완료 (Stage 149)
 - **잔여**: 당국 권고·개입의 실재 여부 (있다면 원문), 전 회원 자동 도달 범위 (VV 회원 ↔ CODE 회원 전면 도달인지)
 
+## Q-CMP-12 — 개인지갑 등록의 Fireblocks 반영 수단은 무엇인가?
+
+**Status**: open
+**Stage**: 157
+**Question**: 컴플라이언스 api.md 는 "개인지갑 등록·소유 증명을 벤더(Address Registry)에 반영 대행" 으로 계약했는데, Fireblocks **Address Registry 는 LEI 기반 VASP 법인 조회 기능이라 개인지갑 등록을 받지 않는다** (reference-address-registry.md — 커버리지 Fireblocks network 내부만, 비고객 주소는 `not_found`). 실제 대응물 후보는 **whitelisted internal/external wallet** (Admin Quorum 게이트·immutable·wallet 당 asset 당 1주소 — whitelisting-new-addresses.md p.1-2) 또는 OTA + Policy 제한. 어느 쪽으로 반영할지, 그리고 소유 증명(ownershipProof)을 벤더 쪽에 남길 수단이 있는지.
+**Where this came up**: blockchain-manager/docs/컴플라이언스/API/api.md §Register Wallet · [[vendors/fireblocks/compliance]] §Address Registry
+**Sources to check**: external wallet API (`POST /v1/external_wallets`) · OTA 문서 · Notabene end-user wallet 검증
+
 ---
 
-## 통계 (Stage 149 기준)
+## 통계 (Stage 157 기준)
 
-- Open: 11 (그중 partial-answered: 3 — Q-CMP-09·10·11)
+- Open: 12 (그중 partial-answered: 3 — Q-CMP-09·10·11)
 - ANSWERED: 0
-- 도메인: KR Regulations
+- 도메인: KR Regulations + 벤더 반영 수단 (Q-CMP-12)

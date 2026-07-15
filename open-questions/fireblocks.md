@@ -507,12 +507,13 @@
 - **Sources to check**: AML 통합 가이드, KYT 파트너 문서
 - **Status**: open
 
-### Q-2026-05-18-S04: Withdrawal address whitelisting cooling-off period의 기본값·설정 범위는?
+### Q-2026-05-18-S04: Withdrawal address whitelisting cooling-off period의 기본값·설정 범위는? (★ Stage 157 partial — 공개 미문서화 확인)
 
 - **Why it matters**: 화이트리스트 활성화 전 대기 기간. 길이가 운영 정책의 핵심.
 - **Where this came up**: [[vendors/fireblocks/security]]
 - **Sources to check**: Whitelisting docs
-- **Status**: open
+- **Status**: open (partial)
+- **Stage 157 확인**: developers `/docs/whitelist-addresses` fetch + 웹 검색 — 기간·설정 범위 **공개 문서 미명세**. Support enable 전용 설정으로 확인. API 흔적은 wallet 객체의 `activationTime` 필드뿐 ([[entities/fireblocks/vault-account]]). 잔여: Support 문의로만 확정 가능
 
 ### Q-2026-05-18-S05: Withdrawal address whitelisting suspension의 정확한 동작은?
 

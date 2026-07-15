@@ -4,8 +4,8 @@ vendor: fireblocks
 status: draft
 tags: [compliance, aml]
 stage_introduced: 1
-last_updated_stage: 144
-source_count: 26
+last_updated_stage: 157
+source_count: 27
 related:
   - overview
   - policy
@@ -72,7 +72,21 @@ Stage 6 `security-checklist.md` p.1에서 **AML Transaction Screening Policy**�
 2. **AML 스크리닝** — Travel Rule 스크리닝보다 먼저 수행. 상대방이 이미 high-risk 플래그면 Travel Rule 데이터 교환은 보통 진행되지 않음 (source: compliance-integrations.md, p.1–2)
 3. **Travel Rule 스크리닝** — AML 이후
 
-**Address Registry** 는 무료 네이티브 기능 (상대방 식별만, 위험 평가 없음). 연결 가능 제공자 목록: **Chainalysis · Notabene · Sumsub · Elliptic** (source: compliance-integrations.md, p.1, p.3).
+### Address Registry (★ Stage 157 — 상세 promote)
+
+무료 네이티브 기능 (상대방 식별만, 위험 평가 없음). 연결 가능 제공자 목록: **Chainalysis · Notabene · Sumsub · Elliptic** (source: compliance-integrations.md, p.1, p.3).
+
+상세 (source: reference-address-registry.md, p.1–4):
+
+- **정체 = counterparty discovery**: 주소를 조회해 그 주소를 통제하는 **법인(legal entity) 신원**을 받는 기능. > "designed solely to facilitate counterparty discovery and verification"
+- **★ 개인지갑(unhosted) whitelist 등록부가 아님** — 커버리지는 **Fireblocks network 내부 주소만**, 비고객·opt-out 주소는 404 (code 2142) `not_found`. > "A not_found result does not indicate that the address is unhosted, illicit, or non-compliant"
+- **현재 Early Access** (Settings > Labs 또는 CSM). default enabled, 전 고객 무료
+- **Lookup**: `GET /v1/address_registry/legal_entities/{address}` → `verified`(LEI 검증 여부)·`entityName`·`jurisdiction`·`lei`·`travelRuleProviders`·`email`
+- **자기 법인 등록**: `POST /v1/legal_entities` — **GLEIF 등록 LEI** 필수. 상태 머신 `Pending → Approved / Denied / Revoked`. workspace 당 복수 legal entity 가능, **vault account 당 최대 1개 매핑**
+- **travelRuleProviders 선언 enum**: `CODE · GTR · MY_OWN · NOTABENE · SYGNA · SUMSUB · TRISA · TRUST · TWENTY_ONE_ANALYTICS · VERIFY_VASP` — 자기 법인이 쓰는 TR 제공자의 **선언 필드**이지 Fireblocks 통합 목록이 아님 (§Travel Rule 의 "VerifyVASP 부재" 결론 유지)
+- **Opt-out**: workspace 전체 (`DELETE /v1/address_registry/tenant`) 또는 vault 단위 (`POST /v1/address_registry/vaults`). opt-out 시 조회·의존 compliance workflow 모두 비활성
+- **Compliance workflows** (counterparty group 정의 + screening policy 연동, first-match·catch-all 필수·timeout accept/reject 설정): **"coming soon"** — Early Access 중 추가 예정
+- **제한**: EU·Swiss 환경 미지원 (인프라 격리, `not_found` 반환), Developer Sandbox 미지원. bulk 추출 방지 통제 (rate limit·daily cap·경보)
 
 ### AML Transaction Screening (★ Stage 144 — Q-S03 ANSWERED)
 
@@ -163,6 +177,7 @@ _TODO: SOC 2 / ISO 27001 / 보험 / 라이선스 — 추후 자료_
 - `2026-05-19__support-fireblocks-io__aml-*.md` 9종 (Stage 144: 제공자·정책·기본값)
 - `2026-05-19__support-fireblocks-io__about-the-travel-rule.md` · `about-travel-rule-transaction-screening.md` · `travel-rule-advanced-configuration-settings.md` · `travel-rule-policy-templates.md` · `changing/deleting-your-travel-rule-policy.md` · `disconnecting-your-travel-rule-provider.md` · `travel-rule-compliance-for-exchange-transactions.md` (Stage 144)
 - `2026-05-19__support-fireblocks-io__compliance-integrations.md` p.1–3 · `global-policy-ofac-sanctions-compliance.md` p.1–2 (Stage 144: 검사 순서·OFAC·제공자 목록)
+- `2026-05-22__developers-fireblocks-com__reference-address-registry.md`, p.1–4 (Stage 157: Address Registry 상세 — LEI 조회·등록·opt-out·workflows coming soon)
 
 ## Open Questions
 
@@ -172,4 +187,5 @@ _TODO: SOC 2 / ISO 27001 / 보험 / 라이선스 — 추후 자료_
 - Q-2026-07-08-C03 — VerifyVASP(국내 망) 도달 경로 (★ Stage 146 진전 — 구조·국내 맥락 확정, sources/travel-rule/webpages/ Mode B 5건 (Stage 148 클러스터 이동). 잔여: 경로 A′(TRLink Sumsub·GTR 경유 상호운용) 실효·Enclave 요건·가격 — CSM·Sumsub 대상. docs-site/travel-rule 9장)
 - Q-2026-05-18-S07 — FSPM entity-grade 명세
 - Q-2026-05-18-A07 — 부분 답; audit log API endpoint·retention·외부 forwarding 잔존
+- Q-CMP-12 — 개인지갑 등록의 Fireblocks 반영 수단 (Stage 157, [[open-questions/compliance]] — Address Registry 는 개인지갑을 받지 않음이 확정되면서 발생)
 - (SOC 2 / ISO 27001 / 보험 / 라이선스는 외부 자료 필요)

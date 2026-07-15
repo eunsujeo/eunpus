@@ -7683,3 +7683,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 영향받은 페이지: vendors/fireblocks/tap.md (placeholder → stable, rule object schema·publish/edit·Console 승인 관문·validation·metadata) · entities/fireblocks/policy.md (Q-P01 note 보강) · entities/fireblocks/designated-signer.md · entities/fireblocks/approval-group.md (양방향 backlink)
 - Open Q 신규: Q-2026-07-14-01 (2-TIER ↔ Approved by 대응) · Q-2026-07-14-02 (Policy Editor V2 vs beta 경로)
 - 신규 entity: 0 (기존 vendor hub tap.md 에 흡수 — 29 stage 연속)
+
+## Stage 157 (2026-07-15) — Address Registry 상세 promote + Q-S04 partial
+- source: 2026-05-22__developers-fireblocks-com__reference-address-registry.md (기존 lake, 본문 promote) + developers /docs/whitelist-addresses fetch
+- 계기: "개인 고객 whitelist 관리" 설계 질의 — Address Registry = LEI 기반 VASP 법인 조회로 확정, 개인지갑 등록부 아님
+- ANSWERED: Q-S04 partial (cooling-off 기간 공개 미문서화 확인) / 신규 Q-CMP-12 (개인지갑 등록의 벤더 반영 수단)
+- 영향받은 페이지: vendors/fireblocks/compliance.md (Address Registry 소절 확장), open-questions/fireblocks.md (Q-S04), open-questions/compliance.md (Q-CMP-12 + 통계)
+- 신규 entity: 0 (Address Registry 는 compliance.md 소절로 흡수 — 30 stage 연속)
