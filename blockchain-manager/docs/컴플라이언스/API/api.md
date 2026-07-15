@@ -1,5 +1,5 @@
 ---
-title: Compliance Service API v0.0.1
+title: Compliance Service API v0.0.2
 status: To Do
 view: doc
 ---
@@ -9,7 +9,7 @@ view: doc
 
 # Compliance Service API
 
-`v0.0.1`
+`v0.0.2`
 
 컴플라이언스 서비스는 규제 대응의 솔루션·벤더 연동을 전담하는 별도 서비스다.
 월렛 백엔드는 이 HTTP API 로 출금 확인·입금 판별의 솔루션 조회를 요청하고,
@@ -53,9 +53,10 @@ view: doc
 
 - **시각** — ISO 8601, UTC, 밀리초. 예: `2026-07-14T04:05:06.789Z`
 - **금액** — 문자열(decimal). 예: `"1.5"`. float 가 아니라 decimal 로 파싱한다.
-- **필드명** — camelCase (`externalTxId` · `verificationRef`)
+- **필드명** — camelCase (`externalTxId` · `travelRuleMessage`)
 - **요청 추적** — 모든 응답에 `meta.requestId`
 - **솔루션 원어 비노출** — 응답은 공통 어휘(TrVerdict 등)만 싣는다. 벤더 응답 코드 등 솔루션 원어 근거는 서비스가 감사 기록으로 보존한다.
+- **curl 예시의 인증 헤더는 생략** — 서비스 간 인증 방식은 미확정(아래 미확정 절).
 
 ## 에러 코드
 
@@ -84,7 +85,7 @@ view: doc
 비동기 확인의 결과 도착(승인·거절·PENDING 만료)은 이 HTTP API 가 아니라 **메시지 큐 이벤트**로 온다.
 
 - **토픽**: `compliance` · 파티션 키 = `accountId` (기존 큐 규칙과 동일)
-- 월렛은 이벤트 수신 후 Get Withdrawal Check 로 travelRuleMessage·증적을 가져간다. 이벤트가 유실돼도 폴링과 PENDING 만료 규칙이 흐름을 끝낸다.
+- 월렛은 이벤트의 verdict 로 바로 진행한다 — 비동기 경로는 travelRuleMessage 가 없어 이벤트만으로 충분하다. Get Withdrawal Check 는 이벤트 유실 대비 폴링·재기동 복구 전용이고, 그마저 놓쳐도 PENDING 만료 규칙이 흐름을 끝낸다.
 - **PENDING 만료의 주인은 이 서비스** — 솔루션별 시간 규칙([트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))을 아는 쪽이 만료를 가려 `REJECTED` 로 발행한다.
 
 이벤트 본문은 [SettledEvent](#타입) 타입.
@@ -98,6 +99,11 @@ view: doc
 `GET` `https://{baseUrl}/compliance/travel-rule/counterparties`
 
 출금 화면에서 고객에게 보여줄 수취 거래소 목록을 내려준다 — 고객은 이 중 하나를 고른다.
+
+```bash
+curl "https://{baseUrl}/compliance/travel-rule/counterparties"
+```
+
 목록의 원천은 솔루션 실시간 조회가 아니라 **컴플라이언스 DB 의 목록 스냅샷**이다 — VerifyVASP 회원 목록(상호연동된 CODE 회원 포함)과 Notabene VASP 목록을 주기 동기화해 보관한다. 솔루션 장애·지연이 출금 화면에 번지지 않고, `counterpartyId` 는 스냅샷의 우리 발급 안정 ID 다.
 상대의 현재 상태(health·도달성)는 목록 시점이 아니라 **Create Withdrawal Check 시점에 솔루션에 재확인**한다 — 스냅샷이 동기화 주기만큼 낡아도 확인은 안전하다.
 
@@ -133,6 +139,19 @@ _응답_
 
 출금 한 건의 트래블룰 확인을 시작한다. 동기 솔루션(CODE·Notabene)은 최종 verdict 를 즉답하고 — **이때 travelRuleMessage·증적까지 실려 와 이 응답만으로 제출 가능하다** — 비동기 솔루션(VerifyVASP)은 `PENDING` 을 돌려준 뒤 결과를 큐 이벤트로 알린다.
 `externalTxId` 로 멱등 — 같은 키 재요청은 기존 check 를 돌려준다.
+
+```bash
+curl -X POST "https://{baseUrl}/compliance/travel-rule/withdrawal-checks" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "externalTxId": "WD-000123",
+    "accountId": "acct_01H8X",
+    "asset": "ETH",
+    "amount": "1.5",
+    "destinationAddress": "0x896B...0b9b",
+    "beneficiary": { "name": "Bruce Wayne", "accountNumber": "0x896B...0b9b", "counterpartyId": "cpty_upbit" }
+  }'
+```
 
 _요청 본문_
 
@@ -191,7 +210,11 @@ _응답_
 
 `GET` `https://{baseUrl}/compliance/travel-rule/withdrawal-checks/{checkId}`
 
-PENDING 해소 전용 — settled 이벤트 수신 후 travelRuleMessage·증적을 가져가고, 이벤트 유실 대비 폴링을 겸한다. 동기 즉답 건은 Create 응답으로 충분해 이 호출이 필요 없다.
+이벤트 유실 대비 폴링·재기동 복구 전용 — 정상 흐름에서는 호출하지 않는다. 동기 건은 Create 응답으로, 비동기 건은 settled 이벤트의 verdict 로 끝난다(비동기 경로는 travelRuleMessage 가 없다).
+
+```bash
+curl "https://{baseUrl}/compliance/travel-rule/withdrawal-checks/chk_01J9Z"
+```
 
 _응답_
 
@@ -227,6 +250,12 @@ _응답_
 온체인 제출 후 tx hash 를 보고한다. 사후 보고가 필요 없는 솔루션이면 서비스가 no-op 처리 — 월렛은 항상 호출한다.
 실패는 재시도 대상일 뿐 출금 흐름을 막지 않는다.
 
+```bash
+curl -X POST "https://{baseUrl}/compliance/travel-rule/withdrawal-checks/chk_01J9Z/report" \
+  -H "Content-Type: application/json" \
+  -d '{ "txHash": "0xabc..." }'
+```
+
 _요청 본문_
 
 ```json
@@ -260,7 +289,18 @@ _응답_
 
 `POST` `https://{baseUrl}/compliance/travel-rule/deposit-checks`
 
-입금 한 건에 대해 솔루션에 물어보는 부분만 대행한다 — 대기함 대조·귀속 판단·가용 전이는 월렛 몫이다.
+입금 한 건의 트래블룰 확인. 서비스가 **자기 대기함(컴플라이언스 DB 의 사전 검증 기록)과 대조**하고, 대조가 안 되면 능동 조회(보고 미수신 건 — Check Transaction Status · 기록 자체가 없으면 — TXID 역추적)까지 안에서 처리해 결과만 돌려준다. 귀속 판단·가용 전이는 월렛 몫이다.
+
+```bash
+curl -X POST "https://{baseUrl}/compliance/travel-rule/deposit-checks" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sourceAddress": "0x1a2b...",
+    "asset": "ETH",
+    "amount": "1.5",
+    "txHash": "0xdef..."
+  }'
+```
 
 _요청 본문_
 
@@ -269,8 +309,7 @@ _요청 본문_
   "sourceAddress": "0x1a2b...",
   "asset": "ETH",
   "amount": "1.5",
-  "txHash": "0xdef...",
-  "verificationRef": "uuid-..."
+  "txHash": "0xdef..."
 }
 ```
 
@@ -280,7 +319,6 @@ _요청 본문_
 | `asset` | string | 필수 | 자산 심볼 |
 | `amount` | string | 필수 | 금액(문자열) |
 | `txHash` | string | 필수 | 온체인 tx |
-| `verificationRef` | string | - | 대기함의 사전 검증 참조 — 있으면 능동 조회(Check Transaction Status)의 열쇠로 쓴다 |
 
 _응답_
 
@@ -311,6 +349,17 @@ _응답_
 `POST` `https://{baseUrl}/compliance/travel-rule/registered-wallets`
 
 개인지갑 등록·소유 증명을 벤더(Address Registry)에 반영하는 부분만 대행한다 — 등록 화면·소유 인증 UX·등록 유도 정책은 월렛 몫이다. 등록된 주소는 이후 출금 verdict(개인지갑 판별)와 입금 `registryMatched` 의 근거가 된다.
+
+```bash
+curl -X POST "https://{baseUrl}/compliance/travel-rule/registered-wallets" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accountId": "acct-001",
+    "address": "0x896B...0b9b",
+    "asset": "ETH",
+    "ownershipProof": { "type": "eip-191", "proof": "0x8c1f..." }
+  }'
+```
 
 _요청 본문_
 
@@ -364,6 +413,10 @@ _응답_
 등록을 해제하고 벤더(Address Registry)에서 내린다 — 해제 UX·정책은 월렛 몫이고, 이 API 는 벤더 반영만 대행한다.
 해제된 주소로의 출금은 다시 미등록 개인지갑으로 취급된다(verdict `REJECTED`).
 
+```bash
+curl -X DELETE "https://{baseUrl}/compliance/travel-rule/registered-wallets/rw-000045"
+```
+
 _응답_
 
 `204` — 해제됨 (본문 없음)
@@ -372,7 +425,7 @@ _응답_
 
 ## 인바운드 내부 API — 월렛이 구현, 컴플라이언스가 호출
 
-상대 VASP 의 사전 검증 요청(수신 질문)에 답하기 위한 계약. 응답 형식·에러 형식은 위 공통 규약과 동일하다.
+상대 VASP 의 사전 검증 요청(수신 질문)에 답하기 위한 계약. 수신 기록의 적재·tx hash 갱신은 서비스 내부(컴플라이언스 DB 대기함)라 월렛 API 가 없다. 응답 형식·에러 형식은 위 공통 규약과 동일하다.
 
 #### Verify Address Attribution
 
@@ -380,11 +433,22 @@ _응답_
 
 "이 주소가 너희 고객 아무개 소유인가" — 주소↔계정은 월렛이 답하고, 실명 대조는 그 데이터를 가진 서비스에 이어 조회한 결과를 합쳐 돌려준다.
 
+```bash
+curl -X POST "https://{walletBaseUrl}/internal/compliance/address-attribution" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "address": "0x896B...0b9b",
+    "asset": "ETH",
+    "name": "Bruce Wayne"
+  }'
+```
+
 _요청 본문_
 
 ```json
 {
   "address": "0x896B...0b9b",
+  "asset": "ETH",
   "name": "Bruce Wayne"
 }
 ```
@@ -392,6 +456,7 @@ _요청 본문_
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `address` | string | 필수 | 확인 대상 주소 |
+| `asset` | string | 필수 | 자산 심볼 — 같은 주소 문자열이 여러 체인에 있을 수 있어 체인 특정에 쓴다 |
 | `name` | string | - | 상대가 대조를 요청한 실명 (있으면) |
 
 _응답_
@@ -413,42 +478,16 @@ _응답_
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `owned` | boolean | 필수 | 우리 고객의 주소인가 |
+| `owned` | boolean | 필수 | 우리 고객의 주소인가 — `false` 는 "아니다"라는 확정 답 |
 | `accountId` | string (null 가능) | - | 귀속 계정 |
 | `nameMatched` | boolean (null 가능) | - | 실명 대조 결과 — `name` 이 안 왔으면 null |
 
-#### Submit Pre-Verification
+_요구사항_
 
-`POST` `https://{walletBaseUrl}/internal/compliance/pre-verifications`
-
-수신한 트래블룰 정보를 월렛에 넘긴다 — 월렛이 대기함에 적재하고 도착 후 대조에 쓴다.
-같은 `verificationRef` 재전달은 갱신(tx hash 후속 전달 포함)으로 처리한다.
-
-_요청 본문_
-
-```json
-{
-  "verificationRef": "uuid-...",
-  "sourceAddress": "0x1a2b...",
-  "beneficiaryAddress": "0x896B...0b9b",
-  "asset": "ETH",
-  "amount": "1.5",
-  "txHash": null
-}
-```
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `verificationRef` | string | 필수 | 솔루션 쪽 검증 참조 — tx hash 매핑·능동 조회의 열쇠 |
-| `sourceAddress` | string | 필수 | 송신 주소 |
-| `beneficiaryAddress` | string | 필수 | 우리 쪽 수취 주소 |
-| `asset` | string | 필수 | 자산 심볼 |
-| `amount` | string | 필수 | 금액(문자열) |
-| `txHash` | string (null 가능) | - | tx hash 보고가 오면 후속 전달 |
-
-_응답_
-
-`202` — 접수 (월렛이 대기함 적재)
+- **확정 답만 준다** — 실명 데이터 서비스 장애 등으로 확인이 불가하면 `owned: false` 가 아니라 **에러(`INTERNAL` 등)로 응답**한다. `false` 는 상대에게 거절로 회신되는 확정 답이다.
+- **무저장** — `name` 은 대조에만 쓰고 저장·로그에 남기지 않는다 (PII).
+- **응답 시간** — 상대 VASP 의 동기 왕복이 이 응답을 기다린다. 제한 값은 미정([트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md) 국내 시간 규칙과 함께).
+- **대조 항목의 확장** — 이름 외 항목(생년월일 등)이 요구되는지는 Enclave 콜백 페이로드 확인 후 확정(아래 미확정).
 
 ## 타입
 
@@ -522,9 +561,9 @@ verdict 의 값 — 솔루션 원어를 이 넷으로 번역한다 ([트래블�
 
 | 값 | 뜻 |
 |---|---|
-| `VERIFIED` | 송신측이 사전 검증을 했음이 확인됨 |
+| `VERIFIED` | 송신측이 사전 검증을 했음이 확인됨 — 대기함 대조 또는 능동 조회 |
 | `NOT_FOUND` | 송신측에 검증 기록 없음 |
-| `UNAVAILABLE` | 조회 열쇠(`verificationRef`) 없음 — 사전 검증 기록이 없는 입금은 조회 불가 |
+| `UNAVAILABLE` | 확인 불가 — 대조 기록이 없고 TXID 역추적도 안 되는 솔루션 |
 
 ### RegisteredWallet
 
@@ -562,3 +601,5 @@ verdict 의 값 — 솔루션 원어를 이 넷으로 번역한다 ([트래블�
 - **Evidence.kind 목록** — 솔루션별 증적 종류 확정 후 enum 으로 못 박는다.
 - **소유 증명 형식·벤더 반영 수단** — Address Registry 에 등록을 반영하는 벤더 API 와 지원하는 증명 방식(`OwnershipProof.type` 목록)은 벤더 확인 필요.
 - **인증 방식** — 서비스 간 인증(월렛↔컴플라이언스·내부 API)은 인프라 결정과 함께 확정.
+- **대기함 대조 규칙** — 키 조합(txHash 우선 · 주소·금액 일치 범위)은 구현 전 확정.
+- **Enclave 콜백 페이로드** — 수신 질문에 어떤 필드가 평문으로 오는지(실명 외 항목 포함 여부) — Enclave 설치 검증 때 확정.

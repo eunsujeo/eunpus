@@ -131,7 +131,7 @@ sequenceDiagram
 
 ## 7.3 입금 ← 국내 (VerifyVASP) — 자금보다 정보가 먼저 온다
 
-요청-응답형이다 — 자금이 오기 전에 우리 수신 사슬이 먼저 응답하고, 그 기록(대기함)을 도착 후 판별(7.5)에서 대조에 쓴다. 인바운드 사슬은 **중앙 서버 → 우리 Enclave → 수신 컴포넌트 → 컴플라이언스 서비스 → 월렛 백엔드(귀속 확인·대기함 적재)** 다(8장).
+요청-응답형이다 — 자금이 오기 전에 우리 수신 사슬이 먼저 응답하고, 그 기록(대기함 — 컴플라이언스 DB)을 도착 후 판별(7.5)에서 대조에 쓴다. 인바운드 사슬은 **중앙 서버 → 우리 Enclave → 수신 컴포넌트 → 컴플라이언스 서비스(대기함 적재 — 귀속·실명 확인은 월렛 백엔드에 조회)** 다(8장).
 
 ```mermaid
 sequenceDiagram
@@ -142,8 +142,8 @@ sequenceDiagram
     participant EN as 우리 Enclave<br/>자체 인프라 · 공개 HTTPS 수신
     participant RX as 트래블룰 수신 컴포넌트<br/>별도 배포 · 얇게
     participant TR as 컴플라이언스 서비스<br/>솔루션 연동 · 8장
-    participant BE as 월렛(Service) 백엔드<br/>매칭·귀속 · 가용 전이
-    participant WQ as 대기함<br/>사전 검증 기록 저장소
+    participant WQ as 컴플라이언스 DB<br/>대기함
+    participant BE as 월렛(Service) 백엔드<br/>귀속 · 가용 전이
     end
     box rgb(220,252,231) 블록체인 매니저
     participant BM as 폴링 → deposit-events
@@ -153,9 +153,9 @@ sequenceDiagram
     HUB->>EN: 암호화 메시지 중계 (인바운드)
     EN->>RX: VASP API 호출 · Verify User · Verify User Account (복호화는 Enclave 안)
     RX->>TR: 위임 — 검증·변환만
-    TR->>BE: 주소 귀속·실명 확인 조회 · 검증 기록 전달
-    BE->>WQ: 사전 검증 기록 적재 (source·수취인·금액)
+    TR->>BE: 주소 귀속·실명 확인 조회
     BE-->>TR: 확인 결과
+    TR->>WQ: 사전 검증 기록 적재 — 대조 키 (PII 없음)
     TR-->>RX: 응답
     RX-->>EN: 승인 응답
     EN-->>HUB: 승인 회신 (암호화)
@@ -168,22 +168,22 @@ sequenceDiagram
         HUB->>EN: Callback — tx hash 중계
         EN->>RX: tx hash 전달
         RX->>TR: 위임 — tx hash
-        TR->>BE: tx hash 전달
-        BE->>WQ: txhash ↔ 사전 검증 기록 매핑
-        BE->>WQ: 폴링 입금 후보로 대조 조회 (7.5)
-        WQ-->>BE: 대조 일치 → APPROVED → 가용
+        TR->>WQ: txHash ↔ 사전 검증 기록 매핑 (내부 처리)
+        BE->>TR: 입금 확인 (deposit-checks · 컴플라이언스 1장 ⑤)
+        TR->>WQ: 대조 조회
+        WQ-->>TR: 대조 일치
+        TR-->>BE: 대조 결과 → APPROVED → 가용
     else 보고 미수신 — 시간 초과
-        BE->>TR: Check Transaction Status 요청 — 송신측 검증 유무 능동 조회
-        TR->>EN: 조회 (Enclave 경유 아웃바운드)
+        BE->>TR: 입금 확인 (deposit-checks) — 대기함 대조 안 됨
+        TR->>EN: Check Transaction Status — 송신측 검증 유무 능동 조회 (Enclave 경유 아웃바운드)
         EN->>HUB: 중계
         TR-->>BE: 조회 결과
-        BE->>WQ: 조회 결과로 대조
         Note over BE,WQ: 대조되면 가용 · 안 풀리면 입금대기(잔고 차단) → 소명·반환 (7.5 마지막 분기 · 8장 판별 5)
     end
 ```
 
 - 승인이 나야 상대가 온체인 전송을 실행한다 — 수신 사슬(**우리 Enclave → 수신 컴포넌트 → 컴플라이언스 서비스 → 월렛 백엔드**)이 응답을 못 하면 국내 입금 자체가 막히므로, 이 사슬의 가용성이 곧 입금 가용성이다.
-- **수신 컴포넌트는 별도 배포**다 — 컴플라이언스 서비스의 인바운드 접점. 얇게: 검증·변환만 하고 컴플라이언스 서비스로 위임하며, 매칭·귀속 판단과 대기함은 월렛 백엔드다(8장).
+- **수신 컴포넌트는 별도 배포**다 — 컴플라이언스 서비스의 인바운드 접점. 얇게: 검증·변환만 하고 컴플라이언스 서비스로 위임한다. 대기함·1차 대조는 컴플라이언스 서비스, 귀속 판단·가용 전이는 월렛 백엔드다(8장).
 - **우리 Enclave vs 중앙** — 공개 HTTPS 를 받는 것은 우리 Enclave(벤더 요건)이고 복호화도 여기서 한다. 중앙 서버는 송신측과 우리 Enclave 사이를 중계만 한다.
 - **CODE 회원(빗썸 등) 발 입금**도 상호연동으로 VerifyVASP 인바운드로 도착한다 — 위 흐름 동일. 미확인 입금의 TXID 역추적이 경유 경로에서 되는지는 6장 상호연동 실효 확인 대상(안 되면 CODE 직접 7.11). 상세 시퀀스는 부록 A(11장).
 
@@ -328,25 +328,26 @@ sequenceDiagram
     end
     box rgb(224,242,254) 우리 측
     participant GT as 컴플라이언스 서비스<br/>수신 웹훅 · 솔루션 조회
-    participant BE as 월렛(Service) 백엔드<br/>매칭·귀속 · 가용 전이
-    participant WQ as 대기함<br/>사전 통지 기록 저장소
+    participant WQ as 컴플라이언스 DB<br/>대기함
+    participant BE as 월렛(Service) 백엔드<br/>귀속 · 가용 전이
     end
 
     opt 사전 통지 (자금보다 먼저)
         SV->>NB: 트래블룰 메시지 전송
         NB->>GT: 웹훅 — 인입 (우리 수신 엔드포인트)
-        GT->>BE: 통지 전달 — 주소 귀속·실명 확인
-        BE->>WQ: 대기함 적재
+        GT->>BE: 주소 귀속·실명 확인 조회
+        BE-->>GT: 확인 결과
+        GT->>WQ: 대기함 적재
     end
     SV->>SV: 온체인 전송 실행
     BM->>BM: 온체인 감지 → 확정 임계 도달
     BM-->>BE: 입금 후보 (확정 이벤트)
-    BE->>WQ: 대조 조회 — source ↔ 대기함 기록
+    BE->>GT: 입금 확인 (deposit-checks · 컴플라이언스 1장 ⑤)
+    GT->>WQ: 대조 조회 — source ↔ 대기함 기록
     alt 대기함 대조 일치
-        WQ-->>BE: 일치 → APPROVED → 가용 전이
+        WQ-->>GT: 일치
+        GT-->>BE: APPROVED → 가용 전이
     else 대조할 기록 없음
-        WQ-->>BE: 없음
-        BE->>GT: 송신측 트래블룰 상태 조회 요청
         GT->>NB: 직접 조회
         GT-->>BE: 대조되면 APPROVED · 아니면 PENDING
     end
@@ -354,7 +355,7 @@ sequenceDiagram
 ```
 
 - **동결 주체가 바뀐다** — 7.4 는 Notabene·Fireblocks 가 동결해 REJECTED 계열로 넘겨줬지만, 여기선 벤더 동결이 없으므로 **입금대기(잔고 차단)가 우리 자체 상태**다. 개념 5장(입금 실무)의 입금대기·강제 반환 경로를 우리가 직접 운영한다.
-- **수신 웹훅이 필요** — 7.3 VerifyVASP 의 수신 컴포넌트와 같은 역할이되 Enclave 는 없다(Notabene SaaS 보관). 사전 통지가 자금보다 먼저 오면 대기함에 쌓아 두었다가 도착 후 대조에 쓴다.
+- **수신 웹훅이 필요** — 7.3 VerifyVASP 의 수신 컴포넌트와 같은 역할이되 Enclave 는 없다(Notabene SaaS 보관). 사전 통지가 자금보다 먼저 오면 컴플라이언스 대기함에 쌓아 두었다가 도착 후 대조에 쓴다.
 - **합류점(7.5)과의 관계** — 7.5 의 "벤더 스크리닝 통과로 도착" 분기가 여기선 "Notabene 직접 조회로 대조" 분기로 바뀐다. 나머지 판별·가용 전이 규칙은 8장 그대로.
 
 ## 7.8 출금 → 개인지갑(자기수탁) — 등록·소유 인증만
@@ -458,7 +459,7 @@ sequenceDiagram
 
 ## 7.11 입금 ← 국내 CODE (직접 연동) — 미확인은 TXID 역추적
 
-입금도 동기 요청-응답이다. 자금 전 사전 승인을 받아 대기함에 쌓고, 도착 후 7.5 합류점에서 대조한다. 대조할 기록이 없으면 TXID 로 역추적한다.
+입금도 동기 요청-응답이다. 자금 전 사전 승인을 받아 컴플라이언스 대기함에 쌓고, 도착 후 7.5 합류점에서 대조한다. 대조할 기록이 없으면 TXID 로 역추적한다.
 
 ```mermaid
 sequenceDiagram
@@ -468,8 +469,8 @@ sequenceDiagram
     box rgb(224,242,254) 우리 측
     participant CC as CODE-Cipher<br/>수신·복호화
     participant TR as 컴플라이언스 서비스<br/>솔루션 연동 · 8장
-    participant BE as 월렛(Service) 백엔드<br/>매칭·귀속 · 가용 전이
-    participant WQ as 대기함<br/>사전 승인 기록 저장소
+    participant WQ as 컴플라이언스 DB<br/>대기함
+    participant BE as 월렛(Service) 백엔드<br/>귀속 · 가용 전이
     end
     box rgb(220,252,231) 블록체인 매니저
     participant BM as 폴링 → deposit-events
@@ -478,19 +479,20 @@ sequenceDiagram
     SV->>CV: Asset Transfer Authorization (사전)
     CV->>CC: 중계 — 암호화 메시지 인입
     CC->>TR: 복호화 인계
-    TR->>BE: 주소 귀속·실명 확인 조회 · 기록 전달
-    BE->>WQ: 사전 승인 기록 적재
+    TR->>BE: 주소 귀속·실명 확인 조회
     BE-->>TR: 확인 결과
+    TR->>WQ: 사전 승인 기록 적재
     TR-->>CC: 승인 응답
     CC-->>CV: 회신
     CV-->>SV: 승인 (동기)
     SV->>SV: 온체인 전송
     BM-->>BE: 입금 후보 — 확정 임계 도달
-    BE->>WQ: 폴링 입금 후보로 대조 조회 (7.5)
+    BE->>TR: 입금 확인 (deposit-checks · 컴플라이언스 1장 ⑤)
+    TR->>WQ: 대조 조회 (7.5)
     alt 대기함 대조 일치
-        WQ-->>BE: 일치 → APPROVED → 가용
+        WQ-->>TR: 일치
+        TR-->>BE: APPROVED → 가용
     else 미확인 (대조할 기록 없음)
-        BE->>TR: TXID 역추적 요청
         TR->>CV: Search VASP by TXID (비동기)
         CV-->>TR: 송신 VASP 식별
         TR->>CV: Asset Transfer Data Request — 사후 정보 교환

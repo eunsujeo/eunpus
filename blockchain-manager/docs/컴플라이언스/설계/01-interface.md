@@ -30,9 +30,9 @@ status: To Do
 |---|---|---|
 | 1 | `GET /compliance/travel-rule/counterparties` | **List Counterparties** — 출금 화면에서 고객에게 보여줄 수취 거래소 목록. **컴플라이언스 DB 의 목록 스냅샷**에서 답한다(솔루션 실시간 조회 아님 · 주기 동기화) |
 | 2 | `POST /compliance/travel-rule/withdrawal-checks` | **Create Withdrawal Check** — 출금 확인 개시 (`externalTxId` = 멱등키). 동기 솔루션은 최종 verdict·travelRuleMessage 까지 즉답 — 이 응답만으로 제출 가능. 비동기 솔루션은 PENDING |
-| 3 | `GET /compliance/travel-rule/withdrawal-checks/{checkId}` | **Get Withdrawal Check** — PENDING 해소: settled 이벤트 후 verdict·travelRuleMessage 수령 (유실 대비 폴링 겸용). 동기 즉답 건은 불필요 |
+| 3 | `GET /compliance/travel-rule/withdrawal-checks/{checkId}` | **Get Withdrawal Check** — 이벤트 유실 대비 폴링·재기동 복구 전용. 정상 흐름에서는 호출하지 않는다 |
 | 4 | `POST /compliance/travel-rule/withdrawal-checks/{checkId}/report` | **Report Withdrawal Result** — 온체인 제출 후 tx hash 보고. 비차단 — 이 호출의 실패는 출금 흐름과 무관(재시도만 하면 된다) |
-| 5 | `POST /compliance/travel-rule/deposit-checks` | **Create Deposit Check** — 입금 판별의 솔루션 조회 대행. **대기함 대조는 월렛 몫**이라 여기 없다 |
+| 5 | `POST /compliance/travel-rule/deposit-checks` | **Create Deposit Check** — 입금 한 건의 트래블룰 확인. 서비스가 **자기 대기함(사전 검증 기록)과 대조**하고, 안 되면 능동 조회까지 해서 결과만 돌려준다. 호출 시점·판별 우선순위는 [트래블룰 8장](../../트래블룰/설계/08-gate-port.md), 귀속·가용 전이 판단은 월렛 몫 |
 | 6 | `POST /compliance/travel-rule/registered-wallets` | **Register Wallet** — 개인지갑 등록·소유 증명의 벤더(Address Registry) 반영 대행. 등록 화면·소유 인증 UX·등록 유도 정책은 월렛 몫 |
 | 7 | `DELETE /compliance/travel-rule/registered-wallets/{walletId}` | **Deregister Wallet** — 등록 해제의 벤더 반영 대행. 해제된 주소로의 출금은 다시 미등록 개인지갑 취급 |
 
@@ -45,13 +45,14 @@ status: To Do
 비동기 확인의 결과 도착은 **메시지 큐 전용 토픽**으로 알린다 — 매니저→월렛이 큐인 기존 패턴과 동일하고, 파티션 키도 같은 규칙(계정 단위)이다.
 
 - **토픽**: `compliance`
-- **이벤트**: `withdrawal-check.settled` — checkId · externalTxId · verdict(APPROVED/REJECTED) · APPROVED 면 travelRuleMessage 준비 완료 표시. settled = check 가 최종 결과(APPROVED·REJECTED — PENDING 만료 포함)에 도달해 더는 바뀌지 않는다
-- 월렛은 이벤트 수신 시 Get Withdrawal Check(3번)로 travelRuleMessage·증적을 가져간다. 이벤트가 유실돼도 폴링(3번)과 PENDING 만료 규칙이 흐름을 끝낸다.
+- **이벤트**: `withdrawal-check.settled` — checkId · externalTxId · verdict(APPROVED/REJECTED). settled = check 가 최종 결과(APPROVED·REJECTED — PENDING 만료 포함)에 도달해 더는 바뀌지 않는다
+- **월렛은 이벤트의 verdict 로 바로 진행한다** — 비동기 경로(VerifyVASP)는 travelRuleMessage 가 없어(사전 승인 자체가 통과) 이벤트만으로 제출·반려가 가능하다. Get(3번)은 이벤트 유실 대비 폴링·재기동 복구 전용이고, 그마저 놓쳐도 PENDING 만료 규칙이 흐름을 끝낸다.
+- travelRuleMessage 를 만드는 솔루션이 비동기로 붙는 날이 오면 — PII 라 이벤트에 싣지 않고, 그때 Get 을 정상 흐름에 되살린다 (지금 그런 조합은 없다).
 - **PENDING 만료의 주인은 이 서비스** — 솔루션별 시간 규칙([트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))을 알고 있는 쪽이 만료를 가려 REJECTED 로 settled 이벤트를 낸다.
 
 ## 배치 — 서비스가 스스로 도는 두 주기 작업
 
-월렛 호출 없이 서비스가 주기적으로 실행한다.
+월렛 호출 없이 서비스가 주기적으로 실행한다. 대기함 보존 기간 만료(값 미정 — [트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))도 확정되면 이 자리에 추가된다.
 
 ### 목록 동기화 — List Counterparties 의 스냅샷을 만든다
 
@@ -73,7 +74,7 @@ sequenceDiagram
         SCH->>FB: Get All VASPs (페이지네이션 — 끝까지 반복)
         FB-->>SCH: VASP 목록 — DID · 이름 (Notabene VASP 디렉토리)
         SCH->>SCH: 병합 — 이름 정규화 · 중복 정리
-        SCH->>DB: 스냅샷 갱신 — 신규는 counterpartyId 발급, 기존은 매핑 유지<br/>reachable 은 health·도달성에서 계산
+        SCH->>DB: 스냅샷 갱신 — 신규는 counterpartyId 발급, 기존은 매핑 유지
         DB-->>SCH: 갱신 결과 — 추가 · 변경 · 제거 건수
     end
 ```
@@ -97,18 +98,8 @@ sequenceDiagram
         SCH->>DB: REJECTED(만료) 확정 저장
         DB-->>SCH: 저장 완료
         SCH->>MQ: withdrawal-check.settled 발행 (만료 건마다)
-        MQ-->>SCH: 발행 확인 (ack)
     end
 ```
-
-## 인바운드 내부 API — 월렛이 구현, 컴플라이언스가 호출 (2개)
-
-상대 VASP 의 사전 검증 요청(수신 질문)에 답하기 위한 계약 — 인바운드 사슬(Enclave → 수신 컴포넌트 → 컴플라이언스 서비스 → 월렛)의 마지막 구간이다.
-
-| # | 계약 | 무엇 |
-|---|---|---|
-| 1 | **Verify Address Attribution** — 주소 귀속·실명 확인 조회 | "이 주소가 너희 고객 아무개 소유인가" — 주소↔계정은 월렛이, 실명 대조는 그 데이터를 가진 서비스에 이어 조회 |
-| 2 | **Submit Pre-Verification** — 사전 검증 기록 전달 | 수신한 트래블룰 정보(source·수취인·금액·이후 tx hash)를 월렛에 넘긴다 — 월렛이 대기함에 적재하고 도착 후 대조에 쓴다 |
 
 ## 시퀀스 — 출금 확인 한 사이클
 
@@ -133,29 +124,38 @@ sequenceDiagram
         CP->>DB: 최종 verdict·travelRuleMessage·증적 저장
         CP-->>BE: verdict·travelRuleMessage·증적 즉시 — 이 응답만으로 제출 가능
     else 비동기 솔루션 (VerifyVASP)
+        NET-->>CP: 접수 응답 — UUID 즉시 (결과는 Callback)
         CP->>DB: PENDING·접수 번호(UUID) 저장
         CP-->>BE: PENDING — 월렛은 "트래블룰 확인 중"으로 대기
         NET-->>CP: 승인·거절 도착 (Callback)
         CP->>DB: 최종 verdict·증적 저장
         CP-->>MQ: withdrawal-check.settled 발행
-        MQ-->>BE: 이벤트 수신
-        BE->>CP: ③ GET withdrawal-checks/{checkId}
-        CP->>DB: check 조회
-        CP-->>BE: verdict · travelRuleMessage(또는 null) · 통과 증적
+        MQ-->>BE: 이벤트 수신 — verdict 로 바로 진행
+        opt 이벤트 유실·재기동 복구
+            BE->>CP: ③ GET withdrawal-checks/{checkId}
+            CP->>DB: check 조회
+            CP-->>BE: verdict · travelRuleMessage(또는 null) · 통과 증적
+        end
     end
     alt APPROVED · NOT_REQUIRED
-        BE->>BE: travelRuleMessage 실어 매니저에 제출
+        BE->>BE: travelRuleMessage 실어 블록체인 매니저에 제출
         BE->>CP: ④ POST report — tx hash
         CP->>DB: tx hash 기록
         CP->>NET: 사후 보고 (필요한 솔루션만 · 아니면 no-op)
-    else REJECTED — 즉답 또는 settled
+    else REJECTED
         BE->>BE: 반려 — 잠긴 금액 가용 복귀 (8장 상태 흐름)
     end
 ```
 
-월렛이 아는 것은 API 7개와 verdict 넷뿐이다. ②(Create)와 ③(Get)의 응답은 같은 모양(WithdrawalCheck)이라 — **동기 즉답이면 ② 응답으로 바로 제출**하고, **③ 은 PENDING 해소·이벤트 유실 대비 전용**이다.
+## 인바운드 내부 API — 월렛이 구현, 컴플라이언스가 호출 (1개)
 
-## 시퀀스 — 입금 쪽 두 계약
+상대 VASP 의 사전 검증 요청(수신 질문)에 답하기 위한 계약. 수신 기록의 적재·tx hash 갱신은 컴플라이언스 DB 대기함에서 내부 처리되므로, 월렛에는 아래 질문 하나만 온다.
+
+| # | 계약 | 무엇 |
+|---|---|---|
+| 1 | **Verify Address Attribution** — 주소 귀속·실명 확인 조회 | "이 주소가 너희 고객 아무개 소유인가" — 주소↔계정은 월렛이, 실명 대조는 그 데이터를 가진 서비스에 이어 조회 |
+
+## 시퀀스 — 입금 한 사이클
 
 ```mermaid
 sequenceDiagram
@@ -163,22 +163,46 @@ sequenceDiagram
     participant NET as 솔루션<br/>상대 VASP 발 사전 검증
     box rgb(224,242,254) 컴플라이언스 서비스
     participant CP as 트래블룰 게이트
+    participant CDB as 컴플라이언스 DB<br/>대기함
     end
     box rgb(224,242,254) 월렛 백엔드
-    participant BE as 매칭·귀속 · 대기함
+    participant BE as 월렛 백엔드
+    participant WDB as 월렛 DB<br/>주소↔계정
     end
 
-    NET->>CP: 사전 검증 요청 인입 (Enclave → 수신 컴포넌트 경유)
-    CP->>BE: 인바운드 ① 주소 귀속·실명 확인 조회
-    BE-->>CP: 확인 결과
-    CP->>BE: 인바운드 ② 사전 검증 기록 전달 — 월렛이 대기함 적재
-    CP-->>NET: 응답 회신
-    Note over BE: (자금 도착 · 확정 — 매니저 deposit-events)
-    BE->>BE: 대기함 대조 — 매칭·귀속 판단은 월렛 몫
-    opt 대조할 기록 없음
-        BE->>CP: ⑤ POST deposit-checks — source·금액·tx hash
-        CP->>NET: 능동 조회 (Check Transaction Status 등)
-        CP-->>BE: 솔루션 조회 결과 — 월렛 판단에 쓸 정보
+    alt 국내 — VerifyVASP 직접 연동: 사전 검증이 우리에게 온다 (7.3)
+        NET->>CP: 사전 검증 요청 인입 — 수취 주소·자산·금액·verificationRef (Enclave → 수신 컴포넌트 경유)
+        CP->>BE: 인바운드 ① 주소 귀속·실명 확인 조회
+        BE->>WDB: 주소↔계정 조회 — 우리 고객 계정인지
+        WDB-->>BE: 귀속 계정
+        BE-->>CP: 확인 결과
+        CP->>CDB: 대기함 적재 — 대조 키·verificationRef (PII 없음)
+        CP-->>NET: 응답 회신
+        NET->>NET: 상대 VASP 온체인 전송 — 체인 confirmation 진행
+        opt tx hash 사후 보고 수신 (TX_REPORT · 순서 보장 없음)
+            NET->>CP: 상대의 tx hash 보고 인입
+            CP->>CDB: 같은 verificationRef 에 txHash 갱신 — 내부 처리
+        end
+        Note over BE: 블록체인 매니저 deposit-events 수신 — 자금 도착·확정
+        BE->>WDB: 주소↔계정 귀속 확인
+        WDB-->>BE: 귀속 계정
+        BE->>CP: ⑤ POST deposit-checks — source·자산·금액·tx hash
+        CP->>CDB: 대기함 대조 — txHash·주소·금액
+        CDB-->>CP: 일치 기록 (또는 없음)
+        opt 대조되지 않음 — 능동 조회
+            CP->>NET: 보고 미수신 건은 Check Transaction Status · 기록 자체가 없으면 TXID 역추적(되는 솔루션)
+            NET-->>CP: 조회 결과
+        end
+        CP-->>BE: 대조 결과
+        BE->>BE: 가용 전이 또는 입금대기 — 월렛 판단
+    else 해외 — Notabene 벤더주도: 대조가 벤더 안에서 끝난다 (7.4)
+        NET->>NET: 사전 통지 수신 — 벤더 수신함에 보류
+        NET->>NET: 상대 VASP 온체인 전송 — 체인 confirmation 진행
+        NET->>NET: 자금 도착 — Fireblocks 가 거래 상세 전달, 벤더가 대조·판정 (인바운드 API 없음)
+        Note over BE: 블록체인 매니저 deposit-events 수신 — 벤더 판정이 접힌 상태 (동결이면 그 계열 상태)
+        BE->>WDB: 주소↔계정 귀속 확인 — 우리 고객 계정인지
+        WDB-->>BE: 귀속 계정 (없으면 미확인 입금 처리)
+        BE->>BE: 가용 전이 또는 동결 대응 — 월렛 판단
     end
 ```
 
@@ -188,7 +212,7 @@ sequenceDiagram
 |---|---|---|---|
 | 목록 (List Counterparties) | 스냅샷에서 반환 (원천: 회원 목록) | 스냅샷에서 반환 (원천: 회원 목록·상호연동) | 스냅샷에서 반환 (원천: VASP 목록) |
 | 개시 (Create Withdrawal Check) | **PENDING** — 승인 왕복 진행 | APPROVED — 동기 즉답 | APPROVED — validate/full 판별·검증 즉답 |
-| 결과 대기 (Get Withdrawal Check) | `compliance` 이벤트 수신 후 Get 으로 수령 | 불필요 — 개시 응답으로 바로 | 불필요 — 개시 응답으로 바로 |
+| 결과 대기 | `compliance` 이벤트 수신으로 종료 (Get 불필요) | 불필요 — 개시 응답으로 바로 | 불필요 — 개시 응답으로 바로 |
 | 제출 | travelRuleMessage null — 그대로 제출 | travelRuleMessage null — 그대로 제출 | **travelRuleMessage 동봉**해 제출 |
 | 보고 (Report Withdrawal Result) | tx hash 보고 실행 | 실행 | no-op — 벤더가 이미 안다 |
 

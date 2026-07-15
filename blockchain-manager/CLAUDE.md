@@ -48,6 +48,8 @@ status: To Do                   # To Do | In Progress | Done | 아카이브
   iframe 으로** 띄운다. 예: `embed: api-doc.html` — build.py 가 `app/public/api-doc.html` 로도 내보내는
   api-docs 원본 뷰어가 디자인 그대로 뜬다. 앱 테마가 iframe 에 동기화된다.
   ★ embed 파일명은 `/api/*`(Functions) 와 겹치는 `api.html` 같은 이름 금지 — pretty-URL 리다이렉트 충돌.
+- ★ **추측 금지** — 확인 안 된 필드·값·동작·순서를 문서에 쓰지 않는다. 원본(공식 스펙·확정 결정)에서
+  확인되면 쓰고, 확인 불가면 생략하거나 "확인 필요/미확정" 절에만 둔다. 그럴듯한 부연을 지어내지 않는다.
 - 카드 요약은 frontmatter 다음 본문 첫 2줄에서 자동 추출 — 문서 첫 단락을 요약답게 쓸 것.
 - 마지막 수정일은 GitHub 커밋 이력에서 가져온다 (문서에 날짜를 적지 않는다).
 - **status 는 git 이 아니라 KV 오버레이에 저장된다** (Stage: KV 전환). frontmatter 의 status 는
