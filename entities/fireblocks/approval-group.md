@@ -75,6 +75,7 @@ Edit user의 기본 흐름은 Owner + Admin Quorum 승인이지만 Approval grou
 - [[entities/fireblocks/user-roles/admin]] — Delete users `Y (AG)`의 활성화 대상
 - [[vendors/fireblocks/lifecycle-events]] — Add/Edit/Delete의 거버넌스 customize 위치
 - [[vendors/fireblocks/user-management]]
+- [[vendors/fireblocks/tap]] — API rule object 의 `authorizationGroups` (th N-of-M sub-quorum) (Stage 156)
 
 ## Sources
 

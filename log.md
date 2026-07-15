@@ -7676,3 +7676,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - Open Q 신규: Q-2026-07-10-WB01~WB11 (브릿지·가스비 수수료 반영·개인지갑 주소소유·한도 초과·Redis 동기화 주기·네팅 트리거·Outbox 물리명·커스터디 코드체계·확장 P1/P2)
 - 신규 entity: +3 (wallet-bank 신규 벤더 — Fireblocks 0-streak 규칙과 별개 namespace, 최소 분할 유지)
 - 후속: BCM 설계 문서(blockchain-manager/docs/블록체인매니저) vs daw-core DB·설계 교차 검증 진행
+
+## Stage 156 (2026-07-14) — TAP Policy Editor API promote (Configure Policies)
+- source: sources/fireblocks/markdown/2026-05-22__developers-fireblocks-com__reference-configure-transaction-authorization-policy.md (773 lines, Mode C — 사용자 promote 승인)
+- 계기: blockchain-manager 정책관리 설계 질의 (API vs Console) — Console 승인 관문이 API 게시 요청에도 적용됨을 확인
+- 영향받은 페이지: vendors/fireblocks/tap.md (placeholder → stable, rule object schema·publish/edit·Console 승인 관문·validation·metadata) · entities/fireblocks/policy.md (Q-P01 note 보강) · entities/fireblocks/designated-signer.md · entities/fireblocks/approval-group.md (양방향 backlink)
+- Open Q 신규: Q-2026-07-14-01 (2-TIER ↔ Approved by 대응) · Q-2026-07-14-02 (Policy Editor V2 vs beta 경로)
+- 신규 entity: 0 (기존 vendor hub tap.md 에 흡수 — 29 stage 연속)

@@ -1173,3 +1173,19 @@
   4. Notabene 은 VerifyVASP 지원을 "보안 검토 대기"로 검토 중 — 미완 (Notabene 분석 페이지).
 - **잔여 확인 질문**: 경로 A′ 실효(Sumsub/GTR 고객 ↔ VerifyVASP 회원 실제 도달) · TRLink 파트너 직접 등록 가능성 · Enclave 운영 요건(리소스·보안 요구)·가격 · 해외 상대 커버리지
 - **Status**: open (구조·국내 맥락 확정, 도달 경로 실효만 잔여 — CSM·Sumsub 대상)
+
+### Q-2026-07-14-01: API action enum `2-TIER` 와 Console 3-action "Approved by" 의 대응
+
+- **Why it matters**: Policy Editor API 로 정책을 운반하는 정책 관리 서비스(blockchain-manager/docs/정책관리)가 rule 을 다룰 때, API enum 과 Console 개념 모델의 대응이 확정돼야 감사 기록·대조가 정확해진다.
+- **확정 (Stage 156)**: API rule object 의 action = `ALLOW` / `BLOCK` / `2-TIER` (reference-configure-transaction-authorization-policy.md §"The Policy Rules structure"). Console 문서의 3-action = Allow / Approved by / Block (how-policies-work.md, p.1 — Stage 10). 두 문서 모두 상호 대응을 명시하지 않음.
+- **확인 질문**: `2-TIER` = "Approved by" 인가? `authorizationGroups` 가 있는 rule 은 action 을 어떤 값으로 두는가?
+- **Sources to check**: developers.fireblocks.com Policy Editor API reference (endpoint schema) · CSM
+- **Status**: open
+
+### Q-2026-07-14-02: Policy Editor V2 표면과 `policy-editor-beta` 경로의 관계 · GA 상태
+
+- **Why it matters**: blockchain-manager 정책관리 설계(01-policy-change.md)는 "Policy Editor V2 기준, Beta 표면은 쓰지 않는다"로 결정했는데, wiki 에 ingest 된 API 가이드(Stage 156 promote)의 엔드포인트 경로는 `policy-editor-beta` 다. 구현 착수 전 어느 표면이 정본인지 확정 필요.
+- **확정 (Stage 156)**: reference-configure-transaction-authorization-policy.md 의 endpoint 링크는 전부 `/api-reference/policy-editor-beta/*` (send-publish-request-for-a-set-of-policy-rules · get-the-active-policy-and-its-validation). V2 표면의 존재·경로는 wiki 4-source 에 근거 없음.
+- **확인 질문**: V2 표면의 정식 경로·GA 여부? beta 와 draft/publish 분리 모델 차이? 마이그레이션 예정?
+- **Sources to check**: developers.fireblocks.com API reference 최신판 · changelog · CSM
+- **Status**: open

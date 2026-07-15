@@ -31,6 +31,7 @@ Policy가 특정 트랜잭션 타입에 대해 지정하는 서명자. **Non-Sig
 - [[entities/fireblocks/user-roles/editor]]
 - [[entities/fireblocks/transaction]]
 - [[vendors/fireblocks/user-management]]
+- [[vendors/fireblocks/tap]] — API rule object 의 `designatedSigners` 키 (users[] + usersGroups[]) (Stage 156)
 
 ## Sources
 

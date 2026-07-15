@@ -296,7 +296,7 @@ Admin Quorum  (workspace-level default)
 
 ## Open Questions
 
-- ~~Q-2026-05-18-P01~~ — **부분 ANSWERED (Stage 10)**: 2 component (Parameters + Actions), 3 action (Allow/Approved by/Block), first-match principle, 5 default rule, premium feature (Raw Signing/Mint/Burn). **Rule field 의 상세 enumeration 은 `policy-rule-parameters.md` (TIER 3 source-lake-only) 에 보류**.
+- ~~Q-2026-05-18-P01~~ — **부분 ANSWERED (Stage 10)**: 2 component (Parameters + Actions), 3 action (Allow/Approved by/Block), first-match principle, 5 default rule, premium feature (Raw Signing/Mint/Burn). **Rule field 의 상세 enumeration 은 `policy-rule-parameters.md` (TIER 3 source-lake-only) 에 보류**. **API 측 rule object 필드 enumeration 은 Stage 156 에서 [[vendors/fireblocks/tap]] 로 promote** — 단 API action enum 은 `2-TIER` 로 Console "Approved by" 와의 대응 미명시 (Q-2026-07-14-01).
 - ~~Q-2026-05-18-P02~~ — **부분 ANSWERED (Stage 9)**: blockchain-standard 직렬화 + Solana 5-tx queue 의 tx 분류 모델 명세
 - Q-2026-05-18-G02 — Q+O에서 Owner와 Quorum의 정확한 카운팅
 - ~~Q-2026-05-18-S02~~ — **ANSWERED (Stage 10)**: DCCP 정식 정의 — confirmation count 정책, inflow/outflow lock state
