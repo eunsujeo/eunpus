@@ -340,6 +340,20 @@ body {
   color: #181a20;
 }
 .doc-body .mermaid svg { max-width: 100%; height: auto; }
+/* alt/else·loop·opt 프레임 구분선 — mermaid 기본(얇은 회색 점선)이 밝은 다이어그램 패널에서 흐려 보여 진하게.
+   mermaid 가 SVG 안에 자체 <style> 을 심으므로 !important 필요. 패널은 두 테마 공통 밝은 배경이라 고정색. */
+.doc-body .mermaid svg line.loopLine {
+  stroke: #d97706 !important; /* 앰버 — 무채색 lifeline 과 구분되는 분기 경계 */
+  stroke-width: 2px !important;
+  stroke-dasharray: 9 5 !important;
+}
+.doc-body .mermaid svg .labelBox { fill: #fcd535 !important; stroke: #2f3640 !important; }
+.doc-body .mermaid svg .labelText, .doc-body .mermaid svg .labelText tspan { fill: #181a20 !important; font-weight: 700 !important; }
+.doc-body .mermaid svg .loopText, .doc-body .mermaid svg .loopText tspan {
+  fill: #181a20 !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+}
 .modal-close {
   background: none;
   border: none;
