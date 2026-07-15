@@ -17,7 +17,7 @@ flowchart TB
       SVC["Service 백엔드"]
       ADM["Admin 백엔드"]
       BM["블록체인 매니저<br/>별도 서비스"]
-      MQ[("메시지 큐<br/>deposit·withdrawal·internal")]
+      MQ[("메시지 큐<br/>deposit·withdrawal·internal·compliance")]
       PADM["정책 관리<br/>별도 서비스"]
       COS["API Co-signer (SGX/TEE)<br/>+ Callback Handler"]
     end
@@ -41,7 +41,9 @@ flowchart TB
   BM -.->|publish| MQ
   MQ -.->|consume| SVC
   ADM -->|정책 편집·게시| PADM
-  SVC --- GATE
+  SVC -->|확인 요청 · verdict 수신| GATE
+  GATE -->|주소 귀속·실명 확인 조회| SVC
+  GATE -.->|settled 발행| MQ
   GATE -->|VerifyVASP 아웃바운드| EN
   GATE -->|validate/full 요청| FBCLI
   EN --> RX
@@ -51,6 +53,7 @@ flowchart TB
   FBCLI -->|JWT 서명 · validate/full| FB
   COS <-->|서명 요청 · MPC share| FB
   FB --> EVM
+  FB -.->|Notabene 경유| TRNET
   EN <--> TRNET
 
   classDef ours fill:#dbeafe,stroke:#2563eb;
@@ -74,10 +77,10 @@ flowchart TB
 | 지갑 기반 | Service 백엔드 | 고객 런타임 — 계정·주소·입금·출금·잔액 | [블록체인매니저 0장](../../블록체인매니저/설계/00-cast.md) |
 | 지갑 기반 | Admin 백엔드 | 운영·거버넌스 — Service 와 물리 분리(배포·권한·감사 경계) | [블록체인매니저 0장](../../블록체인매니저/설계/00-cast.md) |
 | 지갑 기반 | 블록체인 매니저 | 벤더 연동 전담 별도 서비스 — API 제공 · 내부 폴링 · 큐 publish | [블록체인매니저 0장](../../블록체인매니저/설계/00-cast.md) |
-| 지갑 기반 | 메시지 큐 | 토픽 3개(deposit·withdrawal·internal) + 막힘 경보는 별도 채널 | [블록체인매니저 4장](../../블록체인매니저/설계/04-detect-confirm.md) |
+| 지갑 기반 | 메시지 큐 | 토픽 4개(deposit·withdrawal·internal·compliance) + 막힘 경보는 별도 채널 | [블록체인매니저 4장](../../블록체인매니저/설계/04-detect-confirm.md) |
 | 지갑 기반 | 정책 관리 서비스 | 벤더 정책 편집·게시 대행 — 거래 제출 자격과 분리 | [정책관리 0장](../../정책관리/설계/00-scope.md) |
 | 지갑 기반 | API Co-signer + Callback Handler | 보안 존(SGX/TEE) 설치물 — 키 share 공동서명 · 서명 직전 승인·거부 | [블록체인매니저 6장](../../블록체인매니저/설계/06-withdrawal.md) |
-| 컴플라이언스 | 컴플라이언스 서비스 | 신원정보 교환 전담 — 라우터 + 솔루션 어댑터. 트래블룰 게이트가 첫 모듈이고, 매칭·귀속 판단은 월렛 백엔드에 남는다 | [트래블룰 8장](../../트래블룰/설계/08-gate-port.md) · [12장](../../트래블룰/설계/12-physical-layout.md) |
+| 컴플라이언스 | 컴플라이언스 서비스 | 신원정보 교환 전담 — 라우터 + 솔루션 어댑터. 트래블룰 게이트가 첫 모듈. 1차 대조(대기함 — 컴플라이언스 DB)는 이 서비스, 귀속·가용 전이는 월렛 백엔드 | [트래블룰 8장](../../트래블룰/설계/08-gate-port.md) · [12장](../../트래블룰/설계/12-physical-layout.md) |
 | 컴플라이언스 | 수신 컴포넌트 | 상대 VASP 발신 수신 — 별도 배포·얇게 · 공개 HTTPS | [트래블룰 12장](../../트래블룰/설계/12-physical-layout.md) |
 | 컴플라이언스 | VerifyVASP Enclave | 벤더 강제 설치물 — 키·PII · 공개 HTTPS | [트래블룰 12장](../../트래블룰/설계/12-physical-layout.md) |
 | 컴플라이언스 | Fireblocks 스크리닝 클라이언트 | 전용 API user 로 validate/full 호출 — 자격은 시크릿 스토어/KMS 격리 | [트래블룰 8장](../../트래블룰/설계/08-gate-port.md) |
@@ -89,7 +92,7 @@ flowchart TB
 |---|---|---|
 | 백엔드 DB | 두 백엔드 | 회계 진실 — 고객 원장·귀속·출금 지시 상태. 벤더가 바뀌어도 남는다 |
 | 매니저 DB | 블록체인 매니저 | 벤더 번역·운영 상태 — ref↔vault↔주소 매핑 · 이벤트 체크포인트 |
-| 대기함 | 컴플라이언스 서비스 (컴플라이언스 DB) | 트래블룰 사전 검증·승인 기록 — 입금 도착 시 월렛의 입금 확인 질의에 대조 결과로 답한다 |
+| 컴플라이언스 DB | 컴플라이언스 서비스 | 거래소 목록 · check 상태 · 대기함(사전 검증 기록 — 입금 도착 시 대조로 답한다). 테이블은 [컴플라이언스 2장](../../컴플라이언스/설계/02-database.md) |
 | 시크릿 스토어/KMS | 인프라 공통 | 전용 API user 자격(API키·RSA 서명키) — 서비스 밖 격리 |
 
 ## 경계의 요점
