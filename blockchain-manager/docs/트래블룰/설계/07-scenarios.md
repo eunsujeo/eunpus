@@ -12,9 +12,9 @@ status: To Do
 | **VerifyVASP** (자체 Enclave) | 국내 — 업비트 등 VerifyVASP 회원 | 7.1 | 7.3 |
 | **VerifyVASP** — 상호연동이 CODE 까지 나른다 | 국내 — 빗썸·코인원·코빗 (CODE 회원) | A.1 (7.1 과 동일) | A.2 (7.3 과 동일) |
 | **Notabene** (Fireblocks 경유) | 해외 — TRUST·Sygna 등 Notabene 브릿지 솔루션 | 7.2 | 7.4 |
-| **Address Registry** — 정보 교환 상대 없음 | 본인 개인지갑 (자기수탁) | 7.8 | 7.9 |
+| **등록 지갑 목록** (월렛 DB — 정보 교환 상대 없음) | 본인 개인지갑 (자기수탁) | 7.8 | 7.9 |
 
-우리 쪽 창구는 셋뿐이다 — 국내는 상대가 어느 솔루션 회원이든 **우리 VerifyVASP 하나**, 해외는 **Notabene**, 개인지갑은 **Address Registry**.
+우리 쪽 창구는 셋뿐이다 — 국내는 상대가 어느 솔루션 회원이든 **우리 VerifyVASP 하나**, 해외는 **Notabene**, 개인지갑은 **월렛 DB 의 등록 지갑 목록**(컴플라이언스 무관 · 월렛 자체 확인).
 
 **대안·미확정·제외** — 본 표의 확정 경로가 아니다:
 
@@ -118,7 +118,7 @@ sequenceDiagram
         NB-->>FB: 트래블룰 상태 판정
         Note over FB: Post-Screening Policy(4장) — Accept 후에야 서명·전파
     else BELOW_THRESHOLD · NON_CUSTODIAL(개인지갑)
-        Note over GT: 개인지갑 = Address Registry 등록·소유 인증 조회 (정보 교환 상대 없음)
+        Note over GT: 개인지갑 선택 출금은 게이트에 오지 않는다 — 월렛이 등록 지갑 목록으로 자체 확인 (7.8)
         GT-->>BE: 임계 미만·등록 지갑 = APPROVED · 미등록 개인지갑 = REJECTED
         BE->>BM: submitTransaction — 동봉 없음 (미등록이면 반려 · 등록·인증부터)
     end
@@ -241,7 +241,7 @@ sequenceDiagram
     BE->>BE: 입금 판별 — source 를 보관된 기록과 대조 (8장 우선순위)
     alt VerifyVASP 사전 요청 대기함과 대조 일치 — 국내
         BE->>BE: APPROVED
-    else source 가 Address Registry 등록 주소 — 개인지갑
+    else source 가 등록 지갑 목록(월렛 DB)의 주소 — 개인지갑
         BE->>GT: 등록·소유 인증 조회
         GT-->>BE: 확인 → APPROVED
     else 벤더 스크리닝 통과로 도착 — 해외
@@ -360,35 +360,32 @@ sequenceDiagram
 
 ## 7.8 출금 → 개인지갑(자기수탁) — 등록·소유 인증만
 
-여기부터는 다시 **확정 흐름**이다(위 대안 절과 무관). 상대가 VASP 가 아니라 이용자 본인의 자기수탁 지갑이다. 주고받을 상대가 없으니 IVMS101 교환 대신 **화이트리스트(Address Registry) 등록·소유 인증**으로 가른다. 로컬 확인이라 "트래블룰 확인 중"을 즉시 통과한다.
+여기부터는 다시 **확정 흐름**이다(위 대안 절과 무관). 유저가 출금 화면에서 "내 개인지갑"을 선택한 경우다 — 상대가 VASP 가 아니라 이용자 본인의 자기수탁 지갑이다. 주고받을 상대가 없으니 IVMS101 교환 대신 **등록·소유 인증된 본인 지갑 목록(월렛 DB)** 으로 가른다. 고객 데이터라 월렛이 자체 확인하며, **컴플라이언스 서비스를 부르지 않는다**. 로컬 확인이라 "트래블룰 확인 중"을 즉시 통과한다.
 
 ```mermaid
 sequenceDiagram
     autonumber
     box rgb(224,242,254) 우리 측
     participant BE as Service 백엔드<br/>출금 유스케이스
-    participant GT as 트래블룰 게이트<br/>별도 서비스 · 8장
-    participant AR as Address Registry<br/>주소 등록부 · 네이티브
+    participant WDB as 월렛 DB<br/>등록 지갑 목록
     end
     box rgb(220,252,231) 블록체인 매니저
     participant BM as submitTransaction
     end
 
-    BE->>GT: 트래블룰 확인 — 수취가 개인지갑 (validate/full = NON_CUSTODIAL)
-    GT->>AR: 등록·소유 인증 조회 (정보 교환 상대 없음)
+    BE->>WDB: 등록·소유 인증 조회 — 유저가 "내 개인지갑" 선택
     alt 등록·소유 인증됨
-        AR-->>GT: 확인
-        GT-->>BE: APPROVED — 관할 규정에 따른 기록만
-        BE->>BM: submitTransaction — 동봉 없음
+        WDB-->>BE: 확인
+        BE->>BM: submitTransaction — 동봉 없음 (규정에 따른 기록만)
     else 미등록·미인증
-        AR-->>GT: 없음
-        GT-->>BE: REJECTED — 등록·소유 인증부터 (반려)
+        WDB-->>BE: 없음
+        BE->>BE: 반려 — 등록·소유 인증부터
     end
 ```
 
 - **정보 교환이 없다** — 수취인이 VASP 가 아니라 IVMS101 을 주고받을 상대가 없다. 관할권 규정에 따라 기록만 남긴다.
-- **VerifyVASP 는 개인지갑 미지원**(6장)이라, 개인지갑 상대는 솔루션과 무관하게 이 Address Registry 통제로만 처리한다.
-- 7.2·7.6 의 `NON_CUSTODIAL` 분기가 이 흐름을 가리킨다 — 여기서 단독으로 펼친다.
+- **VerifyVASP 는 개인지갑 미지원**(6장)이라, 개인지갑 상대는 솔루션과 무관하게 이 등록 지갑 목록 통제로만 처리한다.
+- 7.2·7.6 의 `NON_CUSTODIAL` 판별은 유저가 거래소를 선택했는데 솔루션이 주소를 개인지갑으로 가린 경우다 — 그때의 취급도 이 등록 지갑 목록 확인으로 합류한다. 유저가 처음부터 개인지갑을 선택한 출금은 컴플라이언스 없이 이 흐름만 탄다.
 
 ## 7.9 입금 ← 개인지갑(자기수탁) — source 가 등록 주소인가
 
@@ -402,20 +399,20 @@ sequenceDiagram
     end
     box rgb(224,242,254) 우리 측
     participant BE as Service 백엔드<br/>가용 전이 게이트
-    participant AR as Address Registry
+    participant WDB as 월렛 DB<br/>등록 지갑 목록
     end
 
     BM-->>BE: 입금 후보 — 확정 임계 도달
-    BE->>AR: source 주소가 등록·소유 인증된 본인 지갑인가
+    BE->>WDB: source 주소가 등록·소유 인증된 본인 지갑인가
     alt 등록 주소
-        AR-->>BE: 확인 → APPROVED → 가용 전이
+        WDB-->>BE: 확인 → APPROVED → 가용 전이
     else 미등록 개인지갑
-        AR-->>BE: 없음 → 입금대기(잔고 차단)
+        WDB-->>BE: 없음 → 입금대기(잔고 차단)
         Note over BE: 등록 유도·소명·반환 정책
     end
 ```
 
-- 7.5 합류점의 "source 가 Address Registry 등록 주소 → 개인지갑 APPROVED" 분기를 단독으로 펼친 것이다.
+- 7.5 합류점의 "source 가 등록 지갑 목록의 주소 → 개인지갑 APPROVED" 분기를 단독으로 펼친 것이다.
 - 미등록 개인지갑 발은 입금대기 → 등록 유도·소명·반환(자체 정책, 개념 5장). 이 사후 처리 설계는 6장이 "별도 통제 필요"라고 짚은 자리다.
 
 ## 7.10 출금 → 국내 CODE (직접 연동) — 동기 사전 승인

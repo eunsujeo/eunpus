@@ -8,33 +8,31 @@ status: To Do
 
 ## Verdict 타입
 
-오른쪽 네 열은 각 솔루션이 돌려주는 상태·응답이고, 그것들이 왼쪽의 verdict 하나로 접혀서 월렛에 도달한다.
+오른쪽 세 열은 각 솔루션이 돌려주는 상태·응답이고, 그것들이 왼쪽의 verdict 하나로 접혀서 월렛에 도달한다.
 
-| TrVerdict | 뜻 | Notabene (해외 · Fireblocks 경유) | VerifyVASP (국내 · 비동기) | CODE (국내 직접 · 동기) | 개인지갑 |
-|---|---|---|---|---|---|
-| `NOT_REQUIRED` | 트래블룰 대상 아님<br/>· 금액이 한국 기준(원화 100만원) 미만이거나<br/>· 수취가 개인지갑 — 교환할 상대 VASP 없음 | validate/full 이 사유를 반환:<br/>· `BELOW_THRESHOLD` — 보내는 쪽 기준 미만<br/>· `NON_CUSTODIAL` — 개인지갑<br/>위 사유(또는 동일 VASP 내부 이전)로 판정되면<br/>Notabene 에 `Saved` 로 기록 — 전송 없이 사유만 남음 | 한국 기준(100만원) 미만<br/>— 보내는 쪽이 원화 환산가 필드<br/>(tradePrice·KRW)를 채워 보냄 | 한국 기준(100만원) 미만<br/>— 원화 환산가 필드 동일 | 정보 교환 없음 |
-| `APPROVED` | 통과 — 정보 교환·검증이 승인됐다 | 출금 — validate/full 검증 통과(`isValid`)<br/>입금 — 벤더 스크리닝 통과<br/>(`Completed` → Post-Screening Accept)로 도착 | User Verification 승인<br/>— Callback 도착 | Asset Transfer Authorization 승인<br/>— 동기 즉답 | Address Registry(주소 등록부 —<br/>이용자가 사전 등록·소유 인증한<br/>본인 지갑 목록)에 있는 주소 |
-| `PENDING` | 아직 결과가 없다 — 결과가 나면<br/>큐 이벤트(`withdrawal-check.settled`)로 알린다 | —<br/>(동기 즉답이라 없음) | 접수 번호(UUID)만 즉시 반환,<br/>결과는 Callback 대기 | —<br/>(동기 즉답이라 없음) | — |
-| `REJECTED` | 거절 — 상대 거절 또는 PENDING 만료 | — (검증 실패는 요청 오류로 응답)<br/>벤더 게이트의 `Rejected`·`Blocking Time Expired` 는 제출 뒤<br/>블록체인 매니저의 거래 상태 이벤트(REJECTED)로 온다 | 상대 거절<br/>· PENDING 만료 | 상대 거절 | 미등록·미인증 |
+| TrVerdict | 뜻 | Notabene (해외 · Fireblocks 경유) | VerifyVASP (국내 · 비동기) | CODE (국내 직접 · 동기) |
+|---|---|---|---|---|
+| `NOT_REQUIRED` | 트래블룰 대상 아님<br/>· 금액이 한국 기준(원화 100만원) 미만이거나<br/>· 수취가 개인지갑 — 교환할 상대 VASP 없음 | validate/full 이 사유를 반환:<br/>· `BELOW_THRESHOLD` — 보내는 쪽 기준 미만<br/>· `NON_CUSTODIAL` — 개인지갑<br/>위 사유(또는 동일 VASP 내부 이전)로 판정되면<br/>Notabene 에 `Saved` 로 기록 — 전송 없이 사유만 남음 | 한국 기준(100만원) 미만<br/>— 보내는 쪽이 원화 환산가 필드<br/>(tradePrice·KRW)를 채워 보냄 | 한국 기준(100만원) 미만<br/>— 원화 환산가 필드 동일 |
+| `APPROVED` | 통과 — 정보 교환·검증이 승인됐다 | 출금 — validate/full 검증 통과(`isValid`)<br/>입금 — 벤더 스크리닝 통과<br/>(`Completed` → Post-Screening Accept)로 도착 | User Verification 승인<br/>— Callback 도착 | Asset Transfer Authorization 승인<br/>— 동기 즉답 |
+| `PENDING` | 아직 결과가 없다 — 결과가 나면<br/>큐 이벤트(`withdrawal-check.settled`)로 알린다 | —<br/>(동기 즉답이라 없음) | 접수 번호(UUID)만 즉시 반환,<br/>결과는 Callback 대기 | —<br/>(동기 즉답이라 없음) |
+| `REJECTED` | 거절 — 상대 거절 또는 PENDING 만료 | — (검증 실패는 요청 오류로 응답)<br/>벤더 게이트의 `Rejected`·`Blocking Time Expired` 는 제출 뒤<br/>블록체인 매니저의 거래 상태 이벤트(REJECTED)로 온다 | 상대 거절<br/>· PENDING 만료 | 상대 거절 |
 
 ## 설계 원칙
 
 - **비동기가 기본형** — 동기 솔루션(CODE·Notabene)은 "즉시 완료되는 비동기"로 접는다. 월렛의 처리 분기는 verdict 뿐이다.
 - **멱등** — 멱등키는 `externalTxId`, 블록체인 매니저 제출에 쓰는 월렛의 출금 건 식별자 그대로다. 같은 키 재호출은 기존 check 를 돌려준다 (같은 키에 다른 내용이면 409).
 
-## API — 월렛 → 컴플라이언스 (7개)
+## API — 월렛 → 컴플라이언스 (5개)
 
 출금 확인 한 건은 **check** 리소스(WithdrawalCheck)로 만들어진다 — `checkId` 로 식별되고, 그 안에 verdict·travelRuleMessage·통과 증적이 담긴다. 2~4번이 이 리소스의 생성·조회·보고다.
 
 | # | 엔드포인트 | 무엇 |
 |---|---|---|
-| 1 | `GET /compliance/travel-rule/counterparties` | **List Counterparties** — 출금 화면에서 고객에게 보여줄 수취 거래소 목록. **컴플라이언스 DB 의 목록 스냅샷**에서 답한다(솔루션 실시간 조회 아님 · 주기 동기화) |
-| 2 | `POST /compliance/travel-rule/withdrawal-checks` | **Create Withdrawal Check** — 출금 확인 개시 (`externalTxId` = 멱등키). 동기 솔루션은 최종 verdict·travelRuleMessage 까지 즉답 — 이 응답만으로 제출 가능. 비동기 솔루션은 PENDING |
+| 1 | `GET /compliance/travel-rule/counterparties` | **List Counterparties** — 출금 화면에서 고객에게 보여줄 수취 거래소 목록. **컴플라이언스 DB 의 거래소 목록**에서 답한다(솔루션 실시간 조회 아님 · 주기 동기화) |
+| 2 | `POST /compliance/travel-rule/withdrawal-checks` | **Create Withdrawal Check** — 출금 확인 개시 (`externalTxId` = 멱등키). **거래소 선택 출금 전용** — 개인지갑 출금은 이 API 를 부르지 않는다(등록 지갑 확인은 월렛이 월렛 DB 의 등록 지갑 목록으로 자체 처리). 동기 솔루션은 최종 verdict·travelRuleMessage 까지 즉답 — 이 응답만으로 제출 가능. 비동기 솔루션은 PENDING |
 | 3 | `GET /compliance/travel-rule/withdrawal-checks/{checkId}` | **Get Withdrawal Check** — 이벤트 유실 대비 폴링·재기동 복구 전용. 정상 흐름에서는 호출하지 않는다 |
 | 4 | `POST /compliance/travel-rule/withdrawal-checks/{checkId}/report` | **Report Withdrawal Result** — 온체인 제출 후 tx hash 보고. 비차단 — 이 호출의 실패는 출금 흐름과 무관(재시도만 하면 된다) |
 | 5 | `POST /compliance/travel-rule/deposit-checks` | **Create Deposit Check** — 입금 한 건의 트래블룰 확인. 서비스가 **자기 대기함(사전 검증 기록)과 대조**하고, 안 되면 능동 조회까지 해서 결과만 돌려준다. 호출 시점·판별 우선순위는 [트래블룰 8장](../../트래블룰/설계/08-gate-port.md), 귀속·가용 전이 판단은 월렛 몫 |
-| 6 | `POST /compliance/travel-rule/registered-wallets` | **Register Wallet** — 개인지갑 등록·소유 증명의 벤더(Address Registry) 반영 대행. 등록 화면·소유 인증 UX·등록 유도 정책은 월렛 몫 |
-| 7 | `DELETE /compliance/travel-rule/registered-wallets/{walletId}` | **Deregister Wallet** — 등록 해제의 벤더 반영 대행. 해제된 주소로의 출금은 다시 미등록 개인지갑 취급 |
 
 요청·응답 본문의 모양과 필드는 [API 문서](../API/api.md)에 정의한다.
 
@@ -54,7 +52,7 @@ status: To Do
 
 월렛 호출 없이 서비스가 주기적으로 실행한다. 대기함 보존 기간 만료(값 미정 — [트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))도 확정되면 이 자리에 추가된다.
 
-### 목록 동기화 — List Counterparties 의 스냅샷을 만든다
+### 목록 동기화 — List Counterparties 가 답할 거래소 목록을 만든다
 
 주기는 미정(0장 미확정). 목록 API 출처 — [VerifyVASP List VASP](https://docs.verifyvasp.com/reference/travelrule-list-vasp-ids)(`GET /v1/vasps` · 상호연동 CODE 회원 포함) · [Fireblocks Get All VASPs](https://developers.fireblocks.com/api-reference/travel-rule/get-all-vasps) · [Fireblocks TRLink List VASPs](https://developers.fireblocks.com/api-reference/trlink/list-vasps)(Notabene VASP 디렉토리 · 페이지네이션).
 
@@ -74,7 +72,7 @@ sequenceDiagram
         SCH->>FB: Get All VASPs (페이지네이션 — 끝까지 반복)
         FB-->>SCH: VASP 목록 — DID · 이름 (Notabene VASP 디렉토리)
         SCH->>SCH: 병합 — 이름 정규화 · 중복 정리
-        SCH->>DB: 스냅샷 갱신 — 신규는 counterpartyId 발급, 기존은 매핑 유지
+        SCH->>DB: 목록 갱신 — 신규는 counterpartyId 발급, 기존은 매핑 유지
         DB-->>SCH: 갱신 결과 — 추가 · 변경 · 제거 건수
     end
 ```
@@ -210,7 +208,7 @@ sequenceDiagram
 
 | 단계 (월렛 관점) | 국내 VerifyVASP (7.1) | 국내 CODE 직접 (7.10) | 해외 Notabene (7.2) |
 |---|---|---|---|
-| 목록 (List Counterparties) | 스냅샷에서 반환 (원천: 회원 목록) | 스냅샷에서 반환 (원천: 회원 목록·상호연동) | 스냅샷에서 반환 (원천: VASP 목록) |
+| 목록 (List Counterparties) | 컴플라이언스 DB 에서 반환 (원천: 회원 목록) | 컴플라이언스 DB 에서 반환 (원천: 회원 목록·상호연동) | 컴플라이언스 DB 에서 반환 (원천: VASP 목록) |
 | 개시 (Create Withdrawal Check) | **PENDING** — 승인 왕복 진행 | APPROVED — 동기 즉답 | APPROVED — validate/full 판별·검증 즉답 |
 | 결과 대기 | `compliance` 이벤트 수신으로 종료 (Get 불필요) | 불필요 — 개시 응답으로 바로 | 불필요 — 개시 응답으로 바로 |
 | 제출 | travelRuleMessage null — 그대로 제출 | travelRuleMessage null — 그대로 제출 | **travelRuleMessage 동봉**해 제출 |

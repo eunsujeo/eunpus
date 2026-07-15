@@ -41,13 +41,13 @@ Travel Rule 사전 검증 기록과 입금 tx 를 맞춰 보는 1차 대조는 *
 월렛(Service) 백엔드
 ├─ 출금·입금 유스케이스 — 상태 흐름·잔고 가용 전이의 단일 주인
 ├─ 귀속 판단 — 주소↔계정 · 입금 가용 전이 (1차 대조 결과는 컴플라이언스에 조회)
+├─ 등록 지갑 확인 — 등록·소유 인증된 본인 지갑 목록 (월렛 DB) · 개인지갑 출금은 여기서 끝난다
 └─ TravelRuleChannel 포트 ──→ 컴플라이언스 서비스 호출 (아래 인터페이스)
 
 컴플라이언스 서비스 — 별도 서비스 · 솔루션 연동 전담
 ├─ 라우터 + 솔루션 어댑터
 │    ├─ VerifyVASP 어댑터 ──→ Enclave 서버 (벤더 강제 별도 인프라 · PII 는 여기)
-│    ├─ Notabene 어댑터  ──→ Fireblocks validate/full (전용 API user — 아래)
-│    └─ 개인지갑 어댑터   ──→ Address Registry
+│    └─ Notabene 어댑터  ──→ Fireblocks validate/full (전용 API user — 아래)
 ├─ 대기함 (컴플라이언스 DB) — 입금 사전 검증 기록 적재·tx hash 갱신·도착 대조
 └─ 솔루션 원어 → 공통 어휘(TrVerdict·검증 기록) 번역 — verdict 와 검증 기록을 월렛 백엔드로 넘긴다
 
@@ -68,22 +68,22 @@ Notabene 어댑터의 `validate/full` 은 Fireblocks API 지만, **블록체인 
 
 ## 인터페이스 — 솔루션마다 다른 호출을 하나로 접는다
 
-국내·해외·개인지갑을 업무 코드가 직접 분기하면(if 국내 … else if 해외 … else 개인지갑 …), 솔루션이 추가되거나 연동 방식이 바뀔 때마다 출금 유스케이스를 고치게 된다. 매니저가 벤더 원어를 TxStatus 다섯으로 번역해 백엔드를 보호하는 것과 같은 원리로 — **게이트도 솔루션 원어를 공통 어휘로 번역해 업무 코드를 보호한다**.
+국내·해외를 업무 코드가 직접 분기하면(if 국내 … else 해외 …), 솔루션이 추가되거나 연동 방식이 바뀔 때마다 출금 유스케이스를 고치게 된다. 매니저가 벤더 원어를 TxStatus 다섯으로 번역해 백엔드를 보호하는 것과 같은 원리로 — **게이트도 솔루션 원어를 공통 어휘로 번역해 업무 코드를 보호한다**.
 
 ### 공통 단계 4개 — 모든 솔루션이 이 틀에 들어간다
 
-| 단계 | VerifyVASP (국내) | Notabene (해외 · 벤더 경유) | 개인지갑 |
-|---|---|---|---|
-| **① 상대 판별** (route) | 회원 목록 조회 ([List VASP API](https://docs.verifyvasp.com/reference/travelrule-list-vasp-ids) — 공식 확인) | 기본 경로 — VASP 목록 조회는 [Get All VASPs](https://developers.fireblocks.com/api-reference/travel-rule/get-all-vasps) | Address Registry 에 등록된 주소인가 |
-| **② 사전 확인** (check) | 주소 소유 확인(동기) + PII 사전 승인(User Verification — **비동기**: UUID 즉시, 결과는 Callback) | `validate/full` 판별 → 완전 검증 — **동기** | 등록·소유 인증 조회 — **동기** |
-| **③ travelRuleMessage** (제출 시 실어 보내는 것) | 없음 — 사전 승인 자체가 통과 증적 | `travelRuleMessage` — 매니저 제출 요청의 `travelRule` 필드에 실림 | 없음 |
-| **④ 사후 보고** (report) | tx hash 보고 (Report Transaction Result — Enclave 가 UUID 에 매핑) | 없음 — 벤더가 이미 안다 | 없음 |
-| **입금 판정** (checkDeposit) | 수신 API 응답·tx hash 대조 기록 | 벤더가 판정 완료 — 동결이면 애초에 REJECTED 계열로 옴 | Address Registry 조회 |
+| 단계 | VerifyVASP (국내) | Notabene (해외 · 벤더 경유) |
+|---|---|---|
+| **① 상대 판별** (route) | 회원 목록 조회 ([List VASP API](https://docs.verifyvasp.com/reference/travelrule-list-vasp-ids) — 공식 확인) | 기본 경로 — VASP 목록 조회는 [Get All VASPs](https://developers.fireblocks.com/api-reference/travel-rule/get-all-vasps) |
+| **② 사전 확인** (check) | 주소 소유 확인(동기) + PII 사전 승인(User Verification — **비동기**: UUID 즉시, 결과는 Callback) | `validate/full` 판별 → 완전 검증 — **동기** |
+| **③ travelRuleMessage** (제출 시 실어 보내는 것) | 없음 — 사전 승인 자체가 통과 증적 | `travelRuleMessage` — 매니저 제출 요청의 `travelRule` 필드에 실림 |
+| **④ 사후 보고** (report) | tx hash 보고 (Report Transaction Result — Enclave 가 UUID 에 매핑) | 없음 — 벤더가 이미 안다 |
+| **입금 판정** (checkDeposit) | 수신 API 응답·tx hash 대조 기록 | 벤더가 판정 완료 — 동결이면 애초에 REJECTED 계열로 옴 |
 
 ### 포트 하나, 판정 어휘 하나
 
 ```kotlin
-// 컴플라이언스 서비스의 포트 — 지갑 백엔드가 보는 인터페이스. 서비스 안에서 솔루션 어댑터(VerifyVASP · Notabene · 개인지갑)가 구현
+// 컴플라이언스 서비스의 포트 — 지갑 백엔드가 보는 인터페이스. 서비스 안에서 솔루션 어댑터(VerifyVASP · Notabene)가 구현
 interface TravelRuleChannel {
   fun checkWithdrawal(w: WithdrawalIntent): TrVerdict   // ② 동기 솔루션은 즉답, 비동기 솔루션은 PENDING 후 콜백·조회로 갱신
   fun travelRuleMessageOf(w: WithdrawalIntent): TravelRuleMessage?  // ③ 매니저 제출 요청의 travelRule 필드에 실린다 — 없으면 null
@@ -107,7 +107,7 @@ fun channelOf(counterparty: Destination): TravelRuleChannel
 | 우리 `TrVerdict` | Fireblocks validate/full · Notabene 판정 | VerifyVASP (비동기) | CODE (동기) | 개인지갑 |
 |---|---|---|---|---|
 | `NOT_REQUIRED` | validate/full `BELOW_THRESHOLD`·`NON_CUSTODIAL` · Notabene `Saved` | 한국 기준(100만원) 미만 — 보내는 쪽이 원화 환산가 필드(tradePrice·KRW)를 채워 보냄 | 한국 기준(100만원) 미만 — 원화 환산가 필드 동일 | 정보 교환 없음 |
-| `APPROVED` | 출금 — validate/full 검증 통과(`isValid`) · 입금 — 벤더 스크리닝 통과(`Completed` → Post-Screening Accept)로 도착 | User Verification 승인 (Callback 도착) | Asset Transfer Authorization 승인 — 동기 즉답 | Address Registry 등록·소유 인증 |
+| `APPROVED` | 출금 — validate/full 검증 통과(`isValid`) · 입금 — 벤더 스크리닝 통과(`Completed` → Post-Screening Accept)로 도착 | User Verification 승인 (Callback 도착) | Asset Transfer Authorization 승인 — 동기 즉답 | 등록 지갑 목록(월렛 DB) 등록·소유 인증 — 월렛 자체 확인 |
 | `PENDING` | — 출금 검증은 동기 즉답이라 없음. 벤더 안 `Pending`(Wait)의 결과는 블록체인 매니저의 거래 상태 이벤트로 온다 | 접수 번호(UUID) 반환 · Callback 대기 | — (동기 즉답이라 없음) | — |
 | `REJECTED` | — 검증 실패는 요청 오류로 응답. 벤더 게이트의 `Rejected`·`Blocking Time Expired` 는 제출 뒤 블록체인 매니저의 거래 상태 이벤트(REJECTED)로 온다 | 상대 거절 · PENDING 만료 | 상대 거절 | 미등록·미인증 |
 
@@ -140,7 +140,7 @@ VerifyVASP 의 사전 승인은 상대 VASP 의 응답(사람 심사일 수도 �
 |---|---|---|
 | 1 | 벤더 동결(REJECTED 계열)로 도착 | 게이트에 안 온다 — 기존 동결 처리(블록체인매니저 5장) |
 | 2 | **VerifyVASP 사전 요청 대기함**과 대조 일치 — 수신 API 가 쌓아 둔 사전 요청·tx hash 보고와 주소·금액 매칭 (7.3) | 국내 — APPROVED |
-| 3 | source 가 **Address Registry** 등록·소유 인증 주소 | 개인지갑 — APPROVED |
+| 3 | source 가 **월렛의 등록 지갑 목록**(등록·소유 인증된 본인 지갑) 주소 | 개인지갑 — APPROVED (월렛 자체 확인) |
 | 4 | **벤더(Notabene) 스크리닝 통과** 상태로 도착 | 해외 — APPROVED. 단 "국내 상대인데 VerifyVASP 보고가 안 온 건"이 여기 섞일 수 있다 — 통과로 볼지 보류로 볼지는 **정책 결정**(4장) |
 | 5 | 어느 것도 아님 | **PENDING — 가용 보류**. 사전 검증 기록은 있는데 보고만 누락된 건은 **Check Transaction Status 로 능동 조회**해 푼다 — 단 이 API 의 입력은 verificationUuid 뿐(공식 명세)이라, 사전 검증 기록 자체가 없는 입금은 조회할 열쇠가 없어 바로 소명·사후 등록·반환 정책으로 간다 (7.4) |
 

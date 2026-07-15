@@ -18,7 +18,6 @@ flowchart TB
     RX["트래블룰 수신 컴포넌트<br/>별도 배포·얇게 · 공개 HTTPS 인바운드"]
     EN["우리 Enclave · VerifyVASP<br/>키·PII · 공개 HTTPS · 포트 21117"]
     CC["CODE-Cipher · CODE 직접 시<br/>조건부 설치물 (6장)"]
-    AR["Address Registry<br/>개인지갑 등록·소유"]
   end
 
   HUB["VerifyVASP 중앙<br/>중계 · E2EE"]
@@ -30,7 +29,6 @@ flowchart TB
   SVC -->|TravelRuleChannel 호출| GATE
   GATE -->|귀속·실명 확인 조회 · 검증 기록 전달| SVC
   GATE --- WQ
-  GATE -.->|개인지갑| AR
   GATE -->|VerifyVASP 아웃바운드| EN
   GATE -.->|CODE 직접 시| CC
   GATE -->|validate/full 요청| FBCLI
