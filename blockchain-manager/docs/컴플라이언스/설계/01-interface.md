@@ -11,64 +11,90 @@ status: To Do
 - **비동기가 기본형** — 동기 솔루션(CODE·Notabene)은 "즉시 완료되는 비동기"로 접는다. 월렛의 처리 분기는 verdict 뿐이다.
 - **멱등** — 멱등키는 `externalTxId`, 블록체인 매니저 제출에 쓰는 월렛의 출금 건 식별자 그대로다. 같은 키 재호출은 기존 check 를 돌려준다 (같은 키에 다른 내용이면 409).
 
-## API — 월렛 → 컴플라이언스 (5개)
+## API — 월렛 → 컴플라이언스 (4개)
 
-출금 확인 한 건은 **check** 리소스(WithdrawalCheck)로 만들어진다 — `checkId` 로 식별되고, 그 안에 verdict·travelRuleMessage·통과 증적이 담긴다. 2~4번이 이 리소스의 생성·조회·보고다.
+출금 확인 한 건은 **check** 리소스(WithdrawalCheck)로 만들어진다 — `checkId` 로 식별되고, 그 안에 verdict·travelRuleMessage·통과 증적이 담긴다. 1~3번이 이 리소스의 생성·조회·보고다.
 
 | # | 엔드포인트 | 무엇 |
 |---|---|---|
-| 1 | `GET /compliance/travel-rule/counterparties` | **List Counterparties** — 출금 화면에서 고객에게 보여줄 수취 거래소 목록. **컴플라이언스 DB 의 거래소 목록에서 우리가 허용한 상대만** 답한다(솔루션 실시간 조회 아님 · 주기 동기화 · 허용은 운영이 켠다) |
-| 2 | `POST /compliance/travel-rule/withdrawal-checks` | **Create Withdrawal Check** — 출금 확인 개시 (`externalTxId` = 멱등키). **거래소 선택 출금 전용** — 개인지갑 출금은 이 API 를 부르지 않는다(등록 지갑 확인은 월렛이 월렛 DB 의 등록 지갑 목록으로 자체 처리). 동기 솔루션은 최종 verdict·travelRuleMessage 까지 즉답 — 이 응답만으로 제출 가능. 비동기 솔루션은 PENDING |
-| 3 | `GET /compliance/travel-rule/withdrawal-checks/{checkId}` | **Get Withdrawal Check** — 이벤트 유실 대비 폴링·재기동 복구 전용. 정상 흐름에서는 호출하지 않는다 |
-| 4 | `POST /compliance/travel-rule/withdrawal-checks/{checkId}/report` | **Report Withdrawal Result** — 온체인 제출 후 tx hash 보고. 비차단 — 이 호출의 실패는 출금 흐름과 무관(재시도만 하면 된다) |
-| 5 | `POST /compliance/travel-rule/deposit-checks` | **Create Deposit Check** — 입금 한 건의 트래블룰 확인. 서비스가 **보관 중인 사전 검증 기록과 대조**하고, 안 되면 능동 조회까지 해서 결과만 돌려준다. 호출 시점·판별 우선순위는 [트래블룰 8장](../../트래블룰/설계/08-gate-port.md), 귀속·가용 전이 판단은 월렛 몫 |
+| 1 | `POST /compliance/travel-rule/withdrawal-checks` | **Create Withdrawal Check** — 출금 확인 개시 (`externalTxId` = 멱등키). 수취 거래소는 **`vaspId`(월렛 백엔드가 발급한 VASP 식별자)로 지목**하고, 어느 솔루션으로 보낼지는 컴플라이언스가 스스로 정한다. **거래소 선택 출금 전용** — 개인지갑 출금은 이 API 를 부르지 않는다(등록 지갑 확인은 월렛이 월렛 DB 의 등록 지갑 목록으로 자체 처리). 동기 솔루션은 최종 verdict·travelRuleMessage 까지 즉답 — 이 응답만으로 제출 가능. 비동기 솔루션은 PENDING |
+| 2 | `GET /compliance/travel-rule/withdrawal-checks/{checkId}` | **Get Withdrawal Check** — 이벤트 유실 대비 폴링·재기동 복구 전용. 정상 흐름에서는 호출하지 않는다 |
+| 3 | `POST /compliance/travel-rule/withdrawal-checks/{checkId}/report` | **Report Withdrawal Result** — 온체인 제출 후 tx hash 보고. 비차단 — 이 호출의 실패는 출금 흐름과 무관(재시도만 하면 된다) |
+| 4 | `POST /compliance/travel-rule/deposit-checks` | **Create Deposit Check** — 입금 한 건의 트래블룰 확인. 서비스가 **보관 중인 사전 검증 기록과 대조**하고, 안 되면 능동 조회까지 해서 결과만 돌려준다. 호출 시점·판별 우선순위는 [트래블룰 8장](../../트래블룰/설계/08-gate-port.md), 귀속·가용 전이 판단은 월렛 몫 |
 
 요청·응답 본문의 모양과 필드는 [API 문서](../API/api.md)에 정의한다.
+
+**출금 화면의 거래소 목록은 이 서비스가 답하지 않는다** — 고객에게 보여줄 "거래할 수 있는 거래소" 목록은 월렛 백엔드가 자기 VASP 마스터(`daw_vasp_m` — 거래 허용을 여기서 켠다)에서 직접 낸다. 컴플라이언스는 출금 확인이 들어온 순간에만, `vaspId` 를 받아 솔루션으로 라우팅하는 일만 한다.
 
 경로를 `/compliance/travel-rule/...` 로 잡는 이유 — 다음 모듈(예: aml)이 생기면 `/compliance/aml/...` 로 나란히 붙는다.
 
 ## 운영 API — Admin → 컴플라이언스 (4개)
 
-운영 API 는 등재 대상을 지칭해야 해서 솔루션 원어를 다룬다 — 월렛(Service) API 의 원어 비노출 규약과 구분된다.
+거래 허용·VASP 정체는 월렛 백엔드의 VASP 마스터(`daw_vasp_m`)가 갖고, 컴플라이언스는 **VASP 를 온보딩(매핑·활성화)** 하는 운영을 맡는다. 컴플라이언스가 아는 VASP 는 각자 안정 id(`cmpl_vasp_id`)를 갖고, Admin 이 그중 하나를 골라 활성화하면 코어 `vasp_id` 와 매핑된다([2장](02-database.md)).
 
 | # | 엔드포인트 | 무엇 |
 |---|---|---|
-| 1 | `POST /compliance/travel-rule/counterparties/sync` | **Sync Counterparties** — VASP 목록 동기화를 즉시 실행 (주기 배치와 같은 일). 새 상대가 목록에 안 보일 때의 운영 대응 |
-| 2 | `GET /compliance/travel-rule/counterparties/candidates?query=` | **List Counterparty Candidates** — 등재 후보를 솔루션 목록에서 검색 (미허용 포함) |
-| 3 | `POST /compliance/travel-rule/counterparties` | **Allow Counterparty** — 허용 등재. 관리 행 생성 · counterpartyId 발급. 심사 기준은 컴플라이언스 부서 몫 |
-| 4 | `DELETE /compliance/travel-rule/counterparties/{counterpartyId}` | **Disallow Counterparty** — 허용 해제. 행은 남기고 허용만 끈다 — List 에서 사라지고 새 출금 확인이 열리지 않는다 |
+| 1 | `POST /compliance/travel-rule/vasps/sync` | **Sync Solution VASPs** — 솔루션 VASP 목록 동기화를 즉시 실행. 신규 항목엔 `cmpl_vasp_id` 를 발급하고, 매핑·활성화는 보존한다(UPSERT) |
+| 2 | `GET /compliance/travel-rule/vasps?query=` | **List VASPs** — Admin 이 온보딩 대상을 고르는 목록. `cmpl_vasp_id`·이름·솔루션·도달성·활성화·매핑된 `vasp_id` 를 준다 |
+| 3 | `POST /compliance/travel-rule/vasps/{cmplVaspId}/activate` | **Activate VASP** — 코어가 만든 `vasp_id` 를 이 항목에 **매핑하고 활성화**한다. 이미 매핑돼 있으면 활성화만. **호출 주체는 Admin(코어) 백엔드** |
+| 4 | `POST /compliance/travel-rule/vasps/{cmplVaspId}/deactivate` | **Deactivate VASP** — 활성화를 끈다. 매핑(`vasp_id`)은 남긴다 — 재활성화하면 그대로 |
 
 check 운영 조회·감사 기록 열람 등 나머지 운영 경로는 미설계([0장](00-scope.md) 열린 결정).
 
-## VASP 목록의 처리 순서 — 동기화에서 출금 확인까지
+## VASP 온보딩의 처리 순서 — 동기화에서 출금 확인까지
 
-VASP 목록은 테이블이 둘이다([2장](02-database.md)): 솔루션 목록(`cmpl_soln_vasp_m` — 동기화만 쓴다)과 허용 판단(`cmpl_vasp_m` — 운영만 쓴다). 순서는 **솔루션 목록이 먼저, 판단이 다음, 노출은 그 교집합**이다.
+VASP 정체와 거래 허용은 월렛 백엔드의 VASP 마스터(`daw_vasp_m`)에 있고, 컴플라이언스는 **솔루션 라우팅**을 맡는다. 온보딩은 Admin 이 컴플라이언스 목록에서 VASP 를 골라 활성화하는 순간, 코어가 `vasp_id` 를 만들어 컴플라이언스에 매핑하는 흐름이다. 그 뒤 출금 확인은 `vaspId` 하나만 실으면 되고, 어느 솔루션으로 보낼지는 컴플라이언스가 매핑을 보고 정한다.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant ADM as Admin 백엔드
-    participant BE as Service 백엔드
+    participant ADM as Admin
+    participant WB as 월렛(코어) 백엔드<br/>VASP 마스터 (daw_vasp_m)
     box rgb(224,242,254) 컴플라이언스 서비스
     participant CP as 컴플라이언스 서비스
-    participant CDB as 컴플라이언스 DB<br/>솔루션 목록 · 거래 상대 관리
+    participant CDB as 컴플라이언스 DB<br/>VASP 레지스트리
     end
     participant SOL as 솔루션
 
-    CP->>SOL: ① 목록 동기화 — 주기 배치 또는 Sync Counterparties
-    SOL-->>CP: 회원·VASP 목록
-    CP->>CDB: 솔루션 목록 갱신 — 관리 테이블은 건드리지 않는다
-    ADM->>CP: ② 허용 등재 — 이 상대와 거래한다 (운영 API Allow Counterparty)
-    CP->>CDB: 관리 행 생성 · counterpartyId 발급 — 솔루션 목록에 없는 상대는 ① 부터
-    BE->>CP: ③ List Counterparties
-    CP->>CDB: 허용 행에 솔루션 목록을 이어 붙임 — 이름·도달성은 그쪽에서
-    CP-->>BE: 허용된 상대만 반환
-    BE->>CP: ④ Create Withdrawal Check — 고객이 고른 counterpartyId
-    CP->>CDB: 관리 행 → 어느 솔루션의 어느 상대인지 확정
+    Note over CP,SOL: ⓪ 솔루션 목록 동기화 — cmpl_vasp_id 발급<br/>상세 시퀀스는 바로 아래
+    ADM->>CP: ① VASP 목록 조회 (List VASPs)
+    CP-->>ADM: cmpl_vasp_id · 이름 · 도달성 · 활성화 여부
+    ADM->>WB: ② 선택 + 활성화 — vasp_id 없으면 생성 (거래 허용)
+    WB->>CP: ③ Activate VASP — cmplVaspId + vasp_id
+    CP->>CDB: ④ 매핑(vasp_id) + 활성화 — 신규면 매핑, 기존이면 활성화만
+    Note over WB: 출금 화면 목록은 월렛이 자체 제공 (허용된 vasp_id)
+    WB->>CP: ⑤ Create Withdrawal Check — vaspId
+    CP->>CDB: vaspId → 매핑된 솔루션 항목 조회 → 라우팅 결정
     CP->>SOL: 해당 솔루션 왕복 (출금 시퀀스)
 ```
 
-솔루션 목록에서 사라진 허용 상대는 ③의 이어 붙이기가 실패해 도달 불가로 노출된다 — 허용 판단은 관리 테이블에 있어 증발하지 않고, 재등장하면 그대로 복귀한다.
+Deactivate 하거나 솔루션 목록에서 사라진(rchbl_yn=false) VASP 는 새 출금 확인이 열리지 않는다 — 매핑은 남아 있어 재활성화·재동기화하면 그대로 복구된다.
+
+### ⓪ 솔루션 목록 동기화
+
+주기는 미정(0장 미확정). 주기 실행 외에 운영 API(Sync Solution VASPs)로도 즉시 실행된다. 목록 API 출처 — [VerifyVASP List VASP](https://docs.verifyvasp.com/reference/travelrule-list-vasp-ids)(`GET /v1/vasps` · 상호연동 CODE 회원 포함) · [Fireblocks Get All VASPs](https://developers.fireblocks.com/api-reference/travel-rule/get-all-vasps) · [Fireblocks TRLink List VASPs](https://developers.fireblocks.com/api-reference/trlink/list-vasps)(Notabene VASP 디렉토리 · 페이지네이션).
+
+동기화는 솔루션에서 받은 목록을 컴플라이언스 VASP 레지스트리에 **UPSERT** 한다 — 신규 항목엔 `cmpl_vasp_id` 를 발급하고, 이미 있는 항목은 이름·도달성만 갱신하며 **매핑(`vasp_id`)·활성화(`actv_yn`)는 보존**한다. 목록에서 빠진 항목은 지우지 않고 도달 불가로만 표시한다([2장](02-database.md)).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    box rgb(224,242,254) 컴플라이언스 서비스
+    participant SCH as 배치 스케줄러
+    participant DB as 컴플라이언스 DB<br/>VASP 레지스트리
+    end
+    participant VV as VerifyVASP
+    participant FB as Fireblocks<br/>(Notabene)
+
+    loop 주기 실행
+        SCH->>VV: List VASP — GET /v1/vasps (protocol=ALL)
+        VV-->>SCH: 회원 목록 — vaspId · 이름 · health · protocol<br/>(상호연동 CODE 회원은 vaspStatus INTEROPERATED)
+        SCH->>FB: Get All VASPs (페이지네이션 — 끝까지 반복)
+        FB-->>SCH: VASP 목록 — DID · 이름 (Notabene 디렉토리)
+        SCH->>DB: UPSERT — 신규 cmpl_vasp_id 발급 · 매핑/활성화 보존 · 빠진 항목 rchbl_yn=false
+        DB-->>SCH: 갱신 결과 — 추가 · 변경 · 도달불가 건수
+    end
+```
 
 ## 이벤트 — 컴플라이언스 → 월렛 (큐 · 확정)
 
@@ -106,32 +132,7 @@ sequenceDiagram
 
 ## 배치 — 서비스가 스스로 도는 두 주기 작업
 
-월렛 호출 없이 서비스가 주기적으로 실행한다. 사전 검증 기록 보존 기간 만료(값 미정 — [트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))도 확정되면 이 자리에 추가된다.
-
-### 목록 동기화 — List Counterparties 가 답할 거래소 목록을 만든다
-
-주기는 미정(0장 미확정). 주기 실행 외에 운영 API(Sync Counterparties)로도 즉시 실행된다. 목록 API 출처 — [VerifyVASP List VASP](https://docs.verifyvasp.com/reference/travelrule-list-vasp-ids)(`GET /v1/vasps` · 상호연동 CODE 회원 포함) · [Fireblocks Get All VASPs](https://developers.fireblocks.com/api-reference/travel-rule/get-all-vasps) · [Fireblocks TRLink List VASPs](https://developers.fireblocks.com/api-reference/trlink/list-vasps)(Notabene VASP 디렉토리 · 페이지네이션).
-
-```mermaid
-sequenceDiagram
-    autonumber
-    box rgb(224,242,254) 컴플라이언스 서비스
-    participant SCH as 배치 스케줄러
-    participant DB as 컴플라이언스 DB
-    end
-    participant VV as VerifyVASP
-    participant FB as Fireblocks<br/>(Notabene)
-
-    loop 주기 실행
-        SCH->>VV: List VASP — GET /v1/vasps (protocol=ALL)
-        VV-->>SCH: 회원 목록 — vaspId · vaspName · health · protocol<br/>(상호연동 CODE 회원은 vaspStatus INTEROPERATED)
-        SCH->>FB: Get All VASPs (페이지네이션 — 끝까지 반복)
-        FB-->>SCH: VASP 목록 — DID · 이름 (Notabene VASP 디렉토리)
-        SCH->>SCH: 병합 — 이름 정규화 · 중복 정리
-        SCH->>DB: 솔루션 목록 갱신 — 받은 그대로 (counterpartyId·허용은 관리 테이블 — 2장)
-        DB-->>SCH: 갱신 결과 — 추가 · 변경 · 제거 건수
-    end
-```
+월렛 호출 없이 서비스가 주기적으로 실행한다. 하나는 **목록 동기화**(위 처리 순서 절의 ①), 하나는 아래 PENDING 만료 스캔이다. 사전 검증 기록 보존 기간 만료(값 미정 — [트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))도 확정되면 이 자리에 추가된다.
 
 ### PENDING 만료 스캔 — settled 이벤트의 REJECTED(만료) 를 만든다
 
@@ -264,8 +265,8 @@ sequenceDiagram
 
 | 단계 (월렛 관점) | 국내 VerifyVASP (7.1) | 국내 CODE 직접 (7.10) | 해외 Notabene (7.2) |
 |---|---|---|---|
-| 목록 (List Counterparties) | 컴플라이언스 DB 에서 반환 (원천: 회원 목록) | 컴플라이언스 DB 에서 반환 (원천: 회원 목록·상호연동) | 컴플라이언스 DB 에서 반환 (원천: VASP 목록) |
-| 개시 (Create Withdrawal Check) | **PENDING** — 승인 왕복 진행 | APPROVED — 동기 즉답 | APPROVED — validate/full 판별·검증 즉답 |
+| 목록 (거래소 선택) | 월렛 VASP 마스터에서 자체 제공 (허용된 VASP) | 월렛 VASP 마스터에서 자체 제공 | 월렛 VASP 마스터에서 자체 제공 |
+| 개시 (Create Withdrawal Check — `vaspId`) | **PENDING** — 승인 왕복 진행 | APPROVED — 동기 즉답 | APPROVED — validate/full 판별·검증 즉답 |
 | 결과 대기 | `compliance` 이벤트 수신으로 종료 (Get 불필요) | 불필요 — 개시 응답으로 바로 | 불필요 — 개시 응답으로 바로 |
 | 제출 | travelRuleMessage null — 그대로 제출 | travelRuleMessage null — 그대로 제출 | **travelRuleMessage 동봉**해 제출 |
 | 보고 (Report Withdrawal Result) | tx hash 보고 실행 | 실행 | no-op — 벤더가 이미 안다 |

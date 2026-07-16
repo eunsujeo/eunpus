@@ -3,8 +3,10 @@ title: 2. 컴플라이언스 DB — 테이블 초안
 status: To Do
 ---
 
-[0장](00-scope.md)이 확정한 컴플라이언스 DB 의 보관 데이터 — 거래소 목록·check 상태·사전 검증 기록 — 의 테이블 초안이다.
+[0장](00-scope.md)이 확정한 컴플라이언스 DB 의 보관 데이터 — VASP 레지스트리(솔루션 목록·매핑·활성화)·check 상태·사전 검증 기록 — 의 테이블 초안이다.
 필드 타입·의미는 [API 문서](../API/api.md)의 타입 정의와 짝이다. **PII 는 어느 테이블에도 없다** — 원문은 Enclave(국내)·벤더(해외)가 보관한다.
+
+VASP 의 정체와 거래 허용(고객 화면 노출)은 이 DB 가 아니라 **월렛 백엔드의 VASP 마스터(`daw_vasp_m`)**에 있다 — 컴플라이언스는 솔루션 라우팅을 맡으므로, 여기 레지스트리는 솔루션 목록을 받아 두고 코어 `vasp_id` 와 매핑·활성화해 둔다([1장 처리 순서](01-interface.md)).
 
 ## 명명 규약
 
@@ -17,50 +19,39 @@ status: To Do
 
 | 테이블 | 무엇을 저장하나 | 쓰는 곳 |
 |---|---|---|
-| `cmpl_soln_vasp_m` | 솔루션 VASP 목록 — **목록 동기화만 이 테이블에 쓴다** | 목록 동기화 배치(주기·수동) |
-| `cmpl_vasp_m` | 거래 상대(VASP) 관리 — 허용 판단 · **운영(Admin)만 이 테이블에 쓴다** | List Counterparties · VASP 허용 관리 |
+| `cmpl_vasp_m` | 컴플라이언스 VASP 레지스트리 — 솔루션 목록 + `cmpl_vasp_id`(우리 발급 안정 id) + 매핑된 코어 `vasp_id` + 활성화 | 동기화(목록 갱신) · List/Activate/Deactivate(운영) · Create Withdrawal Check 라우팅 |
 | `cmpl_wdrl_chk_l` | check 상태 | Create/Get Withdrawal Check · Report · settled 발행 · PENDING 만료 스캔 |
 | `cmpl_pre_vrfc_l` | 사전 검증 기록 | 인바운드 수신 적재 · TX_REPORT 갱신 · Create Deposit Check 대조 |
 
-월렛 DB 에도 같은 이름 계열의 출금 상대(VASP) 마스터가 있다 — 그것은 월렛의 출금 상대 관리이고, 여기 두 테이블은 컴플라이언스의 솔루션 목록·허용 판단이다. 관계 정리는 미확정(아래).
+거래 허용 판단(고객 화면 노출 여부)은 여기 없다 — 월렛 백엔드의 VASP 마스터(`daw_vasp_m`, `vasp_stcd`)가 갖는다. 컴플라이언스의 활성화(`actv_yn`)는 **라우팅을 켜는** 다른 층이다 — Admin 이 VASP 를 온보딩할 때 코어가 `vasp_id` 를 만들어 컴플라이언스에 매핑·활성화한다([1장 처리 순서](01-interface.md)).
 
-## cmpl_soln_vasp_m — 솔루션 VASP 목록
+## cmpl_vasp_m — 컴플라이언스 VASP 레지스트리
 
-솔루션들의 회원·VASP 목록을 그대로 받아 둔 것이다. **이 테이블에 쓰는 것은 목록 동기화뿐이고, 다른 모든 코드는 읽기만 한다.** 원천이 솔루션에 있으니 통째로 갈아치워도(재적재) 잃는 것이 없다.
-
-```sql
-CREATE TABLE cmpl_soln_vasp_m (
-  soln_dvcd      VARCHAR(16)  NOT NULL,      -- 솔루션 구분: VERIFYVASP | CODE_INTEROP | NOTABENE
-  soln_vasp_id   VARCHAR(255) NOT NULL,      -- 솔루션 쪽 식별자 (vaspId · DID)
-  vasp_nm        VARCHAR(255) NOT NULL,      -- 솔루션이 알려준 표시명
-  rchbl_yn       BOOLEAN      NOT NULL,      -- 이 거래소로 확인을 보낼 수 있는가 (마지막 동기화 기준)
-  sync_dttm      TIMESTAMP    NOT NULL,      -- 마지막 동기화 일시
-  PRIMARY KEY (soln_dvcd, soln_vasp_id)
-);
-```
-
-## cmpl_vasp_m — 거래 상대(VASP) 관리
-
-우리가 **거래를 허용하기로 판단한** 상대만 행이 있다. **이 테이블에 쓰는 것은 운영(Admin)뿐이고, 동기화는 읽지도 쓰지도 않는다.**
+컴플라이언스가 아는 VASP 한 항목이 한 행이다. **동기화**가 솔루션 목록을 받아 이 표를 채우고(신규 항목엔 `cmpl_vasp_id` 발급), Admin 이 온보딩하면 **활성화**가 코어 `vasp_id` 를 매핑하고 `actv_yn` 을 켠다. 한 행의 두 출처를 분리해 둔다 — 동기화는 목록 컬럼(`vasp_nm`·`rchbl_yn`·`sync_dttm`)만, 활성화는 매핑 컬럼(`vasp_id`·`actv_yn`)만 건드린다.
 
 ```sql
 CREATE TABLE cmpl_vasp_m (
-  cpty_id        VARCHAR(64)  PRIMARY KEY,   -- 우리 발급 안정 ID (예: cpty_upbit) — 허용 등재 때 발급
-  soln_dvcd      VARCHAR(16)  NOT NULL,      -- 솔루션 목록(cmpl_soln_vasp_m)의 어느 항목인가
-  soln_vasp_id   VARCHAR(255) NOT NULL,
-  alw_yn         BOOLEAN      NOT NULL,      -- 허용 상태 — 해제해도 행은 남긴다 (판단 이력·재허용 시 ID 보존)
-  reg_dttm       TIMESTAMP    NOT NULL,      -- 등재 일시
-  last_chng_dttm TIMESTAMP    NOT NULL,      -- 허용/해제 마지막 변경 일시
+  cmpl_vasp_id   VARCHAR(64)  PRIMARY KEY,   -- 컴플라이언스 발급 안정 id ("vasp unique id") — Admin 브라우징·매핑 대상
+  soln_dvcd      VARCHAR(16)  NOT NULL,      -- 솔루션 구분: VERIFYVASP | CODE_INTEROP | NOTABENE
+  soln_vasp_id   VARCHAR(255) NOT NULL,      -- 솔루션 쪽 식별자 (vaspId · DID)
+  vasp_nm        VARCHAR(255) NOT NULL,      -- 솔루션이 알려준 표시명
+  vasp_id        VARCHAR(64)  NULL,          -- 매핑된 코어 VASP id (daw_vasp_m) — 활성화 때 채운다. 미매핑이면 NULL
+  actv_yn        BOOLEAN      NOT NULL,      -- 활성화 여부 — 활성화 API 로 켠다. 해제해도 매핑(vasp_id)은 남긴다
+  rchbl_yn       BOOLEAN      NOT NULL,      -- 이 항목으로 확인을 보낼 수 있는가 (마지막 동기화 기준)
+  sync_dttm      TIMESTAMP    NOT NULL,      -- 마지막 동기화 일시
+  reg_dttm       TIMESTAMP    NOT NULL,      -- 최초 등재(동기화) 일시
+  last_chng_dttm TIMESTAMP    NOT NULL,      -- 매핑/활성화 마지막 변경 일시
   UNIQUE (soln_dvcd, soln_vasp_id)
 );
+CREATE INDEX idx_cmpl_vasp_by_core ON cmpl_vasp_m (vasp_id);
 ```
 
 | 무엇 | 어떻게 |
 |---|---|
-| 두 테이블의 관계 | List Counterparties = 관리(허용) 행에 솔루션 목록을 이어 붙여 답한다 — 이름·도달성은 솔루션 목록에서, counterpartyId·허용은 관리에서 |
-| 새 상대 허용 | 솔루션 목록에 행이 먼저 있어야 한다(동기화가 만든다 — 없으면 수동 동기화부터). 운영이 허용 등재하면 관리 행이 생기고 `cpty_id` 가 발급된다 |
-| 솔루션 목록에서 사라진 허용 상대 | 관리 행은 그대로, 이어 붙이기에 실패하므로 도달 불가로 노출된다 — 우리 판단은 증발하지 않는다 |
-| 동기화 재적재 | 솔루션 목록은 통째로 갈아도 안전 — `cpty_id`·허용 판단이 관리 테이블에 있어서 안정적이다 |
+| `cmpl_vasp_id` | 컴플라이언스가 발급하는 안정 id — Admin 이 목록에서 이 값으로 VASP 를 지목해 활성화한다. 동기화 재적재에도 안 바뀐다 |
+| 동기화 UPSERT | 동기화는 `(soln_dvcd, soln_vasp_id)` 로 대조해 UPSERT 한다 — 신규면 `cmpl_vasp_id` 발급(`actv_yn`=false), 기존이면 목록 컬럼만 갱신하고 `vasp_id`·`actv_yn` 은 보존. **목록에서 사라진 항목은 삭제하지 않고 `rchbl_yn`=false** — 매핑·활성화를 잃지 않는다 |
+| `vasp_id` 매핑 | 활성화 API(코어 → 컴플라이언스)가 코어가 만든 `vasp_id` 를 이 컬럼에 채운다. 출금 확인의 `vaspId` 를 이 값(인덱스 `idx_cmpl_vasp_by_core`)으로 조회해 솔루션 항목·라우팅을 정한다 |
+| 다중 솔루션 | 같은 실물 VASP 가 여러 솔루션에 있으면 항목(행)이 여럿이라 `vasp_id` 가 여러 행에 붙는다 — 라우팅 규칙으로 하나를 고른다([1장](01-interface.md)) |
 
 ## cmpl_wdrl_chk_l — check 상태
 
@@ -77,6 +68,8 @@ CREATE TABLE cmpl_wdrl_chk_l (
   occr_dttm       TIMESTAMP    NOT NULL,           -- 발생일시 — 확인 요청이 접수돼 행이 생긴 시각
   ext_tx_id       VARCHAR(128) NOT NULL UNIQUE,    -- 멱등 키 (월렛·매니저와 같은 키)
   acnt_id         VARCHAR(64)  NOT NULL,           -- 고객 계정 ID
+  vasp_id         VARCHAR(64)  NOT NULL,           -- 수취 VASP — 월렛이 지목한 값 (월렛 VASP 마스터의 id)
+  soln_dvcd       VARCHAR(16)  NOT NULL,           -- 라우팅으로 확정된 솔루션 — 감사·재현용
   rqst_hash       VARCHAR(64)  NOT NULL,           -- 최초 요청 본문 해시 — 멱등 대조용
   vrdt_stcd       VARCHAR(16)  NOT NULL,           -- TrVerdict: NOT_REQUIRED | APPROVED | PENDING | REJECTED
   trvl_rule_msg   TEXT         NULL,               -- 제출에 실어 보낼 암호화 메시지 (Notabene 경로만 값)
@@ -94,6 +87,8 @@ CREATE TABLE cmpl_wdrl_chk_l (
 | `occr_dttm` | 발생일시 — 확인 요청이 접수돼 행이 생긴 시각 |
 | `ext_tx_id` | 이 확인이 어느 출금 건에 대한 것인가 — 월렛 DB 출금 건 식별자이자 블록체인 매니저 제출 키와 같은 값. UNIQUE 가 멱등의 물리 근거 — 같은 키 재요청은 이 행을 돌려준다 |
 | `acnt_id` | 어느 고객 계정의 출금인가 |
+| `vasp_id` | 수취 거래소 — 월렛이 지목한 VASP 마스터의 id. 컴플라이언스가 이 값으로 솔루션 항목을 찾아 라우팅한다 |
+| `soln_dvcd` | 실제로 어느 솔루션으로 보냈는지 — 라우팅 결과를 남겨 사후 감사·재현에 쓴다 |
 | `rqst_hash` | 최초 요청 본문의 해시 — 같은 키에 다른 내용의 재요청이 오면 이 값과 대조해 거절한다 |
 | `vrdt_stcd` | 확인의 현재 결과 — NOT_REQUIRED(대상 아님) · APPROVED(통과) · PENDING(결과 대기) · REJECTED(거절·만료) |
 | `trvl_rule_msg` | 통과 시 출금 제출에 실어 보낼 암호화 메시지 — 만드는 솔루션(Notabene)만 값이 있다 |
@@ -143,12 +138,13 @@ PII(이름 등 신원 정보) 컬럼이 없는 것이 규칙이다 — 대조 �
 
 ## 미확정
 
-- **약어 검수** — `vrdt`·`evdc`·`bnfc`·`vrfc`·`cpty`·`soln`·`rchbl` 등 새 축약어는 월렛 DB 약어집과 대조 후 확정.
+- **약어 검수** — `vrdt`·`evdc`·`bnfc`·`vrfc`·`soln`·`rchbl`·`actv` 등 새 축약어는 월렛 DB 약어집과 대조 후 확정.
 - **일시 타입** — 월렛 DB 는 일시를 문자열 VARCHAR(16)(`YYYYMMDDHHMMSS` 계열)로 둔다. 이 DB 도 그에 맞출지 TIMESTAMP 로 갈지 결정.
 - **금액 표현** — base unit 정수로 둘지 표시 단위 decimal 로 둘지 — 사전 검증 메시지의 금액 단위 확인·사전 검증 기록 대조 규칙과 함께 확정.
 - **감사 기록(솔루션 원어 근거)의 범위** — 0장 열린 결정 1. 확정되면 append-only 테이블 추가.
 - **evidence(`evdc_dvcd`) enum** — 솔루션별 증적 종류 확정 후.
-- **월렛 DB 의 VASP 마스터와의 관계** — 출금 상대 관리와 이 목록의 동기화·참조 방향.
+- **다중 솔루션 라우팅 규칙** — 한 `vasp_id` 가 여러 솔루션 항목에 걸릴 때(국내·해외 동시) 어느 솔루션을 고를지 — 국내/해외·우선순위 규칙 확정.
+- **동기화 항목 정체 판정** — 같은 실물 VASP 를 여러 솔루션에서 하나로 볼지, 솔루션 항목 단위로 둘지 — 지금은 항목 단위(행 여럿)로 둔다.
 
 ## 약어집 (부록)
 
@@ -157,12 +153,12 @@ PII(이름 등 신원 정보) 컬럼이 없는 것이 규칙이다 — 대조 �
 | 축약 | 원어 | | 축약 | 원어 |
 |---|---|---|---|---|
 | `cmpl` | compliance | | `vrdt` | verdict |
-| `cpty` | counterparty | | `evdc` | evidence |
+| `vasp` | virtual asset service provider | | `evdc` | evidence |
 | `wdrl` | withdrawal | | `vrfc` | verification |
 | `chk` | check | | `bnfc` | beneficiary |
 | `soln` | solution | | `amt` | amount |
 | `rchbl` | reachable | | `ast` | asset |
-| `alw` | allow | | | |
+| `actv` | active (활성화) | | | |
 | `acnt` | account | | `src` | source |
 | `rqst` | request | | `mtch` | match |
 | `stld` | settled | | | |

@@ -78,8 +78,8 @@ view: doc
 
 - **Create Withdrawal Check** — `externalTxId` 가 멱등 키다. 같은 키 재요청은 새 check 를 만들지 않고 기존 check 를 `200` 으로 돌려준다. 같은 키에 다른 본문이면 `CONFLICT`(409) — 서비스가 최초 요청의 본문 해시를 check 에 보관해 대조한다.
 - **제출 결과 보고** — 같은 `txHash` 재보고는 no-op 이다.
-- **Allow Counterparty** — 같은 (`solution`, `solutionVaspId`) 재등재는 기존 `counterpartyId` 를 `200` 으로 돌려준다.
-- **Disallow Counterparty** — 이미 해제된 상대의 재요청도 `204`.
+- **Sync Solution VASPs** — 이미 실행 중이면 `SYNC_IN_PROGRESS`(409). 결과는 항상 최신 목록으로 수렴한다.
+- **Activate / Deactivate VASP** — 이미 그 상태면 그대로 `200`. Activate 에 이미 다른 `vaspId` 가 매핑돼 있으면 `CONFLICT`(409).
 
 ## 이벤트 (메시지 큐)
 
@@ -104,55 +104,19 @@ view: doc
 
 ## API
 
-### Counterparties
+### VASPs (운영 · Admin)
 
-#### List Counterparties
+VASP 정체·거래 허용은 월렛 백엔드의 VASP 마스터(`daw_vasp_m`)에 있다 — 출금 화면의 거래소 목록도 월렛이 거기서 자체 제공한다. 컴플라이언스 운영 API 는 **솔루션 목록 동기화**와 **VASP 온보딩(목록 조회 → 활성화/해제)** 을 맡고, 모두 Admin(코어) 백엔드가 호출한다. 컴플라이언스가 아는 VASP 는 각자 안정 id(`cmplVaspId`)를 갖고, 활성화 때 코어 `vaspId` 와 매핑된다(설계 [2장](../설계/02-database.md)).
 
-`GET` `https://{baseUrl}/compliance/travel-rule/counterparties`
+#### Sync Solution VASPs
 
-출금 화면에서 고객에게 보여줄 수취 거래소 목록을 내려준다 — 고객은 이 중 하나를 고른다.
-**우리가 거래를 허용한 상대만 반환한다** — 솔루션 목록에 있어도(도달 가능) 허용 전이면 목록에 없다. 허용은 운영이 켠다(설계 0장 열린 결정).
+`POST` `https://{baseUrl}/compliance/travel-rule/vasps/sync`
 
-```bash
-curl "https://{baseUrl}/compliance/travel-rule/counterparties"
-```
-
-목록의 원천은 솔루션 실시간 조회가 아니라 **컴플라이언스 DB 의 거래소 목록**이다 — VerifyVASP 회원 목록(상호연동된 CODE 회원 포함)과 Notabene VASP 목록을 주기 동기화해 보관한다. 솔루션 장애·지연이 출금 화면에 번지지 않고, `counterpartyId` 는 허용 등재 때 발급되는 우리 안정 ID 다(설계 2장).
-상대의 현재 상태(health·도달성)는 목록 시점이 아니라 **Create Withdrawal Check 시점에 솔루션에 재확인**한다 — 목록이 동기화 주기만큼 낡아도 확인은 안전하다.
-
-**응답**
-
-`200` — 거래소 목록
-
-```json
-{
-  "data": [
-    {
-      "counterpartyId": "cpty_upbit",
-      "name": "Upbit",
-      "reachable": true
-    }
-  ],
-  "meta": {
-    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
-  }
-}
-```
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `data` | Counterparty 배열 | 필수 |  |
-| `meta` | Meta | 필수 |  |
-
-#### Sync Counterparties
-
-`POST` `https://{baseUrl}/compliance/travel-rule/counterparties/sync`
-
-VASP 목록 동기화를 즉시 실행한다 — 주기 배치와 같은 일을 지금 한다. **호출 주체는 Admin 백엔드다**(운영 — 예: 새 거래소가 목록에 안 보인다는 문의 대응).
+솔루션 VASP 목록 동기화를 즉시 실행한다 — 주기 배치와 같은 일을 지금 한다. 신규 항목엔 `cmplVaspId` 를 발급하고, 이미 있는 항목은 이름·도달성만 갱신하며 **매핑·활성화는 보존**한다(UPSERT). 목록에서 빠진 항목은 지우지 않고 도달 불가로 표시한다.
 이미 실행 중이면 `SYNC_IN_PROGRESS`(409).
 
 ```bash
-curl -X POST "https://{baseUrl}/compliance/travel-rule/counterparties/sync"
+curl -X POST "https://{baseUrl}/compliance/travel-rule/vasps/sync"
 ```
 
 **응답**
@@ -164,7 +128,7 @@ curl -X POST "https://{baseUrl}/compliance/travel-rule/counterparties/sync"
   "data": {
     "addedCount": 2,
     "changedCount": 5,
-    "removedCount": 0,
+    "unreachableCount": 0,
     "syncedAt": "2026-07-16T04:05:06.789Z"
   },
   "meta": {
@@ -175,29 +139,28 @@ curl -X POST "https://{baseUrl}/compliance/travel-rule/counterparties/sync"
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `addedCount` | number | 필수 | 솔루션 목록에 새로 들어온 VASP 수 — 허용은 별도 등재(Allow Counterparty) 전까지 없음 |
-| `changedCount` | number | 필수 | 갱신된 VASP 수 |
-| `removedCount` | number | 필수 | 솔루션 목록에서 사라진 VASP 수 — 허용 판단은 관리 테이블에 있어 증발하지 않는다(설계 2장) |
+| `addedCount` | number | 필수 | 새로 들어와 `cmplVaspId` 를 발급한 VASP 수 |
+| `changedCount` | number | 필수 | 이름·도달성이 갱신된 VASP 수 |
+| `unreachableCount` | number | 필수 | 목록에서 빠져 도달 불가로 표시한 수 (매핑·활성화는 보존) |
 | `syncedAt` | string (ISO 8601) | 필수 | 동기화 완료 시각 |
 
 동기 실행이다 — 목록 규모가 커져 오래 걸리게 되면 접수(202)·결과 조회로 바꾼다(구현 때 확정).
 
-#### List Counterparty Candidates
+#### List VASPs
 
-`GET` `https://{baseUrl}/compliance/travel-rule/counterparties/candidates?query=`
+`GET` `https://{baseUrl}/compliance/travel-rule/vasps?query=`
 
-허용 등재의 후보를 솔루션 목록(2장 `cmpl_soln_vasp_m`)에서 찾는다 — 미허용 포함. **호출 주체는 Admin 백엔드다.**
-운영 API 는 등재 대상을 지칭해야 하므로 솔루션 원어(`solution`·`solutionVaspId`)를 다룬다 — 월렛(Service) API 의 원어 비노출 규약과 구분된다.
+Admin 이 온보딩 대상을 고르는 목록이다 — 컴플라이언스가 아는 VASP 를 `cmplVaspId` 와 함께 준다. 활성화 여부·매핑된 `vaspId` 도 실려, 이미 온보딩된 것과 아닌 것을 가른다. **호출 주체는 Admin 백엔드다.**
 
 ```bash
-curl "https://{baseUrl}/compliance/travel-rule/counterparties/candidates?query=upbit"
+curl "https://{baseUrl}/compliance/travel-rule/vasps?query=upbit"
 ```
 
 **쿼리 파라미터**
 
 | 파라미터 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `query` | string | 필수 | VASP 이름 (부분 일치) |
+| `query` | string | - | VASP 이름 부분 일치 (없으면 전체) |
 
 **응답**
 
@@ -207,11 +170,12 @@ curl "https://{baseUrl}/compliance/travel-rule/counterparties/candidates?query=u
 {
   "data": [
     {
-      "solution": "VERIFYVASP",
-      "solutionVaspId": "vasp-uuid-...",
+      "cmplVaspId": "cvasp_01H9",
       "name": "Upbit",
+      "solution": "VERIFYVASP",
       "reachable": true,
-      "counterpartyId": "cpty_upbit"
+      "active": true,
+      "vaspId": "VASP-0001"
     }
   ],
   "meta": {
@@ -222,64 +186,52 @@ curl "https://{baseUrl}/compliance/travel-rule/counterparties/candidates?query=u
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `solution` | string | 필수 | 어느 솔루션의 항목인가 — `VERIFYVASP` · `CODE_INTEROP` · `NOTABENE` |
-| `solutionVaspId` | string | 필수 | 그 솔루션 안의 식별자 — Allow Counterparty 에 그대로 넘긴다 |
+| `cmplVaspId` | string | 필수 | 컴플라이언스 발급 안정 id — 활성화/해제에 그대로 넘긴다 |
 | `name` | string | 필수 | 솔루션이 알려준 표시명 |
+| `solution` | string | 필수 | 어느 솔루션의 항목인가 — `VERIFYVASP` · `CODE_INTEROP` · `NOTABENE` |
 | `reachable` | boolean | 필수 | 마지막 동기화 기준 도달 가능 |
-| `counterpartyId` | string (null 가능) | - | 이미 등재된 상대면 그 ID — null 이면 미등재 |
+| `active` | boolean | 필수 | 활성화 여부 |
+| `vaspId` | string (null 가능) | - | 매핑된 코어 VASP id — null 이면 아직 온보딩 전 |
 
-#### Allow Counterparty
+#### Activate VASP
 
-`POST` `https://{baseUrl}/compliance/travel-rule/counterparties`
+`POST` `https://{baseUrl}/compliance/travel-rule/vasps/{cmplVaspId}/activate`
 
-이 상대와 거래한다는 등재 — 관리 테이블(2장 `cmpl_vasp_m`)에 행이 생기고 `counterpartyId` 가 발급된다. **호출 주체는 Admin 백엔드다.**
-솔루션 목록에 없는 상대는 등재할 수 없다(`NOT_FOUND`) — 먼저 Sync Counterparties. 허용 심사(누구를 등재할지)의 기준은 컴플라이언스 부서 몫이다.
+코어가 만든 `vaspId` 를 이 VASP 항목에 **매핑하고 활성화**한다 — 이미 매핑돼 있으면 활성화만 한다. **호출 주체는 Admin(코어) 백엔드다** (Admin 이 목록에서 VASP 를 골라 활성화하면, 코어가 `vaspId` 를 만들어 이 API 를 부른다).
 
 ```bash
-curl -X POST "https://{baseUrl}/compliance/travel-rule/counterparties" \
+curl -X POST "https://{baseUrl}/compliance/travel-rule/vasps/cvasp_01H9/activate" \
   -H "Content-Type: application/json" \
-  -d '{ "solution": "VERIFYVASP", "solutionVaspId": "vasp-uuid-..." }'
+  -d '{ "vaspId": "VASP-0001" }'
 ```
 
 **요청 본문**
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `solution` | string | 필수 | 후보 조회에서 받은 값 그대로 |
-| `solutionVaspId` | string | 필수 | 후보 조회에서 받은 값 그대로 |
+| `vaspId` | string | 필수 | 코어가 발급한 VASP id — 이 항목에 매핑한다. 이미 다른 값이 매핑돼 있으면 `CONFLICT`(409) |
 
 **응답**
 
-`201` — 등재됨 (이미 등재돼 있으면 `200` — 해제 상태였으면 다시 허용으로)
+`200` — 매핑·활성화됨 (이미 그 상태여도 `200` — 멱등)
 
-```json
-{
-  "data": {
-    "counterpartyId": "cpty_upbit",
-    "name": "Upbit",
-    "reachable": true
-  },
-  "meta": {
-    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
-  }
-}
-```
+`404` — `NOT_FOUND` — 없는 `cmplVaspId`
 
-#### Disallow Counterparty
+#### Deactivate VASP
 
-`DELETE` `https://{baseUrl}/compliance/travel-rule/counterparties/{counterpartyId}`
+`POST` `https://{baseUrl}/compliance/travel-rule/vasps/{cmplVaspId}/deactivate`
 
-허용을 해제한다 — 행은 남기고 허용만 끈다(판단 이력·재허용 시 ID 보존, 2장). 해제된 상대는 List Counterparties 에서 사라지고, 그 상대로의 새 출금 확인은 열리지 않는다. **호출 주체는 Admin 백엔드다.**
+활성화를 끈다 — 매핑(`vaspId`)은 남긴다. 재활성화하면 그대로 돌아온다. 해제 후에는 그 VASP 로의 새 출금 확인이 열리지 않는다. **호출 주체는 Admin 백엔드다.**
 
 ```bash
-curl -X DELETE "https://{baseUrl}/compliance/travel-rule/counterparties/cpty_upbit"
+curl -X POST "https://{baseUrl}/compliance/travel-rule/vasps/cvasp_01H9/deactivate"
 ```
 
 **응답**
 
-`204` — 해제됨 (이미 해제 상태여도 `204` — 멱등)
+`200` — 해제됨 (이미 해제 상태여도 `200` — 멱등)
 
-`404` — `NOT_FOUND` — 등재된 적 없는 ID
+`404` — `NOT_FOUND` — 없는 `cmplVaspId`
 
 ### Withdrawal Checks
 
@@ -288,8 +240,9 @@ curl -X DELETE "https://{baseUrl}/compliance/travel-rule/counterparties/cpty_upb
 `POST` `https://{baseUrl}/compliance/travel-rule/withdrawal-checks`
 
 출금 한 건의 트래블룰 확인을 시작한다. **거래소 선택 출금 전용이다** — 개인지갑 출금은 등록 지갑 확인을 월렛이 자체 처리하므로 이 API 를 부르지 않는다. 동기 솔루션(CODE·Notabene)은 최종 verdict 를 즉답하고 — **이때 travelRuleMessage·증적까지 실려 와 이 응답만으로 제출 가능하다** — 비동기 솔루션(VerifyVASP)은 `PENDING` 을 돌려준 뒤 결과를 큐 이벤트로 알린다.
+수취 거래소는 `beneficiary.vaspId`(월렛 VASP 마스터의 식별자)로 지목한다 — 컴플라이언스가 이 값으로 연결된 솔루션 항목을 찾아 라우팅한다.
 `externalTxId` 로 멱등 — 같은 키 재요청은 기존 check 를 돌려준다.
-미허용 상대의 `counterpartyId` 가 오면 `VALIDATION_FAILED`(400) — 목록에서 고를 수 없었어야 하는 값이다.
+닿는 솔루션에 연결되지 않은 `vaspId` 가 오면 `VALIDATION_FAILED`(400) — 거래 허용·솔루션 연결은 출금 화면에 오르기 전에 서 있어야 하는 값이다.
 
 ```bash
 curl -X POST "https://{baseUrl}/compliance/travel-rule/withdrawal-checks" \
@@ -300,7 +253,7 @@ curl -X POST "https://{baseUrl}/compliance/travel-rule/withdrawal-checks" \
     "asset": "ETH",
     "amount": "1.5",
     "destinationAddress": "0x896B...0b9b",
-    "beneficiary": { "name": "Bruce Wayne", "accountNumber": "0x896B...0b9b", "counterpartyId": "cpty_upbit" }
+    "beneficiary": { "name": "Bruce Wayne", "accountNumber": "0x896B...0b9b", "vaspId": "VASP-0001" }
   }'
 ```
 
@@ -316,14 +269,14 @@ curl -X POST "https://{baseUrl}/compliance/travel-rule/withdrawal-checks" \
   "beneficiary": {
     "name": "Bruce Wayne",
     "accountNumber": "0x896B...0b9b",
-    "counterpartyId": "cpty_upbit"
+    "vaspId": "VASP-0001"
   }
 }
 ```
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `externalTxId` | string | 필수 | 월렛 DB 의 출금 건 식별자 — 멱등 키. 블록체인 매니저 제출에 쓰는 키와 같은 것 — 한 출금을 양쪽에서 같은 키로 추적한다 |
+| `externalTxId` | string | 필수 | 월렛의 출금 건 식별자 — 멱등 키. 블록체인 매니저 제출에 쓰는 키와 같은 것 — 한 출금을 양쪽에서 같은 키로 추적한다 |
 | `accountId` | string | 필수 | 계정 ID — 결과 이벤트의 큐 파티션 키 |
 | `asset` | string | 필수 | 자산 심볼 |
 | `amount` | string | 필수 | 금액(문자열) |
@@ -440,7 +393,7 @@ curl -X POST "https://{baseUrl}/compliance/travel-rule/withdrawal-checks/chk_01J
 
 `POST` `https://{baseUrl}/compliance/travel-rule/deposit-checks`
 
-입금 한 건의 트래블룰 확인. 서비스가 **자기 사전 검증 기록(컴플라이언스 DB 의 사전 검증 기록)과 대조**하고, 대조가 안 되면 능동 조회(보고 미수신 건 — Check Transaction Status · 기록 자체가 없으면 — TXID 역추적)까지 안에서 처리해 결과만 돌려준다. 귀속 판단·가용 전이는 월렛 몫이다.
+입금 한 건의 트래블룰 확인. 서비스가 **보관 중인 사전 검증 기록과 대조**하고, 대조가 안 되면 능동 조회(보고 미수신 건 — Check Transaction Status · 기록 자체가 없으면 — TXID 역추적)까지 안에서 처리해 결과만 돌려준다. 귀속 판단·가용 전이는 월렛 몫이다.
 
 ```bash
 curl -X POST "https://{baseUrl}/compliance/travel-rule/deposit-checks" \
@@ -494,7 +447,7 @@ curl -X POST "https://{baseUrl}/compliance/travel-rule/deposit-checks" \
 
 ## 인바운드 내부 API — 월렛이 구현, 컴플라이언스가 호출
 
-상대 VASP 의 사전 검증 요청(수신 질문)에 답하기 위한 계약. 수신 기록의 적재·tx hash 갱신은 서비스 내부(컴플라이언스 DB 사전 검증 기록)라 월렛 API 가 없다. 응답 형식·에러 형식은 위 공통 규약과 동일하다.
+상대 VASP 의 사전 검증 요청(수신 질문)에 답하기 위한 계약. 수신 기록의 보관·tx hash 갱신은 서비스 내부라 월렛 API 가 없다. 응답 형식·에러 형식은 위 공통 규약과 동일하다.
 
 #### Verify Address Attribution
 
@@ -584,28 +537,20 @@ verdict 의 값 — 솔루션 원어를 이 넷으로 번역한다 ([트래블�
 | `PENDING` | 아직 결과가 없다 — 결과가 나면 큐 이벤트(`withdrawal-check.settled`)로 알린다 |
 | `REJECTED` | 거절 — 상대 거절 또는 PENDING 만료 |
 
-### Counterparty
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `counterpartyId` | string | 필수 | 거래소 식별자 — 고객이 고른 항목의 이 값을 Create Withdrawal Check 에 그대로 넘긴다 |
-| `name` | string | 필수 | 표시명 |
-| `reachable` | boolean | 필수 | 이 거래소로 지금 트래블룰 확인을 보낼 수 있는가 — 마지막 동기화 기준. 최종 확인은 Create Withdrawal Check 에서 |
-
 ### Beneficiary
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `name` | string | 필수 | 수취인 이름 |
 | `accountNumber` | string | 필수 | 수취 계좌(주소) |
-| `counterpartyId` | string (null 가능) | - | 수취 거래소 — 거래소 목록(List Counterparties)에서 고른 값 |
+| `vaspId` | string (null 가능) | - | 수취 거래소 — 월렛 VASP 마스터(`daw_vasp_m`)의 식별자. 출금 화면의 거래소 목록에서 고른 값 |
 
 ### WithdrawalCheck
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `checkId` | string | 필수 | check 식별자 — 서비스가 발급 |
-| `externalTxId` | string | 필수 | 월렛 DB 의 출금 건 식별자 (멱등 키) |
+| `externalTxId` | string | 필수 | 월렛의 출금 건 식별자 (멱등 키) |
 | `accountId` | string | 필수 | 계정 ID |
 | `verdict` | TrVerdict | 필수 | 현재 verdict |
 | `travelRuleMessage` | string (null 가능) | - | 제출 시 실어 보내는 암호화 메시지 — Notabene 경로만 값, 없는 솔루션은 null. 월렛은 내용을 해석하지 않는다 |
@@ -654,7 +599,7 @@ verdict 의 값 — 솔루션 원어를 이 넷으로 번역한다 ([트래블�
 |---|---|---|---|
 | `type` | string | 필수 | `withdrawal-check.settled` |
 | `checkId` | string | 필수 | check 식별자 |
-| `externalTxId` | string | 필수 | 월렛 DB 의 출금 건 식별자 |
+| `externalTxId` | string | 필수 | 월렛의 출금 건 식별자 |
 | `accountId` | string | 필수 | 파티션 키 |
 | `verdict` | TrVerdict | 필수 | `APPROVED` 또는 `REJECTED` (PENDING 만료 포함) |
 | `settledAt` | string (ISO 8601) | 필수 | 결과가 난 시각 |

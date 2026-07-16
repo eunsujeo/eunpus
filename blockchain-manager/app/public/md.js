@@ -252,6 +252,19 @@ window.MD = (() => {
     return { heading: lines[s].replace(/^##\s+/, ''), md: lines.slice(s + 1, e).join('\n') };
   }
 
+  // 제목이 prefix 로 시작하는 ## 절을 자른다 — 용어 참조(TERM_REFS)용
+  function sliceHeading(body, prefix) {
+    const lines = body.split(/\r?\n/);
+    const s = lines.findIndex((l) => {
+      const m = /^##\s+(.*)$/.exec(l);
+      return m && m[1].startsWith(prefix);
+    });
+    if (s < 0) return null;
+    let e = lines.length;
+    for (let i = s + 1; i < lines.length; i++) if (/^##\s/.test(lines[i])) { e = i; break; }
+    return { heading: lines[s].replace(/^##\s+/, ''), md: lines.slice(s + 1, e).join('\n') };
+  }
+
   function ensurePeek() {
     let peek = document.getElementById('peek');
     if (peek) return peek;
@@ -295,7 +308,8 @@ window.MD = (() => {
       const folder = ctx.docPath.split('/').slice(0, -1).join('/');
       const sibs = cards.filter((c) => c.path.startsWith(folder + '/'));
       let target = null;
-      if (ref.kind === 'appendix') target = sibs.find((c) => (c.title || '').includes(`부록 ${ref.letter}`));
+      if (ref.kind === 'term') target = cards.find((c) => c.path.endsWith('/' + ref.path));
+      else if (ref.kind === 'appendix') target = sibs.find((c) => (c.title || '').includes(`부록 ${ref.letter}`));
       else target = sibs.find((c) => new RegExp('^' + ref.chapter + '\\.(?!\\d)').test(c.title || ''));
       if (!target && ref.kind === 'section' && /^A$/i.test(String(ref.chapter)))
         target = sibs.find((c) => (c.title || '').includes('부록 A'));
@@ -310,6 +324,9 @@ window.MD = (() => {
       if (ref.kind === 'section') {
         const slice = sliceSection(data.body, ref.sec);
         if (slice) { md = slice.md; heading = slice.heading; hash = '#' + headingId(slice.heading); }
+      } else if (ref.kind === 'term') {
+        const slice = sliceHeading(data.body, ref.heading);
+        if (slice) { md = slice.md; heading = slice.heading; hash = '#' + headingId(slice.heading); }
       }
       titleEl.textContent = heading;
       openEl.href = `doc?path=${encodeURIComponent(target.path)}${hash}`;
@@ -322,9 +339,15 @@ window.MD = (() => {
     }
   }
 
-  // "6·8장" 사슬 · "N장" · "N.M" · "A.M" · "부록 A/B" — 코드·링크·제목 밖 텍스트만 감싼다
+  // 공통 어휘 용어 — 눌러서 정의 절을 피크로 본다. path 는 docs 루트 기준 접미 일치.
+  const TERM_REFS = {
+    TxStatus: { path: '블록체인매니저/설계/16-interface.md', heading: 'TxStatus' },
+    TrVerdict: { path: '컴플라이언스/설계/01-interface.md', heading: 'Verdict 타입' },
+  };
+
+  // "6·8장" 사슬 · "N장" · "N.M" · "A.M" · "부록 A/B" · 용어(TERM_REFS) — 코드·링크·제목 밖 텍스트만 감싼다
   // "개념 (세트) N장"·"블록체인매니저 N장" 은 다른 문서 세트 참조라 제외 (같은 폴더에서만 푼다)
-  const REF_RE = /(?<![\d.·])(?<!개념 )(?<!세트 )(?<!매니저 )(\d{1,2}(?:·\d{1,2})*장)|(?<![\d.])((?:\d{1,2}|A)\.\d{1,2})(?![.\d])|(부록 [AB])(?!\s*[—-])/g;
+  const REF_RE = /(?<![\d.·])(?<!개념 )(?<!세트 )(?<!매니저 )(\d{1,2}(?:·\d{1,2})*장)|(?<![\d.])((?:\d{1,2}|A)\.\d{1,2})(?![.\d])|(부록 [AB])(?!\s*[—-])|\b(TxStatus|TrVerdict)\b/g;
 
   function refButton(label, ref) {
     const b = document.createElement('button');
@@ -372,6 +395,9 @@ window.MD = (() => {
           frag.appendChild(refButton(m[2], { kind: 'section', chapter: ch, sec, label: sec }));
         } else if (m[3]) {
           frag.appendChild(refButton(m[3], { kind: 'appendix', letter: m[3].slice(-1), label: m[3] }));
+        } else if (m[4]) {
+          const t = TERM_REFS[m[4]];
+          frag.appendChild(refButton(m[4], { kind: 'term', path: t.path, heading: t.heading, label: m[4] }));
         }
         last = m.index + m[0].length;
       }
