@@ -37,7 +37,7 @@ status: To Do
 - **설치물** — VerifyVASP Enclave(벤더 강제 · 키·PII), CODE-Cipher(조건부). 상대 발신의 수신은 Enclave 가 이 서비스의 수신 콜백을 내부망으로 호출한다.
 - **자격증명** — Fireblocks 스크리닝 전용 API user (validate/full 용도 전용 · 서명 능력 없는 role · TAP 차단 · IP 제한 — [트래블룰 8장](../../트래블룰/설계/08-gate-port.md)). 키는 시크릿 스토어/KMS.
 - **컴플라이언스 DB** — 거래소 목록 · check 상태 · 사전 검증 기록. 테이블 초안은 [2장](02-database.md).
-- **물리 배치** — [트래블룰 12장](../../트래블룰/설계/12-physical-layout.md) · [인프라 0장](../../인프라/설계/00-overview.md).
+- **물리 배치** — [트래블룰 12장](../../트래블룰/설계/12-physical-layout.md) · [전체 배치(온보딩 0장)](../../온보딩/설계/00-overview.md).
 
 ## 열린 결정
 

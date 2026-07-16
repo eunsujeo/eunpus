@@ -42,7 +42,7 @@ flowchart TB
   ADM -->|API| BM
   SVC -->|API| BM
   BM -.->|publish| MQ
-  GATE -.->|settled 발행| MQ
+  GATE -.->|트래블룰 확인 결과 발행 — 승인·거절·만료| MQ
   MQ -.->|consume| SVC
   SVC <-->|확인 요청 · 귀속·실명 조회| GATE
   ADM -->|운영 — 수동 동기화 트리거·check 조회·감사 열람 · 상세 미확정| GATE
