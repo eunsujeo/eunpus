@@ -68,6 +68,7 @@ view: doc
 | `CHECK_NOT_FOUND` | 404 | check 없음 |
 | `NOT_FOUND` | 404 | 그 밖의 리소스 없음 |
 | `CONFLICT` | 409 | 멱등 충돌 — 같은 `externalTxId` 로 다른 본문 재요청 |
+| `SYNC_IN_PROGRESS` | 409 | 목록 동기화가 이미 실행 중 |
 | `NETWORK_UNAVAILABLE` | 502 | 솔루션·벤더 장애 — 외부 이체는 fail-close 가 원칙 |
 | `INTERNAL` | 500 | 서버 내부 오류 |
 
@@ -77,6 +78,8 @@ view: doc
 
 - **Create Withdrawal Check** — `externalTxId` 가 멱등 키다. 같은 키 재요청은 새 check 를 만들지 않고 기존 check 를 `200` 으로 돌려준다. 같은 키에 다른 본문이면 `CONFLICT`(409) — 서비스가 최초 요청의 본문 해시를 check 에 보관해 대조한다.
 - **제출 결과 보고** — 같은 `txHash` 재보고는 no-op 이다.
+- **Allow Counterparty** — 같은 (`solution`, `solutionVaspId`) 재등재는 기존 `counterpartyId` 를 `200` 으로 돌려준다.
+- **Disallow Counterparty** — 이미 해제된 상대의 재요청도 `204`.
 
 ## 이벤트 (메시지 큐)
 
@@ -103,7 +106,7 @@ view: doc
 curl "https://{baseUrl}/compliance/travel-rule/counterparties"
 ```
 
-목록의 원천은 솔루션 실시간 조회가 아니라 **컴플라이언스 DB 의 거래소 목록**이다 — VerifyVASP 회원 목록(상호연동된 CODE 회원 포함)과 Notabene VASP 목록을 주기 동기화해 보관한다. 솔루션 장애·지연이 출금 화면에 번지지 않고, `counterpartyId` 는 이 목록에 붙는 우리 발급 안정 ID 다.
+목록의 원천은 솔루션 실시간 조회가 아니라 **컴플라이언스 DB 의 거래소 목록**이다 — VerifyVASP 회원 목록(상호연동된 CODE 회원 포함)과 Notabene VASP 목록을 주기 동기화해 보관한다. 솔루션 장애·지연이 출금 화면에 번지지 않고, `counterpartyId` 는 허용 등재 때 발급되는 우리 안정 ID 다(설계 2장).
 상대의 현재 상태(health·도달성)는 목록 시점이 아니라 **Create Withdrawal Check 시점에 솔루션에 재확인**한다 — 목록이 동기화 주기만큼 낡아도 확인은 안전하다.
 
 **응답**
@@ -129,6 +132,143 @@ curl "https://{baseUrl}/compliance/travel-rule/counterparties"
 |---|---|---|---|
 | `data` | Counterparty 배열 | 필수 |  |
 | `meta` | Meta | 필수 |  |
+
+#### Sync Counterparties
+
+`POST` `https://{baseUrl}/compliance/travel-rule/counterparties/sync`
+
+VASP 목록 동기화를 즉시 실행한다 — 주기 배치와 같은 일을 지금 한다. **호출 주체는 Admin 백엔드다**(운영 — 예: 새 거래소가 목록에 안 보인다는 문의 대응).
+이미 실행 중이면 `SYNC_IN_PROGRESS`(409).
+
+```bash
+curl -X POST "https://{baseUrl}/compliance/travel-rule/counterparties/sync"
+```
+
+**응답**
+
+`200` — 동기화 완료
+
+```json
+{
+  "data": {
+    "addedCount": 2,
+    "changedCount": 5,
+    "removedCount": 0,
+    "syncedAt": "2026-07-16T04:05:06.789Z"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `addedCount` | number | 필수 | 솔루션 목록에 새로 들어온 VASP 수 — 허용은 별도 등재(Allow Counterparty) 전까지 없음 |
+| `changedCount` | number | 필수 | 갱신된 VASP 수 |
+| `removedCount` | number | 필수 | 솔루션 목록에서 사라진 VASP 수 — 허용 판단은 관리 테이블에 있어 증발하지 않는다(설계 2장) |
+| `syncedAt` | string (ISO 8601) | 필수 | 동기화 완료 시각 |
+
+동기 실행이다 — 목록 규모가 커져 오래 걸리게 되면 접수(202)·결과 조회로 바꾼다(구현 때 확정).
+
+#### List Counterparty Candidates
+
+`GET` `https://{baseUrl}/compliance/travel-rule/counterparties/candidates?query=`
+
+허용 등재의 후보를 솔루션 목록(2장 `cmpl_soln_vasp_m`)에서 찾는다 — 미허용 포함. **호출 주체는 Admin 백엔드다.**
+운영 API 는 등재 대상을 지칭해야 하므로 솔루션 원어(`solution`·`solutionVaspId`)를 다룬다 — 월렛(Service) API 의 원어 비노출 규약과 구분된다.
+
+```bash
+curl "https://{baseUrl}/compliance/travel-rule/counterparties/candidates?query=upbit"
+```
+
+**쿼리 파라미터**
+
+| 파라미터 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `query` | string | 필수 | VASP 이름 (부분 일치) |
+
+**응답**
+
+`200`
+
+```json
+{
+  "data": [
+    {
+      "solution": "VERIFYVASP",
+      "solutionVaspId": "vasp-uuid-...",
+      "name": "Upbit",
+      "reachable": true,
+      "counterpartyId": "cpty_upbit"
+    }
+  ],
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `solution` | string | 필수 | 어느 솔루션의 항목인가 — `VERIFYVASP` · `CODE_INTEROP` · `NOTABENE` |
+| `solutionVaspId` | string | 필수 | 그 솔루션 안의 식별자 — Allow Counterparty 에 그대로 넘긴다 |
+| `name` | string | 필수 | 솔루션이 알려준 표시명 |
+| `reachable` | boolean | 필수 | 마지막 동기화 기준 도달 가능 |
+| `counterpartyId` | string (null 가능) | - | 이미 등재된 상대면 그 ID — null 이면 미등재 |
+
+#### Allow Counterparty
+
+`POST` `https://{baseUrl}/compliance/travel-rule/counterparties`
+
+이 상대와 거래한다는 등재 — 관리 테이블(2장 `cmpl_vasp_m`)에 행이 생기고 `counterpartyId` 가 발급된다. **호출 주체는 Admin 백엔드다.**
+솔루션 목록에 없는 상대는 등재할 수 없다(`NOT_FOUND`) — 먼저 Sync Counterparties. 허용 심사(누구를 등재할지)의 기준은 컴플라이언스 부서 몫이다.
+
+```bash
+curl -X POST "https://{baseUrl}/compliance/travel-rule/counterparties" \
+  -H "Content-Type: application/json" \
+  -d '{ "solution": "VERIFYVASP", "solutionVaspId": "vasp-uuid-..." }'
+```
+
+**요청 본문**
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `solution` | string | 필수 | 후보 조회에서 받은 값 그대로 |
+| `solutionVaspId` | string | 필수 | 후보 조회에서 받은 값 그대로 |
+
+**응답**
+
+`201` — 등재됨 (이미 등재돼 있으면 `200` — 해제 상태였으면 다시 허용으로)
+
+```json
+{
+  "data": {
+    "counterpartyId": "cpty_upbit",
+    "name": "Upbit",
+    "reachable": true
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+#### Disallow Counterparty
+
+`DELETE` `https://{baseUrl}/compliance/travel-rule/counterparties/{counterpartyId}`
+
+허용을 해제한다 — 행은 남기고 허용만 끈다(판단 이력·재허용 시 ID 보존, 2장). 해제된 상대는 List Counterparties 에서 사라지고, 그 상대로의 새 출금 확인은 열리지 않는다. **호출 주체는 Admin 백엔드다.**
+
+```bash
+curl -X DELETE "https://{baseUrl}/compliance/travel-rule/counterparties/cpty_upbit"
+```
+
+**응답**
+
+`204` — 해제됨 (이미 해제 상태여도 `204` — 멱등)
+
+`404` — `NOT_FOUND` — 등재된 적 없는 ID
 
 ### Withdrawal Checks
 

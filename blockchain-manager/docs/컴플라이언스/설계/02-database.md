@@ -17,38 +17,50 @@ status: To Do
 
 | 테이블 | 무엇을 저장하나 | 쓰는 곳 |
 |---|---|---|
-| `cmpl_vasp_m` | 거래소 목록 | List Counterparties · 목록 동기화 배치 |
+| `cmpl_soln_vasp_m` | 솔루션 VASP 목록 — **목록 동기화만 이 테이블에 쓴다** | 목록 동기화 배치(주기·수동) |
+| `cmpl_vasp_m` | 거래 상대(VASP) 관리 — 허용 판단 · **운영(Admin)만 이 테이블에 쓴다** | List Counterparties · VASP 허용 관리 |
 | `cmpl_wdrl_chk_l` | check 상태 | Create/Get Withdrawal Check · Report · settled 발행 · PENDING 만료 스캔 |
 | `cmpl_pre_vrfc_l` | 사전 검증 기록 | 인바운드 수신 적재 · TX_REPORT 갱신 · Create Deposit Check 대조 |
 
-월렛 DB 의 출금 상대(VASP) 마스터와 `cmpl_vasp_m` 은 별개다 — 전자는 월렛의 출금 상대 관리, 후자는 솔루션 목록을 주기 동기화해 보관하는 목록. 관계 정리는 미확정(아래).
+월렛 DB 에도 같은 이름 계열의 출금 상대(VASP) 마스터가 있다 — 그것은 월렛의 출금 상대 관리이고, 여기 두 테이블은 컴플라이언스의 솔루션 목록·허용 판단이다. 관계 정리는 미확정(아래).
 
-## cmpl_vasp_m — 거래소 목록
+## cmpl_soln_vasp_m — 솔루션 VASP 목록
 
-고객이 출금 화면에서 고를 수취 거래소 목록이다. 원천은 솔루션들의 회원·VASP 목록이고, 동기화 배치가 주기적으로 읽어 와 이 테이블을 갱신한다 — 그래서 조회(List Counterparties)가 솔루션 장애·지연과 무관하게 즉답할 수 있다.
+솔루션들의 회원·VASP 목록을 그대로 받아 둔 것이다. **이 테이블에 쓰는 것은 목록 동기화뿐이고, 다른 모든 코드는 읽기만 한다.** 원천이 솔루션에 있으니 통째로 갈아치워도(재적재) 잃는 것이 없다.
+
+```sql
+CREATE TABLE cmpl_soln_vasp_m (
+  soln_dvcd      VARCHAR(16)  NOT NULL,      -- 솔루션 구분: VERIFYVASP | CODE_INTEROP | NOTABENE
+  soln_vasp_id   VARCHAR(255) NOT NULL,      -- 솔루션 쪽 식별자 (vaspId · DID)
+  vasp_nm        VARCHAR(255) NOT NULL,      -- 솔루션이 알려준 표시명
+  rchbl_yn       BOOLEAN      NOT NULL,      -- 이 거래소로 확인을 보낼 수 있는가 (마지막 동기화 기준)
+  sync_dttm      TIMESTAMP    NOT NULL,      -- 마지막 동기화 일시
+  PRIMARY KEY (soln_dvcd, soln_vasp_id)
+);
+```
+
+## cmpl_vasp_m — 거래 상대(VASP) 관리
+
+우리가 **거래를 허용하기로 판단한** 상대만 행이 있다. **이 테이블에 쓰는 것은 운영(Admin)뿐이고, 동기화는 읽지도 쓰지도 않는다.**
 
 ```sql
 CREATE TABLE cmpl_vasp_m (
-  cpty_id        VARCHAR(64) PRIMARY KEY,    -- 우리 발급 안정 ID (예: cpty_upbit)
-  vasp_nm        VARCHAR(255) NOT NULL,      -- 표시명
-  soln_dvcd      VARCHAR(16)  NOT NULL,      -- 솔루션 구분: VERIFYVASP | CODE_INTEROP | NOTABENE
-  soln_vasp_id   VARCHAR(255) NOT NULL,      -- 솔루션 쪽 식별자 (vaspId · DID)
-  rchbl_yn       BOOLEAN      NOT NULL,      -- 이 거래소로 확인을 보낼 수 있는가 (마지막 동기화 기준)
-  alw_yn         BOOLEAN      NOT NULL DEFAULT false,  -- 우리가 거래를 허용한 상대인가 — 동기화는 이 값을 건드리지 않는다
-  sync_dttm      TIMESTAMP    NOT NULL,      -- 마지막 동기화 일시
+  cpty_id        VARCHAR(64)  PRIMARY KEY,   -- 우리 발급 안정 ID (예: cpty_upbit) — 허용 등재 때 발급
+  soln_dvcd      VARCHAR(16)  NOT NULL,      -- 솔루션 목록(cmpl_soln_vasp_m)의 어느 항목인가
+  soln_vasp_id   VARCHAR(255) NOT NULL,
+  alw_yn         BOOLEAN      NOT NULL,      -- 허용 상태 — 해제해도 행은 남긴다 (판단 이력·재허용 시 ID 보존)
+  reg_dttm       TIMESTAMP    NOT NULL,      -- 등재 일시
+  last_chng_dttm TIMESTAMP    NOT NULL,      -- 허용/해제 마지막 변경 일시
   UNIQUE (soln_dvcd, soln_vasp_id)
 );
 ```
 
-| 컬럼 | 뜻 |
+| 무엇 | 어떻게 |
 |---|---|
-| `cpty_id` | 거래소 식별자 — 우리가 발급하는 안정 ID. 동기화로 솔루션 쪽 값이 바뀌어도 유지된다 |
-| `vasp_nm` | 고객 화면에 보여줄 거래소 표시명 |
-| `soln_dvcd` | 이 거래소를 어느 솔루션이 처리하나 — 확인 요청을 어디로 보낼지의 라우팅 기준 |
-| `soln_vasp_id` | 그 솔루션 안에서의 식별자 (VerifyVASP vaspId · Notabene DID) — 솔루션 호출 때 이 값을 쓴다 |
-| `rchbl_yn` | 이 거래소로 지금 트래블룰 확인을 보낼 수 있는가 — 마지막 동기화 때 솔루션이 알려준 상태로 채운다. 낡을 수 있어 실제 확인 요청 때 솔루션에 재검증한다 |
-| `alw_yn` | 우리가 거래를 허용한 상대인가 — 솔루션 목록에 있다(도달 가능)와 별개의 우리 판단. 새 행은 기본 불허(false)로 들어오고, 동기화 배치는 이 값을 절대 바꾸지 않는다. 켜고 끄는 건 운영(Admin) 몫 |
-| `sync_dttm` | 이 행을 마지막으로 동기화한 일시 — 목록이 얼마나 낡았는지의 기준 |
+| 두 테이블의 관계 | List Counterparties = 관리(허용) 행에 솔루션 목록을 이어 붙여 답한다 — 이름·도달성은 솔루션 목록에서, counterpartyId·허용은 관리에서 |
+| 새 상대 허용 | 솔루션 목록에 행이 먼저 있어야 한다(동기화가 만든다 — 없으면 수동 동기화부터). 운영이 허용 등재하면 관리 행이 생기고 `cpty_id` 가 발급된다 |
+| 솔루션 목록에서 사라진 허용 상대 | 관리 행은 그대로, 이어 붙이기에 실패하므로 도달 불가로 노출된다 — 우리 판단은 증발하지 않는다 |
+| 동기화 재적재 | 솔루션 목록은 통째로 갈아도 안전 — `cpty_id`·허용 판단이 관리 테이블에 있어서 안정적이다 |
 
 ## cmpl_wdrl_chk_l — check 상태
 

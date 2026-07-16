@@ -4,7 +4,7 @@ status: To Do
 ---
 
 월렛 백엔드·블록체인 매니저·컴플라이언스의 배포 단위를 한 장에 모은다. 각 배치의 근거는 해당 시스템 장에 있고, 이 장은 그 결론만 조립한다.
-구역은 사내 인프라와 외부 벤더·네트워크 둘이다 — 사내 묶음들은 전부 **같은 네트워크**에 있다.
+구역은 사내 인프라와 외부 벤더·네트워크 둘이다.
 
 ## 한 장 그림
 
@@ -12,11 +12,7 @@ status: To Do
 flowchart TB
   subgraph OURS["사내 인프라"]
     direction TB
-    subgraph WBE["월렛 백엔드"]
-      direction LR
-      ADM["Admin 백엔드"]
-      SVC["Service 백엔드"]
-    end
+    CORE["코인계 — 코어<br/>Service · Admin 백엔드"]
     subgraph BMZ["블록체인 매니저 — 자산 이동"]
       direction LR
       COS["API Co-signer (SGX/TEE)<br/>+ Callback Handler"]
@@ -29,7 +25,7 @@ flowchart TB
       FBCLI["Fireblocks<br/>스크리닝 클라이언트"]
       EN["VerifyVASP Enclave<br/>공개 HTTPS 인바운드"]
     end
-    SVC ~~~ MQ
+    CORE ~~~ MQ
   end
 
   subgraph EXTZ["외부 벤더·네트워크"]
@@ -39,13 +35,12 @@ flowchart TB
     TRNET["트래블룰 솔루션 중앙<br/>VerifyVASP · CodeVASP · Notabene"]
   end
 
-  ADM -->|API| BM
-  SVC -->|API| BM
+  CORE -->|API| BM
   BM -.->|publish| MQ
   GATE -.->|트래블룰 확인 결과 발행 — 승인·거절·만료| MQ
-  MQ -.->|consume| SVC
-  SVC <-->|확인 요청 · 귀속·실명 조회| GATE
-  ADM -->|운영 — 수동 동기화 트리거·check 조회·감사 열람 · 상세 미확정| GATE
+  MQ -.->|consume| CORE
+  CORE <-->|확인 요청 · 귀속·실명 조회| GATE
+  CORE -->|운영 — 목록 동기화·허용 등재/해제 · 그 외 미확정| GATE
   GATE -->|validate/full 요청| FBCLI
   GATE -->|VerifyVASP 아웃바운드| EN
   EN -->|수신 콜백 — Verify User 등| GATE
@@ -61,14 +56,14 @@ flowchart TB
   classDef mq fill:#fef9c3,stroke:#ca8a04;
   classDef vendor fill:#f5f5f7,stroke:#86868b;
   classDef chain fill:#eef2ff,stroke:#818cf8;
-  class SVC,ADM,BM,GATE,FBCLI ours
+  class CORE,BM,GATE,FBCLI ours
   class COS,EN selfhost
   class MQ mq
   class FB,TRNET vendor
   class EVM chain
 ```
 
-파랑 = 직접 만들고 운영하는 서비스, 노랑 = 벤더가 강제해서 우리 인프라 안에 두는 설치물, 회색 = 외부 벤더·네트워크. 안쪽 묶음(월렛 백엔드·블록체인 매니저·컴플라이언스)은 역할 구분일 뿐 네트워크 경계가 아니다 — 전부 같은 네트워크에 있다. 메시지 큐는 매니저·컴플라이언스가 함께 쓰는 공용 인프라라 묶음 밖에 둔다.
+파랑 = 직접 만들고 운영하는 서비스, 노랑 = 벤더가 강제해서 우리 인프라 안에 두는 설치물, 회색 = 외부 벤더·네트워크. 메시지 큐는 매니저·컴플라이언스가 함께 쓰는 공용 인프라라 묶음 밖에 둔다.
 
 ## 별도 서비스 둘 — 정의와 나눈 이유
 

@@ -27,6 +27,49 @@ status: To Do
 
 경로를 `/compliance/travel-rule/...` 로 잡는 이유 — 다음 모듈(예: aml)이 생기면 `/compliance/aml/...` 로 나란히 붙는다.
 
+## 운영 API — Admin → 컴플라이언스 (4개)
+
+운영 API 는 등재 대상을 지칭해야 해서 솔루션 원어를 다룬다 — 월렛(Service) API 의 원어 비노출 규약과 구분된다.
+
+| # | 엔드포인트 | 무엇 |
+|---|---|---|
+| 1 | `POST /compliance/travel-rule/counterparties/sync` | **Sync Counterparties** — VASP 목록 동기화를 즉시 실행 (주기 배치와 같은 일). 새 상대가 목록에 안 보일 때의 운영 대응 |
+| 2 | `GET /compliance/travel-rule/counterparties/candidates?query=` | **List Counterparty Candidates** — 등재 후보를 솔루션 목록에서 검색 (미허용 포함) |
+| 3 | `POST /compliance/travel-rule/counterparties` | **Allow Counterparty** — 허용 등재. 관리 행 생성 · counterpartyId 발급. 심사 기준은 컴플라이언스 부서 몫 |
+| 4 | `DELETE /compliance/travel-rule/counterparties/{counterpartyId}` | **Disallow Counterparty** — 허용 해제. 행은 남기고 허용만 끈다 — List 에서 사라지고 새 출금 확인이 열리지 않는다 |
+
+check 운영 조회·감사 기록 열람 등 나머지 운영 경로는 미설계([0장](00-scope.md) 열린 결정).
+
+## VASP 목록의 처리 순서 — 동기화에서 출금 확인까지
+
+VASP 목록은 테이블이 둘이다([2장](02-database.md)): 솔루션 목록(`cmpl_soln_vasp_m` — 동기화만 쓴다)과 허용 판단(`cmpl_vasp_m` — 운영만 쓴다). 순서는 **솔루션 목록이 먼저, 판단이 다음, 노출은 그 교집합**이다.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant ADM as Admin 백엔드
+    participant BE as Service 백엔드
+    box rgb(224,242,254) 컴플라이언스 서비스
+    participant CP as 컴플라이언스 서비스
+    participant CDB as 컴플라이언스 DB<br/>솔루션 목록 · 거래 상대 관리
+    end
+    participant SOL as 솔루션
+
+    CP->>SOL: ① 목록 동기화 — 주기 배치 또는 Sync Counterparties
+    SOL-->>CP: 회원·VASP 목록
+    CP->>CDB: 솔루션 목록 갱신 — 관리 테이블은 건드리지 않는다
+    ADM->>CP: ② 허용 등재 — 이 상대와 거래한다 (운영 API Allow Counterparty)
+    CP->>CDB: 관리 행 생성 · counterpartyId 발급 — 솔루션 목록에 없는 상대는 ① 부터
+    BE->>CP: ③ List Counterparties
+    CP->>CDB: 허용 행에 솔루션 목록을 이어 붙임 — 이름·도달성은 그쪽에서
+    CP-->>BE: 허용된 상대만 반환
+    BE->>CP: ④ Create Withdrawal Check — 고객이 고른 counterpartyId
+    CP->>CDB: 관리 행 → 어느 솔루션의 어느 상대인지 확정
+    CP->>SOL: 해당 솔루션 왕복 (출금 시퀀스)
+```
+
+솔루션 목록에서 사라진 허용 상대는 ③의 이어 붙이기가 실패해 도달 불가로 노출된다 — 허용 판단은 관리 테이블에 있어 증발하지 않고, 재등장하면 그대로 복귀한다.
+
 ## 이벤트 — 컴플라이언스 → 월렛 (큐 · 확정)
 
 비동기 확인의 결과 도착은 **메시지 큐 전용 토픽**으로 알린다 — 매니저→월렛이 큐인 기존 패턴과 동일하고, 파티션 키도 같은 규칙(계정 단위)이다.
@@ -54,7 +97,7 @@ status: To Do
 
 ### 목록 동기화 — List Counterparties 가 답할 거래소 목록을 만든다
 
-주기는 미정(0장 미확정). 목록 API 출처 — [VerifyVASP List VASP](https://docs.verifyvasp.com/reference/travelrule-list-vasp-ids)(`GET /v1/vasps` · 상호연동 CODE 회원 포함) · [Fireblocks Get All VASPs](https://developers.fireblocks.com/api-reference/travel-rule/get-all-vasps) · [Fireblocks TRLink List VASPs](https://developers.fireblocks.com/api-reference/trlink/list-vasps)(Notabene VASP 디렉토리 · 페이지네이션).
+주기는 미정(0장 미확정). 주기 실행 외에 운영 API(Sync Counterparties)로도 즉시 실행된다. 목록 API 출처 — [VerifyVASP List VASP](https://docs.verifyvasp.com/reference/travelrule-list-vasp-ids)(`GET /v1/vasps` · 상호연동 CODE 회원 포함) · [Fireblocks Get All VASPs](https://developers.fireblocks.com/api-reference/travel-rule/get-all-vasps) · [Fireblocks TRLink List VASPs](https://developers.fireblocks.com/api-reference/trlink/list-vasps)(Notabene VASP 디렉토리 · 페이지네이션).
 
 ```mermaid
 sequenceDiagram
@@ -72,7 +115,7 @@ sequenceDiagram
         SCH->>FB: Get All VASPs (페이지네이션 — 끝까지 반복)
         FB-->>SCH: VASP 목록 — DID · 이름 (Notabene VASP 디렉토리)
         SCH->>SCH: 병합 — 이름 정규화 · 중복 정리
-        SCH->>DB: 목록 갱신 — 신규는 counterpartyId 발급, 기존은 매핑 유지
+        SCH->>DB: 솔루션 목록 갱신 — 받은 그대로 (counterpartyId·허용은 관리 테이블 — 2장)
         DB-->>SCH: 갱신 결과 — 추가 · 변경 · 제거 건수
     end
 ```
