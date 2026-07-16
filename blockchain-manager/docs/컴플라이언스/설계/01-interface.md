@@ -28,11 +28,11 @@ status: To Do
 
 | # | 엔드포인트 | 무엇 |
 |---|---|---|
-| 1 | `GET /compliance/travel-rule/counterparties` | **List Counterparties** — 출금 화면에서 고객에게 보여줄 수취 거래소 목록. **컴플라이언스 DB 의 거래소 목록**에서 답한다(솔루션 실시간 조회 아님 · 주기 동기화) |
+| 1 | `GET /compliance/travel-rule/counterparties` | **List Counterparties** — 출금 화면에서 고객에게 보여줄 수취 거래소 목록. **컴플라이언스 DB 의 거래소 목록에서 우리가 허용한 상대만** 답한다(솔루션 실시간 조회 아님 · 주기 동기화 · 허용은 운영이 켠다) |
 | 2 | `POST /compliance/travel-rule/withdrawal-checks` | **Create Withdrawal Check** — 출금 확인 개시 (`externalTxId` = 멱등키). **거래소 선택 출금 전용** — 개인지갑 출금은 이 API 를 부르지 않는다(등록 지갑 확인은 월렛이 월렛 DB 의 등록 지갑 목록으로 자체 처리). 동기 솔루션은 최종 verdict·travelRuleMessage 까지 즉답 — 이 응답만으로 제출 가능. 비동기 솔루션은 PENDING |
 | 3 | `GET /compliance/travel-rule/withdrawal-checks/{checkId}` | **Get Withdrawal Check** — 이벤트 유실 대비 폴링·재기동 복구 전용. 정상 흐름에서는 호출하지 않는다 |
 | 4 | `POST /compliance/travel-rule/withdrawal-checks/{checkId}/report` | **Report Withdrawal Result** — 온체인 제출 후 tx hash 보고. 비차단 — 이 호출의 실패는 출금 흐름과 무관(재시도만 하면 된다) |
-| 5 | `POST /compliance/travel-rule/deposit-checks` | **Create Deposit Check** — 입금 한 건의 트래블룰 확인. 서비스가 **자기 대기함(사전 검증 기록)과 대조**하고, 안 되면 능동 조회까지 해서 결과만 돌려준다. 호출 시점·판별 우선순위는 [트래블룰 8장](../../트래블룰/설계/08-gate-port.md), 귀속·가용 전이 판단은 월렛 몫 |
+| 5 | `POST /compliance/travel-rule/deposit-checks` | **Create Deposit Check** — 입금 한 건의 트래블룰 확인. 서비스가 **보관 중인 사전 검증 기록과 대조**하고, 안 되면 능동 조회까지 해서 결과만 돌려준다. 호출 시점·판별 우선순위는 [트래블룰 8장](../../트래블룰/설계/08-gate-port.md), 귀속·가용 전이 판단은 월렛 몫 |
 
 요청·응답 본문의 모양과 필드는 [API 문서](../API/api.md)에 정의한다.
 
@@ -50,7 +50,7 @@ status: To Do
 
 ## 배치 — 서비스가 스스로 도는 두 주기 작업
 
-월렛 호출 없이 서비스가 주기적으로 실행한다. 대기함 보존 기간 만료(값 미정 — [트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))도 확정되면 이 자리에 추가된다.
+월렛 호출 없이 서비스가 주기적으로 실행한다. 사전 검증 기록 보존 기간 만료(값 미정 — [트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))도 확정되면 이 자리에 추가된다.
 
 ### 목록 동기화 — List Counterparties 가 답할 거래소 목록을 만든다
 
@@ -147,7 +147,7 @@ sequenceDiagram
 
 ## 인바운드 내부 API — 월렛이 구현, 컴플라이언스가 호출 (1개)
 
-상대 VASP 의 사전 검증 요청(수신 질문)에 답하기 위한 계약. 수신 기록의 적재·tx hash 갱신은 컴플라이언스 DB 대기함에서 내부 처리되므로, 월렛에는 아래 질문 하나만 온다.
+상대 VASP 의 사전 검증 요청(수신 질문)에 답하기 위한 계약. 수신 기록의 적재·tx hash 갱신은 컴플라이언스 DB 사전 검증 기록에서 내부 처리되므로, 월렛에는 아래 질문 하나만 온다.
 
 | # | 계약 | 무엇 |
 |---|---|---|
@@ -161,7 +161,7 @@ sequenceDiagram
     participant NET as 솔루션<br/>상대 VASP 발 사전 검증
     box rgb(224,242,254) 컴플라이언스 서비스
     participant CP as 트래블룰 게이트
-    participant CDB as 컴플라이언스 DB<br/>대기함
+    participant CDB as 컴플라이언스 DB<br/>사전 검증 기록
     end
     box rgb(224,242,254) 월렛 백엔드
     participant BE as 월렛 백엔드
@@ -169,12 +169,12 @@ sequenceDiagram
     end
 
     alt 국내 — VerifyVASP 직접 연동: 사전 검증이 우리에게 온다 (7.3)
-        NET->>CP: 사전 검증 요청 인입 — 수취 주소·자산·금액·verificationRef (Enclave → 수신 컴포넌트 경유)
+        NET->>CP: 사전 검증 요청 인입 — 수취 주소·자산·금액·verificationRef (Enclave 의 수신 콜백 호출)
         CP->>BE: 인바운드 ① 주소 귀속·실명 확인 조회
         BE->>WDB: 주소↔계정 조회 — 우리 고객 계정인지
         WDB-->>BE: 귀속 계정
         BE-->>CP: 확인 결과
-        CP->>CDB: 대기함 적재 — 대조 키·verificationRef (PII 없음)
+        CP->>CDB: 사전 검증 기록 적재 — 대조 키·verificationRef (PII 없음)
         CP-->>NET: 응답 회신
         NET->>NET: 상대 VASP 온체인 전송 — 체인 confirmation 진행
         opt tx hash 사후 보고 수신 (TX_REPORT · 순서 보장 없음)
@@ -185,7 +185,7 @@ sequenceDiagram
         BE->>WDB: 주소↔계정 귀속 확인
         WDB-->>BE: 귀속 계정
         BE->>CP: ⑤ POST deposit-checks — source·자산·금액·tx hash
-        CP->>CDB: 대기함 대조 — txHash·주소·금액
+        CP->>CDB: 사전 검증 기록 대조 — txHash·주소·금액
         CDB-->>CP: 일치 기록 (또는 없음)
         opt 대조되지 않음 — 능동 조회
             CP->>NET: 보고 미수신 건은 Check Transaction Status · 기록 자체가 없으면 TXID 역추적(되는 솔루션)

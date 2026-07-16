@@ -97,6 +97,7 @@ view: doc
 `GET` `https://{baseUrl}/compliance/travel-rule/counterparties`
 
 출금 화면에서 고객에게 보여줄 수취 거래소 목록을 내려준다 — 고객은 이 중 하나를 고른다.
+**우리가 거래를 허용한 상대만 반환한다** — 솔루션 목록에 있어도(도달 가능) 허용 전이면 목록에 없다. 허용은 운영이 켠다(설계 0장 열린 결정).
 
 ```bash
 curl "https://{baseUrl}/compliance/travel-rule/counterparties"
@@ -137,6 +138,7 @@ curl "https://{baseUrl}/compliance/travel-rule/counterparties"
 
 출금 한 건의 트래블룰 확인을 시작한다. **거래소 선택 출금 전용이다** — 개인지갑 출금은 등록 지갑 확인을 월렛이 자체 처리하므로 이 API 를 부르지 않는다. 동기 솔루션(CODE·Notabene)은 최종 verdict 를 즉답하고 — **이때 travelRuleMessage·증적까지 실려 와 이 응답만으로 제출 가능하다** — 비동기 솔루션(VerifyVASP)은 `PENDING` 을 돌려준 뒤 결과를 큐 이벤트로 알린다.
 `externalTxId` 로 멱등 — 같은 키 재요청은 기존 check 를 돌려준다.
+미허용 상대의 `counterpartyId` 가 오면 `VALIDATION_FAILED`(400) — 목록에서 고를 수 없었어야 하는 값이다.
 
 ```bash
 curl -X POST "https://{baseUrl}/compliance/travel-rule/withdrawal-checks" \
@@ -171,7 +173,7 @@ curl -X POST "https://{baseUrl}/compliance/travel-rule/withdrawal-checks" \
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `externalTxId` | string | 필수 | 월렛 DB 의 출금 건 식별자 — 멱등 키. 블록체인 매니저 제출에 쓰는 키와 같은 것 — 한 출금을 양쪽에서 같은 키로 추적한다 |
-| `accountId` | string | 필수 | 계정 ID — 큐 파티션 키·감사 축 |
+| `accountId` | string | 필수 | 계정 ID — 결과 이벤트의 큐 파티션 키 |
 | `asset` | string | 필수 | 자산 심볼 |
 | `amount` | string | 필수 | 금액(문자열) |
 | `destinationAddress` | string | 필수 | 수취 주소 |
@@ -287,7 +289,7 @@ curl -X POST "https://{baseUrl}/compliance/travel-rule/withdrawal-checks/chk_01J
 
 `POST` `https://{baseUrl}/compliance/travel-rule/deposit-checks`
 
-입금 한 건의 트래블룰 확인. 서비스가 **자기 대기함(컴플라이언스 DB 의 사전 검증 기록)과 대조**하고, 대조가 안 되면 능동 조회(보고 미수신 건 — Check Transaction Status · 기록 자체가 없으면 — TXID 역추적)까지 안에서 처리해 결과만 돌려준다. 귀속 판단·가용 전이는 월렛 몫이다.
+입금 한 건의 트래블룰 확인. 서비스가 **자기 사전 검증 기록(컴플라이언스 DB 의 사전 검증 기록)과 대조**하고, 대조가 안 되면 능동 조회(보고 미수신 건 — Check Transaction Status · 기록 자체가 없으면 — TXID 역추적)까지 안에서 처리해 결과만 돌려준다. 귀속 판단·가용 전이는 월렛 몫이다.
 
 ```bash
 curl -X POST "https://{baseUrl}/compliance/travel-rule/deposit-checks" \
@@ -341,7 +343,7 @@ curl -X POST "https://{baseUrl}/compliance/travel-rule/deposit-checks" \
 
 ## 인바운드 내부 API — 월렛이 구현, 컴플라이언스가 호출
 
-상대 VASP 의 사전 검증 요청(수신 질문)에 답하기 위한 계약. 수신 기록의 적재·tx hash 갱신은 서비스 내부(컴플라이언스 DB 대기함)라 월렛 API 가 없다. 응답 형식·에러 형식은 위 공통 규약과 동일하다.
+상대 VASP 의 사전 검증 요청(수신 질문)에 답하기 위한 계약. 수신 기록의 적재·tx hash 갱신은 서비스 내부(컴플라이언스 DB 사전 검증 기록)라 월렛 API 가 없다. 응답 형식·에러 형식은 위 공통 규약과 동일하다.
 
 #### Verify Address Attribution
 
@@ -477,7 +479,7 @@ verdict 의 값 — 솔루션 원어를 이 넷으로 번역한다 ([트래블�
 
 | 값 | 뜻 |
 |---|---|
-| `VERIFIED` | 송신측이 사전 검증을 했음이 확인됨 — 대기함 대조 또는 능동 조회 |
+| `VERIFIED` | 송신측이 사전 검증을 했음이 확인됨 — 사전 검증 기록 대조 또는 능동 조회 |
 | `NOT_FOUND` | 송신측에 검증 기록 없음 |
 | `UNAVAILABLE` | 확인 불가 — 대조 기록이 없고 TXID 역추적도 안 되는 솔루션 |
 
@@ -499,5 +501,5 @@ verdict 의 값 — 솔루션 원어를 이 넷으로 번역한다 ([트래블�
 - **원화 임계 판단의 위치** — 벤더 지원 여부 미확정([트래블룰 14장](../../트래블룰/설계/14-fireblocks-questions.md) 문의 1). 어느 쪽이든 이 API 표면(verdict)은 바뀌지 않는다.
 - **Evidence.kind 목록** — 솔루션별 증적 종류 확정 후 enum 으로 못 박는다.
 - **인증 방식** — 서비스 간 인증(월렛↔컴플라이언스·내부 API)은 인프라 결정과 함께 확정.
-- **대기함 대조 규칙** — 키 조합(txHash 우선 · 주소·금액 일치 범위)은 구현 전 확정.
+- **사전 검증 기록 대조 규칙** — 키 조합(txHash 우선 · 주소·금액 일치 범위)은 구현 전 확정.
 - **Enclave 콜백 페이로드** — 수신 질문에 어떤 필드가 평문으로 오는지(실명 외 항목 포함 여부) — Enclave 설치 검증 때 확정.

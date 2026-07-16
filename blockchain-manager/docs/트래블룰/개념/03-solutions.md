@@ -4,7 +4,7 @@ status: To Do
 ---
 
 트래블룰 데이터 교환은 원장 밖(off-chain) 메시징 프로토콜이 담당하는 게 일반적이며, 데이터 표준은 셋 다 IVMS101(interVASP Messaging Standard) 로 같고 통신 아키텍처만 다르다.
-국내는 VerifyVASP 와 CODE 로 양분되고 글로벌 축은 Notabene 등 레그테크 SaaS 다.
+국내는 VerifyVASP 와 CODE 로 양분되고, 글로벌은 Notabene 등 레그테크 SaaS 다.
 
 ## 왜 원장 밖 프로토콜인가
 
@@ -16,7 +16,7 @@ status: To Do
 
 국내 시장은 두나무 자회사 람다256 이 주도하는 VerifyVASP 연합과, 빗썸·코인원·코빗이 합작한 CODE 진영으로 나뉜다. 여기에 글로벌 레그테크 Notabene 이 SaaS 로 얹힌다.
 
-| 비교 축 | VerifyVASP | CODE | Notabene |
+| 비교 항목 | VerifyVASP | CODE | Notabene |
 |---|---|---|---|
 | 주체 | 람다256(두나무 자회사) 주도 연합 | 빗썸·코인원·코빗 합작법인 | 글로벌 레그테크 기업 |
 | 구현 | 비블록체인 API + Enclave 서버 (각 VASP 인프라 설치형) | Corda 프라이빗 블록체인 → 상호연동 과정에서 비블록체인으로 재개발 | 멀티 프로토콜 SaaS |

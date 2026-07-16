@@ -3,7 +3,7 @@ title: 2. 컴플라이언스 DB — 테이블 초안
 status: To Do
 ---
 
-[0장](00-scope.md)이 확정한 컴플라이언스 DB 의 보관 데이터 — 거래소 목록·check 상태·대기함 — 의 테이블 초안이다.
+[0장](00-scope.md)이 확정한 컴플라이언스 DB 의 보관 데이터 — 거래소 목록·check 상태·사전 검증 기록 — 의 테이블 초안이다.
 필드 타입·의미는 [API 문서](../API/api.md)의 타입 정의와 짝이다. **PII 는 어느 테이블에도 없다** — 원문은 Enclave(국내)·벤더(해외)가 보관한다.
 
 ## 명명 규약
@@ -19,7 +19,7 @@ status: To Do
 |---|---|---|
 | `cmpl_vasp_m` | 거래소 목록 | List Counterparties · 목록 동기화 배치 |
 | `cmpl_wdrl_chk_l` | check 상태 | Create/Get Withdrawal Check · Report · settled 발행 · PENDING 만료 스캔 |
-| `cmpl_pre_vrfc_l` | 대기함 | 인바운드 수신 적재 · TX_REPORT 갱신 · Create Deposit Check 대조 |
+| `cmpl_pre_vrfc_l` | 사전 검증 기록 | 인바운드 수신 적재 · TX_REPORT 갱신 · Create Deposit Check 대조 |
 
 월렛 DB 의 출금 상대(VASP) 마스터와 `cmpl_vasp_m` 은 별개다 — 전자는 월렛의 출금 상대 관리, 후자는 솔루션 목록을 주기 동기화해 보관하는 목록. 관계 정리는 미확정(아래).
 
@@ -34,7 +34,8 @@ CREATE TABLE cmpl_vasp_m (
   soln_dvcd      VARCHAR(16)  NOT NULL,      -- 솔루션 구분: VERIFYVASP | CODE_INTEROP | NOTABENE
   soln_vasp_id   VARCHAR(255) NOT NULL,      -- 솔루션 쪽 식별자 (vaspId · DID)
   rchbl_yn       BOOLEAN      NOT NULL,      -- 이 거래소로 확인을 보낼 수 있는가 (마지막 동기화 기준)
-  sync_dttm       TIMESTAMP    NOT NULL,      -- 마지막 동기화 일시
+  alw_yn         BOOLEAN      NOT NULL DEFAULT false,  -- 우리가 거래를 허용한 상대인가 — 동기화는 이 값을 건드리지 않는다
+  sync_dttm      TIMESTAMP    NOT NULL,      -- 마지막 동기화 일시
   UNIQUE (soln_dvcd, soln_vasp_id)
 );
 ```
@@ -46,6 +47,7 @@ CREATE TABLE cmpl_vasp_m (
 | `soln_dvcd` | 이 거래소를 어느 솔루션이 처리하나 — 확인 요청을 어디로 보낼지의 라우팅 기준 |
 | `soln_vasp_id` | 그 솔루션 안에서의 식별자 (VerifyVASP vaspId · Notabene DID) — 솔루션 호출 때 이 값을 쓴다 |
 | `rchbl_yn` | 이 거래소로 지금 트래블룰 확인을 보낼 수 있는가 — 마지막 동기화 때 솔루션이 알려준 상태로 채운다. 낡을 수 있어 실제 확인 요청 때 솔루션에 재검증한다 |
+| `alw_yn` | 우리가 거래를 허용한 상대인가 — 솔루션 목록에 있다(도달 가능)와 별개의 우리 판단. 새 행은 기본 불허(false)로 들어오고, 동기화 배치는 이 값을 절대 바꾸지 않는다. 켜고 끄는 건 운영(Admin) 몫 |
 | `sync_dttm` | 이 행을 마지막으로 동기화한 일시 — 목록이 얼마나 낡았는지의 기준 |
 
 ## cmpl_wdrl_chk_l — check 상태
@@ -90,7 +92,7 @@ CREATE TABLE cmpl_wdrl_chk_l (
 
 솔루션 원어 근거(벤더 응답 코드 등)를 감사 기록으로 얼마나 둘지는 미정(0장 열린 결정) — 확정되면 append-only `_l` 테이블로 붙인다.
 
-## cmpl_pre_vrfc_l — 대기함
+## cmpl_pre_vrfc_l — 사전 검증 기록
 
 상대 거래소가 **자금을 보내기 전에** 먼저 보내오는 사전 검증(입금 예고)의 보관함이다. 이 시점에는 자금이 아직 없다 — 정보만 먼저 도착한 상태다. 행 하나의 생애:
 
@@ -131,7 +133,7 @@ PII(이름 등 신원 정보) 컬럼이 없는 것이 규칙이다 — 대조 �
 
 - **약어 검수** — `vrdt`·`evdc`·`bnfc`·`vrfc`·`cpty`·`soln`·`rchbl` 등 새 축약어는 월렛 DB 약어집과 대조 후 확정.
 - **일시 타입** — 월렛 DB 는 일시를 문자열 VARCHAR(16)(`YYYYMMDDHHMMSS` 계열)로 둔다. 이 DB 도 그에 맞출지 TIMESTAMP 로 갈지 결정.
-- **금액 표현** — base unit 정수로 둘지 표시 단위 decimal 로 둘지 — 사전 검증 메시지의 금액 단위 확인·대기함 대조 규칙과 함께 확정.
+- **금액 표현** — base unit 정수로 둘지 표시 단위 decimal 로 둘지 — 사전 검증 메시지의 금액 단위 확인·사전 검증 기록 대조 규칙과 함께 확정.
 - **감사 기록(솔루션 원어 근거)의 범위** — 0장 열린 결정 1. 확정되면 append-only 테이블 추가.
 - **evidence(`evdc_dvcd`) enum** — 솔루션별 증적 종류 확정 후.
 - **월렛 DB 의 VASP 마스터와의 관계** — 출금 상대 관리와 이 목록의 동기화·참조 방향.
@@ -148,6 +150,7 @@ PII(이름 등 신원 정보) 컬럼이 없는 것이 규칙이다 — 대조 �
 | `chk` | check | | `bnfc` | beneficiary |
 | `soln` | solution | | `amt` | amount |
 | `rchbl` | reachable | | `ast` | asset |
+| `alw` | allow | | | |
 | `acnt` | account | | `src` | source |
 | `rqst` | request | | `mtch` | match |
 | `stld` | settled | | | |

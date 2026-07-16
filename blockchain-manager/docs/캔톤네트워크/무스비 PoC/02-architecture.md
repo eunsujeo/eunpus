@@ -133,7 +133,7 @@ sequenceDiagram
 
 ## 5. 단계별 진화 (1차 → 최종)
 
-| 축 | 1차 PoC (올해) | 최종 PoC (내년) |
+| 항목 | 1차 PoC (올해) | 최종 PoC (내년) |
 |---|---|---|
 | 환경 | DevNet/TestNet, AWS Sandbox | 망분리 + 국내은행 지갑 시스템 연동 |
 | 통화 | KRWK ↔ JPYSC (테스트 인스트루먼트) | 실제 발행 인스트루먼트 |
