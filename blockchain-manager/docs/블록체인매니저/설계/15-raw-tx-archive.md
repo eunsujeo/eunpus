@@ -18,7 +18,7 @@ status: To Do
 ## 테이블
 
 ```sql
-CREATE TABLE raw_tx (
+CREATE TABLE bcm_raw_tx_l (
   base_dt        DATE         NOT NULL,   -- 적재 기준일 = 파티션 키
   vendor_tx_id   VARCHAR(64)  NOT NULL,   -- 벤더 트랜잭션 id
   ext_tx_id      VARCHAR(128) NULL,       -- 우리 출금 건 식별자 — 입금은 NULL
@@ -78,5 +78,4 @@ CREATE TABLE raw_tx (
 - **보존 연한** — 규제 요구(거래 기록 보존 기간) 확인 후 값 확정 → 파티션 주기(월/일)와 아카이브 시점이 따라온다.
 - **일 활성률 실측** — 파티션 단위·용량 계획의 입력값.
 - **벤더 원문 확보 방식** — 일 배치가 벤더를 재조회할지, 폴링 시점의 마지막 응답을 임시 보관했다 쓸지 — 벤더 조회 한도와 함께 결정.
-- **테이블 명명 규약** — 매니저 DB 의 명명 규약 확정 시 이 테이블명도 맞춘다.
 - **체인 원문(2단계)** — 자체 RPC 접근 여부는 인프라 결정.

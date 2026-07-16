@@ -96,7 +96,7 @@ sequenceDiagram
     Note over SUB: 커서(T − 겹침 폭)보다 새 것만 남겨 lastUpdated 오름차순 정렬<br/>— 같은 계정의 감지 → 확정 순서 보존
 
     loop 받은 tx 각각 — lastUpdated 오름차순
-        SUB->>MDB: 방향 판정(발신자가 우리 vault 인지) + accountId 귀속 · tx 상태 체크포인트 기록<br/>이전 상태와 같으면 publish 생략 (중복 억제)
+        SUB->>MDB: 방향 판정(발신자가 우리 vault 인지) + accountId 귀속 · 마지막 발행 상태 조회<br/>이전 발행 상태와 같으면 publish 생략 (중복 억제)
         alt 발신자가 우리 vault — 외부 출금 · 내부 이체 (txId 도 매칭)
             SUB-->>MQ: publish — 외부 출금 → withdrawal-events(6장) · 내부 이체 → internal-events(5·10장)
         else 입금 · CONFIRMING
@@ -110,6 +110,7 @@ sequenceDiagram
         else 발신자가 외부인데 주소가 우리 매핑에 없음
             SUB-->>MQ: publish → deposit-events — 귀속 불명 (UNMAPPED)
         end
+        SUB->>MDB: 발행 상태 체크포인트 기록 — publish 성공 후에만<br/>기록 전에 죽으면 재발행(중복 — 소비 멱등이 흡수), 반대 순서면 유실
     end
 
     SUB->>MDB: 커서 저장 — 이번에 처리한 마지막 lastUpdated 를<br/>다음 폴의 시작점으로 기록
