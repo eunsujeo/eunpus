@@ -75,7 +75,20 @@ sequenceDiagram
 비동기 확인의 결과 도착은 **메시지 큐 전용 토픽**으로 알린다 — 매니저→월렛이 큐인 기존 패턴과 동일하고, 파티션 키도 같은 규칙(계정 단위)이다.
 
 - **토픽**: `compliance`
-- **이벤트**: `withdrawal-check.settled` — checkId · externalTxId · verdict(APPROVED/REJECTED). settled = check 가 최종 결과(APPROVED·REJECTED — PENDING 만료 포함)에 도달해 더는 바뀌지 않는다
+- **이벤트**: `withdrawal-check.settled`. settled = check 가 최종 결과(APPROVED·REJECTED — PENDING 만료 포함)에 도달해 더는 바뀌지 않는다
+
+메시지 본문은 JSON 이다 — HTTP 응답과 달리 `data`/`meta` 봉투 없이 이 모양 그대로 실린다. 필드 정의는 [API 문서의 SettledEvent](../API/api.md).
+
+```json
+{
+  "type": "withdrawal-check.settled",
+  "checkId": "chk_01J9Z",
+  "externalTxId": "WD-000123",
+  "accountId": "acct_01H8X",
+  "verdict": "APPROVED",
+  "settledAt": "2026-07-16T04:05:06.789Z"
+}
+```
 - **월렛은 이벤트의 verdict 로 바로 진행한다** — 비동기 경로(VerifyVASP)는 travelRuleMessage 가 없어(사전 승인 자체가 통과) 이벤트만으로 제출·반려가 가능하다. Get(3번)은 이벤트 유실 대비 폴링·재기동 복구 전용이고, 그마저 놓쳐도 PENDING 만료 규칙이 흐름을 끝낸다.
 - travelRuleMessage 를 만드는 솔루션이 비동기로 붙는 날이 오면 — PII 라 이벤트에 싣지 않고, 그때 Get 을 정상 흐름에 되살린다 (지금 그런 조합은 없다).
 - **PENDING 만료의 주인은 이 서비스** — 솔루션별 시간 규칙([트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))을 알고 있는 쪽이 만료를 가려 REJECTED 로 settled 이벤트를 낸다.

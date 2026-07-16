@@ -89,7 +89,18 @@ view: doc
 - 월렛은 이벤트의 verdict 로 바로 진행한다 — 비동기 경로는 travelRuleMessage 가 없어 이벤트만으로 충분하다. Get Withdrawal Check 는 이벤트 유실 대비 폴링·재기동 복구 전용이고, 그마저 놓쳐도 PENDING 만료 규칙이 흐름을 끝낸다.
 - **PENDING 만료의 주인은 이 서비스** — 솔루션별 시간 규칙([트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))을 아는 쪽이 만료를 가려 `REJECTED` 로 발행한다.
 
-이벤트 본문은 [SettledEvent](#타입) 타입.
+메시지 본문은 JSON 그대로다 — HTTP 응답의 `data`/`meta` 봉투를 쓰지 않는다. 필드 정의는 [SettledEvent](#타입) 타입.
+
+```json
+{
+  "type": "withdrawal-check.settled",
+  "checkId": "chk_01J9Z",
+  "externalTxId": "WD-000123",
+  "accountId": "acct_01H8X",
+  "verdict": "APPROVED",
+  "settledAt": "2026-07-16T04:05:06.789Z"
+}
+```
 
 ## API
 
@@ -625,7 +636,19 @@ verdict 의 값 — 솔루션 원어를 이 넷으로 번역한다 ([트래블�
 
 ### SettledEvent
 
-큐로 오는 비동기 확인 결과 이벤트 (HTTP 응답이 아니라 `compliance` 토픽으로 전달). settled = check 가 최종 결과(APPROVED·REJECTED — PENDING 만료 포함)에 도달해 더는 바뀌지 않는다.
+큐로 오는 비동기 확인 결과 이벤트 (`compliance` 토픽). settled = check 가 최종 결과(APPROVED·REJECTED — PENDING 만료 포함)에 도달해 더는 바뀌지 않는다.
+메시지 본문은 아래 JSON 그대로다 — HTTP 응답의 `data`/`meta` 봉투를 쓰지 않는다. 전달은 at-least-once 라 재전달될 수 있다 — settled 는 check 당 한 번이므로 **소비 쪽 중복 제거 키는 `checkId`** 다.
+
+```json
+{
+  "type": "withdrawal-check.settled",
+  "checkId": "chk_01J9Z",
+  "externalTxId": "WD-000123",
+  "accountId": "acct_01H8X",
+  "verdict": "APPROVED",
+  "settledAt": "2026-07-16T04:05:06.789Z"
+}
+```
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
