@@ -53,14 +53,12 @@ fun transactionOf(txId: String): Transfer?                     // 단건 조회 
 - `balanceOf` 가 주는 값은 **vault 단위 벤더/온체인 잔액**이라 대사(reconciliation)에 쓰는 값이다 — 고객별 귀속 잔액이 아니다. 고객별 잔액·귀속은 백엔드가 원장으로 가진다(8·13장).
 - `after`·`before` 는 **거래 시각(createdAt) 기준** 시간창이다(최신순 이력). 매니저 내부의 lastUpdated 감지 폴링과는 별개 — 목록 조회는 안정적 createdAt 정렬을 쓴다.
 
-## 출금 · 수수료 API
+## 출금 API
 
 ```kotlin
-fun estimateFee(request: FeeEstimateRequest): FeeEstimate        // 7장 — 낮음·보통·높음 추정 (from·to·asset·amount 만)
 fun submitTransaction(request: TransactionRequest): SubmitResult        // 6장 — 제출 → 벤더 tx id
 ```
 
-- `estimateFee` 는 보장값이 아니다 — 실제 수수료는 제출 시점에 다시 정한다. 대납 구성에선 이 값이 relay 실비 예측이다(7장, 가스 대납 문서).
 - `submitTransaction` 의 응답 `SubmitResult` 의 `txId` 가 벤더 tx id 다. 상태 진행은 응답이 아니라 큐 이벤트(아래)로 따라간다.
 - **`boost` · `cancel` 은 백엔드가 호출하지 않는다.** 막힌 출금은 매니저가 Admin 정책 안에서 **자동 boost**(같은 순번·수수료만 올린 재전송)하고, 백엔드는 이를 모른 채 같은 상태 흐름(CONFIRMING → COMPLETED)만 본다. `cancel` 은 자동 boost 로도 못 살린 예외에서 Admin 의 수동 최후수단이다(6장).
 
@@ -186,7 +184,6 @@ enum class Topic { deposit, withdrawal, internal }   // 토픽명은 deposit-eve
 | `depositAddressOf` | API | Service | 3장 |
 | `balanceOf` | API | Service·Admin | 8장 |
 | `transactionsOf` · `transactionOf` | API | Service·Admin | 8장 (단건은 6장도) |
-| `estimateFee` | API | Service | 7장 |
 | `submitTransaction` | API | Service | 6장 |
 | `boost` · `cancel` | 내부·운영 | 매니저 자동 · Admin | 6장 |
 | `onChainEvent` (deposit·withdrawal·internal) | 이벤트 | Service | 4·5·6·10장 |

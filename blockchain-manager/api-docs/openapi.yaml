@@ -254,27 +254,6 @@ paths:
               schema: { $ref: '#/components/schemas/BalanceResponse' }
         '404': { $ref: '#/components/responses/AccountNotFound' }
 
-  /transactions/estimate-fee:
-    post:
-      tags: [Transactions]
-      summary: 수수료 견적
-      description: |
-        낮음·보통·높음 세 단계 수수료를 추정한다. 실제 수수료는 제출 시점에 정해진다.
-        대납 구성에서 이 값은 우리 vault 가 낼 돈이 아니라 relay 가 낼 실비의 예측이다.
-      operationId: estimateFee
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/FeeEstimateRequest' }
-      responses:
-        '200':
-          description: 수수료 견적
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/FeeEstimateResponse' }
-        '400': { $ref: '#/components/responses/ValidationFailed' }
-
   /transactions:
     post:
       tags: [Transactions]
@@ -542,31 +521,6 @@ components:
         WITHDRAWAL: 외부 출금
         INTERNAL: 내부 이체 (sweep·정산 등)
 
-    Fee:
-      type: object
-      description: 수수료 추정 한 단계. 세부(가스 단가·한도 등)는 체인별로 구현에서 정의.
-      properties:
-        amount:
-          type: string
-          description: 예상 수수료(문자열)
-          example: "0.0012"
-      required: [amount]
-      additionalProperties: true
-
-    FeeEstimate:
-      type: object
-      properties:
-        low:
-          allOf: [{ $ref: '#/components/schemas/Fee' }]
-          description: 낮음 단계
-        medium:
-          allOf: [{ $ref: '#/components/schemas/Fee' }]
-          description: 보통 단계
-        high:
-          allOf: [{ $ref: '#/components/schemas/Fee' }]
-          description: 높음 단계
-      required: [low, medium, high]
-
     SubmitResult:
       type: object
       properties:
@@ -581,27 +535,6 @@ components:
           type: string
           description: 우리 참조 키 (영구 유일) — DB 계정 ID. 고객 `ACT-000123`, 운영(관리) `SYS-000001` (역할 HOT_OPS·FEE_MGT·RESERVE).
           example: ACT-000123
-
-    FeeEstimateRequest:
-      type: object
-      description: 수수료 추정에 필요한 전송 형태만. 트래블룰·externalTxId·메모는 넣지 않는다.
-      properties:
-        from:
-          allOf:
-            - { $ref: '#/components/schemas/TransferPeer' }
-            - properties: { type: { const: ACCOUNT } }
-          description: 보내는 쪽 — type=ACCOUNT 만 허용
-        to:
-          allOf: [{ $ref: '#/components/schemas/TransferPeer' }]
-          description: 목적지
-        asset: { type: string, description: 자산 식별 (체인 × 토큰), example: ETH_USDC }
-        amount: { type: string, description: 금액(문자열), example: "1.5" }
-      required: [from, to, asset, amount]
-      example:
-        from: { type: ACCOUNT, accountId: acct_pool_02 }
-        to: { type: ADDRESS, address: "0x9f...E2" }
-        asset: ETH_USDC
-        amount: "1.5"
 
     TransactionRequest:
       type: object
@@ -730,13 +663,6 @@ components:
         meta: { $ref: '#/components/schemas/Meta' }
         pagination: { $ref: '#/components/schemas/Pagination' }
       required: [data, meta, pagination]
-
-    FeeEstimateResponse:
-      type: object
-      properties:
-        data: { $ref: '#/components/schemas/FeeEstimate' }
-        meta: { $ref: '#/components/schemas/Meta' }
-      required: [data, meta]
 
     SubmitResponse:
       type: object

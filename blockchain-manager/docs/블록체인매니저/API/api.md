@@ -385,7 +385,7 @@ _응답_
 **잔액 조회**
 
 vault 단위 잔액을 가용·대기·잠김으로 돌려준다.
-벤더가 보는 vault 잔액이라 대사(reconciliation)에 쓰는 값이다 — 고객별 귀속 잔액이 아니다. 고객별 잔액은 백엔드 원장이 정본이다.
+벤더가 보는 vault 잔액이라 대사(reconciliation) 재료다 — 고객별 귀속 잔액이 아니다. 고객별 잔액은 백엔드 원장이 정본이다.
 
 _파라미터_
 
@@ -440,87 +440,6 @@ _응답_
 
 ### Transactions
 수수료 견적·출금 제출·거래 조회
-
-#### `POST` https://{baseUrl}/blockchain/manage-api/transactions/estimate-fee
-
-**수수료 견적**
-
-낮음·보통·높음 세 단계 수수료를 추정한다. 실제 수수료는 제출 시점에 정해진다.
-대납 구성에서 이 값은 우리 vault 가 낼 돈이 아니라 relay 가 낼 실비의 예측이다.
-
-_요청 본문_
-
-```json
-{
-  "from": {
-    "type": "ACCOUNT",
-    "accountId": "acct_pool_02"
-  },
-  "to": {
-    "type": "ADDRESS",
-    "address": "0x9f...E2"
-  },
-  "asset": "ETH_USDC",
-  "amount": "1.5"
-}
-```
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `from` | TransferPeer | 필수 | 보내는 쪽 — type=ACCOUNT 만 허용 |
-| `to` | TransferPeer | 필수 | 목적지 |
-| `asset` | string | 필수 | 자산 식별 (체인 × 토큰) |
-| `amount` | string | 필수 | 금액(문자열) |
-
-
-_응답_
-
-`200` — 수수료 견적
-
-```json
-{
-  "data": {
-    "low": {
-      "amount": "0.0012"
-    },
-    "medium": {
-      "amount": "0.0012"
-    },
-    "high": {
-      "amount": "0.0012"
-    }
-  },
-  "meta": {
-    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
-  }
-}
-```
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `data` | FeeEstimate | 필수 |  |
-| `meta` | Meta | 필수 |  |
-
-
-`400` — 요청 검증 실패
-
-```json
-{
-  "error": {
-    "code": "VALIDATION_FAILED",
-    "message": "amount must be a decimal string"
-  },
-  "meta": {
-    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
-  }
-}
-```
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `error` | ErrorBody | 필수 |  |
-| `meta` | Meta | 필수 |  |
-
 
 #### `POST` https://{baseUrl}/blockchain/manage-api/transactions
 
@@ -927,24 +846,6 @@ _응답_
 | `INTERNAL` | 내부 이체 (sweep·정산 등) |
 
 
-### Fee
-
-수수료 추정 한 단계. 세부(가스 단가·한도 등)는 체인별로 구현에서 정의.
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `amount` | string | 필수 | 예상 수수료(문자열) |
-
-
-### FeeEstimate
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `low` | Fee | 필수 | 낮음 단계 |
-| `medium` | Fee | 필수 | 보통 단계 |
-| `high` | Fee | 필수 | 높음 단계 |
-
-
 ### SubmitResult
 
 | 필드 | 타입 | 필수 | 설명 |
@@ -957,18 +858,6 @@ _응답_
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `ref` | string | 필수 | 우리 참조 키 (영구 유일) — DB 계정 ID. 고객 `ACT-000123`, 운영(관리) `SYS-000001` (역할 HOT_OPS·FEE_MGT·RESERVE). |
-
-
-### FeeEstimateRequest
-
-수수료 추정에 필요한 전송 형태만. 트래블룰·externalTxId·메모는 넣지 않는다.
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `from` | TransferPeer | 필수 | 보내는 쪽 — type=ACCOUNT 만 허용 |
-| `to` | TransferPeer | 필수 | 목적지 |
-| `asset` | string | 필수 | 자산 식별 (체인 × 토큰) |
-| `amount` | string | 필수 | 금액(문자열) |
 
 
 ### TransactionRequest
@@ -1060,14 +949,6 @@ _응답_
 | `data` | Transfer[] | 필수 |  |
 | `meta` | Meta | 필수 |  |
 | `pagination` | Pagination | 필수 |  |
-
-
-### FeeEstimateResponse
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `data` | FeeEstimate | 필수 |  |
-| `meta` | Meta | 필수 |  |
 
 
 ### SubmitResponse

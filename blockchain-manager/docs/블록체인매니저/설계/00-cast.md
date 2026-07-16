@@ -130,7 +130,6 @@ flowchart LR
 | 입금 주소 **생성** | createVaultAsset · 자산 지갑 활성화 (EVM=단일) | ● | ● | | | `createDepositAddress` | S | 2장 |
 | 입금 주소 **조회** | (블록체인 매니저 DB 읽기 · Fireblocks 왕복 없음 — API 1홉) | | ● | | ● | `depositAddressOf` | S | 3장 |
 | 수신·확정 이벤트 | 매니저 내부 폴링 (webhook 보조) | | ● | ● | | `onChainEvent` — 메시지 큐 publish/consume | S | 4장 |
-| 수수료 추정 | estimateFee | | | ● | | `estimateFee` | S | 7장 |
 | 출금 제출 | createTransaction | | | ● | | `submitTransaction` | S | 6장 |
 | 거래 상세 조회 | getTransactionById | | | ● | ● | `transactionOf` | S·A | 6장 |
 | 막힌 출금 재촉 | boost (정책 내 자동) | | | ● | ● | `boost`(자동) · `cancel`(예외) | A | 6장 |
