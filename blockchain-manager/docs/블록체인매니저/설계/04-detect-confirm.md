@@ -69,7 +69,7 @@ sweep·델타처럼 우리 계정 둘이 얽히는 내부 이체는 **출발 계
 - **실행** — 매니저는 자기 DB 상태를 **처리중(processing)** 으로 두고 내부 전송을 실행한다. 매니저가 아는 건 "이건 내부 이체(`INTERNAL`)"까지다.
 - **완료** — 완료·상태 변경 이벤트가 **externalTxId 를 달고** `internal-events` 로 오고, 정산 컨슈머는 externalTxId 로 원래 요청을 찾아 sweep/delta 를 가른 뒤 **업무 기록을 닫는다**(예: 델타 배치 완료 → 델타원장 PENDING→완료, 10장).
 
-상태가 두 곳에 있는 셈이다 — **매니저 DB = 트랜잭션 진행**(processing→완료), **백엔드 DB = 업무 원장**(PENDING→완료). 둘을 잇는 열쇠가 externalTxId 다.
+상태가 두 곳에 있는 셈이다 — **매니저 DB = 트랜잭션 진행**(processing→완료), **DAW-CORE DB = 업무 원장**(PENDING→완료). 둘을 잇는 열쇠가 externalTxId 다.
 
 ## 폴링 상세 흐름 — 커서 하나로 입·출금·내부 이체를 다 나른다
 

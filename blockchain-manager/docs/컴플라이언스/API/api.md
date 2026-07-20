@@ -4,7 +4,7 @@ status: To Do
 view: doc
 ---
 
-월렛 백엔드와 스펙을 맞추는 연동 계약 — HTTP 엔드포인트·공통 규약·메시지 큐 이벤트·인바운드 내부 API·타입 전체.
+DAW-CORE와 스펙을 맞추는 연동 계약 — HTTP 엔드포인트·공통 규약·메시지 큐 이벤트·인바운드 내부 API·타입 전체.
 계약의 배경·시퀀스는 [설계 1장](../설계/01-interface.md), verdict 값의 근거는 [트래블룰 8장](../../트래블룰/설계/08-gate-port.md).
 
 # Compliance Service API
@@ -12,7 +12,7 @@ view: doc
 `v0.0.2`
 
 컴플라이언스 서비스는 규제 대응의 솔루션·벤더 연동을 전담하는 별도 서비스다.
-월렛 백엔드는 이 HTTP API 로 출금 확인·입금 판별의 솔루션 조회를 요청하고,
+DAW-CORE는 이 HTTP API 로 출금 확인·입금 판별의 솔루션 조회를 요청하고,
 비동기 확인의 결과 도착은 메시지 큐 이벤트로 받는다.
 
 아래 규약은 **모든 엔드포인트에 공통** 적용되며, 블록체인 매니저 API 와 같은 형식을 쓴다.
@@ -86,7 +86,7 @@ view: doc
 비동기 확인의 결과 도착(승인·거절·PENDING 만료)은 이 HTTP API 가 아니라 **메시지 큐 이벤트**로 온다.
 
 - **토픽**: `compliance` · 파티션 키 = `accountId` (기존 큐 규칙과 동일)
-- 월렛은 이벤트의 verdict 로 바로 진행한다 — 비동기 경로는 travelRuleMessage 가 없어 이벤트만으로 충분하다. Get Withdrawal Check 는 이벤트 유실 대비 폴링·재기동 복구 전용이고, 그마저 놓쳐도 PENDING 만료 규칙이 흐름을 끝낸다.
+- 모든 솔루션이 이 한 경로로 통일된다 — Create 는 항상 PENDING 접수, 최종 verdict 와 travelRuleMessage(값 또는 null)가 이 이벤트로 함께 온다. DAW-CORE는 Get 없이 이벤트만으로 제출한다(값 있으면 동봉). 이벤트를 놓쳐도 Get 이 복구하고, 그마저 놓쳐도 PENDING 만료 규칙이 흐름을 끝낸다.
 - **PENDING 만료의 주인은 이 서비스** — 솔루션별 시간 규칙([트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))을 아는 쪽이 만료를 가려 `REJECTED` 로 발행한다.
 
 메시지 본문은 JSON 그대로다 — HTTP 응답의 `data`/`meta` 봉투를 쓰지 않는다. 필드 정의는 [SettledEvent](#타입) 타입.
@@ -98,6 +98,7 @@ view: doc
   "externalTxId": "WD-000123",
   "accountId": "acct_01H8X",
   "verdict": "APPROVED",
+  "travelRuleMessage": "enc_9f3a...",
   "settledAt": "2026-07-16T04:05:06.789Z"
 }
 ```
@@ -106,13 +107,13 @@ view: doc
 
 ### VASPs (운영 · Admin)
 
-VASP 정체·거래 허용은 월렛 백엔드의 VASP 마스터(`daw_vasp_m`)에 있다 — 출금 화면의 거래소 목록도 월렛이 거기서 자체 제공한다. 컴플라이언스 운영 API 는 **솔루션 목록 동기화**와 **VASP 온보딩(목록 조회 → 활성화/해제)** 을 맡고, 모두 Admin(코어) 백엔드가 호출한다. 컴플라이언스가 아는 VASP 는 각자 안정 id(`cmplVaspId`)를 갖고, 활성화 때 코어 `vaspId` 와 매핑된다(설계 [2장](../설계/02-database.md)).
+VASP 정체·거래 허용은 DAW-CORE의 VASP 마스터(`daw_vasp_m`)에 있다 — 출금 화면의 거래소 목록도 DAW-CORE가 거기서 자체 제공한다. 컴플라이언스 운영 API 는 **솔루션 목록 동기화**와 **VASP 온보딩(목록 조회 → 활성화/해제)** 을 맡고, 모두 Admin(코어) 백엔드가 호출한다. 컴플라이언스가 아는 VASP 는 각자 안정 id(`cmplVaspId`)를 갖고, 활성화 때 코어 `vaspId` 와 매핑된다(설계 [2장](../설계/02-database.md)).
 
 #### Sync Solution VASPs
 
 `POST` `https://{baseUrl}/compliance/travel-rule/vasps/sync`
 
-솔루션 VASP 목록 동기화를 즉시 실행한다 — 주기 배치와 같은 일을 지금 한다. 신규 항목엔 `cmplVaspId` 를 발급하고, 이미 있는 항목은 이름·도달성만 갱신하며 **매핑·활성화는 보존**한다(UPSERT). 목록에서 빠진 항목은 지우지 않고 도달 불가로 표시한다.
+솔루션 VASP 목록 동기화를 즉시 실행한다 — 주기 배치와 같은 일을 지금 한다. 신규 항목엔 `cmplVaspId` 를 발급하고, 이미 있는 항목은 이름·트래블룰 요청을 보낼 수 있는지만 갱신하며 **매핑·활성화는 보존**한다(UPSERT). 목록에서 빠진 항목은 지우지 않고 "트래블룰 요청을 보낼 수 없음"으로 표시한다.
 이미 실행 중이면 `SYNC_IN_PROGRESS`(409).
 
 ```bash
@@ -140,8 +141,8 @@ curl -X POST "https://{baseUrl}/compliance/travel-rule/vasps/sync"
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `addedCount` | number | 필수 | 새로 들어와 `cmplVaspId` 를 발급한 VASP 수 |
-| `changedCount` | number | 필수 | 이름·도달성이 갱신된 VASP 수 |
-| `unreachableCount` | number | 필수 | 목록에서 빠져 도달 불가로 표시한 수 (매핑·활성화는 보존) |
+| `changedCount` | number | 필수 | 이름·트래블룰 요청 가능 여부가 갱신된 VASP 수 |
+| `unreachableCount` | number | 필수 | 목록에서 빠져 "트래블룰 요청 보낼 수 없음"으로 표시한 수 (매핑·활성화는 보존) |
 | `syncedAt` | string (ISO 8601) | 필수 | 동기화 완료 시각 |
 
 동기 실행이다 — 목록 규모가 커져 오래 걸리게 되면 접수(202)·결과 조회로 바꾼다(구현 때 확정).
@@ -189,7 +190,7 @@ curl "https://{baseUrl}/compliance/travel-rule/vasps?query=upbit"
 | `cmplVaspId` | string | 필수 | 컴플라이언스 발급 안정 id — 활성화/해제에 그대로 넘긴다 |
 | `name` | string | 필수 | 솔루션이 알려준 표시명 |
 | `solution` | string | 필수 | 어느 솔루션의 항목인가 — `VERIFYVASP` · `CODE_INTEROP` · `NOTABENE` |
-| `reachable` | boolean | 필수 | 마지막 동기화 기준 도달 가능 |
+| `reachable` | boolean | 필수 | 마지막 동기화 기준, 이 VASP 로 트래블룰 요청을 보낼 수 있는지 |
 | `active` | boolean | 필수 | 활성화 여부 |
 | `vaspId` | string (null 가능) | - | 매핑된 코어 VASP id — null 이면 아직 온보딩 전 |
 
@@ -239,10 +240,10 @@ curl -X POST "https://{baseUrl}/compliance/travel-rule/vasps/cvasp_01H9/deactiva
 
 `POST` `https://{baseUrl}/compliance/travel-rule/withdrawal-checks`
 
-출금 한 건의 트래블룰 확인을 시작한다. **거래소 선택 출금 전용이다** — 개인지갑 출금은 등록 지갑 확인을 월렛이 자체 처리하므로 이 API 를 부르지 않는다. 동기 솔루션(CODE·Notabene)은 최종 verdict 를 즉답하고 — **이때 travelRuleMessage·증적까지 실려 와 이 응답만으로 제출 가능하다** — 비동기 솔루션(VerifyVASP)은 `PENDING` 을 돌려준 뒤 결과를 큐 이벤트로 알린다.
-수취 거래소는 `beneficiary.vaspId`(월렛 VASP 마스터의 식별자)로 지목한다 — 컴플라이언스가 이 값으로 연결된 솔루션 항목을 찾아 라우팅한다.
+출금 한 건의 트래블룰 확인을 시작한다. **거래소 선택 출금 전용이다** — 개인지갑 출금은 등록 지갑 확인을 DAW-CORE가 자체 처리하므로 이 API 를 부르지 않는다. **항상 `PENDING`(접수)으로 답하고, 최종 verdict 는 `compliance` 큐 이벤트로 알린다** — 동기 솔루션(CODE·Notabene)도 "즉시 완료되는 비동기"로 접어(이벤트가 거의 즉시 도착) DAW-CORE가 한 경로만 타게 한다.
+수취 거래소는 `beneficiary.vaspId`(DAW-CORE VASP 마스터의 식별자)로 지목한다 — 컴플라이언스가 이 값으로 연결된 솔루션 항목을 찾아 라우팅한다.
 `externalTxId` 로 멱등 — 같은 키 재요청은 기존 check 를 돌려준다.
-닿는 솔루션에 연결되지 않은 `vaspId` 가 오면 `VALIDATION_FAILED`(400) — 거래 허용·솔루션 연결은 출금 화면에 오르기 전에 서 있어야 하는 값이다.
+트래블룰 요청을 보낼 수 있는 솔루션에 연결되지 않은 `vaspId` 가 오면 `VALIDATION_FAILED`(400) — 거래 허용·솔루션 연결은 출금 화면에 오르기 전에 서 있어야 하는 값이다.
 
 ```bash
 curl -X POST "https://{baseUrl}/compliance/travel-rule/withdrawal-checks" \
@@ -276,7 +277,7 @@ curl -X POST "https://{baseUrl}/compliance/travel-rule/withdrawal-checks" \
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `externalTxId` | string | 필수 | 월렛의 출금 건 식별자 — 멱등 키. 블록체인 매니저 제출에 쓰는 키와 같은 것 — 한 출금을 양쪽에서 같은 키로 추적한다 |
+| `externalTxId` | string | 필수 | DAW-CORE의 출금 건 식별자 — 멱등 키. 블록체인 매니저 제출에 쓰는 키와 같은 것 — 한 출금을 양쪽에서 같은 키로 추적한다 |
 | `accountId` | string | 필수 | 계정 ID — 결과 이벤트의 큐 파티션 키 |
 | `asset` | string | 필수 | 자산 심볼 |
 | `amount` | string | 필수 | 금액(문자열) |
@@ -314,7 +315,7 @@ curl -X POST "https://{baseUrl}/compliance/travel-rule/withdrawal-checks" \
 
 `GET` `https://{baseUrl}/compliance/travel-rule/withdrawal-checks/{checkId}`
 
-이벤트 유실 대비 폴링·재기동 복구 전용 — 정상 흐름에서는 호출하지 않는다. 동기 건은 Create 응답으로, 비동기 건은 settled 이벤트의 verdict 로 끝난다(비동기 경로는 travelRuleMessage 가 없다).
+이벤트 유실·재기동 **복구 전용** — 정상 흐름에서는 호출하지 않는다. settled 이벤트가 verdict·travelRuleMessage 를 다 실어 오므로 제출은 이벤트만으로 된다. 이벤트를 놓쳤거나 재기동으로 소비 상태가 불확실할 때 같은 내용을 다시 읽는다.
 
 ```bash
 curl "https://{baseUrl}/compliance/travel-rule/withdrawal-checks/chk_01J9Z"
@@ -351,7 +352,7 @@ curl "https://{baseUrl}/compliance/travel-rule/withdrawal-checks/chk_01J9Z"
 
 `POST` `https://{baseUrl}/compliance/travel-rule/withdrawal-checks/{checkId}/report`
 
-온체인 제출 후 tx hash 를 보고한다. 사후 보고가 필요 없는 솔루션이면 서비스가 no-op 처리 — 월렛은 항상 호출한다.
+온체인 제출 후 tx hash 를 보고한다. 서비스는 이 해시를 솔루션에 알려 사전 검증과 실 거래를 잇는다 — 그럴 필요가 없는 솔루션이면 no-op 이고, DAW-CORE는 솔루션 구분 없이 항상 호출한다.
 실패는 재시도 대상일 뿐 출금 흐름을 막지 않는다.
 
 ```bash
@@ -393,7 +394,7 @@ curl -X POST "https://{baseUrl}/compliance/travel-rule/withdrawal-checks/chk_01J
 
 `POST` `https://{baseUrl}/compliance/travel-rule/deposit-checks`
 
-입금 한 건의 트래블룰 확인. 서비스가 **보관 중인 사전 검증 기록과 대조**하고, 대조가 안 되면 능동 조회(보고 미수신 건 — Check Transaction Status · 기록 자체가 없으면 — TXID 역추적)까지 안에서 처리해 결과만 돌려준다. 귀속 판단·가용 전이는 월렛 몫이다.
+입금 한 건의 트래블룰 확인. 서비스가 **보관 중인 사전 검증 기록과 대조**하고, 대조가 안 되면 능동 조회(보고 미수신 건 — Check Transaction Status · 기록 자체가 없으면 — TXID 역추적)까지 안에서 처리해 결과만 돌려준다. 귀속 판단·가용 전이는 DAW-CORE 몫이다.
 
 ```bash
 curl -X POST "https://{baseUrl}/compliance/travel-rule/deposit-checks" \
@@ -445,15 +446,15 @@ curl -X POST "https://{baseUrl}/compliance/travel-rule/deposit-checks" \
 | `data` | DepositCheckResult | 필수 |  |
 | `meta` | Meta | 필수 |  |
 
-## 인바운드 내부 API — 월렛이 구현, 컴플라이언스가 호출
+## 인바운드 내부 API — DAW-CORE가 구현, 컴플라이언스가 호출
 
-상대 VASP 의 사전 검증 요청(수신 질문)에 답하기 위한 계약. 수신 기록의 보관·tx hash 갱신은 서비스 내부라 월렛 API 가 없다. 응답 형식·에러 형식은 위 공통 규약과 동일하다.
+상대 VASP 의 사전 검증 요청(수신 질문)에 답하기 위한 계약. 수신 기록의 보관·tx hash 갱신은 서비스 내부라 DAW-CORE API 가 없다. 응답 형식·에러 형식은 위 공통 규약과 동일하다.
 
 #### Verify Address Attribution
 
 `POST` `https://{walletBaseUrl}/internal/compliance/address-attribution`
 
-"이 주소가 너희 고객 아무개 소유인가" — 주소↔계정은 월렛이 답하고, 실명 대조는 그 데이터를 가진 서비스에 이어 조회한 결과를 합쳐 돌려준다.
+"이 주소가 너희 고객 아무개 소유인가" — 주소↔계정은 DAW-CORE가 답하고, 실명 대조는 그 데이터를 가진 서비스에 이어 조회한 결과를 합쳐 돌려준다.
 
 ```bash
 curl -X POST "https://{walletBaseUrl}/internal/compliance/address-attribution" \
@@ -543,17 +544,17 @@ verdict 의 값 — 솔루션 원어를 이 넷으로 번역한다 ([트래블�
 |---|---|---|---|
 | `name` | string | 필수 | 수취인 이름 |
 | `accountNumber` | string | 필수 | 수취 계좌(주소) |
-| `vaspId` | string (null 가능) | - | 수취 거래소 — 월렛 VASP 마스터(`daw_vasp_m`)의 식별자. 출금 화면의 거래소 목록에서 고른 값 |
+| `vaspId` | string (null 가능) | - | 수취 거래소 — DAW-CORE VASP 마스터(`daw_vasp_m`)의 식별자. 출금 화면의 거래소 목록에서 고른 값 |
 
 ### WithdrawalCheck
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `checkId` | string | 필수 | check 식별자 — 서비스가 발급 |
-| `externalTxId` | string | 필수 | 월렛의 출금 건 식별자 (멱등 키) |
+| `externalTxId` | string | 필수 | DAW-CORE의 출금 건 식별자 (멱등 키) |
 | `accountId` | string | 필수 | 계정 ID |
 | `verdict` | TrVerdict | 필수 | 현재 verdict |
-| `travelRuleMessage` | string (null 가능) | - | 제출 시 실어 보내는 암호화 메시지 — Notabene 경로만 값, 없는 솔루션은 null. 월렛은 내용을 해석하지 않는다 |
+| `travelRuleMessage` | string (null 가능) | - | 제출 시 실어 보내는 암호화 메시지 — Notabene 경로만 값, 없는 솔루션은 null. DAW-CORE는 내용을 해석하지 않는다 |
 | `evidence` | Evidence (null 가능) | - | 통과 증적 — 결과가 나기 전이면 null |
 
 ### Evidence
@@ -591,6 +592,7 @@ verdict 의 값 — 솔루션 원어를 이 넷으로 번역한다 ([트래블�
   "externalTxId": "WD-000123",
   "accountId": "acct_01H8X",
   "verdict": "APPROVED",
+  "travelRuleMessage": "enc_9f3a...",
   "settledAt": "2026-07-16T04:05:06.789Z"
 }
 ```
@@ -599,15 +601,16 @@ verdict 의 값 — 솔루션 원어를 이 넷으로 번역한다 ([트래블�
 |---|---|---|---|
 | `type` | string | 필수 | `withdrawal-check.settled` |
 | `checkId` | string | 필수 | check 식별자 |
-| `externalTxId` | string | 필수 | 월렛의 출금 건 식별자 |
+| `externalTxId` | string | 필수 | DAW-CORE의 출금 건 식별자 |
 | `accountId` | string | 필수 | 파티션 키 |
 | `verdict` | TrVerdict | 필수 | `APPROVED` 또는 `REJECTED` (PENDING 만료 포함) |
+| `travelRuleMessage` | string (null 가능) | - | 제출에 실어 보낼 암호화 메시지 — Notabene 경로만 값, 없는 솔루션은 null. DAW-CORE는 내용을 해석하지 않는다. 이 값이 실려 오므로 제출에 Get 이 필요 없다 |
 | `settledAt` | string (ISO 8601) | 필수 | 결과가 난 시각 |
 
 ## 미확정
 
 - **원화 임계 판단의 위치** — 벤더 지원 여부 미확정([트래블룰 14장](../../트래블룰/설계/14-fireblocks-questions.md) 문의 1). 어느 쪽이든 이 API 표면(verdict)은 바뀌지 않는다.
 - **Evidence.kind 목록** — 솔루션별 증적 종류 확정 후 enum 으로 못 박는다.
-- **인증 방식** — 서비스 간 인증(월렛↔컴플라이언스·내부 API)은 인프라 결정과 함께 확정.
+- **인증 방식** — 서비스 간 인증(DAW-CORE↔컴플라이언스·내부 API)은 인프라 결정과 함께 확정.
 - **사전 검증 기록 대조 규칙** — 키 조합(txHash 우선 · 주소·금액 일치 범위)은 구현 전 확정.
 - **Enclave 콜백 페이로드** — 수신 질문에 어떤 필드가 평문으로 오는지(실명 외 항목 포함 여부) — Enclave 설치 검증 때 확정.

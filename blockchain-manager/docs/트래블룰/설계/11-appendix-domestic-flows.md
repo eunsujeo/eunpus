@@ -79,7 +79,7 @@ sequenceDiagram
     participant EN as 우리 Enclave
     participant TR as 컴플라이언스 서비스<br/>솔루션 연동 · 8장
     participant WQ as 컴플라이언스 DB<br/>사전 검증 기록
-    participant BE as 월렛(Service) 백엔드<br/>귀속 · 가용 전이
+    participant BE as DAW-CORE(Service)<br/>귀속 · 가용 전이
     end
     box rgb(220,252,231) 블록체인 매니저
     participant BM as 폴링 → deposit-events
@@ -104,7 +104,7 @@ sequenceDiagram
     TR-->>BE: APPROVED → 가용
 ```
 
-우리 수신 사슬(Enclave → 컴플라이언스 서비스 수신 콜백 — 귀속·실명 확인은 월렛 백엔드에 조회)은 7.3(VerifyVASP 입금)과 동일하다. 빗썸이 CODE 의 동기 절차(Asset Transfer Authorization)를 쓰더라도, 상호연동이 우리에겐 VerifyVASP 인바운드로 변환해 전달한다. tx hash 보고 수신·미수신(능동 조회) 분기는 7.3 과 동일해 생략했다.
+우리 수신 사슬(Enclave → 컴플라이언스 서비스 수신 콜백 — 귀속·실명 확인은 DAW-CORE에 조회)은 7.3(VerifyVASP 입금)과 동일하다. 빗썸이 CODE 의 동기 절차(Asset Transfer Authorization)를 쓰더라도, 상호연동이 우리에겐 VerifyVASP 인바운드로 변환해 전달한다. tx hash 보고 수신·미수신(능동 조회) 분기는 7.3 과 동일해 생략했다.
 
 ## 상호연동에서 확인할 것
 

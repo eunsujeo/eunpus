@@ -52,7 +52,7 @@ flowchart LR
 
 ## 매니저(벤더) 교체 — 코드는 매니저 구현, 비용은 자금 이전
 
-지금 매니저 내부 연동은 Fireblocks 이지만 두 백엔드는 매니저의 API·큐 이벤트 스키마 계약만 보므로 **다른 벤더로 바꾸거나 vault 구성을 재편해도** 두 백엔드는 그대로여야 합니다. 코드 관점에서 벤더 교체는 **배포 수준**의 일입니다 — 같은 API 계약을 지키고 같은 토픽들(deposit·withdrawal·internal)에 같은 이벤트 스키마를 publish 하는 다른 매니저 구현으로 바꾸면 됩니다.
+지금 매니저 내부 연동은 Fireblocks 이지만 DAW-CORE는 매니저의 API·큐 이벤트 스키마 계약만 보므로 **다른 벤더로 바꾸거나 vault 구성을 재편해도** DAW-CORE는 그대로여야 합니다. 코드 관점에서 벤더 교체는 **배포 수준**의 일입니다 — 같은 API 계약을 지키고 같은 토픽들(deposit·withdrawal·internal)에 같은 이벤트 스키마를 publish 하는 다른 매니저 구현으로 바꾸면 됩니다.
 
 그런데 **한 가지는 설정으로 안 됩니다.** 벤더 A 의 주소는 A 의 키에서, 벤더 B 의 주소는 B 의 키에서 나옵니다(2장).
 
@@ -126,7 +126,7 @@ flowchart TB
 
 0장에서 본 배치를 확장 관점으로 다시 봅니다.
 
-- Fireblocks 기준이라 서명·키·노드·전파는 **벤더 안**이고, 이쪽엔 **두 백엔드와 블록체인 매니저, 둘로 나뉜 DB**만 남습니다.
+- Fireblocks 기준이라 서명·키·노드·전파는 **벤더 안**이고, 이쪽엔 **DAW-CORE와 블록체인 매니저, 둘로 나뉜 DB**만 남습니다.
 - Fireblocks 주기 조회(폴링)·webhook 보조·상태 판정은 전부 매니저 내부이고, 매니저가 메시지 큐(deposit·withdrawal·internal)에 publish 한 이벤트를 백엔드가 consume 합니다.
 - 직접 노드·HSM·인덱서를 운영하지 않으므로, 새 EVM 체인이 붙어도 **인프라 배치는 그대로**입니다 — 벤더가 그 체인을 지원하기만 하면 됩니다.
 
@@ -135,7 +135,7 @@ flowchart LR
     subgraph OUR["인프라"]
       SAPI["Service 백엔드<br/>고객 런타임 · 큐 컨슈머"]
       AAPI["Admin 백엔드<br/>정책·승인·rebalance"]
-      DB[("백엔드 DB<br/>고객 원장 · 출금 지시 상태")]
+      DB[("DAW-CORE DB<br/>고객 원장 · 출금 지시 상태")]
       MQ["메시지 큐<br/>deposit·withdrawal·internal"]
       BM["블록체인 매니저 — 별도 서비스<br/>내부 Fireblocks 연동 · 내부 폴링 (4·6장)"]
       BMDB[("블록체인 매니저 DB<br/>커서 · 주소 매핑 · 체크포인트")]

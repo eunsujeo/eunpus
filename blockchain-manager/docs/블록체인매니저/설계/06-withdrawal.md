@@ -42,7 +42,7 @@ sequenceDiagram
     participant BE as 출금 유스케이스
     participant QC as 큐 컨슈머
     end
-    participant DB as 백엔드 DB
+    participant DB as DAW-CORE DB
     box rgb(254,249,195) 메시지 큐
     participant MQ as withdrawal-events
     end
@@ -95,7 +95,7 @@ sequenceDiagram
 
 제출 다이어그램 7번(승인 질의)에서 확인하는 항목입니다. 하나라도 어긋나면 co-signer 가 자기 share 를 보태지 않아 **서명 자체가 만들어지지 않습니다**.
 
-네 항목 모두 **백엔드 DB 읽기 전용 복제본**(조회 전용 계정, 쓰기 경로 없음)으로 판정한다.
+네 항목 모두 **DAW-CORE DB 읽기 전용 복제본**(조회 전용 계정, 쓰기 경로 없음)으로 판정한다.
 
 | 항목 | 확인하는 것 |
 |---|---|
@@ -108,7 +108,7 @@ sequenceDiagram
 
 **예 — 제출 payload 가 접수 기록과 다른 경우** (매니저 API 직접 호출·중간 변조·버그)
 
-| | 접수·승인 기록 (백엔드 DB) | 서명 직전 질의 | 판정 |
+| | 접수·승인 기록 (DAW-CORE DB) | 서명 직전 질의 | 판정 |
 |---|---|---|---|
 | externalTxId | wd-260710-0042 | wd-260710-0042 | 일치 |
 | 자산 · 금액 | ETH · 1.5 | ETH · 1.5 | 일치 |

@@ -23,13 +23,13 @@ sequenceDiagram
     end
     box rgb(224,242,254) Service 백엔드
     participant QC as 큐 컨슈머
-    participant DB as 백엔드 DB
+    participant DB as DAW-CORE DB
     end
 
     EXT->>CH: vault 주소로 송금
     Note over EXT,CH: 온체인 사건은 이 송금과 confirmation 누적뿐 — 둘 다 남(송신자·체인)의 일이다
     CH-->>FB: Fireblocks 가 자기 vault 범위를 감지
-    Note over FB,DB: 여기서부터는 전부 오프체인 — 감지·폴링은 매니저, 기록·가용 처리는 백엔드 DB 의 일이고,<br/>입금 처리에서 우리는 체인에 아무 거래도 내지 않는다
+    Note over FB,DB: 여기서부터는 전부 오프체인 — 감지·폴링은 매니저, 기록·가용 처리는 DAW-CORE DB 의 일이고,<br/>입금 처리에서 우리는 체인에 아무 거래도 내지 않는다
     Note over BM,FB: 주기 폴링은 매니저 내부 구현 — outbound · 지난 폴 이후 갱신된 tx 만 받는다 (4장)
     BM->>MDB: 커서 읽기 — 마지막 처리 lastUpdated
     BM->>FB: GET /v1/transactions · orderBy=lastUpdated · sort=DESC · limit=200<br/>after 는 고정 과거값 — 커서는 중단 기준 (4장)
@@ -75,7 +75,7 @@ sequenceDiagram
 
 고객별 vault 는 **입금 식별용**입니다 — EVM 은 vault·자산당 주소가 하나뿐이라(2장), 고객마다 vault 를 만들어야 "누가 보냈나"가 주소로 갈립니다. 하지만 **자산을 거기 두지 않습니다** — 가용 처리가 끝난 자산은 주기적으로 **옴니버스 vault 로 모읍니다(sweep)**.
 
-고객별 잔액은 백엔드 DB 원장이 관리하므로, 온체인 보관은 집약할수록 키·운영 관리가 단순해집니다. 10장의 "온체인 지갑은 둘뿐" 모델이 이 sweep 을 전제로 합니다.
+고객별 잔액은 DAW-CORE DB 원장이 관리하므로, 온체인 보관은 집약할수록 키·운영 관리가 단순해집니다. 10장의 "온체인 지갑은 둘뿐" 모델이 이 sweep 을 전제로 합니다.
 
 | vault | 역할 |
 |---|---|
@@ -128,7 +128,7 @@ sequenceDiagram
 | **트리거** | 잔액 임계 · 고정 스케줄 · 네트워크 fee 가 유리할 때 — sweep 은 시간에 급하지 않아 **낮은 fee 로 보낼 수 있다**. |
 | **gas** | **Universal Gasless 로 대납** — 고객 vault 에 ETH 를 배포하지 않는다. 상세는 가스 대납 문서. |
 | **서명 자동화** | API Co-Signer — 주기 실행이라 사람 개입 없이 서명까지 자동. |
-| **고객 잔액** | **불변** — 고객별 잔액은 백엔드 DB 원장 몫이고, sweep 은 온체인 보관 위치만 옮긴다(회계 이벤트 아님). |
+| **고객 잔액** | **불변** — 고객별 잔액은 DAW-CORE DB 원장 몫이고, sweep 은 온체인 보관 위치만 옮긴다(회계 이벤트 아님). |
 | **관찰·실패** | sweep tx 는 매니저 내부 폴링에 **내부 이동**으로 잡혀 같은 경로로 상태 추적·막힘 점검·boost 를 타고, 변경은 큐에 publish 된다(4장). |
 
 감지·판정 기준(폴링 루프·DCCP·막힘 점검)은 [4. 감지와 확정](04-detect-confirm.md), 잔액의 세 칸(available·pending·locked)과의 맞물림은 [8. 잔액과 내역 조회](08-balance-history.md), 출금 쪽 상태 전이는 [6. 출금](06-withdrawal.md)에서 이어집니다.

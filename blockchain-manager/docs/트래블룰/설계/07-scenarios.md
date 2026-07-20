@@ -12,9 +12,9 @@ status: To Do
 | **VerifyVASP** (자체 Enclave) | 국내 — 업비트 등 VerifyVASP 회원 | 7.1 | 7.3 |
 | **VerifyVASP** — 상호연동이 CODE 까지 나른다 | 국내 — 빗썸·코인원·코빗 (CODE 회원) | A.1 (7.1 과 동일) | A.2 (7.3 과 동일) |
 | **Notabene** (Fireblocks 경유) | 해외 — TRUST·Sygna 등 Notabene 브릿지 솔루션 | 7.2 | 7.4 |
-| **등록 지갑 목록** (월렛 DB — 정보 교환 상대 없음) | 본인 개인지갑 (자기수탁) | 7.8 | 7.9 |
+| **등록 지갑 목록** (DAW-CORE DB — 정보 교환 상대 없음) | 본인 개인지갑 (자기수탁) | 7.8 | 7.9 |
 
-우리 쪽 창구는 셋뿐이다 — 국내는 상대가 어느 솔루션 회원이든 **우리 VerifyVASP 하나**, 해외는 **Notabene**, 개인지갑은 **월렛 DB 의 등록 지갑 목록**(컴플라이언스 무관 · 월렛 자체 확인).
+우리 쪽 창구는 셋뿐이다 — 국내는 상대가 어느 솔루션 회원이든 **우리 VerifyVASP 하나**, 해외는 **Notabene**, 개인지갑은 **DAW-CORE DB 의 등록 지갑 목록**(컴플라이언스 무관 · DAW-CORE 자체 확인).
 
 **대안·미확정·제외** — 본 표의 확정 경로가 아니다:
 
@@ -118,7 +118,7 @@ sequenceDiagram
         NB-->>FB: 트래블룰 상태 판정
         Note over FB: Post-Screening Policy(4장) — Accept 후에야 서명·전파
     else BELOW_THRESHOLD · NON_CUSTODIAL(개인지갑)
-        Note over GT: 개인지갑 선택 출금은 게이트에 오지 않는다 — 월렛이 등록 지갑 목록으로 자체 확인 (7.8)
+        Note over GT: 개인지갑 선택 출금은 게이트에 오지 않는다 — DAW-CORE가 등록 지갑 목록으로 자체 확인 (7.8)
         GT-->>BE: 임계 미만·등록 지갑 = APPROVED · 미등록 개인지갑 = REJECTED
         BE->>BM: submitTransaction — 동봉 없음 (미등록이면 반려 · 등록·인증부터)
     end
@@ -131,7 +131,7 @@ sequenceDiagram
 
 ## 7.3 입금 ← 국내 (VerifyVASP) — 자금보다 정보가 먼저 온다
 
-요청-응답형이다 — 자금이 오기 전에 우리 수신 사슬이 먼저 응답하고, 그 사전 검증 기록(컴플라이언스 DB)을 도착 후 판별(7.5)에서 대조에 쓴다. 인바운드 사슬은 **중앙 서버 → 우리 Enclave → 컴플라이언스 서비스의 수신 콜백(사전 검증 기록 적재 — 귀속·실명 확인은 월렛 백엔드에 조회)** 다(8장).
+요청-응답형이다 — 자금이 오기 전에 우리 수신 사슬이 먼저 응답하고, 그 사전 검증 기록(컴플라이언스 DB)을 도착 후 판별(7.5)에서 대조에 쓴다. 인바운드 사슬은 **중앙 서버 → 우리 Enclave → 컴플라이언스 서비스의 수신 콜백(사전 검증 기록 적재 — 귀속·실명 확인은 DAW-CORE에 조회)** 다(8장).
 
 ```mermaid
 sequenceDiagram
@@ -142,7 +142,7 @@ sequenceDiagram
     participant EN as 우리 Enclave<br/>자체 인프라 · 공개 HTTPS 수신
     participant TR as 컴플라이언스 서비스<br/>솔루션 연동 · 8장
     participant WQ as 컴플라이언스 DB<br/>사전 검증 기록
-    participant BE as 월렛(Service) 백엔드<br/>귀속 · 가용 전이
+    participant BE as DAW-CORE(Service)<br/>귀속 · 가용 전이
     end
     box rgb(220,252,231) 블록체인 매니저
     participant BM as 폴링 → deposit-events
@@ -178,8 +178,8 @@ sequenceDiagram
     end
 ```
 
-- 승인이 나야 상대가 온체인 전송을 실행한다 — 수신 사슬(**우리 Enclave → 컴플라이언스 서비스 → 월렛 백엔드**)이 응답을 못 하면 국내 입금 자체가 막히므로, 이 사슬의 가용성이 곧 입금 가용성이다.
-- **수신 콜백은 컴플라이언스 서비스의 엔드포인트**다 — Enclave 가 내부망으로 호출한다(별도 컴포넌트 없음). 사전 검증 기록·1차 대조는 컴플라이언스 서비스, 귀속 판단·가용 전이는 월렛 백엔드다(8장).
+- 승인이 나야 상대가 온체인 전송을 실행한다 — 수신 사슬(**우리 Enclave → 컴플라이언스 서비스 → DAW-CORE**)이 응답을 못 하면 국내 입금 자체가 막히므로, 이 사슬의 가용성이 곧 입금 가용성이다.
+- **수신 콜백은 컴플라이언스 서비스의 엔드포인트**다 — Enclave 가 내부망으로 호출한다(별도 컴포넌트 없음). 사전 검증 기록·1차 대조는 컴플라이언스 서비스, 귀속 판단·가용 전이는 DAW-CORE다(8장).
 - **우리 Enclave vs 중앙** — 공개 HTTPS 를 받는 것은 우리 Enclave(벤더 요건)이고 복호화도 여기서 한다. 중앙 서버는 송신측과 우리 Enclave 사이를 중계만 한다.
 - **CODE 회원(빗썸 등) 발 입금**도 상호연동으로 VerifyVASP 인바운드로 도착한다 — 위 흐름 동일. 미확인 입금의 TXID 역추적이 경유 경로에서 되는지는 6장 상호연동 실효 확인 대상(안 되면 CODE 직접 7.11). 상세 시퀀스는 부록 A(11장).
 
@@ -228,7 +228,7 @@ sequenceDiagram
     participant BM as 폴링 → deposit-events
     end
     box rgb(224,242,254) 우리 측
-    participant BE as 월렛(Service) 백엔드<br/>매칭·귀속 · 가용 전이
+    participant BE as DAW-CORE(Service)<br/>매칭·귀속 · 가용 전이
     participant GT as 컴플라이언스 서비스<br/>솔루션 조회
     end
 
@@ -237,7 +237,7 @@ sequenceDiagram
     BE->>BE: 입금 판별 — source 를 보관된 기록과 대조 (8장 우선순위)
     alt VerifyVASP 사전 요청 사전 검증 기록과 대조 일치 — 국내
         BE->>BE: APPROVED
-    else source 가 등록 지갑 목록(월렛 DB)의 주소 — 개인지갑
+    else source 가 등록 지갑 목록(DAW-CORE DB)의 주소 — 개인지갑
         BE->>GT: 등록·소유 인증 조회
         GT-->>BE: 확인 → APPROVED
     else 벤더 스크리닝 통과로 도착 — 해외
@@ -308,9 +308,9 @@ sequenceDiagram
 - **스크리닝 우회 방지 책임이 온전히 우리 것** — 벤더가 빈 메시지를 만들어 주지 않으므로, 대상 판별·메시지 전송 누락이 곧 트래블룰 누락이 된다.
 - **상대 심사면 비동기** — 7.1 VerifyVASP 처럼 수신 웹훅과 PENDING 중단·재개가 필요하다. 벤더주도(7.2) 대비 늘어나는 운영 부담이 여기 있다.
 
-## 7.7 입금 ← 해외 (Notabene 직접) — 확정은 매니저, 대조는 월렛 백엔드
+## 7.7 입금 ← 해외 (Notabene 직접) — 확정은 매니저, 대조는 DAW-CORE
 
-7.4 는 벤더가 감지·동결까지 했지만, 여기선 **벤더가 동결해 주지 않는다**. 온체인 확정은 블록체인 매니저가, 통지 수신·솔루션 조회는 컴플라이언스 서비스가, 대조·입금대기(잔고 차단)는 월렛 백엔드가 맡는다.
+7.4 는 벤더가 감지·동결까지 했지만, 여기선 **벤더가 동결해 주지 않는다**. 온체인 확정은 블록체인 매니저가, 통지 수신·솔루션 조회는 컴플라이언스 서비스가, 대조·입금대기(잔고 차단)는 DAW-CORE가 맡는다.
 
 ```mermaid
 sequenceDiagram
@@ -325,7 +325,7 @@ sequenceDiagram
     box rgb(224,242,254) 우리 측
     participant GT as 컴플라이언스 서비스<br/>수신 웹훅 · 솔루션 조회
     participant WQ as 컴플라이언스 DB<br/>사전 검증 기록
-    participant BE as 월렛(Service) 백엔드<br/>귀속 · 가용 전이
+    participant BE as DAW-CORE(Service)<br/>귀속 · 가용 전이
     end
 
     opt 사전 통지 (자금보다 먼저)
@@ -356,14 +356,14 @@ sequenceDiagram
 
 ## 7.8 출금 → 개인지갑(자기수탁) — 등록·소유 인증만
 
-여기부터는 다시 **확정 흐름**이다(위 대안 절과 무관). 유저가 출금 화면에서 "내 개인지갑"을 선택한 경우다 — 상대가 VASP 가 아니라 이용자 본인의 자기수탁 지갑이다. 주고받을 상대가 없으니 IVMS101 교환 대신 **등록·소유 인증된 본인 지갑 목록(월렛 DB)** 으로 가른다. 고객 데이터라 월렛이 자체 확인하며, **컴플라이언스 서비스를 부르지 않는다**. 로컬 확인이라 "트래블룰 확인 중"을 즉시 통과한다.
+여기부터는 다시 **확정 흐름**이다(위 대안 절과 무관). 유저가 출금 화면에서 "내 개인지갑"을 선택한 경우다 — 상대가 VASP 가 아니라 이용자 본인의 자기수탁 지갑이다. 주고받을 상대가 없으니 IVMS101 교환 대신 **등록·소유 인증된 본인 지갑 목록(DAW-CORE DB)** 으로 가른다. 고객 데이터라 DAW-CORE가 자체 확인하며, **컴플라이언스 서비스를 부르지 않는다**. 로컬 확인이라 "트래블룰 확인 중"을 즉시 통과한다.
 
 ```mermaid
 sequenceDiagram
     autonumber
     box rgb(224,242,254) 우리 측
     participant BE as Service 백엔드<br/>출금 유스케이스
-    participant WDB as 월렛 DB<br/>등록 지갑 목록
+    participant WDB as DAW-CORE DB<br/>등록 지갑 목록
     end
     box rgb(220,252,231) 블록체인 매니저
     participant BM as submitTransaction
@@ -395,7 +395,7 @@ sequenceDiagram
     end
     box rgb(224,242,254) 우리 측
     participant BE as Service 백엔드<br/>가용 전이 게이트
-    participant WDB as 월렛 DB<br/>등록 지갑 목록
+    participant WDB as DAW-CORE DB<br/>등록 지갑 목록
     end
 
     BM-->>BE: 입금 후보 — 확정 임계 도달
@@ -463,7 +463,7 @@ sequenceDiagram
     participant CC as CODE-Cipher<br/>수신·복호화
     participant TR as 컴플라이언스 서비스<br/>솔루션 연동 · 8장
     participant WQ as 컴플라이언스 DB<br/>사전 검증 기록
-    participant BE as 월렛(Service) 백엔드<br/>귀속 · 가용 전이
+    participant BE as DAW-CORE(Service)<br/>귀속 · 가용 전이
     end
     box rgb(220,252,231) 블록체인 매니저
     participant BM as 폴링 → deposit-events

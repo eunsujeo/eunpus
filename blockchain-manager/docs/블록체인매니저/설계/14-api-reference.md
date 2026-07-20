@@ -173,7 +173,7 @@ enum class Topic { deposit, withdrawal, internal }   // 토픽명은 deposit-eve
 
 - **TxStatus 기준**과 벤더 원어 번역, subStatus·networkStatus 분담은 [4장 공통 상태 다섯](04-detect-confirm.md#공통-상태-다섯-txstatus-기준).
 - **확정 기준(DCCP)** — 체인별 확정 컨펌수 정책은 4장. 첫 COMPLETED 가 곧 finality 는 아니므로 `numOfConfirmations` 를 임계와 직접 비교한다.
-- **백엔드 DB 매핑** — 매니저 TxStatus 를 백엔드 DB 상태로 옮기는 대응·미해결(REJECTED 짝 등)은 [13장 DB 스키마 점검](13-backend-db-alignment.md).
+- **DAW-CORE DB 매핑** — 매니저 TxStatus 를 DAW-CORE DB 상태로 옮기는 대응·미해결(REJECTED 짝 등)은 [13장 DB 스키마 점검](13-backend-db-alignment.md).
 
 ## 오퍼레이션 색인
 

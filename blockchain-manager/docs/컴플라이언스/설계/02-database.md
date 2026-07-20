@@ -6,7 +6,7 @@ status: To Do
 [0장](00-scope.md)이 확정한 컴플라이언스 DB 의 보관 데이터 — VASP 레지스트리(솔루션 목록·매핑·활성화)·check 상태·사전 검증 기록 — 의 테이블 초안이다.
 필드 타입·의미는 [API 문서](../API/api.md)의 타입 정의와 짝이다. **PII 는 어느 테이블에도 없다** — 원문은 Enclave(국내)·벤더(해외)가 보관한다.
 
-VASP 의 정체와 거래 허용(고객 화면 노출)은 이 DB 가 아니라 **월렛 백엔드의 VASP 마스터(`daw_vasp_m`)**에 있다 — 컴플라이언스는 솔루션 라우팅을 맡으므로, 여기 레지스트리는 솔루션 목록을 받아 두고 코어 `vasp_id` 와 매핑·활성화해 둔다([1장 처리 순서](01-interface.md)).
+VASP 의 정체와 거래 허용(고객 화면 노출)은 이 DB 가 아니라 **DAW-CORE의 VASP 마스터(`daw_vasp_m`)**에 있다 — 컴플라이언스는 솔루션 라우팅을 맡으므로, 여기 레지스트리는 솔루션 목록을 받아 두고 코어 `vasp_id` 와 매핑·활성화해 둔다([1장 처리 순서](01-interface.md)).
 
 ## 명명 규약
 
@@ -23,7 +23,7 @@ VASP 의 정체와 거래 허용(고객 화면 노출)은 이 DB 가 아니라 *
 | `cmpl_wdrl_chk_l` | check 상태 | Create/Get Withdrawal Check · Report · settled 발행 · PENDING 만료 스캔 |
 | `cmpl_pre_vrfc_l` | 사전 검증 기록 | 인바운드 수신 적재 · TX_REPORT 갱신 · Create Deposit Check 대조 |
 
-거래 허용 판단(고객 화면 노출 여부)은 여기 없다 — 월렛 백엔드의 VASP 마스터(`daw_vasp_m`, `vasp_stcd`)가 갖는다. 컴플라이언스의 활성화(`actv_yn`)는 **라우팅을 켜는** 다른 층이다 — Admin 이 VASP 를 온보딩할 때 코어가 `vasp_id` 를 만들어 컴플라이언스에 매핑·활성화한다([1장 처리 순서](01-interface.md)).
+거래 허용 판단(고객 화면 노출 여부)은 여기 없다 — DAW-CORE의 VASP 마스터(`daw_vasp_m`, `vasp_stcd`)가 갖는다. 컴플라이언스의 활성화(`actv_yn`)는 **라우팅을 켜는** 다른 층이다 — Admin 이 VASP 를 온보딩할 때 코어가 `vasp_id` 를 만들어 컴플라이언스에 매핑·활성화한다([1장 처리 순서](01-interface.md)).
 
 ## cmpl_vasp_m — 컴플라이언스 VASP 레지스트리
 
@@ -55,7 +55,7 @@ CREATE INDEX idx_cmpl_vasp_by_core ON cmpl_vasp_m (vasp_id);
 
 ## cmpl_wdrl_chk_l — check 상태
 
-출금 한 건의 트래블룰 확인(check) 한 건이 한 행이다. 월렛이 출금 확인을 요청하면 행이 생기고, 확인의 생애 — 요청 접수 → 솔루션 왕복 → 결과 확정(승인·거절·만료) → 제출 tx hash 보고 — 가 이 행에 쌓인다. 네 가지 일에 쓰인다:
+출금 한 건의 트래블룰 확인(check) 한 건이 한 행이다. DAW-CORE가 출금 확인을 요청하면 행이 생기고, 확인의 생애 — 요청 접수 → 솔루션 왕복 → 결과 확정(승인·거절·만료) → 제출 tx hash 보고 — 가 이 행에 쌓인다. 네 가지 일에 쓰인다:
 
 - **멱등** — 같은 출금 건의 재요청을 새 확인으로 만들지 않고 기존 행으로 답한다 (`ext_tx_id` UNIQUE · `rqst_hash` 대조).
 - **비동기 진행 추적** — 결과가 나중에 오는 솔루션(VerifyVASP)의 진행 상태를 들고 있다가, Callback 이 오면 확정한다.
@@ -66,9 +66,9 @@ CREATE INDEX idx_cmpl_vasp_by_core ON cmpl_vasp_m (vasp_id);
 CREATE TABLE cmpl_wdrl_chk_l (
   chk_id          VARCHAR(64)  PRIMARY KEY,        -- chk_...  서비스 발급
   occr_dttm       TIMESTAMP    NOT NULL,           -- 발생일시 — 확인 요청이 접수돼 행이 생긴 시각
-  ext_tx_id       VARCHAR(128) NOT NULL UNIQUE,    -- 멱등 키 (월렛·매니저와 같은 키)
+  ext_tx_id       VARCHAR(128) NOT NULL UNIQUE,    -- 멱등 키 (DAW-CORE·매니저와 같은 키)
   acnt_id         VARCHAR(64)  NOT NULL,           -- 고객 계정 ID
-  vasp_id         VARCHAR(64)  NOT NULL,           -- 수취 VASP — 월렛이 지목한 값 (월렛 VASP 마스터의 id)
+  vasp_id         VARCHAR(64)  NOT NULL,           -- 수취 VASP — DAW-CORE가 지목한 값 (DAW-CORE VASP 마스터의 id)
   soln_dvcd       VARCHAR(16)  NOT NULL,           -- 라우팅으로 확정된 솔루션 — 감사·재현용
   rqst_hash       VARCHAR(64)  NOT NULL,           -- 최초 요청 본문 해시 — 멱등 대조용
   vrdt_stcd       VARCHAR(16)  NOT NULL,           -- TrVerdict: NOT_REQUIRED | APPROVED | PENDING | REJECTED
@@ -77,7 +77,7 @@ CREATE TABLE cmpl_wdrl_chk_l (
   evdc_ref        VARCHAR(255) NULL,               -- 증적 참조 (예: 사전 승인 UUID)
   stld_dttm        TIMESTAMP    NULL,               -- 최종 결과 일시 — PENDING 이면 NULL
   pend_expr_dttm   TIMESTAMP    NULL,               -- PENDING 만료 스캔 기준 (시간 규칙: 트래블룰 4장)
-  rpt_tx_hash     VARCHAR(128) NULL                -- 월렛이 제출 후 보고해 온 거래 해시
+  rpt_tx_hash     VARCHAR(128) NULL                -- DAW-CORE가 제출 후 보고해 온 거래 해시
 );
 ```
 
@@ -85,9 +85,9 @@ CREATE TABLE cmpl_wdrl_chk_l (
 |---|---|
 | `chk_id` | 확인 건 식별자 — 서비스가 발급한다 |
 | `occr_dttm` | 발생일시 — 확인 요청이 접수돼 행이 생긴 시각 |
-| `ext_tx_id` | 이 확인이 어느 출금 건에 대한 것인가 — 월렛 DB 출금 건 식별자이자 블록체인 매니저 제출 키와 같은 값. UNIQUE 가 멱등의 물리 근거 — 같은 키 재요청은 이 행을 돌려준다 |
+| `ext_tx_id` | 이 확인이 어느 출금 건에 대한 것인가 — DAW-CORE DB 출금 건 식별자이자 블록체인 매니저 제출 키와 같은 값. UNIQUE 가 멱등의 물리 근거 — 같은 키 재요청은 이 행을 돌려준다 |
 | `acnt_id` | 어느 고객 계정의 출금인가 |
-| `vasp_id` | 수취 거래소 — 월렛이 지목한 VASP 마스터의 id. 컴플라이언스가 이 값으로 솔루션 항목을 찾아 라우팅한다 |
+| `vasp_id` | 수취 거래소 — DAW-CORE가 지목한 VASP 마스터의 id. 컴플라이언스가 이 값으로 솔루션 항목을 찾아 라우팅한다 |
 | `soln_dvcd` | 실제로 어느 솔루션으로 보냈는지 — 라우팅 결과를 남겨 사후 감사·재현에 쓴다 |
 | `rqst_hash` | 최초 요청 본문의 해시 — 같은 키에 다른 내용의 재요청이 오면 이 값과 대조해 거절한다 |
 | `vrdt_stcd` | 확인의 현재 결과 — NOT_REQUIRED(대상 아님) · APPROVED(통과) · PENDING(결과 대기) · REJECTED(거절·만료) |
@@ -95,7 +95,7 @@ CREATE TABLE cmpl_wdrl_chk_l (
 | `evdc_dvcd` · `evdc_ref` | 통과를 증명하는 기록의 종류와 참조 값 (예: 상대의 사전 승인 번호). 종류 목록은 미확정 |
 | `stld_dttm` | 최종 결과가 난 일시 — 이 컬럼이 채워지면 결과가 더는 바뀌지 않는다. PENDING 이면 NULL |
 | `pend_expr_dttm` | 결과 대기의 기한 — 만료 배치가 이 컬럼으로 기한 지난 건을 찾아 거절 확정한다 |
-| `rpt_tx_hash` | 월렛이 온체인 제출 후 보고해 온 거래 해시 — 솔루션 사후 보고에 쓴다 |
+| `rpt_tx_hash` | DAW-CORE가 온체인 제출 후 보고해 온 거래 해시 — 솔루션에 tx hash 를 알려줄 때(사전 검증↔실 거래 연결) 쓴다 |
 
 솔루션 원어 근거(벤더 응답 코드 등)를 감사 기록으로 얼마나 둘지는 미정(0장 열린 결정) — 확정되면 append-only `_l` 테이블로 붙인다.
 
@@ -105,7 +105,7 @@ CREATE TABLE cmpl_wdrl_chk_l (
 
 1. **적재** — 상대의 사전 검증 요청이 수신되면 대조에 쓸 값만 추려 한 행으로 쌓는다 (이름 등 신원 정보는 저장하지 않는다).
 2. **갱신** — 상대가 온체인 전송 후 거래 해시를 보고해 오면 같은 행에 채운다.
-3. **대조** — 입금이 실제로 도착해 월렛이 확인을 요청하면, 이 테이블에서 맞는 행을 찾아 "예고됐던 입금"인지 답한다.
+3. **대조** — 입금이 실제로 도착해 DAW-CORE가 확인을 요청하면, 이 테이블에서 맞는 행을 찾아 "예고됐던 입금"인지 답한다.
 4. **정리** — 예고만 오고 자금이 끝내 안 온 행은 보존 기간이 지나면 배치가 정리한다 (기간 값 미정 — 아래).
 
 ```sql
@@ -130,7 +130,7 @@ CREATE INDEX idx_cmpl_pre_vrfc_addr ON cmpl_pre_vrfc_l (bnfc_addr, ast_cd);
 | `ast_cd` | 자산 심볼 |
 | `amt` | 예고된 금액 — 단위·표현은 대조 규칙과 함께 확정(아래 미확정) |
 | `src_addr` | 보내는 쪽 주소 — 사전 검증 시점엔 상대도 확정 못 할 수 있어 비어 있을 수 있다 |
-| `tx_hash` | 상대의 사후 보고로 채워진다 — 있으면 정확 매칭, 없으면 주소·자산·금액 매칭. 대조 규칙 상세는 미확정(API 문서) |
+| `tx_hash` | 상대가 전송 후 알려온 거래 해시로 채워진다 — 있으면 정확 매칭, 없으면 주소·자산·금액 매칭. 대조 규칙 상세는 미확정(API 문서) |
 | `mtch_dttm` | 도착한 입금과 대조 성공한 일시 — 채워진 행은 다른 입금과 다시 매칭하지 않는다(이중 매칭 방지) |
 | `rcv_dttm` | 사전 검증이 수신된 일시 — 보존 기간 만료의 기준 (기간 값 미정 — 트래블룰 4장 국내 시간 규칙과 함께) |
 
@@ -138,8 +138,8 @@ PII(이름 등 신원 정보) 컬럼이 없는 것이 규칙이다 — 대조 �
 
 ## 미확정
 
-- **약어 검수** — `vrdt`·`evdc`·`bnfc`·`vrfc`·`soln`·`rchbl`·`actv` 등 새 축약어는 월렛 DB 약어집과 대조 후 확정.
-- **일시 타입** — 월렛 DB 는 일시를 문자열 VARCHAR(16)(`YYYYMMDDHHMMSS` 계열)로 둔다. 이 DB 도 그에 맞출지 TIMESTAMP 로 갈지 결정.
+- **약어 검수** — `vrdt`·`evdc`·`bnfc`·`vrfc`·`soln`·`rchbl`·`actv` 등 새 축약어는 DAW-CORE DB 약어집과 대조 후 확정.
+- **일시 타입** — DAW-CORE DB 는 일시를 문자열 VARCHAR(16)(`YYYYMMDDHHMMSS` 계열)로 둔다. 이 DB 도 그에 맞출지 TIMESTAMP 로 갈지 결정.
 - **금액 표현** — base unit 정수로 둘지 표시 단위 decimal 로 둘지 — 사전 검증 메시지의 금액 단위 확인·사전 검증 기록 대조 규칙과 함께 확정.
 - **감사 기록(솔루션 원어 근거)의 범위** — 0장 열린 결정 1. 확정되면 append-only 테이블 추가.
 - **evidence(`evdc_dvcd`) enum** — 솔루션별 증적 종류 확정 후.
