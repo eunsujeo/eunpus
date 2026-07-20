@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Blockchain Manager API</title>
+    <title>API Reference</title>
     <style>
       :root {
         --canvas: #0b0e11;
@@ -373,6 +373,38 @@
           pre.appendChild(code); return pre;
         }
 
+        // --- 오퍼레이션별 base URL (없으면 전역 servers[0]) ---
+        function opServerUrl(op) {
+          return (op.servers && op.servers[0] && op.servers[0].url) || serverUrl;
+        }
+        // --- curl 예시 (build.py 와 같은 형식) ---
+        function fillPath(path, params) {
+          let p = path;
+          params.map((x) => (x.$ref ? resolve(x) : x)).forEach((pm) => {
+            if (pm.in !== "path") return;
+            const ex = pm.example !== undefined ? pm.example : (pm.schema && pm.schema.example);
+            if (ex !== undefined) p = p.replace("{" + pm.name + "}", ex);
+          });
+          return p;
+        }
+        function curlText(method, op, params, path) {
+          const url = opServerUrl(op) + fillPath(path, params);
+          const M = method.toUpperCase();
+          if (M === "GET") {
+            const qs = params.map((x) => (x.$ref ? resolve(x) : x)).filter((pm) => pm.in === "query")
+              .map((pm) => { const ex = pm.example !== undefined ? pm.example : (pm.schema && pm.schema.example); return ex !== undefined && ex !== "" ? pm.name + "=" + ex : null; })
+              .filter(Boolean);
+            return 'curl "' + url + (qs.length ? "?" + qs.join("&") : "") + '"';
+          }
+          const rb = op.requestBody && resolve(op.requestBody);
+          const rbMedia = rb && rb.content && rb.content["application/json"];
+          const body = rbMedia ? mediaExample(rbMedia) : undefined;
+          if (body !== undefined) {
+            return 'curl -X ' + M + ' "' + url + '" \\\n  -H "Content-Type: application/json" \\\n  -d \'' + JSON.stringify(body, null, 2) + "'";
+          }
+          return 'curl -X ' + M + ' "' + url + '"';
+        }
+
         // --- mini markdown (subset) ---
         function markdown(md, headings) {
           const lines = String(md || "").replace(/\r/g, "").split("\n");
@@ -470,10 +502,17 @@
             navItems.push({ id, label: op.summary || path, method: method.toUpperCase() });
             const sec = el("section", "op"); sec.id = id;
             const head = el("div", "op-head");
-            head.innerHTML = `<span class="m m-${method}">${method.toUpperCase()}</span><span class="op-path">${esc(serverUrl + path)}</span>`;
+            head.innerHTML = `<span class="m m-${method}">${method.toUpperCase()}</span><span class="op-path">${esc(opServerUrl(op) + path)}</span>`;
             sec.appendChild(head);
             if (op.summary) sec.appendChild(el("div", "op-title", esc(op.summary)));
             if (op.description) { const d = el("div", "op-desc md"); d.innerHTML = markdown(op.description); sec.appendChild(d); }
+
+            if (spec.info["x-curl"]) {
+              sec.appendChild(el("div", "block-label", "curl"));
+              const pre = el("pre"); const code = el("code");
+              code.textContent = curlText(method, op, params, path);
+              pre.appendChild(code); sec.appendChild(pre);
+            }
 
             if (params.length) {
               sec.appendChild(el("div", "block-label", "파라미터"));
@@ -543,6 +582,11 @@
             content.appendChild(sec);
           });
           addNav("타입", navItems);
+        }
+
+        // 부록 (x-appendix) — 타입 뒤에 렌더 (미확정 등)
+        if (spec.info["x-appendix"]) {
+          const apx = el("div", "md"); apx.innerHTML = markdown(spec.info["x-appendix"]); content.appendChild(apx);
         }
 
         // scroll spy

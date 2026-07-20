@@ -226,7 +226,7 @@ def build(cfg):
             md.append(f"\n**{op['summary']}**")
         if op.get("description"):
             md.append("\n" + op["description"].strip())
-        if cfg.get("curl") or info.get("x-curl"):
+        if info.get("x-curl"):
             md.append("\n```bash\n" + curl_cmd(method, op, params, op_server, path) + "\n```")
         prs = [resolve(p) for p in params]
         if prs:
@@ -320,7 +320,9 @@ def build(cfg):
         + api_md)
 
     # ---------- api.html (단일 HTML export) ----------
-    html = open(os.path.join(cfg["dir"], "index.html"), encoding="utf-8").read()
+    # 뷰어 템플릿은 공용 하나(bcm-api-docs/index.html) — 마커(x-curl·x-section·x-appendix·per-op servers)를
+    # 읽어 스펙별로 동작한다. 스펙마다 다른 건 spec.js(인라인)뿐이라 뷰어 로직은 갈라두지 않는다.
+    html = open(os.path.join(HERE, "index.html"), encoding="utf-8").read()
     specjs = open(os.path.join(cfg["dir"], "spec.js"), encoding="utf-8").read()
     html = html.replace('<script src="./spec.js"></script>',
                         "<script>\n" + specjs + "</script>")
@@ -345,7 +347,6 @@ SPECS = [
         "dir": HERE,
         "kanban": os.path.join(HERE, "..", "docs", "블록체인매니저", "API", "api.md"),
         "embed_name": "bcm-api-doc.html",
-        "curl": False,
         "preamble": (
             "DAW-CORE(Service·Admin)와 스펙을 맞추는 연동 계약 — HTTP 엔드포인트·공통 규약·메시지 큐 이벤트·타입 전체.\n"
             "정본은 bcm-api-docs/openapi.yaml — 이 문서는 build.py 가 만든 export 라 직접 고치지 않는다."
@@ -356,7 +357,6 @@ SPECS = [
         "dir": os.path.join(HERE, "..", "compliance-api-docs"),
         "kanban": os.path.join(HERE, "..", "docs", "컴플라이언스", "API", "api.md"),
         "embed_name": "compliance-api-doc.html",
-        "curl": True,
         "preamble": (
             "DAW-CORE와 스펙을 맞추는 연동 계약 — HTTP 엔드포인트·공통 규약·메시지 큐 이벤트·인바운드 내부 API·타입 전체.\n"
             "계약의 배경·시퀀스는 [설계 1장](../설계/01-interface.md)(운영 API·VASP 온보딩·배치는 [3장](../설계/03-operations.md)), verdict 값의 근거는 [트래블룰 8장](../../트래블룰/설계/08-gate-port.md).\n"

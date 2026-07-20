@@ -176,6 +176,14 @@ sequenceDiagram
 고객 계정뿐 아니라 운영(관리) 계정도 이 오퍼레이션으로 만든다 — 운영 계정은 역할별로 HOT_OPS(운영)·FEE_MGT(가스비)·RESERVE(준비금)이 있다.
 같은 `ref` 재요청은 같은 `accountId` 를 돌려준다 (매니저가 `ref` 로 멱등 보장).
 
+```bash
+curl -X POST "https://{baseUrl}/blockchain/manage-api/accounts" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "ref": "ACT-000123"
+}'
+```
+
 _요청 본문_
 
 ```json
@@ -237,6 +245,10 @@ _응답_
 
 자산 지갑을 활성화하고 입금 주소를 발급한다. EVM 은 자산당 주소 하나다.
 같은 (accountId, asset) 재요청은 같은 주소를 돌려준다 (매니저가 멱등 보장).
+
+```bash
+curl -X POST "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/assets/ETH_USDC/address"
+```
 
 _파라미터_
 
@@ -317,6 +329,10 @@ _응답_
 - 계정은 있으나 주소 미발급 → `data: null` (주소를 만들지 않는다)
 - 계정 없음 → `404 ACCOUNT_NOT_FOUND`
 
+```bash
+curl "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/assets/ETH_USDC/address"
+```
+
 _파라미터_
 
 | 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
@@ -376,6 +392,10 @@ _응답_
 
 vault 단위 잔액을 가용·대기·잠김으로 돌려준다.
 벤더가 보는 vault 잔액이라 대사(reconciliation) 재료다 — 고객별 귀속 잔액이 아니다. 고객별 잔액은 DAW-CORE 원장이 정본이다.
+
+```bash
+curl "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/assets/ETH_USDC/balance"
+```
 
 _파라미터_
 
@@ -437,6 +457,26 @@ _응답_
 
 출금(또는 내부 이체)을 제출한다. `externalTxId` 로 재제출 중복을 차단한다.
 응답은 벤더 tx id(`txId`)이며, 이후 상태 진행은 메시지 큐 이벤트로 따라간다(Events).
+
+```bash
+curl -X POST "https://{baseUrl}/blockchain/manage-api/transactions" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "externalTxId": "wd-260713-0042",
+  "from": {
+    "type": "ACCOUNT",
+    "accountId": "acct_pool_02"
+  },
+  "to": {
+    "type": "ADDRESS",
+    "address": "0x9f...E2"
+  },
+  "asset": "ETH_USDC",
+  "amount": "1.5",
+  "note": null,
+  "travelRule": null
+}'
+```
 
 _요청 본문_
 
@@ -556,6 +596,10 @@ _응답_
 
 벤더 tx id(`txId`)로 거래 1건을 조회한다. `txId` 는 출금 제출 응답이나 큐 이벤트에서 얻는다.
 
+```bash
+curl "https://{baseUrl}/blockchain/manage-api/transactions/tx_9f2a"
+```
+
 _파라미터_
 
 | 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
@@ -621,6 +665,10 @@ _응답_
 거래 이력을 **거래 시각(createdAt) 기준**으로 조회한다 — 기본 최신순, `order=asc` 면 과거→최신. 기간(`after`/`before`)·상태로 좁히고 커서로 페이지네이션한다.
 `order=asc` + `before` 생략 조합이면 마지막 `nextCursor` 를 보관했다가 재요청해 새로 쌓인 내역만 이어받는 증분 폴링이 된다.
 상태 변경 실시간 감지는 이 목록이 아니라 이벤트 큐가 담당한다(매니저 내부의 lastUpdated 감지 폴링과 별개).
+
+```bash
+curl "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/transactions?after=2026-07-01T00:00:00.000Z&before=2026-07-13T00:00:00.000Z&order=desc&status=COMPLETED&limit=200&cursor=eyJsYXN0IjoxNzUxMzM2MDAwMDAwfQ"
+```
 
 _파라미터_
 
