@@ -43,10 +43,11 @@ status: To Do                   # To Do | In Progress | Done | 아카이브
   새 카테고리는 폴더만 만들면 UI(홈 → 대카테고리 → 중카테고리 → 칸반)가 자동 인식한다.
 - `status` 값은 위 4개 문자열만 유효. **필드가 없으면 "To Do" 로 분류**된다.
 - `view: doc` (선택) — 이 문서만 있는 중카테고리는 칸반(4컬럼) 대신 **원본 문서를 그대로** 렌더한다.
-  상태 집계에서도 빠진다. 예: `블록체인매니저/API/api.md` (api-docs `build.py` 생성물).
+  상태 집계에서도 빠진다. 예: `블록체인매니저/API/api.md` (bcm-api-docs `build.py` 생성물).
 - `embed: <app/public 내 html>` (선택, view: doc 와 함께) — 마크다운 렌더 대신 **자체 HTML 뷰어를
-  iframe 으로** 띄운다. 예: `embed: api-doc.html` — build.py 가 `app/public/api-doc.html` 로도 내보내는
-  api-docs 원본 뷰어가 디자인 그대로 뜬다. 앱 테마가 iframe 에 동기화된다.
+  iframe 으로** 띄운다. 예: `embed: bcm-api-doc.html` — build.py 가 `app/public/bcm-api-doc.html` 로도 내보내는
+  bcm-api-docs 원본 뷰어가 디자인 그대로 뜬다. 앱 테마가 iframe 에 동기화된다.
+  (컴플라이언스는 `compliance-api-docs` → `compliance-api-doc.html` 로 대칭.)
   ★ embed 파일명은 `/api/*`(Functions) 와 겹치는 `api.html` 같은 이름 금지 — pretty-URL 리다이렉트 충돌.
 - ★ **조립 문서 함께 갱신** — 다른 장의 결론만 모은 문서들은 원천이 바뀌면 같이 고친다:
   `온보딩/설계/00`(전체 배치)·`온보딩/설계/01`(읽기 순서)·`블록체인매니저/설계/16`(인터페이스 한 장).

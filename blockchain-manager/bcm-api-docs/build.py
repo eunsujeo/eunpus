@@ -344,11 +344,11 @@ SPECS = [
         "name": "manager",
         "dir": HERE,
         "kanban": os.path.join(HERE, "..", "docs", "블록체인매니저", "API", "api.md"),
-        "embed_name": "api-doc.html",
+        "embed_name": "bcm-api-doc.html",
         "curl": False,
         "preamble": (
             "DAW-CORE(Service·Admin)와 스펙을 맞추는 연동 계약 — HTTP 엔드포인트·공통 규약·메시지 큐 이벤트·타입 전체.\n"
-            "정본은 api-docs/openapi.yaml — 이 문서는 build.py 가 만든 export 라 직접 고치지 않는다."
+            "정본은 bcm-api-docs/openapi.yaml — 이 문서는 build.py 가 만든 export 라 직접 고치지 않는다."
         ),
     },
     {

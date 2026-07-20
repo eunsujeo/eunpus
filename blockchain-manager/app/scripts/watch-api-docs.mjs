@@ -8,10 +8,10 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // blockchain-manager/app/scripts
 const BM = resolve(HERE, "..", "..");                 // blockchain-manager
-const API_DOCS = join(BM, "api-docs");                // build.py 위치 (매니저+컴플라 공용)
+const API_DOCS = join(BM, "bcm-api-docs");            // build.py 위치 (매니저+컴플라 공용)
 
 // 감지 대상 디렉터리 — 이 안의 openapi.yaml / index.html 이 바뀌면 재빌드
-const WATCH_DIRS = [join(BM, "api-docs"), join(BM, "compliance-api-docs")].filter(existsSync);
+const WATCH_DIRS = [join(BM, "bcm-api-docs"), join(BM, "compliance-api-docs")].filter(existsSync);
 const TRIGGERS = new Set(["openapi.yaml", "index.html"]);
 
 let timer = null;

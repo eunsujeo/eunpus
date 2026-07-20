@@ -26,7 +26,7 @@
 `spec.js` 를 `<script>` 로 읽으므로 **`index.html` 을 그냥 열어도**(더블클릭 · `file://`) 된다. 정적 서버로 열어도 된다.
 
 ```sh
-cd blockchain-manager/api-docs
+cd blockchain-manager/bcm-api-docs
 python3 -m http.server 4000   # http://localhost:4000
 ```
 

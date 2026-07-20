@@ -38,8 +38,8 @@ else
   rm -rf .wrangler/tmp
 fi
 
-# 3.5) api-docs 워처 — openapi.yaml 편집 시 build.py 자동 실행 (편집만으로 생성물 반영)
-if command -v python3 >/dev/null 2>&1 && [ -f ../api-docs/build.py ]; then
+# 3.5) bcm-api-docs 워처 — openapi.yaml 편집 시 build.py 자동 실행 (편집만으로 생성물 반영)
+if command -v python3 >/dev/null 2>&1 && [ -f ../bcm-api-docs/build.py ]; then
   node scripts/watch-api-docs.mjs &
   WATCH_PID=$!
 fi

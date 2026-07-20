@@ -1,16 +1,16 @@
 ---
-title: Blockchain Manager API v0.0.1
+title: Blockchain Manager API v0.0.2
 status: To Do
 view: doc
-embed: api-doc.html
+embed: bcm-api-doc.html
 ---
 
 DAW-CORE(Service·Admin)와 스펙을 맞추는 연동 계약 — HTTP 엔드포인트·공통 규약·메시지 큐 이벤트·타입 전체.
-정본은 api-docs/openapi.yaml — 이 문서는 build.py 가 만든 export 라 직접 고치지 않는다.
+정본은 bcm-api-docs/openapi.yaml — 이 문서는 build.py 가 만든 export 라 직접 고치지 않는다.
 
 # Blockchain Manager API
 
-`v0.0.1`
+`v0.0.2`
 
 블록체인 매니저는 사내의 별도 서비스로, 온체인 거래(노드 연동)를 담당한다.
 DAW-CORE(Service·Admin)는 이 HTTP API 로 계정·주소·잔액·거래를 다루고,

@@ -1,6 +1,6 @@
 # Blockchain Manager API
 
-`v0.0.1`
+`v0.0.2`
 
 블록체인 매니저는 사내의 별도 서비스로, 온체인 거래(노드 연동)를 담당한다.
 DAW-CORE(Service·Admin)는 이 HTTP API 로 계정·주소·잔액·거래를 다루고,
