@@ -5,7 +5,7 @@ view: doc
 ---
 
 DAW-CORE와 스펙을 맞추는 연동 계약 — HTTP 엔드포인트·공통 규약·메시지 큐 이벤트·인바운드 내부 API·타입 전체.
-계약의 배경·시퀀스는 [설계 1장](../설계/01-interface.md), verdict 값의 근거는 [트래블룰 8장](../../트래블룰/설계/08-gate-port.md).
+계약의 배경·시퀀스는 [설계 1장](../설계/01-interface.md)(운영 API·VASP 온보딩·배치는 [3장](../설계/03-operations.md)), verdict 값의 근거는 [트래블룰 8장](../../트래블룰/설계/08-gate-port.md).
 
 # Compliance Service API
 

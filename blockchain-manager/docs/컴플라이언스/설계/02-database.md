@@ -6,7 +6,7 @@ status: To Do
 [0장](00-scope.md)이 확정한 컴플라이언스 DB 의 보관 데이터 — VASP 레지스트리(솔루션 목록·매핑·활성화)·check 상태·사전 검증 기록 — 의 테이블 초안이다.
 필드 타입·의미는 [API 문서](../API/api.md)의 타입 정의와 짝이다. **PII 는 어느 테이블에도 없다** — 원문은 Enclave(국내)·벤더(해외)가 보관한다.
 
-VASP 의 정체와 거래 허용(고객 화면 노출)은 이 DB 가 아니라 **DAW-CORE의 VASP 마스터(`daw_vasp_m`)**에 있다 — 컴플라이언스는 솔루션 라우팅을 맡으므로, 여기 레지스트리는 솔루션 목록을 받아 두고 코어 `vasp_id` 와 매핑·활성화해 둔다([1장 처리 순서](01-interface.md)).
+VASP 의 정체와 거래 허용(고객 화면 노출)은 이 DB 가 아니라 **DAW-CORE의 VASP 마스터(`daw_vasp_m`)**에 있다 — 컴플라이언스는 솔루션 라우팅을 맡으므로, 여기 레지스트리는 솔루션 목록을 받아 두고 코어 `vasp_id` 와 매핑·활성화해 둔다([3장 처리 순서](03-operations.md)).
 
 ## 명명 규약
 
@@ -23,7 +23,7 @@ VASP 의 정체와 거래 허용(고객 화면 노출)은 이 DB 가 아니라 *
 | `cmpl_wdrl_chk_l` | check 상태 | Create/Get Withdrawal Check · Report · settled 발행 · PENDING 만료 스캔 |
 | `cmpl_pre_vrfc_l` | 사전 검증 기록 | 인바운드 수신 적재 · TX_REPORT 갱신 · Create Deposit Check 대조 |
 
-거래 허용 판단(고객 화면 노출 여부)은 여기 없다 — DAW-CORE의 VASP 마스터(`daw_vasp_m`, `vasp_stcd`)가 갖는다. 컴플라이언스의 활성화(`actv_yn`)는 **라우팅을 켜는** 다른 층이다 — Admin 이 VASP 를 온보딩할 때 코어가 `vasp_id` 를 만들어 컴플라이언스에 매핑·활성화한다([1장 처리 순서](01-interface.md)).
+거래 허용 판단(고객 화면 노출 여부)은 여기 없다 — DAW-CORE의 VASP 마스터(`daw_vasp_m`, `vasp_stcd`)가 갖는다. 컴플라이언스의 활성화(`actv_yn`)는 **라우팅을 켜는** 다른 층이다 — Admin 이 VASP 를 온보딩할 때 코어가 `vasp_id` 를 만들어 컴플라이언스에 매핑·활성화한다([3장 처리 순서](03-operations.md)).
 
 ## cmpl_vasp_m — 컴플라이언스 VASP 레지스트리
 
@@ -51,7 +51,7 @@ CREATE INDEX idx_cmpl_vasp_by_core ON cmpl_vasp_m (vasp_id);
 | `cmpl_vasp_id` | 컴플라이언스가 발급하는 안정 id — Admin 이 목록에서 이 값으로 VASP 를 지목해 활성화한다. 동기화 재적재에도 안 바뀐다 |
 | 동기화 UPSERT | 동기화는 `(soln_dvcd, soln_vasp_id)` 로 대조해 UPSERT 한다 — 신규면 `cmpl_vasp_id` 발급(`actv_yn`=false), 기존이면 목록 컬럼만 갱신하고 `vasp_id`·`actv_yn` 은 보존. **목록에서 사라진 항목은 삭제하지 않고 `rchbl_yn`=false** — 매핑·활성화를 잃지 않는다 |
 | `vasp_id` 매핑 | 활성화 API(코어 → 컴플라이언스)가 코어가 만든 `vasp_id` 를 이 컬럼에 채운다. 출금 확인의 `vaspId` 를 이 값(인덱스 `idx_cmpl_vasp_by_core`)으로 조회해 솔루션 항목·라우팅을 정한다 |
-| 다중 솔루션 | 같은 실물 VASP 가 여러 솔루션에 있으면 항목(행)이 여럿이라 `vasp_id` 가 여러 행에 붙는다 — 라우팅 규칙으로 하나를 고른다([1장](01-interface.md)) |
+| 다중 솔루션 | 같은 실물 VASP 가 여러 솔루션에 있으면 항목(행)이 여럿이라 `vasp_id` 가 여러 행에 붙는다 — 라우팅 규칙으로 하나를 고른다([3장](03-operations.md)) |
 
 ## cmpl_wdrl_chk_l — check 상태
 

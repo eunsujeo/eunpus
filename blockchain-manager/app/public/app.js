@@ -345,7 +345,7 @@ async function renderDocView(items) {
     try {
       const data = await api(`/api/doc?path=${encodeURIComponent(c.path)}`);
       pages[i].innerHTML =
-        `<article class="doc-body">${renderMarkdown(data.body, { docBase: c.path.split('/').slice(0, -1).join('/') })}</article>`;
+        `<article class="doc-body">${renderMarkdown(data.body, { docBase: c.path.split('/').slice(0, -1).join('/'), docLinksNewTab: (data.meta || {}).linkMode === 'newtab' })}</article>`;
     } catch (e) {
       pages[i].innerHTML = `<p style="color:var(--danger)">불러오기 실패: ${esc(e.message)}</p>`;
     }
@@ -694,7 +694,7 @@ async function showPreviewAt(idx) {
       m.subcategory ? `<span class="chip">${esc(m.subcategory)}</span>` : '',
       previewList.length > 1 ? `<span class="chip">${idx + 1} / ${previewList.length}</span>` : '',
     ].join('');
-    modalBody.innerHTML = renderMarkdown(data.body, { docBase: c.path.split('/').slice(0, -1).join('/') });
+    modalBody.innerHTML = renderMarkdown(data.body, { docBase: c.path.split('/').slice(0, -1).join('/'), docLinksNewTab: m.linkMode === 'newtab' });
     await window.MD.runMermaid('#modal-body .mermaid');
     window.MD.enhanceDiagrams(modalBody);
     window.MD.enhanceSectionRefs(modalBody, { docPath: c.path });

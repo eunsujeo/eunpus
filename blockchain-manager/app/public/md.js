@@ -13,6 +13,7 @@ window.MD = (() => {
 
   function renderMarkdown(md, opts = {}) {
     const docBase = opts.docBase || ''; // 현재 문서의 폴더 경로 — 상대 .md 링크를 doc 페이지 링크로 푼다
+    const docLinksNewTab = opts.docLinksNewTab || false; // true 면 내부 .md 링크를 모달 대신 새 탭으로 (인덱스 문서용)
     const lines = md.split(/\r?\n/);
     const out = [];
     let inCode = false;
@@ -53,7 +54,8 @@ window.MD = (() => {
           if (/^https?:\/\//.test(href)) return `<a href="${href}" target="_blank" rel="noopener">${t}</a>`;
           // 앱 내부 링크(보드 뷰 등) — ?cat=…&sub=… 형식은 그대로 앵커로
           if (href.startsWith('?') || href.startsWith('/')) return `<a href="${href}" target="_blank" rel="noopener">${t}</a>`;
-          // 문서로의 상대 링크(같은 폴더 · ../ 상위 경유, #절 앵커 허용) — 새창으로 doc 페이지를 연다
+          // 문서로의 상대 링크(같은 폴더 · ../ 상위 경유, #절 앵커 허용)
+          // — 클릭하면 모달(peek), Ctrl/Cmd·중클릭은 새 탭. API 없으면 href 로 폴백.
           const rel = /^([^#:]+\.md)(#.+)?$/.exec(href);
           if (docBase && rel && !href.startsWith('/')) {
             const stack = [];
@@ -61,7 +63,10 @@ window.MD = (() => {
               if (seg === '..') stack.pop();
               else if (seg && seg !== '.') stack.push(seg);
             }
-            return `<a href="doc?path=${encodeURIComponent(stack.join('/'))}${rel[2] || ''}" target="_blank" rel="noopener">${t}</a>`;
+            const p = stack.join('/');
+            const h = rel[2] || '';
+            if (docLinksNewTab) return `<a href="doc?path=${encodeURIComponent(p)}${h}" target="_blank" rel="noopener">${t}</a>`;
+            return `<a href="doc?path=${encodeURIComponent(p)}${h}" class="doc-link" data-doc-path="${p}" data-doc-hash="${h}" target="_blank" rel="noopener">${t}</a>`;
           }
           return t;
         });
@@ -304,6 +309,23 @@ window.MD = (() => {
     bodyEl.innerHTML = '<p style="color:var(--muted)">불러오는 중…</p>';
     bodyEl.scrollTop = 0;
     try {
+      // 내부 문서 링크 — 전체 경로를 알고 있으니 카드 조회 없이 바로 연다
+      if (ref.kind === 'doc') {
+        const data = await getDoc(ref.path);
+        if (data.error) throw new Error(data.error);
+        const docBase = ref.path.split('/').slice(0, -1).join('/');
+        titleEl.textContent = (data.meta && data.meta.title) || ref.label;
+        openEl.href = `doc?path=${encodeURIComponent(ref.path)}${ref.hash || ''}`;
+        bodyEl.innerHTML = renderMarkdown(data.body, { docBase });
+        await runMermaid('#peek-body .mermaid');
+        enhanceDiagrams(bodyEl);
+        enhanceSectionRefs(bodyEl, { docPath: ref.path });
+        if (ref.hash) {
+          const el = bodyEl.querySelector('[id="' + ref.hash.slice(1).replace(/"/g, '') + '"]');
+          if (el) el.scrollIntoView();
+        }
+        return;
+      }
       const cards = await getCards();
       const folder = ctx.docPath.split('/').slice(0, -1).join('/');
       const sibs = cards.filter((c) => c.path.startsWith(folder + '/'));
@@ -409,6 +431,13 @@ window.MD = (() => {
     if (!root.__secRefWired) {
       root.__secRefWired = true;
       root.addEventListener('click', (e) => {
+        const dl = e.target.closest('a.doc-link');
+        if (dl) {
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; // 새 탭 등은 그대로
+          e.preventDefault();
+          openRef({ kind: 'doc', path: dl.dataset.docPath, hash: dl.dataset.docHash || '', label: dl.textContent }, root.__secRefCtx);
+          return;
+        }
         const btn = e.target.closest('.sec-ref');
         if (btn && btn.__ref) openRef(btn.__ref, root.__secRefCtx);
       });

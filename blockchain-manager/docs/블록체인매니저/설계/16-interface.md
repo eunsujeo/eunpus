@@ -1,18 +1,18 @@
 ---
-title: 16. 백엔드 ↔ 매니저 인터페이스 — API·이벤트 계약
+title: 16. DAW-CORE ↔ 매니저 인터페이스 — API·이벤트 계약
 status: To Do
 ---
 
-DAW-CORE가 블록체인 매니저를 호출하는 계약을 한 장으로 조립한다. 백엔드는 벤더(Fireblocks)를 모른다 — 아는 것은 아래 API·이벤트·TxStatus 뿐이다.
+DAW-CORE가 블록체인 매니저를 호출하는 계약을 한 장으로 조립한다. DAW-CORE는 벤더(Fireblocks)를 모른다 — 아는 것은 아래 API·이벤트·TxStatus 뿐이다.
 이 장은 원천 장들(0·4·5·6·7·8장·[14장 레퍼런스](14-api-reference.md))의 결론만 모은 것이다 — **원천이 바뀌면 이 장을 함께 갱신한다.**
 
 ## 설계 원칙
 
 - **응답은 접수, 진행은 이벤트로** — `submitTransaction` 응답은 벤더 tx id 까지다. 상태 진행(위 다섯)은 큐 이벤트로 따라간다.
 - **멱등** — 생성 계열은 멱등키: `createAccount` = f(ref), `createDepositAddress` = f(accountId, asset) — 24시간 안의 재시도는 같은 결과. 제출은 `externalTxId`(DAW-CORE 출금 건 식별자)가 중복을 막고, 완료 이벤트에 그대로 실려 되돌아온다.
-- **boost·cancel 은 백엔드 몫이 아니다** — 막힌 출금은 매니저가 자동 boost 로 접어 처리하고, 백엔드는 같은 상태 흐름만 본다(6장).
+- **boost·cancel 은 DAW-CORE 몫이 아니다** — 막힌 출금은 매니저가 자동 boost 로 접어 처리하고, DAW-CORE는 같은 상태 흐름만 본다(6장).
 
-## API — 백엔드 → 매니저
+## API — DAW-CORE → 매니저 (7개)
 
 시그니처·타입·열거형의 기준은 [14장](14-api-reference.md). 여기는 무엇이 있는지만.
 
@@ -26,7 +26,7 @@ DAW-CORE가 블록체인 매니저를 호출하는 계약을 한 장으로 조�
 | `transactionOf(txId)` | 단건 조회 | [8장](08-balance-history.md) |
 | `submitTransaction(request)` | 출금·이체 제출 — `externalTxId`·(트래블룰 대상이면) travelRuleMessage 를 싣는다 | [6장](06-withdrawal.md) |
 
-## 이벤트 — 매니저 → 백엔드 (큐)
+## 이벤트 — 매니저 → DAW-CORE (큐)
 
 토픽마다 전용 컨슈머, 같은 계정의 순서는 파티션이 보장한다. 이벤트 본문(ChainEvent)·소비 규칙은 [14장](14-api-reference.md)·[4장](04-detect-confirm.md).
 
@@ -38,7 +38,7 @@ DAW-CORE가 블록체인 매니저를 호출하는 계약을 한 장으로 조�
 
 막힘(오래 안 풀리는 건)은 이벤트가 아니라 별도 경보 채널이다([4장 막힘 점검](04-detect-confirm.md#막힘-점검-오래-confirming-인-건-골라내기)).
 
-## TxStatus — 백엔드가 보는 공통 상태 다섯
+## TxStatus — DAW-CORE가 보는 공통 상태 다섯
 
 벤더 내부 상태는 매니저가 이 다섯으로 번역한다. 뜻·원어 대응·subStatus 는 [4장 기준 표](04-detect-confirm.md#공통-상태-다섯-txstatus-기준)가 원천이다.
 
@@ -59,6 +59,7 @@ sequenceDiagram
     participant BE as 출금 유스케이스
     end
     participant CP as 컴플라이언스 서비스<br/>트래블룰
+    participant MQC as 큐<br/>compliance 토픽
     box rgb(224,242,254) 블록체인 매니저
     participant BM as 매니저<br/>API · 내부 폴링
     end
@@ -66,7 +67,9 @@ sequenceDiagram
     participant FB as Fireblocks<br/>정책 · Co-signer 서명 · 전파
 
     BE->>CP: 트래블룰 확인 (Create Withdrawal Check · 거래소 선택 출금)
-    CP-->>BE: verdict · travelRuleMessage — settled 이벤트 (컴플라이언스 1장)
+    CP-->>BE: PENDING (접수)
+    CP-->>MQC: withdrawal-check.settled 발행 — verdict · travelRuleMessage (컴플라이언스 1장)
+    MQC-->>BE: consume — verdict 로 진행
     Note over BE: APPROVED 여야 제출로 · REJECTED 면 반려
     BE->>BM: submitTransaction — externalTxId · (대상이면) travelRuleMessage
     BM->>FB: 제출 — 정책 통과 → Co-signer 공동서명 → 전파 (6장)

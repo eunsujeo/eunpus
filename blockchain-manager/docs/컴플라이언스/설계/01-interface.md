@@ -28,73 +28,7 @@ DAW-CORE는 어느 솔루션(VerifyVASP·CODE·Notabene)으로 처리되는지 �
 
 경로를 `/compliance/travel-rule/...` 로 잡는 이유 — 다음 모듈(예: aml)이 생기면 `/compliance/aml/...` 로 나란히 붙는다.
 
-## 운영 API — Admin → 컴플라이언스 (4개)
-
-거래 허용·VASP 정체는 DAW-CORE의 VASP 마스터(`daw_vasp_m`)가 갖고, 컴플라이언스는 **VASP 를 온보딩(매핑·활성화)** 하는 운영을 맡는다. 컴플라이언스가 아는 VASP 는 각자 안정 id(`cmpl_vasp_id`)를 갖고, Admin 이 그중 하나를 골라 활성화하면 코어 `vasp_id` 와 매핑된다([2장](02-database.md)).
-
-| # | 엔드포인트 | 무엇 |
-|---|---|---|
-| 1 | `POST /compliance/travel-rule/vasps/sync` | **Sync Solution VASPs** — 솔루션 VASP 목록 동기화를 즉시 실행. 신규 항목엔 `cmpl_vasp_id` 를 발급하고, 매핑·활성화는 보존한다(UPSERT) |
-| 2 | `GET /compliance/travel-rule/vasps?query=` | **List VASPs** — Admin 이 온보딩 대상을 고르는 목록. `cmpl_vasp_id`·이름·솔루션·트래블룰 요청을 보낼 수 있는지·활성화·매핑된 `vasp_id` 를 준다 |
-| 3 | `POST /compliance/travel-rule/vasps/{cmplVaspId}/activate` | **Activate VASP** — 코어가 만든 `vasp_id` 를 이 항목에 **매핑하고 활성화**한다. 이미 매핑돼 있으면 활성화만. **호출 주체는 Admin(코어) 백엔드** |
-| 4 | `POST /compliance/travel-rule/vasps/{cmplVaspId}/deactivate` | **Deactivate VASP** — 활성화를 끈다. 매핑(`vasp_id`)은 남긴다 — 재활성화하면 그대로 |
-
-check 운영 조회·감사 기록 열람 등 나머지 운영 경로는 미설계([0장](00-scope.md) 열린 결정).
-
-## VASP 온보딩의 처리 순서 — 동기화에서 출금 확인까지
-
-VASP 정체와 거래 허용은 DAW-CORE의 VASP 마스터(`daw_vasp_m`)에 있고, 컴플라이언스는 **솔루션 라우팅**을 맡는다. 온보딩은 Admin 이 컴플라이언스 목록에서 VASP 를 골라 활성화하는 순간, 코어가 `vasp_id` 를 만들어 컴플라이언스에 매핑하는 흐름이다. 그 뒤 출금 확인은 `vaspId` 하나만 실으면 되고, 어느 솔루션으로 보낼지는 컴플라이언스가 매핑을 보고 정한다.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant ADM as Admin
-    participant WB as DAW-CORE<br/>VASP 마스터 (daw_vasp_m)
-    box rgb(224,242,254) 컴플라이언스 서비스
-    participant CP as 컴플라이언스 서비스
-    participant CDB as 컴플라이언스 DB<br/>VASP 레지스트리
-    end
-    participant SOL as 솔루션
-
-    Note over CP,SOL: ⓪ 솔루션 목록 동기화 — cmpl_vasp_id 발급<br/>상세 시퀀스는 바로 아래
-    ADM->>CP: ① VASP 목록 조회 (List VASPs)
-    CP-->>ADM: cmpl_vasp_id · 이름 · 트래블룰 요청 가능 여부 · 활성화 여부
-    ADM->>WB: ② 선택 + 활성화 — vasp_id 없으면 생성 (거래 허용)
-    WB->>CP: ③ Activate VASP — cmplVaspId + vasp_id
-    CP->>CDB: ④ 매핑(vasp_id) + 활성화 — 신규면 매핑, 기존이면 활성화만
-    Note over WB: 출금 화면 목록은 DAW-CORE가 자체 제공 (허용된 vasp_id)
-    WB->>CP: ⑤ Create Withdrawal Check — vaspId
-    CP->>CDB: vaspId → 매핑된 솔루션 항목 조회 → 라우팅 결정
-    CP->>SOL: 해당 솔루션 왕복 (출금 시퀀스)
-```
-
-Deactivate 하거나 솔루션 목록에서 사라진(트래블룰 요청을 보낼 수 없는) VASP 는 새 출금 확인이 열리지 않는다 — 매핑은 남아 있어 재활성화·재동기화하면 그대로 복구된다.
-
-### ⓪ 솔루션 목록 동기화
-
-주기는 미정(0장 미확정). 주기 실행 외에 운영 API(Sync Solution VASPs)로도 즉시 실행된다. 목록 API 출처 — [VerifyVASP List VASP](https://docs.verifyvasp.com/reference/travelrule-list-vasp-ids)(`GET /v1/vasps` · 상호연동 CODE 회원 포함) · [Fireblocks Get All VASPs](https://developers.fireblocks.com/api-reference/travel-rule/get-all-vasps) · [Fireblocks TRLink List VASPs](https://developers.fireblocks.com/api-reference/trlink/list-vasps)(Notabene VASP 디렉토리 · 페이지네이션).
-
-동기화는 솔루션에서 받은 목록을 컴플라이언스 VASP 레지스트리에 **UPSERT** 한다 — 신규 항목엔 `cmpl_vasp_id` 를 발급하고, 이미 있는 항목은 이름·트래블룰 요청을 보낼 수 있는지만 갱신하며 **매핑(`vasp_id`)·활성화(`actv_yn`)는 보존**한다. 목록에서 빠진 항목은 지우지 않고 "트래블룰 요청을 보낼 수 없음"으로만 표시한다([2장](02-database.md)).
-
-```mermaid
-sequenceDiagram
-    autonumber
-    box rgb(224,242,254) 컴플라이언스 서비스
-    participant SCH as 배치 스케줄러
-    participant DB as 컴플라이언스 DB<br/>VASP 레지스트리
-    end
-    participant VV as VerifyVASP
-    participant FB as Fireblocks<br/>(Notabene)
-
-    loop 주기 실행
-        SCH->>VV: List VASP — GET /v1/vasps (protocol=ALL)
-        VV-->>SCH: 회원 목록 — vaspId · 이름 · health · protocol<br/>(상호연동 CODE 회원은 vaspStatus INTEROPERATED)
-        SCH->>FB: Get All VASPs (페이지네이션 — 끝까지 반복)
-        FB-->>SCH: VASP 목록 — DID · 이름 (Notabene 디렉토리)
-        SCH->>DB: UPSERT — 신규 cmpl_vasp_id 발급 · 매핑/활성화 보존 · 빠진 항목은 트래블룰 요청 불가로
-        DB-->>SCH: 갱신 결과 — 추가 · 변경 · 트래블룰 요청 불가 건수
-    end
-```
+VASP 온보딩(Admin 운영 API·매핑·활성화)과 주기 배치는 [3장 운영·내부](03-operations.md)로 뺐다 — 이 장은 DAW-CORE 통합 계약만 다룬다.
 
 ## 이벤트 — 컴플라이언스 → DAW-CORE (큐 · 확정)
 
@@ -118,7 +52,7 @@ sequenceDiagram
 ```
 - **DAW-CORE는 이벤트만으로 진행한다** — 모든 솔루션이 이 한 경로로 통일된다(출금 확인은 항상 PENDING 접수 → 이벤트 확정). 이벤트에 verdict 와 **travelRuleMessage(값 또는 null)** 가 함께 오므로, APPROVED 면 값이 있으면 동봉해 바로 제출한다 — Get 왕복이 없다.
 - **Get(2번)은 유실·재기동 복구 전용** — 이벤트를 놓쳤을 때 같은 내용을 다시 읽고, 그마저 놓쳐도 PENDING 만료 규칙이 흐름을 끝낸다.
-- **PENDING 만료의 주인은 이 서비스** — 솔루션별 시간 규칙([트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))을 알고 있는 쪽이 만료를 가려 REJECTED 로 settled 이벤트를 낸다.
+- **PENDING 만료의 주인은 이 서비스** — 솔루션별 시간 규칙([트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))을 알고 있는 쪽이 만료를 가려 REJECTED 로 settled 이벤트를 낸다(스캔 상세는 [3장 배치](03-operations.md)).
 
 ## Verdict 타입
 
@@ -130,32 +64,6 @@ sequenceDiagram
 | `APPROVED` | 통과 — 정보 교환·검증이 승인됐다 | 출금 — validate/full 검증 통과(`isValid`)<br/>입금 — 벤더 스크리닝 통과<br/>(`Completed` → Post-Screening Accept)로 도착 | User Verification 승인<br/>— Callback 도착 | Asset Transfer Authorization 승인<br/>— 동기 즉답 |
 | `PENDING` | 아직 결과가 없다 — 결과가 나면<br/>큐 이벤트(`withdrawal-check.settled`)로 알린다 | —<br/>(동기 즉답이라 없음) | 접수 번호(UUID)만 즉시 반환,<br/>결과는 Callback 대기 | —<br/>(동기 즉답이라 없음) |
 | `REJECTED` | 거절 — 상대 거절 또는 PENDING 만료 | — (검증 실패는 요청 오류로 응답)<br/>벤더 게이트의 `Rejected`·`Blocking Time Expired` 는 제출 뒤<br/>블록체인 매니저의 거래 상태 이벤트(REJECTED)로 온다 | 상대 거절<br/>· PENDING 만료 | 상대 거절 |
-
-## 배치 — 서비스가 스스로 도는 두 주기 작업
-
-DAW-CORE 호출 없이 서비스가 주기적으로 실행한다. 하나는 **목록 동기화**(위 처리 순서 절의 ①), 하나는 아래 PENDING 만료 스캔이다. 사전 검증 기록 보존 기간 만료(값 미정 — [트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))도 확정되면 이 자리에 추가된다.
-
-### PENDING 만료 스캔 — settled 이벤트의 REJECTED(만료) 를 만든다
-
-시간 규칙은 [트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md).
-
-```mermaid
-sequenceDiagram
-    autonumber
-    box rgb(224,242,254) 컴플라이언스 서비스
-    participant SCH as 배치 스케줄러
-    participant DB as 컴플라이언스 DB
-    end
-    participant MQ as 큐<br/>compliance 토픽
-
-    loop 주기 실행
-        SCH->>DB: 기한 지난 PENDING check 검색
-        DB-->>SCH: 만료 대상 목록 — checkId · externalTxId · accountId
-        SCH->>DB: REJECTED(만료) 확정 저장
-        DB-->>SCH: 저장 완료
-        SCH->>MQ: withdrawal-check.settled 발행 (만료 건마다)
-    end
-```
 
 ## 시퀀스 — 출금 확인 한 사이클
 
@@ -260,18 +168,3 @@ sequenceDiagram
     end
 ```
 
-## 시나리오 워크스루 — DAW-CORE의 호출 순서는 세 솔루션 모두 같다
-
-| 단계 (DAW-CORE 관점) | 국내 VerifyVASP (7.1) | 국내 CODE 직접 (7.10) | 해외 Notabene (7.2) |
-|---|---|---|---|
-| 목록 (거래소 선택) | DAW-CORE VASP 마스터에서 자체 제공 (허용된 VASP) | DAW-CORE VASP 마스터에서 자체 제공 | DAW-CORE VASP 마스터에서 자체 제공 |
-| 개시 (Create Withdrawal Check — `vaspId`) | **PENDING** (접수) | **PENDING** (접수) | **PENDING** (접수) |
-| 결과 대기 | `compliance` 이벤트 수신 | `compliance` 이벤트 수신 (즉시 도착) | `compliance` 이벤트 수신 (즉시 도착) |
-| 제출 | travelRuleMessage null — 그대로 제출 | travelRuleMessage null — 그대로 제출 | 이벤트의 **travelRuleMessage 동봉**해 제출 |
-| 보고 (Report Withdrawal Result) | tx hash 보고 실행 | 실행 | no-op — 벤더가 이미 안다 |
-
-가운데 열(CODE 직접)은 상호연동 실효 부족 시의 **대안**이다 — 빗썸 등 CODE 회원의 기본 경로는 상호연동(A.1)이라 왼쪽 VerifyVASP 열과 동일하게 돈다.
-
-Notabene(Fireblocks) 경로 하나만 의미가 다른 지점 — **최종 게이트(Post-Screening)는 제출 뒤 벤더 안에서 한 번 더 돈다**([트래블룰 2장](../../트래블룰/설계/02-withdrawal.md)). 이 경로의 APPROVED 는 "검증 통과·travelRuleMessage 준비 완료"라는 뜻이고, 벤더 스크리닝에서 거절되면 그 결과는 컴플라이언스가 아니라 **매니저의 거래 상태(REJECTED)** 로 온다 — 기존 출금 실패 처리와 같은 자리다.
-
-DAW-CORE 코드는 개시(PENDING)→이벤트 수신→제출→보고를 솔루션 구분 없이 같은 순서로 탄다 — 다른 것은 이벤트가 즉시 오느냐 나중에 오느냐, travelRuleMessage 가 값이냐 null 이냐뿐이고 흐름의 차이가 아니다.
