@@ -83,13 +83,13 @@ DAW-CORE는 이 HTTP API 로 출금 확인·입금 판별의 솔루션 조회를
 
 ## 이벤트 (메시지 큐)
 
-비동기 확인의 결과 도착(승인·거절·PENDING 만료)은 이 HTTP API 가 아니라 **메시지 큐 이벤트**로 온다.
+비동기 확인의 결과 도착(대상 아님·승인·거절·PENDING 만료)은 이 HTTP API 가 아니라 **메시지 큐 이벤트**로 온다.
 
 - **토픽**: `compliance` · 파티션 키 = `accountId` (기존 큐 규칙과 동일)
 - 모든 솔루션이 이 한 경로로 통일된다 — Create 는 항상 PENDING 접수, 최종 verdict 와 travelRuleMessage(값 또는 null)가 이 이벤트로 함께 온다. DAW-CORE는 Get 없이 이벤트만으로 제출한다(값 있으면 동봉). 이벤트를 놓쳐도 Get 이 복구하고, 그마저 놓쳐도 PENDING 만료 규칙이 흐름을 끝낸다.
 - **PENDING 만료의 주인은 이 서비스** — 솔루션별 시간 규칙([트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))을 아는 쪽이 만료를 가려 `REJECTED` 로 발행한다.
 
-메시지 본문은 JSON 그대로다 — HTTP 응답의 `data`/`meta` 봉투를 쓰지 않는다. 필드 정의는 [SettledEvent](#타입) 타입.
+메시지 본문은 JSON 그대로다 — HTTP 응답의 `data`/`meta` 봉투를 쓰지 않는다. 필드 정의는 [SettledEvent](#settledevent) 타입.
 
 ```json
 {
@@ -286,7 +286,7 @@ curl -X POST "https://{baseUrl}/compliance/travel-rule/withdrawal-checks" \
 
 **응답**
 
-`201` — check 생성됨 (멱등 재요청이면 `200`)
+`202` — 접수됨 · check 생성 (멱등 재요청이면 `200`)
 
 ```json
 {
@@ -544,7 +544,7 @@ verdict 의 값 — 솔루션 원어를 이 넷으로 번역한다 ([트래블�
 |---|---|---|---|
 | `name` | string | 필수 | 수취인 이름 |
 | `accountNumber` | string | 필수 | 수취 계좌(주소) |
-| `vaspId` | string (null 가능) | - | 수취 거래소 — DAW-CORE VASP 마스터(`daw_vasp_m`)의 식별자. 출금 화면의 거래소 목록에서 고른 값 |
+| `vaspId` | string | 필수 | 수취 거래소 — DAW-CORE VASP 마스터(`daw_vasp_m`)의 식별자. 출금 화면의 거래소 목록에서 고른 값. 컴플라이언스가 이 값으로 솔루션 라우팅 |
 
 ### WithdrawalCheck
 
@@ -554,7 +554,7 @@ verdict 의 값 — 솔루션 원어를 이 넷으로 번역한다 ([트래블�
 | `externalTxId` | string | 필수 | DAW-CORE의 출금 건 식별자 (멱등 키) |
 | `accountId` | string | 필수 | 계정 ID |
 | `verdict` | TrVerdict | 필수 | 현재 verdict |
-| `travelRuleMessage` | string (null 가능) | - | 제출 시 실어 보내는 암호화 메시지 — Notabene 경로만 값, 없는 솔루션은 null. DAW-CORE는 내용을 해석하지 않는다 |
+| `travelRuleMessage` | string (null 가능) | - | 제출 시 실어 보내는 암호화 메시지 — Notabene 경로만 값, 없는 솔루션은 null. DAW-CORE는 내용을 해석하지 않고 블록체인 매니저 제출의 `travelRule` 로 그대로 전달한다 |
 | `evidence` | Evidence (null 가능) | - | 통과 증적 — 결과가 나기 전이면 null |
 
 ### Evidence
@@ -582,20 +582,8 @@ verdict 의 값 — 솔루션 원어를 이 넷으로 번역한다 ([트래블�
 
 ### SettledEvent
 
-큐로 오는 비동기 확인 결과 이벤트 (`compliance` 토픽). settled = check 가 최종 결과(APPROVED·REJECTED — PENDING 만료 포함)에 도달해 더는 바뀌지 않는다.
-메시지 본문은 아래 JSON 그대로다 — HTTP 응답의 `data`/`meta` 봉투를 쓰지 않는다. 전달은 at-least-once 라 재전달될 수 있다 — settled 는 check 당 한 번이므로 **소비 쪽 중복 제거 키는 `checkId`** 다.
-
-```json
-{
-  "type": "withdrawal-check.settled",
-  "checkId": "chk_01J9Z",
-  "externalTxId": "WD-000123",
-  "accountId": "acct_01H8X",
-  "verdict": "APPROVED",
-  "travelRuleMessage": "enc_9f3a...",
-  "settledAt": "2026-07-16T04:05:06.789Z"
-}
-```
+큐로 오는 비동기 확인 결과 이벤트 (`compliance` 토픽). settled = check 가 최종 결과(NOT_REQUIRED·APPROVED·REJECTED — PENDING 만료는 REJECTED)에 도달해 더는 바뀌지 않는다.
+본문 JSON 예시는 위 [이벤트 (메시지 큐)](#이벤트-메시지-큐) 절에 있다 — HTTP 응답의 `data`/`meta` 봉투를 쓰지 않는다. 전달은 at-least-once 라 재전달될 수 있다 — settled 는 check 당 한 번이므로 **소비 쪽 중복 제거 키는 `checkId`** 다.
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
@@ -603,8 +591,8 @@ verdict 의 값 — 솔루션 원어를 이 넷으로 번역한다 ([트래블�
 | `checkId` | string | 필수 | check 식별자 |
 | `externalTxId` | string | 필수 | DAW-CORE의 출금 건 식별자 |
 | `accountId` | string | 필수 | 파티션 키 |
-| `verdict` | TrVerdict | 필수 | `APPROVED` 또는 `REJECTED` (PENDING 만료 포함) |
-| `travelRuleMessage` | string (null 가능) | - | 제출에 실어 보낼 암호화 메시지 — Notabene 경로만 값, 없는 솔루션은 null. DAW-CORE는 내용을 해석하지 않는다. 이 값이 실려 오므로 제출에 Get 이 필요 없다 |
+| `verdict` | TrVerdict | 필수 | `NOT_REQUIRED` · `APPROVED` · `REJECTED` (PENDING 만료는 `REJECTED`) |
+| `travelRuleMessage` | string (null 가능) | - | 제출에 실어 보낼 암호화 메시지 — Notabene 경로만 값, 없는 솔루션은 null. DAW-CORE는 내용을 해석하지 않고 블록체인 매니저 제출의 `travelRule` 로 그대로 실어 보낸다. 이 값이 이벤트에 실려 오므로 제출에 Get 이 필요 없다 |
 | `settledAt` | string (ISO 8601) | 필수 | 결과가 난 시각 |
 
 ## 미확정

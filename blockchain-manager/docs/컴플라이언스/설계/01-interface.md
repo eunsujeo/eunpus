@@ -33,7 +33,7 @@ VASP 온보딩(Admin 운영 API·매핑·활성화)과 주기 배치는 [3장 �
 |---|---|---|
 | `compliance` | 출금 확인 결과 (`withdrawal-check.settled`) | 계정 accountId |
 
-settled = check 가 최종 결과(APPROVED·REJECTED — PENDING 만료 포함)에 도달해 더는 바뀌지 않는다.
+settled = check 가 최종 결과(NOT_REQUIRED·APPROVED·REJECTED — PENDING 만료는 REJECTED)에 도달해 더는 바뀌지 않는다.
 
 메시지 본문은 JSON 이다 — HTTP 응답과 달리 `data`/`meta` 봉투 없이 이 모양 그대로 실린다. 필드 정의는 [API 문서의 SettledEvent](../API/api.md).
 

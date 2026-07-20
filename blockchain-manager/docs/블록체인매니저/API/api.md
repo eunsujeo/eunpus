@@ -5,15 +5,15 @@ view: doc
 embed: api-doc.html
 ---
 
-백엔드(Service·Admin)와 스펙을 맞추는 연동 계약 — HTTP 엔드포인트·공통 규약·메시지 큐 이벤트·타입 전체.
+DAW-CORE(Service·Admin)와 스펙을 맞추는 연동 계약 — HTTP 엔드포인트·공통 규약·메시지 큐 이벤트·타입 전체.
 정본은 api-docs/openapi.yaml — 이 문서는 build.py 가 만든 export 라 직접 고치지 않는다.
 
 # Blockchain Manager API
 
 `v0.0.1`
 
-블록체인 매니저는 코어 존의 별도 서비스로, 온체인 거래(노드 연동)를 담당한다.
-백엔드(Service·Admin)는 이 HTTP API 로 계정·주소·잔액·거래를 다루고,
+블록체인 매니저는 사내의 별도 서비스로, 온체인 거래(노드 연동)를 담당한다.
+DAW-CORE(Service·Admin)는 이 HTTP API 로 계정·주소·잔액·거래를 다루고,
 온체인 상태 변경은 메시지 큐 이벤트로 받는다.
 
 아래 규약은 **모든 엔드포인트에 공통** 적용된다.
@@ -100,12 +100,12 @@ embed: api-doc.html
 
 ## 멱등
 
-- **생성** — `createAccount` 는 `ref`, `createDepositAddress` 는 `(accountId, asset)` 로 멱등하다. 같은 값으로 재요청하면 매니저가 같은 결과를 돌려준다(백엔드가 별도 멱등키를 넣지 않는다).
+- **생성** — `createAccount` 는 `ref`, `createDepositAddress` 는 `(accountId, asset)` 로 멱등하다. 같은 값으로 재요청하면 매니저가 같은 결과를 돌려준다(DAW-CORE가 별도 멱등키를 넣지 않는다).
 - **출금 제출** — 본문 `externalTxId` 가 멱등 키다. 같은 키로 재제출해도 중복 전송되지 않는다.
 
 ## 이벤트 (메시지 큐)
 
-온체인 상태 변경(입금 감지·출금 확정 등)은 이 HTTP API 가 아니라 **메시지 큐 이벤트**로 온다. 백엔드는 토픽별 컨슈머로 받는다.
+온체인 상태 변경(입금 감지·출금 확정 등)은 이 HTTP API 가 아니라 **메시지 큐 이벤트**로 온다. DAW-CORE는 토픽별 컨슈머로 받는다.
 
 ```mermaid
 sequenceDiagram
@@ -113,9 +113,9 @@ sequenceDiagram
     매니저->>Fireblocks: 폴링 조회
     Fireblocks->>매니저: 상태 응답
     매니저->>큐: publish (3 토픽)
-    큐->>백엔드: consume
-    백엔드->>원장: 반영 (멱등)
-    백엔드->>큐: 오프셋 커밋
+    큐->>DAW-CORE: consume
+    DAW-CORE->>원장: 반영 (멱등)
+    DAW-CORE->>큐: 오프셋 커밋
 ```
 
 | 토픽 | 담는 이벤트 | 파티션 키 |
@@ -171,7 +171,7 @@ sequenceDiagram
 | `FAILED` | 영구 실패 — 사유 동반 (수수료 부족·revert 등) | FAILED | DROPPED_BY_BLOCKCHAIN (reorg 증발) · 그 외 | FAILED (revert) · DROPPED (mempool 누락) | FAILED |
 
 판단은 다섯(`status`)으로 한다. `REJECTED`(일시적) ≠ `FAILED`(영구) 구분이 원장·화면 처리를 가른다.
-`DB tx_stcd` 는 백엔드 상태 대응(제안)이다 — `REJECTED` 는 DB 에 짝이 없어 미정, `CHECKING`·`CANCELLED` 는 DB 고유 상태.
+`DB tx_stcd` 는 DAW-CORE 상태 대응(제안)이다 — `REJECTED` 는 DB 에 짝이 없어 미정, `CHECKING`·`CANCELLED` 는 DB 고유 상태.
 
 ## API
 
@@ -385,7 +385,7 @@ _응답_
 **잔액 조회**
 
 vault 단위 잔액을 가용·대기·잠김으로 돌려준다.
-벤더가 보는 vault 잔액이라 대사(reconciliation) 재료다 — 고객별 귀속 잔액이 아니다. 고객별 잔액은 백엔드 원장이 정본이다.
+벤더가 보는 vault 잔액이라 대사(reconciliation) 재료다 — 고객별 귀속 잔액이 아니다. 고객별 잔액은 DAW-CORE 원장이 정본이다.
 
 _파라미터_
 
@@ -901,6 +901,7 @@ _응답_
 
 - 실제 구조의 기준은 **IVMS101 표준 + 트래블룰 솔루션 스펙**(게이트 쪽 문서)이다.
 - 시나리오별로 실림 여부가 다르다 — 해외(Notabene)=메시지 있음, 국내(VerifyVASP)·개인지갑=없음(`null`).
+- 컴플라이언스가 내보내는 `travelRuleMessage`(암호화 문자열)를 DAW-CORE 가 이 필드로 실어 보낸다 — 정확한 형태는 구현 때 확정.
 
 ### AccountResponse
 
