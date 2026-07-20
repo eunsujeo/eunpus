@@ -58,12 +58,16 @@ sequenceDiagram
     box rgb(224,242,254) DAW-CORE
     participant BE as 출금 유스케이스
     end
+    participant CP as 컴플라이언스 서비스<br/>트래블룰
     box rgb(224,242,254) 블록체인 매니저
     participant BM as 매니저<br/>API · 내부 폴링
     end
     participant MQ as 큐<br/>withdrawal-events
     participant FB as Fireblocks<br/>정책 · Co-signer 서명 · 전파
 
+    BE->>CP: 트래블룰 확인 (Create Withdrawal Check · 거래소 선택 출금)
+    CP-->>BE: verdict · travelRuleMessage — settled 이벤트 (컴플라이언스 1장)
+    Note over BE: APPROVED 여야 제출로 · REJECTED 면 반려
     BE->>BM: submitTransaction — externalTxId · (대상이면) travelRuleMessage
     BM->>FB: 제출 — 정책 통과 → Co-signer 공동서명 → 전파 (6장)
     BM-->>BE: 접수 — 벤더 txId
@@ -92,10 +96,14 @@ sequenceDiagram
     box rgb(224,242,254) DAW-CORE
     participant BE as 입금 컨슈머
     end
+    participant CP as 컴플라이언스 서비스<br/>트래블룰
 
     Note over BE: (사전) createDepositAddress 로 주소 발급 — 고객에게 안내
     CH->>BM: 입금 감지 — 폴링 (4장)
     BM-->>MQ: CONFIRMING → 확정 임계 도달 시 COMPLETED publish
     MQ-->>BE: consume
-    BE->>BE: 귀속(주소↔계정) · 가용 전이 판단 (5장) — 트래블룰 확인은 컴플라이언스 1장
+    BE->>BE: 귀속(주소↔계정) 판단 (5장)
+    BE->>CP: 트래블룰 확인 (Create Deposit Check)
+    CP-->>BE: 대조 결과 (컴플라이언스 1장)
+    BE->>BE: 가용 전이 또는 입금대기·동결 (5장)
 ```
