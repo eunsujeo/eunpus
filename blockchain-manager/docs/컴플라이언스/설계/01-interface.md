@@ -6,18 +6,13 @@ status: To Do
 DAW-CORE가 컴플라이언스 서비스를 호출하는 계약의 초안이다.
 DAW-CORE는 어느 솔루션(VerifyVASP·CODE·Notabene)으로 처리되는지 몰라도 같은 호출 순서로 끝난다. 필드 타입은 이 문서가 아니라 API 문서에서 정의한다.
 
-## 설계 원칙
-
-- **비동기가 기본형** — 동기 솔루션(CODE·Notabene)은 "즉시 완료되는 비동기"로 접는다. DAW-CORE의 처리 분기는 verdict 뿐이다.
-- **멱등** — 멱등키는 `externalTxId`, 블록체인 매니저 제출에 쓰는 DAW-CORE의 출금 건 식별자 그대로다. 같은 키 재호출은 기존 check 를 돌려준다 (같은 키에 다른 내용이면 409).
-
 ## API — DAW-CORE → 컴플라이언스 (4개)
 
 출금 확인 한 건은 **check** 리소스(WithdrawalCheck)로 만들어진다 — `checkId` 로 식별되고, 그 안에 verdict·travelRuleMessage·통과 증적이 담긴다. 1~3번이 이 리소스의 생성·조회·보고다.
 
 | # | 엔드포인트 | 무엇 |
 |---|---|---|
-| 1 | `POST /compliance/travel-rule/withdrawal-checks` | **Create Withdrawal Check** — 출금 확인 개시 (`externalTxId` = 멱등키). 수취 거래소는 **`vaspId`(DAW-CORE가 발급한 VASP 식별자)로 지목**하고, 어느 솔루션으로 보낼지는 컴플라이언스가 스스로 정한다. **거래소 선택 출금 전용** — 개인지갑 출금은 이 API 를 부르지 않는다(등록 지갑 확인은 DAW-CORE가 DAW-CORE DB 의 등록 지갑 목록으로 자체 처리). **항상 `PENDING`(접수)으로 답하고, 최종 verdict 는 큐 이벤트로** — 동기 솔루션도 "즉시 완료되는 비동기"로 접는다 |
+| 1 | `POST /compliance/travel-rule/withdrawal-checks` | **Create Withdrawal Check** — 출금 확인 개시. `externalTxId` 멱등, `vaspId` 로 수취 거래소 지목. 거래소 선택 출금 전용(개인지갑 제외). 항상 `PENDING` 접수 → verdict 는 큐 이벤트로 |
 | 2 | `GET /compliance/travel-rule/withdrawal-checks/{checkId}` | **Get Withdrawal Check** — 이벤트 유실·재기동 복구 전용. 정상 흐름에서는 호출하지 않는다(이벤트가 verdict·travelRuleMessage 를 다 싣는다) |
 | 3 | `POST /compliance/travel-rule/withdrawal-checks/{checkId}/report` | **Report Withdrawal Result** — 온체인 제출 후 tx hash 보고. 비차단 — 이 호출의 실패는 출금 흐름과 무관(재시도만 하면 된다) |
 | 4 | `POST /compliance/travel-rule/deposit-checks` | **Create Deposit Check** — 입금 한 건의 트래블룰 확인. 서비스가 **보관 중인 사전 검증 기록과 대조**하고, 안 되면 능동 조회까지 해서 결과만 돌려준다. 호출 시점·판별 우선순위는 [트래블룰 8장](../../트래블룰/설계/08-gate-port.md), 귀속·가용 전이 판단은 DAW-CORE 몫 |
@@ -30,12 +25,15 @@ DAW-CORE는 어느 솔루션(VerifyVASP·CODE·Notabene)으로 처리되는지 �
 
 VASP 온보딩(Admin 운영 API·매핑·활성화)과 주기 배치는 [3장 운영·내부](03-operations.md)로 뺐다 — 이 장은 DAW-CORE 통합 계약만 다룬다.
 
-## 이벤트 — 컴플라이언스 → DAW-CORE (큐 · 확정)
+## 이벤트 — 컴플라이언스 → DAW-CORE (큐)
 
 비동기 확인의 결과 도착은 **메시지 큐 전용 토픽**으로 알린다 — 매니저→DAW-CORE가 큐인 기존 패턴과 동일하고, 파티션 키도 같은 규칙(계정 단위)이다.
 
-- **토픽**: `compliance`
-- **이벤트**: `withdrawal-check.settled`. settled = check 가 최종 결과(APPROVED·REJECTED — PENDING 만료 포함)에 도달해 더는 바뀌지 않는다
+| 토픽 | 담는 이벤트 | 파티션 키 |
+|---|---|---|
+| `compliance` | 출금 확인 결과 (`withdrawal-check.settled`) | 계정 accountId |
+
+settled = check 가 최종 결과(APPROVED·REJECTED — PENDING 만료 포함)에 도달해 더는 바뀌지 않는다.
 
 메시지 본문은 JSON 이다 — HTTP 응답과 달리 `data`/`meta` 봉투 없이 이 모양 그대로 실린다. 필드 정의는 [API 문서의 SettledEvent](../API/api.md).
 
@@ -50,9 +48,6 @@ VASP 온보딩(Admin 운영 API·매핑·활성화)과 주기 배치는 [3장 �
   "settledAt": "2026-07-16T04:05:06.789Z"
 }
 ```
-- **DAW-CORE는 이벤트만으로 진행한다** — 모든 솔루션이 이 한 경로로 통일된다(출금 확인은 항상 PENDING 접수 → 이벤트 확정). 이벤트에 verdict 와 **travelRuleMessage(값 또는 null)** 가 함께 오므로, APPROVED 면 값이 있으면 동봉해 바로 제출한다 — Get 왕복이 없다.
-- **Get(2번)은 유실·재기동 복구 전용** — 이벤트를 놓쳤을 때 같은 내용을 다시 읽고, 그마저 놓쳐도 PENDING 만료 규칙이 흐름을 끝낸다.
-- **PENDING 만료의 주인은 이 서비스** — 솔루션별 시간 규칙([트래블룰 4장](../../트래블룰/설계/04-policy-and-timing.md))을 알고 있는 쪽이 만료를 가려 REJECTED 로 settled 이벤트를 낸다(스캔 상세는 [3장 배치](03-operations.md)).
 
 ## Verdict 타입
 

@@ -6,12 +6,6 @@ status: To Do
 DAW-CORE가 블록체인 매니저를 호출하는 계약을 한 장으로 조립한다. DAW-CORE는 벤더(Fireblocks)를 모른다 — 아는 것은 아래 API·이벤트·TxStatus 뿐이다.
 이 장은 원천 장들(0·4·5·6·7·8장·[14장 레퍼런스](14-api-reference.md))의 결론만 모은 것이다 — **원천이 바뀌면 이 장을 함께 갱신한다.**
 
-## 설계 원칙
-
-- **응답은 접수, 진행은 이벤트로** — `submitTransaction` 응답은 벤더 tx id 까지다. 상태 진행(위 다섯)은 큐 이벤트로 따라간다.
-- **멱등** — 생성 계열은 멱등키: `createAccount` = f(ref), `createDepositAddress` = f(accountId, asset) — 24시간 안의 재시도는 같은 결과. 제출은 `externalTxId`(DAW-CORE 출금 건 식별자)가 중복을 막고, 완료 이벤트에 그대로 실려 되돌아온다.
-- **boost·cancel 은 DAW-CORE 몫이 아니다** — 막힌 출금은 매니저가 자동 boost 로 접어 처리하고, DAW-CORE는 같은 상태 흐름만 본다(6장).
-
 ## API — DAW-CORE → 매니저 (7개)
 
 시그니처·타입·열거형의 기준은 [14장](14-api-reference.md). 여기는 무엇이 있는지만.
@@ -35,6 +29,24 @@ DAW-CORE가 블록체인 매니저를 호출하는 계약을 한 장으로 조�
 | `deposit-events` | 고객 입금 감지·확정 (DEPOSIT · UNMAPPED) | 고객 accountId |
 | `withdrawal-events` | 외부 출금 상태 변경 (WITHDRAWAL) | 출금 풀 vault 의 accountId |
 | `internal-events` | 내부 이체 완료 (INTERNAL — sweep·delta 는 externalTxId 로 가른다) | 출발 계정 accountId |
+
+메시지 본문은 JSON 이다 — 세 토픽 모두 같은 `ChainEvent` 모양이고, `type`·`status` 로 가른다. 필드 정의는 [14장 ChainEvent](14-api-reference.md).
+
+```json
+{
+  "type": "WITHDRAWAL",
+  "txId": "1a2b3c...",
+  "txHash": "0x9f3a...",
+  "externalTxId": "WD-000123",
+  "accountId": "acct_01H8X",
+  "asset": "ETH",
+  "to": "0x896B...0b9b",
+  "status": "COMPLETED",
+  "numOfConfirmations": 12,
+  "subStatus": null,
+  "networkStatus": null
+}
+```
 
 막힘(오래 안 풀리는 건)은 이벤트가 아니라 별도 경보 채널이다([4장 막힘 점검](04-detect-confirm.md#막힘-점검-오래-confirming-인-건-골라내기)).
 
