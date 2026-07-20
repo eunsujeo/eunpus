@@ -61,7 +61,7 @@ sequenceDiagram
     participant FB as Fireblocks
     end
     box rgb(224,242,254) 우리 측 · 수신 API 0줄
-    participant PW as 폴링 워커
+    participant PW as 웹훅 수신
     participant BE as Service 백엔드
     end
 
@@ -72,10 +72,10 @@ sequenceDiagram
     FB->>NB: 거래 상세
     NB-->>FB: 대조·판정 (Inbound delay 30초)
     Note over FB: Post-Screening Accept / Freeze (4장)
-    PW->>FB: 폴링 — 결과 상태만 수신 → 7.5 합류점
+    FB->>PW: 웹훅 — 결과 상태만 수신 → 7.5 합류점
 ```
 
-7.3(직접 연동 입금)이 요구하던 **우리 수신 사슬(Enclave → 컴플라이언스 서비스 수신 콜백)이 사라지고**, 7.4 처럼 폴링으로 결과만 받는다. 송신측의 VerifyVASP 사전 통지는 게이트웨이가 받아 두었다가 도착한 입금과 대조한다.
+7.3(직접 연동 입금)이 요구하던 **우리 수신 사슬(Enclave → 컴플라이언스 서비스 수신 콜백)이 사라지고**, 7.4 처럼 웹훅으로 결과만 받는다. 송신측의 VerifyVASP 사전 통지는 게이트웨이가 받아 두었다가 도착한 입금과 대조한다.
 
 ## 직접 연동(7.1/7.3)과의 대비
 

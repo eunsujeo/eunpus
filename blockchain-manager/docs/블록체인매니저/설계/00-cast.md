@@ -57,7 +57,7 @@ flowchart LR
       direction TB
       SVCBE["Service 백엔드<br/>유스케이스 · 큐 컨슈머"]
       ADMBE["Admin 백엔드<br/>정책·승인·키 운영·동결·rebalance"]
-      BM["블록체인 매니저 — 별도 서비스<br/>API·메시지 큐 제공 · Fireblocks 연동 (SDK 래핑·체인 라우팅)<br/>내부 폴링 — 입금·상태 감지 (4·6장)"]
+      BM["블록체인 매니저 — 별도 서비스<br/>API·메시지 큐 제공 · Fireblocks 연동 (SDK 래핑·체인 라우팅)<br/>웹훅 수신 — 입금·상태 감지 (4·6장)"]
       MQ["메시지 큐<br/>deposit·withdrawal·internal"]
       BDB[("DAW-CORE DB<br/>고객 원장 · 출금 지시 상태")]
       MDB[("블록체인 매니저 DB<br/>ref↔vault↔주소 매핑 · 이벤트 체크포인트")]
@@ -79,8 +79,8 @@ flowchart LR
     BM --- MDB
     FBV <-->|서명 요청 · MPC share| COS
     COS -->|승인 질의| CB
-    BM -->|주기 조회 · outbound| FBV
-    FBV -.->|webhook · 보조| BM
+    BM -->|제출·조회 · outbound| FBV
+    FBV -.->|웹훅 — 상태 변경 push| BM
     FBV --> EVM
 
     classDef svc fill:#dbeafe,stroke:#2563eb;
@@ -107,13 +107,13 @@ flowchart LR
 - DB 는 둘 — **매핑·이벤트 체크포인트는 블록체인 매니저 DB**, **원장·출금 지시 상태는 DAW-CORE DB**.
 - 서명은 벤더 단독이 아니다. 보안 존(SGX/TEE)의 **API Co-signer** 가 키 share 하나를 들고 공동서명하고, 서명 직전 **Callback Handler** 가 승인·거부를 건다.
 - **벤더 정책(TAP)의 편집·게시는 별도의 정책 관리 서비스가 대행한다.** 정책 편집용 벤더 API user 는 매니저의 거래 제출용과 자격부터 분리하고, 게시 발효는 벤더 거버넌스(Admin Quorum + Owner) 승인이 최종 관문이다. 상세는 [정책 관리](../../정책관리/설계/00-scope.md) — 이 워크스루 범위 밖.
-- 입금·상태 감지는 **매니저 내부 폴링**(주기 조회)이고 webhook 은 보조다(4장). 감지 결과는 **메시지 큐(deposit·withdrawal·internal)** 로 백엔드에 전달된다.
+- 입금·상태 감지는 **Fireblocks 웹훅**(매니저가 수신·서명 검증)이다 — 유실은 재전송·대사가 메운다(4장). 감지 결과는 **메시지 큐(deposit·withdrawal·internal)** 로 백엔드에 전달된다.
 
 ### DB 를 둘로 나눈 이유
 
 두 DB 는 담는 진실의 성격이 다르다.
 
-**매니저 DB — 벤더 번역·운영 상태.** vaultId·주소 매핑과 폴링 커서를 담는다. 매니저가 이걸 쥐는 이유는 둘이다.
+**매니저 DB — 벤더 번역·운영 상태.** vaultId·주소 매핑과 이벤트 체크포인트를 담는다. 매니저가 이걸 쥐는 이유는 둘이다.
 
 - 백엔드는 vaultId 를 몰라야 한다. 그래야 벤더나 매니저를 바꿔도 백엔드는 손대지 않는다(9장).
 - 유일성을 영구 보장한다. 벤더 멱등키는 24시간 뒤 만료되지만, DB 의 UNIQUE 제약은 그 뒤에도 중복을 막는다(1·2장).
@@ -129,7 +129,7 @@ flowchart LR
 | 고객 계정 생성 | createVaultAccount | ● | | | | `createAccount` | S | 1장 |
 | 입금 주소 **생성** | createVaultAsset · 자산 지갑 활성화 (EVM=단일) | ● | ● | | | `createDepositAddress` | S | 2장 |
 | 입금 주소 **조회** | (블록체인 매니저 DB 읽기 · Fireblocks 왕복 없음 — API 1홉) | | ● | | ● | `depositAddressOf` | S | 3장 |
-| 수신·확정 이벤트 | 매니저 내부 폴링 (webhook 보조) | | ● | ● | | `onChainEvent` — 메시지 큐 publish/consume | S | 4장 |
+| 수신·확정 이벤트 | 웹훅 (매니저가 수신 · resend 복구) | | ● | ● | | `onChainEvent` — 메시지 큐 publish/consume | S | 4장 |
 | 출금 제출 | createTransaction | | | ● | | `submitTransaction` | S | 6장 |
 | 거래 상세 조회 | getTransactionById | | | ● | ● | `transactionOf` | S·A | 6장 |
 | 막힌 출금 재촉 | boost (정책 내 자동) | | | ● | ● | `boost`(자동) · `cancel`(예외) | A | 6장 |

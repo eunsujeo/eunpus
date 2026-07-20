@@ -82,7 +82,7 @@ sequenceDiagram
     participant BE as DAW-CORE(Service)<br/>귀속 · 가용 전이
     end
     box rgb(220,252,231) 블록체인 매니저
-    participant BM as 폴링 → deposit-events
+    participant BM as 웹훅 수신 → deposit-events
     end
 
     SV->>CV: Asset Transfer Authorization (CODE · 동기)

@@ -51,7 +51,7 @@ fun transactionOf(txId: String): Transfer?                     // 단건 조회 
 ```
 
 - `balanceOf` 가 주는 값은 **vault 단위 벤더/온체인 잔액**이라 대사(reconciliation)에 쓰는 값이다 — 고객별 귀속 잔액이 아니다. 고객별 잔액·귀속은 백엔드가 원장으로 가진다(8·13장).
-- `after`·`before` 는 **거래 시각(createdAt) 기준** 시간창이다(최신순 이력). 매니저 내부의 lastUpdated 감지 폴링과는 별개 — 목록 조회는 안정적 createdAt 정렬을 쓴다.
+- `after`·`before` 는 **거래 시각(createdAt) 기준** 시간창이다(최신순 이력). 매니저의 웹훅 감지와는 별개 — 목록 조회는 안정적 createdAt 정렬을 쓴다.
 
 ## 출금 API
 
@@ -72,11 +72,11 @@ fun onChainEvent(topic: Topic, handler: (ChainEvent) -> Unit)    // 4장 — 토
 
 | 토픽 | 담는 이벤트 | 파티션 키 | 소비 |
 |---|---|---|---|
-| `deposit-events` | 고객 입금 감지·확정 (DEPOSIT · UNMAPPED) | 고객 accountId | 입금 컨슈머 (5장) |
+| `deposit-events` | 고객 입금 감지·확정 (DEPOSIT) | 고객 accountId | 입금 컨슈머 (5장) |
 | `withdrawal-events` | 외부 출금 상태 변경 (WITHDRAWAL) | 출금 풀 vault 의 accountId | 출금 컨슈머 (6장) |
-| `internal-events` | 내부 이체 완료 (INTERNAL — sweep·delta 구분은 externalTxId 로) | 출발 계정 accountId | 정산 컨슈머 (5·10장) |
+| `internal-events` | 내부 이체 완료 (INTERNAL — delta 정산만 · sweep 은 매니저 내부라 싣지 않는다) | 출발 계정 accountId | 정산 컨슈머 (10장) |
 
-- 같은 계정의 순서는 파티션이 보장한다. sweep·delta 같은 업무 의도는 매니저가 모르고(`INTERNAL` 까지만), 백엔드가 externalTxId 로 가른다(4·10장).
+- 같은 계정의 순서는 파티션이 보장한다. `internal-events` 에 실리는 내부 이체는 delta 뿐이다 — sweep 은 매니저 내부 동작이라 이벤트가 없다(4·5장).
 - 판단은 `status`(TxStatus 다섯)로 한다. `subStatus`·`networkStatus` 는 분기가 필요한 최소 집합만 보고 나머지는 로깅한다(4장).
 
 ## 공통 타입
@@ -165,7 +165,7 @@ class TravelRule                       // 게이트가 만든 암호화 산출�
 enum class Topic { deposit, withdrawal, internal }   // 토픽명은 deposit-events 등
 ```
 
-- **EventType** — `DEPOSIT`(고객 입금) · `UNMAPPED`(귀속 불명·보류) · `WITHDRAWAL`(외부 출금) · `INTERNAL`(내부 이체). 매니저가 발신자가 우리 vault 인지로 가른다(4장).
+- **EventType** — `DEPOSIT`(고객 입금) · `WITHDRAWAL`(외부 출금) · `INTERNAL`(내부 이체). 매니저가 발신자가 우리 vault 인지로 가른다(4장). 귀속 불명 입금은 큐 대신 별도 알림 채널(4장).
 - **TxStatus** (공통 상태 다섯, 4장 기준) — `SUBMITTED`(제출·체인 미등장, 출금만) · `CONFIRMING`(체인 등장·컨펌 누적) · `COMPLETED`(DCCP 임계 도달·확정) · `REJECTED`(거부·차단, **일시적** — 사람 개입 여지) · `FAILED`(**영구** 실패). REJECTED ≠ FAILED 구분이 원장·화면 처리를 가른다.
 - **PeerType** — `ADDRESS`(온체인 주소) · `ACCOUNT`(우리 계정) · `WHITELISTED`(사전 등록 지갑). 벤더 `TransferPeerPathType`(ONE_TIME_ADDRESS · VAULT_ACCOUNT · EXTERNAL_WALLET)로 매핑(6장).
 

@@ -145,7 +145,7 @@ sequenceDiagram
     participant BE as DAW-CORE(Service)<br/>귀속 · 가용 전이
     end
     box rgb(220,252,231) 블록체인 매니저
-    participant BM as 폴링 → deposit-events
+    participant BM as 웹훅 수신 → deposit-events
     end
 
     SV->>HUB: 전송 전 사전 검증 요청
@@ -183,9 +183,9 @@ sequenceDiagram
 - **우리 Enclave vs 중앙** — 공개 HTTPS 를 받는 것은 우리 Enclave(벤더 요건)이고 복호화도 여기서 한다. 중앙 서버는 송신측과 우리 Enclave 사이를 중계만 한다.
 - **CODE 회원(빗썸 등) 발 입금**도 상호연동으로 VerifyVASP 인바운드로 도착한다 — 위 흐름 동일. 미확인 입금의 TXID 역추적이 경유 경로에서 되는지는 6장 상호연동 실효 확인 대상(안 되면 CODE 직접 7.11). 상세 시퀀스는 부록 A(11장).
 
-## 7.4 입금 ← 해외 (Notabene · Fireblocks) — 벤더주도, 우리는 폴링만
+## 7.4 입금 ← 해외 (Notabene · Fireblocks) — 벤더주도, 우리는 웹훅 수신만
 
-입금 쪽 트래블룰에는 우리 코드가 없다 — Fireblocks 와 Notabene 가 감지·스크리닝·판정·조치를 벤더 안에서 끝내고, 우리는 폴링으로 결과 상태만 받는다. 동결 건은 REJECTED 계열로 나타나 기존 입금 파이프라인이 그대로 흡수한다.
+입금 쪽 트래블룰에는 우리 코드가 없다 — Fireblocks 와 Notabene 가 감지·스크리닝·판정·조치를 벤더 안에서 끝내고, 우리는 웹훅으로 결과 상태만 받는다. 동결 건은 REJECTED 계열로 나타나 기존 입금 파이프라인이 그대로 흡수한다.
 
 ```mermaid
 sequenceDiagram
@@ -195,7 +195,7 @@ sequenceDiagram
     participant NB as Notabene<br/>암호화 보관 · FB 는 키 없음
     end
     box rgb(224,242,254) 우리 측
-    participant PW as 폴링 워커
+    participant PW as 웹훅 수신
     participant BE as Service 백엔드<br/>가용 전이 게이트
     end
 
@@ -205,7 +205,7 @@ sequenceDiagram
     FB->>NB: 거래 상세 전송
     NB-->>FB: 상태 판정 — Inbound delay 기본 30초 대기
     FB->>FB: Post-Screening Policy — Accept=통과 · Reject·Freeze=자금 동결
-    PW->>FB: 폴링 — 결과 상태 수신
+    FB->>PW: 웹훅 — 결과 상태 수신
     alt Accept
         PW->>BE: 입금 후보 — 도착 후 판별(7.5)로 넘김
     else Reject · Freeze
@@ -213,7 +213,7 @@ sequenceDiagram
     end
 ```
 
-- **벤더주도** — 감지·스크리닝·판정·조치가 벤더 안에서 끝나고, 우리 폴링 워커는 결과 상태만 받는다. VerifyVASP 입금(7.3)처럼 우리 수신 사슬이 먼저 응답하는 왕복이 없다.
+- **벤더주도** — 감지·스크리닝·판정·조치가 벤더 안에서 끝나고, 우리 웹훅 수신은 결과 상태만 받는다. VerifyVASP 입금(7.3)처럼 우리 수신 사슬이 먼저 응답하는 왕복이 없다.
 - **동결 = REJECTED 계열** — 잔액 미반영·락업, 해제는 Admin unfreeze 운영으로만. 감지·동결·Admin unfreeze 는 이미 블록체인매니저 설계의 입금 흐름이 갖춘 경로이므로 새 코드가 없다.
 - **시간 규칙** — Inbound delay(기본 30초) 안에 판정이 안 나면 기본 설정은 통과(자금 방출). 이 기본값·방출 규칙은 4장.
 
@@ -225,7 +225,7 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     box rgb(220,252,231) 블록체인 매니저
-    participant BM as 폴링 → deposit-events
+    participant BM as 웹훅 수신 → deposit-events
     end
     box rgb(224,242,254) 우리 측
     participant BE as DAW-CORE(Service)<br/>매칭·귀속 · 가용 전이
@@ -320,7 +320,7 @@ sequenceDiagram
     participant NB as Notabene SaaS
     end
     box rgb(220,252,231) 블록체인 매니저
-    participant BM as 폴링 → deposit-events · Fireblocks 커스터디
+    participant BM as 웹훅 수신 → deposit-events · Fireblocks 커스터디
     end
     box rgb(224,242,254) 우리 측
     participant GT as 컴플라이언스 서비스<br/>수신 웹훅 · 솔루션 조회
@@ -391,7 +391,7 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     box rgb(220,252,231) 블록체인 매니저
-    participant BM as 폴링 → deposit-events
+    participant BM as 웹훅 수신 → deposit-events
     end
     box rgb(224,242,254) 우리 측
     participant BE as Service 백엔드<br/>가용 전이 게이트
@@ -466,7 +466,7 @@ sequenceDiagram
     participant BE as DAW-CORE(Service)<br/>귀속 · 가용 전이
     end
     box rgb(220,252,231) 블록체인 매니저
-    participant BM as 폴링 → deposit-events
+    participant BM as 웹훅 수신 → deposit-events
     end
 
     SV->>CV: Asset Transfer Authorization (사전)

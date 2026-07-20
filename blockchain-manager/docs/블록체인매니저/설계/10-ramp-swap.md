@@ -57,7 +57,7 @@ sequenceDiagram
         App->>BM: 배치 키(externalTxId)로 벤더 거래 조회
         Note over App,BM: 있으면 그대로 대기 · 없으면 같은 배치 키로 재제출 — 중복 차단이라 안전
     end
-    Note over BM,MQ: 이하는 제출이 살아 있는 경우 — 매니저 내부 폴링이 확정을 잡으면
+    Note over BM,MQ: 이하는 제출이 살아 있는 경우 — 웹훅 알림으로 확정을 잡으면
     BM->>MQ: publish — onChainEvent (전송 확정 · externalTxId 동반)
     MQ-->>App: consume — externalTxId 로 배치 요청 대조 (4장)
     App->>DL: processing → settled 일괄 전환

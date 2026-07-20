@@ -138,7 +138,7 @@ sequenceDiagram
             NET->>CP: 상대의 tx hash 보고 인입
             CP->>CDB: 같은 기록에 txHash 갱신 — 내부 처리
         end
-        BM->>BM: 온체인 입금 감지·확정 (내부 폴링)
+        BM->>BM: 온체인 입금 감지·확정 (웹훅 수신)
         BM-->>MQ: deposit-events 발행 — 자금 도착·확정
         MQ-->>BE: consume
         BE->>BE: 주소↔계정 귀속 확인 — 우리 고객 계정인지
@@ -155,7 +155,7 @@ sequenceDiagram
         NET->>NET: 사전 통지 수신 — 벤더 수신함에 보류
         NET->>NET: 상대 VASP 온체인 전송 — 체인 confirmation 진행
         NET->>NET: 자금 도착 — Fireblocks 가 거래 상세 전달, 벤더가 대조·판정 (인바운드 API 없음)
-        BM->>BM: 온체인 입금 감지·확정 (내부 폴링)
+        BM->>BM: 온체인 입금 감지·확정 (웹훅 수신)
         BM-->>MQ: deposit-events 발행 — 벤더 판정이 접힌 상태 (동결이면 그 계열 상태)
         MQ-->>BE: consume
         BE->>BE: 주소↔계정 귀속 확인 — 우리 고객 계정인지 (없으면 미확인 입금 처리)

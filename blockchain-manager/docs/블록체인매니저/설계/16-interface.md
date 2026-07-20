@@ -26,9 +26,9 @@ DAW-CORE가 블록체인 매니저를 호출하는 계약을 한 장으로 조�
 
 | 토픽 | 담는 이벤트 | 파티션 키 |
 |---|---|---|
-| `deposit-events` | 고객 입금 감지·확정 (DEPOSIT · UNMAPPED) | 고객 accountId |
+| `deposit-events` | 고객 입금 감지·확정 (DEPOSIT) | 고객 accountId |
 | `withdrawal-events` | 외부 출금 상태 변경 (WITHDRAWAL) | 출금 풀 vault 의 accountId |
-| `internal-events` | 내부 이체 완료 (INTERNAL — sweep·delta 는 externalTxId 로 가른다) | 출발 계정 accountId |
+| `internal-events` | 내부 이체 완료 (INTERNAL — delta 정산만 · sweep 은 매니저 내부라 싣지 않는다) | 출발 계정 accountId |
 
 메시지 본문은 JSON 이다 — 세 토픽 모두 같은 `ChainEvent` 모양이고, `type`·`status` 로 가른다. 필드 정의는 [14장 ChainEvent](14-api-reference.md).
 
@@ -54,13 +54,13 @@ DAW-CORE가 블록체인 매니저를 호출하는 계약을 한 장으로 조�
 
 벤더 내부 상태는 매니저가 이 다섯으로 번역한다. 뜻·원어 대응·subStatus 는 [4장 기준 표](04-detect-confirm.md#공통-상태-다섯-txstatus-기준)가 원천이다.
 
-| TxStatus | 뜻 |
-|---|---|
-| `SUBMITTED` | 제출됨 — 벤더가 서명·전파 준비 중, 아직 체인 미등장 (출금에서만 관찰) |
-| `CONFIRMING` | 체인에 등장, confirmation 누적 중 — 아직 미확정 |
-| `COMPLETED` | 확정 — 확정 정책(DCCP) 임계 도달 |
-| `REJECTED` | 거부·차단 — 정책·스크리닝에 막힘. **임시**(사람 개입 여지 — 입금 동결은 unfreeze 대기) |
-| `FAILED` | **영구 실패** — 사유 동반 (수수료 부족·revert 등) |
+| TxStatus | 뜻 | 블록체인 상태 (Pending → Confirmed → Finalized) |
+|---|---|---|
+| `SUBMITTED` | 제출됨 — 벤더가 서명·전파 준비 중, 아직 체인 미등장 (출금에서만 관찰) | 아직 없음 → 전파되면 Pending |
+| `CONFIRMING` | 체인에 등장, confirmation 누적 중 — 아직 미확정 | Confirmed — 블록에 포함, finality 전 |
+| `COMPLETED` | 확정 — 확정 정책(DCCP) 임계 도달 | Finalized |
+| `REJECTED` | 거부·차단 — 정책·스크리닝에 막힘. **임시**(사람 개입 여지 — 입금 동결은 unfreeze 대기) | 출금 차단은 체인에 없음 · 입금 동결은 Finalized |
+| `FAILED` | **영구 실패** — 사유 동반 (수수료 부족·revert 등) | Pending 에서 증발 · revert 는 Confirmed 이후 |
 
 ## 시퀀스 — 출금 한 사이클
 
@@ -73,7 +73,7 @@ sequenceDiagram
     participant CP as 컴플라이언스 서비스<br/>트래블룰
     participant MQC as 큐<br/>compliance 토픽
     box rgb(224,242,254) 블록체인 매니저
-    participant BM as 매니저<br/>API · 내부 폴링
+    participant BM as 매니저<br/>API · 웹훅 수신
     end
     participant MQ as 큐<br/>withdrawal-events
     participant FB as Fireblocks<br/>정책 · Co-signer 서명 · 전파
@@ -86,8 +86,8 @@ sequenceDiagram
     BE->>BM: submitTransaction — externalTxId · (대상이면) travelRuleMessage
     BM->>FB: 제출 — 정책 통과 → Co-signer 공동서명 → 전파 (6장)
     BM-->>BE: 접수 — 벤더 txId
-    loop 내부 폴링 (4장)
-        BM->>FB: 변경된 tx 조회
+    loop 웹훅 수신 (4장)
+        FB->>BM: 상태 변경 알림 push
         BM-->>MQ: 상태 이벤트 publish — SUBMITTED → CONFIRMING → …
     end
     MQ-->>BE: consume — externalTxId 로 우리 출금 건 대응
@@ -105,7 +105,7 @@ sequenceDiagram
     autonumber
     participant CH as 온체인
     box rgb(224,242,254) 블록체인 매니저
-    participant BM as 매니저<br/>내부 폴링
+    participant BM as 매니저<br/>웹훅 수신
     end
     participant MQ as 큐<br/>deposit-events
     box rgb(224,242,254) DAW-CORE
@@ -114,7 +114,7 @@ sequenceDiagram
     participant CP as 컴플라이언스 서비스<br/>트래블룰
 
     Note over BE: (사전) createDepositAddress 로 주소 발급 — 고객에게 안내
-    CH->>BM: 입금 감지 — 폴링 (4장)
+    CH->>BM: 입금 감지 — 웹훅 (4장)
     BM-->>MQ: CONFIRMING → 확정 임계 도달 시 COMPLETED publish
     MQ-->>BE: consume
     BE->>BE: 귀속(주소↔계정) 판단 (5장)

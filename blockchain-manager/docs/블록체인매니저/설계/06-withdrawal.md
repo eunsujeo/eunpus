@@ -72,7 +72,7 @@ sequenceDiagram
     RL->>CH: 전파 — relay 가 발신자로서 제출하고 gas 를 낸다<br/>vault 몫의 서명(벤더 share + co-signer share)은 그 안의 승인으로 실린다
     CH-->>FB: 블록 누적 → 확정
     Note over BM,FB: 다시 오프체인
-    BM->>FB: 매니저 내부 폴링 — lastUpdated 커서로 변경된 tx 조회 (4장)
+    FB->>BM: 웹훅 — 상태 변경 push · 서명 검증 후 수신 (4장)
     BM->>MQ: onChainEvent publish → withdrawal-events — 상태 변경 (파티션 키 = 보내는 출금 풀 vault 의 accountId)
     MQ->>QC: consume — 컨슈머 그룹으로 인스턴스 분배
     QC->>DB: 상태 갱신 — txId 로 대조, 전파 → 누적 → 확정. 처리 성공 후 오프셋 커밋
@@ -136,7 +136,7 @@ fee 부족이 아니라 **relay 가 gas 를 못 대거나 거절**(잔고 소진
 ```mermaid
 sequenceDiagram
     autonumber
-    participant SW as 막힘 점검<br/>매니저 내부 폴링 · 4장
+    participant SW as 막힘 점검<br/>매니저 내부 주기 작업 · 4장
     box rgb(220,252,231) 블록체인 매니저 — 별도 서비스
     participant BM as 블록체인 매니저 API
     end
@@ -154,12 +154,12 @@ sequenceDiagram
     else relay 가 gas 못 댐 또는 최대 시도까지 해도 안 풀림
         Note over SW: 경보 — 사람이 relay 복구(gas 잔고 충전 등) 또는 수동 cancel 판단
     end
-    Note over BM,FB: 이후 매니저 내부 폴링(4장)이 원래 건 종결·대체 건 확정을 큐에 publish
+    Note over BM,FB: 이후 웹훅 알림(4장)이 원래 건 종결·대체 건 확정을 실어 오고 매니저가 큐에 publish
 ```
 
 막힌 출금의 처리를 요약하면:
 
-- **감지** — 매니저 내부 폴링의 막힘 점검이 매니저 DB 에서 골라낸다(4장).
+- **감지** — 매니저 내부 주기 작업(막힘 점검)이 매니저 DB 에서 골라낸다(4장).
 - **자동 boost** — fee 부족이면 정책 내에서 매니저가 boost 를 자동 트리거한다. 대체 거래는 발신자인 relay 가 만들어 전파하고 gas 도 relay 가 낸다.
 - **예외** — relay 가 gas 를 못 대거나(거절 포함), boost 를 최대 시도까지 해도 안 풀리면 경보한다 — 사람이 relay 복구·수동 처리. cancel 은 이때의 최후수단이다.
 

@@ -94,7 +94,7 @@ flowchart TB
     ABE["backend/admin"]
     DOM["domain<br/>값 객체 — 의존 0"]
     MQ["메시지 큐<br/>deposit·withdrawal·internal"]
-    BM["블록체인 매니저 — 별도 서비스<br/>내부 Fireblocks 연동 · 내부 폴링"]
+    BM["블록체인 매니저 — 별도 서비스<br/>내부 Fireblocks 연동 · 웹훅 수신"]
     FAKE["fake 매니저<br/>테스트용 — 같은 API·큐 이벤트 계약"]
     SDK["Fireblocks SDK (외부)"]
 
@@ -127,7 +127,7 @@ flowchart TB
 0장에서 본 배치를 확장 관점으로 다시 봅니다.
 
 - Fireblocks 기준이라 서명·키·노드·전파는 **벤더 안**이고, 이쪽엔 **DAW-CORE와 블록체인 매니저, 둘로 나뉜 DB**만 남습니다.
-- Fireblocks 주기 조회(폴링)·webhook 보조·상태 판정은 전부 매니저 내부이고, 매니저가 메시지 큐(deposit·withdrawal·internal)에 publish 한 이벤트를 백엔드가 consume 합니다.
+- Fireblocks 웹훅 수신·상태 판정은 전부 매니저 내부이고, 매니저가 메시지 큐(deposit·withdrawal·internal)에 publish 한 이벤트를 백엔드가 consume 합니다.
 - 직접 노드·HSM·인덱서를 운영하지 않으므로, 새 EVM 체인이 붙어도 **인프라 배치는 그대로**입니다 — 벤더가 그 체인을 지원하기만 하면 됩니다.
 
 ```mermaid
@@ -137,7 +137,7 @@ flowchart LR
       AAPI["Admin 백엔드<br/>정책·승인·rebalance"]
       DB[("DAW-CORE DB<br/>고객 원장 · 출금 지시 상태")]
       MQ["메시지 큐<br/>deposit·withdrawal·internal"]
-      BM["블록체인 매니저 — 별도 서비스<br/>내부 Fireblocks 연동 · 내부 폴링 (4·6장)"]
+      BM["블록체인 매니저 — 별도 서비스<br/>내부 Fireblocks 연동 · 웹훅 수신 (4·6장)"]
       BMDB[("블록체인 매니저 DB<br/>커서 · 주소 매핑 · 체크포인트")]
     end
     FB["Fireblocks (벤더 SaaS)<br/>vault · MPC 서명 · TAP 정책 · 노드·전파"]

@@ -110,8 +110,7 @@ DAW-CORE(Service·Admin)는 이 HTTP API 로 계정·주소·잔액·거래를 �
 ```mermaid
 sequenceDiagram
     체인->>Fireblocks: 온체인 상태 변경
-    매니저->>Fireblocks: 폴링 조회
-    Fireblocks->>매니저: 상태 응답
+    Fireblocks->>매니저: 웹훅 알림 push (서명 검증 후 수신)
     매니저->>큐: publish (3 토픽)
     큐->>DAW-CORE: consume
     DAW-CORE->>원장: 반영 (멱등)
@@ -120,11 +119,11 @@ sequenceDiagram
 
 | 토픽 | 담는 이벤트 | 파티션 키 |
 |---|---|---|
-| `deposit-events` | 고객 입금 (`DEPOSIT` · `UNMAPPED`) | 고객 accountId |
+| `deposit-events` | 고객 입금 (`DEPOSIT`) | 고객 accountId |
 | `withdrawal-events` | 외부 출금 (`WITHDRAWAL`) | 출금 풀 vault 의 accountId |
-| `internal-events` | 내부 이체 (`INTERNAL`) | 출발 계정 accountId |
+| `internal-events` | 내부 이체 (`INTERNAL` — delta 정산만 · sweep 은 매니저 내부라 싣지 않는다) | 출발 계정 accountId |
 
-`UNMAPPED`(귀속 불명)은 대응되는 고객 계정이 없어 이벤트의 `accountId` 가 null 일 수 있다.
+귀속 불명 입금(매핑에 없는 주소)은 큐에 싣지 않는다 — 별도 알림 채널로 통지된다.
 
 **ChainEvent** — 큐로 오는 이벤트 형태 (타입 [ChainEvent](#chainevent)):
 
@@ -144,7 +143,7 @@ sequenceDiagram
 }
 ```
 
-- [`type`](#eventtype) — DEPOSIT · UNMAPPED · WITHDRAWAL · INTERNAL
+- [`type`](#eventtype) — DEPOSIT · WITHDRAWAL · INTERNAL
 - [`status`](#txstatus) — 공통 상태 다섯 (아래 "상태 (TxStatus) 기준")
 - `txHash` — 전파 후 채워짐
 - `subStatus` — 벤더 상세 사유. 분기 필요한 최소 집합만 보고 나머지는 로깅한다
@@ -162,13 +161,13 @@ sequenceDiagram
 
 거래·이벤트의 `status` 는 이 다섯이 기준이다. 벤더 원어는 매니저가 이 다섯으로 번역하고, `subStatus`·`networkStatus` 는 분기 필요한 최소 집합만 본다.
 
-| 공통 상태 | 뜻 | 벤더(Fireblocks) 원어 | 대표 subStatus | networkStatus | DB `tx_stcd` |
-|---|---|---|---|---|---|
-| `SUBMITTED` | 제출됨 — 서명·전파 준비 중, 아직 체인 미등장 (출금만 관찰) | PENDING_SIGNATURE · QUEUED · BROADCASTING | — | 서명 단계엔 없음 → BROADCASTING | PENDING |
-| `CONFIRMING` | 전파 후 체인 등장, 컨펌 누적 중 (미확정) | CONFIRMING | PENDING_BLOCKCHAIN_CONFIRMATIONS | CONFIRMING | PENDING |
-| `COMPLETED` | 확정 — 확정 정책(DCCP) 임계 컨펌 도달 = finality | COMPLETED | CONFIRMED | CONFIRMED | CONFIRMED |
-| `REJECTED` | 거부·차단 — 정책·스크리닝에 막힘. 영구 실패가 아니라 사람 개입 여지 | REJECTED · BLOCKED | AUTO_FREEZE · FROZEN_MANUALLY · REJECTED_AML_SCREENING | 출금(전파 전 차단)은 없음 · 입금 동결은 CONFIRMED | — (미정) |
-| `FAILED` | 영구 실패 — 사유 동반 (수수료 부족·revert 등) | FAILED | DROPPED_BY_BLOCKCHAIN (reorg 증발) · 그 외 | FAILED (revert) · DROPPED (mempool 누락) | FAILED |
+| 공통 상태 | 뜻 | 블록체인 상태 (Pending → Confirmed → Finalized) | 벤더(Fireblocks) 원어 | 대표 subStatus | networkStatus | DB `tx_stcd` |
+|---|---|---|---|---|---|---|
+| `SUBMITTED` | 제출됨 — 서명·전파 준비 중, 아직 체인 미등장 (출금만 관찰) | 아직 없음 → 전파되면 Pending | PENDING_SIGNATURE · QUEUED · BROADCASTING | — | 서명 단계엔 없음 → BROADCASTING | PENDING |
+| `CONFIRMING` | 전파 후 체인 등장, 컨펌 누적 중 (미확정) | Confirmed — 블록에 포함, finality 전 | CONFIRMING | PENDING_BLOCKCHAIN_CONFIRMATIONS | CONFIRMING | PENDING |
+| `COMPLETED` | 확정 — 확정 정책(DCCP) 임계 컨펌 도달 = finality | Finalized | COMPLETED | CONFIRMED | CONFIRMED | CONFIRMED |
+| `REJECTED` | 거부·차단 — 정책·스크리닝에 막힘. 영구 실패가 아니라 사람 개입 여지 | 출금 차단은 체인에 없음 · 입금 동결은 Finalized | REJECTED · BLOCKED | AUTO_FREEZE · FROZEN_MANUALLY · REJECTED_AML_SCREENING | 출금(전파 전 차단)은 없음 · 입금 동결은 CONFIRMED | — (미정) |
+| `FAILED` | 영구 실패 — 사유 동반 (수수료 부족·revert 등) | Pending 에서 증발 · revert 는 Confirmed 이후 | FAILED | DROPPED_BY_BLOCKCHAIN (reorg 증발) · 그 외 | FAILED (revert) · DROPPED (mempool 누락) | FAILED |
 
 판단은 다섯(`status`)으로 한다. `REJECTED`(일시적) ≠ `FAILED`(영구) 구분이 원장·화면 처리를 가른다.
 `DB tx_stcd` 는 DAW-CORE 상태 대응(제안)이다 — `REJECTED` 는 DB 에 짝이 없어 미정, `CHECKING`·`CANCELLED` 는 DB 고유 상태.
@@ -674,7 +673,7 @@ _응답_
 
 거래 이력을 **거래 시각(createdAt) 기준**으로 조회한다 — 기본 최신순, `order=asc` 면 과거→최신. 기간(`after`/`before`)·상태로 좁히고 커서로 페이지네이션한다.
 `order=asc` + `before` 생략 조합이면 마지막 `nextCursor` 를 보관했다가 재요청해 새로 쌓인 내역만 이어받는 증분 폴링이 된다.
-상태 변경 실시간 감지는 이 목록이 아니라 이벤트 큐가 담당한다(매니저 내부의 lastUpdated 감지 폴링과 별개).
+상태 변경 실시간 감지는 이 목록이 아니라 이벤트 큐가 담당한다(매니저의 웹훅 감지와 별개).
 
 ```bash
 curl "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/transactions?after=2026-07-01T00:00:00.000Z&before=2026-07-13T00:00:00.000Z&order=desc&status=COMPLETED&limit=200&cursor=eyJsYXN0IjoxNzUxMzM2MDAwMDAwfQ"
@@ -856,11 +855,11 @@ _응답_
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `type` | EventType | 필수 | `DEPOSIT` `UNMAPPED` `WITHDRAWAL` `INTERNAL` |
+| `type` | EventType | 필수 | `DEPOSIT` `WITHDRAWAL` `INTERNAL` |
 | `txId` | string | 필수 | 벤더 tx id |
 | `txHash` | string \\| null | - | 온체인 거래해시 — 전파 후 채워짐 |
 | `externalTxId` | string \\| null | - | 우리 요청 키 (출금·내부이체) |
-| `accountId` | string \\| null | - | 파티션 키 (vault 핸들). UNMAPPED 은 귀속 계정이 없어 null 일 수 있다 |
+| `accountId` | string | 필수 | 파티션 키 (vault 핸들) |
 | `asset` | string | 필수 | 자산 식별 (체인 × 토큰) |
 | `to` | string | 필수 | 목적지 주소 — 입금 판별 |
 | `status` | TxStatus | 필수 | `SUBMITTED` `CONFIRMING` `COMPLETED` `REJECTED` `FAILED` |
@@ -884,14 +883,13 @@ _응답_
 
 ### EventType
 
-이벤트 분류. 매니저가 발신자가 우리 vault 인지로 가른다.
+이벤트 분류. 매니저가 발신자가 우리 vault 인지로 가른다. 귀속 불명 입금은 큐 대신 별도 알림 채널로 통지된다.
 
 | 값 | 설명 |
 |---|---|
 | `DEPOSIT` | 고객 입금 (매핑된 주소로 수신) |
-| `UNMAPPED` | 귀속 불명 — 보류 |
 | `WITHDRAWAL` | 외부 출금 |
-| `INTERNAL` | 내부 이체 (sweep·정산 등) |
+| `INTERNAL` | 내부 이체 — delta 정산 (sweep 은 매니저 내부 처리라 이벤트에 실리지 않는다) |
 
 
 ### SubmitResult
