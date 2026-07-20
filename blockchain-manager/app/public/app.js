@@ -763,9 +763,10 @@ document.addEventListener('keydown', (e) => {
 });
 document.getElementById('refresh-btn').addEventListener('click', loadBoard);
 
-// 보드 전체 → 단일 HTML 다운로드. 조립은 export.js (scripts/export-board.mjs 와 공용)
-async function exportBoardHtml() {
-  const btn = document.getElementById('export-html');
+// 보드 → 단일 HTML 다운로드. 조립은 export.js (scripts/export-board.mjs 와 공용)
+// opts.only 가 있으면 그 대카테고리(또는 대/중카테고리)만 담는다
+async function exportBoardHtml(opts = {}) {
+  const btn = document.getElementById(opts.btnId || 'export-html');
   btn.disabled = true;
   showToast('보드 내보내는 중…');
   try {
@@ -779,6 +780,18 @@ async function exportBoardHtml() {
       )
     );
     const board = await api('/api/board');
+    if (opts.only && opts.only.length) {
+      board.cards = board.cards.filter(
+        (c) => opts.only.includes(c.category) || opts.only.includes(`${c.category}/${c.subcategory}`)
+      );
+      const tree = {};
+      for (const [cat, subs] of Object.entries(board.tree)) {
+        if (opts.only.includes(cat)) { tree[cat] = subs; continue; }
+        const keep = subs.filter((sub) => opts.only.includes(`${cat}/${sub}`));
+        if (keep.length) tree[cat] = keep;
+      }
+      board.tree = tree;
+    }
     const docs = {};
     const paths = board.cards.map((c) => c.path);
     const CHUNK = 8;
@@ -800,16 +813,21 @@ async function exportBoardHtml() {
     const blob = new Blob([out], { type: 'text/html;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'board.html';
+    a.download = opts.filename || 'board.html';
     a.click();
     URL.revokeObjectURL(a.href);
-    showToast('board.html 저장됨 — 파일을 더블클릭으로 열면 됩니다');
+    showToast(`${opts.filename || 'board.html'} 저장됨 — 파일을 더블클릭으로 열면 됩니다`);
   } catch (e) {
     showToast(`내보내기 실패: ${e.message}`, true);
   } finally {
     btn.disabled = false;
   }
 }
-document.getElementById('export-html').addEventListener('click', exportBoardHtml);
+// 위치 인식 — 홈에서는 보드 전체, 대카테고리 안에서는 그 카테고리만 내보낸다
+document.getElementById('export-html').addEventListener('click', () =>
+  nav.cat
+    ? exportBoardHtml({ filename: `${nav.cat}.html`, only: [nav.cat] })
+    : exportBoardHtml()
+);
 
 loadBoard();

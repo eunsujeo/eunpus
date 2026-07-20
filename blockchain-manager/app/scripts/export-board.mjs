@@ -8,6 +8,8 @@
 //
 //   node scripts/export-board.mjs                 → ../board.html (blockchain-manager/board.html)
 //   node scripts/export-board.mjs --out <file> --from <url> --dir <docs>
+//   node scripts/export-board.mjs --only "온보딩,블록체인매니저/API,컴플라이언스/API" --out ../onboarding.html
+//     --only : 지정한 대카테고리(또는 대/중카테고리)만 담는다 — embed 뷰어도 그 카드 것만 내장
 import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { join, resolve, relative, sep, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -132,6 +134,21 @@ try {
   /* 앱이 안 떠 있으면 fs 로 */
 }
 if (!board) board = await buildBoardFromFs();
+
+// --- 1.5) --only 필터: 지정한 대카테고리(또는 대/중카테고리)만 남긴다 ---
+const ONLY = (args.get('only') || '').split(',').map((s) => s.trim()).filter(Boolean);
+if (ONLY.length) {
+  board.cards = board.cards.filter(
+    (c) => ONLY.includes(c.category) || ONLY.includes(`${c.category}/${c.subcategory}`)
+  );
+  const tree = {};
+  for (const [cat, subs] of Object.entries(board.tree)) {
+    if (ONLY.includes(cat)) { tree[cat] = subs; continue; }
+    const keep = subs.filter((s) => ONLY.includes(`${cat}/${s}`));
+    if (keep.length) tree[cat] = keep;
+  }
+  board.tree = tree;
+}
 
 // --- 2) 문서 본문: /api/doc 응답과 같은 모양으로 내장 ---
 const docs = {};
