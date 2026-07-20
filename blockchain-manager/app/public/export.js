@@ -45,6 +45,7 @@ window.__STATIC_BOARD__ = ${dataJs};
     var a = e.target.closest && e.target.closest('a[href^="doc?"]');
     if (!a) return;
     e.preventDefault();
+    e.stopImmediatePropagation(); // md.js 의 doc-link peek 핸들러가 겹쳐 뜨지 않게 (정적 파일은 카드 모달로만 연다)
     var path = new URLSearchParams(a.getAttribute('href').split('?')[1]).get('path');
     if (path) path = path.split('#')[0]; // 절 앵커가 붙은 링크(doc?path=…#절)도 경로만으로 연다
     if (window.__openDocByPath) window.__openDocByPath(path);
