@@ -38,11 +38,17 @@ else
   rm -rf .wrangler/tmp
 fi
 
+# 3.5) api-docs 워처 — openapi.yaml 편집 시 build.py 자동 실행 (편집만으로 생성물 반영)
+if command -v python3 >/dev/null 2>&1 && [ -f ../api-docs/build.py ]; then
+  node scripts/watch-api-docs.mjs &
+  WATCH_PID=$!
+fi
+trap 'kill ${WATCH_PID:-} ${DOCS_PID:-} 2>/dev/null || true' EXIT INT TERM
+
 # 4) 로컬 문서 사이드카 기동 — docs 를 파일시스템에서 직접 읽어 편집이 push 없이 바로 반영
 if [ -d "$DOCS_DIR" ]; then
   node scripts/local-docs.mjs --dir "$DOCS_DIR" --docs-path "$DOCS_PATH" --port "$DOCS_PORT" &
   DOCS_PID=$!
-  trap 'kill $DOCS_PID 2>/dev/null || true' EXIT INT TERM
   LOCAL_BINDING=(--binding "LOCAL_DOCS_URL=http://127.0.0.1:$DOCS_PORT")
   echo "🗂  로컬 문서 모드 — $DOCS_DIR (GitHub 안 읽음 · push 불필요)"
 else
