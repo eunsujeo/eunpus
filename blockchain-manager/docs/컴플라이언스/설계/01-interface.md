@@ -12,7 +12,7 @@ DAW-CORE는 어느 솔루션(VerifyVASP·CODE·Notabene)으로 처리되는지 �
 
 | # | 엔드포인트 | 무엇 |
 |---|---|---|
-| 1 | `POST /compliance/travel-rule/withdrawal-checks` | **Create Withdrawal Check** — 출금 확인 개시. `externalTxId` 멱등, `vaspId` 로 수취 거래소 지목. 거래소 선택 출금 전용(개인지갑 제외). 항상 `PENDING` 접수 → verdict 는 큐 이벤트로 |
+| 1 | `POST /compliance/travel-rule/withdrawal-checks` | **Create Withdrawal Check** — 출금 한 건의 트래블룰 확인. `externalTxId` 멱등, `vaspId` 로 수취 거래소 지목. 거래소 선택 출금 전용(개인지갑 제외). 항상 `PENDING` 접수 → verdict 는 큐 이벤트로 |
 | 2 | `GET /compliance/travel-rule/withdrawal-checks/{checkId}` | **Get Withdrawal Check** — 이벤트 유실·재기동 복구 전용. 정상 흐름에서는 호출하지 않는다(이벤트가 verdict·travelRuleMessage 를 다 싣는다) |
 | 3 | `POST /compliance/travel-rule/withdrawal-checks/{checkId}/report` | **Report Withdrawal Result** — 온체인 제출 후 tx hash 보고. 비차단 — 이 호출의 실패는 출금 흐름과 무관(재시도만 하면 된다) |
 | 4 | `POST /compliance/travel-rule/deposit-checks` | **Create Deposit Check** — 입금 한 건의 트래블룰 확인. 서비스가 **보관 중인 사전 검증 기록과 대조**하고, 안 되면 능동 조회까지 해서 결과만 돌려준다. 호출 시점·판별 우선순위는 [트래블룰 8장](../../트래블룰/설계/08-gate-port.md), 귀속·가용 전이 판단은 DAW-CORE 몫 |
