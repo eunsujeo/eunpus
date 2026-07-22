@@ -669,6 +669,29 @@ a.brand-mark { text-decoration: none; }
   cursor: pointer;
 }
 .dviewer-bar button:hover { color: var(--text-strong); border-color: var(--border-hover); }
+
+/* 코드블록 복사 버튼 — pre 가 가로 스크롤 컨테이너라 래퍼(.code-wrap)에 고정 */
+.code-wrap { position: relative; }
+.code-wrap .code-copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 5px 10px;
+  border: 1px solid var(--code-panel-border);
+  border-radius: 6px;
+  background: var(--code-panel-bg);
+  color: var(--code-panel-muted);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.code-wrap:hover .code-copy,
+.code-wrap .code-copy.copied { opacity: 1; }
+.code-wrap .code-copy:hover { color: var(--code-panel-text); border-color: var(--border-hover); }
+
 .dviewer.fs, .dviewer.fs-fallback {
   background: var(--canvas);
 }
@@ -749,4 +772,268 @@ a.brand-mark { text-decoration: none; }
 }
 @media (max-width: 640px) {
   .board { grid-template-columns: 1fr; }
+}
+
+/* ---- 단계 재생 애니메이션 (```anim 코드펜스, md.js mountAnims) ---- */
+.banim {
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface);
+  margin: 16px 0;
+  overflow: hidden;
+}
+.banim-cap {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--hairline);
+}
+.banim-cap strong { color: var(--text-strong); font-size: 13px; white-space: nowrap; }
+.banim-cap span { color: var(--muted); font-size: 12.5px; }
+.banim-stage { padding: 16px 14px; overflow-x: auto; }
+.banim-scene { min-width: 640px; }
+
+/* 등장 요소 공통 — data-on="N" 은 step >= N 에서 .on */
+.banim [data-on] { opacity: 0; transform: translateY(-4px); transition: opacity 0.4s, transform 0.4s; }
+.banim [data-on].on { opacity: 1; transform: none; }
+
+/* mempool */
+.banim-pool {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 8px 10px;
+  border: 1px dashed var(--hairline);
+  border-radius: 6px;
+}
+.banim-pl { font: 11px var(--mono); color: var(--muted); margin-right: 4px; }
+.banim-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--muted-strong);
+  transition: opacity 0.5s, transform 0.5s;
+}
+/* step >= 2 — 뽑힌 트랜잭션은 mempool 에서 사라진다 */
+.banim[data-step="2"] .banim-dot.pick,
+.banim[data-step="3"] .banim-dot.pick,
+.banim[data-step="4"] .banim-dot.pick,
+.banim[data-step="5"] .banim-dot.pick { opacity: 0; transform: scale(0.3); }
+.banim-chip {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--body);
+  padding: 2px 8px;
+  border: 1px solid var(--border-hover);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+/* 체인 */
+.banim-chain { display: flex; align-items: flex-start; gap: 6px; }
+.banim-link {
+  align-self: center;
+  color: var(--muted);
+  font: 14px var(--mono);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.banim-link.on { opacity: 1; }
+.banim-block {
+  background: var(--surface-elevated);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  padding: 8px 10px;
+  min-width: 108px;
+}
+.banim-block.new { min-width: 190px; border-color: var(--border-hover); }
+.banim-block.next { min-width: 176px; }
+.banim-bt {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+.banim-bt b { font-weight: 600; font-family: var(--mono); font-size: 11px; }
+.banim-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font: 11px/1.7 var(--mono);
+  white-space: nowrap;
+}
+.banim-row span { color: var(--muted); }
+.banim-row b { font-weight: 400; color: var(--body); font-variant-numeric: tabular-nums; }
+.banim-row.chg b, .banim-bt .cv { color: var(--primary-active); }
+:root:not([data-theme="light"]) .banim-row.chg b,
+:root:not([data-theme="light"]) .banim-bt .cv { color: var(--primary); }
+.banim-row.hash { border-top: 1px solid var(--hairline); margin-top: 4px; padding-top: 4px; }
+
+/* 새 블록 바디 — 담긴 트랜잭션 */
+.banim-body { display: flex; gap: 4px; margin: 6px 0 2px; }
+.banim-body i {
+  font: 10px var(--mono);
+  font-style: normal;
+  color: var(--body);
+  padding: 1px 7px;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  background: var(--surface);
+}
+.banim-body i:nth-child(2) { transition-delay: 0.15s; }
+.banim-body i:nth-child(3) { transition-delay: 0.3s; }
+
+/* 컨트롤 */
+.banim-ctl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--hairline);
+}
+.banim-ctl button {
+  background: var(--surface-elevated);
+  color: var(--body);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  font-size: 12px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.banim-ctl button:hover { border-color: var(--border-hover); }
+.banim-dots { display: flex; gap: 5px; margin-left: 8px; }
+.banim-dots button {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: var(--hairline);
+}
+.banim-dots button.cur { background: var(--primary); }
+.banim-body i { opacity: 0; transform: translateY(-4px); transition: opacity 0.4s, transform 0.4s; }
+.banim-body.on i { opacity: 1; transform: none; }
+
+/* ---- anim: reorg·finality 장면 요소 ---- */
+.banim-fork { display: flex; flex-direction: column; gap: 8px; }
+.banim-branch { display: flex; align-items: flex-start; gap: 6px; }
+.banim-branch .banim-link { align-self: center; }
+.banim-block.dead { opacity: 0.35; border-style: dashed; }
+/* data-on 으로 등장한 블록도 탈락하면 흐려져야 한다 — 등장 규칙(opacity:1)보다 우선 */
+.banim [data-on].on.dead { opacity: 0.35; }
+.banim-txchip {
+  display: inline-block;
+  font: 10px var(--mono);
+  color: var(--body);
+  padding: 1px 7px;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  background: var(--surface);
+  margin-top: 6px;
+}
+.banim-gauge { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.banim-gauge i {
+  width: 64px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--hairline);
+  position: relative;
+  overflow: hidden;
+}
+.banim-gauge i::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--w);
+  background: var(--muted-strong);
+  border-radius: 3px;
+}
+.banim-gauge span { font: 10px var(--mono); color: var(--muted); white-space: nowrap; }
+.banim-mem, .banim-note {
+  margin-top: 12px;
+  padding: 6px 10px;
+  border: 1px dashed var(--border-hover);
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: var(--body);
+  display: inline-block;
+}
+.banim-status { margin-top: 12px; font: 11px var(--mono); color: var(--body); }
+.banim-status b { font-weight: 400; }
+.banim-status .cv { color: var(--primary-active); }
+:root:not([data-theme="light"]) .banim-status .cv { color: var(--primary); }
+
+/* finality 슬롯 띠 — 에폭마다 상자로 묶어 경계를 보인다 */
+.banim-band { display: flex; gap: 14px; align-items: stretch; max-width: 720px; }
+.banim-epoch {
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: var(--surface-elevated);
+  transition: border-color 0.5s;
+}
+.banim-epoch.fin { border-color: var(--accent-done); }
+.banim-el { display: block; font: 10px var(--mono); color: var(--muted); margin-bottom: 6px; }
+.banim-epoch.fin .banim-el { color: var(--accent-done); }
+.banim-cells { display: flex; gap: 2px; }
+.banim-cell {
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  transition: background 0.5s;
+}
+.banim-cell.b { background: var(--muted-strong); border-color: transparent; }
+.banim-cell.e { background: transparent; }
+.banim-cell.f { opacity: 0.3; }
+.banim-cell.mine { outline: 2px solid var(--primary); outline-offset: 1px; }
+.banim-epoch.fin .banim-cell.b { background: var(--accent-done); }
+.banim-cpline { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.banim-cpline .banim-gauge { margin-top: 0; }
+.banim-cp {
+  font-size: 10px;
+  color: var(--body);
+  padding: 1px 7px;
+  border: 1px solid var(--border-hover);
+  border-radius: 9px;
+  white-space: nowrap;
+}
+.banim-tagrow { display: flex; max-width: 720px; margin-top: 6px; }
+.banim-tag { font: 10px var(--mono); color: var(--muted-strong); text-align: right; }
+.banim-tag.t1 { flex: 1; }
+.banim-tag.t2 { flex: 0.6; }
+.banim-tag.t3 { flex: 0.4; }
+
+/* proposer 추첨 장면 */
+.banim-vals { display: flex; gap: 6px; flex-wrap: wrap; }
+.banim-val {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font: 11px var(--mono);
+  color: var(--body);
+  padding: 5px 9px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--surface-elevated);
+  transition: opacity 0.4s;
+}
+.banim-val i { font-style: normal; font-size: 9px; color: var(--muted); }
+.banim-val.sel { outline: 2px solid var(--primary); outline-offset: 1px; }
+.banim-val.down { opacity: 0.35; border-style: dashed; }
+.banim-seedline { margin-top: 12px; font: 11px var(--mono); color: var(--muted); }
+.banim-seedline b { font-weight: 400; color: var(--body); }
+.banim-sched {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--surface-elevated);
 }

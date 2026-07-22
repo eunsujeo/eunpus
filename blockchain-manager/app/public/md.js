@@ -82,6 +82,9 @@ window.MD = (() => {
         } else {
           if (codeLang === 'mermaid') {
             out.push(`<div class="mermaid">${esc(codeBuf.join('\n'))}</div>`);
+          } else if (codeLang === 'anim') {
+            // 단계 재생 애니메이션 — 펜스 본문 첫 줄이 애니메이션 이름 (mountAnims 가 마운트)
+            out.push(`<div class="anim" data-anim="${esc(codeBuf.join('\n').trim())}"></div>`);
           } else {
             out.push('<pre><code>' + codeBuf.map(esc).join('\n') + '</code></pre>');
           }
@@ -145,8 +148,384 @@ window.MD = (() => {
     await window.mermaid.run({ querySelector: selector }).catch(() => {});
   }
 
+  /* 렌더된 코드블록마다 복사 버튼을 붙인다 (mermaid 는 dviewer 가 담당) */
+  function enhanceCodeCopy(root) {
+    root.querySelectorAll('pre').forEach((pre) => {
+      if (pre.closest('.code-wrap')) return;
+      // pre 는 가로 스크롤 컨테이너라 버튼을 안에 두면 같이 밀려난다 — 래퍼에 고정
+      const wrap = document.createElement('div');
+      wrap.className = 'code-wrap';
+      pre.parentNode.insertBefore(wrap, pre);
+      wrap.appendChild(pre);
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'code-copy';
+      btn.textContent = '복사';
+      btn.title = '코드 복사';
+      btn.addEventListener('click', async () => {
+        const code = pre.querySelector('code');
+        try {
+          await navigator.clipboard.writeText((code || pre).innerText.replace(/\n$/, ''));
+          btn.textContent = '복사됨 ✓';
+          btn.classList.add('copied');
+        } catch {
+          btn.textContent = '복사 실패';
+        }
+        setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 1600);
+      });
+      wrap.appendChild(btn);
+    });
+  }
+
+  /* ---- 단계 재생 애니메이션 (```anim 코드펜스) ---- */
+
+  // 공용 스텝 엔진 — 캡션·◀▶/재생 컨트롤·data-on/off 표시를 담당.
+  // 각 애니메이션은 장면(scene HTML)과 단계별 값 채우기(render)만 정의한다.
+  // data-on="N" = step ≥ N 에서 표시. data-off="M" 이 있으면 step ≥ M 에서 다시 숨김.
+  function stepAnim(el, cfg) {
+    el.className = 'banim';
+    el.innerHTML =
+      '<div class="banim-cap"><strong data-f="cap-t"></strong><span data-f="cap-d"></span></div>' +
+      `<div class="banim-stage"><div class="banim-scene">${cfg.scene}</div></div>` +
+      '<div class="banim-ctl">' +
+      '<button type="button" data-act="prev" title="이전 단계">◀</button>' +
+      '<button type="button" data-act="play"></button>' +
+      '<button type="button" data-act="next" title="다음 단계">▶</button>' +
+      '<span class="banim-dots">' +
+      cfg.steps.map((_, i) => `<button type="button" data-step="${i}"></button>`).join('') +
+      '</span></div>';
+
+    const setF = (id, v) => {
+      const n = el.querySelector(`[data-f="${id}"]`);
+      if (n) n.innerHTML = v;
+    };
+    let step = 0, timer = null;
+    const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+
+    const render = () => {
+      el.dataset.step = step;
+      setF('cap-t', `${step + 1}. ${cfg.steps[step][0]}`);
+      setF('cap-d', cfg.steps[step][1]);
+      el.querySelectorAll('[data-on]').forEach((n) =>
+        n.classList.toggle('on', step >= +n.dataset.on && !(n.dataset.off && step >= +n.dataset.off)));
+      if (cfg.render) cfg.render(step, setF, el);
+      el.querySelectorAll('.banim-dots button').forEach((b, i) =>
+        b.classList.toggle('cur', i === step));
+      el.querySelector('[data-act="play"]').textContent = timer ? '⏸ 정지' : '▶ 재생';
+    };
+    const go = (n) => { step = Math.min(cfg.steps.length - 1, Math.max(0, n)); render(); };
+
+    el.querySelector('.banim-ctl').addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      if (b.dataset.step !== undefined) { stop(); go(+b.dataset.step); }
+      else if (b.dataset.act === 'prev') { stop(); go(step - 1); }
+      else if (b.dataset.act === 'next') { stop(); go(step + 1); }
+      else if (b.dataset.act === 'play') {
+        if (timer) { stop(); }
+        else {
+          if (step >= cfg.steps.length - 1) step = -1; // 끝에서 재생 → 처음부터
+          timer = setInterval(() => {
+            if (step >= cfg.steps.length - 1) { stop(); render(); return; }
+            go(step + 1);
+          }, 2800);
+          go(step + 1);
+        }
+        render();
+      }
+    });
+    render();
+  }
+
+  // 투표 게이지 공용 조각 — --w 가 채움 비율
+  const animGauge = (pct, on) =>
+    `<div class="banim-gauge" data-on="${on}"><i style="--w:${pct}%"></i><span>투표 ${pct}%</span></div>`;
+
+  // parentHash·해시 두 행을 가진 컴팩트 블록 상자 — reorg 계열 공용
+  const animHashBlk = (cls, title, parent, hash, extra, on) =>
+    `<div class="banim-block ${cls}"${on !== undefined ? ` data-on="${on}"` : ''}>` +
+    `<div class="banim-bt">${title}</div>` +
+    `<div class="banim-row"><span>parentHash</span><b>${parent}</b></div>` +
+    `<div class="banim-row"><span>해시</span><b>${hash}</b></div>${extra || ''}</div>`;
+
+  // 이더리움 블록 생성 과정 — mempool → 트랜잭션 선택 → 헤더 완성 → 부모 연결 → 체인 성장
+  function buildBlockLifecycle(el) {
+    const STEPS = [
+      ['대기 중인 트랜잭션', '사용자가 서명해 보낸 트랜잭션은 먼저 mempool 대기열에 쌓인다.'],
+      ['제안자 선출', '검증자 한 명이 이번 슬롯의 제안자로 뽑힌다. 번호·timestamp·prevRandao·baseFee·feeRecipient·gasLimit 는 시작부터 정해져 있다.'],
+      ['트랜잭션 선택', '팁이 높은 트랜잭션부터 골라 바디에 담는다. 목록이 정해지면 그 요약인 txRoot 도 정해진다.'],
+      ['실행', '담은 트랜잭션을 순서대로 실행한다. 결과로 stateRoot·receiptsRoot·logsBloom·gasUsed 가 채워진다.'],
+      ['부모 연결 — 헤더 완성·전파', 'parentHash 에 직전 블록의 해시를 넣으면 헤더 완성 — 이제서야 이 블록의 해시가 정해지고, 네트워크에 전파된다.'],
+      ['체인이 자란다', '다음 슬롯에서 반복된다. 노란 값이 블록마다 바뀌는 필드 — 직전 블록이 한산해서 baseFee 는 내려갔고, gasLimit 만 그대로다.'],
+    ];
+    // 예시 값 — 설명용 가상 데이터
+    const row = (label, id, chg) =>
+      `<div class="banim-row${chg ? ' chg' : ''}"><span>${label}</span><b data-f="${id}">—</b></div>`;
+    const block = (cls, title, rows, on) =>
+      `<div class="banim-block ${cls}"${on ? ` data-on="${on}"` : ''}>` +
+      `<div class="banim-bt">${title}</div>${rows}</div>`;
+
+    stepAnim(el, {
+      steps: STEPS,
+      scene:
+      '<div class="banim-pool"><span class="banim-pl">mempool</span>' +
+      [3, 1, 4, 2, 5, 6].map((n, i) =>
+        `<span class="banim-dot${i < 3 ? ' pick' : ''}" style="--tip:${n}"></span>`).join('') +
+      '<span class="banim-chip" data-on="1">제안자 선출됨</span></div>' +
+      '<div class="banim-chain">' +
+      block('old', '블록 22,222,221',
+        '<div class="banim-row"><span>해시</span><b>0x51c2…</b></div>') +
+      '<span class="banim-link on">←</span>' +
+      block('old', '블록 22,222,222',
+        '<div class="banim-row"><span>해시</span><b>0x9c4e…</b></div>') +
+      '<span class="banim-link" data-on="4">←</span>' +
+      block('new', '블록 <b data-f="num">?</b>',
+        row('parentHash', 'parent') + row('timestamp', 'time') +
+        row('prevRandao', 'randao') + row('txRoot', 'txroot') +
+        row('stateRoot', 'state') + row('receiptsRoot', 'rcpt') +
+        row('logsBloom', 'bloom') + row('gasUsed', 'used') +
+        row('baseFee', 'fee') + row('feeRecipient', 'recip') +
+        row('gasLimit', 'limit') +
+        '<div class="banim-body" data-on="2"><i>tx</i><i>tx</i><i>tx</i></div>' +
+        '<div class="banim-row hash"><span>이 블록의 해시</span><b data-f="self">—</b></div>', 1) +
+      '<span class="banim-link" data-on="5">←</span>' +
+      block('next', '블록 <b class="cv">22,222,224</b>',
+        '<div class="banim-row chg"><span>parentHash</span><b>0x7ab0…</b></div>' +
+        '<div class="banim-row chg"><span>timestamp</span><b>12:00:24</b></div>' +
+        '<div class="banim-row chg"><span>prevRandao</span><b>0x91e7…</b></div>' +
+        '<div class="banim-row chg"><span>txRoot</span><b>0xe19d…</b></div>' +
+        '<div class="banim-row chg"><span>stateRoot</span><b>0x02c7…</b></div>' +
+        '<div class="banim-row chg"><span>receiptsRoot</span><b>0x5a1f…</b></div>' +
+        '<div class="banim-row chg"><span>logsBloom</span><b>0x40…8a</b></div>' +
+        '<div class="banim-row chg"><span>gasUsed</span><b>189,406</b></div>' +
+        '<div class="banim-row chg"><span>baseFee</span><b>10.9 gwei</b></div>' +
+        '<div class="banim-row chg"><span>feeRecipient</span><b>0x11c9…</b></div>' +
+        '<div class="banim-row"><span>gasLimit</span><b>60,000,000</b></div>' +
+        '<div class="banim-row hash"><span>이 블록의 해시</span><b>0x33d6…</b></div>', 5) +
+      '</div>',
+      render(step, setF) {
+        setF('num', step >= 1 ? '22,222,223' : '?');
+        setF('time', step >= 1 ? '12:00:12' : '—');
+        setF('randao', step >= 1 ? '0x4d2c…' : '—');
+        setF('fee', step >= 1 ? '12.4 gwei' : '—');
+        setF('recip', step >= 1 ? '0xfe0a…' : '—');
+        setF('limit', step >= 1 ? '60,000,000' : '—');
+        setF('txroot', step >= 2 ? '0x6f21…' : '—');
+        setF('state', step >= 3 ? '0xb3d8…' : '—');
+        setF('rcpt', step >= 3 ? '0x88b5…' : '—');
+        setF('bloom', step >= 3 ? '0x00…00' : '—');
+        setF('used', step >= 3 ? '63,000' : '—');
+        setF('parent', step >= 4 ? '0x9c4e…' : '—');
+        setF('self', step >= 4 ? '0x7ab0…' : '—');
+      },
+    });
+  }
+
+  // reorg — 같은 높이에 블록 둘 → 투표 → 한쪽 폐기 → 내 tx 의 blockHash 변경 (1장 3절)
+  function buildReorg(el) {
+    const blk = animHashBlk;
+
+    stepAnim(el, {
+      steps: [
+        ['정상 체인', '내 트랜잭션이 블록 100a 에 담겼다. 컨펌 1 — 아직 되돌아갈 수 있는 구간이다.'],
+        ['포크', '같은 높이 100 에 경쟁 블록 100b 가 나타났다. 둘 다 parentHash 가 99 의 해시(0x3b21…)를 가리킨다 — 같은 부모의 두 자식이다.'],
+        ['투표가 갈린다', '검증자 투표가 100b 쪽으로 몰리고, 다음 블록 101 도 100b 뒤에 붙는다 — 101 의 parentHash 가 100b 의 해시다.'],
+        ['reorg', '100a 는 체인에서 빠진다. 그 안에 있던 내 트랜잭션은 mempool 로 돌아간다.'],
+        ['재포함', '내 트랜잭션이 블록 102 에 다시 담겼다. blockHash 가 바뀌었다 — 저장해 둔 해시와 비교하면 이 사건이 잡힌다.'],
+        ['다른 결말', '다시 담기지 못하면 탈락이다 — 체인에는 아무 기록도 남지 않는다. 입금이었다면 없었던 일이 된다.'],
+      ],
+      scene:
+        '<div class="banim-chain">' +
+        blk('old', '블록 99', '0xc4d7…', '0x3b21…') +
+        '<span class="banim-link on">←</span>' +
+        '<div class="banim-fork">' +
+        '<div class="banim-branch">' +
+        blk('old ba', '블록 100a', '0x3b21…', '0x51ab…',
+          '<div class="banim-txchip" data-on="0" data-off="3">내 tx</div>' + animGauge(31, 2)) +
+        '</div>' +
+        '<div class="banim-branch">' +
+        blk('old', '블록 100b', '0x3b21…', '0x84c0…', animGauge(69, 2), 1) +
+        '<span class="banim-link" data-on="2">←</span>' +
+        blk('old', '블록 101', '0x84c0…', '0x66d2…', '', 2) +
+        '<span class="banim-link" data-on="4">←</span>' +
+        blk('old', '블록 102', '0x66d2…', '0x9e77…',
+          '<div class="banim-txchip" data-on="4">내 tx</div>', 4) +
+        '</div>' +
+        '</div>' +
+        '</div>' +
+        '<div class="banim-mem" data-on="3" data-off="4">mempool 로 복귀 — 내 tx 대기 중</div>' +
+        '<div class="banim-status" data-f="rst"></div>',
+      render(step, setF, root) {
+        root.querySelector('.ba').classList.toggle('dead', step >= 3);
+        setF('rst',
+          step < 3 ? '내 tx 의 blockHash: <b>0x51ab…</b> — 블록 100a · 컨펌 1'
+          : step === 3 ? '내 tx — mempool 대기 · blockHash 없음'
+          : step === 4 ? '내 tx 의 blockHash: <b class="cv">0x9e77…</b> — 블록 102 · 저장해 둔 0x51ab… 과 다르다 · 컨펌 1 부터 다시'
+          : '탈락했다면 — blockHash: null · 체인 기록: 없음');
+      },
+    });
+  }
+
+  // deep-reorg — 컨펌이 쌓인 가지가 통째로 뒤집히는 경우 (1장 3절 끝 — finality 의 동기)
+  function buildDeepReorg(el) {
+    const blk = animHashBlk;
+
+    stepAnim(el, {
+      steps: [
+        ['컨펌이 쌓이는 중', '내 트랜잭션이 블록 100a 에 담겼다. 컨펌 1.'],
+        ['컨펌 2', '100a 위에 101a 가 붙었다. 위에 쌓일수록 되돌리기 어려워 보인다.'],
+        ['숨은 가지', '그 사이 네트워크 다른 쪽에서는 100b 가지가 자라고 있었다 — 전파가 갈라진 동안 서로 다른 끝 위에 블록을 지은 것이다.'],
+        ['역전', '투표를 합산하니 b 가지가 더 무겁다. 다음 블록 102b 도 b 가지에 붙는다.'],
+        ['깊은 reorg', '100a·101a 가 통째로 빠진다. 컨펌이 2 였어도 소용없다 — 내 트랜잭션은 mempool 로 돌아간다.'],
+        ['그래서 finality', '컨펌 수는 확률적 지표일 뿐, 확정 전에는 몇 개가 쌓여도 0 이 될 수 있다. 이 한계를 프로토콜 보증으로 바꾼 것이 다음 절의 finality 다.'],
+      ],
+      scene:
+        '<div class="banim-chain">' +
+        blk('old', '블록 99', '0xc4d7…', '0x3b21…') +
+        '<span class="banim-link on">←</span>' +
+        '<div class="banim-fork">' +
+        '<div class="banim-branch">' +
+        blk('old da', '블록 100a', '0x3b21…', '0x51ab…',
+          '<div class="banim-txchip" data-on="0" data-off="4">내 tx</div>') +
+        '<span class="banim-link" data-on="1">←</span>' +
+        blk('old da', '블록 101a', '0x51ab…', '0x77e4…', animGauge(42, 3), 1) +
+        '</div>' +
+        '<div class="banim-branch">' +
+        blk('old', '블록 100b', '0x3b21…', '0x84c0…', '', 2) +
+        '<span class="banim-link" data-on="2">←</span>' +
+        blk('old', '블록 101b', '0x84c0…', '0x2fd1…', animGauge(58, 3), 2) +
+        '<span class="banim-link" data-on="3">←</span>' +
+        blk('old', '블록 102b', '0x2fd1…', '0x0b6e…',
+          '<div class="banim-txchip" data-on="5">tx 재포함 대기</div>', 3) +
+        '</div>' +
+        '</div>' +
+        '</div>' +
+        '<div class="banim-mem" data-on="4">mempool 로 복귀 — 내 tx 대기 중</div>' +
+        '<div class="banim-status" data-f="rst"></div>',
+      render(step, setF, root) {
+        root.querySelectorAll('.da').forEach((b) => b.classList.toggle('dead', step >= 4));
+        setF('rst',
+          step === 0 ? '내 tx — 블록 100a · 컨펌 1'
+          : step === 1 ? '내 tx — 블록 100a · 컨펌 2'
+          : step === 2 ? '내 tx — 블록 100a · 컨펌 2 — b 가지는 아직 내 컨펌과 무관해 보인다'
+          : step === 3 ? '내 tx — 블록 100a · 컨펌 2 — 하지만 투표는 b 가지로 몰린다'
+          : step === 4 ? '내 tx — mempool 대기 · 컨펌 <b class="cv">2 → 0</b>'
+          : '컨펌 수는 확률 — 확정(finality) 전에는 몇 컨펌이든 되돌아갈 수 있다');
+      },
+    });
+  }
+
+  // proposer — 제안자 추첨: 명단 + prevRandao 시드 → 전원이 같은 계산 (0장 3절)
+  function buildProposer(el) {
+    stepAnim(el, {
+      steps: [
+        ['검증자 명단', '예치금(기본 32 ETH)을 잠근 검증자들이 체인에 등록되어 있다 — 실제로는 백만 명이 넘는다. 뽑힐 확률은 예치금에 비례한다.'],
+        ['시드 — prevRandao', '블록을 만들 때마다 제안자가 서명에서 나온 무작위 값을 하나씩 보탠다. 이 누적값이 추첨의 시드다 — 여러 명의 기여가 섞여, 한 사람이 결과를 정할 수 없다.'],
+        ['전원이 같은 계산', '시드도 명단도 체인에 있는 공개 데이터다. 정해진 셔플 함수에 넣으면 누가 돌려도 같은 답이 나온다.'],
+        ['에폭 스케줄', '에폭이 시작되면 32개 슬롯의 제안자가 슬롯마다 한 명씩 미리 정해진다.'],
+        ['발표자는 없다', '뽑힌 검증자도 자기 차례를 계산해서 알고, 다른 노드들도 같은 계산으로 "이 슬롯의 블록은 V3 의 서명이어야 한다"를 검증한다.'],
+        ['한계 두 가지', '시드가 아직 안 쌓인 먼 미래의 스케줄은 알 수 없다. 그리고 뽑힌 검증자가 다운이면 그 슬롯은 빈 슬롯으로 지나간다.'],
+      ],
+      scene:
+        '<div class="banim-vals">' +
+        [1, 2, 3, 4, 5, 6, 7, 8].map((n) =>
+          `<span class="banim-val" data-v="${n}">V${n}<i>32 ETH</i></span>`).join('') +
+        '</div>' +
+        '<div class="banim-seedline" data-on="1">prevRandao 누적: <b>0x9a31… ⊕ 0x77c2… ⊕ 0x05ed… → 시드 0x4d2c…</b></div>' +
+        '<div class="banim-seedline" data-on="2">모든 노드가 같은 계산: <b>shuffle(시드 0x4d2c…, 슬롯 번호) → 검증자 번호</b></div>' +
+        '<div class="banim-sched" data-on="3">' +
+        '<div class="banim-row"><span>슬롯 224,001</span><b data-f="s1">V3</b></div>' +
+        '<div class="banim-row"><span>슬롯 224,002</span><b data-f="s2">V7</b></div>' +
+        '<div class="banim-row"><span>슬롯 224,003</span><b>V5</b></div>' +
+        '<div class="banim-row"><span>슬롯 224,004…</span><b>…</b></div>' +
+        '</div>' +
+        '<div class="banim-status" data-f="rst"></div>',
+      render(step, setF, root) {
+        root.querySelectorAll('.banim-val').forEach((v) => {
+          v.classList.toggle('sel', step >= 3 && v.dataset.v === '3');
+          v.classList.toggle('down', step >= 5 && v.dataset.v === '7');
+        });
+        setF('s2', step >= 5 ? 'V7 다운 — 빈 슬롯' : 'V7');
+        setF('rst',
+          step === 0 ? '등록 검증자 8명 (예시 — 실제 약 124만)'
+          : step === 1 ? '시드 0x4d2c… — 누구도 혼자 정할 수 없는 값'
+          : step === 2 ? 'shuffle(0x4d2c…, 슬롯 224,001) = 검증자 3'
+          : step === 3 ? '슬롯 224,001 의 제안자 = <b class="cv">V3</b>'
+          : step === 4 ? '발표 없음 — 각자 계산해서 알고, 서명으로 검증한다'
+          : 'V7 다운 → 슬롯 224,002 는 블록 없이 지나간다');
+      },
+    });
+  }
+
+  // finality — 슬롯 띠 → 체크포인트 투표 → 최종 확정 (1장 4·5절)
+  function buildFinality(el) {
+    const cells = (n, opts) => {
+      let h = '';
+      for (let i = 0; i < n; i++) {
+        const c = ['banim-cell'];
+        c.push(opts.empty && opts.empty.includes(i) ? 'e' : 'b');
+        if (opts.future !== undefined && i >= opts.future) c.push('f');
+        if (opts.mine === i) c.push('mine');
+        h += `<span class="${c.join(' ')}"></span>`;
+      }
+      return h;
+    };
+
+    stepAnim(el, {
+      steps: [
+        ['슬롯 띠', '블록은 12초 슬롯마다 쌓인다. 테두리 친 칸이 내 트랜잭션이 담긴 블록 — 아직은 전부 되돌아갈 수 있는 구간이다. 빈 칸은 빈 슬롯.'],
+        ['체크포인트', '32슬롯이 지나 에폭 N 이 끝났다. 에폭 경계의 블록이 체크포인트가 된다.'],
+        ['투표', '검증자 전원이 체크포인트에 투표한다. 전체 예치금의 3분의 2 를 넘으면 통과.'],
+        ['최종 확정', '다음 에폭의 체크포인트도 통과하면 에폭 N 전체가 finalized — 약 두 에폭, 약 13분. 내 트랜잭션도 이 안에 들어왔다.'],
+        ['조회 태그', '노드에 물을 때 finalized·safe·latest 로 어느 구간 기준의 답을 받을지 고를 수 있다.'],
+        ['불가역', '확정 구간을 되돌리는 투표에는 전체 예치금 — 모든 검증자가 잠근 ETH 의 총합 — 의 3분의 1 소각이 필요하다. 그래서 사실상 불가역이다.'],
+      ],
+      scene:
+        '<div class="banim-band">' +
+        '<div class="banim-epoch" data-ep="n"><span class="banim-el">에폭 N — 32슬롯 · 약 6.4분</span>' +
+        `<div class="banim-cells">${cells(32, { mine: 21, empty: [7, 26] })}</div>` +
+        '<div class="banim-cpline"><span class="banim-cp" data-on="1">체크포인트</span>' +
+        animGauge(78, 2) + '</div></div>' +
+        '<div class="banim-epoch"><span class="banim-el">에폭 N+1</span>' +
+        `<div class="banim-cells">${cells(32, { empty: [3], future: 14 })}</div>` +
+        '<div class="banim-cpline"><span class="banim-cp" data-on="3">체크포인트</span>' +
+        animGauge(74, 3) + '</div></div>' +
+        '</div>' +
+        '<div class="banim-tagrow">' +
+        '<span class="banim-tag t1" data-on="4">finalized ▴</span>' +
+        '<span class="banim-tag t2" data-on="4">safe ▴</span>' +
+        '<span class="banim-tag t3" data-on="4">latest ▴</span>' +
+        '</div>' +
+        '<div class="banim-note" data-on="5">finalized 구간을 되돌리려면 전체 예치금의 3분의 1 소각 — 사실상 불가역</div>',
+      render(step, setF, root) {
+        root.querySelector('[data-ep="n"]').classList.toggle('fin', step >= 3);
+      },
+    });
+  }
+
+  const ANIM_DEFS = {
+    'block-lifecycle': buildBlockLifecycle,
+    'proposer': buildProposer,
+    'reorg': buildReorg,
+    'deep-reorg': buildDeepReorg,
+    'finality': buildFinality,
+  };
+
+  function mountAnims(root) {
+    root.querySelectorAll('.anim[data-anim]').forEach((el) => {
+      if (el.dataset.ready) return;
+      el.dataset.ready = '1';
+      const build = ANIM_DEFS[el.dataset.anim.trim()];
+      if (build) build(el);
+      else el.textContent = `알 수 없는 애니메이션: ${el.dataset.anim}`;
+    });
+  }
+
   /* 렌더된 .mermaid 마다 확대·이동·전체화면 컨트롤을 붙인다 */
   function enhanceDiagrams(root) {
+    enhanceCodeCopy(root); // 코드블록 복사 버튼도 같은 진입점에서 — 모든 호출처에 자동 적용
+    mountAnims(root); // ```anim 애니메이션도 동일 — 보드·doc·모달·피크·export 전부 커버
     root.querySelectorAll('.mermaid').forEach((el) => {
       if (el.closest('.dviewer')) return;
       if (!el.querySelector('svg')) return; // 렌더 실패분은 코드 그대로 둠
@@ -369,7 +748,8 @@ window.MD = (() => {
 
   // "6·8장" 사슬 · "N장" · "N.M" · "A.M" · "부록 A/B" · 용어(TERM_REFS) — 코드·링크·제목 밖 텍스트만 감싼다
   // "개념 (세트) N장"·"블록체인매니저 N장" 은 다른 문서 세트 참조라 제외 (같은 폴더에서만 푼다)
-  const REF_RE = /(?<![\d.·])(?<!개념 )(?<!세트 )(?<!매니저 )(\d{1,2}(?:·\d{1,2})*장)|(?<![\d.])((?:\d{1,2}|A)\.\d{1,2})(?![.\d])|(부록 [AB])(?!\s*[—-])|\b(TxStatus|TrVerdict)\b/g;
+  // "6.4분"·"12.5%"·"10.9 gwei" 같은 소수점 수치는 절 참조가 아니다 — 단위어가 뒤따르면 제외
+  const REF_RE = /(?<![\d.·])(?<!개념 )(?<!세트 )(?<!매니저 )(\d{1,2}(?:·\d{1,2})*장)|(?<![\d.])((?:\d{1,2}|A)\.\d{1,2})(?![.\d])(?!\s?(?:분|초|시간|회|배|건|%|gwei))|(부록 [AB])(?!\s*[—-])|\b(TxStatus|TrVerdict)\b/g;
 
   function refButton(label, ref) {
     const b = document.createElement('button');
@@ -387,7 +767,8 @@ window.MD = (() => {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
       acceptNode(n) {
         for (let el = n.parentElement; el && el !== root.parentElement; el = el.parentElement)
-          if (SKIP.has(el.tagName) || el.classList.contains('mermaid')) return NodeFilter.FILTER_REJECT;
+          if (SKIP.has(el.tagName) || el.classList.contains('mermaid') || el.classList.contains('banim'))
+            return NodeFilter.FILTER_REJECT; // banim = 애니메이션 수치 텍스트 — 참조 아님
         return NodeFilter.FILTER_ACCEPT;
       },
     });
@@ -444,5 +825,5 @@ window.MD = (() => {
     }
   }
 
-  return { esc, renderMarkdown, initMermaid, runMermaid, enhanceDiagrams, enhanceSectionRefs };
+  return { esc, renderMarkdown, initMermaid, runMermaid, enhanceDiagrams, enhanceCodeCopy, enhanceSectionRefs, mountAnims };
 })();
