@@ -1190,3 +1190,18 @@
 - **확인 질문**: V2 표면의 정식 경로·GA 여부? beta 와 draft/publish 분리 모델 차이? 마이그레이션 예정?
 - **Sources to check**: developers.fireblocks.com API reference 최신판 · changelog · CSM
 - **Status**: open
+
+### Q-2026-07-22-01: Base COMPLETED (시퀀서 층) 의 메인넷 동일 여부
+
+- **Why it matters**: Base 입금 확정 판정(`COMPLETED && 컨펌 ≥ 임계`)의 보증 수준이 시퀀서 층으로 확정되면, safe/finalized 보증이 필요한 입금은 자체 L1 확인 층이 필수가 된다. 테스트넷 관측의 메인넷 일반화 확인 필요.
+- **확정 (Stage 158)**: Base 테스트넷 콘솔 직접 테스트에서 COMPLETED 도달 1초 미만 — 시퀀서 soft confirmation 기준 (L1 safe 5~10분과 양립 불가한 속도).
+- **확인 질문**: 메인넷도 동일 메커니즘인가? `numOfConfirmations` 의 분모는 Base 블록인가?
+- **Sources to check**: CSM 확답 · 메인넷 소액 테스트
+- **Status**: open
+
+### Q-2026-07-22-02: Base 시퀀서 장애·드랍 시 COMPLETED 이후 상태 전이
+
+- **Why it matters**: COMPLETED 가 시퀀서 약속 층이라면, L1 게시 전에 시퀀서가 블록을 되돌리는 경우 이미 COMPLETED 된 tx 의 전이(FAILED + `DROPPED_BY_BLOCKCHAIN` 적용 여부)가 입금 무효 처리 설계의 전제가 된다.
+- **확인 질문**: L2 층 드랍도 `DROPPED_BY_BLOCKCHAIN` 으로 전이하는가? Fireblocks 가 L1 게시 전 시퀀서 되돌림을 감지·반영하는가?
+- **Sources to check**: CSM · support.fireblocks.io substatus 문서
+- **Status**: open

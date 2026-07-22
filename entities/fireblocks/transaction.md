@@ -4,7 +4,7 @@ vendor: fireblocks
 status: stable
 tags: [transaction, key-link]
 stage_introduced: 5
-last_updated_stage: 152
+last_updated_stage: 158
 source_count: 10
 related: [approver, designated-signer, policy, signer, tap, vault-account]
 ---
@@ -517,6 +517,16 @@ extraParameters: { contractCallData: <hex ABI-encoded> }
 3. **Custom DCCP self-service 불가** = Fireblocks Support review-approval 경유 → 정책 변경 lead-time / audit trail 별도 확인 필요
 
 자세한 chain 별 권장값 + max table 전체는 [[vendors/fireblocks/blockchains]] §"Deposit Control and Confirmation Policy (DCCP)" 참고.
+
+### Base(L2) 의 COMPLETED 기준 — 시퀀서 soft confirmation (★ Stage 158)
+
+사용자 Fireblocks 콘솔 직접 테스트 (2026-07-22, Base testnet): 입금 tx 의 `COMPLETED` 도달 **1초 미만** 관측.
+
+- → L1 게시(safe, 보통 5~10분)·L1 finality(약 15~20분)와 양립 불가한 속도 — **시퀀서 soft confirmation 층** 기준으로 확정. Base flashblocks(200ms 사전 확인)와 정합.
+- 함의: DCCP 컨펌 임계의 분모가 시퀀서 블록이므로 **임계를 올려도 L1 safe/finalized 보증에 도달 불가** (max 30 conf ≈ 60초). L1 수준 보증이 필요한 입금은 고객 측에서 L1 태그(safe/finalized)를 별도 확인해야 한다.
+- 콘솔 UI 에도 배치/L1 게시 상태 표면 없음 (사용자 관측, 2026-07-22) — 상태값·화면·API(blockInfo = L2 블록 좌표뿐) 어디에도 L1 층 비노출. **L1 층 확인(safe/finalized 태그 조회)은 전적으로 고객 측 몫.**
+- 미확정: 메인넷 동일 여부 (Q-2026-07-22-01) · 시퀀서 장애/드랍 시 COMPLETED 이후 상태 전이 (Q-2026-07-22-02).
+- (source: 사용자 콘솔 테스트 2026-07-22 — 문서 근거 아님, 관측 사실)
 
 ## Sources (Stage 40 DCCP 추가)
 - `2026-05-19__support-fireblocks-io__default-deposit-control-and-confirmation-policy.md`, p.1

@@ -7690,3 +7690,9 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - ANSWERED: Q-S04 partial (cooling-off 기간 공개 미문서화 확인) / 신규 Q-CMP-12 (개인지갑 등록의 벤더 반영 수단)
 - 영향받은 페이지: vendors/fireblocks/compliance.md (Address Registry 소절 확장), open-questions/fireblocks.md (Q-S04), open-questions/compliance.md (Q-CMP-12 + 통계)
 - 신규 entity: 0 (Address Registry 는 compliance.md 소절로 흡수 — 30 stage 연속)
+
+## Stage 158 (2026-07-22) — Base COMPLETED = 시퀀서 soft confirmation (콘솔 테스트)
+- source: 사용자 Fireblocks 콘솔 직접 테스트 (Base testnet, COMPLETED <1초 관측)
+- ANSWERED: (기존 Q 없음 — 본문 ★ 기록) / 신규 Q-2026-07-22-01 (메인넷 동일 여부) · Q-2026-07-22-02 (시퀀서 드랍 시 전이) 등록
+- 영향받은 페이지: entities/fireblocks/transaction.md (DCCP 절 하위 소절 추가), open-questions/fireblocks.md
+- 신규 entity: 0 (transaction.md 흡수 — 31 stage 연속)
