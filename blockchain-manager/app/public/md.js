@@ -595,6 +595,53 @@ window.MD = (() => {
     });
   }
 
+  // l2-settlement — Base 블록 → 배치 → 이더리움 기록 → finality: 두 층의 확정 (BASE 0장)
+  function buildL2Settlement(el) {
+    const cell = (cls, on) =>
+      `<span class="banim-cell ${cls}"${on !== undefined ? ` data-on="${on}"` : ''}></span>`;
+
+    stepAnim(el, {
+      steps: [
+        ['두 개의 체인', 'Base 는 2초마다, 이더리움은 12초마다 블록을 만든다. Base 의 블록은 Coinbase 가 운영하는 시퀀서 하나가 만든다.'],
+        ['시퀀서 확인 — unsafe', '내 트랜잭션이 Base 블록에 담겼다. 데이터가 아직 이더리움에 없어서 시퀀서의 약속일 뿐이다. 태그로는 unsafe.'],
+        ['배치로 묶인다', 'Base 는 계속 블록을 만들면서, 쌓인 블록들의 데이터를 묶어 이더리움에 보낼 준비를 한다.'],
+        ['이더리움에 실린다 — safe', '배치가 blob 으로 이더리움 블록에 기록됐다. 시퀀서가 사라져도 이 데이터에서 Base 체인을 다시 만들 수 있다. 이더리움이 reorg 되면 뒤집힐 수 있어 태그는 safe.'],
+        ['이더리움 finality — finalized', '배치를 실은 이더리움 블록이 finality 에 도달했다. 이더리움 1장의 보증이 그대로 이 Base 트랜잭션에 적용된다.'],
+        ['임계 선택', '시퀀서 확인(약 2초) · safe(보통 5~10분) · finalized(약 15~20분) — 어디를 입금 확정으로 삼을지가 Base 판 임계 문제다.'],
+      ],
+      scene:
+        '<div class="banim-el">Base — 2초마다 블록</div>' +
+        '<div class="banim-l2row">' +
+        '<span class="banim-l2batch">' +
+        cell('b') + cell('b') + cell('b mycell') + cell('b') + cell('b') + cell('b') +
+        '</span>' +
+        cell('b', 2) + cell('b', 2) + cell('b', 3) + cell('b', 4) +
+        '</div>' +
+        '<div class="banim-el">Ethereum — 12초마다 블록</div>' +
+        '<div class="banim-l2row">' +
+        '<span class="banim-ecell">블록 N</span>' +
+        '<span class="banim-ecell emid">블록 N+1<i class="banim-bchip" data-on="3">배치</i></span>' +
+        '<span class="banim-ecell" data-on="4">블록 N+2 …</span>' +
+        '</div>' +
+        '<div class="banim-status" data-f="rst"></div>',
+      render(step, setF, root) {
+        root.querySelector('.mycell').classList.toggle('mine', step >= 1);
+        const batch = root.querySelector('.banim-l2batch');
+        batch.classList.toggle('grouped', step >= 2);
+        batch.classList.toggle('safe', step >= 3 && step < 4);
+        batch.classList.toggle('fin', step >= 4);
+        root.querySelector('.emid').classList.toggle('fin', step >= 4);
+        setF('rst',
+          step === 0 ? 'Base 2초 · 이더리움 12초 — 서로 다른 박자'
+          : step === 1 ? '내 tx 태그: unsafe — 시퀀서 확인 (약 2초)'
+          : step === 2 ? '블록 여섯 개의 데이터가 배치 하나로'
+          : step === 3 ? '내 tx 태그: <b class="cv">safe</b> — 배치가 이더리움에 실림 (보통 5~10분)'
+          : step === 4 ? '내 tx 태그: <b class="cv">finalized</b> — 그 이더리움 블록이 finality 도달 (약 15~20분)'
+          : '시퀀서 확인 → safe → finalized — 뒤 단계로 갈수록 오래 걸리는 대신 보증이 세진다');
+      },
+    });
+  }
+
   const ANIM_DEFS = {
     'block-lifecycle': buildBlockLifecycle,
     'proposer': buildProposer,
@@ -603,6 +650,7 @@ window.MD = (() => {
     'finality': buildFinality,
     'slashing': buildSlashing,
     'erc20-transfer': buildErc20Transfer,
+    'l2-settlement': buildL2Settlement,
   };
 
   function mountAnims(root) {
@@ -840,9 +888,9 @@ window.MD = (() => {
   };
 
   // "6·8장" 사슬 · "N장" · "N.M" · "A.M" · "부록 A/B" · 용어(TERM_REFS) — 코드·링크·제목 밖 텍스트만 감싼다
-  // "개념 (세트) N장"·"블록체인매니저 N장" 은 다른 문서 세트 참조라 제외 (같은 폴더에서만 푼다)
+  // "개념 (세트) N장"·"블록체인매니저 N장"·"이더리움 N장" 은 다른 문서 세트 참조라 제외 (같은 폴더에서만 푼다)
   // "6.4분"·"12.5%"·"10.9 gwei" 같은 소수점 수치는 절 참조가 아니다 — 단위어가 뒤따르면 제외
-  const REF_RE = /(?<![\d.·])(?<!개념 )(?<!세트 )(?<!매니저 )(\d{1,2}(?:·\d{1,2})*장)|(?<![\d.])((?:\d{1,2}|A)\.\d{1,2})(?![.\d])(?!\s?(?:분|초|시간|회|배|건|%|gwei))|(부록 [AB])(?!\s*[—-])|\b(TxStatus|TrVerdict)\b/g;
+  const REF_RE = /(?<![\d.·])(?<!개념 )(?<!세트 )(?<!매니저 )(?<!이더리움 )(\d{1,2}(?:·\d{1,2})*장)|(?<![\d.])((?:\d{1,2}|A)\.\d{1,2})(?![.\d])(?!\s?(?:분|초|시간|회|배|건|%|gwei))|(부록 [AB])(?!\s*[—-])|\b(TxStatus|TrVerdict)\b/g;
 
   function refButton(label, ref) {
     const b = document.createElement('button');
