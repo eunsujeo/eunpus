@@ -948,10 +948,12 @@ a.brand-mark { text-decoration: none; }
   content: '';
   position: absolute;
   inset: 0 auto 0 0;
-  width: var(--w);
+  width: 0; /* 등장 시 0 → --w 로 차오른다 — 표가 슬롯마다 누적되는 느낌 */
   background: var(--muted-strong);
   border-radius: 3px;
+  transition: width 1.4s ease-out 0.2s;
 }
+.banim-gauge.on i::after { width: var(--w); }
 .banim-gauge span { font: 10px var(--mono); color: var(--muted); white-space: nowrap; }
 .banim-mem, .banim-note {
   margin-top: 12px;
@@ -1041,3 +1043,68 @@ a.brand-mark { text-decoration: none; }
 /* anim 공용 — 값 하이라이트 (setF 로 끼워 넣는 강조) */
 .banim .cv { color: var(--primary-active); }
 :root:not([data-theme="light"]) .banim .cv { color: var(--primary); }
+/* finality — 지지 확보(justified) 상태: 진행 색(옐로). 확정(fin)은 청록 */
+.banim-epoch.jus { border-color: var(--primary); }
+.banim-epoch.jus .banim-el { color: var(--primary-active); }
+:root:not([data-theme="light"]) .banim-epoch.jus .banim-el { color: var(--primary); }
+/* finality 게이지 — 3분의 2 정족수 기준선 눈금 */
+.banim-gauge.th i { overflow: visible; }
+.banim-gauge.th i::after { border-radius: 3px 0 0 3px; }
+.banim-gauge.th i::before {
+  content: '';
+  position: absolute;
+  left: 66.7%;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--body);
+  z-index: 1;
+}
+.banim-cell { transition: background 0.5s, opacity 0.4s; }
+
+/* slashing — 예치금 겹침 산수 */
+.banim-stake { position: relative; max-width: 640px; margin-top: 10px; }
+.banim-srow {
+  position: relative;
+  height: 22px;
+  background: var(--hairline);
+  border-radius: 4px;
+}
+.banim-srow + .banim-srow { margin-top: 10px; }
+.banim-seg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 4px;
+  font: 10px var(--mono);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+.banim-seg.a { left: 0; width: 66.7%; background: var(--accent-done); color: var(--ink); }
+.banim-seg.b { left: 33.3%; width: 66.7%; background: var(--muted-strong); color: #fff; }
+.banim-olap {
+  position: absolute;
+  left: 33.3%;
+  width: 33.4%;
+  top: -4px;
+  bottom: 22px;
+  border: 2px dashed var(--primary-active);
+  border-radius: 6px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transition: border-color 0.4s, background 0.4s;
+}
+.banim-olap span {
+  position: absolute;
+  bottom: -22px;
+  font: 11px var(--mono);
+  color: var(--body);
+  white-space: nowrap;
+}
+.banim-olap.burn { border-color: var(--danger); border-style: solid; background: color-mix(in srgb, var(--danger) 22%, transparent); }
+.banim-olap.burn span { color: var(--danger); }
+.banim-stake { padding-bottom: 26px; }

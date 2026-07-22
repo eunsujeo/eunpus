@@ -64,7 +64,7 @@ public 문서에 절대 남기지 말 것:
   - special `fill:#e0e7ff,stroke:#6366f1` — 특수 종착 (Sign-Only 등)
   - vault `fill:#dbeafe,stroke:#2563eb` — 자산 보관 단위
 - **direction**: 단일 흐름은 `LR`. 비교 도식 (단일 vs round-robin 등) 은 outer `TB` + inner `LR`
-- node 라벨: 이모지 + 한글 의미 + 영문 status code (예: `"✅ 입금 확정\n(COMPLETED)\n자금 사용 가능"`)
+- node 라벨: 한글 의미 + 영문 status code (예: `"입금 확정\n(COMPLETED)\n자금 사용 가능"`). **이모지·아이콘 금지** — 색(classDef)이 이미 분류를 전달하므로 중복 장식 (2026-07-22 사용자 정정)
 - 모든 diagram 에 **caption** — 색 분류 + 핵심 전이 + 주의 사항
 - BeautifulSoup 후처리 시 `<pre class="mermaid">` 안의 `-->`, `&`, `<br/>` 보존 (placeholder 치환 패턴)
 - 자세히: [references/diagrams.md](references/diagrams.md)

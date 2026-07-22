@@ -112,6 +112,7 @@ status: To Do                   # To Do | In Progress | Done | 아카이브
 ### mermaid 규약 (docs)
 - ✗ **sequence 다이어그램 alt 분기에 `rect` 배경색 지양** — 참여자 `box` tint 와 겹쳐 지저분해진다. 분기는 alt 라벨로 구분.
 - ✗ **flowchart 간선 라벨(`|…|`)에 괄호 금지** — 도형 문법으로 오파싱돼 Syntax error. `—`·`·` 로 대체.
+- ✗ **node 라벨에 이모지·아이콘 금지** — 색(classDef)이 이미 분류를 전달한다. 라벨은 동작·행선지 서술만.
 
 ## 6. 운영 규칙
 

@@ -238,9 +238,9 @@ window.MD = (() => {
     render();
   }
 
-  // 투표 게이지 공용 조각 — --w 가 채움 비율
-  const animGauge = (pct, on) =>
-    `<div class="banim-gauge" data-on="${on}"><i style="--w:${pct}%"></i><span>투표 ${pct}%</span></div>`;
+  // 투표 게이지 공용 조각 — --w 가 채움 비율. th=true 면 ⅔ 기준선 눈금 (finality 정족수용)
+  const animGauge = (pct, on, th) =>
+    `<div class="banim-gauge${th ? ' th' : ''}" data-on="${on}"><i style="--w:${pct}%"></i><span>투표 ${pct}%</span></div>`;
 
   // parentHash·해시 두 행을 가진 컴팩트 블록 상자 — reorg 계열 공용
   const animHashBlk = (cls, title, parent, hash, extra, on) =>
@@ -468,7 +468,7 @@ window.MD = (() => {
         ['두 개의 장부', 'ETH 잔액은 원장의 계정에 직접 있지만, USDC 잔액은 USDC 컨트랙트의 저장소에 적혀 있다. A(0xa11c…)가 B(0xb0b1…)에게 100 USDC 를 보내려 한다.'],
         ['트랜잭션 생성', '받는 사람 B 는 to 필드에 없다 — to 는 USDC 컨트랙트 주소이고, 진짜 수취인과 금액은 호출 데이터 안에 있다. ETH 를 보내는 게 아니라서 value 는 0.'],
         ['실행 — 장부 갱신', 'EVM 이 컨트랙트의 transfer 코드를 실행한다. 저장소의 숫자 두 개가 바뀐다 — A 에서 빼고 B 에 더한다.'],
-        ['이벤트 기록', '표준에 따라 Transfer 이벤트가 receipt 에 남는다. 블록 헤더의 logsBloom 도 켜진다 — 0장에서 빈 값이었던 그 필드다.'],
+        ['이벤트 기록', '표준에 따라 Transfer 이벤트가 receipt 에 남는다. 이벤트들의 압축 요약인 헤더의 logsBloom 도 전부 0 에서 0 이 아닌 값으로 바뀐다.'],
         ['입금 감지', '토큰 입금 감지는 트랜잭션의 to 가 아니라 Transfer 이벤트의 받는이를 본다 — 거기서 내 입금 주소를 찾는다.'],
         ['decimals', '저장값은 정수다. USDC 는 decimals 6 — 저장된 100,000,000 이 화면의 100 USDC 다.'],
       ],
@@ -476,7 +476,8 @@ window.MD = (() => {
         '<div class="banim-chain">' +
         `<div class="banim-block new"><div class="banim-bt">트랜잭션</div>` +
         row('from', '', '0xa11c… — A') + row('to', 'txto') +
-        row('value', 'txval') + row('data', 'txdata') + '</div>' +
+        row('value', 'txval') + row('data', 'txdata') +
+        '<div class="banim-row hash"><span>txHash — 서명까지의 해시</span><b data-f="txh">—</b></div></div>' +
         `<div class="banim-block new"><div class="banim-bt">USDC 컨트랙트 저장소</div>` +
         row('0xa11c… — A', 'balA', '250,000,000') +
         row('0xb0b1… — B', 'balB', '40,000,000') +
@@ -484,7 +485,7 @@ window.MD = (() => {
         `<div class="banim-block new" data-on="3"><div class="banim-bt">receipt</div>` +
         row('status', '', '성공') +
         row('Transfer', '', 'A → B · 100,000,000') +
-        row('logsBloom — 헤더', '', '0x40…8a') + '</div>' +
+        row('logsBloom — 헤더', 'bloom2') + '</div>' +
         '</div>' +
         '<div class="banim-note" data-on="4">감지기 — Transfer 이벤트의 받는이(0xb0b1…)가 매핑된 입금 주소 → DEPOSIT 발행</div>' +
         '<div class="banim-status" data-f="rst"></div>',
@@ -492,16 +493,51 @@ window.MD = (() => {
         setF('txto', step >= 1 ? 'USDC 컨트랙트 — <span class="cv">B 아님</span>' : '—');
         setF('txval', step >= 1 ? '0 ETH' : '—');
         setF('txdata', step >= 1 ? 'transfer(0xb0b1…, 100000000)' : '—');
+        setF('txh', step >= 1 ? '0x3c9f…' : '—');
         setF('balA', step >= 2 ? '<span class="cv">150,000,000</span>' : '250,000,000');
         setF('balB', step >= 2 ? '<span class="cv">140,000,000</span>' : '40,000,000');
+        setF('bloom2', step >= 3 ? '0x00…00 → <span class="cv">0x40…8a</span>' : '—');
         setF('disp', step >= 5 ? '150 USDC · 140 USDC' : '—');
         setF('rst',
           step === 0 ? 'USDC 장부 (저장값) — A: 250,000,000 · B: 40,000,000'
           : step === 1 ? 'tx: to=컨트랙트 · value=0 · 수취인은 data 안'
           : step === 2 ? '장부 갱신 — A −100,000,000 · B +100,000,000'
           : step === 3 ? 'Transfer(0xa11c…, 0xb0b1…, 100,000,000) 기록됨'
-          : step === 4 ? '가스는 약 45,000~65,000 — 컨트랙트 실행이라 단순 송금(21,000)보다 크다'
+          : step === 4 ? '이벤트의 받는이(0xb0b1…) → 입금 주소 매핑 확인 → DEPOSIT 발행'
           : 'decimals 6 — 100,000,000 = 100 USDC');
+      },
+    });
+  }
+
+  // slashing — 확정을 뒤집으면 왜 반드시 1/3 이 소각되는가: 2/3 겹침 산수 (1장 4절)
+  function buildSlashing(el) {
+    stepAnim(el, {
+      steps: [
+        ['확정의 무게', '확정된 체크포인트 A 는 전체 예치금의 3분의 2가 서명한 결과다.'],
+        ['상충하는 확정 B', 'A 를 뒤집으려면 다른 가지의 체크포인트 B 도 3분의 2 를 모아야 한다. 그런데 전체 예치금은 하나뿐이다.'],
+        ['겹침은 피할 수 없다', '3분의 2 + 3분의 2 = 3분의 4 — 전체를 넘는다. 최소 3분의 1은 A 와 B 양쪽 모두에 서명했다는 뜻이다.'],
+        ['이중 투표 — 지울 수 없는 증거', '투표는 서명이다. 겹친 3분의 1에게는 상충하는 서명 두 벌이 남아 있다 — 그 자체가 위반의 물증이다.'],
+        ['자동 소각', '누구든 그 두 서명을 체인에 제출하면 해당 검증자들의 예치금이 소각된다. 재판도 합의도 없다.'],
+        ['그래서 되돌릴 수 없다', '소각은 되돌리기 위해 내는 수수료가 아니라 위반의 결과다 — 뒤집기에 성공하는 순간 최소 3분의 1이 반드시 불탄다.'],
+      ],
+      scene:
+        '<div class="banim-el">전체 예치금 100%</div>' +
+        '<div class="banim-stake">' +
+        '<div class="banim-srow"><span class="banim-seg a">체크포인트 A 에 투표 — 2/3</span></div>' +
+        '<div class="banim-srow"><span class="banim-seg b" data-on="1">체크포인트 B 에 투표 — 2/3</span></div>' +
+        '<div class="banim-olap" data-on="2"><span data-f="olab"></span></div>' +
+        '</div>' +
+        '<div class="banim-status" data-f="rst"></div>',
+      render(step, setF, root) {
+        root.querySelector('.banim-olap').classList.toggle('burn', step >= 4);
+        setF('olab', step >= 4 ? '1/3 소각' : '최소 1/3 겹침');
+        setF('rst',
+          step === 0 ? '확정 A = 예치금 2/3 의 서명'
+          : step === 1 ? 'B 도 2/3 필요 — 하지만 전체는 1 뿐'
+          : step === 2 ? '2/3 + 2/3 − 1 = <b class="cv">최소 1/3</b> 이 양쪽에 서명'
+          : step === 3 ? '겹친 1/3 — 상충하는 서명 두 벌 = 이중 투표 증거'
+          : step === 4 ? '증거 제출 → 해당 예치금 자동 소각 — 약 1,300만 ETH 규모'
+          : '얻을 이익보다 확실히 잃는 담보가 크도록 설계된 경제적 억제');
       },
     });
   }
@@ -523,31 +559,38 @@ window.MD = (() => {
     stepAnim(el, {
       steps: [
         ['슬롯 띠', '블록은 12초 슬롯마다 쌓인다. 테두리 친 칸이 내 트랜잭션이 담긴 블록 — 아직은 전부 되돌아갈 수 있는 구간이다. 빈 칸은 빈 슬롯.'],
-        ['체크포인트', '32슬롯이 지나 에폭 N 이 끝났다. 에폭 경계의 블록이 체크포인트가 된다.'],
-        ['투표', '검증자 전원이 체크포인트에 투표한다. 전체 예치금의 3분의 2 를 넘으면 통과.'],
-        ['최종 확정', '다음 에폭의 체크포인트도 통과하면 에폭 N 전체가 finalized — 약 두 에폭, 약 13분. 내 트랜잭션도 이 안에 들어왔다.'],
+        ['체크포인트', '32슬롯이 지나 에폭 N 이 끝났다. 에폭을 닫는 경계 블록이 체크포인트가 된다.'],
+        ['1차 투표 — 지지 확보', '투표는 매 슬롯 들어온다 — 전원이 32개 조로 나뉘어 슬롯마다 한 조씩, 각자 에폭에 한 번. 에폭 동안 쌓인 표가 예치금의 3분의 2 를 넘으면 지지 확보(justified) — 아직 확정은 아니다.'],
+        ['2차 투표 — 최종 확정', '다음 경계의 체크포인트도 지지를 얻으면 앞의 체크포인트가 확정되고, 그 조상 블록 전부가 한꺼번에 확정된다 — 블록별 나이가 아니라 투표가 기준이다. 약 두 에폭, 약 13분. 에폭 N 은 청록(확정), 에폭 N+1 은 아직 옐로(지지 확보)다.'],
         ['조회 태그', '노드에 물을 때 finalized·safe·latest 로 어느 구간 기준의 답을 받을지 고를 수 있다.'],
-        ['불가역', '확정 구간을 되돌리는 투표에는 전체 예치금 — 모든 검증자가 잠근 ETH 의 총합 — 의 3분의 1 소각이 필요하다. 그래서 사실상 불가역이다.'],
+        ['되돌릴 수 없다', '확정 구간을 뒤집으려면 최소 3분의 1이 이중 투표를 해야 하고, 그 서명이 증거로 남아 예치금(모든 검증자가 잠근 ETH 총합)이 소각된다. 그래서 사실상 되돌릴 수 없다.'],
       ],
       scene:
         '<div class="banim-band">' +
         '<div class="banim-epoch" data-ep="n"><span class="banim-el">에폭 N — 32슬롯 · 약 6.4분</span>' +
         `<div class="banim-cells">${cells(32, { mine: 21, empty: [7, 26] })}</div>` +
         '<div class="banim-cpline"><span class="banim-cp" data-on="1">체크포인트</span>' +
-        animGauge(78, 2) + '</div></div>' +
-        '<div class="banim-epoch"><span class="banim-el">에폭 N+1</span>' +
-        `<div class="banim-cells">${cells(32, { empty: [3], future: 14 })}</div>` +
+        animGauge(78, 2, true) + '</div></div>' +
+        '<div class="banim-epoch" data-ep="n1"><span class="banim-el">에폭 N+1</span>' +
+        `<div class="banim-cells">${cells(32, { empty: [3], future: 0 })}</div>` +
         '<div class="banim-cpline"><span class="banim-cp" data-on="3">체크포인트</span>' +
-        animGauge(74, 3) + '</div></div>' +
+        animGauge(74, 3, true) + '</div></div>' +
         '</div>' +
         '<div class="banim-tagrow">' +
         '<span class="banim-tag t1" data-on="4">finalized ▴</span>' +
         '<span class="banim-tag t2" data-on="4">safe ▴</span>' +
         '<span class="banim-tag t3" data-on="4">latest ▴</span>' +
         '</div>' +
-        '<div class="banim-note" data-on="5">finalized 구간을 되돌리려면 전체 예치금의 3분의 1 소각 — 사실상 불가역</div>',
+        '<div class="banim-note" data-on="5">finalized 를 뒤집으면 최소 3분의 1의 이중 투표 증거가 남아 소각된다 — 사실상 되돌릴 수 없다</div>',
       render(step, setF, root) {
-        root.querySelector('[data-ep="n"]').classList.toggle('fin', step >= 3);
+        const epN = root.querySelector('[data-ep="n"]');
+        epN.classList.toggle('jus', step === 2);  // 1차 투표 통과 — 지지 확보 (옐로)
+        epN.classList.toggle('fin', step >= 3);   // 2차 투표 통과 — 확정 (청록)
+        root.querySelector('[data-ep="n1"]').classList.toggle('jus', step >= 3); // N+1 은 지지 확보 상태로
+        // 에폭 N+1 의 슬롯은 시간이 흐르며 열린다 — 1차 투표 동안 절반, 2차 투표 시점엔 전부
+        const open = step >= 3 ? 32 : step === 2 ? 16 : 0;
+        root.querySelectorAll('[data-ep="n1"] .banim-cell').forEach((c, i) =>
+          c.classList.toggle('f', i >= open));
       },
     });
   }
@@ -558,6 +601,7 @@ window.MD = (() => {
     'reorg': buildReorg,
     'deep-reorg': buildDeepReorg,
     'finality': buildFinality,
+    'slashing': buildSlashing,
     'erc20-transfer': buildErc20Transfer,
   };
 
