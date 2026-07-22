@@ -458,6 +458,54 @@ window.MD = (() => {
     });
   }
 
+  // erc20-transfer — 토큰 전송: 컨트랙트 장부 갱신 + Transfer 이벤트 (2장 2절)
+  function buildErc20Transfer(el) {
+    const row = (label, id, val) =>
+      `<div class="banim-row"><span>${label}</span><b${id ? ` data-f="${id}"` : ''}>${val || '—'}</b></div>`;
+
+    stepAnim(el, {
+      steps: [
+        ['두 개의 장부', 'ETH 잔액은 원장의 계정에 직접 있지만, USDC 잔액은 USDC 컨트랙트의 저장소에 적혀 있다. A(0xa11c…)가 B(0xb0b1…)에게 100 USDC 를 보내려 한다.'],
+        ['트랜잭션 생성', '받는 사람 B 는 to 필드에 없다 — to 는 USDC 컨트랙트 주소이고, 진짜 수취인과 금액은 호출 데이터 안에 있다. ETH 를 보내는 게 아니라서 value 는 0.'],
+        ['실행 — 장부 갱신', 'EVM 이 컨트랙트의 transfer 코드를 실행한다. 저장소의 숫자 두 개가 바뀐다 — A 에서 빼고 B 에 더한다.'],
+        ['이벤트 기록', '표준에 따라 Transfer 이벤트가 receipt 에 남는다. 블록 헤더의 logsBloom 도 켜진다 — 0장에서 빈 값이었던 그 필드다.'],
+        ['입금 감지', '토큰 입금 감지는 트랜잭션의 to 가 아니라 Transfer 이벤트의 받는이를 본다 — 거기서 내 입금 주소를 찾는다.'],
+        ['decimals', '저장값은 정수다. USDC 는 decimals 6 — 저장된 100,000,000 이 화면의 100 USDC 다.'],
+      ],
+      scene:
+        '<div class="banim-chain">' +
+        `<div class="banim-block new"><div class="banim-bt">트랜잭션</div>` +
+        row('from', '', '0xa11c… — A') + row('to', 'txto') +
+        row('value', 'txval') + row('data', 'txdata') + '</div>' +
+        `<div class="banim-block new"><div class="banim-bt">USDC 컨트랙트 저장소</div>` +
+        row('0xa11c… — A', 'balA', '250,000,000') +
+        row('0xb0b1… — B', 'balB', '40,000,000') +
+        row('표시 잔액 ÷10⁶', 'disp') + '</div>' +
+        `<div class="banim-block new" data-on="3"><div class="banim-bt">receipt</div>` +
+        row('status', '', '성공') +
+        row('Transfer', '', 'A → B · 100,000,000') +
+        row('logsBloom — 헤더', '', '0x40…8a') + '</div>' +
+        '</div>' +
+        '<div class="banim-note" data-on="4">감지기 — Transfer 이벤트의 받는이(0xb0b1…)가 매핑된 입금 주소 → DEPOSIT 발행</div>' +
+        '<div class="banim-status" data-f="rst"></div>',
+      render(step, setF) {
+        setF('txto', step >= 1 ? 'USDC 컨트랙트 — <span class="cv">B 아님</span>' : '—');
+        setF('txval', step >= 1 ? '0 ETH' : '—');
+        setF('txdata', step >= 1 ? 'transfer(0xb0b1…, 100000000)' : '—');
+        setF('balA', step >= 2 ? '<span class="cv">150,000,000</span>' : '250,000,000');
+        setF('balB', step >= 2 ? '<span class="cv">140,000,000</span>' : '40,000,000');
+        setF('disp', step >= 5 ? '150 USDC · 140 USDC' : '—');
+        setF('rst',
+          step === 0 ? 'USDC 장부 (저장값) — A: 250,000,000 · B: 40,000,000'
+          : step === 1 ? 'tx: to=컨트랙트 · value=0 · 수취인은 data 안'
+          : step === 2 ? '장부 갱신 — A −100,000,000 · B +100,000,000'
+          : step === 3 ? 'Transfer(0xa11c…, 0xb0b1…, 100,000,000) 기록됨'
+          : step === 4 ? '가스는 약 45,000~65,000 — 컨트랙트 실행이라 단순 송금(21,000)보다 크다'
+          : 'decimals 6 — 100,000,000 = 100 USDC');
+      },
+    });
+  }
+
   // finality — 슬롯 띠 → 체크포인트 투표 → 최종 확정 (1장 4·5절)
   function buildFinality(el) {
     const cells = (n, opts) => {
@@ -510,6 +558,7 @@ window.MD = (() => {
     'reorg': buildReorg,
     'deep-reorg': buildDeepReorg,
     'finality': buildFinality,
+    'erc20-transfer': buildErc20Transfer,
   };
 
   function mountAnims(root) {

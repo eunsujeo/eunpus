@@ -1037,3 +1037,7 @@ a.brand-mark { text-decoration: none; }
   border-radius: 6px;
   background: var(--surface-elevated);
 }
+
+/* anim 공용 — 값 하이라이트 (setF 로 끼워 넣는 강조) */
+.banim .cv { color: var(--primary-active); }
+:root:not([data-theme="light"]) .banim .cv { color: var(--primary); }
