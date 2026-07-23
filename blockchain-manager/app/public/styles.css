@@ -1160,3 +1160,5 @@ a.brand-mark { text-decoration: none; }
   border-radius: 6px;
 }
 .banim-mpool .banim-txchip { margin-top: 0; }
+/* 교체로 밀려난 트랜잭션 칩 — 무효 표시 */
+.banim-txchip.dead { opacity: 0.35; border-style: dashed; text-decoration: line-through; }
