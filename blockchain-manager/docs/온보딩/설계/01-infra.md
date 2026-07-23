@@ -8,15 +8,14 @@ status: To Do
 
 ## 문서 구성
 
+이 문서(인프라)에서 시작해 아래 순서로 읽는다. API 명세는 온보딩 문서가 아니라 각 카테고리의 API 뷰어([블록체인 매니저](?cat=블록체인매니저&sub=API) · [컴플라이언스](?cat=컴플라이언스&sub=API))에 있다.
+
 | 문서 | 내용 |
 |---|---|
-| 이 문서 | 배포 단위 · 큐 · DB · 보안 경계 · 출금·입금 전체 시퀀스 |
 | [블록체인 매니저 — 흐름](02-bcm-flow.md) | 계정·주소·입금·sweep·출금·boost 상세 흐름 + 상태 enum |
-| [블록체인 매니저 API](?cat=블록체인매니저&sub=API) | 엔드포인트·타입 전체 |
-| [블록체인 매니저 — DB](03-bcm-db.md) | ERD · 테이블 · 필드 |
-| [컴플라이언스 — 흐름](04-compliance-flow.md) | 출금 확인·입금 판별·VASP 온보딩 상세 흐름 + 상태 enum |
-| [컴플라이언스 API](?cat=컴플라이언스&sub=API) | 엔드포인트·타입 전체 |
-| [컴플라이언스 — DB](05-compliance-db.md) | ERD · 테이블 · 필드 |
+| 블록체인 매니저 — DB (예정) | ERD · 테이블 · 필드 |
+| 컴플라이언스 — 흐름 (예정) | 출금 확인·입금 판별·VASP 온보딩 상세 흐름 + 상태 enum |
+| 컴플라이언스 — DB (예정) | ERD · 테이블 · 필드 |
 
 ## 배포 단위 — 한 장
 
@@ -25,19 +24,22 @@ flowchart TB
   subgraph OURS["사내 인프라"]
     direction TB
     CORE["DAW-CORE<br/>Service · Admin 백엔드"]
-    subgraph BMZ["블록체인 매니저 — 자산 이동"]
-      direction LR
-      COS["API Co-signer (SGX/TEE)<br/>+ Callback Handler"]
-      BM["블록체인 매니저<br/>웹훅 수신"]
+    subgraph BC["BC"]
+      direction TB
+      subgraph BMZ["블록체인 매니저 — 자산 이동"]
+        direction LR
+        COS["API Co-signer (SGX/TEE)<br/>+ Callback Handler"]
+        BM["블록체인 매니저<br/>웹훅 수신"]
+      end
+      subgraph TRZ["컴플라이언스 게이트"]
+        direction LR
+        GATE["컴플라이언스 서비스<br/>라우터 + 솔루션 어댑터"]
+        FBCLI["Fireblocks<br/>스크리닝 클라이언트"]
+        EN["VerifyVASP Enclave<br/>PUBLIC HTTPS 인바운드"]
+      end
     end
     PADM["정책 관리<br/>벤더 정책 편집·게시"]
     MQ[("메시지 큐<br/>deposit·withdrawal·internal·compliance")]
-    subgraph TRZ["컴플라이언스 — 규제 확인"]
-      direction LR
-      GATE["컴플라이언스 서비스<br/>라우터 + 솔루션 어댑터"]
-      FBCLI["Fireblocks<br/>스크리닝 클라이언트"]
-      EN["VerifyVASP Enclave<br/>PUBLIC HTTPS 인바운드"]
-    end
     CORE ~~~ MQ
   end
 
@@ -77,6 +79,7 @@ flowchart TB
   class MQ mq
   class FB,TRNET vendor
   class EVM chain
+  style BC fill:none,stroke:#0d9488,stroke-width:2px
 ```
 
 파랑 = 직접 만들고 운영하는 서비스, 노랑 = 벤더가 요구해 우리 인프라 안에 두는 설치물, 회색 = 외부 벤더·네트워크.
@@ -94,7 +97,7 @@ flowchart TB
 
 ## 보안 경계
 
-- **PUBLIC 인바운드는 둘** — VerifyVASP Enclave(상대 VASP 발신), 블록체인 매니저 웹훅 수신(Fireblocks 발신 · 공개키 서명 검증). 밖으로 여는 인바운드는 이 둘뿐이고, 나머지 구성 요소는 아웃바운드만 연다.
+- **PUBLIC 인바운드는 둘** — VerifyVASP Enclave(상대 VASP 발신), 블록체인 매니저 웹훅 수신(Fireblocks 발신 · 서명 검증). 밖으로 여는 인바운드는 이 둘뿐이고, 나머지 구성 요소는 아웃바운드만 연다.
 - **벤더 API user 는 셋으로 분리** — 블록체인 매니저(거래 제출) · 정책 관리(정책 편집) · 스크리닝 클라이언트(validate/full).
 - **서명은 벤더 단독으로 되지 않는다** — MPC share 하나는 API Co-signer(SGX/TEE)에 있고, 서명 직전에 Callback Handler 가 승인·거부를 판정한다.
 
@@ -125,7 +128,7 @@ flowchart TB
 
 ## 출금 전체 시퀀스
 
-수취처가 VASP 인 출금 기준. 상세는 [블록체인 매니저 — 흐름](02-bcm-flow.md) · [컴플라이언스 — 흐름](04-compliance-flow.md).
+수취처가 VASP 인 출금 기준. 상세는 [블록체인 매니저 — 흐름](02-bcm-flow.md) · 컴플라이언스 — 흐름 (예정).
 
 ```mermaid
 sequenceDiagram
