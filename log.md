@@ -7696,3 +7696,9 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - ANSWERED: (기존 Q 없음 — 본문 ★ 기록) / 신규 Q-2026-07-22-01 (메인넷 동일 여부) · Q-2026-07-22-02 (시퀀서 드랍 시 전이) 등록
 - 영향받은 페이지: entities/fireblocks/transaction.md (DCCP 절 하위 소절 추가), open-questions/fireblocks.md
 - 신규 entity: 0 (transaction.md 흡수 — 31 stage 연속)
+
+## Stage 159 (2026-07-23) — Webhook 전달 정책·보안 promote (재시도 스케줄·circuit breaker·JWKS)
+- source: reference-webhooks-* 추출본 7종 (2026-05-22 fetch) — responsesretries · configuringwebhooks · best-practices · protection-guide · ip-allowlisting · validating-webhooks · resend-notifications
+- ANSWERED: 없음 (Q-2026-07-02-T02 · Q-2026-05-29-DC06 pending 유지)
+- 영향받은 페이지: vendors/fireblocks/api.md (§"Webhook 전달 정책·보안" 신설 · frontmatter 159 · source_count 22)
+- 신규 entity: 0 (api hub 흡수 — 32 stage 연속)

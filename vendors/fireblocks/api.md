@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [api, identity, data-objects, integration]
 stage_introduced: 1
-last_updated_stage: 151
-source_count: 16
+last_updated_stage: 159
+source_count: 22
 related:
   - api-co-signer
   - api-key
@@ -358,6 +358,31 @@ ApprovalStatus.approval: "PENDING_AUTHORIZATION" | "APPROVED" | "REJECTED" | "NA
 
 (source: `reference-webhook-v2-migration-guide.md` — developers.fireblocks.com, 2026-06-08 web fetch)
 
+### Webhook 전달 정책·보안 (★ Stage 159)
+
+**전달·재시도**
+
+- 벤더는 HTTP 200 응답을 전달 완료로 본다. 무응답·5xx 는 **지수 백오프 재시도: 10 → 30 → 120 → 300 → 900 → 1800 → 3600 → 7200 → 14400초, 총 10회 실패 시 failed 마킹 후 중단** (source: `reference-webhooks-gettingstarted-responsesretries.md`)
+- 4xx 는 재시도하지 않는다 — 예외는 **429 · 408** 둘뿐 (같은 source)
+- **순서 미보장 공식화** — 리소스 단위 순서 전송을 시도하나 보장하지 않는다. "endpoint 는 순서에 의존하지 말 것" (source: `reference-webhooks-best-practices.md` · `reference-webhook-v2-migration-guide.md`)
+- **중복 수신 가능** — 이벤트 ID 추적 + `createdAt` 비교로 걸러야 함 (source: `reference-webhooks-best-practices.md`)
+- **circuit breaker** — 오류율이 임계를 넘는 endpoint 는 **벤더가 자동 비활성화** (임계 수치 비공개). 권고 대응 = 비동기 큐 + 즉시 2xx (source: `reference-webhooks-best-practices.md`)
+- 재전송: v2 는 원 이벤트로부터 **30일**, 단 **이벤트당 5분에 1회** 제한 (source: `reference-webhook-v2-migration-guide.md`). v1 계열 API 는 실패분 전체(`resend_failed`) · tx 단위(`resendTransactionWebhooksById`) 두 가지 (source: `reference-resend-webhook-notifications.md`). 서버 1시간+ 정지 시 최대 24시간 범위 재전송 언급 (source: `reference-webhooks-best-practices.md`)
+
+**설정 제약** (source: `reference-webhooks-gettingstarted-configuringwebhooks.md`)
+
+- 설정 주체는 **Admin 급 사용자만** (Owner · Admin · Non-Signing Admin). API 설정은 Admin 권한 API key 필요.
+- URL: 공개 HTTPS · **443 포트** · 255자 이내 · **워크스페이스당 최대 10개**.
+- `BALANCE_UPDATE` 이벤트는 2025-11부터 v2 셀프 구독 (벤더 수동 활성화 종료).
+
+**보안 3중** (source: `reference-webhook-protection-guide.md`)
+
+- **발신 IP allowlist** — 웹훅 발신 IP 는 환경당 1개: US `3.135.57.98` · EU `63.179.12.78` · EU2 `3.77.138.100` · Sandbox `18.117.207.128`. v1/v2 의 IP 가 다르다. 벤더 권고는 "IP 만 믿지 말고 서명 검증" (source: `reference-webhooks-ip-allowlisting.md`). ※ [[entities/fireblocks/ip-allowlist]] 는 반대 방향(우리→벤더 API 호출의 소스 IP 게이트) — 별개 개념.
+- **서명 검증 (현행 JWKS)** — `Fireblocks-Webhook-Signature` 헤더에 detached JWS(**RS512**). JWS 헤더의 kid 로 JWKS endpoint(`keys.fireblocks.io/.well-known/jwks.json` 등 환경별)에서 공개키 자동 조회 — **키 로테이션 자동**. 구방식 `Fireblocks-Signature`(수동 키 관리)와 마이그레이션 기간 중 병행 전송 (source: `reference-validating-webhooks.md`)
+- **잔액 검증** — 수신 tx 웹훅만으로 내부 로직(sweep 등)을 트리거하지 말고 **balance update 웹훅 수신 + block height 일치 확인 후** 실행 권고 (source: `reference-webhooks-best-practices.md`)
+
+미확인: 재시도 스케줄 수치가 v1/v2 어느 서비스 기준인지 페이지에 명시 없음 (v2 는 "더 긴 창"으로만 서술 — `reference-webhook-v2-migration-guide.md`). circuit breaker 임계 수치 비공개. 알림 이력·재전송의 페이지네이션·rate limit 은 Q-2026-07-02-T02 pending.
+
 ### read/write 본질 (지갑 매니저 매핑)
 
 - **WRITE = 상태 변경**: 계정·자산·주소 생성, 트랜잭션 생성·drop·cancel, webhook 설정. (`estimate_fee` 는 POST지만 사실상 read)
@@ -381,3 +406,12 @@ ApprovalStatus.approval: "PENDING_AUTHORIZATION" | "APPROVED" | "REJECTED" | "NA
 - `developers.fireblocks.com/api-reference/vaults/*` · `/transactions/*` · `/webhooks-v2/*` — 개별 endpoint pages (제목·slug 확인)
 - 경로 직접 확인(.md fetch): `POST /v1/transactions/{txId}/drop` · `POST /v1/transactions/estimate_fee` · `GET /v1/transactions/{txId}`
 - 검색 스니펫 확인: `POST /v1/vault/accounts` · `POST /v1/vault/accounts/{vaultAccountId}/{assetId}/addresses` · `POST /v1/webhooks` · `GET /v1/vault/accounts_paged`
+
+## Sources (Stage 159 추가)
+
+- `2026-05-22__developers-fireblocks-com__reference-webhooks-gettingstarted-responsesretries.md` — 재시도 스케줄·4xx 예외
+- `2026-05-22__developers-fireblocks-com__reference-webhooks-gettingstarted-configuringwebhooks.md` — 설정 제약 (Admin 전용·443·10개)
+- `2026-05-22__developers-fireblocks-com__reference-webhooks-best-practices.md` — circuit breaker·순서·중복·잔액 검증 권고
+- `2026-05-22__developers-fireblocks-com__reference-webhook-protection-guide.md` + `reference-webhooks-ip-allowlisting.md` — 보안 3중·발신 IP
+- `2026-05-22__developers-fireblocks-com__reference-validating-webhooks.md` — JWKS 서명 검증 (RS512 detached JWS)
+- `2026-05-22__developers-fireblocks-com__reference-resend-webhook-notifications.md` — 재전송 API 2종
