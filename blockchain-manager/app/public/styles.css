@@ -1147,3 +1147,16 @@ a.brand-mark { text-decoration: none; }
   border-radius: 4px;
   color: var(--body);
 }
+
+/* nonce-replace — mempool 칩 컨테이너 */
+.banim-mpool {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 14px;
+  padding: 8px 10px;
+  border: 1px dashed var(--hairline);
+  border-radius: 6px;
+}
+.banim-mpool .banim-txchip { margin-top: 0; }

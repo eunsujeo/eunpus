@@ -642,6 +642,44 @@ window.MD = (() => {
     });
   }
 
+  // nonce-replace — 같은 nonce 바꿔치기: 막힘 → 수수료 인상 교체 → 가속/취소 (3장 2절)
+  function buildNonceReplace(el) {
+    stepAnim(el, {
+      steps: [
+        ['순번', '계정의 다음 순번은 12 다. 트랜잭션은 이 번호를 달고 나가고, 체인은 한 계정의 트랜잭션을 번호 순서대로만 포함한다.'],
+        ['막힘', 'nonce 12 를 낮은 팁으로 보냈다. 다른 트랜잭션에 밀려 뽑히지 못하고 mempool 에 머문다.'],
+        ['뒤도 선다', 'nonce 13 을 보내도 12 가 포함되기 전에는 나갈 수 없다. 저가 수수료 한 건이 계정의 출금 전체를 세운다.'],
+        ['바꿔치기', '같은 nonce 12 로 팁을 올린 트랜잭션을 다시 보낸다. 수수료가 충분히 오르면(geth 기본 10% 이상) 노드가 기존 것을 교체한다.'],
+        ['교체 완료', '새 12 가 블록에 담기는 순간 nonce 12 는 소모된다. 원래 트랜잭션은 무효가 되어 사라지고, 13 도 이어서 포함된다.'],
+        ['취소도 같은 원리', '내용을 "자기 자신에게 0 ETH" 로 바꿔 같은 nonce 로 보내면 취소가 된다 — 멈춘 출금을 다루는 표준 방법이다.'],
+      ],
+      scene:
+        '<div class="banim-el">계정 0xa11c… — 다음 nonce: <b data-f="acct">12</b></div>' +
+        '<div class="banim-mpool"><span class="banim-pl">mempool</span>' +
+        '<span class="banim-txchip" data-on="1" data-off="4">nonce 12 · 팁 1 gwei</span>' +
+        '<span class="banim-txchip" data-on="2" data-off="4">nonce 13 · 순서 대기</span>' +
+        '<span class="banim-txchip" data-on="3" data-off="4"><span class="cv">nonce 12 · 팁 2 gwei — 교체</span></span>' +
+        '</div>' +
+        '<div class="banim-chain" data-on="4">' +
+        '<div class="banim-block old"><div class="banim-bt">블록 N</div>' +
+        '<div class="banim-row"><span>포함</span><b>nonce 12 — 팁 2 gwei</b></div>' +
+        '<div class="banim-row"><span>포함</span><b>nonce 13</b></div></div>' +
+        '</div>' +
+        '<div class="banim-note" data-on="5">취소 = 같은 nonce · 자기에게 0 ETH · 팁 인상 — 내용만 다른 같은 바꿔치기</div>' +
+        '<div class="banim-status" data-f="rst"></div>',
+      render(step, setF) {
+        setF('acct', step >= 4 ? '14' : '12');
+        setF('rst',
+          step === 0 ? '지금까지 보낸 트랜잭션 12개 — 다음 번호는 12'
+          : step === 1 ? 'nonce 12: mempool 대기 — 팁이 낮아 안 뽑힌다'
+          : step === 2 ? 'nonce 13: 12 뒤에서 대기 — 갭 없이 순서대로만'
+          : step === 3 ? '같은 12 가 둘 — 노드는 팁 1 → 2 (100% 인상) 쪽으로 교체'
+          : step === 4 ? '12·13 포함 — 다음 nonce 는 14. 원래 12 는 무효'
+          : '가속과 취소 모두 "같은 nonce + 수수료 인상" 하나의 원리');
+      },
+    });
+  }
+
   const ANIM_DEFS = {
     'block-lifecycle': buildBlockLifecycle,
     'proposer': buildProposer,
@@ -651,6 +689,7 @@ window.MD = (() => {
     'slashing': buildSlashing,
     'erc20-transfer': buildErc20Transfer,
     'l2-settlement': buildL2Settlement,
+    'nonce-replace': buildNonceReplace,
   };
 
   function mountAnims(root) {
