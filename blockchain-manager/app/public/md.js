@@ -681,6 +681,45 @@ window.MD = (() => {
     });
   }
 
+  // commitment — 솔라나 확정 단계: processed → confirmed(지분 투표) → finalized(31개 쌓임) (솔라나 0장)
+  function buildCommitment(el) {
+    const cells = Array.from({ length: 32 }, (_, i) =>
+      `<span class="banim-cell b${i === 5 ? ' mycell' : ''}"></span>`).join('');
+
+    stepAnim(el, {
+      steps: [
+        ['400ms 의 박자', '슬롯이 400ms 마다 지나간다. 리더 일정은 에폭 단위로 미리 계산되어 공개돼 있다.'],
+        ['포함 — processed', '내 트랜잭션이 리더의 블록에 담겼다. 아직 투표 전 — 조회 기준으로는 processed.'],
+        ['투표 — confirmed', '지분 3분의 2 이상이 이 블록에 투표했다. 약 1~2초 — confirmed. 이 단계가 뒤집힌 사례는 관측된 적이 없다.'],
+        ['쌓임', '그 위로 confirmed 블록이 400ms 마다 하나씩 빠르게 쌓인다.'],
+        ['finalized', '31개가 쌓이면 finalized — 약 13초. 노드가 이 블록을 뿌리로 고정한다.'],
+        ['세 체인, 같은 질문', '이더리움 약 13분 · Base(L1 기준) 15~20분 · 솔라나 약 13초 — "언제 믿는가"의 답이 체인마다 다르다.'],
+      ],
+      scene:
+        '<div class="banim-epoch" data-ep="s"><span class="banim-el">솔라나 슬롯 — 400ms 간격</span>' +
+        `<div class="banim-cells">${cells}</div>` +
+        '<div class="banim-cpline"><span class="banim-cp" data-on="2">지분 투표</span>' +
+        animGauge(72, 2, true) + '</div></div>' +
+        '<div class="banim-status" data-f="rst"></div>',
+      render(step, setF, root) {
+        const open = [5, 6, 10, 21, 32, 32][step];
+        root.querySelectorAll('[data-ep="s"] .banim-cell').forEach((c, i) =>
+          c.classList.toggle('f', i >= open));
+        root.querySelector('.mycell').classList.toggle('mine', step >= 1);
+        const box = root.querySelector('[data-ep="s"]');
+        box.classList.toggle('jus', step >= 2 && step < 4); // confirmed — 옐로
+        box.classList.toggle('fin', step >= 4);             // finalized — 청록
+        setF('rst',
+          step === 0 ? '슬롯 400ms — 이더리움 12초의 30배 박자'
+          : step === 1 ? '내 tx: processed — 담겼지만 투표 전'
+          : step === 2 ? '내 tx: <b class="cv">confirmed</b> — 지분 3분의 2 투표 (약 1~2초)'
+          : step === 3 ? '내 tx 위로 confirmed 블록이 쌓이는 중 — finalized 까지 31개'
+          : step === 4 ? '내 tx: <b class="cv">finalized</b> — 약 13초'
+          : '이더리움 ≈ 13분 · Base(L1) ≈ 15~20분 · 솔라나 ≈ 13초');
+      },
+    });
+  }
+
   const ANIM_DEFS = {
     'block-lifecycle': buildBlockLifecycle,
     'proposer': buildProposer,
@@ -691,6 +730,7 @@ window.MD = (() => {
     'erc20-transfer': buildErc20Transfer,
     'l2-settlement': buildL2Settlement,
     'nonce-replace': buildNonceReplace,
+    'commitment': buildCommitment,
   };
 
   function mountAnims(root) {
