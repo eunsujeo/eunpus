@@ -7,13 +7,13 @@ embed: compliance-api-doc.html
 
 DAW-CORE와 스펙을 맞추는 연동 계약 — HTTP 엔드포인트·공통 규약·메시지 큐 이벤트·인바운드 내부 API·타입 전체.
 계약의 배경·시퀀스는 [설계 1장](../설계/01-interface.md)(운영 API·VASP 온보딩·배치는 [3장](../설계/03-operations.md)), verdict 값의 근거는 [트래블룰 8장](../../트래블룰/설계/08-gate-port.md).
-정본은 compliance-api-docs/openapi.yaml — 이 문서는 build.py 가 만든 export 라 직접 고치지 않는다.
+이 문서는 build.py 가 만든 export 라 직접 고치지 않는다 — 수정은 compliance-api-docs/openapi.yaml 에서.
 
 # Compliance Service API
 
 `v0.0.5`
 
-컴플라이언스 서비스는 규제 대응의 솔루션·벤더 연동을 전담하는 별도 서비스다.
+컴플라이언스 게이트는 규제 대응의 솔루션·벤더 연동을 전담하는 별도 서비스다.
 DAW-CORE는 이 HTTP API 로 출금 확인·입금 판별의 솔루션 조회를 요청하고,
 비동기 확인의 결과 도착은 메시지 큐 이벤트로 받는다.
 

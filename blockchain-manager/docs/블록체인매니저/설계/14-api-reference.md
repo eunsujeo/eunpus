@@ -77,7 +77,7 @@ fun onChainEvent(topic: Topic, handler: (ChainEvent) -> Unit)    // 4장 — 토
 | `internal-events` | 내부 이체 완료 (INTERNAL — delta 정산만 · sweep 은 매니저 내부라 싣지 않는다) | 출발 계정 accountId | 정산 컨슈머 (10장) |
 
 - 같은 계정의 순서는 파티션이 보장한다. `internal-events` 에 실리는 내부 이체는 delta 뿐이다 — sweep 은 매니저 내부 동작이라 이벤트가 없다(4·5장).
-- 판단은 `status`(TxStatus 다섯)로 한다. `subStatus`·`networkStatus` 는 분기가 필요한 최소 집합만 보고 나머지는 로깅한다(4장).
+- 판단은 `status`(TxStatus 다섯)로 한다. `subStatus`·`networkStatus` 는 이벤트에 싣지 않는다 — 매니저 내부 번역용 값(4장).
 
 ## 공통 타입
 
@@ -149,11 +149,10 @@ data class ChainEvent(
   val accountId: AccountId,            // 파티션 키
   val asset: Asset,
   val to: String,                      // 목적지 주소 — 입금 판별
-  val status: TxStatus,
+  val status: TxStatus,                // DAW-CORE 는 이것으로만 판단한다
   val numOfConfirmations: Int,
-  val subStatus: String? = null,       // 벤더 상세 사유 — 최소 집합만 분기
-  val networkStatus: String? = null,   // 체인 레이어 상태
 )
+// 벤더 subStatus·networkStatus 는 싣지 않는다 — 매니저 내부 번역용 값 (4장)
 
 class TravelRule                       // 게이트가 만든 암호화 산출물 · 매니저 미해석
                                        // 해외(Notabene)=메시지 · 국내(VerifyVASP)·개인지갑=없음 (12장)
@@ -171,7 +170,7 @@ enum class Topic { deposit, withdrawal, internal }   // 토픽명은 deposit-eve
 
 ## 상태 · 확정
 
-- **TxStatus 기준**과 벤더 원어 번역, subStatus·networkStatus 분담은 [4장 공통 상태 다섯](04-detect-confirm.md#공통-상태-다섯-txstatus-기준).
+- **TxStatus 기준**과 벤더 원어 번역(subStatus·networkStatus 는 매니저 내부 값)은 [4장 공통 상태 다섯](04-detect-confirm.md#공통-상태-다섯-txstatus-기준).
 - **확정 기준(DCCP)** — 체인별 확정 컨펌수 정책은 4장. 첫 COMPLETED 가 곧 finality 는 아니므로 `numOfConfirmations` 를 임계와 직접 비교한다.
 - **DAW-CORE DB 매핑** — 매니저 TxStatus 를 DAW-CORE DB 상태로 옮기는 대응·미해결(REJECTED 짝 등)은 [13장 DB 스키마 점검](13-backend-db-alignment.md).
 

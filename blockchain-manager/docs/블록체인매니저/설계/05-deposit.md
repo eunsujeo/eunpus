@@ -4,7 +4,7 @@ status: Done
 ---
 
 큐에 publish 된 입금 이벤트가 대기를 거쳐 가용이 되고 고객 vault 에서 옴니버스로 모이기까지를 다룬다.
-감지는 블록체인 매니저의 웹훅 수신, 원장 반영은 백엔드 큐 컨슈머의 일이다. 감지·판정 기준은 4장을 그대로 쓴다. 입금이 지나는 상태 넷, reorg 예외, sweep 과 원장 반영 순서를 정리한다.
+감지는 블록체인 매니저의 웹훅 수신, 원장 반영은 백엔드 큐 컨슈머의 일이다. 감지·판단 기준은 4장을 그대로 쓴다. 입금이 지나는 상태 넷, reorg 예외, sweep 과 원장 반영 순서를 정리한다.
 
 ## 입금 한 건이 흐르는 길 — 매니저가 감지해 큐에 publish, 백엔드가 consume 해 확정까지
 
@@ -62,14 +62,14 @@ sequenceDiagram
 
 이더리움·Base 는 체인 끝이 드물게 교체(reorg)될 수 있다. Fireblocks 의 reorg 거동은 확답으로 정리됐다.
 
-- **1차 방어는 4장의 DCCP 임계(finality)** — 임계만큼 confirmation 이 쌓인 뒤에만 확정으로 본다. 그보다 얕은 reorg 는 확정 판정에 닿지 못한다.
+- **1차 방어는 4장의 DCCP 임계(finality)** — 임계만큼 confirmation 이 쌓인 뒤에만 확정으로 본다. 그보다 얕은 reorg 는 확정 판단에 닿지 못한다.
 - **CONFIRMING 은 BROADCASTING 으로 되돌아가지 않는다** — reorg 가 나도 마찬가지다. reorg 로 거래가 블록에서 빠져 취소되면 Fireblocks 는 broadcasting 회귀가 아니라 **FAILED(또는 취소·만료) + subStatus `DROPPED_BY_BLOCKCHAIN`** 으로 표시한다(Fireblocks Support 백엔드 팀 확답).
 - 매니저는 이 신호를 큐에 publish 하고, 무효화 처리는 백엔드 몫이다(원장 반영은 8장).
 - 최종 안전망은 **주기 대사**.
 
 ## 입금 다음 — 고객 vault 에서 옴니버스로 (sweep)
 
-고객별 vault 는 **입금 식별용**입니다 — EVM 은 vault·자산당 주소가 하나뿐이라(2장), 고객마다 vault 를 만들어야 "누가 보냈나"가 주소로 갈립니다. 하지만 **자산을 거기 두지 않습니다** — 입금이 확정되면 **매니저가 내부에서 옴니버스 vault 로 옮깁니다(sweep)**. 백엔드는 sweep 을 호출하지 않고 큐 이벤트도 받지 않는다 — 고객 원장 불변(회계 이벤트 아님)이라 백엔드가 알 일이 없다.
+고객별 vault 는 **입금 식별용**입니다 — EVM 은 vault·자산당 주소가 하나뿐이라(2장), 고객마다 vault 를 만들어야 "누가 보냈나"가 주소로 갈립니다. 하지만 **자산을 거기 두지 않습니다** — 입금이 확정되면 **매니저가 내부에서 옴니버스 vault 로 옮깁니다(sweep)**. 확정 관찰은 그 (고객 vault, 자산)을 **sweep 대상으로 마킹**하는 것까지고, **제출은 주기 배치**가 대상을 모아서 한다(주기·최소 금액은 운영 설정값). 백엔드는 sweep 을 호출하지 않고 큐 이벤트도 받지 않는다 — 고객 원장 불변(회계 이벤트 아님)이라 백엔드가 알 일이 없다.
 
 고객별 잔액은 DAW-CORE DB 원장이 관리하므로, 온체인 보관은 집약할수록 키·운영 관리가 단순해집니다. 10장의 "온체인 지갑은 둘뿐" 모델이 이 sweep 을 전제로 합니다.
 
@@ -85,14 +85,17 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     box rgb(220,252,231) 블록체인 매니저 — 별도 서비스
-    participant BM as 매니저 sweep<br/>내부 동작 · 입금 확정이 트리거
+    participant BM as 매니저 sweep<br/>내부 동작 · 확정 마킹 + 주기 배치
     participant MDB as 블록체인 매니저 DB<br/>sweep 대상 · 체크포인트
     end
     participant FB as Fireblocks (SaaS)
     participant RL as 지정 relay<br/>(Fireblocks Relay)
 
-    Note over BM: 입금 확정(COMPLETED)을 잡으면 그 고객 vault 를 sweep 대상으로 — 백엔드 호출 없음
-    BM->>MDB: sweep 대상 기록 (고객 vault · 자산)
+    Note over BM: 입금 확정(COMPLETED)을 잡으면 그 (고객 vault, 자산)을 sweep 대상으로 마킹 — 백엔드 호출 없음
+    BM->>MDB: sweep 대상 마킹
+    Note over BM,MDB: 이하는 주기 배치 — 대상을 모아서 처리 (주기·최소 금액은 운영 설정값)
+    BM->>MDB: 대상 목록 조회
+    BM->>FB: vault 잔액 조회 — sweep 금액 = 조회 시점 전액 · 최소 금액 미만이면 건너뜀(대상 유지)
     BM->>FB: 거래 제출 — 고객 vault → 옴니버스 (gasless)
     Note over FB: 그 vault 의 첫 gasless 거래면 위임 설정(upgrade)이 함께 처리된다 — 주소·키 불변
     FB->>RL: gas 부담 위임 — 거래 생성·서명 시점 (relay 거절이면 거래 실패)
@@ -117,10 +120,12 @@ sequenceDiagram
 
 | 결정 | 내용 |
 |---|---|
-| **트리거** | **입금 확정** — 매니저가 내부에서 실행한다(백엔드 호출 없음). |
+| **트리거·제출** | 입금 확정 = **대상 마킹**(`bcm_swp_trgt`) · 제출 = **주기 배치** — 모두 매니저 내부(백엔드 호출 없음). 제출 직전 vault 잔액을 조회해 금액을 정하므로(sweep 금액 = 그 시점 전액), 벤더 장부 계상 전에 제출하는 경쟁이 구조적으로 없다. |
+| **대상 삭제 기준** | sweep tx 제출 성공이 아니라 **배치가 vault 잔액이 최소 미만임을 확인**했을 때 대상을 지운다 — vault 잔액이 진실이라, 탈락한 sweep 도 진행 중 도착한 새 입금도 다음 배치가 잔액을 보고 자연히 재sweep 한다. `swp_tx_id`(제출한 sweep tx)가 진행 중 재제출을 막고, sweep 종결을 관찰하면 비워 다음 배치가 잔액을 재확인한다(17장). |
+| **배치 값** | 주기 · 자산별 최소 sweep 금액(미만이면 다음 입금과 합침 — gas 인보이스 낭비 방지) · 제출 속도 상한(rate limit·Co-signer 배려) — 전부 운영 설정값, 초기값 미정. 반복 실패는 경보. |
 | **gas** | **Universal Gasless 로 대납** — 고객 vault 에 ETH 를 배포하지 않는다. 상세는 가스 대납 문서. |
 | **서명 자동화** | API Co-Signer — 내부 자동 실행이라 사람 개입 없이 서명까지 자동. |
 | **고객 잔액** | **불변** — 고객별 잔액은 DAW-CORE DB 원장 몫이고, sweep 은 온체인 보관 위치만 옮긴다(회계 이벤트 아님). |
 | **관찰·실패** | sweep tx 도 웹훅 수신으로 상태를 추적하고 막힘 점검·boost 를 탄다(4장). 단 **internal-events 에는 싣지 않는다** — 매니저 자기 실행분이라 백엔드가 소비할 것이 없고, 정합은 대사(8장)가 확인한다. |
 
-감지·판정 기준(웹훅 수신·DCCP·막힘 점검)은 [4. 감지와 확정](04-detect-confirm.md), 잔액의 세 칸(available·pending·locked)과의 맞물림은 [8. 잔액과 내역 조회](08-balance-history.md), 출금 쪽 상태 전이는 [6. 출금](06-withdrawal.md)에서 이어집니다.
+감지·판단 기준(웹훅 수신·DCCP·막힘 점검)은 [4. 감지와 확정](04-detect-confirm.md), 잔액의 세 칸(available·pending·locked)과의 맞물림은 [8. 잔액과 내역 조회](08-balance-history.md), 출금 쪽 상태 전이는 [6. 출금](06-withdrawal.md)에서 이어집니다.

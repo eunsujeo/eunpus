@@ -3,21 +3,21 @@ title: 인프라
 status: To Do
 ---
 
-시스템 전체의 배포 단위·메시지 큐·DB·보안 경계, 출금·입금 전체 시퀀스.
+시스템 전체의 구성 요소·메시지 큐·DB·보안 경계, 출금·입금 전체 시퀀스.
 이 문서 묶음만으로 구현한다. 미확정 항목은 각 장 끝 "미확정" 절에만 있다.
 
 ## 문서 구성
 
-이 문서(인프라)에서 시작해 아래 순서로 읽는다. API 명세는 온보딩 문서가 아니라 각 카테고리의 API 뷰어([블록체인 매니저](?cat=블록체인매니저&sub=API) · [컴플라이언스](?cat=컴플라이언스&sub=API))에 있다.
+이 문서(인프라)에서 시작해 아래 순서로 읽는다. API 명세는 이 문서 묶음이 아니라 각 카테고리의 API 뷰어([블록체인 매니저](?cat=블록체인매니저&sub=API) · [컴플라이언스](?cat=컴플라이언스&sub=API))에 있다.
 
 | 문서 | 내용 |
 |---|---|
-| [블록체인 매니저 — 흐름](02-bcm-flow.md) | 계정·주소·입금·sweep·출금·boost 상세 흐름 + 상태 enum |
-| 블록체인 매니저 — DB (예정) | ERD · 테이블 · 필드 |
-| 컴플라이언스 — 흐름 (예정) | 출금 확인·입금 판별·VASP 온보딩 상세 흐름 + 상태 enum |
+| [블록체인 매니저 — 흐름](02-bcm-flow.md) | 계정·주소·감지(웹훅)·입금·sweep·출금·boost 상세 흐름 + 상태 enum |
+| [블록체인 매니저 — DB](03-bcm-db.md) | ERD · 테이블 8개 · 입금 시나리오 |
+| [컴플라이언스 게이트 — 흐름](04-compliance-flow.md) | 출금 확인·입금 판별·VASP 온보딩·주기 배치 + verdict |
 | 컴플라이언스 — DB (예정) | ERD · 테이블 · 필드 |
 
-## 배포 단위 — 한 장
+## 구성 요소 — 한 장
 
 ```mermaid
 flowchart TB
@@ -29,11 +29,11 @@ flowchart TB
       subgraph BMZ["블록체인 매니저 — 자산 이동"]
         direction LR
         COS["API Co-signer (SGX/TEE)<br/>+ Callback Handler"]
-        BM["블록체인 매니저<br/>웹훅 수신"]
+        BM["API · 웹훅 수신"]
       end
       subgraph TRZ["컴플라이언스 게이트"]
         direction LR
-        GATE["컴플라이언스 서비스<br/>라우터 + 솔루션 어댑터"]
+        GATE["라우터 + 솔루션 어댑터"]
         FBCLI["Fireblocks<br/>스크리닝 클라이언트"]
         EN["VerifyVASP Enclave<br/>PUBLIC HTTPS 인바운드"]
       end
@@ -61,8 +61,7 @@ flowchart TB
   GATE -->|validate/full 요청| FBCLI
   GATE -->|VerifyVASP 아웃바운드| EN
   EN -->|수신 콜백| GATE
-  BM --> FB
-  FB -.->|웹훅 — 상태 변경 push| BM
+  BM <-->|제출·조회 · 웹훅 수신| FB
   COS -->|서명 요청 폴링 · MPC share| FB
   FBCLI -->|JWT 서명 · validate/full| FB
   FB --> EVM
@@ -90,16 +89,16 @@ flowchart TB
 | 블록체인 매니저 | 온체인 자산 이동의 단일 창구. 벤더 원어를 공통 상태(TxStatus)로 번역 |
 | API Co-signer + Callback Handler | MPC 공동서명. 서명 직전 검증(승인·거부) |
 | 정책 관리 | 벤더 정책(TAP) 편집·게시 대행 |
-| 컴플라이언스 서비스 | 규제 확인의 솔루션 연동 창구. 솔루션 원어를 공통 verdict(TrVerdict)로 번역 |
+| 컴플라이언스 게이트 | 규제 확인의 솔루션 연동 창구. 솔루션 원어를 공통 verdict(TrVerdict)로 번역 |
 | Fireblocks 스크리닝 클라이언트 | validate/full 호출 전용 |
-| VerifyVASP Enclave | 상대 VASP 발신을 받아 컴플라이언스 수신 콜백을 내부망으로 호출 |
-| 메시지 큐 | 매니저·컴플라이언스가 발행한 이벤트를 DAW-CORE에 전달 |
+| VerifyVASP Enclave | 상대 VASP 발신을 받아 게이트의 수신 콜백을 내부망으로 호출 |
+| 메시지 큐 | 매니저·게이트가 발행한 이벤트를 DAW-CORE에 전달 |
 
 ## 보안 경계
 
 - **PUBLIC 인바운드는 둘** — VerifyVASP Enclave(상대 VASP 발신), 블록체인 매니저 웹훅 수신(Fireblocks 발신 · 서명 검증). 밖으로 여는 인바운드는 이 둘뿐이고, 나머지 구성 요소는 아웃바운드만 연다.
 - **벤더 API user 는 셋으로 분리** — 블록체인 매니저(거래 제출) · 정책 관리(정책 편집) · 스크리닝 클라이언트(validate/full).
-- **서명은 벤더 단독으로 되지 않는다** — MPC share 하나는 API Co-signer(SGX/TEE)에 있고, 서명 직전에 Callback Handler 가 승인·거부를 판정한다.
+- **서명은 벤더 단독으로 되지 않는다** — MPC share 하나는 API Co-signer(SGX/TEE)에 있고, 서명 직전에 Callback Handler 가 승인·거부를 판단한다.
 
 ## 메시지 큐 — 4 토픽
 
@@ -108,11 +107,23 @@ flowchart TB
 | `deposit-events` | 고객 입금 (DEPOSIT) | 고객 accountId | 매니저 | DAW-CORE 입금 컨슈머 |
 | `withdrawal-events` | 외부 출금 (WITHDRAWAL) | 출금 풀 vault 의 accountId | 매니저 | DAW-CORE 출금 컨슈머 |
 | `internal-events` | delta 정산 (INTERNAL) | 출발 계정 accountId | 매니저 | DAW-CORE 정산 컨슈머 |
-| `compliance` | withdrawal-check.settled | accountId | 컴플라이언스 | DAW-CORE |
+| `compliance` | withdrawal-check.settled | accountId | 게이트 | DAW-CORE |
+
+**파티션 키는 수신자가 아니라 순서 보장 단위다** — 네 토픽 모두 소비자는 DAW-CORE 다.
+
+- 출금의 키가 출금 풀인 이유 — 출금은 고객 vault 가 아니라 공용 출금 풀에서 나가므로, 매니저가 아는 계정이 그 풀뿐이다.
+- "어느 고객의 출금인가"는 DAW-CORE 가 이벤트의 `externalTxId` 로 자기 출금 지시와 대응한다.
+- 한 tx 의 이벤트들은 같은 풀에서 나가므로 같은 파티션에 순서대로 담긴다.
+
+**토픽을 계열별로 나눈 이유 셋:**
+
+- **파티션 키 전략이 계열마다 다르다** — 위 표. 한 토픽이면 키의 의미가 레코드마다 달라진다.
+- **폭주 격리** — 입금이 한꺼번에 몰려도 출금(돈 나가는 경로) 이벤트 처리가 밀리지 않는다.
+- **소비·장애·재처리 단위가 계열이다** — 컨슈머 그룹이 분리돼 한쪽의 장애·리플레이가 다른 계열에 번지지 않는다.
 
 전달 규약:
 
-- **at-least-once** — 같은 이벤트가 드물게 두 번 온다. DAW-CORE는 두 번 받아도 한 번만 반영한다 — 매니저 이벤트는 `txId`(또는 `externalTxId`)로, 컴플라이언스 settled 이벤트는 `checkId` 로 이미 처리한 건지 가린다.
+- **at-least-once** — 같은 이벤트가 드물게 두 번 온다. DAW-CORE는 두 번 받아도 한 번만 반영한다 — 매니저 이벤트는 `txId`(또는 `externalTxId`)로, 게이트의 settled 이벤트는 `checkId` 로 이미 처리한 건지 가린다.
 - **오프셋 커밋은 처리 성공 후에만** 한다. 실패하면 커밋하지 않아 재소비된다.
 - **같은 계정의 순서는 파티션 키가 보장**한다.
 - **컨슈머 그룹은 토픽마다 하나** — 인스턴스가 여러 대여도 분배는 큐가 한다.
@@ -136,7 +147,7 @@ sequenceDiagram
     box rgb(224,242,254) DAW-CORE
     participant BE as 출금 유스케이스
     end
-    participant CP as 컴플라이언스 서비스
+    participant CP as 컴플라이언스 게이트
     participant MQC as 큐<br/>compliance
     box rgb(224,242,254) 블록체인 매니저
     participant BM as 매니저<br/>API · 웹훅 수신
@@ -144,7 +155,7 @@ sequenceDiagram
     participant MQ as 큐<br/>withdrawal-events
     participant FB as Fireblocks
 
-    BE->>CP: POST withdrawal-checks — externalTxId·자산·금액·수취 정보
+    BE->>CP: POST /compliance/travel-rule/withdrawal-checks — externalTxId·자산·금액·수취 정보
     CP-->>BE: PENDING (접수)
     CP->>CP: 트래블룰 확인 — verdict 결과
     CP-->>MQC: withdrawal-check.settled 발행 — verdict · travelRuleMessage
@@ -158,7 +169,7 @@ sequenceDiagram
             BM-->>MQ: publish — SUBMITTED → CONFIRMING → COMPLETED
         end
         MQ-->>BE: consume — externalTxId 로 출금 건 대응 · txHash 는 전파 후 이벤트에 실려 온다
-        BE->>CP: POST report — tx hash (확보 후 1회)
+        BE->>CP: POST /compliance/travel-rule/withdrawal-checks/{checkId}/report — tx hash (확보 후 1회)
         alt COMPLETED
             BE->>BE: 출금 완료 처리
         else REJECTED · FAILED
@@ -175,7 +186,7 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant NET as 상대 VASP · 솔루션
-    participant CP as 컴플라이언스 서비스
+    participant CP as 컴플라이언스 게이트
     participant CH as 온체인
     participant FB as Fireblocks
     box rgb(224,242,254) 블록체인 매니저
@@ -183,13 +194,14 @@ sequenceDiagram
     end
     participant MQ as 큐<br/>deposit-events
     box rgb(224,242,254) DAW-CORE
+    participant SVC as Service 백엔드<br/>내부 API 구현
     participant BE as 입금 컨슈머
     end
 
     opt 사전 검증 — 국내 직접 연동
         NET->>CP: 사전 검증 요청 — 수취 주소·자산·금액
-        CP->>BE: 주소 귀속·실명 확인 조회
-        BE-->>CP: 확인 결과
+        CP->>SVC: POST /internal/compliance/address-attribution (Verify Address Attribution)<br/>주소 귀속·실명 확인 조회 — DAW-CORE 가 구현하는 인바운드 내부 API
+        SVC-->>CP: 확인 결과
         CP->>CP: 사전 검증 기록 적재
         CP-->>NET: 응답 회신
     end
@@ -198,13 +210,13 @@ sequenceDiagram
     BM-->>MQ: publish — CONFIRMING → 확정 임계 도달 시 COMPLETED
     MQ-->>BE: consume
     BE->>BE: 귀속(주소↔계정) 판단
-    BE->>CP: POST deposit-checks — 사전 검증 대조
+    BE->>CP: POST /compliance/travel-rule/deposit-checks (Create Deposit Check) — 사전 검증 대조
     CP-->>BE: 대조 결과 (senderVerified)
     BE->>BE: 가용 전이 또는 입금대기·동결
-    Note over BM: 입금 확정 후 sweep — 매니저 내부에서 실행 (블록체인 매니저 — 흐름)
+    Note over BM: 입금 확정 = sweep 대상 마킹 · 제출은 매니저 내부 주기 배치 (블록체인 매니저 — 흐름)
 ```
 
 ## 미확정
 
-- **서비스 간 인증 방식** — DAW-CORE↔매니저·DAW-CORE↔컴플라이언스·인바운드 내부 API 의 인증은 인프라 결정과 함께 확정한다.
+- **서비스 간 인증 방식** — DAW-CORE↔매니저·DAW-CORE↔게이트·인바운드 내부 API 의 인증은 인프라 결정과 함께 확정한다.
 - **막힘 경보 채널의 구체 수단** — 운영 알림·모니터링·별도 큐 중 무엇으로 흘릴지는 운영 설계에서 정한다.

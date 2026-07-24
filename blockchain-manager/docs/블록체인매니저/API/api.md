@@ -6,7 +6,7 @@ embed: bcm-api-doc.html
 ---
 
 DAW-CORE(Service·Admin)와 스펙을 맞추는 연동 계약 — HTTP 엔드포인트·공통 규약·메시지 큐 이벤트·타입 전체.
-정본은 bcm-api-docs/openapi.yaml — 이 문서는 build.py 가 만든 export 라 직접 고치지 않는다.
+이 문서는 build.py 가 만든 export 라 직접 고치지 않는다 — 수정은 bcm-api-docs/openapi.yaml 에서.
 
 # Blockchain Manager API
 
@@ -137,17 +137,14 @@ sequenceDiagram
   "asset": "ETH_USDC",
   "to": "0x9f...E2",
   "status": "COMPLETED",
-  "numOfConfirmations": 12,
-  "subStatus": "CONFIRMED",
-  "networkStatus": "CONFIRMED"
+  "numOfConfirmations": 12
 }
 ```
 
 - [`type`](#eventtype) — DEPOSIT · WITHDRAWAL · INTERNAL
-- [`status`](#txstatus) — 공통 상태 다섯 (아래 "상태 (TxStatus) 기준")
+- [`status`](#txstatus) — 공통 상태 다섯 (아래 "상태 (TxStatus) 기준"). DAW-CORE 는 이것으로만 판단한다
 - `txHash` — 전파 후 채워짐
-- `subStatus` — 벤더 상세 사유. 분기 필요한 최소 집합만 보고 나머지는 로깅한다
-- `networkStatus` — 체인 레이어 상태
+- 벤더의 `subStatus`·`networkStatus` 는 이벤트에 싣지 않는다 — 매니저가 번역에 쓰는 내부 값이다
 
 전달 보장:
 
@@ -159,7 +156,7 @@ sequenceDiagram
 
 ## 상태 (TxStatus) 기준
 
-거래·이벤트의 `status` 는 이 다섯이 기준이다. 벤더 원어는 매니저가 이 다섯으로 번역하고, `subStatus`·`networkStatus` 는 분기 필요한 최소 집합만 본다.
+거래·이벤트의 `status` 는 이 다섯이 기준이다. 벤더 원어는 매니저가 이 다섯으로 번역한다. 아래 표의 `subStatus`·`networkStatus` 열은 **매니저가 번역에 쓰는 벤더 내부 값** — 이벤트에는 `status`(TxStatus) 만 싣고 DAW-CORE 는 그것으로만 판단한다.
 
 | 공통 상태 | 뜻 | 블록체인 상태 (Pending → Confirmed → Finalized) | 벤더(Fireblocks) 원어 | 대표 subStatus | networkStatus | DB `tx_stcd` |
 |---|---|---|---|---|---|---|
@@ -400,7 +397,7 @@ _응답_
 **잔액 조회**
 
 vault 단위 잔액을 가용·대기·잠김으로 돌려준다.
-벤더가 보는 vault 잔액이라 대사(reconciliation) 재료다 — 고객별 귀속 잔액이 아니다. 고객별 잔액은 DAW-CORE 원장이 정본이다.
+벤더가 보는 vault 잔액이라 대사(reconciliation) 재료다 — 고객별 귀속 잔액이 아니다. 고객별 잔액은 DAW-CORE 원장에 있다.
 
 ```bash
 curl "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/assets/ETH_USDC/balance"
@@ -864,8 +861,6 @@ _응답_
 | `to` | string | 필수 | 목적지 주소 — 입금 판별 |
 | `status` | TxStatus | 필수 | `SUBMITTED` `CONFIRMING` `COMPLETED` `REJECTED` `FAILED` |
 | `numOfConfirmations` | integer | 필수 | 누적 컨펌 수 |
-| `subStatus` | string \\| null | - | 벤더 상세 사유 — 분기 필요한 최소 집합만 |
-| `networkStatus` | string \\| null | - | 체인 레이어 상태 |
 
 
 ### TxStatus

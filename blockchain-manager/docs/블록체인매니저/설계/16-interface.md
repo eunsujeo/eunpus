@@ -42,9 +42,7 @@ DAW-CORE가 블록체인 매니저를 호출하는 계약을 한 장으로 조�
   "asset": "ETH",
   "to": "0x896B...0b9b",
   "status": "COMPLETED",
-  "numOfConfirmations": 12,
-  "subStatus": null,
-  "networkStatus": null
+  "numOfConfirmations": 12
 }
 ```
 
@@ -52,7 +50,7 @@ DAW-CORE가 블록체인 매니저를 호출하는 계약을 한 장으로 조�
 
 ## TxStatus — DAW-CORE가 보는 공통 상태 다섯
 
-벤더 내부 상태는 매니저가 이 다섯으로 번역한다. 뜻·원어 대응·subStatus 는 [4장 기준 표](04-detect-confirm.md#공통-상태-다섯-txstatus-기준)가 원천이다.
+벤더 내부 상태는 매니저가 이 다섯으로 번역한다 — 이벤트엔 `status` 만 싣는다. 뜻·원어 대응(subStatus·networkStatus 는 매니저 내부 값)은 [4장 기준 표](04-detect-confirm.md#공통-상태-다섯-txstatus-기준)가 원천이다.
 
 | TxStatus | 뜻 | 블록체인 상태 (Pending → Confirmed → Finalized) |
 |---|---|---|
@@ -70,7 +68,7 @@ sequenceDiagram
     box rgb(224,242,254) DAW-CORE
     participant BE as 출금 유스케이스
     end
-    participant CP as 컴플라이언스 서비스<br/>트래블룰
+    participant CP as 컴플라이언스 게이트<br/>트래블룰
     participant MQC as 큐<br/>compliance 토픽
     box rgb(224,242,254) 블록체인 매니저
     participant BM as 매니저<br/>API · 웹훅 수신
@@ -111,7 +109,7 @@ sequenceDiagram
     box rgb(224,242,254) DAW-CORE
     participant BE as 입금 컨슈머
     end
-    participant CP as 컴플라이언스 서비스<br/>트래블룰
+    participant CP as 컴플라이언스 게이트<br/>트래블룰
 
     Note over BE: (사전) createDepositAddress 로 주소 발급 — 고객에게 안내
     CH->>BM: 입금 감지 — 웹훅 (4장)

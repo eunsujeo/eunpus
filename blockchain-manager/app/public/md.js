@@ -47,6 +47,9 @@ window.MD = (() => {
     const inline = (s) =>
       esc(s)
         .replace(/&lt;br\s*\/?&gt;/gi, '<br>') // 표 셀 줄바꿈용 <br/> 만 허용
+        // 용어 툴팁 — {{용어::풀이}} → 점선 밑줄 + hover 풀이. 풀이는 평문만 (마크다운 안 먹음)
+        // 구분자가 :: 인 이유 — | 는 표 셀 구분자와 충돌해 표 안에서 셀이 갈라진다
+        .replace(/\{\{([^{}]+?)::([^{}]+)\}\}/g, '<span class="term-tip" data-tip="$2">$1</span>')
         .replace(/`([^`]+)`/g, '<code>$1</code>')
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
         .replace(/\*([^*]+)\*/g, '<em>$1</em>')
@@ -85,6 +88,9 @@ window.MD = (() => {
           } else if (codeLang === 'anim') {
             // 단계 재생 애니메이션 — 펜스 본문 첫 줄이 애니메이션 이름 (mountAnims 가 마운트)
             out.push(`<div class="anim" data-anim="${esc(codeBuf.join('\n').trim())}"></div>`);
+          } else if (codeLang === 'erd') {
+            // 엔티티 카드 + SVG 관계선 (mountErds 가 마운트)
+            out.push(`<div class="erd" data-erd="${esc(codeBuf.join('\n').trim())}"></div>`);
           } else {
             out.push('<pre><code>' + codeBuf.map(esc).join('\n') + '</code></pre>');
           }
@@ -720,6 +726,82 @@ window.MD = (() => {
     });
   }
 
+  // 범용 DB 시나리오 애니메이션 — ```anim 첫 줄이 `db` 면 아래 줄들을 해석한다.
+  //   table: <이름> | <컬럼> | <컬럼> …          장면에 놓을 DB 테이블 (선언 순서대로)
+  //   queue: <이름> | <컬럼> | <컬럼> …          메시지 큐 (색 구분)
+  //   step:  <제목> | <설명>                     단계 시작
+  //   ins:   <테이블> | <값> | <값> …            이 단계에서 행 추가
+  //   upd:   <테이블> | <행번호> | <컬럼>=<값> …  행 갱신 (행번호 = 그 테이블에 추가된 순서, 1부터)
+  //   del:   <테이블> | <행번호>                  행 삭제 — 그 단계에 취소선, 다음 단계부터 사라짐
+  function buildDbScenario(el, src) {
+    const tables = [];
+    const steps = [];
+    const byName = {};
+    src.split('\n').forEach((raw) => {
+      const m = /^(table|queue|step|ins|upd|del):\s*(.*)$/.exec(raw.trim());
+      if (!m) return;
+      const parts = m[2].split('|').map((s) => s.trim());
+      if (m[1] === 'table' || m[1] === 'queue') {
+        const t = { name: parts[0], cols: parts.slice(1), kind: m[1] === 'queue' ? 'queue' : 'db' };
+        tables.push(t);
+        byName[t.name] = t;
+      } else if (m[1] === 'step') {
+        steps.push({ t: parts[0], d: parts[1] || '', ops: [] });
+      } else if (steps.length) {
+        steps[steps.length - 1].ops.push({ op: m[1], tbl: parts[0], args: parts.slice(1) });
+      }
+    });
+    if (!tables.length || !steps.length) { el.textContent = 'db 애니메이션: table:/step: 줄이 필요합니다'; return; }
+
+    stepAnim(el, {
+      steps: steps.map((s) => [s.t, s.d]),
+      scene:
+        '<div class="dbanim">' +
+        tables.map((t, i) =>
+          `<div class="dbt ${t.kind}" data-f="dbt-${i}-box"><div class="dbt-name">${esc(t.name)}<span class="dbt-tag">${t.kind === 'queue' ? '큐' : '테이블'}</span></div>` +
+          `<table><thead><tr>${t.cols.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead>` +
+          `<tbody data-f="dbt-${i}"></tbody></table></div>`).join('') +
+        '</div>',
+      render(step, setF) {
+        // 매 단계 상태를 0단계부터 다시 접어 계산 — 뒤로 가기·점 이동에도 항상 맞는 상태가 나온다
+        const state = tables.map(() => []);
+        for (let s = 0; s <= step; s++) {
+          steps[s].ops.forEach((o) => {
+            const ti = tables.indexOf(byName[o.tbl]);
+            if (ti < 0) return;
+            const rows = state[ti];
+            if (o.op === 'ins') rows.push({ vals: o.args.slice(), born: s, chg: {} });
+            else if (o.op === 'upd') {
+              const r = rows[+o.args[0] - 1];
+              if (!r) return;
+              o.args.slice(1).forEach((a) => {
+                const eq = a.indexOf('=');
+                const ci = tables[ti].cols.indexOf(a.slice(0, eq).trim());
+                if (ci >= 0) { r.vals[ci] = a.slice(eq + 1).trim(); r.chg[ci] = s; }
+              });
+            } else if (o.op === 'del') {
+              const r = rows[+o.args[0] - 1];
+              if (r && r.deadAt === undefined) r.deadAt = s;
+            }
+          });
+        }
+        tables.forEach((t, ti) => {
+          const box = el.querySelector(`[data-f="dbt-${ti}-box"]`);
+          if (box) box.classList.toggle('act', steps[step].ops.some((o) => o.tbl === t.name));
+          const live = state[ti].filter((r) => r.deadAt === undefined || step <= r.deadAt);
+          setF(`dbt-${ti}`,
+            live.length
+              ? live.map((r) =>
+                  `<tr class="${r.born === step ? 'new' : ''}${r.deadAt === step ? ' dead' : ''}">` +
+                  t.cols.map((_, ci) =>
+                    `<td${r.chg[ci] === step ? ' class="chg"' : ''}>${esc(r.vals[ci] ?? '')}</td>`).join('') +
+                  '</tr>').join('')
+              : `<tr class="none"><td colspan="${t.cols.length}">비어 있음</td></tr>`);
+        });
+      },
+    });
+  }
+
   const ANIM_DEFS = {
     'block-lifecycle': buildBlockLifecycle,
     'proposer': buildProposer,
@@ -733,11 +815,161 @@ window.MD = (() => {
     'commitment': buildCommitment,
   };
 
+  // 엔티티 카드 + SVG 관계선 ERD — ```erd 펜스.
+  //   entity: <이름 @열,행> :: <테이블 설명> | <컬럼 PK> :: <필드 설명> | …
+  //           `@열,행` 이 붙으면 격자 배치(없으면 flex) · `::` 뒤는 hover 툴팁 설명(선택)
+  //   rel:    <from> | <to> | <라벨> | <카디널리티> | <스타일>
+  //           카디널리티 = one-one | one-many (기본 one-many) — from=적은 쪽, to=많은 쪽 · 스타일 = solid(기본) | dashed
+  function buildErd(el, src) {
+    const ents = [], rels = [], idOf = {};
+    const splitDesc = (s) => { const i = s.indexOf('::'); return i < 0 ? [s.trim(), ''] : [s.slice(0, i).trim(), s.slice(i + 2).trim()]; };
+    src.split('\n').forEach((raw) => {
+      const m = /^(entity|rel):\s*(.*)$/.exec(raw.trim());
+      if (!m) return;
+      const p = m[2].split('|').map((s) => s.trim());
+      if (m[1] === 'entity') {
+        const [nameTok, desc] = splitDesc(p[0]);
+        const at = /^(.+?)\s*@\s*(\d+),(\d+)$/.exec(nameTok);
+        const name = at ? at[1].trim() : nameTok;
+        idOf[name] = ents.length;
+        ents.push({
+          name, desc, col: at ? +at[2] : null, row: at ? +at[3] : null,
+          cols: p.slice(1).filter(Boolean).map((c) => { const [def, d] = splitDesc(c); return { def, desc: d }; }),
+        });
+      } else {
+        rels.push({ from: p[0], to: p[1], label: p[2] || '', card: p[3] || 'one-many', style: p[4] || 'solid' });
+      }
+    });
+    if (!ents.length) { el.textContent = 'erd: entity: 줄이 필요합니다'; return; }
+
+    const tipAttr = (d) => (d ? ` data-tip="${esc(d)}"` : '');
+    const card = (e, i) =>
+      `<div class="erd-card" data-ei="${i}"${e.col ? ` style="grid-column:${e.col};grid-row:${e.row}"` : ''}>` +
+      `<div class="erd-h"${tipAttr(e.desc)}>${esc(e.name)}</div>` +
+      e.cols.map((c) => {
+        const mm = /^(.*?)\s+(PK|UK|FK|PK,FK|PK,UK)$/.exec(c.def);
+        const [nm, badge] = mm ? [mm[1], mm[2]] : [c.def, ''];
+        return `<div class="erd-c">${esc(nm)}${badge ? ` <b class="erd-b b${badge.replace(',', ' b')}">${badge}</b>` : ''}</div>`;
+      }).join('') + '</div>';
+
+    const grid = ents.some((e) => e.col);
+    const maxCol = Math.max(1, ...ents.map((e) => e.col || 1));
+    const cardsOpen = grid
+      ? `<div class="erd-cards grid" style="grid-template-columns:repeat(${maxCol},max-content)">`
+      : '<div class="erd-cards">';
+    el.innerHTML =
+      '<div class="erd-wrap"><svg class="erd-svg"></svg>' +
+      cardsOpen + ents.map(card).join('') + '</div>' +
+      '<div class="erd-labels"></div></div>';
+    const wrap = el.querySelector('.erd-wrap');
+    const svg = el.querySelector('.erd-svg');
+    const labels = el.querySelector('.erd-labels');
+    const cardEls = [...el.querySelectorAll('.erd-card')];
+
+    const draw = () => {
+      const W = wrap.scrollWidth, H = wrap.scrollHeight;
+      svg.setAttribute('width', W); svg.setAttribute('height', H);
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      const wr = wrap.getBoundingClientRect();
+      const rect = (i) => {
+        const r = cardEls[i].getBoundingClientRect();
+        const l = r.left - wr.left, t = r.top - wr.top;
+        return { l, t, w: r.width, h: r.height, cx: l + r.width / 2, cy: t + r.height / 2 };
+      };
+      let paths = '', lab = '';
+      rels.forEach((r) => {
+        if (idOf[r.from] === undefined || idOf[r.to] === undefined) return;
+        const a = rect(idOf[r.from]), b = rect(idOf[r.to]);
+        const dx = b.cx - a.cx, dy = b.cy - a.cy;
+        let p1, p2;
+        if (Math.abs(dx) >= Math.abs(dy)) {
+          p1 = { x: dx >= 0 ? a.l + a.w : a.l, y: a.cy };
+          p2 = { x: dx >= 0 ? b.l : b.l + b.w, y: b.cy };
+        } else {
+          p1 = { x: a.cx, y: dy >= 0 ? a.t + a.h : a.t };
+          p2 = { x: b.cx, y: dy >= 0 ? b.t : b.t + b.h };
+        }
+        // 부드러운 곡선 — 연결 방향으로 제어점을 뺀다
+        const horiz = Math.abs(p2.x - p1.x) >= Math.abs(p2.y - p1.y);
+        const k = Math.max(28, (horiz ? Math.abs(p2.x - p1.x) : Math.abs(p2.y - p1.y)) * 0.4);
+        const c1 = horiz ? `${p1.x + (p2.x > p1.x ? k : -k)},${p1.y}` : `${p1.x},${p1.y + (p2.y > p1.y ? k : -k)}`;
+        const c2 = horiz ? `${p2.x + (p2.x > p1.x ? -k : k)},${p2.y}` : `${p2.x},${p2.y + (p2.y > p1.y ? -k : k)}`;
+        const dash = r.style === 'dashed' ? ' stroke-dasharray="4 4"' : '';
+        paths += `<path class="erd-line" d="M${p1.x},${p1.y} C${c1} ${c2} ${p2.x},${p2.y}"${dash}/>`;
+        // 끝 표식 — from=one(막대) · to=many(까마귀발). one-one 이면 양쪽 막대
+        const many = r.card !== 'one-one';
+        const dir = (from, to) => { const vx = to.x - from.x, vy = to.y - from.y, L = Math.hypot(vx, vy) || 1; return [vx / L, vy / L]; };
+        const bar = (p, [ux, uy]) => { const px = -uy, py = ux, o = 9, s = 6; const bx = p.x + ux * o, by = p.y + uy * o; return `<line class="erd-mk" x1="${bx + px * s}" y1="${by + py * s}" x2="${bx - px * s}" y2="${by - py * s}"/>`; };
+        const crow = (p, [ux, uy]) => { const px = -uy, py = ux, o = 12, s = 6; const ax = p.x + ux * o, ay = p.y + uy * o; return `<path class="erd-mk" d="M${p.x + px * s},${p.y + py * s} L${ax},${ay} M${p.x},${p.y} L${ax},${ay} M${p.x - px * s},${p.y - py * s} L${ax},${ay}"/>`; };
+        paths += bar(p1, dir(p1, p2));
+        paths += many ? crow(p2, dir(p2, p1)) : bar(p2, dir(p2, p1));
+        if (r.label) {
+          // 가로 선은 라벨을 선 위로 올려 선을 가리지 않게 · 세로 선은 선을 끊으며 중앙
+          const ly = (p1.y + p2.y) / 2 - (horiz ? 13 : 0);
+          lab += `<span class="erd-label" style="left:${(p1.x + p2.x) / 2}px;top:${ly}px">${esc(r.label)}</span>`;
+        }
+      });
+      svg.innerHTML = paths;
+      labels.innerHTML = lab;
+    };
+
+    // 테이블·필드 hover 툴팁 — 카드 overflow 에 안 잘리게 wrap 에 띄우는 단일 툴팁
+    //   헤더 hover = 테이블 설명 + 전체 필드 설명 패널 · 필드 hover = 그 필드만
+    const tip = document.createElement('div');
+    tip.className = 'erd-tip';
+    wrap.appendChild(tip);
+    const fieldLine = (col) => `<div class="erd-tip-f"><code>${esc(col.def)}</code>${col.desc ? ` ${esc(col.desc)}` : ''}</div>`;
+    const showTip = (anchor, html) => {
+      tip.innerHTML = html;
+      tip.classList.add('on');
+      const wr = wrap.getBoundingClientRect(), r = anchor.getBoundingClientRect();
+      tip.style.left = `${r.left - wr.left + r.width / 2}px`;
+      if (r.top - wr.top - tip.offsetHeight - 10 < 0) { // 위로 넘치면 아래로
+        tip.style.top = `${r.bottom - wr.top + 8}px`;
+        tip.classList.add('below');
+      } else {
+        tip.style.top = `${r.top - wr.top - 8}px`;
+        tip.classList.remove('below');
+      }
+    };
+    wrap.addEventListener('mouseover', (e) => {
+      const cardEl = e.target.closest('.erd-card');
+      if (!cardEl || !wrap.contains(cardEl)) return;
+      const ent = ents[+cardEl.dataset.ei];
+      const h = e.target.closest('.erd-h');
+      if (!h) return; // 필드별 패널 없음 — 헤더 hover 만 (테이블 설명 + 전체 필드)
+      let html = `<div class="erd-tip-t">${esc(ent.name)}</div>`;
+      if (ent.desc) html += `<div class="erd-tip-d">${esc(ent.desc)}</div>`;
+      html += ent.cols.map(fieldLine).join('');
+      showTip(h, html);
+    });
+    wrap.addEventListener('mouseout', (e) => {
+      const to = e.relatedTarget;
+      if (!to || !to.closest || !to.closest('.erd-card')) tip.classList.remove('on');
+    });
+
+    if (window.ResizeObserver) new ResizeObserver(draw).observe(wrap);
+    requestAnimationFrame(draw);
+    setTimeout(draw, 60); // 폰트 로드 후 위치 보정
+  }
+
+  function mountErds(root) {
+    root.querySelectorAll('.erd[data-erd]').forEach((el) => {
+      if (el.dataset.ready) return;
+      el.dataset.ready = '1';
+      buildErd(el, el.dataset.erd.trim());
+    });
+  }
+
   function mountAnims(root) {
     root.querySelectorAll('.anim[data-anim]').forEach((el) => {
       if (el.dataset.ready) return;
       el.dataset.ready = '1';
-      const build = ANIM_DEFS[el.dataset.anim.trim()];
+      const src = el.dataset.anim.trim();
+      const nl = src.indexOf('\n');
+      const first = (nl < 0 ? src : src.slice(0, nl)).trim();
+      if (first === 'db') { buildDbScenario(el, nl < 0 ? '' : src.slice(nl + 1)); return; }
+      const build = ANIM_DEFS[src];
       if (build) build(el);
       else el.textContent = `알 수 없는 애니메이션: ${el.dataset.anim}`;
     });
@@ -747,6 +979,7 @@ window.MD = (() => {
   function enhanceDiagrams(root) {
     enhanceCodeCopy(root); // 코드블록 복사 버튼도 같은 진입점에서 — 모든 호출처에 자동 적용
     mountAnims(root); // ```anim 애니메이션도 동일 — 보드·doc·모달·피크·export 전부 커버
+    mountErds(root); // ```erd 엔티티 카드 + SVG 관계선
     root.querySelectorAll('.mermaid').forEach((el) => {
       if (el.closest('.dviewer')) return;
       if (!el.querySelector('svg')) return; // 렌더 실패분은 코드 그대로 둠

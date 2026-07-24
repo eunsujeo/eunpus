@@ -3,7 +3,7 @@ title: 1. DAW-CORE ↔ 컴플라이언스 인터페이스 — API·이벤트 계
 status: To Do
 ---
 
-DAW-CORE가 컴플라이언스 서비스를 호출하는 계약의 초안이다.
+DAW-CORE가 컴플라이언스 게이트를 호출하는 계약의 초안이다.
 DAW-CORE는 어느 솔루션(VerifyVASP·CODE·Notabene)으로 처리되는지 몰라도 같은 호출 순서로 끝난다. 필드 타입은 이 문서가 아니라 API 문서에서 정의한다.
 
 ## API — DAW-CORE → 컴플라이언스 (4개)
@@ -70,7 +70,7 @@ sequenceDiagram
     box rgb(224,242,254) DAW-CORE
     participant BE as 출금 유스케이스<br/>상태 흐름
     end
-    box rgb(224,242,254) 컴플라이언스 서비스
+    box rgb(224,242,254) 컴플라이언스 게이트
     participant CP as 트래블룰 게이트<br/>라우터 + 솔루션 어댑터
     participant DB as 컴플라이언스 DB
     end
@@ -116,7 +116,7 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant NET as 솔루션<br/>상대 VASP 발 사전 검증
-    box rgb(224,242,254) 컴플라이언스 서비스
+    box rgb(224,242,254) 컴플라이언스 게이트
     participant CP as 트래블룰 게이트
     participant CDB as 컴플라이언스 DB<br/>사전 검증 기록
     end

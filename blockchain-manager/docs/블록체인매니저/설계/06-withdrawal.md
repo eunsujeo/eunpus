@@ -95,7 +95,7 @@ sequenceDiagram
 
 제출 다이어그램 7번(승인 질의)에서 확인하는 항목입니다. 하나라도 어긋나면 co-signer 가 자기 share 를 보태지 않아 **서명 자체가 만들어지지 않습니다**.
 
-네 항목 모두 **DAW-CORE DB 읽기 전용 복제본**(조회 전용 계정, 쓰기 경로 없음)으로 판정한다.
+네 항목 모두 **DAW-CORE DB 읽기 전용 복제본**(조회 전용 계정, 쓰기 경로 없음)으로 판단한다.
 
 | 항목 | 확인하는 것 |
 |---|---|
@@ -108,7 +108,7 @@ sequenceDiagram
 
 **예 — 제출 payload 가 접수 기록과 다른 경우** (매니저 API 직접 호출·중간 변조·버그)
 
-| | 접수·승인 기록 (DAW-CORE DB) | 서명 직전 질의 | 판정 |
+| | 접수·승인 기록 (DAW-CORE DB) | 서명 직전 질의 | 판단 |
 |---|---|---|---|
 | externalTxId | wd-260710-0042 | wd-260710-0042 | 일치 |
 | 자산 · 금액 | ETH · 1.5 | ETH · 1.5 | 일치 |
@@ -169,6 +169,6 @@ sequenceDiagram
 
 - 출금은 다섯을 **전부** 지난다 — 특히 SUBMITTED(서명·전파 준비)는 출금에서만 관찰된다. 벤더 내부의 세부 단계(승인·서명·전파)를 SUBMITTED 로 접는 것이 이 장의 번역이다.
 - 상태 변경 이벤트(onChainEvent)는 메시지 큐(withdrawal-events 토픽)에서 consume 하고, transactionOf(단건 조회)는 필요할 때 확인하는 API 조회로 남는다.
-- confirm(체인 등장)↔finality(확정) 판정 기준은 4장과 같다(numOfConfirmations vs DCCP 임계).
+- confirm(체인 등장)↔finality(확정) 판단 기준은 4장과 같다(numOfConfirmations vs DCCP 임계).
 
 상태 이름과 확정 정책(DCCP)은 벤더 안에 있고 그것을 공통 어휘 다섯으로 번역하는 것은 매니저 내부입니다. 막힘 대응의 자동 boost 는 매니저가 실행하되, 어떤 정책(대기 임계·최대 시도)으로 boost 할지는 Admin 이 미리 정합니다 — cancel 은 예외적 수동입니다.

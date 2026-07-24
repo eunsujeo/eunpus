@@ -27,8 +27,8 @@ sequenceDiagram
     autonumber
     participant ADM as Admin
     participant WB as DAW-CORE<br/>VASP 마스터 (daw_vasp_m)
-    box rgb(224,242,254) 컴플라이언스 서비스
-    participant CP as 컴플라이언스 서비스
+    box rgb(224,242,254) 컴플라이언스 게이트
+    participant CP as 컴플라이언스 게이트
     participant CDB as 컴플라이언스 DB<br/>VASP 레지스트리
     end
     participant SOL as 솔루션
@@ -56,7 +56,7 @@ Deactivate 하거나 솔루션 목록에서 사라진(트래블룰 요청을 보
 ```mermaid
 sequenceDiagram
     autonumber
-    box rgb(224,242,254) 컴플라이언스 서비스
+    box rgb(224,242,254) 컴플라이언스 게이트
     participant SCH as 배치 스케줄러
     participant DB as 컴플라이언스 DB<br/>VASP 레지스트리
     end
@@ -84,7 +84,7 @@ DAW-CORE 호출 없이 서비스가 주기적으로 실행한다. 하나는 **�
 ```mermaid
 sequenceDiagram
     autonumber
-    box rgb(224,242,254) 컴플라이언스 서비스
+    box rgb(224,242,254) 컴플라이언스 게이트
     participant SCH as 배치 스케줄러
     participant DB as 컴플라이언스 DB
     end

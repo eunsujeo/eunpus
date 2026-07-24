@@ -6,7 +6,7 @@
 
 | 파일 | 역할 |
 |---|---|
-| `openapi.yaml` | **정본** — OpenAPI 3.1 스펙. 엔드포인트·스키마·에러 + 공통 규약·이벤트 계약(info.description)까지 이 한 파일에 다 있다. |
+| `openapi.yaml` | **수정은 여기서** — OpenAPI 3.1 스펙. 엔드포인트·스키마·에러 + 공통 규약·이벤트 계약(info.description)까지 이 한 파일에 다 있다. |
 | `spec.js` | `openapi.yaml` 을 JSON 으로 감싼 것(`window.OPENAPI`). 뷰어가 라이브러리 없이 읽는다. **생성물** — 직접 고치지 말 것. |
 | `index.html` | 직접 만든 뷰어(HTML/CSS/JS, 라이브러리 0). 사이드바·오퍼레이션·타입, 다크/라이트 토글. |
 | `api.md` | **마크다운 export** — GitHub 등 어디서나 열리는 단일 문서. **생성물**. |

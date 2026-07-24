@@ -131,7 +131,7 @@ sequenceDiagram
 
 ## 7.3 입금 ← 국내 (VerifyVASP) — 자금보다 정보가 먼저 온다
 
-요청-응답형이다 — 자금이 오기 전에 우리 수신 사슬이 먼저 응답하고, 그 사전 검증 기록(컴플라이언스 DB)을 도착 후 판별(7.5)에서 대조에 쓴다. 인바운드 사슬은 **중앙 서버 → 우리 Enclave → 컴플라이언스 서비스의 수신 콜백(사전 검증 기록 적재 — 귀속·실명 확인은 DAW-CORE에 조회)** 다(8장).
+요청-응답형이다 — 자금이 오기 전에 우리 수신 사슬이 먼저 응답하고, 그 사전 검증 기록(컴플라이언스 DB)을 도착 후 판별(7.5)에서 대조에 쓴다. 인바운드 사슬은 **중앙 서버 → 우리 Enclave → 컴플라이언스 게이트의 수신 콜백(사전 검증 기록 적재 — 귀속·실명 확인은 DAW-CORE에 조회)** 다(8장).
 
 ```mermaid
 sequenceDiagram
@@ -140,7 +140,7 @@ sequenceDiagram
     participant HUB as VerifyVASP 중앙 서버<br/>중계만
     box rgb(224,242,254) 우리 측
     participant EN as 우리 Enclave<br/>자체 인프라 · 공개 HTTPS 수신
-    participant TR as 컴플라이언스 서비스<br/>솔루션 연동 · 8장
+    participant TR as 컴플라이언스 게이트<br/>솔루션 연동 · 8장
     participant WQ as 컴플라이언스 DB<br/>사전 검증 기록
     participant BE as DAW-CORE(Service)<br/>귀속 · 가용 전이
     end
@@ -178,8 +178,8 @@ sequenceDiagram
     end
 ```
 
-- 승인이 나야 상대가 온체인 전송을 실행한다 — 수신 사슬(**우리 Enclave → 컴플라이언스 서비스 → DAW-CORE**)이 응답을 못 하면 국내 입금 자체가 막히므로, 이 사슬의 가용성이 곧 입금 가용성이다.
-- **수신 콜백은 컴플라이언스 서비스의 엔드포인트**다 — Enclave 가 내부망으로 호출한다(별도 컴포넌트 없음). 사전 검증 기록·1차 대조는 컴플라이언스 서비스, 귀속 판단·가용 전이는 DAW-CORE다(8장).
+- 승인이 나야 상대가 온체인 전송을 실행한다 — 수신 사슬(**우리 Enclave → 컴플라이언스 게이트 → DAW-CORE**)이 응답을 못 하면 국내 입금 자체가 막히므로, 이 사슬의 가용성이 곧 입금 가용성이다.
+- **수신 콜백은 컴플라이언스 게이트의 엔드포인트**다 — Enclave 가 내부망으로 호출한다(별도 컴포넌트 없음). 사전 검증 기록·1차 대조는 컴플라이언스 게이트, 귀속 판단·가용 전이는 DAW-CORE다(8장).
 - **우리 Enclave vs 중앙** — 공개 HTTPS 를 받는 것은 우리 Enclave(벤더 요건)이고 복호화도 여기서 한다. 중앙 서버는 송신측과 우리 Enclave 사이를 중계만 한다.
 - **CODE 회원(빗썸 등) 발 입금**도 상호연동으로 VerifyVASP 인바운드로 도착한다 — 위 흐름 동일. 미확인 입금의 TXID 역추적이 경유 경로에서 되는지는 6장 상호연동 실효 확인 대상(안 되면 CODE 직접 7.11). 상세 시퀀스는 부록 A(11장).
 
@@ -229,7 +229,7 @@ sequenceDiagram
     end
     box rgb(224,242,254) 우리 측
     participant BE as DAW-CORE(Service)<br/>매칭·귀속 · 가용 전이
-    participant GT as 컴플라이언스 서비스<br/>솔루션 조회
+    participant GT as 컴플라이언스 게이트<br/>솔루션 조회
     end
 
     Note over BM: 벤더(Notabene) 동결 건은 REJECTED 계열로 와서 여기 안 온다 — 기존 동결 처리(7.4·블록체인매니저 입금 흐름 연계)
@@ -310,7 +310,7 @@ sequenceDiagram
 
 ## 7.7 입금 ← 해외 (Notabene 직접) — 확정은 매니저, 대조는 DAW-CORE
 
-7.4 는 벤더가 감지·동결까지 했지만, 여기선 **벤더가 동결해 주지 않는다**. 온체인 확정은 블록체인 매니저가, 통지 수신·솔루션 조회는 컴플라이언스 서비스가, 대조·입금대기(잔고 차단)는 DAW-CORE가 맡는다.
+7.4 는 벤더가 감지·동결까지 했지만, 여기선 **벤더가 동결해 주지 않는다**. 온체인 확정은 블록체인 매니저가, 통지 수신·솔루션 조회는 컴플라이언스 게이트가, 대조·입금대기(잔고 차단)는 DAW-CORE가 맡는다.
 
 ```mermaid
 sequenceDiagram
@@ -323,7 +323,7 @@ sequenceDiagram
     participant BM as 웹훅 수신 → deposit-events · Fireblocks 커스터디
     end
     box rgb(224,242,254) 우리 측
-    participant GT as 컴플라이언스 서비스<br/>수신 웹훅 · 솔루션 조회
+    participant GT as 컴플라이언스 게이트<br/>수신 웹훅 · 솔루션 조회
     participant WQ as 컴플라이언스 DB<br/>사전 검증 기록
     participant BE as DAW-CORE(Service)<br/>귀속 · 가용 전이
     end
@@ -356,7 +356,7 @@ sequenceDiagram
 
 ## 7.8 출금 → 개인지갑(자기수탁) — 등록·소유 인증만
 
-여기부터는 다시 **확정 흐름**이다(위 대안 절과 무관). 유저가 출금 화면에서 "내 개인지갑"을 선택한 경우다 — 상대가 VASP 가 아니라 이용자 본인의 자기수탁 지갑이다. 주고받을 상대가 없으니 IVMS101 교환 대신 **등록·소유 인증된 본인 지갑 목록(DAW-CORE DB)** 으로 가른다. 고객 데이터라 DAW-CORE가 자체 확인하며, **컴플라이언스 서비스를 부르지 않는다**. 로컬 확인이라 "트래블룰 확인 중"을 즉시 통과한다.
+여기부터는 다시 **확정 흐름**이다(위 대안 절과 무관). 유저가 출금 화면에서 "내 개인지갑"을 선택한 경우다 — 상대가 VASP 가 아니라 이용자 본인의 자기수탁 지갑이다. 주고받을 상대가 없으니 IVMS101 교환 대신 **등록·소유 인증된 본인 지갑 목록(DAW-CORE DB)** 으로 가른다. 고객 데이터라 DAW-CORE가 자체 확인하며, **컴플라이언스 게이트를 부르지 않는다**. 로컬 확인이라 "트래블룰 확인 중"을 즉시 통과한다.
 
 ```mermaid
 sequenceDiagram
@@ -461,7 +461,7 @@ sequenceDiagram
     participant CV as CodeVASP 중앙<br/>중계
     box rgb(224,242,254) 우리 측
     participant CC as CODE-Cipher<br/>수신·복호화
-    participant TR as 컴플라이언스 서비스<br/>솔루션 연동 · 8장
+    participant TR as 컴플라이언스 게이트<br/>솔루션 연동 · 8장
     participant WQ as 컴플라이언스 DB<br/>사전 검증 기록
     participant BE as DAW-CORE(Service)<br/>귀속 · 가용 전이
     end

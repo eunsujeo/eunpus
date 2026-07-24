@@ -44,7 +44,7 @@ flowchart LR
 | **주소 형식 검증** (validateAddress) | 0x + 체크섬 — 로컬 규칙 하나 | 주소 형식이 다르다 — 로컬 규칙(AddressRules)에 그 체인의 형식을 추가해야 검증이 선다 |
 | **체인 특화 파라미터** | ChainSpecific = Evm(nonce) 하나 | 새 타입을 추가한다 — sealed 라 추가만 하고 기존 EVM 의미는 안 바뀐다 |
 | **막힘 대응** (6장 boost·cancel) | 같은 순번 재전송(RBF) 전제 | 같은 의미의 동작이 그 체인에 있는지부터 확인 — 없으면 **기능 부재로 선언**(capability 미구현)하고 막힘 운영 절차를 따로 설계 |
-| **확정 판정** (4장) | confirmation 누적 ≥ DCCP 임계 | 그 체인의 확정 개념을 벤더가 어떤 상태·카운트로 번역해 주는지 확인하고 임계를 다시 정한다 |
+| **확정 판단** (4장) | confirmation 누적 ≥ DCCP 임계 | 그 체인의 확정 개념을 벤더가 어떤 상태·카운트로 번역해 주는지 확인하고 임계를 다시 정한다 |
 | **입금 주소 모델** (2장) | vault·자산당 단일 주소 · memoTag null | 주소·memoTag 정책이 체인마다 다르다 — 2장의 단일 주소 전제를 재확인 |
 | **gas 조달** | Universal Gasless — EIP-7702 기반, EVM 전용 | 그대로 이식되지 않는다 — 그 체인의 수수료 조달(네이티브 토큰 보유 여부 포함)을 별도로 결정 |
 
@@ -127,7 +127,7 @@ flowchart TB
 0장에서 본 배치를 확장 관점으로 다시 봅니다.
 
 - Fireblocks 기준이라 서명·키·노드·전파는 **벤더 안**이고, 이쪽엔 **DAW-CORE와 블록체인 매니저, 둘로 나뉜 DB**만 남습니다.
-- Fireblocks 웹훅 수신·상태 판정은 전부 매니저 내부이고, 매니저가 메시지 큐(deposit·withdrawal·internal)에 publish 한 이벤트를 백엔드가 consume 합니다.
+- Fireblocks 웹훅 수신·상태 판단은 전부 매니저 내부이고, 매니저가 메시지 큐(deposit·withdrawal·internal)에 publish 한 이벤트를 백엔드가 consume 합니다.
 - 직접 노드·HSM·인덱서를 운영하지 않으므로, 새 EVM 체인이 붙어도 **인프라 배치는 그대로**입니다 — 벤더가 그 체인을 지원하기만 하면 됩니다.
 
 ```mermaid

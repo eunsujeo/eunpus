@@ -8,11 +8,13 @@ status: To Do
 
 ## 계정 생성 · 입금 주소 발급 · 조회
 
-| 오퍼레이션 | 하는 일 | 멱등 |
-|---|---|---|
-| `createAccount(ref)` | vault 를 만들고 ref↔accountId 매핑을 반환한다. ref = DAW-CORE 계정 ID (고객 `ACT-` · 운영 `SYS-`) | 같은 ref → 같은 accountId. 매니저 DB `ref` UNIQUE 가 최종 방어 — 경합해도 이긴 값을 반환 |
-| `createDepositAddress(accountId, asset)` | 자산 지갑을 활성화하고 입금 주소를 발급한다. EVM 은 자산당 주소 하나 | 같은 (accountId, asset) → 같은 주소 |
-| `depositAddressOf(accountId, asset)` | 발급된 주소를 매니저 DB 에서 읽는다 — 벤더 왕복 없음 | 주소 있음 → 주소 · 미발급 → `data: null` · 계정 없음 → `404 ACCOUNT_NOT_FOUND` |
+| 오퍼레이션 | API | 하는 일 | 멱등 |
+|---|---|---|---|
+| `createAccount` | `POST /accounts` | vault 를 만들고 ref↔accountId 매핑을 반환한다. ref = DAW-CORE 계정 ID (고객 `ACT-` · 운영 `SYS-`) | 같은 ref → 같은 accountId. 매니저 DB `ref` UNIQUE 가 최종 방어 — 경합해도 이긴 값을 반환 |
+| `createDepositAddress` | `POST /accounts/{accountId}/assets/{asset}/address` | 자산 지갑을 활성화하고 입금 주소를 발급한다. EVM 은 자산당 주소 하나 | 같은 (accountId, asset) → 같은 주소 |
+| `depositAddressOf` | `GET /accounts/{accountId}/assets/{asset}/address` | 발급된 주소를 매니저 DB 에서 읽는다 — 벤더 왕복 없음 | 주소 있음 → 주소 · 미발급 → `data: null` · 계정 없음 → `404 ACCOUNT_NOT_FOUND` |
+
+경로는 base(`/blockchain/manage-api`)를 뗀 표기 — 전체 경로·필드는 [블록체인 매니저 API](?cat=블록체인매니저&sub=API).
 
 ```mermaid
 sequenceDiagram
@@ -24,12 +26,12 @@ sequenceDiagram
     end
     participant FB as Fireblocks
 
-    BE->>BM: createAccount(ref)
+    BE->>BM: POST /accounts — ref
     BM->>MDB: ref 조회 — 있으면 기존 accountId 반환
     BM->>FB: createVaultAccount
     BM->>MDB: 매핑 저장 — ref UNIQUE
     BM-->>BE: accountId
-    BE->>BM: createDepositAddress(accountId, asset)
+    BE->>BM: POST /accounts/{accountId}/assets/{asset}/address
     BM->>FB: 자산 지갑 활성화 · 주소 생성
     BM->>MDB: (accountId, asset) ↔ 주소 저장
     BM-->>BE: 입금 주소
@@ -37,7 +39,7 @@ sequenceDiagram
 
 ## 감지 — 웹훅 수신
 
-온체인 상태 변경은 Fireblocks 웹훅으로 받는다. 매니저가 계열을 판정해 세 토픽으로 publish 하고, 백엔드는 토픽별 컨슈머로 consume 한다. 폴링은 없다.
+온체인 상태 변경은 Fireblocks 웹훅으로 받는다. 매니저가 계열을 가려 세 토픽으로 publish 하고, 백엔드는 토픽별 컨슈머로 consume 한다. 감지용 상시 폴링은 없다 — 놓친 웹훅은 tx 대사(10분 주기 목록 대조)가 복구한다.
 
 ```mermaid
 sequenceDiagram
@@ -45,6 +47,7 @@ sequenceDiagram
     participant FB as Fireblocks
     box rgb(220,252,231) 블록체인 매니저
     participant WH as 웹훅 수신<br/>PUBLIC HTTPS
+    participant WK as 판단 워커<br/>병렬 · tx 단위 잠금
     participant MDB as 매니저 DB<br/>주소 매핑 · 체크포인트
     end
     box rgb(254,249,195) 메시지 큐
@@ -53,22 +56,22 @@ sequenceDiagram
 
     FB->>WH: POST 알림 — tx 상태 변경 · tx 객체 동봉
     WH->>WH: 서명 검증 — Fireblocks 공개키 · 실패면 거절
-    WH->>MDB: 수신 적재 — tx id · 상태 · 컨펌 수
+    WH->>MDB: 수신 적재 — 알림 원본 · 키 = 웹훅 알림 id UNIQUE (중복이면 무시하고 200)
     WH-->>FB: 200 — 2xx 가 아니면 벤더가 재시도
-    Note over WH: 수신(검증 → 적재 → 200)과 판정·publish 는 분리해 처리한다
+    Note over WH,WK: 수신(검증 → 적재 → 200)과 판단·publish 는 분리 — 폭주는 워커 적체(지연)로만 나타난다
 
-    loop 판정 — 적재된 tx 각각
-        WH->>MDB: 방향 판정 + accountId 귀속 · 마지막 발행 상태 조회
+    loop 판단 — 워커가 미처리 알림을 집어 간다
+        WK->>MDB: 미처리 알림 집기 · 방향 판단 + accountId 귀속 · 마지막 발행 상태 조회
         alt 발신자가 우리 vault · 목적지 외부
-            WH-->>MQ: publish → withdrawal-events (WITHDRAWAL)
+            WK-->>MQ: publish → withdrawal-events (WITHDRAWAL)
         else 발신자가 우리 vault · 목적지도 우리 vault
-            WH-->>MQ: delta 면 publish → internal-events (INTERNAL) · sweep 이면 발행 생략
+            WK-->>MQ: delta 면 publish → internal-events (INTERNAL) · sweep 이면 발행 생략
         else 발신자가 외부 · 매핑된 입금 주소
-            WH-->>MQ: publish → deposit-events (DEPOSIT)
+            WK-->>MQ: publish → deposit-events (DEPOSIT)
         else 발신자가 외부 · 매핑에 없는 주소
-            WH->>WH: 귀속 불명 — 큐에 싣지 않는다 · 별도 알림 채널로 통지
+            WK->>WK: 귀속 불명 — 큐에 싣지 않는다 · 별도 알림 채널로 통지
         end
-        WH->>MDB: 발행 상태 체크포인트 기록 — publish 성공 후에만
+        WK->>MDB: 발행 상태 체크포인트 기록 + 처리 완료 마킹 — publish 성공 후에만
     end
 ```
 
@@ -77,13 +80,13 @@ sequenceDiagram
 | 규칙 | 내용 |
 |---|---|
 | 서명 검증 | 모든 알림은 서명을 검증하고 통과한 것만 받는다 — JWKS 방식(`Fireblocks-Webhook-Signature` 헤더 · 공개키 자동 조회·로테이션). 발신 IP allowlist 를 겹친다 |
-| 수신 확인 | 2xx 를 돌려줘야 전달 완료 — 아니면 벤더가 지수 백오프로 총 10회 재시도한다. 오류율이 높은 수신 endpoint 는 벤더가 자동 비활성화하므로 즉시 2xx + 비동기 처리 분리가 필수 |
+| 수신 확인 | 2xx 를 돌려줘야 전달 완료 — 아니면 벤더가 지수 백오프로 재시도한다(총 10회 시도 후 failed 마킹). 오류율이 높은 수신 endpoint 는 벤더가 자동 비활성화하므로 즉시 2xx + 비동기 처리 분리가 필수 |
 | 유실 복구 | 재시도로도 못 받은 알림은 재전송 API(`resend_failed` — v2 는 30일)로 다시 받는다. 수신기 재기동 후 1회 호출한다 |
 | 상태 전이만 publish | 체크포인트의 마지막 발행 상태와 비교해 앞으로 가는 전이만 발행한다. 같으면 생략, 과거로 돌아가면 무시 |
 | 체크포인트는 publish 성공 후 | 기록 전에 죽으면 재발행된다 — 중복은 위 중복 반영 방지가 거른다 |
 | 중복 반영 방지 | 같은 이벤트가 두 번 와도 한 번만 반영한다 — `txId`(또는 `externalTxId`) unique 로 가리고, 상태 전이만 반영한다 |
 | 오프셋 커밋 | 원장 반영 성공 후에만 커밋한다. 실패하면 재소비된다 |
-| 최종 안전망 | 주기 대사가 벤더 값과 기록을 대조해 닫는다 |
+| 최종 안전망 | **tx 대사**(10분 주기 — 벤더 거래 목록과 기록을 대조)가 놓친 웹훅을 자동 복구하고 운영 알림을 올린다. 회계 숫자는 별도의 주기·일마감 대사 |
 
 ## 상태 enum
 
@@ -93,11 +96,13 @@ sequenceDiagram
 |---|---|---|---|---|---|
 | `SUBMITTED` | 제출됨 — 서명·전파 준비 중, 체인 미등장. 출금에서만 관찰 | 아직 없음 → 전파되면 Pending | PENDING_SIGNATURE · QUEUED · BROADCASTING | — | 서명 단계엔 없음 → BROADCASTING |
 | `CONFIRMING` | 체인에 등장, 컨펌 누적 중 — 미확정 | Confirmed — 블록에 포함, finality 전 | CONFIRMING | PENDING_BLOCKCHAIN_CONFIRMATIONS | CONFIRMING |
-| `COMPLETED` | 확정 — DCCP 임계 컨펌 도달 | Finalized | COMPLETED | CONFIRMED | CONFIRMED |
+| `COMPLETED` | 확정 — {{DCCP::Deposit Control & Confirmation Policy — 입금을 확정으로 볼 컨펌 수를 정하는 Fireblocks 정책. 상세는 아래 확정 기준 절}} 임계 컨펌 도달 | Finalized | COMPLETED | CONFIRMED | CONFIRMED |
 | `REJECTED` | 거부·차단 — 임시. 사람 개입 여지 | 출금 차단은 체인에 없음 · 입금 동결은 Finalized | REJECTED · BLOCKED | AUTO_FREEZE · FROZEN_MANUALLY · REJECTED_AML_SCREENING | 출금은 없음 · 입금 동결은 CONFIRMED |
 | `FAILED` | 영구 실패 — 사유 동반 | Pending 에서 증발 · revert 는 Confirmed 이후 | FAILED | DROPPED_BY_BLOCKCHAIN · 그 외 | FAILED · DROPPED |
 
-판단은 TxStatus 다섯으로 한다. `REJECTED`(임시) ≠ `FAILED`(영구). subStatus 는 위 대표값(분기 필요한 최소 집합)만 보고 나머지는 로깅한다.
+판단은 TxStatus 다섯으로 한다. `REJECTED`(임시) ≠ `FAILED`(영구). 위 표의 subStatus·networkStatus 열은 **매니저가 벤더에게서 받아 번역에 쓰는 내부 값** — 어떤 TxStatus·이벤트를 낼지 매니저가 이 값으로 가른다. **이벤트에는 TxStatus 만 싣고 DAW-CORE 는 그것으로만 판단한다.**
+
+**이 다섯은 블록체인 매니저 ↔ DAW-CORE 의 계약 어휘다** — 벤더 원어는 매니저 안에서 번역되고, 벤더가 바뀌어도 이 다섯은 유지된다. DAW-CORE `tx_stcd` 의 `PENDING`(미확정 전체)·`CONFIRMED`(확정)와는 별개 어휘다 — 섞어 쓰지 않는다.
 
 ### EventType — 이벤트 분류 셋
 
@@ -109,11 +114,11 @@ sequenceDiagram
 
 ## 확정 기준 — DCCP
 
-CONFIRMING 을 COMPLETED 로 바꾸는 임계 컨펌 수는 DCCP(확정 정책)가 정한다.
+CONFIRMING 을 COMPLETED 로 바꾸는 임계 컨펌 수는 {{DCCP::Deposit Control & Confirmation Policy — 벤더 공식 약어. support 문서가 이 표기를 그대로 쓴다}}(확정 정책)가 정한다.
 
 - 기본 임계 — 대부분의 체인 1 (이더리움·Base 포함) · ETC 372 · 컨트랙트 호출 3 권장. 한도: EVM 최소 1 · 이더리움 최대 100 · 신규 EVM L2 최대 30.
 - 커스텀 임계는 정책 템플릿을 Fireblocks Support 에 제출해 검토·승인 후 반영된다. 요청 값은 Admin 이 정한다.
-- **확정 판정은 status 만 보지 않는다** — `numOfConfirmations` 를 임계와 직접 비교한다. zero-confirmation 설정에서는 COMPLETED 가 블록 등장 시점에 먼저 뜰 수 있다.
+- **확정 판단은 status 만 보지 않는다** — `numOfConfirmations` 를 임계와 직접 비교한다. zero-confirmation 설정에서는 COMPLETED 가 블록 등장 시점에 먼저 뜰 수 있다.
 
 ## 입금
 
@@ -157,7 +162,7 @@ sequenceDiagram
 
 ## sweep — 매니저 내부
 
-입금이 확정되면 매니저가 내부에서 고객 vault 의 자산을 옴니버스 vault 로 옮긴다. 백엔드는 sweep 을 호출하지 않고 큐 이벤트도 받지 않는다. 고객 원장은 불변이다.
+입금이 확정되면 매니저가 내부에서 고객 vault 의 자산을 옴니버스 vault 로 옮긴다 — 확정은 sweep 대상 마킹까지, 제출은 주기 배치가 대상을 모아서 한다(주기·최소 금액은 운영 설정값). 백엔드는 sweep 을 호출하지 않고 큐 이벤트도 받지 않는다. 고객 원장은 불변이다.
 
 | vault | 역할 |
 |---|---|
@@ -169,14 +174,16 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     box rgb(220,252,231) 블록체인 매니저
-    participant BM as 매니저 sweep<br/>입금 확정이 트리거
+    participant BM as 매니저 sweep<br/>확정 마킹 + 주기 배치
     participant MDB as 매니저 DB
     end
     participant FB as Fireblocks
     participant RL as 지정 relay
 
-    Note over BM: 입금 확정(COMPLETED)을 잡으면 그 고객 vault 를 sweep 대상으로
-    BM->>MDB: sweep 대상 기록
+    Note over BM: 입금 확정(COMPLETED)을 잡으면 그 고객 vault 를 sweep 대상으로 마킹
+    BM->>MDB: sweep 대상 마킹
+    Note over BM,MDB: 이하 주기 배치 — 대상을 모아 잔액 조회 후 제출 (주기·최소 금액은 운영 설정값)
+    BM->>FB: vault 잔액 조회 — sweep 금액 = 조회 시점 전액
     BM->>FB: 거래 제출 — 고객 vault → 옴니버스 · gasless
     FB->>RL: gas 부담 위임 — relay 가 지불 · 월말 인보이스 정산
     FB-->>BM: 제출 접수 (txId)
@@ -237,7 +244,7 @@ sequenceDiagram
 
 ### 서명 직전 검증 — Callback Handler 가 보는 것
 
-네 항목 모두 DAW-CORE DB 읽기 전용 복제본으로 판정한다. 하나라도 어긋나면 deny — 서명이 만들어지지 않는다.
+네 항목 모두 DAW-CORE DB 읽기 전용 복제본으로 판단한다. 하나라도 어긋나면 deny — 서명이 만들어지지 않는다.
 
 | 항목 | 확인하는 것 |
 |---|---|
@@ -281,7 +288,7 @@ sequenceDiagram
 
 ## 원본 보관 — 일 배치
 
-finalize 된 트랜잭션 원본을 일 배치로 매니저 DB(`bcm_raw_tx_l`)에 보관한다. 기존 웹훅 수신 → 번역 → 이벤트 경로는 건드리지 않는다.
+finalize 된 트랜잭션 원본을 일 배치로 매니저 DB(`bcm_raw_tx_l`)에 보관한다. 원본은 수신 버퍼(`bcm_noti_l`)에서 그 tx 의 마지막 COMPLETED 알림 payload 를 옮긴다 — 벤더 재조회 없음. 기존 웹훅 수신 → 번역 → 이벤트 경로는 건드리지 않는다.
 
 ## 매니저가 내보내는 신호
 
@@ -289,10 +296,11 @@ finalize 된 트랜잭션 원본을 일 배치로 매니저 DB(`bcm_raw_tx_l`)�
 |---|---|
 | heartbeat | 주기 작업(막힘 점검 등)별 실행 완료 시각 — 매니저 DB 에 기록 |
 | 웹훅 수신 생존 | 마지막 수신 시각 · 수신 오류율 · 서명 검증 실패율 — 메트릭 |
-| 판정 적체 | 수신 적재 대비 publish 지연 깊이 — 메트릭 |
+| 판단 적체 | 수신 적재 대비 publish 지연 깊이 — 메트릭 |
+| 대사 누락 건수 | tx 대사가 잡은 놓친 웹훅 수 — 0 에서 벗어나면 웹훅 경로 이상 신호 · 메트릭 + 운영 알림 |
 | 벤더 호출 오류율 | 429 포함 — 메트릭 |
 
-감시·경보 판정은 매니저 밖 모니터링이 한다.
+감시·경보 판단은 매니저 밖 모니터링이 한다.
 
 ## 미확정
 
