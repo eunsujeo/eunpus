@@ -58,12 +58,19 @@ window.__STATIC_BOARD__ = ${dataJs};
 })();
 </${'script'}>`;
 
+  // 정적 파일엔 export.js 가 없다(조립 전용). 인라인된 app.js 의 동적 import 참조를 없애
+  // 업로드 검증기가 export.js 를 의존 파일로 오인하지 않게 한다 — 이 경로는 export 버튼(정적에선 숨김)에서만 쓰여 실행되지 않는다
+  const staticApp = inlineJs(app).replace(
+    /import\((['"])\.\/export\.js\1\)/g,
+    'Promise.reject(new Error("export module unavailable in static export"))'
+  );
+
   const out = html
     .replace('<link rel="stylesheet" href="styles.css" />', () => `<style>\n${css}\n</style>`)
     .replace('<script src="vendor/mermaid.min.js"></script>', () => `<script>${inlineJs(mermaid)}</script>`)
     .replace('<script src="md.js"></script>', () => `<script>${inlineJs(md)}</script>`)
     .replace('<script src="theme.js"></script>', () => `<script>${inlineJs(theme)}</script>`)
-    .replace('<script src="app.js"></script>', () => `${shim}\n<script>${inlineJs(app)}</script>`);
+    .replace('<script src="app.js"></script>', () => `${shim}\n<script>${staticApp}</script>`);
 
   for (const left of ['href="styles.css"', 'src="vendor/mermaid.min.js"', 'src="md.js"', 'src="theme.js"', 'src="app.js"']) {
     if (out.includes(left)) throw new Error(`인라인 실패 — index.html 의 ${left} 태그 확인`);

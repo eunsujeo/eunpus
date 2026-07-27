@@ -139,7 +139,7 @@ flowchart TB
 
 ## 출금 전체 시퀀스
 
-수취처가 VASP 인 출금 기준. 상세는 [블록체인 매니저 — 흐름](02-bcm-flow.md) · 컴플라이언스 — 흐름 (예정).
+수취처가 VASP 인 출금 기준. 상세는 [블록체인 매니저 — 흐름](02-bcm-flow.md) · [컴플라이언스 게이트 — 흐름](04-compliance-flow.md).
 
 ```mermaid
 sequenceDiagram
@@ -161,7 +161,7 @@ sequenceDiagram
     CP-->>MQC: withdrawal-check.settled 발행 — verdict · travelRuleMessage
     MQC-->>BE: consume
     alt APPROVED · NOT_REQUIRED
-        BE->>BM: POST /transactions — externalTxId · travelRule(값 있으면)
+        BE->>BM: POST /transactions — externalTxId · travelRuleMessage(값 있으면)
         BM->>FB: 제출 — TAP 정책 → Co-signer 서명 → 전파
         BM-->>BE: 접수 — 벤더 txId
         loop 상태 변경마다

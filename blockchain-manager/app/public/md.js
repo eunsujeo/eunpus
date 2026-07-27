@@ -133,6 +133,8 @@ window.MD = (() => {
       if (/^\s*(---|\*\*\*)\s*$/.test(line)) { out.push('<hr>'); continue; }
       if (/^>\s?/.test(line)) { out.push(`<blockquote>${inline(line.replace(/^>\s?/, ''))}</blockquote>`); continue; }
       if (line.trim() === '') continue;
+      const qa = /^\*\*([QA])\.\*\*\s/.exec(line);   // Q&A 문서 — 질문/답변 줄에 색 클래스
+      if (qa) { out.push(`<p class="qa-${qa[1].toLowerCase()}">${inline(line)}</p>`); continue; }
       out.push(`<p>${inline(line)}</p>`);
     }
     closeList();
