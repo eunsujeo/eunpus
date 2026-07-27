@@ -55,8 +55,9 @@ window.MD = (() => {
         .replace(/\*([^*]+)\*/g, '<em>$1</em>')
         .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, t, href) => {
           if (/^https?:\/\//.test(href)) return `<a href="${href}" target="_blank" rel="noopener">${t}</a>`;
-          // 앱 내부 링크(보드 뷰 등) — ?cat=…&sub=… 형식은 그대로 앵커로
-          if (href.startsWith('?') || href.startsWith('/')) return `<a href="${href}" target="_blank" rel="noopener">${t}</a>`;
+          // 앱 내부 링크(?cat=…&sub=…) — 새 탭 대신 그 자리 이동 (app.js 가 클릭을 가로챈다). 절대경로(/)는 새 탭.
+          if (href.startsWith('?')) return `<a href="${href}">${t}</a>`;
+          if (href.startsWith('/')) return `<a href="${href}" target="_blank" rel="noopener">${t}</a>`;
           // 문서로의 상대 링크(같은 폴더 · ../ 상위 경유, #절 앵커 허용)
           // — 클릭하면 모달(peek), Ctrl/Cmd·중클릭은 새 탭. API 없으면 href 로 폴백.
           const rel = /^([^#:]+\.md)(#.+)?$/.exec(href);

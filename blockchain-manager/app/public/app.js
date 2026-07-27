@@ -182,18 +182,22 @@ function tile(label, metaText, subset, onClick) {
 
 function renderHome() {
   view.className = 'view cat-grid';
-  if (!catOrder.length) {
+  // 정적 export 에 homeCats 가 있으면(명시적으로 고른 카테고리) 홈 타일은 그것만 보인다 —
+  // 링크로 딸려온 참조 카테고리(API 뷰어 등)는 숨기고, ?cat= 링크로만 도달하게 한다
+  const homeCats = window.__STATIC_BOARD__ && window.__STATIC_BOARD__.board.homeCats;
+  const cats = homeCats ? catOrder.filter((c) => homeCats.includes(c)) : catOrder;
+  if (!cats.length) {
     view.innerHTML = '<div class="board-status">카테고리가 없습니다.</div>';
     boardMeta.textContent = '';
     return;
   }
-  const els = catOrder.map((cat) => {
+  const els = cats.map((cat) => {
     const subset = cards.filter((c) => c.category === cat);
     return tile(cat, `${tree[cat].length}개 분류 · 문서 ${subset.length}건`, subset, () => goTo(cat, null));
   });
   els.forEach((el) => view.appendChild(el));
-  makeReorderable(view, els, catOrder, (next) => { catOrder = next; persistOrder(); render(); });
-  boardMeta.textContent = `문서 ${cards.length}건`;
+  makeReorderable(view, els, cats, (next) => { catOrder = next; persistOrder(); render(); });
+  boardMeta.textContent = `문서 ${cats.reduce((n, c) => n + cards.filter((x) => x.category === c).length, 0)}건`;
 }
 
 function renderCatView() {
@@ -608,7 +612,7 @@ async function renderSectionReader(items) {
 
 function cardEl(c) {
   const el = document.createElement('article');
-  el.className = 'card';
+  el.className = 'card' + (c.ref ? ' card-ref' : '');
   el.draggable = true;
   el.dataset.path = c.path;
   el.innerHTML = `
@@ -616,6 +620,7 @@ function cardEl(c) {
     <p class="card-summary">${esc(c.summary.join(' '))}</p>
     <div class="card-foot">
       <span class="card-date">${fmtDate(c.updatedAt)}</span>
+      ${c.ref ? `<span class="card-ref-tag">${esc(c.ref)}</span>` : ''}
     </div>`;
 
   el.addEventListener('dragstart', (e) => {
@@ -784,6 +789,16 @@ document.getElementById('download-md').addEventListener('click', () => {
 modal.addEventListener('click', (e) => {
   if (e.target.hasAttribute('data-close')) modal.classList.add('hidden');
 });
+// 문서 내 앱 링크(?cat=…&sub=…)는 새 탭 대신 그 자리에서 이동한다 — 라이브·정적 공통.
+// (Ctrl/Cmd·중클릭은 브라우저 기본대로 두어 새 탭 허용)
+document.addEventListener('click', (e) => {
+  const a = e.target.closest && e.target.closest('a[href^="?"]');
+  if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+  e.preventDefault();
+  const q = new URLSearchParams(a.getAttribute('href').slice(1));
+  modal.classList.add('hidden');
+  goTo(q.get('cat') || null, q.get('sub') || null);
+});
 document.addEventListener('keydown', (e) => {
   if (modal.classList.contains('hidden')) return;
   if (e.key === 'Escape') modal.classList.add('hidden');
@@ -809,29 +824,41 @@ async function exportBoardHtml(opts = {}) {
       )
     );
     const board = await api('/api/board');
+    const allCards = board.cards.slice();
+    const docs = {};
+    const fetchDocs = async (paths) => {
+      const todo = paths.filter((p) => !docs[p]);
+      const CHUNK = 8;
+      for (let i = 0; i < todo.length; i += CHUNK) {
+        await Promise.all(todo.slice(i, i + CHUNK).map(async (p) => {
+          docs[p] = await api(`/api/doc?path=${encodeURIComponent(p)}`);
+        }));
+        showToast(`보드 내보내는 중… ${Math.min(i + CHUNK, todo.length)}/${todo.length}`);
+      }
+    };
     if (opts.only && opts.only.length) {
-      board.cards = board.cards.filter(
-        (c) => opts.only.includes(c.category) || opts.only.includes(`${c.category}/${c.subcategory}`)
-      );
+      const only = new Set(opts.only);
+      const inScope = (c) => only.has(c.category) || only.has(`${c.category}/${c.subcategory}`);
+      // 담긴 문서가 ?cat=…&sub=… 로 가리키는 카테고리를 자동으로 함께 담는다
+      // (BC 문서가 참조하는 API 뷰어 등 상호참조 링크가 export 에서 끊기지 않게)
+      await fetchDocs(allCards.filter(inScope).map((c) => c.path));
+      const refRe = /\?cat=([^&\s)]+)&sub=([^)\s&]+)/g;
+      for (const p of Object.keys(docs)) {
+        let m;
+        while ((m = refRe.exec(docs[p].body || ''))) only.add(`${decodeURIComponent(m[1])}/${decodeURIComponent(m[2])}`);
+      }
+      board.cards = allCards.filter(inScope);
       const tree = {};
       for (const [cat, subs] of Object.entries(board.tree)) {
-        if (opts.only.includes(cat)) { tree[cat] = subs; continue; }
-        const keep = subs.filter((sub) => opts.only.includes(`${cat}/${sub}`));
+        if (only.has(cat)) { tree[cat] = subs; continue; }
+        const keep = subs.filter((sub) => only.has(`${cat}/${sub}`));
         if (keep.length) tree[cat] = keep;
       }
       board.tree = tree;
+      // 홈에 타일로 보일 카테고리 = 명시적으로 고른 것만 (ref-scan 으로 딸려온 건 숨김)
+      board.homeCats = [...new Set(opts.only.map((o) => o.split('/')[0]))];
     }
-    const docs = {};
-    const paths = board.cards.map((c) => c.path);
-    const CHUNK = 8;
-    for (let i = 0; i < paths.length; i += CHUNK) {
-      await Promise.all(
-        paths.slice(i, i + CHUNK).map(async (p) => {
-          docs[p] = await api(`/api/doc?path=${encodeURIComponent(p)}`);
-        })
-      );
-      showToast(`보드 내보내는 중… ${Math.min(i + CHUNK, paths.length)}/${paths.length}`);
-    }
+    await fetchDocs(board.cards.map((c) => c.path));
     // embed 뷰어(예: api.html)도 내장 — 정적 파일에서 원본 디자인 그대로 뜨게
     const embeds = {};
     for (const name of new Set(board.cards.map((c) => c.embed).filter(Boolean))) {

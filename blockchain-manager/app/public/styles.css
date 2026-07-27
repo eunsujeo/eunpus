@@ -311,6 +311,19 @@ body {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.3px;
 }
+/* 참고 문서 — 은은한 인디고 테두리 + 태그로 일반 문서와 구분 (채움·스트립 없음) */
+.card-ref { border-color: rgba(129, 140, 248, 0.34); }
+.card-ref:hover { border-color: rgba(129, 140, 248, 0.62); }
+.card-ref-tag {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #818cf8;
+  border: 1px solid rgba(129, 140, 248, 0.4);
+  border-radius: 4px;
+  padding: 1px 7px;
+}
 
 /* ---- modal ---- */
 .modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; }

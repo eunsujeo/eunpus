@@ -136,18 +136,28 @@ try {
 if (!board) board = await buildBoardFromFs();
 
 // --- 1.5) --only 필터: 지정한 대카테고리(또는 대/중카테고리)만 남긴다 ---
-const ONLY = (args.get('only') || '').split(',').map((s) => s.trim()).filter(Boolean);
-if (ONLY.length) {
-  board.cards = board.cards.filter(
-    (c) => ONLY.includes(c.category) || ONLY.includes(`${c.category}/${c.subcategory}`)
-  );
+const ONLY = new Set((args.get('only') || '').split(',').map((s) => s.trim()).filter(Boolean));
+if (ONLY.size) {
+  const onlyArg = [...ONLY]; // ref-scan 확장 전 원본 — 홈에 보일 카테고리 산출용
+  const allCards = board.cards.slice();
+  const inScope = (c) => ONLY.has(c.category) || ONLY.has(`${c.category}/${c.subcategory}`);
+  // 담긴 문서가 ?cat=…&sub=… 로 가리키는 카테고리를 자동으로 함께 담는다 (상호참조 링크 유지)
+  const refRe = /\?cat=([^&\s)]+)&sub=([^)\s&]+)/g;
+  for (const c of allCards.filter(inScope)) {
+    const raw = await readFile(join(DIR, c.path.slice(DOCS_PATH.length + 1)), 'utf8');
+    let m;
+    while ((m = refRe.exec(raw))) ONLY.add(`${decodeURIComponent(m[1])}/${decodeURIComponent(m[2])}`);
+  }
+  board.cards = allCards.filter(inScope);
   const tree = {};
   for (const [cat, subs] of Object.entries(board.tree)) {
-    if (ONLY.includes(cat)) { tree[cat] = subs; continue; }
-    const keep = subs.filter((s) => ONLY.includes(`${cat}/${s}`));
+    if (ONLY.has(cat)) { tree[cat] = subs; continue; }
+    const keep = subs.filter((s) => ONLY.has(`${cat}/${s}`));
     if (keep.length) tree[cat] = keep;
   }
   board.tree = tree;
+  // 홈에 타일로 보일 카테고리 = 명시적으로 고른 것만 (ref-scan 으로 딸려온 건 숨김)
+  board.homeCats = [...new Set(onlyArg.map((o) => o.split('/')[0]))];
 }
 
 // --- 2) 문서 본문: /api/doc 응답과 같은 모양으로 내장 ---
@@ -155,6 +165,7 @@ const docs = {};
 for (const c of board.cards) {
   const raw = await readFile(join(DIR, c.path.slice(DOCS_PATH.length + 1)), 'utf8');
   const { meta, body } = parseFrontmatter(raw);
+  c.ref = meta.ref || ''; // 참고 문서 마커 — 카드에 배지로 표시 (일반/참고 구분)
   docs[c.path] = {
     path: c.path,
     meta: { ...meta, category: c.category, subcategory: c.subcategory, status: c.status },
