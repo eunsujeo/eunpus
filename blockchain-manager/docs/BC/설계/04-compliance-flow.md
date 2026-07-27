@@ -137,9 +137,9 @@ sequenceDiagram
 
     Note over CP,SOL: (사전) 솔루션 목록 동기화 — cmpl_vasp_id 발급
     ADM->>CP: List VASPs — 온보딩 대상 목록 조회
-    CP-->>ADM: cmpl_vasp_id · 이름 · 트래블룰 요청 가능 여부 · 활성화 여부
+    CP-->>ADM: cmplVaspId · 이름 · 트래블룰 요청 가능 여부 · 활성화 여부
     ADM->>WB: 선택 + 활성화 — vasp_id 없으면 생성 (거래 허용)
-    WB->>CP: Activate VASP — cmplVaspId + vasp_id
+    WB->>CP: Activate VASP — cmplVaspId + vaspId
     CP->>CDB: 매핑(vasp_id) + 활성화 — 신규면 매핑, 기존이면 활성화만
     Note over WB: 출금 화면 목록은 DAW-CORE 가 자체 제공
     WB->>CP: Create Withdrawal Check — vaspId
@@ -155,7 +155,7 @@ DAW-CORE 호출 없이 게이트가 주기적으로 실행한다.
 
 | 배치 | 하는 일 |
 |---|---|
-| **솔루션 목록 동기화** | 솔루션(VerifyVASP·Notabene 디렉토리)에서 VASP 목록을 받아 레지스트리에 UPSERT — 신규엔 `cmpl_vasp_id` 발급, 기존은 매핑·활성화 보존, 빠진 항목은 "트래블룰 요청 불가"로 표시. 운영 API(Sync)로도 즉시 실행 |
+| **솔루션 목록 동기화** | 솔루션(VerifyVASP·Notabene)에서 VASP 목록을 받아 레지스트리에 UPSERT — 신규엔 `cmpl_vasp_id` 발급, 기존은 매핑·활성화 보존, 빠진 항목은 "트래블룰 요청 불가"로 표시. 운영 API(Sync)로도 즉시 실행 |
 | **PENDING 만료 스캔** | 기한 지난 PENDING check 를 찾아 `REJECTED`(만료)로 확정하고 `withdrawal-check.settled` 를 발행 — 이것이 만료 verdict 를 만드는 유일한 경로 |
 
 사전 검증 기록 보존 기간 만료 배치는 보존 기간 값이 정해지면 이 자리에 추가된다(미확정).
