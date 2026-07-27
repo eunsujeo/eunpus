@@ -915,8 +915,8 @@ window.MD = (() => {
         paths += bar(p1, dir(p1, p2));
         paths += many ? crow(p2, dir(p2, p1)) : bar(p2, dir(p2, p1));
         if (r.label) {
-          // 가로 선은 라벨을 선 위로 올려 선을 가리지 않게 · 세로 선은 선을 끊으며 중앙
-          const ly = (p1.y + p2.y) / 2 - (horiz ? 13 : 0);
+          // 가로 선은 라벨을 선 위로 넉넉히 올려 선·끝표식을 안 가리게 · 세로 선은 선을 끊으며 중앙
+          const ly = (p1.y + p2.y) / 2 - (horiz ? 22 : 0);
           lab += `<span class="erd-label" style="left:${(p1.x + p2.x) / 2}px;top:${ly}px">${esc(r.label)}</span>`;
         }
       });
@@ -924,17 +924,19 @@ window.MD = (() => {
       labels.innerHTML = lab;
     };
 
-    // 테이블·필드 hover 툴팁 — 카드 overflow 에 안 잘리게 wrap 에 띄우는 단일 툴팁
-    //   헤더 hover = 테이블 설명 + 전체 필드 설명 패널 · 필드 hover = 그 필드만
+    // 테이블 hover 툴팁 — 카드 overflow 에 안 잘리게 wrap 에 띄우는 단일 툴팁
+    //   헤더 hover = 테이블 설명 + 필드별 설명. 가로 위치는 showTip 에서 wrap 안으로 clamp 해 잘리지 않게 한다
     const tip = document.createElement('div');
     tip.className = 'erd-tip';
     wrap.appendChild(tip);
-    const fieldLine = (col) => `<div class="erd-tip-f"><code>${esc(col.def)}</code>${col.desc ? ` ${esc(col.desc)}` : ''}</div>`;
+    const fieldLine = (col) => `<div class="erd-tip-f"><code>${esc(col.def)}</code>${col.desc ? `<span class="erd-tip-fd">${esc(col.desc)}</span>` : ''}</div>`;
     const showTip = (anchor, html) => {
       tip.innerHTML = html;
       tip.classList.add('on');
       const wr = wrap.getBoundingClientRect(), r = anchor.getBoundingClientRect();
-      tip.style.left = `${r.left - wr.left + r.width / 2}px`;
+      // 가로: 카드 중앙 기준, 단 wrap 밖으로 안 나가게 clamp (맨 왼쪽·오른쪽 카드에서 잘림 방지)
+      const half = tip.offsetWidth / 2, pad = 4;
+      tip.style.left = `${Math.max(half + pad, Math.min(r.left - wr.left + r.width / 2, wr.width - half - pad))}px`;
       if (r.top - wr.top - tip.offsetHeight - 10 < 0) { // 위로 넘치면 아래로
         tip.style.top = `${r.bottom - wr.top + 8}px`;
         tip.classList.add('below');
@@ -948,7 +950,7 @@ window.MD = (() => {
       if (!cardEl || !wrap.contains(cardEl)) return;
       const ent = ents[+cardEl.dataset.ei];
       const h = e.target.closest('.erd-h');
-      if (!h) return; // 필드별 패널 없음 — 헤더 hover 만 (테이블 설명 + 전체 필드)
+      if (!h) return; // 헤더 hover 만 — 테이블 설명 + 필드별 설명
       let html = `<div class="erd-tip-t">${esc(ent.name)}</div>`;
       if (ent.desc) html += `<div class="erd-tip-d">${esc(ent.desc)}</div>`;
       html += ent.cols.map(fieldLine).join('');

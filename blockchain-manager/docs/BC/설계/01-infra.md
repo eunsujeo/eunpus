@@ -15,7 +15,7 @@ status: To Do
 | [블록체인 매니저 — 흐름](02-bcm-flow.md) | 계정·주소·감지(웹훅)·입금·sweep·출금·boost 상세 흐름 + 상태 enum |
 | [블록체인 매니저 — DB](03-bcm-db.md) | ERD · 테이블 8개 · 입금 시나리오 |
 | [컴플라이언스 게이트 — 흐름](04-compliance-flow.md) | 출금 확인·입금 판별·VASP 온보딩·주기 배치 + verdict |
-| 컴플라이언스 — DB (예정) | ERD · 테이블 · 필드 |
+| [컴플라이언스 게이트 — DB](05-compliance-db.md) | ERD · 테이블 3개(레지스트리·확인·사전 검증) · 필드 |
 
 ## 구성 요소 — 한 장
 

@@ -1229,7 +1229,7 @@ a.brand-mark { text-decoration: none; }
 .erd-line { fill: none; stroke: var(--border-hover); stroke-width: 1.5; }
 .erd-mk { fill: none; stroke: var(--muted-strong); stroke-width: 1.5; }
 .erd-cards { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 30px 52px; align-items: flex-start; }
-.erd-cards.grid { display: grid; gap: 66px 76px; justify-content: start; align-items: start; }
+.erd-cards.grid { display: grid; gap: 66px 100px; justify-content: start; align-items: start; }
 .erd-card { border: 1px solid var(--hairline); border-radius: 8px; background: var(--surface); overflow: hidden; min-width: 156px; }
 .erd-h { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; font-weight: 700; padding: 5px 10px; background: var(--surface-elevated); border-bottom: 1px solid var(--hairline); }
 .erd-c { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11.5px; padding: 3px 10px; display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--muted-strong); }
@@ -1242,12 +1242,13 @@ a.brand-mark { text-decoration: none; }
 
 /* ERD hover 툴팁 — 테이블/필드 설명 (md.js buildErd) */
 .erd-h[data-tip] { cursor: help; }
-.erd-tip { position: absolute; z-index: 40; transform: translate(-50%, -100%); max-width: 380px; padding: 9px 12px; border-radius: 8px; background: var(--surface-elevated); border: 1px solid var(--border-hover); color: var(--body); font-size: 12px; line-height: 1.5; text-align: left; white-space: normal; box-shadow: 0 6px 20px rgba(0,0,0,.4); pointer-events: none; opacity: 0; transition: opacity .12s ease; }
+.erd-tip { position: absolute; z-index: 40; transform: translate(-50%, -100%); max-width: 340px; padding: 8px 12px; border-radius: 8px; background: var(--surface-elevated); border: 1px solid var(--border-hover); color: var(--body); font-size: 12px; line-height: 1.5; text-align: left; white-space: normal; box-shadow: 0 6px 20px rgba(0,0,0,.4); pointer-events: none; opacity: 0; transition: opacity .12s ease; }
 .erd-tip.below { transform: translate(-50%, 0); }
 .erd-tip-t { font-family: ui-monospace, SFMono-Regular, monospace; font-weight: 700; }
 .erd-tip-d { color: var(--muted-strong); margin: 1px 0 7px; }
-.erd-tip-f { font-size: 11.5px; margin: 3px 0; }
-.erd-tip-f code { color: var(--primary-active); font-size: 11px; margin-right: 5px; }
+.erd-tip-f { font-size: 11.5px; margin: 6px 0 0; }
+.erd-tip-f code { color: var(--primary-active); font-size: 11px; }
+.erd-tip-fd { display: block; padding-left: 12px; margin-top: 1px; color: var(--body); }
 .erd-tip.on { opacity: 1; }
 
 /* 본문 자동 목차 — 미리보기 모달·문서 뷰 (md.js enhanceToc) */
