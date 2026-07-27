@@ -20,7 +20,7 @@ status: To Do
 | `bcm_acnt_m` | 계정 매핑 — ref ↔ vault | createAccount · 모든 오퍼레이션의 계정 해석 |
 | `bcm_addr_m` | 주소 매핑 — (계정, 자산) ↔ 입금 주소 | createDepositAddress · depositAddressOf · 입금 감지의 주소→계정 대응 |
 | `bcm_tx_l` | 거래 운영 상태 — 감지·발행 추적 | 웹훅 알림 판단 → 이벤트 publish([4장](04-detect-confirm.md)) · 막힘 점검 · 제출 중복 차단 |
-| `bcm_noti_l` | 수신 알림 원본 — 웹훅 버퍼 | 수신부 적재 → 판단 워커 집기([4장](04-detect-confirm.md) 폭주 설계) · finalize 원본의 출처([15장](15-raw-tx-archive.md)) |
+| `bcm_whk_l` | 수신 알림 원본 — 웹훅 버퍼 | 수신부 적재 → 판단 워커 집기([4장](04-detect-confirm.md) 폭주 설계) · finalize 원본의 출처([15장](15-raw-tx-archive.md)) |
 | `bcm_swp_trgt` | sweep 대상 마킹 | 입금 확정 시 마킹 → 주기 배치가 제출([5장](05-deposit.md)) |
 | `bcm_job_m` | 주기 작업 상태 — heartbeat · 대사 커서 | tx 대사의 대조 범위 이어붙임([4장](04-detect-confirm.md)) · 밖에서 읽는 heartbeat([11장](11-monitoring.md)) |
 | `bcm_boost_l` | boost 이력 | 자동 boost([6장](06-withdrawal.md)) — Admin 이 본다 |
@@ -84,21 +84,21 @@ CREATE TABLE bcm_tx_l (
 | `ext_tx_id` | UNIQUE 가 재제출 중복 차단의 물리 근거. 완료 이벤트에 그대로 실어 되돌려준다(14장). **boost 대체 행은 이 값을 갖지 않는다**(원 행만 — 대체 행은 `orig_tx_id` 로 원 행을 가리킬 뿐) |
 | `last_pub_stcd` | 발행 중복을 줄이는 장치 — 큐는 at-least-once 라 최종 중복 제거는 소비 쪽 멱등이 맡는다(4장). **publish 성공 후에만 기록한다** — 기록이 먼저면 그 사이 장애 때 이벤트가 영구 유실된다 |
 
-## bcm_noti_l — 수신 알림 원본
+## bcm_whk_l — 수신 알림 원본
 
-수신부가 웹훅 알림을 받은 그대로 적재하는 버퍼([4장](04-detect-confirm.md) 폭주 설계 — 요청당 3步의 둘째 步). 판단 워커가 미처리분을 집어 가고, finalize 원본 일 배치(15장)가 여기서 payload 를 뽑는다.
+수신부가 웹훅 알림을 받은 그대로 적재하는 버퍼([4장](04-detect-confirm.md) 폭주 설계 — 요청당 3단계의 둘째 단계). 판단 워커가 미처리분을 집어 가고, finalize 원본 일 배치(15장)가 여기서 payload 를 뽑는다.
 
 ```sql
-CREATE TABLE bcm_noti_l (
+CREATE TABLE bcm_whk_l (
   noti_id       VARCHAR(64)   PRIMARY KEY,   -- 웹훅 알림 id — 벤더가 알림마다 붙이는 v2 UUID. unique 가 중복 수신 방어의 물리 근거
   evnt_tp       VARCHAR(64)   NOT NULL,      -- eventType (transaction.status.updated 등)
-  rsrc_id       VARCHAR(64)   NULL,          -- resourceId — 대상 tx id
+  vndr_tx_id    VARCHAR(64)   NULL,          -- 벤더 tx id — 이 알림이 가리키는 거래
   payload       JSON          NOT NULL,      -- 알림 원본 그대로 — 판단·원본 보관의 입력
   rcv_dttm      TIMESTAMP     NOT NULL,      -- 수신 일시
   prcs_yn       CHAR(1)       NOT NULL,      -- 판단 처리 여부
   prcs_dttm     TIMESTAMP     NULL           -- 처리 일시
 );
-CREATE INDEX idx_bcm_noti_pick ON bcm_noti_l (prcs_yn, rcv_dttm);  -- 판단 워커의 집기 — 미처리 오래된 순
+CREATE INDEX idx_bcm_whk_pick ON bcm_whk_l (prcs_yn, rcv_dttm);  -- 판단 워커의 집기 — 미처리 오래된 순
 ```
 
 | 컬럼 | 뜻 |
@@ -174,8 +174,7 @@ CREATE TABLE bcm_boost_l (
 | `dpst` | deposit | | `orig` | original |
 | `cnfm` | confirm | | `reg` | register |
 | `noti` | notification | | `evnt` | event |
-| `rsrc` | resource | | `rcv` | receive |
-| `prcs` | process | | `swp` | sweep |
-| `trgt` | target | | `scs` | success |
-| `alrt` | alert | | | |
-| `ext_tx` | external transaction | | | |
+| `rcv` | receive | | `swp` | sweep |
+| `prcs` | process | | `scs` | success |
+| `trgt` | target | | `alrt` | alert |
+| `ext_tx` | external transaction | | `whk` | webhook |

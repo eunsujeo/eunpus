@@ -231,9 +231,9 @@ function renderBoard() {
   }
 
   // 정적 내보내기 파일 — 여러 독자에게 전달되는 읽기 전용 문서집이라,
-  // 작업 상태판(칸반) 대신 절 단위 읽기 뷰를 그린다 (상태·드래그 없음)
+  // 작업 상태판(칸반) 대신 카드 격자로 그린다 (상태·드래그 없음, 카드 클릭 = 미리보기 모달)
   if (window.__STATIC_BOARD__) {
-    renderSectionReader(items);
+    renderCardGrid(items);
     return;
   }
 
@@ -268,6 +268,22 @@ function renderBoard() {
   }
 
   boardMeta.textContent = `문서 ${items.length}건`;
+}
+
+// 정적 내보내기 뷰 — 문서를 카드 격자로 나열한다 (상태 컬럼·드래그 없음).
+// 카드 클릭 = 기존 미리보기 모달(openPreview) — 같은 중분류 형제로 이전/다음까지 그대로 동작.
+function renderCardGrid(items) {
+  view.className = 'view card-grid';
+  boardMeta.textContent = `문서 ${items.length}건`;
+  if (!items.length) {
+    view.innerHTML = '<div class="board-status">문서가 없습니다.</div>';
+    return;
+  }
+  for (const c of items) {
+    const el = cardEl(c);
+    el.draggable = false; // 정적에선 이동·저장이 없다
+    view.appendChild(el);
+  }
 }
 
 // 원본 뷰어 embed — 앱 public/ 안의 자체 HTML 뷰어(예: api.html)를 iframe 으로 그대로 띄운다.
@@ -688,13 +704,15 @@ async function showPreviewAt(idx) {
     const m = data.meta || {};
     // 복사·다운로드 = frontmatter 제거 + 제목을 H1 로 (title:/status: 가 텍스트로 새지 않게)
     currentDoc = { name: c.name, path: c.path, raw: `# ${m.title || c.title || c.name}\n\n${data.body}` };
+    // 정적 내보내기엔 워크플로우 상태(To Do…)가 없다 — 상태 칩은 뺀다
     modalChips.innerHTML = [
-      m.status ? `<span class="chip status">${esc(m.status)}</span>` : '',
+      window.__STATIC_BOARD__ ? '' : (m.status ? `<span class="chip status">${esc(m.status)}</span>` : ''),
       m.category ? `<span class="chip">${esc(m.category)}</span>` : '',
       m.subcategory ? `<span class="chip">${esc(m.subcategory)}</span>` : '',
       previewList.length > 1 ? `<span class="chip">${idx + 1} / ${previewList.length}</span>` : '',
     ].join('');
     modalBody.innerHTML = renderMarkdown(data.body, { docBase: c.path.split('/').slice(0, -1).join('/'), docLinksNewTab: m.linkMode === 'newtab' });
+    window.MD.enhanceToc(modalBody);
     await window.MD.runMermaid('#modal-body .mermaid');
     window.MD.enhanceDiagrams(modalBody);
     window.MD.enhanceSectionRefs(modalBody, { docPath: c.path });
@@ -708,6 +726,17 @@ window.__openDocByPath = (path) => {
   const c = cards.find((x) => x.path === path);
   if (c) openPreview(c);
 };
+
+// 긴 문서용 "맨 위로" 버튼 — 모달 본문을 아래로 스크롤하면 나타난다
+(() => {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'doc-top hidden';
+  btn.textContent = '↑ 맨 위로';
+  btn.addEventListener('click', () => modalBody.scrollTo({ top: 0, behavior: 'smooth' }));
+  (modal.querySelector('.modal-card') || modal).appendChild(btn);
+  modalBody.addEventListener('scroll', () => btn.classList.toggle('hidden', modalBody.scrollTop < 300));
+})();
 
 function updatePrevNext() {
   document.getElementById('prev-doc').disabled = previewIdx <= 0;

@@ -18,7 +18,7 @@ status: To Do
 |---|---|---|
 | `bcm_acnt_m` | 계정 매핑 — ref ↔ vault | 계정 생성 · 모든 오퍼레이션의 계정 해석 |
 | `bcm_addr_m` | 주소 매핑 — (계정, 자산) ↔ 입금 주소 | 주소 발급·조회 · 입금 감지의 주소→계정 대응 |
-| `bcm_noti_l` | 수신 웹훅 알림 원본 — 버퍼 | 수신부 적재 → 판단 워커 집기 · finalize 원본의 출처 |
+| `bcm_whk_l` | 수신 웹훅 알림 원본 — 버퍼 | 수신부 적재 → 판단 워커 집기 · finalize 원본의 출처 |
 | `bcm_tx_l` | 거래 운영 상태 — 감지·발행 추적 | 판단 워커 → 이벤트 publish · 막힘 점검 · 제출 중복 차단 |
 | `bcm_swp_trgt` | sweep 대상 마킹 | 입금 확정 시 마킹 → 주기 배치가 제출 |
 | `bcm_boost_l` | boost 이력 | 자동 boost — Admin 이 본다 |
@@ -29,17 +29,17 @@ status: To Do
 
 ```erd
 entity: bcm_addr_m @1,1 :: 주소 매핑 — (계정, 자산)당 입금 주소 하나 | acnt_id PK,FK :: 계정 | ast_cd PK :: 자산 심볼 | dpst_addr :: 발급된 입금 주소
-entity: bcm_noti_l @2,1 :: 수신 웹훅 알림 원본 — 버퍼 (처리 후 N일 정리) | noti_id PK :: 웹훅 알림 id (벤더 UUID) — 중복 수신 방어 | rsrc_id :: 대상 tx id | prcs_yn :: 판단 처리 여부
+entity: bcm_whk_l @2,1 :: 수신 웹훅 알림 원본 — 버퍼 (처리 후 N일 정리) | noti_id PK :: 웹훅 알림 id (벤더 UUID) — 중복 수신 방어 | vndr_tx_id :: 벤더 tx id — 이 알림이 가리키는 거래 | prcs_yn :: 판단 처리 여부
 entity: bcm_acnt_m @1,2 :: 계정 매핑 — ref ↔ vault | acnt_id PK :: 매니저가 발급하는 계정 매핑 id | ref UK :: 백엔드 참조 키 (ACT-·SYS-) — 멱등 근거 | vndr_vlt_id :: 벤더 vault id (백엔드 비노출)
 entity: bcm_tx_l @2,2 :: 거래 운영 상태 — 감지·발행 추적 | vndr_tx_id PK :: 벤더 tx id | ext_tx_id UK :: 출금 요청 키 — 재제출 중복 차단, 입금은 NULL | acnt_id FK :: 귀속 계정 — 이벤트 파티션 키 | last_pub_stcd :: 마지막으로 발행한 TxStatus
 entity: bcm_boost_l @3,2 :: boost 이력 — Admin 조회용 | orig_tx_id PK :: 원 벤더 tx | try_seq PK :: 시도 순번 | new_tx_id :: 대체 벤더 tx
 entity: bcm_swp_trgt @1,3 :: sweep 대상 마킹 — 작업 큐 | acnt_id PK,FK :: 고객 계정 | ast_cd PK :: 자산 | swp_tx_id :: 제출한 sweep tx (NULL=미제출)
-entity: bcm_raw_tx_l @2,3 :: finalize 원본 — 일 배치 장기 보관 | base_dt PK :: 적재 기준일 = 파티션 키 | vendor_tx_id PK :: 벤더 tx id | payload_hash :: 원문 SHA-256 — 무결성
+entity: bcm_raw_tx_l @2,3 :: finalize 원본 — 일 배치 장기 보관 | base_dt PK :: 적재 기준일 = 파티션 키 | vndr_tx_id PK :: 벤더 tx id | payload_hash :: 원문 SHA-256 — 무결성
 entity: bcm_job_m @3,3 :: 주기 작업 상태 — heartbeat · 대사 커서 | job_nm PK :: 작업명 | last_scs_dttm :: 마지막 성공 — tx 대사 대조 범위 이어붙임
 rel: bcm_acnt_m | bcm_addr_m | 계정당 주소 | one-many
 rel: bcm_acnt_m | bcm_tx_l | 계정 귀속 | one-many
 rel: bcm_acnt_m | bcm_swp_trgt | sweep 대상 | one-many
-rel: bcm_noti_l | bcm_tx_l | 워커가 옮김 | one-many | dashed
+rel: bcm_whk_l | bcm_tx_l | 워커가 옮김 | one-many | dashed
 rel: bcm_tx_l | bcm_boost_l | boost 시도 | one-many
 rel: bcm_tx_l | bcm_raw_tx_l | 확정 원본 | one-many | dashed
 ```
@@ -54,21 +54,21 @@ rel: bcm_tx_l | bcm_raw_tx_l | 확정 원본 | one-many | dashed
 
 ```anim
 db
-table: bcm_noti_l | noti_id | rsrc_id | prcs_yn
+table: bcm_whk_l | noti_id | vndr_tx_id | prcs_yn
 table: bcm_tx_l | vndr_tx_id | last_pub_stcd | cnfm_cnt
 queue: deposit-events | 이벤트 | txId
 table: bcm_swp_trgt | acnt_id | ast_cd | swp_tx_id
 step: 웹훅 도착 (CONFIRMING) | 수신부가 알림 원본만 적재하고 200 을 돌려준다 — 판단은 아직
-ins: bcm_noti_l | n-8f3a | tx-91c | N
+ins: bcm_whk_l | n-8f3a | tx-91c | N
 step: 워커 집기 · 감지 발행 | 판단 워커가 알림을 집어 tx 행을 만들고, deposit-events 에 감지를 발행한다 · 알림은 처리 완료
 ins: bcm_tx_l | tx-91c | CONFIRMING | 1
 ins: deposit-events | 입금 감지 | tx-91c
-upd: bcm_noti_l | 1 | prcs_yn=Y
+upd: bcm_whk_l | 1 | prcs_yn=Y
 step: 컨펌 누적 | 다음 알림마다 tx 행의 컨펌 수만 오른다 — 임계 전이라 발행 없음 (중간 전이는 기록만)
-ins: bcm_noti_l | n-b2e | tx-91c | Y
+ins: bcm_whk_l | n-b2e | tx-91c | Y
 upd: bcm_tx_l | 1 | cnfm_cnt=8
 step: COMPLETED · 확정 발행 | 임계 도달 — tx 행을 확정으로 갱신하고 deposit-events 에 확정을 발행한다
-ins: bcm_noti_l | n-c7d | tx-91c | Y
+ins: bcm_whk_l | n-c7d | tx-91c | Y
 upd: bcm_tx_l | 1 | last_pub_stcd=COMPLETED | cnfm_cnt=12
 ins: deposit-events | 입금 확정 | tx-91c
 step: sweep 대상 마킹 | 확정을 잡으면 그 (계정, 자산)을 sweep 대상으로 마킹한다 — swp_tx_id 는 비어 있음(미제출)
@@ -79,25 +79,25 @@ step: sweep 확정 · 대상 정리 | 다음 배치가 vault 가 비었음을 �
 del: bcm_swp_trgt | 1
 ```
 
-`bcm_noti_l` 은 처리 후 N일 뒤 정리되고 확정 원본은 `bcm_raw_tx_l` 로 옮겨지지만, 이 그림은 감지~sweep 경로만 보여주려고 그 두 단계는 생략했다.
+`bcm_whk_l` 은 처리 후 N일 뒤 정리되고 확정 원본은 `bcm_raw_tx_l` 로 옮겨지지만, 이 그림은 감지~sweep 경로만 보여주려고 그 두 단계는 생략했다.
 
 ### 출금
 
-`ext_tx_id`(백엔드 요청 키)가 상태 전이 내내 그대로 실려, DAW-CORE 가 자기 출금 지시와 대응한다.
+이벤트에는 벤더 tx id(`txId`)가 늘 실리고, 출금은 여기에 `externalTxId`(백엔드 요청 키)가 더해져 상태 전이 내내 그대로 따라간다 — DAW-CORE 가 자기 출금 지시와 대응한다. (입금은 외부 요청 키가 없어 `txId` 만.)
 
 ```anim
 db
 table: bcm_tx_l | vndr_tx_id | ext_tx_id | last_pub_stcd
-queue: withdrawal-events | 이벤트 | externalTxId
+queue: withdrawal-events | 이벤트 | txId | externalTxId
 step: 제출 접수 | DAW-CORE 가 externalTxId 로 제출 — 매니저가 기록을 등록하고 SUBMITTED 를 발행한다
 ins: bcm_tx_l | tx-w1 | wd-42 | SUBMITTED
-ins: withdrawal-events | SUBMITTED | wd-42
+ins: withdrawal-events | SUBMITTED | tx-w1 | wd-42
 step: 전파 — CONFIRMING | 체인에 올라 컨펌이 쌓인다
 upd: bcm_tx_l | 1 | last_pub_stcd=CONFIRMING
-ins: withdrawal-events | CONFIRMING | wd-42
+ins: withdrawal-events | CONFIRMING | tx-w1 | wd-42
 step: 확정 — COMPLETED | 임계 도달 — 확정을 발행한다. externalTxId 로 백엔드가 출금 건을 닫는다
 upd: bcm_tx_l | 1 | last_pub_stcd=COMPLETED
-ins: withdrawal-events | COMPLETED | wd-42
+ins: withdrawal-events | COMPLETED | tx-w1 | wd-42
 ```
 
 ### 막힘 → 자동 boost
@@ -108,7 +108,7 @@ ins: withdrawal-events | COMPLETED | wd-42
 db
 table: bcm_tx_l | vndr_tx_id | orig_tx_id | last_pub_stcd
 table: bcm_boost_l | orig_tx_id | try_seq | new_tx_id
-queue: withdrawal-events | 이벤트 | externalTxId
+queue: withdrawal-events | 이벤트 | txId | externalTxId
 step: 출금 CONFIRMING | 출금 tx 가 전파돼 컨펌 대기 중이다
 ins: bcm_tx_l | tx-w1 |  | CONFIRMING
 step: 막힘 감지 | 막힘 점검이 오래 CONFIRMING 인 tx-w1 을 골라낸다 — boost 트리거
@@ -117,7 +117,7 @@ ins: bcm_tx_l | tx-w2 | tx-w1 | CONFIRMING
 ins: bcm_boost_l | tx-w1 | 1 | tx-w2
 step: 확정 — 원 tx 로 접어 발행 | 대체 거래가 확정 — 백엔드에는 원 tx(tx-w1) 기준으로 발행한다 (백엔드는 boost 를 모른다)
 upd: bcm_tx_l | 2 | last_pub_stcd=COMPLETED
-ins: withdrawal-events | 확정 | wd-42
+ins: withdrawal-events | 확정 | tx-w1 | wd-42
 ```
 
 ### 웹훅 유실 → tx 대사 복구
@@ -177,21 +177,21 @@ CREATE INDEX idx_bcm_addr_lookup ON bcm_addr_m (dpst_addr, ast_cd);
 | `PRIMARY KEY (acnt_id, ast_cd)` | 자산당 주소 하나 — 같은 자산의 주소를 더 두려면 계정을 더 만든다 |
 | `idx_bcm_addr_lookup` | 역방향 조회 — 입금 감지가 "이 주소가 어느 계정인가"를 여기서 푼다 |
 
-### bcm_noti_l — 수신 알림 원본
+### bcm_whk_l — 수신 알림 원본
 
-수신부가 웹훅 알림을 받은 그대로 적재하는 버퍼 — 수신은 서명 검증·이 적재·200 응답까지만 하고(요청당 3步), 판단은 워커가 분리해서 미처리분을 집어 간다([흐름](02-bcm-flow.md) 감지). finalize 원본 일 배치가 여기서 payload 를 뽑는다.
+수신부가 웹훅 알림을 받은 그대로 적재하는 버퍼 — 수신은 서명 검증·이 적재·200 응답까지만 하고(요청당 3단계), 판단은 워커가 분리해서 미처리분을 집어 간다([흐름](02-bcm-flow.md) 감지). finalize 원본 일 배치가 여기서 payload 를 뽑는다.
 
 ```sql
-CREATE TABLE bcm_noti_l (
+CREATE TABLE bcm_whk_l (
   noti_id       VARCHAR(64)   PRIMARY KEY,   -- 웹훅 알림 id — 벤더가 알림마다 붙이는 v2 UUID. unique 가 중복 수신 방어
   evnt_tp       VARCHAR(64)   NOT NULL,      -- eventType (transaction.status.updated 등)
-  rsrc_id       VARCHAR(64)   NULL,          -- resourceId — 대상 tx id
+  vndr_tx_id    VARCHAR(64)   NULL,          -- 벤더 tx id — 이 알림이 가리키는 거래
   payload       JSON          NOT NULL,      -- 알림 원본 그대로 — 판단·원본 보관의 입력
   rcv_dttm      TIMESTAMP     NOT NULL,      -- 수신 일시
   prcs_yn       CHAR(1)       NOT NULL,      -- 판단 처리 여부
   prcs_dttm     TIMESTAMP     NULL           -- 처리 일시
 );
-CREATE INDEX idx_bcm_noti_pick ON bcm_noti_l (prcs_yn, rcv_dttm);  -- 판단 워커의 집기 — 미처리 오래된 순
+CREATE INDEX idx_bcm_whk_pick ON bcm_whk_l (prcs_yn, rcv_dttm);  -- 판단 워커의 집기 — 미처리 오래된 순
 ```
 
 | 컬럼 | 뜻 |
@@ -276,12 +276,12 @@ CREATE TABLE bcm_job_m (
 
 ### bcm_raw_tx_l — finalize 트랜잭션 원본
 
-finalize 된 tx 의 벤더 원문을 일 배치로 장기 보관한다. 원본은 `bcm_noti_l` 에서 그 tx 의 마지막 COMPLETED 알림 payload 를 옮긴다 — 벤더 재조회 없음.
+finalize 된 tx 의 벤더 원문을 일 배치로 장기 보관한다. 원본은 `bcm_whk_l` 에서 그 tx 의 마지막 COMPLETED 알림 payload 를 옮긴다 — 벤더 재조회 없음.
 
 ```sql
 CREATE TABLE bcm_raw_tx_l (
   base_dt        DATE         NOT NULL,   -- 적재 기준일 = 파티션 키
-  vendor_tx_id   VARCHAR(64)  NOT NULL,   -- 벤더 트랜잭션 id
+  vndr_tx_id     VARCHAR(64)  NOT NULL,   -- 벤더 tx id
   ext_tx_id      VARCHAR(128) NULL,       -- 출금 건 식별자 — 입금은 NULL
   tx_hash        VARCHAR(128) NULL,       -- 온체인 거래 해시
   addr           VARCHAR(128) NOT NULL,   -- 지갑(주소) 기준 조회 키 — 입금은 수취 주소, 출금은 출발 주소
@@ -290,7 +290,7 @@ CREATE TABLE bcm_raw_tx_l (
   payload        TEXT         NOT NULL,   -- 벤더 응답 원문 — 받은 바이트 그대로, 가공 금지
   payload_hash   CHAR(64)     NOT NULL,   -- 원문 바이트의 SHA-256 — 무결성 증명
   rcv_dttm       TIMESTAMP    NOT NULL,   -- 원문을 받은 일시
-  PRIMARY KEY (base_dt, vendor_tx_id)
+  PRIMARY KEY (base_dt, vndr_tx_id)
 ) PARTITION BY RANGE (base_dt);           -- 월 단위 파티션
 ```
 
@@ -300,5 +300,5 @@ CREATE TABLE bcm_raw_tx_l (
 
 - **약어 검수** — `bcm`·`vndr`·`vlt`·`noti`·`swp` 등 축약어는 DAW-CORE DB 약어집과 대조 후 확정.
 - **일시 타입** — 컴플라이언스 DB 와 같은 결정 항목.
-- **`bcm_tx_l`·`bcm_noti_l` 보존** — 종결·처리 완료 건을 언제까지 두고 언제 정리할지 — `bcm_raw_tx_l` 원본 보관과 역할을 나눈 뒤 확정.
+- **`bcm_tx_l`·`bcm_whk_l` 보존** — 종결·처리 완료 건을 언제까지 두고 언제 정리할지 — `bcm_raw_tx_l` 원본 보관과 역할을 나눈 뒤 확정.
 - **subStatus·networkStatus 보관 여부** — 매니저가 번역에 쓰는 벤더 내부 값을 `bcm_tx_l` 행에도 남길지 (이벤트에는 싣지 않는다).

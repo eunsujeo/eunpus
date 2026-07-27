@@ -729,20 +729,25 @@ window.MD = (() => {
   // 범용 DB 시나리오 애니메이션 — ```anim 첫 줄이 `db` 면 아래 줄들을 해석한다.
   //   table: <이름> | <컬럼> | <컬럼> …          장면에 놓을 DB 테이블 (선언 순서대로)
   //   queue: <이름> | <컬럼> | <컬럼> …          메시지 큐 (색 구분)
+  //   hook:  <이름> | <컬럼> | <컬럼> …          외부에서 들어오는 것 (웹훅 도착 등 · 색 구분)
   //   step:  <제목> | <설명>                     단계 시작
   //   ins:   <테이블> | <값> | <값> …            이 단계에서 행 추가
+  //   source:<이름> | <컬럼> …                    벤더에서 당겨오는 것 (거래 목록 조회 등 · 색 구분)
   //   upd:   <테이블> | <행번호> | <컬럼>=<값> …  행 갱신 (행번호 = 그 테이블에 추가된 순서, 1부터)
   //   del:   <테이블> | <행번호>                  행 삭제 — 그 단계에 취소선, 다음 단계부터 사라짐
+  //   alert: <테이블> | <행번호>                  그 행을 빨갛게 경보(장애·누락) — clear 전까지 유지
+  //   clear: <테이블> | <행번호>                  경보 해제(복구)
   function buildDbScenario(el, src) {
     const tables = [];
     const steps = [];
     const byName = {};
+    const BOX = { table: 'db', queue: 'queue', hook: 'hook', source: 'source' };
     src.split('\n').forEach((raw) => {
-      const m = /^(table|queue|step|ins|upd|del):\s*(.*)$/.exec(raw.trim());
+      const m = /^(table|queue|hook|source|step|ins|upd|del|alert|clear):\s*(.*)$/.exec(raw.trim());
       if (!m) return;
       const parts = m[2].split('|').map((s) => s.trim());
-      if (m[1] === 'table' || m[1] === 'queue') {
-        const t = { name: parts[0], cols: parts.slice(1), kind: m[1] === 'queue' ? 'queue' : 'db' };
+      if (BOX[m[1]]) {
+        const t = { name: parts[0], cols: parts.slice(1), kind: BOX[m[1]] };
         tables.push(t);
         byName[t.name] = t;
       } else if (m[1] === 'step') {
@@ -758,7 +763,7 @@ window.MD = (() => {
       scene:
         '<div class="dbanim">' +
         tables.map((t, i) =>
-          `<div class="dbt ${t.kind}" data-f="dbt-${i}-box"><div class="dbt-name">${esc(t.name)}<span class="dbt-tag">${t.kind === 'queue' ? '큐' : '테이블'}</span></div>` +
+          `<div class="dbt ${t.kind}" data-f="dbt-${i}-box"><div class="dbt-name">${esc(t.name)}<span class="dbt-tag">${{ queue: '큐', hook: '웹훅', source: '조회' }[t.kind] || '테이블'}</span></div>` +
           `<table><thead><tr>${t.cols.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead>` +
           `<tbody data-f="dbt-${i}"></tbody></table></div>`).join('') +
         '</div>',
@@ -782,6 +787,12 @@ window.MD = (() => {
             } else if (o.op === 'del') {
               const r = rows[+o.args[0] - 1];
               if (r && r.deadAt === undefined) r.deadAt = s;
+            } else if (o.op === 'alert') {
+              const r = rows[+o.args[0] - 1];
+              if (r) r.alert = true;
+            } else if (o.op === 'clear') {
+              const r = rows[+o.args[0] - 1];
+              if (r) r.alert = false;
             }
           });
         }
@@ -792,7 +803,7 @@ window.MD = (() => {
           setF(`dbt-${ti}`,
             live.length
               ? live.map((r) =>
-                  `<tr class="${r.born === step ? 'new' : ''}${r.deadAt === step ? ' dead' : ''}">` +
+                  `<tr class="${r.born === step ? 'new' : ''}${r.deadAt === step ? ' dead' : ''}${r.alert ? ' alert' : ''}">` +
                   t.cols.map((_, ci) =>
                     `<td${r.chg[ci] === step ? ' class="chg"' : ''}>${esc(r.vals[ci] ?? '')}</td>`).join('') +
                   '</tr>').join('')
@@ -976,6 +987,33 @@ window.MD = (() => {
   }
 
   /* 렌더된 .mermaid 마다 확대·이동·전체화면 컨트롤을 붙인다 */
+  // 본문 제목(h2·h3)으로 접이식 목차를 만들어 본문 맨 위에 넣는다 — 모달·문서 뷰 공용.
+  // root 는 스크롤 컨테이너 안의 본문 요소. 제목이 적으면(3개 미만) 목차를 만들지 않는다.
+  function enhanceToc(root) {
+    if (!root || root.querySelector(':scope > .doc-toc')) return; // 중복 방지
+    const hs = [...root.querySelectorAll('h2, h3')].filter((h) => !h.closest('.doc-toc'));
+    if (hs.length < 3) return;
+    const nav = document.createElement('nav');
+    nav.className = 'doc-toc';
+    let h2n = 0, h3n = 0;
+    nav.innerHTML =
+      '<div class="doc-toc-t">목차</div>' +
+      hs.map((h, i) => {
+        if (!h.id) h.id = `sec-${i}`;
+        let num;
+        if (h.tagName === 'H2') { h2n += 1; h3n = 0; num = `${h2n}`; }
+        else { h3n += 1; num = `${h2n}.${h3n}`; }
+        return `<a href="#${h.id}" class="lv${h.tagName[1]}" data-i="${i}"><span class="doc-toc-n">${num}</span>${esc(h.textContent)}</a>`;
+      }).join('');
+    nav.addEventListener('click', (e) => {
+      const a = e.target.closest('a');
+      if (!a) return;
+      e.preventDefault();
+      hs[+a.dataset.i].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    root.insertBefore(nav, root.firstChild);
+  }
+
   function enhanceDiagrams(root) {
     enhanceCodeCopy(root); // 코드블록 복사 버튼도 같은 진입점에서 — 모든 호출처에 자동 적용
     mountAnims(root); // ```anim 애니메이션도 동일 — 보드·doc·모달·피크·export 전부 커버
@@ -1279,5 +1317,5 @@ window.MD = (() => {
     }
   }
 
-  return { esc, renderMarkdown, initMermaid, runMermaid, enhanceDiagrams, enhanceCodeCopy, enhanceSectionRefs, mountAnims };
+  return { esc, renderMarkdown, initMermaid, runMermaid, enhanceDiagrams, enhanceCodeCopy, enhanceSectionRefs, enhanceToc, mountAnims };
 })();
