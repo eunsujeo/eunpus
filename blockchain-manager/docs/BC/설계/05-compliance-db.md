@@ -3,7 +3,7 @@ title: 컴플라이언스 게이트 — DB
 status: To Do
 ---
 
-컴플라이언스 게이트 DB(`cmpl_`)의 테이블 셋 — VASP 레지스트리, 출금 확인 상태, 입금 사전 검증 기록.
+컴플라이언스 게이트 DB(`cmpl_`)의 테이블 넷 — VASP 레지스트리, 출금 확인 상태, 입금 사전 검증 기록, 발행 아웃박스.
 정체·거래 허용(고객 화면 노출)은 여기가 아니라 DAW-CORE VASP 마스터(`daw_vasp_m`)에 있다 — 게이트는 솔루션 라우팅과 사전 검증 기록만 쥔다. 흐름은 [게이트 흐름](04-compliance-flow.md).
 
 ## 명명 규약
@@ -23,6 +23,7 @@ status: To Do
 |---|---|---|
 | `cmpl_vasp_m` | VASP 레지스트리 — 솔루션 목록 + `cmpl_vasp_id`(게이트 발급 안정 id) + 코어 `vasp_id` 매핑 + 활성화 | 목록 동기화 · Admin 활성화 · 출금 확인 라우팅 |
 | `cmpl_wdrl_chk_l` | 출금 트래블룰 확인 상태 | Create/Get Withdrawal Check · Report · settled 발행 · PENDING 만료 스캔 |
+| `cmpl_outbox_l` | 발행 대기 이벤트 — verdict 확정과 원자 기록 | 결과 확정 시 적재 → relay 가 settled 발행 |
 | `cmpl_pre_vrfc_l` | 입금 사전 검증 기록 — 대조 키만 | 사전 검증 수신 적재 · tx hash 갱신 · 입금 도착 대조 |
 
 ## ERD
@@ -31,10 +32,12 @@ status: To Do
 entity: cmpl_vasp_m @1,1 :: VASP 레지스트리 — 솔루션 목록 + 코어 vasp_id 매핑·활성화 | cmpl_vasp_id PK :: 게이트 발급 안정 id — Admin 이 이 값으로 지목 | soln_dvcd :: 솔루션 구분 (VERIFYVASP·CODE_INTEROP·NOTABENE) | vasp_id :: 매핑된 코어 VASP id — 미매핑이면 NULL | actv_yn :: 활성화(라우팅 켜짐) 여부
 entity: cmpl_wdrl_chk_l @2,1 :: 출금 트래블룰 확인 상태 | chk_id PK :: 확인 건 id | ext_tx_id UK :: 출금 멱등 키 — DAW-CORE·매니저와 같은 값 | vasp_id :: 수취 VASP (코어 id) — 라우팅 입력 | vrdt_stcd :: 확인 결과 (TrVerdict)
 entity: cmpl_pre_vrfc_l @1,2 :: 입금 사전 검증 기록 — 대조 키만 (PII 없음) | vrfc_ref PK :: 솔루션 발급 검증 참조 | bnfc_addr :: 우리 쪽 수취 주소 | tx_hash :: 전송 후 상대가 보고 | mtch_dttm :: 도착 입금과 대조 성공 일시
+entity: cmpl_outbox_l @2,2 :: 발행 대기 이벤트 (Outbox) — verdict 저장과 원자 기록 | evnt_id PK :: 이벤트 id (UUID v7) · 컨슈머 dedup 키 | chk_id :: 어느 확인 건의 이벤트인가 | evnt_stcd :: 발행상태 P/D/F/S
 rel: cmpl_vasp_m | cmpl_wdrl_chk_l | vasp_id 로 라우팅 | one-many | dashed
+rel: cmpl_wdrl_chk_l | cmpl_outbox_l | 같은 트랜잭션 발행 예약 | one-many
 ```
 
-점선 = 값으로 잇는 논리 관계 — 출금 확인이 `vasp_id` 로 레지스트리를 조회해 솔루션을 고른다(FK 아님). `cmpl_pre_vrfc_l` 은 입금 대조 전용 독립 테이블이라 다른 둘과 관계가 없다. 배지 PK·UK.
+점선 = 값으로 잇는 논리 관계 — 출금 확인이 `vasp_id` 로 레지스트리를 조회해 솔루션을 고른다(FK 아님). `cmpl_pre_vrfc_l` 은 입금 대조 전용 독립 테이블이라 다른 테이블과 관계가 없다. 배지 PK·UK.
 
 ## 시나리오로 보는 테이블 흐름
 
@@ -42,19 +45,23 @@ rel: cmpl_vasp_m | cmpl_wdrl_chk_l | vasp_id 로 라우팅 | one-many | dashed
 
 ### 출금 확인
 
-접수는 항상 `PENDING`, 최종 결과는 `compliance` 큐의 `withdrawal-check.settled` 이벤트로만 나간다. 제출 tx hash 보고는 사전 검증과 실 거래를 잇는 비차단 후처리다.
+접수는 항상 `PENDING`, 최종 결과는 `compliance` 큐의 `withdrawal-check.settled` 이벤트로만 나간다. 발행은 매니저와 같은 outbox 경로다 — verdict 저장과 이벤트 적재가 한 트랜잭션, relay 가 발행. 제출 tx hash 보고는 사전 검증과 실 거래를 잇는 비차단 후처리다.
 
 ```anim
 db
 table: cmpl_wdrl_chk_l | chk_id | ext_tx_id | vrdt_stcd | rpt_tx_hash
+table: cmpl_outbox_l | 이벤트 | 발송
 queue: compliance | 이벤트 | externalTxId
 step: ① 접수 (PENDING) | DAW-CORE 가 externalTxId 로 확인을 요청 — 행이 생기고 PENDING 으로 접수 응답
 ins: cmpl_wdrl_chk_l | chk-01 | wd-42 | PENDING | 
 step: ② 솔루션 왕복 | 어댑터가 솔루션과 왕복 — 동기·비동기 차이를 흡수한다
-step: ③ 결과 확정 (settled) | 통과 → APPROVED 로 확정하고 settled 이벤트를 발행한다
+step: ③ 결과 확정 — 한 트랜잭션 | 통과 → APPROVED 로 확정하고 outbox 에 settled 이벤트를 적재(P)한다 — 한 커밋
 upd: cmpl_wdrl_chk_l | 1 | vrdt_stcd=APPROVED
+ins: cmpl_outbox_l | ev-01 | P
+step: ④ relay 발행 | relay 가 미발송(P)을 큐로 보내고 S 로 표시한다 — 소비는 checkId 멱등
 ins: compliance | withdrawal-check.settled | wd-42
-step: ④ 제출 tx hash 보고 | DAW-CORE 가 제출 후 tx hash 를 보고 — 요구하는 솔루션에만 전달(비차단)
+upd: cmpl_outbox_l | 1 | 발송=S
+step: ⑤ 제출 tx hash 보고 | DAW-CORE 가 제출 후 tx hash 를 보고 — 요구하는 솔루션에만 전달(비차단)
 upd: cmpl_wdrl_chk_l | 1 | rpt_tx_hash=0x4e1d
 ```
 
@@ -176,6 +183,41 @@ CREATE TABLE cmpl_wdrl_chk_l (
 | `pend_expr_dttm` | 결과 대기의 기한 — 만료 배치가 이 값으로 기한 지난 건을 찾아 거절 확정한다 |
 | `rpt_tx_hash` | DAW-CORE 가 온체인 제출 후 보고해 온 거래 해시 — 솔루션에 tx hash 를 알려줄 때 쓴다 |
 
+### cmpl_outbox_l — 발행 아웃박스
+
+verdict 가 확정되는 **같은 트랜잭션**에 발행할 settled 이벤트를 여기 적재한다(verdict 저장 + 발행 예약 = 한 커밋). 별도 relay 가 미발송(`P`)을 오래된 순으로 집어 `compliance` 큐로 보내고 `S` 로 표시한다. 매니저 `bcm_outbox_l`·코어 ADR-002 와 같은 패턴이라 세 서비스가 한 방식으로 발행하고, 저장 후 중단돼도 이벤트가 유실되지 않는다.
+
+```sql
+CREATE TABLE cmpl_outbox_l (
+  evnt_id         VARCHAR(36)   PRIMARY KEY,  -- 이벤트ID (time-ordered UUID v7) · 컨슈머 dedup 키
+  evnt_dt         VARCHAR(8)    NOT NULL,     -- 이벤트일자 — 조회·파티셔닝
+  chk_id          VARCHAR(64)   NOT NULL,     -- 어느 확인 건의 이벤트인가 (cmpl_wdrl_chk_l)
+  topic           VARCHAR(32)   NOT NULL,     -- 발행 큐: compliance
+  payload         JSONB         NOT NULL,     -- 이벤트 본문 (withdrawal-check.settled)
+  evnt_stcd       VARCHAR(1)    NOT NULL,     -- 발행상태 P:PENDING / D:DISPATCHED / F:FAILED / S:SUCCESS
+  rtry_cnt        INT           NOT NULL,     -- 재시도횟수
+  max_rtry_cnt    INT           NOT NULL,     -- 최대재시도횟수
+  orgn_id         VARCHAR(36)   NULL,         -- 원본이벤트ID — 재발행·파생 추적
+  trace_id        VARCHAR(64)   NULL,         -- 분산추적 — 게이트→코어 상관관계
+  pub_dttm        VARCHAR(16)   NULL,         -- 최초 DISPATCHED 시각
+  last_rtry_dttm  VARCHAR(16)   NULL,         -- 최종재시도일시
+  err_msg         VARCHAR(1000) NULL,         -- 오류메시지 (마지막 실패 요약)
+  -- 감사 4컬럼
+  frst_reg_empno  VARCHAR(6)  NOT NULL,
+  frst_reg_brcd   VARCHAR(4)  NOT NULL,
+  last_chng_empno VARCHAR(6)  NOT NULL,
+  last_chng_brcd  VARCHAR(4)  NOT NULL
+);
+CREATE INDEX idx_cmpl_outbox_send ON cmpl_outbox_l (evnt_stcd, evnt_id);  -- 미발송(P) 오래된 순 = 시간정렬 UUID v7
+```
+
+| 컬럼 | 뜻 |
+|---|---|
+| `evnt_id` | time-ordered UUID v7 — PK 이자 컨슈머 dedup 키. relay 가 같은 행을 두 번 보내도 컨슈머가 이 값(및 checkId)으로 접는다 |
+| `chk_id` | 이벤트의 출처 확인 건 — verdict 확정과 같은 트랜잭션에 적재된다 |
+| `evnt_stcd` | 확정 시 `P`, relay 발송 성공 시 `S`, 실패 누적 시 `F` |
+| 이벤트 유형 컬럼 없음 | 게이트가 발행하는 이벤트가 `withdrawal-check.settled` 하나뿐이라 두지 않는다 — 종류가 늘면 코어 어휘(`evt_typ_dvcd`)로 추가 |
+
 ### cmpl_pre_vrfc_l — 입금 사전 검증 기록
 
 상대 거래소가 자금을 보내기 전에 먼저 보내오는 사전 검증(입금 예고)을 대조용으로 쌓아 두는 기록이다. 이 시점엔 자금이 아직 없고 정보만 먼저 도착한 상태다.
@@ -238,3 +280,6 @@ PII(이름 등 신원 정보) 컬럼이 없는 것이 규칙이다 — 대조 �
 | `tkn_smbl` | token symbol | | `src` | source |
 | `amt` | amount | | `nm` | name |
 | `empno` | employee no | | `brcd` | branch code |
+| `evnt` | event | | `rtry` | retry |
+| `orgn` | origin | | `pub` | publish |
+| `err` | error | | | |

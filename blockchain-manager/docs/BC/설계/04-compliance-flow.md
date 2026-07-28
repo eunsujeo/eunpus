@@ -42,8 +42,8 @@ sequenceDiagram
     CP-->>BE: PENDING (접수) — DAW-CORE 는 "트래블룰 확인 중"으로 대기
     CP->>NET: 솔루션 왕복 — 어댑터가 동기·비동기 차이를 흡수
     NET-->>CP: 결과 — 즉답이든 Callback 이든
-    CP->>DB: 최종 verdict·travelRuleMessage·증적 저장
-    CP-->>MQ: withdrawal-check.settled 발행 — verdict · travelRuleMessage
+    CP->>DB: 최종 verdict·travelRuleMessage·증적 저장 + outbox 적재 — 한 트랜잭션
+    CP-->>MQ: withdrawal-check.settled 발행 — relay 가 outbox 에서 (verdict · travelRuleMessage)
     MQ-->>BE: consume
     alt APPROVED · NOT_REQUIRED
         BE->>BM: POST /transactions — externalTxId · travelRuleMessage(값 있으면 동봉)
@@ -58,6 +58,7 @@ sequenceDiagram
 - **거래소 목록은 게이트가 답하지 않는다** — 고객에게 보일 "거래할 수 있는 거래소"는 DAW-CORE 가 자기 VASP 마스터에서 낸다. 게이트는 출금 확인이 들어온 순간 `vaspId` 를 받아 솔루션으로 라우팅만 한다.
 - **`travelRuleMessage` 는 이벤트에 그대로 실린다** — 값을 만드는 솔루션(Notabene)이면 값이, 사전 승인이라 값이 없는 솔루션(VerifyVASP·CODE)이면 null 이 온다. DAW-CORE 는 Get 없이 이벤트만으로 제출한다.
 - **Report(tx hash 보고)는 비차단** — 이 호출의 실패는 출금 흐름과 무관하다(재시도만 하면 된다). 사전 검증과 실 거래를 잇는 용도.
+- **발행은 outbox 경로** — verdict 저장과 settled 이벤트 적재가 **한 트랜잭션**이고 relay 가 발행한다(at-least-once). 저장 후 중단돼도 이벤트가 유실되지 않고, 재발송은 DAW-CORE 의 checkId 멱등이 흡수한다. 매니저·코어(ADR-002)와 같은 패턴 — 테이블은 [게이트 DB](05-compliance-db.md) `cmpl_outbox_l`.
 - **Get Withdrawal Check** 는 이벤트 유실·재기동 복구 전용 — 정상 흐름에서는 호출하지 않는다.
 
 ### verdict — 솔루션 원어를 하나로 접는다
@@ -162,7 +163,6 @@ DAW-CORE 호출 없이 게이트가 주기적으로 실행한다.
 
 ## 미확정
 
-- **settled 발행 유실 복구** — verdict 를 DB 에 저장한 뒤 발행 전에 중단되면 이벤트가 나가지 않는다(이미 확정이라 PENDING 만료 스캔 대상도 아님). 게이트 outbox(매니저·코어와 같은 패턴) / 발행 여부 컬럼 + 재발행 스캔 / DAW-CORE 타임아웃 Get 중 택일 — 미결정.
 - **입금 확인 장애 시 태도** — 사전 검증 기록이 게이트에 있으므로, 게이트 장애 중 도착한 입금의 가용 전이를 어떻게 할지(보류가 기본 후보). 국내 시간 규칙과 함께 정한다.
 - **목록 동기화·사전 검증 기록 보존 주기** — 값 미정.
 - **check 운영 조회·감사 기록 열람** — Admin 운영 경로 중 미설계분. 운영 요구가 확정되면 설계한다.
