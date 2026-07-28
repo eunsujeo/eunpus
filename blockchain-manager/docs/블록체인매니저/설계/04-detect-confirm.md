@@ -52,7 +52,7 @@ Fireblocks 는 내부 상태를 여러 단계로 보내지만, 백엔드가 보�
 | **CONFIRMING** | 전파 후 체인에 등장, confirmation 누적 중 (아직 미확정) | **Confirmed** — 블록에 포함, finality 전 | CONFIRMING (numOfConfirmations 증가 중) | PENDING_BLOCKCHAIN_CONFIRMATIONS | CONFIRMING |
 | **COMPLETED** | 확정 — DCCP(확정 정책) 임계 confirmation 도달 = finality | **Finalized** — 확정 임계 도달 | COMPLETED | CONFIRMED | CONFIRMED |
 | **REJECTED** | 거부·차단 — 정책·스크리닝에 막힘. 영구 기술 실패가 아니라 사람 개입 여지 (입금 동결은 Admin unfreeze 대기 · 5장) | 출금 차단은 체인에 없음 · 입금 동결은 **Finalized** (돈은 체인에 확정 — 장부만 잠김) | REJECTED · BLOCKED | AUTO_FREEZE · FROZEN_MANUALLY · REJECTED_AML_SCREENING — 동결 3종, unfreeze 흐름 분기(5장) | 차단 시점에 따라 — 출금(전파 전 차단)은 없음 · 입금 동결은 CONFIRMED (돈은 체인에 도착, 업무만 잠김) |
-| **FAILED** | 영구 실패 — 사유 동반 (수수료 부족·revert 등) | **Pending 에서 증발**(dropped) · 블록 포함 후 실행 실패(revert 는 Confirmed 이후) | FAILED | DROPPED_BY_BLOCKCHAIN — reorg 증발(5장) · 그 외 실패 사유 | FAILED (revert) · DROPPED (mempool 누락·증발) |
+| **FAILED** | 영구 실패 — 사유 동반 (수수료 부족·revert 등) | **Pending 에서 증발**(dropped) · 블록 포함 후 실행 실패(revert 는 Confirmed 이후) | FAILED | DROPPED_BY_BLOCKCHAIN — reorg 증발(5장) · SMART_CONTRACT_EXECUTION_FAILED — 컨트랙트 revert, 사유는 errorDescription 필드(6장) · 그 외 실패 사유 | FAILED (revert) · DROPPED (mempool 누락·증발) |
 
 - 아래 표의 `subStatus`·`networkStatus` 열은 **매니저가 벤더에게서 받아 번역에 쓰는 값**이다 — 어떤 TxStatus·이벤트를 낼지 매니저가 이 값으로 가른다(예: `DROPPED_BY_BLOCKCHAIN` → 무효, 동결 3종 → REJECTED). **이벤트에는 TxStatus 만 싣고 DAW-CORE 는 그것으로만 판단한다** — subStatus·networkStatus 는 백엔드로 넘어가지 않는다.
 - **REJECTED = 임시**(unfreeze 대기) **≠ FAILED = 영구** — 이 구분이 백엔드 원장·화면 처리를 가른다.

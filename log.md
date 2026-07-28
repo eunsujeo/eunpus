@@ -7702,3 +7702,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - ANSWERED: 없음 (Q-2026-07-02-T02 · Q-2026-05-29-DC06 pending 유지)
 - 영향받은 페이지: vendors/fireblocks/api.md (§"Webhook 전달 정책·보안" 신설 · frontmatter 159 · source_count 22)
 - 신규 entity: 0 (api hub 흡수 — 32 stage 연속)
+
+## Stage 160 (2026-07-28) — 종결 sub-status 체계 promote (컨트랙트 revert·수량 실패)
+- source: developers.fireblocks.com/reference/sub-statuses (신규 ingest — `2026-07-28__developers-fireblocks-com__reference-sub-statuses.md`, 124개 enumeration)
+- ANSWERED: 없음 (전 세션 질의 "ERC-20 컨트랙트 블랙리스트 revert 응답" 확정 — SMART_CONTRACT_EXECUTION_FAILED + errorDescription)
+- 영향받은 페이지: entities/fireblocks/transaction.md (§"Stage 160 — 종결 상태 sub-status 체계" 신설 · frontmatter 160 · source_count 11)
+- cross-module: blockchain-manager docs 04(원천 표)·06(출금 실패 분기)·02(조립) 반영 — wiki discipline 밖 독립 모듈
+- 신규 entity: 0 (transaction.md 흡수 — 33 stage 연속)

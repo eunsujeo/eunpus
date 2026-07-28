@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [transaction, key-link]
 stage_introduced: 5
-last_updated_stage: 158
-source_count: 10
+last_updated_stage: 160
+source_count: 11
 related: [approver, designated-signer, policy, signer, tap, vault-account]
 ---
 # Entity: Transaction (Fireblocks)
@@ -532,3 +532,49 @@ extraParameters: { contractCallData: <hex ABI-encoded> }
 - `2026-05-19__support-fireblocks-io__default-deposit-control-and-confirmation-policy.md`, p.1
 - `2026-05-19__support-fireblocks-io__build-a-custom-deposit-control-and-confirmation-policy.md`, p.1-3
 - `2026-05-19__support-fireblocks-io__blockchain-confirmation-limitations.md`, p.1-6
+
+## Stage 160 — 종결 상태 sub-status 체계 (★)
+
+`reference-sub-statuses.md` (developers.fireblocks.com, Stage 160 ingest). Stage 9 의 Red 종결 4종(`CANCELLED` / `BLOCKED` / `REJECTED` / `FAILED`)이 각각 어떤 sub-status 로 세분되는지의 정식 enumeration. 전체 124개 목록은 source 파일 참조 — 본 절은 분류 체계와 운영상 핵심 케이스만.
+
+### 종결 4종 × sub-status 분류
+
+| Primary | sub-status 구성 | 성격 |
+|---|---|---|
+| `BLOCKED` | `BLOCKED_BY_POLICY` 1종 — Policy rule 차단(rule 번호 포함) **또는 source 가 제재 주소인 경우도 이 값** | 체인 미도달 |
+| `CANCELLED` | `CANCELLED_BY_USER` / `CANCELLED_BY_USER_REQUEST`(Support 경유) / `REJECTED_BY_USER`(signer 거절) / `3RD_PARTY_CANCELLED` / `3RD_PARTY_REJECTED` 5종 | 체인 미도달 |
+| `REJECTED` | `AUTO_FREEZE`(Screening Policy 자동 동결) / `FROZEN_MANUALLY` / `REJECTED_AML_SCREENING`(AML high-risk) 3종 — 셋 다 **Admin-level unfreeze 전까지 자산 사용 불가** | 컴플라이언스 동결 |
+| `FAILED` | 6개 카테고리: User input / MPC / Fireblocks system / Third-party account / Third-party system / **Blockchain issues** | 카테고리별 상이 |
+
+(source: reference-sub-statuses.md — BLOCKED/CANCELLED/REJECTED/FAILED sub-statuses 절)
+
+### ★ 컨트랙트 revert — `FAILED` + `SMART_CONTRACT_EXECUTION_FAILED`
+
+Blockchain issues 카테고리. 토큰 컨트랙트 blacklist 에 걸린 ERC-20 전송처럼 **스마트 컨트랙트가 revert 시킨 경우**의 응답:
+
+> "This error occurs when the transaction reverts due to a smart contract error. Check the transaction's **errorDescription** field for the specific reversion reason." (source: reference-sub-statuses.md, §Blockchain issues)
+
+- 응답 구조: `status: FAILED` + `subStatus: SMART_CONTRACT_EXECUTION_FAILED` + `errorDescription`(revert 사유 문자열)
+- errorDescription 의 구체 문자열은 **컨트랙트가 결정** — 문서는 "specific reversion reason" 까지만 명시. 특정 문자열(예: "blacklisted address")을 전제한 파싱은 불가
+- ★ **컴플라이언스 차단(`BLOCKED`/`REJECTED`, 체인 미도달·tx hash 없음)과 달리 Blockchain issues 는 브로드캐스트 이후 체인에서 발생하는 실패** — 온체인 tx 가 존재하는 상태의 실행 실패. 감지·대사 로직에서 별도 분기 필요
+
+### 수량 이슈 sub-status (User input issues)
+
+- **`INSUFFICIENT_FUNDS`** — vault account 잔액이 출금 요청에 부족
+- **`INSUFFICIENT_FUNDS_FOR_FEE`** — 수수료 잔액 부족. > "Fees for token transfers (e.g., USDC) are paid in the base asset (e.g., ETH) from the same vault account as the transaction source." — **ERC-20 전송 수수료는 같은 vault 의 base asset 에서 지불** (★ 토큰 운영 직결)
+- **`AMOUNT_TOO_SMALL`** — 체인별 최소 금액 미만 (알려진 최소: BTC 546 satoshi · ADA 1 ADA + fee)
+
+(source: reference-sub-statuses.md, §User input issues)
+
+### 기타 운영상 유의 sub-status
+
+- `DROPPED_BY_BLOCKCHAIN` (Blockchain issues) — RBF 대체·mempool 축출·노드 거부 3원인 명시. §"reorg 시 상태 전이 (Stage 150)" 의 확답과 정합
+- `FAILED_AML_SCREENING` (Third-party system) — AML 제공자가 결과를 회신하지 않아 실패한 케이스. `REJECTED_AML_SCREENING`(high-risk 판정 거절)과 구분
+- `COMPLETED_BUT_3RD_PARTY_FAILED` / `COMPLETED_BUT_3RD_PARTY_REJECTED` (COMPLETED sub-status) — **체인에서는 완료됐지만 서드파티(거래소)에서 실패/거절** — COMPLETED 라고 전 구간 성공이 아님
+
+(source: reference-sub-statuses.md, §Blockchain issues · §Third-party system issues · §COMPLETED sub-statuses)
+
+## Sources (Stage 160 추가)
+
+- `2026-07-28__developers-fireblocks-com__reference-sub-statuses.md` — 종결 4종 sub-status 전체 enumeration (124개)
+  - 원본 URL: https://developers.fireblocks.com/reference/sub-statuses

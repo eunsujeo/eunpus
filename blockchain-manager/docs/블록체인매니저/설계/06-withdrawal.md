@@ -170,5 +170,9 @@ sequenceDiagram
 - 출금은 다섯을 **전부** 지난다 — 특히 SUBMITTED(서명·전파 준비)는 출금에서만 관찰된다. 벤더 내부의 세부 단계(승인·서명·전파)를 SUBMITTED 로 접는 것이 이 장의 번역이다.
 - 상태 변경 이벤트(onChainEvent)는 메시지 큐(withdrawal-events 토픽)에서 consume 하고, transactionOf(단건 조회)는 필요할 때 확인하는 API 조회로 남는다.
 - confirm(체인 등장)↔finality(확정) 판단 기준은 4장과 같다(numOfConfirmations vs DCCP 임계).
+- **실패는 체인에 나가기 전과 후로 갈린다.**
+  - **나가기 전** — 컴플라이언스 차단(벤더 원어 BLOCKED·REJECTED → REJECTED 번역)과 잔액·최소 금액 미달(subStatus `INSUFFICIENT_FUNDS` · `AMOUNT_TOO_SMALL` 등 → FAILED 번역). tx hash 없이 종결된다.
+  - **나간 뒤(revert)** — 토큰 컨트랙트가 실행을 거부한 경우. 예: 발행사가 블랙리스트에 올린 주소로의 토큰 전송. 블록에 포함된 뒤 실패하며 벤더 응답은 FAILED + subStatus `SMART_CONTRACT_EXECUTION_FAILED`, revert 사유 문자열은 `errorDescription` 필드로 온다. 사유 문자열은 컨트랙트가 정하므로 값을 파싱해 분기하지 않는다 — 기록·경보용으로만 쓴다.
+  - 어느 쪽이든 이벤트에는 TxStatus(REJECTED 또는 FAILED)만 실린다. tx hash 는 있으면 실리므로, hash 유무가 두 실패를 가르는 백엔드 쪽 단서가 된다.
 
 상태 이름과 확정 정책(DCCP)은 벤더 안에 있고 그것을 공통 어휘 다섯으로 번역하는 것은 매니저 내부입니다. 막힘 대응의 자동 boost 는 매니저가 실행하되, 어떤 정책(대기 임계·최대 시도)으로 boost 할지는 Admin 이 미리 정합니다 — cancel 은 예외적 수동입니다.

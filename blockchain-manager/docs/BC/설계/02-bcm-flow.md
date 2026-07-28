@@ -101,7 +101,7 @@ sequenceDiagram
 | `CONFIRMING` | 체인에 등장, 컨펌 누적 중 — 미확정 | Confirmed — 블록에 포함, finality 전 | CONFIRMING | PENDING_BLOCKCHAIN_CONFIRMATIONS | CONFIRMING |
 | `COMPLETED` | 확정 — {{DCCP::Deposit Control & Confirmation Policy — 입금을 확정으로 볼 컨펌 수를 정하는 Fireblocks 정책. 상세는 아래 확정 기준 절}} 임계 컨펌 도달 | Finalized | COMPLETED | CONFIRMED | CONFIRMED |
 | `REJECTED` | 거부·차단 — 임시. 사람 개입 여지 | 출금 차단은 체인에 없음 · 입금 동결은 Finalized | REJECTED · BLOCKED | AUTO_FREEZE · FROZEN_MANUALLY · REJECTED_AML_SCREENING | 출금은 없음 · 입금 동결은 CONFIRMED |
-| `FAILED` | 영구 실패 — 사유 동반 | Pending 에서 증발 · revert 는 Confirmed 이후 | FAILED | DROPPED_BY_BLOCKCHAIN · 그 외 | FAILED · DROPPED |
+| `FAILED` | 영구 실패 — 사유 동반 | Pending 에서 증발 · revert 는 Confirmed 이후 | FAILED | DROPPED_BY_BLOCKCHAIN · SMART_CONTRACT_EXECUTION_FAILED — 컨트랙트 revert, 사유는 errorDescription · 그 외 | FAILED · DROPPED |
 
 판단은 TxStatus 다섯으로 한다. `REJECTED`(임시) ≠ `FAILED`(영구). 위 표의 subStatus·networkStatus 열은 **매니저가 벤더에게서 받아 번역에 쓰는 내부 값** — 어떤 TxStatus·이벤트를 낼지 매니저가 이 값으로 가른다. **이벤트에는 TxStatus 만 싣고 DAW-CORE 는 그것으로만 판단한다.**
 
@@ -258,6 +258,13 @@ sequenceDiagram
 
 관문 밖에서 강제되는 것 — 고정 목적지 화이트리스트·한도는 벤더 정책(TAP), 고객 출금 주소는 접수 단계의 주소록 검사, 재제출 중복은 벤더의 externalTxId 차단.
 
+### 출금 실패 — 체인에 나가기 전과 후
+
+- **나가기 전** — 컴플라이언스 차단(→ REJECTED)과 잔액·최소 금액 미달(`INSUFFICIENT_FUNDS` · `AMOUNT_TOO_SMALL` 등 → FAILED). tx hash 없이 종결된다.
+- **나간 뒤(revert)** — 토큰 컨트랙트가 실행을 거부한 경우. 예: 발행사가 블랙리스트에 올린 주소로의 토큰 전송. 블록에 포함된 뒤 실패하며 FAILED + subStatus `SMART_CONTRACT_EXECUTION_FAILED`, revert 사유는 `errorDescription` 필드로 온다. 사유 문자열은 컨트랙트가 정하므로 파싱해 분기하지 않는다 — 기록·경보용.
+
+어느 쪽이든 이벤트에는 TxStatus 만 실린다. tx hash 는 있으면 실리므로 hash 유무가 두 실패를 가르는 단서다. 상세는 [6장 상태 절](../../블록체인매니저/설계/06-withdrawal.md#상태--공통-어휘로-나간다).
+
 ## 막힘 점검 · 자동 boost
 
 막힌 tx 는 변화가 없어 웹훅이 오지 않는다 — 주기 작업(예: 5분)이 DB 에서 오래 미확정인 건을 조회한다(벤더 호출 없음). 막힘은 둘 — **미채굴(`SUBMITTED`)** 은 boost(RBF·수수료 올린 재전송), **확정 지연(`CONFIRMING`)** 은 경보만.
@@ -312,3 +319,4 @@ finalize 된 트랜잭션 원본을 일 배치로 매니저 DB(`bcm_raw_tx_l`)�
 - **relay 의 stuck 자동 처리 여부** — 자동이면 막힘 점검의 boost 트리거를 뺀다 — 벤더 확인 후 확정.
 - **7702 authorization 서명의 관문 통과 여부** — 이 서명이 TAP·Callback 경로를 지나는지 — 벤더 확인 후 확정.
 - **귀속 불명 입금의 해소 절차** — 매핑 갱신을 누가 트리거하고 해소 후 이벤트를 다시 흘리는지 — DAW-CORE와 정합 후 확정.
+- **gasless 경로의 수수료 실패** — 벤더 규칙상 토큰 전송 수수료는 같은 vault 의 base asset 에서 나간다(subStatus `INSUFFICIENT_FUNDS_FOR_FEE`). relay 가 gas 를 부담하는 이 설계에서 이 실패가 발생할 수 있는지 — 벤더 확인 후 확정.
