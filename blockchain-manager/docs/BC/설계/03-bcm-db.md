@@ -3,7 +3,7 @@ title: 블록체인 매니저 — DB
 status: To Do
 ---
 
-블록체인 매니저 DB(`bcm_`)의 테이블 전체 — 계정·주소 매핑, 거래 운영 상태, 수신 버퍼, sweep 대상, 주기 작업, boost 이력, finalize 원본, 발행 아웃박스.
+블록체인 매니저 DB(`bcm_`)의 테이블 전체 — 계정·주소 매핑, 거래 운영 상태, 수신 버퍼, sweep 대상, 주기 작업, boost 이력, finalize 원본.
 회계 진실(고객 원장·귀속·잔액·출금 지시 상태)은 여기 없다 — 그것은 DAW-CORE DB(`daw_`)다.
 
 ## 명명 규약
@@ -24,8 +24,7 @@ status: To Do
 | `bcm_acnt_m` | 계정 매핑 — ref ↔ vault | 계정 생성 · 모든 오퍼레이션의 계정 해석 |
 | `bcm_addr_m` | 주소 매핑 — (계정, 자산) ↔ 입금 주소 | 주소 발급·조회 · 입금 감지의 주소→계정 대응 |
 | `bcm_whk_l` | 수신 웹훅 알림 원본 — 버퍼(인박스) | 수신부 적재 → 판단 워커 집기 · finalize 원본의 출처 |
-| `bcm_tx_l` | 거래 운영 상태 — 감지·발행 추적 | 판단 워커 → 발행 예약 · 막힘 점검 · 제출 중복 차단 |
-| `bcm_outbox_l` | 발행 대기 이벤트 — 상태 변경과 원자 기록 | 워커가 같은 트랜잭션에 적재 → relay 가 발송 |
+| `bcm_tx_l` | 거래 운영 상태 — 감지·발행 추적 | 판단 워커 → 이벤트 publish · 막힘 점검 · 제출 중복 차단 |
 | `bcm_swp_trgt` | sweep 대상 마킹 | 입금 확정 시 마킹 → 주기 배치가 제출 |
 | `bcm_boost_l` | boost 이력 | 자동 boost — Admin 이 본다 |
 | `bcm_job_m` | 주기 작업 상태 — heartbeat · 대사 커서 | tx 대사 대조 범위 · 밖에서 읽는 heartbeat |
@@ -36,7 +35,6 @@ status: To Do
 ```erd
 entity: bcm_addr_m @1,1 :: 주소 매핑 — (계정, 자산)당 입금 주소 하나 | acnt_id PK,FK :: 계정 | tkn_smbl PK :: 토큰 심볼 | dpst_addr :: 발급된 입금 주소
 entity: bcm_whk_l @2,1 :: 수신 웹훅 알림 원본 — 버퍼 (처리 후 N일 정리) | noti_id PK :: 웹훅 알림 id (벤더 UUID) — 중복 수신 방어 | vndr_tx_id :: 벤더 tx id — 이 알림이 가리키는 거래 | prcs_yn :: 판단 처리 여부
-entity: bcm_outbox_l @3,1 :: 발행 대기 이벤트 (Outbox) — 상태 변경과 원자 기록 | evnt_id PK :: 이벤트 id (UUID v7) · 컨슈머 dedup 키 | evt_typ_dvcd :: 이벤트유형 TXCK/TXCF/TXFL | evnt_stcd :: 발행상태 P/D/F/S
 entity: bcm_acnt_m @1,2 :: 계정 매핑 — ref ↔ vault | acnt_id PK :: 매니저가 발급하는 계정 매핑 id | ref UK :: 백엔드 참조 키 (ACT-·SYS-) — 멱등 근거 | vndr_vlt_id :: 벤더 vault id (백엔드 비노출)
 entity: bcm_tx_l @2,2 :: 거래 운영 상태 — 감지·발행 추적 | vndr_tx_id PK :: 벤더 tx id | ext_tx_id UK :: 출금 요청 키 — 재제출 중복 차단, 입금은 NULL | acnt_id FK :: 귀속 계정 — 이벤트 파티션 키 | last_pub_stcd :: 마지막으로 발행한 TxStatus
 entity: bcm_boost_l @3,2 :: boost 이력 — Admin 조회용 | orig_tx_id PK :: 원 벤더 tx | try_seq PK :: 시도 순번 | new_tx_id :: 대체 벤더 tx
@@ -47,7 +45,6 @@ rel: bcm_acnt_m | bcm_addr_m | 계정당 주소 | one-many
 rel: bcm_acnt_m | bcm_tx_l | 계정 귀속 | one-many
 rel: bcm_acnt_m | bcm_swp_trgt | sweep 대상 | one-many
 rel: bcm_whk_l | bcm_tx_l | 워커가 옮김 | one-many | dashed
-rel: bcm_tx_l | bcm_outbox_l | 같은 트랜잭션 발행 예약 | one-many
 rel: bcm_tx_l | bcm_boost_l | boost 시도 | one-many
 rel: bcm_tx_l | bcm_raw_tx_l | 확정 원본 | one-many | dashed
 ```
@@ -87,7 +84,7 @@ step: sweep 확정 · 대상 정리 | 다음 배치가 vault 가 비었음을 �
 del: bcm_swp_trgt | 1
 ```
 
-위 그림의 "발행"은 효과만 축약한 것이다 — 실제로는 워커가 상태 갱신과 **같은 트랜잭션**으로 `bcm_outbox_l` 에 이벤트를 적재하고, relay 가 큐로 보낸다(장애 시 이중·유실 방지). 메커니즘 상세는 [감지 상세](99-detection-detail.md). 또 `bcm_whk_l` 은 처리 후 N일 뒤 정리되고 확정 원본은 `bcm_raw_tx_l` 로 옮겨지지만, 이 그림은 감지~sweep 경로만 보여주려고 그 단계는 생략했다.
+위 그림의 "발행"은 효과만 축약한 것이다 — 워커는 큐에 발행한 **뒤** 상태를 갱신하고 알림을 처리 완료로 표시하며, 중복은 컨슈머가 이벤트 id 로 접는다(크래시 세이프 상세는 [감지 상세](99-detection-detail.md)). 또 `bcm_whk_l` 은 처리 후 N일 뒤 정리되고 확정 원본은 `bcm_raw_tx_l` 로 옮겨지지만, 이 그림은 감지~sweep 경로만 보여주려고 그 단계는 생략했다.
 
 ### 출금
 
@@ -253,43 +250,7 @@ CREATE TABLE bcm_tx_l (
 |---|---|
 | `orig_tx_id` | boost 로 벤더 거래가 대체되면(새 txId) 새 행이 원 tx 를 가리킨다 — 이벤트는 원 tx 기준으로 나가 백엔드는 대체를 모른다 |
 | `ext_tx_id` | UNIQUE 가 재제출 중복 차단의 물리 근거. 완료 이벤트에 그대로 실어 되돌려준다. boost 대체 행은 이 값을 갖지 않는다(원 행만) |
-| `last_pub_stcd` | 이 값과 다를 때만 새 이벤트를 발행 예약한다. 발행 자체는 `bcm_outbox_l` 에 같은 트랜잭션으로 적재 — 상태 갱신과 발행 예약이 한 커밋이라 장애 시 유실·유령이 없다 |
-
-### bcm_outbox_l — 발행 아웃박스
-
-워커가 상태를 바꾸는 **같은 트랜잭션**에 발행할 이벤트를 여기 적재한다(상태 갱신 + 발행 예약 = 한 커밋). 별도 relay 가 미발송(`P`) 행을 오래된 순으로 집어 큐로 보내고 `S` 로 표시한다. 컨슈머는 `evnt_id` 로 중복을 접는다(코어 ADR-002 Outbox 와 같은 패턴).
-
-```sql
-CREATE TABLE bcm_outbox_l (
-  evnt_id         VARCHAR(36)   PRIMARY KEY,  -- 이벤트ID (time-ordered UUID v7) · 컨슈머 dedup 키
-  evnt_dt         VARCHAR(8)    NOT NULL,     -- 이벤트일자 — 조회·파티셔닝
-  vndr_tx_id      VARCHAR(64)   NOT NULL,     -- 집합체ID(코어 agg_id 대응) — 벤더 tx id
-  agg_typ_dvcd    VARCHAR(2)    NOT NULL,     -- 집합체유형 TX:거래 / DL:델타
-  evt_typ_dvcd    VARCHAR(4)    NOT NULL,     -- 이벤트유형 — 코어 정합(TXCK/TXCF/TXFL)
-  topic           VARCHAR(32)   NOT NULL,     -- 발행 큐: deposit / withdrawal / internal-events
-  payload         JSONB         NOT NULL,     -- 이벤트 본문
-  evnt_stcd       VARCHAR(1)    NOT NULL,     -- 발행상태 P:PENDING / D:DISPATCHED / F:FAILED / S:SUCCESS
-  rtry_cnt        INT           NOT NULL,     -- 재시도횟수
-  max_rtry_cnt    INT           NOT NULL,     -- 최대재시도횟수
-  orgn_id         VARCHAR(36)   NULL,         -- 원본이벤트ID — 재발행·파생 추적
-  trace_id        VARCHAR(64)   NULL,         -- 분산추적 — BC→코어 상관관계
-  pub_dttm        VARCHAR(16)   NULL,         -- 최초 DISPATCHED 시각
-  last_rtry_dttm  VARCHAR(16)   NULL,         -- 최종재시도일시
-  err_msg         VARCHAR(1000) NULL,         -- 오류메시지 (마지막 실패 요약)
-  -- 감사 4컬럼
-  frst_reg_empno  VARCHAR(6)  NOT NULL,
-  frst_reg_brcd   VARCHAR(4)  NOT NULL,
-  last_chng_empno VARCHAR(6)  NOT NULL,
-  last_chng_brcd  VARCHAR(4)  NOT NULL
-);
-CREATE INDEX idx_bcm_outbox_send ON bcm_outbox_l (evnt_stcd, evnt_id);  -- 미발행(P) 오래된 순 = 시간정렬 UUID v7
-```
-
-| 컬럼 | 뜻 |
-|---|---|
-| `evnt_id` | time-ordered UUID v7 — PK 이자 컨슈머 dedup 키. relay 가 같은 행을 두 번 보내도 컨슈머가 이 값으로 접는다. 시간정렬이라 별도 생성시각 없이 발송 순서로 쓴다 |
-| `evt_typ_dvcd` | 코어 이벤트 어휘와 통일 — TXCK(Checking)·TXCF(Confirmed)·TXFL(Failed). BC→코어 계약이 한 어휘로 흐른다 |
-| `evnt_stcd` | 워커 적재 시 `P`, relay 발송 성공 시 `S`, 실패 누적 시 `F`. relay 는 `P` 를 `evnt_id` 순으로 집는다 |
+| `last_pub_stcd` | 큐는 at-least-once 라 최종 중복 제거는 소비 쪽 멱등이 맡는다. publish 성공 후에만 기록한다 — 기록이 먼저면 장애 때 이벤트가 영구 유실된다 |
 
 ### bcm_swp_trgt — sweep 대상
 
@@ -388,5 +349,5 @@ CREATE INDEX idx_bcm_raw_tx_addr ON bcm_raw_tx_l (addr, base_dt);  -- 지갑(주
 
 - **약어 검수** — `bcm`·`vndr`·`vlt`·`noti`·`swp` 등 축약어는 DAW-CORE DB 약어집과 대조 후 확정.
 - **감사 컬럼 센티넬** — 자동 처리 행의 `empno`·`brcd` 시스템 센티넬 값(예: `'SYSTEM'`·본점코드)을 코어 운영 규약과 맞춰 확정.
-- **`bcm_tx_l`·`bcm_whk_l`·`bcm_outbox_l` 보존** — 종결·처리 완료·발송 완료 건을 언제까지 두고 언제 정리할지 — `bcm_raw_tx_l` 원본 보관과 역할을 나눈 뒤 확정.
+- **`bcm_tx_l`·`bcm_whk_l` 보존** — 종결·처리 완료 건을 언제까지 두고 언제 정리할지 — `bcm_raw_tx_l` 원본 보관과 역할을 나눈 뒤 확정.
 - **subStatus·networkStatus 보관 여부** — 매니저가 번역에 쓰는 벤더 내부 값을 `bcm_tx_l` 행에도 남길지 (이벤트에는 싣지 않는다).
