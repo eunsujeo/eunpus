@@ -17,30 +17,7 @@ status: To Do
 
 ## 테이블
 
-```sql
-CREATE TABLE bcm_raw_tx_l (
-  base_dt        DATE         NOT NULL,   -- 적재 기준일 = 파티션 키
-  vendor_tx_id   VARCHAR(64)  NOT NULL,   -- 벤더 트랜잭션 id
-  ext_tx_id      VARCHAR(128) NULL,       -- 우리 출금 건 식별자 — 입금은 NULL
-  tx_hash        VARCHAR(128) NULL,       -- 온체인 거래 해시
-  addr           VARCHAR(128) NOT NULL,   -- 지갑(주소) 기준 조회 키 — 입금은 수취 주소, 출금은 출발 주소
-  ast_cd         VARCHAR(32)  NOT NULL,   -- 자산 심볼
-  final_stcd     VARCHAR(16)  NOT NULL,   -- 도달한 최종 상태
-  payload        TEXT         NOT NULL,   -- 벤더 응답 원문 — 받은 바이트 그대로, 가공 금지
-  payload_hash   CHAR(64)     NOT NULL,   -- 원문 바이트의 SHA-256 — 무결성 증명
-  rcv_dttm       TIMESTAMP    NOT NULL,   -- 원문을 받은 일시
-  PRIMARY KEY (base_dt, vendor_tx_id)
-) PARTITION BY RANGE (base_dt);           -- 월 단위 파티션
-```
-
-| 컬럼 | 뜻 |
-|---|---|
-| `base_dt` | 이 행이 어느 날 배치로 적재됐나 — 파티션 키. PK 에 포함(PostgreSQL 파티션 제약) |
-| `vendor_tx_id` | 벤더가 발급한 트랜잭션 식별자 — 배치 멱등의 물리 근거(PK) |
-| `ext_tx_id` | 이 트랜잭션이 어느 출금 건인가 — DAW-CORE·매니저·컴플라이언스가 공유하는 그 키. 입금은 제출 주체가 없어 NULL |
-| `addr` | 지갑(주소) 기준 조회의 키 — 입금 미확인 건은 계정 귀속 전이라 계정이 아닌 주소를 기본으로 둔다 |
-| `payload` | 조회 키로 쓰지 않는다 — 키는 전부 적재 시 추출한 컬럼(위)으로. TOAST 분리·압축으로 인덱스 스캔에 안 끼어든다 |
-| `payload_hash` | "꺼낸 원문이 받은 원문 그대로"의 증명 — 해시 대상은 payload 바이트 |
+테이블·인덱스 정의는 **[BC/설계 — 블록체인 매니저 DB](../../BC/설계/03-bcm-db.md)** 의 `bcm_raw_tx_l`(코어 규약 정렬본)을 본다. 이 장은 표를 되풀이하지 않고 **보관의 목적·배치·규모·경계**만 다룬다.
 
 ## 인덱스 — 조회 패턴 셋에만
 
@@ -48,7 +25,7 @@ CREATE TABLE bcm_raw_tx_l (
 
 | 인덱스 | 조회 패턴 |
 |---|---|
-| PK `(base_dt, vendor_tx_id)` | 배치 멱등 · 벤더 id 역조회 |
+| PK `(base_dt, vndr_tx_id)` | 배치 멱등 · 벤더 id 역조회 |
 | `(tx_hash)` | 분쟁·역추적 — "이 온체인 tx 의 원본" |
 | `(addr, base_dt)` | 지갑(주소) 기준 기간 조회 — "이 지갑의 그 기간 원본". 선두가 주소라 천만 지갑에서도 균등 분산 |
 
@@ -72,7 +49,7 @@ CREATE TABLE bcm_raw_tx_l (
 - **저장 주체는 블록체인 매니저** — 매니저 DB 의 정체(벤더 번역·운영 상태)에 "finalize 원본 보관"이 추가된다.
 - **트래블룰 메시지 원본과 별개** — 그쪽은 컴플라이언스의 감사 기록(범위 미정)이고 PII 가 걸린다. 이 장은 자산 이동 데이터만 다룬다.
 - 기존 흐름을 건드리지 않는다 — 웹훅 수신→번역→이벤트 경로 옆의 사본 확보다.
-- **원문 출처 = `bcm_whk_l`** (수신 알림 원본 — 17장) — 일 배치가 그 tx 의 마지막 COMPLETED 알림 payload 를 옮긴다. 벤더 재조회가 없어 조회 한도와 무관하다.
+- **원문 출처 = `bcm_whk_l`** (수신 알림 원본 — [DB 문서](../../BC/설계/03-bcm-db.md)) — 일 배치가 그 tx 의 마지막 COMPLETED 알림 payload 를 옮긴다. 벤더 재조회가 없어 조회 한도와 무관하다.
 
 ## 미확정
 

@@ -447,7 +447,7 @@ async function main(): Promise<void> {
 | `transaction.created` | 스캔 — 모르는 txId → 분류 → DEPOSIT (출금·내부는 제출 시점에 매니저가 등록·발행) |
 | `transaction.status.updated` | 스캔(5분 내) · 확인 루프(이후)의 비교 — 발행은 확정·무효만, 중간 전이는 기록 반영만 |
 | `transaction.approval_status.updated` | 〃 |
-| `transaction.alert.stuck_confirming` | 정체 경보 — CONFIRMING 지속 시간 임계 |
+| `transaction.alert.stuck` | 막힘 경보 (Beta) — 수동 개입 필요 |
 
 감지 지연은 스캔 주기(5~10초)만큼 추가된다 — tx 가 이력에 등장하는 시점 자체는 웹훅과 같다 — 이더·Base 입금은 채굴 시점(공식 문서).
 

@@ -8,9 +8,13 @@ status: To Do
 
 ## 명명 규약
 
+코어 DB(`daw_`) 규약을 그대로 따른다 — BC·컴플라이언스·코어가 한 규약을 쓴다.
+
 - **접두** `cmpl_` · **접미** `_m`(마스터) · `_l`(내역/로그)
-- **컬럼 축약** `_dvcd`(구분코드 — 종류 enum) · `_stcd`(상태코드 — 바뀌는 상태) · `_yn`(boolean) · `_dttm`(일시) · `_id`
-- **감사 컬럼 없음** — 이 DB 를 만지는 주체는 게이트뿐이다. 행 생성·변경 시각은 업무 의미가 있는 일시 컬럼(`occr_dttm`·`sync_dttm`·`rcv_dttm`)이 담당한다.
+- **컬럼 축약** `_dvcd`(구분코드 — 종류 enum) · `_stcd`(상태코드 — 바뀌는 상태) · `_yn`(VARCHAR(1) Y/N) · `_dttm`(일시) · `_id`
+- **일시는 VARCHAR(16)** — 코어와 동일(TIMESTAMP 안 씀)
+- **금액은 NUMERIC** · **자산 심볼은 `tkn_smbl`** — 코어 규약
+- **감사 4컬럼** — 모든 테이블에 `frst_reg_empno`(6)·`frst_reg_brcd`(4)·`last_chng_empno`(6)·`last_chng_brcd`(4). 자동 처리 행은 시스템 센티넬, Admin 행위(VASP 활성화·매핑 등)는 실제 직원/부점. 행 발생·변경 "시각"은 별도 도메인 `_dttm`(`occr_dttm`·`sync_dttm`·`rcv_dttm`)이 담당한다
 - **PII 없음** — 어느 테이블에도 이름 등 신원 정보를 두지 않는다. 원문은 Enclave(국내)·벤더(해외)가 보관하고, 여기엔 대조 키만 둔다.
 
 ## 테이블 한눈에
@@ -66,12 +70,12 @@ source: 솔루션 목록 | 동기화
 table: cmpl_vasp_m | cmpl_vasp_id | vasp_id | actv_yn | rchbl_yn
 step: ① 동기화 — 목록 적재 | 솔루션 목록을 UPSERT — 신규 항목에 cmpl_vasp_id 발급, 아직 비활성
 ins: 솔루션 목록 | VASP 항목
-ins: cmpl_vasp_m | cv-01 |  | false | true
+ins: cmpl_vasp_m | cv-01 |  | N | Y
 step: ② Admin 활성화 — 코어가 매핑 | Admin 이 온보딩하면 코어가 vasp_id 를 만들어 게이트에 매핑하고 활성화한다
-upd: cmpl_vasp_m | 1 | vasp_id=vasp-7 | actv_yn=true
+upd: cmpl_vasp_m | 1 | vasp_id=vasp-7 | actv_yn=Y
 step: ③ 출금 확인 라우팅 | 출금 확인의 vaspId 로 이 행을 찾아 솔루션을 정한다
 step: ④ 목록에서 사라짐 | 다음 동기화에 빠지면 삭제하지 않고 도달 가능만 내린다 — 매핑·활성화는 그대로
-upd: cmpl_vasp_m | 1 | rchbl_yn=false
+upd: cmpl_vasp_m | 1 | rchbl_yn=N
 ```
 
 ### 입금 사전 검증 — 자금보다 정보가 먼저
@@ -96,6 +100,8 @@ upd: cmpl_pre_vrfc_l | 1 | mtch_dttm=12:00
 
 ## 테이블 상세
 
+모든 테이블은 코어 규약의 감사 4컬럼(`frst_reg_empno`·`frst_reg_brcd`·`last_chng_empno`·`last_chng_brcd`)을 끝에 둔다 — 아래에서는 반복을 줄여 **감사 4컬럼**으로 적고, 자동 처리 행은 시스템 센티넬, Admin 행위(활성화·매핑)는 실제 직원/부점으로 채운다.
+
 ### cmpl_vasp_m — VASP 레지스트리
 
 게이트가 아는 VASP 한 항목이 한 행이다. 동기화가 솔루션 목록을 채우고(신규엔 `cmpl_vasp_id` 발급), 활성화가 코어 `vasp_id` 를 매핑하고 `actv_yn` 을 켠다.
@@ -107,11 +113,16 @@ CREATE TABLE cmpl_vasp_m (
   soln_vasp_id   VARCHAR(255) NOT NULL,      -- 솔루션 쪽 식별자 (vaspId · DID)
   vasp_nm        VARCHAR(255) NOT NULL,      -- 솔루션이 알려준 표시명
   vasp_id        VARCHAR(64)  NULL,          -- 매핑된 코어 VASP id (daw_vasp_m) — 활성화 때 채운다. 미매핑이면 NULL
-  actv_yn        BOOLEAN      NOT NULL,      -- 활성화 여부 — 해제해도 매핑(vasp_id)은 남긴다
-  rchbl_yn       BOOLEAN      NOT NULL,      -- 이 항목으로 확인을 보낼 수 있는가 (마지막 동기화 기준)
-  sync_dttm      TIMESTAMP    NOT NULL,      -- 마지막 동기화 일시
-  reg_dttm       TIMESTAMP    NOT NULL,      -- 최초 등재 일시
-  last_chng_dttm TIMESTAMP    NOT NULL,      -- 매핑·활성화 마지막 변경 일시
+  actv_yn        VARCHAR(1)   NOT NULL,      -- 활성화 여부 (Y/N) — 해제해도 매핑(vasp_id)은 남긴다
+  rchbl_yn       VARCHAR(1)   NOT NULL,      -- 이 항목으로 확인을 보낼 수 있는가 (Y/N · 마지막 동기화 기준)
+  sync_dttm      VARCHAR(16)  NOT NULL,      -- 마지막 동기화 일시
+  reg_dttm       VARCHAR(16)  NOT NULL,      -- 최초 등재 일시
+  last_chng_dttm VARCHAR(16)  NOT NULL,      -- 매핑·활성화 마지막 변경 일시
+  -- 감사 4컬럼
+  frst_reg_empno  VARCHAR(6)  NOT NULL,
+  frst_reg_brcd   VARCHAR(4)  NOT NULL,
+  last_chng_empno VARCHAR(6)  NOT NULL,
+  last_chng_brcd  VARCHAR(4)  NOT NULL,
   UNIQUE (soln_dvcd, soln_vasp_id)
 );
 CREATE INDEX idx_cmpl_vasp_by_core ON cmpl_vasp_m (vasp_id);
@@ -120,7 +131,7 @@ CREATE INDEX idx_cmpl_vasp_by_core ON cmpl_vasp_m (vasp_id);
 | 컬럼 | 뜻 |
 |---|---|
 | `cmpl_vasp_id` | 게이트가 발급하는 안정 id — Admin 이 목록에서 이 값으로 VASP 를 지목해 활성화한다 |
-| 동기화 UPSERT | `(soln_dvcd, soln_vasp_id)` 로 대조해 UPSERT — 신규면 `cmpl_vasp_id` 발급(`actv_yn`=false), 기존이면 목록 컬럼만 갱신하고 `vasp_id`·`actv_yn` 은 보존. **목록에서 사라진 항목은 지우지 않고 `rchbl_yn`=false** |
+| 동기화 UPSERT | `(soln_dvcd, soln_vasp_id)` 로 대조해 UPSERT — 신규면 `cmpl_vasp_id` 발급(`actv_yn`=N), 기존이면 목록 컬럼만 갱신하고 `vasp_id`·`actv_yn` 은 보존. **목록에서 사라진 항목은 지우지 않고 `rchbl_yn`=N** |
 | `vasp_id` 매핑 | 활성화 API(코어 → 게이트)가 코어의 `vasp_id` 를 채운다. 출금 확인의 `vaspId` 를 이 값(인덱스 `idx_cmpl_vasp_by_core`)으로 조회해 솔루션·라우팅을 정한다 |
 | 다중 솔루션 | 같은 실물 VASP 가 여러 솔루션에 있으면 항목(행)이 여럿이라 `vasp_id` 가 여러 행에 붙는다 — 라우팅 규칙으로 하나를 고른다(미확정) |
 
@@ -131,7 +142,7 @@ CREATE INDEX idx_cmpl_vasp_by_core ON cmpl_vasp_m (vasp_id);
 ```sql
 CREATE TABLE cmpl_wdrl_chk_l (
   chk_id          VARCHAR(64)  PRIMARY KEY,      -- 확인 건 식별자 — 게이트 발급
-  occr_dttm       TIMESTAMP    NOT NULL,         -- 발생 일시 — 요청이 접수돼 행이 생긴 시각
+  occr_dttm       VARCHAR(16)  NOT NULL,         -- 발생 일시 — 요청이 접수돼 행이 생긴 시각
   ext_tx_id       VARCHAR(128) NOT NULL UNIQUE,  -- 멱등 키 — DAW-CORE·매니저와 같은 값. UNIQUE 가 멱등의 물리 근거
   acnt_id         VARCHAR(64)  NOT NULL,         -- 고객 계정 id
   vasp_id         VARCHAR(64)  NOT NULL,         -- 수취 VASP — DAW-CORE 가 지목한 코어 VASP 마스터 id
@@ -141,9 +152,14 @@ CREATE TABLE cmpl_wdrl_chk_l (
   trvl_rule_msg   TEXT         NULL,             -- 제출에 실어 보낼 암호화 메시지 — 만드는 솔루션(Notabene)만 값
   evdc_dvcd       VARCHAR(32)  NULL,             -- 통과 증적 종류 (enum 미확정)
   evdc_ref        VARCHAR(255) NULL,             -- 증적 참조 (예: 사전 승인 UUID)
-  stld_dttm       TIMESTAMP    NULL,             -- 최종 결과 일시 — 채워지면 더는 안 바뀐다. PENDING 이면 NULL
-  pend_expr_dttm  TIMESTAMP    NULL,             -- PENDING 만료 스캔 기준
-  rpt_tx_hash     VARCHAR(128) NULL              -- DAW-CORE 가 제출 후 보고해 온 거래 해시
+  stld_dttm       VARCHAR(16)  NULL,             -- 최종 결과 일시 — 채워지면 더는 안 바뀐다. PENDING 이면 NULL
+  pend_expr_dttm  VARCHAR(16)  NULL,             -- PENDING 만료 스캔 기준
+  rpt_tx_hash     VARCHAR(128) NULL,             -- DAW-CORE 가 제출 후 보고해 온 거래 해시
+  -- 감사 4컬럼
+  frst_reg_empno  VARCHAR(6)  NOT NULL,
+  frst_reg_brcd   VARCHAR(4)  NOT NULL,
+  last_chng_empno VARCHAR(6)  NOT NULL,
+  last_chng_brcd  VARCHAR(4)  NOT NULL
 );
 ```
 
@@ -166,24 +182,29 @@ CREATE TABLE cmpl_wdrl_chk_l (
 
 ```sql
 CREATE TABLE cmpl_pre_vrfc_l (
-  vrfc_ref     VARCHAR(128) PRIMARY KEY,    -- 솔루션이 발급한 검증 참조 UUID
-  bnfc_addr    VARCHAR(128) NOT NULL,       -- 우리 쪽 수취 주소
-  ast_cd       VARCHAR(32)  NOT NULL,       -- 자산 심볼
-  amt          VARCHAR(78)  NOT NULL,       -- 예고된 금액 — 단위·표현은 대조 규칙과 함께 확정 (미확정)
-  src_addr     VARCHAR(128) NULL,           -- 보내는 쪽 주소 — 사전 검증 시점엔 비어 있을 수 있다
-  tx_hash      VARCHAR(128) NULL,           -- 상대가 전송 후 보고해 오면 채운다
-  mtch_dttm    TIMESTAMP    NULL,           -- 도착한 입금과 대조 성공한 일시
-  rcv_dttm     TIMESTAMP    NOT NULL        -- 사전 검증 수신 일시 — 보존 기간 만료 기준
+  vrfc_ref     VARCHAR(128)  PRIMARY KEY,   -- 솔루션이 발급한 검증 참조 UUID (벤더 값이라 길이 그대로)
+  bnfc_addr    VARCHAR(128)  NOT NULL,      -- 우리 쪽 수취 주소
+  tkn_smbl     VARCHAR(16)   NOT NULL,      -- 토큰 심볼
+  amt          NUMERIC(78,0) NOT NULL,      -- 예고된 금액 — base unit 정수. 단위·대조 규칙은 미확정
+  src_addr     VARCHAR(128)  NULL,          -- 보내는 쪽 주소 — 사전 검증 시점엔 비어 있을 수 있다
+  tx_hash      VARCHAR(128)  NULL,          -- 상대가 전송 후 보고해 오면 채운다
+  mtch_dttm    VARCHAR(16)   NULL,          -- 도착한 입금과 대조 성공한 일시
+  rcv_dttm     VARCHAR(16)   NOT NULL,      -- 사전 검증 수신 일시 — 보존 기간 만료 기준
+  -- 감사 4컬럼
+  frst_reg_empno  VARCHAR(6)  NOT NULL,
+  frst_reg_brcd   VARCHAR(4)  NOT NULL,
+  last_chng_empno VARCHAR(6)  NOT NULL,
+  last_chng_brcd  VARCHAR(4)  NOT NULL
 );
 CREATE INDEX idx_cmpl_pre_vrfc_hash ON cmpl_pre_vrfc_l (tx_hash);
-CREATE INDEX idx_cmpl_pre_vrfc_addr ON cmpl_pre_vrfc_l (bnfc_addr, ast_cd);
+CREATE INDEX idx_cmpl_pre_vrfc_addr ON cmpl_pre_vrfc_l (bnfc_addr, tkn_smbl);
 ```
 
 | 컬럼 | 뜻 |
 |---|---|
 | `vrfc_ref` | 솔루션이 발급한 검증 참조 — 최초 수신·사후 tx hash 갱신·솔루션 조회가 모두 이 값으로 같은 건임을 잇는다 |
 | `bnfc_addr` | 예고된 입금의 우리 쪽 수취 주소 — 도착한 입금과 맞춰 보는 기본 키 중 하나 |
-| `amt` | 예고된 금액 — 단위·표현은 대조 규칙과 함께 확정(미확정) |
+| `amt` | 예고된 금액 — base unit 정수(NUMERIC). 단위·표현·대조 규칙은 미확정 |
 | `src_addr` | 보내는 쪽 주소 — 사전 검증 시점엔 상대도 확정 못 할 수 있어 비어 있을 수 있다 |
 | `tx_hash` | 상대가 전송 후 알려온 거래 해시로 채워진다 — 있으면 정확 매칭, 없으면 주소·자산·금액 매칭 |
 | `mtch_dttm` | 도착한 입금과 대조 성공한 일시 — 채워진 행은 다른 입금과 다시 매칭하지 않는다(이중 매칭 방지) |
@@ -193,12 +214,11 @@ PII(이름 등 신원 정보) 컬럼이 없는 것이 규칙이다 — 대조 �
 
 ## 미확정
 
-- **금액 표현** — base unit 정수로 둘지 표시 단위 decimal 로 둘지 — 사전 검증 메시지 금액 단위·대조 규칙과 함께 확정.
+- **금액 정밀도** — `amt` 타입은 코어 규약대로 NUMERIC 로 확정. base unit 정수면 `NUMERIC(78,0)`, 표시 decimal 로 갈 경우 `NUMERIC(36,18)` — 사전 검증 메시지 단위·대조 규칙과 함께 정밀도 확정.
 - **증적(`evdc_dvcd`) enum** — 솔루션별 증적 종류 확정 후.
 - **다중 솔루션 라우팅 규칙** — 한 `vasp_id` 가 여러 솔루션 항목에 걸릴 때(국내·해외 동시) 어느 솔루션을 고를지.
 - **사전 검증 기록 보존 기간** — 값 미정(국내 시간 규칙과 함께).
-- **감사 기록(솔루션 원어 근거) 범위** — 열린 결정. 확정되면 append-only `_l` 테이블로 붙인다.
-- **일시 타입** — DAW-CORE DB 는 일시를 `VARCHAR(16)`(`YYYYMMDDHHMMSS`)로 둔다. 이 DB 도 그에 맞출지 `TIMESTAMP` 로 갈지 결정.
+- **감사 컬럼 센티넬** — 자동 처리 행의 `empno`·`brcd` 시스템 센티넬 값을 코어 운영 규약과 맞춰 확정.
 
 ## 약어집
 
@@ -215,5 +235,6 @@ PII(이름 등 신원 정보) 컬럼이 없는 것이 규칙이다 — 대조 �
 | `actv` | active (활성화) | | `occr` | occur |
 | `acnt` | account | | `rqst` | request |
 | `pend_expr` | pending expire | | `rpt` | report |
-| `ast` | asset | | `src` | source |
+| `tkn_smbl` | token symbol | | `src` | source |
 | `amt` | amount | | `nm` | name |
+| `empno` | employee no | | `brcd` | branch code |

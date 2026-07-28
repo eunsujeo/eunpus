@@ -93,6 +93,39 @@ Fireblocks 담당자에게 문의해 받은 답변을 질문 단위로 모은다
 **Q.** 확정으로 볼 컨펌 수는 어떻게 정해지나?
 **A.** DCCP(확정 정책)가 정한다. 기본은 대부분 체인 1(이더·Base 포함)·ETC 372·컨트랙트 호출 3 권장. 한도는 EVM 최소 1·이더 최대 100·신규 EVM L2 최대 30. 커스텀 임계는 정책 템플릿을 Support 에 제출해 승인 후 반영된다. ([About the DCCP](https://support.fireblocks.io/hc/en-us/articles/360013034359-About-the-Deposit-Control-and-Confirmation-Policy))
 
+## 웹훅 이벤트 — network records (참고)
+
+`transaction.network_records.processing_completed` 가 어떤 거래에서 생기는지 공식 문서로 확인한 것과, 같은 원리를 우리 맥락에 적용한 예시.
+
+**Q.** network records 는 어떤 거래에서 생기나?
+**A.** 한 Fireblocks 거래가 여러 온체인 거래를 묶을 때(주로 컨트랙트 호출)다. 상위 거래의 자산은 **항상 그 네트워크의 기준 자산**(ETH 등)이고, 실제 토큰 이동은 network records 를 펼쳐야 드러난다. 단순 전송(단건 TRANSFER)이면 이 값이 비어 있어 이벤트가 뜨지 않는다. ([CONTRACT_CALL 특수 케이스](https://community.fireblocks.com/t/what-is-the-special-case-for-the-contract-call-transactions/707) · [networkRecords 정의](https://developers.fireblocks.com/reference/transaction-webhooks))
+
+**예시 1 — 스왑 (문서화된 벤더 사례).** Uniswap 에서 USDC → DAI 스왑, CONTRACT_CALL 한 건(자산 ETH):
+
+| # | network record | 내용 |
+|---|---|---|
+| 1 | 나가는 USDC | 스왑에 넣은 토큰 |
+| 2 | 들어오는 DAI | 스왑으로 받은 토큰 |
+| 3 | 나가는 ETH | 수수료 |
+
+> 아래 둘은 같은 원리를 우리 맥락에 적용한 예시 — 벤더가 문서화한 사례는 아니다.
+
+**예시 2 — 컨트랙트 기반 정산: 일괄 지급(disperse).** 여러 수취인에게 USDC 를 한 번에 지급, CONTRACT_CALL 한 건(자산 ETH). 수취인 N명이면 토큰 record N개 + gas 1개, 실제 "누구에게 얼마"는 network records 를 펼쳐야 보인다:
+
+| # | network record | 내용 |
+|---|---|---|
+| 1 | 나가는 USDC → 수취인 A | |
+| 2 | 나가는 USDC → 수취인 B | |
+| 3 | 나가는 USDC → 수취인 C | |
+| 4 | 나가는 ETH | 수수료 |
+
+**예시 3 — 브리지: 체인 간 이동.** USDC 를 이더리움 → Base 로 브리지, 소스 체인의 브리지 컨트랙트에 CONTRACT_CALL(자산 ETH). 목적지 체인 도착은 별개의 온체인 거래로 따로 관측:
+
+| # | network record | 내용 |
+|---|---|---|
+| 1 | 나가는 USDC | 브리지 컨트랙트로 lock/burn |
+| 2 | 나가는 ETH | 수수료 |
+
 ## 대기 중인 문의 (회신 전)
 
 **Q.** WRITE 계열(`POST /transactions` 등)의 분당 한도는?
@@ -100,6 +133,3 @@ Fireblocks 담당자에게 문의해 받은 답변을 질문 단위로 모은다
 
 **Q.** 자산별 확정 임계 값은 얼마로 하나?
 **A.** 논의 후 확정 예정(테스트넷 3, 메인넷은 협의 값). Base 의 컨펌 단위와 블록 간격 상수 유효성도 함께 확인한다.
-
-**Q.** `transaction.status.updated` 는 컨펌마다 발생하나, 아니면 coarse 상태 변화(CONFIRMING·COMPLETED)에만 발생하나?
-**A.** 미확인. 이 답에 따라 웹훅 순간 부하가 몇 배로 갈린다 — 컨펌마다면 진행 중 tx 전부가 매 블록 갱신된다. 회신 후 부하 기준 확정.
