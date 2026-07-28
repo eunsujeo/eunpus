@@ -102,20 +102,20 @@ ins: withdrawal-events | COMPLETED | tx-w1 | wd-42
 
 ### 막힘 → 자동 boost
 
-막힌 출금은 fee 를 올린 대체 거래로 재전송한다. 대체 행이 `orig_tx_id` 로 원 tx 를 가리켜, 백엔드에는 원 tx 로 접어 발행한다.
+막힌 출금(미채굴)은 fee 를 올린 대체 거래로 재전송한다(RBF). 대체 행이 `orig_tx_id` 로 원 tx 를 가리켜, 백엔드에는 원 tx 로 접어 발행한다.
 
 ```anim
 db
 table: bcm_tx_l | vndr_tx_id | orig_tx_id | last_pub_stcd
 table: bcm_boost_l | orig_tx_id | try_seq | new_tx_id
 queue: withdrawal-events | 이벤트 | txId | externalTxId
-step: 출금 CONFIRMING | 출금 tx 가 전파돼 컨펌 대기 중이다
-ins: bcm_tx_l | tx-w1 |  | CONFIRMING
-step: 막힘 감지 | 막힘 점검이 오래 CONFIRMING 인 tx-w1 을 골라낸다 — boost 트리거
-step: boost 제출 | fee 올린 대체 거래 tx-w2 를 제출 — 새 행이 원 tx 를 가리키고 이력을 남긴다
-ins: bcm_tx_l | tx-w2 | tx-w1 | CONFIRMING
+step: 출금 SUBMITTED | 출금 tx 가 전파됐지만 아직 미채굴(mempool)이다 — 수수료가 낮으면 여기서 막힌다
+ins: bcm_tx_l | tx-w1 |  | SUBMITTED
+step: 막힘 감지 | 막힘 점검이 오래 미채굴(SUBMITTED)인 tx-w1 을 골라낸다 — boost 트리거
+step: boost 제출 | fee 올린 대체 거래 tx-w2 를 제출(RBF · 미채굴이라 대체 가능) — 새 행이 원 tx 를 가리키고 이력을 남긴다
+ins: bcm_tx_l | tx-w2 | tx-w1 | SUBMITTED
 ins: bcm_boost_l | tx-w1 | 1 | tx-w2
-step: 확정 — 원 tx 로 접어 발행 | 대체 거래가 확정 — 백엔드에는 원 tx(tx-w1) 기준으로 발행한다 (백엔드는 boost 를 모른다)
+step: 확정 — 원 tx 로 접어 발행 | 대체 거래가 채굴·확정 — 백엔드에는 원 tx(tx-w1) 기준으로 발행한다 (백엔드는 boost 를 모른다)
 upd: bcm_tx_l | 2 | last_pub_stcd=COMPLETED
 ins: withdrawal-events | 확정 | tx-w1 | wd-42
 ```
@@ -202,7 +202,7 @@ CREATE INDEX idx_bcm_whk_pick ON bcm_whk_l (prcs_yn, rcv_dttm);  -- 판단 워�
 
 ### bcm_tx_l — 거래 운영 상태
 
-판단 워커가 알림에서 만들어 추적하는 행 — 상태 변화를 가려 이벤트를 발행하고, 막힘 점검이 오래 CONFIRMING 인 건을 여기서 골라낸다.
+판단 워커가 알림에서 만들어 추적하는 행 — 상태 변화를 가려 이벤트를 발행하고, 막힘 점검이 오래 미확정인 건(미채굴 SUBMITTED · 확정 지연 CONFIRMING)을 여기서 골라낸다.
 
 ```sql
 CREATE TABLE bcm_tx_l (

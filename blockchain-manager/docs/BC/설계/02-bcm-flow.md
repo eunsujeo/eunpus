@@ -259,7 +259,7 @@ sequenceDiagram
 
 ## 막힘 점검 · 자동 boost
 
-막힌 tx 는 변화가 없어 웹훅 알림이 오지 않는다 — 매니저의 주기 작업(예: 5분)이 자기 DB 에서 오래 CONFIRMING 인 건을 조회한다(벤더 호출 없음).
+막힌 tx 는 변화가 없어 웹훅이 오지 않는다 — 주기 작업(예: 5분)이 DB 에서 오래 미확정인 건을 조회한다(벤더 호출 없음). 막힘은 둘 — **미채굴(`SUBMITTED`)** 은 boost(RBF·수수료 올린 재전송), **확정 지연(`CONFIRMING`)** 은 경보만.
 
 ```mermaid
 sequenceDiagram
@@ -268,13 +268,13 @@ sequenceDiagram
     participant MDB as 매니저 DB
     participant AL as 별도 경보 채널
 
-    SW->>MDB: 오래된 대기 조회 — CONFIRMING 이고 체인별 임계 초과
+    SW->>MDB: 오래된 미확정 조회 — 미채굴(SUBMITTED)이 오래 · 또는 CONFIRMING 이 체인별 대기 임계 초과
     MDB-->>SW: 대상 목록 — 이미 경보한 tx 는 건너뜀
-    alt 입금 건
-        SW-->>AL: 막힘 경보 — 고객 안내 · 대사 대기
-    else 출금 · sweep 건
-        SW->>SW: 자동 boost — 같은 순번 · fee 올린 재전송(RBF) · gas 는 relay 부담
+    alt 출금·sweep 이 미채굴로 막힘
+        SW->>SW: 자동 boost — fee 올린 대체 거래(RBF) · gas 는 relay 부담 (미채굴이라 대체 가능)
         SW-->>AL: 경보는 boost 로 못 살릴 때만
+    else 그 외 — 입금 · 채굴된 CONFIRMING 지연
+        SW-->>AL: 막힘 경보 — boost 불가(우리 tx 아님 또는 이미 블록에 있음)
     end
 ```
 
