@@ -158,6 +158,7 @@ DAW-CORE 호출 없이 게이트가 주기적으로 실행한다.
 |---|---|
 | **솔루션 목록 동기화** | 솔루션(VerifyVASP·Notabene)에서 VASP 목록을 받아 레지스트리에 UPSERT — 신규엔 `cmpl_vasp_id` 발급, 기존은 매핑·활성화 보존, 빠진 항목은 "트래블룰 요청 불가"로 표시. 운영 API(Sync)로도 즉시 실행 |
 | **PENDING 만료 스캔** | 기한 지난 PENDING check 를 찾아 `REJECTED`(만료)로 확정하고 `withdrawal-check.settled` 를 발행 — 이것이 만료 verdict 를 만드는 유일한 경로 |
+| **outbox relay** | `cmpl_outbox_l` 의 미발송(`P`)을 오래된 순으로 집어 `compliance` 큐로 발행하고 `S` 표시 — settled 발행의 실제 발송기. 미발송 적체 깊이가 지연·정지 신호 |
 
 사전 검증 기록 보존 기간 만료 배치는 보존 기간 값이 정해지면 이 자리에 추가된다(미확정).
 
