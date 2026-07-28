@@ -68,17 +68,23 @@ sequenceDiagram
   Note over B,O: 몰리면 인박스에만 적체 — 워커가 밀릴 뿐 수신은 안 막힌다
 ```
 
-색: **보라 = 벤더가 보낸 웹훅 도착 · 청록 = DB 테이블 · 노랑 = 메시지 큐.**
+색: **보라 = 벤더가 보낸 웹훅 도착 · 청록 = DB 테이블 · 노랑 = 메시지 큐.** 아래 복구 절의 그림들은 발행을 효과로 축약한다 — outbox·relay 단계는 이 그림과 [DB 문서](03-bcm-db.md) 입금 그림에 있다.
 
 ```anim
 db
 hook: Fireblocks 웹훅 | 도착
 table: bcm_whk_l | 알림 | 처리
+table: bcm_tx_l | 거래 | 상태
+table: bcm_outbox_l | 이벤트 | 발송
 queue: deposit-events | 발행
-step: 평상시 | 벤더가 웹훅을 보내면(도착) 수신부가 저장하고, 워커가 처리하고 relay 가 큐에 발행한다
+step: 평상시 — 수신·워커 | 수신부가 저장하고 200 · 워커가 처리해 tx 행을 만들고 outbox 에 적재한다 (whk_l 완료 표시까지 한 트랜잭션)
 ins: Fireblocks 웹훅 | 입금 감지
 ins: bcm_whk_l | n-01 | 완료
+ins: bcm_tx_l | tx-01 | CONFIRMING
+ins: bcm_outbox_l | ev-01 | P
+step: 평상시 — relay 발행 | relay 가 미발송(P)을 큐로 보내고 S 로 표시한다
 ins: deposit-events | 감지
+upd: bcm_outbox_l | 1 | 발송=S
 step: 폭주 — 웹훅이 쏟아진다 | 블록 뭉치로 웹훅이 한꺼번에 도착 — 수신부는 저장만 하고 즉시 200 (멈추지 않음)
 ins: Fireblocks 웹훅 | 입금 감지
 ins: Fireblocks 웹훅 | 입금 감지
@@ -86,14 +92,24 @@ ins: Fireblocks 웹훅 | 입금 감지
 ins: bcm_whk_l | n-02 | 대기
 ins: bcm_whk_l | n-03 | 대기
 ins: bcm_whk_l | n-04 | 대기
-step: 적체는 워커 쪽에만 | 수신은 계속 받고, 밀린 건 워커가 오래된 것부터 소화한다
+step: 적체 소화 — 워커 | 수신은 계속 받고, 밀린 알림 셋을 워커가 오래된 것부터 처리한다 — tx 행을 만들고 outbox 에 적재(P)
 upd: bcm_whk_l | 2 | 처리=완료
 upd: bcm_whk_l | 3 | 처리=완료
-ins: deposit-events | 감지
-ins: deposit-events | 감지
-step: 정상 복귀 | 남은 것도 처리 — 대가는 처리 지연뿐, 놓친 건 없다
 upd: bcm_whk_l | 4 | 처리=완료
+ins: bcm_tx_l | tx-02 | CONFIRMING
+ins: bcm_tx_l | tx-03 | CONFIRMING
+ins: bcm_tx_l | tx-04 | CONFIRMING
+ins: bcm_outbox_l | ev-02 | P
+ins: bcm_outbox_l | ev-03 | P
+ins: bcm_outbox_l | ev-04 | P
+step: 적체 소화 — relay 발행 | relay 가 미발송(P)을 차례로 큐로 보내고 S 로 표시한다
 ins: deposit-events | 감지
+ins: deposit-events | 감지
+ins: deposit-events | 감지
+upd: bcm_outbox_l | 2 | 발송=S
+upd: bcm_outbox_l | 3 | 발송=S
+upd: bcm_outbox_l | 4 | 발송=S
+step: 정상 복귀 | 적체가 다 비워졌다 — 대가는 처리 지연뿐, 놓친 건 없다
 ```
 
 **트랜잭션 이벤트는 5종**, 그중 **3종을 구독**한다:
@@ -176,7 +192,7 @@ hook: Fireblocks 웹훅 | 도착
 source: 재전송 API | 요청
 table: bcm_whk_l | 알림 | 처리
 queue: deposit-events | 발행
-step: ① 평상시 | 웹훅이 오면 인박스에 적재하고 워커가 처리해 큐에 발행한다
+step: ① 평상시 | 웹훅이 오면 인박스에 적재하고 워커가 처리해 큐로 발행된다
 ins: Fireblocks 웹훅 | 입금 감지
 ins: bcm_whk_l | n-01 | 완료
 ins: deposit-events | 감지

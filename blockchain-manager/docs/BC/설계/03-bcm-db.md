@@ -64,21 +64,28 @@ rel: bcm_tx_l | bcm_raw_tx_l | 확정 원본 | one-many | dashed
 db
 table: bcm_whk_l | noti_id | vndr_tx_id | prcs_yn
 table: bcm_tx_l | vndr_tx_id | last_pub_stcd | cnfm_cnt
+table: bcm_outbox_l | evnt_id | evt_typ_dvcd | evnt_stcd
 queue: deposit-events | 이벤트 | txId
 table: bcm_swp_trgt | acnt_id | tkn_smbl | swp_tx_id
 step: 웹훅 도착 (CONFIRMING) | 수신부가 알림 원본만 적재하고 200 을 돌려준다 — 판단은 아직
 ins: bcm_whk_l | n-8f3a | tx-91c | N
-step: 워커 집기 · 감지 발행 | 판단 워커가 알림을 집어 tx 행을 만들고, deposit-events 에 감지를 발행한다 · 알림은 처리 완료
+step: 워커 — 한 트랜잭션 | 판단 워커가 알림을 집어 tx 행 생성 + outbox 에 감지 이벤트 적재(P) + 알림 처리 완료 — 한 커밋
 ins: bcm_tx_l | tx-91c | CONFIRMING | 1
-ins: deposit-events | 입금 감지 | tx-91c
+ins: bcm_outbox_l | ev-01 | TXCK | P
 upd: bcm_whk_l | 1 | prcs_yn=Y
-step: 컨펌 누적 | 다음 알림마다 tx 행의 컨펌 수만 오른다 — 임계 전이라 발행 없음 (중간 전이는 기록만)
+step: relay 발행 — 감지 | relay 가 미발송(P)을 큐로 보내고 S 표시 — 컨슈머는 evnt_id 로 중복을 접는다
+ins: deposit-events | 입금 감지 | tx-91c
+upd: bcm_outbox_l | 1 | evnt_stcd=S
+step: 컨펌 누적 | 다음 알림마다 tx 행의 컨펌 수만 오른다 — 전이가 아니라 outbox 적재 없음 (기록만)
 ins: bcm_whk_l | n-b2e | tx-91c | Y
 upd: bcm_tx_l | 1 | cnfm_cnt=8
-step: COMPLETED · 확정 발행 | 임계 도달 — tx 행을 확정으로 갱신하고 deposit-events 에 확정을 발행한다
+step: COMPLETED — 한 트랜잭션 | 임계 도달 — tx 행을 확정으로 갱신하고 outbox 에 확정 이벤트 적재(P)
 ins: bcm_whk_l | n-c7d | tx-91c | Y
 upd: bcm_tx_l | 1 | last_pub_stcd=COMPLETED | cnfm_cnt=12
+ins: bcm_outbox_l | ev-02 | TXCF | P
+step: relay 발행 — 확정 | 확정 이벤트가 큐로 나간다
 ins: deposit-events | 입금 확정 | tx-91c
+upd: bcm_outbox_l | 2 | evnt_stcd=S
 step: sweep 대상 마킹 | 확정을 잡으면 그 (계정, 자산)을 sweep 대상으로 마킹한다 — swp_tx_id 는 비어 있음(미제출)
 ins: bcm_swp_trgt | ACT-000123 | USDC | 
 step: 주기 배치 — 제출 | 배치가 미제출 대상의 잔액을 조회해 sweep 을 제출하고 진행 중 표시를 남긴다
@@ -87,7 +94,7 @@ step: sweep 확정 · 대상 정리 | 다음 배치가 vault 가 비었음을 �
 del: bcm_swp_trgt | 1
 ```
 
-이 장의 그림들에서 "발행"은 효과만 축약한 것이다 — 실제로는 워커가 상태 갱신과 **같은 트랜잭션**으로 `bcm_outbox_l` 에 이벤트를 적재하고, relay 가 큐로 보낸다(장애 시 이중·유실 방지). 메커니즘 상세는 [감지 상세](99-detection-detail.md). 또 `bcm_whk_l` 은 처리 후 N일 뒤 정리되고 확정 원본은 `bcm_raw_tx_l` 로 옮겨지지만, 이 그림은 감지~sweep 경로만 보여주려고 그 단계는 생략했다.
+위 입금 그림은 outbox·relay 단계까지 그대로 그렸다. 아래 출금·boost·대사 그림은 발행을 효과만 축약한다 — 실제로는 같은 outbox 경로(워커 한 트랜잭션 → relay 발행)를 지난다(크래시 세이프 상세는 [감지 상세](99-detection-detail.md)). 또 `bcm_whk_l` 은 처리 후 N일 뒤 정리되고 확정 원본은 `bcm_raw_tx_l` 로 옮겨지지만, 입금 그림은 감지~sweep 경로만 보여주려고 그 단계는 생략했다.
 
 ### 출금
 
