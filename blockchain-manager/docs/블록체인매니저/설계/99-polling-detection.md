@@ -150,7 +150,8 @@ flowchart LR
 | FAILED + DROPPED_BY_BLOCKCHAIN | 확정 전이면 무효 이벤트 · 확정 후면 사고 — 운영 알림 · 원장 조정은 사람이 → 관찰 종료 |
 | 아직 CONFIRMING | 남은 컨펌으로 재계산 — 예상 시각을 지났는데 미확정이면 지수 백오프(30초 → 1분 → 5분 → 15분 → 1시간)로 재확인, 1시간에서 저빈도 유지 · 정체 경보가 운영에 통지 |
 | 채굴 전 — blockHash 없음 | 1분 뒤 재확인 — 승인 대기 등으로 미채굴인 출금이 주로 여기 온다 |
-| REJECTED · BLOCKED (동결) | **전이를 처음 관찰한 시점에 운영 알림 발행** → 10분 간격 저빈도 재확인 — 운영 처리(해제·반환 등) 완료 시 기록을 닫는 절차가 짝 (닫지 않으면 조회 대상이 계속 쌓인다) |
+| BLOCKED · 출금 REJECTED (최종) | 전이 시 운영 알림 → **관찰 종료** — 자금이 반환/차단으로 끝나 더는 안 본다 (담당자 확답) |
+| 입금 REJECTED (동결·보류) | **전이 시 운영 알림 발행** → 10분 저빈도 재확인 — Admin 해제(unfreeze)까지. 해제도 웹훅/조회에 반영되므로 재확인이 잡는다. 운영 처리 완료 시 기록을 닫는 절차가 짝 (닫지 않으면 조회 대상이 계속 쌓인다) |
 
 ```mermaid
 sequenceDiagram
@@ -210,6 +211,7 @@ interface TxState {
 const LOOKBACK_MS = 5 * 60_000;         // 스캔 조회 범위 — 신규 감지 + Base 확정이 이 안에 끝난다
 const PAGE_LIMIT = 500;
 const CLOSED_STATUSES = new Set(["COMPLETED", "FAILED", "CANCELLED"]);   // 종결 상태 — toTxState 가 closed 여부를 정할 때 쓴다
+const FREEZE_SUBSTATUSES = new Set(["AUTO_FREEZE", "FROZEN_MANUALLY", "REJECTED_AML_SCREENING"]);  // 입금 동결=보류(최종 아님) — 해제까지 저빈도 재확인 (담당자 확답 2026-07)
 const STALL_MS = 30 * 60_000;           // 정체 경보 임계 — 운영 조정값
 const CHECK_BATCH_LIMIT = 50;           // 확인 루프 주기당 상한 — 밀려도 최대 초당 10번(50건/5초)으로 제한
 const RECHECK_AFTER_FINAL_MS = 30 * 60_000;  // 확정 후 재확인 — 깊은 reorg 감시. 체인별 설정으로 끌 수 있다
@@ -277,8 +279,11 @@ function nextCheckAt(prev: TxState | null, tx: FbTransaction, retries: number, f
       : now() + RECHECK_AFTER_FINAL_MS;                   // 방금 확정으로 전이 — 재확인 1번 예약
     // "재확인을 했는가"는 벤더 객체가 아니라 우리 기록에만 있는 정보 — 전이(prev.finalized)로 판별한다
   if (CLOSED_STATUSES.has(tx.status)) return null;        // 무효 등으로 끝남 — 더 안 본다
-  if (tx.status === 'REJECTED' || tx.status === 'BLOCKED')
-    return now() + 10 * 60_000;                           // 동결 — 10분 저빈도. 운영 닫기 절차와 짝
+  if (tx.status === 'BLOCKED') return null;               // BLOCKED = 최종(출금 정책 차단·자금 반환) — 관찰 종료 (담당자 확답)
+  if (tx.status === 'REJECTED')
+    return FREEZE_SUBSTATUSES.has(tx.subStatus)
+      ? now() + 10 * 60_000                               // 입금 동결 = 보류 — Admin 해제까지 10분 저빈도. 해제도 웹훅/조회에 반영된다
+      : null;                                             // 출금 REJECTED = 최종(자금 즉시 반환) — 관찰 종료
 
   if (!tx.blockInfo?.blockHash) return now() + 60_000;    // 채굴 전 — 1분 뒤 다시
 
@@ -453,4 +458,3 @@ async function main(): Promise<void> {
 ## 미확정 — 벤더 확인 대기
 
 - **자산별 확정 임계 값** — Fireblocks 와 논의 후 환경설정으로 확정 (테스트넷 3, 메인넷은 협의 값). Base 의 컨펌 단위(무엇을 1로 세는지)와 블록 간격 상수의 유효성도 이때 함께 확인. **임계가 12 수준이면 확인 루프가 거의 한산해지고, 64 수준이면 이더 건당 1번 안팎이 더해진다.**
-- **REJECTED·BLOCKED 가 벤더 쪽에서 최종 상태인지** — 되살아날 수 있는 상태라면 저빈도 재확인을 유지해야 하고, 최종이라면 관찰을 접고 운영 절차만 남기면 된다. 동결 닫기 규칙이 여기 달려 있다.

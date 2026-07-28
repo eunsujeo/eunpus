@@ -30,21 +30,17 @@ sequenceDiagram
   participant W as 판단 워커
   participant Q as deposit-events
 
-  Note over F,Q: 평상시 — 받는 즉시 200, 처리는 뒤에서
+  Note over F,R: 수신 — 요청당 딱 3단계
   F->>R: 웹훅 도착
   R->>R: 서명 검증
   R->>B: 적재
   R-->>F: 200
+  Note over F,R: 폭주해도 이 경로는 그대로 — 저장 1번뿐이라 계속 즉시 200
+
+  Note over B,W: 처리 — 뒤에서 비동기로
   W->>B: 오래된 것부터 꺼냄
   W->>Q: 발행
-
-  Note over F,B: 폭주 — 블록 뭉치로 한꺼번에
-  F->>R: 웹훅 다수 도착
-  R->>B: 적재 (요청당 저장 1번)
-  R-->>F: 200 (멈추지 않음)
-  Note over B,W: 적체는 워커 쪽에만 · 수신은 계속 200
-  W->>B: 오래된 것부터 소화
-  W->>Q: 발행
+  Note over B,W: 몰리면 버퍼에만 적체 — 워커가 밀릴 뿐 수신은 안 막힌다
 ```
 
 색: **보라 = 벤더가 보낸 웹훅 도착 · 청록 = DB 테이블 · 노랑 = 메시지 큐.**
@@ -75,7 +71,17 @@ upd: bcm_whk_l | 4 | 처리=완료
 ins: deposit-events | 감지
 ```
 
-**구독 이벤트**는 4종으로 확정 — `transaction.created` · `transaction.status.updated` · `transaction.approval_status.updated` · `transaction.alert.stuck_confirming`. 부하 검증 항목은 p99 응답(1초 이내 목표) · 오류율(circuit breaker 감안 ~0) · 적체 소화 속도.
+**트랜잭션 이벤트는 5종**, 그중 **3종을 구독**한다:
+
+| 이벤트 | 무엇을 알리나 | 구독 |
+|---|---|---|
+| `transaction.created` | tx 가 처음 생김 — 신규 감지(입금 등장)의 시작 | O |
+| `transaction.status.updated` | 상태 전이(예: CONFIRMING → COMPLETED) — 확정·무효 이벤트 발행의 주 신호 | O |
+| `transaction.approval_status.updated` | 승인 상태 변화 — 정책·승인 흐름 진행(주로 출금) | O |
+| `transaction.alert.stuck_confirming` | 오래 CONFIRMING 인 tx 경보 | X — 자체 막힘 점검(주기 작업이 DB 에서 오래 CONFIRMING 인 걸 조회)이 대체. ATC(Account Traffic Control) 기능이라 변경 가능성도 있어 의존하지 않는다 |
+| `transaction.network_records.processing_completed` | 한 거래가 **여러 온체인 거래로 쪼개질 때**(컨트랙트 호출 등) 그 중간 거래들의 처리 완료를 알린다. 단순 전송이면 대상이 없어 뜨지 않는다 | X — 지금은 단순 스테이블코인 입출금이라 미구독. **컨트랙트 호출을 도입하면 그때 구독 검토** |
+
+부하 검증 항목은 p99 응답(1초 이내 목표) · 오류율(circuit breaker 감안 ~0) · 적체 소화 속도.
 
 ## 웹훅을 놓쳤을 때 — 복구 3겹
 
@@ -193,28 +199,28 @@ sequenceDiagram
   Note over B,Q: 이후 평상시 경로로 발행
 ```
 
-색: 보라 = 웹훅 도착 · 청록 = 버퍼·구독 상태 · 노랑 = 큐 · **빨강 깜박임 = 500 응답·구독 차단**.
+색: 보라 = 웹훅 도착 · 청록 = 버퍼·수신 서버 상태 · 노랑 = 큐 · **빨강 깜박임 = 500 응답·웹훅 차단**.
 
 ```anim
 db
 hook: Fireblocks 웹훅 | 도착
 table: bcm_whk_l | 알림 | 처리
-table: 웹훅 구독 | 상태
+table: 웹훅 수신 서버 | 상태
 queue: deposit-events | 발행
-step: ① 평상시 | 웹훅이 오면 버퍼에 적재(200)하고 발행한다 · 구독은 활성
-ins: 웹훅 구독 | 활성
+step: ① 평상시 | 웹훅이 오면 버퍼에 적재(200)하고 발행한다 · 수신 서버 정상
+ins: 웹훅 수신 서버 | 정상
 ins: Fireblocks 웹훅 | 입금 감지
 ins: bcm_whk_l | n-01 | 완료
 ins: deposit-events | 감지
 step: ② DB 다운 — 적재 실패로 500 | 웹훅은 오는데 버퍼에 못 넣는다 → 200 대신 500 을 준다(빨강)
 ins: Fireblocks 웹훅 | 입금 감지
 alert: Fireblocks 웹훅 | 2
-step: ③ 오류율 급증 → 웹훅 자동 차단 | 벤더가 오류율을 보고 구독을 꺼버린다(circuit breaker) · 이제 웹훅이 아예 안 온다 — 로그는 잠잠해 알아채기 어렵다
-upd: 웹훅 구독 | 1 | 상태=차단
-alert: 웹훅 구독 | 1
-step: ④ 복구 — 재활성화 + 구간 회수 | DB 복구 후 구독 상태를 확인해 다시 켜고, 차단 구간은 재전송 API·tx 대사로 메운다
-upd: 웹훅 구독 | 1 | 상태=활성
-clear: 웹훅 구독 | 1
+step: ③ 오류율 급증 → 웹훅 자동 차단 | 벤더가 오류율을 보고 이 서버로의 웹훅을 꺼버린다(circuit breaker) · 이제 웹훅이 아예 안 온다 — 로그는 잠잠해 알아채기 어렵다
+upd: 웹훅 수신 서버 | 1 | 상태=차단
+alert: 웹훅 수신 서버 | 1
+step: ④ 복구 — 재활성화 + 구간 회수 | DB 복구 후 재활성화해 수신 서버를 되살리고, 차단 구간은 재전송 API·tx 대사로 메운다
+upd: 웹훅 수신 서버 | 1 | 상태=정상
+clear: 웹훅 수신 서버 | 1
 clear: Fireblocks 웹훅 | 2
 ins: bcm_whk_l | n-02 | 완료
 ins: deposit-events | 감지
