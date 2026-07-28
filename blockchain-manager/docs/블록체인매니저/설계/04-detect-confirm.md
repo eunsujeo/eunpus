@@ -107,6 +107,7 @@ sequenceDiagram
         end
         WH->>MDB: bcm_tx_l 갱신 + outbox 적재 + 처리 완료 — 한 트랜잭션<br/>발행은 relay 가 outbox 에서 큐로 (at-least-once · 소비 멱등이 dedup)
     end
+    Note over WH,MQ: 위 publish 화살표는 어느 토픽으로 가는지의 논리 흐름 — 실제 발송은 outbox 적재 후 relay
     Note over WH,MDB: 매니저의 역할은 여기까지 — 큐 이후(consume·원장 반영·오프셋 커밋)는 백엔드 몫 (규칙은 위 목록)
 ```
 
