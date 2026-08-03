@@ -208,7 +208,7 @@ CREATE INDEX idx_bcm_addr_lookup ON bcm_addr_m (dpst_addr, tkn_smbl);
 
 수신부가 웹훅 알림을 받은 그대로 적재하는 **수신 인박스(transactional inbox)** — 수신은 서명 검증·이 적재·200 응답까지만 하고(요청당 3단계), 판단은 워커가 분리해서 미처리분을 집어 간다([흐름](02-bcm-flow.md) 감지). finalize 원본 일 배치가 여기서 payload 를 뽑는다.
 
-**왜 큐가 아니라 테이블인가** — ① `noti_id` PK 로 중복 알림을 물리적으로 걸러낸다(큐는 at-least-once 라 별도 dedup 저장소가 결국 필요), ② 원문 payload 를 보관해 재처리·`bcm_raw_tx_l` 원본의 출처가 된다(큐는 소비되면 사라짐), ③ 미처리 적체를 조회로 들여다본다(큐는 불투명), ④ `SELECT … FOR UPDATE SKIP LOCKED` 로 tx 단위 락 분배가 된다. 다운스트림엔 이미 진짜 큐(3토픽)가 있어, 앞단까지 큐로 바꾸면 dedup·감사·조회용 테이블을 어차피 또 두게 된다.
+큐가 아니라 테이블로 두는 근거 — ① `noti_id` PK 로 중복 알림을 물리적으로 걸러낸다 ② 원문 payload 를 보관해 재처리·`bcm_raw_tx_l` 원본의 출처가 된다 ③ 미처리 적체를 조회로 들여다본다 ④ `SELECT … FOR UPDATE SKIP LOCKED` 로 tx 단위 락 분배가 된다. 발행 쪽에는 이미 큐(3토픽)가 있다.
 
 ```sql
 CREATE TABLE bcm_whk_l (
@@ -263,8 +263,8 @@ CREATE TABLE bcm_tx_l (
 |---|---|
 | `orig_tx_id` | boost 로 벤더 거래가 대체되면(새 txId) 새 행이 원 tx 를 가리킨다 — 이벤트는 원 tx 기준으로 나가 백엔드는 대체를 모른다 |
 | `ext_tx_id` | UNIQUE 가 재제출 중복 차단의 물리 근거. 완료 이벤트에 그대로 실어 되돌려준다. boost 대체 행은 이 값을 갖지 않는다(원 행만) |
-| `last_pub_stcd` | 새 알림의 상태와 이 값을 [허용 전이 표](02-bcm-flow.md)에 대조해 발행 여부를 가린다 — 늦게 온 옛 상태는 무시하고, `COMPLETED → FAILED`(reorg 무효화)는 발행한다. 발행 자체는 `bcm_outbox_l` 에 같은 트랜잭션으로 적재 — 상태 갱신과 발행 예약이 한 커밋이라 장애 시 유실·유령이 없다 |
-| `cnfm_cnt`·`last_chng_dttm` | **줄지 않는다** — 알림 도착 순서가 뒤바뀔 수 있어 큰 값(늦은 시각)으로만 갱신한다. 막힘 점검이 이 둘을 입력으로 쓰기 때문이다 |
+| `last_pub_stcd` | 새 알림의 상태와 이 값을 [허용 전이 표](02-bcm-flow.md)에 대조해 발행 여부를 가린다. 발행은 `bcm_outbox_l` 에 같은 트랜잭션으로 적재한다 |
+| `cnfm_cnt`·`last_chng_dttm` | **줄지 않는다** — 큰 값(늦은 시각)으로만 갱신한다. 막힘 점검의 입력이다 |
 
 ### bcm_outbox_l — 발행 아웃박스
 
