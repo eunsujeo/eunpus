@@ -231,7 +231,7 @@ CREATE INDEX idx_bcm_whk_pick ON bcm_whk_l (prcs_yn, rcv_dttm);  -- 판단 워�
 | 컬럼 | 뜻 |
 |---|---|
 | `noti_id` | insert 충돌 = 같은 알림의 중복 전달 — 무시하고 200 을 돌려준다. 중복 방어가 물리 제약으로 끝난다 |
-| `payload` | 검증·파싱 전의 원본 — 판단 버그가 있어도 원본으로 재처리할 수 있고, finalize 원본 보관이 그 tx 의 마지막 COMPLETED 알림의 이 값을 옮겨 간다 |
+| `payload` | 검증·파싱 전의 원본 — 판단 버그가 있어도 원본으로 재처리할 수 있고, finalize 원본 보관이 그 tx 의 마지막 COMPLETED 알림의 이 값을 옮겨 간다. **주의**: JSONB 는 저장 시 정규화(키 재정렬·공백)되므로 보관되는 건 **의미 수준 원본**이다 — 바이트 수준(서명 재검증·원문 해시)이 필요한 용도는 수신 시점에 처리해야 한다 ([PoC 실측](97-webhook-poc-result.md)) |
 | 보존 | 처리 후 N일(운영 설정값) 뒤 정리 — 장기 보존은 `bcm_raw_tx_l` 몫 |
 
 ### bcm_tx_l — 거래 운영 상태
@@ -378,7 +378,8 @@ CREATE TABLE bcm_raw_tx_l (
   tkn_smbl       VARCHAR(16)  NOT NULL,   -- 토큰 심볼
   final_stcd     VARCHAR(16)  NOT NULL,   -- 도달한 최종 상태
   payload        TEXT         NOT NULL,   -- 벤더 응답 원문 — 받은 바이트 그대로, 가공 금지
-  payload_hash   CHAR(64)     NOT NULL,   -- 원문 바이트의 SHA-256 — 무결성 증명
+  payload_hash   CHAR(64)     NOT NULL,   -- 원문 바이트의 SHA-256 — 무결성 증명. 반드시 수신 시점의 와이어 바이트로 계산
+                                          -- (JSONB 에서 꺼낸 값은 키 재정렬·공백 정규화로 원문 바이트가 아니다 — PoC 실측)
   rcv_dttm       VARCHAR(16)  NOT NULL,   -- 원문을 받은 일시
   -- 감사 4컬럼
   frst_reg_empno  VARCHAR(6)  NOT NULL,

@@ -93,6 +93,22 @@ Fireblocks 담당자에게 문의해 받은 답변을 질문 단위로 모은다
 **Q.** 확정으로 볼 컨펌 수는 어떻게 정해지나?
 **A.** DCCP(확정 정책)가 정한다. 기본은 대부분 체인 1(이더·Base 포함)·ETC 372·컨트랙트 호출 3 권장. 한도는 EVM 최소 1·이더 최대 100·신규 EVM L2 최대 30. 커스텀 임계는 정책 템플릿을 Support 에 제출해 승인 후 반영된다. ([About the DCCP](https://support.fireblocks.io/hc/en-us/articles/360013034359-About-the-Deposit-Control-and-Confirmation-Policy))
 
+## PoC 실측으로 확정한 사실 (2026-08)
+
+문서·답변이 아니라 **실물 웹훅으로 직접 관찰**한 것 — 상세는 [수신 PoC 결과보고](../설계/97-webhook-poc-result.md).
+
+**Q.** 재시도 간격은 실제로 얼마인가?
+**A.** 분 단위 배증이다 — 첫 재시도 +21~60초, 이후 1분 → 1분 → 3분 → 6분 → … 으로 벌어지고, 도착이 분 tick(:00)에 정렬된다. 공식 문서의 "지수 백오프 10회·~8시간" 원리는 맞지만 세부 간격 수치(10·30·120초…로 알려진 것)와는 다르다. (2026-08-03, 알림 2건×2회 실측)
+
+**Q.** `resend_failed` 는 실제로 어떻게 동작하나?
+**A.** `202 {"total":N}` 을 반환하는데 **N 은 호출 시점에 실패 상태인 알림 수만** 센다 — 이미 자연 재시도로 2xx 를 받은 알림은 제외된다. 재전송은 즉시가 아니라 **다음 분 tick** 에 도착했다(호출 51초 뒤). 회수 수단으로 유효함을 실측 확인.
+
+**Q.** v2 알림 payload 의 실물 구조는?
+**A.** 최상위 `id`(알림 UUID)·`eventType`·`resourceId`(tx id)·`webhookId`·`workspaceId`·`createdAt`(epoch ms), tx 는 `data.{id,status,subStatus,numOfConfirmations,source,destination,txHash,blockInfo,amountInfo,…}`. `transaction.created` 가 이미 `CONFIRMING`+`txHash` 를 담고 온다(입금은 체인 감지 시점부터). 금액은 `amountInfo` 의 **문자열 값**을 쓰는 게 정밀도 안전. 원본 샘플은 fbhook 저장소 docs/payload-samples/.
+
+**Q.** payload 를 JSON/JSONB 컬럼에 저장하면?
+**A.** 키 재정렬·공백 정규화로 **와이어 바이트가 소실**된다 — DB 에서 꺼낸 값으로는 detached JWS 재검증이 불가했다(실측 401). 원문 해시·서명 재검증은 수신 시점 바이트로 해야 한다.
+
 ## 웹훅 이벤트 — network records (참고)
 
 `transaction.network_records.processing_completed` 가 어떤 거래에서 생기는지 공식 문서로 확인한 것과, 같은 원리를 우리 맥락에 적용한 예시.
