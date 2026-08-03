@@ -101,7 +101,7 @@ Fireblocks 담당자에게 문의해 받은 답변을 질문 단위로 모은다
 **A.** 분 단위 배증이다 — 첫 재시도 +21~60초, 이후 1분 → 1분 → 3분 → 6분 → … 으로 벌어지고, 도착이 분 tick(:00)에 정렬된다. 공식 문서의 "지수 백오프 10회·~8시간" 원리는 맞지만 세부 간격 수치(10·30·120초…로 알려진 것)와는 다르다. (2026-08-03, 알림 2건×2회 실측)
 
 **Q.** `resend_failed` 는 실제로 어떻게 동작하나?
-**A.** `202 {"total":N}` 을 반환하는데 **N 은 호출 시점에 실패 상태인 알림 수만** 센다 — 이미 자연 재시도로 2xx 를 받은 알림은 제외된다. 재전송은 즉시가 아니라 **다음 분 tick** 에 도착했다(호출 51초 뒤). 회수 수단으로 유효함을 실측 확인.
+**A.** `202 {"total":N}` 을 반환하는데 **N 은 호출 시점에 실패 상태인 알림 수만** 센다 — 벤더 재시도로 이미 전달돼 2xx 를 받은 알림은 제외된다. 재전송은 즉시가 아니라 **다음 분 tick** 에 도착했다(호출 51초 뒤). 회수 수단으로 유효함을 실측 확인.
 
 **Q.** v2 알림 payload 의 실물 구조는?
 **A.** 최상위 `id`(알림 UUID)·`eventType`·`resourceId`(tx id)·`webhookId`·`workspaceId`·`createdAt`(epoch ms), tx 는 `data.{id,status,subStatus,numOfConfirmations,source,destination,txHash,blockInfo,amountInfo,…}`. `transaction.created` 가 이미 `CONFIRMING`+`txHash` 를 담고 온다(입금은 체인 감지 시점부터). 금액은 `amountInfo` 의 **문자열 값**을 쓰는 게 정밀도 안전. 원본 샘플은 fbhook 저장소 docs/payload-samples/.

@@ -55,4 +55,4 @@ status: Done
 | 내부 이체의 externalTxId 규약 | 매니저는 `INTERNAL` 까지만 주고 **요청의 externalTxId 를 완료 이벤트에 실어 준다** — 키 형식·동반 보장 합의 (delta 정산 대응이 이 키로 — sweep 은 매니저 내부라 이벤트가 없다) | 4·10장 |
 | 트래블룰 산출물 운반 | 출금 제출의 `travelRule` 필드 — 게이트(백엔드 모듈)가 만든 암호화 산출물을 매니저는 **싣기만 하고 내용을 모른다**(6장). 시나리오별로 싣는 것이 다르다 — 해외(Notabene) = travelRuleMessage · 국내(VerifyVASP)·개인지갑 = 없음: [트래블룰 시나리오](../../트래블룰/설계/07-scenarios.md) · [게이트 설계](../../트래블룰/설계/08-gate-port.md) | 6장 |
 | 승인 레코드 ↔ externalTxId | **1:1 대응·만료·소비 상태**를 검증 복제본에서 판단할 수 있어야 한다 — 서명 직전 검증(6장 표)의 판단 근거 컬럼 합의 | 6장 |
-| 메시지 큐 | ① 세 토픽(`deposit`·`withdrawal`·`internal`)의 이벤트 스키마·파티션 키<br/>② 전달 보장 — **at-least-once**(같은 이벤트가 드물게 중복 — 4장 예외 창) · 이벤트 ID = tx id(또는 externalTxId) unique · **같은 계정 순서는 파티션이 보장**<br/>③ 막힘 경보를 흘릴 별도 채널 수단 | 4장 |
+| 메시지 큐 | ① 세 토픽(`deposit`·`withdrawal`·`internal`)의 이벤트 스키마·파티션 키<br/>② 전달 보장 — **at-least-once**(같은 이벤트가 드물게 중복 — 4장) · dedup 키 = **이벤트 id(`evnt_id`)** (tx 단위 아님) · **같은 계정 순서는 파티션이 보장**(단 relay 가 순차 발송해야 성립)<br/>③ 막힘 경보를 흘릴 별도 채널 수단 | 4장 |

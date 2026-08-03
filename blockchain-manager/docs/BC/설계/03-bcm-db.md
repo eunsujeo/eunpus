@@ -231,7 +231,7 @@ CREATE INDEX idx_bcm_whk_pick ON bcm_whk_l (prcs_yn, rcv_dttm);  -- 판단 워�
 | 컬럼 | 뜻 |
 |---|---|
 | `noti_id` | insert 충돌 = 같은 알림의 중복 전달 — 무시하고 200 을 돌려준다. 중복 방어가 물리 제약으로 끝난다 |
-| `payload` | 검증·파싱 전의 원본 — 판단 버그가 있어도 원본으로 재처리할 수 있고, finalize 원본 보관이 그 tx 의 마지막 COMPLETED 알림의 이 값을 옮겨 간다. **주의**: JSONB 는 저장 시 정규화(키 재정렬·공백)되므로 보관되는 건 **의미 수준 원본**이다 — 바이트 수준(서명 재검증·원문 해시)이 필요한 용도는 수신 시점에 처리해야 한다 ([PoC 실측](97-webhook-poc-result.md)) |
+| `payload` | 검증·파싱 전의 원본 — 판단 버그가 있어도 원본으로 재처리할 수 있고, finalize 원본 보관이 그 tx 의 마지막 COMPLETED 알림의 이 값을 옮겨 간다. **주의**: JSONB 는 저장 시 정규화(키 재정렬·공백)되므로 보관되는 건 **의미 수준 원본**이다 — 바이트 수준(서명 재검증·원문 해시)이 필요한 용도는 수신 시점에 처리해야 한다 (2026-08 PoC 실측) |
 | 보존 | 처리 후 N일(운영 설정값) 뒤 정리 — 장기 보존은 `bcm_raw_tx_l` 몫 |
 
 ### bcm_tx_l — 거래 운영 상태
@@ -246,7 +246,8 @@ CREATE TABLE bcm_tx_l (
   acnt_id         VARCHAR(64)  NOT NULL,      -- 귀속 계정 — 이벤트 파티션 키
   tkn_smbl        VARCHAR(16)  NOT NULL,      -- 토큰 심볼
   last_pub_stcd   VARCHAR(16)  NOT NULL,      -- 마지막으로 발행한 TxStatus — 이 값과 다를 때만 새 이벤트를 낸다
-  cnfm_cnt        INT          NOT NULL,      -- 마지막으로 본 confirmation 수
+  cnfm_cnt        INT          NOT NULL,      -- 마지막으로 본 confirmation 수 — 큰 값으로만 갱신(감소 금지)
+                                              -- 늦게 온 알림은 낮은 값을 담고 있어, 그대로 쓰면 기록이 역행한다
   stall_alrt_dttm VARCHAR(16)  NULL,          -- 막힘 경보 올린 일시 — 있으면 다음 주기 건너뜀 · 해소 전이 시 NULL
   frst_dtct_dttm  VARCHAR(16)  NOT NULL,      -- 처음 감지한 일시
   last_chng_dttm  VARCHAR(16)  NOT NULL,      -- 마지막 갱신 일시 — 막힘 점검의 기준
@@ -262,7 +263,8 @@ CREATE TABLE bcm_tx_l (
 |---|---|
 | `orig_tx_id` | boost 로 벤더 거래가 대체되면(새 txId) 새 행이 원 tx 를 가리킨다 — 이벤트는 원 tx 기준으로 나가 백엔드는 대체를 모른다 |
 | `ext_tx_id` | UNIQUE 가 재제출 중복 차단의 물리 근거. 완료 이벤트에 그대로 실어 되돌려준다. boost 대체 행은 이 값을 갖지 않는다(원 행만) |
-| `last_pub_stcd` | 이 값과 다를 때만 새 이벤트를 발행 예약한다. 발행 자체는 `bcm_outbox_l` 에 같은 트랜잭션으로 적재 — 상태 갱신과 발행 예약이 한 커밋이라 장애 시 유실·유령이 없다 |
+| `last_pub_stcd` | 새 알림의 상태와 이 값을 [허용 전이 표](02-bcm-flow.md)에 대조해 발행 여부를 가린다 — 늦게 온 옛 상태는 무시하고, `COMPLETED → FAILED`(reorg 무효화)는 발행한다. 발행 자체는 `bcm_outbox_l` 에 같은 트랜잭션으로 적재 — 상태 갱신과 발행 예약이 한 커밋이라 장애 시 유실·유령이 없다 |
+| `cnfm_cnt`·`last_chng_dttm` | **줄지 않는다** — 알림 도착 순서가 뒤바뀔 수 있어 큰 값(늦은 시각)으로만 갱신한다. 막힘 점검이 이 둘을 입력으로 쓰기 때문이다 |
 
 ### bcm_outbox_l — 발행 아웃박스
 
