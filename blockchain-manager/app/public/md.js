@@ -1246,6 +1246,7 @@ window.MD = (() => {
   // "6·8장" 사슬 · "N장" · "N.M" · "A.M" · "부록 A/B" · 용어(TERM_REFS) — 코드·링크·제목 밖 텍스트만 감싼다
   // "개념 (세트) N장"·"블록체인매니저 N장"·"이더리움 N장" 은 다른 문서 세트 참조라 제외 (같은 폴더에서만 푼다)
   // "6.4분"·"12.5%"·"10.9 gwei" 같은 소수점 수치는 절 참조가 아니다 — 단위어가 뒤따르면 제외
+  // (거부 목록은 1차 필터일 뿐, 최종 판정은 enhanceSectionRefs 의 hasChapter — 대상 문서 존재 확인)
   const REF_RE = /(?<![\d.·])(?<!개념 )(?<!세트 )(?<!매니저 )(?<!이더리움 )(\d{1,2}(?:·\d{1,2})*장)|(?<![\d.])((?:\d{1,2}|A)\.\d{1,2})(?![.\d])(?!\s?(?:분|초|시간|회|배|건|%|gwei))|(부록 [AB])(?!\s*[—-])|\b(TxStatus|TrVerdict)\b/g;
 
   function refButton(label, ref) {
@@ -1259,7 +1260,31 @@ window.MD = (() => {
 
   async function enhanceSectionRefs(root, ctx) {
     if (!ctx || !ctx.docPath) return;
-    try { if (!(await getCards()).length) return; } catch { return; } // 정적 내보내기 등 API 없는 환경이면 그대로 둔다
+    let sibs;
+    try {
+      const cards = await getCards();
+      if (!cards.length) return; // 정적 내보내기 등 API 없는 환경이면 그대로 둔다
+      const folder = ctx.docPath.split('/').slice(0, -1).join('/');
+      sibs = cards.filter((c) => c.path.startsWith(folder + '/'));
+    } catch { return; }
+
+    // "N.M" 이 절 참조인가 — 같은 폴더에 그 절이 실제로 있을 때만 링크한다.
+    // 수치(3.4 × 10³⁸ · 1.1조)를 단위 거부 목록으로만 막으면 계속 새므로, 대상 존재로 가린다.
+    // 대상 문서 찾기는 openRef 의 chapter 매칭과 같은 규칙, 절은 그 문서의 "## N.M" 헤딩으로 확인한다.
+    const secSet = new Set();
+    const chapters = new Set();
+    for (const m of (root.textContent || '').matchAll(/(?<![\d.])(\d{1,2}|A)\.\d{1,2}(?![.\d])/g))
+      chapters.add(m[1]);
+    await Promise.all([...chapters].map(async (ch) => {
+      const target =
+        sibs.find((c) => new RegExp('^' + ch + '\\.(?!\\d)').test(c.title || '')) ||
+        (/^A$/i.test(ch) ? sibs.find((c) => (c.title || '').includes('부록 A')) : null);
+      if (!target) return; // 그 장 문서가 없으면 절 참조일 수 없다
+      try {
+        const d = await getDoc(target.path);
+        for (const h of (d.body || '').matchAll(/^##\s+((?:\d{1,2}|A)\.\d{1,2})(?!\d)/gm)) secSet.add(h[1]);
+      } catch { /* 조회 실패 시 그 장의 절은 링크하지 않는다 */ }
+    }));
     const SKIP = new Set(['A', 'CODE', 'PRE', 'BUTTON', 'SCRIPT', 'STYLE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
       acceptNode(n) {
@@ -1292,7 +1317,9 @@ window.MD = (() => {
           });
         } else if (m[2]) {
           const [ch, sec] = [m[2].split('.')[0], m[2]];
-          frag.appendChild(refButton(m[2], { kind: 'section', chapter: ch, sec, label: sec }));
+          if (secSet.has(sec))
+            frag.appendChild(refButton(m[2], { kind: 'section', chapter: ch, sec, label: sec }));
+          else frag.appendChild(document.createTextNode(m[2])); // 그 절이 없음 = 절 참조가 아니라 수치
         } else if (m[3]) {
           frag.appendChild(refButton(m[3], { kind: 'appendix', letter: m[3].slice(-1), label: m[3] }));
         } else if (m[4]) {
