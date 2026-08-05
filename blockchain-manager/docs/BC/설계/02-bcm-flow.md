@@ -12,7 +12,7 @@ status: To Do
 |---|---|---|---|
 | `createAccount` | `POST /accounts` | vault 를 만들고 ref↔accountId 매핑을 반환한다. ref = DAW-CORE 계정 ID (접두사 없음), 유형(`CUSTOMER`·`SYSTEM`)을 함께 받는다 | 같은 (유형, ref) → 같은 accountId. 매니저 DB 의 복합 UNIQUE 가 최종 방어 — 경합해도 이긴 값을 반환 |
 | `createDepositAddress` | `POST /accounts/{accountId}/assets/{asset}/address` | 자산 지갑을 활성화하고 입금 주소를 발급한다. EVM 은 자산당 주소 하나 | 같은 (accountId, asset) → 같은 주소 |
-| `createDepositAddressesBulk` | `POST /addresses/bulk` | 여러 (accountId, asset) 의 주소를 한 요청으로 발급한다. 최대 100건 · 항목별 결과 | 항목마다 단건과 같은 기준으로 멱등. 부분 실패해도 성공분은 남아 재시도 안전 |
+| `createDepositAddresses` | `POST /accounts/{accountId}/addresses` | 한 계정의 **여러 자산** 주소를 한 요청으로 발급한다 — 같은 토큰을 여러 네트워크로 받을 때. 최대 20자산 · 자산별 결과 | 자산마다 단건과 같은 기준으로 멱등. 계정 없음은 전체 404, 자산별 실패는 부분 성공으로 남아 재시도 안전 |
 | `depositAddressOf` | `GET /accounts/{accountId}/assets/{asset}/address` | 발급된 주소를 매니저 DB 에서 읽는다 — 벤더 왕복 없음 | 주소 있음 → 주소 · 미발급 → `data: null` · 계정 없음 → `404 ACCOUNT_NOT_FOUND` |
 
 경로는 base(`/blockchain/manage-api`)를 뗀 표기 — 전체 경로·필드는 [블록체인 매니저 API](?cat=블록체인매니저&sub=API).

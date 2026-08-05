@@ -21,7 +21,7 @@ typealias WalletId = String    // 사전 등록(화이트리스트) 지갑 id
 
 ## 공통 규약
 
-- **멱등키(Idempotency-Key)** — 생성 계열은 키로 중복을 막는다. `createAccount` = f(accountType, ref), `createDepositAddress` = f(accountId, asset). 24시간 안의 재시도는 같은 결과를 돌려준다. 그 뒤의 영구 유일성은 매니저 DB 의 UNIQUE 제약이 보장한다(1·2장).
+- **멱등키(Idempotency-Key)** — 생성 계열은 키로 중복을 막는다. `createAccount` = f(accountType, ref), `createDepositAddress` = f(accountId, asset) — 여러 자산 발급도 자산마다 같은 기준이다. 24시간 안의 재시도는 같은 결과를 돌려준다. 그 뒤의 영구 유일성은 매니저 DB 의 UNIQUE 제약이 보장한다(1·2장).
 - **externalTxId** — 제출할 때 백엔드가 싣는 우리 요청 키다. 재제출 중복 차단 + 완료 이벤트 대응에 쓰고, 매니저는 완료 이벤트에 그대로 실어 되돌려준다(6·10·12장).
 - **이벤트 전달 = at-least-once** — 같은 이벤트가 드물게 두 번 올 수 있다. 이벤트 ID(tx id 또는 externalTxId) 유일 기준으로 **상태 전이만 반영**하고, 오프셋은 원장 반영 성공 후 커밋한다(4장).
 - **에러 구분** — `depositAddressOf` 는 계정 없음(`AccountNotFound`)과 주소 미발급(`null`)을 구분한다(3장). 제출 응답은 성공·확정 에러·애매한 에러 세 갈래다(6·10장).
@@ -31,13 +31,13 @@ typealias WalletId = String    // 사전 등록(화이트리스트) 지갑 id
 ```kotlin
 fun createAccount(accountType: AccountType, ref: String): Account // 1장 — vault 생성 · ref↔accountId 매핑 (AccountType = CUSTOMER · SYSTEM)
 fun createDepositAddress(accountId: AccountId, asset: Asset): Address   // 2장 — 자산 지갑 활성화 · 주소 발급
-fun createDepositAddressesBulk(items: List<AddressRequestItem>): List<AddressResult>  // 2장 — 일괄 발급 (최대 100건 · 항목별 결과)
+fun createDepositAddresses(accountId: AccountId, assets: List<Asset>): List<AddressResult>  // 2장 — 여러 네트워크 발급 (최대 20자산 · 자산별 결과)
 fun depositAddressOf(accountId: AccountId, asset: Asset): Address?      // 3장 — DB 읽기 · 벤더 왕복 없음
 ```
 
 - `createAccount` — 같은 (`accountType`, `ref`) 재요청은 같은 `accountId` 를 돌려준다(멱등). 계정 유형은 고객·시스템 ID 가 서로 다른 테이블에서 접두사 없이 발급되어 값이 겹칠 수 있기 때문에 함께 받는다. EVM 은 자산당 주소 하나라, 같은 자산의 주소를 더 두려면 계정을 더 만든다(2장).
 - `depositAddressOf` — 세 갈래: 주소 있음 → `Address`, 계정 있고 주소 미발급 → `null`, 계정 없음 → `AccountNotFound`. 주소를 만들지는 않는다(생성은 `createDepositAddress`).
-- `createDepositAddressesBulk` — **부분 실패가 정상 동작이다.** 항목별로 성공(주소) 또는 실패(에러 코드)를 요청 순서대로 돌려주고, HTTP 는 항목 결과와 무관하게 200 이다. 전체를 되돌리지 않으므로 같은 요청을 그대로 재시도할 수 있다(성공분은 같은 주소, 실패분만 재시도). **벤더 호출 수는 줄지 않는다** — 항목마다 벤더를 한 번 부르므로 줄어드는 것은 백엔드↔매니저 왕복뿐이고, 그래서 100건 상한을 둔다. 벤더의 쓰기 계열 분당 한도는 아직 확답을 못 받았으므로([Fireblocks QnA](?cat=BC&sub=Fireblocks%20QnA) 대기 문의) 대량 발급 주기는 그 답을 받고 정한다.
+- `createDepositAddresses` — 같은 토큰을 **여러 네트워크로 받을 때** 쓴다(USDC 를 이더리움·폴리곤·트론에서 받는 경우). 받을 네트워크를 정하는 것은 백엔드이고 매니저는 토큰 이름을 네트워크로 펼치지 않는다. 계정이 없으면 전체 404 이고, **자산별 부분 실패는 정상 동작이다** — 자산별 성공(주소)/실패(에러 코드)를 요청 순서대로 돌려주고 HTTP 는 200 이다. 전체를 되돌리지 않으므로 같은 요청을 그대로 재시도할 수 있다. **벤더 호출 수는 줄지 않아** 왕복만 줄어들고, 그래서 20자산 상한을 둔다.
 
 ## 잔액 · 내역 API
 
