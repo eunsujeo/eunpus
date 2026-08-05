@@ -1,6 +1,6 @@
 # Blockchain Manager API
 
-`v0.0.6`
+`v0.0.7`
 
 블록체인 매니저는 사내의 별도 서비스로, 온체인 거래(노드 연동)를 담당한다.
 DAW-CORE(Service·Admin)는 이 HTTP API 로 계정·주소·잔액·거래를 다루고,
@@ -96,6 +96,7 @@ DAW-CORE(Service·Admin)는 이 HTTP API 로 계정·주소·잔액·거래를 �
 ## 멱등
 
 - **생성** — `createAccount` 는 (`accountType`, `ref`), `createDepositAddress` 는 `(accountId, asset)` 로 멱등하다. 같은 값으로 재요청하면 매니저가 같은 결과를 돌려준다(DAW-CORE가 별도 멱등키를 넣지 않는다).
+- **일괄 발급** — `createDepositAddressesBulk` 은 항목마다 위와 같은 기준으로 멱등하다. 부분 실패해도 성공분은 남으므로 같은 요청을 그대로 재시도할 수 있다.
 - **출금 제출** — 본문 `externalTxId` 가 멱등 키다. 같은 키로 재제출해도 중복 전송되지 않는다.
 
 ## 이벤트 (메시지 큐)
@@ -382,6 +383,97 @@ _응답_
   "error": {
     "code": "ACCOUNT_NOT_FOUND",
     "message": "account not found"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `error` | ErrorBody | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+#### `POST` https://{baseUrl}/blockchain/manage-api/addresses/bulk
+
+**입금 주소 일괄 발급**
+
+여러 (accountId, asset) 조합의 입금 주소를 한 요청으로 발급한다. 결과는 단건 발급을 여러 번 부른 것과 같고 **항목마다 멱등하다** — 같은 조합을 다시 보내면 같은 주소를 돌려준다.
+
+**부분 성공이 정상 동작이다.** 일부 항목이 실패해도 전체를 되돌리지 않는다 — 성공한 항목은 발급된 상태로 남는다. 응답은 항목별 결과를 **요청과 같은 순서로** 담고, HTTP 상태는 항목 결과와 무관하게 `200` 이다. 판단은 항목별 `error` 유무로 한다. 같은 요청을 그대로 재시도하면 성공분은 같은 주소가 다시 오고 실패분만 새로 시도되므로, 재시도가 안전하다.
+
+**벤더 호출 수는 줄지 않는다.** 매니저는 항목마다 벤더를 한 번 호출하므로 이 오퍼레이션이 줄이는 것은 DAW-CORE ↔ 매니저 사이의 왕복뿐이다. 그래서 `items` 를 100건으로 제한한다 — 더 필요하면 요청을 나눠 보낸다. 매니저는 항목을 병렬로 처리하되 동시 실행 수를 제한하므로, 100건 요청은 단건보다 오래 걸린다. 호출 쪽 타임아웃을 넉넉히 잡는다.
+
+```bash
+curl -X POST "https://{baseUrl}/blockchain/manage-api/addresses/bulk" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "items": [
+    {
+      "accountId": "acct_01H8X",
+      "asset": "ETH_USDC"
+    }
+  ]
+}'
+```
+
+_요청 본문_
+
+```json
+{
+  "items": [
+    {
+      "accountId": "acct_01H8X",
+      "asset": "ETH_USDC"
+    }
+  ]
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `items` | BulkAddressItem[] | 필수 | 발급 대상 1~100건. 빈 배열·초과는 `400 VALIDATION_FAILED`. 같은 조합이 두 번 들어오면 발급은 한 번만 하고 두 항목에 같은 결과를 담는다. |
+
+
+_응답_
+
+`200` — 항목별 결과 (부분 성공 포함)
+
+```json
+{
+  "data": [
+    {
+      "accountId": "acct_01H8X",
+      "asset": "ETH_USDC",
+      "address": "0xAb3...C9",
+      "memoTag": "string",
+      "error": {
+        "code": "ACCOUNT_NOT_FOUND",
+        "message": "account not found"
+      }
+    }
+  ],
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `data` | BulkAddressResult[] | 필수 | 요청과 같은 순서의 항목별 결과 |
+| `meta` | Meta | 필수 |  |
+
+
+`400` — 요청 검증 실패
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_FAILED",
+    "message": "amount must be a decimal string"
   },
   "meta": {
     "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
@@ -984,6 +1076,42 @@ _응답_
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `data` | Address \\| null | 필수 | 미발급 시 null |
+| `meta` | Meta | 필수 |  |
+
+
+### BulkAddressItem
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `accountId` | string | 필수 | 매니저가 발급한 vault 핸들 |
+| `asset` | string | 필수 | 자산 식별 (체인 × 토큰) |
+
+
+### BulkAddressRequest
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `items` | BulkAddressItem[] | 필수 | 발급 대상 1~100건. 빈 배열·초과는 `400 VALIDATION_FAILED`. 같은 조합이 두 번 들어오면 발급은 한 번만 하고 두 항목에 같은 결과를 담는다. |
+
+
+### BulkAddressResult
+
+항목 하나의 결과 — 성공이면 `address`, 실패면 `error` 가 채워진다 (둘 중 하나만).
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `accountId` | string | 필수 |  |
+| `asset` | string | 필수 |  |
+| `address` | string \\| null | - | 발급된 주소 — 실패 시 null |
+| `memoTag` | string \\| null | - | 체인이 요구하는 태그·메모 — EVM 은 null |
+| `error` | ErrorBody \\| null | - | 실패 사유 — 성공 시 null. 코드 체계는 공통 에러 코드 표와 같다 |
+
+
+### BulkAddressResponse
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `data` | BulkAddressResult[] | 필수 | 요청과 같은 순서의 항목별 결과 |
 | `meta` | Meta | 필수 |  |
 
 

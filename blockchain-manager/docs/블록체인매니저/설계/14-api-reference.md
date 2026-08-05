@@ -31,11 +31,13 @@ typealias WalletId = String    // 사전 등록(화이트리스트) 지갑 id
 ```kotlin
 fun createAccount(accountType: AccountType, ref: String): Account // 1장 — vault 생성 · ref↔accountId 매핑 (AccountType = CUSTOMER · SYSTEM)
 fun createDepositAddress(accountId: AccountId, asset: Asset): Address   // 2장 — 자산 지갑 활성화 · 주소 발급
+fun createDepositAddressesBulk(items: List<AddressRequestItem>): List<AddressResult>  // 2장 — 일괄 발급 (최대 100건 · 항목별 결과)
 fun depositAddressOf(accountId: AccountId, asset: Asset): Address?      // 3장 — DB 읽기 · 벤더 왕복 없음
 ```
 
 - `createAccount` — 같은 (`accountType`, `ref`) 재요청은 같은 `accountId` 를 돌려준다(멱등). 계정 유형은 고객·시스템 ID 가 서로 다른 테이블에서 접두사 없이 발급되어 값이 겹칠 수 있기 때문에 함께 받는다. EVM 은 자산당 주소 하나라, 같은 자산의 주소를 더 두려면 계정을 더 만든다(2장).
 - `depositAddressOf` — 세 갈래: 주소 있음 → `Address`, 계정 있고 주소 미발급 → `null`, 계정 없음 → `AccountNotFound`. 주소를 만들지는 않는다(생성은 `createDepositAddress`).
+- `createDepositAddressesBulk` — **부분 실패가 정상 동작이다.** 항목별로 성공(주소) 또는 실패(에러 코드)를 요청 순서대로 돌려주고, HTTP 는 항목 결과와 무관하게 200 이다. 전체를 되돌리지 않으므로 같은 요청을 그대로 재시도할 수 있다(성공분은 같은 주소, 실패분만 재시도). **벤더 호출 수는 줄지 않는다** — 항목마다 벤더를 한 번 부르므로 줄어드는 것은 백엔드↔매니저 왕복뿐이고, 그래서 100건 상한을 둔다. 벤더의 쓰기 계열 분당 한도는 아직 확답을 못 받았으므로([Fireblocks QnA](?cat=BC&sub=Fireblocks%20QnA) 대기 문의) 대량 발급 주기는 그 답을 받고 정한다.
 
 ## 잔액 · 내역 API
 
