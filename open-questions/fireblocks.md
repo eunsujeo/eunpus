@@ -275,7 +275,8 @@
 - **Why it matters**: signing role의 새 user 추가 시 Owner가 별도로 승인하는 "derivation"의 실제 절차(round, 시간, 실패 처리, replay 보호 등)가 보안에 영향.
 - **Where this came up**: [[entities/fireblocks/mpc-key-share]], [[entities/fireblocks/user-roles/owner]]
 - **Sources to check**: MPC-CMP whitepaper, Initial user setup 문서
-- **Status**: open
+- **Status**: **partial-answered (2026-08-05, Stage 161)**
+- **Stage 161 partial answer (Fireblocks 담당자 확답)**: 시점·선행조건 확정 — 디바이스 합류 시 key share 발급, Owner 명시 승인 선행, 동일 master seed 기반(마스터 키·주소 불변). 암호학적 절차(round·시간·실패 처리·replay 보호)는 여전히 미답. 재수행(리허설) 가능 여부도 미답 — 재문의 대상. 적용처: [[vendors/fireblocks/mpc]] §"키 생성(DKG) 시점", [[entities/fireblocks/mpc-key-share]].
 
 ### API (Stage 4에서 추가)
 

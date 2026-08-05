@@ -4,9 +4,9 @@ vendor: fireblocks
 status: stable
 tags: [workspace, governance, key-link]
 stage_introduced: 1
-last_updated_stage: 131
+last_updated_stage: 161
 source_count: 7
-related: [architecture, editor, owner, policy, transaction, workspace]
+related: [architecture, editor, mpc, owner, policy, transaction, workspace]
 ---
 # Entity: Vault Account (Fireblocks)
 
@@ -32,6 +32,7 @@ Fireblocks workspace에서 자산을 보유하는 단위. 본 자료에서 확�
 - Editor 본문에는 "Algorand 토큰 wallet 제외" 표현이 별도 등장 — 표 TL 라벨(4종 모두)과 표현 차이 가능 (p.3, p.5).
 - "Create new vault addresses"가 Editor 책임 설명에 등장 — vault account 내부의 address 개념이 별도로 존재함을 시사 (p.3).
 - 본 자료는 vault account의 정확한 구조·식별자·exchange/network connection과의 관계 모델을 명세하지 않는다.
+- **(★ Stage 161)** Vault account·wallet·주소 생성은 키 생성(DKG)이 아니라 마스터 키로부터의 BIP44 deterministic derivation (`m/44/coinType/vaultAccountId/change/index`) — 새 엔트로피·key share·MPC 세션 없음, Co-Signer·모바일 미개입 (source: Fireblocks 담당자 확답 2026-08, see [[vendors/fireblocks/mpc]]).
 
 ## Related Pages
 
@@ -39,6 +40,7 @@ Fireblocks workspace에서 자산을 보유하는 단위. 본 자료에서 확�
 - [[entities/fireblocks/transaction]]
 - [[entities/fireblocks/policy]]
 - [[entities/fireblocks/user-roles/owner]]
+- [[vendors/fireblocks/mpc]] — 키 생성(DKG) 시점 · vault 생성 = BIP44 derivation (★ Stage 161)
 - [[entities/fireblocks/user-roles/editor]]
 - [[vendors/fireblocks/architecture]]
 - [[entities/wallet-bank/custody-mapping]] — daw-core 가 `ext_acnt_id`(vaultAccountId)로 참조 (cross-vendor)

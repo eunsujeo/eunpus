@@ -7709,3 +7709,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 영향받은 페이지: entities/fireblocks/transaction.md (§"Stage 160 — 종결 상태 sub-status 체계" 신설 · frontmatter 160 · source_count 11)
 - cross-module: blockchain-manager docs 04(원천 표)·06(출금 실패 분기)·02(조립) 반영 — wiki discipline 밖 독립 모듈
 - 신규 entity: 0 (transaction.md 흡수 — 33 stage 연속)
+
+## Stage 161 (2026-08-05) — 키 생성(DKG) 시점 담당자 확답
+- source: Fireblocks 담당자 확답 (2026-08) — 인용 문서: Owner MPC key generation · Fireblocks' MPC wallet infrastructure · Fireblocks Wallets Overview (source lake 미수집, Mode B 후보)
+- ANSWERED: Q-2026-05-18-M04 (partial — 시점·선행조건만. 암호학적 절차·재수행 가능 여부는 미답)
+- 영향받은 페이지: vendors/fireblocks/mpc.md (§"키 생성(DKG) 시점" 신설) · entities/fireblocks/mpc-key-share.md · entities/fireblocks/vault-account.md (vault 생성 = BIP44 derivation)
+- cross-module: blockchain-manager docs Fireblocks QnA 확답 절 신설 (8bdc986)
+- 신규 entity: 0 (mpc hub 흡수 — 34 stage 연속)

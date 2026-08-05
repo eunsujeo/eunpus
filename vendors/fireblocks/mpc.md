@@ -4,7 +4,7 @@ vendor: fireblocks
 status: draft
 tags: [mpc, cryptography]
 stage_introduced: 1
-last_updated_stage: 22
+last_updated_stage: 161
 source_count: 8
 related:
   - api-co-signer
@@ -15,6 +15,7 @@ related:
   - mpc-key-share
   - recovery-passphrase
   - risks
+  - vault-account
   - workspace-keys-backup
 ---
 # Fireblocks — MPC
@@ -95,6 +96,16 @@ MPC key share 분포
 - Co-signer 페어링 (`re-enrolling-api-users.md`, p.1, Stage 4): Owner가 Co-signer key shares 승인
 
 → MPC key share의 lifecycle 이벤트마다 인증 강도가 다름 — Owner 단독 / Owner+Quorum / 사용자 본인 self-service 세 패턴.
+
+### 키 생성(DKG) 시점 (★ Stage 161 — Fireblocks 담당자 확답 2026-08)
+
+DKG 가 수행되는 시점은 세 가지뿐 (source: Fireblocks 담당자 확답 2026-08, 인용 문서: Owner MPC key generation · Fireblocks' MPC wallet infrastructure · Fireblocks Wallets Overview):
+
+1. **오너 최초 온보딩 완료 시** — 모바일 앱 QR 페어링 + PIN/생체인증 + recovery passphrase 확정 과정에서 오너 디바이스 ↔ Fireblocks 엔드포인트 간 DKG → 워크스페이스 마스터 키(3 key share) 최초 생성. passphrase 기반 키 백업도 같은 세션에서 등록.
+2. **서명 권한 사용자·디바이스 합류 시** (signer/admin 모바일 앱, API Co-Signer) — 해당 디바이스용 key share 발급. Owner 명시 승인 선행. 동일 master seed 기반이라 마스터 키·지갑 주소 불변.
+3. **새 서명 알고리즘 키셋 추가 시** (예: EdDSA) — 해당 알고리즘 별도 DKG 1회.
+
+Vault account / vault wallet / 입금 주소 생성은 **키 생성이 아님** — 마스터 키로부터의 BIP44 deterministic derivation (`m/44/coinType/vaultAccountId/change/index`). 새 엔트로피·key share·MPC 세션이 발생하지 않으며 Co-Signer·모바일 디바이스 미개입 (see [[entities/fireblocks/vault-account]]).
 
 ### Recovery Scenarios (Stage 5에서 명세)
 

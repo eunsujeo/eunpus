@@ -4,7 +4,7 @@ vendor: fireblocks
 status: stable
 tags: [mpc, cryptography, key-link]
 stage_introduced: 1
-last_updated_stage: 153
+last_updated_stage: 161
 source_count: 13
 related: [mobile-device, mpc, non-signing-admin, owner, signer, workspace-keys-backup]
 ---
@@ -60,6 +60,8 @@ API user를 Co-signer와 페어링한 후 **Owner가 Co-signer의 key shares를 
 2. **그 user의 MPC device에 대한 key share derivation** (Owner 단독)
 
 둘 다 받아야 user가 active 상태가 된다. derivation의 cryptographic 메커니즘·시간·실패 처리는 본 자료에 없음 → Q-2026-05-18-M04.
+
+**(★ Stage 161 — Q-M04 부분 ANSWERED)** Fireblocks 담당자 확답 (2026-08): 디바이스 합류 시 발급되는 key share 는 **동일 master seed 기반** — 마스터 키·지갑 주소 불변. 시점·선행조건(Owner 승인)은 확정, 암호학적 메커니즘·라운드·실패 처리는 여전히 미명세. DKG 전체 시점 3종은 [[vendors/fireblocks/mpc]] §"키 생성(DKG) 시점" 참조.
 
 ## Related Pages
 
