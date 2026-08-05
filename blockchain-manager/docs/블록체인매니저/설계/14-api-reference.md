@@ -21,7 +21,7 @@ typealias WalletId = String    // 사전 등록(화이트리스트) 지갑 id
 
 ## 공통 규약
 
-- **멱등키(Idempotency-Key)** — 생성 계열은 키로 중복을 막는다. `createAccount` = f(ref), `createDepositAddress` = f(accountId, asset). 24시간 안의 재시도는 같은 결과를 돌려준다. 그 뒤의 영구 유일성은 매니저 DB 의 UNIQUE 제약이 보장한다(1·2장).
+- **멱등키(Idempotency-Key)** — 생성 계열은 키로 중복을 막는다. `createAccount` = f(accountType, ref), `createDepositAddress` = f(accountId, asset). 24시간 안의 재시도는 같은 결과를 돌려준다. 그 뒤의 영구 유일성은 매니저 DB 의 UNIQUE 제약이 보장한다(1·2장).
 - **externalTxId** — 제출할 때 백엔드가 싣는 우리 요청 키다. 재제출 중복 차단 + 완료 이벤트 대응에 쓰고, 매니저는 완료 이벤트에 그대로 실어 되돌려준다(6·10·12장).
 - **이벤트 전달 = at-least-once** — 같은 이벤트가 드물게 두 번 올 수 있다. 이벤트 ID(tx id 또는 externalTxId) 유일 기준으로 **상태 전이만 반영**하고, 오프셋은 원장 반영 성공 후 커밋한다(4장).
 - **에러 구분** — `depositAddressOf` 는 계정 없음(`AccountNotFound`)과 주소 미발급(`null`)을 구분한다(3장). 제출 응답은 성공·확정 에러·애매한 에러 세 갈래다(6·10장).
@@ -29,12 +29,12 @@ typealias WalletId = String    // 사전 등록(화이트리스트) 지갑 id
 ## 계정 · 주소 API
 
 ```kotlin
-fun createAccount(ref: String): Account                          // 1장 — vault 생성 · ref↔accountId 매핑
+fun createAccount(accountType: AccountType, ref: String): Account // 1장 — vault 생성 · ref↔accountId 매핑 (AccountType = CUSTOMER · SYSTEM)
 fun createDepositAddress(accountId: AccountId, asset: Asset): Address   // 2장 — 자산 지갑 활성화 · 주소 발급
 fun depositAddressOf(accountId: AccountId, asset: Asset): Address?      // 3장 — DB 읽기 · 벤더 왕복 없음
 ```
 
-- `createAccount` — 같은 `ref` 재요청은 같은 `accountId` 를 돌려준다(멱등). EVM 은 자산당 주소 하나라, 같은 자산의 주소를 더 두려면 계정을 더 만든다(2장).
+- `createAccount` — 같은 (`accountType`, `ref`) 재요청은 같은 `accountId` 를 돌려준다(멱등). 계정 유형은 고객·시스템 ID 가 서로 다른 테이블에서 접두사 없이 발급되어 값이 겹칠 수 있기 때문에 함께 받는다. EVM 은 자산당 주소 하나라, 같은 자산의 주소를 더 두려면 계정을 더 만든다(2장).
 - `depositAddressOf` — 세 갈래: 주소 있음 → `Address`, 계정 있고 주소 미발급 → `null`, 계정 없음 → `AccountNotFound`. 주소를 만들지는 않는다(생성은 `createDepositAddress`).
 
 ## 잔액 · 내역 API

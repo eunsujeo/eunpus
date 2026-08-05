@@ -98,14 +98,14 @@ SUBMITTED·CONFIRMED 는 tx 레벨에선 모두 PENDING 으로 접힌다 — 컨
 
 | 컬럼 | 타입 | 설명 |
 |---|---|---|
-| sys_acnt_id | VARCHAR(16) | 시스템계정ID (PK, 접두사 SYS-) |
+| sys_acnt_id | VARCHAR(16) | 시스템계정ID (PK) |
 | sys_acnt_role_dvcd | VARCHAR(2) | 시스템계정 역할구분코드 |
 | sys_acnt_nm | VARCHAR(64) | 시스템계정명 |
 | sys_acnt_stcd | VARCHAR(1) | 시스템계정상태코드 |
 | open_dttm · cls_dttm | VARCHAR(16) | 개설·폐쇄일시 |
 
-- **sys_acnt_role_dvcd** — HOT_OPS(운영) · FEE_MGT(가스비) · RESERVE(준비금). FEE_MGT 는 대납 결정과 충돌하고, 옴니버스·출금풀 역할이 없다.
-- 고객 계정 접두사 ACT- 와 공간 분리(SYS-).
+- **sys_acnt_role_dvcd** — 운영 · 가스비 · 준비금 세 역할. 가스비 역할은 대납 결정과 충돌하고, 옴니버스·출금풀 역할이 없다. 원본 스키마에는 `HOT_OPS`·`FEE_MGT`·`RESERVE` 로 적혀 있는데 컬럼이 `VARCHAR(2)` 라 값이 들어가지 않는다 — 실제 저장 코드는 코어 확인이 필요하다.
+- **접두사는 쓰지 않는다 (2026-08-05 확인)** — 원본 스키마 설명에는 고객 `ACT-` · 시스템 `SYS-` 접두사로 ID 공간을 분리한다고 적혀 있지만, 실제로는 붙이지 않는다. 그래서 두 테이블의 ID 값이 겹칠 수 있고, 매니저는 계정 생성 때 유형을 함께 받아 구분한다([BC DB — bcm_acnt_m](../../BC/설계/03-bcm-db.md)).
 
 ## 델타원장 — 같은 개념, 다른 형태
 

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Blockchain Manager API
-  version: "0.0.2"
+  version: "0.0.6"
   x-curl: true
   description: |
     블록체인 매니저는 사내의 별도 서비스로, 온체인 거래(노드 연동)를 담당한다.
@@ -19,7 +19,8 @@ info:
     ```json
     {
       "data": {
-        "ref": "ACT-000123",
+        "accountType": "CUSTOMER",
+        "ref": "000123",
         "accountId": "acct_01H8X"
       },
       "meta": {
@@ -90,9 +91,13 @@ info:
 
     `cursor`/`nextCursor` 는 **불투명 토큰**이라 파싱·구성 대상이 아니며, 받은 값을 그대로 전달한다(다음 위치·필터·정렬 방향이 토큰에 담겨 있다). 커서 요청에서는 첫 요청의 조회 조건이 토큰으로 이어지므로, 함께 보낸 다른 파라미터는 무시된다.
 
+    ## 인증
+
+    **없음 (2026-08-05 확정)** — DAW-CORE ↔ 매니저는 내부망 경계를 신뢰한다. securitySchemes 를 정의하지 않는다.
+
     ## 멱등
 
-    - **생성** — `createAccount` 는 `ref`, `createDepositAddress` 는 `(accountId, asset)` 로 멱등하다. 같은 값으로 재요청하면 매니저가 같은 결과를 돌려준다(DAW-CORE가 별도 멱등키를 넣지 않는다).
+    - **생성** — `createAccount` 는 (`accountType`, `ref`), `createDepositAddress` 는 `(accountId, asset)` 로 멱등하다. 같은 값으로 재요청하면 매니저가 같은 결과를 돌려준다(DAW-CORE가 별도 멱등키를 넣지 않는다).
     - **출금 제출** — 본문 `externalTxId` 가 멱등 키다. 같은 키로 재제출해도 중복 전송되지 않는다.
 
     ## 이벤트 (메시지 큐)
@@ -120,6 +125,7 @@ info:
 
     ```json
     {
+      "eventId": "0198c0de-7a2b-7c3d-8e4f-5a6b7c8d9e0f",
       "type": "WITHDRAWAL",
       "txId": "tx_9f2a",
       "txHash": "0x4e1d...ab",
@@ -132,6 +138,7 @@ info:
     }
     ```
 
+    - `eventId` — 이벤트 고유 id (UUID v7). **중복 제거 기준은 이 값 하나다**
     - [`type`](#schema-EventType) — DEPOSIT · WITHDRAWAL · INTERNAL
     - [`status`](#schema-TxStatus) — 공통 상태 다섯 (아래 "상태 (TxStatus) 기준"). DAW-CORE 는 이것으로만 판단한다
     - `txHash` — 전파 후 채워짐
@@ -139,11 +146,11 @@ info:
 
     전달 보장:
 
-    - **at-least-once** — 같은 이벤트가 드물게 두 번 올 수 있다. 이벤트 ID(`txId` 또는 `externalTxId`) 유일 기준으로 **상태 전이만 반영**한다.
+    - **at-least-once** — 같은 이벤트가 드물게 두 번 올 수 있다. **`eventId` 유일 기준으로 중복을 버린다** — 한 거래(txId)에서 감지·확정·실패 이벤트가 각각 오므로 `txId` 로 중복 제거하면 뒤 이벤트가 버려진다.
     - **오프셋 커밋** — 원장 반영이 성공한 뒤에만.
     - **순서** — 같은 계정은 파티션 키가 보장.
     - **입금 시작 상태** — 입금은 `SUBMITTED` 없이 `CONFIRMED` 부터 온다 (`SUBMITTED` 는 우리가 제출하는 거래에서만 관찰).
-    - `REJECTED`(일시적) ≠ `FAILED`(영구). 확정은 `numOfConfirmations` 를 체인별 임계와 직접 비교한다.
+    - `REJECTED`(일시적) ≠ `FAILED`(영구). 확정(`FINALIZED`) 판정은 **매니저가** `numOfConfirmations` 를 체인별 임계와 비교해 내린다 — 컨슈머는 `status` 로만 판단한다.
 
     ## 상태 (TxStatus) 기준
 
@@ -159,7 +166,11 @@ info:
 
     판단은 다섯(`status`)으로 한다. `REJECTED`(일시적) ≠ `FAILED`(영구) 구분이 원장·화면 처리를 가른다.
     `DB tx_stcd` 는 DAW-CORE 상태 대응(제안)이다 — `REJECTED` 는 DB 에 짝이 없어 미정, `CHECKING`·`CANCELLED` 는 DB 고유 상태.
-    ★ 같은 단어가 두 단계를 가리키는 점에 주의 — 이벤트 `CONFIRMED` 는 미확정이라 `tx_stcd` 는 `PENDING` 유지, `tx_stcd` 의 `CONFIRMED`(확정)는 이벤트 `FINALIZED` 를 받았을 때다. `FINALIZED` 도 체인 finality 가 아니라 확정 정책 임계 도달이며, reorg 증발 시 `FAILED` 로 무효화될 수 있다.
+
+    이 다섯은 매니저 ↔ DAW-CORE 의 **계약 어휘**다 — 이 문서에 남아 있는 `CONFIRMING`·`COMPLETED` 표기는 전부 **벤더(Fireblocks) 원어**다.
+
+    - ★ **`CONFIRMED` 는 미확정이다** — 벤더 subStatus/networkStatus 의 `CONFIRMED`(임계 도달, COMPLETED 동반) 및 DAW-CORE `tx_stcd` 의 `CONFIRMED`(확정)와 철자가 같지만 가리키는 단계가 다르다. 이벤트 `CONFIRMED` → `tx_stcd` 는 `PENDING` 유지, 이벤트 `FINALIZED` → `tx_stcd` `CONFIRMED`(확정).
+    - ★ **`FINALIZED` 는 체인 finality 가 아니다** — DCCP 정책 임계 도달일 뿐이고, `FINALIZED` → `FAILED`(reorg 증발, `DROPPED_BY_BLOCKCHAIN`) 전이가 존재한다. 상태에 서열을 매겨 "뒤로 가면 무시"로 구현하면 안 된다.
 servers:
   - url: https://{baseUrl}/blockchain/manage-api
     description: 매니저 API 베이스 URL
@@ -180,9 +191,9 @@ paths:
       tags: [Accounts]
       summary: 계정 생성
       description: |
-        `ref`(우리 참조 키)로 vault 를 만들고 `ref ↔ accountId` 매핑을 반환한다. `ref` 는 DB 계정 ID 를 쓴다 — 고객 `ACT-000123`, 운영(관리) `SYS-000001`.
-        고객 계정뿐 아니라 운영(관리) 계정도 이 오퍼레이션으로 만든다 — 운영 계정은 역할별로 HOT_OPS(운영)·FEE_MGT(가스비)·RESERVE(준비금)이 있다.
-        같은 `ref` 재요청은 같은 `accountId` 를 돌려준다 (매니저가 `ref` 로 멱등 보장).
+        `accountType` 과 `ref` 로 vault 를 만들고 `ref ↔ accountId` 매핑을 반환한다. `ref` 는 DAW-CORE 계정 ID 를 그대로 쓴다 — 고객은 `daw_acnt_m.acnt_id`, 시스템(운영)은 `daw_sys_acnt_m.sys_acnt_id` 다.
+        고객 계정뿐 아니라 시스템 계정도 이 오퍼레이션으로 만든다. **두 ID 는 서로 다른 테이블에서 발급되고 접두사가 붙지 않아 값이 겹칠 수 있으므로 `accountType` 을 함께 받는다** — `ref` 만으로는 어느 쪽 계정인지 가릴 수 없다. 매니저는 `ref` 를 불투명 유일 문자열로만 다루고 내용을 파싱해 분기하지 않는다.
+        같은 (`accountType`, `ref`) 조합으로 재요청하면 같은 `accountId` 를 돌려준다 (매니저가 이 조합으로 멱등 보장).
       operationId: createAccount
       requestBody:
         required: true
@@ -359,15 +370,15 @@ components:
       name: accountId
       in: path
       required: true
-      schema: { type: string }
+      schema: { type: string, maxLength: 64 }
       description: 매니저가 돌려준 vault 핸들 (DB ext_acnt_id = vaultAccountId)
       example: acct_01H8X
     Asset:
       name: asset
       in: path
       required: true
-      schema: { type: string }
-      description: 자산 식별 (체인 × 토큰)
+      schema: { type: string, maxLength: 16 }
+      description: 자산 식별 (체인 × 토큰) — DB `tkn_smbl`(16자) 대응. 벤더 assetId 와의 변환은 매니저 내부 몫.
       example: ETH_USDC
 
   schemas:
@@ -413,9 +424,10 @@ components:
     Account:
       type: object
       properties:
-        ref: { type: string, description: "우리 참조 키 (DB 계정 ID) — 고객 ACT-000123, 운영 SYS-000001 (역할 HOT_OPS·FEE_MGT·RESERVE)", example: ACT-000123 }
+        accountType: { $ref: '#/components/schemas/AccountType' }
+        ref: { type: string, maxLength: 64, description: "우리 참조 키 — DAW-CORE 계정 ID 그대로. 접두사는 붙지 않는다", example: "000123" }
         accountId: { type: string, description: "매니저가 돌려주는 vault 핸들 (DB ext_acnt_id = vaultAccountId)", example: acct_01H8X }
-      required: [ref, accountId]
+      required: [accountType, ref, accountId]
 
     Address:
       type: object
@@ -473,6 +485,7 @@ components:
       type: object
       description: 큐로 오는 온체인 상태 변경 이벤트 (HTTP 응답이 아니라 메시지 큐로 전달).
       properties:
+        eventId: { type: string, format: uuid, description: 이벤트 고유 id (UUID v7) — 컨슈머 중복 제거 기준 }
         type: { $ref: '#/components/schemas/EventType' }
         txId: { type: string, description: 벤더 tx id }
         txHash: { type: [string, "null"], description: 온체인 거래해시 — 전파 후 채워짐 }
@@ -482,8 +495,9 @@ components:
         to: { type: string, description: 목적지 주소 — 입금 판별 }
         status: { $ref: '#/components/schemas/TxStatus' }
         numOfConfirmations: { type: integer, description: 누적 컨펌 수 }
-      required: [type, txId, accountId, asset, to, status, numOfConfirmations]
+      required: [eventId, type, txId, accountId, asset, to, status, numOfConfirmations]
       example:
+        eventId: 0198c0de-7a2b-7c3d-8e4f-5a6b7c8d9e0f
         type: WITHDRAWAL
         txId: tx_9f2a
         txHash: "0x4e1d...ab"
@@ -497,13 +511,22 @@ components:
     TxStatus:
       type: string
       enum: [SUBMITTED, CONFIRMED, FINALIZED, REJECTED, FAILED]
-      description: 공통 상태 다섯.
+      description: 공통 상태 다섯 — 매니저 ↔ DAW-CORE 계약 어휘 (벤더 원어와 구분).
       x-enumDescriptions:
         SUBMITTED: 제출 — 체인 미등장
-        CONFIRMED: 컨펌 누적 (미확정)
-        FINALIZED: 확정
+        CONFIRMED: 체인 등장·컨펌 누적 (미확정 — tx_stcd 의 CONFIRMED 와 다른 단계)
+        FINALIZED: 확정 — DCCP 임계 도달 (체인 finality 아님 — reorg 시 FAILED 전이 존재)
         REJECTED: 거부·차단 (일시적)
         FAILED: 영구 실패
+
+    AccountType:
+      type: string
+      enum: [CUSTOMER, SYSTEM]
+      description: 계정 유형 — `ref` 가 어느 ID 공간의 값인지 가린다. 접두사가 없어 두 유형의 ID 값이 겹칠 수 있다.
+      x-enumDescriptions:
+        CUSTOMER: 고객 계정 — DAW-CORE `daw_acnt_m.acnt_id`
+        SYSTEM: 시스템(운영) 계정 — DAW-CORE `daw_sys_acnt_m.sys_acnt_id`
+      example: CUSTOMER
 
     EventType:
       type: string
@@ -522,19 +545,22 @@ components:
 
     CreateAccountRequest:
       type: object
-      required: [ref]
+      required: [accountType, ref]
       properties:
+        accountType: { $ref: '#/components/schemas/AccountType' }
         ref:
           type: string
-          description: 우리 참조 키 (영구 유일) — DB 계정 ID. 고객 `ACT-000123`, 운영(관리) `SYS-000001` (역할 HOT_OPS·FEE_MGT·RESERVE).
-          example: ACT-000123
+          maxLength: 64
+          description: 우리 참조 키 — DAW-CORE 계정 ID 그대로. 접두사가 붙지 않으므로 `accountType` 과 짝이어야 유일하다. 자리수·형식은 코어 계정 ID 규칙을 따른다. 초과 시 `400 VALIDATION_FAILED`.
+          example: "000123"
 
     TransactionRequest:
       type: object
       properties:
         externalTxId:
           type: string
-          description: 우리 요청 키 — 승인 완료된 출금 지시 1건과 1:1. 재제출 중복 차단·완료 대응
+          maxLength: 128
+          description: 우리 요청 키 — 승인 완료된 출금 지시 1건과 1:1. 재제출 중복 차단·완료 대응. 초과 시 `400 VALIDATION_FAILED`.
           example: wd-260713-0042
         from:
           allOf:

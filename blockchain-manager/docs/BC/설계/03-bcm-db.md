@@ -21,7 +21,7 @@ status: To Do
 
 | 테이블 | 무엇을 저장하나 | 쓰는 곳 |
 |---|---|---|
-| `bcm_acnt_m` | 계정 매핑 — ref ↔ vault | 계정 생성 · 모든 오퍼레이션의 계정 해석 |
+| `bcm_acnt_m` | 계정 매핑 — (계정유형, ref) ↔ vault | 계정 생성 · 모든 오퍼레이션의 계정 해석 |
 | `bcm_addr_m` | 주소 매핑 — (계정, 자산) ↔ 입금 주소 | 주소 발급·조회 · 입금 감지의 주소→계정 대응 |
 | `bcm_whk_l` | 수신 웹훅 알림 원본 — 인박스 | 수신부 적재 → 판단 워커 집기 · finalize 원본의 출처 |
 | `bcm_tx_l` | 거래 운영 상태 — 감지·발행 추적 | 판단 워커 → 발행 예약 · 막힘 점검 · 제출 중복 차단 |
@@ -37,7 +37,7 @@ status: To Do
 entity: bcm_addr_m @1,1 :: 주소 매핑 — (계정, 자산)당 입금 주소 하나 | acnt_id PK,FK :: 계정 | tkn_smbl PK :: 토큰 심볼 | dpst_addr :: 발급된 입금 주소
 entity: bcm_whk_l @2,1 :: 수신 웹훅 알림 원본 — 인박스 (처리 후 N일 정리) | noti_id PK :: 웹훅 알림 id (벤더 UUID) — 중복 수신 방어 | vndr_tx_id :: 벤더 tx id — 이 알림이 가리키는 거래 | prcs_yn :: 판단 처리 여부
 entity: bcm_outbox_l @3,1 :: 발행 대기 이벤트 (Outbox) — 상태 변경과 원자 기록 | evnt_id PK :: 이벤트 id (UUID v7) · 컨슈머 dedup 키 | evt_typ_dvcd :: 이벤트유형 TXCK/TXCF/TXFL | evnt_stcd :: 발행상태 P/D/F/S
-entity: bcm_acnt_m @1,2 :: 계정 매핑 — ref ↔ vault | acnt_id PK :: 매니저가 발급하는 계정 매핑 id | ref UK :: 백엔드 참조 키 (ACT-·SYS-) — 멱등 근거 | vndr_vlt_id :: 벤더 vault id (백엔드 비노출)
+entity: bcm_acnt_m @1,2 :: 계정 매핑 — ref ↔ vault | acnt_id PK :: 매니저가 발급하는 계정 매핑 id | acnt_typ_dvcd UK :: 계정유형 CU 고객 / SY 시스템 | ref UK :: 백엔드 참조 키 = 코어 계정 ID · 유형과 함께 유일 | vndr_vlt_id :: 벤더 vault id (백엔드 비노출)
 entity: bcm_tx_l @2,2 :: 거래 운영 상태 — 감지·발행 추적 | vndr_tx_id PK :: 벤더 tx id | ext_tx_id UK :: 출금 요청 키 — 재제출 중복 차단, 입금은 NULL | acnt_id FK :: 귀속 계정 — 이벤트 파티션 키 | last_pub_stcd :: 마지막으로 발행한 TxStatus
 entity: bcm_boost_l @3,2 :: boost 이력 — Admin 조회용 | orig_tx_id PK :: 원 벤더 tx | try_seq PK :: 시도 순번 | new_tx_id :: 대체 벤더 tx
 entity: bcm_swp_trgt @1,3 :: sweep 대상 마킹 — 작업 큐 | acnt_id PK,FK :: 고객 계정 | tkn_smbl PK :: 토큰 심볼 | swp_tx_id :: 제출한 sweep tx (NULL=미제출)
@@ -87,7 +87,7 @@ step: relay 발행 — 확정 | 확정 이벤트가 큐로 나간다
 ins: deposit-events | 입금 확정 | tx-91c
 upd: bcm_outbox_l | 2 | evnt_stcd=S
 step: sweep 대상 마킹 | 확정을 잡으면 그 (계정, 자산)을 sweep 대상으로 마킹한다 — swp_tx_id 는 비어 있음(미제출)
-ins: bcm_swp_trgt | ACT-000123 | USDC | 
+ins: bcm_swp_trgt | acct_01H8X | USDC | 
 step: 주기 배치 — 제출 | 배치가 미제출 대상의 잔액을 조회해 sweep 을 제출하고 진행 중 표시를 남긴다
 upd: bcm_swp_trgt | 1 | swp_tx_id=tx-s01
 step: sweep 확정 · 대상 정리 | 다음 배치가 vault 가 비었음을 확인하면 대상 행을 지운다 (탈락이면 잔액이 남아 재sweep)
@@ -161,23 +161,30 @@ upd: bcm_job_m | 1 | last_scs_dttm=12:00
 
 ### bcm_acnt_m — 계정 매핑
 
-ref 당 vault 하나. `ref` UNIQUE 가 계정 생성 멱등의 최종 방어다 — 경합해도 이긴 값을 반환한다.
+(계정유형, ref) 당 vault 하나. 이 **복합 UNIQUE** 가 계정 생성 멱등의 최종 방어다 — 경합해도 이긴 값을 반환한다.
 
 ```sql
 CREATE TABLE bcm_acnt_m (
   acnt_id       VARCHAR(64)  PRIMARY KEY,     -- 매니저가 발급하는 계정 매핑 id — 백엔드가 이후 모든 호출에 쓴다
-  ref           VARCHAR(64)  NOT NULL UNIQUE, -- 백엔드 참조 키 (ACT-·SYS-) — 멱등의 물리 근거 · 접두는 표기 관례
+  acnt_typ_dvcd VARCHAR(2)   NOT NULL,        -- 계정유형 CU:고객 / SY:시스템(운영) — ref 가 어느 ID 공간의 값인지 가린다
+  ref           VARCHAR(64)  NOT NULL,        -- 백엔드 참조 키 = DAW-CORE 계정 ID 그대로 (접두사 없음)
   vndr_vlt_id   VARCHAR(64)  NOT NULL,        -- 벤더 vault id — 백엔드에 노출하지 않는다
   reg_dttm      VARCHAR(16)  NOT NULL,        -- 생성 일시
   -- 감사 4컬럼
   frst_reg_empno  VARCHAR(6)  NOT NULL,
   frst_reg_brcd   VARCHAR(4)  NOT NULL,
   last_chng_empno VARCHAR(6)  NOT NULL,
-  last_chng_brcd  VARCHAR(4)  NOT NULL
+  last_chng_brcd  VARCHAR(4)  NOT NULL,
+  UNIQUE (acnt_typ_dvcd, ref)                 -- 멱등의 물리 근거 — ref 단독으로는 유일하지 않다
 );
 ```
 
-`ref` 접두(`ACT-`·`SYS-`)는 DAW-CORE 계정 ID 의 표기 관례다 — 매니저는 불투명 유일 문자열로만 다루고, 접두를 파싱해 분기하지 않는다.
+| 컬럼 | 자료형 | 역할 |
+|---|---|---|
+| `acnt_typ_dvcd` | VARCHAR(2) | 계정유형 — `CU`(고객) · `SY`(시스템·운영). API 는 읽기 쉬운 `CUSTOMER`·`SYSTEM` 으로 받고 매니저가 이 코드로 번역해 저장한다 |
+| `ref` | VARCHAR(64) | DAW-CORE 계정 ID 를 그대로 담는다. 고객은 `daw_acnt_m.acnt_id`, 시스템은 `daw_sys_acnt_m.sys_acnt_id` |
+
+**왜 유형을 따로 받나 (2026-08-05 확정)** — 고객 계정과 시스템 계정은 DAW-CORE 의 **서로 다른 테이블**이 발급하고 **접두사를 붙이지 않는다.** 그래서 두 ID 의 값이 겹칠 수 있고, `ref` 만으로는 어느 쪽 계정인지 가릴 수 없다. 유형을 함께 받아 `(acnt_typ_dvcd, ref)` 로 유일성을 잡는다. `ref` 자체는 불투명 문자열로만 다루고 내용을 파싱해 분기하지 않는다.
 
 ### bcm_addr_m — 주소 매핑
 

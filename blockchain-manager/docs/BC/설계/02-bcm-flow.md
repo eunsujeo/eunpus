@@ -10,7 +10,7 @@ status: To Do
 
 | 오퍼레이션 | API | 하는 일 | 멱등 |
 |---|---|---|---|
-| `createAccount` | `POST /accounts` | vault 를 만들고 ref↔accountId 매핑을 반환한다. ref = DAW-CORE 계정 ID (고객 `ACT-` · 운영 `SYS-`) | 같은 ref → 같은 accountId. 매니저 DB `ref` UNIQUE 가 최종 방어 — 경합해도 이긴 값을 반환 |
+| `createAccount` | `POST /accounts` | vault 를 만들고 ref↔accountId 매핑을 반환한다. ref = DAW-CORE 계정 ID (접두사 없음), 유형(`CUSTOMER`·`SYSTEM`)을 함께 받는다 | 같은 (유형, ref) → 같은 accountId. 매니저 DB 의 복합 UNIQUE 가 최종 방어 — 경합해도 이긴 값을 반환 |
 | `createDepositAddress` | `POST /accounts/{accountId}/assets/{asset}/address` | 자산 지갑을 활성화하고 입금 주소를 발급한다. EVM 은 자산당 주소 하나 | 같은 (accountId, asset) → 같은 주소 |
 | `depositAddressOf` | `GET /accounts/{accountId}/assets/{asset}/address` | 발급된 주소를 매니저 DB 에서 읽는다 — 벤더 왕복 없음 | 주소 있음 → 주소 · 미발급 → `data: null` · 계정 없음 → `404 ACCOUNT_NOT_FOUND` |
 

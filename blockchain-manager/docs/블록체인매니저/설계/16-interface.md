@@ -12,7 +12,7 @@ DAW-CORE가 블록체인 매니저를 호출하는 계약을 한 장으로 조�
 
 | 오퍼레이션 | 무엇 | 상세 |
 |---|---|---|
-| `createAccount(ref)` | 계정 생성 — ref↔accountId 매핑 (멱등) | [1장](01-create-account.md) |
+| `createAccount(accountType, ref)` | 계정 생성 — ref↔accountId 매핑 (유형+ref 로 멱등) | [1장](01-create-account.md) |
 | `createDepositAddress(accountId, asset)` | 자산 지갑 활성화·입금 주소 발급 (멱등) | [2장](02-issue-deposit-address.md) |
 | `depositAddressOf(accountId, asset)` | 발급된 주소 조회 — DB 읽기, 벤더 왕복 없음 | [3장](03-address-of.md) |
 | `balanceOf(accountId, asset)` | vault 잔액 — 대사에 쓰는 값, 고객별 귀속 잔액 아님 | [8장](08-balance-history.md) |
