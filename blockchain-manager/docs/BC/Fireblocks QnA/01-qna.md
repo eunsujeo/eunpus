@@ -74,6 +74,20 @@ Fireblocks 담당자에게 문의해 받은 답변을 질문 단위로 모은다
 **Q.** 동결·해제 같은 상태 변화를 웹훅·조회로 잡을 수 있나?
 **A.** 잡을 수 있다. status/subStatus 변화(동결·해제 포함)는 `transaction.updated` 웹훅을 발생시키고 `GET /v1/transactions/{txId}` 에도 반영된다.
 
+## 키 생성(DKG) 시점 — 담당자 확답 (2026-08)
+
+**Q.** 암호학적 키 생성(DKG)이 일어나는 시점은 언제인가? 최초 MPC key share·HD 루트를 만드는 시점만인가, 이후 vault 를 만드는 시점도 포함인가?
+**A.** 세 시점뿐이다.
+- (a) 워크스페이스 오너가 최초 온보딩을 완료하는 시점. 오너가 계정 등록 후 Fireblocks 모바일 앱을 QR 코드로 페어링하고, PIN/생체인증을 설정하고, 리커버리 패스프레이즈를 확정하는 과정에서 오너 디바이스와 Fireblocks 측 엔드포인트 간 DKG 가 수행돼 워크스페이스 마스터 키(3개 key share)가 최초로 생성된다. 키 백업(리커버리 패스프레이즈 기반)도 같은 세션에서 함께 등록된다.
+- (b) 서명 권한 사용자·디바이스(추가 signer/admin 의 모바일 앱, API Co-Signer)가 워크스페이스에 합류하는 시점. 해당 디바이스용 key share 가 발급된다. 오너의 명시적 승인이 선행 조건이고, 동일 master seed 기반이라 마스터 키와 지갑 주소는 변하지 않는다.
+- (c) 새 서명 알고리즘 키셋(예: EdDSA) 추가 시 해당 알고리즘에 대한 별도 DKG 1회.
+
+**Q.** vault account·vault wallet·입금 주소 생성도 키 생성인가? 이때 Co-Signer 나 모바일 앱이 개입하나?
+**A.** 아니다. 기존 마스터 키로부터의 BIP44 deterministic derivation(`m/44/coinType/vaultAccountId/change/index`)이라 새 엔트로피·새 key share·MPC 세션이 발생하지 않는다. 따라서 이 시점에 Co-Signer 나 모바일 서명 디바이스는 개입하지 않는다.
+
+**Q.** 키 생성 절차를 우리가 다시 진행해 볼 수 있나?
+**A.** 미답. 참고 문서 3건(Owner MPC key generation · Fireblocks' MPC wallet infrastructure · Fireblocks Wallets Overview)만 안내받았다 — 재수행 가능 여부·절차는 재문의 대상.
+
 ## 공식 문서로 확인한 사실 (참고)
 
 담당자 메신저 답변이 아니라 Fireblocks 공식 문서에서 확인한 것 — 답변마다 원본 출처 링크를 단다.
