@@ -32,16 +32,16 @@ sequenceDiagram
     Note over FB,DB: 여기서부터는 전부 오프체인 — 감지는 매니저의 웹훅 수신, 기록·가용 처리는 DAW-CORE DB 의 일이고,<br/>입금 처리에서 우리는 체인에 아무 거래도 내지 않는다
     FB->>BM: 웹훅 — status CONFIRMING (체인 등장·미확정) · 서명 검증 후 수신 (4장)
     BM->>MDB: 목적지 vault → accountId 귀속 (주소 매핑) · tx 체크포인트
-    BM->>MQ: publish — 입금 이벤트 status=CONFIRMING · 파티션 키=accountId
-    MQ-->>QC: consume — 입금 이벤트 status=CONFIRMING
-    QC->>DB: tx 기록 status=CONFIRMING · 금액은 대기(pending) 칸 — 가용엔 아직 안 더한다
+    BM->>MQ: publish — 입금 이벤트 status=CONFIRMED · 파티션 키=accountId
+    MQ-->>QC: consume — 입금 이벤트 status=CONFIRMED
+    QC->>DB: tx 기록 status=CONFIRMED · 금액은 대기(pending) 칸 — 가용엔 아직 안 더한다
     QC->>MQ: 오프셋 커밋 — 원장 반영 성공 후에만
     Note over CH,FB: confirmation 이 쌓인다 — numOfConfirmations 가 DCCP 임계에 닿을 때까지
     FB->>BM: 웹훅 — status COMPLETED (DCCP 임계 도달 = finality)
     BM->>MDB: 체크포인트 대조 — 상태 전이 확인 (중복·역행 억제)
-    BM->>MQ: publish — 입금 이벤트 status=COMPLETED
-    MQ-->>QC: consume — 입금 이벤트 status=COMPLETED
-    QC->>DB: tx 기록 status=COMPLETED · 금액은 대기 → 가용(available) 이동
+    BM->>MQ: publish — 입금 이벤트 status=FINALIZED
+    MQ-->>QC: consume — 입금 이벤트 status=FINALIZED
+    QC->>DB: tx 기록 status=FINALIZED · 금액은 대기 → 가용(available) 이동
     QC->>MQ: 오프셋 커밋 — 원장 반영 성공 후에만
 ```
 
@@ -51,7 +51,7 @@ sequenceDiagram
 
 상태·subStatus 의 기준은 [4장 "공통 상태 다섯 (TxStatus)"](04-detect-confirm.md#공통-상태-다섯-txstatus-기준) 한 곳에 모았다. 여기서는 입금 쪽 특이사항만:
 
-- 입금이 실제로 지나는 상태는 다섯 중 **넷** — CONFIRMING(대기 pending 으로 잡힘) · COMPLETED(임계 확인 후 가용 available) · REJECTED · FAILED. SUBMITTED 는 출금 쪽 단계라 입금에선 안 본다.
+- 입금이 실제로 지나는 상태는 다섯 중 **넷** — CONFIRMED(대기 pending 으로 잡힘) · FINALIZED(임계 확인 후 가용 available) · REJECTED · FAILED. SUBMITTED 는 출금 쪽 단계라 입금에선 안 본다.
 - COMPLETED 는 zero-confirmation 설정이면 여러 번 관찰될 수 있다(4장 함정).
 - **REJECTED 의 동결 3종**(`AUTO_FREEZE` · `FROZEN_MANUALLY` · `REJECTED_AML_SCREENING`)은 **Admin 의 unfreeze 운영**이 걸린다 — unfreeze 까지 자산 잠금, 잔액 반영 보류.
 - **동결은 온체인 사건이 아니다** — 돈은 이미 vault 주소에 도착·확정돼 있고(체인 레이어 CONFIRMED), 벤더 장부의 잠금(8장 잔액의 `frozen` 칸)이라 출금에 못 쓸 뿐이다.

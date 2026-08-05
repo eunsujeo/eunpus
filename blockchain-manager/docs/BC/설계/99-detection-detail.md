@@ -84,7 +84,7 @@ queue: deposit-events | 발행
 step: 평상시 — 수신·워커 | 수신부가 저장하고 200 · 워커가 처리해 tx 행을 만들고 outbox 에 적재한다 (whk_l 완료 표시까지 한 트랜잭션)
 ins: Fireblocks 웹훅 | 입금 감지
 ins: bcm_whk_l | n-01 | 완료
-ins: bcm_tx_l | tx-01 | CONFIRMING
+ins: bcm_tx_l | tx-01 | CONFIRMED
 ins: bcm_outbox_l | ev-01 | P
 step: 평상시 — relay 발행 | relay 가 미발송(P)을 큐로 보내고 S 로 표시한다
 ins: deposit-events | 감지
@@ -100,9 +100,9 @@ step: 적체 소화 — 워커 | 수신은 계속 받고, 밀린 알림 셋을 �
 upd: bcm_whk_l | 2 | 처리=완료
 upd: bcm_whk_l | 3 | 처리=완료
 upd: bcm_whk_l | 4 | 처리=완료
-ins: bcm_tx_l | tx-02 | CONFIRMING
-ins: bcm_tx_l | tx-03 | CONFIRMING
-ins: bcm_tx_l | tx-04 | CONFIRMING
+ins: bcm_tx_l | tx-02 | CONFIRMED
+ins: bcm_tx_l | tx-03 | CONFIRMED
+ins: bcm_tx_l | tx-04 | CONFIRMED
 ins: bcm_outbox_l | ev-02 | P
 ins: bcm_outbox_l | ev-03 | P
 ins: bcm_outbox_l | ev-04 | P
@@ -328,14 +328,14 @@ table: bcm_job_m | 대사작업 | 마지막성공
 queue: deposit-events | 발행
 step: ① 감지 웹훅 도착 | CONFIRMING 웹훅이 와서 우리 기록이 생긴다
 ins: Fireblocks 웹훅 | 입금 감지
-ins: bcm_tx_l | tx-91c | CONFIRMING | 
+ins: bcm_tx_l | tx-91c | CONFIRMED | 
 ins: bcm_job_m | tx-대사 | 11:50
-step: ② 확정 웹훅 유실 — 장애! | COMPLETED 웹훅이 오지 않는다 — 우리 상태가 CONFIRMING 에 멈춰 빨갛게 경보
+step: ② 확정 웹훅 유실 — 장애! | COMPLETED 웹훅이 오지 않는다 — 우리 상태가 CONFIRMED 에 멈춰 빨갛게 경보
 alert: bcm_tx_l | 1
-step: ③ tx 대사 — 벤더 목록 대조 | 대사가 벤더 목록에서 이 거래를 확인 → 벤더는 COMPLETED, 우리는 CONFIRMING (한 줄에서 불일치가 보인다)
+step: ③ tx 대사 — 벤더 목록 대조 | 대사가 벤더 목록에서 이 거래를 확인 → 벤더는 COMPLETED, 우리는 CONFIRMED (한 줄에서 불일치가 보인다)
 upd: bcm_tx_l | 1 | 벤더 상태=COMPLETED
 step: ④ 복구 발행 | 웹훅과 같은 경로로 확정을 발행하고 운영 알림도 올린다 → 우리 상태를 맞추고 경보 해제
-upd: bcm_tx_l | 1 | 우리 상태=COMPLETED
+upd: bcm_tx_l | 1 | 우리 상태=FINALIZED
 clear: bcm_tx_l | 1
 ins: deposit-events | 입금 확정
 step: ⑤ 커서 전진 | 마지막 성공 시각을 앞으로 — 다음 대사는 여기서 이어붙여 공백이 없다

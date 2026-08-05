@@ -167,11 +167,11 @@ sequenceDiagram
         BM-->>BE: 접수 — 벤더 txId
         loop 상태 변경마다
             FB->>BM: 웹훅 push
-            BM-->>MQ: publish — SUBMITTED → CONFIRMING → COMPLETED
+            BM-->>MQ: publish — SUBMITTED → CONFIRMED → FINALIZED
         end
         MQ-->>BE: consume — externalTxId 로 출금 건 대응 · txHash 는 전파 후 이벤트에 실려 온다
         BE->>CP: POST /compliance/travel-rule/withdrawal-checks/{checkId}/report — tx hash (확보 후 1회)
-        alt COMPLETED
+        alt FINALIZED
             BE->>BE: 출금 완료 처리
         else REJECTED · FAILED
             BE->>BE: 임시 개입 대기 / 영구 실패 처리
@@ -208,7 +208,7 @@ sequenceDiagram
     end
     CH->>FB: 입금 — vault 주소로 도착
     FB->>BM: 웹훅 — 상태 변경 push
-    BM-->>MQ: publish — CONFIRMING → 확정 임계 도달 시 COMPLETED
+    BM-->>MQ: publish — CONFIRMED → 확정 임계 도달 시 FINALIZED
     MQ-->>BE: consume
     BE->>BE: 귀속(주소↔계정) 판단
     BE->>CP: POST /compliance/travel-rule/deposit-checks (Create Deposit Check) — 사전 검증 대조

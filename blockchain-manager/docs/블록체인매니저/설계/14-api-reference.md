@@ -60,7 +60,7 @@ fun submitTransaction(request: TransactionRequest): SubmitResult        // 6장 
 ```
 
 - `submitTransaction` 의 응답 `SubmitResult` 의 `txId` 가 벤더 tx id 다. 상태 진행은 응답이 아니라 큐 이벤트(아래)로 따라간다.
-- **`boost` · `cancel` 은 백엔드가 호출하지 않는다.** 막힌 출금은 매니저가 Admin 정책 안에서 **자동 boost**(같은 순번·수수료만 올린 재전송)하고, 백엔드는 이를 모른 채 같은 상태 흐름(CONFIRMING → COMPLETED)만 본다. `cancel` 은 자동 boost 로도 못 살린 예외에서 Admin 의 수동 최후수단이다(6장).
+- **`boost` · `cancel` 은 백엔드가 호출하지 않는다.** 막힌 출금은 매니저가 Admin 정책 안에서 **자동 boost**(같은 순번·수수료만 올린 재전송)하고, 백엔드는 이를 모른 채 같은 상태 흐름(CONFIRMED → FINALIZED)만 본다. `cancel` 은 자동 boost 로도 못 살린 예외에서 Admin 의 수동 최후수단이다(6장).
 
 ## 이벤트 (메시지 큐)
 
@@ -165,7 +165,7 @@ enum class Topic { deposit, withdrawal, internal }   // 토픽명은 deposit-eve
 ```
 
 - **EventType** — `DEPOSIT`(고객 입금) · `WITHDRAWAL`(외부 출금) · `INTERNAL`(내부 이체). 매니저가 발신자가 우리 vault 인지로 가른다(4장). 귀속 불명 입금은 큐 대신 별도 알림 채널(4장).
-- **TxStatus** (공통 상태 다섯, 4장 기준) — `SUBMITTED`(제출·체인 미등장, 출금만) · `CONFIRMING`(체인 등장·컨펌 누적) · `COMPLETED`(DCCP 임계 도달·확정) · `REJECTED`(거부·차단, **일시적** — 사람 개입 여지) · `FAILED`(**영구** 실패). REJECTED ≠ FAILED 구분이 원장·화면 처리를 가른다.
+- **TxStatus** (공통 상태 다섯, 4장 기준) — `SUBMITTED`(제출·체인 미등장, 출금만) · `CONFIRMED`(체인 등장·컨펌 누적 — 미확정) · `FINALIZED`(DCCP 임계 도달·확정) · `REJECTED`(거부·차단, **일시적** — 사람 개입 여지) · `FAILED`(**영구** 실패). REJECTED ≠ FAILED 구분이 원장·화면 처리를 가른다.
 - **PeerType** — `ADDRESS`(온체인 주소) · `ACCOUNT`(우리 계정) · `WHITELISTED`(사전 등록 지갑). 벤더 `TransferPeerPathType`(ONE_TIME_ADDRESS · VAULT_ACCOUNT · EXTERNAL_WALLET)로 매핑(6장).
 
 ## 상태 · 확정

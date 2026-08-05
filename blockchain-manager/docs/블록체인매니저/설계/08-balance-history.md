@@ -16,7 +16,7 @@ fun balanceOf(accountId: AccountId, asset: Asset): Balance {
 }
 
 // 온체인 내역 — 증빙·대사·운영용. 고객 화면 내역은 DAW-CORE DB 기록에서 나온다
-// status 로 걸러 받기(한 번에 한 상태) — 예: COMPLETED = 대사 · CONFIRMING = 막힌 출금 점검
+// status 로 걸러 받기(한 번에 한 상태) — 예: FINALIZED = 대사 · CONFIRMED = 막힌 출금 점검
 fun transactionsOf(
   accountId: AccountId,
   after: Instant,
@@ -119,7 +119,7 @@ sequenceDiagram
 
 | 언제 | 무엇을 | 조회 형태 |
 |---|---|---|
-| **대사** (실행은 Service 배치) | 확정분만 받아 기록과 대조 — 회계 기표 전(아래 절) | `status=COMPLETED` + 기간 |
+| **대사** (실행은 Service 배치) | 확정분만 받아 기록과 대조 — 회계 기표 전(아래 절) | `status=FINALIZED` + 기간 |
 | **막힌 출금 점검** (Admin) | 자동 boost(매니저)로 안 풀린 건의 수동 처리 판단(6장) — DB 쿼리(4장)와 병행하는 벤더측 교차 확인 | `status=SUBMITTED`(미채굴) + 오래된 것 |
 
 ## 대사 — 두 장부를 주기적으로 맞춘다

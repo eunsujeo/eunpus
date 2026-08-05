@@ -15,14 +15,14 @@ status: To Do
 | 매니저 TxStatus (4장) | 뜻 | DB `tx_stcd` | 대응 |
 |---|---|---|---|
 | SUBMITTED | 제출 | PENDING | 맞물림 |
-| CONFIRMING | 확정 대기 | PENDING | 맞물림 (같은 PENDING 으로 접힘) |
-| COMPLETED | 확정 | CONFIRMED | 맞물림 |
+| CONFIRMED | 확정 대기 | PENDING | 맞물림 (같은 PENDING 으로 접힘) — ★ 매니저 CONFIRMED ≠ DB CONFIRMED |
+| FINALIZED | 확정 | CONFIRMED | 맞물림 |
 | FAILED | 실패 — 영구 | FAILED | 맞물림 |
 | REJECTED | 거부 — 일시적(동결 해제 대기) | — | 짝 없음 |
 | — | 트래블룰 검증 대기 | CHECKING | 코어 고유 — 매니저 이벤트에 없음 |
 | — | 취소 | CANCELLED | 코어 고유 |
 
-SUBMITTED·CONFIRMING 은 tx 레벨에선 모두 PENDING 으로 접힌다 — 컨펌 누적 상세는 `daw_onch_exec_l.cnfm_cnt` 가 따로 들고 있다.
+SUBMITTED·CONFIRMED 는 tx 레벨에선 모두 PENDING 으로 접힌다 — 컨펌 누적 상세는 `daw_onch_exec_l.cnfm_cnt` 가 따로 들고 있다. ★ 같은 단어가 두 단계를 가리키는 점에 주의: 매니저 이벤트의 `CONFIRMED` 는 미확정이라 `tx_stcd` 는 `PENDING` 을 유지하고, `tx_stcd` 가 `CONFIRMED`(확정)로 가는 건 매니저 이벤트 `FINALIZED` 를 받았을 때다.
 
 정할 것 둘.
 
@@ -174,11 +174,11 @@ processing → settled 전이는 온체인 확정으로 일어난다. 이때 매
 
 ### 실시간 잔액에 '대기' 수량이 없다
 
-5장·8장은 업무 잔액을 가용·대기·잠김 셋으로 본다. 입금이 확정 대기(CONFIRMING)일 때 금액은 **대기**이고, 확정되면 가용으로 넘어간다.
+5장·8장은 업무 잔액을 가용·대기·잠김 셋으로 본다. 입금이 확정 대기(매니저 CONFIRMED)일 때 금액은 **대기**이고, 확정되면 가용으로 넘어간다.
 
 - `daw_ast_bal_m` 는 `avbl_qty`(가용) · `lock_qty`(잠금)뿐 — 대기를 담을 컬럼이 없다. (일별 스냅샷 `daw_ldgr_bal_l` 엔 `pend_qty` 가 있다.)
 - **문제가 되는 건 대기를 보여주거나 대사할 때다.** 고객 서비스가 "입금 진행 중" 을 보여주거나 일별 스냅샷의 `pend_qty`·총량(가용+대기+잠금)을 맞추려면 고객별 대기 값이 있어야 하는데, 실시간 테이블에 소스가 없으면 못 만든다. (매니저 `balanceOf` 도 pending 을 주지만 그건 vault 단위 벤더 잔액이라 대사에 쓰는 값이지 고객별 표시값이 아니다 — 8장.)
-- **다만 대기를 꼭 저장할 필요는 없다.** 확정 전 입금을 잔액에 얹지 않고, 아직 확정 안 된 입금 기록을 실시간 집계해 대기를 파생하면 컬럼이 없어도 된다. 다만 미확정 입금을 DB 가 어디에 남기는지 — 거래 테이블의 미확정 상태인지, 원장의 미전기 분개인지 — 는 원본에 분명치 않다. (참고로 `daw_tx_l` 상태엔 CONFIRMING 이 없다 — 매니저 CONFIRMING 은 위 표대로 PENDING 으로 접힌다.)
+- **다만 대기를 꼭 저장할 필요는 없다.** 확정 전 입금을 잔액에 얹지 않고, 아직 확정 안 된 입금 기록을 실시간 집계해 대기를 파생하면 컬럼이 없어도 된다. 다만 미확정 입금을 DB 가 어디에 남기는지 — 거래 테이블의 미확정 상태인지, 원장의 미전기 분개인지 — 는 원본에 분명치 않다. (참고로 `daw_tx_l` 에는 확정 대기 상태가 따로 없다 — 매니저 CONFIRMED(미확정)는 위 표대로 PENDING 으로 접히고, `daw_tx_l` 의 CONFIRMED 는 확정을 뜻한다.)
 
 → 대기를 (a) `daw_ast_bal_m` 에 `pend_qty` 로 저장할지, (b) 미확정 입금 기록에서 파생할지 정한다. 파생이면 컬럼은 필요 없지만, 미확정 입금이 어디에 남는지부터 정해야 한다. 관련: [5장 입금](05-deposit.md) · [8장 잔액](08-balance-history.md)
 
@@ -351,7 +351,7 @@ processing → settled 전이는 온체인 확정으로 일어난다. 이때 매
 
 서명이 만들어진 뒤에는 실패처럼 보여도 나중에 확정될 수 있다 (전파 지연·mempool 재등장). 이 구간에서 DB 가 `tx_stcd` 를 FAILED 로 옮기고 잔액을 자동 복원하면, 거래가 뒤늦게 확정될 때 이중 지급이 된다.
 
-- 매니저가 주는 상태 다섯 중 **FAILED 만 영구**다(4장) — REJECTED·오래 걸리는 CONFIRMING 은 아직 뒤집힐 수 있는 상태다.
+- 매니저가 주는 상태 다섯 중 **FAILED 만 영구**다(4장) — REJECTED·오래 걸리는 CONFIRMED 는 아직 뒤집힐 수 있는 상태다.
 - 이 구간을 막는 규칙이 스키마·설계 어디에도 아직 없다 — 운영·배치 코드가 임의로 실패 처리하면 그대로 이중 지급 경로가 된다.
 
 → 자동 환불·잔액 복원(lock 해제)은 **매니저의 FAILED 이벤트를 받은 뒤에만** 한다. 그 전의 막힘·거부는 `CHECKING` 으로 잡아 수동 보정 대상으로 남긴다. 테이블은 `daw_tx_l`(tx_stcd 전이) · `daw_ast_bal_m`(lock_qty 해제 시점). 관련: [4장 감지·확정](04-detect-confirm.md) · [6장 출금](06-withdrawal.md)

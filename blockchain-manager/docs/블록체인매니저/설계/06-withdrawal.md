@@ -128,7 +128,7 @@ sequenceDiagram
 제출 때 정한 수수료가 시세보다 낮으면 거래가 mempool 에 걸려 **막힙니다**. Gasless Relay 가 stuck 을 스스로 bump 하는지는 미확인이라(12장), **우리가 감지·재촉하는 전제**로 둔다 — 자동 처리로 확인되면 이 트리거는 불필요해진다.
 
 - **자동 boost** — 막힘 점검(4장)이 오래 **미채굴(SUBMITTED)** 인 건을 잡으면 매니저가 **Admin 정책(대기 임계·최대 시도) 안에서 자동으로 boost**(같은 순번, 수수료만 올린 재전송 · RBF — 미채굴이라 대체 가능)한다. 인상된 gas 는 **relay 가 부담**하고, 인상 폭·상한은 relay 설정이다.
-- **백엔드는 boost 를 모른다** — boost 로 벤더 거래가 대체되어도(새 txId) 매니저가 원 txId 로 접어 같은 상태 흐름(CONFIRMING → COMPLETED)만 흘린다. 금액·목적지는 그대로고 인상 gas 도 relay 부담이라 원장에 영향이 없다. boost 이력(시도 횟수·대체 txId)은 매니저 DB 에 남고 Admin 이 본다.
+- **백엔드는 boost 를 모른다** — boost 로 벤더 거래가 대체되어도(새 txId) 매니저가 원 txId 로 접어 같은 상태 흐름(CONFIRMED → FINALIZED)만 흘린다. 금액·목적지는 그대로고 인상 gas 도 relay 부담이라 원장에 영향이 없다. boost 이력(시도 횟수·대체 txId)은 매니저 DB 에 남고 Admin 이 본다.
 - **cancel(철회)** — 기본 흐름에선 쓰지 않는다. 자동 boost 를 최대 시도까지 해도 못 살린 예외에서만 **수동 최후수단**으로 판단한다.
 
 fee 부족이 아니라 **relay 가 gas 를 못 대거나 거절**(잔고 소진 등)이면 boost 로 안 풀리므로, 경보를 올려 사람이 relay 쪽 복구(gas 잔고 충전 등)로 넘긴다. relay 가 stuck 을 자동 처리하는지 등 벤더 확인 항목은 12장.
@@ -144,7 +144,7 @@ sequenceDiagram
     participant RL as 지정 relay
     participant CH as EVM · 이더리움·Base
 
-    SW->>SW: 오래 CONFIRMING 인 건 감지 (매니저 DB · 벤더 호출 없음)
+    SW->>SW: 오래 CONFIRMED 인 건 감지 (매니저 DB · 벤더 호출 없음)
     alt fee 부족 · 정책 내(대기 임계·최대 시도)
         SW->>BM: 자동 boost(txId) — 정책이 트리거
         BM->>FB: 벤더 boost 호출

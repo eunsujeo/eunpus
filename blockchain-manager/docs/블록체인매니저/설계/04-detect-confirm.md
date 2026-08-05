@@ -17,7 +17,7 @@ data class ChainEvent(
   val accountId: AccountId,          // 파티션 키 (내부이체 = 출발 계정)
   val asset: Asset,
   val to: String,                    // 목적지 주소 — 고객 입금 판별
-  val status: TxStatus,              // SUBMITTED · CONFIRMING · COMPLETED · REJECTED · FAILED — DAW-CORE 는 이것으로만 판단한다
+  val status: TxStatus,              // SUBMITTED · CONFIRMED · FINALIZED · REJECTED · FAILED — DAW-CORE 는 이것으로만 판단한다
   val numOfConfirmations: Int,
 )
 ```
@@ -50,14 +50,16 @@ Fireblocks 는 내부 상태를 여러 단계로 보내지만, 백엔드가 보�
 | 공통 상태 (TxStatus) | 뜻 | 블록체인 상태 (Pending → Confirmed → Finalized) | Fireblocks 원어 (매니저가 번역) | 함께 실리는 subStatus (대표) | 체인 레이어 (networkStatus) |
 |---|---|---|---|---|---|
 | **SUBMITTED** | 제출됨 — 벤더가 서명·전파 준비 중, 아직 체인 미등장 (출금에서만 관찰) | 아직 없음 → 전파되면 **Pending** (mempool 대기) | PENDING_SIGNATURE · QUEUED · BROADCASTING | — (분기할 것 없음) | 서명 단계까진 없음 → BROADCASTING (전파 시작) |
-| **CONFIRMING** | 전파 후 체인에 등장, confirmation 누적 중 (아직 미확정) | **Confirmed** — 블록에 포함, finality 전 | CONFIRMING (numOfConfirmations 증가 중) | PENDING_BLOCKCHAIN_CONFIRMATIONS | CONFIRMING |
-| **COMPLETED** | 확정 — DCCP(확정 정책) 임계 confirmation 도달 = finality | **Finalized** — 확정 임계 도달 | COMPLETED | CONFIRMED | CONFIRMED |
+| **CONFIRMED** | 전파 후 체인에 등장, confirmation 누적 중 (아직 미확정) | **Confirmed** — 블록에 포함, finality 전 | CONFIRMING (numOfConfirmations 증가 중) | PENDING_BLOCKCHAIN_CONFIRMATIONS | CONFIRMING |
+| **FINALIZED** | 확정 — DCCP(확정 정책) 임계 confirmation 도달 | **Finalized** — 확정 임계 도달 | COMPLETED | CONFIRMED | CONFIRMED |
 | **REJECTED** | 거부·차단 — 정책·스크리닝에 막힘. 영구 기술 실패가 아니라 사람 개입 여지 (입금 동결은 Admin unfreeze 대기 · 5장) | 출금 차단은 체인에 없음 · 입금 동결은 **Finalized** (돈은 체인에 확정 — 장부만 잠김) | REJECTED · BLOCKED | AUTO_FREEZE · FROZEN_MANUALLY · REJECTED_AML_SCREENING — 동결 3종, unfreeze 흐름 분기(5장) | 차단 시점에 따라 — 출금(전파 전 차단)은 없음 · 입금 동결은 CONFIRMED (돈은 체인에 도착, 업무만 잠김) |
 | **FAILED** | 영구 실패 — 사유 동반 (수수료 부족·revert 등) | **Pending 에서 증발**(dropped) · 블록 포함 후 실행 실패(revert 는 Confirmed 이후) | FAILED | DROPPED_BY_BLOCKCHAIN — reorg 증발(5장) · SMART_CONTRACT_EXECUTION_FAILED — 컨트랙트 revert, 사유는 errorDescription 필드(6장) · 그 외 실패 사유 | FAILED (revert) · DROPPED (mempool 누락·증발) |
 
 - 아래 표의 `subStatus`·`networkStatus` 열은 **매니저가 벤더에게서 받아 번역에 쓰는 값**이다 — 어떤 TxStatus·이벤트를 낼지 매니저가 이 값으로 가른다(예: `DROPPED_BY_BLOCKCHAIN` → 무효, 동결 3종 → REJECTED). **이벤트에는 TxStatus 만 싣고 DAW-CORE 는 그것으로만 판단한다** — subStatus·networkStatus 는 백엔드로 넘어가지 않는다.
 - **REJECTED = 임시**(unfreeze 대기) **≠ FAILED = 영구** — 이 구분이 백엔드 원장·화면 처리를 가른다.
 - 벤더 내부의 세부 단계(승인·서명·전파)는 SUBMITTED 로 접어 감춘다 — 이 다섯만 밖으로 나간다.
+- ★ **CONFIRMED 는 미확정이다** — 벤더 subStatus/networkStatus 의 CONFIRMED(임계 도달)와 철자가 같지만 단계가 다르다. 문서에 CONFIRMING·COMPLETED 표기가 남아 있으면 전부 벤더 원어다.
+- ★ **FINALIZED 는 체인 finality 가 아니다** — DCCP 정책 임계 도달일 뿐이고, reorg 증발 시 FAILED 로 무효화될 수 있다(흐름 문서 허용 전이 표).
 
 ## 내부 이체 — 파티션 키·완료 대응 (결정)
 
@@ -96,9 +98,9 @@ sequenceDiagram
         alt 발신자가 우리 vault — 외부 출금 · 내부 이체 (txId 도 매칭)
             WH-->>MQ: publish — 외부 출금 → withdrawal-events(6장) · 내부 이체(delta) → internal-events(10장)<br/>sweep(매니저 자기 실행분)은 발행 생략 — 체크포인트만 기록
         else 입금 · CONFIRMING
-            WH-->>MQ: publish → deposit-events — 입금 감지 (CONFIRMING)
+            WH-->>MQ: publish → deposit-events — 입금 감지 (CONFIRMED)
         else 입금 · COMPLETED 이고 임계 도달
-            WH-->>MQ: publish → deposit-events — 입금 확정 (COMPLETED)
+            WH-->>MQ: publish → deposit-events — 입금 확정 (FINALIZED)
         else 입금 · 아직 임계 미달
             Note over WH: publish 없음 — 다음 알림에서 다시 본다
         else 입금 · 무효화
@@ -121,7 +123,7 @@ sequenceDiagram
 | **원자 발행 (outbox)** | 워커가 상태 갱신과 발행 이벤트를 **한 트랜잭션(outbox)**에 함께 쓰고, relay 가 큐로 보낸다(at-least-once) — 큐·DB 이중 쓰기 문제를 outbox 로 없앤다. relay 재발송분은 소비 멱등이 흡수한다. |
 | **오프셋 커밋** | 백엔드 컨슈머 그룹은 **원장 반영 성공 후에만** 오프셋 커밋. 실패하면 커밋하지 않아 재소비된다(at-least-once) — 중복은 아래 멱등이 흡수. |
 | **멱등** | dedup 키는 **이벤트 id(`evnt_id`)** — 알림마다 유일한 값이라 "같은 이벤트 재도착"만 정확히 거른다. `txId` 로 가리면 한 tx 의 감지·확정·무효화가 같은 키가 되어 **확정 이벤트가 버려진다**. 재발송·재소비로 두 번 와도 잔액 이중 반영 없음 — 최후 보루. |
-| **상태 반영 판정** | dedup 을 통과한 이벤트는 **허용 전이 표**(흐름 문서 상태 절)로 반영 여부를 가린다 — 늦게 온 옛 상태는 무시, **`COMPLETED → FAILED`(reorg 무효화)는 반영**. 서열로 "뒤로 가면 무시" 하면 무효화가 버려진다. |
+| **상태 반영 판정** | dedup 을 통과한 이벤트는 **허용 전이 표**(흐름 문서 상태 절)로 반영 여부를 가린다 — 늦게 온 옛 상태는 무시, **`FINALIZED → FAILED`(reorg 무효화)는 반영**. 서열로 "뒤로 가면 무시" 하면 무효화가 버려진다. |
 | **reorg** | 확정으로 봤던 입금이 무효화되면 벤더가 상태 변경 알림을 보내고 매니저가 무효화 이벤트를 publish — 백엔드는 **반영해 둔 잔액만 되돌리고** 입금 기록은 보존. 신호는 FAILED + subStatus `DROPPED_BY_BLOCKCHAIN` (reorg 는 5장). 알림까지 놓치면 대사(8장)가 잡는다. |
 | **입금 폭주** | 수신(적재 + 200)과 판단을 분리해 두었으므로 폭주는 판단 쪽 적체로만 나타난다 — 수신은 계속 받는다. 판단 적체 깊이는 경보 대상(11장). |
 | **429 (rate limit)** | 웹훅은 받는 쪽이라 rate limit 대상이 아니다. 남는 벤더 호출(제출·boost·대사·재전송 요청)에는 기존 원칙 유지 — **지수 백오프** + 매니저의 모든 벤더 호출에 **클라이언트측 상한(token bucket) 하나**, **제출·boost > 대사** 순으로 배분(돈 나가는 경로 우선). 제출 재시도는 externalTxId 멱등이라 중복 무해. 429 율은 메트릭으로 내보내 밖에서 경보(11장). |
@@ -130,9 +132,9 @@ sequenceDiagram
 
 입금이 한꺼번에 몰릴 때(수신 3단계 고정·병렬 판단 워커)와 웹훅을 놓쳤을 때의 정지·장애 시나리오는 **[BC/설계 — 웹훅 감지 상세](../../BC/설계/99-detection-detail.md)** 로 옮겼다.
 
-## 막힘 점검 — 오래 CONFIRMING 인 건 골라내기
+## 막힘 점검 — 오래 CONFIRMED 인 건 골라내기
 
-막힘은 push 로 못 잡습니다 — 막힌 tx 는 **변화가 없어서** 웹훅 알림이 오지 않기 때문입니다. 대신 감지가 모든 CONFIRMING 을 이미 블록체인 매니저 DB 에 체크포인트로 기록해 두므로, 매니저의 느슨한 주기(예: 5분) 작업이 **자기 DB 에서 오래된 대기 건을 조회**하면 끝입니다(벤더 호출 없음).
+막힘은 push 로 못 잡습니다 — 막힌 tx 는 **변화가 없어서** 웹훅 알림이 오지 않기 때문입니다. 대신 감지가 모든 CONFIRMED 를 이미 블록체인 매니저 DB 에 체크포인트로 기록해 두므로, 매니저의 느슨한 주기(예: 5분) 작업이 **자기 DB 에서 오래된 대기 건을 조회**하면 끝입니다(벤더 호출 없음).
 
 골라낸 건은 **별도 경보 채널**로 보냅니다 — 원장·정산 컨슈머가 소비하는 데이터 토픽(입금·출금·내부)이 아니라, 사람·운영이 받는 신호 경로입니다. 어떤 수단으로 흘릴지(운영 알림·모니터링·별도 큐 등)는 열어 둡니다.
 
@@ -144,7 +146,7 @@ sequenceDiagram
     participant AL as 별도 경보 채널<br/>운영 알림 · 수단은 열어 둠
     participant OPS as 운영 · 고객 안내<br/>사람 · 대사
 
-    SW->>MDB: 오래된 대기 조회 — status=CONFIRMING 이고 created_at 이 체인별 임계보다 이전
+    SW->>MDB: 오래된 대기 조회 — status=CONFIRMED 이고 created_at 이 체인별 임계보다 이전
     MDB-->>SW: 임계 초과 건 목록
     alt 없음
         Note over SW: 끝 — 다음 주기
@@ -163,13 +165,13 @@ sequenceDiagram
 | 결정 | 어떻게 |
 |---|---|
 | **배치** | 별도 프로세스 불필요 — **매니저 내부의 주기 작업**(예: 5분). 막힘 점검은 boost 트리거까지 하는 **행동하는 작업**이라 매니저 안에 둔다 — 살아 있는지의 **감시는 매니저 밖**(11장). |
-| **조회** | **블록체인 매니저 DB 쿼리** — `status=CONFIRMING` 이고 기록 시각이 임계보다 이전인 행. 벤더의 `status` 필터 조회는 대사·운영용으로만 남긴다(8장). |
+| **조회** | **블록체인 매니저 DB 쿼리** — `status=CONFIRMED` 이고 기록 시각이 임계보다 이전인 행. 벤더의 `status` 필터 조회는 대사·운영용으로만 남긴다(8장). |
 | **막힘 판단** | 체류 시간이 **체인별 임계** 초과. 임계는 평시 confirmation 소요를 감안해 정한다. |
 | **입금이 막히면** | 수신자라 개입 수단이 없다 — **별도 경보 채널로 알림 + 고객 "확인 중" 안내**가 전부이고, 해소는 체인 혼잡 해소 또는 대사가 잡는다. |
 | **출금이 막히면** | 매니저가 **정책 내 자동 boost**(수수료 인상 재전송) — gas 는 relay 부담. 자동 boost 로도 못 살리면(최대 시도까지 boost 해도 안 풀리거나, relay 가 gas 를 못 대거나 거절) **별도 경보 채널로 올려** 사람이 relay 복구·수동 처리한다(cancel 은 예외). 상세 6장. |
 | **경보 채널** | 원장·정산 컨슈머가 소비하는 데이터 토픽과 분리한다 — 사람·운영이 받는 신호라서. 구체 수단(운영 알림·모니터링·별도 큐 등)은 운영 설계에서 정한다. |
 | **벤더·체인 헬스** | 매니저는 **자기 벤더 호출의 오류율·지연을 메트릭으로 내보내는 것까지만** — 이를 보고 경보하는 것과 **벤더 status 공지** 확인은 매니저 밖 모니터링 몫이다(11장). 매니저 안에 두면 매니저가 죽을 때 감시도 같이 죽는다. |
-| **같은 건 중복 경보 방지** | 경보한 tx id 를 기록해 두고 다음 주기엔 건너뛴다. 해소(COMPLETED/FAILED 전이)되면 닫는다. |
+| **같은 건 중복 경보 방지** | 경보한 tx id 를 기록해 두고 다음 주기엔 건너뛴다. 해소(FINALIZED/FAILED 전이)되면 닫는다. |
 
 ## 감지 경로 — 웹훅(주) · 재전송(복구) · 대사(안전망 둘)
 

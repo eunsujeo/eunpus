@@ -31,7 +31,7 @@ DAW-CORE(Service·Admin)는 이 HTTP API 로 계정·주소·잔액·거래를 �
 ```json
 {
   "data": [
-    { "txId": "tx_9f2a", "status": "COMPLETED", "amount": "1.5" }
+    { "txId": "tx_9f2a", "status": "FINALIZED", "amount": "1.5" }
   ],
   "meta": {
     "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
@@ -126,7 +126,7 @@ sequenceDiagram
   "accountId": "acct_pool_02",
   "asset": "ETH_USDC",
   "to": "0x9f...E2",
-  "status": "COMPLETED",
+  "status": "FINALIZED",
   "numOfConfirmations": 12
 }
 ```
@@ -141,7 +141,7 @@ sequenceDiagram
 - **at-least-once** — 같은 이벤트가 드물게 두 번 올 수 있다. 이벤트 ID(`txId` 또는 `externalTxId`) 유일 기준으로 **상태 전이만 반영**한다.
 - **오프셋 커밋** — 원장 반영이 성공한 뒤에만.
 - **순서** — 같은 계정은 파티션 키가 보장.
-- **입금 시작 상태** — 입금은 `SUBMITTED` 없이 `CONFIRMING` 부터 온다 (`SUBMITTED` 는 우리가 제출하는 거래에서만 관찰).
+- **입금 시작 상태** — 입금은 `SUBMITTED` 없이 `CONFIRMED` 부터 온다 (`SUBMITTED` 는 우리가 제출하는 거래에서만 관찰).
 - `REJECTED`(일시적) ≠ `FAILED`(영구). 확정은 `numOfConfirmations` 를 체인별 임계와 직접 비교한다.
 
 ## 상태 (TxStatus) 기준
@@ -151,13 +151,14 @@ sequenceDiagram
 | 공통 상태 | 뜻 | 블록체인 상태 (Pending → Confirmed → Finalized) | 벤더(Fireblocks) 원어 | 대표 subStatus | networkStatus | DB `tx_stcd` |
 |---|---|---|---|---|---|---|
 | `SUBMITTED` | 제출됨 — 서명·전파 준비 중, 아직 체인 미등장 (출금만 관찰) | 아직 없음 → 전파되면 Pending | PENDING_SIGNATURE · QUEUED · BROADCASTING | — | 서명 단계엔 없음 → BROADCASTING | PENDING |
-| `CONFIRMING` | 전파 후 체인 등장, 컨펌 누적 중 (미확정) | Confirmed — 블록에 포함, finality 전 | CONFIRMING | PENDING_BLOCKCHAIN_CONFIRMATIONS | CONFIRMING | PENDING |
-| `COMPLETED` | 확정 — 확정 정책(DCCP) 임계 컨펌 도달 = finality | Finalized | COMPLETED | CONFIRMED | CONFIRMED | CONFIRMED |
+| `CONFIRMED` | 전파 후 체인 등장, 컨펌 누적 중 (미확정) | Confirmed — 블록에 포함, finality 전 | CONFIRMING | PENDING_BLOCKCHAIN_CONFIRMATIONS | CONFIRMING | PENDING |
+| `FINALIZED` | 확정 — 확정 정책(DCCP) 임계 컨펌 도달 | Finalized | COMPLETED | CONFIRMED | CONFIRMED | CONFIRMED |
 | `REJECTED` | 거부·차단 — 정책·스크리닝에 막힘. 영구 실패가 아니라 사람 개입 여지 | 출금 차단은 체인에 없음 · 입금 동결은 Finalized | REJECTED · BLOCKED | AUTO_FREEZE · FROZEN_MANUALLY · REJECTED_AML_SCREENING | 출금(전파 전 차단)은 없음 · 입금 동결은 CONFIRMED | — (미정) |
 | `FAILED` | 영구 실패 — 사유 동반 (수수료 부족·revert 등) | Pending 에서 증발 · revert 는 Confirmed 이후 | FAILED | DROPPED_BY_BLOCKCHAIN (reorg 증발) · 그 외 | FAILED (revert) · DROPPED (mempool 누락) | FAILED |
 
 판단은 다섯(`status`)으로 한다. `REJECTED`(일시적) ≠ `FAILED`(영구) 구분이 원장·화면 처리를 가른다.
 `DB tx_stcd` 는 DAW-CORE 상태 대응(제안)이다 — `REJECTED` 는 DB 에 짝이 없어 미정, `CHECKING`·`CANCELLED` 는 DB 고유 상태.
+★ 같은 단어가 두 단계를 가리키는 점에 주의 — 이벤트 `CONFIRMED` 는 미확정이라 `tx_stcd` 는 `PENDING` 유지, `tx_stcd` 의 `CONFIRMED`(확정)는 이벤트 `FINALIZED` 를 받았을 때다. `FINALIZED` 도 체인 finality 가 아니라 확정 정책 임계 도달이며, reorg 증발 시 `FAILED` 로 무효화될 수 있다.
 
 ## API
 
@@ -617,7 +618,7 @@ _응답_
     "amount": "1.5",
     "from": "0xA1...C9",
     "to": "0x9f...E2",
-    "status": "COMPLETED",
+    "status": "FINALIZED",
     "numOfConfirmations": 12,
     "createdAt": "2026-07-13T04:05:06.789Z",
     "lastUpdated": "2026-07-13T04:06:10.120Z"
@@ -663,7 +664,7 @@ _응답_
 상태 변경 실시간 감지는 이 목록이 아니라 이벤트 큐가 담당한다(매니저의 웹훅 감지와 별개).
 
 ```bash
-curl "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/transactions?after=2026-07-01T00:00:00.000Z&before=2026-07-13T00:00:00.000Z&order=desc&status=COMPLETED&limit=200&cursor=eyJsYXN0IjoxNzUxMzM2MDAwMDAwfQ"
+curl "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/transactions?after=2026-07-01T00:00:00.000Z&before=2026-07-13T00:00:00.000Z&order=desc&status=FINALIZED&limit=200&cursor=eyJsYXN0IjoxNzUxMzM2MDAwMDAwfQ"
 ```
 
 _파라미터_
@@ -674,7 +675,7 @@ _파라미터_
 | `after` | query | string (ISO 8601) | 필수 | 2026-07-01T00:00:00.000Z | 시작 시각 — 거래 시각(createdAt) 기준 (ISO 8601 UTC) |
 | `before` | query | string (ISO 8601) | - | 2026-07-13T00:00:00.000Z | 종료 시각 — 거래 시각(createdAt) 기준 (ISO 8601 UTC). 생략하면 상한 없음 — 증분 폴링(`order=asc`) 조회는 생략한다. |
 | `order` | query | string | - | desc | 정렬 방향 — 거래 시각(createdAt) 기준. 기본 desc(최신순). 마지막 커서를 보관해 새 내역을 이어받는 증분 폴링은 `asc` 조회에서만 성립한다. |
-| `status` | query | TxStatus | - | COMPLETED | 상태 필터 (선택) |
+| `status` | query | TxStatus | - | FINALIZED | 상태 필터 (선택) |
 | `limit` | query | integer | - | 200 | 페이지 크기 — 기본 200, 최대 500 (벤더 한도). 1 미만이거나 500 초과면 `400 VALIDATION_FAILED`. |
 | `cursor` | query | string | - | eyJsYXN0IjoxNzUxMzM2MDAwMDAwfQ | 다음 위치 커서 — 이전 응답의 `pagination.nextCursor` 를 그대로 넣는다. 불투명 토큰이라 직접 만들거나 해석하지 않는다. 첫 요청엔 생략. cursor 가 있으면 조회 조건은 토큰이 우선이라 함께 보낸 `after`/`before`·`status`·`order`·`limit` 는 무시된다. |
 
@@ -694,7 +695,7 @@ _응답_
       "amount": "1.5",
       "from": "0xA1...C9",
       "to": "0x9f...E2",
-      "status": "COMPLETED",
+      "status": "FINALIZED",
       "numOfConfirmations": 12,
       "createdAt": "2026-07-13T04:05:06.789Z",
       "lastUpdated": "2026-07-13T04:06:10.120Z"
@@ -830,7 +831,7 @@ _응답_
 | `amount` | string | 필수 | 금액(문자열) |
 | `from` | string | 필수 | 발신 (확정 온체인 주소) |
 | `to` | string | 필수 | 목적지 (확정 온체인 주소) |
-| `status` | TxStatus | 필수 | `SUBMITTED` `CONFIRMING` `COMPLETED` `REJECTED` `FAILED` |
+| `status` | TxStatus | 필수 | `SUBMITTED` `CONFIRMED` `FINALIZED` `REJECTED` `FAILED` |
 | `numOfConfirmations` | integer | 필수 | 누적 컨펌 수 |
 | `createdAt` | string (ISO 8601) | 필수 | 거래 생성 시각 (목록 정렬·기간 필터 기준) |
 | `lastUpdated` | string (ISO 8601) | 필수 | 마지막 상태 변경 시각 |
@@ -849,7 +850,7 @@ _응답_
 | `accountId` | string | 필수 | 파티션 키 (vault 핸들) |
 | `asset` | string | 필수 | 자산 식별 (체인 × 토큰) |
 | `to` | string | 필수 | 목적지 주소 — 입금 판별 |
-| `status` | TxStatus | 필수 | `SUBMITTED` `CONFIRMING` `COMPLETED` `REJECTED` `FAILED` |
+| `status` | TxStatus | 필수 | `SUBMITTED` `CONFIRMED` `FINALIZED` `REJECTED` `FAILED` |
 | `numOfConfirmations` | integer | 필수 | 누적 컨펌 수 |
 
 
@@ -860,8 +861,8 @@ _응답_
 | 값 | 설명 |
 |---|---|
 | `SUBMITTED` | 제출 — 체인 미등장 |
-| `CONFIRMING` | 컨펌 누적 (미확정) |
-| `COMPLETED` | 확정 |
+| `CONFIRMED` | 컨펌 누적 (미확정) |
+| `FINALIZED` | 확정 |
 | `REJECTED` | 거부·차단 (일시적) |
 | `FAILED` | 영구 실패 |
 

@@ -70,7 +70,7 @@ table: bcm_swp_trgt | acnt_id | tkn_smbl | swp_tx_id
 step: 웹훅 도착 (CONFIRMING) | 수신부가 알림 원본만 적재하고 200 을 돌려준다 — 판단은 아직
 ins: bcm_whk_l | n-8f3a | tx-91c | N
 step: 워커 — 한 트랜잭션 | 판단 워커가 알림을 집어 tx 행 생성 + outbox 에 감지 이벤트 적재(P) + 알림 처리 완료 — 한 커밋
-ins: bcm_tx_l | tx-91c | CONFIRMING | 1
+ins: bcm_tx_l | tx-91c | CONFIRMED | 1
 ins: bcm_outbox_l | ev-01 | TXCK | P
 upd: bcm_whk_l | 1 | prcs_yn=Y
 step: relay 발행 — 감지 | relay 가 미발송(P)을 큐로 보내고 S 표시 — 컨슈머는 evnt_id 로 중복을 접는다
@@ -79,9 +79,9 @@ upd: bcm_outbox_l | 1 | evnt_stcd=S
 step: 컨펌 누적 | 다음 알림마다 tx 행의 컨펌 수만 오른다 — 전이가 아니라 outbox 적재 없음 (기록만)
 ins: bcm_whk_l | n-b2e | tx-91c | Y
 upd: bcm_tx_l | 1 | cnfm_cnt=8
-step: COMPLETED — 한 트랜잭션 | 임계 도달 — tx 행을 확정으로 갱신하고 outbox 에 확정 이벤트 적재(P)
+step: 벤더 COMPLETED 웹훅 — 한 트랜잭션 | 임계 도달 — tx 행을 확정으로 갱신하고 outbox 에 확정 이벤트 적재(P)
 ins: bcm_whk_l | n-c7d | tx-91c | Y
-upd: bcm_tx_l | 1 | last_pub_stcd=COMPLETED | cnfm_cnt=12
+upd: bcm_tx_l | 1 | last_pub_stcd=FINALIZED | cnfm_cnt=12
 ins: bcm_outbox_l | ev-02 | TXCF | P
 step: relay 발행 — 확정 | 확정 이벤트가 큐로 나간다
 ins: deposit-events | 입금 확정 | tx-91c
@@ -107,12 +107,12 @@ queue: withdrawal-events | 이벤트 | txId | externalTxId
 step: 제출 접수 | DAW-CORE 가 externalTxId 로 제출 — 매니저가 기록을 등록하고 SUBMITTED 를 발행한다
 ins: bcm_tx_l | tx-w1 | wd-42 | SUBMITTED
 ins: withdrawal-events | SUBMITTED | tx-w1 | wd-42
-step: 전파 — CONFIRMING | 체인에 올라 컨펌이 쌓인다
-upd: bcm_tx_l | 1 | last_pub_stcd=CONFIRMING
-ins: withdrawal-events | CONFIRMING | tx-w1 | wd-42
-step: 확정 — COMPLETED | 임계 도달 — 확정을 발행한다. externalTxId 로 백엔드가 출금 건을 닫는다
-upd: bcm_tx_l | 1 | last_pub_stcd=COMPLETED
-ins: withdrawal-events | COMPLETED | tx-w1 | wd-42
+step: 전파 — CONFIRMED | 체인에 올라 컨펌이 쌓인다
+upd: bcm_tx_l | 1 | last_pub_stcd=CONFIRMED
+ins: withdrawal-events | CONFIRMED | tx-w1 | wd-42
+step: 확정 — FINALIZED | 임계 도달 — 확정을 발행한다. externalTxId 로 백엔드가 출금 건을 닫는다
+upd: bcm_tx_l | 1 | last_pub_stcd=FINALIZED
+ins: withdrawal-events | FINALIZED | tx-w1 | wd-42
 ```
 
 ### 막힘 → 자동 boost
@@ -131,25 +131,25 @@ step: boost 제출 | fee 올린 대체 거래 tx-w2 를 제출(RBF · 미채굴�
 ins: bcm_tx_l | tx-w2 | tx-w1 | SUBMITTED
 ins: bcm_boost_l | tx-w1 | 1 | tx-w2
 step: 확정 — 원 tx 로 접어 발행 | 대체 거래가 채굴·확정 — 백엔드에는 원 tx(tx-w1) 기준으로 발행한다 (백엔드는 boost 를 모른다)
-upd: bcm_tx_l | 2 | last_pub_stcd=COMPLETED
+upd: bcm_tx_l | 2 | last_pub_stcd=FINALIZED
 ins: withdrawal-events | 확정 | tx-w1 | wd-42
 ```
 
 ### 웹훅 유실 → tx 대사 복구
 
-확정 웹훅을 놓쳐 tx 가 CONFIRMING 에 멈춰도, 10분 주기 tx 대사가 벤더 목록의 **종결된 건**과 대조해 복구한다(진행 중은 웹훅 몫). `bcm_job_m` 이 대조 범위(마지막 성공 시각)를 이어붙인다.
+확정 웹훅을 놓쳐 tx 가 CONFIRMED 에 멈춰도, 10분 주기 tx 대사가 벤더 목록의 **종결된 건**과 대조해 복구한다(진행 중은 웹훅 몫). `bcm_job_m` 이 대조 범위(마지막 성공 시각)를 이어붙인다.
 
 ```anim
 db
 table: bcm_tx_l | vndr_tx_id | last_pub_stcd
 table: bcm_job_m | job_nm | last_scs_dttm
 queue: deposit-events | 이벤트 | txId
-step: 확정 웹훅 유실 | 확정 알림이 오지 않아 tx 가 CONFIRMING 에 멈춰 있다
-ins: bcm_tx_l | tx-91c | CONFIRMING
+step: 확정 웹훅 유실 | 확정 알림이 오지 않아 tx 가 CONFIRMED 에 멈춰 있다
+ins: bcm_tx_l | tx-91c | CONFIRMED
 ins: bcm_job_m | tx-recon | 11:50
 step: tx 대사 실행 | 대사가 last_scs_dttm 이후 생성분을 벤더 목록으로 대조 — tx 가 실제 COMPLETED 임을 발견
 step: 복구 — 확정 발행 | 놓친 확정을 deposit-events 에 발행하고 tx 행을 갱신한다
-upd: bcm_tx_l | 1 | last_pub_stcd=COMPLETED
+upd: bcm_tx_l | 1 | last_pub_stcd=FINALIZED
 ins: deposit-events | 입금 확정 | tx-91c
 step: 커서 전진 | 대사가 last_scs_dttm 을 이번 시각으로 전진 — 다음 대사는 여기서 이어붙인다
 upd: bcm_job_m | 1 | last_scs_dttm=12:00
@@ -236,7 +236,7 @@ CREATE INDEX idx_bcm_whk_pick ON bcm_whk_l (prcs_yn, rcv_dttm);  -- 판단 워�
 
 ### bcm_tx_l — 거래 운영 상태
 
-판단 워커가 알림에서 만들어 추적하는 행 — 상태 변화를 가려 이벤트를 발행하고, 막힘 점검이 오래 미확정인 건(미채굴 SUBMITTED · 확정 지연 CONFIRMING)을 여기서 골라낸다.
+판단 워커가 알림에서 만들어 추적하는 행 — 상태 변화를 가려 이벤트를 발행하고, 막힘 점검이 오래 미확정인 건(미채굴 SUBMITTED · 확정 지연 CONFIRMED)을 여기서 골라낸다.
 
 ```sql
 CREATE TABLE bcm_tx_l (

@@ -100,14 +100,17 @@ sequenceDiagram
 | TxStatus | 뜻 | 블록체인 상태 (Pending → Confirmed → Finalized) | Fireblocks 원어 | 함께 실리는 subStatus (대표) | networkStatus |
 |---|---|---|---|---|---|
 | `SUBMITTED` | 제출됨 — 서명·전파 준비 중, 체인 미등장. 출금에서만 관찰 | 아직 없음 → 전파되면 Pending | PENDING_SIGNATURE · QUEUED · BROADCASTING | — | 서명 단계엔 없음 → BROADCASTING |
-| `CONFIRMING` | 체인에 등장, 컨펌 누적 중 — 미확정 | Confirmed — 블록에 포함, finality 전 | CONFIRMING | PENDING_BLOCKCHAIN_CONFIRMATIONS | CONFIRMING |
-| `COMPLETED` | 확정 — {{DCCP::Deposit Control & Confirmation Policy — 입금을 확정으로 볼 컨펌 수를 정하는 Fireblocks 정책. 상세는 아래 확정 기준 절}} 임계 컨펌 도달 | Finalized | COMPLETED | CONFIRMED | CONFIRMED |
+| `CONFIRMED` | 체인에 등장, 컨펌 누적 중 — 미확정 | Confirmed — 블록에 포함, finality 전 | CONFIRMING | PENDING_BLOCKCHAIN_CONFIRMATIONS | CONFIRMING |
+| `FINALIZED` | 확정 — {{DCCP::Deposit Control & Confirmation Policy — 입금을 확정으로 볼 컨펌 수를 정하는 Fireblocks 정책. 상세는 아래 확정 기준 절}} 임계 컨펌 도달 | Finalized | COMPLETED | CONFIRMED | CONFIRMED |
 | `REJECTED` | 거부·차단 — 임시. 사람 개입 여지 | 출금 차단은 체인에 없음 · 입금 동결은 Finalized | REJECTED · BLOCKED | AUTO_FREEZE · FROZEN_MANUALLY · REJECTED_AML_SCREENING | 출금은 없음 · 입금 동결은 CONFIRMED |
 | `FAILED` | 영구 실패 — 사유 동반 | Pending 에서 증발 · revert 는 Confirmed 이후 | FAILED | DROPPED_BY_BLOCKCHAIN · SMART_CONTRACT_EXECUTION_FAILED — 컨트랙트 revert, 사유는 errorDescription · 그 외 | FAILED · DROPPED |
 
 판단은 TxStatus 다섯으로 한다. `REJECTED`(임시) ≠ `FAILED`(영구). 위 표의 subStatus·networkStatus 열은 **매니저가 벤더에게서 받아 번역에 쓰는 내부 값** — 어떤 TxStatus·이벤트를 낼지 매니저가 이 값으로 가른다. **이벤트에는 TxStatus 만 싣고 DAW-CORE 는 그것으로만 판단한다.**
 
-**이 다섯은 블록체인 매니저 ↔ DAW-CORE 의 계약 어휘다** — 벤더 원어는 매니저 안에서 번역되고, 벤더가 바뀌어도 이 다섯은 유지된다. DAW-CORE `tx_stcd` 의 `PENDING`(미확정 전체)·`CONFIRMED`(확정)와는 별개 어휘다 — 섞어 쓰지 않는다.
+**이 다섯은 블록체인 매니저 ↔ DAW-CORE 의 계약 어휘다** — 벤더 원어는 매니저 안에서 번역되고, 벤더가 바뀌어도 이 다섯은 유지된다. 계약 어휘와 벤더 원어는 철자부터 다르다 — 이 문서 묶음에서 `CONFIRMING`·`COMPLETED` 표기가 남아 있으면 전부 **벤더 원어**다.
+
+- ★ **`CONFIRMED` 는 미확정이다** — 벤더 subStatus/networkStatus 의 `CONFIRMED`(임계 도달, COMPLETED 동반)와 철자가 같지만 가리키는 단계가 다르다. DAW-CORE `tx_stcd` 반영도 어긋난다: 이벤트 `CONFIRMED` → `tx_stcd` 는 `PENDING` 유지, 이벤트 `FINALIZED` → `tx_stcd` `CONFIRMED`(확정).
+- ★ **`FINALIZED` 는 체인 finality 가 아니다** — DCCP 정책 임계 도달일 뿐이고(기본 임계 대부분 1, Base 는 시퀀서 soft confirmation 시점), 아래 전이 표대로 reorg 증발 시 `FAILED` 로 무효화될 수 있다.
 
 ### 허용 전이 표 — 매니저·DAW-CORE 공용 계약
 
@@ -115,18 +118,18 @@ sequenceDiagram
 
 | 직전 상태 | 새 상태 | 처리 |
 |---|---|---|
-| (없음) | `SUBMITTED`(출금) · `CONFIRMING`(입금) | 신규 — 발행·반영 |
-| (없음) | **`COMPLETED` · `REJECTED`** | 기록을 만들고 **감지 이벤트를 합성해 먼저 발행한 뒤** 그 상태를 발행한다 — 순서 계약을 매니저가 지킨다 (아래) |
+| (없음) | `SUBMITTED`(출금) · `CONFIRMED`(입금) | 신규 — 발행·반영 |
+| (없음) | **`FINALIZED` · `REJECTED`** | 기록을 만들고 **감지 이벤트를 합성해 먼저 발행한 뒤** 그 상태를 발행한다 — 순서 계약을 매니저가 지킨다 (아래) |
 | (없음) | **`FAILED`** | 기록만 남기고 **발행하지 않는다** — 반영할 자금이 없다 |
-| `SUBMITTED` | `CONFIRMING` · `COMPLETED` · `REJECTED` · `FAILED` | 발행·반영 |
-| `CONFIRMING` | `COMPLETED` · `REJECTED` · `FAILED` | 발행·반영 |
-| `COMPLETED` | **`FAILED`**(reorg 증발 — subStatus `DROPPED_BY_BLOCKCHAIN`) | **발행·반영** — 무효화다. 잔액을 되돌린다 |
-| `COMPLETED` | `CONFIRMING` · `SUBMITTED` · `COMPLETED` | 무시 (늦게 온 옛 알림) |
-| `REJECTED` | `COMPLETED` · `FAILED` (동결 해제·최종 실패) | 발행·반영 |
+| `SUBMITTED` | `CONFIRMED` · `FINALIZED` · `REJECTED` · `FAILED` | 발행·반영 |
+| `CONFIRMED` | `FINALIZED` · `REJECTED` · `FAILED` | 발행·반영 |
+| `FINALIZED` | **`FAILED`**(reorg 증발 — subStatus `DROPPED_BY_BLOCKCHAIN`) | **발행·반영** — 무효화다. 잔액을 되돌린다 |
+| `FINALIZED` | `CONFIRMED` · `SUBMITTED` · `FINALIZED` | 무시 (늦게 온 옛 알림) |
+| `REJECTED` | `FINALIZED` · `FAILED` (동결 해제·최종 실패) | 발행·반영 |
 | `FAILED` | 그 외 전부 | 무시 (영구 실패는 종결) |
 | 같은 상태 재도착 | — | 무시 (중간 컨펌 갱신은 기록만) |
 
-- ★ **`COMPLETED → FAILED`(reorg 무효화)는 발행·반영한다.** 상태에 서열을 매겨 "뒤로 가면 무시"로 구현하면 잔액이 되돌려지지 않는다.
+- ★ **`FINALIZED → FAILED`(reorg 무효화)는 발행·반영한다.** 상태에 서열을 매겨 "뒤로 가면 무시"로 구현하면 잔액이 되돌려지지 않는다 — FINALIZED 라는 이름이 되돌릴 수 없음을 보장하지 않는다.
 - **`REJECTED` 는 종결이 아니다** — 입금 동결은 Admin 해제로 결과가 바뀐다(출금 `REJECTED`·`BLOCKED` 는 벤더 기준 종결).
 - **`cnfm_cnt`·마지막 갱신 시각은 줄지 않는다** — 큰 값으로만 갱신한다.
 - ★ **이벤트 순서는 매니저가 보장한다** — DAW-CORE 가 받는 순서는 한 tx 에 대해 항상 `감지 → (확정 | 무효)` 다. 앞 단계를 아직 발행하지 않았으면 **감지 이벤트를 합성해 먼저 발행**하고, 두 이벤트를 같은 트랜잭션에 outbox 적재해 relay 가 `evnt_id` 순으로 내보낸다. 소비 쪽은 "감지 없는 확정"을 다루지 않는다.
@@ -143,7 +146,7 @@ sequenceDiagram
 
 ## 확정 기준 — DCCP
 
-CONFIRMING 을 COMPLETED 로 바꾸는 임계 컨펌 수는 {{DCCP::Deposit Control & Confirmation Policy — 벤더 공식 약어. support 문서가 이 표기를 그대로 쓴다}}(확정 정책)가 정한다.
+벤더 상태 CONFIRMING 을 COMPLETED 로 바꾸는 — 즉 계약 상태 `FINALIZED` 발행의 근거가 되는 — 임계 컨펌 수는 {{DCCP::Deposit Control & Confirmation Policy — 벤더 공식 약어. support 문서가 이 표기를 그대로 쓴다}}(확정 정책)가 정한다.
 
 - 기본 임계 — 대부분의 체인 1 (이더리움·Base 포함) · ETC 372 · 컨트랙트 호출 3 권장. 한도: EVM 최소 1 · 이더리움 최대 100 · 신규 EVM L2 최대 30.
 - 커스텀 임계는 정책 템플릿을 Fireblocks Support 에 제출해 검토·승인 후 반영된다. 요청 값은 Admin 이 정한다.
@@ -172,19 +175,19 @@ sequenceDiagram
     CH-->>FB: Fireblocks 가 자기 vault 범위를 감지
     FB->>BM: 웹훅 — CONFIRMING
     BM->>BM: 주소 매핑으로 accountId 귀속 · 체크포인트
-    BM-->>MQ: publish — CONFIRMING · 파티션 키 accountId
+    BM-->>MQ: publish — CONFIRMED · 파티션 키 accountId
     MQ-->>QC: consume
-    QC->>DB: 기록 CONFIRMING · 금액은 대기(pending) — 가용엔 안 더한다
+    QC->>DB: 기록 CONFIRMED · 금액은 대기(pending) — 가용엔 안 더한다
     QC->>MQ: 오프셋 커밋
     Note over CH,FB: 컨펌 누적 — DCCP 임계 도달까지
     FB->>BM: 웹훅 — COMPLETED
-    BM-->>MQ: publish — COMPLETED
+    BM-->>MQ: publish — FINALIZED
     MQ-->>QC: consume
-    QC->>DB: 기록 COMPLETED · 대기 → 가용(available) 이동
+    QC->>DB: 기록 FINALIZED · 대기 → 가용(available) 이동
     QC->>MQ: 오프셋 커밋
 ```
 
-- 입금이 지나는 상태는 넷 — CONFIRMING · COMPLETED · REJECTED · FAILED. SUBMITTED 는 안 본다.
+- 입금이 지나는 상태는 넷 — CONFIRMED · FINALIZED · REJECTED · FAILED. SUBMITTED 는 안 본다.
 - **동결(REJECTED)** — subStatus `AUTO_FREEZE` · `FROZEN_MANUALLY` · `REJECTED_AML_SCREENING`. 돈은 체인에 도착·확정된 상태로 벤더 장부만 잠긴다. 해제(unfreeze)는 Admin 이 벤더 콘솔에서 하고, 상태 변경은 평소처럼 웹훅으로 잡힌다.
 - **reorg 무효화(FAILED + `DROPPED_BY_BLOCKCHAIN`)** — 반영해 둔 잔액만 되돌리고 입금 기록은 보존한다. CONFIRMING 은 BROADCASTING 으로 되돌아가지 않는다.
 - **귀속 불명** — 매핑에 없는 주소의 입금은 큐에 싣지 않고 별도 알림 채널로 통지한다. 수동 매핑 해소를 기다린다.
@@ -259,7 +262,7 @@ sequenceDiagram
     RL->>CH: 전파 — relay 가 발신자로 제출하고 gas 를 낸다
     CH-->>FB: 블록 누적 → 확정
     FB->>BM: 웹훅 — 상태 변경 push
-    BM-->>MQ: publish — SUBMITTED → CONFIRMING → COMPLETED
+    BM-->>MQ: publish — SUBMITTED → CONFIRMED → FINALIZED
     MQ-->>QC: consume
     QC->>QC: externalTxId 로 출금 건 대응 · 상태 갱신 · 오프셋 커밋
 ```
@@ -293,7 +296,7 @@ sequenceDiagram
 
 ## 막힘 점검 · 자동 boost
 
-막힌 tx 는 변화가 없어 웹훅이 오지 않는다 — 주기 작업(예: 5분)이 DB 에서 오래 미확정인 건을 조회한다(벤더 호출 없음). 막힘은 둘 — **미채굴(`SUBMITTED`)** 은 boost(RBF·수수료 올린 재전송), **확정 지연(`CONFIRMING`)** 은 경보만.
+막힌 tx 는 변화가 없어 웹훅이 오지 않는다 — 주기 작업(예: 5분)이 DB 에서 오래 미확정인 건을 조회한다(벤더 호출 없음). 막힘은 둘 — **미채굴(`SUBMITTED`)** 은 boost(RBF·수수료 올린 재전송), **확정 지연(`CONFIRMED`)** 은 경보만.
 
 ```mermaid
 sequenceDiagram
@@ -302,12 +305,12 @@ sequenceDiagram
     participant MDB as 매니저 DB
     participant AL as 별도 경보 채널
 
-    SW->>MDB: 오래된 미확정 조회 — 미채굴(SUBMITTED)이 오래 · 또는 CONFIRMING 이 체인별 대기 임계 초과
+    SW->>MDB: 오래된 미확정 조회 — 미채굴(SUBMITTED)이 오래 · 또는 CONFIRMED 가 체인별 대기 임계 초과
     MDB-->>SW: 대상 목록 — 이미 경보한 tx 는 건너뜀
     alt 출금·sweep 이 미채굴로 막힘
         SW->>SW: 자동 boost — fee 올린 대체 거래(RBF) · gas 는 relay 부담 (미채굴이라 대체 가능)
         SW-->>AL: 경보는 boost 로 못 살릴 때만
-    else 그 외 — 입금 · 채굴된 CONFIRMING 지연
+    else 그 외 — 입금 · 채굴된 CONFIRMED 지연
         SW-->>AL: 막힘 경보 — boost 불가(우리 tx 아님 또는 이미 블록에 있음)
     end
 ```

@@ -46,7 +46,7 @@ status: To Do
 
 ### 그대로 되는 것 — Finalized 조건
 
-현행 설계가 이미 정책과 일치한다 — 입금 **확정(COMPLETED = DCCP 임계 도달 = finality)** 관찰 시에만 `bcm_swp_trgt` 에 마킹한다. 벤더 가이드도 같은 순서(COMPLETED 수신 → sweep 트리거)를 권장한다 ([Sweep to Omnibus](https://developers.fireblocks.com/reference/sweep-to-omnibus-1)).
+현행 설계가 이미 정책과 일치한다 — 입금 **확정(벤더 COMPLETED = DCCP 임계 도달, 계약 상태 `FINALIZED`)** 관찰 시에만 `bcm_swp_trgt` 에 마킹한다. 벤더 가이드도 같은 순서(COMPLETED 수신 → sweep 트리거)를 권장한다 ([Sweep to Omnibus](https://developers.fireblocks.com/reference/sweep-to-omnibus-1)).
 
 ### 바뀌는 것 — 트리거 기준
 

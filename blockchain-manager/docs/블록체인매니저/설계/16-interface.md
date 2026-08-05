@@ -41,12 +41,12 @@ DAW-CORE가 블록체인 매니저를 호출하는 계약을 한 장으로 조�
   "accountId": "acct_01H8X",
   "asset": "ETH",
   "to": "0x896B...0b9b",
-  "status": "COMPLETED",
+  "status": "FINALIZED",
   "numOfConfirmations": 12
 }
 ```
 
-막힘(오래 안 풀리는 건)은 이벤트가 아니라 별도 경보 채널이다([4장 막힘 점검](04-detect-confirm.md#막힘-점검-오래-confirming-인-건-골라내기)).
+막힘(오래 안 풀리는 건)은 이벤트가 아니라 별도 경보 채널이다([4장 막힘 점검](04-detect-confirm.md#막힘-점검-오래-confirmed-인-건-골라내기)).
 
 ## TxStatus — DAW-CORE가 보는 공통 상태 다섯
 
@@ -55,8 +55,8 @@ DAW-CORE가 블록체인 매니저를 호출하는 계약을 한 장으로 조�
 | TxStatus | 뜻 | 블록체인 상태 (Pending → Confirmed → Finalized) |
 |---|---|---|
 | `SUBMITTED` | 제출됨 — 벤더가 서명·전파 준비 중, 아직 체인 미등장 (출금에서만 관찰) | 아직 없음 → 전파되면 Pending |
-| `CONFIRMING` | 체인에 등장, confirmation 누적 중 — 아직 미확정 | Confirmed — 블록에 포함, finality 전 |
-| `COMPLETED` | 확정 — 확정 정책(DCCP) 임계 도달 | Finalized |
+| `CONFIRMED` | 체인에 등장, confirmation 누적 중 — 아직 미확정 | Confirmed — 블록에 포함, finality 전 |
+| `FINALIZED` | 확정 — 확정 정책(DCCP) 임계 도달 | Finalized |
 | `REJECTED` | 거부·차단 — 정책·스크리닝에 막힘. **임시**(사람 개입 여지 — 입금 동결은 unfreeze 대기) | 출금 차단은 체인에 없음 · 입금 동결은 Finalized |
 | `FAILED` | **영구 실패** — 사유 동반 (수수료 부족·revert 등) | Pending 에서 증발 · revert 는 Confirmed 이후 |
 
@@ -86,10 +86,10 @@ sequenceDiagram
     BM-->>BE: 접수 — 벤더 txId
     loop 웹훅 수신 (4장)
         FB->>BM: 상태 변경 알림 push
-        BM-->>MQ: 상태 이벤트 publish — SUBMITTED → CONFIRMING → …
+        BM-->>MQ: 상태 이벤트 publish — SUBMITTED → CONFIRMED → …
     end
     MQ-->>BE: consume — externalTxId 로 우리 출금 건 대응
-    alt COMPLETED
+    alt FINALIZED
         BE->>BE: 출금 완료 처리
     else REJECTED · FAILED
         BE->>BE: 임시(개입 대기) / 영구 실패 — 구분 처리 (4장)
@@ -113,7 +113,7 @@ sequenceDiagram
 
     Note over BE: (사전) createDepositAddress 로 주소 발급 — 고객에게 안내
     CH->>BM: 입금 감지 — 웹훅 (4장)
-    BM-->>MQ: CONFIRMING → 확정 임계 도달 시 COMPLETED publish
+    BM-->>MQ: CONFIRMED → 확정 임계 도달 시 FINALIZED publish
     MQ-->>BE: consume
     BE->>BE: 귀속(주소↔계정) 판단 (5장)
     BE->>CP: 트래블룰 확인 (Create Deposit Check)
