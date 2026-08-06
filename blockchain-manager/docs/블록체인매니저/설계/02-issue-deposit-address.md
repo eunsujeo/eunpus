@@ -7,7 +7,7 @@ status: Done
 (계정, 네트워크, 토큰)↔주소 매핑은 블록체인 매니저 DB 에 저장한다. 저장 못 한 경우의 복구도 매니저 안에서 처리한다.
 
 ```kotlin
-fun createDepositAddresses(accountId: AccountId, token: Token, networks: List<Network>): List<AddressResult>
+fun createDepositAddresses(accountId: AccountId, symbol: Token, networks: List<Network>): List<AddressResult>
 ```
 
 발급 오퍼레이션은 이것 하나다 — 네트워크가 하나뿐이면 목록에 하나만 담아 보낸다. 단건 전용 오퍼레이션을 따로 두지 않는 이유는 완전한 부분집합이어서 구현·테스트가 두 벌이 되고 한쪽만 고쳐져 어긋나기 때문이다.
@@ -27,7 +27,7 @@ sequenceDiagram
     participant FB as Fireblocks SaaS · 벤더
 
     BE->>BM: API · createDepositAddresses — 네트워크마다 아래를 반복
-    BM->>MDB: (accountId, network, token) 조회
+    BM->>MDB: (accountId, network, symbol) 조회
     alt 있으면 — 재사용
         MDB-->>BM: 기존 주소
         BM-->>BE: 주소 (0xAb3…)
@@ -36,7 +36,7 @@ sequenceDiagram
         alt 벤더에 있음 — 활성화됐는데 저장 못 한 경우
             FB-->>BM: 기존 주소
         else 벤더에도 없음 — 신규
-            BM->>FB: 자산 지갑 활성화 createVaultAccountAsset · Idempotency-Key=f(accountId,network,token)
+            BM->>FB: 자산 지갑 활성화 createVaultAccountAsset · Idempotency-Key=f(accountId,network,symbol)
             FB-->>BM: 활성화 응답 · address 0xAb3… · memoTag=null
         end
         BM->>MDB: 주소 저장 · (계정,네트워크,토큰) UNIQUE

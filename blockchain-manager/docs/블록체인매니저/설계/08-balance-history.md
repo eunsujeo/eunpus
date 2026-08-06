@@ -11,7 +11,7 @@ status: Done
 ```kotlin
 // 블록체인 매니저 API 오퍼레이션 — 백엔드가 HTTP 로 호출
 // 온체인 지갑(옴니버스 · sweep 전 고객 vault) 조회 — 운영·대사용
-fun balancesOf(accountId: AccountId, network: Network? = null, token: Token? = null): List<AssetBalance>
+fun balancesOf(accountId: AccountId, network: Network? = null, symbol: Token? = null): List<AssetBalance>
 
 // 온체인 내역 — 증빙·대사·운영용. 고객 화면 내역은 DAW-CORE DB 기록에서 나온다
 // status 로 걸러 받기(한 번에 한 상태) — 예: FINALIZED = 대사 · CONFIRMED = 막힌 출금 점검
@@ -29,7 +29,7 @@ data class Transfer(
   val txHash: String? = null,        // 온체인 거래해시 — 전파 후 채워짐. 대사·증빙용 (4장 ChainEvent 와 동일)
   val externalTxId: String? = null,  // 우리 요청 키 (출금·내부이체) — 기록과 대조용
   val network: Network,
-  val token: Token,
+  val symbol: Token,
   val amount: BigDecimal,
   val from: String,                  // 발신 주소
   val to: String,                    // 목적지 주소 — 방향은 from·to 로 가른다

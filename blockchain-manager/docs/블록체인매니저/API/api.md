@@ -1,5 +1,5 @@
 ---
-title: Blockchain Manager API v0.2.0
+title: Blockchain Manager API v0.3.0
 status: To Do
 view: doc
 embed: bcm-api-doc.html
@@ -10,7 +10,7 @@ embed: bcm-api-doc.html
 
 # Blockchain Manager API
 
-`v0.2.0`
+`v0.3.0`
 
 블록체인 매니저는 사내의 별도 서비스로, 온체인 거래(노드 연동)를 담당한다.
 호출 쪽 백엔드(Service·Admin)는 이 HTTP API 로 계정·주소·잔액·거래를 다루고,
@@ -107,7 +107,7 @@ embed: bcm-api-doc.html
 ## 멱등
 
 - **계정 생성** — `createAccount` 는 (`accountType`, `ref`) 로 멱등하다. 같은 값으로 재요청하면 매니저가 같은 결과를 돌려준다(호출 쪽이 별도 멱등키를 넣지 않는다).
-- **주소 발급** — `createDepositAddresses` 는 네트워크마다 `(accountId, network, token)` 로 멱등하다. 부분 실패해도 성공분은 남으므로 같은 요청을 그대로 재시도할 수 있다.
+- **주소 발급** — `createDepositAddresses` 는 네트워크마다 `(accountId, network, symbol)` 로 멱등하다. 부분 실패해도 성공분은 남으므로 같은 요청을 그대로 재시도할 수 있다.
 - **출금 제출** — 본문 `externalTxId` 가 멱등 키다. **같은 키로 같은 내용을 재제출하면 처음의 `txId` 를 그대로 돌려준다** — 응답을 못 받아 재시도하는 경우가 정상 경로다. 같은 키인데 **내용이 다르면** `409 CONFLICT` 다. 어느 쪽이든 벤더로 중복 전송되지 않는다.
 
 ## 이벤트 (메시지 큐)
@@ -143,7 +143,7 @@ sequenceDiagram
   "externalTxId": "wd-260713-0042",
   "accountId": "acct_pool_02",
   "network": "ETHEREUM",
-  "token": "USDC",
+  "symbol": "USDC",
   "to": "0x9f...E2",
   "status": "FINALIZED",
   "numOfConfirmations": 12
@@ -268,7 +268,7 @@ _응답_
 
 **입금 주소 여러 자산 한 번에 발급**
 
-한 토큰의 입금 주소를 여러 네트워크에 발급한다. `(accountId, network, token)` 로 **네트워크마다 멱등**하다.
+한 토큰의 입금 주소를 여러 네트워크에 발급한다. `(accountId, network, symbol)` 로 **네트워크마다 멱등**하다.
 
 - 결과는 항목마다 `address` 또는 `error` 로 온다 — **둘 중 하나만** 채워진다. HTTP 는 항목 결과와 무관하게 `200` 이고, 응답은 요청과 같은 순서다.
 - 지원하지 않는 네트워크가 **하나라도 섞이면 아무것도 발급하지 않고 `400`** 이다. 발급을 시도했다가 전부 실패한 것(`200`, 모든 항목에 `error`)과 구분된다.
@@ -280,7 +280,7 @@ _응답_
 curl -X POST "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/addresses" \
   -H "Content-Type: application/json" \
   -d '{
-  "token": "USDC",
+  "symbol": "USDC",
   "networks": [
     "ETHEREUM",
     "BASE"
@@ -301,7 +301,7 @@ _요청 본문_
 
 ```json
 {
-  "token": "USDC",
+  "symbol": "USDC",
   "networks": [
     "ETHEREUM",
     "BASE"
@@ -314,7 +314,7 @@ _요청 본문_
 
 ```json
 {
-  "token": "USDC",
+  "symbol": "USDC",
   "networks": [
     "BASE"
   ]
@@ -323,7 +323,7 @@ _요청 본문_
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `token` | string | 필수 | 토큰 심볼 — 이 요청의 모든 네트워크에 공통 |
+| `symbol` | string | 필수 | 심볼 — 이 요청의 모든 네트워크에 공통 |
 | `networks` | string[] | 필수 | 주소를 받을 네트워크 1~20개. 빈 배열·초과는 `400 VALIDATION_FAILED`. 같은 네트워크가 두 번 들어오면 발급은 한 번만 하고 두 항목에 같은 결과를 담는다. |
 
 
@@ -339,14 +339,14 @@ _응답_
   "data": [
     {
       "network": "ETHEREUM",
-      "token": "USDC",
+      "symbol": "USDC",
       "address": "0xAb3...C9",
       "memoTag": null,
       "error": null
     },
     {
       "network": "BASE",
-      "token": "USDC",
+      "symbol": "USDC",
       "address": "0x9f4...E2",
       "memoTag": null,
       "error": null
@@ -368,14 +368,14 @@ _응답_
   "data": [
     {
       "network": "ETHEREUM",
-      "token": "USDC",
+      "symbol": "USDC",
       "address": "0xAb3...C9",
       "memoTag": null,
       "error": null
     },
     {
       "network": "BASE",
-      "token": "USDC",
+      "symbol": "USDC",
       "address": null,
       "memoTag": null,
       "error": {
@@ -398,7 +398,7 @@ _응답_
   "data": [
     {
       "network": "ETHEREUM",
-      "token": "USDC",
+      "symbol": "USDC",
       "address": null,
       "memoTag": null,
       "error": {
@@ -408,7 +408,7 @@ _응답_
     },
     {
       "network": "BASE",
-      "token": "USDC",
+      "symbol": "USDC",
       "address": null,
       "memoTag": null,
       "error": {
@@ -438,7 +438,7 @@ _응답_
 {
   "error": {
     "code": "ASSET_NOT_SUPPORTED",
-    "message": "unsupported network for token: TRON/USDC"
+    "message": "unsupported network for symbol: TRON/USDC"
   },
   "meta": {
     "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
@@ -493,12 +493,12 @@ _응답_
 
 그 계정에 발급된 입금 주소를 돌려준다 — 매니저 DB 를 읽을 뿐 벤더 왕복이 없다.
 
-`token` · `network` 로 걸러 받을 수 있고 둘 다 없으면 그 계정의 전체다. 같은 토큰을 여러 네트워크로 받는 고객 화면은 `token` 하나만 걸어 한 번에 받는다.
+`symbol` · `network` 로 걸러 받을 수 있고 둘 다 없으면 그 계정의 전체다. 같은 토큰을 여러 네트워크로 받는 고객 화면은 `symbol` 하나만 걸어 한 번에 받는다.
 
 **미발급은 배열에 담기지 않는다** — 계정은 있는데 주소가 없으면 빈 배열이고, 계정 자체가 없으면 `404` 다. 발급(`POST`)과 경로가 같아 메서드만 다르다.
 
 ```bash
-curl "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/addresses?token=USDC&network=BASE"
+curl "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/addresses?symbol=USDC&network=BASE"
 ```
 
 _파라미터_
@@ -506,7 +506,7 @@ _파라미터_
 | 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
 |---|---|---|---|---|---|
 | `accountId` | path | string | 필수 | acct_01H8X | 매니저가 돌려준 vault 핸들 (DB ext_acnt_id = vaultAccountId) |
-| `token` | query | string | - | USDC | 토큰 심볼로 거른다 (선택) |
+| `symbol` | query | string | - | USDC | 토큰 심볼로 거른다 (선택) |
 | `network` | query | string | - | BASE | 네트워크 코드로 거른다 (선택) |
 
 
@@ -519,7 +519,7 @@ _응답_
   "data": [
     {
       "network": "BASE",
-      "token": "USDC",
+      "symbol": "USDC",
       "address": "0xAb3...C9",
       "memoTag": "string"
     }
@@ -565,12 +565,12 @@ _응답_
 
 벤더가 보는 **vault 잔액** — 대사 재료이지 고객별 귀속 잔액이 아니다.
 
-- `network` · `token` 으로 거른다. 둘 다 없으면 **그 계정에 주소가 발급된 자산 전부**다.
+- `network` · `symbol` 으로 거른다. 둘 다 없으면 **그 계정에 주소가 발급된 자산 전부**다.
 - **주소 없이 vault 에 들어온 자산은 나오지 않는다** — 매니저가 아는 자산 집합이 발급 기록뿐이다.
 - 자산마다 벤더를 한 번 부른다.
 
 ```bash
-curl "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/balances?network=BASE&token=USDC"
+curl "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/balances?network=BASE&symbol=USDC"
 ```
 
 _파라미터_
@@ -579,7 +579,7 @@ _파라미터_
 |---|---|---|---|---|---|
 | `accountId` | path | string | 필수 | acct_01H8X | 매니저가 돌려준 vault 핸들 (DB ext_acnt_id = vaultAccountId) |
 | `network` | query | string | - | BASE | 네트워크 코드로 거른다 (선택) |
-| `token` | query | string | - | USDC | 토큰 심볼로 거른다 (선택) |
+| `symbol` | query | string | - | USDC | 토큰 심볼로 거른다 (선택) |
 
 
 _응답_
@@ -591,7 +591,7 @@ _응답_
   "data": [
     {
       "network": "BASE",
-      "token": "USDC",
+      "symbol": "USDC",
       "available": "10.5",
       "pending": "1.0",
       "locked": "0.3"
@@ -656,7 +656,7 @@ curl -X POST "https://{baseUrl}/blockchain/manage-api/transactions" \
     "address": "0x9f...E2"
   },
   "network": "ETHEREUM",
-  "token": "USDC",
+  "symbol": "USDC",
   "amount": "1.5",
   "note": null,
   "travelRule": null
@@ -676,7 +676,7 @@ _요청 본문_
     "address": "0x9f...E2"
   },
   "network": "ETHEREUM",
-  "token": "USDC",
+  "symbol": "USDC",
   "amount": "1.5",
   "note": null,
   "travelRule": null
@@ -689,7 +689,7 @@ _요청 본문_
 | `from` | TransferPeer | 필수 | 보내는 쪽 — type=ACCOUNT 만 허용 |
 | `to` | TransferPeer | 필수 | 목적지 |
 | `network` | string | 필수 | 네트워크 코드 |
-| `token` | string | 필수 | 토큰 심볼 |
+| `symbol` | string | 필수 | 토큰 심볼 |
 | `amount` | string | 필수 | 금액(문자열 · 부동소수 금지) |
 | `note` | string \\| null | - | 벤더 거래 기록 메모 |
 | `travelRule` | TravelRule \\| null | - | 트래블룰 게이트가 만든 암호화 산출물 — 해외(Notabene) 출금만 싣고, 국내(VerifyVASP)·개인지갑은 null |
@@ -806,7 +806,7 @@ _응답_
     "txHash": "0x4e1d...ab",
     "externalTxId": "wd-260713-0042",
     "network": "ETHEREUM",
-    "token": "USDC",
+    "symbol": "USDC",
     "amount": "1.5",
     "from": "0xA1...C9",
     "to": "0x9f...E2",
@@ -875,7 +875,7 @@ _응답_
     "txHash": "0x4e1d...ab",
     "externalTxId": "wd-260713-0042",
     "network": "ETHEREUM",
-    "token": "USDC",
+    "symbol": "USDC",
     "amount": "1.5",
     "from": "0xA1...C9",
     "to": "0x9f...E2",
@@ -953,7 +953,7 @@ _응답_
       "txHash": "0x4e1d...ab",
       "externalTxId": "wd-260713-0042",
       "network": "ETHEREUM",
-      "token": "USDC",
+      "symbol": "USDC",
       "amount": "1.5",
       "from": "0xA1...C9",
       "to": "0x9f...E2",
@@ -1257,7 +1257,7 @@ _응답_
 
 **채택한 네트워크에서만 찾는다.** 찾던 네트워크가 안 보이면 아직 채택하지 않은 것이므로 `PUT /admin/networks/{code}` 를 먼저 한다.
 
-여기서만 `token` 이 아니라 `symbol` 을 쓴다 — 후보는 아직 우리 자산이 아니라 우리 코드가 없다. 우리 코드는 등록할 때 `token` 으로 정한다.
+여기서만 `symbol` 이 아니라 `symbol` 을 쓴다 — 후보는 아직 우리 자산이 아니라 우리 코드가 없다. 우리 코드는 등록할 때 `symbol` 으로 정한다.
 
 읽기 전용이고 아무것도 바꾸지 않는다.
 
@@ -1269,7 +1269,7 @@ _파라미터_
 
 | 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
 |---|---|---|---|---|---|
-| `symbol` | query | string | 필수 | USDC | 벤더 표기로 찾는다 — 대소문자를 가리지 않는다. 우리 토큰 코드와 다를 수 있다 |
+| `symbol` | query | string | 필수 | USDC | 심볼로 찾는다 — 대소문자를 가리지 않는다. 벤더 표기가 우리 코드와 다를 수 있다 |
 | `network` | query | string | - | BASE | 특정 네트워크로 좁힌다 (선택) |
 
 
@@ -1339,7 +1339,7 @@ curl -X POST "https://{baseUrl}/blockchain/manage-api/admin/asset-mappings" \
   -H "Content-Type: application/json" \
   -d '{
   "network": "BASE",
-  "token": "USDC",
+  "symbol": "USDC",
   "contractAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 }'
 ```
@@ -1356,7 +1356,7 @@ _요청 본문_
 ```json
 {
   "network": "BASE",
-  "token": "USDC",
+  "symbol": "USDC",
   "contractAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 }
 ```
@@ -1364,7 +1364,7 @@ _요청 본문_
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `network` | string | 필수 | 채택한 네트워크 코드 |
-| `token` | string | 필수 | 우리 토큰 코드 — 여기서 정하고, 이후 모든 계약에서 이 값을 쓴다 |
+| `symbol` | string | 필수 | 우리 심볼 — 여기서 정하고, 이후 모든 계약에서 이 값을 쓴다 |
 | `contractAddress` | string \\| null | 필수 | 발행사 공식 문서에서 확인한 컨트랙트 주소. 네이티브 자산이면 null |
 
 
@@ -1376,7 +1376,7 @@ _응답_
 {
   "data": {
     "network": "BASE",
-    "token": "USDC",
+    "symbol": "USDC",
     "contractAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     "registeredAt": "202608060310"
   },
@@ -1436,7 +1436,7 @@ _응답_
 
 **자산 매핑 목록**
 
-등록된 (네트워크, 토큰) 을 읽는다. `network` · `token` 으로 거른다.
+등록된 (네트워크, 토큰) 을 읽는다. `network` · `symbol` 으로 거른다.
 
 ```bash
 curl "https://{baseUrl}/blockchain/manage-api/admin/asset-mappings"
@@ -1447,7 +1447,7 @@ _파라미터_
 | 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
 |---|---|---|---|---|---|
 | `network` | query | string | - |  |  |
-| `token` | query | string | - |  |  |
+| `symbol` | query | string | - |  |  |
 
 
 _응답_
@@ -1459,7 +1459,7 @@ _응답_
   "data": [
     {
       "network": "BASE",
-      "token": "USDC",
+      "symbol": "USDC",
       "contractAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
       "registeredAt": "202608060310"
     }
@@ -1476,7 +1476,7 @@ _응답_
 | `meta` | Meta | 필수 |  |
 
 
-#### `DELETE` https://{baseUrl}/blockchain/manage-api/admin/asset-mappings/{network}/{token}
+#### `DELETE` https://{baseUrl}/blockchain/manage-api/admin/asset-mappings/{network}/{symbol}
 
 **자산 매핑 삭제**
 
@@ -1485,7 +1485,7 @@ _응답_
 수정 오퍼레이션은 두지 않는다. 가리키는 자산을 바꾸면 이미 나간 주소와 앞으로 나갈 주소가 서로 다른 자산이 되기 때문이다.
 
 ```bash
-curl -X DELETE "https://{baseUrl}/blockchain/manage-api/admin/asset-mappings/{network}/{token}"
+curl -X DELETE "https://{baseUrl}/blockchain/manage-api/admin/asset-mappings/{network}/{symbol}"
 ```
 
 _파라미터_
@@ -1493,7 +1493,7 @@ _파라미터_
 | 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
 |---|---|---|---|---|---|
 | `network` | path | string | 필수 |  |  |
-| `token` | path | string | 필수 |  |  |
+| `symbol` | path | string | 필수 |  |  |
 | `X-Employee-No` | header | string | 필수 | 123456 | 조작한 직원 번호 — 감사 흔적으로 남는다 |
 | `X-Branch-Code` | header | string | 필수 | 0001 | 조작한 부점 코드 |
 
@@ -1590,7 +1590,7 @@ _응답_
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `network` | string | 필수 | 이 자산이 있는 우리 네트워크 코드 |
-| `symbol` | string | 필수 | 벤더가 이 자산에 붙인 표기 — 우리 토큰 코드(`token`)와 다를 수 있다 |
+| `symbol` | string | 필수 | 벤더가 이 자산에 붙인 표기 — 등록할 때 이 값을 그대로 쓰거나 우리 값을 따로 정한다 |
 | `displayName` | string \\| null | - |  |
 | `decimals` | integer \\| null | - |  |
 | `contractAddress` | string \\| null | - | 네이티브 자산은 null |
@@ -1612,7 +1612,7 @@ _응답_
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `network` | string | 필수 |  |
-| `token` | string | 필수 |  |
+| `symbol` | string | 필수 |  |
 | `contractAddress` | string \\| null | - | 네이티브 자산은 null |
 | `registeredAt` | string | 필수 |  |
 
@@ -1638,7 +1638,7 @@ _응답_
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `network` | string | 필수 | 채택한 네트워크 코드 |
-| `token` | string | 필수 | 우리 토큰 코드 — 여기서 정하고, 이후 모든 계약에서 이 값을 쓴다 |
+| `symbol` | string | 필수 | 우리 심볼 — 여기서 정하고, 이후 모든 계약에서 이 값을 쓴다 |
 | `contractAddress` | string \\| null | 필수 | 발행사 공식 문서에서 확인한 컨트랙트 주소. 네이티브 자산이면 null |
 
 
@@ -1692,7 +1692,7 @@ _응답_
 | `txHash` | string \\| null | - | 온체인 거래해시 — 전파 후 채워짐 |
 | `externalTxId` | string \\| null | - | 우리 요청 키 |
 | `network` | string | 필수 | 네트워크 코드 |
-| `token` | string | 필수 | 토큰 심볼 |
+| `symbol` | string | 필수 | 토큰 심볼 |
 | `amount` | string | 필수 | 금액(문자열) |
 | `from` | string | 필수 | 발신 (확정 온체인 주소) |
 | `to` | string | 필수 | 목적지 (확정 온체인 주소) |
@@ -1715,7 +1715,7 @@ _응답_
 | `externalTxId` | string \\| null | - | 우리 요청 키 (출금·내부이체) |
 | `accountId` | string | 필수 | 파티션 키 (vault 핸들) |
 | `network` | string | 필수 | 네트워크 코드 |
-| `token` | string | 필수 | 토큰 심볼 |
+| `symbol` | string | 필수 | 토큰 심볼 |
 | `to` | string | 필수 | 목적지 주소 — 입금 판별 |
 | `status` | TxStatus | 필수 | `SUBMITTED` `CONFIRMED` `FINALIZED` `REJECTED` `FAILED` |
 | `numOfConfirmations` | integer | 필수 | 누적 컨펌 수 |
@@ -1778,7 +1778,7 @@ _응답_
 | `from` | TransferPeer | 필수 | 보내는 쪽 — type=ACCOUNT 만 허용 |
 | `to` | TransferPeer | 필수 | 목적지 |
 | `network` | string | 필수 | 네트워크 코드 |
-| `token` | string | 필수 | 토큰 심볼 |
+| `symbol` | string | 필수 | 토큰 심볼 |
 | `amount` | string | 필수 | 금액(문자열 · 부동소수 금지) |
 | `note` | string \\| null | - | 벤더 거래 기록 메모 |
 | `travelRule` | TravelRule \\| null | - | 트래블룰 게이트가 만든 암호화 산출물 — 해외(Notabene) 출금만 싣고, 국내(VerifyVASP)·개인지갑은 null |
@@ -1826,7 +1826,7 @@ _응답_
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `token` | string | 필수 | 토큰 심볼 — 이 요청의 모든 네트워크에 공통 |
+| `symbol` | string | 필수 | 심볼 — 이 요청의 모든 네트워크에 공통 |
 | `networks` | string[] | 필수 | 주소를 받을 네트워크 1~20개. 빈 배열·초과는 `400 VALIDATION_FAILED`. 같은 네트워크가 두 번 들어오면 발급은 한 번만 하고 두 항목에 같은 결과를 담는다. |
 
 
@@ -1837,7 +1837,7 @@ _응답_
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `network` | string | 필수 |  |
-| `token` | string | 필수 |  |
+| `symbol` | string | 필수 |  |
 | `available` | string | 필수 | 가용 — 지금 출금에 쓸 수 있는 잔액 |
 | `pending` | string | 필수 | 대기 — 들어왔지만 확정 전 |
 | `locked` | string | 필수 | 잠김 — 나가는 중이거나 정책상 묶인 분 (벤더 lockedAmount + frozen) |
@@ -1858,7 +1858,7 @@ _응답_
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `network` | string | 필수 |  |
-| `token` | string | 필수 |  |
+| `symbol` | string | 필수 |  |
 | `address` | string | 필수 | 온체인 입금 주소 |
 | `memoTag` | string \\| null | - | 체인이 요구하는 태그·메모 — EVM 은 null |
 
@@ -1878,7 +1878,7 @@ _응답_
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `network` | string | 필수 |  |
-| `token` | string | 필수 |  |
+| `symbol` | string | 필수 |  |
 | `address` | string \\| null | 필수 | 발급된 주소 — 실패 시 null |
 | `memoTag` | string \\| null | 필수 | 체인이 요구하는 태그·메모 — EVM 은 null |
 | `error` | ErrorBody \\| null | 필수 | 실패 사유 — 성공 시 null. 코드 체계는 공통 에러 코드 표와 같다 |

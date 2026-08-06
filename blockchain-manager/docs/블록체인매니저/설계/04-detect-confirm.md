@@ -16,7 +16,7 @@ data class ChainEvent(
   val externalTxId: String? = null,  // 우리 요청 키 (출금·내부이체) — 완료 대응·멱등
   val accountId: AccountId,          // 파티션 키 (내부이체 = 출발 계정)
   val network: Network,
-  val token: Token,
+  val symbol: Token,
   val to: String,                    // 목적지 주소 — 고객 입금 판별
   val status: TxStatus,              // SUBMITTED · CONFIRMED · FINALIZED · REJECTED · FAILED — DAW-CORE 는 이것으로만 판단한다
   val numOfConfirmations: Int,
@@ -127,7 +127,7 @@ sequenceDiagram
 | **상태 반영 판정** | dedup 을 통과한 이벤트는 **허용 전이 표**(흐름 문서 상태 절)로 반영 여부를 가린다 — 늦게 온 옛 상태는 무시, **`FINALIZED → FAILED`(reorg 무효화)는 반영**. 서열로 "뒤로 가면 무시" 하면 무효화가 버려진다. |
 | **reorg** | 확정으로 봤던 입금이 무효화되면 벤더가 상태 변경 알림을 보내고 매니저가 무효화 이벤트를 publish — 백엔드는 **반영해 둔 잔액만 되돌리고** 입금 기록은 보존. 신호는 FAILED + subStatus `DROPPED_BY_BLOCKCHAIN` (reorg 는 5장). 알림까지 놓치면 대사(8장)가 잡는다. |
 | **입금 폭주** | 수신(적재 + 200)과 판단을 분리해 두었으므로 폭주는 판단 쪽 적체로만 나타난다 — 수신은 계속 받는다. 판단 적체 깊이는 경보 대상(11장). |
-| **429 (rate limit)** | 웹훅은 받는 쪽이라 rate limit 대상이 아니다. 남는 벤더 호출(제출·boost·대사·재전송 요청)에는 기존 원칙 유지 — **지수 백오프** + 매니저의 모든 벤더 호출에 **클라이언트측 상한(token bucket) 하나**, **제출·boost > 대사** 순으로 배분(돈 나가는 경로 우선). 제출 재시도는 externalTxId 멱등이라 중복 무해. 429 율은 메트릭으로 내보내 밖에서 경보(11장). |
+| **429 (rate limit)** | 웹훅은 받는 쪽이라 rate limit 대상이 아니다. 남는 벤더 호출(제출·boost·대사·재전송 요청)에는 기존 원칙 유지 — **지수 백오프** + 매니저의 모든 벤더 호출에 **클라이언트측 상한(symbol bucket) 하나**, **제출·boost > 대사** 순으로 배분(돈 나가는 경로 우선). 제출 재시도는 externalTxId 멱등이라 중복 무해. 429 율은 메트릭으로 내보내 밖에서 경보(11장). |
 
 ### 폭주 설계 · 정지·장애 시나리오
 

@@ -32,7 +32,7 @@ status: To Do
 
 심볼은 표시용이다 — 동일성은 chainId 와 컨트랙트 주소로 판단한다.
 
-**`token` 과 `symbol` 은 다른 값이다.** `token` 은 우리가 정한 코드로, 등록할 때 정하고 그 뒤 모든 계약에서 키로 쓴다. `symbol` 은 벤더가 붙인 표기이고, 아직 우리 자산이 아닌 **후보를 찾을 때만** 쓴다(`GET /admin/asset-candidates`). 둘은 대개 같지만 같아야 하는 것은 아니다.
+계약에서 이 값을 부르는 이름은 `symbol` 하나다 (2026-08-06 확정). `token` 은 인증 토큰·ERC-20 토큰과 겹쳐 이름만으로 무엇인지 알 수 없고, DB 컬럼 `tkn_smbl` 과도 어긋난다. **후보 조회의 `symbol` 은 벤더 표기**이고 등록할 때 우리 값을 정한다 — 대개 같지만 같아야 하는 것은 아니다.
 
 - **네트워크 코드는 벤더 값을 쓰지 않는다.** 우리 이름을 쓰고 벤더 식별자는 `vndr_blkc_id` 로 따로 들고 대조한다.
 - **테스트넷은 별도 코드로 둔다** — `BASE` 와 `BASE_SEPOLIA` 는 다른 네트워크다.
@@ -127,8 +127,8 @@ sequenceDiagram
     API-->>ADM: 네트워크 · 컨트랙트 주소 · 소수 자릿수<br/>운영자가 발행사 문서와 대조
 
     Note over ADM,FB: 등록 — 주소로 자산을 지정한다
-    ADM->>API: POST 매핑 등록<br/>network · token · contractAddress<br/>직원번호 · 부점코드
-    API->>MDB: (network, token) 조회
+    ADM->>API: POST 매핑 등록<br/>network · symbol · contractAddress<br/>직원번호 · 부점코드
+    API->>MDB: (network, symbol) 조회
     alt 이미 등록됨
         MDB-->>API: 기존 행
         API-->>ADM: 409 CONFLICT
@@ -148,7 +148,7 @@ sequenceDiagram
                 API-->>ADM: 409 CONFLICT
             else 저장 성공
                 MDB-->>API: 등록 완료
-                API-->>ADM: 201 — network · token · contractAddress
+                API-->>ADM: 201 — network · symbol · contractAddress
             end
         end
     end
@@ -162,7 +162,7 @@ sequenceDiagram
 
 - **채택한 네트워크만** — FK 가 막는다.
 - **주소로 자산이 하나만 잡혀야 한다** — 없으면 400, 둘 이상이면 409.
-- **중복 등록 차단** — 이미 등록된 (network, token) 은 덮어쓰지 않는다. PK 가 막는다.
+- **중복 등록 차단** — 이미 등록된 (network, symbol) 은 덮어쓰지 않는다. PK 가 막는다.
 - **한 자산은 한 매핑** — 해소된 assetId 를 이미 쓰는 행이 있으면 DB 가 막는다.
 
 사람이 판단하는 지점은 둘이다 — **네트워크 채택 때 올바른 체인에 이름을 붙이는 것**, **토큰마다 발행사 문서에서 컨트랙트 주소를 확인하는 것**.
@@ -178,8 +178,8 @@ sequenceDiagram
 | `DELETE /admin/networks/{code}` | 채택 해제 — 매핑이 남아 있으면 409 |
 | `GET /admin/asset-candidates` | **심볼로** 자산 후보를 찾는다 — 채택한 네트워크마다 잡히는 것이 한 번에 온다 |
 | `GET /admin/asset-mappings` | 등록된 매핑 목록 |
-| `POST /admin/asset-mappings` | 등록 — `network` · `token` · `contractAddress` |
-| `DELETE /admin/asset-mappings/{network}/{token}` | 되돌리기 — **그 (네트워크, 토큰)으로 발급된 주소가 하나도 없을 때만** 허용, 있으면 409 |
+| `POST /admin/asset-mappings` | 등록 — `network` · `symbol` · `contractAddress` |
+| `DELETE /admin/asset-mappings/{network}/{symbol}` | 되돌리기 — **그 (네트워크, 토큰)으로 발급된 주소가 하나도 없을 때만** 허용, 있으면 409 |
 
 수정 오퍼레이션은 두지 않는다 — 고치는 경로는 "지우고 다시 넣기"뿐이다.
 

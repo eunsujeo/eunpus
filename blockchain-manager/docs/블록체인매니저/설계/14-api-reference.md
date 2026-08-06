@@ -22,7 +22,7 @@ typealias WalletId = String    // 사전 등록(화이트리스트) 지갑 id
 
 ## 공통 규약
 
-- **멱등키(Idempotency-Key)** — 생성 계열은 키로 중복을 막는다. `createAccount` = f(accountType, ref), `createDepositAddresses` = 네트워크마다 f(accountId, network, token), `submitTransaction` = f(externalTxId). 같은 값으로 재요청하면 같은 결과를 돌려준다. 그 뒤의 영구 유일성은 매니저 DB 의 UNIQUE 제약이 보장한다(1·2장).
+- **멱등키(Idempotency-Key)** — 생성 계열은 키로 중복을 막는다. `createAccount` = f(accountType, ref), `createDepositAddresses` = 네트워크마다 f(accountId, network, symbol), `submitTransaction` = f(externalTxId). 같은 값으로 재요청하면 같은 결과를 돌려준다. 그 뒤의 영구 유일성은 매니저 DB 의 UNIQUE 제약이 보장한다(1·2장).
 - **externalTxId** — 제출할 때 백엔드가 싣는 우리 요청 키다. 재제출 중복 차단 + 완료 이벤트 대응에 쓰고, 매니저는 완료 이벤트에 그대로 실어 되돌려준다(6·10·12장).
 - **이벤트 전달 = at-least-once** — 같은 이벤트가 드물게 두 번 올 수 있다. 이벤트 ID(tx id 또는 externalTxId) 유일 기준으로 **상태 전이만 반영**하고, 오프셋은 원장 반영 성공 후 커밋한다(4장).
 - **에러 구분** — 주소 조회는 계정 없음(`AccountNotFound`)과 미발급(빈 배열)을 구분한다(3장). 제출은 같은 `externalTxId` 에 같은 내용이면 처음 결과를 돌려주고, 내용이 다르면 `Conflict` 다(6장).
@@ -31,8 +31,8 @@ typealias WalletId = String    // 사전 등록(화이트리스트) 지갑 id
 
 ```kotlin
 fun createAccount(accountType: AccountType, ref: String): Account // 1장 — vault 생성 · ref↔accountId 매핑 (AccountType = CUSTOMER · SYSTEM)
-fun createDepositAddresses(accountId: AccountId, token: Token, networks: List<Network>): List<AddressResult>  // 2장 — 한 토큰 여러 네트워크 (최대 20 · 네트워크별 결과)
-fun depositAddressesOf(accountId: AccountId, token: Token? = null, network: Network? = null): List<DepositAddress>  // 3장 — DB 읽기 · 벤더 왕복 없음
+fun createDepositAddresses(accountId: AccountId, symbol: Token, networks: List<Network>): List<AddressResult>  // 2장 — 한 토큰 여러 네트워크 (최대 20 · 네트워크별 결과)
+fun depositAddressesOf(accountId: AccountId, symbol: Token? = null, network: Network? = null): List<DepositAddress>  // 3장 — DB 읽기 · 벤더 왕복 없음
 ```
 
 - `createAccount` — 같은 (`accountType`, `ref`) 재요청은 같은 `accountId` 를 돌려준다(멱등). 계정 유형은 고객·시스템 ID 가 서로 다른 테이블에서 접두사 없이 발급되어 값이 겹칠 수 있기 때문에 함께 받는다. EVM 은 자산당 주소 하나라, 같은 자산의 주소를 더 두려면 계정을 더 만든다(2장).
@@ -42,7 +42,7 @@ fun depositAddressesOf(accountId: AccountId, token: Token? = null, network: Netw
 ## 잔액 · 내역 API
 
 ```kotlin
-fun balancesOf(accountId: AccountId, network: Network? = null, token: Token? = null): List<AssetBalance>  // 8장 — 자산별 vault 잔액
+fun balancesOf(accountId: AccountId, network: Network? = null, symbol: Token? = null): List<AssetBalance>  // 8장 — 자산별 vault 잔액
 fun transactionsOf(                                              // 8장 — 기간·상태로 거래 목록
   accountId: AccountId,
   after: Instant,
@@ -125,7 +125,7 @@ data class TransactionRequest(
   val from: TransferPeer,              // 보내는 쪽 — 우리 vault 라 type=ACCOUNT 만 허용
   val to: TransferPeer,                // 목적지 — 세 갈래
   val network: Network,
-  val token: Token,
+  val symbol: Token,
   val amount: BigDecimal,
   val note: String? = null,            // 벤더 거래 기록 메모
   val travelRule: TravelRule? = null,  // 게이트 산출물(암호화) — 매니저는 운반만
@@ -136,7 +136,7 @@ data class Transfer(
   val txHash: String? = null,          // 온체인 거래해시 — 전파 후 채워짐
   val externalTxId: String? = null,    // 우리 요청 키
   val network: Network,
-  val token: Token,
+  val symbol: Token,
   val amount: BigDecimal,
   val from: String,                    // 발신 주소
   val to: String,                      // 목적지 주소
@@ -153,7 +153,7 @@ data class ChainEvent(
   val externalTxId: String? = null,    // 우리 요청 키 (출금·내부이체)
   val accountId: AccountId,            // 파티션 키
   val network: Network,
-  val token: Token,
+  val symbol: Token,
   val to: String,                      // 목적지 주소 — 입금 판별
   val status: TxStatus,                // DAW-CORE 는 이것으로만 판단한다
   val numOfConfirmations: Int,

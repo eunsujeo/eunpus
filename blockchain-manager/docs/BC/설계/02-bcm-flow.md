@@ -11,8 +11,8 @@ status: To Do
 | 오퍼레이션 | API | 하는 일 | 멱등 |
 |---|---|---|---|
 | `createAccount` | `POST /accounts` | vault 를 만들고 ref↔accountId 매핑을 반환한다. ref = DAW-CORE 계정 ID (접두사 없음), 유형(`CUSTOMER`·`SYSTEM`)을 함께 받는다 | 같은 (유형, ref) → 같은 accountId. 매니저 DB 의 복합 UNIQUE 가 최종 방어 — 경합해도 이긴 값을 반환 |
-| `createDepositAddresses` | `POST /accounts/{accountId}/addresses` | **한 토큰을 여러 네트워크로** 한 요청에 발급한다 (`token` + `networks`). 최대 20네트워크 · 네트워크별 결과 | 네트워크마다 단건과 같은 기준으로 멱등. 계정 없음은 전체 404, 네트워크별 실패는 부분 성공으로 남아 재시도 안전 |
-| `depositAddressesOf` | `GET /accounts/{accountId}/addresses` | 발급된 주소를 매니저 DB 에서 읽는다 — 벤더 왕복 없음. `token`·`network` 로 걸러 받는다 | 발급분 배열 · 미발급은 빈 배열 · 계정 없음 → `404 ACCOUNT_NOT_FOUND` |
+| `createDepositAddresses` | `POST /accounts/{accountId}/addresses` | **한 토큰을 여러 네트워크로** 한 요청에 발급한다 (`symbol` + `networks`). 최대 20네트워크 · 네트워크별 결과 | 네트워크마다 단건과 같은 기준으로 멱등. 계정 없음은 전체 404, 네트워크별 실패는 부분 성공으로 남아 재시도 안전 |
+| `depositAddressesOf` | `GET /accounts/{accountId}/addresses` | 발급된 주소를 매니저 DB 에서 읽는다 — 벤더 왕복 없음. `symbol`·`network` 로 걸러 받는다 | 발급분 배열 · 미발급은 빈 배열 · 계정 없음 → `404 ACCOUNT_NOT_FOUND` |
 
 경로는 base(`/blockchain/manage-api`)를 뗀 표기 — 전체 경로·필드는 [블록체인 매니저 API](?cat=블록체인매니저&sub=API).
 
@@ -31,10 +31,10 @@ sequenceDiagram
     BM->>FB: createVaultAccount
     BM->>MDB: 매핑 저장 — ref UNIQUE
     BM-->>BE: accountId
-    BE->>BM: POST /accounts/{accountId}/addresses — token · networks
+    BE->>BM: POST /accounts/{accountId}/addresses — symbol · networks
     loop 네트워크마다
         BM->>FB: 자산 지갑 활성화 · 주소 생성
-        BM->>MDB: (accountId, network, token) ↔ 주소 저장
+        BM->>MDB: (accountId, network, symbol) ↔ 주소 저장
     end
     BM-->>BE: 네트워크별 결과
 ```
@@ -323,7 +323,7 @@ sequenceDiagram
 ## 수수료 관측 · 잔액 · 이력 · 대사
 
 - **수수료** — 매니저 내부 주기 작업이 견적을 시계열로 기록한다. 제출 건에는 제출 시각의 시세를 대응시킨다. 실비 검증은 온체인 실측(gasUsed × 체결 단가)으로 하고, 월말 인보이스와 맞춘다.
-- **잔액** — `balancesOf`(`GET /accounts/{accountId}/balances`)는 vault 잔액(가용·대기·잠김)을 자산별로 준다. `network`·`token` 으로 거르고, 비우면 그 계정에 주소가 발급된 자산 전부다. 대사에 쓴다 — 고객별 잔액은 DAW-CORE 원장이 담당한다.
+- **잔액** — `balancesOf`(`GET /accounts/{accountId}/balances`)는 vault 잔액(가용·대기·잠김)을 자산별로 준다. `network`·`symbol` 으로 거르고, 비우면 그 계정에 주소가 발급된 자산 전부다. 대사에 쓴다 — 고객별 잔액은 DAW-CORE 원장이 담당한다.
 - **이력** — `transactionsOf` 는 거래 시각(createdAt) 기준 목록(커서 페이지네이션), `transactionOf` 는 단건 조회.
 - **대사** — 회계가 걸리는 숫자는 주기적으로 벤더 값과 직접 대조한다. 큐 경로와 무관하게 도는 독립 안전장치다.
 
