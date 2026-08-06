@@ -98,7 +98,28 @@ def sample(s, depth=0):
 def media_example(media):
     if not media:
         return None
-    return media["example"] if "example" in media else sample(media.get("schema") or {})
+    if "example" in media:
+        return media["example"]
+    named = media.get("examples")
+    if named:
+        return next(iter(named.values())).get("value")
+    return sample(media.get("schema") or {})
+
+
+def media_fences(media):
+    """examples 가 있으면 이름·설명을 달아 전부 낸다. 없으면 스키마 합성 예시 하나."""
+    named = media.get("examples") if media else None
+    if not named:
+        return [json_fence(media_example(media))]
+    out = []
+    for ex in named.values():
+        head = "\n"
+        if ex.get("summary"):
+            head += f"**{ex['summary']}**\n\n"
+        if ex.get("description"):
+            head += ex["description"] + "\n\n"
+        out.append(head + json_fence(ex.get("value")))
+    return out
 
 
 def prop_rows(s):
@@ -241,7 +262,8 @@ def build(cfg):
         rb = resolve(op["requestBody"]) if op.get("requestBody") else None
         rbm = (rb.get("content") or {}).get("application/json") if rb else None
         if rbm and rbm.get("schema"):
-            md.append("\n_요청 본문_\n\n" + json_fence(media_example(rbm)))
+            md.append("\n_요청 본문_")
+            md.extend(media_fences(rbm))
             rows = prop_rows(rbm["schema"])
             if rows:
                 md.append(table(["필드", "타입", "필수", "설명"], rows))
@@ -252,7 +274,7 @@ def build(cfg):
                 md.append(f"\n`{code}` — {r.get('description', '')}\n")
                 m = (r.get("content") or {}).get("application/json")
                 if m and m.get("schema"):
-                    md.append(json_fence(media_example(m)))
+                    md.extend(media_fences(m))
                     rows = prop_rows(m["schema"])
                     if rows:
                         md.append(table(["필드", "타입", "필수", "설명"], rows))

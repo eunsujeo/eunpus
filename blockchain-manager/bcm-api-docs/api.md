@@ -198,7 +198,6 @@ curl -X POST "https://{baseUrl}/blockchain/manage-api/accounts" \
 ```
 
 _요청 본문_
-
 ```json
 {
   "accountType": "CUSTOMER",
@@ -273,7 +272,8 @@ curl -X POST "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/addres
   -d '{
   "token": "USDC",
   "networks": [
-    "ETHEREUM"
+    "ETHEREUM",
+    "BASE"
   ]
 }'
 ```
@@ -287,11 +287,28 @@ _파라미터_
 
 _요청 본문_
 
+**최초 요청**
+
 ```json
 {
   "token": "USDC",
   "networks": [
-    "ETHEREUM"
+    "ETHEREUM",
+    "BASE"
+  ]
+}
+```
+
+
+**재시도 — 실패한 네트워크만 골라 보내는 경우**
+
+같은 요청을 그대로 보내도 결과는 같다. 응답에 담기는 항목 수만 다르다.
+
+```json
+{
+  "token": "USDC",
+  "networks": [
+    "BASE"
   ]
 }
 ```
@@ -306,6 +323,9 @@ _응답_
 
 `200` — 네트워크별 결과 — 전부 성공·일부 실패·전부 실패가 모두 이 응답이다
 
+
+**전체 성공**
+
 ```json
 {
   "data": [
@@ -313,10 +333,79 @@ _응답_
       "network": "ETHEREUM",
       "token": "USDC",
       "address": "0xAb3...C9",
-      "memoTag": "string",
+      "memoTag": null,
+      "error": null
+    },
+    {
+      "network": "BASE",
+      "token": "USDC",
+      "address": "0x9f4...E2",
+      "memoTag": null,
+      "error": null
+    }
+  ],
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+
+**부분 실패 — 성공분은 그대로 남는다**
+
+같은 요청을 재시도하면 ETHEREUM 은 같은 주소가 그대로 오고 BASE 만 다시 시도된다.
+
+```json
+{
+  "data": [
+    {
+      "network": "ETHEREUM",
+      "token": "USDC",
+      "address": "0xAb3...C9",
+      "memoTag": null,
+      "error": null
+    },
+    {
+      "network": "BASE",
+      "token": "USDC",
+      "address": null,
+      "memoTag": null,
       "error": {
-        "code": "ACCOUNT_NOT_FOUND",
-        "message": "account not found"
+        "code": "INTERNAL",
+        "message": "address issuance failed"
+      }
+    }
+  ],
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+
+**전체 실패 — 발급을 시도했고 전부 실패했다 (400 과 다르다)**
+
+```json
+{
+  "data": [
+    {
+      "network": "ETHEREUM",
+      "token": "USDC",
+      "address": null,
+      "memoTag": null,
+      "error": {
+        "code": "INTERNAL",
+        "message": "address issuance failed"
+      }
+    },
+    {
+      "network": "BASE",
+      "token": "USDC",
+      "address": null,
+      "memoTag": null,
+      "error": {
+        "code": "INTERNAL",
+        "message": "address issuance failed"
       }
     }
   ],
@@ -334,11 +423,29 @@ _응답_
 
 `400` — 발급 전 거절 — 아무것도 발급되지 않았다
 
+
+**지원하지 않는 네트워크가 섞였다**
+
 ```json
 {
   "error": {
-    "code": "ACCOUNT_NOT_FOUND",
-    "message": "account not found"
+    "code": "ASSET_NOT_SUPPORTED",
+    "message": "unsupported network for token: TRON/USDC"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+
+**네트워크 배열이 비었거나 20개를 넘었다**
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_FAILED",
+    "message": "networks must contain 1..20 items"
   },
   "meta": {
     "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
@@ -549,7 +656,6 @@ curl -X POST "https://{baseUrl}/blockchain/manage-api/transactions" \
 ```
 
 _요청 본문_
-
 ```json
 {
   "externalTxId": "wd-260713-0042",
@@ -988,7 +1094,6 @@ _파라미터_
 
 
 _요청 본문_
-
 ```json
 {
   "candidateId": "string"
@@ -1230,7 +1335,6 @@ _파라미터_
 
 
 _요청 본문_
-
 ```json
 {
   "network": "BASE",

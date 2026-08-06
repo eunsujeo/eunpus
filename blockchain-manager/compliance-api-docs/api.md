@@ -206,7 +206,6 @@ _파라미터_
 
 
 _요청 본문_
-
 ```json
 {
   "vaspId": "VASP-0001"
@@ -280,7 +279,6 @@ curl -X POST "https://{baseUrl}/compliance/travel-rule/withdrawal-checks" \
 ```
 
 _요청 본문_
-
 ```json
 {
   "externalTxId": "WD-000123",
@@ -408,7 +406,6 @@ _파라미터_
 
 
 _요청 본문_
-
 ```json
 {
   "txHash": "0xabc..."
@@ -461,7 +458,6 @@ curl -X POST "https://{baseUrl}/compliance/travel-rule/deposit-checks" \
 ```
 
 _요청 본문_
-
 ```json
 {
   "sourceAddress": "0x1a2b...",
@@ -528,7 +524,6 @@ curl -X POST "https://{walletBaseUrl}/internal/compliance/address-attribution" \
 ```
 
 _요청 본문_
-
 ```json
 {
   "address": "0x896B...0b9b",
