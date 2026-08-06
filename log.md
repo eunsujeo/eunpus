@@ -7724,3 +7724,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 영향받은 페이지: vendors/fireblocks/api.md (§"라우팅 기본 프리셋" 신설) · vendors/fireblocks/architecture.md (Trusted Shared Services 에 AAA) · entities/fireblocks/admin-quorum.md (양쪽 Quorum 승인)
 - 신규 Q: Q-2026-08-06-01 (정산 방식) · Q-2026-08-06-02 (비용) · Q-2026-08-06-03 (연결 해제 시 동작)
 - 신규 entity: 0 (api / architecture / admin-quorum 3면 흡수 — 35 stage 연속)
+
+## Stage 163 (2026-08-06) — Smart Transfer (Network 위 정산) promote
+- source: `2026-08-06__developers-fireblocks-com__execute-smart-transfers.md` · `create-ticket.md` · `define-funding-source.md` · `set-funding-source-and-approval.md` · `fund-dvp-ticket.md` (Mode C, 사용자 promote 승인)
+- 신규 fact: ticket/term(leg) 구조 · `externalRefId` 로 호출 쪽 참조 ID 심기 · `fulfilled` = 양쪽 이행 · **`ASYNC` = funding source 지정 시 다리 즉시 전송 → 원자적 아님** · **`DVP` = Early Access, 컨트랙트 approve 기반** · 중개자가 제3자 둘의 티켓을 API 로 개설(세 당사자 같은 Network Profile 필요) · Network 연결이 선행 조건
+- ANSWERED: Q-2026-05-18-P03 (partial — Smart Transfer 정의 확보, Automation rule 은 잔존)
+- 영향받은 페이지: vendors/fireblocks/api.md (§"Smart Transfer — 티켓 기반 정산" 신설)
+- 신규 Q: Q-2026-08-06-04 (DVP 컨트랙트 구조·지원 범위) · Q-2026-08-06-05 (티켓이 Admin Quorum·Policy 대상인가)
+- 신규 entity: 0 (api.md 흡수 — 36 stage 연속)

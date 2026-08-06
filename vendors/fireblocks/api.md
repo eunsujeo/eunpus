@@ -267,6 +267,32 @@ routing 은 **profile 층 / connection 층 2단**이고, connection 의 `DEFAULT
 지원 asset group 은 `/network_ids/routing_policy_asset_groups` 에서 조회.
 (source: `2026-08-06__developers-fireblocks-com__create-a-new-network-connection.md`)
 
+### Smart Transfer — 티켓 기반 정산 (★ Stage 163)
+
+Fireblocks Network 위에 올라간 정산 기능. **"To create Smart Transfer tickets an established network connection must exist"** — Network 연결이 선행 조건이다.
+
+**구조** — ticket = 정산 한 건, term(leg) = 다리 하나.
+
+| 단위 | 필드 |
+|---|---|
+| ticket | `ticketId` · `type` · `status` · `createdByNetworkId`(Network 프로필) · `expiresIn` / `expiresAt` · `externalRefId` · `note` |
+| term | `asset` · `amount` · `fromNetworkId` → `toNetworkId` |
+
+`from`/`to` 가 term 마다 있어 **양방향이 한 ticket 에 들어간다**. `externalRefId` = "Any ID a customer adds to the system" — 호출 쪽 참조 ID 를 ticket 에 심을 수 있다.
+
+lifecycle: created → counterparty added → term added → submitted → **fulfilled**("fulfilled by both sides") / expired / canceled. 전 단계 webhook 발행.
+
+**정산 방식 2종**
+
+- **`ASYNC`** — funding source 를 지정하면 **그 다리가 즉시 전송된다**: "Set funding source for ticket term (**in case of ASYNC tickets, this will execute transfer immediately**)". 다리마다 독립 실행이므로 **원자적 교환이 아니다**.
+- **`DVP`** — **Early Access**. "should only be used if Fireblocks has enabled it in your workspace. Contact your Customer Success Manager." funding source 지정 시 "**creating approving transaction for contract to transfer asset**" → 스마트컨트랙트 approve 기반.
+
+**중개자(intermediary) 모델** — 제3자 둘을 위해 중개자가 ticket 을 열 수 있다. **API 로만 가능**하고, 세 당사자가 **같은 Network Profile 로 서로 연결**돼 있어야 한다: "all three of you need to be connected to each other with the same network profiles on the Fireblocks Network."
+
+**권한** — create ticket: Admin · Non-Signing Admin · Signer · Approver · Editor. (Admin Quorum 승인 대상 여부는 문서에 언급 없음 → Q-2026-08-06-05)
+
+(source: `2026-08-06__developers-fireblocks-com__execute-smart-transfers.md` · `create-ticket.md` · `define-funding-source.md` · `set-funding-source-and-approval.md` · `fund-dvp-ticket.md` · `2026-05-22__developers-fireblocks-com__reference-smart-transfer-webhooks.md`)
+
 ### Stage 36 신규 Q (★ Mode C 후 발견)
 
 - **Q-2026-05-22-A09**: `MPC_ECDSA_SECP256R1` algorithm 의 chain 매트릭스 — 어느 chain 이 secp256r1 사용? Key Link 의 algorithm 매트릭스 와의 차이?

@@ -184,7 +184,9 @@
 - **Why it matters**: 권한표에 등장하지만 본 자료에 정의 없음.
 - **Where this came up**: [[entities/fireblocks/transaction]]
 - **Sources to check**: docs.fireblocks.com의 Smart Transfer / Automation 문서
-- **Status**: open
+- **Status**: **partial answered (2026-08-06, Stage 163)**
+- **Partial Answer**: Smart Transfer = **Fireblocks Network 위의 티켓 기반 정산**. ticket 에 term(leg) 을 여러 개 달고 양쪽이 이행하면 `fulfilled`. 정산 방식 `ASYNC`(다리별 즉시 전송, 원자적 아님) / `DVP`(Early Access, 스마트컨트랙트 approve 기반). 중개자가 제3자 둘의 티켓을 API 로 열 수 있고 세 당사자가 같은 Network Profile 로 연결돼야 한다. 적용처: [[vendors/fireblocks/api]] §"Smart Transfer — 티켓 기반 정산".
+- **잔존**: **Automation rule** 의 정의는 여전히 없음.
 
 ### Workspace
 
@@ -1226,4 +1228,18 @@
 - **Why it matters**: 상대가 연결을 끊으면 그 연결로 지정된 routing 과 진행 중 전송이 어떻게 되는지가 운영 절차의 전제다. `NONE` routing 이 입금 실패를 낳는다는 사실과 맞물려, 해제가 곧 입금 실패로 이어지는지 확인이 필요하다.
 - **확인 질문**: 연결 해제는 한쪽이 단독으로 가능한가? Admin Quorum 승인 대상인가? 해제 후 그 연결로 온 입금은 실패하는가, profile routing 으로 흡수되는가?
 - **Sources to check**: support.fireblocks.io Fireblocks Network 섹션 · network-connections DELETE API
+- **Status**: open
+
+### Q-2026-08-06-04: DVP 정산의 컨트랙트 구조와 지원 범위
+
+- **Why it matters**: `ASYNC` 는 다리별 즉시 전송이라 한쪽만 이행되는 상태가 성립한다. 원자적 교환이 필요한 정산은 `DVP` 가 전제인데, Early Access 라 사용 가능 여부부터 확인해야 한다.
+- **확인 질문**: 어떤 컨트랙트인가(Fireblocks 배포 컨트랙트인가 표준 escrow 인가)? 지원 체인·자산 범위? Early Access 활성 조건? 한쪽이 이행하지 않으면 approve 한 자산은 어떻게 회수되는가?
+- **Sources to check**: CSM 확답 · developers.fireblocks.com Smart Transfers Developer Guide
+- **Status**: open
+
+### Q-2026-08-06-05: Smart Transfer 티켓이 Admin Quorum · Policy 대상인가
+
+- **Why it matters**: create ticket 권한이 Editor 까지 열려 있는데 Admin Quorum 승인 언급이 없다. 티켓 이행이 곧 자금 이동이므로, 승인 관문이 없다면 Policy 층에서 막아야 한다.
+- **확인 질문**: 티켓 생성·이행이 Admin Quorum 승인 대상인가? Policy 의 source/destination 규칙이 Smart Transfer 이행 전송에 적용되는가? `NETWORK_CONNECTION` peer 로 평가되는가?
+- **Sources to check**: about-policies 재확인 · CSM 확답
 - **Status**: open
