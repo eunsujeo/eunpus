@@ -82,7 +82,7 @@ window.OPENAPI = {
           "Accounts"
         ],
         "summary": "입금 주소 여러 자산 한 번에 발급",
-        "description": "한 토큰의 입금 주소를 여러 네트워크에 발급한다. `(accountId, network, token)` 로 **네트워크마다 멱등**하다.\n\n- 네트워크별 결과는 항목의 `address` 또는 `error` 로 온다. HTTP 는 항목 결과와 무관하게 `200` 이고, 응답은 **요청과 같은 순서**다.\n- 계정이 없으면 `404`.\n- 지원하지 않는 네트워크가 **하나라도 섞이면 아무것도 발급하지 않고 `400`** 이다.\n- 재시도는 같은 요청을 그대로 보내면 된다 — 이미 발급된 것은 벤더 호출 없이 같은 주소가 오고 실패분만 다시 시도된다.\n- 한 요청 **20네트워크**까지. 네트워크마다 벤더를 한 번 부른다.\n- 네트워크 목록은 호출 쪽이 정한다 — 매니저는 토큰만 받아 네트워크를 채우지 않는다.\n\n요청:\n\n```json\n{ \"token\": \"USDC\", \"networks\": [\"ETHEREUM\", \"BASE\"] }\n```\n\n**전체 성공** (`200`):\n\n```json\n{\n  \"data\": [\n    { \"network\": \"ETHEREUM\", \"token\": \"USDC\", \"address\": \"0xAb3...C9\", \"memoTag\": null, \"error\": null },\n    { \"network\": \"BASE\",     \"token\": \"USDC\", \"address\": \"0x9f4...E2\", \"memoTag\": null, \"error\": null }\n  ],\n  \"meta\": { \"requestId\": \"3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f\" }\n}\n```\n\n**부분 실패** (`200`) — 성공분은 그대로 남는다. 같은 요청을 재시도하면 `BASE` 만 다시 시도된다:\n\n```json\n{\n  \"data\": [\n    { \"network\": \"ETHEREUM\", \"token\": \"USDC\", \"address\": \"0xAb3...C9\", \"memoTag\": null, \"error\": null },\n    { \"network\": \"BASE\", \"token\": \"USDC\", \"address\": null, \"memoTag\": null,\n      \"error\": { \"code\": \"INTERNAL\", \"message\": \"address issuance failed\" } }\n  ],\n  \"meta\": { \"requestId\": \"3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f\" }\n}\n```\n\n**재시도** — 위 부분 실패 뒤에 **처음과 같은 요청을 그대로** 보낸다:\n\n```json\n{ \"token\": \"USDC\", \"networks\": [\"ETHEREUM\", \"BASE\"] }\n```\n\n응답 (`200`) — 이미 발급된 `ETHEREUM` 은 **같은 주소**가 그대로 오고(매니저 DB 에서 찾아 돌려주므로 **벤더를 다시 부르지 않는다**), `BASE` 만 새로 시도된다:\n\n```json\n{\n  \"data\": [\n    { \"network\": \"ETHEREUM\", \"token\": \"USDC\", \"address\": \"0xAb3...C9\", \"memoTag\": null, \"error\": null },\n    { \"network\": \"BASE\",     \"token\": \"USDC\", \"address\": \"0x9f4...E2\", \"memoTag\": null, \"error\": null }\n  ],\n  \"meta\": { \"requestId\": \"7c2b8d1a-4e6f-4a3b-9d5e-1f2a3b4c5d6e\" }\n}\n```\n\n실패한 네트워크만 골라 `{ \"token\": \"USDC\", \"networks\": [\"BASE\"] }` 로 보내도 결과는 같다 — 응답에 `BASE` 항목 하나만 담길 뿐이다. 어느 쪽이든 이미 발급된 주소가 바뀌지 않는다.\n\n**전체 실패** (`200`) — 발급은 시도했고 전부 실패했다. `400` 과 다르다:\n\n```json\n{\n  \"data\": [\n    { \"network\": \"ETHEREUM\", \"token\": \"USDC\", \"address\": null, \"memoTag\": null,\n      \"error\": { \"code\": \"INTERNAL\", \"message\": \"address issuance failed\" } },\n    { \"network\": \"BASE\", \"token\": \"USDC\", \"address\": null, \"memoTag\": null,\n      \"error\": { \"code\": \"INTERNAL\", \"message\": \"address issuance failed\" } }\n  ],\n  \"meta\": { \"requestId\": \"3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f\" }\n}\n```\n\n**발급 전 거절** (`400`) — 미지원 네트워크가 섞였다. **아무것도 발급되지 않았다**:\n\n```json\n{\n  \"error\": { \"code\": \"ASSET_NOT_SUPPORTED\", \"message\": \"unsupported network for token: TRON/USDC\" },\n  \"meta\": { \"requestId\": \"3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f\" }\n}\n```\n",
+        "description": "한 토큰의 입금 주소를 여러 네트워크에 발급한다. `(accountId, network, token)` 로 **네트워크마다 멱등**하다.\n\n- 결과는 항목마다 `address` 또는 `error` 로 온다 — **둘 중 하나만** 채워진다. HTTP 는 항목 결과와 무관하게 `200` 이고, 응답은 요청과 같은 순서다.\n- 지원하지 않는 네트워크가 **하나라도 섞이면 아무것도 발급하지 않고 `400`** 이다. 발급을 시도했다가 전부 실패한 것(`200`, 모든 항목에 `error`)과 구분된다.\n- **재시도는 같은 요청을 그대로 보낸다** — 이미 발급된 네트워크는 벤더를 부르지 않고 같은 주소가 오고, 실패분만 다시 시도된다. 실패분만 골라 보내도 결과는 같다.\n- 한 요청 **20네트워크**까지. 네트워크마다 벤더를 한 번 부른다.\n- 네트워크 목록은 호출 쪽이 정한다 — 매니저가 토큰만 받아 네트워크를 채우지 않는다.\n",
         "operationId": "createDepositAddresses",
         "requestBody": {
           "required": true,
@@ -90,23 +90,162 @@ window.OPENAPI = {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateAddressesRequest"
+              },
+              "examples": {
+                "두_네트워크": {
+                  "summary": "최초 요청",
+                  "value": {
+                    "token": "USDC",
+                    "networks": [
+                      "ETHEREUM",
+                      "BASE"
+                    ]
+                  }
+                },
+                "실패분만": {
+                  "summary": "재시도 — 실패한 네트워크만 골라 보내는 경우",
+                  "description": "같은 요청을 그대로 보내도 결과는 같다. 응답에 담기는 항목 수만 다르다.",
+                  "value": {
+                    "token": "USDC",
+                    "networks": [
+                      "BASE"
+                    ]
+                  }
+                }
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "네트워크별 결과 (부분 성공 포함)",
+            "description": "네트워크별 결과 — 전부 성공·일부 실패·전부 실패가 모두 이 응답이다",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DepositAddressResultListResponse"
+                },
+                "examples": {
+                  "전체_성공": {
+                    "summary": "전체 성공",
+                    "value": {
+                      "data": [
+                        {
+                          "network": "ETHEREUM",
+                          "token": "USDC",
+                          "address": "0xAb3...C9",
+                          "memoTag": null,
+                          "error": null
+                        },
+                        {
+                          "network": "BASE",
+                          "token": "USDC",
+                          "address": "0x9f4...E2",
+                          "memoTag": null,
+                          "error": null
+                        }
+                      ],
+                      "meta": {
+                        "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+                      }
+                    }
+                  },
+                  "부분_실패": {
+                    "summary": "부분 실패 — 성공분은 그대로 남는다",
+                    "description": "같은 요청을 재시도하면 ETHEREUM 은 같은 주소가 그대로 오고 BASE 만 다시 시도된다.",
+                    "value": {
+                      "data": [
+                        {
+                          "network": "ETHEREUM",
+                          "token": "USDC",
+                          "address": "0xAb3...C9",
+                          "memoTag": null,
+                          "error": null
+                        },
+                        {
+                          "network": "BASE",
+                          "token": "USDC",
+                          "address": null,
+                          "memoTag": null,
+                          "error": {
+                            "code": "INTERNAL",
+                            "message": "address issuance failed"
+                          }
+                        }
+                      ],
+                      "meta": {
+                        "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+                      }
+                    }
+                  },
+                  "전체_실패": {
+                    "summary": "전체 실패 — 발급을 시도했고 전부 실패했다 (400 과 다르다)",
+                    "value": {
+                      "data": [
+                        {
+                          "network": "ETHEREUM",
+                          "token": "USDC",
+                          "address": null,
+                          "memoTag": null,
+                          "error": {
+                            "code": "INTERNAL",
+                            "message": "address issuance failed"
+                          }
+                        },
+                        {
+                          "network": "BASE",
+                          "token": "USDC",
+                          "address": null,
+                          "memoTag": null,
+                          "error": {
+                            "code": "INTERNAL",
+                            "message": "address issuance failed"
+                          }
+                        }
+                      ],
+                      "meta": {
+                        "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+                      }
+                    }
+                  }
                 }
               }
             }
           },
           "400": {
-            "$ref": "#/components/responses/ValidationFailed"
+            "description": "발급 전 거절 — 아무것도 발급되지 않았다",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "미지원_네트워크": {
+                    "summary": "지원하지 않는 네트워크가 섞였다",
+                    "value": {
+                      "error": {
+                        "code": "ASSET_NOT_SUPPORTED",
+                        "message": "unsupported network for token: TRON/USDC"
+                      },
+                      "meta": {
+                        "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+                      }
+                    }
+                  },
+                  "요청_형식_오류": {
+                    "summary": "네트워크 배열이 비었거나 20개를 넘었다",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "networks must contain 1..20 items"
+                      },
+                      "meta": {
+                        "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "404": {
             "$ref": "#/components/responses/AccountNotFound"
@@ -1725,10 +1864,13 @@ window.OPENAPI = {
       },
       "DepositAddressResult": {
         "type": "object",
-        "description": "네트워크 하나의 발급 결과 — 조회 항목(`DepositAddress`)과 같은 필드에 `error` 가 더해진 모양이다. 성공이면 `address`, 실패면 `error` 가 채워진다 (둘 중 하나만).",
+        "description": "네트워크 하나의 발급 결과 — 조회 항목(`DepositAddress`)과 같은 필드에 `error` 가 더해진 모양이다. 성공이면 `address`, 실패면 `error` 가 채워진다 (둘 중 하나만). **다섯 필드가 항상 있고, 해당 없으면 `null`** 이라 `error` 유무로 판단할 수 있다.",
         "required": [
           "network",
-          "token"
+          "token",
+          "address",
+          "memoTag",
+          "error"
         ],
         "properties": {
           "network": {
