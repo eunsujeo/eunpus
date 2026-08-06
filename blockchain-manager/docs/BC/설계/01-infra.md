@@ -17,6 +17,7 @@ status: To Do
 | [컴플라이언스 게이트 — 흐름](04-compliance-flow.md) | 출금 확인·입금 판별·VASP 온보딩·주기 배치 + verdict |
 | [컴플라이언스 게이트 — DB](05-compliance-db.md) | ERD · 테이블 4개(레지스트리·확인·사전 검증·outbox) · 필드 |
 | [sweep 설계 — 정책 적용](06-sweep.md) | 입금 모으기·핫콜드 밴드S — 트리거·배치 실행 방식·Fireblocks 대응 (정책 일부 수신 — 진행 중) |
+| [자산 마스터](07-asset-master.md) | 우리 자산 ↔ 벤더 assetId 표 · 등록 관문 · Admin API |
 
 ## 구성 요소 — 한 장
 
