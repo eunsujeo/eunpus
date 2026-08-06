@@ -158,6 +158,8 @@
       .op-desc { color: var(--muted2); margin: 6px 0 4px; }
       .block-label { font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;
                      color: var(--muted); margin: 22px 0 4px; }
+      .example-label { font-size: 13px; font-weight: 600; color: var(--text); margin: 14px 0 2px; }
+      .example-note { font-size: 13px; color: var(--muted); margin: 0 0 4px; }
       .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; overflow: hidden; margin-top: 6px; }
       .card table { margin: 0; }
       .card th, .card td { padding: 9px 14px; }
@@ -1349,7 +1351,20 @@ window.OPENAPI = {
         }
         function mediaExample(media) {
           if (!media) return undefined;
-          return media.example !== undefined ? media.example : sample(media.schema);
+          if (media.example !== undefined) return media.example;
+          const named = media.examples && Object.values(media.examples);
+          if (named && named.length) return named[0].value;
+          return sample(media.schema);
+        }
+        // examples 가 있으면 이름·설명을 달아 전부 낸다. 없을 때만 스키마로 합성한다.
+        function appendExamples(sec, media) {
+          const named = media && media.examples;
+          if (!named) { sec.appendChild(jsonBlock(mediaExample(media))); return; }
+          for (const ex of Object.values(named)) {
+            if (ex.summary) sec.appendChild(el("div", "example-label", ex.summary));
+            if (ex.description) sec.appendChild(el("div", "example-note", ex.description));
+            sec.appendChild(jsonBlock(ex.value));
+          }
         }
         function jsonBlock(value) {
           const pre = el("pre"); const code = el("code");
@@ -1522,7 +1537,7 @@ window.OPENAPI = {
             const rbSchema = rbMedia && rbMedia.schema;
             if (rbSchema) {
               sec.appendChild(el("div", "block-label", "요청 본문"));
-              sec.appendChild(jsonBlock(mediaExample(rbMedia)));
+              appendExamples(sec, rbMedia);
               const pt = propTable(rbSchema);
               if (pt) sec.appendChild(pt);
             }
@@ -1537,7 +1552,7 @@ window.OPENAPI = {
                 sec.appendChild(row);
                 const media = r.content && r.content["application/json"];
                 if (media && media.schema) {
-                  sec.appendChild(jsonBlock(mediaExample(media)));
+                  appendExamples(sec, media);
                   const pt = propTable(media.schema); if (pt) sec.appendChild(pt);
                 }
               }
