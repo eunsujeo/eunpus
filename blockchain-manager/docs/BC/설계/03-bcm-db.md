@@ -14,7 +14,7 @@ status: To Do
 - **컬럼 축약** `_stcd`(상태코드) · `_dvcd`(구분코드) · `_yn`(VARCHAR(1) Y/N) · `_cnt`(횟수) · `_dttm`(일시) · `_dt`(일자) · `_id` · payload(JSONB)
 - **일시는 VARCHAR(16)** — 코어와 동일(TIMESTAMP 안 씀) · **일자는 VARCHAR(8)** (YYYYMMDD)
 - **id 길이** — 벤더가 주는 값(벤더 tx·vault·알림 id)은 잘리지 않게 VARCHAR(64) 유지. 코어 자체 id 는 16~36
-- **자산 심볼** — 코어 규약대로 `tkn_smbl`(토큰심볼)
+- **자산은 두 컬럼** — `ntwk_cd`(네트워크코드 20자) + `tkn_smbl`(토큰심볼 16자). 코어 마스터의 컬럼명·크기를 따르되 **값은 우리가 정한다** — 코어 키(`tkn_id` 등)에 의존하지 않는다
 - **감사 4컬럼** — 모든 테이블에 `frst_reg_empno`(6)·`frst_reg_brcd`(4)·`last_chng_empno`(6)·`last_chng_brcd`(4). 자동 처리 행은 시스템 센티넬 `empno='SYSTEM'`·`brcd='9999'`(2026-08-05 확정 — 구현은 단일 상수), Admin 수동 개입(수동 boost·동결 해제 등)은 실제 직원/부점. 행 발생·변경 "시각"은 별도 도메인 `_dttm` 이 담당한다(코어와 동일 분리)
 
 ## 테이블 한눈에
@@ -22,7 +22,7 @@ status: To Do
 | 테이블 | 무엇을 저장하나 | 쓰는 곳 |
 |---|---|---|
 | `bcm_acnt_m` | 계정 매핑 — (계정유형, ref) ↔ vault | 계정 생성 · 모든 오퍼레이션의 계정 해석 |
-| `bcm_addr_m` | 주소 매핑 — (계정, 자산) ↔ 입금 주소 | 주소 발급·조회 · 입금 감지의 주소→계정 대응 |
+| `bcm_addr_m` | 주소 매핑 — (계정, 네트워크, 토큰) ↔ 입금 주소 | 주소 발급·조회 · 입금 감지의 주소→계정 대응 |
 | `bcm_whk_l` | 수신 웹훅 알림 원본 — 인박스 | 수신부 적재 → 판단 워커 집기 · finalize 원본의 출처 |
 | `bcm_tx_l` | 거래 운영 상태 — 감지·발행 추적 | 판단 워커 → 발행 예약 · 막힘 점검 · 제출 중복 차단 |
 | `bcm_outbox_l` | 발행 대기 이벤트 — 상태 변경과 원자 기록 | 워커가 같은 트랜잭션에 적재 → relay 가 발송 |
@@ -34,13 +34,13 @@ status: To Do
 ## ERD
 
 ```erd
-entity: bcm_addr_m @1,1 :: 주소 매핑 — (계정, 자산)당 입금 주소 하나 | acnt_id PK,FK :: 계정 | tkn_smbl PK :: 토큰 심볼 | dpst_addr :: 발급된 입금 주소
+entity: bcm_addr_m @1,1 :: 주소 매핑 — (계정, 네트워크, 토큰)당 입금 주소 하나 | acnt_id PK,FK :: 계정 | ntwk_cd PK :: 네트워크 코드 | tkn_smbl PK :: 토큰 심볼 | dpst_addr :: 발급된 입금 주소
 entity: bcm_whk_l @2,1 :: 수신 웹훅 알림 원본 — 인박스 (처리 후 N일 정리) | noti_id PK :: 웹훅 알림 id (벤더 UUID) — 중복 수신 방어 | vndr_tx_id :: 벤더 tx id — 이 알림이 가리키는 거래 | prcs_yn :: 판단 처리 여부
 entity: bcm_outbox_l @3,1 :: 발행 대기 이벤트 (Outbox) — 상태 변경과 원자 기록 | evnt_id PK :: 이벤트 id (UUID v7) · 컨슈머 dedup 키 | evt_typ_dvcd :: 이벤트유형 TXCK/TXCF/TXFL | evnt_stcd :: 발행상태 P/D/F/S
 entity: bcm_acnt_m @1,2 :: 계정 매핑 — ref ↔ vault | acnt_id PK :: 매니저가 발급하는 계정 매핑 id | acnt_typ_dvcd UK :: 계정유형 CU 고객 / SY 시스템 | ref UK :: 백엔드 참조 키 = 코어 계정 ID · 유형과 함께 유일 | vndr_vlt_id :: 벤더 vault id (백엔드 비노출)
 entity: bcm_tx_l @2,2 :: 거래 운영 상태 — 감지·발행 추적 | vndr_tx_id PK :: 벤더 tx id | ext_tx_id UK :: 출금 요청 키 — 재제출 중복 차단, 입금은 NULL | acnt_id FK :: 귀속 계정 — 이벤트 파티션 키 | last_pub_stcd :: 마지막으로 발행한 TxStatus
 entity: bcm_boost_l @3,2 :: boost 이력 — Admin 조회용 | orig_tx_id PK :: 원 벤더 tx | try_seq PK :: 시도 순번 | new_tx_id :: 대체 벤더 tx
-entity: bcm_swp_trgt @1,3 :: sweep 대상 마킹 — 작업 큐 | acnt_id PK,FK :: 고객 계정 | tkn_smbl PK :: 토큰 심볼 | swp_tx_id :: 제출한 sweep tx (NULL=미제출)
+entity: bcm_swp_trgt @1,3 :: sweep 대상 마킹 — 작업 큐 | acnt_id PK,FK :: 고객 계정 | ntwk_cd PK :: 네트워크 코드 | tkn_smbl PK :: 토큰 심볼 | swp_tx_id :: 제출한 sweep tx (NULL=미제출)
 entity: bcm_raw_tx_l @2,3 :: finalize 원본 — 일 배치 장기 보관 | base_dt PK :: 적재 기준일 = 파티션 키 | vndr_tx_id PK :: 벤더 tx id | payload_hash :: 원문 SHA-256 — 무결성
 entity: bcm_job_m @3,3 :: 주기 작업 상태 — heartbeat · 대사 커서 | job_nm PK :: 작업명 | last_scs_dttm :: 마지막 성공 — tx 대사 대조 범위 이어붙임
 rel: bcm_acnt_m | bcm_addr_m | 계정당 주소 | one-many
@@ -66,7 +66,7 @@ table: bcm_whk_l | noti_id | vndr_tx_id | prcs_yn
 table: bcm_tx_l | vndr_tx_id | last_pub_stcd | cnfm_cnt
 table: bcm_outbox_l | evnt_id | evt_typ_dvcd | evnt_stcd
 queue: deposit-events | 이벤트 | txId
-table: bcm_swp_trgt | acnt_id | tkn_smbl | swp_tx_id
+table: bcm_swp_trgt | acnt_id | ntwk_cd | tkn_smbl | swp_tx_id
 step: 웹훅 도착 (CONFIRMING) | 수신부가 알림 원본만 적재하고 200 을 돌려준다 — 판단은 아직
 ins: bcm_whk_l | n-8f3a | tx-91c | N
 step: 워커 — 한 트랜잭션 | 판단 워커가 알림을 집어 tx 행 생성 + outbox 에 감지 이벤트 적재(P) + 알림 처리 완료 — 한 커밋
@@ -87,7 +87,7 @@ step: relay 발행 — 확정 | 확정 이벤트가 큐로 나간다
 ins: deposit-events | 입금 확정 | tx-91c
 upd: bcm_outbox_l | 2 | evnt_stcd=S
 step: sweep 대상 마킹 | 확정을 잡으면 그 (계정, 자산)을 sweep 대상으로 마킹한다 — swp_tx_id 는 비어 있음(미제출)
-ins: bcm_swp_trgt | acct_01H8X | USDC | 
+ins: bcm_swp_trgt | acct_01H8X | ETHEREUM | USDC | 
 step: 주기 배치 — 제출 | 배치가 미제출 대상의 잔액을 조회해 sweep 을 제출하고 진행 중 표시를 남긴다
 upd: bcm_swp_trgt | 1 | swp_tx_id=tx-s01
 step: sweep 확정 · 대상 정리 | 다음 배치가 vault 가 비었음을 확인하면 대상 행을 지운다 (탈락이면 잔액이 남아 재sweep)
@@ -193,6 +193,7 @@ CREATE TABLE bcm_acnt_m (
 ```sql
 CREATE TABLE bcm_addr_m (
   acnt_id     VARCHAR(64)  NOT NULL,       -- 계정
+  ntwk_cd     VARCHAR(20)  NOT NULL,       -- 네트워크 코드
   tkn_smbl    VARCHAR(16)  NOT NULL,       -- 토큰 심볼
   dpst_addr   VARCHAR(128) NOT NULL,       -- 발급된 입금 주소
   reg_dttm    VARCHAR(16)  NOT NULL,       -- 발급 일시
@@ -201,14 +202,14 @@ CREATE TABLE bcm_addr_m (
   frst_reg_brcd   VARCHAR(4)  NOT NULL,
   last_chng_empno VARCHAR(6)  NOT NULL,
   last_chng_brcd  VARCHAR(4)  NOT NULL,
-  PRIMARY KEY (acnt_id, tkn_smbl)
+  PRIMARY KEY (acnt_id, ntwk_cd, tkn_smbl)
 );
-CREATE INDEX idx_bcm_addr_lookup ON bcm_addr_m (dpst_addr, tkn_smbl);
+CREATE INDEX idx_bcm_addr_lookup ON bcm_addr_m (dpst_addr, ntwk_cd);
 ```
 
 | 컬럼 | 뜻 |
 |---|---|
-| `PRIMARY KEY (acnt_id, tkn_smbl)` | 자산당 주소 하나 — 같은 자산의 주소를 더 두려면 계정을 더 만든다 |
+| `PRIMARY KEY (acnt_id, ntwk_cd, tkn_smbl)` | (네트워크, 토큰)당 주소 하나 — 같은 자산의 주소를 더 두려면 계정을 더 만든다. 네트워크를 키에 넣어 같은 토큰의 여러 네트워크가 공존한다 |
 | `idx_bcm_addr_lookup` | 역방향 조회 — 입금 감지가 "이 주소가 어느 계정인가"를 여기서 푼다 |
 
 ### bcm_whk_l — 수신 알림 원본
@@ -251,6 +252,7 @@ CREATE TABLE bcm_tx_l (
   orig_tx_id      VARCHAR(64)  NULL,          -- boost 대체 건이면 원 tx — 백엔드에는 원 tx 로 접어 흘린다
   ext_tx_id       VARCHAR(128) NULL UNIQUE,   -- 제출 건의 백엔드 요청 키 — 재제출 중복 차단, 입금 감지 건은 NULL
   acnt_id         VARCHAR(64)  NOT NULL,      -- 귀속 계정 — 이벤트 파티션 키
+  ntwk_cd         VARCHAR(20)  NOT NULL,      -- 네트워크 코드
   tkn_smbl        VARCHAR(16)  NOT NULL,      -- 토큰 심볼
   last_pub_stcd   VARCHAR(16)  NOT NULL,      -- 마지막으로 발행한 TxStatus — 이 값과 다를 때만 새 이벤트를 낸다
   cnfm_cnt        INT          NOT NULL,      -- 마지막으로 본 confirmation 수 — 큰 값으로만 갱신(감소 금지)
@@ -319,6 +321,7 @@ CREATE INDEX idx_bcm_outbox_send ON bcm_outbox_l (evnt_stcd, evnt_id);  -- 미�
 ```sql
 CREATE TABLE bcm_swp_trgt (
   acnt_id       VARCHAR(64)  NOT NULL,       -- 고객 계정
+  ntwk_cd       VARCHAR(20)  NOT NULL,       -- 네트워크 코드
   tkn_smbl      VARCHAR(16)  NOT NULL,       -- 토큰 심볼
   reg_dttm      VARCHAR(16)  NOT NULL,       -- 처음 마킹된 일시
   swp_tx_id     VARCHAR(64)  NULL,           -- 제출한 sweep 벤더 tx — NULL=미제출(배치 대상) · 값 있으면 진행 중(재제출 안 함)
@@ -329,7 +332,7 @@ CREATE TABLE bcm_swp_trgt (
   frst_reg_brcd   VARCHAR(4)  NOT NULL,
   last_chng_empno VARCHAR(6)  NOT NULL,
   last_chng_brcd  VARCHAR(4)  NOT NULL,
-  PRIMARY KEY (acnt_id, tkn_smbl)
+  PRIMARY KEY (acnt_id, ntwk_cd, tkn_smbl)
 );
 ```
 
@@ -387,6 +390,7 @@ CREATE TABLE bcm_raw_tx_l (
   ext_tx_id      VARCHAR(128) NULL,       -- 출금 건 식별자 — 입금은 NULL
   tx_hash        VARCHAR(128) NULL,       -- 온체인 거래 해시
   addr           VARCHAR(128) NOT NULL,   -- 지갑(주소) 기준 조회 키 — 입금은 수취 주소, 출금은 출발 주소
+  ntwk_cd        VARCHAR(20)  NOT NULL,   -- 네트워크 코드
   tkn_smbl       VARCHAR(16)  NOT NULL,   -- 토큰 심볼
   final_stcd     VARCHAR(16)  NOT NULL,   -- 도달한 최종 상태
   payload        TEXT         NOT NULL,   -- 벤더 응답 원문 — 받은 바이트 그대로, 가공 금지

@@ -13,10 +13,10 @@ DAW-CORE가 블록체인 매니저를 호출하는 계약을 한 장으로 조�
 | 오퍼레이션 | 무엇 | 상세 |
 |---|---|---|
 | `createAccount(accountType, ref)` | 계정 생성 — ref↔accountId 매핑 (유형+ref 로 멱등) | [1장](01-create-account.md) |
-| `createDepositAddress(accountId, asset)` | 자산 지갑 활성화·입금 주소 발급 (멱등) | [2장](02-issue-deposit-address.md) |
-| `createDepositAddresses(accountId, assets)` | 한 계정의 여러 자산 주소 발급 — 같은 토큰 여러 네트워크용. 최대 20자산, 자산별 결과 (부분 성공) | [2장](02-issue-deposit-address.md) |
-| `depositAddressOf(accountId, asset)` | 발급된 주소 조회 — DB 읽기, 벤더 왕복 없음 | [3장](03-address-of.md) |
-| `balanceOf(accountId, asset)` | vault 잔액 — 대사에 쓰는 값, 고객별 귀속 잔액 아님 | [8장](08-balance-history.md) |
+| `createDepositAddress(accountId, network, token)` | 자산 지갑 활성화·입금 주소 발급 (멱등) | [2장](02-issue-deposit-address.md) |
+| `createDepositAddresses(accountId, token, networks)` | 한 토큰을 여러 네트워크로 — 최대 20네트워크, 네트워크별 결과 (부분 성공) | [2장](02-issue-deposit-address.md) |
+| `depositAddressOf(accountId, network, token)` | 발급된 주소 조회 — DB 읽기, 벤더 왕복 없음 | [3장](03-address-of.md) |
+| `balanceOf(accountId, network, token)` | vault 잔액 — 대사에 쓰는 값, 고객별 귀속 잔액 아님 | [8장](08-balance-history.md) |
 | `transactionsOf(accountId, after, before, status?)` | 기간·상태로 거래 목록 | [8장](08-balance-history.md) |
 | `transactionOf(txId)` | 단건 조회 | [8장](08-balance-history.md) |
 | `submitTransaction(request)` | 출금·이체 제출 — `externalTxId`·(트래블룰 대상이면) travelRuleMessage 를 싣는다 | [6장](06-withdrawal.md) |
@@ -40,7 +40,8 @@ DAW-CORE가 블록체인 매니저를 호출하는 계약을 한 장으로 조�
   "txHash": "0x9f3a...",
   "externalTxId": "WD-000123",
   "accountId": "acct_01H8X",
-  "asset": "ETH",
+  "network": "ETHEREUM",
+  "token": "ETH",
   "to": "0x896B...0b9b",
   "status": "FINALIZED",
   "numOfConfirmations": 12

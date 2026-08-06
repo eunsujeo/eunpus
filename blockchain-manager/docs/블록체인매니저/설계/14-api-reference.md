@@ -11,17 +11,18 @@ status: To Do
 - **대상** — 매니저(별도 서비스)를 연동하는 Service·Admin 백엔드 개발자.
 - **기준** — 오퍼레이션 시그니처·공통 타입·열거형의 정의는 이 장이 기준이다. 흐름·근거는 각 장을 본다.
 - **표기** — 계약은 코틀린 시그니처 형태로 적는다. 실제 HTTP 경로·메서드는 구현(Swagger)을 따른다.
-- **식별자** — `AccountId`·`Asset`·`WalletId` 는 문자열 별칭이다.
+- **식별자** — `AccountId`·`Network`·`Token`·`WalletId` 는 문자열 별칭이다. 자산은 `Asset` 한 덩어리가 아니라 **네트워크 + 토큰 두 값**이다 — 같은 토큰을 여러 네트워크로 받는 것이 기본 용도라 결합 문자열을 쓰지 않는다.
 
 ```kotlin
 typealias AccountId = String   // 매니저 계정 매핑 id (우리 ref ↔ vault, 백엔드는 vaultId 를 모른다 · 9장)
-typealias Asset = String       // 자산 식별 (체인 × 토큰)
+typealias Network = String     // 네트워크 코드 (ETHEREUM · POLYGON · TRON …) — 값은 우리가 정한다
+typealias Token = String       // 토큰 심볼 (USDC · ETH …)
 typealias WalletId = String    // 사전 등록(화이트리스트) 지갑 id
 ```
 
 ## 공통 규약
 
-- **멱등키(Idempotency-Key)** — 생성 계열은 키로 중복을 막는다. `createAccount` = f(accountType, ref), `createDepositAddress` = f(accountId, asset) — 여러 자산 발급도 자산마다 같은 기준이다. 24시간 안의 재시도는 같은 결과를 돌려준다. 그 뒤의 영구 유일성은 매니저 DB 의 UNIQUE 제약이 보장한다(1·2장).
+- **멱등키(Idempotency-Key)** — 생성 계열은 키로 중복을 막는다. `createAccount` = f(accountType, ref), `createDepositAddress` = f(accountId, network, token) — 여러 네트워크 발급도 네트워크마다 같은 기준이다. 24시간 안의 재시도는 같은 결과를 돌려준다. 그 뒤의 영구 유일성은 매니저 DB 의 UNIQUE 제약이 보장한다(1·2장).
 - **externalTxId** — 제출할 때 백엔드가 싣는 우리 요청 키다. 재제출 중복 차단 + 완료 이벤트 대응에 쓰고, 매니저는 완료 이벤트에 그대로 실어 되돌려준다(6·10·12장).
 - **이벤트 전달 = at-least-once** — 같은 이벤트가 드물게 두 번 올 수 있다. 이벤트 ID(tx id 또는 externalTxId) 유일 기준으로 **상태 전이만 반영**하고, 오프셋은 원장 반영 성공 후 커밋한다(4장).
 - **에러 구분** — `depositAddressOf` 는 계정 없음(`AccountNotFound`)과 주소 미발급(`null`)을 구분한다(3장). 제출 응답은 성공·확정 에러·애매한 에러 세 갈래다(6·10장).
@@ -30,19 +31,19 @@ typealias WalletId = String    // 사전 등록(화이트리스트) 지갑 id
 
 ```kotlin
 fun createAccount(accountType: AccountType, ref: String): Account // 1장 — vault 생성 · ref↔accountId 매핑 (AccountType = CUSTOMER · SYSTEM)
-fun createDepositAddress(accountId: AccountId, asset: Asset): Address   // 2장 — 자산 지갑 활성화 · 주소 발급
-fun createDepositAddresses(accountId: AccountId, assets: List<Asset>): List<AddressResult>  // 2장 — 여러 네트워크 발급 (최대 20자산 · 자산별 결과)
-fun depositAddressOf(accountId: AccountId, asset: Asset): Address?      // 3장 — DB 읽기 · 벤더 왕복 없음
+fun createDepositAddress(accountId: AccountId, network: Network, token: Token): Address  // 2장 — 자산 지갑 활성화 · 주소 발급
+fun createDepositAddresses(accountId: AccountId, token: Token, networks: List<Network>): List<AddressResult>  // 2장 — 한 토큰 여러 네트워크 (최대 20 · 네트워크별 결과)
+fun depositAddressOf(accountId: AccountId, network: Network, token: Token): Address?  // 3장 — DB 읽기 · 벤더 왕복 없음
 ```
 
 - `createAccount` — 같은 (`accountType`, `ref`) 재요청은 같은 `accountId` 를 돌려준다(멱등). 계정 유형은 고객·시스템 ID 가 서로 다른 테이블에서 접두사 없이 발급되어 값이 겹칠 수 있기 때문에 함께 받는다. EVM 은 자산당 주소 하나라, 같은 자산의 주소를 더 두려면 계정을 더 만든다(2장).
 - `depositAddressOf` — 세 갈래: 주소 있음 → `Address`, 계정 있고 주소 미발급 → `null`, 계정 없음 → `AccountNotFound`. 주소를 만들지는 않는다(생성은 `createDepositAddress`).
-- `createDepositAddresses` — 같은 토큰을 **여러 네트워크로 받을 때** 쓴다(USDC 를 이더리움·폴리곤·트론에서 받는 경우). 받을 네트워크를 정하는 것은 백엔드이고 매니저는 토큰 이름을 네트워크로 펼치지 않는다. 계정이 없으면 전체 404 이고, **자산별 부분 실패는 정상 동작이다** — 자산별 성공(주소)/실패(에러 코드)를 요청 순서대로 돌려주고 HTTP 는 200 이다. 전체를 되돌리지 않으므로 같은 요청을 그대로 재시도할 수 있다. **벤더 호출 수는 줄지 않아** 왕복만 줄어들고, 그래서 20자산 상한을 둔다.
+- `createDepositAddresses` — 토큰 하나와 네트워크 목록을 받는다(USDC 를 이더리움·폴리곤·트론에서 받는 경우). 받을 네트워크를 정하는 것은 백엔드이고 매니저가 스스로 채우지 않는다. 계정이 없으면 전체 404 이고, **네트워크별 부분 실패는 정상 동작이다** — 네트워크별 성공(주소)/실패(에러 코드)를 요청 순서대로 돌려주고 HTTP 는 200 이다. 전체를 되돌리지 않으므로 같은 요청을 그대로 재시도할 수 있다. **벤더 호출 수는 줄지 않아** 왕복만 줄어들고, 그래서 20네트워크 상한을 둔다.
 
 ## 잔액 · 내역 API
 
 ```kotlin
-fun balanceOf(accountId: AccountId, asset: Asset): Balance       // 8장 — vault 잔액(가용·대기·잠김)
+fun balanceOf(accountId: AccountId, network: Network, token: Token): Balance  // 8장 — vault 잔액(가용·대기·잠김)
 fun transactionsOf(                                              // 8장 — 기간·상태로 거래 목록
   accountId: AccountId,
   after: Instant,
@@ -123,7 +124,8 @@ data class TransactionRequest(
   val externalTxId: String,            // 우리 요청 키 — 재제출 중복 차단 · 완료 대응
   val from: TransferPeer,              // 보내는 쪽 — 우리 vault 라 type=ACCOUNT 만 허용
   val to: TransferPeer,                // 목적지 — 세 갈래
-  val asset: Asset,
+  val network: Network,
+  val token: Token,
   val amount: BigDecimal,
   val note: String? = null,            // 벤더 거래 기록 메모
   val travelRule: TravelRule? = null,  // 게이트 산출물(암호화) — 매니저는 운반만
@@ -133,7 +135,8 @@ data class Transfer(
   val txId: String,                   // 벤더 tx id
   val txHash: String? = null,          // 온체인 거래해시 — 전파 후 채워짐
   val externalTxId: String? = null,    // 우리 요청 키
-  val asset: Asset,
+  val network: Network,
+  val token: Token,
   val amount: BigDecimal,
   val from: String,                    // 발신 주소
   val to: String,                      // 목적지 주소
@@ -149,7 +152,8 @@ data class ChainEvent(
   val txHash: String? = null,          // 온체인 거래해시 — 전파 후
   val externalTxId: String? = null,    // 우리 요청 키 (출금·내부이체)
   val accountId: AccountId,            // 파티션 키
-  val asset: Asset,
+  val network: Network,
+  val token: Token,
   val to: String,                      // 목적지 주소 — 입금 판별
   val status: TxStatus,                // DAW-CORE 는 이것으로만 판단한다
   val numOfConfirmations: Int,
