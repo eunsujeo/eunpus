@@ -348,7 +348,7 @@ SPECS = [
         "kanban": os.path.join(HERE, "..", "docs", "블록체인매니저", "API", "api.md"),
         "embed_name": "bcm-api-doc.html",
         "preamble": (
-            "DAW-CORE(Service·Admin)와 스펙을 맞추는 연동 계약 — HTTP 엔드포인트·공통 규약·메시지 큐 이벤트·타입 전체.\n"
+            "호출 쪽 백엔드(Service·Admin)와 스펙을 맞추는 연동 계약 — HTTP 엔드포인트·공통 규약·메시지 큐 이벤트·타입 전체.\n"
             "이 문서는 build.py 가 만든 export 라 직접 고치지 않는다 — 수정은 bcm-api-docs/openapi.yaml 에서."
         ),
     },
