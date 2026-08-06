@@ -17,7 +17,8 @@ data class TransactionRequest(
   val externalTxId: String,             // 벤더에 남기는 우리 쪽 거래 식별자 — 재제출 중복 차단 · 우리 키로 벤더 거래 조회
   val from: TransferPeer,               // 보내는 쪽 — 우리 vault 라 type=ACCOUNT 만 허용
   val to: TransferPeer,                 // 목적지 — type 으로 갈래 구분 (벤더 TransferPeerPathType 으로 매핑)
-  val asset: Asset,
+  val network: Network,
+  val token: Token,
   val amount: BigDecimal,
   val note: String? = null,             // 벤더 거래 기록에 남는 메모
   val travelRule: TravelRule? = null,   // 트래블룰 — 게이트(매니저 밖)가 만든 암호화 메시지. 매니저는 운반만, 내용은 모름

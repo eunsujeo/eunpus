@@ -3,11 +3,11 @@ title: 3. 입금 주소 조회 — depositAddressOf
 status: Done
 ---
 
-생성과 정반대인 읽기 전용 오퍼레이션 — 매니저가 블록체인 매니저 DB 에서 (accountId, asset)로 저장된 주소를 읽는다.
+생성과 정반대인 읽기 전용 오퍼레이션 — 매니저가 블록체인 매니저 DB 에서 (accountId, network, token)으로 저장된 주소를 읽는다.
 가장 자주 불리는 조회라 벤더 왕복 없이 매니저 DB 만 읽고, 백엔드는 매니저 API 1홉으로 받는다.
 
 ```kotlin
-fun depositAddressOf(accountId: AccountId, asset: Asset): Address? {
+fun depositAddressOf(accountId: AccountId, network: Network, token: Token): Address? {
   // accountId 없음 → 에러(AccountNotFound) · 계정 있고 주소 미발급 → null (만들지 않는다, 생성은 2장)
   return address
 }
@@ -26,8 +26,8 @@ sequenceDiagram
     participant MDB as 블록체인 매니저 DB
     end
 
-    BE->>BM: depositAddressOf(accountId, asset) — API
-    BM->>MDB: (accountId, asset)↔주소 읽기
+    BE->>BM: depositAddressOf(accountId, network, token) — API
+    BM->>MDB: (accountId, network, token)↔주소 읽기
     alt 주소 있음
         MDB-->>BM: 주소 (이더리움·Base = 0xAb3… · memoTag null)
         BM-->>BE: 주소

@@ -15,7 +15,8 @@ data class ChainEvent(
   val txHash: String? = null,        // 온체인 거래해시 — 전파 후 채워짐(SUBMITTED 단계엔 없을 수 있음). 백엔드 대사·증빙용
   val externalTxId: String? = null,  // 우리 요청 키 (출금·내부이체) — 완료 대응·멱등
   val accountId: AccountId,          // 파티션 키 (내부이체 = 출발 계정)
-  val asset: Asset,
+  val network: Network,
+  val token: Token,
   val to: String,                    // 목적지 주소 — 고객 입금 판별
   val status: TxStatus,              // SUBMITTED · CONFIRMED · FINALIZED · REJECTED · FAILED — DAW-CORE 는 이것으로만 판단한다
   val numOfConfirmations: Int,

@@ -11,7 +11,7 @@ status: Done
 ```kotlin
 // 블록체인 매니저 API 오퍼레이션 — 백엔드가 HTTP 로 호출
 // 온체인 지갑(옴니버스 · sweep 전 고객 vault) 조회 — 운영·대사용
-fun balanceOf(accountId: AccountId, asset: Asset): Balance {
+fun balanceOf(accountId: AccountId, network: Network, token: Token): Balance {
   return Balance(available, pending, locked)
 }
 
@@ -30,7 +30,8 @@ data class Transfer(
   val txId: String,                 // 벤더 tx id
   val txHash: String? = null,        // 온체인 거래해시 — 전파 후 채워짐. 대사·증빙용 (4장 ChainEvent 와 동일)
   val externalTxId: String? = null,  // 우리 요청 키 (출금·내부이체) — 기록과 대조용
-  val asset: Asset,
+  val network: Network,
+  val token: Token,
   val amount: BigDecimal,
   val from: String,                  // 발신 주소
   val to: String,                    // 목적지 주소 — 방향은 from·to 로 가른다
@@ -98,7 +99,7 @@ sequenceDiagram
     end
     participant FB as Fireblocks (SaaS)
 
-    BE->>BM: API — balanceOf(옴니버스 accountId, asset)
+    BE->>BM: API — balanceOf(옴니버스 accountId, network, token)
     BM->>FB: getVaultAccountAsset — 가용·대기·잠김 필드를 준다
     FB-->>BM: 자산 잔액 (available · pending · lockedAmount · frozen …)
     BM-->>BE: Balance(가용, 대기, 잠김) — 온체인 지갑의 세 칸
