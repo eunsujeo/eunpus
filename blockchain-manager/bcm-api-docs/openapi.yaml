@@ -462,6 +462,8 @@ paths:
 
         **채택한 네트워크에서만 찾는다.** 찾던 네트워크가 안 보이면 아직 채택하지 않은 것이므로 `PUT /admin/networks/{code}` 를 먼저 한다.
 
+        여기서만 `token` 이 아니라 `symbol` 을 쓴다 — 후보는 아직 우리 자산이 아니라 우리 코드가 없다. 우리 코드는 등록할 때 `token` 으로 정한다.
+
         읽기 전용이고 아무것도 바꾸지 않는다.
       operationId: assetCandidatesOf
       parameters:
@@ -469,7 +471,7 @@ paths:
           in: query
           required: true
           schema: { type: string }
-          description: 찾을 심볼 — 대소문자를 가리지 않는다
+          description: 벤더 표기로 찾는다 — 대소문자를 가리지 않는다. 우리 토큰 코드와 다를 수 있다
           example: USDC
         - name: network
           in: query
@@ -770,7 +772,10 @@ components:
           type: string
           description: 이 자산이 있는 우리 네트워크 코드
           example: BASE
-        symbol: { type: string, example: USDC }
+        symbol:
+          type: string
+          description: 벤더가 이 자산에 붙인 표기 — 우리 토큰 코드(`token`)와 다를 수 있다
+          example: USDC
         displayName:
           oneOf: [{ type: string }, { type: 'null' }]
           example: USD Coin
@@ -828,7 +833,7 @@ components:
           example: BASE
         token:
           type: string
-          description: 우리 토큰 코드
+          description: 우리 토큰 코드 — 여기서 정하고, 이후 모든 계약에서 이 값을 쓴다
           example: USDC
         contractAddress:
           oneOf: [{ type: string }, { type: 'null' }]
