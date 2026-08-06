@@ -14,11 +14,12 @@ status: To Do
 |---|---|
 | **이 자산이 벤더에서 무엇인가** (`vndr_ast_id`) | **매니저** — 오히려 다른 데 두면 안 된다. 벤더 식별자를 다른 시스템이 알기 시작하면 "호출 쪽은 벤더를 모른다"는 전제가 무너진다 |
 | 어떤 자산을 지원하는가 | 상품 결정 — 매니저가 정할 위치가 아니다 |
-| 소수 자릿수 · 컨트랙트 주소 | 자산 자체의 속성 — 매니저는 금액을 문자열 decimal 로 넘기고 base unit 환산을 하지 않아 쓸 일이 없다 |
+| 소수 자릿수 | 자산 자체의 속성 — 매니저는 금액을 문자열 decimal 로 넘기고 base unit 환산을 하지 않아 쓸 일이 없다 |
+| 컨트랙트 주소 | 자산의 속성이지만 **등록 때 대조한 근거의 사본**으로 보관한다 — 업무에 쓰는 값이 아니라 "이 매핑을 무엇으로 확인했는가" 를 되짚기 위한 것이다 |
 
-그래서 이 표는 **매핑만** 담는다. 이름을 "자산 마스터"로 부르지 않는 이유도 같다 — 자산의 정의를 우리가 갖는 것처럼 읽히면 곤란하다.
+그래서 매핑 표는 **매핑만** 담는다. 이름을 "자산 마스터"로 부르지 않는 이유도 같다 — 자산의 정의를 우리가 갖는 것처럼 읽히면 곤란하다.
 
-**벤더 카탈로그를 따라 동기화하지 않는다.** 벤더가 지원하는 자산은 수천 개지만 우리가 쓰는 것은 몇 개뿐이다. 지원하기로 한 자산만 등록하고, 늘어나면 그때 한 줄 더한다.
+**자산은 벤더를 따라 동기화하지 않는다.** 벤더가 지원하는 자산은 수천 개지만 우리가 쓰는 것은 몇 개뿐이다. 지원하기로 한 자산만 등록하고, 늘어나면 그때 한 줄 더한다. (블록체인 목록은 고르기 편하자고 하루 한 번 받아 두는데, 그건 지원 결정이 아니라 참조 데이터다 — 아래 "표 둘".)
 
 **범위 (시작 시점)** — 스테이블코인만, 네트워크는 `ETHEREUM` · `BASE` 둘. 벤더에는 스테이블코인이라는 분류가 없어(자산 분류는 NATIVE · FT · FIAT · NFT · SFT · VIRTUAL) 어차피 우리가 고르는 결정이다.
 
@@ -30,8 +31,8 @@ status: To Do
 
 | 우리 값 | 함께 보관하는 표준 값 | 어디서 얻나 |
 |---|---|---|
-| `ntwk_cd` = `BASE` | **chainId** (EIP-155) | 벤더 `GET /v1/blockchains` 의 `onchain.chainId` |
-| `tkn_smbl` = `USDC` | **컨트랙트 주소** | 벤더 `GET /v1/assets/{id}` 응답 |
+| `ntwk_cd` = `BASE` | **chainId** (EIP-155) | 카탈로그 동기화가 벤더 `GET /v1/blockchains` 의 `onchain.chainId` 로 채운다 |
+| `tkn_smbl` = `USDC` | **컨트랙트 주소** | 등록 때 벤더 `GET /v1/assets/{id}` 응답과 대조해 저장 |
 
 **티커 심볼은 표준이 아니다.** `USDC` 라는 심볼은 유일하지 않고 누구나 자기 토큰에 붙일 수 있다. 체인마다 다른 컨트랙트가 같은 심볼을 쓴다. 심볼을 식별자로 삼으면 "USDC 라고 적혀 있으니 USDC 겠지"에 기대는 것이라, 잘못된 컨트랙트를 진짜로 다룰 수 있다. 그래서 심볼은 **표시용**으로 내리고 동일성은 위 두 값으로 판단한다.
 
@@ -45,24 +46,35 @@ status: To Do
 
 **테스트넷은 별도 코드로 둔다** — `BASE` 와 `BASE_SEPOLIA` 는 다른 네트워크다. `ntwk_cd` 하나에 시험망 여부 플래그를 다는 방식은 실수로 섞일 여지를 남긴다.
 
-## bcm_vndr_ast_m — 벤더 자산 매핑
+## 표 둘 — 카탈로그와 매핑
+
+**벤더 블록체인 카탈로그는 동기화하고, 자산 매핑은 손으로 등록한다.** 벤더가 지원하는 체인이 135개라 등록할 때마다 벤더 목록을 훑는 것은 현실적이지 않아 하루 한 번 받아 둔다. 반면 자산은 항상 `(네트워크, 심볼)`로 걸러 조회하므로 결과가 몇 개뿐이라 동기화할 이유가 없다 — 수천 개를 끌어와 몇 줄을 고르는 일이 된다.
 
 ```sql
+-- 벤더 블록체인 카탈로그 — 일 1회 동기화. 고르기 위한 참조 데이터다
+CREATE TABLE bcm_blkc_m (
+  vndr_blkc_id  VARCHAR(64)  PRIMARY KEY,  -- 벤더 blockchainId
+  ntwk_cd       VARCHAR(20)  NULL,         -- 우리 네트워크 코드 — 채택한 체인만 채운다
+  chain_id      BIGINT       NULL,         -- EIP-155 chainId (EVM 만)
+  dspl_nm       VARCHAR(64)  NOT NULL,     -- 벤더 표시명
+  test_yn       VARCHAR(1)   NOT NULL,     -- 시험망 여부 (벤더 onchain.test)
+  deprc_yn      VARCHAR(1)   NOT NULL,     -- 벤더가 폐기 표시 (metadata.deprecated)
+  sync_dttm     VARCHAR(16)  NOT NULL,     -- 마지막 동기화 일시
+  -- 감사 4컬럼
+  UNIQUE (ntwk_cd)
+);
+
+-- 자산 매핑 — 손으로 등록한다
 CREATE TABLE bcm_vndr_ast_m (
-  ntwk_cd       VARCHAR(20)  NOT NULL,   -- 네트워크 코드 (우리 값)
-  tkn_smbl      VARCHAR(16)  NOT NULL,   -- 토큰 심볼 (우리 값)
+  ntwk_cd       VARCHAR(20)  NOT NULL,   -- 우리 네트워크 코드
+  tkn_smbl      VARCHAR(16)  NOT NULL,   -- 토큰 심볼 (표시용)
   vndr_ast_id   VARCHAR(64)  NOT NULL,   -- 벤더 assetId — 벤더 호출에만 쓴다
-  vndr_blkc_id  VARCHAR(64)  NOT NULL,   -- 벤더 blockchainId — 등록 때 확보하고 대조에 쓴다
-  chain_id      BIGINT       NULL,       -- EIP-155 chainId (EVM 만) — 네트워크 속성의 역정규화
-  cntr_addr     VARCHAR(128) NULL,       -- 컨트랙트 주소 — 등록 때 대조한 근거의 사본 (네이티브 자산은 NULL)
+  cntr_addr     VARCHAR(128) NULL,       -- 등록 때 대조한 컨트랙트 주소 (네이티브는 NULL)
   reg_dttm      VARCHAR(16)  NOT NULL,
   -- 감사 4컬럼
-  frst_reg_empno  VARCHAR(6)  NOT NULL,
-  frst_reg_brcd   VARCHAR(4)  NOT NULL,
-  last_chng_empno VARCHAR(6)  NOT NULL,
-  last_chng_brcd  VARCHAR(4)  NOT NULL,
   PRIMARY KEY (ntwk_cd, tkn_smbl),
-  UNIQUE (vndr_ast_id)
+  UNIQUE (vndr_ast_id),
+  FOREIGN KEY (ntwk_cd) REFERENCES bcm_blkc_m (ntwk_cd)
 );
 ```
 
@@ -70,12 +82,24 @@ CREATE TABLE bcm_vndr_ast_m (
 |---|---|
 | `PRIMARY KEY (ntwk_cd, tkn_smbl)` | 같은 자산이 두 줄로 갈라지는 것 |
 | **`UNIQUE (vndr_ast_id)`** | **엉뚱한 체인에 주소를 발급하는 사고.** "BASE 의 USDC" 를 등록하며 이더리움 USDC 의 id 를 넣으면 여기서 걸린다 — 한 벤더 자산은 한 (네트워크, 토큰)에만 대응한다 |
+| **`FOREIGN KEY (ntwk_cd)`** | 채택하지 않은 네트워크로 매핑이 생기는 것. 카탈로그에 이름을 붙인 체인만 쓸 수 있다 — 네트워크와 벤더 체인의 대응이 한 곳에만 있어 어긋날 수가 없다 |
+| `UNIQUE (ntwk_cd)` (카탈로그) | 우리 이름 하나가 두 벤더 체인을 가리키는 것 |
 | `vndr_ast_id` 는 **set-once** | 이미 주소가 발급된 뒤 이 값을 바꾸면 기존 주소와 새 주소가 서로 다른 체인이 된다. 수정 오퍼레이션을 두지 않는 이유다 |
-| **한 `ntwk_cd` 는 한 `vndr_blkc_id` · 한 `chain_id`** | 같은 네트워크의 행들이 서로 다른 벤더 체인을 가리키는 것. 첫 줄만 제대로 고르면 그 뒤로는 등록 때 기계가 막는다 (DB 제약이 아니라 등록 검증) |
 
-`chain_id` 와 `cntr_addr` 은 네트워크·자산의 속성이라 원래 우리 소관이 아니지만, **등록 때 대조한 근거의 사본**으로 남긴다 — 나중에 "이 매핑을 무엇으로 확인했는가" 를 되짚을 수 있어야 한다. 업무에 쓰는 값이 아니라 감사용이다.
+**네트워크 채택은 카탈로그 행에 `ntwk_cd` 를 붙이는 것**이다. "이 체인을 쓰기로 한다"는 결정이 그 한 줄로 기록된다. `chain_id` 와 `dspl_nm` 은 동기화가 채우므로 사람이 적을 값이 아니다.
 
 행 하나가 곧 "이 자산은 벤더로 보낼 수 있다"는 뜻이다. 별도의 사용 여부 플래그는 두지 않는다 — 상품에서 자산을 내리는 것은 호출 쪽이 요청을 보내지 않는 것으로 끝나고, 장애 때 급히 막는 것은 성격이 달라 아래 "뒤로 미룬 것"에서 따로 다룬다.
+
+## 동기화 — 하루 한 번, 카탈로그만
+
+`GET /v1/blockchains` 를 페이징해 `bcm_blkc_m` 을 갱신한다.
+
+- **새 체인은 행을 추가**한다. `ntwk_cd` 는 비운다 — 채택은 사람이 하는 별도 행위다.
+- **기존 체인은 `dspl_nm`·`test_yn`·`deprc_yn`·`sync_dttm` 을 갱신**한다.
+- **벤더 목록에서 사라진 체인은 지우지 않는다.** 채택해 쓰고 있던 체인이면 매핑이 FK 로 걸려 있고, 지우면 그 이력이 사라진다. 벤더가 폐기 표시한 것은 `deprc_yn` 으로만 남긴다.
+- **`chain_id` 가 바뀌면 갱신하지 않고 경보**한다 — 같은 체인의 chainId 는 바뀌지 않는다. 바뀌었다면 벤더 데이터 문제이거나 우리가 다른 체인을 보고 있다는 뜻이다.
+
+**카탈로그가 하루 낡아도 안전하다.** 등록 시점에 벤더로 자산을 다시 확인하는 관문이 있어서, 카탈로그는 고르기 편하자는 참조 데이터이지 진실의 근거가 아니다. 새로 생긴 체인이 하루 늦게 보이는 것뿐이다.
 
 ## 변환은 벤더 경계에서 한 번
 
@@ -102,29 +126,30 @@ sequenceDiagram
     participant FB as Fireblocks
 
     Note over ADM,FB: 고르기 — 운영자는 값을 적지 않는다
-    ADM->>API: GET /admin/vendor-blockchains
-    API->>FB: GET /v1/blockchains
-    FB-->>API: 네트워크 목록
-    API-->>ADM: 목록 — 운영자가 Base 선택 · blockchainId·chainId 확보
-    ADM->>API: GET /admin/vendor-assets — blockchainId · symbol
-    API->>FB: GET /v1/assets — 그 네트워크로 필터
+    ADM->>API: GET /admin/networks — 채택한 네트워크 목록
+    API->>MDB: bcm_blkc_m 조회 (벤더 왕복 없음)
+    MDB-->>API: 네트워크 목록
+    API-->>ADM: 목록 — 운영자가 BASE 선택
+    ADM->>API: GET /admin/vendor-assets — network · symbol
+    API->>MDB: network 의 vndr_blkc_id 조회
+    API->>FB: GET /v1/assets — 그 체인으로 필터
     FB-->>API: 자산 후보
     API-->>ADM: 후보 — 운영자가 선택 · assetId 확보
 
     Note over ADM,FB: 등록 — 고른 값을 우리 (network, token) 에 붙인다
-    ADM->>API: POST 매핑 등록<br/>network · token · vendorAssetId · vendorBlockchainId<br/>chainId · expectedContractAddress · 직원번호 · 부점코드
-    API->>MDB: (network, token) 조회 · 같은 network 의 vndr_blkc_id 조회
-    alt 이미 등록됨 또는 그 network 가 다른 벤더 체인을 쓰고 있음
+    ADM->>API: POST 매핑 등록<br/>network · token · vendorAssetId<br/>expectedContractAddress · 직원번호 · 부점코드
+    API->>MDB: (network, token) 조회
+    alt 이미 등록됨
         MDB-->>API: 기존 행
         API-->>ADM: 409 CONFLICT
     else 통과
         API->>FB: GET /v1/assets/{vendorAssetId} — 최종 확인
-        alt 없거나 blockchainId·컨트랙트 주소가 요청과 불일치
+        alt 없거나 blockchainId·컨트랙트 주소가 어긋남
             FB-->>API: 404 또는 다른 값
             API-->>ADM: 400 VALIDATION_FAILED
         else 확인됨
             FB-->>API: blockchainId · 컨트랙트 주소 · displaySymbol
-            API->>MDB: INSERT — 감사 4컬럼 = 실제 직원·부점
+            API->>MDB: INSERT — ntwk_cd FK · 감사 4컬럼 = 실제 직원·부점
             alt vndr_ast_id UNIQUE 위반
                 MDB-->>API: 제약 위반
                 API-->>ADM: 409 CONFLICT — 이 벤더 자산은<br/>다른 (network, token) 이 이미 쓰고 있다
@@ -138,16 +163,18 @@ sequenceDiagram
 
 색: **초록 상자 = 매니저 안쪽**. 되돌아오는 점선이 실패 응답이다.
 
-**앞의 네 왕복이 값의 출처다.** 운영자가 벤더 콘솔에서 문자열을 눈으로 찾아 복사해 오는 구간을 없애는 것이 목적이고, 이 과정에서 **벤더 `blockchainId` 와 `chainId` 도 함께 확보**된다 — 네트워크 목록 응답의 `onchain.chainId` 가 그 값이다. 등록 요청에 그대로 실어 보내고, 매니저는 받은 값을 저장한다(벤더를 다시 부르지 않는다). 조회 오퍼레이션 둘은 벤더 조회를 대신해 줄 뿐인 읽기 전용이라 위험이 없다.
+**앞의 왕복들이 값의 출처다.** 운영자가 벤더 콘솔에서 문자열을 눈으로 찾아 복사해 오는 구간을 없애는 것이 목적이다. 네트워크 고르기는 **우리 카탈로그를 읽을 뿐이라 벤더 왕복이 없고**, 자산 고르기만 벤더를 부른다.
+
+**등록 요청이 가볍다** — `vendorBlockchainId` 나 `chainId` 를 클라이언트가 실어 보내지 않는다. 네트워크와 벤더 체인의 대응은 카탈로그에만 있고, 매니저가 `ntwk_cd` 로 찾는다. 클라이언트가 보낸 값과 대조하는 방식은 보낸 쪽이 틀리면 같이 틀리므로, 우리 표를 기준으로 삼는다.
 
 **관문 넷이 각각 다른 실수를 잡는다.**
 
-- **중복·네트워크 불일치 차단** — 이미 등록된 (network, token) 은 덮어쓰지 않는다. 여기에 더해 **같은 network 의 기존 행과 `vndr_blkc_id` 가 다르면 거절**한다 — `BASE` 의 첫 매핑이 어떤 벤더 체인을 가리켰다면 이후 `BASE` 매핑은 같은 체인이어야 한다.
-- **벤더 최종 확인** — API 는 조회 화면 없이도 직접 호출될 수 있으므로, 넘어온 assetId 가 실재하는지와 **응답의 `blockchainId` 가 요청과 같은지**를 다시 본다.
+- **중복 등록 차단** — 이미 등록된 (network, token) 은 덮어쓰지 않는다.
+- **벤더 최종 확인** — API 는 조회 화면 없이도 직접 호출될 수 있으므로, 넘어온 assetId 가 실재하는지와 **응답의 `blockchainId` 가 그 네트워크의 것과 같은지**를 다시 본다. 비교 대상은 카탈로그(`bcm_blkc_m`)에서 찾는다 — 클라이언트가 보낸 값이 아니라 **우리 표의 값**과 대조하는 것이 요점이다.
 - **컨트랙트 주소 대조** — 운영자가 **발행사 공식 문서에서 확인한 주소**(`expectedContractAddress`)를 함께 보내고, 벤더 응답의 주소와 다르면 거절한다. 이 관문만 유일하게 벤더 밖의 근거를 쓴다 — 앞의 것들은 전부 벤더가 준 값끼리 대조하는 것이라, **벤더 목록에서 엉뚱한 자산을 골랐을 때** 잡아내는 건 이 하나뿐이다. 네이티브 자산(컨트랙트 없음)은 이 대조를 건너뛴다.
 - **UNIQUE 위반 차단** — 벤더에 존재하는 id 라도 다른 자산의 것일 수 있다. 그 id 를 이미 쓰는 행이 있으면 DB 가 막는다.
 
-사람의 판단에 기대는 지점은 둘로 좁혀진다 — **네트워크당 첫 등록에서 체인을 제대로 고르는 것**(그 뒤로는 `vndr_blkc_id` 일관성 검사가 막는다), 그리고 **토큰마다 발행사 문서에서 컨트랙트 주소를 제대로 확인하는 것**이다. 나머지는 기계가 막는다.
+사람의 판단에 기대는 지점은 둘로 좁혀진다 — **네트워크를 채택할 때 카탈로그에서 올바른 체인에 이름을 붙이는 것**(그 뒤로는 FK 가 막는다), 그리고 **토큰마다 발행사 문서에서 컨트랙트 주소를 제대로 확인하는 것**이다. 나머지는 기계가 막는다.
 
 ## Admin API — 같은 서비스의 `/admin/*` (2026-08-06 확정)
 
@@ -155,10 +182,12 @@ sequenceDiagram
 
 | 오퍼레이션 | 하는 일 |
 |---|---|
-| `GET /admin/vendor-blockchains` | 벤더가 지원하는 네트워크 목록 — 등록 전 고르기용 (읽기 전용 프록시) |
-| `GET /admin/vendor-assets` | 그 네트워크의 자산 후보 — `blockchainId` · `symbol` 로 거른다 (읽기 전용 프록시) |
+| `GET /admin/blockchains` | 벤더 블록체인 카탈로그 — 우리 표를 읽는다. 채택 전 체인을 찾을 때 |
+| `PATCH /admin/blockchains/{vendorBlockchainId}` | **네트워크 채택** — 카탈로그 행에 `ntwkCd` 를 붙인다 |
+| `GET /admin/networks` | 채택한 네트워크 목록 — 자산 등록 전 고르기용 |
+| `GET /admin/vendor-assets` | 그 네트워크의 자산 후보 — `network` · `symbol` 로 거른다 (벤더 조회 프록시) |
 | `GET /admin/asset-mappings` | 등록된 매핑 목록 — 운영 확인용 |
-| `POST /admin/asset-mappings` | 등록 — `network` · `token` · `vendorAssetId` · `vendorBlockchainId` · `chainId` · `expectedContractAddress` |
+| `POST /admin/asset-mappings` | 등록 — `network` · `token` · `vendorAssetId` · `expectedContractAddress` |
 | `DELETE /admin/asset-mappings/{network}/{token}` | 잘못 등록한 것 되돌리기 — **그 (네트워크, 토큰)으로 발급된 주소가 하나도 없을 때만** 허용, 있으면 409 |
 
 수정 오퍼레이션은 두지 않는다. `vndr_ast_id` 가 set-once 이므로 고치는 유일한 경로는 "지우고 다시 넣기"이고, 주소가 이미 발급됐다면 그것도 막힌다 — 그 상황은 매핑 수정이 아니라 사고 처리다.
@@ -169,9 +198,9 @@ sequenceDiagram
 
 ## 뒤로 미룬 것 — 네트워크 장애 대응
 
-체인 장애 때 출금 제출을 네트워크 단위로 멈추는 스위치가 필요하다. 다만 이 표에 담을 것은 아니라고 판단해 **뒤로 미룬다.** 미루면서 정리해 둔 것:
+체인 장애 때 출금 제출을 네트워크 단위로 멈추는 스위치가 필요하다. **뒤로 미루되 자리는 생겼다** — 카탈로그(`bcm_blkc_m`)가 네트워크 단위 표이므로 나중에 여기에 붙이면 된다. 미루면서 정리해 둔 것:
 
-- **단위가 다르다** — 장애는 네트워크 단위로 오는데 매핑은 (네트워크, 토큰) 단위다. 자산마다 내리면 하나 빠뜨렸을 때 그 자산만 새어 나간다.
+- **단위가 다르다** — 장애는 네트워크 단위로 오는데 매핑은 (네트워크, 토큰) 단위다. 자산마다 내리면 하나 빠뜨렸을 때 그 자산만 새어 나간다. 그래서 매핑 표가 아니라 카탈로그 쪽에 붙일 것이다.
 - **저절로 막히는 장애와 아닌 장애가 갈린다** — 벤더가 죽으면 호출이 실패하니 스위치가 필요 없다. 문제는 **벤더는 멀쩡한데 체인이 지연되는 경우**로, 호출은 성공하고 tx 만 쌓인다. 스위치가 필요한 건 이쪽이다.
 - **오퍼레이션마다 대응이 다르다** — 입금 감지는 **절대 막지 않는다**(돈은 계속 들어오고 못 잡는 것이 사고다). 출금 제출은 막아야 하고(stuck tx 가 쌓인다), sweep 은 미루면 되고, 주소 발급·잔액 조회는 굳이 막을 이유가 없다.
 - **주된 통제는 호출 쪽이다** — 이상적으로는 접수 자체를 막아 고객에게 바로 안내되게 한다. 매니저 스위치는 그게 안 됐을 때의 최후 차단이다.
