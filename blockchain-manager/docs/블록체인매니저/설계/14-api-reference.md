@@ -42,7 +42,7 @@ fun depositAddressesOf(accountId: AccountId, token: Token? = null, network: Netw
 ## 잔액 · 내역 API
 
 ```kotlin
-fun balanceOf(accountId: AccountId, network: Network, token: Token): Balance  // 8장 — vault 잔액(가용·대기·잠김)
+fun balancesOf(accountId: AccountId, network: Network? = null, token: Token? = null): List<AssetBalance>  // 8장 — 자산별 vault 잔액
 fun transactionsOf(                                              // 8장 — 기간·상태로 거래 목록
   accountId: AccountId,
   after: Instant,
@@ -53,7 +53,7 @@ fun transactionOf(txId: String): Transfer?                     // 단건 조회 
 fun transactionByExternalTxId(externalTxId: String): Transfer?  // 우리 요청 키로 조회 — 출금은 계정별 목록에 안 나온다 (6장)
 ```
 
-- `balanceOf` 가 주는 값은 **vault 단위 벤더/온체인 잔액**이라 대사(reconciliation)에 쓰는 값이다 — 고객별 귀속 잔액이 아니다. 고객별 잔액·귀속은 백엔드가 원장으로 가진다(8·13장).
+- `balancesOf` 가 주는 값은 **vault 단위 벤더/온체인 잔액**이라 대사(reconciliation)에 쓰는 값이다 — 고객별 귀속 잔액이 아니다. 고객별 잔액·귀속은 백엔드가 원장으로 가진다(8·13장).
 - `after`·`before` 는 **거래 시각(createdAt) 기준** 시간창이다(최신순 이력). 매니저의 웹훅 감지와는 별개 — 목록 조회는 안정적 createdAt 정렬을 쓴다.
 
 ## 출금 API
@@ -187,7 +187,7 @@ enum class Topic { deposit, withdrawal, internal }   // 토픽명은 deposit-eve
 | `createAccount` | API | Service | 1장 |
 | `createDepositAddresses` | API | Service | 2장 |
 | `depositAddressesOf` | API | Service | 3장 |
-| `balanceOf` | API | Service·Admin | 8장 |
+| `balancesOf` | API | Service·Admin | 8장 |
 | `transactionsOf` · `transactionOf` | API | Service·Admin | 8장 (단건은 6장도) |
 | `submitTransaction` | API | Service | 6장 |
 | `boost` · `cancel` | 내부·운영 | 매니저 자동 · Admin | 6장 |

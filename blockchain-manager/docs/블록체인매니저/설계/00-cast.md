@@ -21,7 +21,7 @@ status: Done
 flowchart TB
     SVC["Service 백엔드<br/>고객 런타임 · 입금·출금·잔액"]
     ADM["Admin 백엔드<br/>운영·거버넌스 · 정책·승인·키·동결"]
-    BM["블록체인 매니저 — 별도 서비스 · 1차 목표<br/>HTTP API: createAccount · createDepositAddresses · depositAddressesOf<br/>submitTransaction · balanceOf · transactionsOf …<br/>이벤트: onChainEvent → 메시지 큐 publish"]
+    BM["블록체인 매니저 — 별도 서비스 · 1차 목표<br/>HTTP API: createAccount · createDepositAddresses · depositAddressesOf<br/>submitTransaction · balancesOf · transactionsOf …<br/>이벤트: onChainEvent → 메시지 큐 publish"]
     MQ["메시지 큐<br/>deposit·withdrawal·internal"]
     FB["Fireblocks"]
     ETH["이더리움"]
@@ -133,7 +133,7 @@ flowchart LR
 | 출금 제출 | createTransaction | | | ● | | `submitTransaction` | S | 6장 |
 | 거래 상세 조회 | getTransactionById | | | ● | ● | `transactionOf` | S·A | 6장 |
 | 막힌 출금 재촉 | boost (정책 내 자동) | | | ● | ● | `boost`(자동) · `cancel`(예외) | A | 6장 |
-| 잔액 (가용·대기·잠김) | getVaultAccountAsset | | ● | ● | ● | `balanceOf` | S·A | 8장 |
+| 잔액 (가용·대기·잠김) | getVaultAccountAsset | | ● | ● | ● | `balancesOf` | S·A | 8장 |
 | 내 거래 이력 | 거래 목록 조회 | | | | ● | `transactionsOf` | S·A | 8장 |
 | 서명 정책 (한도·화이트리스트) | co-signer · Callback Handler — 서명 직전 재검증 | | | ● | ● | (동사 없음 — 서명 관문) | A | 6장 |
 | 정책 편집·게시 | Policy Editor — 드래프트·게시 요청 (발효는 Admin Quorum+Owner 승인) | | | | ● | (동사 없음 — 별도 정책 관리 서비스) | A | [정책 관리](../../정책관리/설계/00-scope.md) |

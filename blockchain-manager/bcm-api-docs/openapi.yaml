@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Blockchain Manager API
-  version: "0.1.0"
+  version: "0.1.1"
   x-curl: true
   description: |
     블록체인 매니저는 사내의 별도 서비스로, 온체인 거래(노드 연동)를 담당한다.
@@ -268,24 +268,38 @@ paths:
               schema: { $ref: '#/components/schemas/DepositAddressListResponse' }
         '404': { $ref: '#/components/responses/AccountNotFound' }
 
-  /accounts/{accountId}/networks/{network}/tokens/{token}/balance:
+  /accounts/{accountId}/balances:
     parameters:
       - $ref: '#/components/parameters/AccountId'
-      - $ref: '#/components/parameters/Network'
-      - $ref: '#/components/parameters/Token'
     get:
       tags: [Balances]
-      summary: 잔액 조회
+      summary: vault 잔액 조회
       description: |
-        vault 단위 잔액을 가용·대기·잠김으로 돌려준다.
-        벤더가 보는 vault 잔액이라 대사(reconciliation) 재료다 — 고객별 귀속 잔액이 아니다. 고객별 잔액은 호출 쪽 원장에 있다.
-      operationId: balanceOf
+        벤더가 보는 **vault 잔액**이라 대사(reconciliation) 재료다 — 고객별 귀속 잔액이 아니다. 고객별 잔액은 호출 쪽 원장에 있다.
+
+        `network` · `token` 으로 걸러 받을 수 있고 둘 다 없으면 **그 계정에 주소가 발급된 자산 전부**다. 조회 대상을 이렇게 정하는 이유는 매니저가 아는 자산 집합이 발급 기록(주소 매핑)뿐이기 때문이다 — **주소 없이 vault 에 들어온 자산은 이 목록에 나오지 않는다.**
+
+        자산마다 벤더를 한 번 부르므로 **벤더 호출 수는 자산 수만큼**이다. 줄어드는 것은 호출 쪽과 매니저 사이의 왕복뿐이다.
+      operationId: balancesOf
+      parameters:
+        - name: network
+          in: query
+          required: false
+          schema: { type: string, maxLength: 20 }
+          description: 네트워크 코드로 거른다 (선택)
+          example: BASE
+        - name: token
+          in: query
+          required: false
+          schema: { type: string, maxLength: 16 }
+          description: 토큰 심볼로 거른다 (선택)
+          example: USDC
       responses:
         '200':
-          description: 잔액
+          description: 자산별 잔액 (해당 자산이 없으면 빈 배열)
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BalanceResponse' }
+              schema: { $ref: '#/components/schemas/AssetBalanceListResponse' }
         '404': { $ref: '#/components/responses/AccountNotFound' }
 
   /transactions:
@@ -425,20 +439,6 @@ components:
       schema: { type: string, maxLength: 64 }
       description: 매니저가 돌려준 vault 핸들 (DB ext_acnt_id = vaultAccountId)
       example: acct_01H8X
-    Network:
-      name: network
-      in: path
-      required: true
-      schema: { type: string, maxLength: 20 }
-      description: 네트워크 코드 — DB `ntwk_cd`(20자) 대응
-      example: ETHEREUM
-    Token:
-      name: token
-      in: path
-      required: true
-      schema: { type: string, maxLength: 16 }
-      description: 토큰 심볼 — DB `tkn_smbl`(16자) 대응
-      example: USDC
 
   schemas:
     Meta:
@@ -487,15 +487,6 @@ components:
         ref: { type: string, maxLength: 64, description: "우리 참조 키 — 호출 쪽 계정 ID 그대로. 접두사는 붙지 않는다", example: "000123" }
         accountId: { type: string, description: "매니저가 돌려주는 vault 핸들 (DB ext_acnt_id = vaultAccountId)", example: acct_01H8X }
       required: [accountType, ref, accountId]
-
-    Balance:
-      type: object
-      description: 금액은 문자열(decimal).
-      properties:
-        available: { type: string, description: 가용, example: "10.5" }
-        pending: { type: string, description: 대기(확정 전), example: "1.0" }
-        locked: { type: string, description: "잠김 — 나가는 중(전파 전) 출금 예약분 + AML 동결분", example: "0" }
-      required: [available, pending, locked]
 
     Transfer:
       type: object
@@ -709,6 +700,27 @@ components:
           description: 주소를 받을 네트워크 1~20개. 빈 배열·초과는 `400 VALIDATION_FAILED`. 같은 네트워크가 두 번 들어오면 발급은 한 번만 하고 두 항목에 같은 결과를 담는다.
           items: { type: string, maxLength: 20, description: 네트워크 코드, example: ETHEREUM }
 
+    AssetBalance:
+      type: object
+      description: 자산 하나의 vault 잔액. 세 칸으로 접어 돌려준다.
+      required: [network, token, available, pending, locked]
+      properties:
+        network: { type: string, example: BASE }
+        token: { type: string, example: USDC }
+        available: { type: string, description: 가용 — 지금 출금에 쓸 수 있는 잔액, example: "10.5" }
+        pending: { type: string, description: 대기 — 들어왔지만 확정 전, example: "1.0" }
+        locked: { type: string, description: 잠김 — 나가는 중이거나 정책상 묶인 분 (벤더 lockedAmount + frozen), example: "0.3" }
+
+    AssetBalanceListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          description: 자산별 잔액 — 요청 필터에 걸린 것만
+          items: { $ref: '#/components/schemas/AssetBalance' }
+        meta: { $ref: '#/components/schemas/Meta' }
+      required: [data, meta]
+
     DepositAddress:
       type: object
       description: 발급된 입금 주소 하나.
@@ -763,13 +775,6 @@ components:
           type: array
           description: 요청과 같은 순서의 네트워크별 결과
           items: { $ref: '#/components/schemas/AddressResult' }
-        meta: { $ref: '#/components/schemas/Meta' }
-      required: [data, meta]
-
-    BalanceResponse:
-      type: object
-      properties:
-        data: { $ref: '#/components/schemas/Balance' }
         meta: { $ref: '#/components/schemas/Meta' }
       required: [data, meta]
 

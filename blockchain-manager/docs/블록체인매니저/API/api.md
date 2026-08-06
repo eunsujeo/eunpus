@@ -1,5 +1,5 @@
 ---
-title: Blockchain Manager API v0.1.0
+title: Blockchain Manager API v0.1.1
 status: To Do
 view: doc
 embed: bcm-api-doc.html
@@ -10,7 +10,7 @@ embed: bcm-api-doc.html
 
 # Blockchain Manager API
 
-`v0.1.0`
+`v0.1.1`
 
 블록체인 매니저는 사내의 별도 서비스로, 온체인 거래(노드 연동)를 담당한다.
 호출 쪽 백엔드(Service·Admin)는 이 HTTP API 로 계정·주소·잔액·거래를 다루고,
@@ -450,15 +450,18 @@ _응답_
 ### Balances
 잔액 조회
 
-#### `GET` https://{baseUrl}/blockchain/manage-api/accounts/{accountId}/networks/{network}/tokens/{token}/balance
+#### `GET` https://{baseUrl}/blockchain/manage-api/accounts/{accountId}/balances
 
-**잔액 조회**
+**vault 잔액 조회**
 
-vault 단위 잔액을 가용·대기·잠김으로 돌려준다.
-벤더가 보는 vault 잔액이라 대사(reconciliation) 재료다 — 고객별 귀속 잔액이 아니다. 고객별 잔액은 호출 쪽 원장에 있다.
+벤더가 보는 **vault 잔액**이라 대사(reconciliation) 재료다 — 고객별 귀속 잔액이 아니다. 고객별 잔액은 호출 쪽 원장에 있다.
+
+`network` · `token` 으로 걸러 받을 수 있고 둘 다 없으면 **그 계정에 주소가 발급된 자산 전부**다. 조회 대상을 이렇게 정하는 이유는 매니저가 아는 자산 집합이 발급 기록(주소 매핑)뿐이기 때문이다 — **주소 없이 vault 에 들어온 자산은 이 목록에 나오지 않는다.**
+
+자산마다 벤더를 한 번 부르므로 **벤더 호출 수는 자산 수만큼**이다. 줄어드는 것은 호출 쪽과 매니저 사이의 왕복뿐이다.
 
 ```bash
-curl "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/networks/ETHEREUM/tokens/USDC/balance"
+curl "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/balances?network=BASE&token=USDC"
 ```
 
 _파라미터_
@@ -466,21 +469,25 @@ _파라미터_
 | 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
 |---|---|---|---|---|---|
 | `accountId` | path | string | 필수 | acct_01H8X | 매니저가 돌려준 vault 핸들 (DB ext_acnt_id = vaultAccountId) |
-| `network` | path | string | 필수 | ETHEREUM | 네트워크 코드 — DB `ntwk_cd`(20자) 대응 |
-| `token` | path | string | 필수 | USDC | 토큰 심볼 — DB `tkn_smbl`(16자) 대응 |
+| `network` | query | string | - | BASE | 네트워크 코드로 거른다 (선택) |
+| `token` | query | string | - | USDC | 토큰 심볼로 거른다 (선택) |
 
 
 _응답_
 
-`200` — 잔액
+`200` — 자산별 잔액 (해당 자산이 없으면 빈 배열)
 
 ```json
 {
-  "data": {
-    "available": "10.5",
-    "pending": "1.0",
-    "locked": "0"
-  },
+  "data": [
+    {
+      "network": "BASE",
+      "token": "USDC",
+      "available": "10.5",
+      "pending": "1.0",
+      "locked": "0.3"
+    }
+  ],
   "meta": {
     "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
   }
@@ -489,7 +496,7 @@ _응답_
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `data` | Balance | 필수 |  |
+| `data` | AssetBalance[] | 필수 | 자산별 잔액 — 요청 필터에 걸린 것만 |
 | `meta` | Meta | 필수 |  |
 
 
@@ -947,17 +954,6 @@ _응답_
 | `accountId` | string | 필수 | 매니저가 돌려주는 vault 핸들 (DB ext_acnt_id = vaultAccountId) |
 
 
-### Balance
-
-금액은 문자열(decimal).
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `available` | string | 필수 | 가용 |
-| `pending` | string | 필수 | 대기(확정 전) |
-| `locked` | string | 필수 | 잠김 — 나가는 중(전파 전) 출금 예약분 + AML 동결분 |
-
-
 ### Transfer
 
 거래 1건. 요청의 `from`/`to`(TransferPeer)는 여기선 확정된 온체인 주소 문자열로 나온다.
@@ -1106,6 +1102,27 @@ _응답_
 | `networks` | string[] | 필수 | 주소를 받을 네트워크 1~20개. 빈 배열·초과는 `400 VALIDATION_FAILED`. 같은 네트워크가 두 번 들어오면 발급은 한 번만 하고 두 항목에 같은 결과를 담는다. |
 
 
+### AssetBalance
+
+자산 하나의 vault 잔액. 세 칸으로 접어 돌려준다.
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `network` | string | 필수 |  |
+| `token` | string | 필수 |  |
+| `available` | string | 필수 | 가용 — 지금 출금에 쓸 수 있는 잔액 |
+| `pending` | string | 필수 | 대기 — 들어왔지만 확정 전 |
+| `locked` | string | 필수 | 잠김 — 나가는 중이거나 정책상 묶인 분 (벤더 lockedAmount + frozen) |
+
+
+### AssetBalanceListResponse
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `data` | AssetBalance[] | 필수 | 자산별 잔액 — 요청 필터에 걸린 것만 |
+| `meta` | Meta | 필수 |  |
+
+
 ### DepositAddress
 
 발급된 입금 주소 하나.
@@ -1143,14 +1160,6 @@ _응답_
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `data` | AddressResult[] | 필수 | 요청과 같은 순서의 네트워크별 결과 |
-| `meta` | Meta | 필수 |  |
-
-
-### BalanceResponse
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `data` | Balance | 필수 |  |
 | `meta` | Meta | 필수 |  |
 
 

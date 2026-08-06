@@ -1,5 +1,5 @@
 ---
-title: 8. 잔액과 내역 조회 — balanceOf · transactionsOf
+title: 8. 잔액과 내역 조회 — balancesOf · transactionsOf
 status: Done
 ---
 
@@ -11,9 +11,7 @@ status: Done
 ```kotlin
 // 블록체인 매니저 API 오퍼레이션 — 백엔드가 HTTP 로 호출
 // 온체인 지갑(옴니버스 · sweep 전 고객 vault) 조회 — 운영·대사용
-fun balanceOf(accountId: AccountId, network: Network, token: Token): Balance {
-  return Balance(available, pending, locked)
-}
+fun balancesOf(accountId: AccountId, network: Network? = null, token: Token? = null): List<AssetBalance>
 
 // 온체인 내역 — 증빙·대사·운영용. 고객 화면 내역은 DAW-CORE DB 기록에서 나온다
 // status 로 걸러 받기(한 번에 한 상태) — 예: FINALIZED = 대사 · CONFIRMED = 막힌 출금 점검
@@ -99,7 +97,7 @@ sequenceDiagram
     end
     participant FB as Fireblocks (SaaS)
 
-    BE->>BM: API — balanceOf(옴니버스 accountId, network, token)
+    BE->>BM: API — balancesOf(옴니버스 accountId, 필터 선택)
     BM->>FB: getVaultAccountAsset — 가용·대기·잠김 필드를 준다
     FB-->>BM: 자산 잔액 (available · pending · lockedAmount · frozen …)
     BM-->>BE: Balance(가용, 대기, 잠김) — 온체인 지갑의 세 칸
@@ -120,7 +118,7 @@ sequenceDiagram
 
 | 언제 | 무엇을 | 조회 형태 |
 |---|---|---|
-| **대사** (실행은 Service 배치) | 확정분만 받아 기록과 대조 — 회계 기표 전(아래 절) | `status=FINALIZED` + 기간 |
+| **대사** (실행은 Service 배치) | 확정분만 받아 기록과 대조 — 회계 기표 전(아래 절) | `status=FINALIZED` + 기간. 잔액은 `balancesOf` 를 필터 없이 불러 자산별로 한 번에 받는다 |
 | **막힌 출금 점검** (Admin) | 자동 boost(매니저)로 안 풀린 건의 수동 처리 판단(6장) — DB 쿼리(4장)와 병행하는 벤더측 교차 확인 | `status=SUBMITTED`(미채굴) + 오래된 것 |
 
 ## 대사 — 두 장부를 주기적으로 맞춘다
@@ -133,7 +131,7 @@ sequenceDiagram
 |---|---|
 | **무엇을** | ① **DB 원장의 고객 잔액 합계 vs 온체인 커스터디 총합**(옴니버스 + 나머지 vault — 미sweep 고객 vault·출금 풀) — 옴니버스 모델의 대사 공식, 나머지 vault 계상의 정밀 형태는 정산 워크스루 ② 거래 기록 vs 벤더 거래 목록 (표본은 온체인 탐색기로 교차 확인) |
 | **언제** | 주기(예: 시간 단위) + 일마감 — 회계 기표 전 필수 |
-| **누가** | **실행(주기 대조 배치)은 Service** — sweep 과 같은 자리의 워커. 벤더측 값은 매니저 API(balanceOf·transactionsOf)로 받는다. **불일치의 판단·정정 승인과 감사·기표 확인은 Admin**. |
+| **누가** | **실행(주기 대조 배치)은 Service** — sweep 과 같은 자리의 워커. 벤더측 값은 매니저 API(balancesOf·transactionsOf)로 받는다. **불일치의 판단·정정 승인과 감사·기표 확인은 Admin**. |
 | **어긋나면** | **자동 보정 금지** — 정정 이벤트를 만들어 사람이 본다 (없는 돈을 만들거나 지우는 코드가 가장 위험) |
 
 ```mermaid

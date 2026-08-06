@@ -15,7 +15,7 @@ DAW-CORE가 블록체인 매니저를 호출하는 계약을 한 장으로 조�
 | `createAccount(accountType, ref)` | 계정 생성 — ref↔accountId 매핑 (유형+ref 로 멱등) | [1장](01-create-account.md) |
 | `createDepositAddresses(accountId, token, networks)` | 한 토큰을 여러 네트워크로 — 최대 20네트워크, 네트워크별 결과 (부분 성공) | [2장](02-issue-deposit-address.md) |
 | `depositAddressesOf(accountId, token?, network?)` | 발급된 주소 조회 — DB 읽기, 벤더 왕복 없음. 미발급은 빈 배열 | [3장](03-address-of.md) |
-| `balanceOf(accountId, network, token)` | vault 잔액 — 대사에 쓰는 값, 고객별 귀속 잔액 아님 | [8장](08-balance-history.md) |
+| `balancesOf(accountId, network?, token?)` | 자산별 vault 잔액 — 대사에 쓰는 값, 고객별 귀속 잔액 아님 | [8장](08-balance-history.md) |
 | `transactionsOf(accountId, after, before, status?)` | 기간·상태로 거래 목록 | [8장](08-balance-history.md) |
 | `transactionOf(txId)` | 단건 조회 | [8장](08-balance-history.md) |
 | `submitTransaction(request)` | 출금·이체 제출 — `externalTxId`·(트래블룰 대상이면) travelRuleMessage 를 싣는다 | [6장](06-withdrawal.md) |
