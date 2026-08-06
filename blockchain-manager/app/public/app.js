@@ -816,7 +816,7 @@ async function exportBoardHtml(opts = {}) {
   btn.disabled = true;
   showToast('보드 내보내는 중…');
   try {
-    const { assembleBoardHtml } = await import('./export.js');
+    const { assembleBoardHtml, excludeRefDocs } = await import('./export.js');
     const [html, css, mermaid, md, theme, app] = await Promise.all(
       ['index.html', 'styles.css', 'vendor/mermaid.min.js', 'md.js', 'theme.js', 'app.js'].map((f) =>
         fetch(f).then((r) => {
@@ -867,7 +867,10 @@ async function exportBoardHtml(opts = {}) {
       const r = await fetch(name);
       if (r.ok) embeds[name] = await r.text();
     }
-    const out = assembleBoardHtml({ html, css, mermaid, md, theme, app }, { board, docs, embeds });
+    // 공유용이라 참고 문서(ref:)는 뺀다 — Node 내보내기와 같은 규칙 (export.js)
+    const data = { board, docs, embeds };
+    excludeRefDocs(data, opts.withRef);
+    const out = assembleBoardHtml({ html, css, mermaid, md, theme, app }, data);
     const blob = new Blob([out], { type: 'text/html;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);

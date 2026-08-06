@@ -14,7 +14,7 @@
 import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { join, resolve, relative, sep, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assembleBoardHtml } from '../public/export.js';
+import { assembleBoardHtml, excludeRefDocs } from '../public/export.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PUB = join(HERE, '..', 'public');
@@ -167,45 +167,18 @@ if (ONLY.size) {
 // --- 2) 문서 본문: /api/doc 응답과 같은 모양으로 내장 ---
 // 내보내기는 공유용이라 `ref:` 가 붙은 참고 문서(판단 재료·심화)는 기본으로 뺀다. --with-ref 로 포함.
 const docs = {};
-const loaded = [];
 for (const c of board.cards) {
   const raw = await readFile(join(DIR, c.path.slice(DOCS_PATH.length + 1)), 'utf8');
   const { meta, body } = parseFrontmatter(raw);
   c.ref = meta.ref || ''; // 참고 문서 마커 — 카드에 배지로 표시 (일반/참고 구분)
-  loaded.push({ c, body, raw, meta });
-}
-
-const dropped = WITH_REF ? [] : loaded.filter((d) => d.c.ref);
-const droppedPaths = new Set(dropped.map((d) => d.c.path));
-if (droppedPaths.size) {
-  board.cards = board.cards.filter((c) => !droppedPaths.has(c.path));
-  for (const d of dropped) console.log(`  제외(참고): ${d.c.path}`);
-}
-
-// 빠진 문서를 가리키는 링크는 죽은 링크가 되므로 라벨만 남긴 평문으로 바꾼다
-const MD_LINK = /\[([^\]]+)\]\(([^)\s]+\.md)(#[^)]*)?\)/g;
-function stripDroppedLinks(text, ownPath) {
-  if (!droppedPaths.size) return text;
-  const dir = ownPath.split('/').slice(0, -1);
-  return text.replace(MD_LINK, (whole, label, href) => {
-    const segs = [...dir];
-    for (const seg of href.split('/')) {
-      if (seg === '..') segs.pop();
-      else if (seg !== '.') segs.push(seg);
-    }
-    return droppedPaths.has(segs.join('/')) ? label : whole;
-  });
-}
-
-for (const { c, body, raw, meta } of loaded) {
-  if (droppedPaths.has(c.path)) continue;
   docs[c.path] = {
     path: c.path,
     meta: { ...meta, category: c.category, subcategory: c.subcategory, status: c.status },
-    body: stripDroppedLinks(body, c.path),
-    raw: stripDroppedLinks(raw, c.path),
+    body,
+    raw,
   };
 }
+for (const p of excludeRefDocs({ board, docs }, WITH_REF)) console.log(`  제외(참고): ${p}`);
 
 // --- 3) 앱 UI 인라인 + fetch shim 조립 (export.js — 앱의 "HTML ↓" 버튼과 공용) ---
 const [html, css, mermaid, md, theme, app] = await Promise.all(

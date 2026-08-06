@@ -1,5 +1,37 @@
 // 보드 단일 HTML 내보내기 조립 — 앱의 "HTML ↓" 버튼과 scripts/export-board.mjs 가 공용.
 // 앱 UI 파일들을 인라인하고, fetch 를 내장 데이터로 가로채는 shim 을 심는다 (읽기 전용).
+
+// 내보내기는 공유용이라 frontmatter 에 `ref:` 가 붙은 참고 문서(판단 재료·심화)를 뺀다.
+// 두 내보내기 경로가 같은 규칙을 쓰도록 여기 한 곳에만 둔다. 반환값 = 빠진 경로들.
+const MD_LINK = /\[([^\]]+)\]\(([^)\s]+\.md)(#[^)]*)?\)/g;
+
+export function excludeRefDocs(data, withRef) {
+  if (withRef) return [];
+  const dropped = Object.keys(data.docs).filter((p) => (data.docs[p].meta || {}).ref);
+  if (!dropped.length) return [];
+  const droppedSet = new Set(dropped);
+
+  data.board.cards = data.board.cards.filter((c) => !droppedSet.has(c.path));
+  for (const p of dropped) delete data.docs[p];
+
+  // 빠진 문서를 가리키던 링크는 죽은 링크가 되므로 라벨만 남긴 평문으로 바꾼다
+  const strip = (text, ownPath) =>
+    text.replace(MD_LINK, (whole, label, href) => {
+      const segs = ownPath.split('/').slice(0, -1);
+      for (const seg of href.split('/')) {
+        if (seg === '..') segs.pop();
+        else if (seg !== '.') segs.push(seg);
+      }
+      return droppedSet.has(segs.join('/')) ? label : whole;
+    });
+
+  for (const p of Object.keys(data.docs)) {
+    const d = data.docs[p];
+    if (d.body) d.body = strip(d.body, p);
+    if (d.raw) d.raw = strip(d.raw, p);
+  }
+  return dropped;
+}
 export function assembleBoardHtml(assets, data) {
   const { html, css, mermaid, md, theme, app } = assets;
 
