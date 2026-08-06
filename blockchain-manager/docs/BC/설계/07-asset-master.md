@@ -113,7 +113,13 @@ CREATE TABLE bcm_vndr_ast_m (
 
 ## 등록 — 값을 어디서 얻고 어떻게 거르나
 
-등록은 어쩌다 한 번이지만 여기서 틀리면 자금이 엉뚱한 체인으로 간다. 그래서 **운영자가 값을 적지 않고 고르게** 만든다 — 벤더가 준 목록에서 고른 값이 그대로 넘어오면 옮겨 적는 구간이 없어져 오타 자체가 안 생긴다. 그 뒤에 관문 넷으로 다시 거른다.
+등록은 어쩌다 한 번이지만 여기서 틀리면 자금이 엉뚱한 체인으로 간다.
+
+**Admin 백엔드는 벤더를 몰라야 한다** (2026-08-06 확정). 벤더 assetId·blockchainId 를 Admin 이 들고 다니면 벤더를 바꿀 때 Admin 화면과 그동안 쌓인 값까지 함께 바뀐다. 그래서 자산을 가리키는 값으로 **컨트랙트 주소**를 쓴다 — 벤더 밖에서도 통하고, 발행사 공식 문서에 그대로 적혀 있는 값이다.
+
+그러면 관문이 하나 줄면서 오히려 세진다. 운영자가 보낸 주소를 벤더 응답과 **대조**하던 것이, 주소로 자산을 **찾는 것 자체**가 된다 — 주소가 틀리면 대조에 실패하는 게 아니라 애초에 아무것도 잡히지 않는다.
+
+네트워크도 같다. 채택 전 체인은 벤더 밖에서 통하는 이름이 없으므로(EVM 의 chainId 뿐이고 그 밖의 체인엔 없다) 목록에서 받은 값을 그대로 되돌려 보내는 **손잡이**를 쓴다. Admin 은 그 값을 해석하지도 보관하지도 않고, 한 번의 채택 흐름 안에서만 오간다.
 
 ```mermaid
 sequenceDiagram
@@ -121,78 +127,83 @@ sequenceDiagram
     participant ADM as Admin 백엔드<br/>운영자 조작
     box rgb(220,252,231) 블록체인 매니저
     participant API as Admin API
-    participant MDB as 매니저 DB<br/>bcm_vndr_ast_m
+    participant MDB as 매니저 DB
     end
     participant FB as Fireblocks
 
     Note over ADM,FB: 고르기 — 운영자는 값을 적지 않는다
-    ADM->>API: GET /admin/networks — 채택한 네트워크 목록
-    API->>MDB: bcm_blkc_m 조회 (벤더 왕복 없음)
+    ADM->>API: GET /admin/networks — adopted=true
+    API->>MDB: bcm_blkc_m 조회 · 벤더 왕복 없음
     MDB-->>API: 네트워크 목록
     API-->>ADM: 목록 — 운영자가 BASE 선택
-    ADM->>API: GET /admin/vendor-assets — network · symbol
-    API->>MDB: network 의 vndr_blkc_id 조회
-    API->>FB: GET /v1/assets — 그 체인으로 필터
+    ADM->>API: GET /admin/asset-candidates — network · symbol
+    API->>MDB: BASE 의 vndr_blkc_id 조회
+    API->>FB: 그 체인의 자산 조회
     FB-->>API: 자산 후보
-    API-->>ADM: 후보 — 운영자가 선택 · assetId 확보
+    API-->>ADM: 심볼 · 컨트랙트 주소 · 소수 자릿수<br/>운영자가 발행사 문서와 대조
 
-    Note over ADM,FB: 등록 — 고른 값을 우리 (network, token) 에 붙인다
-    ADM->>API: POST 매핑 등록<br/>network · token · vendorAssetId<br/>expectedContractAddress · 직원번호 · 부점코드
+    Note over ADM,FB: 등록 — 주소로 자산을 지정한다
+    ADM->>API: POST 매핑 등록<br/>network · token · contractAddress<br/>직원번호 · 부점코드
     API->>MDB: (network, token) 조회
     alt 이미 등록됨
         MDB-->>API: 기존 행
         API-->>ADM: 409 CONFLICT
     else 통과
-        API->>FB: GET /v1/assets/{vendorAssetId} — 최종 확인
-        alt 없거나 blockchainId·컨트랙트 주소가 어긋남
-            FB-->>API: 404 또는 다른 값
+        API->>FB: 그 체인에서 주소로 자산 해소
+        alt 잡힌 자산이 없음
+            FB-->>API: 빈 결과
             API-->>ADM: 400 VALIDATION_FAILED
-        else 확인됨
-            FB-->>API: blockchainId · 컨트랙트 주소 · displaySymbol
+        else 둘 이상 잡힘
+            FB-->>API: 복수 후보
+            API-->>ADM: 409 CONFLICT — 사람이 판단할 일
+        else 하나만 잡힘
+            FB-->>API: assetId · 컨트랙트 주소 · 소수 자릿수
             API->>MDB: INSERT — ntwk_cd FK · 감사 4컬럼 = 실제 직원·부점
             alt vndr_ast_id UNIQUE 위반
                 MDB-->>API: 제약 위반
-                API-->>ADM: 409 CONFLICT — 이 벤더 자산은<br/>다른 (network, token) 이 이미 쓰고 있다
+                API-->>ADM: 409 CONFLICT — 이 자산은<br/>다른 (network, token) 이 이미 쓰고 있다
             else 저장 성공
                 MDB-->>API: 등록 완료
-                API-->>ADM: 201 — network · token · vendorAssetId
+                API-->>ADM: 201 — network · token · contractAddress
             end
         end
     end
 ```
 
-색: **초록 상자 = 매니저 안쪽**. 되돌아오는 점선이 실패 응답이다.
+색: **초록 상자 = 매니저 안쪽**. 되돌아오는 점선이 실패 응답이다. 벤더 id 는 초록 상자 밖으로 나가지 않는다.
 
-**앞의 왕복들이 값의 출처다.** 운영자가 벤더 콘솔에서 문자열을 눈으로 찾아 복사해 오는 구간을 없애는 것이 목적이다. 네트워크 고르기는 **우리 카탈로그를 읽을 뿐이라 벤더 왕복이 없고**, 자산 고르기만 벤더를 부른다.
+**앞의 왕복이 값의 출처다.** 운영자가 벤더 콘솔에서 문자열을 찾아 옮겨 적는 구간을 없애는 것이 목적이다. 네트워크 고르기는 **우리 카탈로그를 읽을 뿐이라 벤더 왕복이 없고**, 자산 고르기만 벤더를 부른다.
 
-**등록 요청이 가볍다** — `vendorBlockchainId` 나 `chainId` 를 클라이언트가 실어 보내지 않는다. 네트워크와 벤더 체인의 대응은 카탈로그에만 있고, 매니저가 `ntwk_cd` 로 찾는다. 클라이언트가 보낸 값과 대조하는 방식은 보낸 쪽이 틀리면 같이 틀리므로, 우리 표를 기준으로 삼는다.
+**등록 요청이 가볍다** — 네트워크와 벤더 체인의 대응은 카탈로그에만 있고 매니저가 `ntwk_cd` 로 찾는다. 클라이언트가 보낸 값과 대조하는 방식은 보낸 쪽이 틀리면 같이 틀리므로, 우리 표를 기준으로 삼는다.
 
 **관문 넷이 각각 다른 실수를 잡는다.**
 
-- **중복 등록 차단** — 이미 등록된 (network, token) 은 덮어쓰지 않는다.
-- **벤더 최종 확인** — API 는 조회 화면 없이도 직접 호출될 수 있으므로, 넘어온 assetId 가 실재하는지와 **응답의 `blockchainId` 가 그 네트워크의 것과 같은지**를 다시 본다. 비교 대상은 카탈로그(`bcm_blkc_m`)에서 찾는다 — 클라이언트가 보낸 값이 아니라 **우리 표의 값**과 대조하는 것이 요점이다.
-- **컨트랙트 주소 대조** — 운영자가 **발행사 공식 문서에서 확인한 주소**(`expectedContractAddress`)를 함께 보내고, 벤더 응답의 주소와 다르면 거절한다. 이 관문만 유일하게 벤더 밖의 근거를 쓴다 — 앞의 것들은 전부 벤더가 준 값끼리 대조하는 것이라, **벤더 목록에서 엉뚱한 자산을 골랐을 때** 잡아내는 건 이 하나뿐이다. 네이티브 자산(컨트랙트 없음)은 이 대조를 건너뛴다.
-- **UNIQUE 위반 차단** — 벤더에 존재하는 id 라도 다른 자산의 것일 수 있다. 그 id 를 이미 쓰는 행이 있으면 DB 가 막는다.
+- **채택한 네트워크만** — 이름을 붙이지 않은 네트워크로는 등록할 수 없다. FK 가 막는다.
+- **주소로 자산이 하나만 잡혀야 한다** — 없으면 400(주소가 틀렸거나 벤더가 아직 지원하지 않는다), 둘 이상이면 409. 이 관문만 벤더 밖의 근거를 쓴다 — 나머지는 우리 표와 벤더가 준 값끼리의 대조라, **엉뚱한 자산을 지목했을 때** 잡아내는 건 이 하나뿐이다. 네이티브 자산은 주소가 없으므로 `contractAddress` 를 비우고, 그 체인의 네이티브 자산으로 해석한다.
+- **중복 등록 차단** — 이미 등록된 (network, token) 은 덮어쓰지 않는다. PK 가 막는다.
+- **한 자산은 한 매핑** — 해소된 assetId 를 이미 쓰는 행이 있으면 DB 가 막는다.
 
-사람의 판단에 기대는 지점은 둘로 좁혀진다 — **네트워크를 채택할 때 카탈로그에서 올바른 체인에 이름을 붙이는 것**(그 뒤로는 FK 가 막는다), 그리고 **토큰마다 발행사 문서에서 컨트랙트 주소를 제대로 확인하는 것**이다. 나머지는 기계가 막는다.
+사람의 판단에 기대는 지점은 둘로 좁혀진다 — **네트워크를 채택할 때 올바른 체인에 이름을 붙이는 것**(그 뒤로는 FK 가 막는다), 그리고 **토큰마다 발행사 문서에서 컨트랙트 주소를 제대로 확인하는 것**이다. 나머지는 기계가 막는다.
 
 ## Admin API — 같은 서비스의 `/admin/*` (2026-08-06 확정)
 
 매핑을 읽는 코드와 같은 서비스에 두고 경로를 `/admin/*` 로 나눈다. 표가 매니저 DB 에 있으므로 별도 서비스로 빼면 DB 를 둘이 나눠 쓰게 되거나 결국 매니저를 다시 호출해야 한다.
 
+★ **벤더 어휘가 이 API 를 넘어가지 않는다** — 요청·응답 어디에도 벤더 assetId·blockchainId 가 없다. 벤더를 바꿔도 Admin 백엔드는 그대로다. 계약은 [API 스펙](../../bcm-api-docs/openapi.yaml)의 `Admin` 태그가 정의한다.
+
 | 오퍼레이션 | 하는 일 |
 |---|---|
-| `GET /admin/blockchains` | 벤더 블록체인 카탈로그 — 우리 표를 읽는다. 채택 전 체인을 찾을 때 |
-| `PATCH /admin/blockchains/{vendorBlockchainId}` | **네트워크 채택** — 카탈로그 행에 `ntwkCd` 를 붙인다 |
-| `GET /admin/networks` | 채택한 네트워크 목록 — 자산 등록 전 고르기용 |
-| `GET /admin/vendor-assets` | 그 네트워크의 자산 후보 — `network` · `symbol` 로 거른다 (벤더 조회 프록시) |
+| `GET /admin/networks` | 쓸 수 있는 체인 목록. `adopted` 로 채택 전/후를 가른다 |
+| `PUT /admin/networks/{code}` | **네트워크 채택** — 목록에서 고른 후보에 우리 이름을 붙인다 |
+| `DELETE /admin/networks/{code}` | 채택 해제 — 매핑이 남아 있으면 409 |
+| `GET /admin/asset-candidates` | 그 네트워크의 자산 후보 — 심볼 · 컨트랙트 주소 · 소수 자릿수 |
 | `GET /admin/asset-mappings` | 등록된 매핑 목록 — 운영 확인용 |
-| `POST /admin/asset-mappings` | 등록 — `network` · `token` · `vendorAssetId` · `expectedContractAddress` |
+| `POST /admin/asset-mappings` | 등록 — `network` · `token` · `contractAddress` |
 | `DELETE /admin/asset-mappings/{network}/{token}` | 잘못 등록한 것 되돌리기 — **그 (네트워크, 토큰)으로 발급된 주소가 하나도 없을 때만** 허용, 있으면 409 |
 
 수정 오퍼레이션은 두지 않는다. `vndr_ast_id` 가 set-once 이므로 고치는 유일한 경로는 "지우고 다시 넣기"이고, 주소가 이미 발급됐다면 그것도 막힌다 — 그 상황은 매핑 수정이 아니라 사고 처리다.
 
-**감사 흔적** — 자동 처리 행은 시스템 센티넬(`SYSTEM`/`9999`)을 쓰지만 **Admin 수동 개입은 실제 직원번호·부점코드**를 남긴다는 규약([DB 명명 규약](03-bcm-db.md))을 그대로 따른다. 그래서 이 API 는 요청에 직원번호·부점코드를 받아 감사 4컬럼에 쓴다.
+**감사 흔적** — 자동 처리 행은 시스템 센티넬(`SYSTEM`/`9999`)을 쓰지만 **Admin 수동 개입은 실제 직원번호·부점코드**를 남긴다는 규약([DB 명명 규약](03-bcm-db.md))을 그대로 따른다. 상태를 바꾸는 오퍼레이션은 `X-Employee-No` · `X-Branch-Code` 헤더로 받아 감사 4컬럼에 쓴다. 본문이 아니라 헤더인 것은 `DELETE` 에도 똑같이 필요하기 때문이다.
 
 **경로를 나눈 것은 경계가 아니다** — 매니저 API 는 인증 없이 내부망을 신뢰하는 구성이라, `/admin/*` 로 이름만 갈라 두면 같은 망의 누구나 매핑을 등록할 수 있다. **이 경로의 호출 주체를 Admin 백엔드로 한정하는 망 수준 제한이 함께 필요하다.** 그 방식(방화벽 규칙·별도 리스너 등)은 배포 환경에서 정한다.
 
@@ -210,7 +221,7 @@ sequenceDiagram
 ## 아직 못 정한 것
 
 - **컨트랙트 주소의 정본 출처** — 대조에 쓸 "진짜 USDC 주소" 를 어디서 가져올지. 발행사(Circle) 공식 문서를 근거로 삼는 것이 보통이고, 그 문서를 누가 확인해 등록 요청에 넣을지까지 정해야 한다.
-- **실제 assetId 값** — 조회 오퍼레이션이 생겨 운영자가 등록 화면에서 고르면 되는 값이 됐다. 시드를 미리 넣어야 할 때만 한 번 조회한다.
+- **벤더가 컨트랙트 주소로 자산을 거를 수 있는지** — `GET /v1/assets` 필터에 컨트랙트 주소가 있는지 확인하지 못했다. 없으면 심볼로 좁혀 받아 매니저가 주소로 고르면 되지만, 심볼이 벤더 표기와 다르면 그 체인의 자산을 훑어야 한다. 확인 후 정한다.
 
 ## 참고 — 벤더 조회 API
 

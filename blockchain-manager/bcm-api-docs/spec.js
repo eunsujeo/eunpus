@@ -2,7 +2,7 @@ window.OPENAPI = {
   "openapi": "3.1.0",
   "info": {
     "title": "Blockchain Manager API",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "x-curl": true,
     "description": "블록체인 매니저는 사내의 별도 서비스로, 온체인 거래(노드 연동)를 담당한다.\n호출 쪽 백엔드(Service·Admin)는 이 HTTP API 로 계정·주소·잔액·거래를 다루고,\n온체인 상태 변경은 메시지 큐 이벤트로 받는다.\n\n아래 규약은 **모든 엔드포인트에 공통** 적용된다.\n\n## 응답 형식\n\n성공·목록·에러 모두 같은 구조로 돌려준다. `meta.requestId` 로 요청을 추적한다. 스키마 이름은 단건이 `<타입>Response`, 목록이 `<타입>ListResponse` 다.\n\n단일 리소스:\n\n```json\n{\n  \"data\": {\n    \"accountType\": \"CUSTOMER\",\n    \"ref\": \"000123\",\n    \"accountId\": \"acct_01H8X\"\n  },\n  \"meta\": {\n    \"requestId\": \"3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f\"\n  }\n}\n```\n\n페이지네이션 목록:\n\n```json\n{\n  \"data\": [\n    { \"txId\": \"tx_9f2a\", \"status\": \"FINALIZED\", \"amount\": \"1.5\" }\n  ],\n  \"meta\": {\n    \"requestId\": \"3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f\"\n  },\n  \"pagination\": {\n    \"nextCursor\": \"eyJsYXN0IjoxNzUxMzM2MDAwMDAwfQ\",\n    \"hasMore\": true\n  }\n}\n```\n\n에러:\n\n```json\n{\n  \"error\": {\n    \"code\": \"ACCOUNT_NOT_FOUND\",\n    \"message\": \"account not found\"\n  },\n  \"meta\": {\n    \"requestId\": \"3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f\"\n  }\n}\n```\n\n## 데이터 포맷\n\n- **시각** — ISO 8601, UTC, 밀리초. 예: `2026-07-13T04:05:06.789Z`\n- **금액** — 문자열(decimal). 예: `\"1.5\"`. float 가 아니라 decimal 로 파싱한다.\n- **필드명** — camelCase (`externalTxId` · `numOfConfirmations`)\n- **요청 추적** — 모든 응답에 `meta.requestId`\n- **온체인 해시** — 전파 후 채워짐(그 전엔 null), `txHash`\n\n## 에러 코드\n\n판단은 `error.code` 로 한다.\n\n| 코드 | HTTP | 뜻 |\n|---|---|---|\n| `VALIDATION_FAILED` | 400 | 요청 형식·값이 규약에 안 맞음 |\n| `ACCOUNT_NOT_FOUND` | 404 | 계정 없음 (주소 미발급과 구분) |\n| `ASSET_NOT_SUPPORTED` | 400 | 우리가 지원하지 않는 (네트워크, 토큰) — 요청 형식은 맞다 |\n| `NOT_FOUND` | 404 | 그 밖의 리소스 없음 |\n| `CONFLICT` | 409 | 같은 멱등 키에 다른 내용이 왔다 (예: 이미 쓴 externalTxId 로 금액·목적지가 다른 제출) |\n| `RELAY_REJECTED` | 502 | 대납 relay 가 전송을 못 대거나 거절 |\n| `INTERNAL` | 500 | 서버 내부 오류 |\n\n`INTERNAL`(500) 은 모든 엔드포인트에서 날 수 있어, 오퍼레이션별 응답 표기에서는 생략한다.\n\n## 페이지네이션\n\n목록은 **커서 방식**이다. `limit`(기본 200, 최대 500)으로 크기를 정하고, 응답 `pagination.nextCursor` 를 다음 요청 `cursor` 로 넘겨 이어받는다. 지금 이어받을 페이지가 있는지는 `hasMore` 로 판단한다 — false 면 현재 시점 마지막 페이지다.\n\n`nextCursor` 는 **마지막 페이지에서도 항상 채워진다** — 이번 응답 마지막 항목의 다음 위치를 가리킨다. `order=asc` 조회에서는 이 커서를 보관했다가 나중에 같은 값으로 재요청하면 그 사이 새로 쌓인 내역만 이어받는다(증분 폴링). `order=desc`(기본, 최신순)는 커서가 과거 방향으로 진행하므로 페이지 순회용이다.\n\n`cursor`/`nextCursor` 는 **불투명 토큰**이라 파싱·구성 대상이 아니며, 받은 값을 그대로 전달한다(다음 위치·필터·정렬 방향이 토큰에 담겨 있다). 커서 요청에서는 첫 요청의 조회 조건이 토큰으로 이어지므로, 함께 보낸 다른 파라미터는 무시된다.\n\n## 인증\n\n**없음 (2026-08-05 확정)** — 호출 쪽과 매니저는 내부망 경계를 신뢰한다. securitySchemes 를 정의하지 않는다.\n\n## 멱등\n\n- **계정 생성** — `createAccount` 는 (`accountType`, `ref`) 로 멱등하다. 같은 값으로 재요청하면 매니저가 같은 결과를 돌려준다(호출 쪽이 별도 멱등키를 넣지 않는다).\n- **주소 발급** — `createDepositAddresses` 는 네트워크마다 `(accountId, network, token)` 로 멱등하다. 부분 실패해도 성공분은 남으므로 같은 요청을 그대로 재시도할 수 있다.\n- **출금 제출** — 본문 `externalTxId` 가 멱등 키다. **같은 키로 같은 내용을 재제출하면 처음의 `txId` 를 그대로 돌려준다** — 응답을 못 받아 재시도하는 경우가 정상 경로다. 같은 키인데 **내용이 다르면** `409 CONFLICT` 다. 어느 쪽이든 벤더로 중복 전송되지 않는다.\n\n## 이벤트 (메시지 큐)\n\n온체인 상태 변경(입금 감지·출금 확정 등)은 이 HTTP API 가 아니라 **메시지 큐 이벤트**로 온다. 호출 쪽은 토픽별 컨슈머로 받는다.\n\n```seq\n체인 -> Fireblocks: 온체인 상태 변경\nFireblocks -> 매니저: 웹훅 알림 push (서명 검증 후 수신)\n매니저 -> 큐: publish (3 토픽)\n큐 -> 소비 쪽: consume\n소비 쪽 -> 원장: 반영 (멱등)\n소비 쪽 -> 큐: 오프셋 커밋\n```\n\n| 토픽 | 담는 이벤트 | 파티션 키 |\n|---|---|---|\n| `deposit-events` | 고객 입금 (`DEPOSIT`) | 고객 accountId |\n| `withdrawal-events` | 외부 출금 (`WITHDRAWAL`) | 출금 풀 vault 의 accountId |\n| `internal-events` | 내부 이체 (`INTERNAL` — delta 정산만 · sweep 은 매니저 내부라 싣지 않는다) | 출발 계정 accountId |\n\n귀속 불명 입금(매핑에 없는 주소)은 큐에 싣지 않는다 — 별도 알림 채널로 통지된다.\n\n**ChainEvent** — 큐로 오는 이벤트 형태 (타입 [ChainEvent](#schema-ChainEvent)):\n\n```json\n{\n  \"eventId\": \"0198c0de-7a2b-7c3d-8e4f-5a6b7c8d9e0f\",\n  \"type\": \"WITHDRAWAL\",\n  \"txId\": \"tx_9f2a\",\n  \"txHash\": \"0x4e1d...ab\",\n  \"externalTxId\": \"wd-260713-0042\",\n  \"accountId\": \"acct_pool_02\",\n  \"network\": \"ETHEREUM\",\n  \"token\": \"USDC\",\n  \"to\": \"0x9f...E2\",\n  \"status\": \"FINALIZED\",\n  \"numOfConfirmations\": 12\n}\n```\n\n- `eventId` — 이벤트 고유 id (UUID v7). **중복 제거 기준은 이 값 하나다**\n- [`type`](#schema-EventType) — DEPOSIT · WITHDRAWAL · INTERNAL\n- [`status`](#schema-TxStatus) — 공통 상태 다섯 (아래 \"상태 (TxStatus) 기준\"). 소비 쪽은 이것으로만 판단한다\n- `txHash` — 전파 후 채워짐\n- 벤더의 `subStatus`·`networkStatus` 는 이벤트에 싣지 않는다 — 매니저가 번역에 쓰는 내부 값이다\n\n전달 보장:\n\n- **at-least-once** — 같은 이벤트가 드물게 두 번 올 수 있다. **`eventId` 유일 기준으로 중복을 버린다** — 한 거래(txId)에서 감지·확정·실패 이벤트가 각각 오므로 `txId` 로 중복 제거하면 뒤 이벤트가 버려진다.\n- **오프셋 커밋** — 원장 반영이 성공한 뒤에만.\n- **순서** — 같은 계정은 파티션 키가 보장.\n- **입금 시작 상태** — 입금은 `SUBMITTED` 없이 `CONFIRMED` 부터 온다 (`SUBMITTED` 는 우리가 제출하는 거래에서만 관찰).\n- `REJECTED`(일시적) ≠ `FAILED`(영구). 확정(`FINALIZED`) 판정은 **매니저가** `numOfConfirmations` 를 체인별 임계와 비교해 내린다 — 컨슈머는 `status` 로만 판단한다.\n\n## 상태 (TxStatus) 기준\n\n거래·이벤트의 `status` 는 이 다섯이 기준이다. 벤더 원어는 매니저가 이 다섯으로 번역한다. 아래 표의 `subStatus`·`networkStatus` 열은 **매니저가 번역에 쓰는 벤더 내부 값** — 이벤트에는 `status`(TxStatus) 만 싣는다.\n\n| 공통 상태 | 뜻 | 블록체인 상태 (Pending → Confirmed → Finalized) | 벤더(Fireblocks) 원어 | 대표 subStatus | networkStatus |\n|---|---|---|---|---|---|\n| `SUBMITTED` | 제출됨 — 서명·전파 준비 중, 아직 체인 미등장 (출금만 관찰) | 아직 없음 → 전파되면 Pending | PENDING_SIGNATURE · QUEUED · BROADCASTING | — | 서명 단계엔 없음 → BROADCASTING |\n| `CONFIRMED` | 전파 후 체인 등장, 컨펌 누적 중 (미확정) | Confirmed — 블록에 포함, finality 전 | CONFIRMING | PENDING_BLOCKCHAIN_CONFIRMATIONS | CONFIRMING |\n| `FINALIZED` | 확정 — 확정 정책(DCCP) 임계 컨펌 도달 | Finalized | COMPLETED | CONFIRMED | CONFIRMED |\n| `REJECTED` | 거부·차단 — 정책·스크리닝에 막힘. 영구 실패가 아니라 사람 개입 여지 | 출금 차단은 체인에 없음 · 입금 동결은 Finalized | REJECTED · BLOCKED | AUTO_FREEZE · FROZEN_MANUALLY · REJECTED_AML_SCREENING | 출금(전파 전 차단)은 없음 · 입금 동결은 CONFIRMED |\n| `FAILED` | 영구 실패 — 사유 동반 (수수료 부족·revert 등) | Pending 에서 증발 · revert 는 Confirmed 이후 | FAILED | DROPPED_BY_BLOCKCHAIN (reorg 증발) · 그 외 | FAILED (revert) · DROPPED (mempool 누락) |\n\n판단은 다섯(`status`)으로 한다. `REJECTED`(일시적) ≠ `FAILED`(영구) 구분이 원장·화면 처리를 가른다.\n\n이 다섯은 매니저와 호출 쪽 사이의 **계약 어휘**다 — 이 문서에 남아 있는 `CONFIRMING`·`COMPLETED` 표기는 전부 **벤더(Fireblocks) 원어**다.\n\n- ★ **`CONFIRMED` 는 미확정이다** — 벤더 subStatus/networkStatus 의 `CONFIRMED`(임계 도달, COMPLETED 동반)와 철자가 같지만 가리키는 단계가 다르다. 확정은 `FINALIZED` 다.\n- ★ **`FINALIZED` 는 체인 finality 가 아니다** — DCCP 정책 임계 도달일 뿐이고, `FINALIZED` → `FAILED`(reorg 증발, `DROPPED_BY_BLOCKCHAIN`) 전이가 존재한다. 상태에 서열을 매겨 \"뒤로 가면 무시\"로 구현하면 안 된다.\n"
   },
@@ -29,6 +29,10 @@ window.OPENAPI = {
     {
       "name": "Transactions",
       "description": "수수료 견적·출금 제출·거래 조회"
+    },
+    {
+      "name": "Admin",
+      "description": "운영자 도구 — 네트워크 채택과 자산 매핑. 호출 주체를 Admin 백엔드로 한정하는 **망 수준 제한이 별도로 필요하다**\n(경로를 나눈 것만으로는 경계가 생기지 않는다).\n상태를 바꾸는 오퍼레이션은 감사 흔적을 위해 `X-Employee-No` · `X-Branch-Code` 헤더를 요구한다.\n"
     }
   ],
   "paths": {
@@ -78,7 +82,7 @@ window.OPENAPI = {
           "Accounts"
         ],
         "summary": "입금 주소 여러 자산 한 번에 발급",
-        "description": "한 토큰의 입금 주소를 여러 네트워크에 발급한다. `(accountId, network, token)` 로 **네트워크마다 멱등**하다.\n\n- 네트워크별 결과는 항목의 `address` 또는 `error` 로 온다. HTTP 는 항목 결과와 무관하게 `200` 이고, 응답은 **요청과 같은 순서**다.\n- 계정이 없으면 `404`.\n- 지원하지 않는 네트워크가 **하나라도 섞이면 아무것도 발급하지 않고 `400`** 이다.\n- 재시도는 같은 요청을 그대로 보내면 된다 — 이미 발급된 것은 벤더 호출 없이 같은 주소가 오고 실패분만 다시 시도된다.\n- 한 요청 **20네트워크**까지. 네트워크마다 벤더를 한 번 부른다.\n- 네트워크 목록은 호출 쪽이 정한다 — 매니저는 토큰만 받아 네트워크를 채우지 않는다.\n\n요청:\n\n```json\n{ \"token\": \"USDC\", \"networks\": [\"ETHEREUM\", \"BASE\"] }\n```\n\n**전체 성공** (`200`):\n\n```json\n{\n  \"data\": [\n    { \"network\": \"ETHEREUM\", \"token\": \"USDC\", \"address\": \"0xAb3...C9\", \"memoTag\": null, \"error\": null },\n    { \"network\": \"BASE\",     \"token\": \"USDC\", \"address\": \"0x9f4...E2\", \"memoTag\": null, \"error\": null }\n  ],\n  \"meta\": { \"requestId\": \"3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f\" }\n}\n```\n\n**부분 실패** (`200`) — 성공분은 그대로 남는다. 같은 요청을 재시도하면 `BASE` 만 다시 시도된다:\n\n```json\n{\n  \"data\": [\n    { \"network\": \"ETHEREUM\", \"token\": \"USDC\", \"address\": \"0xAb3...C9\", \"memoTag\": null, \"error\": null },\n    { \"network\": \"BASE\", \"token\": \"USDC\", \"address\": null, \"memoTag\": null,\n      \"error\": { \"code\": \"INTERNAL\", \"message\": \"vendor call failed\" } }\n  ],\n  \"meta\": { \"requestId\": \"3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f\" }\n}\n```\n\n**재시도** — 위 부분 실패 뒤에 **처음과 같은 요청을 그대로** 보낸다:\n\n```json\n{ \"token\": \"USDC\", \"networks\": [\"ETHEREUM\", \"BASE\"] }\n```\n\n응답 (`200`) — 이미 발급된 `ETHEREUM` 은 **같은 주소**가 그대로 오고(매니저 DB 에서 찾아 돌려주므로 **벤더를 다시 부르지 않는다**), `BASE` 만 새로 시도된다:\n\n```json\n{\n  \"data\": [\n    { \"network\": \"ETHEREUM\", \"token\": \"USDC\", \"address\": \"0xAb3...C9\", \"memoTag\": null, \"error\": null },\n    { \"network\": \"BASE\",     \"token\": \"USDC\", \"address\": \"0x9f4...E2\", \"memoTag\": null, \"error\": null }\n  ],\n  \"meta\": { \"requestId\": \"7c2b8d1a-4e6f-4a3b-9d5e-1f2a3b4c5d6e\" }\n}\n```\n\n실패한 네트워크만 골라 `{ \"token\": \"USDC\", \"networks\": [\"BASE\"] }` 로 보내도 결과는 같다 — 응답에 `BASE` 항목 하나만 담길 뿐이다. 어느 쪽이든 이미 발급된 주소가 바뀌지 않는다.\n\n**전체 실패** (`200`) — 발급은 시도했고 전부 실패했다. `400` 과 다르다:\n\n```json\n{\n  \"data\": [\n    { \"network\": \"ETHEREUM\", \"token\": \"USDC\", \"address\": null, \"memoTag\": null,\n      \"error\": { \"code\": \"INTERNAL\", \"message\": \"vendor call failed\" } },\n    { \"network\": \"BASE\", \"token\": \"USDC\", \"address\": null, \"memoTag\": null,\n      \"error\": { \"code\": \"INTERNAL\", \"message\": \"vendor call failed\" } }\n  ],\n  \"meta\": { \"requestId\": \"3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f\" }\n}\n```\n\n**발급 전 거절** (`400`) — 미지원 네트워크가 섞였다. **아무것도 발급되지 않았다**:\n\n```json\n{\n  \"error\": { \"code\": \"ASSET_NOT_SUPPORTED\", \"message\": \"unsupported network for token: TRON/USDC\" },\n  \"meta\": { \"requestId\": \"3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f\" }\n}\n```\n",
+        "description": "한 토큰의 입금 주소를 여러 네트워크에 발급한다. `(accountId, network, token)` 로 **네트워크마다 멱등**하다.\n\n- 네트워크별 결과는 항목의 `address` 또는 `error` 로 온다. HTTP 는 항목 결과와 무관하게 `200` 이고, 응답은 **요청과 같은 순서**다.\n- 계정이 없으면 `404`.\n- 지원하지 않는 네트워크가 **하나라도 섞이면 아무것도 발급하지 않고 `400`** 이다.\n- 재시도는 같은 요청을 그대로 보내면 된다 — 이미 발급된 것은 벤더 호출 없이 같은 주소가 오고 실패분만 다시 시도된다.\n- 한 요청 **20네트워크**까지. 네트워크마다 벤더를 한 번 부른다.\n- 네트워크 목록은 호출 쪽이 정한다 — 매니저는 토큰만 받아 네트워크를 채우지 않는다.\n\n요청:\n\n```json\n{ \"token\": \"USDC\", \"networks\": [\"ETHEREUM\", \"BASE\"] }\n```\n\n**전체 성공** (`200`):\n\n```json\n{\n  \"data\": [\n    { \"network\": \"ETHEREUM\", \"token\": \"USDC\", \"address\": \"0xAb3...C9\", \"memoTag\": null, \"error\": null },\n    { \"network\": \"BASE\",     \"token\": \"USDC\", \"address\": \"0x9f4...E2\", \"memoTag\": null, \"error\": null }\n  ],\n  \"meta\": { \"requestId\": \"3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f\" }\n}\n```\n\n**부분 실패** (`200`) — 성공분은 그대로 남는다. 같은 요청을 재시도하면 `BASE` 만 다시 시도된다:\n\n```json\n{\n  \"data\": [\n    { \"network\": \"ETHEREUM\", \"token\": \"USDC\", \"address\": \"0xAb3...C9\", \"memoTag\": null, \"error\": null },\n    { \"network\": \"BASE\", \"token\": \"USDC\", \"address\": null, \"memoTag\": null,\n      \"error\": { \"code\": \"INTERNAL\", \"message\": \"address issuance failed\" } }\n  ],\n  \"meta\": { \"requestId\": \"3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f\" }\n}\n```\n\n**재시도** — 위 부분 실패 뒤에 **처음과 같은 요청을 그대로** 보낸다:\n\n```json\n{ \"token\": \"USDC\", \"networks\": [\"ETHEREUM\", \"BASE\"] }\n```\n\n응답 (`200`) — 이미 발급된 `ETHEREUM` 은 **같은 주소**가 그대로 오고(매니저 DB 에서 찾아 돌려주므로 **벤더를 다시 부르지 않는다**), `BASE` 만 새로 시도된다:\n\n```json\n{\n  \"data\": [\n    { \"network\": \"ETHEREUM\", \"token\": \"USDC\", \"address\": \"0xAb3...C9\", \"memoTag\": null, \"error\": null },\n    { \"network\": \"BASE\",     \"token\": \"USDC\", \"address\": \"0x9f4...E2\", \"memoTag\": null, \"error\": null }\n  ],\n  \"meta\": { \"requestId\": \"7c2b8d1a-4e6f-4a3b-9d5e-1f2a3b4c5d6e\" }\n}\n```\n\n실패한 네트워크만 골라 `{ \"token\": \"USDC\", \"networks\": [\"BASE\"] }` 로 보내도 결과는 같다 — 응답에 `BASE` 항목 하나만 담길 뿐이다. 어느 쪽이든 이미 발급된 주소가 바뀌지 않는다.\n\n**전체 실패** (`200`) — 발급은 시도했고 전부 실패했다. `400` 과 다르다:\n\n```json\n{\n  \"data\": [\n    { \"network\": \"ETHEREUM\", \"token\": \"USDC\", \"address\": null, \"memoTag\": null,\n      \"error\": { \"code\": \"INTERNAL\", \"message\": \"address issuance failed\" } },\n    { \"network\": \"BASE\", \"token\": \"USDC\", \"address\": null, \"memoTag\": null,\n      \"error\": { \"code\": \"INTERNAL\", \"message\": \"address issuance failed\" } }\n  ],\n  \"meta\": { \"requestId\": \"3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f\" }\n}\n```\n\n**발급 전 거절** (`400`) — 미지원 네트워크가 섞였다. **아무것도 발급되지 않았다**:\n\n```json\n{\n  \"error\": { \"code\": \"ASSET_NOT_SUPPORTED\", \"message\": \"unsupported network for token: TRON/USDC\" },\n  \"meta\": { \"requestId\": \"3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f\" }\n}\n```\n",
         "operationId": "createDepositAddresses",
         "requestBody": {
           "required": true,
@@ -207,6 +211,309 @@ window.OPENAPI = {
           },
           "404": {
             "$ref": "#/components/responses/AccountNotFound"
+          }
+        }
+      }
+    },
+    "/admin/networks": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "네트워크 목록",
+        "description": "쓸 수 있는 체인과, 그중 우리가 이름을 붙여 채택한 것을 함께 읽는다.\n\n- `adopted=true` 면 채택한 것만, `false` 면 아직 안 붙인 후보만.\n- `code` 는 채택했을 때만 채워진다. 채택 전 행을 가리킬 때 쓰는 `candidateId` 는 **해석하지 말고 그대로 되돌려 보내는 값**이다.\n",
+        "operationId": "networksOf",
+        "parameters": [
+          {
+            "name": "adopted",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "testnet",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "네트워크 목록",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/networks/{code}": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Z0-9_]{1,20}$"
+          },
+          "description": "우리 네트워크 코드",
+          "example": "BASE"
+        }
+      ],
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "네트워크 채택",
+        "description": "후보 하나에 우리 이름을 붙인다 — **이 한 번이 \"이 체인을 쓴다\"는 결정**이고, 누가 언제 했는지 남는다.\n\n같은 후보에 같은 이름을 다시 보내면 아무 일도 일어나지 않는다. 이름이 이미 **다른** 후보를 가리키면 `409` 다 — 이미 발급된 주소가 가리키는 체인이 조용히 바뀌면 안 된다.\n",
+        "operationId": "adoptNetwork",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/EmployeeNo"
+          },
+          {
+            "$ref": "#/components/parameters/BranchCode"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdoptNetworkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "채택됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "네트워크 채택 해제",
+        "description": "자산 매핑이 하나라도 남아 있으면 `409` 다. 매핑을 먼저 지운다.",
+        "operationId": "releaseNetwork",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/EmployeeNo"
+          },
+          {
+            "$ref": "#/components/parameters/BranchCode"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "해제됨"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/admin/asset-candidates": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "등록 가능한 자산 후보",
+        "description": "그 네트워크에서 등록할 수 있는 자산을 훑는다. 운영자가 **컨트랙트 주소를 눈으로 대조**하는 자리다 — 발행사 공식 문서의 주소와 같은 행을 찾으면, 그 주소를 그대로 등록에 쓴다.\n\n읽기 전용이고 아무것도 바꾸지 않는다.\n",
+        "operationId": "assetCandidatesOf",
+        "parameters": [
+          {
+            "name": "network",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "BASE"
+          },
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "심볼로 좁힌다 (선택)",
+            "example": "USDC"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "자산 후보 목록",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetCandidateListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/admin/asset-mappings": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "자산 매핑 목록",
+        "description": "등록된 (네트워크, 토큰) 을 읽는다. `network` · `token` 으로 거른다.",
+        "operationId": "assetMappingsOf",
+        "parameters": [
+          {
+            "name": "network",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "매핑 목록",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetMappingListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "자산 매핑 등록",
+        "description": "우리 (네트워크, 토큰) 이 어느 자산인지 **컨트랙트 주소로** 지정한다. 등록은 어쩌다 한 번이지만 여기서 틀리면 자금이 엉뚱한 체인으로 가므로 관문 넷을 지난다.\n\n- **채택한 네트워크만** — 이름을 붙이지 않은 네트워크로는 등록할 수 없다 (`400`).\n- **주소로 자산이 하나만 잡혀야 한다** — 그 네트워크에 그 컨트랙트 주소가 없으면 `400`, 둘 이상이면 `409` 다. 잘못된 주소는 여기서 그냥 아무것도 찾지 못한다.\n- **덮어쓰지 않는다** — 이미 등록된 (네트워크, 토큰) 은 `409` 다. 고치려면 지우고 다시 넣는다.\n- **한 자산은 한 매핑** — 다른 (네트워크, 토큰) 이 이미 그 자산이면 `409` 다.\n\n네이티브 자산(ETH 등)은 컨트랙트 주소가 없으므로 `contractAddress` 를 `null` 로 보낸다 — 그 네트워크의 네이티브 자산으로 해석한다.\n",
+        "operationId": "registerAssetMapping",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/EmployeeNo"
+          },
+          {
+            "$ref": "#/components/parameters/BranchCode"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterAssetMappingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "등록됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetMappingResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/admin/asset-mappings/{network}/{token}": {
+      "parameters": [
+        {
+          "name": "network",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "token",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "자산 매핑 삭제",
+        "description": "잘못 등록한 것을 되돌린다. **그 (네트워크, 토큰) 으로 발급된 주소가 하나도 없을 때만** 허용하고, 있으면 `409` 다 — 주소가 이미 나갔다면 매핑 수정이 아니라 사고 처리다.\n\n수정 오퍼레이션은 두지 않는다. 가리키는 자산을 바꾸면 이미 나간 주소와 앞으로 나갈 주소가 서로 다른 자산이 되기 때문이다.\n",
+        "operationId": "deleteAssetMapping",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/EmployeeNo"
+          },
+          {
+            "$ref": "#/components/parameters/BranchCode"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "삭제됨"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
           }
         }
       }
@@ -435,6 +742,28 @@ window.OPENAPI = {
   },
   "components": {
     "parameters": {
+      "EmployeeNo": {
+        "name": "X-Employee-No",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "maxLength": 6
+        },
+        "description": "조작한 직원 번호 — 감사 흔적으로 남는다",
+        "example": "123456"
+      },
+      "BranchCode": {
+        "name": "X-Branch-Code",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "maxLength": 4
+        },
+        "description": "조작한 부점 코드",
+        "example": "0001"
+      },
       "AccountId": {
         "name": "accountId",
         "in": "path",
@@ -448,6 +777,279 @@ window.OPENAPI = {
       }
     },
     "schemas": {
+      "Network": {
+        "type": "object",
+        "description": "우리가 쓸 수 있는 체인 하나. 벤더 카탈로그를 하루 한 번 동기화한 우리 표에서 읽는다.",
+        "required": [
+          "candidateId",
+          "displayName",
+          "testnet",
+          "deprecated",
+          "syncedAt"
+        ],
+        "properties": {
+          "candidateId": {
+            "type": "string",
+            "description": "아직 채택하지 않은 행을 가리키는 손잡이 — 목록에서 받은 값을 그대로 되돌려 보내는 용도이고, 뜻을 해석하거나 보관하지 않는다"
+          },
+          "code": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "우리 네트워크 코드 — 채택했을 때만 채워진다",
+            "example": "BASE"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Base"
+          },
+          "chainId": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "format": "int64"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "EIP-155 chainId — EVM 계열만",
+            "example": 8453
+          },
+          "testnet": {
+            "type": "boolean"
+          },
+          "deprecated": {
+            "type": "boolean",
+            "description": "더는 권장되지 않는 체인"
+          },
+          "syncedAt": {
+            "type": "string",
+            "description": "이 행을 마지막으로 동기화한 시각",
+            "example": "202608060310"
+          }
+        }
+      },
+      "NetworkListResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Network"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        }
+      },
+      "NetworkResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Network"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        }
+      },
+      "AdoptNetworkRequest": {
+        "type": "object",
+        "required": [
+          "candidateId"
+        ],
+        "properties": {
+          "candidateId": {
+            "type": "string",
+            "description": "네트워크 목록에서 받은 값을 그대로 넣는다"
+          }
+        }
+      },
+      "AssetCandidate": {
+        "type": "object",
+        "description": "그 네트워크에서 등록할 수 있는 자산 하나.",
+        "required": [
+          "symbol",
+          "native"
+        ],
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "example": "USDC"
+          },
+          "displayName": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "example": "USD Coin"
+          },
+          "decimals": {
+            "oneOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "example": 6
+          },
+          "contractAddress": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "네이티브 자산은 null",
+            "example": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+          },
+          "native": {
+            "type": "boolean",
+            "description": "그 체인의 네이티브 자산인지"
+          }
+        }
+      },
+      "AssetCandidateListResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetCandidate"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        }
+      },
+      "AssetMapping": {
+        "type": "object",
+        "description": "등록된 (네트워크, 토큰) 하나.",
+        "required": [
+          "network",
+          "token",
+          "registeredAt"
+        ],
+        "properties": {
+          "network": {
+            "type": "string",
+            "example": "BASE"
+          },
+          "token": {
+            "type": "string",
+            "example": "USDC"
+          },
+          "contractAddress": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "네이티브 자산은 null",
+            "example": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+          },
+          "registeredAt": {
+            "type": "string",
+            "example": "202608060310"
+          }
+        }
+      },
+      "AssetMappingListResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetMapping"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        }
+      },
+      "AssetMappingResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AssetMapping"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        }
+      },
+      "RegisterAssetMappingRequest": {
+        "type": "object",
+        "required": [
+          "network",
+          "token",
+          "contractAddress"
+        ],
+        "properties": {
+          "network": {
+            "type": "string",
+            "description": "채택한 네트워크 코드",
+            "example": "BASE"
+          },
+          "token": {
+            "type": "string",
+            "description": "우리 토큰 코드",
+            "example": "USDC"
+          },
+          "contractAddress": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "발행사 공식 문서에서 확인한 컨트랙트 주소. 네이티브 자산이면 null",
+            "example": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+          }
+        }
+      },
       "Meta": {
         "type": "object",
         "properties": {

@@ -1,6 +1,6 @@
 # Blockchain Manager API
 
-`v0.1.1`
+`v0.2.0`
 
 블록체인 매니저는 사내의 별도 서비스로, 온체인 거래(노드 연동)를 담당한다.
 호출 쪽 백엔드(Service·Admin)는 이 HTTP API 로 계정·주소·잔액·거래를 다루고,
@@ -293,7 +293,7 @@ _응답_
   "data": [
     { "network": "ETHEREUM", "token": "USDC", "address": "0xAb3...C9", "memoTag": null, "error": null },
     { "network": "BASE", "token": "USDC", "address": null, "memoTag": null,
-      "error": { "code": "INTERNAL", "message": "vendor call failed" } }
+      "error": { "code": "INTERNAL", "message": "address issuance failed" } }
   ],
   "meta": { "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f" }
 }
@@ -325,9 +325,9 @@ _응답_
 {
   "data": [
     { "network": "ETHEREUM", "token": "USDC", "address": null, "memoTag": null,
-      "error": { "code": "INTERNAL", "message": "vendor call failed" } },
+      "error": { "code": "INTERNAL", "message": "address issuance failed" } },
     { "network": "BASE", "token": "USDC", "address": null, "memoTag": null,
-      "error": { "code": "INTERNAL", "message": "vendor call failed" } }
+      "error": { "code": "INTERNAL", "message": "address issuance failed" } }
   ],
   "meta": { "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f" }
 }
@@ -981,7 +981,618 @@ _응답_
 | `meta` | Meta | 필수 |  |
 
 
+### Admin
+운영자 도구 — 네트워크 채택과 자산 매핑. 호출 주체를 Admin 백엔드로 한정하는 **망 수준 제한이 별도로 필요하다**
+(경로를 나눈 것만으로는 경계가 생기지 않는다).
+상태를 바꾸는 오퍼레이션은 감사 흔적을 위해 `X-Employee-No` · `X-Branch-Code` 헤더를 요구한다.
+
+
+#### `GET` https://{baseUrl}/blockchain/manage-api/admin/networks
+
+**네트워크 목록**
+
+쓸 수 있는 체인과, 그중 우리가 이름을 붙여 채택한 것을 함께 읽는다.
+
+- `adopted=true` 면 채택한 것만, `false` 면 아직 안 붙인 후보만.
+- `code` 는 채택했을 때만 채워진다. 채택 전 행을 가리킬 때 쓰는 `candidateId` 는 **해석하지 말고 그대로 되돌려 보내는 값**이다.
+
+```bash
+curl "https://{baseUrl}/blockchain/manage-api/admin/networks"
+```
+
+_파라미터_
+
+| 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
+|---|---|---|---|---|---|
+| `adopted` | query | boolean | - |  |  |
+| `testnet` | query | boolean | - |  |  |
+
+
+_응답_
+
+`200` — 네트워크 목록
+
+```json
+{
+  "data": [
+    {
+      "candidateId": "string",
+      "code": "BASE",
+      "displayName": "Base",
+      "chainId": 8453,
+      "testnet": false,
+      "deprecated": false,
+      "syncedAt": "202608060310"
+    }
+  ],
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `data` | Network[] | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+#### `PUT` https://{baseUrl}/blockchain/manage-api/admin/networks/{code}
+
+**네트워크 채택**
+
+후보 하나에 우리 이름을 붙인다 — **이 한 번이 "이 체인을 쓴다"는 결정**이고, 누가 언제 했는지 남는다.
+
+같은 후보에 같은 이름을 다시 보내면 아무 일도 일어나지 않는다. 이름이 이미 **다른** 후보를 가리키면 `409` 다 — 이미 발급된 주소가 가리키는 체인이 조용히 바뀌면 안 된다.
+
+```bash
+curl -X PUT "https://{baseUrl}/blockchain/manage-api/admin/networks/BASE" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "candidateId": "string"
+}'
+```
+
+_파라미터_
+
+| 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
+|---|---|---|---|---|---|
+| `code` | path | string | 필수 | BASE | 우리 네트워크 코드 |
+| `X-Employee-No` | header | string | 필수 | 123456 | 조작한 직원 번호 — 감사 흔적으로 남는다 |
+| `X-Branch-Code` | header | string | 필수 | 0001 | 조작한 부점 코드 |
+
+
+_요청 본문_
+
+```json
+{
+  "candidateId": "string"
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `candidateId` | string | 필수 | 네트워크 목록에서 받은 값을 그대로 넣는다 |
+
+
+_응답_
+
+`200` — 채택됨
+
+```json
+{
+  "data": {
+    "candidateId": "string",
+    "code": "BASE",
+    "displayName": "Base",
+    "chainId": 8453,
+    "testnet": false,
+    "deprecated": false,
+    "syncedAt": "202608060310"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `data` | Network | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+`400` — 요청 검증 실패
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_FAILED",
+    "message": "amount must be a decimal string"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `error` | ErrorBody | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+`409` — 상태·멱등 충돌
+
+```json
+{
+  "error": {
+    "code": "CONFLICT",
+    "message": "externalTxId already used"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `error` | ErrorBody | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+#### `DELETE` https://{baseUrl}/blockchain/manage-api/admin/networks/{code}
+
+**네트워크 채택 해제**
+
+자산 매핑이 하나라도 남아 있으면 `409` 다. 매핑을 먼저 지운다.
+
+```bash
+curl -X DELETE "https://{baseUrl}/blockchain/manage-api/admin/networks/BASE"
+```
+
+_파라미터_
+
+| 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
+|---|---|---|---|---|---|
+| `code` | path | string | 필수 | BASE | 우리 네트워크 코드 |
+| `X-Employee-No` | header | string | 필수 | 123456 | 조작한 직원 번호 — 감사 흔적으로 남는다 |
+| `X-Branch-Code` | header | string | 필수 | 0001 | 조작한 부점 코드 |
+
+
+_응답_
+
+`204` — 해제됨
+
+
+`404` — 리소스 없음
+
+```json
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "transaction not found"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `error` | ErrorBody | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+`409` — 상태·멱등 충돌
+
+```json
+{
+  "error": {
+    "code": "CONFLICT",
+    "message": "externalTxId already used"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `error` | ErrorBody | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+#### `GET` https://{baseUrl}/blockchain/manage-api/admin/asset-candidates
+
+**등록 가능한 자산 후보**
+
+그 네트워크에서 등록할 수 있는 자산을 훑는다. 운영자가 **컨트랙트 주소를 눈으로 대조**하는 자리다 — 발행사 공식 문서의 주소와 같은 행을 찾으면, 그 주소를 그대로 등록에 쓴다.
+
+읽기 전용이고 아무것도 바꾸지 않는다.
+
+```bash
+curl "https://{baseUrl}/blockchain/manage-api/admin/asset-candidates?network=BASE&symbol=USDC"
+```
+
+_파라미터_
+
+| 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
+|---|---|---|---|---|---|
+| `network` | query | string | 필수 | BASE |  |
+| `symbol` | query | string | - | USDC | 심볼로 좁힌다 (선택) |
+
+
+_응답_
+
+`200` — 자산 후보 목록
+
+```json
+{
+  "data": [
+    {
+      "symbol": "USDC",
+      "displayName": "USD Coin",
+      "decimals": 6,
+      "contractAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "native": false
+    }
+  ],
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `data` | AssetCandidate[] | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+`400` — 요청 검증 실패
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_FAILED",
+    "message": "amount must be a decimal string"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `error` | ErrorBody | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+#### `POST` https://{baseUrl}/blockchain/manage-api/admin/asset-mappings
+
+**자산 매핑 등록**
+
+우리 (네트워크, 토큰) 이 어느 자산인지 **컨트랙트 주소로** 지정한다. 등록은 어쩌다 한 번이지만 여기서 틀리면 자금이 엉뚱한 체인으로 가므로 관문 넷을 지난다.
+
+- **채택한 네트워크만** — 이름을 붙이지 않은 네트워크로는 등록할 수 없다 (`400`).
+- **주소로 자산이 하나만 잡혀야 한다** — 그 네트워크에 그 컨트랙트 주소가 없으면 `400`, 둘 이상이면 `409` 다. 잘못된 주소는 여기서 그냥 아무것도 찾지 못한다.
+- **덮어쓰지 않는다** — 이미 등록된 (네트워크, 토큰) 은 `409` 다. 고치려면 지우고 다시 넣는다.
+- **한 자산은 한 매핑** — 다른 (네트워크, 토큰) 이 이미 그 자산이면 `409` 다.
+
+네이티브 자산(ETH 등)은 컨트랙트 주소가 없으므로 `contractAddress` 를 `null` 로 보낸다 — 그 네트워크의 네이티브 자산으로 해석한다.
+
+```bash
+curl -X POST "https://{baseUrl}/blockchain/manage-api/admin/asset-mappings" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "network": "BASE",
+  "token": "USDC",
+  "contractAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+}'
+```
+
+_파라미터_
+
+| 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
+|---|---|---|---|---|---|
+| `X-Employee-No` | header | string | 필수 | 123456 | 조작한 직원 번호 — 감사 흔적으로 남는다 |
+| `X-Branch-Code` | header | string | 필수 | 0001 | 조작한 부점 코드 |
+
+
+_요청 본문_
+
+```json
+{
+  "network": "BASE",
+  "token": "USDC",
+  "contractAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `network` | string | 필수 | 채택한 네트워크 코드 |
+| `token` | string | 필수 | 우리 토큰 코드 |
+| `contractAddress` | string \\| null | 필수 | 발행사 공식 문서에서 확인한 컨트랙트 주소. 네이티브 자산이면 null |
+
+
+_응답_
+
+`201` — 등록됨
+
+```json
+{
+  "data": {
+    "network": "BASE",
+    "token": "USDC",
+    "contractAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "registeredAt": "202608060310"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `data` | AssetMapping | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+`400` — 요청 검증 실패
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_FAILED",
+    "message": "amount must be a decimal string"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `error` | ErrorBody | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+`409` — 상태·멱등 충돌
+
+```json
+{
+  "error": {
+    "code": "CONFLICT",
+    "message": "externalTxId already used"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `error` | ErrorBody | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+#### `GET` https://{baseUrl}/blockchain/manage-api/admin/asset-mappings
+
+**자산 매핑 목록**
+
+등록된 (네트워크, 토큰) 을 읽는다. `network` · `token` 으로 거른다.
+
+```bash
+curl "https://{baseUrl}/blockchain/manage-api/admin/asset-mappings"
+```
+
+_파라미터_
+
+| 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
+|---|---|---|---|---|---|
+| `network` | query | string | - |  |  |
+| `token` | query | string | - |  |  |
+
+
+_응답_
+
+`200` — 매핑 목록
+
+```json
+{
+  "data": [
+    {
+      "network": "BASE",
+      "token": "USDC",
+      "contractAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "registeredAt": "202608060310"
+    }
+  ],
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `data` | AssetMapping[] | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+#### `DELETE` https://{baseUrl}/blockchain/manage-api/admin/asset-mappings/{network}/{token}
+
+**자산 매핑 삭제**
+
+잘못 등록한 것을 되돌린다. **그 (네트워크, 토큰) 으로 발급된 주소가 하나도 없을 때만** 허용하고, 있으면 `409` 다 — 주소가 이미 나갔다면 매핑 수정이 아니라 사고 처리다.
+
+수정 오퍼레이션은 두지 않는다. 가리키는 자산을 바꾸면 이미 나간 주소와 앞으로 나갈 주소가 서로 다른 자산이 되기 때문이다.
+
+```bash
+curl -X DELETE "https://{baseUrl}/blockchain/manage-api/admin/asset-mappings/{network}/{token}"
+```
+
+_파라미터_
+
+| 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
+|---|---|---|---|---|---|
+| `network` | path | string | 필수 |  |  |
+| `token` | path | string | 필수 |  |  |
+| `X-Employee-No` | header | string | 필수 | 123456 | 조작한 직원 번호 — 감사 흔적으로 남는다 |
+| `X-Branch-Code` | header | string | 필수 | 0001 | 조작한 부점 코드 |
+
+
+_응답_
+
+`204` — 삭제됨
+
+
+`404` — 리소스 없음
+
+```json
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "transaction not found"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `error` | ErrorBody | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+`409` — 상태·멱등 충돌
+
+```json
+{
+  "error": {
+    "code": "CONFLICT",
+    "message": "externalTxId already used"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `error` | ErrorBody | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
 ## 타입
+
+### Network
+
+우리가 쓸 수 있는 체인 하나. 벤더 카탈로그를 하루 한 번 동기화한 우리 표에서 읽는다.
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `candidateId` | string | 필수 | 아직 채택하지 않은 행을 가리키는 손잡이 — 목록에서 받은 값을 그대로 되돌려 보내는 용도이고, 뜻을 해석하거나 보관하지 않는다 |
+| `code` | string \\| null | - | 우리 네트워크 코드 — 채택했을 때만 채워진다 |
+| `displayName` | string | 필수 |  |
+| `chainId` | integer \\| null | - | EIP-155 chainId — EVM 계열만 |
+| `testnet` | boolean | 필수 |  |
+| `deprecated` | boolean | 필수 | 더는 권장되지 않는 체인 |
+| `syncedAt` | string | 필수 | 이 행을 마지막으로 동기화한 시각 |
+
+
+### NetworkListResponse
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `data` | Network[] | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+### NetworkResponse
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `data` | Network | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+### AdoptNetworkRequest
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `candidateId` | string | 필수 | 네트워크 목록에서 받은 값을 그대로 넣는다 |
+
+
+### AssetCandidate
+
+그 네트워크에서 등록할 수 있는 자산 하나.
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `symbol` | string | 필수 |  |
+| `displayName` | string \\| null | - |  |
+| `decimals` | integer \\| null | - |  |
+| `contractAddress` | string \\| null | - | 네이티브 자산은 null |
+| `native` | boolean | 필수 | 그 체인의 네이티브 자산인지 |
+
+
+### AssetCandidateListResponse
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `data` | AssetCandidate[] | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+### AssetMapping
+
+등록된 (네트워크, 토큰) 하나.
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `network` | string | 필수 |  |
+| `token` | string | 필수 |  |
+| `contractAddress` | string \\| null | - | 네이티브 자산은 null |
+| `registeredAt` | string | 필수 |  |
+
+
+### AssetMappingListResponse
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `data` | AssetMapping[] | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+### AssetMappingResponse
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `data` | AssetMapping | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+### RegisterAssetMappingRequest
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `network` | string | 필수 | 채택한 네트워크 코드 |
+| `token` | string | 필수 | 우리 토큰 코드 |
+| `contractAddress` | string \\| null | 필수 | 발행사 공식 문서에서 확인한 컨트랙트 주소. 네이티브 자산이면 null |
+
 
 ### Meta
 
