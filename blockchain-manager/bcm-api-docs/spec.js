@@ -359,9 +359,30 @@ window.OPENAPI = {
           "Admin"
         ],
         "summary": "네트워크 목록",
-        "description": "쓸 수 있는 체인과, 그중 우리가 이름을 붙여 채택한 것을 함께 읽는다.\n\n- `adopted=true` 면 채택한 것만, `false` 면 아직 안 붙인 후보만.\n- `code` 는 채택했을 때만 채워진다. 채택 전 행을 가리킬 때 쓰는 `candidateId` 는 **해석하지 말고 그대로 되돌려 보내는 값**이다.\n",
+        "description": "쓸 수 있는 체인과, 그중 우리가 이름을 붙여 채택한 것을 함께 읽는다.\n\n- `adopted=true` 면 채택한 것만, `false` 면 아직 안 붙인 후보만.\n- `code` 는 채택했을 때만 채워진다. 채택 전 행을 가리킬 때 쓰는 `candidateId` 는 **해석하지 말고 그대로 되돌려 보내는 값**이다.\n- **채택 전 목록은 길다.** `q` 로 이름을 좁히고, EVM 이면 `chainId` 로 한 건까지 좁힌다.\n",
         "operationId": "networksOf",
         "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "이름 일부로 좁힌다 — 대소문자를 가리지 않는다",
+            "example": "base"
+          },
+          {
+            "name": "chainId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "EIP-155 chainId 로 정확히 좁힌다 — EVM 이면 한 건이다. 비 EVM 에는 이 값이 없어 이름으로 찾는다",
+            "example": 8453
+          },
           {
             "name": "adopted",
             "in": "query",

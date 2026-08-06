@@ -123,6 +123,8 @@ CREATE TABLE bcm_vndr_ast_m (
 
 **chainId 로 채택하는 방식은 접었다** (2026-08-06). EVM 이라면 chainId 가 벤더 밖에서 통하는 이름이라 목록 왕복 없이 `PUT /admin/networks/BASE {chainId: 8453}` 로 끝난다. 하지만 **비 EVM 에는 chainId 가 없다** — 비트코인·솔라나·트론을 다룰 수 없으므로 채택 수단으로 쓰지 않는다. 손잡이는 체인 종류를 가리지 않는다.
 
+**대신 찾는 쪽을 고쳤다.** 채택 전 목록은 벤더가 지원하는 체인 전부라 길고, 거기서 BASE 를 눈으로 고르는 건 실수하기 쉽다. 그래서 `GET /admin/networks` 에 `q`(이름 일부)와 `chainId`(EVM 정확 일치)를 뒀다 — `chainId=8453` 이면 한 건만 남으므로 고르는 행위가 사실상 사라진다. **행을 가리키는 방법과 행을 찾는 방법은 다른 문제**이고, 막혔던 건 찾는 쪽이었다. chainId 를 찾는 데만 쓰면 비 EVM 은 이름으로 찾으면 되므로 아무것도 막히지 않는다.
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -195,7 +197,7 @@ sequenceDiagram
 
 | 오퍼레이션 | 하는 일 |
 |---|---|
-| `GET /admin/networks` | 쓸 수 있는 체인 목록. `adopted` 로 채택 전/후를 가른다 |
+| `GET /admin/networks` | 쓸 수 있는 체인 목록. `adopted` 로 채택 전/후를 가르고, `q` · `chainId` 로 좁힌다 |
 | `PUT /admin/networks/{code}` | **네트워크 채택** — 목록에서 고른 후보에 우리 이름을 붙인다 |
 | `DELETE /admin/networks/{code}` | 채택 해제 — 매핑이 남아 있으면 409 |
 | `GET /admin/asset-candidates` | 그 네트워크의 자산 후보 — 심볼 · 컨트랙트 주소 · 소수 자릿수 |
