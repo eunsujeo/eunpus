@@ -6,16 +6,15 @@ status: To Do
 DAW-CORE가 블록체인 매니저를 호출하는 계약을 한 장으로 조립한다. DAW-CORE는 벤더(Fireblocks)를 모른다 — 아는 것은 아래 API·이벤트·TxStatus 뿐이다.
 이 장은 원천 장들(0·4·5·6·7·8장·[14장 레퍼런스](14-api-reference.md))의 결론만 모은 것이다 — **원천이 바뀌면 이 장을 함께 갱신한다.**
 
-## API — DAW-CORE → 매니저 (7개)
+## API — 호출 쪽 → 매니저 (7개)
 
 시그니처·타입·열거형의 기준은 [14장](14-api-reference.md). 여기는 무엇이 있는지만.
 
 | 오퍼레이션 | 무엇 | 상세 |
 |---|---|---|
 | `createAccount(accountType, ref)` | 계정 생성 — ref↔accountId 매핑 (유형+ref 로 멱등) | [1장](01-create-account.md) |
-| `createDepositAddress(accountId, network, token)` | 자산 지갑 활성화·입금 주소 발급 (멱등) | [2장](02-issue-deposit-address.md) |
 | `createDepositAddresses(accountId, token, networks)` | 한 토큰을 여러 네트워크로 — 최대 20네트워크, 네트워크별 결과 (부분 성공) | [2장](02-issue-deposit-address.md) |
-| `depositAddressOf(accountId, network, token)` | 발급된 주소 조회 — DB 읽기, 벤더 왕복 없음 | [3장](03-address-of.md) |
+| `depositAddressesOf(accountId, token?, network?)` | 발급된 주소 조회 — DB 읽기, 벤더 왕복 없음. 미발급은 빈 배열 | [3장](03-address-of.md) |
 | `balanceOf(accountId, network, token)` | vault 잔액 — 대사에 쓰는 값, 고객별 귀속 잔액 아님 | [8장](08-balance-history.md) |
 | `transactionsOf(accountId, after, before, status?)` | 기간·상태로 거래 목록 | [8장](08-balance-history.md) |
 | `transactionOf(txId)` | 단건 조회 | [8장](08-balance-history.md) |
@@ -113,7 +112,7 @@ sequenceDiagram
     end
     participant CP as 컴플라이언스 게이트<br/>트래블룰
 
-    Note over BE: (사전) createDepositAddress 로 주소 발급 — 고객에게 안내
+    Note over BE: (사전) createDepositAddresses 로 주소 발급 — 고객에게 안내
     CH->>BM: 입금 감지 — 웹훅 (4장)
     BM-->>MQ: CONFIRMED → 확정 임계 도달 시 FINALIZED publish
     MQ-->>BE: consume

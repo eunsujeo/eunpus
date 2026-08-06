@@ -21,7 +21,7 @@ status: Done
 flowchart TB
     SVC["Service 백엔드<br/>고객 런타임 · 입금·출금·잔액"]
     ADM["Admin 백엔드<br/>운영·거버넌스 · 정책·승인·키·동결"]
-    BM["블록체인 매니저 — 별도 서비스 · 1차 목표<br/>HTTP API: createAccount · createDepositAddress · depositAddressOf<br/>submitTransaction · balanceOf · transactionsOf …<br/>이벤트: onChainEvent → 메시지 큐 publish"]
+    BM["블록체인 매니저 — 별도 서비스 · 1차 목표<br/>HTTP API: createAccount · createDepositAddresses · depositAddressesOf<br/>submitTransaction · balanceOf · transactionsOf …<br/>이벤트: onChainEvent → 메시지 큐 publish"]
     MQ["메시지 큐<br/>deposit·withdrawal·internal"]
     FB["Fireblocks"]
     ETH["이더리움"]
@@ -127,8 +127,8 @@ flowchart LR
 | 기능 | Fireblocks 표면 | 온보딩 | 입금 | 출금 | 운영·CS | 매니저 API | 백엔드 | 페이지 |
 |---|---|---|---|---|---|---|---|---|
 | 고객 계정 생성 | createVaultAccount | ● | | | | `createAccount` | S | 1장 |
-| 입금 주소 **생성** | createVaultAsset · 자산 지갑 활성화 (EVM=단일) | ● | ● | | | `createDepositAddress` | S | 2장 |
-| 입금 주소 **조회** | (블록체인 매니저 DB 읽기 · Fireblocks 왕복 없음 — API 1홉) | | ● | | ● | `depositAddressOf` | S | 3장 |
+| 입금 주소 **생성** | createVaultAsset · 자산 지갑 활성화 (EVM=단일) | ● | ● | | | `createDepositAddresses` | S | 2장 |
+| 입금 주소 **조회** | (블록체인 매니저 DB 읽기 · Fireblocks 왕복 없음 — API 1홉) | | ● | | ● | `depositAddressesOf` | S | 3장 |
 | 수신·확정 이벤트 | 웹훅 (매니저가 수신 · resend 복구) | | ● | ● | | `onChainEvent` — 메시지 큐 publish/consume | S | 4장 |
 | 출금 제출 | createTransaction | | | ● | | `submitTransaction` | S | 6장 |
 | 거래 상세 조회 | getTransactionById | | | ● | ● | `transactionOf` | S·A | 6장 |

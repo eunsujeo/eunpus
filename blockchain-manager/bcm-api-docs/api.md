@@ -1,6 +1,6 @@
 # Blockchain Manager API
 
-`v0.0.10`
+`v0.1.0`
 
 블록체인 매니저는 사내의 별도 서비스로, 온체인 거래(노드 연동)를 담당한다.
 호출 쪽 백엔드(Service·Admin)는 이 HTTP API 로 계정·주소·잔액·거래를 다루고,
@@ -75,7 +75,7 @@
 | `VALIDATION_FAILED` | 400 | 요청 형식·값이 규약에 안 맞음 |
 | `ACCOUNT_NOT_FOUND` | 404 | 계정 없음 (주소 미발급과 구분) |
 | `NOT_FOUND` | 404 | 그 밖의 리소스 없음 |
-| `CONFLICT` | 409 | 상태·멱등 충돌 (예: 이미 쓴 externalTxId) |
+| `CONFLICT` | 409 | 같은 멱등 키에 다른 내용이 왔다 (예: 이미 쓴 externalTxId 로 금액·목적지가 다른 제출) |
 | `RELAY_REJECTED` | 502 | 대납 relay 가 전송을 못 대거나 거절 |
 | `INTERNAL` | 500 | 서버 내부 오류 |
 
@@ -95,9 +95,9 @@
 
 ## 멱등
 
-- **생성** — `createAccount` 는 (`accountType`, `ref`), `createDepositAddress` 는 `(accountId, network, token)` 로 멱등하다. 같은 값으로 재요청하면 매니저가 같은 결과를 돌려준다(호출 쪽이 별도 멱등키를 넣지 않는다).
-- **여러 자산 발급** — `createDepositAddresses` 는 네트워크마다 위와 같은 기준으로 멱등하다. 부분 실패해도 성공분은 남으므로 같은 요청을 그대로 재시도할 수 있다.
-- **출금 제출** — 본문 `externalTxId` 가 멱등 키다. 같은 키로 재제출해도 중복 전송되지 않는다.
+- **계정 생성** — `createAccount` 는 (`accountType`, `ref`) 로 멱등하다. 같은 값으로 재요청하면 매니저가 같은 결과를 돌려준다(호출 쪽이 별도 멱등키를 넣지 않는다).
+- **주소 발급** — `createDepositAddresses` 는 네트워크마다 `(accountId, network, token)` 로 멱등하다. 부분 실패해도 성공분은 남으므로 같은 요청을 그대로 재시도할 수 있다.
+- **출금 제출** — 본문 `externalTxId` 가 멱등 키다. **같은 키로 같은 내용을 재제출하면 처음의 `txId` 를 그대로 돌려준다** — 응답을 못 받아 재시도하는 경우가 정상 경로다. 같은 키인데 **내용이 다르면** `409 CONFLICT` 다. 어느 쪽이든 벤더로 중복 전송되지 않는다.
 
 ## 이벤트 (메시지 큐)
 
@@ -252,152 +252,6 @@ _응답_
 | `meta` | Meta | 필수 |  |
 
 
-#### `POST` https://{baseUrl}/blockchain/manage-api/accounts/{accountId}/networks/{network}/tokens/{token}/address
-
-**입금 주소 발급**
-
-자산 지갑을 활성화하고 입금 주소를 발급한다. EVM 은 자산당 주소 하나다.
-같은 (accountId, network, token) 재요청은 같은 주소를 돌려준다 (매니저가 멱등 보장).
-
-```bash
-curl -X POST "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/networks/ETHEREUM/tokens/USDC/address"
-```
-
-_파라미터_
-
-| 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
-|---|---|---|---|---|---|
-| `accountId` | path | string | 필수 | acct_01H8X | 매니저가 돌려준 vault 핸들 (DB ext_acnt_id = vaultAccountId) |
-| `network` | path | string | 필수 | ETHEREUM | 네트워크 코드 — DB `ntwk_cd`(20자) 대응 |
-| `token` | path | string | 필수 | USDC | 토큰 심볼 — DB `tkn_smbl`(16자) 대응 |
-
-
-_응답_
-
-`201` — 발급됨(또는 멱등 재요청)
-
-```json
-{
-  "data": {
-    "address": "0xAb3...C9",
-    "memoTag": null
-  },
-  "meta": {
-    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
-  }
-}
-```
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `data` | Address | 필수 |  |
-| `meta` | Meta | 필수 |  |
-
-
-`400` — 요청 검증 실패
-
-```json
-{
-  "error": {
-    "code": "VALIDATION_FAILED",
-    "message": "amount must be a decimal string"
-  },
-  "meta": {
-    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
-  }
-}
-```
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `error` | ErrorBody | 필수 |  |
-| `meta` | Meta | 필수 |  |
-
-
-`404` — 계정 없음
-
-```json
-{
-  "error": {
-    "code": "ACCOUNT_NOT_FOUND",
-    "message": "account not found"
-  },
-  "meta": {
-    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
-  }
-}
-```
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `error` | ErrorBody | 필수 |  |
-| `meta` | Meta | 필수 |  |
-
-
-#### `GET` https://{baseUrl}/blockchain/manage-api/accounts/{accountId}/networks/{network}/tokens/{token}/address
-
-**입금 주소 조회**
-
-발급된 입금 주소를 조회한다(벤더 왕복 없음).
-- 주소 있음 → `data` 에 주소
-- 계정은 있으나 주소 미발급 → `data: null` (주소를 만들지 않는다)
-- 계정 없음 → `404 ACCOUNT_NOT_FOUND`
-
-```bash
-curl "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/networks/ETHEREUM/tokens/USDC/address"
-```
-
-_파라미터_
-
-| 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
-|---|---|---|---|---|---|
-| `accountId` | path | string | 필수 | acct_01H8X | 매니저가 돌려준 vault 핸들 (DB ext_acnt_id = vaultAccountId) |
-| `network` | path | string | 필수 | ETHEREUM | 네트워크 코드 — DB `ntwk_cd`(20자) 대응 |
-| `token` | path | string | 필수 | USDC | 토큰 심볼 — DB `tkn_smbl`(16자) 대응 |
-
-
-_응답_
-
-`200` — 조회 결과(미발급 시 data=null)
-
-```json
-{
-  "data": {
-    "address": "0xAb3...C9",
-    "memoTag": null
-  },
-  "meta": {
-    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
-  }
-}
-```
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `data` | Address \\| null | 필수 | 미발급 시 null |
-| `meta` | Meta | 필수 |  |
-
-
-`404` — 계정 없음
-
-```json
-{
-  "error": {
-    "code": "ACCOUNT_NOT_FOUND",
-    "message": "account not found"
-  },
-  "meta": {
-    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
-  }
-}
-```
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `error` | ErrorBody | 필수 |  |
-| `meta` | Meta | 필수 |  |
-
-
 #### `POST` https://{baseUrl}/blockchain/manage-api/accounts/{accountId}/addresses
 
 **입금 주소 여러 자산 한 번에 발급**
@@ -514,6 +368,75 @@ _응답_
 | `meta` | Meta | 필수 |  |
 
 
+#### `GET` https://{baseUrl}/blockchain/manage-api/accounts/{accountId}/addresses
+
+**발급된 입금 주소 조회**
+
+그 계정에 발급된 입금 주소를 돌려준다 — 매니저 DB 를 읽을 뿐 벤더 왕복이 없다.
+
+`token` · `network` 로 걸러 받을 수 있고 둘 다 없으면 그 계정의 전체다. 같은 토큰을 여러 네트워크로 받는 고객 화면은 `token` 하나만 걸어 한 번에 받는다.
+
+**미발급은 배열에 담기지 않는다** — 계정은 있는데 주소가 없으면 빈 배열이고, 계정 자체가 없으면 `404` 다. 발급(`POST`)과 경로가 같아 메서드만 다르다.
+
+```bash
+curl "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/addresses?token=USDC&network=BASE"
+```
+
+_파라미터_
+
+| 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
+|---|---|---|---|---|---|
+| `accountId` | path | string | 필수 | acct_01H8X | 매니저가 돌려준 vault 핸들 (DB ext_acnt_id = vaultAccountId) |
+| `token` | query | string | - | USDC | 토큰 심볼로 거른다 (선택) |
+| `network` | query | string | - | BASE | 네트워크 코드로 거른다 (선택) |
+
+
+_응답_
+
+`200` — 발급된 주소 목록 (미발급이면 빈 배열)
+
+```json
+{
+  "data": [
+    {
+      "network": "BASE",
+      "token": "USDC",
+      "address": "0xAb3...C9",
+      "memoTag": "string"
+    }
+  ],
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `data` | DepositAddress[] | 필수 | 발급된 주소 목록 — 미발급은 담기지 않는다 |
+| `meta` | Meta | 필수 |  |
+
+
+`404` — 계정 없음
+
+```json
+{
+  "error": {
+    "code": "ACCOUNT_NOT_FOUND",
+    "message": "account not found"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `error` | ErrorBody | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
 ### Balances
 잔액 조회
 
@@ -587,8 +510,11 @@ _응답_
 
 **출금 제출**
 
-출금(또는 내부 이체)을 제출한다. `externalTxId` 로 재제출 중복을 차단한다.
-응답은 벤더 tx id(`txId`)이며, 이후 상태 진행은 메시지 큐 이벤트로 따라간다(Events).
+출금(또는 내부 이체)을 제출한다. 응답은 벤더 tx id(`txId`)이며, 이후 상태 진행은 메시지 큐 이벤트로 따라간다(Events).
+
+**재시도가 안전하다** — `externalTxId` 가 멱등 키라, 같은 키로 **같은 내용**을 다시 보내면 처음의 `txId` 를 그대로 돌려준다(`202`). 제출은 보냈는데 응답을 못 받은 상황에서 그대로 재시도하면 된다. 같은 키인데 **내용이 다르면** `409` 로 거절한다 — 키 재사용을 막는 것이 이 코드의 목적이다.
+
+제출한 건을 `externalTxId` 로 다시 찾으려면 `GET /transactions/external/{externalTxId}` 를 쓴다. 출금은 고객 계정이 아니라 출금 풀 vault 에서 나가므로 계정별 목록 조회로는 찾을 수 없다.
 
 ```bash
 curl -X POST "https://{baseUrl}/blockchain/manage-api/transactions" \
@@ -712,6 +638,77 @@ _응답_
   "error": {
     "code": "RELAY_REJECTED",
     "message": "relay refused to sponsor gas"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `error` | ErrorBody | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+#### `GET` https://{baseUrl}/blockchain/manage-api/transactions/external/{externalTxId}
+
+**우리 요청 키로 거래 조회**
+
+`externalTxId` 로 제출한 건을 찾는다. 출금은 고객 계정이 아니라 **출금 풀 vault 에서 나가므로** 계정별 목록 조회로는 찾을 수 없다 — 호출 쪽이 자기 출금을 아는 유일한 키가 `externalTxId` 라 이 경로가 필요하다.
+
+제출 응답을 못 받았을 때의 확인, 그리고 대사에서 우리 기록과 벤더 기록을 잇는 데 쓴다.
+
+```bash
+curl "https://{baseUrl}/blockchain/manage-api/transactions/external/wd-260713-0042"
+```
+
+_파라미터_
+
+| 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
+|---|---|---|---|---|---|
+| `externalTxId` | path | string | 필수 | wd-260713-0042 | 제출할 때 실은 우리 요청 키 |
+
+
+_응답_
+
+`200` — 조회 결과
+
+```json
+{
+  "data": {
+    "txId": "tx_9f2a",
+    "txHash": "0x4e1d...ab",
+    "externalTxId": "wd-260713-0042",
+    "network": "ETHEREUM",
+    "token": "USDC",
+    "amount": "1.5",
+    "from": "0xA1...C9",
+    "to": "0x9f...E2",
+    "status": "FINALIZED",
+    "numOfConfirmations": 12,
+    "createdAt": "2026-07-13T04:05:06.789Z",
+    "lastUpdated": "2026-07-13T04:06:10.120Z"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `data` | Transfer | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+`404` — 리소스 없음
+
+```json
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "transaction not found"
   },
   "meta": {
     "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
@@ -940,14 +937,6 @@ _응답_
 | `accountId` | string | 필수 | 매니저가 돌려주는 vault 핸들 (DB ext_acnt_id = vaultAccountId) |
 
 
-### Address
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `address` | string | 필수 | 입금 주소 |
-| `memoTag` | string \\| null | - | EVM 은 null. Tag/Memo 체인만 사용. |
-
-
 ### Balance
 
 금액은 문자열(decimal).
@@ -1099,28 +1088,32 @@ _응답_
 | `meta` | Meta | 필수 |  |
 
 
-### AddressResponse
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `data` | Address | 필수 |  |
-| `meta` | Meta | 필수 |  |
-
-
-### AddressNullableResponse
-
-| 필드 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `data` | Address \\| null | 필수 | 미발급 시 null |
-| `meta` | Meta | 필수 |  |
-
-
 ### CreateAddressesRequest
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `token` | string | 필수 | 토큰 심볼 — 이 요청의 모든 네트워크에 공통 |
 | `networks` | string[] | 필수 | 주소를 받을 네트워크 1~20개. 빈 배열·초과는 `400 VALIDATION_FAILED`. 같은 네트워크가 두 번 들어오면 발급은 한 번만 하고 두 항목에 같은 결과를 담는다. |
+
+
+### DepositAddress
+
+발급된 입금 주소 하나.
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `network` | string | 필수 |  |
+| `token` | string | 필수 |  |
+| `address` | string | 필수 | 온체인 입금 주소 |
+| `memoTag` | string \\| null | - | 체인이 요구하는 태그·메모 — EVM 은 null |
+
+
+### DepositAddressListResponse
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `data` | DepositAddress[] | 필수 | 발급된 주소 목록 — 미발급은 담기지 않는다 |
+| `meta` | Meta | 필수 |  |
 
 
 ### AddressResult

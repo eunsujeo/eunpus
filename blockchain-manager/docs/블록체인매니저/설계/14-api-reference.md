@@ -22,22 +22,21 @@ typealias WalletId = String    // 사전 등록(화이트리스트) 지갑 id
 
 ## 공통 규약
 
-- **멱등키(Idempotency-Key)** — 생성 계열은 키로 중복을 막는다. `createAccount` = f(accountType, ref), `createDepositAddress` = f(accountId, network, token) — 여러 네트워크 발급도 네트워크마다 같은 기준이다. 24시간 안의 재시도는 같은 결과를 돌려준다. 그 뒤의 영구 유일성은 매니저 DB 의 UNIQUE 제약이 보장한다(1·2장).
+- **멱등키(Idempotency-Key)** — 생성 계열은 키로 중복을 막는다. `createAccount` = f(accountType, ref), `createDepositAddresses` = 네트워크마다 f(accountId, network, token), `submitTransaction` = f(externalTxId). 같은 값으로 재요청하면 같은 결과를 돌려준다. 그 뒤의 영구 유일성은 매니저 DB 의 UNIQUE 제약이 보장한다(1·2장).
 - **externalTxId** — 제출할 때 백엔드가 싣는 우리 요청 키다. 재제출 중복 차단 + 완료 이벤트 대응에 쓰고, 매니저는 완료 이벤트에 그대로 실어 되돌려준다(6·10·12장).
 - **이벤트 전달 = at-least-once** — 같은 이벤트가 드물게 두 번 올 수 있다. 이벤트 ID(tx id 또는 externalTxId) 유일 기준으로 **상태 전이만 반영**하고, 오프셋은 원장 반영 성공 후 커밋한다(4장).
-- **에러 구분** — `depositAddressOf` 는 계정 없음(`AccountNotFound`)과 주소 미발급(`null`)을 구분한다(3장). 제출 응답은 성공·확정 에러·애매한 에러 세 갈래다(6·10장).
+- **에러 구분** — 주소 조회는 계정 없음(`AccountNotFound`)과 미발급(빈 배열)을 구분한다(3장). 제출은 같은 `externalTxId` 에 같은 내용이면 처음 결과를 돌려주고, 내용이 다르면 `Conflict` 다(6장).
 
 ## 계정 · 주소 API
 
 ```kotlin
 fun createAccount(accountType: AccountType, ref: String): Account // 1장 — vault 생성 · ref↔accountId 매핑 (AccountType = CUSTOMER · SYSTEM)
-fun createDepositAddress(accountId: AccountId, network: Network, token: Token): Address  // 2장 — 자산 지갑 활성화 · 주소 발급
 fun createDepositAddresses(accountId: AccountId, token: Token, networks: List<Network>): List<AddressResult>  // 2장 — 한 토큰 여러 네트워크 (최대 20 · 네트워크별 결과)
-fun depositAddressOf(accountId: AccountId, network: Network, token: Token): Address?  // 3장 — DB 읽기 · 벤더 왕복 없음
+fun depositAddressesOf(accountId: AccountId, token: Token? = null, network: Network? = null): List<DepositAddress>  // 3장 — DB 읽기 · 벤더 왕복 없음
 ```
 
 - `createAccount` — 같은 (`accountType`, `ref`) 재요청은 같은 `accountId` 를 돌려준다(멱등). 계정 유형은 고객·시스템 ID 가 서로 다른 테이블에서 접두사 없이 발급되어 값이 겹칠 수 있기 때문에 함께 받는다. EVM 은 자산당 주소 하나라, 같은 자산의 주소를 더 두려면 계정을 더 만든다(2장).
-- `depositAddressOf` — 세 갈래: 주소 있음 → `Address`, 계정 있고 주소 미발급 → `null`, 계정 없음 → `AccountNotFound`. 주소를 만들지는 않는다(생성은 `createDepositAddress`).
+- `depositAddressesOf` — 발급분을 배열로 준다. 계정은 있는데 주소가 없으면 **빈 배열**, 계정이 없으면 `AccountNotFound`. 주소를 만들지는 않는다(생성은 `createDepositAddresses`). 발급과 경로가 같아 메서드만 다르다.
 - `createDepositAddresses` — 토큰 하나와 네트워크 목록을 받는다(USDC 를 이더리움·폴리곤·트론에서 받는 경우). 받을 네트워크를 정하는 것은 백엔드이고 매니저가 스스로 채우지 않는다. 계정이 없으면 전체 404 이고, **네트워크별 부분 실패는 정상 동작이다** — 네트워크별 성공(주소)/실패(에러 코드)를 요청 순서대로 돌려주고 HTTP 는 200 이다. 전체를 되돌리지 않으므로 같은 요청을 그대로 재시도할 수 있다. **벤더 호출 수는 줄지 않아** 왕복만 줄어들고, 그래서 20네트워크 상한을 둔다.
 
 ## 잔액 · 내역 API
@@ -51,6 +50,7 @@ fun transactionsOf(                                              // 8장 — 기
   status: TxStatus? = null,
 ): List<Transfer>
 fun transactionOf(txId: String): Transfer?                     // 단건 조회 (벤더 getTransactionById · 00·8장)
+fun transactionByExternalTxId(externalTxId: String): Transfer?  // 우리 요청 키로 조회 — 출금은 계정별 목록에 안 나온다 (6장)
 ```
 
 - `balanceOf` 가 주는 값은 **vault 단위 벤더/온체인 잔액**이라 대사(reconciliation)에 쓰는 값이다 — 고객별 귀속 잔액이 아니다. 고객별 잔액·귀속은 백엔드가 원장으로 가진다(8·13장).
@@ -185,8 +185,8 @@ enum class Topic { deposit, withdrawal, internal }   // 토픽명은 deposit-eve
 | 오퍼레이션 | 종류 | 호출 | 장 |
 |---|---|---|---|
 | `createAccount` | API | Service | 1장 |
-| `createDepositAddress` | API | Service | 2장 |
-| `depositAddressOf` | API | Service | 3장 |
+| `createDepositAddresses` | API | Service | 2장 |
+| `depositAddressesOf` | API | Service | 3장 |
 | `balanceOf` | API | Service·Admin | 8장 |
 | `transactionsOf` · `transactionOf` | API | Service·Admin | 8장 (단건은 6장도) |
 | `submitTransaction` | API | Service | 6장 |

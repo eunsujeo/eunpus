@@ -163,7 +163,7 @@ sequenceDiagram
     CP-->>MQC: withdrawal-check.settled 발행 — verdict · travelRuleMessage
     MQC-->>BE: consume
     alt APPROVED · NOT_REQUIRED
-        BE->>BM: POST /transactions — externalTxId · travelRuleMessage(값 있으면)
+        BE->>BM: POST /transactions — externalTxId · travelRule(값 있으면)
         BM->>FB: 제출 — TAP 정책 → Co-signer 서명 → 전파
         BM-->>BE: 접수 — 벤더 txId
         loop 상태 변경마다

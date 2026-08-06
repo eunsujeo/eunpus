@@ -32,6 +32,10 @@ data class TransferPeer(                 // 벤더 TransferPeerPath 와 대응 �
 )
 ```
 
+**재제출은 안전하다** — `externalTxId` 가 멱등 키라 같은 키로 **같은 내용**을 다시 보내면 처음의 `txId` 를 그대로 돌려준다. 제출은 보냈는데 응답을 못 받은 상황에서 그대로 재시도하면 된다. 같은 키인데 **내용이 다르면** 거절한다(Conflict) — 키 재사용을 막는 것이 그 코드의 목적이다.
+
+제출한 건을 나중에 `externalTxId` 로 찾을 수 있다(`transactionByExternalTxId`). **출금은 고객 계정이 아니라 출금 풀 vault 에서 나가므로 계정별 목록 조회로는 찾히지 않는다** — 호출 쪽이 자기 출금을 아는 유일한 키가 `externalTxId` 라 이 경로가 필요하다.
+
 `from`·`to` 는 같은 `TransferPeer` 다 — 벤더 `createTransaction` 의 source·destination 이 둘 다 같은 타입인 것과 맞춘다. 단 **`from` 은 항상 우리 vault** 라 `type=ACCOUNT` 만 허용한다(검증). 우리는 키를 쥔 vault 에서만 전송하므로 외부 주소·화이트리스트에서 보내는 경우가 없다 — `to` 만 세 갈래를 다 쓴다.
 
 ## 출금 제출 — 파이프라인이 벤더 안으로 들어간다

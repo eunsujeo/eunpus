@@ -1,5 +1,5 @@
 ---
-title: 2. 입금 주소 생성 — createDepositAddress
+title: 2. 입금 주소 생성 — createDepositAddresses
 status: Done
 ---
 
@@ -7,10 +7,10 @@ status: Done
 (계정, 네트워크, 토큰)↔주소 매핑은 블록체인 매니저 DB 에 저장한다. 저장 못 한 경우의 복구도 매니저 안에서 처리한다.
 
 ```kotlin
-fun createDepositAddress(accountId: AccountId, network: Network, token: Token): Address {
-  return Address(value, memoTag)
-}
+fun createDepositAddresses(accountId: AccountId, token: Token, networks: List<Network>): List<AddressResult>
 ```
+
+발급 오퍼레이션은 이것 하나다 — 네트워크가 하나뿐이면 목록에 하나만 담아 보낸다. 단건 전용 오퍼레이션을 따로 두지 않는 이유는 완전한 부분집합이어서 구현·테스트가 두 벌이 되고 한쪽만 고쳐져 어긋나기 때문이다.
 
 ## 자산 지갑 활성화
 
@@ -26,7 +26,7 @@ sequenceDiagram
     end
     participant FB as Fireblocks SaaS · 벤더
 
-    BE->>BM: API · createDepositAddress(accountId, network, token)
+    BE->>BM: API · createDepositAddresses — 네트워크마다 아래를 반복
     BM->>MDB: (accountId, network, token) 조회
     alt 있으면 — 재사용
         MDB-->>BM: 기존 주소
@@ -50,13 +50,9 @@ sequenceDiagram
 - **추가 주소는 vault 추가로**: EVM 은 (vault, 자산)당 주소가 **하나뿐**이라, 같은 자산의 주소가 더 필요하면 **vault account 를 더 만든다**.
 - **감시 등록까지가 발급**: 주소는 감시(귀속) 등록까지 끝나야 "존재"한다 — 등록 안 된 주소로 온 입금은 감지하지 못하며 입금 사고의 최다 유형이다. 이 감시·귀속은 벤더 몫(vault 가 곧 감시 범위, 입금 감지 4장).
 
-## 여러 네트워크 한 번에 — createDepositAddresses
+## 여러 네트워크를 한 요청으로
 
 고객이 한 토큰을 **여러 네트워크로 받고 싶을 때** 쓴다. USDC 를 이더리움·폴리곤·트론에서 받으려면 세 주소가 필요하고, 그때마다 단건 발급을 세 번 호출하는 대신 토큰 하나와 네트워크 목록으로 한 번에 묶는다.
-
-```kotlin
-fun createDepositAddresses(accountId: AccountId, token: Token, networks: List<Network>): List<AddressResult>
-```
 
 발급 규칙은 새로 생기지 않는다 — 네트워크마다 단건 발급과 결과가 같고 멱등하다. 계정은 하나이므로 vault 도 하나이고, **자산 지갑만 네트워크별로 여러 개 활성화**되는 것이다.
 

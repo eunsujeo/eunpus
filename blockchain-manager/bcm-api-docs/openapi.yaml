@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Blockchain Manager API
-  version: "0.0.10"
+  version: "0.1.0"
   x-curl: true
   description: |
     블록체인 매니저는 사내의 별도 서비스로, 온체인 거래(노드 연동)를 담당한다.
@@ -77,7 +77,7 @@ info:
     | `VALIDATION_FAILED` | 400 | 요청 형식·값이 규약에 안 맞음 |
     | `ACCOUNT_NOT_FOUND` | 404 | 계정 없음 (주소 미발급과 구분) |
     | `NOT_FOUND` | 404 | 그 밖의 리소스 없음 |
-    | `CONFLICT` | 409 | 상태·멱등 충돌 (예: 이미 쓴 externalTxId) |
+    | `CONFLICT` | 409 | 같은 멱등 키에 다른 내용이 왔다 (예: 이미 쓴 externalTxId 로 금액·목적지가 다른 제출) |
     | `RELAY_REJECTED` | 502 | 대납 relay 가 전송을 못 대거나 거절 |
     | `INTERNAL` | 500 | 서버 내부 오류 |
 
@@ -97,9 +97,9 @@ info:
 
     ## 멱등
 
-    - **생성** — `createAccount` 는 (`accountType`, `ref`), `createDepositAddress` 는 `(accountId, network, token)` 로 멱등하다. 같은 값으로 재요청하면 매니저가 같은 결과를 돌려준다(호출 쪽이 별도 멱등키를 넣지 않는다).
-    - **여러 자산 발급** — `createDepositAddresses` 는 네트워크마다 위와 같은 기준으로 멱등하다. 부분 실패해도 성공분은 남으므로 같은 요청을 그대로 재시도할 수 있다.
-    - **출금 제출** — 본문 `externalTxId` 가 멱등 키다. 같은 키로 재제출해도 중복 전송되지 않는다.
+    - **계정 생성** — `createAccount` 는 (`accountType`, `ref`) 로 멱등하다. 같은 값으로 재요청하면 매니저가 같은 결과를 돌려준다(호출 쪽이 별도 멱등키를 넣지 않는다).
+    - **주소 발급** — `createDepositAddresses` 는 네트워크마다 `(accountId, network, token)` 로 멱등하다. 부분 실패해도 성공분은 남으므로 같은 요청을 그대로 재시도할 수 있다.
+    - **출금 제출** — 본문 `externalTxId` 가 멱등 키다. **같은 키로 같은 내용을 재제출하면 처음의 `txId` 를 그대로 돌려준다** — 응답을 못 받아 재시도하는 경우가 정상 경로다. 같은 키인데 **내용이 다르면** `409 CONFLICT` 다. 어느 쪽이든 벤더로 중복 전송되지 않는다.
 
     ## 이벤트 (메시지 큐)
 
@@ -209,43 +209,6 @@ paths:
               schema: { $ref: '#/components/schemas/AccountResponse' }
         '400': { $ref: '#/components/responses/ValidationFailed' }
 
-  /accounts/{accountId}/networks/{network}/tokens/{token}/address:
-    parameters:
-      - $ref: '#/components/parameters/AccountId'
-      - $ref: '#/components/parameters/Network'
-      - $ref: '#/components/parameters/Token'
-    post:
-      tags: [Accounts]
-      summary: 입금 주소 발급
-      description: |
-        자산 지갑을 활성화하고 입금 주소를 발급한다. EVM 은 자산당 주소 하나다.
-        같은 (accountId, network, token) 재요청은 같은 주소를 돌려준다 (매니저가 멱등 보장).
-      operationId: createDepositAddress
-      responses:
-        '201':
-          description: 발급됨(또는 멱등 재요청)
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/AddressResponse' }
-        '400': { $ref: '#/components/responses/ValidationFailed' }
-        '404': { $ref: '#/components/responses/AccountNotFound' }
-    get:
-      tags: [Accounts]
-      summary: 입금 주소 조회
-      description: |
-        발급된 입금 주소를 조회한다(벤더 왕복 없음).
-        - 주소 있음 → `data` 에 주소
-        - 계정은 있으나 주소 미발급 → `data: null` (주소를 만들지 않는다)
-        - 계정 없음 → `404 ACCOUNT_NOT_FOUND`
-      operationId: depositAddressOf
-      responses:
-        '200':
-          description: 조회 결과(미발급 시 data=null)
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/AddressNullableResponse' }
-        '404': { $ref: '#/components/responses/AccountNotFound' }
-
   /accounts/{accountId}/addresses:
     parameters:
       - $ref: '#/components/parameters/AccountId'
@@ -274,6 +237,36 @@ paths:
               schema: { $ref: '#/components/schemas/AddressesResponse' }
         '400': { $ref: '#/components/responses/ValidationFailed' }
         '404': { $ref: '#/components/responses/AccountNotFound' }
+    get:
+      tags: [Accounts]
+      summary: 발급된 입금 주소 조회
+      description: |
+        그 계정에 발급된 입금 주소를 돌려준다 — 매니저 DB 를 읽을 뿐 벤더 왕복이 없다.
+
+        `token` · `network` 로 걸러 받을 수 있고 둘 다 없으면 그 계정의 전체다. 같은 토큰을 여러 네트워크로 받는 고객 화면은 `token` 하나만 걸어 한 번에 받는다.
+
+        **미발급은 배열에 담기지 않는다** — 계정은 있는데 주소가 없으면 빈 배열이고, 계정 자체가 없으면 `404` 다. 발급(`POST`)과 경로가 같아 메서드만 다르다.
+      operationId: depositAddressesOf
+      parameters:
+        - name: token
+          in: query
+          required: false
+          schema: { type: string, maxLength: 16 }
+          description: 토큰 심볼로 거른다 (선택)
+          example: USDC
+        - name: network
+          in: query
+          required: false
+          schema: { type: string, maxLength: 20 }
+          description: 네트워크 코드로 거른다 (선택)
+          example: BASE
+      responses:
+        '200':
+          description: 발급된 주소 목록 (미발급이면 빈 배열)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DepositAddressListResponse' }
+        '404': { $ref: '#/components/responses/AccountNotFound' }
 
   /accounts/{accountId}/networks/{network}/tokens/{token}/balance:
     parameters:
@@ -300,8 +293,11 @@ paths:
       tags: [Transactions]
       summary: 출금 제출
       description: |
-        출금(또는 내부 이체)을 제출한다. `externalTxId` 로 재제출 중복을 차단한다.
-        응답은 벤더 tx id(`txId`)이며, 이후 상태 진행은 메시지 큐 이벤트로 따라간다(Events).
+        출금(또는 내부 이체)을 제출한다. 응답은 벤더 tx id(`txId`)이며, 이후 상태 진행은 메시지 큐 이벤트로 따라간다(Events).
+
+        **재시도가 안전하다** — `externalTxId` 가 멱등 키라, 같은 키로 **같은 내용**을 다시 보내면 처음의 `txId` 를 그대로 돌려준다(`202`). 제출은 보냈는데 응답을 못 받은 상황에서 그대로 재시도하면 된다. 같은 키인데 **내용이 다르면** `409` 로 거절한다 — 키 재사용을 막는 것이 이 코드의 목적이다.
+
+        제출한 건을 `externalTxId` 로 다시 찾으려면 `GET /transactions/external/{externalTxId}` 를 쓴다. 출금은 고객 계정이 아니라 출금 풀 vault 에서 나가므로 계정별 목록 조회로는 찾을 수 없다.
       operationId: submitTransaction
       requestBody:
         required: true
@@ -317,6 +313,30 @@ paths:
         '400': { $ref: '#/components/responses/ValidationFailed' }
         '409': { $ref: '#/components/responses/Conflict' }
         '502': { $ref: '#/components/responses/RelayRejected' }
+
+  /transactions/external/{externalTxId}:
+    parameters:
+      - name: externalTxId
+        in: path
+        required: true
+        schema: { type: string, maxLength: 128 }
+        description: 제출할 때 실은 우리 요청 키
+        example: wd-260713-0042
+    get:
+      tags: [Transactions]
+      summary: 우리 요청 키로 거래 조회
+      description: |
+        `externalTxId` 로 제출한 건을 찾는다. 출금은 고객 계정이 아니라 **출금 풀 vault 에서 나가므로** 계정별 목록 조회로는 찾을 수 없다 — 호출 쪽이 자기 출금을 아는 유일한 키가 `externalTxId` 라 이 경로가 필요하다.
+
+        제출 응답을 못 받았을 때의 확인, 그리고 대사에서 우리 기록과 벤더 기록을 잇는 데 쓴다.
+      operationId: transactionByExternalTxId
+      responses:
+        '200':
+          description: 조회 결과
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransferResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /transactions/{txId}:
     get:
@@ -467,16 +487,6 @@ components:
         ref: { type: string, maxLength: 64, description: "우리 참조 키 — 호출 쪽 계정 ID 그대로. 접두사는 붙지 않는다", example: "000123" }
         accountId: { type: string, description: "매니저가 돌려주는 vault 핸들 (DB ext_acnt_id = vaultAccountId)", example: acct_01H8X }
       required: [accountType, ref, accountId]
-
-    Address:
-      type: object
-      properties:
-        address: { type: string, description: 입금 주소, example: "0xAb3...C9" }
-        memoTag:
-          type: [string, "null"]
-          description: EVM 은 null. Tag/Memo 체인만 사용.
-          example: null
-      required: [address]
 
     Balance:
       type: object
@@ -687,24 +697,6 @@ components:
         meta: { $ref: '#/components/schemas/Meta' }
       required: [data, meta]
 
-    AddressResponse:
-      type: object
-      properties:
-        data: { $ref: '#/components/schemas/Address' }
-        meta: { $ref: '#/components/schemas/Meta' }
-      required: [data, meta]
-
-    AddressNullableResponse:
-      type: object
-      properties:
-        data:
-          oneOf:
-            - { $ref: '#/components/schemas/Address' }
-            - { type: "null" }
-          description: 미발급 시 null
-        meta: { $ref: '#/components/schemas/Meta' }
-      required: [data, meta]
-
     CreateAddressesRequest:
       type: object
       required: [token, networks]
@@ -716,6 +708,30 @@ components:
           maxItems: 20
           description: 주소를 받을 네트워크 1~20개. 빈 배열·초과는 `400 VALIDATION_FAILED`. 같은 네트워크가 두 번 들어오면 발급은 한 번만 하고 두 항목에 같은 결과를 담는다.
           items: { type: string, maxLength: 20, description: 네트워크 코드, example: ETHEREUM }
+
+    DepositAddress:
+      type: object
+      description: 발급된 입금 주소 하나.
+      required: [network, token, address]
+      properties:
+        network: { type: string, example: BASE }
+        token: { type: string, example: USDC }
+        address: { type: string, description: 온체인 입금 주소, example: "0xAb3...C9" }
+        memoTag:
+          oneOf:
+            - { type: string }
+            - { type: "null" }
+          description: 체인이 요구하는 태그·메모 — EVM 은 null
+
+    DepositAddressListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          description: 발급된 주소 목록 — 미발급은 담기지 않는다
+          items: { $ref: '#/components/schemas/DepositAddress' }
+        meta: { $ref: '#/components/schemas/Meta' }
+      required: [data, meta]
 
     AddressResult:
       type: object
