@@ -22,6 +22,29 @@ status: To Do
 
 **범위 (시작 시점)** — 스테이블코인만, 네트워크는 `ETHEREUM` · `BASE` 둘. 벤더에는 스테이블코인이라는 분류가 없어(자산 분류는 NATIVE · FT · FIAT · NFT · SFT · VIRTUAL) 어차피 우리가 고르는 결정이다.
 
+## 네트워크 코드와 토큰 심볼 — 무엇을 기준으로 하나
+
+**이름은 우리가 정하고, 동일성 판단은 표준 값으로 한다.**
+
+읽기 쉬운 이름(`BASE` · `USDC`)을 코드로 쓰되, 그 값이 정말 무엇인지는 이름이 아니라 **chainId 와 컨트랙트 주소**로 가린다. 둘 다 등록할 때 벤더 응답에서 얻어지므로 추가 비용이 없다.
+
+| 우리 값 | 함께 보관하는 표준 값 | 어디서 얻나 |
+|---|---|---|
+| `ntwk_cd` = `BASE` | **chainId** (EIP-155) | 벤더 `GET /v1/blockchains` 의 `onchain.chainId` |
+| `tkn_smbl` = `USDC` | **컨트랙트 주소** | 벤더 `GET /v1/assets/{id}` 응답 |
+
+**티커 심볼은 표준이 아니다.** `USDC` 라는 심볼은 유일하지 않고 누구나 자기 토큰에 붙일 수 있다. 체인마다 다른 컨트랙트가 같은 심볼을 쓴다. 심볼을 식별자로 삼으면 "USDC 라고 적혀 있으니 USDC 겠지"에 기대는 것이라, 잘못된 컨트랙트를 진짜로 다룰 수 있다. 그래서 심볼은 **표시용**으로 내리고 동일성은 위 두 값으로 판단한다.
+
+관련 표준은 목적이 갈린다.
+
+- **EIP-155 chainId** — EVM 의 사실상 표준(숫자). 우리가 실제로 쓰는 값이다.
+- **CAIP-2 / CAIP-19** — 지갑·인프라 생태계의 체인·자산 식별 표준. `eip155:` + chainId 로 언제든 조립할 수 있어, 별도로 저장하지 않아도 필요할 때 만들 수 있다.
+- **ISO 24165 (DTI)** — 금융권 ISO 표준(토큰 식별자 DTI + 원장 식별자 DLI). 규제·보고에서 요구받을 수 있다. 지금 도입하지는 않되, chainId 와 컨트랙트 주소를 갖고 있으면 나중에 매핑할 수 있다 — **표준으로 올라탈 여지를 막지 않는 것**이 지금 할 일이다.
+
+**네트워크 코드는 벤더 값을 쓰지 않는다.** 벤더 체계는 일관성이 없고(`BASECHAIN_ETH` 같은 형태) 벤더를 바꾸면 우리 어휘가 흔들린다. 우리 이름을 쓰고 벤더 식별자는 `vndr_blkc_id` 로 따로 들고 대조한다.
+
+**테스트넷은 별도 코드로 둔다** — `BASE` 와 `BASE_SEPOLIA` 는 다른 네트워크다. `ntwk_cd` 하나에 시험망 여부 플래그를 다는 방식은 실수로 섞일 여지를 남긴다.
+
 ## bcm_vndr_ast_m — 벤더 자산 매핑
 
 ```sql
@@ -30,6 +53,8 @@ CREATE TABLE bcm_vndr_ast_m (
   tkn_smbl      VARCHAR(16)  NOT NULL,   -- 토큰 심볼 (우리 값)
   vndr_ast_id   VARCHAR(64)  NOT NULL,   -- 벤더 assetId — 벤더 호출에만 쓴다
   vndr_blkc_id  VARCHAR(64)  NOT NULL,   -- 벤더 blockchainId — 등록 때 확보하고 대조에 쓴다
+  chain_id      BIGINT       NULL,       -- EIP-155 chainId (EVM 만) — 네트워크 속성의 역정규화
+  cntr_addr     VARCHAR(128) NULL,       -- 컨트랙트 주소 — 등록 때 대조한 근거의 사본 (네이티브 자산은 NULL)
   reg_dttm      VARCHAR(16)  NOT NULL,
   -- 감사 4컬럼
   frst_reg_empno  VARCHAR(6)  NOT NULL,
@@ -46,7 +71,9 @@ CREATE TABLE bcm_vndr_ast_m (
 | `PRIMARY KEY (ntwk_cd, tkn_smbl)` | 같은 자산이 두 줄로 갈라지는 것 |
 | **`UNIQUE (vndr_ast_id)`** | **엉뚱한 체인에 주소를 발급하는 사고.** "BASE 의 USDC" 를 등록하며 이더리움 USDC 의 id 를 넣으면 여기서 걸린다 — 한 벤더 자산은 한 (네트워크, 토큰)에만 대응한다 |
 | `vndr_ast_id` 는 **set-once** | 이미 주소가 발급된 뒤 이 값을 바꾸면 기존 주소와 새 주소가 서로 다른 체인이 된다. 수정 오퍼레이션을 두지 않는 이유다 |
-| **한 `ntwk_cd` 는 한 `vndr_blkc_id`** | 같은 네트워크의 행들이 서로 다른 벤더 체인을 가리키는 것. 첫 줄만 제대로 고르면 그 뒤로는 등록 때 기계가 막는다 (DB 제약이 아니라 등록 검증) |
+| **한 `ntwk_cd` 는 한 `vndr_blkc_id` · 한 `chain_id`** | 같은 네트워크의 행들이 서로 다른 벤더 체인을 가리키는 것. 첫 줄만 제대로 고르면 그 뒤로는 등록 때 기계가 막는다 (DB 제약이 아니라 등록 검증) |
+
+`chain_id` 와 `cntr_addr` 은 네트워크·자산의 속성이라 원래 우리 소관이 아니지만, **등록 때 대조한 근거의 사본**으로 남긴다 — 나중에 "이 매핑을 무엇으로 확인했는가" 를 되짚을 수 있어야 한다. 업무에 쓰는 값이 아니라 감사용이다.
 
 행 하나가 곧 "이 자산은 벤더로 보낼 수 있다"는 뜻이다. 별도의 사용 여부 플래그는 두지 않는다 — 상품에서 자산을 내리는 것은 호출 쪽이 요청을 보내지 않는 것으로 끝나고, 장애 때 급히 막는 것은 성격이 달라 아래 "뒤로 미룬 것"에서 따로 다룬다.
 
@@ -62,7 +89,7 @@ CREATE TABLE bcm_vndr_ast_m (
 
 ## 등록 — 값을 어디서 얻고 어떻게 거르나
 
-등록은 어쩌다 한 번이지만 여기서 틀리면 자금이 엉뚱한 체인으로 간다. 그래서 **운영자가 값을 적지 않고 고르게** 만든다 — 벤더가 준 목록에서 고른 값이 그대로 넘어오면 옮겨 적는 구간이 없어져 오타 자체가 안 생긴다. 그 뒤에 관문 셋으로 다시 거른다.
+등록은 어쩌다 한 번이지만 여기서 틀리면 자금이 엉뚱한 체인으로 간다. 그래서 **운영자가 값을 적지 않고 고르게** 만든다 — 벤더가 준 목록에서 고른 값이 그대로 넘어오면 옮겨 적는 구간이 없어져 오타 자체가 안 생긴다. 그 뒤에 관문 넷으로 다시 거른다.
 
 ```mermaid
 sequenceDiagram
@@ -78,25 +105,25 @@ sequenceDiagram
     ADM->>API: GET /admin/vendor-blockchains
     API->>FB: GET /v1/blockchains
     FB-->>API: 네트워크 목록
-    API-->>ADM: 목록 — 운영자가 Base 선택 · blockchainId 확보
+    API-->>ADM: 목록 — 운영자가 Base 선택 · blockchainId·chainId 확보
     ADM->>API: GET /admin/vendor-assets — blockchainId · symbol
     API->>FB: GET /v1/assets — 그 네트워크로 필터
     FB-->>API: 자산 후보
     API-->>ADM: 후보 — 운영자가 선택 · assetId 확보
 
     Note over ADM,FB: 등록 — 고른 값을 우리 (network, token) 에 붙인다
-    ADM->>API: POST 매핑 등록<br/>network · token · vendorAssetId · vendorBlockchainId · 직원번호 · 부점코드
+    ADM->>API: POST 매핑 등록<br/>network · token · vendorAssetId · vendorBlockchainId<br/>chainId · expectedContractAddress · 직원번호 · 부점코드
     API->>MDB: (network, token) 조회 · 같은 network 의 vndr_blkc_id 조회
     alt 이미 등록됨 또는 그 network 가 다른 벤더 체인을 쓰고 있음
         MDB-->>API: 기존 행
         API-->>ADM: 409 CONFLICT
     else 통과
         API->>FB: GET /v1/assets/{vendorAssetId} — 최종 확인
-        alt 없거나 blockchainId 가 요청과 불일치
-            FB-->>API: 404 또는 다른 blockchainId
+        alt 없거나 blockchainId·컨트랙트 주소가 요청과 불일치
+            FB-->>API: 404 또는 다른 값
             API-->>ADM: 400 VALIDATION_FAILED
         else 확인됨
-            FB-->>API: blockchainId · displaySymbol
+            FB-->>API: blockchainId · 컨트랙트 주소 · displaySymbol
             API->>MDB: INSERT — 감사 4컬럼 = 실제 직원·부점
             alt vndr_ast_id UNIQUE 위반
                 MDB-->>API: 제약 위반
@@ -111,15 +138,16 @@ sequenceDiagram
 
 색: **초록 상자 = 매니저 안쪽**. 되돌아오는 점선이 실패 응답이다.
 
-**앞의 네 왕복이 값의 출처다.** 운영자가 벤더 콘솔에서 문자열을 눈으로 찾아 복사해 오는 구간을 없애는 것이 목적이고, 이 과정에서 **벤더 `blockchainId` 도 함께 확보**된다. 조회 오퍼레이션 둘은 벤더 조회를 대신해 줄 뿐인 읽기 전용이라 위험이 없다.
+**앞의 네 왕복이 값의 출처다.** 운영자가 벤더 콘솔에서 문자열을 눈으로 찾아 복사해 오는 구간을 없애는 것이 목적이고, 이 과정에서 **벤더 `blockchainId` 와 `chainId` 도 함께 확보**된다 — 네트워크 목록 응답의 `onchain.chainId` 가 그 값이다. 등록 요청에 그대로 실어 보내고, 매니저는 받은 값을 저장한다(벤더를 다시 부르지 않는다). 조회 오퍼레이션 둘은 벤더 조회를 대신해 줄 뿐인 읽기 전용이라 위험이 없다.
 
-**관문 셋이 각각 다른 실수를 잡는다.**
+**관문 넷이 각각 다른 실수를 잡는다.**
 
-- **중복·네트워크 불일치 차단 (⑩)** — 이미 등록된 (network, token) 은 덮어쓰지 않는다. 여기에 더해 **같은 network 의 기존 행과 `vndr_blkc_id` 가 다르면 거절**한다 — `BASE` 의 첫 매핑이 어떤 벤더 체인을 가리켰다면 이후 `BASE` 매핑은 같은 체인이어야 한다.
-- **벤더 최종 확인 (⑫)** — API 는 조회 화면 없이도 직접 호출될 수 있으므로, 넘어온 assetId 가 실재하는지와 **응답의 `blockchainId` 가 요청과 같은지**를 다시 본다.
-- **UNIQUE 위반 차단 (⑰)** — 벤더에 존재하는 id 라도 다른 자산의 것일 수 있다. 그 id 를 이미 쓰는 행이 있으면 DB 가 막는다.
+- **중복·네트워크 불일치 차단** — 이미 등록된 (network, token) 은 덮어쓰지 않는다. 여기에 더해 **같은 network 의 기존 행과 `vndr_blkc_id` 가 다르면 거절**한다 — `BASE` 의 첫 매핑이 어떤 벤더 체인을 가리켰다면 이후 `BASE` 매핑은 같은 체인이어야 한다.
+- **벤더 최종 확인** — API 는 조회 화면 없이도 직접 호출될 수 있으므로, 넘어온 assetId 가 실재하는지와 **응답의 `blockchainId` 가 요청과 같은지**를 다시 본다.
+- **컨트랙트 주소 대조** — 운영자가 **발행사 공식 문서에서 확인한 주소**(`expectedContractAddress`)를 함께 보내고, 벤더 응답의 주소와 다르면 거절한다. 이 관문만 유일하게 벤더 밖의 근거를 쓴다 — 앞의 것들은 전부 벤더가 준 값끼리 대조하는 것이라, **벤더 목록에서 엉뚱한 자산을 골랐을 때** 잡아내는 건 이 하나뿐이다. 네이티브 자산(컨트랙트 없음)은 이 대조를 건너뛴다.
+- **UNIQUE 위반 차단** — 벤더에 존재하는 id 라도 다른 자산의 것일 수 있다. 그 id 를 이미 쓰는 행이 있으면 DB 가 막는다.
 
-첫 줄만 사람이 제대로 고르면 그 네트워크의 나머지는 기계가 막는다. 네트워크당 첫 등록이 유일하게 사람의 판단에 기대는 지점이다.
+사람의 판단에 기대는 지점은 둘로 좁혀진다 — **네트워크당 첫 등록에서 체인을 제대로 고르는 것**(그 뒤로는 `vndr_blkc_id` 일관성 검사가 막는다), 그리고 **토큰마다 발행사 문서에서 컨트랙트 주소를 제대로 확인하는 것**이다. 나머지는 기계가 막는다.
 
 ## Admin API — 같은 서비스의 `/admin/*` (2026-08-06 확정)
 
@@ -130,7 +158,7 @@ sequenceDiagram
 | `GET /admin/vendor-blockchains` | 벤더가 지원하는 네트워크 목록 — 등록 전 고르기용 (읽기 전용 프록시) |
 | `GET /admin/vendor-assets` | 그 네트워크의 자산 후보 — `blockchainId` · `symbol` 로 거른다 (읽기 전용 프록시) |
 | `GET /admin/asset-mappings` | 등록된 매핑 목록 — 운영 확인용 |
-| `POST /admin/asset-mappings` | 등록 — `network` · `token` · `vendorAssetId` · `vendorBlockchainId` |
+| `POST /admin/asset-mappings` | 등록 — `network` · `token` · `vendorAssetId` · `vendorBlockchainId` · `chainId` · `expectedContractAddress` |
 | `DELETE /admin/asset-mappings/{network}/{token}` | 잘못 등록한 것 되돌리기 — **그 (네트워크, 토큰)으로 발급된 주소가 하나도 없을 때만** 허용, 있으면 409 |
 
 수정 오퍼레이션은 두지 않는다. `vndr_ast_id` 가 set-once 이므로 고치는 유일한 경로는 "지우고 다시 넣기"이고, 주소가 이미 발급됐다면 그것도 막힌다 — 그 상황은 매핑 수정이 아니라 사고 처리다.
@@ -152,8 +180,8 @@ sequenceDiagram
 
 ## 아직 못 정한 것
 
-- **네트워크 코드 값** — 우리가 정한 이름(`ETHEREUM`·`BASE`)을 쓸지 벤더 `blockchainId` 를 그대로 쓸지. 벤더 blockchainId 를 컬럼으로 따로 들고 대조하므로 **어느 쪽을 골라도 검증은 성립한다** — 읽기 편한 우리 이름을 쓰는 쪽이 무난하다.
-- **실제 assetId 값** — 스펙에는 스키마만 있고 값은 없다. 워크스페이스에서 한 번 조회하거나 담당자에게 확인해야 한다.
+- **컨트랙트 주소의 정본 출처** — 대조에 쓸 "진짜 USDC 주소" 를 어디서 가져올지. 발행사(Circle) 공식 문서를 근거로 삼는 것이 보통이고, 그 문서를 누가 확인해 등록 요청에 넣을지까지 정해야 한다.
+- **실제 assetId 값** — 조회 오퍼레이션이 생겨 운영자가 등록 화면에서 고르면 되는 값이 됐다. 시드를 미리 넣어야 할 때만 한 번 조회한다.
 
 ## 참고 — 벤더 조회 API
 
