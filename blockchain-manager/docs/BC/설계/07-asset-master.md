@@ -135,16 +135,12 @@ sequenceDiagram
     end
     participant FB as Fireblocks
 
-    Note over ADM,FB: 고르기 — 운영자는 값을 적지 않는다
-    ADM->>API: GET /admin/networks — adopted=true
-    API->>MDB: bcm_blkc_m 조회 · 벤더 왕복 없음
-    MDB-->>API: 네트워크 목록
-    API-->>ADM: 목록 — 운영자가 BASE 선택
-    ADM->>API: GET /admin/asset-candidates — network · symbol
-    API->>MDB: BASE 의 vndr_blkc_id 조회
-    API->>FB: 그 체인의 자산 조회
+    Note over ADM,FB: 고르기 — 심볼로 찾는다
+    ADM->>API: GET /admin/asset-candidates — symbol=USDC
+    API->>MDB: 채택한 네트워크의 vndr_blkc_id 조회
+    API->>FB: 각 체인에서 심볼로 자산 조회
     FB-->>API: 자산 후보
-    API-->>ADM: 심볼 · 컨트랙트 주소 · 소수 자릿수<br/>운영자가 발행사 문서와 대조
+    API-->>ADM: 네트워크 · 컨트랙트 주소 · 소수 자릿수<br/>운영자가 발행사 문서와 대조
 
     Note over ADM,FB: 등록 — 주소로 자산을 지정한다
     ADM->>API: POST 매핑 등록<br/>network · token · contractAddress<br/>직원번호 · 부점코드
@@ -176,7 +172,11 @@ sequenceDiagram
 
 색: **초록 상자 = 매니저 안쪽**. 되돌아오는 점선이 실패 응답이다. 벤더 id 는 초록 상자 밖으로 나가지 않는다.
 
-**앞의 왕복이 값의 출처다.** 운영자가 벤더 콘솔에서 문자열을 찾아 옮겨 적는 구간을 없애는 것이 목적이다. 네트워크 고르기는 **우리 카탈로그를 읽을 뿐이라 벤더 왕복이 없고**, 자산 고르기만 벤더를 부른다.
+**앞의 왕복이 값의 출처다.** 운영자가 벤더 콘솔에서 문자열을 찾아 옮겨 적는 구간을 없애는 것이 목적이다.
+
+**네트워크를 먼저 고르지 않는다** (2026-08-06). `symbol=USDC` 하나로 채택한 네트워크마다 잡히는 USDC 가 한 번에 오고, 네트워크는 결과 행에 담겨 온다 — 벤더 콘솔에서 심볼을 치면 체인별로 죽 나오는 것과 같은 모양이다. 네트워크를 먼저 고르게 하면 긴 목록에서 고르는 단계가 자산마다 되풀이된다.
+
+**채택한 네트워크에서만 찾는다.** 우리 표에 있는 몇 개 체인만 벤더에 물으므로 값이 싸고, 나온 행은 전부 그대로 등록할 수 있다. 찾던 네트워크가 안 보이면 아직 채택하지 않은 것이고, 그건 자산 등록이 아니라 채택으로 풀 일이다.
 
 **등록 요청이 가볍다** — 네트워크와 벤더 체인의 대응은 카탈로그에만 있고 매니저가 `ntwk_cd` 로 찾는다. 클라이언트가 보낸 값과 대조하는 방식은 보낸 쪽이 틀리면 같이 틀리므로, 우리 표를 기준으로 삼는다.
 
@@ -200,7 +200,7 @@ sequenceDiagram
 | `GET /admin/networks` | 쓸 수 있는 체인 목록. `adopted` 로 채택 전/후를 가르고, `q` · `chainId` 로 좁힌다 |
 | `PUT /admin/networks/{code}` | **네트워크 채택** — 목록에서 고른 후보에 우리 이름을 붙인다 |
 | `DELETE /admin/networks/{code}` | 채택 해제 — 매핑이 남아 있으면 409 |
-| `GET /admin/asset-candidates` | 그 네트워크의 자산 후보 — 심볼 · 컨트랙트 주소 · 소수 자릿수 |
+| `GET /admin/asset-candidates` | **심볼로** 자산 후보를 찾는다 — 채택한 네트워크마다 잡히는 것이 한 번에 온다 |
 | `GET /admin/asset-mappings` | 등록된 매핑 목록 — 운영 확인용 |
 | `POST /admin/asset-mappings` | 등록 — `network` · `token` · `contractAddress` |
 | `DELETE /admin/asset-mappings/{network}/{token}` | 잘못 등록한 것 되돌리기 — **그 (네트워크, 토큰)으로 발급된 주소가 하나도 없을 때만** 허용, 있으면 409 |
