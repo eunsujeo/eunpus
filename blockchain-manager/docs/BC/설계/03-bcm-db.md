@@ -3,7 +3,7 @@ title: 블록체인 매니저 — DB
 status: To Do
 ---
 
-블록체인 매니저 DB(`bcm_`)의 테이블 전체 — 계정·주소 매핑, 거래 운영 상태, 수신 인박스, sweep 대상, 주기 작업, boost 이력, finalize 원본, 발행 아웃박스.
+블록체인 매니저 DB(`bcm_`)의 테이블 전체 — 계정·주소 매핑, 거래 운영 상태, 수신 인박스, sweep 대상, 주기 작업, boost 이력, finalize 원본, 발행 아웃박스. 자산 매핑·블록체인 카탈로그 두 표는 [자산 매핑](07-asset-master.md) 에서 정의한다.
 회계 진실(고객 원장·귀속·잔액·출금 지시 상태)은 여기 없다 — 그것은 DAW-CORE DB(`daw_`)다.
 
 ## 명명 규약
@@ -30,6 +30,8 @@ status: To Do
 | `bcm_boost_l` | boost 이력 | 자동 boost — Admin 이 본다 |
 | `bcm_job_m` | 주기 작업 상태 — heartbeat · 대사 커서 | tx 대사 대조 범위 · 밖에서 읽는 heartbeat |
 | `bcm_raw_tx_l` | finalize 트랜잭션 원본 | 일 배치 보관 — 장기 보존 |
+| `bcm_blkc_m` | 벤더 블록체인 카탈로그 — 일 1회 동기화 | 네트워크 채택 · 자산 등록 때 고르기 ([자산 매핑](07-asset-master.md)) |
+| `bcm_vndr_ast_m` | 자산 매핑 — (네트워크, 토큰) ↔ 벤더 assetId | 벤더 호출 직전 변환 ([자산 매핑](07-asset-master.md)) |
 
 ## ERD
 
