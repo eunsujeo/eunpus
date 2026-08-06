@@ -251,6 +251,22 @@ ApprovalStatus.approval: "PENDING_AUTHORIZATION" | "APPROVED" | "REJECTED" | "NA
 
 → Stage 7 의 Node Router (chain-level routing) 와 별개 — **Fireblocks P2P Network 의 counterparty 단위 routing**.
 
+#### 라우팅 기본 프리셋 (★ Stage 162)
+
+routing 은 **profile 층 / connection 층 2단**이고, connection 의 `DEFAULT` = "profile routing 을 따른다" (= Profile Routing).
+
+| 대상 | 워크스페이스 기본값 |
+|---|---|
+| Network Profile Crypto | `CUSTOM` — 기본 `dstId = 0`, `dstType = VAULT` |
+| Network Profile FIAT | `NONE` |
+| Network Connection Crypto | `DEFAULT` |
+| Network Connection FIAT | `DEFAULT` |
+
+★ **`NONE` 으로 routing 된 asset type 의 incoming tx 는 실패한다.** `CUSTOM` 에서 대상 account 를 제거해도 다른 account 를 지정할 때까지 실패한다. FIAT 기본값이 `NONE` 이므로 법정화폐 수신 전 profile routing 설정이 선행돼야 한다.
+
+지원 asset group 은 `/network_ids/routing_policy_asset_groups` 에서 조회.
+(source: `2026-08-06__developers-fireblocks-com__create-a-new-network-connection.md`)
+
 ### Stage 36 신규 Q (★ Mode C 후 발견)
 
 - **Q-2026-05-22-A09**: `MPC_ECDSA_SECP256R1` algorithm 의 chain 매트릭스 — 어느 chain 이 secp256r1 사용? Key Link 의 algorithm 매트릭스 와의 차이?

@@ -7716,3 +7716,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 영향받은 페이지: vendors/fireblocks/mpc.md (§"키 생성(DKG) 시점" 신설) · entities/fireblocks/mpc-key-share.md · entities/fireblocks/vault-account.md (vault 생성 = BIP44 derivation)
 - cross-module: blockchain-manager docs Fireblocks QnA 확답 절 신설 (8bdc986)
 - 신규 entity: 0 (mpc hub 흡수 — 34 stage 연속)
+
+## Stage 162 (2026-08-06) — Fireblocks Network (P2P) 기능·라우팅 promote
+- source: `2026-08-06__developers-fireblocks-com__connect-to-the-fireblocks-network.md` · `2026-08-06__developers-fireblocks-com__create-a-new-network-connection.md` (Mode C, 사용자 promote 승인)
+- 신규 fact: AAA (secure hardware enclave 내 encrypted tunnel · 주소 변경 시 자동 remap) · Flexible Network Routing 2단 (profile / connection) · 라우팅 기본 프리셋 4종 · `NONE` = incoming tx 실패 · Automatic Address Rotation (UTXO 주소 / XRP tag / EOS·Hedera·Stellar memo, **account-based 미지원**) · 회원 1,500+ · 연결은 **양쪽 Admin Quorum 승인**
+- ANSWERED: 없음 (기존 Q 와 무관한 신규 평면)
+- 영향받은 페이지: vendors/fireblocks/api.md (§"라우팅 기본 프리셋" 신설) · vendors/fireblocks/architecture.md (Trusted Shared Services 에 AAA) · entities/fireblocks/admin-quorum.md (양쪽 Quorum 승인)
+- 신규 Q: Q-2026-08-06-01 (정산 방식) · Q-2026-08-06-02 (비용) · Q-2026-08-06-03 (연결 해제 시 동작)
+- 신규 entity: 0 (api / architecture / admin-quorum 3면 흡수 — 35 stage 연속)

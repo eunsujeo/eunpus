@@ -1206,3 +1206,24 @@
 - **확인 질문**: L2 층 드랍도 `DROPPED_BY_BLOCKCHAIN` 으로 전이하는가? Fireblocks 가 L1 게시 전 시퀀서 되돌림을 감지·반영하는가?
 - **Sources to check**: CSM · support.fireblocks.io substatus 문서
 - **Status**: open
+
+### Q-2026-08-06-01: Fireblocks Network 전송의 정산 방식
+
+- **Why it matters**: Network transfer 가 온체인 전송인지 Fireblocks 내부 장부 이동(오프체인 넷팅)인지에 따라 확정 판정 근거가 달라진다. 온체인이면 기존 컨펌 임계 로직이 그대로 적용되고, 내부 이동이면 컨펌 개념 자체가 없어 별도 확정 신호가 필요하다.
+- **확인 질문**: Network transfer 가 블록체인에 기록되는가? `numOfConfirmations` 가 채워지는가? Automatic Address Rotation 이 "주소가 회전한다" 고 말하는 것은 온체인 전송을 전제하는가?
+- **Sources to check**: support.fireblocks.io Fireblocks Network 섹션 · CSM 확답
+- **Status**: open
+
+### Q-2026-08-06-02: Fireblocks Network 이용 비용
+
+- **Why it matters**: 도입 판단의 전제. 회원 자격·연결 수·전송량 중 무엇에 과금되는지에 따라 화이트리스트 제거의 이득과 비교 가능해진다.
+- **확인 질문**: Network 이용에 별도 요금이 있는가? 계약 등급에 포함되는가?
+- **Sources to check**: 계약 문서 · CSM 확답
+- **Status**: open
+
+### Q-2026-08-06-03: Network 연결 해제 시 동작
+
+- **Why it matters**: 상대가 연결을 끊으면 그 연결로 지정된 routing 과 진행 중 전송이 어떻게 되는지가 운영 절차의 전제다. `NONE` routing 이 입금 실패를 낳는다는 사실과 맞물려, 해제가 곧 입금 실패로 이어지는지 확인이 필요하다.
+- **확인 질문**: 연결 해제는 한쪽이 단독으로 가능한가? Admin Quorum 승인 대상인가? 해제 후 그 연결로 온 입금은 실패하는가, profile routing 으로 흡수되는가?
+- **Sources to check**: support.fireblocks.io Fireblocks Network 섹션 · network-connections DELETE API
+- **Status**: open

@@ -126,6 +126,7 @@ _TODO: 컴포넌트 다이어그램·신뢰 경계 다이어그램·완전한 �
 2. **Transaction Signing Modules (Co-signers)** — MPC private key shares + signing tx
 3. **Core Components** — core service modules + sensitive data
 4. **Trusted Shared Services** — shared modules + **Fireblocks P2P Network**
+   - **AAA (Automated Address Authentication, ★ Stage 162)** — 모든 Network transfer 가 "**an encrypted tunnel within a secure hardware enclave**" 를 통과. deposit address 를 저장·공유하지 않으므로 MITM·address spoofing 이 성립하지 않고, 내 주소가 바뀌어도 counterparty 재연결 없이 **자동 remap**. (source: `2026-08-06__developers-fireblocks-com__connect-to-the-fireblocks-network.md`)
 5. **Blockchain Nodes Infrastructure** — blockchain network broadcast (no sensitive data, scales V+H)
 6. **Disaster Recovery Services** — 자산 복구, **extended ECDSA + EdDSA private keys (xprv+fprv) 재구성**, "**offline air-gapped machine with hardened access permissions**", "**Should not be used regularly — single point of compromise**" ← 정식 SPOC 경고.
    - **Backup unit (Stage 30 명세)** = **6 encrypted shares** (3 ECDSA + 3 EDDSA, cloud share RSA-4096 + mobile share passphrase). 자세한 backup procedure: [[entities/fireblocks/workspace-keys-backup]] §"Stage 30 — SaaS MPC variant".

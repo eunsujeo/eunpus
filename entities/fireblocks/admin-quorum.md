@@ -204,7 +204,7 @@ Settings > Quorums > Admin Quorum > Show admin quorum > Change Threshold → "Ow
 ### Admin Quorum-Required Activities (정식 enumeration, p.1)
 
 1. Whitelisting addresses
-2. New Fireblocks P2P Network connections
+2. New Fireblocks P2P Network connections — ★ **양쪽 Admin Quorum 승인 필요** (Stage 162): "Both your Admin Quorum as well as your counterparty's Admin Quorum must approve new Network connections." 내 workspace 승인만으로는 연결이 성립하지 않는다. (source: `2026-08-06__developers-fireblocks-com__connect-to-the-fireblocks-network.md`)
 3. New connected accounts
 4. Adding new workspace users
 5. Changes to Policies
