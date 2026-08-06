@@ -308,7 +308,9 @@ function renderDocEmbed(c) {
   const inlined =
     window.__STATIC_BOARD__ && window.__STATIC_BOARD__.embeds && window.__STATIC_BOARD__.embeds[c.embed];
   if (inlined) frame.srcdoc = inlined;
-  else frame.src = c.embed;
+  // 뷰어 HTML 은 문서와 따로 갱신되므로 브라우저가 옛 판본을 계속 쓴다 — 갱신 시점을 붙여 새로 받게 한다.
+  // updatedAt 이 없는 로컬(fs 공급)에서는 매번 새로 받는다.
+  else frame.src = `${c.embed}?v=${encodeURIComponent(c.updatedAt || Date.now())}`;
   frame.title = c.title;
 
   const syncTheme = () => {

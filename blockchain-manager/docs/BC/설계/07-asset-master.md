@@ -32,7 +32,7 @@ status: To Do
 | 우리 값 | 함께 보관하는 표준 값 | 어디서 얻나 |
 |---|---|---|
 | `ntwk_cd` = `BASE` | **chainId** (EIP-155) | 카탈로그 동기화가 벤더 `GET /v1/blockchains` 의 `onchain.chainId` 로 채운다 |
-| `tkn_smbl` = `USDC` | **컨트랙트 주소** | 등록 때 벤더 `GET /v1/assets/{id}` 응답과 대조해 저장 |
+| `tkn_smbl` = `USDC` | **컨트랙트 주소** | 등록 요청의 주소를 벤더 `GET /v1/assets` 응답에서 해소해 저장 |
 
 **티커 심볼은 표준이 아니다.** `USDC` 라는 심볼은 유일하지 않고 누구나 자기 토큰에 붙일 수 있다. 체인마다 다른 컨트랙트가 같은 심볼을 쓴다. 심볼을 식별자로 삼으면 "USDC 라고 적혀 있으니 USDC 겠지"에 기대는 것이라, 잘못된 컨트랙트를 진짜로 다룰 수 있다. 그래서 심볼은 **표시용**으로 내리고 동일성은 위 두 값으로 판단한다.
 
@@ -222,6 +222,8 @@ sequenceDiagram
 
 - **컨트랙트 주소의 정본 출처** — 대조에 쓸 "진짜 USDC 주소" 를 어디서 가져올지. 발행사(Circle) 공식 문서를 근거로 삼는 것이 보통이고, 그 문서를 누가 확인해 등록 요청에 넣을지까지 정해야 한다.
 
+## 확인한 것
+
 확인 결과 Fireblocks `GET /v1/assets` 는 `blockchainId` · `assetClass` · `symbol` 등으로 거를 수 있지만 **컨트랙트 주소 필터는 없다**. 후보 조회는 운영자가 입력한 심볼로 좁히되, 등록 검증은 우리 토큰 심볼과 벤더 표기가 다를 수 있으므로 심볼에 기대지 않는다. 채택한 네트워크의 `blockchainId` 로 자산을 끝까지 페이징하고 응답 `onchain.address` 를 매니저가 대조해 하나로 해소한다. 네이티브 자산은 `assetClass=NATIVE` 로 해소한다.
 
 ## 참고 — 벤더 조회 API
@@ -229,6 +231,5 @@ sequenceDiagram
 | 엔드포인트 | 쓰임 |
 |---|---|
 | `GET /v1/assets` | 자산 조회. `blockchainId` · `assetClass` · `symbol` 로 거를 수 있다. 응답에 `id` · `legacyId` · `blockchainId` · `decimals` · `assetClass` |
-| `GET /v1/assets/{id}` | 단건 — 등록 시 실재 확인에 쓴다 |
 | `GET /v1/blockchains` | 벤더가 지원하는 네트워크 전체. 응답에 `id` · `legacyId` · `displayName` · `nativeAssetId` · `onchain{protocol · chainId · test · signingAlgo}` |
 | `GET /v1/supported_assets` | 구 버전 자산 목록 — `id` · `name` · `type` · `contractAddress` · `nativeAsset` · `decimals` |
