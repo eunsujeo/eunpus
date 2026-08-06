@@ -5,6 +5,15 @@
 // 두 내보내기 경로가 같은 규칙을 쓰도록 여기 한 곳에만 둔다. 반환값 = 빠진 경로들.
 const MD_LINK = /\[([^\]]+)\]\(([^)\s]+\.md)(#[^)]*)?\)/g;
 
+// 카드에 문서 frontmatter 의 표시용 값을 옮긴다 — /api/board 는 이 값들을 담지 않는다.
+export function attachCardMeta(data) {
+  for (const c of data.board.cards) {
+    const meta = (data.docs[c.path] || {}).meta || {};
+    c.ref = meta.ref || '';
+    c.group = meta.group || '';
+  }
+}
+
 export function excludeRefDocs(data, withRef) {
   if (withRef) return [];
   const dropped = Object.keys(data.docs).filter((p) => (data.docs[p].meta || {}).ref);

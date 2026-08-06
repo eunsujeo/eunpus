@@ -204,6 +204,24 @@ body {
   align-content: start;
 }
 
+/* 내보낸 문서집 — group: 별로 소제목을 두고 격자를 나눈다 (읽는 묶음을 드러낸다) */
+.card-grid-groups {
+  display: block;
+  align-content: start;
+}
+.card-grid-groups .card-grid { margin: 0; }
+.grid-group {
+  margin: 28px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.card-grid-groups > .card-grid:first-child + .grid-group { margin-top: 32px; }
+
 /* ---- board ---- */
 .board {
   display: grid;

@@ -277,16 +277,45 @@ function renderBoard() {
 // 정적 내보내기 뷰 — 문서를 카드 격자로 나열한다 (상태 컬럼·드래그 없음).
 // 카드 클릭 = 기존 미리보기 모달(openPreview) — 같은 중분류 형제로 이전/다음까지 그대로 동작.
 function renderCardGrid(items) {
-  view.className = 'view card-grid';
   boardMeta.textContent = `문서 ${items.length}건`;
   if (!items.length) {
+    view.className = 'view card-grid';
     view.innerHTML = '<div class="board-status">문서가 없습니다.</div>';
     return;
   }
-  for (const c of items) {
-    const el = cardEl(c);
-    el.draggable = false; // 정적에선 이동·저장이 없다
-    view.appendChild(el);
+
+  const gridOf = (subset) => {
+    const g = document.createElement('div');
+    g.className = 'card-grid';
+    for (const c of subset) {
+      const el = cardEl(c);
+      el.draggable = false; // 정적에선 이동·저장이 없다
+      g.appendChild(el);
+    }
+    return g;
+  };
+
+  // group: 이 붙은 문서가 없으면 예전처럼 격자 하나로 그린다
+  if (!items.some((c) => c.group)) {
+    view.className = 'view card-grid';
+    view.appendChild(gridOf(items));
+    return;
+  }
+
+  // group 없는 문서(개요 등)를 먼저, 그 뒤로 group 별 소제목 + 격자.
+  // 순서는 문서 정렬 순서에서 처음 나온 group 순 — 파일 번호 순서를 따른다.
+  view.className = 'view card-grid-groups';
+  const ungrouped = items.filter((c) => !c.group);
+  if (ungrouped.length) view.appendChild(gridOf(ungrouped));
+
+  const seen = [];
+  for (const c of items) if (c.group && !seen.includes(c.group)) seen.push(c.group);
+  for (const g of seen) {
+    const h = document.createElement('h2');
+    h.className = 'grid-group';
+    h.textContent = g;
+    view.appendChild(h);
+    view.appendChild(gridOf(items.filter((c) => c.group === g)));
   }
 }
 
@@ -816,7 +845,7 @@ async function exportBoardHtml(opts = {}) {
   btn.disabled = true;
   showToast('보드 내보내는 중…');
   try {
-    const { assembleBoardHtml, excludeRefDocs } = await import('./export.js');
+    const { assembleBoardHtml, attachCardMeta, excludeRefDocs } = await import('./export.js');
     const [html, css, mermaid, md, theme, app] = await Promise.all(
       ['index.html', 'styles.css', 'vendor/mermaid.min.js', 'md.js', 'theme.js', 'app.js'].map((f) =>
         fetch(f).then((r) => {
@@ -869,6 +898,7 @@ async function exportBoardHtml(opts = {}) {
     }
     // 공유용이라 참고 문서(ref:)는 뺀다 — Node 내보내기와 같은 규칙 (export.js)
     const data = { board, docs, embeds };
+    attachCardMeta(data);
     excludeRefDocs(data, opts.withRef);
     const out = assembleBoardHtml({ html, css, mermaid, md, theme, app }, data);
     const blob = new Blob([out], { type: 'text/html;charset=utf-8' });

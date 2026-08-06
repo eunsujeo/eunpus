@@ -1,6 +1,7 @@
 ---
 title: 벤더 자산 매핑 — 우리 자산을 벤더 assetId 로 잇기
 status: To Do
+group: 운영 설계
 ---
 
 우리 (네트워크, 토큰)이 Fireblocks 에서 무엇으로 불리는지 담는 표와, 그 표를 채우는 절차를 정한다.

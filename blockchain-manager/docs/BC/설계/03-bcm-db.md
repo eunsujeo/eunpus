@@ -1,6 +1,7 @@
 ---
 title: 블록체인 매니저 — DB
 status: To Do
+group: 블록체인 매니저
 ---
 
 블록체인 매니저 DB(`bcm_`)의 테이블 전체 — 계정·주소 매핑, 거래 운영 상태, 수신 인박스, sweep 대상, 주기 작업, boost 이력, finalize 원본, 발행 아웃박스. 자산 매핑·블록체인 카탈로그 두 표는 [자산 매핑](07-asset-master.md) 에서 정의한다.

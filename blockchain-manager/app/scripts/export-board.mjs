@@ -14,7 +14,7 @@
 import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { join, resolve, relative, sep, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assembleBoardHtml, excludeRefDocs } from '../public/export.js';
+import { assembleBoardHtml, attachCardMeta, excludeRefDocs } from '../public/export.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PUB = join(HERE, '..', 'public');
@@ -170,7 +170,6 @@ const docs = {};
 for (const c of board.cards) {
   const raw = await readFile(join(DIR, c.path.slice(DOCS_PATH.length + 1)), 'utf8');
   const { meta, body } = parseFrontmatter(raw);
-  c.ref = meta.ref || ''; // 참고 문서 마커 — 카드에 배지로 표시 (일반/참고 구분)
   docs[c.path] = {
     path: c.path,
     meta: { ...meta, category: c.category, subcategory: c.subcategory, status: c.status },
@@ -178,6 +177,7 @@ for (const c of board.cards) {
     raw,
   };
 }
+attachCardMeta({ board, docs });
 for (const p of excludeRefDocs({ board, docs }, WITH_REF)) console.log(`  제외(참고): ${p}`);
 
 // --- 3) 앱 UI 인라인 + fetch shim 조립 (export.js — 앱의 "HTML ↓" 버튼과 공용) ---
