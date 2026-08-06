@@ -11,8 +11,9 @@ status: To Do
 코어 DB(`daw_`) 규약을 그대로 따른다 — BC·컴플라이언스·코어가 한 규약을 쓴다.
 
 - **접두** `bcm_` · **접미** `_m`(마스터) · `_l`(내역/로그) · `_trgt`(작업 대상)
-- **컬럼 축약** `_stcd`(상태코드) · `_dvcd`(구분코드) · `_yn`(VARCHAR(1) Y/N) · `_cnt`(횟수) · `_dttm`(일시) · `_dt`(일자) · `_id` · payload(JSONB)
-- **일시는 VARCHAR(16)** — 코어와 동일(TIMESTAMP 안 씀) · **일자는 VARCHAR(8)** (YYYYMMDD)
+- **컬럼 축약** `_stcd`(상태코드) · `_dvcd`(구분코드) · `_yn`(VARCHAR(1) Y/N) · `_cnt`(횟수) · `_dttm`(일시) · `_dt`(일자) · `_id` · payload(JSONB — 단 수신 바이트를 그대로 보존하는 `bcm_whk_l`·`bcm_raw_tx_l` 은 TEXT)
+- **일시는 VARCHAR(16)** — 코어와 동일(TIMESTAMP 안 씀) · 값은 `yyyyMMddHHmmss` 14자 · **일자는 VARCHAR(8)** (YYYYMMDD)
+- **일시·일자의 시간대는 KST(`Asia/Seoul`)** (2026-08-06 확정) — 포맷에 오프셋이 없어 값만 보고는 시간대를 알 수 없으니 시스템 전체가 하나로 고정돼야 한다. 일 배치·파티션 경계(`base_dt`)도 KST 로 자른다 — 영업일과 어긋나지 않게. 벤더가 주는 절대시각(epoch ms)은 저장 직전 한 곳에서 KST 로 바꾼다
 - **id 길이** — 벤더가 주는 값(벤더 tx·vault·알림 id)은 잘리지 않게 VARCHAR(64) 유지. 코어 자체 id 는 16~36
 - **자산은 두 컬럼** — `ntwk_cd`(네트워크코드 20자) + `tkn_smbl`(토큰심볼 16자). 코어 마스터의 컬럼명·크기를 따르되 **값은 우리가 정한다** — 코어 키(`tkn_id` 등)에 의존하지 않는다
 - **감사 4컬럼** — 모든 테이블에 `frst_reg_empno`(6)·`frst_reg_brcd`(4)·`last_chng_empno`(6)·`last_chng_brcd`(4). 자동 처리 행은 시스템 센티넬 `empno='SYSTEM'`·`brcd='9999'`(2026-08-05 확정 — 구현은 단일 상수), Admin 수동 개입(수동 boost·동결 해제 등)은 실제 직원/부점. 행 발생·변경 "시각"은 별도 도메인 `_dttm` 이 담당한다(코어와 동일 분리)
@@ -225,7 +226,9 @@ CREATE TABLE bcm_whk_l (
   noti_id       VARCHAR(64)   PRIMARY KEY,   -- 웹훅 알림 id — 벤더가 알림마다 붙이는 v2 UUID. unique 가 중복 수신 방어
   evnt_typ      VARCHAR(64)   NOT NULL,      -- 벤더 eventType (transaction.status.updated 등) — 벤더 값 그대로
   vndr_tx_id    VARCHAR(64)   NULL,          -- 벤더 tx id — 이 알림이 가리키는 거래
-  payload       JSONB         NOT NULL,      -- 알림 원본 그대로 — 판단·원본 보관의 입력
+  payload       TEXT          NOT NULL,      -- 수신 바이트 그대로 — 파싱·재직렬화 전의 원문. 판단·원본 보관의 입력
+  payload_hash  CHAR(64)      NOT NULL,      -- 수신 바이트의 SHA-256 (소문자 hex) — 수신부가 계산
+  sign_vl       TEXT          NOT NULL,      -- 수신 서명 헤더 원문 — 벤더가 보낸 것임을 나중에 다시 증명하는 근거
   rcv_dttm      VARCHAR(16)   NOT NULL,      -- 수신 일시
   prcs_yn       VARCHAR(1)    NOT NULL,      -- 판단 처리 여부 (Y/N)
   prcs_dttm     VARCHAR(16)   NULL,          -- 처리 일시
@@ -241,7 +244,9 @@ CREATE INDEX idx_bcm_whk_pick ON bcm_whk_l (prcs_yn, rcv_dttm);  -- 판단 워�
 | 컬럼 | 뜻 |
 |---|---|
 | `noti_id` | insert 충돌 = 같은 알림의 중복 전달 — 무시하고 200 을 돌려준다. 중복 방어가 물리 제약으로 끝난다 |
-| `payload` | 검증·파싱 전의 원본 — 판단 버그가 있어도 원본으로 재처리할 수 있고, finalize 원본 보관이 그 tx 의 마지막 COMPLETED 알림의 이 값을 옮겨 간다. **주의**: JSONB 는 저장 시 정규화(키 재정렬·공백)되므로 보관되는 건 **의미 수준 원본**이다 — 바이트 수준(서명 재검증·원문 해시)이 필요한 용도는 수신 시점에 처리해야 한다 (2026-08 PoC 실측) |
+| `payload` | 검증·파싱 전의 원본을 **받은 바이트 그대로** 둔다. 판단 버그가 있어도 원본으로 재처리할 수 있고, finalize 원본 보관이 그 tx 의 마지막 COMPLETED 알림의 이 값을 옮겨 간다. JSONB 가 아니라 TEXT 인 이유 — JSONB 는 저장 시 정규화(키 재정렬·공백)돼 **꺼낸 값이 원문 바이트가 아니다**. 저장했다 꺼낸 본문에 원래 서명을 붙이면 벤더 검증이 401 로 떨어진다 (2026-08 PoC 실측). 운영 조회에서 JSON 항목이 필요하면 `payload::jsonb ->> …` 로 캐스팅한다 |
+| `payload_hash` | 무결성 증명의 기준값. **HTTP 본문을 문자열로 바꾸기 전 `byte[]` 로 계산한다** — 수신부는 바이트를 한 번 읽어 서명 검증·저장·해시 세 곳에 같은 배열을 쓴다. `bcm_raw_tx_l` 로 옮길 때 다시 계산하지 않고 이 값을 복사한다 |
+| `sign_vl` | 해시는 "우리가 저장한 바이트가 우리가 해시한 바이트와 같다"까지만 증명한다. 벤더가 보낸 것임을 나중에 다시 증명하려면 서명이 함께 있어야 하고, 서명은 수신 시점에만 존재한다. 서명 검증을 통과한 알림만 적재되므로 NOT NULL |
 | 보존 | 처리 후 N일(운영 설정값) 뒤 정리 — 장기 보존은 `bcm_raw_tx_l` 몫 |
 
 ### bcm_tx_l — 거래 운영 상태
@@ -383,7 +388,7 @@ CREATE TABLE bcm_job_m (
 
 ### bcm_raw_tx_l — finalize 트랜잭션 원본
 
-finalize 된 tx 의 벤더 원문을 일 배치로 장기 보관한다. 원본은 `bcm_whk_l` 에서 그 tx 의 마지막 COMPLETED 알림 payload 를 옮긴다 — 벤더 재조회 없음.
+finalize 된 tx 의 벤더 원문을 일 배치로 장기 보관한다. 원본은 `bcm_whk_l` 에서 그 tx 의 마지막 COMPLETED 알림의 `payload`·`payload_hash`·`sign_vl` 세 값을 **그대로 옮긴다** — 벤더 재조회도, 해시 재계산도 없다.
 
 ```sql
 CREATE TABLE bcm_raw_tx_l (
@@ -396,8 +401,9 @@ CREATE TABLE bcm_raw_tx_l (
   tkn_smbl       VARCHAR(16)  NOT NULL,   -- 토큰 심볼
   final_stcd     VARCHAR(16)  NOT NULL,   -- 도달한 최종 상태
   payload        TEXT         NOT NULL,   -- 벤더 응답 원문 — 받은 바이트 그대로, 가공 금지
-  payload_hash   CHAR(64)     NOT NULL,   -- 원문 바이트의 SHA-256 — 무결성 증명. 반드시 수신 시점의 와이어 바이트로 계산
-                                          -- (JSONB 에서 꺼낸 값은 키 재정렬·공백 정규화로 원문 바이트가 아니다 — PoC 실측)
+  payload_hash   CHAR(64)     NOT NULL,   -- 원문 바이트의 SHA-256 — 무결성 증명. bcm_whk_l 의 값을 복사한다(재계산 금지 —
+                                          --  수신 시점의 와이어 바이트로 계산된 값이어야 한다)
+  sign_vl        TEXT         NOT NULL,   -- 수신 서명 헤더 원문 — bcm_whk_l 에서 함께 옮긴다. 벤더 발신 증명의 나머지 절반
   rcv_dttm       VARCHAR(16)  NOT NULL,   -- 원문을 받은 일시
   -- 감사 4컬럼
   frst_reg_empno  VARCHAR(6)  NOT NULL,
@@ -410,11 +416,16 @@ CREATE INDEX idx_bcm_raw_tx_hash ON bcm_raw_tx_l (tx_hash);        -- 분쟁·�
 CREATE INDEX idx_bcm_raw_tx_addr ON bcm_raw_tx_l (addr, base_dt);  -- 지갑(주소) 기준 기간 조회 — 선두가 주소라 균등 분산
 ```
 
-`payload` 는 바이트 그대로 보존해야 해 JSONB 가 아니라 TEXT 다(무결성 해시가 원문 바이트 기준). 보존 연한·파티션 주기·자체 RPC 로 체인 원문까지 보관할지는 미확정이다(아래 미확정 절).
+`payload` 는 바이트 그대로 보존해야 해 JSONB 가 아니라 TEXT 다(무결성 해시가 원문 바이트 기준). 이 표의 세 값은 모두 수신 시점에만 만들 수 있어 `bcm_whk_l` 이 정리되기 전에 옮겨야 한다 — 지나가면 소급해서 만들 수 없다. 보존 연한·파티션 주기·자체 RPC 로 체인 원문까지 보관할지는 미확정이다(아래 미확정 절).
 
 ## 미확정
 
 - **`bcm_tx_l`·`bcm_whk_l`·`bcm_outbox_l` 보존** — 종결·처리 완료·발송 완료 건을 언제까지 두고 언제 정리할지 — `bcm_raw_tx_l` 원본 보관과 역할을 나눈 뒤 확정.
+
+## 확정 이력 (2026-08-06)
+
+- **일시의 시간대 = KST(`Asia/Seoul`)** — 14자 포맷에 오프셋이 없어 한 시간대로 고정해야 하고, `base_dt` 일 경계가 영업일과 맞아야 한다. 코어 스키마 사본에는 시간대를 밝힌 근거가 없어 설계 결정으로 확정했다 — DAW-CORE 회신이 오면 대조한다(어긋나면 Clock 빈 교체로 끝난다).
+- **수신 원문은 바이트 그대로** — `bcm_whk_l.payload` 를 JSONB 에서 TEXT 로 바꾸고 `payload_hash`·`sign_vl` 을 수신 시점에 함께 남긴다. JSONB 정규화 때문에 기존 스키마로는 `bcm_raw_tx_l.payload_hash` 의 "수신 시점 와이어 바이트" 요구를 지킬 수 없었다.
 
 ## 확정 이력 (2026-08-05)
 
