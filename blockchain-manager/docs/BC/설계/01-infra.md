@@ -53,6 +53,7 @@ flowchart TB
   end
 
   CORE -->|API| BM
+  CORE -->|운영 — 자산 매핑 · 네트워크 채택| BM
   BM -.->|publish| MQ
   GATE -.->|settled 발행| MQ
   MQ -.->|consume| CORE
@@ -63,7 +64,7 @@ flowchart TB
   GATE -->|validate/full 요청| FBCLI
   GATE -->|VerifyVASP 아웃바운드| EN
   EN -->|수신 콜백| GATE
-  BM <-->|제출·조회 · 웹훅 수신| FB
+  BM <-->|제출·조회 · 웹훅 수신 · 카탈로그 일 1회| FB
   COS -->|서명 요청 폴링 · MPC share| FB
   FBCLI -->|JWT 서명 · validate/full| FB
   FB --> EVM
@@ -101,6 +102,7 @@ flowchart TB
 - **PUBLIC 인바운드는 둘** — VerifyVASP Enclave(상대 VASP 발신), 블록체인 매니저 웹훅 수신(Fireblocks 발신 · 서명 검증). 밖으로 여는 인바운드는 이 둘뿐이고, 나머지 구성 요소는 아웃바운드만 연다.
 - **벤더 API user 는 셋으로 분리** — 블록체인 매니저(거래 제출) · 정책 관리(정책 편집) · 스크리닝 클라이언트(validate/full).
 - **서명은 벤더 단독으로 되지 않는다** — MPC share 하나는 API Co-signer(SGX/TEE)에 있고, 서명 직전에 Callback Handler 가 승인·거부를 판단한다.
+- **매니저의 `/admin/*` 는 Admin 백엔드만 부를 수 있어야 한다** — 매니저 API 는 인증 없이 내부망을 신뢰하는 구성이라, 경로를 나눈 것만으로는 경계가 생기지 않는다. 이 경로로 자산 매핑과 네트워크 채택이 바뀌므로 **망 수준 제한**(방화벽 규칙·별도 리스너 등)이 필요하다. 수단은 배포 환경에서 정한다. 상세는 [벤더 자산 매핑](07-asset-master.md).
 
 ## 메시지 큐 — 4 토픽
 
@@ -136,7 +138,7 @@ flowchart TB
 | DB | 담는 것 | 테이블 접두 |
 |---|---|---|
 | DAW-CORE DB | 고객 원장 · 출금 지시 · VASP 마스터 | `daw_` |
-| 블록체인 매니저 DB | 계정·주소 매핑 · 거래 체크포인트 · 발행 outbox · boost 이력 · 거래 원본 | `bcm_` |
+| 블록체인 매니저 DB | 계정·주소 매핑 · 거래 체크포인트 · 발행 outbox · boost 이력 · 거래 원본 · **자산 매핑 · 블록체인 카탈로그** | `bcm_` |
 | 컴플라이언스 DB | VASP 레지스트리 · 출금 트래블룰 check · 발행 outbox · 사전 검증 기록 | `cmpl_` |
 
 ## 출금 전체 시퀀스
@@ -222,3 +224,4 @@ sequenceDiagram
 
 - **서비스 간 인증 방식** — DAW-CORE↔매니저·DAW-CORE↔게이트·인바운드 내부 API 의 인증은 인프라 결정과 함께 확정한다.
 - **막힘 경보 채널의 구체 수단** — 운영 알림·모니터링·별도 큐 중 무엇으로 흘릴지는 운영 설계에서 정한다.
+- **콜드월렛 계층** — 핫·콜드 균형(밴드S)이 콜드월렛을 전제하는데 **현 설계에 그 계층이 없다.** 무엇으로 둘지(별도 워크스페이스·별도 vault 등) 확정되면 구성 요소와 DB 에 반영한다. 후보는 [sweep 설계](06-sweep.md).
