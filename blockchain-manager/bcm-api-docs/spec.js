@@ -506,27 +506,28 @@ window.OPENAPI = {
           "Admin"
         ],
         "summary": "등록 가능한 자산 후보",
-        "description": "그 네트워크에서 등록할 수 있는 자산을 훑는다. 운영자가 **컨트랙트 주소를 눈으로 대조**하는 자리다 — 발행사 공식 문서의 주소와 같은 행을 찾으면, 그 주소를 그대로 등록에 쓴다.\n\n읽기 전용이고 아무것도 바꾸지 않는다.\n",
+        "description": "**심볼로 찾고 네트워크는 결과로 받는다.** `symbol=USDC` 하나면 채택한 네트워크마다 잡히는 USDC 가 한 번에 온다 — 네트워크를 먼저 고를 필요가 없다.\n\n운영자가 **컨트랙트 주소를 눈으로 대조**하는 자리다. 발행사 공식 문서의 주소와 같은 행을 찾으면, 그 행의 `network` 와 `contractAddress` 를 그대로 등록에 쓴다.\n\n**채택한 네트워크에서만 찾는다.** 찾던 네트워크가 안 보이면 아직 채택하지 않은 것이므로 `PUT /admin/networks/{code}` 를 먼저 한다.\n\n읽기 전용이고 아무것도 바꾸지 않는다.\n",
         "operationId": "assetCandidatesOf",
         "parameters": [
           {
-            "name": "network",
+            "name": "symbol",
             "in": "query",
             "required": true,
             "schema": {
               "type": "string"
             },
-            "example": "BASE"
+            "description": "찾을 심볼 — 대소문자를 가리지 않는다",
+            "example": "USDC"
           },
           {
-            "name": "symbol",
+            "name": "network",
             "in": "query",
             "required": false,
             "schema": {
               "type": "string"
             },
-            "description": "심볼로 좁힌다 (선택)",
-            "example": "USDC"
+            "description": "특정 네트워크로 좁힌다 (선택)",
+            "example": "BASE"
           }
         ],
         "responses": {
@@ -1041,12 +1042,18 @@ window.OPENAPI = {
       },
       "AssetCandidate": {
         "type": "object",
-        "description": "그 네트워크에서 등록할 수 있는 자산 하나.",
+        "description": "등록할 수 있는 자산 하나 — 어느 네트워크의 것인지까지 담는다.",
         "required": [
+          "network",
           "symbol",
           "native"
         ],
         "properties": {
+          "network": {
+            "type": "string",
+            "description": "이 자산이 있는 우리 네트워크 코드",
+            "example": "BASE"
+          },
           "symbol": {
             "type": "string",
             "example": "USDC"
