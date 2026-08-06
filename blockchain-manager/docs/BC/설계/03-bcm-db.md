@@ -39,8 +39,7 @@ group: 블록체인 매니저
 
 ```erd
 entity: bcm_addr_m @1,1 :: 주소 매핑 — (계정, 네트워크, 토큰)당 입금 주소 하나 | acnt_id PK,FK :: 계정 | ntwk_cd PK :: 네트워크 코드 | tkn_smbl PK :: 토큰 심볼 | dpst_addr :: 발급된 입금 주소
-entity: bcm_whk_l @2,1 :: 수신 웹훅 알림 원본 — 인박스 (처리 후 N일 정리) | noti_id PK :: 웹훅 알림 id (벤더 UUID) — 중복 수신 방어 | vndr_tx_id :: 벤더 tx id — 이 알림이 가리키는 거래 | prcs_yn :: 판단 처리 여부
-entity: bcm_outbox_l @3,1 :: 발행 대기 이벤트 (Outbox) — 상태 변경과 원자 기록 | evnt_id PK :: 이벤트 id (UUID v7) · 컨슈머 dedup 키 | evt_typ_dvcd :: 이벤트유형 TXCK/TXCF/TXFL | evnt_stcd :: 발행상태 P/D/F/S
+entity: bcm_whk_l @2,1 :: 수신 웹훅 알림 원본 — 인박스 (처리 후 N일 정리) | noti_id PK :: 웹훅 알림 id (벤더 UUID) — 중복 수신 방어 | vndr_tx_id :: 벤더 tx id — 이 알림이 가리키는 거래 | prcs_stcd :: 판단 처리 상태 P/S/F — F 는 격리 | evnt_id PK :: 이벤트 id (UUID v7) · 컨슈머 dedup 키 | evt_typ_dvcd :: 이벤트유형 TXCK/TXCF/TXFL | evnt_stcd :: 발행상태 P/D/F/S
 entity: bcm_acnt_m @1,2 :: 계정 매핑 — ref ↔ vault | acnt_id PK :: 매니저가 발급하는 계정 매핑 id | acnt_typ_dvcd UK :: 계정유형 CU 고객 / SY 시스템 | ref UK :: 백엔드 참조 키 = 코어 계정 ID · 유형과 함께 유일 | vndr_vlt_id :: 벤더 vault id (백엔드 비노출)
 entity: bcm_tx_l @2,2 :: 거래 운영 상태 — 감지·발행 추적 | vndr_tx_id PK :: 벤더 tx id | ext_tx_id UK :: 출금 요청 키 — 재제출 중복 차단, 입금은 NULL | acnt_id FK :: 귀속 계정 — 이벤트 파티션 키 | last_pub_stcd :: 마지막으로 발행한 TxStatus
 entity: bcm_boost_l @3,2 :: boost 이력 — Admin 조회용 | orig_tx_id PK :: 원 벤더 tx | try_seq PK :: 시도 순번 | new_tx_id :: 대체 벤더 tx
@@ -66,7 +65,7 @@ rel: bcm_tx_l | bcm_raw_tx_l | 확정 원본 | one-many | dashed
 
 ```anim
 db
-table: bcm_whk_l | noti_id | vndr_tx_id | prcs_yn
+table: bcm_whk_l | noti_id | vndr_tx_id | prcs_stcd
 table: bcm_tx_l | vndr_tx_id | last_pub_stcd | cnfm_cnt
 table: bcm_outbox_l | evnt_id | evt_typ_dvcd | evnt_stcd
 queue: deposit-events | 이벤트 | txId
@@ -76,7 +75,7 @@ ins: bcm_whk_l | n-8f3a | tx-91c | N
 step: 워커 — 한 트랜잭션 | 판단 워커가 알림을 집어 tx 행 생성 + outbox 에 감지 이벤트 적재(P) + 알림 처리 완료 — 한 커밋
 ins: bcm_tx_l | tx-91c | CONFIRMED | 1
 ins: bcm_outbox_l | ev-01 | TXCK | P
-upd: bcm_whk_l | 1 | prcs_yn=Y
+upd: bcm_whk_l | 1 | prcs_stcd=S
 step: relay 발행 — 감지 | relay 가 미발송(P)을 큐로 보내고 S 표시 — 컨슈머는 evnt_id 로 중복을 접는다
 ins: deposit-events | 입금 감지 | tx-91c
 upd: bcm_outbox_l | 1 | evnt_stcd=S
@@ -231,7 +230,9 @@ CREATE TABLE bcm_whk_l (
   payload_hash  CHAR(64)      NOT NULL,      -- 수신 바이트의 SHA-256 (소문자 hex) — 수신부가 계산
   sign_vl       TEXT          NOT NULL,      -- 수신 서명 헤더 원문 — 벤더가 보낸 것임을 나중에 다시 증명하는 근거
   rcv_dttm      VARCHAR(16)   NOT NULL,      -- 수신 일시
-  prcs_yn       VARCHAR(1)    NOT NULL,      -- 판단 처리 여부 (Y/N)
+  prcs_stcd     VARCHAR(1)    NOT NULL,      -- 판단 처리 상태 P:미처리 / S:처리완료 / F:격리(poison)
+  rtry_cnt      INT           NOT NULL,      -- 판단 시도 횟수 — 상한 초과 시 F 로 격리
+  err_msg       VARCHAR(1000) NULL,          -- 마지막 실패 요약 (격리 사유)
   prcs_dttm     VARCHAR(16)   NULL,          -- 처리 일시
   -- 감사 4컬럼
   frst_reg_empno  VARCHAR(6)  NOT NULL,
@@ -239,7 +240,7 @@ CREATE TABLE bcm_whk_l (
   last_chng_empno VARCHAR(6)  NOT NULL,
   last_chng_brcd  VARCHAR(4)  NOT NULL
 );
-CREATE INDEX idx_bcm_whk_pick ON bcm_whk_l (prcs_yn, rcv_dttm);  -- 판단 워커의 집기 — 미처리 오래된 순
+CREATE INDEX idx_bcm_whk_pick ON bcm_whk_l (prcs_stcd, rcv_dttm);  -- 판단 워커의 집기 — 미처리(P) 오래된 순
 ```
 
 | 컬럼 | 뜻 |
@@ -319,7 +320,10 @@ CREATE INDEX idx_bcm_outbox_send ON bcm_outbox_l (evnt_stcd, evnt_id);  -- 미�
 | 컬럼 | 뜻 |
 |---|---|
 | `evnt_id` | time-ordered UUID v7 — PK 이자 컨슈머 dedup 키. relay 가 같은 행을 두 번 보내도 컨슈머가 이 값으로 접는다. 시간정렬이라 별도 생성시각 없이 발송 순서로 쓴다 |
-| `evt_typ_dvcd` | 코어 이벤트 어휘와 통일 — TXCK(Checking)·TXCF(Confirmed)·TXFL(Failed). BC→코어 계약이 한 어휘로 흐른다 |
+| `bcm_tx_l` 갱신 | **행을 잠그고 판정한다** (2026-08-06 확정) — 전이 허용 여부는 직전 상태를 읽어야 정해지므로(02 허용 전이 표) 읽고 쓰는 사이에 다른 알림이 끼면 판정이 어긋난다. 그 tx 행을 `SELECT … FOR UPDATE` 로 잠근 뒤 판정·갱신한다. 같은 tx 의 알림만 경합하므로 잠금 범위가 좁다. `cnfm_cnt` 는 추가로 `GREATEST` 로 감싸 **줄지 않게** 한다(02) |
+| set-once 컬럼 | **갱신문에서 제외한다** — `frst_dtct_dttm` 과 감사의 `frst_reg_empno`·`frst_reg_brcd` 는 최초 흔적이라 다시 쓰지 않는다. 갱신은 `last_chng_*` 만 건드린다 |
+| UNIQUE 충돌 | 도메인 예외로 바꾸고 **재조회해 이긴 값을 돌려준다** — 경합해도 결과는 하나다 |
+| `evt_typ_dvcd` | 코어 이벤트 어휘와 통일 — TXCK(Checking)·TXCF(Confirmed)·TXFL(Failed)·**TXRJ(Rejected — 2026-08-06 신설 제안, 코어 확정 대기)**. BC→코어 계약이 한 어휘로 흐른다 |
 | `evnt_stcd` | 워커 적재 시 `P`, relay 발송 성공 시 `S`, 실패 누적 시 `F`. relay 는 `P` 를 `evnt_id` 순으로 집는다 |
 
 ### bcm_swp_trgt — sweep 대상

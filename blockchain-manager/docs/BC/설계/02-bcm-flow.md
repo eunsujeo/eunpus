@@ -127,6 +127,7 @@ sequenceDiagram
 | `SUBMITTED` | `CONFIRMED` · `FINALIZED` · `REJECTED` · `FAILED` | 발행·반영 |
 | `CONFIRMED` | `FINALIZED` · `REJECTED` · `FAILED` | 발행·반영 |
 | `FINALIZED` | **`FAILED`**(reorg 증발 — subStatus `DROPPED_BY_BLOCKCHAIN`) | **발행·반영** — 무효화다. 잔액을 되돌린다 |
+| `FINALIZED` | **`REJECTED`**(확정 후 동결 — subStatus `AUTO_FREEZE` · `FROZEN_MANUALLY` · `REJECTED_AML_SCREENING`) | **발행·반영** — 가용에서 되돌려 잠근다 |
 | `FINALIZED` | `CONFIRMED` · `SUBMITTED` · `FINALIZED` | 무시 (늦게 온 옛 알림) |
 | `REJECTED` | `FINALIZED` · `FAILED` (동결 해제·최종 실패) | 발행·반영 |
 | `FAILED` | 그 외 전부 | 무시 (영구 실패는 종결) |
@@ -134,9 +135,11 @@ sequenceDiagram
 
 - ★ **`FINALIZED → FAILED`(reorg 무효화)는 발행·반영한다.** 상태에 서열을 매겨 "뒤로 가면 무시"로 구현하면 잔액이 되돌려지지 않는다 — FINALIZED 라는 이름이 되돌릴 수 없음을 보장하지 않는다.
 - **`REJECTED` 는 종결이 아니다** — 입금 동결은 Admin 해제로 결과가 바뀐다(출금 `REJECTED`·`BLOCKED` 는 벤더 기준 종결).
+- ★ **`FINALIZED → REJECTED`(확정 후 동결)도 발행·반영한다** (2026-08-06 확정). 입금 동결은 자금이 도착·확정된 뒤 벤더 장부만 잠그는 것이라, 확정을 이미 발행한 뒤에 올 수 있다. 이 전이를 무시하면 **DAW-CORE 가 동결을 영원히 모르고 가용 잔액이 남는다.** 되돌리는 방향이라는 점에서 `FINALIZED → FAILED` 와 같은 부류이고, 차이는 임시(해제 시 `REJECTED → FINALIZED` 로 복원)라는 것뿐이다.
 - **`cnfm_cnt`·마지막 갱신 시각은 줄지 않는다** — 큰 값으로만 갱신한다.
 - ★ **이벤트 순서는 매니저가 보장한다** — DAW-CORE 가 받는 순서는 한 tx 에 대해 항상 `감지 → (확정 | 무효)` 다. 앞 단계를 아직 발행하지 않았으면 **감지 이벤트를 합성해 먼저 발행**하고, 두 이벤트를 같은 트랜잭션에 outbox 적재해 relay 가 `evnt_id` 순으로 내보낸다. 소비 쪽은 "감지 없는 확정"을 다루지 않는다.
 - 이 표는 매니저의 발행 판정과 DAW-CORE 의 반영 판정에 같이 쓴다.
+- ★ **이벤트는 금액과 발신 주소를 싣는다** (2026-08-06 확정). 입금은 `externalTxId` 가 없어(96 실측) DAW-CORE 가 금액을 알 길이 이벤트뿐이고, [입금 판별](04-compliance-flow.md)에서 DAW-CORE 가 게이트로 보내는 `source·자산·금액·tx hash` 의 출처도 이 이벤트뿐이다. **금액은 문자열**로 싣는다 — 벤더가 숫자와 문자열로 둘 다 주는데 정밀도 때문에 문자열 쪽을 쓴다(96). 발신 주소는 입금에서 항상 채워진다.
 - 벤더의 전달 순서 보장은 미확인 — 순서를 믿지 않는 쪽으로 설계했다([Fireblocks QnA](?cat=BC&sub=Fireblocks%20QnA) 대기 문의).
 
 ### EventType — 이벤트 분류 셋

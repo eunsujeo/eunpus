@@ -1,5 +1,5 @@
 ---
-title: Blockchain Manager API v0.3.0
+title: Blockchain Manager API v0.4.0
 status: To Do
 view: doc
 embed: bcm-api-doc.html
@@ -10,7 +10,7 @@ embed: bcm-api-doc.html
 
 # Blockchain Manager API
 
-`v0.3.0`
+`v0.4.0`
 
 블록체인 매니저는 사내의 별도 서비스로, 온체인 거래(노드 연동)를 담당한다.
 호출 쪽 백엔드(Service·Admin)는 이 HTTP API 로 계정·주소·잔액·거래를 다루고,
@@ -145,6 +145,8 @@ sequenceDiagram
   "network": "ETHEREUM",
   "symbol": "USDC",
   "to": "0x9f...E2",
+  "from": "0xAb3...C9",
+  "amount": "100",
   "status": "FINALIZED",
   "numOfConfirmations": 12
 }
@@ -153,6 +155,8 @@ sequenceDiagram
 - `eventId` — 이벤트 고유 id (UUID v7). **중복 제거 기준은 이 값 하나다**
 - [`type`](#eventtype) — DEPOSIT · WITHDRAWAL · INTERNAL
 - [`status`](#txstatus) — 공통 상태 다섯 (아래 "상태 (TxStatus) 기준"). 소비 쪽은 이것으로만 판단한다
+- `amount` — 이동 금액. **문자열 decimal** 이다(정밀도). 입금은 `externalTxId` 가 없으므로 **금액의 출처가 이 값뿐이다**
+- `from` — 발신 주소. 입금은 항상 채워진다 — 입금 판별을 의뢰할 때 쓴다
 - `txHash` — 전파 후 채워짐
 - 벤더의 `subStatus`·`networkStatus` 는 이벤트에 싣지 않는다 — 매니저가 번역에 쓰는 내부 값이다
 
@@ -161,6 +165,7 @@ sequenceDiagram
 - **at-least-once** — 같은 이벤트가 드물게 두 번 올 수 있다. **`eventId` 유일 기준으로 중복을 버린다** — 한 거래(txId)에서 감지·확정·실패 이벤트가 각각 오므로 `txId` 로 중복 제거하면 뒤 이벤트가 버려진다.
 - **오프셋 커밋** — 원장 반영이 성공한 뒤에만.
 - **순서** — 같은 계정은 파티션 키가 보장.
+- ★ **한 거래의 순서는 매니저가 보장한다** — 한 `txId` 에 대해 받는 순서는 항상 `감지 → 확정` 또는 `감지 → 무효` 다. 매니저가 감지를 아직 발행하지 않은 상태에서 확정·거부 알림을 먼저 받으면 **감지 이벤트를 합성해 먼저 발행**한 뒤 그 상태를 발행한다. 소비 쪽은 "감지 없는 확정" 을 다루지 않는다.
 - **입금 시작 상태** — 입금은 `SUBMITTED` 없이 `CONFIRMED` 부터 온다 (`SUBMITTED` 는 우리가 제출하는 거래에서만 관찰).
 - `REJECTED`(일시적) ≠ `FAILED`(영구). 확정(`FINALIZED`) 판정은 **매니저가** `numOfConfirmations` 를 체인별 임계와 비교해 내린다 — 컨슈머는 `status` 로만 판단한다.
 
@@ -1717,6 +1722,8 @@ _응답_
 | `network` | string | 필수 | 네트워크 코드 |
 | `symbol` | string | 필수 | 토큰 심볼 |
 | `to` | string | 필수 | 목적지 주소 — 입금 판별 |
+| `from` | string \\| null | - | 발신 주소 — 입금은 항상 채워진다. 호출 쪽이 입금 판별을 의뢰할 때 쓴다 |
+| `amount` | string | 필수 | 이동 금액 — 그 자산 단위의 **문자열 decimal**. 입금은 `externalTxId` 가 없어 이 값이 금액의 유일한 출처다. 숫자가 아니라 문자열인 것은 정밀도 때문이다 |
 | `status` | TxStatus | 필수 | `SUBMITTED` `CONFIRMED` `FINALIZED` `REJECTED` `FAILED` |
 | `numOfConfirmations` | integer | 필수 | 누적 컨펌 수 |
 
