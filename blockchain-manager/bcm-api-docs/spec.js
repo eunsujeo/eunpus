@@ -103,8 +103,7 @@ window.OPENAPI = {
                   }
                 },
                 "실패분만": {
-                  "summary": "재시도 — 실패한 네트워크만 골라 보내는 경우",
-                  "description": "같은 요청을 그대로 보내도 결과는 같다. 응답에 담기는 항목 수만 다르다.",
+                  "summary": "재시도 — 실패한 네트워크만 보내는 경우",
                   "value": {
                     "token": "USDC",
                     "networks": [
