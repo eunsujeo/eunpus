@@ -10,7 +10,7 @@
 
 ## 응답 형식
 
-성공·목록·에러 모두 같은 구조로 돌려준다. `meta.requestId` 로 요청을 추적한다.
+성공·목록·에러 모두 같은 구조로 돌려준다. `meta.requestId` 로 요청을 추적한다. 스키마 이름은 단건이 `<타입>Response`, 목록이 `<타입>ListResponse` 다.
 
 단일 리소스:
 
@@ -279,8 +279,8 @@ _응답_
 ```json
 {
   "data": [
-    { "network": "ETHEREUM", "address": "0xAb3...C9", "memoTag": null, "error": null },
-    { "network": "BASE",     "address": "0x9f4...E2", "memoTag": null, "error": null }
+    { "network": "ETHEREUM", "token": "USDC", "address": "0xAb3...C9", "memoTag": null, "error": null },
+    { "network": "BASE",     "token": "USDC", "address": "0x9f4...E2", "memoTag": null, "error": null }
   ],
   "meta": { "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f" }
 }
@@ -291,8 +291,8 @@ _응답_
 ```json
 {
   "data": [
-    { "network": "ETHEREUM", "address": "0xAb3...C9", "memoTag": null, "error": null },
-    { "network": "BASE", "address": null, "memoTag": null,
+    { "network": "ETHEREUM", "token": "USDC", "address": "0xAb3...C9", "memoTag": null, "error": null },
+    { "network": "BASE", "token": "USDC", "address": null, "memoTag": null,
       "error": { "code": "INTERNAL", "message": "vendor call failed" } }
   ],
   "meta": { "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f" }
@@ -310,8 +310,8 @@ _응답_
 ```json
 {
   "data": [
-    { "network": "ETHEREUM", "address": "0xAb3...C9", "memoTag": null, "error": null },
-    { "network": "BASE",     "address": "0x9f4...E2", "memoTag": null, "error": null }
+    { "network": "ETHEREUM", "token": "USDC", "address": "0xAb3...C9", "memoTag": null, "error": null },
+    { "network": "BASE",     "token": "USDC", "address": "0x9f4...E2", "memoTag": null, "error": null }
   ],
   "meta": { "requestId": "7c2b8d1a-4e6f-4a3b-9d5e-1f2a3b4c5d6e" }
 }
@@ -324,9 +324,9 @@ _응답_
 ```json
 {
   "data": [
-    { "network": "ETHEREUM", "address": null, "memoTag": null,
+    { "network": "ETHEREUM", "token": "USDC", "address": null, "memoTag": null,
       "error": { "code": "INTERNAL", "message": "vendor call failed" } },
-    { "network": "BASE", "address": null, "memoTag": null,
+    { "network": "BASE", "token": "USDC", "address": null, "memoTag": null,
       "error": { "code": "INTERNAL", "message": "vendor call failed" } }
   ],
   "meta": { "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f" }
@@ -386,6 +386,7 @@ _응답_
   "data": [
     {
       "network": "ETHEREUM",
+      "token": "USDC",
       "address": "0xAb3...C9",
       "memoTag": "string",
       "error": {
@@ -402,7 +403,7 @@ _응답_
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `data` | AddressResult[] | 필수 | 요청과 같은 순서의 네트워크별 결과 |
+| `data` | DepositAddressResult[] | 필수 | 요청과 같은 순서의 네트워크별 결과 |
 | `meta` | Meta | 필수 |  |
 
 
@@ -1211,23 +1212,24 @@ _응답_
 | `meta` | Meta | 필수 |  |
 
 
-### AddressResult
+### DepositAddressResult
 
-네트워크 하나의 결과 — 성공이면 `address`, 실패면 `error` 가 채워진다 (둘 중 하나만).
+네트워크 하나의 발급 결과 — 조회 항목(`DepositAddress`)과 같은 필드에 `error` 가 더해진 모양이다. 성공이면 `address`, 실패면 `error` 가 채워진다 (둘 중 하나만).
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `network` | string | 필수 |  |
+| `token` | string | 필수 |  |
 | `address` | string \\| null | - | 발급된 주소 — 실패 시 null |
 | `memoTag` | string \\| null | - | 체인이 요구하는 태그·메모 — EVM 은 null |
 | `error` | ErrorBody \\| null | - | 실패 사유 — 성공 시 null. 코드 체계는 공통 에러 코드 표와 같다 |
 
 
-### AddressesResponse
+### DepositAddressResultListResponse
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `data` | AddressResult[] | 필수 | 요청과 같은 순서의 네트워크별 결과 |
+| `data` | DepositAddressResult[] | 필수 | 요청과 같은 순서의 네트워크별 결과 |
 | `meta` | Meta | 필수 |  |
 
 
@@ -1239,7 +1241,7 @@ _응답_
 | `meta` | Meta | 필수 |  |
 
 
-### TransfersResponse
+### TransferListResponse
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
