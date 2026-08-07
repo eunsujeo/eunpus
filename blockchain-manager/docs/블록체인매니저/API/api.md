@@ -1,5 +1,5 @@
 ---
-title: Blockchain Manager API v0.4.0
+title: Blockchain Manager API v0.6.0
 status: To Do
 view: doc
 embed: bcm-api-doc.html
@@ -10,7 +10,7 @@ embed: bcm-api-doc.html
 
 # Blockchain Manager API
 
-`v0.4.0`
+`v0.6.0`
 
 블록체인 매니저는 사내의 별도 서비스로, 온체인 거래(노드 연동)를 담당한다.
 호출 쪽 백엔드(Service·Admin)는 이 HTTP API 로 계정·주소·잔액·거래를 다루고,
@@ -87,8 +87,12 @@ embed: bcm-api-doc.html
 | `ASSET_NOT_SUPPORTED` | 400 | 우리가 지원하지 않는 (네트워크, 토큰) — 요청 형식은 맞다 |
 | `NOT_FOUND` | 404 | 그 밖의 리소스 없음 |
 | `CONFLICT` | 409 | 같은 멱등 키에 다른 내용이 왔다 (예: 이미 쓴 externalTxId 로 금액·목적지가 다른 제출) |
+| `SUBMIT_IN_PROGRESS` | 503 | 같은 `externalTxId` 의 앞선 제출이 처리 중이다 — **오류가 아니라 지연**이다. `Retry-After` 뒤에 같은 요청을 그대로 다시 보낸다 |
 | `RELAY_REJECTED` | 502 | 대납 relay 가 전송을 못 대거나 거절 |
 | `INTERNAL` | 500 | 서버 내부 오류 |
+
+`SUBMIT_IN_PROGRESS` 를 `CONFLICT` 와 나눈 이유 — `CONFLICT` 는 "키를 잘못 썼다"는 확정 오류라 재시도해도 같은 답이 온다.
+`SUBMIT_IN_PROGRESS` 는 잠시 뒤 성공할 상황이다. 둘을 한 코드로 묶으면 호출 쪽이 사고와 지연을 구분할 수 없다.
 
 `INTERNAL`(500) 은 모든 엔드포인트에서 날 수 있어, 오퍼레이션별 응답 표기에서는 생략한다.
 
@@ -647,6 +651,19 @@ _응답_
 - 같은 키인데 **내용이 다르면** `409` 다.
 - 제출한 건은 `GET /transactions/external/{externalTxId}` 로 찾는다 — 출금은 출금 풀 vault 에서 나가 계정별 목록에는 없다.
 
+**"같은 내용"의 범위** — 자금이 어디서 어디로 얼마나 움직이는지를 규정하는 값만 본다:
+`from.type` · `from.accountId` · `to.type` · `to` 의 식별값(`address`·`accountId`·`walletId` 중 채워진 하나) · `network` · `symbol` · `amount`.
+
+- `note` 와 `travelRule` 은 **비교하지 않는다.** 메모는 자금 이동을 바꾸지 않고, 트래블룰 산출물은 다시 만들면 값이 달라질 수 있어 정당한 재시도를 막게 된다.
+- `amount` 는 금액으로 비교한다 — `"1.50"` 과 `"1.5"` 는 같다.
+- 나머지는 **문자 그대로** 비교한다. 주소·네트워크·심볼은 대소문자를 바꾸지 않으므로, 재시도할 때는 처음 보낸 문자열을 그대로 보내야 한다.
+
+**응답을 못 받았을 때** — `5xx` 나 타임아웃은 제출이 나갔는지 알 수 없다는 뜻이지 실패했다는 뜻이 아니다.
+같은 요청을 그대로 다시 보내면 되고(멱등), 확인만 하려면 `GET /transactions/external/{externalTxId}` 를 쓴다.
+
+**같은 키를 동시에 보냈을 때** — 앞선 요청이 아직 처리 중이면 `503 SUBMIT_IN_PROGRESS` 와 `Retry-After` 가 온다.
+중복 제출이 아니라 **아직 결과를 모른다**는 뜻이라, 그 시간만큼 기다렸다 같은 요청을 그대로 다시 보내면 된다.
+
 ```bash
 curl -X POST "https://{baseUrl}/blockchain/manage-api/transactions" \
   -H "Content-Type: application/json" \
@@ -695,7 +712,7 @@ _요청 본문_
 | `to` | TransferPeer | 필수 | 목적지 |
 | `network` | string | 필수 | 네트워크 코드 |
 | `symbol` | string | 필수 | 토큰 심볼 |
-| `amount` | string | 필수 | 금액(문자열 · 부동소수 금지) |
+| `amount` | string | 필수 | 금액(문자열 · 부동소수 금지). **0보다 커야 하고**, 정수부 최대 18자리 · 소수부 최대 18자리다. 반올림 없이 그대로 보관할 수 있는 범위이며, 벗어나면 `400 VALIDATION_FAILED` 다. 부호·지수 표기(`1e-3`)·앞뒤 공백은 허용하지 않는다. 멱등 비교는 금액으로 하므로 `"1.50"` 과 `"1.5"` 는 같은 요청이다.  |
 | `note` | string \\| null | - | 벤더 거래 기록 메모 |
 | `travelRule` | TravelRule \\| null | - | 트래블룰 게이트가 만든 암호화 산출물 — 해외(Notabene) 출금만 싣고, 국내(VerifyVASP)·개인지갑은 null |
 
@@ -741,6 +758,26 @@ _응답_
 | `meta` | Meta | 필수 |  |
 
 
+`404` — 계정 없음
+
+```json
+{
+  "error": {
+    "code": "ACCOUNT_NOT_FOUND",
+    "message": "account not found"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `error` | ErrorBody | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
 `409` — 상태·멱등 충돌
 
 ```json
@@ -768,6 +805,28 @@ _응답_
   "error": {
     "code": "RELAY_REJECTED",
     "message": "relay refused to sponsor gas"
+  },
+  "meta": {
+    "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `error` | ErrorBody | 필수 |  |
+| `meta` | Meta | 필수 |  |
+
+
+`503` — 같은 `externalTxId` 의 앞선 제출이 처리 중이다. 중복 제출이 아니라 아직 결과를 모른다는 뜻이고,
+`Retry-After` 초 뒤에 같은 요청을 그대로 다시 보내면 된다.
+
+
+```json
+{
+  "error": {
+    "code": "SUBMIT_IN_PROGRESS",
+    "message": "submission for this externalTxId is in progress"
   },
   "meta": {
     "requestId": "3f9a1c2e-7b4d-4e2a-9c1f-0a2b3c4d5e6f"
@@ -929,6 +988,13 @@ _응답_
 `order=asc` + `before` 생략 조합이면 마지막 `nextCursor` 를 보관했다가 재요청해 새로 쌓인 내역만 이어받는 증분 폴링이 된다.
 상태 변경 실시간 감지는 이 목록이 아니라 이벤트 큐가 담당한다(매니저의 웹훅 감지와 별개).
 
+**커서는 매니저가 발급한다** — 벤더 커서를 그대로 넘겨주지 않는다. 최초 요청의 필터와 정렬, 그리고 이어받을 위치를
+매니저가 토큰에 담으므로, 마지막 페이지에서도 `nextCursor` 가 채워지고 그 값으로 증분 폴링이 성립한다.
+`hasMore=false` 는 "지금 시점에 더 없다"는 뜻이지 커서가 끝났다는 뜻이 아니다.
+
+**매핑되지 않은 자산의 거래는 목록에서 빠진다** — 우리가 등록하지 않은 벤더 자산이 섞여 오면 그 건만 제외하고 나머지를 돌려준다.
+빠뜨린 건은 조용히 버리지 않고 운영 알림으로 올린다(등록 누락이면 고쳐야 할 설정이다).
+
 ```bash
 curl "https://{baseUrl}/blockchain/manage-api/accounts/acct_01H8X/transactions?after=2026-07-01T00:00:00.000Z&before=2026-07-13T00:00:00.000Z&order=desc&status=FINALIZED&limit=200&cursor=eyJsYXN0IjoxNzUxMzM2MDAwMDAwfQ"
 ```
@@ -938,7 +1004,7 @@ _파라미터_
 | 이름 | 위치 | 타입 | 필수 | 예시 | 설명 |
 |---|---|---|---|---|---|
 | `accountId` | path | string | 필수 | acct_01H8X | 매니저가 돌려준 vault 핸들 (DB ext_acnt_id = vaultAccountId) |
-| `after` | query | string (ISO 8601) | 필수 | 2026-07-01T00:00:00.000Z | 시작 시각 — 거래 시각(createdAt) 기준 (ISO 8601 UTC) |
+| `after` | query | string (ISO 8601) | - | 2026-07-01T00:00:00.000Z | 시작 시각 — 거래 시각(createdAt) 기준 (ISO 8601 UTC). **첫 요청(`cursor` 없음)에는 필수**고, 없으면 `400 VALIDATION_FAILED` 다. `cursor` 가 있으면 조회 조건이 토큰에 들어 있어 이 값은 무시되므로 생략한다.  |
 | `before` | query | string (ISO 8601) | - | 2026-07-13T00:00:00.000Z | 종료 시각 — 거래 시각(createdAt) 기준 (ISO 8601 UTC). 생략하면 상한 없음 — 증분 폴링(`order=asc`) 조회는 생략한다. |
 | `order` | query | string | - | desc | 정렬 방향 — 거래 시각(createdAt) 기준. 기본 desc(최신순). 마지막 커서를 보관해 새 내역을 이어받는 증분 폴링은 `asc` 조회에서만 성립한다. |
 | `status` | query | TxStatus | - | FINALIZED | 상태 필터 (선택) |
@@ -1699,8 +1765,8 @@ _응답_
 | `network` | string | 필수 | 네트워크 코드 |
 | `symbol` | string | 필수 | 토큰 심볼 |
 | `amount` | string | 필수 | 금액(문자열) |
-| `from` | string | 필수 | 발신 (확정 온체인 주소) |
-| `to` | string | 필수 | 목적지 (확정 온체인 주소) |
+| `from` | string \\| null | 필수 | 발신 (확정 온체인 주소). **`SUBMITTED` 구간에는 비어 있을 수 있다** — 거래가 체인에 오르기 전에는 벤더가 주소를 확정하지 않는다. 키는 항상 있고 값만 `null` 이다.  |
+| `to` | string \\| null | 필수 | 목적지 (확정 온체인 주소). `from` 과 같은 이유로 `SUBMITTED` 구간에는 비어 있을 수 있다. |
 | `status` | TxStatus | 필수 | `SUBMITTED` `CONFIRMED` `FINALIZED` `REJECTED` `FAILED` |
 | `numOfConfirmations` | integer | 필수 | 누적 컨펌 수 |
 | `createdAt` | string (ISO 8601) | 필수 | 거래 생성 시각 (목록 정렬·기간 필터 기준) |
@@ -1721,7 +1787,7 @@ _응답_
 | `accountId` | string | 필수 | 파티션 키 (vault 핸들) |
 | `network` | string | 필수 | 네트워크 코드 |
 | `symbol` | string | 필수 | 토큰 심볼 |
-| `to` | string | 필수 | 목적지 주소 — 입금 판별 |
+| `to` | string \\| null | 필수 | 목적지 주소 — 입금 판별. **입금은 항상 채워진다.** 출금·내부이체의 `SUBMITTED` 이벤트는 아직 체인에 오르기 전이라 비어 있을 수 있다 |
 | `from` | string \\| null | - | 발신 주소 — 입금은 항상 채워진다. 호출 쪽이 입금 판별을 의뢰할 때 쓴다 |
 | `amount` | string | 필수 | 이동 금액 — 그 자산 단위의 **문자열 decimal**. 입금은 `externalTxId` 가 없어 이 값이 금액의 유일한 출처다. 숫자가 아니라 문자열인 것은 정밀도 때문이다 |
 | `status` | TxStatus | 필수 | `SUBMITTED` `CONFIRMED` `FINALIZED` `REJECTED` `FAILED` |
@@ -1786,7 +1852,7 @@ _응답_
 | `to` | TransferPeer | 필수 | 목적지 |
 | `network` | string | 필수 | 네트워크 코드 |
 | `symbol` | string | 필수 | 토큰 심볼 |
-| `amount` | string | 필수 | 금액(문자열 · 부동소수 금지) |
+| `amount` | string | 필수 | 금액(문자열 · 부동소수 금지). **0보다 커야 하고**, 정수부 최대 18자리 · 소수부 최대 18자리다. 반올림 없이 그대로 보관할 수 있는 범위이며, 벗어나면 `400 VALIDATION_FAILED` 다. 부호·지수 표기(`1e-3`)·앞뒤 공백은 허용하지 않는다. 멱등 비교는 금액으로 하므로 `"1.50"` 과 `"1.5"` 는 같은 요청이다.  |
 | `note` | string \\| null | - | 벤더 거래 기록 메모 |
 | `travelRule` | TravelRule \\| null | - | 트래블룰 게이트가 만든 암호화 산출물 — 해외(Notabene) 출금만 싣고, 국내(VerifyVASP)·개인지갑은 null |
 

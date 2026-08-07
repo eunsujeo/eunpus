@@ -28,6 +28,7 @@ group: 블록체인 매니저
 | `bcm_whk_l` | 수신 웹훅 알림 원본 — 인박스 | 수신부 적재 → 판단 워커 집기 · finalize 원본의 출처 |
 | `bcm_tx_l` | 거래 운영 상태 — 감지·발행 추적 | 판단 워커 → 발행 예약 · 막힘 점검 · 제출 중복 차단 |
 | `bcm_outbox_l` | 발행 대기 이벤트 — 상태 변경과 원자 기록 | 워커가 같은 트랜잭션에 적재 → relay 가 발송 |
+| `bcm_sbmt_l` | 제출 원장 — 우리가 벤더에 낸 건 | 출금·내부이체 제출의 멱등 판정 · sweep 제출 · 웹훅 분류의 기준 |
 | `bcm_swp_trgt` | sweep 대상 마킹 | 입금 확정 시 마킹 → 주기 배치가 제출 |
 | `bcm_boost_l` | boost 이력 | 자동 boost — Admin 이 본다 |
 | `bcm_job_m` | 주기 작업 상태 — heartbeat · 대사 커서 | tx 대사 대조 범위 · 밖에서 읽는 heartbeat |
@@ -39,7 +40,9 @@ group: 블록체인 매니저
 
 ```erd
 entity: bcm_addr_m @1,1 :: 주소 매핑 — (계정, 네트워크, 토큰)당 입금 주소 하나 | acnt_id PK,FK :: 계정 | ntwk_cd PK :: 네트워크 코드 | tkn_smbl PK :: 토큰 심볼 | dpst_addr :: 발급된 입금 주소
-entity: bcm_whk_l @2,1 :: 수신 웹훅 알림 원본 — 인박스 (처리 후 N일 정리) | noti_id PK :: 웹훅 알림 id (벤더 UUID) — 중복 수신 방어 | vndr_tx_id :: 벤더 tx id — 이 알림이 가리키는 거래 | prcs_stcd :: 판단 처리 상태 P/S/F — F 는 격리 | evnt_id PK :: 이벤트 id (UUID v7) · 컨슈머 dedup 키 | evt_typ_dvcd :: 이벤트유형 TXCK/TXCF/TXFL | evnt_stcd :: 발행상태 P/D/F/S
+entity: bcm_whk_l @2,1 :: 수신 웹훅 알림 원본 — 인박스 (처리 후 N일 정리) | noti_id PK :: 웹훅 알림 id (벤더 UUID) — 중복 수신 방어 | vndr_tx_id :: 벤더 tx id — 이 알림이 가리키는 거래 | prcs_stcd :: 판단 처리 상태 P/S/F — F 는 격리
+entity: bcm_outbox_l @3,1 :: 발행 대기 이벤트 — 워커가 상태 변경과 한 트랜잭션에 적재 | evnt_id PK :: 이벤트 id (UUID v7) · 컨슈머 dedup 키 | evt_typ_dvcd :: 이벤트유형 TXCK/TXCF/TXFL | evnt_stcd :: 발행상태 P/D/F/S
+entity: bcm_sbmt_l @4,1 :: 제출 원장 — 우리가 벤더에 낸 건 (출금·내부이체·sweep) | ext_tx_id PK :: 우리 요청 키 = 멱등 키 | req_hash :: 요청 내용 SHA-256 — 같은 키 다른 내용 판별 | tx_dvcd :: 거래 구분 WITHDRAWAL/INTERNAL/SWEEP — 웹훅 분류의 기준 | vndr_tx_id UK :: 벤더 응답·웹훅으로 채운다 (NULL=미확인)
 entity: bcm_acnt_m @1,2 :: 계정 매핑 — ref ↔ vault | acnt_id PK :: 매니저가 발급하는 계정 매핑 id | acnt_typ_dvcd UK :: 계정유형 CU 고객 / SY 시스템 | ref UK :: 백엔드 참조 키 = 코어 계정 ID · 유형과 함께 유일 | vndr_vlt_id :: 벤더 vault id (백엔드 비노출)
 entity: bcm_tx_l @2,2 :: 거래 운영 상태 — 감지·발행 추적 | vndr_tx_id PK :: 벤더 tx id | ext_tx_id UK :: 출금 요청 키 — 재제출 중복 차단, 입금은 NULL | acnt_id FK :: 귀속 계정 — 이벤트 파티션 키 | last_pub_stcd :: 마지막으로 발행한 TxStatus
 entity: bcm_boost_l @3,2 :: boost 이력 — Admin 조회용 | orig_tx_id PK :: 원 벤더 tx | try_seq PK :: 시도 순번 | new_tx_id :: 대체 벤더 tx
@@ -50,6 +53,7 @@ rel: bcm_acnt_m | bcm_addr_m | 계정당 주소 | one-many
 rel: bcm_acnt_m | bcm_tx_l | 계정 귀속 | one-many
 rel: bcm_acnt_m | bcm_swp_trgt | sweep 대상 | one-many
 rel: bcm_whk_l | bcm_tx_l | 워커가 옮김 | one-many | dashed
+rel: bcm_sbmt_l | bcm_tx_l | 제출한 건이 웹훅으로 돌아옴 | one-one | dashed
 rel: bcm_tx_l | bcm_outbox_l | 같은 트랜잭션 발행 예약 | one-many
 rel: bcm_tx_l | bcm_boost_l | boost 시도 | one-many
 rel: bcm_tx_l | bcm_raw_tx_l | 확정 원본 | one-many | dashed
@@ -282,10 +286,93 @@ CREATE TABLE bcm_tx_l (
 | 컬럼 | 뜻 |
 |---|---|
 | `orig_tx_id` | boost 로 벤더 거래가 대체되면(새 txId) 새 행이 원 tx 를 가리킨다 — 이벤트는 원 tx 기준으로 나가 백엔드는 대체를 모른다 |
-| `ext_tx_id` | UNIQUE 가 재제출 중복 차단의 물리 근거. 완료 이벤트에 그대로 실어 되돌려준다. boost 대체 행은 이 값을 갖지 않는다(원 행만) |
+| `ext_tx_id` | 완료 이벤트에 그대로 실어 되돌려준다. boost 대체 행은 이 값을 갖지 않는다(원 행만). **멱등 판정은 여기가 아니라 `bcm_sbmt_l` 이 한다** — 이 행은 웹훅이 와야 생기고, 멱등은 그보다 앞선 제출 시점에 끝나야 한다. 이 컬럼의 UNIQUE 는 한 요청 키에 거래가 둘 붙지 않게 막는 이중 방어다 |
 | `last_pub_stcd` | 새 알림의 상태와 이 값을 [허용 전이 표](02-bcm-flow.md)에 대조해 발행 여부를 가린다. 발행은 `bcm_outbox_l` 에 같은 트랜잭션으로 적재한다 |
 | `cnfm_cnt`·`last_chng_dttm` | **줄지 않는다** — 큰 값(늦은 시각)으로만 갱신한다. 막힘 점검의 입력이다 |
 | `vndr_sub_stcd`·`vndr_ntwk_stcd` | 마지막 알림의 벤더 원어 — 운영 조사(FAILED 사유 구분·대사 불일치 분석)용. whk_l 은 보존 기간 후 정리되므로 장기 조회처는 여기다. **이벤트에는 싣지 않는다** |
+
+### bcm_sbmt_l — 제출 원장
+
+우리가 벤더에 낸 건(출금·내부이체·sweep)을 **벤더에 보내기 전에** 먼저 적는 원장이다. 두 가지 일을 한다 — ① `ext_tx_id` 멱등 판정(같은 키 + 같은 내용이면 처음 `txId` 반환, 내용이 다르면 거절) ② 우리 vault 에서 나간 웹훅이 어느 계열인지 가르는 기준.
+
+`bcm_tx_l` 에 흡수하지 않는 이유는 **키가 다르기 때문**이다. `bcm_tx_l` 의 PK 는 벤더 tx id 인데 제출 시점에는 그 값을 아직 모른다. 반대로 멱등 판정은 벤더를 부르기 전에 끝나야 한다 — 부른 뒤에 적으면 그 사이에 죽었을 때 돈이 나갔는지 알 방법이 없다. 그래서 우리 요청 키를 PK 로 갖는 원장을 따로 둔다.
+
+```sql
+CREATE TABLE bcm_sbmt_l (
+  ext_tx_id     VARCHAR(128) PRIMARY KEY,   -- 우리 요청 키 = 멱등 키. 승인된 출금 지시 1건과 1:1
+  req_hash      CHAR(64)     NOT NULL,      -- 요청 내용의 SHA-256 (소문자 hex) — 아래 canonical 규칙
+  hash_vrsn     VARCHAR(8)   NOT NULL,      -- canonical 규칙 판 (v1) — 판이 다르면 아래 필드로 재계산해 비교
+  sbmt_stcd     VARCHAR(16)  NOT NULL,      -- 제출 상태 REQUESTED · SUBMITTED · FAILED
+  claim_id      VARCHAR(36)  NULL,          -- 진행 중 소유권 토큰(UUID) — 이 값을 쥔 호출자만 벤더에 제출한다
+  claim_exp_dttm VARCHAR(16) NULL,          -- 소유권 만료 일시 — 지나면 다른 호출자가 뺏는다 (죽은 소유자 방치 방지)
+  tx_dvcd       VARCHAR(16)  NOT NULL,      -- 거래 구분 WITHDRAWAL · INTERNAL · SWEEP — 제출 시점에 못박는다
+  vndr_tx_id    VARCHAR(64)  NULL,          -- 벤더 응답(또는 먼저 온 웹훅)으로 채운다. NULL = 벤더에 닿았는지 미확인
+  snd_acnt_id   VARCHAR(64)  NOT NULL,      -- 보내는 계정 — 이벤트 파티션 키이기도 하다
+  rcv_dvcd      VARCHAR(16)  NOT NULL,      -- 목적지 유형 ADDRESS · ACCOUNT · WHITELISTED
+  rcv_vl        VARCHAR(128) NOT NULL,      -- 목적지 식별값 — 유형에 따라 주소 · 계정 · 등록지갑 id 중 하나
+  ntwk_cd       VARCHAR(20)  NOT NULL,      -- 네트워크 코드
+  tkn_smbl      VARCHAR(16)  NOT NULL,      -- 토큰 심볼
+  trsf_amt      NUMERIC(36,18) NOT NULL,    -- 정규화한 금액
+  req_dttm      VARCHAR(16)  NOT NULL,      -- 접수 일시 — 미결 제출 점검의 기준
+  rsp_dttm      VARCHAR(16)  NULL,          -- 벤더 응답 일시
+  -- 감사 4컬럼
+  frst_reg_empno  VARCHAR(6)  NOT NULL,
+  frst_reg_brcd   VARCHAR(4)  NOT NULL,
+  last_chng_empno VARCHAR(6)  NOT NULL,
+  last_chng_brcd  VARCHAR(4)  NOT NULL
+);
+CREATE UNIQUE INDEX ux_bcm_sbmt_vndr_tx ON bcm_sbmt_l (vndr_tx_id) WHERE vndr_tx_id IS NOT NULL;
+CREATE INDEX idx_bcm_sbmt_open ON bcm_sbmt_l (sbmt_stcd, req_dttm);  -- 미결(REQUESTED) 오래된 순
+```
+
+| 컬럼 | 뜻 |
+|---|---|
+| `ext_tx_id` | PK 가 멱등의 물리 근거다. 제출 요청이 오면 **벤더를 부르기 전에** 이 행을 먼저 넣는다 — 충돌하면 이미 받은 키다 |
+| `req_hash` | "같은 내용인가"의 판정값. 아래 canonical 규칙으로 만든 문자열의 SHA-256. **요청 원문은 저장하지 않는다** — `travelRule` 이 트래블룰 게이트가 만든 암호화 산출물(IVMS101 계열 개인정보)이라, 원문을 남기면 매니저가 그 보관 주체가 된다. 매니저는 운반만 한다([흐름](02-bcm-flow.md)) |
+| `hash_vrsn` | canonical 규칙을 나중에 바꿔도 옛 행을 되살릴 수 있게 판을 함께 적는다. 판이 다르면 해시를 믿지 않고 아래 개별 컬럼으로 그 판의 규칙을 다시 적용해 비교한다 |
+| `tx_dvcd` | **웹훅 분류의 유일한 기준.** 출금·내부이체·sweep 은 셋 다 우리 vault 에서 나가 주소만으로는 갈리지 않는다 — 제출 시점에 우리가 아는 값을 못박아 두고, 웹훅이 오면 이 값을 읽는다 |
+| `vndr_tx_id` | 벤더 응답으로 채우는 게 정상이지만, 응답을 못 받고 웹훅이 먼저 와도 그때 채운다. 부분 UNIQUE 인덱스가 벤더 tx 와 1:1 을 보장한다 |
+| `sbmt_stcd` | `REQUESTED` = 벤더에 닿았는지 모름 · `SUBMITTED` = 벤더가 tx id 를 줌 · `FAILED` = 벤더가 검증으로 확정 거절. 복구 규칙은 [흐름](02-bcm-flow.md) 출금 절 |
+| `claim_id`·`claim_exp_dttm` | **같은 키가 동시에 들어와도 벤더 제출은 한 번만** 하게 하는 소유권이다. 행을 넣거나 뺏을 때 토큰과 만료를 함께 적고, 그 토큰을 쥔 호출자만 벤더를 부른다. **상태값(`SUBMITTING` 같은)으로 하지 않는 이유** — 소유자 프로세스가 죽으면 그 상태에서 영원히 멈춘다. 만료 시각이 붙어 있으면 스스로 풀린다. 만료는 벤더 제출 호출 타임아웃보다 길게 잡는다(운영 설정값) |
+| `snd_acnt_id` | 출금은 출금 풀 vault 계정, 내부이체는 출발 계정. 이벤트 파티션 키가 이 값이라 따로 `acnt_id` 를 두지 않는다 |
+| 보존 | 종결 뒤에도 남긴다 — `ext_tx_id` 재사용 탐지가 영구적이어야 한다(벤더도 `externalTxId` 를 영구 보관한다) |
+
+#### sbmt_stcd 전이 — 어느 경로로 왔는지가 함께 판단 기준이다
+
+같은 전이라도 **누가 가져온 사실인지**에 따라 허용이 갈린다. 제출 응답은 우리가 부른 결과이고, 웹훅은 벤더가 서명해 보낸 사실이라 무게가 다르다.
+
+| 현재 | 다음 | 허용 경로 | 조건 |
+|---|---|---|---|
+| (없음) | `REQUESTED` | 제출 접수 | 행을 넣으면서 소유권을 함께 잡는다 |
+| `REQUESTED` | `SUBMITTED` | 제출 응답 | **소유권을 쥔 호출자만** |
+| `REQUESTED` | `SUBMITTED` | 웹훅 · 미결 점검 | 소유권과 무관 — 벤더 tx id 를 회수한다 |
+| `REQUESTED` | `FAILED` | 제출 응답 | **확정 거절로 분류된 응답만**(아래 [흐름](02-bcm-flow.md) 4xx 표). 소유권을 쥔 호출자만 |
+| `FAILED` | `SUBMITTED` | **웹훅 · 미결 점검만** | 회수 — 아래 |
+| `SUBMITTED` | — | | 종착. 다른 `vndr_tx_id` 가 오면 충돌로 보고 격리한다 |
+
+★ **`FAILED` → `SUBMITTED` 회수를 허용한다.** 우리가 벤더 응답을 거절로 읽어 `FAILED` 로 적어 놓았는데 나중에 그 거래의 웹훅이 서명 검증을 통과해 도착하는 경우가 있다. 웹훅은 **벤더가 거래를 실제로 만들었다는 최종 근거**라 우리 판단보다 나중이고 더 정확하다. 이걸 막으면 실재하는 거래가 원장에서 실패로 남고 그 알림이 격리 처리돼, 돈은 나갔는데 아무도 모르는 상태가 된다.
+
+- **제출 응답 경로로는 이 전이를 하지 않는다.** 우리가 부른 결과로 `FAILED` 를 뒤집으면 거절 판정 자체가 무의미해진다. 되살리는 건 벤더가 보낸 사실뿐이다.
+- 이미 다른 `vndr_tx_id` 가 적혀 있으면 회수하지 않고 충돌로 격리한다 — 한 요청 키에 거래가 둘 붙은 상황이라 사람이 봐야 한다.
+
+#### canonical 요청 — 무엇이 같아야 "같은 요청"인가
+
+**자금이 어디서 어디로 얼마나 움직이는지를 규정하는 값만** 넣는다. 고정 순서 7줄을 줄바꿈으로 이어 SHA-256 한다.
+
+```
+1  from.type          (ACCOUNT 고정)
+2  from.accountId
+3  to.type            (ADDRESS · ACCOUNT · WHITELISTED)
+4  to 의 식별값        (유형에 따라 address · accountId · walletId 중 채워진 하나)
+5  network
+6  symbol
+7  정규화한 amount
+```
+
+- **JSON 정규화는 쓰지 않는다** — 키 정렬·공백 처리가 구현체마다 흔들려 같은 요청이 다른 해시가 될 수 있다. 위 7개 값은 전부 길이 제한을 통과한 한 줄짜리라 줄바꿈이 들어갈 수 없고, 그래서 줄바꿈 결합이 안전하다.
+- **`amount` 만 정규화한다** — 십진수로 파싱한 뒤 뒤따르는 0 을 떼고 지수 없는 평문으로 쓴다(`1.50` → `1.5`). 같은 금액을 다른 문자열로 적은 재시도를 거절하면 정당한 재시도를 막는 셈이 된다.
+- **나머지는 원문 그대로 비교한다 — 대소문자를 바꾸지 않는다.** 주소는 체인마다 대소문자가 의미를 갖는다(EVM 체크섬은 무시해도 되지만 base58 계열은 대소문자가 다르면 다른 주소다). 소문자로 눕히면 서로 다른 주소가 같아질 수 있어, 안전한 쪽은 원문 비교다. `network`·`symbol` 도 마찬가지 — 등록되지 않은 표기는 [자산 매핑](07-asset-master.md)이 이미 400 으로 거른다.
+- **`note` 와 `travelRule` 은 넣지 않는다.** `note` 는 벤더 거래 메모라 자금 이동을 바꾸지 않는다. `travelRule` 은 게이트가 다시 만들면 같은 출금 지시라도 암호문이 달라질 수 있어, 넣으면 정당한 재시도가 거절된다.
 
 ### bcm_outbox_l — 발행 아웃박스
 
@@ -427,6 +514,11 @@ CREATE INDEX idx_bcm_raw_tx_addr ON bcm_raw_tx_l (addr, base_dt);  -- 지갑(주
 
 - **`bcm_tx_l`·`bcm_whk_l`·`bcm_outbox_l` 보존** — 종결·처리 완료·발송 완료 건을 언제까지 두고 언제 정리할지 — `bcm_raw_tx_l` 원본 보관과 역할을 나눈 뒤 확정.
 
+## 확정 이력 (2026-08-07)
+
+- **제출 원장 `bcm_sbmt_l` 신설** — `ext_tx_id` PK. 벤더를 부르기 전에 먼저 적어 멱등을 판정하고, 우리 vault 발신 웹훅의 계열을 `tx_dvcd` 로 가른다. `bcm_tx_l` 흡수는 키가 달라(PK = 벤더 tx id, 제출 시점 미상) 불가능하다.
+- **canonical 요청 = 자금 이동 7값** — from 2 · to 2 · network · symbol · 정규화 amount. `note`·`travelRule` 은 제외(재시도 오탐 방지 + 개인정보 미보관). 요청 원문은 저장하지 않고 해시와 개별 필드만 남긴다.
+
 ## 확정 이력 (2026-08-06)
 
 - **일시의 시간대 = KST(`Asia/Seoul`)** — 14자 포맷에 오프셋이 없어 한 시간대로 고정해야 하고, `base_dt` 일 경계가 영업일과 맞아야 한다. 코어 스키마 사본에는 시간대를 밝힌 근거가 없어 설계 결정으로 확정했다 — DAW-CORE 회신이 오면 대조한다(어긋나면 Clock 빈 교체로 끝난다).
@@ -434,6 +526,6 @@ CREATE INDEX idx_bcm_raw_tx_addr ON bcm_raw_tx_l (addr, base_dt);  -- 지갑(주
 
 ## 확정 이력 (2026-08-05)
 
-- **약어** — 이 문서 표기 그대로 확정(`bcm`·`vndr`·`vlt`·`noti`·`swp` = 프로젝트 약어집). DAW-CORE DB 약어집이 나오면 대조해 어긋난 것만 조정한다.
+- **약어** — 이 문서 표기 그대로 확정(`bcm`·`vndr`·`vlt`·`noti`·`swp`·`sbmt`(제출)·`rcv`(받는 쪽)·`snd`(보내는 쪽) = 프로젝트 약어집). DAW-CORE DB 약어집이 나오면 대조해 어긋난 것만 조정한다.
 - **감사 컬럼 센티넬** — 자동 처리 행은 `empno='SYSTEM'` · `brcd='9999'`(실존 부점과 충돌 불가한 값). 구현은 단일 상수로 관리해 코어 운영 규약 확인 시 한 곳만 바꾼다.
 - **subStatus·networkStatus** — `bcm_tx_l` 에 보관(`vndr_sub_stcd`·`vndr_ntwk_stcd`). 운영 조사용 — 이벤트 미탑재는 유지.
