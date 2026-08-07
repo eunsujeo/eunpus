@@ -816,6 +816,102 @@ window.MD = (() => {
     });
   }
 
+  // mpc-keygen — 키 생성: 세 지점이 각자 난수로 share 를 만들고 공개키만 함께 계산 (지갑보안 3장)
+  function buildMpcKeygen(el) {
+    const row = (label, id) =>
+      `<div class="banim-row"><span>${label}</span><b data-f="${id}">—</b></div>`;
+    const party = (title, where, idp) =>
+      `<div class="banim-block new"><div class="banim-bt">${title}</div>` +
+      `<div class="banim-row"><span>위치</span><b>${where}</b></div>` +
+      row('난수원', `${idp}-r`) + row('보유 share', `${idp}-s`) + '</div>';
+
+    stepAnim(el, {
+      steps: [
+        ['서명 지점 셋', '고객 측 1곳과 Fireblocks 가 운영하는 SGX 서버 2곳이 키 생성에 참여한다. 아직 아무 share 도 없다.'],
+        ['각자 자기 난수', '지점마다 하드웨어로 격리된 구성요소 안에서 자기 난수를 만든다. 그 난수를 다른 지점에 보내지 않는다.'],
+        ['share 확정', '지점마다 share 하나를 쥔다. 셋을 다 모으기 전까지는 비밀에 대한 정보가 한 조각도 나오지 않는다.'],
+        ['공개키만 함께 계산', '세 지점이 함께 공개키를 계산한다. 이것이 지갑 주소가 된다. 개인키 쪽은 합쳐지지 않는다.'],
+        ['완전한 개인키는 없다', '어느 지점의 메모리에도, 생성 과정 중에도 완전한 개인키가 존재한 적이 없다. 생성이 중간에 실패하면 키는 만들어지지 않는다.'],
+        ['예외 하나 — 백업', '재해 대비로만 share 를 암호화해 recovery package 로 내보낸다. 이 조합을 한 곳이 다 쥐면 나눠 둔 의미가 사라진다.'],
+      ],
+      scene:
+        '<div class="banim-el">키 생성 — 세 지점이 각자 난수를 낸다</div>' +
+        '<div class="banim-chain">' +
+        party('고객 Co-Signer', '모바일 · 또는 고객 SGX', 'p1') +
+        party('Fireblocks SGX #1', '클라우드 · 지역 분산', 'p2') +
+        party('Fireblocks SGX #2', '클라우드 · 지역 분산', 'p3') +
+        '</div>' +
+        '<div class="banim-el">결과 — 무엇이 남는가</div>' +
+        '<div class="banim-chain">' +
+        '<div class="banim-block new"><div class="banim-bt">공개키 — 지갑 주소</div>' + row('값', 'pub') + '</div>' +
+        '<div class="banim-block new"><div class="banim-bt">완전한 개인키</div>' + row('존재 위치', 'full') + '</div>' +
+        '</div>' +
+        '<div class="banim-note" data-on="4">생성이 중간에 실패하면 키가 만들어지지 않는다 — 절반만 만들어진 약한 키가 남지 않는다</div>' +
+        '<div class="banim-note" data-on="5">워크스페이스 키 백업 — share 를 암호화해 recovery package 로. 여기서만 예외적으로 밖에 나간다</div>' +
+        '<div class="banim-status" data-f="rst"></div>',
+      render(step, setF) {
+        setF('p1-r', step >= 1 ? 'Secure Enclave · TEE' : '—');
+        setF('p2-r', step >= 1 ? 'Intel RDRAND · SGX' : '—');
+        setF('p3-r', step >= 1 ? 'Intel RDRAND · SGX' : '—');
+        setF('p1-s', step >= 2 ? '<span class="cv">share 1</span>' : '—');
+        setF('p2-s', step >= 2 ? '<span class="cv">share 2</span>' : '—');
+        setF('p3-s', step >= 2 ? '<span class="cv">share 3</span>' : '—');
+        setF('pub', step >= 3 ? '0x7f3a…c19d' : '—'); // 예시 값
+        setF('full', step >= 4 ? '<span class="cv">어디에도 없음</span>' : '—');
+        setF('rst',
+          step === 0 ? '지점 3 · share 0 — 아직 키가 없다'
+          : step === 1 ? '난수는 지점 안에서만 — 서로에게 보내지 않는다'
+          : step === 2 ? 'share 1 + share 2 + share 3 — 합치는 연산은 덧셈 하나'
+          : step === 3 ? '공개키 0x7f3a…c19d = 지갑 주소 — 함께 계산하는 부분은 여기까지'
+          : step === 4 ? '완전한 개인키: <b class="cv">어디에도 없음</b> — 생성 실패 시 키 미생성'
+          : 'recovery package — 이 조합을 누가 보관하는지가 수탁 경계의 질문');
+      },
+    });
+  }
+
+  // mpc-rounds — 서명 왕복: GG18 8라운드 vs MPC-CMP 4라운드(3은 사전계산) + 마지막 라운드 QR (지갑보안 3장)
+  function buildMpcRounds(el) {
+    const cell = (label, on, extra) =>
+      `<span class="banim-ecell" data-on="${on}">${label}${extra || ''}</span>`;
+    const GG_ON = [2, 2, 2, 3, 3, 3, 4, 4]; // GG18 라운드가 열리는 단계
+
+    stepAnim(el, {
+      steps: [
+        ['왕복 횟수가 곧 지연', 'threshold 서명은 참여 지점끼리 메시지를 여러 번 주고받아야 하나 완성된다. 그 왕복 수가 서명 지연을 정한다.'],
+        ['거래 전 — 사전계산 3라운드', 'MPC-CMP 는 4라운드 중 3라운드를 거래가 들어오기 전에 미리 돌려 둔다. GG18 에는 이 단계가 없다.'],
+        ['출금 요청 도착', 'GG18 은 이 시점에 8라운드를 처음부터 시작한다.'],
+        ['남은 라운드 하나', 'MPC-CMP 는 남은 1라운드만 돌면 서명이 완성된다. GG18 은 아직 2라운드 남았다.'],
+        ['마지막 라운드를 QR 로', '그 1라운드는 QR 로 오프라인 전달할 수 있다. 서명 기기를 네트워크에서 완전히 떼어 놓을 수 있다는 뜻이다.'],
+        ['결과물은 서명 하나', '어느 프로토콜이든 체인에 올라가는 것은 평범한 서명 한 건이다. 체인은 MPC 를 썼는지 알지 못한다.'],
+      ],
+      scene:
+        '<div class="banim-el">GG18 — 서명 라운드 8 · 전부 거래 도착 후</div>' +
+        '<div class="banim-l2row" data-ep="gg">' +
+        GG_ON.map((on, i) => cell(`R${i + 1}`, on)).join('') +
+        '</div>' +
+        '<div class="banim-el">MPC-CMP — 서명 라운드 4 · 그중 3은 미리</div>' +
+        '<div class="banim-l2row" data-ep="cmp">' +
+        cell('R1 · 사전', 1) + cell('R2 · 사전', 1) + cell('R3 · 사전', 1) +
+        cell('R4', 3, '<i class="banim-bchip" data-on="4">QR 오프라인</i>') +
+        '</div>' +
+        '<div class="banim-note" data-on="5">체인에 올라가는 것 — 완성된 서명 한 건. 멀티시그처럼 체인 쪽 지원이 필요하지 않다</div>' +
+        '<div class="banim-status" data-f="rst"></div>',
+      render(step, setF, root) {
+        root.querySelectorAll('[data-ep="cmp"] .banim-ecell')
+          .forEach((c) => c.classList.toggle('fin', step >= 3));
+        root.querySelectorAll('[data-ep="gg"] .banim-ecell')
+          .forEach((c) => c.classList.toggle('fin', step >= 4));
+        setF('rst',
+          step === 0 ? 'GG18 8라운드 · MPC-CMP 4라운드 — Fireblocks 표기로는 약 8배 빠름'
+          : step === 1 ? 'MPC-CMP 사전계산 3라운드 완료 — 거래는 아직 없다'
+          : step === 2 ? '거래 도착 — GG18 은 R1 부터 시작'
+          : step === 3 ? 'MPC-CMP <b class="cv">서명 완성</b> — 남은 왕복 0 · GG18 은 2라운드 남음'
+          : step === 4 ? '마지막 라운드를 QR 로 전달 → 서명 기기를 망에서 떼어 놓을 수 있다'
+          : '체인에 올라가는 것은 서명 하나 — 체인은 MPC 여부를 알지 못한다');
+      },
+    });
+  }
+
   const ANIM_DEFS = {
     'block-lifecycle': buildBlockLifecycle,
     'proposer': buildProposer,
@@ -827,6 +923,8 @@ window.MD = (() => {
     'l2-settlement': buildL2Settlement,
     'nonce-replace': buildNonceReplace,
     'commitment': buildCommitment,
+    'mpc-keygen': buildMpcKeygen,
+    'mpc-rounds': buildMpcRounds,
   };
 
   // 엔티티 카드 + SVG 관계선 ERD — ```erd 펜스.
