@@ -24,6 +24,13 @@ function byManifest(items, order) {
   });
 }
 
+// date: YYYY-MM-DD 가 있으면 카드 표시일로 고정하고, 없거나 잘못됐으면 기존 수정일을 쓴다.
+function cardDate(meta, fallback) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(meta.date || '')
+    ? `${meta.date}T00:00:00.000Z`
+    : fallback;
+}
+
 async function headSha(env) {
   const branch = env.GITHUB_BRANCH || 'main';
   const r = await gh(
@@ -120,7 +127,7 @@ async function buildBase(env) {
           view: meta.view || '', // 'doc' = 칸반 대신 원본 문서로 표시
           embed: meta.embed || '', // 앱 public/ 내 HTML — iframe 으로 원본 뷰어를 그대로 띄운다
           summary,
-          updatedAt: node ? node.committedDate : null,
+          updatedAt: cardDate(meta, node ? node.committedDate : null),
         };
       });
     })
@@ -145,11 +152,11 @@ export async function onRequestGet({ env }) {
       if (bad) return bad;
       const sha = await headSha(env).catch(() => null);
       // SHA 캐시 히트면 GitHub 대량 호출을 건너뛴다. status·order 는 매 요청 KV 로 덧씌운다.
-      if (ns && sha) base = await ns.get(`cache:base:v3:${sha}`, 'json').catch(() => null);
+      if (ns && sha) base = await ns.get(`cache:base:v4:${sha}`, 'json').catch(() => null);
       if (!base) {
         base = await buildBase(env);
         if (ns && sha) {
-          await ns.put(`cache:base:v3:${sha}`, JSON.stringify(base), { expirationTtl: 86400 }).catch(() => {});
+          await ns.put(`cache:base:v4:${sha}`, JSON.stringify(base), { expirationTtl: 86400 }).catch(() => {});
         }
       }
     }

@@ -22,6 +22,8 @@ blockchain-manager/
     <대카테고리>/<중카테고리>/*.md   ← 2단계 폴더 = 대·중카테고리 (폴더명이 source of truth)
     블록체인매니저/설계/     ← 첫 문서 세트
     트래블룰/ 캔톤네트워크/ 무스비 PoC/  ← 대카테고리 예약 (분류 폴더 만들면 UI 에 자동 반영)
+  sources/                   ← 독립 모듈 리서치 원본. 날짜별 immutable snapshot + manifest
+    travel-rule-solutions/   ← BC/트래블룰솔루션 카드의 공식 원문과 SHA-256
   app/                       ← 웹앱. Cloudflare Pages 프로젝트 루트.
     public/                  ← 정적 프론트엔드 (빌드 스텝 없음)
     functions/api/           ← Pages Functions. GitHub API 프록시 (토큰은 서버사이드만)
@@ -36,6 +38,7 @@ blockchain-manager/
 ---
 title: <카드에 표시될 제목>
 status: To Do                   # To Do | In Progress | Done | 아카이브
+date: 2026-07-19               # 선택: 카드에 고정할 작성일(YYYY-MM-DD)
 ---
 ```
 
@@ -45,6 +48,8 @@ status: To Do                   # To Do | In Progress | Done | 아카이브
 - `group: <묶음 이름>` (선택) — **내보낸 문서집에서 묶음 소제목으로 갈라 준다.** 칸반에는 영향 없다.
   같은 값이 붙은 문서끼리 한 격자로 묶이고, `group` 이 없는 문서(진입점 개요 등)는 소제목 없이 맨 위에 온다.
   묶음 순서는 문서 정렬 순서에서 처음 나온 순 — 파일 번호를 따른다. 예: `BC/설계` 는 개요 · 블록체인 매니저 · 컴플라이언스 게이트 · 운영 설계.
+- `layout: schema` (선택) — 필드 사전처럼 계층 탐색이 필요한 문서의 카드 미리보기를 **고정 구조 목차 + 본문**으로 나눈다.
+  데스크톱 목차는 스크롤 위치를 따라가고, 좁은 화면에서는 접힌다. 라이브 앱과 단일 HTML 내보내기에 동일하게 적용된다.
 - `ref: 참고` (선택) — **참고 문서 표시.** 판단 재료·심화 설명처럼 설계 본문과 붙어 읽히지만 공유 대상은 아닌 문서에 붙인다.
   칸반에는 그대로 보이고, **HTML 내보내기 두 경로(앱의 "HTML ↓" 버튼 · `export-board.mjs`)에서 모두 제외**된다.
   규칙은 `public/export.js` 의 `excludeRefDocs()` 한 곳에 있다 (CLI 는 `--with-ref` 로 포함). 내보낸 문서에서 빠진 문서를
@@ -62,7 +67,12 @@ status: To Do                   # To Do | In Progress | Done | 아카이브
 - ★ **추측 금지** — 확인 안 된 필드·값·동작·순서를 문서에 쓰지 않는다. 원본(공식 스펙·확정 결정)에서
   확인되면 쓰고, 확인 불가면 생략하거나 "확인 필요/미확정" 절에만 둔다. 그럴듯한 부연을 지어내지 않는다.
 - 카드 요약은 frontmatter 다음 본문 첫 2줄에서 자동 추출 — 문서 첫 단락을 요약답게 쓸 것.
-- 마지막 수정일은 GitHub 커밋 이력에서 가져온다 (문서에 날짜를 적지 않는다).
+- 카드 날짜는 기본적으로 GitHub 마지막 커밋일을 사용한다. 작성일을 고정해야 하는 문서만 frontmatter의
+  `date: YYYY-MM-DD`를 쓰며, 로컬·GitHub·정적 HTML 모두 이 값을 우선한다.
+- **리서치 카드의 원본 분리** — 조사 결과는 `docs/`, 공식 원문은 `sources/<topic>/` 에 둔다.
+  원본은 날짜가 붙은 snapshot 으로 보존하고 덮어쓰지 않는다. 각 source ID 의 URL·수집일·자료 등급·SHA-256은
+  `manifest.yml` 에 기록한다. 카드의 사실은 source ID와 공식 URL 또는 원문 절에 연결하고, 가격·SLA·도달성처럼
+  공식 원문에서 확인되지 않은 내용은 `확인 필요` 로만 남긴다.
 - **status 는 git 이 아니라 KV 오버레이에 저장된다** (Stage: KV 전환). frontmatter 의 status 는
   **초기값(seed)** — KV 에 값이 있으면 그것이 이긴다. 드래그·순서변경은 커밋을 만들지 않는다.
   문서 파일의 frontmatter status 를 직접 고쳐도 KV 오버레이가 있으면 화면엔 KV 값이 뜬다.

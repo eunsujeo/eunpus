@@ -1096,11 +1096,14 @@ window.MD = (() => {
     if (!root || root.querySelector(':scope > .doc-toc')) return; // 중복 방지
     const hs = [...root.querySelectorAll('h2, h3')].filter((h) => !h.closest('.doc-toc'));
     if (hs.length < 3) return;
+    const schemaLayout = root.classList.contains('schema-doc');
     const nav = document.createElement('nav');
     nav.className = 'doc-toc';
     let h2n = 0, h3n = 0;
     nav.innerHTML =
-      '<div class="doc-toc-t">목차</div>' +
+      (schemaLayout
+        ? '<button type="button" class="doc-toc-t doc-toc-toggle" aria-expanded="false">정보 구조</button>'
+        : '<div class="doc-toc-t">목차</div>') +
       hs.map((h, i) => {
         if (!h.id) h.id = `sec-${i}`;
         let num;
@@ -1112,9 +1115,60 @@ window.MD = (() => {
       const a = e.target.closest('a');
       if (!a) return;
       e.preventDefault();
-      hs[+a.dataset.i].scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const target = hs[+a.dataset.i];
+      const narrowSchema = schemaLayout && matchMedia('(max-width: 900px)').matches;
+      if (narrowSchema) {
+        nav.classList.remove('open');
+        nav.querySelector('.doc-toc-toggle').setAttribute('aria-expanded', 'false');
+      }
+      // scrollIntoView 는 고정 목차까지 포함한 바깥 페이지를 함께 움직일 수 있다.
+      // 제목의 root 내부 좌표를 계산해 문서 스크롤 컨테이너만 이동한다.
+      const move = () => {
+        const top = root.scrollTop + target.getBoundingClientRect().top - root.getBoundingClientRect().top - 16;
+        root.scrollTo({
+          top: Math.max(0, top),
+          behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        });
+      };
+      if (narrowSchema) requestAnimationFrame(move); // 목차가 접혀 본문 위치가 확정된 뒤 계산
+      else move();
     });
-    root.insertBefore(nav, root.firstChild);
+    if (schemaLayout) {
+      const toggle = nav.querySelector('.doc-toc-toggle');
+      toggle.addEventListener('click', () => {
+        const open = nav.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', String(open));
+      });
+    }
+    if (schemaLayout) {
+      const content = document.createElement('div');
+      content.className = 'schema-content';
+      while (root.firstChild) content.appendChild(root.firstChild);
+      root.appendChild(nav);
+      root.appendChild(content);
+
+      if (root.__tocObserver) root.__tocObserver.disconnect();
+      let active = null;
+      const links = [...nav.querySelectorAll('a')];
+      root.__tocObserver = new IntersectionObserver((entries) => {
+        const visible = entries.filter((entry) => entry.isIntersecting);
+        if (!visible.length) return;
+        const i = hs.indexOf(visible[0].target);
+        if (i < 0 || links[i] === active) return;
+        if (active) active.classList.remove('active');
+        active = links[i];
+        active.classList.add('active');
+        // 현재 항목은 왼쪽 목차 안에서만 보이게 한다. scrollIntoView 를 쓰면
+        // 조상인 본문 스크롤까지 되돌아가 목차 클릭 이동과 충돌한다.
+        const nr = nav.getBoundingClientRect();
+        const ar = active.getBoundingClientRect();
+        if (ar.top < nr.top + 28) nav.scrollTop -= nr.top + 28 - ar.top;
+        else if (ar.bottom > nr.bottom - 12) nav.scrollTop += ar.bottom - nr.bottom + 12;
+      }, { root, rootMargin: '-8% 0px -82% 0px', threshold: 0 });
+      hs.forEach((h) => root.__tocObserver.observe(h));
+    } else {
+      root.insertBefore(nav, root.firstChild);
+    }
   }
 
   function enhanceDiagrams(root) {

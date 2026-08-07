@@ -45,6 +45,12 @@ function parseFrontmatter(text) {
   return { meta, body: text.slice(m[0].length) };
 }
 
+function cardDate(meta, fallback) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(meta.date || '')
+    ? `${meta.date}T00:00:00.000Z`
+    : fallback;
+}
+
 async function entries(dir) {
   try {
     return await readdir(dir, { withFileTypes: true });
@@ -85,7 +91,7 @@ async function card(absFile, category, subcategory) {
     view: meta.view || '',
     embed: meta.embed || '',
     summary,
-    updatedAt: st.mtime.toISOString(),
+    updatedAt: cardDate(meta, st.mtime.toISOString()),
   };
 }
 

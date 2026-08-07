@@ -3,24 +3,24 @@ title: 3. 솔루션 지형 — VerifyVASP·CODE·글로벌 프로토콜
 status: To Do
 ---
 
-트래블룰 데이터 교환은 원장 밖(off-chain) 메시징 프로토콜이 담당하는 게 일반적이며, 데이터 표준은 셋 다 IVMS101(interVASP Messaging Standard) 로 같고 통신 아키텍처만 다르다.
-국내는 VerifyVASP 와 CODE 로 양분되고, 글로벌은 Notabene 등 레그테크 SaaS 다.
+트래블룰 데이터 교환은 원장 밖(off-chain) 메시징 프로토콜이 담당하는 게 일반적이며, 데이터 표준은 셋 다 {{IVMS101::InterVASP Messaging Standard 101 — 트래블룰 당사자 정보를 교환하기 위한 데이터 표준}}로 같고 통신 아키텍처만 다르다.
+국내는 VerifyVASP 와 CODE 로 양분되고, 글로벌은 Notabene 등 {{RegTech::Regulatory Technology — 규제 준수 업무를 기술로 자동화·지원하는 제품과 서비스}} SaaS 다.
 
 ## 왜 원장 밖 프로토콜인가
 
-트래블룰이 요구하는 것은 송금인(originator)·수취인(beneficiary) 의 개인식별정보(PII) 를 송신 VASP 가 수신 VASP 에 전달하는 일이다. 이 데이터는 블록체인에 올릴 수 없다 — 개인정보를 공개 원장에 새기는 순간 그 자체가 규정 위반이자 프라이버시 사고가 된다.
+트래블룰이 요구하는 것은 송금인(originator)·수취인(beneficiary)의 {{PII::Personally Identifiable Information — 개인을 식별할 수 있는 정보}}를 송신 {{VASP::Virtual Asset Service Provider — 가상자산사업자}}가 수신 VASP에 전달하는 일이다. 이 데이터는 블록체인에 올릴 수 없다 — 개인정보를 공개 원장에 새기는 순간 그 자체가 규정 위반이자 프라이버시 사고가 된다.
 
 그래서 실제 데이터 교환은 원장 밖(off-chain) 메시징 프로토콜이 담당한다. 온체인 거래는 그대로 흐르고, 그와 짝을 이루는 PII 메시지는 별도 채널로 VASP 끼리 주고받는다. 세 진영 모두 데이터 표준은 IVMS101 로 같다. 갈리는 것은 통신 아키텍처 — 상대 VASP 를 어떻게 찾고, 데이터를 어떤 경로로 암호화해 보내느냐다.
 
 ## 국내 3종 — VerifyVASP · CODE · Notabene
 
-국내 시장은 두나무 자회사 람다256 이 주도하는 VerifyVASP 연합과, 빗썸·코인원·코빗이 합작한 CODE 진영으로 나뉜다. 여기에 글로벌 레그테크 Notabene 이 SaaS 로 얹힌다.
+국내 시장은 두나무 자회사 람다256 이 주도하는 VerifyVASP 연합과, 빗썸·코인원·코빗이 합작한 CODE 진영으로 나뉜다. 여기에 글로벌 {{RegTech::Regulatory Technology — 규제 준수 업무를 기술로 자동화·지원하는 제품과 서비스}} 기업 Notabene 이 SaaS 로 얹힌다.
 
 | 비교 항목 | VerifyVASP | CODE | Notabene |
 |---|---|---|---|
-| 주체 | 람다256(두나무 자회사) 주도 연합 | 빗썸·코인원·코빗 합작법인 | 글로벌 레그테크 기업 |
-| 구현 | 비블록체인 API + Enclave 서버 (각 VASP 인프라 설치형) | Corda 프라이빗 블록체인 → 상호연동 과정에서 비블록체인으로 재개발 | 멀티 프로토콜 SaaS |
-| 데이터 보안 | 종단간 암호화(E2EE) — 중앙 서버는 복호화 불가 | 노드 간 직접 합의 (중개자 배제) | 기업별 룰 엔진·오케스트레이션 |
+| 주체 | 람다256(두나무 자회사) 주도 연합 | 빗썸·코인원·코빗 합작법인 | 글로벌 {{RegTech::Regulatory Technology — 규제 준수 업무를 기술로 자동화·지원하는 제품과 서비스}} 기업 |
+| 구현 | 비블록체인 API + {{Enclave::VerifyVASP가 VASP 내부에 설치하는 암복호화·통신 모듈}} 서버 (각 VASP 인프라 설치형) | Corda 프라이빗 블록체인 → 상호연동 과정에서 비블록체인으로 재개발 | 멀티 프로토콜 SaaS |
+| 데이터 보안 | 종단간 암호화({{E2EE::End-to-End Encryption — 송신자와 수신자만 내용을 해독할 수 있는 종단간 암호화}}) — 중앙 서버는 복호화 불가 | 노드 간 직접 합의 (중개자 배제) | 기업별 룰 엔진·오케스트레이션 |
 | 상호운용 | CODE 와 상호연동 완료 | VerifyVASP 와 직접 통신 | 글로벌 규격 연계 |
 
 CODE 는 원래 Corda 기반 프라이빗 블록체인으로 출발했으나, VerifyVASP 와 상호연동하는 과정에서 비블록체인 방식으로 재개발했다. 두 국내 진영의 상호연동은 2022-04-25 0시에 완료됐고, 이로써 4대 거래소 간 100만원 이상 입출금이 재개됐다. 당초 특금법 시행(2022-03-25) 과 동시에 연동될 예정이었으나 약 한 달 지연됐다.
@@ -53,14 +53,14 @@ flowchart LR
 
 | 프로토콜/네트워크 | 성격 | 카운터파티 발견·검증 | 비고 |
 |---|---|---|---|
-| TRISA | 오픈소스, P2P 메시징 + 중앙 CA(인증서 권한) | 중앙 CA 가 VASP 공개키 인증서 목록 역할 | PII 는 VASP 끼리 직접 P2P 교환 |
+| TRISA | 오픈소스, {{P2P::Peer-to-Peer — 중앙 중개 없이 참여자끼리 직접 통신하는 방식}} 메시징 + 중앙 {{CA::Certificate Authority — 디지털 인증서를 발급·검증하는 인증기관}} | 중앙 CA가 VASP 공개키 인증서 목록 역할 | PII는 VASP끼리 직접 P2P 교환 |
 | TRP(Travel Rule Protocol) | 오픈, 중앙 목록 + E2E API | 중앙 목록 서비스로 VASP 발견 | Coinbase 등 업계 컨소시엄 주도 |
 | OpenVASP | 오픈, 탈중앙 발견 | 공유 인프라 최소화·메시지 표준 중심 | 프라이버시·탈중앙 강조 |
 | TRUST | 폐쇄형(미국 중심) | 멤버 한정 | 미국 거래소 연합 |
 | Sygna Bridge | 상용 | 자체 네트워크 | — |
 | VerifyVASP | 상용, P2P·E2E, API | 검증된 VASP 네트워크(150여 곳·30여 국) | 한국계 |
 | Shyft / Veriscope | 온체인 접근 | 블록체인 기반 목록 | 프로토콜 자체가 체인 |
-| Notabene | 프로토콜 비종속 게이트웨이 | W3C DID·검증가능자격증명(VC) 으로 기존 프로토콜을 브릿지 | 여러 프로토콜을 한 대시보드로 |
+| Notabene | 프로토콜 비종속 게이트웨이 | W3C {{DID::Decentralized Identifier — 중앙 등록기관에 의존하지 않는 분산 식별자}}·검증가능자격증명({{VC::Verifiable Credential — 검증가능자격증명}})으로 기존 프로토콜을 브릿지 | 여러 프로토콜을 한 대시보드로 |
 
 ## 공통점과 차이
 
