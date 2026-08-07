@@ -6,6 +6,13 @@
     "트래블룰"
   ],
   "subcategories": {
+    "BC": [
+      "설계",
+      "기능검토",
+      "트래블룰솔루션",
+      "Fireblocks QnA",
+      "WaaS SDK QnA"
+    ],
     "캔톤네트워크": [
       "개념",
       "무스비 PoC"

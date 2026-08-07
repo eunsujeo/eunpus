@@ -25,6 +25,10 @@ function fmtDate(iso) {
   return iso ? iso.slice(0, 10) : '';
 }
 
+function plainSummary(text) {
+  return String(text || '').replace(/\{\{([^{}]+?)::[^{}]+\}\}/g, '$1');
+}
+
 function showToast(msg, isError) {
   toast.textContent = msg;
   toast.classList.toggle('error', !!isError);
@@ -64,6 +68,7 @@ window.addEventListener('popstate', () => {
   const prev = nav;
   readURL();
   if (nav.cat !== prev.cat || nav.sub !== prev.sub) render();
+  syncPreviewFromURL();
 });
 
 function renderCrumbs() {
@@ -648,7 +653,7 @@ function cardEl(c) {
   el.dataset.path = c.path;
   el.innerHTML = `
     <h3 class="card-title">${esc(c.title)}</h3>
-    <p class="card-summary">${esc(c.summary.join(' '))}</p>
+    <p class="card-summary">${esc(plainSummary(c.summary.join(' ')))}</p>
     <div class="card-foot">
       <span class="card-date">${fmtDate(c.updatedAt)}</span>
       ${c.ref ? `<span class="card-ref-tag">${esc(c.ref)}</span>` : ''}
@@ -677,6 +682,7 @@ async function loadBoard() {
     cards = data.cards || [];
     readURL();
     render();
+    syncPreviewFromURL();
   } catch (e) {
     view.innerHTML = `<div class="board-status error">불러오기 실패: ${esc(e.message)}</div>`;
   }
@@ -714,22 +720,56 @@ let currentDoc = null;   // 복사·다운로드·새창용 { name, path, raw }
 let previewList = [];    // 같은 중카테고리 형제 카드 (순서대로)
 let previewIdx = -1;
 
-function openPreview(c) {
+function previewPathFromURL() {
+  return new URLSearchParams(location.search).get('doc') || '';
+}
+
+function setPreviewURL(c, mode = 'replace') {
+  const q = new URLSearchParams(location.search);
+  if (c) {
+    q.set('cat', c.category);
+    q.set('sub', c.subcategory);
+    q.set('doc', c.path);
+  } else {
+    q.delete('doc');
+  }
+  const next = `${location.pathname}${q.toString() ? `?${q}` : ''}`;
+  try {
+    history[mode === 'push' ? 'pushState' : 'replaceState'](
+      { cat: nav.cat, sub: nav.sub, doc: c ? c.path : null },
+      '',
+      next
+    );
+  } catch {
+    // file:// 로 연 정적 HTML 에서 History API 가 막혀도 문서 열기는 계속 동작한다.
+  }
+}
+
+function openPreview(c, pushURL = true) {
+  // 공유 URL 만으로 들어온 경우에도 원문 뒤에 해당 중카테고리가 보이도록 위치를 맞춘다.
+  if (nav.cat !== c.category || nav.sub !== c.subcategory) {
+    nav = { cat: c.category, sub: c.subcategory };
+    render();
+  }
   // 형제 = 같은 대·중카테고리, 파일명 순
   previewList = cards
     .filter((x) => x.category === c.category && x.subcategory === c.subcategory)
     .sort((a, b) => a.name.localeCompare(b.name));
   previewIdx = previewList.findIndex((x) => x.path === c.path);
+  if (pushURL) setPreviewURL(c, 'push');
+  else setPreviewURL(c, 'replace');
   modal.classList.remove('hidden');
-  showPreviewAt(previewIdx);
+  showPreviewAt(previewIdx, false);
 }
 
-async function showPreviewAt(idx) {
+async function showPreviewAt(idx, syncURL = true) {
   if (idx < 0 || idx >= previewList.length) return;
   previewIdx = idx;
   const c = previewList[idx];
+  if (syncURL) setPreviewURL(c, 'replace');
   modalTitle.textContent = c.title;
   modalChips.innerHTML = '';
+  modalBody.classList.remove('schema-doc');
   modalBody.innerHTML = '<p style="color:var(--muted)">불러오는 중…</p>';
   modalBody.scrollTop = 0;
   currentDoc = null;
@@ -748,6 +788,7 @@ async function showPreviewAt(idx) {
       previewList.length > 1 ? `<span class="chip">${idx + 1} / ${previewList.length}</span>` : '',
     ].join('');
     modalBody.innerHTML = renderMarkdown(data.body, { docBase: c.path.split('/').slice(0, -1).join('/'), docLinksNewTab: m.linkMode === 'newtab' });
+    modalBody.classList.toggle('schema-doc', m.layout === 'schema');
     window.MD.enhanceToc(modalBody);
     await window.MD.runMermaid('#modal-body .mermaid');
     window.MD.enhanceDiagrams(modalBody);
@@ -755,6 +796,24 @@ async function showPreviewAt(idx) {
   } catch (e) {
     modalBody.innerHTML = `<p style="color:var(--danger)">미리보기 실패: ${esc(e.message)}</p>`;
   }
+}
+
+function closePreview(syncURL = true) {
+  modal.classList.add('hidden');
+  currentDoc = null;
+  if (syncURL) setPreviewURL(null, 'replace');
+}
+
+function syncPreviewFromURL() {
+  const path = previewPathFromURL();
+  if (!path) {
+    if (!modal.classList.contains('hidden')) closePreview(false);
+    return;
+  }
+  const c = cards.find((x) => x.path === path);
+  if (!c) return;
+  if (!modal.classList.contains('hidden') && currentDoc && currentDoc.path === path) return;
+  openPreview(c, false);
 }
 
 // 정적 내보내기(export-board.mjs)에서 문서 간 링크(doc?path=…)를 모달로 열기 위한 훅
@@ -797,6 +856,28 @@ document.getElementById('open-page').addEventListener('click', () => {
   window.open(`doc?path=${encodeURIComponent(currentDoc.path)}`, '_blank');
 });
 
+document.getElementById('copy-link').addEventListener('click', async () => {
+  if (!currentDoc) return;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(location.href);
+    } else {
+      const input = document.createElement('textarea');
+      input.value = location.href;
+      input.style.position = 'fixed';
+      input.style.opacity = '0';
+      document.body.appendChild(input);
+      input.select();
+      const copied = document.execCommand('copy');
+      input.remove();
+      if (!copied) throw new Error('copy unavailable');
+    }
+    showToast('원문 링크를 클립보드에 복사했습니다');
+  } catch {
+    showToast('링크 복사 실패 — 주소창의 URL을 복사해 주세요', true);
+  }
+});
+
 document.getElementById('copy-md').addEventListener('click', async () => {
   if (!currentDoc) return;
   try {
@@ -818,7 +899,7 @@ document.getElementById('download-md').addEventListener('click', () => {
 });
 
 modal.addEventListener('click', (e) => {
-  if (e.target.hasAttribute('data-close')) modal.classList.add('hidden');
+  if (e.target.hasAttribute('data-close')) closePreview();
 });
 // 문서 내 앱 링크(?cat=…&sub=…)는 새 탭 대신 그 자리에서 이동한다 — 라이브·정적 공통.
 // (Ctrl/Cmd·중클릭은 브라우저 기본대로 두어 새 탭 허용)
@@ -827,12 +908,12 @@ document.addEventListener('click', (e) => {
   if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
   e.preventDefault();
   const q = new URLSearchParams(a.getAttribute('href').slice(1));
-  modal.classList.add('hidden');
+  closePreview(false);
   goTo(q.get('cat') || null, q.get('sub') || null);
 });
 document.addEventListener('keydown', (e) => {
   if (modal.classList.contains('hidden')) return;
-  if (e.key === 'Escape') modal.classList.add('hidden');
+  if (e.key === 'Escape') closePreview();
   else if (e.key === 'ArrowLeft') showPreviewAt(previewIdx - 1);
   else if (e.key === 'ArrowRight') showPreviewAt(previewIdx + 1);
 });

@@ -1,0 +1,67 @@
+# VerifyVASP Documentation
+
+> Documentation for VerifyVASP
+
+## API Reference
+- [Overview](https://docs.verifyvasp.com/reference/welcome.md): Welcome to the VerifyVASP documentation. Access a comprehensive overview for quick entry to key reference materials supporting your TravelRule or VerifyName protocol implementation.
+- [Understanding Travel Rule](https://docs.verifyvasp.com/reference/understanding-travel-rule.md)
+- [Purpose and Scope](https://docs.verifyvasp.com/reference/purpose-and-scope.md): This guide provides a comprehensive overview of the Travel Rule and VerifyName solutions, helping Virtual Asset Service Providers (VASPs) comply effectively with Travel Rule and related regulatory requirements.
+- [Definitions](https://docs.verifyvasp.com/reference/definitions.md)
+- [Change logs](https://docs.verifyvasp.com/reference/change-logs.md)
+- [How to migrate Enclave 1.5.x to 2.0.0](https://docs.verifyvasp.com/reference/how-to-migrate-enclave.md)
+- [TravelRule VS VerifyName](https://docs.verifyvasp.com/reference/travelrule-vs-verifyname.md): VerifyVASP provides two core protocols — TravelRule and VerifyName — each designed to address different VASP compliance requirements. Select and implement the protocol that best meets your VASP’s Travel Rule obligations.
+- [Overview](https://docs.verifyvasp.com/reference/travelrule-overview.md): This page provides an overview of VerifyVASP’s architecture and the verification processes based on the TravelRule and VerifyName protocols. Before beginning integration, review the available security options and the integration sequence on the VASP side to plan your implementation.
+- [Scenarios and Flows](https://docs.verifyvasp.com/reference/travelrule-scenarios-and-flows.md): This section introduces the Best Practice scenario required for TravelRule implementation, along with optional Screening scenarios and detailed flows. Follow the flow diagrams to complete the TravelRule integration process according to your VASP’s requirements.
+- [To-Be Architecture](https://docs.verifyvasp.com/reference/travelrule-to-be-architecture.md): This section outlines the To-Be Architecture of a VASP backend for TravelRule integration, along with the required implementation scope.
+- [Scenarios and Flows](https://docs.verifyvasp.com/reference/verifyname-scenarios-and-flows.md): This section introduces the Post-Verification and Pre-Verification scenarios for the VerifyName protocol, along with the related API flows. Each VASP can choose the appropriate scenario based on the counterparty VASP’s Travel Rule regulatory obligations.
+- [To-Be Architecture](https://docs.verifyvasp.com/reference/verifyname-to-be-architecture.md): This section describes the To-Be Architecture of a VASP backend for VerifyName 2.0 integration, along with the required implementation scope.
+- [Onboarding](https://docs.verifyvasp.com/reference/onboarding.md): Before integrating the Travel Rule or VerifyName protocols, you must complete VerifyVASP onboarding and obtain an API Key.
+- [VASP API Implementation](https://docs.verifyvasp.com/reference/travelrule-api-implementation.md): The first step for TravelRule integration is implementing the VASP APIs. This section describes the API specifications and requirements for the REST APIs that must be implemented in your VASP backend.
+- [Verify User Account API](https://docs.verifyvasp.com/reference/travelrule-user-account-verification.md)
+- [Verify User API](https://docs.verifyvasp.com/reference/travelrule-user-verification.md)
+- [Callback API](https://docs.verifyvasp.com/reference/travelrule-callback.md)
+- [Check Transaction Status API](https://docs.verifyvasp.com/reference/travelrule-check-transaction-status.md)
+- [Database Management API](https://docs.verifyvasp.com/reference/travelrule-get-decrypted-enckey.md)
+- [Enclave Database Initialization](https://docs.verifyvasp.com/reference/travelrule-database-setup.md): Once the VASP API implementation is complete, you can begin preparing to launch the Enclave server. Before running the Enclave server, a dedicated database must be provisioned. This guide outlines the system requirements, operational policies, and configuration details required to set up the database used by the Enclave.
+- [Running and Integrating the Enclave](https://docs.verifyvasp.com/reference/travelrule-enclave-setup.md): Once the Enclave database has been configured, you can proceed with downloading the Enclave Docker image and launching the server. This document provides guidance on running the Enclave and setting the necessary environment variables.
+- [Get VASP ID API](https://docs.verifyvasp.com/reference/travelrule-get-vasp-id.md): Get VASP ID API
+- [List VASP API](https://docs.verifyvasp.com/reference/travelrule-list-vasp-ids.md)
+- [Request User Account Verification API](https://docs.verifyvasp.com/reference/travelrule-enclave-user-account-verification.md)
+- [Request User Verification API](https://docs.verifyvasp.com/reference/travelrule-encalve-request-user-verification.md)
+- [Report Transaction Result API](https://docs.verifyvasp.com/reference/travelrule-enclave-report-transaction-result.md)
+- [Report Error API](https://docs.verifyvasp.com/reference/travelrule-enclave-report-error.md)
+- [Check Transaction Status API](https://docs.verifyvasp.com/reference/travelrule-enclave-check-transaction-status.md)
+- [List Verification Result API](https://docs.verifyvasp.com/reference/travelrule-enclave-list-verification-result.md)
+- [Get Verification Result API](https://docs.verifyvasp.com/reference/travelrule-enclave-get-verification-result.md)
+- [Risk Assessment Via Chainalysis Sanction API](https://docs.verifyvasp.com/reference/travelrule-chainalysis-sanction.md)
+- [Risk Assessment Via Chainalysis KYT API](https://docs.verifyvasp.com/reference/travelrule-chainalysis-kyt.md)
+- [Risk Assessment Via Refinitiv WCO API](https://docs.verifyvasp.com/reference/travelrule-refinitiv-wco.md)
+- [RobotVASP Integration End-to-End Test](https://docs.verifyvasp.com/reference/travelrule-robotvasp-integration-test.md): Once the main integration tasks are completed, you can perform simulated deposit and withdrawal tests by using the Robot VASP provided by VerifyVASP as the counterparty VASP. This document explains how to verify the proper integration of major use cases through simulation tests.
+- [ Withdrawal Scenario Test](https://docs.verifyvasp.com/reference/travelrule-withdrawal-test.md): This document explains the withdrawal scenario, including test cases and expected behaviors.
+- [Deposit Scenario Test](https://docs.verifyvasp.com/reference/travelrule-deposit-test.md): This guide provides the deposit scenario, including the test cases and expected behavior.
+- [Operations](https://docs.verifyvasp.com/reference/travelrule-maintenance.md): This section defines the operational regulations for VASPs to ensure stable operation of the Travel Rule Protocol. By adhering to these regulations, VASPs can minimize errors during inter-VASP verification processes and provide a stable user experience.
+- [VASP API Implementation](https://docs.verifyvasp.com/reference/verifyname-api-implemantion.md): This is the first step for integrating with VerifyName — implementing the VASP API. This document outlines the specifications and requirements for the REST APIs that must be implemented in your VASP backend.
+- [VerifyName API](https://docs.verifyvasp.com/reference/verifyname-request-verification.md)
+- [Callback API](https://docs.verifyvasp.com/reference/verifyname-callback.md)
+- [Database Management API](https://docs.verifyvasp.com/reference/verifyname-get-decrypted-enckey.md)
+- [Enclave Database Initialization](https://docs.verifyvasp.com/reference/verifyname-database-setup.md): Once the VASP API implementation is complete, you can begin preparing to launch the Enclave server. Before starting the Enclave server, you must pre-configure the database that will be used by the Enclave so that it is ready for use. This guide describes in detail the system requirements, operational policies, and configuration parameters for setting up the database used by the Enclave server.
+- [Running and Integrating the Enclave](https://docs.verifyvasp.com/reference/verifyname-enclave-setup.md): Once the Enclave database has been configured, you can proceed to download the Enclave Docker image and start the server. This document provides guidance on running the Enclave and configuring its environment variables.
+- [Get VASP ID API](https://docs.verifyvasp.com/reference/verifyname-get-vasp-id.md)
+- [List VASP API](https://docs.verifyvasp.com/reference/verifyname-list-vasp.md)
+- [Request Owner Verification API](https://docs.verifyvasp.com/reference/verifyname-owner-verification.md)
+- [Owner Verification Result Report API](https://docs.verifyvasp.com/reference/verifyname-owner-verification-result-report.md)
+- [Owner Verification Transaction Report API](https://docs.verifyvasp.com/reference/verifyname-transaction-report.md)
+- [List Owner Verification Result API](https://docs.verifyvasp.com/reference/verifyname-list-owner-verification.md)
+- [Get Owner Verification Result API](https://docs.verifyvasp.com/reference/verifyname-get-owner-verification-result.md)
+- [RobotVASP Integration End-to-End Test](https://docs.verifyvasp.com/reference/verifyname-robotvasp-integration-test.md): Once the main integration work is complete, you can perform mock deposit and withdrawal tests using the Robot VASP provided by VerifyVASP as the counterparty VASP. This document explains how to verify successful integration for key cases through mock testing.
+- [Withdrawal Scenario Test](https://docs.verifyvasp.com/reference/verifyname-withdrawal-test.md): This guide explains how to verify the withdrawal scenario and check the relevant test cases and expected behaviors.
+- [Deposit Scenario Test](https://docs.verifyvasp.com/reference/verifyname-deposit-test.md): This guide explains the deposit scenario, test cases, and expected results.
+- [Operations](https://docs.verifyvasp.com/reference/verifyname-maintenance.md): These are the operational guidelines for VASPs to ensure the stable operation of the VerifyName Protocol. By adhering to these rules, you can minimize potential errors during the inter-VASP verification process and provide a stable user experience.
+- [IVMS101 Guide](https://docs.verifyvasp.com/reference/ivms101-guide.md): InterVASP Messaging Standards 101 (hereinafter referred to as IVMS101) provides a standardized data model for the Originator and Beneficiary information that VASPs must exchange to meet the requirements of the Financial Action Task Force (FATF) Travel Rule.
+- [Network Standard](https://docs.verifyvasp.com/reference/network-standard.md): This document provides a guide on how to fill in the network field in the request body when sending API requests such as the User Verification API, User Account Verification API, or Risk Assessment with the Chainalysis KYT API. Additionally, you can check the list of networks that can be entered in the network field.
+- [ISO20022 Standard](https://docs.verifyvasp.com/reference/iso20022-standard.md): ISO 20022 is an international standard format for electronic data exchange between financial institutions, used for constructing messages in financial transactions. Established in 2004, it has been adopted or is under consideration for adoption by major national financial market infrastructures.
+- [Wallet Address Format Standard](https://docs.verifyvasp.com/reference/wallet-address-format-standard.md): Some blockchain networks have their own unique address scheme, so your VASP must enter a suitable address that fits the scheme supported by the network for each verification request.
+- [TXID Standard](https://docs.verifyvasp.com/reference/txid-standard.md): This guide provides the standards and examples for Transaction IDs to effectively support data transportation between VASPs.
+- [Onboarding](https://docs.verifyvasp.com/reference/faq-onboarding.md)
+- [Integration](https://docs.verifyvasp.com/reference/faq-integration.md)
+- [Maintanence](https://docs.verifyvasp.com/reference/faq-maintanence.md)

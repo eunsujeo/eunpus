@@ -1,0 +1,173 @@
+solution: CODE
+publisher: CodeVASP
+accessed_at: 2026-08-07
+authority_grade: A2
+immutable: true
+sources:
+  - id: CODE-IDX-001
+    file: 2026-08-07__docs-index.md
+    url: https://docs.codevasp.com/api/markdown/en
+    sha256: 0bba7611aa2182831ad1323df72fb097eeb5851f13b5c70472e36dc7861ee143
+  - id: CODE-API-001
+    file: 2026-08-07__introduction.md
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/01-Intro/01-CodeVASP-Introduction
+    sha256: 70e4caf30cd7ddadd74e8356e1b59f4d26d9212edc5f363dc1d2f41ae91b9149
+  - id: CODE-ONB-001
+    file: 2026-08-07__integration-process.md
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/guides/01-General/01-Integration-Process
+    sha256: 607535466b1d12c1e7a0cf9bfe9da06d0ccfe654da9e8479f14ab0b4cdeb28dd
+  - id: CODE-FLOW-001
+    file: 2026-08-07__communication-scenarios.md
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/guides/01-General/02-Communication-Scenarios
+    sha256: 48caa00499fe96bfa5aae408894e54f2c6dfed510577aed55425e1d610134c1a
+  - id: CODE-FLOW-002
+    file: 2026-08-07__transaction-flow.md
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/guides/01-General/03-Transaction-Flow
+    sha256: 6bdc52c53e1a19fef61062699b5669e4f95ddc6966887e27013f10bf65a470c6
+  - id: CODE-SEC-001
+    file: 2026-08-07__encryption-decryption.md
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/guides/02-Development/02-Encryption-Decryption
+    sha256: 4df649dbdbf8e4eda00e2864ada6e860dfc0b96c7eae440d0a60031a546597be
+  - id: CODE-SEC-002
+    file: 2026-08-07__cipher-server-module.md
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/guides/02-Development/11-CodeVASP-Cipher-Server-Module-Guide
+    sha256: c4093c02fb5ebd9bdb99d593d326f78cfcb436352a089e7b808693b534e73aae
+  - id: CODE-INT-001
+    file: 2026-08-07__interoperability.md
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/guides/02-Development/12-Interoperability-with-Other-Protocols
+    sha256: f66684e82a0910c67d5762783e622f90c33df908d2549e7b4c019ea3fca2f04a
+  - id: CODE-HDR-001
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/guides/02-Development/03-Header-Parameter
+    sha256: 0ef4e046c3db3a294bd59e576f03696e7d0a0ed7da8bbfe07e4dde7ac2c4b2fd
+  - id: CODE-IVMS-001
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/guides/02-Development/04-IVMS101-part1
+    sha256: bcebf91d4f8537ad80275714a83afa637f1c0777bbe5f54156f985b34ad6eb8b
+  - id: CODE-IVMS-002
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/guides/02-Development/04-IVMS101-part2
+    sha256: bac5e0eb05f2b4b5c6b65b9f9c27bcbe3c89c17c8a809c5f4a0b70a4e39a98da
+  - id: CODE-IVMS-003
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/guides/02-Development/04-IVMS101-part3
+    sha256: ed8efc2205cedd0718e29324818f2fc99d49232824b4f071c7b62d6f49ac5abd
+  - id: CODE-SCHEMA-001
+    file: null
+    archived_locally: false
+    url: https://raw.githubusercontent.com/codevasp-lab/ivms101/main/json-schema.json
+    sha256: 2c34622856ca4a2ba61dcc5ea40706655863967ff4a61f3efbb5d0e541f12b2c
+  - id: CODE-REQ-001
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/03-Request-API/01-VASP-List-Search
+    sha256: c1cc88ce23d58536dc0958fa7d479778d593579a6599c2bc5886afb7faedcdb0
+  - id: CODE-REQ-002
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/03-Request-API/02-Public-Key-Search
+    sha256: f846d8975e22c8fc181732d7b6303ab86b4062b9e91c8dfa0dfa2c4d373b2025
+  - id: CODE-REQ-003
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/03-Request-API/03-Networks-by-Coin
+    sha256: 21c694349dbb8b5c5020b43014875a8cbe3bcd11f1dab9ad7a4572574a71fe91
+  - id: CODE-REQ-004
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/03-Request-API/04-Search-VASP-by-Wallet-Request
+    sha256: 21fd06ae4942fbc19529c22b606a0557c4b2824bcf80ab8fa5071e7d6ad6d7e6
+  - id: CODE-REQ-005
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/03-Request-API/05-Search-VASP-by-Wallet-Result
+    sha256: 9cdd063dcc59cdbc8267f2de3d2bd07290f685c9e67619b006ba11ac3283f9ce
+  - id: CODE-REQ-006
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/03-Request-API/06-Virtual-Asset-Address-Search
+    sha256: 4f2b9e0e2fe6c084f971ba791ef61188b1aa5acbd456d260fc5e94ae4e7c5eb0
+  - id: CODE-REQ-007
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/03-Request-API/07-Asset-Transfer-Authorization
+    sha256: 8b293c3e36cae2e1fd2cc37838fa298480dc7e0ffbea1acf01538276e658b25b
+  - id: CODE-REQ-008
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/03-Request-API/08-Report-Transfer-Result
+    sha256: 0ffb26a29995add4535e39fa1f06e21e8c4e8e62c002b742714a86558eeeeb27
+  - id: CODE-REQ-009
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/03-Request-API/09-Transaction-Status-Search
+    sha256: 167607f97ca1ec4643caa0b388fe92ae44fa45c69deea9a10a0de84f13af08f0
+  - id: CODE-REQ-010
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/03-Request-API/10-Finish-Transfer
+    sha256: 373d6175e0d3d8cdb5eab9a4e2c7b66d8a66d57385dd299b6c0386bbe3cbecc2
+  - id: CODE-REQ-011
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/03-Request-API/11-Search-VASP-by-TXID-Request
+    sha256: 5bd4bbd63f3001256ef3da4c182fb5ddef8131bb6acc174588a5f4942c9fc5d3
+  - id: CODE-REQ-012
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/03-Request-API/12-Search-VASP-by-TXID-Result
+    sha256: 9158426200300c4290480446262d7c73c5a1ef2e00f944dc2179147e895a2d8a
+  - id: CODE-REQ-013
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/03-Request-API/13-Asset-Transfer-Data-Request
+    sha256: 4a8686a83a99f8328ee808f41b719d437333b21dfd1a74d1ed7dfc9e8db3ce90
+  - id: CODE-RES-001
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/02-Response-API/01-Getting-Started
+    sha256: dc9377383d932b808e0142fdb57ed2fda5535c3d4131310566e5292b1360b334
+  - id: CODE-RES-002
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/02-Response-API/02-Virtual-Asset-Address-Search
+    sha256: f031ed53e68c79a9f673482cb8d996b686a302c64403b28d79ab45ef49316ef4
+  - id: CODE-RES-003
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/02-Response-API/03-Asset-Transfer-Authorization
+    sha256: 919eb29348c9c078982059e24a65a98562f984392d98fcc0c1433533a539645b
+  - id: CODE-RES-004
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/02-Response-API/04-Report-Transfer-Result
+    sha256: 79fbee80a8140a70cfcf380dc6c9f85f348854b944bfb7b600c3867ddead0ea5
+  - id: CODE-RES-005
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/02-Response-API/05-Transaction-Status-Search
+    sha256: 557994007caa54a37c5deaded643c63ebde26196ba69ab816514c10c023b5b8c
+  - id: CODE-RES-006
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/02-Response-API/06-Finish-Transfer
+    sha256: c53e69f01aea7e67b714f568f09c405fa56ad3fc3d766305ed4a6bb0a6d46745
+  - id: CODE-RES-007
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/02-Response-API/07-Search-VASP-by-TXID
+    sha256: a0d6f8283b385652901f65ce2a49c4a4957a0688c21bea1b47fbbe32a2b841ee
+  - id: CODE-RES-008
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/02-Response-API/08-Asset-Transfer-Data-Request
+    sha256: 219bfa64746961e53297b663db6044d5b3092cd46b082974b9d1a393249aa318
+  - id: CODE-RES-009
+    file: null
+    archived_locally: false
+    url: https://docs.codevasp.com/api/markdown/en/travel-rule/api-reference/02-Response-API/09-Health-Check
+    sha256: bc48c25f75ff353bfa16f6e1ea5cdaa58afbc9ed3ebde8472a0d421bffdc8078

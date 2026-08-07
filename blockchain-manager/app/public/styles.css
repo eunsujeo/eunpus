@@ -1291,11 +1291,59 @@ a.brand-mark { text-decoration: none; }
 /* 본문 자동 목차 — 미리보기 모달·문서 뷰 (md.js enhanceToc) */
 .doc-toc { margin: 4px 0 26px; padding: 14px 18px; border: 1px solid var(--hairline); border-radius: 10px; background: var(--surface); }
 .doc-toc-t { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 9px; }
+.doc-toc-toggle { width: 100%; padding: 0; border: 0; background: none; font-family: inherit; text-align: left; cursor: pointer; }
 .doc-toc a { display: flex; gap: 2px; padding: 3px 0; font-size: 13px; color: var(--muted-strong); text-decoration: none; line-height: 1.5; transition: color .12s ease; }
 .doc-toc a:hover { color: var(--text-strong); }
+.doc-toc a.active { color: var(--text-strong); font-weight: 600; }
 .doc-toc a.lv3 { padding-left: 20px; font-size: 12.5px; }
 .doc-toc-n { flex: none; min-width: 1.7em; color: var(--muted); font-variant-numeric: tabular-nums; }
 .doc-toc a:hover .doc-toc-n { color: inherit; }
+
+/* IVMS101 같은 필드 사전 — 업무 개념 지도에서 객체 상세로 내려가는 고정 구조 목차 */
+.doc-body.schema-doc {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  align-items: start;
+  gap: 32px;
+  padding: 0 28px 36px 0;
+}
+.schema-doc > .doc-toc {
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 142px);
+  overflow-y: auto;
+  margin: 0;
+  padding: 22px 16px 28px 22px;
+  border: 0;
+  border-right: 1px solid var(--hairline);
+  border-radius: 0;
+  background: var(--surface);
+}
+.schema-doc > .schema-content {
+  min-width: 0;
+  padding-top: 24px;
+  /* 마지막 절도 목차 클릭 시 상단까지 올라올 수 있는 스크롤 여유 */
+  padding-bottom: calc(100vh - 180px);
+}
+.schema-doc > .schema-content > h2:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+
+@media (max-width: 900px) {
+  .doc-body.schema-doc { display: block; padding: 18px 20px 28px; }
+  .schema-doc > .doc-toc {
+    position: static;
+    max-height: none;
+    margin: 0 0 24px;
+    padding: 14px 18px;
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+  }
+  .schema-doc > .doc-toc .doc-toc-t { margin-bottom: 0; }
+  .schema-doc > .doc-toc .doc-toc-toggle::after { content: "펼치기"; float: right; font-size: 10px; font-weight: 500; letter-spacing: 0; color: var(--muted); }
+  .schema-doc > .doc-toc.open .doc-toc-toggle::after { content: "접기"; }
+  .schema-doc > .doc-toc:not(.open) a { display: none; }
+  .schema-doc > .doc-toc.open .doc-toc-t { margin-bottom: 9px; }
+  .schema-doc > .schema-content { padding-top: 0; }
+}
 
 /* 긴 문서용 맨 위로 버튼 — 미리보기 모달 (app.js) */
 .doc-top { position: absolute; right: 24px; bottom: 22px; z-index: 6; padding: 8px 14px; border-radius: 22px; border: 1px solid var(--border-hover); background: var(--surface-elevated); color: var(--body); font-size: 12px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,.35); opacity: .9; transition: opacity .15s ease, transform .15s ease; }
