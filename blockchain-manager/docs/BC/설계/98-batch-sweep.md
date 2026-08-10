@@ -274,7 +274,7 @@ sequenceDiagram
 
 ### 실측 결과 (2026-08-10)
 
-이 문서에서 가장 오래 미확인으로 뒀던 질문이다. 이더리움 Sepolia 에서 직접 확인했다 — vault 82 가 EOA 를 spender 로 승인하고, 그 EOA 가 `transferFrom(vault82, vault12, 100)` 을 직접 호출했다.
+이더리움 Sepolia 에서 확인했다 — vault 82 가 EOA 를 spender 로 승인하고, 그 EOA 가 `transferFrom(vault82, vault12, 100)` 을 직접 호출했다. 상세는 [PoC 결과보고](95-approve-pull-poc-result.md).
 
 | 관찰 대상 | 결과 |
 |---|---|
@@ -305,7 +305,7 @@ operator 거래 아래 `networkRecords` 7개가 붙고, **원천 vault 가 귀�
 
 `transaction.network_records.processing_completed` 웹훅도 도착했다. 잔액도 맞았다(82: 500→300 · 83: 400→250 · 옴니버스 +350).
 
-**두 실측을 가르는 것은 "누가 온체인 거래를 제출했는가" 다.** 단건 때는 외부 EOA 가 제출해 Fireblocks 가 그 거래를 아예 몰랐고, 그래서 입금 쪽만 보였다. 배치는 우리 vault 가 제출하므로 벤더가 영수증을 파싱해 자기 vault 들에 귀속시킨다. 정리하면:
+**두 실측의 차이는 누가 온체인 거래를 제출했는지에서 온다.** 단건 때는 외부 EOA 가 제출해 Fireblocks 가 그 거래를 몰랐고, 그래서 입금 쪽만 보였다. 배치는 우리 vault 가 제출하므로 벤더가 영수증을 파싱해 자기 vault 들에 귀속시킨다. 정리하면:
 
 - **배치 sweep 은 감지·대사가 성립한다** — 원천 vault·금액이 `networkRecords` 에 나온다. 앞서 "벤더 기록으로는 귀속이 안 된다"고 본 것은 외부 제출 케이스에만 해당한다.
 - **대신 최상위 거래는 1건뿐이다** — 원천 vault 를 source 로 하는 최상위 거래도, 옴니버스 입금 최상위 거래도 생기지 않는다. 원장·감지는 반드시 `networkRecords` 를 펼쳐 읽어야 하고, 그래서 `transaction.network_records.processing_completed` 구독은 검토 대상이 아니라 **필수**가 된다 ([감지 상세](99-detection-detail.md) 이벤트 표).

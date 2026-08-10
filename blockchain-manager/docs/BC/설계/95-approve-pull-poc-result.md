@@ -4,13 +4,13 @@ status: Done
 ref: 참고
 ---
 
-[배치 sweep 메커니즘](98-batch-sweep.md)에서 오래 미확인으로 뒀던 두 질문을 실물로 검증했다(2026-08-10). ① ERC-20 `approve` 를 Fireblocks 로 어떻게 제출하나 ② vault 가 스스로 제출하지 않은 거래로 잔액이 빠질 때 벤더가 거래 기록과 웹훅을 내주나. 두 번째가 배치 sweep 채택 여부를 가르는 질문이었다.
+[배치 sweep 메커니즘](98-batch-sweep.md)의 미확인 항목 두 가지를 실물로 확인한 결과다(2026-08-10). ① ERC-20 `approve` 를 Fireblocks 로 어떤 형태로 제출하나 ② vault 가 스스로 제출하지 않은 거래로 잔액이 빠질 때 거래 기록과 웹훅이 어떻게 오나.
 
 ## 환경
 
 - 체인 **이더리움 Sepolia**. 토큰은 파블로 발행한 **kbKRW**(`KBKRW_ETH_TEST5_6KCC` · `0xe64B8b9be27a2DcEF434932d4e7065EB3E098f47` · 18 decimals · 업그레이드 가능한 프록시)
-- Fireblocks testnet 워크스페이스 · US 프로덕션 스택(api.fireblocks.io)
-- 웹훅 구독은 기존 3종에 **`transaction.network_records.processing_completed` 를 추가**해서 돌렸다. 배치 이동이 이 계열로만 온다면 3종 구독으로는 "안 왔다"고 잘못 결론내기 때문
+- Fireblocks testnet 워크스페이스
+- 웹훅 구독은 기존 3종에 **`transaction.network_records.processing_completed` 를 추가**해서 돌렸다
 - **Universal Gasless 는 쓰지 않았다** — vault 에 Sepolia ETH 를 직접 넣고 제출했다. 그래서 대납 적용 여부는 이 PoC 로 답이 나오지 않는다
 
 | 역할 | 주체 | 주소 |
@@ -32,7 +32,7 @@ sweeper 는 98 의 "최소 통제" 를 그대로 반영해 짰다 — 목적지(
 | 2 | 외부 EOA 가 단건 `transferFrom` 실행 | 빠지는 vault 쪽 **거래 기록·웹훅 없음** · 잔액만 감소 · 받는 vault 입금 1건만 생성 |
 | 3 | operator vault 가 배치 2 leg 제출 | `networkRecords` 7개에 **원천 vault·금액 귀속** · `network_records.processing_completed` 수신 |
 
-시나리오 2와 3의 결과가 갈린다. 가르는 것은 방식이 아니라 **누가 온체인 거래를 제출했는가** 다.
+시나리오 2와 3은 결과가 다르다. 차이는 방식이 아니라 **누가 온체인 거래를 제출했는지**에서 온다.
 
 ```mermaid
 flowchart TB
@@ -92,7 +92,7 @@ flowchart LR
   class L special
 ```
 
-제출값과 조회값이 다르다는 것이 이 절의 요점이다. 원장에 operation 을 남길 때 어느 쪽을 적을지 정해 둬야 한다.
+제출값과 조회값이 다르다. 원장에 operation 을 남길 때 어느 쪽을 적을지 정해 둬야 한다.
 
 정책 쪽에 `APPROVE` transactionType 과 Contract_Call 룰의 `applyForApprove` 플래그가 있으니 이 분류 위에 정책이 서는 구조로 보이지만, 정책이 실제로 걸리는지는 확인하지 않았다.
 
@@ -164,7 +164,7 @@ flowchart TB
 
 ## 종합 — 설계에 반영한 것
 
-- **배치 sweep 의 감지·대사는 성립한다.** "기록·웹훅이 안 나오면 배치 전체가 닫힌다"고 본 가정은 틀렸다. 단 성립 조건이 있다 — **제출을 우리 vault 로 해야 한다.** 서명만 넘겨 외부가 제출하는 구성(3009·2612 를 제3자가 실행)은 시나리오 2 처럼 원천 쪽 무기록이 된다.
+- **배치 sweep 의 감지·대사에 필요한 기록은 나온다.** 조건은 **제출을 우리 vault 로 하는 것**이다. 서명만 넘겨 외부가 제출하는 구성(3009·2612 를 제3자가 실행)은 시나리오 2 처럼 원천 쪽에 기록이 남지 않는다.
 - **`network_records.processing_completed` 구독이 검토 대상에서 필수로 바뀐다.** 최상위 거래 1건에는 이동 정보가 없어서, 이 이벤트와 `networkRecords` 없이는 어느 vault 에서 얼마가 빠졌는지 알 수 없다.
 - **대사 규칙에 걸러내기가 들어간다** — `netAmount` 0 레코드 제외, 그리고 같은 이동이 입금·출금 관점으로 두 번 오는 것의 중복 제거. 이 규칙 없이 레코드 수를 이동 건수로 세면 틀린다.
 - **approve 제출은 `CONTRACT_CALL`** 이고 조회 시 `APPROVE` 로 보인다. 원장에 operation 을 기록할 때 제출값과 조회값이 다를 수 있다는 뜻이다.
