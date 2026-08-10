@@ -97,15 +97,15 @@ sequenceDiagram
 | to | 옴니버스 vault | 자금이 도착한다 — 허가와는 무관한 수취 주소 |
 | 제출자 | 운영 계정 vault | 매 sweep 마다 sweeper 를 호출하는 Fireblocks 거래를 낸다 |
 
-`spender` 는 토큰 컨트랙트 장부의 칸 이름이고, sweeper 는 우리가 배포해 그 칸에 적어 넣는 컨트랙트다 — 둘은 같은 것을 가리킨다. 토큰 컨트랙트가 들고 있는 것은 `allowance[owner][spender] = 금액` 한 줄뿐이라, spender 가 어떤 코드인지도 자금이 어디로 갈지도 모른다.
+`spender` 는 토큰 컨트랙트 장부의 칸 이름이고, sweeper 는 우리가 배포해 그 칸에 적어 넣는 컨트랙트다 — 둘은 같은 것을 가리킨다. 토큰 컨트랙트가 들고 있는 것은 `allowance[owner][spender] = 금액` 한 줄뿐이라, 그 주소가 어떤 코드인지도 자금이 어디로 갈지도 모른다.
 
-spender 자리에 운영자 EOA 를 넣어도 `transferFrom` 은 된다. 다만 EOA 는 한 거래에 호출 하나라 M개를 옮기려면 거래도 M건이 되어 배치가 아니다. 한 거래 안에서 `transferFrom` 을 M번 돌리려면 반복문을 담을 코드가 필요해서 spender 가 컨트랙트가 된다.
+승인 대상 자리에 운영자 EOA 를 넣어도 `transferFrom` 은 된다. 다만 EOA 는 한 거래에 호출 하나라 M개를 옮기려면 거래도 M건이 되어 배치가 아니다. 한 거래 안에서 `transferFrom` 을 M번 돌리려면 반복문을 담을 코드가 필요해서 승인 대상이 컨트랙트가 된다.
 
 여기서 **거래를 내는 주체와 자금을 옮길 권한을 가진 주체가 갈린다**. 거래는 운영 계정이 내고, 권한은 sweeper 에 있고, 잔액이 주는 건 고객 vault M개다. 아래 위험과 감사 부담은 대부분 이 분리에서 나온다.
 
 ### 순서
 
-1. 받는주소 M개가 각각 sweeper 컨트랙트를 spender 로 지정해 `approve` 거래를 제출한다.
+1. 받는주소 M개가 각각 sweeper 컨트랙트를 승인 대상으로 지정해 `approve` 거래를 제출한다.
 2. allowance 가 확인된 뒤 운영 계정이 `batchSweep` 컨트랙트를 한 번 호출한다.
 3. 컨트랙트가 각 주소에 대해 `transferFrom(받는주소, 옴니버스, 금액)` 을 실행한다.
 4. allowance 가 남아 있으면 다음 sweep 부터는 2번만 반복할 수 있다.
@@ -116,7 +116,7 @@ sequenceDiagram
   participant F as Fireblocks
   participant R as 받는주소 vault — owner
   participant O as 운영 계정 vault — 제출자
-  participant S as sweeper 컨트랙트 — spender
+  participant S as sweeper 컨트랙트 — 승인 대상
   participant T as 토큰 컨트랙트
   participant P as 옴니버스 주소
 
@@ -173,16 +173,16 @@ sequenceDiagram
 
 ### 제출 형태 — 실측 확정 (2026-08-10)
 
-이더리움 Sepolia · KBKRW(`KBKRW_ETH_TEST5_6KCC`) · vault → EOA spender 로 직접 확인했다.
+이더리움 Sepolia · KBKRW(`KBKRW_ETH_TEST5_6KCC`) · vault 가 EOA 를 승인 대상으로 두고 직접 확인했다.
 
-- **`operation: APPROVE` 로 직접 제출하면 거절된다** — `400 {"message":"Cannot perform transaction","code":1401}`. 토큰 assetId + spender 목적지 형태, 가스 assetId + 컨트랙트 목적지 + calldata 형태 둘 다 같은 응답이었다.
+- **`operation: APPROVE` 로 직접 제출하면 거절된다** — `400 {"message":"Cannot perform transaction","code":1401}`. 토큰 assetId + 승인 대상을 목적지로 둔 형태, 가스 assetId + 컨트랙트 목적지 + calldata 형태 둘 다 같은 응답이었다.
 - **`operation: CONTRACT_CALL` + approve calldata 는 통한다** — 제출 200 → `COMPLETED`, 온체인 allowance 반영까지 확인.
 - 그런데 **그 거래를 조회하면 `operation` 이 `APPROVE`** 로 나온다. 즉 `APPROVE` 는 제출용 operation 이 아니라 **벤더가 calldata 를 보고 붙이는 분류 라벨**이다. 스키마 enum 에 이름이 있는 것과 제출 경로로 쓸 수 있는 것은 다르다.
 - 따라서 TAP 의 `APPROVE` transactionType·`applyForApprove` 도 이 분류 위에 서 있을 것으로 보이나, 정책이 실제로 걸리는지는 실측하지 않았다.
 
 ### Fireblocks 쪽에서 정해야 할 것
 
-정책에는 `APPROVE` transactionType 과 Contract_Call 룰의 `applyForApprove` 플래그가 있어 approve 거래를 골라내는 기능이 있고([Configure Policies](https://developers.fireblocks.com/reference/configure-transaction-authorization-policy)), Console 에는 Approve Amount Cap 도 있다([Interact with smart contracts](https://developers.fireblocks.com/docs/interact-with-smart-contracts)). 다만 spender·token 이 정책 입력에 어떻게 노출되는지, Amount Cap 이 API 로 제출한 두 경로에 모두 적용되는지, 정책 설정 API 로 allowance 상한을 강제할 수 있는지는 확인되지 않았다.
+정책에는 `APPROVE` transactionType 과 Contract_Call 룰의 `applyForApprove` 플래그가 있어 approve 거래를 골라내는 기능이 있고([Configure Policies](https://developers.fireblocks.com/reference/configure-transaction-authorization-policy)), Console 에는 Approve Amount Cap 도 있다([Interact with smart contracts](https://developers.fireblocks.com/docs/interact-with-smart-contracts)). 다만 승인 대상·토큰이 정책 입력에 어떻게 노출되는지, Amount Cap 이 API 로 제출한 두 경로에 모두 적용되는지, 정책 설정 API 로 allowance 상한을 강제할 수 있는지는 확인되지 않았다.
 
 ### 왜 수탁 경계가 바뀌나
 
@@ -191,7 +191,7 @@ sequenceDiagram
 그래서 위험은 단순히 "컨트랙트를 하나 더 운영한다"가 아니다.
 
 - **지속 권한** — 큰 allowance 를 주면 운영자 키·sweeper·프록시 관리자 중 하나가 침해됐을 때 여러 고객 vault 의 승인 잔액이 함께 노출된다. sweep 마다 정확한 금액만 승인하면 노출은 줄지만 approve M건이 매번 필요해 배치 이점이 사라진다.
-- **목적지 통제** — spender allowance 자체에는 목적지가 없다. 옴니버스 주소 고정은 sweeper 코드가 보장해야 한다. 업그레이드 가능한 프록시라면 관리자 침해로 그 보장을 바꿀 수 있다.
+- **목적지 통제** — allowance 자체에는 목적지 정보가 없다. 옴니버스 주소 고정은 sweeper 코드가 보장해야 한다. 업그레이드 가능한 프록시라면 관리자 침해로 그 보장을 바꿀 수 있다.
 - **긴급 회수 지연** — allowance 취소는 각 받는주소가 `approve(spender, 0)` 을 다시 제출해야 한다. 컨트랙트 pause 는 정상 코드의 실행을 막을 뿐 토큰에 남은 allowance 를 지우지 않으며, M개 vault 의 권한을 즉시 일괄 회수하는 ERC-20 표준 기능은 없다.
 - **영향 범위 확대** — 건별 거래 한 건의 오류가 한 vault 에 머무는 현재 구조와 달리, batch 호출·컨트랙트 버그·잘못된 운영 입력 한 번이 M개 vault 에 영향을 준다.
 - **1:N 감사·대사** — Fireblocks 에 제출하는 거래는 운영 계정의 CONTRACT_CALL 1건이고 온체인 자산 이동은 M건이다. 실측(8절)에서 그 1건의 `networkRecords` 에 **원천 vault 와 금액이 귀속돼 나온다**는 것이 확인됐다. 다만 최상위 거래는 1건뿐이라 원장·감지가 반드시 network records 를 펼쳐야 하고, 이동 한 건당 레코드가 관점별로 2~3개씩 나오므로 중복 제거 규칙이 필요하다.
@@ -200,7 +200,7 @@ sequenceDiagram
 ### 채택한다면 필요한 최소 통제
 
 - 목적지는 배포 시 정한 옴니버스 주소로 **불변 고정**하고 호출자가 임의 주소를 넘기지 못하게 한다.
-- 네트워크·토큰·spender 를 allowlist 로 고정하고, 무제한 allowance 대신 자산·vault 별 상한과 잔여 allowance 모니터링을 둔다.
+- 네트워크·토큰·승인 대상을 allowlist 로 고정하고, 무제한 allowance 대신 자산·vault 별 상한과 잔여 allowance 모니터링을 둔다.
 - 가능하면 비업그레이드형 컨트랙트를 사용한다. 업그레이드가 필요하면 운영 호출자와 업그레이드 권한을 분리하고 multisig·timelock 을 강제한다.
 - pause·호출 빈도·배치 최대 M·건별 최대 금액을 제한한다. pause 는 긴급 완화 수단일 뿐 allowance 회수 수단은 아니라는 런북을 둔다.
 - 이동 한 건마다 원천 vault·token·요청금액·실제금액·결과를 담은 이벤트를 내고, 전체 revert 와 부분 성공 중 한 정책을 명시해 DB 재처리와 일치시킨다.
@@ -208,7 +208,7 @@ sequenceDiagram
 
 ### Fireblocks 에서 확인할 것
 
-- `APPROVE` operation·정책의 `APPROVE` transactionType·`applyForApprove`·Console Amount Cap 존재까지는 확인됐다. 남은 질문은 **APPROVE 와 CONTRACT_CALL 중 실제 제출 경로**, spender·token 의 정책 매칭 방식, API 제출에도 Amount Cap 이 적용되는지, 정책 설정 API 로 allowance 상한을 강제할 수 있는지다.
+- `APPROVE` operation·정책의 `APPROVE` transactionType·`applyForApprove`·Console Amount Cap 존재까지는 확인됐다. 남은 질문은 **APPROVE 와 CONTRACT_CALL 중 실제 제출 경로**, 승인 대상·토큰의 정책 매칭 방식, API 제출에도 Amount Cap 이 적용되는지, 정책 설정 API 로 allowance 상한을 강제할 수 있는지다.
 - 제3자 `transferFrom` 으로 vault 잔액이 빠질 때 vault 별 거래 레코드와 웹훅이 생성되는가. 생성된다면 어떤 txId·operation·network record 로 연결되는가.
 - approve 와 batch CONTRACT_CALL 의 rate limit·정책 승인·Co-signer 경로가 대량 vault 에서 감당 가능한가. 선택된 approve operation 에 Universal Gasless 를 적용할 수 있는지, 가능하다면 relay 처리량은 얼마인가.
 - gasless 도입 요건의 "initiator 와 signer 는 같을 수 없다" 제약 아래에서, 운영 계정 vault 가 배치 CONTRACT_CALL 을 제출하는 구성이 성립하는가.
@@ -319,7 +319,7 @@ operator 거래 아래 `networkRecords` 7개가 붙고, **원천 vault 가 귀�
 ## 10. 도입 게이트와 확인 목록
 
 - **실측 완료 (2026-08-10)** — ① approve 제출 경로는 CONTRACT_CALL, 기록은 `operation=APPROVE`(5절). ② **우리 vault 가 제출한 배치는 `networkRecords` 에 원천 vault·금액이 귀속되고 `transaction.network_records.processing_completed` 도 온다** — 감지·대사 성립(8절).
-- **벤더 실측 — 남은 것** — ① TYPED_MESSAGE 대량 서명의 TAP 통제·처리량 ② TAP 의 `APPROVE`·`applyForApprove` 가 spender·token·승인 금액을 어디까지 제한하는가 · Console Amount Cap 이 API 제출에도 걸리는가 · CONTRACT_CALL approve 에 gasless 를 적용할 수 있는가 ③ 7702 위임 코드의 운영자 pull 지원 ④ 한 배치의 이동을 M=수십 건으로 올렸을 때 network records 개수·이벤트 지연.
+- **벤더 실측 — 남은 것** — ① TYPED_MESSAGE 대량 서명의 TAP 통제·처리량 ② TAP 의 `APPROVE`·`applyForApprove` 가 승인 대상·토큰·승인 금액을 어디까지 제한하는가 · Console Amount Cap 이 API 제출에도 걸리는가 · CONTRACT_CALL approve 에 gasless 를 적용할 수 있는가 ③ 7702 위임 코드의 운영자 pull 지원 ④ 한 배치의 이동을 M=수십 건으로 올렸을 때 network records 개수·이벤트 지연.
 - **발행사·토큰** — 자산별 EIP-3009/2612 지원과 ERC-20 approve 호환 동작을 온보딩마다 판정한다. 발행 스펙에 관여 가능한 자산은 3009 포함을 요구사항으로 검토한다.
 - **컨트랙트** — 옴니버스 목적지 불변, 권한 분리, pause, batch 상한, 이동 건별 이벤트, 부분 실패 정책을 확정하고 독립 감사를 통과한다.
 - **매니저 모델** — batch tx 1건 ↔ 원천 이동 M건의 DB 식별·멱등·claim·웹훅·영수증·재처리·대사를 설계하고 장애 테스트를 통과한다. **주소 → vault 매핑으로 원천을 복원하는 경로가 필수**다 — 벤더 기록이 귀속을 안 해준다는 것이 실측으로 확정됐다.

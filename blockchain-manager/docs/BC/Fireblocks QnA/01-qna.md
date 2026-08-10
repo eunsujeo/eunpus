@@ -184,7 +184,7 @@ Fireblocks 담당자에게 문의해 받은 답변을 질문 단위로 모은다
 **Q.** TYPED_MESSAGE(EIP-712) 서명에 TAP 으로 내용 기반 제약(특정 컨트랙트·도메인·수신 주소 한정 등)을 걸 수 있나? 분당 서명 처리량과 권장 상한은?
 **A.** 미확인. 3009 배치 노선의 성립 조건 — 이 서명은 곧 자금 이동 권한이라 정책 통제가 보안의 핵심이고, 처리량이 배치 크기(M)·주기 설계의 상한이 된다. 배치 재검토 시에 판단할 항목이다.
 
-**Q.** ERC-20 `approve` 를 API 로 낼 때 별도 `APPROVE` operation 과 approve calldata 를 넣은 `CONTRACT_CALL` 중 어느 경로를 써야 하나? TAP 이 spender·token·**승인 금액(allowance) 상한**을 어디까지 강제하고, 제3자 `transferFrom` 은 vault 별 거래 레코드·웹훅에 어떤 형태로 잡히나?
+**Q.** ERC-20 `approve` 를 API 로 낼 때 별도 `APPROVE` operation 과 approve calldata 를 넣은 `CONTRACT_CALL` 중 어느 경로를 써야 하나? TAP 이 승인 대상·토큰·**승인 금액(allowance) 상한**을 어디까지 강제하고, 제3자 `transferFrom` 은 vault 별 거래 레코드·웹훅에 어떤 형태로 잡히나?
 **A.** 제출 경로와 기록 형태는 **실측 완료 (2026-08-10)** — 위 실측 절 참조. `APPROVE` 로는 제출 불가(400·1401), `CONTRACT_CALL` 로 내면 통하고 기록은 `operation=APPROVE`. 스키마 enum 에 이름이 있는 것과 제출 경로로 쓸 수 있는 것이 다르다.
 
-**남은 미확인은 정책 쪽** — `APPROVE` transactionType·`applyForApprove` 로 spender·token 을 넘어 **승인 금액 상한**까지 강제할 수 있는가([정책](https://developers.fireblocks.com/reference/configure-transaction-authorization-policy)), Console 의 Approve Amount Cap 이 API 제출에도 적용되는가([Amount Cap](https://developers.fireblocks.com/docs/interact-with-smart-contracts)), CONTRACT_CALL approve 에 Universal Gasless 를 적용할 수 있고 relay 처리량은 얼마인가. 정책 상한이 없어도 유한 allowance 는 calldata 로 지정할 수 있지만 독립적인 오승인 방어선이 약해진다.
+**남은 미확인은 정책 쪽** — `APPROVE` transactionType·`applyForApprove` 로 승인 대상·토큰을 넘어 **승인 금액 상한**까지 강제할 수 있는가([정책](https://developers.fireblocks.com/reference/configure-transaction-authorization-policy)), Console 의 Approve Amount Cap 이 API 제출에도 적용되는가([Amount Cap](https://developers.fireblocks.com/docs/interact-with-smart-contracts)), CONTRACT_CALL approve 에 Universal Gasless 를 적용할 수 있고 relay 처리량은 얼마인가. 정책 상한이 없어도 유한 allowance 는 calldata 로 지정할 수 있지만 독립적인 오승인 방어선이 약해진다.

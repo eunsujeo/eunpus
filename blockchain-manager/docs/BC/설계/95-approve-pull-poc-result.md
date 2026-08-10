@@ -34,7 +34,7 @@ ref: 참고
 
 | 시도 | 요청 | 결과 |
 |---|---|---|
-| A-1 | `operation: APPROVE` · 토큰 assetId · 목적지 = spender | **400** `{"message":"Cannot perform transaction","code":1401}` |
+| A-1 | `operation: APPROVE` · 토큰 assetId · 목적지 = 승인 대상 | **400** `{"message":"Cannot perform transaction","code":1401}` |
 | A-2 | `operation: APPROVE` · 가스 assetId · 목적지 = 토큰 컨트랙트 · approve calldata | **400** 같은 응답 |
 | B | `operation: CONTRACT_CALL` · 가스 assetId · 목적지 = 토큰 컨트랙트 · approve calldata | **200 → COMPLETED** |
 
@@ -119,7 +119,7 @@ flowchart TB
 
 ## 못 한 것
 
-- **TAP 정책 실측** — `APPROVE`·`applyForApprove` 로 spender·token·승인 금액을 어디까지 제한할 수 있는지. 정책 발행이 Owner 콘솔 리뷰와 모바일 승인을 거쳐야 해서 이번에 못 돌렸다.
+- **TAP 정책 실측** — `APPROVE`·`applyForApprove` 로 승인 대상·토큰·승인 금액을 어디까지 제한할 수 있는지. 정책 발행이 Owner 콘솔 리뷰와 모바일 승인을 거쳐야 해서 이번에 못 돌렸다.
 - **Universal Gasless 적용** — `CONTRACT_CALL` approve 와 배치 호출을 대납으로 낼 수 있는지, relay 처리량은 얼마인지. 도입에 계약이 선행이라 CSM 질의 대상이다.
 - **이동 건수 확대** — 이번은 이동 2건이다. 한 배치에 수십 건을 넣으면 레코드 개수·이벤트 지연·가스가 어떻게 되는지는 안 봤다.
 - **부분 실패 경로** — sweeper 에 skip + 이벤트를 구현했지만 실패하는 이동을 실제로 만들어 보지는 않았다.
