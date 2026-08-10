@@ -34,6 +34,31 @@ sweeper 는 98 의 "최소 통제" 를 그대로 반영해 짰다 — 목적지(
 
 시나리오 2와 3의 결과가 갈린다. 가르는 것은 방식이 아니라 **누가 온체인 거래를 제출했는가** 다.
 
+```mermaid
+flowchart TB
+  subgraph S2["시나리오 2 — 외부 EOA 가 제출"]
+    direction LR
+    A1["외부 EOA<br/>Fireblocks 밖"] --> A2["온체인 transferFrom"]
+    A2 --> A3["원천 vault<br/>잔액만 감소<br/>거래 기록·웹훅 없음"]
+    A2 --> A4["옴니버스 vault<br/>입금 1건<br/>source = External"]
+  end
+  subgraph S3["시나리오 3 — 우리 vault 가 제출"]
+    direction LR
+    B1["operator vault"] --> B2["CONTRACT_CALL 1건<br/>batchSweep"]
+    B2 --> B3["networkRecords<br/>원천 vault 귀속 · netAmount"]
+    B2 --> B4["network_records<br/>processing_completed 웹훅"]
+  end
+
+  classDef bad fill:#fee2e2,stroke:#dc2626
+  classDef good fill:#dcfce7,stroke:#16a34a
+  classDef vault fill:#dbeafe,stroke:#2563eb
+  class A3 bad
+  class A4,B3,B4 good
+  class B1,A1 vault
+```
+
+빨강은 벤더 장부에 남지 않는 것, 초록은 남는 것, 파랑은 거래를 낸 주체다. 같은 `transferFrom` 이라도 제출자가 워크스페이스 밖이면 원천 vault 쪽이 통째로 비고, 우리 vault 가 제출하면 벤더가 영수증을 파싱해 자기 vault 들에 귀속시킨다.
+
 ## 1. approve 제출 경로
 
 **한 것** — vault 82 가 spender 를 승인하는 거래를 두 형태로 제출했다.
@@ -52,6 +77,22 @@ txHash 0xb442e5f5…   온체인 allowance 200 반영 확인
 ```
 
 즉 `APPROVE` 는 제출용 operation 이 아니라 **벤더가 calldata 를 보고 붙이는 분류 라벨**이다. API 스키마에 이름이 있다는 것과 제출 경로로 쓸 수 있다는 것은 다르다 — 이 PoC 전에는 둘을 같은 것으로 봤다.
+
+```mermaid
+flowchart LR
+  P1["제출 — operation APPROVE"] -->|400 · code 1401| X["거절"]
+  P2["제출 — operation CONTRACT_CALL<br/>approve calldata"] -->|200| S["COMPLETED<br/>온체인 allowance 반영"]
+  S -->|조회하면| L["operation = APPROVE<br/>벤더가 붙인 분류"]
+
+  classDef bad fill:#fee2e2,stroke:#dc2626
+  classDef good fill:#dcfce7,stroke:#16a34a
+  classDef special fill:#e0e7ff,stroke:#6366f1
+  class X bad
+  class S good
+  class L special
+```
+
+제출값과 조회값이 다르다는 것이 이 절의 요점이다. 원장에 operation 을 남길 때 어느 쪽을 적을지 정해 둬야 한다.
 
 정책 쪽에 `APPROVE` transactionType 과 Contract_Call 룰의 `applyForApprove` 플래그가 있으니 이 분류 위에 정책이 서는 구조로 보이지만, 정책이 실제로 걸리는지는 확인하지 않았다.
 
@@ -95,6 +136,31 @@ txHash 0xb442e5f5…   온체인 allowance 200 반영 확인
 - 잔액도 맞았다 — 82: 500 → 300 · 83: 400 → 250 · 옴니버스 1139 → **1489**(+350).
 - **최상위 거래는 제출 1건뿐이다** — 원천 vault 를 source 로 하는 최상위 거래도, 옴니버스 입금 최상위 거래도 생기지 않았다.
 - **leg 당 레코드가 2~3개로 중복 표현된다** — 입금 관점(External → 옴니버스 vault) · 출금 관점(원천 vault → 옴니버스 주소) · `netAmount` 0 인 컨트랙트 호출 관점.
+
+```mermaid
+flowchart TB
+  TX["온체인 거래 1건<br/>batchSweep · leg 2개"] --> FB["Fireblocks 최상위 거래 1건<br/>CONTRACT_CALL · amount 0 · asset ETH"]
+  FB --> NR["networkRecords 7개"]
+  NR --> LA["leg A — vault 82 → 옴니버스 200"]
+  NR --> LB["leg B — vault 83 → 옴니버스 150"]
+  NR --> GAS["가스 1개<br/>vault 84 → sweeper · ETH 0"]
+  LA --> A1["입금 관점<br/>External → vault 12 · 200"]
+  LA --> A2["출금 관점<br/>vault 82 → 옴니버스 주소 · 200"]
+  LA --> A3["호출 관점<br/>vault 82 → sweeper · 0"]
+  LB --> B1["입금 관점<br/>External → vault 12 · 150"]
+  LB --> B2["출금 관점<br/>vault 83 → 옴니버스 주소 · 150"]
+  LB --> B3["호출 관점<br/>vault 83 → sweeper · 0"]
+
+  classDef good fill:#dcfce7,stroke:#16a34a
+  classDef wait fill:#fef3c7,stroke:#d97706
+  classDef vault fill:#dbeafe,stroke:#2563eb
+  class A2,B2 good
+  class A1,B1 wait
+  class A3,B3,GAS wait
+  class TX,FB,NR vault
+```
+
+초록이 대사에 쓸 레코드다 — 원천 vault 와 금액이 함께 있는 출금 관점 한 줄. 노랑은 같은 이동을 다른 관점으로 다시 센 것이거나 금액이 0 인 것이라 걸러야 한다. 레코드 수를 그대로 이동 건수로 세면 2건이 7건이 된다.
 
 ## 종합 — 설계에 반영한 것
 
