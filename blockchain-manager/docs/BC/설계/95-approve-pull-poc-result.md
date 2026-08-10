@@ -80,7 +80,7 @@ flowchart LR
 | 6 | vault 84 | sweeper | ETH | 0 — 호출 자체 |
 
 - **원천 vault 가 귀속된다** — `source` 에 `{id: "82"/"83", type: "VAULT_ACCOUNT"}` 로 나오고 `netAmount` 도 실린다.
-- **`transaction.network_records.processing_completed` 가 왔다** — 제출 약 37초 뒤.
+- **`transaction.network_records.processing_completed` 가 왔다** — 제출 약 37초 뒤, `status` 는 아직 `CONFIRMING` 이었다. 알림 원문은 [payload 실물 샘플](96-payload-sample.md)에 있다.
 - 잔액도 맞았다 — 82: 500 → 300 · 83: 400 → 250 · 옴니버스 1139 → **1489**(+350).
 - **최상위 거래는 제출 1건뿐이다** — 원천 vault 를 source 로 하는 최상위 거래도, 옴니버스 입금 최상위 거래도 생기지 않았다.
 - **leg 당 레코드가 2~3개로 중복 표현된다** — 입금 관점(External → 옴니버스 vault) · 출금 관점(원천 vault → 옴니버스 주소) · `netAmount` 0 인 컨트랙트 호출 관점.
