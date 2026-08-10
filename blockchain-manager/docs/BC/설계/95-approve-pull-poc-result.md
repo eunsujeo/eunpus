@@ -26,7 +26,7 @@ ref: 참고
 | # | 시나리오 | 결과 |
 |---|---|---|
 | 1 | `approve` 를 두 경로로 제출 | `APPROVE` operation 은 **거절(400)** · `CONTRACT_CALL` 은 성공하고 **기록은 `operation=APPROVE`** |
-| 2 | 운영 계정이 배치 2 leg 제출 | `networkRecords` 7개에 **원천 vault·금액 귀속** · `network_records.processing_completed` 수신 |
+| 2 | 운영 계정이 이동 2건짜리 배치 제출 | `networkRecords` 7개에 **원천 vault·금액 귀속** · `network_records.processing_completed` 수신 |
 
 ## 1. approve 제출 경로
 
@@ -63,7 +63,7 @@ flowchart LR
 
 정책 쪽에 `APPROVE` transactionType 과 Contract_Call 룰의 `applyForApprove` 플래그가 있으니 이 분류 위에 정책이 서는 구조로 보이지만, 정책이 실제로 걸리는지는 확인하지 않았다.
 
-## 2. 운영 계정이 배치 2 leg 제출
+## 2. 운영 계정이 이동 2건짜리 배치 제출
 
 **한 것** — 고객 vault 두 곳(82·83)이 `CONTRACT_CALL` 로 sweeper 를 승인(각 300)한 뒤, **운영 계정 vault 84 가 `batchSweep([82주소, 83주소], [200, 150])` 을 CONTRACT_CALL 로 한 번** 제출했다.
 
@@ -83,14 +83,14 @@ flowchart LR
 - **`transaction.network_records.processing_completed` 가 왔다** — 제출 약 37초 뒤, `status` 는 아직 `CONFIRMING` 이었다. 알림 원문은 [payload 실물 샘플](96-payload-sample.md)에 있다.
 - 잔액도 맞았다 — 82: 500 → 300 · 83: 400 → 250 · 옴니버스 1139 → **1489**(+350).
 - **최상위 거래는 제출 1건뿐이다** — 원천 vault 를 source 로 하는 최상위 거래도, 옴니버스 입금 최상위 거래도 생기지 않았다.
-- **leg 당 레코드가 2~3개로 중복 표현된다** — 입금 관점(External → 옴니버스 vault) · 출금 관점(원천 vault → 옴니버스 주소) · `netAmount` 0 인 컨트랙트 호출 관점.
+- **레코드마다 우리 vault 는 한쪽에만 채워진다** — 같은 이동이 받는 vault 관점(`source` 가 `UNKNOWN/External`)과 보내는 vault 관점(`destination` 이 `ONE_TIME_ADDRESS`)으로 두 번 들어온다. 주소는 양쪽 다 옴니버스 주소로 정확히 찍힌다. 여기에 토큰이 움직이지 않은 호출 관계(`netAmount` `"0"`)가 더 붙어 이동 한 건당 레코드 3개가 된다.
 
 ```mermaid
 flowchart TB
-  TX["온체인 거래 1건<br/>batchSweep · leg 2개"] --> FB["Fireblocks 최상위 거래 1건<br/>CONTRACT_CALL · amount 0 · asset ETH"]
+  TX["온체인 거래 1건<br/>batchSweep · 이동 2건"] --> FB["Fireblocks 최상위 거래 1건<br/>CONTRACT_CALL · amount 0 · asset ETH"]
   FB --> NR["networkRecords 7개"]
-  NR --> LA["leg A — vault 82 → 옴니버스 200"]
-  NR --> LB["leg B — vault 83 → 옴니버스 150"]
+  NR --> LA["이동 A — vault 82 → 옴니버스 200"]
+  NR --> LB["이동 B — vault 83 → 옴니버스 150"]
   NR --> GAS["가스 1개<br/>vault 84 → sweeper · ETH 0"]
   LA --> A1["입금 관점<br/>External → vault 12 · 200"]
   LA --> A2["출금 관점<br/>vault 82 → 옴니버스 주소 · 200"]
@@ -121,8 +121,8 @@ flowchart TB
 
 - **TAP 정책 실측** — `APPROVE`·`applyForApprove` 로 spender·token·승인 금액을 어디까지 제한할 수 있는지. 정책 발행이 Owner 콘솔 리뷰와 모바일 승인을 거쳐야 해서 이번에 못 돌렸다.
 - **Universal Gasless 적용** — `CONTRACT_CALL` approve 와 배치 호출을 대납으로 낼 수 있는지, relay 처리량은 얼마인지. 도입에 계약이 선행이라 CSM 질의 대상이다.
-- **leg 수 확대** — 이번은 2 leg 이다. 수십 leg 에서 레코드 개수·이벤트 지연·가스가 어떻게 되는지는 안 봤다.
-- **부분 실패 경로** — sweeper 에 skip + 이벤트를 구현했지만 실패하는 leg 를 실제로 만들어 보지는 않았다.
+- **이동 건수 확대** — 이번은 이동 2건이다. 한 배치에 수십 건을 넣으면 레코드 개수·이벤트 지연·가스가 어떻게 되는지는 안 봤다.
+- **부분 실패 경로** — sweeper 에 skip + 이벤트를 구현했지만 실패하는 이동을 실제로 만들어 보지는 않았다.
 - **사고 상황** — allowance 가 서 있는 상태에서 제3자가 임의 주소로 당겨갈 때 우리가 무엇을 보게 되는지. 배치 설계가 아니라 침해 감지에 해당하므로 별도 시나리오로 다룬다.
 - 7702 위임 코드의 운영자 pull 지원도 여전히 미확인이다.
 

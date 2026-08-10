@@ -123,8 +123,8 @@ Fireblocks 담당자에게 문의해 받은 답변을 질문 단위로 모은다
 **Q.** payload 를 JSON/JSONB 컬럼에 저장하면?
 **A.** 키 재정렬·공백 정규화로 **와이어 바이트가 소실**된다 — DB 에서 꺼낸 값으로는 detached JWS 재검증이 불가했다(실측 401). 원문 해시·서명 재검증은 수신 시점 바이트로 해야 한다.
 
-**Q.** 배치 컨트랙트가 `transferFrom` 으로 여러 vault 의 잔액을 한 거래에 모을 때, vault 별 거래 기록과 웹훅이 어떻게 오나? (2026-08-10 이더리움 Sepolia · KBKRW · leg 2개)
-**A.** 우리 vault 가 배치를 `CONTRACT_CALL` 로 제출한 경우로 확인했다. 그 거래의 `networkRecords` 에 **원천 vault 가 귀속되고 `netAmount` 도 나온다.** `transaction.network_records.processing_completed` 도 온다. 단 최상위 거래는 제출 1건뿐이고(원천 vault·옴니버스 각각의 최상위 거래는 생기지 않는다), leg 당 레코드가 관점별로 2~3개씩(입금 관점 · 출금 관점 · `netAmount` 0 인 컨트랙트 호출 관점) 나온다.
+**Q.** 배치 컨트랙트가 `transferFrom` 으로 여러 vault 의 잔액을 한 거래에 모을 때, vault 별 거래 기록과 웹훅이 어떻게 오나? (2026-08-10 이더리움 Sepolia · KBKRW · 이동 2건)
+**A.** 우리 vault 가 배치를 `CONTRACT_CALL` 로 제출한 경우로 확인했다. 그 거래의 `networkRecords` 에 **원천 vault 가 귀속되고 `netAmount` 도 나온다.** `transaction.network_records.processing_completed` 도 온다. 단 최상위 거래는 제출 1건뿐이고(원천 vault·옴니버스 각각의 최상위 거래는 생기지 않는다), 레코드마다 우리 vault 는 한쪽에만 채워진다 — 같은 이동이 받는 vault 관점과 보내는 vault 관점으로 두 번 들어오고, 토큰이 움직이지 않은 호출 관계까지 더해 이동 한 건당 레코드 3개가 된다.
 
 시사점 — 배치 sweep 의 감지·대사는 성립하지만 **network records 를 펼쳐 읽고 관점 중복과 0 금액을 걸러내는 처리가 필수**다. 서명만 넘겨 외부가 제출하는 모델에서도 같은지는 재보지 않았다.
 
@@ -176,7 +176,7 @@ Fireblocks 담당자에게 문의해 받은 답변을 질문 단위로 모은다
 **A.** 논의 후 확정 예정(테스트넷 3, 메인넷은 협의 값). Base 의 컨펌 단위와 블록 간격 상수 유효성도 함께 확인한다.
 
 **Q.** vault 가 스스로 제출하지 않은 제3자 거래(사전 서명 authorization·사전 allowance·위임 코드 경유)로 잔액이 출금될 때, vault 별 거래 기록과 웹훅(v2)이 생성되나? 생성된다면 어떤 형태인가(개별 tx vs 제출 거래의 networkRecords)?
-**A.** **실측으로 답 나옴 (2026-08-10)** — 위 "PoC 실측으로 확정한 사실" 절 참조. 우리 vault 가 제출한 배치라면 `networkRecords` 에 원천 vault·금액이 귀속되고 `network_records.processing_completed` 도 온다. 남은 것은 leg 수를 수십으로 올렸을 때의 레코드 개수·이벤트 지연이다.
+**A.** **실측으로 답 나옴 (2026-08-10)** — 위 "PoC 실측으로 확정한 사실" 절 참조. 우리 vault 가 제출한 배치라면 `networkRecords` 에 원천 vault·금액이 귀속되고 `network_records.processing_completed` 도 온다. 남은 것은 한 배치의 이동을 수십 건으로 올렸을 때의 레코드 개수·이벤트 지연이다.
 
 **Q.** Universal Gasless 로 upgrade 된 vault 의 위임 지갑 코드가, 지정 운영자(감사된 배치 sweep 컨트랙트)의 일괄 인출을 허용하는 구성이 가능한가? 안 되면 로드맵에 있거나, 우리가 지정한 감사된 코드로의 위임을 허용하는 경로가 있나?
 **A.** 미확인. 7702 배치 노선의 성립 조건 — 안 되면 그 노선 자체가 닫힌다. 현재 결정은 자산 구분 없이 건별 전송이다.

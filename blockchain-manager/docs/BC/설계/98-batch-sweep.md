@@ -194,7 +194,7 @@ sequenceDiagram
 - **목적지 통제** — spender allowance 자체에는 목적지가 없다. 옴니버스 주소 고정은 sweeper 코드가 보장해야 한다. 업그레이드 가능한 프록시라면 관리자 침해로 그 보장을 바꿀 수 있다.
 - **긴급 회수 지연** — allowance 취소는 각 받는주소가 `approve(spender, 0)` 을 다시 제출해야 한다. 컨트랙트 pause 는 정상 코드의 실행을 막을 뿐 토큰에 남은 allowance 를 지우지 않으며, M개 vault 의 권한을 즉시 일괄 회수하는 ERC-20 표준 기능은 없다.
 - **영향 범위 확대** — 건별 거래 한 건의 오류가 한 vault 에 머무는 현재 구조와 달리, batch 호출·컨트랙트 버그·잘못된 운영 입력 한 번이 M개 vault 에 영향을 준다.
-- **1:N 감사·대사** — Fireblocks 에 제출하는 거래는 운영 계정의 CONTRACT_CALL 1건이고 온체인 자산 이동은 M건이다. 실측(8절)에서 그 1건의 `networkRecords` 에 **원천 vault 와 금액이 귀속돼 나온다**는 것이 확인됐다. 다만 최상위 거래는 1건뿐이라 원장·감지가 반드시 network records 를 펼쳐야 하고, leg 당 레코드가 관점별로 2~3개씩 나오므로 중복 제거 규칙이 필요하다.
+- **1:N 감사·대사** — Fireblocks 에 제출하는 거래는 운영 계정의 CONTRACT_CALL 1건이고 온체인 자산 이동은 M건이다. 실측(8절)에서 그 1건의 `networkRecords` 에 **원천 vault 와 금액이 귀속돼 나온다**는 것이 확인됐다. 다만 최상위 거래는 1건뿐이라 원장·감지가 반드시 network records 를 펼쳐야 하고, 이동 한 건당 레코드가 관점별로 2~3개씩 나오므로 중복 제거 규칙이 필요하다.
 - **토큰별 차이** — allowance 변경 규칙, fee-on-transfer, 반환값, pause·blocklist 같은 토큰 동작이 다를 수 있다. 자산별 호환성 검증 없이 공통 배치로 묶을 수 없다.
 
 ### 채택한다면 필요한 최소 통제
@@ -294,7 +294,7 @@ operator 거래 아래 `networkRecords` 7개가 붙고, **원천 vault 가 귀�
 
 - **배치 sweep 은 감지·대사가 성립한다** — 원천 vault·금액이 `networkRecords` 에 나온다.
 - **대신 최상위 거래는 1건뿐이다** — 원천 vault 를 source 로 하는 최상위 거래도, 옴니버스 입금 최상위 거래도 생기지 않는다. 원장·감지는 반드시 `networkRecords` 를 펼쳐 읽어야 하고, 그래서 `transaction.network_records.processing_completed` 구독은 검토 대상이 아니라 **필수**가 된다 ([감지 상세](99-detection-detail.md) 이벤트 표).
-- **레코드는 leg 당 2~3개로 중복 표현된다** — 입금 관점(External → 옴니버스 vault), 출금 관점(원천 vault → 옴니버스 주소), 그리고 `netAmount` 0 인 컨트랙트 호출 관점. 대사 규칙에 **0 금액 제외 + 관점 중복 제거**가 들어가야 한다.
+- **레코드마다 우리 vault 는 한쪽에만 채워진다** — 같은 이동이 받는 vault 관점(`source` 가 `UNKNOWN/External`)과 보내는 vault 관점(`destination` 이 `ONE_TIME_ADDRESS`)으로 두 번 들어온다. 주소는 양쪽 다 옴니버스 주소로 정확히 찍힌다. 여기에 토큰이 움직이지 않은 호출 관계(`netAmount` `"0"`)가 더 붙어 이동 한 건당 레코드 3개가 된다. 대사 규칙에 **0 금액 제외 + 한 관점만 채택**이 들어가야 한다.
 - **제출 주체가 우리 vault 일 때의 결과다** — 서명만 넘겨 외부가 제출하는 구성(3009·2612 를 제3자가 실행)에서도 같은지는 재보지 않았다.
 
 - 부분 실패: 컨트랙트는 불량 항목을 revert 말고 **skip + 이벤트**로 남겨야 한 건 때문에 배치 전체가 죽지 않는다 — 성공/실패 집계는 영수증 로그를 읽어 `bcm_swp_trgt` 를 건별 정리.
@@ -308,7 +308,7 @@ operator 거래 아래 `networkRecords` 7개가 붙고, **원천 vault 가 귀�
 | sweep 1회당 벤더 호출 | M(서명)+1(제출) | M+1 | 최초 M(approve)+1, 이후 1 | **1** |
 | 주소당 gas | ~70k대 | ~75k대 | 최초 approve 비용 + 이후 transferFrom | **~50k** |
 | 토큰 조건 | 3009 지원 (USDC O · KRWK 미확인) | 2612 지원 (USDC O · KRWK 미확인) | ERC-20 approve 호환 | 무관 |
-| 벤더 의존 | TYPED_MESSAGE 서명 (지원 확인됨 · [문서](https://developers.fireblocks.com/reference/sign-typed-messages-for-ethereum-and-evm-networks)) | 동일 | **CONTRACT_CALL 로 제출 · 기록은 operation=APPROVE · 배치 leg 은 networkRecords 에 원천 vault 로 귀속 (실측 확정)** · 정책 매칭·gasless 는 미실측 | 위임 코드 구현 (미확인) |
+| 벤더 의존 | TYPED_MESSAGE 서명 (지원 확인됨 · [문서](https://developers.fireblocks.com/reference/sign-typed-messages-for-ethereum-and-evm-networks)) | 동일 | **CONTRACT_CALL 로 제출 · 기록은 operation=APPROVE · 배치 안의 이동은 networkRecords 에 원천 vault 로 귀속 (실측 확정)** · 정책 매칭·gasless 는 미실측 | 위임 코드 구현 (미확인) |
 
 읽는 법 — **안전(1회용·목적지 고정)을 잡으면 서명 M건이 남고(3009), 호출·가스 최소를 잡으면 allowance 또는 위임의 상시 권한을 감수한다(approve·7702).** 현재 06의 결정은 어느 배치 방식도 채택하지 않고 건별 전송을 유지하는 것이다.
 
@@ -319,7 +319,7 @@ operator 거래 아래 `networkRecords` 7개가 붙고, **원천 vault 가 귀�
 ## 10. 도입 게이트와 확인 목록
 
 - **실측 완료 (2026-08-10)** — ① approve 제출 경로는 CONTRACT_CALL, 기록은 `operation=APPROVE`(5절). ② **우리 vault 가 제출한 배치는 `networkRecords` 에 원천 vault·금액이 귀속되고 `transaction.network_records.processing_completed` 도 온다** — 감지·대사 성립(8절).
-- **벤더 실측 — 남은 것** — ① TYPED_MESSAGE 대량 서명의 TAP 통제·처리량 ② TAP 의 `APPROVE`·`applyForApprove` 가 spender·token·승인 금액을 어디까지 제한하는가 · Console Amount Cap 이 API 제출에도 걸리는가 · CONTRACT_CALL approve 에 gasless 를 적용할 수 있는가 ③ 7702 위임 코드의 운영자 pull 지원 ④ leg 수를 M=수십으로 올렸을 때 network records 개수·이벤트 지연.
+- **벤더 실측 — 남은 것** — ① TYPED_MESSAGE 대량 서명의 TAP 통제·처리량 ② TAP 의 `APPROVE`·`applyForApprove` 가 spender·token·승인 금액을 어디까지 제한하는가 · Console Amount Cap 이 API 제출에도 걸리는가 · CONTRACT_CALL approve 에 gasless 를 적용할 수 있는가 ③ 7702 위임 코드의 운영자 pull 지원 ④ 한 배치의 이동을 M=수십 건으로 올렸을 때 network records 개수·이벤트 지연.
 - **발행사·토큰** — 자산별 EIP-3009/2612 지원과 ERC-20 approve 호환 동작을 온보딩마다 판정한다. 발행 스펙에 관여 가능한 자산은 3009 포함을 요구사항으로 검토한다.
 - **컨트랙트** — 옴니버스 목적지 불변, 권한 분리, pause, batch 상한, 이동 건별 이벤트, 부분 실패 정책을 확정하고 독립 감사를 통과한다.
 - **매니저 모델** — batch tx 1건 ↔ 원천 이동 M건의 DB 식별·멱등·claim·웹훅·영수증·재처리·대사를 설계하고 장애 테스트를 통과한다. **주소 → vault 매핑으로 원천을 복원하는 경로가 필수**다 — 벤더 기록이 귀속을 안 해준다는 것이 실측으로 확정됐다.
