@@ -9,16 +9,18 @@ ref: 참고
 
 ## 알림 순서 — 배치 거래 한 건에 8건
 
-| 시각 | 이벤트 | status | subStatus |
+| 시각 | 이벤트 | status | 그 단계에서 하는 일 |
 |---|---|---|---|
-| 08:42:39 | `transaction.created` | `SUBMITTED` | |
-| 08:42:40 | `transaction.status.updated` | `PENDING_ENRICHMENT` | |
-| 08:42:41 | `transaction.status.updated` | `QUEUED` | |
-| 08:42:43 | `transaction.status.updated` | `PENDING_SIGNATURE` | |
-| 08:42:45 | `transaction.status.updated` | `BROADCASTING` | |
-| 08:42:45 | `transaction.status.updated` | `CONFIRMING` | `PENDING_BLOCKCHAIN_CONFIRMATIONS` |
-| 08:43:16 | **`transaction.network_records.processing_completed`** | `CONFIRMING` | `PENDING_BLOCKCHAIN_CONFIRMATIONS` |
-| 08:43:25 | `transaction.status.updated` | `COMPLETED` | `CONFIRMED` |
+| 08:42:39 | `transaction.created` | `SUBMITTED` | 제출 접수. outgoing 거래의 첫 단계 |
+| 08:42:40 | `transaction.status.updated` | `PENDING_ENRICHMENT` | 콘솔 표시는 Pending Security Screening — dApp Protection 검사. **여기서 걸려도 거래가 실패하지는 않는다** |
+| 08:42:41 | `transaction.status.updated` | `QUEUED` | 서명자에게 보내기 전 대기 |
+| 08:42:43 | `transaction.status.updated` | `PENDING_SIGNATURE` | 지정 서명자의 서명 대기. **2시간 넘으면 실패** |
+| 08:42:45 | `transaction.status.updated` | `BROADCASTING` | 체인으로 송신 중 |
+| 08:42:45 | `transaction.status.updated` | `CONFIRMING` | 컨펌 대기 (`PENDING_BLOCKCHAIN_CONFIRMATIONS`) |
+| 08:43:16 | **`transaction.network_records.processing_completed`** | `CONFIRMING` | 이동 내역 확정 — 아직 컨펌 대기 중이다 |
+| 08:43:25 | `transaction.status.updated` | `COMPLETED` | 확정 (`CONFIRMED`) |
+
+단계 정의는 벤더 문서 [Primary transaction statuses](https://support.fireblocks.io/hc/en-us/articles/4407808817042) 기준이다. 전체 17개 중 이번 거래가 지난 것은 위 일곱 개다 — AML 스크리닝(`PENDING_AML_SCREENING`)과 승인 대기(`PENDING_AUTHORIZATION`)는 지나지 않았다.
 
 - **우리가 낸 거래는 `created` 가 `SUBMITTED` 로 시작한다.** 입금 알림은 `created` 가 이미 `CONFIRMING`+`txHash` 를 담고 오는데([입금 샘플](96-payload-sample.md)), 제출한 거래는 벤더 내부 단계까지 전부 알림으로 온다 — 여기서는 6초 안에 다섯 단계.
 - **이동 내역이 확정보다 먼저 온다.** `network_records` 알림이 `CONFIRMING` 과 `COMPLETED` 사이에 오고, 확정 9초 전이었다.
