@@ -6,7 +6,7 @@ ref: 참고
 
 실측에서 실제로 받은 Fireblocks 웹훅 v2 알림 원문이다. 필드 이름을 확정한 근거다.
 
-- **입금 두 건** — [수신 PoC](97-webhook-poc-result.md). 같은 입금 tx 의 감지·확정이고, testnet(`ETH_TEST5`) 로 KBKRW 테스트 토큰 100 을 외부 지갑에서 vault 로 보낸 건이다.
+- **입금 두 건** — [수신 PoC](97-webhook-poc-result.md). 같은 입금 tx 의 감지·확정이다.
 - **배치 sweep 한 건** — [approve 배치 sweep PoC](95-approve-pull-poc-result.md). 한 거래 아래 `networkRecords` 가 어떻게 담기는지 보여준다.
 
 ## 감지 — `transaction.created`
