@@ -22,8 +22,6 @@ ref: 참고
 | spender EOA — 시나리오 2 전용 | **Fireblocks 밖의 일회용 지갑** · 개인키를 로컬에 생성 | `0x7b2CD2087fF2Ca4aEFC2e9A99Ae2a61560a0255b` |
 | 배치 sweeper 컨트랙트 | 직접 배포 | `0xF95AFc896461a3eb7426714267eC6abb1cd6A1c9` |
 
-sweeper 는 98 의 "최소 통제" 를 그대로 반영해 짰다 — 목적지(옴니버스)·토큰·호출 가능한 운영자를 **배포 시 고정**하고 호출자가 임의 주소를 넘길 수 없게 했으며, 한 건이 실패해도 전체를 revert 하지 않고 skip 하며 이벤트를 남긴다. 수신기(fbhook)는 관찰 지점으로만 썼고 실행은 일회성 스크립트로 했다.
-
 ## 시나리오 한눈에
 
 | # | 시나리오 | 결과 |
@@ -57,8 +55,6 @@ flowchart TB
   class B1,A1 vault
 ```
 
-빨강은 벤더 장부에 남지 않는 것, 초록은 남는 것, 파랑은 거래를 낸 주체다. 같은 `transferFrom` 이라도 제출자가 워크스페이스 밖이면 원천 vault 쪽이 통째로 비고, 우리 vault 가 제출하면 벤더가 영수증을 파싱해 자기 vault 들에 귀속시킨다.
-
 ## 1. approve 제출 경로
 
 **한 것** — vault 82 가 spender 를 승인하는 거래를 두 형태로 제출했다.
@@ -76,7 +72,7 @@ flowchart TB
 txHash 0xb442e5f5…   온체인 allowance 200 반영 확인
 ```
 
-즉 `APPROVE` 는 제출용 operation 이 아니라 **벤더가 calldata 를 보고 붙이는 분류 라벨**이다. API 스키마에 이름이 있다는 것과 제출 경로로 쓸 수 있다는 것은 다르다 — 이 PoC 전에는 둘을 같은 것으로 봤다.
+즉 `APPROVE` 는 제출용 operation 이 아니라 **벤더가 calldata 를 보고 붙이는 분류 라벨**이다. 원장에 operation 을 남길 때 제출값과 조회값 중 어느 쪽을 적을지 정해 둬야 한다.
 
 ```mermaid
 flowchart LR
@@ -91,8 +87,6 @@ flowchart LR
   class S good
   class L special
 ```
-
-제출값과 조회값이 다르다. 원장에 operation 을 남길 때 어느 쪽을 적을지 정해 둬야 한다.
 
 정책 쪽에 `APPROVE` transactionType 과 Contract_Call 룰의 `applyForApprove` 플래그가 있으니 이 분류 위에 정책이 서는 구조로 보이지만, 정책이 실제로 걸리는지는 확인하지 않았다.
 
@@ -113,8 +107,6 @@ flowchart LR
 | 받는 vault(12) 웹훅 | `transaction.created` → `transaction.status.updated` 2건 |
 | `networkRecords` | 0 (단건이라 비어 있다) |
 
-벤더가 모르는 거래로 잔액이 줄어도 **잔액 자체는 맞춰진다.** 다만 그 인출은 벤더 장부에 "누가 뺐다"로 남지 않는다.
-
 ## 3. operator vault 가 배치 2 leg 제출
 
 **한 것** — owner vault 두 곳(82·83)이 `CONTRACT_CALL` 로 sweeper 를 승인(각 300)한 뒤, **operator vault 84 가 `batchSweep([82주소, 83주소], [200, 150])` 을 CONTRACT_CALL 로 한 번** 제출했다.
@@ -131,7 +123,7 @@ flowchart LR
 | 5 | vault 82 | sweeper | kbKRW | 0 |
 | 6 | vault 84 | sweeper | ETH | 0 — 호출 자체 |
 
-- **원천 vault 가 귀속된다** — `source` 에 `{id: "82"/"83", type: "VAULT_ACCOUNT"}` 로 나오고 `netAmount` 도 실린다. 시나리오 2에서 안 되던 것이 여기서는 된다.
+- **원천 vault 가 귀속된다** — `source` 에 `{id: "82"/"83", type: "VAULT_ACCOUNT"}` 로 나오고 `netAmount` 도 실린다.
 - **`transaction.network_records.processing_completed` 가 왔다** — 제출 약 37초 뒤.
 - 잔액도 맞았다 — 82: 500 → 300 · 83: 400 → 250 · 옴니버스 1139 → **1489**(+350).
 - **최상위 거래는 제출 1건뿐이다** — 원천 vault 를 source 로 하는 최상위 거래도, 옴니버스 입금 최상위 거래도 생기지 않았다.
@@ -160,16 +152,14 @@ flowchart TB
   class TX,FB,NR vault
 ```
 
-초록이 대사에 쓸 레코드다 — 원천 vault 와 금액이 함께 있는 출금 관점 한 줄. 노랑은 같은 이동을 다른 관점으로 다시 센 것이거나 금액이 0 인 것이라 걸러야 한다. 레코드 수를 그대로 이동 건수로 세면 2건이 7건이 된다.
-
 ## 종합 — 설계에 반영한 것
 
 - **배치 sweep 의 감지·대사에 필요한 기록은 나온다.** 조건은 **제출을 우리 vault 로 하는 것**이다. 서명만 넘겨 외부가 제출하는 구성(3009·2612 를 제3자가 실행)은 시나리오 2 처럼 원천 쪽에 기록이 남지 않는다.
 - **`network_records.processing_completed` 구독이 검토 대상에서 필수로 바뀐다.** 최상위 거래 1건에는 이동 정보가 없어서, 이 이벤트와 `networkRecords` 없이는 어느 vault 에서 얼마가 빠졌는지 알 수 없다.
 - **대사 규칙에 걸러내기가 들어간다** — `netAmount` 0 레코드 제외, 그리고 같은 이동이 입금·출금 관점으로 두 번 오는 것의 중복 제거. 이 규칙 없이 레코드 수를 이동 건수로 세면 틀린다.
-- **approve 제출은 `CONTRACT_CALL`** 이고 조회 시 `APPROVE` 로 보인다. 원장에 operation 을 기록할 때 제출값과 조회값이 다를 수 있다는 뜻이다.
+- **approve 제출은 `CONTRACT_CALL`** 이고 조회하면 `APPROVE` 로 보인다.
 
-배치 채택 여부는 [sweep 설계](06-sweep.md)에서 결정한다. 이 PoC 는 그 판단의 재료이고, 현재 결정은 여전히 건별 일반 전송이다 — 감지가 된다고 확인됐어도 최상위 1건 ↔ 이동 M건을 받는 DB·상태 흐름이 아직 없고, allowance 라는 지속 권한 문제는 그대로 남아 있다.
+배치 채택 여부는 [sweep 설계](06-sweep.md)에서 결정한다. 현재 결정은 건별 일반 전송이다 — 최상위 1건 ↔ 이동 M건을 받는 DB·상태 흐름이 아직 없고, allowance 라는 지속 권한도 그대로 남아 있다.
 
 ## 못 한 것
 

@@ -138,8 +138,6 @@ sequenceDiagram
   Note over T: 남은 allowance 는 계속 유효 — 회수는 받는주소가 approve(sweeper 주소, 0) 을 다시 낼 때만
 ```
 
-받는주소가 서명하는 것은 위쪽 `approve` 한 번뿐이다. 아래쪽에서 실제로 토큰을 옮기는 `transferFrom` 의 호출자는 sweeper 이고, 받는주소는 그 거래에 등장하지 않는다 — 이미 낸 승인이 권한을 대신한다.
-
 ### 승인 금액을 얼마로 주나
 
 `approve(spender, value)` 의 `value` 가 **승인 금액**이다. "sweeper 가 내 토큰을 여기까지 가져가도 된다" 는 상한이고, 토큰 컨트랙트에 `allowance(받는주소, sweeper)` 라는 숫자로 남는다. `transferFrom` 이 실행될 때마다 그만큼 깎이고, 0 이 되면 그 주소는 `approve` 를 다시 내야 한다. (트리거 조건에 나오는 가스비 상한이나 받는주소 잔액 상한과는 다른 값이다.)
