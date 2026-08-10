@@ -19,7 +19,7 @@ ref: 참고
 | owner 2 (받는주소) | vault 83 `approve-pull-owner2` | `0xB6Df2ad4d9FB89529874636276AF2E367cf091D2` |
 | operator (제출자) | vault 84 `approve-pull-operator` | `0xf39864Fe764072cec80feb0DC1E24Db7a00E2B08` |
 | 옴니버스 (목적지) | vault 12 `kb-test-stablecoin-issuer` | `0x496E49e0d3F30336079FF0B921F98D77eb00055D` |
-| spender EOA (단건용) | 로컬 키 | `0x7b2CD2087fF2Ca4aEFC2e9A99Ae2a61560a0255b` |
+| spender EOA — 시나리오 2 전용 | **Fireblocks 밖의 일회용 지갑** · 개인키를 로컬에 생성 | `0x7b2CD2087fF2Ca4aEFC2e9A99Ae2a61560a0255b` |
 | 배치 sweeper 컨트랙트 | 직접 배포 | `0xF95AFc896461a3eb7426714267eC6abb1cd6A1c9` |
 
 sweeper 는 98 의 "최소 통제" 를 그대로 반영해 짰다 — 목적지(옴니버스)·토큰·호출 가능한 운영자를 **배포 시 고정**하고 호출자가 임의 주소를 넘길 수 없게 했으며, 한 건이 실패해도 전체를 revert 하지 않고 skip 하며 이벤트를 남긴다. 수신기(fbhook)는 관찰 지점으로만 썼고 실행은 일회성 스크립트로 했다.
@@ -98,7 +98,7 @@ flowchart LR
 
 ## 2. 외부 EOA 가 단건 transferFrom 실행
 
-**한 것** — vault 82 가 EOA 를 spender 로 승인한 상태에서, 그 **EOA 가 직접** `transferFrom(vault82, vault12, 100)` 을 호출했다. Fireblocks 를 거치지 않은 제출이다.
+**한 것** — vault 82 가 EOA 를 spender 로 승인한 상태에서, 그 **EOA 가 직접** `transferFrom(vault82, vault12, 100)` 을 호출했다. Fireblocks 를 거치지 않은 제출이다 — 벤더가 모르는 거래로 vault 잔액이 빠지는 상황을 만들려면 제출자가 워크스페이스 밖에 있어야 해서, 이 시나리오에만 쓰는 일회용 지갑을 따로 만들었다. 설계의 운영 계정에 해당하는 것은 시나리오 3 의 vault 84 다.
 
 **결과** — 온체인 성공(`0x52d60271…`), vault 82 잔액 1000 → 900.
 
