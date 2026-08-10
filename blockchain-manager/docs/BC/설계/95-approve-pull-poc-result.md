@@ -19,7 +19,6 @@ ref: 참고
 | owner 2 (받는주소) | vault 83 `approve-pull-owner2` | `0xB6Df2ad4d9FB89529874636276AF2E367cf091D2` |
 | operator (제출자) | vault 84 `approve-pull-operator` | `0xf39864Fe764072cec80feb0DC1E24Db7a00E2B08` |
 | 옴니버스 (목적지) | vault 12 `kb-test-stablecoin-issuer` | `0x496E49e0d3F30336079FF0B921F98D77eb00055D` |
-| 시나리오 1 의 승인 대상 | 테스트용 일회용 지갑 · 개인키를 로컬에 생성 | `0x7b2CD2087fF2Ca4aEFC2e9A99Ae2a61560a0255b` |
 | 배치 sweeper 컨트랙트 | 직접 배포 | `0xF95AFc896461a3eb7426714267eC6abb1cd6A1c9` |
 
 ## 시나리오 한눈에
@@ -31,7 +30,7 @@ ref: 참고
 
 ## 1. approve 제출 경로
 
-**한 것** — vault 82 가 spender 를 승인하는 거래를 두 형태로 제출했다.
+**한 것** — vault 82 에서 승인 거래를 두 형태로 제출했다. 승인 대상 주소가 무엇이든 결과는 같으므로 여기서는 제출 형태만 본다.
 
 | 시도 | 요청 | 결과 |
 |---|---|---|
@@ -131,4 +130,4 @@ flowchart TB
 
 실행 스크립트는 fbhook 저장소 `scripts/approve-pull/` 에 있다(앱 범위 밖의 일회성 스크립트). 준비 → 승인 → 배치 순으로 번호가 붙어 있고, sweeper 소스도 같은 폴더에 있다. 관찰 원본은 fbhook `NEXT.md` 의 관찰 기록에 적었다.
 
-테스트 잔여물은 지우지 않았다 — vault 82·83·84, spender EOA, sweeper 컨트랙트, 그리고 owner 두 곳에 남은 allowance(각각 100·150). 재검토 때 그대로 다시 쓸 수 있다. 치울 때는 `approve(sweeper, 0)` 을 먼저 내고 토큰·가스를 회수한다.
+테스트 잔여물은 지우지 않았다 — vault 82·83·84, 배포한 sweeper 컨트랙트, 시나리오 1 에 쓴 테스트 지갑, 그리고 sweeper 앞으로 남은 allowance(82 는 100 · 83 은 150). 재검토 때 그대로 다시 쓸 수 있다. 치울 때는 `approve(sweeper, 0)` 을 먼저 내고 토큰·가스를 회수한다.
