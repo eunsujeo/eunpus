@@ -7,7 +7,24 @@ ref: 참고
 [approve 배치 sweep PoC](95-approve-pull-poc-result.md)에서 받은 알림 원문이다. 고객 vault 두 곳의 잔액을
 배치 컨트랙트가 한 거래로 옮겼고, 그 이동이 `networkRecords` 에 어떻게 담기는지를 보여준다.
 
-거래 생성 37초 뒤에 도착했고 그때 `data.status` 는 아직 `CONFIRMING` 이었다 — 확정을 기다리지 않는다.
+## 알림 순서 — 배치 거래 한 건에 8건
+
+| 시각 | 이벤트 | status | subStatus |
+|---|---|---|---|
+| 08:42:39 | `transaction.created` | `SUBMITTED` | |
+| 08:42:40 | `transaction.status.updated` | `PENDING_ENRICHMENT` | |
+| 08:42:41 | `transaction.status.updated` | `QUEUED` | |
+| 08:42:43 | `transaction.status.updated` | `PENDING_SIGNATURE` | |
+| 08:42:45 | `transaction.status.updated` | `BROADCASTING` | |
+| 08:42:45 | `transaction.status.updated` | `CONFIRMING` | `PENDING_BLOCKCHAIN_CONFIRMATIONS` |
+| 08:43:16 | **`transaction.network_records.processing_completed`** | `CONFIRMING` | `PENDING_BLOCKCHAIN_CONFIRMATIONS` |
+| 08:43:25 | `transaction.status.updated` | `COMPLETED` | `CONFIRMED` |
+
+- **우리가 낸 거래는 `created` 가 `SUBMITTED` 로 시작한다.** 입금 알림은 `created` 가 이미 `CONFIRMING`+`txHash` 를 담고 오는데([입금 샘플](96-payload-sample.md)), 제출한 거래는 벤더 내부 단계까지 전부 알림으로 온다 — 여기서는 6초 안에 다섯 단계.
+- **이동 내역이 확정보다 먼저 온다.** `network_records` 알림이 `CONFIRMING` 과 `COMPLETED` 사이에 오고, 확정 9초 전이었다.
+- 한 배치 sweep 이 알림 8건을 만든다. 이동 건수를 늘렸을 때도 8건인지는 확인하지 않았다.
+
+## network records 알림 원문
 
 ```json
 {
