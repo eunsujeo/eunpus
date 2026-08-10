@@ -123,13 +123,10 @@ Fireblocks 담당자에게 문의해 받은 답변을 질문 단위로 모은다
 **Q.** payload 를 JSON/JSONB 컬럼에 저장하면?
 **A.** 키 재정렬·공백 정규화로 **와이어 바이트가 소실**된다 — DB 에서 꺼낸 값으로는 detached JWS 재검증이 불가했다(실측 401). 원문 해시·서명 재검증은 수신 시점 바이트로 해야 한다.
 
-**Q.** vault 가 스스로 제출하지 않은 제3자 거래(승인된 spender 의 `transferFrom`)로 잔액이 빠질 때, 그 vault 의 거래 기록과 웹훅이 생기나? (2026-08-10 이더리움 Sepolia · KBKRW · vault → EOA spender)
-**A.** **제출 주체에 따라 갈린다.**
+**Q.** 배치 컨트랙트가 `transferFrom` 으로 여러 vault 의 잔액을 한 거래에 모을 때, vault 별 거래 기록과 웹훅이 어떻게 오나? (2026-08-10 이더리움 Sepolia · KBKRW · leg 2개)
+**A.** 우리 vault 가 배치를 `CONTRACT_CALL` 로 제출한 경우로 확인했다. 그 거래의 `networkRecords` 에 **원천 vault 가 귀속되고 `netAmount` 도 나온다.** `transaction.network_records.processing_completed` 도 온다. 단 최상위 거래는 제출 1건뿐이고(원천 vault·옴니버스 각각의 최상위 거래는 생기지 않는다), leg 당 레코드가 관점별로 2~3개씩(입금 관점 · 출금 관점 · `netAmount` 0 인 컨트랙트 호출 관점) 나온다.
 
-- **외부 EOA 가 제출한 경우** — 빠지는 vault 쪽에는 거래 레코드도 웹훅도 생기지 않는다. 잔액만 줄고(1000 → 900), 그 vault 를 source 로 하는 거래는 조회해도 없다. 생기는 것은 받는 vault 의 입금 1건(`operation=TRANSFER`)이고 웹훅도 그것만 온다. 그 레코드의 `source` 는 같은 워크스페이스 주소인데도 `{type:"UNKNOWN", name:"External"}` 이고 `sourceAddress` 만 채워진다. `networkRecords` 는 비어 있다.
-- **우리 vault 가 CONTRACT_CALL 로 제출한 경우(배치)** — 그 거래의 `networkRecords` 에 **원천 vault 가 귀속되고 `netAmount` 도 나온다.** `transaction.network_records.processing_completed` 도 온다. 단 최상위 거래는 제출 1건뿐이고(원천 vault·옴니버스 각각의 최상위 거래는 생기지 않는다), leg 당 레코드가 관점별로 2~3개씩(입금 관점 · 출금 관점 · `netAmount` 0 인 컨트랙트 호출 관점) 나온다.
-
-시사점 — 배치 sweep 의 감지·대사는 성립하지만 **network records 를 펼쳐 읽고 관점 중복과 0 금액을 걸러내는 처리가 필수**다. 반대로 서명만 넘겨 외부가 제출하는 모델은 원천 쪽 무기록이므로 제출 주체를 우리 쪽에 두는 것이 감지의 전제가 된다.
+시사점 — 배치 sweep 의 감지·대사는 성립하지만 **network records 를 펼쳐 읽고 관점 중복과 0 금액을 걸러내는 처리가 필수**다. 서명만 넘겨 외부가 제출하는 모델에서도 같은지는 재보지 않았다.
 
 **Q.** ERC-20 `approve` 는 어떤 operation 으로 제출하나? 스키마 enum 의 `APPROVE` 를 쓰면 되나?
 **A.** **`APPROVE` 로는 제출할 수 없다** — `400 {"message":"Cannot perform transaction","code":1401}`(두 가지 body 형태 모두). `CONTRACT_CALL` 에 approve calldata 를 실어 보내면 통하고(200 → COMPLETED, 온체인 allowance 반영), **조회하면 그 거래의 `operation` 이 `APPROVE`** 로 나온다. 즉 `APPROVE` 는 제출용이 아니라 벤더가 calldata 를 보고 붙이는 분류 라벨이다. TAP 의 `APPROVE` transactionType·`applyForApprove` 도 이 분류 위에 있을 것으로 보이나 정책 적용은 미실측.
@@ -179,7 +176,7 @@ Fireblocks 담당자에게 문의해 받은 답변을 질문 단위로 모은다
 **A.** 논의 후 확정 예정(테스트넷 3, 메인넷은 협의 값). Base 의 컨펌 단위와 블록 간격 상수 유효성도 함께 확인한다.
 
 **Q.** vault 가 스스로 제출하지 않은 제3자 거래(사전 서명 authorization·사전 allowance·위임 코드 경유)로 잔액이 출금될 때, vault 별 거래 기록과 웹훅(v2)이 생성되나? 생성된다면 어떤 형태인가(개별 tx vs 제출 거래의 networkRecords)?
-**A.** **실측으로 답 나옴 (2026-08-10)** — 위 "PoC 실측으로 확정한 사실" 절 참조. 빠지는 vault 쪽은 무기록·무웹훅이고 받는 vault 입금 1건만 생긴다. 벤더 문의로 남은 것은 **배치 컨트랙트로 M개 이동을 한 tx 에 묶었을 때** 입금이 M건으로 쪼개지는지와 `networkRecords` 가 어떻게 채워지는지다.
+**A.** **실측으로 답 나옴 (2026-08-10)** — 위 "PoC 실측으로 확정한 사실" 절 참조. 우리 vault 가 제출한 배치라면 `networkRecords` 에 원천 vault·금액이 귀속되고 `network_records.processing_completed` 도 온다. 남은 것은 leg 수를 수십으로 올렸을 때의 레코드 개수·이벤트 지연이다.
 
 **Q.** Universal Gasless 로 upgrade 된 vault 의 위임 지갑 코드가, 지정 운영자(감사된 배치 sweep 컨트랙트)의 일괄 인출을 허용하는 구성이 가능한가? 안 되면 로드맵에 있거나, 우리가 지정한 감사된 코드로의 위임을 허용하는 경로가 있나?
 **A.** 미확인. 7702 배치 노선의 성립 조건 — 안 되면 그 노선 자체가 닫힌다. 현재 결정은 자산 구분 없이 건별 전송이다.
@@ -188,6 +185,6 @@ Fireblocks 담당자에게 문의해 받은 답변을 질문 단위로 모은다
 **A.** 미확인. 3009 배치 노선의 성립 조건 — 이 서명은 곧 자금 이동 권한이라 정책 통제가 보안의 핵심이고, 처리량이 배치 크기(M)·주기 설계의 상한이 된다. 배치 재검토 시에 판단할 항목이다.
 
 **Q.** ERC-20 `approve` 를 API 로 낼 때 별도 `APPROVE` operation 과 approve calldata 를 넣은 `CONTRACT_CALL` 중 어느 경로를 써야 하나? TAP 이 spender·token·**승인 금액(allowance) 상한**을 어디까지 강제하고, 제3자 `transferFrom` 은 vault 별 거래 레코드·웹훅에 어떤 형태로 잡히나?
-**A.** 제출 경로와 기록 형태는 **실측 완료 (2026-08-10)** — 위 실측 절 참조. `APPROVE` 로는 제출 불가(400·1401), `CONTRACT_CALL` 로 내면 통하고 기록은 `operation=APPROVE`. 제3자 `transferFrom` 은 빠지는 vault 쪽 무기록, 받는 vault 입금 1건. 스키마 enum 에 이름이 있는 것과 제출 경로로 쓸 수 있는 것이 다르다는 게 이번 실측의 핵심이다.
+**A.** 제출 경로와 기록 형태는 **실측 완료 (2026-08-10)** — 위 실측 절 참조. `APPROVE` 로는 제출 불가(400·1401), `CONTRACT_CALL` 로 내면 통하고 기록은 `operation=APPROVE`. 스키마 enum 에 이름이 있는 것과 제출 경로로 쓸 수 있는 것이 다르다.
 
 **남은 미확인은 정책 쪽** — `APPROVE` transactionType·`applyForApprove` 로 spender·token 을 넘어 **승인 금액 상한**까지 강제할 수 있는가([정책](https://developers.fireblocks.com/reference/configure-transaction-authorization-policy)), Console 의 Approve Amount Cap 이 API 제출에도 적용되는가([Amount Cap](https://developers.fireblocks.com/docs/interact-with-smart-contracts)), CONTRACT_CALL approve 에 Universal Gasless 를 적용할 수 있고 relay 처리량은 얼마인가. 정책 상한이 없어도 유한 allowance 는 calldata 로 지정할 수 있지만 독립적인 오승인 방어선이 약해진다.

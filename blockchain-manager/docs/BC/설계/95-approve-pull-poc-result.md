@@ -4,7 +4,7 @@ status: Done
 ref: 참고
 ---
 
-[배치 sweep 메커니즘](98-batch-sweep.md)의 미확인 항목 두 가지를 실물로 확인한 결과다(2026-08-10). ① ERC-20 `approve` 를 Fireblocks 로 어떤 형태로 제출하나 ② vault 가 스스로 제출하지 않은 거래로 잔액이 빠질 때 거래 기록과 웹훅이 어떻게 오나.
+[배치 sweep 메커니즘](98-batch-sweep.md)의 미확인 항목 두 가지를 실물로 확인한 결과다(2026-08-10). ① ERC-20 `approve` 를 Fireblocks 로 어떤 형태로 제출하나 ② 배치 컨트랙트가 여러 vault 의 잔액을 한 거래로 모을 때 거래 기록과 웹훅이 어떻게 오나.
 
 ## 환경
 
@@ -19,7 +19,7 @@ ref: 참고
 | owner 2 (받는주소) | vault 83 `approve-pull-owner2` | `0xB6Df2ad4d9FB89529874636276AF2E367cf091D2` |
 | operator (제출자) | vault 84 `approve-pull-operator` | `0xf39864Fe764072cec80feb0DC1E24Db7a00E2B08` |
 | 옴니버스 (목적지) | vault 12 `kb-test-stablecoin-issuer` | `0x496E49e0d3F30336079FF0B921F98D77eb00055D` |
-| spender EOA — 시나리오 2 전용 | **Fireblocks 밖의 일회용 지갑** · 개인키를 로컬에 생성 | `0x7b2CD2087fF2Ca4aEFC2e9A99Ae2a61560a0255b` |
+| 시나리오 1 의 승인 대상 | 테스트용 일회용 지갑 · 개인키를 로컬에 생성 | `0x7b2CD2087fF2Ca4aEFC2e9A99Ae2a61560a0255b` |
 | 배치 sweeper 컨트랙트 | 직접 배포 | `0xF95AFc896461a3eb7426714267eC6abb1cd6A1c9` |
 
 ## 시나리오 한눈에
@@ -27,33 +27,7 @@ ref: 참고
 | # | 시나리오 | 결과 |
 |---|---|---|
 | 1 | `approve` 를 두 경로로 제출 | `APPROVE` operation 은 **거절(400)** · `CONTRACT_CALL` 은 성공하고 **기록은 `operation=APPROVE`** |
-| 2 | 외부 EOA 가 단건 `transferFrom` 실행 | 빠지는 vault 쪽 **거래 기록·웹훅 없음** · 잔액만 감소 · 받는 vault 입금 1건만 생성 |
-| 3 | operator vault 가 배치 2 leg 제출 | `networkRecords` 7개에 **원천 vault·금액 귀속** · `network_records.processing_completed` 수신 |
-
-시나리오 2와 3은 결과가 다르다. 차이는 방식이 아니라 **누가 온체인 거래를 제출했는지**에서 온다.
-
-```mermaid
-flowchart TB
-  subgraph S2["시나리오 2 — 외부 EOA 가 제출"]
-    direction LR
-    A1["외부 EOA<br/>Fireblocks 밖"] --> A2["온체인 transferFrom"]
-    A2 --> A3["원천 vault<br/>잔액만 감소<br/>거래 기록·웹훅 없음"]
-    A2 --> A4["옴니버스 vault<br/>입금 1건<br/>source = External"]
-  end
-  subgraph S3["시나리오 3 — 우리 vault 가 제출"]
-    direction LR
-    B1["operator vault"] --> B2["CONTRACT_CALL 1건<br/>batchSweep"]
-    B2 --> B3["networkRecords<br/>원천 vault 귀속 · netAmount"]
-    B2 --> B4["network_records<br/>processing_completed 웹훅"]
-  end
-
-  classDef bad fill:#fee2e2,stroke:#dc2626
-  classDef good fill:#dcfce7,stroke:#16a34a
-  classDef vault fill:#dbeafe,stroke:#2563eb
-  class A3 bad
-  class A4,B3,B4 good
-  class B1,A1 vault
-```
+| 2 | operator vault 가 배치 2 leg 제출 | `networkRecords` 7개에 **원천 vault·금액 귀속** · `network_records.processing_completed` 수신 |
 
 ## 1. approve 제출 경로
 
@@ -90,24 +64,7 @@ flowchart LR
 
 정책 쪽에 `APPROVE` transactionType 과 Contract_Call 룰의 `applyForApprove` 플래그가 있으니 이 분류 위에 정책이 서는 구조로 보이지만, 정책이 실제로 걸리는지는 확인하지 않았다.
 
-## 2. 외부 EOA 가 단건 transferFrom 실행
-
-**한 것** — vault 82 가 EOA 를 spender 로 승인한 상태에서, 그 **EOA 가 직접** `transferFrom(vault82, vault12, 100)` 을 호출했다. Fireblocks 를 거치지 않은 제출이다 — 벤더가 모르는 거래로 vault 잔액이 빠지는 상황을 만들려면 제출자가 워크스페이스 밖에 있어야 해서, 이 시나리오에만 쓰는 일회용 지갑을 따로 만들었다. 설계의 운영 계정에 해당하는 것은 시나리오 3 의 vault 84 다.
-
-**결과** — 온체인 성공(`0x52d60271…`), vault 82 잔액 1000 → 900.
-
-| 관찰 대상 | 결과 |
-|---|---|
-| 빠지는 vault(82) 잔액 | 갱신된다 |
-| 빠지는 vault(82) 거래 기록 | **없다** — 이 vault 를 source 로 하는 거래는 앞서 낸 approve 뿐 |
-| 빠지는 vault(82) 웹훅 | **없다** |
-| 받는 vault(12) 거래 기록 | 입금 1건 — `operation=TRANSFER` · `COMPLETED` · amount 100 |
-| 그 기록의 `source` | `{type: "UNKNOWN", name: "External"}` — 같은 워크스페이스 vault 인데도 귀속되지 않는다 |
-| 그 기록의 `sourceAddress` | `0x429CdEa1…` — 주소는 채워진다 |
-| 받는 vault(12) 웹훅 | `transaction.created` → `transaction.status.updated` 2건 |
-| `networkRecords` | 0 (단건이라 비어 있다) |
-
-## 3. operator vault 가 배치 2 leg 제출
+## 2. operator vault 가 배치 2 leg 제출
 
 **한 것** — owner vault 두 곳(82·83)이 `CONTRACT_CALL` 로 sweeper 를 승인(각 300)한 뒤, **operator vault 84 가 `batchSweep([82주소, 83주소], [200, 150])` 을 CONTRACT_CALL 로 한 번** 제출했다.
 
@@ -154,7 +111,7 @@ flowchart TB
 
 ## 종합 — 설계에 반영한 것
 
-- **배치 sweep 의 감지·대사에 필요한 기록은 나온다.** 조건은 **제출을 우리 vault 로 하는 것**이다. 서명만 넘겨 외부가 제출하는 구성(3009·2612 를 제3자가 실행)은 시나리오 2 처럼 원천 쪽에 기록이 남지 않는다.
+- **배치 sweep 의 감지·대사에 필요한 기록은 나온다.** 우리 vault 가 제출한 배치 거래라면 원천 vault 와 금액이 `networkRecords` 에 실린다.
 - **`network_records.processing_completed` 구독이 검토 대상에서 필수로 바뀐다.** 최상위 거래 1건에는 이동 정보가 없어서, 이 이벤트와 `networkRecords` 없이는 어느 vault 에서 얼마가 빠졌는지 알 수 없다.
 - **대사 규칙에 걸러내기가 들어간다** — `netAmount` 0 레코드 제외, 그리고 같은 이동이 입금·출금 관점으로 두 번 오는 것의 중복 제거. 이 규칙 없이 레코드 수를 이동 건수로 세면 틀린다.
 - **approve 제출은 `CONTRACT_CALL`** 이고 조회하면 `APPROVE` 로 보인다.
@@ -167,10 +124,11 @@ flowchart TB
 - **Universal Gasless 적용** — `CONTRACT_CALL` approve 와 배치 호출을 대납으로 낼 수 있는지, relay 처리량은 얼마인지. 도입에 계약이 선행이라 CSM 질의 대상이다.
 - **leg 수 확대** — 이번은 2 leg 이다. 수십 leg 에서 레코드 개수·이벤트 지연·가스가 어떻게 되는지는 안 봤다.
 - **부분 실패 경로** — sweeper 에 skip + 이벤트를 구현했지만 실패하는 leg 를 실제로 만들어 보지는 않았다.
+- **사고 상황** — allowance 가 서 있는 상태에서 제3자가 임의 주소로 당겨갈 때 우리가 무엇을 보게 되는지. 배치 설계가 아니라 침해 감지에 해당하므로 별도 시나리오로 다룬다.
 - 7702 위임 코드의 운영자 pull 지원도 여전히 미확인이다.
 
 ## 재현
 
-실행 스크립트는 fbhook 저장소 `scripts/approve-pull/` 에 있다(앱 범위 밖의 일회성 스크립트). 준비 → 승인 → 단건 인출 → 배치 순으로 번호가 붙어 있고, sweeper 소스도 같은 폴더에 있다. 관찰 원본은 fbhook `NEXT.md` 의 관찰 기록에 적었다.
+실행 스크립트는 fbhook 저장소 `scripts/approve-pull/` 에 있다(앱 범위 밖의 일회성 스크립트). 준비 → 승인 → 배치 순으로 번호가 붙어 있고, sweeper 소스도 같은 폴더에 있다. 관찰 원본은 fbhook `NEXT.md` 의 관찰 기록에 적었다.
 
 테스트 잔여물은 지우지 않았다 — vault 82·83·84, spender EOA, sweeper 컨트랙트, 그리고 owner 두 곳에 남은 allowance(각각 100·150). 재검토 때 그대로 다시 쓸 수 있다. 치울 때는 `approve(sweeper, 0)` 을 먼저 내고 토큰·가스를 회수한다.

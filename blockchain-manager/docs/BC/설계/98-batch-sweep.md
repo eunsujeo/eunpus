@@ -4,7 +4,9 @@ status: To Do
 ref: 참고
 ---
 
-[sweep 설계](06-sweep.md)의 비채택 대안인 배치 방식을 검토하는 심화 참고 문서다. 여기서 미확인으로 두던 항목 일부는 2026-08-10 에 직접 재서 확정했다 — 시나리오와 원본 관찰은 [approve 배치 sweep PoC 결과보고](95-approve-pull-poc-result.md)에 있다 — 여러 입금 주소의 자산을 **온체인 거래 한 건**으로 모으는 일이 왜 어렵고, 가능하게 하는 방법과 수탁 위험이 무엇인지를 바닥부터 설명한다. 현재 결정은 받는주소마다 Fireblocks 일반 전송 1건이며, 이 문서의 방식은 구현 대상이 아니다. 채택 결정은 06에서만 한다.
+[sweep 설계](06-sweep.md)의 비채택 대안인 배치 방식을 검토하는 심화 참고 문서다 — 여러 입금 주소의 자산을 **온체인 거래 한 건**으로 모으는 일이 왜 어렵고, 가능하게 하는 방법과 수탁 위험이 무엇인지를 바닥부터 설명한다. 현재 결정은 받는주소마다 Fireblocks 일반 전송 1건이며, 이 문서의 방식은 구현 대상이 아니다. 채택 결정은 06에서만 한다.
+
+여기서 미확인으로 두던 항목 일부는 2026-08-10 에 직접 확인했다. 시나리오와 관찰 원본은 [approve 배치 sweep PoC 결과보고](95-approve-pull-poc-result.md)에 있다.
 
 ## 1. 문제의 뿌리 — ERC-20 은 보유자만 보낸다
 
@@ -272,22 +274,7 @@ sequenceDiagram
 
 ### 실측 결과 (2026-08-10)
 
-이더리움 Sepolia 에서 확인했다 — vault 82 가 EOA 를 spender 로 승인하고, 그 EOA 가 `transferFrom(vault82, vault12, 100)` 을 직접 호출했다. 상세는 [PoC 결과보고](95-approve-pull-poc-result.md).
-
-| 관찰 대상 | 결과 |
-|---|---|
-| 빠지는 vault(82) 잔액 | 1000 → 900 — **갱신된다** |
-| 빠지는 vault(82) 거래 레코드 | **생기지 않는다** — 이 vault 를 source 로 하는 거래는 앞서 낸 approve 뿐 |
-| 빠지는 vault(82) 웹훅 | **없다** |
-| 받는 vault(12) 거래 레코드 | 입금 1건 생성 — `operation=TRANSFER` · `status=COMPLETED` |
-| 그 레코드의 source | `{type: "UNKNOWN", name: "External"}` — 같은 워크스페이스 vault 인데도 귀속되지 않는다 |
-| 그 레코드의 sourceAddress | `0x429CdEa1…9Dddb` — **주소는 남는다** |
-| 받는 vault(12) 웹훅 | `transaction.created` → `transaction.status.updated` 2건 |
-| networkRecords | 0 (단건 `transferFrom` 이라 비어 있음) |
-
-### 배치로 하면 결과가 다르다 (2026-08-10 실측)
-
-같은 날 배치 컨트랙트를 Sepolia 에 올려 다시 쟀다 — owner vault 두 곳(82·83)이 sweeper 를 승인하고, **operator vault(84)가 `batchSweep` 을 CONTRACT_CALL 로 한 번 제출**했다. 결과가 위와 다르다.
+이더리움 Sepolia 에 배치 컨트랙트를 올려 확인했다 — owner vault 두 곳(82·83)이 sweeper 를 승인하고, **operator vault(84)가 `batchSweep` 을 CONTRACT_CALL 로 한 번 제출**했다. 상세는 [PoC 결과보고](95-approve-pull-poc-result.md).
 
 operator 거래 아래 `networkRecords` 7개가 붙고, **원천 vault 가 귀속된다.**
 
@@ -303,12 +290,12 @@ operator 거래 아래 `networkRecords` 7개가 붙고, **원천 vault 가 귀�
 
 `transaction.network_records.processing_completed` 웹훅도 도착했다. 잔액도 맞았다(82: 500→300 · 83: 400→250 · 옴니버스 +350).
 
-**두 실측의 차이는 누가 온체인 거래를 제출했는지에서 온다.** 단건 때는 외부 EOA 가 제출해 Fireblocks 가 그 거래를 몰랐고, 그래서 입금 쪽만 보였다. 배치는 우리 vault 가 제출하므로 벤더가 영수증을 파싱해 자기 vault 들에 귀속시킨다. 정리하면:
+정리하면:
 
-- **배치 sweep 은 감지·대사가 성립한다** — 원천 vault·금액이 `networkRecords` 에 나온다. 앞서 "벤더 기록으로는 귀속이 안 된다"고 본 것은 외부 제출 케이스에만 해당한다.
+- **배치 sweep 은 감지·대사가 성립한다** — 원천 vault·금액이 `networkRecords` 에 나온다.
 - **대신 최상위 거래는 1건뿐이다** — 원천 vault 를 source 로 하는 최상위 거래도, 옴니버스 입금 최상위 거래도 생기지 않는다. 원장·감지는 반드시 `networkRecords` 를 펼쳐 읽어야 하고, 그래서 `transaction.network_records.processing_completed` 구독은 검토 대상이 아니라 **필수**가 된다 ([감지 상세](99-detection-detail.md) 이벤트 표).
 - **레코드는 leg 당 2~3개로 중복 표현된다** — 입금 관점(External → 옴니버스 vault), 출금 관점(원천 vault → 옴니버스 주소), 그리고 `netAmount` 0 인 컨트랙트 호출 관점. 대사 규칙에 **0 금액 제외 + 관점 중복 제거**가 들어가야 한다.
-- **제3자가 제출하는 모델은 여전히 위 단건 결과를 따른다** — 3009·2612 를 우리 vault 가 배치로 제출하면 같은 귀속을 기대할 수 있지만, 서명만 넘겨 외부가 제출하는 구성이면 무기록이다. 제출 주체를 우리 쪽에 두는 것이 감지의 전제다.
+- **제출 주체가 우리 vault 일 때의 결과다** — 서명만 넘겨 외부가 제출하는 구성(3009·2612 를 제3자가 실행)에서도 같은지는 재보지 않았다.
 
 - 부분 실패: 컨트랙트는 불량 항목을 revert 말고 **skip + 이벤트**로 남겨야 한 건 때문에 배치 전체가 죽지 않는다 — 성공/실패 집계는 영수증 로그를 읽어 `bcm_swp_trgt` 를 건별 정리.
 
@@ -331,7 +318,7 @@ operator 거래 아래 `networkRecords` 7개가 붙고, **원천 vault 가 귀�
 
 ## 10. 도입 게이트와 확인 목록
 
-- **실측 완료 (2026-08-10)** — ① approve 제출 경로는 CONTRACT_CALL, 기록은 `operation=APPROVE`(5절). ② 외부 EOA 가 제출한 단건 `transferFrom` 은 빠지는 vault 쪽 무기록. ③ **우리 vault 가 제출한 배치는 `networkRecords` 에 원천 vault·금액이 귀속되고 `transaction.network_records.processing_completed` 도 온다** — 감지·대사 성립(8절).
+- **실측 완료 (2026-08-10)** — ① approve 제출 경로는 CONTRACT_CALL, 기록은 `operation=APPROVE`(5절). ② **우리 vault 가 제출한 배치는 `networkRecords` 에 원천 vault·금액이 귀속되고 `transaction.network_records.processing_completed` 도 온다** — 감지·대사 성립(8절).
 - **벤더 실측 — 남은 것** — ① TYPED_MESSAGE 대량 서명의 TAP 통제·처리량 ② TAP 의 `APPROVE`·`applyForApprove` 가 spender·token·승인 금액을 어디까지 제한하는가 · Console Amount Cap 이 API 제출에도 걸리는가 · CONTRACT_CALL approve 에 gasless 를 적용할 수 있는가 ③ 7702 위임 코드의 운영자 pull 지원 ④ leg 수를 M=수십으로 올렸을 때 network records 개수·이벤트 지연.
 - **발행사·토큰** — 자산별 EIP-3009/2612 지원과 ERC-20 approve 호환 동작을 온보딩마다 판정한다. 발행 스펙에 관여 가능한 자산은 3009 포함을 요구사항으로 검토한다.
 - **컨트랙트** — 옴니버스 목적지 불변, 권한 분리, pause, batch 상한, 이동 건별 이벤트, 부분 실패 정책을 확정하고 독립 감사를 통과한다.
