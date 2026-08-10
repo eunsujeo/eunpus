@@ -40,20 +40,20 @@ app/{short}-api  ──→  domain
 
 ### app 모듈 (api)
 ```
-com.kakaobank.{base}.app.api/
+com.whatto.{base}.app.api/
 ├── {feature}/
 │   ├── {Feature}Controller.kt         # REST Controller
 │   └── {Feature}Response.kt           # 응답 DTO
 ├── config/                             # CodeEnumConfig 등
 └── web/                                # ExceptionHandler, CodeEnum
-com.kakaobank.{base}.app.application/
+com.whatto.{base}.app.application/
 └── {feature}/
     └── {Feature}Service.kt            # 유스케이스 오케스트레이션
 ```
 
 ### domain 모듈
 ```
-com.kakaobank.{base}.domain/
+com.whatto.{base}.domain/
 └── {feature}/
     ├── {Feature}.kt                   # 도메인 모델 (순수 Kotlin data class)
     ├── {Feature}Policy.kt             # 도메인 규칙/정책 (필요 시)
@@ -62,7 +62,7 @@ com.kakaobank.{base}.domain/
 
 ### infra/persistence 모듈
 ```
-com.kakaobank.{base}.infra.persistence/
+com.whatto.{base}.infra.persistence/
 ├── config/
 │   └── DatasourceConfig.kt            # DataSource 설정
 └── {feature}/

@@ -1115,7 +1115,7 @@
 
 ### Q-2026-07-09-C02: boost/drop 을 승인 단계에서 원본과 결정적으로 연결 — 이중 주체 zero-trust 승인
 
-- **Why it matters**: 카카오 거버넌스는 **JV·KakaoBank 두 주체 co-approval** 인데 둘은 다른 trust boundary(직접 API 불가·zero-trust). boost/drop tx 를 원본과 연결하려면 **Fireblocks 가 서명한 콜백 payload** 안에 불변 식별자가 있어야 하나, **승인 단계 payload 엔 없다** → 승인자가 이 요청이 기존 tx 의 boost/drop 인지 판별 불가. approver-only 주체(은행)는 JV 가 만든 dropTransaction 응답도 신뢰 못 함.
+- **Why it matters**: 카카오 거버넌스는 **JV·whatto 두 주체 co-approval** 인데 둘은 다른 trust boundary(직접 API 불가·zero-trust). boost/drop tx 를 원본과 연결하려면 **Fireblocks 가 서명한 콜백 payload** 안에 불변 식별자가 있어야 하나, **승인 단계 payload 엔 없다** → 승인자가 이 요청이 기존 tx 의 boost/drop 인지 판별 불가. approver-only 주체(은행)는 JV 가 만든 dropTransaction 응답도 신뢰 못 함.
 - **확정 (CSM, `sources/fireblocks/csm2_boost.txt`)**: ① `rawTx` 는 서명 단계에만(승인 = 직렬화 이전 — fee 변동 때문에 승인 후 직렬화) ② 승인 콜백에 `replaceTxByHash`·원 txId·nonce 없음 ③ **RETRY 우회(최대 20회·~3분·~1h)** 는 이중 주체 co-approval 엔 부적합 ④ 현행 연결책 = **"Get Transaction by ID" 의 `replacedTxHash`**(boost·drop 공통). internal note 는 고객 설정 가능이라 침해 시 신뢰 불가.
 - **요청 (feature request open)**: 승인+서명 콜백 payload 에 `replaceTxByHash`(또는 originalTxId) 포함. Fireblocks 제품팀 검토 중(플로우 다이어그램 제출 요청받음).
 - **적용처**: [[entities/fireblocks/callback-handler]] §"승인 단계 제약", [[entities/fireblocks/transaction]] §"Boost (RBF) 메커니즘".

@@ -4,6 +4,44 @@
 // 내보내기는 공유용이라 frontmatter 에 `ref:` 가 붙은 참고 문서(판단 재료·심화)를 뺀다.
 // 두 내보내기 경로가 같은 규칙을 쓰도록 여기 한 곳에만 둔다. 반환값 = 빠진 경로들.
 const MD_LINK = /\[([^\]]+)\]\(([^)\s]+\.md)(#[^)]*)?\)/g;
+const MERMAID_FENCE = /^```mermaid\s*\r?\n([\s\S]*?)\r?\n```\s*$/gim;
+
+function mermaidBlocks(markdown) {
+  return [...String(markdown || '').matchAll(MERMAID_FENCE)].map((m) => m[1].trim());
+}
+
+// 정적 HTML 은 업로드 환경에서 대용량 Mermaid 인라인 스크립트가 차단될 수 있다.
+// 다운로드 전에 각 문서의 다이어그램을 SVG 로 확정해 두면 정적 파일에서는 Mermaid 런타임이 필요 없다.
+// 문서별 배열인 이유: 같은 원본이 여러 번 나와도 SVG 내부 id 가 겹치지 않게 각 위치를 따로 렌더한다.
+export async function preRenderMermaid(data, onProgress) {
+  const jobs = [];
+  for (const [path, doc] of Object.entries(data.docs || {})) {
+    mermaidBlocks(doc.body).forEach((source, index) => jobs.push({ path, index, source }));
+  }
+
+  data.mermaidSvgs = {};
+  data.mermaidPreRendered = true;
+  if (!jobs.length) return { total: 0 };
+  if (!globalThis.mermaid || typeof globalThis.mermaid.render !== 'function') {
+    throw new Error('Mermaid SVG 생성기를 불러오지 못했습니다');
+  }
+
+  if (globalThis.MD && typeof globalThis.MD.initMermaid === 'function') globalThis.MD.initMermaid();
+  for (let i = 0; i < jobs.length; i += 1) {
+    const job = jobs[i];
+    try {
+      const rendered = await globalThis.mermaid.render(`export-mermaid-${i + 1}`, job.source);
+      if (!data.mermaidSvgs[job.path]) data.mermaidSvgs[job.path] = [];
+      data.mermaidSvgs[job.path][job.index] = { source: job.source, svg: rendered.svg };
+    } catch (error) {
+      delete data.mermaidSvgs;
+      data.mermaidPreRendered = false;
+      throw new Error(`${job.path}의 Mermaid ${job.index + 1}번 SVG 생성 실패: ${error.message || error}`);
+    }
+    if (onProgress) onProgress(i + 1, jobs.length);
+  }
+  return { total: jobs.length };
+}
 
 // 카드에 문서 frontmatter 의 표시용 값을 옮긴다 — /api/board 는 이 값들을 담지 않는다.
 export function attachCardMeta(data) {
@@ -108,7 +146,10 @@ window.__STATIC_BOARD__ = ${dataJs};
 
   const out = html
     .replace('<link rel="stylesheet" href="styles.css" />', () => `<style>\n${css}\n</style>`)
-    .replace('<script src="vendor/mermaid.min.js"></script>', () => `<script>${inlineJs(mermaid)}</script>`)
+    .replace(
+      '<script src="vendor/mermaid.min.js"></script>',
+      () => data.mermaidPreRendered ? '' : `<script>${inlineJs(mermaid)}</script>`
+    )
     .replace('<script src="md.js"></script>', () => `<script>${inlineJs(md)}</script>`)
     .replace('<script src="theme.js"></script>', () => `<script>${inlineJs(theme)}</script>`)
     .replace('<script src="app.js"></script>', () => `${shim}\n<script>${staticApp}</script>`);

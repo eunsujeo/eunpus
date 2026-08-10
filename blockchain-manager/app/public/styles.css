@@ -385,6 +385,15 @@ body {
   color: #181a20;
 }
 .doc-body .mermaid svg { max-width: 100%; height: auto; }
+.mermaid-render-error {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  color: var(--danger);
+  font: 600 12px/1.5 Inter, sans-serif;
+  text-align: left;
+}
 /* alt/else·loop·opt 프레임 구분선 — mermaid 기본(얇은 회색 점선)이 밝은 다이어그램 패널에서 흐려 보여 진하게.
    mermaid 가 SVG 안에 자체 <style> 을 심으므로 !important 필요. 패널은 두 테마 공통 밝은 배경이라 고정색. */
 .doc-body .mermaid svg line.loopLine {

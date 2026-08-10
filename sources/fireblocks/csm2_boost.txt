@@ -39,7 +39,7 @@ If both approval and signing are requested for a transaction, one callback handl
 
 Because of this configuration, the request was handled as a signing request, and rawTx was therefore available.
 
-However, in the actual production setup, either KakaoBank or Kakao JV will operate as an approver only, not as a signer. In that case, rawTx is not included in the callback payload, which creates a limitation.
+However, in the actual production setup, either whatto or Kakao JV will operate as an approver only, not as a signer. In that case, rawTx is not included in the callback payload, which creates a limitation.
 
 Could you please advise on the recommended way to map a Boost transaction to its original transaction under this constraint?
 번역됨||Bruce  [오후 7:30]
@@ -59,7 +59,7 @@ I understand the explanation that it is difficult to provide rawTx at the approv
 
 (My understanding is as follows: once the nonce is serialized, if another transaction with the same nonce is created, the previously approved transaction cannot be reused. Additionally, if the system blocks subsequent transactions when there is a pending transaction at the approval stage, it becomes impossible to generate a new transaction using the same nonce.)
 
-However, in Kakao’s transaction governance model, approval must be obtained from two separate entities — Kakao JV and KakaoBank. Because of this dual-entity co-signing(co-approving) requirement, we cannot rely on a manual approval flow using a RETRY mechanism. Both co-signers must be able to deterministically identify the relationship between the original transaction and the boosted transaction.
+However, in Kakao’s transaction governance model, approval must be obtained from two separate entities — Kakao JV and whatto. Because of this dual-entity co-signing(co-approving) requirement, we cannot rely on a manual approval flow using a RETRY mechanism. Both co-signers must be able to deterministically identify the relationship between the original transaction and the boosted transaction.
 
 Would it be possible to include the replaceTxByHash parameter in the callback handler requests for both the approval stage and the signing stage? This would allow both entities to correlate the boosted transaction with the original transaction.
 Richard Smith  [오전 12:18]
@@ -83,15 +83,15 @@ So I can work with our product team on a solution. Can I ask you to provide a fl
 Once I have that, I can work with our team on some ideas.
 번역됨||emjay.x  [오후 7:10]
 스레드에 댓글 남김:Hi @Richard Smith
-In the current architecture, Kakao JV and KakaoBank are not within the same trust boundary, and due to communication restrictions imposed by the bank, direct API calls between the two entities (the JV system and the bank’s blockchain system)  are not possible.
+In the current architecture, Kakao JV and whatto are not within the same trust boundary, and due to communication restrictions imposed by the bank, direct API calls between the two entities (the JV system and the bank’s blockchain system)  are not possible.
 
-As a result, KakaoBank cannot rely on the dropTransaction response generated on the Kakao JV side.
+As a result, whatto cannot rely on the dropTransaction response generated on the Kakao JV side.
 
 Additionally, we assume a zero-trust model between the two entities. Any inter-entity communication cannot be implicitly trusted.
 
 However, the Callback Handler payload can be trusted because it is generated and signed by Fireblocks, and therefore cannot be modified or forged by Kakao JV.
 
-Therefore, we would require an approval mechanism that provides a verifiable linkage between the original transaction and the corresponding dropTransaction/boostTransaction request (e.g., through explicit inclusion of originalTxId, replaceTxByHash, or equivalent immutable identifiers in the callback payload), without requiring direct API trust between Kakao JV and KakaoBank.
+Therefore, we would require an approval mechanism that provides a verifiable linkage between the original transaction and the corresponding dropTransaction/boostTransaction request (e.g., through explicit inclusion of originalTxId, replaceTxByHash, or equivalent immutable identifiers in the callback payload), without requiring direct API trust between Kakao JV and whatto.
 
 @Bruce @mob.bit @marcus.m25(마커스)/서비스플랫폼실 (편집됨) 
 emjay.kp(엠제이)/스테이블코인테크TF  [오전 11:05]

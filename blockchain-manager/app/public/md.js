@@ -13,12 +13,14 @@ window.MD = (() => {
 
   function renderMarkdown(md, opts = {}) {
     const docBase = opts.docBase || ''; // 현재 문서의 폴더 경로 — 상대 .md 링크를 doc 페이지 링크로 푼다
+    const docPath = opts.docPath || ''; // 정적 export 의 문서별 사전 렌더 Mermaid SVG 조회 키
     const docLinksNewTab = opts.docLinksNewTab || false; // true 면 내부 .md 링크를 모달 대신 새 탭으로 (인덱스 문서용)
     const lines = md.split(/\r?\n/);
     const out = [];
     let inCode = false;
     let codeLang = '';
     let codeBuf = [];
+    let mermaidIndex = 0;
     let listTag = null;
     let tableRows = null;
 
@@ -85,7 +87,17 @@ window.MD = (() => {
           inCode = true;
         } else {
           if (codeLang === 'mermaid') {
-            out.push(`<div class="mermaid">${esc(codeBuf.join('\n'))}</div>`);
+            const source = codeBuf.join('\n').trim();
+            const cached = window.__STATIC_BOARD__ && window.__STATIC_BOARD__.mermaidSvgs;
+            const docSvgs = cached && docPath && cached[docPath];
+            let entry = docSvgs && docSvgs[mermaidIndex];
+            // 절만 잘라 보는 피크는 원문 안의 Mermaid 순번이 달라질 수 있으므로 원본으로 한 번 더 찾는다.
+            if (docSvgs && (!entry || entry.source !== source)) entry = docSvgs.find((item) => item.source === source);
+            const svg = entry && entry.svg;
+            out.push(svg
+              ? `<div class="mermaid" data-processed="true">${svg}</div>`
+              : `<div class="mermaid">${esc(source)}</div>`);
+            mermaidIndex += 1;
           } else if (codeLang === 'anim') {
             // 단계 재생 애니메이션 — 펜스 본문 첫 줄이 애니메이션 이름 (mountAnims 가 마운트)
             out.push(`<div class="anim" data-anim="${esc(codeBuf.join('\n').trim())}"></div>`);
@@ -152,9 +164,28 @@ window.MD = (() => {
   }
 
   async function runMermaid(selector) {
-    if (!window.mermaid) return;
+    const pending = [...document.querySelectorAll(selector)].filter((el) => !el.querySelector('svg'));
+    if (!pending.length) return;
+    const showError = (message) => pending
+      .filter((el) => !el.querySelector('svg'))
+      .forEach((el) => {
+        if (el.querySelector('.mermaid-render-error')) return;
+        const error = document.createElement('div');
+        error.className = 'mermaid-render-error';
+        error.textContent = message;
+        el.prepend(error);
+      });
+    if (!window.mermaid) {
+      showError('다이어그램 렌더러가 차단되어 원본 텍스트를 표시합니다.');
+      return;
+    }
     initMermaid();
-    await window.mermaid.run({ querySelector: selector }).catch(() => {});
+    try {
+      await window.mermaid.run({ querySelector: selector });
+    } catch (error) {
+      console.error('Mermaid rendering failed', error);
+      showError(`다이어그램 렌더링 실패: ${error.message || error}`);
+    }
   }
 
   /* 렌더된 코드블록마다 복사 버튼을 붙인다 (mermaid 는 dviewer 가 담당) */
@@ -1344,7 +1375,7 @@ window.MD = (() => {
         const docBase = ref.path.split('/').slice(0, -1).join('/');
         titleEl.textContent = (data.meta && data.meta.title) || ref.label;
         openEl.href = `doc?path=${encodeURIComponent(ref.path)}${ref.hash || ''}`;
-        bodyEl.innerHTML = renderMarkdown(data.body, { docBase });
+        bodyEl.innerHTML = renderMarkdown(data.body, { docPath: ref.path, docBase });
         await runMermaid('#peek-body .mermaid');
         enhanceDiagrams(bodyEl);
         enhanceSectionRefs(bodyEl, { docPath: ref.path });
@@ -1380,7 +1411,7 @@ window.MD = (() => {
       }
       titleEl.textContent = heading;
       openEl.href = `doc?path=${encodeURIComponent(target.path)}${hash}`;
-      bodyEl.innerHTML = renderMarkdown(md, { docBase });
+      bodyEl.innerHTML = renderMarkdown(md, { docPath: target.path, docBase });
       await runMermaid('#peek-body .mermaid');
       enhanceDiagrams(bodyEl);
       enhanceSectionRefs(bodyEl, { docPath: target.path }); // 피크 안의 참조도 이어서 열 수 있게

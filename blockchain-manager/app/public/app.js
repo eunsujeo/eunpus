@@ -401,7 +401,7 @@ async function renderDocView(items) {
     try {
       const data = await api(`/api/doc?path=${encodeURIComponent(c.path)}`);
       pages[i].innerHTML =
-        `<article class="doc-body">${renderMarkdown(data.body, { docBase: c.path.split('/').slice(0, -1).join('/'), docLinksNewTab: (data.meta || {}).linkMode === 'newtab' })}</article>`;
+        `<article class="doc-body">${renderMarkdown(data.body, { docPath: c.path, docBase: c.path.split('/').slice(0, -1).join('/'), docLinksNewTab: (data.meta || {}).linkMode === 'newtab' })}</article>`;
     } catch (e) {
       pages[i].innerHTML = `<p style="color:var(--danger)">불러오기 실패: ${esc(e.message)}</p>`;
     }
@@ -624,7 +624,7 @@ async function renderSectionReader(items) {
     pageEl.innerHTML =
       `<header class="reader-head"><span class="reader-doc">${esc(s.card.title)}</span>` +
       `<span class="reader-pos">${s.i + 1} / ${s.n}</span></header>` +
-      `<div class="doc-body">${renderMarkdown(s.md, { docBase: s.card.path.split('/').slice(0, -1).join('/') })}</div>` +
+      `<div class="doc-body">${renderMarkdown(s.md, { docPath: s.card.path, docBase: s.card.path.split('/').slice(0, -1).join('/') })}</div>` +
       '<nav class="doc-nav">' +
       (prev
         ? `<a class="doc-nav-link prev" href="#"><span class="doc-nav-dir">← 이전 절</span><span class="doc-nav-title">${esc(navLabel(prev, s))}</span></a>`
@@ -787,7 +787,7 @@ async function showPreviewAt(idx, syncURL = true) {
       m.subcategory ? `<span class="chip">${esc(m.subcategory)}</span>` : '',
       previewList.length > 1 ? `<span class="chip">${idx + 1} / ${previewList.length}</span>` : '',
     ].join('');
-    modalBody.innerHTML = renderMarkdown(data.body, { docBase: c.path.split('/').slice(0, -1).join('/'), docLinksNewTab: m.linkMode === 'newtab' });
+    modalBody.innerHTML = renderMarkdown(data.body, { docPath: c.path, docBase: c.path.split('/').slice(0, -1).join('/'), docLinksNewTab: m.linkMode === 'newtab' });
     modalBody.classList.toggle('schema-doc', m.layout === 'schema');
     window.MD.enhanceToc(modalBody);
     await window.MD.runMermaid('#modal-body .mermaid');
@@ -926,7 +926,7 @@ async function exportBoardHtml(opts = {}) {
   btn.disabled = true;
   showToast('보드 내보내는 중…');
   try {
-    const { assembleBoardHtml, attachCardMeta, excludeRefDocs } = await import('./export.js');
+    const { assembleBoardHtml, attachCardMeta, excludeRefDocs, preRenderMermaid } = await import('./export.js');
     const [html, css, mermaid, md, theme, app] = await Promise.all(
       ['index.html', 'styles.css', 'vendor/mermaid.min.js', 'md.js', 'theme.js', 'app.js'].map((f) =>
         fetch(f).then((r) => {
@@ -981,6 +981,7 @@ async function exportBoardHtml(opts = {}) {
     const data = { board, docs, embeds };
     attachCardMeta(data);
     excludeRefDocs(data, opts.withRef);
+    await preRenderMermaid(data, (done, total) => showToast(`다이어그램 SVG 만드는 중… ${done}/${total}`));
     const out = assembleBoardHtml({ html, css, mermaid, md, theme, app }, data);
     const blob = new Blob([out], { type: 'text/html;charset=utf-8' });
     const a = document.createElement('a');

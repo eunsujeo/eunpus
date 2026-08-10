@@ -48,7 +48,7 @@ async function load() {
 
     // 복사·다운로드 = frontmatter 제거 + 제목을 H1 로 (title:/status: 가 텍스트로 새지 않게)
     currentDoc = { name: path.split('/').pop(), raw: `# ${title}\n\n${data.body}` };
-    bodyEl.innerHTML = renderMarkdown(data.body, { docBase: path.split('/').slice(0, -1).join('/') });
+    bodyEl.innerHTML = renderMarkdown(data.body, { docPath: path, docBase: path.split('/').slice(0, -1).join('/') });
     await window.MD.runMermaid('#doc-body .mermaid');
     window.MD.enhanceDiagrams(bodyEl);
     window.MD.enhanceSectionRefs(bodyEl, { docPath: path });

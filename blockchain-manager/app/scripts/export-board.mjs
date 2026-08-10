@@ -11,9 +11,12 @@
 //   node scripts/export-board.mjs --only "온보딩,블록체인매니저/API,컴플라이언스/API" --out ../onboarding.html
 //   node scripts/export-board.mjs --with-ref            → 참고 문서(ref:)까지 포함
 //     --only : 지정한 대카테고리(또는 대/중카테고리)만 담는다 — embed 뷰어도 그 카드 것만 내장
-import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { join, resolve, relative, sep, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { assembleBoardHtml, attachCardMeta, excludeRefDocs } from '../public/export.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -29,6 +32,7 @@ const DIR = resolve(HERE, args.get('dir') || '../../docs');
 const DOCS_PATH = (args.get('docs-path') || 'blockchain-manager/docs').replace(/\/+$/, '');
 const FROM = args.get('from') || 'http://127.0.0.1:8788';
 const OUT = resolve(HERE, args.get('out') || '../../board.html');
+const execFileAsync = promisify(execFile);
 
 const STATUSES = ['To Do', 'In Progress', 'Done', '아카이브'];
 const norm = (s) => (STATUSES.includes(s) ? s : 'To Do');
@@ -49,6 +53,94 @@ function cardDate(meta, fallback) {
   return /^\d{4}-\d{2}-\d{2}$/.test(meta.date || '')
     ? `${meta.date}T00:00:00.000Z`
     : fallback;
+}
+
+function mermaidJobs(data) {
+  const fence = /^```mermaid\s*\r?\n([\s\S]*?)\r?\n```\s*$/gim;
+  const jobs = [];
+  for (const [path, doc] of Object.entries(data.docs || {})) {
+    [...String(doc.body || '').matchAll(fence)].forEach((m, index) => {
+      jobs.push({ path, index, source: m[1].trim() });
+    });
+  }
+  return jobs;
+}
+
+async function findChrome() {
+  const candidates = [
+    process.env.CHROME_PATH,
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    try { await access(candidate); return candidate; } catch { /* 다음 후보 */ }
+  }
+  return '';
+}
+
+// Node 경로도 브라우저의 HTML ↓와 같은 결과를 만든다. 프로젝트에 무거운 DOM 의존성을 추가하는 대신
+// 설치된 Chrome에서 vendored Mermaid를 한 번 실행하고 SVG 캐시만 다시 가져온다.
+async function preRenderMermaidWithChrome(data, mermaidSource) {
+  const jobs = mermaidJobs(data);
+  data.mermaidSvgs = {};
+  data.mermaidPreRendered = true;
+  if (!jobs.length) return 0;
+
+  const chrome = await findChrome();
+  if (!chrome) {
+    delete data.mermaidSvgs;
+    data.mermaidPreRendered = false;
+    console.warn('  경고: Chrome을 찾지 못해 Mermaid 런타임을 포함합니다 (CHROME_PATH로 지정 가능)');
+    return 0;
+  }
+
+  const tempDir = await mkdtemp(join(tmpdir(), 'blockchain-manager-mermaid-'));
+  const renderer = join(tempDir, 'render.html');
+  const safeJobs = JSON.stringify(jobs).replace(/</g, '\\u003c');
+  const inlineMermaid = mermaidSource.replace(/<\/script/gi, '<\\/script');
+  const page = `<!doctype html><html><head><meta charset="utf-8"></head><body>
+<pre id="result">pending</pre>
+<script>${inlineMermaid}</script>
+<script>
+const jobs = ${safeJobs};
+mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'strict' });
+(async () => {
+  const cache = {};
+  for (let i = 0; i < jobs.length; i += 1) {
+    const job = jobs[i];
+    const rendered = await mermaid.render('export-mermaid-' + (i + 1), job.source);
+    if (!cache[job.path]) cache[job.path] = [];
+    cache[job.path][job.index] = { source: job.source, svg: rendered.svg };
+  }
+  const json = JSON.stringify({ cache });
+  document.getElementById('result').textContent = btoa(unescape(encodeURIComponent(json)));
+})().catch((error) => {
+  document.getElementById('result').textContent = 'ERROR:' + (error && error.message || error);
+});
+</${'script'}></body></html>`;
+
+  try {
+    await writeFile(renderer, page, 'utf8');
+    const { stdout } = await execFileAsync(chrome, [
+      '--headless=new', '--no-first-run', '--disable-gpu', '--disable-background-networking',
+      `--user-data-dir=${join(tempDir, 'profile')}`, '--virtual-time-budget=15000', '--dump-dom',
+      `file://${renderer}`,
+    ], { timeout: 45000, maxBuffer: 20 * 1024 * 1024 });
+    const encoded = /<pre id="result">([^<]+)<\/pre>/.exec(stdout)?.[1] || '';
+    if (!encoded || encoded.startsWith('ERROR:')) throw new Error(encoded || 'Chrome SVG 결과 없음');
+    const parsed = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'));
+    data.mermaidSvgs = parsed.cache;
+    return jobs.length;
+  } catch (error) {
+    delete data.mermaidSvgs;
+    data.mermaidPreRendered = false;
+    console.warn(`  경고: Mermaid SVG 사전 생성 실패 — 런타임 포함 (${error.message})`);
+    return 0;
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
 }
 
 async function entries(dir) {
@@ -202,7 +294,10 @@ for (const name of new Set(board.cards.map((c) => c.embed).filter(Boolean))) {
     /* 없으면 마크다운 뷰로 대체 (assembleBoardHtml 이 embed 를 비운다) */
   }
 }
-const out = assembleBoardHtml({ html, css, mermaid, md, theme, app }, { board, docs, embeds });
+const data = { board, docs, embeds };
+const svgCount = await preRenderMermaidWithChrome(data, mermaid);
+if (svgCount) console.log(`  Mermaid SVG ${svgCount}개 사전 생성`);
+const out = assembleBoardHtml({ html, css, mermaid, md, theme, app }, data);
 
 await writeFile(OUT, out, 'utf8');
 console.log(`board.html 내보내기 완료 — ${OUT}`);
