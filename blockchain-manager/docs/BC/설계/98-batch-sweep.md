@@ -208,8 +208,7 @@ sequenceDiagram
 
 ### Fireblocks 에서 확인할 것
 
-- `APPROVE` operation·정책의 `APPROVE` transactionType·`applyForApprove`·Console Amount Cap 존재까지는 확인됐다. 남은 질문은 **APPROVE 와 CONTRACT_CALL 중 실제 제출 경로**, 승인 대상·토큰의 정책 매칭 방식, API 제출에도 Amount Cap 이 적용되는지, 정책 설정 API 로 allowance 상한을 강제할 수 있는지다.
-- 제3자 `transferFrom` 으로 vault 잔액이 빠질 때 vault 별 거래 레코드와 웹훅이 생성되는가. 생성된다면 어떤 txId·operation·network record 로 연결되는가.
+- 정책의 `APPROVE` transactionType·`applyForApprove`·Console Amount Cap 이 **승인 대상·토큰·승인 금액을 어디까지 잡는가**. 제출 경로와 기록 형태는 실측으로 확정했고, 정책이 실제로 걸리는지가 남았다.
 - approve 와 batch CONTRACT_CALL 의 rate limit·정책 승인·Co-signer 경로가 대량 vault 에서 감당 가능한가. 선택된 approve operation 에 Universal Gasless 를 적용할 수 있는지, 가능하다면 relay 처리량은 얼마인가.
 - gasless 도입 요건의 "initiator 와 signer 는 같을 수 없다" 제약 아래에서, 운영 계정 vault 가 배치 CONTRACT_CALL 을 제출하는 구성이 성립하는가.
 - 토큰 승인을 0 으로 낮추는 긴급 거래를 일반 sweep 보다 높은 우선순위로 제출할 수 있는가.
@@ -294,7 +293,14 @@ operator 거래 아래 `networkRecords` 7개가 붙고, **원천 vault 가 귀�
 
 - **배치 sweep 은 감지·대사가 성립한다** — 원천 vault·금액이 `networkRecords` 에 나온다.
 - **대신 최상위 거래는 1건뿐이다** — 원천 vault 를 source 로 하는 최상위 거래도, 옴니버스 입금 최상위 거래도 생기지 않는다. 원장·감지는 반드시 `networkRecords` 를 펼쳐 읽어야 하고, 그래서 `transaction.network_records.processing_completed` 구독은 검토 대상이 아니라 **필수**가 된다 ([감지 상세](99-detection-detail.md) 이벤트 표).
-- **레코드마다 우리 vault 는 한쪽에만 채워진다** — 같은 이동이 받는 vault 관점(`source` 가 `UNKNOWN/External`)과 보내는 vault 관점(`destination` 이 `ONE_TIME_ADDRESS`)으로 두 번 들어온다. 주소는 양쪽 다 옴니버스 주소로 정확히 찍힌다. 여기에 토큰이 움직이지 않은 호출 관계(`netAmount` `"0"`)가 더 붙어 이동 한 건당 레코드 3개가 된다. 대사 규칙에 **0 금액 제외 + 한 관점만 채택**이 들어가야 한다.
+- **레코드는 영수증 로그에서 만들어진다.** 로그 종류마다 행이 생기고, **각 행에는 우리 vault 가 한쪽에만 채워진다.**
+  - `Transfer` 하나당 **두 행** — 보낸 vault 기준 한 행(`source` 가 그 vault, 상대는 `ONE_TIME_ADDRESS`), 받은 vault 기준 한 행(`destination` 이 그 vault, 상대는 `UNKNOWN/External`). 반대편이 같은 워크스페이스의 vault 여도 그렇게 온다.
+  - `Approval` 하나당 **한 행** — `transferFrom` 이 승인 잔여를 깎으면서 남긴 로그다. 자산이 안 움직여 `netAmount` 가 `"0"` 이고 상대가 sweeper 인 것은 승인을 받은 쪽이 sweeper 라서다.
+  - 가스 한 행.
+
+  로그 수와 맞아떨어진다 — 이동 2건짜리 배치는 `Transfer` 2 + `Approval` 2 + 가스 = **7행**, 한 건이 되돌려진 배치는 `Transfer` 1 + `Approval` 1 + 가스 = **4행**. 이 모델은 실측 두 건에 들어맞지만 벤더 문서로 확인한 것은 아니다.
+
+  대사는 **보낸 vault 기준 행**만 쓴다 — 원천과 금액이 그 행에 함께 있다.
 - **제출 주체가 우리 vault 일 때의 결과다** — 서명만 넘겨 외부가 제출하는 구성(3009·2612 를 제3자가 실행)에서도 같은지는 재보지 않았다.
 
 - 부분 실패는 실측했다 — 한 이동이 실패해도 배치 거래는 `COMPLETED` 로 끝나고 나머지는 옮겨진다. 단 **되돌려진 이동은 벤더 레코드에 나오지 않았다**(실패 유형 하나만 확인). 성공/실패 집계는 요청 calldata 를 디코딩해 레코드와 대조하거나 영수증의 컨트랙트 이벤트를 읽어 `bcm_swp_trgt` 를 건별 정리해야 한다.
@@ -322,7 +328,7 @@ operator 거래 아래 `networkRecords` 7개가 붙고, **원천 vault 가 귀�
 - **벤더 실측 — 남은 것** — ① TYPED_MESSAGE 대량 서명의 TAP 통제·처리량 ② TAP 의 `APPROVE`·`applyForApprove` 가 승인 대상·토큰·승인 금액을 어디까지 제한하는가 · Console Amount Cap 이 API 제출에도 걸리는가 · CONTRACT_CALL approve 에 gasless 를 적용할 수 있는가 ③ 7702 위임 코드의 운영자 pull 지원 ④ 한 배치의 이동을 M=수십 건으로 올렸을 때 network records 개수·이벤트 지연.
 - **발행사·토큰** — 자산별 EIP-3009/2612 지원과 ERC-20 approve 호환 동작을 온보딩마다 판정한다. 발행 스펙에 관여 가능한 자산은 3009 포함을 요구사항으로 검토한다.
 - **컨트랙트** — 옴니버스 목적지 불변, 권한 분리, pause, batch 상한, 이동 건별 이벤트, 부분 실패 정책을 확정하고 독립 감사를 통과한다.
-- **매니저 모델** — batch tx 1건 ↔ 원천 이동 M건의 DB 식별·멱등·claim·웹훅·영수증·재처리·대사를 설계하고 장애 테스트를 통과한다. **주소 → vault 매핑으로 원천을 복원하는 경로가 필수**다 — 벤더 기록이 귀속을 안 해준다는 것이 실측으로 확정됐다.
+- **매니저 모델** — batch tx 1건 ↔ 원천 이동 M건의 DB 식별·멱등·claim·웹훅·영수증·재처리·대사를 설계하고 장애 테스트를 통과한다. 보낸 쪽 기준 레코드에 원천 vault id 가 들어 있으므로 주소 매핑은 필요 없다. 대신 **요청 목록과 레코드를 맞추는 처리**가 필수다 — 되돌려진 이동은 레코드에 안 나온다.
 - **운영 복구** — 운영자·관리자 키 침해, 컨트랙트 취약점, 잘못된 batch 입력을 가정한 정지와 vault 별 `approve(0)` 회수 훈련을 통과한다.
 - **경제성** — 건별 일반 전송과 동일 조건에서 총가스·벤더 호출·운영 복잡도를 실측해 순이익이 확인돼야 한다.
 

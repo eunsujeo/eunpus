@@ -126,7 +126,7 @@ Fireblocks 담당자에게 문의해 받은 답변을 질문 단위로 모은다
 **Q.** 배치 컨트랙트가 `transferFrom` 으로 여러 vault 의 잔액을 한 거래에 모을 때, vault 별 거래 기록과 웹훅이 어떻게 오나? (2026-08-10 이더리움 Sepolia · KBKRW · 이동 2건)
 **A.** 우리 vault 가 배치를 `CONTRACT_CALL` 로 제출한 경우로 확인했다. 그 거래의 `networkRecords` 에 **원천 vault 가 귀속되고 `netAmount` 도 나온다.** `transaction.network_records.processing_completed` 도 온다. 단 최상위 거래는 제출 1건뿐이고(원천 vault·옴니버스 각각의 최상위 거래는 생기지 않는다), 레코드마다 우리 vault 는 한쪽에만 채워진다 — 같은 이동이 받는 vault 관점과 보내는 vault 관점으로 두 번 들어오고, 토큰이 움직이지 않은 호출 관계까지 더해 이동 한 건당 레코드 3개가 된다.
 
-시사점 — 배치 sweep 의 감지·대사는 성립하지만 **network records 를 펼쳐 읽고 관점 중복과 0 금액을 걸러내는 처리가 필수**다. 서명만 넘겨 외부가 제출하는 모델에서도 같은지는 재보지 않았다.
+시사점 — 배치 sweep 의 감지·대사는 성립하지만 **network records 를 펼쳐 보낸 vault 기준 행만 골라 쓰는 처리가 필수**다. 서명만 넘겨 외부가 제출하는 모델에서도 같은지는 재보지 않았다.
 
 **Q.** ERC-20 `approve` 는 어떤 operation 으로 제출하나? 스키마 enum 의 `APPROVE` 를 쓰면 되나?
 **A.** **`APPROVE` 로는 제출할 수 없다** — `400 {"message":"Cannot perform transaction","code":1401}`(두 가지 body 형태 모두). `CONTRACT_CALL` 에 approve calldata 를 실어 보내면 통하고(200 → COMPLETED, 온체인 allowance 반영), **조회하면 그 거래의 `operation` 이 `APPROVE`** 로 나온다. 즉 `APPROVE` 는 제출용이 아니라 벤더가 calldata 를 보고 붙이는 분류 라벨이다. TAP 의 `APPROVE` transactionType·`applyForApprove` 도 이 분류 위에 있을 것으로 보이나 정책 적용은 미실측.

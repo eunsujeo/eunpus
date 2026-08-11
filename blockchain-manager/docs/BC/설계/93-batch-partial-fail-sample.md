@@ -262,4 +262,4 @@ SweepDone 이동=2  성공=1
 
 위 `SweepLeg` 은 우리 sweeper 가 실패한 항목도 이벤트로 남기게 짜여 있어서 나온다. 이벤트를 내지 않는 컨트랙트라면 되돌려진 이동은 온체인에도 흔적이 없다.
 
-필드 자료형은 [배치 sweep payload 실물 샘플](94-batch-payload-sample.md)의 "파싱할 때 걸리는 값" 과 같다.
+레코드 4개는 `Transfer` 1개가 만든 두 행(보낸 vault 기준·받은 vault 기준), `Approval` 1개가 만든 금액 0 행, 가스 한 행이다. 필드 자료형은 [배치 sweep payload 실물 샘플](94-batch-payload-sample.md)의 "파싱할 때 걸리는 값" 과 같다.

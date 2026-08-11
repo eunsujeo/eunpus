@@ -84,7 +84,12 @@ flowchart LR
 - **`transaction.network_records.processing_completed` 가 왔다** — 알림 순서와 원문은 [배치 sweep payload 실물 샘플](94-batch-payload-sample.md)에 있다.
 - 잔액도 맞았다 — 82: 500 → 300 · 83: 400 → 250 · 옴니버스 1139 → **1489**(+350).
 - **최상위 거래는 제출 1건뿐이다** — 원천 vault 를 source 로 하는 최상위 거래도, 옴니버스 입금 최상위 거래도 생기지 않았다.
-- **레코드마다 우리 vault 는 한쪽에만 채워진다** — 같은 이동이 받는 vault 관점(`source` 가 `UNKNOWN/External`)과 보내는 vault 관점(`destination` 이 `ONE_TIME_ADDRESS`)으로 두 번 들어온다. 주소는 양쪽 다 옴니버스 주소로 정확히 찍힌다. 여기에 토큰이 움직이지 않은 호출 관계(`netAmount` `"0"`)가 더 붙어 이동 한 건당 레코드 3개가 된다.
+- **레코드는 영수증 로그에서 만들어진다.** 로그 종류마다 행이 생기고, **각 행에는 우리 vault 가 한쪽에만 채워진다.**
+  - `Transfer` 하나당 **두 행** — 보낸 vault 기준 한 행(`source` 가 그 vault, 상대는 `ONE_TIME_ADDRESS`), 받은 vault 기준 한 행(`destination` 이 그 vault, 상대는 `UNKNOWN/External`). 반대편이 같은 워크스페이스의 vault 여도 그렇게 온다.
+  - `Approval` 하나당 **한 행** — `transferFrom` 이 승인 잔여를 깎으면서 남긴 로그다. 자산이 안 움직여 `netAmount` 가 `"0"` 이고 상대가 sweeper 인 것은 승인을 받은 쪽이 sweeper 라서다.
+  - 가스 한 행.
+
+  로그 수와 맞아떨어진다 — 이동 2건짜리 배치는 `Transfer` 2 + `Approval` 2 + 가스 = **7행**, 한 건이 되돌려진 배치는 `Transfer` 1 + `Approval` 1 + 가스 = **4행**. 이 모델은 실측 두 건에 들어맞지만 벤더 문서로 확인한 것은 아니다.
 
 ```mermaid
 flowchart TB
@@ -93,12 +98,12 @@ flowchart TB
   NR --> LA["이동 A — vault 82 → 옴니버스 200"]
   NR --> LB["이동 B — vault 83 → 옴니버스 150"]
   NR --> GAS["가스 1개<br/>vault 84 → sweeper · ETH 0"]
-  LA --> A1["입금 관점<br/>External → vault 12 · 200"]
-  LA --> A2["출금 관점<br/>vault 82 → 옴니버스 주소 · 200"]
-  LA --> A3["호출 관점<br/>vault 82 → sweeper · 0"]
-  LB --> B1["입금 관점<br/>External → vault 12 · 150"]
-  LB --> B2["출금 관점<br/>vault 83 → 옴니버스 주소 · 150"]
-  LB --> B3["호출 관점<br/>vault 83 → sweeper · 0"]
+  LA --> A1["받은 vault 기준<br/>External → vault 12 · 200"]
+  LA --> A2["보낸 vault 기준<br/>vault 82 → 옴니버스 주소 · 200"]
+  LA --> A3["Approval 로그<br/>승인 잔여 차감 · 금액 0"]
+  LB --> B1["받은 vault 기준<br/>External → vault 12 · 150"]
+  LB --> B2["보낸 vault 기준<br/>vault 83 → 옴니버스 주소 · 150"]
+  LB --> B3["Approval 로그<br/>승인 잔여 차감 · 금액 0"]
 
   classDef good fill:#dcfce7,stroke:#16a34a
   classDef wait fill:#fef3c7,stroke:#d97706
@@ -120,9 +125,9 @@ flowchart TB
 | 배치 거래 상태 | `COMPLETED` |
 | 잔액 | 82 는 300 그대로 · 83 은 250 → 150 · 옴니버스 +100 |
 | `networkRecords` | **4개** — vault 83 의 이동 3개 + 가스 1개 |
-| 실패한 vault 82 | **레코드에 없다** |
+| 실패한 vault 82 | **레코드에 나오지 않았다** |
 
-온체인 이벤트에는 남는다.
+영수증에서 `SweepLeg` 이벤트를 디코딩하면 나온다.
 
 ```
 SweepLeg  from=0x429cdea1…(vault 82)  요청=200  성공=False
@@ -130,7 +135,7 @@ SweepLeg  from=0xb6df2ad4…(vault 83)  요청=100  성공=True
 SweepDone 이동=2  성공=1
 ```
 
-**82 에서 200 을 옮기려던 시도는 어느 레코드에도 없었다.** 다만 이걸 "실패는 레코드에 안 들어온다" 로 일반화하기에는 실패 유형 하나를 한 번 본 것뿐이다.
+이걸 "실패는 레코드에 안 들어온다" 로 일반화하기에는 실패 유형 하나를 한 번 본 것뿐이다.
 
 더 그럴듯한 설명은 따로 있다 — 되돌려진 `transferFrom` 은 **온체인에 `Transfer` 이벤트를 남기지 않는다.** 레코드가 영수증 로그에서 만들어진다면 애초에 적을 것이 없었던 셈이다. 그렇다면 실패해도 이동 흔적이 남는 유형(예: 일부만 옮겨지는 토큰)에서는 레코드가 생길 수 있다. 실제로 레코드에는 `isDropped` 필드가 있어 벤더가 떨어진 레코드를 표시하는 개념을 갖고 있는데, 이번에 본 값은 `false` 뿐이다. 이 설명과 예측은 아직 재보지 않았다.
 
@@ -147,7 +152,7 @@ SweepDone 이동=2  성공=1
 
 - **배치 sweep 의 감지·대사에 필요한 기록은 나온다.** 우리 vault 가 제출한 배치 거래라면 원천 vault 와 금액이 `networkRecords` 에 실린다.
 - **`network_records.processing_completed` 구독이 검토 대상에서 필수로 바뀐다.** 최상위 거래 1건에는 이동 정보가 없어서, 이 이벤트와 `networkRecords` 없이는 어느 vault 에서 얼마가 빠졌는지 알 수 없다.
-- **대사 규칙에 걸러내기가 들어간다** — `netAmount` 0 레코드 제외, 그리고 같은 이동이 입금·출금 관점으로 두 번 오는 것의 중복 제거. 이 규칙 없이 레코드 수를 이동 건수로 세면 틀린다.
+- **대사는 보낸 vault 기준 행만 쓴다.** `source` 가 vault 인 행에 원천과 금액이 함께 있다. 받은 vault 기준 행은 상대가 `External` 이고 주소 필드조차 없어 원천을 못 찾는다. `Approval` 행은 자산 이동이 아니므로 합계에서 빼되, 승인 잔여가 얼마나 깎였는지를 알려주는 별개 정보다.
 - **되돌려진 이동은 `networkRecords` 에 나오지 않았다.** 요청 calldata 는 벤더가 보관하지만 풀어 주지는 않으므로, 디코딩해서 레코드와 대조하거나 컨트랙트 이벤트를 읽어야 집계가 선다. 다른 실패 유형에서도 같은지는 확인하지 않았다.
 - **approve 제출은 `CONTRACT_CALL`** 이고 조회하면 `APPROVE` 로 보인다.
 
