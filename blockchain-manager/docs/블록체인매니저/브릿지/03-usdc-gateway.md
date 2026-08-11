@@ -112,10 +112,22 @@ POST /vault/accounts/{vaultAccountId}/virtual_asset_wallet/usdc_gateway/deposit_
 - **vault 당 Gateway 지갑 하나.** 브릿지 창구로 쓸 vault 를 정해야 한다.
 - **한도는 Fireblocks 쪽에 없다.** 다만 Circle 이 rate limit 을 걸면 그 오류가 그대로 실패로 온다.
 
-## 아직 모르는 것
+## 우리 워크스페이스에서는 아직 못 쓴다 (2026-08-11 확인)
+
+읽기 전용으로 엔드포인트를 찔러 확인했다.
+
+```
+403  GET /v1/vault/accounts/12/virtual_asset_wallet/usdc_gateway/deposit_automation
+     {"message":"ok","code":0}
+```
+
+**404 가 아니라 403** 이다. 없는 엔드포인트면 `{"code":-15,"message":"Endpoint not defined in API specification"}` 가 오는데(같은 시도에서 다른 경로가 그렇게 응답했다), 여기는 403 이므로 **경로는 실재하고 기능이 안 켜져 있거나 권한이 없는 상태**다.
+
+Beta 라 Console 의 Labs 에서 켜거나 CSM 에 요청해야 한다. **CSM 요청은 한참 뒤로 예정**이라 그전까지 실측은 막혀 있다. 켜지면 `USDC_ETH_TEST5_0GER` 이 이미 vault 12 에 있어 Sepolia → Base Sepolia 로 바로 재볼 수 있다.
+
+## 실측이 열리면 잴 것
 
 - **소요 시간.** 입금은 우리 확정 정책, 출금은 "목적지 체인 전달 확인 시 완료" 라고만 하고 실제 몇 분인지는 문서에 없다.
-- **우리 워크스페이스에서 켤 수 있는지.** Labs 에 노출돼 있는지 확인이 필요하다. 테스트넷 자산 목록에 이미 보유 중인 `USDC_ETH_TEST5_0GER` 이 있어, 켤 수만 있으면 Sepolia ↔ Base Sepolia 로 바로 실측할 수 있다.
 - **실패 시 자금 위치.** 출금이 중간에 실패하면 Gateway 잔액에 남는지, 어떤 상태로 보이는지.
 
 ## 출처
