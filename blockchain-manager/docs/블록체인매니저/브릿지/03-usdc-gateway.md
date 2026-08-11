@@ -58,19 +58,23 @@ archive 된 지갑에 활성화를 다시 호출하면 재활성화된다.
 ```mermaid
 sequenceDiagram
   participant M as 블록체인 매니저
-  participant F as Fireblocks
-  participant V as vault 의 USDC 자산 지갑 — 체인 A
-  participant G as Circle Gateway 컨트랙트 — 체인 A
+  box rgb(219,234,254) Fireblocks
+  participant F as 플랫폼 — 정책·서명
+  participant V as vault 의 USDC 자산 지갑 (체인 A)
+  end
+  participant G as Circle Gateway 컨트랙트 (체인 A)
 
   M->>F: POST /v1/transactions — destination.subType 은 VIRTUAL_ACCOUNT
   alt 그 주소가 체인 A 에서 처음 입금하는 경우
-    F->>V: Approve 거래 자동 생성 — 거래 목록에 별도 항목
+    F->>V: Approve 거래 생성·서명 — 거래 목록에 별도 항목
     V->>G: 온체인 approve — Gateway 컨트랙트에 인출 권한 부여
   end
-  F->>V: 입금 거래 서명 — 소스 체인 가스는 우리 부담
+  F->>V: 입금 거래 생성·서명 — 소스 체인 가스는 우리 부담
   V->>G: USDC 이동
   F-->>M: 확정 정책 충족 시 COMPLETED
 ```
+
+경계는 하나다 — **우리는 Fireblocks 를 부르고, 온체인으로 나가는 것은 벤더가 vault 키로 낸다.** 위 그림에서 파란 묶음 안은 벤더 영역이라 우리가 개별 호출하는 지점이 아니다.
 
 **"첫 입금" 은 `(vault 주소, 체인)` 조합마다 한 번**이다. 같은 체인의 두 번째 입금부터는 승인 없이 진행되고, 다른 체인에서 처음 입금하면 그 체인에서 또 한 번 나온다.
 
@@ -80,10 +84,10 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-  participant M as 매니저
+  participant M as 블록체인 매니저
   participant F as Fireblocks
   participant G as Circle Gateway
-  participant D as 목적지 — 체인 B
+  participant D as 목적지 (체인 B)
 
   M->>F: POST /v1/transactions — source.subType 은 VIRTUAL_ACCOUNT · 목적지 체인과 금액만 지정
   F->>G: 인출 요청 · 어느 체인에서 뺄지는 잔액 보고 벤더가 결정
