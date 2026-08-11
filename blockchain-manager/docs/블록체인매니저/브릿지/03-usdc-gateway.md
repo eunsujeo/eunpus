@@ -53,24 +53,28 @@ archive 된 지갑에 활성화를 다시 호출하면 재활성화된다.
 
 ## 흐름 — 입금 · 체인 A 의 USDC 를 Gateway 잔액으로
 
+방아쇠는 우리가 낸 입금 거래다. **그 vault 주소가 그 체인에서 처음 입금하는 경우에만** 벤더가 승인 거래를 먼저 끼워 넣는다.
+
 ```mermaid
 sequenceDiagram
-  participant M as 매니저
+  participant M as 블록체인 매니저
   participant F as Fireblocks
   participant V as vault 의 USDC 자산 지갑 — 체인 A
   participant G as Circle Gateway 컨트랙트 — 체인 A
 
-  Note over M,G: 그 체인의 첫 입금일 때만 · Fireblocks 가 알아서 낸다
-  F->>V: Approve 거래 자동 제출 — Gateway 컨트랙트에 인출 권한 부여
-  V->>G: 온체인 approve · 거래 목록에 별도 항목으로 남는다
-  Note over M,G: 입금
   M->>F: POST /v1/transactions — destination.subType 은 VIRTUAL_ACCOUNT
-  F->>V: vault 키 서명 · 소스 체인 가스는 우리 부담
+  alt 그 주소가 체인 A 에서 처음 입금하는 경우
+    F->>V: Approve 거래 자동 생성 — 거래 목록에 별도 항목
+    V->>G: 온체인 approve — Gateway 컨트랙트에 인출 권한 부여
+  end
+  F->>V: 입금 거래 서명 — 소스 체인 가스는 우리 부담
   V->>G: USDC 이동
   F-->>M: 확정 정책 충족 시 COMPLETED
 ```
 
-`APPROVE` 거래는 우리가 내는 것이 아니다. **그 체인에서 처음 입금할 때 Fireblocks 가 자동으로 제출한다.** ERC-20 승인이라 Gateway 컨트랙트가 그 주소에서 USDC 를 가져갈 수 있게 하는 것이고, 한 번 승인되면 같은 체인의 다음 입금은 승인 없이 진행된다. 정책에 `APPROVE` 룰이 없으면 이 자동 거래가 막혀 입금이 실패한다.
+**"첫 입금" 은 `(vault 주소, 체인)` 조합마다 한 번**이다. 같은 체인의 두 번째 입금부터는 승인 없이 진행되고, 다른 체인에서 처음 입금하면 그 체인에서 또 한 번 나온다.
+
+승인 거래는 우리가 내는 것이 아니라 **Fireblocks 가 자동으로 제출**한다. ERC-20 승인이라 Gateway 컨트랙트가 그 주소에서 USDC 를 가져갈 수 있게 하는 것이다. 정책에 `APPROVE` 룰이 없으면 이 자동 거래가 막혀 입금이 실패한다.
 
 ## 흐름 — 출금 · Gateway 잔액을 체인 B 로
 
