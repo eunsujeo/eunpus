@@ -32,9 +32,16 @@ sequenceDiagram
   participant F as Fireblocks
 
   C->>M: Gateway 사용 지시 — 우리 설계에서 아직 미정
-  M->>F: 활성화 API 호출 — vaultAccountId 지정
+  M->>F: 활성화 API 호출 — 본문은 vaultAccountId 하나
   F-->>M: walletId · status ACTIVATED
+  M->>F: 자동 입금 설정 — 쓸 경우 별도 호출
 ```
+
+**활성화 후 상태는 조회로 확인한다.** 잔액 조회 API 가 `status`(`ACTIVATED`·`DEACTIVATED`)와 `totalBalance`·`balanceBreakdown`·`assetIds` 를 준다. `assetIds` 는 그 Gateway 지갑이 커버하는 Fireblocks 자산 ID 목록이다.
+
+자동 입금은 API 활성화 본문에 없다. Console 은 활성화 흐름에 토글을 두지만, API 로 붙이면 **활성화와 자동 입금 설정이 두 번의 호출**이다.
+
+archive 된 지갑에 활성화를 다시 호출하면 재활성화된다.
 
 ## 흐름 — 입금 · 체인 A 의 USDC 를 Gateway 잔액으로
 
@@ -207,6 +214,7 @@ POST /vault/accounts/{vaultAccountId}/virtual_asset_wallet/usdc_gateway/deposit_
 - **실패 시 자금 위치.** 출금이 중간에 실패하면 Gateway 잔액에 남는지, 어떤 상태로 보이는지.
 - **어느 vault 에 붙이고 언제 붙일지.** Gateway 지갑이 vault 1:1 이고 잔액도 vault 단위라, 고객 입금 vault 마다 활성화하는 구성과 한 곳만 활성화하는 구성이 갈린다. 전자면 vault 생성 흐름에 활성화를 넣는 것이 자연스럽고 후자면 생성 흐름과 무관해진다. 문서는 어느 쪽도 권하지 않는다 — 우리 구조에서 정할 사항이다.
 - **거래 기록 형태.** 입금·출금이 `networkRecords` 와 웹훅에 어떻게 잡히는지. 벤더 문서는 "표준 Fireblocks 거래" 라고만 한다.
+- **활성화가 우리 시스템에 어떻게 보이는지.** 활성화가 웹훅을 내는지, `GET /v1/vault/accounts/{id}` 응답에 Gateway 지갑이 나타나는지. 나타나면 vault 조회만으로 활성화 여부를 알 수 있고, 안 나타나면 잔액 조회 API 를 따로 불러야 한다. 활성화 실패 사유·에러 형태도 문서에 없다.
 
 ## 출처
 
