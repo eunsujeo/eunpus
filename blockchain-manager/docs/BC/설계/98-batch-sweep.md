@@ -114,7 +114,7 @@ sequenceDiagram
 sequenceDiagram
   participant M as 매니저
   participant F as Fireblocks
-  participant R as 받는주소 vault — owner
+  participant R as 받는주소 vault — 토큰 소유자
   participant O as 운영 계정 vault — 제출자
   participant S as sweeper 컨트랙트 — 승인 대상
   participant T as 토큰 컨트랙트
@@ -274,7 +274,7 @@ sequenceDiagram
 
 ### 실측 결과 (2026-08-10)
 
-이더리움 Sepolia 에 배치 컨트랙트를 올려 확인했다 — owner vault 두 곳(82·83)이 sweeper 를 승인하고, **operator vault(84)가 `batchSweep` 을 CONTRACT_CALL 로 한 번 제출**했다. 상세는 [PoC 결과보고](95-approve-pull-poc-result.md).
+이더리움 Sepolia 에 배치 컨트랙트를 올려 확인했다 — 고객 vault 두 곳(82·83)이 sweeper 를 승인하고, **운영 계정 vault(84)가 `batchSweep` 을 CONTRACT_CALL 로 한 번 제출**했다. 상세는 [PoC 결과보고](95-approve-pull-poc-result.md).
 
 operator 거래 아래 `networkRecords` 7개가 붙고, **원천 vault 가 귀속된다.**
 
