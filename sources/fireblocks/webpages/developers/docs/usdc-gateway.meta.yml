@@ -1,0 +1,11 @@
+url: https://developers.fireblocks.com/docs/usdc-gateway
+fetched_at: 2026-08-11
+source_type: webpage
+domain: governance / usdc-gateway / policy
+tier: 1
+title: "USDC Gateway (API guide)"
+crawl_status: full-body (curl .md 저장 — 원문 보존)
+acquisition_method: "curl -L .../usdc-gateway.md → sources/fireblocks/markdown/ (v3.2.2 Mode C)"
+related_cluster: usdc-gateway
+promote_status: deep-ingested (Stage 39)
+related_pdfs: "sources/fireblocks/pdf/2026-08-11__support-fireblocks-io__usdc-gateway-*.pdf (3종)"
