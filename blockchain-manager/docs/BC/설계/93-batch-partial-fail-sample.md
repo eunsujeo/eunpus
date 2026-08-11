@@ -8,6 +8,79 @@ vault 82(승인 잔여 100)에 200 을, vault 83(잔여 150)에 100 을 요청�
 
 레코드는 **4개**이고 **82 는 어느 레코드에도 없다.** 성공만 담긴 경우는 [배치 sweep payload 실물 샘플](94-batch-payload-sample.md)에 있다.
 
+## 제출 — `transaction.created`
+
+```json
+{
+    "id": "c451a7d4-8dc6-4879-a88f-7fbbd61d7f0e",
+    "data": {
+        "id": "647c2c5b-b2a0-49b3-8b46-d2300c34c8bb",
+        "fee": -1,
+        "note": "approve-pull \ubd80\ubd84 \uc2e4\ud328 \uc7ac\ud604 \u2014 \ud55c \uac74\uc740 \uc2b9\uc778 \uc794\uc5ec \ucd08\uacfc",
+        "amount": 0,
+        "source": {
+            "id": "84",
+            "name": "approve-pull-operator",
+            "type": "VAULT_ACCOUNT",
+            "subType": ""
+        },
+        "status": "SUBMITTED",
+        "txHash": "",
+        "assetId": "ETH_TEST5",
+        "feeInfo": {},
+        "signedBy": [],
+        "amountUSD": null,
+        "blockInfo": {},
+        "createdAt": 1786407516290,
+        "createdBy": "a040583c-465a-453f-8b02-bef2f3e97c48",
+        "netAmount": 0,
+        "operation": "CONTRACT_CALL",
+        "subStatus": "",
+        "amountInfo": {
+            "amount": "0",
+            "netAmount": "0",
+            "requestedAmount": "0"
+        },
+        "networkFee": -1,
+        "rejectedBy": "",
+        "addressType": "",
+        "destination": {
+            "id": null,
+            "name": "N/A",
+            "type": "ONE_TIME_ADDRESS",
+            "subType": ""
+        },
+        "feeCurrency": "ETH_TEST5",
+        "lastUpdated": 1786407516290,
+        "exchangeTxId": "",
+        "externalTxId": "approve-pull-partial-fail-1",
+        "sourceAddress": "",
+        "destinationTag": "",
+        "extraParameters": {
+            "contractCallData": "0xd128dea1000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000002000000000000000000000000429cdea1dc75bbda4e006675abe5f773e299dddb000000000000000000000000b6df2ad4d9fb89529874636276af2e367cf091d2000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000ad78ebc5ac62000000000000000000000000000000000000000000000000000056bc75e2d63100000"
+        },
+        "requestedAmount": 0,
+        "destinationAddress": "0xF95AFc896461a3eb7426714267eC6abb1cd6A1c9",
+        "destinationAddressDescription": ""
+    },
+    "createdAt": 1786407516426,
+    "eventType": "transaction.created",
+    "webhookId": "ac8bf7d0-1dff-499a-81f4-3a87719f3b3c",
+    "resourceId": "647c2c5b-b2a0-49b3-8b46-d2300c34c8bb",
+    "workspaceId": "f0e016ae-d9cc-510d-b66d-0c30dd520503"
+}
+```
+
+`extraParameters.contractCallData` 에 **요청 두 건이 들어 있다.** 우리 컨트랙트 ABI 로 풀면 이렇게 나온다.
+
+```
+$ cast decode-calldata "batchSweep(address[],uint256[])" 0xd128dea1…
+[0x429CdEa1DC75bBDa4e006675Abe5F773E299Dddb, 0xB6Df2ad4d9FB89529874636276AF2E367cf091D2]
+[200000000000000000000, 100000000000000000000]
+```
+
+vault 82 에 200, vault 83 에 100 이다. 아래 이동 내역 알림에는 83 의 100 만 남는다 — **요청은 여기 있고 결과는 거기 있어서, 둘을 맞춰야 82 의 실패가 드러난다.**
+
 ## 이동 내역 — `transaction.network_records.processing_completed`
 
 ```json
