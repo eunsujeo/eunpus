@@ -191,7 +191,7 @@ Contract Call Policy 에는 하나 — Block · 출발지 vault 84 · 대상 토
 
 차단된 거래에는 위반한 rule number 가 표시되므로 어느 룰에 걸렸는지로 판독한다.
 
-벤더 문서는 Policy Engine 이 Contract Call 에 대해 **제한된 정보만 받는다**고 적고 있다. 그대로라면 세 번째 거래가 룰 4 에 걸리고 두 번째도 통과해 버린다 — 승인 대상과 금액을 정책으로 못 거른다는 뜻이고, 그 경우 상한은 sweeper 코드 쪽에서 강제해야 한다.
+벤더 문서는 Policy Engine 이 Contract Call 에 대해 **제한된 정보만 받는다**고 적고 있다 ([Transaction lifecycle](https://support.fireblocks.io/hc/en-us/articles/5530525064476-Transaction-lifecycle)). 그대로라면 세 번째 거래가 룰 4 에 걸리고 두 번째도 통과해 버린다 — 승인 대상과 금액을 정책으로 못 거른다는 뜻이고, 그 경우 상한은 sweeper 코드 쪽에서 강제해야 한다.
 
 ## 재현
 

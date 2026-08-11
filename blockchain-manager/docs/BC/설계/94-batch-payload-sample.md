@@ -21,7 +21,7 @@ ref: 참고
 | 08:43:16 | **`transaction.network_records.processing_completed`** | `CONFIRMING` | 이동 내역 확정 — 아직 컨펌 대기 중이다 |
 | 08:43:25 | `transaction.status.updated` | `COMPLETED` | 확정 (`CONFIRMED`) |
 
-단계 정의는 벤더 문서 [Primary transaction statuses](https://support.fireblocks.io/hc/en-us/articles/4407808817042) 기준이다. 전체 17개 중 이번 거래가 지난 것은 위 일곱 개다 — AML 스크리닝(`PENDING_AML_SCREENING`)과 승인 대기(`PENDING_AUTHORIZATION`)는 지나지 않았다.
+단계 정의는 벤더 문서 [Primary transaction statuses](https://support.fireblocks.io/hc/en-us/articles/5536566813468-Primary-transaction-statuses) 기준이다. 전체 17개 중 이번 거래가 지난 것은 위 일곱 개다 — AML 스크리닝(`PENDING_AML_SCREENING`)과 승인 대기(`PENDING_AUTHORIZATION`)는 지나지 않았다.
 
 - **우리가 낸 거래는 `created` 가 `SUBMITTED` 로 시작한다.** 입금 알림은 `created` 가 이미 `CONFIRMING`+`txHash` 를 담고 오는데([입금 샘플](96-payload-sample.md)), 제출한 거래는 벤더 내부 단계까지 전부 알림으로 온다 — 여기서는 6초 안에 다섯 단계.
 - 한 배치 sweep 이 알림 8건을 만든다. 이동 건수를 늘렸을 때도 8건인지는 확인하지 않았다.
