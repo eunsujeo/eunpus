@@ -208,6 +208,16 @@ POST /vault/accounts/{vaultAccountId}/virtual_asset_wallet/usdc_gateway/deposit_
 
 출금은 특별한 설정이 없다 — 일반 전송과 같은 룰을 탄다.
 
+## Gateway 지갑의 정체
+
+**Fireblocks 쪽에서는 가상 자산 지갑이다.** 문서가 `USDC Gateway virtual asset wallet` 이라 부르고, API 경로는 `virtual_asset_wallet`, 거래 요청에는 `subType: VIRTUAL_ACCOUNT` 를 쓴다. 활성화할 때 **자금이 움직이지 않고 온체인 상호작용도 없다**고 명시하니 새 온체인 주소가 생기는 것이 아니다. vault 안에 잔액을 표현하는 칸이 하나 생긴다.
+
+**잔액의 실체는 각 체인의 Circle 컨트랙트에 있다.** 문서 표현이 "지원하는 모든 체인의 Circle Gateway 스마트컨트랙트에 걸쳐 보유된 단일 USDC 잔액" 이다. 하나의 풀이 아니라 체인마다 실제로 USDC 가 있고 그 합계를 한 숫자로 보여준다 — `balanceBreakdown` 이 체인별 내역을 주는 이유다.
+
+**체인 무관이 되는 방식은 Circle 쪽 구조다.** Circle 은 이것을 크로스체인 유동성 계층이라 부르고, 소스 체인의 비수탁 Gateway Wallet 컨트랙트에 예치해 두면 **목적지 체인에서 USDC 를 새로 mint** 한다고 설명한다. 우리가 넣은 코인이 체인을 건너가는 것이 아니다. 상세는 [Circle Gateway 참고](99-circle-gateway.md).
+
+출금 문구가 이와 맞물린다 — Fireblocks 가 **우리 체인별 잔액에서** 차감할 체인을 고르고(여러 체인에서 나눠 뺄 수도 있다) 도착은 우리가 지정한 체인이다. 수수료 구조가 그 대가다.
+
 ## 고객 입금 감지와의 관계
 
 직접 이어진 흐름은 아니다. 고객 입금은 외부 → 고객 vault 이고, Gateway 입금은 **우리가 내는 거래**(그 vault 의 USDC 자산 지갑 → 같은 vault 의 Gateway 지갑)다. 순서로 보면 고객 입금이 확정되고 sweep 으로 모인 뒤에 오는 별개 단계다.
@@ -222,14 +232,14 @@ POST /vault/accounts/{vaultAccountId}/virtual_asset_wallet/usdc_gateway/deposit_
 
 - **Beta 다.** 동작·엔드포인트·한도가 바뀔 수 있다. Console 의 Labs 에서 켜거나 CSM 에 요청한다.
 - **USDC 전용.** 다른 자산은 이 경로를 못 쓴다.
-- **자금이 Circle 컨트랙트에 있다.** Gateway 잔액은 각 체인의 Circle Gateway 스마트컨트랙트가 들고 있고 우리 vault 잔액이 아니다. 지갑을 archive 해도 자금은 그대로 남으며 재활성화하면 다시 접근된다.
+- **자금이 Circle 컨트랙트에 있다.** Gateway 잔액은 각 체인의 Circle Gateway 스마트컨트랙트가 들고 있고 우리 vault 잔액이 아니다. Circle 은 이 컨트랙트를 비수탁으로 규정하고 7일 무신뢰 인출 경로를 둔다([참고](99-circle-gateway.md)) — 수탁 판단에서는 두 사실을 함께 봐야 한다. 지갑을 archive 해도 자금은 그대로 남으며 재활성화하면 다시 접근된다.
 - **입금 완료 표시가 앞설 수 있다.** 완료 판정이 Circle 의 잔액 반영이 아니라 우리 워크스페이스 확정 정책으로 나기 때문에, `COMPLETED` 인데 Gateway 잔액에 아직 안 잡힐 수 있다고 문서가 명시한다. Circle 의 체인별 요구 컨펌 수에 따라 지연된다.
 - **vault 당 Gateway 지갑 하나.** 브릿지 창구로 쓸 vault 를 정해야 한다.
 - **한도는 Fireblocks 쪽에 없다.** 다만 Circle 이 rate limit 을 걸면 그 오류가 그대로 실패로 온다.
 
 ## 아직 모르는 것
 
-- **소요 시간.** 입금은 우리 확정 정책, 출금은 "목적지 체인 전달 확인 시 완료" 라고만 하고 실제 몇 분인지는 문서에 없다.
+- **소요 시간.** Fireblocks 문서는 입금은 우리 확정 정책, 출금은 "목적지 체인 전달 확인 시 완료" 라고만 한다. Circle 쪽 전송 자체는 500ms 미만이라고 밝히므로([참고](99-circle-gateway.md)) 전체 시간은 확정 대기가 지배할 것으로 보이나, 벤더를 통했을 때의 실측값은 없다.
 - **실패 시 자금 위치.** 출금이 중간에 실패하면 Gateway 잔액에 남는지, 어떤 상태로 보이는지.
 - **거래 기록 형태.** 입금·출금이 `networkRecords` 와 웹훅에 어떻게 잡히는지. 벤더 문서는 "표준 Fireblocks 거래" 라고만 한다.
 - **활성화가 우리 시스템에 어떻게 보이는지.** 활성화가 웹훅을 내는지, `GET /v1/vault/accounts/{id}` 응답에 Gateway 지갑이 나타나는지. 나타나면 vault 조회만으로 활성화 여부를 알 수 있고, 안 나타나면 잔액 조회 API 를 따로 불러야 한다. 활성화 실패 사유·에러 형태도 문서에 없다.

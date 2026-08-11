@@ -17,7 +17,8 @@ status: To Do
 | 후보 | 상태 | 조사할 것 |
 |---|---|---|
 | **USDC Gateway** (Fireblocks) | [3장](03-usdc-gateway.md) 기능 정리 · [4장](04-gateway-placement.md) 배치 확정 | 소요 시간 · 실패 시 자금 위치 |
-| **Circle CCTP 직접** | 미조사 | Gateway 를 안 거치고 직접 붙일 때의 차이 — 수수료·시간·구현 부담·수탁 경계 |
+| **Circle Gateway 직접** | [참고](99-circle-gateway.md) 정리 · permissionless 라 Fireblocks 없이도 가능 | 서명·키 관리가 우리 몫이 되는 범위 · Fireblocks 정책·기록 경계 밖으로 나가는 영향 |
+| **Circle CCTP** | [참고](99-circle-gateway.md)에 Gateway 와의 차이표 | 한 번 옮기는 용도. 속도 Fast 8~20초·Standard 15~19분 · 잔액을 두지 않는다 |
 | **서드파티 브릿지** | 미조사 | 어떤 것들이 있고 무엇을 신뢰해야 하나. 수탁 서비스가 쓸 수 있는 형태인가 |
 | **거래소 경유** | 미조사 | 입금 후 다른 체인으로 출금하는 방식. 한도·시간·상대방 위험 |
 | **재고 사전 확보** | 미조사 | 옮기지 않고 각 네트워크에 미리 깔아 두는 것. 밴드C 값을 키우는 선택 |
