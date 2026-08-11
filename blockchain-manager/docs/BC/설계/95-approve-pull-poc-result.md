@@ -27,6 +27,7 @@ ref: 참고
 |---|---|---|
 | 1 | `approve` 를 두 경로로 제출 | `APPROVE` operation 은 **거절(400)** · `CONTRACT_CALL` 은 성공하고 **기록은 `operation=APPROVE`** |
 | 2 | 운영 계정이 이동 2건짜리 배치 제출 | `networkRecords` 7개에 **원천 vault·금액 귀속** · `network_records.processing_completed` 수신 |
+| 3 | 한 이동이 실패하는 배치 제출 | 거래는 `COMPLETED` · **실패한 이동은 레코드에 없다** · 온체인 이벤트에만 남는다 |
 
 ## 1. approve 제출 경로
 
@@ -108,23 +109,77 @@ flowchart TB
   class TX,FB,NR vault
 ```
 
+## 3. 부분 실패 — 한 이동이 실패하는 배치
+
+**한 것** — 승인 잔여가 100 인 vault 82 에 200 을, 잔여 150 인 vault 83 에 100 을 요청하는 배치를 냈다. 82 의 `transferFrom` 은 승인 금액을 넘어 실패하고 83 은 성공한다.
+
+**결과** — 거래는 `COMPLETED` 로 끝났다. 한 건이 실패해도 배치 전체가 되돌려지지 않는다.
+
+| 관찰 | 결과 |
+|---|---|
+| 배치 거래 상태 | `COMPLETED` |
+| 잔액 | 82 는 300 그대로 · 83 은 250 → 150 · 옴니버스 +100 |
+| `networkRecords` | **4개** — vault 83 의 이동 3개 + 가스 1개 |
+| 실패한 vault 82 | **레코드에 없다** |
+
+온체인 이벤트에는 남는다.
+
+```
+SweepLeg  from=0x429cdea1…(vault 82)  요청=200  성공=False
+SweepLeg  from=0xb6df2ad4…(vault 83)  요청=100  성공=True
+SweepDone 이동=2  성공=1
+```
+
+**요청했는데 실패한 건은 Fireblocks 기록으로 알 수 없다.** 레코드 개수만 보이고 우리가 몇 건을 요청했는지가 벤더 쪽에 없다. `bcm_swp_trgt` 정리는 제출 시점의 요청 목록(`extraParameters.contractCallData`)과 영수증의 컨트랙트 이벤트를 대조해서 해야 하고, 벤더 레코드는 성공분 확인에만 쓴다.
+
 ## 종합 — 설계에 반영한 것
 
 - **배치 sweep 의 감지·대사에 필요한 기록은 나온다.** 우리 vault 가 제출한 배치 거래라면 원천 vault 와 금액이 `networkRecords` 에 실린다.
 - **`network_records.processing_completed` 구독이 검토 대상에서 필수로 바뀐다.** 최상위 거래 1건에는 이동 정보가 없어서, 이 이벤트와 `networkRecords` 없이는 어느 vault 에서 얼마가 빠졌는지 알 수 없다.
 - **대사 규칙에 걸러내기가 들어간다** — `netAmount` 0 레코드 제외, 그리고 같은 이동이 입금·출금 관점으로 두 번 오는 것의 중복 제거. 이 규칙 없이 레코드 수를 이동 건수로 세면 틀린다.
+- **실패한 이동은 벤더 기록에 흔적이 없다.** 요청 목록과 컨트랙트 이벤트를 우리가 들고 대조해야 성공·실패 집계가 선다.
 - **approve 제출은 `CONTRACT_CALL`** 이고 조회하면 `APPROVE` 로 보인다.
 
 배치 채택 여부는 [sweep 설계](06-sweep.md)에서 결정한다. 현재 결정은 건별 일반 전송이다 — 최상위 1건 ↔ 이동 M건을 받는 DB·상태 흐름이 아직 없고, allowance 라는 지속 권한도 그대로 남아 있다.
 
 ## 못 한 것
 
-- **TAP 정책 실측** — `APPROVE`·`applyForApprove` 로 승인 대상·토큰·승인 금액을 어디까지 제한할 수 있는지. 정책 발행이 Owner 콘솔 리뷰와 모바일 승인을 거쳐야 해서 이번에 못 돌렸다.
+- **TAP 정책 실측** — 아래 "다음 시나리오" 로 계획을 잡아 뒀다.
 - **Universal Gasless 적용** — `CONTRACT_CALL` approve 와 배치 호출을 대납으로 낼 수 있는지, relay 처리량은 얼마인지. 도입에 계약이 선행이라 CSM 질의 대상이다.
 - **이동 건수 확대** — 이번은 이동 2건이다. 한 배치에 수십 건을 넣으면 레코드 개수·이벤트 지연·가스가 어떻게 되는지는 안 봤다.
-- **부분 실패 경로** — sweeper 에 skip + 이벤트를 구현했지만 실패하는 이동을 실제로 만들어 보지는 않았다.
 - **사고 상황** — allowance 가 서 있는 상태에서 제3자가 임의 주소로 당겨갈 때 우리가 무엇을 보게 되는지. 배치 설계가 아니라 침해 감지에 해당하므로 별도 시나리오로 다룬다.
 - 7702 위임 코드의 운영자 pull 지원도 여전히 미확인이다.
+
+## 다음 시나리오 — TAP 정책 실측
+
+승인 대상·토큰·승인 금액을 정책으로 어디까지 묶을 수 있는지 잰다. 정책 발행이 Owner 콘솔 검토와 모바일 승인을 거쳐야 해서 이번 회차에 넣지 못했다.
+
+**출발점** — 이번 실측에서 approve 를 `CONTRACT_CALL` 로 냈는데 기록에는 `operation=APPROVE`, `amount=200` 으로 남았다. 승인 금액이 calldata 에서 뽑혀 `amount` 에 올라온다는 뜻이라, TAP 의 금액 조건이 그 값에 걸리는지가 관건이다.
+
+Approve Policy 에 네 개를 기본 Allow 룰보다 위에 둔다. first-match 라 순서가 결과를 가른다.
+
+| 순서 | 동작 | 출발지 | 대상 | 자산 | 금액 |
+|---|---|---|---|---|---|
+| 1 | Block | vault 82 | 제한 없음 | kbKRW | 조건 없음 |
+| 2 | Block | vault 83 | 제한 없음 | kbKRW | 100 이상 |
+| 3 | Block | vault 83 | sweeper 주소 | kbKRW | 조건 없음 |
+| 4 | Block | vault 83 | 토큰 컨트랙트 주소 | kbKRW | 조건 없음 |
+
+Contract Call Policy 에는 하나 — Block · 출발지 vault 84 · 대상 토큰 컨트랙트 주소(sweeper 는 넣지 않는다).
+
+낼 거래와 갈리는 것:
+
+| 거래 | 무엇을 가르나 |
+|---|---|
+| vault 82 `approve(sweeper, 50)` | 룰 1 에 걸리면 `CONTRACT_CALL` 로 낸 approve 가 `APPROVE` 룰에 잡힌다 |
+| vault 83 `approve(sweeper, 300)` | 룰 2 에 걸리면 **승인 금액 조건이 선다** |
+| vault 83 `approve(sweeper, 50)` | 룰 3 이면 정책이 calldata 를 본다 · 룰 4 면 목적지(토큰 컨트랙트) 기준이다 |
+| vault 84 sweeper 호출 | 통과해야 정상 |
+| vault 84 토큰 컨트랙트 호출 | 차단되면 대상 컨트랙트 단위 제한이 선다 |
+
+차단된 거래에는 위반한 rule number 가 표시되므로 어느 룰에 걸렸는지로 판독한다.
+
+벤더 문서는 Policy Engine 이 Contract Call 에 대해 **제한된 정보만 받는다**고 적고 있다. 그대로라면 세 번째 거래가 룰 4 에 걸리고 두 번째도 통과해 버린다 — 승인 대상과 금액을 정책으로 못 거른다는 뜻이고, 그 경우 상한은 sweeper 코드 쪽에서 강제해야 한다.
 
 ## 재현
 
