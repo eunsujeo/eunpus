@@ -80,7 +80,7 @@ flowchart LR
 | 6 | vault 84 | sweeper | ETH | 0 — 호출 자체 |
 
 - **원천 vault 가 귀속된다** — `source` 에 `{id: "82"/"83", type: "VAULT_ACCOUNT"}` 로 나오고 `netAmount` 도 실린다.
-- **`transaction.network_records.processing_completed` 가 왔다** — 제출 약 37초 뒤, `status` 는 아직 `CONFIRMING` 이었다. 알림 원문은 [배치 sweep payload 실물 샘플](94-batch-payload-sample.md)에 있다.
+- **`transaction.network_records.processing_completed` 가 왔다** — 알림 순서와 원문은 [배치 sweep payload 실물 샘플](94-batch-payload-sample.md)에 있다.
 - 잔액도 맞았다 — 82: 500 → 300 · 83: 400 → 250 · 옴니버스 1139 → **1489**(+350).
 - **최상위 거래는 제출 1건뿐이다** — 원천 vault 를 source 로 하는 최상위 거래도, 옴니버스 입금 최상위 거래도 생기지 않았다.
 - **레코드마다 우리 vault 는 한쪽에만 채워진다** — 같은 이동이 받는 vault 관점(`source` 가 `UNKNOWN/External`)과 보내는 vault 관점(`destination` 이 `ONE_TIME_ADDRESS`)으로 두 번 들어온다. 주소는 양쪽 다 옴니버스 주소로 정확히 찍힌다. 여기에 토큰이 움직이지 않은 호출 관계(`netAmount` `"0"`)가 더 붙어 이동 한 건당 레코드 3개가 된다.
