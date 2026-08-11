@@ -23,27 +23,20 @@ Circle Gateway 쪽 구현은 이 문서에서 다루지 않는다. 우리가 보
 - vault account 가 존재한다
 - 그 vault 에 **USDC 자산 지갑이 주소까지 생성돼** 있다
 
-두 번째 조건이 우리 흐름의 어디와 붙는지가 정해진다 — DAW-CORE 가 매니저의 **입금 주소 발급 API** 를 부르는 지점이다.
+우리 구조에서는 옴니버스 vault 하나에만 붙이므로([4장](04-gateway-placement.md)) **운영 초기 1회 설정**이고, 고객 vault 생성·주소 발급 흐름과는 무관하다.
 
 ```mermaid
 sequenceDiagram
-  participant C as DAW-CORE
   participant M as 블록체인 매니저
   participant F as Fireblocks
 
-  C->>M: POST /accounts/{accountId}/addresses — symbol USDC · networks 목록
-  loop 네트워크마다
-    M->>F: 자산 지갑·입금 주소 발급
-    F-->>M: 주소
-  end
-  M-->>C: 네트워크별 주소 또는 error
-  Note over M,F: 아래를 이 흐름에 붙일지는 우리 설계에서 미정
+  M->>F: 옴니버스 vault 에 USDC 자산 지갑·주소 생성 — 체인마다
   M->>F: Gateway 활성화 — 본문은 vaultAccountId 하나
   F-->>M: walletId · status ACTIVATED
   M->>F: 자동 입금 설정 — 쓸 경우 별도 호출
 ```
 
-주소 발급 API 는 한 토큰을 여러 네트워크에 한 번에 발급하고 네트워크마다 벤더를 한 번 부른다. 반면 **Gateway 활성화는 vault 단위**다 — 본문이 `vaultAccountId` 하나라 일괄 활성화가 없다. Console 에서는 vault 나 USDC 자산 지갑의 점 세 개 메뉴에서 실행한다.
+**Gateway 활성화는 vault 단위**다 — 본문이 `vaultAccountId` 하나라 일괄 활성화가 없다. Console 에서는 vault 나 USDC 자산 지갑의 점 세 개 메뉴에서 실행한다.
 
 **활성화 후 상태는 조회로 확인한다.** 잔액 조회 API 가 `status`(`ACTIVATED`·`DEACTIVATED`)와 `totalBalance`·`balanceBreakdown`·`assetIds` 를 준다. `assetIds` 는 그 Gateway 지갑이 커버하는 Fireblocks 자산 ID 목록이다.
 
@@ -238,8 +231,6 @@ POST /vault/accounts/{vaultAccountId}/virtual_asset_wallet/usdc_gateway/deposit_
 
 - **소요 시간.** 입금은 우리 확정 정책, 출금은 "목적지 체인 전달 확인 시 완료" 라고만 하고 실제 몇 분인지는 문서에 없다.
 - **실패 시 자금 위치.** 출금이 중간에 실패하면 Gateway 잔액에 남는지, 어떤 상태로 보이는지.
-- **어느 vault 에 붙일지.** 문서는 어느 쪽도 권하지 않는다. 두 구성을 주소 단위로 비교한 것은 [4장](04-gateway-placement.md)에 있다.
-- **주소 발급 API 안에서 활성화까지 할지 (검토 중).** 붙이면 DAW-CORE 가 한 번 호출해 준비가 끝난다. 정할 것은 활성화만 실패한 경우의 응답(주소 발급은 항목별 부분 성공 모델이고 활성화는 요청 단위라 지금 스키마에 자리가 없다), 이미 활성화된 vault 에 다시 호출했을 때의 동작(문서에 없다 — archive 후 재활성화만 적혀 있다), `symbol` 이 USDC 일 때만 붙는 분기, 그리고 정책 룰이 없으면 활성화는 성공하고 **첫 입금에서** 막힌다는 순서 문제다.
 - **거래 기록 형태.** 입금·출금이 `networkRecords` 와 웹훅에 어떻게 잡히는지. 벤더 문서는 "표준 Fireblocks 거래" 라고만 한다.
 - **활성화가 우리 시스템에 어떻게 보이는지.** 활성화가 웹훅을 내는지, `GET /v1/vault/accounts/{id}` 응답에 Gateway 지갑이 나타나는지. 나타나면 vault 조회만으로 활성화 여부를 알 수 있고, 안 나타나면 잔액 조회 API 를 따로 불러야 한다. 활성화 실패 사유·에러 형태도 문서에 없다.
 
