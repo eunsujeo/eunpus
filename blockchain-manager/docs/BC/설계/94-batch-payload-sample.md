@@ -30,62 +30,62 @@ ref: 참고
 
 ```json
 {
-    "id": "c92c16be-9652-433d-aeeb-c7d6a86af5c9",
-    "data": {
-        "id": "d98a64ba-3d6f-407a-96e8-e1746fc087a8",
-        "fee": -1,
-        "note": "approve-pull \ubc30\uce58 \uc2e4\uce21 \u2014 batchSweep 2 leg",
-        "amount": 0,
-        "source": {
-            "id": "84",
-            "name": "approve-pull-operator",
-            "type": "VAULT_ACCOUNT",
-            "subType": ""
-        },
-        "status": "SUBMITTED",
-        "txHash": "",
-        "assetId": "ETH_TEST5",
-        "feeInfo": {},
-        "signedBy": [],
-        "amountUSD": null,
-        "blockInfo": {},
-        "createdAt": 1786351358653,
-        "createdBy": "a040583c-465a-453f-8b02-bef2f3e97c48",
-        "netAmount": 0,
-        "operation": "CONTRACT_CALL",
-        "subStatus": "",
-        "amountInfo": {
-            "amount": "0",
-            "netAmount": "0",
-            "requestedAmount": "0"
-        },
-        "networkFee": -1,
-        "rejectedBy": "",
-        "addressType": "",
-        "destination": {
-            "id": null,
-            "name": "N/A",
-            "type": "ONE_TIME_ADDRESS",
-            "subType": ""
-        },
-        "feeCurrency": "ETH_TEST5",
-        "lastUpdated": 1786351358653,
-        "exchangeTxId": "",
-        "externalTxId": "approve-pull-batchsweep-1",
-        "sourceAddress": "",
-        "destinationTag": "",
-        "extraParameters": {
-            "contractCallData": "0xd128dea1000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000002000000000000000000000000429cdea1dc75bbda4e006675abe5f773e299dddb000000000000000000000000b6df2ad4d9fb89529874636276af2e367cf091d2000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000ad78ebc5ac620000000000000000000000000000000000000000000000000000821ab0d4414980000"
-        },
-        "requestedAmount": 0,
-        "destinationAddress": "0xF95AFc896461a3eb7426714267eC6abb1cd6A1c9",
-        "destinationAddressDescription": ""
+  "id": "c92c16be-9652-433d-aeeb-c7d6a86af5c9",
+  "data": {
+    "id": "d98a64ba-3d6f-407a-96e8-e1746fc087a8",
+    "fee": -1,
+    "note": "approve-pull 배치 실측 — batchSweep 2 leg",
+    "amount": 0,
+    "source": {
+      "id": "84",
+      "name": "approve-pull-operator",
+      "type": "VAULT_ACCOUNT",
+      "subType": ""
     },
-    "createdAt": 1786351358809,
-    "eventType": "transaction.created",
-    "webhookId": "ac8bf7d0-1dff-499a-81f4-3a87719f3b3c",
-    "resourceId": "d98a64ba-3d6f-407a-96e8-e1746fc087a8",
-    "workspaceId": "f0e016ae-d9cc-510d-b66d-0c30dd520503"
+    "status": "SUBMITTED",
+    "txHash": "",
+    "assetId": "ETH_TEST5",
+    "feeInfo": {},
+    "signedBy": [],
+    "amountUSD": null,
+    "blockInfo": {},
+    "createdAt": 1786351358653,
+    "createdBy": "a040583c-465a-453f-8b02-bef2f3e97c48",
+    "netAmount": 0,
+    "operation": "CONTRACT_CALL",
+    "subStatus": "",
+    "amountInfo": {
+      "amount": "0",
+      "netAmount": "0",
+      "requestedAmount": "0"
+    },
+    "networkFee": -1,
+    "rejectedBy": "",
+    "addressType": "",
+    "destination": {
+      "id": null,
+      "name": "N/A",
+      "type": "ONE_TIME_ADDRESS",
+      "subType": ""
+    },
+    "feeCurrency": "ETH_TEST5",
+    "lastUpdated": 1786351358653,
+    "exchangeTxId": "",
+    "externalTxId": "approve-pull-batchsweep-1",
+    "sourceAddress": "",
+    "destinationTag": "",
+    "extraParameters": {
+      "contractCallData": "0xd128dea1000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000002000000000000000000000000429cdea1dc75bbda4e006675abe5f773e299dddb000000000000000000000000b6df2ad4d9fb89529874636276af2e367cf091d2000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000ad78ebc5ac620000000000000000000000000000000000000000000000000000821ab0d4414980000"
+    },
+    "requestedAmount": 0,
+    "destinationAddress": "0xF95AFc896461a3eb7426714267eC6abb1cd6A1c9",
+    "destinationAddressDescription": ""
+  },
+  "createdAt": 1786351358809,
+  "eventType": "transaction.created",
+  "webhookId": "ac8bf7d0-1dff-499a-81f4-3a87719f3b3c",
+  "resourceId": "d98a64ba-3d6f-407a-96e8-e1746fc087a8",
+  "workspaceId": "f0e016ae-d9cc-510d-b66d-0c30dd520503"
 }
 ```
 
