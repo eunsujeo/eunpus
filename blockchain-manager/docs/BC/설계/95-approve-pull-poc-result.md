@@ -87,9 +87,9 @@ flowchart LR
 - **레코드는 영수증 로그에서 만들어진다.** 로그 종류마다 행이 생기고, **각 행에는 우리 vault 가 한쪽에만 채워진다.**
   - `Transfer` 하나당 **두 행** — 보낸 vault 기준 한 행(`source` 가 그 vault, 상대는 `ONE_TIME_ADDRESS`), 받은 vault 기준 한 행(`destination` 이 그 vault, 상대는 `UNKNOWN/External`). 반대편이 같은 워크스페이스의 vault 여도 그렇게 온다.
   - `Approval` 하나당 **한 행** — `transferFrom` 이 승인 잔여를 깎으면서 남긴 로그다. 자산이 안 움직여 `netAmount` 가 `"0"` 이고 상대가 sweeper 인 것은 승인을 받은 쪽이 sweeper 라서다.
-  - 가스 한 행.
+  - **호출 자체 한 행** — 기준 자산에 우리가 실은 value 가 들어간다. 배치는 value 0 이라 `netAmount` 도 0 이었고, value 0.001 을 실은 호출을 따로 내 보니 그 행에 0.001 이 찍혔다. **가스는 행이 아니라 필드다** — `networkFee` 가 모든 행에 같은 값으로 복사돼 있다.
 
-  로그 수와 맞아떨어진다 — 이동 2건짜리 배치는 `Transfer` 2 + `Approval` 2 + 가스 = **7행**, 한 건이 되돌려진 배치는 `Transfer` 1 + `Approval` 1 + 가스 = **4행**. 이 모델은 실측 두 건에 들어맞지만 벤더 문서로 확인한 것은 아니다.
+  로그 수와 맞아떨어진다 — 이동 2건짜리 배치는 `Transfer` 2 + `Approval` 2 + 호출 1 = **7행**, 한 건이 되돌려진 배치는 `Transfer` 1 + `Approval` 1 + 호출 1 = **4행**. 이 모델은 실측 두 건에 들어맞지만 벤더 문서로 확인한 것은 아니다.
 
 ```mermaid
 flowchart TB
@@ -97,7 +97,7 @@ flowchart TB
   FB --> NR["networkRecords 7개"]
   NR --> LA["이동 A — vault 82 → 옴니버스 200"]
   NR --> LB["이동 B — vault 83 → 옴니버스 150"]
-  NR --> GAS["가스 1개<br/>vault 84 → sweeper · ETH 0"]
+  NR --> GAS["호출 자체 1개<br/>vault 84 → sweeper · ETH 0"]
   LA --> A1["받은 vault 기준<br/>External → vault 12 · 200"]
   LA --> A2["보낸 vault 기준<br/>vault 82 → 옴니버스 주소 · 200"]
   LA --> A3["Approval 로그<br/>승인 잔여 차감 · 금액 0"]
@@ -124,7 +124,7 @@ flowchart TB
 |---|---|
 | 배치 거래 상태 | `COMPLETED` |
 | 잔액 | 82 는 300 그대로 · 83 은 250 → 150 · 옴니버스 +100 |
-| `networkRecords` | **4개** — vault 83 의 이동 3개 + 가스 1개 |
+| `networkRecords` | **4개** — vault 83 의 이동 3개 + 호출 1개 |
 | 실패한 vault 82 | **레코드에 나오지 않았다** |
 
 영수증에서 `SweepLeg` 이벤트를 디코딩하면 나온다.
