@@ -141,7 +141,7 @@ SweepDone 이동=2  성공=1
 1. **calldata 를 디코딩**해 요청 목록을 만들고 `networkRecords` 와 대조 — 빠진 것이 실패다
 2. **영수증의 `SweepLeg` 이벤트**를 읽기 — 어느 이동이 실패했는지 바로 나온다
 
-알림 원문은 [배치 sweep payload 실물 샘플](94-batch-payload-sample.md)의 부분 실패 절에 있다.
+알림 원문은 [부분 실패 payload 실물 샘플](93-batch-partial-fail-sample.md)에 있다.
 
 ## 종합 — 설계에 반영한 것
 
