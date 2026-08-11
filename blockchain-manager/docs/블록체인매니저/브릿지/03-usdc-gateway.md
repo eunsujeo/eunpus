@@ -23,19 +23,27 @@ Circle Gateway 쪽 구현은 이 문서에서 다루지 않는다. 우리가 보
 - vault account 가 존재한다
 - 그 vault 에 **USDC 자산 지갑이 주소까지 생성돼** 있다
 
-Console 에서는 vault 나 USDC 자산 지갑의 점 세 개 메뉴에서 실행한다. **vault 생성 시 자동으로 붙는 동작은 문서에 없다** — 우리가 vault 생성 흐름 끝에 활성화 호출을 붙이면 결과적으로 함께 만들어지는 모양이 되고, 그건 우리 오케스트레이션 결정이다.
+두 번째 조건이 우리 흐름의 어디와 붙는지가 정해진다 — DAW-CORE 가 매니저의 **입금 주소 발급 API** 를 부르는 지점이다.
 
 ```mermaid
 sequenceDiagram
   participant C as DAW-CORE
-  participant M as 매니저
+  participant M as 블록체인 매니저
   participant F as Fireblocks
 
-  C->>M: Gateway 사용 지시 — 우리 설계에서 아직 미정
-  M->>F: 활성화 API 호출 — 본문은 vaultAccountId 하나
+  C->>M: POST /accounts/{accountId}/addresses — symbol USDC · networks 목록
+  loop 네트워크마다
+    M->>F: 자산 지갑·입금 주소 발급
+    F-->>M: 주소
+  end
+  M-->>C: 네트워크별 주소 또는 error
+  Note over M,F: 아래를 이 흐름에 붙일지는 우리 설계에서 미정
+  M->>F: Gateway 활성화 — 본문은 vaultAccountId 하나
   F-->>M: walletId · status ACTIVATED
   M->>F: 자동 입금 설정 — 쓸 경우 별도 호출
 ```
+
+주소 발급 API 는 한 토큰을 여러 네트워크에 한 번에 발급하고 네트워크마다 벤더를 한 번 부른다. 반면 **Gateway 활성화는 vault 단위**다 — 본문이 `vaultAccountId` 하나라 일괄 활성화가 없다. Console 에서는 vault 나 USDC 자산 지갑의 점 세 개 메뉴에서 실행한다.
 
 **활성화 후 상태는 조회로 확인한다.** 잔액 조회 API 가 `status`(`ACTIVATED`·`DEACTIVATED`)와 `totalBalance`·`balanceBreakdown`·`assetIds` 를 준다. `assetIds` 는 그 Gateway 지갑이 커버하는 Fireblocks 자산 ID 목록이다.
 
