@@ -89,7 +89,7 @@ ref: 참고
 
 체인에 올라가기 전이라 `txHash` 는 빈 문자열, `blockInfo`·`feeInfo` 는 빈 객체, `subStatus` 도 빈 문자열이다.
 
-우리가 보낸 **`extraParameters.contractCallData` 가 그대로 실려 온다.** 어떤 주소에서 얼마씩 옮기라고 요청했는지가 이 값 안에 있어서 제출 시점 기록으로 쓸 수 있다.
+우리가 보낸 **`extraParameters.contractCallData` 가 그대로 실려 온다.** 어떤 주소에서 얼마씩 옮기라고 요청했는지가 이 값 안에 있다. 뒤따르는 모든 알림과 `GET /v1/transactions/{id}` 응답에도 계속 실려 오므로 요청 내용을 벤더 쪽에서 다시 꺼낼 수 있다 — 다만 벤더가 디코딩해 주지는 않는다.
 
 ## 이동 내역 — `transaction.network_records.processing_completed`
 
