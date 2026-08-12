@@ -1,0 +1,33 @@
+url: https://developers.circle.com/gateway
+fetched_at: 2026-08-11
+source_type: webpage-cluster
+vendor: circle
+domain: bridge / circle-gateway / crosschain-usdc
+tier: 1
+title: "Circle Gateway — developer docs (4 pages)"
+crawl_status: full-body (curl .md 저장 — 원문 보존)
+acquisition_method: "curl -L https://developers.circle.com/<path>.md → sources/circle/markdown/ (v3.2.2 Mode C)"
+related_cluster: usdc-gateway
+promote_status: deep-ingested (Stage 39)
+pages:
+  - path: /gateway
+    file: markdown/2026-08-11__developers-circle-com__gateway.md
+    note: "개요 · 주요 기능 · CCTP 비교표"
+  - path: /gateway/references/technical-guide
+    file: markdown/2026-08-11__developers-circle-com__gateway-technical-guide.md
+    note: "Wallet/Minter 컨트랙트 · 오프체인 원장 · burn intent · attestation · 예치 메서드 4종 · 위임 · 7일 무신뢰 인출 · 감사"
+  - path: /gateway/references/fees
+    file: markdown/2026-08-11__developers-circle-com__gateway-fees.md
+    note: "이체율 0.005% · 체인별 고정 가스 · 전달 수수료 $0.05 · maxFee 산식"
+  - path: /gateway/references/supported-blockchains
+    file: markdown/2026-08-11__developers-circle-com__gateway-supported-blockchains.md
+    note: "메인넷 12 · 테스트넷 13 · 요구 컨펌 수 표 · 빠른 예치 제3자 주의"
+not_fetched:
+  - /gateway/references/forwarding-service
+  - /gateway/references/contract-interfaces-and-events
+  - /gateway/references/contract-addresses
+  - /gateway/references/solana-programs
+  - /gateway/references/erc-1271
+  - /gateway/webhooks
+related_pdfs: "sources/circle/Circle Gateway - Circle Docs.pdf (사용자 제공 · 개요 페이지)"
+consumed_by: "blockchain-manager/docs/블록체인매니저/브릿지/99-circle-gateway.md · 03-usdc-gateway.md"
