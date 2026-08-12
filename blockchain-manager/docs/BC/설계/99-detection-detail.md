@@ -122,17 +122,19 @@ upd: bcm_outbox_l | 4 | 발송=S
 step: 정상 복귀 | 적체가 다 비워졌다 — 대가는 처리 지연뿐, 놓친 건 없다
 ```
 
-**트랜잭션 이벤트는 5종**, 그중 **3종을 구독**한다:
+**트랜잭션 이벤트는 5종**, 초기 범위에서는 **3종을 구독**한다:
 
 | 이벤트 | 무엇을 알리나 | 구독 |
 |---|---|---|
 | `transaction.created` | tx 가 처음 생김 — 신규 감지(입금 등장)의 시작 | O |
 | `transaction.status.updated` | 상태 전이(예: CONFIRMING → COMPLETED) — 확정·무효 이벤트 발행의 주 신호 | O |
 | `transaction.approval_status.updated` | 승인 상태 변화 — 정책·승인 흐름 진행(주로 출금) | O |
-| `transaction.alert.stuck` | 막혀서 수동 개입이 필요한 tx 경보 (콘솔에 Beta phase 로 표기) | X — 자체 막힘 점검(주기 작업이 DB 에서 오래 미확정인 걸 조회)이 대체 |
+| `transaction.alert.stuck` | EVM vault+base asset에서 `CONFIRMING`으로 막힌 head-of-queue와 `txHash`·권장 `BOOST_TRANSACTION`을 알림 | 초기 X — 주기 DB 점검이 correctness 기준. 운영에서 안정성을 확인하면 후보 발견을 앞당기는 보조 신호로 추가하되 이 이벤트 유실만으로 막힘을 놓치지 않게 한다 |
 | `transaction.network_records.processing_completed` | 한 거래가 **여러 온체인 거래로 쪼개질 때**(컨트랙트 호출 등) 그 중간 거래들의 처리 완료를 알린다. 단순 전송이면 대상이 없어 뜨지 않는다 | X — 지금은 단순 스테이블코인 입출금이라 미구독. **컨트랙트 호출을 도입하면 그때 구독 검토** |
 
 부하 검증 항목은 p99 응답(1초 이내 목표) · 오류율(circuit breaker 감안 ~0) · 적체 소화 속도.
+
+막힘 점검은 이 미구독 때문에 벤더 상태를 추측하지 않는다. DB의 오래된 `SUBMITTED`·`CONFIRMED`는 후보일 뿐이고, boost 직전에 단건 조회로 `CONFIRMING`·`txHash` 있음·0 confirmation을 확인한다. `transaction.alert.stuck`을 나중에 구독해도 같은 재검증을 생략하지 않는다. 상세는 [흐름의 막힘 점검](02-bcm-flow.md#막힘-점검--자동-boost).
 
 ## 이중처리는 어떻게 막나 — outbox·멱등·크래시 세이프
 

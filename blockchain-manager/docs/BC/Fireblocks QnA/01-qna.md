@@ -107,6 +107,15 @@ Fireblocks 담당자에게 문의해 받은 답변을 질문 단위로 모은다
 **Q.** 확정으로 볼 컨펌 수는 어떻게 정해지나?
 **A.** DCCP(확정 정책)가 정한다. 기본은 대부분 체인 1(이더·Base 포함)·ETC 372·컨트랙트 호출 3 권장. 한도는 EVM 최소 1·이더 최대 100·신규 EVM L2 최대 30. 커스텀 임계는 정책 템플릿을 Support 에 제출해 승인 후 반영된다. ([About the DCCP](https://support.fireblocks.io/hc/en-us/articles/360013034359-About-the-Deposit-Control-and-Confirmation-Policy))
 
+**Q.** 일반 EVM 거래를 API로 boost할 수 있나?
+**A.** 가능하다. Create Transaction에 원 거래의 온체인 hash를 `replaceTxByHash`로 넣으면 같은 nonce의 더 높은 수수료 거래를 만든다. 새 거래는 원 거래가 CONTRACT_CALL이어도 TRANSFER로 생성된다. ([Boost Transactions](https://developers.fireblocks.com/reference/boost-transactions))
+
+**Q.** Fireblocks가 일반 발신 거래를 자동 boost해 주나?
+**A.** 공식 문서에서 자동 boost가 명시된 것은 Gas Station의 auto-fueling 거래다. 일반 EVM 발신은 Console Boost 또는 API RBF 절차와 `transaction.alert.stuck`의 권장 조치 `BOOST_TRANSACTION`이 문서화돼 있어, 일반 거래의 자동 처리를 보장한다고 보지 않는다. ([Gas Station Autoboost](https://support.fireblocks.io/hc/en-us/articles/14406592622748-Gas-Station-Autoboost) · [Transaction events](https://developers.fireblocks.com/reference/webhooks-structures-eventtypes-transaction))
+
+**Q.** stuck 이벤트는 무엇을 주나?
+**A.** EVM에서 vault+base asset의 거래가 `CONFIRMING`으로 막히면 `transaction.alert.stuck`이 발생할 수 있고, 가장 오래 막힌 Fireblocks tx id와 tx hash, 경과 블록·시간, 권장 `BOOST_TRANSACTION`을 준다. 알림은 개입 워크플로를 만드는 신호이고 자동 해결 완료 통지가 아니다. ([Transaction events](https://developers.fireblocks.com/reference/webhooks-structures-eventtypes-transaction))
+
 ## PoC 실측으로 확정한 사실 (2026-08)
 
 문서·답변이 아니라 **실물로 직접 관찰**한 것 — 상세는 [수신 PoC 결과보고](../설계/97-webhook-poc-result.md)와 [approve 배치 sweep PoC 결과보고](../설계/95-approve-pull-poc-result.md).
@@ -171,6 +180,12 @@ Fireblocks 담당자에게 문의해 받은 답변을 질문 단위로 모은다
 
 **Q.** WRITE 계열(`POST /transactions` 등)의 분당 한도는?
 **A.** 미확인. 위 1,000/1,500 은 거래 조회 두 엔드포인트 한정이라, 출금·sweep·boost 제출량의 근거가 아직 없다 — 후속 문의 대상.
+
+**Q.** Universal Gasless로 제출된 EVM 토큰 거래에 `replaceTxByHash`와 `useGasless=true`를 함께 넣어 RBF할 수 있고, 관리형 relay가 대체 거래의 gas도 부담하나?
+**A.** 미확인. 공개 RBF 예시는 gasless 조합을 다루지 않고 Gas Station Autoboost는 별도 기능이다. sandbox 실측 또는 담당자 확답 전에는 자동 boost 기능 게이트를 기본 비활성으로 두고 경보만 한다.
+
+**Q.** RBF Create Transaction에 최초 전송의 `travelRuleMessage`를 다시 실어야 하나, 아니면 `replaceTxByHash`가 원 거래의 컴플라이언스 맥락을 승계하나?
+**A.** 미확인. 매니저는 개인정보 보관 경계를 지키기 위해 `travelRuleMessage` 원문을 제출 원장에 저장하지 않는다. 재전달이 필수라면 현재의 무인 자동 boost는 성립하지 않으므로 함께 확인한다.
 
 **Q.** 자산별 확정 임계 값은 얼마로 하나?
 **A.** 논의 후 확정 예정(테스트넷 3, 메인넷은 협의 값). Base 의 컨펌 단위와 블록 간격 상수 유효성도 함께 확인한다.
