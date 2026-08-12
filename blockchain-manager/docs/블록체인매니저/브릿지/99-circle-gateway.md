@@ -137,7 +137,7 @@ Gateway 스마트컨트랙트는 ChainSecurity · OtterSec 두 곳의 외부 감
 - **수탁 판단** — Wallet 컨트랙트는 비수탁이고 7일 무신뢰 인출 경로와 외부 감사 보고서가 있다. 3장의 "자금이 Circle 컨트랙트에 있다" 와 함께 본다.
 - **소요 시간** — Base·이더리움을 쓰면 예치 확정에 13~19분이 든다. 3장에서 미확인으로 둔 것은 Fireblocks 를 통했을 때의 전체 시간이고, 그 안에 이 대기가 들어간다.
 - **수수료** — Fireblocks 문서는 소스 체인 가스를 "인출 시점에 Circle 이 견적" 이라고만 한다. Circle 쪽은 체인별 고정값을 공개한다.
-- **승인 거래** — `deposit` 이 allowance 를 요구하므로 첫 입금의 `APPROVE` 는 우회할 수 없다. Fireblocks 가 서명 기반 예치 메서드를 쓰지 않는 이유는 벤더 문의 후보다.
+- **승인 거래** — Fireblocks 연동은 첫 입금에 `APPROVE` 를 쓴다. allowance 를 요구하는 `deposit` 경로다. **직접 연동하면 서명 기반 메서드도 고를 수 있다.** Fireblocks 가 그쪽을 쓰지 않는 이유는 벤더 문의 후보다.
 - **직접 붙이는 경우** — permissionless 라 가입은 없다. 대신 burn intent 구성·서명, `maxFee` 산정, attestation 처리와 10분 만료, minter 호출, 위임 관리가 우리 몫이 되고 Fireblocks 의 정책·기록 경계 밖으로 나간다.
 
 ## 아직 안 본 것

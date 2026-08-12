@@ -21,16 +21,18 @@ Circle Gateway 쪽 구현은 이 문서에서 다루지 않는다. 우리가 보
 이미 있는 vault 에 Gateway 지갑을 붙이는 단계다. 자금은 움직이지 않는다. 전제조건이 둘이다.
 
 - vault account 가 존재한다
-- 그 vault 에 **USDC 자산 지갑이 주소까지 생성돼** 있다
+- 그 vault 에 **주소까지 생성된 USDC 자산 지갑이 최소 하나** 있다
 
-우리 구조에서는 옴니버스 vault 하나에만 붙이므로([4장](04-gateway-placement.md)) **운영 초기 1회 설정**이고, 고객 vault 생성·주소 발급 흐름과는 무관하다.
+체인별 준비는 활성화가 아니라 입금에 걸린다 — **입금할 체인마다** 그 체인의 USDC 자산 지갑과 네이티브 가스가 필요하다(Gas Station·Universal Gasless 가 켜져 있으면 가스는 자동 충당).
+
+고객자산 쪽은 옴니버스 vault 에 붙인다([4장](04-gateway-placement.md)) — **운영 초기 1회 설정**이고 고객 vault 생성·주소 발급 흐름과는 무관하다. 회사자산 Gateway 는 4장에서 따로 다룬다.
 
 ```mermaid
 sequenceDiagram
   participant M as 블록체인 매니저
   participant F as Fireblocks
 
-  M->>F: 옴니버스 vault 에 USDC 자산 지갑·주소 생성 — 체인마다
+  M->>F: 옴니버스 vault 에 USDC 자산 지갑·주소 생성 — 최소 하나
   M->>F: Gateway 활성화 — 본문은 vaultAccountId 하나
   F-->>M: walletId · status ACTIVATED
   M->>F: 자동 입금 설정 — 쓸 경우 별도 호출
@@ -73,7 +75,7 @@ sequenceDiagram
 
 경계는 하나다 — **우리는 Fireblocks 를 부르고, 온체인으로 나가는 것은 벤더가 vault 키로 낸다.** 위 그림에서 파란 묶음 안은 벤더 영역이라 우리가 개별 호출하는 지점이 아니다.
 
-**온체인 USDC 이동은 수동·자동 둘 다 같은 거래다.** 자동 입금을 켜면 우리가 `POST /v1/transactions` 를 내지 않을 뿐, 그 아래 승인·이동·웹훅은 동일하다. 다른 것은 제출자뿐이다 — 자동일 때는 `USDC Gateway Depositor` 서비스 유저가 낸다.
+**온체인 USDC 이동은 수동·자동 둘 다 같은 거래다.** 자동 입금을 켜면 우리가 `POST /v1/transactions` 를 내지 않을 뿐, 그 아래 이동과 웹훅은 동일하다. 자동일 때 **입금 거래**의 제출자는 `USDC Gateway Depositor` 서비스 유저다. 첫 입금에 붙는 `APPROVE` 의 제출자는 문서에 없다.
 
 ### 몇 번 하나 — 활성화는 1회, 승인은 체인마다
 
@@ -87,7 +89,7 @@ sequenceDiagram
 
 승인 거래는 우리가 내는 것이 아니라 **Fireblocks 가 자동으로 제출**한다. 정책에 `APPROVE` 룰이 없으면 이 자동 거래가 막혀 입금이 실패한다.
 
-이 승인은 우회할 수 없다. Circle 의 Wallet 컨트랙트는 예치 메서드 `deposit` 에 미리 부여한 allowance 를 요구하고, 컨트랙트 주소로 일반 ERC-20 전송을 보내면 그 USDC 는 소실된다([참고](99-circle-gateway.md)).
+**Fireblocks 경로에서는 이 승인을 건너뛰는 방법이 문서에 없다.** Circle 의 Wallet 컨트랙트는 예치 메서드 `deposit` 에 미리 부여한 allowance 를 요구하고, 컨트랙트 주소로 일반 ERC-20 전송을 보내면 그 USDC 는 소실된다. Circle 을 직접 연동하면 서명 기반 예치(`depositWithPermit`·`depositWithAuthorization`)로 승인 없이 넣을 수 있다([참고](99-circle-gateway.md)).
 
 ## 흐름 — 출금 · Gateway 잔액을 체인 B 로
 
@@ -118,14 +120,36 @@ sequenceDiagram
 
 ## 호출하는 API
 
-| 동작 | 호출 |
+| 동작 | 경로 |
 |---|---|
-| 활성화 | [Activate a USDC Gateway wallet](https://developers.fireblocks.com/api-reference/vaults/activate-a-usdc-gateway-wallet) — 본문에 `vaultAccountId` |
+| 활성화 | `POST /vault/accounts/{vaultAccountId}/usdc_gateway/activate` |
+| 비활성화 | `POST /vault/accounts/{vaultAccountId}/usdc_gateway/deactivate` |
+| 조회 | `GET /vault/accounts/{vaultAccountId}/usdc_gateway` |
 | 입금 | `POST /v1/transactions` · **destination** 에 `subType: VIRTUAL_ACCOUNT` |
 | 출금 | `POST /v1/transactions` · **source** 에 `subType: VIRTUAL_ACCOUNT` |
-| 잔액 조회 | [Get USDC Gateway wallet info](https://developers.fireblocks.com/api-reference/vaults/get-usdc-gateway-wallet-info) — `status`·`symbol`·`totalBalance`·`balanceBreakdown`·`assetIds` |
-| 비활성화 | [Deactivate a USDC Gateway wallet](https://developers.fireblocks.com/api-reference/vaults/deactivate-a-usdc-gateway-wallet) |
 | 자동 입금 | `POST·GET·PATCH·DELETE /vault/accounts/{vaultAccountId}/virtual_asset_wallet/usdc_gateway/deposit_automation` |
+
+경로 체계가 두 갈래다 — 핵심 셋은 `usdc_gateway` 바로 아래인데 자동 입금만 `virtual_asset_wallet` 을 낀다. 자동 입금 4종은 **OpenAPI 스펙에 없고 API 가이드에만 있다.**
+
+**활성화에 요청 본문이 없다.** `vaultAccountId` 는 path 파라미터다. 그래서 일괄 활성화가 없는 것은 본문 구조가 아니라 URL 구조에서 나온다 — vault 하나당 호출 하나다. (API 가이드는 본문 `{"vaultAccountId": "1267"}` 을 보여주는데 스펙과 다르다.)
+
+### 조회 응답 — 두 문서가 다르다
+
+| 필드 | OpenAPI | API 가이드 |
+|---|---|---|
+| `walletId` · `type` · `status` · `symbol` · `assetIds` | 있음 (전부 required) | 일부만 언급 |
+| **`totalBalance` · `balanceBreakdown`** | **없음** | 응답 필드로 명시 |
+
+`type` 은 provider 를 담고 예시값이 `CIRCLEGATEWAY` 다. `status` 는 `ACTIVATED`·`DEACTIVATED`.
+
+**잔액 두 필드가 스펙에 없다.** 조회로 실제 금액을 받을 수 있는지가 확정되지 않았다는 뜻이고, Gateway 잔액을 재고·한도 계산에 넣는 설계가 여기에 걸린다([5장](05-fit.md)).
+
+### 엔드포인트 권한
+
+| 동작 | 허용 역할 |
+|---|---|
+| 활성화·비활성화·자동 입금 설정/변경/중지 | Admin · Non-Signing Admin · Signer · Approver |
+| 조회·자동 입금 조회 | 위 + **Editor · Viewer** |
 
 입금·출금은 별도 엔드포인트가 아니라 **표준 거래 생성 API** 다. `subType` 을 어느 쪽에 붙이느냐로 방향이 갈린다.
 
@@ -155,9 +179,9 @@ sequenceDiagram
 | 출금 | 소스 체인 가스 | 변동. 인출 시점에 Circle 이 견적해 **Gateway 잔액에서 차감** |
 | 출금 | 전달 수수료 | Circle Forwarding Service 가 목적지 체인 가스·전달을 부담하고, **전달되는 USDC 에서 차감** |
 
-즉 **출금하면 목적지에 도착하는 USDC 가 요청액보다 적다.** 우리 가스가 드는 것은 입금뿐이다.
+**출금 수수료는 모두 USDC 로 뗀다.** 이체율과 소스 체인 가스는 Gateway 잔액에서, 전달 수수료는 목적지로 전달되는 USDC 에서 빠진다. 요청 `amount` 와 최종 도착액의 정확한 관계는 확인이 필요하다. 우리 가스가 드는 것은 입금뿐이다.
 
-수수료는 Circle 이 정하고 바뀔 수 있다. Fireblocks 문서는 소스 체인 가스를 "인출 시점 견적" 이라고만 하지만, **Circle 은 체인별 고정값을 공개한다** — 이더리움 $1.00, Base·Arbitrum $0.01, OP·Polygon $0.0015 등([참고](99-circle-gateway.md)). 전달 수수료도 정액 $0.05 + 목적지 mint 가스다. 같은 체인 안에서 빼면 이체율(0.005%)이 붙지 않고 가스만 든다.
+수수료는 Circle 이 정하고 바뀔 수 있다. Fireblocks 문서는 소스 체인 가스를 "인출 시점 견적" 이라고만 한다. Circle 직접 연동 문서에는 체인별 고정 가스표가 공개돼 있지만(이더리움 $1.00, Base·Arbitrum $0.01, OP·Polygon $0.0015 등 · 전달 수수료 정액 $0.05 + 목적지 mint 가스 · [참고](99-circle-gateway.md)), **Fireblocks 를 통한 실제 청구액이 그 표와 같은지는 확인되지 않았다.**
 
 ## 지원 체인
 
@@ -266,6 +290,7 @@ POST /vault/accounts/{vaultAccountId}/virtual_asset_wallet/usdc_gateway/deposit_
 
 - **소요 시간.** Fireblocks 문서는 입금은 우리 확정 정책, 출금은 "목적지 체인 전달 확인 시 완료" 라고만 한다. Circle 쪽은 **Base·이더리움·Arbitrum·OP·Unichain·World Chain 에서 예치가 잔액으로 잡히기까지 ~65 ETH 블록, 13~19분**이 걸리고 전송 자체는 500ms 미만이라고 밝힌다([참고](99-circle-gateway.md)). 벤더를 통했을 때 이 대기가 우리 눈에 어떻게 보이는지는 실측값이 없다.
 - **자동 입금일 때 첫 승인 거래의 제출자.** 정책 문서는 `USDC Gateway Depositor` 가 initiator 가 된다고 Transfer 룰에 대해서만 밝힌다. 같은 체인 첫 입금에 붙는 `APPROVE` 도 이 서비스 유저가 내는지는 안 나온다. 승인용 정책 룰의 initiator 를 무엇으로 둘지가 여기에 걸린다.
+- **조회로 잔액을 받을 수 있는지.** OpenAPI 응답 스키마에 `totalBalance`·`balanceBreakdown` 이 없고 API 가이드에는 있다. 스펙이 beta 라 뒤처진 것인지, 가이드가 앞서 적은 것인지 확인해야 한다.
 - **실패 시 자금 위치.** 출금이 중간에 실패하면 Gateway 잔액에 남는지, 어떤 상태로 보이는지.
 - **거래 기록 형태.** 입금·출금이 `networkRecords` 와 웹훅에 어떻게 잡히는지. 벤더 문서는 "표준 Fireblocks 거래" 라고만 한다.
 - **활성화가 우리 시스템에 어떻게 보이는지.** 활성화가 웹훅을 내는지, `GET /v1/vault/accounts/{id}` 응답에 Gateway 지갑이 나타나는지. 나타나면 vault 조회만으로 활성화 여부를 알 수 있고, 안 나타나면 잔액 조회 API 를 따로 불러야 한다. 활성화 실패 사유·에러 형태도 문서에 없다.
@@ -276,5 +301,6 @@ POST /vault/accounts/{vaultAccountId}/virtual_asset_wallet/usdc_gateway/deposit_
 - [USDC Gateway: Prerequisites and Setup Guide](https://support.fireblocks.io/hc/en-us/articles/27420202963612-USDC-Gateway-Prerequisites-and-Setup-Guide)
 - [Setting up policy rules for USDC Gateway](https://support.fireblocks.io/hc/en-us/articles/28897919442588-Setting-up-policy-rules-for-USDC-Gateway)
 - [USDC Gateway (API guide)](https://developers.fireblocks.com/docs/usdc-gateway)
+- API reference 7종 + `openapi/swagger.yaml` 의 Gateway 발췌 (2026-08-12 수집)
 
 Circle 쪽 원문은 [Circle Gateway 참고](99-circle-gateway.md)에 정리했다.
