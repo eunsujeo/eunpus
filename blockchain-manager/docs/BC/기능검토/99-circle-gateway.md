@@ -4,7 +4,7 @@ status: To Do
 ref: 참고
 ---
 
-[3장](03-usdc-gateway.md)의 USDC Gateway 는 Fireblocks 가 **Circle Gateway** 를 감싼 것이다. 이 문서는 Circle 쪽 문서만 정리한다. 직접 붙이는 경우([2장](02-options.md))를 견적할 때의 재료이기도 하다.
+[USDC Gateway](02-usdc-gateway.md)는 Fireblocks 가 **Circle Gateway** 를 감싼 것이다. 이 문서는 Circle 쪽 문서만 정리한다. 직접 붙이는 경우([브릿지 — 선택지](../../블록체인매니저/브릿지/02-options.md))를 견적할 때의 재료이기도 하다.
 
 출처는 Circle 개발자 문서 — [개요](https://developers.circle.com/gateway) · [기술 가이드](https://developers.circle.com/gateway/references/technical-guide) · [수수료](https://developers.circle.com/gateway/references/fees) · [지원 체인](https://developers.circle.com/gateway/references/supported-blockchains).
 
@@ -53,7 +53,7 @@ Wallet 컨트랙트는 예치 메서드 넷을 노출한다.
 
 **표준 ERC-20 transfer 로 Wallet 컨트랙트 주소에 USDC 를 보내면 그 USDC 는 소실된다.** Circle 이 경고로 명시한다. Gateway 잔액을 얻으려면 반드시 위 메서드를 호출해야 한다.
 
-여기서 [3장](03-usdc-gateway.md)의 자동 승인 거래가 설명된다 — Fireblocks 가 체인마다 첫 입금에서 `APPROVE` 를 먼저 내는 것은 `deposit` 이 allowance 를 요구하기 때문이다. Circle 은 가능하면 서명 기반(`depositWithPermit`·`depositWithAuthorization`)을 쓰라고 권하고, `approve` + `deposit` 을 쓰면 **두 개의 별개 거래로 취급해 상태를 따로 보이라**고 한다. Fireblocks 가 승인 거래를 거래 목록에 별도 항목으로 띄우는 것이 이 형태다.
+여기서 [기능](02-usdc-gateway.md)의 자동 승인 거래가 설명된다 — Fireblocks 가 체인마다 첫 입금에서 `APPROVE` 를 먼저 내는 것은 `deposit` 이 allowance 를 요구하기 때문이다. Circle 은 가능하면 서명 기반(`depositWithPermit`·`depositWithAuthorization`)을 쓰라고 권하고, `approve` + `deposit` 을 쓰면 **두 개의 별개 거래로 취급해 상태를 따로 보이라**고 한다. Fireblocks 가 승인 거래를 거래 목록에 별도 항목으로 띄우는 것이 이 형태다.
 
 예치는 파이널라이즈·처리된 뒤에야 전송에 쓸 수 있다. **대기 중 예치는 잔액과 별도로 봐야 한다** — `/v1/deposits` 가 `pending` 예치를, `/v1/balances` 가 쓸 수 있는 잔액을 준다.
 
@@ -134,8 +134,8 @@ Gateway 스마트컨트랙트는 ChainSecurity · OtterSec 두 곳의 외부 감
 
 ## 우리 문서와 맞춰 볼 것
 
-- **수탁 판단** — Wallet 컨트랙트는 비수탁이고 7일 무신뢰 인출 경로와 외부 감사 보고서가 있다. 3장의 "자금이 Circle 컨트랙트에 있다" 와 함께 본다.
-- **소요 시간** — Base·이더리움을 쓰면 예치 확정에 13~19분이 든다. 3장에서 미확인으로 둔 것은 Fireblocks 를 통했을 때의 전체 시간이고, 그 안에 이 대기가 들어간다.
+- **수탁 판단** — Wallet 컨트랙트는 비수탁이고 7일 무신뢰 인출 경로와 외부 감사 보고서가 있다. [기능](02-usdc-gateway.md)의 "자금이 Circle 컨트랙트에 있다" 와 함께 본다.
+- **소요 시간** — Base·이더리움을 쓰면 예치 확정에 13~19분이 든다. [기능](02-usdc-gateway.md)에서 미확인으로 둔 것은 Fireblocks 를 통했을 때의 전체 시간이고, 그 안에 이 대기가 들어간다.
 - **수수료** — Fireblocks 문서는 소스 체인 가스를 "인출 시점에 Circle 이 견적" 이라고만 한다. Circle 쪽은 체인별 고정값을 공개한다.
 - **승인 거래** — Fireblocks 연동은 첫 입금에 `APPROVE` 를 쓴다. allowance 를 요구하는 `deposit` 경로다. **직접 연동하면 서명 기반 메서드도 고를 수 있다.** Fireblocks 가 그쪽을 쓰지 않는 이유는 벤더 문의 후보다.
 - **직접 붙이는 경우** — permissionless 라 가입은 없다. 대신 burn intent 구성·서명, `maxFee` 산정, attestation 처리와 10분 만료, minter 호출, 위임 관리가 우리 몫이 되고 Fireblocks 의 정책·기록 경계 밖으로 나간다.

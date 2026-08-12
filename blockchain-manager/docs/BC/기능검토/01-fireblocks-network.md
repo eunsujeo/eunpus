@@ -1,6 +1,7 @@
 ---
 title: Fireblocks Network · Smart Transfer — 정산 선택지 검토
 status: To Do
+group: Fireblocks Network
 ---
 
 Fireblocks 회원 기관끼리 직접 연결해 자금을 주고받는 평면과, 그 위에서 정산을 티켓으로 다루는 기능을 정리한다.

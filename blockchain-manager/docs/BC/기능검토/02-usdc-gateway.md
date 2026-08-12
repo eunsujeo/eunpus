@@ -1,9 +1,12 @@
 ---
-title: 3. USDC Gateway — Fireblocks 가 주는 브릿지 수단
+title: USDC Gateway — Fireblocks 가 감싼 Circle Gateway
 status: To Do
+group: USDC Gateway
 ---
 
 Fireblocks 가 Circle Gateway 를 감싼 기능이다. vault 의 USDC 를 체인 구분 없는 단일 잔액으로 모아 두고, 필요할 때 원하는 체인으로 인출한다. 체인마다 미리 USDC 를 깔아 둘 필요가 없어진다.
+
+**도입은 미정이다.** 이 문서는 벤더가 무엇을 주는지 정리한 것이고, 쓸지 말지는 [우리 구조에 걸리는 것](04-usdc-gateway-fit.md)에서 판단한다.
 
 브릿지 수단으로 볼 때의 성질은 **같은 자산(USDC)을 체인 간에 옮기는 것**이다. 교환이 아니라 이동이고, 값은 1:1 에서 수수료만큼 깎인다.
 
@@ -25,7 +28,7 @@ Circle Gateway 쪽 구현은 이 문서에서 다루지 않는다. 우리가 보
 
 체인별 준비는 활성화가 아니라 입금에 걸린다 — **입금할 체인마다** 그 체인의 USDC 자산 지갑과 네이티브 가스가 필요하다(Gas Station·Universal Gasless 가 켜져 있으면 가스는 자동 충당).
 
-고객자산 쪽은 옴니버스 vault 에 붙인다([4장](04-gateway-placement.md)) — **운영 초기 1회 설정**이고 고객 vault 생성·주소 발급 흐름과는 무관하다. 회사자산 Gateway 는 4장에서 따로 다룬다.
+고객자산 쪽은 옴니버스 vault 에 붙인다([배치](03-usdc-gateway-placement.md)) — **운영 초기 1회 설정**이고 고객 vault 생성·주소 발급 흐름과는 무관하다. 회사자산 Gateway 는 [배치](03-usdc-gateway-placement.md)에서 따로 다룬다.
 
 ```mermaid
 sequenceDiagram
@@ -142,7 +145,7 @@ sequenceDiagram
 
 `type` 은 provider 를 담고 예시값이 `CIRCLEGATEWAY` 다. `status` 는 `ACTIVATED`·`DEACTIVATED`.
 
-**잔액 두 필드가 스펙에 없다.** 조회로 실제 금액을 받을 수 있는지가 확정되지 않았다는 뜻이고, Gateway 잔액을 재고·한도 계산에 넣는 설계가 여기에 걸린다([5장](05-fit.md)).
+**공식 문서 간 응답 스키마가 다르다.** API 가이드와 Overview 는 조회로 총액과 체인별 내역을 받는다고 명시하고, OpenAPI 스키마에는 그 두 필드가 없다. 조회가 되느냐가 아니라 **어느 쪽이 실제 Beta 응답과 맞느냐**가 미확인이다. 실측으로 가린다.
 
 ### 엔드포인트 권한
 
@@ -153,16 +156,42 @@ sequenceDiagram
 
 입금·출금은 별도 엔드포인트가 아니라 **표준 거래 생성 API** 다. `subType` 을 어느 쪽에 붙이느냐로 방향이 갈린다.
 
-```json
-// 입금 — 체인 A 의 USDC 를 Gateway 로
-{ "assetId": "USDC_ETH_TEST5", "amount": "10",
-  "source":      { "type": "VAULT_ACCOUNT", "id": "0" },
-  "destination": { "type": "VAULT_ACCOUNT", "id": "0", "subType": "VIRTUAL_ACCOUNT" } }
+**입금** — 체인 A 의 USDC 를 Gateway 로
 
-// 출금 — Gateway 에서 목적지 체인으로
-{ "assetId": "USDC_ETH_TEST5", "amount": "10",
-  "source":      { "type": "VAULT_ACCOUNT", "id": "0", "subType": "VIRTUAL_ACCOUNT" },
-  "destination": { "type": "ONE_TIME_ADDRESS", "oneTimeAddress": { "address": "0x…" } } }
+```json
+{
+  "assetId": "USDC_ETH_TEST5",
+  "amount": "10",
+  "source": {
+    "type": "VAULT_ACCOUNT",
+    "id": "0"
+  },
+  "destination": {
+    "type": "VAULT_ACCOUNT",
+    "id": "0",
+    "subType": "VIRTUAL_ACCOUNT"
+  }
+}
+```
+
+**출금** — Gateway 에서 목적지 체인으로
+
+```json
+{
+  "assetId": "USDC_ETH_TEST5",
+  "amount": "10",
+  "source": {
+    "type": "VAULT_ACCOUNT",
+    "id": "0",
+    "subType": "VIRTUAL_ACCOUNT"
+  },
+  "destination": {
+    "type": "ONE_TIME_ADDRESS",
+    "oneTimeAddress": {
+      "address": "0x…"
+    }
+  }
+}
 ```
 
 `assetId` 는 입금이면 **소스 체인**의 USDC, 출금이면 **목적지 체인**의 USDC 를 가리킨다. 위 예시 값은 API 가이드 원문 그대로이고, 설정 가이드의 자산 표에는 이더리움 Sepolia 가 `USDC_ETH_TEST5_0GER` 로 적혀 있어 표기가 다르다 — 실제 값은 자산 목록 조회로 확인한다.
@@ -231,11 +260,18 @@ Beta 기간에 늘 수 있다.
 - Console 활성화 흐름에 토글이 있고 **기본이 켜짐**이다. 켜지 않으면 입금은 매번 수동으로 낸다.
 - `automationType` 과 `assetId` 는 만든 뒤 못 바꾼다. 주기만 `PATCH` 로 바꾸고, `DELETE` 는 설정을 남긴 채 스케줄만 멈춘다.
 
+`POST /vault/accounts/{vaultAccountId}/virtual_asset_wallet/usdc_gateway/deposit_automation`
+
 ```json
-POST /vault/accounts/{vaultAccountId}/virtual_asset_wallet/usdc_gateway/deposit_automation
-{ "automationType": "USDC_GATEWAY_DEPOSIT",
+{
+  "automationType": "USDC_GATEWAY_DEPOSIT",
   "assetId": "USDC_ETH",
-  "timeBased": { "intervalValue": 60, "intervalUnit": "MINUTES", "balanceThreshold": "1000" } }
+  "timeBased": {
+    "intervalValue": 60,
+    "intervalUnit": "MINUTES",
+    "balanceThreshold": "1000"
+  }
+}
 ```
 
 **제출자가 우리가 아니다.** 자동 입금 거래는 `USDC Gateway Depositor` 라는 서비스 유저가 제출한다. 이 유저는 **제출만 하고 서명은 못 한다.** 그래서 정책 룰에 별도 서명자를 지정해야 하고, 안 하면 자동 입금이 "정책에 막힘" 으로 실패한다.
@@ -272,7 +308,7 @@ POST /vault/accounts/{vaultAccountId}/virtual_asset_wallet/usdc_gateway/deposit_
 
 직접 이어진 흐름은 아니다. 고객 입금은 외부 → 고객 vault 이고, Gateway 입금은 **우리가 내는 거래**(그 vault 의 USDC 자산 지갑 → 같은 vault 의 Gateway 지갑)다. 순서로 보면 고객 입금이 확정되고 sweep 으로 모인 뒤에 오는 별개 단계다.
 
-다만 기록이 섞인다. 벤더 문서가 "입금·출금은 표준 Fireblocks 거래이며 거래 목록에 나타나고 정책 룰을 따르고 AML 스크리닝을 거치며 **다른 전송과 똑같이 웹훅을 낸다**" 고 명시한다. 첫 입금의 승인 거래도 별도 항목으로 뜬다. 우리 감지 파이프라인에 어떤 영향이 있는지는 [5장](05-fit.md).
+다만 기록이 섞인다. 벤더 문서가 "입금·출금은 표준 Fireblocks 거래이며 거래 목록에 나타나고 정책 룰을 따르고 AML 스크리닝을 거치며 **다른 전송과 똑같이 웹훅을 낸다**" 고 명시한다. 첫 입금의 승인 거래도 별도 항목으로 뜬다. 우리 감지 파이프라인에 어떤 영향이 있는지는 [우리 구조에 걸리는 것](04-usdc-gateway-fit.md).
 
 ## 걸리는 것
 
@@ -284,13 +320,13 @@ POST /vault/accounts/{vaultAccountId}/virtual_asset_wallet/usdc_gateway/deposit_
 - **vault 당 Gateway 지갑 하나.** 브릿지 창구로 쓸 vault 를 정해야 한다.
 - **한도는 Fireblocks 쪽에 없다.** 다만 Circle 이 rate limit 을 걸면 그 오류가 그대로 실패로 온다.
 
-위 제약이 우리 설계에 무엇을 요구하는지는 [5장](05-fit.md).
+위 제약이 우리 설계에 무엇을 요구하는지는 [우리 구조에 걸리는 것](04-usdc-gateway-fit.md).
 
 ## 아직 모르는 것
 
 - **소요 시간.** Fireblocks 문서는 입금은 우리 확정 정책, 출금은 "목적지 체인 전달 확인 시 완료" 라고만 한다. Circle 쪽은 **Base·이더리움·Arbitrum·OP·Unichain·World Chain 에서 예치가 잔액으로 잡히기까지 ~65 ETH 블록, 13~19분**이 걸리고 전송 자체는 500ms 미만이라고 밝힌다([참고](99-circle-gateway.md)). 벤더를 통했을 때 이 대기가 우리 눈에 어떻게 보이는지는 실측값이 없다.
 - **자동 입금일 때 첫 승인 거래의 제출자.** 정책 문서는 `USDC Gateway Depositor` 가 initiator 가 된다고 Transfer 룰에 대해서만 밝힌다. 같은 체인 첫 입금에 붙는 `APPROVE` 도 이 서비스 유저가 내는지는 안 나온다. 승인용 정책 룰의 initiator 를 무엇으로 둘지가 여기에 걸린다.
-- **조회로 잔액을 받을 수 있는지.** OpenAPI 응답 스키마에 `totalBalance`·`balanceBreakdown` 이 없고 API 가이드에는 있다. 스펙이 beta 라 뒤처진 것인지, 가이드가 앞서 적은 것인지 확인해야 한다.
+- **조회 응답의 실제 형태.** API 가이드·Overview 는 `totalBalance`·`balanceBreakdown` 을 준다고 하고 OpenAPI 스키마에는 없다. 실제 Beta 응답이 어느 쪽인지 실측으로 가린다.
 - **실패 시 자금 위치.** 출금이 중간에 실패하면 Gateway 잔액에 남는지, 어떤 상태로 보이는지.
 - **거래 기록 형태.** 입금·출금이 `networkRecords` 와 웹훅에 어떻게 잡히는지. 벤더 문서는 "표준 Fireblocks 거래" 라고만 한다.
 - **활성화가 우리 시스템에 어떻게 보이는지.** 활성화가 웹훅을 내는지, `GET /v1/vault/accounts/{id}` 응답에 Gateway 지갑이 나타나는지. 나타나면 vault 조회만으로 활성화 여부를 알 수 있고, 안 나타나면 잔액 조회 API 를 따로 불러야 한다. 활성화 실패 사유·에러 형태도 문서에 없다.

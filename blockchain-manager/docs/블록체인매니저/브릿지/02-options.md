@@ -16,10 +16,10 @@ status: To Do
 
 | 후보 | 상태 | 조사할 것 |
 |---|---|---|
-| **USDC Gateway — 고객자산 쪽** | [3장](03-usdc-gateway.md) 기능 정리 · [4장](04-gateway-placement.md) 배치 확정 · [5장](05-fit.md) 우리 구조와의 충돌 정리 | 소요 시간 · 실패 시 자금 위치. 옴니버스 ↔ 출금 풀 이동 정책이 서야 확정된다 |
-| **USDC Gateway — 회사자산 쪽** | [4장](04-gateway-placement.md) 자산 경계마다 하나 | 회사자산을 체인 무관으로 들고 있다가 필요한 체인으로 뽑아 브릿지교환에 쓴다. 밴드S·밴드C 를 안 건드려 결정할 것이 적다 |
-| **Circle Gateway 직접** | [참고](99-circle-gateway.md) 정리 · permissionless 라 Fireblocks 없이도 가능 | burn intent 구성·서명 · `maxFee` 산정 · attestation 10분 만료 처리 · minter 호출 · 위임 관리가 우리 몫이 된다. Fireblocks 정책·기록 경계 밖으로 나가는 영향 |
-| **Circle CCTP** | [참고](99-circle-gateway.md)에 Gateway 와의 차이표 | 한 번 옮기는 용도. 속도 Fast 8~20초·Standard 15~19분 · 잔액을 두지 않는다 |
+| **USDC Gateway — 고객자산 쪽** | 도입 미정. 검토는 `BC/기능검토` 에 있다 — [기능](../../BC/기능검토/02-usdc-gateway.md) · [배치](../../BC/기능검토/03-usdc-gateway-placement.md) · [우리 구조에 걸리는 것](../../BC/기능검토/04-usdc-gateway-fit.md) | 소요 시간 · 실패 시 자금 위치. 옴니버스 ↔ 출금 풀 이동 정책이 서야 확정된다 |
+| **USDC Gateway — 회사자산 쪽** | [배치](../../BC/기능검토/03-usdc-gateway-placement.md) — 자산 경계마다 하나 | 회사자산을 체인 무관으로 들고 있다가 필요한 체인으로 뽑아 브릿지교환에 쓴다. 밴드S·밴드C 를 안 건드려 결정할 것이 적다 |
+| **Circle Gateway 직접** | [Circle Gateway 참고](../../BC/기능검토/99-circle-gateway.md) · permissionless 라 Fireblocks 없이도 가능 | burn intent 구성·서명 · `maxFee` 산정 · attestation 10분 만료 처리 · minter 호출 · 위임 관리가 우리 몫이 된다. Fireblocks 정책·기록 경계 밖으로 나가는 영향 |
+| **Circle CCTP** | [Circle Gateway 참고](../../BC/기능검토/99-circle-gateway.md)에 Gateway 와의 차이표 | 한 번 옮기는 용도. 속도 Fast 8~20초·Standard 15~19분 · 잔액을 두지 않는다 |
 | **서드파티 브릿지** | 미조사 | 어떤 것들이 있고 무엇을 신뢰해야 하나. 수탁 서비스가 쓸 수 있는 형태인가 |
 | **거래소 경유** | 미조사 | 입금 후 다른 체인으로 출금하는 방식. 한도·시간·상대방 위험 |
 | **재고 사전 확보** | 미조사 | 옮기지 않고 각 네트워크에 미리 깔아 두는 것. 밴드C 값을 키우는 선택 |
