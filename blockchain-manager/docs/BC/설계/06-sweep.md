@@ -105,6 +105,47 @@ sequenceDiagram
 
 배치는 **부분 성공**을 허용한다. 한 vault 의 잔액·allowance·토큰 상태가 달라졌다고 정상 항목까지 전부 되돌리지 않는다. 컨트랙트는 항목마다 원천·토큰·요청금액·실제금액·성공 여부·실패 코드를 이벤트로 내고, 실패 항목만 다음 회차에서 잔액과 allowance 를 다시 확인한다. 최상위 Fireblocks 거래의 `COMPLETED`는 배치 호출의 성공일 뿐 N개 항목 전체 성공이 아니다.
 
+#### 운영 컨트랙트 ABI
+
+PoC의 `batchSweep(address[],uint256[])`는 외부발 인출과 부분 성공 관찰만 위한 최소 구현이다. 운영 계약은 실행 재사용 차단과 항목 대사를 위해 아래 ABI를 쓴다.
+
+```solidity
+struct SweepRequest {
+    address owner;
+    uint256 amount;
+}
+
+function batchSweep(
+    bytes16 executionId,
+    address token,
+    SweepRequest[] calldata items
+) external;
+
+event SweepLeg(
+    bytes16 indexed executionId,
+    uint32 indexed itemSeq,
+    address indexed owner,
+    uint256 requestedAmount,
+    uint256 actualAmount,
+    bool success,
+    bytes32 failureCode
+);
+
+event SweepDone(
+    bytes16 indexed executionId,
+    uint32 itemCount,
+    uint32 successCount,
+    uint256 actualTotalAmount
+);
+```
+
+- `executionId`는 UUID v7의 16바이트 값이다. DB와 로그에서는 표준 36자 UUID 문자열로 보관하고 ABI에서만 하이픈을 뺀 `bytes16`으로 바꾼다.
+- `items`는 EVM 원천 주소의 20바이트 값 오름차순으로 정렬하고 `itemSeq`는 그 순서의 1부터 시작한다. 같은 네트워크에서 입금 주소가 유일하므로 동률은 허용하지 않는다.
+- `amount`는 토큰 최소 단위 정수다. DB의 사람 단위 십진 금액은 토큰 `decimals`로 정확히 환산하며 나머지가 생기면 제출하지 않는다.
+- 컨트랙트는 등록 운영자·token allowlist·최대 M·건별/총액 상한을 검사하고 사용한 `executionId`를 영구 재사용 금지한다. 목적지는 배포 시 불변이다.
+- `actualAmount`는 옴니버스의 토큰 잔액 증가분이다. 호출 반환값만으로 성공을 판정하지 않는다. `failureCode`는 성공이면 `bytes32(0)`, 실패면 컨트랙트가 정의한 닫힌 코드다.
+- `SweepLeg.itemSeq`와 요청 원천·금액을 DB 항목에 대조한다. 이벤트가 없거나 중복·불일치하면 성공을 추측하지 않고 대사 실패로 격리한다.
+
 ### 권한 경계
 
 | 구분 | 블록체인 매니저 책임 | 별도 경계 |
@@ -157,7 +198,7 @@ Fireblocks의 `APPROVE`·`applyForApprove`·Approve Amount Cap이 `CONTRACT_CALL
 
 운영 계정의 배치 거래 논스는 Fireblocks가 관리한다. 같은 실행의 중복 제출은 제출 원장의 멱등·claim 경계와 컨트랙트의 `executionId` 소진 기록으로 이중 차단한다. 같은 운영 계정의 동시 제출은 직렬화한다.
 
-`bcm_swp_trgt`에서 같은 네트워크·토큰이고 트리거 조건을 만족한 대상을 보유량 많은 순으로 고른다. 예상 gas가 블록 gas limit 대비 운영 상한을 넘지 않는 최대 M개만 `SweepExecution` 하나에 넣는다. 성공 항목은 잔액을 재확인해 정리하고, 실패·잔액 잔존 항목은 다음 실행 대상으로 되돌린 뒤 loop한다. 항목 하나인 경우도 같은 1:N 모델에서 N=1로 처리한다.
+`bcm_swp_trgt`에서 같은 네트워크·토큰이고 트리거 조건을 만족한 대상을 보유량 많은 순으로 고른다. 예상 gas가 블록 gas limit 대비 운영 상한을 넘지 않는 최대 M개만 고른 뒤, 실행 의도와 calldata는 위 ABI 규칙대로 원천 주소 오름차순으로 다시 정렬해 `SweepExecution` 하나에 넣는다. 성공 항목은 잔액을 재확인해 정리하고, 실패·잔액 잔존 항목은 다음 실행 대상으로 되돌린 뒤 loop한다. 항목 하나인 경우도 같은 1:N 모델에서 N=1로 처리한다.
 
 ## ② 밴드S — 어떻게 처리하나
 

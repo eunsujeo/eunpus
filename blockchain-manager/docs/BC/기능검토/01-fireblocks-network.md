@@ -7,6 +7,8 @@ group: Fireblocks Network
 Fireblocks 회원 기관끼리 직접 연결해 자금을 주고받는 평면과, 그 위에서 정산을 티켓으로 다루는 기능을 정리한다.
 현재 설계에는 쓰지 않는다. 나중에 기관 간 정산을 다루게 될 때 꺼내 볼 자료다.
 
+이 문서의 **Fireblocks Network·Smart Transfer**와 외부 Provider가 Fireblocks에 서비스를 연결하는 **Network Link v2(Provider Connectivity API)**는 다른 기능이다. 외부 KRWK 발행업체 사례의 RFQ·견적 실행은 [Network Link v2 외부 LP 유동성 연동](05-network-link-v2-liquidity.md), Ramp·Trading API는 [Payments Ramp·Trading API](06-fireblocks-payments-ramp-reference.md)에서 다룬다. 두 문서는 우리 지갑 설계에 적용하지 않는 기능 참고자료다.
+
 ## 무엇인가
 
 **Fireblocks Network** 는 회원 기관끼리 워크스페이스를 직접 연결하는 별도 평면이다. 온체인 주소를 주고받아 화이트리스트에 등록하는 대신, 상대 기관과 연결을 맺고 그 연결을 거래 상대로 지목한다. 유동성 공급자·대출 데스크·거래 상대 **1,500개 이상**이 회원이다.

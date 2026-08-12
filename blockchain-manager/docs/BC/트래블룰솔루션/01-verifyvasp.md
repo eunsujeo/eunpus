@@ -6,7 +6,7 @@ group: 솔루션별 조사
 ---
 
 VerifyVASP의 TravelRule은 각 {{VASP::Virtual Asset Service Provider — 가상자산사업자}} 인프라에 {{Enclave::VerifyVASP가 VASP 내부에 설치하는 암복호화·통신 모듈}}와 전용 DB를 설치하고 중앙 서버를 중계자로 사용하는 구조다.
-이 문서는 2026-08-07에 확보한 VerifyVASP 공식 개발자 문서만 근거로 작성했다.
+기술 구조 본문은 2026-08-07에 확보한 VerifyVASP 공식 개발자 문서를 근거로 작성했다. 2026-08-12에 전달받은 담당자 회의록은 별도 절에서 **회의 발언으로 귀속**하며, 공식 원문으로 검증되지 않은 규제 해석·실적·대외 협력 현황은 확정 사실로 사용하지 않는다.
 
 ## 한눈에 보기
 
@@ -20,6 +20,7 @@ VerifyVASP의 TravelRule은 각 {{VASP::Virtual Asset Service Provider — 가�
 | 출금 | 수취 계정·사용자 검증 → 온체인 전송 → {{TxHash::Transaction Hash — 블록체인 거래를 식별하는 해시 값}} 보고 |
 | 테스트 | Robot VASP를 이용한 입출금 시나리오 테스트 제공 |
 | 조사 기준일 | 2026-08-07 |
+| 회의 보강 | 운영·실사·은행 적용 설명 — 벤더 발언, 독립 검증 전 |
 
 ## 무엇인가
 
@@ -146,6 +147,45 @@ VASP 백엔드가 호출하는 Enclave 쪽에는 VASP 조회, 계정·사용자 
 
 오래된 검증 데이터 자동 삭제는 **기본 비활성화된 opt-in 기능**이다. `VEGA_VERIFICATION_RETENTION_DAYS`를 설정하면 Enclave가 매시간 오래된 verification과 연관 위험평가 결과를 배치 삭제한다. 삭제 전 법정 보존기간과 백업을 확인해야 하며, 삭제된 데이터는 복구되지 않는다고 문서가 경고한다. ([VV-OPS-002](https://docs.verifyvasp.com/reference/travelrule-maintenance), §Data Retention)
 
+## 담당자 회의에서 보강된 운영 설명
+
+이 절은 2026-08-12에 전달받은 회의록([VV-MTG-001](../../../sources/travel-rule-solutions/verifyvasp-meeting/2026-08-12__meeting-notes.md))을 정리한 것이다. 아래 내용은 **VerifyVASP 측 설명**이며 공식 API·계약·규제기관 원문으로 독립 검증한 사실과 구분한다.
+
+### 입출금 통제 원칙
+
+- **출금** — 사전 승인한 상대 선택, 고객 동의, E2E 암호화 정보 전송, 상대 DB의 수취인 대조를 마친 뒤 온체인 전송한다. 출금 전 확인은 실시간 처리가 필요하다고 설명했다.
+- **입금** — 자금 도착 자체는 막을 수 없으므로 잔고 반영을 보류하고 출처를 확인한 뒤 가용 처리한다. 이는 우리 설계의 `확정 임계 도달 ≠ 가용` 원칙과 일치한다.
+- 회의에서는 **TXID로 상대를 조회**한다고 설명했지만, 확보한 공개 명세의 `Check Transaction Status` 입력은 `verificationUuid`다. TXID 조회가 VerifyVASP 단독 기능인지, CODE 상호연동이나 별도 운영 절차인지 확인 전에는 구현 전제로 삼지 않는다.
+
+### 상대 VASP 실사
+
+상대 VASP는 사전 승인이 필요하고 Wolfsberg CBDDQ를 준용한 실사 자료를 바탕으로 위험도에 따라 3개월·6개월·12개월 주기로 재실사한다고 설명했다. VerifyVASP는 신규 회원 안내와 양측 승인 후 기초자료 전달을 지원하지만, **실사 판단과 거래 관계 승인 책임은 각 VASP에 있다**고 밝혔다. 실사 주기와 필수 자료는 계약·운영정책으로 확인해야 한다.
+
+### 암호화·저장의 범위
+
+회의에서는 거래 건마다 키페어를 생성하고 수신 VASP 인프라 안에서만 복호화하며, 중앙 구간은 메모리 처리 뒤 폐기한다고 설명했다. 이 설명은 다음 두 범위를 나눠 읽어야 한다.
+
+- **중앙 서버** — E2EE 메시지를 복호화·저장하지 않는다는 공식 문서와 같은 방향이다.
+- **VASP Enclave DB** — 검증정보와 private key를 저장한다. 따라서 `VerifyVASP 무저장`을 우리 인프라를 포함한 전체 시스템의 무저장으로 해석하면 안 된다.
+
+또한 공식 문서는 공개키 운용 단위를 `PerVasp`, `PerAddress`, `PerVerification` 중 선택할 수 있다고 설명한다. 회의의 `거래 건마다 키페어`가 실제 도입 설정인지 확인해야 한다.
+
+### 리전과 네트워크
+
+국내 사업자의 첫 접점은 AWS 한국 리전이고 해외 상대 거래만 싱가포르를 경유한다고 설명했다. 이는 회의 발언 기준의 네트워크 경로이며, 실제 endpoint·데이터 레지던시·장애조치 경로는 계약 및 네트워크 명세로 확정해야 한다.
+
+### 벤더 제시 실적
+
+VerifyVASP 측은 일 처리금액 4.5조원, 최대 20만건, 건당 3만~4만달러, 거절 비율 9%, 글로벌 시장점유율 90%를 제시했다. 체인 오입력에 따른 자산 소실 방지, 사칭 보이스피싱 소멸, 해외 OCR 오독 방지를 운영 효과로 설명했다. 이 수치와 효과는 독립 검증하지 않았으므로 용량 산정·SLA·도입 결정의 확정 근거로 사용하지 않는다.
+
+## 규제·은행 적용에 관한 회의 견해
+
+VerifyVASP 측은 트래블룰을 FATF 권고 16 이행으로 설명하면서 `상대방 확인 → 수취인 확인 → 확인된 곳에만 전송`을 핵심 원칙으로 제시했다. 한국의 100만원 미만 면제는 FATF 취지와 다르며 분할 송금·시세 변동·상대 VASP 미확인 문제를 만든다는 견해도 밝혔다. 은행 간 스테이블코인 전송도 트래블룰 대상이고, 기술이나 벤더보다 **교환할 정보 목록**이 기준이라는 입장이다.
+
+함께 언급된 FATF 권고 16의 은행권 2030년 이행, 면제 운영 국가, 국내 개정 상태, LEI 적용, DBS 고객 관계, SWIFT PoC 현황은 회의 발언으로만 기록한다. 현행 법적 의무나 대외 협력 사실로 사용하려면 FATF·FIU·FSC·SWIFT·계약 자료 등 해당 원문 확인이 필요하다.
+
+CODE 상호연동에서는 정보 제공 동의가 경로별로 비대칭일 수 있다는 위험을 제기했다. 따라서 기술적 도달성만 확인하지 말고 **양 방향의 회원 동의·실사·정보 제공 권한**을 별도 검증해야 한다.
+
 ## Fireblocks와의 관계
 
 이번에 수집한 VerifyVASP 공식 원문에는 Fireblocks 직접 통합 방식이 설명되어 있지 않다. 따라서 Fireblocks 안에서 provider로 선택 가능한지, 별도 컴플라이언스 게이트로 병행해야 하는지는 **미확정**으로 둔다.
@@ -171,11 +211,15 @@ VASP 백엔드가 호출하는 Enclave 쪽에는 VASP 조회, 계정·사용자 
 - 계약 가격과 과금 기준
 - verification UUID가 없는 미확인 입금의 TXID 역추적 방법
 - CODE 상호연동 경로에서 주소 확인·원화 임계·미확인 입금 기능이 모두 유지되는지
+- CODE 상호연동 양 방향에서 회원 동의·실사·정보 제공 권한이 모두 성립하는지
 - VASP DB 백업본의 암호화와 키 분리 운영에 대한 계약상 요구
+- 회의에서 언급한 TXID 기반 상대 조회의 정확한 API와 적용 경로
+- `PerVerification` 키 운용이 실제 도입 환경의 필수값인지 선택값인지
+- 한국 리전 첫 접점·싱가포르 경유·데이터 레지던시·장애조치 경로의 계약상 보장
 
 ## Sources
 
-| ID | 공식 원문 | 확인한 내용 | 로컬 스냅샷 |
+| ID | 출처 | 확인한 내용 | 로컬 스냅샷 |
 |---|---|---|---|
 | VV-ARCH-001 | [Overview](https://docs.verifyvasp.com/reference/travelrule-overview) | 중앙 중계·Enclave·E2EE·키·전체 흐름 | `verifyvasp/2026-08-07__travelrule-overview.md` |
 | VV-ARCH-002 | [To-Be Architecture](https://docs.verifyvasp.com/reference/travelrule-to-be-architecture) | VASP 구현 범위 | `verifyvasp/2026-08-07__to-be-architecture.md` |
@@ -185,8 +229,10 @@ VASP 백엔드가 호출하는 Enclave 쪽에는 VASP 조회, 계정·사용자 
 | VV-FLOW-001 | [Scenarios and Flows](https://docs.verifyvasp.com/reference/travelrule-scenarios-and-flows) | 출금·입금·예외 흐름 | `verifyvasp/2026-08-07__scenarios-and-flows.md` |
 | VV-OPS-002 | [Operations](https://docs.verifyvasp.com/reference/travelrule-maintenance) | 점검 통지·데이터 retention | `verifyvasp/2026-08-07__operations.md` |
 | VV-IVMS-001 | [IVMS101 포맷 정의](https://docs-kr.verifyvasp.com/reference/ivms101/ivms101) | VerifyVASP 구현 필드명·확장·필수 조건·처리 범위 | `verifyvasp/2026-08-07__ivms101-ko.md` |
+| VV-MTG-001 | 담당자 회의록 — 내부 자료 | 운영·실사·리전·규제·은행 적용에 관한 벤더 설명, 독립 검증 전 | `verifyvasp-meeting/2026-08-12__meeting-notes.md` |
 
-전체 URL과 SHA-256: `blockchain-manager/sources/travel-rule-solutions/verifyvasp/manifest.yml`
+- 공식 원문 URL과 SHA-256: `blockchain-manager/sources/travel-rule-solutions/verifyvasp/manifest.yml`
+- 회의록 출처와 SHA-256: `blockchain-manager/sources/travel-rule-solutions/verifyvasp-meeting/manifest.yml`
 
 ## Related
 

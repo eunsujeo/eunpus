@@ -537,6 +537,10 @@ CREATE TABLE bcm_swp_exec_l (
   last_chng_brcd   VARCHAR(4)     NOT NULL
 );
 
+CREATE UNIQUE INDEX uk_bcm_swp_exec_operator_pending
+  ON bcm_swp_exec_l (opr_acnt_id)
+  WHERE swp_exec_stcd IN ('READY', 'SUBMITTING');
+
 CREATE TABLE bcm_swp_item_l (
   swp_exec_id      VARCHAR(36)    NOT NULL,
   item_seq         INT            NOT NULL,
@@ -563,7 +567,10 @@ ALTER TABLE bcm_swp_trgt
 ```
 
 - 실행과 모든 항목, `bcm_swp_trgt` claim은 한 DB 트랜잭션으로 선기록한다. calldata는 이 레코드에서만 만들고 Callback도 같은 실행 의도와 대조한다.
-- `req_hash`는 chain·token·sweep contract·executionId·`item_seq` 순 원천 주소·금액을 고정 형식으로 결합해 계산한다. 재시도에서 내용이 달라지면 같은 `ext_tx_id`를 쓰지 못한다.
+- 같은 운영 계정의 `READY`·`SUBMITTING` 실행은 부분 UNIQUE 인덱스로 하나만 허용한다. 새 후보를 claim하기 전에 이 실행을 먼저 회수하며, 벤더 접수를 기록해 `SUBMITTED`가 된 뒤에만 다음 실행을 만들 수 있다.
+- 항목은 EVM 원천 주소 20바이트 값 오름차순으로 정렬하고 `item_seq`를 1부터 부여한다. 같은 네트워크의 주소 중복은 허용하지 않는다.
+- `req_hash`의 첫 판은 `batch-v1`이다. LF로 `BATCH_V1` · network · symbol · token contract 소문자 · sweep contract 소문자 · 표준 36자 UUID executionId 소문자를 한 줄씩 잇고, 이어서 각 항목을 `item_seq|원천주소 소문자|정규화 십진금액` 한 줄로 붙인 UTF-8 바이트의 SHA-256 소문자 hex다. 마지막 LF는 붙이지 않는다. 재시도에서 내용이 달라지면 같은 `ext_tx_id`를 쓰지 못한다.
+- calldata는 [sweep 운영 ABI](06-sweep.md#운영-컨트랙트-abi)의 같은 순서를 쓰되 executionId는 UUID 원문 16바이트, 금액은 token decimals를 적용한 최소 단위 정수다. canonical hash의 금액은 DB와 같은 사람 단위 십진 정규화 값이라 ABI 단위와 섞지 않는다.
 - 최상위 거래가 `COMPLETED`여도 곧바로 실행을 완료하지 않는다. `RECONCILING`에서 요청 N개와 network records·receipt의 `SweepLeg` 이벤트를 대조한 뒤 `COMPLETED` 또는 `PARTIAL`로 종결한다.
 - 되돌려진 항목은 network records에 없을 수 있으므로 성공 레코드의 부재만으로 실패 사유를 추측하지 않는다. 컨트랙트 실패 이벤트와 실행 후 잔액을 함께 본다.
 

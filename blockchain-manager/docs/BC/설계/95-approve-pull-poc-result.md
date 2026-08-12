@@ -158,6 +158,8 @@ SweepDone 이동=2  성공=1
 
 배치 채택 여부는 [sweep 설계](06-sweep.md)에서 결정한다. 2026-08-12 설계 결정은 `approve + transferFrom` 채택이다. 이 PoC가 확인한 제출·기록 경로를 사용하되, 최상위 1건 ↔ 이동 M건의 DB·상태 흐름, allowance 상한·회수, TAP·Callback·컨트랙트 통제는 06의 출시 게이트를 충족해야 한다.
 
+**PoC ABI는 운영 계약이 아니다.** 여기서 배포한 `batchSweep(address[],uint256[])`는 `executionId`·token allowlist·실제 이동량·실패 코드를 갖지 않는다. 운영 구현은 [06의 운영 컨트랙트 ABI](06-sweep.md#운영-컨트랙트-abi)를 사용하며, 이 샘플 calldata와 selector는 관찰 근거로만 남긴다.
+
 ## 못 한 것
 
 - **TAP 정책 실측** — 아래 "다음 시나리오" 로 계획을 잡아 뒀다.
