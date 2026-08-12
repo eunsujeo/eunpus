@@ -6602,12 +6602,12 @@ related: [entity-slug ...]
 사용자 명시: "이 문서는 공식문서는 아니고 현재 설계 초기 단계로 작성한거에요. 이 부분 참고해서 MODE C 로 진행해 주세요."
 
 ### Source 추가
-- `sources/bank/DAW_회계설계_자문요청.pptx` (binary, 11 슬라이드, 카뱅 회계자금 개발팀, 2026-04-30 자문 미팅)
+- `sources/bank/DAW_회계설계_자문요청.pptx` (binary, 11 슬라이드, 은행 회계자금 개발팀, 2026-04-30 자문 미팅)
 - `sources/bank/2026-04-30__bank__DAW_accounting_design_consultation-extracted.md` (외부 도구 unzip + python regex 로 추출한 텍스트 + 메타데이터)
 
 ### Classification
 - **TIER 1** — 도입 reference 의 회계 영역 직접 영향
-- **Confidential** — 카뱅 internal 자료 (DAW / KRWK / 5,010 등 수치 포함). docs-site 공개 site 노출 시 일반화 필수
+- **Confidential** — 은행 internal 자료 (DAW / KRWK / 5,010 등 수치 포함). docs-site 공개 site 노출 시 일반화 필수
 - **work-in-progress 설계** — vendor 공식 자료 아님. 회계법인 / 외부 감사 검증 전 초안
 
 ### docs-site 영향 — 신규 도메인 I. Accounting & Reconciliation
@@ -6619,7 +6619,7 @@ related: [entity-slug ...]
 ### Confidential 처리
 
 PPT 의 specific 명칭·수치 모두 일반화:
-- "카뱅" → "은행 도입 시" / "본 은행"
+- 은행명 → "은행 도입 시" / "본 은행"
 - "DAW" → "수탁 시스템"
 - "KRWK" → "원화 stablecoin (KRW-pegged)"
 - "USDC" → "달러 stablecoin (USDC 등)"
