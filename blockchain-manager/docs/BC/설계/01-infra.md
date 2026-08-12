@@ -217,7 +217,7 @@ sequenceDiagram
     BE->>CP: POST /compliance/travel-rule/deposit-checks (Create Deposit Check) — 사전 검증 대조
     CP-->>BE: 대조 결과 (senderVerified)
     BE->>BE: 가용 전이 또는 입금대기·동결
-    Note over BM: 입금 확정 = sweep 대상 마킹 · 주기 작업이 대상별 일반 전송 제출 (블록체인 매니저 — 흐름)
+    Note over BM: 입금 확정 = sweep 대상 마킹 · 주기 작업이 allowance 준비 후 approve + transferFrom 배치 제출 (블록체인 매니저 — 흐름)
 ```
 
 ## 미확정

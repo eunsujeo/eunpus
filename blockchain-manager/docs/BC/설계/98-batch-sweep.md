@@ -4,7 +4,7 @@ status: To Do
 ref: 참고
 ---
 
-[sweep 설계](06-sweep.md)의 비채택 대안인 배치 방식을 검토하는 심화 참고 문서다 — 여러 입금 주소의 자산을 **온체인 거래 한 건**으로 모으는 일이 왜 어렵고, 가능하게 하는 방법과 수탁 위험이 무엇인지를 바닥부터 설명한다. 현재 결정은 받는주소마다 Fireblocks 일반 전송 1건이며, 이 문서의 방식은 구현 대상이 아니다. 채택 결정은 06에서만 한다.
+[sweep 설계](06-sweep.md)의 채택 근거를 담는 심화 참고 문서다 — 여러 입금 주소의 자산을 **온체인 거래 한 건**으로 모으는 일이 왜 어렵고, 가능한 방법과 수탁 위험이 무엇인지를 바닥부터 설명한다. 2026-08-12 결정은 `approve + transferFrom`이며, 실제 구현 계약과 권한 통제는 06에서 정의한다. 나머지 방식은 비교 이력으로만 유지한다.
 
 여기서 미확인으로 두던 항목 일부는 2026-08-10 에 직접 확인했다. 시나리오와 관찰 원본은 [approve 배치 sweep PoC 결과보고](95-approve-pull-poc-result.md)에 있다.
 
@@ -215,7 +215,7 @@ sequenceDiagram
 
 ### 현재 판단
 
-**미채택**이다. 기술적으로 가능하지만, 경제성이 생기려면 allowance 를 회차 사이에 유지해야 하고 바로 그 지속 권한이 수탁 위험의 핵심이다. 위 확인과 통제를 마쳐도 건별 전송 대비 가스·호출량 절감이 실측으로 유의미할 때만 다시 검토한다.
+**채택 설계는 approve + transferFrom이다(2026-08-12).** allowance를 회차 사이에 유지해 반복 sweep의 벤더 호출과 고정 gas를 줄인다. 대신 무제한 승인은 금지하고 vault·토큰별 운영 상한, 목적지 불변 컨트랙트, TAP 기본 거부, Callback calldata 검증, 긴급 `approve(0)` 회수를 출시 조건으로 둔다. 구현 계약은 [sweep 설계](06-sweep.md)에 정의한다.
 
 ## 6. 방법 4 — EIP-7702 코드 위임
 
@@ -316,20 +316,20 @@ operator 거래 아래 `networkRecords` 7개가 붙고, **원천 vault 가 귀�
 | 토큰 조건 | 3009 지원 (USDC O · KRWK 미확인) | 2612 지원 (USDC O · KRWK 미확인) | ERC-20 approve 호환 | 무관 |
 | 벤더 의존 | TYPED_MESSAGE 서명 (지원 확인됨 · [문서](https://developers.fireblocks.com/reference/sign-typed-messages-for-ethereum-and-evm-networks)) | 동일 | **CONTRACT_CALL 로 제출 · 기록은 operation=APPROVE · 배치 안의 이동은 networkRecords 에 원천 vault 로 귀속 (실측 확정)** · 정책 매칭·gasless 는 미실측 | 위임 코드 구현 (미확인) |
 
-읽는 법 — **안전(1회용·목적지 고정)을 잡으면 서명 M건이 남고(3009), 호출·가스 최소를 잡으면 allowance 또는 위임의 상시 권한을 감수한다(approve·7702).** 현재 06의 결정은 어느 배치 방식도 채택하지 않고 건별 전송을 유지하는 것이다.
+읽는 법 — **안전(1회용·목적지 고정)을 잡으면 서명 M건이 남고(3009), 호출·가스 최소를 잡으면 allowance 또는 위임의 상시 권한을 감수한다(approve·7702).** 현재 06의 채택안은 Fireblocks에서 실행 경로를 실측한 `approve + transferFrom`이다. 다른 방식은 구현 범위에서 제외한다.
 
 **상시 권한 칸의 단서** — 이 대비는 gas 를 대납으로 조달하지 않을 때만 그대로 성립한다. Universal Gasless 를 쓰면 어느 방법을 고르든 첫 거래에서 vault 가 7702 로 upgrade 되므로, 벤더 위임이 이미 서 있는 상태 위에 각 방법의 권한이 얹힌다 (5절 "Universal Gasless 로 낼 수 있나").
 
 **토큰 조건의 정확한 뜻** — 3009·2612 는 ERC-20 표준이 아니라 발행자가 배포 때 넣는 **선택 확장**이다. 최소 스펙(transfer/approve 만)으로 배포된 토큰이면 그 자산의 배치는 7702(토큰 무관 — 계정 쪽 기능)나 approve 방식만 남는다. 불변 컨트랙트면 나중에 확장을 추가할 수도 없다 — **원화 SC 발행 스펙에 관여할 수 있는 단계라면 EIP-3009(+2612) 포함을 발행 요구사항으로 넣는 것이 최선**이다(구현 비용은 표준 라이브러리 수준).
 
-## 10. 도입 게이트와 확인 목록
+## 10. 출시 게이트와 확인 목록
 
 - **실측 완료 (2026-08-10)** — ① approve 제출 경로는 CONTRACT_CALL, 기록은 `operation=APPROVE`(5절). ② **우리 vault 가 제출한 배치는 `networkRecords` 에 원천 vault·금액이 귀속되고 `transaction.network_records.processing_completed` 도 온다** — 감지·대사 성립(8절).
-- **벤더 실측 — 남은 것** — ① TYPED_MESSAGE 대량 서명의 TAP 통제·처리량 ② TAP 의 `APPROVE`·`applyForApprove` 가 승인 대상·토큰·승인 금액을 어디까지 제한하는가 · Console Amount Cap 이 API 제출에도 걸리는가 · CONTRACT_CALL approve 에 gasless 를 적용할 수 있는가 ③ 7702 위임 코드의 운영자 pull 지원 ④ 한 배치의 이동을 M=수십 건으로 올렸을 때 network records 개수·이벤트 지연.
-- **발행사·토큰** — 자산별 EIP-3009/2612 지원과 ERC-20 approve 호환 동작을 온보딩마다 판정한다. 발행 스펙에 관여 가능한 자산은 3009 포함을 요구사항으로 검토한다.
+- **벤더 실측 — 남은 것** — TAP의 `APPROVE`·`applyForApprove`가 승인 대상·토큰·승인 금액을 어디까지 제한하는가 · Console Amount Cap이 API 제출에도 걸리는가 · CONTRACT_CALL approve와 batch 호출에 Universal Gasless를 적용할 수 있는가 · 한 배치 M=수십 건에서 network records 개수·이벤트 지연이 얼마인가.
+- **토큰** — 자산별 ERC-20 approve/transferFrom 호환, 0 선행 allowance 변경 요구, 반환값·pause·blocklist·fee-on-transfer 동작을 온보딩마다 판정한다.
 - **컨트랙트** — 옴니버스 목적지 불변, 권한 분리, pause, batch 상한, 이동 건별 이벤트, 부분 실패 정책을 확정하고 독립 감사를 통과한다.
 - **매니저 모델** — batch tx 1건 ↔ 원천 이동 M건의 DB 식별·멱등·claim·웹훅·영수증·재처리·대사를 설계하고 장애 테스트를 통과한다. 보낸 쪽 기준 레코드에 원천 vault id 가 들어 있으므로 주소 매핑은 필요 없다. 대신 **요청 목록과 레코드를 맞추는 처리**가 필수다 — 되돌려진 이동은 레코드에 안 나온다.
 - **운영 복구** — 운영자·관리자 키 침해, 컨트랙트 취약점, 잘못된 batch 입력을 가정한 정지와 vault 별 `approve(0)` 회수 훈련을 통과한다.
 - **경제성** — 건별 일반 전송과 동일 조건에서 총가스·벤더 호출·운영 복잡도를 실측해 순이익이 확인돼야 한다.
 
-위 게이트를 모두 통과하고 06에서 별도 채택 결정을 기록하기 전까지 배치 sweep은 참고안으로만 유지한다.
+채택 결정과 운영 출시는 구분한다. 구현 방향은 확정됐지만 위 게이트를 모두 통과하기 전에는 운영망에서 allowance를 설정하거나 batch sweep을 활성화하지 않는다.

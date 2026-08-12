@@ -14,7 +14,7 @@ group: 운영 설계
 | ① 입금 모으기 | 고객 vault → 옴니버스 | 자산별 — 고객 vault 잔액이 총자산 대비 일정 비율(예: 1%) 이상 · 가스비 한도 안에서 | 보유량 많은 순 M개 묶어 배치 전송, 완료 후 재체크 loop |
 | ② 핫·콜드 균형 (밴드S) | 옴니버스·출금 풀 ↔ 콜드월렛 | 핫월렛백분율이 상한 초과 → 콜드로 · 하한 미만 → 콜드에서 충전 | 전 자산 동일 비율로 이동해 핫월렛균형으로 복귀 |
 
-위 표의 "M개 묶음"은 정책 원문의 대상 선정 단위다. 현재 실행 결정은 **고객 vault 마다 Fireblocks 일반 전송 1건**이며, 여러 sweep 을 한 온체인 거래로 묶는 배치 컨트랙트는 채택하지 않았다(2026-08 확정). 배치 메커니즘과 재검토 조건은 참고 문서 [배치 sweep 메커니즘](98-batch-sweep.md)에 격리한다.
+위 표의 "M개 묶음"은 대상 선정 단위이자 한 온체인 배치의 최대 후보 수다. 실행 방식은 **`approve + transferFrom` 배치 sweep** 으로 채택했다(2026-08-12 설계 결정). 고객 vault 는 자산별로 sweep 컨트랙트에 제한된 allowance 를 설정하고, 전용 운영 계정이 `batchSweep` 한 건을 제출해 M개 vault 의 자산을 옴니버스로 모은다. EIP-3009·2612·EIP-7702 직접 pull과 per-vault 일반 전송은 sweep 구현안에서 제외한다. Universal Gasless 내부의 EIP-7702 사용은 별개다. 근거와 실측은 [배치 sweep 메커니즘](98-batch-sweep.md)과 [approve 배치 sweep PoC](95-approve-pull-poc-result.md)에 남긴다.
 
 공통 전제:
 
@@ -66,34 +66,98 @@ group: 운영 설계
 
 벤더 가이드의 권장 트리거 요인(잔액 임계·주기·네트워크 수수료 여건)과 같은 축이라 벤더 모델과 충돌이 없다. 비율 트리거의 분모(총자산합)는 원화환산이 필요해 아래 "환산 입력" 문제와 같이 걸린다.
 
-### 실행 방식 — 건별 일반 전송 (현재 결정)
+### 실행 방식 — approve + transferFrom 배치 (채택 설계)
 
-**전제 사실**: Fireblocks 의 sweep 가이드는 **vault 당 개별 거래**를 만든다 — 여러 vault 를 한 온체인 거래로 묶는 배치가 아니라, vault 를 순회하며 거래를 하나씩 제출한다 ([Sweep to Omnibus](https://developers.fireblocks.com/reference/sweep-to-omnibus-1)).
+고객 vault 는 토큰 컨트랙트에 `approve(sweepContract, allowanceCap)` 를 제출한다. 승인된 뒤에는 고객 vault 의 새 MPC 서명 없이 sweep 컨트랙트가 `transferFrom` 으로 자산을 옴니버스에 옮길 수 있다. 같은 네트워크·토큰의 대상 M개를 한 `batchSweep` 호출로 묶는다. `approve`와 `batchSweep`은 모두 Fireblocks `CONTRACT_CALL`로 제출하고 Universal Gasless를 요청한다.
 
-**채택**: 고객 vault 마다 Fireblocks 일반 전송 1건을 만들고 목적지를 옴니버스 vault 로 둔다. 후보 M개를 한 주기에 골라도 이는 **선정·처리 묶음**일 뿐 온체인 배치가 아니다. Phase 6 구현은 이 결정만 대상으로 한다.
+```mermaid
+sequenceDiagram
+    autonumber
+    participant BM as 블록체인 매니저
+    participant DB as BCM DB
+    participant FB as Fireblocks
+    participant CB as Co-signer Callback
+    participant T as 토큰 컨트랙트
+    participant S as Sweep 컨트랙트
+    participant O as 옴니버스
 
-| 안 | 상태 | 온체인 tx 수 | 판단 |
-|---|---|---|---|
-| **A. per-vault 일반 전송** | **채택** | M | 기존 MPC 서명·정책·거래 기록·웹훅 경계를 그대로 사용하고, sweep 한 건과 원장 한 행을 직접 대응시킨다. |
-| B. 서명 기반 배치 (EIP-3009·2612) | 미채택 · 참고 | 1 + 주소별 오프체인 서명 | 토큰 확장과 외부발 인출 기록을 확인해야 한다. |
-| C. 상시 권한 배치 (approve·EIP-7702) | 미채택 · 참고 | 최초 권한 설정 M + 이후 배치 1 | 권한이 지속돼 컨트랙트·운영자 침해의 영향 범위가 여러 고객 vault 로 넓어진다. |
+    BM->>DB: Finalized 대상 M개 claim
+    BM->>T: allowance(owner, sweepContract) 조회
+    alt allowance 부족
+      BM->>FB: CONTRACT_CALL approve(cap) · gasless
+      FB->>CB: 서명 직전 검증
+      CB-->>FB: token · spender · cap 일치 시 승인
+      FB->>T: approve(sweepContract, cap)
+      BM->>T: allowance 재조회
+    end
+    BM->>DB: SweepExecution 1 + SweepItem N 선기록
+    BM->>FB: 운영 계정에서 batchSweep(items) · gasless
+    FB->>CB: 서명 직전 검증
+    CB-->>FB: contract · selector · executionId · items · 한도 일치 시 승인
+    FB->>S: batchSweep(executionId, items)
+    loop item N개
+      S->>T: transferFrom(customerVault, omnibus, amount)
+      T->>O: 토큰 이동
+      S-->>BM: SweepLeg 이벤트
+    end
+    BM->>DB: networkRecords + receipt 이벤트로 항목별 확정
+```
 
-배치가 줄일 수 있는 제출 수와 고정 가스는 장점이지만, 현재는 다음 조건을 충족하지 못했다.
+배치는 **부분 성공**을 허용한다. 한 vault 의 잔액·allowance·토큰 상태가 달라졌다고 정상 항목까지 전부 되돌리지 않는다. 컨트랙트는 항목마다 원천·토큰·요청금액·실제금액·성공 여부·실패 코드를 이벤트로 내고, 실패 항목만 다음 회차에서 잔액과 allowance 를 다시 확인한다. 최상위 Fireblocks 거래의 `COMPLETED`는 배치 호출의 성공일 뿐 N개 항목 전체 성공이 아니다.
 
-- 기록·감지는 실측으로 성립이 확인됐다(2026-08-10 Sepolia) — 우리 vault 가 제출한 배치 거래면 `networkRecords` 에 원천 vault·금액이 귀속되고 `transaction.network_records.processing_completed` 도 온다. **대신 최상위 거래가 1건뿐이라** 감지·원장이 network records 를 펼쳐 읽고 관점 중복까지 제거하는 구조로 바뀌어야 하는데, 그 처리가 아직 없다.
-- approve 기반은 각 vault 의 최초 승인 거래가 필요하고, 남은 allowance 가 수탁 경계 밖의 지속 권한이 된다.
-- 한 배치 tx 아래 M개 원천 이동을 `bcm_swp_trgt`·제출 원장·영수증·재처리와 정확히 대응하는 1:N 모델이 현재 DB·상태 흐름에 없다.
-- 배치 컨트랙트와 운영 권한은 별도 보안 설계·감사·긴급 정지·회수 절차가 필요하다.
+### 권한 경계
 
-따라서 배치는 Phase 6 범위가 아니다. 메커니즘·수탁 위험·도입 게이트는 참고 문서 [배치 sweep 메커니즘](98-batch-sweep.md)에, 실측 시나리오와 결과는 [approve 배치 sweep PoC 결과보고](95-approve-pull-poc-result.md)에 남기고, 실제 재검토 결정이 있기 전까지 코드와 DB를 배치 전제로 확장하지 않는다.
+| 구분 | 블록체인 매니저 책임 | 별도 경계 |
+|---|---|---|
+| 실행 | 대상 선정·claim, allowance 실측, approve·batch 제출, 항목별 대사, 실패 재시도 | — |
+| 실행 의도 | `SweepExecution 1 : N SweepItem` 선기록, canonical hash·`externalTxId` 생성 | — |
+| 긴급 회수 | 승인된 비상 모드에서 vault 별 `approve(sweeper, 0)` 제출·진행 추적 | Admin 이 Fireblocks에서 직접 실행하는 독립 경로도 유지 |
+| TAP | 활성 정책을 전제로 거래를 제출할 뿐 편집하지 않음 | 정책 관리 서비스의 별도 API user + Admin Quorum·Owner 승인 |
+| 서명 | 서명을 요청할 뿐 스스로 승인하지 않음 | 별도 API Co-signer + Callback Handler |
+| 컨트랙트 관리 | 현재 배포 주소·코드 해시를 검증하고 호출 | 보안 관리자 multisig가 pause·운영자 교체. 비업그레이드형이 기본 |
 
-### 논스
+거래 제출 자격과 정책 편집·최종 서명·컨트랙트 관리자 자격을 한 서비스에 모으지 않는다. 블록체인 매니저가 침해돼도 목적지와 함수, 자산·금액 상한을 자기 힘으로 바꾸지 못하게 하는 경계다.
 
-건별 일반 전송의 계정 논스는 vault 별로 Fireblocks 가 관리한다. 매니저는 같은 vault 의 중복 제출을 `bcm_sbmt_l` 멱등·claim 경계로 막되, 배치 실행 계정의 공용 논스 예약 모델은 도입하지 않는다.
+### 보안 권한 정책
 
-### M개 선정·loop
+**Fireblocks TAP은 기본 거부**다.
 
-`bcm_swp_trgt` 에서 트리거 조건을 만족한 (계정, 네트워크, 자산) 중 **보유량 많은 순 M개**를 선정한다. 선정된 각 행을 별도 일반 전송으로 제출하고, 각 거래가 끝난 뒤 대상 행을 정리한 다음 재체크한다. M은 한 주기의 작업량·벤더 호출 pacing 상한이지 한 온체인 거래에 넣는 개수가 아니다.
+- 고객 vault의 approve는 등록된 네트워크·토큰 컨트랙트, 현재 sweep 컨트랙트, vault·자산별 allowance cap, sweep 전용 initiator에만 허용한다. 그 밖의 고객 vault `APPROVE`·`CONTRACT_CALL`은 차단한다.
+- 긴급 `approve(sweeper, 0)`는 정상 batch 정책을 차단한 뒤에도 실행할 수 있는 별도 revoke rule과 전용 initiator를 둔다. 이 경로는 금액 상향이나 다른 spender 승인을 허용하지 않는다.
+- 운영 계정은 화이트리스트된 sweep 컨트랙트의 `batchSweep`만 호출한다. 다른 전송·컨트랙트 호출은 차단한다.
+- 거래 initiator, API Co-signer, 정책 편집 API user, 보안 관리자 multisig를 서로 분리한다.
+- 정책·화이트리스트·allowance cap 상향·운영자 변경은 자동화하지 않고 Admin Quorum과 보안 관리자 승인을 거친다.
+
+**Co-signer Callback은 실제 calldata를 fail-closed로 검증**한다.
+
+- `approve`: chain, token contract, 함수 selector, spender, 금액이 활성 설정과 일치해야 한다.
+- `batchSweep`: chain, sweep contract, 함수 selector, `executionId`, 원천·금액 목록이 선기록한 실행 의도와 일치해야 한다.
+- 배치 최대 M, 건별·배치 총액, 실행 빈도, 토큰 allowlist, 컨트랙트 코드 해시를 다시 확인한다.
+- DB·정책 스냅샷을 조회할 수 없거나 해석하지 못한 calldata면 승인하지 않는다.
+
+Fireblocks의 `APPROVE`·`applyForApprove`·Approve Amount Cap이 `CONTRACT_CALL + approve calldata` 제출에 실제로 어떻게 매칭되는지는 운영 전 정책 PoC로 확정한다. 확인 전에는 Fireblocks Amount Cap만으로 spender·승인금액 통제가 끝났다고 보지 않는다.
+
+**Sweep 컨트랙트가 마지막 경계를 강제**한다.
+
+- 옴니버스 목적지는 배포 시 불변 고정하고 함수 인자로 받지 않는다.
+- 등록된 운영자만 호출하고, 토큰 allowlist·배치 최대 M·건별/총액 상한·`executionId` 재사용 방지를 둔다.
+- 임의 외부 호출·`delegatecall`·임의 주소로의 rescue를 두지 않는다.
+- `pause`와 운영자 교체 권한만 보안 관리자 multisig에 둔다. 가능하면 비업그레이드형으로 배포한다.
+- 토큰 호출은 반환값과 실제 잔액 변화를 확인하고 항목별 결과 이벤트를 남긴다.
+
+### allowance 운영
+
+- 무제한 `uint256.max` 승인은 금지하고 vault·토큰별 `operational allowance cap`을 둔다.
+- 현재 allowance가 예정 sweep 금액 이상이면 재승인하지 않는다. 부족하면 cap까지 보충하고 **온체인 allowance 재조회가 성공한 뒤에만** 배치에 넣는다.
+- 잔여 allowance·vault 잔액·cap 초과를 상시 감시한다. cap 변경은 일반 실행 값이 아니라 승인된 정책 변경으로 취급한다.
+- 0이 아닌 allowance를 새 cap으로 바꿀 때는 해당 vault·토큰의 active batch가 없는지 확인하고 `approve(0)` 확정 뒤 새 cap을 승인한다. 토큰 구현 차이와 기존 allowance·신규 allowance의 이중 사용 경쟁을 함께 피한다.
+- `pause`는 allowance를 지우지 않는다. 사고 시 TAP batch 차단 → 컨트랙트 pause → 운영자 제거 → 전체 vault `approve(sweeper, 0)` 순서로 회수한다.
+
+### 논스·M개 선정·loop
+
+운영 계정의 배치 거래 논스는 Fireblocks가 관리한다. 같은 실행의 중복 제출은 제출 원장의 멱등·claim 경계와 컨트랙트의 `executionId` 소진 기록으로 이중 차단한다. 같은 운영 계정의 동시 제출은 직렬화한다.
+
+`bcm_swp_trgt`에서 같은 네트워크·토큰이고 트리거 조건을 만족한 대상을 보유량 많은 순으로 고른다. 예상 gas가 블록 gas limit 대비 운영 상한을 넘지 않는 최대 M개만 `SweepExecution` 하나에 넣는다. 성공 항목은 잔액을 재확인해 정리하고, 실패·잔액 잔존 항목은 다음 실행 대상으로 되돌린 뒤 loop한다. 항목 하나인 경우도 같은 1:N 모델에서 N=1로 처리한다.
 
 ## ② 밴드S — 어떻게 처리하나
 
@@ -137,22 +201,25 @@ group: 운영 설계
 | 정책 요소 | 벤더 기능 | 근거 |
 |---|---|---|
 | 입금 확정 판정 | DCCP (확정 임계) + `transaction.status.updated` | 현행 감지 설계 그대로 |
-| sweep 실행 | per-vault createTransaction — 배치 없음 | [Sweep to Omnibus](https://developers.fireblocks.com/reference/sweep-to-omnibus-1) |
-| sweep gas | **Universal Gasless**(relay 부담 — 현행 채택) 또는 **Gas Station**(고객 vault 에 ETH 자동 충전 — [가이드](https://developers.fireblocks.com/docs/work-with-gas-station)) | 현행은 gasless — Gas Station 은 고객 vault 에 ETH 를 두는 방식이라 전환 유인 없음 |
-| 배치 전송 | **미채택** — 서명·approve·7702 메커니즘은 참고 검토만 유지 | [배치 sweep 메커니즘](98-batch-sweep.md) — 외부발 인출 기록과 수탁 통제 미확인 |
+| allowance 설정 | 고객 vault 에서 `CONTRACT_CALL + approve calldata` | 제출·온체인 반영은 [PoC](95-approve-pull-poc-result.md)로 확인. TAP 매칭·gasless는 출시 게이트 |
+| sweep 실행 | 운영 계정에서 sweep 컨트랙트 `batchSweep` 1건 | `networkRecords` 원천 귀속·부분 성공은 [PoC](95-approve-pull-poc-result.md)로 확인 |
+| sweep gas | approve와 batch 호출 모두 **Universal Gasless** 요청 | 제품 범위는 Contract Call. 실제 workspace·정책·relay 처리는 출시 전 실측 |
+| 배치 결과 | `transaction.network_records.processing_completed` + receipt의 항목별 이벤트 | 최상위 `COMPLETED`만으로 항목 성공을 판정하지 않음 |
 | 트리거 요인 | 벤더 권장 = 잔액 임계·주기·수수료 여건 — 정책과 같은 축 | [Sweep to Omnibus](https://developers.fireblocks.com/reference/sweep-to-omnibus-1) |
 | 콜드 계층 | hot/cold workspace | 이동 경로 상세 확인 필요 |
 
-## 파장 — 확정 시 반영할 문서
+## 구현 반영 문서
 
-- **[02 흐름](02-bcm-flow.md)** sweep 절 — 트리거 서술(최소 금액 → 비율+가스비 한도), 밴드S 절 신설, 콜드 계층.
-- **[03 DB](03-bcm-db.md)** `bcm_swp_trgt` — 트리거 판정 입력 컬럼(비율 기준) 검토. 밴드S 지시·이력 테이블 여부.
-- **[99 감지 상세](99-detection-detail.md)** — 현재 건별 전송은 기존 거래 웹훅 경계를 사용한다. 배치를 별도 채택할 때만 network records 구독과 영수증 1:N 해석을 다시 설계한다.
+- **[02 흐름](02-bcm-flow.md)** — allowance 준비 → 배치 선기록 → 제출 → 항목별 확정 순서.
+- **[03 DB](03-bcm-db.md)** — allowance 상태와 `SweepExecution 1 : N SweepItem`.
+- **[99 감지 상세](99-detection-detail.md)** — network records 구독과 receipt 이벤트 기반 1:N 결과 판정.
 - **[01 개요](01-infra.md)** — 콜드 계층이 확정되면 구성 요소 그림·DB 표.
 
 ## 미확정 · 벤더 문의 후보
 
-- **배치 재검토 시 확인** — 기록·감지는 2026-08-10 실측으로 답이 나왔다(우리 vault 제출 시 network records 에 원천 귀속 · 최상위는 1건). 남은 것은 TAP 으로 승인 대상·함수·승인 금액을 제한할 수 있는가 · CONTRACT_CALL approve 에 gasless 가 적용되는가 · 위임 코드가 제3자 운영자 pull 을 허용하는가 · 한 배치의 이동을 수십 건으로 올렸을 때 레코드 개수와 이벤트 지연. 항목별 상세는 [배치 sweep 메커니즘](98-batch-sweep.md)의 도입 게이트 절에 있다. 현재 Phase 6의 선행 조건이 아니라 향후 채택 게이트다.
+- **출시 게이트** — TAP의 `APPROVE`·`applyForApprove`가 CONTRACT_CALL approve의 token·spender·금액을 어디까지 제한하는지, Approve Amount Cap이 API 제출에도 적용되는지, approve와 batch CONTRACT_CALL에 Universal Gasless가 적용되는지 실측한다. Gasless batch에서 sweep 컨트랙트가 관찰하는 `msg.sender`가 등록 운영자와 일치하는지도 함께 확인한다.
+- **부하 게이트** — 한 배치 M=수십 건에서 gas 추정 오차, network records 개수·이벤트 지연·부분 실패 결과를 실측해 운영 최대 M을 정한다.
+- **보안 게이트** — 컨트랙트 독립 감사, Callback fail-closed 시험, 운영자 침해·pause·전체 `approve(0)` 회수 훈련을 통과한다.
 - **cold workspace 간 이동 경로** — 같은 Customer Domain 내 워크스페이스 간 전송 방식·수수료·정책 통제.
 - **비율 트리거의 분모 산출 주기** — 총자산합(원화환산)을 얼마나 자주, 누가 갱신하나 (밴드S 환산 입력과 같은 결정).
 - **M·버퍼·상하한·받는주소최대 값** — 운영 설정값. 정책 예시(1%·18%·5%·12.5%)는 예시.

@@ -214,7 +214,7 @@ sequenceDiagram
 
 ## sweep — 매니저 내부
 
-입금이 확정되면 매니저가 내부에서 고객 vault 의 자산을 옴니버스 vault 로 옮긴다 — 확정은 sweep 대상 마킹까지, 제출은 주기 배치가 대상을 모아서 한다(주기·최소 금액은 운영 설정값). 백엔드는 sweep 을 호출하지 않고 큐 이벤트도 받지 않는다. 고객 원장은 불변이다.
+입금이 확정되면 매니저가 내부에서 고객 vault 의 자산을 옴니버스 vault 로 옮긴다. 실행 방식은 `approve + transferFrom`이다. 확정 관찰은 sweep 대상만 마킹하고, 주기 작업이 allowance 준비와 `batchSweep` 제출을 수행한다. 백엔드는 sweep 을 호출하지 않고 큐 이벤트도 받지 않는다. 고객 원장은 불변이다.
 
 | vault | 역할 |
 |---|---|
@@ -230,22 +230,42 @@ sequenceDiagram
     participant MDB as 매니저 DB
     end
     participant FB as Fireblocks
+    participant CB as Co-signer Callback
     participant RL as 지정 relay
+    participant TKN as 토큰 컨트랙트
+    participant SWC as Sweep 컨트랙트
+    participant OMN as 옴니버스
 
     Note over BM: 입금 확정(COMPLETED)을 잡으면 그 고객 vault 를 sweep 대상으로 마킹
     BM->>MDB: sweep 대상 마킹
-    Note over BM,MDB: 이하 주기 배치 — 대상을 모아 잔액 조회 후 제출 (주기·최소 금액은 운영 설정값)
-    BM->>FB: vault 잔액 조회 — sweep 금액 = 조회 시점 전액
-    BM->>FB: 거래 제출 — 고객 vault → 옴니버스 · gasless
-    FB->>RL: gas 부담 위임 — relay 가 지불 · 월말 인보이스 정산
-    FB-->>BM: 제출 접수 (txId)
-    FB->>BM: 웹훅 — sweep 거래 상태 변경
-    BM->>MDB: 체크포인트 갱신 — internal-events 에 싣지 않는다
+    Note over BM,MDB: 이하 주기 작업 — 같은 네트워크·토큰의 대상을 M개까지 선정
+    BM->>FB: vault 잔액 조회
+    BM->>TKN: allowance(vault, sweepContract) 조회
+    alt allowance 부족
+      BM->>FB: 고객 vault의 approve(cap) 제출 · gasless
+      FB->>CB: token · spender · cap 서명 검증
+      CB-->>FB: 일치 시 승인
+      FB->>RL: gas 부담 위임
+      FB->>TKN: approve(sweepContract, cap)
+      BM->>TKN: allowance 재조회
+    end
+    BM->>MDB: SweepExecution 1 + SweepItem N 선기록
+    BM->>FB: 운영 계정의 batchSweep(executionId, items) 제출 · gasless
+    FB->>CB: contract · selector · 실행 의도 서명 검증
+    CB-->>FB: 일치 시 승인
+    FB->>RL: gas 부담 위임
+    FB->>SWC: batchSweep 실행
+    loop 항목 N개
+      SWC->>TKN: transferFrom(고객 vault, 옴니버스, 금액)
+      TKN->>OMN: 토큰 이동
+    end
+    FB-->>BM: 상태 웹훅 + network records 처리 완료
+    BM->>MDB: receipt 이벤트와 대조해 항목별 성공·실패 갱신
 ```
 
-sweep 제출도 [제출 원장](03-bcm-db.md)에 `tx_dvcd = SWEEP` 으로 행을 남기고 `externalTxId` 를 붙인다(`swp-` 접두 + UUID v7 — 매니저가 만드는 키다). 그래야 sweep 웹훅이 돌아왔을 때 고객 토픽으로 잘못 나가지 않는다.
+approve와 batchSweep 제출은 모두 [제출 원장](03-bcm-db.md)에 각각 `tx_dvcd = SWEEP_APPROVE`·`SWEEP_BATCH`로 선기록하고 `externalTxId`를 붙인다. batch 제출 원장은 `SweepExecution` 하나를 가리키고, 그 아래 N개 `SweepItem`이 원천 vault 이동을 나타낸다. 그래야 최상위 웹훅 한 건을 고객 거래로 잘못 발행하지 않고 항목별 결과로 펼칠 수 있다.
 
-sweep 거래도 막힘 점검·boost 를 동일하게 탄다. 정합은 대사가 확인한다.
+최상위 batch 거래의 `COMPLETED`만으로 N개 항목을 모두 성공 처리하지 않는다. `transaction.network_records.processing_completed` 뒤 network records와 receipt의 항목별 이벤트를 요청 목록과 대조한다. 성공 항목은 잔액을 재확인해 대상에서 정리하고, 실패하거나 잔액이 남은 항목은 다음 회차 대상으로 되돌린다. sweep 거래도 막힘 점검 대상이지만 Universal Gasless + RBF는 별도 기능 게이트를 따른다.
 
 ## 출금
 

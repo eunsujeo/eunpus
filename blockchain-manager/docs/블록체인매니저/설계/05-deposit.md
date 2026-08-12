@@ -69,7 +69,7 @@ sequenceDiagram
 
 ## 입금 다음 — 고객 vault 에서 옴니버스로 (sweep)
 
-고객별 vault 는 **입금 식별용**입니다 — EVM 은 vault·자산당 주소가 하나뿐이라(2장), 고객마다 vault 를 만들어야 "누가 보냈나"가 주소로 갈립니다. 하지만 **자산을 거기 두지 않습니다** — 입금이 확정되면 **매니저가 내부에서 옴니버스 vault 로 옮깁니다(sweep)**. 확정 관찰은 그 (고객 vault, 자산)을 **sweep 대상으로 마킹**하는 것까지고, **제출은 주기 배치**가 대상을 모아서 한다(주기·최소 금액은 운영 설정값). 백엔드는 sweep 을 호출하지 않고 큐 이벤트도 받지 않는다 — 고객 원장 불변(회계 이벤트 아님)이라 백엔드가 알 일이 없다.
+고객별 vault 는 **입금 식별용**입니다 — EVM 은 vault·자산당 주소가 하나뿐이라(2장), 고객마다 vault 를 만들어야 "누가 보냈나"가 주소로 갈립니다. 하지만 **자산을 거기 두지 않습니다** — 입금이 확정되면 **매니저가 내부에서 옴니버스 vault 로 옮깁니다(sweep)**. 실행 방식은 `approve + transferFrom`이다. 확정 관찰은 그 (고객 vault, 자산)을 대상으로 마킹하고, 주기 작업이 allowance를 준비한 뒤 같은 네트워크·토큰의 여러 vault를 `batchSweep` 한 건으로 모은다. 백엔드는 sweep 을 호출하지 않고 큐 이벤트도 받지 않는다 — 고객 원장 불변(회계 이벤트 아님)이라 백엔드가 알 일이 없다.
 
 고객별 잔액은 DAW-CORE DB 원장이 관리하므로, 온체인 보관은 집약할수록 키·운영 관리가 단순해집니다. 10장의 "온체인 지갑은 둘뿐" 모델이 이 sweep 을 전제로 합니다.
 
@@ -89,21 +89,37 @@ sequenceDiagram
     participant MDB as 블록체인 매니저 DB<br/>sweep 대상 · 체크포인트
     end
     participant FB as Fireblocks (SaaS)
+    participant CB as Co-signer Callback
     participant RL as 지정 relay<br/>(Fireblocks Relay)
+    participant TKN as 토큰 컨트랙트
+    participant SWC as Sweep 컨트랙트
+    participant OMN as 옴니버스
 
     Note over BM: 입금 확정(COMPLETED)을 잡으면 그 (고객 vault, 자산)을 sweep 대상으로 마킹 — 백엔드 호출 없음
     BM->>MDB: sweep 대상 마킹
-    Note over BM,MDB: 이하는 주기 배치 — 대상을 모아서 처리 (주기·최소 금액은 운영 설정값)
-    BM->>MDB: 대상 목록 조회
-    BM->>FB: vault 잔액 조회 — sweep 금액 = 조회 시점 전액 · 최소 금액 미만이면 건너뜀(대상 유지)
-    BM->>FB: 거래 제출 — 고객 vault → 옴니버스 (gasless)
-    Note over FB: 그 vault 의 첫 gasless 거래면 위임 설정(upgrade)이 함께 처리된다 — 주소·키 불변
-    FB->>RL: gas 부담 위임 — 거래 생성·서명 시점 (relay 거절이면 거래 실패)
-    Note over FB,RL: gas 는 relay 가 지불 · 토큰은 고객 vault 에서 이동 — 월말 인보이스 정산
-    FB-->>BM: 제출 접수 (txId)
-    Note over BM,RL: 여기까지 오프체인 — 온체인은 relay 가 전파한 뒤부터
-    FB->>BM: 웹훅 — sweep 거래 상태 변경 (4장)
-    BM->>MDB: 체크포인트 갱신 — 자기 실행분이라 internal-events 에 싣지 않는다<br/>막힘 점검·boost 는 다른 거래와 동일 · 정합은 대사(8장)
+    Note over BM,MDB: 이하는 주기 작업 — 같은 네트워크·토큰 대상 M개 선정
+    BM->>FB: vault 잔액 조회
+    BM->>TKN: allowance(vault, sweepContract) 조회
+    alt allowance 부족
+      BM->>FB: 고객 vault의 approve(cap) CONTRACT_CALL · gasless
+      FB->>CB: token · spender · cap 검증
+      CB-->>FB: 승인
+      FB->>RL: gas 부담 위임
+      FB->>TKN: approve 반영
+      BM->>TKN: allowance 재조회
+    end
+    BM->>MDB: 실행 1건 + 항목 N건 선기록·claim
+    BM->>FB: 운영 계정의 batchSweep CONTRACT_CALL · gasless
+    FB->>CB: contract · selector · executionId · items 검증
+    CB-->>FB: 승인
+    FB->>RL: gas 부담 위임
+    FB->>SWC: batchSweep(executionId, items)
+    loop 항목 N개
+      SWC->>TKN: transferFrom(고객 vault, 옴니버스, 금액)
+      TKN->>OMN: 토큰 이동
+    end
+    FB->>BM: 상태 웹훅 + network records 처리 완료
+    BM->>MDB: receipt 이벤트와 대조해 항목별 결과·대상 갱신
 ```
 
 이 한 건에서 누가 무엇을 하는지 역할로 나누면:
@@ -112,20 +128,21 @@ sequenceDiagram
 |---|---|
 | **고객 (최종 사용자)** | **등장하지 않는다** — sweep 은 고객 요청 없이 도는 내부 운영이고, 고객 잔액은 DB 원장에 그대로다. 고객은 이 vault 의 키도, 존재도 모른다. |
 | **Service 백엔드** | **등장하지 않는다** — sweep 을 호출하지 않고 큐 이벤트도 받지 않는다. 고객 원장이 불변이라 알 일이 없다. |
-| **블록체인 매니저** | 입금 확정을 트리거로 스스로 제출하고, 이후 상태를 웹훅 수신으로 추적한다(큐 발행 없음 — 자기 실행분). |
-| **고객별 vault (EOA)** | 토큰이 빠져나가는 발신 계정. **키는 수탁자 몫**(MPC — 벤더 share + co-signer share)이다. 첫 gasless 거래면 이 vault 의 위임 설정(upgrade)이 함께 처리된다. |
-| **지정 relay** | 바깥 거래의 발신자 — 제출하고 gas 를 낸다(월말 인보이스). 내용은 위조하지 못한다 — vault 서명의 검증은 위임된 지갑 코드가 온체인에서 한다. |
+| **블록체인 매니저** | 입금 확정을 트리거로 allowance 확인·approve·batch 실행 의도를 만들고 Fireblocks에 제출한다. 정책 편집·최종 서명·컨트랙트 관리자 권한은 갖지 않는다. |
+| **고객별 vault (EOA)** | 최초·보충 approve의 발신 계정. allowance가 유효한 동안 개별 sweep마다 새 MPC 서명을 만들지 않는다. |
+| **Sweep 운영 계정** | 최상위 `batchSweep` CONTRACT_CALL의 Fireblocks source. 목적지는 화이트리스트된 sweep 컨트랙트로 제한한다. |
+| **지정 relay** | approve와 batch 호출의 gas를 지불한다(월말 인보이스). 자산 이동 권한은 relay가 아니라 allowance와 sweep 컨트랙트에 있다. |
 
-서명이 두 겹이다 — vault 몫의 승인 서명(안쪽)과 relay 의 바깥 거래 서명. 이 구조는 출금(6장)과 같고 메커니즘 상세는 가스 대납 문서 9장.
+approve 시에는 고객 vault의 MPC 서명이 필요하고, 이후 batch마다 운영 계정의 서명이 필요하다. Co-signer Callback은 두 거래의 calldata를 선기록한 의도와 대조한다. Universal Gasless는 이 거래들의 gas만 대납하며 allowance를 대신 만들지 않는다.
 
 | 결정 | 내용 |
 |---|---|
-| **트리거·제출** | 입금 확정 = **대상 마킹**(`bcm_swp_trgt`) · 제출 = **주기 배치** — 모두 매니저 내부(백엔드 호출 없음). 제출 직전 vault 잔액을 조회해 금액을 정하므로(sweep 금액 = 그 시점 전액), 벤더 장부 계상 전에 제출하는 경쟁이 구조적으로 없다. |
-| **대상 삭제 기준** | sweep tx 제출 성공이 아니라 **배치가 vault 잔액이 최소 미만임을 확인**했을 때 대상을 지운다 — vault 잔액이 진실이라, 탈락한 sweep 도 진행 중 도착한 새 입금도 다음 배치가 잔액을 보고 자연히 재sweep 한다. `swp_tx_id`(제출한 sweep tx)가 진행 중 재제출을 막고, sweep 종결을 관찰하면 비워 다음 배치가 잔액을 재확인한다(17장). |
-| **배치 값** | 주기 · 자산별 최소 sweep 금액(미만이면 다음 입금과 합침 — gas 인보이스 낭비 방지) · 제출 속도 상한(rate limit·Co-signer 배려) — 전부 운영 설정값, 초기값 미정. 반복 실패는 경보. |
-| **gas** | **Universal Gasless 로 대납** — 고객 vault 에 ETH 를 배포하지 않는다. 상세는 가스 대납 문서. |
-| **서명 자동화** | API Co-Signer — 내부 자동 실행이라 사람 개입 없이 서명까지 자동. |
+| **트리거·제출** | 입금 확정 = 대상 마킹 · 주기 작업 = allowance 준비 → 실행 1건/항목 N건 선기록 → 운영 계정 batch 제출. 제출 직전 잔액과 allowance를 온체인에서 다시 읽는다. |
+| **대상 삭제 기준** | 최상위 tx 제출·`COMPLETED`가 아니라 **항목 성공 뒤 vault 잔액이 최소 미만임을 확인**했을 때 지운다. 실패·잔액 잔존 항목은 claim을 풀어 재선정한다. |
+| **배치 값** | 주기 · 최소 금액 · allowance cap · 건별/총액 상한 · 최대 M · 블록 gas limit 대비 운영 상한 · 제출 속도 상한. 모두 승인된 운영 설정이며 반복 실패는 경보한다. |
+| **gas** | 고객 vault의 approve와 운영 계정의 batch 호출을 **Universal Gasless**로 요청한다. 지원 여부·정책 매칭은 출시 전 실측한다. |
+| **서명 자동화** | API Co-Signer + fail-closed Callback. token·spender·cap 또는 contract·selector·executionId·items가 실행 의도와 다르면 거부한다. |
 | **고객 잔액** | **불변** — 고객별 잔액은 DAW-CORE DB 원장 몫이고, sweep 은 온체인 보관 위치만 옮긴다(회계 이벤트 아님). |
-| **관찰·실패** | sweep tx 도 웹훅 수신으로 상태를 추적하고 막힘 점검·boost 를 탄다(4장). 단 **internal-events 에는 싣지 않는다** — 매니저 자기 실행분이라 백엔드가 소비할 것이 없고, 정합은 대사(8장)가 확인한다. |
+| **관찰·실패** | `transaction.network_records.processing_completed`와 receipt의 항목별 이벤트를 요청 N건과 대조한다. 최상위 `COMPLETED`를 항목 전체 성공으로 보지 않는다. **internal-events에는 싣지 않는다.** |
 
 감지·판단 기준(웹훅 수신·DCCP·막힘 점검)은 [4. 감지와 확정](04-detect-confirm.md), 잔액의 세 칸(available·pending·locked)과의 맞물림은 [8. 잔액과 내역 조회](08-balance-history.md), 출금 쪽 상태 전이는 [6. 출금](06-withdrawal.md)에서 이어집니다.

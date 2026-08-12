@@ -107,6 +107,7 @@ flowchart LR
 - DB 는 둘 — **매핑·이벤트 체크포인트는 블록체인 매니저 DB**, **원장·출금 지시 상태는 DAW-CORE DB**.
 - 서명은 벤더 단독이 아니다. 보안 존(SGX/TEE)의 **API Co-signer** 가 키 share 하나를 들고 공동서명하고, 서명 직전 **Callback Handler** 가 승인·거부를 건다.
 - **벤더 정책(TAP)의 편집·게시는 별도의 정책 관리 서비스가 대행한다.** 정책 편집용 벤더 API user 는 매니저의 거래 제출용과 자격부터 분리하고, 게시 발효는 벤더 거버넌스(Admin Quorum + Owner) 승인이 최종 관문이다. 상세는 [정책 관리](../../정책관리/설계/00-scope.md) — 이 워크스루 범위 밖.
+- **approve + transferFrom sweep도 이 경계를 넘지 않는다.** 매니저는 allowance 확인·approve·batch 실행 의도를 만들고 거래를 제출하지만, TAP 변경·Co-signer 최종 승인·sweep 컨트랙트 pause/운영자 변경 권한은 갖지 않는다. 상세 통제는 [sweep 설계](../../BC/설계/06-sweep.md#보안-권한-정책).
 - 입금·상태 감지는 **Fireblocks 웹훅**(매니저가 수신·서명 검증)이다 — 유실은 재전송·대사가 메운다(4장). 감지 결과는 **메시지 큐(deposit·withdrawal·internal)** 로 백엔드에 전달된다.
 
 ### DB 를 둘로 나눈 이유

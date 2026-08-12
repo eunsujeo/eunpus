@@ -56,6 +56,19 @@ sequenceDiagram
 
 발신 vault 에 ETH 가 없어도 토큰이 이동하고, gas 는 지정 relay 가 낸다. 첫 gasless 거래라면 이 시점에 vault 가 EIP-7702 로 smart contract wallet 로 upgrade 된다. 상태 전이·확정 판정(DCCP·numOfConfirmations)은 일반 거래와 동일하다 — 블록체인 매니저 설계의 감지·확정 흐름을 그대로 탄다. Fireblocks Relay 를 쓰면 정산은 온체인 gas 가 아니라 월말 인보이스(gas 실비 + 구독료)로 잡힌다.
 
+### approve + transferFrom sweep에 적용
+
+채택한 batch sweep에는 gasless 거래가 두 종류 있다.
+
+| 단계 | 발신 vault | Fireblocks 제출 | gasless의 역할 |
+|---|---|---|---|
+| allowance 준비 | 고객 입금 vault | `CONTRACT_CALL + approve calldata` | 고객 vault에 ETH를 넣지 않고 approve의 gas를 relay가 부담 |
+| batch 실행 | sweep 운영 계정 vault | sweep 컨트랙트 `batchSweep` CONTRACT_CALL | 최상위 batch tx의 gas를 relay가 부담 |
+
+Universal Gasless는 gas 지불자를 바꿀 뿐 자산 이동 권한을 만들지 않는다. 고객 자산을 가져오는 권한은 토큰 컨트랙트의 allowance와 sweep 컨트랙트의 `transferFrom`에 있다. 따라서 gasless를 켰다고 approve가 생략되거나 Fireblocks의 EIP-7702 위임 코드가 직접 sweep을 수행하는 것은 아니다.
+
+제품 문서상 Contract Call은 Universal Gasless 범위지만, [approve batch PoC](../../BC/설계/95-approve-pull-poc-result.md)는 vault에 ETH를 직접 넣어 수행했다. 운영 전에는 두 CONTRACT_CALL 모두 `useGasless`로 완료되는지, TAP `APPROVE`·`applyForApprove`가 어느 규칙에 매칭되는지, gasless batch에서 컨트랙트가 관찰하는 `msg.sender`가 등록 운영자와 일치하는지, relay 처리량과 initiator/signer 제약을 sandbox에서 실측한다. 이 확인은 방식 재선정 조건이 아니라 출시 게이트다.
+
 ## 운영 caveat — 대납이어도 남는 것
 
 대납은 gas 조달을 relay 로 옮길 뿐, 운영 부담을 없애지는 않는다. 네 가지가 그대로 남거나 새로 생긴다.

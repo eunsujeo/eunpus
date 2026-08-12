@@ -23,7 +23,7 @@ Universal Gasless 를 채택하면 앞 장들에서 다룬 블록체인 매니�
 - **① Admin — TAP(거래 승인 정책) 2종 추가.** upgrade policy(vault 의 첫 gasless 거래 때 위임 설정을 허용)와 Orchestrator rule(relay 로의 gas 위임을 허용)을 Admin 운영 항목으로 새로 둔다.
 - **② 감지·상태 — 실패 사유 추가.** 매니저의 감지 판정 실패 분기에 **"relay 거절"** 을 더한다. 함께 **relay 잔고 모니터링**을 운영 감시 대상에 넣는다.
 - **③ 회계 — 인보이스 대사로 이동.** gas 운영이 건별 온체인 비용 관리에서 **월말 인보이스 대사**로 옮겨간다.
-- **④ sweep — 전량 Gasless.** 스테이블코인 전용이라 sweep 은 예외 없이 Gasless 로 나간다(충전 경로 없음).
+- **④ sweep — 전량 Gasless.** `approve + transferFrom` 채택에 따라 고객 vault의 allowance 설정 CONTRACT_CALL과 운영 계정의 `batchSweep` CONTRACT_CALL 모두 Gasless로 요청한다. 제품 범위는 맞지만 실제 적용은 출시 전 sandbox 실측 게이트다(충전 경로 없음).
 - **⑤ estimateFee — 역할 이동.** 우리 쪽 비용 추정이 아니라 **relay 비용 예측·인보이스 검증**으로 쓰임이 바뀐다.
 
 ## 남은 확인
