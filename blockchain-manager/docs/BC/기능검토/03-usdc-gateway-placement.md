@@ -6,7 +6,7 @@ group: USDC Gateway
 
 Gateway 지갑은 vault account 하나에 결속되고 잔액도 vault 단위다([기능](02-usdc-gateway.md)). 그래서 어느 vault 에 붙이느냐가 구조를 가른다.
 
-**USDC Gateway 도입 자체는 미정이다.** 도입할 경우의 배치안이고, 그 배치안은 정했다.
+**USDC Gateway 도입 자체는 미정이다.** 도입할 경우 어느 vault 에 붙일 수 있는지를 정리한다. **실제로 어디부터 붙일지는 [운영 설계](07-usdc-gateway-operating.md)에서 회사자산 vault 를 먼저 두는 안으로 좁혔다.**
 
 **자산 경계마다 전용 vault 하나에만 활성화한다.** 고객자산 Gateway 는 옴니버스 vault 에, 회사자산 Gateway 는 회사자산 vault 에 붙인다.
 
@@ -18,7 +18,7 @@ Gateway 지갑은 vault account 하나에 결속되고 잔액도 vault 단위다
 
 그래서 주소 단위로 그리면 고객 하나에 EVM 주소 하나다. 체인이 갈리는 것은 주소가 아니라 **그 주소가 어느 체인에서 무슨 자산을 들고 있는지**다.
 
-## 배치 — 옴니버스에만 활성화
+## 고객자산 배치 — 옴니버스에만 활성화
 
 ```mermaid
 flowchart LR
