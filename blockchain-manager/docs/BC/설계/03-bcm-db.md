@@ -13,9 +13,8 @@ group: 블록체인 매니저
 
 - **접두** `bcm_` · **접미** `_m`(마스터) · `_l`(내역/로그) · `_trgt`(작업 대상)
 - **컬럼 축약** `_stcd`(상태코드) · `_dvcd`(구분코드) · `_yn`(VARCHAR(1) Y/N) · `_cnt`(횟수) · `_dttm`(일시) · `_dt`(일자) · `_id` · payload(JSONB — 단 수신 바이트를 그대로 보존하는 `bcm_whk_l`·`bcm_raw_tx_l` 은 TEXT)
-- **일시는 VARCHAR(16)** — 코어와 동일(TIMESTAMP 안 씀) · 값은 UTC `yyyyMMddHHmmss` 14자 · **일자는 VARCHAR(8)** (YYYYMMDD)
-- **절대시각은 UTC로 저장** (2026-08-14 확정) — 모든 `_dttm`과 벤더 `createdAt` · epoch ms를 UTC로 정규화한 뒤 저장한다. 포맷에 오프셋이 없으므로 DB 값을 KST로 해석하지 않는다. API는 ISO 8601 UTC(`Z`), 화면·보고서는 요청된 시간대로 변환한다
-- **업무 일자는 KST 기준** — `_dt`는 절대시각이 아니다. 정산일·영업일·일 배치 및 파티션 경계(`base_dt`)는 `Asia/Seoul`로 산정해 영업일과 맞춘다
+- **일시는 VARCHAR(16)** — 코어와 동일(TIMESTAMP 안 씀) · 값은 UTC `yyyyMMddHHmmss` 14자 · **일자는 VARCHAR(8)** UTC `yyyyMMdd`
+- **DB 일시·일자는 모두 UTC** (2026-08-14 확정) — `_dttm`, `_dt`, `base_dt`, 벤더 `createdAt` · epoch ms를 UTC 기준으로 저장한다. 포맷에 오프셋이 없으므로 DB 값은 항상 UTC로 해석한다. API는 ISO 8601 UTC(`Z`), 화면·정산·보고서는 필요한 시간대로 변환하여 산정한다
 - **id 길이** — 벤더가 주는 값(벤더 tx·vault·알림 id)은 잘리지 않게 VARCHAR(64) 유지. 코어 자체 id 는 16~36
 - **자산은 두 컬럼** — `ntwk_cd`(네트워크코드 20자) + `tkn_smbl`(토큰심볼 16자). 코어 마스터의 컬럼명·크기를 따르되 **값은 우리가 정한다** — 코어 키(`tkn_id` 등)에 의존하지 않는다
 - **감사 4컬럼** — 모든 테이블에 `frst_reg_empno`(6)·`frst_reg_brcd`(4)·`last_chng_empno`(6)·`last_chng_brcd`(4). 자동 처리 행은 시스템 센티넬 `empno='SYSTEM'`·`brcd='9999'`(2026-08-05 확정 — 구현은 단일 상수), Admin 수동 개입(수동 boost·동결 해제 등)은 실제 직원/부점. 행 발생·변경 "시각"은 별도 도메인 `_dttm` 이 담당한다(코어와 동일 분리)
@@ -704,7 +703,7 @@ finalize 된 tx 의 벤더 원문을 일 배치로 장기 보관한다. 원본�
 
 ```sql
 CREATE TABLE bcm_raw_tx_l (
-  base_dt        VARCHAR(8)   NOT NULL,   -- KST 적재 기준일 = 파티션 키 (YYYYMMDD)
+  base_dt        VARCHAR(8)   NOT NULL,   -- UTC 적재 기준일 = 파티션 키 (YYYYMMDD)
   vndr_tx_id     VARCHAR(64)  NOT NULL,   -- 벤더 tx id
   ext_tx_id      VARCHAR(128) NULL,       -- 출금 건 식별자 — 입금은 NULL
   tx_hash        VARCHAR(128) NULL,       -- 온체인 거래 해시
@@ -741,6 +740,7 @@ CREATE INDEX idx_bcm_raw_tx_vendor ON bcm_raw_tx_l (vndr_tx_id, rcv_dttm); -- �
 
 ## 확정 이력 (2026-08-14)
 
+- **DB 일시·일자는 UTC로 통일** — `_dttm`은 UTC `yyyyMMddHHmmss`, `_dt`·`base_dt`는 UTC `yyyyMMdd`로 저장한다. API는 ISO 8601 UTC를 쓰고 화면·정산·보고서에서만 필요한 시간대로 변환한다. 2026-08-06의 KST 저장 결정은 이 결정으로 대체한다.
 - **tx 대사는 벤더 createdAt 단일 시간축** — 벤더 목록과 `bcm_tx_l.vndr_crt_dttm`을 안정화 지연이 지난 같은 닫힌 구간으로 비교한다. 창 밖 미결 단건 조회는 DB claim·영속 백오프·실행당 상한·최대 추적 나이를 둔다.
 - **원본 보관은 커서 없는 미보관 재탐색** — 늦게 적격이 된 원문도 다시 찾고, 배치별로 안전하게 커밋한다. 전체 적체를 비운 실행만 인박스 정리와 성공 heartbeat를 남긴다.
 
@@ -755,11 +755,6 @@ CREATE INDEX idx_bcm_raw_tx_vendor ON bcm_raw_tx_l (vndr_tx_id, rcv_dttm); -- �
 - **boost도 crash-safe intent를 선기록** — `bcm_boost_l`에 별도 externalTxId·claim·교체 대상을 먼저 남기며, 물리 대체 거래는 최초 `bcm_tx_l` root 행으로 접는다. 원 거래와 대체 거래 중 먼저 채굴된 쪽이 승자다.
 - **미결 제출 점검은 조회만 수행** — 오래된 `REQUESTED`의 벤더 거래가 확인되면 회수하고, 미발견·조회 실패는 체크포인트만 갱신한다. 전체 원 요청 문맥 없이 백그라운드에서 재제출하지 않는다.
 
-## 확정 이력 (2026-08-14)
-
-- **절대시각은 UTC로 저장** — `_dttm`과 벤더 시각은 UTC `yyyyMMddHHmmss`로 통일한다. API는 ISO 8601 UTC를 쓰고 표시 시점에만 사용자 시간대로 변환한다.
-- **업무 일자는 KST로 유지** — `_dt`와 `base_dt`는 정산일·영업일·파티션 경계를 위한 달력값이므로 `Asia/Seoul`로 산정한다. 2026-08-06의 `_dttm` KST 저장 결정은 이 결정으로 대체한다.
-
 ## 확정 이력 (2026-08-07)
 
 - **제출 원장 `bcm_sbmt_l` 신설** — `ext_tx_id` PK. 벤더를 부르기 전에 먼저 적어 멱등을 판정하고, 우리 vault 발신 웹훅의 계열을 `tx_dvcd` 로 가른다. `bcm_tx_l` 흡수는 키가 달라(PK = 벤더 tx id, 제출 시점 미상) 불가능하다.
@@ -767,7 +762,7 @@ CREATE INDEX idx_bcm_raw_tx_vendor ON bcm_raw_tx_l (vndr_tx_id, rcv_dttm); -- �
 
 ## 확정 이력 (2026-08-06)
 
-- **일시의 시간대 = KST(`Asia/Seoul`)** — 14자 포맷에 오프셋이 없어 한 시간대로 고정해야 하고, `base_dt` 일 경계가 영업일과 맞아야 한다는 초기 결정이었다. **2026-08-14에 `_dttm`은 UTC 저장, `_dt`·`base_dt`는 KST 산정으로 대체했다.**
+- **일시의 시간대 = KST(`Asia/Seoul`)** — 14자 포맷에 오프셋이 없어 한 시간대로 고정해야 한다는 초기 결정이었다. **2026-08-14에 `_dttm`·`_dt`·`base_dt` 모두 UTC 기준으로 대체했다.**
 - **수신 원문은 바이트 그대로** — `bcm_whk_l.payload` 를 JSONB 에서 TEXT 로 바꾸고 `payload_hash`·`sign_vl` 을 수신 시점에 함께 남긴다. JSONB 정규화 때문에 기존 스키마로는 `bcm_raw_tx_l.payload_hash` 의 "수신 시점 와이어 바이트" 요구를 지킬 수 없었다.
 
 ## 확정 이력 (2026-08-05)
