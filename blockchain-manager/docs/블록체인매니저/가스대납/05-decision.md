@@ -12,9 +12,22 @@ ETH 없이 운영이 되나, 충전과 대납 중 무엇을 쓰나, 기존 설�
 |---|---|
 | **ETH 없이 운영이 되나** | Fireblocks Relay 면 가능하다 — "even if you do not hold any ETH". 우리 서비스는 스테이블코인 전용이라 토큰 운영이 전부다. |
 | **충전(Gas Station)은 왜 안 쓰나** | 결정은 **Universal Gasless 단일**이다. 스테이블코인 전용이라 대납이 안 되는 자산(ETH 자체의 이동)이 애초에 없다 — 그래서 충전 경로를 두지 않는다. |
+| **relay 를 누가 하나** | **Fireblocks relay 를 쓴다** — 월말 인보이스를 받는 구조다(2026-08-13 결정). local relay(우리 전용 vault)·external workspace relay 는 쓰지 않는다. 그쪽은 그 vault 의 ETH 로 내는 구조라 인보이스가 없고 ETH 조달이 우리 몫으로 남는다. |
 | **기존 설계에서 바뀌는 것** | 감지·확정 판정, 막힘 점검·boost 운영은 그대로다. 바뀌는 건 gas 조달 운영뿐 — 월말 인보이스 정산(회계 층)으로 옮겨간다. |
 
 Universal Gasless 단일은 곧 **모든 온체인 거래(sweep·출금)를 relay 가 대납**한다는 뜻이다. ETH 를 고객 vault 에 배포하지도, Gas Station 으로 충전하지도 않는다. relay 가 gas 를 내고, 토큰은 vault 에서 이동하며, gas 비용은 월말 인보이스로 사후 정산된다.
+
+### 청구 구조 — 문서에서 확인된 것
+
+| | 내용 |
+|---|---|
+| 주기 | **월말 통합 인보이스**. Fireblocks 가 gas 를 먼저 내고 뒤에 청구한다 |
+| 청구 항목 | **실제 gas 비용 + 구독료** — 원문 "monthly invoice for actual gas costs plus any applicable subscription fee" |
+| fee 수준 결정 | **우리가 정하지 않는다** — 원문 "All fee settings are handled automatically for gasless transactions". 건별로 direct fee 로 바꾸면 통제하지만 그건 대납이 아니라 소스 vault 차감이다 |
+| 켜는 절차 | Console 설정 → Support 요청 → **CSM 협의(대상 체인·예상 월 거래량·유스케이스)** → 서비스 계약 서명 → 활성화 |
+| 프리미엄 | 추가 구매 대상. testnet 30일 체험 가능 |
+
+**fee 수준을 우리가 못 정한다는 것이 상한을 걸 수 없다는 뜻**이다. 비용 통제 수단은 인보이스 사후 대사뿐이다.
 
 ## 도입하면 설계가 어떻게 달라지나
 
@@ -30,7 +43,7 @@ Universal Gasless 를 채택하면 앞 장들에서 다룬 블록체인 매니�
 
 미확정 — 확인 필요:
 
-- **인보이스 단가·구독료** — 실제 과금 조건. CSM/PoC 로 확인한다.
+- **인보이스 단가·구독료** — 실제 과금 조건. 헬프센터에 가격이 없다 — 프리미엄 기능이라 계약 협의 사항이다. CSM 으로 확인한다.
 - **MPC ↔ 7702 내부 동작** — MPC 키와 위임 코드가 내부에서 어떻게 맞물리는지. CSM/PoC 로 확인한다.
 
 ETH 네이티브 전송의 대납 불가는 확정이다 — 다만 우리는 스테이블코인 전용이라 해당 없다.
