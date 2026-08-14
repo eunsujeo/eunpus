@@ -18,6 +18,7 @@ status: To Do
 | [컴플라이언스 게이트 — DB](05-compliance-db.md) | ERD · 테이블 4개(레지스트리·확인·사전 검증·outbox) · 필드 |
 | [sweep 설계 — 정책 적용](06-sweep.md) | 입금 모으기·핫콜드 밴드S — 트리거·건별 실행·비채택 배치 대안·Fireblocks 대응 (정책 일부 수신 — 진행 중) |
 | [벤더 자산 매핑](07-asset-master.md) | 우리 (네트워크, 토큰) ↔ 벤더 assetId · 등록 관문 · Admin API |
+| [블록체인 매니저 Admin](08-bcm-admin.md) | 운영 조사·컨트랙트·실행 정책·밴드S·승인·비상 운영과 UI/UX 경계 |
 
 ## 구성 요소 — 한 장
 
