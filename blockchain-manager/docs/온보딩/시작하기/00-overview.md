@@ -1,16 +1,17 @@
 ---
 title: 온보딩 안내
 status: Done
-date: 2026-08-18
+date: 2026-08-19
 view: grid
 ---
 
 # 디지털 자산 플랫폼 온보딩
 
-이 폴더는 우리 디지털 자산 플랫폼의 세 가지 기반을 한곳에 정리한다.
-권장 읽기 순서와 세 문서를 관통하는 출금 흐름, 공통 용어를 안내한다.
+이 폴더는 우리 디지털 자산 플랫폼의 기반과 실제 실행 시스템을 한곳에 정리한다.
+권장 읽기 순서와 문서들을 관통하는 입출금 흐름, 공통 용어를 안내한다.
 
 - **트래블룰**: 누구에게 어떤 정보를 전달하고, 입출금 흐름의 어디에서 검사하는가
+- **블록체인 매니저**: 계정·주소를 만들고 입출금·sweep·상태·대사를 어떻게 실행하는가
 - **Canton Network**: 프라이버시 원장과 Holding 기반 자산을 어떻게 읽고 다루는가
 - **Fireblocks**: 키·정책·승인·서명·체인 연동을 어떤 운영 모델로 제공하는가
 
@@ -20,17 +21,21 @@ view: grid
 
 규제·출금 흐름·IVMS101 전체 필드·솔루션 연동을 여러 문서로 나누어 다룬다.
 
-### 2. [Canton Network](../Canton%20Network/00-overview.md)
+### 2. [블록체인 매니저](../블록체인%20매니저/00-overview.md)
+
+계정·주소, 입금·출금, sweep, 이벤트·대사와 운영 경계를 실제 시스템 흐름으로 다룬다.
+
+### 3. [Canton Network](../Canton%20Network/00-overview.md)
 
 프라이버시 원장, Party·Participant, Holding과 전송 흐름을 여러 문서로 나누어 설명한다.
 
-### 3. [Fireblocks](../Fireblocks/00-overview.md)
+### 4. [Fireblocks](../Fireblocks/00-overview.md)
 
 Workspace·Vault·MPC·Policy·자동 서명·Webhook 운영을 여러 문서로 나누어 정리한다.
 
-## 세 문서를 연결해서 보기
+## 문서들을 연결해서 보기
 
-하나의 출금은 세 주제를 차례로 통과한다.
+하나의 출금은 각 주제를 차례로 통과한다.
 
 ```mermaid
 flowchart LR
@@ -48,6 +53,7 @@ flowchart LR
 | 질문 | 주로 답하는 문서 |
 |---|---|
 | 상대 VASP에 어떤 신원 정보를 보내야 하는가? | 트래블룰 |
+| 계정·주소를 만들고 입출금 상태를 어떻게 전달하는가? | 블록체인 매니저 |
 | 자산과 거래를 누가 볼 수 있으며 잔액은 어떻게 표현되는가? | Canton Network |
 | 누가 거래를 승인하고 어떤 키로 서명하는가? | Fireblocks |
 | 고객의 실제 의사와 내부 잔액이 맞는가? | 우리 업무 시스템의 책임 |
@@ -57,6 +63,7 @@ flowchart LR
 | 용어 | 이 문서 묶음에서의 의미 |
 |---|---|
 | **VASP** | 가상자산 이전·보관 등 규제 대상 서비스를 제공하는 사업자 |
+| **TxStatus** | 블록체인 매니저가 벤더 상태를 번역한 SUBMITTED·CONFIRMED·FINALIZED·REJECTED·FAILED |
 | **Party** | Canton 원장에서 권리와 의무를 갖는 신원 |
 | **Participant** | Party를 호스팅하고 관련 원장을 저장·검증하는 Canton 노드 |
 | **Validator** | Canton Global Synchronizer에 연결되는 운영 역할·배포 묶음. 문맥에 따라 Participant를 포함 |
