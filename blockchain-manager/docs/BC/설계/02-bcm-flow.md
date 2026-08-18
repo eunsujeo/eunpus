@@ -506,9 +506,9 @@ sequenceDiagram
 
 1. DAW-CORE Treasury/Admin 백엔드가 환율·NAV·원장과 관찰 잔액을 immutable snapshot으로 묶고 simulation·이동안을 계산한다.
 2. BCM은 정책 version·snapshot hash·만료·목적지 registry·예약 충돌·출금 풀 최소잔액을 검증한다.
-3. 승인된 hot→cold는 고객 vault→옴니버스 sweep, 옴니버스·출금 풀→treasury egress 내부이체,
-   egress→TAP 고정 외부 cold 순서로 각 단계 FINALIZED 뒤 진행한다.
-4. cold→hot은 외부 콜드 서명으로 egress 입금을 완료한 사실을 재조회한 뒤 강화 정족수로 출금 풀 재분배를 승인한다.
+3. 승인된 hot→cold는 고객 vault→옴니버스 sweep, 출금 풀→옴니버스 회수 내부이체,
+   옴니버스→TAP 고정 외부 cold 순서로 각 단계 FINALIZED 뒤 진행한다.
+4. cold→hot은 외부 콜드 서명으로 옴니버스 입금을 완료한 사실을 재조회한 뒤 강화 정족수로 출금 풀 보충을 승인한다.
 5. 각 item은 제출 전에 `SUBMIT_INTENT`와 같은 `externalTxId`의 제출 원장 `BAND_S` 행을 선기록한다. 응답 유실은 기존 claim·조회 경계로 회수하며 고객 토픽에는 발행하지 않는다.
 6. 실행마다 정책 version·input snapshot hash·이동안 hash·각 벤더 거래를 남기고 완료 뒤 잔액을 대사한다.
 

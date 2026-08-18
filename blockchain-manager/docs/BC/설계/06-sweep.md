@@ -12,7 +12,7 @@ group: 운영 설계
 | 계층 | 방향 | 트리거 | 실행 |
 |---|---|---|---|
 | ① 입금 모으기 | 고객 vault → 옴니버스 | 자산별 — 고객 vault 잔액이 총자산 대비 일정 비율(예: 1%) 이상 · 가스비 한도 안에서 | 보유량 많은 순 M개 묶어 배치 전송, 완료 후 재체크 loop |
-| ② 핫·콜드 균형 (밴드S) | hot vault → treasury egress ↔ 외부 cold | 핫월렛백분율이 상한 초과 → 콜드로 · 하한 미만 → 콜드에서 충전 | 전 자산 동일 비율로 이동해 핫월렛균형으로 복귀 |
+| ② 핫·콜드 균형 (밴드S) | 옴니버스 ↔ 외부 cold | 핫월렛백분율이 상한 초과 → 콜드로 · 하한 미만 → 콜드에서 충전 | 전 자산 동일 비율로 이동해 핫월렛균형으로 복귀 |
 
 위 표의 "M개 묶음"은 대상 선정 단위이자 한 온체인 배치의 최대 후보 수다. 실행 방식은 **`approve + transferFrom` 배치 sweep** 으로 채택했다(2026-08-12 설계 결정). 고객 vault 는 자산별로 sweep 컨트랙트에 제한된 allowance 를 설정하고, 전용 운영 계정이 `batchSweep` 한 건을 제출해 M개 vault 의 자산을 옴니버스로 모은다. EIP-3009·2612·EIP-7702 직접 pull과 per-vault 일반 전송은 sweep 구현안에서 제외한다. Universal Gasless 내부의 EIP-7702 사용은 별개다. 근거와 실측은 [배치 sweep 메커니즘](98-batch-sweep.md)과 [approve 배치 sweep PoC](95-approve-pull-poc-result.md)에 남긴다.
 
@@ -27,7 +27,7 @@ group: 운영 설계
 | 정책 용어 | 우리 구조 | 비고 |
 |---|---|---|
 | 받는주소들 | 고객별 vault (입금 식별·수신 전용) | 그대로 대응 |
-| 보내는주소들 | **옴니버스 vault + 출금 풀 vault + treasury egress vault** | egress는 외부 cold로 나가는 단일 출구 |
+| 보내는주소들 | **옴니버스 vault + 출금 풀 vault** | 정책의 한 계층을 우리가 둘로 쪼갰다 |
 | 콜드월렛들 | **TAP allowlist 고정 외부 cold 주소** | 첫 출시는 외부 오프라인 서명 체계 |
 
 정책은 계층이 셋인데 우리는 vault 가 셋이다. **보내는주소 하나를 둘로 쪼갠 것**이고, 쪼갠 이유는 규제와 무관하다 — 옴니버스는 sweep 이 모이는 보관처, 출금 풀은 EVM 의 vault 당 nonce 직렬을 피하려고 복수로 둔 제출 창구다.
@@ -40,8 +40,8 @@ group: 운영 설계
 
 | 항목 | 정의 |
 |---|---|
-| 총자산합 (=100%) | **고객 vault + 옴니버스 + 출금 풀 + treasury egress + 외부 cold** 전체 이용가능잔액의 원화환산 합에 아래 델타 순잔액을 일관되게 반영 |
-| 핫월렛합 · 핫월렛백분율 | **고객 vault + 옴니버스 + 출금 풀 + treasury egress**의 원화환산 합에 아래 hot 델타 조정 적용 · 핫월렛합×100/총자산합 |
+| 총자산합 (=100%) | **고객 vault + 옴니버스 + 출금 풀 + 외부 cold** 전체 이용가능잔액의 원화환산 합에 아래 델타 순잔액을 일관되게 반영 |
+| 핫월렛합 · 핫월렛백분율 | **고객 vault + 옴니버스 + 출금 풀**의 원화환산 합에 아래 hot 델타 조정 적용 · 핫월렛합×100/총자산합 |
 | 핫월렛상한 | 법정최대치(20%) − 운영 버퍼(예: 2%) = 18%. 고객 vault를 hot에 포함하므로 받는주소최대를 다시 빼지 않음 |
 | 핫월렛하한 | 예: 5% |
 | 핫월렛균형 | (상한−하한)/2 + 하한 — 예: 12.5% |
@@ -240,33 +240,36 @@ Fireblocks의 `APPROVE`·`applyForApprove`·Approve Amount Cap이 `CONTRACT_CALL
 밴드 판정에는 매니저가 모르는 **고시환율·NAV·원장 정본**이 필요하다. 따라서 DAW-CORE Treasury/Admin 백엔드가
 환산·밴드 판정과 immutable input snapshot을 만들고, 블록체인 매니저는 승인된 자산별 이동량을 검증·멱등 제출·대사한다.
 
-snapshot에는 정책 version, 기준·만료 시각, 자산별 환율·NAV·공급자, 고객 vault·옴니버스·출금 풀·treasury egress와
+snapshot에는 정책 version, 기준·만료 시각, 자산별 환율·NAV·공급자, 고객 vault·옴니버스·출금 풀과
 외부 cold의 관찰 잔액, 진행 중 이동 예약, 입력 hash를 포함한다. 누락·만료·hash 불일치가 있으면 simulation과 승인을 막는다.
 
 ### 비율과 예약분 산식
 
 - 총자산 `A = 관찰 hot H + 관찰 cold C`.
 - 상한 초과 시 목표 이동량은 `H - 목표비율 × A`, 하한 미달 시 필요 충전량은 `목표비율 × A - H`.
-- hot 범위는 고객 vault, 옴니버스, 출금 풀, treasury egress의 체인 관찰 잔액이다. 고객 vault의 미sweep 잔액도 분모와 hot에 포함하지만 직접 cold로 보내지 않는다.
+- hot 범위는 고객 vault, 옴니버스, 출금 풀의 체인 관찰 잔액이다. 고객 vault의 미sweep 잔액도 분모와 hot에 포함하지만 직접 cold로 보내지 않는다.
 - 진행 중 hot→cold 예약분은 유효 hot에서 **한 번만** 빼고 분모 `A`에서는 빼지 않는다. cold→hot 예약분도 유효 hot에 한 번만 더한다.
 - 같은 정책 version·snapshot으로 생성한 이동안만 승인·실행할 수 있다. 실행 중 잔액·정책·목적지가 달라지면 새 snapshot을 요구한다.
 
 ### 핫 → 콜드 (상한 초과)
 
-외부로 나가는 출구를 전용 **treasury egress vault 하나**로 고정한다.
+외부로 나가는 출구는 **옴니버스 하나**다(2026-08-18 결정 — 1차 설계에서 treasury egress vault 를 제외한다).
 
 1. 고객 vault 잔액은 기존 sweep으로 옴니버스에 모은다.
-2. 옴니버스와 출금 풀의 이동 가능 잔액을 Fireblocks 내부이체로 treasury egress vault에 모은다.
-3. egress vault에서 TAP allowlist에 등록된 네트워크·자산별 고정 외부 cold 주소로 일반 전송한다.
+2. 출금 풀의 초과 잔액은 회수(출금 풀 → 옴니버스 내부이체)로 옴니버스에 모은다.
+3. 옴니버스에서 TAP allowlist에 등록된 네트워크·자산별 고정 외부 cold 주소로 일반 전송한다.
 4. 각 중간 거래가 FINALIZED 된 뒤 다음 단계를 열고, 진행 중 금액은 예약분으로 잡아 같은 이동을 다시 제안하지 않는다.
 
-출금 풀 내부이체는 풀별 최소 운영잔액을 침해할 수 없다. 이동 가능 잔액이 제안량보다 작으면 고객 vault를 직접 보내거나 상한을
+출금 풀 회수는 풀별 최소 운영잔액을 침해할 수 없다. 이동 가능 잔액이 제안량보다 작으면 고객 vault를 직접 보내거나 상한을
 임의 완화하지 않고 이동안을 차단한다. 목적지 변경은 [Admin](08-bcm-admin.md)의 보안 변경 정족수와 TAP 재검증을 거친다.
+
+**treasury egress vault 는 재검토 후보로 남긴다** — 외부 전송 권한을 별도 vault 로 격리해야 할 필요(정책 분리·감사 요구 등)가
+생기면 그때 다시 본다. 도입하면 옴니버스의 TAP 에서 외부 cold 주소가 빠지고 egress 가 유일한 외부 출구가 된다.
 
 ### 콜드 → 핫 (하한 미만 · 충전)
 
-첫 출시는 외부 cold의 오프라인 서명 절차로 treasury egress vault에 입금한다. Admin은 서명하지 않고 입금의 온체인 FINALIZED를
-재조회한다. 확인 뒤 출금 풀 재분배는 재개와 같은 강화 정족수로 승인한다. hot→cold와 cold→hot의 소요 시간을 같다고 가정하지 않는다.
+첫 출시는 외부 cold의 오프라인 서명 절차로 옴니버스에 입금한다. Admin은 서명하지 않고 입금의 온체인 FINALIZED를
+재조회한다. 확인 뒤 출금 풀 보충(옴니버스 → 출금 풀)은 재개와 같은 강화 정족수로 승인한다. hot→cold와 cold→hot의 소요 시간을 같다고 가정하지 않는다.
 
 Fireblocks cold workspace는 첫 경로가 아니다. 같은 Customer Domain 이동 방식·수수료·정책·API user 권한을 실측한 뒤
 별도 정책 version과 출시 게이트로 추가할 수 있다.
@@ -281,14 +284,14 @@ Fireblocks cold workspace는 첫 경로가 아니다. 같은 Customer Domain 이
 | sweep gas | approve와 batch 호출 모두 **Universal Gasless** 요청 | 제품 범위는 Contract Call. 실제 workspace·정책·relay 처리는 출시 전 실측 |
 | 배치 결과 | `transaction.network_records.processing_completed` + receipt의 항목별 이벤트 | 최상위 `COMPLETED`만으로 항목 성공을 판정하지 않음 |
 | 트리거 요인 | 벤더 권장 = 잔액 임계·주기·수수료 여건 — 정책과 같은 축 | [Sweep to Omnibus](https://developers.fireblocks.com/reference/sweep-to-omnibus-1) |
-| 콜드 계층 | treasury egress 일반 전송 → TAP 고정 외부 cold | hot→cold 출구 1개. cold→hot은 외부 오프라인 서명 |
+| 콜드 계층 | 옴니버스 일반 전송 → TAP 고정 외부 cold | hot→cold 출구는 옴니버스 1개. cold→hot은 외부 오프라인 서명 |
 
 ## 구현 반영 문서
 
 - **[02 흐름](02-bcm-flow.md)** — allowance 준비 → 배치 선기록 → 제출 → 항목별 확정 순서.
 - **[03 DB](03-bcm-db.md)** — allowance 상태와 `SweepExecution 1 : N SweepItem`, Admin·밴드S 물리 원장 설계 게이트.
 - **[99 감지 상세](99-detection-detail.md)** — network records 구독과 receipt 이벤트 기반 1:N 결과 판정.
-- **[01 개요](01-infra.md)** — DAW-CORE 계산·treasury egress·외부 cold 경계.
+- **[01 개요](01-infra.md)** — DAW-CORE 계산·외부 cold 경계.
 
 ## 미확정 · 벤더 문의 후보
 

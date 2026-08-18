@@ -369,9 +369,9 @@ Admin은 BCM이 호출할 컨트랙트의 레지스트리와 활성 binding을 �
 - 프론트는 밴드S 금액을 계산하지 않는다.
 - DAW-CORE Treasury/Admin 백엔드가 환율·NAV·원장과 체인 관찰 잔액으로 immutable input snapshot과 이동안을 계산한다.
 - 블록체인 매니저 서비스는 승인된 실행 지시를 검증·멱등 제출·추적하는 실행기다.
-- 고객 vault 잔액은 기존 sweep으로 옴니버스에 모으고, 옴니버스·출금 풀의 이동 가능 잔액은 내부이체로 전용 treasury egress vault에 모은다. 외부 콜드로 나가는 출구는 이 vault 하나다.
+- 고객 vault 잔액은 기존 sweep으로, 출금 풀 초과분은 회수 내부이체로 옴니버스에 모은다. 외부 콜드로 나가는 출구는 옴니버스 하나다(1차 설계 — treasury egress vault 는 재검토 후보, [sweep](06-sweep.md)).
 - 첫 출시는 TAP allowlist의 고정 외부 콜드 주소만 허용한다. Fireblocks cold workspace는 이동·권한·수수료 실측 뒤 별도 정책 버전으로 추가한다.
-- cold→hot은 외부 콜드 서명 절차로 egress vault 입금을 확인한 뒤 강화 정족수로 출금 풀 재분배를 승인한다.
+- cold→hot은 외부 콜드 서명 절차로 옴니버스 입금을 확인한 뒤 강화 정족수로 출금 풀 보충을 승인한다.
 - 오래되거나 일부 누락된 입력으로 이동안을 승인할 수 없다.
 - simulation과 실제 실행은 같은 정책 버전·입력 snapshot을 참조해야 한다.
 - 총자산 `A=관찰 hot H+관찰 cold C`, 상한 초과 이동량은 `H-목표비율×A`다. 진행 중 hot→cold 예약분은 유효 hot에서 한 번만 빼고 분모 `A`에서는 빼지 않는다.
@@ -459,7 +459,7 @@ multisig 서명을 만들지 않고, 인증 경계가 없는 기능 테스트 �
 | [개요](01-infra.md) | 독립 Blockchain Manager Admin Frontend·BFF, 기능 테스트와 공유 환경 경계 |
 | [흐름](02-bcm-flow.md) | 네트워크 중지, 정책 활성화, 밴드S 실행·복구의 도메인 흐름 |
 | [DB](03-bcm-db.md) | 컨트랙트·정책·승인·감사 원장과 실행 snapshot의 물리 설계 게이트 |
-| [sweep](06-sweep.md) | 컨트랙트 교체, allowance 회수, DAW-CORE 계산·egress·외부 cold 경계 |
+| [sweep](06-sweep.md) | 컨트랙트 교체, allowance 회수, DAW-CORE 계산·외부 cold 경계 |
 | [자산 매핑](07-asset-master.md) | BFF 인증과 감사 식별자 분리, 네트워크 중지·매핑 해제 후속 |
 
 ## 확정 이력 (2026-08-17)
@@ -467,7 +467,7 @@ multisig 서명을 만들지 않고, 인증 경계가 없는 기능 테스트 �
 - 2026-08-17 후속 사용자 결정으로 Admin Frontend·BFF는 DAW-CORE와 분리해 이 저장소의 독립 애플리케이션으로 둔다. 첫 출시는 loopback 읽기 전용 기능 테스트 profile이며, 공유 환경의 BCM Admin API는 private listener/ingress에서 mTLS와 단기 JWT를 함께 검증한다.
 - 역할 claim 5개와 위험 등급별 정족수를 위 표대로 확정했다. 중지는 운영자 1명이 즉시 수행할 수 있고, 재개·보안 변경은 요청자 외 2명과 보안 승인자 1명이 필요하다.
 - 컨트랙트 release·문서 hash·2-RPC 온체인 대조를 증적 정본으로 확정했다.
-- 밴드S는 DAW-CORE가 계산하고 BCM이 실행한다. 단일 treasury egress vault→TAP 고정 외부 cold를 첫 경로로 사용하며 예약분은 hot에서 한 번만 공제한다.
+- 밴드S는 DAW-CORE가 계산하고 BCM이 실행한다. 옴니버스→TAP 고정 외부 cold를 첫 경로로 사용하며 예약분은 hot에서 한 번만 공제한다.
 - `blockchain-manager-svc/docs/admin-reference/`의 토큰과 네 기준 화면을 사용자 승인 기준 화면으로 확정했다.
 
 ## 미확정

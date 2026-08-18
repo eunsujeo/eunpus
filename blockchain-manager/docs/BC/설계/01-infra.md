@@ -110,7 +110,7 @@ flowchart TB
 - **서명은 벤더 단독으로 되지 않는다** — MPC share 하나는 API Co-signer(SGX/TEE)에 있고, 서명 직전에 Callback Handler 가 승인·거부를 판단한다.
 - **일반 내부 API는 내부망 경계를 신뢰한다** — DAW-CORE Service↔매니저·게이트의 일반 업무 API에는 애플리케이션 인증을 추가하지 않는다.
 - **매니저의 `/admin/*` 는 강화된 별도 경계다** — 같은 `bcm-api` 애플리케이션의 private listener/ingress로 분리하고 Blockchain Manager Admin BFF만 접근시킨다. 공유 환경에서는 BFF와 BCM이 mTLS 서비스 신원과 5분 이하 단기 JWT를 함께 검증하며 직원번호·부점코드 헤더만으로 인증하지 않는다. T10.2의 읽기 전용 기능 테스트 profile은 frontend·BFF와 대상 BCM을 loopback에만 바인딩하고 상태 변경 API를 노출하지 않는다. 상세는 [Admin](08-bcm-admin.md).
-- **밴드S 외부 출구는 하나다** — 고객 vault는 기존 sweep으로 옴니버스에 모으고, 옴니버스·출금 풀의 이동 가능 잔액을 전용 treasury egress vault에 내부이체한 뒤 TAP allowlist의 고정 외부 콜드 주소로만 전송한다. cold→hot 서명은 Admin 밖의 외부 콜드 절차다.
+- **밴드S 외부 출구는 옴니버스 하나다** — 고객 vault는 기존 sweep으로, 출금 풀 초과분은 회수 내부이체로 옴니버스에 모은 뒤 TAP allowlist의 고정 외부 콜드 주소로만 전송한다. cold→hot 서명은 Admin 밖의 외부 콜드 절차다. (treasury egress vault 는 1차 설계에서 제외 — 외부 전송 권한을 별도 vault 로 격리할 필요가 생기면 재검토, [sweep](06-sweep.md))
 
 ## 메시지 큐 — 4 토픽
 

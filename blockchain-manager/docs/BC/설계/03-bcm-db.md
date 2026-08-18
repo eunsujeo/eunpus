@@ -909,7 +909,7 @@ CREATE UNIQUE INDEX ux_bcm_bnds_exec_evt_vndr ON bcm_bnds_exec_evt_l(vndr_tx_id)
 
 snapshot·proposal·item·execution·item key·event에는 공통 append-only trigger를 건다. proposal 요청은 `bcm_chng_req_l.tgt_dvcd='BAND_S'`,
 `risk_dvcd='FUND'`, `aft_bnds_prop_id`로 연결하고 요청자 외 독립 승인자 1명을 요구한다. 실행 직전에는 snapshot 만료·완전성,
-정책/binding version, proposal/input hash, 목적지 allowlist와 treasury egress vault, item dependency를 다시 확인한다.
+정책/binding version, proposal/input hash, 목적지 allowlist와 외부 cold 출구(옴니버스), item dependency를 다시 확인한다.
 `COLD_TO_HOT`의 `COLD_DEPOSIT`은 Admin이 제출하지 않고 외부 입금 `FINALIZED` 관찰만 기록하며 이후 `HOT_REDISTRIBUTE`를 연다.
 
 현재 상태는 event의 `(exec_id,item_seq)`별 가장 큰 `evt_seq`로 파생한다. 전 item이 `RECONCILED`면 `COMPLETED`, 일부가
