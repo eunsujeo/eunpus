@@ -7218,8 +7218,7 @@ PHPC는 필리핀 최대 가상자산 기업 중 하나인 Coins.ph가 발행한
 [134]   원화의 안정된 미래 - KRW1. url: https://krw1.kr/ (visited on 12/29/2025).
 [135]   의안정보 시스템. url: https://likms.assembly.go.kr/bill (visited on 12/14/2025).
 [136]   인터넷 글로벌 경쟁력 강화를 위한 차세대 웹 표준 (HTML5) 확산 추진계획, 방송통신위원회.
-[137]   정산 관리 | Kakao Business 비즈니스 가이드. Sept. 2023. url: https://kakaobusiness.gitbook.io/
-        main/tool/checkout/calculate (visited on 12/18/2025).
+[137]   정산 관리 | 간편결제 비즈니스 가이드. Sept. 2023. (url 생략 — 2026-08-18 일반화).
 
 
 
@@ -7236,7 +7235,7 @@ PHPC는 필리핀 최대 가상자산 기업 중 하나인 Coins.ph가 발행한
 [139]   중앙일보. 한은 총재 ”원화 스테이블코인, 은행 중심으로 단계적 도입 필요”. url: https://www.
         joongang.co.kr/article/25360080.
 [140]   청년몽땅정보통. url: http://youth.seoul.go.kr (visited on 12/21/2025).
-[141]   카카오페이 포인트 제휴 안내서.
+[141]   간편결제 포인트 제휴 안내서.
 [142]   한국은행. [보도자료] 2025년 상반기중 전자지급서비스 이용현황. url: https://www.bok.or.kr/
         portal/bbs/B0000502/view.do?menuNo=201265&nttId=10093789.
 [143]   한국은행. 디지털 시대의 화폐, 혁신과 신뢰의 조화: 원화 스테이블코인의 주요 이슈와 대응방안. url:

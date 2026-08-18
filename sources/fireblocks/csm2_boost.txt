@@ -1,4 +1,4 @@
-Hi @Richard Smith, I have a few questions.
+Hi @CSM, I have a few questions.
 
 I ran some tests on gas boost:
 https://developers.fireblocks.com/reference/boost-transactions#replace-by-fee-rbf-for-evm-networks
@@ -19,18 +19,18 @@ In the callback handler, is there a way to determine that this request is a boos
 
 
 For the Signer, it is possible to identify the same nonce through the rawTx, but for the Approver, since rawTx is not provided, it seems difficult to determine whether this is a boosted transaction.
-Fireblocks Developer PortalBoost TransactionsTransactions can get stuck in the mempool due to low fees or a sudden surge in network fees. Stuck transactions can create a backlog of subsequent transactions from your vault account in some networks. To address this issue, Fireblocks customers can utilize the Replace By Fee (RBF) mechanism for EVM…Richard Smith  [오후 2:49]
-Hi @emjay.x 
+Fireblocks Developer PortalBoost TransactionsTransactions can get stuck in the mempool due to low fees or a sudden surge in network fees. Stuck transactions can create a backlog of subsequent transactions from your vault account in some networks. To address this issue, Fireblocks customers can utilize the Replace By Fee (RBF) mechanism for EVM…CSM  [오후 2:49]
+Hi @질문자 
 
 Yes. Please refer to: https://developers.fireblocks.com/reference/boost-transactions#replace-by-fee-rbf-for-evm-networks. Your colleague has also looked at this functionality before and we discussed this in another channel here.
 Correct, only for CONTRACT_CALL
 I believe you can use the same ID
 Please refer to here: https://fireblocks.enterprise.slack.com/archives/C0A9JFH2QNT/p1769998972219069
-Fireblocks Developer PortalBoost TransactionsTransactions can get stuck in the mempool due to low fees or a sudden surge in network fees. Stuck transactions can create a backlog of subsequent transactions from your vault account in some networks. To address this issue, Fireblocks customers can utilize the Replace By Fee (RBF) mechanism for EVM…Hi @Richard Smith,
-After a transaction has been broadcast to the blockchain network, if the gas fee needs to be increased due to network congestion, I assume a re-signing request will be sent to the co-signer. In this case, does the process operate the same as the normal signing flow, such as calling the callback handler to obtain approval?fireblocks-kakaoconsortium-poc의 스레드 | 2월 2일 | 메시지 보기emjay.x  [오후 4:22]
-스레드에 댓글 남김:@Richard Smith
+Fireblocks Developer PortalBoost TransactionsTransactions can get stuck in the mempool due to low fees or a sudden surge in network fees. Stuck transactions can create a backlog of subsequent transactions from your vault account in some networks. To address this issue, Fireblocks customers can utilize the Replace By Fee (RBF) mechanism for EVM…Hi @CSM,
+After a transaction has been broadcast to the blockchain network, if the gas fee needs to be increased due to network congestion, I assume a re-signing request will be sent to the co-signer. In this case, does the process operate the same as the normal signing flow, such as calling the callback handler to obtain approval?fireblocks-poc의 스레드 | 2월 2일 | 메시지 보기질문자  [오후 4:22]
+스레드에 댓글 남김:@CSM
 
-After checking with @Bruce, it seems that during the re-signing test, the co-signer was configured to act as both approver and signer.
+After checking with @질문자, it seems that during the re-signing test, the co-signer was configured to act as both approver and signer.
 
 As stated in the documentation:
 
@@ -39,34 +39,34 @@ If both approval and signing are requested for a transaction, one callback handl
 
 Because of this configuration, the request was handled as a signing request, and rawTx was therefore available.
 
-However, in the actual production setup, either whatto or Kakao JV will operate as an approver only, not as a signer. In that case, rawTx is not included in the callback payload, which creates a limitation.
+However, in the actual production setup, either the operator or the JV will operate as an approver only, not as a signer. In that case, rawTx is not included in the callback payload, which creates a limitation.
 
 Could you please advise on the recommended way to map a Boost transaction to its original transaction under this constraint?
-번역됨||Bruce  [오후 7:30]
-Hi @Richard Smith,
+번역됨||질문자  [오후 7:30]
+Hi @CSM,
 If rawTx were available at the approval stage, the approver would be able to perform much more thorough validation. May I ask why the system was designed so that rawTx is not provided at the approval stage?
 Also, would it be possible for your team to consider adding rawTx to the approval stage in the future? If so, could you share how difficult or feasible such a change might be? (편집됨) 
-Richard Smith  [오전 2:00]
+CSM  [오전 2:00]
 I'll find out and come back to you on this
-emjay.kp(엠제이)/스테이블코인테크TF  [오전 8:19]
-(In addition to the rawTx requested by Bruce) If replaceTxByHash is also delivered to the callback handler we would be able to establish the relationship between the original transaction and the boosted transaction in a blockchain-agnostic manner.
+질문자  [오전 8:19]
+(In addition to the rawTx requested earlier) If replaceTxByHash is also delivered to the callback handler we would be able to establish the relationship between the original transaction and the boosted transaction in a blockchain-agnostic manner.
 
 For boost transactions, could you include the replaceTxByHash parameter in the payload sent to the callback handler (for both approval and signing requests)? (편집됨) 
-번역됨||Richard Smith  [오후 3:30]
-The rawTx field is only available in the signing stage because the approval stage happens before serialization. The main reason for that is approvals (especially manual approvals) can take time and until a transaction is approved fees can change so we serialize transactions only after approval stage is completed. If Kakao want manual approvals during the signing stage you can do so using the callback handler’s RETRY mechanism. Currently, the callback handler can get up to 20 retries every ~3 minutes (total ~1 hour), so while the callback is returning RETRY to the cosigner, Kakao can implement a manual approvals logic on your server.
-emjay.x  [오후 3:40]
+번역됨||CSM  [오후 3:30]
+The rawTx field is only available in the signing stage because the approval stage happens before serialization. The main reason for that is approvals (especially manual approvals) can take time and until a transaction is approved fees can change so we serialize transactions only after approval stage is completed. If you want manual approvals during the signing stage you can do so using the callback handler’s RETRY mechanism. Currently, the callback handler can get up to 20 retries every ~3 minutes (total ~1 hour), so while the callback is returning RETRY to the cosigner, you can implement a manual approvals logic on your server.
+질문자  [오후 3:40]
 I understand the explanation that it is difficult to provide rawTx at the approval stage.
 
 (My understanding is as follows: once the nonce is serialized, if another transaction with the same nonce is created, the previously approved transaction cannot be reused. Additionally, if the system blocks subsequent transactions when there is a pending transaction at the approval stage, it becomes impossible to generate a new transaction using the same nonce.)
 
-However, in Kakao’s transaction governance model, approval must be obtained from two separate entities — Kakao JV and whatto. Because of this dual-entity co-signing(co-approving) requirement, we cannot rely on a manual approval flow using a RETRY mechanism. Both co-signers must be able to deterministically identify the relationship between the original transaction and the boosted transaction.
+However, in our transaction governance model, approval must be obtained from two separate entities — the JV and the operator. Because of this dual-entity co-signing(co-approving) requirement, we cannot rely on a manual approval flow using a RETRY mechanism. Both co-signers must be able to deterministically identify the relationship between the original transaction and the boosted transaction.
 
 Would it be possible to include the replaceTxByHash parameter in the callback handler requests for both the approval stage and the signing stage? This would allow both entities to correlate the boosted transaction with the original transaction.
-Richard Smith  [오전 12:18]
+CSM  [오전 12:18]
 The challenge isn't around re-sending the same transaction with the same nonce. The issue is that we can't serialise the transaction until approvals have been received. If we serialise the transaction before approvals are received, there is a risk that on-chain fees change between when the transaction is submitted for approval and the time that all approvals are received (this could be many, many hours). Therefore the TxByHash can only be sent at signing stage.
 
 Remember that this is only for transactions that are submitted with a gas fee that is too low. Have you considered automatically canceling the TX by the API and the resubmitting using a different nonce?
-emjay.x  [오전 9:25]
+질문자  [오전 9:25]
 I fully understood the difficulty serialization before approval.
 
 However, since the replaceTxByHash parameter passed to createTransaction is independent of serialization, wouldn’t it be possible to deliver it during both the approval stage and the signing stage?
@@ -74,32 +74,32 @@ However, since the replaceTxByHash parameter passed to createTransaction is inde
 Using DropTx to invalidate the previous transaction is a reasonable approach. However, after testing it, we confirmed that even in this case, the co-signer does not receive any information about the previous transaction (e.g., previous txId, replacedTxHash, nonce, etc.).
 
 For DropTransaction as well, the co-signer must be able to identify which original transaction the request refers to during the approval stage.
-번역됨||babel.w(바벨)/스테이블코인테크TF  [오전 11:29]
- 님에 의해 fireblocks-kakaoconsortium-poc에 추가되었습니다.Richard Smith  [오후 1:51]
+번역됨||동료  [오전 11:29]
+ 님에 의해 fireblocks-poc에 추가되었습니다.CSM  [오후 1:51]
 Thanks for the explanation
 
 So I can work with our product team on a solution. Can I ask you to provide a flow diagram to outline the approval and signing flow. Please include all parties, timings, methods of approval/signing.
 
 Once I have that, I can work with our team on some ideas.
-번역됨||emjay.x  [오후 7:10]
-스레드에 댓글 남김:Hi @Richard Smith
-In the current architecture, Kakao JV and whatto are not within the same trust boundary, and due to communication restrictions imposed by the bank, direct API calls between the two entities (the JV system and the bank’s blockchain system)  are not possible.
+번역됨||질문자  [오후 7:10]
+스레드에 댓글 남김:Hi @CSM
+In the current architecture, the JV and the operator are not within the same trust boundary, and due to communication restrictions imposed by the bank, direct API calls between the two entities (the JV system and the bank’s blockchain system)  are not possible.
 
-As a result, whatto cannot rely on the dropTransaction response generated on the Kakao JV side.
+As a result, whatto cannot rely on the dropTransaction response generated on the JV side.
 
 Additionally, we assume a zero-trust model between the two entities. Any inter-entity communication cannot be implicitly trusted.
 
-However, the Callback Handler payload can be trusted because it is generated and signed by Fireblocks, and therefore cannot be modified or forged by Kakao JV.
+However, the Callback Handler payload can be trusted because it is generated and signed by Fireblocks, and therefore cannot be modified or forged by the JV.
 
-Therefore, we would require an approval mechanism that provides a verifiable linkage between the original transaction and the corresponding dropTransaction/boostTransaction request (e.g., through explicit inclusion of originalTxId, replaceTxByHash, or equivalent immutable identifiers in the callback payload), without requiring direct API trust between Kakao JV and whatto.
+Therefore, we would require an approval mechanism that provides a verifiable linkage between the original transaction and the corresponding dropTransaction/boostTransaction request (e.g., through explicit inclusion of originalTxId, replaceTxByHash, or equivalent immutable identifiers in the callback payload), without requiring direct API trust between the JV and the operator.
 
-@Bruce @mob.bit @marcus.m25(마커스)/서비스플랫폼실 (편집됨) 
-emjay.kp(엠제이)/스테이블코인테크TF  [오전 11:05]
-Hi  @Richard Smith.
+@질문자 @질문자 @동료 (편집됨) 
+질문자  [오전 11:05]
+Hi  @CSM.
 We’re just wrapping up the Success Criteria for the PoC.
 
 Is there any documentation regarding Fireblocks' RTO/RPO/SLO, as well as how the two keyshares managed by Fireblocks are backed up and geographically dispersed to prepare for disaster recovery scenarios?
-Richard Smith  [오전 11:29]
+CSM  [오전 11:29]
 
 RTO: Unified value of 6 hours
 RPO: 0, meaning minimal to no data loss in most disaster recovery scenarios.
@@ -111,8 +111,8 @@ Key Share Backup & Geo-Dispersal
 MPC Architecture & Key Share Distribution
 Fireblocks uses a secure Multi-Party Computation (MPC) architecture for wallet key management:
 
-For each signing device in Kakao (could be mobile device and/or API Co-Signer):
-One key share is generated on the Kakao device.
+For each signing device on your side (could be mobile device and/or API Co-Signer):
+One key share is generated on your device.
 Two key shares are generated on separate Fireblocks-managed Intel SGX servers.
 These Fireblocks-managed servers are hosted across geo-redundant multi-cloud infrastructure (AWS, Azure, GCP), ensuring resilience and global dispersal of key shares.  
 
@@ -120,11 +120,11 @@ These Fireblocks-managed servers are hosted across geo-redundant multi-cloud inf
 Backup and Recovery Solutions
 Fireblocks provides a comprehensive backup and recovery program, including:
 
-A Disaster Recovery Kit, delivered during onboarding, enabling Kakao to securely back up and recover the key shares—even if you lose access to all of them or Fireblocks suspends operations.
+A Disaster Recovery Kit, delivered during onboarding, enabling you to securely back up and recover the key shares—even if you lose access to all of them or Fireblocks suspends operations.
 Data backups are conducted daily (and at additional intervals for critical assets), with backups encrypted at rest and in transit. Restorations are tested at least annually in dedicated environments to verify recovery integrity. Backup files are stored in geographically distinct data centers.
 Key share recovery mechanisms include:
 Soft Key Recovery: Device- or key share-specific recovery (e.g., lost device). Requires at least one accessible key share (existing Owner/Admin user).
-Hard Key Recovery: Restoration of the whole wallet in catastrophic scenarios (e.g., all devices inaccessible, Fireblocks permanently out of service). Requires more rigorous processes which can be managed in-house with Kakao, or outsourced to partners including Station70/Coin Cover   
+Hard Key Recovery: Restoration of the whole wallet in catastrophic scenarios (e.g., all devices inaccessible, Fireblocks permanently out of service). Requires more rigorous processes which can be managed in-house, or outsourced to partners including Station70/Coin Cover   
 Geographic Redundancy: The combination of customer device shares and Fireblocks’ secured, cloud-agnostic infrastructure ensures key shares are not only logically, but also geographically, separated to withstand regional failures or cloud provider outages.   
 
 
@@ -132,8 +132,8 @@ Compliance and Testing
 
 Fireblocks is ISO 22301 (Business Continuity Management) certified and undergoes annual SOC2 Type 2 audits, including backup and recovery processes.
 Regular DR and BCP testing is documented; the last noted Disaster Recovery test was completed successfully with zero adverse findings. Tests involve measuring start-to-stop recovery times and outcomes
-emjay.x  [오전 11:37]
-스레드에 댓글 남김:@Richard Smith
+질문자  [오전 11:37]
+스레드에 댓글 남김:@CSM
 
 The internal note can be arbitrarily set by the JV, so if the JV were ever compromised, it would no longer be a trustworthy field. For that reason, we did not consider using the internal note.
 

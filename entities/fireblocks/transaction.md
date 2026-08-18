@@ -302,7 +302,7 @@ CONFIRMING 트랜잭션은 reorg 가 나도 **BROADCASTING 으로 회귀하지 �
 
 얕은 reorg 로 잠깐 빠졌다 재편입되는 케이스나 confirmation 수 감소(예: 1→0)는 확답 밖 — 상태 실시간 반영 원칙상 CONFIRMING 유지·confirmation 재계산으로 해석(미확정). "ORPHANED" 같은 별도 신호는 없다 (Q-2026-07-03-T04 ANSWERED).
 
-(source: `2026-07-03__fireblocks-support-slack__reorg-status-semantics.md` = raw `sources/fireblocks/csm.txt` — Fireblocks CSM Richard Smith · 백엔드 팀 확인)
+(source: `2026-07-03__fireblocks-support-slack__reorg-status-semantics.md` = raw `sources/fireblocks/csm.txt` — Fireblocks CSM 담당자 · 백엔드 팀 확인)
 
 ### Chain-Specific Blockchain Info (p.BlockchainInfo)
 

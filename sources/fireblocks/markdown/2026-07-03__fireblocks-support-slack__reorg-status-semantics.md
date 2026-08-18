@@ -1,6 +1,6 @@
 # reorg 시 트랜잭션 상태 semantics — Fireblocks Support 확답 (2026-07-03)
 
-> 출처: Slack 대화 — 질문자 Bruce(사내), 답변자 **Richard Smith(Fireblocks Support)**, "백엔드 팀에 의해 확인됨" 명시. 공개 문서가 아닌 support 채널 확답. Q-2026-07-03-T04 ANSWERED 근거.
+> 출처: Slack 대화 — 질문자(사내), 답변자 **CSM(Fireblocks Support)**, "백엔드 팀에 의해 확인됨" 명시. 공개 문서가 아닌 support 채널 확답. Q-2026-07-03-T04 ANSWERED 근거.
 
 ## 확인된 사실 (Fireblocks 백엔드 팀 확인)
 

@@ -6602,7 +6602,7 @@ related: [entity-slug ...]
 사용자 명시: "이 문서는 공식문서는 아니고 현재 설계 초기 단계로 작성한거에요. 이 부분 참고해서 MODE C 로 진행해 주세요."
 
 ### Source 추가
-- `sources/bank/DAW_회계설계_자문요청.pptx` (binary, 11 슬라이드, 은행 회계자금 개발팀, 2026-04-30 자문 미팅)
+- `sources/bank/DAW_회계설계_자문요청.pptx` (binary, 11 슬라이드, 은행 회계자금 개발팀, 2026-04-30 자문 미팅) — 원본 pptx 는 2026-08-18 저장소에서 제거(회사명 포함 바이너리), 추출본만 보존
 - `sources/bank/2026-04-30__bank__DAW_accounting_design_consultation-extracted.md` (외부 도구 unzip + python regex 로 추출한 텍스트 + 메타데이터)
 
 ### Classification
@@ -7475,7 +7475,7 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 신규 entity: 0
 
 ## Stage 129 (2026-07-03) — T04 ANSWERED: reorg 무효화 신호 = FAILED·CANCELLED·만료 + DROPPED_BY_BLOCKCHAIN
-- source: Fireblocks Support 확답 (Slack — Richard Smith, "백엔드 팀에 의해 확인됨" 명시, 사용자 제공). extract: sources/fireblocks/markdown/2026-07-03__fireblocks-support-slack__reorg-status-semantics.md
+- source: Fireblocks Support 확답 (Slack — CSM 담당자, "백엔드 팀에 의해 확인됨" 명시, 사용자 제공). extract: sources/fireblocks/markdown/2026-07-03__fireblocks-support-slack__reorg-status-semantics.md
 - 확답 요지: ① CONFIRMING→BROADCASTING 회귀 없음 ② reorg 로 취소되면 실패·취소·만료 + subStatus DROPPED_BY_BLOCKCHAIN ③ 즉시 반영(유예 없음). 공식 문서 교차: reference-sub-statuses.md 의 DROPPED_BY_BLOCKCHAIN = "mined but dropped" — 정합. 얕은 reorg 재편입은 명시 확답 밖(실시간 반영 원칙상 CONFIRMING 유지·confirmation 재계산 해석)
 - 반영: 05-deposit reorg 문단("지원팀 문의 필요" → 확정 신호·BROADCASTING 회귀 없음·얕은 reorg 는 CONFIRMING 유지) + subStatus 표에 FAILED/DROPPED_BY_BLOCKCHAIN 행 · 04-detect-confirm 급소 표 reorg 행 + 상세 다이어그램 분기 라벨 · scenario-deposit·component-indexer(본문·meta·의사코드) · confluence 02·03
 - ANSWERED: Q-2026-07-03-T04
@@ -7632,7 +7632,7 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 신규 entity: 0
 
 ## Stage 150 (2026-07-09) — reorg 상태 semantics 정본 promote (Fireblocks Support Slack)
-- source: sources/fireblocks/csm.txt (= 기존 extract 2026-07-03__fireblocks-support-slack__reorg-status-semantics.md · Fireblocks CSM Richard Smith · 백엔드 팀 확인)
+- source: sources/fireblocks/csm.txt (= 기존 extract 2026-07-03__fireblocks-support-slack__reorg-status-semantics.md · Fireblocks CSM 담당자 · 백엔드 팀 확인)
 - ANSWERED 재확인: Q-2026-07-03-T04 — reorg 시 CONFIRMING↛BROADCASTING, 드랍 = status FAILED(또는 CANCELLED·만료) + subStatus DROPPED_BY_BLOCKCHAIN. "ORPHANED" 신호는 없음. 얕은 reorg 재편입·confirmation 감소(1→0)는 확답 밖(미확정)
 - 정본 promote: open-Q 에만 있던 확답을 entities/fireblocks/transaction.md 본문("reorg 시 상태 전이" 절)으로 올림 — 그간 정본 페이지에 누락돼 있었음
 - 영향받은 페이지: entities/fireblocks/transaction.md (frontmatter last_updated_stage 150·source_count 9 · reorg 절·Sources 추가) · open-questions/fireblocks.md (Q-T04 정본 링크)
