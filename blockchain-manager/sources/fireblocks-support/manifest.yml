@@ -20,3 +20,8 @@ sources:
     provenance: user-provided conversation transcript
     verification: external KRWK issuer use case; wallet design applicability explicitly excluded
     sha256: cd791c4ee758dc8917750379c75648662ffb43f79af6bad4fa28397a1e0fca0c
+  - id: FB-SUP-004
+    file: 2026-08-18__gasless-relay-billing-conversation.md
+    provenance: user-provided conversation transcript (received 2026-08-18)
+    verification: billing terms are vendor statements; boost/manual-RBF cross-checked against public help center article 23508430639516
+    sha256: 2f40a8fee03ca3602649457afa7c44c8b3acc79a89eb9b39b3d98bc427d903bd
