@@ -71,13 +71,13 @@ flowchart LR
 ```mermaid
 flowchart LR
   CO["회사자산 vault"]
-  CV["고객 vault"]
+  OM["옴니버스 — 고객 몫"]
 
-  CO -->|4 온램프 대응 · 배치| CV
-  CV -->|5 오프램프 대응| CO
+  CO -->|4 온램프 대응 · 배치| OM
+  OM -->|5 오프램프 대응| CO
 
   classDef vault fill:#dbeafe,stroke:#2563eb
-  class CO,CV vault
+  class CO,OM vault
 ```
 
 ## 확정된 이동
@@ -87,8 +87,8 @@ flowchart LR
 | 1 | 고객 입금 | 외부 → 고객 vault | 고객 | `DEPOSIT` → deposit-events | [흐름](02-bcm-flow.md) |
 | 2 | sweep — 입금 모으기 | 고객 vault → 옴니버스 | 매니저 — approve + transferFrom 배치 · gasless | `SWEEP` — 큐에 싣지 않음 | [sweep](06-sweep.md) |
 | 3 | 고객 출금 — 타VASP 송금 | 출금 풀 → 외부 주소 | DAW-CORE 가 매니저 API 로 제출 — gasless · 컴플라이언스 게이트 통과 후 | `WITHDRAWAL` → withdrawal-events | [흐름](02-bcm-flow.md) |
-| 4 | 델타 정산 — 온램프 대응 | 회사자산 vault → 고객 vault | 델타 배치 — 원장 선반영 후 사후 이동 | `INTERNAL` → internal-events | [램프·스왑](../../블록체인매니저/설계/10-ramp-swap.md) |
-| 5 | 델타 정산 — 오프램프 대응 | 고객자산 쪽 → 회사자산 vault | 〃 | 〃 | 〃 |
+| 4 | 델타 정산 — 온램프 대응 | 회사자산 vault → 옴니버스 | 델타 배치 — 원장 선반영 후 사후 이동 | `INTERNAL` → internal-events | [램프·스왑](../../블록체인매니저/설계/10-ramp-swap.md) |
+| 5 | 델타 정산 — 오프램프 대응 | 옴니버스 → 회사자산 vault | 〃 | 〃 | 〃 |
 | 6 | 브릿지교환 | **옴니버스 ↔ 회사자산 vault** — 남는 BC자산을 주고 부족한 BC자산을 받는 맞교환 (2026-08-18 결정 — 교환 당사자는 옴니버스) | 운영 | 두 다리를 짝으로 기록 | [브릿지](../../블록체인매니저/브릿지/01-problem.md) |
 | 7 | 콜드교환 | **옴니버스 ↔ 외부 콜드** — 맞교환 · 물리 경로는 egress 경유. 콜드 쪽은 서명·전파 분리, 진행 중 그 콜드월렛의 다른 출금 잠금 | 운영 | — | 〃 |
 | 8 | 밴드S — 핫 → 콜드 | 옴니버스·출금 풀 → **treasury egress** (내부이체) → 외부 콜드 (TAP 고정 주소) — 상한 초과 시 전 자산 동일 비율. 단계마다 FINALIZED 후 진행, 진행분은 예약 | 판정 코어 · 실행 매니저 | — | [sweep](06-sweep.md) |
