@@ -19,6 +19,7 @@ status: To Do
 | [sweep 설계 — 정책 적용](06-sweep.md) | 입금 모으기·핫콜드 밴드S — 트리거·건별 실행·비채택 배치 대안·Fireblocks 대응 (정책 일부 수신 — 진행 중) |
 | [벤더 자산 매핑](07-asset-master.md) | 우리 (네트워크, 토큰) ↔ 벤더 assetId · 등록 관문 · Admin API |
 | [블록체인 매니저 Admin](08-bcm-admin.md) | 운영 조사·컨트랙트·실행 정책·밴드S·승인·비상 운영과 UI/UX 경계 |
+| [자산 이동 지도](09-asset-map.md) | 시나리오별 vault 간 이동 한 장 — 확정 이동·미정 이동·자산 경계 (조립 문서) |
 
 ## 구성 요소 — 한 장
 
