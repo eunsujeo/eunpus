@@ -182,6 +182,7 @@ async function card(absFile, category, subcategory) {
     status: norm(meta.status),
     view: meta.view || '',
     embed: meta.embed || '',
+    group: meta.group || '',
     summary,
     updatedAt: cardDate(meta, st.mtime.toISOString()),
   };

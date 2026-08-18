@@ -231,6 +231,12 @@ function boardCards() {
 function renderBoard() {
   const items = boardCards();
 
+  // view: grid 문서만 있는 분류는 상태 컬럼 없이 카드 목록으로 보여준다.
+  if (items.length && items.every((c) => c.view === 'grid')) {
+    renderCardGrid(items);
+    return;
+  }
+
   // view: doc 문서만 있는 분류는 칸반(4컬럼) 대신 원본 문서를 그대로 보여준다
   if (items.length && items.every((c) => c.view === 'doc')) {
     // embed 지정 문서 하나면 원본 뷰어(HTML)를 iframe 으로 그대로 띄운다
@@ -279,7 +285,7 @@ function renderBoard() {
   boardMeta.textContent = `문서 ${items.length}건`;
 }
 
-// 정적 내보내기 뷰 — 문서를 카드 격자로 나열한다 (상태 컬럼·드래그 없음).
+// 카드 목록 뷰 — 문서를 카드 격자로 나열한다 (상태 컬럼·드래그 없음).
 // 카드 클릭 = 기존 미리보기 모달(openPreview) — 같은 중분류 형제로 이전/다음까지 그대로 동작.
 function renderCardGrid(items) {
   boardMeta.textContent = `문서 ${items.length}건`;
