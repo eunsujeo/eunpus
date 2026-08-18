@@ -54,9 +54,9 @@ Admin은 단순 설정 CRUD가 아니라 다음 운영 순서를 한곳에서 �
 
 ```mermaid
 flowchart LR
-    U[운영자 브라우저] --> F[Blockchain Manager Admin]
-    F --> B[Admin BFF]
-    B --> M[Blockchain Manager Admin API]
+    U[운영자 브라우저] --> F[Blockchain Manager Admin Frontend]
+    F --> B[Blockchain Manager Admin BFF]
+    B -->|mTLS + 단기 JWT| M[Blockchain Manager Admin API<br/>private listener]
     M --> D[(BCM DB)]
     M --> V[Fireblocks 조회]
     M --> R[온체인 읽기]
@@ -65,28 +65,43 @@ flowchart LR
 ```
 
 - 브라우저가 블록체인 매니저 API를 직접 호출하지 않는다.
+- Admin Frontend와 BFF는 DAW-CORE와 분리된 매니저 전용 애플리케이션으로 이 저장소에서 함께 운영한다.
+- T10.2의 첫 용도는 읽기 전용 기능 테스트다. frontend·BFF와 대상 BCM은 기본적으로 loopback에 바인딩하고 상태 변경 API를 BFF에 노출하지 않는다.
 - BFF가 Admin 세션·역할을 확인하고 운영자 식별자를 전달한다.
 - `X-Employee-No`·`X-Branch-Code`는 감사 정보이며 그 자체가 인증 수단은 아니다.
-- 블록체인 매니저 Admin API는 배포 환경에서 Admin BFF만 접근하도록 망 수준으로 제한한다.
+- 블록체인 매니저 Admin API는 `bcm-api`와 같은 애플리케이션으로 배포하되 일반 업무 API와 분리한 private listener/ingress에 두고 Admin BFF만 접근시킨다.
+- 공유 환경의 BFF→BCM은 mTLS 서비스 신원과 5분 이하의 단기 서명 JWT를 함께 검증한다. JWT는 `aud=bcm-admin-api`, 직원번호, 부점코드, 역할, 세션·요청 ID를 담는다.
 - Fireblocks 자격·RPC 자격·multisig 자격은 브라우저에 전달하지 않는다.
-- BFF의 실제 인증 방식, 역할 claim, 블록체인 매니저와의 서비스 간 신뢰 방식은 배포 설계에서 확정한다.
+- 사내 인증 제공자의 실제 그룹은 BFF에서 아래 BCM 역할 claim으로 매핑한다. 기능 테스트 profile은 조회 역할만 사용하고 loopback 밖에서 시작하지 않는다. 구체 인증 제품은 이 설계의 경계를 바꾸지 않는다.
 
 ## 사용자와 권한
 
 역할의 발급·회수는 외부 Admin 권한 시스템 소관이다. 이 문서는 기능별 필요한 권한만 정의한다.
 
-| 역할 | 할 수 있는 일 |
-|---|---|
-| 조회자 | 운영 상태·정책·컨트랙트·감사 이력 조회 |
-| 운영자 | 변경 요청 작성, 복구 요청, 허용된 신속 중지 |
-| 승인자 | 정책·밴드S 실행·재개 요청 검토와 승인·거절 |
-| 보안 승인자 | 컨트랙트 활성화, 보안 상한 확대, 운영자 변경 확인 |
-| 감사자 | 요청·승인·외부 응답·실행 결과의 읽기 전용 조회 |
+| 역할 claim | 역할 | 할 수 있는 일 |
+|---|---|---|
+| `BCM_VIEWER` | 조회자 | 운영 상태·정책·컨트랙트·감사 이력 조회 |
+| `BCM_OPERATOR` | 운영자 | 변경 요청 작성, 복구 요청, 허용된 신속 중지 |
+| `BCM_APPROVER` | 승인자 | 정책·밴드S 실행·재개 요청 검토와 승인·거절 |
+| `BCM_SECURITY_APPROVER` | 보안 승인자 | 컨트랙트 활성화, 보안 상한 확대, 운영자 변경 확인 |
+| `BCM_AUDITOR` | 감사자 | 요청·승인·외부 응답·실행 결과의 읽기 전용 조회 |
+
+### 위험 등급과 정족수
+
+| 위험 등급 | 대표 작업 | 필요한 사람 |
+|---|---|---|
+| 조회 | 상태·감사·증적 조회 | 해당 조회 역할 1명 |
+| 신속 중지 | 출금·sweep·approve 신규 실행 중지 | 운영자 1명, 사후 감사 필수 |
+| 일반 변경 | hard ceiling 안의 운영값 변경, 웹훅 복구 요청 | 요청자 + 독립 승인자 1명 |
+| 자금 실행 | 승인된 밴드S hot→cold, allowance 회수 | 요청자 + 독립 승인자 1명 |
+| 보안 변경 | 컨트랙트 활성화, 상한 확대, 고정 목적지 변경 | 요청자 + 서로 다른 승인자 2명, 그중 보안 승인자 1명 |
+| 재개 | 중지 해제, 보안 기능 재활성화 | 요청자 + 서로 다른 승인자 2명, 그중 보안 승인자 1명 |
 
 공통 규칙:
 
 - 요청자와 최종 승인자를 분리한다.
-- 승인 정족수와 어떤 변경에 보안 승인자가 필요한지는 운영 전 확정한다.
+- 고위험 요청의 두 승인자는 서로 다른 사람이어야 하고 요청자는 어느 정족수에도 포함하지 않는다.
+- 거절·만료·대상 snapshot 변화 뒤에는 기존 승인을 재사용하지 않는다.
 - 중지는 복구보다 빠르게 할 수 있어야 한다. 재개·상한 확대·컨트랙트 활성화는 중지보다 강한 승인 조건을 쓴다.
 - 프론트 권한 표시는 편의 기능이다. 실제 허용 여부는 서버가 판단한다.
 
@@ -108,7 +123,26 @@ flowchart LR
 
 ## 핵심 화면 와이어프레임
 
-와이어프레임은 시각 디자인이 아니라 정보 우선순위와 행동 위치의 계약이다. 색·타이포그래피·컴포넌트 라이브러리는 Admin Frontend 저장소와 기존 사내 디자인 시스템을 확인한 뒤 확정한다.
+와이어프레임은 정보 우선순위와 행동 위치의 계약이다. 사내 디자인 시스템이 없으므로 아래 토큰과
+`blockchain-manager-svc/docs/admin-reference/`의 Dashboard·Transaction Detail·Policy Approval·Band S Simulation
+기준 화면을 초기 UI 정본으로 사용한다.
+
+### 디자인 토큰
+
+| 구분 | 토큰·값 |
+|---|---|
+| 배경 | canvas `#080d12`, shell `#0d141b`, panel `#121c25`, raised `#172530`, selected `#17312f` |
+| 선 | subtle `#22313e`, strong `#395064` |
+| 텍스트 | primary `#eef5f7`, secondary `#a7bac5`, muted `#758b99` |
+| 의미색 | accent `#5ee0c1`, info `#78adff`, success `#75d98b`, warning `#f2bd5a`, danger `#ff7770` |
+| 간격 | 4·8·12·16·24·32px |
+| 모서리 | 3px·6px. 상태 pill과 과도한 둥근 카드는 쓰지 않는다 |
+| 글꼴 | UI `IBM Plex Sans KR` 우선, 식별자·금액 `IBM Plex Mono` 우선. 대체 글꼴은 배포 셸이 제공한다 |
+| 동작 | 장식 애니메이션 없음. 필요한 상태 피드백은 opacity·transform만 200ms 이하, reduced motion 존중 |
+
+- 화면은 운영 관제 원장처럼 증적과 다음 행동을 먼저 보여 주며 화면마다 주 accent는 하나만 쓴다.
+- 상태는 아이콘·텍스트·색을 함께 쓰고, 금액·비율·시각은 tabular 숫자로 정렬한다.
+- destructive action은 diff와 영향 범위를 다시 보여 주는 접근 가능한 확인 대화상자를 거친다.
 
 ### 공통 셸과 대시보드
 
@@ -278,6 +312,12 @@ flowchart LR
 
 Admin은 BCM이 호출할 컨트랙트의 레지스트리와 활성 binding을 관리한다. 배포와 multisig 서명은 하지 않는다.
 
+- 소스·ABI·재현 빌드는 별도 `blockchain-manager-contracts` 저장소의 서명된 immutable release가 정본이다.
+- release에는 source commit, compiler·optimizer 설정, ABI/artifact SHA-256, 예상 runtime bytecode hash, 배포 manifest를 포함한다.
+- 실제 주소·code·불변값은 BCM 서버가 사내 RPC gateway에서 pinned block 기준으로 읽은 온체인 값이 정본이다.
+- 활성화·재개 때 서로 독립된 두 RPC endpoint의 `chainId`, code hash, 불변값이 모두 일치해야 한다. 실패·stale·불일치는 fail-closed다.
+- 감사·TAP·Callback·Gasless·회수 훈련 문서는 승인된 문서 보관소 URI와 SHA-256으로 등록하고 Admin DB에는 불변 evidence snapshot을 남긴다.
+
 | 보관·검증 대상 | 내용 |
 |---|---|
 | 식별 | 용도, 네트워크, 버전, 주소 |
@@ -287,7 +327,8 @@ Admin은 BCM이 호출할 컨트랙트의 레지스트리와 활성 binding을 �
 | 상한 | token allowlist, 최대 M, 건별·배치 총액 |
 | 증적 | 독립 감사, TAP·Callback·Gasless·회수 훈련 결과와 검증 시각 |
 
-개념 상태는 후보 → 검증 완료 → 활성 → 중지 → 은퇴 순서다. 실제 DB 상태코드와 전이 조건은 [DB](03-bcm-db.md) 개정에서 확정한다.
+상태는 후보 → 검증 완료 → 활성 → 중지 → 은퇴 순서이며 실제 저장코드와 불변 원장에서의 파생 규칙은
+[DB](03-bcm-db.md#상태코드와-현재-상태-파생)를 따른다.
 
 - 주소·버전은 직접 수정하거나 삭제하지 않는다.
 - 같은 네트워크·용도에는 활성 컨트랙트 하나만 허용한다.
@@ -297,7 +338,8 @@ Admin은 BCM이 호출할 컨트랙트의 레지스트리와 활성 binding을 �
 
 ### 실행 정책
 
-정책은 행을 직접 수정하지 않고 불변 버전을 생성한다. 개념 상태는 초안 → 검토 → 승인 → 활성 → 대체 순서이며 DB 상태코드는 별도 확정한다.
+정책은 행을 직접 수정하지 않고 불변 버전을 생성한다. 상태는 초안 → 검토 → 승인 → 활성 → 대체 순서이며 실제 저장코드와
+현재 상태 파생 규칙은 [DB](03-bcm-db.md#상태코드와-현재-상태-파생)를 따른다.
 
 | 정책 층 | 예 | 변경 통제 |
 |---|---|---|
@@ -313,7 +355,7 @@ Admin은 BCM이 호출할 컨트랙트의 레지스트리와 활성 binding을 �
 
 ### 밴드S
 
-밴드S는 고객 vault → 옴니버스 sweep과 다른 핫·콜드 유동성 관리다. 정책과 미확정 계산 입력은 [sweep](06-sweep.md)이 정본이다.
+밴드S는 고객 vault → 옴니버스 sweep과 다른 핫·콜드 유동성 관리다. 계산·입력·실행 경계는 [sweep](06-sweep.md)이 정본이다.
 
 | 화면 | 내용 |
 |---|---|
@@ -325,9 +367,14 @@ Admin은 BCM이 호출할 컨트랙트의 레지스트리와 활성 binding을 �
 | 실행 | 제출 intent, 벤더 거래, 공통 상태, 완료 후 잔액 대사 |
 
 - 프론트는 밴드S 금액을 계산하지 않는다.
-- 블록체인 매니저 서비스는 승인된 실행 지시를 멱등 제출·추적하는 실행기다. 계산 주체와 입력 전달 계약은 DAW-CORE/Admin 백엔드 정합 후 확정한다.
+- DAW-CORE Treasury/Admin 백엔드가 환율·NAV·원장과 체인 관찰 잔액으로 immutable input snapshot과 이동안을 계산한다.
+- 블록체인 매니저 서비스는 승인된 실행 지시를 검증·멱등 제출·추적하는 실행기다.
+- 고객 vault 잔액은 기존 sweep으로 옴니버스에 모으고, 옴니버스·출금 풀의 이동 가능 잔액은 내부이체로 전용 treasury egress vault에 모은다. 외부 콜드로 나가는 출구는 이 vault 하나다.
+- 첫 출시는 TAP allowlist의 고정 외부 콜드 주소만 허용한다. Fireblocks cold workspace는 이동·권한·수수료 실측 뒤 별도 정책 버전으로 추가한다.
+- cold→hot은 외부 콜드 서명 절차로 egress vault 입금을 확인한 뒤 강화 정족수로 출금 풀 재분배를 승인한다.
 - 오래되거나 일부 누락된 입력으로 이동안을 승인할 수 없다.
 - simulation과 실제 실행은 같은 정책 버전·입력 snapshot을 참조해야 한다.
+- 총자산 `A=관찰 hot H+관찰 cold C`, 상한 초과 이동량은 `H-목표비율×A`다. 진행 중 hot→cold 예약분은 유효 hot에서 한 번만 빼고 분모 `A`에서는 빼지 않는다.
 - 자동화는 읽기 전용 → shadow simulation → 수동 승인 실행 → 제한 자동화 순으로 연다.
 
 ### 승인함
@@ -366,7 +413,8 @@ sweep 사고의 기본 순서는 TAP batch 차단 → 컨트랙트 pause → 운
 - Fireblocks·온체인·정책 관리 외부 대조 결과
 - 실패·재시도·취소·대체 관계
 
-감사 원장은 추가 전용을 기본으로 하고 보존 기간·민감정보 마스킹·외부 감사 체계 합류 여부는 DB 설계 전에 확정한다.
+감사 원장은 추가 전용이며 물리 삭제 없이 영구 보존한다. 외부 감사 보관소 합류가 확정되면 검증된 archive migration으로만
+보존 정책을 바꾼다. RPC credential·시크릿·raw payload는 저장하지 않고 논리 endpoint ID와 구조화된 관찰값만 남긴다.
 
 ## API 계약 원칙
 
@@ -403,22 +451,26 @@ sweep 사고의 기본 순서는 TAP batch 차단 → 컨트랙트 pause → 운
 
 | 문서 | 후속 반영 |
 |---|---|
-| [개요](01-infra.md) | Admin Frontend·BFF·Admin API와 망 경계, 이 문서 링크 |
+| [개요](01-infra.md) | 독립 Blockchain Manager Admin Frontend·BFF, 기능 테스트와 공유 환경 경계 |
 | [흐름](02-bcm-flow.md) | 네트워크 중지, 정책 활성화, 밴드S 실행·복구의 도메인 흐름 |
-| [DB](03-bcm-db.md) | 컨트랙트·정책·승인·감사 원장과 실행 snapshot 참조 |
-| [sweep](06-sweep.md) | 컨트랙트 교체, allowance 회수, 밴드S 입력·계산·실행 경계 |
-| [자산 매핑](07-asset-master.md) | 네트워크 중지, 매핑 논리 삭제·감사, 주소 발급 경합 해소 |
+| [DB](03-bcm-db.md) | 컨트랙트·정책·승인·감사 원장과 실행 snapshot의 물리 설계 게이트 |
+| [sweep](06-sweep.md) | 컨트랙트 교체, allowance 회수, DAW-CORE 계산·egress·외부 cold 경계 |
+| [자산 매핑](07-asset-master.md) | BFF 인증과 감사 식별자 분리, 네트워크 중지·매핑 해제 후속 |
+
+## 확정 이력 (2026-08-17)
+
+- 2026-08-17 후속 사용자 결정으로 Admin Frontend·BFF는 DAW-CORE와 분리해 이 저장소의 독립 애플리케이션으로 둔다. 첫 출시는 loopback 읽기 전용 기능 테스트 profile이며, 공유 환경의 BCM Admin API는 private listener/ingress에서 mTLS와 단기 JWT를 함께 검증한다.
+- 역할 claim 5개와 위험 등급별 정족수를 위 표대로 확정했다. 중지는 운영자 1명이 즉시 수행할 수 있고, 재개·보안 변경은 요청자 외 2명과 보안 승인자 1명이 필요하다.
+- 컨트랙트 release·문서 hash·2-RPC 온체인 대조를 증적 정본으로 확정했다.
+- 밴드S는 DAW-CORE가 계산하고 BCM이 실행한다. 단일 treasury egress vault→TAP 고정 외부 cold를 첫 경로로 사용하며 예약분은 hot에서 한 번만 공제한다.
+- `blockchain-manager-svc/docs/admin-reference/`의 토큰과 네 기준 화면을 사용자 승인 기준 화면으로 확정했다.
 
 ## 미확정
 
-- Admin Frontend/BFF를 둘 저장소와 배포 단위, 기존 Admin 셸과의 결합 방식.
-- Admin 인증 제공자, 역할 claim, BFF와 블록체인 매니저 사이의 신뢰 방식.
-- BCM 내부 정책 변경의 승인 정족수와 위험 등급별 승인자 조합.
-- 컨트랙트 artifact·ABI·감사 증적의 정본 저장소와 온체인 읽기 RPC.
 - 정책·컨트랙트·승인·감사 테이블의 물리 스키마와 보존 기간.
-- 밴드S 계산 주체, 입력 전달 계약, 핫 합산 범위, 콜드 이동 경로, 상한 산식의 이중 공제 여부.
 - 외부 모니터링·정책 관리·multisig 상태를 Admin에서 연결하는 API와 갱신 주기.
 - 운영자용 다운로드·증적 열람의 마스킹·권한·감사 기준.
+- 실제 사내 인증 제공자 그룹과 BCM 역할 claim의 배포 환경별 매핑.
 
 ## 관련
 
