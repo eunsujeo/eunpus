@@ -64,8 +64,10 @@ window.MD = (() => {
           // — 클릭하면 모달(peek), Ctrl/Cmd·중클릭은 새 탭. API 없으면 href 로 폴백.
           const rel = /^([^#:]+\.md)(#.+)?$/.exec(href);
           if (docBase && rel && !href.startsWith('/')) {
+            let relPath = rel[1];
+            try { relPath = decodeURIComponent(relPath); } catch { /* 잘못된 escape 는 원문 경로로 처리 */ }
             const stack = [];
-            for (const seg of `${docBase}/${rel[1]}`.split('/')) {
+            for (const seg of `${docBase}/${relPath}`.split('/')) {
               if (seg === '..') stack.pop();
               else if (seg && seg !== '.') stack.push(seg);
             }
@@ -163,28 +165,36 @@ window.MD = (() => {
     mermaidReady = true;
   }
 
+  let mermaidRenderSeq = 0;
   async function runMermaid(selector) {
     const pending = [...document.querySelectorAll(selector)].filter((el) => !el.querySelector('svg'));
     if (!pending.length) return;
-    const showError = (message) => pending
-      .filter((el) => !el.querySelector('svg'))
-      .forEach((el) => {
-        if (el.querySelector('.mermaid-render-error')) return;
-        const error = document.createElement('div');
-        error.className = 'mermaid-render-error';
-        error.textContent = message;
-        el.prepend(error);
-      });
+    const showError = (el, message) => {
+      if (el.querySelector('svg') || el.querySelector('.mermaid-render-error')) return;
+      const error = document.createElement('div');
+      error.className = 'mermaid-render-error';
+      error.textContent = message;
+      el.prepend(error);
+    };
     if (!window.mermaid) {
-      showError('다이어그램 렌더러가 차단되어 원본 텍스트를 표시합니다.');
+      pending.forEach((el) => showError(el, '다이어그램 렌더러가 차단되어 원본 텍스트를 표시합니다.'));
       return;
     }
     initMermaid();
-    try {
-      await window.mermaid.run({ querySelector: selector });
-    } catch (error) {
-      console.error('Mermaid rendering failed', error);
-      showError(`다이어그램 렌더링 실패: ${error.message || error}`);
+    // Mermaid.run 은 같은 tick 에 여러 블록을 처리할 때 Date.now 기반 SVG id 를
+    // 중복 생성할 수 있다. marker·clipPath 참조가 충돌하면 서로 다른 다이어그램이
+    // 한 패널에 겹쳐 보이므로, 각 블록을 고유 id 로 순차 렌더한다.
+    for (const el of pending) {
+      const source = el.textContent.trim();
+      try {
+        const id = `mermaid-live-${Date.now()}-${++mermaidRenderSeq}`;
+        const rendered = await window.mermaid.render(id, source);
+        el.innerHTML = rendered.svg;
+        if (typeof rendered.bindFunctions === 'function') rendered.bindFunctions(el);
+      } catch (error) {
+        console.error('Mermaid rendering failed', error);
+        showError(el, `다이어그램 렌더링 실패: ${error.message || error}`);
+      }
     }
   }
 

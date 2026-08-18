@@ -20,13 +20,13 @@ view: grid
 
 규제·출금 흐름·IVMS101 전체 필드·솔루션 연동을 여러 문서로 나누어 다룬다.
 
-### 2. [Canton Network](./02-canton-network.md) — 15~20분
+### 2. [Canton Network](../Canton%20Network/00-overview.md)
 
-자산이 기록되고 움직이는 원장 모델을 설명한다.
+프라이버시 원장, Party·Participant, Holding과 전송 흐름을 여러 문서로 나누어 설명한다.
 
-### 3. [Fireblocks 기능과 운영 모델](./03-fireblocks-features.md) — 15~20분
+### 3. [Fireblocks](../Fireblocks/00-overview.md)
 
-키와 트랜잭션을 실제 운영하는 플랫폼을 정리한다.
+Workspace·Vault·MPC·Policy·자동 서명·Webhook 운영을 여러 문서로 나누어 정리한다.
 
 ## 세 문서를 연결해서 보기
 
