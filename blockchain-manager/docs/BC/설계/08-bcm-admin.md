@@ -402,6 +402,11 @@ Admin은 BCM이 호출할 컨트랙트의 레지스트리와 활성 binding을 �
 
 sweep 사고의 기본 순서는 TAP batch 차단 → 컨트랙트 pause → 운영자 제거 → 전체 allowance 회수다. 외부 조치가 필요한 단계는 완료를 추측하지 않고 재조회한 사실을 표시한다.
 
+외부 통제 관찰은 TAP 관리면과 pinned block 기준의 독립 RPC 2곳을 매번 새로 조회한다. 한 snapshot에 TAP batch 차단 여부,
+두 RPC의 pause 여부·운영자 집합 hash·관찰 시각과 source 오류를 함께 고정한다. 화면은 `CONFIRMED/DRIFT/STALE/UNCONFIRMED/ERROR`,
+작업 티켓, 관찰·만료 시각, 서버 계산 issue를 보여 주며 `CONFIRMED`가 아닌 상태를 완료로 표시하지 않는다. 조회 과정은 외부 조치나
+multisig 서명을 만들지 않고, 인증 경계가 없는 기능 테스트 단계에는 관찰 실행 버튼이나 mutation route도 열지 않는다.
+
 ### 감사
 
 감사는 상태 변경 행의 마지막 작업자만 보는 화면이 아니다. 변경 한 건의 요청부터 실제 결과까지 이어야 한다.
