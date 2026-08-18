@@ -385,7 +385,7 @@ ApprovalStatus: "PENDING_AUTHORIZATION" | "APPROVED" | "REJECTED" | "NA"
 - `2026-05-22__developers-fireblocks-com__reference-transaction-screening-objects.md`, p.1-2 (Travel Rule verdicts)
 - `2026-05-22__developers-fireblocks-com__reference-fee-estimation-objects.md`, p.1-2 (EIP-1559 + Solana rent)
 - `2026-07-03__fireblocks-support-slack__reorg-status-semantics.md` (= raw `sources/fireblocks/csm.txt`) — reorg 시 CONFIRMING↛BROADCASTING · 드랍 = FAILED + `DROPPED_BY_BLOCKCHAIN` (Stage 150, Fireblocks Support 백엔드 팀 확답)
-- `sources/fireblocks/csm2_boost.txt` — boost(RBF) = createTransaction + replaceTxByHash · type 변경은 CONTRACT_CALL 만 · externalTxId 재사용 가능 · replacedTxHash(Get Transaction by ID)로 원본 연결 (Stage 152, Fireblocks CSM · Kakao PoC)
+- `sources/fireblocks/csm2_boost.txt` — boost(RBF) = createTransaction + replaceTxByHash · type 변경은 CONTRACT_CALL 만 · externalTxId 재사용 가능 · replacedTxHash(Get Transaction by ID)로 원본 연결 (Stage 152, Fireblocks CSM 질의 · 2026-07 PoC)
 
 ## Stage 36 — Create Transaction API Contract (`create-transactions.md`)
 

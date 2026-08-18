@@ -278,7 +278,7 @@ RECONSTRUCTION (Stage 31):
 
 ## Stage 153 — DR/BCP 지표·복구 계층 (CSM 확답)
 
-`sources/fireblocks/csm2_boost.txt` (Fireblocks CSM · Kakao PoC) — DR/백업 확답:
+`sources/fireblocks/csm2_boost.txt` (Fireblocks CSM 질의 · 2026-07 PoC) — DR/백업 확답:
 
 ### BCP 지표
 - **RTO 6시간**(통합값) · **RPO 0**(대부분의 DR 시나리오에서 데이터 손실 최소~무) · **SLO/uptime 99.9%**(SLA).
@@ -328,7 +328,7 @@ RECONSTRUCTION (Stage 31):
 - `2026-05-19__support-fireblocks-io__recovering-private-key-material.md` (Stage 31 Mode C, reconstruction procedure + 4-secret model + auto-passphrase variant)
 
 ## Sources (Stage 153 추가)
-- `sources/fireblocks/csm2_boost.txt` — DR/BCP 지표(RTO 6h·RPO 0·SLO 99.9%)·일 단위 백업·DR Kit·Soft/Hard 복구(Station70·Coin Cover)·ISO 22301·SOC2 Type 2·key share 1+2 SGX geo (Fireblocks CSM · Kakao PoC)
+- `sources/fireblocks/csm2_boost.txt` — DR/BCP 지표(RTO 6h·RPO 0·SLO 99.9%)·일 단위 백업·DR Kit·Soft/Hard 복구(Station70·Coin Cover)·ISO 22301·SOC2 Type 2·key share 1+2 SGX geo (Fireblocks CSM 질의 · 2026-07 PoC)
 
 ## Open Questions
 

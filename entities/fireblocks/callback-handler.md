@@ -79,7 +79,7 @@ API user를 Co-signer와 페어링할 때 Callback Handler 인증서가 Co-signe
 
 ### Stage 152 — 승인 단계 제약: rawTx 없음 · boost 연결 불가 (CSM 확답)
 
-`sources/fireblocks/csm2_boost.txt` (Fireblocks CSM · Kakao PoC):
+`sources/fireblocks/csm2_boost.txt` (Fireblocks CSM 질의 · 2026-07 PoC):
 
 - **`rawTx` 는 서명 단계에만** 온다 — 승인 단계는 **직렬화(serialize) 이전**이라서다. 승인(특히 수동)은 오래 걸릴 수 있고 그 사이 on-chain fee 가 바뀌므로, Fireblocks 는 **승인 완료 후에야 직렬화**한다. 그래서 승인 콜백엔 rawTx 가 없다.
 - **승인 콜백은 boost/drop 을 원본과 연결할 식별자를 주지 않는다** — `replaceTxByHash`·원 txId·nonce 가 승인 payload 에 없어, **approver-only 주체는 이 요청이 기존 tx 의 boost/drop 인지 결정적으로 판별 불가**. (signer 는 rawTx 의 nonce 로 유추 가능하나 approver 는 rawTx 가 없다.)
@@ -121,7 +121,7 @@ Fireblocks 공식 boilerplate 가 사전 구성 plugin 4종으로 예시하는 �
 - `2026-05-18__support-fireblocks-io__re-enrolling-api-users.md`, p.1–2
 - `sources/fireblocks/webpages/developers/docs/create-api-co-signer-callback-handler.md` (Stage 24 Mode C, 47 lines)
 - `sources/fireblocks/webpages/developers/reference/cosigner-callbackhandler-secure-communication-authentication.md` (Stage 24 Mode C, 185 lines)
-- `sources/fireblocks/csm2_boost.txt` (Stage 152) — 승인 단계 rawTx 부재·boost/drop 연결 불가·RETRY(20회·~3분·~1h)·replacedTxHash 연결책 (Fireblocks CSM · Kakao PoC)
+- `sources/fireblocks/csm2_boost.txt` (Stage 152) — 승인 단계 rawTx 부재·boost/drop 연결 불가·RETRY(20회·~3분·~1h)·replacedTxHash 연결책 (Fireblocks CSM 질의 · 2026-07 PoC)
 - `sources/fireblocks/markdown/2026-07-10__github-com__fireblocks-plugin-based-callback-handler.md` (Stage 154 Mode C) — 공식 boilerplate 4 plugin 검증 항목 (README + src/plugins/*.py raw verify)
 
 ## Open Questions
