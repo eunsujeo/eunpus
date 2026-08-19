@@ -1,7 +1,7 @@
 ---
 title: 트래블룰 게이트 — 인터페이스와 운영
 status: Done
-date: 2026-08-18
+date: 2026-08-19
 view: grid
 group: 솔루션과 운영
 ---
@@ -114,7 +114,7 @@ flowchart LR
 | `NOT_REQUIRED` | 현재 정책상 VASP 간 정보 교환 대상이 아님 | 다른 업무 검증 후 진행 | 귀속·AML 조건을 충족하면 가용 검토 |
 | `APPROVED` | 필요한 상대 확인과 정보 교환이 완료됨 | 제출 가능 상태로 전이 | 온체인 확정과 귀속까지 충족하면 가용 |
 | `PENDING` | 상대 응답·수동 심사·추가 자료를 기다림 | 금액 잠금 유지, 제출 금지 | 고객 가용 전환 금지 |
-| `REJECTED` | 상대 거절, 불일치, 정책 차단 또는 종료된 타임아웃 | 반려하고 잠금 해제 | 보류 계정 유지, 소명·반환 절차로 이동 |
+| `REJECTED` | 상대 거절, 불일치, 정책 차단 또는 응답 기한 만료 후 정책상 종결 | 반려하고 잠금 해제 | 보류 계정 유지, 소명·반환 절차로 이동 |
 
 `ERROR`를 업무 판정으로 추가하지 않는다. 네트워크 오류와 벤더 장애는 마지막으로 확정된 판정을 유지한 채 별도 기술 상태로 기록한다. 호출 실패를 `REJECTED`로 덮으면 재시도 가능한 장애와 실제 규제 거절을 구분할 수 없다.
 
@@ -124,12 +124,14 @@ stateDiagram-v2
     PENDING --> APPROVED: 상대 승인·정보 일치
     PENDING --> REJECTED: 상대 거절·불일치
     PENDING --> PENDING: 콜백 중복·상태 조회
-    PENDING --> REJECTED: 업무 타임아웃 종료
+    PENDING --> REJECTED: 응답 기한 만료 후 정책상 종결
     APPROVED --> APPROVED: 중복 콜백
     REJECTED --> REJECTED: 중복 콜백
 ```
 
 승인과 거절은 기본적으로 종결 상태다. 벤더에서 이후 정정이 가능하더라도 기존 결과를 덮지 않고 새 검증 차수(`attempt`)를 만든다. 이미 온체인 제출한 거래의 사전 승인을 사후에 되돌려 거래를 없었던 것으로 만들 수는 없다.
+
+출금 처리 문서의 `REQUESTED`, `CHECKING_COUNTERPARTY`, `EXCHANGING_PII`, `WAITING_REVIEW`, `UNREACHABLE`은 모두 처리 진행 상태이며 외부 판정으로는 `PENDING`이다. `COMPLETED`는 `APPROVED`, `TERMINATED`는 `REJECTED`로 변환한다.
 
 ## 제품 상태 정규화
 

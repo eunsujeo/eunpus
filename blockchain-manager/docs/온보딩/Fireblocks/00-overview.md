@@ -1,13 +1,15 @@
 ---
 title: Fireblocks — 구조와 문서 안내
 status: Done
-date: 2026-08-18
+date: 2026-08-19
 view: grid
 ---
 
 # Fireblocks 업무 구조
 
 Fireblocks는 키 보관 API 하나가 아니라 Workspace 안에서 Vault·자산·거래를 관리하고, 역할·Policy·다중 승인과 MPC 서명을 거쳐 블록체인에 제출하는 운영 플랫폼이다. 우리 시스템은 고객 요청과 내부 원장의 정본을 유지하면서 Fireblocks를 키·정책·체인 실행 계층으로 사용한다.
+
+이 문서 묶음은 별도 표시가 없으면 **Direct Custody**의 Vault·Policy·MPC 모델을 기준으로 한다. Embedded Wallets·Hosted MPC·Key Link처럼 키 구성과 운영 책임이 다른 제품은 해당 문단에서 범위를 구분한다.
 
 ## 전체 흐름
 

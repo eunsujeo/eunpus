@@ -1,119 +1,178 @@
 ---
-title: Canton — 프라이버시와 원장 모델
+title: Canton — 프라이버시와 무결성
 status: Done
-date: 2026-08-18
+date: 2026-08-19
 view: grid
-group: 원장과 프라이버시
+group: 개념과 구조
 ---
 
-# 프라이버시와 Daml 원장
+# 거래 공개 범위와 관련 당사자 검증
 
-Canton의 프라이버시는 네트워크 밖에서 데이터를 숨기는 부가기능이 아니다. Daml 계약에 참여자와 권한을 정의하고, 트랜잭션을 필요한 하위 뷰로 나눠 권한 있는 Participant에만 전달하는 실행 모델이다.
+기관 간 거래에는 서로 충돌하는 요구가 있다. 거래 금액과 상대는 감춰야 하지만, 같은 자산을 두 번 쓰지 않았는지와 계약 조건을 지켰는지는 함께 검증해야 한다.
 
-## 계약의 권한
+일반적인 퍼블릭 체인은 공개된 거래와 상태를 여러 노드가 복제·검증하는 방식으로 무결성을 얻는다. 거래 정보 자체가 민감한 기관 금융에는 이 공개 범위를 그대로 적용하기 어렵다.
 
-| 역할 | 계약을 보는가 | 할 수 있는 일 |
-|---|---|---|
-| Signatory | 항상 본다 | 계약 생성에 동의하고 계약의 핵심 책임을 진다 |
-| Observer | 본다 | 관찰하지만 그 사실만으로 choice 실행 권한을 갖지는 않는다 |
-| Controller | 해당 choice와 결과를 본다 | 특정 choice를 행사한다 |
-| Stakeholder | 해당 | signatory와 observer를 합친 용어다 |
+Canton은 하나의 트랜잭션을 권한과 가시성 범위에 따라 여러 하위 트랜잭션으로 나눈다. 각 하위 트랜잭션을 `Transaction View`라고 하며, 이후에는 `View`로 줄여 쓴다.
 
-`본다`와 `행동한다`를 구분해야 한다. 계약을 조회할 수 있는 운영자라고 해서 자산 이전 choice를 실행할 수 있는 것은 아니다. 애플리케이션 RBAC도 이 차이를 보존해야 한다.
-
-## 불변 계약과 상태 전이
-
-Daml 계약은 생성 후 필드를 제자리에서 바꾸지 않는다. choice를 행사하면 기존 계약이 소비되어 archive되고, 필요한 새 계약이 생성된다.
+## 선택적 공개와 관련 당사자 검증
 
 ```mermaid
 flowchart LR
-    C1[활성 계약 C1] -->|Choice 행사| TX[원자적 트랜잭션]
-    TX --> A1[C1 archive]
-    TX --> C2[새 활성 계약 C2]
-    TX --> C3[새 활성 계약 C3]
+    PRIVATE[거래 정보는<br/>당사자만 알아야 함]
+    VALID[여러 기관이<br/>같은 결과를 검증해야 함]
+    PRIVATE --> DILEMMA{프라이버시와<br/>무결성을 함께}
+    VALID --> DILEMMA
+    DILEMMA --> CANTON[허용된 Transaction View만 전달<br/>관련 Participant만 검증]
 
-    classDef active fill:#e8f7f5,stroke:#2dbdb6,color:#181a20
-    classDef tx fill:#fff3cd,stroke:#d6a800,color:#181a20
-    classDef archive fill:#fde8e8,stroke:#d9534f,color:#181a20
-    class C1,C2,C3 active
-    class TX tx
-    class A1 archive
+    classDef need fill:#e8f0fe,stroke:#4a90e2,color:#181a20
+    classDef answer fill:#fcd535,stroke:#181a20,color:#181a20,font-weight:bold
+    class PRIVATE,VALID need
+    class CANTON answer
 ```
 
-현재 상태는 ACS(Active Contract Set)다. 과거에 존재했지만 소비된 계약은 거래 이력에 남지만 현재 잔액을 구성하지 않는다. 업무 DB는 ACS를 해석하고 고객·상품과 연결하는 계층이지, Participant와 독립된 또 하나의 원장으로 만들지 않는다.
+Canton은 거래 전체를 모든 Participant에 보내지 않는다. 각 View를 볼 권한이 있는 Party의 Participant에만 전달한다.
 
-## 트랜잭션 뷰
+## 선택적 공개의 세 단계
 
-복합 트랜잭션은 하나의 평면 payload가 아니라 권한이 다른 하위 뷰의 트리다. 각 Participant는 호스팅 Party가 볼 수 있는 뷰만 전달받는다.
+| 단계 | 하는 일 | 빠지면 생기는 문제 |
+|---|---|---|
+| View 분리 | 거래를 당사자별로 필요한 부분으로 나눈다 | 모든 당사자가 거래 전체를 보게 된다 |
+| 관련 당사자 검증 | 그 View와 이해관계가 있는 Participant만 권한·입력 상태를 확인한다 | 무관한 노드까지 데이터와 검증 부담을 가진다 |
+| 가시성 없는 조정 | Synchronizer가 암호화된 메시지의 순서와 확인 결과를 맞춘다 | 중앙 조정자가 거래 원문을 보게 된다 |
+
+세 단계는 하나의 흐름이다. View만 잘게 나눠도 무관한 노드가 검증하면 정보가 새고, 관련 노드만 검증해도 조정 계층이 원문을 읽으면 프라이버시 경계가 무너진다.
+
+## 기관 A의 전송 흐름
+
+기관 A가 기관 B에게 자산을 보내고 감독기관을 관찰자로 둔다고 하자.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as 기관 A Participant
+    participant S as Sequencer
+    participant M as Mediator
+    participant B as 기관 B Participant
+    participant R as 감독기관 Participant
+    participant C as 무관한 기관 C
+
+    A->>S: 수신자별로 암호화한 View 제출
+    S->>A: A가 볼 View 전달
+    S->>B: B가 볼 View 전달
+    S->>R: 감독기관이 볼 View 전달
+    Note over C: 이 거래의 View를 받지 않음
+    A->>S: Confirmation Response
+    B->>S: Confirmation Response
+    S->>M: 관련 Participant의 확인 결과 전달
+    M-->>S: Commit 또는 Reject Verdict
+    S-->>A: 최종 결과 전달
+    S-->>B: 최종 결과 전달
+    S-->>R: 최종 결과 전달
+```
+
+Sequencer는 메시지에 순서를 부여해 필요한 Participant로 보낸다. A와 B의 Participant는 자신에게 전달된 View를 검증하고 확인 결과를 Sequencer에 보낸다. Sequencer가 확인 결과를 Mediator에 전달하면 Mediator가 Commit 또는 Reject Verdict를 만들고, Sequencer가 그 결과를 관련 Participant에 전달한다.
+
+이 예에서 기관 C가 거래를 조회하지 못하는 이유는 화면 권한으로 가렸기 때문이 아니다. 기관 C가 호스팅하는 Party가 해당 거래의 이해관계자가 아니므로 그 Participant에 View가 전달되지 않는다.
+
+### Transaction View 전달 단계
+
+전달 대상과 확인 주체는 트랜잭션의 권한 범위와 Party 역할에 따라 단계별로 달라진다.
+
+```anim
+canton-view-flow
+```
+
+## 누가 보고 누가 행동하는가
+
+Daml Contract는 데이터와 함께 역할을 선언한다.
+
+| 역할 | Contract를 보는가 | 할 수 있는 일 |
+|---|---|---|
+| Signatory | 본다 | Contract 생성에 동의하고 핵심 책임을 진다 |
+| Observer | 본다 | 내용을 관찰하지만 그 이유만으로 Choice를 실행하지는 못한다 |
+| Controller | 해당 Choice와 결과를 본다 | 지정된 Choice를 실행한다 |
+| Stakeholder | 해당 | Signatory와 Observer를 합쳐 부르는 말이다 |
+
+예를 들어 기관 A와 B를 Signatory로, 감독기관을 Observer로 두면 세 Party는 Contract를 볼 수 있다. 하지만 감독기관은 관찰자라는 이유만으로 자산 이전 Choice를 실행할 수 없다.
+
+```daml
+template TransferAgreement
+  with
+    sender    : Party
+    receiver  : Party
+    regulator : Party
+    amount    : Decimal
+  where
+    signatory sender, receiver
+    observer regulator
+
+    choice Execute : ()
+      controller sender
+      do pure ()
+```
+
+코드는 개념을 보여주기 위한 축약 예시다. 실제 전송 모델은 사용하는 토큰 구현과 패키지에 따라 달라진다.
+
+## View는 화면 한 장이 아니다
+
+View는 UI 화면이나 API 응답 일부를 뜻하지 않는다. 복합 트랜잭션 안에서 같은 권한과 가시성을 갖는 원장 효과의 단위에 가깝다.
+
+DvP 거래에는 현금 토큰 이전과 증권 토큰 이전이 함께 들어갈 수 있다. 두 다리가 한 트랜잭션으로 확정되더라도 모든 당사자가 모든 세부 정보를 보는 것은 아니다.
 
 ```mermaid
 flowchart TB
     ROOT[원자적 DvP 트랜잭션]
-    ROOT --> CASH[현금 토큰 이전 뷰]
-    ROOT --> ASSET[증권 토큰 이전 뷰]
+    ROOT --> CASH[현금 자산 View]
+    ROOT --> ASSET[증권 자산 View]
     CASH --> BANK[은행 Party]
     CASH --> BUYER[매수자 Party]
-    ASSET --> REG[등록기관 Party]
+    ASSET --> REGISTRY[등록기관 Party]
     ASSET --> SELLER[매도자 Party]
-    ROOT -.공통 결과.-> BUYER
-    ROOT -.공통 결과.-> SELLER
 
     classDef root fill:#fcd535,stroke:#181a20,color:#181a20,font-weight:bold
     classDef view fill:#e8f0fe,stroke:#4a90e2,color:#181a20
     classDef party fill:#e8f7f5,stroke:#2dbdb6,color:#181a20
     class ROOT root
     class CASH,ASSET view
-    class BANK,BUYER,REG,SELLER party
+    class BANK,BUYER,REGISTRY,SELLER party
 ```
 
-원자적 결과를 함께 확정한다고 해서 모든 당사자가 모든 자산 다리의 상세를 아는 것은 아니다. 실제 공개 범위는 template의 signatory·observer, choice controller, 하위 호출과 데이터 의존관계로 결정한다.
+정확한 공개 범위는 Signatory와 Observer 목록만으로 끝나지 않는다. 하위 Choice 호출, `fetch`한 Contract, 검증에 필요한 데이터 의존관계도 누가 어떤 View를 받는지에 영향을 준다.
 
-## `fetch`와 divulgence
+## `fetch`와 의도하지 않은 공개
 
-프라이버시는 `observer` 목록만 확인해서 끝나지 않는다. 트랜잭션 안에서 기존 계약을 `fetch`하면 실행 검증에 필요한 당사자에게 계약 내용이 공개될 수 있다. 이 공개를 divulgence라고 부른다.
+Daml 트랜잭션이 기존 Contract를 `fetch`하면 실행 검증에 필요한 Party에게 그 내용이 알려질 수 있다. 이런 공개를 divulgence라고 부른다.
 
-Daml 리뷰에서는 다음을 확인한다.
+Contract를 리뷰할 때는 다음 질문을 함께 본다.
 
-- 이 choice의 controller가 입력 계약 전체를 알아야 하는가?
-- 검증에 필요한 최소 데이터만 별도 계약이나 인자로 전달할 수 있는가?
-- 하위 choice가 상위 트랜잭션의 당사자를 불필요하게 informee로 만드는가?
-- 상업적으로 민감한 가격·상대·포지션이 공통 뷰에 들어가 있지 않은가?
-- 오류 메시지와 애플리케이션 로그가 원장보다 더 넓게 데이터를 노출하지 않는가?
+- 이 Choice의 Controller가 입력 Contract 전체를 알아야 하는가?
+- 검증에 필요한 값만 별도 인자나 Contract로 전달할 수 있는가?
+- 하위 Choice 때문에 상위 거래의 공개 범위가 넓어지지 않는가?
+- 가격·상대·포지션처럼 민감한 값이 공통 View에 들어가지 않았는가?
+- 애플리케이션 로그와 오류 메시지가 원장보다 더 많은 정보를 노출하지 않는가?
 
-## Participant가 검증하는 것
+## Participant가 확인하는 것
 
-관련 Participant는 전달받은 뷰에 대해 다음을 검증한다.
+관련 Participant는 자신이 받은 View를 바탕으로 다음을 확인한다.
 
-- 제출 Party가 choice를 실행할 권한이 있는가
-- 필요한 signatory와 controller의 권한이 충족됐는가
-- 입력 계약이 활성 상태이며 중복 소비되지 않았는가
-- Daml 패키지와 계약 키, 시간 제약이 유효한가
-- 자신이 확인해야 하는 원장 효과가 결정적으로 계산되는가
+- 제출 Party가 명령을 실행할 권한이 있는가
+- 필요한 Signatory와 Controller 권한이 충족됐는가
+- 입력 Contract가 아직 활성 상태인가
+- 같은 Contract를 다른 거래가 먼저 소비하지 않았는가
+- Daml Package, Contract Key, 시간 조건이 유효한가
+- 자신이 확인해야 할 원장 효과가 결정적으로 계산되는가
 
-검증에 참여하지 않는 노드는 트랜잭션 전체를 받아 재실행하지 않는다. 이것이 공개 블록체인의 전역 실행·복제 모델과 가장 큰 차이다.
+검증에 참여하지 않는 노드는 거래 전체를 받아 다시 실행하지 않는다. 이것이 모든 노드가 같은 거래를 검증하는 퍼블릭 체인과 가장 큰 차이다.
 
-## 조회 모델
+## 프라이버시 검증 범위
 
-애플리케이션은 Party 권한을 지정해 ACS와 업데이트를 읽는다. 같은 Participant API를 호출해도 조회 Party가 다르면 보이는 계약이 다르다.
+기능 테스트가 성공했다고 프라이버시까지 검증된 것은 아니다. Party와 Participant를 나눠 실제 가시성을 확인해야 한다.
 
-| 조회 | 목적 | 주의점 |
-|---|---|---|
-| ACS snapshot | 시작 시점의 현재 활성 계약 확보 | snapshot을 읽는 동안 발생한 update와 경계를 맞춘다 |
-| update stream | 생성·행사·archive를 순서대로 반영 | offset을 영속화하고 재연결 시 이어 읽는다 |
-| transaction tree | 업무 결과와 하위 원장 효과 분석 | 호출자에게 허용된 뷰만 보인다는 전제 유지 |
-| contract lookup | 특정 contract ID 확인 | archive된 계약과 미가시 계약을 구분한다 |
+1. 거래 당사자 A와 B, 무관한 C를 서로 다른 Participant에 호스팅한다.
+2. A와 B가 참여하는 전송 또는 DvP를 실행한다.
+3. C의 Contract 조회와 Update Stream에 거래·금액·상대가 나타나지 않는지 확인한다.
+4. 감독기관을 Observer로 추가했을 때 의도한 Contract만 보이는지 비교한다.
+5. `fetch`와 하위 Choice를 추가한 모델에서 공개 범위가 달라지는지 확인한다.
+6. 통합 DB, 로그, 메트릭, 오류 추적 도구에서도 같은 경계가 지켜지는지 확인한다.
 
-권장 초기화 흐름은 `snapshot 기준점 확보 → ACS 적재 → 기준점 이후 update 재생 → 실시간 전환`이다. API 재시도 때문에 같은 update를 다시 받아도 업무 잔액이 두 번 바뀌지 않도록 contract ID와 offset 기반 멱등 처리가 필요하다.
-
-## 프라이버시 테스트
-
-기능 성공 시나리오만으로 프라이버시를 검증할 수 없다. 테스트 Party와 Participant를 분리해 관찰 범위를 직접 확인한다.
-
-1. 거래 당사자 A·B와 무관한 C를 서로 다른 Participant에 호스팅한다.
-2. A·B가 참여하는 전송과 복합 DvP를 실행한다.
-3. C의 ACS·update stream·transaction 조회에서 계약·금액·상대가 보이지 않는지 확인한다.
-4. Observer를 추가했을 때 의도한 계약만 보이는지 비교한다.
-5. `fetch`와 하위 choice를 추가한 변형 모델에서 공개 범위가 넓어지는지 확인한다.
-6. 애플리케이션 로그·메트릭·에러 추적 도구에서도 같은 경계가 지켜지는지 확인한다.
-
-네트워크 프로토콜의 선택적 공개와 우리 애플리케이션의 데이터 최소화는 별개 통제다. 원장에서는 보이지 않는 정보를 통합 DB나 로그가 전체 사용자에게 노출하면 프라이버시 설계는 실패한다.
+Canton 프로토콜이 View 전달을 제한해도 우리 시스템이 모든 Party의 정보를 한 DB나 로그에 섞어 노출하면 프라이버시는 깨진다. 네트워크의 선택적 공개와 애플리케이션의 접근 통제는 별도로 검증한다.

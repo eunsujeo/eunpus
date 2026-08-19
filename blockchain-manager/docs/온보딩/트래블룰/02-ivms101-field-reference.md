@@ -1,7 +1,7 @@
 ---
-title: IVMS101 — 데이터 모델과 전체 필드
+title: IVMS101 — 데이터 모델과 필드
 status: Done
-date: 2026-08-18
+date: 2026-08-19
 view: grid
 group: IVMS101
 ---
@@ -12,7 +12,7 @@ IVMS101은 VASP 사이에서 교환하는 송금인·수취인 정보를 같은 
 
 이 페이지의 이름·다중성·타입은 InterVASP 정본을 따른다. VerifyVASP 같은 제품이 사용하는 JSON 필드명과 필수 조건은 다음 페이지에서 별도로 다룬다.
 
-## 전체 객체 구조
+## 객체 구조
 
 ```mermaid
 flowchart TB
@@ -256,9 +256,9 @@ VASP는 일반적으로 `LegalPerson`으로 표현하고 법인명과 국가·�
 |---|---:|---|---|
 | `transferPath` | `[0..n]` | `IntermediaryVASP` | 중간 VASP의 순서 있는 배열 |
 | `IntermediaryVASP.intermediaryVASP` | `[1..1]` | `Person` | 중간 VASP 정보 |
-| `IntermediaryVASP.sequence` | `[1..1]` | `1..999` | 전달 경로 순서 |
+| `IntermediaryVASP.sequence` | `[1..1]` | `Number` | 0부터 시작하는 전달 경로 순서 |
 
-`sequence`는 1부터 시작해 중복 없이 이어져야 한다. VerifyVASP 공개 포맷은 `TransferPath`를 현재 지원하지 않는다고 설명하므로 제품 간 중간 경로가 필요한 경우 지원 여부를 별도로 확인한다.
+`sequence`는 0부터 시작해 중복과 누락 없이 이어져야 한다. VerifyVASP 공개 포맷은 `TransferPath`를 현재 지원하지 않는다고 설명하므로 제품 간 중간 경로가 필요한 경우 지원 여부를 별도로 확인한다.
 
 ## PayloadMetadata
 
@@ -284,7 +284,7 @@ VASP는 일반적으로 `LegalPerson`으로 표현하고 법인명과 국가·�
 | `C9` | 식별번호 유형에 따라 발급국·등록기관 사용 규칙 적용 |
 | `C10` | `LEIX`가 아니면 법인 등록기관 정보 필요 |
 | `C11` | `LEIX`이면 20자리 LEI 형식을 사용하고 등록기관 필드를 넣지 않음 |
-| `C12` | `TransferPath.sequence`는 1부터 시작하는 연속된 고유 순서 |
+| `C12` | `TransferPath.sequence`는 0부터 시작하는 연속된 고유 순서 |
 
 ## 공통 문자·형식 규칙
 
@@ -335,4 +335,3 @@ flowchart LR
 | 상대가 추가로 요구하는 정보 | 상대 VASP의 `requiredBeneficiaryInfo`와 양자 운영 규칙 |
 
 표준과 제품 문서가 다르면 하나를 임의로 정답으로 만들지 않는다. 표준 적합성 검사는 InterVASP 이름으로, 실제 API 요청은 제품 이름으로 수행하고 두 모델 사이의 명시적 매핑을 둔다.
-

@@ -1,7 +1,7 @@
 ---
 title: 트래블룰 출금 — 사전 검증부터 결과 보고까지
 status: Done
-date: 2026-08-18
+date: 2026-08-19
 view: grid
 group: 업무 흐름
 ---
@@ -121,36 +121,41 @@ VerifyVASP에서는 송신 VASP의 Enclave가 중앙 서버를 통해 수신 Enc
 
 IVMS101 정본에서 선택 필드인 값이 제품 API나 상대 관할 규칙에서는 필수일 수 있다. 따라서 `표준 스키마 검증`, `제품 API 검증`, `업무 필수 검증`을 별도 단계로 둔다.
 
-## 5. 상대 판정을 내부 상태로 정규화한다
+## 5. 처리 상태와 업무 판정을 분리한다
 
-제품별 상태를 업무 시스템이 직접 알게 하지 않고 게이트가 공통 결과로 바꾼다.
+제품별 상태를 업무 시스템이 직접 알게 하지 않는다. 게이트는 검증이 어디까지 진행됐는지를 나타내는 **처리 상태**와, 업무 시스템이 출금 가능 여부를 결정할 때 사용하는 **업무 판정**을 별도로 관리한다.
 
 ```mermaid
 stateDiagram-v2
     [*] --> REQUESTED
     REQUESTED --> CHECKING_COUNTERPARTY
     CHECKING_COUNTERPARTY --> EXCHANGING_PII
-    EXCHANGING_PII --> PASSED
-    EXCHANGING_PII --> NEEDS_REVIEW
-    EXCHANGING_PII --> REJECTED
+    EXCHANGING_PII --> COMPLETED
+    EXCHANGING_PII --> WAITING_REVIEW
+    EXCHANGING_PII --> TERMINATED
     CHECKING_COUNTERPARTY --> UNREACHABLE
     UNREACHABLE --> CHECKING_COUNTERPARTY: 재시도
-    NEEDS_REVIEW --> PASSED: 추가 확인 완료
-    NEEDS_REVIEW --> REJECTED: 확인 실패
-    PASSED --> REPORTED: txHash 보고
-    PASSED --> CANCELLED: 출금 취소
-    REJECTED --> [*]
+    WAITING_REVIEW --> COMPLETED: 추가 확인 완료
+    WAITING_REVIEW --> TERMINATED: 확인 실패
+    COMPLETED --> REPORTED: txHash 보고
+    COMPLETED --> CANCELLED: 제출 전 출금 취소
+    TERMINATED --> [*]
     REPORTED --> [*]
     CANCELLED --> [*]
 ```
 
-| 공통 상태 | 업무 처리 |
-|---|---|
-| `PASSED` | 출금 승인·서명 단계 진입 가능 |
-| `NEEDS_REVIEW` | 자동 처리 중단, 추가 정보 또는 운영자 확인 |
-| `REJECTED` | 출금 거절, 고객에게 노출 가능한 사유로 변환 |
-| `UNREACHABLE` | 제한된 재시도 후 보류 또는 실패 |
-| `EXPIRED` | 검증 유효시간 만료, 새 검증 필요 |
+처리 상태를 업무 판정으로 바꾸는 기준은 게이트 운영 문서의 네 가지 판정과 일치시킨다.
+
+| 처리 상태·조건 | 업무 판정 | 업무 처리 |
+|---|---|---|
+| 정책상 VASP 간 정보 교환 대상이 아님 | `NOT_REQUIRED` | 다른 업무 검증 후 진행 가능 |
+| `REQUESTED`, `CHECKING_COUNTERPARTY`, `EXCHANGING_PII` | `PENDING` | 자동 제출 금지, 응답 대기 |
+| `WAITING_REVIEW` | `PENDING` | 추가 정보 또는 운영자 확인 |
+| `UNREACHABLE` | `PENDING` | 제한된 재시도 후 운영 큐로 이동 |
+| `COMPLETED` | `APPROVED` | 출금 승인·서명 단계 진입 가능 |
+| `TERMINATED` | `REJECTED` | 출금 반려, 고객에게 노출 가능한 사유로 변환 |
+
+검증 유효시간이 끝난 `EXPIRED`는 다섯 번째 업무 판정이 아니다. 기존 검증을 종결하고 새 `attempt`를 `PENDING`으로 시작한다. `REPORTED`와 `CANCELLED`도 상대 판정이 아니라 온체인 결과 보고의 진행 상태다.
 
 ## 6. 통과 결과를 서명 직전에 다시 확인한다
 
@@ -166,9 +171,9 @@ stateDiagram-v2
 
 Fireblocks 트랜잭션을 만들기 직전에 이 값이 그대로인지 확인한다. 주소·수량·상대가 바뀌었으면 검증을 폐기하고 처음부터 다시 수행한다.
 
-## 7. 온체인 전파 결과를 상대에게 보고한다
+## 7. 프로토콜이 요구하는 온체인 결과를 보고한다
 
-검증 통과만 하고 거래 결과를 보고하지 않으면 수신 VASP가 사전 검증과 실제 입금을 연결하기 어렵다. 성공 시 `txHash`, 네트워크, 실행 시각, 검증 식별자를 보고하고, 전파 전에 취소되거나 실패한 경우에도 오류·취소 결과를 전달한다.
+연동 프로토콜이 결과 보고를 요구하는 경우, 검증 통과만 하고 거래 결과를 보고하지 않으면 수신 VASP가 사전 검증과 실제 입금을 연결하기 어렵다. 성공 시 `txHash`, 네트워크, 실행 시각, 검증 식별자를 보고하고, 프로토콜이 정의한 범위에서 전파 전 취소·실패 결과도 전달한다.
 
 VerifyVASP 공개 흐름은 검증 성공 후 온체인 전송을 실행하고 `Report Transaction Result API`로 txHash를 전달하는 순서를 설명한다. 출금 중단은 `Report Error API`로 전달한다.
 
@@ -198,4 +203,3 @@ VerifyVASP 공개 흐름은 검증 성공 후 온체인 전송을 실행하고 `
 - 상대에게 결과 보고가 완료되었는가
 
 PII 원문이 필요한 법정 보관 영역과 일반 운영 로그를 분리하고, 접근권한·암호화·보존기간·삭제 절차를 각각 둔다.
-

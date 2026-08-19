@@ -1,7 +1,7 @@
 ---
 title: Fireblocks — Workspace·Vault·키 모델
 status: Done
-date: 2026-08-18
+date: 2026-08-19
 view: grid
 group: 플랫폼
 ---
@@ -61,6 +61,8 @@ Vault Account ID는 내부 고객 ID가 아니다. 삭제·숨김·마이그레�
 ## MPC-CMP
 
 MPC는 완전한 개인키 한 개를 평상시에 한 장소에 조립하지 않고 여러 key share가 공동으로 서명을 만든다. Hot 모델에서는 API Co-signer, Warm 모델에서는 온라인 mobile signer, Cold 모델에서는 오프라인 mobile signer가 고객 측 share를 행사한다.
+
+아래 그림은 **Direct Custody의 Fireblocks SaaS MPC** 구성을 나타낸다. Embedded Wallets와 Hosted MPC는 share 수·배치와 고객이 운영하는 구성요소가 다르므로 이 그림을 그대로 적용하지 않는다.
 
 ```mermaid
 flowchart LR

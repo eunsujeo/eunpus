@@ -1,7 +1,7 @@
 ---
 title: Fireblocks — API·Webhooks v2 운영
 status: Done
-date: 2026-08-18
+date: 2026-08-19
 view: grid
 group: 자동화와 운영
 ---
@@ -76,7 +76,7 @@ HTTP timeout은 요청이 Fireblocks에 도착하지 않았다는 뜻이 아니�
 
 ## Webhooks v2 수신
 
-Webhooks v1은 2026년 6월 15일 폐기 대상으로 안내됐으므로 신규 운영 설계는 v2를 기준으로 한다. v2는 전달 관측성과 재전송 기능을 제공하지만 수신 애플리케이션의 멱등 처리와 독립 대사를 대신하지 않는다.
+[Fireblocks 마이그레이션 안내](https://developers.fireblocks.com/reference/webhook-v2-migration-guide)는 Webhooks v1의 지원 종료일을 2026년 6월 15일로 안내했다. 신규 운영 설계와 기존 연동 마이그레이션은 v2를 기준으로 한다. v2는 전달 관측성과 재전송 기능을 제공하지만 수신 애플리케이션의 멱등 처리와 독립 대사를 대신하지 않는다.
 
 [공식 webhook 검증 문서](https://developers.fireblocks.com/reference/validating-webhooks)는 `Fireblocks-Webhook-Signature`의 Detached JWS와 JWKS `kid` 기반 key lookup을 설명한다.
 

@@ -1,51 +1,52 @@
 ---
-title: 온보딩 안내
+title: 온보딩 — 팀 공통 개념
 status: Done
 date: 2026-08-19
 view: grid
 ---
 
-# 디지털 자산 플랫폼 온보딩
+# 팀에서 공유하는 디지털 자산 플랫폼 개념
 
-이 폴더는 우리 디지털 자산 플랫폼의 기반과 실제 실행 시스템을 한곳에 정리한다.
-권장 읽기 순서와 문서들을 관통하는 입출금 흐름, 공통 용어를 안내한다.
+이 카테고리는 우리 디지털 자산 플랫폼에서 공통으로 사용하는 개념, 시스템 구조와 책임 경계를 정리한다.
 
 - **트래블룰**: 누구에게 어떤 정보를 전달하고, 입출금 흐름의 어디에서 검사하는가
 - **블록체인 매니저**: 계정·주소를 만들고 입출금·sweep·상태·대사를 어떻게 실행하는가
-- **Canton Network**: 프라이버시 원장과 Holding 기반 자산을 어떻게 읽고 다루는가
+- **Canton Network**: 거래를 공개하지 않고 검증하는 구조에서 Party·Contract·Holding을 어떻게 다루는가
 - **Fireblocks**: 키·정책·승인·서명·체인 연동을 어떤 운영 모델로 제공하는가
 
-## 권장 읽기 순서
+## 주제별 문서
 
-### 1. [트래블룰](../트래블룰/00-overview.md)
+### [트래블룰](../트래블룰/00-overview.md)
 
-규제·출금 흐름·IVMS101 전체 필드·솔루션 연동을 여러 문서로 나누어 다룬다.
+규제·출금 흐름·IVMS101 데이터 필드·솔루션 연동을 여러 문서로 나누어 다룬다.
 
-### 2. [블록체인 매니저](../블록체인%20매니저/00-overview.md)
+### [블록체인 매니저](../블록체인%20매니저/00-overview.md)
 
 계정·주소, 입금·출금, sweep, 이벤트·대사와 운영 경계를 실제 시스템 흐름으로 다룬다.
 
-### 3. [Canton Network](../Canton%20Network/00-overview.md)
+### [Canton Network](../Canton%20Network/00-overview.md)
 
 프라이버시 원장, Party·Participant, Holding과 전송 흐름을 여러 문서로 나누어 설명한다.
 
-### 4. [Fireblocks](../Fireblocks/00-overview.md)
+### [Fireblocks](../Fireblocks/00-overview.md)
 
 Workspace·Vault·MPC·Policy·자동 서명·Webhook 운영을 여러 문서로 나누어 정리한다.
 
-## 문서들을 연결해서 보기
+## 주제 간 업무 연결
 
-하나의 출금은 각 주제를 차례로 통과한다.
+출금은 하나의 고정된 벤더 경로를 통과하지 않는다. 공통 업무 검증과 트래블룰 대상 판정을 마친 뒤 자산별 실행 어댑터로 분기하고, 실행 결과는 다시 내부 원장으로 모인다.
 
 ```mermaid
-flowchart LR
+flowchart TD
     A[고객 출금 요청] --> B[우리 업무 검증]
-    B --> C[트래블룰·AML]
-    C --> D[Fireblocks Policy·승인]
-    D --> E[MPC·외부 키 서명]
-    E --> F[블록체인 또는 Canton 제출]
-    F --> G[Webhook·원장 이벤트]
-    G --> H[내부 장부 대사]
+    B --> C[트래블룰 대상 판정·AML]
+    C --> E{자산별 실행 경로}
+    E -->|Fireblocks 수탁 자산| F[블록체인 매니저·Fireblocks 실행]
+    E -->|Canton 자산| G[Canton 지갑 어댑터·Command 제출]
+    F --> H[블록체인 이벤트]
+    G --> I[Canton 원장 이벤트]
+    H --> J[내부 장부 대사]
+    I --> J
 ```
 
 이 흐름에서 각 계층은 서로를 대체하지 않는다.

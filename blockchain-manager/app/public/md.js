@@ -236,14 +236,14 @@ window.MD = (() => {
   function stepAnim(el, cfg) {
     el.className = 'banim';
     el.innerHTML =
-      '<div class="banim-cap"><strong data-f="cap-t"></strong><span data-f="cap-d"></span></div>' +
+      '<div class="banim-cap" aria-live="polite"><strong data-f="cap-t"></strong><span data-f="cap-d"></span></div>' +
       `<div class="banim-stage"><div class="banim-scene">${cfg.scene}</div></div>` +
       '<div class="banim-ctl">' +
-      '<button type="button" data-act="prev" title="이전 단계">◀</button>' +
-      '<button type="button" data-act="play"></button>' +
-      '<button type="button" data-act="next" title="다음 단계">▶</button>' +
+      '<button type="button" data-act="prev" title="이전 단계" aria-label="이전 단계">◀</button>' +
+      '<button type="button" data-act="play" aria-label="단계 자동 재생"></button>' +
+      '<button type="button" data-act="next" title="다음 단계" aria-label="다음 단계">▶</button>' +
       '<span class="banim-dots">' +
-      cfg.steps.map((_, i) => `<button type="button" data-step="${i}"></button>`).join('') +
+      cfg.steps.map((_, i) => `<button type="button" data-step="${i}" aria-label="${i + 1}단계로 이동"></button>`).join('') +
       '</span></div>';
 
     const setF = (id, v) => {
@@ -260,9 +260,14 @@ window.MD = (() => {
       el.querySelectorAll('[data-on]').forEach((n) =>
         n.classList.toggle('on', step >= +n.dataset.on && !(n.dataset.off && step >= +n.dataset.off)));
       if (cfg.render) cfg.render(step, setF, el);
-      el.querySelectorAll('.banim-dots button').forEach((b, i) =>
-        b.classList.toggle('cur', i === step));
-      el.querySelector('[data-act="play"]').textContent = timer ? '⏸ 정지' : '▶ 재생';
+      el.querySelectorAll('.banim-dots button').forEach((b, i) => {
+        b.classList.toggle('cur', i === step);
+        if (i === step) b.setAttribute('aria-current', 'step');
+        else b.removeAttribute('aria-current');
+      });
+      const play = el.querySelector('[data-act="play"]');
+      play.textContent = timer ? '⏸ 정지' : '▶ 재생';
+      play.setAttribute('aria-label', timer ? '단계 자동 재생 정지' : '단계 자동 재생');
     };
     const go = (n) => { step = Math.min(cfg.steps.length - 1, Math.max(0, n)); render(); };
 
@@ -953,6 +958,133 @@ window.MD = (() => {
     });
   }
 
+  // Canton — 수신자별 View 전달: 제출 → 순서화 → 선택 전달 → 확인 → verdict.
+  function buildCantonViewFlow(el) {
+    stepAnim(el, {
+      steps: [
+        ['거래 준비', '기관 A가 기관 B와 감독기관을 포함한 거래를 만들고, 수신자마다 볼 수 있는 View를 준비한다.'],
+        ['순서 부여', 'Sequencer가 암호화된 메시지에 순서와 시각을 부여한다. 거래 원문 전체를 공개 원장에 올리지 않는다.'],
+        ['필요한 곳에만 전달', 'A·B·감독기관의 Participant에는 허용된 View가 도착한다.'],
+        ['무관한 기관은 받지 않음', '기관 C는 이 거래의 이해관계자가 아니므로 해당 View가 전달되지 않는다.'],
+        ['관련 노드가 확인', '기관 A와 B의 Participant가 권한·입력 Contract·원장 효과를 검증하고 확인 결과를 보낸다.'],
+        ['하나의 결과로 확정', 'Mediator가 필요한 확인을 모아 거래 전체에 Commit 판정을 내리고 관련 Participant가 결과를 반영한다.'],
+      ],
+      scene:
+        '<div class="canton-view-grid">' +
+          '<div class="canton-node canton-origin"><span class="canton-kicker">제출자</span><b>기관 A</b><small>거래·View 준비</small></div>' +
+          '<span class="canton-route" data-on="1">→</span>' +
+          '<div class="canton-node canton-sync" data-on="1"><span class="canton-kicker">조정</span><b>Sequencer</b><small>순서·시각</small></div>' +
+          '<span class="canton-route" data-on="2">→</span>' +
+          '<div class="canton-view-targets">' +
+            '<div class="canton-view-target canton-confirming" data-on="2"><i>View A</i><b>기관 A Participant</b><small>검증·확인</small></div>' +
+            '<div class="canton-view-target canton-confirming" data-on="2"><i>View B</i><b>기관 B Participant</b><small>검증·확인</small></div>' +
+            '<div class="canton-view-target" data-on="2"><i>Observer View</i><b>감독기관 Participant</b><small>관찰</small></div>' +
+            '<div class="canton-view-target canton-outsider"><i>View 없음</i><b>기관 C Participant</b><small>거래와 무관</small></div>' +
+          '</div>' +
+          '<span class="canton-route" data-on="4">→</span>' +
+          '<div class="canton-node canton-mediator" data-on="4"><span class="canton-kicker">판정</span><b>Mediator</b><small>확인 취합</small></div>' +
+        '</div>' +
+        '<div class="canton-verdict" data-on="5"><span>COMMIT</span> 관련 Participant가 같은 결과를 반영한다</div>' +
+        '<div class="banim-status" data-f="rst"></div>',
+      render(step, setF, root) {
+        root.querySelector('.canton-outsider').classList.toggle('no-view', step >= 3);
+        root.querySelectorAll('.canton-confirming').forEach((n) => n.classList.toggle('confirmed', step >= 4));
+        setF('rst',
+          step < 2 ? 'View는 아직 관련 Participant에 도착하지 않았다.'
+          : step === 2 ? '전달 대상: 기관 A · 기관 B · 감독기관'
+          : step === 3 ? '기관 C 수신: <b class="cv">0개 View</b>'
+          : step === 4 ? '확인 주체: 기관 A · 기관 B — 감독기관은 관찰만 한다.'
+          : '최종 결과: <b class="cv">전체 Commit</b> — 일부 View만 따로 확정되지 않는다.');
+      },
+    });
+  }
+
+  // Canton — Daml Contract는 수정 대신 소비되고 새 Contract로 이어진다.
+  function buildCantonContractTransition(el) {
+    stepAnim(el, {
+      steps: [
+        ['현재 ACS', '기관 A의 활성 Holding 100이 현재 원장 상태를 구성한다.'],
+        ['전송 선택', '기관 B에게 60을 보내는 Transfer Choice를 준비한다.'],
+        ['Choice 실행', '하나의 트랜잭션 안에서 입력 Holding과 출력 Holding을 계산한다.'],
+        ['기존 Contract 소비', 'Holding 100은 제자리에서 40으로 바뀌지 않고 Archive된다.'],
+        ['새 Contract 생성', '기관 B의 Holding 60과 기관 A의 잔여 Holding 40을 함께 만든다.'],
+        ['새 ACS', 'Archive된 입력은 현재 상태에서 빠지고 새 Holding 두 개가 활성 상태가 된다.'],
+      ],
+      scene:
+        '<div class="canton-contract-flow">' +
+          '<div class="canton-contract canton-input"><span>ACTIVE CONTRACT</span><b>Holding · 100</b><small>owner: 기관 A</small></div>' +
+          '<span class="canton-route" data-on="1">→</span>' +
+          '<div class="canton-choice" data-on="1"><span>CHOICE</span><b>Transfer 60</b><small>A → B</small></div>' +
+          '<span class="canton-route" data-on="2">→</span>' +
+          '<div class="canton-effects" data-on="2">' +
+            '<div class="canton-effect canton-archive" data-on="3"><span>ARCHIVE</span><b>Holding · 100</b></div>' +
+            '<div class="canton-effect canton-create" data-on="4"><span>CREATE</span><b>B Holding · 60</b></div>' +
+            '<div class="canton-effect canton-create" data-on="4"><span>CREATE</span><b>A Holding · 40</b></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="canton-acs" data-on="5"><span>NEW ACS</span><b>기관 A · 40</b><i>+</i><b>기관 B · 60</b></div>' +
+        '<div class="banim-status" data-f="rst"></div>',
+      render(step, setF, root) {
+        root.querySelector('.canton-input').classList.toggle('selected', step >= 1 && step < 3);
+        root.querySelector('.canton-input').classList.toggle('spent', step >= 3);
+        root.querySelector('.canton-choice').classList.toggle('executing', step >= 2);
+        setF('rst',
+          step === 0 ? '현재 활성 Contract: Holding 100 한 개'
+          : step === 1 ? '업무 요청: 기관 B에게 60 전송'
+          : step === 2 ? '원장 효과 계산: 입력 1개 · 출력 2개'
+          : step === 3 ? '기존 Holding 상태: <b class="cv">Archived</b>'
+          : step === 4 ? '생성 결과: B 60 · A 잔여 40'
+          : '현재 활성 Contract: <b class="cv">A 40 + B 60</b> — 합계 100');
+      },
+    });
+  }
+
+  // Canton — 두 DvP leg를 잠근 뒤 한 번의 실행으로 함께 commit한다.
+  function buildCantonDvp(el) {
+    stepAnim(el, {
+      steps: [
+        ['정산 제안', '매도 기관이 증권과 대금을 교환할 조건을 제안한다. 자산은 아직 움직이지 않는다.'],
+        ['상대방 수락', '매수 기관이 조건을 확인하고 수락한다. 양쪽이 같은 정산 조건에 동의한다.'],
+        ['Settlement 준비', '정산 운영자가 두 자산 Leg를 묶는 Settlement를 만든다.'],
+        ['증권 Leg 잠금', '매도 기관이 넘길 증권 Holding을 할당한다. 아직 소유권은 바뀌지 않는다.'],
+        ['대금 Leg 잠금', '매수 기관이 지급할 대금 Holding을 할당한다. 두 Leg가 모두 준비됐다.'],
+        ['원자적 실행', '정산 운영자가 Execute를 호출한다. 검증은 두 Leg 전체를 하나의 트랜잭션으로 계산한다.'],
+        ['함께 Commit', '증권은 매수 기관으로, 대금은 매도 기관으로 같은 결과에서 이동한다. 한 Leg라도 실패하면 전체가 Reject된다.'],
+      ],
+      scene:
+        '<div class="canton-dvp-head">' +
+          '<div class="canton-node"><span class="canton-kicker">매도</span><b>기관 A</b></div>' +
+          '<div class="canton-settlement"><span>SETTLEMENT</span><b data-f="settle">제안 작성 중</b></div>' +
+          '<div class="canton-node"><span class="canton-kicker">매수</span><b>기관 B</b></div>' +
+        '</div>' +
+        '<div class="canton-dvp-legs" data-on="2">' +
+          '<div class="canton-leg canton-asset"><span>증권 LEG</span><b>기관 A → 기관 B</b><i data-f="asset">대기</i></div>' +
+          '<div class="canton-leg canton-cash"><span>대금 LEG</span><b>기관 B → 기관 A</b><i data-f="cash">대기</i></div>' +
+        '</div>' +
+        '<div class="canton-execute" data-on="5">ATOMIC EXECUTE</div>' +
+        '<div class="canton-verdict canton-dvp-verdict" data-on="6"><span>COMMIT</span> 증권과 대금이 같은 트랜잭션에서 이동</div>' +
+        '<div class="banim-status" data-f="rst"></div>',
+      render(step, setF, root) {
+        const asset = root.querySelector('.canton-asset');
+        const cash = root.querySelector('.canton-cash');
+        asset.classList.toggle('locked', step >= 3 && step < 6);
+        cash.classList.toggle('locked', step >= 4 && step < 6);
+        asset.classList.toggle('moved', step >= 6);
+        cash.classList.toggle('moved', step >= 6);
+        setF('settle', step === 0 ? '제안 작성 중' : step === 1 ? '양쪽 수락' : step < 5 ? '두 Leg 준비' : step === 5 ? '실행 검증 중' : '정산 완료');
+        setF('asset', step < 3 ? '대기' : step < 6 ? 'LOCKED' : 'MOVED');
+        setF('cash', step < 4 ? '대기' : step < 6 ? 'LOCKED' : 'MOVED');
+        setF('rst',
+          step < 2 ? '자산 이동: 없음'
+          : step === 2 ? 'Settlement가 두 Leg를 하나의 실행 단위로 묶는다.'
+          : step === 3 ? '준비 상태: 증권 Leg만 잠김 — 실행 불가'
+          : step === 4 ? '준비 상태: 두 Leg 잠김 — 실행 가능'
+          : step === 5 ? '두 Leg의 권한·입력·원장 효과를 함께 검증한다.'
+          : '최종 결과: <b class="cv">두 Leg 함께 Commit</b> · 부분 성공 없음');
+      },
+    });
+  }
+
   const ANIM_DEFS = {
     'block-lifecycle': buildBlockLifecycle,
     'proposer': buildProposer,
@@ -966,6 +1098,9 @@ window.MD = (() => {
     'commitment': buildCommitment,
     'mpc-keygen': buildMpcKeygen,
     'mpc-rounds': buildMpcRounds,
+    'canton-view-flow': buildCantonViewFlow,
+    'canton-contract-transition': buildCantonContractTransition,
+    'canton-dvp': buildCantonDvp,
   };
 
   // 엔티티 카드 + SVG 관계선 ERD — ```erd 펜스.

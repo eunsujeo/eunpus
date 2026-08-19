@@ -1,100 +1,115 @@
 ---
-title: Canton Network — 구조와 문서 안내
+title: Canton Network — 개요
 status: Done
-date: 2026-08-18
+date: 2026-08-19
 view: grid
 ---
 
-# Canton Network 업무 구조
+# Canton Network 개요
 
-Canton은 모든 참여자가 같은 거래 원문을 복제하는 네트워크가 아니다. Daml 계약이 정한 당사자에게 필요한 트랜잭션 뷰만 전달하고, 관련 Participant들이 그 뷰를 검증해 하나의 결과로 확정한다. 수탁 시스템은 이 차이 때문에 주소·잔액·블록 탐색기 중심의 퍼블릭 체인 모델을 그대로 적용할 수 없다.
+Canton Network는 Daml로 표현한 자산과 업무 계약을 여러 기관이 하나의 거래로 처리하는 분산 원장 네트워크다. 각 기관의 `Participant`가 원장 신원인 `Party`를 호스팅하고, `Synchronizer` 계층이 관련 Participant 사이의 메시지 순서와 거래 확정을 조정한다.
 
-## 전체 구조
+우리 수탁 시스템은 Ledger API를 통해 우리 Participant에 명령을 제출한다. 확정된 원장 결과는 Update Stream으로 수신하여 내부 거래 상태와 잔액에 반영한다.
+
+## 우리 시스템과 Canton의 연결
+
+우리 Participant는 고객과 회사의 Party를 호스팅하고, 해당 Party 권한으로 Daml Contract를 생성하거나 행사한다. 상대 기관과의 거래는 Synchronizer를 거쳐 상대 Participant에 전달된다. 우리 시스템이 상대 Participant나 Synchronizer의 내부 데이터에 직접 접근하지는 않는다.
+
+`Validator`는 Participant와 네트워크 연동 서비스를 포함하는 배포·운영 구성이다. External Party를 사용하는 경우에는 명령 제출 전에 Prepared Transaction 검증과 외부 서명이 추가된다.
+
+## 거래 제출과 확정 흐름
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant APP as 우리 수탁 시스템
+    participant PA as 우리 Participant
+    participant SYNC as Synchronizer 계층
+    participant PB as 상대 Participant
+
+    Note over PA: 기관 A Party 호스팅
+    Note over PB: 기관 B Party 호스팅
+    APP->>PA: 기관 A Party 권한으로 거래 명령 제출
+    PA->>PA: 권한·입력 Contract 검증<br/>수신자별 거래 데이터 생성
+    PA->>SYNC: 암호화된 거래 데이터 제출
+    SYNC->>PA: 기관 A에 허용된 거래 정보 전달
+    SYNC->>PB: 기관 B에 허용된 거래 정보 전달
+    PA->>SYNC: 검증 결과인 Confirmation Response
+    PB->>SYNC: 검증 결과인 Confirmation Response
+    SYNC-->>PA: Commit 또는 Reject 판정
+    SYNC-->>PB: Commit 또는 Reject 판정
+    PA-->>APP: Update Stream으로 원장 결과 전달
+```
+
+Synchronizer 계층의 Sequencer가 암호화된 메시지의 순서를 정하고, Mediator가 관련 Participant의 확인 결과를 모아 Commit 또는 Reject를 판정한다. 원장 커밋이 끝난 뒤에도 우리 수탁 시스템의 내부 계정 반영과 대사가 별도 단계로 남는다.
+
+## 거래 정보 전달 범위
+
+기관 A가 기관 B에게 자산을 이전하면 A와 B의 Participant에 각 기관이 볼 수 있는 거래 정보가 전달된다. Daml Contract에서 감독기관을 `Observer`로 선언했다면 감독기관의 Participant에도 해당 Contract와 관련 원장 효과가 전달된다. 거래와 관계없는 기관 C의 Participant에는 전달되지 않는다.
 
 ```mermaid
 flowchart LR
-    APP[수탁·지갑 애플리케이션] --> API[Ledger API·Wallet API]
-    API --> VA[우리 Validator·Participant]
-    VA -->|호스팅| PA[우리 Party·고객 Party]
-    VA <--> SYNC[Global Synchronizer]
-    SYNC <--> VB[상대 Validator·Participant]
-    VB -->|호스팅| PB[상대 Party]
+    TX[기관 A·B 거래]
+    TX --> PUB[일반적인 퍼블릭 체인<br/>공개 원장에 기록]
+    PUB --> PWHO[네트워크 노드·탐색기 이용자가<br/>거래 데이터 조회 가능]
 
-    APP --> SIGN[정책·외부 서명]
-    SIGN --> API
+    TX --> CAN[Canton<br/>관계된 기관에만 전달]
+    CAN --> CAB[거래 당사자<br/>기관 A·B Participant]
+    CAN -.Daml Contract의 Observer.-> REG[해당 Contract와 관련 원장 효과<br/>감독기관 Participant]
+    CAN -.거래와 무관.-> CC[기관 C Participant<br/>거래 내용 미전달]
 
-    classDef app fill:#fcd535,stroke:#181a20,color:#181a20,font-weight:bold
-    classDef node fill:#e8f0fe,stroke:#4a90e2,color:#181a20
-    classDef identity fill:#fff3cd,stroke:#d6a800,color:#181a20
-    classDef network fill:#e8f7f5,stroke:#2dbdb6,color:#181a20
-    class APP app
-    class API,VA,VB,SIGN node
-    class PA,PB identity
-    class SYNC network
+    classDef tx fill:#fcd535,stroke:#181a20,color:#181a20,font-weight:bold
+    classDef network fill:#fff3cd,stroke:#d6a800,color:#181a20
+    classDef party fill:#e8f0fe,stroke:#4a90e2,color:#181a20
+    classDef muted fill:#f3f4f6,stroke:#9ca3af,color:#6b7280
+    class TX tx
+    class PUB,CAN network
+    class PWHO,CAB,REG party
+    class CC muted
 ```
 
-`Validator`는 Canton Network에 참여하기 위한 배포·운영 역할을 가리키고, 그 안의 `Participant`는 Party를 호스팅하며 Daml 원장을 저장·검증하는 핵심 노드다. 공식 설명처럼 Participant는 자신이 호스팅하는 Party에 관련된 계약 데이터만 보유한다. Synchronizer는 암호화된 메시지 순서와 원자적 커밋을 조정하며 업무 데이터 전체를 공개 원장처럼 저장하는 주체가 아니다.
+Canton은 하나의 트랜잭션을 권한 범위에 따라 여러 부분으로 나눈다. 각 부분을 `Transaction View`라고 한다. Participant는 자신이 호스팅하는 Party에 허용된 View만 받아 권한, 입력 Contract, 원장 효과를 검증한다.
 
-## 핵심 용어
+위 그림은 데이터의 공개 범위를 나타낸다. 실제 메시지는 기관 A에서 기관 B로 직접 전달되지 않는다. 제출 Participant가 수신자별로 암호화한 View를 Synchronizer에 보내고, Synchronizer가 관련 Participant에 순서대로 전달한다.
 
-| 용어 | 의미 | 구현에서 구분할 것 |
+## 거래 참여자
+
+| 주체 | 원장 역할 | 거래에서 하는 일 |
 |---|---|---|
-| Party | 원장 위에서 권리와 의무를 갖는 신원 | 로그인 사용자·계정·주소와 같지 않음 |
-| Participant | Party를 호스팅하고 관련 계약을 실행·저장·검증하는 노드 | Synchronizer와 다름 |
-| Validator | Participant와 Canton Network 연동 서비스를 포함한 운영 묶음 | 프로토콜의 단일 노드 타입으로만 보지 않음 |
-| Synchronizer | 암호화 메시지의 순서와 확인을 조정하는 계층 | 모든 계약 원문을 보관하지 않음 |
-| Contract | Daml template로 만든 불변 원장 객체 | 변경 대신 소비와 새 생성으로 상태 전이 |
-| ACS | 현재 활성 상태인 계약들의 집합 | 업무 DB 잔액과 계속 대사할 원장 정본 |
-| Holding | 토큰 보유분을 나타내는 활성 계약 | 주소의 단일 잔액이 아니라 여러 조각일 수 있음 |
+| 기관 A Party | 자산 송신자 | 전송을 제출하고 관련 View를 검증한다 |
+| 기관 B Party | 자산 수신자 | 관련 View를 검증하고 Token workflow가 수신자 수락을 요구하면 전송을 수락한다 |
+| 감독기관 Party | Observer | Observer로 선언된 Contract와 관련 원장 효과를 관찰한다 |
+| 기관 C Party | 거래와 무관 | 해당 거래의 View를 받지 않는다 |
+| 우리 수탁 시스템 | 원장 외부 업무 시스템 | 고객 요청을 원장 명령으로 바꾸고 결과를 내부 원장에 반영한다 |
 
-## 퍼블릭 체인 가정과의 차이
+## 주요 구성요소
 
-| 질문 | 일반적인 EVM 모델 | Canton 모델 |
+| 구성요소 | 역할 | 우리 시스템에서 구분할 대상 |
 |---|---|---|
-| 누가 거래를 보는가 | 전체 노드가 거래·상태를 복제 | Daml 권한상 관련된 Party의 Participant만 해당 뷰를 수신 |
-| 현재 상태는 무엇인가 | 계정·스토리지의 가변 값 | 활성 계약의 집합 |
-| 잔액은 무엇인가 | 주소의 숫자 | Party가 소유한 Holding들의 합 |
-| 상태를 어떻게 바꾸는가 | 스토리지 갱신 | 계약 행사·소비와 새 계약 생성 |
-| 거래를 어디서 조회하는가 | 공개 RPC·블록 탐색기 | Party 권한을 적용한 ACS·업데이트 스트림 |
-| 서명자는 무엇을 확인하는가 | 체인별 직렬화 payload | 준비된 Daml 트랜잭션의 전체 원장 효과 |
+| Party | 원장 위에서 권리와 의무를 갖는 업무 신원 | 고객 계정·로그인 사용자·주소와 구분한다 |
+| Participant | Party의 Contract를 저장하고 명령을 실행·검증하는 노드 | Synchronizer와 구분한다 |
+| Synchronizer | 관련 Participant 사이에서 암호화 메시지의 순서와 판정 결과를 조정한다 | 업무 데이터 저장소로 사용하지 않는다 |
+| Daml Contract | 데이터, 가시성, 허용된 행동을 함께 표현하는 원장 객체 | 내부 DB Row와 구분한다 |
+| Validator | Participant와 네트워크 연동 서비스를 포함하는 운영 구성 | 장애 시 실제 실패한 서비스와 Participant를 구체적으로 식별한다 |
 
-## 문서 구성
+## 퍼블릭 체인과의 개념 차이
 
-| 문서 | 다루는 범위 |
+| 관점 | 일반적인 퍼블릭 체인 | Canton |
+|---|---|---|
+| 거래 공개 범위 | 공개 원장 데이터가 네트워크 참여자에게 폭넓게 공개 | 관련 Party의 Participant만 허용된 View를 수신 |
+| 현재 상태 | 주소·계정의 가변 상태 | 활성 Contract의 집합인 ACS |
+| 잔액 | 주소에 연결된 숫자 | Party가 소유한 활성 Holding의 합 |
+| 상태 변경 | 계정·스토리지 값 갱신 | 기존 Contract 소비와 새 Contract 생성 |
+| 거래 조회 | 공개 RPC·블록 탐색기 | Party 권한이 적용된 ACS·Update Stream |
+| 확정 | 블록 포함과 Confirmation·Finality | 관련 Participant 확인과 Mediator 판정 |
+| 서명 검증 | 체인별 직렬화 Payload 확인 | Prepared Transaction의 전체 원장 효과 확인 |
+
+## 세부 문서
+
+| 문서 | 범위 |
 |---|---|
-| [프라이버시와 원장 모델](./01-privacy-and-ledger-model.md) | Daml 계약, signatory·observer·controller, 트랜잭션 뷰, ACS |
-| [Party와 노드](./02-party-participant-synchronizer.md) | Party 호스팅, Participant·Validator·Synchronizer 책임, 외부 Party |
-| [토큰과 전송](./03-token-and-transfer-flow.md) | Holding, TransferInstruction, 수락·거절·철회, 확정과 traffic |
-| [수탁 연동과 운영](./04-custody-integration-and-operations.md) | 고객 매핑, 입금·출금, 서명 검증, 대사, 노드 운영 |
-
-## 시스템 경계
-
-```mermaid
-flowchart TB
-    CORE[업무 시스템] -->|고객·잔액·승인| WALLET[지갑 통합 계층]
-    WALLET -->|명령 준비·조회| PARTICIPANT[Participant]
-    WALLET -->|검증된 해시·정책 요청| SIGNER[Fireblocks·외부 서명]
-    SIGNER -->|서명| WALLET
-    PARTICIPANT -->|ACS·업데이트| WALLET
-    WALLET -->|정규화 이벤트| CORE
-
-    PARTICIPANT <--> SYNCHRONIZER[Synchronizer]
-
-    classDef core fill:#fcd535,stroke:#181a20,color:#181a20,font-weight:bold
-    classDef integration fill:#fff3cd,stroke:#d6a800,color:#181a20
-    classDef node fill:#e8f0fe,stroke:#4a90e2,color:#181a20
-    class CORE core
-    class WALLET integration
-    class PARTICIPANT,SIGNER,SYNCHRONIZER node
-```
-
-업무 시스템은 고객 주문과 내부 원장의 정본이다. Participant는 Daml 원장 상태의 정본이고, 서명자는 승인된 트랜잭션에 키 권한을 행사한다. 세 계층의 성공을 하나의 상태로 축약하지 않는다. 정책 승인이 끝났어도 Daml 검증은 실패할 수 있고, 원장 커밋이 끝났어도 내부 계정 귀속과 대사가 끝나지 않았을 수 있다.
-
-## 설계 원칙
-
-- Party, 고객 계정, Participant, API 사용자를 각각 별도 식별자로 관리한다.
-- 잔액 숫자뿐 아니라 그 잔액을 구성하는 Holding과 contract ID를 추적한다.
-- 원장 이벤트는 중복·재연결·재처리를 전제로 offset과 멱등 키를 둔다.
-- 서명 전에 준비된 트랜잭션의 Party·자산·금액·상대·원장 효과를 독립 검증한다.
-- Synchronizer 연결 성공을 고객 업무 성공으로 해석하지 않는다.
-- DevNet·TestNet에서 관측한 지연과 기능을 MainNet의 보장값으로 사용하지 않는다.
+| [프라이버시와 무결성](./01-privacy-and-ledger-model.md) | Transaction View, Signatory·Observer·Controller, 관련 Participant 검증 |
+| [Party와 노드](./02-party-participant-synchronizer.md) | Party 호스팅, Participant·Validator·Synchronizer 책임, External Party |
+| [Daml Contract와 원장](./03-daml-contract-and-ledger.md) | Contract 생성·소비, ACS, Update Stream, 동시성 |
+| [Holding과 전송·정산](./04-token-and-transfer-flow.md) | Holding 잔액, 전송 상태, DvP, Traffic |
+| [수탁 시스템 연동](./05-custody-integration-and-operations.md) | 고객 매핑, 입금·출금, 외부 서명, 인덱싱·대사 |

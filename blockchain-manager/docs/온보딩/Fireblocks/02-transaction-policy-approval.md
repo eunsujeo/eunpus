@@ -1,20 +1,20 @@
 ---
 title: Fireblocks — Transaction·Policy·승인
 status: Done
-date: 2026-08-18
+date: 2026-08-19
 view: grid
 group: 거래 통제
 ---
 
 # 거래 수명주기와 승인 통제
 
-Fireblocks transaction은 생성 즉시 블록체인으로 전파되지 않는다. 컴플라이언스, Policy, 승인, 서명, broadcast와 confirmation 단계를 거치며 실패 원인도 단계별로 다르다.
+Fireblocks transaction은 생성 즉시 블록체인으로 전파되지 않는다. 구성된 기능과 transaction type에 따라 컴플라이언스, Policy, 승인, 서명, broadcast와 confirmation 단계를 거치며 실패 원인도 단계별로 다르다.
 
 ## 수명주기
 
 ```mermaid
 flowchart LR
-    A[SUBMITTED] --> B[검증·컴플라이언스]
+    A[SUBMITTED] --> B[검증·컴플라이언스<br/>구성에 따라 적용]
     B --> C[PENDING_AUTHORIZATION]
     C --> D[QUEUED]
     D --> E[PENDING_SIGNATURE]

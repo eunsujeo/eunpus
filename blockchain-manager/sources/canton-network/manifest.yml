@@ -1,0 +1,16 @@
+solution: Canton Network
+publisher: Digital Asset
+upstream_repository: https://github.com/digital-asset/canton
+upstream_ref: v3.4.11
+accessed_at: 2026-08-19
+authority_grade: A1
+immutable: true
+sources:
+  - id: DA-CANTON-PARTICIPANT-001
+    file: 2026-08-19__participant-overview-v3.4.11.rst
+    url: https://raw.githubusercontent.com/digital-asset/canton/v3.4.11/docs-open/src/sphinx/participant/overview/index.rst
+    sha256: 996ff4636171273a33c1dd4bf587170d90b6afcbb7cba5fbf383f69dcef9b1a9
+  - id: DA-CANTON-EXTERNAL-PARTY-001
+    file: 2026-08-19__external-party-v3.4.11.rst
+    url: https://raw.githubusercontent.com/digital-asset/canton/v3.4.11/docs-open/src/sphinx/overview/explanations/canton/external-party.rst
+    sha256: ddea6e86db74f62d2f59645e11a2b3a82eb4cf17187b079381403b689e891af2

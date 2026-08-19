@@ -1,7 +1,7 @@
 ---
 title: 트래블룰 솔루션 — 구조와 상대 VASP 도달성
 status: Done
-date: 2026-08-18
+date: 2026-08-19
 view: grid
 group: 솔루션과 운영
 ---
@@ -49,7 +49,7 @@ flowchart TB
 
 ## VerifyVASP
 
-VerifyVASP는 각 VASP 인프라에 Enclave와 전용 DB를 배치하고 Central Server가 요청을 중계한다. VASP 백엔드는 Enclave API를 호출하고, Enclave가 암복호화와 중앙 서버 통신을 담당한다.
+[VerifyVASP의 TravelRule 구조](https://docs.verifyvasp.com/reference/travelrule-overview.md)는 각 VASP 인프라에 Enclave와 전용 DB를 배치하고 Central Server가 요청을 중계하는 형태다. VASP 백엔드는 Enclave API를 호출하고, Enclave가 암복호화와 중앙 서버 통신을 담당한다.
 
 ### 출금 흐름
 
@@ -73,7 +73,7 @@ Central Server가 개인정보를 복호화·저장하지 않는다는 설명과
 
 ## CODE
 
-CODE 공식 문서는 Pre-verification과 Post-verification 두 흐름을 제공한다.
+[CODE transaction flow](https://docs.codevasp.com/api/markdown/en/travel-rule/guides/01-General/03-Transaction-Flow)는 Pre-verification과 Post-verification 두 흐름을 제공한다.
 
 ### Pre-verification
 
@@ -93,7 +93,7 @@ CODE 요청은 nonce, UTC 시각, 송신 VASP 공개키, Ed25519 서명, 송신 
 
 ## Notabene
 
-Notabene Transact는 transfer 생성, 상대 탐색, 관할별 개인정보 요구, 정책 판정, 웹훅, 개인지갑 증명 UI를 함께 제공한다.
+[Notabene outgoing transfer 문서](https://devx.notabene.id/docs/create-outgoing-transfers.md)는 transfer 생성, 상대 탐색, 개인정보 제공, 정책 판정과 개인지갑 소유 증명을 하나의 흐름으로 설명한다. 웹훅과 입금 보완은 별도 제품 기능으로 연결된다.
 
 ### 주요 특징
 
@@ -121,7 +121,7 @@ Notabene Transact는 transfer 생성, 상대 탐색, 관할별 개인정보 요�
 | 필수 필드 | 상대 프로토콜의 추가 개인정보를 제공할 수 있는가 |
 | 운영 상태 | 상대 서버·콜백·키가 현재 정상인가 |
 
-CODE는 VerifyVASP·GTR·Sygna 등과의 기술 상호운용을 설명하지만, 대시보드에 보이는 VASP가 내부 정책상 실제 연결됐다는 뜻은 아니라고 명시한다. 특히 VerifyVASP 연동 거래소와의 경로는 국내 거래만 지원된다는 제한을 안내한다.
+[CODE 상호운용 문서](https://docs.codevasp.com/api/markdown/en/travel-rule/guides/02-Development/12-Interoperability-with-Other-Protocols)는 VerifyVASP·GTR·Sygna 등과의 기술 연결 범위와 운영 제약을 설명한다. 디렉터리에서 상대 VASP가 조회되더라도 양사의 정책 승인·방향·자산·네트워크 조건을 통과해야 실제 거래할 수 있다.
 
 상대 VASP가 여러 경로에서 보이면 다음 우선순위를 정책 데이터로 관리한다.
 
