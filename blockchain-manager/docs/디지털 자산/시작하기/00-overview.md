@@ -12,6 +12,7 @@ view: grid
 - **트래블룰**: 누구에게 어떤 정보를 전달하고, 입출금 흐름의 어디에서 검사하는가
 - **Canton Network**: 거래를 공개하지 않고 검증하는 구조에서 Party·Contract·Holding을 어떻게 다루는가
 - **Fireblocks**: 키·정책·승인·서명·체인 연동을 어떤 운영 모델로 제공하는가
+- **가스 대납**: 자산 이동 권한과 네트워크 수수료 지불 책임을 어떻게 분리하는가
 
 ## 주제별 문서
 
@@ -26,6 +27,10 @@ view: grid
 ### [Fireblocks](../Fireblocks/00-overview.md)
 
 Workspace·Vault·MPC·Policy·자동 서명·Webhook 운영을 여러 문서로 나누어 정리한다.
+
+### [가스 대납](../가스대납/00-overview.md)
+
+직접 지불·자동 충전·Relay·Paymaster와 ERC-3009·ERC-2771·ERC-4337·EIP-7702의 실행 구조를 구분한다.
 
 ## 주제 간 업무 연결
 
@@ -51,6 +56,7 @@ flowchart TD
 | 상대 VASP에 어떤 신원 정보를 보내야 하는가? | 트래블룰 |
 | 자산과 거래를 누가 볼 수 있으며 잔액은 어떻게 표현되는가? | Canton Network |
 | 누가 거래를 승인하고 어떤 키로 서명하는가? | Fireblocks |
+| 토큰 이동 계정이 기본 자산 없이 거래하려면 누가 가스비를 부담하는가? | 가스 대납 |
 | 고객의 실제 의사와 내부 잔액이 맞는가? | 우리 업무 시스템의 책임 |
 
 ## 공통 용어
@@ -66,3 +72,5 @@ flowchart TD
 | **Policy** | Fireblocks outgoing transaction의 허용·추가 승인·차단 규칙 |
 | **Callback Handler** | API Co-signer가 자동 서명하기 전에 우리 로직으로 요청을 검증하는 서버 |
 | **ACS** | Canton의 현재 Active Contract Set. Party가 볼 수 있는 활성 계약 집합 |
+| **Relay** | 자산 소유자의 승인을 받아 거래를 제출하고 네트워크 수수료를 선지불하는 주체 |
+| **Paymaster** | ERC-4337에서 대납 조건을 검증하고 EntryPoint 예치금으로 가스비를 부담하는 컨트랙트 |
