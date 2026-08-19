@@ -148,7 +148,7 @@ stateDiagram-v2
 
 | 처리 상태·조건 | 업무 판정 | 업무 처리 |
 |---|---|---|
-| 정책상 VASP 간 정보 교환 대상이 아님 | `NOT_REQUIRED` | 다른 업무 검증 후 진행 가능 |
+| 정책상 VASP 간 정보 교환 대상이 아님 | `NOT_REQUIRED` | 잔액·주소·승인 조건 확인 후 진행 가능 |
 | `REQUESTED`, `CHECKING_COUNTERPARTY`, `EXCHANGING_PII` | `PENDING` | 자동 제출 금지, 응답 대기 |
 | `WAITING_REVIEW` | `PENDING` | 추가 정보 또는 운영자 확인 |
 | `UNREACHABLE` | `PENDING` | 제한된 재시도 후 운영 큐로 이동 |

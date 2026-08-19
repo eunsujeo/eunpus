@@ -1217,7 +1217,7 @@ a.brand-mark { text-decoration: none; }
 /* 교체로 밀려난 트랜잭션 칩 — 무효 표시 */
 .banim-txchip.dead { opacity: 0.35; border-style: dashed; text-decoration: line-through; }
 
-/* Canton 온보딩 — View 전달·Contract 상태 전이·DvP 단계 재생 */
+/* Canton 문서 — View 전달·Contract 상태 전이·DvP 단계 재생 */
 .canton-view-grid {
   display: grid;
   grid-template-columns: 142px 28px 142px 28px minmax(250px, 1fr) 28px 142px;

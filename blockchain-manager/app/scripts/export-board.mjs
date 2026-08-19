@@ -8,7 +8,7 @@
 //
 //   node scripts/export-board.mjs                 → ../board.html (blockchain-manager/board.html)
 //   node scripts/export-board.mjs --out <file> --from <url> --dir <docs>
-//   node scripts/export-board.mjs --only "온보딩,블록체인매니저/API,컴플라이언스/API" --out ../onboarding.html
+//   node scripts/export-board.mjs --only "디지털 자산,블록체인매니저/API,컴플라이언스/API" --out ../digital-assets.html
 //   node scripts/export-board.mjs --with-ref            → 참고 문서(ref:)까지 포함
 //     --only : 지정한 대카테고리(또는 대/중카테고리)만 담는다 — embed 뷰어도 그 카드 것만 내장
 import { access, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';

@@ -7,29 +7,31 @@ view: grid
 
 # 트래블룰 업무 구조
 
-트래블룰은 블록체인 트랜잭션에 개인정보를 기록하는 기능이 아니다. 가상자산을 보내는 경로와 별도로 송금인·수취인 정보를 VASP 사이에서 교환하고, 그 결과를 출금 승인과 입금 가용 처리에 반영하는 업무다.
+트래블룰은 VASP 사이에서 송금인·수취인 정보를 별도 채널로 교환하고, 그 판정 결과를 출금 승인과 입금 가용 처리에 반영하는 업무다.
 
-실무 시스템에서는 네 가지 흐름을 분리해서 다룬다.
+출금 요청에서 온체인 확정·대사까지의 처리 순서는 다음과 같다.
 
 ```mermaid
-flowchart LR
-    REQ[고객 출금 요청] --> BIZ[업무 검증]
-    BIZ --> TR[트래블룰 검증]
-    TR --> AUTH[승인·서명]
-    AUTH --> CHAIN[온체인 전송]
-    CHAIN --> RECON[확정·대사]
-
-    TR -.-> PII[IVMS101 개인정보 교환]
-    PII -.-> RV[수신 VASP]
+flowchart TD
+    REQ[1. 고객 출금 요청] --> BIZ[2. 고객·계정·잔액<br/>한도·주소 검증]
+    BIZ --> TARGET{3. 트래블룰 대상인가}
+    TARGET -->|대상| PII[4. 상대 VASP 확인·<br/>IVMS101 정보 교환]
+    TARGET -->|대상 아님| AUTH[6. 승인·서명]
+    PII --> RV[5. 수신 VASP 판정]
+    RV -->|APPROVED| AUTH
+    RV -->|PENDING| HOLD[응답·추가 확인 대기]
+    RV -->|REJECTED| STOP[출금 반려]
+    AUTH --> CHAIN[7. 온체인 전송]
+    CHAIN --> RECON[8. 확정·대사]
 
     classDef request fill:#f4f5f7,stroke:#707a8a,color:#181a20
     classDef control fill:#fff3cd,stroke:#d6a800,color:#181a20
     classDef execute fill:#e8f0fe,stroke:#4a90e2,color:#181a20
     classDef pii fill:#fde8e8,stroke:#d9534f,color:#181a20
     class REQ,BIZ request
-    class TR,AUTH control
+    class TARGET,AUTH control
     class CHAIN,RECON execute
-    class PII,RV pii
+    class PII,RV,HOLD,STOP pii
 ```
 
 ## 시스템별 책임
@@ -44,7 +46,7 @@ flowchart LR
 
 ## 규제 기준과 시스템 적용
 
-법령과 감독규정은 트래블룰 대상 거래, 송신·수신 VASP의 의무, 교환할 신원정보와 거래 제한 조건을 정한다. 온보딩 문서는 변동되는 금액 기준과 시행일을 고정값으로 복제하지 않고, 우리 시스템이 규제 정책을 적용하는 경계를 기록한다.
+법령과 감독규정은 트래블룰 대상 거래, 송신·수신 VASP의 의무, 교환할 신원정보와 거래 제한 조건을 정한다. 이 문서 묶음은 변동되는 금액 기준과 시행일을 고정값으로 복제하지 않고, 우리 시스템이 규제 정책을 적용하는 경계를 기록한다.
 
 | 규제 기준 | 시스템에 반영하는 위치 |
 |---|---|
