@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>12. 입금 · 출금 흐름 — NodeWallet 은행 도입</title>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. 컴포넌트 토폴로지</a></li>
+<li><a href="trust-boundaries.html">2. 신뢰 경계</a></li>
+<li><a href="db-split.html">3. 4-DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. DB Schema</h3>
+<ul>
+<li><a href="tables-approver.html">4. approverdb</a></li>
+<li><a href="tables-audit.html">5. auditdb</a></li>
+<li><a href="tables-ledger-chain.html">6. ledgerdb · chaindb</a></li>
+<li><a href="tables-tenant-wallet.html">7. 테넌트 · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Cryptography</h3>
+<ul><li><a href="keys-hsm-tee.html">8. HSM · SGX · 키 수명주기</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Policy &amp; Decisions</h3>
+<ul>
+<li><a href="policy-rules.html">9. 10 Policy Rules</a></li>
+<li><a href="sm-decision.html">10. 결정 라이프사이클</a></li>
+<li><a href="sm-signing.html">11. 3-key 서명 흐름</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Transactions &amp; Audit</h3>
+<ul>
+<li><a class="active" href="sm-deposit-withdrawal.html">12. 입금 · 출금 흐름</a></li>
+<li><a href="audit-2layer.html">13. 2-Layer 감사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Compliance</h3>
+<ul><li><a href="compliance-regulations.html">14. 5 규제 + 트래블룰</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Discipline</h3>
+<ul>
+<li><a href="storage-discipline.html">15. Storage Discipline</a></li>
+<li><a href="risks-anti-patterns.html">16. Risks &amp; Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="sm-deposit-withdrawal">
+<h2>12. 입금 · 출금 흐름</h2>
+<span class="section-subtitle">4 종 작업의 lifecycle — 입금 (관찰) · sweep (3-key) · 출금 (3-key) · 내부 transfer (2-key + 영수증)</span>
+
+<div class="callout">
+<div class="callout-title">출처</div>
+<p><code>security__architecture__multisig.md</code> 작업별 차이 (4 작업 종류), <code>compliance__architecture.md</code> 한계와 비책임 (입금 차단 불가), <code>security__ops__audit-logs.md</code> Layer 1 (작업별 영수증).</p>
+</div>
+
+<h3>입금 (Deposit) — 관찰 경로</h3>
+<p>입금 트랜잭션은 이미 체인에 실행된 사건이라 노드월렛이 차단할 수 없다 (source: <code>compliance__architecture.md</code> 한계와 비책임). 관찰 + 검증 + 사용자 잔액 credit + 후속 sweep eligibility 판단만 수행.</p>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  participant Customer as 사용자
+  participant Chain as Solana
+  participant Obs as Chain Observer
+  participant ChainDB as chaindb
+  participant Verify as Deposit Verifier
+  participant Coord as Coordinator
+  participant App2 as Approver
+  participant Ledger as ledgerdb
+
+  Customer->>Chain: USDC 전송 (사용자 지갑 주소로)
+  Chain-->>Chain: confirmed → finalized
+  Obs->>Chain: poll / WS 구독
+  Chain-->>Obs: token transfer event
+  Obs->>ChainDB: chain_events INSERT
+  Obs->>Verify: trigger verify
+  Verify->>Verify: 주소 매칭 + token mint + 금액 검증
+  Verify->>ChainDB: deposit_verifications INSERT (status=verified)
+  Verify->>Coord: deposit ack
+  Coord->>App2: /v1/evaluate (flow_type=deposit, 후속 스윕 정책)
+  alt Allow (정상 입금)
+    App2-->>Coord: AutoApprove
+    Coord->>Ledger: ledger_entries INSERT (credit, 사용자 계정)
+    Coord->>Coord: sweep 큐에 enqueue (별도 worker)
+  else Held (의심 입금)
+    App2->>App2: held_deposits INSERT
+    Note over Coord: 후속 sweep 보류 — 영업 채널 검토 후 해소
+  else Deny
+    App2->>App2: policy_decisions INSERT (REJECT)
+    Note over Coord: 사용자 잔액 credit 안 함 → 운영 alert
+  end
+</pre>
+</div>
+
+<h3>Sweep — 사용자 지갑 → omnibus</h3>
+<p>vendor docs 가 명시: <em>"Sweep 은 출금과 동일한 서명 경로를 따른다"</em> (source: <code>security__architecture__multisig.md</code> 작업별 차이). 체인 관점에서 sweep 도 한 트랜잭션의 source 가 사용자 지갑이므로 withdrawal 과 같은 보안 envelope.</p>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  participant Worker as Sweep Worker
+  participant SDK as Java SDK
+  participant HSM_A as HSM (개시 키)
+  participant Coord as Coordinator
+  participant App2 as Approver
+  participant HSM_B as HSM (승인 키)
+  participant Enc as SGX Enclave
+  participant Solana
+  participant GasW as Gas-payer Wallet
+
+  Worker->>SDK: sweep(userWalletId, omnibusWalletId, mint)
+  SDK->>HSM_A: 개시 서명
+  Note over SDK,Coord: 이하 sm-signing 의 3-key 시퀀스와 동일
+  SDK->>Coord: signed request
+  Coord->>App2: /v1/evaluate (flow_type=deposit 의 후속 스윕)
+  App2->>HSM_B: 승인 키 co-sign
+  Coord->>Enc: CBOR IPC
+  Enc-->>Coord: 실행 키 서명 (Ed25519)
+  Note over Coord,Solana: gas-payer 가 SOL 수수료 대납
+  Coord->>Solana: submit (fee_payer = gas-payer wallet)
+  Solana-->>Coord: tx_hash
+  Coord->>Coord: ledgerdb + auditdb INSERT
+</pre>
+</div>
+
+<h3>출금 (Withdraw) — 가장 풍부한 경로</h3>
+<p>전체 3-key 시퀀스는 <a href="sm-signing.html">11. 3-key 서명 흐름</a> 의 success path 다이어그램 참고. 여기서는 출금 lifecycle 의 macro 상태 머신을 정리.</p>
+
+<div class="diagram">
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> REQUESTED: SDK.withdraw()
+  REQUESTED --> SDK_SIGNED: 개시 키 PKCS#11 서명
+  SDK_SIGNED --> EVALUATING: Coordinator → Approver
+  EVALUATING --> DENIED: 1 rule = Deny
+  EVALUATING --> HELD: 1 rule = Held
+  EVALUATING --> APPROVED: 모든 pass + 승인 키 co-sign
+  HELD --> EVALUATING: 폴링 재평가
+  HELD --> DENIED_TTL: 24h 경과
+  APPROVED --> ENCLAVE_VERIFIED: DCAP 세션
+  ENCLAVE_VERIFIED --> CHAIN_SIGNED: 실행 키 서명 + 제로화
+  CHAIN_SIGNED --> SUBMITTED: Solana submit
+  SUBMITTED --> CONFIRMED: tx_hash + finalized
+  SUBMITTED --> FAILED: 체인 reject
+  CONFIRMED --> [*]
+  DENIED --> [*]
+  DENIED_TTL --> [*]
+  FAILED --> [*]
+</pre>
+</div>
+
+<h3>Multi-destination?</h3>
+<p>NodeInfra docs 는 Solana 의 single-destination 트랜잭션을 기준으로 설명. Solana 의 token transfer instruction 은 multi-output 을 지원하지만 NodeWallet 이 multi-dest 트랜잭션 (한 요청에 여러 destination) 을 노출하는지는 ★ Hypothesis — docs 미명시. 보통 batch withdrawal 은 별도 N 개 요청으로 처리하는 것이 idempotency · auditability · partial failure 처리에 유리.</p>
+
+<h3>내부 transfer — 체인 서명 없음 + 엔클레이브 영수증</h3>
+<p>같은 테넌트 안의 ledger account 간 이동. vendor docs 명시 (source: <code>security__architecture__multisig.md</code> 작업별 차이):</p>
+<blockquote>Transfer: 내부 원장 이동. 개시 키 + 승인 키만 서명하고, 체인 서명 대신 엔클레이브 <code>verify_and_authorize</code> 영수증이 감사 로그 Layer 1 에 기록된다.</blockquote>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  participant App as Spring Backend
+  participant SDK as Java SDK
+  participant Coord as Coordinator
+  participant App2 as Approver
+  participant Enc as SGX Enclave
+  participant Ledger as ledgerdb
+
+  App->>SDK: transfer(fromAccount, toAccount, amount, mint)
+  SDK->>Coord: signed (개시 키)
+  Coord->>App2: /v1/evaluate (flow_type=transfer)
+  App2->>App2: 승인 키 co-sign
+  App2-->>Coord: AutoApprove
+  Coord->>Enc: CBOR IPC (verify_and_authorize)
+  Enc->>Enc: 검증 후 영수증 발급 (체인 서명 없음)
+  Enc-->>Coord: verify_and_authorize receipt
+  Coord->>Ledger: ledger_entries INSERT × 2 (debit + credit)
+  Coord->>Coord: auditdb signing_events INSERT (operation=transfer, chain_sig=NULL, enclave_receipt set)
+  Coord-->>SDK: transfer_id
+</pre>
+</div>
+
+<h3>4 작업 비교 — 키 사용 + 체인 사용 + 영수증 매트릭스</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>작업</th><th>개시 키</th><th>승인 키</th><th>실행 키</th><th>체인 fee</th><th>Layer 1 영수증</th></tr></thead>
+<tbody>
+<tr><td>Deposit (관찰)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>deposit_verifications</td></tr>
+<tr><td>Sweep</td><td>✓</td><td>✓</td><td>✓</td><td>gas-payer 부담</td><td>signing_events.chain_sig</td></tr>
+<tr><td>Withdraw</td><td>✓</td><td>✓</td><td>✓</td><td>gas-payer 부담</td><td>signing_events.chain_sig</td></tr>
+<tr><td>Transfer (internal)</td><td>✓</td><td>✓</td><td>—</td><td>—</td><td>verify_and_authorize receipt</td></tr>
+<tr><td>Unsafe-send (★)</td><td>✓</td><td>✓</td><td>✓</td><td>gas-payer 부담</td><td>signing_events</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>flow_type 별 정책 적용</h3>
+<p>한 룰의 <code>flow_type</code> 으로 적용 범위를 분리:</p>
+<ul>
+<li><code>withdrawal</code> — 외부 destination 으로 출금 (Withdraw). 가장 많은 룰이 적용되는 경로.</li>
+<li><code>transfer</code> — 내부 ledger 이동.</li>
+<li><code>deposit</code> — 입금 후 sweep 정책 (입금 자체는 차단 불가).</li>
+<li><code>*</code> — 모든 flow.</li>
+</ul>
+
+<h3>gas-payer 잔액 관리</h3>
+<p>모든 체인 트랜잭션 (sweep / withdraw / unsafe-send) 은 gas-payer 지갑의 SOL 잔액을 소모. 잔액이 임계 미만이면 트랜잭션 submit 실패 → 출금 정지. 운영 패턴:</p>
+<ul>
+<li>SDK / 외부 모니터 가 gas-payer 잔액을 폴링</li>
+<li>임계 미만 시 alert + admin 채널 충전</li>
+<li>충전은 별도 출금 (omnibus → gas-payer) 또는 외부 SOL 입금 (외부 거래소 → gas-payer 주소)</li>
+<li>★ Hypothesis: 충전 자체도 3-key 의식 (omnibus 가 source 면 withdraw 와 동일 경로)</li>
+</ul>
+
+<h3>★ 미명시 — 추가 설계 영역</h3>
+<ul>
+<li><strong>partial failure</strong> — Solana submit 후 chain reject (예: insufficient SOL · invalid recent_blockhash) 시 ledger 의 debit 을 어떻게 reverse 할지. vendor docs 미명시. signing_events 는 append-only 이므로 reversal entry 패턴 추정.</li>
+<li><strong>retry 정책</strong> — 일시적 RPC 실패 시 같은 reference_id 로 retry → idempotency 표가 거부 → 다른 reference_id 필요? 또는 timer-based?</li>
+<li><strong>chain reorg</strong> — confirmed → finalized 사이의 reorg 가능성. NodeInfra docs 가 finality 처리를 명시하지 않음. 보통 finalized 권장.</li>
+<li><strong>SPL token decimal mismatch</strong> — USDC 는 6 decimal, NATIVE_SOL 은 lamports (9 decimal). 룰의 <code>max_amount_lamports</code> 가 mint=* 일 때 decimal 다른 토큰에 의미 흐림 — token 별 룰 권장.</li>
+</ul>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="sm-signing.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">11. 3-key 서명 흐름</span></a>
+<a class="page-nav-link page-nav-next" href="audit-2layer.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">13. 2-Layer 감사</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

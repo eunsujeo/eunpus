@@ -1,0 +1,18 @@
+url: https://www.dailysecu.com/news/articleView.html?idxno=207405
+fetched_at: 2026-08-20
+source_type: webpage (제품 출시 기사 — 2차)
+domain: pqc / web-encryption / korea
+tier: 3
+title: "한컴위드, 별도 설치 없는 PQC 웹 구간 암호화 솔루션 출시 (한컴 엑스에프웹)"
+crawl_status: fetched (2026-08-20, Mode C)
+markdown: sources/pqc/markdown/2026-08-20__dailysecu-com__hancomwith-xfweb-pqc-launch.md
+key_facts: |
+  - 2026-06 말 보도. 무설치 PQC 웹 구간 암호화 솔루션 '한컴 엑스에프웹 (Hancom xFWeb)' 출시
+  - 계층형 PQC 하이브리드: 기존 TLS 채널 위에 애플리케이션 계층 PQC 암호 통신 추가 (인프라 전면 교체 없이 전환)
+  - 암호 민첩성 (crypto agility) 기반 설계 — 레거시 수정 최소화
+  - AEAD 기반 무결성 검증으로 파라미터 위·변조·스크래핑·봇 차단, 스크립트 난독화 + 무결성 자가 검증
+  - 정부의 설치형 보안 SW 단계적 제한 방침 + 암호 체계 전환 요구에 맞춰 공공·금융 공략
+context: |
+  한컴위드 PQC 세션 배경 자료 보조 수집 (2026-08-20). 월렛이 아닌 웹 구간 암호화 제품이지만
+  한컴위드 PQC 제품 라인 파악용.
+promote_condition: "한컴위드 PQC 스택 전체를 비교 정리할 때만 (낮은 우선순위)"

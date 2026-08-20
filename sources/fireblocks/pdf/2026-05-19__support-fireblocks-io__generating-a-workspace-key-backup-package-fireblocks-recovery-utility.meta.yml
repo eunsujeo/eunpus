@@ -1,0 +1,11 @@
+url: https://support.fireblocks.io/hc/en-us/articles/9716732961820-Generating-a-Workspace-Key-Backup-Package-Fireblocks-Recovery-Utility
+url_status: confirmed (Stage 30 Mode C 시점 real article ID 발견)
+fetched_at: 2026-05-19
+source_type: pdf
+domain: mobile-recovery / workspace-keys-backup / SaaS-MPC-variant
+tier: 1
+title: "Generating a Workspace Key Backup Package — Fireblocks Recovery Utility"
+crawl_status: full-body (Stage 30 chunked via pdftotext + sed, body 미 LLM context 전체 로드)
+promote_condition: "deep-ingested Stage 30 — sources/markdown 의 본문 markdown 참조"
+recommended_mode: mode_c_executed
+triage_stage: Stage 25 (source_triage.py auto rename), Stage 30 (manual Mode C)

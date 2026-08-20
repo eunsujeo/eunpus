@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Overview — Fireblocks Key Link 도입</title>
+<meta content="Fireblocks Key Link — customer-held HSM 모델. 은행 도입 reference" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a class="active" href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Key Link 기초</h3>
+<ul>
+<li><a href="key-link-fundamentals.html">1. Key Link 란</a></li>
+<li><a href="architecture-components.html">2. 아키텍처 구성요소</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Registration &amp; Signing</h3>
+<ul>
+<li><a href="key-registration-poo.html">3. Key 등록 + PoO</a></li>
+<li><a href="signing-flow.html">4. Signing Flow</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 은행 도입</h3>
+<ul>
+<li><a href="bank-deployment.html">5. 은행 도입</a></li>
+<li><a href="risks-open-questions.html">6. Risks &amp; Open Questions</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="overview">
+<h1>Fireblocks Key Link — Customer HSM 통합 reference</h1>
+<p class="lead">
+Fireblocks 의 <strong>Key Link</strong> 는 고객사가 보유한 HSM (Hardware Security Module) <span class="g" data-tip="암호키를 안전하게 저장·연산하는 전용 하드웨어. FIPS 140-3 등 보안 표준 인증을 받은 장비. 키가 장비 밖으로 절대 빠져나가지 않음">(?)</span>
+을 Fireblocks 플랫폼과 결합하는 통합 방식. <strong>Fireblocks 는 키 share 를 보유하지 않으며</strong>,
+서명은 모두 고객의 HSM 에서 수행된다.
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">본 페이지의 출처 — 어디까지가 공식 사실이고, 어디부터가 저자 추정인가</div>
+<p>본 문서는 두 등급으로 출처를 구분한다:</p>
+<ul style="margin-bottom:0.5rem">
+<li><strong>공식 문서에 정의된 사실</strong> — 그대로 받아도 안전 (출처 명시)</li>
+<li><strong>저자가 합리적으로 추정한 운영 권장</strong> — 참고용, 본인 환경 검증 권장</li>
+</ul>
+<p style="margin-bottom:0">
+저자가 Fireblocks Help Center 에서 식별한 Key Link 관련 공식 문서 3 건 (Overview · Getting Started · Vault Setup) 의 본문을 정밀 인용 가능. 추가로 Fireblocks 공식 블로그 1 건 (2025-09-23 Thales 파트너십) 의 본문 인용 가능.
+</p>
+</div>
+
+<h2>10 초 요약</h2>
+<ul>
+<li><strong>Key Link = customer-held HSM 모델</strong>. SaaS MPC 와 달리 Fireblocks 가 키 share 를 0 개 보유.
+  <span class="src">(출처: Fireblocks 공식 문서 — Fireblocks Key Link Overview)</span></li>
+<li><strong>4 구성요소</strong>: Fireblocks Agent (open-source TS) + Customer Server + HSM Component + HSM Adaptor (선택, cold HSM 용).
+  <span class="src">(출처: Fireblocks 공식 문서 — Fireblocks Key Link Overview)</span></li>
+<li><strong>2 key 모델</strong>: Validation Key (등록 권한 증명) + Signing Key (실제 서명).
+  <span class="src">(출처: Fireblocks 공식 문서 — Getting Started with Fireblocks Key Link)</span></li>
+<li><strong>3-mode signing</strong>: Hot · Warm · Cold (air-gapped: USB / SFTP / data diodes).
+  <span class="src">(출처: Fireblocks 공식 블로그 — Enterprise Digital Asset Security with Fireblocks and Thales, 2025-09-23)</span></li>
+<li><strong>Reference HSM 파트너</strong>: <span class="g" data-tip="Thales 가 만든 HSM 제품 라인. 금융권 표준. FIPS 140-3 Level 3 + Common Criteria 인증 + post-quantum cryptography (PQC) 대응">(?)</span> Thales Luna HSM — FIPS 140-3 Level 3 + Common Criteria + PQC 대응.
+  <span class="src">(출처: Fireblocks 공식 블로그 — 2025-09-23)</span></li>
+<li><strong>API 상태</strong>: Beta (endpoint prefix <code>/key-link-beta/</code>). Production 도입 시 vendor 와 조건 협의 필요 — 저자 추정.</li>
+<li><strong>KR 관할 명시 없음</strong>: vendor 블로그가 HKMA · HKSFC · JFSA 만 명시. KR VASP 환경 적용은 별도 검증 항목.</li>
+</ul>
+
+<h2>이 문서의 7 페이지</h2>
+<div class="table-wrap">
+<table class="overview-domains">
+<thead><tr><th>도메인</th><th>다루는 내용</th><th>진입점</th></tr></thead>
+<tbody>
+<tr><td>0. Overview</td><td>요약, 3-way 비교 (SaaS MPC / Hosted MPC / Key Link), 핵심 invariant</td><td><a href="index.html">현재 페이지</a></td></tr>
+<tr><td>A. 기초</td><td>Key Link 정의 · paired key plane · 4 구성요소 토폴로지</td><td><a href="key-link-fundamentals.html">1. Key Link 란</a></td></tr>
+<tr><td>B. Reg + Sign</td><td>Validation/Signing Key 등록 · PoO 2 methods · Hot/Warm/Cold 3-mode signing</td><td><a href="key-registration-poo.html">3. Key 등록 + PoO</a></td></tr>
+<tr><td>C. 은행 도입</td><td>KR 망분리 IDC 적합성 · 컴플라이언스 매핑 · 검증 항목 · Risk-KL01~KL07</td><td><a href="bank-deployment.html">5. 은행 도입</a></td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>은행 입장에서 본 3-way 비교</h2>
+<p>
+디지털 자산 키 관리를 위해 Fireblocks 가 제공하는 3 가지 product line.
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>① SaaS MPC</th><th>② Hosted MPC</th><th>③ Key Link</th></tr></thead>
+<tbody>
+<tr><td><strong>키 share 위치</strong></td>
+  <td>Fireblocks Cloud + Co-signer(s) + Mobile</td>
+  <td>고객 인프라 내부 Co-signer + Fireblocks Cloud + Mobile</td>
+  <td><strong>전량 고객 HSM</strong>. Fireblocks share = 0</td></tr>
+<tr><td><strong>서명 위치</strong></td>
+  <td>분산 MPC 라운드 (3-party)</td>
+  <td>분산 MPC 라운드 (3-party)</td>
+  <td>고객 HSM 내부 단일 서명</td></tr>
+<tr><td><strong>고객 측 인프라</strong></td>
+  <td>Mobile app 만</td>
+  <td>Hosted Co-signer 1 대 이상</td>
+  <td>Customer Server + Fireblocks Agent + HSM (+ Adaptor)</td></tr>
+<tr><td><strong>거버넌스</strong></td>
+  <td>Admin Quorum + Approval Group + Policy</td>
+  <td>Admin Quorum + Approval Group + Policy</td>
+  <td>Admin Quorum + Approval Group + Policy + Customer Server 내부 로직 추가 가능</td></tr>
+<tr><td><strong>HSM 종류</strong></td>
+  <td>—</td>
+  <td>SGX TEE</td>
+  <td>FIPS HSM (Thales Luna 등) · on-prem / cloud / cold</td></tr>
+<tr><td><strong>API 상태</strong></td>
+  <td>GA</td>
+  <td>GA</td>
+  <td><strong>Beta</strong> (prefix <code>/key-link-beta/</code>)</td></tr>
+<tr><td><strong>KR 망분리 적합성</strong></td>
+  <td>외부 SaaS 통신 — 망분리 해석 필요</td>
+  <td>Co-signer on-prem 가능 — 해석 여지 큼</td>
+  <td>HSM + Customer Server 전량 on-prem 가능 — <strong>가장 강한 적합성</strong> (저자 추정)</td></tr>
+<tr><td><strong>키 share 0 invariant</strong></td>
+  <td>해당 없음</td>
+  <td>해당 없음</td>
+  <td><strong>Fireblocks 가 키 share 0 보유 (보장)</strong>. 단 Validation Key 가 등록 governance plane 으로 작용</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Fireblocks Key Link Overview · Hosted MPC Workspace Configuration · 공식 블로그 2025-09-23)</span>
+</p>
+
+<div class="callout">
+<div class="callout-title">권장 시나리오 — 어떤 경우에 Key Link 를 선택하나</div>
+<ul>
+<li><strong>강한 키 보유권 요건</strong> — 규제 / 내부 정책상 "키 share 가 외부 (Fireblocks Cloud) 에 한 개도 존재해서는 안 된다"</li>
+<li><strong>기존 HSM 자산 활용</strong> — 이미 Thales Luna / Entrust / 기타 FIPS HSM 운영 중. SaaS MPC 로 가면 이 자산이 의미가 없어짐</li>
+<li><strong>망분리 IDC 의 강한 해석</strong> — KR 은행처럼 외부 SaaS 통신 자체가 해석 부담일 때 (단 Customer Server 가 Fireblocks 와 outbound 통신은 여전히 필요)</li>
+<li><strong>커스텀 정책 / 검증 추가</strong> — Customer Server 단계에서 자체 transaction validation, custom approval logic 추가 가능</li>
+</ul>
+<p style="margin-bottom:0">
+<em>단, Beta 상태인 점 + Customer Server SPOF (Risk-KL01) + Agent open-source 운영 부담 (Risk-KL02) 등은 별도 trade-off.</em>
+</p>
+</div>
+
+<h2>핵심 invariant (6)</h2>
+<ol>
+<li><strong>Fireblocks 키 share = 0</strong> — Key Link workspace 에서는 Fireblocks 클라우드가 키 share 를 보유하지 않는다.
+  <span class="src">(출처: Fireblocks 공식 문서 — Fireblocks Key Link Overview)</span></li>
+<li><strong>Vault Account = 1 ECDSA + 1 EdDSA</strong> — 각 vault 에 algorithm 별 1 키만 할당. 한 키가 한 vault 전속 (다른 vault 재사용 불가).
+  <span class="src">(출처: Fireblocks 공식 문서 — Set up your Fireblocks Vault with Key Link)</span></li>
+<li><strong>Validation Key 가 등록 권한 plane</strong> — 새 Signing Key 등록은 active Validation Key 의 서명을 통해서만 가능 (자동화 가능).
+  <span class="src">(출처: Fireblocks 공식 문서 — Getting Started with Fireblocks Key Link)</span></li>
+<li><strong>PoO 2 methods</strong> — Interactive (Fireblocks 가 challenge 발송) / Non-interactive (등록 시 사전 서명 첨부). 둘 중 하나 선택.
+  <span class="src">(출처: Fireblocks 공식 문서 — Getting Started with Fireblocks Key Link)</span></li>
+<li><strong>Designated signer = Agent API user</strong> — Policy rule 의 designated signer 는 Signer-role API user (Agent 와 페어링된) 강제.
+  <span class="src">(출처: Fireblocks 공식 문서 — Getting Started with Fireblocks Key Link)</span></li>
+<li><strong>Workspace type immutable</strong> — Key Link workspace 는 다른 type (SaaS MPC / Hosted MPC) 으로 변환 불가 — 저자 추정 (architectural symmetry, SaaS MPC 의 invariant 와 동일 패턴).
+  <span class="src">(출처: Fireblocks 공식 문서 — Hosted MPC Workspace Configuration; 저자 추정 — Key Link 자체 명시는 미확보)</span></li>
+</ol>
+
+<h2>이 문서가 다루지 <em>않는</em> 것</h2>
+<ul>
+<li><strong>Fireblocks Agent 의 정확한 GitHub repo URL · 버전 release cycle</strong> — open-source 사실은 공식 명시, 구체 repo URL · 운영 정책은 본 문서 미확보 (Q-KL02 / Q-KL03)</li>
+<li><strong>Hot/Warm/Cold 의 정확한 기술 정의</strong> — 특히 "Warm" 의 의미. vendor 블로그에 framing 만 명시. 정밀 spec 미확보 (Q-FB01)</li>
+<li><strong>SaaS Cold Wallet workspace vs Key Link Cold signing 의 관계</strong> — 별개 product 인지 같은 plane variant 인지 미명시 (Q-FB02)</li>
+<li><strong>KR VASP 환경의 vendor 공식 입장</strong> — 블로그가 HKMA · HKSFC · JFSA 만 명시. KR 미명시 (Q-FB03)</li>
+<li><strong>Validation Key 분실 시 복구 절차</strong> — quorum 으로 새 Validation Key 등록 가능 추정, 정밀 복구 절차 미확보</li>
+<li><strong>다른 vendor (Anchorage / Copper / Hex Trust) 의 customer-held HSM 모델</strong> — 본 문서는 Fireblocks 한정</li>
+</ul>
+
+<h2>이 문서의 가장 자주 인용되는 출처</h2>
+<ul>
+<li><strong>Fireblocks Key Link Overview</strong> (Fireblocks Help Center) — 4 구성요소 정의</li>
+<li><strong>Getting Started with Fireblocks Key Link</strong> (Fireblocks Help Center) — Validation/Signing key, PoO 2 methods, Agent 설치 절차</li>
+<li><strong>Set up your Fireblocks Vault with Key Link</strong> (Fireblocks Help Center) — Vault account 의 1 ECDSA + 1 EdDSA 룰</li>
+<li><strong>Enterprise Digital Asset Security with Fireblocks and Thales</strong> (Fireblocks 공식 블로그, 2025-09-23) — Hot/Warm/Cold 3-mode, Thales Luna 통합, PQC 대응</li>
+<li><strong>Hosted MPC Workspace Configuration</strong> (Fireblocks Help Center) — workspace type immutability invariant</li>
+</ul>
+
+<p class="back-top"><a href="#overview">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="assets/app.js"></script>
+</body>
+</html>

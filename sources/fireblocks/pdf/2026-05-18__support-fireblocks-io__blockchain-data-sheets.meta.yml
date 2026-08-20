@@ -1,0 +1,12 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/24563952449308-Blockchain-data-sheets-on-Fireblocks
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 3
+language: en
+category: blockchains-core
+notes: |
+  Standard metadata template for newly-supported chains.
+  Fields: name, support since, description, native asset, mainnet/testnet explorers,
+  supported functionality, finality, max confirmations, gas station defaults, importing private keys
+  (chain ID, address prefix), token support, globally supported assets, minimum balance, supported networks.
+  Currently lists Zigchain and Pocket Network (both Cosmos SDK, January 2026).

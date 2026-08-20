@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>1. 컴포넌트 토폴로지 — NodeWallet 은행 도입</title>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a class="active" href="architecture.html">1. 컴포넌트 토폴로지</a></li>
+<li><a href="trust-boundaries.html">2. 신뢰 경계</a></li>
+<li><a href="db-split.html">3. 4-DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. DB Schema</h3>
+<ul>
+<li><a href="tables-approver.html">4. approverdb</a></li>
+<li><a href="tables-audit.html">5. auditdb</a></li>
+<li><a href="tables-ledger-chain.html">6. ledgerdb · chaindb</a></li>
+<li><a href="tables-tenant-wallet.html">7. 테넌트 · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Cryptography</h3>
+<ul><li><a href="keys-hsm-tee.html">8. HSM · SGX · 키 수명주기</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Policy &amp; Decisions</h3>
+<ul>
+<li><a href="policy-rules.html">9. 10 Policy Rules</a></li>
+<li><a href="sm-decision.html">10. 결정 라이프사이클</a></li>
+<li><a href="sm-signing.html">11. 3-key 서명 흐름</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Transactions &amp; Audit</h3>
+<ul>
+<li><a href="sm-deposit-withdrawal.html">12. 입금 · 출금 흐름</a></li>
+<li><a href="audit-2layer.html">13. 2-Layer 감사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Compliance</h3>
+<ul><li><a href="compliance-regulations.html">14. 5 규제 + 트래블룰</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Discipline</h3>
+<ul>
+<li><a href="storage-discipline.html">15. Storage Discipline</a></li>
+<li><a href="risks-anti-patterns.html">16. Risks &amp; Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="architecture">
+<h2>1. 컴포넌트 토폴로지</h2>
+<span class="section-subtitle">5 컴포넌트 + 4 DB + 망분리 IDC — 은행 perimeter 안에서 닫혀 있다</span>
+
+<div class="callout">
+<div class="callout-title">출처</div>
+<p><code>compliance__architecture.md</code> (3 컴포넌트), <code>security__architecture__multisig.md</code> (3-key 서명), <code>dev__architecture.md</code> (SDK · 지갑 종류), <code>security__architecture__trust-boundaries.md</code> (DMZ/격리구역/TEE).</p>
+</div>
+
+<h3>5 컴포넌트</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>컴포넌트</th><th>역할</th><th>키 보관 / 의존</th><th>소유</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><strong>Spring Backend (은행 자체)</strong></td><td>은행 비즈니스 로직. NodeWallet Java SDK 호출. <em>개시 서명</em>의 주체.</td><td>HSM 파티션 (개시 키)</td><td>은행 개발팀</td></tr>
+<tr><td>2</td><td><strong>Coordinator</strong></td><td>평가 컨텍스트 사전계산 (잔액 · 일일누적 · 일일건수) + 승인자 · 엔클레이브 호출 오케스트레이션 + Held 폴링 루프 주도</td><td>의존: ledger · approver</td><td>NodeInfra 제공 / 은행 운영</td></tr>
+<tr><td>3</td><td><strong>Approver (정책 엔진)</strong></td><td>10 rule 평가 + 승인 키 co-sign + Held 큐 관리 + hot reload (<code>ArcSwap</code><span class="g" data-tip="Rust 의 원자적 포인터 교체 자료구조. 정책 규칙 set 의 hot reload 에 사용" tabindex="0">(?)</span>)</td><td>HSM 파티션 (승인 키) + approverdb</td><td>NodeInfra 제공 / 은행 운영</td></tr>
+<tr><td>4</td><td><strong>SGX Enclave (실행 서비스)</strong></td><td>마스터 키 언실 + BIP-44<span class="g" data-tip="HD wallet 의 경로 표준. m/44'/coin_type'/account'/change/index" tabindex="0">(?)</span> 파생 + Ed25519 체인 서명 + 즉시 제로화</td><td>디스크 sealed blob (실행 키 마스터, MRENCLAVE 봉인)</td><td>NodeInfra 제공 / 은행 운영</td></tr>
+<tr><td>5</td><td><strong>Compliance Portal</strong></td><td>규칙 등록·전환 · 결정/지갑 조회 · 활동 로그 (Admin / Operator / Auditor 3 역할)</td><td>의존: approverdb · auditdb</td><td>NodeInfra 제공 / 컴플라이언스팀 사용</td></tr>
+</tbody>
+</table>
+</div>
+<p class="hint">★ Hypothesis: Coordinator + Approver + Enclave 3개는 NodeInfra 가 release 하는 binary. 콘솔/포털은 web app. 4개 DB schema 와 trigger 함수는 NodeInfra 가 제공하는 migration 으로 설치된다고 추정 (vendor docs 에 schema-only release 형태 미명시).</p>
+
+<h3>4 DB</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>DB</th><th>주요 책임</th><th>mutability</th><th>핵심 표 (대표)</th></tr></thead>
+<tbody>
+<tr><td><code>approverdb</code></td><td>정책 규칙 · 결정 · Held 큐 · velocity counter · 정책 변경 로그</td><td>혼합 (rules mutable · decisions append-only · Held set-once · counters insert-only)</td><td>policy_rules · policy_decisions · held_withdrawals · velocity_windows · policy_change_log</td></tr>
+<tr><td><code>auditdb</code></td><td>체인 서명 이벤트 · 키 수명주기 · 마스터 KEK<span class="g" data-tip="Key Encryption Key. 다른 키를 암호화·복호화하는 데 쓰는 상위 키" tabindex="0">(?)</span> 운영</td><td>append-only</td><td>signing_events · key_lifecycle · master_key_operations</td></tr>
+<tr><td><code>ledgerdb</code></td><td>잔액 추적 · 계정별 SHA-256 prev_hash 해시체인</td><td>mutable, but with FK 제약 to 작업 레코드 + 해시체인</td><td>ledger_entries · checkpoints (★ Hypothesis 명)</td></tr>
+<tr><td><code>chaindb</code></td><td>온체인 입금/출금 이벤트 ingest + deposit 검증 reference</td><td>append-only</td><td>chain_events · deposit_verifications (★ Hypothesis 명)</td></tr>
+</tbody>
+</table>
+</div>
+<p class="hint">★ Cross-DB join 은 <code>request_id</code> · <code>account_id</code> · <code>tx_hash</code> · <code>chain_evidence_ref</code> 같은 well-known key 로 한다 (source: <code>pm-db-design-notes.md</code>). 단일 DB 만 보고는 lifecycle 전체를 못 본다.</p>
+
+<h3>망분리 IDC 안의 배치</h3>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  subgraph Internet["인터넷 (외부)"]
+    USER["고객 단말 / 외부 시스템"]
+  end
+  subgraph DMZ["DMZ"]
+    LB["L7 LB / WAF"]
+  end
+  subgraph BankZone["은행 격리 구역 (망분리 내부망)"]
+    SPRING["Spring Backend<br/>(은행 비즈니스)"]
+    SDK["NodeWallet Java SDK<br/>(개시 키 PKCS#11)"]
+    COORD["Coordinator"]
+    APPROVER["Approver<br/>(승인자 정책엔진)"]
+    PORTAL["Compliance Portal"]
+    APPDB[(approverdb)]
+    AUDITDB[(auditdb)]
+    LEDGERDB[(ledgerdb)]
+    CHAINDB[(chaindb)]
+    HSM["HSM 클러스터<br/>FIPS 140-3 L3"]
+    CHAIN_OBS["Chain Observer<br/>(Solana RPC client)"]
+  end
+  subgraph Enclave["SGX Enclave 호스트 (별도 hardening)"]
+    ENC["SGX Enclave<br/>실행 키 / sealed blob"]
+  end
+  subgraph SolanaNet["Solana 외부 네트워크"]
+    RPC["Solana RPC<br/>(validators)"]
+  end
+
+  USER -->|HTTPS| LB
+  LB -->|TLS mTLS| SPRING
+  SPRING -.uses.-> SDK
+  SDK -->|signed request| COORD
+  COORD -->|/v1/evaluate| APPROVER
+  APPROVER -->|PKCS#11<br/>승인 키| HSM
+  COORD -->|CBOR IPC + DCAP| ENC
+  ENC -.PKCS#11 프로비저닝 시만.-> HSM
+  APPROVER --> APPDB
+  COORD --> AUDITDB
+  COORD --> LEDGERDB
+  CHAIN_OBS --> CHAINDB
+  CHAIN_OBS <-->|outbound only| RPC
+  ENC -->|signed tx<br/>outbound only| RPC
+  PORTAL --> APPDB
+  PORTAL --> AUDITDB
+</pre>
+</div>
+<p class="diagram-caption">은행 격리 구역 안의 모든 컴포넌트는 SDK · HSM · 4 DB 만 보고, 외부 인터넷으로의 outbound 는 Solana RPC 와 DMZ LB 의 inbound 만 허용. HSM 은 격리 구역 안에 두지만 추가 VLAN 분리 권장.</p>
+
+<h3>데이터 흐름 — 출금 (가장 풍부한 경로)</h3>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  participant App as Spring Backend
+  participant SDK as Java SDK
+  participant HSM1 as HSM<br/>(개시 키)
+  participant Coord as Coordinator
+  participant Approver as Approver
+  participant HSM2 as HSM<br/>(승인 키)
+  participant Enc as SGX Enclave<br/>(실행 키)
+  participant Chain as Solana
+  participant Ledger as ledgerdb
+  participant Audit as auditdb
+  participant App2 as approverdb
+
+  App->>SDK: withdraw(walletId, amount, dest, reference_id)
+  SDK->>HSM1: sign (Ed25519, 개시 키)
+  HSM1-->>SDK: signed payload
+  SDK->>Coord: signed request (60초 timestamp)
+  Coord->>Coord: EvaluationContext 사전계산 (잔액, 일일누적)
+  Coord->>Approver: /v1/evaluate (PolicyContext)
+  Approver->>Approver: 규칙 priority 평가 (short-circuit)
+  alt Allow
+    Approver->>HSM2: co-sign (승인 키)
+    HSM2-->>Approver: 승인 sig
+    Approver->>App2: policy_decisions INSERT (append-only)
+    Approver-->>Coord: AutoApprove + auth_approver_sig
+    Coord->>Enc: CBOR IPC + DCAP nonce + payload
+    Enc->>Enc: sealed blob 언실 → BIP-44 파생 → Ed25519 서명 → 즉시 제로화
+    Enc-->>Coord: 체인 서명 (실행 키)
+    Coord->>Chain: submit tx
+    Chain-->>Coord: tx_hash
+    Coord->>Audit: signing_events INSERT (CBOR PolicyDecision 재포함)
+    Coord->>Ledger: ledger_entries INSERT (prev_hash 체인)
+  else Held
+    Approver->>App2: held_withdrawals INSERT
+    Approver-->>Coord: Held
+    Coord->>Coord: 폴링 루프 진입 (최대 24h)
+  else Deny
+    Approver->>App2: policy_decisions INSERT (verdict=REJECT, triggered_rules)
+    Approver-->>Coord: Deny(reasons)
+    Coord-->>SDK: 400 + 거부 사유
+  end
+</pre>
+</div>
+<p class="diagram-caption">3-key 가 sequential 인 것이 핵심. 개시 → 승인 → 실행 중 하나라도 빠지면 체인 서명이 안 나간다. 잔액·일일누적 같은 상태는 Approver 가 직접 조회하지 않고 Coordinator 가 미리 계산해서 넘긴다 (Approver hot path 단순화).</p>
+
+<h3>3 컴포넌트의 컴플라이언스 책임 (벤더 자기서술)</h3>
+<p>vendor docs 가 명시한 3-component 구분 (source: <code>compliance__architecture.md</code>):</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>컴포넌트</th><th>역할</th><th>소유자</th></tr></thead>
+<tbody>
+<tr><td>컴플라이언스 포털</td><td>규칙 등록·전환 · 결정/지갑 조회 · 활동 로그</td><td>컴플라이언스팀 (admin / operator / auditor)</td></tr>
+<tr><td>승인자 (정책엔진)</td><td>규칙 평가 · HSM 승인 키 co-sign · Held 큐 관리</td><td>자동 (운영자 개입 없음)</td></tr>
+<tr><td>코디네이터</td><td>평가 컨텍스트 사전계산 (잔액·일일누적) · 승인자 호출 오케스트레이션</td><td>자동</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>4-축 격리 (vendor 자기서술)</h3>
+<p>NodeInfra 는 "4-축 격리" 라는 용어로 보안 boundary 를 정리한다 (source: <code>compliance__architecture.md</code> 4-축 격리 안에서의 위치):</p>
+<ol>
+<li><strong>서비스 격리</strong> — 승인 키는 개시 키·실행 키와 분리된 HSM 파티션. 승인자 호스트 탈취 시에도 PKCS#11<span class="g" data-tip="HSM 접근의 표준 API. 슬롯/세션 기반. 벤더 portability" tabindex="0">(?)</span> 외부로 키 자체는 노출되지 않는다.</li>
+<li><strong>키 격리</strong> — HSM 파티션 + SGX sealed blob 의 dual key-custody 도메인.</li>
+<li><strong>테넌트 격리</strong> — 테넌트별 3-key 세트 + SPKI-hash 바인딩 + payload <code>tenant_id</code> 교차검증 (3 키 모두에서).</li>
+<li><strong>시간·증거 격리</strong> — 모든 결정은 <code>policy_decisions</code> 의 해시체인에 기록되고, 후속 <code>signing_events</code> 행이 <code>approver_decision_rationale</code> 로 결정 CBOR<span class="g" data-tip="Concise Binary Object Representation. JSON 비슷한 구조의 binary serialization. byte-deterministic" tabindex="0">(?)</span> 을 재포함 → 결정과 서명 사이가 사후 변조 불가능한 cross-DB 증거로 묶인다.</li>
+</ol>
+
+<h3>은행 도입 시 결정해야 할 것 (이 페이지 범위)</h3>
+<ul>
+<li><strong>망분리 깊이</strong> — HSM/Enclave 호스트를 추가 VLAN 으로 또 분리할지. NodeInfra 권장: 별도 management network.</li>
+<li><strong>HSM 토폴로지</strong> — 단일 HSM + 3 파티션 (기본) vs 키별 독립 HSM (권장). 후자가 단일 펌웨어 취약점 전파를 막는다 (source: <code>security__keys__hsm.md</code> 다중 HSM 배치 권장).</li>
+<li><strong>벤더 다양화</strong> — 예: 개시·승인 키는 Thales Luna, 실행 키는 Utimaco — 단일 vendor 의 monoculture risk 회피.</li>
+<li><strong>물리적 DB 분리</strong> — 4 DB 를 4 instance 로 둘지, 1 instance 의 4 schema 로 둘지. NodeInfra docs 는 separate DB 를 전제로 한 cross-DB join 패턴.</li>
+<li><strong>Coordinator HA</strong> — Coordinator 는 load-bearing 컴포넌트. 장애 시 출금 정지 → 핫/콜드 스탠바이 설계.</li>
+<li><strong>Approver HA</strong> — fail-closed 원칙상 Approver 장애 = 출금 정지가 의도된 동작. HA 로 가용성은 높이되 fail-open 으로 가지 않도록.</li>
+</ul>
+
+<div class="callout callout-warn">
+<div class="callout-title">설명 없는 부분 (★ Hypothesis)</div>
+<p>vendor docs 는 컴포넌트별 binary 패키징 형태 · 배포 단위 (k8s pod / systemd / Docker) · OS 권장사항 · 네트워크 ACL 세부 · DB 엔진 (Postgres vs MySQL) 을 명시하지 않는다. 위 다이어그램의 컴포넌트 모듈성은 docs 의 텍스트로부터 추정한 것이며, 실제 배포 단위는 NodeInfra 와 onboarding 시 확인해야 한다.</p>
+</div>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="index.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">0. Overview</span></a>
+<a class="page-nav-link page-nav-next" href="trust-boundaries.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">2. 신뢰 경계</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>6. 수탁 통합 — Canton 네트워크 지갑 연동 가이드</title>
+<meta content="Canton 공식 wallet 통합 가이드를 수탁 관점으로 정리 — 입금 식별(memo tag), party 운용(계정당 1개), 전송·서명 API, 입금 관찰(TransferIn), 운영·대사. 앞 장들의 핵심을 한 데 모은 통합 체크리스트." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Canton 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 원장 모델</h3><ul>
+<li><a href="model.html">1. 원장 모델 — ACS · Holding UTXO</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 네트워크 동작</h3><ul>
+<li><a href="validator.html">2. Validator · Synchronizer · 확정</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 자산 동작</h3><ul>
+<li><a href="operations.html">3. mint · burn · transfer · fee · cancel</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 인덱서</h3><ul>
+<li><a href="indexer.html">4. 인덱서 구현</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 운영</h3><ul>
+<li><a href="integration.html">5. 직접 운영 vs 위탁 운영</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 수탁 통합</h3><ul>
+<li><a class="active" href="custody.html">6. 수탁 통합 — wallet/guidance</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="custody">
+<h2>6. 수탁 통합 — wallet/guidance</h2>
+<span class="section-subtitle">공식 지갑 통합 가이드의 수탁 요건을 한 데 모은 체크리스트 — 앞 장들의 핵심을 연결한다</span>
+
+<p class="lead">
+이 장은 Canton 공식 문서의 <strong>지갑 통합 가이드(integrations/wallet/guidance)</strong>를 수탁 관점에서 정리한 것이다. 앞의 1~5장이 "Canton 이 EVM 과 왜 다른가" 를 설명했다면, 이 장은 그 차이가 <strong>수탁 지갑 구현에서 실제로 어떤 결정을 강제하는가</strong>를 한눈에 모은다. 각 항목의 깊은 설명은 해당 장으로 링크한다.
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">EVM 수탁 경험에서 가장 크게 바뀌는 세 가지</div>
+<ul>
+<li><strong>입금주소가 없다</strong> — 사용자별 입금주소 대신 <strong>memo 태그</strong>로 입금자를 구분한다(6.1).</li>
+<li><strong>party 를 남발하지 않는다</strong> — 입금/사용자마다 주소를 찍던 습관 대신 <strong>계정당 party 하나</strong>를 고정한다(6.2).</li>
+<li><strong>제출이 완료가 아니다</strong> — 2-step 전송이라 입금은 <strong>"TransferIn" + 수락</strong>까지 봐야 확정이다(6.4).</li>
+</ul>
+</div>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    subgraph US["우리 수탁 스택"]
+      direction TB
+      BE["지갑 백엔드<br/>memo→사용자 귀속 · UpdateID DB 영속화"]
+      FB["서명 프로바이더<br/>Fireblocks·MPC (키)"]
+    end
+    LAPI["Ledger API<br/>(participant)"]
+    NET["Canton 원장"]
+
+    NET -->|"입금: TransferIn 이벤트"| LAPI
+    LAPI -->|"이벤트 전달"| BE
+    BE -->|"출금 ① prepare"| LAPI
+    LAPI -->|"② 서명할 hash"| FB
+    FB -->|"③ 서명"| LAPI
+    LAPI -->|"④ execute"| NET
+    NET -->|"정산 이벤트(UpdateID)"| BE
+
+    classDef us fill:#dcfce7,stroke:#16a34a;
+    classDef adp fill:#dbeafe,stroke:#2563eb;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    class BE us;
+    class FB special;
+    class LAPI adp;
+    class NET ext;
+</pre></div>
+<p class="diagram-caption">Figure 6-0. 수탁 통합 한눈에. <strong>초록 = 지갑 백엔드</strong>(입금은 memo 로 사용자에 귀속(6.1), 정산 증빙 UpdateID 는 우리 DB 에 영속화(6.6)). <strong>보라 = 서명 프로바이더</strong>(Fireblocks·MPC — 키는 여기, 6.3). <strong>파랑 = Ledger API</strong>(participant 창구). <strong>회색 = Canton 원장</strong>. <strong>입금</strong>: 원장의 TransferIn 이벤트를 받아 귀속(6.4). <strong>출금</strong>: 백엔드가 prepare → 서명할 hash 를 Fireblocks 가 서명 → execute(6.3). 자금 권한 키는 우리(서명 프로바이더)에 남고, participant 는 우리 서명 없이 못 움직인다.</p>
+
+<h3>6.1 입금 식별 — memo tag (별도 입금주소 없음)</h3>
+
+<p>EVM·비트코인 수탁 지갑은 사용자마다 입금주소를 발급해 "어느 주소로 들어왔나" 로 입금자를 구분한다. <strong>Canton 은 이 방식을 쓰지 않는다.</strong> 공식 가이드는 별도 입금주소 없이 <strong>전송 metadata 의 memo 태그</strong>로 입금을 추적하라고 안내한다(거래소 입금도 동일).</p>
+
+<pre><code>"meta": { "values": { "splice.lfdecentralizedtrust.org/reason": "memo-ref" } }</code></pre>
+
+<p>리플(XRP)·스텔라(XLM)의 destination tag 와 같은 발상이다. 따라서 수탁 백엔드는 <strong>"입금주소 → 사용자" 가 아니라 "memo-ref → 사용자" 매핑</strong>으로 입금을 귀속시킨다. 인덱서가 이 memo 를 읽어 사용자에 연결하는 방식은 <a href="indexer.html">4. 인덱서</a>에서 다룬다.</p>
+
+<h3>6.2 party 운용 — 계정당 하나, 임시 발급 금지</h3>
+
+<p>party allocation 에는 비용이 따른다. 그래서 공식 권고는 <strong>"계정/지갑당 party 하나(one Party per account/wallet)"</strong> 를 안정적으로 두는 것이다.</p>
+
+<ul>
+<li><strong>입금 건마다 임시 party 를 만들지 말 것</strong> — 입금자 구분은 party 가 아니라 memo 태그로 한다(6.1).</li>
+<li><strong>PartyId 형식</strong> = <code>name::fingerprint</code>, 최대 185자. allocation 으로만 생성하고 파싱하지 않는다(<a href="validator.html">2. Validator</a>).</li>
+<li><strong>multi-host</strong> — 백업·이중화를 위해 같은 party 를 여러 validator 에 host 한다. 노드 하나를 잃어도 다른 노드가 계속 서비스한다(<a href="integration.html">5. 운영</a>).</li>
+<li><strong>external party 로</strong> — 키를 우리가 쥐는 external party 가 수탁의 기본형이다. participant 는 우리 서명 없이는 원장에서 움직일 수 없다(<a href="validator.html">2. Validator</a>).</li>
+<li><strong>이름 표시(CNS)</strong> — PartyId 는 사람이 못 읽으니, Canton Name Service(<code>alice.unverified.cns</code> 식, DNS/ENS 류)로 읽을 수 있는 이름을 매핑해 UI 에 표시하거나 이름으로 송금할 수 있다(등록 시 CC 결제·소각). 내부 귀속 키는 여전히 PartyId·memo 다.</li>
+</ul>
+
+<div class="callout">
+<div class="callout-title">MPC/HSM 키로 party 만드는 절차 (external party 온보딩)</div>
+<p>키를 custody(HSM·MPC) 안에 둔 채로 party 를 만드는 흐름은 명확하다 — <strong>키가 custody 밖으로 나오지 않는다.</strong></p>
+<ol>
+<li>custody 에서 키 생성, <strong>공개키만</strong> 추출(DER→base64).</li>
+<li><code>/v2/parties/external/generate-topology</code> 호출(synchronizer·이름 hint·공개키) → PartyToParticipant topology 와 <strong>서명할 multi-hash</strong> 를 돌려받음.</li>
+<li>그 hash 를 <strong>custody 키로 서명</strong>(MPC/HSM 내부).</li>
+<li><code>/v2/parties/external/allocate</code> 에 topology + 서명 제출 → party 등록 완료.</li>
+</ol>
+<p>다중 host 로 두려면 <code>otherConfirmingParticipantUids</code> 에 참여 participant 를 추가하고 같은 온보딩 트랜잭션을 각 participant 에 올린다.</p>
+</div>
+
+<h3>6.3 전송·서명 — prepare → sign → execute</h3>
+
+<p>출금(전송)은 <strong>준비·서명·실행</strong> 세 단계로 일어난다 — external party 의 외부 서명 모델(<a href="validator.html">2. Validator</a>)이 그대로 API 에 드러난다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    PREP["① prepare<br/>/v2/interactive-submission/prepare<br/>명령 → Daml tx, hash 산출"]
+    SIGN["② sign<br/>tx-tree hash 를 우리 키로 서명<br/>(MPC·HSM)"]
+    EXEC["③ execute<br/>/v2/interactive-submission/execute<br/>서명 붙여 제출"]
+    DONE["✅ 제출됨<br/>(2-step 이면 상대 수락 대기)"]
+
+    PREP --> SIGN --> EXEC --> DONE
+
+    classDef wait fill:#fef3c7,stroke:#d97706;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    class PREP,EXEC wait;
+    class SIGN special;
+    class DONE good;
+</pre></div>
+<p class="diagram-caption">Figure 6-1. 전송 3단계. <strong>노랑 = participant 가 하는 준비·실행</strong>, <strong>보라 = 우리 키로만 하는 서명</strong>(participant 는 이 서명 없이 진행 불가), <strong>초록 = 제출 완료</strong>. 단 2-step 전송이면 제출이 곧 완료가 아니라 "상대 수락 대기" 다(<a href="operations.html">3. 자산 동작</a>). 서명 전에는 prepare 응답의 hash 를 <strong>독립적으로 재계산해 검증</strong>하는 것이 권장된다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:34%">용도</th><th>엔드포인트 / 호출</th></tr></thead>
+<tbody>
+<tr><td>트랜잭션 준비</td><td><code>/v2/interactive-submission/prepare</code></td></tr>
+<tr><td>트랜잭션 실행</td><td><code>/v2/interactive-submission/execute</code></td></tr>
+<tr><td>holding(UTXO) 조회</td><td><code>/v2/state/active-contracts</code></td></tr>
+<tr><td>현재 offset</td><td><code>/v2/state/ledger-end</code> (prepare 전 호출, contract id 고정)</td></tr>
+<tr><td>수수료(traffic) 추정</td><td>prepare 응답의 traffic estimate (<a href="operations.html">3. 자산 동작</a>)</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Canton Coin 은 <strong>pre-approval</strong> 을 설정하면 수신이 자동 수락돼 1-step 이 된다(수신자 측 grant). 그 외 토큰은 기본 2-step 이다(<a href="operations.html">3. 자산 동작</a>).</p>
+
+<div class="callout">
+<div class="callout-title">MPC·HSM 은 어떻게 붙나 — 서명 프로바이더</div>
+<p>"②번 서명" 을 어디서 하느냐가 custody 전략이다. Canton 의 Wallet Gateway 는 서명을 <strong>외부 프로바이더에 위임</strong>할 수 있고, 공식 지원 목록에 우리에게 익숙한 이름들이 있다:</p>
+<ul>
+<li><strong>Fireblocks</strong> — HSM 기반 엔터프라이즈 키관리·서명(API 키·환경변수 구성).</li>
+<li><strong>Dfns</strong> — MPC 기반, 정책 제어·다자 승인 워크플로. validator 통합으로 wallet 생성·broadcast 까지.</li>
+<li><strong>Blockdaemon</strong> — 관리형 인프라 서명.</li>
+<li><strong>participant 기반</strong>(노드가 키 보관) · <strong>internal</strong>(개발용 DB 보관).</li>
+</ul>
+<p><strong>party 별로 프로바이더를 섞을 수 있어</strong>, 일부 계정은 Fireblocks(HSM), 일부는 Dfns(MPC) 식의 혼합 custody 가 한 게이트웨이에서 가능하다. 우리 수탁 스택이 이미 Fireblocks·MPC 라면 그대로 Canton 서명에 연결된다. 이 프로바이더들은 추상 개념이 아니라 <strong>공식 Canton Wallet SDK</strong>(<a href="https://github.com/canton-network/wallet">canton-network/wallet</a>, TypeScript)의 <code>core-signing-*</code> 드라이버로 제공된다 — <code>internal</code>(Ed25519)·<code>participant</code>·<strong><code>fireblocks</code></strong>·<code>blockdaemon</code>·<code>dfns</code> 5종(공통 <code>SigningDriverInterface</code> 구현).</p>
+</div>
+
+<div class="callout">
+<div class="callout-title">Fireblocks 로 Canton 수탁 — 우리 주력 경로</div>
+<p>우리 수탁 스택이 Fireblocks 라면 Canton 도 같은 방식으로 붙는다 — <strong>키는 Fireblocks(MPC/HSM)에 남고</strong>, Canton external party 거래를 <strong>Fireblocks Raw Signing(EdDSA·Ed25519)</strong> 으로 서명한다(공식 Canton Coin 복구 절차가 이 EdDSA Raw Signing 을 쓴다). 흐름은 6.3 그대로: participant 가 <code>prepare</code> 로 해시를 만들면 → <strong>Fireblocks 가 서명</strong> → <code>execute</code>. participant 는 우리(Fireblocks) 서명 없이 원장에서 움직일 수 없다. 공식 드라이버(<code>core-signing-fireblocks</code>) 코드 기준, <strong>EdDSA Ed25519</strong> 키로 <strong>Fireblocks Raw Signing</strong>(<code>createTransaction</code> operation <code>RAW</code>)을 써서 prepared tx 의 <strong>hash</strong> 를 서명하고, party 공개키는 <code>getPublicKeyInfo(EddsaEd25519)</code> 로 가져온다.</p>
+<ul>
+<li><strong>2-step 매핑</strong> — Fireblocks 는 Canton 2-step 을 generic status 로 뭉개지 않고 <strong>전용 <code>transactionType</code> 필드</strong>(<code>OFFER·ACCEPT·REJECT·WITHDRAW·PRE_APPROVAL</code>)로 그대로 노출하고, <code>traceableId</code>·<code>CantonHashes</code>(<code>offerUpdateId</code> 로 OFFER↔후속 연결)로 lifecycle 을 추적한다. 출금 상태머신은 <code>OFFER</code>=수락 대기로 두고 <code>ACCEPT/REJECT/WITHDRAW</code> 로 전이한다. <strong>timeout</strong> 은 수락 안 되면 송신자가 <code>WITHDRAW</code>(언제 할지는 앱 정책 — Fireblocks 강제 아님).</li>
+<li><strong>복구·사후처리</strong> — Fireblocks 는 Canton Coin 복구를 문서화한다(topology tx 외부 서명 → ACS import, <a href="integration.html">5. 운영</a>의 복구). 복구 후 <strong>pre-approval 재설정·contract id 갱신</strong>이 필요하고, <strong>토큰(USDCx 등)은 Circle 같은 Registrar 와 별도</strong> 절차다.</li>
+<li><strong>연동</strong> — 공식 Canton Wallet SDK(TypeScript)의 <strong><code>core-signing-fireblocks</code></strong> 드라이버(<code>SigningDriverInterface</code> 구현)로 붙는다. Fireblocks API 인증은 <strong>RSA-4096 키(<code>FIREBLOCKS_SECRET</code>)·API User(CSR)·API Key</strong> 구성(이 RSA 는 API 인증용 — 온원장 서명 알고리즘과 별개 층). (<a href="https://github.com/canton-network/wallet">canton-network/wallet</a>)</li>
+</ul>
+</div>
+
+<div class="callout">
+<div class="callout-title">공식 SDK 가 주는 것 — 직접 안 만들어도 되는 부품</div>
+<p>위 내용을 처음부터 짤 필요는 없다. <strong>Canton Wallet SDK</strong>(<code>@canton-network/wallet-sdk</code>, NodeJS)와 core 모듈이 수탁 통합의 기본 부품을 제공한다:</p>
+<ul>
+<li><strong>읽기·조립</strong>: <code>acs-reader</code>(ACS/잔액) · <code>ledger-client</code>(Ledger API) · <code>token-standard</code> · <code>tx-parser</code>·<code>tx-visualizer</code>(거래 해석)</li>
+<li><strong>서명</strong>: <code>signing-lib</code> + 드라이버 5종(internal·participant·<strong>fireblocks</strong>·blockdaemon·dfns) · <code>signing-store-sql</code></li>
+<li><strong>저장·인증</strong>: <code>wallet-store</code>(inmemory/sql) · <code>wallet-auth</code></li>
+<li><strong>Wallet Gateway</strong>(서버) — RPC 서버(기본 :3030, <code>/api/v0/dapp</code>·<code>/api/v0/user</code>). 서명을 <strong>드라이버(Fireblocks·Dfns)로 라우팅</strong>하고, wallet store 와 <strong>서명 자격증명 store 를 분리(Postgres)</strong> 보관, Canton·CantonTestnet 관리.</li>
+</ul>
+<p>즉 Fireblocks 키만 우리가 쥐고, ACS 읽기·Ledger 제출·서명 라우팅·저장은 SDK/Gateway 부품으로 조립할 수 있다.</p>
+</div>
+
+<div class="callout">
+<div class="callout-title">전송에 "안 보이는 contract" 가 필요할 때 — disclosed contracts</div>
+<p>토큰 전송은 발행자/레지스트리의 <strong>transfer factory contract</strong> 를 참조하는데, 그 contract 는 우리가 stakeholder 가 아니라 우리 노드에서 안 보일 수 있다. 이때 <code>prepare</code> 호출에 <strong><code>disclosed_contracts</code></strong>(template_id·contract_id·<code>created_event_blob</code>)를 함께 넘기면, 보이지 않는 contract 라도 거래에 쓸 수 있다(레지스트리가 off-ledger 로 그 blob 을 제공). contract-id 가 해시 기반이라 위변조하면 id 가 달라져 자동 탐지된다. 6.3 의 prepare 단계에서 "disclosed contracts" 를 넘기는 게 바로 이것이다.</p>
+</div>
+
+<p>전체 호출 순서를 한 그림으로 보면 다음과 같다 — 사전 준비(party 온보딩)는 한 번, 전송은 매번 반복된다.</p>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant App as 백엔드 / 주문 App<br/>(Client)
+    participant PN as Participant Node<br/>(Ledger API /v2)
+    participant Dec as 거래 해석·검증<br/>(tx-parser / visualizer)
+    participant FB as Fireblocks<br/>(Raw Signing · MPC/HSM)
+    participant Sync as Synchronizer<br/>(2/3 BFT 합의)
+
+    Note over App,Sync: 사전 준비 (1회) — external party 온보딩
+    App->>FB: 공개키 요청 (Ed25519)
+    FB-->>App: party 공개키
+    App->>PN: /v2/parties/external/generate-topology
+    PN-->>App: topology + 해시
+    App->>FB: Raw Signing (topology 해시)
+    FB-->>App: 서명
+    App->>PN: /v2/parties/external/allocate → PartyId 발급
+
+    Note over App,Sync: 전송 1건 (반복)
+    App->>PN: ① prepare (명령 → Daml tx)
+    PN-->>App: prepared tx + 해시(결정적)
+    rect rgb(254,243,199)
+    Note over App,Dec: 서명 전 검증 — 이 해시가 정말 의도한 거래인가
+    App->>Dec: prepared tx 디코딩(목적지·금액 확인)
+    Dec-->>App: 일치? OK / 거절
+    end
+    App->>FB: ② Raw Signing (해시만 전달, EdDSA Ed25519)
+    Note right of FB: 정책 엔진은 해시만 봄<br/>목적지·금액은 안 보임
+    FB-->>App: 서명
+    App->>PN: ③ execute (서명 붙여 제출)
+    PN->>Sync: 제출
+    Sync-->>PN: 확정 (보통 3~10초)
+    PN-->>App: 완료 / 원장 이벤트
+</pre></div>
+<p class="diagram-caption">Figure 6-2. 전송 한 건의 실제 호출 순서. <strong>노랑 박스 = 서명 전 검증 지점</strong>. Fireblocks 는 ②에서 <strong>해시만</strong> 받으므로 거래의 의미(목적지·금액)를 알 수 없다 — 따라서 "이 해시가 정말 의도한 거래인가" 는 ② 이전에 우리가 확인해야 한다. 사전 준비 단계의 party 발급도 같은 Raw Signing 으로 이뤄진다.</p>
+
+<div class="callout">
+<div class="callout-title">blind signing 과 fund-drain — 무엇이 막히고, 무엇이 우리 몫인가</div>
+<p>Raw Signing 은 거래 내용을 사람이 읽는 형태로 보여주지 않고 <strong>해시 한 덩어리에 서명</strong>한다(이를 blind signing 이라 한다). 위험 시나리오는 이렇다 — <code>prepare</code> 를 부르는 경로가 조작돼 "A 에게 100" 대신 <strong>"잔액 전부를 공격자에게"</strong> 라는 거래의 해시가 Fireblocks 로 넘어가면, Fireblocks 는 의미를 모른 채 서명한다. 그러면 자금이 통째로 빠져나간다(이런 거래를 fund-drain, 자금 탈취 거래라 한다).</p>
+<p><strong>Canton 이 구조적으로 막아주는 것</strong> — Canton 의 잔액(holding)은 소유자만 서명권을 갖고, 이더리움식 "사용 권한 위임"(한 번 허가해 두면 상대가 알아서 빼가는 방식)이 아예 없다. 따라서 "무제한 인출 권한을 한 번 서명시켜 두고 나중에 빼가는" 가장 흔한 탈취 수법은 Canton 에선 성립하지 않는다.</p>
+<p><strong>한 가지 정정 — Canton 규약 자체는 "blind 서명"을 전제하지 않는다</strong> — Canton 의 외부 서명 방식은 본래 준비된 거래를 해독(decode)하고, 서명하는 쪽이 해시를 <strong>독립적으로 다시 계산해 일치를 확인한 뒤</strong> 서명하도록 설계돼 있다(거래를 만든 노드를 신뢰할 수 없으면 그 노드가 준 해시는 무시하도록 규정한다). 즉 "검증된 해시 서명"이 정공법이다. 문제는 <strong>Fireblocks 를 Raw Signing 으로 끼울 때</strong> Fireblocks 가 해시만 받아 그 해독·재계산 단계가 자동으로 따라오지 않는다는 점이다. 그래서 "Raw Signing 이라 무조건 blind" 가 아니라, <strong>규약은 검증을 지원하지만 Raw Signing 으로 연결하면 그 검증 책임이 우리 쪽으로 넘어온다</strong> 가 정확하다 — Figure 6-2 의 노랑 박스가 바로 그 넘어온 책임을 우리가 수행하는 자리다.</p>
+<p><strong>우리가 막아야 하는 것 — 그리고 단일 백엔드의 한계</strong> — 남는 위험은 위 시나리오 같은 "직접 전송형" 탈취다. Figure 6-2 의 노랑 박스(서명 전 디코딩 검증)가 1차 방어지만, <strong>그 검증이 주문 백엔드와 같은 곳에 있으면 백엔드가 탈취된 순간 함께 무력화된다</strong> — 공격자가 검증을 건너뛰고 악성 해시를 바로 서명에 넘기면 그만이기 때문이다. 따라서 검증 한 단계로는 부족하고, 신뢰를 <strong>여러 곳에 분산</strong>해야 한다:</p>
+<dl class="chain-rr">
+<dt>다중 서명 (여러 키로 나눠 서명)</dt><dd>Canton 은 한 party 에 여러 서명키와 임계값(예: 5개 키 중 3개가 서명해야 유효)을 둘 수 있다. 백엔드 하나가 털려도 <strong>단독으로는 유효 서명을 만들 수 없다</strong> — 단일 백엔드 탈취에 대한 구조적 방어다.</dd>
+<dt>독립된 승인 평면</dt><dd>검증·승인을 주문 백엔드와 <strong>다른 신뢰 영역</strong>에 둔다(예: 별도 기기에서의 모바일 승인). 단 Raw Signing 은 승인자에게 보이는 정보가 제한적이라, 이 방어만으로는 약하다.</dd>
+<dt>해시 독립 재계산</dt><dd>Canton 의 서명 대상 해시는 결정적이라, 별도 검증자가 <strong>독립적으로 받은 주문</strong>으로 해시를 다시 계산해 대조할 수 있다. 위 두 가지와 결합할 때 의미가 있다.</dd>
+</dl>
+<p><strong>정직한 경계</strong> — 단일 백엔드 + Raw Signing 만으로는, 그 백엔드가 "무엇에 서명할지" 의 단일 신뢰점이 된다. 수탁급 안전을 위해서는 <strong>다중 서명·독립 승인</strong>이 사실상 필수다(디코딩 검증 한 단계 추가로는 부족하다).</p>
+</div>
+
+<h3>6.4 입금 관찰 — "TransferIn" + 수락까지</h3>
+
+<p>입금은 <strong>"TransferIn" 이벤트</strong>로 감시한다. 단 2-step 이라 들어오는 전송은 먼저 대기(Pending)로 보이고, <strong>우리가(또는 pre-approval 이) 수락(Accept)해야</strong> 실제 holding 이 생긴다.</p>
+
+<ul>
+<li><strong>pre-approval 켜짐</strong> — 들어오는 전송이 자동 수락돼 바로 holding 으로 들어온다.</li>
+<li><strong>pre-approval 꺼짐(기본)</strong> — 전송 instruction 의 pending/completed 상태를 보고, 수동으로 <code>TransferInstruction_Accept</code>(수령) 또는 <code>TransferInstruction_Reject</code>(반환)한다.</li>
+<li><strong>"전송이 보였다 ≠ 입금 확정"</strong> — 확정은 수락 후 holding 이 생긴 시점이다. 상세 상태 추적은 <a href="indexer.html">4. 인덱서</a>.</li>
+<li><strong>위탁(Fireblocks) 경로</strong> — Fireblocks 수탁이면 이 관찰을 Fireblocks 가 대신해 <code>transactionType</code> webhook(OFFER/ACCEPT/…)으로 통지받을 수 있다. 자체 participant 의 Ledger API "TransferIn" 을 직접 구독하는 건 직접 운영 경로다 — 어느 쪽인지는 통합 방식에 따라 갈린다(<a href="integration.html">5. 운영</a>).</li>
+</ul>
+
+<h3>6.5 운영 · 대사</h3>
+
+<ul>
+<li><strong>진행 위치 = offset, 대사 = recordTime.</strong> 우리 인덱스 진행은 <code>/v2/state/ledger-end</code> 의 offset 으로 잡지만, <strong>외부 파트너와의 대사</strong>는 synchronizer 가 매기는 <code>recordTime</code> 으로 맞춘다 — offset 은 우리 노드 로컬 값이라 상대와 공유되지 않는다.</li>
+<li><strong>UTXO 조각 관리.</strong> holding 조각은 보관·연산 비용이 있어 <strong>사용자당 약 10개</strong> 수준으로 병합(merge)한다. 큰 출금은 여러 조각을 모으고, 거스름 조각을 최소화한다(<a href="model.html">1. 원장 모델</a>).</li>
+<li><strong>4 환경 운영.</strong> LocalNet · DevNet · TestNet · MainNet 을 함께 운영해, 업그레이드를 운영에 올리기 전 하위 환경에서 검증한다(DevNet 시크릿은 API·1시간, TestNet/MainNet 은 sponsor 제공). 운영 SLA·복구는 <a href="integration.html">5. 운영</a>.</li>
+<li><strong>registry 조회.</strong> 자산 발행자 정보·instrument·transfer factory 는 registry 엔드포인트(<code>/registry/metadata/v1/info</code>·<code>/instruments</code>·<code>/registry/transfer-instruction/v1/transfer-factory</code>)로 얻는다.</li>
+<li><strong>확정 시간.</strong> 보통 3-10초(<a href="validator.html">2. Validator</a>).</li>
+<li><strong>멱등 재시도.</strong> 중복 제거 기준은 <strong>command ID</strong>(=change ID; 같은 작업의 재시도엔 동일 값을 유지)이고, <strong>submission ID 는 시도마다 새 값(UUID)</strong>을 쓴다. 중복 제거 기간은 처리시간 상한 B 로 명시하는 게 안전하다.</li>
+</ul>
+
+<h3>6.6 전송 증명 · 원장 pruning · 거래소 변형</h3>
+
+<div class="callout callout-warn">
+<div class="callout-title">원장은 pruning 된다 — 증빙을 우리 DB 에 보관해야 한다</div>
+<p>EVM 은 과거 트랜잭션을 언제든 체인에서 다시 조회할 수 있다고 가정하지만, <strong>Canton 원장은 pruning(과거 데이터 정리)된다.</strong> 공식 가이드는 전송 증명을 위해 <strong>Transfer Object 와 UpdateID</strong>(원장 거래 고유 id)를 <strong>지갑 백엔드 DB 에 직접 영속화하라</strong>고 못 박는다 — pruning 이후엔 원장 과거 조회가 실패하기 때문이다. 감사·대사·분쟁 대응을 원장에만 의존하면 안 되고, <strong>우리 DB 가 1차 증빙 보관처</strong>여야 한다.</p>
+<p>증명 조회: <code>GET /v2/updates/update-by-id</code>(완료 전송), 거절·철회는 <code>/v2/events/events-by-contract-id</code>. 이 값을 받아 두는 게 핵심이다.</p>
+<p>보조 장치도 있다 — 노드는 <strong>PQS(Participant Query Store)</strong> 라는 distilled 장기 보관소를 둘 수 있고, participant 들은 <strong>ACS commitment</strong>(보유 contract 의 암호 서명 요약)를 상대 participant 와 주기적으로 교환해 "서로 같은 상태를 본다" 를 증명·정합(fork 탐지)한다. 단 이들은 <strong>현재 상태</strong> 증명이지 과거 전체 이력이 아니므로, 감사·분쟁용 이력은 여전히 우리 DB 에 남겨야 한다.</p>
+</div>
+
+<div class="callout">
+<div class="callout-title">거래소(omnibus) 는 패턴이 다르다 — 단일 treasuryParty</div>
+<p>지금까지는 "계정당 party 하나"(6.2) 를 전제했지만, <strong>거래소형</strong>은 보통 단일 <strong><code>treasuryParty</code></strong> 가 입금 수령·자금 통제·출금 집행을 모두 맡는 <strong>omnibus</strong> 구조다. 입금자 구분은 여전히 memo 태그(6.1)로 한다. 출금 시에는 입력 holding 을 골라 target recordTime 까지 잠그는데, 공식 가이드는 <strong>한 전송에 UTXO 100개 미만</strong>으로 제한하고, 동시 출금 k건을 위해 <strong>큰 금액 UTXO k개 풀</strong>을 유지하라고 권한다(거래 이력은 <code>/v2/updates/flats</code>, 출금은 <code>TransferFactory_Transfer</code> choice). 은행 수탁이 계정 분리형이라면 6.2 를, 거래소형이라면 이 omnibus 를 택한다.</p>
+</div>
+
+<h3>6.7 한 눈 체크리스트 — EVM 가정 → Canton 정정</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:42%">EVM 수탁에서 익숙한 가정</th><th>Canton 에서</th></tr></thead>
+<tbody>
+<tr><td>사용자마다 입금주소 발급</td><td>입금주소 없음 — memo 태그로 귀속 (6.1)</td></tr>
+<tr><td>입금/사용자마다 키·주소 생성</td><td>계정당 party 하나, 임시 발급 금지 (6.2)</td></tr>
+<tr><td>broadcast 하면 입금/출금 끝</td><td>2-step — 수락(TransferIn·Accept)까지 (6.4)</td></tr>
+<tr><td>gas 후불</td><td>traffic 선충전 잔고(CC 소각) (<a href="operations.html">3</a>)</td></tr>
+<tr><td>막히면 nonce 교체(RBF)로 가속</td><td>가속 없음 — 미수락 OFFER 는 Withdraw (<a href="operations.html">3</a>)</td></tr>
+<tr><td>N블록 확인 후 확정</td><td>commit = 확정, 보통 3-10초 (<a href="validator.html">2</a>)</td></tr>
+<tr><td>잔액 = 숫자 하나</td><td>holding 조각 합(가용/locked), ~10개로 병합 (<a href="model.html">1</a>)</td></tr>
+<tr><td>키는 노드/지갑이 보유</td><td>external party — 키는 우리만, participant 는 서명 없이 불가 (<a href="validator.html">2</a>)</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>처음으로 — <a href="index.html"><strong>0. Canton 개요</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

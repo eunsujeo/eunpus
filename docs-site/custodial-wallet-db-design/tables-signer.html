@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Designated Signer · Cosigner · Callback Handler — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Designated Signer · Cosigner · Callback Handler" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace.html">3. Workspace</a></li>
+<li><a href="tables-vault.html">4. Vault</a></li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a class="active" href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">14. Transaction State</a></li>
+<li><a href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="tables-signer">
+<h2>12. Cosigner<span class="g" data-tip="자동 서명 컴포넌트. Mobile Cosigner (사용자 device) / API Cosigner (customer server) / Fireblocks Cloud Cosigner (Azure SGX)" tabindex="0">(?)</span> &amp; Callback Handler<span class="g" data-tip="Customer 가 운영하는 외부 검증 endpoint. Cosigner 가 서명 전에 콜백해서 비즈니스 규칙 추가 검증" tabindex="0">(?)</span></h2>
+<span class="section-subtitle">3 cosigner 종류 · 5 auth option · /v2 URL convention · key model 비대칭</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처 — 어디까지가 Fireblocks 정의이고, 어디부터가 추정인가</div>
+<p>이 페이지의 내용은 두 갈래입니다.</p>
+<p><strong>Fireblocks 공식 문서에 정의된 사실</strong> — 그대로 받아들여도 안전</p>
+<ul style="margin-bottom:0.5rem">
+<li><strong>3 cosigner 종류 + 1 test</strong>: Mobile Cosigner · API Cosigner (SGX 강제) · Fireblocks Cloud Cosigner (Azure SGX, 2 대) · Communal Test Cosigner (testnet 전용)</li>
+<li><strong>Chain of Trust</strong> 3 단: Co-Signer Certificate → Core Services Intermediate → Co-Signer End Certificate</li>
+<li><strong>Callback Handler 의 default = auto-sign</strong>: 미설정 시 Co-signer 가 모든 요청 자동 승인/서명 (보안상 중요 운영 risk)</li>
+<li><strong>5 Authentication Options</strong>: Public key (JWT) · Self-Signed Cert pin · Root-CA · Hybrid 2 종 (SGX only, v2025.12.11+)</li>
+<li><strong>/v2 URL 분기</strong>: JWT-bearing (opt 1, 4, 5) 만 /v2 prefix, JSON-bearing (opt 2, 3) 은 prefix 없음</li>
+<li><strong>Key model 비대칭</strong>: Co-signer private key 는 <strong>global</strong> (페어링된 모든 API user 공유), Callback Handler private key 는 <strong>per-API-user</strong> 분리</li>
+<li><strong>Pairing token 1 시간 유효</strong>. Callback SSL public key pinning. Re-enroll trigger 2 가지 (auth method 전환 / SSL cert 변경 또는 만료) — 둘 다 Owner 의 key share 승인 필요</li>
+</ul>
+<p style="margin-bottom:0.3rem"><strong>저자가 합리적으로 추정해서 그린 설계</strong> — 참고용, 본인 환경에서 검증 권장</p>
+<ul style="margin-bottom:0">
+<li><code>cosigner_configs</code> · <code>callback_endpoints</code> · <code>designated_signers</code> 3 테이블의 구체 schema</li>
+<li><code>cosigner_configs.type</code> 의 4 값 ENUM 정형화 (Fireblocks 자료는 자유 텍스트일 수 있음)</li>
+<li><code>callback_endpoints.auth_option</code> 을 TINYINT (1~5) 로 정형화</li>
+<li>HSM-wrapped private key reference (<code>configuration_db_keyref</code>) 의 정확한 형식 — plaintext 절대 금지가 원칙</li>
+</ul>
+</div>
+
+<h3>Cosigner 종류</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>종류</th><th>위치</th><th>SGX<span class="g" data-tip="Intel Software Guard Extensions. CPU 안의 봉인된 메모리 영역 (enclave). OS 나 hypervisor 도 그 안을 들여다볼 수 없음" tabindex="0">(?)</span> 강제</th></tr></thead>
+<tbody>
+<tr><td><strong>Mobile Co-Signer</strong></td><td>User mobile device (iOS Keychain / Android TEE<span class="g" data-tip="Trusted Execution Environment. SGX 같은 봉인된 실행 환경의 일반 용어" tabindex="0">(?)</span>)</td><td>device-level enclave<span class="g" data-tip="SGX/TEE 안의 격리된 실행 공간. 외부에서 메모리 접근 불가" tabindex="0">(?)</span></td></tr>
+<tr><td><strong>API Co-Signer</strong></td><td>Customer-deployed confidential compute server (6 deployment options 아래 표 참조)</td><td><strong>SGX / Nitro / Confidential Space baseline</strong> (공식 확인)</td></tr>
+<tr><td><strong>Fireblocks Cloud Co-Signers (2)</strong></td><td>Azure SGX (3-5 machines, segregated network)</td><td>YES</td></tr>
+<tr><td><strong>Fireblocks Communal Test Co-signer</strong></td><td>Fireblocks 공유 (testnet 전용)</td><td>—</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>API Co-Signer 6 Deployment Options (Stage 8 의 SGX baseline 의 cloud 매트릭스)</h4>
+<p>customer 가 API Co-Signer 를 어디에 배포할지의 정식 6 옵션 — 모두 confidential-compute (TEE) 환경 baseline. cross-cloud HA 가능 (예: AWS Nitro + GCP Confidential Space 분산).</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Option</th><th>TEE / Confidential compute</th><th>Cloud / On-prem</th><th>운영 노트</th></tr></thead>
+<tbody>
+<tr><td><strong>Azure SGX</strong></td><td>Intel SGX</td><td>Microsoft Azure</td><td>★ Fireblocks 의 default cloud — Cloud Co-Signer 2 대와 동일 인프라 사용 (Stage 8 cross-cut)</td></tr>
+<tr><td><strong>On-Prem SGX</strong></td><td>Intel SGX</td><td>Customer 자체 데이터 센터</td><td>regulated environment / data sovereignty 요건</td></tr>
+<tr><td><strong>AWS Nitro</strong></td><td>AWS Nitro Enclaves</td><td>Amazon Web Services</td><td>Nitro = AWS 의 자체 confidential compute (SGX 와 다른 기술)</td></tr>
+<tr><td><strong>GCP Confidential Space</strong></td><td>Google Confidential Computing</td><td>Google Cloud Platform</td><td>AMD SEV 또는 Intel TDX 기반</td></tr>
+<tr><td><strong>Alibaba Cloud SGX</strong></td><td>Intel SGX</td><td>Alibaba Cloud</td><td>APAC 지역 latency 최적화 / 중국 시장 배포</td></tr>
+<tr><td><strong>IBM Cloud SGX</strong></td><td>Intel SGX</td><td>IBM Cloud</td><td>enterprise-tier compliance (FedRAMP / HIPAA 등)</td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary)">★ 6 option 모두 Stage 8 의 SGX-baseline 요건을 충족 (SGX / Nitro / Confidential Space 가 동등한 confidential compute baseline 으로 인정됨). Installation 절차: ① 환경 설정 + 도메인 access ② Console / API 로 API user 생성 후 Co-Signer 등록 ③ deployment script 다운로드 + pairing token 으로 페어 ④ Policy 의 designated signer 를 paired API user 로 설정.</p>
+<h3>Chain of Trust</h3>
+    <pre>Co-Signer Certificate (self-generated, priv → Configuration DB)
+       ↓ (CSR via Co-Signer Broker)
+Core Services Intermediate Certificate (built into image)
+       ↓ (sign)
+Co-Signer End Certificate (배포)</pre>
+
+    <h3>Callback Handler — Optional 인데 위험한 default</h3>
+<p>Callback Handler 는 Co-signer 가 서명 전에 "이 요청이 정말 정책에 맞는가" 를 customer 측 외부 endpoint 에 다시 물어보는 추가 검증 단계입니다. 그런데 이게 <strong>optional</strong> 이라는 게 운영 함정.</p>
+<div class="callout callout-warn">
+<div class="callout-title">⚠️ Default = Auto-Sign — Callback 미설정 시 자동 서명</div>
+<p>Fireblocks 의 <code>create-api-co-signer-callback-handler.md</code> 직접 인용:<br/>
+<em>"If a Callback Handler is not configured for an API user, the Co-signer will automatically sign or approve all requests it receives for that API user."</em></p>
+<p>즉 <strong>Callback Handler 가 설정되지 않은 API user 는 Co-signer 가 들어오는 모든 요청을 자동으로 서명/승인</strong> — 외부 business / compliance 검증이 bypass 됩니다. 운영 risk register 에 반드시 등재할 항목.</p>
+</div>
+<h3>5 Authentication Options</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>명칭</th><th>Message</th><th>TLS</th><th>Version</th><th>SGX only</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><strong>Public key authentication</strong></td><td>JWT (RSA 2048)</td><td>HTTPS + trusted CA (prod)</td><td>all</td><td>—</td></tr>
+<tr><td>2</td><td><strong>Self-Signed Cert pinning</strong></td><td>JSON</td><td>TLS cert pin</td><td>all</td><td>—</td></tr>
+<tr><td>3</td><td><strong>Root-CA Cert</strong></td><td>JSON</td><td>TLS Root-CA validation</td><td>v2025.12.11+</td><td>—</td></tr>
+<tr><td>4</td><td><strong>Hybrid — Public key + Cert pin</strong></td><td>JWT</td><td>TLS cert pin</td><td>v2025.12.11+</td><td><strong>★ SGX only</strong></td></tr>
+<tr><td>5</td><td><strong>Hybrid — Public key + Root-CA</strong></td><td>JWT</td><td>TLS Root-CA</td><td>v2025.12.11+</td><td><strong>★ SGX only</strong></td></tr>
+</tbody>
+</table>
+</div>
+<p>Hybrid options (4/5) = message-layer (JWT 서명) + TLS-layer (cert) <strong>dual security</strong>.</p>
+<h3>Payload / URL Convention</h3>
+<ul>
+<li><strong>Endpoints</strong>: <code>tx_sign_request</code> + <code>config_change_sign_request</code> (Co-signer → Callback Handler POST)</li>
+<li><strong>/v2 URL 분기</strong>:
+        <ul>
+<li>JWT-bearing (1, 4, 5): <code>https://&lt;base&gt;/v2/tx_sign_request</code></li>
+<li>JSON-bearing (2, 3): <code>https://&lt;base&gt;/tx_sign_request</code> (no /v2 prefix)</li>
+</ul>
+</li>
+<li>URL setting 시 base URL + custom relative path 만 입력 — /v2/... 는 자동 추가</li>
+<li>Production = HTTPS w/ trusted CA cert 강제 권장 / dev = HTTP 허용</li>
+</ul>
+<h3>Key Model 비대칭 — Co-signer 키 vs Callback Handler 키</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>키</th><th>범위</th><th>비고</th></tr></thead>
+<tbody>
+<tr><td><strong>Co-signer private key</strong></td><td><strong>global</strong> — 해당 Co-signer 에 페어링된 <strong>모든 API user</strong> 의 request 서명에 재사용</td><td><em>"The same Co-signer private key is used to sign request messages... for all API users paired with this Co-signer."</em></td></tr>
+<tr><td><strong>Callback Handler private key</strong></td><td><strong>per-API-user</strong> — API user 별 별도 public key 를 Co-signer 에 등록</td><td>RSA 2048 only (response auth)</td></tr>
+</tbody>
+</table>
+</div>
+<p>→ Co-signer 측 single global key compromise = 모든 API user 의 request 서명 위조 가능. Callback Handler 측 key 는 per-user 격리.</p>
+<h3>Pairing / Re-enroll</h3>
+<ul>
+<li><strong>Pairing token 1시간 유효</strong></li>
+<li>Callback Handler <strong>SSL public key pinning</strong> — Co-signer 가 cert 고정 신뢰</li>
+<li><strong>Re-enroll 요구</strong>: (a) auth method 전환, (b) SSL 인증서 변경 또는 만료 — 둘 다 Owner 의 key share 승인 필요</li>
+</ul>
+<h3>DB Schema</h3>
+
+<h4>8.1 <code>cosigner_configs</code> — 등록된 Co-signer 들의 설정</h4>
+<pre><code>CREATE TABLE cosigner_configs (
+  id                      BINARY(16) PRIMARY KEY,
+  workspace_id            BINARY(16) NOT NULL,
+  paired_api_user_id      BINARY(16),                       -- API Co-signer 의 경우
+  type                    ENUM('mobile', 'api-sgx', 'communal-test', 'fb-cloud-sgx') NOT NULL,
+  end_cert_pem            TEXT NOT NULL,
+  end_cert_fingerprint    BINARY(32) NOT NULL,
+  intermediate_cert_id    BINARY(16) NOT NULL,             -- chain of trust
+  configuration_db_keyref VARCHAR(128),                    -- ★ HSM-wrapped private key reference
+  registered_by           BINARY(16) NOT NULL,              -- 페어링 시작한 actor
+  registered_at           DATETIME(6) NOT NULL,             -- ★ created_at semantic
+  modified_by             BINARY(16) NOT NULL,
+  modified_at             DATETIME(6) NOT NULL,
+  re_enrolled_at          DATETIME(6),
+  UNIQUE KEY (end_cert_fingerprint)
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>cosigner 설정의 고유 식별자</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16) FK</td><td>이 cosigner 가 속한 workspace</td></tr>
+<tr><td><code>paired_api_user_id</code></td><td>BINARY(16) nullable FK</td><td>API Cosigner 의 경우 페어링된 API user. Mobile / Fireblocks Cloud cosigner 는 NULL</td></tr>
+<tr><td><code>type</code></td><td>ENUM (4 값)</td><td><strong>mobile</strong> 사용자 device / <strong>api-sgx</strong> customer 운영 SGX 서버 / <strong>communal-test</strong> testnet 전용 공유 / <strong>fb-cloud-sgx</strong> Fireblocks Azure SGX</td></tr>
+<tr><td><code>end_cert_pem</code></td><td>TEXT</td><td>Chain of Trust 의 leaf cert (PEM 인코딩)</td></tr>
+<tr><td><code>end_cert_fingerprint</code></td><td>BINARY(32) UNIQUE</td><td>leaf cert 의 SHA-256 지문. 같은 cert 가 중복 등록되지 않도록 UNIQUE</td></tr>
+<tr><td><code>intermediate_cert_id</code></td><td>BINARY(16) FK</td><td>이 leaf cert 를 서명한 Core Services Intermediate Cert 의 id (체인 추적)</td></tr>
+<tr><td><code>configuration_db_keyref</code></td><td>VARCHAR(128) nullable</td><td><strong>HSM-wrapped private key reference</strong>. plaintext 절대 저장 안 함</td></tr>
+<tr><td><code>registered_by</code> · <code>registered_at</code></td><td>BINARY(16) · DATETIME(6)</td><td>최초 페어링 시작한 actor + 시각. <strong>이 row 의 created semantic</strong>. set-once</td></tr>
+<tr><td><code>modified_by</code> · <code>modified_at</code></td><td>BINARY(16) · DATETIME(6)</td><td>마지막 변경 (cert update / config 수정 등) actor + 시각</td></tr>
+<tr><td><code>re_enrolled_at</code></td><td>DATETIME(6) nullable</td><td>가장 최근 재등록 시각 (auth method 전환 또는 SSL cert 변경 시)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>8.2 <code>callback_endpoints</code> — Callback Handler 의 endpoint 설정 (per-API-user)</h4>
+<pre><code>CREATE TABLE callback_endpoints (
+  id                  BINARY(16) PRIMARY KEY,
+  cosigner_id         BINARY(16) NOT NULL,
+  paired_api_user_id  BINARY(16) NOT NULL,             -- per-API-user key model
+  url_base            VARCHAR(255) NOT NULL,
+  custom_path         VARCHAR(128),
+  auth_option         TINYINT NOT NULL,                -- 1 ~ 5
+  jwt_or_json         ENUM('jwt', 'json') NOT NULL,
+  url_uses_v2         BOOLEAN NOT NULL,
+  callback_pubkey     BLOB NOT NULL,                   -- RSA 2048 public
+  tls_pin_sha256      BINARY(32),                      -- option 2, 4 의 cert pin
+  registered_by       BINARY(16) NOT NULL,
+  registered_at       DATETIME(6) NOT NULL,
+  modified_by         BINARY(16) NOT NULL,
+  modified_at         DATETIME(6) NOT NULL,
+  last_invoked_at     DATETIME(6)
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>endpoint 의 고유 식별자</td></tr>
+<tr><td><code>cosigner_id</code></td><td>BINARY(16) FK</td><td>이 callback 이 속한 Cosigner</td></tr>
+<tr><td><code>paired_api_user_id</code></td><td>BINARY(16) FK</td><td>이 endpoint 의 대상 API user. <strong>per-API-user 격리</strong> — Co-signer 의 global key 와 달리 callback 은 user 별 별도 key</td></tr>
+<tr><td><code>url_base</code> · <code>custom_path</code></td><td>VARCHAR(255) · VARCHAR(128)</td><td>customer 가 운영하는 endpoint URL. <code>/v2</code> prefix 는 자동 결정 (JWT 면 추가, JSON 이면 미추가)</td></tr>
+<tr><td><code>auth_option</code></td><td>TINYINT</td><td>1~5 — 위 "5 Authentication Options" 표의 번호</td></tr>
+<tr><td><code>jwt_or_json</code></td><td>ENUM (2 값)</td><td>auth_option 1/4/5 = jwt / 2/3 = json. url_uses_v2 의 분기 조건</td></tr>
+<tr><td><code>url_uses_v2</code></td><td>BOOLEAN</td><td>JWT-bearing 이면 TRUE (URL 에 /v2 prefix 추가)</td></tr>
+<tr><td><code>callback_pubkey</code></td><td>BLOB</td><td>callback handler 의 response 서명 검증용 public key (RSA 2048)</td></tr>
+<tr><td><code>tls_pin_sha256</code></td><td>BINARY(32) nullable</td><td>auth_option 2 / 4 의 TLS cert pin SHA-256</td></tr>
+<tr><td><code>registered_by</code> · <code>registered_at</code></td><td>BINARY(16) · DATETIME(6)</td><td>최초 등록 actor + 시각. created semantic. set-once</td></tr>
+<tr><td><code>modified_by</code> · <code>modified_at</code></td><td>BINARY(16) · DATETIME(6)</td><td>마지막 변경 actor + 시각</td></tr>
+<tr><td><code>last_invoked_at</code></td><td>DATETIME(6) nullable</td><td>마지막으로 이 endpoint 가 호출된 시각 (운영 상태 모니터링용)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>8.3 <code>designated_signers</code> — Policy rule 의 designated signer 지정 (junction)</h4>
+<pre><code>-- Policy 의 NS 라벨이 적용된 rule 의 signer set
+CREATE TABLE designated_signers (
+  id                          BINARY(16) PRIMARY KEY,
+  policy_rule_id              BINARY(16) NOT NULL,
+  signer_user_id              BINARY(16),
+  signer_user_group_id        BINARY(16),
+  internal_exchange_excluded  BOOLEAN NOT NULL DEFAULT TRUE,
+  granted_by                  BINARY(16) NOT NULL,
+  granted_at                  DATETIME(6) NOT NULL,
+  revoked_by                  BINARY(16),
+  revoked_at                  DATETIME(6),
+  KEY (policy_rule_id),
+  KEY (policy_rule_id, revoked_at)
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>지정 이벤트의 surrogate PK</td></tr>
+<tr><td><code>policy_rule_id</code></td><td>BINARY(16) FK</td><td>이 designated signer 가 적용되는 Policy rule. <a href="tables-policy.html">10. Policy</a> 의 <code>policy_rules.designated_signer_user_group_id</code> 가 단일 group 만 가리키지만, 본 테이블은 ad-hoc 지정도 표현</td></tr>
+<tr><td><code>signer_user_id</code></td><td>BINARY(16) nullable</td><td>단일 user 지정인 경우. user_group_id 와 둘 중 하나만 set</td></tr>
+<tr><td><code>signer_user_group_id</code></td><td>BINARY(16) nullable</td><td>group 지정인 경우</td></tr>
+<tr><td><code>internal_exchange_excluded</code></td><td>BOOLEAN</td><td>NSA / Editor 의 designated signer 흐름이 internal exchange transfer 만 제외하는 default 정책. TRUE = 제외</td></tr>
+<tr><td><code>granted_by</code> · <code>granted_at</code></td><td>BINARY(16) · DATETIME(6)</td><td>지정 actor + 시각. set-once</td></tr>
+<tr><td><code>revoked_by</code> · <code>revoked_at</code></td><td>BINARY(16) nullable · DATETIME(6) nullable</td><td>지정 해제 actor + 시각. NULL = 현재 active. set-once when set</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Putting It Together — Signing 시퀀스</h3>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Initiator as 👤 tx initiator<br/>(API user 또는 Console user)
+  participant FB as 🛡️ Fireblocks Core
+  participant Policy as 📜 Policy Engine
+  participant Cosigner as 🖥️ API Cosigner<br/>(SGX)
+  participant Callback as 🌐 Callback Handler<br/>(customer endpoint)
+  participant Chain as ⛓️ Blockchain
+
+  Initiator->>FB: tx 요청 (api_keys + cert)
+  FB->>Policy: Policy rule 평가 (initiator / source / destination / amount)
+
+  alt Policy action = Approved by + designated_signer 지정됨
+    Policy->>Cosigner: signing 위임 (designated_signers 의 signer_user/group)
+  else action = Allow
+    Policy->>Cosigner: 일반 cosigner 흐름
+  end
+
+  Cosigner->>Cosigner: cosigner_configs 의 cert chain 검증
+
+  alt callback_endpoints 가 등록됨
+    Cosigner->>Callback: tx_sign_request POST<br/>(JWT 또는 JSON, /v2 분기)
+    Note over Callback: customer 측 추가 검증<br/>(compliance / business rule)
+    Callback->>Cosigner: ACK 또는 REJECT
+    alt callback REJECT
+      Cosigner->>FB: 서명 거부
+      FB->>Initiator: tx FAILED
+    end
+  else callback 미등록
+    Note over Cosigner: ⚠️ Auto-sign default<br/>외부 검증 단계 bypass
+  end
+
+  Cosigner->>FB: MPC share 서명 (3-share ceremony 의 cosigner 측 share)
+  FB->>Chain: 서명 완료 tx broadcast
+  FB->>Initiator: tx accepted
+</pre>
+<span class="diagram-caption">Figure 28. tx 서명 흐름 + cosigner + callback. 핵심: ① Policy Engine 이 rule 매칭 후 designated_signers 가 지정된 경우 signing 을 그 user/group 에 위임. ② Cosigner 가 자기 cert chain (cosigner_configs) 을 검증. ③ <strong>Callback Handler 가 등록된 경우</strong> 서명 직전에 customer 측 endpoint 에 추가 검증 요청 (callback_endpoints) — REJECT 시 서명 거부. ④ <strong>callback 미등록 = auto-sign default</strong> — 운영상 가장 중요한 보안 risk. ⑤ 검증 통과 후 비로소 MPC ceremony 의 cosigner 측 share 가 서명에 참여. cosigner private key 가 global (모든 API user 공유) 인 것 vs callback key 가 per-user 인 것의 비대칭은 위 "Key Model 비대칭" 절 참조.</span>
+</div>
+  </section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-mpc.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">11. MPC<span class="g" data-tip="Multi-Party Computation. 여러 당사자가 각자 키 조각만 들고 협력해서 서명 — 누구도 단독으로 키를 모름. 전체 키가 한 번도 한곳에 모이지 않음" tabindex="0">(?)</span> Key Share</span></a>
+<a class="page-nav-link page-nav-next" href="tables-recovery.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">13. Recovery &amp; Backup</span></a>
+</nav>
+</main>
+</div>
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

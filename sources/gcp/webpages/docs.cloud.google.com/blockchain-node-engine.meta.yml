@@ -1,0 +1,22 @@
+source_urls:
+  - https://cloud.google.com/blockchain-node-engine/docs/overview
+  - https://cloud.google.com/blockchain-node-engine (product)
+  - https://cloud.google.com/blockchain-node-engine/docs (landing)
+host: cloud.google.com (→ docs.cloud.google.com redirect)
+title: Google Cloud Blockchain Node Engine (BNE)
+publisher: Google Cloud (official docs)
+language: en
+tier: 1
+domain: indexer (node/RPC infrastructure)
+mode: C (full ingest — overview/landing/product; 일부 하위 페이지 404)
+stage_ingested: 49
+crawl_status: partial-extracted (overview/landing OK; supported-networks·create-node·secure 404/truncated)
+fact_tier: official-vendor
+extract: ../../markdown/2026-06-04__cloud-google-com__blockchain-node-engine.md
+notes: |
+  GCP BNE = 완전관리형 전용 노드 호스팅(Web3). Ethereum first(mainnet+testnet),
+  REST+RPC API, SLA·자동 재시작·single-op 배포. 멀티테넌트 공용 RPC(Alchemy/QuickNode)와
+  달리 dedicated 노드 모델. enhanced/indexing API 는 없음(별도 인덱싱 필요).
+  흡수처: blockchain-indexer-architecture-reference (node/RPC vendor 비교).
+  미확인(node type/client/보안/pricing)은 open-questions/gcp-bne 로 분리.
+  하위 페이지 재fetch 또는 사용자 PDF 제공 시 fact 보강 가능.

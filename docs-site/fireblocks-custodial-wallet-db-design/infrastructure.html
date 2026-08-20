@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>2. 인프라 운영 — Fireblocks 도입 시 은행 인프라</title>
+<meta content="플랫폼 · Co-signer · HSM · webhook endpoint · 망분리 IDC 배치" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a class="active" href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a href="db-split.html">3. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a href="tables-workspace-vault.html">4. Workspace</a></li>
+<li><a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a></li>
+<li><a href="tables-counterparty.html">6. Counterparty Registry</a></li>
+<li><a href="cold-wallet.html">7. Cold Wallet 운영</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a href="tables-user.html">8. Internal Users</a></li>
+<li><a href="tables-customer-user.html">9. Customer Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a href="tables-governance.html">10. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a href="tables-crypto.html">11. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">13. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
+<li><a href="tables-transaction-request.html">15. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">16. Swap · Ramp Lifecycle</a></li>
+<li><a href="cross-border-canton.html">17. Cross-border + Canton</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">18. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">19. KR 규제 매핑</a></li>
+<li><a href="risks.html">20. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
+<li><a href="accounting-ledger.html">21. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">22. 대사 · 결산 · 마감</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
+<li><a href="db-ops.html">23. DB 운영 · Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="infrastructure">
+<h2>2. 인프라 운영</h2>
+<span class="section-subtitle">은행 측 인프라 (플랫폼 · Co-signer · HSM · webhook endpoint · 망분리 IDC)</span>
+
+<h3>2.1 인프라 구성 한눈에 보기</h3>
+<p>
+Fireblocks 도입 후 은행이 실제 운영하는 인프라 구성요소. <a href="architecture.html">1. 책임 분담</a> 의 trust boundary 를 물리 / 네트워크 레벨로 풀어냄.
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ KR 은행은 망분리 정책으로 on-prem IDC 강제</div>
+<p>
+전자금융감독규정의 망분리 의무로 인해 KR 은행은 <strong>public cloud (AWS / Azure / GCP 일반 region) 직접 사용 어려움</strong>.
+모든 코인계 컴포넌트 (플랫폼 · DB · Cosigner · HSM 등) 는 <strong>은행 자체 on-prem IDC</strong> 배치가 default.
+</p>
+<p style="margin-bottom:0">
+예외 — 망분리 cloud 옵션 (AWS Outposts · Azure Stack · 금융 클라우드 등) 은 망분리 환경에 배치 가능하지만 vendor / 금감원 사전 협의 필수.
+본 reference 는 <strong>on-prem IDC default</strong> 로 기술.
+</p>
+</div>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>구성요소</th><th>배치</th><th>운영 부담</th><th>적용 옵션</th></tr></thead>
+<tbody>
+<tr><td><strong>플랫폼</strong> (거래 API · Webhook · 원장/대사)</td><td>은행 IDC (on-prem, 망분리 안)</td><td>중</td><td>모든 옵션 공통</td></tr>
+<tr><td><strong>3 DB</strong> (core · audit · compliance (3 격리 영역))</td><td>은행 IDC (on-prem)</td><td>중</td><td>모든 옵션 공통</td></tr>
+<tr><td><strong>Webhook endpoint</strong> (HA 2-node)</td><td>은행 DMZ (on-prem)</td><td>중</td><td>모든 옵션 공통</td></tr>
+<tr><td><strong>Secret manager</strong> (HashiCorp Vault 등)</td><td>은행 IDC (on-prem)</td><td>낮음</td><td>모든 옵션 공통</td></tr>
+<tr><td><strong>Hosted Co-signer</strong></td><td>은행 IDC 의 on-prem SGX 머신</td><td>중-높음</td><td>Hosted MPC 시</td></tr>
+<tr><td><strong>Fireblocks Agent</strong> (TypeScript on-prem)</td><td>은행 DMZ (on-prem)</td><td>중</td><td>Key Link 시</td></tr>
+<tr><td><strong>Customer Server</strong></td><td>은행 IDC (on-prem HA)</td><td>높음</td><td>Key Link 시</td></tr>
+<tr><td><strong>HSM</strong> (Thales Luna 등)</td><td>은행 IDC 의 보안 구역</td><td>높음</td><td>Key Link 시</td></tr>
+<tr><td><strong>AML provider 통합</strong></td><td>외부 API call (DMZ 경유)</td><td>낮음</td><td>모든 옵션 공통</td></tr>
+<tr><td><strong>Travel Rule provider 통합</strong></td><td>외부 API call (DMZ 경유)</td><td>낮음</td><td>모든 옵션 공통</td></tr>
+<tr><td><strong>외부 IdP</strong> (SSO 시)</td><td>은행 또는 3rd-party</td><td>낮음</td><td>SSO 활용 시</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>2.2 망분리 IDC 표준 배치 (KR 은행)</h3>
+<p>
+전자금융감독규정 망분리 의무를 만족하는 표준 zone 분리.
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  subgraph external["외부망"]
+    FB["Fireblocks SaaS"]
+    IdP["외부 IdP (Okta / Entra)"]
+    AML["AML Provider"]
+    TR["Travel Rule Provider"]
+    Mob["운영자 Mobile (Owner / Approver)"]
+  end
+
+  subgraph dmz["DMZ (외부 통신 종단)"]
+    OutProxy["Outbound Proxy / Firewall<br/>(REST API 호출 매개)"]
+    WebhookSvc["Webhook endpoint<br/>HA 2-node<br/>HMAC-SHA512 검증"]
+    Agent["Fireblocks Agent<br/>(Key Link 시)<br/>TypeScript on-prem"]
+    LB["Reverse proxy / WAF"]
+  end
+
+  subgraph internal["코인계 (망분리)"]
+    TxAPI["거래 API<br/>사용자 facing 입출금 · 스왑<br/>+ Fireblocks SDK 호출"]
+    WhWorker["Webhook<br/>이벤트 dedup + core 영역 저장"]
+    LedgerRecon["원장 / 대사<br/>회계 4 원장 + 4 단계 대사 (L1-L4)<br/>+ 결산 · Hot/Cold rebalancing"]
+    AdminUI["관리 콘솔<br/>운영자 / 컴플라이언스 / 회계 UI"]
+    Monitor["운영 감시<br/>metric · alert · dashboard"]
+    WalletDB["core 영역<br/>(7 domain)"]
+    AuditDB["audit 영역<br/>별도 storage<br/>+ 5년 archive"]
+    ComplDB["compliance 영역"]
+    Callback["Callback Server<br/>(Hosted MPC 시)"]
+    CSrv["Customer Server<br/>(Key Link 시) HA"]
+    Cosigner["Hosted Co-signer<br/>(Hosted MPC 시)"]
+    Secrets["Secret Manager<br/>(Vault / KMS)"]
+  end
+
+  subgraph legacy["기존 은행 시스템 (망분리 안 별도 zone)"]
+    Acct["계정계<br/>(고객 KRW 잔액 · 입출금)"]
+    FX["외환계<br/>(환율 · 외환 환산)"]
+    DW["정보계<br/>(DW · 마감 · 감사 보고)"]
+    Channel["채널계<br/>(mobile · web · 점포 단말)"]
+  end
+
+  subgraph vault["보안 구역"]
+    HSM["Thales Luna HSM<br/>FIPS 140-3 L3<br/>(Key Link 시)"]
+  end
+
+  %% 외부 ↔ Fireblocks (DMZ 우회 — vendor 측 통신)
+  Mob -.HTTPS push.-> FB
+  IdP -.SAML / OIDC.-> FB
+
+  %% 코인계 ↔ DMZ outbound proxy ↔ 외부
+  TxAPI --> OutProxy
+  LedgerRecon --> OutProxy
+  OutProxy -.REST API.-> FB
+  OutProxy -.AML 조회.-> AML
+  OutProxy -.트래블룰.-> TR
+
+  %% 관리 콘솔 → 3 service
+  AdminUI --> TxAPI
+  AdminUI --> LedgerRecon
+
+  %% Fireblocks → DMZ webhook → 코인계
+  FB -.webhook HMAC-SHA512.-> LB
+  LB --> WebhookSvc
+  WebhookSvc --> WhWorker
+
+  %% Fireblocks → DMZ Agent → 코인계 (Key Link)
+  FB -.signing req.-> Agent
+  Agent --> CSrv
+  CSrv -->|PKCS#11| HSM
+
+  %% Fireblocks → 코인계 Cosigner (Hosted MPC)
+  FB -.signing req.-> Cosigner
+  Cosigner -.callback.-> Callback
+
+  %% 3 service ↔ DB / Secret Manager
+  TxAPI --> WalletDB
+  TxAPI --> ComplDB
+  TxAPI --> Secrets
+  WhWorker --> WalletDB
+  WhWorker --> AuditDB
+  LedgerRecon --> WalletDB
+  AdminUI --> AuditDB
+  Monitor -.metric scrape.-> TxAPI
+  Monitor -.metric scrape.-> WhWorker
+  Monitor -.metric scrape.-> LedgerRecon
+  Monitor -.metric scrape.-> WalletDB
+  Monitor -.metric scrape.-> AuditDB
+
+  %% 기존 은행 시스템 ↔ 코인계
+  Channel --> TxAPI
+  TxAPI <--> Acct
+  TxAPI <--> FX
+  LedgerRecon --> DW
+
+  classDef ext fill:#fef3c7,stroke:#d97706
+  classDef dmz fill:#fde2e2,stroke:#dc2626
+  classDef int fill:#dcfce7,stroke:#16a34a
+  classDef legacyzone fill:#f3e8ff,stroke:#7e22ce
+  classDef vault fill:#e0e7ff,stroke:#6366f1
+
+  class FB,IdP,AML,TR,Mob ext
+  class OutProxy,WebhookSvc,Agent,LB dmz
+  class TxAPI,WhWorker,LedgerRecon,AdminUI,Monitor,WalletDB,AuditDB,ComplDB,Callback,CSrv,Cosigner,Secrets int
+  class Acct,FX,DW,Channel legacyzone
+  class HSM vault
+</pre>
+</div>
+<p class="diagram-caption">
+은행 망분리 IDC 의 표준 zone 분리. <strong>노랑 = 외부망</strong> (Fireblocks SaaS · IdP · AML / Travel Rule provider · 운영자 Mobile) /
+<strong>빨강 = DMZ</strong> (Outbound Proxy · Webhook · Agent · LB / WAF) /
+<strong>초록 = 코인계 (망분리)</strong> (거래 API · Webhook · 원장/대사 · 관리 콘솔 · 운영 감시 · 3 DB · Cosigner · Customer Server · Callback Server · Secret Manager) /
+<strong>연보라 = 기존 은행 시스템</strong> (계정계 · 외환계 · 정보계 · 채널계) /
+<strong>보라 = 보안 구역</strong> (HSM)
+<span class="g" data-tip="보안 구역. HSM 같은 고가치 보안 장비를 보관하는 별도의 잠긴 물리 공간. 일반 사무실 / IDC 와 분리. 출입 통제 (생체 + 키 카드 + 다중 인증) · 24/7 영상 감시 · 화재 방지 · 전자 차폐 등 물리 보안 강화" tabindex="0">(?)</span>.
+<br/>
+화살표 — 방향은 <strong>발신자 → 수신자</strong> (response 는 같은 채널로 자연스럽게).
+<strong>실선</strong> = 동기 호출 (같은 영역 안) / <strong>점선</strong> = 영역 경계 넘는 외부 통신 + 비동기.
+<br/>
+<strong>망분리 원칙</strong>: Application · DB · HSM 은 코인계 (망분리 안). 모든 외부 통신은 DMZ 의 <strong>Outbound Proxy</strong> (은행 → 외부) 또는 <strong>Webhook endpoint / Agent</strong> (외부 → 은행) 종단. 코인계에서 직접 외부 호출하는 화살표 없음 (망분리 의무).
+<br/>
+<strong>기존 은행 시스템 통합</strong>: 채널계 → 플랫폼 (사용자 facing 진입) · 플랫폼 ↔ 계정계 (KRW 잔액 / 입출금) · 플랫폼 ↔ 외환계 (환율 / 외환 환산) · 플랫폼 → 정보계 (마감 / 감사 보고).
+실제 통합은 별도 ESB / API Gateway / iPaaS 경유하는 경우 많음 (본 다이어그램은 직접 호출로 단순화 표시).
+3 계층 정합 (블록체인 · 오프체인 · 계정계) 의 상세는 <a href="accounting-ledger.html">21. 회계 · 원장 설계</a> 참조.
+</p>
+
+<h3>2.3 플랫폼 운영</h3>
+
+<div class="callout">
+<div class="callout-title">본 절의 출처</div>
+<p style="margin-bottom:0">
+이하 호스팅 요건 · SDK 활용 · Secret 관리는 <strong>저자 권장 + 일반 IT 표준</strong> 혼합. Fireblocks 공식 권장이 아님 (단 vendor-specific 사항 — API key 의 IP allowlist · webhook signature 등 — 은 공식 fact 로 별도 표시).
+운영 시작 전 본인 환경의 부하 테스트 + 보안팀 / 운영팀 검증 권장.
+</p>
+</div>
+
+<h4>2.3.1 호스팅 요건 (저자 권장)</h4>
+<ul>
+<li><strong>최소 2-node HA</strong> <span class="g" data-tip="HA (High Availability, 고가용성) — 시스템이 한 대 장애로 멈추지 않게 다중화하는 구성. 2-node = 서버 2 대를 동시에 운영" tabindex="0">(?)</span>
+  <strong>+ load balancer + health check</strong> — load balancer
+  <span class="g" data-tip="load balancer — 들어오는 트래픽을 여러 서버에 분산하는 장비 / 서비스 (예: AWS ALB · Nginx). 한 대 장애 시 다른 대로 트래픽 자동 전환" tabindex="0">(?)</span>
+  가 들어오는 트래픽을 두 서버에 분산, health check
+  <span class="g" data-tip="health check — 각 서버가 정상 작동 중인지 주기적으로 (보통 5-30 초마다) 확인. 비정상 응답 시 load balancer 가 해당 서버를 트래픽에서 제외" tabindex="0">(?)</span>
+  로 비정상 서버 자동 제외</li>
+<li><strong>Auto-scaling</strong> — 거래량 증가 시 서버 자동 증설 (CPU / memory / 요청 수 기준). on-prem 환경에서는 사전 capacity 예약 + 수동 증설 패턴</li>
+<li><strong>IDC zone failover</strong> — 단일 IDC zone 장애 대응 (예: 주 IDC → 백업 IDC). 본사 IDC + DR site IDC 의 cross-IDC replication</li>
+<li><strong>outbound NAT IP 고정</strong> — Fireblocks API key 의 IP allowlist 적용용 (vendor-specific)</li>
+<li><strong>TLS 1.2+ outbound</strong> — Fireblocks API 호출 / 외부 provider 통신</li>
+</ul>
+
+<h4>2.3.2 Fireblocks SDK 활용</h4>
+<ul>
+<li><strong>공식 SDK</strong>: TypeScript / JavaScript / Python / Java / Go
+  (<a href="https://developers.fireblocks.com/reference/typescript-sdk">TypeScript SDK</a>) — <em>공식 사실</em></li>
+<li><strong>SDK version pinning</strong> — production 은 fixed version. version upgrade 는 Testnet Staging 에서 사전 검증 — <em>저자 권장</em></li>
+<li><strong>rate limit 준수</strong> — Fireblocks 의 분당 API call 제한 (요금제별 다름, vendor 와 협의) — <em>공식 사실</em></li>
+<li><strong>retry 정책 (저자 권장)</strong> — 5xx / network error 시 exponential backoff (예: 1s → 2s → 4s) · max 3 retry. Fireblocks 가 specific 수치를 강제하지 않으므로 본인 환경 부하 + Fireblocks SLA 에 맞춰 조정 필요 — <em>저자 권장</em></li>
+</ul>
+
+<h4>2.3.3 Secret 관리</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Secret</th><th>저장 위치</th><th>회전 주기 (저자 권장)</th></tr></thead>
+<tbody>
+<tr><td>Fireblocks API key + secret</td><td>Secret Manager</td><td>분기별</td></tr>
+<tr><td>Webhook signature 검증용 public key</td><td>Secret Manager 또는 application config</td><td>Fireblocks 가 변경 시</td></tr>
+<tr><td>DB connection password</td><td>Secret Manager</td><td>분기별 + 침해 의심 시 즉시</td></tr>
+<tr><td>AML provider API key</td><td>Secret Manager</td><td>provider 정책</td></tr>
+<tr><td>Travel Rule provider credential</td><td>Secret Manager</td><td>provider 정책</td></tr>
+<tr><td>Customer Server 의 PKCS#11 PIN (Key Link)</td><td>Secret Manager 또는 HSM 자체 PIN</td><td>분기별 + ceremony 매개</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/manage-api-keys">Fireblocks — Manage API Keys</a>
+</p>
+
+<h3>2.4 Hosted Co-signer 운영 (Hosted MPC 선택 시)</h3>
+
+<h4>2.4.1 6 가지 배포 option (KR 은행은 on-prem 강제)</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>Deployment</th><th>KR 은행 망분리 적합성</th><th>장단점</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Azure SGX (Fireblocks default cloud)</td><td><strong>부적합</strong> — public cloud, 망분리 위반</td><td>은행 외 일반 고객의 default · KR 은행은 사용 불가</td></tr>
+<tr><td>2</td><td><strong>On-prem SGX 머신</strong></td><td><strong>★ KR 은행 유일 선택지</strong> (망분리 IDC 안 배치)</td><td>가장 강한 격리 · 운영 부담 큼 · SGX 하드웨어 조달 + 운영 필요</td></tr>
+<tr><td>3</td><td>AWS Nitro Enclaves</td><td>부적합 — AWS 일반 region 은 망분리 위반. <strong>AWS Outposts</strong> 같은 망분리 옵션은 별도 검토</td><td>일반 AWS 환경 시 사용. KR 은행은 거의 안 씀</td></tr>
+<tr><td>4</td><td>GCP Confidential Space</td><td>부적합 — GCP 일반 region 은 망분리 위반</td><td>일반 GCP 환경 시 사용. KR 은행은 거의 안 씀</td></tr>
+<tr><td>5</td><td>Alibaba SGX</td><td>N/A (중국 region)</td><td>—</td></tr>
+<tr><td>6</td><td>IBM Cloud Confidential Computing</td><td>N/A (IBM 전용)</td><td>—</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout callout-warn">
+<div class="callout-title">★ KR 은행은 ② On-prem SGX 머신이 사실상 유일 선택지</div>
+<p style="margin-bottom:0">
+망분리 의무 (전자금융감독규정) 로 인해 1, 3, 4 의 public cloud option 은 KR 은행 적용 불가.
+망분리 cloud 옵션 (AWS Outposts · Azure Stack · 금융 클라우드 등) 사용 시 별도 vendor / 금감원 협의 필수.
+대부분의 KR 은행은 <strong>② On-prem SGX 머신</strong> 으로 진행.
+</p>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/introduction">Fireblocks Developer Portal — Introduction</a> · On-prem SGX cosigner 설치 / 운영 가이드는 vendor / Sales 협의 (Fireblocks 가 NDA 하 별도 제공). public cloud 옵션 (AWS Nitro · GCP · Azure) 의 공식 docs 는 KR 은행 환경에 직접 적용 불가
+</p>
+
+<h4>2.4.2 Co-signer HA / DR</h4>
+<ul>
+<li><strong>다중 instance</strong> — 단일 Co-signer 의 장애가 전체 서명 중단을 일으키지 않도록 2+ instance</li>
+<li><strong>Callback Handler 통합</strong> — Co-signer 직전에 은행 endpoint 호출하여 추가 검증 (자체 정책)
+  <a href="https://developers.fireblocks.com/docs/create-api-co-signer-callback-handler">(Create API Co-signer Callback Handler)</a></li>
+<li><strong>CSR private key 보관</strong> — Co-signer 등록 시 발급된 CSR private key 의 안전한 보관 (Secret Manager)</li>
+<li><strong>SGX attestation</strong> — Co-signer 가 정상 SGX enclave 안에서 실행 중인지 정기 검증</li>
+</ul>
+
+<h4>2.4.3 Co-signer 버전 관리 (★ 중요)</h4>
+<p>
+Co-signer 는 키 share 를 보유하는 서명 컴포넌트라 <strong>버전 관리가 critical</strong>. Fireblocks 가 신규 version 을 발표할 때마다 보안 patch · breaking change · 호환성 변경이 동시에 발생할 수 있음.
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>관리 항목</th><th>권장 절차</th></tr></thead>
+<tbody>
+<tr><td><strong>version pinning</strong></td><td>Production 은 항상 fixed version 로 고정. 자동 upgrade 금지</td></tr>
+<tr><td><strong>신규 version 검증</strong></td><td>Fireblocks 가 release 한 신규 version 은 <strong>Testnet Staging workspace</strong> 에 먼저 배포하여 검증 (서명 흐름 · Callback Handler · SGX attestation · 호환성). 최소 1-2 주 운영 관찰 후 production 적용</td></tr>
+<tr><td><strong>security CVE 대응</strong></td><td>Fireblocks 의 보안 advisory 발표 시 <strong>긴급 patch 절차</strong> 적용. 24-48 시간 안에 Staging 검증 후 production 배포</td></tr>
+<tr><td><strong>Fireblocks minimum version 강제</strong></td><td>Fireblocks 가 일정 시점부터 구 version 지원 중단 가능. release notes 모니터링 + 사전 대응. on-prem cosigner 의 version 정책은 vendor 와 직접 협의 (Fireblocks 공식 cosigner 문서 + Sales)</td></tr>
+<tr><td><strong>downgrade 가능성</strong></td><td>신규 version 의 critical bug 발견 시 이전 version 으로 rollback 가능한지 사전 검증. Fireblocks 의 downgrade 지원 정책 vendor 확인 필수</td></tr>
+<tr><td><strong>SGX enclave 재인증</strong></td><td>version upgrade 시 SGX enclave 의 attestation 재발급 필요. 재인증 절차 + 다운타임 관리</td></tr>
+<tr><td><strong>change log 관리</strong></td><td>모든 version 변경을 자체 change log 에 기록 (version 번호 · 변경 시점 · 책임자 · 검증 결과). 외부 감사 대응 자료</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/introduction">Fireblocks Developer Portal — Introduction</a> (on-prem cosigner 운영 가이드는 vendor / Sales 협의 별도 문서) · 저자 권장 (운영 절차)
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ Cosigner 버전 관리 실패 시 위험</div>
+<ul style="margin-bottom:0">
+<li><strong>키 손상</strong> — 잘못된 version 으로 인한 키 share 손상 가능성 (vendor 가 보장 안 함)</li>
+<li><strong>서명 중단</strong> — Fireblocks minimum version 미달 시 모든 거래 서명 중단</li>
+<li><strong>security CVE</strong> — patch 지연 시 보안 침해 가능성</li>
+<li><strong>외부 감사 지적</strong> — 변경 관리 미흡 시 SOC 2 · 금감원 검사 시 risk finding</li>
+</ul>
+</div>
+
+<h3>2.5 Key Link 인프라 (Key Link 선택 시)</h3>
+<p>
+별도 reference: <a href="../fireblocks-key-link-bank-design/architecture-components.html">Key Link 의 4 컴포넌트 토폴로지</a>
+</p>
+
+<h4>2.5.1 4 컴포넌트 요약</h4>
+<ul>
+<li><strong>Fireblocks Agent</strong> — DMZ. TypeScript on-prem service. Fireblocks ↔ Customer Server 중계</li>
+<li><strong>Customer Server</strong> — 내부망 HA. 은행 자체 비즈니스 로직 + custom validation</li>
+<li><strong>HSM Component</strong> — 보안 구역. Thales Luna HSM 또는 다른 FIPS 장비</li>
+<li><strong>HSM Adaptor</strong> (선택) — Cold HSM 통신 매개 (USB / SFTP / data diodes)</li>
+</ul>
+<p>
+출처: <a href="https://support.fireblocks.io/hc/en-us/articles/14228517105052-Fireblocks-Key-Link-Overview">Fireblocks Key Link Overview</a>
+</p>
+
+<h4>2.5.2 HSM 종류 — Thales Luna 권장</h4>
+<ul>
+<li><strong>FIPS 140-3 Level 3 + Common Criteria 인증</strong> — 금융권 표준</li>
+<li><strong>PQC (Post-Quantum Cryptography) readiness</strong> — 양자컴퓨터 대비</li>
+<li><strong>Crypto agility</strong> — 펌웨어 업데이트로 알고리즘 진화 대응</li>
+<li><strong>Air-gap 지원</strong> — USB / SFTP / data diodes</li>
+</ul>
+<p>
+출처: <a href="https://www.fireblocks.com/blog/enterprise-digital-asset-security-fireblocks-thales">Enterprise Digital Asset Security with Fireblocks and Thales (2025-09-23)</a>
+</p>
+
+<h3>2.6 Webhook Endpoint 인프라</h3>
+<p>
+은행이 운영하는 Webhook 수신 인프라 의 표준 구성. 상세: <a href="sm-webhook.html">13. Webhook 처리</a>.
+</p>
+
+<h4>2.6.1 HA 구성</h4>
+<ul>
+<li><strong>최소 2-node</strong> — active-active 또는 active-passive</li>
+<li><strong>L7 LB + WAF</strong> — TLS termination, rate limit, IP allowlist (Fireblocks 측 IP)</li>
+<li><strong>처리 큐 분리</strong> — endpoint 가 200 OK 응답 후, 별도 worker 가 비동기 처리 (Kafka / SQS / Redis)</li>
+<li><strong>dead-letter queue</strong> — 처리 실패 event 별도 보관 + 운영팀 alert</li>
+</ul>
+
+<h4>2.6.2 모니터링</h4>
+<p>
+Webhook endpoint 의 monitoring 은 내부망의 <strong>Monitoring 컴포넌트</strong> (Prometheus / Grafana / Datadog 등) 가 metric scrape.
+주요 metric:
+</p>
+<ul>
+<li>signature failure rate (0 권장 — 0 이 아니면 위조 시도 가능성)</li>
+<li>processing latency p99 &lt; 500ms</li>
+<li>worker queue depth</li>
+<li>dedup hit rate (중복 수신 비율)</li>
+<li>retry rate (Fireblocks 가 retry 한 비율 — 높으면 endpoint 가 느림)</li>
+</ul>
+
+<h3>2.7 외부 시스템 통합</h3>
+
+<h4>2.7.1 AML Provider</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Provider</th><th>통합 방식</th><th>주 기능</th></tr></thead>
+<tbody>
+<tr><td><strong>Chainalysis KYT</strong></td><td>Fireblocks built-in 통합 또는 직접 API</td><td>incoming / outgoing screening</td></tr>
+<tr><td><strong>Elliptic Navigator</strong></td><td>Fireblocks built-in 통합 또는 직접 API</td><td>wallet screening + tx monitoring</td></tr>
+<tr><td><strong>TRM Labs</strong></td><td>직접 API</td><td>risk scoring</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/define-aml-policies">Define AML Policies</a>
+</p>
+
+<h4>2.7.2 Travel Rule Provider</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Provider</th><th>protocol</th></tr></thead>
+<tbody>
+<tr><td>Notabene</td><td>TRISA / IVMS101</td></tr>
+<tr><td>Sumsub</td><td>TRP</td></tr>
+<tr><td>TRP (Travel Rule Protocol)</td><td>open standard</td></tr>
+<tr><td>OpenVASP</td><td>open standard</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/define-travel-rule-policies">Define Travel Rule Policies</a> ·
+<a href="https://developers.fireblocks.com/reference/validatefulltravelruletransaction">Validate Full Travel Rule Transaction</a>
+</p>
+
+<h4>2.7.3 외부 IdP (SSO 시)</h4>
+<ul>
+<li>SAML 2.0 또는 OIDC</li>
+<li>Fireblocks 측 service provider 는 Auth0 가 담당</li>
+<li>2FA 는 IdP 측 또는 Fireblocks 측에 적용 가능</li>
+</ul>
+<p>
+출처: <a href="https://support.fireblocks.io/hc/en-us/articles/10031671057692-Configure-SSO">Configure SSO</a>
+</p>
+
+<h3>2.8 운영 환경 분리</h3>
+<p>
+은행은 2 환경 운영:
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>환경</th><th>workspace</th><th>용도</th></tr></thead>
+<tbody>
+<tr><td><strong>Production</strong></td><td>Mainnet workspace (Hot + Cold)</td><td>실제 자산 운영</td></tr>
+<tr><td><strong>Testnet Staging</strong></td><td>Testnet workspace</td><td>개발 + 통합 테스트 + 운영 환경 변경 사전 검증 (SDK upgrade · Cosigner version · 신규 정책 등)</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="../fireblocks-cold-wallet-bank-design/workspace-topology.html">Workspace 토폴로지</a>
+</p>
+
+<div class="callout">
+<div class="callout-title">Testnet Staging 환경의 활용 — 운영 변경 사전 검증</div>
+<ul style="margin-bottom:0">
+<li><strong>SDK / Cosigner version upgrade</strong> — 신규 version 을 Staging 에 먼저 배포 → 최소 1-2 주 운영 관찰 후 production</li>
+<li><strong>Policy rule / Approval Group 변경</strong> — 신규 정책을 Staging 에 적용 → 기대 동작 검증</li>
+<li><strong>Webhook · Callback Handler endpoint 분리</strong> — Production / Staging 의 endpoint URL · signature key 가 별도여야 충돌 방지</li>
+<li><strong>Cold Wallet workspace</strong> — Cold Wallet 은 Mainnet 전용 (Testnet 미지원) — Cold workspace 운영 변경은 별도 신중 검증 필요</li>
+</ul>
+</div>
+
+<h3>2.9 BCP / DR 시나리오</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>장애 시나리오</th><th>대응</th></tr></thead>
+<tbody>
+<tr><td>Fireblocks SaaS 장애</td><td>거래 큐잉 + 사용자 응답 SLA + Fireblocks status page 모니터링</td></tr>
+<tr><td>플랫폼 장애</td><td>HA 자동 failover (load balancer)</td></tr>
+<tr><td>은행 DB 장애</td><td>HA failover (PostgreSQL streaming replication)</td></tr>
+<tr><td>Webhook endpoint 장애</td><td>Fireblocks 의 retry 정책 + 정상화 후 reconciliation backfill</td></tr>
+<tr><td>Cosigner / Customer Server 장애</td><td>HA failover (Hosted MPC / Key Link)</td></tr>
+<tr><td>HSM 장애 (Key Link)</td><td>backup HSM swap (Thales 의 backup HSM 활용)</td></tr>
+<tr><td>외부 IdP 장애 (SSO)</td><td>backup IdP 또는 일시적 SSO 우회 (Fireblocks 직접 인증)</td></tr>
+<tr><td>본사 IDC 전체 장애</td><td>cross-IDC DR (백업 IDC 의 standby 환경)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>2.10 인프라 capacity sizing</h3>
+<p>
+운영 규모별 권장 인프라 (저자 추정 — 수치는 일반 패턴 기반. 실제 sizing 은 본인 환경의 부하 테스트 + Fireblocks SLA + AML provider 응답 시간 등을 반영하여 검증 필요).
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>규모</th><th>일일 거래량 (저자 추정)</th><th>권장 구성 (on-prem IDC)</th></tr></thead>
+<tbody>
+<tr><td>소규모 (시범 도입)</td><td>~100 tx</td><td>App 2-node · DB 1-node + replica · Webhook 1-node (단일 IDC)</td></tr>
+<tr><td>중규모 (시장 진입)</td><td>~1,000 tx</td><td>App 4-node + 사전 capacity 예약 · DB HA · Webhook 2-node · 모니터링 풀 (단일 IDC)</td></tr>
+<tr><td>대규모 (운영 안정)</td><td>~10,000 tx</td><td>App 8+ node + cross-IDC DR · DB cluster · Webhook 4+ node · 본사 IDC + 백업 IDC</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">capacity sizing 의 vendor 의존성</div>
+<p style="margin-bottom:0">
+은행 인프라 sizing 은 다음 vendor 측 변수에 영향 받음 — 별도 확인 필수:
+</p>
+<ul style="margin-bottom:0">
+<li><strong>Fireblocks API 의 분당 rate limit</strong> (요금제 별 다름)</li>
+<li><strong>Webhook 의 동시 전송 한계</strong> (peak 시점)</li>
+<li><strong>AML / Travel Rule provider 의 응답 latency</strong></li>
+<li><strong>blockchain confirmation 시간</strong> (chain 별, 마감 시간 영향)</li>
+</ul>
+</div>
+
+<h3>2.11 운영자 역할 분담 (RACI)</h3>
+<p>
+인프라 운영의 운영자 / 보안팀 / 컴플라이언스 / 회계의 역할 분담. <strong>R</strong> = Responsible (실행 담당) /
+<strong>A</strong> = Accountable (최종 책임) / <strong>C</strong> = Consulted (자문) / <strong>I</strong> = Informed (정보 공유).
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>인프라 영역</th><th>운영팀</th><th>보안팀</th><th>컴플라이언스</th><th>회계</th><th>법무</th></tr></thead>
+<tbody>
+<tr><td>Application server / DB 운영</td><td><strong>R/A</strong></td><td>C</td><td>I</td><td>I</td><td>—</td></tr>
+<tr><td>Webhook endpoint 운영</td><td><strong>R/A</strong></td><td>C</td><td>I</td><td>I</td><td>—</td></tr>
+<tr><td>Secret Manager · API key 관리</td><td>R</td><td><strong>A</strong></td><td>I</td><td>—</td><td>—</td></tr>
+<tr><td>HSM · Co-signer · Customer Server (Hosted/Key Link)</td><td>R</td><td><strong>A</strong></td><td>I</td><td>—</td><td>—</td></tr>
+<tr><td>Admin Quorum ceremony (recovery passphrase 등)</td><td>R</td><td><strong>A</strong></td><td>C</td><td>—</td><td>C</td></tr>
+<tr><td>BCP / DR plan + drill</td><td><strong>R/A</strong></td><td>C</td><td>I</td><td>I</td><td>I</td></tr>
+<tr><td>vendor 장애 대응 / SLA 협의</td><td>R</td><td>C</td><td>C</td><td>—</td><td><strong>A</strong></td></tr>
+<tr><td>AML / Travel Rule provider 통합</td><td>R</td><td>C</td><td><strong>A</strong></td><td>—</td><td>C</td></tr>
+<tr><td>외부 IdP 통합 (SSO)</td><td><strong>R/A</strong></td><td>C</td><td>I</td><td>—</td><td>—</td></tr>
+<tr><td>모니터링 dashboard · alert</td><td><strong>R/A</strong></td><td>C</td><td>I</td><td>I</td><td>—</td></tr>
+<tr><td>외부 감사 · 금감원 검사 대응</td><td>R</td><td>C</td><td><strong>R/A</strong></td><td>C</td><td>C</td></tr>
+<tr><td>5 년 보존 retention 정책</td><td>R</td><td>C</td><td><strong>A</strong></td><td>C</td><td>C</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ 보안팀의 핵심 책임</div>
+<p style="margin-bottom:0">
+보안팀이 Accountable (최종 책임) 인 영역: <strong>Secret · API key · HSM · Co-signer · Admin Quorum ceremony</strong>. 운영팀이 일상 운영 (R) 을 수행하지만 최종 의사 결정 + 침해 시 대응 책임은 보안팀.
+컴플라이언스 / 법무는 외부 의무 (감사 · 금감원 · KR 규제 · vendor 계약) 의 책임 분담.
+</p>
+</div>
+
+<h3>2.12 Server role 별 권장 구성 — 코인계 안</h3>
+<p>
+코인계 (망분리 영역) 안에서 분리해야 할 서버 role 과 권장 spec / HA 단위. 2.10 capacity sizing 의 보강.
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Role</th><th>역할</th><th>권장 spec (중규모 기준)</th><th>HA 단위</th><th>보안 zone</th></tr></thead>
+<tbody>
+<tr><td><strong>API 서버</strong></td><td>채널계 ↔ 코인계 API · 사용자 요청 진입 · transaction_request INSERT</td><td>4 vCPU · 8GB RAM × 2-4 node</td><td>active-active · L4/L7 LB</td><td>코인계 (망분리 안)</td></tr>
+<tr><td><strong>Webhook worker</strong></td><td>Fireblocks event 수신 (HMAC-SHA512 검증) · dedup · transaction / accounting domain 갱신</td><td>4 vCPU · 8GB RAM × 2 node 이상</td><td>active-active · queue 기반</td><td>코인계 (DMZ webhook endpoint → worker)</td></tr>
+<tr><td><strong>Ledger / 대사 cron</strong></td><td>회계 4 원장 갱신 · L1-L4 대사 · 일말 외화환산 · 마감 박제</td><td>4 vCPU · 16GB RAM × 1 active + 1 standby</td><td>active-passive</td><td>코인계</td></tr>
+<tr><td><strong>Admin Console</strong></td><td>운영자 UI · master 변경 · audit_log_internal 작성</td><td>2 vCPU · 4GB RAM × 2 node</td><td>active-active</td><td>코인계 (내부 IP only)</td></tr>
+<tr><td><strong>Cosigner</strong> (Hosted MPC 시)</td><td>SGX 머신 · MPC key share · 거래 서명</td><td>4 cores · 16GB RAM · 128GB · 2GB EPC (<a href="tables-crypto.html">11. MPC · Cosigner</a> 11.3 절)</td><td>active-active (multi-cosigner)</td><td>코인계 (HSM 인접)</td></tr>
+<tr><td><strong>core DB cluster</strong></td><td>customer · counterparty · transaction · accounting · reconciliation · ops · admin 7 domain</td><td>16 vCPU · 64GB RAM · NVMe SSD · primary + replica + standby</td><td>primary-replica HA · streaming replication</td><td>코인계</td></tr>
+<tr><td><strong>audit DB</strong> (분리 필수)</td><td>audit_log_mirror + audit_log_internal · 변조방지 · 5년 보존</td><td>8 vCPU · 32GB RAM · WORM storage 또는 append-only DB · S3 Object Lock 옵션</td><td>active-passive · hash chain</td><td>코인계 (별도 storage)</td></tr>
+<tr><td><strong>compliance DB</strong></td><td>travel_rule · VASP · 금감원 보고</td><td>4 vCPU · 16GB RAM × HA</td><td>active-passive</td><td>코인계 (separate)</td></tr>
+<tr><td><strong>Prometheus + Grafana</strong> (모니터링)</td><td>metrics 수집 · dashboard</td><td>4 vCPU · 16GB RAM · 1TB+ disk (1년 보관) × HA</td><td>federation + replica</td><td>코인계 (관리망)</td></tr>
+<tr><td><strong>ELK stack</strong> (로그)</td><td>application + DB + audit log aggregation · 검색</td><td>16 vCPU · 64GB RAM · 5TB+ disk (5년 보관) · 3+ node cluster</td><td>Elasticsearch cluster (master/data/coordinator 분리)</td><td>코인계 (관리망)</td></tr>
+<tr><td><strong>HSM</strong> (Key Link 시)</td><td>Thales Luna 등 · 키 보관 + 서명</td><td>vendor 권장 사양 · <a href="tables-crypto.html">11. MPC · Cosigner</a> 11.7 절</td><td>active-active (HA cluster)</td><td>보안구역 (HSM zone)</td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary);font-size:13px">
+<strong>spec 수치는 중규모 (일 ~1,000 tx) 기준 저자 권장</strong> — 실제 sizing 은 부하 테스트 + Fireblocks API rate limit + AML provider 응답 latency + 회계 cron 의 일말 처리 시간으로 검증 필요.
+</p>
+
+<h3>2.12a Database engine — 용도별 선택 가이드</h3>
+<p>
+2.12 의 "core DB / audit DB / compliance DB" 같은 단일 표현은 실제 운영에서 <strong>data 특성 별로 다른 engine</strong> 을 mix 하는 것이 일반적. 본 절은 7 가지 용도 (시계열 · OLTP · 메타데이터 · 분석 · 변조방지 · 캐시 · 검색) 별 engine 선택 가이드 + 본 wiki 표가 어디에 들어가는지 매핑. <a href="db-split.html">3. DB 분할</a> 3.6 절 (domain 의 data 특성 → engine 후보) 의 server-role 차원 보완.
+</p>
+
+<h4>2.12a.1 7 카테고리 한눈에 보기</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>카테고리</th><th>data 특성</th><th>추천 engine (OSS)</th><th>추천 engine (Commercial / Managed)</th><th>본 wiki 의 적용 표</th></tr></thead>
+<tbody>
+<tr><td><strong>① OLTP / Transactional</strong></td><td>mutable · row-level lock · ACID · 정합성 critical</td><td>PostgreSQL · MySQL · MariaDB</td><td>Oracle · SQL Server · Aurora · Cloud SQL</td><td>customer · counterparty · admin · ops · transaction_request (header + detail) · withdrawal_execution / transaction_execution</td></tr>
+<tr><td><strong>② 시계열 (Time-series)</strong></td><td>append-only · 시간 기반 query · 대용량 · partition by time</td><td>TimescaleDB · InfluxDB · QuestDB</td><td>ClickHouse · DataDog Metrics · AWS Timestream</td><td>balance_snapshots · asset_value_krw · fx_rate_history · webhook_events · vendor_transaction_status_history · hot_cold_ratio_daily · 일별 metrics</td></tr>
+<tr><td><strong>③ 메타데이터 / NoSQL</strong></td><td>key-value · schema-less · 빠른 read · 단순 query</td><td>Redis (persistent) · MongoDB · Cassandra</td><td>DynamoDB · Cosmos DB · Firestore</td><td>cosigner_meta · mobile_device · workspace 메타 (단순 config) · vault_lifecycle_event (jsonb payload)</td></tr>
+<tr><td><strong>④ 분석 / BI (Data Warehouse)</strong></td><td>OLAP · large scan · columnar · BI tool 연결</td><td>ClickHouse · Apache Druid · Doris</td><td>Snowflake · BigQuery · Redshift · Synapse</td><td>모든 표의 BI 사본 (회계 / 거래 / 사용자 분석 · 위험 분석 · 컴플라이언스 보고서 생성)</td></tr>
+<tr><td><strong>⑤ 변조방지 Audit</strong></td><td>append-only · WORM · hash chain · 5년 보존</td><td>append-only PostgreSQL + hash chain · Apache Kafka (with retention)</td><td>AWS S3 Object Lock · Azure Immutable Blob · AWS QLDB · Google Cloud Storage Object Lock</td><td>audit_log_mirror · audit_log_internal · general_ledger_snapshot · customer_balance_snapshot</td></tr>
+<tr><td><strong>⑥ Cache (in-memory)</strong></td><td>millisecond access · TTL · ephemeral</td><td>Redis · Memcached</td><td>ElastiCache · Memorystore</td><td>asset_value_krw (TTL cache) · 세션 토큰 · rate limit counter · 일시적 잔액 조회 cache</td></tr>
+<tr><td><strong>⑦ 검색 / 로그 (Search)</strong></td><td>full-text search · log aggregation · faceted query</td><td>Elasticsearch · OpenSearch · Apache Solr</td><td>Algolia · AWS OpenSearch Service</td><td>application 로그 · audit log 검색 · 거래 내역 search · compliance review 검색</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>2.12a.2 카테고리 1 — OLTP / Transactional (PostgreSQL 권장)</h4>
+<ul>
+<li><strong>본 wiki 의 대표 표</strong>: <code>customer.*</code> · <code>counterparty.*</code> · <code>admin.*</code> · <code>ops.*</code> · <code>transaction_request</code> (header + 3 detail) · <code>transaction_execution</code> · <code>vendor_transaction</code> · 회계 4 원장 (customer_ledger · bank_ledger · delta_ledger · general_ledger_entry · general_ledger_account)</li>
+<li><strong>핵심 요구사항</strong>:
+  <ul>
+    <li>ACID transaction — 회계 분개의 양변 동시 commit · 잔액 lock + delta_ledger INSERT 동시</li>
+    <li>row-level lock — 동일 user_id 동시 출금 prevention</li>
+    <li>cross-schema FK — customer / transaction / accounting domain 간 1:N 관계</li>
+    <li>complex query — 5년 보존 데이터 검색 · multi-table JOIN</li>
+  </ul>
+</li>
+<li><strong>권장</strong>: <strong>PostgreSQL 15+</strong>
+  <ul>
+    <li>장점: 가장 풍부한 SQL · JSONB 지원 (metadata 컬럼) · streaming replication · partial / partial index · CHECK constraint</li>
+    <li>HA: primary + 1+ standby (streaming replication) · failover automation (Patroni / repmgr)</li>
+    <li>partition: 시간 기반 (월/년) · 일별 audit log partition</li>
+  </ul>
+</li>
+<li><strong>대안</strong>: Oracle (기존 은행 코어 일관성) · MySQL (성능 ↑ but JSON / FK 제약) · CockroachDB (multi-region 분산 시)</li>
+<li><strong>spec</strong>: 16 vCPU · 64GB RAM · NVMe SSD · primary + replica</li>
+</ul>
+
+<h4>2.12a.3 카테고리 2 — 시계열 (TimescaleDB 또는 ClickHouse)</h4>
+<ul>
+<li><strong>본 wiki 의 대표 표</strong>: <code>balance_snapshots</code> (일별 잔액) · <code>asset_value_krw</code> (시점 cache · 시계열로 archive) · <code>fx_rate_history</code> (일별 / 시간별 시세) · <code>webhook_events</code> (대용량 event) · <code>vendor_transaction_status_history</code> (status 변경 시계열) · <code>hot_cold_ratio_daily</code> · 모니터링 metrics (Prometheus → archive)</li>
+<li><strong>핵심 요구사항</strong>:
+  <ul>
+    <li>append-only · 시간 ordering · partition by time</li>
+    <li>대용량 (수억 row) · 시간 범위 query 빠름 (예: "최근 30일 거래 추이")</li>
+    <li>retention 정책 (예: 5년 후 cold tier archive)</li>
+    <li>downsampling (예: 분 단위 → 시간 단위 → 일 단위 점진 압축)</li>
+  </ul>
+</li>
+<li><strong>권장 옵션</strong>:
+  <ul>
+    <li><strong>TimescaleDB</strong> (PostgreSQL extension) — SQL 호환성 ↑ · OLTP 와 동일 engine 운영 가능 (운영 단순화) · hypertable + continuous aggregate</li>
+    <li><strong>ClickHouse</strong> — 더 빠른 OLAP · columnar · 대용량 시계열 분석 + BI 통합 ↑ · 별도 운영 부담</li>
+    <li><strong>InfluxDB</strong> — IoT / 인프라 metrics 표준 · Prometheus remote write 통합 자연스러움</li>
+  </ul>
+</li>
+<li><strong>권장 mix</strong>: OLTP 와 같이 운영 → TimescaleDB (PostgreSQL extension) · 별도 시계열 → ClickHouse (분석 시 BI 통합 용이)</li>
+<li><strong>spec</strong>: 8 vCPU · 32GB RAM · 시간 기반 partition · 일별 retention monitoring</li>
+</ul>
+
+<h4>2.12a.4 카테고리 3 — 메타데이터 / NoSQL (Redis · MongoDB)</h4>
+<ul>
+<li><strong>본 wiki 의 대표 표</strong>: <code>cosigner_meta</code> · <code>mobile_device</code> · <code>workspace.config</code> · <code>vault_lifecycle_event</code> (jsonb event payload) · 단순 key-value 설정</li>
+<li><strong>핵심 요구사항</strong>:
+  <ul>
+    <li>schema-less · 빠른 lookup · 단순 query (PK 또는 secondary index)</li>
+    <li>schema 변경 빈번 (예: vendor 가 새 event field 추가)</li>
+  </ul>
+</li>
+<li><strong>권장 옵션</strong>:
+  <ul>
+    <li><strong>PostgreSQL JSONB 컬럼</strong> (저자 권장) — OLTP 와 동일 engine 사용 · 운영 단순화 · JSON path query 지원. 본 wiki 의 표 대부분 metadata jsonb 컬럼으로 처리 권장</li>
+    <li><strong>Redis</strong> (cache 겸용) — TTL · pub/sub · 빠른 read. event-driven workflow 적합</li>
+    <li><strong>MongoDB</strong> — 진짜 schema-less 가 필요할 때 (대규모 event log 등)</li>
+  </ul>
+</li>
+<li><strong>저자 권장</strong>: <strong>대부분 PostgreSQL JSONB 로 처리</strong> — 별도 NoSQL engine 운영 부담 회피. 정말 필요한 경우만 Redis (cache) 추가</li>
+</ul>
+
+<h4>2.12a.5 카테고리 4 — 분석 / BI (Data Warehouse · Snowflake/BigQuery)</h4>
+<ul>
+<li><strong>용도</strong>: 임원 BI 보고서 · 거래 / 사용자 / 위험 분석 · 컴플라이언스 / 금감원 보고서 생성 · 회계 마감 자료 산출</li>
+<li><strong>data flow</strong>: OLTP / 시계열 / audit → ETL / CDC → Data warehouse (analytical 사본)</li>
+<li><strong>권장 옵션</strong>:
+  <ul>
+    <li><strong>Snowflake</strong> — KR 은행권 채택 ↑ · separation of compute/storage · 멀티 region · BI 통합 풍부 (Tableau · PowerBI)</li>
+    <li><strong>BigQuery</strong> (GCP) — 완전 serverless · ad-hoc query 빠름 · 가격 query-based</li>
+    <li><strong>ClickHouse</strong> (OSS) — 자체 운영 · 빠른 OLAP · KR 은행 망분리 환경에 적합</li>
+    <li><strong>Apache Druid</strong> — real-time analytics · 거래 streaming 분석</li>
+  </ul>
+</li>
+<li><strong>data 동기화</strong>: Debezium CDC (PostgreSQL → Kafka → DW) 또는 nightly batch ETL</li>
+<li><strong>분리 필수</strong>: OLTP DB 와 분리 (OLAP query 가 OLTP 성능 영향 X)</li>
+<li><strong>망분리 고려</strong>: DW 자체도 코인계 안에 배치 (KR 은행 망분리 정책). 또는 IDC 별도 zone (BI 영역)</li>
+</ul>
+
+<h4>2.12a.6 카테고리 5 — 변조방지 Audit (Object Store WORM · QLDB)</h4>
+<ul>
+<li><strong>본 wiki 의 대표 표</strong>: <code>audit_log_mirror</code> (Fireblocks 사본) · <code>audit_log_internal</code> (은행 자체 변경) · <code>general_ledger_snapshot</code> (일말 회계 박제) · <code>customer_balance_snapshot</code> (일말 잔액)</li>
+<li><strong>핵심 요구사항</strong>:
+  <ul>
+    <li>append-only — UPDATE / DELETE 금지 (특금법 5조의4)</li>
+    <li>hash chain 또는 WORM (Write Once Read Many) storage</li>
+    <li>5 년 보존 (특금법) · 일부 7년 (회계 자료)</li>
+    <li>외부 감사 read-only access</li>
+  </ul>
+</li>
+<li><strong>권장 옵션</strong>:
+  <ul>
+    <li><strong>append-only PostgreSQL + hash chain</strong> (자체 구현) — INSERT 만 허용 trigger + previous_hash 컬럼 + current_hash 컬럼. 운영 단순 · 검증 가능</li>
+    <li><strong>AWS S3 Object Lock</strong> (Compliance mode) — WORM 보장 + KMS 암호화 + Glacier archive 가능. KR 은행 망분리 환경에서는 AWS GovCloud 또는 직접 S3 호환 storage (MinIO + Object Lock)</li>
+    <li><strong>AWS QLDB</strong> (Quantum Ledger Database) — 자체 cryptographic verifiability · 다만 KR region 한계 (망분리 우려)</li>
+    <li><strong>Apache Kafka (with retention)</strong> — append-only stream · 5년 retention · audit log 의 streaming 사본</li>
+  </ul>
+</li>
+<li><strong>저자 권장</strong>: <strong>PostgreSQL append-only + hash chain (운영 일관성) + S3 호환 WORM (장기 archive)</strong>. 두 layer 로 운영 단순화 + 변조방지 강화</li>
+</ul>
+
+<h4>2.12a.7 카테고리 6 — Cache (Redis)</h4>
+<ul>
+<li><strong>용도</strong>: <code>asset_value_krw</code> 시점 cache (TTL 1 시간) · session 토큰 · rate limit counter · vault balance 조회 cache · pre-computed UI 잔액</li>
+<li><strong>권장</strong>: <strong>Redis 7+</strong> (cluster mode) — pub/sub · pipeline · Lua script · TLS</li>
+<li><strong>HA</strong>: Redis Sentinel 또는 Redis Cluster (자동 failover)</li>
+<li><strong>persistent vs ephemeral</strong>: cache 는 ephemeral · session 은 short persistent (AOF)</li>
+<li><strong>spec</strong>: 2 vCPU · 8GB RAM × 3 node (cluster)</li>
+</ul>
+
+<h4>2.12a.8 카테고리 7 — 검색 / 로그 (Elasticsearch / OpenSearch)</h4>
+<ul>
+<li><strong>용도</strong>: application 로그 검색 · audit log full-text query · 거래 내역 search · compliance reviewer 의 의심 거래 search</li>
+<li><strong>본 wiki 의 적용</strong>: 2.13.2 ELK Stack 의 데이터 source (application + DB + audit log)</li>
+<li><strong>권장</strong>: <strong>Elasticsearch 8+</strong> (또는 OpenSearch 2+ — Amazon fork) · Logstash · Kibana</li>
+<li><strong>spec</strong>: 16 vCPU · 64GB RAM · 5TB+ disk · 3+ node cluster (master / data / coordinator 분리)</li>
+<li><strong>주의</strong>: 검색 engine 자체는 transactional consistency 부족 → 진실의 source 는 OLTP / audit DB 이고 ES 는 사본</li>
+</ul>
+
+<h4>2.12a.9 통합 운영 — 7 engine 동시 운영의 부담 vs 단일 engine 의 한계</h4>
+<div class="callout callout-warn">
+<div class="callout-title">★ 운영 단순화 권장 — 시작 단계는 3-4 engine 으로</h4>
+<p style="margin-bottom:0.5rem">
+모든 카테고리에 별도 engine 도입 시 운영 부담 ↑. 시작 단계 권장:
+</p>
+<ol style="margin-bottom:0">
+<li><strong>PostgreSQL</strong> — OLTP + 시계열 (TimescaleDB extension) + NoSQL (JSONB) + audit (append-only + hash chain) 통합 운영</li>
+<li><strong>Redis</strong> — Cache + session</li>
+<li><strong>Elasticsearch / OpenSearch</strong> — 로그 + 검색</li>
+<li><strong>S3 호환 storage</strong> — 장기 archive (Object Lock WORM)</li>
+</ol>
+<p style="margin-bottom:0;margin-top:0.5rem">
+운영 안정화 후 (예: 일 거래량 ~10,000+) 분리 필요 영역 식별 → Data warehouse (Snowflake / ClickHouse) · 시계열 separate (ClickHouse) 등 점진 도입. KR 은행 망분리 환경에서는 <strong>cloud SaaS engine 선택 시 망분리 적합성 사전 검증</strong> 필수.
+</p>
+</div>
+
+<h4>2.12a.10 본 wiki 표의 통합 매핑 (참고)</h4>
+<p>
+앞 2.12 의 server role 별 spec 표와 본 절의 engine 카테고리 cross 매핑:
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>본 wiki 표</th><th>1차 engine (OLTP 권장)</th><th>2차 engine (분석 / archive)</th></tr></thead>
+<tbody>
+<tr><td>customer · counterparty · admin · ops</td><td>PostgreSQL</td><td>Data warehouse (BI)</td></tr>
+<tr><td>transaction_request (header + detail) · transaction_execution · vendor_transaction</td><td>PostgreSQL (시간 partition)</td><td>Data warehouse (분석) · 시계열 archive</td></tr>
+<tr><td>회계 4 원장 (customer_ledger · bank_ledger · delta_ledger · general_ledger_entry)</td><td>PostgreSQL (ACID critical)</td><td>Data warehouse (BI · 외부 감사)</td></tr>
+<tr><td>balance_snapshots · fx_rate_history · asset_value_krw</td><td>TimescaleDB 또는 PostgreSQL</td><td>ClickHouse (시계열 분석)</td></tr>
+<tr><td>webhook_events</td><td>PostgreSQL (시간 partition) + Kafka (stream)</td><td>시계열 archive</td></tr>
+<tr><td>audit_log_mirror · audit_log_internal</td><td>PostgreSQL append-only + hash chain</td><td>S3 Object Lock (장기 archive)</td></tr>
+<tr><td>general_ledger_snapshot · customer_balance_snapshot</td><td>PostgreSQL + hash chain</td><td>S3 archive (immutable)</td></tr>
+<tr><td>compliance.travel_rule_records · screening_results · regulator_reports</td><td>PostgreSQL (별도 DB instance)</td><td>장기 archive</td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary);font-size:13px">
+구체 engine / spec 은 운영 환경 (망분리 / cloud / 거래량 / KR 규제) 에 따라 다름. 본 표는 일반 권장이며 도입 시 부하 테스트 + DBA 검토 + 망분리 적합성 확인 필수.
+</p>
+
+<h3>2.13 모니터링 Stack — 5 카테고리 통합</h3>
+<p>
+보유 자산 · 거래 · 사용자 · 인프라 · 보안 의 5 카테고리를 통합 모니터링. 권장 stack 은 KR 은행 환경의 일반 패턴 (Prometheus + Grafana + ELK + Chainalysis + 자체 FDS).
+</p>
+
+<div class="callout">
+<div class="callout-title">5 카테고리 모니터링 전체 아키텍처</div>
+<p style="margin-bottom:0.5rem">
+한국 거래소 (Upbit · 빗썸) + 해외 best practice (Coinbase · Binance · Fireblocks) 의 공통 패턴을 종합한 5 카테고리. 각 카테고리마다 별도 stack 운영 + 통합 alert 게이트웨이로 SOC 에 전달.
+</p>
+</div>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  subgraph Sources["데이터 source"]
+    direction TB
+    src_infra["인프라<br/>(CPU · 메모리 · 네트워크 · DB)"]
+    src_app["application<br/>(API · webhook · cron 로그)"]
+    src_chain["블록체인<br/>(RPC · mempool · block event)"]
+    src_tx["거래<br/>(transaction_request · transaction_execution)"]
+    src_security["보안<br/>(인증 · 권한 · audit log · WAF)"]
+  end
+
+  subgraph Stack["모니터링 stack"]
+    direction TB
+    prom["① Prometheus + Grafana<br/>(metrics)"]
+    elk["② ELK Stack<br/>(logs · 검색)"]
+    chain["③ Chainalysis KYT<br/>(on-chain screening · cluster 분석)"]
+    fds["④ 자체 FDS<br/>(룰 엔진 + 24/72h 출금지연 + 화이트리스트)"]
+    siem["⑤ SIEM / SOC<br/>(보안 통합 · 침해 탐지)"]
+  end
+
+  subgraph Output["출력"]
+    direction TB
+    dash["dashboard (Grafana / Kibana)"]
+    alert["alert (PagerDuty / Slack)"]
+    soc["SOC review queue"]
+  end
+
+  src_infra --> prom
+  src_app --> elk
+  src_chain --> chain
+  src_chain --> prom
+  src_tx --> fds
+  src_tx --> chain
+  src_security --> elk
+  src_security --> siem
+  elk --> siem
+
+  prom --> dash
+  elk --> dash
+  chain --> alert
+  chain --> soc
+  fds --> alert
+  fds --> soc
+  siem --> alert
+  siem --> soc
+
+  classDef src fill:#dbeafe,stroke:#2563eb
+  classDef stack fill:#dcfce7,stroke:#16a34a
+  classDef out fill:#fef3c7,stroke:#d97706
+  class src_infra,src_app,src_chain,src_tx,src_security src
+  class prom,elk,chain,fds,siem stack
+  class dash,alert,soc out
+</pre>
+</div>
+<p class="diagram-caption">
+5 카테고리 데이터 source → 5 layer monitoring stack → dashboard / alert / SOC review queue. 각 layer 는 독립 stack 으로 운영하고 통합은 alert 게이트웨이 (PagerDuty 등) + SIEM 에서.
+</p>
+
+<h4>2.13.1 카테고리 1 — Infrastructure metrics (Prometheus + Grafana)</h4>
+<ul>
+<li><strong>역할</strong>: 서버 / DB / network / docker 의 CPU · 메모리 · disk · network 메트릭 수집</li>
+<li><strong>도구</strong>: <strong>Prometheus</strong> (OSS) + <strong>node_exporter</strong> · <strong>postgres_exporter</strong> · <strong>blackbox_exporter</strong> · Grafana dashboard</li>
+<li><strong>데이터 source</strong>: 코인계 모든 서버 (API · Webhook · Ledger cron · DB · Console · Cosigner host)</li>
+<li><strong>보관 기간</strong>: 1년 (원시 metric) · 3년 (downsampled hourly)</li>
+<li><strong>대표 alert 룰</strong>: CPU > 80% 5분 · disk &lt; 10% · DB connection &gt; 90% pool · webhook endpoint p99 latency &gt; 5초 · cosigner heartbeat 부재 1분</li>
+</ul>
+
+<h4>2.13.2 카테고리 2 — Application logs (ELK Stack)</h4>
+<ul>
+<li><strong>역할</strong>: application / webhook handler / cron / DB query log 집중 + 검색</li>
+<li><strong>도구</strong>: <strong>Elasticsearch + Logstash + Kibana</strong> (OSS) · Filebeat agent · Logstash pipeline</li>
+<li><strong>데이터 source</strong>: 코인계 서버의 stdout / stderr + 회계 cron + cosigner <code>customer_cosigner.log</code> + audit_log (별도 stream)</li>
+<li><strong>보관 기간</strong>: 5년 (audit 영역 = 특금법 의무) · 1년 (application = 운영 표준)</li>
+<li><strong>대표 활용</strong>: 거래 ID 로 lifecycle 추적 · 사용자 ID 로 활동 검색 · 에러율 시계열 · audit log 무결성 검증</li>
+<li><strong>외부 log delivery</strong>: cosigner 의 경우 Docker JSON file driver → Filebeat → ELK (<a href="tables-crypto.html">11. MPC · Cosigner</a> 11.3 절)</li>
+</ul>
+
+<h4>2.13.3 카테고리 3 — On-chain monitoring (Chainalysis)</h4>
+<ul>
+<li><strong>역할</strong>: 출금 / 입금 address 의 cluster 식별 · 리스크 점수 · 제재 list screening · VASP 식별 (트래블룰 보조)</li>
+<li><strong>도구</strong>: <strong>Chainalysis KYT (Know Your Transaction)</strong> API + Reactor (수사 도구) — <strong>400+ networks 의 노드 수준 데이터 수집</strong></li>
+<li><strong>데이터 source</strong>: customer.transaction_request 의 destination_address (출금 시) + transaction.deposit_observations 의 sender address (입금 시)</li>
+<li><strong>통합 시점</strong>: 출금 요청 시 (PENDING_VALIDATION 단계) · 입금 webhook 시 (TRANSACTION_CREATED)</li>
+<li><strong>대표 alert</strong>: high-risk cluster (Mixer · Darknet · Sanction) 탐지 → 거래 자동 차단 + SOC 검토</li>
+<li><strong>보관</strong>: <code>compliance.screening_results</code> 에 응답 영구 보관 (audit)</li>
+<li><strong>대안 vendor 비교</strong>:
+  <ul>
+    <li><strong>Chainalysis</strong> — 400+ networks · 라벨 / 클러스터링 강점 · KYT 정량 score · Reactor 수사 도구</li>
+    <li><strong>Elliptic</strong> — 실시간 지갑 / 거래 스크리닝 · 크로스체인 추적 · 지속 재스크리닝 · Elliptic2 dataset 공개</li>
+    <li><strong>TRM Labs</strong> — 제재 확장 인텔리전스 · 크로스체인 위험 + 정책 자동화</li>
+  </ul>
+</li>
+</ul>
+
+<div class="callout">
+<div class="callout-title">FATF 권고 — 내부 데이터 + 외부 인텔리전스 결합</div>
+<p style="margin-bottom:0">
+FATF 는 거래소 / 발행사 / 수탁사가 <strong>온체인 데이터 + 오프체인 데이터 (KYC · 트래블룰)</strong> 를 결합해 잠재적 불법행위를 식별해야 한다고 명시. 동일 VASP 내 내부원장 이동 등 상당수 거래가 오프체인에 존재 → 공개 온체인 데이터만으로는 완전한 감시 불가. 본 wiki 의 <code>customer.transaction_request</code> + Chainalysis KYT 결합이 이 구조에 부합. 출처: <code>sources/monitoring/2026-05-28__blockchain-wallet-stablecoin-monitoring.md</code>.
+</p>
+</div>
+
+<h5>AI 기반 이상거래 탐지 — 4-tier 계층 구조 (저자 권장)</h5>
+<p>
+KR / 해외 best practice + 학술 연구 (Elliptic2 dataset · MDST-GNN 2025 · GNN 초기화 연구 2026) 종합:
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Tier</th><th>방법</th><th>강점</th><th>한계</th></tr></thead>
+<tbody>
+<tr><td><strong>Tier 1 — 룰 엔진</strong></td><td>amount · destination · frequency · time-of-day 룰</td><td>해석 가능 · audit trail 명확 · 즉시 차단 가능</td><td>새로운 패턴 적응 ↓</td></tr>
+<tr><td><strong>Tier 2 — 피처 기반 지도학습</strong></td><td>random forest · gradient boosting · 고객 평소 패턴 학습</td><td>오탐 감소 · score 정량화</td><td>학습 데이터 의존 · 클래스 불균형</td></tr>
+<tr><td><strong>Tier 3 — 그래프 / 시계열 모델</strong></td><td>GNN · MDST-GNN (multi-domain spatio-temporal) · 클러스터 + 시간축</td><td>주소 cluster + 시간 변화 함께 탐지 · 대규모 subgraph</td><td>학습 자원 ↑ · 설명가능성 ↓</td></tr>
+<tr><td><strong>Tier 4 — 인간 검토 피드백</strong></td><td>SOC / 컴플라이언스 reviewer 의 판정 → 모델 재학습</td><td>최종 정확도 ↑ · 새 패턴 학습</td><td>인력 부담 · latency</td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary);font-size:13px">
+순수 룰 엔진만으로는 부족 · 순수 종단형 딥러닝 단독도 위험. 4-tier 결합이 학술 / 실무 권장. 본 wiki 2.13.4 자체 FDS 의 룰 엔진은 Tier 1 만 cover — Tier 2-4 도입은 운영 후속 stage 검토.
+</p>
+
+<h4>2.13.4 카테고리 4 — Transaction monitoring (자체 FDS)</h4>
+<ul>
+<li><strong>역할</strong>: 출금 / 스왑 / 램프 거래의 이상 패턴 탐지 + 자동 차단 / 출금 지연</li>
+<li><strong>도구</strong>: <strong>자체 룰 엔진</strong> — KR 거래소 best practice 모방 (24/72h 출금 지연 · 화이트리스트 · 한도 · 빈도)</li>
+<li><strong>데이터 source</strong>: customer.transaction_request + accounting.customer_ledger + customer.customer_external_destination</li>
+<li><strong>대표 룰</strong> (KR 거래소 패턴 종합 · 저자 권장):
+  <ul>
+    <li>최초 등록 화이트리스트 destination 의 <strong>24h 출금 지연</strong> (빗썸 / Upbit 패턴)</li>
+    <li>당일 누적 출금 한도 (예: 1억원) 초과 시 추가 승인 요청</li>
+    <li>새 destination 으로의 첫 출금 시 <strong>72h 지연 + 추가 본인 확인</strong></li>
+    <li>고객 평소 패턴 대비 급격한 변화 (금액 · 빈도 · 시간대) → review queue</li>
+    <li>특정 high-risk 도메인 (믹서 · darknet) 자동 차단</li>
+  </ul>
+</li>
+<li><strong>출력</strong>: 차단 / 지연 / 경고 → SOC review queue · 정상 거래는 통과</li>
+<li><strong>보관</strong>: 룰 적용 이력 + 결정 reason 을 audit_log_internal 에 5년 보존</li>
+</ul>
+
+<div class="callout">
+<div class="callout-title">KR 4 대 거래소 실제 콜드월렛 / 운영 수치 (2025 공시 기준)</div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>거래소</th><th>콜드월렛 비율</th><th>실명계좌 은행</th><th>외부 회계법인 (실사)</th><th>특이사항</th></tr></thead>
+<tbody>
+<tr><td>Upbit</td><td><strong>98.33%</strong></td><td>케이뱅크</td><td>성현 회계법인</td><td>2024 투명성 보고서 최초 발간 · 분기 실사 공개</td></tr>
+<tr><td>빗썸</td><td><strong>95.6%</strong> (90% 공표)</td><td>KB국민은행 (2025-03 전환)</td><td>한울 회계법인</td><td>준비금 약 1,000억 원 · 7년 연속 해킹 0건</td></tr>
+<tr><td>코인원</td><td><strong>100.12%</strong> (가상자산) · 102.37% (예금)</td><td>제휴 은행</td><td>대주회계법인 (변경)</td><td>2025 닐리온 상장 직후 매도 중단 전산오류 발생</td></tr>
+<tr><td>코빗</td><td>80%+ (가상자산이용자보호법 준수)</td><td>신한은행</td><td>삼덕 회계법인 (AUP)</td><td>reserve 전용 페이지 운영 · 2025-12 12시간 서비스 중단</td></tr>
+</tbody>
+</table>
+</div>
+<p style="margin-bottom:0;color:var(--text-secondary);font-size:13px">
+법정 최소 콜드월렛 비율 80% (가상자산업감독규정 9조) 를 모두 상회. 그러나 <strong>실사보고서는 AUP (합의된 절차 수행 결과) 이지 회계감사 (Audit) 아님</strong> → 내부통제 / 잠재적 부외 위험 cover 안 됨. 본 KR 은행 시스템은 회계감사 수준의 검증 권장. 출처: <code>sources/monitoring/2026-05-28__customer-asset-separation-kr-exchanges.md</code>.
+</p>
+</div>
+
+<h4>2.13.5 카테고리 5 — Security monitoring (SIEM / SOC)</h4>
+<ul>
+<li><strong>역할</strong>: 인증 / 권한 / WAF / IDS / IPS / 직원 access · 보안 사고 통합 탐지</li>
+<li><strong>도구</strong>: <strong>SIEM</strong> — Splunk Enterprise Security 또는 IBM QRadar 또는 자체 ELK + SIEM 룰</li>
+<li><strong>데이터 source</strong>: WAF / IDS / IPS / SSO / Active Directory / Fireblocks audit_log_mirror + 은행 audit_log_internal · network firewall / SSH 로그</li>
+<li><strong>대표 alert</strong>: 비정상 SSH login · 권한 변경 · API key 사용 패턴 이상 · 외부 → 망분리 안 접근 시도 · Fireblocks Console 의 비정상 admin 활동</li>
+<li><strong>통합</strong>: SOC team 의 24/7 monitoring (또는 MSS 위탁) + on-call escalation</li>
+</ul>
+
+<h4>2.13.6 통합 alert / on-call</h4>
+<ul>
+<li><strong>도구</strong>: <strong>PagerDuty</strong> (SaaS) 또는 자체 alert 시스템 + Slack 통합</li>
+<li><strong>severity tier</strong>:
+  <ul>
+    <li>P0 (cosigner 다운 · 자금 손실 위험 · 5분 내 응답)</li>
+    <li>P1 (서비스 중요 기능 장애 · 15분 내 응답)</li>
+    <li>P2 (성능 저하 · 30분 내 응답)</li>
+    <li>P3 (warning · business hours 내 응답)</li>
+  </ul>
+</li>
+<li><strong>on-call shift</strong>: SRE / SOC 별도 rotation · primary + secondary + manager escalation</li>
+<li><strong>runbook</strong>: alert 별 사전 정의된 대응 절차 (인계 매뉴얼)</li>
+</ul>
+
+<h3>2.14 DR · Backup · 5년 보존</h3>
+<p>
+운영 데이터의 백업 + 재해 복구 전략. 2.9 BCP/DR 시나리오 의 구체적 backup 절차.
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>대상</th><th>backup 방식</th><th>주기</th><th>보존 / RTO</th></tr></thead>
+<tbody>
+<tr><td><strong>core DB</strong> (customer / accounting / transaction 등)</td><td>streaming replication (실시간) + 일일 full + 시간별 incremental</td><td>실시간 + 24h</td><td>일반 5년 · 회계 / 감사 영역은 5년 (특금법) · RTO 4 시간</td></tr>
+<tr><td><strong>audit DB</strong> (audit_log_mirror + internal)</td><td>WORM storage (S3 Object Lock) + hash chain 무결성</td><td>append-only · 실시간</td><td>5년 (변조방지 · 특금법 의무) · RTO 24 시간 (감사 query 만)</td></tr>
+<tr><td><strong>compliance DB</strong></td><td>일일 full + 정기 archive</td><td>일일</td><td>5년 (금감원 보고 의무) · RTO 4 시간</td></tr>
+<tr><td><strong>Cosigner</strong> (Hosted MPC 시)</td><td>secrets.db + ra_loader_enclave.signed.so 백업 (<a href="tables-crypto.html">11. MPC · Cosigner</a> 11.3 절)</td><td>변경 시 자동 (cosigner 내장)</td><td>migration 시 활용 · 분실 시 unpair + 신규 setup</td></tr>
+<tr><td><strong>Recovery passphrase</strong> (Workspace Keys Backup)</td><td>Admin Quorum ceremony · 분할 보관 (4-of-7 등) · 종이 + HSM</td><td>workspace 별 1 회 (생성 시) + 정기 ceremony</td><td>영구 보존 · 분실 시 자산 회복 불가</td></tr>
+<tr><td><strong>HSM backup</strong> (Key Link 시)</td><td>Thales Luna 의 backup HSM 또는 cloning</td><td>vendor 권장</td><td>벤더 SLA</td></tr>
+<tr><td><strong>5년 보존 archive</strong></td><td>월별 cold storage (S3 Glacier 또는 tape) + hash 검증</td><td>월별</td><td>5년 (특금법 5조의4)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>2.14.1 DR drill — 정기 훈련</h4>
+<ul>
+<li><strong>분기 1 회</strong>: 백업 데이터 복원 검증 (audit DB · core DB)</li>
+<li><strong>반기 1 회</strong>: DR site failover 훈련 (운영 시간 외)</li>
+<li><strong>연 1 회</strong>: Cosigner 신규 머신 migration + Recovery passphrase ceremony 모의 실행 (<a href="tables-crypto.html">11. MPC · Cosigner</a> 11.3 절 의 migration 절차)</li>
+<li><strong>훈련 결과</strong>: audit_log_internal 에 기록 + 외부 감사 자료</li>
+</ul>
+
+<h3>2.15 운영 인력 — SRE · SOC · CSIRT (RACI 의 구체화)</h3>
+<p>
+2.11 RACI 의 확장 — 24/7 운영 인력 구성. 한국 은행 + 거래소 (Upbit · 빗썸) + 해외 best practice (Coinbase · Binance · Fireblocks) 공통 패턴 기반.
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>조직</th><th>역할</th><th>shift / 인원 (저자 권장)</th><th>대표 도구</th></tr></thead>
+<tbody>
+<tr><td><strong>SRE</strong> (Site Reliability)</td><td>인프라 운영 · 배포 · capacity 관리 · 성능 튜닝 · 인프라 alert 대응</td><td>3 shift × 2 인 + manager (총 7+ 명)</td><td>Prometheus · Grafana · ELK · PagerDuty</td></tr>
+<tr><td><strong>SOC</strong> (Security Operations Center)</td><td>SIEM 알람 monitoring · 침해 탐지 · WAF 운영 · 직원 access review</td><td>24/7 shift × 2 인 + manager (총 9+ 명) 또는 MSS 위탁</td><td>SIEM (Splunk / QRadar) · WAF · IDS / IPS</td></tr>
+<tr><td><strong>CSIRT</strong> (Incident Response)</td><td>사고 발생 시 격리 · 분석 · 복구 · 외부 신고 · post-mortem · runbook 업데이트</td><td>3+ 명 (전담 또는 SOC 겸임)</td><td>incident management 도구 · forensic 도구 · runbook</td></tr>
+<tr><td><strong>컴플라이언스</strong></td><td>AML / 트래블룰 / FDS 룰 운영 · 의심 거래 review · 금감원 보고 · STR 신고</td><td>5+ 명 (24h on-call rotation 포함)</td><td>Chainalysis Reactor · FDS · KOFIU 보고 시스템</td></tr>
+<tr><td><strong>회계 / 자금팀</strong></td><td>일말 마감 · 외화환산 · 정정 분개 · 대사 finding 처리 · 외부 감사 대응</td><td>3+ 명 + 회계법인 협업</td><td>회계 시스템 · BI · ledger query</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">on-call escalation 흐름 (저자 권장)</div>
+<ol style="margin-bottom:0">
+<li><strong>L1 (자동 응답)</strong> — PagerDuty alert → primary on-call 5 분 응답</li>
+<li><strong>L2 (escalation)</strong> — 5 분 미응답 시 secondary 자동 호출</li>
+<li><strong>L3 (manager)</strong> — 15 분 미해결 시 manager + CSIRT 동시 호출</li>
+<li><strong>L4 (위기 대응)</strong> — 고객 자산 손실 위험 시 임원 + 법무 + 컴플라이언스 동시 소집 (war room)</li>
+</ol>
+</div>
+
+<p>
+출처: <code>sources/monitoring/블록체인_안정성_및_모니터링_실무_보고서.md</code> 의 KR / 해외 거래소 best practice 종합. <code>sources/monitoring/국내 가상자산 거래소의 고객별 자산 분리 보장 관리 현황.pdf</code> · <code>sources/monitoring/블록체인 지갑 및 스테이블 코인 모니터링 시스템 종합 검토 보고서.pdf</code> 도 함께 참조.
+</p>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="architecture.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">1. 책임 분담</span></a>
+<a class="page-nav-link page-nav-next" href="db-split.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">3. DB 분할</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

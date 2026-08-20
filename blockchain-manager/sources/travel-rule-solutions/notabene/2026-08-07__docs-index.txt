@@ -1,0 +1,235 @@
+# Notabene Travel Rule Integration Documentation
+
+> Documentation and APIs to become crypto travel rule compliant globally
+
+## Guides
+- [Common use cases](https://devx.notabene.id/docs/common-usecases.md)
+- [Office hours](https://devx.notabene.id/docs/office-hours.md)
+- [Important](https://devx.notabene.id/docs/important.md)
+- [Notabene IPs](https://devx.notabene.id/docs/notabene-ips.md)
+- [Rate limiting](https://devx.notabene.id/docs/rate-limiting.md)
+- [Creating your account](https://devx.notabene.id/docs/creating-your-account.md)
+- [Authentication](https://devx.notabene.id/docs/authentication.md)
+- [DIDdoc setup](https://devx.notabene.id/docs/diddoc-setup.md)
+- [DIDdocs explained](https://devx.notabene.id/docs/diddocs-explained.md)
+- [Key Management in DIDdocs](https://devx.notabene.id/docs/key-management-in-diddocs.md)
+- [Webhooks](https://devx.notabene.id/docs/webhook-flow.md): There are three parts to our guide about webhooks: setup, basics and details
+- [Introduction](https://devx.notabene.id/docs/welcome.md)
+- [Diagrams](https://devx.notabene.id/docs/flow-diagrams-v2.md): Here you will find diagrams for withdrawals and deposits, showing how your system interacts with Notabene in both.
+- [1. Initiating a Transfer](https://devx.notabene.id/docs/transfers.md)
+- [Create transfers](https://devx.notabene.id/docs/transfer.md)
+- [Data collection](https://devx.notabene.id/docs/data-collection.md): Learn how to collect data for virtual asset transactions using Notabene components and API, including optional steps for counterparty discovery and Travel Rule validation.
+- [Transfer payload structure](https://devx.notabene.id/docs/transfer-payload-structure.md): Learn about Notabene's flexible agent-based model for cryptocurrency transfers, including roles, chains, and multi-party scenarios.
+- [Asset, addresses and custom value](https://devx.notabene.id/docs/asset-addresses-and-custom-value.md): Guide on asset identification, address formats, and handling custom fiat values using CAIP standards.
+- [Create Outgoing transfers](https://devx.notabene.id/docs/create-outgoing-transfers.md): Guide on creating outgoing transfers to hosted and unhosted wallets, including agent discovery and proof of ownership.
+- [Authorization requirements](https://devx.notabene.id/docs/after-initiation.md): Learn how to set and manage Transaction Authorization Policies, including default settings, API updates, and handling counterparty requests.
+- [Provide PII](https://devx.notabene.id/docs/provide-pii.md)
+- [PII requirements](https://devx.notabene.id/docs/pii-requirements.md): Learn about PII requirements for Travel Rule compliance, including jurisdictional guidelines and validation processes.
+- [Encryption managed by Notabene](https://devx.notabene.id/docs/encryption-by-notabene.md): Guide on PII encryption and submission using Notabene SafeTransact, including endpoint usage, PII re-use conditions, and response handling.
+- [Encryption managed by the Customer](https://devx.notabene.id/docs/self-encryption.md): Guide on submitting encrypted PII for end-to-end encrypted forwarding, including endpoint usage and payload requirements.
+- [Reject, Authorize and Settle](https://devx.notabene.id/docs/reject-authorize-and-settle.md)
+- [2. Incoming transfers](https://devx.notabene.id/docs/incoming-transfers.md)
+- [Confirm address](https://devx.notabene.id/docs/confirm-address.md): Learn how to confirm blockchain addresses automatically or manually using API and webhooks.
+- [Verifying the beneficiary name / Internal checks](https://devx.notabene.id/docs/verify-beneficiary-name-v2.md)
+- [Authorization requirements](https://devx.notabene.id/docs/authorization-requirements.md): Learn how to define and manage authorization requirements for transactions and transfers, including setting default policies and handling counterparty requests.
+- [Receive Travel Rule (PII) data transfers](https://devx.notabene.id/docs/receive-travel-rule-pii-data-transfers.md): Learn how to receive and process Travel Rule (PII) data transfers, including webhook subscriptions and data retrieval.
+- [Authorize, Reject or Flag](https://devx.notabene.id/docs/incoming-decisions.md): Guide on rejecting or authorizing transfers via API, including authorization, rejection, and flagging processes.
+- [Settlement Process](https://devx.notabene.id/docs/settlement.md): Learn about the settlement process, handling incoming transfers, and managing flagged settlements with clear instructions and improved accessibility.
+- [Redirect transfers](https://devx.notabene.id/docs/redirect-transfers.md): Learn how to manage agent replacements in transfers, including redirects and intermediary additions.
+- [Reconcile received transfers](https://devx.notabene.id/docs/recieve-transfer.md): Learn how to reconcile received transfers using the match endpoint and create incoming transfers when necessary.
+- [Beneficiary-Initiated Request for Information](https://devx.notabene.id/docs/beneficiary-initiated-request-for-information.md)
+- [Statuses explained](https://devx.notabene.id/docs/statuses-explained.md): In this page, you will find  a description of possible statuses as well as an explanation of what they mean
+- [Relationships](https://devx.notabene.id/docs/relationships.md)
+- [PII Encryption Guide](https://devx.notabene.id/docs/pii-encryption-guide.md): A Hybrid Approach Using Elliptic Curve Cryptography
+- [Encryption workflow](https://devx.notabene.id/docs/encryption-workflow-1.md): A streamlined guide to the encryption workflow, including key generation, encryption process, and JWE construction.
+- [Decryption workflow](https://devx.notabene.id/docs/decryption-workflow-1.md): Simplified guide to decrypting JWE using ECDH-ES and AES-GCM, with security features highlighted.
+- [Webhook events details](https://devx.notabene.id/docs/webhook-details.md)
+- [Automated testing/RoboVASPs](https://devx.notabene.id/docs/automated-testing.md)
+- [Adding Agents to a transfer](https://devx.notabene.id/docs/adding-agents-to-a-transfer.md)
+- [Assets, Coins, and Tokens](https://devx.notabene.id/docs/supported-coins.md): Which tokens are supported by Notabene?
+- [Notabene Flow — Developer Introduction](https://devx.notabene.id/docs/introduction.md)
+- [What is Flow & Why it matters](https://devx.notabene.id/docs/what-is-flow-why-it-matters.md)
+- [Choose Your Integration Path](https://devx.notabene.id/docs/choose-your-integration-path.md)
+- [PIA (Create Pay-ins)](https://devx.notabene.id/docs/quickstart-pia-create-pay-ins.md)
+- [PRA (Respond to Pay-ins)](https://devx.notabene.id/docs/quickstart-pra-respond-to-pay-ins.md)
+- [IP (Infrastructure Provider)](https://devx.notabene.id/docs/infrastructure-provider-ip.md)
+- [Pay-in lifecycle](https://devx.notabene.id/docs/payins.md): For Payment Initiating Agents (PIA), Payment Responding Agents (PRA), and Infrastructure Providers (IP)
+- [Demo ](https://devx.notabene.id/docs/demo.md): Try out FLOW yourself
+- [End-to-end examples ](https://devx.notabene.id/docs/end-to-end-examples.md)
+- [Flow Diagrams (v1)](https://devx.notabene.id/docs/how-does-our-apis-interact-with-your-system.md)
+- [Travel Rule Statuses (v1)](https://devx.notabene.id/docs/tr-status_vnext.md)
+- [Coins & Decimals](https://devx.notabene.id/docs/coins-decimals.md): Which coins are supported by Notabene?
+- [Supported Assets](https://devx.notabene.id/docs/supported-assets.md)
+- [Unsupported Assets](https://devx.notabene.id/docs/unsupprted-assets.md)
+- [Generate API credentials](https://devx.notabene.id/docs/id-and-secret-new.md)
+- [Generate accessToken](https://devx.notabene.id/docs/auth0.md): Client Credentials Flow
+- [Generate customerToken](https://devx.notabene.id/docs/customertoken.md)
+- [2. Front-end data collection](https://devx.notabene.id/docs/validate-1.md)
+- [Validation API](https://devx.notabene.id/docs/validation-api.md)
+- [Using txCreate](https://devx.notabene.id/docs/sending.md)
+- [Adding transaction hash/origin wallet](https://devx.notabene.id/docs/adding-transaction-hash.md)
+- [4. Receiving travel rule messages](https://devx.notabene.id/docs/confimation-automation.md)
+- [Upload CSV or register single address](https://devx.notabene.id/docs/upload-addresses.md)
+- [Using notification webhook](https://devx.notabene.id/docs/verify-using-api.md)
+- [Verify beneficiary details - name match](https://devx.notabene.id/docs/verify-beneficiary-details.md)
+- [Dealing with duplicate hashes](https://devx.notabene.id/docs/dealing-with-duplicate-hashes.md)
+- [Using txNotify](https://devx.notabene.id/docs/calling-txnotify-for-every-deposit.md)
+- [Incomplete message - how to collect data?](https://devx.notabene.id/docs/incomplete-how-to-collect-data.md)
+- [Updating an incomplete message](https://devx.notabene.id/docs/updating-an-incomplete-message.md)
+- [6. Webhooks](https://devx.notabene.id/docs/webhook-enhancements.md)
+- [Trigger webhook](https://devx.notabene.id/docs/executing.md)
+- [Notification webhook](https://devx.notabene.id/docs/updating.md)
+- [Nested VASPs](https://devx.notabene.id/docs/nested-vasp-redirect.md)
+- [Identifying your counterparty](https://devx.notabene.id/docs/counterparty-vasp-discoverability.md)
+- [Node SDK](https://devx.notabene.id/docs/create-transactions.md)
+- [PII SDK](https://devx.notabene.id/docs/pii-only-sdk.md): Encryption & Decryption Library for Personal Identifiable Information (PII)
+- [Encryption flows](https://devx.notabene.id/docs/encryption-flows.md)
+- [Key management](https://devx.notabene.id/docs/key-management.md)
+- [RoboVASPs](https://devx.notabene.id/docs/robotvasps.md)
+- [Error Messages](https://devx.notabene.id/docs/errors.md)
+- [API Testing Script](https://devx.notabene.id/docs/api-testing-script-v2.md)
+- [Sanctions screening](https://devx.notabene.id/docs/bitgo-1.md)
+- [Configuration](https://devx.notabene.id/docs/configuration.md)
+- [Diagrams](https://devx.notabene.id/docs/diagrams-2.md)
+- [Blockchain Analytics](https://devx.notabene.id/docs/blockchainanalytics.md)
+- [External screening](https://devx.notabene.id/docs/external-screening.md)
+- [SafeConnect Components](https://devx.notabene.id/docs/safe-connect-components-v2.md)
+- [Configuring the SafeConnect Components](https://devx.notabene.id/docs/components-overview.md)
+- [Component Events](https://devx.notabene.id/docs/using-the-safeconnect-component-response.md): Handling events generated by the components.
+- [Embedded Components + V1 API](https://devx.notabene.id/docs/embedded-components-v1-api.md): Leveraging the V1 Notabene API to operationalize data captured by embedded components.
+- [Embedded Components + V2 API](https://devx.notabene.id/docs/embedded-components-v2-api.md): Leveraging the V2 Notabene API to operationalize data captured by embedded components.
+- [Self Hosted Wallet Proofs](https://devx.notabene.id/docs/self-hosted-wallet-verification-1.md): Collecting non-custodial wallet proofs
+- [FAQ](https://devx.notabene.id/docs/faq.md)
+- [Fireblocks Integration Overview](https://devx.notabene.id/docs/using-notabene-and-fireblocks.md): Leveraging the power of Notabene travel rule compliance directly in your Fireblocks workspace.
+- [Sending and Receiving Travel Rule Messages - Fireblocks](https://devx.notabene.id/docs/fireblocks-sending-and-receiving-tr-messages-fireblocks.md): Using the Fireblocks Notabene Integration to send and receive TR messages.
+- [Integrating Notabene Into Your Fireblocks Policies](https://devx.notabene.id/docs/integrating-notabene-into-your-fireblocks-decisions.md): How to use the status of a travel rule message in your Fireblocks transaction decision making.
+- [Using Notabene, Fireblocks and Blockchain Analytics](https://devx.notabene.id/docs/fireblocks-and-blockchain-analytics.md)
+- [Testing and FAQ](https://devx.notabene.id/docs/fireblocks-testing.md): How to test your Notabene/Fireblocks Integration
+- [Diagrams](https://devx.notabene.id/docs/custodian-flows.md)
+- [TRUSThub connector (beta)](https://devx.notabene.id/docs/trusthub.md): How to receive TR data from VASPs using TRUSThub
+- [Mastercard Crypto Credential](https://devx.notabene.id/docs/mastercard-crypto-credential.md)
+
+## API Reference
+- [Getting Started](https://devx.notabene.id/reference/getting-started-with-your-api.md): This page will help you get started with the Notabene APIs.
+- [Create a new relationship](https://devx.notabene.id/reference/createrelationship.md): Creates a new relationship between an address and an entity. Relationships establish ownership or control over blockchain addresses. Optionally includes an ownership proof for verification.
+- [List relationships for an entity](https://devx.notabene.id/reference/listrelationships.md): Retrieves all relationships associated with the specified entity, including ownership proofs for each relationship. Supports optional filtering by 'from', 'to', 'custodian', and 'asset'.
+- [Confirm a relationship](https://devx.notabene.id/reference/confirmrelationship.md): Confirms a relationship between an address and an entity. Creates the relationship if it doesn't exist (upsert behavior). Optionally includes an ownership proof for verification.
+- [Delete a relationship](https://devx.notabene.id/reference/deleterelationship.md): Deletes an existing relationship between an address and an entity. Use 'from' and 'to' query parameters to identify the relationship.
+- [Create a new transfer](https://devx.notabene.id/reference/createtransfer.md): Creates a new transfer from the specified entity to another entity. This is the entry point for initiating a new transfer in the system.
+- [List transfers for an entity](https://devx.notabene.id/reference/listtransfers.md): Retrieves a paginated list of transfers for the specified entity. Supports filtering by status, asset, direction, date range, and more.
+- [Remove an agent from a transfer](https://devx.notabene.id/reference/removeagent.md): Removes an existing agent from a transfer. The agent is soft-deleted (marked with removed_at timestamp). The caller must be the transfer initiator, a gateway, or have a relationship with the agent being removed.
+- [Authorize a transfer](https://devx.notabene.id/reference/authorizetransfer.md): Authorizes a transfer to proceed. Optionally accepts a settlement address and memo tag. Can be forced with the `force` query parameter to bypass certain checks, or use `ignoreFlags` to ignore flag policies.
+- [Settle a transfer](https://devx.notabene.id/reference/settletransfer.md): Settles a transfer by providing settlement transaction details. This endpoint accepts optional settlement ID, settlement ID index, and revert settlement ID.
+- [Add an agent to a transfer](https://devx.notabene.id/reference/addagent.md): Adds an agent (VASP, custodian, etc.) to an existing transfer. The agent must have a valid DID and role.
+- [Get a specific transfer](https://devx.notabene.id/reference/gettransfer.md): Retrieves detailed information about a specific transfer including status, agents, and policy evaluations. Supports optional PII decryption, timeline, and integration results.
+- [Search transfers with filters](https://devx.notabene.id/reference/searchtransfers.md)
+- [Match transfers by settlement identifiers](https://devx.notabene.id/reference/matchtransfers.md)
+- [Clear transfer funds](https://devx.notabene.id/reference/cleartransfer.md): Clears the funds associated with a transfer. Requires the ClearTransfer permission.
+- [Reject a transfer](https://devx.notabene.id/reference/rejecttransfer.md): Rejects a transfer with a specified reason. If the reason is OTHER, a comment is required.
+- [Replace an agent in a transfer](https://devx.notabene.id/reference/replaceagent.md): Replaces an existing agent in a transfer with a new agent. The caller must be the transfer initiator, a gateway, or have a relationship with the agent being replaced.
+- [Add a comment to a transfer](https://devx.notabene.id/reference/addcomment.md): Appends a free-form note to a transfer. Comments are scoped to the writing entity and are not shared with the counterparty.
+- [Discover address ownership information](https://devx.notabene.id/reference/discoveraddressownership.md): Performs agent discovery for a given blockchain address using multiple methods: 1. Relationships (confirmed/unconfirmed) 2. Hashed Address Service 3. Blockchain Analytics (if configured)  Returns the discovered agent/VASP information, custodian, jurisdiction, relationship status, and ownership proofs (when available).  **Authentication**: Supports both M2M tokens and delegate tokens for automated integrations.
+- [Append PII data to a transfer](https://devx.notabene.id/reference/appendtransfer.md): Appends IVMS101 PII (Personally Identifiable Information) data to an existing transfer. The PII data is validated against the transfer's presentation definition (if set) and encrypted before storage. All arrays in the IVMS101 structure are limited to 25 items to prevent unbounded payload attacks.
+- [Present PII data to counterparties](https://devx.notabene.id/reference/presenttransferpii.md): Used to present PII data to counterparties in a transfer. This endpoint is used for sharing PII between entities and can optionally skip validation with skipValidation=true parameter.
+- [Create a delegate token](https://devx.notabene.id/reference/createdelegatetoken.md): Creates a delegate token for an entity. The delegate token is a JWT that allows a delegate to act on behalf of the entity. If a delegate DID already exists for the given delegateId, it will be reused.
+- [Get entity public encryption keys](https://devx.notabene.id/reference/getentitypublickeys.md): Returns the encryption key that would be sent in webhooks for the given entity. This allows counterparties to proactively fetch encryption keys without waiting for a RequirePresentation webhook.  **V1 VASP Handling:** For entities using the TRNow protocol (V1 VASPs with did:ethr DIDs), this endpoint automatically returns the Gateway VASP's encryption keys instead of the entity's own keys, since V1 VASPs don't have their own encryption keys. The response includes a `gatewayDID` field to indicate this.  **Performance Optimization:** For did:web entities in the local database, encryption keys are resolved directly without Network API calls, enabling fast response times for local V2 entities.  **Key Selection Priority:** Uses the same priority algorithm as webhook sending: 1. Keys ending with "#pii" (highest priority) 2. Keys ending with "#notabene-pii" 3. Keys with type "X25519KeyAgreementKey2019" 4. First available key (fallback)  Response is cached via Veramo's DID resolution cache (5 minute TTL).
+- [List audit log events](https://devx.notabene.id/reference/listauditlog.md): Returns a paginated list of audit log events for an entity, with optional filters for domain, action, actor, and time range.
+- [Complete beneficiary name matching check](https://devx.notabene.id/reference/completebeneficiarynamematching.md): Marks the beneficiary name matching check as complete for the specified transfer. This endpoint is called after the entity has verified that the beneficiary name matches.
+- [Complete internal checks](https://devx.notabene.id/reference/completeinternalchecks.md): Marks the internal checks as complete for the specified transfer. This endpoint is called after the entity has completed internal operational checks on the provided PII/Travel Rule information.
+- [Get Entity](https://devx.notabene.id/reference/getvasp.md): Retrieves VASP/Entity information from the Network API by DID. Returns detailed information about the entity including regulatory status, verification status, and protocol support.
+- [List entities in the network](https://devx.notabene.id/reference/listentities.md): Returns a list of VASP entities in the network. Supports filtering by various criteria including sandbox mode, verification status, and search queries. Results are paginated and can be ordered by different fields.
+- [Set funding address for Flow transfer](https://devx.notabene.id/reference/setfundingaddress.md): Allows onramps (agents in a Flow transfer) to provide funding address information. The funding information is stored in the transfer (replacing any existing) and a Fund TAP message is broadcast to all agents in the transfer. This endpoint should be called after the onramp is added as an agent to the Flow transfer.
+- [List customers for an entity within Flow workflows](https://devx.notabene.id/reference/listflowcustomers.md): Retrieves a paginated list of customers associated with an entity within Flow workflow contexts. Customer PII in profileData is encrypted and not included by default for security and privacy compliance.
+- [Create a new customer for Flow workflows](https://devx.notabene.id/reference/createflowcustomer.md): Creates a new customer profile within a Flow workflow context. Customer PII is encrypted before storage and returned without PII by default. This endpoint checks for existing customers to prevent duplicates.  **IVMS101 Validation Requirements:** - For natural persons: `name` object is **required** - For legal persons: `name` and `nationalIdentification` objects are **required** - When `nameIdentifier` array is provided, its fields are **required** - Unknown fields are rejected (strict validation)
+- [Get a customer profile by DID](https://devx.notabene.id/reference/getflowcustomer.md): Retrieves a customer profile within a Flow workflow context. Customer PII can be optionally included in the response based on the includePII query parameter and user permissions. PII data is decrypted on-demand when requested.
+- [Update a customer profile within Flow workflows](https://devx.notabene.id/reference/updateflowcustomer.md): Updates an existing customer profile within a Flow workflow context. Customer PII is automatically encrypted before storage when profile data is updated. Only specified fields are updated, maintaining data integrity.  **IVMS101 Validation Requirements (when profileData is provided):** - Same validation rules as POST apply when updating profileData - For natural persons: `name` object is **required** - For legal persons: `name` and `nationalIdentification` objects are **required** - When `nameIdentifier` array is provided, its fields are **required** - Unknown fields are rejected (strict validation)
+- [Delete a customer profile within Flow workflows](https://devx.notabene.id/reference/deleteflowcustomer.md): Permanently removes a customer profile from a Flow workflow context. This action cannot be undone and will remove all associated customer data and PII.
+- [Create a new payin for a customer within Flow workflows](https://devx.notabene.id/reference/createflowcustomerpayin.md): Creates a new payin transaction for a customer within a Flow workflow context. This endpoint initiates a payment workflow where the customer (merchant) can receive payments. The payin includes invoice data, supported assets, and generates a payment link for customer interaction.
+- [List payins for a specific customer within Flow workflows](https://devx.notabene.id/reference/listflowcustomerpayins.md): Retrieves a paginated list of payin transactions for a specific customer within Flow workflows. This endpoint filters payins by the customer (merchant) and supports filtering by client references and Flow workflow states.
+- [Get a specific payin for a customer within Flow workflows](https://devx.notabene.id/reference/getflowcustomerpayin.md): Retrieves detailed information about a specific payin transaction for a customer within a Flow workflow context. This endpoint verifies that the payin belongs to the specified customer and returns comprehensive transaction details.
+- [Create a new payout for a customer within Flow workflows](https://devx.notabene.id/reference/createflowcustomerpayout.md): Creates a new payout transaction for a customer within a Flow workflow context. This endpoint initiates a payout workflow where the customer can receive funds by selecting a wallet and specifying where they want the funds sent.
+- [List payouts for a specific customer within Flow workflows](https://devx.notabene.id/reference/listflowcustomerpayouts.md): Retrieves a paginated list of payout transactions for a specific customer within Flow workflows. This endpoint filters payouts by the customer and supports filtering by client references and Flow workflow states.
+- [Get a specific payout for a customer within Flow workflows](https://devx.notabene.id/reference/getflowcustomerpayout.md): Retrieves detailed information about a specific payout transaction for a customer within a Flow workflow context. This endpoint verifies that the payout belongs to the specified customer and returns comprehensive transaction details.
+- [List payins for an entity with optional ref-based filtering](https://devx.notabene.id/reference/listflowpayins.md): Retrieves a paginated list of payin transactions for an entity within Flow workflows. Supports filtering by client references and Flow workflow states. Client references are automatically converted to database references by adding the 'flow-' prefix.
+- [Create a new payin within Flow workflows (entity-level)](https://devx.notabene.id/reference/createflowpayin.md): Creates a new payin transaction within a Flow workflow context. The payin includes invoice data, supported assets, fallback settlement addresses, and generates a payment link for customer interaction.
+- [List incoming payins for an entity (as responder)](https://devx.notabene.id/reference/listflowincomingpayins.md): Retrieves a paginated list of incoming payin transactions where the entity acts as the responder within Flow workflows. These are payins initiated by other entities that this entity needs to respond to. Supports filtering by client references and Flow workflow states.
+- [List outgoing payins for an entity (as initiator)](https://devx.notabene.id/reference/listflowoutgoingpayins.md): Retrieves a paginated list of outgoing payin transactions where the entity acts as the initiator within Flow workflows. These are payins initiated by this entity to other entities. Supports filtering by client references and Flow workflow states.
+- [Get a specific payin by ID (entity-level)](https://devx.notabene.id/reference/getflowpayin.md): Retrieves detailed information about a specific payin transaction within a Flow workflow. This includes the payin status, asset details, amounts, and associated workflow data.
+- [Authorize payin by confirming settlement address and optional asset](https://devx.notabene.id/reference/authorizeflowpayin.md): Authorizes a payin by providing a settlement address and, optionally, the asset. Requirements depend on whether the entity is initiator or responder in the workflow.
+- [Notify that web authorization is required for a payin](https://devx.notabene.id/reference/payinauthorizationrequired.md): Emits an AuthorizationRequired action for a PAYIN Flow transfer. The responding party supplies a web `authorizationUrl` that the initiator must present to the customer for confirmation before continuing the payment.
+- [List payouts for an entity with optional ref-based filtering](https://devx.notabene.id/reference/listflowpayouts.md): Retrieves a paginated list of payout transactions for an entity within Flow workflows. Supports filtering by client references and Flow workflow states. Client references are automatically converted to database references by adding the 'flow-' prefix.
+- [Create a new payout within Flow workflows (entity-level)](https://devx.notabene.id/reference/createflowpayout.md): Creates a new payout transaction within a Flow workflow context. This endpoint initiates a payout workflow where the merchant can receive funds by selecting a wallet and specifying where they want the funds sent.
+- [List incoming payouts for an entity (as responder)](https://devx.notabene.id/reference/listflowincomingpayouts.md): Retrieves a paginated list of incoming payout transactions where the entity acts as the responder within Flow workflows. These are payouts initiated by other entities that this entity needs to respond to. Supports filtering by client references and Flow workflow states.
+- [List outgoing payouts for an entity (as initiator)](https://devx.notabene.id/reference/listflowoutgoingpayouts.md): Retrieves a paginated list of outgoing payout transactions where the entity acts as the initiator within Flow workflows. These are payouts initiated by this entity to other entities. Supports filtering by client references and Flow workflow states.
+- [Get a specific payout by ID (entity-level)](https://devx.notabene.id/reference/getflowpayout.md): Retrieves detailed information about a specific payout transaction within a Flow workflow. This includes the payout status, asset details, amounts, and associated workflow data.
+- [Authorize payout by selecting asset and optional settlement address](https://devx.notabene.id/reference/authorizeflowpayout.md): Authorizes a payout by confirming the asset to be used and, optionally, a settlement address. Requirements depend on whether the entity is initiator or responder in the workflow.
+- [Notify that web authorization is required for a payout](https://devx.notabene.id/reference/payoutauthorizationrequired.md): Sends an AuthorizationRequired signal for a PAYOUT Flow transfer. The responder provides a web `authorizationUrl` that the initiator should present to the customer for approval. Optionally an `expires` ISO timestamp can be provided; if omitted, a default TTL (1 hour) is applied by the server.
+- [Authentication](https://devx.notabene.id/reference/authentication-2.md)
+- [Get customer access token](https://devx.notabene.id/reference/authcustomertoken-1.md): Get a Notabene API access token on behalf of a customer
+- [Get VASP](https://devx.notabene.id/reference/tfsimplegetvasp-1.md): Returns information about a VASP that has the specified [DID](https://www.w3.org/TR/did-core/#identifier).
+- [List VASPs](https://devx.notabene.id/reference/tfsimplelistvasps-1.md): Returns a list of VASPs. VASPs can be searched and sorted and results are paginated.
+- [Create customer](https://devx.notabene.id/reference/authnewcustomer-1.md): Creates a new customer
+- [Get customer](https://devx.notabene.id/reference/authgetcustomer-1.md): Returns a customer of a VASP by customer DID
+- [Get transfer](https://devx.notabene.id/reference/txinfo-1.md): Gets the detail of a transfer that has been created based on the passed transfer ID.
+- [Search transfer](https://devx.notabene.id/reference/txquery-1.md): Searches for transfers based on transfer hash, destination blockchain address or Bitcoin vout.
+- [List the transactions of a VASP. The transactions are grouped by beneficiary and originator.](https://devx.notabene.id/reference/txlistbeneficiaryoriginator-1.md): Fetches a list of transactions belonging to a VASP. The transactions will be grouped showing when the VASP is beneficiary and/or originator.
+- [List transactions](https://devx.notabene.id/reference/txlist-1.md): Fetches a list of transactions belonging to a VASP. Transactions can be sorted, filtered, and searched and results are paginated.
+- [Fully Validate transfer](https://devx.notabene.id/reference/txvalidatefull-1.md): Fully Validate your transfer with this method
+- [Create transfer](https://devx.notabene.id/reference/txcreate-1.md): Creates a new transfer. The fields required in a transfer differ depending on the jurisdiction of the originating VASP. Additional data may be provided to the beneficiary VASP depending on their jurisdiction.
+- [Approve transfer](https://devx.notabene.id/reference/txapprove-1.md): Approves an outgoing transfer. If the VASP is present in the [Notabene Directory](https://app.notabene.id/directory), approving a transfer will send the transfer to them and set the transfer status to `SENT`. If the VASP is not in the [Notabene Directory](https://app.notabene.id/directory), approving the transfer will set the status to `WAITING_FOR_INFORMATION`.
+- [Cancel transfer](https://devx.notabene.id/reference/txcancel-1.md): Cancels the transfer and sets the status to `CANCELLED`.
+- [Update transfer](https://devx.notabene.id/reference/txupdate-1.md): Update a transfer with the passed parameters.
+- [Confirm transfer](https://devx.notabene.id/reference/txconfirm-1.md): Confirms that the blockchain address of the transfer belongs to the beneficiary VASP. Confirming sets the status of a transfer to `ACK`.
+- [Notify transfer](https://devx.notabene.id/reference/txnotify-1.md): Notifies the originator VASP of an incoming transfer on the blockchain.
+- [Reject transfer](https://devx.notabene.id/reference/txreject-1.md): Rejects a transfer indicating that the blockchain address is not owned by the beneficiary VASP. Rejecting sets the transfer status to `REJECTED`.
+- [Mark a transfer as not ready](https://devx.notabene.id/reference/txnotready.md): Marks a transfer as not ready, as the VASP is not ready yet to respond. The transfer status is `NOT_READY`.
+- [Accept transfer](https://devx.notabene.id/reference/txaccept-1.md): Accepts a transfer setting the status to `ACCEPTED`. Transfers can be automatically accepted by setting rules in the rules engine or manually using this endpoint.
+- [Decline transfer](https://devx.notabene.id/reference/txdecline-1.md): Declines a transfer setting the status to `DECLINED`. Transfers can be automatically declined by setting rules in the rules engine or manually using this endpoint.
+- [Redirect transfer](https://devx.notabene.id/reference/txredirect-1.md): Redirecting transfer allows beneficiary VASPs to route incoming transfers from one subsidiary to another.
+- [Rules](https://devx.notabene.id/reference/rules-1.md)
+- [List rules](https://devx.notabene.id/reference/rulesget-1.md): Returns a list of transfer rules that have been setup.
+- [Set rules](https://devx.notabene.id/reference/rulessetwithdirection.md): Sets the transfer rules to be applied to transactions.
+- [Deletes rules from the provided ids](https://devx.notabene.id/reference/rulesdelete.md): Deletes rules and Returns a list of transfer rules that have been setup.
+- [Get upload URL](https://devx.notabene.id/reference/addressuploadaddresslist-1.md): To upload an address book you must first request a URL to uploda to. Upload URLs are short-lived AWS S3 bucket URLs.
+- [Register address](https://devx.notabene.id/reference/addressregistercustomer-1.md): Registers the blockchain address of a customer in your address book.
+- [Get address ownership information](https://devx.notabene.id/reference/addressownershipget.md): Get the ownership information about a customer blockchain address.
+- [Get addresses registered](https://devx.notabene.id/reference/addressesget.md): Get the addresses registered for a VASP.
+- [Delete addresses](https://devx.notabene.id/reference/addressesdelete.md): Delete addresses previously added to the address book.
+- [Update a VASP's settings](https://devx.notabene.id/reference/updatesettings-1.md): Update a VASP's settings.
+- [Get a VASP's settings](https://devx.notabene.id/reference/getsettings.md): Get a VASP's settings
+- [List all Jurisdictions](https://devx.notabene.id/reference/getjurisdictions-1.md): Returns a list of juristicions.
+
+## Recipes
+- [[Component + V2 API] Withdrawal Assist with txCreate, appendPII, and confirmRelationship](https://devx.notabene.id/recipes/component-v1-api-withdrawal-assist-with-txcreate-appendpii-and-confirmrelationship.md)
+- [[Component + V2 API] Connect Wallet with confirmRelationship](https://devx.notabene.id/recipes/component-v2-api-connect-wallet-with-confirmrelationship.md)
+- [[Component + V2 API] Deposit Assist with txCreate, appendPII, and confirmRelationship](https://devx.notabene.id/recipes/component-v2-api-deposit-assist-with-txcreate-appendpii-and-confirmrelationship.md)
+- [[Component] Connect Wallet JS SDK Basic HTML](https://devx.notabene.id/recipes/connect-wallet-js-sdk-basic-html.md)
+- [[V1 API] Decrypting PII with the PII-SDK](https://devx.notabene.id/recipes/decrypting-pii-with-the-pii-sdk.md)
+- [[Component + V1 API]  Deposit Assist + txUpdate example](https://devx.notabene.id/recipes/deposit-assist-txupdate-example.md)
+- [[V1 API] Export TR Message Data to CSV](https://devx.notabene.id/recipes/export-tr-message-data-to-csv.md)
+- [[Fireblocks] Getting Your Counterparty's Encryption Key](https://devx.notabene.id/recipes/fireblocks-getting-your-counterpartys-encryption-key.md)
+- [[V2 E2E] Generate E2E key and update didDOC ](https://devx.notabene.id/recipes/generate-e2e-key-and-update-diddoc.md)
+- [[V1 API] Notabene API - Getting Your Counterparty's Encryption Key](https://devx.notabene.id/recipes/notabene-api-getting-your-counterpartys-encryption-key.md)
+- [[V1 API] Slack Notifications](https://devx.notabene.id/recipes/slack-notifications.md)
+- [[V1 API] txCreate 1st-party Example](https://devx.notabene.id/recipes/txcreate-recipe-w-1st-party.md)
+- [[Fireblocks] Use Notabene with the Fireblocks SDK](https://devx.notabene.id/recipes/use-notabene-with-the-fireblocks-sdk.md)
+- [[Fireblocks] Using the PII-SDK and Fireblocks API](https://devx.notabene.id/recipes/using-the-pii-sdk-and-fireblocks-api.md)
+- [[V1 API] Using the PII SDK to encrypt and send a tr message](https://devx.notabene.id/recipes/using-the-pii-sdk-to-encrypt-and-send-a-tr-message.md)
+- [[V2 API] Create E2E keys and DIDdoc](https://devx.notabene.id/recipes/v2-create-e2e-keys-and-diddoc.md)
+- [[V2 E2E] Decrypt PII](https://devx.notabene.id/recipes/v2-e2e-decrypt-pii.md)
+- [[V2 E2E] Encrypt PII using shared key](https://devx.notabene.id/recipes/v2-e2e-encrypt-pii-using-shared-key.md)
+- [[Component + V1 API] Withdrawal Assist+ txCreate example](https://devx.notabene.id/recipes/withdrawal-assist-txcreate-example.md)
+- [[Component] Withdrawal Assist Basic HTML Example](https://devx.notabene.id/recipes/withdrawal-assist-widget-basic-html-example.md)
+- [[Component] Withdrawal Assist TypeScript Example](https://devx.notabene.id/recipes/withdrawal-assist-widget-typescript-example.md)
+
+## Changelog
+- [App - transact V2 - Validation and normalization](https://devx.notabene.id/changelog/app-transact-v2-2.md)
+- [App - Transact V2](https://devx.notabene.id/changelog/app-transact-v2-4.md)
+- [App - Transact V2](https://devx.notabene.id/changelog/app-transact-v2-3.md)
+- [App - Transact V2](https://devx.notabene.id/changelog/app-transact-v2-1.md)
+- [App - Transact V2](https://devx.notabene.id/changelog/app-transact-v2.md)
+- [SDK - Embedded UI Scheduled Release](https://devx.notabene.id/changelog/sdk-embedded-ui-scheduled-release.md)
+- [App - Transact V2](https://devx.notabene.id/changelog/transact.md)
+- [Embedded UI: Add Jurisdictional Options](https://devx.notabene.id/changelog/embedded-ui-add-jurisdictional-options.md)
+- [SDK - Add support for zcash message signature verification](https://devx.notabene.id/changelog/sdk-add-support-for-zcash-message-signature-verification.md)
+- [Sonic blockchain support](https://devx.notabene.id/changelog/sonic-blockchain-support.md)

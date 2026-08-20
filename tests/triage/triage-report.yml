@@ -1,0 +1,1671 @@
+generated_at: '2026-05-19'
+run_mode: dry-run
+total_non_normalized: 274
+by_domain:
+  unknown: 266
+  workspace-management: 6
+  governance: 2
+by_tier:
+  '2': 183
+  '3': 91
+by_recommended_mode:
+  mode_a: 274
+results:
+- original: ASTR rent fee deductions – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__astr-rent-fee-deductions.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: About Embedded Wallets – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__about-embedded-wallets.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: About Fireblocks Off Exchange – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__about-fireblocks-off-exchange.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: About the Fireblocks Gasless Service – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__about-the-fireblocks-gasless-service.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: About the Gas Station – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__about-the-gas-station.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: About the P2P Network – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__about-the-p2p-network.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: About the Provider Network – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__about-the-provider-network.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: About webhooks & notifications – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__about-webhooks-notifications.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Account balances – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__account-balances.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Account types and provider features glossary – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__account-types-and-provider-features-glossary.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Adding & removing collateral – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__adding-removing-collateral.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Adding EVM assets to a workspace – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__adding-evm-assets-to-a-workspace.pdf
+  domain: workspace-management
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Adding a NEAR wallet – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__adding-a-near-wallet.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Adding a Ripple asset wallet – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__adding-a-ripple-asset-wallet.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Adding a Solana asset wallet – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__adding-a-solana-asset-wallet.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Adding a Stellar asset wallet – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__adding-a-stellar-asset-wallet.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Adding an Algorand asset wallet – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__adding-an-algorand-asset-wallet.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Adding non-EVM assets to a workspace – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__adding-non-evm-assets-to-a-workspace.pdf
+  domain: workspace-management
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Adding private ABIs – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__adding-private-abis.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Address Types and Formats – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__address-types-and-formats.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Alfred Pay – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__alfred-pay.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Asset Notes – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__asset-notes.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Asset prices and US dollar conversion rates – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__asset-prices-and-us-dollar-conversion-rates.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Assets page – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__assets-page.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Audit Event webhooks & notifications – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__audit-event-webhooks-notifications.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Automation rule example for sweeping vault accounts – Fireblocks Help
+    Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__automation-rule-example-for-sweeping-vault-accounts.pdf
+  domain: workspace-management
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Automation rule example_ rebalance – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__automation-rule-example-rebalance.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Automation rule example_ service fee collection – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__automation-rule-example-service-fee-collection.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Automation rule example_ top up – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__automation-rule-example-top-up.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Automation rule statuses – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__automation-rule-statuses.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Best practices for transaction reconciliation and crediting – Fireblocks
+    Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__best-practices-for-transaction-reconciliation-and-crediting.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Binance account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__binance-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Binance sub-account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__binance-sub-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Binance.US account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__binanceus-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Binance.US sub-account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__binanceus-sub-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: BitMEX account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__bitmex-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Bitfinex account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__bitfinex-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Bitfinex sub-account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__bitfinex-sub-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Bitget account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__bitget-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Bitget sub-account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__bitget-sub-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Bithumb account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__bithumb-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Bitso account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__bitso-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Bitstamp account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__bitstamp-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Bitstamp sub-account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__bitstamp-sub-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Bittrex account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__bittrex-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Blockchain Bond Tokenization Best Practices – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__blockchain-bond-tokenization-best-practices.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Blockchain confirmation limitations – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__blockchain-confirmation-limitations.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Bridge account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__bridge-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Broadcasting substatuses – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__broadcasting-substatuses.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Bullish account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__bullish-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Bullish sub-account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__bullish-sub-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Bybit account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__bybit-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Bybit sub-account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__bybit-sub-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Cancel a transaction – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__cancel-a-transaction.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Canceling a Smart Transfers ticket – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__canceling-a-smart-transfers-ticket.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Cancelled substatuses – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__cancelled-substatuses.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Cardano network fees – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__cardano-network-fees.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Circle account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__circle-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Claiming & Redeeming NIGHT tokens from the Midnight Glacier Drop – Fireblocks
+    Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__claiming-redeeming-night-tokens-from-the-midnight-glacier-drop.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: CoinCover for Off-Exchange – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__coincover-for-off-exchange.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: CoinMetro account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__coinmetro-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Coinbase Prime account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__coinbase-prime-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Coinbase Pro and Coinbase Exchange account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__coinbase-pro-and-coinbase-exchange-account.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Coinbase Pro and Coinbase Exchange sub-accounts – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__coinbase-pro-and-coinbase-exchange-sub-accounts.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Coinbase international account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__coinbase-international-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Coinhako account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__coinhako-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Coinhako sub-account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__coinhako-sub-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Collateral Signer and Forced Settlements for Fireblocks Off Exchange –
+    Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__collateral-signer-and-forced-settlements-for-fireblocks-off-exchange.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Completed substatuses – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__completed-substatuses.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Configure Gas Station settings – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__configure-gas-station-settings.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Configuring Solana Gasless transactions – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__configuring-solana-gasless-transactions.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Configuring Universal Gasless transactions – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__configuring-universal-gasless-transactions.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Configuring webhooks – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__configuring-webhooks.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Configuring your P2P Network profile – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__configuring-your-p2p-network-profile.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Confirming substatuses – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__confirming-substatuses.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Connected account balances – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__connected-account-balances.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Connected accounts and balances – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__connected-accounts-and-balances.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Connecting The Kingdom Bank (TKB) account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__connecting-the-kingdom-bank-tkb-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Connecting a BCB Group BLINC account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__connecting-a-bcb-group-blinc-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Connecting with P2P Network counterparties – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__connecting-with-p2p-network-counterparties.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Creating On_Off-ramp orders – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__creating-on-off-ramp-orders.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Creating a Smart Transfer ticket – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__creating-a-smart-transfer-ticket.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Creating an automation rule – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__creating-an-automation-rule.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Creating an automation user – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__creating-an-automation-user.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Creating new transfers – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__creating-new-transfers.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Cross-chain bridging in Fireblocks – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__cross-chain-bridging-in-fireblocks.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Crypto.com account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__cryptocom-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Crypto.com sub-account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__cryptocom-sub-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Custom Development Services – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__custom-development-services.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Default Gas Station values – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__default-gas-station-values.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Deploying gasless contracts – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__deploying-gasless-contracts.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Deposit addresses – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__deposit-addresses.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Deribit account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__deribit-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Deribit sub-account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__deribit-sub-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Developer Center – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__developer-center.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Dismiss a transaction card – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__dismiss-a-transaction-card.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Doge-supported UTXOs – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__doge-supported-utxos.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: EDX Markets Account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__edx-markets-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: EDXM Global Account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__edxm-global-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: EOS transaction fees (PowerUP model) – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__eos-transaction-fees-powerup-model.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: EVM fees_ Adjusting network transaction fees – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__evm-fees-adjusting-network-transaction-fees.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: EVM fees_ Ethereum fee parameters – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__evm-fees-ethereum-fee-parameters.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: EVM fees_ Fee behavior – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__evm-fees-fee-behavior.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: EVM fees_ Fee rates – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__evm-fees-fee-rates.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: EVM fees_ Fee validation – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__evm-fees-fee-validation.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: EVM fees_ Limiting the MaxFee – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__evm-fees-limiting-the-maxfee.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: EVM fees_ Minimum gas price limitations – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__evm-fees-minimum-gas-price-limitations.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: EVM fees_ Net vs. gross fee selection – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__evm-fees-net-vs-gross-fee-selection.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: EVM fees_ Overview – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__evm-fees-overview.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: EVM fees_ Reviewing estimated and actual fees – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__evm-fees-reviewing-estimated-and-actual-fees.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: EVM fees_ Selecting transaction fees – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__evm-fees-selecting-transaction-fees.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: EVM token maximum operational values – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__evm-token-maximum-operational-values.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Embedded Wallets Takeover Option – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__embedded-wallets-takeover-option.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Enable or disable Gas Station auto-fueling – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__enable-or-disable-gas-station-auto-fueling.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Enable the Gas Station – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__enable-the-gas-station.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Enabling & Disabling MPC-BAM – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__enabling-disabling-mpc-bam.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Exporting CVA deposit addresses – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__exporting-cva-deposit-addresses.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Failed substatuses – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__failed-substatuses.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Fast MPC & MPC-BAM Overview – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__fast-mpc-mpc-bam-overview.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Fiat account balances – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__fiat-account-balances.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Fiat accounts – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__fiat-accounts.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Fireblocks Network Link for providers – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__fireblocks-network-link-for-providers.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Fireblocks Off Exchange FAQ – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__fireblocks-off-exchange-faq.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Fireblocks Smart Contract (DeFi) API – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__fireblocks-smart-contract-defi-api.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Fireblocks Trust Company account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__fireblocks-trust-company-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Fireblocks XRP SDK for XRPL Network Operations – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__fireblocks-xrp-sdk-for-xrpl-network-operations.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Fireblocks upgradeable smart contracts – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__fireblocks-upgradeable-smart-contracts.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Fireblocks Labs_ Early‑Access Feature Hub – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__fireblocks-labs-earlyaccess-feature-hub.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Flexible Network Routing – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__flexible-network-routing.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Fund the Gas Station – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__fund-the-gas-station.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Funding a Smart Transfers ticket – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__funding-a-smart-transfers-ticket.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Gas Station Autoboost – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__gas-station-autoboost.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Gasless fee contingencies – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__gasless-fee-contingencies.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Gasless settings for individual transfers – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__gasless-settings-for-individual-transfers.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Gasless tokenization infrastructure – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__gasless-tokenization-infrastructure.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Gate.io account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__gateio-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Gate.io sub-account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__gateio-sub-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Gemini V2 Account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__gemini-v2-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Gemini account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__gemini-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Globally supported assets – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__globally-supported-assets.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: HTX (formerly HUOBI) account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__htx-formerly-huobi-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: HTX (formerly Huobi) sub-account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__htx-formerly-huobi-sub-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: HitBTC account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__hitbtc-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Hosted MPC Customer-Side Setup – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__hosted-mpc-customer-side-setup.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Hybrid address Blockchains – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__hybrid-address-blockchains.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Idempotency key and externalTxId usage best practices – Fireblocks Help
+    Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__idempotency-key-and-externaltxid-usage-best-practices.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Importing your private keys to an external wallet – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__importing-your-private-keys-to-an-external-wallet.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Independent Reserve account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__independent-reserve-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Initial setup & Onboarding for Off Exchange – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__initial-setup-onboarding-for-off-exchange.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Interacting with gasless contracts – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__interacting-with-gasless-contracts.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Intermediary setup for Smart Transfers – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__intermediary-setup-for-smart-transfers.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Issuing tokens – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__issuing-tokens.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Korbit account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__korbit-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Kraken, Kraken Futures and Kraken International accounts – Fireblocks
+    Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__kraken-kraken-futures-and-kraken-international-accounts.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Kraken, Kraken Futures and Kraken International sub-accounts – Fireblocks
+    Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__kraken-kraken-futures-and-kraken-international-sub-accounts.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: KuCoin account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__kucoin-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: KuCoin sub-account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__kucoin-sub-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Lightbit account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__lightbit-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Linking existing tokens and smart contracts – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__linking-existing-tokens-and-smart-contracts.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Listing your service on the provider network – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__listing-your-service-on-the-provider-network.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Luno account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__luno-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Lynq account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__lynq-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Manage asset wallets – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__manage-asset-wallets.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Managing Cardano accounts with Fireblocks using Raw Signing – Fireblocks
+    Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__managing-cardano-accounts-with-fireblocks-using-raw-signing.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Managing Vesting Smart Contracts – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__managing-vesting-smart-contracts.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Managing keys with the Key Management Dashboard – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__managing-keys-with-the-key-management-dashboard.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Managing smart contracts for tokenization – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__managing-smart-contracts-for-tokenization.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Managing your Movement account on Fireblocks – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__managing-your-movement-account-on-fireblocks.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Managing your automation rules – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__managing-your-automation-rules.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Minting and burning tokens – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__minting-and-burning-tokens.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Monitoring Smart Transfers – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__monitoring-smart-transfers.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Multi-destination UTXO transactions – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__multi-destination-utxo-transactions.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Multi-input transactions – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__multi-input-transactions.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: N.Exchange account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__nexchange-account.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: N3XT Account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__n3xt-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: NFT token support – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__nft-token-support.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: OKCoin account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__okcoin-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: OKX (OKEx) - API V5 sub-account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__okx-okex-api-v5-sub-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: OKX (OKEx) account - API V5 – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__okx-okex-account-api-v5.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: On_Off-ramp orders overview – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__on-off-ramp-orders-overview.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: One-Time Address Transactions – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__one-time-address-transactions.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Operating the CMTA token contract – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__operating-the-cmta-token-contract.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Operating the Denylist contract – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__operating-the-denylist-contract.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Operating the Full-feature token contract – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__operating-the-full-feature-token-contract.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Operating the Recurring Vesting & Payment Contract – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__operating-the-recurring-vesting-payment-contract.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Operating the Token Locker Contract – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__operating-the-token-locker-contract.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Operating the Token Sale Contract – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__operating-the-token-sale-contract.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Operating the Upgradeable ERC-1155F contract – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__operating-the-upgradeable-erc-1155f-contract.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Operating the Upgradeable ERC-20F contract – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__operating-the-upgradeable-erc-20f-contract.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Operating the Upgradeable ERC-721F contract – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__operating-the-upgradeable-erc-721f-contract.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Parallel Transactions Wallet – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__parallel-transactions-wallet.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Paxos (ItBit) account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__paxos-itbit-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Pending third-party substatuses – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__pending-third-party-substatuses.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Policies for EVM DeFi operations – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__policies-for-evm-defi-operations.pdf
+  domain: governance
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Policy rules for automation actions – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__policy-rules-for-automation-actions.pdf
+  domain: governance
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Poloniex account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__poloniex-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Proof of Assets – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__proof-of-assets.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Rate limits – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__rate-limits.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Receiving fiat transfers – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__receiving-fiat-transfers.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Receiving funds into your Fireblocks accounts – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__receiving-funds-into-your-fireblocks-accounts.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Recognizing incoming transactions – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__recognizing-incoming-transactions.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Recover Canton Coin (CC) – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__recover-canton-coin-cc.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Rejected substatuses – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__rejected-substatuses.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Retry a transaction – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__retry-a-transaction.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Reviewing transaction details (Recent Activity and Transaction History)
+    – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__reviewing-transaction-details-recent-activity-and-transaction-history.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Ripple (XRP) asset wallet minimum balance – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__ripple-xrp-asset-wallet-minimum-balance.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Sending fiat transfers – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__sending-fiat-transfers.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Set Up the Gas Station – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__set-up-the-gas-station.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Setting an MPC Key Provisioner – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__setting-an-mpc-key-provisioner.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Setting token prices – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__setting-token-prices.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Settings & Configuration – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__settings-configuration.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Settlements Dashboard overview – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__settlements-dashboard-overview.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Settling with an exchange – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__settling-with-an-exchange.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Setup for Gas Station 2.0 – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__setup-for-gas-station-20.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Smart Transfers overview – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__smart-transfers-overview.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Smart contract library – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__smart-contract-library.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Solana Tokenization – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__solana-tokenization.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Solana asset wallet minimum balance – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__solana-asset-wallet-minimum-balance.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Solana priority fee – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__solana-priority-fee.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Solana program call API – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__solana-program-call-api.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Stellar asset wallet minimum balance – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__stellar-asset-wallet-minimum-balance.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Supported exchanges & assets for Off Exchange – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__supported-exchanges-assets-for-off-exchange.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Supported providers & capabilities – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__supported-providers-capabilities.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Supported transaction types per blockchain – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__supported-transaction-types-per-blockchain.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Swapping tokens on Fireblocks – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__swapping-tokens-on-fireblocks.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: TON fees – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__ton-fees.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: TRES integration – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__tres-integration.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: TRON fee calculation – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__tron-fee-calculation.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Tags & Protected Tags – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__tags-protected-tags.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: The Fireblocks API – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__the-fireblocks-api.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: The Fireblocks-Talos Integration – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__the-fireblocks-talos-integration.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: The Tokenization Page – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__the-tokenization-page.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Token management user experience – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__token-management-user-experience.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Tokenization on EVM-compatible blockchains – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__tokenization-on-evm-compatible-blockchains.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Tokenization on Ripple – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__tokenization-on-ripple.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Tokenization on Stellar – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__tokenization-on-stellar.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Transaction fee & Transaction amount representation – Fireblocks Help
+    Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__transaction-fee-transaction-amount-representation.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Transaction fee and transaction amount representation – Fireblocks Help
+    Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__transaction-fee-and-transaction-amount-representation.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Transactions not broadcast by Fireblocks – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__transactions-not-broadcast-by-fireblocks.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Transferring assets between networks – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__transferring-assets-between-networks.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Transferring over the P2P Network – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__transferring-over-the-p2p-network.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Typed Message Signing – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__typed-message-signing.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: UTXO fees_ Adjusting network transaction fees – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__utxo-fees-adjusting-network-transaction-fees.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: UTXO fees_ Fee behavior – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__utxo-fees-fee-behavior.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: UTXO fees_ Fee rates – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__utxo-fees-fee-rates.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: UTXO fees_ Fee validation – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__utxo-fees-fee-validation.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: UTXO fees_ Net vs. gross fee selection – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__utxo-fees-net-vs-gross-fee-selection.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: UTXO fees_ Overview – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__utxo-fees-overview.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: UTXO fees_ Reviewing estimated and actual fees – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__utxo-fees-reviewing-estimated-and-actual-fees.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: UTXO fees_ Selecting transaction fees – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__utxo-fees-selecting-transaction-fees.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Understanding stuck mempool transactions – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__understanding-stuck-mempool-transactions.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Universal Gasless integrated chains – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__universal-gasless-integrated-chains.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Universal Gasless – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__universal-gasless.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Unknown Destination notice in multi-destination transactions – Fireblocks
+    Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__unknown-destination-notice-in-multi-destination-transactions.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Unsupported and Unmapped assets – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__unsupported-and-unmapped-assets.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Using a local gasless relay in your workspace – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__using-a-local-gasless-relay-in-your-workspace.pdf
+  domain: workspace-management
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Using a workspace as a gasless relay provider – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__using-a-workspace-as-a-gasless-relay-provider.pdf
+  domain: workspace-management
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Using an external workspace as a gasless relay – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__using-an-external-workspace-as-a-gasless-relay.pdf
+  domain: workspace-management
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Using the Automation free trial – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__using-the-automation-free-trial.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Using the Fireblocks Gasless Relay – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__using-the-fireblocks-gasless-relay.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Verified Assets – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__verified-assets.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: View the Gas Station's current balance – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__view-the-gas-stations-current-balance.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Viewing actually spent transaction fees – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__viewing-actually-spent-transaction-fees.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Viewing asset and blockchain details – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__viewing-asset-and-blockchain-details.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: What happens if Fireblocks or Fireblocks Off Exchange is unresponsive_
+    – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__what-happens-if-fireblocks-or-fireblocks-off-exchange-is-unresponsive.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: What happens if the exchange defaults or is unresponsive_ – Fireblocks
+    Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__what-happens-if-the-exchange-defaults-or-is-unresponsive.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: What is a smart contract ABI_ – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__what-is-a-smart-contract-abi.pdf
+  domain: unknown
+  tier: '3'
+  recommended_mode: mode_a
+  rationale: TIER 3 (out-of-scope product line) — rename + meta.yml only, no markdown
+- original: Whitebit account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__whitebit-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Withdrawal Fees Explained – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__withdrawal-fees-explained.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Withdrawing your assets – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__withdrawing-your-assets.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Wrapping and unwrapping tokens – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__wrapping-and-unwrapping-tokens.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: XRP Token transfers – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__xrp-token-transfers.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Yellow Card Account – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__yellow-card-account.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정
+- original: Zcash (ZEC) transactions on Fireblocks – Fireblocks Help Center.pdf
+  proposed: 2026-05-19__support-fireblocks-io__zcash-zec-transactions-on-fireblocks.pdf
+  domain: unknown
+  tier: '2'
+  recommended_mode: mode_a
+  rationale: TIER 2 placeholder — meta.yml only, markdown deferred until promote 결정

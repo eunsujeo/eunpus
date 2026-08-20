@@ -1,0 +1,8 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/override-the-dccp-for-specific-transactions
+downloaded_at: 2026-05-18
+domain: governance
+tier: 2
+status: source-lake-only
+title: "Override the DCCP for specific transactions"
+ingest_log: "Stage 10 (2026-05-18) — renamed, markdown deferred"
+note: "Per-tx DCCP override mechanism. Covered conceptually by `about-the-deposit-control-and-confirmation-policy.md`. Promote if DCCP operational detail needed."

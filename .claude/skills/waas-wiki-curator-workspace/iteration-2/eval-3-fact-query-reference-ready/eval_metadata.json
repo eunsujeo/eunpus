@@ -1,0 +1,18 @@
+{
+  "eval_id": 3,
+  "eval_name": "fact-query-reference-ready",
+  "prompt": "Fireblocks 의 MPC key share 가 어디에 분포되어 있는지 알려줘. 그리고 Hosted MPC 와의 차이도.",
+  "assertions": [
+    {"id": "opening-trigger-detection", "text": "응답 opening 에 Trigger 3 (fact query / reference-ready) 판별 선언"},
+    {"id": "exact-six-section-headers", "text": "6 정확한 한국어 헤더 모두 사용: 핵심 요약 + 운영 상세 + 확정 vs hypothesis + 답 가능 범위 + promote 필요 + 추천"},
+    {"id": "wiki-grep-evidence", "text": "vendors/fireblocks/mpc.md AND entities/fireblocks/mpc-key-share.md 둘 다 인용"},
+    {"id": "inline-source-attribution", "text": "각 fact 진술에 (source: ...) 또는 wiki 경로 inline 출처 ≥5 건"},
+    {"id": "stage-tags-multiple", "text": "Stage 번호 ≥2 개 명시 (예: Stage 8, Stage 22, Stage 29)"},
+    {"id": "mpc-cmp-protocol", "text": "MPC-CMP protocol 명시 (Canetti-Makriyannis-Peled / 4-round / ACM CCS)"},
+    {"id": "saas-3-share-distribution", "text": "SaaS MPC = 1 customer + 2 Fireblocks (3-of-3) 정확히 명시"},
+    {"id": "hosted-mpc-variant", "text": "Hosted MPC = 3 customer + 0 Fireblocks (sovereign key management) 명시"},
+    {"id": "confirmed-vs-hypothesis-explicit", "text": "확정 fact vs hypothesis 명확 분리 (★ 두 sub-section 또는 callout)"},
+    {"id": "open-question-ref", "text": "Open Question (Q-...) 또는 미해결 영역 ≥1 언급"},
+    {"id": "no-pretraining-fillin", "text": "LLM 일반 지식 fill-in 없음 — unverified 라벨 없이 단정형 진술 0건"}
+  ]
+}

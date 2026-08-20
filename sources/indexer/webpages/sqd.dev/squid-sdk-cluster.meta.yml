@@ -1,0 +1,23 @@
+source_urls:
+  - https://docs.sqd.dev/en/sdk/squid-sdk/reference/processors/architecture
+  - https://docs.sqd.dev/en/sdk/squid-sdk/subsquid-vs-thegraph
+  - https://docs.sqd.dev/en/sdk/squid-sdk/tutorials/bayc/step-one-indexing-transfers
+host: docs.sqd.dev
+title: SQD / Subsquid (Squid SDK) — processor architecture / vs The Graph / BAYC tutorial
+publisher: SQD (Subsquid) official docs
+language: en
+tier: 1
+domain: indexer
+mode: C (full ingest — 3-page cluster, WebFetch 추출)
+stage_ingested: 48
+crawl_status: full-text-extracted
+fact_tier: vendor-official (★ vs-The-Graph 비교는 vendor-claimed 편향)
+extract: ../../markdown/2026-06-04__sqd-dev__squid-sdk-cluster.md
+notes: |
+  SQD/Subsquid = batch-processor 인덱싱 프레임워크. 기존
+  blockchain-indexer-architecture-reference 의 multi-ecosystem 합성(The Graph·
+  SubQuery·NEAR·Solana·Blockscout)에 빠진 벤더 → §9.4 로 흡수.
+  핵심: EvmBatchProcessor/SubstrateBatchProcessor, SQD Network archive + RPC
+  data source, ctx.blocks batch model, boundary block, isHead, setFields,
+  filter-before-decode, batch insert, schema codegen, unfinalized block 지원.
+  ★ vs-The-Graph 수치(1k~50k vs 100~150 blocks/sec 등)는 SQD 자체 주장 — Q-VRF.

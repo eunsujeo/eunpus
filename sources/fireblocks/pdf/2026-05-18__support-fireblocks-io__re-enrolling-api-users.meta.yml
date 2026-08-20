@@ -1,0 +1,12 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/4412016177554-Re-enrolling-API-users
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 3
+language: en
+notes: |
+  Fireblocks Help Center article "Re-enrolling API users".
+  Re-enroll triggers: initial Co-signer setup errors, pair with new/existing
+  Co-signer, Callback Handler config change (e.g., switching auth method).
+  Pairing token 1-hour validity.
+  Troubleshooting: pairing token expiry, Callback Handler SSL cert mismatch
+  (pinned public key).

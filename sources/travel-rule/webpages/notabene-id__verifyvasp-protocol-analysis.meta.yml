@@ -1,0 +1,15 @@
+url: https://notabene.id/travel-rule-messaging-protocols/verifyvasp
+fetched_at: 2026-07-08
+source_type: webpage (제3자 분석 — 경쟁사 Notabene 작성, 편향 가능)
+domain: travel-rule / protocol-analysis
+tier: 2
+title: "Analysis of VerifyVASP: Travel Rule Messaging Protocol (Notabene)"
+key_facts: |
+  - 아키텍처: 폐쇄소스 Enclave 서버(각 VASP 인프라 — 키·PII 관리) + VerifyVASP 운영 중앙 API 서버
+    (User Account Verification · User Verification · Transaction Status — 거래 메타데이터 보유)
+  - 출금 사전 허가형 4단계: 수취 VASP 정보 수집 → 주소 소유권 사전 확인 → 암호화 PII 전송·사전 승인 → 전송 후 tx hash 보고
+  - 폐쇄망: 비회원·기술 통합 미완 회원과 통신 불가 · non-custodial 미지원 · 수동 대시보드 없음
+  - 거버넌스: VerifyVASP Pte. Ltd. (싱가포르 · Upbit·Chainalysis 합작) · 가입 무료(작성 시점) · 엄격한 실사
+  - Notabene 입장: VerifyVASP 지원 추가 검토 중(보안 검토 대기) — 상호운용 미완
+  - 약점 지적(경쟁사 관점 유의): 폐쇄소스 보안 미검증 · 중앙 서버의 거래·VASP 매핑 데이터 축적 · 컴플라이언스 규칙 자체 구축 필요
+promote_condition: "도입 비교평가 시"

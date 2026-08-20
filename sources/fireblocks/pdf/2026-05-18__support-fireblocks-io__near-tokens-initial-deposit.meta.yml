@@ -1,0 +1,11 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/15847369735836-Near-tokens-initial-deposit
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 2
+language: en
+category: blockchains-chain-specific
+chain: NEAR
+notes: |
+  Near tokens: token's smart contract must be funded for an address to hold any token balance.
+  Before sending Near token to a destination, ensure destination is funded in the token's smart contract.
+  Placeholder ingestion.

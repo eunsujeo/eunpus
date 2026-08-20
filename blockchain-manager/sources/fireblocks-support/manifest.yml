@@ -1,0 +1,27 @@
+source: Fireblocks 담당자 기술 질의응답
+publisher: internal
+received_at: 2026-08-12
+conversation_date: unknown
+authority_grade: C1
+immutable: true
+sources:
+  - id: FB-SUP-001
+    file: 2026-08-12__network-link-v2-liquidity-conversation.md
+    provenance: user-provided conversation transcript
+    verification: vendor statements cross-checked only where noted against public API specification
+    sha256: 20e08a5d1fdaf2b6d2b699308237a2c699943407f29f061b1f32069759565f4b
+  - id: FB-SUP-002
+    file: 2026-08-12__network-link-v2-private-lp-continuation.md
+    provenance: user-provided continuation transcript
+    verification: vendor-proposed architecture; final confirmation questions remain unanswered
+    sha256: 32ad9c3051a69d8d79294eef6b4aea489d4cc06db0a294c2f7539c0efe987c4a
+  - id: FB-SUP-003
+    file: 2026-08-12__payments-ramp-trading-conversation.md
+    provenance: user-provided conversation transcript
+    verification: external KRWK issuer use case; wallet design applicability explicitly excluded
+    sha256: cd791c4ee758dc8917750379c75648662ffb43f79af6bad4fa28397a1e0fca0c
+  - id: FB-SUP-004
+    file: 2026-08-18__gasless-relay-billing-conversation.md
+    provenance: user-provided conversation transcript (received 2026-08-18)
+    verification: billing terms are vendor statements; boost/manual-RBF cross-checked against public help center article 23508430639516
+    sha256: 2f40a8fee03ca3602649457afa7c44c8b3acc79a89eb9b39b3d98bc427d903bd

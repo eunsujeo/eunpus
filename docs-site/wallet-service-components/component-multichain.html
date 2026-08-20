@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>2. 체인 차이 흡수 — EVM(이더리움·Base) — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="체인 차이 흡수 — Fireblocks 가 벤더 안에서 체인 규칙을 정규화한다. 우리는 멀티체인 어댑터를 만들지 않는다. EVM(이더리움·Base) 기준으로 무엇이 벤더 안에서 도는지, 우리와의 이음매가 어디인지." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Fireblocks 매니저 (벤더 안)</h3><ul>
+<li><a class="active" href="component-multichain.html">2. 체인 차이 흡수 — EVM</a></li>
+<li><a href="component-indexer.html">3. 입금 감지 (webhook)</a></li>
+<li><a href="component-tx-nonce.html">4. 출금 파이프라인</a></li>
+<li><a href="component-signing.html">5. 서명 · co-signer</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 우리 백엔드 (Service·Admin)</h3><ul>
+<li><a href="component-gateway.html">6. API 게이트웨이</a></li>
+<li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
+<li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 시나리오</h3><ul>
+<li><a href="scenario-provisioning.html">9. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">10. 입금</a></li>
+<li><a href="scenario-withdrawal.html">11. 출금</a></li>
+<li><a href="scenario-onofframp.html">12. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 추상화</h3><ul>
+<li><a href="abstraction.html">13. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
+<li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. 기타</h3><ul>
+<li><a href="wallet-creation-animated.html">18. 지갑 생성 애니메이션</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="multichain">
+<h2>2. 체인 차이 흡수 — EVM(이더리움·Base)</h2>
+<span class="section-subtitle">체인마다 다른 규칙은 Fireblocks 가 벤더 안에서 흡수한다 — 우리는 멀티체인 어댑터를 만들지 않는다</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처</div>
+<p>여기 담긴 설계·코드는 <strong>저자가 일반적인 지갑 인프라 패턴을 바탕으로 정리한 설계 참고안</strong>(의사코드)이다. 본문에서 "Fireblocks 가 …" 처럼 특정 벤더의 동작을 언급한 부분은 해당 벤더의 공식 문서에서 확인한 사실이고, 그 외는 저자 추정이므로 실제 적용 전 자신의 환경에서 검증이 필요하다.</p>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">이 장을 어떻게 읽나 — 벤더 안에서 도는 일</div>
+<p>이 가이드는 매니저로 <strong>Fireblocks 를 채택</strong>하고 체인은 <strong>EVM — 이더리움과 Base</strong>만 태우는 전제로 쓴다. 체인 규칙을 한 인터페이스로 정규화하는 "멀티체인 어댑터" 는 <strong>Fireblocks 가 벤더 안에서 이미 하는 일</strong>이라, 우리가 만드는 컴포넌트가 아니다. 그래서 이 장은 "우리가 무엇을 구현하나" 가 아니라 <strong>"벤더 안에서 무엇이 돌고, 우리와의 이음매(seam)가 어디인가"</strong> 를 그린다. EVM 외 다른 체인(UTXO·Solana 등)은 벤더의 관심사이지 우리 설계 범위가 아니다.</p>
+</div>
+
+<h3>2.1 왜 벤더가 흡수하나</h3>
+
+<p>체인은 저마다 규칙이 다르다. 이더리움은 계정마다 순번(nonce<span class="g" data-tip="계정 기반 체인에서 한 주소의 트랜잭션 순번 카운터. 0부터 1씩, 비면 뒤가 모두 막힌다">?</span>)으로 트랜잭션을 직렬화하고, 확정(finality<span class="g" data-tip="이 거래가 더는 뒤집히지 않는다고 볼 수 있는 상태. 체인마다 판단 기준과 시간이 다르다">?</span>) 판단 기준도, 수수료 매기는 법도, 막힌 트랜잭션을 바꾸는 방법도 다르다.</p>
+
+<p>이 차이를 우리 백엔드 곳곳에 흩어 두면 입금 감지·출금 파이프라인·서명·정합성 코드가 전부 체인 분기로 오염된다. <strong>Fireblocks 는 이 차이를 벤더 안에서 흡수해</strong>, 우리 백엔드에는 "체인이 무엇이든 똑같아 보이는" API 표면을 준다. 우리가 별도 어댑터 계층을 세워 정규화할 필요가 없다는 뜻이다.</p>
+
+<div class="callout">
+<div class="callout-title">한 문장 요약</div>
+<p>체인별 차이를 흡수하는 자리 = <strong>Fireblocks 벤더 안</strong>. 우리 백엔드는 벤더가 정규화한 공통 표면만 부르고, EVM 체인이 늘어도(이더리움→Base) 우리 코드는 그대로다.</p>
+</div>
+
+<h3>2.2 EVM 이 벤더 안에서 정규화되는 것</h3>
+
+<p>우리가 태우는 체인은 EVM — <strong>이더리움과 Base</strong>뿐이다. 둘은 같은 EVM 계열이라 계정 모델·주소 체계·수수료·확정·재전송 규칙이 사실상 같고, Base 는 이더리움 L2(OP-Stack)라 같은 규칙을 공유한다. 아래는 벤더가 EVM 을 다룰 때 흡수하는 관심사다 — <strong>우리가 구현하는 표가 아니라, 벤더 안에서 이렇게 처리된다는 참조</strong>다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:22%">관심사</th><th>EVM — 이더리움·Base (벤더가 흡수)</th></tr></thead>
+<tbody>
+<tr><td>잔액 표현</td><td>주소별 잔액 + nonce (ERC-20 토큰도 같은 주소, 컨트랙트 잔액으로 조회)</td></tr>
+<tr><td>순서 보장</td><td>주소별 nonce 순차 — 벤더가 nonce 를 점유·직렬화한다(4장)</td></tr>
+<tr><td>확정 판단</td><td>numOfConfirmations 가 DCCP<span class="g" data-tip="Deposit Control and Confirmation Policy — 몇 개의 confirmation 이 쌓이면 확정(finality)으로 볼지 정하는 Fireblocks 정책. 대부분 체인 1, 컨트랙트 호출은 최소 3 권장. Admin 이 관리">?</span> 임계에 닿으면 확정(finality) — 3장</td></tr>
+<tr><td>수수료</td><td>gas × gasPrice — EIP-1559<span class="g" data-tip="이더리움 수수료 방식 — 기본료(base fee)+우선료(priority fee) 구조">?</span> 의 기본료(base fee)+우선료(priority fee)</td></tr>
+<tr><td>재전송</td><td>같은 nonce + 수수료 인상(RBF<span class="g" data-tip="Replace-By-Fee — 확정 전 트랜잭션을 같은 순번(nonce)에 더 높은 수수료로 교체해 재전송">?</span>) — 벤더의 boost 로 노출(4장, Admin 운영)</td></tr>
+<tr><td>주소 파생</td><td>BIP-32/44 경로 + coin type — 벤더 vault 안에서 파생, 우리는 발급된 주소만 받는다(2장 워크스루)</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Fireblocks 는 이 모든 것을 벤더 안에서 처리하고, 우리 백엔드에는 업무 언어(도메인 동사)로 감싼 <strong>포트</strong> — "주소 발급해라", "잔액 알려줘", "이 출금 제출해라", "수수료 추정해라", "상태 알려줘" — 만 노출한다. 어느 동사가 어느 백엔드(Service·Admin)에서 쓰이는지는 <a href="../wallet-design-walkthrough/00-cast.html">워크스루 0페이지</a>의 기능 매트릭스에 정리돼 있다.</p>
+
+<div class="callout">
+<div class="callout-title">Base 는 이더리움과 같은 EVM 이다</div>
+<p>Base 는 이더리움 L2(OP-Stack)라 주소·상태·수수료·boost/RBF·확정 모델이 이더리움과 사실상 같다. 그래서 이 가이드는 둘을 <strong>'EVM' 으로 묶어 한 번에</strong> 다루고, 체인이 갈리는 지점(가스 시세, L2 특유의 확정 지연 등)만 따로 짚는다. 다른 EVM L2 가 붙어도 우리 백엔드 코드는 안 바뀐다 — 벤더가 흡수하기 때문이다.</p>
+</div>
+
+<h3>2.3 어떻게 놓이는가 — 이음매(seam)는 어디인가</h3>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    SVC["우리 백엔드 · Service·Admin<br/>도메인 동사만 부른다"]
+    PORT["포트 · 통로<br/>createAccount · issueDepositAddress · submitTransaction · balanceOf …"]
+    FB["Fireblocks · 벤더 안<br/>체인 규칙 정규화 · nonce · gas · 확정 · RBF"]
+    ETH["이더리움"]
+    BASE["Base"]
+
+    SVC --> PORT
+    PORT --> FB
+    FB --> ETH
+    FB --> BASE
+
+    classDef be fill:#dbeafe,stroke:#2563eb;
+    classDef port fill:#e0e7ff,stroke:#6366f1;
+    classDef vendor fill:#dcfce7,stroke:#16a34a;
+    classDef chain fill:#eef2ff,stroke:#818cf8;
+    class SVC be; class PORT port; class FB vendor; class ETH,BASE chain;
+</pre></div>
+<p class="diagram-caption">Figure 2-1. 이음매(seam)의 위치. 우리 백엔드(파랑)는 포트(보라)로만 벤더를 부르고, EVM 체인 규칙의 정규화는 <strong>Fireblocks 벤더 안</strong>(초록)에서 끝난다. 그 아래 체인은 EVM — 이더리움·Base(연보라)다. 우리와 벤더 사이의 이음매는 <strong>포트 하나</strong>뿐이다 — 이 포트가 EVM 체인이 늘어도, 훗날 벤더를 바꿔도 우리 백엔드를 그대로 지켜 준다.</p>
+
+<h3>2.4 포트로 보면 — 우리가 부르는 면</h3>
+
+<p>설명용 의사코드다. 우리 백엔드가 보는 것은 <strong>포트</strong> 하나뿐이고, 그 뒤(체인 분기·nonce·gas)는 전부 벤더 안이다. 아래는 <a href="../wallet-design-walkthrough/00-cast.html">워크스루 0페이지</a>의 도메인 한 장과 같은 면이다.</p>
+
+<pre><code>// ── 우리 백엔드가 보는 유일한 면 — 포트 (Fireblocks 가 구현) ──
+interface AccountPort {
+  createAccount(ref): Account                       // 고객 계정 생성 (Service)
+  issueDepositAddress(account, asset): Address      // 입금 주소 발급 — EVM 은 memoTag 불필요 (Service)
+  addressOf(account, asset): Address                // 발급된 주소 조회 (Service)
+  balanceOf(account, asset): Balance               // 가용·대기·잠김 세 칸 (Service·Admin)
+}
+interface TransactionPort {
+  submitTransaction(request): TxRef                 // 출금 제출 — 멱등 키 동반 (Service · 4장)
+  transactionsOf(account, range): List&lt;Transfer&gt;   // 거래 이력
+  onChainEvent(handler)                             // Fireblocks webhook 수신 (입금·상태 · 3장)
+}
+
+// ── 선택 capability — EVM 이 제공하는 운영 동작 (Admin) ──
+interface FeeBoostCapability { boost(txRef): TxRef }   // 수수료 인상 재전송 (RBF · 4장)
+interface CancelCapability   { cancel(txRef): TxRef }  // 철회 (4장)
+
+// ── 체인 분기·nonce·gas·확정·RBF 는 전부 이 아래 (벤더 안) ──
+//  EVM(이더리움·Base) : 벤더가 nonce 점유 · EIP-1559 수수료 · numOfConfirmations 로 확정 · boost=RBF
+//  그 외 체인          : 벤더의 관심사 — 우리 설계 범위 밖</code></pre>
+
+<div class="callout">
+<div class="callout-title">코드가 말하는 것</div>
+<p>우리 백엔드는 <code>submitTransaction(...)</code>·<code>balanceOf(...)</code> 처럼 <strong>도메인 동사만</strong> 부른다. EVM 의 nonce 점유, EIP-1559 수수료 책정, 확정 판정(numOfConfirmations vs DCCP), RBF 재전송은 전부 <strong>벤더 안</strong>에서 일어나고 포트 시그니처에는 새지 않는다. "어느 구현인지 우리 백엔드가 모른다" — 이 성질 덕에 EVM 체인이 늘어도(이더리움→Base), 훗날 벤더를 바꿔도 백엔드 코드는 그대로다. <code>boost</code>·<code>cancel</code> 은 EVM 이 제공하는 <strong>선택 capability</strong>라 있을 때만 노출되고, 나가는 돈에 개입하는 동작이라 <strong>Admin</strong> 운영이다(4장).</p>
+</div>
+
+<h3>2.5 우리 쪽에 남는 것 — 벤더가 흡수하지 못하는 이음매</h3>
+
+<p>체인 차이가 벤더 안으로 들어간다고 해서 우리 몫이 0 이 되진 않는다. 이음매에는 여전히 우리가 지어야 할 것이 있다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">이음매</th><th>우리 몫</th></tr></thead>
+<tbody>
+<tr><td><a href="component-indexer.html">입금 감지 (3장)</a></td><td>벤더가 감지·통지하지만, 그 <strong>webhook 을 받는 수신기와 매핑 DB</strong> 는 우리 것 (Service)</td></tr>
+<tr><td><a href="component-tx-nonce.html">출금 제출 (4장)</a></td><td>조립·nonce·전파는 벤더 안. 우리는 <strong>멱등한 제출·상태 추적</strong>, boost·cancel 운영(Admin)</td></tr>
+<tr><td><a href="component-signing.html">서명 (5장)</a></td><td>MPC 는 벤더 클라우드 + <strong>우리 온프렘 co-signer</strong> 공동서명 — 마지막 서명 관문이 우리 인프라 안</td></tr>
+<tr><td><a href="component-ledger.html">정합성·추적 (7장)</a></td><td>벤더가 준 체인 사실을 <strong>우리 장부와 대사</strong> — 자산 단위·소수점 정규화</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">설계 포인트</div>
+<ul>
+<li><strong>체인 차이는 벤더 안에</strong> — 우리 백엔드에 EVM 분기 코드(gas·nonce·confirmation)가 새면 추상화가 새는 신호다. 그런 세부는 포트 뒤에 남겨 둔다.</li>
+<li><strong>능력 노출(capability)</strong> — boost·cancel 같은 EVM 운영 동작은 벤더가 "이 체인이 지원한다" 고 알려 준 capability 로만 노출한다. 우리는 체인 이름으로 분기하지 않는다.</li>
+<li><strong>포트가 이음매</strong> — 우리와 벤더 사이의 유일한 접점이 포트다. 포트를 가짜 구현으로 바꿔 벤더 없이 백엔드를 테스트할 수도 있다(<a href="abstraction.html">13. 추상화</a>).</li>
+</ul>
+</div>
+
+<h3>2.6 노드/RPC 는 누가 운영하나 — 벤더가</h3>
+
+<p>어댑터가 체인과 대화하려면 그 아래에 <strong>블록체인 노드 · RPC 엔드포인트</strong>가 있어야 한다. 엔드포인트가 하나뿐이면 그 노드가 죽거나 느려지는 순간 읽기·쓰기가 전부 멈추므로, 보통은 한 체인당 여러 엔드포인트를 풀(pool)로 묶어 장애 전환(failover)·부하 분산·건강 검사를 돌린다.</p>
+
+<div class="callout">
+<div class="callout-title">Fireblocks 채택 기준 — 이 풀은 우리 컴포넌트가 아니다</div>
+<p>노드 인프라·엔드포인트 가용성·failover 는 <strong>Fireblocks 가 벤더 안에서 처리</strong>한다. 우리는 노드를 직접 운영하지 않으므로 이 풀은 우리 매니저의 컴포넌트가 아니다. 우리 쪽에 남는 것은 <strong>webhook 수신기·매핑 DB·co-signer</strong> 뿐이다(<a href="../wallet-design-walkthrough/00-cast.html">워크스루 0페이지 물리 배치</a>). 그래서 이 가이드는 노드/RPC 접근을 우리 설계 범위 밖 — <strong>벤더 안 계층</strong>으로 둔다.</p>
+</div>
+
+<p>다음 — <a href="component-indexer.html"><strong>3. 입금 감지 — Fireblocks webhook</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

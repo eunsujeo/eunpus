@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series">설계 워크스루 · 백엔드 개발자 대상 · 비공개 (URL 공유)</p>
+<h1>지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</h1>
+<p class="subtitle">1차 목표는 이 통로(포트) 하나입니다. 포트 뒤의 매니저는 <b>Fireblocks</b>, 이더리움·Base(EVM)를 한 포트로 태웁니다</p>
+
+<div class="callout">
+<div class="callout-title">전제 (합의 완료)</div>
+<p style="margin:0 0 8px">1차 목표는 두 백엔드가 <b>블록체인 매니저</b>를 부르는 <b>통로(포트) 하나</b>를 EVM(이더리움·Base) 위에 세우는 것이다. 두 백엔드는 <b>물리적으로 분리</b>한다 — <b>Service 백엔드</b>(고객 런타임: 입금·출금·잔액)와 <b>Admin 백엔드</b>(운영·거버넌스: 정책·승인·키·동결·rebalance)가 별도 배포·권한·감사 경계로 나뉜다.</p>
+<p style="margin:0">포트로 추상화하므로 <b>매니저를 바꿔도 두 백엔드 코드는 그대로</b>다. EVM 체인이 늘어도(이더리움·Base, 이후 다른 L2) 백엔드는 안 바뀐다 — 체인 분기는 포트 뒤에 갇힌다. 훗날 매니저(벤더)를 교체해도 같은 포트가 그 변화를 흡수한다.</p>
+</div>
+
+<ol class="toc" start="0">
+<li><a href="00-cast.html"><span class="num">0</span>구성 요소 + Fireblocks 기능 × 사용처 표<span class="act">먼저 읽기</span></a></li>
+<li><a href="01-create-account.html"><span class="num">1</span>계정 생성 — createAccount<span class="act">온보딩</span></a></li>
+<li><a href="02-issue-deposit-address.html"><span class="num">2</span>입금 주소 생성 — createDepositAddress<span class="act">온보딩·운영</span></a></li>
+<li><a href="03-address-of.html"><span class="num">3</span>입금 주소 조회 — depositAddressOf<span class="act">고객 화면</span></a></li>
+<li><a href="04-detect-confirm.html"><span class="num">4</span>감지와 확정 — 폴링 · 상태 판정 · DCCP<span class="act">입·출금 공통</span></a></li>
+<li><a href="05-deposit.html"><span class="num">5</span>입금 — 한 건이 잔액이 되기까지<span class="act">자금 유입</span></a></li>
+<li><a href="06-withdrawal.html"><span class="num">6</span>출금 — 제출에서 확정까지, 막혔을 때<span class="act">자금 유출</span></a></li>
+<li><a href="07-estimate-fee.html"><span class="num">7</span>수수료 견적 — estimateFee<span class="act">비용 기록·검증</span></a></li>
+<li><a href="08-balance-history.html"><span class="num">8</span>잔액과 내역 조회 — balanceOf · transactionsOf<span class="act">고객 화면</span></a></li>
+<li><a href="09-switch-extend.html"><span class="num">9</span>확장 — 포트가 EVM 체인 확장·매니저 교체를 흡수하는 법<span class="act">마무리</span></a></li>
+<li><a href="10-ramp-swap.html"><span class="num">10</span>온·오프램프·스왑 — 입금·출금 조합으로 보기<span class="act">확장 주제</span></a></li>
+</ol>
+<p class="table-note" style="margin-top:10px"><b>관련</b> · <a href="../gas-delegation/">가스 대납 — 누가 수수료를 내게 할 것인가</a> · <a href="../ramp-settlement-walkthrough/manager-boundary.html">정산 흐름과 블록체인 매니저의 경계</a> — 이 매니저가 온·오프램프·스왑 정산 흐름과 어디서 맞물리는지, <a href="../ramp-settlement-walkthrough/index.html">정산 워크스루</a>와 겹쳐 본다.</p>
+</div>
+</body>
+</html>

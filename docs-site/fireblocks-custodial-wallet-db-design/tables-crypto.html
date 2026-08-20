@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>11. MPC · Key Link · Cosigner — 키 관리 옵션</title>
+<meta content="3 product option (SaaS MPC / Hosted MPC / Key Link) + Cosigner deployment + Recovery" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a href="db-split.html">3. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a href="tables-workspace-vault.html">4. Workspace</a></li>
+<li><a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a></li>
+<li><a href="tables-counterparty.html">6. Counterparty Registry</a></li>
+<li><a href="cold-wallet.html">7. Cold Wallet 운영</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a href="tables-user.html">8. Internal Users</a></li>
+<li><a href="tables-customer-user.html">9. Customer Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a href="tables-governance.html">10. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a class="active" href="tables-crypto.html">11. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">13. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
+<li><a href="tables-transaction-request.html">15. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">16. Swap · Ramp Lifecycle</a></li>
+<li><a href="cross-border-canton.html">17. Cross-border + Canton</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">18. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">19. KR 규제 매핑</a></li>
+<li><a href="risks.html">20. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
+<li><a href="accounting-ledger.html">21. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">22. 대사 · 결산 · 마감</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
+<li><a href="db-ops.html">23. DB 운영 · Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="crypto">
+<h2>11. MPC · Key Link · Cosigner</h2>
+<span class="section-subtitle">3 product option · Cosigner deployment · Workspace Keys Backup · Recovery</span>
+
+<h3>11.1 키 관리 3 product option</h3>
+<p>
+Fireblocks 는 키 관리를 3 가지 product 으로 제공. 은행은 도입 결정 시 하나를 선택 (workspace type immutable, 변경 불가).
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>SaaS MPC</th><th>Hosted MPC</th><th>Key Link</th></tr></thead>
+<tbody>
+<tr><td><strong>Fireblocks Cloud 측 share</strong></td><td><strong>2 개</strong> (Cloud Co-Signer ×2, Azure SGX)</td><td><strong>2 개</strong> (Cloud Co-Signer ×2)</td><td><strong>0 개</strong></td></tr>
+<tr><td><strong>고객 측 share</strong></td><td><strong>1 개</strong> (운영자 Mobile device)</td><td><strong>1 개</strong> (API Co-Signer — 고객 SGX server. Mobile 도 페어링 가능)</td><td>HSM 단독 키 보유 (MPC 가 아님)</td></tr>
+<tr><td><strong>총 share / threshold</strong></td><td>3 share · 2-of-3</td><td>3 share · 2-of-3</td><td>1 key · HSM 안에서만 서명</td></tr>
+<tr><td><strong>알고리즘 (MPC-CMP)</strong></td><td>ECDSA-SECP256K1, EdDSA-Ed25519, ECDSA-SECP256R1</td><td>동일</td><td>ECDSA, EdDSA (Validation/Signing key)</td></tr>
+<tr><td><strong>고객 측 인프라</strong></td><td>Mobile app 만</td><td>API Co-Signer 1 대 이상 (SGX 머신)</td><td>Agent + Customer Server + HSM</td></tr>
+<tr><td><strong>Backup 매커니즘</strong></td><td>Workspace Keys Backup (recovery passphrase)</td><td>동일</td><td>HSM vendor 의 backup (Thales Luna 의 backup HSM 등)</td></tr>
+<tr><td><strong>Recovery</strong></td><td>recovery passphrase + 새 device 매개</td><td>recovery passphrase + Co-signer 재구성</td><td>HSM vendor 의 recovery 절차</td></tr>
+<tr><td><strong>은행이 DB 에 보관하는 키 material</strong></td><td><strong>❌ 없음 (F-bid)</strong></td><td><strong>❌ 없음 (F-bid)</strong> — Co-signer 가 자체 보관</td><td><strong>❌ 없음 (F-bid)</strong> — HSM 안에서만</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+4 페이지의 architecture.html 1.2 표와 일치. F-bid (Forbidden) 는 직접 구축 reference 의 storage class 약어 — 어떤 column 에도 절대 저장 금지를 의미. 자세한 forbidden list 는 10.8 아래 callout 참조.
+</p>
+<p>
+출처: <a href="https://support.fireblocks.io/hc/en-us/articles/10167020461596-MPC-CMP-security-enhancements-version-update-August-2023">MPC-CMP Security Enhancements</a> ·
+<a href="https://support.fireblocks.io/hc/en-us/articles/14228517105052-Fireblocks-Key-Link-Overview">Key Link Overview</a>
+</p>
+
+<h3>11.2 MPC-CMP — Fireblocks 의 threshold 서명 (참고)</h3>
+<p>
+SaaS MPC / Hosted MPC 는 <strong>MPC-CMP (Canetti-Makriyannis-Peled 2020)</strong> protocol 사용. 3-party threshold ECDSA / EdDSA.
+</p>
+<ul>
+<li>3 party 중 <strong>2 party 가 협력</strong>해야 서명 1 개 완성 (2-of-3)</li>
+<li>한 party 의 share 만으로는 서명 불가능 → 단일 침해로 자산 탈취 불가</li>
+<li>2023-08 보안 업데이트: GG18 → MPC-CMP 로 전환. <strong>"라운드"</strong> = 서명 1 회 완성에 필요한 party 간 통신 왕복 수. 8 → 4 로 줄면서 latency / 통신 비용 감소</li>
+</ul>
+<p>
+출처: <a href="https://support.fireblocks.io/hc/en-us/articles/10167020461596-MPC-CMP-security-enhancements-version-update-August-2023">MPC-CMP Security Update 2023-08</a>
+</p>
+
+<div class="callout">
+<div class="callout-title">은행 입장에서 — MPC 의 함의</div>
+<p style="margin-bottom:0">
+은행은 MPC 내부 동작을 자세히 알 필요는 없다. 알아야 할 것은:
+</p>
+<ul style="margin-bottom:0">
+<li>키 share 가 1 곳에 모이지 않으므로, Fireblocks Cloud / 은행 mobile / 은행 cosigner 중 1 곳만 침해되어도 자산 탈취 불가</li>
+<li>SaaS MPC 는 Fireblocks Cloud + 은행 mobile + Cloud Co-signer 의 3-party. 즉 은행 측 device 가 1 개 필요</li>
+<li>Hosted MPC 는 은행 측 Co-signer 1 대 추가 — Cloud Co-signer 대신</li>
+<li>Key Link 는 MPC 가 아닌 단일 HSM 모델 (다른 보안 모델)</li>
+</ul>
+</div>
+
+<h3>11.3 Cosigner Deployment — 6 options</h3>
+<p>
+Hosted MPC 의 Co-signer 는 다양한 환경에 배포 가능:
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>Deployment</th><th>특성</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Azure SGX (Fireblocks 운영)</td><td>SaaS 의 default</td></tr>
+<tr><td>2</td><td><strong>On-prem (고객 SGX 머신)</strong></td><td><strong>★ KR 은행 권장</strong> — 망분리 IDC 안 배치 가능. 가장 강한 격리 + 전자금융감독규정 망분리 정책 충족</td></tr>
+<tr><td>3</td><td>AWS Nitro Enclaves</td><td>AWS 환경의 confidential computing</td></tr>
+<tr><td>4</td><td>GCP Confidential Space</td><td>GCP confidential computing</td></tr>
+<tr><td>5</td><td>Alibaba Cloud SGX</td><td>중국 region</td></tr>
+<tr><td>6</td><td>IBM Cloud Confidential Computing</td><td>IBM region</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ KR 은행 — On-prem SGX 가 사실상 강제</div>
+<p style="margin-bottom:0">
+KR 은행은 <strong>전자금융감독규정의 망분리 정책</strong> 으로 인해 public cloud (Azure / AWS / GCP) 에 키 share 를 둘 수 없음. 따라서 Hosted MPC 운영 시 cosigner deployment 는 <strong>옵션 2 (On-prem SGX)</strong> 가 사실상 강제. 자세한 망분리 적합성 분석은 <a href="infrastructure.html">2. 인프라 운영</a> 참조.
+</p>
+</div>
+
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/intel-sgx-api-co-signer">Intel SGX API Co-signer</a>
+</p>
+
+<h4><code>admin.cosigner_meta</code> (Hosted MPC 시)</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>cosigner_id (PK)</td><td>uuid</td><td>등록 후 변경 불가</td><td>은행 내부 ID</td></tr>
+<tr><td>vendor_cosigner_uuid</td><td>varchar</td><td>등록 후 변경 불가</td><td>Fireblocks 가 발급한 cosigner UUID</td></tr>
+<tr><td>workspace_code</td><td>varchar</td><td>등록 후 변경 불가</td><td>config 의 workspace key (<code>"admin"</code> / <code>"ops"</code> / <code>"hot"</code> / <code>"cold"</code>)</td></tr>
+<tr><td>deployment</td><td>enum</td><td>등록 후 변경 불가</td><td><code>azure_sgx / onprem / aws_nitro / gcp_cs / alibaba / ibm</code></td></tr>
+<tr><td>hostname</td><td>varchar</td><td>수정 가능</td><td>운영 hostname</td></tr>
+<tr><td>region</td><td>varchar</td><td>수정 가능</td><td>cloud region (예: ap-northeast-2). on-prem 시 IDC 식별자</td></tr>
+<tr><td>cosigner_version</td><td>varchar</td><td>수정 가능</td><td>설치된 cosigner version</td></tr>
+<tr><td>last_heartbeat_at</td><td>timestamptz</td><td>수정 가능</td><td>마지막 alive 확인 시점 (Fireblocks 측 monitoring API)</td></tr>
+<tr><td>installed_at</td><td>timestamptz</td><td>등록 후 변경 불가</td><td>최초 설치 시점</td></tr>
+<tr><td>status</td><td>enum</td><td>수정 가능</td><td><code>active / suspended / retired</code></td></tr>
+<tr><td>modified_by</td><td>varchar</td><td>수정 가능</td><td>마지막 변경 운영자 (employee_id)</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+version upgrade / status 변경 같은 lifecycle 이벤트는 <code>audit.audit_log_internal</code> 의 <code>cosigner_meta</code> entry 로 추적 (5년 보존).
+</p>
+
+<h4>On-prem Cosigner 설치 — 사전 준비</h4>
+<p>
+출처: Fireblocks 공식 docs (<a href="https://developers.fireblocks.com/reference/install-api-cosigner-onprem">Install SGX On-prem API Co-signer</a>) + 설치 스크립트 <code>cosigner-v2026.03.02</code> 분석. on-prem 한정 (스크립트가 chassis-asset-tag 로 Azure VM 자동 감지하는 부분은 on-prem 에서 무관 — standard <code>cosigner</code> 이미지 사용).
+</p>
+
+<h5>하드웨어 요구사항 (Fireblocks 공식 docs)</h5>
+<div class="table-wrap">
+<table>
+<thead><tr><th>항목</th><th>요구사항</th></tr></thead>
+<tbody>
+<tr><td>CPU processor</td><td><a href="https://www.intel.com/content/www/us/en/architecture-and-technology/software-guard-extensions-processors.html">Intel® SGX 지원 processor</a> (목록)</td></tr>
+<tr><td>CPU cores</td><td>Minimum <strong>4</strong></td></tr>
+<tr><td>OS</td><td><strong>Ubuntu 22.04 LTS 또는 24.04 LTS</strong> (Canonical) — 최신 Linux kernel + Intel microcode (BIOS update)</td></tr>
+<tr><td>RAM</td><td>Minimum <strong>16 GB</strong></td></tr>
+<tr><td>Storage</td><td>Minimum <strong>128 GB</strong></td></tr>
+<tr><td>SGX Memory</td><td>Minimum <strong>2 GB EPC</strong></td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary);font-size:13px">
+Fireblocks 가 <strong>OVHcloud</strong> on-prem SGX 서버도 지원. 스크립트 v2026.03.02 의 SGX driver URL 은 <code>ubuntu20.04-server</code> 경로지만 공식 docs 의 최신 OS 권장은 22.04 / 24.04 LTS — 스크립트가 자동 다운로드하는 driver 가 22.04 / 24.04 에서도 호환되는지는 사전 검증 필요.
+</p>
+
+<h5>BIOS 설정 (Fireblocks 공식)</h5>
+<ul>
+<li><strong>Intel SGX</strong> (Software Guard Extension) — Enable</li>
+<li><strong>DCAP (FLC)</strong> — Enable</li>
+<li><strong>Hyper threading</strong> — <strong>Disable</strong></li>
+<li><strong>Intel SpeedStep Technology</strong> — <strong>Disable</strong></li>
+<li><strong>Onboard VGA</strong> — <strong>Disable</strong></li>
+</ul>
+
+<h5>SGX 활성 검증 (설치 전 / 후)</h5>
+<pre style="background:#f7f7f7;padding:10px;border-radius:6px;font-size:13px;margin:0 0 0.5rem 0"><code>sudo apt update
+sudo apt upgrade
+sudo apt install cpuid
+cpuid -1 | grep -i sgx</code></pre>
+<p style="color:var(--text-secondary);font-size:13px">
+검증 결과 — <strong>SGX = true</strong> (Software Guard Extensions supported) · <strong>SGX_LC = true</strong> (SGX launch config supported) 모두 필수. 설치 스크립트는 cpuid instruction 으로 자체 검증 (leaf 7 / EBX bit 2 = SGX · ECX bit 30 = SGX_LC). 메모: Azure Standard_DC*_v2 instance 는 SGX2 미지원이지만 cosigner 실행에는 무관.
+</p>
+
+<h5>네트워크 — 사전 도메인 허용 + 포트 설정</h5>
+<p>Fireblocks 공식 allowlist:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>도메인</th><th>소유</th><th>용도</th></tr></thead>
+<tbody>
+<tr><td><code>mobile-api.fireblocks.io</code></td><td>Fireblocks</td><td>API 시그널링 (런타임 상시)</td></tr>
+<tr><td><code>signurl.fireblocks.io</code></td><td>Fireblocks</td><td>signed URL</td></tr>
+<tr><td><code>s3signurl.fireblocks.io</code></td><td>Fireblocks</td><td>S3 signed URL</td></tr>
+<tr><td><code>fb-certs.s3.amazonaws.com</code></td><td>AWS</td><td>Fireblocks 발급 인증서</td></tr>
+<tr><td><code>fb-cosigner-images.s3.amazonaws.com</code></td><td>AWS</td><td>Cosigner 이미지</td></tr>
+<tr><td><code>fb-customers.s3.amazonaws.com</code> (+ <code>/uploads</code>)</td><td>AWS</td><td>고객 파일 업로드</td></tr>
+<tr><td><code>download.docker.com</code></td><td>Docker</td><td>Docker repo (설치)</td></tr>
+<tr><td><code>github.com</code></td><td>GitHub</td><td>docker-compose 바이너리</td></tr>
+<tr><td><code>cdn.registry.gitlab-static.net</code></td><td>GitLab</td><td>registry CDN</td></tr>
+<tr><td><code>gitlab.com</code></td><td>GitLab</td><td>GitLab</td></tr>
+<tr><td><code>registry.gitlab.com</code></td><td>GitLab</td><td>Cosigner Docker 이미지 pull (포트 <strong>5000</strong>)</td></tr>
+<tr><td><code>download.01.org</code></td><td>Intel</td><td>SGX driver / DCAP</td></tr>
+<tr><td><code>bootstrap.pypa.io</code></td><td>PSF</td><td>pip 부트스트랩</td></tr>
+<tr><td><code>files.pythonhosted.org</code> · <code>pypi.org</code> · <code>pypi.python.org</code></td><td>PSF</td><td>Python 패키지</td></tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--text-secondary);font-size:13px">
+포트: 대부분 <strong>443 (HTTPS)</strong> · <code>registry.gitlab.com/customer-cosigner</code> 는 <strong>5000</strong>.
+</p>
+<p style="color:var(--text-secondary);font-size:13px">
+<strong>★ Region 별 Fireblocks 도메인 차이</strong> — Global SaaS = <code>mobile-api.fireblocks.io</code> · Europe SaaS = <code>eu2-mobile-api.fireblocks.io</code> 등 prefix · Swiss SaaS = <code>eu-mobile-api.fireblocks.io</code> 등 prefix. 사용 region 에 맞춰 allowlist 조정.
+</p>
+<p style="color:var(--text-secondary);font-size:13px">
+<strong>Outbound Proxy</strong> 는 스크립트에서 선택사항 — <code>HTTPS_PROXY</code> 환경변수 + <code>set-proxy</code> 커맨드로 설정 가능. proxy 설정 시 WebSocket 자동 비활성화 (long polling 으로 전환).
+</p>
+
+<h5>스토리지</h5>
+<ul>
+<li><strong>경로</strong>: <code>/databases/cosigner/</code> 아래 5 디렉토리 자동 생성 — <code>db/</code> (<code>secrets.db</code> · SGX enclave key 로 암호화) · <code>config/</code> · <code>log/</code> · <code>backup/</code> (DB 변경마다 자동 백업) · <code>enclave/</code> (<code>ra_loader_enclave.signed.so</code>)</li>
+<li><strong>소유자</strong>: UID/GID <code>2000:2000</code> (스크립트 자동 chown — 컨테이너 내부 <code>fb_service</code> user)</li>
+<li><strong>로그 파일 (공식 docs)</strong> — <code>run.log</code> (설치 / 설정 history) + <code>customer_cosigner.log</code> (workspace 거래 승인 / 서명 / 연결 승인 history). 후자는 <strong>10 file × 4MB rotation</strong> · 시간 순 overwrite</li>
+<li><strong>Docker log rotation (스크립트 daemon.json)</strong>: max 500MB × 6 file (json-file driver · non-blocking · max-buffer 4MB)</li>
+</ul>
+
+<h5>Fireblocks 측 사전 발급</h5>
+<ul>
+<li><strong>API user 생성</strong> — Fireblocks Console 또는 API. 이 API user 가 cosigner 와 페어링됨</li>
+<li><strong>Pairing Token</strong> — Console 에서 cosigner 추가 시 발급. setup 시 한 번 interactive 입력 (또는 headless mode 시 <code>/tmp/pairing-token.json</code>)</li>
+<li><strong>설치 스크립트 download URL</strong> — Fireblocks Console 에서 발급 (cosigner 추가 후). <code>curl -o cosigner "URL"</code> 로 다운로드</li>
+</ul>
+
+<h5>Intel 측 사전 등록 (공식 docs Step 1.4 + 1.5)</h5>
+<p>
+SGX driver 설치 자체는 스크립트가 자동 처리하지만, 공식 docs 는 <strong>Intel 측 사전 등록 절차</strong>도 명시:
+</p>
+<ol>
+<li><strong>Intel PCS 구독</strong> (<a href="https://api.portal.trustedservices.intel.com/provisioning-certification">ECDSA Attestation</a>) — API key 발급</li>
+<li><strong>Intel PCCS</strong> (Provisioning Certification Caching Service) 설정 — Intel reference caching service</li>
+<li><strong>PCKIDRetrievalTool 실행</strong> — <code>pckid_retrieval.csv</code> 생성 → JSON 변환 → Intel 등록</li>
+<li><strong>Reimage SGX platform</strong> + Intel SGX runtime stack 설치</li>
+<li><strong>Fireblocks 측 등록 검증</strong> — <code>curl https://mobile-api.fireblocks.io/sgx/certification/v3/pckcert?...</code> 로 certificate 반환 확인</li>
+</ol>
+<p style="color:var(--text-secondary);font-size:13px">
+이 등록 절차 없이는 remote attestation 실패. Intel 자료: <a href="https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/Intel_SGX_SW_Installation_Guide_for_Linux.pdf">Intel SGX SW Installation Guide</a> · <a href="https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/SGX_DCAP_Caching_Service_Design_Guide.pdf">SGX DCAP Caching Service Design Guide</a>.
+</p>
+
+<h5>은행 측 사전 결정</h5>
+<ul>
+<li><strong>Callback Handler endpoint</strong> 구축 — URL + 인증 방식 (스크립트 5 옵션 interactive — Public key / Certificate / Root-CA / Hybrid cert / Hybrid CA. <a href="https://developers.fireblocks.com/reference/cosigner-callbackhandler-secure-communication-authentication">공식 문서</a>).
+  <div class="callout callout-warn" style="margin-top:0.5rem">
+  <p style="margin-bottom:0">
+  <strong>★ Callback Handler 미설정 시 자동 승인</strong> (Fireblocks <a href="https://developers.fireblocks.com/docs/create-api-co-signer-callback-handler">공식 docs</a>): "If a Callback Handler is not configured for an API user, the Co-signer will automatically sign or approve all requests it receives for that API user." → 미설정 = 외부 validation 없이 모든 거래 자동 서명. 은행 환경에서는 <strong>Callback Handler 설정 필수</strong>.
+  </p>
+  </div>
+</li>
+<li><strong>Callback retry 사용 여부</strong> 결정 — 스크립트 interactive. retry 사용 = WebSocket 자동 비활성화 (long polling). 스크립트 prompt: "응답 30초 이상 또는 비동기 통신 목표 시 retry 사용 · 그 외에는 비활성화 권장 (성능 영향)"</li>
+<li><strong>Recovery Public Key</strong> — 스크립트 자동 생성 (<code>fb-recovery-pub.pem</code>). 대응 private key 의 보관 plan 은 스크립트 범위 밖 — 별도 절차 필요</li>
+<li><strong>Physical Device ID (UUID)</strong> — 스크립트 자동 생성 (<code>uuidgen</code>) → <code>.local_config</code> 저장</li>
+<li><strong>Workspace Owner mobile app</strong> — 설치 완료 후 MPC key share 요청 승인 단계에 필요 (Owner 가 mobile app 으로 승인)</li>
+</ul>
+
+<h4>On-prem Cosigner 설치 — 설치 과정</h4>
+
+<p>
+Fireblocks 공식 docs 의 3 단계 high-level:
+</p>
+<ol>
+<li><strong>Step 1</strong>: on-prem 환경 + SGX 서버 setup / configure (위 "사전 준비" 절)</li>
+<li><strong>Step 2</strong>: Console 에서 API user 생성 → cosigner 추가 → Pairing Token + 설치 스크립트 URL 발급</li>
+<li><strong>Step 3</strong>: 설치 스크립트 다운로드 + 실행 + workspace owner 가 mobile app 으로 MPC key share 승인</li>
+</ol>
+
+<h5>Step 3.1: 설치 스크립트 다운로드</h5>
+<p>
+Console 에서 받은 URL 로 SGX 머신에 직접 다운로드:
+</p>
+<pre style="background:#f7f7f7;padding:10px;border-radius:6px;font-size:13px;margin:0 0 0.5rem 0"><code>curl -o cosigner "URL"
+chmod +x cosigner</code></pre>
+
+<h5>Step 3.2: 설치 실행</h5>
+<pre style="background:#f7f7f7;padding:10px;border-radius:6px;font-size:13px;margin:0 0 0.5rem 0"><code>sudo ./cosigner setup</code></pre>
+<p>
+스크립트 1 회 실행으로 자동 진행. 각 단계는 idempotent (재실행 안전 — 이미 설치된 항목은 skip):
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>단계</th><th>작업</th><th>스크립트 동작</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>사전 검증</td><td>Root 권한 · SGX CPU 지원 (cpuid 검증) 확인</td></tr>
+<tr><td>2</td><td>필수 패키지 설치</td><td><code>apt install build-essential dkms curl jq python3 uuid-runtime</code></td></tr>
+<tr><td>3</td><td>SGX driver 설치</td><td>Intel SGX driver 다운로드 + 설치 → <code>/dev/sgx_*</code> device 등록 확인 (사전에 Intel PCS / PCCS / 등록 완료된 상태 가정)</td></tr>
+<tr><td>4</td><td>Docker 설치</td><td>Docker CE + docker-compose 1.29.2 설치. <code>daemon.json</code> 설정 (live-restore · log rotation)</td></tr>
+<tr><td>5</td><td>GitLab registry 로그인</td><td>스크립트 내장 자격으로 <code>registry.gitlab.com</code> 로그인 (이미 로그인된 경우 skip)</td></tr>
+<tr><td>6</td><td>docker-compose 파일 생성</td><td><code>docker-compose.yml</code> (메인) + <code>docker-compose-init.yml</code> (초기화) 자동 생성</td></tr>
+<tr><td>7</td><td>physicalDeviceId 생성</td><td><code>uuidgen</code> 으로 UUID 생성 → <code>.local_config</code> 저장 (이미 있으면 skip)</td></tr>
+<tr><td>8</td><td>storage 디렉토리 초기화</td><td><code>/databases/cosigner/{db,config,log,backup,enclave}</code> 생성 + UID 2000 chown</td></tr>
+<tr><td>9</td><td>Pairing 정보 입력</td><td><strong>interactive</strong> — Pairing Token + Callback Handler URL + 인증 정보 (5 옵션) + Recovery key 자동 생성 + <code>config.json</code> 작성</td></tr>
+<tr><td>10</td><td>Revision 결정</td><td>인자로 받거나 <code>.revision</code> 파일 또는 default (<code>2026.03.02</code>) 사용</td></tr>
+<tr><td>11</td><td>Proxy 설정 (선택)</td><td>interactive — outbound proxy URL 입력 또는 skip</td></tr>
+<tr><td>12</td><td>통신 모드 자동 결정</td><td>proxy 있거나 callback retry 사용 → long polling (<code>WEBSOCKET=0</code>) / 둘 다 없으면 WebSocket (<code>WEBSOCKET=1</code>)</td></tr>
+<tr><td>13</td><td>초기 설정 적용 (init container)</td><td><code>docker-compose -p init -f docker-compose-init.yml up -d</code> → init container 안에서 attestation flow 포함 <code>customer_cosigner --initial-config-file config/config.json</code> 실행 → init container down. setup 단계가 SGX enclave 안에서 cosigner 실행되는지 attestation 으로 검증</td></tr>
+</tbody>
+</table>
+</div>
+
+<p style="color:var(--text-secondary);font-size:13px">
+<strong>★ 메인 컨테이너 시작은 별도 단계</strong> — 스크립트의 <code>setup</code> 은 위 13 단계 (init 까지) 만 실행. 메인 cosigner 컨테이너 시작은 사용자가 <code>./cosigner start</code> 를 별도로 실행 (스크립트 line 803: 메인 컨테이너 자동 시작은 <code>headless</code> 모드 = Azure Marketplace 전용 branch 안에만 있음). on-prem 흐름: <code>./cosigner setup</code> → <code>./cosigner start</code>. setup 완료 시 cosigner 가 향후 설정 갱신용 JSON 설정 파일 생성.
+</p>
+
+<h5>Step 3.3: Workspace owner 의 MPC key share 승인</h5>
+<p>
+Cosigner 와 페어링된 API user 가 <strong>Admin 또는 User role</strong> 인 경우, workspace owner 가 mobile app 에서 <strong>새 MPC key share 요청 승인</strong> 알림 받음. owner 가 승인하면 Console 의 Co-signers tab (Developer Center) 에 cosigner 가 <strong>online + API user paired</strong> 상태로 표시.
+</p>
+<p style="color:var(--text-secondary);font-size:13px">
+모든 setup 동작은 <code>{날짜시간}_run.log</code> 에 기록 (스크립트 상단의 exec redirect). 문제 발생 시 이 로그 + <code>./cosigner logs</code> 출력으로 Fireblocks 지원에 전달.
+</p>
+
+<h4>운영 커맨드 (CLI reference) + 절차</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>커맨드</th><th>용도</th></tr></thead>
+<tbody>
+<tr><td><code>setup</code></td><td>최초 설치 (prerequisite 설치 + init container 실행. 메인 컨테이너는 별도 <code>start</code> 필요)</td></tr>
+<tr><td><code>start [revision]</code></td><td>메인 cosigner 컨테이너 시작 — <code>docker-compose -p cc pull</code> + <code>up -d</code>. revision 지정 시 <code>.revision</code> 파일 갱신</td></tr>
+<tr><td><code>stop</code></td><td>cosigner 중지 (<code>docker-compose -p cc down</code>)</td></tr>
+<tr><td><code>restart</code></td><td>down + up 으로 재시작 (env var 변경 반영용 explicit recreate)</td></tr>
+<tr><td><code>upgrade</code></td><td>실행 중 컨테이너에 SIGUSR1 signal — in-place 업그레이드 trigger</td></tr>
+<tr><td><code>upgrade-script</code></td><td>설치 스크립트 자체 백업 (<code>{스크립트명}.{VER}.{날짜}</code>) — 새 스크립트 URL 은 Fireblocks Console 에서 retrieve</td></tr>
+<tr><td><code>list-users</code></td><td>이 cosigner 에 연결된 API user 목록 (<code>customer_cosigner --list-devices</code>). workspace name · API user ID · Callback URL 표시</td></tr>
+<tr><td><code>print-public-key</code></td><td>cosigner public key 출력 — Callback Handler 가 cosigner 요청 인증에 사용</td></tr>
+<tr><td><code>add-user</code></td><td>추가 API user 등록 — multi-device 운영 시 <code>multiDevice=1</code> flag 가 <code>.local_config</code> 에 자동 추가</td></tr>
+<tr><td><code>callback-update [userId]</code></td><td>Callback URL + 인증 정보 재설정. interactive 5 옵션 흐름. multi-user 시 userId 필수. retry 설정 변화 시 통신 모드 변경 + 재시작</td></tr>
+<tr><td><code>set-proxy</code></td><td>outbound proxy URL 변경. proxy 변경 시 자동 재시작</td></tr>
+<tr><td><code>logs [num] [target]</code></td><td>최근 N 줄 log 추출 (기본 3000 줄 · target=cosigner). <code>{날짜시간}_{target}.log</code> 로 저장</td></tr>
+<tr><td><code>version</code></td><td>스크립트 / Docker 이미지 / 내부 binary version 출력</td></tr>
+</tbody>
+</table>
+</div>
+
+<h5>로그 확인 (공식 docs)</h5>
+<p>
+Cosigner 가 생성하는 2 가지 log:
+</p>
+<ul>
+<li><strong><code>run.log</code></strong> — setup / configuration history 자동 기록</li>
+<li><strong><code>customer_cosigner.log</code></strong> — workspace 운영 데이터 (거래 승인 / 서명 history · 신규 연결 승인). <strong>10 file × 4MB rotation</strong> · 시간 순 overwrite. 위치: <code>/databases/cosigner/log/customer_cosigner.log{,.1,.2,...}</code></li>
+</ul>
+<p>
+로그 포맷 RegEx: <code>${AppName}:${Line} ${LogLevel} ${dd/MM/yyyy} ${HH:mm:ss,fff} ${ClassName} ::${MethodName} - ${LogMessage}</code>. <strong>외부 log delivery 권장</strong>: ELK · Splunk · Datadog 등 (Docker JSON file driver 기본 사용 — 다른 driver 로 변경 가능).
+</p>
+<p>
+실행 중 docker image / script version 조회:
+</p>
+<pre style="background:#f7f7f7;padding:10px;border-radius:6px;font-size:13px;margin:0 0 0.5rem 0"><code># Docker image version
+docker inspect cosigner | jq -r '.[0].Config.Image' + " " + '.[0].Image'
+
+# Script version
+head cosigner -n 3 | grep -i ver</code></pre>
+
+<h5>Update 절차 (공식 docs)</h5>
+<p>
+공식 절차 — 단순 <code>upgrade</code> 커맨드보다 안전:
+</p>
+<ol>
+<li>Console 에서 새 설치 스크립트 URL retrieve → <code>curl -o cosigner "URL"</code> + <code>chmod +x cosigner</code></li>
+<li><code>./cosigner stop</code> + <code>docker ps -a</code> 로 cosigner container 없음 확인</li>
+<li>Enclave 백업: <code>mv /databases/cosigner/enclave/enclave.signed.so /databases/cosigner/enclave/enclave.signed.so_old</code></li>
+<li><code>sudo rm -f .revision</code> — revision 파일 제거</li>
+<li><code>./cosigner start</code> (최신 버전) 또는 <code>./cosigner start &lt;image_version&gt;</code> (특정 버전)</li>
+<li><code>docker ps -a</code> 로 cosigner container 실행 확인</li>
+</ol>
+<p style="color:var(--text-secondary);font-size:13px">
+업데이트 실패 시 재설치 절차 (공식): <code>sudo rm -rf /databases</code> + <code>sudo rm -f .local_config .revision</code> → <code>./cosigner setup</code>. 그래도 실패하면 <a href="https://developers.fireblocks.com/reference/api-cosigner-troubleshooting">API Co-signer Troubleshooting</a>.
+</p>
+
+<h5>신규 머신 Migration (공식 docs)</h5>
+<p>
+기존 머신 → 신규 SGX 머신 이전 시 backup data 활용 (downtime 최소화):
+</p>
+<ol>
+<li>신규 SGX 머신 setup (위 사전 준비 절차 동일)</li>
+<li>기존 머신에서 다음 2 파일 백업:
+  <ul>
+    <li><code>/databases/cosigner/db/secrets.db</code> — secrets DB (SGX enclave key 로 암호화)</li>
+    <li><code>/databases/cosigner/enclave/ra_loader_enclave.signed.so</code> — enclave loader</li>
+  </ul>
+</li>
+<li>신규 머신의 같은 경로에 두 파일 복사</li>
+<li><code>./cosigner start</code></li>
+</ol>
+<p style="color:var(--text-secondary);font-size:13px">
+<strong>★ 두 파일 백업 부재 시</strong> — cosigner 와 연결된 API user 들을 unpair (re-enroll) + 신규 머신에 새 cosigner setup 필요. backup 절차 사전 수립 필수.
+</p>
+
+<div class="callout">
+<div class="callout-title">스크립트가 명시하는 추가 운영 동작</div>
+<ul style="margin-bottom:0">
+<li><strong>upgrade 메커니즘</strong> — <code>upgrade</code> 커맨드는 실행 중 <code>customer_cosigner</code> 프로세스에 SIGUSR1 signal 발송 (<code>kill -s SIGUSR1</code>). 새 이미지 pull 은 별도 <code>start</code> 또는 docker-compose 의 <code>pull</code> 단계</li>
+<li><strong>Recovery key</strong> — setup 중 <code>openssl genrsa 2048</code> 로 keypair 생성. public key (<code>fb-recovery-pub.pem</code>) 는 config 에 등록. private key 의 보관 / 백업 절차는 스크립트 범위 밖</li>
+<li><strong>multi-cosigner</strong> — <code>add-user</code> 성공 시 <code>multiDevice=1</code> 이 <code>.local_config</code> 에 추가됨. 이 flag 가 있으면 <code>callback-update</code> 등에서 userId 지정 강제</li>
+<li><strong>통신 모드</strong> — proxy 설정 OR slow_callback_handler (retry 사용) = true 일 때 WebSocket 비활성화. 둘 다 false 일 때만 WebSocket 활성화</li>
+<li><strong>restart 정책</strong> — 메인 컨테이너는 <code>restart: always</code> · init 컨테이너는 <code>restart: "no"</code></li>
+</ul>
+</div>
+
+<p>
+출처: 본 절의 사실은 다음 자료에 근거:
+</p>
+<ul>
+<li>Fireblocks 공식 docs: <a href="https://developers.fireblocks.com/reference/install-api-cosigner-onprem">Install SGX On-prem API Co-signer</a></li>
+<li>Fireblocks 공식 docs: <a href="https://developers.fireblocks.com/reference/api-cosigner-maintenance-sgx">SGX API Co-signer Maintenance</a></li>
+<li>Fireblocks 공식 docs: <a href="https://developers.fireblocks.com/docs/create-api-co-signer-callback-handler">Setup API Co-signer Callback Handler</a></li>
+<li>설치 스크립트 (<code>sources/fireblocks/cosigner-v2026.03.02</code>) 코드 동작 분석</li>
+</ul>
+<p>
+운영 정책 (upgrade 시점 · proxy 이중화 · Recovery key HSM 보관 · attestation 모니터링 등) 은 본 wiki 범위 밖 — 별도 운영 절차서 / <a href="https://developers.fireblocks.com/reference/api-cosigner-troubleshooting">Fireblocks Troubleshooting</a> 참조.
+</p>
+
+<h3>11.4 Callback Handler (Hosted MPC 운영 검증)</h3>
+<p>
+Hosted MPC 의 API Co-signer 는 거래 서명 직전에 은행의 Callback Handler endpoint 를 호출하여 마지막 게이트로 추가 검증을 받음. 은행이 자체 정책 (KYC / 한도 / counterparty / 시간대 등) 을 Fireblocks TAP 위에 한 번 더 적용 가능.
+</p>
+<ul>
+<li>예: TAP 통과한 거래에 대해 (a) 송신자 KYC 완료 여부 재확인, (b) 24h 누적 한도 재계산, (c) 채널계 / 정산계 잔액 일치 확인 → 모두 OK 시에만 서명 진행</li>
+<li>은행이 Endpoint URL + RSA 2048 keypair 를 생성 → <strong>public key 를 Fireblocks 에 등록</strong> (Fireblocks 가 발급하는 게 아님). private key 는 은행 secret manager (예: AWS Secrets Manager) 에 별도 보관 — 자세한 컬럼 정의는 <a href="tables-user.html">8. Internal Users</a> 8.5 절 의 <code>callback_handler_meta</code> 참조</li>
+<li>secure communication (mTLS) 강제 — 통신 자체가 양방향 인증</li>
+</ul>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/create-api-co-signer-callback-handler">Create API Co-signer Callback Handler</a> ·
+<a href="https://developers.fireblocks.com/reference/cosigner-callbackhandler-secure-communication-authentication">Callback Handler Secure Communication</a>
+</p>
+
+<h3>11.5 Workspace Keys Backup — Backup 매커니즘</h3>
+<p>
+Fireblocks 가 제공하는 자산 회복 매커니즘. mobile device 분실 / Co-signer 손상 등의 시나리오 대응.
+</p>
+
+<h4>매커니즘 (저자 정리)</h4>
+<ul>
+<li>Owner / Admin 이 "Create new backup" 시작 (Fireblocks Console)</li>
+<li><strong>Recovery passphrase</strong> (사용자 입력) 로 backup 암호화</li>
+<li>Fireblocks 가 backup 의 encrypted form 을 보관</li>
+<li>Mobile device 분실 시 새 device 에 recovery passphrase 입력 → 복원</li>
+</ul>
+<p>
+출처: Fireblocks 공식 — <em>"Workspace Keys Backup"</em> / <em>"MPC Setup and Backup"</em> (Help Center)
+</p>
+
+<h4><code>admin.workspace_backup_meta</code></h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>backup_id (PK)</td><td>uuid</td><td>등록 후 변경 불가</td><td>은행 내부 ID</td></tr>
+<tr><td>workspace_code</td><td>varchar</td><td>등록 후 변경 불가</td><td>config 의 workspace key</td></tr>
+<tr><td>vendor_backup_uuid</td><td>varchar</td><td>등록 후 변경 불가</td><td>Fireblocks 가 발급한 backup ID</td></tr>
+<tr><td>created_by</td><td>varchar</td><td>등록 후 변경 불가</td><td>backup 생성 시작자 (vendor_user_id)</td></tr>
+<tr><td>passphrase_storage_location</td><td>varchar</td><td>수정 가능</td><td>recovery passphrase 의 물리 보관 위치 (예: "은행 보안 구역 safe #3") — <strong>passphrase 자체는 DB 에 절대 저장 금지</strong></td></tr>
+<tr><td>passphrase_custodians</td><td>jsonb</td><td>수정 가능</td><td>passphrase 를 알고 있는 사람 (custodian) 목록</td></tr>
+<tr><td>created_at</td><td>timestamptz</td><td>등록 후 변경 불가</td><td>backup 생성 시점</td></tr>
+<tr><td>last_tested_at</td><td>timestamptz</td><td>수정 가능 (NULL 가능)</td><td>마지막 recovery drill 시점 (저자 권장 — 분기별 1회 drill)</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: Fireblocks 공식 — <em>"Workspace Keys Backup"</em> (Help Center) ·
+<em>"MPC Setup and Backup"</em>
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ Recovery passphrase 의 보관</div>
+<ul style="margin-bottom:0">
+<li><strong>절대 DB / digital storage 에 저장 금지</strong> — 물리 보안 구역의 sealed envelope 권장</li>
+<li><strong>다수 custodian 분할 보관 권장</strong> — Shamir's Secret Sharing 또는 split-phrase 패턴</li>
+<li><strong>정기 recovery drill</strong> — 분기별 1회 testnet workspace 에서 실제 recovery 절차 검증</li>
+<li><strong>SPOC (Single Point of Compromise) 인식</strong> — "한 번이라도 노출되면 시스템 전체가 위험해지는 critical 지점". recovery passphrase 가 한 번이라도 노출되면 자산 노출로 간주 (Fireblocks 공식 표현: "private key being considered exposed and compromised")</li>
+</ul>
+</div>
+
+<h3>11.6 Recovery — Fireblocks Recovery Utility</h3>
+<p>
+Fireblocks 의 <strong>Recovery Utility</strong> (공식 명칭 — Disaster Recovery Utility 로 통칭되기도 함) 는 자산 회복용 도구. <strong>★ SPOC 경고</strong> — 정기 사용 금지, 1 회 사용도 키 노출 risk 로 간주.
+</p>
+<ul>
+<li>반드시 <strong>offline air-gapped machine</strong> 에서만 실행. Fireblocks 공식: "Performing this procedure on an online machine will result in your private key being considered exposed and compromised"</li>
+<li>4 secrets 매개 — Recovery Kit ZIP + RSA private key + Mobile App Recovery Passphrase + RSA Private Key Passphrase</li>
+<li>사용 후 해당 machine 폐기 또는 disk wipe</li>
+<li>extended private keys (xprv + fprv) 재구성 가능 — 즉 사용자가 키 자체를 손에 쥐는 상태</li>
+<li>은행 정책: Recovery Utility 사용 = Admin Quorum 전원 동의 + 외부 감사 ceremony</li>
+</ul>
+<p>
+출처: Fireblocks 공식 — <em>"Recovery Utility"</em> · <em>"Workspace Recovery"</em> (Help Center)
+</p>
+
+<h4><code>admin.recovery_event_log</code> (저자 권장)</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>event_id (PK)</td><td>uuid</td><td>등록 후 변경 불가</td><td>은행 내부 ID</td></tr>
+<tr><td>event_type</td><td>enum</td><td>등록 후 변경 불가</td><td><code>backup_created / recovery_drill / actual_recovery / device_migration</code></td></tr>
+<tr><td>workspace_code</td><td>varchar</td><td>등록 후 변경 불가</td><td>config 의 workspace key</td></tr>
+<tr><td>initiated_by</td><td>varchar</td><td>등록 후 변경 불가</td><td>시작자 (Admin Quorum quorum 의 leader employee_id)</td></tr>
+<tr><td>witness_list</td><td>jsonb</td><td>등록 후 변경 불가</td><td>ceremony 참관인 (외부 감사인 포함)</td></tr>
+<tr><td>video_recording_ref</td><td>varchar</td><td>등록 후 변경 불가</td><td>ceremony 녹화 파일 reference (외부 감사 대응)</td></tr>
+<tr><td>started_at</td><td>timestamptz</td><td>등록 후 변경 불가</td><td>ceremony 시작</td></tr>
+<tr><td>completed_at</td><td>timestamptz</td><td>수정 가능 (NULL 가능)</td><td>ceremony 완료</td></tr>
+<tr><td>result</td><td>enum</td><td>수정 가능</td><td><code>success / partial / failed</code></td></tr>
+<tr><td>findings</td><td>text</td><td>수정 가능</td><td>ceremony 결과 / 발견 사항</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+event 자체가 append-only audit record — 모든 recovery ceremony 는 row 1 개로 영구 보존 (5년 이상). external auditor 검증용.
+</p>
+
+<h3>11.7 Key Link 의 특수성 (별도 reference)</h3>
+<p>
+Key Link product 는 customer-held HSM 모델로 위의 모든 룰이 다르게 적용됨:
+</p>
+<ul>
+<li><strong>Backup 은 HSM vendor 가 제공</strong> — Thales Luna 의 backup HSM 또는 smart card 백업</li>
+<li><strong>Workspace Keys Backup 매커니즘 미적용</strong> (Fireblocks 가 키 share 0 이므로)</li>
+<li><strong>Validation Key + Signing Key 2 key 모델</strong></li>
+<li><strong>HSM 자체가 SPOC</strong> — HSM 침해 / 손상 = 자산 손실</li>
+</ul>
+<p>
+상세: <a href="../fireblocks-key-link-bank-design/">Fireblocks Key Link — Customer HSM 통합</a> reference
+</p>
+
+<h3>11.8 알고리즘 매핑 (asset → algorithm)</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>알고리즘</th><th>커브</th><th>주요 자산</th></tr></thead>
+<tbody>
+<tr><td>ECDSA</td><td>SECP256K1</td><td>BTC, ETH, USDC (ERC-20), MATIC, BNB</td></tr>
+<tr><td>EdDSA</td><td>Ed25519</td><td>SOL, XLM, NEAR, ALGO, ADA</td></tr>
+<tr><td>ECDSA</td><td>SECP256R1 (NIST P-256)</td><td>특정 enterprise 자산 (소수)</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/api-reference/blockchains-&amp;-assets/list-assets">List Assets API</a>
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ Forbidden — 은행 DB 에 저장하지 말 것</div>
+<p style="margin-bottom:0">다음은 어떤 column 에도 저장 금지 (직접 구축의 F-bid storage class 와 동일):</p>
+<ul style="margin-bottom:0">
+<li>MPC private key share (어떤 party 의 share 도)</li>
+<li>extended private keys (xprv, fprv)</li>
+<li>Recovery passphrase</li>
+<li>HSM PIN, PKCS#11 access token (Key Link 시)</li>
+<li>Validation Key / Signing Key private (Key Link 시)</li>
+<li>Mobile device KeyChain dump</li>
+<li>Fireblocks API secret 평문</li>
+<li>SGX enclave sealing key</li>
+</ul>
+</div>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-governance.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">10. Roles · Quorum · Policy</span></a>
+<a class="page-nav-link page-nav-next" href="sm-transaction.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">12. Transaction State + 14-step</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

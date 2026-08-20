@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>6. Reorg · Finality — 블록체인 인덱서 설계 가이드</title>
+<meta content="블록체인 reorg 와 finality — 인터랙티브 시나리오 + 인덱서의 5 가지 처리 전략." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Foundation</h3><ul>
+<li><a href="what-is-indexer.html">1. 인덱서란 무엇인가</a></li>
+<li><a href="requirements.html">2. 요구사항</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Implementation</h3><ul>
+<li><a href="implementation-patterns.html">3. 4 구현 패턴</a></li>
+<li><a href="reference-architecture.html">4. 참조 아키텍처</a></li>
+<li><a href="data-model.html">5. 데이터 모델</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Operations</h3><ul>
+<li><a class="active" href="reorg-finality.html">6. Reorg · Finality</a></li>
+<li><a href="performance-scalability.html">7. 성능 · 확장성</a></li>
+<li><a href="monitoring-ops.html">8. 운영 · 모니터링</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Industry Cases</h3><ul>
+<li><a href="exchange-cases.html">9. 자체 인덱서 운영</a></li>
+<li><a href="saas-cases.html">10. 인덱서 / 데이터 인프라 vendor</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Infrastructure</h3><ul>
+<li><a href="infrastructure-spec.html">11. 인프라 · 스펙</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Portability</h3><ul>
+<li><a href="portability.html">12. 벤더 교체 · 포트 설계</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="reorg-finality">
+<h2>6. Reorg · Finality</h2>
+<span class="section-subtitle">인덱서가 가장 어려워하는 부분 — 시나리오와 애니메이션으로 이해</span>
+
+<h3>6.1 한 줄 요약</h3>
+
+<p><strong>Reorg</strong> (chain reorganization) = "이미 확정된 줄 알았던 블록이 chain head 교체로 사라지는 사고". <strong>Finality</strong> = "이 시점 이후로는 reorg 가 불가능한 안전 지점".</p>
+
+<p>강조해야 할 점 — 일반 시스템에서는 commit 된 데이터가 사라지는 것은 비상 사태지만, <strong>블록체인의 reorg 는 정상 운영의 일부</strong>다. Ethereum mainnet 에서 1-block reorg 는 자주 발생한다. 인덱서는 reorg 를 예외가 아닌 정규 동작으로 다뤄야 한다.</p>
+
+<h3>6.2 왜 일어나는가</h3>
+
+<p>블록체인은 분산 합의 시스템. 여러 노드가 동시에 새 블록을 만들 수 있다.</p>
+
+<ul>
+  <li>(a) proposer A 가 블록 N+3 을 만들어 broadcast</li>
+  <li>(b) 동시에 proposer B 가 다른 블록 N+3' 을 만들어 broadcast</li>
+  <li>(c) 네트워크의 일부는 A 의 N+3 을, 다른 일부는 B 의 N+3' 을 먼저 받음</li>
+  <li>(d) 잠시 두 chain 이 공존. 더 긴 (또는 더 무거운) chain 이 canonical 로 결정</li>
+</ul>
+
+<p>탈락한 쪽의 블록 = <strong>orphan block (고아 블록)</strong> — canonical chain 에서 떨어져 나간 블록. orphan 안에 들어있던 트랜잭션은 mempool 로 돌아가거나 영영 사라질 수 있다.</p>
+
+<h3>6.3 시나리오 — 인터랙티브 애니메이션</h3>
+
+<p>아래는 <strong>수신 주소 0x1a2b... 로의 USDC 100 입금 tx</strong> 가 블록 19,345,678 에 proposed 된 후 reorg 가 일어나는 6 단계 시나리오. <strong>Next</strong> 버튼을 눌러 단계를 진행하면 chain 상태가 변한다.</p>
+
+<div class="reorg-stage">
+  <div class="reorg-stage-header">
+    <span class="reorg-stage-step" id="stepNum">STEP 0 / 5</span>
+    <span class="reorg-stage-title" id="stepTitle">정상 운영 — chain 의 안정 상태</span>
+  </div>
+
+  <div class="reorg-canvas">
+    <div class="reorg-chain">
+      <div class="reorg-chain-label">Canonical →</div>
+      <div class="reorg-block confirmed" id="b675"><div class="num">19,345,675</div><div class="hash">0xa1...</div></div>
+      <div class="reorg-arrow">→</div>
+      <div class="reorg-block confirmed" id="b676"><div class="num">19,345,676</div><div class="hash">0xa2...</div></div>
+      <div class="reorg-arrow">→</div>
+      <div class="reorg-block confirmed" id="b677"><div class="num">19,345,677</div><div class="hash">0xa3...</div></div>
+      <div class="reorg-arrow">→</div>
+      <div class="reorg-block" id="b678"><div class="num">19,345,678</div><div class="hash">0xa4...</div></div>
+      <div class="reorg-arrow" id="arr-canon-678">→</div>
+      <div class="reorg-block" id="b679" style="display:none"><div class="num">19,345,679</div><div class="hash">0xa5...</div></div>
+      <div class="reorg-arrow" id="arr-canon-679" style="display:none">→</div>
+      <div class="reorg-block" id="b680" style="display:none"><div class="num">19,345,680</div><div class="hash">0xa6...</div></div>
+    </div>
+    <div class="reorg-chain" id="forkChain" style="display:none">
+      <div class="reorg-chain-label">Fork →</div>
+      <div style="width: calc(80px * 3 + 24px * 3); flex-shrink: 0;"></div>
+      <div class="reorg-block fork" id="b678f"><div class="num">19,345,678'</div><div class="hash">0xb4...</div></div>
+      <div class="reorg-arrow" id="arr-fork-678">→</div>
+      <div class="reorg-block fork" id="b679f" style="display:none"><div class="num">19,345,679'</div><div class="hash">0xb5...</div></div>
+      <div class="reorg-arrow" id="arr-fork-679" style="display:none">→</div>
+      <div class="reorg-block fork" id="b680f" style="display:none"><div class="num">19,345,680'</div><div class="hash">0xb6...</div></div>
+    </div>
+  </div>
+
+  <div class="reorg-narrative" id="narrative">
+    <p>블록 19,345,675 ~ 19,345,677 까지는 충분한 confirmation 이 쌓여 confirmed. 인덱서의 cursor 는 블록 19,345,677 에 있다.</p>
+    <p>아직 평화로운 상태. 모든 read API 가 정상 응답.</p>
+  </div>
+
+  <div class="reorg-tx-status" id="txStatus">
+    <strong>입금 tx (0xabc...def)</strong> — 아직 mempool. 어떤 블록에도 포함 안 됨.
+  </div>
+
+  <div class="reorg-controls">
+    <button class="reorg-btn" id="btnPrev" disabled>← Prev</button>
+    <button class="reorg-btn primary" id="btnNext">Next →</button>
+    <button class="reorg-btn" id="btnReset">Reset</button>
+    <span class="reorg-progress" id="progress">0 / 5</span>
+  </div>
+</div>
+
+<h3>6.4 시나리오 정리 — 무엇이 일어났나</h3>
+
+<p>위 6 단계가 보여주는 것:</p>
+
+<ol>
+  <li><strong>Step 0</strong> — 안정 상태. 인덱서는 일상 운영.</li>
+  <li><strong>Step 1</strong> — 입금 tx 가 블록 N+3 (19,345,678) 에 proposed. <em>인덱서 입장에서</em> "입금 발견, 1 conf".</li>
+  <li><strong>Step 2</strong> — 다른 proposer 가 동시에 N+3' 을 만들어 broadcast. 네트워크에 두 chain head 존재. 일부 노드는 A 를, 다른 노드는 B 를 본다.</li>
+  <li><strong>Step 3</strong> — Fork chain 이 더 빠르게 자라남 (N+4'). 이제 fork 가 더 길다 (length 2 vs 1). longest-chain rule 에 의해 fork 가 canonical 후보가 됨.</li>
+  <li><strong>Step 4</strong> — <strong>Reorg 발생!</strong> 원래 chain 의 N+3, N+4 → orphan. fork 의 N+3', N+4' → canonical. <em>입금 tx 는 orphan block 에 있었음 → mempool 로 돌아감</em>.</li>
+  <li><strong>Step 5</strong> — 입금 tx 가 새 canonical chain 의 N+5 에 다시 proposed. 인덱서가 다시 "입금 발견".</li>
+</ol>
+
+<h3>6.5 인덱서가 reorg 를 처리하는 5 가지 접근</h3>
+
+<h4>(1) Confirmation 정책 — 충분히 기다리기</h4>
+<p>가장 단순. "block N 의 이벤트는 <strong>chain head 가 N+K 에 도달</strong> 하기 전까지는 read API 에 노출 안 함" (즉 K 번의 confirmation 이 쌓이기 전까지). K 는 체인 별 다름.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>체인</th><th>일반 confirmation 권장</th><th>이유</th></tr></thead>
+<tbody>
+<tr><td>Bitcoin</td><td>3 (일반) ~ 6 (고액)</td><td>10분 × 6 = 60분 대기</td></tr>
+<tr><td>Ethereum PoS</td><td>32 ~ 64 (epoch 1-2)</td><td>finality 까지 약 13-26분</td></tr>
+<tr><td>Polygon PoS</td><td>~ 256</td><td>checkpoint 까지 약 30분</td></tr>
+<tr><td>Solana</td><td>1 (confirmed) ~ 32 (finalized)</td><td>commitment level 정책</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>장점</strong> — 구현 가장 간단.</p>
+<p><strong>단점</strong> — 사용자가 느린 confirmation 까지 기다림.</p>
+
+<h4>(2) Add/Remove event sequence (Coinbase ChainStorage 방식)</h4>
+<p>블록을 overwrite 하지 않고, 추가 (+) / 제거 (-) 이벤트의 sequence 로 적재. 인덱서 DB 는 이 sequence 를 따라가며 자체 row 를 INSERT / DELETE.</p>
+
+<p>핵심 규칙:</p>
+<ul>
+  <li><code>+ block N</code> → 인덱서 DB 에 그 블록의 tx 들을 <strong>INSERT</strong></li>
+  <li><code>- block N</code> → 인덱서 DB 에서 그 블록의 tx 들을 <strong>DELETE</strong></li>
+</ul>
+
+<p><strong>아래 시나리오</strong> — 6.3 절의 reorg 시나리오와 동일. <code>0xa</code> 계열 chain 이 canonical 이었다가 <code>0xb</code> 계열 chain 이 더 길어지면서 canonical 이 교체되는 상황. 블록 번호는 같지만 <strong>hash 가 다르면 다른 블록</strong>.</p>
+
+<div class="method-viz">
+  <div class="method-stage stage-before">
+    <div class="method-stage-label">T1 — <code>0xa</code> 계열 canonical</div>
+    <div class="method-step"><strong>Raw event log</strong> (append-only)</div>
+    <div class="method-rows">
+      <div class="row add">+ block 19345678 (<strong>0xa</strong>4) [deposit tx]</div>
+      <div class="row add">+ block 19345679 (<strong>0xa</strong>5)</div>
+      <div class="row add">+ block 19345680 (<strong>0xa</strong>6)</div>
+    </div>
+    <div class="method-step" style="margin-top:8px"><strong>인덱서 DB</strong> (token_transfers)</div>
+    <div class="method-rows">
+      <div class="row new">INSERT (block=19345678, hash=0xa4, deposit tx)</div>
+    </div>
+  </div>
+  <div class="method-stage stage-event">
+    <div class="method-stage-label">T2 — <code>0xa</code> 계열 orphan 됨</div>
+    <div class="method-step"><strong>Raw event log</strong> (− 이벤트 append)</div>
+    <div class="method-rows">
+      <div class="row remove">− block 19345680 (<strong>0xa</strong>6)</div>
+      <div class="row remove">− block 19345679 (<strong>0xa</strong>5)</div>
+      <div class="row remove">− block 19345678 (<strong>0xa</strong>4)</div>
+    </div>
+    <div class="method-step" style="margin-top:8px"><strong>인덱서 DB</strong> (반영)</div>
+    <div class="method-rows">
+      <div class="row remove">DELETE WHERE block=19345678 AND hash=0xa4</div>
+      <div class="row" style="color:var(--text-tertiary)">(다른 두 블록엔 tx 없어 no-op)</div>
+    </div>
+  </div>
+  <div class="method-stage stage-after">
+    <div class="method-stage-label">T3 — <code>0xb</code> 계열 canonical</div>
+    <div class="method-step"><strong>Raw event log</strong> (새 chain append)</div>
+    <div class="method-rows">
+      <div class="row add">+ block 19345678 (<strong>0xb</strong>4)</div>
+      <div class="row add">+ block 19345679 (<strong>0xb</strong>5)</div>
+      <div class="row add">+ block 19345680 (<strong>0xb</strong>6)</div>
+      <div class="row add">+ block 19345681 (<strong>0xb</strong>7) [deposit re-mined]</div>
+    </div>
+    <div class="method-step" style="margin-top:8px"><strong>인덱서 DB</strong> (반영)</div>
+    <div class="method-rows">
+      <div class="row new">INSERT (block=19345681, hash=0xb7, deposit tx)</div>
+    </div>
+  </div>
+</div>
+
+<p><strong>주의 — block_number 만 봐서는 안 됨</strong>. T1 의 <code>(19345678, 0xa4)</code> 와 T3 의 <code>(19345678, 0xb4)</code> 는 같은 block_number 지만 다른 hash 즉 다른 블록. T2 의 <code>- (19345678, 0xa4)</code> 는 같은 0xa4 가 canonical 에서 빠졌다는 통보 (블록 자체가 사라진 게 아니라 canonical chain 에서 제외됨).</p>
+
+<p>핵심 — <strong>raw log 는 수정 ✗, 오로지 append</strong>. 인덱서 DB 는 + / − 이벤트를 받아 단순한 INSERT / DELETE 만 적용. 결과적으로 인덱서 DB 의 최종 상태는 새 canonical chain 과 자동으로 일치.</p>
+
+<p><strong>장점</strong> — raw log 는 완전한 audit trail (모든 + / − 가 timestamp 와 함께 보존). 새로운 인덱서 / 분석 consumer 가 같은 log 를 처음부터 replay 하면 동일 상태 재구성 가능.</p>
+<p><strong>단점</strong> — consumer (인덱서 DB write 로직) 가 INSERT / DELETE 양쪽을 idempotent 하게 처리해야 함 (같은 + 이벤트 두 번 받아도 row 중복 ✗).</p>
+
+<h4>(3) Soft-delete + 재계산 (Reverted flag)</h4>
+<p>row 를 삭제하지 않고 <code>reverted=true</code> 로 표시. 새 블록 hash 의 row 추가. read API 는 <code>WHERE reverted = false</code> 필터.</p>
+
+<div class="method-viz">
+  <div class="method-stage stage-before">
+    <div class="method-stage-label">Before — token_transfers</div>
+    <div class="method-rows">
+      <div class="row">block_num=19345678, hash=0xa4, reverted=false</div>
+    </div>
+    <div class="method-step"><span class="step-num">read</span><code>WHERE reverted=false</code> → 1 row 노출</div>
+  </div>
+  <div class="method-stage stage-event">
+    <div class="method-stage-label">Reorg 시점</div>
+    <div class="method-rows">
+      <div class="row reverted">block_num=19345678, hash=0xa4, reverted=TRUE</div>
+    </div>
+    <div class="method-step"><span class="step-num">UPDATE</span> 기존 row 의 <code>reverted=true</code> marking</div>
+  </div>
+  <div class="method-stage stage-after">
+    <div class="method-stage-label">After — 새 block 적재</div>
+    <div class="method-rows">
+      <div class="row reverted">block_num=19345678, hash=0xa4, reverted=TRUE</div>
+      <div class="row new">block_num=19345678, hash=0xb4, reverted=false</div>
+    </div>
+    <div class="method-step"><span class="step-num">read</span><code>WHERE reverted=false</code> → 새 row 만 노출</div>
+  </div>
+</div>
+
+<p>Row 는 두 가지 hash 가 공존하지만 read query 가 <code>reverted=false</code> 만 보므로 사용자에게는 항상 canonical 데이터만 노출. orphan row 도 보존되어 audit / 분석 가능.</p>
+
+<p><strong>장점</strong> — query 가 단순 (filter 하나만).</p>
+<p><strong>단점</strong> — 모든 projection 에 reverted flag 필요 + 모든 read 에 WHERE 조건 강제.</p>
+
+<h4>(4) Snapshot-and-rollback</h4>
+<p>finalized 가 아닌 모든 데이터를 별도 schema 에 staging. finality 도달 시 main schema 로 commit. reorg 시 staging 만 rollback.</p>
+
+<div class="method-viz">
+  <div class="method-stage stage-before">
+    <div class="method-stage-label">T1 — Pending</div>
+    <div class="method-step"><strong>staging</strong></div>
+    <div class="method-rows">
+      <div class="row pending">block N (0xa4)</div>
+      <div class="row pending">block N+1 (0xa5)</div>
+    </div>
+    <div class="method-step" style="margin-top:8px"><strong>main</strong></div>
+    <div class="method-rows">
+      <div class="row" style="color:var(--text-tertiary)">(비어있음 — finality 대기)</div>
+    </div>
+  </div>
+  <div class="method-stage stage-event">
+    <div class="method-stage-label">T2 — Reorg!</div>
+    <div class="method-step"><strong>staging</strong> — orphan 만 삭제</div>
+    <div class="method-rows">
+      <div class="row remove">DELETE block_hash=0xa4</div>
+      <div class="row remove">DELETE block_hash=0xa5</div>
+    </div>
+    <div class="method-step" style="margin-top:8px"><strong>main</strong> — 영향 없음</div>
+    <div class="method-rows">
+      <div class="row" style="color:var(--text-tertiary)">(여전히 비어있음)</div>
+    </div>
+  </div>
+  <div class="method-stage stage-after">
+    <div class="method-stage-label">T3 — Finality 도달</div>
+    <div class="method-step"><strong>staging</strong> → <strong>main</strong> commit</div>
+    <div class="method-rows">
+      <div class="row new">block N (0xb4) → main</div>
+      <div class="row new">block N+1 (0xb5) → main</div>
+    </div>
+    <div class="method-step" style="margin-top:8px"><strong>main</strong> — finalized 데이터</div>
+    <div class="method-rows">
+      <div class="row committed">block N (0xb4)</div>
+      <div class="row committed">block N+1 (0xb5)</div>
+    </div>
+  </div>
+</div>
+
+<p>핵심 — <strong>main schema 에는 finalized 데이터만</strong> 들어감. read API 가 main 만 보면 reorg 영향을 절대 안 받음 (대신 finality 시간 만큼 데이터 노출 지연).</p>
+
+<p><strong>장점</strong> — main 은 항상 finalized, 정합성 보장 가장 강함.</p>
+<p><strong>단점</strong> — staging vs main 두 schema 의 schema 일관성 부담 + finality 시간만큼 read API 지연.</p>
+
+<h4>(5) Replay-from-cursor</h4>
+<p>raw log 를 cursor 와 함께 보관. reorg 시 affected block 부터 projection 만 다시 돌림.</p>
+
+<div class="method-cursor-track">
+  <div><strong>T1 — Reorg 전</strong></div>
+  <div class="cursor-blocks" style="margin-top:8px">
+    <span class="blk confirmed">N-1</span>
+    <span class="blk confirmed">N</span>
+    <span class="blk confirmed">N+1 (0xa5)</span>
+    <span class="blk confirmed">N+2 (0xa6)</span>
+  </div>
+  <div class="cursor-pointer" style="padding-left: calc(80px * 3 + 12px); margin-top:4px">↑ projection cursor</div>
+</div>
+
+<div class="method-cursor-track">
+  <div><strong>T2 — Reorg 감지!</strong> orphan block 발견 (N+1, N+2 가 새 chain 에서 다른 hash)</div>
+  <div class="cursor-blocks" style="margin-top:8px">
+    <span class="blk confirmed">N-1</span>
+    <span class="blk confirmed">N</span>
+    <span class="blk orphan">N+1 (0xa5)</span>
+    <span class="blk orphan">N+2 (0xa6)</span>
+    <span class="blk new">N+1 (0xb5)</span>
+    <span class="blk new">N+2 (0xb6)</span>
+  </div>
+  <div class="cursor-pointer" style="padding-left: calc(80px * 1 + 4px); margin-top:4px">↑ cursor rewind to N (orphan 직전)</div>
+</div>
+
+<div class="method-cursor-track">
+  <div><strong>T3 — 새 canonical 로 replay</strong></div>
+  <div class="cursor-blocks" style="margin-top:8px">
+    <span class="blk confirmed">N-1</span>
+    <span class="blk confirmed">N</span>
+    <span class="blk orphan">N+1 (0xa5)</span>
+    <span class="blk orphan">N+2 (0xa6)</span>
+    <span class="blk confirmed">N+1 (0xb5)</span>
+    <span class="blk confirmed">N+2 (0xb6)</span>
+  </div>
+  <div class="cursor-pointer" style="padding-left: calc(80px * 5 + 20px); margin-top:4px">↑ cursor 가 새 canonical 의 tip 까지 진행</div>
+</div>
+
+<p>Raw log 는 모든 block (orphan 포함) 을 보관. Projection 의 cursor 를 reorg point 직전으로 rewind 한 뒤 새 canonical chain 만 따라가며 다시 적용. projection 의 read model 은 자동으로 최신 canonical state 로 수렴.</p>
+
+<p><strong>장점</strong> — projection 이 여러 개라도 동일 패턴 적용. 새 projection 추가 시도 같은 메커니즘.</p>
+<p><strong>단점</strong> — replay 시간이 reorg depth 에 비례 (10-block reorg 면 10 block 분 replay).</p>
+
+<h4>5 방식 trade-off 비교</h4>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th style="width:16%">방식</th><th>핵심 메커니즘</th><th>장점</th><th>단점</th><th>대표 사용 사례</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>(1) Confirmation 정책</strong></td>
+  <td>K conf 쌓일 때까지 read API 에 노출 안 함</td>
+  <td>구현 가장 단순. projection schema 변경 없음</td>
+  <td>사용자가 K 만큼 기다림 (Bitcoin = ~60 분)</td>
+  <td>거의 모든 거래소 / 지갑. Bitcoin K=3~6 표준, Upbit / Bithumb / Coinone / Korbit 의 <code>minimum_deposit_confirmations</code>, Fireblocks DCCP</td>
+</tr>
+<tr>
+  <td><strong>(2) Add/Remove sequence</strong></td>
+  <td>raw log 에 + / − 이벤트 append</td>
+  <td>완전한 audit trail. consumer 가 자기 속도로</td>
+  <td>consumer 가 add/remove 둘 다 idempotent 처리</td>
+  <td><strong>Coinbase ChainStorage</strong> — 공식 blog Part 1 에 "block overwrite ✗, add/remove event sequence" 명시</td>
+</tr>
+<tr>
+  <td><strong>(3) Soft-delete + Reverted flag</strong></td>
+  <td>row 보존 + <code>reverted=true</code> marking</td>
+  <td>read query 단순 (filter 하나)</td>
+  <td>모든 projection 에 flag 필요. 모든 read 에 WHERE 강제</td>
+  <td><strong>The Graph / Graph Node</strong> entity versioning, <strong>SubQuery</strong> 자동 rollback, Blockscout 의 internal tx</td>
+</tr>
+<tr>
+  <td><strong>(4) Snapshot-and-rollback</strong></td>
+  <td>staging + main 두 schema. finality 시 main commit</td>
+  <td>main 은 항상 finalized — 정합성 가장 강함</td>
+  <td>두 schema 의 일관성 부담 + read 지연</td>
+  <td><strong>Firehose / StreamingFast</strong> — finalized vs unfinalized 분리, Ethereum <code>finalized</code> tag 활용, 금융 / 컴플라이언스 영역</td>
+</tr>
+<tr>
+  <td><strong>(5) Replay-from-cursor</strong></td>
+  <td>cursor rewind + 새 chain replay</td>
+  <td>projection 늘어나도 같은 패턴 적용</td>
+  <td>replay 시간 = reorg depth 에 비례</td>
+  <td><strong>Kafka 기반 인덱서</strong> (offset 으로 cursor), <strong>Firehose</strong> cursor-based resumption, <strong>SubQuery</strong> worker checkpoint, <strong>Korbit</strong> Kafka event sourcing + Temporal</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<p style="font-size:12.5px;color:var(--text-tertiary);margin-top:8px">★ 위 사용 사례는 vendor 공식 docs / tech blog 기준. 자세한 비교는 <a href="exchange-cases.html">9. 자체 인덱서 운영</a> 및 <a href="saas-cases.html">10. 인덱서 / 데이터 인프라 vendor</a> 참조.</p>
+
+<h4>5 방식의 시각적 차이 요약</h4>
+
+<div class="method-viz">
+  <div class="method-stage stage-before">
+    <div class="method-stage-label">(1) Confirmation</div>
+    <div class="method-rows">
+      <div class="row">block 적재 보류</div>
+      <div class="row">K 후 노출</div>
+    </div>
+    <div class="method-step">data 흐름: <code>wait → emit</code></div>
+  </div>
+  <div class="method-stage stage-before">
+    <div class="method-stage-label">(2) Add/Remove</div>
+    <div class="method-rows">
+      <div class="row add">+ append</div>
+      <div class="row remove">− append</div>
+      <div class="row add">+ append</div>
+    </div>
+    <div class="method-step">log: <code>append only</code></div>
+  </div>
+  <div class="method-stage stage-before">
+    <div class="method-stage-label">(3) Soft-delete</div>
+    <div class="method-rows">
+      <div class="row reverted">row marked</div>
+      <div class="row new">new row</div>
+    </div>
+    <div class="method-step">read: <code>WHERE reverted=false</code></div>
+  </div>
+  <div class="method-stage stage-before">
+    <div class="method-stage-label">(4) Snapshot</div>
+    <div class="method-rows">
+      <div class="row pending">staging</div>
+      <div class="row committed">→ main (final 시)</div>
+    </div>
+    <div class="method-step">read: <code>main only</code></div>
+  </div>
+  <div class="method-stage stage-before" style="grid-column: span 3">
+    <div class="method-stage-label">(5) Replay-from-cursor</div>
+    <div class="method-step" style="margin-top:6px">cursor rewind → 새 canonical chain replay → projection 자동 수렴</div>
+  </div>
+</div>
+
+<h3>6.6 체인 별 finality 모델</h3>
+
+<p>finality 의 정의가 체인마다 다르다. 인덱서는 이 차이를 알아야 한다.</p>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>체인 / 합의</th><th>Finality 모델</th><th>인덱서 의미</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Bitcoin (PoW)</strong></td>
+  <td>Probabilistic — N block 이 쌓일수록 reorg 확률 ↓</td>
+  <td>K=6 정도면 실용적 finality</td>
+</tr>
+<tr>
+  <td><strong>Ethereum (PoS, Gasper)</strong></td>
+  <td>Deterministic — finalized 블록 표시 명시</td>
+  <td><code>finalized</code> tag query 가능. ~ 2 epoch.</td>
+</tr>
+<tr>
+  <td><strong>Solana</strong></td>
+  <td>3 commitment level — <code>processed</code> / <code>confirmed</code> / <code>finalized</code></td>
+  <td>API 가 commitment 별 명시. <code>finalized</code> = supermajority + lockout.</td>
+</tr>
+<tr>
+  <td><strong>Cosmos / Tendermint</strong></td>
+  <td>Instant finality — 한 블록 commit 되면 final</td>
+  <td>K=1 충분. reorg 거의 없음.</td>
+</tr>
+<tr>
+  <td><strong>Polkadot</strong></td>
+  <td>BABE (block production) + GRANDPA (finality) 분리</td>
+  <td>2 level. confirmed (BABE) / finalized (GRANDPA).</td>
+</tr>
+<tr>
+  <td><strong>Optimistic Rollup (Optimism, Arbitrum)</strong></td>
+  <td>L1 commit + challenge window (7 days)</td>
+  <td>L2 finality 와 L1 finality 분리. trustless finality 는 7 일.</td>
+</tr>
+<tr>
+  <td><strong>ZK Rollup (zkSync, StarkNet)</strong></td>
+  <td>proof 가 L1 에 commit 되면 final</td>
+  <td>~ 수 시간 ~ 일 단위</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<h3>6.7 인덱서가 API 로 노출해야 할 것</h3>
+
+<p>read API 응답에 confirmation level 을 명시. 사용자가 own risk tolerance 에 따라 선택.</p>
+
+<pre><code>GET /api/transfers?account=0x1a2b...&min_confirmations=6
+
+[
+  {
+    "tx_hash": "0xabc...",
+    "amount": "100.00",
+    "asset": "USDC",
+    "block_number": 19345678,
+    "confirmations": 8,
+    "finality": "confirmed",      // 'pending' | 'confirmed' | 'finalized' | 'reverted'
+    "as_of_block": 19345686
+  }
+]</code></pre>
+
+<h3>6.8 흔한 실수</h3>
+
+<ol>
+  <li><strong>1 conf 만으로 confirmed 처리</strong> — reorg 발생 시 cleanup 비용 큼. 최소 6+ confirmation.</li>
+  <li><strong>reorg 시 row UPDATE</strong> — audit log 손실. 항상 새 row + reverted flag.</li>
+  <li><strong>projection 의 cursor 와 raw log 의 cursor 혼동</strong> — 별도 관리.</li>
+  <li><strong>finality 정의를 API 에 안 노출</strong> — consumer 가 "이 데이터 안전한가" 판단 불가.</li>
+  <li><strong>orphan 블록 의 tx 영구 삭제</strong> — 같은 tx 가 mempool 거쳐 새 block 에 다시 들어올 수 있음.</li>
+</ol>
+
+<h3>6.9 다음 페이지</h3>
+
+<p>reorg 처리를 알았으니, 다음 — <a href="performance-scalability.html"><strong>7. 성능 · 확장성</strong></a> 에서 인덱서의 throughput / latency / 처리량 확장.</p>
+
+</section>
+</main>
+</div>
+
+<script>
+(function() {
+  const steps = [
+    {
+      title: '정상 운영 — chain 의 안정 상태',
+      narrative: '<p>블록 19,345,675 ~ 19,345,677 까지는 충분한 confirmation 이 쌓여 confirmed. 인덱서의 cursor 는 블록 19,345,677 에 있다. read API 가 모두 정상 응답 중.</p>',
+      tx: { text: '<strong>입금 tx (0xabc...def)</strong> — 아직 mempool. 어떤 블록에도 포함 안 됨.', cls: '' },
+      blocks: {
+        b678: { state: '', visible: true },
+        'arr-canon-678': { visible: true },
+        b679: { visible: false },
+        'arr-canon-679': { visible: false },
+        b680: { visible: false },
+        forkChain: { visible: false },
+        b678f: { state: 'fork', visible: false },
+        'arr-fork-678': { visible: false },
+        b679f: { visible: false },
+        'arr-fork-679': { visible: false },
+        b680f: { visible: false },
+      }
+    },
+    {
+      title: '새 블록 proposed — 입금 tx 발견',
+      narrative: '<p>proposer A 가 블록 19,345,678 (hash 0xa4) 을 만들었다. 이 블록 안에 0x1a2b... 로의 USDC 100 입금이 포함됨.</p><p>인덱서가 새 블록을 받고 token_transfers 테이블에 row INSERT. confirmation = 1. 아직 확정은 아니다 — 다른 proposer 가 다른 블록을 만들었을 가능성이 있기 때문.</p>',
+      tx: { text: '<strong>입금 tx</strong> — 블록 19,345,678 에 proposed. confirmation = <strong>1</strong>. 인덱서가 pending balance 에 +100 USDC 반영.', cls: '' },
+      blocks: {
+        b678: { state: 'new', visible: true },
+        'arr-canon-678': { visible: true },
+        b679: { visible: false },
+        'arr-canon-679': { visible: false },
+        b680: { visible: false },
+        forkChain: { visible: false },
+      }
+    },
+    {
+      title: '동시에 다른 proposer 가 다른 블록을 만들었다',
+      narrative: '<p>proposer B 가 거의 동시에 다른 블록 19,345,678\' (hash 0xb4) 를 broadcast. 두 블록이 같은 부모 (19,345,677, 0xa3) 를 가리킴. 네트워크는 일시적으로 둘 다 본다.</p><p>인덱서의 노드는 A 의 chain 을 먼저 받았기 때문에 그 쪽을 canonical 로 간주. B 의 블록은 알지만 아직 사용 안 함. 이 시점에서 어느 chain 이 살아남을지 아직 모름.</p>',
+      tx: { text: '<strong>입금 tx</strong> — 여전히 19,345,678 (canonical) 에 있음. confirmation = 1. 인덱서 상태 변화 없음.', cls: '' },
+      blocks: {
+        b678: { state: 'confirmed', visible: true },
+        'arr-canon-678': { visible: true },
+        b679: { state: 'new', visible: true },
+        'arr-canon-679': { visible: false },
+        b680: { visible: false },
+        forkChain: { visible: true },
+        b678f: { state: 'fork', visible: true },
+        'arr-fork-678': { visible: false },
+        b679f: { visible: false },
+        'arr-fork-679': { visible: false },
+        b680f: { visible: false },
+      }
+    },
+    {
+      title: 'Fork chain 이 더 길어졌다',
+      narrative: '<p>proposer B 의 쪽에서 빠르게 다음 블록 19,345,679\' (0xb5) 가 만들어졌다. 이제 fork chain 의 length 가 canonical 보다 길다 (2 vs 1).</p><p>blockchain 의 <strong>longest-chain rule</strong> — 더 긴 chain 이 canonical. 네트워크가 fork 쪽으로 전환하기 시작. 인덱서가 알아챘다면 confirmation 이 적은 블록의 잔고 반영은 이 시점에서 보류해야 한다.</p>',
+      tx: { text: '<strong>입금 tx</strong> — 아직 원래 chain 19,345,678 에 있음. 그러나 그 chain 이 위태로움. <strong>인덱서가 알아챘다면 잔고 반영을 보류해야 한다.</strong>', cls: 'danger' },
+      blocks: {
+        b678: { state: 'confirmed', visible: true },
+        'arr-canon-678': { visible: true },
+        b679: { state: 'confirmed', visible: true },
+        'arr-canon-679': { visible: false },
+        b680: { visible: false },
+        forkChain: { visible: true },
+        b678f: { state: 'fork', visible: true },
+        'arr-fork-678': { visible: true },
+        b679f: { state: 'fork', visible: true },
+        'arr-fork-679': { visible: false },
+        b680f: { visible: false },
+      }
+    },
+    {
+      title: 'REORG! — chain head 가 교체',
+      narrative: '<p>proposer B 쪽이 19,345,680\' (0xb6) 도 만들었다. fork chain length 3 vs canonical 2. <strong>fork 가 새 canonical 이 된다.</strong></p><p>원래 canonical 의 19,345,678 (0xa4), 19,345,679 (0xa5) → <strong>orphan block</strong>. 그 안의 트랜잭션은 mempool 로 돌아간다. 인덱서는 이 두 블록의 raw event 를 <code>reverted=true</code> 로 marking 하고 잔고를 보정한다.</p>',
+      tx: { text: '<strong>입금 tx</strong> — orphan 됐다. 인덱서는 <strong>token_transfers 의 row 를 reverted=true 로 marking</strong>, 잔고 -100 보정. 입금은 잠시 "사라진" 상태.', cls: 'danger' },
+      blocks: {
+        b678: { state: 'orphan', visible: true },
+        'arr-canon-678': { visible: true },
+        b679: { state: 'orphan', visible: true },
+        'arr-canon-679': { visible: false },
+        b680: { visible: false },
+        forkChain: { visible: true },
+        b678f: { state: 'confirmed', visible: true },
+        'arr-fork-678': { visible: true },
+        b679f: { state: 'confirmed', visible: true },
+        'arr-fork-679': { visible: true },
+        b680f: { state: 'new', visible: true },
+      }
+    },
+    {
+      title: '복구 + finality 도달',
+      narrative: '<p>입금 tx 는 mempool 로 돌아갔다가 새 canonical 의 다음 블록 (19,345,681\') 에 다시 proposed. 인덱서가 새로운 row INSERT.</p><p>충분한 confirmation 이 쌓이고 (Ethereum 의 경우 ~ 2 epoch ≈ 약 12.8 분), 이 블록은 <strong>finalized</strong>. 이제 reorg 불가능 — 안전한 시점에 도달.</p>',
+      tx: { text: '<strong>입금 tx</strong> — 새 canonical chain 의 19,345,681\' 에 finalized. 인덱서가 잔고 +100 USDC 다시 반영. 수신자에게 "입금 완료" 알림. <strong>이제 안전.</strong>', cls: 'success' },
+      blocks: {
+        b678: { state: 'orphan', visible: true },
+        'arr-canon-678': { visible: true },
+        b679: { state: 'orphan', visible: true },
+        'arr-canon-679': { visible: false },
+        b680: { visible: false },
+        forkChain: { visible: true },
+        b678f: { state: 'final', visible: true },
+        'arr-fork-678': { visible: true },
+        b679f: { state: 'final', visible: true },
+        'arr-fork-679': { visible: true },
+        b680f: { state: 'final', visible: true },
+      }
+    },
+  ];
+
+  let cur = 0;
+
+  function setBlockState(id, state) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('new', 'confirmed', 'fork', 'orphan', 'final');
+    if (state) el.classList.add(state);
+  }
+  function setVisible(id, vis) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = vis ? '' : 'none';
+  }
+
+  function render() {
+    const s = steps[cur];
+    document.getElementById('stepNum').textContent = `STEP ${cur} / ${steps.length - 1}`;
+    document.getElementById('stepTitle').textContent = s.title;
+    document.getElementById('narrative').innerHTML = s.narrative;
+    const ts = document.getElementById('txStatus');
+    ts.innerHTML = s.tx.text;
+    ts.className = 'reorg-tx-status' + (s.tx.cls ? ' ' + s.tx.cls : '');
+    document.getElementById('progress').textContent = `${cur} / ${steps.length - 1}`;
+
+    // apply block states (cumulative from all previous + current)
+    const allBlocks = {};
+    for (let i = 0; i <= cur; i++) {
+      Object.assign(allBlocks, steps[i].blocks);
+    }
+    for (const [id, cfg] of Object.entries(allBlocks)) {
+      if ('visible' in cfg) setVisible(id, cfg.visible);
+      if ('state' in cfg) setBlockState(id, cfg.state);
+    }
+
+    document.getElementById('btnPrev').disabled = (cur === 0);
+    document.getElementById('btnNext').disabled = (cur === steps.length - 1);
+  }
+
+  document.getElementById('btnNext').addEventListener('click', () => {
+    if (cur < steps.length - 1) { cur++; render(); }
+  });
+  document.getElementById('btnPrev').addEventListener('click', () => {
+    if (cur > 0) { cur--; render(); }
+  });
+  document.getElementById('btnReset').addEventListener('click', () => {
+    cur = 0; render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

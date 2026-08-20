@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>14-Step Transaction Flow — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — 14-Step Transaction Flow" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace.html">3. Workspace</a></li>
+<li><a href="tables-vault.html">4. Vault</a></li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">14. Transaction State</a></li>
+<li><a class="active" href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="sm-14step">
+<h2>15. 14-Step Transaction Flow</h2>
+<span class="section-subtitle">tx 가 user 입력부터 chain broadcast 까지 거치는 14 단계 + 각 step 의 DB row 매핑</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처 — 어디까지가 Fireblocks 정의이고, 어디부터가 추정인가</div>
+<p>이 페이지의 내용은 두 갈래입니다.</p>
+<p><strong>Fireblocks 공식 문서에 정의된 사실</strong> — 그대로 받아들여도 안전</p>
+<ul style="margin-bottom:0.5rem">
+<li><strong>14 step</strong>: User tx request → JWT 검증 → balance / AML / Travel Rule → Policy Engine → Secure Vault → Co-Signer ceremony → broadcast 의 canonical 흐름</li>
+<li><strong>SGX 격리 서비스 4 종</strong>: Auth Engine · Policy Engine · Secure Vault · Co-Signer Engine — 모두 Azure SGX enclave 안에서만 동작</li>
+<li><strong>Co-Signer 분포</strong>: Co-Signer 1/2 = Fireblocks SGX, Co-Signer 3 = customer-side</li>
+<li><strong>Zero-trust handoff</strong>: 모든 service-to-service 호출에 derived cert 검증 — internal network 라도 매번 신뢰 재확인</li>
+<li>Step 10 의 Callback Handler 가 attached 인 경우 외부 검증 callback 가능 (optional)</li>
+</ul>
+<p style="margin-bottom:0.3rem"><strong>저자가 합리적으로 추정해서 그린 설계</strong> — 참고용, 본인 환경에서 검증 권장</p>
+<ul style="margin-bottom:0">
+<li>각 step 의 DB row 매핑 (오른쪽 표) — Fireblocks 가 정확히 어느 service 가 어느 row 를 만드는지는 미명시, 본 매핑은 14-step 흐름 + 다른 페이지의 schema 를 종합한 추정</li>
+<li><code>service_handoff_events</code> 테이블 패턴 — zero-trust handoff 의 audit event 화 (Fireblocks 가 내부적으로 어떻게 영속화하는지는 미명시)</li>
+</ul>
+</div>
+<div class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+  participant User
+  participant API as Dev API Gateway
+  participant Auth as Auth Engine (SGX)
+  participant TM as Transaction Manager
+  participant BS as Balance Service
+  participant SS as Screening Service
+  participant AML as AML Provider
+  participant PE as Policy Engine (SGX)
+  participant SV as Secure Vault (SGX)
+  participant CSE as Co-Signer Engine (SGX)
+  participant C1 as Co-Signer 1 (FB SGX)
+  participant C2 as Co-Signer 2 (FB SGX)
+  participant C3 as Co-Signer 3 (Customer)
+  participant Node
+
+  User->>API: 1. tx request
+  API-->>API: 2. JWT 서명 access token
+  API->>Auth: 3-4. JWT 검증 (cert store + Auth Engine)
+  Auth-->>API: validated
+  API->>TM: 5. tx
+  TM->>BS: 5a. balance check
+  BS->>Node: query
+  TM->>SS: 5b/5c. AML + Travel Rule
+  SS->>AML: query (Chainalysis / Elliptic / Notabene)
+  TM->>PE: 6-7. policy evaluation (SGX)
+  PE-->>PE: auto-approve OR collect approvals
+  PE->>SV: 8. signing 개시
+  SV->>CSE: 9. tx request cache (UUID + Policy rules)
+  CSE->>C1: 10. signing ceremony
+  CSE->>C2: 10. signing ceremony
+  CSE->>C3: 10. signing ceremony
+  C3->>CSE: partial sig
+  Note over C3: optional Callback Handler attached
+  CSE->>Auth: 11. partial signature hash 검증
+  CSE->>SV: 12. signed tx 조립
+  SV->>Node: 13. broadcast
+  Node-->>Blockchain: 14. 최종 broadcast
+      </pre>
+      <span class="diagram-caption">Figure 31. 14-step transaction flow (E2E) — Auth Engine / Policy Engine / Secure Vault / Co-Signer Engine 모두 SGX<span class="g" data-tip="Intel Software Guard Extensions. CPU 안의 봉인된 메모리 영역 (enclave). OS 나 hypervisor 도 그 안을 들여다볼 수 없음" tabindex="0">(?)</span> (Azure). Co-Signer 3 가 customer-side.</span>
+</div>
+<h3>Step 별 DB row 매핑</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Step</th><th>Action</th><th>DB row 생성/갱신</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>User → API tx request</td><td><code>transactions</code> INSERT (status=SUBMITTED)</td></tr>
+<tr><td>2-4</td><td>JWT 발급 + Auth Engine 검증</td><td><code>auth_tokens</code> INSERT (access token, 6h)</td></tr>
+<tr><td>5a</td><td>Balance Service → Node</td><td>(stateless query, no DB write)</td></tr>
+<tr><td>5b</td><td>Screening Service → AML<span class="g" data-tip="Anti-Money Laundering. 자금세탁 방지 규제. tx 별 KYC / sanction screening 강제" tabindex="0">(?)</span> Provider</td><td><code>aml_screening_results</code> INSERT (status=PENDING_AML_SCREENING)</td></tr>
+<tr><td>5c</td><td>Screening Service → Travel Rule<span class="g" data-tip="VASP (가상자산 사업자) 간 송금 시 originator / beneficiary 정보 교환 의무화 규제" tabindex="0">(?)</span></td><td><code>travel_rule_records</code> INSERT</td></tr>
+<tr><td>6-7</td><td>Policy Engine 평가</td><td><code>approval_requests</code> INSERT (status=PENDING_AUTHORIZATION), <code>approval_decisions</code> INSERT per approver</td></tr>
+<tr><td>8</td><td>충분한 approvals → Secure Vault</td><td><code>transactions.status</code> = QUEUED → PENDING_SIGNATURE</td></tr>
+<tr><td>9</td><td>Vault tx request cache → Co-Signer Engine</td><td><code>signing_requests</code> INSERT (UUID + policy_rule_ref)</td></tr>
+<tr><td>10</td><td>Co-Signer 1/2/3 signing ceremony</td><td><code>signing_events</code> INSERT per share (append-only<span class="g" data-tip="DB 의 추가 전용 규칙. 한 번 들어간 row 는 UPDATE / DELETE 절대 불가. trigger 로 강제" tabindex="0">(?)</span>)</td></tr>
+<tr><td>10a</td><td>Co-Signer 3 → Callback Handler<span class="g" data-tip="Customer 가 운영하는 외부 검증 endpoint. Cosigner 가 서명 전에 콜백해서 비즈니스 규칙 추가 검증" tabindex="0">(?)</span></td><td><code>callback_invocations</code> INSERT (optional)</td></tr>
+<tr><td>11</td><td>Auth Engine partial sig hash 검증</td><td>(SGX-internal, no DB write)</td></tr>
+<tr><td>12</td><td>Secure Vault 서명된 tx 조립</td><td><code>transactions.raw_payload_cbor</code> SET (set-once<span class="g" data-tip="DB 컬럼의 1회만 set 규칙. NULL → 값 1 회만 허용, 이후 변경 금지. trigger 로 강제" tabindex="0">(?)</span>)</td></tr>
+<tr><td>13</td><td>Node infrastructure broadcast</td><td><code>broadcast_attempts</code> INSERT, <code>transactions.status</code> = BROADCASTING</td></tr>
+<tr><td>14</td><td>Blockchain 최종 broadcast</td><td><code>transactions.tx_hash</code> SET (set-once), status = CONFIRMING</td></tr>
+</tbody>
+</table>
+</div>
+<h3>Zero-Trust Handoff 가 DB 에 미치는 영향</h3>
+<p>각 service handoff 마다 derived cert 검증 — <strong>service-to-service 호출 자체가 audit event</strong>. <code>service_handoff_events</code> 테이블 (append-only) 에 from_service / to_service / cert_chain_hash / occurred_at 기록.</p>
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="sm-transaction.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">14. Transaction State</span></a>
+<a class="page-nav-link page-nav-next" href="sm-approval.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">16. Approval State</span></a>
+</nav>
+</main>
+</div>
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

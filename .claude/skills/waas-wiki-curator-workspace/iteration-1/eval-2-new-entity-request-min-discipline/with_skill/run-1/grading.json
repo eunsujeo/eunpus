@@ -1,0 +1,40 @@
+{
+  "expectations": [
+    {
+      "text": "entity-min discipline check — 기존 entity / vendor hub 흡수 가능성 평가",
+      "passed": true,
+      "evidence": "...\"신규 entity 생성 최소화 — 기존 entity / vendor hub 에 흡수 가능한지 먼저 점검\"** + **\"curated wiki 자동 수정 금지 — diff 보여주고..."
+    },
+    {
+      "text": "흡수 후보 명시 (transaction.md / policy.md / vault-account.md / blockchains.md 등 중 ≥1)",
+      "passed": true,
+      "evidence": "...entities/fireblocks/transaction.md` 의 fee 관련 행 보강 + (c) 신규 source ingest 필요분은 **open-questions** 로 빼..."
+    },
+    {
+      "text": "새 entity 즉시 생성 안 함 — 분석 보고 + 승인 대기",
+      "passed": true,
+      "evidence": "...*자동 생성하지 않고 분석 보고 + 승인 대기**로 응답합니다.\n\n---\n\n## 1. 핵심 요약 (10초)\n\n- **신규 entity 생성을 권장하지 않습니다.** \"gas fee..."
+    },
+    {
+      "text": "신규 entity 생성 시 Stage counter reset 명시 또는 entity-min 누적 카운트 언급",
+      "passed": false,
+      "evidence": "none of: ['stage counter reset', 'stage reset', '카운터 reset']..."
+    },
+    {
+      "text": "공식 근거 wiki 안에서 fee 관련 fact 검색 후 hypothesis 와 분리",
+      "passed": true,
+      "evidence": "...-estimation.md) | ★ confirmed |\n+ | DOT | min 0.01 (reaped + replay risk); tx 2h valid | [polkadot-d..."
+    },
+    {
+      "text": "실제 파일 생성 안 함 — diff / draft 만 제시",
+      "passed": true,
+      "evidence": "...ted wiki 자동 수정 금지 — diff 보여주고 승인 후만\"** 적용.\n> → **자동 생성하지 않고 분석 보고 + 승인 대기**로 응답합니다.\n\n---\n\n## 1. 핵심 요..."
+    }
+  ],
+  "summary": {
+    "pass_rate": 0.8333333333333334,
+    "passed": 5,
+    "failed": 1,
+    "total": 6
+  }
+}

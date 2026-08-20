@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>문서 — 블록체인매니저</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t !== 'light' && t !== 'dark') {
+          t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <a class="brand-mark" href="./" title="보드로">BM</a>
+      <span class="brand-name" id="doc-title-top">문서</span>
+    </div>
+    <div class="topbar-right">
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="테마 전환"></button>
+      <button id="copy-md" class="btn-secondary" type="button">복사</button>
+      <button id="download-md" class="btn-secondary" type="button">.md</button>
+      <a class="btn-secondary btn-link" href="./">보드로</a>
+    </div>
+  </header>
+
+  <main class="doc-page">
+    <h1 id="doc-title"></h1>
+    <div id="doc-chips" class="chips"></div>
+    <article id="doc-body" class="doc-body"></article>
+    <nav id="doc-nav" class="doc-nav"></nav>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="vendor/mermaid.min.js"></script>
+  <script src="md.js"></script>
+  <script src="theme.js"></script>
+  <script src="doc.js"></script>
+</body>
+</html>

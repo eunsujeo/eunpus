@@ -1,0 +1,13 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/9189366603548-Allowlisting-IP-addresses-for-Console-access
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 3
+language: en
+notes: |
+  Console-side IP allowlist (different from Stage 4 API user IP allowlist).
+  Workspace-scoped, default disabled.
+  IPv4/IPv6, CIDR notation OR range (12.123.456.789 - 12.123.456.799) — NOT /32-only like API allowlist.
+  Editor's own IP must be included to activate (lockout prevention).
+  Settings > General > Manage IP allowlist.
+  Default Admin Quorum; can delegate via Quorums > Security & compliance approval group.
+  Audit Log records IP allowlist events.

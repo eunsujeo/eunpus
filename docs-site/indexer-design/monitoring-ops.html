@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>8. 운영 · 모니터링 — 블록체인 인덱서 설계 가이드</title>
+<meta content="인덱서 운영 — 지표 / SLO / 알람 / Dashboard / Incident response / Postmortem / DR / 보안." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Foundation</h3><ul>
+<li><a href="what-is-indexer.html">1. 인덱서란 무엇인가</a></li>
+<li><a href="requirements.html">2. 요구사항</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Implementation</h3><ul>
+<li><a href="implementation-patterns.html">3. 4 구현 패턴</a></li>
+<li><a href="reference-architecture.html">4. 참조 아키텍처</a></li>
+<li><a href="data-model.html">5. 데이터 모델</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Operations</h3><ul>
+<li><a href="reorg-finality.html">6. Reorg · Finality</a></li>
+<li><a href="performance-scalability.html">7. 성능 · 확장성</a></li>
+<li><a class="active" href="monitoring-ops.html">8. 운영 · 모니터링</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Industry Cases</h3><ul>
+<li><a href="exchange-cases.html">9. 자체 인덱서 운영</a></li>
+<li><a href="saas-cases.html">10. 인덱서 / 데이터 인프라 vendor</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Infrastructure</h3><ul>
+<li><a href="infrastructure-spec.html">11. 인프라 · 스펙</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Portability</h3><ul>
+<li><a href="portability.html">12. 벤더 교체 · 포트 설계</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="monitoring">
+<h2>8. 운영 · 모니터링</h2>
+<span class="section-subtitle">지표 · SLO · 알람 · Dashboard · Incident response · Postmortem · DR · 보안</span>
+
+<h3>8.1 운영의 4 가지 흔한 장애</h3>
+
+<p>인덱서 운영 중 가장 자주 발생하는 4 가지. 모두 모니터링 부재 시 악화.</p>
+
+<ol>
+  <li><strong>체인 헤드 추격 실패</strong> — head lag 누적. UX 에 즉시 보임.</li>
+  <li><strong>DB 디스크 고갈</strong> — backfill 또는 retention 부족.</li>
+  <li><strong>RPC rate limit</strong> — 외부 vendor 의 monthly quota 초과.</li>
+  <li><strong>Reorg 후 projection 불일치</strong> — raw 는 OK 인데 projection 정합성 깨짐.</li>
+</ol>
+
+<h3>8.2 필수 모니터링 지표</h3>
+
+<p>다음 11 가지 지표를 항상 측정 + 알람. 임계는 3 단계 (warn / critical / page).</p>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>지표</th><th>의미</th><th>warn</th><th>critical</th><th>page</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>head_lag_seconds</code></td>
+  <td>최신 chain head - 인덱서 cursor 의 시간 차</td>
+  <td>&gt; 30s</td>
+  <td>&gt; 120s</td>
+  <td>&gt; 5분 (지속)</td>
+</tr>
+<tr>
+  <td><code>finalized_lag_blocks</code></td>
+  <td>chain finalized block - 인덱서 finalized 처리 block</td>
+  <td>&gt; 50 blocks</td>
+  <td>&gt; 200 blocks</td>
+  <td>&gt; 1000 blocks</td>
+</tr>
+<tr>
+  <td><code>ingest_rate_blocks_per_sec</code></td>
+  <td>초당 처리 블록 수</td>
+  <td>체인 자연 속도의 90%</td>
+  <td>50%</td>
+  <td>10% (catchup 실패)</td>
+</tr>
+<tr>
+  <td><code>rpc_error_rate</code></td>
+  <td>RPC 호출 실패율 (timeout / 4xx / 5xx)</td>
+  <td>&gt; 1%</td>
+  <td>&gt; 5%</td>
+  <td>&gt; 20% (지속 5분)</td>
+</tr>
+<tr>
+  <td><code>rpc_quota_remaining</code></td>
+  <td>외부 vendor 의 남은 quota (CU 또는 호출)</td>
+  <td>&lt; 30%</td>
+  <td>&lt; 10%</td>
+  <td>&lt; 1% (즉시)</td>
+</tr>
+<tr>
+  <td><code>db_connection_wait</code></td>
+  <td>DB connection pool wait time p95</td>
+  <td>&gt; 50ms</td>
+  <td>&gt; 200ms</td>
+  <td>&gt; 1s (지속)</td>
+</tr>
+<tr>
+  <td><code>db_disk_free_pct</code></td>
+  <td>DB 디스크 여유율</td>
+  <td>&lt; 30%</td>
+  <td>&lt; 15%</td>
+  <td>&lt; 5% (즉시 page)</td>
+</tr>
+<tr>
+  <td><code>kafka_consumer_lag</code></td>
+  <td>각 projection consumer 의 Kafka lag</td>
+  <td>&gt; 1k msgs</td>
+  <td>&gt; 10k msgs</td>
+  <td>&gt; 100k msgs</td>
+</tr>
+<tr>
+  <td><code>projection_replay_duration</code></td>
+  <td>새 projection 의 backfill 진행</td>
+  <td>ETA 의 1.2x</td>
+  <td>1.5x</td>
+  <td>2x</td>
+</tr>
+<tr>
+  <td><code>reorg_depth</code></td>
+  <td>발생한 reorg 의 depth (blocks)</td>
+  <td>&gt; 3</td>
+  <td>&gt; 10</td>
+  <td>&gt; 50 (대규모 reorg)</td>
+</tr>
+<tr>
+  <td><code>query_p95_ms</code></td>
+  <td>read API 의 p95 응답 시간</td>
+  <td>&gt; 200ms</td>
+  <td>&gt; 1000ms</td>
+  <td>5xx rate &gt; 1%</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<p>위 11 지표 중 블록체인 specific 한 것은 <code>head_lag_seconds</code>, <code>finalized_lag_blocks</code>, <code>reorg_depth</code> 3 가지뿐 — 나머지 (DB / Kafka / API / quota) 는 일반 백엔드 SRE 지표와 동일하다.</p>
+
+<h3>8.3 SLO 정의 예시</h3>
+
+<p>각 axis 별 SLO 를 명문화. 다음은 mid-size 인덱서의 typical SLO.</p>
+
+<pre><code>service: blockchain-indexer
+slos:
+  - name: ingest_freshness
+    objective: 99% of blocks indexed within 10s of proposal
+    measurement: head_lag_seconds &lt; 10
+    window: 28d rolling
+    error_budget: 1% (~ 6.7 hours/month)
+
+  - name: query_latency
+    objective: 95% of point queries &lt; 100ms
+    measurement: query_p95_ms &lt; 100
+    window: 7d rolling
+
+  - name: query_availability
+    objective: 99.9% successful query responses
+    measurement: 5xx_rate &lt; 0.1%
+    window: 30d rolling
+
+  - name: data_correctness
+    objective: zero finalized data drift events per month
+    measurement: count(finalized_drift_alerts) = 0
+    window: 30d rolling</code></pre>
+
+<h4>SLO / SLI / SLA 의 구분</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>용어</th><th>의미</th><th>예시</th></tr></thead>
+<tbody>
+<tr><td><strong>SLI</strong> (Indicator)</td><td>실제 측정 지표</td><td><code>head_lag_seconds</code> 의 P95 값</td></tr>
+<tr><td><strong>SLO</strong> (Objective)</td><td>충족해야 할 목표</td><td>"99% of blocks within 10s"</td></tr>
+<tr><td><strong>SLA</strong> (Agreement)</td><td>SLO 위반 시 보상 / 환불 조항이 있는 고객 계약</td><td>"99.9% 미달 시 월 사용료 10% 환불"</td></tr>
+<tr><td><strong>Error budget</strong></td><td>SLO 의 허용 실패 시간</td><td>99% → 월 ~7.2시간 실패 OK</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>8.4 알람 단계화</h3>
+
+<p>3 단계 — Info / Warning / Critical.</p>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>단계</th><th>대응</th><th>예시</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Info</strong></td><td>Slack 알림 (action 불필요)</td><td>reorg depth 1, RPC retry 1 회</td></tr>
+<tr><td><strong>Warning</strong></td><td>oncall 확인 (영업 시간 OK)</td><td>head lag &gt; 30s 5분 지속, DB 디스크 &lt; 25%</td></tr>
+<tr><td><strong>Critical</strong></td><td>oncall 즉시 page</td><td>head lag &gt; 5분, DB 디스크 &lt; 10%, query 5xx &gt; 1%</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>Prometheus 알람 룰 예시</h4>
+
+<pre><code>groups:
+- name: indexer-critical
+  rules:
+  - alert: HeadLagCritical
+    expr: head_lag_seconds &gt; 120
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "인덱서 head lag {{ $value }}s &gt; 120s"
+      runbook: "https://runbook/indexer-head-lag"
+
+  - alert: DBDiskExhausted
+    expr: db_disk_free_pct &lt; 5
+    for: 1m
+    labels:
+      severity: page
+    annotations:
+      summary: "DB 디스크 여유 {{ $value }}% &lt; 5%"
+      runbook: "https://runbook/db-disk"
+
+  - alert: RPCQuotaCritical
+    expr: rpc_quota_remaining_pct &lt; 10
+    labels:
+      severity: critical
+    annotations:
+      summary: "외부 RPC quota 잔여 {{ $value }}%"</code></pre>
+
+<h3>8.5 Dashboard 구성 예시 (Grafana)</h3>
+
+<p>인덱서 Grafana dashboard 의 panel 구성. 4 row × 3 panel.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Row</th><th>Panel</th><th>Query</th></tr></thead>
+<tbody>
+<tr><td rowspan="3"><strong>Row 1 — 인덱서 상태</strong></td><td>Head lag (per chain)</td><td><code>head_lag_seconds</code> time series</td></tr>
+<tr><td>Finalized lag (per chain)</td><td><code>finalized_lag_blocks</code> time series</td></tr>
+<tr><td>Ingest rate (blocks/sec)</td><td><code>rate(blocks_ingested_total[5m])</code></td></tr>
+<tr><td rowspan="3"><strong>Row 2 — 외부 의존성</strong></td><td>RPC error rate</td><td><code>rate(rpc_errors_total[5m]) / rate(rpc_requests_total[5m])</code></td></tr>
+<tr><td>RPC quota remaining</td><td><code>rpc_quota_remaining</code></td></tr>
+<tr><td>External vendor latency</td><td>histogram_quantile 99 of vendor calls</td></tr>
+<tr><td rowspan="3"><strong>Row 3 — Storage</strong></td><td>DB disk free</td><td><code>db_disk_free_pct</code></td></tr>
+<tr><td>DB connection wait</td><td><code>db_connection_wait_seconds</code> P95</td></tr>
+<tr><td>Kafka consumer lag (per group)</td><td><code>kafka_consumer_lag</code> by group</td></tr>
+<tr><td rowspan="3"><strong>Row 4 — Query API</strong></td><td>QPS (per endpoint)</td><td><code>rate(http_requests_total[5m])</code> by endpoint</td></tr>
+<tr><td>Latency P50 / P95 / P99</td><td><code>histogram_quantile</code> 3 lines</td></tr>
+<tr><td>5xx rate</td><td><code>rate(http_5xx_total[5m]) / rate(http_requests_total[5m])</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>중요 panel — Reorg / Synthetic / Error budget</h4>
+
+<p>별도 row 또는 별도 dashboard 로:</p>
+<ul>
+  <li><strong>Reorg history</strong> — 최근 24 시간의 reorg depth time series</li>
+  <li><strong>Synthetic canary tx</strong> — onchain → indexer 의 end-to-end 지연 분포</li>
+  <li><strong>Error budget burndown</strong> — SLO 의 monthly error budget 소진 현황</li>
+</ul>
+
+<h3>8.6 장애 시나리오 + Runbook</h3>
+
+<h4>(1) RPC source down</h4>
+
+<pre><code>증상: rpc_error_rate &gt; 50%, head_lag 증가
+원인 후보:
+  - 외부 RPC vendor outage
+  - 네트워크 문제
+  - quota 초과
+
+조치:
+  1) status page 확인 (Alchemy/QuickNode/Infura)
+  2) fallback RPC 전환 (multi-RPC 구성 시 자동)
+  3) quota 초과면 임시 plan 업그레이드
+  4) 자체 노드 사용 가능하면 전환</code></pre>
+
+<h4>(2) 인덱서 lag 누적</h4>
+
+<pre><code>증상: head_lag_seconds 가 증가하기만 함
+원인 후보:
+  - 블록당 처리 시간이 블록 주기보다 느림
+  - DB write bottleneck
+  - parser bug (특정 event 처리 무한 loop)
+
+조치:
+  1) 최근 deploy 확인. rollback 검토
+  2) parser CPU 사용량 확인
+  3) DB slow query 확인
+  4) worker scale up
+  5) 임시 — 일부 event filter 강화</code></pre>
+
+<h4>(3) DB 디스크 고갈</h4>
+
+<pre><code>증상: db_disk_free_pct &lt; 10% (critical)
+원인 후보:
+  - 백필이 예상보다 많이 적재
+  - retention 정책 부재
+  - autovacuum 실패
+
+조치:
+  1) 즉시 — 오래된 partition DROP
+  2) ANALYZE + VACUUM 실행
+  3) 디스크 확장 (managed DB 는 reboot 없이)
+  4) 장기 — partitioning + retention 정책</code></pre>
+
+<h4>(4) Reorg 후 projection 불일치 (data drift)</h4>
+
+<pre><code>증상: 잔고 합계 != 사용자 잔고 합
+원인 후보:
+  - reorg 시 projection 의 일부 row 만 revert
+  - dual-write 중 일관성 깨짐
+  - projection 의 idempotency bug
+
+조치:
+  1) 영향 block range 식별
+  2) raw_event_log 기준으로 affected projection 재계산
+  3) projection 의 cursor 를 영향 block 직전으로 rewind
+  4) replay 실행
+  5) postmortem — idempotency 강화</code></pre>
+
+<h4>(5) Webhook delivery 실패</h4>
+
+<pre><code>증상: webhook consumer 에서 처리됐는데 인덱서 측 webhook_sent 없음
+원인 후보:
+  - consumer endpoint 5xx
+  - signature 검증 실패
+  - consumer 의 idempotency 처리 부재
+
+조치:
+  1) consumer 의 receive log 확인
+  2) retry queue 확인
+  3) signature key rotation 여부
+  4) 30 일 retry budget 내 재전송</code></pre>
+
+<h4>(6) Kafka consumer lag 폭증</h4>
+
+<pre><code>증상: kafka_consumer_lag &gt; 100k msgs
+원인 후보:
+  - consumer process crash 후 재시작 안 됨
+  - consumer 가 단일 message 처리에 너무 오래 걸림
+  - partition 수 부족 → consumer 병렬화 한계
+
+조치:
+  1) consumer process 상태 확인 (crashloop?)
+  2) slow consumer 의 message 별 처리 시간 logging
+  3) 임시 — 더 빠른 consumer 추가 (group 확장)
+  4) 장기 — partition 수 증가 + consumer 병렬</code></pre>
+
+<h3>8.7 Incident response 절차</h3>
+
+<p>장애 발생 시 표준 절차 — 6 단계.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    DETECT[1. 감지<br/>알람 / 사용자 신고]
+    TRIAGE[2. Triage<br/>severity 판정]
+    COMM[3. 소통<br/>incident channel 개설]
+    MIT[4. 완화<br/>impact 줄이기]
+    RES[5. 복구<br/>root cause 제거]
+    PM[6. Postmortem<br/>5 영업일 이내]
+
+    DETECT --> TRIAGE --> COMM --> MIT --> RES --> PM
+</pre></div>
+
+<h4>각 단계의 책임</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>단계</th><th>책임</th><th>목표 시간</th></tr></thead>
+<tbody>
+<tr><td><strong>1. 감지</strong></td><td>알람 시스템 / 사용자 / synthetic check</td><td>지표 임계 도달 후 1 분 이내</td></tr>
+<tr><td><strong>2. Triage</strong></td><td>oncall — severity (P1/P2/P3) + impact scope 판정</td><td>5 분 이내</td></tr>
+<tr><td><strong>3. 소통</strong></td><td>oncall — incident channel (Slack) 개설, IC (Incident Commander) 지정, 영향 사용자 notify</td><td>10 분 이내</td></tr>
+<tr><td><strong>4. 완화</strong></td><td>IC + responder — 사용자 impact 줄이기 (rollback, fallback, traffic shift). root cause 모르더라도 OK</td><td>P1 = 30 분 이내</td></tr>
+<tr><td><strong>5. 복구</strong></td><td>IC + responder — root cause 제거, 정상 운영 복구</td><td>P1 = RTO 이내 (예: 4 시간)</td></tr>
+<tr><td><strong>6. Postmortem</strong></td><td>IC — blameless postmortem 문서 작성 + action item</td><td>5 영업일 이내</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>Severity 분류 예시</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Severity</th><th>의미</th><th>예시</th><th>response</th></tr></thead>
+<tbody>
+<tr><td><strong>P1 (page)</strong></td><td>사용자 영향 큼 / 데이터 손실 가능성</td><td>전체 read API down, head lag &gt; 30 분, DB 손상</td><td>oncall 즉시 + 24/7</td></tr>
+<tr><td><strong>P2 (high)</strong></td><td>부분 사용자 영향 / degraded</td><td>일부 endpoint 5xx, latency 10x 증가</td><td>oncall 영업시간</td></tr>
+<tr><td><strong>P3 (medium)</strong></td><td>사용자 영향 없음 / 곧 발생 가능</td><td>DB 디스크 30%, RPC quota 30%</td><td>다음 영업일</td></tr>
+<tr><td><strong>P4 (low)</strong></td><td>cosmetic / 장기 개선</td><td>slow query 1 개, dashboard 정정</td><td>backlog</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>8.8 Postmortem template</h3>
+
+<p>blameless postmortem (사람 비난 ✗, 시스템 / 절차 개선 중심). 표준 template:</p>
+
+<pre><code># Incident YYYY-MM-DD — &lt;제목&gt;
+
+## Summary
+1-2 문장으로 incident 요약. 사용자 영향 + duration.
+
+## Timeline (UTC)
+| Time | Event |
+|------|-------|
+| 14:00 | 알람 발생 — head_lag &gt; 120s |
+| 14:02 | oncall ack |
+| 14:05 | incident channel 개설 + IC 지정 |
+| 14:15 | fallback RPC 로 전환 — lag 감소 시작 |
+| 14:40 | head_lag 정상화 (&lt; 10s) |
+| 15:30 | root cause 확인 — Alchemy outage |
+| 16:00 | postmortem 작성 시작 |
+
+## Impact
+- 영향받은 사용자 수 / 비율
+- 영향받은 endpoint / 기능
+- 데이터 손실 여부
+- SLO error budget 소진량
+
+## Root Cause
+실제 원인 분석. "사람이 실수해서" ✗, "시스템이 그 실수를 막지 못해서" ✓.
+
+## Resolution
+어떤 조치로 정상화 됐는가.
+
+## What went well
+잘 작동한 부분 (감지 빠름, runbook 효과적, 등).
+
+## What went wrong
+개선이 필요한 부분.
+
+## Action items
+| # | 항목 | 담당 | 마감 |
+|---|------|------|------|
+| 1 | multi-RPC failover 자동화 | @sre | 2 주 |
+| 2 | Alchemy 외 fallback vendor 추가 | @platform | 1 개월 |
+| 3 | Runbook 의 fallback 절차 명확화 | @oncall | 1 주 |</code></pre>
+
+<h3>8.9 Observability stack</h3>
+
+<p>일반 백엔드와 동일 stack 사용 가능.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>영역</th><th>도구</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td>Metrics</td><td>Prometheus + Grafana</td><td>지표 수집 + 대시보드</td></tr>
+<tr><td>Logs</td><td>Loki / Elasticsearch / Datadog</td><td>structured log 수집</td></tr>
+<tr><td>Tracing</td><td>OpenTelemetry + Jaeger / Tempo</td><td>tx → ingest → projection → query 경로 추적</td></tr>
+<tr><td>Alerting</td><td>PagerDuty / Opsgenie / Slack</td><td>oncall escalation</td></tr>
+<tr><td>Synthetic check</td><td>자체 cron + canary tx</td><td>"내 wallet 의 잔고가 인덱서에서 N 초 내 보이는가" 검증</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>Structured logging 예시</h4>
+
+<pre><code>{
+  "level": "info",
+  "ts": "2026-06-02T14:00:14Z",
+  "service": "indexer-eth",
+  "chain": "ethereum",
+  "block_num": 19345678,
+  "block_hash": "0xa4...",
+  "tx_count": 142,
+  "events_count": 487,
+  "ingest_duration_ms": 87,
+  "msg": "block processed"
+}</code></pre>
+
+<p>JSON structured log + 일관된 field 명 = Loki / ES 에서 query 와 aggregation 쉬움.</p>
+
+<h3>8.10 Synthetic monitoring — 가장 신뢰할 만한 health check</h3>
+
+<p>인덱서가 "동작하는 것 같지만 실제로는 틀린 데이터" 인 경우가 있다. 진짜 동작 확인은 <strong>canary tx</strong>.</p>
+
+<pre><code>// 5 분마다 실행
+function syntheticCheck() {
+  // 1. 모니터링 전용 wallet 에서 small transfer 전송
+  const tx = wallet.sendSmall(CANARY_DEST, 0.001 USDC);
+
+  // 2. 일정 시간 후 인덱서에 해당 transfer 가 나타나는지 polling
+  const start = Date.now();
+  while (Date.now() - start &lt; 60_000) {
+    const found = await indexer.query({
+      from: wallet.address,
+      to: CANARY_DEST,
+      after: tx.blockNumber,
+    });
+    if (found.length &gt; 0) {
+      metrics.recordCanarySuccess(Date.now() - start);
+      return;
+    }
+    await sleep(5_000);
+  }
+
+  // 3. 60초 안에 못 찾으면 alert
+  metrics.recordCanaryTimeout();
+  alert.send('Canary tx not indexed within 60s');
+}</code></pre>
+
+<h3>8.11 Backup / DR</h3>
+
+<h4>백업 대상</h4>
+<ol>
+  <li><strong>Raw event log</strong> — 가장 중요. 손실 시 전체 재인덱싱 (수 일 ~ 수 주).</li>
+  <li><strong>Postgres 의 read model</strong> — projection 의 복구 source. PITR (Point-In-Time Recovery) 권장.</li>
+  <li><strong>체크포인트 / cursor</strong> — DB 손실 시 어디서 resume 할지.</li>
+  <li><strong>Schema 정의</strong> — 코드 + DB schema 의 버전 일치.</li>
+</ol>
+
+<h4>RPO / RTO 목표</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>대상</th><th>RPO</th><th>RTO</th></tr></thead>
+<tbody>
+<tr><td>Raw event log</td><td>0 (즉시 backup 또는 replication)</td><td>1 시간 (다른 region 에 standby)</td></tr>
+<tr><td>Postgres projection</td><td>5 분 (WAL archiving)</td><td>1 시간 (replica 로 failover)</td></tr>
+<tr><td>전체 service</td><td>5 분</td><td>4 시간 (DR region 활성화)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>DR 시나리오 — 전체 region 손실</h4>
+<ol>
+  <li>Raw event log 가 multi-region 에 replicated → 손실 0</li>
+  <li>다른 region 의 standby 인덱서가 raw log 로부터 projection 재생성</li>
+  <li>DNS / load balancer 가 DR region 으로 cutover</li>
+  <li>예상 복구 시간 — 4 시간 (projection 의 fresh 시점에 따라)</li>
+</ol>
+
+<h4>DR drill — 정기 훈련</h4>
+
+<p>실제 DR 시 처음 해보면 실패 확률 높음. 정기 훈련 필수.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>주기</th><th>훈련 종류</th></tr></thead>
+<tbody>
+<tr><td>분기</td><td>Backup 으로부터 신규 환경 복구. RPO/RTO 측정 후 SLO 비교.</td></tr>
+<tr><td>반기</td><td>DR region 으로 traffic cutover 5 분간 (Game Day)</td></tr>
+<tr><td>연간</td><td>전체 region failover. 실제 production traffic 전환 + 정상 동작 검증.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>8.12 Schema migration 운영</h3>
+
+<p>새 projection 추가 또는 기존 projection 변경 시 — <strong>dual-write + backfill + cutover</strong> 패턴.</p>
+
+<pre><code>// Phase 1 — 새 schema 에 dual-write
+// 코드 deploy: 기존 + 새 projection 둘 다 write
+projection_v1.write(event);
+projection_v2.write(event);   // new
+
+// Phase 2 — 새 schema 의 backfill
+// 별도 worker 가 raw log 처음부터 v2 에 적재
+backfill_v2(from_block=0, to_block=current);
+
+// Phase 3 — verify
+// v1 과 v2 의 결과가 일치하는지 sample 검증
+
+// Phase 4 — cutover
+// read API 가 v2 를 가리키도록 변경
+
+// Phase 5 — cleanup
+// dual-write 제거, v1 schema drop</code></pre>
+
+<h3>8.13 Capacity planning</h3>
+
+<p>트래픽 증가 예측 + 사전 scale up. 사후 reactive 보다 proactive 가 안전.</p>
+
+<h4>측정해야 할 capacity</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>리소스</th><th>현재 사용량 metric</th><th>head room 권장</th></tr></thead>
+<tbody>
+<tr><td>CPU (indexer worker)</td><td>평균 CPU 사용률</td><td>peak &lt; 70%</td></tr>
+<tr><td>RAM</td><td>process RSS / 가용 메모리</td><td>peak &lt; 80%</td></tr>
+<tr><td>DB connection pool</td><td>active / max</td><td>peak &lt; 70%</td></tr>
+<tr><td>DB disk</td><td>free %</td><td>&gt; 40%</td></tr>
+<tr><td>DB IOPS</td><td>actual / provisioned</td><td>peak &lt; 60%</td></tr>
+<tr><td>Kafka disk</td><td>retention 사용량</td><td>&gt; 30% free</td></tr>
+<tr><td>RPC quota</td><td>monthly used %</td><td>&lt; 70% (안전 margin)</td></tr>
+<tr><td>Egress bandwidth</td><td>peak / limit</td><td>&lt; 60%</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>Growth projection 방법</h4>
+
+<ol>
+  <li>지난 90 일의 트래픽 / 데이터 양 trend 분석</li>
+  <li>추세선 (linear / exponential) 으로 다음 6 개월 예측</li>
+  <li>예측 + safety margin (1.5x) 으로 sizing 결정</li>
+  <li>분기마다 재검토 — actual vs predicted</li>
+</ol>
+
+<h3>8.14 보안 운영</h3>
+
+<h4>인덱서가 갖는 secret</h4>
+<ul>
+  <li>외부 RPC API key (Alchemy 등)</li>
+  <li>DB credential</li>
+  <li>Webhook signing key</li>
+  <li>모니터링 wallet (canary tx 용) 의 private key</li>
+</ul>
+
+<p>모두 KMS / Vault / Secrets Manager 에. 코드 / config 에 직접 ✗. 정기 rotation.</p>
+
+<h4>Secret rotation 주기</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Secret 종류</th><th>권장 주기</th><th>방법</th></tr></thead>
+<tbody>
+<tr><td>RPC API key</td><td>분기 (90 일)</td><td>새 key 발급 → dual-key 운영 → 구 key 제거</td></tr>
+<tr><td>DB password</td><td>반기 (180 일)</td><td>새 password 설정 → 모든 client rotate → 구 password 제거</td></tr>
+<tr><td>Webhook signing key</td><td>연간</td><td>customer notify → 새 key 발급 → grace period → 구 key 제거</td></tr>
+<tr><td>Canary wallet</td><td>incident 시</td><td>새 wallet 생성 → 자산 이동</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>Query API 보호</h4>
+<ul>
+  <li>인증 — API key / JWT / OAuth</li>
+  <li>rate limit — IP / API key / user 별 (token bucket)</li>
+  <li>query complexity 제한 — GraphQL 의 cost analysis</li>
+  <li>WAF — OWASP top 10 대응</li>
+  <li>CORS / CSP 정책</li>
+</ul>
+
+<h4>RBAC — 운영자 권한 모델</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Role</th><th>권한</th><th>예시 task</th></tr></thead>
+<tbody>
+<tr><td>viewer</td><td>read-only metrics + dashboards</td><td>대시보드 확인</td></tr>
+<tr><td>oncall</td><td>viewer + runbook 실행 (정의된 action)</td><td>service restart, traffic shift, fallback 전환</td></tr>
+<tr><td>operator</td><td>oncall + schema migration, config 변경</td><td>새 projection deploy, schema 변경</td></tr>
+<tr><td>admin</td><td>operator + secret rotation, IAM 변경</td><td>vendor key rotation, 권한 grant</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>8.15 흔한 운영 함정 (Common Pitfalls)</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>함정</th><th>증상</th><th>해결</th></tr></thead>
+<tbody>
+<tr><td>Alert fatigue</td><td>알람 폭증 → oncall 무시</td><td>noise 알람 제거, severity 재조정</td></tr>
+<tr><td>Runbook 미비</td><td>장애 시 oncall 이 어쩔 줄 모름</td><td>모든 critical 알람에 runbook link</td></tr>
+<tr><td>Hero culture</td><td>한 명에게 의존</td><td>shadow oncall + 정기 rotation</td></tr>
+<tr><td>SLO 없음</td><td>"빠르면 좋고 느리면 나쁘다" 같은 모호한 목표</td><td>측정 가능한 SLO 명문화</td></tr>
+<tr><td>Postmortem skip</td><td>incident 후 학습 없음</td><td>blameless postmortem 강제</td></tr>
+<tr><td>DR drill 없음</td><td>실제 DR 시 첫 실행 → 실패</td><td>분기 / 반기 drill</td></tr>
+<tr><td>Backup 검증 없음</td><td>"Backup 있다" 만으로 안심 → 복원 시 발견되는 깨진 백업</td><td>정기 restore drill</td></tr>
+<tr><td>Single point oncall</td><td>주말 / 휴가 시 무응답</td><td>primary + secondary rotation</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>8.16 다음 페이지</h3>
+
+<p>운영 영역이 끝났다. 이제 실제 사례 — <a href="exchange-cases.html"><strong>9. 자체 인덱서 운영</strong></a> 에서 Coinbase / Korbit / Binance / Upbit / Bithumb / Coinone 의 공개 아키텍처를 본다.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

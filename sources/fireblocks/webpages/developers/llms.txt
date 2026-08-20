@@ -1,0 +1,709 @@
+# Fireblocks Developer Docs
+
+## Docs
+
+- [Update admin quorum threshold](https://developers.fireblocks.com/api-reference/admin-quorum/update-admin-quorum-threshold.md): Update admin quorum threshold
+- [Create API Key](https://developers.fireblocks.com/api-reference/api-user/create-api-key.md): Create a new API key in your workspace. Learn more about Fireblocks API Keys management in the following [guide](https://developers.fireblocks.com/docs/manage-api-keys). Endpoint Permission: Admin, Non-Signing Admin.
+- [Get API Keys](https://developers.fireblocks.com/api-reference/api-user/get-api-keys.md): List all API keys in your workspace. - Please note that this endpoint is available only for API keys with Admin/Non Signing Admin permissions. Endpoint Permission: Admin, Non-Signing Admin.
+- [Get audit logs](https://developers.fireblocks.com/api-reference/audit-logs/get-audit-logs.md): Get Audit logs for the last Day/Week.
+- [Get a Blockchain by ID](https://developers.fireblocks.com/api-reference/blockchains-&-assets/get-a-blockchain-by-id.md): Returns a blockchain by ID or legacyID.
+- [Get an asset](https://developers.fireblocks.com/api-reference/blockchains-&-assets/get-an-asset.md): Returns an asset by ID or legacyID.
+- [List assets](https://developers.fireblocks.com/api-reference/blockchains-&-assets/list-assets.md): Retrieves a paginated list of all assets supported by Fireblocks in your workspace
+- [List assets (Legacy)](https://developers.fireblocks.com/api-reference/blockchains-&-assets/list-assets-legacy.md): **This legacy endpoint has not been deprecated but it should not be used in your operations. Instead, use the new [List assets](https://developers.fireblocks.com/reference/listassets) endpoint for better performance and to retrieve more detailed asset information.**
+- [List blockchains](https://developers.fireblocks.com/api-reference/blockchains-&-assets/list-blockchains.md): Returns all blockchains supported by Fireblocks.
+- [Register an asset](https://developers.fireblocks.com/api-reference/blockchains-&-assets/register-an-asset.md): Register a new asset to a workspace and return the newly created asset's details. Currently supported chains are: - EVM based chains - Stellar - Algorand - TRON - NEAR - Solana - Sui - TON
+- [Set asset price](https://developers.fireblocks.com/api-reference/blockchains-&-assets/set-asset-price.md): Set asset price for the given asset id. Returns the asset price response.
+- [Update the user’s metadata for an asset](https://developers.fireblocks.com/api-reference/blockchains-&-assets/update-the-user’s-metadata-for-an-asset.md): Update the user’s metadata for an asset.
+- [Get AML Screening Policy Configuration](https://developers.fireblocks.com/api-reference/compliance-screening-configuration/get-aml-screening-policy-configuration.md): Retrieves the configuration for Travel Rule screening policy.
+- [Get Travel Rule Screening Policy Configuration](https://developers.fireblocks.com/api-reference/compliance-screening-configuration/get-travel-rule-screening-policy-configuration.md): Retrieves the configuration for Travel Rule screening policy.
+- [Activate BYORK Light](https://developers.fireblocks.com/api-reference/compliance/activate-byork-light.md): Activates BYORK Light for the authenticated tenant (sets config.active to true). Once activated, BYORK screening applies to matching transactions. Requires BYORK Light to be enabled for the tenant (contact your CSM to enable).
+- [Add vault accounts to the address registry opt-out list](https://developers.fireblocks.com/api-reference/compliance/add-vault-accounts-to-the-address-registry-opt-out-list.md): Adds one or more vault account ids to the workspace opt-out list for the address registry.
+- [AML - View Post-Screening Policy](https://developers.fireblocks.com/api-reference/compliance/aml--view-post-screening-policy.md): Get the post-screening policy for AML.
+- [AML - View Screening Policy](https://developers.fireblocks.com/api-reference/compliance/aml--view-screening-policy.md): Get the screening policy for AML.
+- [Assign vault accounts to a legal entity](https://developers.fireblocks.com/api-reference/compliance/assign-vault-accounts-to-a-legal-entity.md): Assigns one or more vault accounts to a specific legal entity registration. Explicitly mapped vault accounts take precedence over the workspace default legal entity. Endpoint Permission: Admin, Non-Signing Admin.
+- [Calling the "Bypass Screening Policy" API endpoint triggers a new transaction, with the API user as the initiator, bypassing the screening policy check](https://developers.fireblocks.com/api-reference/compliance/calling-the-"bypass-screening-policy"-api-endpoint-triggers-a-new-transaction-with-the-api-user-as-the-initiator-bypassing-the-screening-policy-check.md): This endpoint is restricted to Admin API users and is only applicable to outgoing transactions.
+- [Create a counterparty group](https://developers.fireblocks.com/api-reference/compliance/create-a-counterparty-group.md): Creates a new counterparty group.
+- [Deactivate BYORK Light](https://developers.fireblocks.com/api-reference/compliance/deactivate-byork-light.md): Deactivates BYORK Light for the authenticated tenant (sets config.active to false). Once deactivated, BYORK screening no longer applies until activated again. Requires BYORK Light to be enabled for the tenant (contact your CSM to enable).
+- [Delete a counterparty group](https://developers.fireblocks.com/api-reference/compliance/delete-a-counterparty-group.md): Permanently deletes a counterparty group.
+- [Get a counterparty group](https://developers.fireblocks.com/api-reference/compliance/get-a-counterparty-group.md): Returns the details of a specific counterparty group.
+- [Get a legal entity](https://developers.fireblocks.com/api-reference/compliance/get-a-legal-entity.md): Returns details of a specific legal entity registration, including GLEIF data when available. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.
+- [Get address registry participation status for the authenticated workspace](https://developers.fireblocks.com/api-reference/compliance/get-address-registry-participation-status-for-the-authenticated-workspace.md): Returns whether the workspace is `OPTED_IN` or `OPTED_OUT` of the address registry.
+- [Get BYORK Light configuration](https://developers.fireblocks.com/api-reference/compliance/get-byork-light-configuration.md): Retrieves BYORK Light configuration for the authenticated tenant (timeouts, active flag, allowed timeout ranges). Returns default config when none exists. Requires BYORK Light to be enabled for the tenant.
+- [Get BYORK Light verdict](https://developers.fireblocks.com/api-reference/compliance/get-byork-light-verdict.md): Returns the current BYORK verdict and status for a transaction. Status can be PRE_ACCEPTED, PENDING, RECEIVED (verdict is final but processing not yet complete), or COMPLETED. Requires BYORK Light to be enabled for the tenant. Returns 404 if no BYORK verdict is found for the transaction.
+- [Get whether a vault account is opted out of the address registry](https://developers.fireblocks.com/api-reference/compliance/get-whether-a-vault-account-is-opted-out-of-the-address-registry.md): Returns whether this vault account is on the workspace opt-out list (`optedOut` true or false). List, add, and clear-all are available on `/v1/address_registry/vaults`; this path reads or removes one vault.
+- [List counterparty groups](https://developers.fireblocks.com/api-reference/compliance/list-counterparty-groups.md): Returns a paginated list of counterparty groups.
+- [List legal entities (Paginated)](https://developers.fireblocks.com/api-reference/compliance/list-legal-entities-paginated.md): Returns legal entity registrations for the workspace with cursor-based pagination. If query parameter vaultAccountId is used it returns the legal entity registration associated with a specific vault account. If no explicit mapping exists for the vault, the workspace default legal entity is returned.…
+- [List vault accounts for a legal entity (Paginated)](https://developers.fireblocks.com/api-reference/compliance/list-vault-accounts-for-a-legal-entity-paginated.md): Returns vault account IDs explicitly assigned to a specific legal entity registration, with cursor-based pagination. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.
+- [List vault-level address registry opt-outs (paginated)](https://developers.fireblocks.com/api-reference/compliance/list-vault-level-address-registry-opt-outs-paginated.md): Lists vault accounts that are opted out of the address registry for this workspace. Pagination uses `next` and `prev` cursors from the response. If `pageSize` is omitted, **50** items are returned per page; allowed range is **1–100** per request.
+- [Look up legal entity by blockchain address](https://developers.fireblocks.com/api-reference/compliance/look-up-legal-entity-by-blockchain-address.md): Returns legal entity information for the given blockchain address (verification status, LEI, Travel Rule providers, contact email, and related fields — see response schema). URL-encode `{address}` when required.
+- [Opt the workspace in to the address registry](https://developers.fireblocks.com/api-reference/compliance/opt-the-workspace-in-to-the-address-registry.md): Opts the workspace in. No request body. Response uses the same JSON shape as GET; status is OPTED_IN.
+- [Opt the workspace out of the address registry](https://developers.fireblocks.com/api-reference/compliance/opt-the-workspace-out-of-the-address-registry.md): Opts the workspace out. No request body. Response uses the same JSON shape as GET; status is OPTED_OUT.
+- [Provides all the compliance details for the given screened transaction.](https://developers.fireblocks.com/api-reference/compliance/provides-all-the-compliance-details-for-the-given-screened-transaction.md): Provides all the compliance details for the given screened transaction.
+- [Register a new legal entity](https://developers.fireblocks.com/api-reference/compliance/register-a-new-legal-entity.md): Registers a new legal entity for the workspace using its LEI (Legal Entity Identifier) code. The LEI is validated against the GLEIF registry. Each workspace can register multiple legal entities. Endpoint Permission: Admin, Non-Signing Admin.
+- [Remove a single vault account from the address registry opt-out list](https://developers.fireblocks.com/api-reference/compliance/remove-a-single-vault-account-from-the-address-registry-opt-out-list.md): Removes this vault account id from the workspace opt-out list if it is present; otherwise the call still succeeds. Response body matches GET (`optedOut` is `false` after success). To clear the whole list, use `DELETE /v1/address_registry/vaults`.
+- [Remove all vault-level address registry opt-outs for the workspace](https://developers.fireblocks.com/api-reference/compliance/remove-all-vault-level-address-registry-opt-outs-for-the-workspace.md): Removes all vault accounts from the workspace opt-out list.
+- [Set AML Verdict (BYORK Super Light)](https://developers.fireblocks.com/api-reference/compliance/set-aml-verdict-byork-super-light.md): Set AML verdict for incoming transactions when **BYORK Super Light** (Manual Screening Verdict) is enabled. This endpoint is for Super Light only. For **BYORK Light**, use POST /screening/byork/verdict instead. When Super Light is retired, this endpoint will be deprecated; use the BYORK Light verdic…
+- [Set BYORK Light timeouts](https://developers.fireblocks.com/api-reference/compliance/set-byork-light-timeouts.md): Updates timeout values for BYORK wait-for-response (incoming and/or outgoing). At least one of incomingTimeoutSeconds or outgoingTimeoutSeconds is required. Values must be within the ranges returned in GET config (timeoutRangeIncoming for incomingTimeoutSeconds, timeoutRangeOutgoing for outgoingTime…
+- [Set BYORK Light verdict](https://developers.fireblocks.com/api-reference/compliance/set-byork-light-verdict.md): Submit verdict (ACCEPT or REJECT) for a transaction in the BYORK Light flow. If the transaction is awaiting your decision, the verdict is applied immediately (response status COMPLETED). If processing has not yet reached that point, the verdict is stored and applied when it does (response status PRE…
+- [Tenant - Screening Configuration](https://developers.fireblocks.com/api-reference/compliance/tenant--screening-configuration.md): Update tenant screening configuration.
+- [Travel Rule - View Post-Screening Policy](https://developers.fireblocks.com/api-reference/compliance/travel-rule--view-post-screening-policy.md): Get the post-screening policy for Travel Rule.
+- [Travel Rule - View Screening Policy](https://developers.fireblocks.com/api-reference/compliance/travel-rule--view-screening-policy.md): Get the screening policy for Travel Rule.
+- [Update a counterparty group](https://developers.fireblocks.com/api-reference/compliance/update-a-counterparty-group.md): Updates an existing counterparty group.
+- [Update AML Configuration](https://developers.fireblocks.com/api-reference/compliance/update-aml-configuration.md): Updates bypass screening, inbound delay, or outbound delay configurations for AML.
+- [Update legal entity](https://developers.fireblocks.com/api-reference/compliance/update-legal-entity.md): Updates the status of a legal entity registration. Setting isDefault to true marks the registration as the workspace default, which is applied to vault accounts that have no explicit legal entity mapping. Endpoint Permission: Admin, Non-Signing Admin.
+- [Update Travel Rule Configuration](https://developers.fireblocks.com/api-reference/compliance/update-travel-rule-configuration.md): Updates bypass screening, inbound delay, or outbound delay configurations for Travel Rule.
+- [Disconnect connected account](https://developers.fireblocks.com/api-reference/connected-accounts-beta/disconnect-connected-account.md): Disconnect a connected account by ID.
+- [Get balances for an account](https://developers.fireblocks.com/api-reference/connected-accounts-beta/get-balances-for-an-account.md): Retrieve current asset balances for a specific connected account as a flat list (one row per `assetId`, `balanceType`).
+- [Get connected account](https://developers.fireblocks.com/api-reference/connected-accounts-beta/get-connected-account.md): Retrieve detailed information about a specific connected account by ID.
+- [Get connected accounts](https://developers.fireblocks.com/api-reference/connected-accounts-beta/get-connected-accounts.md): Returns all connected accounts.
+- [Get exchange rates for an account](https://developers.fireblocks.com/api-reference/connected-accounts-beta/get-exchange-rates-for-an-account.md): Retrieve current exchange rates for converting between specific assets in a connected account.
+- [Get supported trading pairs for an account](https://developers.fireblocks.com/api-reference/connected-accounts-beta/get-supported-trading-pairs-for-an-account.md): Retrieve all asset trading pairs supported by a specific connected account, including the pair type (`quote`, `market`, `onOffRamp`).
+- [Rename Connected Account](https://developers.fireblocks.com/api-reference/connected-accounts-beta/rename-connected-account.md): Rename a connected account by account ID.
+- [Create console user](https://developers.fireblocks.com/api-reference/console-user/create-console-user.md): Create console users in your workspace - Please note that this endpoint is available only for API keys with Admin/Non Signing Admin permissions. Learn more about Fireblocks Users management in the following [guide](https://developers.fireblocks.com/docs/manage-users). Endpoint Permission: Admin, Non…
+- [Get console users](https://developers.fireblocks.com/api-reference/console-user/get-console-users.md): Get console users for your workspace. - Please note that this endpoint is available only for API keys with Admin/Non Signing Admin permissions. Endpoint Permission: Admin, Non-Signing Admin.
+- [Call a read function on a deployed contract](https://developers.fireblocks.com/api-reference/contract-interactions/call-a-read-function-on-a-deployed-contract.md): Call a read function on a deployed contract by blockchain native asset id and contract address
+- [Call a write function on a deployed contract](https://developers.fireblocks.com/api-reference/contract-interactions/call-a-write-function-on-a-deployed-contract.md): Call a write function on a deployed contract by blockchain native asset id and contract address. This creates an onchain transaction, thus it is an async operation. It returns a transaction id that can be polled for status check
+- [Decode a function call data, error, or event log](https://developers.fireblocks.com/api-reference/contract-interactions/decode-a-function-call-data-error-or-event-log.md): Decode a function call data, error, or event log from a deployed contract by blockchain native asset id and contract address.
+- [Get contract address by transaction hash](https://developers.fireblocks.com/api-reference/contract-interactions/get-contract-address-by-transaction-hash.md): Retrieve the contract address by blockchain native asset ID and transaction hash
+- [Get transaction receipt](https://developers.fireblocks.com/api-reference/contract-interactions/get-transaction-receipt.md): Retrieve the transaction receipt by blockchain native asset ID and transaction hash > **Note** > This functionality is exclusively available for EVM (Ethereum Virtual Machine) compatible chains.  Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, and Viewer.
+- [Return deployed contract's ABI](https://developers.fireblocks.com/api-reference/contract-interactions/return-deployed-contracts-abi.md): Return deployed contract's ABI by blockchain native asset id and contract address. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, and Viewer.
+- [Delete a contract template by id](https://developers.fireblocks.com/api-reference/contract-templates/delete-a-contract-template-by-id.md): Delete a contract by id. allowed only for private contract templates. Notice: it is irreversible!
+- [Deploy contract](https://developers.fireblocks.com/api-reference/contract-templates/deploy-contract.md): Deploy a new contract by contract template id. If you wish to deploy a token (ERC20, ERC721 etc), and create asset please use POST /tokenization
+- [Get supported blockchains for the template](https://developers.fireblocks.com/api-reference/contract-templates/get-supported-blockchains-for-the-template.md): Get supported blockchains for the template
+- [List all contract templates](https://developers.fireblocks.com/api-reference/contract-templates/list-all-contract-templates.md): Return minimal representation of all the contract templates available for the workspace. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.
+- [Return contract template by id](https://developers.fireblocks.com/api-reference/contract-templates/return-contract-template-by-id.md): Return detailed information about the contract template
+- [Return contract template's constructor](https://developers.fireblocks.com/api-reference/contract-templates/return-contract-templates-constructor.md): Return contract template's constructor ABI
+- [Return contract template's function](https://developers.fireblocks.com/api-reference/contract-templates/return-contract-templates-function.md): Return contract template`s function ABI by signature
+- [Upload contract template](https://developers.fireblocks.com/api-reference/contract-templates/upload-contract-template.md): Upload a new contract template. This contract template will be available for the workspace
+- [Add a contract](https://developers.fireblocks.com/api-reference/contracts/add-a-contract.md): Adds a contract to the workspace whitelist. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Add an asset to a whitelisted contract](https://developers.fireblocks.com/api-reference/contracts/add-an-asset-to-a-whitelisted-contract.md): Adds an asset to a whitelisted contract. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Delete a contract](https://developers.fireblocks.com/api-reference/contracts/delete-a-contract.md): Deletes a contract by ID. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Delete an asset from a whitelisted contract](https://developers.fireblocks.com/api-reference/contracts/delete-an-asset-from-a-whitelisted-contract.md): Deletes a whitelisted contract asset by ID. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Find a Specific Whitelisted Contract](https://developers.fireblocks.com/api-reference/contracts/find-a-specific-whitelisted-contract.md): Returns a whitelisted contract by Fireblocks Contract ID. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Find a whitelisted contract's asset](https://developers.fireblocks.com/api-reference/contracts/find-a-whitelisted-contracts-asset.md): Returns a whitelisted contract's asset by ID. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [List Whitelisted Contracts](https://developers.fireblocks.com/api-reference/contracts/list-whitelisted-contracts.md): Gets a list of whitelisted contracts. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.
+- [Add cosigner](https://developers.fireblocks.com/api-reference/cosigners-beta/add-cosigner.md): Add a new cosigner. The cosigner will be pending pairing until the API key is manually paired Endpoint Permission: Admin and Non-Signing Admin.
+- [Get all API keys](https://developers.fireblocks.com/api-reference/cosigners-beta/get-all-api-keys.md): Get all cosigner paired API keys (paginated). **Note:** These endpoints are currently in beta and might be subject to changes. Endpoint Permission: Admin and Non-Signing Admin.
+- [Get all cosigners](https://developers.fireblocks.com/api-reference/cosigners-beta/get-all-cosigners.md): Get all workspace cosigners (paginated). **Note:** These endpoints are currently in beta and might be subject to changes. Endpoint Permission: Admin and Non-Signing Admin.
+- [Get API key](https://developers.fireblocks.com/api-reference/cosigners-beta/get-api-key.md): Get an API key by ID. **Note:** These endpoints are currently in beta and might be subject to changes. Endpoint Permission: Admin and Non-Signing Admin.
+- [Get cosigner](https://developers.fireblocks.com/api-reference/cosigners-beta/get-cosigner.md): Get a cosigner by ID. **Note:** These endpoints are currently in beta and might be subject to changes. Endpoint Permission: Admin and Non-Signing Admin.
+- [Get request status](https://developers.fireblocks.com/api-reference/cosigners-beta/get-request-status.md): Get the status of an asynchronous request Endpoint Permission: Admin and Non-Signing Admin.
+- [Pair API key](https://developers.fireblocks.com/api-reference/cosigners-beta/pair-api-key.md): Pair an API key to a cosigner Endpoint Permission: Admin and Non-Signing Admin.
+- [Rename cosigner](https://developers.fireblocks.com/api-reference/cosigners-beta/rename-cosigner.md): Rename a cosigner by ID. **Note:** These endpoints are currently in beta and might be subject to changes. Endpoint Permission: Admin and Non-Signing Admin.
+- [Unpair API key](https://developers.fireblocks.com/api-reference/cosigners-beta/unpair-api-key.md): Unpair an API key from a cosigner Endpoint Permission: Admin and Non-Signing Admin.
+- [Update API key callback handler](https://developers.fireblocks.com/api-reference/cosigners-beta/update-api-key-callback-handler.md): Update the callback handler of an API key Endpoint Permission: Admin and Non-Signing Admin.
+- [Fetch the contract ABI](https://developers.fireblocks.com/api-reference/deployed-contracts/fetch-the-contract-abi.md): Fetch the ABI. If not found fetch the ABI from the block explorer
+- [List deployed contracts data](https://developers.fireblocks.com/api-reference/deployed-contracts/list-deployed-contracts-data.md): Return a filtered lean representation of the deployed contracts data on all blockchains (paginated)
+- [Return deployed contract data](https://developers.fireblocks.com/api-reference/deployed-contracts/return-deployed-contract-data.md): Return deployed contract data by blockchain native asset id and contract address
+- [Return deployed contract data by id](https://developers.fireblocks.com/api-reference/deployed-contracts/return-deployed-contract-data-by-id.md): Return deployed contract data by id
+- [Save contract ABI](https://developers.fireblocks.com/api-reference/deployed-contracts/save-contract-abi.md): Save contract ABI for the tenant
+- [Approve earn provider terms of service](https://developers.fireblocks.com/api-reference/earn-beta/approve-earn-provider-terms-of-service.md): Approves the lending provider's terms of service for this workspace. When `isTermsApprovalRequired` is true on the provider (see list providers), call this once before creating or executing earn actions with that provider. After success, `GET /earn/providers` reflects `isTermsOfServiceApproved`.
+- [Create and execute a lending action (deposit or withdraw)](https://developers.fireblocks.com/api-reference/earn-beta/create-and-execute-a-lending-action-deposit-or-withdraw.md): Creates and runs a sequence of on-chain steps for either a deposit into or a withdrawal from an earn vault/market. Specify the operation with `action` in the request body (`DEPOSIT` or `WITHDRAW`).
+- [Get a single earn lending action](https://developers.fireblocks.com/api-reference/earn-beta/get-a-single-earn-lending-action.md): Returns one lending action by its action sequence id (tenant-scoped).
+- [Get list of earn opportunities](https://developers.fireblocks.com/api-reference/earn-beta/get-list-of-earn-opportunities.md): Get list of earn opportunities (vaults).
+- [Get list of earn positions](https://developers.fireblocks.com/api-reference/earn-beta/get-list-of-earn-positions.md): Get list of earn positions for accounts tracked for this workspace.  Optional query parameters filter by chain, provider, and pagination.
+- [Get list of earn providers](https://developers.fireblocks.com/api-reference/earn-beta/get-list-of-earn-providers.md): Get list of earn providers.
+- [List earn lending actions](https://developers.fireblocks.com/api-reference/earn-beta/list-earn-lending-actions.md): Returns a paginated list of lending actions (deposits and withdrawals) for the authenticated tenant.
+- [Add asset to account](https://developers.fireblocks.com/api-reference/embedded-wallets/add-asset-to-account.md): Get the addresses of a specific asset, under a specific account, under a specific Non Custodial Wallet
+- [Assign a wallet](https://developers.fireblocks.com/api-reference/embedded-wallets/assign-a-wallet.md): Assign a specific Non Custodial Wallet to a user
+- [Create a new account](https://developers.fireblocks.com/api-reference/embedded-wallets/create-a-new-account.md): Create a new account under a specific Non Custodial Wallet
+- [Create a new wallet](https://developers.fireblocks.com/api-reference/embedded-wallets/create-a-new-wallet.md): Create new Non Custodial Wallet
+- [Get a account](https://developers.fireblocks.com/api-reference/embedded-wallets/get-a-account.md): Get a specific account under a specific Non Custodial Wallet
+- [Get a wallet](https://developers.fireblocks.com/api-reference/embedded-wallets/get-a-wallet.md): Get a wallet
+- [Get device key setup state](https://developers.fireblocks.com/api-reference/embedded-wallets/get-device-key-setup-state.md): Get the state of the specific device setup key under a specific Non Custodial Wallet
+- [Get Embedded Wallet Device](https://developers.fireblocks.com/api-reference/embedded-wallets/get-embedded-wallet-device.md): Get specific device for a specific s Wallet
+- [Get registered devices - paginated](https://developers.fireblocks.com/api-reference/embedded-wallets/get-registered-devices--paginated.md): Get a paginated list of registered devices for a specific Non Custodial Wallet
+- [Get the public key for a derivation path](https://developers.fireblocks.com/api-reference/embedded-wallets/get-the-public-key-for-a-derivation-path.md): Gets the public key information based on derivation path and signing algorithm within a Non-Custodial Wallet
+- [Get the public key of an asset](https://developers.fireblocks.com/api-reference/embedded-wallets/get-the-public-key-of-an-asset.md): Gets the public key of an asset associated with a specific account within a Non-Custodial Wallet
+- [Get the public key of an asset](https://developers.fireblocks.com/api-reference/embedded-wallets/get-the-public-key-of-an-asset-1.md): Gets the public key of an asset associated with a specific account within a Non-Custodial Wallet
+- [Get wallet key setup state](https://developers.fireblocks.com/api-reference/embedded-wallets/get-wallet-key-setup-state.md): Get the key setup state for a specific Non Custodial Wallet, including required algorithms and device setup status
+- [Get wallet Latest Backup details](https://developers.fireblocks.com/api-reference/embedded-wallets/get-wallet-latest-backup-details.md): Get wallet Latest Backup details, including the deviceId, and backup time
+- [List wallets](https://developers.fireblocks.com/api-reference/embedded-wallets/list-wallets.md): Get all Non Custodial Wallets
+- [Refresh asset balance](https://developers.fireblocks.com/api-reference/embedded-wallets/refresh-asset-balance.md): Refresh the balance of an asset in a specific account
+- [Retrieve asset](https://developers.fireblocks.com/api-reference/embedded-wallets/retrieve-asset.md): Get asset under a specific account, under a specific Non Custodial Wallet
+- [Retrieve asset addresses](https://developers.fireblocks.com/api-reference/embedded-wallets/retrieve-asset-addresses.md): Get the addresses of a specific asset, under a specific account, under a specific Non Custodial Wallet
+- [Retrieve asset balance](https://developers.fireblocks.com/api-reference/embedded-wallets/retrieve-asset-balance.md): Get balance for specific asset, under a specific account
+- [Retrieve assets](https://developers.fireblocks.com/api-reference/embedded-wallets/retrieve-assets.md): Retrieve assets for a specific account under a specific Non Custodial Wallet
+- [Retrieve supported assets](https://developers.fireblocks.com/api-reference/embedded-wallets/retrieve-supported-assets.md): Get all the available supported assets for the Non-Custodial Wallet
+- [Update device status](https://developers.fireblocks.com/api-reference/embedded-wallets/update-device-status.md): Update the enabled/disabled status of a specific device for a Non Custodial Wallet
+- [Update wallet status](https://developers.fireblocks.com/api-reference/embedded-wallets/update-wallet-status.md): Update the enabled/disabled status of a specific Non Custodial Wallet
+- [Add an exchange account](https://developers.fireblocks.com/api-reference/exchange-accounts/add-an-exchange-account.md): Add an exchange account to exchanges.
+- [Convert exchange account funds](https://developers.fireblocks.com/api-reference/exchange-accounts/convert-exchange-account-funds.md): Convert exchange account funds from the source asset to the destination asset. Coinbase (USD to USDC, USDC to USD) and Bitso (MXN to USD) are supported conversions. Learn more about Fireblocks Exchange Connectivity in the following [guide](https://developers.fireblocks.com/docs/connect-to-exchanges-…
+- [Get a specific exchange account](https://developers.fireblocks.com/api-reference/exchange-accounts/get-a-specific-exchange-account.md): Returns an exchange account by ID. Endpoint Permission: Admin, Non-Signing Admin.
+- [Get an asset for an exchange account](https://developers.fireblocks.com/api-reference/exchange-accounts/get-an-asset-for-an-exchange-account.md): Returns an asset for an exchange account. Endpoint Permission: Admin, Non-Signing Admin.
+- [Get public key to encrypt exchange credentials](https://developers.fireblocks.com/api-reference/exchange-accounts/get-public-key-to-encrypt-exchange-credentials.md): Return public key
+- [Internal transfer for exchange accounts](https://developers.fireblocks.com/api-reference/exchange-accounts/internal-transfer-for-exchange-accounts.md): Transfers funds between trading accounts under the same exchange account. Learn more about Fireblocks Exchange Connectivity in the following [guide](https://developers.fireblocks.com/docs/connect-to-exchanges-and-fiat-providers). Endpoint Permission: Admin, Non-Signing Admin.
+- [List connected exchange accounts](https://developers.fireblocks.com/api-reference/exchange-accounts/list-connected-exchange-accounts.md): Returns a list of the connected exchange accounts in your workspace. Endpoint Permission: Admin, Non-Signing Admin.
+- [List exchange accounts](https://developers.fireblocks.com/api-reference/exchange-accounts/list-exchange-accounts.md): DEPRECATED - Please use the `/exchange_accounts/paged` endpoint. Endpoint Permission: Admin, Non-Signing Admin.
+- [Add an asset to an external wallet.](https://developers.fireblocks.com/api-reference/external-wallets/add-an-asset-to-an-external-wallet.md): Adds an asset to an existing external wallet. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Create an external wallet](https://developers.fireblocks.com/api-reference/external-wallets/create-an-external-wallet.md): Creates a new external wallet with the requested name.
+- [Delete an asset from an external wallet](https://developers.fireblocks.com/api-reference/external-wallets/delete-an-asset-from-an-external-wallet.md): Deletes an external wallet asset by ID. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Delete an external wallet](https://developers.fireblocks.com/api-reference/external-wallets/delete-an-external-wallet.md): Deletes an external wallet by ID. External Wallet is a whitelisted address of a wallet that belongs to your users/counterparties. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Find an external wallet](https://developers.fireblocks.com/api-reference/external-wallets/find-an-external-wallet.md): Returns an external wallet by ID. External Wallet is a whitelisted address of a wallet that belongs to your users/counterparties. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.
+- [Get an asset from an external wallet](https://developers.fireblocks.com/api-reference/external-wallets/get-an-asset-from-an-external-wallet.md): Returns an external wallet by wallet ID and asset ID. External Wallet is a whitelisted address of a wallet that belongs to your users/counterparties. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.
+- [List external wallets](https://developers.fireblocks.com/api-reference/external-wallets/list-external-wallets.md): Gets a list of external wallets under the workspace.
+- [Set an AML customer reference ID for an external wallet](https://developers.fireblocks.com/api-reference/external-wallets/set-an-aml-customer-reference-id-for-an-external-wallet.md): Sets an AML/KYT customer reference ID for the specific external wallet. External Wallet is a whitelisted address of a wallet that belongs to your users/counterparties. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Deposit funds from DDA](https://developers.fireblocks.com/api-reference/fiat-accounts/deposit-funds-from-dda.md): Deposits funds from the linked DDA.
+- [Find a specific fiat account](https://developers.fireblocks.com/api-reference/fiat-accounts/find-a-specific-fiat-account.md): Returns a fiat account by ID. Endpoint Permission: Admin, Non-Signing Admin.
+- [List fiat accounts](https://developers.fireblocks.com/api-reference/fiat-accounts/list-fiat-accounts.md): Returns all fiat accounts. Endpoint Permission: Admin, Non-Signing Admin.
+- [Redeem funds to DDA](https://developers.fireblocks.com/api-reference/fiat-accounts/redeem-funds-to-dda.md): Redeems funds to the linked DDA.
+- [Edit gas station settings](https://developers.fireblocks.com/api-reference/gas-stations/edit-gas-station-settings.md): Configures gas station settings for ETH. Learn more about the Fireblocks Gas Station in the following [guide](https://developers.fireblocks.com/docs/work-with-gas-station). Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Edit gas station settings for an asset](https://developers.fireblocks.com/api-reference/gas-stations/edit-gas-station-settings-for-an-asset.md): Configures gas station settings for a requested asset. Learn more about the Fireblocks Gas Station in the following [guide](https://developers.fireblocks.com/docs/work-with-gas-station). Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Get gas station settings](https://developers.fireblocks.com/api-reference/gas-stations/get-gas-station-settings.md): Returns gas station settings and ETH balance. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Get gas station settings by asset](https://developers.fireblocks.com/api-reference/gas-stations/get-gas-station-settings-by-asset.md): Returns gas station settings and balances for a requested asset. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Add an asset to an internal wallet](https://developers.fireblocks.com/api-reference/internal-wallets/add-an-asset-to-an-internal-wallet.md): Adds an asset to an existing internal wallet.
+- [Create an internal wallet](https://developers.fireblocks.com/api-reference/internal-wallets/create-an-internal-wallet.md): Creates a new internal wallet with the requested name. Learn more about Whitelisted Internal Addresses [here](https://developers.fireblocks.com/docs/whitelist-addresses#internal-wallets)
+- [Delete a whitelisted address](https://developers.fireblocks.com/api-reference/internal-wallets/delete-a-whitelisted-address.md): Deletes a whitelisted address (for an asset) from an internal wallet.
+- [Delete an internal wallet](https://developers.fireblocks.com/api-reference/internal-wallets/delete-an-internal-wallet.md): Deletes an internal wallet by ID.
+- [Get an asset from an internal wallet](https://developers.fireblocks.com/api-reference/internal-wallets/get-an-asset-from-an-internal-wallet.md): Returns information for an asset in an internal wallet.
+- [Get assets for internal wallet](https://developers.fireblocks.com/api-reference/internal-wallets/get-assets-for-internal-wallet.md): Returns information for an internal wallet.
+- [List assets in an internal wallet (Paginated)](https://developers.fireblocks.com/api-reference/internal-wallets/list-assets-in-an-internal-wallet-paginated.md): Returns a paginated response of assets in an internal wallet.
+- [List internal wallets](https://developers.fireblocks.com/api-reference/internal-wallets/list-internal-wallets.md): Gets a list of internal wallets.
+- [Set an AML/KYT customer reference ID for internal wallet](https://developers.fireblocks.com/api-reference/internal-wallets/set-an-amlkyt-customer-reference-id-for-internal-wallet.md): Sets an AML/KYT customer reference ID for the specific internal wallet.
+- [Add a new signing key](https://developers.fireblocks.com/api-reference/key-link-beta/add-a-new-signing-key.md): Adds a new signing key to the workspace. The added key will be linked to the specific Fireblocks agent user ID. The same user will receive the proof of ownership message to be signed, and upon successful proof, the key will become enabled.
+- [Add a new validation key](https://developers.fireblocks.com/api-reference/key-link-beta/add-a-new-validation-key.md): Adds a new validation key used to validate signing keys. The new validation key will undergo an approval process by the workspace quorum.
+- [Disables a validation key](https://developers.fireblocks.com/api-reference/key-link-beta/disables-a-validation-key.md): Allows disabling validation key even if it has not expired yet. It is not allowed to enable the validation key back. Another key has to be used for future validations.
+- [Get a signing key by `keyId`](https://developers.fireblocks.com/api-reference/key-link-beta/get-a-signing-key-by-`keyid`.md): Returns a signing key if it exists, identified by the specified `keyId`.
+- [Get a validation key by `keyId`](https://developers.fireblocks.com/api-reference/key-link-beta/get-a-validation-key-by-`keyid`.md): Returns a validation key if it exists, identified by the specified `keyId`.
+- [Get list of registered validation keys](https://developers.fireblocks.com/api-reference/key-link-beta/get-list-of-registered-validation-keys.md): Returns the list of validation keys in the workspace
+- [Get list of signing keys](https://developers.fireblocks.com/api-reference/key-link-beta/get-list-of-signing-keys.md): Returns the list of signing keys in the workspace
+- [Modify the signing keyId](https://developers.fireblocks.com/api-reference/key-link-beta/modify-the-signing-keyid.md): Allows assigning the signing key to a vault account, if it hasn't been assigned to any other vault accounts yet.
+- [Set agent user id](https://developers.fireblocks.com/api-reference/key-link-beta/set-agent-user-id.md): Can modify existing signing key id if the key is not enabled. The change done in background and will be visible once applied. If key is already enabled (after proof of ownership) the user cannot be changed.
+- [Get list of mpc keys](https://developers.fireblocks.com/api-reference/keys-beta/get-list-of-mpc-keys.md): Returns a list of MPC signing keys of the workspace. For each key, the list of players associated with it is attached. **Note:**  This endpoint is currently in beta and might be subject to changes.
+- [Get list of mpc keys by `userId`](https://developers.fireblocks.com/api-reference/keys-beta/get-list-of-mpc-keys-by-`userid`.md): Returns a list of MPC signing keys of a specific user. For each key, the list of players associated with it is attached. **Note:** This endpoint is currently in beta and might be subject to changes.
+- [Create a new network connection](https://developers.fireblocks.com/api-reference/network-connections/create-a-new-network-connection.md): Initiates a new network connection. **Note:** This API call is subject to Flexible Routing Schemes.
+- [Creates a new Network ID](https://developers.fireblocks.com/api-reference/network-connections/creates-a-new-network-id.md): Create a new Network ID.
+- [Delete a network connection by ID](https://developers.fireblocks.com/api-reference/network-connections/delete-a-network-connection-by-id.md): Deletes an existing network connection specified by its connection ID.
+- [Delete specific network ID.](https://developers.fireblocks.com/api-reference/network-connections/delete-specific-network-id.md): Deletes a network by its ID.
+- [Get a network connection](https://developers.fireblocks.com/api-reference/network-connections/get-a-network-connection.md): Gets a network connection by ID.
+- [Get all network IDs](https://developers.fireblocks.com/api-reference/network-connections/get-all-network-ids.md): Retrieves a list of all local and discoverable remote network IDs.
+- [Get both local IDs and discoverable remote IDs](https://developers.fireblocks.com/api-reference/network-connections/get-both-local-ids-and-discoverable-remote-ids.md): Retrieves a list of all local and discoverable remote network IDs. Can be filtered.
+- [List network connections](https://developers.fireblocks.com/api-reference/network-connections/list-network-connections.md): Returns all network connections.
+- [Retrieve third-party network routing validation](https://developers.fireblocks.com/api-reference/network-connections/retrieve-third-party-network-routing-validation.md): The Fireblocks Network allows for flexibility around incoming deposits. A receiver can receive network deposits to locations other than Fireblocks. This endpoint validates whether future transactions are routed to the displayed recipient or to a 3rd party.
+- [Return all enabled routing policy asset groups](https://developers.fireblocks.com/api-reference/network-connections/return-all-enabled-routing-policy-asset-groups.md): Returns all enabled routing policy asset groups
+- [Return specific network ID.](https://developers.fireblocks.com/api-reference/network-connections/return-specific-network-id.md): Returns specific network ID.
+- [Update network connection routing policy.](https://developers.fireblocks.com/api-reference/network-connections/update-network-connection-routing-policy.md): Updates an existing network connection's routing policy.
+- [Update network id routing policy.](https://developers.fireblocks.com/api-reference/network-connections/update-network-id-routing-policy.md): Updates the routing policy of a specified network ID.
+- [Update network ID's discoverability.](https://developers.fireblocks.com/api-reference/network-connections/update-network-ids-discoverability.md): Update whether or not the network ID is discoverable by others.
+- [Update network ID's name.](https://developers.fireblocks.com/api-reference/network-connections/update-network-ids-name.md): Updates name of a specified network ID.
+- [List all distinct owned tokens (paginated)](https://developers.fireblocks.com/api-reference/nfts/list-all-distinct-owned-tokens-paginated.md): Returns all owned distinct tokens (for your tenant) and their data in your workspace.
+- [List all owned tokens (paginated)](https://developers.fireblocks.com/api-reference/nfts/list-all-owned-tokens-paginated.md): Returns all tokens and their data in your workspace.
+- [List owned collections (paginated)](https://developers.fireblocks.com/api-reference/nfts/list-owned-collections-paginated.md): Returns all collections in your workspace
+- [List token data by ID](https://developers.fireblocks.com/api-reference/nfts/list-token-data-by-id.md): Returns the requested token data.
+- [List tokens by IDs](https://developers.fireblocks.com/api-reference/nfts/list-tokens-by-ids.md): Returns the requested tokens data.
+- [Refresh token metadata](https://developers.fireblocks.com/api-reference/nfts/refresh-token-metadata.md): Updates the latest token metadata.
+- [Refresh vault account tokens](https://developers.fireblocks.com/api-reference/nfts/refresh-vault-account-tokens.md): Updates all tokens and balances per blockchain and vault account. Learn more about Fireblocks NFT management in the following [guide](https://developers.fireblocks.com/reference/deploy-an-nft-collection).
+- [Update token ownership status](https://developers.fireblocks.com/api-reference/nfts/update-token-ownership-status.md): Updates token status for a tenant, in all tenant vaults.
+- [Update tokens ownership spam property](https://developers.fireblocks.com/api-reference/nfts/update-tokens-ownership-spam-property.md): Updates tokens spam property for a tenant's token ownerships, in all tenant vaults.
+- [Update tokens ownership status](https://developers.fireblocks.com/api-reference/nfts/update-tokens-ownership-status.md): Updates tokens status for a tenant, in all tenant vaults.
+- [Add Collateral](https://developers.fireblocks.com/api-reference/off-exchanges/add-collateral.md): Add collateral and create deposit request. Learn more about Fireblocks Off Exchange in the following [guide](https://developers.fireblocks.com/docs/off-exchange). Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Create Settlement for a Trader](https://developers.fireblocks.com/api-reference/off-exchanges/create-settlement-for-a-trader.md): Create settlement for a trader. Learn more about Fireblocks Off Exchange in the following [guide](https://developers.fireblocks.com/docs/off-exchange). Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Find a specific collateral exchange account](https://developers.fireblocks.com/api-reference/off-exchanges/find-a-specific-collateral-exchange-account.md): Returns a collateral account by mainExchangeAccountId. Learn more about Fireblocks Off Exchange in the following [guide](https://developers.fireblocks.com/docs/off-exchange). Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Get Settlements Transactions](https://developers.fireblocks.com/api-reference/off-exchanges/get-settlements-transactions.md): Get settlements transactions from exchange. Learn more about Fireblocks Off Exchange in the following [guide](https://developers.fireblocks.com/docs/off-exchange). Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Remove Collateral](https://developers.fireblocks.com/api-reference/off-exchanges/remove-collateral.md): Remove collateral, create withdraw request. Learn more about Fireblocks Off Exchange in the following [guide](https://developers.fireblocks.com/docs/off-exchange). Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Fetch onchain transactions for a contract](https://developers.fireblocks.com/api-reference/onchain-data/fetch-onchain-transactions-for-a-contract.md): Returns a paginated list of onchain transactions for the specified contract address and base asset ID, optionally filtered by date range.
+- [Get historical balance data for a specific account in a contract](https://developers.fireblocks.com/api-reference/onchain-data/get-historical-balance-data-for-a-specific-account-in-a-contract.md): Returns the paginated balance history of the specified account in a contract with optional date range and interval filtering.
+- [Get historical total supply data for a contract](https://developers.fireblocks.com/api-reference/onchain-data/get-historical-total-supply-data-for-a-contract.md): Returns the paginated total supply history of the specified contract with optional date range and interval filtering.
+- [Get latest balances for all addresses holding tokens from a contract](https://developers.fireblocks.com/api-reference/onchain-data/get-latest-balances-for-all-addresses-holding-tokens-from-a-contract.md): Returns the latest balance for each unique address with support for numeric balance sorting. The `prev` cursor is reserved for future support.
+- [Get summary for the token contract](https://developers.fireblocks.com/api-reference/onchain-data/get-summary-for-the-token-contract.md): Returns the total number of unique addresses holding balances and the total supply for the specified contract.
+- [Get the current state of addresses in an access registry](https://developers.fireblocks.com/api-reference/onchain-data/get-the-current-state-of-addresses-in-an-access-registry.md): Returns the current state of addresses in the specified access registry. Only addresses that are currently active (added but not removed) are included.
+- [List of active roles for a given contract address and base asset ID](https://developers.fireblocks.com/api-reference/onchain-data/list-of-active-roles-for-a-given-contract-address-and-base-asset-id.md): Returns a list of currently active roles for the specified baseAssetId and contractAddress.
+- [Summary of access registry state](https://developers.fireblocks.com/api-reference/onchain-data/summary-of-access-registry-state.md): Returns a summary of the current state of the access registry for the specified baseAssetId and accessRegistryAddress.
+- [Enable or disable transactions to OTA](https://developers.fireblocks.com/api-reference/ota-beta/enable-or-disable-transactions-to-ota.md): Enable or disable transactions to One Time Addresses (Non Whitelisted addresses). Learn more about [One Time Addresses](https://support.fireblocks.io/hc/en-us/articles/4409104568338-One-Time-Address-OTA-feature)
+- [Returns current OTA status](https://developers.fireblocks.com/api-reference/ota-beta/returns-current-ota-status.md): Returns current OTA status
+- [Create payment flow configuration](https://developers.fireblocks.com/api-reference/payments--flows/create-payment-flow-configuration.md): Generate a new configuration ID to be used for initiating executions in subsequent phases. This configuration should include the operations you intend to incorporate into the workflow, such as TRANSFER, CONVERT, and DISBURSE, in addition to your pre-screening preferences, which are disabled by defau…
+- [Create workflow execution](https://developers.fireblocks.com/api-reference/payments--flows/create-workflow-execution.md): Validate the "workflow-config" previously created by utilizing the unique "configId". This step requires the mandatory field amount, and allows for modifications to other fields defined via the "workflow-config" endpoint, including pre-screening preferences. A response containing the "workflowExecut…
+- [Delete workflow configuration](https://developers.fireblocks.com/api-reference/payments--flows/delete-workflow-configuration.md): Delete a configuration using the specified "configId".
+- [Execute the payments workflow](https://developers.fireblocks.com/api-reference/payments--flows/execute-the-payments-workflow.md): Launch the execution of a pre-configured workflow, identified by "workflowExecutionId", once it reaches the READY_FOR_LAUNCH state. The workflow undergoes several phases during execution - EXECUTION_IN_PROGRESS - Marks the start of the workflow execution. EXECUTION_COMPLETED or EXECUTION_FAILED - In…
+- [Get workflow execution details](https://developers.fireblocks.com/api-reference/payments--flows/get-workflow-execution-details.md): Retrieve details of a previously initiated workflow execution by specifying the "workflowExecutionId"
+- [Retrieve workflow configuration](https://developers.fireblocks.com/api-reference/payments--flows/retrieve-workflow-configuration.md): Retrieve a previously created workflow configuration using the specified "configId".
+- [Create a payout instruction set](https://developers.fireblocks.com/api-reference/payments--payout/create-a-payout-instruction-set.md): **Note:** The reference content in this section documents the Payments Engine endpoint. The Payments Engine endpoints include APIs available only for customers with Payments Engine enabled on their accounts.
+- [Execute a payout instruction set](https://developers.fireblocks.com/api-reference/payments--payout/execute-a-payout-instruction-set.md): **Note:** The reference content in this section documents the Payments Engine endpoint. The Payments Engine endpoints include APIs available only for customers with Payments Engine enabled on their accounts.
+- [Get the status of a payout instruction set](https://developers.fireblocks.com/api-reference/payments--payout/get-the-status-of-a-payout-instruction-set.md): **Note:** The reference content in this section documents the Payments Engine endpoint. The Payments Engine endpoints include APIs available only for customers with Payments Engine enabled on their accounts.  These endpoints are currently in beta and might be subject to changes. If you want to learn…
+- [Get the active draft](https://developers.fireblocks.com/api-reference/policy-editor-beta/get-the-active-draft.md): Legacy Endpoint – Returns the active draft and its validation.  **Note:**  - This endpoint will remain available for the foreseeable future and is not deprecated. - The `getDraft` endpoint under policy/paths provides policy type-specific operations and improved functionality. - These endpoints are c…
+- [Get the active policy and its validation](https://developers.fireblocks.com/api-reference/policy-editor-beta/get-the-active-policy-and-its-validation.md): Legacy Endpoint – Returns the active policy and its validation.  **Note:**  - This endpoint will remain available for the foreseeable future and is not deprecated. - The `getActivePolicy` endpoint under policy/paths provides policy type-specific operations and improved functionality. - These endpoin…
+- [Send publish request for a certain draft id](https://developers.fireblocks.com/api-reference/policy-editor-beta/send-publish-request-for-a-certain-draft-id.md): Legacy Endpoint – Send publish request of certain draft id and returns the response.  **Note:**  - This endpoint will remain available for the foreseeable future and is not deprecated. - The `publishDraft` endpoint under policy/paths provides improved functionality and better performance. - These en…
+- [Send publish request for a set of policy rules](https://developers.fireblocks.com/api-reference/policy-editor-beta/send-publish-request-for-a-set-of-policy-rules.md): Send publish request of set of policy rules and returns the response.  **Note:** These endpoints are currently in beta and might be subject to changes. If you want to participate and learn more about the Fireblocks TAP, please contact your Fireblocks Customer Success Manager or send an email to CSM@…
+- [Update the draft with a new set of rules](https://developers.fireblocks.com/api-reference/policy-editor-beta/update-the-draft-with-a-new-set-of-rules.md): Legacy Endpoint – Update the draft and return its validation.  **Note:**  - This endpoint will remain available for the foreseeable future and is not deprecated. - The `updateDraft` endpoint under policy/paths provides policy type-specific operations and improved functionality. - These endpoints are…
+- [Get the active draft by policy type](https://developers.fireblocks.com/api-reference/policy-editor-v2-beta/get-the-active-draft-by-policy-type.md): Returns the active draft and its validation for a specific policy type.  **Note:** These endpoints are currently in beta and might be subject to changes.
+- [Get the active policy and its validation by policy type](https://developers.fireblocks.com/api-reference/policy-editor-v2-beta/get-the-active-policy-and-its-validation-by-policy-type.md): Returns the active policy and its validation for a specific policy type.
+- [Send publish request for a certain draft id](https://developers.fireblocks.com/api-reference/policy-editor-v2-beta/send-publish-request-for-a-certain-draft-id.md): Send publish request of certain draft id and returns the response.  **Note:** These endpoints are currently in beta and might be subject to changes. If you want to participate and learn more about the Fireblocks Policy Editor, please contact your Fireblocks Customer Success Manager or send an email…
+- [Update the draft with a new set of rules by policy types](https://developers.fireblocks.com/api-reference/policy-editor-v2-beta/update-the-draft-with-a-new-set-of-rules-by-policy-types.md): Update the draft and return its validation for specific policy types.  **Note:** These endpoints are currently in beta and might be subject to changes.
+- [Resets device](https://developers.fireblocks.com/api-reference/reset-device/resets-device.md): Resets mobile device for given console user, that user will need to do mobile onboarding again. - Please note that this endpoint is available only for API keys with Admin/Non Signing Admin permissions. Endpoint Permission: Admin, Non-Signing Admin.
+- [Add external ref. ID](https://developers.fireblocks.com/api-reference/smart-transfer/add-external-ref-id.md): Set external id Smart Transfer ticket. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Cancel Ticket](https://developers.fireblocks.com/api-reference/smart-transfer/cancel-ticket.md): Cancel Smart Transfer ticket. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Create leg (term)](https://developers.fireblocks.com/api-reference/smart-transfer/create-leg-term.md): Creates new smart transfer ticket term (when the ticket status is DRAFT). Learn more about Fireblocks Smart Transfers in the following [guide](https://developers.fireblocks.com/docs/execute-smart-transfers). Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Create Ticket](https://developers.fireblocks.com/api-reference/smart-transfer/create-ticket.md): Creates a new Smart Transfer ticket. Learn more about Fireblocks Smart Transfers [here](https://developers.fireblocks.com/docs/execute-smart-transfers).
+- [Define funding source](https://developers.fireblocks.com/api-reference/smart-transfer/define-funding-source.md): Set funding source for ticket term (in case of ASYNC tickets, this will execute transfer immediately). Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Delete ticket leg (term)](https://developers.fireblocks.com/api-reference/smart-transfer/delete-ticket-leg-term.md): Delete ticket term when ticket is in DRAFT status
+- [Find Ticket](https://developers.fireblocks.com/api-reference/smart-transfer/find-ticket.md): Find tickets by their title or ticker. You can also query all tickets without filters by not providing any input parameters. **Endpoint Permissions:** Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.
+- [Fund dvp ticket](https://developers.fireblocks.com/api-reference/smart-transfer/fund-dvp-ticket.md): Create or fulfill dvp ticket order
+- [Fund ticket manually](https://developers.fireblocks.com/api-reference/smart-transfer/fund-ticket-manually.md): Manually fulfill ticket, in case when all terms (legs) are funded manually. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Get Smart Transfer ticket term](https://developers.fireblocks.com/api-reference/smart-transfer/get-smart-transfer-ticket-term.md): Find a specific term of a specific Smart Transfer ticket. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.
+- [Get smart transfers statistic](https://developers.fireblocks.com/api-reference/smart-transfer/get-smart-transfers-statistic.md): Get smart transfer statistic
+- [Get user group](https://developers.fireblocks.com/api-reference/smart-transfer/get-user-group.md): Get Smart Transfer user groups. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.
+- [Manually add term transaction](https://developers.fireblocks.com/api-reference/smart-transfer/manually-add-term-transaction.md): Manually set ticket term transaction. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Search Ticket by ID](https://developers.fireblocks.com/api-reference/smart-transfer/search-ticket-by-id.md): Find Smart Transfer ticket by id. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.
+- [Set expiration](https://developers.fireblocks.com/api-reference/smart-transfer/set-expiration.md): Set expiration date on Smart Transfer ticket. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Set funding source and approval](https://developers.fireblocks.com/api-reference/smart-transfer/set-funding-source-and-approval.md): Set funding source for ticket term and creating approving transaction for contract to transfer asset
+- [Set user group](https://developers.fireblocks.com/api-reference/smart-transfer/set-user-group.md): Set Smart Transfers user group to receive email notifications for Smart Transfers. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Submit ticket](https://developers.fireblocks.com/api-reference/smart-transfer/submit-ticket.md): Submit Smart Transfer ticket - change status into ready for approval if auto approval is not turned on, or OPEN if auto approval is on. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Update ticket leg (term)](https://developers.fireblocks.com/api-reference/smart-transfer/update-ticket-leg-term.md): Update ticket term (when ticket status is DRAFT)
+- [Approve provider terms of service](https://developers.fireblocks.com/api-reference/staking/approve-provider-terms-of-service.md): Approves the provider's terms of service. Must be called once before performing any staking operation with this provider.
+- [Claim accrued rewards](https://developers.fireblocks.com/api-reference/staking/claim-accrued-rewards.md): Claims available staking rewards for the specified chain and vault. Supported chains: Solana and Polygon (POL/Matic). Behavior depends on protocol reward distribution.
+- [Consolidate staking positions (ETH validator consolidation)](https://developers.fireblocks.com/api-reference/staking/consolidate-staking-positions-eth-validator-consolidation.md): Consolidates the source staking position into the destination, merging the balance into the destination and closing the source position once complete. Both positions must be from the same vault account (i.e. same withdrawal credentials).  On chain, this translates into a consolidation transaction, w…
+- [Get chain-level staking parameters](https://developers.fireblocks.com/api-reference/staking/get-chain-level-staking-parameters.md): Returns chain-specific staking information such as epoch/slot cadence, lockup or unbonding periods, fee/reward mechanics, and other operational constraints.
+- [Get position details](https://developers.fireblocks.com/api-reference/staking/get-position-details.md): Returns full details for a single staking position: amounts, rewards, status, chain, and vault.
+- [Get positions summary](https://developers.fireblocks.com/api-reference/staking/get-positions-summary.md): Returns an aggregated cross-vault summary: active/inactive counts, total staked, and total rewards per chain.
+- [Get positions summary by vault](https://developers.fireblocks.com/api-reference/staking/get-positions-summary-by-vault.md): Returns per-vault aggregates: status breakdown, total staked, and total rewards per chain.
+- [Initiate or add to existing stake](https://developers.fireblocks.com/api-reference/staking/initiate-or-add-to-existing-stake.md): Creates a new staking position and returns its unique ID. For Ethereum compounding validator (EIP-7251): when the 'id' of an existing compounding validator position is provided, adds to that position; otherwise creates a new position. For Ethereum legacy validator: creates a new position regardless…
+- [Initiate unstake](https://developers.fireblocks.com/api-reference/staking/initiate-unstake.md): Submits a chain-specific unstake request.
+- [List staking positions](https://developers.fireblocks.com/api-reference/staking/list-staking-positions.md): Returns all staking positions with core details: amounts, rewards, status, chain, and vault. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [List staking positions (Paginated)](https://developers.fireblocks.com/api-reference/staking/list-staking-positions-paginated.md): Returns staking positions with core details: amounts, rewards, status, chain, and vault. It supports cursor-based pagination for efficient data retrieval. This endpoint always returns a paginated response with {data, next} structure. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, E…
+- [List staking providers](https://developers.fireblocks.com/api-reference/staking/list-staking-providers.md): Returns all available staking providers with metadata such as name, ID, and supported chains. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [List supported staking chains](https://developers.fireblocks.com/api-reference/staking/list-supported-staking-chains.md): Returns an alphabetical list of blockchains supported for staking by the current workspace context. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Merge staking positions](https://developers.fireblocks.com/api-reference/staking/merge-staking-positions.md): Merges the source stake account into the destination, consolidating the balance into the destination and closing the source account once complete. Both accounts must be from the same validator provider and of same vault account.. Supported chains: Solana (SOL). Endpoint Permission: Owner, Admin, Non…
+- [Split a staking position](https://developers.fireblocks.com/api-reference/staking/split-a-staking-position.md): Splits a staking position by creating a new stake account with the requested amount, while keeping the original account with the remaining balance. Supported chains: Solana (SOL).
+- [Withdraw staked funds](https://developers.fireblocks.com/api-reference/staking/withdraw-staked-funds.md): Withdraws funds that have completed the unbonding period. Typically requires the position to be deactivated first (unstake → unbond → withdraw). Amount and timing vary by chain protocol.
+- [Cancel an approval request by id](https://developers.fireblocks.com/api-reference/tags/cancel-an-approval-request-by-id.md): Cancel an approval request by id. Can only cancel requests in PENDING status. Returns 202 Accepted when the cancellation is processed.
+- [Create a new tag](https://developers.fireblocks.com/api-reference/tags/create-a-new-tag.md): Create a new tag. Endpoint Permissions: For protected tags: ADMIN,NON_SIGNING_ADMIN,OWNER. For non protected tags: ADMIN,NON_SIGNING_ADMIN,OWNER,SIGNER,EDITOR,APPROVER.
+- [Delete a tag](https://developers.fireblocks.com/api-reference/tags/delete-a-tag.md): Delete the specified tag. Endpoint Permission: For protected tags: Owner, Admin, Non-Signing Admin. For non protected tags: Owner, Admin, Non-Signing Admin, Signer, Editor, Approver.
+- [Get a tag](https://developers.fireblocks.com/api-reference/tags/get-a-tag.md): Retrieve an existing tag by ID.
+- [Get an approval request by id](https://developers.fireblocks.com/api-reference/tags/get-an-approval-request-by-id.md): Get an approval request by id
+- [Get list of tags](https://developers.fireblocks.com/api-reference/tags/get-list-of-tags.md): Retrieve a paged list of all tags according to filters.
+- [Update a tag](https://developers.fireblocks.com/api-reference/tags/update-a-tag.md): Update an existing specified tag. Endpoint Permission: For protected tags: Owner, Admin, Non-Signing Admin. For non protected tags: Owner, Admin, Non-Signing Admin, Signer, Editor, Approver.
+- [Burn tokens](https://developers.fireblocks.com/api-reference/tokenization/burn-tokens.md): Burn tokens in a collection
+- [Create a new collection](https://developers.fireblocks.com/api-reference/tokenization/create-a-new-collection.md): Create a new collection and link it as a token. Endpoint Permission: Owner, Admin, Non-Signing Admin, Signer, and Editor.
+- [Delete a collection link](https://developers.fireblocks.com/api-reference/tokenization/delete-a-collection-link.md): Delete a collection link
+- [Deploy LayerZero adapters](https://developers.fireblocks.com/api-reference/tokenization/deploy-layerzero-adapters.md): Deploy LayerZero adapters for multichain token bridging functionality. This endpoint creates adapter contracts that enable cross-chain token transfers.
+- [Get a collection by id](https://developers.fireblocks.com/api-reference/tokenization/get-a-collection-by-id.md): Get a collection by id
+- [Get collection token details](https://developers.fireblocks.com/api-reference/tokenization/get-collection-token-details.md): Get collection token details by id
+- [Get collections](https://developers.fireblocks.com/api-reference/tokenization/get-collections.md): Get collections (paginated). Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.
+- [Get deterministic address for contract deployment](https://developers.fireblocks.com/api-reference/tokenization/get-deterministic-address-for-contract-deployment.md): Get a deterministic address for contract deployment. The address is derived from the contract's bytecode and  provided salt. This endpoint is used to get the address of a contract that will be deployed in the future.
+- [Get LayerZero DVN configuration](https://developers.fireblocks.com/api-reference/tokenization/get-layerzero-dvn-configuration.md): Retrieve the DVN (Data Verification Network) configuration for a specific adapter. Returns DVN configurations for channels between the source adapter and its peers.
+- [Get LayerZero peers](https://developers.fireblocks.com/api-reference/tokenization/get-layerzero-peers.md): Retrieve the LayerZero peers configured for a specific adapter. Returns information about peer relationships for cross-chain communication.
+- [Get the total count of linked tokens](https://developers.fireblocks.com/api-reference/tokenization/get-the-total-count-of-linked-tokens.md): Get the total count of linked tokens
+- [Issue a new token](https://developers.fireblocks.com/api-reference/tokenization/issue-a-new-token.md): Facilitates the creation of a new token, supporting both EVM-based and Stellar/Ripple platforms. For EVM, it deploys the corresponding contract template to the blockchain and links the token to the workspace. For Stellar/Ripple, it links a newly created token directly to the workspace without deploy…
+- [Issue a token on one or more blockchains](https://developers.fireblocks.com/api-reference/tokenization/issue-a-token-on-one-or-more-blockchains.md): Facilitates the creation of a new token on one or more blockchains.
+- [Link a contract](https://developers.fireblocks.com/api-reference/tokenization/link-a-contract.md): Link an a contract
+- [List all linked tokens](https://developers.fireblocks.com/api-reference/tokenization/list-all-linked-tokens.md): Return all linked tokens (paginated)
+- [Mint tokens](https://developers.fireblocks.com/api-reference/tokenization/mint-tokens.md): Mint tokens and upload metadata
+- [Reissue a multichain token](https://developers.fireblocks.com/api-reference/tokenization/reissue-a-multichain-token.md): Reissue a multichain token. This endpoint allows you to reissue a token on one or more blockchains. The token must be initially issued using the issueTokenMultiChain endpoint.
+- [Remove LayerZero adapters](https://developers.fireblocks.com/api-reference/tokenization/remove-layerzero-adapters.md): Remove LayerZero adapters by deactivating and unlinking them. This endpoint revokes roles and deactivates the specified adapter contracts.
+- [Remove LayerZero peers](https://developers.fireblocks.com/api-reference/tokenization/remove-layerzero-peers.md): Remove LayerZero peers to disconnect adapter contracts. This endpoint removes peer relationships between LayerZero adapters.
+- [Return a linked token](https://developers.fireblocks.com/api-reference/tokenization/return-a-linked-token.md): Return a linked token, with its status and metadata.
+- [Set LayerZero DVN configuration](https://developers.fireblocks.com/api-reference/tokenization/set-layerzero-dvn-configuration.md): Configure DVN settings for LayerZero adapters. This endpoint sets up the DVN configuration for message verification between source and destination adapters.
+- [Set LayerZero peers](https://developers.fireblocks.com/api-reference/tokenization/set-layerzero-peers.md): Set LayerZero peers to establish connections between adapter contracts. This endpoint creates peer relationships that enable cross-chain communication. It sets the destination adapter as a peer of the source adapter. If `bidirectional` is true, it also sets the source adapter as a peer of the destin…
+- [Unlink a token](https://developers.fireblocks.com/api-reference/tokenization/unlink-a-token.md): Unlink a token. The token will be unlinked from the workspace. The token will not be deleted on chain nor the refId, only the link to the workspace will be removed.
+- [Validate LayerZero channel configuration](https://developers.fireblocks.com/api-reference/tokenization/validate-layerzero-channel-configuration.md): Validate the LayerZero channel configuration between adapters. This endpoint checks if the channel configuration is correct and returns any validation errors.
+- [Create a quote](https://developers.fireblocks.com/api-reference/trading-beta/create-a-quote.md): Generate a time-limited quote for asset conversion, providing exchange rate and amount calculations.
+- [Create an order](https://developers.fireblocks.com/api-reference/trading-beta/create-an-order.md): Create an order to buy or sell an asset. If no source is given, an external source will be use.
+- [Get order details](https://developers.fireblocks.com/api-reference/trading-beta/get-order-details.md): Retrieve detailed information about a specific order by its ID.
+- [Get orders](https://developers.fireblocks.com/api-reference/trading-beta/get-orders.md): Retrieve a paginated list of orders with optional filtering by account, provider, status, and time range.
+- [Get providers](https://developers.fireblocks.com/api-reference/trading-beta/get-providers.md): Retrieve a list of all available external providers supporting trading activities through the platform.
+- [Get trading provider by ID](https://developers.fireblocks.com/api-reference/trading-beta/get-trading-provider-by-id.md): Retrieve a single provider by ID.
+- [Cancel a transaction](https://developers.fireblocks.com/api-reference/transactions/cancel-a-transaction.md): Cancels a transaction by Fireblocks Transaction ID.
+- [Create a new transaction](https://developers.fireblocks.com/api-reference/transactions/create-a-new-transaction.md): Creates a new transaction. This endpoint can be used for regular Transfers, Contract Calls, Raw & Typed message signing. - For Transfers, the required parameters are: `assetId`, `source`, `destination` and `amount`. - For Contract Calls, the required parameters are: `operation.CONTRACT_CALL`, `asset…
+- [Drop ETH (EVM) transaction by ID](https://developers.fireblocks.com/api-reference/transactions/drop-eth-evm-transaction-by-id.md): Drops a stuck ETH (EVM) transaction and creates a replacement transaction with 0 amount. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Estimate the required fee for an asset](https://developers.fireblocks.com/api-reference/transactions/estimate-the-required-fee-for-an-asset.md): Gets the estimated required fee for an asset. Fireblocks fetches, calculates and caches the result every 30 seconds. Customers should query this API while taking the caching interval into consideration. Notes: - The `networkFee` parameter is the `gasPrice` with a given delta added, multiplied by the…
+- [Estimate transaction fee](https://developers.fireblocks.com/api-reference/transactions/estimate-transaction-fee.md): Estimates the transaction fee for a specific transaction request. This endpoint simulates a transaction which means that the system will expect to have the requested asset and balance in the specified wallet. **Note**: Supports all Fireblocks assets except ZCash (ZEC). The PROGRAM_CALL operation is…
+- [Freeze a transaction](https://developers.fireblocks.com/api-reference/transactions/freeze-a-transaction.md): Freezes a transaction by ID.
+- [Get a specific transaction by external transaction ID](https://developers.fireblocks.com/api-reference/transactions/get-a-specific-transaction-by-external-transaction-id.md): Returns transaction by external transaction ID. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.
+- [Get a specific transaction by Fireblocks transaction ID](https://developers.fireblocks.com/api-reference/transactions/get-a-specific-transaction-by-fireblocks-transaction-id.md): Get a specific transaction data by Fireblocks Transaction ID Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.
+- [Get transaction history](https://developers.fireblocks.com/api-reference/transactions/get-transaction-history.md): Get the transaction history for your workspace.
+- [Set confirmation threshold by Fireblocks Transaction ID](https://developers.fireblocks.com/api-reference/transactions/set-confirmation-threshold-by-fireblocks-transaction-id.md): Overrides the required number of confirmations for transaction completion Fireblocks Transaction ID. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Set confirmation threshold by transaction hash](https://developers.fireblocks.com/api-reference/transactions/set-confirmation-threshold-by-transaction-hash.md): Overrides the required number of confirmations for transaction completion by transaction hash. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Unfreeze a transaction](https://developers.fireblocks.com/api-reference/transactions/unfreeze-a-transaction.md): Unfreezes a transaction by Fireblocks Transaction ID and makes the transaction available again. Endpoint Permission: Admin, Non-Signing Admin.
+- [Validate destination address](https://developers.fireblocks.com/api-reference/transactions/validate-destination-address.md): Checks if an address is valid and active (for XRP, DOT, XLM, and EOS). Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Add jsonDidKey to VASP details](https://developers.fireblocks.com/api-reference/travel-rule/add-jsondidkey-to-vasp-details.md): Update VASP Details.
+- [Assign VASP to vault](https://developers.fireblocks.com/api-reference/travel-rule/assign-vasp-to-vault.md): Sets the VASP Did for a specific vault. Pass empty string to remove existing one.
+- [Create Trust Network Proof of Address](https://developers.fireblocks.com/api-reference/travel-rule/create-trust-network-proof-of-address.md): Creates a cryptographic proof of address ownership for TRUST network.
+- [Get All VASPs](https://developers.fireblocks.com/api-reference/travel-rule/get-all-vasps.md): Get All VASPs.
+- [Get assigned VASP to vault](https://developers.fireblocks.com/api-reference/travel-rule/get-assigned-vasp-to-vault.md): Get assigned VASP Did for a specific vault. Returns empty string vaspDid value in response if none assigned.
+- [Get VASP details](https://developers.fireblocks.com/api-reference/travel-rule/get-vasp-details.md): Get VASP Details.
+- [Retrieve Trust Network Proof of Address Signature](https://developers.fireblocks.com/api-reference/travel-rule/retrieve-trust-network-proof-of-address-signature.md): Retrieves the TRUST-compatible encoded signature for a proof of address transaction. Send this signature directly to TRUST for verification.
+- [Validate Full Travel Rule Transaction](https://developers.fireblocks.com/api-reference/travel-rule/validate-full-travel-rule-transaction.md): Validate Full Travel Rule transactions.
+- [Validate Travel Rule Transaction](https://developers.fireblocks.com/api-reference/travel-rule/validate-travel-rule-transaction.md): Validate Travel Rule transactions. Checks what beneficiary VASP details are required by your jurisdiction and the beneficiary's jurisdiction. **Deprecation Notice** This endpoint will be deprecated soon in favor of the [validate full](https://developers.fireblocks.com/reference/validatefulltravelrul…
+- [Assess Travel Rule requirement](https://developers.fireblocks.com/api-reference/trlink/assess-travel-rule-requirement.md): Assesses travel rule requirement for a transaction by validating stored credentials and determining whether Travel Rule compliance is required based on amount, jurisdiction, and partner thresholds.
+- [Cancel Travel Rule Message](https://developers.fireblocks.com/api-reference/trlink/cancel-travel-rule-message.md): Cancels a travel rule message. The TRM status will be updated to cancelled and the partner will be notified.
+- [Connect customer integration](https://developers.fireblocks.com/api-reference/trlink/connect-customer-integration.md): Connects a customer integration by providing API credentials. Stores encrypted credentials and enables the integration for use.
+- [Create customer](https://developers.fireblocks.com/api-reference/trlink/create-customer.md): Creates a new customer (legal entity/VASP) for TRSupport Travel Rule compliance operations. The customer represents your organization in the Travel Rule network and contains IVMS101-compliant identity information.
+- [Create customer integration](https://developers.fireblocks.com/api-reference/trlink/create-customer-integration.md): Creates a new TRSupport integration for a customer. This establishes a connection placeholder between a customer and a Travel Rule partner. Use the connect endpoint to provide credentials after creation. You may optionally supply `customerIntegrationId` in the request body when your tenant is enable…
+- [Create Travel Rule Message](https://developers.fireblocks.com/api-reference/trlink/create-travel-rule-message.md): Creates a new travel rule message with IVMS101-compliant PII data. Encrypts sensitive originator and beneficiary information before sending to partner.
+- [Delete customer](https://developers.fireblocks.com/api-reference/trlink/delete-customer.md): Deletes a customer and all associated integrations. This action cannot be undone.
+- [Disconnect customer integration](https://developers.fireblocks.com/api-reference/trlink/disconnect-customer-integration.md): Disconnects the integration for the authenticated workspace (tenant): removes stored credentials and deletes this tenant's integration record. The operation is scoped to the caller's tenant; it does not remove partner-side state for other workspaces that reuse the same logical customer integration.…
+- [Get all customers](https://developers.fireblocks.com/api-reference/trlink/get-all-customers.md): Retrieves all customers associated with the authenticated tenant. Returns a list of legal entities configured for Travel Rule compliance.
+- [Get customer by ID](https://developers.fireblocks.com/api-reference/trlink/get-customer-by-id.md): Retrieves detailed information about a specific customer by their unique identifier.
+- [Get customer integration by ID](https://developers.fireblocks.com/api-reference/trlink/get-customer-integration-by-id.md): Retrieves detailed information about a specific customer integration.
+- [Get customer integrations](https://developers.fireblocks.com/api-reference/trlink/get-customer-integrations.md): Retrieves all TRSupport integrations for a specific customer. Returns a list of partner integrations configured for Travel Rule compliance.
+- [Get public key for PII encryption](https://developers.fireblocks.com/api-reference/trlink/get-public-key-for-pii-encryption.md): Retrieves the partner's public key in JWK format for encrypting PII data in Travel Rule Messages. Use this key to encrypt sensitive originator and beneficiary information before sending Travel Rule messages.
+- [Get required actions for a TRM](https://developers.fireblocks.com/api-reference/trlink/get-required-actions-for-a-trm.md): Retrieves the list of required actions (e.g., PII fields) needed to process the Travel Rule Message.
+- [Get supported asset by ID](https://developers.fireblocks.com/api-reference/trlink/get-supported-asset-by-id.md): Retrieves detailed information about a specific asset by its Fireblocks asset ID. Returns the transformed Fireblocks asset data, raw partner response, and support status.
+- [Get TRLink policy](https://developers.fireblocks.com/api-reference/trlink/get-trlink-policy.md): Retrieves the complete TRSupport policy for the authenticated tenant, including pre-screening rules, post-screening rules, and missing TRM rules. Pre-screening rules determine whether transactions should be screened. Post-screening rules determine actions based on screening results. Missing TRM rule…
+- [Get TRM by ID](https://developers.fireblocks.com/api-reference/trlink/get-trm-by-id.md): Retrieves a Travel Rule Message by its unique identifier from the partner provider. Returns full TRM details including status, IVMS101 data, and transaction information.
+- [Get VASP by ID](https://developers.fireblocks.com/api-reference/trlink/get-vasp-by-id.md): Retrieves detailed information about a specific VASP by its unique identifier. Returns VASP details including public key if available.
+- [List available TRSupport partners](https://developers.fireblocks.com/api-reference/trlink/list-available-trsupport-partners.md): Retrieves a list of all available Travel Rule Support integration partners. Partners provide Travel Rule compliance services such as VASP discovery, TRM exchange, and PII encryption.
+- [List supported assets](https://developers.fireblocks.com/api-reference/trlink/list-supported-assets.md): Retrieves a paginated list of assets supported by the partner integration. Includes a flag indicating whether the partner can handle assets not explicitly listed. Supports cursor-based pagination.
+- [List VASPs](https://developers.fireblocks.com/api-reference/trlink/list-vasps.md): Retrieves a paginated list of VASPs (Virtual Asset Service Providers) available through the partner integration. Supports cursor-based pagination.
+- [Manual decision for missing TRM](https://developers.fireblocks.com/api-reference/trlink/manual-decision-for-missing-trm.md): Accept or reject destinations stuck in NoTRM step without waiting for TRP webhook or policy timeout.
+- [Redirect Travel Rule Message](https://developers.fireblocks.com/api-reference/trlink/redirect-travel-rule-message.md): Redirects a Travel Rule Message to a subsidiary VASP. This operation requires the partner to support nested VASPs functionality.
+- [Resolve action for a TRM](https://developers.fireblocks.com/api-reference/trlink/resolve-action-for-a-trm.md): Submits required data (e.g., beneficiary PII) to resolve a pending Travel Rule Message action.
+- [Set destination travel rule message ID](https://developers.fireblocks.com/api-reference/trlink/set-destination-travel-rule-message-id.md): Associates a Travel Rule Message ID with a specific destination in a multi-destination Fireblocks transaction. Matches destinations by amount and peer path.
+- [Set transaction travel rule message ID](https://developers.fireblocks.com/api-reference/trlink/set-transaction-travel-rule-message-id.md): Associates a Travel Rule Message ID with a Fireblocks transaction. This links the TRM compliance data to the blockchain transaction.
+- [Test connection](https://developers.fireblocks.com/api-reference/trlink/test-connection.md): Tests the connection to a customer integration by validating stored credentials and attempting communication with the Travel Rule partner. Returns connection status and any error messages.
+- [Update customer](https://developers.fireblocks.com/api-reference/trlink/update-customer.md): Updates an existing customer's information. All fields are optional - only provided fields will be updated.
+- [Create user group](https://developers.fireblocks.com/api-reference/user-groups-beta/create-user-group.md): Create a new user group. Users with the Viewer role cannot be added to groups. Endpoint Permission: Admin, Non-Signing Admin.
+- [Delete user group](https://developers.fireblocks.com/api-reference/user-groups-beta/delete-user-group.md): Delete a user group by ID.
+- [Get user group](https://developers.fireblocks.com/api-reference/user-groups-beta/get-user-group.md): Get a user group by ID.
+- [List user groups](https://developers.fireblocks.com/api-reference/user-groups-beta/list-user-groups.md): Get all user groups in your workspace
+- [Update user group](https://developers.fireblocks.com/api-reference/user-groups-beta/update-user-group.md): Update a user group by ID.
+- [List users](https://developers.fireblocks.com/api-reference/users/list-users.md): List all users for the workspace.
+- [Attach or detach labels to/from UTXOs](https://developers.fireblocks.com/api-reference/utxo-management-beta/attach-or-detach-labels-tofrom-utxos.md): Attach or detach labels to/from UTXOs in a vault account. Labels can be used for organizing and filtering UTXOs. Labels are applied additively — `labelsToAttach` adds to the existing label set and `labelsToDetach` removes from it. Neither operation replaces the full set. **Note:** These endpoints ar…
+- [List unspent outputs (UTXOs)](https://developers.fireblocks.com/api-reference/utxo-management-beta/list-unspent-outputs-utxos.md): Returns a paginated list of unspent transaction outputs (UTXOs) for a UTXO-based asset in a vault account, with optional filters for labels, statuses, amounts, and more. **Note:** These endpoints are currently in beta and might be subject to changes. Endpoint Permission: Admin, Non-Signing Admin, Si…
+- [Activate a Circle Gateway wallet](https://developers.fireblocks.com/api-reference/vaults/activate-a-circle-gateway-wallet.md): Activates the Circle Gateway wallet associated with the given vault account. If the wallet does not yet exist it is created in an activated state.
+- [Activate a wallet in a vault account](https://developers.fireblocks.com/api-reference/vaults/activate-a-wallet-in-a-vault-account.md): Initiates activation for a wallet in a vault account.  Activation is required for tokens that need an on-chain transaction for creation (XLM tokens, SOL tokens etc). Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Assign AML customer reference ID](https://developers.fireblocks.com/api-reference/vaults/assign-aml-customer-reference-id.md): Sets an AML/KYT customer reference ID for a specific address. Endpoint Permission: Admin, Non-Signing Admin.
+- [Attach or detach tags from vault accounts](https://developers.fireblocks.com/api-reference/vaults/attach-or-detach-tags-from-vault-accounts.md): Attach or detach one or more tags from the requested vault accounts. Endpoint Permission: For protected tags: Owner, Admin, Non-Signing Admin. For non protected tags: Owner, Admin, Non-Signing Admin, Signer, Editor, Approver.
+- [Bulk creation of new deposit addresses](https://developers.fireblocks.com/api-reference/vaults/bulk-creation-of-new-deposit-addresses.md): **For UTXO blockchains only.**
+- [Bulk creation of new vault accounts](https://developers.fireblocks.com/api-reference/vaults/bulk-creation-of-new-vault-accounts.md): Create multiple vault accounts by running an async job.       - The HBAR, TON, SUI, TERRA, ALGO, and DOT blockchains are not supported. - These endpoints are currently in beta and might be subject to changes. - Limited to a maximum of 10,000 accounts per operation.
+- [Convert a segwit address to legacy format](https://developers.fireblocks.com/api-reference/vaults/convert-a-segwit-address-to-legacy-format.md): Converts an existing segwit address to the legacy format. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Create a new vault account](https://developers.fireblocks.com/api-reference/vaults/create-a-new-vault-account.md): Creates a new vault account with the requested name. **Note: ** Vault account names should consist of ASCII characters only. Learn more about Fireblocks Vault Accounts in the following [guide](https://developers.fireblocks.com/reference/create-vault-account). Endpoint Permission: Admin, Non-Signing…
+- [Create a new vault wallet](https://developers.fireblocks.com/api-reference/vaults/create-a-new-vault-wallet.md): Creates a wallet for a specific asset in a vault account. Learn more about Fireblocks Vault Wallets in the following [guide](https://developers.fireblocks.com/reference/create-vault-wallet). Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Create new asset deposit address](https://developers.fireblocks.com/api-reference/vaults/create-new-asset-deposit-address.md): Creates a new deposit address for an asset of a vault account. Should be used for UTXO or Tag/Memo based assets ONLY.
+- [Deactivate a Circle Gateway wallet](https://developers.fireblocks.com/api-reference/vaults/deactivate-a-circle-gateway-wallet.md): Deactivates the Circle Gateway wallet associated with the given vault account.
+- [Get a vault account by ID](https://developers.fireblocks.com/api-reference/vaults/get-a-vault-account-by-id.md): Get a vault account by its unique ID. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.
+- [Get addresses (Paginated)](https://developers.fireblocks.com/api-reference/vaults/get-addresses-paginated.md): Returns a paginated response of the addresses for a given vault account and asset. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.
+- [Get an asset's public key](https://developers.fireblocks.com/api-reference/vaults/get-an-assets-public-key.md): Get the public key information for a specific asset in a vault account. Endpoint Permission: Admin, Non-Signing Admin.
+- [Get asset addresses](https://developers.fireblocks.com/api-reference/vaults/get-asset-addresses.md): DEPRECATED!
+- [Get asset balance for chosen assets](https://developers.fireblocks.com/api-reference/vaults/get-asset-balance-for-chosen-assets.md): Gets the assets amount summary for all accounts or filtered accounts.
+- [Get Circle Gateway wallet info](https://developers.fireblocks.com/api-reference/vaults/get-circle-gateway-wallet-info.md): Returns the Circle Gateway wallet information associated with the given vault account. **Note:** This endpoint is currently in beta and might be subject to changes. </br>Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.
+- [Get job status of bulk creation of new vault accounts](https://developers.fireblocks.com/api-reference/vaults/get-job-status-of-bulk-creation-of-new-vault-accounts.md): Returns the current status of (or error for) the specified vault account bulk creation job.
+- [Get max spendable amount in a transaction](https://developers.fireblocks.com/api-reference/vaults/get-max-spendable-amount-in-a-transaction.md): **UTXO assets only.**
+- [Get maximum BIP44 index used](https://developers.fireblocks.com/api-reference/vaults/get-maximum-bip44-index-used.md): Retrieves the maximum BIP44 address index and change address index used for a specific asset in a vault account (BIP44 standard).
+- [Get the asset balance for a vault account](https://developers.fireblocks.com/api-reference/vaults/get-the-asset-balance-for-a-vault-account.md): Returns a specific vault wallet balance information for a specific asset.
+- [Get the job status of the bulk deposit address creation](https://developers.fireblocks.com/api-reference/vaults/get-the-job-status-of-the-bulk-deposit-address-creation.md): Returns the current status of (or an error for) the specified deposit addresss bulk creation job.
+- [Get the public key for a derivation path](https://developers.fireblocks.com/api-reference/vaults/get-the-public-key-for-a-derivation-path.md): Gets the public key information based on derivation path and signing algorithm. Endpoint Permission: Admin, Non-Signing Admin.
+- [Get UTXO unspent inputs information](https://developers.fireblocks.com/api-reference/vaults/get-utxo-unspent-inputs-information.md): Returns unspent inputs information of an UTXO asset in a vault account.
+- [Get vault accounts](https://developers.fireblocks.com/api-reference/vaults/get-vault-accounts.md): DEPRECATED - Please use `/vault/accounts_paged` endpoint instead. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.
+- [Get vault accounts (Paginated)](https://developers.fireblocks.com/api-reference/vaults/get-vault-accounts-paginated.md): Gets all vault accounts in your workspace. This endpoint returns a limited amount of results with a quick response time. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.
+- [Get vault balance by an asset](https://developers.fireblocks.com/api-reference/vaults/get-vault-balance-by-an-asset.md): Get the total balance of an asset across all the vault accounts.
+- [Get vault wallets (Paginated)](https://developers.fireblocks.com/api-reference/vaults/get-vault-wallets-paginated.md): Get all vault wallets of the vault accounts in your workspace.  A vault wallet is an asset in a vault account.
+- [Hide a vault account in the console](https://developers.fireblocks.com/api-reference/vaults/hide-a-vault-account-in-the-console.md): Hides the requested vault account from the web console view. This operation is required when creating thousands of vault accounts to serve your end-users. Used for preventing the web console to be swamped with too much vault accounts. Learn more in the following [guide](https://developers.fireblocks…
+- [Refresh asset balance data](https://developers.fireblocks.com/api-reference/vaults/refresh-asset-balance-data.md): Updates the balance of a specific asset in a vault account.
+- [Rename a vault account](https://developers.fireblocks.com/api-reference/vaults/rename-a-vault-account.md): Renames the requested vault account. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver.
+- [Set an AML/KYT ID for a vault account](https://developers.fireblocks.com/api-reference/vaults/set-an-amlkyt-id-for-a-vault-account.md): Assigns an AML/KYT customer reference ID for the vault account. Learn more about Fireblocks AML management in the following [guide](https://developers.fireblocks.com/docs/define-aml-policies). Endpoint Permission: Admin, Non-Signing Admin.
+- [Set auto fueling to on or off](https://developers.fireblocks.com/api-reference/vaults/set-auto-fueling-to-on-or-off.md): Toggles the auto fueling property of the vault account to enabled or disabled. Vault Accounts with 'autoFuel=true' are monitored and auto fueled by the Fireblocks Gas Station. Learn more about the Fireblocks Gas Station in the following [guide](https://developers.fireblocks.com/docs/work-with-gas-st…
+- [Unhide a vault account in the console](https://developers.fireblocks.com/api-reference/vaults/unhide-a-vault-account-in-the-console.md): Makes a hidden vault account visible in web console view. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Update address description](https://developers.fireblocks.com/api-reference/vaults/update-address-description.md): Updates the description of an existing address of an asset in a vault account. Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor.
+- [Create a new Web3 connection.](https://developers.fireblocks.com/api-reference/web3-connections/create-a-new-web3-connection.md): Initiate a new Web3 connection.
+- [List all open Web3 connections.](https://developers.fireblocks.com/api-reference/web3-connections/list-all-open-web3-connections.md): Get open Web3 connections.
+- [Remove an existing Web3 connection.](https://developers.fireblocks.com/api-reference/web3-connections/remove-an-existing-web3-connection.md): Remove a Web3 connection
+- [Respond to a pending Web3 connection request.](https://developers.fireblocks.com/api-reference/web3-connections/respond-to-a-pending-web3-connection-request.md): Submit a response to *approve* or *reject* an initiated Web3 connection. * Note: This call is used to complete your `POST /v1/connections/wc/` request.
+- [Create a new webhook](https://developers.fireblocks.com/api-reference/webhooks-v2/create-a-new-webhook.md): Creates a new webhook, which will be triggered on the specified events
+- [Delete webhook](https://developers.fireblocks.com/api-reference/webhooks-v2/delete-webhook.md): Delete a webhook by its id
+- [Get all notifications by webhook id](https://developers.fireblocks.com/api-reference/webhooks-v2/get-all-notifications-by-webhook-id.md): Get all notifications by webhook id (paginated)
+- [Get all webhooks](https://developers.fireblocks.com/api-reference/webhooks-v2/get-all-webhooks.md): Get all webhooks (paginated).
+- [Get notification attempts](https://developers.fireblocks.com/api-reference/webhooks-v2/get-notification-attempts.md): Get notification attempts by notification id
+- [Get notification by id](https://developers.fireblocks.com/api-reference/webhooks-v2/get-notification-by-id.md): Get notification by id
+- [Get resend by query job status](https://developers.fireblocks.com/api-reference/webhooks-v2/get-resend-by-query-job-status.md): Get the status of a resend by query job
+- [Get resend job status](https://developers.fireblocks.com/api-reference/webhooks-v2/get-resend-job-status.md): Get the status of a resend job
+- [Get webhook by id](https://developers.fireblocks.com/api-reference/webhooks-v2/get-webhook-by-id.md): Retrieve a webhook by its id
+- [Get webhook metrics](https://developers.fireblocks.com/api-reference/webhooks-v2/get-webhook-metrics.md): Get webhook metrics by webhook id and metric name
+- [Resend failed notifications](https://developers.fireblocks.com/api-reference/webhooks-v2/resend-failed-notifications.md): Resend all failed notifications for a webhook in the last 24 hours
+- [Resend notification by id](https://developers.fireblocks.com/api-reference/webhooks-v2/resend-notification-by-id.md): Resend notification by ID
+- [Resend notifications by query](https://developers.fireblocks.com/api-reference/webhooks-v2/resend-notifications-by-query.md): Resend notifications matching the given query filters (statuses, events, time range, resource ID)
+- [Resend notifications by resource Id](https://developers.fireblocks.com/api-reference/webhooks-v2/resend-notifications-by-resource-id.md): Resend notifications by resource Id
+- [Update webhook](https://developers.fireblocks.com/api-reference/webhooks-v2/update-webhook.md): Update a webhook by its id
+- [Resend failed webhooks](https://developers.fireblocks.com/api-reference/webhooks/resend-failed-webhooks.md): Resends all failed webhook notifications.
+- [Resend webhooks for a transaction by ID](https://developers.fireblocks.com/api-reference/webhooks/resend-webhooks-for-a-transaction-by-id.md): Resends webhook notifications for a transaction by its unique identifier.
+- [Get whitelisted ip addresses for an API Key](https://developers.fireblocks.com/api-reference/whitelist-ip-addresses/get-whitelisted-ip-addresses-for-an-api-key.md): Get a list of the whitelisted IP addresses for a specific API Key - Please note that this endpoint is available only for API keys with Admin/Non Signing Admin permissions. Endpoint Permission: Admin, Non-Signing Admin.
+- [Returns current workspace status](https://developers.fireblocks.com/api-reference/workspace-status-beta/returns-current-workspace-status.md): Returns current workspace status (Beta). **Note**: - This endpoint is now in Beta, disabled for general availability at this time. - Please note that this endpoint is available only for API keys with Admin/Non Signing Admin permissions.
+- [Freeze](https://developers.fireblocks.com/api-reference/workspace/freeze.md): Freezes a Workspace so that ALL operations by ANY user are blocked. You should only perform this action when the workspace faces imminent risk, such as when you have a security breach. To unfreeze a workspace, the workspace Owner must submit a request to Fireblocks Support. **NOTE:**  - This operati…
+- [Get workspace](https://developers.fireblocks.com/api-reference/workspace/get-workspace.md): Returns the workspace ID and name for the authenticated user.
+- [Changelog](https://developers.fireblocks.com/changelog.md)
+- [Constructing Encrypted PII Messages for Exchanges via Fireblocks](https://developers.fireblocks.com/docs/a-developers-guide-to-constructing-encrypted-pii-messages-for-binance-via-fireblocks.md)
+- [Add an Exchange Account](https://developers.fireblocks.com/docs/add-an-exchange-account.md): You can easily add your own exchange account to the Fireblocks workspace, provided it's supported by Fireblocks. Once connected, you can seamlessly transfer funds between your exchange account and Fireblocks via the console or API. This guide will explain to you how to add an exchange account via ou…
+- [API Communication](https://developers.fireblocks.com/docs/api-communication.md)
+- [Associate End Clients](https://developers.fireblocks.com/docs/associating-end-clients-with-transactions.md)
+- [AWS Nitro API Co-signer Architecture](https://developers.fireblocks.com/docs/aws-nitro-api-co-signer.md)
+- [Backup and Recovery Overview](https://developers.fireblocks.com/docs/backup-and-recovery-overview.md)
+- [Boost Transactions](https://developers.fireblocks.com/docs/boost-transactions-1.md)
+- [Building with AI](https://developers.fireblocks.com/docs/building-with-ai.md): AI-assisted development is the default way to build on Fireblocks. This page explains the tools available and when to use each.
+- [Fireblocks Key Features & Capabilities](https://developers.fireblocks.com/docs/capabilities.md)
+- [CLI Authentication](https://developers.fireblocks.com/docs/cli-authentication.md): Configure credentials for the Fireblocks CLI.
+- [CLI Usage Guide](https://developers.fireblocks.com/docs/cli-usage.md): Commands, flags, examples, and error handling for the Fireblocks CLI.
+- [API Co-signer Security Checklist and Recommended Defense and Monitoring Systems](https://developers.fireblocks.com/docs/co-signer-security-checklist-defense-monitoring.md)
+- [Configure Gas Station Values](https://developers.fireblocks.com/docs/configure-gas-station-values.md): You can configure the Fireblocks Gas Station with a gas threshold, a gas cap, and a maximum gas price for each blockchain network according to its base asset by using the Fireblocks API.
+- [Connect to Exchanges and Fiat Providers](https://developers.fireblocks.com/docs/connect-to-exchanges-and-fiat-providers.md): Fireblocks enables clients to connect their own (supported by Fireblocks) exchange and fiat accounts directly within the workspace.
+- [Connect to the Fireblocks Network](https://developers.fireblocks.com/docs/connect-to-the-fireblocks-network.md): The Fireblocks Network is a peer-to-peer, institutional liquidity and transfer network of 1,500+ liquidity providers, lending desks, and trading counterparties. Members can discover, connect, and settle with other Fireblocks Network members quickly, easily, and securely using features available only…
+- [API Co-signers Architecture Overview](https://developers.fireblocks.com/docs/cosigner-architecture-overview.md)
+- [Setup API Co-signer Callback Handler](https://developers.fireblocks.com/docs/create-api-co-signer-callback-handler.md)
+- [Create Direct Custody Wallets](https://developers.fireblocks.com/docs/create-direct-custody-wallets.md)
+- [Overview](https://developers.fireblocks.com/docs/create-payouts.md)
+- [Data Model](https://developers.fireblocks.com/docs/data-model.md)
+- [Data Privacy and Protection](https://developers.fireblocks.com/docs/data-privacy-and-protection.md): Fireblocks does not store or process any client Personal Identifiable Information (PII). To achieve this, the customer is required to strictly use anonymized tokens, such as  (UUID) to reflect client data. These anonymous tokens are mapped internally by the customer to actual client identifiers stor…
+- [Overview](https://developers.fireblocks.com/docs/define-aml-policies.md): Since privacy is a key principle of blockchain technology, transactions on the blockchain do not contain any information about the people or organizations involved. However, criminals may try to use this anonymity to hide illicit fund transfers. To prevent funds from being sent to criminals or sanct…
+- [Define Approval Quorums](https://developers.fireblocks.com/docs/define-approval-quorums.md)
+- [Overview](https://developers.fireblocks.com/docs/define-confirmation-policy.md): Blockchain confirmations are crucial for maintaining the security and integrity of the blockchain. This process ensures that transactions are securely verified, thereby preventing fraud and double-spending. However, the number of confirmations also directly impacts the time it takes for a transactio…
+- [Define Travel Rule Policies](https://developers.fireblocks.com/docs/define-travel-rule-policies.md): The  recommended the Travel Rule in order to combat money laundering and terrorist trafficking activity. The rule states that Virtual Asset Service Providers (VASPs), which include businesses that exchange virtual assets, must provide additional data on the senders and recipients of certain transact…
+- [Developer Center](https://developers.fireblocks.com/docs/developer-center.md)
+- [Overview](https://developers.fireblocks.com/docs/dynamic-embedded-wallets.md): Fireblocks has acquired Dynamic, a developer platform powering millions of onchain user accounts across web, iOS, and Android.
+- [Overview](https://developers.fireblocks.com/docs/embedded-wallet-android-core-sdk.md)
+- [Embedded Wallet SDK](https://developers.fireblocks.com/docs/embedded-wallet-android-sdk.md)
+- [Asset Management](https://developers.fireblocks.com/docs/embedded-wallet-asset-management.md)
+- [Backup and Recovery](https://developers.fireblocks.com/docs/embedded-wallet-backup-and-recovery.md)
+- [Boosting Embedded Wallet Performance](https://developers.fireblocks.com/docs/embedded-wallet-boosting-embedded-wallet-performance.md)
+- [Create Transaction](https://developers.fireblocks.com/docs/embedded-wallet-create-transaction.md)
+- [Data Objects](https://developers.fireblocks.com/docs/embedded-wallet-data-objects.md)
+- [Disaster Recovery](https://developers.fireblocks.com/docs/embedded-wallet-disaster-recovery.md)
+- [Events Handler](https://developers.fireblocks.com/docs/embedded-wallet-events-handler.md): You can choose whether to provide an events handler during the mobile and web Software Development Kits (SDKs) setup for the Fireblocks Embedded Wallet (EW). The events handler activates during different operations within the SDK and keeps you in the loop about significant occurrences, such as key g…
+- [Overview](https://developers.fireblocks.com/docs/embedded-wallet-faq.md)
+- [Overview](https://developers.fireblocks.com/docs/embedded-wallet-full-key-takeover-export-private-key.md)
+- [Handling Returning End Users](https://developers.fireblocks.com/docs/embedded-wallet-handling-returning-end-users.md)
+- [High-Level Architecture](https://developers.fireblocks.com/docs/embedded-wallet-high-level-architecture.md)
+- [Initializing the SDKs](https://developers.fireblocks.com/docs/embedded-wallet-initializing-the-sdks.md)
+- [Fireblocks Embedded Wallets](https://developers.fireblocks.com/docs/embedded-wallet-introduction.md)
+- [Overview](https://developers.fireblocks.com/docs/embedded-wallet-ios-core-sdk.md)
+- [Embedded Wallet SDK](https://developers.fireblocks.com/docs/embedded-wallet-ios-sdk.md)
+- [Overview](https://developers.fireblocks.com/docs/embedded-wallet-js-core-sdk.md): https://www.npmjs.com/package/@fireblocks/ncw-js-sdk
+- [Embedded Wallet SDK](https://developers.fireblocks.com/docs/embedded-wallet-js-sdk.md): https://www.npmjs.com/package/@fireblocks/embedded-wallet-sdk
+- [Key Storage](https://developers.fireblocks.com/docs/embedded-wallet-key-storage.md)
+- [Embedded Wallet Keys Explained](https://developers.fireblocks.com/docs/embedded-wallet-keys-explained.md)
+- [MPC Key Generation](https://developers.fireblocks.com/docs/embedded-wallet-mpc-key-generation.md)
+- [Multi-Device Implementation](https://developers.fireblocks.com/docs/embedded-wallet-multi-device-implementation.md)
+- [Setup](https://developers.fireblocks.com/docs/embedded-wallet-setup.md)
+- [Using ECDSA and EdDSA](https://developers.fireblocks.com/docs/embedded-wallet-using-ecdsa-and-eddsa.md)
+- [Wallet](https://developers.fireblocks.com/docs/embedded-wallet-wallet.md)
+- [Web3 Wallet Link](https://developers.fireblocks.com/docs/embedded-wallet-web3-wallet-link.md)
+- [Webhook Configuration](https://developers.fireblocks.com/docs/embedded-wallet-webhook-configuration.md)
+- [Webhooks](https://developers.fireblocks.com/docs/embedded-wallet-webhooks.md)
+- [Enable the Gas Station](https://developers.fireblocks.com/docs/enabling-the-gas-station-1.md)
+- [EW SDK Event Collection](https://developers.fireblocks.com/docs/ew-sdk-event-collection.md)
+- [EW SDK Manual Log Retrieval](https://developers.fireblocks.com/docs/ew-sdk-manual-log-retrieval.md)
+- [Execute Smart Transfers](https://developers.fireblocks.com/docs/execute-smart-transfers.md)
+- [Fetching Transaction Receipt](https://developers.fireblocks.com/docs/fetching-transaction-receipt.md): This guide outlines the procedure for retrieving a transaction receipt via the  endpoint, utilizing the  function in the Fireblocks SDK.
+- [Fireblocks CLI](https://developers.fireblocks.com/docs/fireblocks-cli.md): Execute any Fireblocks API operation from the command line.
+- [Google Cloud Confidential Space API Co-signer Architecture](https://developers.fireblocks.com/docs/gcp-confidential-space-api-co-signer.md)
+- [Create a CSR for an API user](https://developers.fireblocks.com/docs/generate-a-csr-for-an-api-user.md)
+- [Getting Started](https://developers.fireblocks.com/docs/getting-started-with-embedded-wallets.md)
+- [Integrate Fireblocks with Third-Party Service Providers](https://developers.fireblocks.com/docs/integrate-fireblocks-with-third-party-service-providers.md)
+- [Integrating third-party AML providers](https://developers.fireblocks.com/docs/integrating-third-party-aml-providers.md): Fireblocks offers direct integrations with AML providers Chainalysis and Elliptic. If you prefer to use a different provider, you can use the workflows below to integrate a third-party service into your workspace.
+- [Intel SGX Co-signer Architecture](https://developers.fireblocks.com/docs/intel-sgx-api-co-signer.md)
+- [Interact With Smart Contracts](https://developers.fireblocks.com/docs/interact-with-smart-contracts.md)
+- [Interact with TRUST](https://developers.fireblocks.com/docs/interact-with-trust.md): The  platform can be used to securely send information required by the Travel Rule.
+- [Fireblocks Developer Docs](https://developers.fireblocks.com/docs/introduction.md)
+- [Tokenize Assets](https://developers.fireblocks.com/docs/issue-new-tokens.md)
+- [Overview](https://developers.fireblocks.com/docs/list-supported-assets-1.md): Fireblocks supports thousands of assets across dozens of blockchain networks and frequently adds support for new assets. All supported assets share the same name and asset ID across every customer workspace where they are available.
+- [Main Capabilities](https://developers.fireblocks.com/docs/main-capabilities.md)
+- [Manage API Access](https://developers.fireblocks.com/docs/manage-api-keys.md)
+- [Manage Deposits at Scale](https://developers.fireblocks.com/docs/manage-deposits-at-scale.md)
+- [Overview](https://developers.fireblocks.com/docs/manage-users.md): Fireblocks users can be added either via the web console or via the API:
+- [Manage Withdrawals at Scale](https://developers.fireblocks.com/docs/manage-withdrawals-at-scale.md)
+- [Mandatory fields for Bitstamp deposits](https://developers.fireblocks.com/docs/mandatory-fields-for-bitstamp-deposits.md)
+- [Mandatory fields for Bitstamp withdrawals](https://developers.fireblocks.com/docs/mandatory-fields-for-bitstamp-withdrawals.md)
+- [Mandatory fields for OKex withdrawals](https://developers.fireblocks.com/docs/mandatory-fields-for-okex-withdrawals.md)
+- [Mandatory fields for TrustCo withdrawals](https://developers.fireblocks.com/docs/mandatory-fields-for-trustco-withdrawals.md)
+- [Mandatory properties for Binance deposits](https://developers.fireblocks.com/docs/mandatory-properties-for-deposits.md)
+- [Mandatory properties for Binance withdrawals](https://developers.fireblocks.com/docs/mandatory-properties-for-withdrawals.md)
+- [Configuring Multiple API Co-signers in High Availability](https://developers.fireblocks.com/docs/multiple-cosigners-high-availability.md)
+- [Overview](https://developers.fireblocks.com/docs/network-link-integration-guide-for-provider-connectivity.md)
+- [Fireblocks Object Model](https://developers.fireblocks.com/docs/object-model.md): The Fireblocks platform can be viewed as consisting of the following components:
+- [Off Exchange](https://developers.fireblocks.com/docs/off-exchange.md)
+- [On/Off-Ramp, and cross-chain Swap via CeFi](https://developers.fireblocks.com/docs/on-ramp-off-ramp-and-bridgeswap-via-account-based-providers-cefi.md)
+- [Overview](https://developers.fireblocks.com/docs/overview.md)
+- [Define Payment Flows](https://developers.fireblocks.com/docs/payment-flows-copy.md)
+- [Overview](https://developers.fireblocks.com/docs/perform-drs-process.md)
+- [Getting Started](https://developers.fireblocks.com/docs/quickstart.md): Install the Fireblocks Documentation MCP, then use an SDK or the Fireblocks CLI to make your first Fireblocks API calls.
+- [Overview](https://developers.fireblocks.com/docs/raw-signing.md)
+- [Segregate Duties](https://developers.fireblocks.com/docs/segregate-duties.md): To ensure the security of your workspace operations, it is crucial to segregate duties and delegate responsibilities appropriately. The first and most important step is to distinguish between users handling critical managerial tasks and those managing regular operations.
+- [Self-Custody Infrastructure](https://developers.fireblocks.com/docs/self-custody-infrastructure.md): Be the owner of your funds without compromising speed and security using Fireblocks' self-custody infrastructure
+- [Set Auto Fueling Property](https://developers.fireblocks.com/docs/set-auto-fueling-property.md)
+- [Set Policies](https://developers.fireblocks.com/docs/set-transaction-authorization-policy.md): Policies define which actions are allowed or blocked in your Fireblocks workspace: controlling who can initiate transactions, from which sources, to which destinations, and under what conditions. You can manage Policies directly in the Fireblocks Console using the Policy Editor, or programmatically…
+- [Stake Assets](https://developers.fireblocks.com/docs/stake-assets.md)
+- [Supported Networks](https://developers.fireblocks.com/docs/supported-networks.md): The following table contains the blockchain networks supported by the Fireblocks Embedded Wallet (EW) service.
+- [Supported Platforms](https://developers.fireblocks.com/docs/supported-platforms.md): The Fireblocks Embedded Wallets (EW) SDK offers tools to build on multiple platforms.
+- [Swap examples via DeFi](https://developers.fireblocks.com/docs/swap-via-direct-access-providers-defi.md)
+- [Sweep Funds](https://developers.fireblocks.com/docs/sweep-funds.md)
+- [Tokenization](https://developers.fireblocks.com/docs/tokenization.md): Deploy, manage, mint, and burn custom tokenized on-chain assets securely using the Fireblocks API
+- [Overview](https://developers.fireblocks.com/docs/trading-api-overview.md)
+- [Transaction Flows](https://developers.fireblocks.com/docs/transaction-flows.md)
+- [Treasury Management](https://developers.fireblocks.com/docs/treasury-management.md): Store your funds securely in hot and cold wallets, manage your fund operations, and connect to exchanges, DeFi, and trading counterparties with Fireblocks Treasury Management
+- [Sign Typed Messages](https://developers.fireblocks.com/docs/typed-message-signing-1.md)
+- [Explore Use Cases](https://developers.fireblocks.com/docs/use-cases.md)
+- [Use API Co-signers for Signing and Approval Automation](https://developers.fireblocks.com/docs/use-cosigners-for-signing-automation.md)
+- [Validate Balances](https://developers.fireblocks.com/docs/validate-balances.md): Fireblocks customers can create automated mechanisms to notify their organization about incoming transactions using the following methods:
+- [Estimate Transaction Fees](https://developers.fireblocks.com/docs/verify-fee-effeciency.md): Fireblocks provides clients with two API endpoints to estimate transaction fees:
+- [Wallet-as-a-Service](https://developers.fireblocks.com/docs/wallet-as-a-service.md): Easily build and integrate custom, secure wallets into your application with Fireblocks' Wallet-as-a-Service API
+- [Wallet Link](https://developers.fireblocks.com/docs/web3-wallet-link.md)
+- [What Is Fireblocks?](https://developers.fireblocks.com/docs/what-is-fireblocks.md): Fireblocks is a user-friendly platform that uses direct custody to build new blockchain-based products and manage your digital asset operations. Direct custody is a type of self-custody that seamlessly blends high performance, zero counterparty risk, and multiple layers of security. With Fireblocks,…
+- [Overview](https://developers.fireblocks.com/docs/whitelist-addresses.md)
+- [Whitelist IPs for API Keys](https://developers.fireblocks.com/docs/whitelist-ips-for-api-keys.md): The IP allowlist (whitelist) enables you to restrict API calls to only accept specific IP addresses for each API key. Only allowing access to a select number of IP addresses can lower the chances of a security threat or malicious attack.
+- [Work with Fireblocks Gas Station](https://developers.fireblocks.com/docs/work-with-gas-station.md)
+- [Workspace Comparison](https://developers.fireblocks.com/docs/workspace-environments.md)
+- [Add Tokens](https://developers.fireblocks.com/reference/add-your-tokens.md)
+- [Address Registry](https://developers.fireblocks.com/reference/address-registry.md)
+- [Android SDK errors](https://developers.fireblocks.com/reference/android-sdk-errors.md)
+- [API Co-signer Deployment Options and Installation Flow](https://developers.fireblocks.com/reference/api-cosigner-installation-flow.md)
+- [API Co-signer Maintenance](https://developers.fireblocks.com/reference/api-cosigner-maintenance.md)
+- [AWS Nitro API Co-signer Maintenance](https://developers.fireblocks.com/reference/api-cosigner-maintenance-aws-nitro.md)
+- [GCP Confidential Space API Co-signer Maintenance](https://developers.fireblocks.com/reference/api-cosigner-maintenance-gcp-confspace.md)
+- [SGX API Co-signer Maintenance](https://developers.fireblocks.com/reference/api-cosigner-maintenance-sgx.md)
+- [API Co-signer Management](https://developers.fireblocks.com/reference/api-cosigner-management.md)
+- [Operating the API Co-signer](https://developers.fireblocks.com/reference/api-cosigner-operate.md)
+- [API Co-signer Troubleshooting](https://developers.fireblocks.com/reference/api-cosigner-troubleshooting.md)
+- [API Co-signers Versions](https://developers.fireblocks.com/reference/api-cosigner-versions.md)
+- [AWS Nitro API Co-signer Version History](https://developers.fireblocks.com/reference/api-cosigner-versions-aws.md)
+- [GCP Confidential Space API Co-signer Version History](https://developers.fireblocks.com/reference/api-cosigner-versions-gcp.md)
+- [SGX API Co-signer Version History](https://developers.fireblocks.com/reference/api-cosigner-versions-sgx.md)
+- [API Endpoints Overview](https://developers.fireblocks.com/reference/api-endpoints-overview.md)
+- [API responses and error codes](https://developers.fireblocks.com/reference/api-error-codes.md)
+- [API Idempotency](https://developers.fireblocks.com/reference/api-idempotency.md)
+- [API Overview](https://developers.fireblocks.com/reference/api-overview.md)
+- [Approve configuration changes](https://developers.fireblocks.com/reference/approve-configuration-changes.md)
+- [Approve transactions](https://developers.fireblocks.com/reference/approve-transactions.md)
+- [Audit Log Events](https://developers.fireblocks.com/reference/audit-log-events.md)
+- [Authenticating the Callback Handler Request](https://developers.fireblocks.com/reference/authenticate.md)
+- [Automation Webhooks](https://developers.fireblocks.com/reference/automation-webhooks.md)
+- [Introduction](https://developers.fireblocks.com/reference/background-retail-demo-application.md)
+- [Balance validation](https://developers.fireblocks.com/reference/balance-validation.md)
+- [Basic Callback Handler example](https://developers.fireblocks.com/reference/basic-code-example.md)
+- [Bring your own screening check developer guide](https://developers.fireblocks.com/reference/bring-your-own-screening-check-developer-guide.md)
+- [Caching Signatures](https://developers.fireblocks.com/reference/caching-signatures.md)
+- [Code Examples](https://developers.fireblocks.com/reference/code-examples-1.md)
+- [Code Examples](https://developers.fireblocks.com/reference/code-examples-2.md)
+- [Common errors](https://developers.fireblocks.com/reference/common-errors.md)
+- [Configure Policies](https://developers.fireblocks.com/reference/configure-transaction-authorization-policy.md)
+- [Configure Webhook URLs](https://developers.fireblocks.com/reference/configure-webhook-urls.md)
+- [Consolidate UTXOs](https://developers.fireblocks.com/reference/consolidate-utxos.md)
+- [Webhooks v1](https://developers.fireblocks.com/reference/consume-webhooks.md)
+- [Contract Objects](https://developers.fireblocks.com/reference/contract-objects.md)
+- [Securing communication](https://developers.fireblocks.com/reference/cosigner-callbackhandler-secure-communication-authentication.md)
+- [Create Omnibus Structure](https://developers.fireblocks.com/reference/create-omnibus-structure.md)
+- [Create a Staking Position](https://developers.fireblocks.com/reference/create-stake.md)
+- [Create Transactions](https://developers.fireblocks.com/reference/create-transactions.md)
+- [Create Vault Accounts](https://developers.fireblocks.com/reference/create-vault-account.md)
+- [Create Vault Wallets](https://developers.fireblocks.com/reference/create-vault-wallet.md)
+- [Create Workflow Configuration](https://developers.fireblocks.com/reference/create-workflow-configuration.md)
+- [Create Workflow Execution](https://developers.fireblocks.com/reference/create-workflow-execution.md)
+- [Data Objects](https://developers.fireblocks.com/reference/data-objects.md)
+- [Deploy an NFT Collection](https://developers.fireblocks.com/reference/deploy-an-nft-collection.md)
+- [Estimate Transaction Fee](https://developers.fireblocks.com/reference/estimate-transaction-fee.md)
+- [EVM Local JSON RPC](https://developers.fireblocks.com/reference/evm-local-json-rpc.md)
+- [EVM Web3 Provider](https://developers.fireblocks.com/reference/evm-web3-provider.md)
+- [EW API errors](https://developers.fireblocks.com/reference/ew-api-errors.md)
+- [Exchange & Fiat Account Webhooks](https://developers.fireblocks.com/reference/exchange-fiat-account-webhooks.md)
+- [Exchange Account Objects](https://developers.fireblocks.com/reference/exchange-objects.md)
+- [Execute Payouts](https://developers.fireblocks.com/reference/executing-payouts.md)
+- [Postman Guide](https://developers.fireblocks.com/reference/explore-postman-collection.md)
+- [Fee Estimation Objects](https://developers.fireblocks.com/reference/fee-estimation-objects.md)
+- [Fiat Account Objects](https://developers.fireblocks.com/reference/fiat-account-objects.md)
+- [Fund the Gas Station](https://developers.fireblocks.com/reference/fund-the-gas-station.md)
+- [Gas Station Objects](https://developers.fireblocks.com/reference/gas-station-objects.md)
+- [General Objects](https://developers.fireblocks.com/reference/general-objects.md)
+- [Handle API Errors](https://developers.fireblocks.com/reference/handling-api-errors.md)
+- [Fireblocks Hardhat Plugin](https://developers.fireblocks.com/reference/hardhat-plugin.md)
+- [Hedera Token Service SDK](https://developers.fireblocks.com/reference/hedera-token-service-sdk.md)
+- [How to Use Fireblocks TypeScript SDK with Travel Rule Messages](https://developers.fireblocks.com/reference/how-to-use-fireblocks-typescript-sdk-with-travel-rule-messages.md)
+- [Add a new Co-signer to the workspace](https://developers.fireblocks.com/reference/install-api-cosigner-add-new-cosigner-p2.md)
+- [Install SGX Alibaba Cloud API Co-signer](https://developers.fireblocks.com/reference/install-api-cosigner-alibaba.md)
+- [Install AWS Nitro API Co-signer](https://developers.fireblocks.com/reference/install-api-cosigner-aws.md)
+- [Install SGX Azure API Co-signer](https://developers.fireblocks.com/reference/install-api-cosigner-azure.md)
+- [Install SGX Azure Marketplace API Co-signer](https://developers.fireblocks.com/reference/install-api-cosigner-azure-marketplace.md)
+- [Install Google Cloud Confidential Space API Co-signer](https://developers.fireblocks.com/reference/install-api-cosigner-gcp.md)
+- [Install SGX IBM Cloud API Co-signer](https://developers.fireblocks.com/reference/install-api-cosigner-ibm.md)
+- [Install SGX On-prem API Co-signer](https://developers.fireblocks.com/reference/install-api-cosigner-onprem.md)
+- [Interact with Solana Programs](https://developers.fireblocks.com/reference/interact-with-solana-programs.md)
+- [Internal, External & Contract Wallet Webhooks](https://developers.fireblocks.com/reference/internal-external-contract-wallet-webhooks.md)
+- [Internal/External Wallet Objects](https://developers.fireblocks.com/reference/internalexternal-wallet-objects.md)
+- [iOS SDK errors](https://developers.fireblocks.com/reference/ios-sdk-errors.md)
+- [Issue New ERC20F Tokens](https://developers.fireblocks.com/reference/issue-new-erc-20f-tokens.md)
+- [Issue new ERC721F/ERC1155F Tokens](https://developers.fireblocks.com/reference/issue-new-erc721ferc1155f-tokens.md)
+- [Java SDK](https://developers.fireblocks.com/reference/java-sdk.md)
+- [JavaScript SDK errors](https://developers.fireblocks.com/reference/javascript-sdk-errors.md)
+- [JS SDK (Legacy)](https://developers.fireblocks.com/reference/js-sdk-legacy.md)
+- [Launch Workflow Execution](https://developers.fireblocks.com/reference/launch-workflow-execution.md)
+- [Mint an NFT](https://developers.fireblocks.com/reference/mint-an-nft.md)
+- [Monitor the Gas Station](https://developers.fireblocks.com/reference/monitor-the-gas-station.md)
+- [Monitoring Transaction Statuses](https://developers.fireblocks.com/reference/monitoring-transaction-status.md)
+- [Network Connection Webhooks](https://developers.fireblocks.com/reference/network-connection-webhooks.md)
+- [Network Connection Objects](https://developers.fireblocks.com/reference/network-objects.md)
+- [Python SDK](https://developers.fireblocks.com/reference/new-python-sdk.md)
+- [NFT Objects](https://developers.fireblocks.com/reference/nft-objects.md)
+- [NFT Webhooks](https://developers.fireblocks.com/reference/nft-webhooks.md)
+- [Off Exchange Webhooks](https://developers.fireblocks.com/reference/off-exchange-webhooks.md)
+- [Operational Guide for ERC20F Token](https://developers.fireblocks.com/reference/operational-guide-for-erc20f-token.md)
+- [Order events](https://developers.fireblocks.com/reference/order-events.md)
+- [Payments Objects](https://developers.fireblocks.com/reference/payments-objects.md)
+- [Plugin-based Callback Handler](https://developers.fireblocks.com/reference/plugin-based-callback-handler.md)
+- [Python SDK (Legacy)](https://developers.fireblocks.com/reference/python-sdk.md)
+- [Rate Limiting](https://developers.fireblocks.com/reference/rate-limiting.md)
+- [Raw Signing Objects](https://developers.fireblocks.com/reference/raw-signing-objects.md)
+- [Resend Webhook Notifications](https://developers.fireblocks.com/reference/resend-webhook-notifications.md)
+- [Callback Handler response object](https://developers.fireblocks.com/reference/response-object.md)
+- [REST API Guide](https://developers.fireblocks.com/reference/rest-api-guide-1.md)
+- [Retail Demo Application](https://developers.fireblocks.com/reference/retail-demo.md)
+- [Retrieve NFTs](https://developers.fireblocks.com/reference/retrieve-nfts.md)
+- [SDK Migration Guide](https://developers.fireblocks.com/reference/sdk-migration-guide.md)
+- [SDK - Multichain Deployment](https://developers.fireblocks.com/reference/sdk-multichain-deployment.md)
+- [Select UTXOs](https://developers.fireblocks.com/reference/select-utxos-for-a-transaction.md)
+- [Setting Up Roles in ERC20F Tokens](https://developers.fireblocks.com/reference/setting-up-roles-in-erc20f-tokens.md)
+- [Setup](https://developers.fireblocks.com/reference/setup.md)
+- [Sign Typed Messages in Ethereum](https://developers.fireblocks.com/reference/sign-typed-messages-for-ethereum-and-evm-networks.md)
+- [Authenticate](https://developers.fireblocks.com/reference/signing-a-request-jwt-structure.md)
+- [Sign Typed Messages in Bitcoin](https://developers.fireblocks.com/reference/signing-typed-messages-in-bitcoin.md)
+- [Sign Typed Messages in Tron](https://developers.fireblocks.com/reference/signing-typed-messages-in-tron.md)
+- [Smart Transfer Webhooks](https://developers.fireblocks.com/reference/smart-transfer-webhooks.md)
+- [Solana Web3 Connection Adapter](https://developers.fireblocks.com/reference/solana-web3-adapter.md)
+- [Overview](https://developers.fireblocks.com/reference/staking-overview.md)
+- [Statuses](https://developers.fireblocks.com/reference/statuses.md)
+- [Structure](https://developers.fireblocks.com/reference/structure.md)
+- [Structure the API Call](https://developers.fireblocks.com/reference/structure-the-api-call.md)
+- [Structure the API Call](https://developers.fireblocks.com/reference/structuring-the-api-call.md)
+- [Sub-Statuses](https://developers.fireblocks.com/reference/sub-statuses.md)
+- [Blockchain & Asset Objects](https://developers.fireblocks.com/reference/supported-assets-object.md)
+- [Sweep to Omnibus](https://developers.fireblocks.com/reference/sweep-to-omnibus-1.md)
+- [Transaction Authorization Objects](https://developers.fireblocks.com/reference/transaction-authorization-objects.md)
+- [Transaction Objects](https://developers.fireblocks.com/reference/transaction-objects.md)
+- [Transaction Screening Objects](https://developers.fireblocks.com/reference/transaction-screening-objects.md)
+- [Transaction Sources & Destinations](https://developers.fireblocks.com/reference/transaction-sources-destinations.md)
+- [Transaction Webhooks](https://developers.fireblocks.com/reference/transaction-webhooks.md)
+- [Transfer NFTs](https://developers.fireblocks.com/reference/transfer-nfts.md)
+- [Travel Rule Support Integration Guide](https://developers.fireblocks.com/reference/travel-rule-link-integration.md)
+- [TypeScript SDK](https://developers.fireblocks.com/reference/typescript-sdk.md)
+- [Upload Contract Template](https://developers.fireblocks.com/reference/upload-contract-template.md)
+- [Using the Communal Test Co-signer](https://developers.fireblocks.com/reference/use-communal-cosigner.md)
+- [User Object](https://developers.fireblocks.com/reference/user-object.md)
+- [Validate ETH raw transactions](https://developers.fireblocks.com/reference/validate-eth-raw-transactions.md)
+- [Travel Rule with Notabene - Validate Travel Rule](https://developers.fireblocks.com/reference/validate-travel-rule.md)
+- [Validating webhooks](https://developers.fireblocks.com/reference/validating-webhooks.md)
+- [Vault Objects](https://developers.fireblocks.com/reference/vault-objects.md)
+- [Vault Webhooks](https://developers.fireblocks.com/reference/vault-webhooks.md)
+- [Validate Requests](https://developers.fireblocks.com/reference/verify-requests.md)
+- [Web3 Connection Objects](https://developers.fireblocks.com/reference/web3-connection-objects.md)
+- [Webhook Object](https://developers.fireblocks.com/reference/webhook-object.md)
+- [Protecting webhooks](https://developers.fireblocks.com/reference/webhook-protection-guide.md)
+- [Migration Guide](https://developers.fireblocks.com/reference/webhook-v2-migration-guide.md)
+- [Best practices for webhooks](https://developers.fireblocks.com/reference/webhooks-best-practices.md)
+- [Configuring webhooks](https://developers.fireblocks.com/reference/webhooks-gettingstarted-configuringwebhooks.md)
+- [Responses & retries](https://developers.fireblocks.com/reference/webhooks-gettingstarted-responsesretries.md)
+- [IP allowlisting](https://developers.fireblocks.com/reference/webhooks-ip-allowlisting.md)
+- [Overview](https://developers.fireblocks.com/reference/webhooks-overview.md)
+- [Resending & troubleshooting webhook notifications](https://developers.fireblocks.com/reference/webhooks-resend-troubleshooting.md)
+- [CeFi events](https://developers.fireblocks.com/reference/webhooks-structures-eventtypes-cefi.md)
+- [Embedded Wallet events](https://developers.fireblocks.com/reference/webhooks-structures-eventtypes-embeddedwallet.md)
+- [Network connection events](https://developers.fireblocks.com/reference/webhooks-structures-eventtypes-networkconnection.md)
+- [Off Exchange events](https://developers.fireblocks.com/reference/webhooks-structures-eventtypes-offexchange.md)
+- [Smart Transfer events](https://developers.fireblocks.com/reference/webhooks-structures-eventtypes-smarttransfer.md)
+- [Tokenization events](https://developers.fireblocks.com/reference/webhooks-structures-eventtypes-tokenization.md)
+- [Transaction events](https://developers.fireblocks.com/reference/webhooks-structures-eventtypes-transaction.md)
+- [Wallet events](https://developers.fireblocks.com/reference/webhooks-structures-eventtypes-wallet.md)
+- [Whitelist events](https://developers.fireblocks.com/reference/webhooks-structures-eventtypes-whitelist.md)
+- [Webhook notification structure](https://developers.fireblocks.com/reference/webhooks-structures-notificationstructure.md)
+- [Webhook object structure](https://developers.fireblocks.com/reference/webhooks-structures-webhookobjectstructure.md)
+- [Unstake & Withdraw](https://developers.fireblocks.com/reference/withdraw-staked-assets.md)
+
+## OpenAPI Specs
+
+- [swagger](https://docs.fireblocks.com/api/v1/swagger.yaml)
+- [fireblocks-api-v1](https://developers.fireblocks.com/openapi/fireblocks-api-v1.yaml)
+- [openapi](https://developers.fireblocks.com/api-reference/openapi.json)

@@ -1,0 +1,11 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/13950564581660-Node-Router
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 4
+language: en
+category: blockchains-core
+notes: |
+  Premium feature, Customer Success Manager enablement.
+  Two scenarios: Static dedicated route (single node, all outgoing tx) / On-demand route (per-tx via API).
+  Restrictions: single node for static / EVM-only / used for tx prep & submission only.
+  No fallback to Fireblocks default node. Customer responsible for maintenance.

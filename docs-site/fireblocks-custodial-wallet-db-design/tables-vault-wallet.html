@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>5. Vault · Asset Wallet · Deposit Address — 은행 DB 매핑</title>
+<meta content="Fireblocks Vault Account · Asset Wallet · Deposit Address 의 은행 customer / ops DB 매핑" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a href="db-split.html">3. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a href="tables-workspace-vault.html">4. Workspace</a></li>
+<li><a class="active" href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a></li>
+<li><a href="tables-counterparty.html">6. Counterparty Registry</a></li>
+<li><a href="cold-wallet.html">7. Cold Wallet 운영</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a href="tables-user.html">8. Internal Users</a></li>
+<li><a href="tables-customer-user.html">9. Customer Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a href="tables-governance.html">10. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a href="tables-crypto.html">11. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">13. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
+<li><a href="tables-transaction-request.html">15. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">16. Swap · Ramp Lifecycle</a></li>
+<li><a href="cross-border-canton.html">17. Cross-border + Canton</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">18. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">19. KR 규제 매핑</a></li>
+<li><a href="risks.html">20. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
+<li><a href="accounting-ledger.html">21. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">22. 대사 · 결산 · 마감</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
+<li><a href="db-ops.html">23. DB 운영 · Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="vault-wallet">
+<h2>5. Vault · Asset Wallet · Deposit Address</h2>
+<span class="section-subtitle">고객 라인 (<code>customer</code> domain) vs 운영 라인 (<code>ops</code> domain) 분리 + Vault → Customer 매핑 패턴</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지 위치</div>
+<p style="margin-bottom:0">
+4 페이지의 5-level 계층 / ER 다이어그램 / Workspace 매핑 다음 단계. 각 vault 안의 자산 / 주소 라인 전수 매핑 + 회계 단위 분리 패턴 정의.
+</p>
+</div>
+
+<h3>5.1 Vault Account — 고객 단위 격리</h3>
+<p>
+Vault Account 는 자산 보관의 격리 단위. 은행은 (a) 고객 1 인 = vault 1 개 (segregated) 또는 (b) 자산군 별 omnibus vault 중 선택.
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ Fireblocks vault account 는 삭제 불가</div>
+<p style="margin-bottom:0">
+Fireblocks 공식 동사: <strong>create / rename / hide / unhide / asset wallet 추가</strong>. <strong>delete 동사 없음</strong> — 자산 보호 + audit log 보존 + 회계 정합성 위해 vault 는 영구 보존.
+<br/>
+<strong>hide 의 목적</strong>: 사용자 수 증가로 vault 가 많아지면 Console dashboard 가 느려질 수 있어 UI 성능 위해 hide 처리. 자산 / history 는 그대로 보존되며 API 로는 계속 조회 가능.
+</p>
+</div>
+
+<h4>5.1.1 Sweep-to-omnibus vs Segregated</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>패턴</th><th>vault 구성</th><th>적합한 운영</th></tr></thead>
+<tbody>
+<tr><td><strong>Sweep-to-omnibus</strong></td><td>End user 입금 vault → Intermediate vault → Omnibus vault → Withdrawal pool</td><td>대량 사용자 · 자동 sweeping · Gas Station 자동</td></tr>
+<tr><td><strong>Segregated</strong></td><td>Per-client vault (고객 1 인당 1 vault)</td><td>institutional 고객 · settlement on-chain atomic · 작은 사용자 base</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  subgraph sweep["Sweep-to-omnibus (대량 사용자 / Retail)"]
+    direction LR
+    U1["사용자 1<br/>입금 vault"]
+    U2["사용자 2<br/>입금 vault"]
+    UN["사용자 N<br/>입금 vault"]
+    Intm["Intermediate vault<br/>(중간 집결)"]
+    Omn["Omnibus vault<br/>(통합 보관)"]
+    WP["Withdrawal pool<br/>(출금 전용 vault)"]
+    GS["Gas Station<br/>(자동 가스 공급)"]
+
+    U1 -->|"sweep"| Intm
+    U2 -->|"sweep"| Intm
+    UN -->|"sweep"| Intm
+    Intm -->|"daily batch"| Omn
+    Omn -->|"출금 요청 시"| WP
+    GS -.가스 공급.-> U1
+    GS -.가스 공급.-> U2
+    GS -.가스 공급.-> UN
+  end
+
+  subgraph seg["Segregated (Institutional / 고액 고객)"]
+    direction TB
+    C1["고객 1 vault<br/>(BTC · ETH · USDC)"]
+    C2["고객 2 vault<br/>(BTC · ETH · USDC)"]
+    CN["고객 N vault<br/>(BTC · ETH · USDC)"]
+    note["각 고객 = 1 vault<br/>입금 / 출금 모두 자체 vault"]
+  end
+
+  classDef user fill:#fef3c7,stroke:#d97706
+  classDef intm fill:#e0e7ff,stroke:#6366f1
+  classDef omn fill:#dcfce7,stroke:#16a34a
+  classDef pool fill:#fde2e2,stroke:#dc2626
+  classDef gas fill:#fce7f3,stroke:#be185d
+  classDef seg fill:#dbeafe,stroke:#2563eb
+  classDef noteclass fill:#f3f4f6,stroke:#6b7280,color:#374151
+
+  class U1,U2,UN user
+  class Intm intm
+  class Omn omn
+  class WP pool
+  class GS gas
+  class C1,C2,CN seg
+  class note noteclass
+</pre>
+</div>
+<p class="diagram-caption">
+<strong>Sweep-to-omnibus</strong>: 노랑 = 사용자별 입금 vault → 보라 = Intermediate (중간 집결) → 초록 = Omnibus (통합 보관) → 빨강 = Withdrawal pool (출금 전용).
+분홍 = Gas Station (자동 가스 공급, EVM 체인의 입금 vault 에 fee 공급).
+<br/>
+<strong>우측 Segregated</strong>: 파랑 = 고객별 1 vault. 각 vault 안에 자산별 wallet (BTC · ETH · USDC) 분리.
+<br/>
+대량 사용자 (Retail) → Sweep-to-omnibus / 고액 institutional 고객 → Segregated. 한 은행이 두 패턴 동시 운영 가능 — 데이터 모델에서는 <strong>고객 vault</strong> 와 <strong>운영 vault</strong> 를 두 표로 분리 (아래 <code>customer_vault</code> · <code>ops_vault</code> 참조).
+</p>
+
+<p>
+출처: <a href="https://support.fireblocks.io/hc/en-us/articles/5253421857564-Vault-Structure-Best-Practices">Fireblocks Vault Structure Best Practices</a> ·
+<a href="https://developers.fireblocks.com/docs/work-with-gas-station">Work with Gas Station</a>
+</p>
+
+<div class="callout">
+<strong>Vault 표 2 분할 — 운영 단위 분리</strong> — Fireblocks API 상 vault 는 한 종류 객체지만, 은행은 두 가지 의미로 사용:
+<ul>
+<li><strong><code>customer_vault</code></strong> — 고객 자산 vault (<code>customer_segregated</code>). 고객 KYC · 회계 customer_ledger · 채널계 조회 권한과 연결.</li>
+<li><strong><code>ops_vault</code></strong> — 은행 자체 운영 vault (<code>omnibus / intermediate / withdrawal_pool / gas_station / treasury</code>). 운영자 quorum · bank_ledger · 관리 콘솔 권한과 연결.</li>
+</ul>
+두 표는 lifecycle / 권한 / 회계 매핑이 달라 분리. 은행 측 PK 에 <strong>prefix</strong> (<code>cv_</code> / <code>ov_</code>) 를 두어 ID 만 봐도 어느 표인지 식별 가능.
+</div>
+
+<h4>5.1.2 <code>customer.customer_vault</code> — 고객 자산 vault</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>customer_vault_id (PK)</td><td>text</td><td>등록 후 변경 불가</td><td>은행 내부 ID — <code>cv_</code> prefix + uuid (예: <code>cv_018f4a...</code>). prefix 로 customer / ops 구분 즉시 식별</td></tr>
+<tr><td>vendor_vault_id (UNIQUE)</td><td>varchar</td><td>등록 후 변경 불가</td><td>Fireblocks 의 vault account ID (정수 문자열) — application 이 vault 생성 시 두 표 cross-check 으로 UNIQUE 강제</td></tr>
+<tr><td>workspace_code</td><td>varchar</td><td>등록 후 변경 불가</td><td>config 의 workspace key (<code>"admin"</code> / <code>"ops"</code> / <code>"hot"</code> / <code>"cold"</code>) 참조. enum 체크는 application</td></tr>
+<tr><td>bank_customer_id (FK)</td><td>uuid NOT NULL</td><td>등록 후 변경 불가</td><td>은행 고객 ID — 1 고객 1 vault 매핑 (UNIQUE 제약)</td></tr>
+<tr><td>vault_name</td><td>varchar</td><td>수정 가능</td><td>Fireblocks Console 에서 보이는 이름 (rename 가능)</td></tr>
+<tr><td>is_hidden</td><td>boolean</td><td>수정 가능</td><td>"Hidden on UI" 옵션 — 대량 vault 시 Console dashboard 성능 위한 hide 처리</td></tr>
+<tr><td>vendor_created_at</td><td>timestamptz</td><td>등록 후 변경 불가</td><td>Fireblocks 측 vault 생성 시점 (Fireblocks API 응답 기준)</td></tr>
+<tr><td>created_at</td><td>timestamptz</td><td>등록 후 변경 불가</td><td>은행 DB 에 등록한 시점</td></tr>
+<tr><td>modified_at</td><td>timestamptz</td><td>수정 가능</td><td>마지막 변경 시점 (vault_name · is_hidden 등 변경 추적)</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+<code>bank_customer_id</code> 가 NOT NULL 로 강제되어 1 고객 1 vault 회계 정합성이 표 단위로 보장. 회계 4 원장 중 <code>customer_ledger</code> 에 매핑.
+</p>
+
+<h4>5.1.3 <code>ops.ops_vault</code> — 은행 자체 운영 vault</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>ops_vault_id (PK)</td><td>text</td><td>등록 후 변경 불가</td><td>은행 내부 ID — <code>ov_</code> prefix + uuid</td></tr>
+<tr><td>vendor_vault_id (UNIQUE)</td><td>varchar</td><td>등록 후 변경 불가</td><td>Fireblocks 의 vault account ID</td></tr>
+<tr><td>workspace_code</td><td>varchar</td><td>등록 후 변경 불가</td><td>config 의 workspace key (<code>"admin"</code> / <code>"ops"</code> / <code>"hot"</code> / <code>"cold"</code>)</td></tr>
+<tr><td>vault_purpose</td><td>enum</td><td>등록 후 변경 불가</td><td><code>omnibus / intermediate / withdrawal_pool / gas_station / treasury</code></td></tr>
+<tr><td>vault_name</td><td>varchar</td><td>수정 가능</td><td>Fireblocks Console 에서 보이는 이름</td></tr>
+<tr><td>is_hidden</td><td>boolean</td><td>수정 가능</td><td>"Hidden on UI" 옵션</td></tr>
+<tr><td>auto_fuel</td><td>boolean</td><td>수정 가능</td><td>Gas Station 자동 연료 공급 활성화 여부 (gas_station / 입금 vault 만 의미 있음)</td></tr>
+<tr><td>vendor_created_at</td><td>timestamptz</td><td>등록 후 변경 불가</td><td>Fireblocks 측 vault 생성 시점</td></tr>
+<tr><td>created_at</td><td>timestamptz</td><td>등록 후 변경 불가</td><td>은행 DB 등록 시점</td></tr>
+<tr><td>modified_at</td><td>timestamptz</td><td>수정 가능</td><td>마지막 변경 시점</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+<strong>회계 매핑</strong> — <code>bank_ledger</code> 에 매핑. omnibus 의 경우 표 자체는 "은행 보관 통합 vault" 지만, 그 안의 고객별 잔액 분해는 별도 <code>customer_ledger</code> 표에서 mirror (5.4 참조).
+</p>
+
+<div class="callout">
+<strong>Webhook 라우팅 — vault_index 없이 어떻게?</strong>
+<ul style="margin-bottom:0">
+<li><strong>은행 측 PK 흐름</strong>: PK 자체에 <code>cv_</code> / <code>ov_</code> prefix 가 있어 application 내부에서 vault ID 만 보면 어느 DB / 어느 표인지 즉시 결정.</li>
+<li><strong>Fireblocks webhook 흐름</strong>: webhook 은 <code>vendor_vault_id</code> 만 들고 옴 → application 이 <strong>try-customer-first</strong> (고객 vault 가 압도적 다수) → 없으면 ops_vault fallback. 평균 1 query, worst case 2 query. 핫 캐시 (vendor_vault_id → vault_kind) 추가 시 평균 0 에 가까움.</li>
+<li><strong>UNIQUE 보장</strong>: vault 생성 시 application 이 두 표 모두 vendor_vault_id 점검 후 INSERT. 생성 빈도가 webhook 보다 훨씬 낮아 비용 미미.</li>
+</ul>
+</div>
+
+<div class="callout">
+<strong>Hide / unhide 이벤트 시점 추적</strong> — <code>is_hidden</code> 은 현재 상태만 표현하고, "언제 hide 했는지 / 언제 다시 unhide 했는지" 이력은 <code>audit.audit_log_mirror</code> 에 보관 (Fireblocks 발생 동작). hide 는 자주 일어나는 동작이 아니라 별도 column 으로 두지 않아도 audit log mirror 의 vault 변경 entry 로 충분히 역추적 가능.
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/reference/create-vault-account">Create Vault Account API</a> ·
+<a href="https://developers.fireblocks.com/docs/create-direct-custody-wallets#hiding-vault-accounts">Hiding Vault Accounts</a> ·
+<a href="https://developers.fireblocks.com/docs/work-with-gas-station">Gas Station</a>
+</p>
+
+<h3>5.2 Asset Wallet — 자산별 등록</h3>
+<p>
+한 vault 안에 자산별로 asset wallet 을 생성. Fireblocks 는 1,800 + 종 자산 지원.
+</p>
+
+<div class="callout">
+<strong>Asset Wallet 도 vault 따라 동일 schema 분리</strong> — 부모 vault 가 <code>customer</code> · <code>ops</code> 두 schema 로 분리되었으므로 자식 asset_wallet 도 부모와 같은 schema 에 둠. 이렇게 하면 vault → asset_wallet FK 가 동일 schema 안의 RDB foreign key 로 강제되어 무결성 보장.
+</div>
+
+<h4>5.2.1 <code>customer.customer_asset_wallet</code> — 고객 vault 의 자산 wallet</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>asset_wallet_id (PK)</td><td>uuid</td><td>등록 후 변경 불가</td><td>은행 내부 ID</td></tr>
+<tr><td>customer_vault_id (FK)</td><td>text</td><td>등록 후 변경 불가</td><td>속한 고객 vault — <code>customer.customer_vault</code> 의 PK 참조 (<code>cv_</code> prefix). 동일 schema FK</td></tr>
+<tr><td>vendor_vault_id</td><td>varchar</td><td>등록 후 변경 불가</td><td>Fireblocks vault ID (denormalize — webhook 라우팅 시 join 회피용)</td></tr>
+<tr><td>asset_id</td><td>varchar</td><td>등록 후 변경 불가</td><td><code>ops.asset_catalog</code> 참조 (cross-schema — 자산 list 는 read-rare, application layer cache 권장. PostgreSQL 에서 cross-schema FK 강제도 가능)</td></tr>
+<tr><td>chain</td><td>varchar</td><td>등록 후 변경 불가</td><td>blockchain</td></tr>
+<tr><td>algorithm</td><td>enum</td><td>등록 후 변경 불가</td><td><code>ECDSA_SECP256K1</code>
+<span class="g" data-tip="ECDSA = Elliptic Curve Digital Signature Algorithm (타원곡선 디지털 서명). SECP256K1 = Bitcoin · Ethereum · EVM 계열에서 사용하는 타원곡선" tabindex="0">(?)</span>
+/ <code>EDDSA_ED25519</code>
+<span class="g" data-tip="EdDSA = Edwards-curve Digital Signature Algorithm. Ed25519 = Solana · Stellar · NEAR · Algorand · Cardano 등에서 사용하는 곡선. ECDSA 보다 빠르고 안전한 특성" tabindex="0">(?)</span>
+/ <code>ECDSA_SECP256R1</code>
+<span class="g" data-tip="ECDSA 의 P-256 변형 (NIST P-256). 일부 enterprise 자산 / smart card 표준에서 사용. KR 은행의 일반 자산에서는 거의 안 씀" tabindex="0">(?)</span>
+</td></tr>
+<tr><td>created_at</td><td>timestamptz</td><td>등록 후 변경 불가</td><td>asset wallet 생성 시점</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>5.2.2 <code>ops.ops_asset_wallet</code> — 운영 vault 의 자산 wallet</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>asset_wallet_id (PK)</td><td>uuid</td><td>등록 후 변경 불가</td><td>은행 내부 ID</td></tr>
+<tr><td>ops_vault_id (FK)</td><td>text</td><td>등록 후 변경 불가</td><td>속한 운영 vault — <code>ops.ops_vault</code> 의 PK 참조 (<code>ov_</code> prefix). 동일 schema FK</td></tr>
+<tr><td>vendor_vault_id</td><td>varchar</td><td>등록 후 변경 불가</td><td>Fireblocks vault ID</td></tr>
+<tr><td>asset_id (FK)</td><td>varchar</td><td>등록 후 변경 불가</td><td><code>ops.asset_catalog</code> 참조 — 동일 schema FK 강제</td></tr>
+<tr><td>chain</td><td>varchar</td><td>등록 후 변경 불가</td><td>blockchain</td></tr>
+<tr><td>algorithm</td><td>enum</td><td>등록 후 변경 불가</td><td>customer 표와 동일</td></tr>
+<tr><td>created_at</td><td>timestamptz</td><td>등록 후 변경 불가</td><td>asset wallet 생성 시점</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/reference/create-vault-wallet">Create Vault Wallet API</a> ·
+<a href="https://developers.fireblocks.com/api-reference/blockchains-&amp;-assets/list-assets">List Assets API</a>
+</p>
+
+<h4>5.2.3 <code>ops.asset_catalog</code> — 자산 단위 master</h4>
+<p>
+Fireblocks 는 1,800 + 자산을 카탈로그로 미리 지원. <strong>은행은 그중 어떤 자산을 실제 서비스로 노출할지</strong> 자산 단위 master 로 관리 (전 고객 공통). 신규 자산 도입 / 입금만 허용 (출금 차단) / 운영 종료 같은 lifecycle 상태가 여기에 모임.
+</p>
+<p class="cross-ref">
+거래 승인 정책 (TAP — 한도 · quorum · signer 등) 은 다른 의미의 "policy" 이며 <a href="tables-governance.html">10. Roles · Quorum · Policy</a> 에서 다룸. 본 표는 그 정책의 적용 대상이 되는 자산 master.
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>asset_id (PK)</td><td>varchar</td><td>등록 후 변경 불가</td><td>Fireblocks asset ID (예: <code>BTC</code>, <code>ETH</code>, <code>USDC_ETH</code>)</td></tr>
+<tr><td>chain</td><td>varchar</td><td>등록 후 변경 불가</td><td>blockchain (예: <code>bitcoin</code>, <code>ethereum</code>, <code>polygon</code>)</td></tr>
+<tr><td>display_name</td><td>varchar</td><td>수정 가능</td><td>채널계 / 관리 콘솔에서 노출할 이름</td></tr>
+<tr><td>algorithm</td><td>enum</td><td>등록 후 변경 불가</td><td><code>ECDSA_SECP256K1 / EDDSA_ED25519 / ECDSA_SECP256R1</code></td></tr>
+<tr><td>support_status</td><td>enum</td><td>수정 가능</td><td><code>planned</code> (도입 예정) / <code>active</code> (입출금 정상) / <code>deposit_only</code> (출금 차단) / <code>retired</code> (운영 종료)</td></tr>
+<tr><td>onboarded_at</td><td>timestamptz nullable</td><td>등록 후 변경 불가</td><td><code>active</code> 로 첫 전환된 시점</td></tr>
+<tr><td>retired_at</td><td>timestamptz nullable</td><td>수정 가능</td><td><code>retired</code> 로 전환된 시점</td></tr>
+<tr><td>notes</td><td>text nullable</td><td>수정 가능</td><td>정책 결정 배경 (예: KR 규제, compliance, 유동성 등)</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+status 변경 이력 (언제 active → deposit_only → retired 로 바뀌었는지) 은 <code>audit.audit_log_internal</code> 의 <code>asset_catalog</code> entry 로 추적 (은행 내부 변경이므로 Fireblocks audit log 사본이 아닌 internal audit).
+</p>
+
+<h3>5.3 Deposit Address — UTXO vs Account-based</h3>
+<p>
+Asset Wallet 안에 deposit address 가 생성됨. 자산 유형에 따라 개수가 다르다:
+</p>
+<ul>
+<li><strong>UTXO
+<span class="g" data-tip="Unspent Transaction Output (미사용 거래 출력). Bitcoin 계열의 거래 모델 — 잔액이 '계좌 숫자' 가 아니라 받은 거래의 출력들의 합으로 표현. 송금 시 일부 UTXO 를 입력으로 사용 + 거스름돈 새 UTXO 생성. 결과적으로 한 wallet 에 다수 주소 가능" tabindex="0">(?)</span>
+체인 (BTC, LTC 등)</strong>: <strong>다중 deposit address</strong> 가능. 새 입금마다 새 주소 발급 가능 (privacy + 분리 입금 추적)</li>
+<li><strong>Account-based
+<span class="g" data-tip="계좌 기반 모델. Ethereum · Solana 등에서 사용. 한 주소 = 한 계좌 = 잔액 숫자. 송금은 잔액에서 직접 차감 (UTXO 처럼 거스름돈 안 만듦). 한 wallet 의 주소는 보통 1 개" tabindex="0">(?)</span>
+체인 (ETH, SOL, ...)</strong>: <strong>단일 deposit address</strong>. 한 asset wallet = 한 주소</li>
+</ul>
+
+<h4>5.3.1 One-time vs Permanent address</h4>
+<ul>
+<li><strong>Permanent</strong>: deposit address 가 영구 보관, 여러 번 입금 수신. 회계 / 추적 단순</li>
+<li><strong>One-time</strong>: 한 번만 사용 가능, 입금 후 폐기 (privacy 향상). 입금 별 별도 주소로 추적 용이</li>
+</ul>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/create-direct-custody-wallets">Create Direct Custody Wallets</a>
+</p>
+
+<div class="callout">
+<strong>Deposit Address 도 vault 따라 동일 schema 분리</strong> — asset_wallet 과 같은 원칙. 부모 asset_wallet 이 customer / ops 두 schema 로 분리되었으므로 address 도 부모와 같은 schema. 동일 schema 안의 RDB FK 로 무결성 보장.
+</div>
+
+<h4>5.3.2 <code>customer.customer_deposit_address</code> — 고객 자산 입금 주소</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>address_id (PK)</td><td>uuid</td><td>등록 후 변경 불가</td><td>은행 내부 ID</td></tr>
+<tr><td>asset_wallet_id (FK)</td><td>uuid</td><td>등록 후 변경 불가</td><td>속한 asset wallet — <code>customer_asset_wallet</code> 의 PK 참조 (동일 schema FK)</td></tr>
+<tr><td>address</td><td>varchar</td><td>등록 후 변경 불가</td><td>on-chain address (생성 후 절대 변경 불가)</td></tr>
+<tr><td>address_type</td><td>enum</td><td>등록 후 변경 불가</td><td><code>permanent / one_time</code></td></tr>
+<tr><td>tag_memo</td><td>varchar</td><td>등록 후 변경 불가 (NULL 가능)</td><td>destination tag (XRP / XLM 등의 memo)</td></tr>
+<tr><td>created_at</td><td>timestamptz</td><td>등록 후 변경 불가</td><td>address 생성 시점</td></tr>
+<tr><td>used_at</td><td>timestamptz</td><td>수정 가능 (NULL 가능)</td><td>one-time 의 경우 사용 시점</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>5.3.3 <code>ops.ops_deposit_address</code> — 운영 vault 입금 주소</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>address_id (PK)</td><td>uuid</td><td>등록 후 변경 불가</td><td>은행 내부 ID</td></tr>
+<tr><td>asset_wallet_id (FK)</td><td>uuid</td><td>등록 후 변경 불가</td><td>속한 asset wallet — <code>ops_asset_wallet</code> 의 PK 참조 (동일 schema FK)</td></tr>
+<tr><td>address</td><td>varchar</td><td>등록 후 변경 불가</td><td>on-chain address (생성 후 변경 불가)</td></tr>
+<tr><td>address_type</td><td>enum</td><td>등록 후 변경 불가</td><td><code>permanent / one_time</code></td></tr>
+<tr><td>tag_memo</td><td>varchar</td><td>등록 후 변경 불가 (NULL 가능)</td><td>destination tag</td></tr>
+<tr><td>created_at</td><td>timestamptz</td><td>등록 후 변경 불가</td><td>address 생성 시점</td></tr>
+<tr><td>used_at</td><td>timestamptz</td><td>수정 가능 (NULL 가능)</td><td>one-time 의 경우 사용 시점</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>5.4 Vault → Customer 매핑의 권장 패턴 (저자)</h3>
+<p>
+은행 customer 의 매핑 패턴:
+</p>
+<ul>
+<li><strong>segregated 패턴</strong> — <code>customer_vault</code> 에 1 행 = 1 고객 (<code>bank_customer_id NOT NULL</code> 강제). 고객 ID 가 표 단위로 보장되어 회계 정합성 ↑</li>
+<li><strong>omnibus 패턴</strong> — <code>ops_vault</code> 의 <code>vault_purpose = 'omnibus'</code> 행 1 개에 다수 고객 자산 통합 + 별도 <code>customer_ledger</code> 표에 고객별 잔액 mirror. 회계 시스템 통합</li>
+<li><strong>혼합 패턴</strong> — Retail (omnibus → <code>ops_vault</code>) + Institutional (segregated → <code>customer_vault</code>) 동시 운영. <strong>표 분리 자체가 패턴 분리를 표현</strong>하므로 application layer 의 조건 분기 부담 ↓</li>
+</ul>
+
+<div class="callout callout-warn">
+<div class="callout-title">omnibus vault 의 KR 컴플라이언스 함의 (저자)</div>
+<p style="margin-bottom:0">
+omnibus 패턴 시 은행 내부 회계로 고객별 잔액을 분리 관리하더라도, on-chain 에는 1 vault 의 통합 balance 만 표시됨.
+대법원 2024도10710 의 "실질 통제" 판단 시 한 vault 안의 자산이 누구의 통제권에 있는지 명확히 구분되어야 함.
+은행은 customer_ledger 의 무결성 (audit log 와 정합성) 을 별도로 증명할 책임.
+</p>
+<p style="margin-bottom:0;margin-top:0.5rem">
+<code>customer_ledger</code> 는 <a href="accounting-ledger.html">21. 회계 · 원장 설계</a> 의 <strong>고객 원장 (4 원장의 ①)</strong> 과 같은 영역.
+hash chain 변조방지 + 정기 reconciliation 은 <a href="reconciliation-close.html">22. 대사 · 결산 · 마감</a> 의 L1 / L2 대사 참조.
+</p>
+</div>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-workspace-vault.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">4. Workspace</span></a>
+<a class="page-nav-link page-nav-next" href="tables-counterparty.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">6. Counterparty Registry</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

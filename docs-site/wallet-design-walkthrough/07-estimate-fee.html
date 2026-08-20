@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>7. 수수료 견적 — estimateFee</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</a></p>
+<div class="progress">
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-detect-confirm.html">4</a><a href="05-deposit.html">5</a><a href="06-withdrawal.html">6</a><span class="cur">7</span><a href="08-balance-history.html">8</a><a href="09-switch-extend.html">9</a><a href="10-ramp-swap.html">10</a>
+</div>
+<h1>수수료 견적 — estimateFee</h1>
+<p class="subtitle">제출 전에 한 번 읽어 보는 동사. 대납(Universal Gasless) 구성에서 이 값은 "우리가 낼 돈"이 아니라 "relay 가 낼 실비"의 예측이다</p>
+
+<pre><code>estimateFee(출금 지시) → FeeEstimate { low, medium, high }</code></pre>
+
+<h2>estimateFee — 단가 × 사용량을 계산하고, 그 돈은 relay 가 낸다</h2>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BE as Service 백엔드
+    box rgb(220,252,231) 블록체인 매니저
+    participant FB as Fireblocks
+    end
+    participant CH as EVM 노드 · 벤더 안
+    participant RL as 지정 relay<br/>(Fireblocks Relay)
+
+    BE->>FB: estimateFee(출금 지시)
+    FB->>CH: 최근 블록 수수료 이력 조회 (feeHistory) — 단가 재료
+    CH-->>FB: 수수료 이력 데이터
+    FB->>CH: 모의 실행 (estimateGas) — 사용량 재료
+    CH-->>FB: 예상 가스 사용량
+    Note over BE,CH: 순번 점유 없음 — 읽기뿐이라 출금 화면에서 수시 호출해도 안전
+    FB->>FB: 이력의 백분위수로 등급 산출
+    FB-->>BE: low · medium · high (보장 아님 — 실제 수수료는 제출 때 재확정)
+    Note over BE,RL: 이 금액은 우리 vault 가 아니라 relay 가 낸다<br/>견적 = relay 실비의 예측 — 주기 관측으로 시계열 기록 (아래 표)<br/>인보이스 검증의 최종 근거는 체결 후 온체인 실측이다
+</pre></div>
+
+<h2>언제 부르고, 무엇으로 검증하나</h2>
+
+<p>gas 는 지정 relay 가 내고, Fireblocks Relay 면 <b>월말 통합 인보이스</b>(gas 실비 + 구독료)로 정산됩니다. 이 구성에서 estimateFee 가 서는 자리는 셋입니다:</p>
+
+<table>
+<thead><tr><th style="width:28%">부르는 시점</th><th>하는 일</th></tr></thead>
+<tbody>
+<tr><td><b>주기 관측</b> — 예: 폴링과 같은 주기</td><td>견적을 <b>시계열로 기록</b>한다. 우리 거래는 스테이블코인 전송으로 균질해서 견적이 건이 아니라 <b>시간의 함수</b>다 — 건마다 부르면 같은 시세를 중복 기록할 뿐이다. 제출 건에는 <b>제출 시각으로 그때 시세를 대응</b>시키고, 시세가 비정상적으로 튀는 시간대의 감지도 이 시계열 대비로 한다.</td></tr>
+<tr><td><b>sweep 타이밍 판단</b></td><td>sweep 은 시간 민감도가 낮아 <b>fee 가 유리할 때 모아 보낼 수 있다</b> — 견적이 그 판단의 입력이다. relay 가 내는 돈도 결국 인보이스로 돌아오므로, 싼 때 보내는 것이 그대로 우리 절감이다.</td></tr>
+<tr><td><b>고객 화면</b> (선택)</td><td>고객에게 보여주는 수수료는 회계 층이 선계산해 고정한 값이라 실시간 견적 표시는 필수가 아니다 — 과금 산정의 참고 재료로만 쓴다. 정산·회계는 <a href="../ramp-settlement-walkthrough/">정산 워크스루</a>.</td></tr>
+</tbody>
+</table>
+
+<p><b>검증은 실측으로 합니다.</b> 거래가 체결되면 relay 가 실제로 낸 금액은 체인에 정확히 남습니다 — 사용량(gasUsed) × 체결 단가를 receipt 에서 계산할 수 있습니다. 월말 인보이스의 gas 실비는 이 <b>온체인 실측의 합계</b>와 맞추고, 견적 시계열은 예측 대비 실측의 편차를 추적하는 보조 자료입니다. 견적으로 인보이스를 검증하면 추정 대 추정이라 오차 시비가 남습니다.</p>
+
+<p class="foot">대납의 선택지·도입 요건·메커니즘(EIP-7702)은 <a href="../gas-delegation/">가스 대납 문서</a>, 조립 시 수수료 설정과 인상 재전송은 <a href="../wallet-service-components/component-tx-nonce.html">가이드 4장</a>을 참고하세요.</p>
+
+<div class="pager">
+<a href="06-withdrawal.html">← 6. 출금</a>
+<a href="index.html">목차</a>
+<a href="08-balance-history.html">8. 잔액과 내역 →</a>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/walkthrough-diagram.js"></script>
+</body>
+</html>

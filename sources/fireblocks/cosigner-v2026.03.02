@@ -1,0 +1,1020 @@
+#!/bin/bash -e
+
+VER="2026.03.02"
+SGX_DRIVER="sgx_linux_x64_driver_1.41.bin"
+DATE=$(date '+%Y%m%d%H%M%S')
+USERNAME="customer-loader"
+PASS="LAkjxc2QNs6piQJLh3VP"
+DB_PATH="/databases/cosigner"
+DEFAULT_REVISION="2026.03.02"
+
+exec 6>&1
+exec 1>${DATE}_run.log 2>&1
+
+if [[ "$(dmidecode --string chassis-asset-tag)" == "7783-7084-3265-9085-8269-3286-77" ]]; then
+    echo "Using Azure image"
+    IMAGE="registry.gitlab.com/customer-cosigner/v2/azure-cosigner"
+else
+    IMAGE="registry.gitlab.com/customer-cosigner/v2/cosigner"
+fi
+
+exec_cosigner() {
+  docker exec cosigner /bin/su fb_service -s /bin/bash -c "$@"
+}
+
+upload_logs() {
+    if [ -f upload_s3.py ] && [ x${no_log} == "x" ]; then
+        python3 upload_s3.py ${DATE}*
+        echo 'Uploading logs to Fireblocks' >&6
+        echo "Physical Device ID: ${physicalDeviceId}" >&6
+    fi
+}
+
+# trap upload_logs EXIT INT
+
+set -x
+
+check_root() {
+    if [ $(id -u) -eq 0 ]; then
+        return 0
+    else
+        echo "Must run as root" >&6
+        exit 1
+    fi
+}
+
+check_required_packages() {
+    dpkg -l |egrep  ${1}
+    if [ ${?} -eq 0 ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+check_sgx_cap() {
+    if [ ! -x ./sgx_cap ]; then
+        cat <<-EOF | cc -x c -o sgx_cap -
+#include <stdio.h>
+
+/* This is a PIC-compliant version of CPUID */
+static inline void cpuid(int *eax, int *ebx, int *ecx, int *edx)
+{
+#if defined(__x86_64__)
+
+    asm("cpuid"
+        : "=a" (*eax),
+        "=b" (*ebx),
+        "=c" (*ecx),
+        "=d" (*edx)
+        : "0" (*eax), "2" (*ecx));
+
+#else
+    /*on 32bit, ebx can NOT be used as PIC code*/
+    asm volatile ("xchgl %%ebx, %1; cpuid; xchgl %%ebx, %1"
+        : "=a" (*eax), "=r" (*ebx), "=c" (*ecx), "=d" (*edx)
+        : "0" (*eax), "2" (*ecx));
+#endif
+}
+
+static inline void __cpuid(int reg[4], int leaf, int subleaf)
+{
+    reg[0] = leaf;
+    reg[2] = subleaf;
+    cpuid(&reg[0], &reg[1], &reg[2], &reg[3]);
+}
+
+int main()
+{
+    int reg[4];
+    __cpuid(reg, 7, 0);
+
+    printf("SGX %s\n", reg[1] & 0x4 ? "supported" : "not supported");
+    printf("SGX_LC %s\n", reg[2] & 0x40000000 ? "supported" : "not supported");
+    return 0;
+}
+EOF
+    fi
+
+    sgxcapResult=$(./sgx_cap)
+    if [ ! ${?} -eq 0 ]; then
+        echo "./sgx_cap failed to execute"  >&6
+        return 1
+    fi
+    echo "${sgxcapResult}" | egrep '^SGX_LC supported'
+    if [ ! ${?} -eq 0 ]; then
+        echo "SGX_LC is not supported. See help center article \"SGX Enablement Verification\""  >&6
+        return 1
+    else
+        return 0
+    fi
+}
+
+check_sgx_driver() {
+    if ls /dev/sgx_enclave && ls /dev/sgx_provision; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+install_sgx_driver() {
+    echo "Downloading and installing Intel SGX driver" >&6
+    if [ ! -f ${SGX_DRIVER} ]; then
+        curl -s -O https://download.01.org/intel-sgx/sgx-dcap/1.10.3/linux/distro/ubuntu20.04-server/${SGX_DRIVER}
+    fi
+
+    bash -x ./${SGX_DRIVER}
+}
+
+install_docker() {
+    echo "Installing docker" >&6
+    apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+    add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+    apt-get update
+    apt-get install -y docker-ce docker-ce-cli containerd.io
+}
+
+install_docker_compose() {
+    curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    chmod +x /usr/local/bin/docker-compose
+}
+
+check_https_access(){
+    if [ $(curl -s https://mobile-api.fireblocks.io/50x.html) -eq 500 ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+create_docker_compose_file() {
+    cat - <<EOF > docker-compose.yml
+version: '3.7'
+
+networks:
+  default:
+    name: fireblocks
+
+services:
+  cosigner:
+    container_name: cosigner
+    hostname: cosigner
+    command: ["su", "fb_service", "-s", "/bin/bash", "-c", "./customer_cosigner"]
+    volumes:
+      - "${DB_PATH}/db:/opt/fireblocks/customer_cosigner/db"
+      - "${DB_PATH}/config:/opt/fireblocks/customer_cosigner/config"
+      - "${DB_PATH}/log:/opt/fireblocks/customer_cosigner/log"
+      - "${DB_PATH}/backup:/backup"
+      - "${DB_PATH}/enclave:/opt/fireblocks/customer_cosigner/enclave"
+    environment:
+      - AZDCAP_DEBUG_LOG_LEVEL=ERROR
+      - HTTPS_PROXY=\${HTTPS_PROXY}
+      - WEBSOCKET=\${WEBSOCKET}
+    devices:
+      - "/dev/sgx_enclave:/dev/sgx/enclave"
+      - "/dev/sgx_provision:/dev/sgx/provision"
+    image: ${IMAGE}:\${REVISION}
+    init: true
+    restart: always
+EOF
+}
+
+create_docker_compose_init() {
+    cat - <<EOF > docker-compose-init.yml
+version: '3.7'
+
+networks:
+  default:
+    name: fireblocks
+
+services:
+  cosigner-init:
+    container_name: cosigner-init
+    hostname: cosigner-init
+    command: ["/usr/bin/tail", "-f", "/dev/null"]
+    volumes:
+      - "${DB_PATH}/db:/opt/fireblocks/customer_cosigner/db"
+      - "${DB_PATH}/config:/opt/fireblocks/customer_cosigner/config"
+      - "${DB_PATH}/log:/opt/fireblocks/customer_cosigner/log"
+      - "${DB_PATH}/backup:/backup"
+      - "${DB_PATH}/enclave:/opt/fireblocks/customer_cosigner/enclave"
+    environment:
+      - AZDCAP_DEBUG_LOG_LEVEL=ERROR
+      - HTTPS_PROXY=\${HTTPS_PROXY}
+      - WEBSOCKET=\${WEBSOCKET}
+    devices:
+      - "/dev/sgx_enclave:/dev/sgx/enclave"
+      - "/dev/sgx_provision:/dev/sgx/provision"
+    image: ${IMAGE}:\${REVISION}
+    init: false
+    restart: "no"
+EOF
+}
+
+create_docker_daemon_json() {
+    if [ ! -d /etc/docker ]; then
+        mkdir /etc/docker
+    fi
+    cat - <<EOF > /etc/docker/daemon.json
+{
+  "userland-proxy": false,
+  "live-restore": true,
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "500m",
+    "mode": "non-blocking",
+    "max-buffer-size": "4m",
+    "max-file": "6"
+  }
+}
+EOF
+}
+
+initialize_files() {
+    mkdir -p ${DB_PATH}/db
+    mkdir -p ${DB_PATH}/config
+    mkdir -p ${DB_PATH}/log
+    mkdir -p ${DB_PATH}/backup
+    mkdir -p ${DB_PATH}/enclave
+    chown -R 2000:2000 ${DB_PATH}/
+}
+
+install_python_req() {
+    curl https://bootstrap.pypa.io/get-pip.py | python3
+}
+
+read_from_stdin() {
+    IFS=
+    read -d '' -n 1 wtr # wtr - what to read
+    while read -d '' -n 1 -t 1 pk
+    do
+        wtr+=$pk
+    done
+}
+
+callback_public_key() {
+    echo "Please enter the Callback Handler public key (PEM format):" >&6
+    set +x
+    read_from_stdin
+    set -x
+    callbackPublicKey=$wtr
+    if [[ $callbackPublicKey =~ $mpt ]]; then # check it not empty
+        echo -e "\nThe callback public key is empty, please try again\n" >&6
+        exit 1
+    else
+        echo -n $callbackPublicKey > callbackPublicKey.pem
+        if openssl rsa -pubin -in callbackPublicKey.pem ; then
+            callbackPublicKey=$(sed -e 's/$/\\n/' callbackPublicKey.pem | tr -d '\n' )
+            rm -f callbackPublicKey.pem
+            return 0
+        else
+            echo -e "\nFatal: error loading callback public key, please check callbackPublicKey.pem file, compare with the input and try again\n" >&6
+            exit 1
+        fi
+    fi
+}
+
+callback_cert() {
+    echo "Would you like to try to fetch the certificate for ${domain} from the web server(y/n):" >&6
+    while true; do
+        read -r ans
+        case $ans in
+            [Yy]* )
+                echo "Fetching certificate from the ${domain}"
+                callbackCert=$(openssl s_client -connect ${domain}:443 -servername ${domain}  </dev/null 2>/dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/s/$/\\n/p' | tr -d '\n')
+                if [[ $callbackCert =~ $mpt ]]; then # check it not empty
+                    echo -e "\nFailed to fetch certificate from ${domain}, please try again\n" >&6
+                    exit 1
+                else
+                    echo -e "\nThe certificate was fetched successfully\n" >&6
+                    return 0
+                fi
+                break
+            ;;
+            [Nn]* )
+                echo "Need certificate for domain ${domain}, Please enter the certificate for certificate pinning (PEM format):" >&6
+                set +x
+                read_from_stdin
+                set -x
+                callbackCert=$wtr
+                if [[ $callbackCert =~ $mpt ]]; then # check it not empty
+                    echo "The certificate is empty, please try again" >&6
+                    exit 1
+                else
+                    echo -n $callbackCert > certificate.pem
+                    certDomain=$(openssl x509 -in certificate.pem -noout -subject | grep -oP '(?<=CN = )[^,]+' | sed -e 's/^\*/\[\^\.\]\+\\/')
+                    if [[ $(echo -n ${domain} | sed -r "s/${certDomain}/OK/") == "OK" ]]; then
+                        callbackCert=$(openssl x509 -in certificate.pem | sed -e 's/$/\\n/' | tr -d '\n' )
+                        rm -f certificate.pem
+                        return 0
+                    else
+                        for certDomain in $(openssl x509 -in certificate.pem -noout -ext subjectAltName | grep -oP '(?<=DNS:)[^,]+' | sed -e 's/^\*/\[\^\.\]\+\\/'); do
+                            if [[ $(echo -n ${domain} | sed -r "s/${certDomain}/OK/") == "OK" ]]; then
+                                callbackCert=$(openssl x509 -in certificate.pem | sed -e 's/$/\\n/' | tr -d '\n' )
+                                rm -f certificate.pem
+                                return 0
+                            fi
+                        done
+                        echo -e "\nFatal: error loading certificate, please check certificate.pem file, compare with the input and try again\n" >&6
+                        exit 1
+                    fi
+                fi
+                break
+            ;;
+            * )
+                echo -e "Please select y or n"
+            ;;
+        esac
+    done
+}
+
+prompt_to_select_cosigner_communication_type() {
+    echo -e "\nDo you plan to use a retry mechanism in the callback handler?" >&6
+    echo -e "Note: Use retry if your callback endpoint might take longer than 30 seconds to respond, or you're aiming for asynchronous communication." >&6
+    echo -e "In case of multiple callback handlers, if any of them use a retry mechanism - answer 'Yes'." >&6
+    echo -e "We recommend NOT configuring a retry mechanism unless necessary, as it may impact performance." >&6
+    echo -e "\n1. Yes - planning to use callback retry mechanism\n2. No - won't use retry mechanism (recommended)" >&6
+    echo -e "Enter your choice:" >&6
+    while true; do
+        read -r choice
+        case $choice in
+                1)
+                slow_callback_handler=true
+                echo "1" > .slow_callback_handler_configured
+                return 0
+                ;;
+                2)
+                slow_callback_handler=false
+                rm -f .slow_callback_handler_configured
+                return 0
+                ;;
+                *)
+                echo -e "Invalid choice - Please select one of the options - 1 or 2" >&6
+                ;;
+        esac
+    done
+}
+
+callback_root_ca_input() {
+    echo "Please enter the Root-CA certificate (PEM format):" >&6
+    set +x
+    read_from_stdin
+    set -x
+    callbackRootCA=$wtr
+    if [[ $callbackRootCA =~ $mpt ]]; then
+        echo "Invalid Root-CA certificate format. Please provide a valid CA certificate in PEM format." >&6
+        exit 1
+    else
+        echo -n $callbackRootCA > rootca.pem
+        if openssl x509 -in rootca.pem -noout 2>/dev/null; then
+            # Check if it's a CA certificate
+            if openssl x509 -in rootca.pem -noout -text | grep -q "CA:TRUE"; then
+                callbackRootCA=$(openssl x509 -in rootca.pem | sed -e 's/$/\\n/' | tr -d '\n' )
+                rm -f rootca.pem
+                return 0
+            else
+                echo "Invalid Root-CA certificate format. Please provide a valid CA certificate in PEM format." >&6
+                rm -f rootca.pem
+                exit 1
+            fi
+        else
+            echo "Invalid Root-CA certificate format. Please provide a valid CA certificate in PEM format." >&6
+            rm -f rootca.pem
+            exit 1
+        fi
+    fi
+}
+
+callback_confirm_configuration() {
+    echo "" >&6
+    echo "Callback Handler Configuration Summary:" >&6
+    echo "- URL: ${callbackUrl}" >&6
+
+    case $callback_auth_option in
+        "public_key")
+            echo "- Authentication: Public key authentication" >&6
+            echo "- Credentials: Public key provided" >&6
+            ;;
+        "certificate")
+            echo "- Authentication: Certificate-based communication (certificate pinning)" >&6
+            echo "- Credentials: Certificate provided" >&6
+            ;;
+        "root_ca")
+            echo "- Authentication: Root-CA Certificate based communication" >&6
+            echo "- Credentials: Root-CA certificate provided" >&6
+            ;;
+        "hybrid_cert")
+            echo "- Authentication: Hybrid - Public key authentication with certificate pinning" >&6
+            echo "- Credentials: Certificate and public key provided" >&6
+            ;;
+        "hybrid_ca")
+            echo "- Authentication: Hybrid - Public key authentication with Root-CA certificate" >&6
+            echo "- Credentials: Root-CA certificate and public key provided" >&6
+            ;;
+    esac
+
+    echo "" >&6
+    echo "Do you want to save this configuration? (yes/no):" >&6
+
+    while true; do
+        read -r confirm
+        case $confirm in
+            [Yy]es|[Yy])
+                echo "Callback Handler configuration saved successfully." >&6
+                return 0
+                ;;
+            [Nn]o|[Nn])
+                echo "Configuration cancelled. No changes were made." >&6
+                exit 0
+                ;;
+            *)
+                echo "Please enter 'yes' or 'no':" >&6
+                ;;
+        esac
+    done
+}
+
+
+check_if_callback_sends_retry_by_configuration() {
+    if [[ -f .slow_callback_handler_configured ]]; then
+        slow_callback_handler=true
+    else
+        slow_callback_handler=false
+    fi
+}
+
+callback_url_params() {
+    mpt=$'^\n*$'
+    echo -e "\nDo you want to configure a callback handler?" >&6
+    echo -e "A callback handler can be used to check a transaction in an external system before it gets signed." >&6
+    echo -e "\n1. Yes - Configure callback handler (default)\n2. No - Skip callback configuration\n" >&6
+    echo -e "Enter your choice (1 or 2): " >&6
+    while true; do
+        read -r choice
+        case $choice in
+                1 | "")
+                break
+                ;;
+                2)
+                echo "You selected No - proceeding without callback URL" >&6
+                callbackUrl=""
+                return 0
+                ;;
+                *)
+                echo -e "Invalid choice - Please select one of the options - 1 or 2" >&6
+                ;;
+        esac
+    done
+    echo "Please enter callback URL:" >&6
+    read -r callbackUrl
+    if [ X${callbackUrl} != "X" ]; then
+        domain=$(echo -n ${callbackUrl} | sed -r 's,https://([^/:]+)[/:]?.*,\1,')
+
+        echo "Please choose one of the following authentication options:" >&6
+        echo "1. Public key authentication" >&6
+        echo "2. Certificate-based communication (certificate pinning)" >&6
+        echo "3. Root-CA Certificate based communication" >&6
+        echo "4. Hybrid - Public key authentication with certificate pinning" >&6
+        echo "5. Hybrid - Public key authentication with Root-CA certificate" >&6
+        echo "" >&6
+        echo "For more details about each option, see:" >&6
+        echo "https://developers.fireblocks.com/reference/cosigner-callbackhandler-secure-communication-authentication" >&6
+        echo "" >&6
+        echo "Enter option number (1-5):" >&6
+
+        while true; do
+            read -r ans
+            case $ans in
+                [1] )
+                    callback_auth_option="public_key"
+                    callback_public_key
+                    break
+                ;;
+                [2] )
+                    callback_auth_option="certificate"
+                    callback_cert
+                    break
+                ;;
+                [3] )
+                    callback_auth_option="root_ca"
+                    callback_root_ca_input
+                    break
+                ;;
+                [4] )
+                    callback_auth_option="hybrid_cert"
+                    callback_cert
+                    callback_public_key
+                    break
+                ;;
+                [5] )
+                    callback_auth_option="hybrid_ca"
+                    callback_root_ca_input
+                    callback_public_key
+                    break
+                ;;
+                * )
+                    echo "Invalid option. Please enter a number between 1 and 5." >&6
+                ;;
+            esac
+        done
+
+        # Show configuration summary and confirm
+        callback_confirm_configuration
+
+        prompt_to_select_cosigner_communication_type
+    else
+        echo "Proceeding without callback URL" >&6
+        callbackUrl=""
+        return 0
+    fi
+}
+
+add_user () {
+    if [ X${1} == "Xheadless" ]; then
+        if [ -f /tmp/pairing-token.json ]; then
+            pairingToken=$(jq -r '.pairingToken' /tmp/pairing-token.json)
+            echo "pairingToken found from /tmp/pairing-token.json" >&6
+            callbackUrl=$(jq -r '.callbackUrl' /tmp/pairing-token.json)
+            echo "callbackUrl found from /tmp/pairing-token.json" >&6
+            callbackPublicKey=$(jq -r '.callbackPublicKey' /tmp/pairing-token.json)
+            echo "callbackPublicKey found from /tmp/pairing-token.json" >&6
+            echo -n $callbackPublicKey > callbackPublicKey.pem
+            if openssl rsa -pubin -in callbackPublicKey.pem ; then
+                callbackPublicKey=$(sed -e 's/$/\\n/' callbackPublicKey.pem | tr -d '\n' )
+                rm -f callbackPublicKey.pem
+            fi
+        else
+            echo "No pairing token file, exiting" >&6
+            exit 1
+        fi
+    else
+        echo "Please enter pairing token from the fireblocks console" >&6
+        read -r pairingToken
+
+        if ! callback_url_params ; then
+            echo "No callback url params" >&6
+            exit 1
+        fi
+    fi
+
+    if [ ! -f fb-recovery-pub.pem ]; then
+        openssl genrsa 2048 | openssl rsa -pubout -out fb-recovery-pub.pem
+    fi
+
+    if openssl rsa -pubin -in fb-recovery-pub.pem ; then
+        recoveryPublicKey=$(sed -e 's/$/\\n/' fb-recovery-pub.pem | tr -d '\n' )
+    else
+        echo "Fatal: error loading recovery public key" >&6
+        exit 1
+    fi
+
+    echo "{\"pairingToken\": \"${pairingToken}\", \"callbackUrl\": \"${callbackUrl}\", \"callbackCert\": \"${callbackCert}\", \"callbackPublicKey\": \"${callbackPublicKey}\", \"recoveryPublicKey\": \"${recoveryPublicKey}\",\"physicalDeviceId\":\"${physicalDeviceId}\"}" > config.json
+
+    jq . config.json > ${DB_PATH}/config/config.json
+    chown 2000:2000 ${DB_PATH}/config/config.json
+}
+
+set_proxy () {
+    read -r proxy
+    if [[ -z $proxy ]]; then
+        echo "Proceeding without proxy" >&6
+        if [[ -f .proxy ]] && grep -q '[^[:space:]]' .proxy; then
+            echo "Deleting previous proxy: $(cat .proxy)" >&6
+            # Deletion by making the file empty (so when a restart occurs, the matching env var will set to empty as well).
+            echo -n "" > .proxy
+        fi
+    elif [[ $proxy =~ ^(https?:\/\/)(([a-zA-Z0-9_.-]+))(:([0-9]+))?$ ]]; then
+        echo -e "\nUsing $proxy with the cosigner" >&6
+        echo "$proxy" > .proxy
+    else
+        echo -e "\nProxy URL $proxy is invalid. Please retry and refer to example" >&6
+        exit 1
+    fi
+}
+
+prompt_for_proxy(){
+    echo -e "\nDo you want to configure a proxy for cosigner communication?" >&6
+    echo -e "1. Yes - Configure proxy settings\n2. No - Direct communication (no proxy, default)" >&6
+    echo -e "Enter your choice (1 or 2): " >&6
+    while true; do
+        read -r ans
+        case $ans in
+            1)
+                echo -e "Enter your proxy server name (for example http://proxy.example.com:1234)" >&6
+                set_proxy
+                HTTPS_PROXY=$(cat .proxy)
+                export HTTPS_PROXY
+                break
+            ;;
+            2 | "")
+                echo "No proxy was configured." >&6
+                break
+            ;;
+            * )
+                echo -e "Please select valid option (1 or 2)" >&6
+            ;;
+        esac
+    done
+}
+
+usage () {
+    echo "Fireblocks Co-Signer CLI" >&6
+    echo "" >&6
+    echo -e "\e[1mVERSION \e[0m" >&6
+    echo "  ${VER}" >&6
+    echo "" >&6
+    echo -e "\e[1mUSAGE \e[0m" >&6
+    echo "  $0 [COMMAND]" >&6
+    echo "" >&6
+    echo -e "\e[1mCOMMANDS \e[0m" >&6
+    echo "  setup                 Install all prerequisites for running the co-signer" >&6
+    echo "  start                 Start the co-signer [revision]" >&6
+    echo "  stop                  Stop the co-signer" >&6
+    echo "  restart               Reinitialize the co-signer" >&6
+    echo "  upgrade               Download the latest co-signer's SW version from Fireblocks" >&6
+    echo "  logs                  Create co-signer log file, please send to Fireblocks support" >&6
+    echo "  list-users            List all users linked to the co-signer" >&6
+    echo "  print-public-key      Print public key" >&6
+    echo "  add-user              Add an API user to the co-signer" >&6
+    echo "  upgrade-script        Please retrieve URL from Fireblocks Console" >&6
+    echo "  version               Print cosigner versions" >&6
+    echo "  callback-update       Configure callback handler settings [user id]" >&6
+    echo "                        Interactive flow to set callback URL and authentication options:" >&6
+    echo "                        1. Public key authentication" >&6
+    echo "                        2. Certificate-based communication (certificate pinning)" >&6
+    echo "                        3. Root-CA Certificate based communication" >&6
+    echo "                        4. Hybrid - Public key authentication with certificate pinning" >&6
+    echo "                        5. Hybrid - Public key authentication with Root-CA certificate" >&6
+    echo "                        In case there is more than one user linked to the co-signer, please specify the" >&6
+    echo "                        user id for which the callback update should apply." >&6
+    echo "                        The user id can be retrieved by calling ${0} list-users" >&6
+    echo "  set-proxy             Configure proxy settings for the co-signer" >&6
+    echo "" >&6
+    exit 1
+}
+
+set_websocket_by_configuration() {
+    local slow_callback_handler="$1"
+    local proxy_file_has_content="false"
+    if [[ -f .proxy ]] && grep -q '[^[:space:]]' .proxy; then
+        proxy_file_has_content="true"
+    fi
+    if [[ "$proxy_file_has_content" == "true" || "$slow_callback_handler" == "true" ]]; then
+        # Either proxy is set or the callback might be slow - disable websocket.
+        WEBSOCKET="0"
+        export WEBSOCKET
+        rm -f .websocket
+        echo "Note: WebSocket communication has been automatically disabled because you configured a proxy/retry mechanism." >&6
+        return 0
+    fi
+    # No proxy and no slow callback - enable websocket by default.
+    WEBSOCKET="1"
+    export WEBSOCKET
+    echo "1" > .websocket
+    echo "Note: WebSocket communication has been automatically enabled for better performance." >&6
+}
+
+# Note: this function, as all calls to docker-compose commands, should be called after exporting all relevant env vars (HTTPS_PROXY,
+# WEBSOCKET and REVISION).
+restart_explicitly() {
+    echo "Restarting cosigner docker - by explicit down & up" >&6
+    # Do not use 'docker-compose -p cc restart' since: "If you make changes to your compose.yml configuration,
+    # these changes are not reflected after running this command. For example, changes to environment variables
+    # (which are added after a container is built, but before the container's command is executed) are not
+    # updated after restarting" - https://docs.docker.com/reference/cli/docker/compose/restart/.
+    # Also, using explicit down & up since "docker-compose -p cc up -d --force-recreate" fails to get the new
+    # container running for unknown reason.
+    echo "Stopping cosigner docker" >&6
+    if ! docker-compose -p cc down ; then
+        echo "Failed stopping cosigner docker" >&6
+        exit 1
+    fi
+    echo "Starting cosigner docker" >&6
+    docker-compose -p cc up -d
+}
+
+if  ! check_root ; then
+    echo "Please run as root" >&6
+    exit 1
+fi
+
+if [ -f .local_config ]; then
+    . .local_config
+    export physicalDeviceId
+elif [ -f env_file.txt ] && [ $(grep USER_ID env_file.txt) ]; then
+    export physicalDeviceId=$(grep USER_ID env_file.txt|awk -F'=' '{print $2}')
+fi
+
+case ${1} in
+
+    setup|headless)
+        # Headless mode is when this script is used through the Azure Marketplace;
+        # In such case, NO prompt should be made.
+        called=${1}
+        echo "Installing prerequisites packages" >&6
+        # For information about CPU and Microcode to be on the log file
+        cat /proc/cpuinfo | grep 'microcode\|model' | sort | uniq
+        lscpu | grep 'Thread(s)'
+
+        apt update && apt install -y build-essential dkms curl jq python3 uuid-runtime
+
+        if  check_sgx_cap ; then
+            if ! check_sgx_driver ; then
+                install_sgx_driver
+                if ! check_sgx_driver ; then
+                    echo "Problem loading SGX driver, please reboot and rerun ${0}" >&6
+                    exit 1
+                fi
+            fi
+        else
+            exit 1
+        fi
+
+        if  ! check_required_packages docker-ce ; then
+            install_docker
+        fi
+
+        if [ ! -x /usr/local/bin/docker-compose ]; then
+            install_docker_compose
+        fi
+
+        if [ ! -f ~/.docker/config.json ]; then
+            docker login -u ${USERNAME} -p ${PASS} registry.gitlab.com
+        fi
+
+        if [ ! -f docker-compose.yml ]; then
+            create_docker_compose_file
+        fi
+
+        if [ ! -f docker-compose-init.yml ]; then
+            create_docker_compose_init
+        fi
+
+        if [ ! -f /etc/docker/daemon.json ]; then
+            create_docker_daemon_json
+            systemctl restart docker
+        fi
+
+        if [ ! -f .local_config ]; then
+            echo "export physicalDeviceId=$(uuidgen)" > .local_config
+            . .local_config
+        fi
+
+        initialize_files
+        add_user ${called}
+        shift
+        if [ "x${1}" == "x" ]; then
+            if [ -f .revision ]; then
+                REVISION=$(cat .revision)
+            else
+                REVISION=${DEFAULT_REVISION}
+                echo ${REVISION} > .revision
+            fi
+        else
+            REVISION=${1}
+            echo ${REVISION} > .revision
+        fi
+        export REVISION
+        if [ ! -f .proxy ]; then
+            if [ X${called} == Xheadless ]; then
+                echo "File not found. Nothing to do" >&6
+            else
+                prompt_for_proxy
+            fi
+        else
+            HTTPS_PROXY=$(cat .proxy)
+            export HTTPS_PROXY
+        fi
+        # slow_callback_handler is set during add_user.
+        set_websocket_by_configuration ${slow_callback_handler}
+        echo -e "\nRunning cosigner init docker" >&6
+        docker-compose -p init -f docker-compose-init.yml up -d
+        docker exec cosigner-init /bin/su fb_service -s /bin/bash -c "./customer_cosigner --initial-config-file config/config.json"
+        if [ $? -eq 0 ]; then
+            echo "Cosigner init succeeded"
+        else
+            echo "Cosigner init failed"
+        fi
+
+        docker-compose -p init -f docker-compose-init.yml down
+
+        if [ X${called} == Xheadless ]; then
+            echo "Headless Pulling cosigner docker" >&6
+            docker-compose -p cc pull
+            echo "Headless Running cosigner docker" >&6
+            docker-compose -p cc up -d
+            echo "Headless setup completed" >&6
+        fi
+        ;;
+
+    add-user)
+
+        add_user
+        if docker exec cosigner ./customer_cosigner --enroll-new-device config/config.json ; then
+            if [ "x${multiDevice}" == "x" ]; then
+                echo "multiDevice=1" >> .local_config
+            fi
+            echo -e "\nUser added sucessfully" >&6
+        fi
+        ;;
+
+    list-users)
+
+        exec_cosigner "./customer_cosigner --list-devices" >&6
+        no_log=1
+        ;;
+
+    override_files)
+
+        create_docker_compose_init
+        create_docker_compose_file
+        create_docker_daemon_json
+        ;;
+
+    print-public-key)
+
+        exec_cosigner "./customer_cosigner --print-pubkey" >&6
+        no_log=1
+        ;;
+
+    upgrade)
+
+        ps -e |grep customer_cosig | awk '{print $1}' | xargs kill -s SIGUSR1
+        ;;
+
+    upgrade-script)
+
+        echo "Backup install script ${0} to ${0}.${VER}.${DATE}" >&6
+        cp ${0} ${0}.${VER}.${DATE}
+        echo "Please retrieve install script URL from Fireblocks console" >&6
+        ;;
+
+    callback-update)
+
+        if [ "x${multiDevice}" != "x" ]; then
+            if [ "x${2}" != "x" ]; then
+                userId=${2}
+            else
+                echo "This server appears to have multiple users, please specify user id" >&6
+                echo "To list all user use ${0} list-users" >&6
+                no_log=1
+                exit 1
+            fi
+        fi
+        # Check current configuration
+        check_if_callback_sends_retry_by_configuration
+        prior_to_update_slow_callback_handler=${slow_callback_handler}
+
+        callback_url_params
+
+        if [ "x${userId}" != "x" ]; then
+            echo "{\"callbackUrl\": \"${callbackUrl}\",\"callbackCert\": \"${callbackCert}\",\"callbackRootCA\": \"${callbackRootCA}\",\"callbackPublicKey\": \"${callbackPublicKey}\",\"userId\":\"${userId}\"}" > config.json
+        else
+            echo "{\"callbackUrl\": \"${callbackUrl}\",\"callbackCert\": \"${callbackCert}\",\"callbackRootCA\": \"${callbackRootCA}\",\"callbackPublicKey\": \"${callbackPublicKey}\"}" > config.json
+        fi
+
+        if jq . config.json > ${DB_PATH}/config/config.json; then
+            exec_cosigner "./customer_cosigner --update-config config/config.json"
+        fi
+
+        if [ "${slow_callback_handler}" != "${prior_to_update_slow_callback_handler}" ]; then
+            # slow_callback_handler was updated during callback_url_params,
+            # need to call set_websocket_by_configuration again to update WEBSOCKET env var accordingly.
+            set_websocket_by_configuration ${slow_callback_handler}
+            if [ "${slow_callback_handler}" == "true" ] && [ "${prior_to_update_slow_callback_handler}" != "true" ]; then
+                echo "You have updated the callback to use a retry mechanism, hence co-signer's communication would be switched from WebSocket to long polling." >&6
+            else
+                echo "You've stated that all callback do NOT use a retry mechanism (and there's no proxy set up) - co-signer's communication would be optimized from long polling to WebSocket." >&6
+            fi
+            read -rsn1 -p "For these *communication* changes to take effect, please press Enter and the cosigner will be restarted." >&6 2>&6
+            echo "" # Adds a newline because 'read' didn't capture one
+            # Set up other required env vars before calling restart.
+            REVISION=$(cat .revision)
+            export REVISION
+            if [ -f .proxy ]; then
+                HTTPS_PROXY=$(cat .proxy)
+                export HTTPS_PROXY
+            fi
+            restart_explicitly
+        fi
+        ;;
+
+    start)
+
+        shift
+        if [ "x${1}" == "x" ]; then
+            if [ -f .revision ]; then
+                REVISION=$(cat .revision)
+            else
+                REVISION=${DEFAULT_REVISION}
+                echo ${REVISION} > .revision
+            fi
+        else
+            REVISION=${1}
+            echo ${REVISION} > .revision
+        fi
+        export REVISION
+        if [ ! -f .proxy ]; then
+            echo "File not found. Nothing to do"
+        else
+            HTTPS_PROXY=$(cat .proxy)
+            export HTTPS_PROXY
+        fi
+        check_if_callback_sends_retry_by_configuration
+        set_websocket_by_configuration ${slow_callback_handler}
+        echo "Pulling cosigner docker" >&6
+        docker-compose -p cc pull
+        echo "Running cosigner docker" >&6
+        docker-compose -p cc up -d
+        ;;
+
+    restart)
+
+        REVISION=$(cat .revision)
+        export REVISION
+        if [ ! -f .proxy ]; then
+            echo "File not found. Nothing to do"
+        else
+            HTTPS_PROXY=$(cat .proxy)
+            export HTTPS_PROXY
+        fi
+        check_if_callback_sends_retry_by_configuration
+        set_websocket_by_configuration ${slow_callback_handler}
+        restart_explicitly
+        ;;
+
+    stop)
+
+        REVISION=$(cat .revision)
+        export REVISION
+        if [ ! -f .proxy ]; then
+            echo "File not found. Nothing to do"
+        else
+            HTTPS_PROXY=$(cat .proxy)
+            export HTTPS_PROXY
+        fi
+        check_if_callback_sends_retry_by_configuration
+        set_websocket_by_configuration ${slow_callback_handler}
+        echo "Stopping cosigner docker" >&6
+        docker-compose -p cc down
+        ;;
+
+    set-proxy)
+
+        echo -e "Enter your proxy server name (for example http://proxy.example.com:1234, leave empty to disable proxy)\n" >&6
+        echo -e "Adding proxy will restart the cosigner\n" >&6
+        set_proxy
+        if [ ! -f .proxy ]; then
+            echo "File not found. Nothing to do"
+        else
+            REVISION=$(cat .revision)
+            export REVISION
+            HTTPS_PROXY=$(cat .proxy)
+            export HTTPS_PROXY
+            check_if_callback_sends_retry_by_configuration
+            set_websocket_by_configuration ${slow_callback_handler}
+            restart_explicitly
+        fi
+        ;;
+
+    logs)
+
+        shift
+        if [ "x${1}" == "x" ]; then
+            num=3000
+        else
+            num=${1}
+        fi
+
+        if [ "x${2}" == "x" ]; then
+            target="cosigner"
+        else
+            target=${2}
+        fi
+
+        echo "Creating cosigner docker logs" >&6
+        echo "----- ${t} log -----" >> ${DATE}_${target}.log
+        docker logs --tail ${num} ${target} >> ${DATE}_${target}.log 2>&1
+        ;;
+
+    upload-all-logs)
+
+        no_log=1
+        echo "Deprecated please contact support" >&6
+        ;;
+
+    version)
+
+        echo "Script version: ${VER}" >&6
+        echo "Cosigner docker image: $(docker inspect cosigner | jq  -r '.[0].Config.Image')" >&6
+        echo "Cosigner docker image hash: $(docker inspect cosigner | jq  -r '.[0].Image')" >&6
+        exec_cosigner "./customer_cosigner --version" | grep -v "customer_cosigner:" >&6
+        ;;
+
+    *)
+        no_log=1
+        usage
+        ;;
+esac

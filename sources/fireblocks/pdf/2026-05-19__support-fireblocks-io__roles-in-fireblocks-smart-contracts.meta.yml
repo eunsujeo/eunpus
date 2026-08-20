@@ -1,0 +1,8 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/roles-in-fireblocks-smart-contracts
+downloaded_at: 2026-05-19
+domain: tokenization (governance cross-cut)
+tier: 2-deferred
+status: placeholder
+title: "Roles in Fireblocks smart contracts"
+ingest_log: "Stage 11 (2026-05-19) — Stage 11 lazy-load policy applied; catalog placeholder, deep ingest deferred"
+note: "Smart contract role model. Cross-cut with Stage 9 Vault Structure BP (Mint/Burn/Pause/Deploy/Upgrade per-op vault) and Stage 10 Policy entity. Promote to full ingest when Tokenization becomes active operational domain."

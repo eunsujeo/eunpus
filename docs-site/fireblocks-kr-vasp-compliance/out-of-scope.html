@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>4. Fireblocks 로 안 풀리는 것</title>
+<meta content="Fireblocks 의 기능 범위 밖이라 별도 솔루션 / 인가 / 인증으로만 해결되는 KR 의무" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. 법규 지형</h3>
+<ul>
+<li><a href="regulation-landscape.html">1. 한국 규제 지형</a></li>
+<li><a href="fireblocks-coverage.html">2. Fireblocks 가 푸는 것 (직접)</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. 경계선</h3>
+<ul>
+<li><a href="partial-coverage.html">3. Fireblocks 가 거드는 것 (부분)</a></li>
+<li><a class="active" href="out-of-scope.html">4. Fireblocks 로 안 풀리는 것</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 운영</h3>
+<ul>
+<li><a href="enforcement-defense.html">5. 제재 사례와 도구 매핑</a></li>
+<li><a href="deployment-checklist.html">6. 도입 통합 절차</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. 미해결</h3>
+<ul>
+<li><a href="open-questions.html">7. 별도 검증이 필요한 항목</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="oos">
+<h1>4. Fireblocks 로 안 풀리는 것 — 7 개 영역</h1>
+<p class="lead">
+한국 가상자산 사업의 의무 중 Fireblocks 가 <strong>전혀 풀어주지 않는</strong> 영역.
+별도 인가·인증·기관·인사가 필요하며, "Fireblocks 가 알아서" 라는 기대를 가지면 사업 자체가 위험.
+이 페이지의 목적은 명시적으로 "도구의 한계" 를 드러내는 것.
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">왜 이 페이지를 별도로 만들었나</div>
+<p>
+2024–2026 사이 한국 디지털 자산 사업자들 사이에서 가장 자주 발생하는 오해가 "<strong>Fireblocks 도입했으니 컴플라이언스 OK</strong>" 라는 인식이다.
+실제로는 Fireblocks 는 지갑·거버넌스·감사 도구일 뿐, 다음 7 개 영역은 사업자 본인이 별도 절차로 해결해야 한다.
+이 영역들이 사업 시작의 critical path 에 자주 등장하며 — Fireblocks 도입보다 훨씬 오래 걸린다.
+</p>
+</div>
+
+<h2>4.1 7 영역 한눈에</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>영역</th><th>왜 외부인가</th><th>실제 해결 주체</th></tr></thead>
+<tbody>
+<tr><td>4.2</td><td>VASP 신고제 자체</td><td>국가 인가 절차 — vendor 가 대행 불가</td><td>FIU + 사업자 + 변호사</td></tr>
+<tr><td>4.3</td><td>실명확인 입출금계정</td><td>은행 vs 사업자의 직접 계약 + AML 위험평가</td><td>국내 은행</td></tr>
+<tr><td>4.4</td><td>ISMS / ISMS-P 인증</td><td>독립 인증 기관의 심사</td><td>KISA + 인증 기관</td></tr>
+<tr><td>4.5</td><td>보험 / 준비금</td><td>보험사·회계 + 회사 자본</td><td>보험사 + 회계법인</td></tr>
+<tr><td>4.6</td><td>영업행위 규율</td><td>회사 정책·약관·마케팅 — 도구로 해결 안 됨</td><td>사업자 + 법무</td></tr>
+<tr><td>4.7</td><td>법인 설립 · 자본금 · 이사회</td><td>회사법 영역</td><td>법무법인 + 등기소</td></tr>
+<tr><td>4.8</td><td>취약점 평가 (평가전문기관)</td><td>금감원 지정 평가기관의 외부 점검</td><td>지정 평가전문기관</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>4.2 VASP 신고제 자체</h2>
+
+<h3>KR 의무</h3>
+<p>특금법 7 — 가상자산사업자 또는 그 운영 예정자는 상호·대표자·사업장 소재지 등을 FIU 원장에게 신고해야 함.</p>
+
+<h3>왜 Fireblocks 가 풀어주지 않는가</h3>
+<ul>
+<li>신고 자체가 <strong>국가 인가 절차</strong> — vendor 가 대신할 수 없음</li>
+<li>FIU 신고 심사 위탁이 금융감독원으로 일원화 — Fireblocks 의 기능과 무관</li>
+<li>신고서 12 항목 중 Fireblocks 가 답을 주는 것은 "지갑주소 목록" 뿐, 나머지 11 항목은 사업자 자체 정보</li>
+</ul>
+
+<h3>실제 해결 절차</h3>
+<ol>
+<li>법인 설립 (4.7 참조)</li>
+<li>실명계정 발급 (4.3 참조)</li>
+<li>ISMS 인증 (4.4 참조)</li>
+<li>법령준수체계 (조직·인력·전산설비) 구축</li>
+<li>FIU 신고서 작성 + 12 종 자료 첨부</li>
+<li>심사 3개월 대기 + 보완 요청 대응</li>
+<li>신고 수리 → 영업 개시</li>
+</ol>
+<p>
+→ <strong>FIU 신고는 일반적으로 6–12 개월</strong> 의 critical path. Fireblocks 도입 (수 주) 보다 훨씬 길다.
+</p>
+
+<h2>4.3 실명확인 입출금계정 — 은행과의 직접 계약</h2>
+
+<h3>KR 의무</h3>
+<p>특금법 시행령 — 가상자산과 원화의 교환 기능이 있는 경우 실명확인 입출금계정 발급 필수.</p>
+
+<h3>왜 Fireblocks 가 풀어주지 않는가</h3>
+<ul>
+<li>국내 은행이 사업자에게 발급하는 <strong>은행 측 결정</strong>. Vendor 와 무관</li>
+<li>은행이 사업자에 대한 자체 AML 위험평가를 수행 — 평가 통과해야 발급</li>
+<li>은행 4 사 (신한·NH농협·케이뱅크·전북) 만 현재 실명계정 운영 중 (2025-2026 기준 변동 가능)</li>
+</ul>
+
+<h3>예외 — custody-only 모델</h3>
+<p>
+금융위 2021 안내자료 명시: "가상자산과 금전의 교환이 없는 경우 가상자산사업자는 실명확인 입출금 계정을 받지 않아도 된다."
+순수 custody (자산 보관·이전 만, 원화 매매 없음) 모델은 실명계정 요건 자동 부과 안 됨. 단 실무 권장은 받는 쪽이 안전.
+</p>
+
+<h3>실제 해결 절차</h3>
+<ol>
+<li>은행 선정 → 사업자 제안서 제출</li>
+<li>은행 AML 위험평가 (수 개월)</li>
+<li>계약 협상 (수수료·SLA·운영 정책)</li>
+<li>실명계정 발급 확인서 발급</li>
+<li>FIU 신고서에 첨부</li>
+</ol>
+
+<h2>4.4 ISMS / ISMS-P 인증</h2>
+
+<h3>KR 의무</h3>
+<p>FIU 신고 시 필수 첨부 자료. 정보보호 관리체계 인증서.</p>
+
+<h3>왜 Fireblocks 가 풀어주지 않는가</h3>
+<ul>
+<li>ISMS / ISMS-P 는 <strong>KISA (한국인터넷진흥원) 또는 ISMS-P 인증 기관의 인증</strong></li>
+<li>사업자의 <strong>전사 정보보호 관리체계</strong>에 대한 인증 — Fireblocks 사용 사실로 대체 안 됨</li>
+<li>Fireblocks 가 SOC 2 / ISO 27001 인증을 받았다는 것은 사업자의 ISMS 인증과 별개</li>
+</ul>
+
+<h3>실제 해결 절차</h3>
+<ol>
+<li>전사 정보보호 정책 수립 — 인사·운영·기술 통합</li>
+<li>위험평가 수행</li>
+<li>통제 항목 구현 (관리적·물리적·기술적)</li>
+<li>인증 신청 → 심사 → 인증서 발급</li>
+<li>매년 사후심사 + 3 년마다 갱신</li>
+</ol>
+<p>
+→ 신규 사업자는 보통 <strong>6–12 개월</strong> 소요.
+</p>
+
+<div class="callout">
+<div class="callout-title">신고서 36 의 추가 의무 — 인증서로 끝나지 않음</div>
+<p>
+가상자산업감독규정은 "ISMS 보유" 로 끝나지 않고 — <strong>취약점 평가 + 사후보완 보고</strong>까지 포함하는 작동체계여야 한다고 명시.
+즉 인증서만 들고 있으면 안 되고, 취약점 평가 (4.8) + 보완계획서 + 30 일 이내 금감원장 제출까지 작동해야.
+</p>
+</div>
+
+<h2>4.5 보험 / 준비금</h2>
+
+<h3>KR 의무</h3>
+<p>이용자보호법 + 가상자산업감독규정. 해킹·전산장애 등 사고에 대비한 보험 가입 또는 준비금 적립.</p>
+
+<h3>왜 Fireblocks 가 풀어주지 않는가</h3>
+<ul>
+<li>보험은 <strong>보험사와의 계약</strong>. Fireblocks 가 제공 안 함</li>
+<li>준비금은 <strong>회사 자본의 일정 비율 / 금감원 기준</strong> — 회계·재무 영역</li>
+<li>보험 한도 / 준비금 비율은 감독규정·고시 기준으로 변동 — 최신 기준 재확인 필요</li>
+</ul>
+
+<h3>실무 — 디지털 자산 보험 시장</h3>
+<ul>
+<li>글로벌 보험사 (Lloyd's, AIG, Marsh 등) 가 디지털 자산 보험 제공</li>
+<li>보험료는 <strong>cold storage 비율에 강하게 의존</strong> — 80% cold 가 보험 underwriting 의 기본 요건</li>
+<li>국내 보험사의 디지털 자산 보험 시장은 형성 중 — 글로벌 보험사가 주력</li>
+</ul>
+
+<h2>4.6 영업행위 규율 — 도구로 풀리지 않는 것</h2>
+
+<h3>KR 의무</h3>
+<ul>
+<li>이용자보호법 — 불공정거래 금지, 자기 자산 운용 제한</li>
+<li>유사수신행위법 (2024 개정) — <strong>법령상 적법한 인가·허가·등록·신고 없이 불특정 다수로부터 자금·가상자산까지 조달하는 행위 규율</strong></li>
+</ul>
+
+<h3>왜 Fireblocks 가 풀어주지 않는가</h3>
+<ul>
+<li>이용자 자산 오사용·수익약정·portfolio 운용·제3자 대출 활용 — 모두 <strong>사업자의 정책·약관·마케팅 결정</strong></li>
+<li>도구가 이러한 행위를 자동 차단할 수 없음 (정책 결정 자체이므로)</li>
+<li>"확정수익률 보장" 같은 마케팅 문구가 유사수신행위법 적용 대상</li>
+</ul>
+
+<h3>사업자가 해야 하는 것</h3>
+<ul>
+<li>약관·마케팅 자료의 사전 법무 심사</li>
+<li>"수익약정" 표현 회피 — 거래 실현 수익만 표시</li>
+<li>고객 자산의 자기 운용 금지 (담보화·대출 활용 등)</li>
+<li>스테이킹·earn 상품 도입 전 유사수신행위법 + 자본시장법 검토</li>
+</ul>
+
+<h2>4.7 법인 설립 · 자본금 · 이사회</h2>
+
+<h3>KR 의무 (전제 조건)</h3>
+<p>FIU 신고서 첨부 자료에 다음이 필수:</p>
+<ul>
+<li>법인등기부등본 · 사업자등록증</li>
+<li>정관</li>
+<li>이사회 의사록</li>
+<li>대표자·임원·대주주 현황</li>
+</ul>
+
+<h3>왜 Fireblocks 가 풀어주지 않는가</h3>
+<p>회사법·상법 영역. Vendor 가 관여하지 않음. 법무법인·등기소·이사회 운영이 답.</p>
+
+<h3>2026 년 개정 예고</h3>
+<p>
+2026-03-30 예고된 시행령·감독규정 개정안에 <strong>대주주 범위 구체화</strong>가 포함. 신규 사업자는 대주주 신고 의무 범위가
+이전보다 넓어질 가능성. 법인 설계 시 사전 고려 필요.
+</p>
+
+<h2>4.8 취약점 평가 — 평가전문기관</h2>
+
+<h3>KR 의무</h3>
+<p>
+가상자산업감독규정 — ISMS 인증과 별도로 <strong>취약점 분석·평가를 평가전문기관을 통하여 실시</strong>, 결과보고와 보완계획을
+종료 후 30 일 이내에 금융감독원장에게 제출.
+</p>
+
+<h3>왜 Fireblocks 가 풀어주지 않는가</h3>
+<ul>
+<li>금감원 지정 평가전문기관의 <strong>외부 점검</strong></li>
+<li>사업자의 <strong>전사 시스템 (Fireblocks 외 포함)</strong>에 대한 평가 — Fireblocks 만 평가 대상이 아님</li>
+<li>평가 결과는 사업자가 책임지고 보완 — Fireblocks 가 자체적으로 보완 불가</li>
+</ul>
+
+<h3>Fireblocks 가 도움될 수 있는 부분</h3>
+<ul>
+<li>Fireblocks 측 보안 인증 (SOC 2 / ISO 27001 등) 자료를 평가 input 으로 제공 가능</li>
+<li>FSPM (Fireblocks Security Posture Management) 의 attack simulator 결과를 평가 보조 자료로 활용 가능</li>
+<li>단 평가 자체는 평가전문기관이 수행</li>
+</ul>
+
+<h2>4.9 그 외 도구로 해결 안 되는 항목들</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>항목</th><th>왜 외부인가</th></tr></thead>
+<tbody>
+<tr><td>주민등록번호 수집 시 제한</td><td>개인정보보호법 — 신고수리 이전 수집 금지 (금융위 2021 경고)</td></tr>
+<tr><td>경영진의 적격성 심사</td><td>금감원의 임원 적격성 심사</td></tr>
+<tr><td>외부 감사 (회계 감사)</td><td>회계법인 — 자체 수행 불가</td></tr>
+<tr><td>대외 공시 (분기·반기·연간)</td><td>금감원·공정위 등의 공시 시스템 활용</td></tr>
+<tr><td>고객 민원 처리</td><td>금융감독원 분쟁조정위원회 / 한국소비자원 등 외부 plane</td></tr>
+<tr><td>자금세탁방지 감독관 (CCO) 지정</td><td>인사 결정 — 도구 무관</td></tr>
+<tr><td>준법감시인 지정</td><td>인사 결정 — 도구 무관</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>4.10 정직한 마무리</h2>
+<p>
+이 페이지의 7 영역은 Fireblocks 도입 결정과 무관하게 <strong>한국에서 디지털 자산 사업을 하기 위한 기본 조건</strong>이다.
+"Fireblocks 가 좋다" 와 "한국에서 사업할 수 있다" 는 별개의 문제.
+</p>
+<p>
+실제 운영에서 가장 큰 비용·시간이 드는 것은:
+</p>
+<ol>
+<li>은행 실명계정 발급 — 보통 가장 어려움</li>
+<li>FIU 신고 심사 3개월 + 보완 — 누적 6–12 개월</li>
+<li>ISMS 인증 6–12 개월</li>
+<li>법인 설립·자본금·이사회 — 1–3 개월</li>
+</ol>
+<p>
+Fireblocks 도입은 위 4 단계의 <strong>병행 작업</strong>으로 진행 가능. Fireblocks 가 critical path 가 되는 경우는 드물다.
+</p>
+
+<p class="back-top"><a href="#oos">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="assets/app.js"></script>
+</body>
+</html>

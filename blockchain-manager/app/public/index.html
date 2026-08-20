@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>블록체인매니저 — 설계 보드</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t !== 'light' && t !== 'dark') {
+          t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" id="brand-home" role="button" tabindex="0">DOCS</span>
+      <nav id="crumbs" class="crumbs"></nav>
+    </div>
+    <div class="topbar-right">
+      <span id="board-meta" class="board-meta"></span>
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="테마 전환"></button>
+      <button id="export-html" class="btn-secondary" type="button" title="단일 HTML 로 저장 — 홈에서는 보드 전체, 대카테고리 안에서는 그 카테고리만">HTML ↓</button>
+      <button id="refresh-btn" class="btn-secondary" type="button">새로고침</button>
+    </div>
+  </header>
+
+  <main id="view" class="view" aria-busy="true">
+    <div id="board-status" class="board-status">불러오는 중…</div>
+  </main>
+
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="modal-title"></h2>
+          <div id="modal-chips" class="chips"></div>
+        </div>
+        <div class="modal-actions">
+          <button id="prev-doc" class="btn-secondary" type="button" title="이전 문서">‹</button>
+          <button id="next-doc" class="btn-secondary" type="button" title="다음 문서">›</button>
+          <button id="open-page" class="btn-secondary" type="button">새 창</button>
+          <button id="copy-link" class="btn-secondary" type="button">링크 복사</button>
+          <button id="copy-md" class="btn-secondary" type="button">복사</button>
+          <button id="download-md" class="btn-secondary" type="button">.md</button>
+          <button class="modal-close" type="button" data-close aria-label="닫기">×</button>
+        </div>
+      </div>
+      <article id="modal-body" class="doc-body"></article>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="vendor/mermaid.min.js"></script>
+  <script src="md.js"></script>
+  <script src="theme.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

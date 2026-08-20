@@ -1,0 +1,18 @@
+url: https://github.com/coinbase/x402
+fetched_at: 2026-08-20
+source_type: webpage (프로토콜 공식 저장소 README — 1차)
+domain: stablecoin / agent-payments / x402
+tier: 2
+crawl_status: fetched (2026-08-20, Mode C — WebFetch 추출 요약. 스펙 문서 본문은 저장소 내 별도 파일, 미수집)
+markdown: sources/stablecoin/markdown/2026-08-20__github-com__coinbase-x402.md
+title: "coinbase/x402 — A payments protocol for the internet. Built on HTTP."
+key_facts: |
+  - HTTP 402 Payment Required 상태 코드 기반 결제 표준. Coinbase 개발 → x402 Foundation 으로 거버넌스 이전, 오픈 스탠다드
+  - 흐름: 요청 → 402 + PAYMENT-REQUIRED 헤더 (PaymentRequirements) → 클라이언트가 PaymentPayload 서명 → PAYMENT-SIGNATURE 헤더 재요청 → 검증·정산 → PAYMENT-RESPONSE
+  - scheme = 자금 이동의 논리 방식 (첫 공식 scheme 은 exact — 정확한 금액), 네트워크별 구현
+  - facilitator = 검증(/verify)·정산(/settle) 대행 — 다중 네트워크 (EVM·SVM·Stellar)
+  - 신뢰 모델: facilitator·서버는 클라이언트가 서명한 의도 범위 내에서만 자금 이동 가능 (trust minimizing)
+context: |
+  Q-2026-08-20-STBL08 (에이전트 지갑 지출 통제 vs 커스터디 정책 엔진) 의 "x402 스펙 1차 자료 미수집" 해소용 수집 (2026-08-20).
+  AWS AgentCore payments 가 이 프로토콜 위에 구축됨.
+promote_condition: "에이전트 결제 정책 평면 vs Fireblocks Policy Engine 비교 분석 시. 스펙 상세 필요하면 저장소 specs/ 추가 수집"

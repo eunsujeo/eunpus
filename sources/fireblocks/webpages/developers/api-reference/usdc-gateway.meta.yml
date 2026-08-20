@@ -1,0 +1,20 @@
+url: https://developers.fireblocks.com/api-reference/vaults/ (USDC Gateway 7종)
+fetched_at: 2026-08-12
+source_type: api-reference + openapi
+domain: bridge / usdc-gateway / api
+tier: 1
+title: "USDC Gateway — API reference 7종 + swagger 발췌"
+crawl_status: full-body (페이지는 요약 stub · 스키마는 swagger 발췌본)
+acquisition_method: "curl <url>.md x7 + openapi/swagger.yaml 발췌"
+related_cluster: usdc-gateway
+promote_status: deep-ingested (Stage 39)
+files:
+  - markdown/2026-08-12__developers-fireblocks-com__usdc-gateway-api-reference.md
+  - openapi/2026-08-12__fireblocks-usdc-gateway__swagger-excerpt.json
+findings:
+  - "실제 경로는 /vault/accounts/{vaultAccountId}/usdc_gateway (+/activate·/deactivate). virtual_asset_wallet 없음"
+  - "활성화에 requestBody 없음 — vaultAccountId 는 path 파라미터"
+  - "UsdcGatewayWalletInfoResponse 에 totalBalance·balanceBreakdown 없음 (API 가이드 표와 불일치)"
+  - "deposit_automation 4종은 OpenAPI 에 없음 — 가이드에만 존재"
+  - "type: CIRCLEGATEWAY 필드로 provider 확인"
+  - "권한 — 쓰기는 Admin/Non-Signing Admin/Signer/Approver, 읽기는 +Editor/Viewer"

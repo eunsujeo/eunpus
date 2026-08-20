@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>10. 인덱서 / 데이터 인프라 vendor — 블록체인 인덱서 설계 가이드</title>
+<meta content="The Graph · Alchemy · QuickNode · Firehose · Fireblocks · BitGo · 설치형 — 인덱서 / 데이터를 product 로 판매하는 vendor 의 공개 아키텍처." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Foundation</h3><ul>
+<li><a href="what-is-indexer.html">1. 인덱서란 무엇인가</a></li>
+<li><a href="requirements.html">2. 요구사항</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Implementation</h3><ul>
+<li><a href="implementation-patterns.html">3. 4 구현 패턴</a></li>
+<li><a href="reference-architecture.html">4. 참조 아키텍처</a></li>
+<li><a href="data-model.html">5. 데이터 모델</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Operations</h3><ul>
+<li><a href="reorg-finality.html">6. Reorg · Finality</a></li>
+<li><a href="performance-scalability.html">7. 성능 · 확장성</a></li>
+<li><a href="monitoring-ops.html">8. 운영 · 모니터링</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Industry Cases</h3><ul>
+<li><a href="exchange-cases.html">9. 자체 인덱서 운영</a></li>
+<li><a class="active" href="saas-cases.html">10. 인덱서 / 데이터 인프라 vendor</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Infrastructure</h3><ul>
+<li><a href="infrastructure-spec.html">11. 인프라 · 스펙</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Portability</h3><ul>
+<li><a href="portability.html">12. 벤더 교체 · 포트 설계</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="saas-cases">
+<h2>10. 인덱서 / 데이터 인프라 vendor</h2>
+<span class="section-subtitle">인덱서를 product 로 판매하는 vendor — 4 카테고리, 7 회사</span>
+
+<h3>10.1 개요 + 분류</h3>
+
+<p>인덱서 / 블록체인 데이터를 product 로 판매하는 회사들. 자체 운영 사례는 <a href="exchange-cases.html">9. 자체 인덱서 운영</a> 에서 다룬다.</p>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>카테고리</th><th>회사</th><th>핵심 제공 형태</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>탈중앙 인덱싱 프로토콜</strong></td><td>The Graph</td><td>Subgraph + GraphQL, 토큰 incentive (GRT)</td></tr>
+<tr><td rowspan="2"><strong>관리형 Data API + RPC</strong></td><td>Alchemy</td><td>사전 인덱싱된 Data API + Webhooks</td></tr>
+<tr><td>QuickNode</td><td>Streams + Webhooks + SQL Explorer + RPC</td></tr>
+<tr><td><strong>스트림 인프라</strong></td><td>Firehose / StreamingFast</td><td>raw block stream + file storage</td></tr>
+<tr><td rowspan="2"><strong>커스터디 + 인덱서적 기능</strong></td><td>Fireblocks</td><td>지갑 + tx 관리 + webhook (인덱서 자체 product 아님)</td></tr>
+<tr><td>BitGo</td><td>다중서명 수탁 인프라</td></tr>
+<tr><td><strong>설치형 (on-prem)</strong></td><td>NodeInfra 등</td><td>customer 의 IDC 에 직접 설치</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>10.2 한눈에 비교</h3>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>회사</th><th>주 제공 형태</th><th>가격 (공식)</th><th>주요 한계</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>The Graph</strong></td><td>Subgraph (GraphQL) · Substreams</td><td>Query fee = GRT token 기반</td><td>관계형 schema 제약, dApp 중심</td></tr>
+<tr><td><strong>Alchemy</strong></td><td>Transfers / Portfolio / Token / NFT / Prices API + Webhooks</td><td>Free / Growth $49 / Scale 협상</td><td>at-least-once webhook · <code>indexed</code> tag 지연</td></tr>
+<tr><td><strong>QuickNode</strong></td><td>Streams · Webhooks · SQL Explorer · RPC</td><td>Build $42-49 / Business $849-999 / Enterprise</td><td>credits / RPS 제한</td></tr>
+<tr><td><strong>Firehose</strong></td><td>raw block stream + 파일 기반 + cursor</td><td>open-source 기반</td><td>도입 복잡 + 별도 저장/서빙 설계 필요</td></tr>
+<tr><td><strong>Fireblocks</strong></td><td>Webhooks v2 + custody API (인덱서 product ✗)</td><td>NDA 협상</td><td>내부 인덱서 구현 비공개</td></tr>
+<tr><td><strong>BitGo</strong></td><td>REST API + Webhook + multisig + Trust</td><td>NDA 협상</td><td>internal 공개 거의 없음</td></tr>
+<tr><td><strong>NodeInfra (설치형)</strong></td><td>customer IDC 에 설치</td><td>라이센스 모델</td><td>운영 책임 customer</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>10.3 The Graph — 탈중앙 인덱싱 프로토콜</h3>
+
+<p>인덱서를 <strong>토큰 incentive 기반 분산 네트워크</strong> 로 만든 사례. 가장 자세히 공개됨.</p>
+
+<h4>아키텍처</h4>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    subgraph DEV[개발자가 작성]
+      direction TB
+      MANIFEST[subgraph.yaml<br/>manifest]
+      SCHEMA[schema.graphql<br/>entity 정의]
+      MAPPING[mappings.ts<br/>변환 로직]
+    end
+    IPFS[(IPFS<br/>subgraph + ABI)]
+    subgraph IDX[Indexer Node]
+      direction TB
+      INGEST[blockchain<br/>monitor]
+      WORKER[mapping<br/>worker]
+    end
+    subgraph SUB[Substreams 옵션]
+      direction TB
+      FH[Firehose]
+      PAR[parallel<br/>modules]
+    end
+    PG[(Postgres<br/>shard)]
+    subgraph QRY[Query Node 분리]
+      direction TB
+      GQL[GraphQL API]
+    end
+    APP[dApp / Frontend]
+
+    DEV --> IPFS
+    IPFS --> IDX
+    IDX --> PG
+    SUB --> IDX
+    PG --> QRY --> APP
+</pre></div>
+
+<h4>핵심 컴포넌트</h4>
+
+<p>출처 — <a href="https://thegraph.com/docs/en/indexing/tooling/graph-node/" target="_blank" rel="noopener">Graph Node docs</a>.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>컴포넌트</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><strong>Graph Node</strong></td><td>인덱서 core. blockchain 모니터링, subgraph 실행</td></tr>
+<tr><td><strong>Postgres store</strong></td><td>entity 저장. 샤딩 지원</td></tr>
+<tr><td><strong>IPFS</strong></td><td>subgraph manifest + ABI 보관</td></tr>
+<tr><td><strong>전용 query node</strong></td><td>indexing 과 분리 — read traffic 흡수</td></tr>
+<tr><td><strong>Prometheus + Grafana</strong></td><td>공식 권장 운영 stack</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>Subgraph manifest 예시</h4>
+
+<pre><code># subgraph.yaml
+specVersion: 0.0.7
+dataSources:
+  - kind: ethereum
+    name: USDC
+    network: mainnet
+    source:
+      address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+      abi: USDC
+      startBlock: 6082465
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities: [Transfer, Holder]
+      eventHandlers:
+        - event: Transfer(indexed address, indexed address, uint256)
+          handler: handleTransfer
+      file: ./src/mapping.ts</code></pre>
+
+<p>개발자가 작성하는 것:</p>
+<ul>
+  <li><code>subgraph.yaml</code> — manifest (체인, contract 주소, startBlock, event handler)</li>
+  <li><code>schema.graphql</code> — entity 정의 (Postgres table 로 변환)</li>
+  <li><code>mappings.ts</code> — event → entity 변환 (AssemblyScript)</li>
+</ul>
+
+<h4>Substreams — 병렬 처리 layer</h4>
+
+<p>출처 — <a href="https://thegraph.com/blog/substreams-parallel-processing/" target="_blank" rel="noopener">The Graph blog</a>.</p>
+
+<ul>
+  <li><strong>Firehose 기반</strong> raw block stream 위에 병렬 변환</li>
+  <li>일부 subgraph <strong>100x+ sync 부스트</strong></li>
+  <li>fork-aware streaming + cursor-based resumption</li>
+</ul>
+
+<h4>Economic model — GRT 토큰</h4>
+
+<ul>
+  <li>인덱서는 GRT 를 staking</li>
+  <li>잘못된 데이터 / 잘못된 인덱싱 시 <strong>slashing</strong></li>
+  <li>Query fee + indexing reward 를 GRT 로 받음</li>
+  <li>★ <strong>The Graph hosted service 는 deprecated</strong> — decentralized network 만 운영</li>
+  <li>★ <strong>Alchemy Subgraphs hosted 는 2025-12-08 sunset</strong></li>
+</ul>
+
+<h3>10.4 Alchemy — 사전 인덱싱 Data API</h3>
+
+<p>가장 보편적 Data API 제공 vendor. "체인 스캔 없이" 주소 이력을 즉시 조회.</p>
+
+<h4>제공 API 카탈로그</h4>
+
+<p>출처 — <a href="https://www.alchemy.com/docs" target="_blank" rel="noopener">Alchemy docs</a>.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>API</th><th>핵심 기능</th><th>주요 endpoint</th></tr></thead>
+<tbody>
+<tr><td><strong>Transfers API</strong></td><td>주소 이력 (incoming / outgoing)</td><td><code>alchemy_getAssetTransfers</code></td></tr>
+<tr><td><strong>Portfolio API</strong></td><td>주소의 모든 자산 + 잔고</td><td><code>alchemy_getTokenBalances</code> 등</td></tr>
+<tr><td><strong>Token API</strong></td><td>ERC-20 메타 + 잔고</td><td><code>alchemy_getTokenMetadata</code></td></tr>
+<tr><td><strong>NFT API</strong></td><td>ERC-721 / 1155 collection + ownership</td><td><code>getNFTs</code>, <code>getContractMetadata</code></td></tr>
+<tr><td><strong>Prices API</strong></td><td>token 가격 (실시간 + 역사)</td><td><code>getTokenPriceBySymbol</code></td></tr>
+<tr><td><strong>Webhooks</strong></td><td>실시간 push (mined tx, address activity, dropped tx, NFT activity)</td><td>HTTP POST</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>주요 한계</h4>
+<ul>
+  <li><code>eth_getLogs</code> 응답 크기 제한 — <strong>10,000 logs</strong></li>
+  <li><code>indexed</code> 블록 태그 = 캐시 데이터, 최신 블록보다 지연 가능</li>
+  <li><strong>Webhooks at-least-once</strong> delivery — consumer 의 idempotency 필수</li>
+</ul>
+
+<h4>가격 (공식)</h4>
+
+<p>출처 — <a href="https://www.alchemy.com/pricing" target="_blank" rel="noopener">Alchemy pricing</a> (변동 가능, 공식 페이지 cross-verify 권장).</p>
+
+<ul>
+  <li>Free — 월 300M compute units, 5 webhooks</li>
+  <li>Growth — 월 $49+, 1.5B CU</li>
+  <li>Scale / Enterprise — 협상</li>
+</ul>
+
+<h3>10.5 QuickNode — Stream + SQL + RPC</h3>
+
+<p>RPC + Streams + Webhooks + SQL 의 통합 plaform.</p>
+
+<h4>제공 product</h4>
+
+<p>출처 — <a href="https://www.quicknode.com/docs/quicknode-streams" target="_blank" rel="noopener">QuickNode Streams docs</a>.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Product</th><th>역할</th><th>특성</th></tr></thead>
+<tbody>
+<tr><td><strong>Streams</strong></td><td>블록체인 데이터를 저장소 / 인덱싱 시스템으로 가져오는 파이프라인</td><td><strong>exactly-once delivery (finality order 기준)</strong>, 자동 재시작, backfill, tip streaming</td></tr>
+<tr><td><strong>Webhooks</strong></td><td>실시간 push</td><td>exactly-once 표방</td></tr>
+<tr><td><strong>SQL Explorer</strong></td><td>indexed data 에 SQL query (REST 로 실행)</td><td>수십억 row scale</td></tr>
+<tr><td><strong>RPC</strong></td><td>표준 JSON-RPC + WebSocket</td><td>private endpoint</td></tr>
+<tr><td><strong>Functions / Marketplace</strong></td><td>서버리스 함수 + 외부 모듈</td><td>(부분 product)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>Streams 의 핵심 특성</h4>
+<ul>
+  <li><strong>Exactly-once delivery</strong> — finality order 기준 (reorg 후 final 상태로만 deliver)</li>
+  <li>backfill + live tip 동시 처리</li>
+  <li>destination 자유 (S3, Postgres, custom webhook 등)</li>
+</ul>
+
+<h4>가격 (공식)</h4>
+
+<p>출처 — <a href="https://www.quicknode.com/pricing" target="_blank" rel="noopener">QuickNode pricing</a>.</p>
+
+<ul>
+  <li>Build — 월 $42-49, 80M API credits + Streams + Webhooks</li>
+  <li>Business — 월 $849-999, 2B API credits, 500 RPS</li>
+  <li>Enterprise — 협상</li>
+</ul>
+
+<h3>10.6 Firehose / StreamingFast — raw block stream 인프라</h3>
+
+<p>인덱서의 source layer (= 인덱서 자체가 아니라 인덱서 위에 올라가는 인프라).</p>
+
+<h4>핵심 특성</h4>
+
+<p>출처 — <a href="https://firehose.streamingfast.io/firehose/architecture" target="_blank" rel="noopener">Firehose docs</a>.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>특성</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>제공 형태</td><td>블록체인 데이터를 <strong>파일 기반 + streaming-first</strong> 로 추출 / 저장</td></tr>
+<tr><td>Live streaming</td><td><strong>Sub-second latency</strong></td></tr>
+<tr><td>Historical access</td><td>과거 block 도 파일로 즉시</td></tr>
+<tr><td>Reorg 처리</td><td><strong>Fork-aware streaming</strong> — reorg 시 revert event emit</td></tr>
+<tr><td>Resumption</td><td><strong>Cursor-based</strong> — consumer crash 후 정확한 시점 resume</td></tr>
+<tr><td>파일 포맷</td><td>protobuf 기반 binary</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>Substreams — Firehose 위의 병렬 처리</h4>
+
+<ul>
+  <li>Substreams = Firehose 위의 병렬 ETL framework</li>
+  <li>The Graph 와 통합 — subgraph 가 Substreams 위에 build 가능</li>
+  <li>일부 subgraph 100x+ sync 부스트 (Firehose 의 file 기반 source 덕분)</li>
+</ul>
+
+<p>★ Firehose 는 인덱서 자체가 아니라 <strong>인덱서의 source layer</strong>. The Graph / Substreams / 자체 인덱서 가 Firehose 위에 build.</p>
+
+<h3>10.7 Fireblocks — Custody + Webhook (인덱서 product 아님)</h3>
+
+<p>Fireblocks 는 인덱서 product 가 아니라 <strong>custody 플랫폼</strong>. 다만 내부적으로 인덱서적 기능이 있고, 외부로 webhook + receipt API 를 제공.</p>
+
+<h4>제공 API (인덱서 관련)</h4>
+
+<p>출처 — <a href="https://developers.fireblocks.com/" target="_blank" rel="noopener">Fireblocks developers</a>.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>API / 기능</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>/blockchains</code> + 자산 목록 API</td><td>지원 체인 / 자산 메타데이터</td></tr>
+<tr><td>EVM Transaction Receipt 조회 API</td><td>logs, status, block info</td></tr>
+<tr><td>Network connection + routing 정책 API</td><td>chain 별 routing</td></tr>
+<tr><td><strong>Webhooks v2</strong></td><td>트랜잭션 / 오더 등 리소스 이벤트 push</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>Webhooks v2 — 보장 사항</h4>
+
+<p>출처 — <a href="https://developers.fireblocks.com/reference/webhooks-gettingstarted-responsesretries" target="_blank" rel="noopener">Fireblocks Webhooks docs</a>.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>속성</th><th>값 / 정책</th></tr></thead>
+<tbody>
+<tr><td>이벤트 순서 보장</td><td><strong>✗ 보장 안 함</strong> (consumer 가 처리)</td></tr>
+<tr><td>실패 시 재시도</td><td>Exponential backoff</td></tr>
+<tr><td>최대 재전송 기간</td><td><strong>30 일</strong></td></tr>
+<tr><td>에러율 높은 webhook</td><td>자동 비활성화</td></tr>
+<tr><td>서명 검증</td><td>JWKS</td></tr>
+<tr><td>네트워크</td><td>IP allowlisting 권장</td></tr>
+<tr><td>멱등성</td><td><code>externalTxId</code> 영구 멱등성 (출금 API)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>운영 권장</h4>
+<ul>
+  <li>빠른 2xx 응답 → 내부 큐 적재 → 비동기 처리</li>
+  <li>incoming transaction webhook 만 믿지 말고 balance update webhook + block height 교차검증</li>
+</ul>
+
+<h4>내부 인덱서 — 미공개</h4>
+
+<p>Fireblocks 의 내부 노드 / DB / 큐 / 백필 / 포크 처리 — 공식 docs 에서 확인 안 됨. 정리하면: <strong>"내부에 indexer 적 기능은 존재하나, 공개적으로는 API · 웹훅 · 영수증 조회 형태로 노출, 범용 인덱서 제품 설명은 미확인"</strong>.</p>
+
+<h3>10.8 BitGo — 다중서명 수탁 인프라</h3>
+
+<p>BitGo 의 공개 자료는 적은 편.</p>
+
+<h4>확인됨</h4>
+<ul>
+  <li>REST API + Webhook</li>
+  <li>다중서명 (multisig) 표준</li>
+  <li>BitGo Trust — 보험 product</li>
+  <li>오픈소스 — BitGo SDK</li>
+</ul>
+
+<h4>내부 인덱서 — 미공개</h4>
+
+<p>BitGo 의 internal 구현은 거의 공개 안 됨. 도입 검토 시 BitGo Solutions Engineer 와 직접 확인 필요.</p>
+
+<h3>10.9 설치형 (on-prem) vendor</h3>
+
+<p>일부 vendor 는 customer 의 IDC 에 직접 설치하는 product 를 제공 (예: NodeInfra).</p>
+
+<h4>특성</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>속성</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>네트워크</td><td>인터넷 통신 ✗ (vendor update 외)</td></tr>
+<tr><td>데이터 위치</td><td>모든 데이터가 customer side 에 머무름</td></tr>
+<tr><td>Vendor 책임</td><td>라이센스 + support 만 제공</td></tr>
+<tr><td>Customer 책임</td><td>HW (서버, HSM, SGX) + IDC + 운영 인력</td></tr>
+<tr><td>출시 기간</td><td>일반 SaaS 대비 ↑ (IDC 설치 + 보안 검증)</td></tr>
+<tr><td>운영 인력</td><td>일반 SaaS 대비 ↑</td></tr>
+<tr><td>강점</td><td><strong>데이터 sovereignty 가 가장 강함</strong>. 강한 망분리 환경 (정부 / 은행) 에 적합</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>10.10 SaaS vs 자체 구축 비교</h3>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>axis</th><th>SaaS (Alchemy / QuickNode / The Graph)</th><th>커스터디 SaaS (Fireblocks / BitGo)</th><th>자체 구축</th></tr>
+</thead>
+<tbody>
+<tr><td>출시 기간</td><td>1-3 개월</td><td>3-6 개월</td><td>9-18 개월</td></tr>
+<tr><td>운영 인력</td><td>최소</td><td>3-5 명</td><td>10-20 명</td></tr>
+<tr><td>인프라 비용 (월)</td><td>$50 - $5,000 (트래픽)</td><td>vendor 라이센스 (협상)</td><td>$3,000 - $30,000+</td></tr>
+<tr><td>유연성</td><td>vendor schema 제약</td><td>API spec 제약</td><td>완전 자유</td></tr>
+<tr><td>벤더 종속</td><td>높음</td><td>높음</td><td>없음</td></tr>
+<tr><td>데이터 sovereignty</td><td>낮음</td><td>중간</td><td>높음</td></tr>
+<tr><td>compliance 대응</td><td>vendor 종속</td><td>vendor 종속</td><td>자체 통제</td></tr>
+<tr><td>multi-chain 확장</td><td>즉시 (vendor 지원 범위)</td><td>vendor 지원 범위</td><td>운영팀 capacity</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>10.11 상황 별 선택 가이드</h3>
+
+<div class="dev-note">
+<span class="dev-note-label">상황 별 권장</span>
+<ul>
+  <li><strong>MVP / 빠른 검증</strong> — Alchemy 또는 QuickNode Build tier. 1 일 안에 동작 가능.</li>
+  <li><strong>dApp / DEX</strong> — The Graph subgraph. 표준 GraphQL.</li>
+  <li><strong>탐색기 (Etherscan 류)</strong> — Blockscout 자체 호스팅.</li>
+  <li><strong>커스터디 / 수탁</strong> — Fireblocks / BitGo (vendor lock-in 수용 시) 또는 자체 구축 (sovereignty 우선 시).</li>
+  <li><strong>고성능 ETL / 분석</strong> — Firehose + Substreams + 자체 분석 stack.</li>
+  <li><strong>강한 망분리 환경</strong> — 설치형 (on-prem) 또는 자체 구축.</li>
+  <li><strong>대형 거래소</strong> — 자체 구축 (Coinbase ChainStorage 패턴 차용).</li>
+</ul>
+</div>
+
+<h3>10.12 SaaS 사용 시 주의사항</h3>
+
+<ol>
+  <li><strong>SLA 명문화</strong> — vendor 의 freshness / latency / availability SLA 확인. 환불 조항.</li>
+  <li><strong>장애 대응 경로</strong> — vendor outage 시 fallback (다른 vendor / 자체 RPC).</li>
+  <li><strong>데이터 export</strong> — 종속에서 벗어날 때 마이그레이션 path. raw data export 가능 여부.</li>
+  <li><strong>Idempotency 의무</strong> — at-least-once delivery 의 vendor 가 많음. consumer 가 처리.</li>
+  <li><strong>Quota 관리</strong> — monthly quota 초과 시 throttling 또는 부과금. 모니터링 필수.</li>
+  <li><strong>Vendor schema 변경</strong> — vendor 의 API breaking change. 보통 deprecation notice 가 있지만 짧을 수 있음.</li>
+</ol>
+
+<h3>10.13 다음 페이지</h3>
+
+<p>마지막 — <a href="infrastructure-spec.html"><strong>11. 인프라 · 스펙</strong></a>. HW / OS / 네트워크 / 스토리지 의 구체 sizing.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

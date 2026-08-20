@@ -1,0 +1,25 @@
+url: https://raw.githubusercontent.com/x402-foundation/x402/7d5363a6d51750dc246041f2b0ed5819dd46a0d7/specs/x402-specification-v2.md  # 기준 스냅샷 고정 (2026-08-20)
+latest_url: https://raw.githubusercontent.com/x402-foundation/x402/main/specs/x402-specification-v2.md  # 가변 최신본
+original_url: https://raw.githubusercontent.com/coinbase/x402/main/specs/x402-specification-v2.md  # 최초 추출 출처 — 정본이 Foundation 으로 이동
+fetched_at: 2026-08-20
+source_type: webpage (프로토콜 공식 스펙 v2 — 1차)
+domain: stablecoin / agent-payments / x402
+tier: 2
+crawl_status: fetched (2026-08-20, Mode C — WebFetch 추출 요약)
+markdown: sources/stablecoin/markdown/2026-08-20__github-com__x402-specification-v2.md
+title: "x402 Specification v2"
+key_facts: |
+  - scheme 4종 (스냅샷 7d5363a6 기준): exact (정확 금액) · upto (최대 승인·사용량 정산 — LLM 토큰 과금 용례 명시) · batch-settlement (커밋 즉시·배치 정산·동적 가격) · auth-capture (승인 후 확정 청구 — escrow 2단계 또는 환불 가능 단발, void·refund·reclaim 내장). core 서두는 3종만 나열 (문서 내 불일치)
+  - PaymentRequired: x402Version=2 · resource · accepts[] (PaymentRequirements: scheme·network(CAIP-2)·amount(원자단위)·asset(컨트랙트 주소 또는 ISO 4217)·payTo·maxTimeoutSeconds·extra)
+  - PaymentPayload: accepted (선택한 requirements) + payload (scheme 별)
+  - exact EVM 의 assetTransferMethod 3종 (Foundation 정본): **eip3009** (기본) · Permit2 (미지원 ERC-20 범용 대안 — 사전 allowance 1회 필요: 직접 approve / facilitator 가스 대납 확장 / EIP-2612 permit 확장) · ERC-7710 (delegation 스마트 계정). 기본 eip3009 = **transferWithAuthorization** + EIP-712 서명 — 가스리스 ERC-20 전송. authorization = from·to·value·validAfter·validBefore·nonce(32B 재생 방지)
+  - exact scheme (SVM, Foundation 정본 기준) = 결과 기반 검증 — 전송은 top-level TransferChecked 또는 CPI 내부 명령 허용. 고정 명령어 레이아웃은 표준 지갑의 fast path 에만, 스마트 지갑은 시뮬레이션 경로 (allowlist 전제). CU 상한 + ATA 검증
+  - facilitator REST: POST /verify (온체인 실행 없이 검증) · POST /settle (scheme 별 정산 — exact·upto 는 tx 실행, batch-settlement 는 커밋 저장 후 redemption 에서 가치 이전) · GET /supported
+  - exact EVM(eip3009) 검증 6단계: 서명 → 잔액 → 금액 정확 일치 → 시간 창 → 파라미터 매칭 → tx 시뮬레이션. 에러 코드 enum (insufficient_funds 등). SVM 은 결과 기반이라 요구 금액 이상의 초과 지불 허용 등 경로가 다름 (위 SVM 항목)
+  - v1→v2: CAIP-2 네트워크 식별자 · payload/PaymentRequired 재구조화 · ResourceInfo 분리 · extensions
+context: |
+  세미나 사전지식 보강 (2026-08-20). README 요약 (github-com__coinbase-x402.meta.yml) 의 스펙 상세 후속.
+  핵심 이해: exact EVM 기본 eip3009 방식에서의 "서명" 은 온체인 tx 제출이 아니라 EIP-3009 오프체인 authorization — 정산(settle)은
+  facilitator 가 대행하고, 지출 통제의 원자 단위 = authorization 의 value·validBefore·nonce.
+  SVM 은 다름 — 클라이언트가 온체인 트랜잭션을 부분 서명하고 sponsor 가 feePayer 서명으로 완성·제출.
+promote_condition: "에이전트 결제 정책 평면 분석 또는 x402 수용 검토 시"

@@ -1,0 +1,11 @@
+url: https://support.fireblocks.io/hc/en-us/articles/9716757315996-Recovering-private-key-material
+url_status: confirmed (Stage 31 Mode C 시점 real article ID 발견)
+fetched_at: 2026-05-19
+source_type: pdf
+domain: mobile-recovery / workspace-keys-backup / reconstruction
+tier: 1
+title: "Recovering Private Key Material"
+crawl_status: full-body (Stage 31 chunked via pdftotext + sed, body 미 LLM context 전체 로드)
+promote_condition: "deep-ingested Stage 31 — sources/markdown 의 본문 markdown 참조"
+recommended_mode: mode_c_executed
+triage_stage: Stage 12 (placeholder), Stage 31 (manual Mode C, full body ingest)

@@ -1,0 +1,12 @@
+source: VerifyVASP 담당자 회의록
+publisher: internal
+received_at: 2026-08-12
+meeting_date: unknown
+authority_grade: C1
+immutable: true
+sources:
+  - id: VV-MTG-001
+    file: 2026-08-12__meeting-notes.md
+    provenance: user-provided meeting summary
+    verification: not independently verified
+    sha256: 70238e613c5f3cbfedbe0b1b8019b5f946bf91c373a7d3fae552add22a73777e

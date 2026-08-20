@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>10. Roles · Quorum · Policy — 거버넌스 매핑</title>
+<meta content="Fireblocks 9 role · Admin Quorum · Approval Group · TAP/Policy rule" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a href="db-split.html">3. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a href="tables-workspace-vault.html">4. Workspace</a></li>
+<li><a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a></li>
+<li><a href="tables-counterparty.html">6. Counterparty Registry</a></li>
+<li><a href="cold-wallet.html">7. Cold Wallet 운영</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a href="tables-user.html">8. Internal Users</a></li>
+<li><a href="tables-customer-user.html">9. Customer Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a class="active" href="tables-governance.html">10. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a href="tables-crypto.html">11. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">13. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
+<li><a href="tables-transaction-request.html">15. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">16. Swap · Ramp Lifecycle</a></li>
+<li><a href="cross-border-canton.html">17. Cross-border + Canton</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">18. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">19. KR 규제 매핑</a></li>
+<li><a href="risks.html">20. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
+<li><a href="accounting-ledger.html">21. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">22. 대사 · 결산 · 마감</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
+<li><a href="db-ops.html">23. DB 운영 · Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="governance">
+<h2>10. Roles · Quorum · Policy</h2>
+<span class="section-subtitle">9 user role · Admin Quorum · Approval Group · TAP — Fireblocks 가 운영하는 거버넌스 plane</span>
+
+<h3>10.1 9 User Roles — Fireblocks 의 권한 모델</h3>
+<p>
+Fireblocks 는 user role 을 9 가지로 정의. 각 role 의 권한과 책임:
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Role</th><th>주요 권한</th><th>은행 적용 예</th></tr></thead>
+<tbody>
+<tr><td><strong>Owner</strong></td><td>workspace 의 단일 최상위 권한자. 모든 거버넌스 작업 시작자</td><td>은행 CTO · 임원 1 인</td></tr>
+<tr><td><strong>Admin</strong></td><td>Admin Quorum 의 구성원. user / policy / quorum 변경 승인</td><td>운영팀 팀장 · 보안팀 팀장</td></tr>
+<tr><td><strong>Non-Signing Admin</strong></td><td>거래 서명 권한 없음, 그 외 Admin 작업</td><td>컴플라이언스팀</td></tr>
+<tr><td><strong>Approver</strong></td><td>Approval Group 에서 거래 / 정책 승인</td><td>운영팀 일반 직원</td></tr>
+<tr><td><strong>Signer</strong></td><td>Policy rule 의 designated signer — Hosted MPC 의 API Co-signer (자동 서명 SGX 서버) 또는 Key Link 의 Co-signer / Agent (HSM 통신) 가 사용하는 API user role. 사람이 아닌 자동화 시스템이 보유</td><td>플랫폼 의 API key</td></tr>
+<tr><td><strong>Non-Signing User</strong></td><td>거래 시작 가능, 서명 권한 없음</td><td>거래 요청자 (예: ops 신청)</td></tr>
+<tr><td><strong>Editor</strong></td><td>workspace 설정 편집 (정책 미반영 시도 가능, 단 실제 적용은 quorum)</td><td>설정 관리자</td></tr>
+<tr><td><strong>Viewer</strong></td><td>read-only</td><td>회계팀 · 감사 access</td></tr>
+<tr><td><strong>Auditor</strong></td><td>read-only + audit log 전용</td><td>외부 감사인</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/manage-users">Fireblocks — Manage Users</a> ·
+<a href="https://support.fireblocks.io/">Fireblocks Help Center — Roles &amp; Permissions</a>
+</p>
+
+<div class="callout">
+<div class="callout-title">은행 user role 적용 권장 (저자)</div>
+<ul style="margin-bottom:0">
+<li><strong>Owner = 1 인</strong> — 은행 CTO 또는 임원. 24/7 사용 불가능한 경우 backup Owner 절차 미리 협의 (Transfer Workspace Owner)</li>
+<li><strong>Admin = 3-5 인</strong> — Admin Quorum quorum 의 양수가 안정적 운영의 기본</li>
+<li><strong>Approver = 5-10 인</strong> — Approval Group 활용 시 충분한 인원</li>
+<li><strong>Signer = API key 만</strong> — 사람 user 가 Signer role 인 것은 권장하지 않음</li>
+<li><strong>Viewer / Auditor = 회계/감사용</strong> — 외부 감사인은 Auditor role</li>
+</ul>
+</div>
+
+<h3>10.2 Admin Quorum — workspace 의 최고 거버넌스</h3>
+<p>
+Admin Quorum 은 workspace 의 모든 Admin user 의 집합. 거버넌스 작업은 quorum (예: 3 of 5) 의 mobile app 승인 매개.
+</p>
+
+<h4>Admin Quorum quorum 매개 작업 (대표)</h4>
+<ul>
+<li>새 user 추가 / role 변경 / user 제거</li>
+<li>Policy rule 추가 / 수정 / 삭제 (TAP 변경)</li>
+<li>Approval Group 구성 변경</li>
+<li>Validation Key 등록 (Key Link 시)</li>
+<li>Whitelisted address 등록 (선택적, group 위임 가능)</li>
+<li>Workspace Owner 이전 (Transfer Workspace Owner)</li>
+<li>2FA reset (분실 시)</li>
+<li>SSO 설정 변경</li>
+</ul>
+<p>
+출처: <a href="https://support.fireblocks.io/hc/en-us/articles/10371416837788-Transfer-workspace-Owner">Transfer Workspace Owner</a>
+</p>
+
+<h4><code>admin.admin_quorum_meta</code> — quorum 구성 mirror</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>quorum_id (PK)</td><td>uuid</td><td>등록 후 변경 불가</td><td>은행 내부 ID</td></tr>
+<tr><td>workspace_code</td><td>varchar</td><td>등록 후 변경 불가</td><td>config 의 workspace key (<code>"admin"</code> / <code>"ops"</code> / <code>"hot"</code> / <code>"cold"</code>)</td></tr>
+<tr><td>quorum_threshold</td><td>varchar</td><td>수정 가능</td><td>예: <code>3 of 5</code> 형태 (Fireblocks 측 설정 mirror)</td></tr>
+<tr><td>member_user_ids</td><td>jsonb</td><td>수정 가능</td><td>Admin 사용자 vendor_user_id 목록</td></tr>
+<tr><td>created_at</td><td>timestamptz</td><td>등록 후 변경 불가</td><td>매핑 등록 시점</td></tr>
+<tr><td>modified_at</td><td>timestamptz</td><td>수정 가능</td><td>마지막 quorum 변경 시점 (Fireblocks audit log mirror)</td></tr>
+<tr><td>modified_by</td><td>varchar</td><td>수정 가능</td><td>마지막 변경 시작자 (vendor_user_id)</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+quorum 구성 변경 이력 (threshold · member 추가/제거) 은 <code>audit.audit_log_internal</code> 의 <code>admin_quorum_meta</code> entry 로 추적 (5년 보존).
+</p>
+
+<div class="callout">
+<div class="callout-title">왜 <code>created_by</code> 가 없는가 — mirror semantic</div>
+<p style="margin-bottom:0">
+본 표는 Fireblocks Console 의 <strong>Admin Quorum 구성의 state mirror</strong>. canonical source 는 vendor 측 — 변경 actor 는 <code>modified_by</code> (vendor_user_id) 에 기록되며, 이건 Fireblocks audit log 의 actor 와 동일. <code>created_by</code> 가 별도 컬럼으로 있으면 같은 정보의 중복 — 첫 설정자 정보가 필요하면 <code>audit.audit_log_mirror</code> 의 첫 governance event 를 조회.
+</p>
+</div>
+
+<h3>10.3 Approval Group — Admin Quorum 의 위임</h3>
+<p>
+Approval Group 은 특정 작업의 quorum 권한을 Admin Quorum 보다 좁은 group 에 위임하는 매커니즘.
+</p>
+
+<h4>위임 가능 작업 (Fireblocks Console 의 "Security &amp; compliance")</h4>
+<ul>
+<li>Add validation keys (Key Link workspace 의 Validation Key 등록)</li>
+<li>Whitelist addresses (외부 송금 주소 화이트리스팅)</li>
+<li>Add internal wallets</li>
+<li>Smart Transfer 정책</li>
+<li>Transaction policy 변경</li>
+<li>기타 12 종의 위임 가능 작업 (Fireblocks 의 12 assignable approval-group actions)</li>
+</ul>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/manage-users">Manage Users</a> · Fireblocks Help Center — Approval Groups
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ Cold Wallet workspace 는 Approval Group 미지원</div>
+<p style="margin-bottom:0">
+SaaS Cold Wallet workspace 는 <strong>Approval Group 위임 미지원</strong> — 모든 거버넌스 결정이 Admin Quorum 전체 동의 필요.
+</p>
+<p style="margin-bottom:0;margin-top:8px">
+<strong>위험</strong>: Admin 1 명만 부재해도 Cold 거버넌스 정지.
+</p>
+<p style="margin-bottom:0;margin-top:8px">
+<strong>완화책</strong>:
+</p>
+<ul style="margin-bottom:0">
+<li><strong>AQ 인원 3-5 인 확보</strong> — quorum threshold 의 여유분 (예: 5 인 중 3 인 동의면 OK)</li>
+<li><strong>정기 drill <span class="g" data-tip="모의 훈련 (simulation exercise). Cold Wallet AQ 의 mobile 동작 / device 분실 복구 / 부재 대응 / quorum 도달 가능성 / push latency 등을 정기적 (예: 분기 1 회) 으로 모의 실행하여 실제 incident 전에 점검" tabindex="0">(?)</span> 시행</strong> — 실제 운영 ceremony 를 정기적 (예: 분기 1 회) 으로 모의 실행하여 다음을 점검:
+  <ul style="margin:4px 0 0 0">
+    <li>모든 AQ 멤버의 mobile app 동작 / 인증서 유효성</li>
+    <li>device 분실 / 교체 시 복구 절차</li>
+    <li>휴가 · 부재 · 퇴사 시 대응 (대체자 지정 / 임시 위임 / 멤버 교체)</li>
+    <li>비상 시 quorum 충족 가능 여부 (예: 새벽 / 주말 incident)</li>
+    <li>실제 Fireblocks Console 의 mobile push 도달 / 응답 시간</li>
+  </ul>
+</li>
+</ul>
+<p style="margin-bottom:0;margin-top:8px">
+상세는 <a href="cold-wallet.html">7. Cold Wallet 운영</a> 7.2 절 참조.
+</p>
+</div>
+
+<h3>10.4 Policy / TAP (Transaction Authorization Policy)</h3>
+<p>
+TAP 는 Fireblocks 의 거래 단위 정책 엔진. 모든 거래는 TAP 평가를 통과해야 서명 단계로 진입. policy rule 은 vault / 자산 / 금액 / 시작자 등 조건을 매칭해 action (허용 / 차단 / 추가 승인 등) 을 결정.
+</p>
+
+<h4>Policy rule 의 핵심 필드</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>필드</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td><strong>source</strong></td><td>출금 vault 조건 (특정 vault / vault category / any)</td></tr>
+<tr><td><strong>destination</strong></td><td>입금 대상 (whitelisted only / network connection / any)</td></tr>
+<tr><td><strong>asset</strong></td><td>자산군 (BTC / ETH / 모든 자산)</td></tr>
+<tr><td><strong>amount</strong></td><td>금액 한도 (단일 거래 / 누적 / 24h / 7d)</td></tr>
+<tr><td><strong>initiator</strong></td><td>거래 시작자 user / API key 조건</td></tr>
+<tr><td><strong>action</strong></td><td>매칭 시 실행할 결정 — 대표 값:
+<ul style="margin:0.3rem 0">
+<li><code>ALLOW</code> — 자동 통과 (서명 단계로 진입)</li>
+<li><code>BLOCK</code> — 거절</li>
+<li><code>2FA</code> — 시작자의 2FA 추가 확인 후 통과</li>
+<li><code>Designated Signer</code> — 지정된 Signer-role API user 가 서명</li>
+<li>그룹 승인 action — Approval Group 의 quorum mobile 승인 후 통과 (정확한 enum 이름은 Console 버전 / Help Center 문서 확인)</li>
+</ul>
+</td></tr>
+<tr><td><strong>designated_signer</strong></td><td>action 이 Designated Signer 일 때 어느 Signer-role API user</td></tr>
+<tr><td><strong>approval_group</strong></td><td>action 이 그룹 승인 일 때 어느 group 의 quorum</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: Fireblocks 공식 — <em>"Transaction Authorization Policy"</em> (Help Center) ·
+<a href="https://developers.fireblocks.com/docs/define-aml-policies">Define AML Policies</a> ·
+<a href="https://developers.fireblocks.com/docs/define-travel-rule-policies">Define Travel Rule Policies</a>. action enum 의 정확한 표기는 Fireblocks Console 버전에 따라 달라질 수 있어 본문은 의미 중심으로 정리.
+</p>
+
+<h4><code>admin.policy_rule_snapshot</code> — 정책의 versioned snapshot (참고용)</h4>
+<p>
+정책 자체는 Fireblocks Console / API 가 source of truth. 은행 DB 는 audit / 변경 이력 mirror 만:
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>policy_snapshot_id (PK)</td><td>uuid</td><td>등록 후 변경 불가</td><td>은행 내부 ID</td></tr>
+<tr><td>vendor_rule_id</td><td>varchar</td><td>등록 후 변경 불가</td><td>Fireblocks 정책 UUID</td></tr>
+<tr><td>workspace_code</td><td>varchar</td><td>등록 후 변경 불가</td><td>config 의 workspace key (<code>"admin"</code> / <code>"ops"</code> / <code>"hot"</code> / <code>"cold"</code>)</td></tr>
+<tr><td>rule_json</td><td>jsonb</td><td>등록 후 변경 불가</td><td>정책 전체 spec (변경 시점의 snapshot)</td></tr>
+<tr><td>rule_hash</td><td>varchar</td><td>등록 후 변경 불가</td><td>SHA-256(rule_json) — 변조 검출용</td></tr>
+<tr><td>active_from</td><td>timestamptz</td><td>등록 후 변경 불가</td><td>활성 시작 시점</td></tr>
+<tr><td>active_until</td><td>timestamptz</td><td>수정 가능 (NULL 가능)</td><td>활성 종료 시점 (변경 시 이전 row 의 이 column 설정)</td></tr>
+<tr><td>changed_by</td><td>varchar</td><td>등록 후 변경 불가</td><td>Fireblocks audit log 의 변경자 user</td></tr>
+<tr><td>quorum_approved_by</td><td>jsonb</td><td>등록 후 변경 불가</td><td>Admin Quorum 승인자 목록</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+변경 이벤트 자체는 append-only — 활성 정책이 바뀌면 기존 row 에 <code>active_until</code> 설정 + 새 row INSERT. 정책 변경 audit 는 <code>audit.audit_log_mirror</code> (Fireblocks 발생) + <code>audit_log_internal</code> (은행 측 승인 흐름) 두 곳에 기록.
+</p>
+
+<div class="callout">
+<div class="callout-title">왜 <code>created_by</code> 가 없는가 — mirror semantic</div>
+<p style="margin-bottom:0">
+본 표는 Fireblocks Console 의 <strong>정책 snapshot mirror</strong>. canonical source 는 vendor 측 — 정책 변경자는 <code>changed_by</code> (Fireblocks audit log 의 actor) 에 기록되며, 별도의 <code>created_by</code> 컬럼은 같은 정보의 중복. 활성 정책의 historical 변천은 row 의 <code>active_from</code> / <code>active_until</code> 시계열로 추적.
+</p>
+</div>
+
+<h3>10.5 거버넌스 흐름 — 거래 한 건의 평가</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant App as 🏢 은행 application
+  participant FB as ☁️ Fireblocks API
+  participant TAP as Policy Engine / TAP
+  participant AG as Approval Group<br/>(필요 시)
+  participant Signer as Designated Signer<br/>(API user / Agent)
+  participant Bank as 🏢 은행 webhook
+
+  App->>FB: Create Transaction
+  FB->>TAP: Policy 평가
+  alt 정책 통과 + 추가 승인 없음
+    TAP->>Signer: 서명 요청
+  else 정책 통과 + Approval Group 매개
+    TAP->>AG: quorum 승인 요청 (Mobile push)
+    AG-->>TAP: 승인
+    TAP->>Signer: 서명 요청
+  else 정책 BLOCK
+    TAP-->>FB: BLOCKED
+    FB-->>App: 실패 응답
+  end
+  Signer-->>FB: 서명 완료
+  FB-->>App: tx 상태 변경
+  FB-->>Bank: webhook event - TRANSACTION_STATUS_UPDATED
+</pre>
+</div>
+<p class="diagram-caption">
+거래 한 건이 TAP 를 통과 → 필요 시 Approval Group quorum → Designated Signer 서명 → webhook 으로 은행에 전달.
+모든 단계가 Fireblocks 내부에서 발생하며, 은행은 webhook 으로 결과만 관찰.
+</p>
+
+<h3>10.6 거래 시작자 / 승인자 분리 (Maker-Checker)</h3>
+<p>
+은행 운영 best practice — <strong>거래 시작자 ≠ 승인자</strong>. Fireblocks 의 정책 + role 분리로 enforce:
+</p>
+<ul>
+<li><strong>Non-Signing User</strong> 가 거래 요청 시작</li>
+<li><strong>Approver</strong> 또는 <strong>Admin</strong> 의 Approval Group 이 mobile 로 승인</li>
+<li><strong>Signer-role API key</strong> 가 자동 서명 수행</li>
+<li>한 사람이 모든 단계를 단독으로 못 하도록 정책 + role 분리</li>
+</ul>
+
+<h3>10.7 KR 컴플라이언스 매핑</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>KR 요건</th><th>Fireblocks 매핑</th></tr></thead>
+<tbody>
+<tr><td>이용자 자산의 80% offline (가상자산업감독규정 9조)</td><td>Cold Wallet workspace + rebalancing Policy rule</td></tr>
+<tr><td>거래 5년 보존 (특금법 5조의4)</td><td>Fireblocks Console immutable log + core 영역 5년 retention</td></tr>
+<tr><td>의심 거래 보고 (특금법)</td><td>Approval Group 의 compliance reviewer + 별도 SAR queue</td></tr>
+<tr><td>트래블룰 100만원 이상 (시행령 10조의10)</td><td>Fireblocks 트래블룰 정책 + 트래블룰 provider 연동 — Sumsub · Notabene · TRP (Travel Rule Protocol, open standard)</td></tr>
+<tr><td>실질 통제 (대법원 2024도10710)</td><td><strong>(저자 hypothesis)</strong> Key Link 시 가장 강함 (키 share 0). SaaS MPC 시 분산 — 별도 법률 검토 필요</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://www.law.go.kr/법령/특정금융거래정보의보고및이용등에관한법률">특금법</a> ·
+<a href="https://developers.fireblocks.com/docs/define-travel-rule-policies">Travel Rule Policies</a> ·
+<a href="../fireblocks-kr-vasp-compliance/">국내 블록체인 사업 법규 × Fireblocks</a>
+</p>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-customer-user.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">9. Customer Users (고객)</span></a>
+<a class="page-nav-link page-nav-next" href="tables-crypto.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">11. MPC · Key Link · Cosigner</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

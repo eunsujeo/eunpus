@@ -1,0 +1,12 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/4407823826194-Add-API-users
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 3
+language: en
+notes: |
+  Fireblocks Help Center article "Add API users".
+  Two-step procedure: CSR generation (RSA 4096) + Console creation.
+  API users use same user roles as Console users.
+  Approval flow same as Console user add (Owner + Admin Quorum).
+  Co-signer pairing options including Fireblocks Communal Test Co-signer (testnet)
+  and SGX Co-signer "First user on this machine".

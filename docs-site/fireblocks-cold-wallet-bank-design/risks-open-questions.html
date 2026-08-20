@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>7. Risks &amp; Open Questions — Cold Wallet</title>
+<meta content="Cold Wallet 도입의 risk register + 공식 문서 미명세 항목" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Cold Wallet 기초</h3>
+<ul>
+<li><a href="cold-wallet-fundamentals.html">1. Cold Wallet 이란</a></li>
+<li><a href="workspace-topology.html">2. Workspace 토폴로지</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Governance &amp; Flow</h3>
+<ul>
+<li><a href="governance-quorum.html">3. Admin Quorum 단독 거버넌스</a></li>
+<li><a href="hot-cold-rebalancing.html">4. Hot ↔ Cold Rebalancing</a></li>
+<li><a href="signing-flow.html">5. Cold Wallet Signing</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 은행 도입</h3>
+<ul>
+<li><a href="bank-operations.html">6. 은행 운영 절차</a></li>
+<li><a class="active" href="risks-open-questions.html">7. Risks &amp; Open Questions</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="risks">
+<h1>7. Risks &amp; Open Questions — Cold Wallet</h1>
+<p class="lead">
+Cold Wallet 도입 시 식별 가능한 risk register + 공식 문서에 명시되지 않은 항목.
+은행은 Fireblocks 와 직접 계약 협의 시 본 목록을 참고로 사용 권장.
+</p>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처 — 어디까지가 공식 사실이고, 어디부터가 저자 추정인가</div>
+<p>이 페이지의 내용은 두 갈래입니다.</p>
+<p><strong>공식 문서에 정의된 사실</strong> — 그대로 받아도 안전</p>
+<ul style="margin-bottom:0.5rem">
+<li>Approval Group 미지원 (Risk-G07) — Fireblocks 공식 문서</li>
+<li>Owner Console-direct 특수 규칙 — Fireblocks 공식 문서</li>
+<li>Workspace type immutability — Fireblocks 공식 문서</li>
+<li>Default visibility — Fireblocks 공식 문서</li>
+<li>KR 법령 시행일·임계값 — 한국 법령 (law.go.kr)</li>
+<li>4 종합검사 결과 — 금융위 / 금감원 보도자료</li>
+</ul>
+<p style="margin-bottom:0.3rem"><strong>저자가 합리적으로 추정한 운영 권장</strong> — 참고용, 본인 환경 검증 권장</p>
+<ul style="margin-bottom:0">
+<li>"Cold 도 동일 적용" 같은 Hot 의무의 Cold 매핑 추정</li>
+<li>"Cold device 가 별도 hardware 일 가능성" 같은 device class 추정</li>
+<li>완화 방안의 구체 수치 (Admin ≥ 3, threshold ≥ 2 등)</li>
+</ul>
+</div>
+
+<h2>7.1 Risk Register — Cold-specific (7)</h2>
+
+<div class="risk-card">
+<h3><span class="risk-id">R1</span> Approval Group 미지원 — 거버넌스 부담 증가</h3>
+<p><strong>출처</strong>: Fireblocks 공식 문서 (Approval Groups)</p>
+<p><strong>영향</strong>: Cold workspace 의 모든 governance 변경에 Admin Quorum 전체 동의 필요. Hot 와 달리 use case 별 위임 불가.</p>
+<p><strong>완화</strong>: Admin 인원 ≥ 3 + 비상 근무 일정 + Quorum threshold ≥ 2.</p>
+</div>
+
+<div class="risk-card">
+<h3><span class="risk-id">R2</span> Owner Console-direct critical ops — Owner SPOF 강화</h3>
+<p><strong>출처</strong>: Fireblocks 공식 문서 (Admin Quorum — Cold Wallet 특수 규칙)</p>
+<p><strong>영향</strong>: User delete + 2FA reset 이 Owner 단독 권한. Owner 사고 시 governance halt.</p>
+<p><strong>완화</strong>: Workspace Keys Backup + Recovery Passphrase + 이사회 결의 절차 사전 정의.</p>
+</div>
+
+<div class="risk-card">
+<h3><span class="risk-id">R3</span> Support 경유 부담 — user / API key 추가의 응답 시간</h3>
+<p><strong>출처</strong>: Fireblocks 공식 문서 ("Adding users to a Cold Wallet workspace" / "Adding API keys to a Cold Wallet workspace")</p>
+<p><strong>영향</strong>: 모든 user / API key 추가가 Fireblocks Support 응답 시간에 종속. Hot 의 self-service 대비 운영 latency.</p>
+<p><strong>완화</strong>: Fireblocks 계약 시 SLA 명시. Cold workspace 의 user 변경 빈도 최소화 (안정된 인원 운영).</p>
+</div>
+
+<div class="risk-card">
+<h3><span class="risk-id">R4</span> Cold device signature quota 소진 — "Less than 10%" 임계</h3>
+<p><strong>출처</strong>: Fireblocks 공식 문서 (Audit Log 카테고리)</p>
+<p><strong>영향</strong>: Cold device 의 sign capacity 가 유한. 소진 시 signing halt 가능 (정확한 limit 은 공식 문서 미명세).</p>
+<p><strong>완화</strong>: Sign quota 사전 alert (예: 30%, 20% 단계별). Signer device 인벤토리 운영. 신규 device provisioning 사전 준비.</p>
+</div>
+
+<div class="risk-card">
+<h3><span class="risk-id">R5</span> Workspace type immutability — 1-way door</h3>
+<p><strong>출처</strong>: Fireblocks 공식 문서 (Hosted MPC Workspace Configuration)</p>
+<p><strong>영향</strong>: Cold workspace 를 한번 생성하면 Hot 으로 변환 불가. 재구성 시 새 workspace + 자산 transfer.</p>
+<p><strong>완화</strong>: Workspace 생성 전 architecture 결정의 충분한 sandbox testing. 자산 transfer 의 운영 단절 계획.</p>
+</div>
+
+<div class="risk-card">
+<h3><span class="risk-id">R6</span> Default visibility — 모든 workspace user 가 모든 vault 가시</h3>
+<p><strong>출처</strong>: Fireblocks 공식 문서 (Vault Structure Best Practices)</p>
+<p><strong>영향</strong>: Cold workspace 내부의 부분 가시성 제한 불가. user 수에 비례한 정보 누출 위험.</p>
+<p><strong>완화</strong>: Cold workspace user 수를 최소화 (Owner + 2–3 Admin + 2 Signer). Viewer / Editor 제한.</p>
+</div>
+
+<div class="risk-card">
+<h3><span class="risk-id">R7</span> Cold MPC share 분포 미명세 — 3 가지 가설</h3>
+<p><strong>출처</strong>: 공식 문서 미명세 (Q-M05 참조)</p>
+<p><strong>영향</strong>: Fireblocks 의 Cold side cloud share 의존 정도 / cold facility 위치가 미명세. SaaS 장애 / cold facility 침해 영향 평가 불가.</p>
+<p><strong>완화</strong>: Fireblocks 계약 시 Cold MPC 모델의 명시 요청. BCM 적용 가능성 확인.</p>
+</div>
+
+<h2>7.2 Hot 공통 Risk 의 Cold 적용 (cross-cut)</h2>
+<p>다음 매핑의 "Cold 영향" 컬럼은 대부분 <strong>저자 추정</strong> — Hot 의무가 Cold workspace 에도 동일 적용된다는 가정. 별도 공식 검증 권장.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Risk</th><th>Hot 영향</th><th>Cold 영향 (대부분 추정)</th></tr></thead>
+<tbody>
+<tr><td>Risk-S08 — Single-Signer SPOF</td>
+  <td>Single Signer = 자산 접근 상실</td>
+  <td>Cold 도 동일 (추정). Cold Signer ≥ 2 강제 권장</td></tr>
+<tr><td>Risk-S09 — DR Service SPOC</td>
+  <td>xprv+fprv 재구성 = MPC 신뢰 모델 깨짐</td>
+  <td>Cold backup 도 동일 위험 (추정). Air-gapped + hardened access</td></tr>
+<tr><td>Risk-S10 — SaaS Outage</td>
+  <td>BCM 미보유 customer 는 signing halt</td>
+  <td>Cold 도 SaaS plane 의존 (추정). 3-region 단일 region 장애 시 Cold workspace 도 동일 영향</td></tr>
+<tr><td>Risk-S11 — Owner Yubikey 전파</td>
+  <td>Owner 채택 → 모든 신규 user 강제</td>
+  <td>Cold workspace 의 Owner 가 별도 Yubikey 운영 시 전파 범위 분리 가능 (미명세)</td></tr>
+<tr><td>Risk-S12 — 3-region 단일 region</td>
+  <td>해당 region tenant 가용성 영향</td>
+  <td>Cold workspace 의 region 선택 시 본사 데이터 주권 / 규제 고려</td></tr>
+<tr><td>Risk-S13 — Audit Log Admin-only</td>
+  <td>Security Auditor 직접 forensic 불가</td>
+  <td>Cold 도 동일 (추정)</td></tr>
+<tr><td>Risk-S14 — Mobile 단일 host</td>
+  <td>Mobile compromise = signing + governance 영향</td>
+  <td>Cold device 가 mobile 이면 동일. 별도 hardware 이면 격리 (device class 미명세)</td></tr>
+<tr><td>Risk-G01 — API Admin quorum −1</td>
+  <td>API Admin 자동 approve 로 threshold 변경</td>
+  <td>Cold 도 동일 (추정). Cold API Admin 최소화 권장</td></tr>
+<tr><td>Risk-G06 — Default "All Admins" bootstrap</td>
+  <td>초기 Admin 추가 종속성</td>
+  <td>Cold 도 동일 (추정)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>7.3 Open Questions — 공식 답변이 필요한 항목</h2>
+<p>
+은행 도입 시 Fireblocks 와 직접 확인 권장.
+</p>
+
+<div class="oq">
+<h3>Q-M05 — Cold Wallet MPC share 분포</h3>
+<p><strong>질문</strong>: Cold Wallet 의 MPC 3-share 모델이 Hot 의 "1 mobile + 2 Fireblocks SGX cloud" 와 동일한가, 다른가?</p>
+<p><strong>출처</strong>: 공식 문서 미명세</p>
+<p><strong>영향 영역</strong>: <a href="signing-flow.html">5. Signing</a></p>
+</div>
+
+<div class="oq">
+<h3>Q-D-cold — Cold device = mobile vs 별도 hardware</h3>
+<p><strong>질문</strong>: Cold Wallet device 가 일반 mobile (Hot 와 동일 device class) 인가, 별도 hardware (air-gapped PC, hardware wallet 등) 인가?</p>
+<p><strong>출처</strong>: 공식 문서 미명세</p>
+<p><strong>영향 영역</strong>: <a href="signing-flow.html">5. Signing</a>, <a href="bank-operations.html">6. 운영</a></p>
+</div>
+
+<div class="oq">
+<h3>Q-CW01 — Signature quota 의 정확한 limit</h3>
+<p><strong>질문</strong>: "Less than 10% remaining signatures" 이벤트의 baseline 100% 가 정확히 몇 회인가? device class 별로 다른가? 소진 시 동작?</p>
+<p><strong>출처</strong>: 공식 문서에 Audit Log 카테고리만 명시, 정확한 수치 미명세</p>
+<p><strong>영향 영역</strong>: <a href="signing-flow.html">5. Signing</a>, <a href="bank-operations.html">6. 운영</a></p>
+</div>
+
+<div class="oq">
+<h3>Q-CW02 — Hot ↔ Cold P2P 가 internal vs on-chain</h3>
+<p><strong>질문</strong>: Cold ↔ Hot rebalancing 의 "P2P" 가 Fireblocks internal ledger 만 이동인가, on-chain tx 인가?</p>
+<p><strong>출처</strong>: 공식 문서 미명세</p>
+<p><strong>영향 영역</strong>: <a href="hot-cold-rebalancing.html">4. Rebalancing</a></p>
+</div>
+
+<div class="oq">
+<h3>Q-CW03 — Cold ↔ Hot rebalancing 시 signing 위치</h3>
+<p><strong>질문</strong>: Cold → Hot 출금 시 어느 쪽 signing plane 이 발동? Hot → Cold 송금 시는?</p>
+<p><strong>출처</strong>: 공식 문서 미명세</p>
+<p><strong>영향 영역</strong>: <a href="hot-cold-rebalancing.html">4. Rebalancing</a>, <a href="signing-flow.html">5. Signing</a></p>
+</div>
+
+<div class="oq">
+<h3>Q-CW04 — Cold workspace 의 9-role 적용 매트릭스</h3>
+<p><strong>질문</strong>: Hot workspace 의 9-role 중 Cold workspace 에 적용 가능한 role 은? Security Admin / Auditor 의 Cold 멤버십</p>
+<p><strong>출처</strong>: Fireblocks 공식 문서 (User roles for Cold Wallet workspaces) — 본 문서의 원문 인용 미확보</p>
+<p><strong>영향 영역</strong>: <a href="governance-quorum.html">3. 거버넌스</a>, <a href="bank-operations.html">6. 운영</a></p>
+</div>
+
+<div class="oq">
+<h3>Q-CW05 — Cold workspace device requirements</h3>
+<p><strong>질문</strong>: Cold Wallet device 의 OS / 보안 인증 / 하드웨어 spec 요건?</p>
+<p><strong>출처</strong>: Fireblocks 공식 문서 (Cold Wallet Device Requirements) — 본 문서의 원문 인용 미확보</p>
+<p><strong>영향 영역</strong>: <a href="bank-operations.html">6. 운영</a></p>
+</div>
+
+<div class="oq">
+<h3>Q-CW06 — Cold workspace BCM 적용</h3>
+<p><strong>질문</strong>: Hosted MPC 전용인 Business Continuity Module (BCM) 이 Cold workspace 에도 적용 가능한가?</p>
+<p><strong>출처</strong>: 공식 문서에 Hot 의 BCM 만 명세</p>
+<p><strong>영향 영역</strong>: <a href="bank-operations.html">6. 운영</a> — Risk-S10 완화</p>
+</div>
+
+<div class="oq">
+<h3>Q-CW07 — Cold workspace 의 Enhanced Console Experience</h3>
+<p><strong>질문</strong>: <code>cold-wallet-enhanced-console-experience</code> 가 별도 문서로 존재 — Cold console 의 UI / 기능 차이는?</p>
+<p><strong>출처</strong>: 공식 문서 미적재</p>
+<p><strong>영향 영역</strong>: <a href="bank-operations.html">6. 운영</a></p>
+</div>
+
+<div class="oq">
+<h3>Q-CW08 — Cold workspace Owner transfer 절차</h3>
+<p><strong>질문</strong>: Hot 의 Owner transfer (3–5 영업일 + recovery passphrase verify) 가 Cold 에 동일 적용? 별도 절차?</p>
+<p><strong>출처</strong>: 공식 문서에 Hot 만 명시, Cold variant 미명세</p>
+<p><strong>영향 영역</strong>: <a href="bank-operations.html">6. 운영</a> — 사고 대응</p>
+</div>
+
+<div class="oq">
+<h3>Q-CW09 — Cold Wallet 별도 mobile app 의 device 사양</h3>
+<p><strong>질문</strong>: Fireblocks 공식 문서에 "Cold Wallet 은 별도 앱" 명시 — 이 별도 앱이
+일반 Fireblocks mobile app 의 iOS 16.6+ / Android 8.1+ 사양과 동일한가? 별도 hardware (예: dedicated firmware) 인가?
+App Store / Google Play 일반 배포인가, 별도 enterprise 배포인가?</p>
+<p><strong>출처</strong>: Fireblocks 공식 문서 — Mobile Device Minimum Requirements ("Cold Wallet 은 별도 앱"). device 사양 원문 인용 미확보</p>
+<p><strong>영향 영역</strong>: <a href="signing-flow.html">5. Signing</a>, <a href="governance-quorum.html">3. 거버넌스</a>, <a href="bank-operations.html">6. 운영</a></p>
+</div>
+
+<div class="oq">
+<h3>Q-CW10 — Cold workspace 의 SSO / Auth0 적용</h3>
+<p><strong>질문</strong>: Hot workspace 의 SSO 운영 (Auth0 service provider 의존) 이 Cold workspace 에도 적용 가능한가?
+Cold workspace 의 Console 접근이 Auth0 SSO 를 사용하는가, 별도 인증인가?</p>
+<p><strong>출처</strong>: 공식 문서 미명세. Hot workspace 의 SSO 만 명시</p>
+<p><strong>영향 영역</strong>: <a href="bank-operations.html">6. 운영</a> — 인증 정책 통합</p>
+</div>
+
+<div class="oq">
+<h3>Q-CW11 — Cold workspace 의 AML provider (Notabene / Chainalysis / Elliptic) 통합</h3>
+<p><strong>질문</strong>: Cold workspace 의 출금 시 트래블룰 100만원 이상 거래에 Notabene 통합이 발동되는가?
+Chainalysis / Elliptic 의 transaction screening 이 Cold workspace 의 출고에도 자동 적용되는가?
+3 provider 통합의 workspace-level 설정이 Cold 에도 가능한가?</p>
+<p><strong>출처</strong>: 공식 문서에 Hot workspace 의 통합만 명시. Cold variant 미명세</p>
+<p><strong>영향 영역</strong>: <a href="bank-operations.html">6. 운영</a> — KR 트래블룰 + AML 매핑</p>
+</div>
+
+<div class="oq">
+<h3>Q-CW12 — Cold workspace 의 Callback Handler / API user 운영</h3>
+<p><strong>질문</strong>: Cold workspace 에 API user 가 존재하는가? 존재한다면 Callback Handler 미설정 시
+자동 sign 패턴 (Risk-S16) 이 Cold 에서도 적용되는가? Cold 의 API user 추가가 Support 경유인가?</p>
+<p><strong>출처</strong>: 공식 문서에 Hot 의 API user 만 명시. Cold variant 미명세</p>
+<p><strong>영향 영역</strong>: <a href="governance-quorum.html">3. 거버넌스</a>, <a href="bank-operations.html">6. 운영</a></p>
+</div>
+
+<div class="oq">
+<h3>Q-CW13 — Cold workspace 의 Device migration / SCIM / FSPM 적용</h3>
+<p><strong>질문</strong>:
+</p>
+<ul>
+<li><strong>Device migration</strong>: Hot 의 self-service device migration (PIN + passphrase + biometric 3중 인증) 이 Cold 에도 가능한가?</li>
+<li><strong>SCIM</strong>: Cold workspace 의 user provisioning 이 SCIM (자동 user 동기화) 으로 가능한가? (Support 경유 의무와 충돌)</li>
+<li><strong>FSPM (Fireblocks Security Posture Management)</strong>: Cold workspace 도 FSPM add-on 의 attack simulator 대상인가?</li>
+</ul>
+<p><strong>출처</strong>: 공식 문서에 Hot variant 만 명시. Cold 적용 미명세</p>
+<p><strong>영향 영역</strong>: <a href="bank-operations.html">6. 운영</a>, <a href="governance-quorum.html">3. 거버넌스</a></p>
+</div>
+
+<div class="oq">
+<h3>Q-CW14 — Cold workspace 의 Batch operations</h3>
+<p><strong>질문</strong>: Hot 의 batch approvals (최대 10 requests / batch, 부분 실패 가능) 이 Cold workspace 에도 적용되는가?
+Cold workspace 의 rebalancing batch 가 동일 메커니즘인가?</p>
+<p><strong>출처</strong>: 공식 문서에 Hot batch operations 만 명시. Cold variant 미명세</p>
+<p><strong>영향 영역</strong>: <a href="hot-cold-rebalancing.html">4. Rebalancing</a></p>
+</div>
+
+<h2>7.4 KR 규제 매핑 — 2026-05-22 확정 fact</h2>
+<p>
+2026-05-22 KR 컴플라이언스 가이드 본문 적재로 다음 항목들이 확정 fact 로 갱신됨.
+1차 출처는 모두 law.go.kr / fsc.go.kr / 대법원 공식 자료.
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>법령·규정</th><th>시행일</th><th>Cold wallet 관련 핵심</th><th>1차 출처</th></tr></thead>
+<tbody>
+<tr><td><strong>특정금융정보법 (특금법)</strong></td><td>2024-07-19</td>
+  <td>VASP 정의, 신고의무. MPC·멀티시그 구조라도 사업자가 자산 이동을 실질 통제·승인 시 "보관 또는 관리" 평가 가능 (대법원 2024도10710)</td>
+  <td>law.go.kr lsiSeq=252787</td></tr>
+<tr><td><strong>특금법 시행령</strong></td><td>2026-01-02</td>
+  <td>신고 유효기간 <strong>3년</strong>, 갱신 <strong>45일 전</strong>, 실명확인 입출금계정 기준</td>
+  <td>law.go.kr</td></tr>
+<tr><td><strong>가상자산이용자보호법 (VACPA)</strong></td><td>2024-07-19</td>
+  <td>예치금 보호, 이용자 가상자산 분리보관, <strong>동종·동량 보유</strong>, 보험·준비금 적립</td>
+  <td>law.go.kr lsiSeq=252731</td></tr>
+<tr><td><strong>이용자보호법 시행령</strong></td><td>2025-04-23</td>
+  <td>입출금 차단의 정당한 사유 (정보통신망 장애 / 거래지원 종료 / AML 준수 / 자금세탁 의심 시 최소 기간 / 전기통신금융사기 72시간), 예치금 양도·담보 예외</td>
+  <td>law.go.kr lsiSeq=270729</td></tr>
+<tr><td><strong>가상자산업감독규정</strong></td><td>2024-07-19</td>
+  <td><strong>콜드월렛 보관비율 = 경제적 가치 기준 80%</strong> (시행령 위임 "≥70%" 범위 내 금융위 정함)</td>
+  <td>law.go.kr admRulSeq=2100000244180</td></tr>
+<tr><td><strong>특금법 시행령 10조의10</strong></td><td>2024-07-19 / 2026-01-02</td>
+  <td><strong>트래블룰 임계 = 100만원 이상</strong>. Cold workspace 출금에도 동일 적용</td>
+  <td>law.go.kr lspttninfSeq=82843</td></tr>
+<tr><td><strong>특금법 5조의4</strong></td><td>2024-07-19</td>
+  <td>기록보존 <strong>최소 5년</strong> (KYC 사본, 로그, 승인 흐름, 차단·해제 근거)</td>
+  <td>law.go.kr lsiSeq=252787</td></tr>
+<tr><td><strong>자금세탁방지 업무규정</strong></td><td>2026-01-22</td>
+  <td>AML 내부통제 세부 규범 (현재 행정규칙)</td>
+  <td>law.go.kr admRulSeq=2100000267264</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">결정적 수치 — 콜드월렛 80%</div>
+<p>
+KR 가상자산업감독규정 9조 가 <strong>"이용자 가상자산 중 70% 이상의 범위에서 금융위가 정하는 비율 이상을 인터넷과 분리하여 보관"</strong>하도록 규정하며,
+실제로 금융위가 <strong>경제적 가치 기준 80%</strong> 로 정했음.
+<span class="src">(출처: KR 컴플라이언스 가이드 + law.go.kr admRulSeq=2100000244180)</span>
+</p>
+<p>
+→ 은행이 운영하는 Cold workspace 의 잔액 합계 ≥ 전체 보관 자산의 80% (경제적 가치). Hot workspace 는 ≤ 20% 만 가능.
+이는 Hybrid 구성에서 <strong>실제 자산 분배 비율의 법정 임계값</strong>.
+</p>
+</div>
+
+<h2>7.4b 4 종합검사 제재사례 — 직접 인용</h2>
+<p>
+모든 사례에 공통: ① 미신고 해외 VASP 와의 거래 차단 실패, ② KYC 재이행 실패, ③ 신규 서비스 AML 위험평가 미실시. 은행 도입 시 동일 통제 부재가 가장 큰 제재 트리거.
+<span class="src">(출처: KR 컴플라이언스 가이드 — 금감원 / FIU 보도자료)</span>
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>VASP</th><th>일자</th><th>핵심 위반</th><th>제재</th></tr></thead>
+<tbody>
+<tr><td>두나무</td><td>2025-02-25</td><td>미신고 해외 VASP 19개사와 44,948건 거래, 신규 위험평가 미실시</td><td>신규 고객 가상자산 이전 금지 3개월, 대표 문책경고</td></tr>
+<tr><td>코빗</td><td>2025-12-31</td><td>KYC·거래제한 위반 약 2.2만건, NFT 등 신규지원 전 위험평가 미실시 655건</td><td>기관경고 + 과태료 27.3억원</td></tr>
+<tr><td>빗썸</td><td>2026-03-17</td><td>위반 약 665만건, 해외 미신고 VASP 18개사와 45,772건, 자료보존 위반</td><td>영업일부정지 6개월 + 과태료 368억원, 대표 문책경고·보고책임자 정직</td></tr>
+<tr><td>코인원</td><td>2026-04-14</td><td>미신고 VASP 거래금지·KYC·거래제한 위반 다수</td><td>영업일부정지 3개월, 대표 문책경고</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>7.4c 신고제 운영 — 은행 도입 일정 영향</h2>
+<ul>
+<li><strong>신고 유효기간 3년</strong>, 갱신 <strong>만료 45일 전</strong>까지 (특금법 시행령)</li>
+<li><strong>신규 신고 심사 3개월</strong>, 변경 신고 45일 이내 수리 여부 통보 (FIU 공지)</li>
+<li><strong>미신고 영업 = 5년 이하 징역 또는 5천만원 이하 벌금</strong> (특금법 7조)</li>
+<li>신고서 필수 첨부: 대표자·임원·대주주 현황, 인터넷 도메인, 호스트 서버 소재지, <strong>가상자산 취급·관리 지갑주소 목록</strong>, 법령준수체계 자료, 정보보호 관리체계 인증서, 실명계정 발급 확인서·계약서·은행 AML 위험평가 서류</li>
+</ul>
+<p>
+→ 은행이 Fireblocks Cold Wallet workspace 의 vault 주소를 신고서에 등록해야 함.
+Workspace 변경 (신규 cold vault 추가, address 변경) 마다 45일 변경신고 필수.
+<span class="src">(출처: KR 컴플라이언스 가이드)</span>
+</p>
+
+<h2>7.4d 별도 검증 필요 (잔존)</h2>
+<ul>
+<li><strong>전자금융감독규정 (금감원) 의 IT 망분리</strong> — 별도 검증 (전자금융감독규정 본문 확인 필요)</li>
+<li><strong>「금융회사의 정보처리 업무 위탁에 관한 규정」</strong> — Fireblocks SaaS 가 외주 처리에 해당하는지 KR 컴플라이언스 source 미명시</li>
+<li><strong>ISMS·ISMS-P 차이 + 신고심사 평가 기준</strong> — Q-CMP-04 (open)</li>
+<li><strong>MPC·멀티시그 사업자의 "실질 통제" 임계점</strong> — Q-CMP-08 (open). 대법원 2024도10710 판결의 wallet architecture 적용 시점</li>
+<li><strong>KR 관할에서 Key Link + Thales Luna HSM 적용</strong> — Fireblocks 공식 블로그 (2025-09-23) 가 HKMA · HKSFC · JFSA 의 관할권은 명시했으나 KR 미명시. Q-2025-09-23-FB03 (open)</li>
+</ul>
+
+<h2>7.4e Hot/Warm/Cold 3-mode — 2025-09-23 vendor 공식 framing (부분 확정)</h2>
+<p>
+Fireblocks 공식 블로그 "Enterprise Digital Asset Security with Fireblocks and Thales" (2025-09-23, by Adam Levine SVP) 가 다음을 명시.
+이전까지 본 페이지의 다수 추정이 부분 확정 fact 로 격상됨.
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>이전 추정</th><th>2025-09-23 vendor 공식 발언</th><th>잔존 미명세</th></tr></thead>
+<tbody>
+<tr><td>Cold device = 별도 hardware (추정)</td>
+  <td><strong>Cold workflow 의 air-gap transport = USB · SFTP · data diodes</strong></td>
+  <td>정확한 device class 미명세</td></tr>
+<tr><td>Cold signing mode 가 별도 plane (추정)</td>
+  <td>"<strong>Hot, Warm, and Cold signing workflows</strong>" — 3-mode framing 공식화</td>
+  <td>"Warm" 의 기술 정의 미명세 (Q-FB01)</td></tr>
+<tr><td>HSM 통합 가능성 (추정)</td>
+  <td><strong>Fireblocks KeyLink ↔ Thales Luna HSM</strong> 통합. FIPS 140-3 Level 3 + Common Criteria 인증, PQC readiness</td>
+  <td>다른 HSM vendor 통합 옵션 미명세</td></tr>
+<tr><td>SaaS Cold Wallet 과 customer HSM Cold 의 관계 (추정)</td>
+  <td>—</td>
+  <td>여전히 미명세 (Q-FB02)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>7.5 권장 다음 단계</h2>
+<ol>
+<li>Fireblocks 와 직접 협의 — 본 페이지의 Q-CW01 ~ Q-CW14 명시적 응답 요청</li>
+<li>Sandbox workspace 에서 Cold Wallet 의 rebalancing rehearsal</li>
+<li>KR 법률 / 금감원 검토 — 본 문서 7.4 항목별 검증</li>
+<li>내부 인원 구성 — Cold Owner / Admin / Signer / Approver 인원 사전 임명</li>
+<li>Fireblocks 계약 시 Support SLA + Cold workspace device 사양 명시</li>
+<li>Cold Wallet 관련 공식 문서 15 건의 원문 정밀 인용 확보 후 본 문서 갱신</li>
+</ol>
+
+<p class="back-top"><a href="#risks">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="assets/app.js"></script>
+</body>
+</html>

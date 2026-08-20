@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>7. 온체인 정합성 · 추적 — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="온체인 정합성·트랜잭션 추적 — 체인 사실 확정·요청 ID 연결·예외 감지. 내부 회계 원장(double-entry) 대사·기표는 회계 평면에 위임." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Fireblocks 매니저 (벤더 안)</h3><ul>
+<li><a href="component-multichain.html">2. 체인 차이 흡수 — EVM</a></li>
+<li><a href="component-indexer.html">3. 입금 감지 (webhook)</a></li>
+<li><a href="component-tx-nonce.html">4. 출금 파이프라인</a></li>
+<li><a href="component-signing.html">5. 서명 · co-signer</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 우리 백엔드 (Service·Admin)</h3><ul>
+<li><a href="component-gateway.html">6. API 게이트웨이</a></li>
+<li><a class="active" href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
+<li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 시나리오</h3><ul>
+<li><a href="scenario-provisioning.html">9. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">10. 입금</a></li>
+<li><a href="scenario-withdrawal.html">11. 출금</a></li>
+<li><a href="scenario-onofframp.html">12. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 추상화</h3><ul>
+<li><a href="abstraction.html">13. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
+<li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. 기타</h3><ul>
+<li><a href="wallet-creation-animated.html">18. 지갑 생성 애니메이션</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="onchain-consistency">
+<h2>7. 온체인 정합성 · 추적</h2>
+<span class="section-subtitle">체인 사실을 확정하고 요청 ID 로 끝까지 추적한다 — 회계 원장 대사는 회계 평면에 위임</span>
+
+<div class="callout">
+<div class="callout-title">이 페이지의 전제 — 체인 사실은 Fireblocks 가 준다</div>
+<p>블록체인 매니저로 <strong>Fireblocks 를 채택</strong>했으므로, 체인 위 사실은 우리가 노드·인덱서를 돌려 직접 캐지 않는다. 입금·확정·출금 결과는 <strong>Fireblocks webhook</strong> 으로 들어오고, 잔액은 <strong><code>getVaultAccountAsset</code></strong> 로 조회한다. 그래서 이 컴포넌트가 하는 일은 "체인을 직접 관측" 하는 게 아니라 <strong>벤더가 준 값을 우리 기록과 주기적으로 대조</strong>하는 것이다 — <strong>자동 보정은 하지 않는다.</strong> 대조는 <strong>Service·Admin 두 백엔드가 함께</strong> 참여하는 운영·감사 평면의 일이다.</p>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">범위 — 체인 측 진실만 책임진다</div>
+<p>이 컴포넌트는 <strong>체인 측 진실(온체인 정합성)만</strong> 책임진다. <strong>내부 회계 원장(double-entry)·잔액 진실원천과의 대사 및 기표·공시는 이 컴포넌트 범위 밖(회계/원장 평면)</strong>이다. 검증된 체인 사실을 요청 ID 로 회계 평면에 <strong>제공</strong>할 뿐, 회계 장부를 소유하지 않는다. (준비자산을 범위 밖으로 둔 것과 같은 논리)</p>
+</div>
+
+<h3>7.1 왜 필요한가</h3>
+
+<p>Fireblocks 가 체인에 무언가를 쓰거나 읽어 그 결과를 우리에게 넘겼으면, <strong>그게 정말 체인에 반영됐는지·끊김 없이 추적되는지</strong>를 확인해야 한다. 우리가 보낸 출금이 확정됐나, 입금이 빠짐없이 잡혔나, 한 건의 요청이 채널 접수부터 온체인 결과까지 같은 요청 ID 로 이어지나 — 이 <strong>체인 측 정합성</strong>이 깨지면 "보냈다고 생각한 게 안 갔거나, 들어온 걸 놓치는" 사고로 직결된다. 벤더 조회가 아무리 정확해도 webhook 누락·지연·우리 쪽 반영 버그는 생기게 마련이라, 값은 벤더의 것이되 <strong>주기적으로 우리 기록과 맞춰</strong> 확인한다.</p>
+
+<p>단, 이것은 <strong>"회계가 맞는가"</strong> 와는 다른 문제다. 잔액 장부(복식부기, system-of-record<span class="g" data-tip="잔액의 진실원천 — 다른 데이터와 다르면 이쪽이 맞다고 보는 원본 장부">?</span>)와 체인을 맞추고 기표하는 일은 회계 평면의 몫이고, 이 컴포넌트는 그 평면이 신뢰할 수 있는 <strong>검증된 체인 사실을 만들어 넘기는 데까지</strong>가 책임이다.</p>
+
+<h3>7.2 어떻게 동작하는가</h3>
+
+<p>핵심 축은 <strong>요청 ID</strong> 하나다. 한 건의 입금/출금이 채널 접수부터 온체인 결과까지 같은 ID 로 꿰여, 어디서 멈췄는지·어긋났는지 단일 조회로 추적된다. 여기서 대조하는 두 장부는 <strong>Fireblocks 가 준 값</strong>(webhook 이벤트·<code>getVaultAccountAsset</code> 잔액)과 <strong>우리 기록</strong>(요청·tx 상태·매핑 DB)이다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    REQ["채널 요청<br/>(요청 ID)"]
+    OFF["오프체인 정산/지급<br/>(은행·PG 결과)"]
+    ON["Fireblocks 값<br/>(webhook · getVaultAccountAsset)"]
+    OPS["우리 기록<br/>(요청·tx 상태 · 매핑 DB)"]
+    MATCH{"요청 ID 로 대조<br/>Service·Admin 공동"}
+    OK["정상 (MATCHED)"]
+    CHK["확인 필요<br/>(지연·미반영)"]
+    BAD["불일치 (MISMATCH)<br/>사람이 본다 · 자동 보정 금지"]
+    ACC["회계 · 원장 평면<br/>(범위 밖)"]
+
+    REQ --> MATCH
+    OFF --> MATCH
+    ON --> MATCH
+    OPS --> MATCH
+    MATCH --> OK
+    MATCH --> CHK
+    MATCH --> BAD
+    OK -->|검증된 체인 사실 제공| ACC
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef wait fill:#fef3c7,stroke:#d97706;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef vendor fill:#dbeafe,stroke:#2563eb;
+    classDef out fill:#f5f5f7,stroke:#86868b;
+    class REQ good;
+    class OFF out;
+    class ON vendor;
+    class OPS good;
+    class MATCH special;
+    class OK good;
+    class CHK wait;
+    class BAD bad;
+    class ACC out;
+</pre></div>
+<p class="diagram-caption">Figure 7-1. 온체인 정합성 대조 — 벤더 값 대 우리 기록. 한 요청 ID 에 묶인 기록을 대조해 정상/확인 필요/불일치로 분류한다. 입력 4종은 출처대로 색을 입혔다 — 채널 요청은 우리 백엔드(초록), 은행·PG 결과는 외부 시스템(회색), <strong>Fireblocks 값</strong>(webhook·<code>getVaultAccountAsset</code>)은 벤더(파랑), 우리 기록(매핑 DB)은 우리 백엔드(초록). 대조는 <strong>Service·Admin 이 함께</strong> 참여하는 운영·감사 평면의 일이다. 검증된 사실은 <strong>회계·원장 평면(회색 = 범위 밖)</strong>에 제공되며, 복식부기 기표·잔액 대사는 그 평면이 한다. 불일치가 나도 <strong>자동으로 고치지 않는다</strong> — 정정 이벤트를 만들어 사람이 본다.</p>
+
+<p>최소 산출물은 셋이다 — ① 각 요청 ID 의 <strong>온체인 정합성 상태</strong>(정상/확인 필요/불일치), ② 예외 건의 <strong>원인 유형</strong>(온체인 미반영·지급 지연·우리 기록 누락 등), ③ 운영 콘솔·알림·회계 평면으로 잇는 <strong>예외 목록 + 검증 사실</strong>.</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">확정(finality)은 Fireblocks 상태로 판단한다 — DCCP 임계</div>
+<p>"체인에 등장했나(confirm)" 와 "확정됐나(finality)" 는 다르다. Fireblocks 거래는 전파 뒤 <strong>CONFIRMING → COMPLETED</strong> 로 흐르는데, <strong>COMPLETED = 확정 정책이 정한 임계 confirmation 수에 도달</strong>한 상태이고 그때가 우리 기준의 finality 다. 그 임계는 확정 정책(Fireblocks 의 <strong>DCCP</strong><span class="g" data-tip="입금·출금에 필요한 confirmation 횟수를 체인별로 정하는 확정 정책 — Fireblocks 의 Deposit/Confirmation Control Policy. 기본값은 대부분 1 confirmation">?</span>, <strong>Admin 이 관리</strong>)이 체인별로 정하고, 기본값은 대부분 1 confirmation 이다. 대조는 벤더가 준 상태(CONFIRMING/COMPLETED)와 <strong><code>numOfConfirmations</code></strong> 를 <strong>읽어서</strong> 판단하지, 우리가 블록을 세서 정하지 않는다. 이더리움과 Base 는 같은 EVM 이라 이 흐름이 동일하다.</p>
+</div>
+
+<h3>7.3 범위 — 회계 원장은 다른 평면</h3>
+
+<div class="callout callout-warn">
+<div class="callout-title">매니저가 하지 않는 것 (회계/원장 평면에 위임)</div>
+<ul>
+<li><strong>내부 회계 장부(double-entry) 보유</strong> — 잔액 system-of-record 는 회계 평면.</li>
+<li><strong>회계 기표 · 대사</strong> — 체인 사실 ↔ 회계 장부 일치 검증과 분개는 회계 평면.</li>
+<li><strong>공시 · 회계 기준</strong> — 준비자산·재무 공시는 자금 운용/회계 평면.</li>
+</ul>
+<p>검증된 체인 사실(요청 ID·금액·확정 수준·tx 해시)을 <strong>요청 ID 로 제공</strong>하는 데까지. 그 사실을 받아 장부에 기표·대사하는 것은 회계 평면이 한다.</p>
+</div>
+
+<h3>7.4 코드로 보면</h3>
+
+<p>설명용 의사코드다. 이 컴포넌트는 <strong>대조(reconcile)만</strong> 한다 — 회계 기표·잔액 대사는 안 하고, <strong>어긋나도 자동 보정하지 않는다</strong>(7.3). 한 <code>correlationId</code>(요청 ID)에 묶인 기록을 여러 출처에서 모아, <strong>Fireblocks 값과 우리 기록이</strong> 한 사실로 일치하는지 대조하고, <strong>검증된 사실만 회계 평면으로</strong> 넘긴다. 같은 두 겹 — <strong>자산 단위·소수점·주소 정규화는 체인별(어댑터 <a href="component-multichain.html">2</a>)</strong>, <strong>대조 로직은 공통</strong>. EVM(이더리움·Base)은 단위·주소 체계가 같아 정규화가 한 벌로 족하다.</p>
+
+<pre><code>class ReconciliationEngine {
+  // sources = { gateway, instruction, vendor(=Fireblocks webhook·조회), opLog(우리 기록) }
+  // adapters[chainId] = 단위·주소 정규화(2),  accounting = 회계 평면(범위 밖, 7.3)
+  constructor(adapters, sources, accounting, alerts) {}
+
+  async reconcile(correlationId) {
+    const rec = {
+      request:     await this.sources.gateway.byId(correlationId),         // 채널 요청
+      instruction: await this.sources.instruction.byId(correlationId),     // 승인된 오프체인 지급
+      vendor:      await this.sources.vendor.byCorrelation(correlationId),  // Fireblocks 값(webhook·조회)
+      op:          await this.sources.opLog.byId(correlationId),           // 우리 기록(요청·tx 상태)
+    }
+
+    // 벤더 값이 아직 안 옴(webhook 미도착)이면 정규화·대조 자체가 불가 — 먼저 분기
+    if (!rec.vendor) return 'NEEDS_REVIEW'           // 지연·미반영 — sweep 이 다시 잡는다(7.5 ②)
+
+    // 체인별 단위·소수점·주소를 "비교 가능한 정규형" 으로 (어댑터, EVM 은 wei/체크섬 주소)
+    const a = this.adapters[rec.vendor.chainId]
+    const norm = {
+      amount:  a.normalizeAmount(rec.vendor),        // wei → 정규 단위
+      address: a.normalizeAddress(rec.vendor.to),
+      status:  rec.vendor.status,                    // Fireblocks 상태(CONFIRMING/COMPLETED …)
+      confs:   rec.vendor.numOfConfirmations,        // 확정 판단 근거
+    }
+
+    // 대조 — 요청·지시·벤더 값·우리 기록이 한 사실로 모이나 (finality = COMPLETED, DCCP 임계 도달)
+    const verdict = classify({
+      amountMatch:  eq(norm.amount,  rec.instruction?.amount),
+      addressMatch: eq(norm.address, a.normalizeAddress(rec.instruction?.to)),
+      finalized:    norm.status === 'COMPLETED',     // DCCP 임계 confirmation 도달
+    })   // → 'MATCHED' | 'NEEDS_REVIEW' | 'MISMATCH'
+
+    if (verdict === 'MISMATCH') this.alerts.raise(correlationId, rec)         // 자동 보정 없이 사람에게
+    else this.accounting.postFact({ correlationId, ...norm, verdict })        // 검증된 사실만 → 회계 평면
+    return verdict
+  }
+}</code></pre>
+
+<div class="callout">
+<div class="callout-title">코드가 말하는 것</div>
+<ul>
+<li><strong>대조만, 기표는 안 한다(7.3)</strong> — <code>postFact</code> 로 <em>검증된 사실</em>을 회계 평면에 넘길 뿐, 복식부기·잔액 대사는 그 평면의 몫이다. 그래서 <code>accounting</code> 은 범위 밖 포트로 둔다.</li>
+<li><strong>correlationId 로 4 출처를 한자리에</strong> — 채널 요청 · 승인된 지시 · <strong>Fireblocks 값</strong> · 우리 기록. 벤더 값은 webhook(<a href="component-indexer.html">3. 입금 감지</a>)과 <code>getVaultAccountAsset</code> 조회에서 온 것을 그대로 받는다.</li>
+<li><strong>finality 는 벤더 상태로</strong> — <code>status === 'COMPLETED'</code> 가 DCCP 임계 confirmation 도달, 즉 우리 기준 finality 다(7.2 절 callout). <code>numOfConfirmations</code> 를 함께 봐 CONFIRMING 인지 COMPLETED 인지 가른다 — 블록을 우리가 세지 않는다.</li>
+<li><strong>비교 전 정규화는 체인별 → 어댑터</strong> — EVM 은 wei 단위·체크섬 주소로 <code>normalizeAmount</code>·<code>normalizeAddress</code> 를 맞춰야 <code>eq()</code> 비교가 성립한다.</li>
+<li><strong>3-way 분류 + MISMATCH 는 멈춤 · 자동 보정 금지</strong> — MATCHED / NEEDS_REVIEW / MISMATCH. 불일치는 자동으로 고치지 않고 알림(사람 개입). 없는 돈을 만들거나 지우는 코드가 가장 위험하다. 검증된 것만 회계로 흘린다.</li>
+</ul>
+<p>같은 분리 — <strong>정규화 규칙(단위·주소)은 체인별(어댑터), 대조 로직은 공통</strong>이다.</p>
+</div>
+
+<h3>7.5 언제 도는가 — 이벤트 + 주기 sweep</h3>
+
+<p>이 대조는 <strong>쓰기(출금 집행) 경로 밖에서 사후·배경으로</strong> 돈다 — 출금을 막지 않는다. 같은 <code>reconcile(correlationId)</code> 를 세 시점이 부른다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    EV["Fireblocks webhook 이벤트<br/>(건별 · 거의 실시간)"]
+    SWEEP["주기 sweep<br/>(열린·최근 ID 훑기)"]
+    OD["온디맨드<br/>(회계 마감·예외 조사)"]
+    REC{"reconcile · correlationId"}
+    OK["정상 (MATCHED)<br/>회계 평면으로"]
+    CHK["확인 필요<br/>지연·미반영"]
+    BAD["불일치 (MISMATCH)<br/>알림·예외 목록"]
+
+    EV --> REC
+    SWEEP --> REC
+    OD --> REC
+    REC --> OK
+    REC --> CHK
+    REC --> BAD
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef wait fill:#fef3c7,stroke:#d97706;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef chain fill:#dbeafe,stroke:#2563eb;
+    classDef out fill:#f5f5f7,stroke:#86868b;
+    class EV,SWEEP chain;
+    class OD out;
+    class REC special;
+    class OK good;
+    class CHK wait;
+    class BAD bad;
+</pre></div>
+<p class="diagram-caption">Figure 7-2. 대조의 트리거. 같은 reconcile() 를 ① Fireblocks webhook 이벤트(건별) ② 주기 sweep(배치) ③ 온디맨드 세 경로가 부른다 — 함수는 같고 호출 시점만 다르다. webhook 이벤트는 벤더가 밀어 주는 신호(파랑), 주기 sweep 은 우리 백엔드가 도는 안전망(파랑), 온디맨드는 회계 마감·예외 조사 등 바깥에서 들어오는 요청(회색)이다. 쓰기 경로와 분리된 사후 동작이고, 대조 자체는 <strong>Service·Admin 두 백엔드가 함께</strong> 참여한다.</p>
+
+<ul>
+<li><strong>① 이벤트 기반(건별)</strong> — Fireblocks webhook(<a href="component-indexer.html">3. 입금 감지</a>)의 <code>onChainEvent</code> 가 "이 요청의 상태가 COMPLETED 로 확정" 을 알리면 그 건을 즉시 대조. 입금 감지 직후(<a href="scenario-deposit.html">10</a>), 출금 확정 직후(<a href="scenario-withdrawal.html">11</a>).</li>
+<li><strong>② 주기 sweep(완전성 안전망)</strong> — 시간별·일마감 등으로 열린/최근 ID 를 훑는다. <strong>"와야 하는데 안 온 것"</strong>(stuck·미반영·지급 지연)은 이벤트가 <em>없어서</em> 이벤트론 안 잡힌다 — sweep 이 잡는다. Figure 7-1 의 "확인 필요" 가 여기서 나온다.</li>
+<li><strong>③ 온디맨드</strong> — 회계 마감 전 정합성 확인, 예외 조사 시 수동 트리거.</li>
+</ul>
+
+<div class="callout callout-warn">
+<div class="callout-title">이벤트만으론 부족하다 — sweep 이 안전망</div>
+<p>이벤트 기반은 "일어난 것" 만 본다. 정합성에서 진짜 위험한 건 <strong>일어나야 했는데 안 일어난 것</strong>(전파됐는데 확정 안 됨, 오프체인 지급은 됐는데 온체인 결과 없음)이라, 이건 주기 sweep 으로만 드러난다. 그래서 둘 다 필요하다 — 이벤트 = 빠름, sweep = 완전.</p>
+</div>
+
+<h3>7.6 다른 컴포넌트와의 관계</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">관계</th><th>내용</th></tr></thead>
+<tbody>
+<tr><td>← <a href="component-indexer.html">3. 입금 감지 (webhook)</a></td><td>Fireblocks webhook 이 준 체인 위 사실(입금/출금 확정 결과)을 대조 근거로 받는다.</td></tr>
+<tr><td>← <a href="component-tx-nonce.html">4. 출금 파이프라인</a></td><td>출금 전파·확정 결과를 요청 ID 로 연결.</td></tr>
+<tr><td>← Admin 백엔드 · 운영 콘솔</td><td>대사·감사에 함께 참여 — 운영·감사 경계라 <strong>Admin</strong> 도 벤더 값·거래 목록을 조회한다(Service·Admin).</td></tr>
+<tr><td>→ 회계 · 원장 평면 (범위 밖)</td><td>검증된 체인 사실을 요청 ID 로 제공 (기표·대사는 그 평면이 수행).</td></tr>
+<tr><td>→ <a href="component-gateway.html">6. API 게이트웨이</a></td><td>건별 처리 상태·온체인 정합성 조회 제공.</td></tr>
+<tr><td>→ <a href="component-alerts.html">8. 이벤트 · 알림</a></td><td>불일치·예외·정정을 운영자(Admin)와 비즈 레이어(Service)에 알림 — COMPLETED 알림(8장)이 먼저 나간 건이 사후 검증에서 뒤집히면, 정정 이벤트로 반영 철회를 트리거한다.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">설계 포인트</div>
+<ul>
+<li><strong>요청 ID 단일 축</strong> — 모든 기록을 한 ID 로 꿰어야 종단 추적·검증이 가능.</li>
+<li><strong>멱등 처리</strong> — 같은 결과를 두 번 처리해도 상태가 두 번 바뀌지 않게.</li>
+<li><strong>자동 보정 금지</strong> — 벤더 값과 우리 기록이 어긋나면 코드가 임의로 맞추지 않는다. 정정 이벤트를 만들어 사람이 판단한다 — 없는 돈을 만들거나 지우는 자동 보정이 가장 위험하다.</li>
+<li><strong>확정 수준 인식</strong> — Fireblocks 가 준 상태(CONFIRMING/COMPLETED)와 <code>numOfConfirmations</code> 를 함께 보고, reorg<span class="g" data-tip="블록 재구성 — 한 번 체인에 들어간 블록이 더 긴 체인으로 대체되어 그 안의 거래가 뒤집히는 일">?</span> 로 뒤집히면 제공한 사실도 정정 통지. finality 판단은 벤더 상태에 맡기고 우리가 블록을 세지 않는다.</li>
+<li><strong>Service·Admin 공동 참여</strong> — 고객 런타임 조회는 Service, 회계·대사처럼 감사에 걸리는 조회는 Admin 도 함께 부른다. 두 백엔드는 같은 포트를 쓰되 배포·권한·감사 경계가 다르다.</li>
+<li><strong>회계 장부 미소유</strong> — 검증 사실 제공까지. 잔액 진실원천·기표는 회계 평면.</li>
+</ul>
+</div>
+
+<p>다음 — 대조에서 나온 예외와 상태 변화를 외부로 push 하는 <a href="component-alerts.html"><strong>8. 이벤트 · 알림</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

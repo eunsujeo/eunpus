@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>0. Overview — 블록체인 인덱서 설계 가이드</title>
+<meta content="블록체인 인덱서가 무엇인가, 왜 필요한가, 어떻게 구현하는가 — 백엔드 엔지니어를 위한 reference." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a class="active" href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Foundation</h3><ul>
+<li><a href="what-is-indexer.html">1. 인덱서란 무엇인가</a></li>
+<li><a href="requirements.html">2. 요구사항</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Implementation</h3><ul>
+<li><a href="implementation-patterns.html">3. 4 구현 패턴</a></li>
+<li><a href="reference-architecture.html">4. 참조 아키텍처</a></li>
+<li><a href="data-model.html">5. 데이터 모델</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Operations</h3><ul>
+<li><a href="reorg-finality.html">6. Reorg · Finality</a></li>
+<li><a href="performance-scalability.html">7. 성능 · 확장성</a></li>
+<li><a href="monitoring-ops.html">8. 운영 · 모니터링</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Industry Cases</h3><ul>
+<li><a href="exchange-cases.html">9. 자체 인덱서 운영</a></li>
+<li><a href="saas-cases.html">10. 인덱서 / 데이터 인프라 vendor</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Infrastructure</h3><ul>
+<li><a href="infrastructure-spec.html">11. 인프라 · 스펙</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Portability</h3><ul>
+<li><a href="portability.html">12. 벤더 교체 · 포트 설계</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="overview">
+<h2>0. Overview</h2>
+<span class="section-subtitle">블록체인 인덱서가 무엇이고, 왜 필요하고, 어떻게 만드는가</span>
+
+<p class="lead">
+본 가이드는 <strong>블록체인 인덱서</strong> 의 reference 문서다. 인덱서는 블록체인 데이터를 애플리케이션이 사용할 수 있는 형태로 변환하는 데이터 인프라 레이어다. Coinbase, Korbit, The Graph, Alchemy, QuickNode, Fireblocks 등이 모두 자체 인덱서를 운영하거나 SaaS 형태로 제공한다.
+</p>
+
+<h3>0.1 한 화면으로 보는 인덱서</h3>
+
+<p>대부분의 블록체인 애플리케이션 (지갑, 거래소, 분석 도구) 은 다음과 같은 구조를 갖는다. 사용자는 "블록체인" 을 직접 보지 않는다 — 인덱서가 변환해준 데이터를 본다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    subgraph BC[블록체인 네트워크]
+      direction TB
+      B1[블록 N-2]:::block --- B2[블록 N-1]:::block --- B3[블록 N]:::block
+    end
+
+    subgraph NODE[블록체인 노드]
+      direction TB
+      RPC[JSON-RPC<br/>WebSocket]:::comp
+    end
+
+    subgraph INDEXER[인덱서]
+      direction TB
+      ING[수집 ingest]:::comp
+      PARSE[파싱 · 정규화]:::comp
+      STORE[(저장소<br/>Postgres / Redis / ES)]:::store
+      ING --> PARSE --> STORE
+    end
+
+    subgraph APP[애플리케이션]
+      direction TB
+      API[Query API<br/>REST / GraphQL]:::comp
+      UI[지갑 UI · 분석 대시보드]:::ui
+      API --> UI
+    end
+
+    BC --> NODE --> INDEXER --> APP
+
+    classDef block fill:#fff7ed,stroke:#f5d5a8,stroke-width:1px
+    classDef comp fill:#f5f7fb,stroke:#d1dbf0,stroke-width:1px
+    classDef store fill:#f0faf2,stroke:#c8e6cf,stroke-width:1px
+    classDef ui fill:#fef2f2,stroke:#f3c0c0,stroke-width:1px
+</pre></div>
+<p class="diagram-caption">Figure 0-1. 블록체인 → 노드 → 인덱서 → 애플리케이션. 인덱서가 가운데에서 데이터를 변환·저장한다.</p>
+
+<h3>0.2 인덱서가 없으면 무엇이 안 되는가</h3>
+
+<p>"왜 그냥 RPC 호출만으로 안 되는가?" 가 자주 나오는 질문이다. 답은 4 가지로 요약된다.</p>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th style="width:14%">영역</th><th>RPC 만 쓸 때의 한계</th><th>인덱서가 해결하는 방식</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>성능</strong></td>
+  <td>30일 입금 내역 = 블록 216,000 개 스캔. 분 단위 응답.</td>
+  <td>이미 indexed table 에서 SQL 한 번 = 50ms.</td>
+</tr>
+<tr>
+  <td><strong>도메인 매핑</strong></td>
+  <td>"이 주소가 어느 사용자의 지갑인가" 는 chain 이 모른다.</td>
+  <td>address → user / vault / wallet 매핑 자체 DB 보관.</td>
+</tr>
+<tr>
+  <td><strong>이벤트 push</strong></td>
+  <td>RPC 는 pull. polling 60 초마다 = 최대 60 초 지연.</td>
+  <td>webhook / WebSocket / Kafka 로 1-2 초 push.</td>
+</tr>
+<tr>
+  <td><strong>Reorg 처리</strong></td>
+  <td>같은 트랜잭션이 사라지거나 다시 들어옴. 애플리케이션이 직접 대응.</td>
+  <td>인덱서가 reorg 를 흡수, 애플리케이션은 final state 만 본다.</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<h3>0.3 도메인 구성</h3>
+
+<p>본 가이드는 5 도메인으로 나뉘어 있다.</p>
+
+<div class="table-wrap">
+<table class="overview-domains">
+<thead>
+<tr><th>도메인</th><th>다루는 내용</th><th>진입 페이지</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>A. Foundation</strong></td>
+  <td>인덱서가 무엇인가, 무엇을 해결하는가의 본질적 정의 + 요구사항</td>
+  <td><a href="what-is-indexer.html">1. 인덱서란</a> · <a href="requirements.html">2. 요구사항</a></td></tr>
+<tr><td><strong>B. Implementation</strong></td>
+  <td>구현 패턴 (pull / streaming / scan / lake), 컴포넌트 계층, 데이터 모델</td>
+  <td><a href="implementation-patterns.html">3. 4 패턴</a> · <a href="reference-architecture.html">4. 참조 아키텍처</a> · <a href="data-model.html">5. 데이터 모델</a></td></tr>
+<tr><td><strong>C. Operations</strong></td>
+  <td>Reorg / Finality 처리, 성능 / 확장성, 운영 / 모니터링</td>
+  <td><a href="reorg-finality.html">6. Reorg</a> · <a href="performance-scalability.html">7. 성능</a> · <a href="monitoring-ops.html">8. 운영</a></td></tr>
+<tr><td><strong>D. Industry Cases</strong></td>
+  <td>자체 인덱서 운영 회사 (Coinbase / Korbit / Binance / Upbit / Bithumb / Coinone) + 인덱서 / 데이터 인프라 vendor (The Graph / Alchemy / QuickNode / Firehose / Fireblocks / BitGo / 설치형) 의 공개 아키텍처</td>
+  <td><a href="exchange-cases.html">9. 자체 운영</a> · <a href="saas-cases.html">10. vendor</a></td></tr>
+<tr><td><strong>E. Infrastructure</strong></td>
+  <td>HW / OS / 네트워크 / DB / 스토리지 등 인프라 spec + 비용 모델</td>
+  <td><a href="infrastructure-spec.html">11. 인프라 · 스펙</a></td></tr>
+<tr><td><strong>F. Portability</strong></td>
+  <td>자체 인덱서로 시작했다가 Fireblocks·타 벤더로 갈릴 수 있을 때의 포트 설계 — 수집 포트, 영원히 내 것인 조회 모델, AML 스크리닝 포트 분리</td>
+  <td><a href="portability.html">12. 벤더 교체 · 포트 설계</a></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>0.4 핵심 용어 (10초 정의)</h3>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>용어</th><th>의미</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>블록</strong></td><td>트랜잭션 batch + parent hash. 평균 12 초 (Ethereum) / 10 분 (BTC) 마다 생성.</td></tr>
+<tr><td><strong>트랜잭션</strong></td><td>상태 변경 요청 (token 이동, contract 호출 등). 서명 + nonce + payload.</td></tr>
+<tr><td><strong>Mempool</strong></td><td>아직 블록에 안 포함된 pending 트랜잭션 pool.</td></tr>
+<tr><td><strong>JSON-RPC</strong></td><td>블록체인 노드의 표준 API (HTTP POST). <code>eth_getBalance</code>, <code>eth_getLogs</code> 등.</td></tr>
+<tr><td><strong>WebSocket subscribe</strong></td><td>새 블록 / 새 이벤트 push 받는 채널.</td></tr>
+<tr><td><strong>Confirmation</strong></td><td>tx 가 포함된 블록 뒤로 쌓인 블록 수. 많을수록 reorg 위험 ↓.</td></tr>
+<tr><td><strong>Slot</strong></td><td>Ethereum PoS 의 블록 생성 단위 = 12 초. 매 slot 마다 한 validator 가 블록 propose.</td></tr>
+<tr><td><strong>Epoch</strong></td><td>Ethereum PoS 의 finality 처리 단위 = 32 slots = 384 초 (~ 6.4 분). validator 들이 매 epoch 마다 vote (attestation).</td></tr>
+<tr><td><strong>Finality</strong></td><td>이 시점 이후 reorg 불가능. Ethereum PoS 는 보통 2 epoch (~ 12.8 분) 후 finalized.</td></tr>
+<tr><td><strong>Reorg</strong></td><td>chain head 가 다른 fork 로 교체. confirmed tx 가 사라질 수 있음.</td></tr>
+<tr><td><strong>Full node</strong></td><td>최신 state + 최근 트랜잭션 보관. ~ 1 TB.</td></tr>
+<tr><td><strong>Archive node</strong></td><td>모든 과거 state 보관. ~ 2-20 TB.</td></tr>
+<tr><td><strong>EVM</strong></td><td>Ethereum Virtual Machine. smart contract 실행 환경.</td></tr>
+<tr><td><strong>Gas</strong></td><td>tx 처리 비용. 사용자가 지불.</td></tr>
+<tr><td><strong>Nonce</strong></td><td>주소 별 tx sequence 번호. 0 부터 +1.</td></tr>
+<tr><td><strong>axis</strong></td><td>(영어 단어) 어떤 것을 보는 관점 / 차원. "8 가지 axis" = "8 가지 관점".</td></tr>
+<tr><td><strong>SLO</strong></td><td>Service Level Objective. 시스템이 충족해야 할 측정 가능한 목표 (예: p95 latency &lt; 100ms, 99.9% availability). SLI (지표) 로 측정, SLA (계약) 와 구분.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p style="margin-top:32px;color:var(--text-tertiary);font-size:13px">
+다음 페이지부터 — <a href="what-is-indexer.html"><strong>1. 인덱서란 무엇인가</strong></a>.
+</p>
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

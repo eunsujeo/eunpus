@@ -1,0 +1,8 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/about-automation
+downloaded_at: 2026-05-18
+domain: governance
+tier: 2
+status: source-lake-only
+title: "About Automation"
+ingest_log: "Stage 10 (2026-05-18) — renamed, markdown deferred"
+note: "Automation rule entry point. New domain — promote to full ingest in future stage if Automation becomes operational priority. Linked from `audit-log.md` Automation rule events."

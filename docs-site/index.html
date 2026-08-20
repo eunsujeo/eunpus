@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wallet Architecture — Documentation Hub</title>
+  <meta name="description" content="지갑 architecture 관련 reference 문서 모음">
+  <meta name="robots" content="noindex">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-subtle: #fafafa;
+      --bg-card: #ffffff;
+      --bg-card-hover: #f7f7f8;
+      --bg-tag: #f1f3f5;
+
+      --border: #e5e5e7;
+      --border-strong: #d2d2d7;
+      --border-card: #e5e5e7;
+      --border-card-hover: #c1c1c4;
+
+      --text: #1d1d1f;
+      --text-secondary: #515154;
+      --text-tertiary: #86868b;
+      --text-link: #0366d6;
+      --text-link-hover: #0246a8;
+
+      --accent: #0366d6;
+
+      --radius-sm: 4px;
+      --radius-md: 8px;
+
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Helvetica Neue", Arial, "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Cascadia Mono", "Roboto Mono", Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.65;
+      color: var(--text);
+      background-color: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .site-header {
+      border-bottom: 1px solid var(--border);
+      padding: 14px 32px;
+      background-color: var(--bg);
+    }
+
+    .site-header .inner {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .site-header .title {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .site-header .meta {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 56px 32px 80px;
+    }
+
+    h1 {
+      font-size: 30px;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      margin: 0 0 8px;
+    }
+
+    .lead {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin: 0 0 8px;
+    }
+
+    .lead code {
+      font-family: var(--font-mono);
+      font-size: 13.5px;
+      background-color: var(--bg-tag);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    .intro-note {
+      font-size: 13.5px;
+      color: var(--text-tertiary);
+      margin-top: 16px;
+      max-width: 680px;
+    }
+
+    h2 {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-tertiary);
+      margin: 48px 0 16px;
+    }
+
+    .doc-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .doc-card {
+      display: block;
+      padding: 22px 24px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+    }
+
+    .doc-card:hover {
+      border-color: var(--border-card-hover);
+      background-color: var(--bg-card-hover);
+    }
+
+    .doc-card:active {
+      transform: translateY(1px);
+    }
+
+    .doc-card .doc-title {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0 0 6px;
+      letter-spacing: -0.015em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .doc-card .doc-title .arrow {
+      color: var(--text-tertiary);
+      font-weight: 400;
+      font-size: 16px;
+      transition: transform 0.15s ease;
+    }
+
+    .doc-card:hover .doc-title .arrow {
+      transform: translateX(2px);
+      color: var(--accent);
+    }
+
+    .doc-card .doc-summary {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin: 0 0 14px;
+      line-height: 1.55;
+    }
+
+    .doc-card .doc-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      font-size: 12.5px;
+      color: var(--text-tertiary);
+    }
+
+    .doc-card .doc-meta-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .doc-card .doc-meta-item strong {
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .doc-card .doc-path {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .doc-card-placeholder {
+      background-color: var(--bg-subtle);
+      border-style: dashed;
+      cursor: default;
+      opacity: 0.75;
+    }
+
+    .doc-card-placeholder:hover {
+      border-color: var(--border-card);
+      background-color: var(--bg-subtle);
+    }
+
+    .doc-card-placeholder .doc-title {
+      color: var(--text-secondary);
+    }
+
+    .doc-card-placeholder .arrow {
+      display: none;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 1px 7px;
+      font-size: 11px;
+      font-weight: 500;
+      border-radius: 3px;
+      letter-spacing: 0.02em;
+      vertical-align: middle;
+    }
+
+    .badge-current {
+      background-color: #e7f4ec;
+      color: #1f6c3d;
+      border: 1px solid #b8dec7;
+    }
+
+    .badge-planned {
+      background-color: #f1f3f5;
+      color: #515154;
+      border: 1px solid #d2d2d7;
+    }
+
+    .badge-reviewed {
+      background-color: #e7f4ec;
+      color: #1f6c3d;
+      border: 1px solid #b8dec7;
+    }
+
+    .badge-pending-review {
+      background-color: #fff4e0;
+      color: #8a5a00;
+      border: 1px solid #ffd591;
+    }
+
+    .badge-in-review {
+      background-color: #e3f0ff;
+      color: #0850a0;
+      border: 1px solid #a8c8f0;
+    }
+
+    .badge-new {
+      background-color: #f3effe;
+      color: #6b21a8;
+      border: 1px solid #e2d1f9;
+    }
+
+    .footer-note {
+      margin-top: 56px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      font-size: 12.5px;
+      color: var(--text-tertiary);
+    }
+
+    .footer-note p {
+      margin: 4px 0;
+    }
+
+    .footer-note code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background-color: var(--bg-tag);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    @media (max-width: 640px) {
+      main {
+        padding: 32px 18px 48px;
+      }
+      h1 {
+        font-size: 24px;
+      }
+      .doc-card {
+        padding: 18px 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<main>
+  <h1>Documentation Hub</h1>
+
+  <div class="doc-list" style="margin-top:32px">
+
+    <a class="doc-card" href="indexer-design/">
+      <div class="doc-title">
+        블록체인 인덱서 — 수탁형 지갑 설계 가이드 <span class="badge badge-new">NEW</span>
+        <span class="arrow">→</span>
+      </div>
+      <p class="doc-summary">
+        <strong>학습 path (S1-S5)</strong> 왜 인덱서가 필요? · 사용 vs 미사용 비교 · 수탁형 지갑에서의 3 평면 역할 · 필수 여부 · vendor 풍경.
+        <strong>Spec path (Spec 1-4)</strong> Fireblocks / BitGo / NodeInfra / 자체구축 4 path 모두에서 작동하는
+        <strong>abstraction library 설계</strong> — Hexagonal architecture · WalletIndexerPort · 4 adapter · TypeScript interface · idempotency · reorg-safe · KR 은행 망분리 적용.
+        <em>bitcoin-study 풍 학습 narrative 스타일.</em>
+      </p>
+      <div class="doc-meta">
+        <span class="doc-meta-item"><span class="badge badge-pending-review">리뷰 전</span></span>
+        <span class="doc-meta-item"><strong>업데이트</strong> 2026-06-01</span>
+        <span class="doc-meta-item"><strong>Pages</strong> 9 (Hub + S1-S5 + Spec1-4)</span>
+        <span class="doc-meta-item"><strong>Source</strong> Stage 41-44 indexer reference + Fireblocks/Coinbase/Korbit/BitGo 공개 자료</span>
+      </div>
+      <div class="doc-path">indexer-design/</div>
+    </a>
+
+    <a class="doc-card" href="wallet-service-components/">
+      <div class="doc-title">
+        블록체인 매니저 — 컴포넌트 구성과 동작 시나리오 <span class="badge badge-new">NEW</span>
+        <span class="arrow">→</span>
+      </div>
+      <p class="doc-summary">
+        지갑 서비스 백엔드를 <strong>두 층</strong>으로 분해 — 체인과 직접 대화하는 <strong>블록체인 매니저(체인 엔진)</strong>(멀티체인·인덱서·Tx/Nonce·서명)와,
+        그것을 감싸는 <strong>지갑 서비스 백엔드</strong>(게이트웨이·멱등·온체인 정합성·알림).
+        7 컴포넌트는 <strong>왜 필요/어떻게 동작/코드</strong> 를 전용 페이지로, <strong>입금·출금·온오프램프</strong> 시나리오는 mermaid 로,
+        그리고 <strong>블록체인 매니저를 기능별 포트(Account·Transaction·ChainQuery)로 추상화</strong> — 한 어댑터가 여러 포트를 채우고(Fireblocks) 약한 포트만 갈아끼우는(인덱서는 자체/Alchemy) 설계, 세 구현 예시(Fireblocks·자체 구축·NodeWallet 온프렘)까지.
+        정책·컴플라이언스·준비자산 운용은 의도적으로 범위 밖(상위 평면 위임).
+        <em>vendor-neutral 설계 참고안.</em>
+      </p>
+      <div class="doc-meta">
+        <span class="doc-meta-item"><span class="badge badge-pending-review">리뷰 전</span></span>
+        <span class="doc-meta-item"><strong>업데이트</strong> 2026-06-04</span>
+        <span class="doc-meta-item"><strong>Pages</strong> 18 (Overview + 컴포넌트 개요 + 블록체인 매니저 4 + 지갑 서비스 백엔드 3 + 시나리오 4 + 추상화 + 구현 예시 3 + 프로젝트 구조 1)</span>
+        <span class="doc-meta-item"><strong>Source</strong> 저자 설계 (지갑 인프라 패턴 + 공개 SaaS API 참고)</span>
+      </div>
+      <div class="doc-path">wallet-service-components/</div>
+    </a>
+
+    <a class="doc-card" href="gas-delegation/">
+      <div class="doc-title">
+        가스 대납 — 누가 수수료를 내게 할 것인가 <span class="badge badge-new">NEW</span>
+        <span class="arrow">→</span>
+      </div>
+      <p class="doc-summary">
+        EVM 의 gas 는 <strong>발신 계정의 ETH 에서</strong> 나간다 — 수탁 지갑에서 sweep·운영 ETH 보유가 아픈 이유.
+        해법을 <strong>충전(Fireblocks Gas Station)</strong> 과 <strong>대납(Gasless Service — relay 3형태)</strong> 두 축으로 정리하고,
+        <strong>Fireblocks Relay 는 ETH 0 보유 + 월말 인보이스 정산</strong>이라는 확정 사실(ERC-3009 · 2771 · <strong>EIP-7702</strong>,
+        Universal Gasless 는 vault 를 smart contract wallet 로 자동 승격, Base 포함 6개 mainnet)까지.
+        일반 표준 <strong>GSN · ERC-4337 Paymaster 와의 구분</strong>은 저자 정리로 라벨해 붙였다.
+        <em>공식 문서 확정 사실 + 저자 정리 구분 표기.</em>
+      </p>
+      <div class="doc-meta">
+        <span class="doc-meta-item"><span class="badge badge-pending-review">리뷰 전</span></span>
+        <span class="doc-meta-item"><strong>업데이트</strong> 2026-07-03</span>
+        <span class="doc-meta-item"><strong>Pages</strong> 1 (문제 · 선택지 · Gasless 확정 사실 · GSN·Paymaster 구분 · 결정 포인트)</span>
+        <span class="doc-meta-item"><strong>Source</strong> Fireblocks 공식 문서(헬프센터 Gasless Service·Gas Station) + 일반 표준 저자 정리</span>
+      </div>
+      <div class="doc-path">gas-delegation/</div>
+    </a>
+
+    <a class="doc-card" href="canton-network/">
+      <div class="doc-title">
+        Canton 네트워크 — 수탁 지갑 연동 가이드 <span class="badge badge-new">NEW</span>
+        <span class="arrow">→</span>
+      </div>
+      <p class="doc-summary">
+        Canton 네트워크를 <strong>수탁 지갑 관점</strong>으로 분해 — 곳곳에서 <strong>EVM 과 대비</strong>한다.
+        <strong>원장 모델</strong>(활성 contract 집합 ACS + Holding UTXO vs 계정+nonce) · <strong>네트워크 동작</strong>(party·participant=validator, Synchronizer 의 Sequencer+Mediator 2-phase commit 확정) ·
+        <strong>자산 동작</strong>(mint·burn·2-step transfer·traffic 수수료·cancel=Withdraw) · <strong>인덱서 구현</strong>(블록 폴링이 아니라 Ledger API offset 스트림으로 ACS 변화·2-step lifecycle 추적) ·
+        <strong>직접 운영 대 위탁 운영</strong> 책임·복구·trade-off 까지.
+        <em>1차 기술 문서(docs.digitalasset.com) 기반 · 미확정 항목은 "확인 필요" 격리.</em>
+      </p>
+      <div class="doc-meta">
+        <span class="doc-meta-item"><span class="badge badge-pending-review">리뷰 전</span></span>
+        <span class="doc-meta-item"><strong>업데이트</strong> 2026-06-09</span>
+        <span class="doc-meta-item"><strong>Pages</strong> 7 (개요 + 원장 모델 + 네트워크 동작 + 자산 동작 + 인덱서 + 운영 + 수탁 통합)</span>
+        <span class="doc-meta-item"><strong>Source</strong> Digital Asset 공식 문서(v3.4) · docs.sync.global · Fireblocks Canton Coin 복구 · Musubi</span>
+      </div>
+      <div class="doc-path">canton-network/</div>
+    </a>
+
+    <a class="doc-card" href="cosigner-callback-network/">
+      <div class="doc-title">
+        Fireblocks Co-signer ↔ Callback Handler 망 경로 <span class="badge badge-new">NEW</span>
+        <span class="arrow">→</span>
+      </div>
+      <p class="doc-summary">
+        Co-signer 가 서명 전 <strong>Callback Handler(정책 게이트)</strong> 를 호출하는 통신 경로를, <strong>은행 망 분리</strong>처럼 그 사이에 <strong>proxy 가 여러 단</strong> 낄 때 어떻게 설계하나.
+        <strong>통신 모델</strong>(Co-signer=client, SSL pinning + 메시지 서명, 5 인증 옵션) · <strong>L4/L7</strong>(투명 전달 vs TLS 종료)과 pinning 이 깨지는 조건 · <strong>Squid CONNECT passthrough</strong>(SSL Bump 금지) · timeout 누적 ·
+        <strong>책임 분담(RACI)</strong>(Co-signer 운영자 · 중간 벤더 · 은행)까지.
+        <em>Fireblocks 공식 사실 / 일반 네트워크 지식 / 설계 판단을 구분 · timeout 규격은 "측정·합의" 로 격리.</em>
+      </p>
+      <div class="doc-meta">
+        <span class="doc-meta-item"><span class="badge badge-pending-review">리뷰 전</span></span>
+        <span class="doc-meta-item"><strong>업데이트</strong> 2026-06-16</span>
+        <span class="doc-meta-item"><strong>Pages</strong> 3 (개요·통신 모델 + proxy 다단·L4/L7·passthrough + 책임 분담·운영)</span>
+        <span class="doc-meta-item"><strong>Source</strong> Fireblocks 공식(Co-signer·Callback Handler) · 일반 네트워크(L4/L7·Squid) · 설계 판단</span>
+      </div>
+      <div class="doc-path">cosigner-callback-network/</div>
+    </a>
+
+    <a class="doc-card" href="fireblocks-custodial-wallet-db-design/">
+      <div class="doc-title">
+        Fireblocks 도입 수탁형 지갑 — 인프라 · 규제 · DB · 상태 흐름 종합
+        <span class="arrow">→</span>
+      </div>
+      <p class="doc-summary">
+        은행이 Fireblocks 를 도입했을 때의 종합 reference (21 페이지 · 9 도메인).
+        책임 분담 · <strong>망분리 IDC 인프라 운영</strong> · 3 DB 단순화 (walletdb · auditdb · compliancedb) ·
+        Workspace/Vault · <strong>Cold Wallet 80% 비율 + rebalancing</strong> · 9 user role · Admin Quorum / TAP ·
+        SaaS MPC / Hosted MPC / Key Link · 17-status state mirror · webhook (HMAC-SHA512 + idempotency) ·
+        입출금 lifecycle · 2-layer audit · <strong>KR 규제 17 의무 매핑</strong> ·
+        <strong>회계 · 원장 · 4 단계 대사 · 결산 마감</strong> · 10 risks · 10 anti-patterns.
+      </p>
+      <div class="doc-meta">
+        <span class="doc-meta-item"><span class="badge badge-in-review">리뷰 중</span></span>
+        <span class="doc-meta-item"><strong>업데이트</strong> 2026-05-27</span>
+        <span class="doc-meta-item"><strong>Sections</strong> 21</span>
+        <span class="doc-meta-item"><strong>Source</strong> Fireblocks Developer Portal + Help Center</span>
+      </div>
+      <div class="doc-path">fireblocks-custodial-wallet-db-design/</div>
+    </a>
+
+    <a class="doc-card" href="ramp-settlement-walkthrough/">
+      <div class="doc-title">
+        온·오프램프·스왑 정산 워크스루 — 델타 원장 <span class="badge badge-new">NEW</span>
+        <span class="arrow">→</span>
+      </div>
+      <p class="doc-summary">
+        온램프·오프램프·스왑 거래 한 건을 <strong>단계별로</strong> 따라가며, "화면 즉시 반영"과 "실제 자산 정산 지연"의 시점차를
+        <strong>델타 원장</strong>이 어떻게 메우는지 보여준다. <strong>공통 2단계 골격</strong>(카드 승인↔정산 비유) ·
+        거래별 mermaid 시퀀스(델타 pending → settled) · <strong>미정산 분개</strong>(차변/대변 예시) ·
+        정산 실패 rollback · <strong>대사 4단계(L1~L4)</strong>에서 델타의 역할까지. 회계·원장 설계의 거래 흐름을 읽기 쉽게 푼 워크스루.
+      </p>
+      <div class="doc-meta">
+        <span class="doc-meta-item"><span class="badge badge-pending-review">리뷰 전</span></span>
+        <span class="doc-meta-item"><strong>업데이트</strong> 2026-06-25</span>
+        <span class="doc-meta-item"><strong>Pages</strong> 7 (Hub + 온램프·오프램프·스왑·실패되돌리기·DB변화·대사결산)</span>
+        <span class="doc-meta-item"><strong>Source</strong> 회계·원장 설계 거래 흐름 (일반화)</span>
+      </div>
+      <div class="doc-path">ramp-settlement-walkthrough/</div>
+    </a>
+
+    <a class="doc-card" href="custodial-wallet-db-design/">
+      <div class="doc-title">
+        수탁형 지갑 — DB 구조와 상태 흐름
+        <span class="arrow">→</span>
+      </div>
+      <p class="doc-summary">
+        Vendor (Fireblocks 등) 없이 직접 구축하는 수탁형 지갑의 persistence reference.
+        7-DB split · 7 storage class · append-only enforcement · set-once columns ·
+        4 state machine · reversal-entry · evidence chain · reconciliation.
+      </p>
+      <div class="doc-meta">
+        <span class="doc-meta-item"><span class="badge badge-reviewed">리뷰완료</span></span>
+        <span class="doc-meta-item"><strong>업데이트</strong> 2026-05-22</span>
+        <span class="doc-meta-item"><strong>Sections</strong> 25</span>
+        <span class="doc-meta-item"><strong>Diagrams</strong> 15</span>
+      </div>
+      <div class="doc-path">custodial-wallet-db-design/</div>
+    </a>
+
+    <a class="doc-card" href="fireblocks-kr-vasp-compliance/">
+      <div class="doc-title">
+        국내 블록체인 사업 법규 × Fireblocks
+        <span class="arrow">→</span>
+      </div>
+      <p class="doc-summary">
+        한국에서 가상자산사업자 (VASP) 로 사업할 때의 법규를 Fireblocks 로 어디까지 풀고 어디부터 못 푸는지
+        정직하게 정리한 reference. ✅ 직접 / ⚠️ 부분 / ❌ 외부 3-분류 17 의무 매핑 + 4 종합검사 사례 분석
+        + KR VASP 신고 + Fireblocks 도입 통합 절차 + 8 미해결 항목.
+      </p>
+      <div class="doc-meta">
+        <span class="doc-meta-item"><span class="badge badge-pending-review">리뷰 전</span></span>
+        <span class="doc-meta-item"><strong>업데이트</strong> 2026-05-08</span>
+        <span class="doc-meta-item"><strong>Sections</strong> 8</span>
+        <span class="doc-meta-item"><strong>Source</strong> KR 법령 + Fireblocks Help Center</span>
+      </div>
+      <div class="doc-path">fireblocks-kr-vasp-compliance/</div>
+    </a>
+
+    <a class="doc-card" href="fireblocks-cold-wallet-bank-design/">
+      <div class="doc-title">
+        Fireblocks Cold Wallet — 수탁형 지갑 운영
+        <span class="arrow">→</span>
+      </div>
+      <p class="doc-summary">
+        은행이 수탁형 지갑을 만들 때 Fireblocks Cold Wallet 을 어떻게 배치·운영할지 정리. Hot/Cold workspace
+        직교 축 · multi-workspace 토폴로지 · Admin Quorum 단독 거버넌스 (Risk-G07) · Hot↔Cold P2P
+        rebalancing · signing flow · KR 은행 운영 절차 · 8 open questions.
+      </p>
+      <div class="doc-meta">
+        <span class="doc-meta-item"><span class="badge badge-pending-review">리뷰 전</span></span>
+        <span class="doc-meta-item"><strong>업데이트</strong> 2026-04-28</span>
+        <span class="doc-meta-item"><strong>Sections</strong> 8</span>
+        <span class="doc-meta-item"><strong>Source</strong> Fireblocks Help Center</span>
+      </div>
+      <div class="doc-path">fireblocks-cold-wallet-bank-design/</div>
+    </a>
+
+    <a class="doc-card" href="fireblocks-key-link-bank-design/">
+      <div class="doc-title">
+        Fireblocks Key Link — Customer HSM 통합
+        <span class="arrow">→</span>
+      </div>
+      <p class="doc-summary">
+        Fireblocks 의 Key Link plane — Fireblocks 가 키 share 를 보유하지 않는
+        customer-held HSM 모델 (Validation Key + Signing Key paired plane).
+        Thales Luna HSM 통합 · Hot/Warm/Cold 3-mode signing · Customer Server SPOF ·
+        PoO 2 methods · KR 망분리 적합성 · 7 risks + 8 open questions.
+      </p>
+      <div class="doc-meta">
+        <span class="doc-meta-item"><span class="badge badge-pending-review">리뷰 전</span></span>
+        <span class="doc-meta-item"><strong>업데이트</strong> 2026-05-21</span>
+        <span class="doc-meta-item"><strong>Sections</strong> 7</span>
+        <span class="doc-meta-item"><strong>Source</strong> Fireblocks Help Center</span>
+      </div>
+      <div class="doc-path">fireblocks-key-link-bank-design/</div>
+    </a>
+
+    <a class="doc-card" href="nodewallet-bank-design/">
+      <div class="doc-title">
+        NodeWallet 은행 도입 — 인프라 · DB · 상태 흐름
+        <span class="arrow">→</span>
+      </div>
+      <p class="doc-summary">
+        은행이 NodeInfra 의 NodeWallet (온프레미스 스테이블코인 핫월렛 인프라) 을 자사 망분리 IDC 에
+        설치·운영할 때의 인프라 · DB 스키마 · 상태 머신. 3-key 다중서명 (HSM + SGX) · 4-DB 분할 ·
+        10 policy rule · 결정 라이프사이클 · 2-layer 감사 · 5 KR 규제 매핑.
+      </p>
+      <div class="doc-meta">
+        <span class="doc-meta-item"><span class="badge badge-pending-review">리뷰 전</span></span>
+        <span class="doc-meta-item"><strong>업데이트</strong> 2026-05-12</span>
+        <span class="doc-meta-item"><strong>Sections</strong> 17</span>
+        <span class="doc-meta-item"><strong>Diagrams</strong> 14</span>
+      </div>
+      <div class="doc-path">nodewallet-bank-design/</div>
+    </a>
+
+  </div>
+
+</main>
+
+</body>
+</html>

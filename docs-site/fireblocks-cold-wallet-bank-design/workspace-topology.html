@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>2. Workspace 토폴로지 — 은행 Cold Wallet 배치</title>
+<meta content="은행이 Fireblocks Cold Wallet 을 도입할 때의 multi-workspace 토폴로지" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Cold Wallet 기초</h3>
+<ul>
+<li><a href="cold-wallet-fundamentals.html">1. Cold Wallet 이란</a></li>
+<li><a class="active" href="workspace-topology.html">2. Workspace 토폴로지</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Governance &amp; Flow</h3>
+<ul>
+<li><a href="governance-quorum.html">3. Admin Quorum 단독 거버넌스</a></li>
+<li><a href="hot-cold-rebalancing.html">4. Hot ↔ Cold Rebalancing</a></li>
+<li><a href="signing-flow.html">5. Cold Wallet Signing</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 은행 도입</h3>
+<ul>
+<li><a href="bank-operations.html">6. 은행 운영 절차</a></li>
+<li><a href="risks-open-questions.html">7. Risks &amp; Open Questions</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="topology">
+<h1>2. Workspace 토폴로지 — 은행 Cold Wallet 배치</h1>
+<p class="lead">
+Fireblocks 의 Vault Structure Best Practices 의 다중 workspace 패턴을 은행 환경에 매핑.
+은행은 보통 <strong>4–5 workspace</strong> 로 시작한다.
+</p>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처</div>
+<p><strong>공식 문서에 정의된 사실</strong></p>
+<ul style="margin-bottom:0.5rem">
+<li>3-workspace 분리 패턴 (Administrative / Operational / Custodial) — Fireblocks Vault Structure Best Practices</li>
+<li>5-level 계층 (Customer Domain → Workspace → Vault Account → Asset Wallet → Deposit Address) — Fireblocks 공식 문서</li>
+<li>Default visibility 정책 — Fireblocks 공식 문서</li>
+<li>Workspace type immutability — Fireblocks 공식 문서 (Hosted MPC Workspace Configuration)</li>
+</ul>
+<p style="margin-bottom:0"><strong>저자가 합리적으로 추정한 운영 권장</strong> — 참고용</p>
+<ul style="margin-bottom:0">
+<li>"5 workspace baseline" 의 정확한 구성 (Administrative / Operational / Custodial Hot / Custodial Cold / Sandbox)</li>
+<li>Cold workspace 에서 Sweep-to-omnibus vs Segregated 의 적용성</li>
+<li>Cold workspace 의 round-robin 의미</li>
+<li>은행 결정 사항 (workspace 위치 / Customer Domain 분리 / user 수 / rebalancing 주기)</li>
+</ul>
+</div>
+
+<h2>2.1 권장 workspace 구성 — Bank Baseline (저자 추정)</h2>
+<p>
+Fireblocks Vault Structure Best Practices 의 <strong>3-workspace 분리 패턴</strong> (>$10M tokenization)
++ Cold Wallet 분리를 합친 형태.
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>Workspace</th><th>Type</th><th>Network</th><th>역할</th><th>Approval Group</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><strong>Administrative</strong></td><td>Hot</td><td>Mainnet</td>
+  <td>smart contract deploy / upgrade, role allocation</td><td>지원</td></tr>
+<tr><td>2</td><td><strong>Operational</strong></td><td>Hot</td><td>Mainnet</td>
+  <td>일일 입출금, sweeping, gas station 운영</td><td>지원</td></tr>
+<tr><td>3</td><td><strong>Custodial (Hot)</strong></td><td>Hot</td><td>Mainnet</td>
+  <td>고객 자산 working balance 보관</td><td>지원</td></tr>
+<tr><td>4</td><td><strong>Custodial (Cold)</strong></td><td><span class="badge badge-cold">Cold</span></td><td>Mainnet</td>
+  <td>고객 자산 bulk reserve (cold storage)</td><td><strong>미지원 — Admin Quorum 단독</strong></td></tr>
+<tr><td>5</td><td><strong>Sandbox</strong></td><td>Hot</td><td>Testnet</td>
+  <td>개발 / 통합 테스트</td><td>지원</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Vault Structure Best Practices: 3-workspace 분리 + Cold 별도)</span>
+</p>
+
+<div class="callout">
+<div class="callout-title">왜 Custodial 을 Hot / Cold 둘로 쪼개나</div>
+<p>
+Fireblocks Vault Structure BP 의 권장은 "<strong>Cold Wallet 분리</strong>" (workspace 단위). 은행은 동일 고객 자산을
+"hot balance" (실시간 처리용) 와 "cold reserve" (대량 보관용) 두 plane 으로 운영하며,
+plane 간 자산 이동은 P2P rebalancing 으로 수행한다.
+<span class="src">(출처: Fireblocks 공식 문서 — Vault Structure Best Practices)</span>
+</p>
+</div>
+
+<h2>2.2 5-Level 계층의 Cold workspace 내부 구조</h2>
+<p>
+Cold workspace 내부도 Hot 과 동일한 5-level 계층을 따른다는 가정 (5-level 구조 자체는 공식 문서 fact, workspace type 직교는 저자 추정).
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  CD["🏢 Customer Domain<br/>(Bank)"]
+  WS["❄ Workspace<br/>Custodial Cold<br/>(본 페이지 대상)"]
+
+  VA1["📁 Vault Account<br/>BTC-Reserve"]
+  VA2["📁 Vault Account<br/>ETH-Reserve"]
+  VA3["📁 Vault Account<br/>USDC-Reserve"]
+
+  AW1["💰 Asset Wallet<br/>BTC"]
+  AW2["💰 Asset Wallet<br/>ETH"]
+  AW3["💰 Asset Wallet<br/>USDC (ERC-20)"]
+
+  DA1["📍 Deposit Address × N<br/>(UTXO multi-address)"]
+  DA2["📍 Deposit Address × 1<br/>(account-based single)"]
+  DA3["📍 Deposit Address × 1"]
+
+  CD --> WS
+  WS --> VA1
+  WS --> VA2
+  WS --> VA3
+  VA1 --> AW1 --> DA1
+  VA2 --> AW2 --> DA2
+  VA3 --> AW3 --> DA3
+
+  classDef domain fill:#dcfce7,stroke:#16a34a
+  classDef cold fill:#dbeafe,stroke:#2563eb
+  classDef vault fill:#fef3c7,stroke:#d97706
+  classDef asset fill:#e0e7ff,stroke:#6366f1
+  classDef addr fill:#fae8ff,stroke:#a855f7
+
+  class CD domain
+  class WS cold
+  class VA1,VA2,VA3 vault
+  class AW1,AW2,AW3 asset
+  class DA1,DA2,DA3 addr
+</pre>
+</div>
+<p class="diagram-caption">
+Custodial Cold workspace 내부의 5-level 계층 예시. 5 레벨이 색으로 구분:
+초록 = Customer Domain / 파랑 = Cold Workspace / 노랑 = Vault Account / 보라 = Asset Wallet / 분홍 = Deposit Address.
+Asset 유형에 따라 Deposit Address 개수가 다름 (BTC = N 개 / ETH·USDC = 1 개).
+</p>
+
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Account and Wallet Structure: 5-level 계층, Asset Type → Address 매핑)</span>
+</p>
+
+<h2>2.3 Segregated vs Sweep-to-omnibus — Cold workspace 에서는 어떻게?</h2>
+<p>
+Fireblocks 의 2 vault 구조 패턴 (Segregated / Sweep-to-omnibus).
+<span class="src">(출처: Fireblocks 공식 문서 — Vault Structure Best Practices)</span>
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>Hot workspace</th><th>Cold workspace</th></tr></thead>
+<tbody>
+<tr><td><strong>Sweep-to-omnibus</strong></td>
+  <td>End user 입금 → Intermediate vault → Omnibus → Withdrawal pool. Gas Station 자동.</td>
+  <td>저자 추정 — Cold 에서는 Sweep 의 의미가 약함. Cold 으로의 sweep 은 운영 시간 단위의 batch rebalancing.</td></tr>
+<tr><td><strong>Segregated</strong></td>
+  <td>Per-client vault. Settlement on-chain atomic.</td>
+  <td>저자 추정 — Cold 의 segregated 는 사용 빈도 낮음 (대량 보관 목적과 충돌)</td></tr>
+<tr><td><strong>은행 권장 (Cold)</strong></td>
+  <td>—</td>
+  <td><strong>대형 omnibus vault 1–N 개</strong> (BTC / ETH / 안정자산 별 1 omnibus reserve). 사용자 단위 분리 안 함.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>2.4 Default visibility 함정 — workspace 단위 격리</h2>
+<p>
+Fireblocks 의 <strong>default 모든 user 가 모든 vault 가시성</strong> 정책이 Cold workspace 에도 동일 적용됨.
+<span class="src">(출처: Fireblocks 공식 문서 — Vault Structure Best Practices: "By default, all users in the workspace have visibility to all of the Vault accounts in the workspace.")</span>
+</p>
+<p>
+→ <strong>Cold workspace 내부의 부분 가시성 제한은 별도 workspace 분리로만 가능</strong>.
+은행 권장: Cold workspace 자체를 <strong>최소 사용자 집합 (Owner + 2–3 Admin)</strong> 으로 유지.
+</p>
+
+<h2>2.5 Customer Domain 단위 grouping</h2>
+<p>
+Cold workspace 와 Hot workspace 들은 같은 Customer Domain 에 속한다. Fireblocks 공식 문서:
+"Customer Domain (5-level hierarchy 의 top) 안에 다양한 type 의 workspace 가능".
+<span class="src">(출처: Fireblocks 공식 문서 — Set up your Fireblocks Vault with Key Link)</span>
+</p>
+<p>
+→ 은행의 모든 workspace (Hot×3 + Cold + Sandbox) 가 단일 Customer Domain 에 묶임. Workspace type 만 immutable.
+</p>
+
+<h2>2.6 Round-Robin Withdrawal vault 의 Cold workspace 적용</h2>
+<p>
+Fireblocks 의 round-robin 권장 (EVM nonce / Bitcoin 25-chain 제약) 은 Hot withdrawal pool 대상.
+<strong>Cold workspace 는 round-robin 이 의미 약함</strong> — withdrawal 빈도가 낮고, 시간 단위 batch 로 운영되기 때문 (저자 추정).
+<span class="src">(출처: Fireblocks 공식 문서 — Account and Wallet Structure: round-robin pattern 의 원래 적용 대상)</span>
+</p>
+
+<h2>2.7 변경 불가 — workspace type immutability</h2>
+<p>
+한 번 Cold workspace 로 생성하면 Hot workspace 로 변환 불가, 그 역도 불가. 공식 문서 직접 인용:
+</p>
+<blockquote>
+"You must open and configure a <strong>new workspace</strong> for a Hosted MPC setup, as
+<strong>modifying an existing SaaS MPC workspace is impossible</strong>."
+</blockquote>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Hosted MPC Workspace Configuration)</span>
+</p>
+<p>
+→ Cold ↔ SaaS MPC 변환도 architectural symmetry 로 같은 invariant 추정.
+은행이 Cold workspace 도입 결정은 <strong>1-way door</strong> 로 간주.
+</p>
+
+<h2>2.8 토폴로지 요약 — 은행 baseline</h2>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  CD["🏢 Customer Domain<br/>(Bank)"]
+
+  ADMIN["⚙️ Administrative<br/>Hot · Mainnet<br/>smart contract · role"]
+  OPS["🔄 Operational<br/>Hot · Mainnet<br/>일일 입출금"]
+  CHOT["💰 Custodial Hot<br/>Hot · Mainnet<br/>working balance ≤ 20%"]
+  CCOLD["❄ Custodial Cold<br/>Cold · Mainnet<br/>bulk reserve ≥ 80%"]
+  SANDBOX["🧪 Sandbox<br/>Hot · Testnet<br/>개발 · 통합 테스트"]
+
+  CD --> ADMIN
+  CD --> OPS
+  CD --> CHOT
+  CD --> CCOLD
+  CD --> SANDBOX
+
+  CHOT <-. "P2P rebalancing" .-> CCOLD
+
+  classDef hot fill:#fef3c7,stroke:#d97706
+  classDef cold fill:#dbeafe,stroke:#2563eb
+  classDef sandbox fill:#e0e7ff,stroke:#6366f1
+  classDef domain fill:#dcfce7,stroke:#16a34a
+
+  class CD domain
+  class ADMIN,OPS,CHOT hot
+  class CCOLD cold
+  class SANDBOX sandbox
+</pre>
+</div>
+<p class="diagram-caption">
+한 사업자 (Customer Domain) 아래 5 workspace. 초록 = 사업자 / 노랑 = Hot Mainnet / 파랑 = Cold Mainnet (별도 product) / 보라 = Sandbox Testnet.
+Custodial Hot ↔ Cold 간 P2P rebalancing 으로 80% cold ratio 유지.
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">은행 결정 사항 (5)</div>
+<ol>
+<li><strong>Cold workspace 의 위치</strong> — KR 망분리 IDC 안 / 외부 Fireblocks Cold facility / hybrid. Fireblocks Sales 와 협의 필요</li>
+<li><strong>Customer Domain 통합 vs 분리</strong> — 자회사 / 계열사가 별도 Customer Domain 인지</li>
+<li><strong>Cold 의 user 수</strong> — Admin Quorum 단독 운영이므로 최소 인원으로 (Default visibility 함정)</li>
+<li><strong>Cold rebalancing 주기</strong> — 일일 / 주간 / 임계점 기반</li>
+<li><strong>Cold storage 비율</strong> — KR 가상자산업감독규정 9조 의 80% (경제적 가치) 충족</li>
+</ol>
+</div>
+
+<p class="back-top"><a href="#topology">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

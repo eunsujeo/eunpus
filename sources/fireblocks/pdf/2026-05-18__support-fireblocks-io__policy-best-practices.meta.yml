@@ -1,0 +1,8 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/policy-best-practices
+downloaded_at: 2026-05-18
+domain: governance
+tier: 2
+status: source-lake-only
+title: "Policy best practices"
+ingest_log: "Stage 10 (2026-05-18) — renamed, markdown deferred"
+note: "Best-practice patterns for Policy rules. Promote to full ingest if Operations team needs specific guidance."

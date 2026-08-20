@@ -1,0 +1,11 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/17816899620764-Filecoin-Blockchain-functionality-overview
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 6
+language: en
+category: blockchains-chain-specific
+chain: FIL
+notes: |
+  Filecoin L1 with EVM-compatible interface. Four account types F1/F2/F3/F4 (F4 = EVM 0x rep).
+  Fireblocks implements EVM interface + supports transfers between EVM (0x) and native (Fx) via FILForwarder.
+  Placeholder ingestion — covers EVM/native interop quirks.

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>1. 컴포넌트 개요 — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="블록체인 매니저의 7 컴포넌트 개요와 책임 경계 매트릭스 — 체인 차이 흡수(EVM), 입금 감지, 출금 파이프라인, 서명(co-signer), 온체인 정합성, API 게이트웨이, 알림. Fireblocks 매니저와 우리 백엔드(Service·Admin) 두 층." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a class="active" href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Fireblocks 매니저 (벤더 안)</h3><ul>
+<li><a href="component-multichain.html">2. 체인 차이 흡수 — EVM</a></li>
+<li><a href="component-indexer.html">3. 입금 감지 (webhook)</a></li>
+<li><a href="component-tx-nonce.html">4. 출금 파이프라인</a></li>
+<li><a href="component-signing.html">5. 서명 · co-signer</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 우리 백엔드 (Service·Admin)</h3><ul>
+<li><a href="component-gateway.html">6. API 게이트웨이</a></li>
+<li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
+<li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 시나리오</h3><ul>
+<li><a href="scenario-provisioning.html">9. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">10. 입금</a></li>
+<li><a href="scenario-withdrawal.html">11. 출금</a></li>
+<li><a href="scenario-onofframp.html">12. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 추상화</h3><ul>
+<li><a href="abstraction.html">13. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
+<li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. 기타</h3><ul>
+<li><a href="wallet-creation-animated.html">18. 지갑 생성 애니메이션</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="components">
+<h2>1. 컴포넌트 개요</h2>
+<span class="section-subtitle">7 컴포넌트를 한눈에 — 두 층(Fireblocks 매니저 / 우리 백엔드)으로</span>
+
+<p class="lead">컴포넌트를 나누는 기준은 "기능" 이 아니라 <strong>책임 경계</strong>다. 즉 "무엇을 결정하고, 무엇을 받기만 하고, 어디서 외부와 맞닿는가" 로 나눈다. 경계가 분명해야 한 컴포넌트의 장애나 변경이 다른 컴포넌트로 번지지 않는다.</p>
+
+<div class="callout callout-success">
+<div class="callout-title">7 컴포넌트는 두 층에 속한다</div>
+<ul>
+<li><strong>Fireblocks 매니저 (벤더 안)</strong> — 체인 차이 흡수(EVM) · 입금 감지(webhook) · 출금 파이프라인 · 서명. 체인과 직접 대화하는 부분으로, <strong>Fireblocks 를 채택</strong>해 벤더 안에서 돌린다. 다만 서명은 우리 <strong>API Co-signer</strong> 와의 공동서명으로 마지막 관문이 우리 인프라에 선다.</li>
+<li><strong>우리 백엔드 (Service·Admin)</strong> — API 게이트웨이 · 온체인 정합성·추적 · 이벤트/알림. 블록체인 특화가 아닌 서비스 로직으로, 벤더 안으로 들어가지 않는다. <strong>Service 백엔드</strong>(고객 런타임)와 <strong>Admin 백엔드</strong>(운영·거버넌스)로 물리 분리된다.</li>
+</ul>
+<p>이 두 층을 가르는 경계가 <a href="abstraction.html">13. 추상화</a> 의 기능별 포트(AccountPort·TransactionPort·ChainQueryPort)다.</p>
+</div>
+
+<h3>1.1 컴포넌트 한눈에 보기</h3>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th style="width:20%">컴포넌트</th><th style="width:14%">층</th><th>한 줄 책임</th><th style="width:12%">상세</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>API 게이트웨이</strong></td><td>우리 백엔드 · Service</td><td>외부 요청을 받아 인증하고, 같은 요청이 두 번 실행되지 않게 멱등 키<span class="g" data-tip="같은 요청 ID 로 두 번 들어와도 실행은 한 번만 — 재시도·장애 시 중복 실행/이중 지급 방지">?</span>를 부여해 내부로 라우팅</td><td><a href="component-gateway.html">6. 상세</a></td></tr>
+<tr><td><strong>체인 차이 흡수 (EVM)</strong></td><td>Fireblocks 매니저</td><td>이더리움·Base 처럼 여러 EVM 체인의 차이(가스 시세·L2 확정 지연 등)를 한 가지 인터페이스로 정규화</td><td><a href="component-multichain.html">2. 상세</a></td></tr>
+<tr><td><strong>입금 감지 (webhook)</strong></td><td>Fireblocks 매니저</td><td>체인 데이터에서 우리 주소로 들어온 수신 트랜잭션을 감지하고, 확정 판단(DCCP<span class="g" data-tip="입금·출금 확정 정책(Deposit Control and Confirmation Policy). 몇 번의 confirmation 을 쌓아야 finality 로 볼지 정한다 — 대부분 1, ETC 372, contract call 3 이상">?</span>) 후 webhook 으로 밀어 넣는다</td><td><a href="component-indexer.html">3. 상세</a></td></tr>
+<tr><td><strong>출금 파이프라인</strong></td><td>Fireblocks 매니저</td><td>송신 트랜잭션(출금)을 조립하고, 순번(nonce<span class="g" data-tip="계정 기반 체인에서 한 주소의 트랜잭션 순번 카운터. 순차적이어야 하고 비면 뒤 트랜잭션이 모두 막힌다">?</span>)을 관리하며, 전파하고, 막히면(stuck) boost·cancel 로 재전송</td><td><a href="component-tx-nonce.html">4. 상세</a></td></tr>
+<tr><td><strong>서명 오케스트레이션</strong></td><td>Fireblocks 매니저 (+ 우리 co-signer)</td><td>조립된 트랜잭션을 <strong>Fireblocks MPC 와 우리 API Co-signer</strong>가 공동서명하는 경계. Co-signer 는 Callback Handler 에 승인을 물은 뒤 서명 share 를 낸다</td><td><a href="component-signing.html">5. 상세</a></td></tr>
+<tr><td><strong>온체인 정합성 · 추적</strong></td><td>우리 백엔드 · Service·Admin</td><td>체인 사실 확정 · 요청 ID 연결 · 예외 감지 (회계 원장 대사는 회계 평면에 위임)</td><td><a href="component-ledger.html">7. 상세</a></td></tr>
+<tr><td><strong>이벤트 · 알림</strong></td><td>우리 백엔드 · Service</td><td>수신·확정·송신 완료 등 트랜잭션 상태 변화를 외부에 push(webhook/스트림)</td><td><a href="component-alerts.html">8. 상세</a></td></tr>
+</tbody>
+</table>
+</div>
+
+<p>7 컴포넌트 모두 전용 상세 페이지에서 "왜 필요 / 어떻게 동작 / 코드로 보면 / 다른 컴포넌트가 어떻게 쓰는지" 를 다룬다. 백엔드 두 컴포넌트(API 게이트웨이 · 이벤트/알림)는 아래 1.3 에서 위치만 한 번 더 짚는다. (현금↔코인 전환인 온/오프램프는 수탁 지갑에선 은행 앱의 내부 작업이라 매니저 컴포넌트가 아니다 — <a href="scenario-onofframp.html">12. 온·오프램프</a> 참조)</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    BIZ["비즈니스 레이어"]
+    subgraph SVC["우리 백엔드 — Service·Admin 물리 분리"]
+      GW["API 게이트웨이 · 멱등 · 알림<br/>Service — 고객 런타임"]
+      LED["온체인 정합성 · 추적<br/>Service·Admin"]
+      ADM["정책·승인·키 운영<br/>Admin — boost·cancel·동결"]
+    end
+    subgraph MGR["Fireblocks 매니저 — 채택 · 벤더 안"]
+      ADP["체인 차이 흡수 — EVM"]
+      IDX["입금 감지 — webhook<br/>수신 트랜잭션"]
+      TX["출금 파이프라인<br/>송신 트랜잭션 · boost"]
+      SIG["서명 오케스트레이션"]
+    end
+    COS["API Co-signer + Callback Handler<br/>우리 보안 존 · SGX/TEE"]
+
+    BIZ --> GW
+    BIZ --> ADM
+    GW -->|기능 포트 호출| MGR
+    ADM -->|정책·승인·운영| SIG
+    TX -->|서명 요청| SIG
+    SIG -->|공동서명 질의| COS
+    MGR -->|체인 사실 · 수신 이벤트| LED
+    MGR -->|webhook| GW
+
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    classDef svc fill:#dcfce7,stroke:#16a34a;
+    classDef adm fill:#fef3c7,stroke:#d97706;
+    classDef adp fill:#dbeafe,stroke:#2563eb;
+    classDef sec fill:#fee2e2,stroke:#dc2626;
+    class BIZ ext;
+    class GW,LED svc;
+    class ADM adm;
+    class ADP,IDX,TX,SIG adp;
+    class COS sec;
+</pre></div>
+<p class="diagram-caption">Figure 1-1. 7 컴포넌트를 두 층으로. <strong>초록 = 우리 백엔드 Service</strong>(게이트웨이·정합성·알림 — 고객 런타임), <strong>노랑 = 우리 백엔드 Admin</strong>(정책·승인·키 운영·boost·cancel·동결 — 운영·거버넌스). 둘은 <strong>물리적으로 분리</strong>된다. <strong>파랑 = Fireblocks 매니저</strong>(채택 · 벤더 안: 체인 차이 흡수·입금 감지·출금 파이프라인·서명). <strong>빨강 = API Co-signer</strong>(우리 보안 존의 SGX/TEE — 서명 share 하나를 들고 공동서명). 비즈니스 레이어 → Service 게이트웨이 → 매니저(기능 포트) → 정합성·알림. 운영·거버넌스는 Admin 이 정책·승인으로 서명 경계에 개입한다. 트리거로 보면 — <strong>① 호출(inbound)</strong> 은 게이트웨이로, <strong>② 감지(event-driven)</strong> 는 입금 감지 webhook 으로 (0.2 절 참조).</p>
+
+<h3>1.2 책임 경계 매트릭스</h3>
+
+<p>각 컴포넌트가 무엇을 하는지 세 가지로 나눈다 — <strong>D</strong>=결정(스스로 판단) · <strong>X</strong>=집행(받아서 실행) · <strong>E</strong>=외부 위임.</p>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>관심사</th><th>주관 컴포넌트</th><th>성격</th></tr>
+</thead>
+<tbody>
+<tr><td>요청 진입 · 멱등</td><td>API 게이트웨이 (Service)</td><td>집행(X)</td></tr>
+<tr><td>EVM 체인 규칙 정규화</td><td>체인 차이 흡수 (매니저)</td><td>결정(D) — 체인 semantic 한정</td></tr>
+<tr><td>수신 트랜잭션 감지 · 확정 판단</td><td>입금 감지 (매니저)</td><td>결정(D) — 확정 정책 DCCP 적용</td></tr>
+<tr><td>nonce · 전파 · 재전송 · boost·cancel</td><td>출금 파이프라인 (매니저 + Admin 개입)</td><td>결정(D) — 체인 쓰기 전략</td></tr>
+<tr><td>서명</td><td>서명 오케스트레이션 → Fireblocks MPC + 우리 Co-signer</td><td>외부(E) — 벤더 + 우리 공동서명</td></tr>
+<tr><td>온체인 정합성 · 추적</td><td>온체인 정합성 · 추적 (Service·Admin)</td><td>집행(X) — 사실 비교</td></tr>
+<tr><td>상태 변화 알림</td><td>이벤트 · 알림 (Service)</td><td>집행(X) — 전달만</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="light-backend">1.3 백엔드 컴포넌트 — <a href="component-gateway.html">6. API 게이트웨이</a> · <a href="component-alerts.html">8. 이벤트·알림</a> (온체인 정합성 · 추적은 <a href="component-ledger.html">7장</a>에서 별도 상세)</h3>
+
+<h4>API 게이트웨이 (Service)</h4>
+<dl class="chain-rr">
+<dt>왜 필요</dt><dd>고객 런타임 요청의 단일 진입점. 인증·rate limit 과 <strong>멱등 키</strong>로 "재시도해도 한 번만 실행" 을 보장하는 곳. 이게 없으면 네트워크 재시도가 곧바로 이중 출금으로 이어진다.</dd>
+<dt>하는 일</dt><dd>주소 발급, 송신 트랜잭션 요청(출금), 잔액/상태 조회를 받아 Fireblocks 매니저(쓰기)·온체인 정합성(조회)으로 라우팅. 비즈니스 판단은 안 한다. 정책·승인·boost·cancel·동결 같은 운영·거버넌스는 <strong>Admin 백엔드</strong>가 별도 경계에서 맡는다.</dd>
+<dt>경계</dt><dd>얇게 유지 — 로직은 뒤 컴포넌트로 위임.</dd>
+</dl>
+
+<h4>이벤트 · 알림</h4>
+<dl class="chain-rr">
+<dt>왜 필요</dt><dd>상위 서비스·고객이 폴링하지 않고도 수신·확정·송신 완료를 즉시 알 수 있어야 한다.</dd>
+<dt>하는 일</dt><dd>인덱서·트랜잭션·온체인 정합성의 상태 변화를 webhook/스트림으로 push. 재시도·순서·서명 검증.</dd>
+<dt>경계</dt><dd>상태를 만들지 않고 전달만 한다. 멱등 전달(같은 이벤트 중복 수신 대비)을 소비자에게 보장.</dd>
+</dl>
+
+<div class="callout callout-warn">
+<div class="callout-title">범위 밖 (다시 강조)</div>
+<p>준비자산 운용(자금)과 회계 원장 대사·기표(회계 평면)는 매니저가 소유·결정하지 않는다. 출금도 매니저가 승인하지 않으며, <strong>승인이 끝난 요청을 받아</strong> 집행만 한다.</p>
+</div>
+
+<p>다음 — <a href="component-multichain.html"><strong>2. 체인 차이 흡수 — EVM</strong></a> 부터 컴포넌트를 깊게 본다.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

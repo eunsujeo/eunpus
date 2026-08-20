@@ -1,0 +1,42 @@
+solution: Notabene
+publisher: Notabene
+accessed_at: 2026-08-07
+authority_grade: A2
+immutable: true
+sources:
+  - id: NB-IDX-001
+    file: 2026-08-07__docs-index.txt
+    url: https://devx.notabene.id/llms.txt
+    sha256: c8c6040679a4c0d0115984733efc03cd0d7396af2e77c1c2e24875e6ae578f24
+  - id: NB-INTRO-001
+    file: 2026-08-07__welcome.md
+    url: https://devx.notabene.id/docs/welcome.md
+    sha256: a9f986b56cb10b99bc213af4db58817338f91bec41b286603ee79c24253a9e9e
+  - id: NB-FLOW-001
+    file: 2026-08-07__flow-diagrams-v2.md
+    url: https://devx.notabene.id/docs/flow-diagrams-v2.md
+    sha256: 7887fe48f58934d621cc662b31bd72400d43bd85a6449bb1451cecefcaddeca2
+  - id: NB-AUTH-001
+    file: 2026-08-07__authentication.md
+    url: https://devx.notabene.id/docs/authentication.md
+    sha256: 1f262d8d191329f25b2ed41417de256a0344d8bbe5e3fc1294d25f36bf04162b
+  - id: NB-WEBHOOK-001
+    file: 2026-08-07__webhook-flow.md
+    url: https://devx.notabene.id/docs/webhook-flow.md
+    sha256: dd5a4178b4d9838f62ce63753598c2fc2e1e58cb2ed33e6b309ac1032f421f30
+  - id: NB-FLOW-002
+    file: 2026-08-07__create-outgoing-transfers.md
+    url: https://devx.notabene.id/docs/create-outgoing-transfers.md
+    sha256: e35bab27f521bb0c4623f4a5f30bf35b262be44253b98b3a41cadc10efda12de
+  - id: NB-SEC-001
+    file: 2026-08-07__self-encryption.md
+    url: https://devx.notabene.id/docs/self-encryption.md
+    sha256: 1b034cb7de1fd649990c876db4830bdeb7fc2829f79d32b41670a92aab5b87db
+  - id: NB-SEC-002
+    file: 2026-08-07__encryption-by-notabene.md
+    url: https://devx.notabene.id/docs/encryption-by-notabene.md
+    sha256: ad4317d3f00024f1ce0d203d59c69aa08af17e384c5a410ece44f0309e045f1d
+  - id: NB-FB-001
+    file: 2026-08-07__using-notabene-and-fireblocks.md
+    url: https://devx.notabene.id/docs/using-notabene-and-fireblocks.md
+    sha256: 44612e601c9255e7f83e7b9f90c1e606b86448ef1ed8b3f2ce964c557c0b19af

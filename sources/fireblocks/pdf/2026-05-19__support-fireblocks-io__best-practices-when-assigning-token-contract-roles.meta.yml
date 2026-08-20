@@ -1,0 +1,8 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/best-practices-when-assigning-token-contract-roles
+downloaded_at: 2026-05-19
+domain: tokenization (governance cross-cut)
+tier: 2-deferred
+status: placeholder
+title: "Best practices when assigning token contract roles"
+ingest_log: "Stage 11 (2026-05-19) — Stage 11 lazy-load policy applied; catalog placeholder, deep ingest deferred"
+note: "Role assignment governance best practices for token contracts. Promote with Roles in Fireblocks smart contracts when Tokenization deep ingest is requested."

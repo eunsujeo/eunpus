@@ -1,0 +1,10 @@
+url: https://support.fireblocks.io/hc/en-us/articles/api-co-signer-overview-and-usage
+url_status: inferred (slug 기반 추정, 실 article ID 미확인)
+fetched_at: 2026-05-19
+source_type: pdf
+domain: cosigner-deployment / api-cosigner-overview
+tier: 1
+title: "API Co-signer overview and usage"
+crawl_status: not-fetched (body 미로드, lightweight index 만)
+promote_condition: "API Co-signer 전반 개요 + usage 패턴 (Stage 8 의 entity-grade 명세 확장) 필요시"
+cluster: aws-nitro-cosigner

@@ -1,0 +1,8 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/security-and-maintenance-best-practices
+downloaded_at: 2026-05-19
+domain: mobile-recovery + security-access
+tier: 1-deferred
+status: lightweight-index
+title: "security-and-maintenance-best-practices"
+ingest_log: "Stage 12 (2026-05-19) — v3 policy applied; PDF body not loaded, lightweight markdown index only"
+note: "PDF rename + meta + lightweight markdown completed. Deep ingest deferred until external markdown extraction provides body."

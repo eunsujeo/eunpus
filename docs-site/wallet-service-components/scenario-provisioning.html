@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>9. 계정·주소 발급 — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="온보딩 시 계정·주소 발급(createAccount·issueDepositAddress) 시나리오 — Service 백엔드가 AccountPort 를 호출하고 Fireblocks 어댑터가 vault 생성·EVM 주소 발급으로 채운다. 키는 Fireblocks vault·MPC 안에, 우리는 계정·주소 매핑만." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Fireblocks 매니저 (벤더 안)</h3><ul>
+<li><a href="component-multichain.html">2. 체인 차이 흡수 — EVM</a></li>
+<li><a href="component-indexer.html">3. 입금 감지 (webhook)</a></li>
+<li><a href="component-tx-nonce.html">4. 출금 파이프라인</a></li>
+<li><a href="component-signing.html">5. 서명 · co-signer</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 우리 백엔드 (Service·Admin)</h3><ul>
+<li><a href="component-gateway.html">6. API 게이트웨이</a></li>
+<li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
+<li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 시나리오</h3><ul>
+<li><a class="active" href="scenario-provisioning.html">9. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">10. 입금</a></li>
+<li><a href="scenario-withdrawal.html">11. 출금</a></li>
+<li><a href="scenario-onofframp.html">12. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 추상화</h3><ul>
+<li><a href="abstraction.html">13. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
+<li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. 기타</h3><ul>
+<li><a href="wallet-creation-animated.html">18. 지갑 생성 애니메이션</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="provisioning">
+<h2>9. 계정·주소 발급 (온보딩)</h2>
+<span class="section-subtitle">고객 온보딩 시 createAccount · 첫 주소 발급 — 입금·출금에 앞선 사전 단계. Service 백엔드가 부른다</span>
+
+<p class="lead">입금(10장)·출금(11장)은 <strong>주소가 이미 있다는 전제</strong>로 시작한다. 그 주소를 만드는 게 이 단계 — 고객 온보딩(또는 새 자산 추가) 때 <strong>Service 백엔드</strong>가 <strong>계정을 만들고(createAccount) 자산별 수신 주소를 발급(issueDepositAddress)</strong>한다. 매니저로 <strong>Fireblocks 를 채택</strong>했으므로 계정은 Fireblocks 의 <strong>vault</strong>(<code>createVaultAccount</code>) 하나이고, 주소는 그 vault 밑에서 <code>generateNewAddress</code> 로 태어나는 <strong>순수 EVM 주소</strong>다. 발급된 주소를 다시 부를 때만 <strong>조회(addressOf)</strong>를 쓴다 — 조회와 발급은 다른 동사고(<a href="abstraction.html">13.3</a>), <strong>addressOf 는 절대 새 주소를 만들지 않는다</strong>. <a href="abstraction.html">13. 추상화</a> 의 <strong>AccountPort</strong> 가 하는 일이다. 키·서명·주소 파생은 전부 <strong>Fireblocks vault·MPC 안</strong>에서 일어나고, 우리 쪽엔 <strong>계정↔주소 매핑</strong> 한 줄만 남는다.</p>
+
+<h3>9.1 표준 흐름</h3>
+
+<ol>
+<li><strong>비즈니스 레이어</strong> — 인증·KYC·자격 확인(업무 판단) 후 Service 백엔드 게이트웨이에 <strong>"지갑 개설 (고객 ref · asset)" 한 요청 + 멱등 키</strong>. 비즈 레이어는 업무 언어 한 문장만 말한다.</li>
+<li><strong>게이트웨이 (인증·멱등)</strong> — 호출 시스템 인증과 멱등 키 확인. 처리된 키면 저장된 결과를 즉시 반환한다.</li>
+<li><strong>유스케이스 서비스</strong> — 그 한 요청을 두 포트 호출로 푼다: <code>createAccount(ref)</code>(= Fireblocks <code>createVaultAccount</code>) → 첫 주소 <strong>발급</strong> <code>issueDepositAddress</code>(= Fireblocks <code>generateNewAddress</code> — 9.2 표). 이후 같은 주소를 다시 볼 때만 <code>addressOf</code> 조회.</li>
+<li><strong>계정 디렉터리 저장</strong>(계정↔주소 매핑) — 여기까지가 발급이다. Fireblocks 채택 경로에선 vault 가 곧 감시 범위라 별도 인덱서 등록이 없다(9.4).</li>
+<li>결과를 <strong>멱등 레코드에 저장</strong>하고 비즈 레이어로 반환 — 재시도가 와도 계정·주소가 두 번 만들어지지 않는다.</li>
+</ol>
+
+<div class="callout">
+<div class="callout-title">이 흐름의 불변식 3개</div>
+<ul>
+<li><strong>묶음 멱등</strong> — 두 포트 호출 묶음 전체에 <strong>멱등 키 하나</strong>가 걸린다. 계정만 생기고 중단돼도 같은 키 재시도가 이어서 재개한다.</li>
+<li><strong>역할 분담</strong> — 비즈 레이어 = 업무 언어·<strong>최종 사용자</strong> 인증·KYC / 게이트웨이 = <strong>호출 시스템</strong> 인증·멱등(중복 차단)만 — 두 "인증" 은 다른 것이다 / 유스케이스 = 포트 호출 순서·재개의 오케스트레이션.</li>
+<li><strong>키는 우리 것이 아니다</strong> — createAccount 가 만든 vault 의 키는 <strong>Fireblocks vault·MPC 안</strong>에 있다. 우리 쪽엔 키 트리도 HSM 도 없고, 계정↔주소 매핑 한 줄만 남는다.</li>
+</ul>
+</div>
+
+<p>구체 시퀀스 그림은 어댑터 장에 있다 — <a href="example-fireblocks.html">Figure 14-2a</a>(Fireblocks 계정·주소 발급). 그 그림의 파란 상자는 <strong>프로세스(실패) 경계</strong>고 — 상자를 넘는 화살표에서만 부분 실패·중복이 생겨 멱등이 필요하다 — <strong>레이어(교체) 경계</strong>는 AccountPort 어댑터부터 블록체인 매니저 영역(<a href="abstraction.html">13.1</a>)이다. 서로 다른 두 경계다.</p>
+
+<h3>9.2 Fireblocks 어댑터 구현 (EVM)</h3>
+
+<p>매니저로 Fireblocks 를 채택했으므로 <code>createAccount</code>·주소 발급은 벤더의 두 API 호출로 채워진다. 이더리움과 Base 는 같은 EVM 이라 동사·경로가 동일하다 — 체인만 바뀐다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:22%">포트 동사</th><th style="width:30%">Fireblocks 표면</th><th>하는 일</th></tr></thead>
+<tbody>
+<tr><td><code>createAccount(ref)</code></td><td><code>fb.createVaultAccount(ref)</code></td><td>고객당 한 번. <strong>vault</strong>(논리적 계정 단위) 하나를 만든다 — 체인에 안 나가고 주소도 아직 없다. 키는 Fireblocks vault·MPC 소관(<a href="example-fireblocks.html">14.2</a>)</td></tr>
+<tr><td><code>issueDepositAddress(account, asset)</code></td><td><code>fb.generateNewAddress</code></td><td>vault 밑에 <strong>순수 EVM 주소</strong> 하나를 발급(부를 때마다 새 주소 — <a href="example-fireblocks.html">14.3</a>). EVM 은 memoTag 가 없어 <code>Address(value, memoTag=null)</code> 다. 곡선·경로·인코딩 차이는 Fireblocks 가 흡수</td></tr>
+<tr><td><code>addressOf(account, asset)</code></td><td>vault 주소 목록 조회</td><td>이미 발급된 주소의 <strong>조회</strong> — 새 주소를 만들지 않는다</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>ERC-20 토큰은 ETH 와 <strong>같은 주소</strong>를 쓴다 — 파생의 실제 단위는 asset 이 아니라 <strong>chain</strong> 이라, 한 EVM 체인 안에서 주소는 계정만의 함수다. 이더리움용·Base용 vault 를 따로 만들지 않는다 — <code>createAccount(ref)</code> 시그니처에 asset 인자가 없다는 것이 그 증거다(<a href="../wallet-design-walkthrough/01-create-account.html">워크스루 1장</a>). 이 체인 차이 흡수는 전부 Fireblocks 매니저 안(<a href="component-multichain.html">2. 체인 차이 흡수 — EVM</a>)에서 끝난다 — 우리는 곡선·xpub·파생 경로를 다루지 않는다.</p>
+
+<h3>9.3 주의</h3>
+
+<ul>
+<li><strong>승인 게이트가 아님(보통)</strong> — 계정·주소 발급은 프로비저닝이라 출금 같은 다자 승인이 보통 필요 없다. 단 <strong>인증·KYC</strong>(비즈 레이어)와 <strong>멱등 키</strong>(같은 온보딩 요청이 계정을 두 번 만들지 않게)는 필수.</li>
+<li><strong>온체인 트랜잭션이 아님</strong> — vault 생성도 EVM 주소 발급도 <strong>Fireblocks vault 내부 연산</strong>이라 체인에 tx 를 쓰지 않는다(전파·수수료 없음). EVM 주소는 순수 주소라 tag/memo 구분자가 필요 없다 — <code>Address(value, memoTag=null)</code>.</li>
+<li><strong>키는 어디에</strong> — createAccount 가 키를 만들지만, 키 자체는 <strong>Fireblocks vault·MPC 안</strong>에 있고 매니저·게이트웨이는 만지지 않는다 (<a href="component-signing.html">5. 서명 · co-signer</a>).</li>
+<li><strong>수탁 구조 선택은 비즈/회계</strong> — "고객마다 별도 계정" vs "공용(omnibus) + 내부 장부 attribution(누구 몫인지 귀속)" 은 업무·회계 설계다. 매니저는 계정/주소 발급이라는 기본 동사만 제공. 단 규모는 매니저 설계에도 닿는다 — 은행 리테일처럼 고객이 수십만~수백만이면 "고객 1명 = vault 1개"(9.2 표의 <code>createVaultAccount</code> 1:1) 는 vault 수 폭발로 비용·rate limit·운영 부담이 커지므로, 대규모에선 <strong>공용 vault + 고객별 입금 주소 + 내부 attribution</strong> 구성을 함께 검토한다. 어느 쪽이든 매니저 쪽 차이는 계정·주소 매핑(계정 디렉터리)뿐이다.</li>
+<li><strong>발급 결과는 백엔드의 계정 디렉터리에</strong> — createAccount·issueDepositAddress/addressOf 의 결과(계정↔vaultId↔주소 매핑)는 지갑 서비스 백엔드가 <strong>계정 디렉터리</strong>로 저장·소유한다. 이후 모든 요청의 "계정 id → 계정" 해석은 게이트웨이가 이 디렉터리로 풀고, 벤더에 다시 물어보지 않는다 — 벤더를 교체해도 남는 우리 데이터다 (<a href="project-structure.html">17. 프로젝트 구조</a> 의 backend/directory).</li>
+</ul>
+
+<h3>9.4 발급된 주소는 어떻게 감시되나 — Fireblocks 는 vault 가 곧 감시 범위</h3>
+
+<p>입금을 감지하려면 "우리 주소 집합"이 알려져 있어야 한다. 매니저로 Fireblocks 를 채택했으므로 우리가 직접 인덱서를 돌려 watch-list 를 관리하지 않는다 — <strong>vault 가 곧 감시 범위</strong>다. 발급된 주소로의 입금은 <strong>Fireblocks 가 자동으로 감지해 webhook 으로 push</strong> 한다(<a href="example-fireblocks.html">14.5</a>). 그래서 자체 인덱서 경로에서 흔한 <strong>등록 갭</strong>(발급과 watch-list 전파 사이에 입금이 도착해 누락되는 사고)이 이 경로에는 구조적으로 없다.</p>
+
+<div class="callout">
+<div class="callout-title">우리 몫은 webhook 수신기 하나</div>
+<p>Fireblocks 채택 경로에서 발급-감지를 잇는 우리 책임은 <strong>webhook 수신기(Service 백엔드)</strong> 하나로 좁아진다 — vault 범위의 입금을 Fireblocks 가 감지해 통지하면, 수신기가 받아 매핑 DB 에 기록한다(<a href="scenario-deposit.html">10. 입금</a>). 직접 노드·인덱서 운영, watch-list 전파, backfill 재스캔 같은 자체 구축의 짐은 벤더 안으로 들어간다. 다만 <strong>webhook 은 누락·지연·중복이 가능</strong>하므로, 회계의 최종 근거는 통지가 아니라 주기적 대사(벤더 잔액과 우리 기록의 대조)가 닫는다(<a href="component-ledger.html">7. 온체인 정합성 · 추적</a>).</p>
+</div>
+
+<p>다음 — 발급된 주소로 외부 입금을 받는 <a href="scenario-deposit.html"><strong>10. 입금</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

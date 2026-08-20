@@ -1,0 +1,10 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/4405980040210-Allowlist-IP-addresses-for-API-user-requests
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 2
+language: en
+notes: |
+  Fireblocks Help Center article "Allowlist IP addresses for API user requests".
+  /32 CIDR only (no ranges).
+  Workspace Owner only.
+  Without allowlisting, stolen API key usable from any internet machine.

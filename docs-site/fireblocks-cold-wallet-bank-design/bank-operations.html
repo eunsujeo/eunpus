@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>6. 은행 운영 절차 — KR 은행 도입 가이드</title>
+<meta content="KR 은행이 Fireblocks Cold Wallet 을 도입할 때의 운영 절차 / 인원 / 감사 / 규제 매핑" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Cold Wallet 기초</h3>
+<ul>
+<li><a href="cold-wallet-fundamentals.html">1. Cold Wallet 이란</a></li>
+<li><a href="workspace-topology.html">2. Workspace 토폴로지</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Governance &amp; Flow</h3>
+<ul>
+<li><a href="governance-quorum.html">3. Admin Quorum 단독 거버넌스</a></li>
+<li><a href="hot-cold-rebalancing.html">4. Hot ↔ Cold Rebalancing</a></li>
+<li><a href="signing-flow.html">5. Cold Wallet Signing</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 은행 도입</h3>
+<ul>
+<li><a class="active" href="bank-operations.html">6. 은행 운영 절차</a></li>
+<li><a href="risks-open-questions.html">7. Risks &amp; Open Questions</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="operations">
+<h1>6. 은행 운영 절차 — KR 은행 도입 가이드</h1>
+<p class="lead">
+도입부터 일상 운영, 감사 대응, 사고 대응까지의 절차. KR 은행 환경 (특금법 / VACPA / 망분리 / 금감원 검사) 을
+가정한 운영 가이드.
+</p>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처</div>
+<p><strong>공식 문서에 정의된 사실</strong></p>
+<ul style="margin-bottom:0.5rem">
+<li>KR 법령 시행일·임계값 (콜드월렛 80%, 트래블룰 100만원, 기록보존 5년 등) — KR 컴플라이언스 가이드 + law.go.kr</li>
+<li>4 종합검사 결과 — 금감원 / FIU 보도자료</li>
+<li>Fireblocks Cold Wallet 의 Approval Group 미지원, Owner Console-direct 특수 규칙, Support 경유 user 추가 — Fireblocks 공식 문서</li>
+</ul>
+<p style="margin-bottom:0"><strong>저자가 합리적으로 추정한 운영 권장</strong> — 참고용</p>
+<ul style="margin-bottom:0">
+<li>6 phase 도입 단계 + 일상 운영 매트릭스의 구체 빈도</li>
+<li>옵션 A/B/C 선택 의사결정</li>
+<li>인원 구성 수치 (Admin ≥ 3, Signer ≥ 2 등)</li>
+<li>일일 / 분기 점검 체크리스트</li>
+</ul>
+</div>
+
+<h2>6.1 도입 단계 — 6 phase</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Phase</th><th>주요 작업</th><th>주요 산출물</th></tr></thead>
+<tbody>
+<tr><td>① 협의 / 계약</td>
+  <td>Fireblocks 와 Cold Wallet workspace 별도 구매. KR 망분리 / IDC 요건 협의</td>
+  <td>SLA, Support 응답 시간, Cold facility 위치, 가격</td></tr>
+<tr><td>② Customer Domain &amp; Workspace 생성</td>
+  <td>Hot×3 + Cold×1 + Sandbox×1 (Workspace 토폴로지 참조)</td>
+  <td>5 workspace, Owner 임명 (각 workspace 별 1명)</td></tr>
+<tr><td>③ Admin Quorum 구성</td>
+  <td>Cold workspace 의 Admin ≥ 3 추가 (Support 경유)</td>
+  <td>Admin 인원 명부, Quorum threshold, mobile device 등록</td></tr>
+<tr><td>④ Provisioning</td>
+  <td>Cold device provisioning (Owner / Signer)</td>
+  <td>Cold device 인벤토리, provisioning ceremony 영상</td></tr>
+<tr><td>⑤ Policy &amp; Whitelist</td>
+  <td>TAP 양측 설정, Hot↔Cold whitelist 사전 등록</td>
+  <td>Policy rule set, whitelist 목록</td></tr>
+<tr><td>⑥ Rebalancing rehearsal</td>
+  <td>Testnet 에서 Hot↔Cold rebalancing 시뮬레이션 + DR 복구 rehearsal</td>
+  <td>운영 매뉴얼, 복구 절차서</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>6.2 일상 운영 — 주요 활동 매트릭스</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>활동</th><th>빈도</th><th>주체</th><th>거버넌스</th></tr></thead>
+<tbody>
+<tr><td>고객 입금 처리 (Hot)</td><td>실시간</td><td>API / 자동화</td><td>Webhook + Hot Policy</td></tr>
+<tr><td>고객 출금 처리 (Hot)</td><td>실시간</td><td>API + Mobile</td><td>Hot Admin Quorum / Approval Group</td></tr>
+<tr><td>Hot → Cold rebalancing</td><td>일 1회 또는 임계점 기반</td><td>Treasury 팀</td><td>Hot 측 Approval Group 위임 가능</td></tr>
+<tr><td>Cold → Hot rebalancing</td><td>임계점 기반 (Hot 잔액 부족 시)</td><td>Treasury 팀 + Cold Signer</td><td><strong>Cold Admin Quorum 전체</strong></td></tr>
+<tr><td>User 추가 (Cold workspace)</td><td>드물게</td><td>Fireblocks Support 경유</td><td>Support + Admin Quorum (Cold 특수 규칙)</td></tr>
+<tr><td>User 삭제 (Cold workspace)</td><td>드물게</td><td>Owner Console-direct</td><td><strong>Owner 단독</strong> (Cold 특수 규칙)</td></tr>
+<tr><td>Policy 변경 (Cold)</td><td>분기 / 임계점</td><td>Security 팀</td><td>Cold Admin Quorum 전체</td></tr>
+<tr><td>Signature quota 점검</td><td>주 / 일</td><td>Operations</td><td>"Less than 10%" alert</td></tr>
+<tr><td>Audit Log 추출 / 보고</td><td>일 / 주 / 월</td><td>Compliance 팀</td><td>Owner / Admin / NSA 만 접근 (Risk-S13)</td></tr>
+<tr><td>DR rehearsal</td><td>분기 / 반기</td><td>Operations + Security</td><td>Testnet 환경 사용</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>6.3 KR 망분리 / IDC 구성</h2>
+<p>
+KR 금융권 IT 망분리 (전자금융감독규정) 환경에서 Fireblocks Cold Wallet 의 배치 옵션.
+참고로 KR 가상자산업감독규정 9조 가 별도로 <strong>이용자 가상자산의 80% (경제적 가치) 콜드월렛 보관 의무</strong>를 부과.
+<span class="src">(출처: KR 컴플라이언스 가이드 · law.go.kr admRulSeq=2100000244180)</span>
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>옵션</th><th>구성</th><th>장단점</th></tr></thead>
+<tbody>
+<tr><td><strong>옵션 A — All-SaaS</strong></td>
+  <td>Hot + Cold 모두 Fireblocks SaaS. 은행은 망분리 환경에서 인터넷 segment 의 Console 접근 단말만 운영.</td>
+  <td>구축 단순. 단 모든 자산 plane 이 Fireblocks 의존. 망분리 규정 해석에 따라 부적합 가능.</td></tr>
+<tr><td><strong>옵션 B — Hosted MPC + Cold</strong></td>
+  <td>Hot 은 Hosted MPC (customer-side SGX), Cold 은 SaaS Cold workspace.</td>
+  <td>Hot 의 sovereign key. BCM + Hosted MPC operational burden (Risk-S09).</td></tr>
+<tr><td><strong>옵션 C — Key Link + Cold</strong></td>
+  <td>Hot 은 Key Link (customer HSM 직접 보유), Cold 은 SaaS Cold workspace 또는 customer HSM Cold mode.</td>
+  <td>최대 sovereign. Beta 상태 / Customer Server SPOF.</td></tr>
+<tr><td><strong>옵션 C-Thales — Key Link + Thales Luna HSM</strong></td>
+  <td>Fireblocks KeyLink ("secure middleware") ↔ Thales Luna HSM (FIPS 140-3 L3 + Common Criteria 인증) 통합. Hot · Warm · Cold 3-mode signing workflow 지원 (air-gap = USB/SFTP/data diodes).</td>
+  <td>2025-09-23 vendor 공식 발표 옵션. PQC readiness. <strong>KR 미명시 — HKMA / HKSFC / JFSA 만 명시</strong>. KR 적용 시 Fireblocks Sales 협의 필요.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">옵션 선택 — KR 은행의 일반 권장</div>
+<p>
+망분리 + KR 특금법 cold 요건 + 운영 단순성 균형에서 <strong>옵션 A → 옵션 B</strong> 로의 단계적 도입이 일반적.
+처음부터 옵션 C 도입은 Key Link risk (Customer Server SPOF 등) 부담 큼.
+KR 금융감독 해석에 따라 변동 가능 — 본 권장은 저자 추정.
+</p>
+</div>
+
+<h2>6.3b Mobile Device 정책 — Cold 은 별도 앱</h2>
+<p>
+Cold Wallet workspace 의 Admin Quorum approval 과 Signer signing 은 mobile app 에서 수행되지만,
+<strong>Cold Wallet 은 일반 Fireblocks mobile app 과 별개의 mobile app</strong> 임이 공식 문서에 명시.
+<span class="src">(출처: Fireblocks 공식 문서 — Mobile Device Minimum Requirements)</span>
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>항목</th><th>일반 Fireblocks mobile app (Hot)</th><th>Cold Wallet 별도 앱</th></tr></thead>
+<tbody>
+<tr><td>OS 최소 사양</td>
+  <td><strong>iOS 16.6+</strong> / <strong>Android 8.1+ (64-bit)</strong> + biometric 필수</td>
+  <td>공식 미명세 (Hot 와 동일 가정 — Q-CW09 open)</td></tr>
+<tr><td>설치 store</td>
+  <td>App Store / Google Play Store</td>
+  <td>공식 미명세 (별도 enterprise 배포 가능성)</td></tr>
+<tr><td>동일 device 에 Hot + Cold 앱 동시 설치</td>
+  <td>—</td>
+  <td>가능성 / 별도 device 운영 권장 여부 미명세</td></tr>
+<tr><td>iOS 11.0–14.0 동작 정책</td>
+  <td>동작하나 업데이트 불가</td>
+  <td>공식 미명세</td></tr>
+<tr><td>Re-enrollment 절차</td>
+  <td>Owner / Admin 승인 (workflow 명세 적재)</td>
+  <td>공식 미명세 (Fireblocks Support 협의 필요)</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+은행 운영 권장:
+</p>
+<ol>
+<li><strong>Cold 별도 앱은 별도 device 에 설치</strong> — 보안 격리 강화 (Hot device compromise 가 Cold 에 영향 안 미치도록)</li>
+<li><strong>Cold approver 의 device 인벤토리 별도 관리</strong> — Hot device 와 분리된 폐쇄 자산 인벤토리</li>
+<li><strong>device 분실 시나리오 사전 정의</strong> — Fireblocks Support 와 SLA 협의 필요</li>
+</ol>
+
+<h2>6.4 인원 구성 권장</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>역할</th><th>인원</th><th>Cold workspace 적용</th></tr></thead>
+<tbody>
+<tr><td>Owner</td><td>1</td><td>Cold Owner 별도 (Hot Owner 와 분리 권장)</td></tr>
+<tr><td>Admin</td><td>≥ 3</td><td>Quorum threshold ≥ 2 (Owner SPOF 완화). API Admin 있으면 ≥ 3</td></tr>
+<tr><td>Non-Signing Admin</td><td>1–2</td><td>Audit Log 모니터링 (Risk-S13)</td></tr>
+<tr><td>Signer</td><td>≥ 2</td><td>Cold device redundancy. Approver ≠ Signer 원칙</td></tr>
+<tr><td>Approver</td><td>≥ 2</td><td>이해상충 방지 (KR 특금법) — Signer 와 별도</td></tr>
+<tr><td>Security Admin / Auditor</td><td>1–2</td><td>Cold workspace 의 멤버십은 공식 문서 미명세</td></tr>
+<tr><td>Viewer / Editor</td><td>(필요 시)</td><td>최소화 (Default visibility 함정)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>6.5 감사 / 내부통제 매핑 — 확정 fact</h2>
+<p>
+KR 은행 감사 / 내부통제 요건과 Fireblocks Cold Wallet 의 audit 자산 매핑.
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>KR 요건</th><th>법적 근거</th><th>Fireblocks 자산</th><th>실무 메모</th></tr></thead>
+<tbody>
+<tr><td>거래 audit trail</td>
+  <td>특금법 5조의4 — 최소 <strong>5년</strong> 보존</td>
+  <td>Audit Log (Cold workspace 의 모든 tx, signing 기록)</td>
+  <td>KYC 사본, 로그, 승인 흐름, 차단·해제 근거 5년 archive</td></tr>
+<tr><td>고객확인 (KYC / CDD)</td>
+  <td>특금법 5조의2</td>
+  <td>(Fireblocks 외부 — 은행 KYC 시스템)</td>
+  <td>주민등록번호, 원본성 있는 신분증, 주소 검증, 재이행 주기, 위험등급 상향 시 추가 CDD</td></tr>
+<tr><td>거래제한 (KYC 미완료)</td>
+  <td>특금법 8조 + 시행령 10조의20</td>
+  <td>Cold workspace 의 Policy / TAP rule 로 destination 제약</td>
+  <td>고객확인 완료 전 출고·이체·교환 시스템 차단</td></tr>
+<tr><td>미신고 VASP 와 거래금지</td>
+  <td>특금법 8조 + 시행령 10조의20 ④</td>
+  <td>Cold workspace Whitelist (allow-list) + denylist 양방향 등록</td>
+  <td>counterparty due diligence + 해외사업자 onboarding 심사</td></tr>
+<tr><td><strong>트래블룰</strong></td>
+  <td>시행령 10조의10 — <strong>100만원 이상</strong></td>
+  <td>Cold workspace 출금에도 동일 적용. Fireblocks Compliance plane (별도)</td>
+  <td>송·수신인 이름 전송 실패 시 출고 차단</td></tr>
+<tr><td>STR (의심거래보고)</td>
+  <td>특금법 4조</td>
+  <td>체인분석, 이상거래탐지, Audit Log 의 escalation</td>
+  <td>보고책임자 승인 기록 5년 보존</td></tr>
+<tr><td>신규 서비스 AML 위험평가</td>
+  <td>특금법 5조 + 시행령 9조</td>
+  <td>(Fireblocks 외부 — 신규 자산·서비스 도입 시)</td>
+  <td>제품승인위원회 운영. 두나무·코빗·빗썸·코인원 4 종합검사 공통 위반 사유</td></tr>
+<tr><td><strong>콜드월렛 보관비율</strong></td>
+  <td>가상자산업감독규정 9조 — <strong>경제적 가치 80%</strong></td>
+  <td>Hot / Cold workspace 의 vault balance 일일 reconciliation</td>
+  <td>월별 cold ratio 점검 (실사). Hot ≤ 20% / Cold ≥ 80%</td></tr>
+<tr><td>이용자 자산 분리·동종·동량</td>
+  <td>이용자보호법 (2024-07-19)</td>
+  <td>Workspace 분리 (회사자산 ≠ 고객자산) + 동량 reconciliation</td>
+  <td>재무회계상 회사자산과 고객자산 물리적·논리적 분리</td></tr>
+<tr><td>이해상충 방지</td>
+  <td>이용자보호법</td>
+  <td>9-role 분리 (Signer ≠ Approver), Admin Quorum threshold</td>
+  <td>Cold Signer ≠ Cold Approver 인원 분리</td></tr>
+<tr><td>입출금 차단 사유 약관화</td>
+  <td>이용자보호법 시행령 (2025-04-23)</td>
+  <td>Policy / TAP 의 deny rule + Audit Log</td>
+  <td>정당한 사유: 시스템장애 / 거래종료 / AML 의심 / 전기통신금융사기 72h / 자금세탁 최소 기간</td></tr>
+<tr><td>보험 또는 준비금</td>
+  <td>이용자보호법 + 감독규정</td>
+  <td>(Fireblocks 외부 — 은행 자체)</td>
+  <td>해킹·전산장애 대비. 한도·기준은 감독규정 최신 기준 재확인</td></tr>
+<tr><td>비상 대응 (Owner 사고)</td>
+  <td>(거버넌스 일반)</td>
+  <td>Workspace Keys Backup + Recovery Passphrase + 이사회 결의</td>
+  <td>3–5 영업일 절차</td></tr>
+<tr><td>신고제 운영</td>
+  <td>특금법 7조 + 시행령</td>
+  <td>지갑주소 목록 (신고서 첨부) + 변경 시 신고 갱신</td>
+  <td>유효 <strong>3년</strong>, 갱신 <strong>45일 전</strong>, 변경 <strong>45일 이내</strong> 수리</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+<span class="src">(출처: KR 컴플라이언스 가이드 — 1차 출처는 모두 law.go.kr / fsc.go.kr)</span>
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">4 종합검사 공통 위반 사유 — 은행 도입 시 직접 적용</div>
+<p>
+두나무 (2025-02), 코빗 (2025-12), 빗썸 (2026-03), 코인원 (2026-04) 4 사 종합검사의 공통 위반은:
+</p>
+<ol>
+<li><strong>미신고 해외 VASP 와 거래 차단 실패</strong> — 두나무 44,948건 / 빗썸 45,772건. Cold workspace 의 whitelist · denylist 양방향 등록이 1차 방어선.</li>
+<li><strong>고객확인 재이행 실패</strong> — 만료 자동락, 주소 검증, 원본성 점검, 위험등급 상향 시 추가 CDD 자동 발동.</li>
+<li><strong>신규 자산·서비스 출시 전 AML 위험평가 누락</strong> — 코빗 NFT 신규 지원 전 미실시 655 건. 제품승인위원회 필수.</li>
+</ol>
+<p>
+4 사 모두 영업일부 정지 · 과태료 · 대표 문책경고. 빗썸 = 영업일부 정지 6 개월 + 과태료 368 억원. 은행은 동일 통제가 첫날부터 작동해야.
+<span class="src">(출처: KR 컴플라이언스 가이드)</span>
+</p>
+</div>
+
+<h2>6.6 사고 대응 — 우선순위 매트릭스</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>사고</th><th>심각도</th><th>대응</th></tr></thead>
+<tbody>
+<tr><td>Cold device 분실 / 도난</td><td>★★★★★</td>
+  <td>① 즉시 Fireblocks Support 신고 + 영상 통화 ② Workspace freeze ③ Workspace Keys Backup 으로 재 provisioning ④ KR 금감원 보고 / 고객 통지</td></tr>
+<tr><td>"Less than 10% remaining signatures" alert</td><td>★★★★</td>
+  <td>① 신규 device provisioning ceremony 즉시 시작 ② 기존 device 의 잔여 signature 는 emergency-only</td></tr>
+<tr><td>Cold Owner 사고 (사망 / 실종)</td><td>★★★★★</td>
+  <td>① 이사회 결의 발의 ② Fireblocks Support + 신임 Owner candidate ③ Recovery Passphrase verify ④ 3–5 영업일 전체 절차 (Hot 와 동일 가정)</td></tr>
+<tr><td>Cold Admin 다수 부재</td><td>★★★</td>
+  <td>① Quorum threshold 충족 불가 → rebalancing halt ② Fireblocks Support 통해 임시 Admin 추가 (Cold 특수 절차)</td></tr>
+<tr><td>Hot → Cold rebalancing 실패</td><td>★★★</td>
+  <td>① stuck tx 진단 ② Round-robin withdrawal vault 회전 ③ 필요 시 nonce reset</td></tr>
+<tr><td>의심 거래 (Cold)</td><td>★★★★</td>
+  <td>① Cold workspace freeze ② Audit Log + signing 기록 forensic ③ 금감원 보고</td></tr>
+<tr><td>Fireblocks SaaS outage (3-region 단일 region)</td><td>★★★</td>
+  <td>Cold 도 SaaS plane 의존 — BCM 없으면 signing halt (Risk-S10)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>6.7 일일 운영 체크리스트</h2>
+<ul>
+<li>☐ Audit Log 추출 (Hot + Cold 양측)</li>
+<li>☐ "Less than 10% remaining signatures" alert 확인</li>
+<li>☐ Hot 잔액 vs Cold 잔액 reconciliation</li>
+<li>☐ 의심 거래 review (TAP 규칙 트리거 여부)</li>
+<li>☐ IP allowlist 변경 모니터링</li>
+<li>☐ User add / delete request 처리</li>
+<li>☐ Rebalancing 임계점 확인 (Hot &lt; Y% 또는 Hot &gt; X%)</li>
+<li>☐ Fireblocks status page 모니터링 (SaaS outage 사전 인지)</li>
+</ul>
+
+<h2>6.8 분기 / 반기 점검</h2>
+<ul>
+<li>☐ Recovery Passphrase Periodic Verification (월 1회 권장)</li>
+<li>☐ Workspace Keys Backup 재생성 (변경된 user / quorum 반영)</li>
+<li>☐ Testnet 에서 DR rehearsal (production keys 사용 금지)</li>
+<li>☐ Cold device sign capacity audit ("Less than 10%" 도달 전 사전 교체)</li>
+<li>☐ Admin Quorum 인원 audit (Threshold ≥ 2 유지 / API Admin 보유 시 ≥ 3)</li>
+<li>☐ IP allowlist 갱신 (VPN / NAT 변경)</li>
+<li>☐ Policy / Whitelist 일관성 audit</li>
+<li>☐ KR 특금법 cold 비율 reporting</li>
+</ul>
+
+<p class="back-top"><a href="#operations">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="assets/app.js"></script>
+</body>
+</html>

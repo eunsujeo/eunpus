@@ -1,0 +1,65 @@
+{
+  "expectations": [
+    {
+      "text": "응답 opening 에 Trigger 3 (fact query / reference-ready) 판별 선언",
+      "passed": false,
+      "evidence": "trigger=False, step=False, route=False, status=False"
+    },
+    {
+      "text": "6 정확한 한국어 헤더 모두 사용",
+      "passed": false,
+      "evidence": "matched 1/6 exact headers"
+    },
+    {
+      "text": "vendors/fireblocks/mpc.md AND entities/fireblocks/mpc-key-share.md 둘 다 인용",
+      "passed": true,
+      "evidence": "mpc.md=True, mpc-key-share.md=True"
+    },
+    {
+      "text": "각 fact 진술에 inline 출처 ≥5 건",
+      "passed": false,
+      "evidence": "found 4 source citations"
+    },
+    {
+      "text": "Stage 번호 ≥2 개 명시",
+      "passed": true,
+      "evidence": "stages: ['1', '29', '30', '5', '8']"
+    },
+    {
+      "text": "MPC-CMP protocol 명시",
+      "passed": true,
+      "evidence": "...group threshold** 의 MPC-CMP 프로토콜로,\n1 customer share + 2 Fireblocks cloud share 로 분포한다. **Hosted MPC*..."
+    },
+    {
+      "text": "SaaS MPC = 1 customer + 2 Fireblocks (3-of-3) 명시",
+      "passed": true,
+      "evidence": "...** 의 MPC-CMP 프로토콜로,\n1 customer share + 2 Fireblocks cloud share 로 분포한다. **Hosted MPC** 는 동일한 3-of-3 ..."
+    },
+    {
+      "text": "Hosted MPC = 3 customer + 0 Fireblocks 명시",
+      "passed": true,
+      "evidence": "... MPC Key Share 분포 & Hosted MPC 와의 차이\n\n## 1. 핵심 요약 (10초)\n\nFireblocks 의 default(SaaS) MPC 는 **3-of-3 w..."
+    },
+    {
+      "text": "확정 fact vs hypothesis 명확 분리",
+      "passed": true,
+      "evidence": "... Hosted MPC 변형\n\n### 3.1 Share 분포 — 3/3 fully customer-side\n\n`hosted-mpc-overview.md` (Stage 8) 직접 인용..."
+    },
+    {
+      "text": "Open Question ≥1 언급",
+      "passed": true,
+      "evidence": "matched: Q-M04"
+    },
+    {
+      "text": "LLM 일반 지식 fill-in 없음 — unverified 라벨 없이 단정형 진술 0건",
+      "passed": false,
+      "evidence": "no unverified marker"
+    }
+  ],
+  "summary": {
+    "pass_rate": 0.6363636363636364,
+    "passed": 7,
+    "failed": 4,
+    "total": 11
+  }
+}

@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>14. Fireblocks 어댑터 — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="Fireblocks 어댑터가 유일한 라이브 구현 — createTransaction 이 조립·nonce·MPC 서명(온프렘 co-signer 공동서명)·전파를 묶고, webhook(transaction.status.updated)이 내 지갑 수신·확정 이벤트를 전달. 임의 외부 주소·커스텀 조회(ChainQueryPort)는 미제공." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Fireblocks 매니저 (벤더 안)</h3><ul>
+<li><a href="component-multichain.html">2. 체인 차이 흡수 — EVM</a></li>
+<li><a href="component-indexer.html">3. 입금 감지 (webhook)</a></li>
+<li><a href="component-tx-nonce.html">4. 출금 파이프라인</a></li>
+<li><a href="component-signing.html">5. 서명 · co-signer</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 우리 백엔드 (Service·Admin)</h3><ul>
+<li><a href="component-gateway.html">6. API 게이트웨이</a></li>
+<li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
+<li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 시나리오</h3><ul>
+<li><a href="scenario-provisioning.html">9. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">10. 입금</a></li>
+<li><a href="scenario-withdrawal.html">11. 출금</a></li>
+<li><a href="scenario-onofframp.html">12. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 추상화</h3><ul>
+<li><a href="abstraction.html">13. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
+<li><a class="active" href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
+<li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. 기타</h3><ul>
+<li><a href="wallet-creation-animated.html">18. 지갑 생성 애니메이션</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="example-fireblocks">
+<h2>14. Fireblocks 어댑터 — Account·Transaction 두 포트 구현 (유일한 라이브 구현)</h2>
+<span class="section-subtitle">FireblocksProvider 는 얇은 어댑터 — 트랜잭션 제출은 createTransaction 한 번, 수신은 webhook. 우리가 실제로 운영하는 매니저 구현은 이 하나다</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 성격</div>
+<p>설명용 의사코드다. 메서드 이름은 Fireblocks 공개 API 형태를 참고했으나 실제 SDK 와 다를 수 있다. Fireblocks 기능 범위(서명·전파·nonce·webhook·DCCP·externalTxId·vault)는 Fireblocks 공식 개발자 문서에서 확인한 사실에 근거한다. <strong>블록체인 매니저로 Fireblocks 를 채택했으므로, 이 어댑터가 포트를 채우는 유일한 라이브 구현이다</strong> — 자체 구축은 테스트용 가짜 구현(<code>adapters/fake</code>)으로만 남는다(<a href="project-structure.html">17장</a>). 태우는 체인은 EVM — 이더리움·Base 다.</p>
+</div>
+
+<h3>14.1 큰 그림</h3>
+
+<p>Fireblocks 한 어댑터가 <strong>AccountPort·TransactionPort 를 채운다 — 내 지갑 수신·확정 이벤트(webhook)까지 TransactionPort 로 제공</strong>. 위층 <strong>지갑 서비스 백엔드</strong>(멱등·팬아웃·정합성·오케스트레이션)는 그대로 두고, 어댑터가 계정·트랜잭션 동작을 Fireblocks API·webhook 으로 번역한다. <strong>서명은 Fireblocks MPC 와 우리 온프렘 API Co-signer(SGX/TEE)가 공동서명</strong>하고, Co-signer 는 서명 직전 우리 Callback Handler 에 승인·거부를 묻는다(<a href="component-signing.html">5장</a>) — 나가는 돈의 마지막 자동 관문이 우리 인프라 안에 선다. 다만 <strong>임의 외부 주소·커스텀 조회(ChainQueryPort)는 Fireblocks 가 미제공</strong> — 필요하면 그 포트만 자체 인덱서/Alchemy 같은 쿼리 프로바이더로 따로 붙인다 (<a href="abstraction.html">13.4</a>).</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    CORE["지갑 서비스 백엔드<br/>(포트에만 의존)"]
+    FBP["FireblocksProvider<br/>(Account·Transaction 포트 구현)"]
+    FB["Fireblocks<br/>createTransaction · webhook · vault · fee"]
+    COS["API Co-signer · 우리 온프렘 SGX/TEE<br/>MPC 공동서명 · Callback Handler 승인 훅"]
+    EVM["EVM 네트워크<br/>이더리움 · Base"]
+
+    CORE -->|"submitTransaction · statusOf · onChainEvent …"| FBP
+    FBP --> FB
+    FB -->|서명 요청| COS
+    COS -->|MPC 서명 share| FB
+    FB --> EVM
+    FB -.수신·상태 webhook.-> FBP
+
+    classDef mgr fill:#dcfce7,stroke:#16a34a;
+    classDef adp fill:#dbeafe,stroke:#2563eb;
+    classDef sec fill:#fee2e2,stroke:#dc2626;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    class CORE mgr;
+    class FBP adp;
+    class COS sec;
+    class FB,EVM ext;
+</pre></div>
+<p class="diagram-caption">Figure 14-1. Fireblocks 구현(유일한 라이브 구현). FireblocksProvider(파랑 어댑터)가 Account·Transaction 포트를 채운다(수신 이벤트 webhook 포함 — 임의 조회 ChainQueryPort 는 별도 인덱서). 쓰기 쪽 <code>submitTransaction</code> 은 Fireblocks 의 <strong>createTransaction 한 번</strong>(조립·nonce·MPC 서명·전파)으로 끝나되, MPC 서명은 <strong>우리 온프렘 API Co-signer(빨강, SGX/TEE)가 공동서명</strong>하고 그 직전 Callback Handler 로 승인·거부를 건다(5장). 수신 트랜잭션은 Fireblocks 가 <strong>webhook 으로 push</strong> 한다. 태우는 체인은 EVM(이더리움·Base)뿐이다.</p>
+
+<h3>14.2 provider 코드</h3>
+
+<pre><code>class FireblocksProvider implements AccountPort, TransactionPort {
+
+  constructor(private fb: FireblocksSDK, private webhooks: WebhookBus) {}
+
+  // 계정(vault) 생성 — 고객 온보딩 시
+  createAccount(ref) { return this.fb.createVaultAccount(ref) }
+
+  // 주소 · 잔액 — Fireblocks 가 멀티체인 차이까지 흡수. 조회(addressOf)와 발급(issueDepositAddress)은 다른 동사 (13.3)
+  addressOf(vaultId, asset) { return this.fb.getDepositAddresses(vaultId, asset).first }  // 조회 — 기존(기본) 주소 (조회 엔드포인트는 적용 전 확인)
+  issueDepositAddress(vaultId, asset) { return this.fb.generateNewAddress(vaultId, asset) }  // 발급 capability — 부를 때마다 새 주소
+  balanceOf(vaultId, asset) { return toBalance(this.fb.getVaultAccountAsset(vaultId, asset)) }  // available·pending·locked 구분 응답 → 13.3 Balance
+  validateAddress(asset, addr) { return addressRules.validate(asset, addr) }  // 로컬 형식·체크섬 검증 — 미확정 벤더 엔드포인트에 의존하지 않는다
+
+  // 수수료 추정 — 제출 전 (POST 지만 상태 변경 X)
+  estimateFee(req) { return this.fb.estimateFeeForTransaction(req) }   // low / medium / high
+
+  // 트랜잭션 제출 : 서명+전파+nonce 가 createTransaction 한 번으로 묶임
+  submitTransaction(req) {
+    const { id } = this.fb.createTransaction({       // build + nonce + MPC서명(온프렘 co-signer 공동서명) + 전파
+      assetId: req.asset,
+      source:      { type:'VAULT_ACCOUNT', id: this.vaultOf(req.accountRef) },  // vault id 매핑은 어댑터 안에 캡슐화 (13.5)
+      destination: { type:'ONE_TIME_ADDRESS', oneTimeAddress:{ address: req.to } },
+      amount: req.amount,
+      externalTxId: req.idempotencyKey,         // 코어의 멱등 키를 tx dedup 으로 전달
+    })
+    return id                                   // = TxRef
+  }
+  statusOf(txRef) { return this.fb.getTransactionById(txRef).status }   // SUBMITTED/CONFIRMING/COMPLETED (주요 상태 예)
+  transactionsOf(vaultId, range) { return this.fb.getTransactions({ vault: vaultId, ...range }) }  // 내 거래 이력 — 거래 목록 API (목록 엔드포인트는 적용 전 확인)
+  boost(txRef) { return this.fb.boostTransaction(txRef) }            // EVM 가스 인상 재전송 (RBF/부스트), 4.4
+  cancel(txRef) { return this.fb.cancelTransaction(txRef) }            // 취소 — drop(교체/드롭) 과 별도 엔드포인트
+
+  // 수신 트랜잭션 · 확정 : Fireblocks 가 webhook 으로 push
+  onChainEvent(handler) {
+    this.webhooks.on('transaction.status.updated', e =&gt; handler(toChainEvent(e)))  // Webhooks v2
+    // 우리 vault 로 들어온 트랜잭션은 INCOMING 이벤트로 push
+  }
+}</code></pre>
+
+<p>두 포트(Account·Transaction)의 메서드가 거의 그대로 Fireblocks 호출 하나씩으로 매핑된다 — 그래서 <strong>얇은 어댑터</strong>다. 이 어댑터가 우리가 실제로 운영하는 유일한 라이브 구현이며, 포트 시그니처가 벤더에 독립이라는 것을 벤더 없이 검증하려면 같은 포트를 채우는 <strong>테스트용 가짜 구현(<code>adapters/fake</code>)</strong>을 계약 테스트로 함께 돌린다(<a href="project-structure.html">17장</a>).</p>
+
+<p>없는 포트는 어떻게 채우나 — <strong>ChainQueryPort 가 필요하면 쿼리 프로바이더 어댑터를 "따로" 붙인다</strong>(하이브리드, <a href="abstraction.html">13.4</a>). custody 와 별개 슬롯이라 Fireblocks 어댑터에는 손대지 않고 옆에 하나 더 꽂는다:</p>
+
+<pre><code>// ── ChainQueryPort 는 FireblocksProvider 에 없다 — Fireblocks 가 안 주는 포트 (13.4) ──
+//    필요할 때만 쿼리 프로바이더 어댑터를 "따로" 붙인다. custody 는 Fireblocks 그대로 두고,
+//    임의 조회만 Alchemy(또는 The Graph 등) 어댑터로 채운다.
+class ChainQueryProviderAdapter implements ChainQueryPort {
+  constructor(private q: ChainQueryProvider) {}                                      // 예: Alchemy
+  transfersOf(addr, range) { return this.q.transfersOf(addr, range) }               // 임의 주소의 이체 이력 (projection)
+  balanceAt(addr, asset, block) { return this.q.balanceAt(addr, asset, block) }      // as-of-block 잔액
+  query(filter) { return this.q.query(filter) }                                      // 탈출구 — 커스텀·집계 (13.3)
+}
+
+// 하이브리드 조립 (13.4) — custody 는 Fireblocks, 임의 조회만 쿼리 프로바이더
+const provider   = new FireblocksProvider(fb, webhooks)
+const chainQuery = new ChainQueryProviderAdapter(alchemy)   // 단 이 어댑터를 붙이는 순간, 조회 프로바이더 계정·비용은 우리 몫이다</code></pre>
+
+<h3>14.3 계정·주소 발급 단계별 흐름</h3>
+
+<p>온보딩 때 <code>createAccount</code> → <code>issueDepositAddress</code>(첫 주소 발급) 가 Fireblocks 에선 <strong>vault 계정 생성 → 자산별 주소 발급</strong> 두 번의 호출로 끝난다 — 이후의 <code>addressOf</code> 는 그 주소를 조회만 한다. 비즈 레이어의 "지갑 개설(고객 ref · asset)" <strong>한 요청</strong>을 <strong>지갑 서비스 백엔드가 두 포트 호출로 푸는 구조도(내부 역할 분담은 9.1), 첫 주소가 발급 동사(issueDepositAddress)로 태어나는 것도 9.1 표준 흐름 그대로다</strong> — 묶음 전체에 멱등 키 하나가 걸려, vault 만 생기고 중단돼도 같은 키 재시도가 이어서 재개한다. Fireblocks 에서 발급은 <strong>벤더 측 쓰기</strong>(generateNewAddress)이고, <code>addressOf</code> 는 그렇게 만들어진 주소의 조회일 뿐 절대 새 주소를 만들지 않는다. 주소는 workspace 의 MPC 키에서 BIP44 로 파생되며, 그 체인별 파생을 Fireblocks 가 감춘다 (MPC 키 share 분산은 vault 생성 이벤트가 아니라 workspace·디바이스·co-signer 단위의 lifecycle 이벤트다). 온체인 트랜잭션이 아니라 전파·수수료가 없다.</p>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BIZ as 비즈니스 레이어
+    box rgb(239,246,255) 우리 서버 — 한 프로세스 · 배포 단위
+    participant BE as 지갑 서비스 백엔드
+    participant ACC as AccountPort (FireblocksProvider)
+    end
+    participant FB as Fireblocks (SaaS · MPC)
+
+    BIZ->>BE: 지갑 개설 (고객 ref · asset) + 멱등 키
+    Note over BE: 인증·멱등 확인 — 한 요청을 두 포트 호출로 푸는 내부 역할 분담은 9.1
+    BE->>ACC: createAccount(ref)
+    ACC->>FB: POST /v1/vault/accounts
+    Note over FB: vault 계정 생성 — 주소는 workspace MPC 키에서 BIP44 파생
+    FB-->>ACC: vaultAccountId
+    BE->>ACC: issueDepositAddress(account, asset)
+    ACC->>FB: POST /v1/vault/accounts/{id}/{asset}/addresses
+    Note over FB: 자산별 주소 파생 (멀티체인 흡수)
+    FB-->>ACC: address
+    ACC-->>BE: vaultAccountId · 주소
+    BE->>BE: 계정 디렉터리 저장 (9.3) — watch-list 등록은 불요 (vault 가 곧 감시 범위, 9.4)
+    BE-->>BIZ: 계정 · 입금 주소 — 멱등 레코드에 저장
+</pre></div>
+<p class="diagram-caption">Figure 14-2a. Fireblocks 계정·주소 발급. 지갑 서비스 백엔드는 <code>createAccount</code>·<code>issueDepositAddress</code>(첫 주소) 두 번만 부르고, vault 생성·체인별 주소 파생(workspace MPC 키에서 BIP44)은 Fireblocks 가 처리한다 — 이후 조회는 <code>addressOf</code>. 전파·수수료가 없는 발급 단계다. 파란 상자는 한 프로세스(우리 서버) — 상자를 넘는 화살표(비즈→백엔드, 어댑터→Fireblocks)만 네트워크 호출이고, 상자 안은 메서드 호출이다. 단 레이어로는 어댑터부터 블록체인 매니저 영역(9.1·13.1). REST 매핑 상세는 14.7 표 참조.</p>
+
+<p>발급이 끝난 뒤의 <strong>조회(addressOf)</strong> 는 별개의 흐름이다 — 입금 화면을 띄울 때마다 불리는 읽기 경로로, 상태를 바꾸지 않으니 멱등 키도 발급 부수효과도 없다.</p>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BIZ as 비즈니스 레이어
+    box rgb(239,246,255) 우리 서버 — 한 프로세스 · 배포 단위
+    participant BE as 지갑 서비스 백엔드
+    participant ACC as AccountPort (FireblocksProvider)
+    end
+    participant FB as Fireblocks (SaaS · MPC)
+
+    BIZ->>BE: 입금 주소 조회 (고객 ref · asset)
+    Note over BE: 읽기 — 멱등 키 불요 (몇 번 불러도 같은 값)
+    BE->>BE: 계정 디렉터리에서 account 확인
+    BE->>ACC: addressOf(account, asset)
+    ACC->>FB: 기존 입금 주소 조회
+    FB-->>ACC: address
+    ACC-->>BE: address
+    BE-->>BIZ: 입금 주소
+</pre></div>
+<p class="diagram-caption">Figure 14-2b. 주소 조회(addressOf) — 발급(14-2a)과 분리된 읽기 경로. 상태를 바꾸지 않으니 멱등 키가 필요 없고, 새 주소가 생기지도 않는다. Fireblocks 의 조회 엔드포인트는 적용 전 확인(14.7 표). 운영에선 매 조회가 벤더 API 왕복일 필요는 없다 — 발급 때 계정 디렉터리에 저장해 둔 주소를 그대로 내줘도 같은 값이다(9.3).</p>
+
+<h3>14.4 송신 트랜잭션 단계별 흐름</h3>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant CORE as 지갑 서비스 백엔드
+    participant FBP as FireblocksProvider
+    participant FB as Fireblocks
+
+    CORE->>FBP: submitTransaction(승인된 송신 req + 멱등 키)
+    FBP->>FB: createTransaction (build+서명+전파+nonce, externalTxId)
+    FB-->>FBP: txRef
+    loop 확정 대기
+        FB-->>FBP: webhook(상태 변화)
+        FBP-->>CORE: onChainEvent: SUBMITTED → CONFIRMING → COMPLETED
+    end
+    Note over CORE,FB: 막히면 CORE→FBP.boost(txRef) → FB.drop & replace (boost)
+</pre></div>
+<p class="diagram-caption">Figure 14-3. Fireblocks 송신 트랜잭션. 코어는 <strong>submitTransaction 한 번</strong>이면 끝 — 빌드·서명·전파·nonce 를 Fireblocks 가 처리한다. 상태는 webhook 으로 받고, stuck 시 boost(RBF/부스트)만 호출. 멱등 키는 <code>externalTxId</code> 로 넘겨 중복 제출을 Fireblocks 측에서도 막는다.</p>
+
+<h3>14.5 수신 트랜잭션 단계별 흐름</h3>
+
+<ol>
+<li>외부에서 우리 vault 주소로 트랜잭션이 들어옴</li>
+<li>Fireblocks 가 감지 → <strong>webhook</strong> 으로 INCOMING + 상태(CONFIRMING → COMPLETED) push — 확정 기준은 DCCP(입금 확정 정책, Deposit Control and Confirmation Policy)</li>
+<li>지갑 서비스 백엔드가 등록한 <code>onChainEvent</code> 핸들러가 수신 → 비즈 레이어로 팬아웃</li>
+</ol>
+<p>즉 수신 트랜잭션은 코어가 무엇을 호출해서가 아니라 <strong>Fireblocks 가 push 한 webhook</strong> 으로 시작된다 (0.2 의 "② 감지"). 이를 "입금" 으로 해석하는 건 비즈 레이어의 몫이다.</p>
+
+<h3>14.6 그래서 지갑 서비스 백엔드가 직접 짜는 것</h3>
+
+<div class="callout callout-warn">
+<div class="callout-title">서명·전파가 한 호출로 묶인다</div>
+<p>Fireblocks 에선 서명과 전파가 <strong><code>createTransaction</code> 하나</strong>로 합쳐진다(빌드·nonce 포함). MPC 서명 자체는 우리 온프렘 co-signer 가 공동으로 참여하지만, 코어 입장에선 "조립 → 서명 → 전파" 3단계를 직접 밟지 않고 <strong>submitTransaction 한 번 + 상태 추적</strong>으로 끝난다. raw nonce 를 직접 돌리면 Fireblocks 내부 nonce 와 충돌하니 만들지 않는다.</p>
+</div>
+
+<p>Fireblocks 가 백엔드를 채워줘도, <strong>지갑 서비스 백엔드가 반드시 갖는 것</strong>(13.7)은 그대로 남는다:</p>
+<ul>
+<li><strong>게이트웨이 멱등</strong> — 인바운드 요청에 우리 멱등 키 부여 → <code>externalTxId</code> 로 매핑. (externalTxId 만으로는 트랜잭션 한정 dedup)</li>
+<li><strong>vault 라우팅</strong> — EVM nonce 직렬화가 vault 단위라, 한 vault 가 막혀도 다른 vault 로 (출금 전용 vault 를 여러 개 두고 번갈아 쓰는 multiple withdrawal vault round-robin)</li>
+<li><strong>webhook 처리 + 팬아웃</strong> — 서명 검증 · 멱등 수신 · 상태 → 비즈 레이어/클라이언트 알림</li>
+<li><strong>내부 장부 대사</strong> — Fireblocks 가 준 체인 사실을 우리 장부와 맞춰봄</li>
+<li><strong>상태 모니터링 + boost 트리거</strong> — stuck 감지 시 RBF/부스트 호출</li>
+</ul>
+
+<h3>14.7 포트 메서드 → 실제 Fireblocks REST API</h3>
+
+<p>위 의사코드의 <code>fb.*</code> 호출은 실제로 다음 Fireblocks REST 엔드포인트로 매핑된다. 경로는 <a href="https://developers.fireblocks.com/">Fireblocks 공식 API reference</a> 기준이며, base URL 은 <code>https://api.fireblocks.io</code>, 모든 요청은 JWT(API Key + RSA) 서명이다. (적용 전 최신 문서로 재확인 권장)</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:14%">포트</th><th style="width:22%">메서드</th><th>Fireblocks REST</th><th style="width:12%">read/write</th></tr></thead>
+<tbody>
+<tr><td rowspan="5"><strong>AccountPort</strong></td><td><code>createAccount</code></td><td><code>POST /v1/vault/accounts</code></td><td>write</td></tr>
+<tr><td><code>addressOf</code></td><td>vault 자산의 기존 주소 조회 (조회 엔드포인트는 적용 전 확인)</td><td>read</td></tr>
+<tr><td><code>issueDepositAddress</code></td><td><code>POST /v1/vault/accounts/{vaultAccountId}/{assetId}/addresses</code> — 새 입금 주소 발급</td><td>write</td></tr>
+<tr><td><code>balanceOf</code></td><td><code>GET /v1/vault/accounts/{vaultAccountId}/{assetId}</code></td><td>read</td></tr>
+<tr><td><code>validateAddress</code></td><td>로컬 체인 규칙으로 검증 — 벤더 엔드포인트 불요 (해당 공식 API 가 미확정이라 의존을 제거)</td><td>local</td></tr>
+<tr><td rowspan="7"><strong>TransactionPort</strong></td><td><code>estimateFee</code></td><td><code>POST /v1/transactions/estimate_fee</code> (low/medium/high)</td><td>write*</td></tr>
+<tr><td><code>submitTransaction</code></td><td><code>POST /v1/transactions</code> (서명+전파+nonce, <code>externalTxId</code> 멱등)</td><td>write</td></tr>
+<tr><td><code>statusOf</code></td><td><code>GET /v1/transactions/{txId}</code></td><td>read</td></tr>
+<tr><td><code>transactionsOf</code></td><td>내 vault 의 거래 목록 조회 (목록 엔드포인트는 적용 전 확인)</td><td>read</td></tr>
+<tr><td><code>boost</code></td><td><code>POST /v1/transactions/{txId}/drop</code> (부스트/RBF, drop &amp; replace)</td><td>write</td></tr>
+<tr><td><code>cancel</code></td><td><code>POST /v1/transactions/{txId}/cancel</code> (취소 — drop 과 별도 엔드포인트)</td><td>write</td></tr>
+<tr><td><code>onChainEvent</code></td><td>webhook 등록 <code>POST /v1/webhooks</code> → <code>transaction.status.updated</code> push (내 지갑 수신·확정)</td><td>event</td></tr>
+<tr><td><strong>ChainQueryPort</strong></td><td>(Fireblocks 미제공)</td><td>임의 외부 주소·커스텀 조회 미제공 → Alchemy 등 쿼리 프로바이더를 ChainQueryPort 로 추가</td><td>—</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>*</strong> <code>estimate_fee</code> 는 POST 지만 상태를 바꾸지 않는다(전송 전 모의 추정). 내 지갑 수신·확정 이벤트와 내 거래 상태는 <strong>TransactionPort</strong> 로 Fireblocks 가 준다. 반면 <strong>임의 외부 주소·deep history·커스텀 집계(ChainQueryPort)는 Fireblocks 가 미제공</strong> — 필요하면 Alchemy 등 쿼리 프로바이더를 ChainQueryPort 로 추가한다 (<a href="abstraction.html">13.4</a>).</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">Webhooks 는 v2 로 — v1 은 2026-06-15 EOL</div>
+<p>신규 구축은 <strong>Webhooks v2</strong>(<code>POST /v1/webhooks</code> 로 등록)를 쓴다. v1 은 2026-06-15 지원 종료이고 신규 이벤트는 v2 만 지원한다. v2 는 이벤트 이름이 <strong>점 표기</strong>로 바뀐 점에 주의 — <code>TRANSACTION_STATUS_UPDATED</code>(v1) → <code>transaction.status.updated</code>(v2), <code>TRANSACTION_CREATED</code> → <code>transaction.created</code>, <code>TRANSACTIONS_APPROVAL_STATUS_UPDATED</code> → <code>transaction.approval_status.updated</code>. 그 외 v2 는 다중 webhook·이벤트 구독·30일 재전송을 제공한다.</p>
+</div>
+
+<h3>14.8 confirm ↔ finality — 상태 두 개를 가르는 기준</h3>
+
+<p>EVM 에서 "체인에 올라감(confirm)"과 "확정(finality)"은 다르다. Fireblocks 어댑터는 이 둘을 <strong>두 상태</strong>로 갈라 <code>onChainEvent</code> 로 올린다:</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:22%">상태</th><th>뜻</th></tr></thead>
+<tbody>
+<tr><td><code>CONFIRMING</code></td><td>체인에 올라가 confirmation 을 누적하는 중 — 아직 미확정. <code>numOfConfirmations</code> 가 올라간다.</td></tr>
+<tr><td><code>COMPLETED</code></td><td>확정 정책(수신은 DCCP, 송신은 우리 임계) 이 요구한 confirmation 에 도달 = finality. 이 시점부터 자금이 최종이다.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>그래서 수신 흐름(14.5)의 확정 기준은 <strong>DCCP(입금 확정 정책, Deposit Control and Confirmation Policy)</strong>이고, 송신 흐름(14.4)은 어댑터가 올린 <code>numOfConfirmations</code> 로 "confirm(체인 등장) ↔ finality(임계 도달)"를 가른다. 이 상태 두 개가 곧 <a href="scenario-withdrawal.html">11. 출금</a> 상태머신의 중간 단계다 — 이더리움과 Base 는 같은 EVM 이라 이 모델이 동일하고, L2 특유의 확정 지연만 임계값으로 조정한다.</p>
+
+<p>다음으로, 이 어댑터를 모듈로 어떻게 배치하는지는 — <a href="project-structure.html"><strong>17. 프로젝트 구조</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

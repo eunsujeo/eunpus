@@ -1,0 +1,11 @@
+url: https://support.fireblocks.io/hc/en-us/articles/using-tags-for-vault-management
+url_status: inferred (slug 기반 추정, 실 article ID 미확인)
+fetched_at: 2026-05-19
+source_type: pdf
+domain: workspace-management
+tier: 1
+title: "Using Tags for vault management"
+crawl_status: not-fetched (body 미로드)
+promote_condition: "Source Lake hygiene only — full ingest 필요시 결정"
+recommended_mode: mode_b_cluster
+triage_stage: Stage 25 (source_triage.py auto)

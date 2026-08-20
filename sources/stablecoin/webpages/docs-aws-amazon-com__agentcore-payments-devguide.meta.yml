@@ -1,0 +1,21 @@
+url: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-how-it-works.html
+fetched_at: 2026-08-20
+source_type: webpage (AWS 공식 개발자 문서 — 1차)
+domain: stablecoin / agent-payments
+tier: 2
+crawl_status: fetched (2026-08-20, Mode C — how-it-works + concepts 2페이지, 본문 근접)
+markdown: sources/stablecoin/markdown/2026-08-20__docs-aws-amazon-com__agentcore-payments-devguide.md
+title: "Amazon Bedrock AgentCore payments — How it works / Core concepts"
+key_facts: |
+  - 자원 모델: PaymentManager (계정 단위 최상위, IAM/CUSTOM_JWT) → PaymentConnector (CoinbaseCDP | StripePrivy, credential 은 AgentCore Identity→Secrets Manager, 1:1 PaymentCredentialProvider) → PaymentSession (상호작용 단위, maxSpendAmount·currency·expiry) → PaymentInstrument (체인별 EMBEDDED_CRYPTO_WALLET)
+  - 한도 모델: 세션 단위 지출 한도 + 만료 — 대상·조건 규칙 없음. 초과·만료 시 거절, 서명 실패 시 차감 자동 롤백
+  - IAM 4-role 분리 (payments-iam-roles): 세션 생성 권한과 ProcessPayment 를 같은 역할에 두면 상향 한도의 새 세션으로 한도 우회 가능 — 관리 role 에 ProcessPayment 명시 Deny 요구
+  - 지갑: 생성 시 0 USDC. 사용자가 wallet hub 에서 충전 (카드·Apple/Google Pay·ACH·crypto) + 에이전트 권한 부여/회수 — 명시 권한 없으면 에이전트 거래 불가
+  - 결제 흐름: 402 수신 → 한도 체크 → Identity 에서 credential 취득·파트너 통해 서명 → X-PAYMENT 헤더로 재시도 → 머천트 verify·settle → 세션 장부 갱신 (실패 시 예약 해제 + FAILED)
+  - 프로토콜 2종: x402 (v1·v2) + MPP (Machine Payments Protocol — WWW-Authenticate: Payment 챌린지 / Authorization 헤더)
+  - 발견: Gateway 로 유료 MCP 연결 (x402 Bazaar 통합), Browser 로 x402 페이월 사이트 접근
+context: |
+  세미나 사전지식 보강 수집 (2026-08-20). Q-2026-08-20-STBL08 의 "정책 표현력" 판단 재료 —
+  AgentCore 의 통제는 세션 지출 한도+만료+사용자 권한 부여가 전부로, Fireblocks Policy Engine 의
+  rule 표현식 (대상·자산·금액·quorum) 과 구조가 다름.
+promote_condition: "에이전트 결제 vs 커스터디 정책 엔진 비교 분석 시"

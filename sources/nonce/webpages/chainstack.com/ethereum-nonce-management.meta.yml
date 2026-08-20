@@ -1,0 +1,25 @@
+source_url: https://chainstack.com/ethereum-nonce-management/
+host: chainstack.com
+downloaded_at: 2026-06-04
+doc_type: vendor-blog
+title: Ethereum nonce management
+publisher: Chainstack (node infrastructure provider)
+language: en
+tier: 1
+domain: nonce
+mode: C (full ingest — 단일 페이지)
+stage_ingested: 46
+crawl_status: tool-extracted (WebFetch 구조화 추출; raw HTML 미보존)
+extract: ../../markdown/2026-06-04__chainstack-com__ethereum-nonce-management.md
+notes: |
+  Ethereum/EVM nonce 관리 production 가이드 (Chainstack 기술 블로그).
+  핵심: nonce 규칙(sequential, no-gap), stuck tx cascade, concurrency race,
+  local nonce tracker 패턴(ethers v6), eth_getTransactionCount pending/latest,
+  replacement/cancellation tx(같은 nonce + ≥10% fee bump), mempool 캡(Geth/Reth
+  ~16 pending/~64 queued), Flashbots private route, L2 sequencer(Arbitrum/Base/OP)
+  force-inclusion, build-vs-buy(ethers NonceManager / OpenZeppelin Defender).
+  위키 교차: signing-workflow-orchestration / multi-chain-adapter-pattern /
+  withdrawal-lifecycle / entities/fireblocks/transaction (nonce 처리).
+  ★ WebFetch 소형 모델 추출본이므로 fact tier 는 "tool-extracted" — 1차 원문
+  재확인 시 fact 승격. 미처리 sources/nonce/블록체인 nonce 관리…pdf 와 함께
+  nonce-management-reference 의 입력으로 사용 가능.

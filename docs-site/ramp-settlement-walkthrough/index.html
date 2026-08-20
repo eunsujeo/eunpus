@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>온·오프램프·스왑 정산 워크스루 — 델타 원장</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series">정산 워크스루 · 백엔드/회계 담당자 대상 · 비공개 (URL 공유)</p>
+<h1>온·오프램프·스왑 정산 워크스루</h1>
+<p class="subtitle">고객 자산과 은행 자산을 분리해 두고, 그 사이 이동을 <b>DB 엔 즉시</b> 반영하되 <b>실제 블록체인 전송은 15분 배치</b>로 묶는 — 그 PENDING 큐인 <b>델타 원장</b>이 어떻게 도는지 거래 한 건으로 따라갑니다</p>
+
+<div class="callout">
+<div class="callout-title">먼저 한 가지 — "델타 원장"이 무엇인가</div>
+<p style="margin:0 0 8px">출발점은 <b>고객 자산과 은행 자산의 분리</b>(분별관리)입니다. 코인계는 고객 몫(<code>customer_ledger</code>)과 은행 몫(<code>bank_ledger</code> · 재고 풀)을 따로 관리하고, <b>온체인에서도 분리</b>돼 있습니다 — <b>고객 자산 옴니버스 지갑 1개</b>와 <b>은행 자산 옴니버스 지갑 1개</b>. 고객마다 개인 지갑이 있는 게 아니라 전 고객 코인이 옴니버스 1개에 섞여 보관되고, "누가 얼마"는 <b>DB(<code>customer_ledger</code>)에만</b> 있습니다. 충전·환전·스왑은 결국 이 <b>고객↔은행 자산 이동</b>입니다 (충전 = 은행 풀→고객, 환전 = 고객→은행 풀, 스왑 = 양방향).</p>
+<p style="margin:0 0 8px">이동이 생기면 <b>DB(고객·은행 자산 테이블)에는 즉시 반영</b>해 고객이 바로 잔액을 보게 합니다. 하지만 <b>실제 블록체인 전송(wallet 간 코인 이동)은 건별로 안 하고 15분마다 배치로 묶어</b> 실행합니다(가스·운영 효율). <b>델타 원장 = "DB 엔 반영됐지만 아직 블록체인 전송 전"인 이동을 <code>PENDING</code> 으로 쌓아 두는 큐</b>이고, 15분 배치가 on-chain 전송을 끝내면 <code>settled</code> 가 됩니다. (계정계와 무관 — 코인계의 고객·은행 자산만 봅니다.)</p>
+<p style="margin:0"><b>그래서 연속 추적이 필수입니다.</b> DB 가 블록체인보다 앞서 가니, 추적을 안 하면 <b>은행 풀에 코인이 부족한데도 온/오프/스왑이 DB 상 계속 승인</b>돼 15분 배치에서 전송이 깨지거나 고객 자산 보전이 무너집니다. <b>은행 풀 가용 = 실제 잔액 − 미정산(PENDING) 유출</b>을 항상 보고, 거래를 그 가용분 안에서만 허용해야 합니다.</p>
+</div>
+
+<ol class="toc" start="1">
+<li><a href="01-onramp.html"><span class="num">1</span>온램프 — 법정통화 → 코인 (충전)<span class="act">발행/조달</span></a></li>
+<li><a href="02-offramp.html"><span class="num">2</span>오프램프 — 코인 → 법정통화 (환전)<span class="act">소각/처분</span></a></li>
+<li><a href="03-swap.html"><span class="num">3</span>스왑 — 코인 ↔ 코인 (KRWK → USDC)<span class="act">델타 2줄</span></a></li>
+<li><a href="04-failure-reconciliation.html"><span class="num">4</span>실패 되돌리기 — 정산 실패 rollback<span class="act">되돌리기</span></a></li>
+<li><a href="05-db-changes.html"><span class="num">5</span>DB 상태 변화 — row 단위로 따라가기<span class="act">테이블</span></a></li>
+<li><a href="06-reconciliation.html"><span class="num">6</span>대사·결산 — 어긋남을 잡는 4단계 그물<span class="act">정합성</span></a></li>
+</ol>
+<p class="table-note" style="margin-top:10px"><b>부록</b> · <a href="manager-boundary.html">정산 흐름과 블록체인 매니저의 경계</a> — 이 2단계 흐름이 자체/Fireblocks 매니저와 어디서 맞물리는지, <a href="../wallet-design-walkthrough/index.html">지갑 매니저 워크스루</a>와 겹쳐 본다.</p>
+<p class="table-note" style="margin-top:6px"><b>부록</b> · <a href="canton-institutional.html">기관간 정산·해외송금(Canton)으로 확장하면 DB 는?</a> — 이 4원장 설계가 Canton 식 atomic 정산·국경 간 FX 로 가면 무엇만 바꾸면 되는지.</p>
+
+<h2>공통 골격 — 모든 거래가 똑같은 2단계</h2>
+<p>온램프·오프램프·스왑은 정산 상대(발행사·거래소)만 다를 뿐 <b>흐름은 동일한 2단계</b>입니다. 이 그림이 세 거래 전체의 뼈대이고, 각 페이지는 여기에 살을 붙입니다.</p>
+
+<div class="callout">
+<div class="callout-title">왜 DB 와 블록체인을 나눠서 처리하나</div>
+<p style="margin:0 0 8px"><b>DB 반영은 즉시 가능하지만 블록체인 전송은 느리기 때문</b>입니다. wallet 간 on-chain 전송은 가스·확정 시간이 들어, 거래마다 한 건씩 쏘면 비효율적입니다. 그래서 고객↔은행 자산 이동을 <b>DB(고객·은행 자산 테이블)에는 즉시 반영</b>해 고객에게 바로 보여주고, <b>실제 코인 전송은 15분마다 묶어서</b> 처리합니다.</p>
+<p style="margin:0"><b>카드 결제의 "승인 ↔ 정산"과 비슷합니다.</b> 긁으면 즉시 승인되고(=1단계, DB 즉시) 실제 정산은 나중에 묶여 일어납니다(=2단계, 15분 블록체인 배치). 그 사이 "DB 엔 됐지만 아직 체인 전송 전"인 건을 잡아두는 것이 <b>델타 원장</b>입니다 — 다만 정산 주체가 외부가 아니라 <b>우리 15분 블록체인 배치</b>라는 점이 다릅니다.</p>
+</div>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Cust as 고객
+    participant App as 백엔드
+    participant CL as 고객 자산<br/>(customer_ledger)
+    participant BL as 은행 자산·풀<br/>(bank_ledger)
+    participant DL as 델타 원장<br/>(delta_ledger)
+    participant CH as 블록체인<br/>(wallet)
+
+    rect rgb(254,243,199)
+    Note over Cust,DL: ★ 1단계 — 즉시 (DB 반영)
+    Cust->>App: 요청 (충전 / 환전 / 스왑)
+    App->>App: 검증 + 가용 확인 (풀 잔액 − 미정산 PENDING ≥ 요청?)
+    App->>BL: 은행 자산 이동 반영 (즉시)
+    App->>CL: 고객 자산 이동 반영 (즉시)
+    App->>DL: 델타 PENDING 기록 (블록체인 전송 대기)
+    App-->>Cust: 잔액 즉시 반영
+    end
+
+    rect rgb(220,252,231)
+    Note over App,CH: ★ 2단계 — 15분 배치 (블록체인 전송)
+    App->>CH: 쌓인 PENDING 네팅해 두 옴니버스 지갑 간 순액 전송
+    CH-->>App: 전송 확정
+    App->>DL: status = settled
+    end
+</pre></div>
+<p class="diagram-caption">Figure 0. 세 거래의 공통 2단계. <b>노랑 = 1단계(DB 즉시 반영 + 델타 PENDING)</b>, <b>초록 = 2단계(15분 배치로 블록체인 전송 → settled)</b>. 고객↔은행 자산 이동은 DB 엔 즉시 적되 체인 전송은 묶어서 처리하고, 1단계의 <b>가용 확인</b>이 풀 부족 초과 거래를 막는다. 온체인 전송은 <b>고객·은행 두 옴니버스 지갑 사이</b>에서, 그 15분 창의 전 거래를 <b>네팅한 순액</b>으로 한 번 오간다 — 개별 거래의 금액은 그 배치에 더해지는 몫이다.</p>
+
+<div class="callout">
+<div class="callout-title">가용 확인 — "풀이 부족한데 거래가 나가는" 일을 막는다</div>
+<p style="margin:0 0 8px">DB 가 블록체인보다 앞서 가기 때문에, 매 거래 전에 <b>은행 풀 가용 = 실제 wallet 잔액 − 아직 정산 안 된 PENDING 유출</b>을 확인하고 <b>가용 ≥ 요청일 때만</b> 승인합니다.</p>
+<pre style="margin:0 0 8px"><code>풀 실제 잔액         1,000 KRWK
+− 미정산(PENDING) 유출  800 KRWK
+= 가용                 200 KRWK
+→ 300 KRWK 온램프 요청? 거절 (또는 rebalance 트리거)</code></pre>
+<p style="margin:0">이 확인이 없으면 DB 로는 계속 승인돼 <b>15분 배치에서 코인이 모자라 전송이 깨지고</b>, 고객 자산 보전(고객/은행 분리)이 무너집니다. 그래서 <b>델타의 PENDING 합을 늘 빼서 보는 것</b>이 분별관리를 지키는 핵심이고, 오래 안 닫힌 PENDING 은 대사 단계(<a href="06-reconciliation.html">6장</a>)가 잡습니다.</p>
+</div>
+
+<h2 id="pool">실무 기본형 — 사전 민팅 재고 풀 (mint/burn 이 느리기 때문)</h2>
+<p>발행사 mint/burn 은 <b>수 분~수십 분 이상</b> 걸립니다. 그래서 <b>건별로 발행·소각하지 않고</b>, 코인을 미리 대량 민팅해 <b>재고 풀(pool · 은행 자산)</b>로 들고 있다가 거래마다 <b>풀에서 고객에게 넣고 빼기만</b> 합니다. 발행사를 매 건 부르지 않는 게 핵심이고, <b>고객↔은행 wallet 간 실제 코인 전송은 그대로 15분 배치(델타)</b>로 처리됩니다.</p>
+<div class="table-wrap"><table>
+<thead><tr><th style="width:16%">거래</th><th>풀 동작 (DB 즉시 반영 · 블록체인 전송은 15분 배치 = 델타)</th></tr></thead>
+<tbody>
+<tr><td><b>온램프</b></td><td>풀에서 고객에게 <b>할당(out)</b> — DB 즉시: customer_ledger 반환채무↑ · bank_ledger 재고↓. 풀→고객 wallet <b>코인 전송은 15분 배치</b>(델타 PENDING→settled).</td></tr>
+<tr><td><b>오프램프</b></td><td>고객 코인을 풀로 <b>회수(in)</b> — DB 즉시: customer_ledger 반환채무↓ · bank_ledger 재고↑. 고객→풀 wallet <b>전송은 15분 배치</b>(델타).</td></tr>
+<tr><td><b>스왑</b></td><td><b>양쪽 모두 풀</b> — 회수(in)+할당(out), DB 즉시. wallet 전송은 15분 배치(델타 2줄). 단 <b>두 자산 재고가 다 있어야</b> 하고, 거래 뒤 재고 쏠림으로 <b>FX/재고 위험을 은행이 진다</b>(매매차익·스프레드의 원천 · 실제 FX 는 rebalance 때 정산).</td></tr>
+</tbody>
+</table></div>
+<p>회수한 코인은 다음 거래에 <b>재사용</b>되어 풀이 순환합니다. 느린 <b>발행사 mint/burn 은 풀이 상·하한을 벗어날 때만 묶어서(batch rebalance)</b> 일어납니다 — <b>아래 1·2·3장의 발행사/Circle/거래소 흐름이 바로 그 rebalance(또는 재고가 비었을 때의 온디맨드) 경로</b>입니다. 평상시 거래는 발행사 없이 풀 할당/회수 + 15분 델타 배치로 끝납니다.</p>
+<p class="table-note"><b>트레이드오프</b>: 즉시성·건별 발행 호출 절감 ↔ 재고에 자본이 묶이고, 풀 상·하한·rebalance·소진 시 fallback(온디맨드)을 관리해야 한다. 스왑은 여기에 <b>두 자산 재고 + 재고 FX 위험</b>이 더해진다. 그리고 DB 가 앞서 가므로 <b>풀 가용(실제 잔액 − 미정산 PENDING)을 연속 추적</b>해 부족분 초과 거래를 막아야 한다(위 델타 콜아웃).</p>
+
+<h2>세 거래 한눈 비교</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:14%">항목</th><th>온램프</th><th>오프램프</th><th>스왑</th></tr></thead>
+<tbody>
+<tr><td><b>방향</b></td><td>법정통화 → 코인</td><td>코인 → 법정통화</td><td>코인 ↔ 코인</td></tr>
+<tr><td><b>정산처</b></td><td>원화코인=발행사 발행 / 달러코인=Circle 발행·거래소 매입</td><td>원화코인=발행사 소각 / 달러코인=Circle 상환·거래소 매도</td><td>발행사 소각+발행 또는 거래소 매매</td></tr>
+<tr><td><b>계정계(법정)</b></td><td>원화 <b>차감</b></td><td>원화 <b>입금</b></td><td>관여 없음</td></tr>
+<tr><td><b>델타 1단계</b></td><td>1줄 (− 은행→고객 전송 대기)</td><td>1줄 (+ 고객→은행 전송 대기)</td><td>2줄 (보내는 코인 +, 받는 코인 −)</td></tr>
+<tr><td><b>총계정 변화</b></td><td>부채 ↑</td><td>부채 ↓</td><td>없음 (형태만 바뀜)</td></tr>
+<tr><td><b>손익</b></td><td>고정 수수료수익 (+ 거래소 채널이면 스프레드)</td><td>고정 수수료수익 + 매도·상환 스프레드</td><td>매매 차익(스프레드) + 고정 수수료수익</td></tr>
+</tbody>
+</table>
+</div>
+<p class="table-note"><b>델타 amount 부호 규약</b>: <code>−</code> = 은행→고객 전송 대기(고객이 받을 코인), <code>+</code> = 고객→은행 전송 대기(고객이 낼 코인). 둘 다 "DB 엔 반영, 블록체인 전송은 다음 15분 배치 대기" 상태입니다. 그래서 받는 거래 온램프가 <code>−</code>, 보내는 거래 오프램프가 <code>+</code>, 스왑은 둘 다 잡힙니다.</p>
+<p class="table-note"><b>수수료(손익) 두 층</b>: 표의 "손익"은 매매 스프레드만이 아니라 <b>고객에게 받는 고정 수수료</b>(거래소식 선계산 출금/매매 요율)와 <b>실제 실비·조달 비용</b>의 차액도 포함합니다. 고객 과금은 고정 스케줄(비즈니스 정책)이고 네트워크 실비는 변동이라, 그 차액이 수수료수익이나 손실로 떨어집니다. 변동 실비 추정 자체는 매니저 층의 일입니다(→ <a href="../wallet-design-walkthrough/07-estimate-fee.html">지갑 매니저 워크스루의 수수료 견적</a>).</p>
+
+<div class="callout">
+<div class="callout-title">기억할 두 규칙</div>
+<p style="margin:0 0 8px"><b>DB 는 즉시, 블록체인은 15분 배치.</b> 고객↔은행 자산 이동은 <code>customer_ledger</code>·<code>bank_ledger</code> 에 즉시 반영해 고객이 바로 잔액을 보고, 실제 wallet 전송만 15분 배치(델타)로 묶습니다.</p>
+<p style="margin:0"><b>나가는 쪽은 가용으로 막는다.</b> 풀(은행 자산)에서 코인이 나가는 거래는 <b>실제 잔액 − 미정산 PENDING ≥ 요청</b>일 때만 승인해, 풀에 없는 코인을 DB 로 약속하는 일을 막습니다.</p>
+</div>
+
+<p class="foot">상세 회계 설계: <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a>(4 원장·분개·매트릭스) · 대사/마감: <a href="../fireblocks-custodial-wallet-db-design/reconciliation-close.html">대사·결산·마감</a>.</p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/walkthrough-diagram.js"></script>
+</body>
+</html>

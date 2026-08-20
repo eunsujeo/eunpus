@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>API Key · CSR · 2FA · SSO · IP — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — API Key · CSR · 2FA · SSO · IP" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace.html">3. Workspace</a></li>
+<li><a href="tables-vault.html">4. Vault</a></li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">6. Users</a></li>
+<li><a class="active" href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">14. Transaction State</a></li>
+<li><a href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="tables-auth">
+<h2>7. API Key · CSR<span class="g" data-tip="Certificate Signing Request. RSA public key + 신원 정보를 묶은 cert 발급 요청서. API user 인증에 사용" tabindex="0">(?)</span> · 2FA<span class="g" data-tip="Two-Factor Authentication. password + 추가 인증 (대부분 TOTP authenticator app 의 6 자리 코드)" tabindex="0">(?)</span> · SSO<span class="g" data-tip="Single Sign-On. 사내 IdP (Google / Okta 등) 에 로그인 위임. Fireblocks 는 Auth0 가 service provider" tabindex="0">(?)</span> · IP Allowlist</h2>
+<span class="section-subtitle">5 자격증명 평면의 영속화 — login + API call 시 인증과 권한을 어떻게 영속화하는가</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처 — 어디까지가 Fireblocks 정의이고, 어디부터가 추정인가</div>
+<p>이 페이지의 내용은 두 갈래입니다. 미리 구분해두면 어떤 부분을 그대로 받아들이고 어떤 부분은 본인 환경에서 검증할지 판단이 쉬워집니다.</p>
+<p><strong>Fireblocks 공식 문서에 정의된 사실</strong> — 그대로 받아들여도 안전</p>
+<ul style="margin-bottom:0.5rem">
+<li><strong>5 자격증명 평면</strong>: API Key · CSR · 2FA · SSO · IP Allowlist 가 각각 다른 layer 에서 작동</li>
+<li>API Key: API user 당 1 개 · Rename 시 key 불변 · Delete 즉시 invalid (진행 중 tx 실패)</li>
+<li>CSR: <strong>RSA 4096</strong> X.509<span class="g" data-tip="공개키 인증서 표준 형식. CSR 으로 발급받아 서버-클라이언트 신원 검증에 사용" tabindex="0">(?)</span>, customer-side 에서 생성 (Fireblocks 는 private key 모름)</li>
+<li>2FA: <strong>모든 Console user 필수</strong>, TOTP<span class="g" data-tip="Time-based One-Time Password. authenticator app 이 30 초마다 생성하는 6 자리 코드" tabindex="0">(?)</span> authenticator (Google / Microsoft / LastPass / Yubico 등), 본인 reset 불가</li>
+<li>SSO: service provider 는 <strong>Auth0</strong>, email domain 기반 authorization, 9 IdP (Google / Entra / Okta / OpenID Connect<span class="g" data-tip="OpenID Connect. OAuth 2.0 위에 얹은 신원 검증 layer. JWT 기반 ID token 발급" tabindex="0">(?)</span> / PingFederate / SAML<span class="g" data-tip="Security Assertion Markup Language. SSO 의 XML 기반 표준. assertion 으로 사용자 속성 전달" tabindex="0">(?)</span> 2.0 / SAML 3.0 / ADFS<span class="g" data-tip="Active Directory Federation Services. Microsoft 의 SAML 기반 SSO 서버" tabindex="0">(?)</span> / LDAP<span class="g" data-tip="Lightweight Directory Access Protocol. 사내 디렉토리 접근 표준. AD 의 기반 프로토콜" tabindex="0">(?)</span>)</li>
+<li>IP Allowlist: API user 별 + workspace 별 두 평면, <strong><code>/32</code> CIDR<span class="g" data-tip="Classless Inter-Domain Routing. IP 주소 + prefix 길이로 범위 표현. /32 = single IP" tabindex="0">(?)</span> (single IP) 만 허용</strong></li>
+<li>Fireblocks 자체 문서에 <strong>"권한표 vs 본문" inconsistency</strong> 존재 — 2FA reset / IP Allowlist 수정 권한 등에서 권한표는 "Owner + Security Admin", 본문은 "Owner only" 로 다르게 적힘 (어느 게 맞는지는 본 자료로 결정 불가)</li>
+</ul>
+<p style="margin-bottom:0.3rem"><strong>저자가 합리적으로 추정해서 그린 설계</strong> — 참고용, 본인 환경에서 검증 권장</p>
+<ul style="margin-bottom:0">
+<li>8 테이블 (<code>api_keys</code> · <code>csrs</code> · <code>user_2fa</code> · <code>twofa_reset_events</code> · <code>sso_configs</code> · <code>sso_authorized_domains</code> · <code>api_user_ip_allowlists</code> · <code>workspace_ip_allowlists</code>) 의 구체 schema</li>
+<li>TOTP<span class="g" data-tip="Time-based One-Time Password. authenticator app 이 30 초마다 생성하는 6 자리 코드" tabindex="0">(?)</span> secret 과 SSO client secret 을 <strong>HSM<span class="g" data-tip="Hardware Security Module. 암호 키를 plaintext 로 노출하지 않는 전용 보안 하드웨어. wrap 된 key 만 외부로 나옴" tabindex="0">(?)</span>-wrapped key reference</strong> 로 저장하는 형태 (plaintext 절대 금지)</li>
+<li><code>twofa_reset_events</code> 의 append-only 패턴 (reset 이력 audit)</li>
+<li><code>sso_authorized_domains</code> 를 별도 junction 으로 둔 선택 (sso_configs 의 array 컬럼 회피)</li>
+<li><code>idp_type</code> ENUM 9 값으로 정형화 (Fireblocks 자료는 자유 텍스트일 수 있음)</li>
+<li><strong>WebAuthn<span class="g" data-tip="Web Authentication. W3C 표준. 브라우저에서 FIDO2 보안 키 또는 기기 내장 인증기 (지문/Face ID) 로 password 없이 로그인" tabindex="0">(?)</span> / FIDO2<span class="g" data-tip="Fast IDentity Online 2. password 자체를 없애는 인증 표준. 보안 키 (YubiKey 등) 또는 기기 내장 인증기로 로컬 private key 서명. phishing 방어 강력" tabindex="0">(?)</span> / hardware key 같은 password-less 2FA 방식 지원 여부</strong> — Fireblocks 자료에 명시 없음, 본 schema 는 TOTP 만 가정</li>
+</ul>
+</div>
+
+<h3>5 자격증명 평면 한눈 비교</h3>
+<p>각 자격증명이 어디에 적용되고 어떤 보안 메커니즘에 의존하는지, 손상 시 무슨 대응을 해야 하는지 비교:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>자격증명</th><th>적용 대상</th><th>작동 layer</th><th>핵심 보안 메커니즘</th><th>손상 시 대응</th></tr></thead>
+<tbody>
+<tr><td><strong>API Key</strong></td><td>API user</td><td>모든 REST API 호출</td><td>X.509<span class="g" data-tip="공개키 인증서 표준 형식. CSR 으로 발급받아 서버-클라이언트 신원 검증에 사용" tabindex="0">(?)</span> cert 검증 + IP allowlist</td><td>Delete 즉시 invalidate</td></tr>
+<tr><td><strong>CSR</strong></td><td>API user (enrollment)</td><td>cert 발급 1 회</td><td>customer-side 에서 private key 생성·보관 (Fireblocks 모름)</td><td>새 CSR 발급 + re-enroll</td></tr>
+<tr><td><strong>2FA (TOTP)</strong></td><td>Console user 전원</td><td>로그인 시점</td><td>authenticator app + HSM-wrapped TOTP secret</td><td>Owner / Security Admin reset</td></tr>
+<tr><td><strong>SSO</strong></td><td>Console user (선택)</td><td>로그인 authorization</td><td>외부 IdP (Google · Okta 등) 위임 + email domain 매칭</td><td>Fireblocks Support 경유 변경</td></tr>
+<tr><td><strong>IP Allowlist</strong></td><td>API user + workspace 양쪽</td><td>network 차원</td><td><code>/32</code> CIDR (single IP) pinning</td><td>Owner / Security Admin 권한자가 제거 / 갱신</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>API Key — API user 의 통신 인증</h3>
+<p>API user 가 Fireblocks REST API 를 호출할 때 자신을 식별하는 비밀 값. <strong>API user 1 명당 정확히 1 개</strong> 의 API key 가 발급되며 (Fireblocks 정식 표현: "Each API user has an associated API key"), Console 의 API users list 에서 마우스 hover 로 복사할 수 있습니다.</p>
+
+<p>중요한 운영 동작 3 가지:</p>
+<ul>
+<li><strong>Rename 후에도 key 자체는 불변</strong> — 사용자 이름만 바뀔 뿐 같은 key 로 계속 호출 가능. 운영 시스템 측 비밀 키 교체 필요 없음</li>
+<li><strong>Delete 시 즉시 무효화</strong> — 별도 유예 기간 없이 그 순간부터 모든 통합이 끊김. 진행 중인 tx 가 실패하고 새 서명 요청도 거부됨</li>
+<li><strong>IP Allowlist 가 없으면 위험</strong> — 도난된 API key 는 인터넷 어느 머신에서나 사용 가능하므로, key 유출 자체를 차단하기 어렵다면 <strong>호출 가능한 IP 자체를 좁히는 것</strong> 이 마지막 방어선. 자세히는 아래 IP Allowlist 절</li>
+</ul>
+
+<pre><code>CREATE TABLE api_keys (
+  id              BINARY(16) PRIMARY KEY,
+  api_user_id     BINARY(16) NOT NULL UNIQUE,
+  csr_id          BINARY(16) NOT NULL,
+  created_by      BINARY(16) NOT NULL,             -- 발급 actor (반드시 Owner)
+  created_at      DATETIME(6) NOT NULL,
+  invalidated_by  BINARY(16),                       -- Delete 한 user (Owner)
+  invalidated_at  DATETIME(6),                       -- delete 시 set, 즉시 적용
+  KEY (invalidated_at)
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>API key 의 고유 식별자</td></tr>
+<tr><td><code>api_user_id</code></td><td>BINARY(16) UNIQUE FK</td><td>이 key 가 속한 API user. <strong>UNIQUE</strong> 제약으로 1 user 1 key 강제</td></tr>
+<tr><td><code>csr_id</code></td><td>BINARY(16) FK</td><td>이 key 와 짝인 CSR (cert) 의 id — 아래 csrs 테이블 참조</td></tr>
+<tr><td><code>created_by</code></td><td>BINARY(16)</td><td>이 key 를 발급한 user — <strong>반드시 Owner</strong> (Owner + Admin Quorum approval 의 initiator). set-once</td></tr>
+<tr><td><code>created_at</code></td><td>DATETIME(6)</td><td>발급 시각. set-once</td></tr>
+<tr><td><code>invalidated_by</code></td><td>BINARY(16) nullable</td><td>Delete 를 실행한 user (반드시 Owner). NULL = 활성. set-once when set</td></tr>
+<tr><td><code>invalidated_at</code></td><td>DATETIME(6) nullable</td><td>Delete 시 set. set-once. NULL = 활성. <strong>그 시점 이후 들어오는 모든 호출 거부</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>CSR — API user 의 cert 발급 요청</h3>
+<p>API key 가 "이 호출이 누구인지" 를 가리키는 단순 토큰이라면, CSR (Certificate Signing Request) 은 그 신원을 cryptography 차원에서 증명할 수 있도록 발급되는 <strong>X.509<span class="g" data-tip="공개키 인증서 표준 형식. CSR 으로 발급받아 서버-클라이언트 신원 검증에 사용. 공개키 + 신원 정보 + 발급자 서명을 묶은 ASN.1 인코딩 데이터" tabindex="0">(?)</span> 인증서</strong> 의 발급 요청입니다 — RSA 4096 비트 키 크기를 사용합니다.</p>
+
+<p>핵심 설계 — <strong>private key 는 customer 측에서 생성해서 로컬에만 보관</strong>합니다 (보통 <code>fireblocks_secret.key</code> 파일). Fireblocks 는 public key 만 받아서 cert 를 발급하므로, <strong>Fireblocks 도 customer 의 private key 를 모르는 신뢰 모델</strong>입니다. 만약 Fireblocks 가 private key 를 가지고 있다면 customer 신원을 위장해서 API 호출이 가능해지지만, 이 설계 덕에 그게 불가능.</p>
+
+<p>예외 — <strong>Sandbox 환경</strong>에서는 학습 편의를 위해 브라우저에서 자동 생성 (Fireblocks 가 임시 private key 를 발급해 즉시 다운로드). 본 운영에서는 사용 금지.</p>
+
+<p>인증서 체인 구조 — Fireblocks 는 자체 Root CA → Intermediate CA → <strong>end cert (leaf)</strong> 의 3 단 chain 을 운영합니다. 위 CSR 으로 발급된 cert 가 <strong>leaf</strong> (가장 말단), 그 위로 intermediate, 그 위로 root 가 신뢰의 끝.</p>
+
+<pre><code>CREATE TABLE csrs (
+  id                BINARY(16) PRIMARY KEY,
+  subject_cn        VARCHAR(255) NOT NULL,
+  public_key_pem    TEXT NOT NULL,
+  fingerprint_sha256 BINARY(32) NOT NULL UNIQUE,
+  signed_by_intermediate_cert_id BINARY(16) NOT NULL,
+  end_cert_pem      TEXT,                              -- Core Services 가 sign 후 set
+  signed_at         DATETIME(6),
+  expires_at        DATETIME(6) NOT NULL,
+  uploaded_by       BINARY(16) NOT NULL,                -- CSR 을 upload 한 user (= API user 추가 initiator)
+  uploaded_at       DATETIME(6) NOT NULL                -- ★ 이 row 의 created_at semantic
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>CSR 의 고유 식별자</td></tr>
+<tr><td><code>subject_cn</code></td><td>VARCHAR(255)</td><td>cert 의 Common Name — 누구의 cert 인지를 가리키는 식별자 (예: API user 이름)</td></tr>
+<tr><td><code>public_key_pem</code></td><td>TEXT</td><td>customer 가 보낸 public key 의 PEM 인코딩. 짝인 private key 는 customer 만 보유</td></tr>
+<tr><td><code>fingerprint_sha256</code></td><td>BINARY(32) UNIQUE</td><td>public key 의 SHA-256 지문. 같은 key 가 중복 등록되지 않도록 UNIQUE</td></tr>
+<tr><td><code>signed_by_intermediate_cert_id</code></td><td>BINARY(16)</td><td>이 leaf cert 를 서명한 intermediate cert 의 id. 체인 추적용</td></tr>
+<tr><td><code>end_cert_pem</code></td><td>TEXT nullable</td><td>Fireblocks 의 Core Services 가 CSR 을 서명해서 발급한 최종 leaf cert. 발급 전에는 NULL</td></tr>
+<tr><td><code>signed_at</code></td><td>DATETIME(6) nullable</td><td>발급 완료 시각. NULL = 아직 미발급. set-once when set</td></tr>
+<tr><td><code>expires_at</code></td><td>DATETIME(6)</td><td>cert 의 만료 시각. 만료되면 다시 CSR 제출해야 함</td></tr>
+<tr><td><code>uploaded_by</code></td><td>BINARY(16)</td><td>CSR 을 업로드한 user (= API user 추가 흐름의 initiator). set-once</td></tr>
+<tr><td><code>uploaded_at</code></td><td>DATETIME(6)</td><td>customer 가 CSR 을 업로드한 시각. <strong>이 row 의 created_at 과 같은 의미</strong> — CSR 업로드 의미가 더 직관적이라 이름 보존. set-once</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>2FA — Console user 의 2 단계 인증</h3>
+<p>password 만으로는 부족하므로 추가 인증을 의무화 — Fireblocks 는 <strong>모든 Console user 가 TOTP<span class="g" data-tip="Time-based One-Time Password. authenticator app 이 30 초마다 생성하는 6 자리 코드" tabindex="0">(?)</span> (Time-based One-Time Password, 시간 기반 일회용 비밀번호) authenticator app 을 등록하도록 강제</strong> 합니다. Google Authenticator / Microsoft Authenticator / LastPass Authenticator / Yubico Authenticator 등이 지원되며, 모두 같은 원리로 작동합니다 — 등록 시 서버와 app 이 같은 secret 을 공유하고, 그 secret + 현재 시각 을 함께 계산해서 <strong>30 초마다 새로 6 자리 코드를 발급</strong> (서버도 같은 계산을 해서 일치 여부 검증). 따라서 서버-app 의 시간 동기화가 필요.</p>
+<p>참고 — <strong>WebAuthn<span class="g" data-tip="Web Authentication. W3C 표준. 브라우저에서 FIDO2 보안 키 또는 기기 내장 인증기 (지문/Face ID) 로 password 없이 로그인" tabindex="0">(?)</span> / FIDO2<span class="g" data-tip="Fast IDentity Online 2. password 자체를 없애는 인증 표준. 보안 키 (YubiKey 등) 또는 기기 내장 인증기로 로컬 private key 서명. phishing 방어 강력" tabindex="0">(?)</span></strong> (password 자체를 없애는 인증 표준 — 보안 키나 지문 / Face ID 로 로컬에서 private key 서명) 같은 <strong>하드웨어 보안 키 지원 여부는 Fireblocks 자료에 명시되어 있지 않아</strong>, 본 schema 에서는 TOTP 만 가정합니다.</p>
+
+<div class="callout">
+<div class="callout-title">왜 TOTP secret 을 HSM<span class="g" data-tip="Hardware Security Module. 암호 키를 plaintext 로 노출하지 않는 전용 보안 하드웨어. wrap 된 key 만 외부로 나옴" tabindex="0">(?)</span> 안에 두는가</div>
+<p>TOTP 의 secret (서버 - 사용자 사이에 공유하는 seed) 이 한 번 유출되면 공격자가 그 사용자의 2FA 코드를 무한히 생성할 수 있으므로, 사실상 password 만큼 민감한 비밀입니다. 따라서 DB 에 plaintext 저장은 금지 — <strong>HSM 안에 보관하고 DB 에는 그 key 의 reference 만</strong> 둡니다. 이 reference 로 HSM 에 "이 사용자의 TOTP 코드 검증" 을 요청하면 HSM 내부에서 secret 을 꺼내지 않고 검증해서 결과만 반환합니다.</p>
+</div>
+
+<p>Reset 운영:</p>
+<ul>
+<li><strong>본인 reset 불가</strong> — 자신의 2FA 를 자신이 푸는 것은 보안 의미 없음 (이미 password 만 알면 푸는 셈). 따라서 다른 사람에게 reset 을 요청해야 함</li>
+<li>표준 절차: 사용자 → Owner 또는 Security Admin 에게 요청 → 관리자가 reset 실행 → 사용자 이메일로 확인 메일 → 재로그인 + 새 authenticator 등록</li>
+<li><strong>Owner 본인의 reset</strong> 은 누구에게 요청? — Fireblocks Support 에 별도 절차로 요청 (via_support 플래그가 이 케이스를 마크)</li>
+</ul>
+
+<div class="callout callout-warn">
+<div class="callout-title">⚠️ Fireblocks 자체 문서의 inconsistency</div>
+<p>2FA reset 권한이 누구에게 있는지에 대해 <strong>권한표와 본문이 일치하지 않습니다</strong>. 권한표는 "Owner + Security Admin" 으로 적혀 있고, 본문 산문 설명은 "Owner only" 로 적혀 있어 어느 쪽이 운영 진실인지 본 자료로 결정할 수 없습니다. 실제 운영 시 Fireblocks Support 에 확인 권장.</p>
+</div>
+
+<pre><code>CREATE TABLE user_2fa (
+  user_id           BINARY(16) PRIMARY KEY,
+  -- ★ TOTP secret 은 plaintext 저장 금지. HSM-wrapped 만.
+  secret_hsm_keyref VARCHAR(128) NOT NULL,
+  enrolled_at       DATETIME(6) NOT NULL,
+  last_used_at      DATETIME(6),
+  KEY (last_used_at)
+);
+
+-- ★ append-only — 모든 reset 이력은 audit
+CREATE TABLE twofa_reset_events (
+  id                BINARY(16) PRIMARY KEY,
+  target_user_id    BINARY(16) NOT NULL,
+  actor_user_id     BINARY(16) NOT NULL,
+  reset_at          DATETIME(6) NOT NULL,
+  via_support       BOOLEAN NOT NULL DEFAULT FALSE,    -- Owner 본인 reset 은 Support 경유
+  KEY (target_user_id)
+);</code></pre>
+
+<h4>3.1 <code>user_2fa</code> — 사용자별 2FA 등록 상태</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>user_id</code></td><td>BINARY(16) PK / FK</td><td>이 등록의 주인 user. user 1 명당 1 row (PK 가 user_id 자체)</td></tr>
+<tr><td><code>secret_hsm_keyref</code></td><td>VARCHAR(128)</td><td><strong>HSM 안에 저장된 TOTP secret 의 reference</strong>. plaintext 절대 저장 안 함 — 위 callout 참조</td></tr>
+<tr><td><code>enrolled_at</code></td><td>DATETIME(6)</td><td>최초 2FA 등록 시각. set-once</td></tr>
+<tr><td><code>last_used_at</code></td><td>DATETIME(6) nullable</td><td>마지막 2FA 검증 성공 시각. 휴면 계정 / 의심 활동 탐지에 활용</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>3.2 <code>twofa_reset_events</code> — reset 이력 (append-only)</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>이벤트 고유 식별자</td></tr>
+<tr><td><code>target_user_id</code></td><td>BINARY(16) FK</td><td>2FA 가 reset 된 user</td></tr>
+<tr><td><code>actor_user_id</code></td><td>BINARY(16) FK</td><td>reset 을 실행한 관리자. 책임 추적의 핵심</td></tr>
+<tr><td><code>reset_at</code></td><td>DATETIME(6)</td><td>reset 실행 시각</td></tr>
+<tr><td><code>via_support</code></td><td>BOOLEAN</td><td><strong>TRUE</strong> = Fireblocks Support 경유 (Owner 본인 reset 같은 특수 케이스) / <strong>FALSE</strong> = workspace 내 Owner/Security Admin 이 직접 처리</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>SSO — 사내 IdP 에 로그인 위임</h3>
+<p>Console user 가 회사의 다른 시스템 (Google Workspace · Microsoft 365 · Okta 등) 에 이미 로그인할 때 쓰는 계정으로 Fireblocks 도 로그인하는 메커니즘. password 를 별도로 외울 필요 없이 사내 IdP<span class="g" data-tip="Identity Provider. 외부 인증 서비스 (Google Workspace / Okta / Entra ID 등)" tabindex="0">(?)</span> 가 신원을 보장해주는 방식.</p>
+
+<p>중요한 분리 — <strong>SSO 는 "로그인 authorization" 만</strong> 처리합니다. 즉 "이 사람이 회사 직원인가 + 진짜 그 사람 맞는가" 의 검증까지만 사내 IdP 에 맡기고, "그 사람이 Fireblocks workspace 의 어떤 role 인가" 는 별도 평면 — Owner / Admin 이 Console 에서 user 를 추가하고 role 을 부여하는 — 에서 관리합니다. SSO 로 로그인하더라도 workspace 에 user 로 등록되어 있지 않으면 접근 불가.</p>
+
+<p>Service provider 는 <strong>Auth0</strong><span class="g" data-tip="Fireblocks 의 SSO service provider. login authorization 만 처리, workspace user 관리는 별개" tabindex="0">(?)</span> (callback URL: <code>auth.fireblocks.io/login/callback</code>). 즉 Fireblocks ← Auth0 ← 회사 IdP 3 단 체인. 변경 (IdP 추가 / 교체) 은 <strong>Fireblocks Support 경유 + Workspace Owner 승인 필요</strong> — Console UI 에서 자유롭게 바꿀 수 없음.</p>
+
+<p>Authorization 메커니즘 — <strong>email domain 기반</strong>. workspace 의 SSO 설정에 등록된 domain (예: <code>company.com</code>) 의 email 로만 로그인 가능. 동일 IdP 에 있더라도 다른 domain 의 user 는 차단.</p>
+
+<p>9 IdP 지원 — Fireblocks 가 self-setup (Console 에서 자체 설정) 을 허용하는 것과 Support 경유만 가능한 것이 갈립니다:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>IdP</th><th>Self-setup</th><th>주요 입력</th></tr></thead>
+<tbody>
+<tr><td>Google Workspace</td><td>✓</td><td>Client ID, Secret, domain (OAuth 2.0<span class="g" data-tip="권한 위임 표준. 외부 앱이 사용자 대신 리소스 접근하는 토큰 발급 프로토콜. 로그인 인증에도 사용" tabindex="0">(?)</span>)</td></tr>
+<tr><td>Microsoft Entra ID</td><td>✓</td><td>Client ID, <strong>Secret value</strong> (Secret 의 "ID" 가 아니라 "value" 임에 주의), domain</td></tr>
+<tr><td>Okta</td><td>✓</td><td>customer-metadata.xml, X.509 (SAML<span class="g" data-tip="Security Assertion Markup Language. SSO 의 XML 기반 표준. assertion 으로 사용자 속성 (firstName/email 등) 전달" tabindex="0">(?)</span> 의 firstName / lastName / email 3 가지 attribute 매핑)</td></tr>
+<tr><td>OpenID Connect</td><td>✓</td><td>Issuer URL, Client ID, domain (OIDC<span class="g" data-tip="OpenID Connect. OAuth 2.0 위에 얹은 신원 검증 layer. JWT 기반 ID token 발급" tabindex="0">(?)</span>)</td></tr>
+<tr><td>PingFederate</td><td>✓</td><td>Server URL, X.509 (Base64)</td></tr>
+<tr><td>SAML 2.0 / 3.0</td><td>✓</td><td>metadata.xml, X.509</td></tr>
+<tr><td>ADFS<span class="g" data-tip="Active Directory Federation Services. Microsoft 의 SAML 기반 SSO 서버. 사내 AD 와 연동" tabindex="0">(?)</span></td><td>—</td><td>Fireblocks Support 경유</td></tr>
+<tr><td>LDAP<span class="g" data-tip="Lightweight Directory Access Protocol. 사내 디렉토리 (사용자/조직 정보 저장소) 접근 표준. AD 의 기반 프로토콜" tabindex="0">(?)</span> / AD</td><td>—</td><td>Fireblocks Support 경유</td></tr>
+</tbody>
+</table>
+</div>
+
+<pre><code>CREATE TABLE sso_configs (
+  id                BINARY(16) PRIMARY KEY,
+  workspace_id      BINARY(16) NOT NULL UNIQUE,        -- workspace 당 1개의 SSO 설정
+  idp_type          ENUM('google','entra','okta','oidc','pingfederate','saml2','saml3','adfs','ldap') NOT NULL,
+  callback_url      VARCHAR(255) NOT NULL,             -- auth.fireblocks.io/login/callback
+  client_id         VARCHAR(255),
+  client_secret_hsm_keyref VARCHAR(128),               -- ★ HSM-wrapped, never plaintext
+  metadata_xml_blob BLOB,                              -- SAML 계열에서 사용
+  created_by        BINARY(16) NOT NULL,                -- 최초 설정 actor (Owner)
+  created_at        DATETIME(6) NOT NULL,
+  modified_by       BINARY(16) NOT NULL,                -- 마지막 변경 actor (Support 경유 변경의 Owner)
+  modified_at       DATETIME(6) NOT NULL                -- ★ Support 경유 변경 시 갱신
+);
+
+CREATE TABLE sso_authorized_domains (
+  id            BINARY(16) PRIMARY KEY,
+  sso_config_id BINARY(16) NOT NULL,
+  email_domain  VARCHAR(255) NOT NULL,
+  added_by      BINARY(16) NOT NULL,
+  added_at      DATETIME(6) NOT NULL,
+  removed_by    BINARY(16),
+  removed_at    DATETIME(6),
+  KEY (sso_config_id, email_domain),
+  KEY (sso_config_id, removed_at)
+);</code></pre>
+
+<h4>4.1 <code>sso_configs</code> — workspace 당 SSO 설정 본체</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>SSO 설정의 고유 식별자</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16) UNIQUE</td><td>이 SSO 가 속한 workspace. <strong>UNIQUE</strong> — workspace 당 SSO 설정 1 개 강제</td></tr>
+<tr><td><code>idp_type</code></td><td>ENUM (9 값)</td><td>IdP 종류. <strong>google</strong>=Google Workspace / <strong>entra</strong>=Microsoft Entra ID (구 Azure AD) / <strong>okta</strong>=Okta / <strong>oidc</strong>=일반 OpenID Connect / <strong>pingfederate</strong>=PingFederate / <strong>saml2/saml3</strong>=일반 SAML / <strong>adfs</strong>=Microsoft ADFS / <strong>ldap</strong>=LDAP/AD</td></tr>
+<tr><td><code>callback_url</code></td><td>VARCHAR(255)</td><td>Auth0 의 callback endpoint. 보통 <code>auth.fireblocks.io/login/callback</code></td></tr>
+<tr><td><code>client_id</code></td><td>VARCHAR(255) nullable</td><td>OAuth 2.0 / OIDC 의 client ID. SAML 계열에서는 NULL 가능 (metadata.xml 안에 식별 포함)</td></tr>
+<tr><td><code>client_secret_hsm_keyref</code></td><td>VARCHAR(128) nullable</td><td>OAuth 2.0 / OIDC 의 client secret. <strong>plaintext 저장 금지</strong> — HSM 안의 reference 만</td></tr>
+<tr><td><code>metadata_xml_blob</code></td><td>BLOB nullable</td><td>SAML 계열의 metadata.xml 원본. OAuth 계열에서는 NULL</td></tr>
+<tr><td><code>created_by</code></td><td>BINARY(16)</td><td>최초 SSO 설정을 한 user (Owner). set-once</td></tr>
+<tr><td><code>created_at</code></td><td>DATETIME(6)</td><td>최초 설정 시각. set-once</td></tr>
+<tr><td><code>modified_by</code></td><td>BINARY(16)</td><td>마지막 변경 actor — Support 경유 변경의 initiator (Owner)</td></tr>
+<tr><td><code>modified_at</code></td><td>DATETIME(6)</td><td>Fireblocks Support 경유로 마지막 변경된 시각</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>4.2 <code>sso_authorized_domains</code> — SSO 가 허용하는 email domain 목록</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody><tr><td><code>id</code></td><td>BINARY(16) PK</td><td>등록 이벤트의 surrogate PK. removed 후 같은 domain 재추가 시 새 row INSERT — 이력 보존</td></tr>
+<tr><td><code>sso_config_id</code></td><td>BINARY(16) FK</td><td>어느 SSO 설정에 속한 domain 인지</td></tr>
+<tr><td><code>email_domain</code></td><td>VARCHAR(255)</td><td>허용 domain (예: <code>company.com</code>). 이 list 에 없는 domain 의 email 로 로그인 시도는 거부</td></tr>
+<tr><td><code>added_by</code> · <code>added_at</code></td><td>BINARY(16) · DATETIME(6)</td><td>domain 추가 actor + 시각. set-once</td></tr>
+<tr><td><code>removed_by</code> · <code>removed_at</code></td><td>BINARY(16) nullable · DATETIME(6) nullable</td><td>제거 actor + 시각. NULL = 현재 active. set-once when set</td></tr>
+<tr><td><code>KEY (sso_config_id, email_domain)</code></td><td>—</td><td>"이 SSO 의 domain 이력" 조회</td></tr>
+<tr><td><code>KEY (sso_config_id, removed_at)</code></td><td>—</td><td>"현재 active 한 domain 만" 조회 (WHERE removed_at IS NULL)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>IP Allowlist — 호출 가능한 IP 자체를 제한</h3>
+<p>아무리 API key 와 cert 가 안전해도 그 자격증명이 어디선가 유출되면 도난당한 key 로 인터넷 어디서나 호출이 가능합니다. 마지막 방어선으로 <strong>호출이 허용되는 IP 주소 자체를 화이트리스트로 좁히는 것</strong> — 그게 IP Allowlist 입니다. 등록되지 않은 IP 에서 들어온 호출은 자격증명이 맞아도 거부.</p>
+
+<p>두 layer 가 별도 존재:</p>
+<ul>
+<li><strong>API user 별 (per-API-user)</strong> — 각 API user 마다 자기만의 허용 IP 목록. customer 의 운영 서버 IP 만 등록하는 식. 본 페이지의 <code>api_user_ip_allowlists</code> 테이블</li>
+<li><strong>Workspace 별 (Console 접근용)</strong> — 사람이 Console UI 에 로그인할 수 있는 IP 자체를 제한 (예: 오피스 IP, VPN 출구 IP). 본 페이지의 <code>workspace_ip_allowlists</code> 테이블</li>
+</ul>
+
+<p>두 평면 모두 <strong>CIDR<span class="g" data-tip="Classless Inter-Domain Routing. IP 주소 + prefix 길이로 범위 표현. /32 = single IP, /24 = 256 IP 범위" tabindex="0">(?)</span> 표기의 <code>/32</code> 만 허용</strong> — single IP 강제. <code>/24</code> 같은 범위 전체 허용은 안 됨. 이유: range 를 허용하면 "회사 망 전체" 같은 넓은 범위가 등록되어 사실상 의미 없어지므로, 정확히 어느 머신인지 한 대씩 지정하도록 강제.</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">⚠️ Fireblocks 자체 문서의 inconsistency</div>
+<p>IP Allowlist 수정 권한이 누구에게 있는지에 대해 <strong>권한표는 "Owner + Security Admin"</strong>, <strong>본문 산문 설명은 "Only workspace Owners"</strong> 로 다르게 적혀 있어 본 자료로 결정 불가. (2FA reset 권한과 동일 패턴) 실제 운영 시 Fireblocks Support 에 확인 권장.</p>
+</div>
+
+<pre><code>CREATE TABLE api_user_ip_allowlists (
+  id          BINARY(16) PRIMARY KEY,
+  api_user_id BINARY(16) NOT NULL,
+  cidr        VARCHAR(18) NOT NULL,              -- /32 only
+  added_by    BINARY(16) NOT NULL,                -- Owner 또는 Security Admin
+  added_at    DATETIME(6) NOT NULL,
+  removed_by  BINARY(16),                         -- 제거 actor. set-once when set
+  removed_at  DATETIME(6),
+  KEY (api_user_id, removed_at)
+);
+
+CREATE TABLE workspace_ip_allowlists (
+  id           BINARY(16) PRIMARY KEY,
+  workspace_id BINARY(16) NOT NULL,
+  cidr         VARCHAR(18) NOT NULL,              -- /32 only
+  added_by     BINARY(16) NOT NULL,                -- Owner (workspace 평면은 Owner 전용)
+  added_at     DATETIME(6) NOT NULL,
+  removed_by   BINARY(16),                         -- 제거 actor. set-once when set
+  removed_at   DATETIME(6),
+  KEY (workspace_id, removed_at)
+);</code></pre>
+
+<h4>5.1 <code>api_user_ip_allowlists</code> — API user 별 허용 IP</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>등록 항목의 고유 식별자</td></tr>
+<tr><td><code>api_user_id</code></td><td>BINARY(16) FK</td><td>이 IP 가 허용된 API user</td></tr>
+<tr><td><code>cidr</code></td><td>VARCHAR(18)</td><td>허용 IP. <code>/32</code> CIDR 만 허용 (예: <code>203.0.113.5/32</code>)</td></tr>
+<tr><td><code>added_by</code></td><td>BINARY(16)</td><td>이 항목을 추가한 관리자 (Owner 또는 Security Admin). set-once</td></tr>
+<tr><td><code>added_at</code></td><td>DATETIME(6)</td><td>추가 시각. set-once</td></tr>
+<tr><td><code>removed_by</code></td><td>BINARY(16) nullable</td><td>제거 actor. NULL = 현재 활성. set-once when set</td></tr>
+<tr><td><code>removed_at</code></td><td>DATETIME(6) nullable</td><td>제거 시각. NULL = 현재 활성. soft delete — row 는 audit 위해 유지</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>5.2 <code>workspace_ip_allowlists</code> — Console 접근용 허용 IP</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>등록 항목의 고유 식별자</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16) FK</td><td>이 IP 가 적용되는 workspace</td></tr>
+<tr><td><code>cidr</code></td><td>VARCHAR(18)</td><td>허용 IP. <code>/32</code> CIDR 만</td></tr>
+<tr><td><code>added_by</code></td><td>BINARY(16)</td><td>이 항목을 추가한 user — workspace 평면은 Owner 전용 (per Fireblocks doc, 권한 inconsistency 와 별개). set-once</td></tr>
+<tr><td><code>added_at</code></td><td>DATETIME(6)</td><td>추가 시각. set-once</td></tr>
+<tr><td><code>removed_by</code></td><td>BINARY(16) nullable</td><td>제거 actor. NULL = 활성. set-once when set</td></tr>
+<tr><td><code>removed_at</code></td><td>DATETIME(6) nullable</td><td>제거 시각. NULL = 활성</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Putting It Together — 5 자격증명이 실제로 어떻게 작동하는가</h3>
+<p>지금까지 본 5 평면이 운영 흐름 안에서 어떻게 묶여 작동하는지 3 가지 대표 시나리오로. 본 페이지의 schema 가 다른 페이지 (특히 <a href="tables-user.html">6. Users</a> · <a href="tables-quorum.html">9. Admin Quorum</a>) 와 어떻게 cross-cut 되는지도 함께 보입니다.</p>
+
+<h4>6.1 Console user 로그인 — SSO + 2FA 묶음</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor User as 👤 Console user
+  participant Browser as 🌐 Browser
+  participant Auth0 as 🔐 Auth0<br/>(service provider)
+  participant IdP as 🏢 사내 IdP<br/>(Google / Okta 등)
+  participant FB as 🛡️ Fireblocks Core
+
+  User->>Browser: console.fireblocks.io 접속
+  Browser->>Auth0: redirect /login
+
+  alt workspace 가 SSO 설정함
+    Auth0->>FB: sso_configs 조회 (workspace_id)
+    Auth0->>IdP: SAML/OIDC authorize
+    IdP->>User: 사내 로그인 (회사 계정)
+    User->>IdP: 인증
+    IdP->>Auth0: assertion (email + 속성)
+    Auth0->>FB: email domain 이<br/>sso_authorized_domains 에 있는가?
+  else SSO 미사용
+    Auth0->>User: email + password 요구
+    User->>Auth0: 자격증명 제출
+  end
+
+  Auth0->>Browser: 1차 인증 OK
+  Browser->>User: TOTP 6자리 코드 요구
+  User->>Browser: authenticator app 의 코드 입력
+  Browser->>FB: TOTP 검증 요청
+  FB->>FB: user_2fa.secret_hsm_keyref 로<br/>HSM 검증 (secret 외부 노출 X)
+  FB->>FB: workspace_ip_allowlists 매칭<br/>(Console 접근 IP 제한)
+  FB->>Browser: session token
+  Browser->>User: console 진입 완료
+</pre>
+<span class="diagram-caption">Figure 13. Console user 로그인 — SSO (선택) + 2FA (필수) + Console IP allowlist (선택). 핵심 분기: ① SSO 가 설정된 workspace 면 외부 IdP 가 1차 신원 검증을 처리하고 Auth0 가 그 결과를 받아 email domain 매칭만 추가 확인 / 미설정이면 Auth0 가 email+password 자체 처리. ② 1차 인증이 끝나도 TOTP 가 반드시 필요 (모든 Console user). ③ HSM 안에서 검증되어 TOTP secret 은 단 한 번도 외부로 노출 안 됨. ④ workspace 단위 IP allowlist 가 있으면 추가 검사.</span>
+</div>
+
+<h4>6.2 API user 의 REST 호출 — 4 layer 보안 체크</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Client as 🤖 운영 시스템<br/>(customer 측)
+  participant LB as 🛡️ Fireblocks 진입점
+  participant Auth as 🔐 인증/권한 layer
+  participant Handler as 🎯 REST handler
+
+  Client->>LB: HTTPS POST /v1/transactions<br/>+ API key (Bearer)<br/>+ X.509 client cert (TLS)
+
+  LB->>Auth: 자격증명 검사 시작
+
+  Auth->>Auth: ① api_user_ip_allowlists 에<br/>요청 source IP 가 있는가?
+  alt IP allowlist 에 없음
+    Auth->>Client: 403 Forbidden
+  end
+
+  Auth->>Auth: ② api_keys.invalidated_at 가 NULL?<br/>(즉 아직 살아있는 key 인가)
+  alt key invalidated
+    Auth->>Client: 401 Unauthorized
+  end
+
+  Auth->>Auth: ③ X.509 cert chain 검증<br/>(leaf → intermediate → root)
+  Auth->>Auth: ④ cert fingerprint 가<br/>csrs.fingerprint_sha256 와 일치?
+  alt cert 불일치 / 만료
+    Auth->>Client: 401 Unauthorized
+  end
+
+  Auth->>Handler: 통과 — user_id + role 부여
+  Handler->>Handler: role 별 권한 매트릭스 확인
+  Handler->>Client: 200 OK + response
+</pre>
+<span class="diagram-caption">Figure 14. API user 의 REST 호출 — 4 layer 검사. 모든 호출이 ① <strong>IP</strong> (네트워크 출처) → ② <strong>API key</strong> (자격증명 유효성) → ③ <strong>X.509 cert chain</strong> (cryptography 신원 증명) → ④ <strong>fingerprint 일치</strong> (이 API user 의 등록된 cert 인가) 순서로 검증. 어느 단계든 통과 못 하면 즉시 reject. 이게 다 통과한 뒤에야 비로소 user 의 role 권한 매트릭스가 적용되어 실제 동작 가능. 즉 "도난된 API key 가 임의 머신에서 사용 불가" 의 보안 보장은 ① 의 IP allowlist 가 핵심.</span>
+</div>
+
+<h4>6.3 API user 추가 lifecycle — 거버넌스 평면과 묶임</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Initiator as 👤 Owner/Admin/NSA
+  actor Owner as 👤 Owner
+  actor Quorum as 👥 Admin Quorum<br/>(N-of-M)
+  participant Console as 🖥️ Fireblocks Console
+  participant FB as 🛡️ Fireblocks Core
+  participant Cosigner as 🖥️ API Cosigner 머신<br/>(customer 운영)
+
+  Initiator->>Console: "Add API user" 요청
+  Console->>Owner: mobile push 알림
+  Console->>Quorum: mobile push 알림 (M 명)
+
+  Owner->>Console: 승인 (mobile 서명)
+  Quorum->>Console: N-of-M 승인 (mobile 서명)
+
+  Note over Console,FB: Owner + Quorum threshold 충족
+
+  Console->>FB: users row INSERT<br/>(type='api', status='pending')
+  FB->>FB: pairing token 발급 (1h 유효)
+  FB->>Console: token + setup 안내
+
+  Initiator->>Cosigner: RSA 4096 key pair 생성<br/>private key 로컬 (fireblocks_secret.key)
+  Initiator->>Cosigner: CSR 생성 (public key + subject)
+  Initiator->>Console: CSR 파일 upload
+  Console->>FB: csrs row INSERT
+  FB->>FB: Intermediate CA 가 leaf cert 서명
+  FB->>Console: end cert 발급 + api_keys row INSERT
+
+  Initiator->>Cosigner: pairing token + end cert 로 setup
+  Cosigner->>FB: enrollment 완료 신호 (cert 로 인증)
+  FB->>FB: users.status = 'active' (activated_at set)
+  FB->>Console: 신규 API user 사용 가능
+
+  Note over Initiator,FB: 이후 보안 강화 — IP allowlist 등록 권장
+  Initiator->>Console: api_user_ip_allowlists 에<br/>운영 서버 IP 등록
+</pre>
+<span class="diagram-caption">Figure 15. API user 추가 — 본 페이지의 자격증명 5 평면 중 <strong>API Key · CSR · IP Allowlist</strong> 3 평면이 한 lifecycle 안에 모두 등장. 별도로 <a href="tables-quorum.html">9. Admin Quorum</a> (Owner + Quorum 의 N-of-M 승인 단계) 과 cross-cut. 핵심 보안 설계: ① private key 는 customer 측에서만 생성·보관 (Fireblocks 도 모름) → ② Fireblocks 는 public key 만 받아서 cert 발급 → ③ pairing token 1h 유효 (시간 압박으로 leak 위험 축소) → ④ activation 후에도 IP allowlist 로 추가 방어 권장.</span>
+</div>
+  </section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-user.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">6. Users</span></a>
+<a class="page-nav-link page-nav-next" href="tables-role.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">8. 9 User Roles</span></a>
+</nav>
+</main>
+</div>
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

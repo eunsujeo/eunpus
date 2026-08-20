@@ -1,0 +1,14 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/6429764039452-Recovery-Passphrase
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 5
+language: en
+notes: |
+  Owner/Admin/Signer create recovery passphrase at initial user setup.
+  Fireblocks creates encrypted backup of mobile device's private key share stored in Fireblocks cloud servers.
+  Requirements: 10+ chars, 1 capital, 1 number, 1 special.
+  Verify Passphrase feature: Settings > Verify recovery passphrase.
+  3-fail lockout (5 min).
+  Periodic Passphrase Verification: monthly (iOS 2.5.7+, Android 2.5.2+).
+  Risk assessment via audit logs.
+  Three recovery scenarios: Owner / Admin-Signer / Workspace Keys Recovery (full key reconstruction).

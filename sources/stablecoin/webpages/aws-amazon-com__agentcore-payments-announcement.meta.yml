@@ -1,0 +1,21 @@
+url: https://aws.amazon.com/blogs/machine-learning/agents-that-transact-introducing-amazon-bedrock-agentcore-payments-built-with-coinbase-and-stripe/
+fetched_at: 2026-08-20
+source_type: webpage (AWS 공식 블로그 — 1차)
+domain: stablecoin / agent-payments
+tier: 2
+crawl_status: fetched (2026-08-20, Mode C — 추출본은 verbatim 아님, 구조 재편성 요약. 세부 인용 시 원문 재확인)
+markdown: sources/stablecoin/markdown/2026-08-20__aws-amazon-com__agentcore-payments-announcement.md
+title: "Agents that transact: Introducing Amazon Bedrock AgentCore payments, built with Coinbase and Stripe"
+key_facts: |
+  - 2026-05-07 발표, Amazon Bedrock AgentCore payments (프리뷰: US East/US West/Frankfurt/Sydney)
+  - AI 에이전트가 execution loop 안에서 API·웹 콘텐츠·MCP 서버에 실시간 직접 결제
+  - 파트너: Coinbase (x402 프로토콜 + 지갑 인프라) / Stripe (Privy 지갑)
+  - 결제 수단: 스테이블코인 (법정화폐는 로드맵, 프리뷰 미지원). 지갑은 Coinbase / Stripe Privy 중 선택
+  - 통제: 세션별 지출 한도 + 명시적 사용자 승인 필수 + AgentCore 인프라 레이어 강제 (에이전트 우회 불가) + 트랜잭션 로그
+context: |
+  컨퍼런스 세션 "Do Agents Dream of Electronic Payments" (AWS, AI 에이전트 자율 결제와 보안,
+  USDC 자율 송금 데모 포함) 의 배경 자료로 수집 (2026-08-20).
+related_news:
+  - https://www.ledgerinsights.com/aws-unveils-ai-agent-payments-based-on-stablecoins/
+  - https://www.tokenpost.kr/news/tech/357557
+promote_condition: "에이전트 지갑 지출 정책(policy engine 유사 구조) 또는 x402 결제 프로토콜을 설계에 대조할 때"

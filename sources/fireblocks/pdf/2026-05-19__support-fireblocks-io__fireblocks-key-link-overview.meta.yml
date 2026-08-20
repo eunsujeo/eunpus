@@ -1,0 +1,10 @@
+url: https://support.fireblocks.io/hc/en-us/articles/fireblocks-key-link-overview
+url_status: inferred (slug 기반 추정, 실 article ID 미확인)
+fetched_at: 2026-05-19
+source_type: pdf
+domain: customer-held-key / signing-plane
+tier: 1
+title: "Fireblocks Key Link Overview"
+crawl_status: not-fetched (body 미로드, lightweight index 만)
+promote_condition: "Key Link 신뢰 모델 / MPC plane 과의 boundary 명세 필요시, 또는 사용자 명시 promote"
+cluster: key-link

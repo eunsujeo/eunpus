@@ -1,0 +1,4 @@
+# Admin 운영·거버넌스 (정책·승인·동결·rebalance·sweep). 정합성 sweep·알림은 Service 소관.
+spring:
+  application:
+    name: custodial-wallet-admin-api

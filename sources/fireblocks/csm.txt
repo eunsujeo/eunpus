@@ -1,0 +1,23 @@
+질문자  [오후 5:39]
+hi @CSM,
+can a transaction in the CONFIRMING state ever move back to BROADCASTING, for example due to a reorg?
+번역됨||5개의 댓글질문자  [오전 10:47]
+Hi @CSM,
+I am still waiting for an answer to this question.
+The reason this is important for us is that we reconcile the information obtained through the totalSupply contract call with the transaction data we manage internally. Therefore, if a reorg occurs, we need to update the status of the transactions we are tracking to reflect the latest state. This is because totalSupply only reflects transactions that have been included in a block, and does not reflect pending transactions.
+What I would like to confirm is whether, when a reorg occurs, the transaction status provided by Fireblocks is updated to reflect the latest state of the blockchain.
+Thank you.번역됨||CSM  [오전 11:00]
+Im still waiting for 100% confirmation from our team, however please review the below (which is 99% certain)
+
+A transaction in the CONFIRMING state in Fireblocks generally does not move back to the BROADCASTING state, even if a blockchain reorganization ("reorg") occurs. Instead, Fireblocks updates the transaction status to reflect its actual state on-chain, and if a reorg removes it from the blockchain, the status is updated to a failed or dropped state—rather than reverting to broadcasting.
+If a reorg drops a confirming transaction, Fireblocks will promptly update the status (for example, to FAILED or DROPPED_BY_BLOCKCHAIN), ensuring the UI and API are in sync with the actual blockchain state, with no lag or extra margin to "wait for reorgs to resolve"  .The transaction does not revert from CONFIRMING to BROADCASTING. Instead, in the event of a network reorg and the transaction being dropped, Fireblocks marks the transaction as failed, dropped, or expired (for example, with substatus DROPPED_BY_BLOCKCHAIN), not as returned to broadcasting (편집됨) 
+번역됨||질문자  [오전 11:25]
+Thank you for your prompt response.
+To share my understanding, unless it is a case of double spending, there are many situations where a transaction may be temporarily removed from a block due to a reorg and then included again later. For that reason, I do not think such a case would necessarily result in a FAILED or DROPPED_BY_BLOCKCHAIN status.
+Also, my question is not limited to whether the transaction goes back to the BROADCASTING state. It also includes cases where the transaction remains in the CONFIRMING state, but the number of confirmations decreases—for example, from 1 back to 0 due to a reorg.
+In any case, it would be sufficient for us if the transaction status simply reflects the current state of the blockchain in real time.
+I would appreciate it if you could share the team’s response once you receive it. Thank you.번역됨||질문자  [오후 2:43]
+Hi @CSM
+Have there been any updates from the team regarding this?번역됨||CSM  [오후 3:36]
+Yes, I can confirm this answer has been confirmed by our backend team:
+A transaction in the CONFIRMING state in Fireblocks generally does not move back to the BROADCASTING state, even if a blockchain reorganization ("reorg") occurs. Instead, in the event of a network reorg and the transaction being dropped, Fireblocks marks the transaction as failed, dropped, or expired (for example, with substatus DROPPED_BY_BLOCKCHAIN), not as returned to broadcasting

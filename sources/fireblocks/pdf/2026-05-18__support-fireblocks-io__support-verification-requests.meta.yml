@@ -1,0 +1,10 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/25216149364892-Support-verification-requests
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 2
+language: en
+notes: |
+  Support agent initiates additional verification for sensitive workspace ops (e.g., account recovery).
+  Flow: Mobile app notification -> PIN read-back (if displayed) -> biometric.
+  Gradually rolled out; may not be available to all customers yet.
+  Unexpected request -> reject + report to Fireblocks Support.

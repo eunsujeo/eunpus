@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>7. 성능 · 확장성 — 블록체인 인덱서 설계 가이드</title>
+<meta content="처리량 / 지연 / 확장성 / 백필 / Hot-Cold / Backpressure / 비용 — 인덱서의 성능 측면." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Foundation</h3><ul>
+<li><a href="what-is-indexer.html">1. 인덱서란 무엇인가</a></li>
+<li><a href="requirements.html">2. 요구사항</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Implementation</h3><ul>
+<li><a href="implementation-patterns.html">3. 4 구현 패턴</a></li>
+<li><a href="reference-architecture.html">4. 참조 아키텍처</a></li>
+<li><a href="data-model.html">5. 데이터 모델</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Operations</h3><ul>
+<li><a href="reorg-finality.html">6. Reorg · Finality</a></li>
+<li><a class="active" href="performance-scalability.html">7. 성능 · 확장성</a></li>
+<li><a href="monitoring-ops.html">8. 운영 · 모니터링</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Industry Cases</h3><ul>
+<li><a href="exchange-cases.html">9. 자체 인덱서 운영</a></li>
+<li><a href="saas-cases.html">10. 인덱서 / 데이터 인프라 vendor</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Infrastructure</h3><ul>
+<li><a href="infrastructure-spec.html">11. 인프라 · 스펙</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Portability</h3><ul>
+<li><a href="portability.html">12. 벤더 교체 · 포트 설계</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="performance">
+<h2>7. 성능 · 확장성</h2>
+<span class="section-subtitle">처리량 · 지연 · 확장 · 백필 · Hot/Cold · Backpressure · 비용</span>
+
+<h3>7.1 성능 목표 정의 + 측정 방법</h3>
+
+<p>"성능" 은 하나의 숫자가 아니다. 다음 4 가지를 분리해서 정의한다.</p>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>축</th><th>측정 단위</th><th>전형 목표</th><th>측정 방법</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Ingest throughput</strong></td>
+  <td>blocks/sec, events/sec</td>
+  <td>Ethereum 1 block/12s · Solana &gt; 100 events/s · 백필 시 10-100x</td>
+  <td>일정 시간 (5분) 동안 처리된 block 수 / 초</td>
+</tr>
+<tr>
+  <td><strong>Ingest latency (head lag)</strong></td>
+  <td>새 블록 proposed → 인덱서 적재까지의 초</td>
+  <td>P2 (streaming) 1-2s · P1 (pull) 5-15s</td>
+  <td>block.timestamp 와 ingested_at 의 차이 분포 (P50/P95/P99)</td>
+</tr>
+<tr>
+  <td><strong>Query latency</strong></td>
+  <td>API 응답 p95 (ms)</td>
+  <td>점 query &lt; 100ms · range query &lt; 500ms · 집계 &lt; 2s</td>
+  <td>request → response 시간. middleware / DB / cache 별 breakdown</td>
+</tr>
+<tr>
+  <td><strong>Query throughput</strong></td>
+  <td>QPS</td>
+  <td>요구사항 별 · 1k QPS 이상 시 read replica + 캐시</td>
+  <td>load testing (k6, Locust 등)</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<p>인덱서 성능에서 특이한 점 — write rate 가 외부 (블록체인) 에 의해 결정된다. 인덱서가 그 외부 write rate 를 따라잡지 못하면 lag 가 누적되며, lag 가 커질수록 read API 의 데이터 신선도 (freshness) 가 떨어진다.</p>
+
+<h4>측정 방법론</h4>
+
+<p>모든 axis 의 측정은 <strong>P50 / P95 / P99 분포</strong> 로. 평균값은 outlier 를 감춤. SLO 도 P95 또는 P99 기준이 표준.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>측정 도구</th><th>용도</th><th>출력 예시</th></tr></thead>
+<tbody>
+<tr><td>Prometheus histogram</td><td>latency 분포 수집</td><td><code>histogram_quantile(0.95, rate(query_duration_seconds_bucket[5m]))</code></td></tr>
+<tr><td>k6 / Locust</td><td>API load testing</td><td>500 VU 동시 → P95, error rate</td></tr>
+<tr><td>pgbench</td><td>Postgres TPS / latency</td><td>tpmC, P95 ms</td></tr>
+<tr><td>Synthetic canary tx</td><td>end-to-end 검증</td><td>onchain → indexer 적재까지 분포</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>7.2 Ingest throughput 의 한계</h3>
+
+<p>인덱서의 ingest 속도를 결정하는 3 가지 bottleneck.</p>
+
+<h4>(1) RPC source 의 응답 속도</h4>
+<p>외부 RPC (Alchemy 등) 사용 시 — block fetch 당 100-500ms latency + monthly quota. 자체 노드 사용 시 — 노드의 disk IOPS + state 검색.</p>
+
+<p>실측 reference:</p>
+<ul>
+  <li>Alchemy / Infura — 단일 RPC 호출 ~ 50-200ms (region / endpoint 의존)</li>
+  <li>자체 geth full node (i4i.xlarge 기준) — <code>eth_getBlockByNumber</code> ~ 10-30ms</li>
+  <li><code>eth_getLogs</code> — 응답 크기 제한 10,000 logs (Alchemy / Infura). 큰 범위는 chunked 호출 필요</li>
+</ul>
+
+<h4>(2) Parser / Decoder CPU</h4>
+<p>ABI 디코딩, address 매핑, decimals 적용 등. CPU-bound. 보통 single-thread per chain. 멀티스레딩 시 ordering 보장 필요.</p>
+
+<p>실측 reference:</p>
+<ul>
+  <li>EVM ABI decode — 단일 event 당 10-50µs (Rust / Go) 또는 50-200µs (TypeScript)</li>
+  <li>대량 event (USDC Transfer 1만건) 의 decode + Postgres bulk insert — 1-3 초 (mid-tier CPU)</li>
+</ul>
+
+<h4>(3) Storage write</h4>
+<p>Postgres INSERT 속도 + index update. bulk write (COPY) 와 single-row INSERT 의 차이가 10-50x.</p>
+
+<p>실측 reference:</p>
+<ul>
+  <li>Postgres single INSERT — 0.5-2ms (RTT 포함, gp3 SSD)</li>
+  <li>Postgres COPY — 50,000-200,000 rows/sec (binary format, gp3)</li>
+  <li>ClickHouse async insert — 1,000,000+ rows/sec</li>
+</ul>
+
+<h3>7.3 처리량 확장 전술</h3>
+
+<h4>(a) Filter / Dictionary — 처리할 블록 줄이기</h4>
+<p>SubQuery 가 보여준 패턴. "관심 있는 이벤트가 있는 블록만" 처리. 빈 블록 / 무관 블록 skip.</p>
+
+<pre><code>// 일반 scan
+for block in 0..head:  // 모든 블록
+  process(block)
+
+// Dictionary 기반
+relevant = dictionary.blocks_with_events(
+  contracts=[USDC, USDT, WETH],
+  events=['Transfer'],
+)
+for block in relevant:  // 10-100배 적음
+  process(block)</code></pre>
+
+<p>SubQuery 공개 문서 — worker thread 와 dictionary 조합으로 <strong>최대 4 배 부스트</strong>.</p>
+
+<h4>(b) Parallel workers — block range 별 병렬</h4>
+<p>백필 시 block range 를 N 등분해서 worker N 개가 병렬 처리. ordering 이 필요한 projection (예: 잔고) 은 마지막에 sequential merge.</p>
+
+<pre><code>// 백필 — 10 worker 병렬
+range = [0, 19_345_678]
+chunks = split(range, 10)  // 각 1.9M 블록
+for chunk in chunks:
+  worker.enqueue(chunk)
+// 각 worker 가 자기 chunk 의 events 를 raw log 에 적재
+// projection 은 raw log 의 cursor 따라 sequential</code></pre>
+
+<h4>(c) Bulk write — Postgres COPY</h4>
+<p>single INSERT 대신 COPY 또는 multi-row INSERT.</p>
+
+<pre><code>// Bad: 1 row per INSERT
+for event in events:
+  INSERT INTO events VALUES (...);  // 1000 events = 1000 RTT
+
+// Good: COPY
+COPY events FROM STDIN;
+...binary data...
+\.  // 1000 events = 1 RTT</code></pre>
+
+<p>30-100x 빠름.</p>
+
+<h4>(d) Stream bus — Kafka / Redpanda</h4>
+<p>ingestion 과 projection 분리. ingestion 은 raw event 만 Kafka 로 publish, projection worker 들이 각자 consume.</p>
+
+<pre><code>// Producer (ingestion)
+for event in chain_stream:
+  kafka.produce('raw-events', event, key=event.chainId)
+
+// Consumer (projection)
+kafka.consume('raw-events', group='balance-projection', handler=updateBalance)
+kafka.consume('raw-events', group='transfer-projection', handler=updateTransfers)
+kafka.consume('raw-events', group='nft-projection', handler=updateNFT)</code></pre>
+
+<p>장점 — 새 projection 추가 시 consumer 만 추가. raw log 가 자연스러운 replay source.</p>
+
+<h4>(e) Sharding — chain 별 / block range 별</h4>
+<p>대규모 인덱서는 chain 별 또는 block range 별 sharding.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Sharding 전략</th><th>분할 기준</th><th>적합 시점</th><th>운영 부담</th></tr></thead>
+<tbody>
+<tr><td><strong>Chain 별</strong></td><td>Ethereum / Polygon / Solana 가 각자 shard</td><td>multi-chain 인덱서, 트래픽 분리 OK</td><td>낮음 (chain 별 독립 운영)</td></tr>
+<tr><td><strong>Block range 별</strong></td><td>같은 chain 의 0-10M / 10-20M 별로</td><td>백필 + 시계열 분석 heavy</td><td>중간 (cross-shard query 의 routing)</td></tr>
+<tr><td><strong>Tenant 별</strong></td><td>SaaS 인덱서의 customer 별</td><td>multi-tenant SaaS</td><td>높음 (tenant migration, noisy neighbor)</td></tr>
+<tr><td><strong>Contract 별</strong></td><td>특정 contract 의 이벤트 별</td><td>대형 contract (USDC, WETH) 의 throughput hot</td><td>높음 (hot contract 분포 모니터링)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>7.4 Query latency 확장 전술</h3>
+
+<h4>(a) 인덱스 설계</h4>
+<p>가장 흔한 query 패턴에 맞춰 index. PostgreSQL 의 핵심:</p>
+
+<pre><code>-- 주소 별 transfer 목록 (시간 역순)
+CREATE INDEX idx_transfers_to_time
+  ON token_transfers (chain_id, contract, to_addr, ts DESC)
+  WHERE reverted = false;  -- partial index
+
+-- block range query
+CREATE INDEX idx_events_block_range
+  ON events (chain_id, contract, block_num)
+  WHERE reverted = false;
+
+-- JSON 필드 검색 (gin)
+CREATE INDEX idx_events_args
+  ON events USING gin (args_json);</code></pre>
+
+<h4>(b) Materialized view</h4>
+<p>흔한 집계는 미리 계산.</p>
+
+<pre><code>-- 일별 transfer 집계
+CREATE MATERIALIZED VIEW daily_transfers AS
+SELECT
+  chain_id,
+  contract,
+  date_trunc('day', ts) AS day,
+  COUNT(*) AS count,
+  SUM(amount) AS volume
+FROM token_transfers
+WHERE reverted = false
+GROUP BY chain_id, contract, day;
+
+CREATE UNIQUE INDEX ON daily_transfers (chain_id, contract, day);
+
+-- 매일 1회 refresh
+REFRESH MATERIALIZED VIEW CONCURRENTLY daily_transfers;</code></pre>
+
+<h4>(c) Read replica + 캐시</h4>
+<p>Postgres read replica 1-N + Redis 캐시. hot path (잔고 조회) 는 캐시 우선.</p>
+
+<pre><code>// Pseudo-code: balance lookup
+func getBalance(account, asset) {
+  cached = redis.get(`balance:${account}:${asset}`)
+  if (cached) return cached  // hit
+
+  result = postgresReadReplica.query(...)
+  redis.setex(`balance:${account}:${asset}`, 10, result)  // 10s TTL
+  return result
+}</code></pre>
+
+<h4>캐시 전략 디테일</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>전략</th><th>패턴</th><th>장점</th><th>주의</th></tr></thead>
+<tbody>
+<tr><td><strong>TTL 기반</strong></td><td>10s 만료 후 다시 fetch</td><td>구현 단순</td><td>stale data (블록 변동 시 최대 10s 지연)</td></tr>
+<tr><td><strong>Event-driven invalidation</strong></td><td>해당 wallet 의 transfer event 시 cache 삭제</td><td>fresh 보장</td><td>invalidation 누락 = 영구 stale</td></tr>
+<tr><td><strong>Write-through</strong></td><td>projection worker 가 DB 와 cache 동시 write</td><td>최신성 + 단순 read</td><td>2-phase write 의 정합성 부담</td></tr>
+<tr><td><strong>Stampede 방지</strong></td><td>cache miss 시 lock 또는 stale-while-revalidate</td><td>backend 폭주 방지</td><td>lock overhead</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>(d) Search engine — Elasticsearch / OpenSearch</h4>
+<p>전문 검색 / 복잡한 boolean filter 는 ES 가 Postgres 보다 빠름. 인덱서가 ES 에도 별도 projection.</p>
+
+<h4>(e) OLAP 분리 — ClickHouse</h4>
+<p>대규모 집계 (예: 1년치 거래량) 는 ClickHouse 가 압도적. Coinbase 같은 대형 인덱서가 사용.</p>
+
+<h3>7.5 Hot path vs Cold path</h3>
+
+<p>인덱서가 처리하는 데이터는 "최근 N 블록 (hot)" 과 "과거 전체 (cold)" 의 접근 패턴이 매우 다르다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    CHAIN[블록체인]
+    subgraph HOT[Hot Path<br/>최근 N 블록]
+      direction TB
+      CACHE[Redis cache]
+      PG_HOT[Postgres<br/>hot partition]
+    end
+    subgraph COLD[Cold Path<br/>과거 전체]
+      direction TB
+      PG_COLD[Postgres<br/>old partitions]
+      CH[ClickHouse<br/>analytics]
+      S3[(S3<br/>cold archive)]
+    end
+    API[Query API]
+
+    CHAIN --> HOT
+    HOT --> COLD
+    HOT --> API
+    COLD --> API
+</pre></div>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>특성</th><th>Hot Path</th><th>Cold Path</th></tr></thead>
+<tbody>
+<tr><td>범위</td><td>최근 N 블록 (예: 10,000 블록 ≈ 33 시간)</td><td>그 외 전체 history</td></tr>
+<tr><td>저장소</td><td>Redis + Postgres hot partition</td><td>Postgres old partition / ClickHouse / S3</td></tr>
+<tr><td>접근 빈도</td><td>높음 (앱의 실시간 화면)</td><td>낮음 (분석, audit, BI)</td></tr>
+<tr><td>지연 요구</td><td>&lt; 100ms</td><td>1s ~ 수십 초 OK</td></tr>
+<tr><td>비용 우선순위</td><td>속도 &gt; 비용</td><td>비용 &gt; 속도</td></tr>
+<tr><td>reorg risk</td><td>높음 (block N+K 미만)</td><td>없음 (finalized)</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>실무에서 적용 — Postgres 의 <strong>partitioning</strong> 으로 최근 30일 만 hot partition (메모리 우선 caching), 그 이상은 cold partition. 1년 이상은 ClickHouse 또는 S3 로 이동.</p>
+
+<h3>7.6 Backpressure / Flow control</h3>
+
+<p>인덱서가 외부 source (블록체인 / RPC) 보다 느려지면 lag 가 누적된다. <strong>Backpressure</strong> = 빠른 producer 와 느린 consumer 사이의 부하 조절 메커니즘.</p>
+
+<h4>Backpressure 가 없을 때의 실패 모드</h4>
+
+<ol>
+  <li><strong>OOM</strong> — 처리 못한 event 가 메모리 큐에 누적 → process killed</li>
+  <li><strong>Disk overflow</strong> — Kafka / 큐의 retention 초과 → 오래된 event 삭제 → 데이터 손실</li>
+  <li><strong>Cascade failure</strong> — 한 projection 이 느려서 Kafka consumer lag → broker 부하 → 다른 consumer 영향</li>
+</ol>
+
+<h4>Backpressure 전술</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>전술</th><th>메커니즘</th><th>적합 위치</th></tr></thead>
+<tbody>
+<tr><td><strong>Bounded queue</strong></td><td>큐 크기 제한 — 가득 차면 producer 가 wait</td><td>parser → DB write 사이</td></tr>
+<tr><td><strong>Adaptive batching</strong></td><td>처리량 따라 batch size 동적 조정 (1 ~ 1000)</td><td>RPC 호출 / DB COPY</td></tr>
+<tr><td><strong>Token bucket</strong></td><td>일정 rate 로 token 발급 → consumer 가 token 가져가서 처리</td><td>외부 RPC 호출 rate limit</td></tr>
+<tr><td><strong>Circuit breaker</strong></td><td>downstream 실패 N 회 시 차단 → 일정 시간 후 half-open</td><td>외부 vendor (Alchemy / Chainalysis) 호출</td></tr>
+<tr><td><strong>Kafka consumer lag SLO</strong></td><td>lag &gt; 임계 시 알람 + auto-scale</td><td>Kafka consumer group</td></tr>
+<tr><td><strong>Priority queue</strong></td><td>finality 임박 / 사용자 활동 wallet 우선 처리</td><td>projection scheduling</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>예시 — Adaptive batching</h4>
+
+<pre><code>// 처리량 측정 → batch size 동적 조정
+let batchSize = 100;
+let lastDuration = 0;
+
+while (true) {
+  const events = await queue.popN(batchSize);
+  const start = Date.now();
+  await processBatch(events);
+  const duration = Date.now() - start;
+
+  // 목표 batch duration = 500ms
+  if (duration < 250 && batchSize < 1000) batchSize *= 2;
+  if (duration > 1000 && batchSize > 10) batchSize /= 2;
+}</code></pre>
+
+<h3>7.7 백필 (backfill)</h3>
+
+<p>새 인덱서 시작 시 또는 새 projection 추가 시 — 처음부터 다시 처리. 백필이 production traffic 보다 부하 크다.</p>
+
+<h4>전형적 백필 비용</h4>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>체인</th><th>현재 블록 (2026-06)</th><th>RPC 호출 수 (block 별 5 호출 가정)</th><th>완료 시간 (1 worker, 100ms/RPC)</th></tr>
+</thead>
+<tbody>
+<tr><td>Bitcoin</td><td>~ 850,000</td><td>4.25M</td><td>~ 5 일</td></tr>
+<tr><td>Ethereum</td><td>~ 19.3M</td><td>96.5M</td><td>~ 112 일</td></tr>
+<tr><td>Polygon</td><td>~ 60M</td><td>300M</td><td>~ 347 일</td></tr>
+<tr><td>BSC</td><td>~ 45M</td><td>225M</td><td>~ 260 일</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>이 표가 보여주는 — <strong>single worker 로는 절대 안 됨</strong>. 백필은 항상 병렬 + filter + bulk write.</p>
+
+<h4>백필 부스트 전술</h4>
+
+<ol>
+  <li><strong>Range 분할 + 병렬 worker</strong> — 10-100 worker 동시 처리. Ethereum 백필 ~ 1 일.</li>
+  <li><strong>Filter / dictionary</strong> — 빈 블록 skip. 추가 10-100x.</li>
+  <li><strong>Raw block file 활용</strong> — Firehose / cryo (Paradigm) 같은 도구로 raw block 을 파일로 export 후 로컬에서 처리. RPC 호출 줄임.</li>
+  <li><strong>Archive node 직접 read</strong> — 자체 archive node 의 LevelDB 직접 read (geth 의 chaindata).</li>
+  <li><strong>Stream-first 도구</strong> — Substreams (The Graph) — 일부 subgraph 100x+ sync.</li>
+</ol>
+
+<h4>백필 운영 — 모니터링 / 일시 정지 / 재개</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>기능</th><th>구현</th><th>운영 가치</th></tr></thead>
+<tbody>
+<tr><td>진행 지표</td><td>현재 처리 block / 전체 block, ETA 계산</td><td>완료 시점 예측</td></tr>
+<tr><td>일시 정지</td><td>worker 의 cursor 만 freeze (적재된 데이터는 그대로)</td><td>긴급 유지보수 / 인프라 작업 시</td></tr>
+<tr><td>재개</td><td>cursor 부터 resume. idempotent 처리로 중복 방지</td><td>장애 후 복구</td></tr>
+<tr><td>속도 조절</td><td>worker 수 / batch size 조정</td><td>production 트래픽 영향 최소화</td></tr>
+<tr><td>검증</td><td>완료 후 sample block 의 RPC 와 인덱서 비교</td><td>data drift 감지</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>7.8 흔한 성능 함정 (Common Pitfalls)</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>함정</th><th>증상</th><th>해결</th></tr></thead>
+<tbody>
+<tr><td><strong>N+1 query</strong></td><td>tx 1000 건의 receipt 를 1000 회 RPC 호출</td><td>batch RPC (<code>eth_getTransactionReceipt</code> array) 또는 multicall</td></tr>
+<tr><td><strong>Missing partial index</strong></td><td><code>WHERE reverted=false</code> 조건이 모든 query 에 있는데 index 가 reverted 포함</td><td>partial index 추가 — <code>CREATE INDEX ... WHERE reverted=false</code></td></tr>
+<tr><td><strong>Autovacuum 부족</strong></td><td>dead tuple 누적 → bloat → query 느려짐</td><td><code>autovacuum_vacuum_scale_factor</code> 조정, manual VACUUM</td></tr>
+<tr><td><strong>JSONB gin 과도 사용</strong></td><td>모든 jsonb 필드 색인 → write 느려짐</td><td>필요한 path 만 expression index</td></tr>
+<tr><td><strong>Long-running transaction</strong></td><td>worker 가 큰 tx 유지 → autovacuum / replication 막힘</td><td>tx 작게 자르기 + commit 자주</td></tr>
+<tr><td><strong>Cache stampede</strong></td><td>인기 key expire 시 동시 N 개 request 가 DB 폭격</td><td>lock + stale-while-revalidate</td></tr>
+<tr><td><strong>Cursor 손실</strong></td><td>worker crash 후 처음부터 다시 처리</td><td>cursor 를 매 batch 마다 DB commit</td></tr>
+<tr><td><strong>RPC quota 폭증</strong></td><td>backfill 중 외부 quota 소진 → 429</td><td>backfill 전용 별도 plan / 자체 노드</td></tr>
+<tr><td><strong>Single-threaded parser</strong></td><td>고 TPS chain (Solana) 에서 parser 가 bottleneck</td><td>per-block 병렬 parser + sequential commit</td></tr>
+<tr><td><strong>Connection pool exhaust</strong></td><td>worker 수 &gt; DB max_connections → wait</td><td>PgBouncer 등 connection pooler</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>7.9 체인 별 부하 모델</h3>
+
+<p>체인마다 인덱서의 부하 특성이 다르다. sizing 결정 시 참고.</p>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>체인</th><th>블록 주기</th><th>일일 블록</th><th>일평균 tx</th><th>주요 부담</th></tr>
+</thead>
+<tbody>
+<tr><td>Bitcoin</td><td>~ 10 분</td><td>~ 144</td><td>~ 30만</td><td>UTXO 누적 (input/output 추적)</td></tr>
+<tr><td>Ethereum (PoS)</td><td>12 초</td><td>~ 7,200</td><td>~ 100만</td><td>event log + trace API + state</td></tr>
+<tr><td>Polygon PoS</td><td>2 초</td><td>~ 43,200</td><td>~ 200-300만</td><td>높은 TPS + 잦은 reorg</td></tr>
+<tr><td>BSC</td><td>3 초</td><td>~ 28,800</td><td>~ 300-400만</td><td>높은 TPS + 짧은 finality</td></tr>
+<tr><td>Solana</td><td>400-600ms / slot</td><td>~ 150,000+ slots</td><td>~ 수천만</td><td>Geyser plugin 필수 (RPC 한계)</td></tr>
+<tr><td>Arbitrum / OP</td><td>~ 2 초</td><td>~ 43,200</td><td>~ 100-200만</td><td>L1 commit + challenge window (Optimistic)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>7.10 Performance 의 실측 reference</h3>
+
+<p>공개 사례에서 보이는 수치 (vendor 공식 docs / blog 기준).</p>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>사례</th><th>수치</th><th>출처</th></tr>
+</thead>
+<tbody>
+<tr><td>NEAR Indexer</td><td>응답 3.8s min / 5-7s avg</td><td><a href="https://docs.near.org/data-infrastructure/near-indexer" target="_blank" rel="noopener">NEAR docs</a></td></tr>
+<tr><td>NEAR Lake</td><td>응답 6-8s avg, 인프라 $20/월 vs Indexer $500+</td><td>NEAR docs (Lake deprecated 2026-03-24)</td></tr>
+<tr><td>SubQuery</td><td>worker thread 사용 시 최대 4x</td><td><a href="https://subquery.network/doc/indexer/run_publish/optimisation.html" target="_blank" rel="noopener">SubQuery docs</a></td></tr>
+<tr><td>Firehose</td><td>sub-second live streaming</td><td><a href="https://firehose.streamingfast.io/firehose/architecture" target="_blank" rel="noopener">Firehose docs</a></td></tr>
+<tr><td>The Graph Substreams</td><td>일부 subgraph 100x+ sync 부스트</td><td><a href="https://thegraph.com/blog/substreams-parallel-processing/" target="_blank" rel="noopener">The Graph blog</a></td></tr>
+<tr><td>Coinbase ChainStorage</td><td>AWS Ethereum 1-2s freshness, 실험적 ~1000 blocks/sec</td><td><a href="https://www.coinbase.com/blog/part-1-chainstorage-the-enterprise-blockchain-data-availability-layer" target="_blank" rel="noopener">Coinbase blog Part 1</a></td></tr>
+<tr><td>CDP Webhooks (Coinbase)</td><td>at-least-once delivery, 최대 60 retry, &lt;500ms freshness</td><td><a href="https://docs.cdp.coinbase.com/data/get-started/quickstart" target="_blank" rel="noopener">Coinbase CDP docs</a></td></tr>
+<tr><td>Solana</td><td>slot 400-600ms</td><td><a href="https://docs.anza.xyz/validator/geyser" target="_blank" rel="noopener">Anza docs</a></td></tr>
+<tr><td>Geth path-based archive</td><td>~ 2 TB (flat state) ~ 6.5 TB (with trie)</td><td><a href="https://geth.ethereum.org/docs/fundamentals/archive" target="_blank" rel="noopener">Geth docs</a></td></tr>
+<tr><td>Geth hash-based archive</td><td>20 TB+, sync 수개월</td><td>Geth docs</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>7.11 비용 모델</h3>
+
+<p>인덱서 운영 비용 = 4 가지 카테고리 합.</p>
+
+<pre><code>월 인덱서 비용 =
+    노드 컴퓨트 (full/archive/RPC) + 저장소
+  + DB 컴퓨트 + 저장소
+  + 스트림 버스 (Kafka 등)
+  + 네트워크 egress
+  + 모니터링/로그 저장
+  + 운영 인력 (FTE)</code></pre>
+
+<h4>예시 — Ethereum archive 기반 자체 인덱서 (월)</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>항목</th><th>구성</th><th>월 비용 추정</th></tr></thead>
+<tbody>
+<tr><td>Archive node (geth path-based)</td><td>EC2 i4i.2xlarge + 2.5 TB NVMe</td><td>~ $500</td></tr>
+<tr><td>Indexer compute</td><td>EC2 c7i.2xlarge × 2</td><td>~ $400</td></tr>
+<tr><td>Postgres (managed)</td><td>RDS db.r7g.xlarge + 2 TB gp3</td><td>~ $700</td></tr>
+<tr><td>Kafka (managed)</td><td>MSK 3 broker + 1 TB retention</td><td>~ $1,020 (AWS 예시)</td></tr>
+<tr><td>ElasticSearch</td><td>OpenSearch r6g.large × 3</td><td>~ $500</td></tr>
+<tr><td>S3 backup</td><td>10 TB Standard</td><td>~ $230</td></tr>
+<tr><td>Egress + 모니터링</td><td>—</td><td>~ $200</td></tr>
+<tr><td><strong>인프라 소계</strong></td><td>—</td><td><strong>~ $3,500</strong></td></tr>
+<tr><td>운영 인력 (SRE 1 FTE × 부분)</td><td>—</td><td>(별도 인건비)</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>수치 — AWS 공식 단가 (gp3 $0.08/GB-월, S3 Standard $0.023/GB-월) 기준의 추정. 실제는 region / 예약 / 협상 따라 달라짐.</p>
+
+<h4>SaaS 사용 시 비교</h4>
+
+<ul>
+  <li><strong>Alchemy Growth</strong> — $499/월, 1.5B compute units</li>
+  <li><strong>QuickNode Build</strong> — $42-49/월, 80M API credits, Streams/Webhooks 포함</li>
+  <li><strong>QuickNode Business</strong> — $849-999/월, 2B API credits, 500 RPS</li>
+</ul>
+
+<p>(vendor 공식 페이지에서 cross-verify 권장. 가격은 자주 변경됨.)</p>
+
+<h3>7.12 비용 vs 성능 trade-off</h3>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>전략</th><th>출시 속도</th><th>비용</th><th>성능 통제</th><th>vendor 종속</th></tr>
+</thead>
+<tbody>
+<tr><td>외부 RPC + 자체 인덱서</td><td>★★★★</td><td>★★ (RPC 비용)</td><td>★★★</td><td>중간</td></tr>
+<tr><td>SaaS 인덱서 (The Graph 등)</td><td>★★★★★</td><td>★★★</td><td>★</td><td>높음</td></tr>
+<tr><td>자체 full node + 인덱서</td><td>★★</td><td>★★★ (인프라)</td><td>★★★★</td><td>낮음</td></tr>
+<tr><td>자체 archive + Firehose</td><td>★</td><td>★★★★ (대규모 인프라)</td><td>★★★★★</td><td>없음</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>7.13 다음 페이지</h3>
+
+<p>다음은 — <a href="monitoring-ops.html"><strong>8. 운영 · 모니터링</strong></a>. 인덱서가 정상 작동하는지 어떻게 알 것인가.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/4410538842898-Songbird-support-and-the-Flare-airdrop
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 2
+language: en
+category: blockchains-chain-specific
+chain: SGB
+notes: |
+  Songbird = Canary network for Flare. SGB token support.
+  Two SGB assets: "SongBird" (current, coin type 60 = EVM-compatible) and "SongBird (Legacy derivation)" (coin type 544 from 2020 BIP44).
+  Need SGB wallet only if not participated in Flare airdrop on Fireblocks.
+  Placeholder ingestion.

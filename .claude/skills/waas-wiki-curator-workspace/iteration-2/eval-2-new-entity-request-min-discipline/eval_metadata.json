@@ -1,0 +1,16 @@
+{
+  "eval_id": 2,
+  "eval_name": "new-entity-request-min-discipline",
+  "prompt": "Fireblocks 의 새 entity 만들어줘: \"transaction-fee-calculation\" — gas fee / network fee 계산 로직 정리하는 entity.",
+  "assertions": [
+    {"id": "opening-trigger-detection", "text": "응답 opening 에 명시적 Trigger 2 판별 선언 + entity-min discipline 인용"},
+    {"id": "explicit-refusal", "text": "신규 entity 생성을 ★ 명시적으로 거절 또는 비권장 — '권장하지 않습니다' / '비권장' / '거절' / '반려' 명시"},
+    {"id": "no-draft-body", "text": "본문 markdown 초안 (h1 / Summary / Key Concepts 등 완성형) 작성 안 함 — 분석만"},
+    {"id": "absorb-candidates-named", "text": "흡수 후보 page 명시 (transaction.md / policy.md / vault-account.md / blockchains.md / workspace.md 등 ≥2)"},
+    {"id": "evidence-depth-evaluation", "text": "wiki 의 fee 관련 confirmed evidence 깊이 평가 (KSM/DOT 명시 또는 evidence 얕음 명시)"},
+    {"id": "confirmed-vs-hypothesis-explicit", "text": "확정 fact vs hypothesis 명확 두 sub-section 또는 callout 으로 분리"},
+    {"id": "stage-reset-warning", "text": "신규 entity 생성 시 Stage counter reset 또는 entity-min 누적 카운트 언급"},
+    {"id": "dry-run-respected", "text": "실제 파일 생성 안 함 — diff / draft 만 제시, opening 에 dry-run 명시"},
+    {"id": "prompts-route-citation", "text": "prompts/extract-entities.md 또는 update-wiki.md 인용"}
+  ]
+}

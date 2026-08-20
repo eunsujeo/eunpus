@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Workspace &amp; Vault Topology — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Workspace &amp; Vault Topology" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a class="active" href="tables-workspace.html">3. Workspace</a></li>
+<li><a href="tables-vault.html">4. Vault</a></li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">14. Transaction State</a></li>
+<li><a href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="tables-workspace">
+<h2>3. Workspace<span class="g" data-tip="Fireblocks 의 최상위 격리·거버넌스 단위. 1 workspace = 1 Owner. Slack workspace 와 무관" tabindex="0">(?)</span></h2>
+<span class="section-subtitle">workspace = 회사 (또는 사업부) 의 격리·거버넌스 단위</span>
+
+<h3>관계도 — Workspace → Vault → Asset Wallet → Address 의 4 단계 계층</h3>
+<p>3. Workspace 와 다음 두 페이지 (<a href="tables-vault.html">4. Vault Account</a>, <a href="tables-wallet.html">5. Wallets · Addresses</a>) 는 한 묶음으로 읽어야 합니다 — <strong>workspace → vault → asset wallet → address</strong> 의 4 단계 hierarchy 를 형성하기 때문. 이 도식이 그 4 단계를 한눈에 보여주고, 마지막 단계 (address) 는 chain 의 잔액 모델에 따라 3 패턴으로 갈립니다.</p>
+<div class="diagram">
+<pre class="mermaid">
+graph TB
+  WS["📦 workspaces<br/>(회사/사업부의 격리 단위)"]
+  WS --> VA["🏦 vault_accounts<br/>(자산 보관 그룹)"]
+
+  VA --> AW1["💰 Asset Wallet — BTC<br/>(UTXO 패턴)"]
+  VA --> AW2["💰 Asset Wallet — ETH<br/>(Account no-tag 패턴)"]
+  VA --> AW3["💰 Asset Wallet — XRP<br/>(Account tag 패턴)"]
+
+  subgraph UTXO_BOX["① UTXO: 1 wallet → N addresses"]
+    AW1 --> A1a["📍 address #1"]
+    AW1 --> A1b["📍 address #2"]
+    AW1 --> A1c["📍 address #N …"]
+  end
+
+  subgraph ACCT_BOX["② Account no-tag: 1 wallet → 1 address (강제)"]
+    AW2 --> A2["📍 단일 address<br/>(ERC-20 token 도 동일 address 공유)"]
+  end
+
+  subgraph TAG_BOX["③ Account tag/memo: 1 address + N tags"]
+    AW3 --> A3["📍 단일 on-chain address"]
+    A3 -. tag .-> T1["🏷️ tag/memo #1"]
+    A3 -. tag .-> T2["🏷️ tag/memo #2"]
+    A3 -. tag .-> T3["🏷️ tag/memo #N"]
+  end
+
+  classDef ws fill:#dbeafe,stroke:#2563eb,stroke-width:2px;
+  classDef vault fill:#fef3c7,stroke:#d97706,stroke-width:2px;
+  classDef wallet fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px;
+  classDef addr fill:#dcfce7,stroke:#16a34a;
+  classDef tag fill:#fce7f3,stroke:#db2777;
+  class WS ws;
+  class VA vault;
+  class AW1,AW2,AW3 wallet;
+  class A1a,A1b,A1c,A2,A3 addr;
+  class T1,T2,T3 tag;
+</pre>
+<span class="diagram-caption">Figure 16. Workspace → Vault → Asset Wallet → Address 4 단계 계층 + chain 별 3 address 패턴. <code>workspaces</code> 가 root → <code>vault_accounts</code> 가 자산 그룹 → <code>asset_wallets</code> 가 chain × asset 단위로 분기 → 그 다음 단계가 chain 의 잔액 모델에 따라 ① UTXO (BTC: 1 wallet → N addresses) / ② Account no-tag (ETH: 1 wallet → 1 강제 address) / ③ Account tag/memo (XRP: 1 address + N tags) 3 패턴으로 갈림. 본 도식은 cluster 의 "데이터 hierarchy" 만 보여줌 — append-only 이력 (workspace_change_events / workspace_freeze_events / vault_account_change_events) · junction (vault_account_roles) · destination 평면 (whitelisted_addresses / one_time_addresses) · 거버넌스 평면 (admin_quorums) · 이런 보조 테이블은 각 페이지의 해당 절에서 별도로 다룬다.</span>
+</div>
+
+<h3>개념 정리 — 왜 4 단계로 나누는가</h3>
+<p>한 회사가 여러 client 의 자산을 보관할 때, 모든 자산을 한 통에 섞으면 누가 무엇을 가지고 있는지 추적 불가능. 그래서 다음처럼 계층을 나눈다:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:18%">단계</th><th style="width:24%">역할</th><th>비유</th></tr></thead>
+<tbody>
+<tr><td><strong>Workspace</strong></td><td>회사 전체의 격리 공간</td><td>"한 회사 (또는 사업부) 의 전체 자산 관리 영역". 다른 회사의 자산과 완전 분리</td></tr>
+<tr><td><strong>Vault Account</strong></td><td>workspace 안의 자산 그룹</td><td>"한 client / 한 팀 / 한 용도 단위로 묶은 금고". workspace 안에 여러 개 만듦</td></tr>
+<tr><td><strong>Asset Wallet</strong></td><td>한 chain 의 자산 보관</td><td>"한 vault account 안의 chain 별 지갑" (BTC 지갑 · ETH 지갑 · SOL 지갑 등)</td></tr>
+<tr><td><strong>Address</strong></td><td>실제 chain 주소</td><td>"한 asset wallet 의 실제 입출금 주소". chain 종류에 따라 1 개 또는 여러 개 (5. Wallet 페이지 참조)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>1. Workspace — 최상위 격리 공간</h3>
+<p>Fireblocks 직접 인용: <em>"Every workspace requires one (and only one) Owner to set up the Vault."</em></p>
+<p style="color:var(--text-secondary)">→ <strong>의미</strong>: Vault 를 운영하려면 workspace 에 <strong>정확히 1 명의 Owner 가 존재해야 한다</strong>는 필요조건. <em>Owner 만 vault setup 작업을 할 수 있다</em>는 뜻이 아님 — 실제 vault account 생성은 Owner / Admin / NSA / Signer / Approver / Editor 모두 가능 (권한표 "Assets and addresses" 절).</p>
+
+<h4>1.1 핵심 규칙</h4>
+<ul>
+<li><strong>1 workspace = 1 Owner</strong> 강제 (DB UNIQUE constraint)</li>
+<li>workspace type 2 종: <strong>hot / cold</strong> (아래 표 참조)</li>
+<li>workspace-level 거버넌스 작업 (Policy 변경 · Admin Quorum 변경 · AML 설정 · Freeze 등) 은 모두 다수결 승인 흐름 (Q / Q+O)</li>
+</ul>
+
+<h4>1.2 Workspace type 2 종 — 무엇을 의미하는가</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:14%">type</th><th style="width:30%">의미</th><th>사용 예</th></tr></thead>
+<tbody>
+<tr><td><strong>hot</strong></td><td>일상적인 자산 운영 workspace. 인터넷 연결 · 정상 거버넌스 흐름 작동</td><td>대부분의 입출금 / 거래소 연동 / 매일 운영. 보통 회사에서 가장 많이 사용</td></tr>
+<tr><td><strong>cold</strong></td><td>장기 보관용 workspace. 별도 격리 / 운영 빈도 매우 낮음</td><td>대규모 자산의 보관용 — 잘 안 꺼냄. 거버넌스 흐름이 더 엄격</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>1.3 <code>workspaces</code> 테이블</h4>
+<pre><code>CREATE TABLE workspaces (
+  id              BINARY(16) PRIMARY KEY,
+  type            ENUM('hot', 'cold') NOT NULL,
+  owner_user_id   BINARY(16) NOT NULL UNIQUE,
+  name            VARCHAR(128) NOT NULL,
+  aml_default     ENUM('fail-on-unknown', 'pass-on-unknown') NOT NULL,
+  created_by      BINARY(16) NOT NULL,
+  created_at      DATETIME(6) NOT NULL,
+  modified_by     BINARY(16) NOT NULL,
+  modified_at     DATETIME(6) NOT NULL,
+  frozen_at       DATETIME(6),
+  frozen_by       BINARY(16),
+  KEY (frozen_at)
+);</code></pre>
+
+<h4>1.4 필드별 설명</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">컬럼</th><th style="width:18%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>workspace 의 고유 식별자. UUID 를 16-byte binary 로 저장 (string 보다 50% 작고 빠름)</td></tr>
+<tr><td><code>type</code></td><td>ENUM</td><td>위 1.2 표의 2 종 (hot / cold) 중 하나</td></tr>
+<tr><td><code>owner_user_id</code></td><td>BINARY(16) UNIQUE</td><td>workspace 의 유일한 Owner 의 user id. <strong>UNIQUE 제약</strong>으로 "한 workspace 의 Owner 는 1 명" 을 DB 레벨에서 강제</td></tr>
+<tr><td><code>name</code></td><td>VARCHAR(128)</td><td>사람이 읽는 이름표 (예: "Acme Corp Production", "Trading Desk")</td></tr>
+<tr><td><code>aml_default</code></td><td>ENUM</td><td>AML 정책의 기본값 — 모르는 주소에 대한 처리:<br/>· <strong>fail-on-unknown</strong>: 처음 보는 destination 은 차단 (안전 우선)<br/>· <strong>pass-on-unknown</strong>: 처음 보는 destination 도 통과 (외부 분석에 의존)</td></tr>
+<tr><td><code>created_by</code></td><td>BINARY(16)</td><td>workspace 를 만든 user id. set-once — 이후 변경 금지</td></tr>
+<tr><td><code>created_at</code></td><td>DATETIME(6)</td><td>workspace 생성 시각 (마이크로초 정밀). set-once</td></tr>
+<tr><td><code>modified_by</code></td><td>BINARY(16)</td><td>마지막 변경자의 user id. 변경 발생 시마다 갱신. 빠른 조회용 — 자세한 이력은 1.5 change log</td></tr>
+<tr><td><code>modified_at</code></td><td>DATETIME(6)</td><td>마지막 변경 시각. 변경 발생 시 자동 갱신. <strong>무엇이</strong> 변경되었는지는 1.5 change log 에서 확인</td></tr>
+<tr><td><code>frozen_at</code></td><td>DATETIME(6) nullable</td><td>Freeze 발동 시각. NULL = 정상 운영 중. 값 있음 = 모든 작업 정지 상태</td></tr>
+<tr><td><code>frozen_by</code></td><td>BINARY(16) nullable</td><td>누가 freeze 했는지의 user id. Owner / Admin / NSA / Security Admin 4 role 만 가능</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>1.5 <code>workspace_change_events</code> — 모든 변경의 append-only 이력</h4>
+<p>workspace 의 모든 field 변경마다 1 row 추가. UPDATE / DELETE 금지 (audit-grade evidence).</p>
+<pre><code>CREATE TABLE workspace_change_events (
+  id                BINARY(16) PRIMARY KEY,
+  workspace_id      BINARY(16) NOT NULL,
+  event_type        ENUM('created', 'renamed', 'type-changed', 'owner-transferred', 'aml-default-changed') NOT NULL,
+  field_name        VARCHAR(64) NOT NULL,
+  old_value         JSON,
+  new_value         JSON,
+  actor_user_id     BINARY(16) NOT NULL,
+  approval_request_id BINARY(16),
+  audit_event_id    BINARY(16),
+  occurred_at       DATETIME(6) NOT NULL,
+  KEY (workspace_id, occurred_at),
+  KEY (event_type)
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">컬럼</th><th style="width:18%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>이벤트 고유 식별자</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16)</td><td>어느 workspace 의 변경인지</td></tr>
+<tr><td><code>event_type</code></td><td>ENUM (5 값)</td><td><strong>created</strong> (최초 생성), <strong>renamed</strong> (name 변경), <strong>type-changed</strong> (hot↔cold migration), <strong>owner-transferred</strong> (Transfer Owner), <strong>aml-default-changed</strong> (AML 정책 변경)</td></tr>
+<tr><td><code>field_name</code></td><td>VARCHAR(64)</td><td>변경된 컬럼명 (예: <code>name</code>, <code>owner_user_id</code>). 한 event 가 여러 컬럼 변경 시 여러 row</td></tr>
+<tr><td><code>old_value</code> · <code>new_value</code></td><td>JSON nullable</td><td>변경 전/후 값. created event 시 old=NULL</td></tr>
+<tr><td><code>actor_user_id</code></td><td>BINARY(16)</td><td>변경을 실행한 사람의 user id</td></tr>
+<tr><td><code>approval_request_id</code></td><td>BINARY(16) nullable</td><td>Q+O 승인 흐름을 거친 변경의 경우 (aml-default-changed 등) 해당 approval_request 의 id. 즉시 변경 시 NULL</td></tr>
+<tr><td><code>audit_event_id</code></td><td>BINARY(16) nullable</td><td><code>auditdb.audit_events</code> 의 해당 event id (cross-DB binding). outbox pattern 으로 비동기 영속화 — auditdb 의 hash chain 에도 포함</td></tr>
+<tr><td><code>occurred_at</code></td><td>DATETIME(6)</td><td>변경 발생 시각</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>1.6 <code>workspace_freeze_events</code> — Freeze 이력 테이블</h4>
+<pre><code>CREATE TABLE workspace_freeze_events (
+  id              BINARY(16) PRIMARY KEY,
+  workspace_id    BINARY(16) NOT NULL,
+  event_type      ENUM('freeze', 'unfreeze') NOT NULL,
+  actor_user_id   BINARY(16) NOT NULL,
+  support_ticket_id VARCHAR(64),
+  occurred_at     DATETIME(6) NOT NULL
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">컬럼</th><th style="width:18%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>이벤트 고유 식별자</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16)</td><td>어느 workspace 에 발생한 이벤트인지</td></tr>
+<tr><td><code>event_type</code></td><td>ENUM</td><td><strong>freeze</strong> (정지 발동) 또는 <strong>unfreeze</strong> (정지 해제)</td></tr>
+<tr><td><code>actor_user_id</code></td><td>BINARY(16)</td><td>이 이벤트를 실행한 사람의 user id</td></tr>
+<tr><td><code>support_ticket_id</code></td><td>VARCHAR(64) nullable</td><td>unfreeze 는 Fireblocks Support 경유 필수 — 그 ticket 번호. freeze 시엔 NULL</td></tr>
+<tr><td><code>occurred_at</code></td><td>DATETIME(6)</td><td>이벤트 발생 시각</td></tr>
+</tbody>
+</table>
+</div>
+<p>이 테이블은 <strong>append-only</strong> (UPDATE / DELETE 금지) — freeze 이력은 audit evidence 라서 영구 보존.</p>
+
+<h4>1.7 왜 <code>change_events</code> 와 <code>freeze_events</code> 를 분리하는가</h4>
+<p>두 테이블을 합쳐서 하나로 만들 수도 있다 — `event_type` ENUM 에 'freeze' / 'unfreeze' 만 추가하면 가능. 그럼에도 본 reference 는 <strong>분리 유지</strong>를 권장하는 이유:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">근거</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td><strong>① 의미적 도메인 분리</strong></td><td><code>change_events</code> 는 workspace metadata 의 진화 (rename, owner transfer, AML 정책 변경). <code>freeze_events</code> 는 <strong>emergency 운영 상태</strong> 전환. 같은 도메인의 이벤트가 아님.</td></tr>
+<tr><td><strong>② 전용 필드의 schema 명확성</strong></td><td>freeze 만 갖는 컬럼 (<code>support_ticket_id</code> — unfreeze 시 Fireblocks Support 경유 증빙) 이 한 테이블에 강제됨. 통합 시 JSON 으로 흡수해야 해서 schema 명세성이 떨어짐.</td></tr>
+<tr><td><strong>③ Hot path query 분리</strong></td><td>"<strong>지금 frozen 인가?</strong>" 는 매우 빈번 (모든 작업 시작 시 체크). 이 query 가 metadata 변경 이력 (수년치 누적) 까지 스캔하지 않게 함. 작은 freeze_events 테이블만 보면 끝.</td></tr>
+<tr><td><strong>④ Index 효율</strong></td><td>각 테이블의 분포와 query 패턴이 달라서 index 설계도 다름. 통합하면 어느 쪽도 최적 아닌 index 가 됨.</td></tr>
+<tr><td><strong>⑤ 권한·운영 분리 가능성</strong></td><td>future scaling 시 freeze 만 별도 incident DB 로 이전, change_events 는 walletdb 유지 같은 옵션 열려 있음. 통합되어 있으면 분리 마이그레이션 부담.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout">
+<div class="callout-title">walletdb 안에서는 분리, auditdb 안에서는 통합</div>
+<p>두 테이블 모두 <code>audit_event_id</code> 로 <code>auditdb.audit_events</code> 와 cross-DB binding 됨. <strong>walletdb 안에서는 의미별로 분리</strong>하되, <strong>auditdb 의 hash chain 에서는 통합</strong>되어 workspace 전체 audit trail 이 한 곳에 영속화됨 — best of both worlds.</p>
+</div>
+<div class="callout callout-warn">
+<div class="callout-title">통합이 더 좋은 경우</div>
+<p>다음 상황에선 1 테이블로 통합 시작 후 점진 분리:</p>
+<ul style="margin-bottom:0">
+<li>작은 institution — 운영 부담 최소화 우선</li>
+<li>이벤트 빈도가 매우 낮음 — 테이블 분리의 효율 이점 없음</li>
+<li>모든 이벤트의 통합 timeline 이 주 use case (workspace audit dashboard 한 query)</li>
+</ul>
+</div>
+
+<h4>1.8 Workspace Freeze 모델 — 풀어 쓰기</h4>
+<div class="callout">
+<div class="callout-title">Emergency Freeze 가 발동되면 무슨 일이?</div>
+<ul style="margin-bottom:0">
+<li>모든 user 의 role 이 <strong>일시적으로 Viewer 로 강제 변경</strong> (Owner 포함). 즉 누구도 자금 이동·설정 변경 불가</li>
+<li>차단되는 작업: 외부 송금 · 새 주소 whitelist · 새 거래소 연결 · P2P 네트워크 연결</li>
+<li>★ <strong>Incoming transfer (입금) 는 계속 수신</strong> — 외부에서 우리 주소로 들어오는 코인은 막을 수 없음 (chain 의 본질)</li>
+<li>Freeze 발동: Owner / Admin / NSA / Security Admin 4 role 가능</li>
+<li>Unfreeze: <strong>Owner only via Fireblocks Support</strong> (Console 으로 직접 못 푸는 안전장치)</li>
+</ul>
+</div>
+
+<h4>1.9 Freeze flow 시퀀스 — schema 가 흐름 안에서 어떻게 작동하는가</h4>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Admin as 👤 Admin
+  actor Owner as 👤 Owner
+  participant Console as 🖥️ Fireblocks Console
+  participant Support as 🆘 Fireblocks Support
+  participant FB as 🛡️ Fireblocks Core
+  participant TxQ as 🔄 출금 tx 큐
+  participant Chain as ⛓️ Blockchain
+
+  Note over Admin,Chain: ① Freeze 시작 — 의심 활동 감지 시
+  Admin->>Console: "Freeze workspace" 요청
+  Console->>FB: workspace_freeze_events INSERT<br/>(frozen_at + frozen_by_user_id + reason)
+  FB->>FB: workspaces.frozen_at = now()
+
+  Note over FB,Chain: ② 그 시점부터 outgoing 만 차단
+  TxQ->>FB: 새 출금 요청
+  FB->>TxQ: REJECTED (workspace frozen)
+  Chain->>FB: 외부에서 들어오는 입금 observation
+  FB->>FB: chain_events / deposit_observations<br/>계속 INSERT (입금은 차단 안 됨)
+  Note over Chain,FB: 입금은 chain 의 본질상 막을 수 없음 —<br/>외부 송금자를 우리가 통제 못 함
+
+  Note over Owner,Support: ③ Unfreeze — Owner 만 + Support 경유
+  Owner->>Support: unfreeze 요청 (별도 검증 절차)
+  Support->>FB: workspace_freeze_events INSERT<br/>(unfrozen_at + unfrozen_by_user_id)
+  FB->>FB: workspaces.frozen_at = NULL
+  FB->>TxQ: 출금 재개 가능
+  Console->>Admin: 정상 운영 상태로 복귀
+</pre>
+<span class="diagram-caption">Figure 17. Workspace Freeze 흐름. 핵심 3 단계: ① Admin 이 Console 에서 freeze 시작 (즉시 적용, append-only event 1 row) → ② 그 순간부터 모든 출금 요청 거부, <strong>입금은 계속 들어옴</strong> (chain 의 본질 — 외부 송금자를 우리가 막을 수 없음) → ③ Unfreeze 는 Owner 만 + 반드시 Fireblocks Support 경유 (Console UI 로 직접 못 푸는 안전장치 — 공격자가 Admin 권한을 탈취해도 freeze 를 임의로 풀지 못하도록). <code>workspace_freeze_events</code> 가 append-only 라서 freeze / unfreeze 의 모든 이력이 audit 차원에서 보존됨.</span>
+</div>
+
+<h3>참고글</h3>
+<ul>
+<li><a href="https://support.fireblocks.io/hc/en-us/articles/360012832959-User-roles" target="_blank" rel="noopener">Fireblocks — User roles</a> · workspace 의 9 role 권한표</li>
+<li><a href="https://support.fireblocks.io/hc/en-us/articles/360012842759-Freeze-your-workspace" target="_blank" rel="noopener">Fireblocks — Freeze your workspace</a> · 비상 freeze 흐름 + Unfreeze 절차</li>
+<li><a href="tables-vault.html">4. Vault</a> · workspace 안의 자산 보관 단위 (vault account)</li>
+<li><a href="db-split.html">2. DB 분할</a> · workspaces 가 walletdb 에 속하는 이유</li>
+<li><a href="tables-quorum.html">9. Admin Quorum · Approval Group</a> · workspace-level 거버넌스 (Q / Q+O / AG)</li>
+<li><a href="tables-audit.html">20. Audit Log</a> · workspace_change_events / freeze_events 의 cross-DB hash chain 영속화</li>
+<li><a href="storage-discipline.html">24. Storage Discipline</a> · append-only / set-once 규율</li>
+</ul>
+
+</section>
+</main>
+</div>
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

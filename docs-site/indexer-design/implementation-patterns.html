@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>3. 4 구현 패턴 — 블록체인 인덱서 설계 가이드</title>
+<meta content="인덱서 4 가지 구현 패턴 — pull / streaming / scan / data lake. 장단점 + 적합 워크로드." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Foundation</h3><ul>
+<li><a href="what-is-indexer.html">1. 인덱서란 무엇인가</a></li>
+<li><a href="requirements.html">2. 요구사항</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Implementation</h3><ul>
+<li><a class="active" href="implementation-patterns.html">3. 4 구현 패턴</a></li>
+<li><a href="reference-architecture.html">4. 참조 아키텍처</a></li>
+<li><a href="data-model.html">5. 데이터 모델</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Operations</h3><ul>
+<li><a href="reorg-finality.html">6. Reorg · Finality</a></li>
+<li><a href="performance-scalability.html">7. 성능 · 확장성</a></li>
+<li><a href="monitoring-ops.html">8. 운영 · 모니터링</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Industry Cases</h3><ul>
+<li><a href="exchange-cases.html">9. 자체 인덱서 운영</a></li>
+<li><a href="saas-cases.html">10. 인덱서 / 데이터 인프라 vendor</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Infrastructure</h3><ul>
+<li><a href="infrastructure-spec.html">11. 인프라 · 스펙</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Portability</h3><ul>
+<li><a href="portability.html">12. 벤더 교체 · 포트 설계</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="patterns">
+<h2>3. 4 구현 패턴</h2>
+<span class="section-subtitle">pull / streaming / scan / data lake — 모든 인덱서는 이 4 패턴의 조합이다</span>
+
+<h3>3.1 4 패턴 한눈에 보기</h3>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th style="width:18%">패턴</th><th>메커니즘</th><th>대표 사례</th><th>특성</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>(P1) Pull (full node 기반)</strong></td>
+  <td>노드의 JSON-RPC / WebSocket / tracing API / 내부 framework 에서 직접 read</td>
+  <td>Geth, Reth, nearcore, NEAR Indexer</td>
+  <td>정합성 ↑ 분산성 ↑ / 노드 운영 부담 ↑</td>
+</tr>
+<tr>
+  <td><strong>(P2) Streaming (event push)</strong></td>
+  <td>validator/노드가 외부로 push (WebSocket / Geyser / Kafka)</td>
+  <td>Solana Geyser, Ethereum eth_subscribe, Yellowstone gRPC</td>
+  <td>지연 ↓ / 재전송·중복·reorg 처리 필요</td>
+</tr>
+<tr>
+  <td><strong>(P3) Scan (filter + dictionary)</strong></td>
+  <td>체인 전체를 훑되 filter / topic / dictionary 로 선택적으로 처리</td>
+  <td>EVM logs scan, SubQuery dictionary, Blockscout catchup</td>
+  <td>유연 / filter 설계 의존</td>
+</tr>
+<tr>
+  <td><strong>(P4) Data Lake (file/object storage)</strong></td>
+  <td>원시 체인 데이터를 파일 / S3 / gRPC stream 으로 외부화</td>
+  <td>NEAR Lake (deprecated), Firehose, Coinbase ChainStorage</td>
+  <td>대량 재처리 / 병렬화 쉬움 / 외부 의존</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<h3>3.2 (P1) Pull 패턴 상세</h3>
+
+<p>가장 단순한 패턴. 인덱서가 노드에 주기적으로 RPC 호출.</p>
+
+<pre><code>// Pull 패턴의 기본 loop (의사 코드)
+loop:
+  current = node.eth_blockNumber()
+  for blockNum in (lastProcessed+1 .. current):
+    block = node.eth_getBlock(blockNum, fullTx=true)
+    logs  = node.eth_getLogs({fromBlock: blockNum, toBlock: blockNum})
+    process(block, logs)
+    lastProcessed = blockNum
+    save_cursor(blockNum)
+  sleep(2s)  // 블록 주기 따라
+</code></pre>
+
+<h4>장단점</h4>
+<table>
+<thead><tr><th>장점</th><th>단점</th></tr></thead>
+<tbody>
+<tr><td>가장 간단. 구현 / 디버깅 쉬움</td><td>polling 간격만큼 지연</td></tr>
+<tr><td>RPC 표준만 사용 — 어떤 클라이언트 / vendor RPC 든 OK</td><td>RPC 호출 수가 처리량을 결정 (RPC throttling 시 lag)</td></tr>
+<tr><td>cursor 기반 재시작이 자연스러움</td><td>tx receipt 추가 조회 시 N+1 호출 문제</td></tr>
+</tbody>
+</table>
+
+<h4>적합 워크로드</h4>
+<ul>
+  <li>소규모 / MVP — 빠른 출시</li>
+  <li>RPC 만 사용 가능한 환경 (자체 노드 없음)</li>
+  <li>지연 SLO 가 느슨 (수 초 ~ 수십 초 OK)</li>
+</ul>
+
+<h3>3.3 (P2) Streaming 패턴 상세</h3>
+
+<p>노드가 새 블록 / 이벤트를 발생 즉시 외부로 push. 인덱서는 consumer.</p>
+
+<h4>주요 메커니즘</h4>
+<ul>
+  <li><strong>Ethereum WebSocket</strong> — <code>eth_subscribe('newHeads')</code> / <code>eth_subscribe('logs', filter)</code></li>
+  <li><strong>Solana Geyser plugin</strong> — validator 내부의 plugin interface. accounts / slots / blocks / transactions 를 Postgres / Kafka / gRPC 로 push</li>
+  <li><strong>Yellowstone gRPC</strong> — Geyser 위에 표준화된 gRPC stream</li>
+  <li><strong>Firehose</strong> — sub-second live streaming + fork-aware + cursor resume</li>
+</ul>
+
+<pre><code>// Streaming 패턴의 consumer (의사 코드)
+node.subscribe('newHeads', (block) =&gt; {
+  processNewBlock(block);
+  // logs 도 subscribe 한 경우 별도 handler
+});
+
+node.subscribe('logs', { address: USDC_CONTRACT, topics: [TRANSFER] }, (log) =&gt; {
+  processLog(log);
+});
+</code></pre>
+
+<h4>장단점</h4>
+<table>
+<thead><tr><th>장점</th><th>단점</th></tr></thead>
+<tbody>
+<tr><td>최소 지연 (sub-second 가능)</td><td>연결 유지 / 재연결 / 중복 처리 부담</td></tr>
+<tr><td>RPC quota 절약 (push 라 호출 수 적음)</td><td>WebSocket 의 reliability 가 낮음 — 끊김 잦음</td></tr>
+<tr><td>이벤트 필터링이 노드 측에서 가능</td><td>reorg 시 같은 이벤트 다시 전송 (<code>removed=true</code>) → idempotency 필수</td></tr>
+</tbody>
+</table>
+
+<h4>중요 — 재연결 + 중복 처리</h4>
+<p>WebSocket 이 끊긴 사이 발생한 이벤트는 놓침. 보통 P2 + P1 hybrid 로 운영 — 끊김 감지 시 P1 (pull) 로 backfill 후 재구독.</p>
+
+<h3>3.4 (P3) Scan 패턴 상세</h3>
+
+<p>체인 전체를 훑되 filter / dictionary 로 처리할 블록만 선택.</p>
+
+<h4>핵심 — Dictionary</h4>
+<p>SubQuery 가 대중화한 개념. "필요한 이벤트가 있는 블록 높이 목록" 을 GraphQL 로 미리 받아와서 나머지 블록은 skip.</p>
+
+<pre><code>// 일반 scan — 모든 블록 처리
+for block in (0 .. head):
+  process(block)  // 대부분 빈 블록도 처리
+
+// Dictionary 기반 scan
+relevant_blocks = dictionary.query({
+  events: ['Transfer'],
+  contracts: [USDC, USDT, ...]
+})
+// e.g., relevant_blocks = [100, 234, 1056, 1057, ...]
+
+for block in relevant_blocks:
+  process(block)  // 99% 의 빈 블록 skip
+</code></pre>
+
+<h4>장단점</h4>
+<table>
+<thead><tr><th>장점</th><th>단점</th></tr></thead>
+<tbody>
+<tr><td>처리 블록 수 대폭 감소 (10-100배)</td><td>filter 설계가 잘못되면 누락</td></tr>
+<tr><td>backfill 속도 빠름</td><td>새 이벤트 type 추가 시 backfill 다시</td></tr>
+<tr><td>RPC quota 절약</td><td>dictionary 서비스 의존</td></tr>
+</tbody>
+</table>
+
+<h3>3.5 (P4) Data Lake 패턴 상세</h3>
+
+<p>raw 블록 데이터를 파일 / object storage / 표준 stream 으로 외부화. 인덱서는 그 파일에서 read.</p>
+
+<h4>주요 메커니즘</h4>
+<ul>
+  <li><strong>Firehose (StreamingFast)</strong> — 블록을 protobuf 파일로 저장 + sub-second live stream</li>
+  <li><strong>NEAR Lake</strong> (deprecated 2026-03-24) — JSON 파일을 S3 로 dump</li>
+  <li><strong>Coinbase ChainStorage</strong> — S3 + DynamoDB 에 raw block 적재, ELT 방식</li>
+  <li><strong>Substreams</strong> — Firehose 위의 병렬 처리 framework</li>
+</ul>
+
+<h4>장단점</h4>
+<table>
+<thead><tr><th>장점</th><th>단점</th></tr></thead>
+<tbody>
+<tr><td>병렬 처리가 자연스러움 (file = partition)</td><td>외부 storage 의존 (S3 outage 영향)</td></tr>
+<tr><td>backfill / 재처리 비용 ↓ (cold storage)</td><td>실시간성은 P2 보다 약함</td></tr>
+<tr><td>여러 consumer 가 같은 raw data 공유</td><td>도입 복잡도 ↑</td></tr>
+</tbody>
+</table>
+
+<h3>3.6 실무 — 패턴 조합</h3>
+
+<p>현실의 모든 production 인덱서는 2-3 패턴의 조합이다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>사례</th><th>조합</th><th>이유</th></tr></thead>
+<tbody>
+<tr>
+  <td>The Graph</td>
+  <td>P1 (Graph Node pull) + P4 (Firehose) + P3 (Substreams filter)</td>
+  <td>안정성 (P1) + 백필 속도 (P4) + 선택적 처리 (P3)</td>
+</tr>
+<tr>
+  <td>Coinbase ChainStorage</td>
+  <td>P1 (load-balanced 노드 cluster) + P4 (S3 + DynamoDB lake)</td>
+  <td>대규모 + 정합성</td>
+</tr>
+<tr>
+  <td>SubQuery</td>
+  <td>P1 (RPC) + P3 (dictionary)</td>
+  <td>multi-chain + 효율</td>
+</tr>
+<tr>
+  <td>Solana 인덱서</td>
+  <td>P2 (Geyser) + P1 (RPC backup)</td>
+  <td>초저지연 + 재연결 대비</td>
+</tr>
+<tr>
+  <td>Blockscout</td>
+  <td>P2 (eth_subscribe realtime) + P1 (catchup indexer)</td>
+  <td>실시간 + 누락 보정</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<h3>3.7 패턴 선택 — 한 줄 기준</h3>
+
+<div class="dev-note">
+<span class="dev-note-label">패턴 선택 가이드</span>
+<ul>
+  <li><strong>Pull (P1)</strong> — 기본. 어떤 워크로드든 P1 으로 시작 가능. 작게 만들고 키워라.</li>
+  <li><strong>Streaming (P2)</strong> — 지연 SLO 가 5 초 미만이면 추가.</li>
+  <li><strong>Scan (P3)</strong> — 특정 컨트랙트 / 토큰만 추적할 때. Backfill 비용 절감용.</li>
+  <li><strong>Data Lake (P4)</strong> — 대규모 분석 / 멀티 consumer / 장기 보존 시.</li>
+</ul>
+</div>
+
+<h3>3.8 다음 페이지</h3>
+
+<p>패턴이 정해졌으니, 다음은 — <a href="reference-architecture.html"><strong>4. 참조 아키텍처</strong></a> 에서 인덱서의 컴포넌트 계층 (수집 / 파싱 / 저장 / projection / API) 을 본다.</p>
+
+</section>
+</main>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,13 @@
+url: https://developers.fireblocks.com/docs/define-travel-rule-policies
+fetched_at: 2026-07-07
+source_type: webpage
+domain: compliance / travel-rule
+tier: 1
+title: "Define Travel Rule Policies"
+crawl_status: summary-fetched (WebFetch 요약 — 본문 원문 미보존)
+key_facts: |
+  - Fireblocks 는 Travel Rule 을 Notabene 파트너십으로 처리 — 입·출금 실시간 스크리닝
+  - Fireblocks 는 Travel Rule 전용 거래 데이터를 영구 저장하지 않음 (암호화되어 Notabene 보관)
+  - 관할권별 적용 대상·요구 데이터는 각 관할권이 결정
+promote_condition: "트래블룰 도입 설계 착수 시 — support PDF 클러스터(2026-05-19)와 함께 deep ingest"
+related_pdfs: "sources/fireblocks/pdf/2026-05-19__support-fireblocks-io__travel-rule-*.pdf (10종)"

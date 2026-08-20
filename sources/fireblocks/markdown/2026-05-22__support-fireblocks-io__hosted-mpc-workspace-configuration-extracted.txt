@@ -1,0 +1,52 @@
+26. 5. 18. 오후 3:36                                             Hosted MPC Workspace Configuration – Fireblocks Help Center
+
+
+                     Don't see what you're looking for? Log in for the full Help Center experience
+
+                                                                          Fireblocks Help Center Search the Help Center /
+
+
+
+
+        Hosted MPC Workspace
+        Configuration
+        Updated 1 year ago
+
+        When you request to own and manage all of your MPC signing keys, Fireblocks creates a
+        workspace with a “Hosted MPC” tag for you. The onboarding process requires careful
+        planning of the Co-Signer’s deployment, so it is necessary to work closely with our
+        customer support staff. Contact your Customer Success Manager to learn more about the
+        process.
+
+            Note:
+            You must open and configure a new workspace for a Hosted MPC setup, as modifying an
+            existing SaaS MPC workspace is impossible.
+
+
+
+                                                            Was this article helpful?
+                                                                     Yes             No
+
+
+
+             Related Articles
+                     Hosted MPC Overview
+                     Hosted MPC Customer-Side Setup
+
+
+
+
+https://support.fireblocks.io/hc/en-us/articles/12901932277404-Hosted-MPC-Workspace-Configuration                            1/2
+26. 5. 18. 오후 3:36                                             Hosted MPC Workspace Configuration – Fireblocks Help Center
+      fireblocks.com          Status       API Docs         Console         info@fireblocks.com
+                     Don't see what you're looking for? Log in for the full Help Center experience
+
+                                                                          Fireblocks Help Center                             /
+      Fireblocks © 2026. All Rights Reserved. NMLS Registration Number: 2066055
+      Privacy Policy
+
+
+
+
+https://support.fireblocks.io/hc/en-us/articles/12901932277404-Hosted-MPC-Workspace-Configuration                                2/2
+

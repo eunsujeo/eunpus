@@ -1,0 +1,23 @@
+url: http://www.newstheai.com/news/articleView.html?idxno=20703
+fetched_at: 2026-08-20
+source_type: webpage (전략 발표회 취재 기사 — 2차)
+domain: pqc / digital-asset-platform / korea
+tier: 2
+crawl_status: fetched (2026-08-20, Mode C)
+markdown: sources/pqc/markdown/2026-08-20__newstheai-com__hancomwith-the-shift-strategy.md
+title: "한컴위드가 꺼낸 세 카드 — 디지털 자산·양자·AI 인증 (HANCOM : THE SHIFT)"
+key_facts: |
+  - 2026-05-19 서울 여의도 페어몬트 호텔 'HANCOM : THE SHIFT' 전략 발표회
+  - 3대 축: 디지털 금융 (RWA 토큰화) / 양자보안 (PQC) / AI 인증
+  - PQC: KCMVP 암호 모듈에 PQC 알고리즘 비검증 모듈 추가 개발 완료, 통신·데이터 암호화 솔루션에 적용 공급 중.
+    드론·인공위성용 경량 암호모듈 개발 완료 단계. 디지털 금융 플랫폼에 자사 양자보안 기술 직접 적용
+  - 디지털 자산: 온토리움 (RWA 플랫폼) / OXAU (실물 금 1:1 골드 토큰) / 아쿠아 (DeFi, 4/21 글로벌 출시) / 플로트 (24시간 글로벌 결제·자산 운용, 연내 출시)
+  - AI 인증 3종: 한컴 오스 (얼굴 라이브니스) / 스피키 (음성) / 엑스씨오스 (무자각 지속 인증)
+  - 디지털 월렛의 키 관리 PQC 전환 상세는 기사에 없음
+context: |
+  컨퍼런스 세션 "디지털 월렛의 양자내성암호(PQC) 전환" (한컴위드) 의 배경 자료로 수집 (2026-08-20).
+  세션 본편은 월렛 키 체계의 PQC 전환 로드맵을 다룰 것으로 예상 — 기사에는 해당 상세 없음.
+related_news:
+  - https://www.dailysecu.com/news/articleView.html?idxno=207405
+  - https://www.hancomwith.com/secure/data.php
+promote_condition: "월렛 키 관리 PQC 전환 (harvest-now-decrypt-later 대응) 을 설계 검토할 때. 발표 자료 확보 시 우선 검토"

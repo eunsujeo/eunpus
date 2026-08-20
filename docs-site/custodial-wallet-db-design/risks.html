@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Risks Register — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Risks Register" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace.html">3. Workspace</a></li>
+<li><a href="tables-vault.html">4. Vault</a></li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">14. Transaction State</a></li>
+<li><a href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a class="active" href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="risks">
+<h2>23. Risks Register</h2>
+<span class="section-subtitle">Fireblocks 자료에서 명시된 10 가지 risk + DB 설계상 mitigation</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처 — 어디까지가 Fireblocks 정의이고, 어디부터가 추정인가</div>
+<p>이 페이지의 내용은 두 갈래입니다.</p>
+<p><strong>Fireblocks 공식 문서에 정의된 사실</strong> — 그대로 받아들여도 안전</p>
+<ul style="margin-bottom:0.5rem">
+<li>아래 10 가지 risk 각각이 Fireblocks 의 운영/보안 문서에 명시되어 있음 (운영팀이 사전에 인지해야 할 영역)</li>
+<li>각 risk 의 본질적 원인 — Owner SPOF · passphrase loss · API credential exposure · device 분실 · DR online execution · co-signer compromise · EVM nonce · BTC 25-chain · BCM 자격 차이 · incoming reject lock</li>
+</ul>
+<p style="margin-bottom:0.3rem"><strong>저자가 합리적으로 추정해서 그린 설계</strong> — 참고용, 본인 환경에서 검증 권장</p>
+<ul style="margin-bottom:0">
+<li>각 risk 의 <strong>Severity 등급</strong> — Fireblocks 가 공식 등급을 매기지 않음, 본 페이지가 운영 우선순위 결정에 도움 되도록 추정 부여</li>
+<li><code>risk_markers</code> 테이블의 schema — risk 상태를 추적·해소까지 audit 하는 패턴</li>
+<li><code>owner_recovery_events</code> 같은 mitigation 의 DB 표현 (Fireblocks 자체 구현은 미명시)</li>
+</ul>
+</div>
+
+<h3>Risk Catalog — 10 가지 운영 risk</h3>
+<p>Fireblocks 운영에서 사전 인지·대비가 필요한 risk 목록. <strong>Severity</strong> 는 운영 우선순위 (저자 추정), <strong>DB-level mitigation</strong> 은 본 docs-site 의 schema 가 어떻게 그 risk 를 추적·완화하는지.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Risk</th><th>Severity</th><th>DB-level mitigation</th></tr></thead>
+<tbody>
+<tr><td><strong>Owner SPOF</strong> — 2FA<span class="g" data-tip="Two-Factor Authentication. password + 추가 인증 (대부분 TOTP authenticator app 의 6 자리 코드)" tabindex="0">(?)</span> reset · device 재등록 · Owner transfer 모두 Fireblocks Support 영상 통화 필수 (Console 불가). Owner 한 명에게 의존하는 single point of failure</td><td>🔴 Critical</td><td><code>owner_recovery_events</code> append-only<span class="g" data-tip="DB 의 추가 전용 규칙. 한 번 들어간 row 는 UPDATE / DELETE 절대 불가. trigger 로 강제" tabindex="0">(?)</span> log + multi-admin escalation procedure</td></tr>
+<tr><td><strong>Recovery passphrase 분실</strong> — passphrase 분실 시 cloud backup 해독 불가, key share 영구 손실 가능</td><td>🔴 Critical</td><td>월 1회 periodic verification (Owner/Admin/Signer) + 3-fail lockout. DB 에는 passphrase 자체 저장 안 함 (forbidden storage)</td></tr>
+<tr><td><strong>API credential 노출</strong> — API key 또는 CSR<span class="g" data-tip="Certificate Signing Request. RSA public key + 신원 정보를 묶은 cert 발급 요청서. API user 인증에 사용" tabindex="0">(?)</span> private key 노출 시 자동 서명. 도난된 자격증명이 인터넷 어디서나 사용 가능</td><td>🔴 Critical</td><td>IP allowlist (/32 CIDR 만) + immediate revoke (Owner 즉시) + audit log</td></tr>
+<tr><td><strong>Mobile device 분실</strong> — Primary MPC<span class="g" data-tip="Multi-Party Computation. 여러 당사자가 각자 키 조각만 들고 협력해서 서명 — 누구도 단독으로 키를 모름. 전체 키가 한 번도 한곳에 모이지 않음" tabindex="0">(?)</span> key share 손실. 재등록 절차 진행 중 운영 정체</td><td>🟠 High</td><td>Re-enroll device (2-day window × 2 단계 — Owner + 사용자) + recovery from cloud backup. 일반 user 는 재발급 가능, Owner 는 별도 절차</td></tr>
+<tr><td><strong>SPOC<span class="g" data-tip="SPOC — Single Point of Compromise. 한 번이라도 노출되면 전체 키가 compromise 된 것으로 간주하는 지점. Fireblocks DR Recovery Utility 가 online machine 에서 실행될 때 정식 SPOC 경고 발동" tabindex="0">(?)</span> at DR</strong> — Disaster Recovery 절차가 online machine 에서 실행되면 private key "considered exposed and compromised". 한 번의 실수가 key compromise</td><td>🔴 Critical</td><td>DR Recovery Utility 는 offline-only 강제 — 4 secrets 모두 air-gapped 머신 2 대 환경에서만 사용. <code>recovery_events.air_gapped_machine_*_attested</code> 컬럼이 schema 차원에서 attestation 기록</td></tr>
+<tr><td><strong>Co-signer compromise</strong> — Customer 측 key share 가 compromise 되어도 Fireblocks 의 safeguards 가 작동 (single failure 가 즉시 자금 손실로 이어지지 않음)</td><td>🟠 High</td><td>Fireblocks 의 safeguards — Policy enforcement (tx amount threshold · destination integrity 검증) 가 customer share 손상에도 차단 역할</td></tr>
+<tr><td><strong>EVM<span class="g" data-tip="Ethereum Virtual Machine. Ethereum 호환 chain 계열 (Polygon / Arbitrum / Optimism 등). account-based 모델" tabindex="0">(?)</span> nonce<span class="g" data-tip="EVM 의 transaction 순서 번호. 같은 주소의 tx 가 순차 처리되도록. 충돌 시 뒤 tx 가 stuck" tabindex="0">(?)</span> 충돌</strong> — 동시 withdrawal 시 nonce gap → 후속 tx 전부 stuck. <code>transactions.chain_nonce</code> 컬럼이 stuck detection 의 schema-level key</td><td>🟡 Medium</td><td>Multiple withdrawal vault round-robin + nonce 직렬화 (vault account<span class="g" data-tip="Fireblocks 의 자산 보관 단위. workspace 안에서 여러 개 만들어 client / team / 용도별 분리" tabindex="0">(?)</span> 단위). <a href="tables-wallet.html">5. Wallet</a> 의 round-robin 도식 참조</td></tr>
+<tr><td><strong>Canton OFFER orphan</strong> — 2-step transfer 의 OFFER 가 ACCEPT/REJECT/WITHDRAW 없이 무기한 pending. recipient 가 응답 안 하면 자금 lock 상태 지속</td><td>🟡 Medium</td><td><code>transactions.canton_action='OFFER'</code> + state='Pending 3rd Party' 의 timeout 정책 + scheduled job 이 만료된 OFFER 를 자동 WITHDRAW (sender 가 회수)</td></tr>
+<tr><td><strong>Relay vault 고갈</strong> — Gasless / sponsored tx 의 relay (Gas Station 또는 third-party) 의 fee asset 잔액 부족 시 모든 sponsored tx 가 fail. relay 가 same-tenant 면 자산 충전, third-party 면 contract 재협상 필요</td><td>🟡 Medium</td><td><code>transactions.paid_by_relay=true</code> + <code>relay_vault_id</code> 별 balance threshold monitoring. Gas Station 의 <code>gasThreshold</code> alert 와 동일 패턴. <code>relay_type='THIRD_PARTY'</code> 의 경우 별도 escalation lane</td></tr>
+<tr><td><strong>MEV routing bypass</strong> — <code>routing_type='MEV'</code> 가 보장이 아니라 best-effort. Private mempool 이 거부하면 public mempool 로 fallback 되면서 MEV bot 노출 가능. broadcasting 시 customer 가 routing 보장 받지 못함</td><td>🟡 Medium</td><td>tx-level routing audit + MEV 실패 시 alert. <code>broadcast_attempts</code> 에 actual mempool path 기록. high-value tx 는 NODE_ROUTER 로 customer-controlled node 사용 권장</td></tr>
+<tr><td><strong>Bitcoin 25-chain limit</strong> — unconfirmed input chain 이 25 개 도달 시 추가 tx 차단 (Bitcoin Core default policy)</td><td>🟡 Medium</td><td>Multiple withdrawal vault + 사전 confirmation 대기. EVM 의 nonce 와 비슷한 chain-side bottleneck</td></tr>
+<tr><td><strong>BCM dependency</strong> — Hosted MPC customer 만 BCM (Business Continuity Module) 자격 — SaaS-only 는 BCM 불가</td><td>🟡 Medium</td><td>SaaS customer 는 mobile + 2 Fireblocks share 의 가용성에 의존. Fireblocks 인프라 장애 시 영향. Hosted MPC variant 로 이전 시 BCM 적용</td></tr>
+<tr><td><strong>Incoming rejected freeze</strong> — Incoming tx 가 AML 거절 시 자산이 chain 상 도착해 있지만 Admin unfreeze 까지 lock. 잘못된 차단 시 자금 회수까지 시간 소요</td><td>🟡 Medium</td><td>Admin escalation path + unfreeze audit. <a href="tables-aml.html">22. AML</a> 의 <code>rejected_incoming_assets</code> 테이블이 lock 추적 + Admin 의 unfreeze 결정 기록</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>DB Schema — <code>risk_markers</code></h3>
+<p>위 risk 들의 상태를 workspace 단위로 추적하는 운영 테이블. risk 가 감지되면 row INSERT, 해소 시 resolved_at SET — Open risk 의 visibility 확보 + 운영팀의 우선순위 결정 자료.</p>
+<pre><code>CREATE TABLE risk_markers (
+  id              BINARY(16) PRIMARY KEY,
+  workspace_id    BINARY(16) NOT NULL,
+  risk_type       VARCHAR(64) NOT NULL,  -- 'owner-spof', 'passphrase-stale', ...
+  severity        ENUM('low','medium','high','critical') NOT NULL,
+  detected_at     DATETIME(6) NOT NULL,
+  detected_by     BINARY(16) NOT NULL,
+  resolved_at     DATETIME(6),
+  resolved_by     BINARY(16),
+  resolution_note TEXT,
+  KEY (workspace_id, risk_type, severity)
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>risk marker 의 고유 식별자</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16) FK</td><td>risk 가 속한 workspace</td></tr>
+<tr><td><code>risk_type</code></td><td>VARCHAR(64)</td><td>위 catalog 의 10 가지 risk type (예: <code>owner-spof</code>, <code>passphrase-stale</code>, <code>api-credential-exposed</code>). 운영 시 ENUM 으로 정형화 권장</td></tr>
+<tr><td><code>severity</code></td><td>ENUM (4 값)</td><td>위 catalog 의 Severity 컬럼 — low / medium / high / critical</td></tr>
+<tr><td><code>detected_at</code> · <code>detected_by</code></td><td>DATETIME(6) · BINARY(16)</td><td>risk 가 감지된 시각 + 감지한 actor (운영팀 / 자동 system check). set-once</td></tr>
+<tr><td><code>resolved_at</code> · <code>resolved_by</code></td><td>DATETIME(6) nullable · BINARY(16) nullable</td><td>risk 가 해소된 시각 + 해소한 actor. NULL = 여전히 open. set-once when set</td></tr>
+<tr><td><code>resolution_note</code></td><td>TEXT nullable</td><td>해소 과정에 대한 자유 텍스트 기록 — audit 시 무엇을 어떻게 처리했는지 확인용</td></tr>
+</tbody>
+</table>
+</div>
+  </section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-aml.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">22. AML<span class="g" data-tip="Anti-Money Laundering. 자금세탁 방지 규제. tx 별 KYC / sanction screening 강제" tabindex="0">(?)</span> · Travel Rule<span class="g" data-tip="VASP (가상자산 사업자) 간 송금 시 originator / beneficiary 정보 교환 의무화 규제" tabindex="0">(?)</span></span></a>
+<a class="page-nav-link page-nav-next" href="storage-discipline.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">24. Storage Discipline</span></a>
+</nav>
+</main>
+</div>
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

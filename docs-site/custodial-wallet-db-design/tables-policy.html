@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Policy &amp; TAP Rules — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Policy &amp; TAP Rules" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace.html">3. Workspace</a></li>
+<li><a href="tables-vault.html">4. Vault</a></li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a class="active" href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">14. Transaction State</a></li>
+<li><a href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="tables-policy">
+<h2>10. Policy &amp; TAP<span class="g" data-tip="Transaction Authorization Policy. Fireblocks 의 거래 단위 승인 정책 엔진" tabindex="0">(?)</span> Rules</h2>
+<span class="section-subtitle">2 component · 3 action · designated signer · DCCP<span class="g" data-tip="Deposit Control and Confirmation Policy. 입금 confirmation 횟수 기반 정책. clear 전까지 자금 lock" tabindex="0">(?)</span> · Whitelist vs OTA</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처 — 어디까지가 Fireblocks 정의이고, 어디부터가 추정인가</div>
+<p>이 페이지의 내용은 두 갈래입니다.</p>
+<p><strong>Fireblocks 공식 문서에 정의된 사실</strong> — 그대로 받아들여도 안전</p>
+<ul style="margin-bottom:0.5rem">
+<li>Policy 가 <strong>workspace 의 primary security control</strong> 이라는 위상 (아래 직접 인용 callout)</li>
+<li>Policy rule 의 <strong>2 component</strong>: Parameters (initiator / source / destination / asset 등) + Actions (Allow / Approved by / Block)</li>
+<li><strong>3 평면</strong>: Fireblocks Policy (TAP) · DCCP (입금 confirmation) · AML Transaction Screening Policy</li>
+<li><strong>Designated Signer 메커니즘</strong>: NSA / Editor 가 MPC key 없이도 designated signer 가 지정된 tx 타입을 initiate 가능 (internal exchange transfer 제외)</li>
+<li><strong>Second Authorizer</strong>: NSA / Approver 를 두 번째 authorizer 로 지정 가능</li>
+<li><strong>User Group</strong>: 다수 사용자를 single rule 에 매핑 / rule-level sub-quorum (예: "Management 그룹의 2 명 승인")</li>
+<li><strong>Policy 변경 = Q+O</strong> (Admin Quorum + Owner) 필수, mobile 서명 누적</li>
+<li><strong>Whitelist vs OTA 의 방어 차이</strong>: whitelist 는 Admin Quorum 의 address-level 사전 승인, OTA 는 그게 없어 Policy 가 사실상 유일한 자동 방어선</li>
+</ul>
+<p style="margin-bottom:0.3rem"><strong>저자가 합리적으로 추정해서 그린 설계</strong> — 참고용, 본인 환경에서 검증 권장</p>
+<ul style="margin-bottom:0">
+<li><code>policies</code> · <code>policy_rules</code> · <code>policy_change_log</code> · <code>user_groups</code> · <code>user_group_members</code> 5 테이블의 구체 schema</li>
+<li><code>policy_rules.parameters_cbor</code> 를 CBOR<span class="g" data-tip="Concise Binary Object Representation. JSON 과 비슷한 데이터 구조의 binary 표현. 크기 작고 byte-deterministic" tabindex="0">(?)</span> 단일 BLOB 로 저장하는 선택 (대안: 컬럼 분해)</li>
+<li><code>policies.version</code> + <code>active_at</code> + <code>superseded_at</code> 의 monotonic version 패턴</li>
+<li><code>policy_change_log.mobile_app_approval_sigs</code> 의 정확한 형식 (개별 서명 list vs aggregated)</li>
+</ul>
+</div>
+
+<div class="callout">
+<div class="callout-title">Policy = Primary Security Control (Fireblocks 직접 인용)</div>
+<p><em>"Policies are your primary security control in your workspace<span class="g" data-tip="Fireblocks 의 최상위 격리·거버넌스 단위. 1 workspace = 1 Owner" tabindex="0">(?)</span>."</em> — Fireblocks 의 공식 문서 (<code>about-policies.md</code>, p.1) 가 명시한 Policy 의 위상. 단순한 부가 기능이 아니라 보안 모델의 <strong>first-class spine</strong> 이며, 다른 보안 평면 (Admin Quorum / IP allowlist / 2FA 등) 이 모두 갖춰져도 Policy 가 부실하면 결국 자금이 새어 나갈 수 있음.</p>
+</div>
+
+<h3>Policy Rule 의 2 Component — Parameters 와 Actions</h3>
+<p>Policy rule 하나는 "어떤 상황에서 (Parameters) 무엇을 할지 (Actions)" 의 IF-THEN 구조입니다.</p>
+<ul>
+<li><strong>Parameters (= Scope)</strong> — 어떤 tx 에 이 rule 이 적용되는지의 조건. 보통: <strong>initiator</strong> (누가 시작한 tx) · <strong>source</strong> (어느 vault 에서) · <strong>destination</strong> (어디로) · <strong>asset</strong> (어떤 자산) · <strong>amount</strong> (금액 범위) 같은 characteristic 들의 조합</li>
+<li><strong>Actions</strong> — 위 조건이 매칭되면 어떻게 처리할지. 3 종: <strong>Allow</strong> (그대로 통과) / <strong>Approved by</strong> (지정된 user/group 의 승인을 받고 통과) / <strong>Block</strong> (차단). 자세히는 <a href="sm-approval.html">16. Approval State</a></li>
+</ul>
+<h3>Policy 종류 (3 평면)</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>종류</th><th>역할</th><th>평가 시점</th></tr></thead>
+<tbody>
+<tr><td><strong>Fireblocks Policies (TAP)</strong></td><td>일반 tx 단위 rule. 본 페이지 주 대상</td><td>Step 6-7 (Policy Engine SGX<span class="g" data-tip="Intel Software Guard Extensions. CPU 안의 봉인된 메모리 영역 (enclave). OS 나 hypervisor 도 그 안을 들여다볼 수 없음" tabindex="0">(?)</span>)</td></tr>
+<tr><td><strong>Deposit Control and Confirmation Policy (DCCP)</strong></td><td>blockchain confirmation 횟수 정책 (incoming + outgoing). Clear 전 = inflow/outflow state lock</td><td>Confirming → Completed transition trigger</td></tr>
+<tr><td><strong>AML<span class="g" data-tip="Anti-Money Laundering. 자금세탁 방지 규제. tx 별 KYC / sanction screening 강제" tabindex="0">(?)</span> Transaction Screening Policy</strong></td><td>AML provider 통합. workspace-level default 가능 (fail-on-unknown vs pass-on-unknown)</td><td>Step 5b (Screening Service)</td></tr>
+</tbody>
+</table>
+</div>
+<h3>Designated Signer 메커니즘 — NS 라벨이 뜻하는 것</h3>
+<p>NSA · Editor 는 MPC<span class="g" data-tip="Multi-Party Computation. 여러 당사자가 각자 키 조각만 들고 협력해서 서명 — 누구도 단독으로 키를 모름. 전체 키가 한 번도 한곳에 모이지 않음" tabindex="0">(?)</span> key 가 없어 본인이 직접 서명할 수 없는 role 입니다. 그러나 Policy 가 그 tx type 의 서명자를 미리 지정해두면 NSA / Editor 가 "내가 시작할 테니 지정된 사람이 서명해라" 식으로 tx 를 <strong>initiate</strong> 할 수 있습니다 — 그 패턴을 NS 라벨로 부릅니다.</p>
+<p>Fireblocks 공식 정의:</p>
+<ul>
+<li>NSA: <em>"can initiate transactions when the Policy assigns a designated signer"</em></li>
+<li>Editor: <em>"can also initiate certain transactions if the Policy defines another user capable of signing as a designated signer for that transaction type"</em></li>
+<li><strong>적용 범위</strong>: NSA / Editor 는 <strong>internal exchange transfer 를 제외한 모든 tx</strong> 를 designated signer 흐름으로 initiate 가능</li>
+</ul>
+<p>schema 측 표현 — <code>policy_rules.designated_signer_user_group_id</code> 컬럼이 어느 user group 이 그 rule 의 designated signer 인지 가리킴. NS 라벨이 적용된 rule 은 이 컬럼이 set.</p>
+
+<h3>Second Authorizer — 두 번째 승인자</h3>
+<p>Policy rule 의 Action 이 "Approved by" 일 때, 첫 번째 승인자 외에 두 번째 승인자를 별도로 정의 가능합니다. Non-Signing Admin / Approver 가 second authorizer 자격이 있고, Owner 의 책임 범위에 이 지정 권한이 포함됩니다. 4 eyes principle (두 사람이 함께 봐야 진행) 을 구현하는 메커니즘.</p>
+
+<h3>User Group in Policy — 그룹 단위 매핑</h3>
+<ul>
+<li><strong>다수 사용자를 single rule 에 매핑</strong> — 한 명씩 일일이 적지 않고 "Management 그룹" 같은 추상을 사용. 팀 변경 시 group 멤버만 갱신하면 되고 rule 자체는 안 건드림</li>
+<li><strong>Initiator + Approved by 양쪽에 사용 가능</strong> — "이 그룹이 시작" / "저 그룹이 승인" 식으로 결합</li>
+<li><strong>Sub-quorum (rule-level N-of-M)</strong>: <em>"requires any two members of a user group called Management to approve"</em> — group 안에서 다시 정족수를 정함. Admin Quorum 의 workspace-wide quorum 과 별개로 rule 안에서만 작동하는 작은 quorum</li>
+</ul>
+
+<h3>변경 거버넌스 — Policy 자체를 누가 바꿀 수 있는가</h3>
+<p>Policy 가 보안의 spine 이므로 Policy 자체의 변경은 가장 엄격하게 통제됩니다.</p>
+<ul>
+<li><strong>변경 라벨 = Q+O</strong> — Admin Quorum<span class="g" data-tip="관리자급 사용자의 다수결 승인 그룹. 회사 이사회 정족수 개념. Q (Quorum) / Q+O (Quorum + Owner) 라벨로 표시" tabindex="0">(?)</span> + Owner 양쪽 모두 승인 필요. 즉 단일 Admin 의 단독 변경 불가</li>
+<li><strong>편집 권한</strong>: Owner + Admin-level user (NSA 포함) 가 Console 에서 rule 을 작성. 실제 적용는 assigned approval group 의 승인 단계를 거친 후</li>
+<li><strong>mobile app 승인 필수</strong> — Console 에서 변경 시도하면 Owner + Quorum 멤버에게 mobile push 가 가고, 각자 mobile 에서 서명 (MPC share) 을 모아 threshold 충족 시 적용. policy_change_log 에 모든 서명이 저장되어 audit 가능</li>
+</ul>
+
+<h3>Premium Features — Raw Signing · Mint · Burn</h3>
+<p>일부 고급 기능 (Raw Signing / Mint / Burn) 은 별도 premium 구매가 필요합니다. 본 docs-site 의 4. Vault 페이지의 "Vault Structure Best Practices" 절에서 본 Mint/Burn/Pause/Deploy/Upgrade segregated vault 권장과 정합 — 이런 권한이 있는 사람이 작업할 수 있는 별도 vault 를 두는 게 안전.</p>
+
+<h3>Whitelist vs OTA — Policy 의 방어 차이</h3>
+<p>외부로 송금 가능한 destination 은 두 종류 — 사전 등록된 whitelist 와 일회용 OTA. 둘은 보안 의존도가 다릅니다:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Address path</th><th>Policy 의 역할</th></tr></thead>
+<tbody>
+<tr><td><strong>Whitelisted address</strong></td><td>Admin Quorum 이 등록 시점에 <strong>address-level 사전 승인</strong>. Policy 는 그 위에 추가 rule (cap · approver · cumulative limit) 적용. 즉 Policy 가 부실해도 등록 자체가 quorum 통과한 destination 이므로 1 차 방어선이 있음</td></tr>
+<tr><td><strong>One-Time Address (OTA)</strong></td><td>Address-level Admin Quorum <strong>없음</strong> — 그때그때 사용하고 버리는 destination 이므로 사전 승인 단계가 없음. <strong>Policy 가 사실상 유일한 자동 방어선</strong> (preselected user/group/vault, threshold approval). Policy 가 허술하면 그대로 송금 가능 → Policy 설계의 가장 중요한 case</td></tr>
+</tbody>
+</table>
+</div>
+<h3>DB Schema</h3>
+
+<h4>9.1 <code>policies</code> — workspace 별 Policy 본체 (versioned)</h4>
+<pre><code>CREATE TABLE policies (
+  id              BINARY(16) PRIMARY KEY,
+  workspace_id    BINARY(16) NOT NULL,
+  policy_type     ENUM('transfer','contract-call','approve','dccp','aml') NOT NULL,
+  version         INT NOT NULL,                        -- monotonic
+  created_by      BINARY(16) NOT NULL,                  -- 이 version 변경을 시작한 actor (Q+O 흐름의 initiator)
+  active_at       DATETIME(6) NOT NULL,                -- ★ set-once when activated (= 이 row 의 created_at semantic)
+  superseded_at   DATETIME(6),                          -- 다음 version 활성화 시각
+  KEY (workspace_id, policy_type, version)
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>Policy 의 고유 식별자 (version 별로 별도 row)</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16) FK</td><td>이 Policy 가 속한 workspace</td></tr>
+<tr><td><code>policy_type</code></td><td>ENUM (5 값)</td><td>Policy 의 종류. <strong>transfer</strong>=일반 송금 rule / <strong>contract-call</strong>=smart contract 호출 / <strong>approve</strong>=ERC-20 approve / <strong>dccp</strong>=입금 confirmation 정책 / <strong>aml</strong>=AML screening 정책</td></tr>
+<tr><td><code>version</code></td><td>INT</td><td>단조 증가 (monotonic). Policy 변경 시 version+1 의 새 row INSERT, 이전 row 는 <code>superseded_at</code> set</td></tr>
+<tr><td><code>created_by</code></td><td>BINARY(16)</td><td>이 version 변경을 시작한 actor (Q+O 흐름의 initiator). 실제 승인한 quorum 은 <code>policy_change_log.approved_by_quorum_request_id</code> 에서 cross-ref. set-once</td></tr>
+<tr><td><code>active_at</code></td><td>DATETIME(6)</td><td>이 version 이 활성화된 시각. <strong>set-once</strong> — 변경 불가. <strong>이 row 의 created_at 과 같은 의미</strong> — Policy 의 "활성" 개념이 더 직관적이라 이름 보존</td></tr>
+<tr><td><code>superseded_at</code></td><td>DATETIME(6) nullable</td><td>다음 version 이 활성화돼서 이 version 이 더 이상 유효하지 않게 된 시각. NULL = 현재 활성 version</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>9.2 <code>policy_rules</code> — Policy 안의 개별 rule (per-version immutable)</h4>
+<pre><code>CREATE TABLE policy_rules (
+  id              BINARY(16) PRIMARY KEY,
+  policy_id       BINARY(16) NOT NULL,
+  rule_number     INT NOT NULL,                        -- first-match ordering
+  parameters_cbor BLOB NOT NULL,                       -- initiator / source / destination / asset / amount
+  applicable_operations SET('TRANSFER','CONTRACT_CALL','PROGRAM_CALL','TYPED_MESSAGE','RAW','MINT','BURN'),
+                                                       -- ★ 어느 operation 에 적용. NULL = 모든 operation 에 적용
+  action          ENUM('allow','approved_by','block') NOT NULL,
+  designated_signer_user_group_id BINARY(16),          -- NS 흐름의 signer set
+  approvers_user_group_id         BINARY(16),          -- Approved by 의 group
+  approvers_threshold             INT,                  -- sub-quorum N
+  approvers_logic                 ENUM('AND','OR') DEFAULT 'OR',  -- multi-group approval 간 logic (Authorization data model)
+  allow_initiator_as_approver     BOOLEAN DEFAULT FALSE,           -- AuthorizationInfo.allowOperatorAsAuthorizer
+  time_window_seconds             INT,                  -- velocity limit window
+  cumulative_usd_cap              DECIMAL(38, 2),       -- velocity limit cap
+  created_by      BINARY(16) NOT NULL,                  -- 이 rule 을 만든 actor (= policy version 의 initiator)
+  created_at      DATETIME(6) NOT NULL,                 -- = 속한 policies.active_at
+  UNIQUE KEY (policy_id, rule_number)
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>rule 의 고유 식별자</td></tr>
+<tr><td><code>policy_id</code></td><td>BINARY(16) FK</td><td>이 rule 이 속한 Policy</td></tr>
+<tr><td><code>rule_number</code></td><td>INT</td><td>rule 평가 순서 (1, 2, 3 …). Policy 는 <strong>first-match</strong> — 위에서 아래로 평가하며 처음 매칭되는 rule 의 action 을 적용</td></tr>
+<tr><td><code>parameters_cbor</code></td><td>BLOB</td><td>rule 의 조건 (Parameters): initiator / source vault / destination / asset / amount range 등. CBOR 로 binary 직렬화 — 자유로운 구조 + byte-deterministic audit 가능</td></tr>
+<tr><td><code>applicable_operations</code></td><td>SET (7 값)</td><td>★ Fireblocks API <code>operation</code> body parameter 의 7 enum 중 어느 operation 에 본 rule 이 적용되는지. <strong>TRANSFER</strong> (default 자금 이동) / <strong>CONTRACT_CALL</strong> (EVM smart contract method) / <strong>PROGRAM_CALL</strong> (Solana program) / <strong>TYPED_MESSAGE</strong> (EIP-191 / EIP-712 / TIP-191 / BTC personal message) / <strong>RAW</strong> (off-chain raw signing) / <strong>MINT</strong> · <strong>BURN</strong> (Stellar / Ripple / EVM 의 token supply 변경). NULL = 모든 operation 에 적용</td></tr>
+<tr><td><code>action</code></td><td>ENUM (3 값)</td><td>매칭 시 어떻게 처리할지. <strong>allow</strong> 그대로 통과 / <strong>approved_by</strong> 지정된 사람의 승인을 받고 통과 / <strong>block</strong> 차단</td></tr>
+<tr><td><code>designated_signer_user_group_id</code></td><td>BINARY(16) nullable</td><td>NS 라벨이 적용된 rule 에서 어느 user group 이 designated signer 인지 지정. NULL = NS 흐름 미적용</td></tr>
+<tr><td><code>approvers_user_group_id</code></td><td>BINARY(16) nullable</td><td>action='approved_by' 일 때 누가 승인해야 하는지의 group</td></tr>
+<tr><td><code>approvers_threshold</code></td><td>INT nullable</td><td>그 group 안에서 sub-quorum N (예: "그룹의 2 명 승인" → 2). 단순 1 명 승인이면 NULL 또는 1</td></tr>
+<tr><td><code>approvers_logic</code></td><td>ENUM('AND','OR')</td><td>★ Authorization data model (Fireblocks API <code>AuthorizationInfo.logic</code>) — multiple authorization groups 간 boolean logic. <strong>OR</strong> (default) = 어느 group 이든 threshold 충족하면 승인 / <strong>AND</strong> = 모든 group 이 threshold 충족해야 승인. Stage 8 의 within-group 3/3 + across-group 1/N OR pattern 의 schema 표현</td></tr>
+<tr><td><code>allow_initiator_as_approver</code></td><td>BOOLEAN</td><td>★ <code>AuthorizationInfo.allowOperatorAsAuthorizer</code> — initiator (transaction 시작한 user) 가 approver 가 될 수 있는지. default <code>false</code> (separation of duties 의 기본 원칙)</td></tr>
+<tr><td><code>time_window_seconds</code></td><td>INT nullable</td><td>velocity limit (속도 제한) 의 시간 window. 예: 600 = 10 분</td></tr>
+<tr><td><code>cumulative_usd_cap</code></td><td>DECIMAL(38,2) nullable</td><td>time_window_seconds 안의 누적 USD 한도. 위 두 컬럼이 함께 작동해서 "10 분 안에 $50,000 초과 송금 시 차단" 같은 rule 표현</td></tr>
+<tr><td><code>created_by</code></td><td>BINARY(16)</td><td>이 rule 을 만든 user — 즉 속한 policy version 의 변경을 시작한 actor. set-once</td></tr>
+<tr><td><code>created_at</code></td><td>DATETIME(6)</td><td>이 rule 의 생성 시각. <strong>policy_rules 는 per-version immutable</strong> — 같은 rule 이 다음 version 에서 바뀌면 UPDATE 가 아니라 새 row INSERT 되므로 modified_by/at 가 별도로 필요 없음. set-once</td></tr>
+<tr><td><code>UNIQUE (policy_id, rule_number)</code></td><td>—</td><td>같은 Policy 안에서 rule_number 중복 방지</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>9.3 <code>policy_change_log</code> — Policy 변경 이력 (append-only)</h4>
+<pre><code>-- ★ append-only — 모든 Policy 변경의 audit trail
+CREATE TABLE policy_change_log (
+  id                            BINARY(16) PRIMARY KEY,
+  policy_id                     BINARY(16) NOT NULL,
+  prev_version                  INT,
+  new_version                   INT NOT NULL,
+  diff_cbor                     BLOB NOT NULL,           -- rule add/remove/edit 의 diff
+  changed_by_user_id            BINARY(16) NOT NULL,
+  approved_by_quorum_request_id BINARY(16) NOT NULL,    -- Q+O 의 approval_request
+  changed_at                    DATETIME(6) NOT NULL,
+  mobile_app_approval_sigs      BLOB NOT NULL            -- mobile 서명 집합
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>이벤트 고유 식별자</td></tr>
+<tr><td><code>policy_id</code></td><td>BINARY(16) FK</td><td>변경된 Policy</td></tr>
+<tr><td><code>prev_version</code></td><td>INT nullable</td><td>변경 전 version 번호. 최초 생성이면 NULL</td></tr>
+<tr><td><code>new_version</code></td><td>INT</td><td>변경 후 version 번호</td></tr>
+<tr><td><code>diff_cbor</code></td><td>BLOB</td><td>변경된 rule 들의 add/remove/edit diff. CBOR 로 직렬화</td></tr>
+<tr><td><code>changed_by_user_id</code></td><td>BINARY(16)</td><td>변경을 시작한 사용자 (Owner 또는 Admin-level)</td></tr>
+<tr><td><code>approved_by_quorum_request_id</code></td><td>BINARY(16)</td><td>이 변경을 승인한 Q+O approval_request 의 id (audit 추적의 핵심)</td></tr>
+<tr><td><code>changed_at</code></td><td>DATETIME(6)</td><td>변경이 실제로 적용된 시각</td></tr>
+<tr><td><code>mobile_app_approval_sigs</code></td><td>BLOB</td><td>Owner + Quorum 멤버 각자의 mobile 서명 집합. byte-equal cross-DB binding 으로 audit 평면과 정합</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>9.4 <code>user_groups</code> — Policy 에서 다수 사용자 묶음</h4>
+<pre><code>CREATE TABLE user_groups (
+  id           BINARY(16) PRIMARY KEY,
+  workspace_id BINARY(16) NOT NULL,
+  name         VARCHAR(64) NOT NULL,
+  created_by   BINARY(16) NOT NULL,
+  created_at   DATETIME(6) NOT NULL,
+  modified_by  BINARY(16) NOT NULL,
+  modified_at  DATETIME(6) NOT NULL
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>group 의 고유 식별자</td></tr>
+<tr><td><code>workspace_id</code></td><td>BINARY(16)</td><td>이 group 이 속한 workspace</td></tr>
+<tr><td><code>name</code></td><td>VARCHAR(64)</td><td>사람이 읽는 group 이름 (예: "Management", "Treasury", "Trading Desk")</td></tr>
+<tr><td><code>created_by</code> · <code>created_at</code></td><td>BINARY(16) · DATETIME(6)</td><td>group 최초 생성 actor + 시각. set-once</td></tr>
+<tr><td><code>modified_by</code> · <code>modified_at</code></td><td>BINARY(16) · DATETIME(6)</td><td>마지막 변경 (이름 등) actor + 시각</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>9.5 <code>user_group_members</code> — group 의 멤버 (junction · grant/revoke 패턴)</h4>
+<pre><code>CREATE TABLE user_group_members (
+  id         BINARY(16) PRIMARY KEY,
+  group_id   BINARY(16) NOT NULL,
+  user_id    BINARY(16) NOT NULL,
+  granted_by BINARY(16) NOT NULL,
+  granted_at DATETIME(6) NOT NULL,
+  revoked_by BINARY(16),
+  revoked_at DATETIME(6),
+  KEY (group_id, user_id),
+  KEY (group_id, revoked_at)
+);</code></pre>
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컬럼</th><th style="width:20%">자료형</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>BINARY(16) PK</td><td>grant 이벤트의 surrogate PK. revoke 후 재추가 시 새 row INSERT</td></tr>
+<tr><td><code>group_id</code></td><td>BINARY(16) FK</td><td>어느 user_group 의 멤버인지</td></tr>
+<tr><td><code>user_id</code></td><td>BINARY(16) FK</td><td>멤버 사용자</td></tr>
+<tr><td><code>granted_by</code> · <code>granted_at</code></td><td>BINARY(16) · DATETIME(6)</td><td>멤버 추가 actor + 시각. set-once</td></tr>
+<tr><td><code>revoked_by</code> · <code>revoked_at</code></td><td>BINARY(16) nullable · DATETIME(6) nullable</td><td>제거 actor + 시각. NULL = 현재 active. set-once when set</td></tr>
+<tr><td><code>KEY (group_id, revoked_at)</code></td><td>—</td><td>"이 user_group 의 현재 active 멤버" 조회 인덱스 (WHERE revoked_at IS NULL)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>BLOCKED rule number — tx 가 차단됐을 때 어느 rule 이 trigger 했는가</h3>
+<p>tx 가 <code>BLOCKED</code> status 에 도달했을 때, 어느 rule 이 차단했는지 추적 가능해야 운영자가 "왜 차단됐는지" 즉시 알 수 있습니다. <code>transactions.blocked_by_rule_id</code> + <code>blocked_by_rule_number</code> 컬럼이 그 정보를 저장 — 사용자는 console UI 에서 "Rule #3 (cumulative cap exceeded) 가 차단" 같이 명확히 볼 수 있음.</p>
+
+<h3>Putting It Together — Policy 변경 시퀀스</h3>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Editor as 👤 Owner / Admin-level
+  actor Owner as 👤 Owner
+  actor Quorum as 👥 Admin Quorum
+  participant Console as 🖥️ Fireblocks Console
+  participant FB as 🛡️ Fireblocks Core
+
+  Editor->>Console: Policy edit (rule add / remove / edit)
+  Console->>FB: draft 작성 — 아직 활성화 안 됨
+  Console->>FB: approval_requests INSERT<br/>(action='policy_change', expires_at = +7day)
+  Console->>Owner: mobile push (Q+O 흐름)
+  Console->>Quorum: mobile push (멤버 전체)
+
+  Note over Owner,Quorum: 각자 mobile 에서 diff 검토 + 서명 (MPC share)
+  Owner->>Console: 승인 + mobile_app_approval_sig
+  Quorum->>Console: N-of-M 승인 + 각자 sig
+
+  alt 7일 안에 Q+O threshold 충족
+    Console->>FB: 새 policies row INSERT (version+1, active_at = now())
+    FB->>FB: 이전 policies row 의 superseded_at SET
+    FB->>FB: 새 policy_rules rows INSERT
+    FB->>FB: policy_change_log INSERT<br/>(prev_version, new_version, diff_cbor, sigs)
+    FB->>Console: 변경 적용 완료
+    Console->>Editor: 새 Policy 가 즉시 적용됨
+    Note over FB: 이후 모든 tx 가 새 version 으로 평가
+  else 7일 expire 또는 거절
+    FB->>Console: approval_requests.status = 'expired'/'rejected'
+    Console->>Editor: 변경 무효 — draft 폐기
+  end
+</pre>
+<span class="diagram-caption">Figure 24. Policy 변경 — Q+O 흐름 + version-bump pattern. 핵심: ① edit 자체는 즉시 적용되지 않고 draft + approval_requests 로 pending. ② Owner + Quorum 전원 mobile push, 각자 mobile 에서 diff 검토 + MPC share 서명. ③ threshold 충족 시 새 <code>policies</code> row INSERT (version+1) + 이전 row 의 <code>superseded_at</code> SET 으로 atomic 한 cutover, 동시에 <code>policy_change_log</code> 에 모든 서명과 diff 가 append-only 로 기록 → audit 평면에서 cross-verify 가능. ④ 7일 expire 또는 거절 시 draft 폐기. 이 패턴 덕에 어느 시점에 어떤 Policy version 이 활성이었는지 모든 tx 에 대해 정확히 reconstruct 가능 — 과거 사고 조사 시 "그 tx 가 평가됐을 당시의 Policy 가 정확히 무엇인가" 를 알 수 있음.</span>
+</div>
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-quorum.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">9. Admin Quorum · AG</span></a>
+<a class="page-nav-link page-nav-next" href="tables-mpc.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">11. MPC Key Share</span></a>
+</nav>
+</main>
+</div>
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

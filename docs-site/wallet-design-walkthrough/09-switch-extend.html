@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>9. 확장 — 포트가 EVM 체인 확장·매니저 교체를 흡수하는 법</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</a></p>
+<div class="progress">
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-detect-confirm.html">4</a><a href="05-deposit.html">5</a><a href="06-withdrawal.html">6</a><a href="07-estimate-fee.html">7</a><a href="08-balance-history.html">8</a><span class="cur">9</span><a href="10-ramp-swap.html">10</a>
+</div>
+<h1>확장 — 포트가 EVM 체인 확장·매니저 교체를 흡수하는 법</h1>
+<p class="subtitle">체인은 어댑터 등록, 벤더는 자금 이사 — 포트가 두 변화를 흡수한다</p>
+
+<h2>EVM 체인 확장 — Base 는 이미 붙었다</h2>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    SVC["Service 백엔드<br/>변경 0줄"]
+    ADM["Admin 백엔드<br/>변경 0줄"]
+    PORT["포트 (통로)<br/>같은 동사 · 체인 분기 숨김"]
+    ADP["Fireblocks 어댑터<br/>체인·자산 등록만 추가"]
+    ETH["이더리움<br/>(붙어 있음)"]
+    BASE["Base<br/>(이미 붙음 — 같은 EVM 어댑터)"]
+    L2["다른 EVM L2<br/>(등록 한 줄이면 태운다)"]
+
+    SVC --> PORT
+    ADM --> PORT
+    PORT --> ADP
+    ADP --> ETH
+    ADP --> BASE
+    ADP -.등록만 추가.-> L2
+
+    classDef be fill:#dbeafe,stroke:#2563eb;
+    classDef port fill:#e0e7ff,stroke:#6366f1;
+    classDef impl fill:#dcfce7,stroke:#16a34a;
+    classDef chain fill:#eef2ff,stroke:#818cf8;
+    class SVC,ADM be; class PORT port; class ADP impl; class ETH,BASE,L2 chain;
+</pre></div>
+<h2>EVM 이 아닐 때 — Solana 를 붙인다면</h2>
+
+<table>
+<thead><tr><th style="width:22%">다시 봐야 하는 것</th><th style="width:32%">EVM 전제</th><th>Solana 를 붙일 때의 결정</th></tr></thead>
+<tbody>
+<tr><td><b>주소 형식 검증</b> (validateAddress)</td><td>0x + 체크섬 — 로컬 규칙 하나</td><td>주소 형식이 다르다 — 로컬 규칙(AddressRules)에 그 체인의 형식을 추가해야 검증이 선다</td></tr>
+<tr><td><b>체인 특화 파라미터</b></td><td>ChainSpecific = Evm(nonce) 하나</td><td>새 타입을 추가한다 — sealed 라 추가만 하고 기존 EVM 의미는 안 바뀐다</td></tr>
+<tr><td><b>막힘 대응</b> (6장 boost·cancel)</td><td>같은 순번 재전송(RBF) 전제</td><td>같은 의미의 동작이 그 체인에 있는지부터 확인 — 없으면 <b>기능 부재로 선언</b>(capability 미구현)하고 막힘 운영 절차를 따로 설계</td></tr>
+<tr><td><b>확정 판정</b> (4장)</td><td>confirmation 누적 ≥ DCCP 임계</td><td>그 체인의 확정 개념을 벤더가 어떤 상태·카운트로 번역해 주는지 확인하고 임계를 다시 정한다</td></tr>
+<tr><td><b>입금 주소 모델</b> (2장)</td><td>vault·자산당 단일 주소 · memoTag null</td><td>주소·memoTag 정책이 체인마다 다르다 — 2장의 단일 주소 전제를 재확인</td></tr>
+<tr><td><b>gas 조달</b></td><td>Universal Gasless — EIP-7702 기반, EVM 전용</td><td>그대로 이식되지 않는다 — 그 체인의 수수료 조달(네이티브 토큰 보유 여부 포함)을 별도로 결정</td></tr>
+</tbody>
+</table>
+<p class="table-note">노드·서명·전파는 여전히 벤더 몫이다 — 위 목록은 전부 <b>우리 쪽 경계(어댑터 등록·로컬 규칙·정책)</b>의 결정이고, Solana 열의 각 항목은 적용 전 벤더 문서로 확인한다.</p>
+
+<h2>매니저(벤더) 교체 — 코드는 어댑터, 비용은 자금 이전</h2>
+
+<p>지금 매니저는 Fireblocks 이지만, 포트로 감쌌으므로 <b>다른 벤더로 바꾸거나 vault 구성을 재편해도</b> 두 백엔드는 그대로여야 합니다. 코드 관점에서 벤더 교체는 <b>어댑터를 하나 더 만들고 주입을 바꾸는 설정 수준</b>의 일입니다.</p>
+
+<p>그런데 <b>한 가지는 설정으로 안 됩니다.</b> 벤더 A 의 주소는 A 의 키에서, 벤더 B 의 주소는 B 의 키에서 나옵니다(2장). 그래서 <b>주소와 그 위의 잔액은 이전되지 않습니다.</b> 이건 vault 를 재구성할 때도 마찬가지입니다 — 새 vault 의 주소는 새 키에서 나오니까요. 즉 <b>코드 교체는 싸고, 자금 이전(sweep)이 비용의 전부</b>입니다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    A["교체 시점<br/>어댑터·주입 변경<br/>신규 발급부터 새 주소"] --> B["이중 감시 기간<br/>구 주소 watch-list 유지<br/>(늦은 입금 수용)"]
+    B --> C["이사 (sweep)<br/>구 주소 잔액을<br/>새 vault 로 출금"]
+    C --> D["종료<br/>구 주소 안내 중단<br/>DB에 세대 기록"]
+
+    classDef step fill:#dbeafe,stroke:#2563eb;
+    classDef warn fill:#fef3c7,stroke:#d97706;
+    class A,D step; class B,C warn;
+</pre></div>
+<p class="diagram-caption">벤더 교체(또는 vault 재구성) 운영 타임라인. 파랑은 값싼 코드·설정 작업, <b>노랑 구간이 비용의 전부</b>다. 그 비용은 <b>구 주소 수와 잔액에 비례</b>한다 — 옮길 돈이 많을수록 sweep 출금 건수·수수료가 는다. 늦은 입금을 놓치지 않도록 구 주소 watch-list 를 한동안 유지하다가, 잔액을 새 vault 로 출금(6장 출금 그대로)하고, DB 에 주소의 세대를 기록해 닫는다. 서명 관문의 규칙(화이트리스트·한도)도 새 벤더의 거버넌스 정책으로 이관하고 동등성을 검증하는 것까지가 교체다(6장).</p>
+
+<h2>코드 구조 — 이 문서를 모노레포로 옮기면</h2>
+
+<p>지금까지의 구성 요소(0장)와 성질이 코드에서 강제되려면 <b>모듈 경계가 곧 설계 경계</b>여야 합니다.</p>
+
+<p>모듈 사이의 <b>의존 방향</b>이 이 문서의 성질들을 컴파일 타임에 강제합니다. 화살표는 "의존한다"라는 뜻이고, 전부 안쪽(domain)을 향합니다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    SAPI["apps/service-api<br/>(DI — 어댑터 주입)"]
+    AAPI["apps/admin-api<br/>(DI — 어댑터 주입)"]
+    HOOK["apps/poller"]
+    SBE["backend/service"]
+    ABE["backend/admin"]
+    FBA["adapters/fireblocks<br/>주 구현"]
+    FAKE["adapters/fake<br/>테스트용"]
+    DOM["domain<br/>포트 + 값 객체 — 의존 0"]
+    SDK["Fireblocks SDK (외부)"]
+
+    SAPI --> SBE
+    AAPI --> ABE
+    SAPI -.주입.-> FBA
+    AAPI -.주입.-> FBA
+    SBE --> DOM
+    ABE --> DOM
+    FBA --> DOM
+    FAKE --> DOM
+    FBA --> SDK
+    HOOK --> DOM
+
+    classDef mine fill:#dcfce7,stroke:#16a34a;
+    classDef impl fill:#dbeafe,stroke:#2563eb;
+    classDef core fill:#e0e7ff,stroke:#6366f1;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    class SBE,ABE mine; class FBA,FAKE impl; class DOM core; class SAPI,AAPI,HOOK,SDK ext;
+</pre></div>
+
+<h2>인프라 — 무엇이 어디서 도는가</h2>
+
+<p>0장 에서 본 배치를 확장 관점으로 다시 봅니다. Fireblocks 기준이라 서명·키·노드·전파는 <b>벤더 안</b>이고, 이쪽엔 <b>두 백엔드와 폴링 워커, DB</b>만 남습니다. 직접 노드·HSM·인덱서를 운영하지 않으므로, 새 EVM 체인이 붙어도 <b>인프라 배치는 그대로</b>입니다 — 벤더가 그 체인을 지원하기만 하면 됩니다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    subgraph OUR["인프라"]
+      SAPI["Service 백엔드<br/>고객 런타임"]
+      HOOK["폴링 워커<br/>입금·상태 감지 — 주기 조회 (4·6장)"]
+      AAPI["Admin 백엔드<br/>정책·승인·sweep·rebalance"]
+      DB[("DB<br/>Service·Admin 공용")]
+    end
+    FB["Fireblocks (벤더 SaaS)<br/>vault · MPC 서명 · TAP 정책 · 노드·전파"]
+    EVM["EVM 네트워크<br/>이더리움 · Base · (다른 L2)"]
+
+    SAPI -->|포트 호출| FB
+    AAPI -->|정책·운영·sweep 호출| FB
+    SAPI --- DB
+    AAPI --- DB
+    HOOK --- DB
+    HOOK -->|주기 조회 · outbound| FB
+    FB -.->|webhook · 보조| HOOK
+    FB --> EVM
+
+    classDef svc fill:#dbeafe,stroke:#2563eb;
+    classDef adm fill:#fef3c7,stroke:#d97706;
+    classDef data fill:#dcfce7,stroke:#16a34a;
+    classDef vendor fill:#f5f5f7,stroke:#86868b;
+    classDef ext fill:#eef2ff,stroke:#818cf8;
+    class SAPI,HOOK svc; class AAPI adm; class DB data; class FB vendor; class EVM ext;
+</pre></div>
+<p class="foot">더 깊이: 포트별 교체 구조 — <a href="../wallet-service-components/abstraction.html">가이드 13장</a> · DI 어댑터 주입 — <a href="../wallet-service-components/project-structure.html">16장</a>.</p>
+
+<div class="pager">
+<a href="08-balance-history.html">← 8. 잔액과 내역</a>
+<a href="index.html">목차</a>
+<a href="10-ramp-swap.html">10. 온·오프램프·스왑 →</a>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/walkthrough-diagram.js"></script>
+</body>
+</html>

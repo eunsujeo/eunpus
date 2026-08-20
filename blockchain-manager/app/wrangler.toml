@@ -1,0 +1,15 @@
+name = "blockchain-manager"
+compatibility_date = "2026-01-01"
+pages_build_output_dir = "public"
+
+# GITHUB_TOKEN 은 secret 으로만 관리 (dashboard 또는 wrangler pages secret put)
+[vars]
+GITHUB_OWNER = "eunsujeo"
+GITHUB_REPO = "eunpus"
+GITHUB_BRANCH = "main"
+DOCS_PATH = "blockchain-manager/docs"
+
+# 상태·순서 오버레이용 KV. 로컬은 `wrangler pages dev public --kv BOARD` 로 대체 가능.
+[[kv_namespaces]]
+binding = "BOARD"
+id = "6596a99a23af485983828d35c4fea875"

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>2. Validator · Synchronizer · 확정 — Canton 네트워크 지갑 연동 가이드</title>
+<meta content="Canton 의 네트워크 동작 — party 와 participant(validator) 의 관계, Synchronizer(Sequencer+Mediator) 가 거래를 순서화·확정하는 2-phase commit 흐름, 확정을 언제로 봐야 하는가." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Canton 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 원장 모델</h3><ul>
+<li><a href="model.html">1. 원장 모델 — ACS · Holding UTXO</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 네트워크 동작</h3><ul>
+<li><a class="active" href="validator.html">2. Validator · Synchronizer · 확정</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 자산 동작</h3><ul>
+<li><a href="operations.html">3. mint · burn · transfer · fee · cancel</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 인덱서</h3><ul>
+<li><a href="indexer.html">4. 인덱서 구현</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 운영</h3><ul>
+<li><a href="integration.html">5. 직접 운영 vs 위탁 운영</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 수탁 통합</h3><ul>
+<li><a href="custody.html">6. 수탁 통합 — wallet/guidance</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="validator">
+<h2>2. Validator · Synchronizer · 확정</h2>
+<span class="section-subtitle">누가 거래를 검증하고, 무엇이 순서를 정하며, 확정은 언제인가 — EVM 의 "블록 N개 확인" 과 다른 그림</span>
+
+<h3>2.1 party · participant · validator — 셋의 관계</h3>
+
+<p>Canton 의 등장인물부터 정리한다. EVM 의 "주소 = 키쌍" 단순함과 달리 Canton 은 세 층위가 있다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:22%">개념</th><th>무엇</th><th>EVM 대응(억지로 비유하면)</th></tr></thead>
+<tbody>
+<tr><td><strong>party</strong></td><td>거래 주체(논리적 신원). 자산을 보유하고 전송을 개시·수락하는 단위. PartyId = <code>hint::fingerprint</code></td><td>"계정 주소" 에 가깝지만 키가 아니라 신원</td></tr>
+<tr><td><strong>participant node</strong></td><td>party 를 host 하는 실제 노드. Ledger API 를 제공하고 거래를 검증한다. <strong>= validator</strong></td><td>"내가 운영하는 풀노드" 에 가까움</td></tr>
+<tr><td><strong>Synchronizer</strong></td><td>모든 participant 가 공유하는 동기화 계층. Sequencer + Mediator</td><td>"합의 계층" 에 해당하지만 검증은 안 함</td></tr>
+<tr><td><strong>Super Validator</strong></td><td>공용 Global Synchronizer 인프라를 운영하는 소수 기관. sequencing·Canton Coin 검증·거버넌스. <strong>우리가 운영하지 않음</strong></td><td>(EVM 엔 정확한 대응 없음 — 공용 인프라 운영 주체)</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">(일반) Validator 와 Super Validator 는 다르다 — 헷갈리지 말 것</div>
+<p>둘 다 "validator" 가 들어가 헷갈리지만 다르다. <strong>(일반) Validator = participant node</strong> = 우리 party 를 host 하고 우리 거래를 검증하는 노드(우리가 직접 또는 위탁 운영) — <strong>본 장의 주인공</strong>이다. 반면 <strong>Super Validator</strong> 는 공용 <strong>Global Synchronizer</strong> 를 운영하는 소수 기관(현재 54 노드; Goldman Sachs·SBI Digital Asset·Euroclear 등 — <a href="index.html">0.3</a>)으로 <strong>우리가 운영하지 않는다.</strong> 그래서 수탁 지갑 관점에선 <strong>(일반) Validator 가 핵심</strong>이고, Super Validator·Synchronizer 는 우리가 올라타는 공용 계층일 뿐이다(그 합의 역할은 아래 2.3).</p>
+</div>
+
+<p>핵심: <strong>한 party 는 하나 이상의 participant 에 host<span class="g" data-tip="host = 그 party 의 상태(ACS·키 권한)를 participant 노드가 맡아 저장하고 그 party 의 거래를 대신 검증·제출해 주는 것. 이메일 주소가 메일 서버에 올라가야 작동하는 것과 비슷">?</span> 된다.</strong> 우리가 수탁 지갑으로 어떤 고객의 party 를 다룬다는 건, 그 party 가 우리(또는 우리가 위탁한) participant node 에 host 되어 있다는 뜻이다. validator 를 잃으면 그 party 의 ACS 를 새 participant 로 옮겨 re-host 해야 하는 이유가 여기 있다(<a href="integration.html">5. 운영</a>).</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    subgraph A["국내은행 A (수탁)"]
+      direction TB
+      PA["participant node A<br/>= validator<br/>(A 인프라)"] --> PtA["party<br/>BankA-Treasury"]
+    end
+    subgraph B["해외은행 B"]
+      direction TB
+      PB["participant node B<br/>= validator<br/>(B 인프라)"] --> PtB["party<br/>BankB-Treasury"]
+    end
+    SY["Synchronizer (공용)<br/>순서·확정<br/>※ 우리가 운영 안 함"]
+    PA <-->|Ledger API 로 제출·구독| SY
+    SY <--> PB
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef adp fill:#dbeafe,stroke:#2563eb;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    class PtA,PtB good;
+    class PA,PB adp;
+    class SY special;
+</pre></div>
+<p class="diagram-caption">Figure 2-0. 국내은행 A ↔ 해외은행 B 예시. <strong>party</strong>(초록) = "누구"(은행·계좌 같은 신원, 예: BankA-Treasury). <strong>participant node = validator</strong>(파랑) = 그 party 를 담고 거래를 검증하는 노드(보통 각 은행 인프라). <strong>Synchronizer</strong>(보라) = 두 노드를 잇는 공용 합의 계층(우리가 운영하지 않는다). A 가 B 에게 송금하면, A 는 자기 participant 의 Ledger API 로 전송을 제출하고, A·B 의 participant 가 각자 자기 party 몫을 검증하며, Synchronizer 가 순서·확정을 맡는다.</p>
+
+<div class="callout">
+<div class="callout-title">셋의 관계 한 줄</div>
+<p><strong>party 는 "누구"</strong>(신원·계좌), <strong>participant node(=validator)는 "그 누구를 담고 거래를 검증하는 노드"</strong>(보통 은행 인프라, 직접 운영하거나 위탁), <strong>Synchronizer 는 "노드들을 잇는 공용 합의 계층"</strong>이다. 은행 A 는 자기 participant 에 자기 party 를 host 하고(키는 A 가 통제 — 아래 2.2 의 external party), B 도 마찬가지다. 둘은 같은 Synchronizer 에 연결돼야 서로 거래할 수 있다.</p>
+</div>
+
+<div class="callout">
+<div class="callout-title">PartyId = hint::fingerprint — 키가 아니라 신원</div>
+<p><strong>쉽게:</strong> PartyId 는 <strong>party 의 고유 ID</strong>(계좌번호 같은 것)다 — party 를 만들 때 받아서 그대로 쓰면 된다. 아래는 그 ID 가 어떻게 생겼는지(속 구조)인데, <strong>실무에선 몰라도 된다.</strong></p>
+<p>PartyId 는 <code>::</code> 로 나뉜 두 부분이다. 예: <code>BankA-Treasury::1220f2fe29…</code></p>
+<ul>
+<li><strong>hint</strong>(앞) = allocation 할 때 우리가 붙이는 <strong>사람이 읽는 라벨</strong>(예 <code>BankA-Treasury</code>). 안 주면 <code>party-{UUID}</code> 로 자동 생성되고, namespace 안에서 유일해야 한다.</li>
+<li><strong>fingerprint</strong>(뒤) = 이 party 의 topology 변경을 authorize 하는 <strong>공개키의 sha256</strong> — 신원과 서명 권한을 묶는다.</li>
+</ul>
+<p><strong>"allocation 으로 생성"</strong> = EVM 처럼 키에서 주소를 오프라인으로 계산하는 게 아니라, <strong>allocation(party 등록) 작업을 호출해야 PartyId 가 나온다</strong> — 그래서 발급에 비용이 있고 미리 대량으로 못 찍는다(계정당 하나만, 아래 2.2). <strong>"파싱 금지"</strong> = 이 문자열을 잘라 hint·fingerprint 를 빼 쓰거나 손으로 PartyId 를 조립하지 말 것. <strong>opaque 한 손잡이(handle)</strong>로 보고 통째로 저장·전달만 한다.</p>
+</div>
+
+<div class="callout">
+<div class="callout-title">party 는 계정당 하나 — 입금마다 새로 만들지 말 것</div>
+<p>EVM 수탁 지갑은 흔히 "사용자(또는 입금)마다 새 주소" 를 발급한다. Canton 에서는 이 습관을 버려야 한다. party allocation 에는 비용이 따르므로, 공식 가이드는 <strong>"계정/지갑당 party 하나(one Party per account/wallet)"</strong> 를 안정적으로 두라고 권한다 — <strong>입금 건마다 임시 party 를 만들지 말 것</strong>. 입금자 구분은 별도 주소가 아니라 memo 태그로 한다(<a href="indexer.html">4. 인덱서</a>). PartyId 는 <code>name::fingerprint</code> 형식에 최대 185자다. 백업·이중화를 위해 같은 party 를 여러 validator 에 multi-host 할 수 있다(<a href="integration.html">5. 운영</a>).</p>
+</div>
+
+<h3>2.2 키 · 서명 · 정족수 — external party · 키 모델 · 다중서명</h3>
+
+<p>여기서부터는 <strong>"누가 거래를 서명하고, 키를 어디에 두는가"</strong> 다 — 수탁 설계에서 가장 중요한 부분이다. 앞 2.1 이 "행위자가 누구인가" 였다면, 이 절은 그 행위자의 <strong>서명 권한과 키</strong>를 다룬다.</p>
+
+<h4>external party — 키를 우리가 쥐는 신원 (수탁에 핵심)</h4>
+
+<p>수탁 지갑에서 가장 중요한 구분이 <strong>external party</strong>다. party 가 participant 에 host 되는 방식은 둘로 나뉜다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">항목</th><th>local party</th><th>external party</th></tr></thead>
+<tbody>
+<tr><td>키 통제</td><td>topology 관리를 host node 에 위임</td><td><strong>자체 signing key 로 자체 통제</strong></td></tr>
+<tr><td>namespace</td><td>host node 와 공유 (제출을 host 노드에 의존)</td><td>자체 고유 namespace</td></tr>
+<tr><td>제출 노드</td><td>최소 1개 필요</td><td>없음 (submission key holder)</td></tr>
+<tr><td>확인 노드</td><td>임의 수</td><td>최소 1개 필요</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>external party 의 거래 서명은 <strong>2단계</strong>로 일어난다.</p>
+<ul>
+<li><strong>① Preparing Participant Node</strong> — Ledger API 명령을 Daml 트랜잭션으로 변환해 "서명할 대상" 을 만든다.</li>
+<li><strong>② Executing Participant Node</strong> — party 의 서명을 붙여 제출한다. party 는 모든 원장 효과를 나타내는 <strong>"transaction tree 의 hash"</strong> 를 직접 서명한다.</li>
+</ul>
+
+<div class="callout callout-warn">
+<div class="callout-title">왜 수탁에서 external party 가 정답에 가까운가</div>
+<p>external party 에서는 <strong>private signing key 를 party(=우리)만 통제·사용</strong>하고, participant node 는 <strong>party 의 명시적 승인(서명) 없이는 원장에서 아무것도 할 수 없다</strong>. 즉 validator 를 운영사에 맡기더라도(<a href="integration.html">5. 운영</a>) 자금을 움직이는 권한은 우리 키에 남는다. 이 구조는 <strong>MPC·HSM 으로 키를 보관하고 participant 는 준비·실행만 하는</strong> 수탁 모델과 정확히 맞아떨어진다. Fireblocks 의 Canton 복구 절차가 Raw Signing(EdDSA)으로 topology 해시를 외부 서명하는 것도 같은 그림이다.</p>
+</div>
+
+<h4>키 모델 — 무엇을, 어디에 두나</h4>
+
+<p>Canton 은 한 종류의 키만 쓰는 게 아니다. 수탁 설계에서 "무엇을 우리가 쥐고, 무엇을 노드가 쥐는가" 를 가르려면 키 종류를 구분해야 한다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:26%">키</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><strong>namespace root key</strong></td><td>namespace 의 뿌리 — namespace 는 이 키의 hash 다. topology 변경(누가 어느 노드에 host 되는가 등)을 authorize</td></tr>
+<tr><td><strong>external party 서명키</strong></td><td>party 가 거래를 직접 authorize 하는 키 — <strong>수탁에서 우리가 쥐는 핵심 키</strong>. 권장 저장은 <strong>offline</strong></td></tr>
+<tr><td>node signing key</td><td>노드 운영용 — sequencer 인증, ACS 상태 서명 등 (운영 인프라 키)</td></tr>
+<tr><td>encryption key</td><td>view 암호화용 — 큰 데이터는 대칭키, 그 대칭 세션키만 비대칭키로 보호</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">키를 어디에 두나 — 루트는 오프라인, 운영 키는 KMS</div>
+<p>키 저장 옵션은 <strong>DB(평문)·메모리·offline·KMS(envelope/full)</strong> 다. 수탁이라면 <strong>party 서명키</strong>(자금을 움직이는 키)를 <strong>offline 또는 KMS·HSM·MPC</strong> 로 둔다 — 공식 가이드의 권장도 external party 서명키 = <strong>offline</strong> 이다. 그러면 validator 는 운영용 node 키만 쥐고 <strong>자금 권한 키는 우리 통제 경계 안</strong>에 남는다.</p>
+<p>키는 계층적이기도 하다 — <strong>root namespace key</strong> 는 신원의 뿌리라 <strong>오프라인(air-gap)·KMS 로 격리</strong>하고, 평소 topology 변경은 그 아래 <strong>intermediate key</strong>(노드에 두고 root 없이 교체)로 한다(루트 CA 는 금고에, 발급용 중간 인증서는 온라인에 두는 PKI 와 같은 발상). KMS 는 <strong>AWS·GCP·드라이버(HSM)</strong> 를 지원하고, <strong>envelope</strong>(Canton 이 키 생성·KMS 가 감싸 보관) 와 <strong>full KMS</strong>(생성·보관 전부 KMS, <strong>Canton 이 원본 개인키를 못 봄</strong>) 두 모드가 있다.</p>
+</div>
+
+<div class="callout">
+<div class="callout-title">서명 알고리즘과 "무엇을 서명하나"</div>
+<p>공식 crypto-schemes 기준 서명 알고리즘은 <strong>Ed25519</strong><span class="g" data-tip="EdDSA 의 한 곡선. Canton 의 소프트웨어(JCE) 기본 서명 알고리즘">?</span>(소프트웨어 기본) 와 <strong>ECDSA-SHA256</strong>(EC-P256·secp256k1, KMS 기본)·ECDSA-SHA384(P-384)이고, 해시는 <strong>SHA-256</strong>(유일)이다. 그래서 Fireblocks 등으로 외부 서명할 때 EdDSA(Ed25519) Raw Signing 을 쓰는 것과 정확히 맞는다.</p>
+<p>서명하는 대상은 거래 전체에 대한 <strong>결정적 해시</strong>다 — 대략 <code>SHA-256( 용도prefix ‖ 버전 ‖ hash(거래) ‖ hash(메타데이터) )</code> 꼴이고, protobuf 가 비결정적이라 Canton 은 별도의 결정적 인코딩 규칙으로 직렬화한 뒤 해시한다. 덕분에 <strong>MPC·HSM 이 서명 직전에 이 해시를 독립적으로 다시 계산해 "맞는 거래인지" 검증</strong>할 수 있다(validator 가 거래를 몰래 바꾸면 해시가 어긋나 서명이 무효).</p>
+</div>
+
+<div class="callout">
+<div class="callout-title">n-of-m 다중서명 — 수탁 승인 정족수</div>
+<p>은행 수탁이라면 "한 키 = 한 서명" 이 아니라 <strong>여러 키의 정족수(quorum)</strong>로 자금을 움직이고 싶을 것이다. Canton 은 세 층위로 이를 지원한다.</p>
+<ul>
+<li><strong>제출 키 임계값</strong> — <code>PartyToParticipant</code> 에 Protocol Signing Key 목록과 임계값(예: <strong>3 of 5</strong>)을 둬, 제출 노드가 서명을 모아 임계값을 채워야 거래가 나간다.</li>
+<li><strong>다중 host 확인 임계값</strong> — party 를 여러 validator 에 host 하고, 그 중 임계값(>1) 이상이 확인해야 그 party 의 확인으로 친다(탈중앙 party).</li>
+<li><strong>탈중앙 namespace</strong> — N개 키 중 T개(T≤N) 서명으로 신원 권한을 행사.</li>
+</ul>
+<p>Fireblocks 의 TAP·승인 정족수(quorum) 같은 거버넌스를 Canton 에선 <strong>키 분산 + 임계값</strong>으로 구현하는 셈이다. 단 <strong>EVM 멀티시그와 결이 다르다</strong> — EVM 은 익명의 서명자가 교체 가능한 n-of-m 이지만, Canton 은 <strong>지정된 party 의 "named-role" 서명</strong>(DAML choice 단위)이고, 동시 집계가 아니라 <strong>순차(rolling) 승인</strong>이다. "특정한 그 party 의 서명" 을 요구하므로 maker-checker·four-eyes 를 절차가 아니라 <strong>암호학적으로</strong> 강제한다(Canton 위 수탁 구현 Musubi 가 이 방식을 쓴다).</p>
+<p><strong>다중 host 와 다중 서명은 다른 층</strong>임을 유의하자 — party 를 여러 validator 에 두는 <strong>multi-hosting</strong> 은 가용성(HA)·즉시 failover·악성 validator 방어를 위한 <em>토폴로지</em> 분산이고, 위 ①의 <strong>키 임계값(multi-sig)</strong> 은 <em>거래 서명</em>을 n-of-m 으로 요구하는 것이다. 둘은 함께 쓸 수 있다.</p>
+</div>
+
+<h3>2.3 Synchronizer — Sequencer 와 Mediator</h3>
+
+<p>EVM 에서는 채굴자/검증자가 트랜잭션을 모아 블록을 만들고, 그 블록이 쌓이며 확정된다. Canton 에는 그런 "블록 생산자" 가 없다. 대신 <strong>Synchronizer</strong> 가 두 가지 일을 한다.</p>
+
+<ul>
+<li><strong>Sequencer(순서화)</strong> — participant 노드들 사이의 통신을 <strong>순서화·기밀</strong>로 중계한다. atomic multicast 로 메시지를 전달하고, 일관된 순서와 timestamp 를 부여한다. "누가 먼저 보냈나" 를 정하는 게 이 역할이다. <strong>거래 내용을 검증하지는 않는다.</strong></li>
+<li><strong>Mediator(확정 집계)</strong> — 해당 거래의 이해관계자(stakeholder) participant 들이 보낸 <strong>confirmation 을 집계</strong>해 <strong>2-phase commit</strong> 으로 거래를 승인하거나 거절한다. 원자성과 프라이버시를 보장한다.</li>
+</ul>
+
+<p>검증 책임은 <strong>거래의 이해관계자 participant(validator)에게</strong> 있다 — Synchronizer 자체는 검증하지 않는다. 이게 프라이버시의 핵심이다: 무관한 노드는 거래 내용을 받지도, 검증하지도 않는다.</p>
+
+<div class="callout">
+<div class="callout-title">프라이버시가 작동하는 방식 — 트랜잭션을 "view" 로 쪼갠다</div>
+<p>"당사자만 본다" 가 어떻게 가능한가. 하나의 트랜잭션은 <strong>여러 view 로 분해</strong>되고, <strong>각 party 는 자기 view 만</strong> 받는다. Synchronizer 는 이 view 들을 <strong>복호화하지 않고 암호화된 채로</strong> 순서화·전달만 한다("조율(coordination)은 Synchronizer, 저장(storage)은 participant" 로 역할이 갈린다). 그래서 한 거래에 여러 party 가 얽혀도 각자는 자기 몫만 보고, 전체를 보는 단일 주체가 없다. (참고: party 는 EVM 의 주소·EOA 에 해당하는 <strong>on-ledger 신원</strong>이다.)</p>
+</div>
+
+<div class="callout">
+<div class="callout-title">Synchronizer 는 하나만 있는 게 아니다 — 토폴로지 선택</div>
+<p>본 가이드는 공용 <strong>글로벌 Synchronizer</strong> 를 전제로 설명하지만, Canton 은 <strong>단일 Synchronizer · 복수 Synchronizer · 글로벌 Synchronizer</strong> 구성을 모두 지원한다. 폐쇄망·컨소시엄용으로 자체 Synchronizer 를 두거나, 여러 Synchronizer 를 함께 쓰는 토폴로지도 가능하다는 뜻이다. 수탁 지갑이 어디에 연결되는지(어느 Synchronizer)에 따라 운영 책임 범위가 달라진다(<a href="integration.html">5. 운영</a>).</p>
+</div>
+
+<div class="callout">
+<div class="callout-title">순서화 계층의 BFT 합의</div>
+<p>Sequencer 의 순서화 자체도 단일 신뢰점이 아니다. 글로벌 동기화 계층(Global Synchronizer)은 <strong>2/3 다수결 BFT<span class="g" data-tip="Byzantine Fault Tolerant — 일부 노드가 임의로(악의적으로 포함) 오작동해도 합의가 유지되는 성질. 2/3 다수가 정직하면 동작 = 장애 노드가 1/3 미만이면 정상">?</span> 합의 프로토콜</strong>로 운영된다 — <code>Mempool → Availability → Consensus → Output</code> 4단계 파이프라인으로, <strong>장애 노드가 전체의 1/3 미만</strong>이면 정상 동작한다. 즉 Canton 의 합의는 <strong>두 층</strong>이다: 순서화 계층(Synchronizer)이 "무엇이 먼저인가" 를 BFT 로 정하고, 그 위에서 이해관계자 participant 들이 "이 거래가 옳은가" 를 검증한다.</p>
+
+<p>이 순서화·검증을 떠받치는 노드도 둘로 나뉜다. <strong>Super Validator</strong> 가 Global Synchronizer 인프라를 운영하며 <strong>트랜잭션 순서화(sequencing)·Canton Coin 거래 검증·거버넌스</strong>를 맡고, 일반 <strong>Validator</strong> 는 자신이 host 한 party 의 거래를 검증하고 연결을 제공한다(2.1 의 구분 참조). 거버넌스는 <strong>Canton Foundation</strong>(구 Global Synchronizer Foundation; Linux Foundation 파트너십)이 감독한다(<a href="index.html">0.3</a>).</p>
+</div>
+
+<h3>2.4 거래 확정 흐름 — 2-phase commit</h3>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    SUB["① 송신 participant<br/>거래 제출<br/>(submission request)"]
+    SEQ["② Sequencer<br/>순서화 + timestamp<br/>관련 participant 에게 전달"]
+    CONF["③ 이해관계자 participant 들<br/>각자 거래 검증<br/>confirmation 응답"]
+    MED{"④ Mediator<br/>confirmation 집계<br/>2-phase commit"}
+    OK["✅ 확정<br/>(committed)<br/>ACS 갱신 · 자금 이동"]
+    NG["❌ 거절<br/>(rejected)<br/>상태 변화 없음"]
+
+    SUB --> SEQ --> CONF --> MED
+    MED -->|모든 confirmation 충족| OK
+    MED -->|불충족 · 충돌 · 권한 실패| NG
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+    classDef wait fill:#fef3c7,stroke:#d97706;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    class SUB,SEQ wait;
+    class CONF wait;
+    class MED special;
+    class OK good;
+    class NG bad;
+</pre></div>
+<p class="diagram-caption">Figure 2-1. 거래 확정 흐름. <strong>노랑 = 진행 중</strong>(제출 → Sequencer 순서화 → 이해관계자 검증). <strong>보라 = Mediator 의 2-phase commit 판정</strong>. <strong>초록 = 확정</strong>(committed — ACS 가 갱신되고 자금이 실제로 이동), <strong>빨강 = 거절</strong>(rejected — 상태 변화 없음). EVM 의 "블록에 들어가고 N개 더 쌓이면 확정" 과 달리, Canton 은 <strong>Mediator 가 commit 을 내는 순간이 확정 지점</strong>이다. 단 이 한 번의 확정이 끝났다고 2-step 전송 전체가 끝난 건 아니다 — 이건 "OFFER 가 원장에 올라간" 확정일 수 있고, 자금이 수신자에게 가려면 별도의 ACCEPT 거래가 또 한 번 이 흐름을 탄다(<a href="operations.html">3. 자산 동작</a>).</p>
+
+<h3>2.5 확정을 언제로 봐야 하는가</h3>
+
+<p>EVM 에서는 "몇 블록 확인(confirmation)을 기다릴지" 를 우리가 정한다(예: 12블록). Canton 은 다르다 — <strong>Mediator 가 commit 을 내면 그 거래는 확정</strong>이고, 재구성(reorg)으로 뒤집히는 모델이 아니다. 그래서 "N블록 대기" 라는 개념 자체가 없다.</p>
+
+<div class="callout">
+<div class="callout-title">확정 시간 — 공식 문서 기준 "보통 3-10초"</div>
+<p>공식 지갑 통합 가이드는 <strong>"Finality usually takes 3-10s"</strong> 라고 명시한다 — 확정(Mediator 2-phase commit)까지 보통 3~10초가 걸린다는 뜻이다. 단 "보통(usually)" 이라는 표현대로 네트워크·구성에 따라 편차가 있을 수 있으니, 엄격한 SLA 를 잡을 때는 <strong>운영 환경에서 직접 측정</strong>해 확정 짓는 것을 권한다. 참고로 합의 메커니즘 페이지에는 별도의 latency/throughput 벤치마크 수치는 제시돼 있지 않다.</p>
+</div>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">관심사</th><th>EVM</th><th>Canton</th></tr></thead>
+<tbody>
+<tr><td>"블록" 의 정체</td><td>트랜잭션 묶음, 일정 간격 생산</td><td>명시적 블록 생산자 없음 — Sequencer 가 순서·timestamp 부여</td></tr>
+<tr><td>확정 판단</td><td>N 블록 더 쌓일 때까지 대기</td><td>Mediator 가 commit 내는 순간</td></tr>
+<tr><td>재구성(reorg)</td><td>가능 — 그래서 N블록 대기</td><td>해당 모델 아님 — commit = 확정</td></tr>
+<tr><td>검증 주체</td><td>모든 검증자가 모든 거래</td><td>거래의 이해관계자 participant 만</td></tr>
+<tr><td>확정 시간</td><td>체인별 알려진 값</td><td>보통 3-10초("usually") — 환경별 편차 가능</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">설계 포인트</div>
+<ul>
+<li><strong>"N블록 대기" 로직을 Canton 어댑터에 넣지 말 것</strong> — 확정은 commit 이벤트로 온다. 인덱서는 블록 높이를 세는 게 아니라 Ledger API 의 거래 완료 이벤트를 받는다(<a href="indexer.html">4. 인덱서</a>).</li>
+<li><strong>commit ≠ 전송 완료</strong> — 2-step 전송에서는 OFFER commit, ACCEPT commit 이 각각 따로 확정된다. "확정됐다" 를 "돈이 상대에게 갔다" 로 착각하지 말 것(<a href="operations.html">3. 자산 동작</a>).</li>
+<li><strong>확정 시간은 측정값으로</strong> — 코드/문서에 임의 수치를 박지 말고, 운영 환경에서 측정한 값으로 SLA·타임아웃을 잡는다.</li>
+</ul>
+</div>
+
+<p>다음 — <a href="operations.html"><strong>3. mint · burn · transfer · fee · cancel</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

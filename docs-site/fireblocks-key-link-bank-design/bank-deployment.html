@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>5. 은행 도입 — KR 망분리 + 컴플라이언스 매핑</title>
+<meta content="Fireblocks Key Link 의 KR 은행 도입 가이드. 망분리 적합성, 가상자산이용자보호법 매핑, 검증 항목" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Key Link 기초</h3>
+<ul>
+<li><a href="key-link-fundamentals.html">1. Key Link 란</a></li>
+<li><a href="architecture-components.html">2. 아키텍처 구성요소</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Registration &amp; Signing</h3>
+<ul>
+<li><a href="key-registration-poo.html">3. Key 등록 + PoO</a></li>
+<li><a href="signing-flow.html">4. Signing Flow</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 은행 도입</h3>
+<ul>
+<li><a class="active" href="bank-deployment.html">5. 은행 도입</a></li>
+<li><a href="risks-open-questions.html">6. Risks &amp; Open Questions</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="deployment">
+<h1>5. 은행 도입 — KR 망분리 + 컴플라이언스</h1>
+<p class="lead">
+KR 은행이 수탁형 디지털 자산 지갑을 운영할 때 Fireblocks Key Link 를 어떻게 배치하고, KR 법규에 어떻게 매핑할지 정리.
+관련 컴플라이언스 reference 는 <a href="../fireblocks-kr-vasp-compliance/">국내 블록체인 사업 법규 × Fireblocks</a> 문서 참조.
+</p>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처</div>
+<p><strong>공식 문서에 정의된 사실</strong></p>
+<ul style="margin-bottom:0.5rem">
+<li>Key Link 의 customer-held HSM 모델 + on-prem 가능 — Fireblocks Key Link Overview</li>
+<li>Thales Luna HSM 의 FIPS 140-3 L3 + CC 인증 — Fireblocks 공식 블로그 (2025-09-23)</li>
+<li>HKMA · HKSFC · JFSA 관할 명시 (KR 미명시) — Fireblocks 공식 블로그 (2025-09-23)</li>
+</ul>
+<p style="margin-bottom:0"><strong>저자가 합리적으로 추정한 운영 권장</strong> — 참고용</p>
+<ul style="margin-bottom:0">
+<li>KR 망분리 IDC 안의 Key Link 배치 권장 토폴로지</li>
+<li>가상자산이용자보호법 / 가상자산업감독규정 매핑 (3-옵션 비교 안의 옵션 C-Thales)</li>
+<li>대법원 2024도10710 의 "실질 통제" 판단 기준 충족 여부 분석</li>
+<li>은행 도입 절차 (Phase 1-5)</li>
+<li>vendor 가 KR 관할을 미명시한 점에 대한 risk 평가</li>
+</ul>
+</div>
+
+<h2>5.1 KR 은행 환경의 3 가지 제약</h2>
+<p>
+KR 은행 (수탁업자) 이 디지털 자산 지갑을 운영할 때 직면하는 3 가지 핵심 제약:
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>제약</th><th>근거</th><th>Key Link 의 적합성</th></tr></thead>
+<tbody>
+<tr><td><strong>망분리</strong></td>
+  <td>전자금융감독규정 (망분리 의무) + 은행권 내부 보안 정책</td>
+  <td><strong>강함</strong> — HSM + Customer Server 전량 on-prem 가능. Agent 만 outbound HTTPS</td></tr>
+<tr><td><strong>콜드월렛 80%</strong></td>
+  <td>가상자산업감독규정 9조 (이용자 자산의 80% offline)</td>
+  <td><strong>가능</strong> — Cold HSM 운영 + air-gap transport. 단 운영 부담 검토 필요</td></tr>
+<tr><td><strong>실질 통제 보유</strong></td>
+  <td>대법원 2024도10710 — 키 통제권 = 실질 통제</td>
+  <td><strong>가장 강함</strong> — 키 share 0 invariant, Fireblocks 가 단독 서명 불가</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+<span class="src">(출처: KR 법령 — law.go.kr · 대법원 2024도10710; Fireblocks 공식 — Key Link Overview)</span>
+</p>
+
+<h2>5.2 3-옵션 비교 — SaaS MPC / Hosted MPC / Key Link</h2>
+<p>
+KR 은행이 Fireblocks 도입 시 선택 가능한 3 옵션의 KR 적합성 비교 (저자 분석).
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>항목</th><th>옵션 A — SaaS MPC</th><th>옵션 B — Hosted MPC</th><th>옵션 C-Thales — Key Link + Thales Luna</th></tr></thead>
+<tbody>
+<tr><td><strong>키 share 위치</strong></td>
+  <td>Fireblocks Cloud + Mobile</td>
+  <td>고객 Co-signer + Cloud + Mobile</td>
+  <td><strong>전량 고객 HSM</strong></td></tr>
+<tr><td><strong>망분리 해석</strong></td>
+  <td>외부 SaaS 통신 — 강한 해석 시 부담</td>
+  <td>Co-signer on-prem, Mobile + Cloud 외부 — 해석 여지</td>
+  <td><strong>HSM + Customer Server 전량 on-prem 가능</strong></td></tr>
+<tr><td><strong>FIPS 인증</strong></td>
+  <td>해당 없음 (MPC 분산)</td>
+  <td>SGX TEE 기반 (FIPS 인증 별도)</td>
+  <td><strong>FIPS 140-3 L3 + CC (Thales Luna)</strong></td></tr>
+<tr><td><strong>실질 통제 판단 (대법원 2024도10710)</strong></td>
+  <td>분산 MPC — 단독 통제 어려움, 해석 필요</td>
+  <td>분산 MPC — 해석 필요</td>
+  <td><strong>고객 단독 통제 (강한 주장 가능)</strong></td></tr>
+<tr><td><strong>콜드월렛 운영</strong></td>
+  <td>별도 SaaS Cold Wallet workspace 구매</td>
+  <td>제한적</td>
+  <td><strong>Cold HSM mode 로 자연스럽게 통합</strong></td></tr>
+<tr><td><strong>vendor KR 관할 명시</strong></td>
+  <td>해당 없음 (일반 SaaS)</td>
+  <td>해당 없음</td>
+  <td><strong>미명시 (HKMA · HKSFC · JFSA 만)</strong></td></tr>
+<tr><td><strong>운영 부담</strong></td>
+  <td>낮음 (Mobile app 만)</td>
+  <td>중 (Co-signer 1 대 이상)</td>
+  <td><strong>높음 (Agent + Customer Server + HSM 운영)</strong></td></tr>
+<tr><td><strong>API 상태</strong></td>
+  <td>GA</td>
+  <td>GA</td>
+  <td><strong>Beta</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout">
+<div class="callout-title">권장 — 옵션 C-Thales (단 조건부)</div>
+<p>
+KR 은행 환경에서 가장 강한 컴플라이언스 적합성은 <strong>옵션 C-Thales (Key Link + Thales Luna)</strong>.
+키 share 0 + on-prem HSM + 망분리 IDC 안 배치 + FIPS 140-3 L3 인증의 조합이 망분리 / 실질통제 / 콜드월렛 80% 의 3 제약을 동시에 풀 수 있다.
+</p>
+<p style="margin-bottom:0">
+<strong>단 다음 조건부</strong>:
+</p>
+<ul style="margin-bottom:0">
+<li>Beta API 의 production-readiness 검증</li>
+<li>KR 관할에서의 vendor 공식 입장 확보 (Q-FB03)</li>
+<li>Customer Server SPOF / Agent 운영 부담 대응 (Risk-KL01, KL02)</li>
+<li>HSM 의 PoO replay risk 분석 (Risk-KL06)</li>
+</ul>
+</div>
+
+<h2>5.3 KR 법규 매핑</h2>
+<p>
+가상자산이용자보호법 / 가상자산업감독규정 / 특정금융정보법 (특금법) / 전자금융감독규정의 주요 항목 매핑.
+</p>
+
+<h3>5.3.1 가상자산업감독규정 9조 — 콜드월렛 80%</h3>
+<p>
+"이용자 가상자산의 100분의 80 이상에 해당하는 자산 (경제적 가치 기준) 을 인터넷과 분리하여 보관" — 시행령 위임 "100분의 70 이상" 안에서 금융위 정함.
+</p>
+<ul>
+<li><strong>옵션 C-Thales 매핑</strong>: Cold HSM mode 의 자산을 80% 이상으로 운영. air-gap (USB / SFTP / data diodes) 으로 인터넷 격리</li>
+<li><strong>측정 방식</strong>: workspace 또는 vault account 단위로 Hot / Cold 분리, Cold vault 의 자산 가치 / 전체 자산 가치 비율 monitor</li>
+<li><strong>Cold HSM 의 운영 부담</strong>: 80% 비율 유지를 위한 Hot↔Cold rebalancing 빈도 결정 필요 — 일일 / 주간 / 임계점 기반</li>
+</ul>
+<p>
+<span class="src">(출처: KR 가상자산업감독규정 — law.go.kr admRulSeq=2100000244180)</span>
+</p>
+
+<h3>5.3.2 대법원 2024도10710 — 실질 통제 판단</h3>
+<p>
+MPC · 멀티시그 환경에서 누가 "실질 통제" 권을 가지는지 판단한 판례. 단순한 키 보유가 아니라 <strong>실제 거래 서명 / 거부 권한의 행사 가능성</strong>이 기준.
+</p>
+<ul>
+<li><strong>옵션 C-Thales 매핑</strong>: HSM 안의 키를 고객 (은행) 이 단독 운영. Fireblocks 가 Cloud 에서 서명 요청을 보내도, Customer Server / HSM 에서 거부 가능</li>
+<li><strong>강한 통제 주장 가능</strong>: (a) HSM 의 PKCS#11 / vendor SDK 접근권 = 은행 / (b) Customer Server 의 custom validation logic 으로 거래 거부 가능 / (c) Fireblocks 단독으로 서명 생성 불가</li>
+<li><strong>단 주의</strong>: Fireblocks 가 Policy rule plane 을 운영하므로, Policy 가 통과한 거래만 서명 요청이 흘러옴. 이 plane 이 "실질 통제" 판단에 어떤 영향을 미치는지는 별도 법률 검토 필요</li>
+</ul>
+<p>
+<span class="src">(출처: 대법원 2024도10710 — KR 법원 판례; 옵션 C-Thales 매핑은 저자 분석)</span>
+</p>
+
+<h3>5.3.3 특금법 5조의4 — 거래기록 5년 보존</h3>
+<ul>
+<li><strong>옵션 C-Thales 매핑</strong>: Fireblocks Cloud 의 immutable audit logs (Console) 가 1 차 기록. 단 Fireblocks 의 보존 기간 정책이 5 년 충족 여부 vendor 확인 필요</li>
+<li><strong>보조 기록</strong>: Customer Server 에 거래 로그 별도 저장 권장 (custom validation 로그 포함). 은행 내부 5 년 보존 system 과 통합</li>
+</ul>
+<p>
+<span class="src">(출처: KR 특정금융정보법 5조의4 — law.go.kr)</span>
+</p>
+
+<h3>5.3.4 전자금융감독규정 (망분리)</h3>
+<ul>
+<li><strong>옵션 C-Thales 매핑</strong>: HSM + Customer Server 를 망분리 IDC 안에 배치. Agent 는 outbound HTTPS 만 — DMZ 배치 가능</li>
+<li><strong>단 Agent 의 outbound 통신 자체가 망분리 해석에서 issue 인지</strong>는 KR 은행 보안팀 / 금감원 해석 필요</li>
+</ul>
+
+<h2>5.4 권장 토폴로지 — Phase 1 시작 구성</h2>
+<p>
+KR 은행이 Key Link 도입 시 Phase 1 (시범) 단계의 권장 토폴로지:
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  subgraph external["외부망"]
+    FBcloud["☁️ Fireblocks Cloud<br/>(SaaS)"]
+    Mobile["📱 Owner Mobile app<br/>(onboarding · 승인)"]
+  end
+
+  subgraph dmz["DMZ"]
+    Agent["🔄 Fireblocks Agent<br/>active + standby"]
+  end
+
+  subgraph internal["내부망 (망분리 안쪽)"]
+    CSrv["⚙️ Customer Server<br/>HA 2-node<br/>+ custom validation"]
+    AuditDB["📋 거래 로그 DB<br/>5년 보존"]
+  end
+
+  subgraph vault["🔐 보안 구역"]
+    HotHSM["🔒 Thales Luna Network HSM<br/>Hot (≤ 20% 자산)"]
+    ColdHSM["🔒❄ Thales Luna HSM<br/>Cold air-gapped<br/>(≥ 80% 자산)"]
+  end
+
+  FBcloud <-->|HTTPS| Agent
+  Mobile <-->|HTTPS| FBcloud
+  Agent <--> CSrv
+  CSrv <-->|PKCS#11| HotHSM
+  CSrv -.-> AuditDB
+  CSrv <-.air-gap.-> ColdHSM
+
+  classDef external fill:#dbeafe,stroke:#2563eb
+  classDef good fill:#dcfce7,stroke:#16a34a
+  classDef wait fill:#fef3c7,stroke:#d97706
+  classDef special fill:#e0e7ff,stroke:#6366f1
+
+  class FBcloud,Mobile external
+  class Agent,CSrv good
+  class HotHSM special
+  class ColdHSM wait
+  class AuditDB good
+</pre>
+</div>
+<p class="diagram-caption">
+KR 은행 Phase 1 권장 토폴로지. 파랑 = 외부 (Fireblocks SaaS + Owner Mobile) / 초록 = Agent (DMZ) + Customer Server (내부망 HA) / 보라 = Hot HSM / 노랑 = Cold HSM (air-gap).
+망분리 의무: HSM + Customer Server 전량 내부망. Agent 만 외부 HTTPS outbound.
+콜드월렛 80%: Cold HSM 의 자산 비율을 80% 이상으로 운영.
+</p>
+
+<h2>5.5 도입 절차 — 5 단계</h2>
+<p>
+KR 은행의 Key Link 도입 권장 절차 (저자 정리):
+</p>
+
+<h3>Phase 1 — 사전 평가 (1-2 개월)</h3>
+<ul>
+<li>Fireblocks Sales 와 옵션 C-Thales 의 KR 관할 vendor 공식 입장 확인 (Q-FB03)</li>
+<li>Beta API 의 production-readiness · SLA · roadmap 합의</li>
+<li>HSM 선정 (Thales Luna Network HSM vs Cold HSM 별도)</li>
+<li>은행 내부 보안팀 / 컴플라이언스팀 / 법무팀의 사전 검토</li>
+<li>망분리 해석 — 금감원 / 은행 내규 검토</li>
+</ul>
+
+<h3>Phase 2 — 인프라 준비 (2-3 개월)</h3>
+<ul>
+<li>망분리 IDC 의 vault room 구성 (Hot HSM + Cold HSM)</li>
+<li>Customer Server HA 구성 (2-node minimum)</li>
+<li>Fireblocks Agent 호스팅 환경 (DMZ Node.js 운영)</li>
+<li>거래 로그 DB 5 년 보존 system 통합</li>
+<li>HSM 의 air-gap transport 설계 (USB ceremony / SFTP / data diode)</li>
+</ul>
+
+<h3>Phase 3 — Key Link 등록 (1 개월)</h3>
+<ul>
+<li>Fireblocks Key Link workspace 생성</li>
+<li>Approval Group "Add validation keys" 위임 (보안팀 3 인 권장)</li>
+<li>Validation Key 등록 (Hot HSM 또는 Cold HSM 어디에 둘지 결정)</li>
+<li>Signing Key 등록 (Vault 별 ECDSA + EdDSA)</li>
+<li>Policy rule 의 designated signer 설정 (Agent API user)</li>
+</ul>
+
+<h3>Phase 4 — 운영 정책 수립 (1 개월)</h3>
+<ul>
+<li>Hot/Cold 비율 monitor + rebalancing 빈도</li>
+<li>Customer Server 의 custom validation logic 정의 (필요 시)</li>
+<li>거래 로그 5 년 보존 + 외부 감사 대응 절차</li>
+<li>HSM key backup (Thales Luna 의 backup HSM 또는 Smart Card 백업)</li>
+<li>DR / BCP 시나리오 (HSM 장애, Customer Server 장애, Validation Key 침해 등)</li>
+</ul>
+
+<h3>Phase 5 — 운영 시작 + 점진적 자산 이전 (3-6 개월)</h3>
+<ul>
+<li>제한된 자산으로 운영 시작 (테스트 vault)</li>
+<li>모니터링 — 서명 latency / 실패율 / Cold ceremony 빈도</li>
+<li>점진적 자산 이전 (전체 자산의 일부 → 50% → 전체)</li>
+<li>운영 안정화 후 모든 vault 의 Key Link 적용</li>
+</ul>
+
+<h2>5.6 핵심 검증 항목 (운영 전 점검)</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>항목</th><th>검증 방법</th><th>책임</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>망분리 적합성</td><td>전자금융감독규정 해석 + 금감원 사전 협의</td><td>은행 컴플라이언스</td></tr>
+<tr><td>2</td><td>실질 통제 판단 (대법원 2024도10710)</td><td>법무팀 검토 + 의견서</td><td>은행 법무</td></tr>
+<tr><td>3</td><td>콜드월렛 80% 측정 정확도</td><td>vault 단위 자산 가치 monitor + 일일 리포트</td><td>운영팀</td></tr>
+<tr><td>4</td><td>5 년 거래 기록 보존</td><td>Fireblocks Console 의 audit log retention 정책 + 내부 DB 통합</td><td>운영팀</td></tr>
+<tr><td>5</td><td>HSM 의 FIPS / CC 인증 유효성</td><td>Thales 의 인증서 (FIPS 140-3 L3 + CC) 확인</td><td>보안팀</td></tr>
+<tr><td>6</td><td>Validation Key 의 침해 시나리오</td><td>회수/재발급 절차 사전 정의 + 모의 침해 ceremony</td><td>보안팀</td></tr>
+<tr><td>7</td><td>Customer Server 의 HA / DR</td><td>장애 시뮬레이션 + failover 시간 측정</td><td>운영팀</td></tr>
+<tr><td>8</td><td>Cold HSM ceremony 의 audit 기록</td><td>물리 이동 + USB transfer 의 video / log 기록</td><td>운영팀 + 감사</td></tr>
+<tr><td>9</td><td>vendor KR 관할 입장 (Q-FB03)</td><td>Fireblocks Sales 의 공식 답변 + 계약 조항</td><td>은행 법무</td></tr>
+<tr><td>10</td><td>Beta API 의 production-readiness</td><td>SLA 명시 + Fireblocks Support 채널 합의</td><td>운영팀</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>5.7 cold-wallet docs 와의 cross-link</h2>
+<p>
+SaaS Cold Wallet workspace 와 Key Link Cold mode 는 별개 product 일 가능성이 큼 (Q-FB02 미해결). 두 옵션의 상세 비교는:
+</p>
+<ul>
+<li><a href="../fireblocks-cold-wallet-bank-design/index.html">은행 Fireblocks Cold Wallet 도입 — 수탁형 지갑 reference</a> — SaaS Cold Wallet workspace 전용</li>
+<li><a href="../fireblocks-cold-wallet-bank-design/bank-operations.html">은행 운영 절차 (Cold Wallet)</a> — 옵션 C-Thales 표 포함</li>
+<li><a href="../fireblocks-kr-vasp-compliance/">국내 블록체인 사업 법규 × Fireblocks</a> — KR VASP 컴플라이언스 매핑 전반</li>
+</ul>
+
+<h2>5.8 다음 페이지</h2>
+<p>
+Key Link 의 식별된 7 가지 risk (KL01-KL07) 와 미해결 8 가지 open question (KL01-05, FB01-03) 은
+<a href="risks-open-questions.html">6. Risks &amp; Open Questions</a> 에서 다룬다.
+</p>
+
+<p class="back-top"><a href="#deployment">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

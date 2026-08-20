@@ -1,0 +1,316 @@
+{
+  "_note": "developers.fireblocks.com/openapi/swagger.yaml 에서 USDC Gateway 부분만 발췌 (2026-08-12). deposit_automation 4종은 스펙에 없음.",
+  "_source_url": "https://developers.fireblocks.com/openapi/swagger.yaml",
+  "paths": {
+    "/vault/accounts/{vaultAccountId}/usdc_gateway": {
+      "get": {
+        "summary": "Get USDC Gateway wallet info",
+        "description": "Returns the USDC Gateway wallet information associated with the given vault account.\n**Note:** This endpoint is currently in beta and might be subject to changes.\n</br>Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver, Editor, Viewer.",
+        "tags": [
+          "Vaults"
+        ],
+        "x-rate-limit-category": "read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vaultAccountId",
+            "required": true,
+            "description": "The ID of the vault account",
+            "schema": {
+              "type": "string",
+              "format": "numeric",
+              "x-fb-entity": "vault_account"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "USDC Gateway wallet information",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/X-Request-ID"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsdcGatewayWalletInfoResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "operationId": "getUsdcGatewayWalletInfoBeta",
+        "x-readme": {
+          "code-samples": [
+            {
+              "language": "typescript",
+              "code": "const response: Promise<FireblocksResponse<UsdcGatewayWalletInfoResponse>> = fireblocks.vaults.getUsdcGatewayWalletInfoBeta(vaultsApiGetUsdcGatewayWalletInfoBetaRequest);",
+              "name": "Fireblocks SDK TypeScript example"
+            },
+            {
+              "language": "java",
+              "code": "CompletableFuture<ApiResponse<UsdcGatewayWalletInfoResponse>> response = fireblocks.vaults().getUsdcGatewayWalletInfoBeta(vaultAccountId);",
+              "name": "Fireblocks SDK Java example"
+            },
+            {
+              "language": "python",
+              "code": "response = fireblocks.vaults.get_usdc_gateway_wallet_info_beta(vault_account_id);",
+              "name": "Fireblocks SDK Python example"
+            }
+          ]
+        },
+        "x-codeSamples": [
+          {
+            "lang": "TypeScript",
+            "source": "const response: Promise<FireblocksResponse<UsdcGatewayWalletInfoResponse>> = fireblocks.vaults.getUsdcGatewayWalletInfoBeta(vaultsApiGetUsdcGatewayWalletInfoBetaRequest);"
+          },
+          {
+            "lang": "Java",
+            "source": "CompletableFuture<ApiResponse<UsdcGatewayWalletInfoResponse>> response = fireblocks.vaults().getUsdcGatewayWalletInfoBeta(vaultAccountId);"
+          },
+          {
+            "lang": "Python",
+            "source": "response = fireblocks.vaults.get_usdc_gateway_wallet_info_beta(vault_account_id);"
+          }
+        ]
+      }
+    },
+    "/vault/accounts/{vaultAccountId}/usdc_gateway/activate": {
+      "post": {
+        "summary": "Activate a USDC Gateway wallet",
+        "description": "Activates the USDC Gateway wallet associated with the given vault account. If the wallet does not yet exist it is created in an activated state.\n\n **Note:** This endpoint is currently in beta and might be subject to changes.\n\n</br>Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver.",
+        "tags": [
+          "Vaults"
+        ],
+        "x-rate-limit-category": "write",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vaultAccountId",
+            "required": true,
+            "description": "The ID of the vault account",
+            "schema": {
+              "type": "string",
+              "format": "numeric",
+              "x-fb-entity": "vault_account"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/X-Idempotency-Key"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "USDC Gateway wallet activated successfully",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/X-Request-ID"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsdcGatewayWalletStatusResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "operationId": "activateUsdcGatewayWalletBeta",
+        "x-readme": {
+          "code-samples": [
+            {
+              "language": "typescript",
+              "code": "const response: Promise<FireblocksResponse<UsdcGatewayWalletStatusResponse>> = fireblocks.vaults.activateUsdcGatewayWalletBeta(vaultsApiActivateUsdcGatewayWalletBetaRequest);",
+              "name": "Fireblocks SDK TypeScript example"
+            },
+            {
+              "language": "java",
+              "code": "CompletableFuture<ApiResponse<UsdcGatewayWalletStatusResponse>> response = fireblocks.vaults().activateUsdcGatewayWalletBeta(vaultAccountId, idempotencyKey);",
+              "name": "Fireblocks SDK Java example"
+            },
+            {
+              "language": "python",
+              "code": "response = fireblocks.vaults.activate_usdc_gateway_wallet_beta(vault_account_id, idempotency_key);",
+              "name": "Fireblocks SDK Python example"
+            }
+          ]
+        },
+        "x-codeSamples": [
+          {
+            "lang": "TypeScript",
+            "source": "const response: Promise<FireblocksResponse<UsdcGatewayWalletStatusResponse>> = fireblocks.vaults.activateUsdcGatewayWalletBeta(vaultsApiActivateUsdcGatewayWalletBetaRequest);"
+          },
+          {
+            "lang": "Java",
+            "source": "CompletableFuture<ApiResponse<UsdcGatewayWalletStatusResponse>> response = fireblocks.vaults().activateUsdcGatewayWalletBeta(vaultAccountId, idempotencyKey);"
+          },
+          {
+            "lang": "Python",
+            "source": "response = fireblocks.vaults.activate_usdc_gateway_wallet_beta(vault_account_id, idempotency_key);"
+          }
+        ]
+      }
+    },
+    "/vault/accounts/{vaultAccountId}/usdc_gateway/deactivate": {
+      "post": {
+        "summary": "Deactivate a USDC Gateway wallet",
+        "description": "Deactivates the USDC Gateway wallet associated with the given vault account.\n\n **Note:** This endpoint is currently in beta and might be subject to changes.\n\n</br>Endpoint Permission: Admin, Non-Signing Admin, Signer, Approver.",
+        "tags": [
+          "Vaults"
+        ],
+        "x-rate-limit-category": "write",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vaultAccountId",
+            "required": true,
+            "description": "The ID of the vault account",
+            "schema": {
+              "type": "string",
+              "format": "numeric",
+              "x-fb-entity": "vault_account"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/X-Idempotency-Key"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "USDC Gateway wallet deactivated successfully",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/X-Request-ID"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsdcGatewayWalletStatusResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "operationId": "deactivateUsdcGatewayWalletBeta",
+        "x-readme": {
+          "code-samples": [
+            {
+              "language": "typescript",
+              "code": "const response: Promise<FireblocksResponse<UsdcGatewayWalletStatusResponse>> = fireblocks.vaults.deactivateUsdcGatewayWalletBeta(vaultsApiDeactivateUsdcGatewayWalletBetaRequest);",
+              "name": "Fireblocks SDK TypeScript example"
+            },
+            {
+              "language": "java",
+              "code": "CompletableFuture<ApiResponse<UsdcGatewayWalletStatusResponse>> response = fireblocks.vaults().deactivateUsdcGatewayWalletBeta(vaultAccountId, idempotencyKey);",
+              "name": "Fireblocks SDK Java example"
+            },
+            {
+              "language": "python",
+              "code": "response = fireblocks.vaults.deactivate_usdc_gateway_wallet_beta(vault_account_id, idempotency_key);",
+              "name": "Fireblocks SDK Python example"
+            }
+          ]
+        },
+        "x-codeSamples": [
+          {
+            "lang": "TypeScript",
+            "source": "const response: Promise<FireblocksResponse<UsdcGatewayWalletStatusResponse>> = fireblocks.vaults.deactivateUsdcGatewayWalletBeta(vaultsApiDeactivateUsdcGatewayWalletBetaRequest);"
+          },
+          {
+            "lang": "Java",
+            "source": "CompletableFuture<ApiResponse<UsdcGatewayWalletStatusResponse>> response = fireblocks.vaults().deactivateUsdcGatewayWalletBeta(vaultAccountId, idempotencyKey);"
+          },
+          {
+            "lang": "Python",
+            "source": "response = fireblocks.vaults.deactivate_usdc_gateway_wallet_beta(vault_account_id, idempotency_key);"
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "UsdcGatewayWalletInfoResponse": {
+        "type": "object",
+        "required": [
+          "walletId",
+          "type",
+          "status",
+          "symbol",
+          "assetIds"
+        ],
+        "properties": {
+          "walletId": {
+            "type": "string",
+            "description": "The USDC Gateway wallet identifier",
+            "example": "b68a9e08-b59c-4ff9-893f-52d4f78c21e6"
+          },
+          "type": {
+            "type": "string",
+            "description": "The USDC Gateway provider identifier",
+            "example": "CIRCLEGATEWAY"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVATED",
+              "DEACTIVATED"
+            ],
+            "description": "Current activation status of the USDC Gateway wallet",
+            "example": "ACTIVATED"
+          },
+          "symbol": {
+            "type": "string",
+            "description": "The token symbol supported by this wallet (e.g. USDC)",
+            "example": "USDC"
+          },
+          "assetIds": {
+            "type": "array",
+            "description": "Fireblocks asset IDs available for this wallet",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "USDC"
+            ]
+          }
+        }
+      },
+      "UsdcGatewayWalletStatusResponse": {
+        "type": "object",
+        "required": [
+          "walletId",
+          "status"
+        ],
+        "properties": {
+          "walletId": {
+            "type": "string",
+            "description": "The USDC Gateway wallet identifier",
+            "example": "b68a9e08-b59c-4ff9-893f-52d4f78c21e6"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVATED",
+              "DEACTIVATED"
+            ],
+            "description": "Current activation status of the USDC Gateway wallet",
+            "example": "ACTIVATED"
+          }
+        }
+      }
+    }
+  }
+}

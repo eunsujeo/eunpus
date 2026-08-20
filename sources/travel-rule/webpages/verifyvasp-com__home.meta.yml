@@ -1,0 +1,12 @@
+url: https://www.verifyvasp.com/en/
+fetched_at: 2026-07-08
+source_type: webpage
+domain: travel-rule / vendor-official
+tier: 1
+title: "VerifyVASP — The Travel Rule Solution for Digital Assets"
+key_facts: |
+  - 제품 3종: TravelRule API · VerifyName API · VerifyWallet
+  - 150+ 멤버 VASP (Upbit·Bybit·OKX·Crypto.com·HashKey·Bitget·HTX 등) · 30+ 관할권
+  - "Immediate submission and verification" — 전송 전 실시간 검증, 응답 0.2초 이하 주장
+  - 개발자 문서: https://docs.verifyvasp.com/
+promote_condition: "VerifyVASP 도입 확정 시 docs 전체 Mode C"

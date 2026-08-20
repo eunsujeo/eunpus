@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>2. 오프램프 — 코인 → 법정통화</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">온·오프램프·스왑 정산 워크스루</a></p>
+<div class="progress">
+<a href="index.html">목차</a><a href="01-onramp.html">1</a><span class="cur">2</span><a href="03-swap.html">3</a><a href="04-failure-reconciliation.html">4</a><a href="05-db-changes.html">5</a><a href="06-reconciliation.html">6</a>
+</div>
+<h1>오프램프 — 코인 → 법정통화 (환전)</h1>
+<p class="subtitle">충전을 거꾸로 돌린 흐름이다. 고객에서 은행 풀로 코인이 옮겨 가며, DB 는 즉시·블록체인 전송은 15분 배치로 처리한다</p>
+
+<p><b>무엇·언제</b>: 사용자가 스테이블코인을 원화로 환전합니다. 환전은 <b>고객에서 은행 풀로</b> 코인이 옮겨 가는 일입니다. 1단계에서 고객 <b>사용가능 잔액을 곧바로 차감</b>하고 원화도 즉시 입금하며, 같은 코인이 고객에서 풀로 실제로 옮겨 가는 <b>블록체인 전송은 15분 배치</b>로 모아서 처리합니다. 환전이므로 <b>총계정상 부채가 줄어듭니다</b>.</p>
+
+<p><b>실무 기본형은 사전 민팅 재고 풀입니다.</b> 소각이 느려서(수 분~수십 분+), 평상시에는 고객 코인을 <b>풀로 회수만</b> 하고 회수한 코인을 다음 충전에 재사용합니다 — 발행사·Circle·거래소는 끼지 않습니다. 발행사 소각·Circle 상환·거래소 매도가 등장하는 것은 <b>풀을 줄이는 rebalance(또는 재고 과다 시)</b> 뿐입니다. 아래 다이어그램의 소각·처분 흐름은 그 <b>재고 소진 경로</b>입니다 (→ <a href="index.html#pool">공통 골격: 사전 민팅 재고 풀</a>).</p>
+
+<div class="callout">
+<div class="callout-title">소각(burn)·처분 권한은 누구에게</div>
+<p style="margin:0 0 6px"><b>원화코인(KRWK)</b> 소각 = 발행사에 소각 요청(지갑 → 발행사로 코인 송금 후 소각).</p>
+<p style="margin:0 0 6px"><b>달러코인(USDC)</b> 처분 = Circle 상환(1차 시장 · 소각의 역방향) <b>또는</b> 외부 거래소 매도(2차 시장).</p>
+<p style="margin:0">보관 지갑(Fireblocks)은 코인을 발행사/거래소로 <b>내보내기만</b> 할 뿐, 소각 권한은 없습니다.</p>
+</div>
+
+<div class="callout">
+<div class="callout-title">"고객 지갑"은 고객마다 있는 게 아니다 — 옴니버스 1개</div>
+<p style="margin:0">고객 자산은 <b>고객 옴니버스 지갑 1개</b>에 전 고객 코인이 섞여 보관됩니다. 개인 지갑·개인 주소는 없고, "누가 얼마"는 <b>DB(<code>customer_ledger</code>)에만</b> 있습니다. 은행 자산도 별도 옴니버스 1개입니다. 그래서 아래 2단계 온체인 전송은 <b>고객 옴니버스 ↔ 은행 옴니버스</b> 사이에서 일어나고, 실제로는 그 15분 창의 <b>전 거래를 네팅한 순액</b>이 한 번 오갑니다 — 아래 "KRWK 1,000"은 이 거래가 그 배치에 더하는 몫입니다.</p>
+</div>
+
+<h2>▸ Case A — 원화코인 → 원화 (발행사 소각, 1:1)</h2>
+<p style="color:var(--muted);font-size:13px">예시: 1:1 고정. 사용자가 KRWK 1,000 → KRW 1,000 환전.</p>
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Cust as 고객
+    participant App as 은행 App
+    participant CL as 고객 원장
+    participant DL as 델타 원장
+    participant GLE as 총계정 원장
+    participant FB as 보관 지갑<br/>(고객·은행 옴니버스)
+    participant Acct as 계정계(원화)
+    participant BL as 은행 원장
+
+    rect rgb(254,243,199)
+    Note over Cust,GLE: ★ 1단계 — DB 즉시 (델타 PENDING 적재)
+    Cust->>App: 오프램프 요청 KRWK 1,000 → KRW 1,000
+    App->>App: 검증 (사용가능 ≥ 1,000)
+    App->>CL: KRWK 사용가능 −1,000 (화면: 즉시 차감)
+    App->>Acct: KRW 1,000 입금 (고객 계좌)
+    Acct-->>App: 입금 완료
+    App->>DL: 델타 PENDING 1줄 — 고객 → 은행 풀 KRWK 1,000 (블록체인 전송 전)
+    App->>GLE: 미정산 분개 — KRWK 반환채무↓ · 전송전자산↓
+    App-->>Cust: "환전 완료 (전송 정산 대기)" 알림
+    end
+
+    rect rgb(220,252,231)
+    Note over App,BL: ★ 2단계 — 15분 블록체인 배치 (고객 → 풀 전송)
+    App->>FB: 15분 배치 — 고객 옴니버스 → 은행 옴니버스 (이 건 몫 KRWK 1,000, 배치 네팅에 합산)
+    FB-->>App: 온체인 전송 확정 통지 (KRWK −1,000)
+    App->>BL: KRWK 고객 옴니버스 −1,000 · 은행 옴니버스 +1,000 (온체인 반영)
+    App->>DL: 델타 settled (PENDING 마감)
+    App->>GLE: 정산 분개 — 전송전자산 마감
+    App-->>Cust: "전송 정산 완료" 알림
+    end
+</pre></div>
+<p class="diagram-caption">Figure 2-A. 원화코인 환전. 1단계에서 사용가능을 즉시 차감하고 원화도 입금하며 델타를 PENDING 으로 적재하고, 2단계 15분 배치가 고객 옴니버스 → 은행 옴니버스 온체인 전송(전 거래 네팅 순액, 이 건은 +1,000 기여)을 마쳐 settled 한다. 발행사 소각은 풀을 줄이는 rebalance 경로로 이 흐름에는 등장하지 않는다.</p>
+
+<h2>▸ Case B — 달러코인 → 원화 (Circle 상환 또는 거래소)</h2>
+<p style="color:var(--muted);font-size:13px">예시: 시세 1,310 KRW/USD. 사용자가 USDC 1 → KRW. 평상시 환전은 코인을 풀로 회수하므로 흐름은 원화코인과 같습니다. 풀을 줄이는 처분 채널(Circle 상환 · 거래소 매도, 스프레드)은 별도의 rebalance 경로입니다.</p>
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Cust as 고객
+    participant App as 은행 App
+    participant CL as 고객 원장
+    participant DL as 델타 원장
+    participant GLE as 총계정 원장
+    participant FB as 보관 지갑<br/>(고객·은행 옴니버스)
+    participant Acct as 계정계(원화)
+    participant BL as 은행 원장
+
+    rect rgb(254,243,199)
+    Note over Cust,GLE: ★ 1단계 — DB 즉시 (델타 PENDING 적재)
+    Cust->>App: 오프램프 요청 USDC 1 → KRW
+    App->>App: 검증 (시세 1,310원/USD · 사용가능 ≥ 1)
+    App->>CL: USDC 사용가능 −1 (화면: 즉시 차감)
+    App->>Acct: KRW 약 1,310 입금 (고객 계좌)
+    Acct-->>App: 입금 완료
+    App->>DL: 델타 PENDING 1줄 — 고객 → 은행 풀 USDC 1 (블록체인 전송 전)
+    App->>GLE: 미정산 분개 — USDC 반환채무↓(1,310원) · 전송전자산↓
+    App-->>Cust: "환전 완료 (전송 정산 대기)" 알림
+    end
+
+    rect rgb(220,252,231)
+    Note over App,BL: ★ 2단계 — 15분 블록체인 배치 (고객 → 풀 전송)
+    App->>FB: 15분 배치 — 고객 옴니버스 → 은행 옴니버스 (이 건 몫 USDC 1, 배치 네팅에 합산)
+    FB-->>App: 온체인 전송 확정 통지 (USDC −1)
+    App->>BL: USDC 고객 옴니버스 −1 · 은행 옴니버스 +1 (온체인 반영)
+    App->>DL: 델타 settled (PENDING 마감)
+    App->>GLE: 정산 분개 — 전송전자산 마감
+    App-->>Cust: "전송 정산 완료" 알림
+    end
+</pre></div>
+<p class="diagram-caption">Figure 2-B. 달러코인 환전. 평상시 흐름은 원화코인과 동일하다 — 1단계 DB 즉시(사용가능 차감 + 원화 입금) + 델타 PENDING, 2단계 15분 배치로 고객 옴니버스 → 은행 옴니버스 온체인 전송(네팅 순액) 후 settled. Circle 상환·거래소 매도는 풀을 줄이는 rebalance 경로라 이 흐름에는 등장하지 않으며, 스프레드·수수료 손익도 그쪽에서 발생한다.</p>
+
+<h2>핵심 포인트</h2>
+<ul>
+<li><b>1단계 = DB 즉시 + 델타 PENDING</b> — 사용가능을 바로 줄여 같은 코인이 두 번 환전되는 일을 막고, 원화도 즉시 입금합니다. 고객에서 풀로의 이동은 "DB 는 됐지만 블록체인 전송 전" 상태로 델타 큐에 PENDING 으로 쌓입니다.</li>
+<li><b>2단계 = 15분 블록체인 배치</b> — 모아 둔 PENDING 을 고객 옴니버스 → 은행 옴니버스 온체인 전송으로 처리한 뒤 settled 로 마감합니다. 전송은 <b>전 거래를 네팅한 순액 한 번</b>이고, 이 건의 1,000 은 거기 더해지는 몫입니다.</li>
+<li><b>고객 지갑은 옴니버스 1개</b> — 고객마다 개인 온체인 지갑이 있는 게 아니라 전 고객 코인이 옴니버스 1개에 섞여 있고, 개인 귀속은 <code>customer_ledger</code>(DB)에만 있습니다.</li>
+<li><b>충전의 역방향</b> — 코인이 고객에서 풀로 돌아오고(부채 ↓), 델타 방향만 뒤집힐 뿐 구조는 같습니다. 델타는 계정계와 무관합니다.</li>
+</ul>
+
+<p class="foot">이 거래의 DB row 변화: <a href="05-db-changes.html#offramp">5장 ② 오프램프</a> · 분개 상세: <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a>.</p>
+
+<div class="pager">
+<a href="01-onramp.html">← 1. 온램프</a>
+<a href="index.html">목차</a>
+<a href="03-swap.html">3. 스왑 →</a>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/walkthrough-diagram.js"></script>
+</body>
+</html>

@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>11. 인프라 · 스펙 — 블록체인 인덱서 설계 가이드</title>
+<meta content="HW / OS / 네트워크 / DB / 스토리지 의 구체 sizing + 3 규모별 reference + 물리 토폴로지." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Foundation</h3><ul>
+<li><a href="what-is-indexer.html">1. 인덱서란 무엇인가</a></li>
+<li><a href="requirements.html">2. 요구사항</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Implementation</h3><ul>
+<li><a href="implementation-patterns.html">3. 4 구현 패턴</a></li>
+<li><a href="reference-architecture.html">4. 참조 아키텍처</a></li>
+<li><a href="data-model.html">5. 데이터 모델</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Operations</h3><ul>
+<li><a href="reorg-finality.html">6. Reorg · Finality</a></li>
+<li><a href="performance-scalability.html">7. 성능 · 확장성</a></li>
+<li><a href="monitoring-ops.html">8. 운영 · 모니터링</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Industry Cases</h3><ul>
+<li><a href="exchange-cases.html">9. 자체 인덱서 운영</a></li>
+<li><a href="saas-cases.html">10. 인덱서 / 데이터 인프라 vendor</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Infrastructure</h3><ul>
+<li><a class="active" href="infrastructure-spec.html">11. 인프라 · 스펙</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Portability</h3><ul>
+<li><a href="portability.html">12. 벤더 교체 · 포트 설계</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="infra-spec">
+<h2>11. 인프라 · 스펙</h2>
+<span class="section-subtitle">HW · OS · 네트워크 · DB · 스토리지 의 구체 sizing + 3 규모별 reference + 물리 토폴로지</span>
+
+<p class="lead">
+인덱서 인프라는 <strong>워크로드 규모</strong> 와 <strong>SLO 수준</strong> 에 따라 spec 이 크게 달라진다. 본 페이지에서는 Small / Medium / Large 3 규모를 정의하고, 각 규모별 물리 토폴로지 · HW spec · OS tuning · 비용 모델 을 제시한다. 모든 수치는 reference 일 뿐이며 실제 도입 시 워크로드 측정 후 조정.
+</p>
+
+<h3>11.1 3 규모 분류</h3>
+
+<p>인덱서를 운영하는 규모를 다음 3 단계로 분류. 각 단계의 reference spec 을 본다.</p>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>규모</th><th>워크로드 예시</th><th>처리량 (events/s)</th><th>월 인프라 비용</th><th>운영 인력</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Small (경량)</strong></td>
+  <td>특정 contract / token 이벤트만, 1 chain, 단일 application</td>
+  <td>~ 50</td>
+  <td>$100 - $800</td>
+  <td>0.5 - 1 FTE</td>
+</tr>
+<tr>
+  <td><strong>Medium (중간)</strong></td>
+  <td>멀티 protocol API, explorer-lite, 2-3 chain</td>
+  <td>500 - 2,000</td>
+  <td>$800 - $5,000</td>
+  <td>2 - 5 FTE</td>
+</tr>
+<tr>
+  <td><strong>Large (대규모)</strong></td>
+  <td>전체 chain analytics, Ethereum explorer, Solana low-latency, multi-chain custody</td>
+  <td>5,000 - 50,000+</td>
+  <td>$3,000 - $30,000+</td>
+  <td>10 - 30 FTE</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<h3>11.2 Small 규모 reference</h3>
+
+<p>외부 RPC vendor 에 의존하는 경량 구성. 단일 AZ, 자체 노드 없음. 가장 빠르게 시작 가능.</p>
+
+<h4>11.2.1 논리 구성</h4>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    EXT[External RPC<br/>Alchemy / QuickNode]
+    APP[Indexer App<br/>Node.js / Go]
+    PG[(Postgres<br/>managed)]
+    REDIS[(Redis<br/>cache)]
+    API[REST API]
+    UI[Frontend]
+
+    EXT --> APP --> PG
+    APP --> REDIS
+    PG --> API --> UI
+    REDIS --> API
+</pre></div>
+<p class="diagram-caption">Figure 11-1. Small 규모 — 외부 RPC + 단일 AZ. 자체 노드 없음.</p>
+
+<h4>11.2.2 물리 토폴로지 (AWS 기준)</h4>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    subgraph CLOUD[AWS ap-northeast-2]
+      subgraph AZ1["ap-northeast-2a (single AZ)"]
+        subgraph PUB[Public subnet]
+          ALB[ALB<br/>HTTPS]
+        end
+        subgraph PRIV[Private subnet]
+          EC2A[EC2 t3.medium<br/>Indexer worker]
+          EC2B[EC2 t3.medium<br/>API server]
+          RDS[(RDS db.t4g.medium<br/>200 GB gp3)]
+          REDIS[(ElastiCache<br/>cache.t4g.small)]
+        end
+      end
+    end
+
+    USER[사용자]
+    VENDOR[Alchemy / QuickNode<br/>외부 RPC]
+
+    USER --> ALB --> EC2B
+    EC2B --> RDS
+    EC2B --> REDIS
+    EC2A --> VENDOR
+    EC2A --> RDS
+    EC2A --> REDIS
+
+    classDef pub fill:#fef2f2,stroke:#f3c0c0
+    classDef priv fill:#f0faf2,stroke:#c8e6cf
+    classDef ext fill:#fff7ed,stroke:#f5d5a8
+    class ALB pub
+    class EC2A,EC2B,RDS,REDIS priv
+    class VENDOR ext
+</pre></div>
+<p class="diagram-caption">Figure 11-2. Small 물리 토폴로지 — 단일 AZ. ALB 가 public, indexer / DB / cache 가 private subnet.</p>
+
+<h4>11.2.3 HW spec (AWS 기준)</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>컴포넌트</th><th>인스턴스</th><th>vCPU/RAM</th><th>저장소</th><th>월 비용</th></tr></thead>
+<tbody>
+<tr><td>Indexer app</td><td>EC2 t3.medium × 2</td><td>2 vCPU / 4 GB × 2</td><td>30 GB gp3 (root)</td><td>~ $60</td></tr>
+<tr><td>Postgres</td><td>RDS db.t4g.medium</td><td>2 vCPU / 4 GB</td><td>200 GB gp3 (3,000 IOPS)</td><td>~ $80</td></tr>
+<tr><td>Redis</td><td>ElastiCache cache.t4g.small</td><td>2 vCPU / 1.4 GB</td><td>—</td><td>~ $30</td></tr>
+<tr><td>External RPC</td><td>Alchemy Growth</td><td>—</td><td>—</td><td>$49</td></tr>
+<tr><td>ALB + 모니터링</td><td>—</td><td>—</td><td>—</td><td>~ $30</td></tr>
+<tr><td>Egress (1 TB/월)</td><td>—</td><td>—</td><td>—</td><td>~ $30</td></tr>
+<tr><td><strong>월 합계</strong></td><td>—</td><td>—</td><td>—</td><td><strong>~ $280</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>11.2.4 스토리지 추정</h4>
+<ul>
+  <li>Postgres — 단일 contract 의 Transfer 이벤트 약 10 GB/년 (1M events/year × 10 KB)</li>
+  <li>Redis — hot balance cache 1 GB</li>
+  <li>1년 후 예상 — Postgres 30 GB, Redis 2 GB</li>
+</ul>
+
+<h4>11.2.5 적합 워크로드</h4>
+<ul>
+  <li>특정 NFT 컬렉션 분석</li>
+  <li>단일 DeFi protocol dashboard</li>
+  <li>1 chain (Ethereum 또는 Polygon) 의 specific contract</li>
+  <li>PoC / MVP / startup early stage</li>
+</ul>
+
+<h4>11.2.6 한계점</h4>
+<ul>
+  <li>외부 RPC 의 rate limit (보통 1,000 - 5,000 CU/s) 초과 시 즉시 장애</li>
+  <li>외부 RPC vendor 가 historical data backfill 시 매우 느림 (1 일에 ~ 10K 블록)</li>
+  <li>단일 AZ → AZ 장애 시 전체 다운</li>
+</ul>
+
+<h3>11.3 Medium 규모 reference</h3>
+
+<p>자체 full node + Kafka 도입. multi-AZ 로 가용성 확보. 2-3 chain 동시 운영 가능.</p>
+
+<h4>11.3.1 논리 구성</h4>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    NODE[Own Full Node<br/>geth / reth]
+    EXT[External RPC<br/>fallback]
+    KAFKA[Kafka<br/>managed MSK]
+    APP[Indexer Workers<br/>Go × 4]
+    PG[(Postgres<br/>RDS r7g)]
+    REDIS[(Redis cluster)]
+    ES[(Elasticsearch)]
+    API[Query API]
+
+    NODE --> KAFKA
+    EXT -.fallback.-> KAFKA
+    KAFKA --> APP
+    APP --> PG
+    APP --> ES
+    APP --> REDIS
+    PG --> API
+    ES --> API
+    REDIS --> API
+</pre></div>
+<p class="diagram-caption">Figure 11-3. Medium 규모 — 자체 노드 + Kafka + 검색 인덱스. 외부 RPC 는 fallback.</p>
+
+<h4>11.3.2 물리 토폴로지 (multi-AZ)</h4>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    subgraph CLOUD[AWS ap-northeast-2]
+      subgraph AZ1["AZ a (primary)"]
+        NODE1[i4i.xlarge<br/>geth full node<br/>1 TB NVMe]
+        WORKER1[c7i.xlarge × 2<br/>Indexer workers]
+        PGM[(RDS db.r7g.xlarge<br/>Postgres primary<br/>1 TB gp3)]
+        KAFKA1[MSK broker m5.large × 2]
+        ES1[OpenSearch r6g.large]
+        REDIS1[ElastiCache 3-shard]
+      end
+      subgraph AZ2["AZ c (replica)"]
+        WORKER2[c7i.xlarge × 2<br/>Indexer workers]
+        PGR[(RDS db.r7g.large<br/>Postgres replica)]
+        KAFKA2[MSK broker m5.large]
+        ES2[OpenSearch r6g.large]
+      end
+      ALB[ALB<br/>multi-AZ]
+    end
+
+    EXT[Alchemy / QuickNode<br/>fallback]
+    USERS[API 사용자]
+
+    USERS --> ALB
+    ALB --> WORKER1
+    ALB --> WORKER2
+    NODE1 --> KAFKA1
+    EXT -.fallback.-> KAFKA1
+    KAFKA1 --> WORKER1
+    KAFKA2 --> WORKER2
+    WORKER1 --> PGM
+    WORKER2 --> PGM
+    PGM -.replication.-> PGR
+    WORKER1 --> ES1
+    ES1 -.replica.-> ES2
+
+    classDef az1 fill:#f0faf2,stroke:#c8e6cf
+    classDef az2 fill:#f5f7fb,stroke:#d1dbf0
+    classDef ext fill:#fff7ed,stroke:#f5d5a8
+    class NODE1,WORKER1,PGM,KAFKA1,ES1,REDIS1 az1
+    class WORKER2,PGR,KAFKA2,ES2 az2
+    class EXT ext
+</pre></div>
+<p class="diagram-caption">Figure 11-4. Medium 물리 토폴로지 — 2 AZ. Postgres primary/replica, MSK 3 broker (AZ 분산), OpenSearch replica.</p>
+
+<h4>11.3.3 HW spec</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>컴포넌트</th><th>인스턴스</th><th>vCPU/RAM</th><th>저장소</th><th>월 비용</th></tr></thead>
+<tbody>
+<tr><td>Full node (Ethereum)</td><td>EC2 i4i.xlarge</td><td>4 vCPU / 32 GB</td><td>1 TB NVMe (instance store)</td><td>~ $300</td></tr>
+<tr><td>Indexer workers</td><td>EC2 c7i.xlarge × 4</td><td>4 vCPU / 8 GB × 4</td><td>50 GB gp3</td><td>~ $360</td></tr>
+<tr><td>Postgres primary</td><td>RDS db.r7g.xlarge</td><td>4 vCPU / 32 GB</td><td>1 TB gp3 (12,000 IOPS)</td><td>~ $500</td></tr>
+<tr><td>Postgres read replica</td><td>RDS db.r7g.large</td><td>2 vCPU / 16 GB</td><td>1 TB gp3</td><td>~ $300</td></tr>
+<tr><td>Kafka (MSK)</td><td>3 broker × m5.large</td><td>2 vCPU / 8 GB × 3</td><td>500 GB (EBS)</td><td>~ $400</td></tr>
+<tr><td>Redis cluster</td><td>ElastiCache 3-shard</td><td>2 vCPU × 3</td><td>—</td><td>~ $150</td></tr>
+<tr><td>Elasticsearch</td><td>OpenSearch r6g.large × 2</td><td>2 vCPU / 16 GB × 2</td><td>500 GB gp3</td><td>~ $300</td></tr>
+<tr><td>External RPC fallback</td><td>QuickNode Build</td><td>—</td><td>—</td><td>$49</td></tr>
+<tr><td>ALB + NAT + 모니터링</td><td>—</td><td>—</td><td>—</td><td>~ $150</td></tr>
+<tr><td><strong>월 합계</strong></td><td>—</td><td>—</td><td>—</td><td><strong>~ $2,500</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>11.3.4 스토리지 추정</h4>
+<ul>
+  <li>Ethereum full node — 1 TB (현재) ~ 2 TB (1 년 후, geth path-based)</li>
+  <li>Postgres — 1 TB (multi-chain 의 이벤트 + 잔고 + history)</li>
+  <li>Kafka retention — 7 일 = ~ 500 GB</li>
+  <li>OpenSearch — 500 GB (최근 90 일 events)</li>
+</ul>
+
+<h4>11.3.5 핵심 운영 포인트</h4>
+<ul>
+  <li>i4i 인스턴스의 NVMe 는 <strong>instance store</strong> — 인스턴스 종료 시 데이터 손실. EBS snapshot 백업 필수 또는 두 노드 운영.</li>
+  <li>Postgres primary 만 write. replica 는 read 전용 → API 서버에서 read 분산.</li>
+  <li>MSK 3 broker 를 AZ 별 1 개씩 분산 → 1 AZ 장애에도 producer/consumer 가능.</li>
+  <li>외부 RPC fallback 은 자체 노드 down 시 자동 전환. health check + circuit breaker 필수.</li>
+</ul>
+
+<h3>11.4 Large 규모 reference</h3>
+
+<p>archive node + multi-region + sharded DB. Korbit · Coinbase ChainStorage 같은 거래소 규모. ClickHouse / Flink 등 분석 인프라 포함.</p>
+
+<h4>11.4.1 논리 구성</h4>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    subgraph SRC[Source layer]
+      direction TB
+      AN[Archive Node<br/>Ethereum] ~~~ AN2[Archive Node<br/>Polygon] ~~~ AN3[Solana Validator<br/>+ Geyser] ~~~ FH[Firehose<br/>fallback]
+    end
+
+    subgraph ING[Ingestion layer]
+      direction TB
+      KAFKA[Kafka cluster<br/>multi-AZ] ~~~ INGEST[Ingest workers<br/>per-chain]
+    end
+
+    subgraph PROC[Processing layer]
+      direction TB
+      WORKERS[Projection workers<br/>auto-scale] ~~~ FLINK[Flink<br/>complex transform]
+    end
+
+    subgraph STORE[Storage layer]
+      direction TB
+      PG[(Postgres<br/>sharded × 4)] ~~~ CH[(ClickHouse<br/>analytics)] ~~~ ES[(Elasticsearch<br/>search)] ~~~ S3[(S3<br/>cold + backup)]
+    end
+
+    subgraph SERVE[Serving layer]
+      direction TB
+      REST[REST API] ~~~ GQL[GraphQL] ~~~ WH[Webhook emitter]
+    end
+
+    SRC --> ING --> PROC --> STORE --> SERVE
+</pre></div>
+<p class="diagram-caption">Figure 11-5. Large 규모 — 5 계층 (source / ingest / process / store / serve). 각 계층 별 독립 scaling.</p>
+
+<h4>11.4.2 물리 토폴로지 (multi-region)</h4>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    subgraph PRIMARY[Primary region — ap-northeast-2]
+      direction TB
+      subgraph PA[AZ a]
+        NETH1[Ethereum archive<br/>i4i.2xlarge × 2 HA]
+        NSOL[Solana RPC<br/>c7i.16xlarge]
+        K1[MSK m5.2xlarge × 2]
+      end
+      subgraph PB[AZ b]
+        NPOL[Polygon archive<br/>i4i.2xlarge]
+        EKS1[EKS cluster<br/>~ 30 pods]
+        K2[MSK m5.2xlarge × 2]
+      end
+      subgraph PC[AZ c]
+        CH1[ClickHouse 3-node<br/>c7i.4xlarge]
+        OS1[OpenSearch 6-node<br/>r6g.2xlarge]
+        K3[MSK m5.2xlarge × 2]
+      end
+      PGCLUSTER[(Postgres sharded × 4<br/>RDS r7g.2xlarge)]
+      S3P[(S3 Standard<br/>50 TB)]
+    end
+
+    subgraph DR[DR region — ap-southeast-1]
+      direction TB
+      PGDR[(Postgres replica)]
+      S3DR[(S3 Cross-Region<br/>Replication)]
+      EKSDR[EKS standby]
+    end
+
+    CF[CloudFront + WAF]
+    EXT[External RPC<br/>QuickNode / Firehose]
+
+    EXT -.fallback.-> K1
+    NETH1 --> K1
+    NPOL --> K2
+    NSOL --> K3
+    K1 --> EKS1
+    K2 --> EKS1
+    K3 --> EKS1
+    EKS1 --> PGCLUSTER
+    EKS1 --> CH1
+    EKS1 --> OS1
+    PGCLUSTER --> S3P
+    PGCLUSTER -.async replication.-> PGDR
+    S3P -.CRR.-> S3DR
+    EKS1 -.cold standby.-> EKSDR
+    CF --> EKS1
+
+    classDef src fill:#fff7ed,stroke:#f5d5a8
+    classDef proc fill:#f5f7fb,stroke:#d1dbf0
+    classDef store fill:#f0faf2,stroke:#c8e6cf
+    classDef dr fill:#fef2f2,stroke:#f3c0c0
+    class NETH1,NPOL,NSOL src
+    class EKS1,K1,K2,K3 proc
+    class PGCLUSTER,CH1,OS1,S3P store
+    class PGDR,S3DR,EKSDR dr
+</pre></div>
+<p class="diagram-caption">Figure 11-6. Large 물리 토폴로지 — 3 AZ × 2 region. Primary 는 active, DR 은 async replica + cold standby.</p>
+
+<h4>11.4.3 HW spec</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>컴포넌트</th><th>구성</th><th>월 비용</th></tr></thead>
+<tbody>
+<tr><td>Ethereum archive node (geth path)</td><td>i4i.2xlarge × 2 (HA) + 2.5 TB NVMe</td><td>~ $1,000</td></tr>
+<tr><td>Polygon archive node</td><td>i4i.2xlarge + 6 TB NVMe</td><td>~ $700</td></tr>
+<tr><td>Solana validator (RPC)</td><td>c7i.16xlarge + 4 TB NVMe</td><td>~ $2,500</td></tr>
+<tr><td>Ingest workers (per-chain)</td><td>EC2 c7i.xlarge × 10</td><td>~ $900</td></tr>
+<tr><td>Kafka MSK</td><td>6 broker m5.2xlarge, 2 TB</td><td>~ $2,000</td></tr>
+<tr><td>Projection workers</td><td>EKS cluster, ~ 30 pod</td><td>~ $1,500</td></tr>
+<tr><td>Postgres (sharded × 4)</td><td>RDS r7g.2xlarge × 4 + 5 TB total</td><td>~ $4,000</td></tr>
+<tr><td>ClickHouse cluster</td><td>3 node × c7i.4xlarge + 10 TB</td><td>~ $2,500</td></tr>
+<tr><td>OpenSearch</td><td>r6g.2xlarge × 6, 5 TB</td><td>~ $2,500</td></tr>
+<tr><td>S3 (cold + backup)</td><td>50 TB Standard + 100 TB Glacier</td><td>~ $1,500</td></tr>
+<tr><td>API gateway, CloudFront, WAF</td><td>—</td><td>~ $500</td></tr>
+<tr><td>Egress (multi-region replication)</td><td>—</td><td>~ $1,500</td></tr>
+<tr><td>DR region (idle, partial replica)</td><td>—</td><td>~ $800</td></tr>
+<tr><td>모니터링 (Prometheus + ELK + Datadog 일부)</td><td>—</td><td>~ $1,000</td></tr>
+<tr><td><strong>월 인프라 합계</strong></td><td>—</td><td><strong>~ $22,900</strong></td></tr>
+<tr><td>운영 인력 (10-30 FTE)</td><td>—</td><td>(인건비 별도)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>11.4.4 핵심 운영 포인트</h4>
+<ul>
+  <li>Postgres sharding key — <code>chain_id</code> 또는 <code>contract_address</code>. 7 절 (성능) 의 sharding 전략 참조.</li>
+  <li>ClickHouse — 7 일 / 30 일 / 365 일 partition. cold tier 는 S3 backed table.</li>
+  <li>Kafka 는 chain 별 topic 분리. partition = consumer 수 × 2 ~ 4.</li>
+  <li>DR — async replication (5-15 분 lag 허용). RPO 5 분, RTO 30 분 목표.</li>
+  <li>Archive node — 2 노드 HA. snapshot 주기 weekly. backup 노드 hot-standby.</li>
+</ul>
+
+<h3>11.5 노드 자체 운영 — Spec</h3>
+
+<p>가장 큰 비용 + 가장 까다로운 sizing. chain 별로 요구사항이 크게 다르다.</p>
+
+<h4>11.5.1 Ethereum geth (path-based archive, 2026 기준)</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>항목</th><th>요구</th><th>비고</th></tr></thead>
+<tbody>
+<tr><td>CPU</td><td>4-8 vCPU</td><td>peer 처리 + EVM 실행</td></tr>
+<tr><td>RAM</td><td>16-32 GB</td><td>state cache</td></tr>
+<tr><td>Disk</td><td>2-3 TB NVMe SSD</td><td>HDD/SATA ✗ (random IO 많음). IOPS ≥ 10,000</td></tr>
+<tr><td>네트워크</td><td>≥ 25 Mbps 양방향, 안정 latency</td><td>peer 와 block sync</td></tr>
+<tr><td>peer 수</td><td>30-50</td><td>너무 적으면 sync 지연</td></tr>
+<tr><td>초기 sync 시간</td><td>3-7 일 (snap sync)</td><td>스냅샷 사용 시 1-2 일</td></tr>
+<tr><td>월 데이터 증가</td><td>~ 30-50 GB</td><td>state growth + tx</td></tr>
+<tr><td>open file descriptor</td><td>≥ 65,536</td><td>ulimit 설정 필수</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>출처 — <a href="https://geth.ethereum.org/docs/fundamentals/archive" target="_blank" rel="noopener">Geth archive docs</a>:</p>
+<ul>
+  <li>Path-based archive — flat state ~ 2 TB</li>
+  <li>Path-based archive + historical state — ~ 6.5 TB</li>
+  <li>Hash-based archive (legacy) — 20 TB+, sync 수개월</li>
+</ul>
+
+<h4>11.5.2 Bitcoin Core (full node)</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>항목</th><th>요구</th></tr></thead>
+<tbody>
+<tr><td>CPU</td><td>2-4 vCPU</td></tr>
+<tr><td>RAM</td><td>4-8 GB (dbcache 2 GB 권장)</td></tr>
+<tr><td>Disk</td><td>700 GB SSD (full)</td></tr>
+<tr><td>네트워크</td><td>≥ 5 Mbps</td></tr>
+<tr><td>초기 sync</td><td>1-3 일</td></tr>
+<tr><td>월 증가</td><td>~ 5-8 GB</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>11.5.3 Solana validator (RPC node)</h4>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>항목</th><th>요구</th></tr></thead>
+<tbody>
+<tr><td>CPU</td><td>32+ vCPU (AMD EPYC 권장)</td></tr>
+<tr><td>RAM</td><td>256-512 GB</td></tr>
+<tr><td>Disk</td><td>2 × 2 TB NVMe (account + ledger 분리)</td></tr>
+<tr><td>네트워크</td><td>1 Gbps 권장 (대량 gossip)</td></tr>
+<tr><td>월 데이터 증가</td><td>~ 80-150 GB (snapshot 미적용 시 더 큼)</td></tr>
+<tr><td>비용</td><td>월 $2,000+</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Solana 는 노드 spec 이 가장 높음. slot 400-600ms 이라 throughput 매우 높음. <a href="https://docs.anza.xyz/operations/requirements" target="_blank" rel="noopener">Anza docs</a>.</p>
+
+<h4>11.5.4 Cosmos / Substrate / Aptos / Sui 등</h4>
+<p>대체로 Bitcoin ~ Ethereum 사이. chain 별 공식 docs 의 hardware requirement 확인.</p>
+
+<h4>11.5.5 노드 운영 관행</h4>
+<ul>
+  <li>archive node 는 항상 2 대 운영 (rotation backup) — sync 재시작 시 1 주일 이상 걸리므로</li>
+  <li>snapshot — daily EBS snapshot 또는 LVM snapshot. corruption 시 복구 시간 단축</li>
+  <li>monitoring — sync status, peer 수, latest block, db size, disk IOPS</li>
+  <li>업그레이드 — hard fork 일정 추적. 보통 4-6 개월 마다 클라이언트 업그레이드</li>
+</ul>
+
+<h3>11.6 DB sizing 가이드</h3>
+
+<h4>11.6.1 PostgreSQL</h4>
+
+<p>인덱서의 핵심 DB. 다음 항목으로 sizing.</p>
+
+<ul>
+  <li><strong>RAM</strong> — hot data 의 1.5x 권장. <code>shared_buffers</code> = RAM 의 25%, <code>effective_cache_size</code> = RAM 의 75%.</li>
+  <li><strong>CPU</strong> — read 가 많으면 cores ↑. write heavy 면 fewer cores + faster cores.</li>
+  <li><strong>Disk IOPS</strong> — write 빈도에 비례. gp3 default 3,000 IOPS 도 부족할 수 있음. 16,000 IOPS 까지 provisioned.</li>
+  <li><strong>Disk throughput</strong> — gp3 default 125 MB/s. 대규모 backfill 시 1,000 MB/s 까지.</li>
+  <li><strong>Storage</strong> — 1 년치 events + 잔고 + history. 일반적 multi-chain 인덱서 ~ 1-5 TB.</li>
+  <li><strong>connection pool</strong> — PgBouncer 권장. max_connections 보통 200-500.</li>
+</ul>
+
+<p>핵심 튜닝 파라미터 예시 (db.r7g.xlarge, 32 GB RAM 기준):</p>
+<pre><code>shared_buffers = 8GB                   # 25% of RAM
+effective_cache_size = 24GB            # 75% of RAM
+work_mem = 32MB                        # per query operation
+maintenance_work_mem = 2GB             # for VACUUM, CREATE INDEX
+max_wal_size = 16GB                    # write-heavy workload
+checkpoint_completion_target = 0.9
+random_page_cost = 1.1                 # NVMe SSD
+effective_io_concurrency = 200         # NVMe
+max_worker_processes = 8
+max_parallel_workers = 8
+max_parallel_workers_per_gather = 4
+autovacuum_vacuum_scale_factor = 0.05  # 자주 vacuum (write heavy)</code></pre>
+
+<h4>11.6.2 ClickHouse</h4>
+
+<p>OLAP 분석용. 다음 특징:</p>
+<ul>
+  <li>columnar storage — 압축률 5-10x (zstd / lz4)</li>
+  <li>분산 query — shard 자유</li>
+  <li>MergeTree engine — partition 별 background merge</li>
+  <li>Postgres 대비 분석 query 10-100x</li>
+  <li>partition by <code>toYYYYMM(block_time)</code> — 월 단위 hot/cold 관리 용이</li>
+</ul>
+
+<p>Coinbase 가 사용하는 사례 — Delta Lake / ClickHouse 둘 다.</p>
+
+<h4>11.6.3 Elasticsearch / OpenSearch</h4>
+
+<p>검색 + 집계용.</p>
+<ul>
+  <li>Index 당 ~ 50 GB shard size 권장</li>
+  <li>각 shard 1 primary + 1 replica</li>
+  <li>master node 3 개 (HA, dedicated)</li>
+  <li>data node — 검색 query 부하에 비례</li>
+  <li>JVM heap = RAM 의 50%, 최대 30 GB (compressed oops 한계)</li>
+  <li>refresh_interval = 30s (실시간성 양보, indexing throughput 향상)</li>
+</ul>
+
+<h4>11.6.4 Redis</h4>
+
+<p>hot cache + rate limiting + dedup.</p>
+<ul>
+  <li>maxmemory-policy = <code>allkeys-lru</code> (cache 용도)</li>
+  <li>persistence — RDB snapshot + AOF (durability 필요 시)</li>
+  <li>cluster mode — 데이터 ≥ 50 GB 또는 throughput ≥ 100K ops/s 시</li>
+  <li>대형 hash 사용 시 hash-max-ziplist-entries 조정</li>
+</ul>
+
+<h3>11.7 OS · Kernel tuning</h3>
+
+<p>인덱서 워커는 IO heavy + network heavy. Linux 기본 설정으로는 throughput 의 30-50% 만 활용. 다음 튜닝 권장.</p>
+
+<h4>11.7.1 sysctl 튜닝 (network)</h4>
+
+<pre><code># /etc/sysctl.d/99-indexer.conf
+net.core.somaxconn = 65535
+net.core.netdev_max_backlog = 5000
+net.ipv4.tcp_max_syn_backlog = 8192
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.ip_local_port_range = 1024 65535
+net.ipv4.tcp_fin_timeout = 15
+net.ipv4.tcp_keepalive_time = 60
+net.core.rmem_max = 16777216
+net.core.wmem_max = 16777216
+net.ipv4.tcp_rmem = 4096 87380 16777216
+net.ipv4.tcp_wmem = 4096 65536 16777216</code></pre>
+
+<h4>11.7.2 ulimit + file descriptor</h4>
+
+<pre><code># /etc/security/limits.d/indexer.conf
+* soft nofile 1048576
+* hard nofile 1048576
+* soft nproc 65535
+* hard nproc 65535
+
+# Kafka broker, geth, postgres 모두 fd ≥ 1M 권장</code></pre>
+
+<h4>11.7.3 디스크 / 파일시스템</h4>
+
+<ul>
+  <li><strong>파일시스템</strong> — XFS 또는 ext4. Postgres + geth + Kafka 모두 XFS 권장 (대용량 + 동시 쓰기 안정).</li>
+  <li><strong>mount options</strong> — <code>noatime,nodiratime</code> 으로 메타데이터 IO 감소.</li>
+  <li><strong>I/O scheduler</strong> — NVMe 는 <code>none</code> 또는 <code>mq-deadline</code>. SATA SSD 는 <code>mq-deadline</code>.</li>
+  <li><strong>swappiness</strong> — DB / Kafka 서버는 <code>vm.swappiness = 1</code> (절대 swap 금지).</li>
+  <li><strong>Transparent Huge Pages</strong> — Postgres + Redis 는 <code>never</code> 권장 (latency spike 방지).</li>
+</ul>
+
+<h4>11.7.4 NUMA</h4>
+
+<p>32 vCPU 이상의 큰 인스턴스 (Solana validator 등) 는 NUMA topology 영향 큼. Postgres 는 <code>numactl --interleave=all</code> 권장. Kafka 는 broker 별로 CPU pinning.</p>
+
+<h4>11.7.5 컨테이너 환경</h4>
+
+<p>Kubernetes 사용 시 — node 의 sysctl 은 pod 에 자동 적용되지 않음. <code>securityContext.sysctls</code> 명시 또는 <code>initContainer</code> 로 설정. cgroup memory limit 은 JVM / Postgres / Redis 의 max heap 보다 충분히 크게.</p>
+
+<h3>11.8 네트워크 + 보안</h3>
+
+<h4>11.8.1 네트워크 토폴로지</h4>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    INET[Internet]
+    BLOCKCHAIN[Blockchain P2P<br/>peers]
+
+    subgraph DMZ[DMZ / Public subnet]
+      WAF[WAF + CDN]
+      LB[Load Balancer]
+      NODE[Blockchain Node<br/>peer 통신]
+    end
+
+    subgraph PRIV[Private subnet]
+      APP[Indexer Workers]
+      PG[(Postgres)]
+      KAFKA[Kafka]
+    end
+
+    INET --> WAF --> LB --> APP
+    BLOCKCHAIN <--> NODE
+    NODE --> APP
+    APP --> PG
+    APP --> KAFKA
+</pre></div>
+<p class="diagram-caption">Figure 11-7. 네트워크 토폴로지 — DMZ (외부 P2P + 사용자 진입), Private (DB + 워커).</p>
+
+<h4>11.8.2 보안 원칙</h4>
+
+<ol>
+  <li>인덱서 worker 는 Private subnet. Internet 직접 통신 ✗</li>
+  <li>블록체인 노드만 P2P (외부 통신) — DMZ 에 배치</li>
+  <li>외부 RPC (Alchemy) 사용 시 NAT gateway 경유</li>
+  <li>Query API 는 WAF + rate limit 뒤에</li>
+  <li>DB / Kafka 는 application-tier 만 접근. Audit log.</li>
+  <li>모든 secret 은 KMS / Secrets Manager 에. 코드 ✗.</li>
+  <li>VPC flow log + DB audit log 90 일 이상 보관</li>
+  <li>관리자 SSH 는 SSM Session Manager 또는 Bastion + MFA</li>
+</ol>
+
+<h4>11.8.3 망분리 환경 (정부 / 은행)</h4>
+
+<p>망분리 환경에서는 외부 RPC 사용 불가. 자체 노드 + 인터넷망 / 업무망 / 운영망 분리:</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    subgraph INETZONE[인터넷망]
+      direction TB
+      NODE[블록체인 노드<br/>P2P]
+      PROXY[Outbound proxy]
+    end
+    subgraph BIZ[업무망]
+      direction TB
+      INGEST[Ingest workers]
+      KAFKA[Kafka]
+      PARSE[Parser workers]
+    end
+    subgraph OPS[운영망]
+      direction TB
+      PG[(Postgres)]
+      ES[(Elasticsearch)]
+      API[Query API]
+    end
+
+    NODE --> PROXY --> INGEST
+    INGEST --> KAFKA --> PARSE
+    PARSE -.firewall + audit.-> PG
+    PARSE -.firewall + audit.-> ES
+    API --> PG
+    API --> ES
+
+    classDef inet fill:#fff7ed,stroke:#f5d5a8
+    classDef biz fill:#f5f7fb,stroke:#d1dbf0
+    classDef ops fill:#f0faf2,stroke:#c8e6cf
+    class NODE,PROXY inet
+    class INGEST,KAFKA,PARSE biz
+    class PG,ES,API ops
+</pre></div>
+<p class="diagram-caption">Figure 11-8. 망분리 토폴로지 — 3 zone (인터넷 / 업무 / 운영). zone 간 명시적 firewall rule + audit.</p>
+
+<ul>
+  <li>블록체인 노드 = 인터넷망 (P2P 트래픽만)</li>
+  <li>인덱서 = 업무망</li>
+  <li>DB / API = 운영망</li>
+  <li>zone 간 통신은 명시적 firewall rule + 패킷 audit (단방향 통신 권장)</li>
+  <li>설치형 vendor (Fireblocks 자체 운영, BitGo 설치형) 가 망분리 환경 도입 시 주로 선택</li>
+</ul>
+
+<h3>11.9 Backup · DR</h3>
+
+<p>인덱서는 "재처리 가능" 하므로 RPO/RTO 가 거래 시스템보다 느슨하다. 그러나 노드 재 sync 비용은 매우 크다.</p>
+
+<h4>11.9.1 컴포넌트별 RPO / RTO 목표</h4>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>컴포넌트</th><th>RPO</th><th>RTO</th><th>전략</th></tr>
+</thead>
+<tbody>
+<tr><td>블록체인 노드</td><td>0 (chain 에서 재 sync 가능)</td><td>3-7 일 (재 sync 시간)</td><td>HA 2 노드 + weekly EBS snapshot</td></tr>
+<tr><td>Postgres</td><td>5 분 (WAL replication)</td><td>30 분</td><td>read replica + PITR 7 일</td></tr>
+<tr><td>Kafka</td><td>0 (3-way replication)</td><td>0 (즉시 failover)</td><td>3 broker × 3 AZ</td></tr>
+<tr><td>Elasticsearch</td><td>1 시간 (snapshot 주기)</td><td>2 시간</td><td>S3 snapshot daily + 1 replica</td></tr>
+<tr><td>raw_logs (S3)</td><td>15 분 (S3 CRR)</td><td>—</td><td>Cross-Region Replication</td></tr>
+<tr><td>Projection (Postgres 의 derived table)</td><td>—</td><td>replay 시간 (수 시간)</td><td>raw_logs 에서 replay</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>11.9.2 백업 토폴로지</h4>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    subgraph PROD[Production]
+      direction TB
+      PGP[(Postgres primary)]
+      ESP[(Elasticsearch)]
+      RAW[(Raw logs<br/>S3 Standard)]
+    end
+
+    subgraph BACKUP[Backup tier]
+      direction TB
+      PGR[(Postgres replica<br/>+ PITR WAL)]
+      ESS[(ES snapshot<br/>daily)]
+      S3CRR[(S3 Cross-Region<br/>Replication)]
+    end
+
+    subgraph COLD[Cold archive]
+      direction TB
+      GLACIER[(Glacier<br/>3 년 보관)]
+    end
+
+    PGP -.streaming.-> PGR
+    ESP -.daily snapshot.-> ESS
+    RAW -.CRR.-> S3CRR
+    PGR -.weekly dump.-> GLACIER
+    S3CRR -.lifecycle 90d.-> GLACIER
+
+    classDef prod fill:#f0faf2,stroke:#c8e6cf
+    classDef bkp fill:#f5f7fb,stroke:#d1dbf0
+    classDef cold fill:#fef2f2,stroke:#f3c0c0
+    class PGP,ESP,RAW prod
+    class PGR,ESS,S3CRR bkp
+    class GLACIER cold
+</pre></div>
+<p class="diagram-caption">Figure 11-9. 3 tier 백업 — production / backup (warm) / cold archive.</p>
+
+<h4>11.9.3 복구 시나리오</h4>
+
+<ul>
+  <li><strong>노드 디스크 손상</strong> — backup 노드로 즉시 전환 (1 분). 원노드는 snapshot 에서 복구 (수 시간).</li>
+  <li><strong>Postgres primary 장애</strong> — read replica 를 promote (5-10 분). PITR 로 5 분 전 시점 복구 가능.</li>
+  <li><strong>전체 region 장애</strong> — DR region 의 cold standby 를 활성화 (30 분 - 2 시간). 라우팅 변경 (Route 53).</li>
+  <li><strong>인덱서 로직 버그</strong> — projection table truncate → raw_logs 에서 replay (수 시간 ~ 1 일).</li>
+  <li><strong>chain reorg + 누락</strong> — cursor 를 N 블록 뒤로 이동, 재처리 (수 분).</li>
+</ul>
+
+<h4>11.9.4 백업 검증</h4>
+
+<ul>
+  <li>월 1 회 — Postgres backup 을 staging 에 restore + sanity query</li>
+  <li>분기 1 회 — DR region failover drill (route 변경, 트래픽 일부 실제 전환)</li>
+  <li>backup 메타데이터 (last_successful_backup, size, duration) 를 Prometheus metric 으로</li>
+</ul>
+
+<h3>11.10 비용 vs 성능 sensitivity</h3>
+
+<p>같은 워크로드도 trade-off 에 따라 비용이 5-10x 다를 수 있다. 주요 sensitivity:</p>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>축</th><th>저비용</th><th>고비용</th><th>차이</th></tr>
+</thead>
+<tbody>
+<tr><td>RPC source</td><td>외부 vendor free tier</td><td>자체 archive node × 다중 chain</td><td>10-50x</td></tr>
+<tr><td>DB</td><td>RDS gp3</td><td>RDS provisioned IOPS + read replica</td><td>3-5x</td></tr>
+<tr><td>Search</td><td>Postgres index</td><td>ES cluster</td><td>5-10x</td></tr>
+<tr><td>Multi-region</td><td>single region</td><td>2-3 region replication</td><td>2-3x</td></tr>
+<tr><td>가용성</td><td>single AZ</td><td>multi-AZ + auto failover</td><td>1.5-2x</td></tr>
+<tr><td>저장 기간</td><td>최근 30 일만</td><td>전체 history + 5 년 보관</td><td>3-8x</td></tr>
+<tr><td>모니터링</td><td>self-host Prometheus</td><td>Datadog full feature</td><td>3-5x</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>11.11 성장 경로</h3>
+
+<p>Small → Medium → Large 의 자연스러운 성장 trigger.</p>
+
+<ol>
+  <li><strong>Small → Medium</strong> — 트래픽이 외부 RPC 의 Growth tier ($49) 초과 시. 자체 노드 + Kafka 도입.</li>
+  <li><strong>Medium → Large</strong> — 1 chain 만으로 부족 / 분석 / 백필 부담 증가 / multi-region 필요 시. Archive node + ClickHouse + 다중 region.</li>
+</ol>
+
+<p>각 단계 전환 시 marker (지표 기준):</p>
+<ul>
+  <li>외부 RPC 의 월 비용 ≥ $500 → 자체 노드 검토 (보통 ROI 1-2 개월)</li>
+  <li>Postgres ≥ 80% CPU 지속 → read replica 또는 sharding 검토</li>
+  <li>p95 latency ≥ SLO 의 80% 지속 1 주 → 다음 tier 검토</li>
+  <li>1 chain 당 backfill 시간 ≥ 1 주 → archive node + parallel worker 검토</li>
+</ul>
+
+<h3>11.12 운영 체크리스트</h3>
+
+<div class="dev-note">
+<span class="dev-note-label">신규 인덱서 배포 체크리스트</span>
+<ol>
+  <li>모든 secret 이 KMS / Secrets Manager 에 있는가</li>
+  <li>모든 컴포넌트의 backup / restore 절차 테스트했는가</li>
+  <li>RPO / RTO 측정값이 목표 이내인가</li>
+  <li>Synthetic canary tx 가 동작하는가</li>
+  <li>모든 11 지표 (8.2 절) 가 수집되고 알람 임계가 있는가</li>
+  <li>Reorg 시나리오 테스트 통과했는가 (testnet 에서)</li>
+  <li>Schema migration runbook 이 있는가</li>
+  <li>외부 RPC quota 알람이 80% / 95% 에 있는가</li>
+  <li>DB connection pool size + work_mem 튜닝됐는가</li>
+  <li>WAF + rate limit 활성화됐는가</li>
+  <li>Multi-region 또는 multi-AZ 인가</li>
+  <li>Postgres autovacuum 모니터링 + 튜닝됐는가</li>
+  <li>Kafka retention 정책이 적용됐는가</li>
+  <li>Health check endpoint 가 있는가</li>
+  <li>Postmortem template 가 있는가</li>
+  <li>OS 튜닝 (sysctl, ulimit, THP) 이 적용됐는가</li>
+  <li>노드 backup 노드 (HA) 가 hot-standby 인가</li>
+  <li>망분리 환경이면 firewall rule + 단방향 통신 audit 됐는가</li>
+</ol>
+</div>
+
+<h3>11.13 마치며</h3>
+
+<p>본 가이드는 블록체인 인덱서의 vendor-neutral reference. 핵심 결론:</p>
+
+<ol>
+  <li>인덱서는 "블록체인 → 자체 read model" 의 ETL + projection layer.</li>
+  <li>4 패턴 (pull / streaming / scan / lake) 의 조합으로 만든다.</li>
+  <li>참조 아키텍처는 7 계층. raw event log 가 source of truth.</li>
+  <li>Reorg + finality 가 가장 어려운 부분. confirmation 정책 + soft-delete + replay 의 조합으로 해결.</li>
+  <li>SaaS / 자체 구축 의 trade-off — 출시 속도 vs sovereignty.</li>
+  <li>운영의 11 가지 핵심 지표를 항상 측정.</li>
+  <li>비용은 워크로드 + 규모에 따라 $280/월 ~ $30,000/월. 인력은 0.5 FTE ~ 30 FTE.</li>
+  <li>OS · kernel · 파일시스템 튜닝 없이는 HW 성능의 30-50% 만 활용.</li>
+  <li>RPO/RTO 는 거래 시스템보다 느슨하지만, 노드 재 sync 비용은 크다 — backup 노드 + snapshot 필수.</li>
+</ol>
+
+<p>실제 도입 시 — vendor 공식 docs 와 Solutions Engineer 검증 필수. 본 가이드의 수치 / 가격 / 스펙은 추정 또는 공개 자료 기반이며, 항상 cross-verify 권장.</p>
+
+<p style="margin-top:32px;color:var(--text-tertiary);font-size:13px">
+처음으로 — <a href="index.html">0. Overview</a>
+</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

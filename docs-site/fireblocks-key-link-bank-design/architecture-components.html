@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>2. 아키텍처 구성요소 — Agent · Customer Server · HSM · Adaptor</title>
+<meta content="Fireblocks Key Link 의 4 컴포넌트 토폴로지와 책임" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Key Link 기초</h3>
+<ul>
+<li><a href="key-link-fundamentals.html">1. Key Link 란</a></li>
+<li><a class="active" href="architecture-components.html">2. 아키텍처 구성요소</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Registration &amp; Signing</h3>
+<ul>
+<li><a href="key-registration-poo.html">3. Key 등록 + PoO</a></li>
+<li><a href="signing-flow.html">4. Signing Flow</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 은행 도입</h3>
+<ul>
+<li><a href="bank-deployment.html">5. 은행 도입</a></li>
+<li><a href="risks-open-questions.html">6. Risks &amp; Open Questions</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="components">
+<h1>2. 아키텍처 구성요소</h1>
+<p class="lead">
+Fireblocks Key Link 의 핵심 컴포넌트는 4 가지: Fireblocks Agent, Customer Server, HSM Component, HSM Adaptor (선택).
+이 페이지는 각 컴포넌트의 책임과 토폴로지를 정리한다.
+</p>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처</div>
+<p><strong>공식 문서에 정의된 사실</strong></p>
+<ul style="margin-bottom:0.5rem">
+<li>4 컴포넌트의 정의와 책임 — Fireblocks Key Link Overview</li>
+<li>Fireblocks Agent = open-source TypeScript on-prem service — Fireblocks Key Link Overview</li>
+<li>Customer Server 가 custom logic (policy / validation) 추가 가능 — Fireblocks Key Link Overview</li>
+<li>HSM Adaptor 는 optional, cold HSM 통신 매개 — Fireblocks Key Link Overview</li>
+<li>Thales Luna HSM 통합 — Fireblocks 공식 블로그 (2025-09-23)</li>
+</ul>
+<p style="margin-bottom:0"><strong>저자가 합리적으로 추정한 운영 권장</strong> — 참고용</p>
+<ul style="margin-bottom:0">
+<li>은행 환경에서 권장 토폴로지 (망분리 IDC 안 배치)</li>
+<li>Customer Server 의 HA / DR 구성 권장</li>
+<li>각 컴포넌트 간 네트워크 보안 권장 (mTLS / firewall rule)</li>
+<li>각 컴포넌트의 정확한 호스팅 사양 / 리소스 요구사항은 본 문서 미확보 — 공식 README 별도 확인 필요</li>
+</ul>
+</div>
+
+<h2>2.1 4 컴포넌트 한눈에 보기</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>컴포넌트</th><th>주체</th><th>역할</th><th>오픈소스?</th></tr></thead>
+<tbody>
+<tr><td><strong>Fireblocks Agent</strong></td>
+  <td>고객 (Fireblocks 가 코드 배포)</td>
+  <td>Fireblocks 와 Customer Server 사이의 통신 중계 (TypeScript on-prem service)</td>
+  <td>✅ 오픈소스</td></tr>
+<tr><td><strong>Customer Server</strong></td>
+  <td>고객 (직접 개발)</td>
+  <td>Agent 메시지 수신 → HSM 으로 서명 요청 → 결과 반환. custom policy / validation 추가 가능</td>
+  <td>❌ 고객 자체</td></tr>
+<tr><td><strong>HSM Component</strong></td>
+  <td>고객 (HSM 제조사 제품)</td>
+  <td>실제 키 보관 + 서명 연산. on-prem / cloud / hot / cold 모두 가능</td>
+  <td>❌ HSM 제품</td></tr>
+<tr><td><strong>HSM Adaptor</strong> (선택)</td>
+  <td>고객 (직접 개발 또는 통합)</td>
+  <td>Cold (offline) HSM 과의 통신 매개. online HSM 일 때는 Customer Server 안에 통합 가능</td>
+  <td>❌ 고객 자체</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Fireblocks Key Link Overview)</span>
+</p>
+
+<h2>2.2 토폴로지 다이어그램</h2>
+<p>
+4 컴포넌트와 Fireblocks Cloud 의 관계를 LR (좌→우) 흐름으로 표현.
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  FBcloud["☁️ Fireblocks Cloud<br/>(SaaS layer)<br/>운영 · governance · 전송망"]
+
+  subgraph customer["🏢 Customer Infrastructure (on-prem 또는 cloud VPC)"]
+    direction LR
+    Agent["🔄 Fireblocks Agent<br/>open-source TS<br/>메시지 중계"]
+    CSrv["⚙️ Customer Server<br/>고객 개발<br/>custom logic · validation"]
+    Adaptor["🔌 HSM Adaptor<br/>(선택, cold 용)<br/>air-gap 매개"]
+    HSM["🔒 HSM Component<br/>실제 키 보관 · 서명<br/>FIPS 인증"]
+  end
+
+  FBcloud <--> |"signing request / response<br/>over HTTPS"| Agent
+  Agent <--> |"local API"| CSrv
+  CSrv <--> |"PKCS#11 / vendor SDK"| HSM
+  CSrv -.-> |"online 경로<br/>(직접 통합)"| HSM
+  Adaptor <--> |"air-gap transport<br/>USB · SFTP · data diode"| HSM
+  CSrv <--> |"cold 경로"| Adaptor
+
+  classDef cloud fill:#dbeafe,stroke:#2563eb
+  classDef good fill:#dcfce7,stroke:#16a34a
+  classDef wait fill:#fef3c7,stroke:#d97706
+  classDef special fill:#e0e7ff,stroke:#6366f1
+
+  class FBcloud cloud
+  class Agent good
+  class CSrv good
+  class HSM special
+  class Adaptor wait
+</pre>
+</div>
+<p class="diagram-caption">
+파랑 = Fireblocks Cloud (외부 SaaS) / 초록 = 고객이 운영하는 통신 중계 컴포넌트 (Agent · Customer Server) / 보라 = HSM (실제 키 + 서명) / 노랑 = 선택적 cold HSM Adaptor.
+서명 요청은 Cloud → Agent → Customer Server → HSM 으로 흘러 들어가고, 서명 결과는 역방향으로 반환된다.
+</p>
+
+<h2>2.3 Fireblocks Agent — 통신 중계자</h2>
+<blockquote>
+"Fireblocks Agent is an open-source on-prem service (TypeScript) responsible for receiving new messages to sign from Fireblocks, relaying these messages to the customer's HSM through the customer's server, and returning the signed results to Fireblocks."
+</blockquote>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Getting Started with Fireblocks Key Link)</span>
+</p>
+
+<h3>2.3.1 책임</h3>
+<ul>
+<li>Fireblocks Cloud 로부터 서명 요청 메시지 수신 (poll 또는 push)</li>
+<li>메시지를 Customer Server 로 중계</li>
+<li>Customer Server 에서 받은 서명을 Fireblocks 로 반환</li>
+<li>API user (Signer role) 와 페어링되어 본인 인증</li>
+</ul>
+
+<h3>2.3.2 운영 특성</h3>
+<ul>
+<li><strong>오픈소스</strong> — 코드 자체가 공개되어 있어 코드 검증 가능. 단 운영 책임 (security patch, version 업데이트) 은 고객 부담</li>
+<li><strong>on-prem 서비스</strong> — 고객 인프라 안에 설치 (망분리 IDC 가능)</li>
+<li><strong>TypeScript 기반</strong> — Node.js 런타임 필요. on-prem 환경에 Node.js 운영 부담 추가</li>
+<li><strong>API user 와 페어링</strong> — Console 에서 Signer role 의 API user 생성 → Admin Quorum 승인 → pairing token 으로 Agent 와 페어링</li>
+</ul>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Getting Started with Fireblocks Key Link)</span>
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">Risk-KL02 — Agent 운영 부담</div>
+<p style="margin-bottom:0">
+오픈소스 = 고객의 운영 부담 + version 호환성 책임이 고객. Fireblocks 의 minimum-version 강제 / security patch 일정이 공식 문서에 미명세. 은행은 자체적으로 Agent version 추적 / patch 적용 정책을 수립해야 한다 — 저자 권장. <a href="risks-open-questions.html">Risk-KL02</a> 참조.
+</p>
+</div>
+
+<h2>2.4 Customer Server — 비즈니스 로직 계층</h2>
+<blockquote>
+"Customer Server: Developed and hosted by the customer. Receives messages to sign from the Fireblocks Agent, signs the messages via the customer's HSM, and relays them back to Fireblocks. The customer server can have any custom logic (e.g., custom on-prem policy, transaction validation, etc.) to approve or reject transaction signing requests."
+</blockquote>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Fireblocks Key Link Overview)</span>
+</p>
+
+<h3>2.4.1 책임</h3>
+<ul>
+<li>Agent 로부터 메시지 수신</li>
+<li>HSM 에 서명 요청 (online: 직접 PKCS#11 / vendor SDK / cold: HSM Adaptor 경유)</li>
+<li>서명 결과를 Agent 로 반환</li>
+<li><strong>(선택) custom logic</strong>: 자체 transaction validation, on-prem policy 적용, 승인/거절 결정</li>
+</ul>
+
+<h3>2.4.2 운영 특성</h3>
+<ul>
+<li>고객이 직접 개발 / 호스팅</li>
+<li>Customer Server 가 down → 모든 서명 중단 (<strong>Risk-KL01: Single Point of Failure</strong>)</li>
+<li>HSM 과의 통신 protocol 은 고객 결정 (PKCS#11, vendor SDK, REST API 등)</li>
+<li>Custom policy 가 Fireblocks Policy rule 과 별개로 작동 — 이중 정책 관리 가능 / 부담</li>
+</ul>
+
+<div class="callout callout-warn">
+<div class="callout-title">Risk-KL01 — Customer Server SPOF</div>
+<p style="margin-bottom:0">
+Customer Server 가 단일 장애점. Fireblocks 공식 문서에 HA / failover 권장이 명시되지 않음. 은행은 자체적으로 active-active 또는 active-passive HA 구성 + 모니터링 권장 — 저자 추정. <a href="risks-open-questions.html">Risk-KL01</a> 참조.
+</p>
+</div>
+
+<h2>2.5 HSM Component — 실제 키 보관</h2>
+<blockquote>
+"HSM Component: The actual HSM implementation. Can be on-prem, cloud-based, hot or cold HSM, or a different Key Management System."
+</blockquote>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Fireblocks Key Link Overview)</span>
+</p>
+
+<h3>2.5.1 지원되는 HSM 종류</h3>
+<ul>
+<li><strong>On-prem HSM</strong> — 망분리 IDC 안 (KR 은행 권장)</li>
+<li><strong>Cloud HSM</strong> — AWS CloudHSM, Azure Dedicated HSM, GCP Cloud HSM</li>
+<li><strong>Hot HSM</strong> — 항상 online, network 연결</li>
+<li><strong>Cold HSM</strong> — air-gapped, USB / SFTP / data diode 경유</li>
+<li><strong>기타 KMS</strong> — "different Key Management System" 명시 (FIPS-compliant 장비면 HSM 이 아니어도 통합 가능)</li>
+</ul>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Fireblocks Key Link Overview · Getting Started with Fireblocks Key Link)</span>
+</p>
+
+<h3>2.5.2 Reference HSM — Thales Luna</h3>
+<p>
+Fireblocks 가 공식 블로그 (2025-09-23) 에서 reference HSM 파트너로 <strong>Thales Luna HSM</strong> 을 명시.
+</p>
+<blockquote>
+"At the heart of this solution is Fireblocks KeyLink, our secure middleware layer that connects the Fireblocks platform to Thales Luna Hardware Security Modules (HSMs)."
+</blockquote>
+<ul>
+<li><strong>FIPS 140-3 Level 3 + Common Criteria 인증</strong> — 금융권 / 공공기관 표준</li>
+<li><strong>PQC (post-quantum cryptography) 대응</strong> — 양자컴퓨터 시대 대비 알고리즘 지원</li>
+<li><strong>"crypto agility"</strong> — 알고리즘 교체 유연성</li>
+<li>"Institutions maintain full key ownership" — 키 share 0 invariant 의 vendor 강조</li>
+</ul>
+<p>
+<span class="src">(출처: Fireblocks 공식 블로그 — Enterprise Digital Asset Security with Fireblocks and Thales, 2025-09-23 by Adam Levine)</span>
+</p>
+
+<div class="callout">
+<div class="callout-title">왜 Thales Luna 가 reference 인가</div>
+<p style="margin-bottom:0">
+공식 블로그에서 Fireblocks 가 명시한 점:
+</p>
+<ul style="margin-bottom:0">
+<li>금융권 (HKMA · HKSFC · JFSA) 의 인증 표준 충족</li>
+<li>Crypto agility — 새 알고리즘 도입 시 HSM 교체 없이 펌웨어 업데이트 가능</li>
+<li>PQC readiness — NIST 표준 후보 알고리즘 대응 가능</li>
+<li>Air-gapped workflow 지원 (USB · SFTP · data diodes)</li>
+</ul>
+</div>
+
+<h2>2.6 HSM Adaptor (선택) — Cold HSM 통신 매개</h2>
+<blockquote>
+"HSM Adaptor: An optional separate component that can, for example, communicate with an offline (cold) HSM. An online HSM setup can be part of the customer server code or a separate component."
+</blockquote>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Fireblocks Key Link Overview)</span>
+</p>
+
+<h3>2.6.1 언제 필요한가</h3>
+<ul>
+<li><strong>Cold HSM 운영 시</strong> — Customer Server 와 HSM 이 직접 네트워크로 연결되지 않을 때</li>
+<li><strong>Air-gapped 환경</strong> — USB / SFTP / data diodes 경유 transport 필요</li>
+<li><strong>물리적 격리 정책</strong> — HSM 이 별도 보안 구역 (vault, safe room) 안에 위치</li>
+</ul>
+
+<h3>2.6.2 Online HSM 일 때</h3>
+<ul>
+<li>Customer Server 가 직접 HSM 과 통신 (PKCS#11 / vendor SDK)</li>
+<li>HSM Adaptor 불필요 — 공식 문서가 "An online HSM setup can be part of the customer server code" 명시</li>
+</ul>
+
+<div class="callout callout-warn">
+<div class="callout-title">Risk-KL05 — Cold HSM latency</div>
+<p style="margin-bottom:0">
+HSM Adaptor 가 cold (offline) HSM 과의 통신 매개. Cold HSM 의 정확한 signing latency / batching 패턴이 공식 문서에 미명세. Air-gap transport (USB / SFTP / data diodes) 까지는 vendor 블로그에서 부분 확인되었지만, latency 수치는 여전히 미공개 — <a href="risks-open-questions.html">Risk-KL05</a> 참조.
+</p>
+</div>
+
+<h2>2.7 통신 흐름 — 전체 컴포넌트 chain</h2>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant FB as ☁️ Fireblocks Cloud
+  participant Agent as 🔄 Fireblocks Agent
+  participant CSrv as ⚙️ Customer Server
+  participant Adaptor as 🔌 HSM Adaptor (선택)
+  participant HSM as 🔒 HSM
+
+  Note over FB: 거래 생성<br/>Policy rule 적용
+  FB->>Agent: 서명 요청 (HTTPS)
+  Agent->>CSrv: 메시지 중계 (local API)
+
+  alt Online HSM
+    CSrv->>HSM: 서명 요청 (PKCS#11 / SDK)
+    HSM-->>CSrv: 서명 결과
+  else Cold HSM (Air-gapped)
+    CSrv->>Adaptor: 서명 요청 (USB · SFTP)
+    Adaptor->>HSM: air-gap transport
+    HSM-->>Adaptor: 서명 결과
+    Adaptor-->>CSrv: 결과 반환
+  end
+
+  CSrv-->>Agent: 서명 결과
+  Agent-->>FB: 서명 반환 (HTTPS)
+  Note over FB: 거래 브로드캐스트
+</pre>
+</div>
+<p class="diagram-caption">
+서명 요청은 Fireblocks Cloud → Agent → Customer Server → (Adaptor) → HSM 순서로 흐른다.
+Online HSM 은 직접 통신, Cold HSM 은 HSM Adaptor 경유 air-gap transport (USB · SFTP · data diodes).
+서명 결과는 역방향으로 반환.
+</p>
+
+<h2>2.8 은행 환경 권장 토폴로지 (저자 추정)</h2>
+<p>
+KR 은행이 망분리 IDC 안에 Key Link 를 배치할 때의 권장 토폴로지.
+</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  subgraph fb["☁️ Fireblocks SaaS (외부)"]
+    FBcloud["Fireblocks Cloud<br/>(서비스망 외부)"]
+  end
+
+  subgraph idc["🏢 KR 은행 망분리 IDC"]
+    direction TB
+
+    subgraph dmz["서비스망 (DMZ)"]
+      Agent1["🔄 Agent #1 (active)"]
+      Agent2["🔄 Agent #2 (standby)"]
+    end
+
+    subgraph internal["내부망 (망분리 안쪽)"]
+      CSrv1["⚙️ Customer Server #1 (active)"]
+      CSrv2["⚙️ Customer Server #2 (standby)"]
+      Adaptor["🔌 HSM Adaptor<br/>(cold 운영 시)"]
+    end
+
+    subgraph vault["🔐 보안 구역 (vault room)"]
+      HotHSM["🔒 Hot HSM<br/>Thales Luna<br/>online"]
+      ColdHSM["🔒❄ Cold HSM<br/>Thales Luna<br/>air-gapped"]
+    end
+  end
+
+  FBcloud <-->|HTTPS outbound| Agent1
+  FBcloud -.fallback.-> Agent2
+  Agent1 <--> CSrv1
+  Agent2 <--> CSrv2
+  CSrv1 <-->|PKCS#11| HotHSM
+  CSrv1 <--> Adaptor
+  Adaptor <-->|USB · SFTP| ColdHSM
+
+  classDef cloud fill:#dbeafe,stroke:#2563eb
+  classDef good fill:#dcfce7,stroke:#16a34a
+  classDef wait fill:#fef3c7,stroke:#d97706
+  classDef special fill:#e0e7ff,stroke:#6366f1
+
+  class FBcloud cloud
+  class Agent1,Agent2 good
+  class CSrv1,CSrv2 good
+  class HotHSM special
+  class ColdHSM wait
+  class Adaptor wait
+</pre>
+</div>
+<p class="diagram-caption">
+은행 망분리 IDC 안의 권장 배치 (저자 추정). 파랑 = Fireblocks SaaS / 초록 = HA 구성된 Agent · Customer Server / 보라 = Hot HSM (online) / 노랑 = Cold HSM + Adaptor (air-gapped).
+Agent 는 서비스망 (DMZ) 에 배치하여 Fireblocks Cloud 와 outbound HTTPS 통신. Customer Server 와 HSM 은 내부망 + 보안 구역에 격리.
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">은행 결정 사항 (5)</div>
+<ol style="margin-bottom:0">
+<li><strong>Agent 위치</strong> — DMZ vs 내부망. 망분리 정책 (전자금융감독규정 15조) 의 해석 필요</li>
+<li><strong>Customer Server HA</strong> — active-active vs active-passive. Risk-KL01 의 SPOF 완화</li>
+<li><strong>HSM 종류</strong> — Thales Luna vs 다른 FIPS HSM. PQC / crypto agility 요구사항 평가</li>
+<li><strong>Hot vs Cold 비율</strong> — 가상자산업감독규정 9조의 콜드월렛 80% 충족 — 단 Cold HSM 의 air-gap 운영 비용 검토</li>
+<li><strong>HSM Adaptor 자체 개발 vs 통합</strong> — vendor 가 제공하는 air-gap transport tool 활용 가능 여부 (Thales 의 경우 별도 솔루션 존재 가능)</li>
+</ol>
+</div>
+
+<h2>2.9 다음 페이지</h2>
+<p>
+Key 등록 절차 (Validation Key, Signing Key) 와 PoO (Proof of Ownership) 의 2 가지 방법은
+<a href="key-registration-poo.html">3. Key 등록 + PoO</a> 에서 다룬다.
+</p>
+
+<p class="back-top"><a href="#components">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

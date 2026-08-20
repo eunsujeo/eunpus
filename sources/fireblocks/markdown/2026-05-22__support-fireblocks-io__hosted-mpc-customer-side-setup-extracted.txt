@@ -1,0 +1,112 @@
+26. 5. 18. 오후 3:36                                               Hosted MPC Customer-Side Setup – Fireblocks Help Center
+
+
+                     Don't see what you're looking for? Log in for the full Help Center experience
+
+                                                                          Fireblocks Help Center Search the Help Center /
+
+
+
+
+        Hosted MPC Customer-Side Setup
+        Updated 1 year ago
+
+
+        Deployment Requirements
+        Working with the Hosted MPC model requires you to deploy at least three Co-Signers in
+        your environment. You must deploy all the Co-Signers on SGX-enabled machines, in a cloud
+        service provider with compatible servers, or on-premises. Deploying the Co-Signers in
+        different locations to gain business continuity is possible. You can learn more about SGX
+        Co-Signers here.
+
+
+
+        High Availability in Hosted MPC
+        In the Hosted MPC model, you are responsible for deploying a configuration that provides
+        business continuity and mitigates failures. Fireblocks recommends deploying the Co-
+        Signers across different data centers, or Azure Availability Zones, should one of them incur
+        a failure. You should also configure the Co-Signers to work in high availability mode, as
+        explained in the Configuring multiple API Co-Signers in high availability mode article.
+        The following diagram illustrates a typical High Availability “Hot Signing” setup across two
+        Availability Zones (A & B):
+
+
+
+
+https://support.fireblocks.io/hc/en-us/articles/12901968207516-Hosted-MPC-Customer-Side-Setup                               1/4
+26. 5. 18. 오후 3:36                                               Hosted MPC Customer-Side Setup – Fireblocks Help Center
+
+
+                     Don't see what you're looking for? Log in for the full Help Center experience
+
+                                                                          Fireblocks Help Center                           /
+
+
+
+
+        As shown above, all your Co-Signers connect to Fireblocks and are the only ones
+        participating in the MPC signing process. Our Customer Support staff configures the Co-
+        Signers during the workspace creation.
+
+
+
+        Cold Signing support in Hosted MPC
+        You can configure a Hosted MPC setup for Cold Signing using an offline signing device
+        instead of the Primary Co-Signer. The following diagram illustrates a typical High
+        Availability Cold Signing setup across two Availability Zones (A & B).
+        To learn more about Cold Signing, see the article about Fireblocks Cold Wallet.
+
+
+
+
+https://support.fireblocks.io/hc/en-us/articles/12901968207516-Hosted-MPC-Customer-Side-Setup                                  2/4
+26. 5. 18. 오후 3:36                                               Hosted MPC Customer-Side Setup – Fireblocks Help Center
+
+
+                     Don't see what you're looking for? Log in for the full Help Center experience
+
+                                                                          Fireblocks Help Center                           /
+
+
+
+
+        Our Customer Support staff must set up a new Hosted MPC Workspace for Cold Signing,
+        similar to a Hosted MPC Hot Signing setup. You cannot use existing Cold Signing
+        Workspaces for this purpose.
+
+
+
+                                                            Was this article helpful?
+                                                                     Yes             No
+
+        ON THIS PAGE
+              Deployment Requirements
+              High Availability in Hosted MPC
+              Cold Signing support in Hosted MPC
+
+
+
+             Related Articles
+                     Hosted MPC Overview
+                     Hosted MPC Workspace Configuration
+
+
+
+
+https://support.fireblocks.io/hc/en-us/articles/12901968207516-Hosted-MPC-Customer-Side-Setup                                  3/4
+26. 5. 18. 오후 3:36                                               Hosted MPC Customer-Side Setup – Fireblocks Help Center
+
+
+                     Don't see what you're looking for? Log in for the full Help Center experience
+      fireblocks.com          Status       API Docs         Console         info@fireblocks.com                            /
+                                                                          Fireblocks Help Center
+
+
+      Fireblocks © 2026. All Rights Reserved. NMLS Registration Number: 2066055
+      Privacy Policy
+
+
+
+
+https://support.fireblocks.io/hc/en-us/articles/12901968207516-Hosted-MPC-Customer-Side-Setup                                  4/4
+

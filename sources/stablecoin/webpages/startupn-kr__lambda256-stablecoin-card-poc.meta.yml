@@ -1,0 +1,21 @@
+url: https://www.startupn.kr/news/articleView.html?idxno=59028
+official_source: https://www.lambda256.io/news/press-release/lambda256-credit-card-industry-stablecoin-poc-ko  # 람다256 공식 발표 (2026-08-20 확인, HTTP 200)
+fetched_at: 2026-08-20
+source_type: webpage (보도자료 기반 기사 — 2차)
+domain: stablecoin / card-payment-poc / korea
+tier: 2
+crawl_status: fetched (2026-08-20, Mode C)
+markdown: sources/stablecoin/markdown/2026-08-20__startupn-kr__lambda256-stablecoin-card-poc.md
+title: "람다256, 여신금융협회·9개 카드사와 스테이블코인 결제·정산 PoC 완료"
+key_facts: |
+  - 2026-07-24 발표. 람다256 (두나무 자회사) + 여신금융협회 + 9개 카드사 (사명 미공개) 공동 PoC 완료
+  - 검증 범위: 스테이블코인 발행·분배 → 결제 승인·취소·환불 → 정산 → 정책지원금·카드포인트 활용 → 온체인 AML·FDS 까지 카드 결제 전 과정
+  - 사용 플랫폼: SCOPE (디지털자산 오케스트레이션) + CLAIR (온체인 컴플라이언스)
+  - 월렛 구조·키 관리 상세는 기사에 없음
+  - 상용화는 법·제도 정비 + 금융당국 정책 + 카드업계 전략에 따라 결정. 람다256 은 법제화 과정 기술 지원 지속
+context: |
+  컨퍼런스 세션 "스테이블코인 PoC 사례를 통해 보는 스테이블코인 결제 월렛의 보안" (람다256) 의
+  배경 자료로 수집 (2026-08-20). 세션 본편은 이 PoC 의 월렛 보안 관점 상세를 다룰 것으로 예상.
+related_news:
+  - https://www.news1.kr/finance/blockchain-fintech/6237685
+promote_condition: "커스터디얼 결제 월렛 + 온체인 AML/FDS 연계 설계 시 (blockchain-manager·컴플라이언스 설계와 동일 문제 공간). 발표 자료 확보 시 우선 검토"

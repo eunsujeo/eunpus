@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>2. 입금 주소 생성 — createDepositAddress</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</a></p>
+<div class="progress">
+<a href="00-cast.html">0</a><a href="01-create-account.html">1</a><span class="cur">2</span><a href="03-address-of.html">3</a><a href="04-detect-confirm.html">4</a><a href="05-deposit.html">5</a><a href="06-withdrawal.html">6</a><a href="07-estimate-fee.html">7</a><a href="08-balance-history.html">8</a><a href="09-switch-extend.html">9</a><a href="10-ramp-swap.html">10</a>
+</div>
+<h1>입금 주소 생성 — createDepositAddress</h1>
+<p class="subtitle">(account, asset)당 한 번 — 자산 지갑을 활성화해 단일 주소를 얻는다. EVM 주소는 memoTag 가 null</p>
+
+<pre><code>createDepositAddress(accountId, asset) → Address { value, memoTag? }
+// EVM: memoTag=null · (account,asset)당 1개 · 활성화 1회(재시도 멱등)</code></pre>
+
+<h2>▸ 자산 지갑 활성화 — (account, asset)당 한 번</h2>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    box rgb(219,234,254) Service 백엔드 — 어댑터 포함·한 프로세스
+    participant BE as 유스케이스
+    participant FBI as 블록체인 매니저 어댑터·포트
+    end
+    participant BDB as 백엔드 DB
+    participant FB as Fireblocks SaaS · 벤더
+
+    BE->>FBI: createDepositAddress(accountId, asset)
+    FBI->>BDB: (accountId, asset) 조회
+    alt 있으면 — 재사용
+        BDB-->>FBI: 기존 주소
+        FBI-->>BE: 주소 (0xAb3…)
+    else 없으면
+        FBI->>FB: 벤더에 있는지 확인 — vault 자산 주소 조회 (addresses_paginated)
+        alt 벤더에 있음 — 활성화됐는데 저장 못 한 경우
+            FB-->>FBI: 기존 주소
+        else 벤더에도 없음 — 신규
+            FBI->>FB: 자산 지갑 활성화 createVaultAccountAsset · Idempotency-Key=f(accountId,asset)
+            FB-->>FBI: 활성화 응답 · address 0xAb3… · memoTag=null
+        end
+        FBI->>BDB: 주소 저장 (accountId+asset ↔ 0xAb3…) · account·asset UNIQUE
+        FBI-->>BE: 주소 (0xAb3…)
+    end
+    Note over FBI,FB: EVM = account·자산당 주소 1개 · 활성화 1회. generateNewAddress 는 UTXO·Tag 전용의 다른 작업. 감시·귀속은 벤더 몫
+</pre></div>
+<div class="callout">
+<div class="callout-title">주소의 두 규칙 (결정)</div>
+<ul style="margin:0">
+<li><b>추가 주소는 vault 추가로</b>: EVM 은 (vault, 자산)당 주소가 <b>하나뿐</b>이라, 같은 자산의 주소가 더 필요하면 <b>vault account 를 더 만든다</b>.</li>
+<li><b>감시 등록까지가 발급</b>: 주소는 감시(귀속) 등록까지 끝나야 "존재"한다 — <b>등록 안 된 주소로 온 입금은 감지하지 못하며, 입금 사고의 최다 유형</b>이다. 이 감시·귀속은 벤더 몫(vault 가 곧 감시 범위, 입금 감지 4장).</li>
+</ul>
+</div>
+
+<p class="foot">더 깊이: 발급·등록·놓친 입금 방어 — <a href="../wallet-service-components/scenario-provisioning.html">가이드 9장</a>.</p>
+
+<div class="pager">
+<a href="01-create-account.html">← 1. 계정(vault)</a>
+<a href="index.html">목차</a>
+<a href="03-address-of.html">3. 입금 주소 조회 →</a>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/walkthrough-diagram.js"></script>
+</body>
+</html>

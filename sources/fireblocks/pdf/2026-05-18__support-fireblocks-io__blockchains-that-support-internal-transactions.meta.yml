@@ -1,0 +1,11 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/24909157974940-Blockchains-that-support-internal-transactions
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 4
+language: en
+category: blockchains-core
+notes: |
+  Internal transactions = native asset transfers executed by smart contracts during tx execution (not standalone tx, no separate hash).
+  Fireblocks notifies on direct native transfers (all EVM) and internal transfers (subset).
+  Lists ~35 mainnets + ~24 testnets with internal-tx notification support.
+  "Implementation choice, not chain limitation."

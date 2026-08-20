@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>16. Risks &amp; Anti-patterns — NodeWallet 은행 도입</title>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. 컴포넌트 토폴로지</a></li>
+<li><a href="trust-boundaries.html">2. 신뢰 경계</a></li>
+<li><a href="db-split.html">3. 4-DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. DB Schema</h3>
+<ul>
+<li><a href="tables-approver.html">4. approverdb</a></li>
+<li><a href="tables-audit.html">5. auditdb</a></li>
+<li><a href="tables-ledger-chain.html">6. ledgerdb · chaindb</a></li>
+<li><a href="tables-tenant-wallet.html">7. 테넌트 · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Cryptography</h3>
+<ul><li><a href="keys-hsm-tee.html">8. HSM · SGX · 키 수명주기</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Policy &amp; Decisions</h3>
+<ul>
+<li><a href="policy-rules.html">9. 10 Policy Rules</a></li>
+<li><a href="sm-decision.html">10. 결정 라이프사이클</a></li>
+<li><a href="sm-signing.html">11. 3-key 서명 흐름</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Transactions &amp; Audit</h3>
+<ul>
+<li><a href="sm-deposit-withdrawal.html">12. 입금 · 출금 흐름</a></li>
+<li><a href="audit-2layer.html">13. 2-Layer 감사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Compliance</h3>
+<ul><li><a href="compliance-regulations.html">14. 5 규제 + 트래블룰</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Discipline</h3>
+<ul>
+<li><a href="storage-discipline.html">15. Storage Discipline</a></li>
+<li><a class="active" href="risks-anti-patterns.html">16. Risks &amp; Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="risks-anti-patterns">
+<h2>16. Risks &amp; Anti-patterns</h2>
+<span class="section-subtitle">은행 운영 중 실제로 일어나는 가용성·보안·정합성 위험 + 흔히 빠지는 함정</span>
+
+<div class="callout">
+<div class="callout-title">출처</div>
+<p>vendor docs 의 명시적 한계 (<code>compliance__architecture.md</code> 한계와 비책임 · <code>security__ops__audit-logs.md</code> Layer 2 가 하지 않는 것), <code>pm-db-design-notes.md</code> 섹션 10 (silent 영역), <code>unknowns.md</code> (residual gaps).</p>
+</div>
+
+<h3>Risks Register (운영 중 만나는 위험)</h3>
+
+<h3>R1. 승인자 장애 = 출금 정지 (의도된 안전 기본값)</h3>
+<p>fail-closed 원칙상 승인자 장애 시 모든 출금이 Deny 처리. <em>가용성 vs 안전 trade-off 의 안전 쪽</em>. 영향:</p>
+<ul>
+<li>출금 SLA 미달 → 고객 클레임</li>
+<li>긴급 출금이 필요한 운영 시나리오 대응 불가</li>
+</ul>
+<p><strong>완화</strong>: 승인자 HA (active-passive 또는 active-active + 정족수 합의). 다만 <em>fail-open 으로 가지 않도록</em> 설계 — 두 인스턴스가 disagree 면 fail-closed.</p>
+
+<h3>R2. Coordinator 장애 = end-to-end 정지</h3>
+<p>Coordinator 는 evaluation context 사전계산 + 오케스트레이션 주체. 장애 시 출금 / sweep / 폴링 모두 정지. load-bearing component.</p>
+<p><strong>완화</strong>: Coordinator HA + 동일 데이터를 가리키는 standby (DB 는 shared, application state 는 distributed lock 또는 leader election).</p>
+
+<h3>R3. HSM 단일 펌웨어 취약점</h3>
+<p>단일 HSM + 3 파티션 구성에서 HSM 의 펌웨어 취약점 (예: vendor 의 CVE) 이 3 키 모두에 동시 영향. <em>monoculture risk</em>.</p>
+<p><strong>완화</strong>: 다중 HSM + vendor diversity (개시·승인은 Thales Luna, 실행은 Utimaco). NodeInfra 권장.</p>
+
+<h3>R4. SGX 마이크로코드 취약점</h3>
+<p>Intel SGX 의 알려진 취약점 (Plundervolt · LVI · ÆPIC Leak 등) 으로 sealed blob 또는 enclave 메모리에 영향. NodeInfra 의 DCAP 검증은 TCB 수준을 검증하지만 alleged side-channel 은 새로 발견될 수 있다.</p>
+<p><strong>완화</strong>: TCB 최신 유지 + Intel SA 이메일 모니터링 + 영향 시 enclave 이미지 / sealed blob 재provisioning.</p>
+
+<h3>R5. MRENCLAVE rotation 의 sealed blob 손실</h3>
+<p>MRENCLAVE 가 바뀌면 이전 sealed blob 은 새 이미지로 언실 불가. 신중하지 않은 image rotation 은 마스터 키 영구 손실 가능.</p>
+<p><strong>완화</strong>: rotation 시 반드시 HSM 에서 <em>같은 마스터 키를 새 enclave 의 RSA 공개키로 다시 wrap</em> (re-provisioning) → 새 이미지가 동일 sealed blob 을 생성. 절차를 매뉴얼화 + dry-run 환경에서 검증.</p>
+
+<h3>R6. 24h Held TTL 의 영업적 사각</h3>
+<p>Held 가 24h 절대 시간 후 자동 Deny. 영업일 기준이 아님. 영업종료 직전 Held → 다음 영업일 같은 시간까지 폴링 → Deny. 운영팀이 영업시간 외 monitoring 의무.</p>
+<p><strong>완화</strong>: alerting 으로 Held 미해소 14h+ 알람 + 영업종료 직전 Held 의 별도 추적.</p>
+
+<h3>R7. 가스대납 잔액 고갈</h3>
+<p>gas-payer wallet 의 SOL 잔액이 임계 미만이면 모든 체인 트랜잭션 실패 → 출금 정지. 사실상 R1 과 같은 결과.</p>
+<p><strong>완화</strong>: SDK / 외부 모니터 의 폴링 + 자동 충전 logic. 충전 자체도 3-key 의식이라 무한 dependency 회피하려면 <em>충전용 별도 권한</em> 분리.</p>
+
+<h3>R8. condition_set (VASP whitelist) 부정확</h3>
+<p>VASP 식별 잘못된 주소가 화이트리스트에 들어가면 그 주소로의 출금이 통과 → 트래블룰 우회 + AML risk. 큐레이션 source 품질에 의존.</p>
+<p><strong>완화</strong>: 다수 source 교차검증 + 큐레이션 review 절차 + condition_set 변경의 외부 의식.</p>
+
+<h3>R9. 정합성 체크 cadence 가 60초 권장이라 실시간이 아님</h3>
+<p>가짜 ledger entry 가 삽입되어 60초 안에 정합성 alert 가 발화하기까지 <em>최대 60초 window</em> 가 있다. 그 사이에 후속 출금이 일어나면 가짜 잔액 기반 결정 가능.</p>
+<p><strong>완화</strong>: cadence 단축 (10-30초 또는 trigger-based 실시간) + ledger 의 read model 에 <em>증명 가능한</em> 잔액 (account_balance + last_action_ref hash 등) 을 두어 출금 시 cross-verify.</p>
+
+<h3>R10. DCAP 망분리 issue</h3>
+<p>망분리 환경에서 Intel PCS 접근 어려움 → DCAP collateral refresh 가 정체. stale collateral 로 검증 시 false reject / false accept risk.</p>
+<p><strong>완화</strong>: internal mirror 로 collateral 캐시 + refresh 절차 + emergency procedure.</p>
+
+<h3>R11. 망분리 환경에서 vendor 패치 적용 지연</h3>
+<p>NodeInfra 의 patch / security release 가 망분리 내부망에 들어가는 데 시간 소요. CVE 발견 시 적용 지연.</p>
+<p><strong>완화</strong>: vendor 와 sandbox / pre-prod 환경 통합 + 패치 distribution 절차 자동화 + emergency procedure.</p>
+
+<h3>R12. 4 DB cross-DB 트랜잭션 부재</h3>
+<p>4 DB 가 separate instance 면 application 의 outbox / saga 패턴이 필요. partial failure (예: approverdb commit 됐는데 auditdb 실패) 의 reconcile 부담.</p>
+<p><strong>완화</strong>: outbox pattern + idempotent writer + 정합성 체크가 partial 검출.</p>
+
+<h3>R13. Solana 체인 사고 (halt / reorg / fork)</h3>
+<p>Solana 가 halt 또는 reorg 되면:</p>
+<ul>
+<li>halt: 출금 정지 + 입금 chain_events 정체</li>
+<li>reorg: confirmed 단계의 트랜잭션이 사라질 수 있다 (finalized 까지 기다리면 회피)</li>
+</ul>
+<p><strong>완화</strong>: finality = finalized 사용 + halt 대응 매뉴얼 + 다중 RPC + 자체 노드 운영.</p>
+
+<h3>R14. 일시적 AUTO 변경의 race</h3>
+<p>외부 의식 후 <code>approval_tier</code> 를 AUTO 로 → 폴링 통과 → 원복 패턴에서, A 운영자가 AUTO 변경 직후 B 운영자가 별개의 거액 출금을 시도하면 B 도 통과한다. 의식 운영의 행동 약속에 의존.</p>
+<p><strong>완화</strong>: 변경 권한 분리 + 변경 후 X 초 안에 자동 원복 워치독 + 그 시간 동안 새로 들어온 요청을 추가 감시.</p>
+
+<h3>R15. expression 룰의 DSL 한계</h3>
+<p>vendor docs 에 expression rule 페이지가 404 — DSL spec 의 완전성 / operator 목록 / type coercion 이 미명시. 커스텀 룰이 의도와 다르게 evaluate 되는 silent bug 가능.</p>
+<p><strong>완화</strong>: 모든 expression 룰의 test 케이스 + dry-run 환경 검증 + NodeInfra 와 spec 확인.</p>
+
+<h3>R16. SDK 의 33 ErrorCode mapping 변화</h3>
+<p>NodeInfra SDK version up 시 ErrorCode 추가/변경 가능. 자행 backend 의 error handling 이 stale 하면 unrecognized error 발생.</p>
+<p><strong>완화</strong>: SDK 버전 업그레이드 시 error code diff 검토 + default handler.</p>
+
+<h3>R17. 단일 jurisdiction · 단일 chain scope</h3>
+<p>NodeWallet 은 한국 + Solana scope. 향후 다른 jurisdiction (EU MiCA · 미국 BSA) 또는 다른 chain (EVM / Bitcoin) 이 필요하면 NodeWallet 자체를 다시 설계해야 한다.</p>
+<p><strong>완화</strong>: 향후 chain / jurisdiction 확장 가능성을 PM roadmap 에 반영. 자행 application 단에 abstraction 두고 NodeWallet 을 plug-in 으로.</p>
+
+<hr/>
+
+<h3>Anti-Patterns (실제로 자주 만나는 함정)</h3>
+
+<h3>AP1. policy_change_log 무시한 정책 직접 변경</h3>
+<p><strong>안티</strong>: DBA 가 superuser 권한으로 <code>policy_rules</code> 를 직접 UPDATE — trigger 우회.<br/>
+<strong>결과</strong>: 정책 변경 흔적 손실 → 외부 의식 evidence 와 disjoint → audit 무결성 무너짐.<br/>
+<strong>옳은 방법</strong>: 모든 변경은 admin API / 콘솔 경유. DB 권한 분리.</p>
+
+<h3>AP2. set-once 컬럼을 NULL 로 reset</h3>
+<p><strong>안티</strong>: held_withdrawals 의 auth_approver_sig 를 NULL 로 UPDATE 후 다시 INSERT.<br/>
+<strong>결과</strong>: set-once 보증 무너짐 → sticky decision 보증 무너짐.<br/>
+<strong>옳은 방법</strong>: set-once trigger 가 NULL → 값 1회만 허용하도록 정의 (NULL 로 reset 도 거부).</p>
+
+<h3>AP3. 결정과 서명을 한 BEGIN/COMMIT 에 묶기</h3>
+<p><strong>안티</strong>: approverdb 와 auditdb 를 같은 schema 에 두고 한 트랜잭션에서 INSERT.<br/>
+<strong>결과</strong>: cross-DB tamper-evidence 의 의미가 사라진다 (한 침해로 두 영역 동시 변조 가능).<br/>
+<strong>옳은 방법</strong>: 4 DB 를 separate instance 또는 최소 separate user / 권한 분리. outbox 패턴으로 cross-DB INSERT.</p>
+
+<h3>AP4. SDK 우회한 직접 HTTP 호출</h3>
+<p><strong>안티</strong>: Java SDK 가 처리하는 timestamp / SHA-256 / Ed25519 / reference_id 멱등성을 backend 에서 직접 구현해 HTTP API 호출.<br/>
+<strong>결과</strong>: 정규 메시지 형식 / replay 보호 / 멱등성 보증이 깨질 수 있다.<br/>
+<strong>옳은 방법</strong>: SDK 사용. 다른 언어가 필요하면 NodeInfra 와 협의하여 SDK 추가 또는 HTTP API spec 합의.</p>
+
+<h3>AP5. omnibus 다중 생성 시도</h3>
+<p><strong>안티</strong>: DBA 가 wallets 표에 wallet_type='omnibus' 인 두 번째 row INSERT.<br/>
+<strong>결과</strong>: 단일 omnibus 회계 모델 무너짐. 정합성 체크 fail.<br/>
+<strong>옳은 방법</strong>: <code>UNIQUE (tenant_id, wallet_type) WHERE wallet_type IN ('omnibus', 'gas_payer')</code> 제약 + application 단 검증.</p>
+
+<h3>AP6. SoftHSM2 로 production 배포</h3>
+<p><strong>안티</strong>: pilot / POC 환경의 SoftHSM2 설정을 그대로 production 으로.<br/>
+<strong>결과</strong>: SDK 가 mode=production 차단 — 하지만 mode 가 development 로 잘못 설정되면 통과.<br/>
+<strong>옳은 방법</strong>: production 배포 자동 검증 — mode=production + HSM 종류 / 모델 화이트리스트 enforce.</p>
+
+<h3>AP7. enclave 호스트를 일반 OS 처럼 운영</h3>
+<p><strong>안티</strong>: enclave 호스트의 OS 가 일반 backend 서비스와 같은 patch 주기 / 운영자 권한.<br/>
+<strong>결과</strong>: 비록 EPC 메모리는 보호되지만, side-channel 또는 known SGX 취약점이 발견되면 영향. enclave 외부 IPC / 호스트 fs / 호스트 시간이 영향받음.<br/>
+<strong>옳은 방법</strong>: enclave 호스트는 별도 hardening + 최소 service · 별도 patch cadence.</p>
+
+<h3>AP8. condition_set 을 admin 외 일반 권한자가 수정</h3>
+<p><strong>안티</strong>: VASP 화이트리스트를 admin 권한 분리 없이 일반 운영자도 수정 가능하게.<br/>
+<strong>결과</strong>: 화이트리스트 부주의한 추가 = 트래블룰 우회 게이트.<br/>
+<strong>옳은 방법</strong>: condition_set 변경 권한 분리 + 변경 시 외부 의식 + policy_change_log 모니터링.</p>
+
+<h3>AP9. signing_events 의 CBOR rationale 무시한 reporting</h3>
+<p><strong>안티</strong>: 트래블룰 / AML 보고서를 만들 때 approverdb 의 policy_decisions 만 보고 signing_events 의 CBOR rationale 을 검증하지 않음.<br/>
+<strong>결과</strong>: 한 DB 만 변조된 경우 보고서가 incorrect.<br/>
+<strong>옳은 방법</strong>: 보고서 생성 단계에서 approverdb.policy_decisions 와 auditdb.signing_events.approver_decision_rationale 의 CBOR 일치 검증.</p>
+
+<h3>AP10. backup / restore 가 append-only 보장 무시</h3>
+<p><strong>안티</strong>: 일반 backup 도구로 auditdb 를 backup → 다른 환경에서 restore → trigger 가 빠지거나 다른 user 권한.<br/>
+<strong>결과</strong>: 복원본의 append-only 보증 무너짐. forensic 분석 신뢰 손실.<br/>
+<strong>옳은 방법</strong>: backup / restore 절차에 trigger 와 권한 검증을 자동화 + restore 후 자동 verify.</p>
+
+<h3>AP11. Held 큐 monitoring 부재</h3>
+<p><strong>안티</strong>: 24h TTL 가 알아서 정리하니까 Held 모니터링을 안 함.<br/>
+<strong>결과</strong>: 24h 후 silent Deny 가 누적되어 고객 클레임 증가.<br/>
+<strong>옳은 방법</strong>: Held 큐 age 별 dashboard + 14h / 20h 알람 + 23h 운영자 escalation.</p>
+
+<h3>AP12. global_halt 활성/해제의 audit 부재</h3>
+<p><strong>안티</strong>: 사고 대응 중 global_halt 를 활성/해제하는 절차에 audit · 다중 승인 부재.<br/>
+<strong>결과</strong>: 인사이더가 global_halt 을 임의로 해제하여 출금 정지를 우회.<br/>
+<strong>옳은 방법</strong>: global_halt 활성/해제는 별도 의식 + 다수 권한자 + policy_change_log 의 강한 monitoring.</p>
+
+<h3>요약 — 도입 전 체크리스트</h3>
+<ul>
+<li>[ ] 4 DB 의 user 권한 / role 분리</li>
+<li>[ ] prevent_mutation / set-once trigger 의 release 테스트</li>
+<li>[ ] HSM 모델 + m-of-n 임계값 + vendor diversity</li>
+<li>[ ] enclave 호스트 별도 hardening 매뉴얼</li>
+<li>[ ] MRENCLAVE registry + re-provisioning 절차</li>
+<li>[ ] gas-payer 잔액 모니터링 + 자동 충전</li>
+<li>[ ] VASP 큐레이션 source + import 주기</li>
+<li>[ ] 정합성 체크 cadence + alert routing</li>
+<li>[ ] Held 큐 monitoring + 영업외 escalation</li>
+<li>[ ] global_halt 활성/해제 의식</li>
+<li>[ ] 외부 KYC / 트래블룰 솔루션 통합</li>
+<li>[ ] DR / HA topology (Coordinator · Approver · DB · HSM)</li>
+<li>[ ] auditdb WORM archive 정책</li>
+<li>[ ] Solana finality + multi-RPC + 자체 노드</li>
+<li>[ ] 24h Held TTL 의 영업적 의미 운영팀 공유</li>
+</ul>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="storage-discipline.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">15. Storage Discipline</span></a>
+<span class="page-nav-spacer"></span>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

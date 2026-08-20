@@ -1,0 +1,19 @@
+url: https://www.etoday.co.kr/news/view/2600883
+official_source: https://www.lambda256.io/news/press-release/lambda256-begins-digital-asset-settlement-off-ramp-and-aml-verification-project-with-kbank-and-ksnet-ko  # 람다256 공식 발표 (2026-08-20 확인, HTTP 200)
+fetched_at: 2026-08-20
+source_type: webpage (보도자료 기반 기사 — 2차)
+domain: stablecoin / offramp-poc / korea
+tier: 2
+crawl_status: fetched (2026-08-20, Mode C)
+markdown: sources/stablecoin/markdown/2026-08-20__etoday-co-kr__lambda256-kbank-ksnet-offramp-poc.md
+title: "람다256, 케이뱅크·케이에스넷과 디지털자산 정산 오프램프·AML 검증 프로젝트 착수"
+key_facts: |
+  - 람다256 + 케이뱅크 + 케이에스넷(KSNET) 3사, 디지털자산 오프램프 PoC 착수. 약 5개월. 토큰 = USDC
+  - 역할: 케이뱅크 = FX 적용·원화 지급·AML/STR 운영 / KSNET = 결제 인프라·가맹점 원화 정산·실물 운영 정책 / 람다256 = SCOPE (온체인 정산) + CLAIR (온체인 컴플라이언스)
+  - 검증 흐름: 결제 시점 FX → 대금 정산 요청 생성 → AML·FDS 검증 → 지급 승인 → 온체인 정산 실행 → 원화 지급 → 거래 모니터링·STR
+  - 운영체계: 기관 간 역할 분담·컴플라이언스·감사 대응·정책 유연성 점검
+  - 지갑·키 관리 상세는 기사에 없음
+context: |
+  세미나 사전지식 보강 (2026-08-20). 람다256 세션 (카드사 PoC) 의 최신 후속 행보 —
+  카드 결제 PoC (온램프 쪽) 와 대칭인 오프램프 검증. Q-2026-08-20-STBL07 관련 배경.
+promote_condition: "오프램프·정산 설계 대조 시 (ramp-settlement-walkthrough 문제 공간)"

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>17. 프로젝트 구조 (모노레포) — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="이 가이드의 2백엔드(Service·Admin)·포트·Fireblocks 어댑터를 Kotlin+Spring Gradle 멀티모듈로 매핑 — domain(포트) 안쪽 핵, 의존성은 안쪽으로만. 매니저는 Fireblocks, 체인은 EVM." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Fireblocks 매니저 (벤더 안)</h3><ul>
+<li><a href="component-multichain.html">2. 체인 차이 흡수 — EVM</a></li>
+<li><a href="component-indexer.html">3. 입금 감지 (webhook)</a></li>
+<li><a href="component-tx-nonce.html">4. 출금 파이프라인</a></li>
+<li><a href="component-signing.html">5. 서명 · co-signer</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 우리 백엔드 (Service·Admin)</h3><ul>
+<li><a href="component-gateway.html">6. API 게이트웨이</a></li>
+<li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
+<li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 시나리오</h3><ul>
+<li><a href="scenario-provisioning.html">9. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">10. 입금</a></li>
+<li><a href="scenario-withdrawal.html">11. 출금</a></li>
+<li><a href="scenario-onofframp.html">12. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 추상화</h3><ul>
+<li><a href="abstraction.html">13. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
+<li><a class="active" href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. 기타</h3><ul>
+<li><a href="wallet-creation-animated.html">18. 지갑 생성 애니메이션</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="project-structure">
+<h2>17. 프로젝트 구조 (모노레포)</h2>
+<span class="section-subtitle">두 백엔드(Service·Admin)·포트·Fireblocks 어댑터를 그대로 디렉터리로 — 의존성은 안쪽(도메인·포트)으로만</span>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처</div>
+<p>여기 담긴 설계·코드는 <strong>저자가 일반적인 지갑 인프라 패턴을 바탕으로 정리한 설계 참고안</strong>(의사코드)이다. 본문에서 "Fireblocks 가 …" 처럼 특정 벤더의 동작을 언급한 부분은 해당 벤더의 공식 문서에서 확인한 사실이고, 그 외는 저자 추정이므로 실제 적용 전 자신의 환경에서 검증이 필요하다. <strong>블록체인 매니저는 Fireblocks 를 채택했고 태우는 체인은 EVM(이더리움·Base)</strong>이므로, 이 구조도 <code>adapters/fireblocks</code> 를 유일한 라이브 어댑터로 두고 자체 구축은 테스트용 가짜(<code>adapters/fake</code>)로만 남긴다.</p>
+</div>
+
+<h3>17.1 왜 모노레포인가</h3>
+
+<p>지금까지의 설계(<a href="abstraction.html">13. 포트</a>·두 백엔드(Service·Admin)·어댑터 교체)를 코드로 옮기면, <strong>경계가 패키지 경계</strong>가 되어야 흐트러지지 않는다. 모노레포<span class="g" data-tip="여러 패키지(앱·라이브러리)를 한 저장소에서 함께 버전·빌드 관리하는 방식. 패키지 간 경계를 명확히 두되 한 번에 빌드·테스트한다">?</span>로 두면 (1) <strong>도메인·포트가 안쪽 핵</strong>으로 고정되고 (2) 어댑터를 <strong>패키지 단위로 넣고 빼며</strong> (3) 한 번에 빌드·테스트·타입체크할 수 있다. 핵심 규칙은 하나 — <strong>의존성은 항상 안쪽(domain)으로만 흐른다</strong>(헥사고날<span class="g" data-tip="포트(인터페이스)를 중심에 두고, 바깥 어댑터가 안쪽으로 의존하게 하는 구조. 클린 아키텍처와 같은 결">?</span> · 클린 아키텍처).</p>
+
+<div class="callout callout-success">
+<div class="callout-title">스택: Kotlin + Spring (JVM) 이 이 조합엔 특히 잘 맞는다</div>
+<p><strong>Fireblocks 가 Java SDK 를 1급으로 제공</strong>하고, EVM 은 web3j 로 붙으며(자체 구축 전환이나 보조 조회에 대비한 준비물), 두 백엔드(Service·Admin)와 webhook 수신기는 Spring Boot 로 자연스럽게 나뉜다. 포트도 Kotlin 에 잘 맞는다: <code>interface</code> 포트, <code>chainSpecific</code> 은 <code>sealed</code> 로(<code>when</code> 망라), 어댑터 wiring 은 Spring DI. 지금은 매니저가 Fireblocks 라 서명·nonce·전파·인덱싱이 대부분 벤더 안에서 끝나므로, JVM 쪽 우리 코드는 <strong>포트·두 백엔드·Fireblocks 어댑터·webhook 수신</strong>에 집중된다.</p>
+</div>
+
+<h3>17.2 디렉터리 구조</h3>
+
+<pre><code>custodial-wallet/                # Gradle 멀티모듈 (각 디렉터리 = 서브프로젝트 + build.gradle.kts)
+├─ settings.gradle.kts          # include(":domain", ":backend:*", ":adapters:*", ":apps:*") — * 는 축약 표기 (Gradle 은 와일드카드 미지원 — 실제로는 모듈명을 각각 나열)
+├─ build.gradle.kts             # 공통 플러그인 · Spring Boot BOM
+├─ gradle/libs.versions.toml    # 버전 카탈로그
+│
+├─ domain/                      # 순수 Kotlin (Spring 의존 X) — 모델 + 포트 (안쪽 핵)
+│  └─ src/main/kotlin/…/domain/
+│     ├─ model/                 # Transaction · Account · Address · Amount · TxStatus(SUBMITTED|CONFIRMING|COMPLETED|FAILED)
+│     ├─ port/                  # AccountPort · TransactionPort · (ChainQueryPort — 선택) interface
+│     └─ error/                 # UnsupportedCapabilityException 등
+│
+├─ backend/                     # Spring Boot — 두 백엔드로 물리 분리 (벤더 무관 · 항상 우리 것) → domain
+│  ├─ service/                  #    Service 백엔드 — 고객 런타임 (계정·주소·입금·출금 제출·잔액)
+│  │  ├─ gateway/               # 6  인증 · 멱등 키 · 라우팅 (@RestController · 멱등 store)
+│  │  ├─ directory/             # 9  계정·주소 디렉터리 — 발급 결과 저장 + "계정 id → 계정" 해석 (우리 데이터)
+│  │  ├─ orchestration/         #    요청 큐 · 상태머신 · vault 라우팅
+│  │  ├─ reconciliation/        # 7  온체인 정합성 · 추적 (correlationId · @Scheduled sweep)
+│  │  └─ alerts/                # 8  이벤트 · 알림 팬아웃 (webhook/스트림)
+│  └─ admin/                    #    Admin 백엔드 — 정책·승인·키 운영·동결·rebalance·sweep (권한·감사 경계)
+│
+├─ adapters/                    # 매니저 어댑터 = 포트 구현
+│  ├─ fireblocks/               # 14 Fireblocks Java SDK — Account+Transaction (REST/webhook v2) · 유일한 라이브 구현
+│  ├─ fake/                     #    테스트용 가짜 구현 — 벤더 없이 계약 테스트·백엔드 검증 (자체 구축 자리)
+│  └─ chainquery-alchemy/       #    (선택) ChainQueryPort 만 — Alchemy/The Graph 등 쿼리 프로바이더
+│
+├─ shared/                      # config · logging · idempotency store · crypto util
+│
+└─ apps/                        # Spring Boot 실행 모듈 (@SpringBootApplication · 어댑터 wiring)
+   ├─ service-api/              # Service 서버 — DI 로 fireblocks 어댑터 주입
+   ├─ admin-api/                # Admin 서버 — 정책·운영·sweep
+   └─ webhook-receiver/         # Fireblocks webhook → onChainEvent</code></pre>
+
+<p>여기엔 <strong>자체 구축 엔진(engine/*)이나 체인 프로토콜 모듈(chains/*)이 없다</strong> — 매니저로 Fireblocks 를 채택했으므로 서명·nonce·전파·멀티체인 흡수가 전부 벤더 안에서 끝나기 때문이다. 훗날 자체 구축으로 전환하거나 EVM 을 직접 붙일 때에만 <code>engine/*</code>·<code>chains/evm</code> 을 새 모듈로 추가하면 되고, <strong>도메인 포트와 두 백엔드는 그대로</strong>다(17.5). 지금은 그 자리를 비워 두고, 포트 계약을 벤더 없이 검증하는 <code>adapters/fake</code> 만 둔다.</p>
+
+<h3>17.3 의존성 규칙 — 안쪽으로만</h3>
+
+<p>패키지 경계가 의미 있으려면 <strong>화살표(의존)가 한 방향</strong>이어야 한다. <code>domain</code> 은 누구도 의존하지 않고 모두가 <code>domain</code> 을 의존한다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    SAPI["apps/service-api<br/>(DI — 어댑터 주입)"]
+    AAPI["apps/admin-api<br/>(DI — 어댑터 주입)"]
+    HOOK["apps/webhook-receiver"]
+    SBE["backend/service"]
+    ABE["backend/admin"]
+    FBA["adapters/fireblocks<br/>유일한 라이브 구현"]
+    FAKE["adapters/fake<br/>테스트용"]
+    DOM["domain<br/>포트 + 모델 — 의존 0"]
+    SDK["Fireblocks SDK (외부)"]
+
+    SAPI --> SBE
+    AAPI --> ABE
+    SAPI -.주입.-> FBA
+    AAPI -.주입.-> FBA
+    SBE --> DOM
+    ABE --> DOM
+    FBA --> DOM
+    FAKE --> DOM
+    FBA --> SDK
+    HOOK --> DOM
+
+    classDef mine fill:#dcfce7,stroke:#16a34a;
+    classDef impl fill:#dbeafe,stroke:#2563eb;
+    classDef core fill:#e0e7ff,stroke:#6366f1;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    class SBE,ABE mine;
+    class FBA,FAKE impl;
+    class DOM core;
+    class SAPI,AAPI,HOOK,SDK ext;
+</pre></div>
+<p class="diagram-caption">Figure 17-1. 의존성은 안쪽으로만. <strong>domain(보라)=포트·모델</strong>이 핵이고 누구도 의존하지 않는다. <strong>두 backend(초록 — Service·Admin)는 domain 만 의존</strong>하므로 어댑터를 모른다("어느 벤더인지 모른다"가 컴파일 타임의 사실). 어댑터를 아는 곳은 apps 의 DI(점선)뿐이다. <strong>adapters/fireblocks(파랑)가 유일한 라이브 구현이고, fake 는 테스트용 가짜 구현</strong>이다 — 계약 테스트를 두 어댑터가 똑같이 통과하면 포트 의미가 구현과 무관함이 증명된다. <strong>Fireblocks SDK 는 adapters/fireblocks 안에 격리</strong>되고, 벤더 타입이 그 밖으로 새면 교체가 깨지므로 이 경계는 빌드 규칙(ArchUnit)으로 막는다. Service·Admin 이 별도 backend·apps 모듈인 것이 곧 물리 분리다.</p>
+
+<div class="callout">
+<div class="callout-title">이게 "교체 가능" 의 실체</div>
+<ul>
+<li><strong>어댑터 교체 = 모듈 교체</strong> — 지금은 <code>adapters/fireblocks</code> 하나만 라이브다. 훗날 벤더를 바꾸거나 자체 구축으로 전환하면 새 어댑터 모듈을 이 자리에 더하고 <code>apps/*-api</code> 의 wiring 한 줄만 바꾼다 — <code>domain</code>·<code>backend</code> 코드는 그대로(다만 주소·잔액은 이전되지 않아 자금 sweep 이 별도 비용, <a href="../wallet-design-walkthrough/09-switch-extend.html">워크스루 8p</a>).</li>
+<li><strong>포트는 한 곳(domain)</strong> — 어댑터·앱이 전부 같은 포트 타입을 import 하니, 시그니처가 어긋나면 컴파일에서 잡힌다.</li>
+<li><strong>EVM 체인 추가 = 어댑터의 체인·자산 등록만</strong> — 이더리움·Base 는 같은 EVM 이라 어댑터가 등록만 늘리면 되고 <code>backend</code>·<code>domain</code> 은 0줄(<a href="component-multichain.html">2</a> "EVM 차이 흡수"). Fireblocks 가 그 체인을 지원하기만 하면 된다.</li>
+</ul>
+</div>
+
+<h3>17.4 가이드 ↔ 패키지 매핑</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:40%">가이드</th><th>패키지</th></tr></thead>
+<tbody>
+<tr><td>13. 기능별 포트 · 도메인 모델</td><td><code>domain</code> 모듈 (port · model)</td></tr>
+<tr><td>2 EVM 차이 흡수 · 3 입금 감지 · 4 출금 · 5 서명·co-signer</td><td>Fireblocks 매니저 안 (벤더 제공) — 우리 모듈 없음</td></tr>
+<tr><td>6 게이트웨이 · 7 정합성 · 8 알림 (Service)</td><td><code>backend/service</code> 모듈</td></tr>
+<tr><td>정책·승인·키 운영·동결·sweep (Admin)</td><td><code>backend/admin</code> 모듈</td></tr>
+<tr><td>14 Fireblocks 어댑터 (유일한 라이브)</td><td><code>adapters/fireblocks</code> 모듈 · 테스트용 <code>adapters/fake</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>17.5 시작 셋 — EVM(이더리움·Base), 매니저는 Fireblocks</h3>
+
+<p>처음부터 전부 만들 필요 없다. 지금 필요한 것만:</p>
+<ul>
+<li><strong>필수</strong>: <code>domain</code> · <code>backend/service</code> · <code>backend/admin</code> · <code>adapters/fireblocks</code> · <code>adapters/fake</code> · <code>apps/service-api</code> · <code>apps/admin-api</code> · <code>apps/webhook-receiver</code></li>
+<li><strong>선택·나중(자체 구축 전환 대비)</strong>: <code>engine/*</code> · <code>chains/evm</code> · 자체 구축 어댑터 자리만 비워두고, <strong>도메인 포트는 그대로</strong> 둔다 → 전환 시 새 어댑터·엔진 패키지만 추가하면 <code>backend</code>·<code>apps</code> 는 거의 그대로. 지금은 Fireblocks 가 EVM 의 nonce·수수료·전파를 모두 흡수하므로 <code>chains/evm</code> 은 자체 구축 전환 때 채우면 된다.</li>
+</ul>
+
+<div class="callout callout-warn">
+<div class="callout-title">Fireblocks 를 써도 우리 쪽에 반드시 남는 것</div>
+<p>Fireblocks 가 멀티체인·서명·nonce·전파를 다 흡수하므로 <strong>engine/chains 없이 시작할 수 있다.</strong> 그래도 우리 쪽엔 반드시 남는 게 있다 — <strong>두 백엔드(Service·Admin) · webhook 수신기 · 매핑 DB · 온프렘 API Co-signer(SGX/TEE) 운영</strong>이다. 특히 co-signer 는 서명 직전 우리 Callback Handler 로 승인·거부를 거는 자리라, 벤더에 위임되지 않는 우리 몫이다(<a href="component-signing.html">5장</a>). ChainQuery(임의 외부 주소 조회)처럼 Fireblocks 가 안 주는 부분만 <code>adapters/chainquery-alchemy</code> 로 선택적으로 채운다(<a href="abstraction.html">13.8</a> 트레이드오프).</p>
+</div>
+
+<h3>17.6 도구</h3>
+
+<ul>
+<li><strong>Gradle 멀티모듈</strong><span class="g" data-tip="settings.gradle.kts 의 include() 로 서브프로젝트(모듈)를 묶고, 모듈 간 의존은 implementation(project(\&quot;:domain\&quot;)) 로 선언">?</span> — 모듈 간 의존은 <code>implementation(project(":domain"))</code>. 버전은 <code>libs.versions.toml</code> 카탈로그 한 곳에.</li>
+<li><strong>domain 은 순수 Kotlin</strong> — Spring 의존 금지(<code>build.gradle.kts</code> 에 spring-* 미포함). Spring Boot 는 <code>backend</code>·<code>apps</code>·일부 <code>adapters</code> 에만.</li>
+<li><strong>DI = Spring</strong> — 포트 구현을 <code>@Component</code> 로 주입, 어댑터 선택은 <code>@Profile</code> 또는 <code>@ConditionalOnProperty</code> 한 줄(예: 운영은 <code>manager=fireblocks</code>, 계약 테스트는 <code>manager=fake</code>).</li>
+<li><strong>의존 방향 강제</strong> — Gradle 모듈 그래프 + <strong>ArchUnit</strong><span class="g" data-tip="JVM 아키텍처 테스트 라이브러리 — &quot;domain 은 어떤 모듈도 의존하면 안 된다&quot; 같은 규칙을 테스트로 검증">?</span>/Konsist 로 "안쪽(domain)으로만" 을 CI 에서 검사.</li>
+</ul>
+
+<p>정리하면 — <strong>모듈 경계 = 설계 경계</strong>. 포트(domain)를 핵에 두고 두 백엔드(Service·Admin)를 별도 모듈로, Fireblocks 어댑터를 교체 축으로 분리하면, 이 가이드가 말한 "도메인 우선 · 어댑터 교체 · 백엔드 물리 분리" 가 코드 구조에서 강제된다. 처음으로 — <a href="index.html"><strong>0. Overview</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

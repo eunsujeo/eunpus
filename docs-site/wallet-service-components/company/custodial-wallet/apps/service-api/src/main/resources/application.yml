@@ -1,0 +1,14 @@
+# custody 어댑터 선택 (가이드 17.6): fireblocks(유일한 라이브) | fake(테스트용)
+custody:
+  provider: fireblocks
+
+# (선택) 임의·커스텀 조회 포트 — custody 가 안 주는 것 (가이드 13.4): alchemy
+# chainquery:
+#   provider: alchemy
+
+reconciliation:
+  sweep-delay-ms: 60000
+
+spring:
+  application:
+    name: custodial-wallet-service-api

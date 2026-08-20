@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>1. 계정 생성 — createAccount</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">지갑 백엔드 ↔ 블록체인 매니저 통로 설계 워크스루</a></p>
+<div class="progress">
+<a href="00-cast.html">0</a><span class="cur">1</span><a href="02-issue-deposit-address.html">2</a><a href="03-address-of.html">3</a><a href="04-detect-confirm.html">4</a><a href="05-deposit.html">5</a><a href="06-withdrawal.html">6</a><a href="07-estimate-fee.html">7</a><a href="08-balance-history.html">8</a><a href="09-switch-extend.html">9</a><a href="10-ramp-swap.html">10</a>
+</div>
+<h1>계정 생성 — createAccount</h1>
+<p class="subtitle">고객당 한 번 — 체인과 무관한 vault 를 만든다</p>
+
+<pre><code>createAccount(ref) → Account { ref, accountId }
+// accountId = vault 매핑 id</code></pre>
+
+<h2>▸ createAccount — vault 를 만든다 (EVM 공통)</h2>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    box rgb(219,234,254) Service 백엔드 — 어댑터 포함·한 프로세스
+    participant BE as 유스케이스
+    participant FBI as 블록체인 매니저 어댑터·포트
+    end
+    participant BDB as 백엔드 DB
+    participant FB as Fireblocks SaaS · 벤더
+
+    BE->>FBI: createAccount(ref)
+    FBI->>BDB: ref 조회
+    alt 있으면 — 재사용
+        BDB-->>FBI: 기존 accountId
+        FBI-->>BE: Account { ref, accountId }
+    else 없으면
+        FBI->>FB: 벤더에 있는지 확인 — accounts_paged · namePrefix=ref
+        alt 벤더에 있음 — 만들었는데 저장 못 한 경우
+            FB-->>FBI: 기존 vaultId
+        else 벤더에도 없음 — 신규
+            FBI->>FB: createVaultAccount(name=ref) · Idempotency-Key=f(ref)
+            FB-->>FBI: vaultId
+        end
+        FBI->>BDB: 저장 (ref ↔ vaultId · ref UNIQUE)
+        FBI-->>BE: Account { ref, accountId }
+    end
+    Note over FBI,FB: 재시도는 Idempotency-Key 로 24h 같은 vaultId · 그 밖 갭은 name 검색으로 벤더 확인 · 영구 유일성은 DB ref UNIQUE
+</pre></div>
+
+<div class="callout">
+<div class="callout-title">한 번만 — 재시도·중복 방어 (결정)</div>
+<ul style="margin:0">
+<li><b>재시도 멱등</b>: createVaultAccount 에 <code>Idempotency-Key=f(ref)</code> — 24시간 내 재시도는 벤더가 <b>같은 vaultId</b> 를 돌려준다(중복 vault 없음).</li>
+<li><b>영구 유일성</b>: <b>백엔드 DB 의 ref UNIQUE</b> — 중복 row 를 막고, 경합 시 이긴 값을 <b>읽어 그대로 반환</b>한다(에러 아님).</li>
+<li><b>name 은 라벨</b>: 벤더가 vault name 유일성을 강제하지 않으므로(중복 생성 가능), name(namePrefix) 검색은 DB·멱등키가 다 놓친 경우에 <b>벤더에 있는지 확인하는 fallback</b>일 뿐이다.</li>
+</ul>
+</div>
+
+<p class="foot">더 깊이: 계정·주소 발급 시나리오 — <a href="../wallet-service-components/scenario-provisioning.html">가이드 9장</a>.</p>
+
+<div class="pager">
+<a href="00-cast.html">← 0. 구성 요소</a>
+<a href="index.html">목차</a>
+<a href="02-issue-deposit-address.html">2. 입금 주소 생성 →</a>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/walkthrough-diagram.js"></script>
+</body>
+</html>

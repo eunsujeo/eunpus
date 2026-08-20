@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>3. mint · burn · transfer · fee · cancel — Canton 네트워크 지갑 연동 가이드</title>
+<meta content="Canton 의 자산 동작 — 발행(mint)·소각(burn)·2-step 전송(transfer)·traffic 수수료(fee)·취소(cancel/Withdraw) 를 각각 EVM 과 대비해 정리." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Canton 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 원장 모델</h3><ul>
+<li><a href="model.html">1. 원장 모델 — ACS · Holding UTXO</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 네트워크 동작</h3><ul>
+<li><a href="validator.html">2. Validator · Synchronizer · 확정</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 자산 동작</h3><ul>
+<li><a class="active" href="operations.html">3. mint · burn · transfer · fee · cancel</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 인덱서</h3><ul>
+<li><a href="indexer.html">4. 인덱서 구현</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 운영</h3><ul>
+<li><a href="integration.html">5. 직접 운영 vs 위탁 운영</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 수탁 통합</h3><ul>
+<li><a href="custody.html">6. 수탁 통합 — wallet/guidance</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="operations">
+<h2>3. mint · burn · transfer · fee · cancel</h2>
+<span class="section-subtitle">자산이 생기고·사라지고·옮겨지고·비용을 치르고·취소되는 다섯 동작 — 각각 EVM 과 무엇이 다른가</span>
+
+<h3>3.1 다섯 동작 한 눈에</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:14%">동작</th><th>EVM (ERC-20 감각)</th><th>Canton</th></tr></thead>
+<tbody>
+<tr><td><strong>mint</strong></td><td>발행자 컨트랙트가 <code>mint()</code> → 잔액 숫자 증가</td><td>registrar/발행 권한 party 가 holding contract 생성 → ACS 에 새 Holding UTXO</td></tr>
+<tr><td><strong>burn</strong></td><td><code>burn()</code> → 잔액 숫자 감소</td><td>holding contract archive → ACS 에서 제거. <strong>traffic 충전</strong>도 Canton Coin burn 으로 일어남</td></tr>
+<tr><td><strong>transfer</strong></td><td>1-step — <code>transfer()</code> 즉시 이동</td><td><strong>기본 2-step</strong> — OFFER 생성(자금 locked) → 수신자 ACCEPT. CC 는 pre-approval 로 1-step</td></tr>
+<tr><td><strong>fee</strong></td><td>gas × gasPrice, 거래마다 후불</td><td>traffic — Canton Coin 선소각으로 byte 잔고 충전, 거래 시 소비분이 수수료</td></tr>
+<tr><td><strong>cancel</strong></td><td>같은 nonce 더 높은 gas 로 덮어쓰기(RBF)</td><td>송신자 <code>Withdraw</code> — 미수락 OFFER 철회, locked 자금 회수</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>3.2 transfer — 기본 2-step 전송</h3>
+
+<p>Canton 에서 가장 EVM 과 다른 동작이다. <strong>토큰 전송의 기본은 2-step</strong> 이다 ("matches how funds are usually transferred in TradFi"). 송신자가 보낸다고 끝이 아니라, 수신자가 받아야 완료된다. <em>(단 출처에 따라 톤이 다르다 — 일부 공식 문서는 "모든 토큰의 기본값" 으로 단정하고, 리뉴얼된 문서는 토큰 표준의 "구현 옵션" 으로 서술한다. 적용 대상 토큰의 표준을 확인할 것.)</em></p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    START["송신자: 전송 개시"]
+    OFFER["① OFFER 생성<br/>(TransferInstruction)<br/>송신 자금 → locked"]
+    PEND{"② 대기 상태<br/>(Pending)<br/>누가 먼저 행동?"}
+    ACC["✅ 수신자 ACCEPT<br/>(Accepted)<br/>자금 → 수신자 holdings"]
+    REJ["↩ 수신자 REJECT<br/>(Rejected)<br/>자금 → 송신자 반환"]
+    WD["↩ 송신자 WITHDRAW<br/>(Withdrawn)<br/>locked 자금 회수"]
+
+    START --> OFFER --> PEND
+    PEND -->|수신자 수락| ACC
+    PEND -->|수신자 거절| REJ
+    PEND -->|송신자 철회| WD
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+    classDef wait fill:#fef3c7,stroke:#d97706;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    class START,OFFER wait;
+    class PEND special;
+    class ACC good;
+    class REJ,WD bad;
+</pre></div>
+<p class="diagram-caption">Figure 3-1. 2-step 전송 lifecycle. <strong>노랑 = 진행 중</strong>(OFFER 제출 → 자금 locked → 대기). <strong>보라 = 분기점</strong>(누가 먼저 행동하는가). <strong>초록 = 완료</strong>(수신자 ACCEPT — 자금이 실제로 수신자 holdings 로). <strong>빨강 = 미완 종료</strong>(REJECT/WITHDRAW — 자금이 송신자에게 돌아옴). 핵심: OFFER 가 원장에 확정(<a href="validator.html">2장</a>의 commit)됐다는 것과 전송이 완료됐다는 것은 다르다. OFFER commit 후에도 자금은 locked 일 뿐이고, 완료는 ACCEPT 가 또 한 번 확정돼야 한다.</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">수탁 지갑이 흡수해야 할 핵심 — "제출 = 완료" 아님</div>
+<p>EVM 어댑터는 broadcast 후 영수증(receipt)을 기다리면 끝이지만, Canton 출금은 OFFER 제출 후 <strong>"수신자 수락 대기" 라는 중간 상태</strong>가 존재한다. 이 동안 송신 자금은 locked 라 잔액에서 빠진 것처럼 보이지만 아직 상대에게 간 게 아니다. 어댑터·인덱서는 이 상태를 명시적으로 추적해야 하고(<a href="indexer.html">4. 인덱서</a>), "언제까지 수락 안 하면 회수할지" 같은 타임아웃 정책이 필요하다. <em>(Fireblocks 의 경우 이 상태들을 전용 <code>transactionType</code> 필드 OFFER/ACCEPT/REJECT/WITHDRAW/PRE_APPROVAL 로 그대로 노출한다 — <code>CantonHashes.offerUpdateId</code> 로 연결. timeout 은 수락 안 되면 송신자 WITHDRAW(앱 정책).)</em></p>
+</div>
+
+<h4>Canton Coin 은 1-step (pre-approval)</h4>
+
+<p>모든 전송이 2-step 인 건 아니다. <strong>Canton Coin(CC)</strong> 은 <strong>Transfer Pre-approval</strong> 로 수신을 자동 수락하게 설정할 수 있어, 송신자 입장에서 "보내면 끝" 인 1-step 경험이 된다. 단 pre-approval 은 설정 대상이고, validator 복구 후에는 기존 pre-approval 을 취소·재생성해야 한다(<a href="integration.html">5. 운영</a>).</p>
+
+<div class="callout">
+<div class="callout-title">Canton 엔 ERC-20 식 allowance/approve 가 없다 — 수탁 보안 이점</div>
+<p>EVM 토큰은 <code>approve(spender, amount)</code> 로 제3자(컨트랙트)에 사용권을 미리 위임하고, 그 spender 가 <code>transferFrom</code> 으로 빼간다 — 무한 승인(infinite approval) 방치가 대표적 탈취 경로다. <strong>Canton 에는 이 패턴이 없다.</strong> holding 은 <strong>소유자가 sole signatory</strong> 라, 자금은 <strong>소유자의 직접 서명으로만</strong> 움직인다(미리 위임해 둔 spender 가 없다). 그래서 "승인 권한이 새어 털리는" 공격면이 구조적으로 존재하지 않는다 — 수탁 관점에서 분명한 이점이다. <em>(이 패턴은 Canton 위 실제 수탁 구현 Musubi 의 custodian 모델에서도 "sole signatory, no allowance/approval pattern" 으로 확인된다.)</em></p>
+</div>
+
+<h3>3.3 fee — traffic 모델</h3>
+
+<p>EVM gas 와 가장 다른 점: <strong>수수료가 후불이 아니라 선충전 잔고</strong>다.</p>
+
+<ul>
+<li><strong>traffic = byte 단위 대역폭 잔고.</strong> validator 가 Synchronizer 와 통신(거래 broadcast·합의 메시지)할 때 차감된다.</li>
+<li><strong>충전은 Canton Coin 소비로.</strong> CC 를 써서 traffic 을 구매하면 원장의 <code>MemberTraffic</code> 잔고가 갱신된다. 추가 traffic 가격은 <strong>약 $60 USD / MB</strong>(구매 시점 환율로 CC 환산)다.</li>
+<li><strong>무료 base 잔고.</strong> <strong>20분 window 당 400,000 byte</strong> 의 무료 잔고가 있고, 거래를 보내지 않으면 선형으로 회복된다(한 window 가 다 지나면 완전 회복). 소진되면 충전 전까지 거래가 막힌다.</li>
+<li><strong>자동 top-up.</strong> validator 앱에 목표 처리량·최소 구매 간격을 설정하면, 필요한 만큼 traffic 을 자동으로 사들이는 기능이 내장돼 있다(최소 top-up 단위 약 200,000 byte).</li>
+<li><strong>보유세(holding fee).</strong> Holding 조각 보유에는 storage·compute 비용이 따른다(연 단위 보유 비용). 보유 비용이 가치를 넘는 dust 조각은 archive 가 허용된다. 그래서 지갑은 조각 수를 <strong>사용자당 약 10개</strong> 수준으로 유지하도록 병합(merge)하는 게 권장된다.</li>
+</ul>
+
+<div class="callout">
+<div class="callout-title">"Canton Coin 을 소각하면 traffic 이라는 수수료가 생긴다" 를 정확히</div>
+<p>소각 자체가 수수료가 아니다. <strong>① Canton Coin 을 소각(burn) → ② traffic(byte) 잔고가 충전됨 → ③ 거래를 보낼 때 소비되는 traffic 이 곧 그 거래의 수수료.</strong> EVM 처럼 거래마다 즉석에서 빠지는 후불이 아니라, "대역폭을 미리 사 두고 거래가 그걸 쓰는" 선불 모델이다. 잔고가 마르면 충전 전까지 거래가 막힌다.</p>
+<p>토큰경제 관점에서 이 소각은 <strong>burn-mint 균형</strong>의 한 축이다 — 수수료로 쓴 Canton Coin 은 <strong>유통에서 제거(burn)</strong>되고(중앙 주체로 가지 않음), 반대편에서 validator·super validator 가 인프라 운영·사용량·가동(liveness) 기여로 Canton Coin 을 <strong>새로 발행(mint)</strong>받는다. 발행은 <strong>약 10분 단위 라운드</strong>(연 약 52,560회)로 일어나고, 라운드마다 개발 기금 5% 를 뗀 뒤 validator·앱·SV 로 배분된다(예: validator 가동 보상 상한 기본 라운드당 약 $2.85). USD↔CC 환율은 라운드별 SV 게시율의 중앙값을 쓴다. 소각과 발행이 균형을 이루며 가치를 안정시키는 구조다.</p>
+</div>
+
+<h4>거래 1건의 traffic 비용 산정식</h4>
+
+<p>한 메시지가 소비하는 traffic 은 <strong>크기 × (수신자 수에 따른 가중치)</strong> 로 계산된다.</p>
+
+<pre><code>메시지 비용(byte) = 메시지크기 × (1 + 수신자수 × readVsWriteScalingFactor / 10000)
+
+// 예: scaling factor = 4, 1 MB 메시지, 수신자 10명
+//   1,000,000 × (1 + 10 × 0.004) = 1,040,000 byte</code></pre>
+
+<p>현재 네트워크 공통 파라미터(고정값이 아니라 구성에 따라 바뀔 수 있음):</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:38%">파라미터</th><th>값</th></tr></thead>
+<tbody>
+<tr><td>무료 base 잔고</td><td>400,000 byte / 20분 window (선형 회복)</td></tr>
+<tr><td>추가 traffic 가격</td><td>약 $60 USD / MB (CC 로 환산 청구)</td></tr>
+<tr><td>read-vs-write scaling factor</td><td>4 basis points (0.004)</td></tr>
+<tr><td>최소 top-up 단위</td><td>약 200,000 byte</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>confirmation 요청/응답, topology 요청 등 Synchronizer 로 가는 메시지가 과금 대상이다. 절대 byte↔금액 환율은 Synchronizer 구성에 따라 가변이라 고정값이 아니다. <strong>실무 산정</strong>은 Ledger API 의 <code>/v2/interactive-submission/prepare</code> 가 submission·confirmation 의 traffic estimate 를 돌려주고, participant 로그의 <code>EventCost</code> 로 실측한다.</p>
+
+<pre><code>// 수수료 추정 — EVM 의 estimateGas 대응
+const est = await ledger.prepare(unsignedTx)   // /v2/interactive-submission/prepare
+est.trafficEstimate   // 이 거래가 소비할 traffic(byte) 추정
+// 실측은 participant 로그의 EventCost 로 사후 확인</code></pre>
+
+<h3>3.4 cancel — Withdraw (nonce-replace 아님)</h3>
+
+<p>EVM 에서 막히거나 잘못 보낸 거래를 취소하려면 <strong>같은 nonce 에 더 높은 gas 로 덮어쓰기(RBF)</strong> 하거나 0-value self-send 로 nonce 를 소비한다. Canton 에는 nonce 가 없으므로 이 방식이 통하지 않는다.</p>
+
+<p>대신 2-step 전송의 구조를 그대로 쓴다 — 수신자가 아직 ACCEPT 하지 않은 OFFER 를 <strong>송신자가 <code>Withdraw</code> 로 철회</strong>하면 locked 자금이 회수된다. 이미 ACCEPT 되어 확정된 전송은 취소 대상이 아니다(되돌리려면 반대 방향 새 전송).</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:24%">상황</th><th>EVM</th><th>Canton</th></tr></thead>
+<tbody>
+<tr><td>아직 미확정 거래 취소</td><td>같은 nonce + gas↑ 로 replace (RBF)</td><td>해당 없음 — 제출 즉시 OFFER 가 확정될 수 있음</td></tr>
+<tr><td>미수락 전송 취소</td><td>개념 없음(1-step 이라 이미 끝)</td><td><code>Withdraw</code> — 미수락 OFFER 철회, locked 회수</td></tr>
+<tr><td>이미 완료된 전송</td><td>되돌릴 수 없음</td><td>되돌릴 수 없음 — 반대 전송 필요</td></tr>
+<tr><td>수수료 인상으로 가속</td><td>RBF / CPFP</td><td>해당 모델 없음 — traffic 은 가속 대상 아님</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">EVM 의 "boost(RBF)" 는 Canton 에 없다</div>
+<p>EVM·UTXO 어댑터가 제공하는 "막힌 거래 수수료 올려 재전송(boost)" 능력은 Canton 에 해당 모델이 없다. Canton 의 취소는 가속이 아니라 <strong>미수락 OFFER 의 Withdraw</strong>이고, 수수료(traffic)는 선충전 잔고라 거래별로 올려 가속하는 개념이 아니다. 어댑터는 boost 를 Canton 에서 미지원 능력으로 두고, 취소는 cancel(Withdraw)로만 노출한다.</p>
+</div>
+
+<h3>3.5 코드로 보면 — 다섯 동작을 어댑터로</h3>
+
+<p>설명용 의사코드다. EVM 어댑터의 동사와 같은 이름을 쓰되, 내부가 2-step·traffic·Withdraw 로 다르게 채워진다.</p>
+
+<pre><code>class CantonAdapter {
+  // transfer = OFFER 제출 (제출이 완료가 아님 — 상태는 인덱서가 추적)
+  submitTransfer(t) {
+    const offer = buildTransferInstruction(t)   // 송신 자금 locked
+    return ledger.submit(offer)                 // → traceableId, 상태 = Pending
+  }
+
+  // 수신측 완료 — 우리가 수신자 party 를 수탁할 때
+  accept(offerRef) { return ledger.exercise(offerRef, "Accept") }
+  reject(offerRef) { return ledger.exercise(offerRef, "Reject") }
+
+  // cancel = 송신자 Withdraw (미수락 OFFER 철회, RBF 아님)
+  cancel(offerRef) { return ledger.exercise(offerRef, "Withdraw") }
+
+  // fee 추정 = traffic estimate (estimateGas 대응)
+  estimateFee(unsignedTx) {
+    const p = ledger.prepare(unsignedTx)        // /v2/interactive-submission/prepare
+    return { trafficBytes: p.trafficEstimate }
+  }
+
+  // mint/burn 은 발행 권한 party·registrar 의 동작 — 일반 수탁 지갑은 보통 호출자가 아님
+  // (USDCx 등 native token 은 Token Registrar 가 관리, CC 와 별도)
+
+  // boost? 미구현 — Canton 은 RBF/가속 모델 없음 (cancel=Withdraw 로만)
+}</code></pre>
+
+<div class="callout">
+<div class="callout-title">설계 포인트</div>
+<ul>
+<li><strong>submit ≠ done</strong> — <code>submitTransfer</code> 의 반환은 "제출됨(Pending)" 이지 "완료" 가 아니다. 완료/거절/회수는 인덱서가 lifecycle 이벤트로 확정한다(<a href="indexer.html">4. 인덱서</a>).</li>
+<li><strong>수신측도 우리 책임일 수 있다</strong> — 양쪽 party 를 모두 수탁한다면 accept/reject 도 우리가 실행한다. 한쪽만 수탁하면 상대 행동을 기다린다.</li>
+<li><strong>mint/burn 은 보통 발행자/registrar 의 일</strong> — 일반 수탁 지갑은 transfer·cancel·조회가 주 동작이고, native token 발행·소각은 Token Registrar(예: USDCx 는 Circle)가 관리한다. CC 소각은 traffic 충전 경로로만 닿는다.</li>
+<li><strong>boost 는 미지원 능력으로</strong> — 어댑터가 Canton 에서 boost 를 throw/부재로 두고, 취소는 cancel(Withdraw)만 노출한다.</li>
+</ul>
+</div>
+
+<p>다음 — <a href="indexer.html"><strong>4. 인덱서 구현</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

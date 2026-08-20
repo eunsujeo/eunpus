@@ -1,0 +1,55 @@
+{
+  "expectations": [
+    {
+      "text": "응답 opening 에 명시적 Trigger 2 판별 선언 + entity-min discipline 인용",
+      "passed": true,
+      "evidence": "trigger=True, step=True, route=True, status=True"
+    },
+    {
+      "text": "신규 entity 생성을 ★ 명시적으로 거절 또는 비권장",
+      "passed": true,
+      "evidence": "...y 요청 시 default 동작 = 거절 + 흡수 분석\"\n> **운영 위임**: prompts/extract-entities.md (entity 후보 평가) + prompts/up..."
+    },
+    {
+      "text": "본문 markdown 초안 (h1 / Summary / Key Concepts 등 완성형) 작성 안 함",
+      "passed": true,
+      "evidence": "no full body draft"
+    },
+    {
+      "text": "흡수 후보 page 명시 ≥2 개",
+      "passed": true,
+      "evidence": "matched: ['transaction.md', 'policy.md', 'blockchains.md']"
+    },
+    {
+      "text": "wiki 의 fee 관련 confirmed evidence 깊이 평가",
+      "passed": true,
+      "evidence": "...t / 최소 잔액 / fee 모델 (KSM: fee/byte × network fee + tip / DOT: 0.01 reaped 임계) + L175 chain-specific 1..."
+    },
+    {
+      "text": "확정 fact vs hypothesis 명확 두 sub-section 또는 callout",
+      "passed": true,
+      "evidence": "...이 평가 — confirmed vs hypothesis\n\n**Confirmed evidence (wiki 인용 가능 fact)**\n\n- `entities/fireblocks/tra..."
+    },
+    {
+      "text": "신규 entity 생성 시 Stage counter reset 또는 entity-min 누적 카운트",
+      "passed": true,
+      "evidence": "... 승인 시에만 진행. 그 시점에 **Stage counter reset 명시** + `log.md` 에 entry 추가 필요 (SKILL.md Step 7).\n\n---\n\n## 4...."
+    },
+    {
+      "text": "실제 파일 생성 안 함 — diff / draft 만 제시, opening 에 dry-run 명시",
+      "passed": true,
+      "evidence": "...d (흡수 절차)\n> **상태**: dry-run — 사용자 승인 전까지 어떤 파일도 생성/수정 안 함. 신규 entity 생성 보류 (default refusal).\n\n---\n\n..."
+    },
+    {
+      "text": "prompts/extract-entities.md 또는 update-wiki.md 인용",
+      "passed": true,
+      "evidence": "...흡수 분석\"\n> **운영 위임**: prompts/extract-entities.md (entity 후보 평가) + prompts/update-wiki.md (흡수 절차)\n> **..."
+    }
+  ],
+  "summary": {
+    "pass_rate": 1.0,
+    "passed": 9,
+    "failed": 0,
+    "total": 9
+  }
+}

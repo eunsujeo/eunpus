@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>0. Canton 개요 — Canton 네트워크 지갑 연동 가이드</title>
+<meta content="Canton 네트워크를 수탁 지갑 관점에서 분해 — EVM 과의 모델 차이, validator·Synchronizer 블록 동작, mint·burn·transfer·fee·cancel, 인덱서 구현, 직접 운영 대 관리형 위탁의 차이를 다루는 설계 가이드." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a class="active" href="index.html">0. Canton 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 원장 모델</h3><ul>
+<li><a href="model.html">1. 원장 모델 — ACS · Holding UTXO</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. 네트워크 동작</h3><ul>
+<li><a href="validator.html">2. Validator · Synchronizer · 확정</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 자산 동작</h3><ul>
+<li><a href="operations.html">3. mint · burn · transfer · fee · cancel</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 인덱서</h3><ul>
+<li><a href="indexer.html">4. 인덱서 구현</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 운영</h3><ul>
+<li><a href="integration.html">5. 직접 운영 vs 위탁 운영</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 수탁 통합</h3><ul>
+<li><a href="custody.html">6. 수탁 통합 — wallet/guidance</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="overview">
+<h2>0. Canton 개요</h2>
+<span class="section-subtitle">Canton 이 EVM 과 무엇이 다르고, 수탁 지갑이 무엇을 흡수해야 하는가</span>
+
+<p class="lead">
+본 가이드는 <strong>Canton 네트워크</strong>를 수탁(custodial) 지갑 관점에서 분해한다. 같은 "블록체인 연동" 이라도 Canton 은 이더리움(EVM)과 <strong>원장 모델·확정 방식·수수료·전송 단계</strong>가 근본적으로 다르다. 이 차이를 먼저 정리하고, validator 가 블록을 어떻게 확정하는지, 자산 동작(발행·소각·전송·수수료·취소)이 어떻게 일어나는지, 인덱서를 어떻게 짜야 하는지, 그리고 노드를 <strong>직접 운영</strong>할 때와 <strong>관리형으로 위탁</strong>할 때 무엇이 달라지는지를 본다.
+</p>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처</div>
+<p>이 문서의 사실 진술은 출처를 둘로 나눠 읽어야 한다.</p>
+<ul>
+<li><strong>공식 문서에 정의된 사실 (그대로 받아도 안전)</strong> — Digital Asset 공식 기술 문서(docs.digitalasset.com v3.4)와 Canton 운영 문서(docs.sync.global), Fireblocks 의 Canton Coin 복구 절차 문서에서 확인한 내용. 본문에서 별도 표시 없이 서술한다.</li>
+<li><strong>저자가 정리한 설계 참고안 (본인 환경 검증 권장)</strong> — 위 사실을 수탁 지갑 컴포넌트로 옮긴 코드·다이어그램·운영 권고. "설계 포인트", "코드로 보면" 처럼 묶은 부분이 여기에 해당한다.</li>
+</ul>
+<p>아직 1차 문서로 확정하지 못한 항목(예: 확정까지 걸리는 정확한 시간)은 <strong>"확인 필요"</strong> 라벨로 분리한다. 추정으로 메우지 않는다.</p>
+</div>
+
+<h3>0.1 Canton 이란</h3>
+
+<p>Canton 은 <strong>DAML<span class="g" data-tip="Digital Asset Modeling Language — Canton 의 스마트컨트랙트 언어. 자산·권한·전송 규칙을 contract 로 표현한다">?</span> 스마트컨트랙트 기반의 privacy-enabled 퍼블릭 블록체인</strong>이다(참여는 허가형 — permissioned — 이라 "오픈 퍼블릭" 과는 다르다). 기관 금융·자산 토큰화·국가 간 결제를 주 대상으로 설계됐다. 다른 퍼블릭 체인과 가장 다른 점은 <strong>프라이버시</strong>다 — 거래 당사자만 해당 거래 데이터를 보고, 무관한 참여자에게는 노출되지 않는다.</p>
+
+<div class="callout">
+<div class="callout-title">먼저 — 이 가이드에 계속 나오는 용어 6개 (1분)</div>
+<p>아래만 알고 들어가면 나머지가 수월하다. 핵심은 <strong>"Canton 의 모든 것은 contract 다"</strong>.</p>
+<ul>
+<li><strong>contract</strong> — Canton 원장에 올라가는 <strong>상태 한 조각</strong>. "누가 토큰 얼마 보유", "전송 진행 중", "이 권한 있음" 이 <strong>전부 contract</strong>(DAML 스마트컨트랙트의 인스턴스)다. 한 번 생기면 못 고치고 <strong>생성(created)되거나 소멸(archived)될 뿐</strong>이다. (자세히 <a href="model.html">1장</a>)</li>
+<li><strong>ACS (활성 contract 집합)</strong> — 한 party 가 지금 보유한 contract 전부의 묶음 = 그 party 의 <strong>현재 상태</strong>. (<a href="model.html">1장</a>)</li>
+<li><strong>holding (UTXO<span class="g" data-tip="Unspent Tx Output — 잔액을 숫자 하나가 아니라 '쓰지 않은 출력' 조각들의 집합으로 보는 모델. 비트코인이 대표적">?</span> 형)</strong> — <strong>토큰 잔액을 나타내는 contract</strong>. 비트코인 UTXO 처럼 "100" 이 한 칸이 아니라 <strong>[50][30][20] 조각</strong>으로 쪼개져 있고, <strong>잔액 = 조각들의 합</strong>이다. (<a href="model.html">1장</a>)</li>
+<li><strong>party</strong> — 거래 주체(<strong>신원</strong>). 은행·계좌처럼 "누구" 에 해당 — 주소가 아니라 신원이다. 단순 요청자가 아니라, <strong>그 party 의 키로 서명해야 거래가 성립</strong>하는 <strong>승인자</strong>다. 수탁(external party)이면 그 키는 participant 가 아니라 <strong>우리가 HSM/MPC·offline 에 보관·통제</strong>한다. (<a href="validator.html">2장</a>)</li>
+<li><strong>participant node (= validator)</strong> — party 를 담고 거래를 <strong>검증하는 노드</strong>. 보통 각 기관의 인프라다. (<a href="validator.html">2장</a>)</li>
+<li><strong>Synchronizer</strong> — 노드들을 잇는 <strong>공용 합의 계층</strong>. 거래 <strong>순서·확정</strong>을 맡는다(우리가 운영하지 않는다). (<a href="validator.html">2장</a>)</li>
+</ul>
+</div>
+
+<p>이 용어로 구조를 한 줄로 요약하면: <strong>party(거래 주체)</strong>가 <strong>participant(=validator 노드)</strong>에 host<span class="g" data-tip="host = 그 party 의 상태(ACS·키 권한)를 어느 participant 노드가 맡아 저장하고, 그 party 의 거래를 대신 검증·제출해 주는 것. 이메일 주소가 메일 서버에 올라가야 작동하는 것과 비슷. 한 party 를 여러 노드가 맡으면 multi-host(백업)">?</span> 되고, 거래는 <strong>Synchronizer</strong>(Sequencer + Mediator)를 통해 순서화·확정된다. 자산 상태는 계정 잔액이 아니라 <strong>party 가 보유한 활성 contract 집합(ACS)</strong>으로 표현되고, 토큰 잔액은 그 위에서 <strong>UTXO 형 holdings(잔액 = 조각들의 합)</strong>로 다뤄진다.</p>
+
+<h3>0.2 EVM 과 한 눈 대비</h3>
+
+<p>수탁 지갑이 EVM 만 다뤄 봤다면, Canton 에서 가장 먼저 깨야 하는 가정이 아래 표다. 자세한 모델 비교는 <a href="model.html">1. 원장 모델</a>, 동작별 비교는 <a href="operations.html">3. 자산 동작</a>에서 이어진다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:16%">관심사</th><th>EVM (이더리움 등)</th><th>Canton</th></tr></thead>
+<tbody>
+<tr><td>상태 표현<span class="g" data-tip="원장이 '지금 누가 무엇을 보유했나'(현재 상태)를 어떤 자료구조로 저장하는가 — EVM 은 주소별 숫자, Canton 은 contract 집합">?</span></td><td>주소별 잔액 + nonce<span class="g" data-tip="계정의 트랜잭션 순번. EVM 은 주소마다 nonce 를 1씩 올리며 순서를 보장한다">?</span></td><td>party 의 활성 contract 집합(ACS<span class="g" data-tip="Active Contract Set — party 가 현재 보유한 활성 contract 전체. Canton 의 원장 상태">?</span>) + 토큰은 Holding UTXO</td></tr>
+<tr><td>주체 식별</td><td>0x… 주소 (공개키 해시)</td><td>PartyId<span class="g" data-tip="party(누구)의 고유 ID — 계좌번호 같은 것. party 를 만들 때 받아서 그대로 저장·사용한다. 우리가 지어내거나 쪼개 쓰지 않는다.">?</span> = <code>hint::fingerprint</code> (만들 때 받는 값, 그대로 사용)</td></tr>
+<tr><td>전송 단계</td><td>1-step — 보내면 끝</td><td>기본 2-step<span class="g" data-tip="송신자가 OFFER(TransferInstruction)를 만들고 자금이 잠긴 뒤, 수신자가 ACCEPT 해야 완료. 거절(Reject)·회수(Withdraw) 가능. Canton Coin 은 pre-approval 로 1-step">?</span> (송신 OFFER → 수신 ACCEPT). Canton Coin 은 pre-approval 로 1-step</td></tr>
+<tr><td>확정</td><td>N 블록 확인</td><td>Synchronizer 의 Mediator 2-phase commit (2/3 BFT, 보통 3-10초)</td></tr>
+<tr><td>수수료</td><td>gas × gasPrice (거래마다 후불)</td><td>traffic<span class="g" data-tip="미리 충전해 둔 대역폭 잔고(byte). Canton Coin 을 소각하면 traffic 이 충전되고, 거래 시 소비되는 traffic 이 곧 수수료다">?</span> — Canton Coin 소각으로 미리 충전, 거래 시 소비분이 수수료</td></tr>
+<tr><td>막힌 거래</td><td>같은 nonce + 수수료 인상(RBF)</td><td>nonce-replace 없음 — 송신자 <code>Withdraw</code> 로 OFFER 취소·자금 회수</td></tr>
+<tr><td>실행 단위</td><td>EVM 바이트코드 (Solidity)</td><td>DAML contract (권한·전송 규칙이 contract 에 내장)</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">EVM 감각으로 들어왔을 때 가장 크게 틀리는 두 가지</div>
+<ul>
+<li><strong>"제출 = 완료" 가 아니다.</strong> Canton 전송은 기본이 2-step 이라, 출금을 제출해도 "수신자 수락 대기" 상태에 머무를 수 있고 그동안 송신 자금은 잠긴다. EVM 의 "broadcast 하면 곧 확정" 감각을 그대로 쓰면 안 된다. (<a href="operations.html">3. 자산 동작</a>)</li>
+<li><strong>수수료는 후불이 아니라 선충전 잔고다.</strong> gas 처럼 거래마다 즉석에서 빠지는 게 아니라, Canton Coin 을 미리 소각해 traffic 잔고를 채워 두고 거래가 그 잔고를 소비한다. 잔고가 마르면 거래가 막힌다. (<a href="operations.html">3. 자산 동작</a>)</li>
+</ul>
+</div>
+
+<h3>0.3 한 화면으로 보는 Canton 구성</h3>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    subgraph APP["우리 지갑 서비스 (Canton 밖 — 우리 것)"]
+      WALLET["수탁 지갑 백엔드<br/>(Canton 어댑터)"]
+    end
+    subgraph CANTON["Canton 네트워크 = privacy-enabled 퍼블릭 블록체인 (노드들 + Synchronizer 전체)"]
+      subgraph PART["participant 계층 (validator 노드)"]
+        LAPI["Ledger API<br/>(participant node 가 노출)<br/>submit · stream · ACS 조회"]
+        PNODE["participant node<br/>= validator<br/>party host · 거래 검증"]
+      end
+      subgraph SYNC["Synchronizer (글로벌 동기화 계층)"]
+        SEQ["Sequencer<br/>순서화 · timestamp"]
+        MED["Mediator<br/>confirmation 집계<br/>2-phase commit"]
+      end
+      SV["Super Validator<br/>Global Synchronizer 운영<br/>(sequencing·CC 검증·거버넌스)<br/>+ CC-USD 환율 게시"]
+    end
+
+    WALLET --> LAPI --> PNODE
+    PNODE -->|거래 제출| SEQ
+    SEQ -->|순서화된 메시지| MED
+    MED -->|승인/거절| PNODE
+    SV -.환율·traffic 가격.-> SYNC
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef adp fill:#dbeafe,stroke:#2563eb;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    class WALLET good;
+    class LAPI,PNODE adp;
+    class SEQ,MED special;
+    class SV ext;
+</pre></div>
+<p class="diagram-caption">Figure 0-1. Canton 구성. <strong>바깥의 큰 박스 "Canton 네트워크" 가 곧 privacy-enabled 퍼블릭 블록체인</strong>이다 — participant 계층(파랑) + Synchronizer(보라) + Super Validator(회색) <strong>전체</strong>가 Canton 이고, 그 밖의 <strong>초록(우리 지갑 서비스)만 Canton 이 아니라 우리 것</strong>이다(Canton 어댑터를 통해 연동). "privacy" 는 그림의 특정 영역이 아니라 거래가 흐르는 방식(view 분해, <a href="model.html">1장</a>·<a href="validator.html">2장</a>)의 성질이다. <strong>파랑 = participant 계층</strong> — 우리가 붙는 Ledger API 와 그 뒤의 participant node(=validator). validator 는 party 를 host 하고 자신이 이해관계자인 거래를 검증한다. <strong>보라 = Synchronizer</strong>(Sequencer 가 순서·timestamp 를, Mediator 가 confirmation 집계 후 2-phase commit 으로 확정). <strong>회색 = Super Validator</strong> — 공용 Global Synchronizer 를 운영(sequencing·CC 검증·거버넌스)하고 CC-USD 환율도 게시한다(traffic 가격의 기준). 직접 운영 대상 아님. 우리가 코드로 닿는 면은 거의 항상 <strong>Ledger API<span class="g" data-tip="앱이 Canton 원장과 대화하는 participant node 의 API. EVM 의 JSON-RPC(eth_*)에 해당. gRPC(com.daml.ledger.api.v2) + JSON/HTTP(/v2/…) 두 형태. ACS 조회·command 제출(prepare→execute)·update 스트림을 한다 (구체 엔드포인트는 6장)">?</span></strong> 한 겹이다 — validator 를 직접 운영하든(<a href="integration.html">5. 운영</a>) 관리형으로 위탁하든. <strong>이 Ledger API 는 누구의 API 인가 — participant node(=validator)가 노출하는 API</strong>다. 우리가 직접 운영한 노드든, 위탁한 노드든, 그 노드가 제공하는 창구가 Ledger API 이고 우리 지갑 백엔드는 거기에 붙는다.</p>
+
+<div class="callout">
+<div class="callout-title">실제로 누구인가 — 박스별 기관</div>
+<ul>
+<li>🟩 <strong>우리 지갑 서비스</strong> = <strong>우리 은행·수탁사</strong>(우리가 만드는 것).</li>
+<li>🟦 <strong>participant node = validator</strong> = <strong>우리(직접 운영)</strong> 또는 <strong>위탁 운영사</strong>. 서명만 위탁하면 Fireblocks·Dfns 같은 custody 제공자(<a href="custody.html">6. 수탁 통합</a>).</li>
+<li>🟪 <strong>Synchronizer</strong> = 우리가 운영하지 않는 <strong>공용 Global Synchronizer</strong> — 아래 Super Validator 들이 공동 운영.</li>
+<li>⬜ <strong>Super Validator</strong> = <strong>주요 금융·핀테크 기관들</strong>. 공식 재단(<strong>Canton Foundation</strong>, 구 Global Synchronizer Foundation) 회원 기준 <strong>Goldman Sachs · SBI Digital Asset · Euroclear · Broadridge · Tradeweb · Digital Asset · Moody's · Cumberland</strong> 등으로, 현재 <strong>54개 SV 노드</strong>가 Global Synchronizer 를 공동 운영한다. <strong>Fireblocks</strong> 도 Super Validator 를 운영한다(2026-02 Canton 지원 출시).</li>
+</ul>
+<p>요점: <strong>우리(은행)는 초록 + (직접 운영 시) 파랑까지</strong>가 우리 몫이고, <strong>보라·회색은 우리가 운영하지 않는 공용 글로벌 계층</strong>이다. (출처: Canton Foundation, 2026-06 기준 — 명단·노드 수는 시점에 따라 변함.)</p>
+</div>
+
+<h3>0.4 읽는 법</h3>
+
+<ul>
+<li><strong>1. 원장 모델</strong> — ACS + Holding UTXO 가 EVM 의 계정+nonce 와 어떻게 다른지. 잔액을 어떻게 읽고, locked 가 무엇인지.</li>
+<li><strong>2. Validator · Synchronizer · 확정</strong> — party/participant 관계, Sequencer+Mediator 가 블록(거래)을 확정하는 흐름, 확정을 언제로 봐야 하는지.</li>
+<li><strong>3. mint · burn · transfer · fee · cancel</strong> — 자산이 생기고(mint) 사라지고(burn) 옮겨지는(transfer 2-step) 동작, traffic 수수료, 취소(Withdraw) — 각각 EVM 대비.</li>
+<li><strong>4. 인덱서 구현</strong> — ACS/UTXO 를 어떻게 읽고, Ledger API 이벤트 스트림으로 2-step lifecycle 을 어떻게 추적하는지. EVM 인덱서와의 차이.</li>
+<li><strong>5. 직접 운영 vs 위탁 운영</strong> — validator participant 를 직접 운영할 때와 관리형으로 위탁할 때의 책임·복구·trade-off.</li>
+<li><strong>6. 수탁 통합 — wallet/guidance</strong> — 공식 지갑 통합 가이드의 수탁 요건을 한 데 모은 체크리스트. 입금(memo 태그)·party 운용·전송 API·입금 확인·운영을 앞 장들과 연결.</li>
+</ul>
+
+<p>다음 — <a href="model.html"><strong>1. 원장 모델 — ACS · Holding UTXO</strong></a>.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/4404971260050-Delete-users
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 2
+language: en
+notes: |
+  Fireblocks Help Center article "Delete users".
+  "Updated 2 days ago" as captured 2026-05-18.
+  Covers: Owner-default immediate deletion (no mobile approval), cloud-based key
+  shares deletion, activity preservation in transaction history and audit logs,
+  deleted-status user ID retention, Approval group delegation to allow Admins
+  to delete via Settings > Quorums > Approval groups.

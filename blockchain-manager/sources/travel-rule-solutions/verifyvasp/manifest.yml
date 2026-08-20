@@ -1,0 +1,42 @@
+solution: VerifyVASP
+publisher: VerifyVASP
+accessed_at: 2026-08-07
+authority_grade: A2
+immutable: true
+sources:
+  - id: VV-IDX-001
+    file: 2026-08-07__docs-index.txt
+    url: https://docs.verifyvasp.com/llms.txt
+    sha256: 89939da1a313b32e0f1a0b107c274083268b2eb7d50754bafeff38de73fab2d1
+  - id: VV-ARCH-001
+    file: 2026-08-07__travelrule-overview.md
+    url: https://docs.verifyvasp.com/reference/travelrule-overview.md
+    sha256: 622b7af3ee8df7f5079b69416ad27d3c8fbf17d5df568c9aefc152bade569735
+  - id: VV-ARCH-002
+    file: 2026-08-07__to-be-architecture.md
+    url: https://docs.verifyvasp.com/reference/travelrule-to-be-architecture.md
+    sha256: f035975a47510360a539fac24a6e2dcf37df7fd4f063d279f0fb5bd14883ddb9
+  - id: VV-API-001
+    file: 2026-08-07__api-implementation.md
+    url: https://docs.verifyvasp.com/reference/travelrule-api-implementation.md
+    sha256: 16d06c1dfd55efe998aba5727fa5092ee2f53e2ee97d3bcc74945e72b345a03c
+  - id: VV-DATA-001
+    file: 2026-08-07__database-setup.md
+    url: https://docs.verifyvasp.com/reference/travelrule-database-setup.md
+    sha256: adcae1e73dcc7bc8dc128ad2ffa9c1fd65ad43b31bb8b0394407a14f2cc80fd6
+  - id: VV-OPS-001
+    file: 2026-08-07__enclave-setup.md
+    url: https://docs.verifyvasp.com/reference/travelrule-enclave-setup.md
+    sha256: 5a859c2b4d02e4b94e29e2909ab718fbe621ea31356081a96e10edadb293c434
+  - id: VV-FLOW-001
+    file: 2026-08-07__scenarios-and-flows.md
+    url: https://docs.verifyvasp.com/reference/travelrule-scenarios-and-flows.md
+    sha256: 638b82bf01ce569c6428fcbe1834bd9955520d42ff018b60a66bee9be21fa65f
+  - id: VV-OPS-002
+    file: 2026-08-07__operations.md
+    url: https://docs.verifyvasp.com/reference/travelrule-maintenance.md
+    sha256: c679d2411a9b166c572e88cd970ca60152c0c017a0ab6f5e3abf20e030a36b65
+  - id: VV-IVMS-001
+    file: 2026-08-07__ivms101-ko.md
+    url: https://docs-kr.verifyvasp.com/reference/ivms101/ivms101.md
+    sha256: ffd30013f1af2779f7f6fad2b06b5dae53ef1440abd66b3e841a9ff13185192a

@@ -1,0 +1,12 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/11288189152924-Device-migration
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 3
+language: en
+notes: |
+  Self-service device migration (different from Stage 3 admin-driven re-enroll).
+  Owner-enabled: Settings > General > Linked user migration.
+  Security warning: no administrative approval, security risk if new device compromised.
+  Export (PIN + passphrase + biometric) -> QR (1h valid) -> Import (new PIN + biometric + passphrase).
+  Auto-delete from old device, confirmation email.
+  When old device unavailable: Owner Support, others request re-enrollment.

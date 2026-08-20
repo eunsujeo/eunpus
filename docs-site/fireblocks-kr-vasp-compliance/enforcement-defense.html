@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>5. 제재 사례와 도구 매핑 — 4 종합검사 정직 분석</title>
+<meta content="두나무·코빗·빗썸·코인원 4 종합검사 위반 사유를 Fireblocks 도구로 어디까지 방어 가능했는지 정직하게 매핑" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. 법규 지형</h3>
+<ul>
+<li><a href="regulation-landscape.html">1. 한국 규제 지형</a></li>
+<li><a href="fireblocks-coverage.html">2. Fireblocks 가 푸는 것 (직접)</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. 경계선</h3>
+<ul>
+<li><a href="partial-coverage.html">3. Fireblocks 가 거드는 것 (부분)</a></li>
+<li><a href="out-of-scope.html">4. Fireblocks 로 안 풀리는 것</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 운영</h3>
+<ul>
+<li><a class="active" href="enforcement-defense.html">5. 제재 사례와 도구 매핑</a></li>
+<li><a href="deployment-checklist.html">6. 도입 통합 절차</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. 미해결</h3>
+<ul>
+<li><a href="open-questions.html">7. 별도 검증이 필요한 항목</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="defense">
+<h1>5. 제재 사례와 도구 매핑 — 정직한 분석</h1>
+<p class="lead">
+2025–2026 사이 금융감독원이 4 개 국내 VASP (두나무·코빗·빗썸·코인원) 에 종합검사를 실시하고 행정 제재를 부과했다.
+본 페이지는 각 사 위반 사유를 <strong>Fireblocks 도구가 실제로 방어 가능했는지</strong>의 관점에서 정직하게 매핑한다.
+"도구가 있었으면 위반 안 했다" 는 결론은 의도적으로 피한다 — 위반의 본질은 도구 부재가 아닌 운영 통제 부재.
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">중요한 전제 — 4 사가 Fireblocks 를 사용했는지</div>
+<p>
+4 사의 실제 지갑 인프라가 Fireblocks 인지, 자체 구축인지, 다른 vendor 인지는 본 wiki 의 적재 범위 밖.
+본 분석은 "<strong>Fireblocks 를 사용했다고 가정할 때</strong>, 어느 도구가 어느 위반을 방어 가능했을지" 의 가상 매핑이다.
+즉 본 페이지는 도구 평가가 목적이지, 4 사 의사결정에 대한 평가는 아니다.
+</p>
+</div>
+
+<h2>5.1 4 사 위반 한눈에</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>VASP</th><th>일자</th><th>핵심 위반</th><th>제재</th></tr></thead>
+<tbody>
+<tr><td>두나무</td><td>2025-02-25</td>
+  <td>미신고 해외 VASP 19개사와 44,948건 거래, KYC·STR·위험평가 위반, 신규 고객 가상자산 이전 금지 3개월</td>
+  <td>대표이사 문책경고, 보고책임자·준법감시인 면책</td></tr>
+<tr><td>코빗</td><td>2025-12-31</td>
+  <td>KYC·거래제한 위반 약 2.2만건, 해외 미신고 VASP 3사 19건, NFT 등 신규지원 전 위험평가 미실시 655건</td>
+  <td>기관경고 + 과태료 27.3억원</td></tr>
+<tr><td>빗썸</td><td>2026-03-17</td>
+  <td>위반 약 665만건, 해외 미신고 VASP 18사 45,772건, KYC·거래제한·자료보존 위반</td>
+  <td>영업일부정지 6개월 + 과태료 368억원, 대표 문책경고·보고책임자 정직</td></tr>
+<tr><td>코인원</td><td>2026-04-14</td>
+  <td>미신고 VASP 거래금지·KYC·거래제한 위반 다수</td>
+  <td>영업일부정지 3개월, 대표이사 문책경고</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>5.2 6 개 공통 위반 패턴</h2>
+<p>4 사 위반은 6 가지 패턴으로 분류 가능. 각 패턴에 대해 Fireblocks 가 어디까지 방어 가능한지 분석.</p>
+
+<h3>패턴 1 — 미신고 해외 VASP 와의 거래 차단 실패</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>내용</th></tr></thead>
+<tbody>
+<tr><td>위반 건수</td><td>두나무 44,948 / 빗썸 45,772 / 코빗 19 / 코인원 다수</td></tr>
+<tr><td>법적 근거</td><td>특금법 8 + 시행령 10조의20 ④</td></tr>
+<tr><td><strong>Fireblocks 방어 가능성</strong></td><td><strong>높음 — 직접 방어 가능</strong></td></tr>
+<tr><td>방어 도구</td><td>Whitelist (allow-list) + AML provider (Chainalysis · Elliptic) screening + TAP rule</td></tr>
+<tr><td>운영 조건</td><td>인가 VASP 27 사 hot wallet 주소의 일일 갱신, fail-on-unknown 기본 설정</td></tr>
+<tr><td>방어 한계</td><td>새로 추가된 미신고 VASP 주소 식별이 AML provider 의 라벨링 속도에 의존. lag 기간 동안 일부 거래 통과 가능성</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>패턴 2 — 고객확인 (KYC) 재이행 실패</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>내용</th></tr></thead>
+<tbody>
+<tr><td>위반 형태</td><td>초점 불량 신분증 수리, 주소 공란·무관자료 수리, 재이행 기한 경과, 위험등급 상향 후 추가 CDD 없이 거래 허용, 운전면허증 암호일련번호 미검증</td></tr>
+<tr><td>법적 근거</td><td>특금법 5조의2 + 8</td></tr>
+<tr><td><strong>Fireblocks 방어 가능성</strong></td><td><strong>중간 — 부분 방어</strong></td></tr>
+<tr><td>방어 도구</td><td>TAP rule "IF source.kyc_status != ok THEN BLOCK", Audit Log</td></tr>
+<tr><td>운영 조건</td><td>외부 KYC 시스템이 정확한 kyc_status 를 전송해야. KYC 시스템 자체의 정확도가 본질</td></tr>
+<tr><td>방어 한계</td><td>Fireblocks 는 KYC 시스템의 결과만 받음. <strong>"초점 불량 신분증 수리"</strong> 같은 KYC 시스템 내부 문제는 Fireblocks 가 검출 불가</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>패턴 3 — 신규 서비스 출시 전 AML 위험평가 누락</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>내용</th></tr></thead>
+<tbody>
+<tr><td>위반 건수</td><td>코빗 NFT 등 655 건 적발</td></tr>
+<tr><td>법적 근거</td><td>특금법 5 + 시행령 9</td></tr>
+<tr><td><strong>Fireblocks 방어 가능성</strong></td><td><strong>낮음 — 거의 방어 안 됨</strong></td></tr>
+<tr><td>방어 도구</td><td>Sandbox workspace, FSPM (add-on)</td></tr>
+<tr><td>운영 조건</td><td>제품승인위원회 운영 — 도구가 아닌 조직 절차</td></tr>
+<tr><td>방어 한계</td><td>위험평가 자체는 사업자의 위원회·법무·보고책임자가 수행해야. Fireblocks 는 기술 시험 환경만 제공</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>패턴 4 — 자료보존 위반</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>내용</th></tr></thead>
+<tbody>
+<tr><td>위반 형태</td><td>빗썸 — 실명확인증 사본 미보관, 거래내역·차단 근거 5년 미보관</td></tr>
+<tr><td>법적 근거</td><td>특금법 5조의4</td></tr>
+<tr><td><strong>Fireblocks 방어 가능성</strong></td><td><strong>중간 — 부분 방어</strong></td></tr>
+<tr><td>방어 도구</td><td>Audit Log (vendor 측 보관)</td></tr>
+<tr><td>운영 조건</td><td>사업자가 정기 export + 자체 archive 인프라 운영</td></tr>
+<tr><td>방어 한계</td><td>Fireblocks 의 Audit Log 보관 기간 자체는 vendor 측. 사업자의 자체 5년 archive 책임 따로. 신분증 사본은 KYC 시스템 영역</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>패턴 5 — 거래제한 (KYC 미완료 고객) 위반</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>내용</th></tr></thead>
+<tbody>
+<tr><td>위반 형태</td><td>고객확인 미완료 고객 거래 허용 (반복 제재 사유)</td></tr>
+<tr><td>법적 근거</td><td>특금법 8 + 시행령 10조의20</td></tr>
+<tr><td><strong>Fireblocks 방어 가능성</strong></td><td><strong>높음 — 직접 방어 가능</strong></td></tr>
+<tr><td>방어 도구</td><td>TAP rule 의 "IF source.kyc_status != ok THEN BLOCK"</td></tr>
+<tr><td>운영 조건</td><td>KYC 시스템과 Fireblocks 의 정확한 연동, kyc_status 의 실시간 갱신</td></tr>
+<tr><td>방어 한계</td><td>두 시스템의 sync 단절 시 일부 거래 통과 가능. 정기 reconciliation 필요</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>패턴 6 — 의심거래보고 (STR) 미보고</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>내용</th></tr></thead>
+<tbody>
+<tr><td>위반 형태</td><td>두나무 — 영장 관련 이용자 15명의 의심거래 미보고</td></tr>
+<tr><td>법적 근거</td><td>특금법 4</td></tr>
+<tr><td><strong>Fireblocks 방어 가능성</strong></td><td><strong>낮음 — 거의 방어 안 됨</strong></td></tr>
+<tr><td>방어 도구</td><td>Audit Log + AML provider screening 결과</td></tr>
+<tr><td>운영 조건</td><td>의심거래 판단·보고책임자 escalation·KoFIU 제출은 사업자 절차</td></tr>
+<tr><td>방어 한계</td><td>"보고를 안 했다" 는 행위적 위반. 도구가 강제 보고를 자동 수행 불가. 운영 의지 부족이 본질</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>5.3 매핑 종합 — 어디까지 방어 가능한가</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>패턴</th><th>Fireblocks 도구</th><th>운영 절차</th><th>외부 시스템</th><th>방어 가능성</th></tr></thead>
+<tbody>
+<tr><td>1. 미신고 VASP 거래</td><td>Whitelist + AML</td><td>일일 갱신</td><td>인가 VASP 목록</td><td><strong>높음</strong></td></tr>
+<tr><td>2. KYC 재이행</td><td>TAP rule</td><td>kyc_status 갱신</td><td>KYC 시스템 정확도</td><td><strong>중간</strong></td></tr>
+<tr><td>3. 신규 서비스 위험평가</td><td>Sandbox</td><td>제품승인위원회</td><td>법무·보고책임자</td><td><strong>낮음</strong></td></tr>
+<tr><td>4. 자료보존</td><td>Audit Log export</td><td>5년 archive 인프라</td><td>WORM storage</td><td><strong>중간</strong></td></tr>
+<tr><td>5. 거래제한 (KYC 미완료)</td><td>TAP rule</td><td>sync 검증</td><td>KYC 시스템</td><td><strong>높음</strong></td></tr>
+<tr><td>6. STR 미보고</td><td>screening 결과 제공</td><td>보고책임자 escalation</td><td>KoFIU 시스템</td><td><strong>낮음</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>5.4 정직한 결론 — 도구는 절반의 답</h2>
+<p>6 개 패턴을 종합하면:</p>
+<ul>
+<li><strong>"높음" 방어 가능 — 2 개 (패턴 1, 5)</strong>: Fireblocks 의 Whitelist + TAP rule 이 직접 차단</li>
+<li><strong>"중간" 방어 가능 — 2 개 (패턴 2, 4)</strong>: Fireblocks 가 일부 기여, 외부 시스템·자체 archive 가 보완</li>
+<li><strong>"낮음" 방어 가능 — 2 개 (패턴 3, 6)</strong>: 도구가 아닌 사업자 조직 절차가 본질</li>
+</ul>
+
+<div class="callout">
+<div class="callout-title">바로 가장 중요한 메시지</div>
+<p>
+4 종합검사 보고서의 공통 메시지는 "도구가 없었다" 가 아니라 "<strong>AML 별도 부서의 체크리스트가 아니라 상품·운영·보안과 연결된
+사업 승인체계여야 한다</strong>" 였다. 즉 제재의 본질은:
+</p>
+<ol style="margin-bottom:0">
+<li>보고책임자, 준법감시인, 지갑운영, 제품, 보안, 개발이 모두 참여하는 "출시 전 승인위원회" 의 부재</li>
+<li>KYC 시스템 ↔ 거래 엔진 ↔ Fireblocks 간 운영 sync 의 단절</li>
+<li>대량 이용자 기반에서 KYC 재이행 자동화·자료보존 자동화 미흡</li>
+</ol>
+</div>
+
+<h2>5.5 신규 사업자의 권고 — 4 사 제재 사례 흡수</h2>
+<ol>
+<li><strong>"AML 제품승인위원회" 설계 강제</strong> — 신규 토큰·신규 지갑타입·신규 해외 counterparty·신규 출고정책 모두 위원회 거치도록</li>
+<li><strong>지갑운영 정책 문서화</strong> — Fireblocks workspace 인벤토리, 승인권자 매트릭스, hot/cold 분리, 키 관리, 장애 시 출고중단 프로토콜</li>
+<li><strong>해외사업자 연결은 whitelist + denylist 기반</strong> — 인가 VASP 목록 자동 갱신, fail-on-unknown 강제</li>
+<li><strong>KYC ↔ Fireblocks sync 자동화</strong> — kyc_status 의 실시간 sync + 일별 reconciliation</li>
+<li><strong>5년 archive 인프라 사전 구축</strong> — Audit Log 정기 export + WORM storage</li>
+<li><strong>보고책임자·준법감시인의 독립성·승인권 확보</strong> — 4 사 모두 인적 책임이 제재로 연결</li>
+</ol>
+
+<p class="back-top"><a href="#defense">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="assets/app.js"></script>
+</body>
+</html>

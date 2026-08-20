@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>5. DB 상태 변화 — row 단위로 따라가기</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">온·오프램프·스왑 정산 워크스루</a></p>
+<div class="progress">
+<a href="index.html">목차</a><a href="01-onramp.html">1</a><a href="02-offramp.html">2</a><a href="03-swap.html">3</a><a href="04-failure-reconciliation.html">4</a><span class="cur">5</span><a href="06-reconciliation.html">6</a>
+</div>
+<h1>DB 상태 변화 — row 단위로 따라가기</h1>
+<p class="subtitle">앞 페이지의 다이어그램이 "흐름"이라면, 이 페이지는 <b>실제 테이블 row 가 단계마다 어떻게 바뀌는지</b> 보여줍니다</p>
+
+<p><b>네 개의 테이블</b>이 움직입니다. <b>고객 원장</b>(customer_ledger) · <b>델타 원장</b>(delta_ledger) · <b>은행 원장</b>(bank_ledger) · <b>총계정 원장</b>(general_ledger_entry). 컬럼명은 <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a>의 스키마를 따릅니다.</p>
+
+<div class="callout">
+<div class="callout-title">네 원장이 각각 무엇인가 — row 를 보기 전에</div>
+<p style="margin:0 0 10px">크게 둘로 나뉩니다. 셋은 "지금 잔액이 얼마"를 빠르게 보는 <b>캐시</b>이고, 하나는 "왜 그렇게 됐나"를 영구히 적는 <b>증적</b>입니다. 아래 JSON 은 사용자 u_42 가 KRWK 1,000 을 충전 완료한 시점의 실제 row 한 줄입니다.</p>
+<div class="table-wrap"><table>
+<thead><tr><th style="width:21%">테이블</th><th style="width:31%">무엇인가 (누구 것 · 비유)</th><th>row 예시 (JSON)</th></tr></thead>
+<tbody>
+<tr><td><b>고객 원장</b><br/>customer_ledger</td><td>고객이 맡긴 잔액. 우리가 갚을 <b>빚(부채)</b>. 〈통장 잔액〉</td><td><pre style="margin:0;padding:10px 12px;font-size:12px;line-height:1.5"><code>{
+  "user_id": "u_42",
+  "asset_id": "KRWK_ETH",
+  "confirmed": 1000,
+  "pending_in": 0,
+  "pending_out": 0
+}</code></pre></td></tr>
+<tr><td><b>은행 원장</b><br/>bank_ledger</td><td>은행 자신이 가진 <b>자산</b>(treasury·가스·수수료). 〈회사 금고〉</td><td><pre style="margin:0;padding:10px 12px;font-size:12px;line-height:1.5"><code>{
+  "account_type": "VAULT",
+  "asset_id": "KRWK_ETH",
+  "balance": 5000
+}</code></pre></td></tr>
+<tr><td><b>델타 원장</b><br/>delta_ledger</td><td>고객↔은행 자산 이동을 DB 에는 즉시 반영했지만 <b>아직 블록체인 전송 전</b>인 건들의 <b>PENDING 큐</b>. 15분마다 도는 블록체인 배치가 실제 전송하면 settled 로 닫힌다.</td><td><pre style="margin:0;padding:10px 12px;font-size:12px;line-height:1.5"><code>{
+  "delta_id": "delta-1",
+  "delta_type": "ONRAMP",
+  "asset_id": "KRWK_ETH",
+  "amount": -1000,
+  "settlement_status": "settled"
+}</code></pre></td></tr>
+<tr><td><b>총계정 원장</b><br/>general_ledger_entry</td><td>모든 거래를 차변=대변으로 적는 <b>이중부기 본체</b>(불변 증적). 〈분개장〉</td><td><pre style="margin:0;padding:10px 12px;font-size:12px;line-height:1.5"><code>{
+  "entry_id": "e1",
+  "account_code": "KRWK_전송전자산",
+  "debit_credit": "차",
+  "amount": 1000,
+  "source_ref": "req_123"
+}</code></pre></td></tr>
+</tbody>
+</table></div>
+<p style="margin:10px 0 0">앞의 셋은 "지금 상태"를 보여주는 잔액 캐시이고, 총계정 원장은 그 상태가 된 이유를 남기는 불변 기록입니다. <b>자산 = 부채 + 자기자본</b> 항등식이 성립하는 곳도 총계정 원장입니다. 아래 ①~③에서 이 row 들이 단계마다 어떻게 바뀌는지 따라갑니다.</p>
+</div>
+
+<p class="table-note"><b>asset_id 주의</b> — asset_id 는 토큰만 가리키지 않고 <b>토큰 + 네트워크</b>를 한데 묶은 식별자다. 가령 <code>USDC_ETH</code> 는 이더리움 위의 USDC 다. 같은 토큰이라도 체인이 다르면 asset_id 도 달라진다(<code>USDC_ETH</code> ≠ Polygon USDC). 그래서 JSON 예시도 아래 추적 표의 asset_id 도 모두 실제 형태인 <code>KRWK_ETH</code>·<code>USDC_ETH</code> 로 적는다. (단 회계 계정명 <code>account_code</code> 는 네트워크와 무관한 토큰 단위로 둔다 — 예: <code>KRWK_전송전자산</code>.)</p>
+
+<p class="table-note"><b>온체인은 옴니버스, 개인 귀속은 DB</b> — 위 <code>u_42</code> 처럼 "누가 얼마"는 <b>customer_ledger(DB)에만</b> 있다. 온체인에는 고객마다의 개인 지갑이 없고, 전 고객 코인이 <b>고객 옴니버스 지갑 1개</b>에 섞여 있다(은행 자산도 별도 옴니버스 1개). 그래서 아래 bank_ledger 표의 "고객 옴니버스"·"은행 옴니버스"는 각각 <b>지갑 1개의 총 잔액</b>이고, 15분 배치의 온체인 전송은 그 두 지갑 사이에서 <b>전 거래를 네팅한 순액</b>으로 오간다 — 단일 거래의 ±1,000 은 그 배치에 더해지는 몫이다.</p>
+
+<div class="callout">
+<div class="callout-title">테이블별 쓰기 규율 — 먼저 알아둘 것</div>
+<div class="table-wrap"><table>
+<thead><tr><th style="width:34%">테이블</th><th style="width:28%">쓰기 방식</th><th>이유</th></tr></thead>
+<tbody>
+<tr><td>customer_ledger (고객 원장)</td><td><b>UPDATE</b> (잔액)</td><td>현재 잔액 캐시</td></tr>
+<tr><td>delta_ledger (델타 원장)</td><td>INSERT + status <b>UPDATE</b></td><td>미정산 추적·마감</td></tr>
+<tr><td>bank_ledger (은행 원장)</td><td><b>UPDATE</b></td><td>지갑 자산 캐시</td></tr>
+<tr><td>general_ledger_entry (총계정)</td><td><b>append-only (INSERT만)</b></td><td>회계 증적 불변 · 감사</td></tr>
+</tbody>
+</table></div>
+<p style="margin:8px 0 0">즉 총계정 원장은 <b>한 번 적은 row 를 절대 고치지 않습니다</b>. 정정할 때도 새 row 를 하나 더 답니다. 계정 잔액은 "차변 합 − 대변 합"으로 <b>계산</b>합니다.</p>
+</div>
+
+<h2 id="onramp">① 온램프 — 가장 단순한 형태 (KRW 1,000 → KRWK 1,000, 1:1)</h2>
+<p>사용자 X 가 KRWK 0 에서 시작해 1,000 을 충전합니다. 네 테이블을 <b>처음 / 1단계 후 / 2단계 후</b> 세 시점으로 추적합니다.</p>
+
+<h3>customer_ledger — 1단계에 confirmed 즉시 (풀에 코인 있음)</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>asset_id</th><th>confirmed</th><th>pending_in</th><th>pending_out</th></tr></thead>
+<tbody>
+<tr><td>처음</td><td>KRWK_ETH</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td><b>1단계 후</b></td><td>KRWK_ETH</td><td><b>1,000</b></td><td>0</td><td>0</td></tr>
+<tr><td>2단계 후</td><td>KRWK_ETH</td><td>1,000</td><td>0</td><td>0</td></tr>
+</tbody>
+</table></div>
+<p class="table-note">사전 민팅 재고 풀에 코인이 이미 있으므로 1단계에 고객 잔액을 바로 confirmed(가용)로 올린다 — pending_in 스테이징 단계를 거치지 않는다. 15분 블록체인 배치(2단계)는 고객 잔액을 더 바꾸지 않고, <b>온체인 wallet 간 전송(델타 settled)만</b> 처리한다. 이 세 칸은 지갑 매니저의 잔액 조회가 보여주는 <b>가용·대기·잠김</b>과 같은 버킷이다(confirmed=가용, pending_in=대기, pending_out=잠김 — <a href="../wallet-design-walkthrough/08-balance-history.html">지갑 매니저 워크스루의 잔액 조회</a>).</p>
+
+<h3>delta_ledger — INSERT 후 status 만 닫힘</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>row (delta_type · asset · amount · status)</th></tr></thead>
+<tbody>
+<tr><td>처음</td><td>(없음)</td></tr>
+<tr><td><b>1단계 후</b></td><td><code>delta-1 · ONRAMP · KRWK_ETH · −1,000 · pending</code> ← DB 엔 반영, 아직 블록체인 전송 전</td></tr>
+<tr><td><b>2단계 후</b></td><td><code>delta-1 · ONRAMP · KRWK_ETH · −1,000 · settled</code> ← 15분 블록체인 배치가 전송 완료, status 만 닫힘</td></tr>
+</tbody>
+</table></div>
+<p class="table-note">pending 이 오래 머물면 정산이 막혔다는 신호다. 정산이 제때 닫혔는지 보는 대사 단계가 바로 이 status 를 감시한다(<a href="04-failure-reconciliation.html">4장</a>).</p>
+
+<h3>bank_ledger — 은행 옴니버스·고객 옴니버스 두 지갑, 2단계에만 변함</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>은행 옴니버스 KRWK_ETH</th><th>고객 옴니버스 KRWK_ETH</th></tr></thead>
+<tbody>
+<tr><td>처음</td><td>P₀</td><td>C₀</td></tr>
+<tr><td>1단계 후</td><td>P₀ <span style="color:var(--muted)">(변동 없음 — 아직 블록체인 전송 전)</span></td><td>C₀ <span style="color:var(--muted)">(변동 없음)</span></td></tr>
+<tr><td><b>2단계 후</b></td><td><b>P₀ − 1,000</b></td><td><b>C₀ + 1,000</b></td></tr>
+</tbody>
+</table></div>
+<p class="table-note">온체인 전송은 15분 블록체인 배치(2단계)에 일어난다 — 은행 옴니버스에서 빠져 고객 옴니버스로 들어간다(은행 −1,000 / 고객 +1,000). 실제로는 그 배치의 <b>전 거래를 네팅한 순액</b>이 한 번 오가고, 이 건의 1,000 은 거기 더해지는 몫이다. 두 옴니버스 지갑의 <b>총량은 불변, 내부 이동</b>일 뿐이라 지갑별 잔액만 바뀐다.</p>
+
+<h3>general_ledger_entry — append-only, row 가 쌓이기만</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>단계</th><th>INSERT 되는 row (account_code · 차/대 · amount · source_ref)</th></tr></thead>
+<tbody>
+<tr><td><b>1단계</b></td><td><code>e1 · KRWK 전송전자산 · 차 · 1,000 · req_123</code><br/><code>e2 · KRWK 반환채무 · 대 · 1,000 · req_123</code></td></tr>
+<tr><td><b>2단계</b></td><td><code>e3 · KRWK 지갑자산 · 차 · 1,000 · req_123</code><br/><code>e4 · KRWK 전송전자산 · 대 · 1,000 · req_123</code> ← 전송전자산 −1,000 (1단계 +1,000 과 상쇄돼 잔액 0)</td></tr>
+</tbody>
+</table></div>
+<p class="table-note">4개 row 가 누적(수정·삭제 없음). 네 줄 모두 <code>source_ref = req_123</code> 으로 같은 거래임을 표시 — 1·2단계에 걸쳐 들어간 분개를 이 값으로 한데 묶는다.</p>
+
+<h3>이 row 들로 항등식이 어떻게 유지되나</h3>
+<p>차변 합 − 대변 합으로 계정 잔액을 계산하면:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>계정</th><th>1단계 후</th><th>2단계 후</th></tr></thead>
+<tbody>
+<tr><td>KRWK 전송전자산 (자산)</td><td>+1,000</td><td><b>0</b> (e1 +1,000, e4 −1,000 = 닫힘)</td></tr>
+<tr><td>KRWK 지갑자산 (자산)</td><td>0</td><td><b>+1,000</b></td></tr>
+<tr><td>KRWK 반환채무 (부채)</td><td>+1,000</td><td>+1,000</td></tr>
+<tr><td><b>항등식 (자산 = 부채)</b></td><td>1,000 = 1,000 ✓</td><td>1,000 = 1,000 ✓</td></tr>
+</tbody>
+</table></div>
+<p>1단계에는 <b>전송전자산</b>이 자산 자리를 채워 균형을 맞추고, 2단계에는 그게 <b>지갑자산</b>으로 바뀌며 다시 균형을 맞춥니다. 두 시점 어디서도 균형이 깨지지 않습니다. 전송전자산이 1단계엔 전송 대기로, 2단계엔 실제 wallet 자산으로 바뀌며 균형을 유지합니다.</p>
+
+<h2 id="offramp">② 오프램프 — 온램프의 역방향 (KRWK 1,000 → KRW 1,000)</h2>
+<p>방향만 반대입니다(고객→은행풀). 보내는 쪽이라 이중사용을 막으려고 <b>1단계에 사용가능(confirmed)을 즉시 차감</b>합니다(pending 스테이징 없음). 온체인 wallet 전송은 "DB 엔 반영됐지만 아직 블록체인 전송 전"인 델타 PENDING 으로 잡고, 15분 배치(2단계)에 실제 전송합니다.</p>
+
+<h3>delta_ledger — 1줄 INSERT 후 settled</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>row</th></tr></thead>
+<tbody>
+<tr><td><b>1단계 후</b></td><td><code>delta-1 · OFFRAMP · KRWK_ETH · +1,000 · pending</code> ← DB 엔 반영, 아직 블록체인 전송 전</td></tr>
+<tr><td><b>2단계 후</b></td><td><code>delta-1 · OFFRAMP · KRWK_ETH · +1,000 · settled</code> ← 15분 블록체인 배치가 전송 완료</td></tr>
+</tbody>
+</table></div>
+<p class="table-note">부호가 온램프(<code>−</code>)와 반대인 <code>+</code> 다 — 고객 자산이 은행풀로 돌아가는, 곧 wallet 밖으로 전송될 코인이라서다(미출금).</p>
+
+<h3>customer_ledger — 1단계에 confirmed 즉시 차감</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>asset_id</th><th>confirmed</th><th>pending_in</th><th>pending_out</th></tr></thead>
+<tbody>
+<tr><td>처음</td><td>KRWK_ETH</td><td>1,000</td><td>0</td><td>0</td></tr>
+<tr><td><b>1단계 후</b></td><td>KRWK_ETH</td><td><b>0</b></td><td>0</td><td>0</td></tr>
+<tr><td>2단계 후</td><td>KRWK_ETH</td><td>0</td><td>0</td><td>0</td></tr>
+</tbody>
+</table></div>
+<p class="table-note">받는 거래(온램프)와 달리 보내는 거래라 1단계에 confirmed 를 바로 차감한다(pending_out 스테이징 없음). 15분 배치(2단계)는 고객 잔액을 더 바꾸지 않고 온체인 wallet 전송(델타 settled)만 처리한다.</p>
+
+<h3>general_ledger_entry — 방향이 반대</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>단계</th><th>INSERT 되는 row</th></tr></thead>
+<tbody>
+<tr><td><b>1단계</b></td><td><code>KRWK 반환채무 · 차 · 1,000</code> (빚 감소)<br/><code>KRWK 전송전자산 · 대 · 1,000</code> (아직 블록체인 전송 전 자산)</td></tr>
+<tr><td><b>2단계</b></td><td><code>KRWK 전송전자산 · 차 · 1,000</code> (전송전자산 +1,000, 1단계분과 상쇄돼 잔액 0)<br/><code>KRWK 지갑자산 · 대 · 1,000</code> (15분 배치가 실제 전송)</td></tr>
+</tbody>
+</table></div>
+<p class="table-note">온램프와 차/대가 반대다. 충전은 부채↑·은행풀→고객, 환전은 부채↓·고객→은행풀이다. 델타가 "DB 즉시 반영 후 15분 블록체인 배치 전까지 PENDING"으로 잡는 방식은 양쪽 모두 같다.</p>
+
+<h3>bank_ledger — 2단계에 고객 옴니버스 → 은행 옴니버스 내부 이동</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>은행 옴니버스 KRWK_ETH</th><th>고객 옴니버스 KRWK_ETH</th></tr></thead>
+<tbody>
+<tr><td>처음</td><td>P₀</td><td>C₀</td></tr>
+<tr><td>1단계 후</td><td>P₀ <span style="color:var(--muted)">(변동 없음 — 아직 블록체인 전송 전)</span></td><td>C₀ <span style="color:var(--muted)">(변동 없음)</span></td></tr>
+<tr><td><b>2단계 후</b></td><td><b>P₀ + 1,000</b></td><td><b>C₀ − 1,000</b></td></tr>
+</tbody>
+</table></div>
+<p class="table-note">온램프와 방향이 반대다 — 2단계에 고객 옴니버스에서 빠져 은행 옴니버스로 돌아간다(고객 −1,000 / 은행 +1,000). 1단계엔 안 바뀌고(델타가 미출금 PENDING 으로 표시) 15분 블록체인 배치가 실제 전송(전 거래 네팅 순액)하는 2단계에 갱신된다. 두 옴니버스 지갑의 <b>총량은 불변·내부 이동</b>일 뿐이라 지갑별 잔액만 바뀐다.</p>
+
+<h2 id="swap">③ 스왑 — 델타 2줄, 총계정 4줄 (KRWK 1,300 → USDC 1)</h2>
+<p>스왑은 한쪽이 빠지고 다른 쪽이 들어오는 거래라 <b>미정산이 양쪽에</b> 생깁니다. 온램프와 달라지는 테이블 위주로 보겠습니다.</p>
+
+<h3>delta_ledger — 1단계에 2줄 INSERT</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>row</th></tr></thead>
+<tbody>
+<tr><td><b>1단계 후</b></td><td><code>delta-1 · SWAP_OUT · KRWK_ETH · +1,300 · pending</code><br/><code>delta-2 · SWAP_IN · USDC_ETH · −1 · pending</code></td></tr>
+<tr><td><b>2단계 후</b></td><td><code>delta-1 · SWAP_OUT · KRWK_ETH · +1,300 · settled</code><br/><code>delta-2 · SWAP_IN · USDC_ETH · −1 · settled</code></td></tr>
+</tbody>
+</table></div>
+
+<h3>customer_ledger — 1단계에 KRWK↓·USDC↑ 즉시 (pending 없음)</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>KRWK_ETH (conf · in · out)</th><th>USDC_ETH (conf · in · out)</th></tr></thead>
+<tbody>
+<tr><td>처음</td><td>1,300 · 0 · 0</td><td>0 · 0 · 0</td></tr>
+<tr><td><b>1단계 후</b></td><td><b>0</b> · 0 · 0</td><td><b>1</b> · 0 · 0</td></tr>
+<tr><td>2단계 후</td><td>0 · 0 · 0</td><td>1 · 0 · 0</td></tr>
+</tbody>
+</table></div>
+<p class="table-note">풀에 양쪽 코인이 이미 있으므로 1단계에 고객 잔액을 바로 confirmed 로 맞춘다(KRWK −1,300, USDC +1, pending 스테이징 없음). 15분 배치(2단계)는 고객 잔액을 더 바꾸지 않고 온체인 wallet 전송(델타 settled)만 처리한다.</p>
+<h3>general_ledger_entry — 1단계 4줄 · 2단계 4줄 (KRWK·USDC 각자 균형)</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>단계</th><th>INSERT 되는 row (account_code · 차/대 · amount · source_ref)</th></tr></thead>
+<tbody>
+<tr><td><b>1단계</b></td><td><code>KRWK 반환채무 · 차 · 1,300 · req_789</code> (KRWK 빚↓)<br/><code>KRWK 전송전자산 · 대 · 1,300 · req_789</code> (전송 전 PENDING)<br/><code>USDC 전송전자산 · 차 · 1 · req_789</code> (전송 전 PENDING)<br/><code>USDC 반환채무 · 대 · 1 · req_789</code> (USDC 빚↑)</td></tr>
+<tr><td><b>2단계</b></td><td><code>KRWK 전송전자산 · 차 · 1,300 · req_789</code> (1단계분과 상쇄돼 0)<br/><code>KRWK 지갑자산 · 대 · 1,300 · req_789</code> (15분 배치가 실제 전송)<br/><code>USDC 지갑자산 · 차 · 1 · req_789</code> (15분 배치가 실제 전송)<br/><code>USDC 전송전자산 · 대 · 1 · req_789</code> (1단계분과 상쇄돼 0)</td></tr>
+</tbody>
+</table></div>
+<p class="table-note"><b>두 자산이 각자 따로 균형</b>이다 — KRWK(1,300)와 USDC(1)는 금액·단위가 다르지만, 차변=대변은 <b>같은 account_code(자산) 네임스페이스 안에서 각각</b> 맞는다(교차 균형 아님). 전송전자산은 양쪽 모두 2단계에 상쇄돼 0 으로 닫힌다. 매매 스프레드가 있으면 손익 분개(GLE) 한 줄이 더 붙는다.</p>
+
+<h3>bank_ledger — 2단계에 두 자산 모두 풀↔고객 이동</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>은행 옴니버스 KRWK_ETH</th><th>고객 옴니버스 KRWK_ETH</th><th>은행 옴니버스 USDC_ETH</th><th>고객 옴니버스 USDC_ETH</th></tr></thead>
+<tbody>
+<tr><td>처음</td><td>PK₀</td><td>CK₀</td><td>PU₀</td><td>CU₀</td></tr>
+<tr><td>1단계 후</td><td>PK₀ <span style="color:var(--muted)">(변동 없음)</span></td><td>CK₀</td><td>PU₀ <span style="color:var(--muted)">(변동 없음)</span></td><td>CU₀</td></tr>
+<tr><td><b>2단계 후</b></td><td><b>PK₀ + 1,300</b></td><td><b>CK₀ − 1,300</b></td><td><b>PU₀ − 1</b></td><td><b>CU₀ + 1</b></td></tr>
+</tbody>
+</table></div>
+<p class="table-note">스왑은 두 자산이 모두 은행 옴니버스↔고객 옴니버스로 움직인다 — KRWK 는 고객→은행(고객 −1,300 / 은행 +1,300), USDC 는 은행→고객(은행 −1 / 고객 +1). 각 자산별로 <b>총량은 불변·내부 이동</b>일 뿐이라 지갑별 잔액만 바뀐다. 1단계 승인은 <b>풀 가용분(실제 wallet 잔액 − 미정산 PENDING 유출)</b> 안에서만 허용한다 — 아직 전송 전인 PENDING 을 미리 빼두어야 풀이 오버할당되지 않는다.</p>
+
+<h2 id="failure">④ 실패 되돌리기 — 1단계를 거꾸로 (충전 실패 예시)</h2>
+<p>1단계까지 반영됐는데 2단계(15분 블록체인 배치)가 실패하면, 델타 미정산 줄을 기준으로 1단계를 <b>정확히 거꾸로</b> 풉니다(흐름 다이어그램은 <a href="04-failure-reconciliation.html">4장</a>). 온램프(충전)가 1단계 후 실패한 경우의 row 변화입니다.</p>
+
+<h3>customer_ledger — confirmed 원복</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>asset_id</th><th>confirmed</th><th>pending_in</th><th>pending_out</th></tr></thead>
+<tbody>
+<tr><td>1단계 후</td><td>KRWK_ETH</td><td>1,000</td><td>0</td><td>0</td></tr>
+<tr><td><b>실패 → 원복</b></td><td>KRWK_ETH</td><td><b>0</b></td><td>0</td><td>0</td></tr>
+</tbody>
+</table></div>
+<p class="table-note">받는 거래였으니 1단계에 즉시 올렸던 confirmed +1,000 을 도로 차감한다(보내는 거래였다면 1단계에 차감했던 confirmed 를 다시 +복원). pending 스테이징이 없으므로 confirmed 한 칸만 거꾸로 푼다.</p>
+
+<h3>delta_ledger — settled 가 아니라 cancelled 로 닫음</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>시점</th><th>row</th></tr></thead>
+<tbody>
+<tr><td>1단계 후</td><td><code>delta-1 · ONRAMP · KRWK_ETH · −1,000 · pending</code></td></tr>
+<tr><td><b>실패</b></td><td><code>delta-1 · ONRAMP · KRWK_ETH · −1,000 · cancelled</code> ← 정상 마감(settled)이 아니라 취소</td></tr>
+</tbody>
+</table></div>
+
+<h3>general_ledger_entry — 정정(reverse) 분개를 새로 INSERT</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>단계</th><th>INSERT 되는 row</th></tr></thead>
+<tbody>
+<tr><td><b>실패 정정</b></td><td><code>e5 · KRWK 반환채무 · 차 · 1,000 · req_123</code><br/><code>e6 · KRWK 전송전자산 · 대 · 1,000 · req_123</code> ← 1단계(e1·e2)의 차/대를 뒤집음</td></tr>
+</tbody>
+</table></div>
+<p class="table-note">총계정은 append-only라 1단계 분개를 <b>지우지 않고</b>, 차/대를 뒤집은 정정 분개를 새로 INSERT 해 상쇄한다. 결과적으로 전송전자산·반환채무 모두 0 으로 복귀하고, 같은 <code>source_ref(req_123)</code> 로 묶여 한 거래의 시작·취소가 한눈에 보인다.</p>
+
+<div class="callout">
+<div class="callout-title">한 줄로</div>
+<p style="margin:0">움직이는 row 는 매번 같다. <b>customer_ledger 잔액(UPDATE)</b> · <b>delta_ledger 미정산(INSERT→status UPDATE)</b> · <b>bank_ledger 지갑(2단계 UPDATE)</b> · <b>general_ledger_entry 분개(append-only INSERT)</b>. 거래마다 갈리는 건 델타가 1줄이냐 2줄이냐, 차/대 방향이 어디로 가느냐 정도다.</p>
+</div>
+
+<p class="foot">스키마·분개 상세: <a href="../fireblocks-custodial-wallet-db-design/accounting-ledger.html">회계·원장 설계</a> · 대사 4단계: <a href="06-reconciliation.html">6장</a>.</p>
+
+<div class="pager">
+<a href="04-failure-reconciliation.html">← 4. 실패 되돌리기</a>
+<a href="index.html">목차</a>
+<a href="06-reconciliation.html">6. 대사·결산 →</a>
+</div>
+</div>
+</body>
+</html>

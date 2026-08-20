@@ -1,0 +1,11 @@
+url: https://support.fireblocks.io/hc/en-us/articles/12902205245340-Hosted-MPC-Backup-and-Recovery
+url_status: confirmed (Stage 29 Mode C 시점 real article ID 발견)
+fetched_at: 2026-05-19
+source_type: pdf
+domain: mobile-recovery
+tier: 1
+title: "Hosted MPC Backup and Recovery"
+crawl_status: full-body (Stage 29 chunked via pdftotext + sed, body 미 LLM context 전체 로드)
+promote_condition: "deep-ingested Stage 29 — sources/markdown 의 본문 markdown 참조"
+recommended_mode: mode_c_executed
+triage_stage: Stage 25 (source_triage.py auto rename), Stage 29 (manual Mode C)

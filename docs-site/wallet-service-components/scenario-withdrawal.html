@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>11. 출금 시나리오 — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="크립토 출금 시나리오 — Service 백엔드가 createTransaction 으로 멱등 제출, Fireblocks 서명 요청에 우리 온프렘 co-signer 가 Callback Handler 검증 후 MPC share 로 공동서명. SUBMITTED→CONFIRMING→COMPLETED/FAILED. boost·cancel·TAP 은 Admin." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Fireblocks 매니저 (벤더 안)</h3><ul>
+<li><a href="component-multichain.html">2. 체인 차이 흡수 — EVM</a></li>
+<li><a href="component-indexer.html">3. 입금 감지 (webhook)</a></li>
+<li><a href="component-tx-nonce.html">4. 출금 파이프라인</a></li>
+<li><a href="component-signing.html">5. 서명 · co-signer</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 우리 백엔드 (Service·Admin)</h3><ul>
+<li><a href="component-gateway.html">6. API 게이트웨이</a></li>
+<li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
+<li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 시나리오</h3><ul>
+<li><a href="scenario-provisioning.html">9. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">10. 입금</a></li>
+<li><a class="active" href="scenario-withdrawal.html">11. 출금</a></li>
+<li><a href="scenario-onofframp.html">12. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 추상화</h3><ul>
+<li><a href="abstraction.html">13. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
+<li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. 기타</h3><ul>
+<li><a href="wallet-creation-animated.html">18. 지갑 생성 애니메이션</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="withdrawal">
+<h2>11. 출금 시나리오</h2>
+<span class="section-subtitle">우리 자산을 외부로 보내는 쓰기 흐름 — 제출 · 공동서명 · 전파 · 확정 · 재전송</span>
+
+<p class="lead">출금은 체인에 <strong>쓰는</strong> 흐름이라 이 시리즈에서 사고가 가장 비싸다. 매니저로 <strong>Fireblocks 를 채택</strong>했으므로 조립·순번·전파는 <strong>벤더 안 블랙박스</strong>로 돌지만, <strong>MPC 서명만은 우리 보안 존의 co-signer key share 가 있어야</strong> 완성된다 — 나가는 돈의 마지막 서명 관문이 우리 인프라 안에 선다. <strong>Service 백엔드</strong>가 승인된 출금 지시를 <code>createTransaction</code> 으로 <strong>멱등하게 제출</strong>하고, 상태 추적과 co-signer 운영을 맡는다. 출금 승인 자체(누가 승인하나)와 정책(TAP·boost·cancel)은 <strong>Admin 백엔드</strong>의 몫이다.</p>
+
+<h3>11.1 표준 흐름 — 파이프라인이 벤더 안으로, 서명은 공동으로</h3>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant BIZ as 비즈니스 레이어
+    participant BE as Service 백엔드
+    box rgb(254,226,226) 우리 보안 존 · SGX/TEE
+    participant COS as API Co-signer
+    participant CB as Callback Handler
+    end
+    box rgb(220,252,231) 블록체인 매니저
+    participant FB as Fireblocks
+    end
+    participant CH as EVM · 이더리움·Base
+
+    Note over BIZ: 출금 요청·승인 완료 (승인 절차는 Admin 거버넌스)
+    BIZ->>BE: 승인된 출금 지시(+멱등 키)
+    BE->>FB: submitTransaction(승인된 출금 + 멱등 키)
+    FB->>FB: createTransaction(…, externalTxId = 멱등 키)
+    FB-->>BE: 트랜잭션 id (= TxRef)
+    Note over COS,CH: 조립·순번·전파는 벤더가 — 다만 MPC 서명엔 우리 co-signer share 가 필요하다
+    FB->>COS: 서명 요청 (원문 목적지·금액 동반)
+    COS->>CB: 승인 질의 — 한도·화이트리스트 재검증
+    CB-->>COS: approve / deny
+    COS-->>FB: MPC 서명 share (approve) · deny 면 서명 거부
+    FB->>CH: 전파 — 벤더 cloud share + 우리 share 로 서명 완료
+    FB-->>BE: 상태 변화 webhook — 전파·누적·확정까지 push
+    CH-->>FB: 블록 누적 → 확정
+</pre></div>
+<p class="diagram-caption">Figure 11-1. 출금 표준 흐름. 출금 요청·승인은 <strong>비즈니스 레이어·Admin 거버넌스에서 완료된 상태</strong>로, Service 백엔드가 승인된 지시를 매니저에 넘긴다. 조립·순번·전파는 <strong>벤더 안 블랙박스</strong>지만, <strong>MPC 서명은 우리 보안 존의 co-signer 와 공동</strong>으로 이뤄진다 — Fireblocks 가 서명을 요청하면 co-signer 가 <strong>Callback Handler</strong>(우리 정책 훅)에 목적지·금액을 재검증받고 approve 일 때만 자기 key share 로 서명한다. 백엔드가 침해돼 "승인된 척" 지시가 와도 이 관문이 <strong>우리 인프라 안</strong>에서 막는다. 멱등 키를 externalTxId 로 넘겨 중복 차단이 벤더 쪽에서도 이어지고, 순번(nonce)은 벤더가 관리한다(<a href="component-signing.html">5. 서명 · co-signer</a>).</p>
+
+<div class="callout">
+<div class="callout-title">왜 우리가 파이프라인을 만들지 않나 — 멱등 제출 하나만 남는다</div>
+<p>직접 구축이었다면 조립(순번 점유)·서명(HSM)·전파를 우리가 단계마다 기록하며 몰고 가야 한다 — 어느 사이에 죽어도 <strong>같은 서명본으로</strong> 재개해야 이중 출금을 막기 때문이다. Fireblocks 를 채택하면 이 파이프라인과 복구 책임이 통째로 벤더 안으로 들어간다. 우리에게 남는 재시도 안전장치는 하나 — <strong>같은 멱등 키(=externalTxId)로 다시 제출</strong>하면 벤더가 새 트랜잭션을 만들지 않고 기존 것을 돌려준다. 우리 몫은 <strong>멱등한 제출·상태 추적·co-signer 운영</strong>이다.</p>
+</div>
+
+<h3>11.2 정책 게이트 — 마지막 방어선은 TAP + co-signer (Admin)</h3>
+
+<p>승인이 끝난 출금만 매니저에 온다고 했는데, 서명 직전에 <strong>또</strong> 검증하는 이유는 하나다. <strong>서명자는 백엔드를 신뢰하지 않는다</strong>. 백엔드가 침해당하면 "승인된 척하는" 출금 지시가 내려올 수 있고, 그때 키 앞을 지키는 마지막 방어선이 필요하다. Fireblocks 채택 기준 그 방어선은 벤더의 거버넌스 정책 <strong>TAP</strong> + 우리 보안 존의 <strong>co-signer</strong> 다. TAP 이 서명 요청을 그대로 믿지 않고 <strong>원문(목적지·금액)을 다시 본다</strong> — 수신처 화이트리스트, 건당 한도, 일일 누적을 말이다.</p>
+
+<p>두 가지가 따라온다. 첫째, <strong>규칙은 코드가 아니라 데이터</strong>다. 화이트리스트와 한도는 설정으로 관리되고, 이 규칙을 관리·승인하는 것은 <strong>Admin 백엔드</strong>의 거버넌스 몫이다(co-signer 승인 포함). 둘째, 이 마지막 방어선은 우리 애플리케이션 코드가 아니라 <strong>벤더 안 TAP + 온프렘 co-signer</strong> 에 있으므로, 우리가 지킬 것은 "게이트를 어떻게 만드나" 가 아니라 "TAP 정책을 어떻게 운영·승인하나"(Admin)와 "co-signer 를 어떻게 운영하나" 다.</p>
+
+<h3>11.3 막혔을 때 — boost 와 cancel (Admin 운영)</h3>
+
+<p>확정한 수수료가 시세보다 낮으면 트랜잭션이 mempool 에 걸려 <strong>막힌다</strong>. EVM(이더리움·Base 모두)에선 대응이 둘이다. <strong>boost</strong> — 같은 순번에 수수료만 올려 다시 보내는 재전송(RBF). Fireblocks 는 전파(Broadcasting) 중 boost 를 지원한다. <strong>cancel</strong> — 출금 자체를 철회. 두 동작 모두 나가는 돈에 개입하는 <strong>Admin 백엔드</strong>의 운영이다. Service 는 고객 출금을 제출할 뿐, boost·cancel 은 부르지 않는다.</p>
+
+<div class="diagram"><pre class="mermaid">
+flowchart TB
+    BC["전파·확정 대기<br/>상태 CONFIRMING<br/>블록 등장·누적 중"]
+    OK["확정<br/>상태 COMPLETED<br/>DCCP 임계 도달"]
+    STUCK["막힘<br/>임계 시간 초과<br/>수수료 부족"]
+    BOOST["boost — Admin<br/>같은 순번<br/>수수료 인상 재전송 RBF"]
+    CANCEL["cancel — Admin<br/>같은 순번<br/>0원 self-send 철회"]
+
+    BC -->|기준 시간 내 채굴| OK
+    BC -->|미채굴 · 임계 초과| STUCK
+    STUCK -->|계속 진행| BOOST
+    STUCK -->|중단 필요| CANCEL
+    BOOST --> BC
+
+    classDef wait fill:#fef3c7,stroke:#d97706;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+    classDef special fill:#e0e7ff,stroke:#6366f1;
+    class BC,STUCK wait;
+    class OK good;
+    class CANCEL bad;
+    class BOOST special;
+</pre></div>
+<p class="diagram-caption">Figure 11-2. 막힘 대응(Admin 운영). 노랑 = 대기·막힘, 초록 = 확정, 보라 = boost(같은 순번 + 수수료 인상 재전송), 빨강 = cancel(같은 순번으로 0원 self-send — 자기 주소로 0원을 보내 같은 순번을 덮어쓴다. 기존 tx 보다 수수료를 올려야 교체된다). EVM 의 수수료 교체는 두 수수료 필드 — 기본 수수료 상한(maxFeePerGas)과 우선 수수료(maxPriorityFeePerGas) — 를 모두, 노드가 요구하는 최소 인상률(통상 10%) 이상 올려야 받아들여진다. boost·cancel 은 벤더가 집행하지만 <strong>언제 boost·언제 철회할지의 판단은 Admin 운영</strong>으로 남는다 — 매니저가 흡수하지 못하는 업무 정책이다(<a href="component-tx-nonce.html">4. 출금 파이프라인</a>).</p>
+
+<pre><code>// 출금 유스케이스 (Service) — 업무 승인은 Admin 거버넌스에서 끝난 뒤
+suspend fun withdraw(order: ApprovedWithdrawal): TxRef =
+    withIdempotency("withdraw:${order.id}") {
+        transactions.submitTransaction(order.toRequest())   // 벤더 파이프라인 + co-signer 공동서명은 전부 이 한 줄 아래
+    }
+
+// 막힌 출금 개입 (Admin) — capability 가 있으면 버튼이 생기고, 없으면 없다
+fun stuckActions(): List&lt;Action&gt; = buildList {
+    (transactions as? FeeBoostCapability)?.let { add(BoostAction(it)) }   // 수수료 인상 재전송 (EVM)
+    (transactions as? CancelCapability)?.let { add(CancelAction(it)) }    // 철회
+}</code></pre>
+<p class="diagram-caption">제출은 Service 의 한 줄, 막힘 개입은 Admin 의 capability 다. 운영 화면조차 체인을 하드코딩하지 않는다 — boost·cancel 은 EVM capability 가 있을 때만 노출된다.</p>
+
+<h3>11.4 상태 한 장 — Fireblocks 필드를 공통 어휘로</h3>
+
+<p>Fireblocks 는 내부 상태를 여러 단계로 보낸다(PENDING_SIGNATURE, QUEUED, BROADCASTING, CONFIRMING, COMPLETED, FAILED…). 백엔드가 보는 것은 <strong>어댑터가 번역한 공통 상태</strong> 하나다. 아래 넷이 밖으로 나간다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:22%">공통 상태 (TxStatus)</th><th>뜻</th><th style="width:34%">Fireblocks 원어 (어댑터가 번역)</th></tr></thead>
+<tbody>
+<tr><td><strong>SUBMITTED</strong></td><td>제출됨 — 벤더가 서명·전파 준비 중, 아직 체인 미등장</td><td>PENDING_SIGNATURE · QUEUED · BROADCASTING</td></tr>
+<tr><td><strong>CONFIRMING</strong></td><td>전파 후 체인에 등장, confirmation 누적 중 (아직 미확정)</td><td>CONFIRMING (numOfConfirmations 증가 중)</td></tr>
+<tr><td><strong>COMPLETED</strong></td><td>확정 — DCCP(확정 정책) 임계 confirmation 도달 = finality, 이후 불변</td><td>COMPLETED</td></tr>
+<tr><td><strong>FAILED</strong></td><td>영구 실패 — 사유 동반 (수수료 부족·거절·revert 등)</td><td>FAILED · REJECTED · BLOCKED</td></tr>
+</tbody>
+</table>
+</div>
+<p>confirm(체인 등장)과 finality(확정)를 <strong>numOfConfirmations</strong> 로 가른다. 체인에 올라간 순간이 CONFIRMING 이고, DCCP(확정 정책)가 정한 임계 confirmation 에 도달하면 COMPLETED = finality 다(입금 10.2 와 같은 기준). 이 문서는 이 넷만 밖으로 내보내고, 벤더 내부의 세부 단계는 SUBMITTED 로 접어 감춘다. 상태 이름과 확정 정책(DCCP)은 벤더 안에 있지만, 그것을 우리 공통 어휘 넷으로 번역하는 어댑터, 그리고 막혔을 때의 boost·cancel(Admin) 판단은 여전히 우리 몫이다.</p>
+
+<h3>11.5 컴포넌트별 역할 요약</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th style="width:30%">컴포넌트</th><th>출금에서의 역할</th></tr></thead>
+<tbody>
+<tr><td><a href="component-tx-nonce.html"><strong>출금 파이프라인</strong></a></td><td>조립·순번 점유·전파·확정 추적·boost·cancel — 전부 <strong>Fireblocks 매니저 안</strong>. 우리는 멱등 제출과 상태 번역만.</td></tr>
+<tr><td><a href="component-signing.html"><strong>서명 · co-signer</strong></a></td><td>MPC 공동서명. 벤더 cloud share + 우리 보안 존의 co-signer share, Callback Handler 가 목적지·금액 재검증.</td></tr>
+<tr><td><a href="component-multichain.html"><strong>체인 차이 흡수 — EVM</strong></a></td><td>이더리움·Base 의 순번·수수료(maxFeePerGas·maxPriorityFeePerGas)·boost 규칙을 매니저 안에서 흡수.</td></tr>
+<tr><td><a href="component-indexer.html"><strong>입금 감지 (webhook)</strong></a></td><td>제출한 tx 의 상태 변화(CONFIRMING·COMPLETED)를 webhook 으로 역방향 통지.</td></tr>
+<tr><td><a href="component-ledger.html"><strong>온체인 정합성 · 추적</strong></a></td><td>출금 확정의 정합성 확인 + 벤더 잔액 대사 후 회계 평면 제공.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout callout-danger">
+<div class="callout-title">순서가 곧 안전</div>
+<p>출금에서 가장 위험한 실수는 <strong>순서 역전</strong>이다. 승인 전 제출, 확정 전 "완료" 통지, 서명 전 장부 차감은 모두 사고로 이어진다. Fireblocks 채택으로 조립·순번·서명 순서는 벤더가 지키지만, <strong>멱등 제출</strong>(같은 externalTxId 재사용)과 <strong>co-signer 의 서명 직전 재검증</strong>은 우리 인프라 안에 남는 안전장치다. 모든 전이는 요청 ID + 멱등 키로 추적되어 재처리에도 한 번만 실행되어야 한다.</p>
+</div>
+
+<p>다음 — <a href="scenario-onofframp.html"><strong>12. 온·오프램프 시나리오</strong></a> 에서 fiat(법정화폐) 경계가 끼는 흐름을 본다.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

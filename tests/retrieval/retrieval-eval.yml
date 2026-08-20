@@ -1,0 +1,1170 @@
+evaluated_at: '2026-05-19'
+evaluator_version: v0.1 (P3 MVP, predicted mode)
+question_bank: tests/questions/question-bank.yml
+total: 106
+counts:
+  PASS: 51
+  WEAK: 7
+  PROMOTE_NEEDED: 46
+  FAIL: 2
+rates:
+  PASS: 0.4811
+  WEAK: 0.066
+  PROMOTE_NEEDED: 0.434
+  FAIL: 0.0189
+retrieval_quality:
+  scope: non-verification questions (definition + workflow + comparison)
+  total: 57
+  counts:
+    PASS: 51
+    WEAK: 0
+    PROMOTE_NEEDED: 4
+    FAIL: 2
+  PASS_rate: 0.8947
+  FAIL+PROMOTE_rate: 0.1053
+open_question_backlog:
+  scope: verification questions (Open Q status check)
+  total: 49
+  counts:
+    PASS: 0
+    WEAK: 7
+    PROMOTE_NEEDED: 42
+    FAIL: 0
+  PROMOTE_NEEDED: 42
+  WEAK_partial: 7
+  PASS_answered: 0
+q7_targets:
+  scope: retrieval_quality (non-verification)
+  PASS_min: 0.7
+  FAIL+PROMOTE_max: 0.2
+  pass_target_met: true
+  fp_target_met: true
+  overall_met: true
+results:
+- id: Q-gen-def-000
+  question: 2FA가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 5 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__manage-your-2fa
+  - 2026-05-18__support-fireblocks-io__configure-sso
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__fireblocks-yubikey-authentication
+  - 2026-05-18__support-fireblocks-io__security-aspects-signing-with-the-fireblocks-mobile-app
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-001
+  question: Admin Quorum가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 8 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+  - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access
+  - 2026-05-18__support-fireblocks-io__best-practices-for-choosing-user-roles
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-002
+  question: API Co-signer가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 5 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-003
+  question: API Key가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 2 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-004
+  question: API User가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 4 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-005
+  question: Approval Group가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 7 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access
+  - 2026-05-18__support-fireblocks-io__approval-groups
+  - 2026-05-18__support-fireblocks-io__user-group-management
+  - 2026-05-18__support-fireblocks-io__how-policies-work
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-006
+  question: Callback Handler가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 2 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-007
+  question: Console User가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 5 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__configure-sso
+  - 2026-05-18__support-fireblocks-io__manage-your-2fa
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-008
+  question: Cosigner가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 8 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__authentication-and-authorization
+  - 2026-05-18__support-fireblocks-io__intel-sgx-secure-environments
+  - 2026-05-18__support-fireblocks-io__mpc-cmp
+  - 2026-05-18__support-fireblocks-io__hosted-mpc-overview
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-009
+  question: CSR가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 2 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__user-roles
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-010
+  question: Designated Signer가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 1 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-011
+  question: IP Allowlist가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 4 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access
+  - 2026-05-18__support-fireblocks-io__security-checklist
+  - 2026-05-18__support-fireblocks-io__fireblocks-ip-addresses-to-whitelist
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-012
+  question: Mobile Device가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 8 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__manage-your-2fa
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  - 2026-05-18__support-fireblocks-io__device-migration
+  - 2026-05-18__support-fireblocks-io__linked-users-fireblocks-mobile-app
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-updates
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-013
+  question: MPC Key Share가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 7 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__device-migration
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-updates
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-014
+  question: Policy가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 8 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+  - 2026-05-18__support-fireblocks-io__security-checklist
+  - 2026-05-18__support-fireblocks-io__transaction-lifecycle
+  - 2026-05-18__support-fireblocks-io__primary-transaction-statuses
+  - 2026-05-18__support-fireblocks-io__whitelisting-new-addresses
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-015
+  question: Recovery Passphrase가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 6 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__reset-the-owners-recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-updates
+  - 2026-05-18__support-fireblocks-io__device-migration
+  - 2026-05-18__support-fireblocks-io__security-checklist
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-016
+  question: Sandbox Workspace가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 2 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-017
+  question: SSO가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 2 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__configure-sso
+  - 2026-05-18__support-fireblocks-io__manage-your-2fa
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-018
+  question: Transaction가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 8 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+  - 2026-05-18__support-fireblocks-io__batch-approvals-and-signing
+  - 2026-05-18__support-fireblocks-io__transaction-lifecycle
+  - 2026-05-18__support-fireblocks-io__primary-transaction-statuses
+  - 2026-05-18__support-fireblocks-io__account-and-wallet-structure
+  - 2026-05-18__support-fireblocks-io__whitelisting-new-addresses
+  - 2026-05-18__support-fireblocks-io__one-time-address-ota-feature
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-019
+  question: User가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 8 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__linked-users-fireblocks-mobile-app
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-020
+  question: Vault Account가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 6 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__supported-blockchain-networks
+  - 2026-05-18__support-fireblocks-io__account-and-wallet-structure
+  - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+  - 2026-05-18__support-fireblocks-io__primary-transaction-statuses
+  - 2026-05-18__support-fireblocks-io__whitelisting-new-addresses
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-021
+  question: Workspace Keys Backup가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 6 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__reset-the-owners-recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-19__support-fireblocks-io__hosted-mpc-backup-and-recovery
+  - 2026-05-19__support-fireblocks-io__generating-a-workspace-key-backup-package-fireblocks-recovery-utility
+  - 2026-05-19__support-fireblocks-io__recovering-private-key-material
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-022
+  question: Workspace가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 3 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__account-and-wallet-structure
+  - 2026-05-18__support-fireblocks-io__vault-structure-best-practices
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-023
+  question: Admin가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 5 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-024
+  question: Approver가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 1 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-025
+  question: Editor가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 1 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-026
+  question: Non-Signing Admin가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 3 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-027
+  question: Owner가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 8 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  - 2026-05-18__support-fireblocks-io__reset-the-owners-recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__device-migration
+  - 2026-05-18__support-fireblocks-io__batch-approvals-and-signing
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-028
+  question: Security Admin가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 2 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-029
+  question: Security Auditor가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 2 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__fireblocks-security-posture-management-fspm
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-030
+  question: Signer가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 3 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-def-031
+  question: Viewer가 뭐야?
+  answer_type: definition
+  classification: PASS
+  reason: entity + 1 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-wf-000
+  question: API 운영 절차?
+  answer_type: workflow
+  classification: PASS
+  reason: hub + 3 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-wf-001
+  question: Architecture 운영 절차?
+  answer_type: workflow
+  classification: PASS
+  reason: hub + 8 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__configure-sso
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-updates
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__blockchains-sla
+  - 2026-05-18__support-fireblocks-io__fireblocks-cloud-architecture
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-wf-002
+  question: Authentication 운영 절차?
+  answer_type: workflow
+  classification: PASS
+  reason: hub + 6 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__configure-sso
+  - 2026-05-18__support-fireblocks-io__manage-your-2fa
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access
+  - 2026-05-18__support-fireblocks-io__security-checklist
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-wf-003
+  question: Blockchains 운영 절차?
+  answer_type: workflow
+  classification: PASS
+  reason: hub + 3 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__supported-blockchain-networks
+  - 2026-05-18__support-fireblocks-io__blockchain-data-sheets
+  - 2026-05-18__support-fireblocks-io__blockchains-sla
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-wf-004
+  question: Callback Handler 운영 절차?
+  answer_type: workflow
+  classification: PASS
+  reason: hub + 2 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-wf-005
+  question: Compliance 운영 절차?
+  answer_type: workflow
+  classification: PASS
+  reason: hub + 4 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__security-checklist
+  - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-wf-006
+  question: Cosigner 운영 절차?
+  answer_type: workflow
+  classification: PASS
+  reason: hub + 5 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-wf-007
+  question: Lifecycle Events 운영 절차?
+  answer_type: workflow
+  classification: PASS
+  reason: hub + 8 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__device-migration
+  - 2026-05-18__support-fireblocks-io__reset-the-owners-recovery-passphrase
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-wf-008
+  question: Mobile App 운영 절차?
+  answer_type: workflow
+  classification: PASS
+  reason: hub + 6 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-updates
+  - 2026-05-18__support-fireblocks-io__fireblocks-mobile-app-signing-and-approving
+  - 2026-05-18__support-fireblocks-io__batch-approvals-and-signing
+  - 2026-05-18__support-fireblocks-io__new-mobile-experience-request-management
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-wf-009
+  question: MPC 운영 절차?
+  answer_type: workflow
+  classification: PASS
+  reason: hub + 6 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  - 2026-05-18__support-fireblocks-io__recovery-passphrase
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__device-migration
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-wf-010
+  question: Overview 운영 절차?
+  answer_type: workflow
+  classification: PASS
+  reason: hub + 1 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-wf-011
+  question: Policy Engine 운영 절차?
+  answer_type: workflow
+  classification: FAIL
+  reason: hub is empty stub (577 bytes)
+  evidence:
+  - /Users/mob.bit/Workspace/waas-wiki/vendors/fireblocks/policy-engine.md
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-wf-012
+  question: Risks 운영 절차?
+  answer_type: workflow
+  classification: PASS
+  reason: hub + 8 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  - 2026-05-18__support-fireblocks-io__configure-sso
+  - 2026-05-18__support-fireblocks-io__add-api-users
+  - 2026-05-18__support-fireblocks-io__re-enrolling-api-users
+  - 2026-05-18__support-fireblocks-io__rename-and-delete-api-users
+  - 2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-wf-013
+  question: Security 운영 절차?
+  answer_type: workflow
+  classification: PASS
+  reason: hub + 8 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__security-checklist
+  - 2026-05-18__support-fireblocks-io__allowlisting-ip-addresses-for-console-access
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__audit-log
+  - 2026-05-18__support-fireblocks-io__authentication-and-authorization
+  - 2026-05-18__support-fireblocks-io__mpc-cmp
+  - 2026-05-18__support-fireblocks-io__security-aspects-signing-with-the-fireblocks-mobile-app
+  - 2026-05-18__support-fireblocks-io__intel-sgx-secure-environments
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-wf-014
+  question: TAP (Transaction Authorization Policy) 운영 절차?
+  answer_type: workflow
+  classification: FAIL
+  reason: hub is empty stub (560 bytes)
+  evidence:
+  - /Users/mob.bit/Workspace/waas-wiki/vendors/fireblocks/tap.md
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-wf-015
+  question: User Management 운영 절차?
+  answer_type: workflow
+  classification: PASS
+  reason: hub + 3 full-ingest cite
+  evidence:
+  - 2026-05-18__support-fireblocks-io__user-roles
+  - 2026-05-18__support-fireblocks-io__edit-users
+  - 2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device
+  expected_confidence: high
+  promote_expected: 'false'
+- id: Q-gen-cls-000
+  question: aml compliance 환경에서 어떻게 세팅?
+  answer_type: workflow
+  classification: PROMOTE_NEEDED
+  reason: cluster catalog only, body needed
+  evidence:
+  - 2026-05-19__support-fireblocks-io__aml-compliance-cluster-catalog
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-cls-001
+  question: aws-nitro-cosigner 환경에서 어떻게 세팅?
+  answer_type: workflow
+  classification: PROMOTE_NEEDED
+  reason: cluster catalog only, body needed
+  evidence:
+  - 2026-05-19__support-fireblocks-io__aws-nitro-cluster-catalog
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-cls-002
+  question: cold wallet 환경에서 어떻게 세팅?
+  answer_type: workflow
+  classification: PROMOTE_NEEDED
+  reason: cluster catalog only, body needed
+  evidence:
+  - 2026-05-19__support-fireblocks-io__cold-wallet-cluster-catalog
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-cls-003
+  question: key-link 환경에서 어떻게 세팅?
+  answer_type: workflow
+  classification: PROMOTE_NEEDED
+  reason: cluster catalog only, body needed
+  evidence:
+  - 2026-05-19__support-fireblocks-io__key-link-cluster-catalog
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-cmp-000
+  question: API Co-signer vs Mobile Co-signer 차이?
+  answer_type: comparison
+  classification: PASS
+  reason: both entities exist
+  evidence:
+  - api-co-signer
+  - cosigner
+  expected_confidence: medium
+  promote_expected: 'false'
+- id: Q-gen-cmp-001
+  question: Admin Quorum vs Approval Group 차이?
+  answer_type: comparison
+  classification: PASS
+  reason: both entities exist
+  evidence:
+  - admin-quorum
+  - approval-group
+  expected_confidence: medium
+  promote_expected: 'false'
+- id: Q-gen-cmp-002
+  question: Hot Workspace vs Sandbox Workspace 차이?
+  answer_type: comparison
+  classification: PASS
+  reason: both entities exist
+  evidence:
+  - workspace
+  - sandbox-workspace
+  expected_confidence: medium
+  promote_expected: 'false'
+- id: Q-gen-cmp-003
+  question: 2FA vs SSO 차이?
+  answer_type: comparison
+  classification: PASS
+  reason: both entities exist
+  evidence:
+  - 2fa
+  - sso
+  expected_confidence: medium
+  promote_expected: 'false'
+- id: Q-gen-cmp-004
+  question: MPC Key Share vs Recovery Passphrase 차이?
+  answer_type: comparison
+  classification: PASS
+  reason: both entities exist
+  evidence:
+  - mpc-key-share
+  - recovery-passphrase
+  expected_confidence: medium
+  promote_expected: 'false'
+- id: Q-gen-ver-006
+  question: Q-2026-05-18-C01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: WEAK
+  reason: Q-2026-05-18-C01 partial — promote can complete
+  evidence:
+  - Q-2026-05-18-C01
+  expected_confidence: high
+  promote_expected: mode_b
+- id: Q-gen-ver-008
+  question: Q-2026-05-18-P01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: WEAK
+  reason: Q-2026-05-18-P01 partial — promote can complete
+  evidence:
+  - Q-2026-05-18-P01
+  expected_confidence: high
+  promote_expected: mode_b
+- id: Q-gen-ver-009
+  question: Q-2026-05-18-P02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: WEAK
+  reason: Q-2026-05-18-P02 partial — promote can complete
+  evidence:
+  - Q-2026-05-18-P02
+  expected_confidence: high
+  promote_expected: mode_b
+- id: Q-gen-ver-010
+  question: Q-2026-05-18-P03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-P03 open — promote needed
+  evidence:
+  - Q-2026-05-18-P03
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-012
+  question: Q-2026-05-18-O01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-O01 open — promote needed
+  evidence:
+  - Q-2026-05-18-O01
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-013
+  question: Q-2026-05-18-L01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-L01 open — promote needed
+  evidence:
+  - Q-2026-05-18-L01
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-014
+  question: Q-2026-05-18-L02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-L02 open — promote needed
+  evidence:
+  - Q-2026-05-18-L02
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-015
+  question: Q-2026-05-18-L03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-L03 open — promote needed
+  evidence:
+  - Q-2026-05-18-L03
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-016
+  question: Q-2026-05-18-L04 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-L04 open — promote needed
+  evidence:
+  - Q-2026-05-18-L04
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-017
+  question: Q-2026-05-18-L05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-L05 open — promote needed
+  evidence:
+  - Q-2026-05-18-L05
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-019
+  question: Q-2026-05-18-L07 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-L07 open — promote needed
+  evidence:
+  - Q-2026-05-18-L07
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-021
+  question: Q-2026-05-18-M04 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-M04 open — promote needed
+  evidence:
+  - Q-2026-05-18-M04
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-022
+  question: Q-2026-05-18-A01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-A01 open — promote needed
+  evidence:
+  - Q-2026-05-18-A01
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-023
+  question: Q-2026-05-18-A02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-A02 open — promote needed
+  evidence:
+  - Q-2026-05-18-A02
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-024
+  question: Q-2026-05-18-A03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-A03 open — promote needed
+  evidence:
+  - Q-2026-05-18-A03
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-027
+  question: Q-2026-05-18-A06 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: WEAK
+  reason: Q-2026-05-18-A06 partial — promote can complete
+  evidence:
+  - Q-2026-05-18-A06
+  expected_confidence: high
+  promote_expected: mode_b
+- id: Q-gen-ver-029
+  question: Q-2026-05-18-AU01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-AU01 open — promote needed
+  evidence:
+  - Q-2026-05-18-AU01
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-030
+  question: Q-2026-05-18-AU02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-AU02 open — promote needed
+  evidence:
+  - Q-2026-05-18-AU02
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-031
+  question: Q-2026-05-18-AU03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-AU03 open — promote needed
+  evidence:
+  - Q-2026-05-18-AU03
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-033
+  question: Q-2026-05-18-AU05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-AU05 open — promote needed
+  evidence:
+  - Q-2026-05-18-AU05
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-035
+  question: Q-2026-05-18-D02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: WEAK
+  reason: Q-2026-05-18-D02 partial — promote can complete
+  evidence:
+  - Q-2026-05-18-D02
+  expected_confidence: high
+  promote_expected: mode_b
+- id: Q-gen-ver-036
+  question: Q-2026-05-18-D03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-D03 open — promote needed
+  evidence:
+  - Q-2026-05-18-D03
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-037
+  question: Q-2026-05-18-O02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-O02 open — promote needed
+  evidence:
+  - Q-2026-05-18-O02
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-038
+  question: Q-2026-05-18-O03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-O03 open — promote needed
+  evidence:
+  - Q-2026-05-18-O03
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-040
+  question: Q-2026-05-18-D05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-D05 open — promote needed
+  evidence:
+  - Q-2026-05-18-D05
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-041
+  question: Q-2026-05-18-D06 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-D06 open — promote needed
+  evidence:
+  - Q-2026-05-18-D06
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-042
+  question: Q-2026-05-18-D07 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-D07 open — promote needed
+  evidence:
+  - Q-2026-05-18-D07
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-043
+  question: Q-2026-05-18-D08 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-D08 open — promote needed
+  evidence:
+  - Q-2026-05-18-D08
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-044
+  question: Q-2026-05-18-P04 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-P04 open — promote needed
+  evidence:
+  - Q-2026-05-18-P04
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-045
+  question: Q-2026-05-18-P05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-P05 open — promote needed
+  evidence:
+  - Q-2026-05-18-P05
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-046
+  question: Q-2026-05-18-O04 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-O04 open — promote needed
+  evidence:
+  - Q-2026-05-18-O04
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-047
+  question: Q-2026-05-18-S01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: WEAK
+  reason: Q-2026-05-18-S01 partial — promote can complete
+  evidence:
+  - Q-2026-05-18-S01
+  expected_confidence: high
+  promote_expected: mode_b
+- id: Q-gen-ver-049
+  question: Q-2026-05-18-S03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-S03 open — promote needed
+  evidence:
+  - Q-2026-05-18-S03
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-050
+  question: Q-2026-05-18-S04 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-S04 open — promote needed
+  evidence:
+  - Q-2026-05-18-S04
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-051
+  question: Q-2026-05-18-S05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-S05 open — promote needed
+  evidence:
+  - Q-2026-05-18-S05
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-052
+  question: Q-2026-05-18-S06 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-S06 open — promote needed
+  evidence:
+  - Q-2026-05-18-S06
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-054
+  question: Q-2026-05-18-O05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-O05 open — promote needed
+  evidence:
+  - Q-2026-05-18-O05
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-055
+  question: Q-2026-05-18-B01 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-B01 open — promote needed
+  evidence:
+  - Q-2026-05-18-B01
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-056
+  question: Q-2026-05-18-B02 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-B02 open — promote needed
+  evidence:
+  - Q-2026-05-18-B02
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-057
+  question: Q-2026-05-18-B03 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-B03 open — promote needed
+  evidence:
+  - Q-2026-05-18-B03
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-061
+  question: Q-2026-05-18-S10 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-S10 open — promote needed
+  evidence:
+  - Q-2026-05-18-S10
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-062
+  question: Q-2026-05-18-S11 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-S11 open — promote needed
+  evidence:
+  - Q-2026-05-18-S11
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-063
+  question: Q-2026-05-18-S12 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-S12 open — promote needed
+  evidence:
+  - Q-2026-05-18-S12
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-064
+  question: Q-2026-05-18-S13 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: WEAK
+  reason: Q-2026-05-18-S13 partial — promote can complete
+  evidence:
+  - Q-2026-05-18-S13
+  expected_confidence: high
+  promote_expected: mode_b
+- id: Q-gen-ver-065
+  question: Q-2026-05-18-S14 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-18-S14 open — promote needed
+  evidence:
+  - Q-2026-05-18-S14
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-066
+  question: Q-2026-05-19-G05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-19-G05 open — promote needed
+  evidence:
+  - Q-2026-05-19-G05
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-067
+  question: Q-2026-05-19-M05 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-19-M05 open — promote needed
+  evidence:
+  - Q-2026-05-19-M05
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-068
+  question: Q-2026-05-19-G06 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-19-G06 open — promote needed
+  evidence:
+  - Q-2026-05-19-G06
+  expected_confidence: low
+  promote_expected: mode_c
+- id: Q-gen-ver-069
+  question: Q-2026-05-19-S15 답이 있는가? promote 필요한가?
+  answer_type: verification
+  classification: PROMOTE_NEEDED
+  reason: Q-2026-05-19-S15 open — promote needed
+  evidence:
+  - Q-2026-05-19-S15
+  expected_confidence: low
+  promote_expected: mode_c

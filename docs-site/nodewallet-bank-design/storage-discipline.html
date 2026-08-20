@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>15. Storage Discipline — NodeWallet 은행 도입</title>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a href="architecture.html">1. 컴포넌트 토폴로지</a></li>
+<li><a href="trust-boundaries.html">2. 신뢰 경계</a></li>
+<li><a href="db-split.html">3. 4-DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. DB Schema</h3>
+<ul>
+<li><a href="tables-approver.html">4. approverdb</a></li>
+<li><a href="tables-audit.html">5. auditdb</a></li>
+<li><a href="tables-ledger-chain.html">6. ledgerdb · chaindb</a></li>
+<li><a href="tables-tenant-wallet.html">7. 테넌트 · Wallet</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Cryptography</h3>
+<ul><li><a href="keys-hsm-tee.html">8. HSM · SGX · 키 수명주기</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Policy &amp; Decisions</h3>
+<ul>
+<li><a href="policy-rules.html">9. 10 Policy Rules</a></li>
+<li><a href="sm-decision.html">10. 결정 라이프사이클</a></li>
+<li><a href="sm-signing.html">11. 3-key 서명 흐름</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Transactions &amp; Audit</h3>
+<ul>
+<li><a href="sm-deposit-withdrawal.html">12. 입금 · 출금 흐름</a></li>
+<li><a href="audit-2layer.html">13. 2-Layer 감사</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Compliance</h3>
+<ul><li><a href="compliance-regulations.html">14. 5 규제 + 트래블룰</a></li></ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Discipline</h3>
+<ul>
+<li><a class="active" href="storage-discipline.html">15. Storage Discipline</a></li>
+<li><a href="risks-anti-patterns.html">16. Risks &amp; Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="storage-discipline">
+<h2>15. Storage Discipline</h2>
+<span class="section-subtitle">4 storage class + 1 never-store list — DB trigger 와 FK 제약으로 storage 자체가 정책</span>
+
+<div class="callout">
+<div class="callout-title">출처</div>
+<p><code>pm-db-design-notes.md</code> 섹션 2 (NEVER STORE · APPEND-ONLY · SET-ONCE · MUTABLE · RUNTIME-ONLY 5 카테고리).</p>
+</div>
+
+<h3>5 storage class</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>class</th><th>의미</th><th>강제 수단</th></tr></thead>
+<tbody>
+<tr><td><strong>NEVER STORE</strong></td><td>DB / 디스크 / 캐시 어디에도 저장 금지 — plaintext 키 자료 등</td><td>아키텍처적 분리 (HSM · SGX 내부만)</td></tr>
+<tr><td><strong>APPEND-ONLY</strong></td><td>row INSERT 만 허용. UPDATE / DELETE 금지</td><td><code>prevent_mutation()</code> trigger</td></tr>
+<tr><td><strong>SET-ONCE</strong></td><td>특정 컬럼이 NULL → 값 1회 INSERT 만 허용. 이후 변경 금지</td><td>컬럼 trigger</td></tr>
+<tr><td><strong>MUTABLE WITH CHANGE LOG</strong></td><td>admin 변경 가능하지만 변경마다 audit row append</td><td>application + trigger 가 <code>policy_change_log</code> append</td></tr>
+<tr><td><strong>RUNTIME-ONLY</strong></td><td>메모리에만 존재. DB / 디스크에 영속화 금지</td><td>설계 규약 (DCAP quote · enclave 세션 등)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>NEVER STORE — 절대 영속화 금지</h3>
+<div class="callout callout-warn">
+<div class="callout-title">DB / 디스크 / 캐시 절대 저장 금지</div>
+<ul>
+<li><strong>키 자료 (plaintext)</strong> — HSM 또는 SGX 봉인 외부로 plaintext 가 나가지 않는다. HSM 은 PKCS#11 으로만 접근, SGX 는 sealed blob 만 디스크.</li>
+<li><strong>마스터 키 평문</strong> — HSM 내부에서 만들어지고 RSA-OAEP wrap 후 enclave 로 전달. 평문이 HSM / enclave 경계를 한 번도 건너지 않는다.</li>
+<li><strong>★ Hypothesis (vendor 의 D1a 일반 invariant)</strong> — PIN · 패스코드 · 고객 비밀 정보도 approverdb / ledgerdb / chaindb / auditdb 에 저장 금지.</li>
+</ul>
+</div>
+
+<h3>APPEND-ONLY — INSERT 만</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>표</th><th>DB</th><th>이유</th></tr></thead>
+<tbody>
+<tr><td><code>policy_decisions</code></td><td>approverdb</td><td>모든 평가 결과 영구 보존 — 결정 사슬 무결성</td></tr>
+<tr><td><code>signing_events</code></td><td>auditdb</td><td>모든 체인 서명 이벤트 영구 보존 — Layer 1 영수증</td></tr>
+<tr><td><code>policy_change_log</code></td><td>approverdb</td><td>모든 규칙 변경 영구 보존 — 외부 의식 해소 흔적</td></tr>
+<tr><td><code>key_lifecycle</code></td><td>auditdb</td><td>모든 키 상태 전환 영구 보존</td></tr>
+<tr><td><code>master_key_operations</code></td><td>auditdb</td><td>마스터 KEK 의식 영구 보존</td></tr>
+<tr><td><code>velocity_windows</code></td><td>approverdb</td><td>증분 INSERT 만 — UPDATE 시 sliding window 신뢰 무너짐</td></tr>
+<tr><td><code>address_first_use</code></td><td>approverdb</td><td>insert-only 로 first_seen_at 보존</td></tr>
+<tr><td><code>initiator_nonce_seen</code></td><td>approverdb</td><td>insert-only + unique constraint</td></tr>
+<tr><td><code>tenant_enclave_registrations</code> (★)</td><td>ledgerdb 또는 별도</td><td>SPKI-hash + blob_hash 가 변경되면 안 되므로 append-only</td></tr>
+<tr><td><code>ledger_checkpoints</code></td><td>ledgerdb</td><td>체크포인트 자체는 append-only</td></tr>
+<tr><td><code>chain_events</code></td><td>chaindb</td><td>온체인 사건은 사후 수정 불가 — append-only</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>강제 패턴 — <code>prevent_mutation()</code> trigger</h3>
+<pre><code>CREATE FUNCTION prevent_mutation() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'append-only: % not allowed on %', TG_OP, TG_TABLE_NAME;
+END $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER policy_decisions_no_mutation
+  BEFORE UPDATE OR DELETE OR TRUNCATE ON policy_decisions
+  FOR EACH STATEMENT EXECUTE FUNCTION prevent_mutation();
+-- signing_events · key_lifecycle · master_key_operations 등에 동일 적용</code></pre>
+<p>★ trigger 함수의 정확한 구현은 vendor docs 미명시. 위 PL/pgSQL 은 추정 — MySQL / Oracle 로 install 되면 stored function 형태로 변환.</p>
+
+<h3>SET-ONCE — 컬럼이 NULL → 값 1회만</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>컬럼</th><th>표</th><th>규칙</th></tr></thead>
+<tbody>
+<tr><td><code>auth_approver_sig</code></td><td>policy_decisions · held_*</td><td>NULL → INSERT 1 회 → 그 후 UPDATE 거부</td></tr>
+<tr><td><code>auth_approver_pubkey</code></td><td>동일</td><td>동일</td></tr>
+<tr><td><code>decision</code> (held_*)</td><td>held_deposits · held_withdrawals</td><td>HELD → AUTO_APPROVE 또는 DENY 단방향. 다른 값으로 UPDATE 거부 (sticky)</td></tr>
+<tr><td>payload 컬럼 (held_*)</td><td>held_deposits · held_withdrawals</td><td>INSERT 후 immutable</td></tr>
+<tr><td><code>spki_hash</code> · <code>blob_hash</code></td><td>tenant_enclave_registrations</td><td>register_enclave 1 회만</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>강제 패턴 — set-once trigger</h3>
+<pre><code>-- 예시: auth_approver_sig 의 set-once
+CREATE FUNCTION enforce_set_once_sig() RETURNS trigger AS $$
+BEGIN
+  IF OLD.auth_approver_sig IS NOT NULL THEN
+    IF NEW.auth_approver_sig IS DISTINCT FROM OLD.auth_approver_sig THEN
+      RAISE EXCEPTION 'auth_approver_sig is set-once';
+    END IF;
+  END IF;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER held_withdrawals_set_once
+  BEFORE UPDATE ON held_withdrawals
+  FOR EACH ROW EXECUTE FUNCTION enforce_set_once_sig();</code></pre>
+
+<h3>MUTABLE WITH CHANGE LOG — admin 가능 + audit append</h3>
+<p>policy_rules · condition_sets · condition_set_items 가 이 class. 변경마다 <code>policy_change_log</code> 에 old_data / new_data / created_by / changed_at 이 자동 INSERT.</p>
+<pre><code>-- 예시: policy_rules 변경 자동 로그
+CREATE FUNCTION log_policy_change() RETURNS trigger AS $$
+BEGIN
+  INSERT INTO policy_change_log
+    (table_name, row_id, action, old_data, new_data, created_by, changed_at)
+  VALUES
+    (TG_TABLE_NAME, NEW.id,
+     CASE TG_OP WHEN 'INSERT' THEN 'CREATE'
+                WHEN 'UPDATE' THEN 'UPDATE'
+                WHEN 'DELETE' THEN 'DELETE' END,
+     to_jsonb(OLD), to_jsonb(NEW),
+     current_setting('app.current_user'), now());
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;</code></pre>
+
+<h3>RUNTIME-ONLY — 메모리만</h3>
+<p>vendor docs 가 explicit 하게 enumerate 하지는 않지만 구조적으로 도출 (★ Hypothesis on enumeration):</p>
+<ul>
+<li><strong>Active rule snapshot</strong> — 승인자의 <code>ArcSwap</code> 이 들고 있는 atomic 규칙 set. 변경 source 는 DB 의 policy_rules + policy_change_log 이지만 hot 평가는 in-memory snapshot.</li>
+<li><strong>DCAP attestation quote</strong> — 세션별 생성. 결과 enclave 공개키는 등록 시 한 번 저장되지만 attestation quote 자체는 store 하지 않음.</li>
+<li><strong>Enclave 세션 state</strong> — TLS / CBOR IPC 의 세션 nonce + 채널 state.</li>
+<li><strong>Pre-computed EvaluationContext</strong> — in-flight 요청의 잔액 · 일일누적은 계산 후 evaluation 완료 시 휘발.</li>
+<li><strong>SGX EPC 메모리</strong> — 마스터 키 · BIP-44 파생 키 · 중간값은 서명 직후 제로화.</li>
+</ul>
+
+<h3>storage class → 표 매핑 한눈에</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>class</th><th>표 / 자원</th></tr></thead>
+<tbody>
+<tr><td>NEVER STORE</td><td>plaintext key · 마스터 키 · PIN / 비밀 정보</td></tr>
+<tr><td>APPEND-ONLY</td><td>policy_decisions · signing_events · policy_change_log · key_lifecycle · master_key_operations · velocity_windows · address_first_use · initiator_nonce_seen · chain_events · ledger_checkpoints · tenant_enclave_registrations</td></tr>
+<tr><td>SET-ONCE</td><td>auth_approver_sig · auth_approver_pubkey · held_*.decision · held_*.payload · spki_hash / blob_hash</td></tr>
+<tr><td>MUTABLE + CHANGE LOG</td><td>policy_rules · condition_sets · condition_set_items · tenants · wallets (status)</td></tr>
+<tr><td>RUNTIME-ONLY</td><td>ArcSwap rule snapshot · DCAP quote · 세션 state · EvaluationContext (in-flight) · SGX 메모리 (마스터/파생/중간값)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>storage class 가 무너지는 anti-pattern</h3>
+<ul>
+<li><strong>운영 권한과 application 권한 미분리</strong> — DBA 가 superuser 권한으로 prevent_mutation trigger 우회. 운영 권한은 read-only · 권한 escalation 은 별도 의식.</li>
+<li><strong>auditdb를 일반 DB 와 같은 backup 정책</strong> — auditdb 는 longer retention + WORM archive. 일반 backup 으로 rotate 시 forensic 손실.</li>
+<li><strong>set-once 컬럼을 application 단에서만 강제</strong> — DB trigger 가 없으면 향후 migration / hotfix 가 우회 가능.</li>
+<li><strong>runtime-only 를 캐시에 저장</strong> — Redis 등 외부 캐시에 evaluation context 를 영속화하면 race condition · stale data risk.</li>
+</ul>
+
+<h3>은행 도입 시 결정해야 할 것</h3>
+<ul>
+<li><strong>DB 권한 분리</strong> — application user (INSERT/SELECT only) · admin user (rule 변경) · auditor user (SELECT only) · DBA (구조 변경만, data DML 권한 없음).</li>
+<li><strong>WORM archive 채택</strong> — auditdb 의 오래된 row 를 어떤 스토리지로 ship. AWS S3 Object Lock · 자행 storage solution.</li>
+<li><strong>change-log retention</strong> — policy_change_log 가 정책 변경 평생 보존. row 크기 × 변경 빈도 → 저장 sizing.</li>
+<li><strong>migration 정책</strong> — schema 변경 시 trigger 도 함께 update. trigger drop → migrate → recreate 의 risk 윈도우를 어떻게 다룰지.</li>
+<li><strong>SET-ONCE 우회 발견 시 절차</strong> — set-once 가 깨졌다는 사실이 detect 되면 그 결정의 신뢰가 무너진다. detection 도구 + incident 절차.</li>
+</ul>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="compliance-regulations.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">14. 5 규제 + 트래블룰</span></a>
+<a class="page-nav-link page-nav-next" href="risks-anti-patterns.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">16. Risks &amp; Anti-patterns</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>12. 온·오프램프 (수탁) — 블록체인 매니저 컴포넌트 가이드</title>
+<meta content="수탁 지갑에서 온/오프램프(현금↔코인)는 은행 앱의 내부 DB 작업이며, 블록체인 매니저는 온체인 가장자리(외부 입출금)에서만 호출된다." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. 컴포넌트</h3><ul>
+<li><a href="components.html">1. 컴포넌트 개요</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Fireblocks 매니저 (벤더 안)</h3><ul>
+<li><a href="component-multichain.html">2. 체인 차이 흡수 — EVM</a></li>
+<li><a href="component-indexer.html">3. 입금 감지 (webhook)</a></li>
+<li><a href="component-tx-nonce.html">4. 출금 파이프라인</a></li>
+<li><a href="component-signing.html">5. 서명 · co-signer</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. 우리 백엔드 (Service·Admin)</h3><ul>
+<li><a href="component-gateway.html">6. API 게이트웨이</a></li>
+<li><a href="component-ledger.html">7. 온체인 정합성 · 추적</a></li>
+<li><a href="component-alerts.html">8. 이벤트 · 알림</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. 시나리오</h3><ul>
+<li><a href="scenario-provisioning.html">9. 계정·주소 발급</a></li>
+<li><a href="scenario-deposit.html">10. 입금</a></li>
+<li><a href="scenario-withdrawal.html">11. 출금</a></li>
+<li><a class="active" href="scenario-onofframp.html">12. 온·오프램프</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. 추상화</h3><ul>
+<li><a href="abstraction.html">13. 벤더 추상화 (기능별 포트)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. 구현 예시</h3><ul>
+<li><a href="example-fireblocks.html">14. Fireblocks 어댑터</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. 프로젝트 구조</h3><ul>
+<li><a href="project-structure.html">17. 프로젝트 구조 (모노레포)</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. 기타</h3><ul>
+<li><a href="wallet-creation-animated.html">18. 지갑 생성 애니메이션</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="onofframp">
+<h2>12. 온·오프램프 (수탁) — 매니저는 언제 호출되나</h2>
+<span class="section-subtitle">현금↔코인 전환은 은행 앱의 내부 DB 작업 — 블록체인 매니저는 온체인 가장자리에서만</span>
+
+<p class="lead">앞 시나리오(입금·출금)와 달리, <strong>온/오프램프(현금↔코인 전환)는 블록체인 매니저의 일이 아니다.</strong> 수탁(custodial) 지갑에서는 고객의 코인 잔액이 <strong>은행 앱 안의 내부 장부(DB)</strong> 로 관리되므로, 현금↔코인 전환은 대부분 <strong>은행 앱의 DB 변경 + 코어뱅킹 처리</strong>로 끝난다. 매니저로 <strong>Fireblocks 를 채택</strong>했든 무엇이든, 매니저는 <strong>실제 온체인 이동이 필요한 순간(외부 입금·외부 출금·준비자산 이동)</strong> 에만 호출된다.</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">그래서 "온/오프램프 커넥터" 는 매니저의 컴포넌트가 아니다</div>
+<p>온/오프램프 오케스트레이션(현금 처리 → 코인화 결정)은 <strong>은행 앱(상위)의 일</strong>이다. 매니저가 제공하는 것은 온체인 입금 감지(Fireblocks webhook)와 외부 출금(제출·co-signer 공동서명)뿐이다. 그래서 본 가이드는 온/오프램프를 컴포넌트가 아니라 <strong>"은행 앱이 매니저를 언제 호출/미호출하는가" 시나리오</strong>로만 다룬다. 그 안쪽의 정산·회계(델타 원장·분개·준비자산 대사)는 별도 설계라 <a href="../ramp-settlement-walkthrough/">정산 워크스루</a>에서 다룬다. (전제: 은행이 만드는 수탁 지갑 앱)</p>
+</div>
+
+<h3>12.1 온/오프램프 = 은행 앱의 내부 DB 작업 (매니저 미호출)</h3>
+
+<p>고객이 현금을 코인으로(온램프) 또는 코인을 현금으로(오프램프) 바꿀 때, 자산은 <strong>밖으로 나가지 않는다</strong>. 은행 앱 안에서 코어뱅킹 잔액과 수탁 코인 잔액(DB)만 서로 조정될 뿐이다.</p>
+
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant U as 고객
+    participant APP as 은행 지갑 앱
+    participant CB as 코어뱅킹 · 계정계
+    participant DB as 수탁 잔액 장부 (DB)
+
+    Note over U,DB: 온램프 (현금 → 코인)
+    U->>APP: 온램프 요청
+    APP->>CB: 계좌 차감 · fiat 처리
+    CB-->>APP: fiat 처리 완료
+    APP->>DB: 수탁 코인 잔액 +
+    APP-->>U: 코인 잔액 반영
+    Note over U,DB: 온체인 tx 없음 · 블록체인 매니저 미호출
+
+    Note over U,DB: 오프램프 (코인 → 현금) = 역방향
+    U->>APP: 오프램프 요청
+    APP->>DB: 수탁 코인 잔액 −
+    APP->>CB: 계좌 입금 · fiat 지급
+    CB-->>APP: 지급 완료
+    APP-->>U: 현금 지급 완료
+</pre></div>
+<p class="diagram-caption">Figure 12-1. 수탁 온/오프램프 = 은행 앱 내부 작업. 코어뱅킹(현금)과 수탁 DB(코인 잔액)만 조정되고 <strong>온체인 tx 도, 블록체인 매니저 호출도 없다.</strong> 코인은 은행이 보관 중인 준비자산 안에서 "장부상" 배정될 뿐이다. 오프램프는 코어뱅킹의 fiat(법정화폐) 지급 완료 응답을 받은 뒤에 고객에게 통지하며, 지급이 실패하면 먼저 차감한 수탁 코인 잔액을 원복(보상)한다.</p>
+
+<h3>12.2 블록체인 매니저가 호출되는 때 (온체인 가장자리)</h3>
+
+<p>매니저는 <strong>자산이 실제로 체인을 건너는 순간</strong>에만 등장한다.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>작업</th><th style="width:14%">온체인?</th><th style="width:18%">매니저 호출?</th><th>담당</th></tr></thead>
+<tbody>
+<tr><td>온램프 (내부 현금→코인)</td><td>✗</td><td>✗</td><td>은행 앱 + DB</td></tr>
+<tr><td>오프램프 (내부 코인→현금)</td><td>✗</td><td>✗</td><td>은행 앱 + DB</td></tr>
+<tr><td>외부 입금 (타 지갑 → 우리 주소)</td><td>✓</td><td>✓</td><td><a href="component-indexer.html">입금 감지 (webhook)</a> (<a href="scenario-deposit.html">10. 입금</a>)</td></tr>
+<tr><td>외부 출금 (우리 → 타 주소)</td><td>✓</td><td>✓</td><td><a href="component-tx-nonce.html">출금 파이프라인·서명</a> (<a href="scenario-withdrawal.html">11. 출금</a>)</td></tr>
+<tr><td>준비자산 온체인 이동 (treasury · 집금 sweep)</td><td>✓</td><td>✓</td><td>출금 파이프라인·서명 (<a href="scenario-deposit.html">10.6 집금</a>)</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    subgraph BANK["은행 앱 (상위)"]
+      APP["지갑 앱 · 코어뱅킹 · 수탁 DB<br/>(온/오프램프는 내부 DB 처리로 완결)"]
+    end
+    subgraph MGR["블록체인 매니저 (Fireblocks)"]
+      IDX["입금 감지 · webhook"]
+      TX["출금 파이프라인 · co-signer 서명"]
+    end
+    EXTW["외부 지갑 · 거래소"]
+
+    APP -->|외부 출금 요청| TX
+    TX -->|온체인 전송| EXTW
+    EXTW -->|외부 입금| IDX
+    IDX -->|입금 확정 통지| APP
+
+    classDef ext fill:#f5f5f7,stroke:#86868b;
+    classDef gw fill:#dbeafe,stroke:#2563eb;
+    class APP,EXTW ext;
+    class IDX,TX gw;
+</pre></div>
+<p class="diagram-caption">Figure 12-2. 매니저 호출 경계. 내부 현금↔코인(온/오프램프)은 은행 앱 안에서 끝나 <strong>매니저를 거치지 않는다</strong>. 매니저(파랑)는 <strong>외부 출금</strong>(은행 앱이 호출·co-signer 공동서명)과 <strong>외부 입금</strong>(Fireblocks webhook 이 감지)에서만 동작한다. 이는 0.2 의 두 트리거 — 호출(외부 출금)·감지(외부 입금) — 와 정확히 같다.</p>
+
+<h3>12.3 정리</h3>
+
+<ul>
+<li><strong>온/오프램프는 은행 앱의 오케스트레이션</strong> — 현금 처리(코어뱅킹) + 코인 잔액(수탁 DB) 조정. 매니저 밖.</li>
+<li><strong>수탁이라 내부 이동은 DB로 충분</strong> — 코인이 실제로 체인을 건너지 않으면 온체인 tx 가 없고, 매니저도 부르지 않는다.</li>
+<li><strong>매니저는 온체인 가장자리 전용</strong> — 외부 입금(Fireblocks webhook)·외부 출금(제출·co-signer 서명)·준비자산 이동에서만.</li>
+</ul>
+
+<p>온/오프램프 안쪽의 <strong>정산·회계</strong>(fiat↔crypto 델타 원장·분개·준비자산 대사)는 이 가이드가 다루지 않는다 — <a href="../ramp-settlement-walkthrough/"><strong>정산 워크스루</strong></a>에서 커스터디 DB 관점으로 이어진다.</p>
+
+<p>다음 — <a href="abstraction.html"><strong>13. 벤더 추상화 (기능별 포트)</strong></a> 에서 이 컴포넌트들을 벤더에 묶이지 않게 추상화한다.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/confluence-export.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/27491829465372-Rename-and-delete-API-users
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 3
+language: en
+notes: |
+  Fireblocks Help Center article "Rename and delete API users".
+  Rename: reversible, API key unchanged, Owner + Admin Quorum approval.
+  Delete: default Owner-only, immediate, no mobile approval.
+  Side effects: API key invalid, in-flight tx fail, Co-signer pairing retained
+  (unpairing is separate), audit logs preserved, API user list retains entry.
+  Approval group delegation reuses same Delete users permission as Console users.

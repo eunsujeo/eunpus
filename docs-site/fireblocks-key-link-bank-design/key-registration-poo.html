@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>3. Key 등록 + PoO — Validation Key, Signing Key, 2 가지 Proof of Ownership</title>
+<meta content="Validation Key 와 Signing Key 등록 절차, Interactive/Non-interactive PoO 비교" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Key Link 기초</h3>
+<ul>
+<li><a href="key-link-fundamentals.html">1. Key Link 란</a></li>
+<li><a href="architecture-components.html">2. 아키텍처 구성요소</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Registration &amp; Signing</h3>
+<ul>
+<li><a class="active" href="key-registration-poo.html">3. Key 등록 + PoO</a></li>
+<li><a href="signing-flow.html">4. Signing Flow</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 은행 도입</h3>
+<ul>
+<li><a href="bank-deployment.html">5. 은행 도입</a></li>
+<li><a href="risks-open-questions.html">6. Risks &amp; Open Questions</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="registration">
+<h1>3. Key 등록 + Proof of Ownership</h1>
+<p class="lead">
+Key Link workspace 에서 키를 사용하려면 2 단계가 필요하다.
+먼저 <strong>Validation Key</strong> 를 등록 (Approval Group quorum 매개) 한 다음,
+이를 통해 <strong>Signing Key</strong> 를 등록한다. 등록 시 <strong>PoO (Proof of Ownership)</strong> 가
+2 가지 방식 (Interactive / Non-interactive) 으로 가능하다.
+</p>
+
+<div class="callout">
+<div class="callout-title">본 페이지의 출처</div>
+<p><strong>공식 문서에 정의된 사실</strong></p>
+<ul style="margin-bottom:0.5rem">
+<li>Validation Key 의 정의와 등록 절차 — Getting Started with Fireblocks Key Link</li>
+<li>Signing Key 의 정의와 등록 절차 — Getting Started with Fireblocks Key Link</li>
+<li>Interactive PoO 의 challenge 메시지 포맷 (<code>sha256({tenant_id}-{request_id}-{key_id})</code>) — Getting Started with Fireblocks Key Link</li>
+<li>Non-interactive PoO 의 메시지 포맷 (<code>Fireblocks|Proof of Ownership Message|...</code>) — Getting Started with Fireblocks Key Link</li>
+<li>지원 알고리즘 (ECDSA, EdDSA) — Getting Started with Fireblocks Key Link</li>
+<li>x509 cert 기반 등록 (Ed25519 예시 Python 코드) — Getting Started with Fireblocks Key Link</li>
+<li>Approval Group "Add validation keys" — Getting Started with Fireblocks Key Link</li>
+</ul>
+<p style="margin-bottom:0"><strong>저자가 합리적으로 추정한 운영 권장</strong> — 참고용</p>
+<ul style="margin-bottom:0">
+<li>Interactive vs Non-interactive 선택 권장 (cold HSM 운영 환경에서의 trade-off)</li>
+<li>Validation Key 의 보관 위치 권장 (Fireblocks 공식 문서가 명시하지 않음)</li>
+<li>Non-interactive PoO 의 replay risk 분석 (Risk-KL06)</li>
+</ul>
+</div>
+
+<h2>3.1 2 가지 키의 역할 복습</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>Validation Key</th><th>Signing Key</th></tr></thead>
+<tbody>
+<tr><td><strong>용도</strong></td><td>새 Signing Key 등록 권한 증명</td><td>실제 거래 서명</td></tr>
+<tr><td><strong>등록 시 quorum</strong></td><td>✅ Approval Group quorum 매개</td><td>❌ quorum 매개 없음 (Validation 의 서명만)</td></tr>
+<tr><td><strong>등록 횟수</strong></td><td>적음 (vault 운영 정책 변경 시)</td><td>많음 (vault 추가 시마다)</td></tr>
+<tr><td><strong>비유</strong></td><td>Intermediate CA</td><td>End-entity cert</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>3.2 Validation Key 등록 절차</h2>
+<p>
+새 Signing Key 등록 권한을 얻기 위해 먼저 Validation Key 를 등록한다.
+</p>
+
+<h3>3.2.1 사전 작업 — Approval Group 설정</h3>
+<p>
+Validation Key 등록은 Approval Group quorum 의 승인을 거친다. 이 group 은 별도 설정 가능:
+</p>
+<ul>
+<li>Fireblocks Console → Settings → Quorums → <strong>Security &amp; compliance</strong> tab → <strong>Add validation keys</strong> 항목</li>
+<li>default: Admin Quorum (workspace 의 모든 Admin)</li>
+<li>위임 가능: 별도 group (예: "Validation Key Approvers" — 보안팀 3 인) 으로 설정</li>
+</ul>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Getting Started with Fireblocks Key Link)</span>
+</p>
+
+<div class="callout">
+<div class="callout-title">왜 Approval Group 위임 가능한가</div>
+<p style="margin-bottom:0">
+Validation Key 등록 권한은 운영상 중요하지만 일상적 거래 승인과 분리하고 싶을 때 위임 가능.
+예: 보안팀 3 인이 Validation Key 추가/회수 결정, 운영팀은 Policy rule 과 일상 transaction 만 다룬다.
+</p>
+</div>
+
+<h3>3.2.2 등록 단계</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant HSM as 🔒 HSM
+  participant Op as 👤 운영자
+  participant FB as ☁️ Fireblocks Cloud
+  participant Approver as 👥 Approval Group<br/>(Add validation keys)
+
+  Op->>HSM: Validation Key pair 생성
+  HSM-->>Op: public key
+  Op->>FB: Add validation key API 호출<br/>(public key 첨부)
+  FB->>Approver: 승인 요청 (Mobile app push)
+  Approver-->>FB: quorum 승인
+  FB-->>Op: Validation Key active
+  Note over FB: 이후 Signing Key 등록 시<br/>이 Validation Key 의 서명을 검증
+</pre>
+</div>
+<p class="diagram-caption">
+Validation Key 등록 5 단계: (1) HSM 에서 키 pair 생성 → (2) public key 추출 → (3) Add validation key API 호출 → (4) Approval Group 의 quorum 이 Mobile app 으로 승인 → (5) Fireblocks 에서 active 상태로 등록.
+</p>
+
+<h3>3.2.3 결과</h3>
+<ul>
+<li>Active Validation Key 가 workspace 에 등록됨</li>
+<li>이후 Signing Key 등록 시 이 Validation Key 의 서명만으로 자동 등록 가능</li>
+<li>여러 Validation Key 등록 가능 (운영 단위별 분리 등)</li>
+</ul>
+
+<h2>3.3 Signing Key 등록 — 공통 단계</h2>
+<p>
+Signing Key 등록은 <strong>PoO method 선택 → 인증서 생성 → 업로드</strong> 의 흐름.
+PoO 방식은 Interactive 와 Non-interactive 중 하나 선택.
+</p>
+
+<h3>3.3.1 공통 단계 (PoO 무관)</h3>
+<ol>
+<li><strong>키 pair 생성</strong> — HSM 또는 FIPS-compliant 장비에서 ECDSA 또는 EdDSA 알고리즘으로 생성. public key 추출
+  <span class="src">(출처: Getting Started with Fireblocks Key Link)</span></li>
+<li><strong>x509 cert 생성</strong> — Active Validation Key 로 signing key 의 public key 를 wrap (x509 certificate 형태)
+  <span class="src">(출처: Getting Started with Fireblocks Key Link, Python 예시 코드 포함)</span></li>
+<li><strong>Create signing key endpoint 호출</strong> — cert 와 함께 Fireblocks API 로 업로드. <strong>관련 Fireblocks Agent user ID 명시</strong> 필수 (어느 Agent 가 이 키의 서명 요청을 받을지 지정)
+  <span class="src">(출처: Getting Started with Fireblocks Key Link)</span></li>
+<li><strong>Cert 검증</strong> — Fireblocks 가 cert 가 active Validation Key 로 서명되었는지 검증. 검증 통과 시 키 등록 (status = enabled=false)
+  <span class="src">(출처: Getting Started with Fireblocks Key Link)</span></li>
+<li><strong>PoO 단계 (방법 분기)</strong> — Interactive 또는 Non-interactive 의 PoO 완료 시 enabled=true</li>
+</ol>
+
+<h3>3.3.2 x509 cert 예시 (Ed25519)</h3>
+<p>
+공식 문서가 직접 인용하는 Python 예시 (요약):
+</p>
+<pre style="background:#f7f7f7;padding:14px;border-radius:6px;font-size:13px;overflow-x:auto"><code>def issue_certificate(root_ca_private_key, certificate_pubkey, common_name):
+    sign_algo = None  # Ed25519 default
+    now = datetime.now(timezone.utc)
+    time_delta = timedelta(minutes=5)
+    certificate = (x509.CertificateBuilder()
+        .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, common_name)]))
+        .issuer_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, issuer_name)]))
+        .public_key(certificate_pubkey)
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now)
+        .not_valid_after(now + time_delta)
+        .add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(
+            root_ca_private_key.public_key()), critical=False)
+        .sign(root_ca_private_key, sign_algo))
+    return certificate</code></pre>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Getting Started with Fireblocks Key Link, p.5-6)</span>
+</p>
+
+<p>
+즉 Validation Key (root_ca_private_key) 가 Signing Key 의 public key (certificate_pubkey) 를 wrap 하여 x509 cert 발급.
+not_valid_after 가 <strong>5 분</strong> 으로 매우 짧음 — 등록 직후 즉시 사용 권장 (저자 해석).
+</p>
+
+<h2>3.4 Interactive PoO — Fireblocks 가 challenge 발송</h2>
+<p>
+가장 기본적인 PoO 방식. cert 검증 후 Fireblocks 가 challenge 메시지를 전송, HSM 이 서명, Fireblocks 가 검증.
+</p>
+
+<h3>3.4.1 흐름</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant HSM as 🔒 HSM
+  participant CSrv as ⚙️ Customer Server
+  participant Agent as 🔄 Fireblocks Agent
+  participant FB as ☁️ Fireblocks Cloud
+
+  Note over HSM,FB: 사전: cert 업로드 + 검증 완료<br/>키 status = enabled=false
+  FB->>Agent: PoO challenge 발송
+  Note right of FB: 메시지 =<br/>sha256(tenant_id-request_id-key_id)
+  Agent->>CSrv: challenge 중계
+  CSrv->>HSM: 서명 요청
+  HSM-->>CSrv: challenge 서명
+  CSrv-->>Agent: 서명 결과
+  Agent-->>FB: 서명 반환
+  FB->>FB: 서명 검증 (signing key public 으로)
+  Note over FB: 검증 통과 시<br/>키 status = enabled=true
+</pre>
+</div>
+<p class="diagram-caption">
+Interactive PoO 의 8 단계. 키 등록 직후 Fireblocks 가 challenge 발송 (1) → Agent · Customer Server 경유 (2-3) → HSM 이 서명 (4-5) → 역방향 반환 (6-7) → Fireblocks 검증 (8). 검증 통과 시 키가 enabled 로 전환.
+</p>
+
+<h3>3.4.2 Challenge 메시지 포맷</h3>
+<blockquote>
+"the Proof of Ownership message to be signed is computed as <code>sha256({tenant_id}-{request_id}-{key_id}).hexdigest()</code>"
+</blockquote>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Getting Started with Fireblocks Key Link)</span>
+</p>
+
+<p>
+즉 challenge 는 다음 3 ID 의 결합의 SHA256:
+</p>
+<ul>
+<li><code>tenant_id</code> — workspace ID</li>
+<li><code>request_id</code> — PoO 요청 ID</li>
+<li><code>key_id</code> — 등록 중인 Signing Key ID</li>
+</ul>
+<p>
+Customer Server / HSM 측에서 메시지 무결성 검증 가능 (3 ID 로 hash 를 재계산 후 비교).
+</p>
+
+<h3>3.4.3 운영 특성</h3>
+<ul>
+<li>✅ HSM 이 항상 online 인 경우 즉시 활성화 가능</li>
+<li>✅ Customer 측에 별도 PoO 사전 준비 불필요</li>
+<li>❌ Cold HSM 운영 시 challenge 전달 → 서명 → 반환의 air-gap round-trip 필요 — 매우 느림</li>
+<li>❌ Fireblocks 의 challenge 발송 시점에 HSM 이 reachable 해야 함</li>
+</ul>
+
+<h2>3.5 Non-interactive PoO — 사전 서명 첨부</h2>
+<p>
+Cold HSM / air-gap 환경에 적합한 PoO. 등록 시 메시지와 서명을 사전에 생성하여 첨부.
+</p>
+
+<h3>3.5.1 흐름</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant HSM as 🔒 HSM
+  participant Op as 👤 운영자
+  participant FB as ☁️ Fireblocks Cloud
+
+  Note over HSM,FB: 사전 작업 (air-gap 가능)
+  Op->>HSM: PoO 메시지 생성<br/>(WorkspaceDisplayName, SdkApiKey,<br/>signingDeviceKeyId, UnixTimeInSeconds)
+  HSM-->>Op: 메시지 + 서명
+  Op->>FB: Add signing key API<br/>(cert + proofOfOwnership 첨부)
+  Note over FB: cert 검증 + PoO 서명 검증
+  alt 검증 성공
+    FB-->>Op: 키 status = enabled=true (즉시)
+  else 검증 실패
+    FB-->>Op: 등록 실패
+  end
+</pre>
+</div>
+<p class="diagram-caption">
+Non-interactive PoO 의 흐름. 운영자가 사전에 메시지 생성 (1) → HSM 이 서명 (2) → cert + PoO 첨부하여 등록 API 호출 (3) → Fireblocks 가 검증 → 통과 시 즉시 enabled. air-gap HSM 도 사전 서명 가능하므로 운영 효율적.
+</p>
+
+<h3>3.5.2 메시지 포맷</h3>
+<blockquote>
+"<code>Fireblocks|Proof of Ownership Message|&lt;WorkspaceDisplayName&gt;|&lt;SdkApiKey&gt;</code><br/>
+This message should be in hexadecimal format and is designed to avoid accidental signatures."
+</blockquote>
+<p>
+<span class="src">(출처: Fireblocks 공식 문서 — Getting Started with Fireblocks Key Link)</span>
+</p>
+
+<p>구성요소:</p>
+<ul>
+<li><code>Fireblocks</code> — 상수 문자열</li>
+<li><code>Proof of Ownership Message</code> — 상수 문자열</li>
+<li><code>&lt;WorkspaceDisplayName&gt;</code> — workspace 이름 (workspace 간 혼동 방지)</li>
+<li><code>&lt;SdkApiKey&gt;</code> — 요청을 만든 API key 의 GUID</li>
+<li><code>signingDeviceKeyId</code> — HSM 안의 키 ID 또는 label</li>
+<li><code>UnixTimeInSeconds</code> — 서명 생성 시점 timestamp</li>
+</ul>
+
+<p>
+메시지를 SHA256 으로 hash, HSM 이 서명. 메시지 (hex) + 서명을 <code>proofOfOwnership</code> 객체로 등록 요청에 첨부.
+유효하면 Interactive PoO challenge 없이 즉시 enabled.
+</p>
+
+<h3>3.5.3 운영 특성</h3>
+<ul>
+<li>✅ Air-gap HSM 에서도 사전 서명 가능 → cold HSM 운영에 적합</li>
+<li>✅ Fireblocks 의 challenge 응답 round-trip 불필요</li>
+<li>✅ Workspace 이름 + API key GUID 포함으로 workspace 간 혼동 방지</li>
+<li>❌ Timestamp 가 포함되지만 Fireblocks 측의 timestamp 만료 정책 미명세 → <strong>Risk-KL06 (Replay 가능성)</strong></li>
+<li>❌ 메시지 무결성을 위해 정확한 hex 인코딩 / 메시지 구성 책임이 고객</li>
+</ul>
+
+<div class="callout callout-warn">
+<div class="callout-title">Risk-KL06 — Non-Interactive PoO Replay 가능성</div>
+<p>
+Non-interactive PoO 메시지 포맷에 <code>UnixTimeInSeconds</code> 가 포함되지만, <strong>Fireblocks 가 이 timestamp 의 만료 정책을 강제하는지 공식 문서에 미명시</strong>.
+만약 timestamp 만료 검증이 없다면 한 번 만든 PoO 서명을 재사용 (replay) 가능 — 단 같은 <code>SdkApiKey</code> + <code>signingDeviceKeyId</code> 조합은 한 번만 등록 가능하므로 actual replay vector 는 제한적.
+</p>
+<p style="margin-bottom:0">
+운영 권장: Non-interactive PoO 생성 직후 등록 → 사용하지 않는 PoO 서명은 즉시 폐기 — 저자 추정. <a href="risks-open-questions.html">Risk-KL06</a> 참조.
+</p>
+</div>
+
+<h2>3.6 Interactive vs Non-interactive — 선택 가이드</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th>Interactive</th><th>Non-interactive</th></tr></thead>
+<tbody>
+<tr><td><strong>HSM 환경</strong></td><td>Online HSM 필수</td><td>Online · Cold HSM 모두 가능</td></tr>
+<tr><td><strong>등록 시간</strong></td><td>challenge round-trip 필요 (분 단위)</td><td>사전 서명 후 즉시 (초 단위)</td></tr>
+<tr><td><strong>운영자 작업</strong></td><td>cert 업로드만</td><td>메시지 구성 + 사전 서명 + cert 업로드</td></tr>
+<tr><td><strong>Replay risk</strong></td><td>없음 (Fireblocks 가 매번 새 challenge 생성)</td><td>가능성 있음 (Risk-KL06)</td></tr>
+<tr><td><strong>은행 권장</strong></td><td>Hot HSM 시</td><td><strong>Cold HSM 또는 air-gap 환경 시</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>3.7 등록 완료 후 — Policy rule 설정</h2>
+<p>
+Signing Key 가 enabled 되면 거래 서명에 사용 가능. 사용 전 마지막 단계:
+</p>
+<ol>
+<li><strong>Vault account 에 키 할당</strong> — Console 또는 API. ECDSA 1 + EdDSA 1 까지 (앞 페이지 참조)</li>
+<li><strong>Policy rule 의 designated signer 설정</strong> — Signer-role API user (Agent 와 페어된) 강제
+  <span class="src">(출처: Fireblocks 공식 문서 — Getting Started with Fireblocks Key Link)</span></li>
+<li><strong>Asset wallet 생성</strong> — vault 에 키가 할당된 algorithm 의 asset 만 생성 가능</li>
+</ol>
+
+<div class="callout">
+<div class="callout-title">Designated signer 강제의 의미</div>
+<p style="margin-bottom:0">
+Policy rule 의 designated signer 가 <strong>Signer-role API user</strong> 로 강제되는 이유는, 모든 서명 요청이 페어된 Agent → Customer Server → HSM 경로로 흘러야 하기 때문.
+다른 user (Admin / Editor) 가 designated signer 가 될 수 없도록 강제 — 우회 경로 차단.
+</p>
+</div>
+
+<h2>3.8 Validation Key 회수 / 재발급</h2>
+<p>
+Validation Key 가 침해 의심 또는 운영 정책 변경 시 회수 필요. 단 Fireblocks 공식 문서가 회수 절차를 별도 명시하지 않음 — 저자 추정 정리:
+</p>
+<ul>
+<li><strong>새 Validation Key 등록</strong> → Approval Group quorum 승인</li>
+<li><strong>이전 Validation Key 의 active 상태 해제</strong> — API endpoint 또는 Console (정확한 endpoint 명세는 본 문서 미확보)</li>
+<li><strong>기존 Signing Key 의 영향</strong> — 등록 시 사용된 Validation Key 가 회수되어도 이미 enabled 된 Signing Key 는 계속 사용 가능 추정 (cert 가 등록 시점에 이미 검증되었으므로)</li>
+</ul>
+<p>
+<span class="src">(출처: 저자 추정 — Fireblocks 공식 회수 절차 미확보, vendor 별도 확인 필요)</span>
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">Risk-KL04 — Validation Key 침해</div>
+<p style="margin-bottom:0">
+Validation Key 가 침해되면 공격자가 임의 Signing Key 를 등록 (등록 시 Approval Group quorum 매개 없이) 가능.
+완화: Approval Group "Add validation keys" 의 quorum 을 보안팀에 위임 + Validation Key 자체를 HSM 안에 보관 (공식 명시 권장 미확보) + 주기적 회수/재발급 — 저자 권장. <a href="risks-open-questions.html">Risk-KL04</a> 참조.
+</p>
+</div>
+
+<h2>3.9 다음 페이지</h2>
+<p>
+등록된 Signing Key 로 실제 거래를 서명하는 흐름 (Hot · Warm · Cold 3-mode) 은
+<a href="signing-flow.html">4. Signing Flow</a> 에서 다룬다.
+</p>
+
+<p class="back-top"><a href="#registration">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

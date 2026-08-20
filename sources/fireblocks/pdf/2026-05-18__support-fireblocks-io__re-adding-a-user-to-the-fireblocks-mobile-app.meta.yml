@@ -1,0 +1,8 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/13548929359260-Re-adding-a-user-to-the-Fireblocks-mobile-app
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 3
+language: en
+notes: |
+  Remove user from Linked users (mobile app) -> Re-add via Console mobile app registration sequence.
+  If user record cannot be found in linked users list, proceed to Console re-add directly.

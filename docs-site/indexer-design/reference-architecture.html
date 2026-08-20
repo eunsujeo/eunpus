@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>4. 참조 아키텍처 — 블록체인 인덱서 설계 가이드</title>
+<meta content="인덱서 참조 아키텍처 — 7 컴포넌트 계층 + 책임 + 인터페이스." name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Foundation</h3><ul>
+<li><a href="what-is-indexer.html">1. 인덱서란 무엇인가</a></li>
+<li><a href="requirements.html">2. 요구사항</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Implementation</h3><ul>
+<li><a href="implementation-patterns.html">3. 4 구현 패턴</a></li>
+<li><a class="active" href="reference-architecture.html">4. 참조 아키텍처</a></li>
+<li><a href="data-model.html">5. 데이터 모델</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Operations</h3><ul>
+<li><a href="reorg-finality.html">6. Reorg · Finality</a></li>
+<li><a href="performance-scalability.html">7. 성능 · 확장성</a></li>
+<li><a href="monitoring-ops.html">8. 운영 · 모니터링</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Industry Cases</h3><ul>
+<li><a href="exchange-cases.html">9. 자체 인덱서 운영</a></li>
+<li><a href="saas-cases.html">10. 인덱서 / 데이터 인프라 vendor</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Infrastructure</h3><ul>
+<li><a href="infrastructure-spec.html">11. 인프라 · 스펙</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Portability</h3><ul>
+<li><a href="portability.html">12. 벤더 교체 · 포트 설계</a></li>
+</ul></div>
+</nav>
+</aside>
+
+<main class="content">
+<section id="reference-arch">
+<h2>4. 참조 아키텍처</h2>
+<span class="section-subtitle">7 컴포넌트 계층, 각자의 책임, 인터페이스</span>
+
+<h3>4.1 전체 그림</h3>
+
+<div class="diagram"><pre class="mermaid">
+flowchart LR
+    subgraph SRC[1. Source — 데이터 원천]
+      direction TB
+      FN[Full Node]
+      AN[Archive Node]
+      GP[Geyser plugin]
+      LK[(Lake / S3)]
+      FN ~~~ AN ~~~ GP ~~~ LK
+    end
+
+    subgraph COL[2. Collector — 수집]
+      direction TB
+      RP[RPC Poller]
+      WS[WebSocket Sub]
+      GR[gRPC Stream]
+      FR[File Reader]
+      RP ~~~ WS ~~~ GR ~~~ FR
+    end
+
+    subgraph REORG[3. Reorg / Finality Manager]
+      direction TB
+      CUR[Cursor]
+      CONF[Confirmation tracker]
+      ROLL[Rollback handler]
+      CUR ~~~ CONF ~~~ ROLL
+    end
+
+    subgraph PARSE[4. Parser / Decoder]
+      direction TB
+      ABI[ABI / IDL]
+      NORM[Normalizer]
+      ABI ~~~ NORM
+    end
+
+    subgraph RAW[5. Raw Event Log]
+      LOG[(Append-only<br/>raw store)]
+    end
+
+    subgraph PROJ[6. Projection Workers]
+      direction TB
+      P1[Balance projection]
+      P2[Transfer projection]
+      P3[NFT projection]
+      P4[Search projection]
+      P1 ~~~ P2 ~~~ P3 ~~~ P4
+    end
+
+    subgraph STORE[7. Storage]
+      direction TB
+      PG[(Postgres<br/>system of record)]
+      RD[(Redis<br/>cache · state)]
+      ES[(Elasticsearch<br/>search)]
+      PG ~~~ RD ~~~ ES
+    end
+
+    subgraph API[8. Query API]
+      direction TB
+      REST[REST]
+      GQL[GraphQL]
+      SQL[SQL Explorer]
+      WH[Webhook emitter]
+      REST ~~~ GQL ~~~ SQL ~~~ WH
+    end
+
+    SRC --> COL --> REORG --> PARSE --> RAW
+    RAW --> PROJ --> STORE --> API
+
+    classDef src fill:#fff7ed,stroke:#f5d5a8
+    classDef proc fill:#f5f7fb,stroke:#d1dbf0
+    classDef store fill:#f0faf2,stroke:#c8e6cf
+    class FN,AN,GP,LK,LOG,PG,RD,ES src
+    class RP,WS,GR,FR,CUR,CONF,ROLL,ABI,NORM,P1,P2,P3,P4 proc
+    class REST,GQL,SQL,WH store
+</pre></div>
+<p class="diagram-caption">Figure 4-1. 참조 아키텍처 — 8 계층. 흐름은 왼쪽 (블록체인 원천) 에서 오른쪽 (Query API) 으로. 각 계층 안의 항목은 그 계층의 독립 컴포넌트들.</p>
+
+<p>이 아키텍처는 event sourcing + CQRS 구조다. Raw Event Log (5) = append-only event store, Projection Workers (6) + Storage (7) = materialized view 의 read model, Query API (8) = query side. Source / Collector / Reorg manager 가 이 구조의 앞단에 있는 이유는 <strong>event 의 source 가 자체 application 이 아니라 외부 blockchain</strong> 이기 때문 — 합의 / reorg / 외부 RPC 의 추가 처리가 필요하다.</p>
+
+<h3>4.2 컴포넌트 별 책임</h3>
+
+<p>8 컴포넌트의 역할 / 입력 / 출력 / 운영 지표를 한 표로. 데이터는 (1) Source → ... → (8) Query API 순서로 흐른다.</p>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th style="width:14%">컴포넌트</th><th>역할 (한 줄)</th><th>입력</th><th>출력</th><th>운영 지표</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>(1) Source</strong><br/>데이터 원천</td>
+  <td>blockchain raw data 의 source</td>
+  <td>(P2P 합의)</td>
+  <td>block · tx · log · state change</td>
+  <td>sync 상태, peer count, head lag</td>
+</tr>
+<tr>
+  <td><strong>(2) Collector</strong><br/>수집</td>
+  <td>Source 에서 데이터 fetch (4 구현 패턴 P1-P4 중 하나)</td>
+  <td>Source 의 raw</td>
+  <td>untyped block / tx / log stream</td>
+  <td>fetch latency, error rate, retry</td>
+</tr>
+<tr>
+  <td><strong>(3) Reorg / Finality Manager</strong></td>
+  <td>cursor 관리, confirmation 추적, reorg 감지 + rollback signal</td>
+  <td>block + parent hash chain</td>
+  <td>cursor / reorg event / finality event</td>
+  <td>reorg depth, finality lag</td>
+</tr>
+<tr>
+  <td><strong>(4) Parser / Decoder</strong></td>
+  <td>raw bytes → 도메인 schema (ABI · IDL · contract metadata 사용)</td>
+  <td>untyped event</td>
+  <td>typed event (예: <code>Transfer{from,to,value}</code>)</td>
+  <td>unknown ABI 비율, decode 실패 수</td>
+</tr>
+<tr>
+  <td><strong>(5) Raw Event Log</strong><br/>★ append-only</td>
+  <td>모든 parsed event 를 immutable 보관 (재처리의 source of truth)</td>
+  <td>typed event</td>
+  <td>append-only log (Kafka / Postgres / object storage)</td>
+  <td>log size, retention 정책 준수</td>
+</tr>
+<tr>
+  <td><strong>(6) Projection Workers</strong></td>
+  <td>raw event → 도메인 별 read model 변환 (여러 worker 가 같은 raw 를 각자 다르게)</td>
+  <td>raw log</td>
+  <td>indexed row (잔고, transfer 이력, NFT 소유, 검색 index, 시계열 등)</td>
+  <td>replay duration, projection lag</td>
+</tr>
+<tr>
+  <td><strong>(7) Storage</strong></td>
+  <td>projection 결과 저장 (역할 별 서로 다른 storage)</td>
+  <td>projection 출력</td>
+  <td>(read API 의 source)</td>
+  <td>DB size, query latency, write throughput</td>
+</tr>
+<tr>
+  <td><strong>(8) Query API</strong></td>
+  <td>storage 의 데이터를 외부 애플리케이션에 노출</td>
+  <td>storage read</td>
+  <td>REST / GraphQL / SQL / gRPC / Webhook push</td>
+  <td>QPS, p95 latency, 5xx 비율</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<h4>주요 디테일</h4>
+
+<p><strong>(1) Source 의 선택지</strong> — full node (geth · reth · bitcoin-core) · archive node · third-party RPC (Alchemy · Infura · QuickNode) · Geyser plugin · Firehose · S3 lake. 선택 기준은 <a href="implementation-patterns.html">3. 4 구현 패턴</a> 참조.</p>
+
+<p><strong>(3) Reorg Manager 의 핵심 데이터</strong> — 모든 블록의 <code>(block_number, block_hash, parent_hash)</code> chain 을 추적해야 reorg 를 감지 가능. 자세한 처리 전략은 <a href="reorg-finality.html">6. Reorg · Finality 페이지</a> 참조.</p>
+
+<p><strong>(4) Parser 의 운영 이슈</strong> — unknown ABI (등록 안 된 contract), proxy contract (logic contract 의 ABI 사용 필요), 새 event signature 추가 (코드 deploy 없이 ABI 만 업데이트) 대응 필요.</p>
+
+<p><strong>(5) Raw Event Log 의 ★ 핵심 원칙</strong> — <strong>raw log 는 절대 삭제 / 수정 ✗</strong>. projection 만 disposable. 이 원칙이 깨지면 새 projection 추가 시 replay 불가 + audit trail 손실.</p>
+
+<p><strong>(6) Projection 의 운영 패턴</strong> — 새 projection 추가 시 raw log 의 처음부터 replay. 같은 raw event 가 여러 projection (잔고 + 시세 + 검색) 의 source 가 됨.</p>
+
+<p><strong>(7) Storage 의 종류 별 선택</strong> — 역할 별 서로 다른 storage 가 표준 패턴:</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>저장소</th><th>역할</th><th>전형적 사용</th></tr></thead>
+<tbody>
+<tr><td>PostgreSQL</td><td>system of record</td><td>잔고, transfer history, contract metadata</td></tr>
+<tr><td>Redis</td><td>cache + 상태</td><td>최근 N 블록 hot cache, watermark</td></tr>
+<tr><td>Elasticsearch / OpenSearch</td><td>검색 + 집계</td><td>주소 / tx 전문 검색, 대시보드 집계</td></tr>
+<tr><td>ClickHouse</td><td>OLAP 분석</td><td>대규모 시계열, 분석 query</td></tr>
+<tr><td>RocksDB / Pebble</td><td>임베디드 KV</td><td>내부 state, checkpoint</td></tr>
+<tr><td>S3 / GCS</td><td>cold storage</td><td>raw log 백업, 오래된 snapshot</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>(8) Query API 의 책임</strong> — 단순 데이터 노출 뿐 아니라 auth · rate limit · query complexity 제한 · pagination · caching 까지 포함.</p>
+
+<h3>4.3 read / write 분리 — 가장 중요한 원칙</h3>
+
+<p>이 아키텍처에서 가장 중요한 invariant 한 가지:</p>
+
+<div class="dev-note">
+<span class="dev-note-label">★ read / write 분리</span>
+<p><strong>인덱서가 만드는 모든 storage 는 read-only.</strong> 인덱서가 자체 storage 에 write 할 때, 그 write 의 source 는 항상 raw event log → projection 의 deterministic 변환이어야 한다.</p>
+<p>운영 중 storage 의 row 를 직접 UPDATE 하지 않는다. 보정이 필요하면 raw event 를 추가하고 projection 을 다시 돌린다.</p>
+<p>이 원칙이 깨지면 reorg / replay 시 정합성이 무너진다.</p>
+</div>
+
+<h3>4.4 컴포넌트 간 인터페이스</h3>
+
+<h4>Collector → Reorg manager</h4>
+<pre><code>type RawBlock = {
+  number: BlockNumber
+  hash: BlockHash
+  parentHash: BlockHash
+  timestamp: Timestamp
+  txs: RawTx[]
+  logs: RawLog[]
+}</code></pre>
+
+<h4>Reorg manager → Parser</h4>
+<pre><code>type ChainEvent =
+  | { type: 'NewBlock', block: RawBlock, confirmations: number }
+  | { type: 'BlockFinalized', blockNumber: BlockNumber }
+  | { type: 'Revert', orphanedBlock: BlockHash, fromBlock: BlockNumber }</code></pre>
+
+<h4>Parser → Raw Event Log</h4>
+<pre><code>type ParsedEvent = {
+  // canonical key (idempotency)
+  chainId: ChainId
+  blockNumber: BlockNumber
+  blockHash: BlockHash
+  txHash: TxHash
+  logIndex: number
+
+  // typed payload
+  eventName: string         // e.g., 'Transfer'
+  args: Record&lt;string, any&gt; // decoded
+  raw: Bytes                // 원본 보존
+}</code></pre>
+
+<h4>Raw → Projection</h4>
+<p>각 projection worker 가 raw log 의 own cursor 를 가짐. Kafka offset, Postgres LSN 같은 형태. 새 projection 추가 시 cursor 를 0 으로 시작.</p>
+
+<h4>Projection → Storage</h4>
+<p>idempotent upsert. 같은 event 를 두 번 처리해도 결과 같음.</p>
+<pre><code>// 예 — 잔고 projection
+INSERT INTO balances (account, asset, balance, as_of_block)
+VALUES ($account, $asset, $newBalance, $blockNumber)
+ON CONFLICT (account, asset)
+  DO UPDATE SET
+    balance = EXCLUDED.balance,
+    as_of_block = EXCLUDED.as_of_block
+  WHERE EXCLUDED.as_of_block &gt; balances.as_of_block;
+  -- block number 가 더 큰 update 만 적용 (out-of-order 방어)</code></pre>
+
+<h3>4.5 운영 평면 분리</h3>
+
+<p>참조 아키텍처는 다음 3 평면으로 운영 분리 가능. 각자 별도 deploy / scale.</p>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>평면</th><th>컴포넌트</th><th>scale 특성</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Ingestion plane</strong></td>
+  <td>Source · Collector · Reorg manager · Parser · Raw Log</td>
+  <td>source 처리량에 비례. blockchain TPS 가 결정.</td>
+</tr>
+<tr>
+  <td><strong>Projection plane</strong></td>
+  <td>Projection Workers · Storage write</td>
+  <td>projection 수에 비례. 새 read model 추가 시 worker 추가.</td>
+</tr>
+<tr>
+  <td><strong>Serving plane</strong></td>
+  <td>Storage read · Query API · Webhook</td>
+  <td>애플리케이션 트래픽에 비례. 가장 가변적.</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<p>The Graph 가 "indexing node" 와 "query node" 를 별도 process 로 운영하는 것이 정확히 이 분리. Blockscout 도 indexer / API / UI 를 별도 모드로 운영 가능.</p>
+
+<h3>4.6 다음 페이지</h3>
+
+<p>아키텍처를 알았으니, 다음은 — <a href="data-model.html"><strong>5. 데이터 모델</strong></a> — Raw log + Projection 의 구체 schema 설계.</p>
+
+</section>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

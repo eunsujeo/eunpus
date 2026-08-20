@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>부록 — 정산 흐름과 블록체인 매니저의 경계</title>
+<meta content="noindex" name="robots"/>
+<link href="assets/walkthrough.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="wrap">
+<p class="series"><a href="index.html">온·오프램프·스왑 정산 워크스루</a> · 부록</p>
+<h1>정산 흐름과 블록체인 매니저의 경계</h1>
+<p class="subtitle">이 워크스루의 2단계 흐름이 <b>자체/Fireblocks 블록체인 매니저</b>와 어디서 맞물리는가 — 두 워크스루를 잇는 한 장</p>
+
+<p><b>왜 이 페이지</b>: 본문(1~6장)은 정산을 <b>회계 도메인</b> 관점에서 봅니다. 옆 워크스루(<a href="../wallet-design-walkthrough/index.html">자체 블록체인 매니저 설계</a>)는 같은 거래를 <b>매니저(입금·출금·서명)</b> 관점에서 봅니다. 둘이 어디서 만나는지를 한 장에 겹쳐 봅니다.</p>
+
+<div class="callout">
+<div class="callout-title">한 줄로</div>
+<p style="margin:0">블록체인 매니저는 <b>1단계엔 거의 들어오지 않고, 2단계의 "온체인 전송" 한 지점에만</b> 들어옵니다. 충전·환전·스왑은 본질적으로 <b>고객↔은행 자산 이동</b>이고, DB 는 즉시 적되 <b>온체인 전송은 15분 배치</b>로 모읍니다. 델타는 그 사이 <b>"DB 는 됐지만 아직 전송 전"인 PENDING 큐</b>이고, 매니저가 닿는 <code>onChainEvent</code>·출금이 바로 그 <b>15분 배치 전송</b>입니다. 4원장·델타·대사는 전부 매니저 <b>위</b>(코인계 회계 도메인)에 있어 custody 와 무관합니다. 그래서 자체↔Fireblocks 를 바꿔도 <b>2단계 그 지점만</b> 구현이 갈립니다.</p>
+</div>
+
+<h2>본문 다이어그램의 각 액터는 어느 계층인가</h2>
+<div class="table-wrap"><table>
+<thead><tr><th style="width:34%">본문(Figure 0)의 액터·화살표</th><th style="width:30%">어느 계층</th><th>매니저 동사 (입금·출금)</th></tr></thead>
+<tbody>
+<tr><td>App (은행 App)</td><td><b>코인계 백엔드</b> — 매니저의 호출자<br/>(옆 워크스루의 <code>BE 지갑 백엔드</code>)</td><td>—</td></tr>
+<tr><td>CL · DL · GLE · BL (4원장)</td><td><b>코인계 회계 도메인</b> (매니저 밖)</td><td>—</td></tr>
+<tr><td><code>App→Set</code> 발행/소각/매매 · 정산처(발행사·거래소)</td><td><b>비즈니스 통합</b> (매니저 아님)</td><td>—</td></tr>
+<tr><td><code>FB 보관 지갑</code> · 지갑 입금/출금 · webhook 통지</td><td><b>블록체인 매니저 경계</b></td><td>입금 = <code>onChainEvent</code><br/>출금 = 서명·broadcast</td></tr>
+<tr><td>1단계 검증의 "시세·실비"</td><td>매니저 read-only</td><td><code>estimateFee</code></td></tr>
+</tbody>
+</table></div>
+<p class="table-note">핵심: <b>정산처(발행사·거래소)는 매니저가 아니다.</b> 매니저는 "체인 위 우리 vault 의 입금 감지·출금 실행"만 한다. <code>bank_ledger</code> 도 매니저가 아니라, 매니저의 webhook 을 받아 회계 도메인이 적는 <b>vault 잔액 캐시</b>다.</p>
+
+<h2>겹쳐 본 2단계 — 세 거래</h2>
+<p>세 다이어그램 모두 참가자를 두 그룹(<b>코인계 백엔드</b> · <b>블록체인 매니저</b>)으로 <b>묶기만</b> 했습니다(색 없음). 노랑은 1단계(즉시), 초록은 2단계(정산)입니다. 매니저가 닿는 화살표만 눈으로 따라가면 됩니다.</p>
+
+<p class="table-note"><b>재고 풀(실무 기본형)에선 평상시 온램프·오프램프가 매니저를 거의 안 부릅니다.</b> 코인이 이미 vault 에 있어 한 거래는 <b>순수 DB 할당/회수 + 델타(전송 대기) 큐 적재</b>로 끝나고, 실제 온체인 이동은 <b>15분 배치</b>로 델타를 모아 한 번에 전송하기 때문입니다(<a href="index.html#pool">공통 골격: 사전 민팅 재고 풀</a>). 발행사 호출이 필요한 건 <b>풀 rebalance(batch mint/burn)</b> 뿐이고, 매니저는 그 배치 전송과 rebalance(또는 재고가 비었을 때의 온디맨드)에서 들어옵니다. 아래 ①②의 발행/출금·<code>onChainEvent</code> 흐름이 바로 그 경로입니다.</p>
+
+<h3>① 온램프 — 입금 감지만 (출금 없음)</h3>
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Cust as 고객
+    box transparent 코인계 백엔드 · 회계 도메인
+    participant App as 백엔드
+    participant L as 4원장 CL·DL·GLE·BL
+    end
+    participant ISS as 정산처 · 발행사/거래소
+    box transparent 블록체인 매니저 · 자체↔Fireblocks
+    participant MGR as 매니저
+    participant CH as 체인 / vault
+    end
+
+    rect rgb(254,243,199)
+    Note over Cust,L: 1단계 — 즉시 (매니저 호출 없음)
+    Cust->>App: 충전 요청 KRW 1,000 → KRWK 1,000
+    App->>App: 수수료 산정 (고정 요율)
+    App->>L: CL pending_in +1,000 · DL pending(−) · GLE 미정산 분개
+    App-->>Cust: "처리중"
+    end
+
+    rect rgb(220,252,231)
+    Note over App,CH: 2단계 — 매니저는 입금 감지만
+    App->>ISS: 발행 요청 (비즈니스 통합)
+    ISS-->>App: 발행 접수
+    ISS->>CH: 우리 vault 로 KRWK 1,000 mint 전송
+    MGR->>CH: onChainEvent 구독 (인덱서 / 벤더 webhook)
+    CH-->>MGR: 입금 이벤트 PENDING → CONFIRMED
+    MGR-->>App: 입금 확정 통지
+    App->>L: CL confirmed · BL +1,000 · DL settled · GLE 정산 분개
+    App-->>Cust: "완료"
+    end
+</pre></div>
+<p class="diagram-caption">받는 거래라 매니저는 2단계의 <b>onChainEvent</b>(입금 감지)만 한다. 1단계엔 매니저 호출이 아예 없다. 발행은 외부 정산처(발행사)다. 점선(╌▷)은 호출에 대한 <b>응답·이벤트</b>다.</p>
+<p class="table-note"><b>수수료 산정 (고정 요율)</b> — 고객에게 받을 수수료를 자산·네트워크별 <b>고정 요율표</b>(비즈니스 정책)로 계산하는 회계 도메인 내부 단계다. 변동하는 네트워크 실비(<code>estimateFee</code>)와 다르고, 온램프는 우리가 직접 tx 를 broadcast 하지 않아 실비가 없으므로 이 고정 요율만 적용된다.</p>
+
+<h3>② 오프램프 — 출금 실행이 더해진다</h3>
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Cust as 고객
+    box transparent 코인계 백엔드 · 회계 도메인
+    participant App as 백엔드
+    participant L as 4원장 CL·DL·GLE·BL
+    end
+    participant ISS as 정산처 · 발행사/거래소
+    box transparent 블록체인 매니저 · 자체↔Fireblocks
+    participant MGR as 매니저
+    participant CH as 체인 / vault
+    end
+
+    rect rgb(254,243,199)
+    Note over Cust,L: 1단계 — 즉시 · 보내는 쪽이라 곧바로 잠금
+    Cust->>App: 환전 요청 KRWK 1,000 → KRW 1,000
+    App->>MGR: estimateFee (출금 실비 · read)
+    MGR-->>App: 예상 실비(변동)
+    App->>L: CL confirmed −1,000 · pending_out +1,000 · DL pending(+) · GLE 미정산 분개
+    App-->>Cust: "처리중"
+    end
+
+    rect rgb(220,252,231)
+    Note over App,CH: 2단계 — 매니저가 출금 실행 + 출금 확정 감지
+    App->>MGR: 출금 실행 (vault → 발행사 주소 · HSM/Fireblocks 서명)
+    MGR->>CH: 서명 tx broadcast (KRWK 1,000 송금)
+    MGR-->>App: 출금 접수 (tx 제출)
+    CH-->>MGR: 출금 확정 이벤트(onChainEvent)
+    MGR-->>App: 출금 CONFIRMED
+    App->>ISS: 소각 + 원화 입금 지시 (비즈니스 통합)
+    ISS-->>App: KRWK 소각 · KRW 1,000 입금 (계정계)
+    App->>L: CL pending_out −1,000 마감 · BL −1,000 · DL settled · GLE 정산 분개
+    App-->>Cust: "완료"
+    end
+</pre></div>
+<p class="diagram-caption">보내는 거래라 매니저가 <b>출금 실행</b>(vault에서 코인 송금 · 서명)을 하고, 그 출금이 체인에서 확정되는 것도 <b>onChainEvent</b>로 받는다. 소각·원화 입금은 외부 정산처/계정계의 일이다.</p>
+
+<h3>③ 스왑 — 출금 + 입금 (양쪽)</h3>
+<div class="diagram"><pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Cust as 고객
+    box transparent 코인계 백엔드 · 회계 도메인
+    participant App as 백엔드
+    participant L as 4원장 CL·DL·GLE·BL
+    end
+    participant ISS as 정산처 · 발행사/거래소
+    box transparent 블록체인 매니저 · 자체↔Fireblocks
+    participant MGR as 매니저
+    participant CH as 체인 / vault
+    end
+
+    rect rgb(254,243,199)
+    Note over Cust,L: 1단계 — 즉시 · 미정산이 양쪽에
+    Cust->>App: 스왑 요청 KRWK 1,300 → USDC 1
+    App->>MGR: estimateFee (양쪽 실비 · read)
+    MGR-->>App: 예상 실비(변동)
+    App->>L: CL KRWK pending_out +1,300 · USDC pending_in +1 · DL 2줄 pending · GLE 미정산 4줄
+    App-->>Cust: "처리중"
+    end
+
+    rect rgb(220,252,231)
+    Note over App,CH: 2단계 — 보내는 코인 출금 + 받는 코인 입금
+    App->>MGR: 출금 실행 (vault KRWK 1,300 → 정산처 · 서명)
+    MGR->>CH: 서명 tx broadcast
+    MGR-->>App: 출금 접수 (tx 제출)
+    CH-->>MGR: 출금 확정 이벤트(onChainEvent)
+    MGR-->>App: 출금 CONFIRMED
+    App->>ISS: KRWK 매도 → USDC 매수 (비즈니스 통합)
+    ISS-->>App: 매매 체결 접수
+    ISS->>CH: USDC 1 → 우리 vault 전송
+    MGR->>CH: onChainEvent 구독
+    CH-->>MGR: 입금 이벤트 PENDING → CONFIRMED (USDC)
+    MGR-->>App: USDC 입금 확정 통지
+    App->>L: CL KRWK 마감 · USDC confirmed · BL KRWK −1,300 · USDC +1 · DL 2줄 settled · GLE 정산 분개
+    App-->>Cust: "완료"
+    end
+</pre></div>
+<p class="diagram-caption">한쪽이 나가고 다른 쪽이 들어오므로 매니저는 <b>출금 실행</b>과 <b>입금 감지(onChainEvent)</b>를 모두 한다. 두 코인을 맞바꾸는 매매 자체는 외부 정산처(거래소·발행사)의 일이다.</p>
+
+<h2>거래별로 매니저가 하는 일 (2단계)</h2>
+<div class="table-wrap"><table>
+<thead><tr><th style="width:16%">거래</th><th>매니저가 하는 일</th><th style="width:28%">쓰이는 입금·출금</th></tr></thead>
+<tbody>
+<tr><td><b>온램프</b></td><td>발행사가 vault 로 보낸 코인 <b>입금 감지</b>만 (출금 없음)</td><td><code>onChainEvent</code> (PENDING→CONFIRMED)</td></tr>
+<tr><td><b>오프램프</b></td><td>vault→발행사 주소 <b>출금 실행</b>(HSM/Fireblocks 서명·broadcast) + 출금 확정 감지</td><td>출금 + <code>onChainEvent</code></td></tr>
+<tr><td><b>스왑</b></td><td>보내는 코인 <b>출금</b> + 받는 코인 <b>입금 감지</b> (양쪽)</td><td>출금 + <code>onChainEvent</code></td></tr>
+</tbody>
+</table></div>
+
+<h2>짚어둘 두 가지</h2>
+<div class="callout">
+<div class="callout-title">① "pending" 이 두 종류다</div>
+<p style="margin:0">회계 1단계 pending(사용자 요청 즉시 — CL/DL 에 기록)과 매니저의 <code>onChainEvent</code> PENDING(온체인 감지 시점)은 서로 다른 사건이다. 처리중을 사용가능(confirmed)으로 넘기는 트리거는 매니저의 <b>CONFIRMED</b> 이벤트다. 감지 ≠ 확정이라, 감지하자마자 잔액을 올리면 reorg 때 "없는 돈을 이미 쓴" 상태가 된다(<a href="../wallet-design-walkthrough/04-detect-confirm.html">매니저 워크스루 4장</a>).</p>
+</div>
+<div class="callout">
+<div class="callout-title">② 교체해도 위층은 그대로다</div>
+<p style="margin:0">자체↔Fireblocks 를 바꿔도 갈리는 건 2단계의 <code>onChainEvent</code>·출금 구현뿐이다. 1단계 + 4원장 + 델타 + 대사는 손대지 않는다. "매니저는 교체 가능한 입금·출금 층, 회계는 그 위"라는 명제의 실제 모습이 이 한 장이다(전환의 비용은 <a href="../wallet-design-walkthrough/09-switch-extend.html">매니저 워크스루 9장</a>).</p>
+</div>
+
+<p class="foot">정산 흐름 본문: <a href="index.html">정산 워크스루 목차</a> · 매니저 입금·출금 상세: <a href="../wallet-design-walkthrough/index.html">자체 블록체인 매니저 설계 워크스루</a>(감지와 확정 <a href="../wallet-design-walkthrough/04-detect-confirm.html">4장</a> · 입금 <a href="../wallet-design-walkthrough/05-deposit.html">5장</a> · 출금 <a href="../wallet-design-walkthrough/06-withdrawal.html">6장</a> · 수수료 <a href="../wallet-design-walkthrough/07-estimate-fee.html">7장</a>).</p>
+
+<div class="pager">
+<a href="index.html">← 정산 워크스루 목차</a>
+<a href="index.html">목차</a>
+<a href="../wallet-design-walkthrough/index.html">지갑 매니저 워크스루 →</a>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/walkthrough-diagram.js"></script>
+</body>
+</html>

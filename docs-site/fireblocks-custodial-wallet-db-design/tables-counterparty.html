@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>6. Counterparty Registry — 외부 송금 대상</title>
+<meta content="Fireblocks 외부 송금 대상 (whitelisted address / external wallet / exchange / network / fiat) 등록 정책" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a href="db-split.html">3. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a href="tables-workspace-vault.html">4. Workspace</a></li>
+<li><a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a></li>
+<li><a class="active" href="tables-counterparty.html">6. Counterparty Registry</a></li>
+<li><a href="cold-wallet.html">7. Cold Wallet 운영</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a href="tables-user.html">8. Internal Users</a></li>
+<li><a href="tables-customer-user.html">9. Customer Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a href="tables-governance.html">10. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a href="tables-crypto.html">11. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">13. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
+<li><a href="tables-transaction-request.html">15. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">16. Swap · Ramp Lifecycle</a></li>
+<li><a href="cross-border-canton.html">17. Cross-border + Canton</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">18. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">19. KR 규제 매핑</a></li>
+<li><a href="risks.html">20. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
+<li><a href="accounting-ledger.html">21. 회계 · 원장 설계</a></li>
+<li><a href="reconciliation-close.html">22. 대사 · 결산 · 마감</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
+<li><a href="db-ops.html">23. DB 운영 · Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="counterparty">
+<h2>6. Counterparty Registry</h2>
+<span class="section-subtitle">외부 송금 대상의 등록 / 검증 / 화이트리스트 — Admin Quorum 매개 사전 승인</span>
+
+<h3>6.1 Counterparty 종류</h3>
+<p>
+<strong>Counterparty (거래 상대방)</strong> = 은행이 송금하거나 송금받는 외부 대상. 종류:
+</p>
+<ul>
+<li><strong>Whitelisted address</strong> — 화이트리스트로 등록된 외부 wallet 주소 (예: 고객의 외부 wallet · 파트너 회사)</li>
+<li><strong>External wallet</strong> — 외부 자산 보관 wallet 의 매핑 (Fireblocks 외부)</li>
+<li><strong>Exchange account</strong> — 외부 거래소 계좌 (Binance · Coinbase 등)</li>
+<li><strong>Network connection</strong> — Fireblocks Network 의 다른 고객사 (chain 우회 즉시 송금 가능한 P2P 망)</li>
+<li><strong>Fiat account</strong> — 외부 fiat 계좌 (은행 송금 / SWIFT 등)</li>
+</ul>
+<div class="callout callout-warn">
+<div class="callout-title">★ 모든 counterparty 등록은 Admin Quorum 매개 (사전 승인)</div>
+<p style="margin-bottom:0">
+외부 송금 대상의 등록은 <strong>거래 위험의 진입점</strong>. 잘못 등록된 counterparty 로 송금하면 자산 회수 불가 (블록체인의 비가역성).
+모든 counterparty 등록 / 회수는 <strong>Admin Quorum 매개 (mobile app 승인)</strong> 필수.
+일부 종류 (whitelisted address · internal wallet) 는 Approval Group 위임 가능 (Add Validation Keys 와 같은 패턴).
+AML provider 사전 screening 도 권장 — 등록 전에 high-risk address 차단.
+</p>
+</div>
+
+<h3>6.2 <code>counterparty.whitelisted_destinations</code></h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>dest_id (PK)</td><td>은행 내부 ID</td></tr>
+<tr><td>dest_type</td><td><code>whitelisted_address / external_wallet / exchange_account / network_connection / fiat_account</code></td></tr>
+<tr><td>vendor_dest_id</td><td>Fireblocks 의 destination ID</td></tr>
+<tr><td>display_name</td><td>은행에서 부르는 이름</td></tr>
+<tr><td>chain · asset</td><td>해당 자산 / 체인</td></tr>
+<tr><td>address</td><td>on-chain address (해당 시)</td></tr>
+<tr><td>aml_screening_status</td><td>AML 검사 결과 (별도 trigger)</td></tr>
+<tr><td>approved_by</td><td>Admin Quorum quorum member 목록</td></tr>
+<tr><td>approved_at</td><td>등록 승인 시점</td></tr>
+<tr><td>created_at / retired_at</td><td>생성 / 폐기 시점</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/whitelist-addresses#internal-wallets">Whitelist Addresses</a> ·
+<a href="https://developers.fireblocks.com/docs/add-an-exchange-account">Add an Exchange Account</a> ·
+<a href="https://developers.fireblocks.com/docs/connect-to-exchanges-and-fiat-providers">Connect to Exchanges and Fiat Providers</a>
+</p>
+
+<h3>6.3 <code>counterparty.internal_wallet_map</code> — 은행 자체 외부 wallet 등록</h3>
+<p>
+은행이 직접 보유한 외부 wallet (Fireblocks 외부 storage 의 wallet) 의 매핑. 예: 은행이 별도로 운영하는 cold storage · 파트너 custodian · 자체 treasury wallet. <code>whitelisted_destinations</code> 와 분리하는 이유 — <strong>고객 자산이 아닌 은행 고유 자산</strong> 의 외부 storage 이므로 운영 정책 / 권한 / 감사 추적이 다름.
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>internal_wallet_id (PK)</td><td>uuid</td><td>등록 후 변경 불가</td><td>은행 내부 ID</td></tr>
+<tr><td>vendor_internal_wallet_id</td><td>varchar</td><td>등록 후 변경 불가</td><td>Fireblocks 의 internal wallet ID</td></tr>
+<tr><td>display_name</td><td>varchar</td><td>수정 가능</td><td>은행에서 부르는 이름 (예: "treasury-cold-1")</td></tr>
+<tr><td>chain</td><td>varchar</td><td>등록 후 변경 불가</td><td>blockchain (예: BTC · ETH)</td></tr>
+<tr><td>asset_id</td><td>varchar</td><td>등록 후 변경 불가</td><td>자산 (cross-domain: ops.asset_catalog 참조)</td></tr>
+<tr><td>address</td><td>varchar</td><td>등록 후 변경 불가</td><td>on-chain address</td></tr>
+<tr><td>purpose</td><td>enum</td><td>등록 후 변경 불가</td><td><code>treasury / partner_custody / external_cold / disaster_recovery</code> 등</td></tr>
+<tr><td>operator_responsibility</td><td>varchar</td><td>수정 가능</td><td>이 wallet 의 운영 책임자 (employee_id 또는 팀)</td></tr>
+<tr><td>aml_screening_status</td><td>enum</td><td>수정 가능</td><td>AML 검사 결과 (별도 trigger)</td></tr>
+<tr><td>approved_by</td><td>jsonb</td><td>등록 후 변경 불가</td><td>Admin Quorum quorum member 목록 (등록 승인)</td></tr>
+<tr><td>approved_at</td><td>timestamptz</td><td>등록 후 변경 불가</td><td>등록 승인 시점</td></tr>
+<tr><td>created_at</td><td>timestamptz</td><td>등록 후 변경 불가</td><td>생성 시점</td></tr>
+<tr><td>retired_at</td><td>timestamptz</td><td>수정 가능 (NULL 가능)</td><td>폐기 시점</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/whitelist-addresses#internal-wallets">Whitelist Addresses — Internal Wallets</a>
+</p>
+
+<h3>6.4 <code>counterparty.exchange_account_map</code> — 외부 거래소 계좌 등록</h3>
+<p>
+은행이 거래하는 외부 거래소 (Binance · Coinbase · Kraken 등) 의 계좌 매핑. 은행은 출금 / 환전 / 유동성 공급 등의 목적으로 외부 거래소와 거래 — 각 거래소의 sub-account 식별 + 인증 정보 (API key) 가 필요. <strong>거래소는 KR 컴플라이언스상 VASP counterparty</strong> 라 트래블룰 / KYC 의 대상.
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>column</th><th>type</th><th>storage</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>exchange_account_id (PK)</td><td>uuid</td><td>등록 후 변경 불가</td><td>은행 내부 ID</td></tr>
+<tr><td>vendor_exchange_account_id</td><td>varchar</td><td>등록 후 변경 불가</td><td>Fireblocks 의 exchange account ID</td></tr>
+<tr><td>exchange_name</td><td>enum</td><td>등록 후 변경 불가</td><td><code>binance / coinbase / kraken / bitfinex / okx</code> 등 (Fireblocks 지원 list)</td></tr>
+<tr><td>display_name</td><td>varchar</td><td>수정 가능</td><td>은행에서 부르는 이름 (예: "binance-treasury-main")</td></tr>
+<tr><td>sub_account_label</td><td>varchar</td><td>등록 후 변경 불가 (NULL 가능)</td><td>거래소 sub-account 식별자 (해당 시)</td></tr>
+<tr><td>api_key_secret_ref</td><td>varchar</td><td>등록 후 변경 불가</td><td>secret manager 의 reference (예: AWS Secrets Manager ARN). <strong>API key / secret 자체는 절대 column 에 저장 금지</strong></td></tr>
+<tr><td>vasp_identifier</td><td>varchar</td><td>등록 후 변경 불가 (NULL 가능)</td><td>VASP DID 또는 트래블룰 식별자 (compliance.vasp_counterparty 와 cross-domain 참조)</td></tr>
+<tr><td>purpose</td><td>enum</td><td>등록 후 변경 불가</td><td><code>liquidity / fiat_conversion / cold_to_exchange / customer_withdrawal_route</code> 등</td></tr>
+<tr><td>aml_screening_status</td><td>enum</td><td>수정 가능</td><td>거래소 자체에 대한 AML 평가 결과</td></tr>
+<tr><td>approved_by</td><td>jsonb</td><td>등록 후 변경 불가</td><td>Admin Quorum 승인자 목록</td></tr>
+<tr><td>approved_at</td><td>timestamptz</td><td>등록 후 변경 불가</td><td>등록 승인 시점</td></tr>
+<tr><td>created_at</td><td>timestamptz</td><td>등록 후 변경 불가</td><td>생성 시점</td></tr>
+<tr><td>last_connected_at</td><td>timestamptz</td><td>수정 가능 (NULL 가능)</td><td>마지막 API 호출 시점 (health check)</td></tr>
+<tr><td>retired_at</td><td>timestamptz</td><td>수정 가능 (NULL 가능)</td><td>폐기 시점</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+출처: <a href="https://developers.fireblocks.com/docs/add-an-exchange-account">Add an Exchange Account</a> ·
+<a href="https://developers.fireblocks.com/docs/connect-to-exchanges-and-fiat-providers">Connect to Exchanges and Fiat Providers</a>
+</p>
+
+<div class="callout">
+<div class="callout-title">★ 거래소 계좌의 트래블룰 함의</div>
+<p style="margin-bottom:0">
+외부 거래소는 <strong>VASP counterparty</strong> 이므로 거래 시 트래블룰 100만원 이상 (시행령 제10조의10) 의 정보 교환 의무 적용. <code>vasp_identifier</code> 컬럼이 <code>compliance.vasp_counterparty</code> 로 cross-domain 참조 — 거래 시 자동 IVMS101 메시지 생성 trigger. <a href="kr-compliance.html">19. KR 규제 매핑</a> 19.3.3 절 참조.
+</p>
+</div>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="tables-vault-wallet.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">5. Vault · Asset Wallet · Address</span></a>
+<a class="page-nav-link page-nav-next" href="cold-wallet.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">7. Cold Wallet 운영</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

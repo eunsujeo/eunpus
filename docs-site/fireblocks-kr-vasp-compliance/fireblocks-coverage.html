@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>2. Fireblocks 가 직접 푸는 것 — Policy · AML · Audit · Governance</title>
+<meta content="Fireblocks 의 어떤 기능이 한국 VASP 의무를 어떻게 직접 충족시키는지의 매핑" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul><li><a href="index.html">0. Overview</a></li></ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. 법규 지형</h3>
+<ul>
+<li><a href="regulation-landscape.html">1. 한국 규제 지형</a></li>
+<li><a class="active" href="fireblocks-coverage.html">2. Fireblocks 가 푸는 것 (직접)</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. 경계선</h3>
+<ul>
+<li><a href="partial-coverage.html">3. Fireblocks 가 거드는 것 (부분)</a></li>
+<li><a href="out-of-scope.html">4. Fireblocks 로 안 풀리는 것</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. 운영</h3>
+<ul>
+<li><a href="enforcement-defense.html">5. 제재 사례와 도구 매핑</a></li>
+<li><a href="deployment-checklist.html">6. 도입 통합 절차</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. 미해결</h3>
+<ul>
+<li><a href="open-questions.html">7. 별도 검증이 필요한 항목</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="coverage">
+<h1>2. Fireblocks 가 직접 푸는 것 — 6 개 영역</h1>
+<p class="lead">
+Fireblocks 가 한국 VASP 의무를 <strong>설정만 잘 하면 충족시켜 주는</strong> 6 개 영역.
+"풀린다" 의 정확한 의미는 — Fireblocks 의 기능이 KR 의무 의 <em>실행 메커니즘 (enforcement mechanism)</em>으로 작동한다는 뜻이며,
+설계·정책·운영의 책임은 여전히 사업자에게 있다.
+</p>
+
+<div class="callout">
+<div class="callout-title">"직접" 의 의미 — 어디까지가 도구이고, 어디부터가 사업자 책임</div>
+<p>
+"Fireblocks 가 직접 푼다" 는 다음을 의미:
+</p>
+<ul style="margin-bottom:0.5rem">
+<li>Fireblocks 에 해당 기능이 존재하고 — 운영 console 또는 API 로 활성 가능</li>
+<li>KR 의무의 <strong>기술적 실행</strong> 단계에서 Fireblocks 가 차단·감사·검증을 수행</li>
+<li>적정 설정 하에서 사업자가 의무를 "지키지 못한" 상태를 자동 방지</li>
+</ul>
+<p style="margin-bottom:0">
+다음은 의미하지 않음:
+</p>
+<ul style="margin-bottom:0">
+<li>사업자의 자체 정책 결정·조직 설계·인사 책임자 지정 없이 작동하지 않음</li>
+<li>설정 오류 / 운영 부주의를 도구가 자동 보정해주지 않음</li>
+<li>한국 규제 당국이 "Fireblocks 사용 = 컴플라이언스 인정" 으로 보지 않음</li>
+</ul>
+</div>
+
+<h2>2.1 6 개 영역 한눈에</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>영역</th><th>Fireblocks 기능</th><th>충족되는 KR 의무</th></tr></thead>
+<tbody>
+<tr><td>2.2</td><td>거래 정책 엔진</td><td>TAP (Transaction Authorization Policy)</td><td>거래제한, 입출금 차단, 임계금액 규칙</td></tr>
+<tr><td>2.3</td><td>AML / Travel Rule 통합</td><td>Chainalysis · Elliptic · Notabene 통합</td><td>미신고 VASP 거래금지, 트래블룰, 의심거래 screening</td></tr>
+<tr><td>2.4</td><td>Whitelist / 화이트리스트</td><td>condition_sets + whitelist</td><td>미신고 VASP 와 거래금지 (counterparty 통제)</td></tr>
+<tr><td>2.5</td><td>Audit Log</td><td>20+ 이벤트 카테고리, 보관 기간 vendor 측</td><td>거래 audit trail, 접근 통제 audit</td></tr>
+<tr><td>2.6</td><td>MPC 거버넌스</td><td>Admin Quorum · Approval Group · 9 user role</td><td>이해상충 방지, 다중 승인, 승인권자 분리</td></tr>
+<tr><td>2.7</td><td>Workspace 격리</td><td>Hot/Cold workspace, Mainnet/Testnet 두 직교 축</td><td>분리보관 (workspace 단위), cold storage 인프라</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>2.2 거래 정책 엔진 (TAP) — 거래제한·입출금 차단</h2>
+
+<h3>충족되는 KR 의무</h3>
+<ul>
+<li><strong>거래제한</strong> (특금법 8 + 시행령 10조의20): 고객확인 완료 전 출고·이체·교환 차단</li>
+<li><strong>입출금 차단의 정당한 사유</strong> (이용자보호법 시행령 2025-04-23): 정보통신망 장애, 거래지원 종료, AML 의심, 전기통신금융사기 72시간 등</li>
+</ul>
+
+<h3>Fireblocks TAP 의 작동 방식</h3>
+<p>
+TAP 은 각 트랜잭션에 대해 <strong>first-match</strong> 로 평가되는 rule 의 list. 한국 의무를 다음 패턴으로 매핑:
+</p>
+<pre><code># Rule 1 — KYC 미완료 차단 (특금법 8 + 시행령 10조의20)
+IF source.kyc_status != "completed"
+   THEN BLOCK
+
+# Rule 2 — 미신고 VASP 차단 (특금법 8 + 시행령 10조의20 ④)
+IF destination NOT IN whitelist_kr_vasp
+   AND destination IN denylist_unregistered_vasp
+   THEN BLOCK
+
+# Rule 3 — 트래블룰 임계 (시행령 10조의10)
+IF amount >= KRW 1,000,000
+   AND travel_rule_message_status != "delivered"
+   THEN BLOCK
+
+# Rule 4 — 전기통신금융사기 의심 시 72시간 차단 (이용자보호법 시행령)
+IF flagged_by_anti_fraud_system
+   THEN HOLD_FOR_72H
+
+# Rule 5 — 영업종료 절차 (이용자보호법 시행령)
+IF workspace.mode == "winddown"
+   THEN BLOCK ALL OUTGOING
+
+# Last Rule — block-all (Fireblocks default, 삭제 불가)
+ELSE BLOCK
+</code></pre>
+
+<h3>한계 — TAP 만으로 부족한 것</h3>
+<ul>
+<li>고객확인 (KYC) 자체의 신원증명 검증은 외부 KYC 시스템. Fireblocks 는 결과만 받음</li>
+<li>전기통신금융사기 의심 신호는 외부 anti-fraud / chain analytics 가 보내야</li>
+<li>Rule ordering 의 first-match brittleness — 운영 review 시 ordering check 필수</li>
+<li>Custom Policy 도입 시 default Policy 의 implicit allow 가 모두 사라짐 (one-way) — 누락 시 silently block</li>
+</ul>
+
+<h2>2.3 AML / Travel Rule 통합 — 3 사 provider</h2>
+
+<h3>충족되는 KR 의무</h3>
+<ul>
+<li><strong>미신고 VASP 거래금지</strong> (특금법 8 + 시행령 10조의20 ④): counterparty due diligence</li>
+<li><strong>트래블룰</strong> (시행령 10조의10): 100만원 이상 상당 출고 시 송·수신인 이름 전송</li>
+<li><strong>STR 의심거래보고</strong> (특금법 4): 의심거래 탐지의 source 데이터</li>
+</ul>
+
+<h3>Fireblocks 가 통합 지원하는 provider</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Provider</th><th>영역</th><th>한국 의무</th></tr></thead>
+<tbody>
+<tr><td>Chainalysis</td><td>AML 분석 · chain forensic</td><td>미신고 VASP 거래 탐지, 의심거래 source</td></tr>
+<tr><td>Elliptic</td><td>AML 분석 · sanction screening</td><td>제재 대상 차단</td></tr>
+<tr><td>Notabene</td><td>Travel Rule 메시지 교환</td><td>100만원 이상 출고 시 송·수신인 정보 전송</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>14-step Flow 의 Step 5b · 5c</h3>
+<p>
+Fireblocks 의 트랜잭션 흐름에서 AML / Travel Rule 검증은 Step 5b / 5c 에 위치.
+Policy Engine (Step 6) 진입 전 두 검증을 통과해야 함.
+</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  S1["1. Submit<br/>Customer · Console · API"]
+  S2["2. Validation<br/>형식 검증"]
+  S3["3. Pre-screening"]
+  S4["4. Compliance setup"]
+  S5A["5a. AML / Travel Rule<br/>setup"]
+  S5B["5b. AML screening<br/>Chainalysis · Elliptic"]
+  S5C["5c. Travel Rule check<br/>Notabene"]
+  S6["6. Policy Engine<br/>TAP"]
+  S7["7~14<br/>서명 · 제출 · 모니터링"]
+
+  S1 --> S2 --> S3 --> S4 --> S5A
+  S5A --> S5B
+  S5A --> S5C
+  S5B --> S6
+  S5C --> S6
+  S6 --> S7
+
+  classDef step fill:#fef3c7,stroke:#d97706
+  classDef gate fill:#fee2e2,stroke:#dc2626
+  classDef final fill:#dcfce7,stroke:#16a34a
+
+  class S1,S2,S3,S4,S5A step
+  class S5B,S5C,S6 gate
+  class S7 final
+</pre>
+</div>
+<p class="diagram-caption">
+Step 5b · 5c 의 AML / Travel Rule 검증이 Policy Engine (Step 6) 보다 먼저. 미통과 시 거래는 6 단계에 진입 안 함.
+빨강 = compliance 게이트 / 노랑 = 사전 처리 / 초록 = 서명·제출 단계.
+</p>
+
+<h3>한계 — Fireblocks 가 직접 KYC 를 하지 않는 영역</h3>
+<ul>
+<li><strong>고객 신원확인 (KYC) 자체</strong> — Fireblocks 는 KYC 모듈을 제공하지 않음. 사업자가 외부 KYC 시스템 (NICE · 신용평가사 · 자체 시스템) 으로 처리한 결과를 source.kyc_status 로 받음</li>
+<li><strong>STR 보고서 작성·제출</strong> — Fireblocks 는 screening 결과를 제공할 뿐. 보고서 양식·KoFIU 시스템 제출은 사업자</li>
+<li><strong>3 provider 모두 별도 계약 + 별도 비용</strong>. Fireblocks 가 통합 채널만 제공, provider 와 직접 계약 필요</li>
+<li><strong>Workspace-level AML default</strong> 가 fail-on-unknown 인지 pass-on-unknown 인지에 따라 결과가 갈림. KR 환경은 <strong>fail-on-unknown</strong> 강제 권장</li>
+</ul>
+
+<h2>2.4 Whitelist — counterparty 통제</h2>
+
+<h3>충족되는 KR 의무</h3>
+<ul>
+<li><strong>미신고 VASP 와 거래금지</strong> — 화이트리스트 / 블랙리스트 양방향 통제</li>
+</ul>
+
+<h3>패턴 — 인가 VASP 화이트리스트</h3>
+<p>
+한국 인가 VASP 27 개사 (2025 하반기 기준) 의 hot wallet 주소를 사전 whitelist 로 등록.
+</p>
+<pre><code># Approval Group 또는 Policy 의 destination whitelist
+whitelist_kr_vasp = [
+  Upbit hot wallets (등록 주소 다수),
+  Bithumb hot wallets,
+  Coinone hot wallets,
+  Korbit hot wallets,
+  ... (인가 VASP 27 개 hot wallet)
+]
+
+# 미등록 destination 으로의 출금은 별도 strict review
+IF destination NOT IN whitelist_kr_vasp
+   THEN require Admin Quorum + manual review
+</code></pre>
+
+<h3>한계 — Whitelist 운영의 함정</h3>
+<ul>
+<li>인가 VASP 의 hot wallet 주소는 <strong>변경됨</strong>. 일일·주간 갱신 절차 필요</li>
+<li>새 VASP 가 신고 수리 받으면 whitelist 에 추가 — 인사 책임자 + 변경 절차 정의</li>
+<li>Counterparty 가 한 번에 여러 주소 보유 시 모두 등록 필요 (sweeping pattern)</li>
+<li>Whitelist 변경 자체가 Admin Quorum 승인을 거쳐야 (감독규정 9 의 운영통제)</li>
+</ul>
+
+<h2>2.5 Audit Log — 거래 audit trail</h2>
+
+<h3>충족되는 KR 의무</h3>
+<ul>
+<li><strong>기록보존 5년</strong> (특금법 5조의4): KYC 사본, 로그, 승인 흐름, 차단·해제 근거</li>
+<li><strong>STR 의심거래보고</strong>의 evidence base</li>
+<li><strong>거버넌스 변경 audit</strong>: user add/delete, 2FA reset, IP allowlist 변경, threshold 변경</li>
+</ul>
+
+<h3>Fireblocks Audit Log 의 20+ 이벤트 카테고리</h3>
+<p>
+Vault Accounts / Workspace Key Backup / Gas Station / Cold Wallet (signature quota) / Policy / TAP /
+Admin Quorum / Approval Group / User / API / Webhook / Transaction / Compliance / Settings / Auth /
+Recovery / Co-signer / Mobile / Console / SSO 등.
+</p>
+
+<h3>한계 — Audit Log 만으로 5년 보존이 되지 않음</h3>
+<ul>
+<li>Fireblocks 의 Audit Log 보관 기간 자체는 vendor 측 운영 — <strong>사업자의 5년 archive 책임을 vendor 가 대신 지지 않음</strong></li>
+<li>사업자는 Audit Log 를 정기적으로 export · 자체 archive 시스템에 적재해야</li>
+<li>Audit Log 접근 권한이 Owner / Admin / Non-Signing Admin 에 한정 (Security Auditor 직접 접근 불가) — 포렌식 시 Admin 협조 필요</li>
+<li>"Less than 10% remaining signatures" 같은 Cold Wallet 특수 이벤트는 별도 alert 등록 필요</li>
+</ul>
+
+<h2>2.6 MPC 거버넌스 — Admin Quorum + 9-role</h2>
+
+<h3>충족되는 KR 의무</h3>
+<ul>
+<li><strong>이해상충 방지</strong> — Signer ≠ Approver 분리 (이용자보호법 정신)</li>
+<li><strong>다중 승인 강제</strong> — Admin Quorum threshold 로 단독 결정 방지</li>
+<li><strong>책임자 분리</strong> — 9 user role 로 권한별 분리</li>
+</ul>
+
+<h3>9 user role 의 한국 의무 매핑</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Fireblocks role</th><th>한국 운영상 권장 매핑</th></tr></thead>
+<tbody>
+<tr><td>Owner</td><td>대표이사 또는 컴플라이언스 최고책임자</td></tr>
+<tr><td>Admin</td><td>운영·재무 임원 (다수)</td></tr>
+<tr><td>Non-Signing Admin</td><td>감사 / 보고책임자 / 준법감시인</td></tr>
+<tr><td>Signer</td><td>실무 서명 담당 (다수, 이해상충 방지)</td></tr>
+<tr><td>Approver</td><td>실무 승인 담당 (Signer 와 분리)</td></tr>
+<tr><td>Editor</td><td>설정 변경자 (제한적)</td></tr>
+<tr><td>Viewer</td><td>일반 직원 / 감사 보조</td></tr>
+<tr><td>Security Admin</td><td>정보보안 책임자 (ISMS)</td></tr>
+<tr><td>Security Auditor</td><td>외부 감사 / 평가전문기관 인력</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Admin Quorum threshold 권장</h3>
+<ul>
+<li><strong>최소 threshold ≥ 2</strong> — Owner SPOF 완화 (단독 결정 방지)</li>
+<li><strong>API Admin 보유 시 threshold ≥ 3</strong> — API Admin 의 자동 approve 효과 (quorum -1) 완화</li>
+</ul>
+
+<h3>한계 — 거버넌스 도구의 한계</h3>
+<ul>
+<li>Cold Wallet workspace 는 <strong>Approval Group 미지원</strong> → Admin Quorum 단독 운영. 운영 부담 증가</li>
+<li>인사·조직 설계 (누구를 Owner 로 두고, Signer ≠ Approver 가 실제 분리되어 있는지) 는 사업자 책임</li>
+<li>Owner 부재 시 Owner transfer 절차 (3–5 영업일 + Fireblocks Support 영상통화) — 비상 대응 사전 시뮬레이션 필요</li>
+<li>Yubikey 채택 시 모든 신규 사용자에 강제 (Risk-S11) — 조직 IT 정책과 정렬 필요</li>
+</ul>
+
+<h2>2.7 Workspace 격리 — Hot/Cold + 다중 workspace</h2>
+
+<h3>충족되는 KR 의무</h3>
+<ul>
+<li><strong>분리보관</strong> (이용자보호법): 자기 자산 ≠ 고객 자산 — workspace 분리</li>
+<li><strong>콜드월렛 80% 의 인프라</strong> — Cold Wallet workspace</li>
+<li><strong>역할별 운영 분리</strong> — Administrative / Operational / Custodial 3-workspace 패턴</li>
+</ul>
+
+<h3>권장 workspace 토폴로지</h3>
+<p>
+한국 VASP 의 기본 권장:
+</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  CD["🏢 Customer Domain<br/>(사업자 법인)"]
+
+  ADMIN["⚙️ Administrative<br/>Hot · Mainnet<br/>smart contract · role"]
+  OPS["🔄 Operational<br/>Hot · Mainnet<br/>일일 입출금 · sweeping"]
+  CHOT["💰 Custodial Hot<br/>Hot · Mainnet<br/>working balance ≤ 20%"]
+  CCOLD["❄ Custodial Cold<br/>Cold · Mainnet<br/>bulk reserve ≥ 80%<br/>(별도 product)"]
+  SANDBOX["🧪 Sandbox<br/>Hot · Testnet<br/>신규 자산 시험"]
+
+  CD --> ADMIN
+  CD --> OPS
+  CD --> CHOT
+  CD --> CCOLD
+  CD --> SANDBOX
+
+  CHOT <-. "P2P rebalancing<br/>(양방향)" .-> CCOLD
+
+  classDef hot fill:#fef3c7,stroke:#d97706
+  classDef cold fill:#dbeafe,stroke:#2563eb
+  classDef sandbox fill:#e0e7ff,stroke:#6366f1
+  classDef domain fill:#dcfce7,stroke:#16a34a
+
+  class CD domain
+  class ADMIN,OPS,CHOT hot
+  class CCOLD cold
+  class SANDBOX sandbox
+</pre>
+</div>
+<p class="diagram-caption">
+한 사업자 (Customer Domain) 아래 5 개 workspace. 초록 = 사업자 단위 / 노랑 = Hot Mainnet / 파랑 = Cold Mainnet (별도 product) / 보라 = Sandbox Testnet.
+Custodial Hot ↔ Cold 간 P2P rebalancing 으로 80% cold ratio 유지.
+</p>
+
+<h3>한계 — Workspace 격리만으로 부족한 것</h3>
+<ul>
+<li>"고객 자산 의 80% 가 cold 에 있다" 의 검증은 사업자의 일일 reconciliation 에서 일어남. Fireblocks 는 vault balance 만 보여줌</li>
+<li>경제적 가치 환산 (시세 적용) 는 사업자가 자체 시세 source 로 계산</li>
+<li>Workspace type 은 immutable — 한 번 Cold 로 만들면 Hot 으로 변환 불가. 도입 결정은 1-way door</li>
+<li>Workspace 내 default visibility — 모든 user 가 모든 vault 가시. 권한 분리는 workspace 단위로만</li>
+</ul>
+
+<h2>2.8 본 페이지의 정직한 표현 — "도구는 있다, 책임은 그대로다"</h2>
+<p>
+위 6 개 영역에서 Fireblocks 는 KR 의무의 실행 도구를 제공한다. 하지만 다음은 변하지 않는다:
+</p>
+<ul>
+<li>설정 오류 / 정책 누락 / 운영 부주의의 책임은 사업자에게</li>
+<li>금감원 종합검사에서 Fireblocks 사용 사실이 면책 사유가 되지 않음</li>
+<li>인사 책임자 (보고책임자 · 준법감시인 · 대표이사) 의 개인 제재 가능성은 도구 사용과 무관</li>
+<li>4 종합검사 사례에서 보듯, 도구의 부재가 아닌 운영 통제의 부재가 위반의 원인</li>
+</ul>
+
+<p class="back-top"><a href="#coverage">↑ 위로</a></p>
+</section>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

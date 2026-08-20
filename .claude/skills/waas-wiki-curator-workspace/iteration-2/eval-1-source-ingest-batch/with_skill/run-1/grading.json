@@ -1,0 +1,60 @@
+{
+  "expectations": [
+    {
+      "text": "응답 opening 에 명시적 Trigger 1 판별 선언 + workflow Step 1 위치",
+      "passed": true,
+      "evidence": "trigger=True, step=True, route=True, status=True"
+    },
+    {
+      "text": "opening 에 dry-run / 승인 대기 marker 명시",
+      "passed": true,
+      "evidence": "...ht-index\"\n> **상태**: dry-run — 사용자 승인 전까지 어떤 파일도 생성/수정 안 함\n\n---\n\n## 0. 입력 요약\n\n새 PDF 3 개 — 본문 미수신, **파..."
+    },
+    {
+      "text": "각 PDF 에 대해 Mode A / B / C 중 하나로 분류 + 결정 근거",
+      "passed": true,
+      "evidence": "matched: Mode C"
+    },
+    {
+      "text": "각 PDF 에 TIER 1 / 2 / 3 분류 명시",
+      "passed": true,
+      "evidence": "matched: TIER 1"
+    },
+    {
+      "text": "5 priority domain 적합도 명시적 평가",
+      "passed": true,
+      "evidence": "...e / host / slug / 5 priority domain 매핑까지만 수행한다.\n\n| # | filename | host | slug |\n|---|---|---|---|\n| ..."
+    },
+    {
+      "text": "본문 fact 추측 금지 원칙 명시 + filename/URL slug 기반 cross-cut signal 만",
+      "passed": true,
+      "evidence": "... dry-run 으로 보여준다. **본문 fact 추측 금지(★)** — 따라서 \"Why TIER 1\" / \"Cross-cut signal\" 은 filename + URL + do..."
+    },
+    {
+      "text": "meta.yml 의 구체 필드 (url / fetched_at / source_type / domain / tier / promote_condition) 제안",
+      "passed": true,
+      "evidence": "....yml (제안)**\n```yaml\nsource_url: https://support.fireblocks.io/hc/en-us/articles/<TBD>-Transaction-Sc..."
+    },
+    {
+      "text": "사용자 승인 대기 명시",
+      "passed": true,
+      "evidence": "...k-handler.md`).\n- **승인 대기 항목**: 원본 URL 3 개, Mode B/C 선택, Stage 번호.\n..."
+    },
+    {
+      "text": "log.md 추가 entry — Stage N 형식 제안",
+      "passed": true,
+      "evidence": "matched: log.md"
+    },
+    {
+      "text": "prompts/ingest-pdf.md 또는 operating-principles.md 명시적 인용",
+      "passed": true,
+      "evidence": "... 결정 단계\n> **운영 위임**: prompts/ingest-pdf.md 의 §\"처리 모드 결정\" + §\"모드 B — lightweight-index\"\n> **상태**: dry-..."
+    }
+  ],
+  "summary": {
+    "pass_rate": 1.0,
+    "passed": 10,
+    "failed": 0,
+    "total": 10
+  }
+}

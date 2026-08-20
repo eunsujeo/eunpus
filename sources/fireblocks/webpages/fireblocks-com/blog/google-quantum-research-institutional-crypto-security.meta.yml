@@ -1,0 +1,17 @@
+url: https://www.fireblocks.com/blog/google-quantum-research-institutional-crypto-security
+fetched_at: 2026-08-20
+source_type: webpage (Fireblocks 공식 블로그 — 1차)
+domain: security / pqc / mpc
+tier: 1
+crawl_status: fetched (2026-08-20, Mode C — WebFetch 추출 요약, verbatim 아님)
+markdown: sources/fireblocks/markdown/2026-08-20__fireblocks-com__google-quantum-research-institutional-crypto-security.md
+title: "What Google's New Quantum Research Means for Institutional Crypto Security"
+key_facts: |
+  - 2026-04-01, Michael Gutkin (VP Research). Google 양자 연구 (secp256k1 파괴에 ≤1,200 논리 큐빗 ≈ 물리 ~50만) 에 대한 공식 입장
+  - 위협 구분: at-rest (노출 공개키 — 더 가까움) vs on-spend (검증 전 조작 — 더 멂). HNDL 명시
+  - MPC×PQC: 코드 기반·다변수 구성이 MPC 에 자연스럽게 적합할 수 있다 평가. NIST ML-DSA·SLH-DSA·FN-DSA + Round 2 후보 검토
+  - 준비 4축: ① 체인 계층 추적 (BIP 360/P2MR·Ethereum·Solana, 재단 협의) ② PQC 서명의 co-signer 모델 통합 연구 ③ 내부 스택 감사 (인증서·at-rest·인증·TLS·3rd-party) ④ 표준 기구 참여
+  - 현재 조치: 주소 위생 — P2WPKH 기본 (지출 전 공개키 은닉) + Network 자동 주소 로테이션, 주소 재사용 금지
+  - 체인 쪽 전환은 프로토콜 결정에 종속 — "블록체인 수렴 시점에 MPC 구성이 준비돼 있게 한다"
+  - 전체 PQC 전략 문서 2026 하반기 공개 예정
+promote_condition: "Q-2026-08-20-01 (MPC-CMP PQC 전환) 답변 반영 시 — 본 수집으로 partial-answer 가능"

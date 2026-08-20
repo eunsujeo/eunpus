@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<!--
+★ TIER: UNVERIFIED VENDOR ANALYSIS (★ 출처 = LLM 생성 자료)
+ingested_at: 2026-06-01 (Stage 42 promote)
+ingested_as: hypothesis tier (Fireblocks/BitGo/Coinbase 공식 source 와 cross-verify 안 됨)
+related_unverified_md: 블록체인_인덱서_구현_리서치.md (같은 주제의 본문 짝 자료)
+
+★ 사용 시 주의: 본 HTML 의 모든 fact / 차트 / 다이어그램은 LLM 이 생성한 분석 — 운영 결정 시 vendor 공식 문서 / Solutions Engineer 검증 필수.
+wiki 본문 인용 시 반드시 "본 자료에 따르면" (hedged) 형식, Fireblocks 공식 fact 와 절대 혼합 금지.
+
+→ promote 결정: Stage 42 (2026-06-01) — 사용자 명시 승인 + "unverified vendor analysis" tier 표시 조건부
+-->
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>엔터프라이즈 블록체인 인덱서 아키텍처 연구</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Chosen Palette: Slate & Emerald Enterprise -->
+    <!-- Application Structure Plan: Dashboard-style SPA. 1. Executive Summary (Hero) 2. Interactive Data Pipeline (Core visualization using HTML/CSS grid to explain the complex indexer flow without SVG) 3. Key Enterprise Features (Tabbed interface for detailed reading) 4. Performance Metrics (Chart.js to show scale). This structure allows users to grasp the high-level concept first, then drill down into technical specifics interactively. -->
+    <!-- Visualization & Content Choices: 
+         - Data Flow -> Interactive HTML Grid -> Shows process steps linearly. Justification: Needs to explain sequential process without relying on external diagram tools (No SVG).
+         - Enterprise Features -> Tab System -> Groups dense technical text logically.
+         - Indexing Latency/Volume -> Chart.js Bar Chart -> Compare performance across chains. Justification: Best for quantitative comparison, utilizes Canvas. 
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* Slate 50 */
+            color: #0f172a; /* Slate 900 */
+        }
+        
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 40vh;
+            max-height: 400px;
+            min-height: 300px;
+        }
+
+        /* Custom scrollbar for inner content if needed */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        .pipeline-node {
+            transition: all 0.2s ease-in-out;
+        }
+        .pipeline-node:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .pipeline-node.active {
+            border-color: #10b981; /* Emerald 500 */
+            background-color: #ecfdf5; /* Emerald 50 */
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-2xl mr-2">⛓️</span>
+                    <span class="font-bold text-xl tracking-tight text-slate-800">Index<span class="text-emerald-600">Research</span></span>
+                </div>
+                <div class="flex items-center space-x-4 hidden md:flex">
+                    <button onclick="scrollToSection('pipeline')" class="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">아키텍처</button>
+                    <button onclick="scrollToSection('features')" class="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">핵심 기술</button>
+                    <button onclick="scrollToSection('metrics')" class="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">성능 지표</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-16">
+
+        <section id="hero" class="text-center py-12 md:py-20 animate-fade-in">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 leading-tight">
+                엔터프라이즈 블록체인 인덱서 설계 구조
+            </h1>
+            <p class="mt-4 text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
+                파이어블록스(Fireblocks)와 같은 기관급 크립토 인프라 기업은 수십 개의 블록체인 네트워크에서 발생하는 초당 수만 건의 데이터를 어떻게 누락 없이, 실시간으로 처리할까요? 본 리서치는 고가용성 인덱서의 내부 아키텍처를 분석합니다.
+            </p>
+            <div class="mt-8 flex justify-center gap-4 text-sm font-medium text-slate-500">
+                <span class="bg-slate-100 px-3 py-1 rounded-full">#Multi-chain</span>
+                <span class="bg-slate-100 px-3 py-1 rounded-full">#High-Availability</span>
+                <span class="bg-slate-100 px-3 py-1 rounded-full">#Real-time Data</span>
+            </div>
+        </section>
+
+        <section id="pipeline" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10">
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-slate-800">인터랙티브 데이터 파이프라인</h2>
+                <p class="text-slate-500 mt-2">블록체인 노드에서 사용자 API까지 데이터가 흐르는 과정을 보여줍니다. 각 단계를 클릭하여 기관급 인덱서가 일반 인덱서와 어떻게 다른지 상세 기술 스택을 확인하세요.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-1 flex flex-col space-y-2">
+                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Data Flow (Clickable)</div>
+                    
+                    <button class="pipeline-node active text-left border-2 border-emerald-500 bg-emerald-50 p-4 rounded-xl cursor-pointer" data-target="node">
+                        <div class="font-bold text-slate-800">1. Node Infrastructure</div>
+                        <div class="text-sm text-slate-500 mt-1">블록체인 네트워크와 직접 통신</div>
+                    </button>
+                    <div class="flex justify-center text-slate-300 py-1">⬇️</div>
+                    
+                    <button class="pipeline-node text-left border-2 border-slate-200 bg-white p-4 rounded-xl cursor-pointer hover:border-emerald-300" data-target="ingest">
+                        <div class="font-bold text-slate-800">2. Data Ingestion Layer</div>
+                        <div class="text-sm text-slate-500 mt-1">블록/이벤트 수집 및 큐잉 (Kafka)</div>
+                    </button>
+                    <div class="flex justify-center text-slate-300 py-1">⬇️</div>
+                    
+                    <button class="pipeline-node text-left border-2 border-slate-200 bg-white p-4 rounded-xl cursor-pointer hover:border-emerald-300" data-target="process">
+                        <div class="font-bold text-slate-800">3. Processing & Normalization</div>
+                        <div class="text-sm text-slate-500 mt-1">UTXO/Account 모델 표준화 및 디코딩</div>
+                    </button>
+                    <div class="flex justify-center text-slate-300 py-1">⬇️</div>
+
+                    <button class="pipeline-node text-left border-2 border-slate-200 bg-white p-4 rounded-xl cursor-pointer hover:border-emerald-300" data-target="store">
+                        <div class="font-bold text-slate-800">4. Storage Layer</div>
+                        <div class="text-sm text-slate-500 mt-1">Hot/Cold 데이터베이스 분리 분산 저장</div>
+                    </button>
+                    <div class="flex justify-center text-slate-300 py-1">⬇️</div>
+
+                    <button class="pipeline-node text-left border-2 border-slate-200 bg-white p-4 rounded-xl cursor-pointer hover:border-emerald-300" data-target="api">
+                        <div class="font-bold text-slate-800">5. API & Delivery</div>
+                        <div class="text-sm text-slate-500 mt-1">고객사 연동 (REST, GraphQL, Webhooks)</div>
+                    </button>
+                </div>
+
+                <div class="lg:col-span-2 bg-slate-50 rounded-xl p-6 md:p-8 border border-slate-200 flex flex-col justify-center min-h-[400px]">
+                    <div id="pipeline-details" class="transition-opacity duration-300">
+                        <div class="flex items-center mb-4">
+                            <span id="detail-icon" class="text-3xl mr-3">🌐</span>
+                            <h3 id="detail-title" class="text-2xl font-bold text-emerald-700">분산형 멀티체인 노드 인프라</h3>
+                        </div>
+                        <p id="detail-desc" class="text-slate-700 text-lg leading-relaxed mb-6">
+                            엔터프라이즈 인덱서의 첫 관문입니다. 단일 RPC 노드에 의존하지 않고, 자체 구축한 풀 노드(Full Node)와 상용 RPC 제공자(Alchemy, Infura 등)를 로드밸런서 뒤에 묶어 고가용성(HA) 클러스터를 구성합니다. 특정 노드가 다운되거나 동기화 지연(Sync lag)이 발생하면 즉시 정상 노드로 트래픽을 라우팅하여 데이터 수집의 무결성을 보장합니다.
+                        </p>
+                        <div class="bg-white p-4 rounded-lg border border-slate-200">
+                            <h4 class="font-semibold text-slate-800 mb-2">🔥 엔터프라이즈 차별점</h4>
+                            <ul id="detail-points" class="list-disc list-inside text-slate-600 space-y-1 text-sm">
+                                <li>Geo-routing을 통한 글로벌 레이턴시 최소화</li>
+                                <li>노드 헬스체크 및 자동 Failover 시스템</li>
+                                <li>WebSocket 및 gRPC 스트리밍 최적화</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="features">
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-slate-800">핵심 아키텍처 특성</h2>
+                <p class="text-slate-500 mt-2">수십 조 원의 자산을 다루는 플랫폼이 인덱서를 설계할 때 가장 중요하게 고려하는 요소들입니다.</p>
+            </div>
+
+            <div class="border-b border-slate-200 mb-6">
+                <nav class="flex space-x-8" aria-label="Tabs">
+                    <button class="tab-btn border-emerald-500 text-emerald-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="standard">
+                        데이터 정규화 (Normalization)
+                    </button>
+                    <button class="tab-btn border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="reorg">
+                        Reorg (블록 재구성) 핸들링
+                    </button>
+                    <button class="tab-btn border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="policy">
+                        정책 엔진 통합 (Policy Engine)
+                    </button>
+                </nav>
+            </div>
+
+            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 min-h-[250px]">
+                <div id="tab-standard" class="tab-content block">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">서로 다른 체인을 하나의 언어로</h3>
+                    <p class="text-slate-600 mb-4 leading-relaxed">
+                        비트코인(UTXO 모델)과 이더리움(Account 모델), 그리고 솔라나(State 모델)는 데이터를 저장하는 방식이 완전히 다릅니다. 엔터프라이즈 인덱서는 이 이질적인 원천 데이터를 수집한 직후, 사내 표준 데이터 스키마로 변환(Parsing & Normalization)합니다.
+                    </p>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                            <span class="font-mono text-xs text-slate-400">Raw Data (BTC)</span><br>
+                            <span class="text-sm font-mono text-slate-700">vin: [...], vout: [...]</span>
+                        </div>
+                        <div class="bg-emerald-50 p-4 rounded-lg border border-emerald-100 flex items-center">
+                            <span class="mr-2">➡️</span>
+                            <div>
+                                <span class="font-mono text-xs text-emerald-600">Normalized System Data</span><br>
+                                <span class="text-sm font-mono text-slate-700">from: "addrA", to: "addrB", amount: 1.5, asset: "BTC"</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-reorg" class="tab-content hidden">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">체인 분기(Reorganization)에 대한 방어</h3>
+                    <p class="text-slate-600 mb-4 leading-relaxed">
+                        블록체인 네트워크 특성상 이미 확정된 줄 알았던 블록이 취소되고 다른 블록으로 대체되는 'Reorg'가 발생할 수 있습니다. 엔터프라이즈 인덱서는 단순 데이터베이스 저장이 아니라, 블록의 'Finality(완결성)' 상태를 추적합니다.
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 text-slate-600">
+                        <li><strong>Unconfirmed 상태 트래킹:</strong> mempool 데이터와 최신 블록 데이터를 별도의 Hot Cache(예: Redis)에서 관리.</li>
+                        <li><strong>Reorg 감지 및 롤백:</strong> 포크가 감지되면 영향을 받은 트랜잭션 기록을 즉시 데이터베이스에서 식별하고 이전 상태로 안전하게 롤백(Rollback)하는 로직 구현.</li>
+                        <li><strong>Confirmation 기반 웹훅:</strong> 고객사 API로 이벤트를 쏠 때, 체인별로 정의된 안전한 컨펌 수(예: BTC 6 block, ETH 64 epoch)에 도달했을 때만 'Finalized' 이벤트를 발송.</li>
+                    </ul>
+                </div>
+
+                <div id="tab-policy" class="tab-content hidden">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">보안과 컴플라이언스 엔진 결합</h3>
+                    <p class="text-slate-600 mb-4 leading-relaxed">
+                        단순히 데이터를 읽는 것을 넘어, 파이어블록스와 같은 지갑 인프라 기업의 인덱서는 AML(자금세탁방지) 시스템 및 사내 정책 엔진(Policy Engine)과 실시간으로 통신해야 합니다.
+                    </p>
+                    <div class="flex items-center space-x-4 bg-slate-50 p-4 rounded-lg">
+                        <div class="flex-shrink-0 text-2xl">🛡️</div>
+                        <p class="text-sm text-slate-600">
+                            특정 지갑 주소로 들어오는 입금(Deposit) 트랜잭션이 인덱서에 포착되면, 데이터베이스에 저장되기 전 파이프라인에서 즉시 AML 스크리닝 API를 호출합니다. 위험 주소로 판별되면 해당 자산을 '격리(Quarantine)' 상태로 마킹하여 인출을 원천 차단합니다.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="metrics" class="mb-20">
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-slate-800">데이터 처리 성능 지표 (Simulation)</h2>
+                <p class="text-slate-500 mt-2">다양한 블록체인 네트워크의 특성에 따른 인덱서의 처리량과 지연 시간을 비교합니다.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-4 text-center">체인별 평균 블록 동기화 지연 시간 (ms)</h3>
+                    <p class="text-xs text-center text-slate-400 mb-2">노드 생성부터 DB 인서트까지의 시간</p>
+                    <!-- Chart Container adhering strictly to requirements -->
+                    <div class="chart-container">
+                        <canvas id="latencyChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-center">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-4">처리량 아키텍처 과제</h3>
+                    <div class="space-y-6">
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm font-medium text-slate-700">비트코인 (Low TPS, Heavy Parsing)</span>
+                                <span class="text-sm font-medium text-slate-500">난이도: 보통</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-2">
+                                <div class="bg-slate-400 h-2 rounded-full" style="width: 40%"></div>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">TPS는 낮지만 UTXO 스크립트 파싱 및 주소 매핑 연산이 무거움.</p>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm font-medium text-slate-700">이더리움 L1 (Smart Contracts)</span>
+                                <span class="text-sm font-medium text-slate-500">난이도: 높음</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-2">
+                                <div class="bg-emerald-400 h-2 rounded-full" style="width: 75%"></div>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">방대한 내부 트랜잭션(Internal Tx) 추적 및 컨트랙트 ABI 실시간 디코딩 필요.</p>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm font-medium text-slate-700">솔라나 (Extreme High TPS)</span>
+                                <span class="text-sm font-medium text-slate-500">난이도: 매우 높음</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-2">
+                                <div class="bg-rose-400 h-2 rounded-full" style="width: 95%"></div>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">0.4초의 블록 타임. 수천 TPS의 방대한 로그를 지연 없이 처리하기 위한 Kafka 클러스터 및 In-memory DB 필수.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-8 text-center">
+        <p class="text-slate-400 text-sm">본 시뮬레이션 웹 애플리케이션은 엔터프라이즈 인덱서 아키텍처 연구 목적으로 제작되었습니다.</p>
+    </footer>
+
+    <script>
+        // --- 1. Navigation Logic ---
+        function scrollToSection(id) {
+            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- 2. Interactive Pipeline Logic ---
+        const pipelineData = {
+            'node': {
+                icon: '🌐',
+                title: '분산형 멀티체인 노드 인프라',
+                desc: '엔터프라이즈 인덱서의 첫 관문입니다. 단일 RPC 노드에 의존하지 않고, 자체 구축한 풀 노드(Full Node)와 상용 RPC 제공자를 로드밸런서 뒤에 묶어 고가용성(HA) 클러스터를 구성합니다. 특정 노드가 다운되거나 동기화 지연(Sync lag)이 발생하면 즉시 정상 노드로 트래픽을 라우팅하여 데이터 수집의 무결성을 보장합니다.',
+                points: ['Geo-routing을 통한 글로벌 레이턴시 최소화', '노드 헬스체크 및 자동 Failover 시스템', 'WebSocket 및 gRPC 스트리밍 최적화']
+            },
+            'ingest': {
+                icon: '📥',
+                title: '데이터 수집 및 큐잉 (Ingestion Layer)',
+                desc: '블록체인 노드에서 쏟아지는 원시 데이터(Raw Data)를 안전하게 받아내는 버퍼 역할을 합니다. 솔라나와 같이 TPS가 극도로 높은 체인의 데이터를 유실 없이 처리하기 위해 Apache Kafka나 AWS Kinesis와 같은 분산 메시지 큐 시스템을 활용합니다.',
+                points: ['초당 수만 건의 이벤트를 처리하는 높은 Throughput', '컴포넌트 장애 시 데이터 유실 방지 (메시지 보관)', '다수의 Consumer 컴포넌트로 데이터 병렬 분배']
+            },
+            'process': {
+                icon: '⚙️',
+                title: '파싱 및 정규화 엔진 (Processing)',
+                desc: '핵심 비즈니스 로직이 들어가는 구간입니다. 수집된 이진(Binary) 또는 원시 포맷의 데이터를 읽을 수 있는 형태로 디코딩하고, 기관 내부에서 사용하는 통합 데이터 스키마로 변환합니다. 스마트 컨트랙트 이벤트(Log) 해석도 여기서 일어납니다.',
+                points: ['UTXO/Account 모델의 표준 스키마 변환', 'Smart Contract ABI 기반 실시간 이벤트 디코딩', '스팸 트랜잭션 필터링 및 악의적 데이터 정제']
+            },
+            'store': {
+                icon: '🗄️',
+                title: '하이브리드 스토리지 (Storage Layer)',
+                desc: '데이터의 성격에 따라 저장소를 분리하여 조회 성능과 비용을 최적화합니다. 실시간 잔고 확인이나 최신 트랜잭션 조회를 위한 데이터는 인메모리나 고성능 RDBMS에 저장하고, 수년 전의 히스토리 데이터는 저렴한 Cold Storage로 이관합니다.',
+                points: ['Hot Data: Redis, PostgreSQL (빠른 조회, 트랜잭션 무결성)', 'Cold/Analytical Data: AWS S3, Snowflake, ClickHouse', 'Reorg 발생 시 롤백을 위한 트랜잭션 상태 관리']
+            },
+            'api': {
+                icon: '🚀',
+                title: 'API 및 실시간 웹훅 (Delivery)',
+                desc: '정제되고 저장된 데이터를 고객사의 지갑 서비스, 회계 시스템, 트레이딩 봇 등에 전달하는 최종 관문입니다. 단순한 REST API 조회뿐만 아니라, 특정 지갑에 입금이 발생했을 때 실시간으로 알림을 주는 Webhook 시스템이 필수적입니다.',
+                points: ['GraphQL을 통한 복잡한 쿼리 최적화 지원', '지정된 Confirm 수 도달 시 트리거되는 신뢰성 높은 Webhook', '초당 수천 건의 API 요청을 견디는 API Gateway']
+            }
+        };
+
+        const nodes = document.querySelectorAll('.pipeline-node');
+        const detailIcon = document.getElementById('detail-icon');
+        const detailTitle = document.getElementById('detail-title');
+        const detailDesc = document.getElementById('detail-desc');
+        const detailPoints = document.getElementById('detail-points');
+        const detailContainer = document.getElementById('pipeline-details');
+
+        nodes.forEach(node => {
+            node.addEventListener('click', () => {
+                // Remove active from all
+                nodes.forEach(n => {
+                    n.classList.remove('active', 'border-emerald-500', 'bg-emerald-50');
+                    n.classList.add('border-slate-200', 'bg-white');
+                });
+                
+                // Add active to clicked
+                node.classList.add('active', 'border-emerald-500', 'bg-emerald-50');
+                node.classList.remove('border-slate-200', 'bg-white');
+
+                // Update content with fade effect
+                const targetKey = node.getAttribute('data-target');
+                const data = pipelineData[targetKey];
+
+                detailContainer.style.opacity = 0;
+                setTimeout(() => {
+                    detailIcon.textContent = data.icon;
+                    detailTitle.textContent = data.title;
+                    detailDesc.textContent = data.desc;
+                    
+                    detailPoints.innerHTML = '';
+                    data.points.forEach(point => {
+                        const li = document.createElement('li');
+                        li.textContent = point;
+                        detailPoints.appendChild(li);
+                    });
+                    
+                    detailContainer.style.opacity = 1;
+                }, 150); // slight delay for smooth transition
+            });
+        });
+
+        // --- 3. Tabs Logic ---
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Reset all buttons
+                tabBtns.forEach(b => {
+                    b.classList.remove('border-emerald-500', 'text-emerald-600');
+                    b.classList.add('border-transparent', 'text-slate-500');
+                });
+                // Activate clicked button
+                btn.classList.remove('border-transparent', 'text-slate-500');
+                btn.classList.add('border-emerald-500', 'text-emerald-600');
+
+                // Hide all content
+                tabContents.forEach(c => c.classList.add('hidden'));
+                
+                // Show target content
+                const targetId = `tab-${btn.getAttribute('data-tab')}`;
+                document.getElementById(targetId).classList.remove('hidden');
+            });
+        });
+
+        // --- 4. Chart.js Setup ---
+        // Ensuring chart adheres to constraints by setting maintainAspectRatio: false
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('latencyChart').getContext('2d');
+            
+            // Mock data for simulation
+            const data = {
+                labels: ['Bitcoin', 'Ethereum', 'Polygon', 'Solana'],
+                datasets: [{
+                    label: '평균 동기화 지연 (ms)',
+                    data: [850, 420, 180, 45], // Simulated processing latency inside indexer
+                    backgroundColor: [
+                        'rgba(247, 147, 26, 0.7)', // BTC Orange
+                        'rgba(98, 126, 234, 0.7)', // ETH Blue
+                        'rgba(130, 71, 229, 0.7)', // MATIC Purple
+                        'rgba(20, 241, 149, 0.7)'  // SOL Green
+                    ],
+                    borderColor: [
+                        'rgba(247, 147, 26, 1)',
+                        'rgba(98, 126, 234, 1)',
+                        'rgba(130, 71, 229, 1)',
+                        'rgba(20, 241, 149, 1)'
+                    ],
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            };
+
+            const config = {
+                type: 'bar',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // Critical for parent container sizing
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleFont: { size: 13, family: 'Inter' },
+                            bodyFont: { size: 14, family: 'Inter', weight: 'bold' },
+                            padding: 10,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y + ' ms';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#f1f5f9',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                font: { family: 'Inter', size: 11 },
+                                color: '#64748b'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: { family: 'Inter', size: 12 },
+                                color: '#475569'
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            };
+
+            new Chart(ctx, config);
+        });
+
+    </script>
+</body>
+</html>

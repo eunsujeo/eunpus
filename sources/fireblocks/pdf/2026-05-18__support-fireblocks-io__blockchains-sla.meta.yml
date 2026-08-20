@@ -1,0 +1,11 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/15948217169436-Blockchains-SLA
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 2
+language: en
+category: blockchains-core
+notes: |
+  Three node types: Fireblocks-hosted / certified vendors / foundation-provided.
+  99.9% uptime SLA for Fireblocks-hosted + certified vendors only.
+  Foundation-provided nodes have no SLA.
+  Lists ~30 chains included in SLA (dynamic list).

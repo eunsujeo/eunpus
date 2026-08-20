@@ -1,0 +1,14 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/25477807296540-New-mobile-experience-Request-management
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 6
+language: en
+notes: |
+  New mobile UX, min version 3.4.0.
+  Multi-tenant view (All Workspaces or specific).
+  3 views: All / Transactions / Administration.
+  Sort: Last/First initiated, USD value high/low.
+  Dismiss eligible: others-initiated, transaction/config requests.
+  Dismiss not eligible: own-initiated, MPC operations, off-exchange policy, DRS finalization.
+  Filters: Initiated by me, Requires my approval, Signing requests.
+  Expired requests auto-removed.

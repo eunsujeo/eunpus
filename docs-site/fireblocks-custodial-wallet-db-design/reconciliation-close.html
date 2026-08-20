@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>22. 대사 · 결산 · 마감 — 4 단계 대사 + 결산 프로세스</title>
+<meta content="4 단계 대사 (L1-L4) · 결산 · 마감 · 정정 · 외부 감사 대응" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up"><a class="nav-up-link" href="../index.html">← Documentation Hub</a></div>
+<div class="nav-section"><h3 class="nav-section-title">Overview</h3><ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">A. Architecture</h3><ul>
+<li><a href="architecture.html">1. 책임 분담 · Trust Boundary</a></li>
+<li><a href="infrastructure.html">2. 인프라 운영</a></li>
+<li><a href="db-split.html">3. DB 분할</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">B. Workspace &amp; Vault</h3><ul>
+<li><a href="tables-workspace-vault.html">4. Workspace</a></li>
+<li><a href="tables-vault-wallet.html">5. Vault · Asset Wallet · Address</a></li>
+<li><a href="tables-counterparty.html">6. Counterparty Registry</a></li>
+<li><a href="cold-wallet.html">7. Cold Wallet 운영</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">C. Users &amp; Access</h3><ul>
+<li><a href="tables-user.html">8. Internal Users</a></li>
+<li><a href="tables-customer-user.html">9. Customer Users</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">D. Governance &amp; Policy</h3><ul>
+<li><a href="tables-governance.html">10. Roles · Quorum · Policy</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">E. Cryptography &amp; Signing</h3><ul>
+<li><a href="tables-crypto.html">11. MPC · Key Link · Cosigner</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">F. Transaction Lifecycle</h3><ul>
+<li><a href="sm-transaction.html">12. Transaction State + 14-step</a></li>
+<li><a href="sm-webhook.html">13. Webhook 처리</a></li>
+<li><a href="sm-deposit-withdrawal.html">14. Deposit · Withdrawal Flow</a></li>
+<li><a href="tables-transaction-request.html">15. Transaction Request · Execution</a></li>
+<li><a href="sm-swap-ramp.html">16. Swap · Ramp Lifecycle</a></li>
+<li><a href="cross-border-canton.html">17. Cross-border + Canton</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">G. Audit &amp; Compliance</h3><ul>
+<li><a href="tables-audit.html">18. Audit · AML · Travel Rule</a></li>
+<li><a href="kr-compliance.html">19. KR 규제 매핑</a></li>
+<li><a href="risks.html">20. Risks Register</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">H. Accounting &amp; Reconciliation</h3><ul>
+<li><a href="accounting-ledger.html">21. 회계 · 원장 설계</a></li>
+<li><a class="active" href="reconciliation-close.html">22. 대사 · 결산 · 마감</a></li>
+</ul></div>
+<div class="nav-section"><h3 class="nav-section-title">I. Ops</h3><ul>
+<li><a href="db-ops.html">23. DB 운영 · Anti-patterns</a></li>
+</ul></div>
+</nav>
+</aside>
+<main class="content">
+<section id="reconciliation">
+<h2>22. 대사 · 결산 · 마감</h2>
+<span class="section-subtitle">4 단계 대사 (L1-L4) · 24/7 거래 vs 시점 마감 · 정정 절차 · 외부 감사 대응</span>
+
+<div class="callout callout-warn">
+<div class="callout-title">본 영역의 출처 — vendor 공식 자료 부재</div>
+<p style="margin-bottom:0">
+Fireblocks 는 대사·결산·마감을 다루지 않는다. 본 도메인은 일반 수탁업 / 펀드 / 자산운용업의 회계 표준 + 본 reference 의 권장 설계 (work-in-progress).
+운영 시작 전 회계법인 / 외부 감사 / 내부 회계팀의 검증 필수.
+</p>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ 본 페이지의 정의 수준 — 도메인 view 까지</div>
+<p style="margin-bottom:0">
+본 페이지는 <strong>4 단계 대사 (L1-L4) · 대사 주기 · 불일치 처리 정책 · 결산 / 마감 절차 · 외부 감사 대응 자료</strong> 같은 <strong>운영 도메인 view</strong> 까지 정의한다. 각 표 (<code>reconciliation_session</code> · <code>reconciliation_finding</code> · <code>reconciliation_resolution</code> · <code>balance_check_history</code> · <code>onchain_sync_log</code>) 의 <strong>column-level schema 는 정의하지 않음</strong>.
+</p>
+<p style="margin-bottom:0;margin-top:8px">
+이유: 대사 / 결산 column schema 는 <strong>회계감사 / 금감원 검사 대응 자료의 정밀한 요구사항</strong> 에 따라 확정되어야 후속 변경 비용이 작다. 표명 + 책임 + L1-L4 매트릭스까지만 정의하고, 정확한 column / type / constraint 는 별도 stage 에서 회계법인 자문 + 금감원 검사 실무 대응 후 추가 예정.
+</p>
+</div>
+
+<h3>22.1 대사 (Reconciliation) — 왜 필요한가</h3>
+<p>
+은행 수탁 시스템은 4 곳에 잔액·거래 정보가 분산:
+</p>
+<ol>
+<li><strong>블록체인 (canonical source)</strong> — 실제 자산의 truth</li>
+<li><strong>Fireblocks Console / API</strong> — vendor 의 vault balance · audit log</li>
+<li><strong>core 영역</strong> — webhook 으로 받은 사본 + 4 원장 (고객 / 자체 / 델타 / 총계정)</li>
+<li><strong>계정계</strong> — 기존 은행 시스템의 법정통화 측 정합</li>
+</ol>
+<p>
+대사 = 이 4 곳의 정합성을 정기적으로 검증. 불일치 발견 시 자동 보정 또는 운영자 검토 / 거래 일시중단.
+</p>
+
+<h3>22.2 4 단계 대사 (L1-L4) — 저자 권장</h3>
+<p>
+아래 4-tier 분류는 본 reference 의 권장 설계. 일반 수탁업 / 펀드 시스템의 multi-tier reconciliation 패턴을 가상자산 환경에 일반화한 것 — 정확한 tier 구분과 주기는 회계법인 / 운용업계 표준 (한국금융투자협회 등) 과 정합성 검증 권장.
+</p>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ 금융위 2026.04 — KR 거래소에 "5 분 주기 상시 대사" 요구</div>
+<p style="margin-bottom:0.5rem">
+2026년 4월 금융위원회는 빗썸 오지급 사태 (BTC 랜덤박스 사고) 이후 5 대 거래소와 간담회를 열고 다음을 요구:
+</p>
+<ul style="margin-bottom:0.5rem">
+<li><strong>이용자 자산을 5분 주기로 상시 대사하는 자동화 시스템</strong></li>
+<li><strong>이벤트 보상 등 수작업 거래의 계정 분리 · 자동 검증 · 다중 승인</strong></li>
+<li><strong>금융회사 수준의 준법감시 + 표준 위험관리 체계</strong></li>
+</ul>
+<p style="margin-bottom:0;color:var(--text-secondary);font-size:13px">
+배경 — 콜드월렛 80% 같은 "보관 위치" 와 "총량 보유" 만으로는 충분하지 않고, 실제 사고는 <strong>장부 · 운영 · 권한관리</strong>에서 발생한다는 감독당국의 인식 전환. 본 wiki 의 L2 (5분 건별 대조) 가 정확히 이 요구사항에 부합. KR 은행은 이를 1단계 디지털자산법 → 2단계 입법으로 의무화될 가능성에 대비. 출처: <code>sources/monitoring/2026-05-28__customer-asset-separation-kr-exchanges.md</code> · <a href="https://www.fsc.go.kr/no010101/86636">금융위 보도자료 (2026-04-06)</a>.
+</p>
+</div>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  subgraph realtime["🔄 L1 — 실시간 대사 (잔액)"]
+    L1["오프체인 4 원장 잔액 합<br/>=<br/>총계정 잔액"]
+  end
+
+  subgraph fivemin["⏱ L2 — 5분 주기 (건별 대조)"]
+    L2["거래 내역 1:1 매칭<br/>오프체인 거래 ↔ webhook event"]
+  end
+
+  subgraph settlement["✅ L3 — 정산 시 (정산 검증)"]
+    L3["델타 원장 정산 완료 확인<br/>온체인 confirmation 후"]
+  end
+
+  subgraph daily["📅 L4 — 일 단위 (온체인 검증)"]
+    L4["블록체인 잔액<br/>=<br/>오프체인 + 델타"]
+  end
+
+  L1 -->|"불일치 시"| Alert1["운영팀 즉시 alert<br/>+ 거래 일시중단 고려"]
+  L2 -->|"불일치 시"| Queue["미매칭 거래 review queue"]
+  L3 -->|"불일치 시"| Manual["수동 정정 (Admin Quorum)"]
+  L4 -->|"불일치 시"| Critical["치명적 — 즉시 시스템 정지"]
+
+  classDef ok fill:#dcfce7,stroke:#16a34a
+  classDef alert fill:#fef3c7,stroke:#d97706
+  classDef crit fill:#fee2e2,stroke:#dc2626
+
+  class L1,L2,L3,L4 ok
+  class Alert1,Queue alert
+  class Manual,Critical crit
+</pre>
+</div>
+<p class="diagram-caption">
+4 단계 대사 — L1 (실시간 잔액) / L2 (5분 건별) / L3 (정산 검증) / L4 (일별 온체인 검증).
+각 단계의 불일치 발견 시 처리 절차 (alert / review queue / 수동 정정 / 시스템 정지).
+</p>
+
+<h4>L1 — 실시간 잔액 대사</h4>
+<ul>
+<li><strong>검증식</strong>: 오프체인 4 원장 잔액의 자산 종류별 합 = 총계정원장의 잔액</li>
+<li><strong>주기</strong>: 실시간 (모든 거래 후 즉시)</li>
+<li><strong>구현</strong>: DB trigger 또는 transaction 직후 check</li>
+<li><strong>불일치 시</strong>: 운영팀 즉시 alert + 영향 거래 시점 분석. 심각 시 거래 일시중단 고려</li>
+</ul>
+
+<h4>L2 — 5 분 주기 건별 대조</h4>
+<ul>
+<li><strong>검증식</strong>: 오프체인 거래 내역 ↔ Fireblocks webhook event 의 1:1 매칭</li>
+<li><strong>주기</strong>: 5 분 (또는 batch schedule)</li>
+<li><strong>구현</strong>: cron job 또는 streaming pipeline</li>
+<li><strong>불일치 시</strong>: 미매칭 거래 review queue + 운영자 manual 처리</li>
+<li><strong>특이</strong>: webhook 의 at-least-once 보장으로 중복 가능 — dedup 후 매칭</li>
+</ul>
+
+<h4>L3 — 정산 검증</h4>
+<ul>
+<li><strong>검증식</strong>: 델타 원장의 정산 플래그 = 온체인 confirmation 상태</li>
+<li><strong>주기</strong>: 정산 시점 (델타 처리 완료 시점)</li>
+<li><strong>구현</strong>: 델타 처리 시 trigger</li>
+<li><strong>불일치 시</strong>: 수동 정정 (Admin Quorum 매개) + 회계 처리 review</li>
+</ul>
+
+<h4>L4 — 일 단위 온체인 검증</h4>
+<ul>
+<li><strong>검증식</strong>: 블록체인의 vault 잔액 = 오프체인 잔액 + 델타 (정산 대기)</li>
+<li><strong>주기</strong>: 일 단위 (마감 시점)</li>
+<li><strong>구현</strong>: Fireblocks API 로 모든 vault balance 조회 + 자체 잔액과 대조</li>
+<li><strong>불일치 시</strong>: <strong>치명적</strong> — 즉시 시스템 정지 수준. 보안 침해 / 회계 오류 의심</li>
+</ul>
+
+<h3>22.3 reconciliation 의 대사 테이블</h3>
+<p>
+본 페이지는 회계 영역의 <strong>도메인 설계 view</strong> (17 페이지와 동일 정책). 아래 표는 매핑 차원이며, 각 표의 컬럼 / type / storage 상세는 향후 별도 schema 페이지 또는 추후 확장에서 정의.
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>테이블</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><code>reconciliation.reconciliation_session</code></td><td>대사 실행 session (L1-L4 별, 시작·종료·결과)</td></tr>
+<tr><td><code>reconciliation.reconciliation_finding</code></td><td>불일치 발견 내역 (mismatch 종류 · 자산 · 금액 · 관련 거래)</td></tr>
+<tr><td><code>reconciliation.reconciliation_resolution</code></td><td>발견된 불일치의 처리 결과 (자동 보정 / 수동 정정 / 시스템 정지 등)</td></tr>
+<tr><td><code>reconciliation.balance_check_history</code></td><td>L1 의 실시간 잔액 검증 이력</td></tr>
+<tr><td><code>reconciliation.onchain_sync_log</code></td><td>L4 의 일별 온체인 검증 결과 (blockchain 잔액 ↔ 오프체인). partition / archive 정책은 <a href="db-ops.html">23. DB 운영 · Anti-patterns</a> 참조</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>22.4 불일치 처리 정책 — Decision Matrix (저자 권장)</h3>
+<p>
+불일치 발견 시 어떻게 처리할지 사전에 정의. <strong>자동 보정은 매우 제한적</strong>으로만 적용. 본 표의 정책은 본 reference 의 권장이며, 회계법인 / 보안팀 / 운영팀이 사전 협의해 확정.
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>불일치 종류</th><th>심각도</th><th>처리 정책 (저자 권장)</th></tr></thead>
+<tbody>
+<tr><td>L1 잔액 불일치 (소액 · 소수점 오차)</td><td>낮음</td><td>자동 보정 (rounding 오차로 분류) + 일별 누적 monitor</td></tr>
+<tr><td>L1 잔액 불일치 (큰 액수)</td><td>높음</td><td>거래 일시중단 + 운영팀 alert + 회계팀 review</td></tr>
+<tr><td>L2 미매칭 거래 (webhook 누락)</td><td>중</td><td>review queue + 자동 backfill (Fireblocks API 재조회) + retry</td></tr>
+<tr><td>L2 중복 거래 (idempotency 실패)</td><td>중</td><td>중복 row 제거 + 원인 분석 (webhook handler 점검)</td></tr>
+<tr><td>L3 정산 불일치</td><td>높음</td><td>Admin Quorum 매개 수동 정정 + 회계법인 협의</td></tr>
+<tr><td>L4 온체인 불일치</td><td><strong>치명</strong></td><td>즉시 모든 거래 정지 + 보안팀 / 회계팀 / 외부 감사 통보. 침해 가능성 조사</td></tr>
+<tr><td>외부 vendor 측 오류 (Fireblocks 의 자체 오류)</td><td>중-높음</td><td>Fireblocks Support 즉시 통보 + 자체 회계 보존 (vendor 응답 대기)</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout callout-warn">
+<div class="callout-title">자동 보정의 위험</div>
+<p style="margin-bottom:0">
+불일치를 자동으로 "보정" 하면 진짜 사고를 가릴 수 있다. <strong>자동 보정은 rounding 오차 등 명백한 소수점 차이에만</strong> 적용.
+나머지는 모두 운영자 / 회계팀 검토. 자동 보정 정책은 회계법인과 사전 협의 필수.
+</p>
+</div>
+
+<h3>22.5 결산·마감 프로세스</h3>
+<p>
+24/7 거래 발생 vs 회계 기간 단위 마감의 충돌. 마감 시점 정의가 critical.
+</p>
+
+<h4>마감 시간 기준 — 옵션 비교</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>옵션</th><th>장단</th><th>적합 시나리오</th></tr></thead>
+<tbody>
+<tr><td><strong>한국 자정 (KST 00:00)</strong></td>
+  <td>한국 영업일과 직관적 정합. 단 자정 시점에 거래 multi-region 처리 시 race condition</td>
+  <td>KR 은행 표준</td></tr>
+<tr><td><strong>UTC 00:00</strong></td>
+  <td>국제 표준. 단 한국 시간 09:00 마감이라 운영시간 중 마감 처리 부담</td>
+  <td>multi-region · 외화 거래 비중 큼</td></tr>
+<tr><td><strong>영업일 마감 (한국 영업일 종료 시점)</strong></td>
+  <td>은행 영업일 정의를 따름. 단 정의가 시스템마다 다를 수 있음</td>
+  <td>기존 은행 회계 시스템과 정합 우선</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>
+<strong>저자 권장</strong>: <strong>한국 자정 (KST 00:00)</strong> + 기존 은행 일·월 마감과 동일 schedule. 단 외화 환산은 자정 직전 환율 적용 + 자정 이후 거래는 익일 처리. <strong>블록체인은 24/7 라 자연스러운 cutoff 가 없어 은행이 자체 cycle 을 정의</strong> (<a href="cold-wallet.html">7. Cold Wallet 운영</a> 7.4.1 절 의 "일일 cutoff" 정의와 동일 개념). 외화 환산 / 매매기준율 적용 상세는 <a href="accounting-ledger.html">21. 회계 · 원장 설계</a> 21.7 절 참조.
+</p>
+
+<h4>마감 처리 흐름</h4>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Time as ⏰ 마감 시점<br/>(KST 00:00)
+  participant Lock as 거래 lock<br/>(L1 대사 대기)
+  participant FB as Fireblocks API
+  participant DB as 은행
+  participant Calc as 결산 계산기
+  participant Snap as 스냅샷 테이블
+  participant GL as 계정계 sync
+
+  Time->>Lock: 마감 trigger (cron)
+  Lock->>Lock: 신규 거래 잠시 보류
+  Lock->>FB: GET /v1/transactions (24h)
+  FB-->>Lock: tx list
+  Lock->>DB: webhook backfill (누락 detection)
+  DB->>Calc: 4 원장 잔액 산출
+  Calc->>Calc: 외화 → 원화 환산 (매매기준율)
+  Calc->>Calc: 회계 항등식 검증<br/>(자산 = 부채 + 자기자본)
+  alt 항등식 OK
+    Calc->>Snap: 일별 스냅샷 INSERT<br/>(immutable + hash chain)
+    Snap-->>Lock: 마감 완료
+    Lock->>Lock: 거래 lock 해제
+    Snap-.일별 sync.->GL: 계정계로 일별 보고
+  else 항등식 깨짐
+    Calc-->>Lock: 마감 실패 (alert)
+    Note over Lock: 거래 정지 유지<br/>운영팀 review
+  end
+</pre>
+</div>
+<p class="diagram-caption">
+일별 마감의 표준 흐름. KST 00:00 trigger → 거래 lock → webhook backfill → 4 원장 잔액 산출 → 외화 환산 → 회계 항등식 검증 → 통과 시 스냅샷 INSERT → 거래 lock 해제 → 계정계 sync.
+실패 시 거래 정지 유지 + 운영팀 review.
+</p>
+
+<h4>스냅샷 immutable 보장</h4>
+<ul>
+<li>스냅샷 row 는 <strong>append-only</strong> (UPDATE / DELETE 금지). DB trigger 또는 RLS 로 enforce</li>
+<li>각 row 의 <strong>hash chain</strong> (이전 row 의 hash 포함) 로 변조 detection</li>
+<li>월말 / 분기말 / 연말 hash 를 외부 anchor (예: 블록체인 commitment, 외부 timestamp service) 로 고정</li>
+<li>외부 감사 시 hash chain 무결성 검증 → 변조 없음 증명</li>
+</ul>
+
+<h3>22.6 정정·재마감 절차</h3>
+<p>
+마감 후 오류 발견 시 처리. <strong>이미 마감된 row 는 절대 UPDATE / DELETE 금지</strong> (회계 표준).
+</p>
+
+<h4>3 가지 정정 패턴</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>패턴</th><th>의미</th><th>적용</th></tr></thead>
+<tbody>
+<tr><td><strong>역분개 (Reversal Entry)</strong></td>
+  <td>잘못된 분개를 정확히 반대로 한 번 더 기록 (원본은 그대로). 회계 표준 패턴</td>
+  <td>대부분의 정정</td></tr>
+<tr><td><strong>조정분개 (Adjusting Entry)</strong></td>
+  <td>특정 금액만큼만 보정 (잔액을 정확한 값으로 가져가는 분개)</td>
+  <td>외화환산 / 평가 보정</td></tr>
+<tr><td><strong>전기 정정 (Prior Period Adjustment)</strong></td>
+  <td>마감된 직전 기간의 오류 정정 (현재 기간에 누적 효과 인식)</td>
+  <td>중대한 오류 + 외부 감사 대응</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>정정 절차</h4>
+<ol>
+<li>오류 발견 → 운영팀 정정 ticket</li>
+<li>회계팀 review → 정정 분개 작성 (역분개 / 조정 / 전기 정정 중 선택)</li>
+<li>Admin Quorum 매개 (mobile 승인) → 정정 분개 commit. quorum 매커니즘 상세는 <a href="tables-governance.html">10. Roles · Quorum · Policy</a> 10.2 절 참조</li>
+<li>정정 후 항등식 재검증 (L1 대사 재실행)</li>
+<li>정정 사유 + 영향 거래 + 승인자를 <code>accounting.accounting_correction_log</code> 에 기록 (append-only · hash chain 적용 · 5년 보존. <a href="tables-audit.html">18. Audit · AML · Travel Rule</a> 18.3 절 의 audit_log_internal 패턴과 동일)</li>
+</ol>
+
+<div class="callout callout-warn">
+<div class="callout-title">★ 절대 금지</div>
+<ul style="margin-bottom:0">
+<li>마감된 스냅샷 row 의 UPDATE / DELETE</li>
+<li>거래 이력 row 의 사후 수정 (DBA 권한으로도 금지)</li>
+<li>회계 항등식을 깨는 일방 분개 (차변 만 또는 대변 만)</li>
+<li>정정 분개에 대한 quorum 우회</li>
+</ul>
+</div>
+
+<h3>22.7 계정계와의 동기화</h3>
+<p>
+은행의 기존 일·월·분기 마감과 수탁 시스템 (수탁) 마감의 정합.
+</p>
+
+<h4>동기화 schedule 권장 (저자)</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>주기</th><th>수탁 시스템 마감</th><th>계정계 sync</th></tr></thead>
+<tbody>
+<tr><td>일별</td><td>KST 00:00</td><td>일별 잔액 + 손익 → 계정계 totals 업데이트 (KST 00:30 cron)</td></tr>
+<tr><td>월별</td><td>월말 자정</td><td>월별 결산 보고서 (계정과목 별) → 계정계 월말 마감 정합</td></tr>
+<tr><td>분기별</td><td>분기말 자정</td><td>분기 손익 + 자기자본 변동 + 외화환산손익 → 계정계 분기 정합</td></tr>
+<tr><td>연말</td><td>연말 자정</td><td>연말 결산 + 외부 감사 자료 제출</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>계정계와의 차이 처리</h4>
+<ul>
+<li><strong>수탁 시스템 마감 시점 ≠ 계정계 마감 시점</strong> 시 한 시점 동안 양측 잔액 불일치 → 명시적 buffer period 설정</li>
+<li><strong>외화 환산 환율 차이</strong> — 양측이 같은 환율 사용 필수 (매매기준율 일원화)</li>
+<li><strong>정정 발생 시 양측 동시 정정</strong> — 수탁 시스템 만 정정하면 계정계 정합 깨짐</li>
+</ul>
+
+<h3>22.8 외부 감사 대응</h3>
+<p>
+회계법인 / 금감원 / 내부 감사인이 대사 증적을 요구할 때 제공 가능한 자료. 회계 audit 영역의 전체 패키지는 <a href="tables-audit.html">18. Audit · AML · Travel Rule</a> 18.6 절 참조.
+</p>
+
+<h4>제공 자료 패키지</h4>
+<ol>
+<li><strong>일별 reconciliation_session 이력</strong> (L1-L4 의 모든 실행 결과)</li>
+<li><strong>reconciliation_finding 이력</strong> (불일치 발견 + 처리 결과)</li>
+<li><strong>스냅샷 hash chain 무결성 증명</strong> (chain verification script)</li>
+<li><strong>회계 항등식 검증 이력</strong> (마감 시점마다 self-check)</li>
+<li><strong>정정 분개 이력</strong> (역분개 / 조정 / 전기 정정 의 사유 · 승인자 · 영향)</li>
+<li><strong>Fireblocks Console 의 immutable audit log</strong> (Auditor role 제공)</li>
+<li><strong>온체인 잔액 조회 증적</strong> (블록체인 explorer 또는 RPC node 응답)</li>
+</ol>
+
+<h4>외부 감사 시점 사전 협의</h4>
+<ul>
+<li>회계법인이 받아 보는 양식 사전 정의 (분기 / 연말 schedule)</li>
+<li>금감원 정기 점검 / 종합검사 대응 절차</li>
+<li>감사인의 read-only access 권한 (Auditor role + DB read-only account)</li>
+<li>전기 감사 의견의 follow-up (이전 감사에서 지적된 사항의 후속 조치)</li>
+</ul>
+
+<h3>22.9 펀드 시스템 차용 가능성 (저자 권장)</h3>
+<p>
+기존 펀드 수신 / 자산운용 시스템의 대사 자동화 프레임워크 활용 가능성:
+</p>
+<ul>
+<li><strong>대사 도구</strong> — 펀드 시스템의 기존 대사 엔진 차용 (rule-based · stream-based)</li>
+<li><strong>불일치 처리 큐</strong> — 운영자 review 큐의 기존 양식</li>
+<li><strong>보고 양식</strong> — 일별 대사 결과 리포트의 형식</li>
+<li><strong>승인 절차</strong> — 정정 분개의 승인 chain (펀드의 운영자 → 회계팀 → 감사 의 chain)</li>
+<li><strong>외부 감사 협의 절차</strong> — 펀드의 감사 대응 양식 / 증적 형식</li>
+</ul>
+
+<h3>22.10 운영 체크리스트 (분기별)</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>항목</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>L1-L4 대사가 정상 schedule 로 실행되고 있는가</td></tr>
+<tr><td>2</td><td>불일치 finding 의 90% 이상이 24h 이내 처리되는가</td></tr>
+<tr><td>3</td><td>일별 마감의 hash chain 무결성이 검증되는가</td></tr>
+<tr><td>4</td><td>외화 환산이 매매기준율 일원화 적용되는가</td></tr>
+<tr><td>5</td><td>정정 분개의 quorum 매개가 100% 적용되는가</td></tr>
+<tr><td>6</td><td>계정계와 일·월·분기 잔액 정합이 유지되는가</td></tr>
+<tr><td>7</td><td>외부 감사 자료 패키지가 즉시 제공 가능한가</td></tr>
+<tr><td>8</td><td>L4 (온체인 검증) 의 mismatch 가 0 인가</td></tr>
+<tr><td>9</td><td>전기 감사 의견의 follow-up 이 완료되었는가</td></tr>
+<tr><td>10</td><td>회계법인 / 내부 회계팀과의 정기 검토 schedule 이 유지되는가</td></tr>
+</tbody>
+</table>
+</div>
+
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="accounting-ledger.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">21. 회계 · 원장 설계</span></a>
+<a class="page-nav-link page-nav-next" href="db-ops.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">23. DB 운영 · Anti-patterns</span></a>
+</nav>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

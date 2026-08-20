@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Cloud &amp; Trust Boundaries — 수탁형 지갑 DB 설계</title>
+<meta content="Fireblocks llm-wiki 기반 수탁형 지갑 DB 설계 — Cloud &amp; Trust Boundaries" name="description"/>
+<meta content="noindex" name="robots"/>
+<link href="assets/styles.css" rel="stylesheet"/>
+</head>
+<body>
+<button aria-label="Toggle navigation" class="menu-toggle">≡ Menu</button>
+<div class="layout">
+<aside aria-label="Table of contents" class="sidebar">
+<nav>
+<div class="nav-section nav-up">
+<a class="nav-up-link" href="../index.html">← Documentation Hub</a>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">Overview</h3>
+<ul>
+<li><a href="index.html">0. Overview</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">A. Architecture</h3>
+<ul>
+<li><a class="active" href="architecture.html">1. Cloud &amp; Trust Boundaries</a></li>
+<li><a href="db-split.html">2. DB 분할</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">B. Workspace &amp; Vault</h3>
+<ul>
+<li><a href="tables-workspace.html">3. Workspace</a></li>
+<li><a href="tables-vault.html">4. Vault</a></li>
+<li><a href="tables-wallet.html">5. Wallet &amp; Address</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">C. Users &amp; Access</h3>
+<ul>
+<li><a href="tables-user.html">6. Users</a></li>
+<li><a href="tables-auth.html">7. Auth credentials</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">D. Governance &amp; Policy</h3>
+<ul>
+<li><a href="tables-role.html">8. 9 User Roles</a></li>
+<li><a href="tables-quorum.html">9. Admin Quorum · AG</a></li>
+<li><a href="tables-policy.html">10. Policy · TAP</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">E. Cryptography &amp; Signing</h3>
+<ul>
+<li><a href="tables-mpc.html">11. MPC Key Share</a></li>
+<li><a href="tables-signer.html">12. Cosigner · Callback</a></li>
+<li><a href="tables-recovery.html">13. Recovery &amp; Backup</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">F. Transaction Lifecycle</h3>
+<ul>
+<li><a href="sm-transaction.html">14. Transaction State</a></li>
+<li><a href="sm-14step.html">15. 14-step Flow</a></li>
+<li><a href="sm-approval.html">16. Approval State</a></li>
+<li><a href="sm-signing.html">17. Signing State</a></li>
+<li><a href="sm-deposit.html">18. Deposit Lifecycle</a></li>
+<li><a href="sm-withdrawal.html">19. Withdrawal Lifecycle</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">G. Audit, Compliance, Risks</h3>
+<ul>
+<li><a href="tables-audit.html">20. Audit Log</a></li>
+<li><a href="tables-lifecycle.html">21. Lifecycle Events</a></li>
+<li><a href="tables-aml.html">22. AML · Travel Rule</a></li>
+<li><a href="risks.html">23. Risks Register</a></li>
+</ul>
+</div>
+<div class="nav-section">
+<h3 class="nav-section-title">H. Cross-cutting &amp; Ops</h3>
+<ul>
+<li><a href="storage-discipline.html">24. Storage Discipline</a></li>
+<li><a href="db-ops.html">25. DB 운영 (MySQL)</a></li>
+<li><a href="anti-patterns.html">26. Anti-patterns</a></li>
+</ul>
+</div>
+</nav>
+</aside>
+<main class="content">
+<section id="architecture">
+<h2>1. Cloud &amp; Trust Boundaries</h2>
+<span class="section-subtitle">3-cloud 분할 · 6 system component · zero-trust<span class="g" data-tip="모든 service handoff 마다 derived cert 로 다시 검증. internal network 라도 신뢰 안 함" tabindex="0">(?)</span></span>
+<h3>3-Cloud Provider 분할</h3>
+<p>Fireblocks 는 단일 cloud 가 아니라 <strong>sensitive material<span class="g" tabindex="0" data-tip="공격자가 손에 넣으면 우리 동의 없이도 코인을 자기 주소로 옮길 수 있는 데이터. Fireblocks 명세상 5 종 — (1) MPC 서명용 키 조각, (2) workspace 설정 및 권한, (3) policy 룰 (TAP / DCCP / AML), (4) 외부 API 자격증명 (AML provider · IdP 등), (5) SGX enclave 안의 메모리 데이터">(?)</span> 의 위치 기준으로 3 cloud 를 분할</strong>한다.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Provider</th><th>역할</th><th>Sensitive material</th></tr></thead>
+<tbody>
+<tr><td><strong>Microsoft Azure</strong></td><td>Core services · Auth / Policy / TAP<span class="g" data-tip="Transaction Authorization Policy. Fireblocks 의 거래 단위 승인 정책 엔진" tabindex="0">(?)</span> / MPC<span class="g" data-tip="Multi-Party Computation. 여러 당사자가 각자 키 조각만 들고 협력해서 서명 — 누구도 단독으로 키를 모름. 전체 키가 한 번도 한곳에 모이지 않음" tabindex="0">(?)</span> / SGX<span class="g" data-tip="Intel Software Guard Extensions. CPU 안의 봉인된 메모리 영역 (enclave). OS 나 hypervisor 도 그 안을 들여다볼 수 없음" tabindex="0">(?)</span> / Co-Signer Engine / Secure Vault · key shares · configs · policy rules · third-party API credentials · <strong>SGX Confidential Enclaves</strong></td><td><strong>YES</strong></td></tr>
+<tr><td><strong>Amazon AWS</strong></td><td>Shell Services VPC (Firestore, Transaction Manager, Mobile Service, Dev API Gateway, Web Console, API Gateway) + Node Infrastructure VPC (Blockchain Nodes, Fireblocks Network)</td><td>NO</td></tr>
+<tr><td><strong>GCP (Firebase)</strong></td><td>Console + mobile app caching DB</td><td>NO</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+<strong>Azure = sensitive 의 root</strong>, AWS = 외피 (gateway / frontend), GCP = caching.<br/>
+      Azure ↔ AWS 통신은 <strong>SGX DMZ + PROXY</strong> 매개.
+    </p>
+<div class="callout">
+<div class="callout-title">DB 설계가 받는 영향</div>
+<p>물리적 DB 분할의 1차 기준은 <strong>"sensitive 인가 / 외피인가 / cache 인가"</strong>. 한 DB 안에 두 종류를 섞으면 cloud / network / IAM 분리가 무의미해진다.</p>
+</div>
+<h3>6 System Components</h3>
+<p>전체 시스템은 6 개 영역으로 나뉘어 있고 각각이 책임이 다르다. <strong>민감 데이터를 다루는 영역과 외피 영역을 같은 cloud / network 에 두지 않는다</strong>.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>Component</th><th>한국어 설명 · 책임</th><th>민감 데이터</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><strong>Shell Services</strong></td><td><strong>외피 서비스</strong> — 외부 API 요청의 진입 관문. API gateway / 이벤트 라우팅 / 메시지 큐. 민감 데이터 처리 안 함</td><td>NO</td></tr>
+<tr><td>2</td><td><strong>Transaction Signing Modules</strong><br/>(Co-signers)</td><td><strong>서명 모듈</strong> — MPC 키 조각 보관 + 실제 트랜잭션 서명. 3 개의 co-signer 가 협력해야 1 개의 서명 완성 (단독 서명 불가)</td><td>YES<br/>(key share)</td></tr>
+<tr><td>3</td><td><strong>Core Components</strong></td><td><strong>코어</strong> — 민감 데이터를 SGX enclave 안에서 처리하는 4 개 모듈:<br/>· <strong>Auth Engine</strong> (사용자·서비스 인증 검증)<br/>· <strong>Policy Engine / TAPs</strong> (트랜잭션 단위 정책 평가)<br/>· <strong>Secure Vault</strong> (서명된 tx 조립 + PKI 보관)<br/>· <strong>Co-Signer Engine</strong> (3 co-signer 에 서명 분산 라우팅)</td><td>YES</td></tr>
+<tr><td>4</td><td><strong>Trusted Shared Services</strong></td><td><strong>신뢰 공유 서비스</strong> — Fireblocks 내부 공유 모듈 + <strong>P2P Network</strong> (Fireblocks 고객사들끼리 chain 안 거치고 즉시 송금 가능한 망)</td><td>partial</td></tr>
+<tr><td>5</td><td><strong>Blockchain Nodes</strong></td><td><strong>블록체인 노드</strong> — 서명 끝난 tx 를 실제 blockchain 에 broadcast. BTC / ETH / SOL 등 chain 별 노드 운영</td><td>NO</td></tr>
+<tr><td>6</td><td><strong>Disaster Recovery Services</strong></td><td><strong>재해복구</strong> — 자산 복구용. extended private keys (xprv + fprv) 를 재구성 가능. 반드시 <strong>offline air-gapped</strong> (네트워크 끊긴 별도 머신) 에서만.<br/>★ <strong>SPOC<span class="g" data-tip="SPOC — Single Point of Compromise. 한 번이라도 노출되면 전체 키가 compromise 된 것으로 간주하는 지점. Fireblocks DR Recovery Utility 가 online machine 에서 실행될 때 정식 SPOC 경고 발동" tabindex="0">(?)</span> 경고</strong>: 정기 사용 금지 — 1 회만 사용해도 키 노출로 간주</td><td>EXTREME</td></tr>
+</tbody>
+</table>
+</div>
+<div class="diagram">
+      <pre class="mermaid">
+graph TB
+  subgraph FB_AWS["🟡 Fireblocks AWS — 외피 (민감 데이터 없음)"]
+    GW["Dev API Gateway<br/>외부 API 진입점"]
+    TM["Transaction Manager<br/>tx 라우팅"]
+    BS["Balance Service<br/>잔액 조회"]
+    SS["Screening Service<br/>AML · Travel Rule 검사"]
+    CS["Certificate Store<br/>인증서 보관"]
+  end
+
+  subgraph FB_AZURE["🔵 Fireblocks Azure SGX — Core (민감 데이터 보호)"]
+    AE["Auth Engine<br/>인증 검증"]
+    PE["Policy Engine / TAPs<br/>정책 평가"]
+    SV["Secure Vault<br/>서명 조립 + PKI"]
+    CSE["Co-Signer Engine<br/>서명 분산 라우팅"]
+  end
+
+  subgraph FB_SIG["🔵 Fireblocks Azure SGX — Co-Signers (2 of 3)"]
+    C1["Co-Signer 1<br/>key share #1"]
+    C2["Co-Signer 2<br/>key share #2"]
+  end
+
+  subgraph CUST_SIG["🟢 Customer 측 — Co-Signer 3 (1 of 3) · 신뢰 경계 분리"]
+    C3M["Mobile device<br/>iOS Keychain / Android TEE"]
+    C3A["또는: API Co-Signer<br/>customer SGX server"]
+    CH["Callback Handler<br/>customer 운영 검증 endpoint"]
+  end
+
+  subgraph NODES["🟡 Fireblocks AWS — Blockchain Nodes"]
+    N["Node infrastructure<br/>BTC / ETH / SOL / ..."]
+  end
+
+  subgraph COLD["⚪ Cold Workspace — 별도 격리 plane (offline)"]
+    COLDW["Cold workspace<br/>완전 오프라인<br/>대량 자산 장기 보관<br/>Hot workspace 와 분리"]
+  end
+
+  subgraph DR["🔴 Disaster Recovery — offline only · ★ SPOC"]
+    DRS["xprv + fprv 재구성<br/>air-gapped machine<br/>정기 사용 금지"]
+  end
+
+  GW --> TM --> BS --> N
+  TM --> SS
+  GW --> AE
+  SS --> PE
+  PE --> SV --> CSE
+  CSE --> C1
+  CSE --> C2
+  CSE -. 서명 요청 .-> C3M
+  CSE -. 서명 요청 .-> C3A
+  C3A -. 검증 콜백 .-> CH
+  CSE --> N
+
+  classDef azure fill:#dbeafe,stroke:#1e40af,color:#1e3a8a
+  classDef aws fill:#fef3c7,stroke:#92400e,color:#78350f
+  classDef customer fill:#dcfce7,stroke:#166534,color:#14532d
+  classDef cold fill:#f3f4f6,stroke:#6b7280,color:#374151
+  classDef dr fill:#fde2e2,stroke:#991b1b,color:#7f1d1d
+  class AE,PE,SV,CSE,C1,C2 azure
+  class GW,TM,BS,SS,CS,N aws
+  class C3M,C3A,CH customer
+  class COLDW cold
+  class DRS dr
+      </pre>
+      <span class="diagram-caption">Figure 1. 신뢰 경계별 색상 구분 — 🟡 AWS (외피) / 🔵 Azure SGX (민감) / 🟢 Customer (사용자 영역) / ⚪ Cold workspace (offline 격리) / 🔴 DR (offline only). 3 co-signer 가 함께 서명 — Fireblocks 측 2 + Customer 측 1.</span>
+</div>
+<h3>Zero-Trust Architecture</h3>
+<p><strong>한 줄 요약</strong>: 내부 service 끼리도 서로를 신뢰하지 않는다. 매번 cert 로 검증.</p>
+<p>Fireblocks 의 원문 (<code>transaction-lifecycle.md</code> p.5):</p>
+<blockquote style="border-left:3px solid var(--border-callout); padding-left:14px; color:var(--text-secondary); font-style:italic">
+      "All services in the Fireblocks core infrastructure operate in a <strong>zero-trust configuration</strong>. Each service has a <strong>derivation of root CA</strong> and <strong>validates every handoff between services</strong>."
+    </blockquote>
+<p><strong>풀어 쓰면</strong>:</p>
+<ul>
+<li>같은 회사 내부망 안에 있는 service 끼리도 "내부니까 안전" 으로 가정하지 않는다.</li>
+<li>한 service 가 다른 service 를 부를 때마다 <strong>cert (= 신원증명서)</strong> 를 보여주고, 받는 쪽이 이를 검증한다.</li>
+<li>모든 cert 는 <strong>Root CA</strong> (회사의 최상위 인증기관) 에서 파생된다. Root → Intermediate → End cert 의 chain 으로 신원이 cryptographically 증명됨.</li>
+<li>SGX enclave 끼리도 예외 없이 derived cert 로 검증.</li>
+</ul>
+<p>→ 공격자가 내부망 한 곳을 뚫어도 다른 service 에 접근하려면 cert 가 필요 → 횡적 이동 (lateral movement) 차단.</p>
+
+<h3>Authentication Architecture</h3>
+<p><strong>한 줄 요약</strong>: 모바일·API 의 인증은 짧은 수명의 토큰 chain 으로 구성. 1 단계라도 만료되면 재발급 강제.</p>
+
+<h4>Cert chain (= 신원 증명 체인)</h4>
+<p><strong>Root Key</strong> → <strong>Intermediate Cert</strong> → <strong>Co-Signer End Cert</strong></p>
+<ul>
+<li><strong>Root Key</strong> = Core Services 의 CA (Certificate Authority, 인증기관). 모든 cert 의 근원</li>
+<li><strong>Intermediate Cert</strong> = Root 가 서명한 중간 cert. 실제 발급에 사용</li>
+<li><strong>End Cert</strong> = Intermediate 가 서명한 말단 cert. 각 co-signer 에 배포</li>
+<li>Customer 측 component (mobile / API Co-Signer) 는 Root Key 의 <strong>public 부분만</strong> 사전 보유 → Fireblocks 가 서명해서 보내준 token 을 검증할 수 있음</li>
+</ul>
+
+<h4>Token lifecycle (= 인증 토큰의 수명 구조)</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Token</th><th>수명</th><th>저장 위치</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td><strong>Activation token</strong></td><td>7 일</td><td>모바일 신규 등록 시 일회성</td><td>초기 페어링용</td></tr>
+<tr><td><strong>Refresh token</strong></td><td>장기</td><td>모바일 KeyChain (iOS 의 보안 저장소)</td><td>access token 재발급에 사용</td></tr>
+<tr><td><strong>Access token</strong></td><td>6 시간</td><td>메모리 (휘발성)</td><td>API 호출 시마다 첨부</td></tr>
+</tbody>
+</table>
+</div>
+<p>→ Access token 이 6 시간마다 새로 발급되므로 token 이 유출돼도 짧은 시간만 유효. Refresh token 이 노출되면 더 큰 피해 → mobile KeyChain 의 hardware-encrypted 영역에 보관.</p>
+<h3>신뢰 경계 (Trust Boundaries)</h3>
+<p>시스템의 각 영역이 누가 운영하고 무엇을 보호하는지. <strong>영역이 다르면 보안 모델도 다르다</strong> — 한 영역이 뚫려도 다른 영역의 자산이 즉시 노출되지 않게 설계.</p>
+<div class="table-wrap trust-boundaries">
+<table>
+<thead><tr><th>영역</th><th>호스팅 주체</th><th>보관·처리하는 신뢰 자산</th></tr></thead>
+<tbody>
+<tr><td><strong>Fireblocks SaaS</strong></td><td>Fireblocks</td><td>Console UI · API endpoint · 버전 결정 · audit log · cloud 측 key share backup (passphrase 로 암호화된 상태)</td></tr>
+<tr><td><strong>Auth0 (SSO)</strong></td><td>Fireblocks 측 service provider</td><td>SSO 로그인의 callback 처리. 사용자 password 자체는 외부 IdP 가 관리</td></tr>
+<tr><td><strong>사용자 mobile device</strong></td><td>사용자</td><td>Primary MPC key share (secure enclave 안에 hardware 암호화) · PIN · biometric · mobile app passphrase · recovery passphrase 입력</td></tr>
+<tr><td><strong>고객 인프라</strong></td><td>고객 회사</td><td>API Co-Signer 인스턴스 (선택적으로 SGX 머신) · Callback Handler 서버 · CSR private key</td></tr>
+<tr><td><strong>외부 IdP</strong><br/>(Identity Provider)</td><td>고객 또는 third-party<br/>(Google Workspace / Okta / Entra ID 등)</td><td>SSO 사용자 인증 자체 (Fireblocks 외부의 identity 책임)</td></tr>
+<tr><td><strong>Blockchain</strong></td><td>Public (탈중앙)</td><td>서명 끝난 transaction 의 broadcast + 확정</td></tr>
+</tbody>
+</table>
+</div>
+<p>★ <strong>핵심 원칙</strong>: 어느 한 영역이 침해되어도 다른 영역의 자산은 별도 보호. 예 — Fireblocks SaaS 가 침해되어도 customer 측 co-signer 의 key share 1 개가 없으면 서명 불가능.</p>
+</section>
+<nav aria-label="Section navigation" class="page-nav">
+<a class="page-nav-link page-nav-prev" href="index.html"><span class="page-nav-dir">← Previous</span><span class="page-nav-label">0. Overview</span></a>
+<a class="page-nav-link page-nav-next" href="db-split.html"><span class="page-nav-dir">Next →</span><span class="page-nav-label">2. DB 분할</span></a>
+</nav>
+</main>
+</div>
+<!-- Mermaid + svg-pan-zoom CDN -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

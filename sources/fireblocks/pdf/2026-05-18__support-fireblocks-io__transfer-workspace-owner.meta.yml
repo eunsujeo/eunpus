@@ -1,0 +1,14 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/10371416837788-Transfer-workspace-Owner
+downloaded_at: 2026-05-18
+doc_type: support-docs
+pages: 2
+language: en
+notes: |
+  Fireblocks Help Center article "Transfer workspace Owner".
+  Requires Fireblocks Support (cannot be done via Console).
+  Preconditions: new Owner has Admin or Signer role, fully onboarded (MPC key
+  shares generated), active Policies allow new Owner to sign.
+  Both Owners verify identity via video call; new Owner verifies recovery passphrase.
+  Workspace Keys Backup decision (keep/destroy) before transfer.
+  Owner absence path: board resolution via stakeholder quorum.
+  SLA: 3–5 business days.

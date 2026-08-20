@@ -1,0 +1,29 @@
+{
+  "skill_name": "waas-wiki-curator",
+  "evals": [
+    {
+      "id": 1,
+      "name": "source-ingest-batch",
+      "prompt": "사용자가 새 PDF 3 개를 sources/fireblocks/pdf/ 에 추가하려고 한다. 파일명만 알려준다. 다음 3 개를 ingest 해줘.\n\n- 2026-06-01__support-fireblocks-io__transaction-screening.pdf\n- 2026-06-01__support-fireblocks-io__compliance-overview.pdf\n- 2026-06-01__developers-fireblocks-com__webhook-events.pdf\n\n각 파일의 mode 분류와 처리 절차를 알려줘.",
+      "expected_output": "각 파일에 대해 (1) domain triage (5 priority domain 중 어디인지), (2) tier 추정, (3) mode 결정 (A/B/C), (4) meta.yml 생성 제안, (5) PDF 직접 read 안 함, (6) 사용자 승인 대기. cluster catalog markdown 가능성 언급. 본문 fact 추측 0건.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "name": "new-entity-request-min-discipline",
+      "prompt": "Fireblocks 의 새 entity 만들어줘: \"transaction-fee-calculation\" — gas fee / network fee 계산 로직 정리하는 entity.",
+      "expected_output": "entity-min discipline check 수행. 기존 entity (transaction.md, policy.md, vault-account.md) 또는 vendor hub (vendors/fireblocks/blockchains.md) 에 흡수 가능한지 먼저 평가. 신규 entity 생성을 즉시 수락하지 않고 흡수 옵션 제시. 만약 신규 entity 생성이 필요하다면 Stage counter reset 명시 + 사용자 승인 요청. 본문 fact 추측 없이 기존 wiki 구조와의 관계만 분석.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 3,
+      "name": "fact-query-reference-ready",
+      "prompt": "Fireblocks 의 MPC key share 가 어디에 분포되어 있는지 알려줘. 그리고 Hosted MPC 와의 차이도.",
+      "expected_output": "vendors/fireblocks/mpc.md + entities/fireblocks/mpc-key-share.md grep. Stage 8 ANSWERED 사실 인용 (MPC-CMP, 1 customer + 2 FB cloud SGX, 3/3 within-group, 1/N across-group). Hosted MPC variant (3 share customer + 0 share FB, sovereign key management) 차이 명시. 모든 fact 에 출처. hypothesis 영역 (e.g., decryption 가능성) 은 별도 라벨. 답변 형식 v2 6-section (핵심 요약 / 운영 상세 / 확정 vs hypothesis / 답 가능 범위 / promote 필요 / 추천). LLM 일반 지식 fill-in 0건.",
+      "files": [],
+      "assertions": []
+    }
+  ]
+}
