@@ -21,7 +21,7 @@ group: 운영 경계
 | 온체인 Revert | 컨트랙트 조건 실패·Allowance 부족 | 발생 | 실패 상태와 소비 가스 기록 |
 | 확정 | 토큰 이동 완료 | 발생 | 거래·비용·업무 결과 대사 |
 
-Fireblocks 담당자의 2026-08-18 답변에 따르면 Fireblocks Relay에서 온체인 Revert는 네트워크가 가스를 소비했으므로 청구되고, Policy·검증 단계에서 Broadcast 전에 차단된 요청은 네트워크 비용이 발생하지 않는다.
+[Fireblocks 담당자의 2026-08-18 답변](https://github.com/eunsujeo/eunpus/blob/main/blockchain-manager/sources/fireblocks-support/2026-08-18__gasless-relay-billing-conversation.md)에 따르면 Fireblocks Relay에서 온체인 Revert는 네트워크가 가스를 소비했으므로 청구되고, Policy·검증 단계에서 Broadcast 전에 차단된 요청은 네트워크 비용이 발생하지 않는다.
 
 ## Pending과 RBF
 

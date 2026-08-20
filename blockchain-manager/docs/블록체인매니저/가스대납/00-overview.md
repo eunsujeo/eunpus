@@ -9,7 +9,7 @@ view: grid
 
 우리 시스템은 EVM 스테이블코인 거래의 가스비를 Fireblocks Universal Gasless와 Fireblocks-managed Relay로 처리한다. 고객 Vault·옴니버스·출금 풀에 가스비 목적의 기본 자산을 배포하지 않고, Relay가 선지불한 네트워크 비용을 월 청구서로 정산한다.
 
-이 결정은 2026-08-13 채택 방식과 2026-08-18 Fireblocks 담당자 과금 답변을 기준으로 한다.
+이 결정은 2026-08-13 채택 방식과 [2026-08-18 Fireblocks 담당자 과금 답변](https://github.com/eunsujeo/eunpus/blob/main/blockchain-manager/sources/fireblocks-support/2026-08-18__gasless-relay-billing-conversation.md)을 기준으로 한다.
 
 ## 채택 결정
 

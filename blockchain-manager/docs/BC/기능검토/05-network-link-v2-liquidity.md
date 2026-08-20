@@ -286,8 +286,8 @@ Liquidity Taker는 KRWK 발행업체의 기관 고객이면서 Fireblocks 고객
 | ID | 출처 | 반영 범위 |
 |---|---|---|
 | FB-NL2-001 | [Fireblocks Provider Connectivity API v2](https://fireblocks.github.io/fireblocks-network-link/v2/docs.html) | capability discovery, liquidity quote·execute, blockchain withdrawal, idempotency |
-| FB-SUP-001 | Fireblocks 담당자 기술 질의응답 | LP 선행 연동·거래쌍 조건, 제공자 유형, Swap API, createTransaction, 외부 제공자 후보 제안, 미답변 질문 |
-| FB-SUP-002 | Private LP 후속 질의응답 | KRWK 발행업체 Aggregator 제안 구조, 기관 고객 이중 KYB·API key 접근 제한, 최종 미답변 질문 |
+| FB-SUP-001 | [Fireblocks 담당자 기술 질의응답](https://github.com/eunsujeo/eunpus/blob/main/blockchain-manager/sources/fireblocks-support/2026-08-12__network-link-v2-liquidity-conversation.md) | LP 선행 연동·거래쌍 조건, 제공자 유형, Swap API, createTransaction, 외부 제공자 후보 제안, 미답변 질문 |
+| FB-SUP-002 | [Private LP 후속 질의응답](https://github.com/eunsujeo/eunpus/blob/main/blockchain-manager/sources/fireblocks-support/2026-08-12__network-link-v2-private-lp-continuation.md) | KRWK 발행업체 Aggregator 제안 구조, 기관 고객 이중 KYB·API key 접근 제한, 최종 미답변 질문 |
 
 담당자 대화의 출처와 SHA-256은 `blockchain-manager/sources/fireblocks-support/manifest.yml`에 기록한다.
 

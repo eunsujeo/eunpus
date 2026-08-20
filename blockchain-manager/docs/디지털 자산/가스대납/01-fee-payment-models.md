@@ -61,7 +61,7 @@ Relay를 쓰면 운영 항목이 사라지는 것이 아니라 집중되는 위�
 
 토큰 대납 지원이 네이티브 자산 전송까지 포함한다는 뜻은 아니다. 네이티브 자산은 이동 대상과 수수료 자산이 같아 제품별 처리 방식이 다르다.
 
-보관된 Fireblocks 공식 Sweep 원문은 Universal Gasless가 ERC-20·ERC-721·ERC-1155 Sweep을 지원하지만 네이티브 ETH 전송은 Relay하지 않는다고 구분한다. 네이티브 자산을 취급하는 서비스는 Gasless만으로 기본 자산 보유를 완전히 제거했다고 판단하면 안 된다.
+[보관된 Fireblocks 공식 Sweep 원문](https://github.com/eunsujeo/eunpus/blob/main/sources/fireblocks/markdown/2026-07-03__developers-fireblocks-com__sweep-funds-omnibus.md)은 Universal Gasless가 ERC-20·ERC-721·ERC-1155 Sweep을 지원하지만 네이티브 ETH 전송은 Relay하지 않는다고 구분한다. 네이티브 자산을 취급하는 서비스는 Gasless만으로 기본 자산 보유를 완전히 제거했다고 판단하면 안 된다.
 
 ## 비용 귀속
 

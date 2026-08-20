@@ -149,7 +149,7 @@ VASP 백엔드가 호출하는 Enclave 쪽에는 VASP 조회, 계정·사용자 
 
 ## 담당자 회의에서 보강된 운영 설명
 
-이 절은 2026-08-12에 전달받은 회의록(VV-MTG-001)을 정리한 것이다. 아래 내용은 **VerifyVASP 측 설명**이며 공식 API·계약·규제기관 원문으로 독립 검증한 사실과 구분한다.
+이 절은 2026-08-12에 전달받은 회의록([VV-MTG-001](https://github.com/eunsujeo/eunpus/blob/main/blockchain-manager/sources/travel-rule-solutions/verifyvasp-meeting/2026-08-12__meeting-notes.md))을 정리한 것이다. 아래 내용은 **VerifyVASP 측 설명**이며 공식 API·계약·규제기관 원문으로 독립 검증한 사실과 구분한다.
 
 ### 입출금 통제 원칙
 

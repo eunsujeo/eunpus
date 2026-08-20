@@ -296,7 +296,7 @@ Console이 이 API를 사용하는 UI라는 방향은 담당자 설명과 맞지
 | FB-TRD-003 | [Create Order](https://developers.fireblocks.com/api-reference/trading-beta/create-an-order) | Order 생성, Provider·실행·정산·source/destination 입력 |
 | FB-TRD-004 | [Account-based Provider Ramp 시나리오](https://developers.fireblocks.com/docs/on-ramp-off-ramp-and-bridgeswap-via-account-based-providers-cefi) | 계정 연결, DVP·Prefunded On-ramp, DVP Off-ramp 흐름 |
 | FB-PAY-001 | [별도 결제 네트워크 Off-ramp 가이드](https://developers.fireblocks.com/docs/circle-payments-network-cpn-api-guide) | PII 요구사항, Quote·Order·서명·RFI·상태 조회 흐름 |
-| FB-SUP-003 | 외부 발행업체 질의응답 | Ramp API 답변, Connected Account, Console Swap, Provider 제안, 미답변 질문 |
+| FB-SUP-003 | [외부 발행업체 질의응답](https://github.com/eunsujeo/eunpus/blob/main/blockchain-manager/sources/fireblocks-support/2026-08-12__payments-ramp-trading-conversation.md) | Ramp API 답변, Connected Account, Console Swap, Provider 제안, 미답변 질문 |
 
 담당자 대화의 출처와 SHA-256은 `blockchain-manager/sources/fireblocks-support/manifest.yml`에 기록한다.
 

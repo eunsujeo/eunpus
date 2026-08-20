@@ -34,7 +34,7 @@ Notabene 은 이 둘이 없다 — SaaS 라 자체 설치물이 없고 인바운
 
 ## 회의에서 전달받은 운영·네트워크 조건
 
-아래는 2026-08-12에 전달받은 담당자 회의록의 설명이다. 공개 개발자 문서의 확정 요건과 구분하며 계약·운영정책으로 확인한다.
+아래는 2026-08-12에 전달받은 [담당자 회의록](https://github.com/eunsujeo/eunpus/blob/main/blockchain-manager/sources/travel-rule-solutions/verifyvasp-meeting/2026-08-12__meeting-notes.md)의 설명이다. 공개 개발자 문서의 확정 요건과 구분하며 계약·운영정책으로 확인한다.
 
 | 항목 | 회의 설명 | 도입 시 처리 |
 |---|---|---|

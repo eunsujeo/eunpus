@@ -90,7 +90,7 @@ flowchart LR
 
 ## 담당자 회의가 추가한 도입 조건
 
-2026-08-12에 전달받은 VerifyVASP 담당자 회의록은 직접 연동의 운영 조건을 세 가지 보강한다. 공식 API 명세가 아니라 벤더 발언이므로 계약·운영정책으로 확정한 뒤 적용한다.
+2026-08-12에 전달받은 [VerifyVASP 담당자 회의록](https://github.com/eunsujeo/eunpus/blob/main/blockchain-manager/sources/travel-rule-solutions/verifyvasp-meeting/2026-08-12__meeting-notes.md)은 직접 연동의 운영 조건을 세 가지 보강한다. 공식 API 명세가 아니라 벤더 발언이므로 계약·운영정책으로 확정한 뒤 적용한다.
 
 1. **거래 관계 승인은 우리 책임** — VerifyVASP가 신규 회원 안내와 기초자료 전달을 지원해도 상대 VASP의 실사·승인 판단은 각 회원사 책임이다. 라우터의 `도달 가능`과 정책의 `거래 승인`을 한 상태로 합치지 않는다.
 2. **CODE 상호연동은 양 방향 권한을 확인** — 기술적으로 목록에 나타나는 것만으로 충분하지 않다. 송·수신 각 방향에서 회원 동의, 실사, 개인정보 제공 권한이 성립하는지 확인한다.

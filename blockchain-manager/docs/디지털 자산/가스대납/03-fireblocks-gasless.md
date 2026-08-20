@@ -22,7 +22,7 @@ Fireblocks의 Gas Station은 Vault Account에 기본 자산을 자동 충전하�
 
 ## Limited와 Universal Gasless
 
-보관된 Fireblocks 공식 원문은 제품 범위를 다음과 같이 구분한다.
+[보관된 Fireblocks 공식 원문](https://github.com/eunsujeo/eunpus/blob/main/sources/fireblocks/markdown/2026-07-03__support-fireblocks-io__gasless-service-extract.md)은 제품 범위를 다음과 같이 구분한다.
 
 | 제품 | 기반 | 적용 범위 |
 |---|---|---|
