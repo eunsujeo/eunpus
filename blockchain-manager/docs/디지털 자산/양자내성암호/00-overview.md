@@ -61,4 +61,4 @@ flowchart TB
 | **ML-DSA · SLH-DSA · FN-DSA** | NIST PQC 서명 알고리즘 — 앞 둘은 최종 표준(FIPS 204·205), FN-DSA 는 FIPS 206 개발 중 |
 | **암호 민첩성 (crypto agility)** | 알고리즘을 시스템 개조 없이 교체할 수 있게 하는 설계 성질 |
 
-출처: [Fireblocks 공식 블로그 보관본 (2026-04, VP Research)](https://github.com/eunsujeo/eunpus/blob/main/sources/fireblocks/markdown/2026-08-20__fireblocks-com__google-quantum-research-institutional-crypto-security.md) · [한컴위드 THE SHIFT 발표회 기사 보관본](https://github.com/eunsujeo/eunpus/blob/main/sources/pqc/markdown/2026-08-20__newstheai-com__hancomwith-the-shift-strategy.md)
+출처: [Fireblocks 공식 블로그 (2026-04, VP Research)](https://www.fireblocks.com/blog/google-quantum-research-institutional-crypto-security) · [한컴위드 THE SHIFT 발표회 기사](https://www.newstheai.com/news/articleView.html?idxno=20703)

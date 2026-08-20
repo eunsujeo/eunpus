@@ -85,4 +85,4 @@ flowchart LR
 | **EIP-712** | 구조화 데이터 서명 표준 — 도메인(컨트랙트·체인)과 타입 필드를 정해 서명해서, 지갑이 서명 내용을 구조화해 표시할 수 있게 하고 서로 다른 체인·컨트랙트·앱 문맥 간 서명 충돌을 막는다. 같은 문맥 안의 재사용 방지는 EIP-3009 의 nonce·유효 시간 창 몫이다. 위임장을 이 서식으로 서명한다 |
 | **Microtransaction** | 센트 단위 이하 소액 결제 — 전통 결제망의 최소 거래 비용 때문에 스테이블코인을 쓰는 이유 |
 
-출처: [x402 저장소 README](https://github.com/eunsujeo/eunpus/blob/main/sources/stablecoin/markdown/2026-08-20__github-com__coinbase-x402.md) · [AWS AgentCore payments 개발자 문서](https://github.com/eunsujeo/eunpus/blob/main/sources/stablecoin/markdown/2026-08-20__docs-aws-amazon-com__agentcore-payments-devguide.md) (보관본)
+출처: [x402 공식 저장소](https://github.com/x402-foundation/x402) · [AWS AgentCore payments 동작 방식](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-how-it-works.html) · [AWS AgentCore payments 핵심 개념](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-concepts.html)

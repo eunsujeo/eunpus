@@ -52,4 +52,4 @@ flowchart LR
 - 커스터디는 벤더(Fireblocks) 의존이므로, 우리 쪽 액션 아이템은 벤더 전략 문서(2026 하반기 예고)의 확인이다. 특히 **key backup 평면과 하이브리드 채택 여부**는 현재 공개 자료에 없다 (wiki open question 으로 추적 중).
 - 우리가 직접 소유한 평면은 서비스 간 통신·DB 저장·백업이다 — HNDL 관점에서 장기 보존 데이터(거래 원본·감사 기록)의 암호화 방식이 국내 2035 전환 일정의 대상이 된다.
 
-출처: [Fireblocks 공식 블로그 보관본](https://github.com/eunsujeo/eunpus/blob/main/sources/fireblocks/markdown/2026-08-20__fireblocks-com__google-quantum-research-institutional-crypto-security.md) · [한컴 xFWeb 출시 기사 보관본](https://github.com/eunsujeo/eunpus/blob/main/sources/pqc/markdown/2026-08-20__dailysecu-com__hancomwith-xfweb-pqc-launch.md) · [한컴위드 THE SHIFT 기사 보관본](https://github.com/eunsujeo/eunpus/blob/main/sources/pqc/markdown/2026-08-20__newstheai-com__hancomwith-the-shift-strategy.md). 마지막 절은 팀 관점이다.
+출처: [Fireblocks 공식 블로그](https://www.fireblocks.com/blog/google-quantum-research-institutional-crypto-security) · [한컴 xFWeb 출시 기사](https://www.dailysecu.com/news/articleView.html?idxno=207405) · [한컴위드 THE SHIFT 기사](https://www.newstheai.com/news/articleView.html?idxno=20703). 마지막 절은 팀 관점이다.

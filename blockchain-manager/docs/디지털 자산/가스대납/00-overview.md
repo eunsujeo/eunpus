@@ -53,7 +53,7 @@ sequenceDiagram
 
 이 흐름에서 Relay는 transaction을 제출하면서 자신의 fee account에 있는 native token으로 network fee를 낸다. 제출 뒤 다른 주체의 입금을 기다리는 단계는 없다.
 
-[보관된 Fireblocks 공식 문서](https://github.com/eunsujeo/eunpus/blob/main/sources/fireblocks/markdown/2026-07-03__support-fireblocks-io__gasless-service-extract.md)에서 확인되는 비용 재원은 다음과 같다.
+[Fireblocks Gasless Relay 공식 문서](https://support.fireblocks.io/hc/en-us/articles/23508430639516-Using-the-Fireblocks-Gasless-Relay)에서 확인되는 비용 재원은 다음과 같다.
 
 | Relay 설정 | network fee 재원 | 이후 정산 |
 |---|---|---|

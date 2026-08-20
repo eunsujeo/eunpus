@@ -74,4 +74,4 @@ flowchart LR
 
 람다256 은 국내 블록체인 업계 최초로 SOC 2 Type II 인증을 획득했다 (람다256 공식 발표 기준).
 
-출처: [카드업권 PoC 공식 발표 — 람다256](https://www.lambda256.io/news/press-release/lambda256-credit-card-industry-stablecoin-poc-ko) · [케이뱅크·KSNET 오프램프 공식 발표 — 람다256](https://www.lambda256.io/news/press-release/lambda256-begins-digital-asset-settlement-off-ramp-and-aml-verification-project-with-kbank-and-ksnet-ko). 보조: [카드업권 기사 보관본](https://github.com/eunsujeo/eunpus/blob/main/sources/stablecoin/markdown/2026-08-20__startupn-kr__lambda256-stablecoin-card-poc.md) · [오프램프 기사 보관본](https://github.com/eunsujeo/eunpus/blob/main/sources/stablecoin/markdown/2026-08-20__etoday-co-kr__lambda256-kbank-ksnet-offramp-poc.md).
+출처: [카드업권 PoC 공식 발표 — 람다256](https://www.lambda256.io/news/press-release/lambda256-credit-card-industry-stablecoin-poc-ko) · [케이뱅크·KSNET 오프램프 공식 발표 — 람다256](https://www.lambda256.io/news/press-release/lambda256-begins-digital-asset-settlement-off-ramp-and-aml-verification-project-with-kbank-and-ksnet-ko).

@@ -104,4 +104,4 @@ Payments 의 PaymentSession 기본 통제는 금액·통화·만료 중심이고
 - **AgentCore Gateway** — 유료 MCP 서버·API 연결. Coinbase **x402 Bazaar** 통합으로 기존 유료 MCP tool 을 발견
 - **AgentCore Browser** — x402 를 지원하는 페이월 웹사이트에 접근
 
-출처: [AWS AgentCore payments 개발자 문서 보관본](https://github.com/eunsujeo/eunpus/blob/main/sources/stablecoin/markdown/2026-08-20__docs-aws-amazon-com__agentcore-payments-devguide.md) · [발표 블로그 보관본](https://github.com/eunsujeo/eunpus/blob/main/sources/stablecoin/markdown/2026-08-20__aws-amazon-com__agentcore-payments-announcement.md). 지역·파트너 사실은 발표 블로그, 자원 모델·흐름은 개발자 문서 기준.
+출처: [AWS AgentCore payments 동작 방식](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-how-it-works.html) · [핵심 개념](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-concepts.html) · [IAM 역할 분리](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-iam-roles.html) · [AWS 공식 발표 블로그](https://aws.amazon.com/blogs/machine-learning/agents-that-transact-introducing-amazon-bedrock-agentcore-payments-built-with-coinbase-and-stripe/). 지역·파트너 사실은 발표 블로그, 자원 모델·흐름은 동작 방식·핵심 개념 문서, 권한 통제는 IAM 역할 문서 기준.
