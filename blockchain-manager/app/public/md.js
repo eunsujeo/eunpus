@@ -614,7 +614,7 @@ window.MD = (() => {
     const FLD = [
       '첫 요청 — 아직 결제 데이터 없음',
       'PAYMENT-REQUIRED 헤더(base64): scheme "exact" · amount "10000" (0.01 USDC) · payTo "' + ab(FV.payTo) + '" · maxTimeoutSeconds 60',
-      '위임장 authorization: from "' + ab(FV.from) + '" → to "' + ab(FV.payTo) + '" (= payTo) · value "10000" (= amount) · 유효 창 65초 · nonce "' + ab(FV.nonce) + '" + EIP-712 서명',
+      '이체 승인 authorization: from "' + ab(FV.from) + '" → to "' + ab(FV.payTo) + '" (= payTo) · value "10000" (= amount) · 유효 창 65초 · nonce "' + ab(FV.nonce) + '" + EIP-712 서명',
       'PAYMENT-SIGNATURE 헤더(base64): accepted (= accepts[0]) + payload (서명 + authorization)',
       'verify: 서명·잔액 확인 · value "10000" <span class="cv">정확 일치</span> · 시간 창·파라미터·시뮬레이션 통과',
       'settle: transferWithAuthorization 제출 — 정산·nonce 상태는 확인 대기 (settlement_pending 이면 tx 해시로 온체인 대조)',
@@ -642,9 +642,9 @@ window.MD = (() => {
     stepAnim(el, {
       steps: [
         ['첫 요청 — 결제 정보 없음', '이 재생은 exact EVM 의 기본 eip3009 방식 기준 예시다 — SVM 은 서명 형태가 다르다 (x402 프로토콜 문서의 비교표). 에이전트가 서버(merchant)에 유료 자원을 요청한다 — 아직 아무 결제 정보도 없고, 체인·지갑은 관여하지 않는다.'],
-        ['402 — 서버가 가격표를 돌려준다', '서버가 402 Payment Required 로 응답한다. PaymentRequirements 가 scheme·network·금액(원자 단위 — USDC 는 decimals 6, 10,000 = 0.01 USDC · 예시 값)·수취 주소를 제시한다.'],
+        ['402 — 서버가 결제 요구를 돌려준다', '서버가 402 Payment Required 로 응답한다. PaymentRequirements 가 scheme·network·금액(원자 단위 — USDC 는 decimals 6, 10,000 = 0.01 USDC · 예시 값)·수취 주소를 제시한다.'],
         ['에이전트 내부 — 오프체인 서명', '에이전트 지갑이 EIP-3009 authorization(from·to·value·유효 시간 창·nonce 32바이트)에 EIP-712 로 서명한다. 밖으로 나가는 것이 없다 — 가스도 쓰지 않는다.'],
-        ['재시도 — 서명을 실어 같은 요청', '같은 요청을 PAYMENT-SIGNATURE 헤더(v2 — v1 은 X-PAYMENT)에 PaymentPayload 를 실어 다시 보낸다. 서명(위임장)이 처음으로 에이전트 밖으로 나간다.'],
+        ['재시도 — 서명을 실어 같은 요청', '같은 요청을 PAYMENT-SIGNATURE 헤더(v2 — v1 은 X-PAYMENT)에 PaymentPayload 를 실어 다시 보낸다. 서명된 이체 승인이 처음으로 에이전트 밖으로 나간다.'],
         ['서버가 facilitator 에 검증을 맡긴다', '이 그림은 검증·정산을 facilitator 에 맡기는 구성이다. /verify 는 서명 → 잔액 → 금액 정확 일치 → 시간 창 → 파라미터 → 시뮬레이션을 확인해 isValid 를 돌려준다. 온체인 실행은 없다.'],
         ['settle — 처음으로 온체인', '서버가 /settle 을 호출하면 facilitator 가 transferWithAuthorization 을 체인에 제출한다. 제출자인 facilitator 가 가스를 낸다 — 에이전트 지갑에 기본 자산이 필요 없는 이유다. 이 단계는 제출까지다 — 성공 확인 전이면 정산·nonce 소진도 확정이 아니다 (settlement_pending + tx 해시).'],
         ['콘텐츠 전달 — 같은 서명은 끝', '서버가 200 과 콘텐츠(+ PAYMENT-RESPONSE 헤더)를 돌려준다. authorization 의 nonce 는 소진됐다 — 같은 authorization 으로 다시 정산할 수는 없다 (동일 요청의 처리는 merchant 구현 몫). 응답을 못 받았다면 새 서명 전에 기존 정산 여부부터 확인한다 — 새 nonce 서명은 새 결제가 된다.'],
@@ -691,9 +691,9 @@ window.MD = (() => {
           : 'EIP-3009 + EIP-712 서명 — 오프체인 · 밖으로 안 나감');
         setF('rst',
           step === 0 ? '체인·지갑 아직 관여 없음 — 평범한 HTTP 요청'
-          : step === 1 ? '가격표 수신 — 무엇을 · 얼마나 · 누구에게 낼지 확정'
+          : step === 1 ? '결제 요구 수신 — 무엇을 · 얼마나 · 누구에게 낼지 확정'
           : step === 2 ? '서명 완료 — 아직 체인에는 아무 일도 일어나지 않았다'
-          : step === 3 ? '서명(위임장)이 처음으로 에이전트 밖으로 나간다'
+          : step === 3 ? '서명된 이체 승인이 처음으로 에이전트 밖으로 나간다'
           : step === 4 ? 'verify 통과 — 체인에 올리기 전 확인 끝'
           : step === 5 ? '여기서 처음 온체인 — 에이전트 지갑 가스 0'
           : '완료 — 이 서명은 재사용 불가. 응답 유실 시엔 새 서명 전에 정산 여부부터 확인 (이중 지불 방지)');
