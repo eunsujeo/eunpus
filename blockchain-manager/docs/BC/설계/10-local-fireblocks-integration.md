@@ -37,6 +37,31 @@ Stub이 Fireblocks 전체를 흉내 낸다고 주장하지 않고, **실제 체�
 
 `STUB+LOCAL`은 실제 Fireblocks Secret이나 외부 RPC URL이 들어오면 시작을 거부한다. Stub·Anvil·bootstrap은 loopback 또는 같은 서버의 내부 주소에만 바인딩하고 외부로 공개하지 않는다.
 
+개발자 PC의 `fireblocks`와 `stub` 모드는 BCM PostgreSQL·Kafka 데이터까지 서로 격리한다. 두 모드는 같은 compose volume,
+database, Kafka log·consumer offset을 재사용하지 않으며 한 모드에서 만든 네트워크·자산 매핑·계정·거래·Webhook 원장이 다른
+모드의 Admin이나 API에 나타나면 안 된다. `.env`의 실 Fireblocks 자격은 `fireblocks` 프로세스에만 주입하고 Stub용 테스트 키·
+manifest는 별도 런타임 경로에 둔다. 모드 전환은 반대 모드 프로세스를 종료한 뒤 수행하며, `down`은 선택 모드의 데이터를 보존하고
+`purge`는 사용자가 지정하고 확인한 모드의 데이터만 삭제한다.
+
+### 기본 로컬 EVM 카탈로그와 최초 준비
+
+상시 개발용 `STUB+LOCAL`은 다음 두 독립 Anvil과 네 ERC-20 자산을 고정 카탈로그로 제공한다. BCM 네트워크 코드는 업무 표준인
+`ETHEREUM`·`BASE`를 사용하며 `ETH`는 화면 설명에서만 쓰는 축약어다.
+
+| BCM 네트워크 | Stub blockchain id | 로컬 chain id | 자산 | Stub asset id | decimals |
+|---|---|---:|---|---|---:|
+| `ETHEREUM` | `ethereum-local` | `31337` | USDC | `USDC_ETH_LOCAL` | 6 |
+| `ETHEREUM` | `ethereum-local` | `31337` | KRWK | `KRWK_ETH_LOCAL` | 6 |
+| `BASE` | `base-local` | `31338` | USDC | `USDC_BASE_LOCAL` | 6 |
+| `BASE` | `base-local` | `31338` | KRWK | `KRWK_BASE_LOCAL` | 6 |
+
+각 Anvil에는 해당 네트워크의 USDC·KRWK 테스트 컨트랙트를 별도로 배포하고 manifest에 chain id, RPC, 컨트랙트 주소와 code
+hash를 기록한다. `local.sh up stub`은 체인·Stub readiness 뒤 BCM 카탈로그 동기화와 네트워크 채택·자산 매핑을 멱등하게
+완료한 뒤 준비 완료를 출력한다. 일부만 존재하거나 manifest와 DB가 어긋나면 성공처럼 덮어쓰지 않고 어느 네트워크·자산이
+불일치하는지 실패한다. Anvil은 프로세스마다 빈 체인에서 다시 시작하지만 같은 seed로 동일한 컨트랙트 주소를 재현하고 새 manifest의
+code hash를 검증한다. BCM의 유효한 기존 mapping은 중복 생성하지 않고 재사용한다. 고객 vault·입금 주소·테스트 잔액은 기본
+bootstrap에 만들지 않고 명시적인 시나리오가 소유한다.
+
 ## BCM이 실제 사용하는 Fireblocks API 계약
 
 지원 범위는 현재 BCM 코드가 호출하거나 파싱하는 항목까지다. 새로운 Fireblocks 기능이 필요해지면 이 표와 계약 테스트를 먼저 바꾼다.

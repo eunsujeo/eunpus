@@ -177,10 +177,14 @@ flowchart LR
 | 구분 | 준비 항목 | 완료 근거 | 다음 행동 |
 |---|---|---|---|
 | 자동 준비 | BCM API·Webhook 연결 | 두 BFF 조회 성공 + Webhook 프로세스 health 응답 + runtime 요약 조회 | 실패 component의 `local.sh logs` 확인 (10장) |
-| 자동 준비 | 네트워크 후보 동기화 | 채택 네트워크 또는 동기화 후보 존재 | 없으면 catalog sync 실행 |
-| 직접 확인 | 네트워크 채택 | 채택 네트워크 1개 이상 | 네트워크 화면에서 chainId·testnet 확인 |
-| 직접 확인 | 자산 매핑 | 활성 자산 매핑 1개 이상 | 자산 화면에서 token contract 대조 |
+| 자동 준비 | 기본 Stub 카탈로그 | `STUB+LOCAL`에서 ETHEREUM·BASE 채택과 USDC·KRWK 4개 mapping 존재 | 누락이면 `up stub` bootstrap 단계와 catalog sync 로그 확인 |
+| 직접 확인 | 네트워크 채택 | ETHEREUM `31337`, BASE `31338`가 각각 testnet으로 채택 | 네트워크 화면에서 chainId·모드 확인 |
+| 직접 확인 | 자산 매핑 | 두 네트워크의 USDC·KRWK mapping과 6자리 decimals 존재 | 자산 화면에서 네트워크별 token contract 대조 |
 | 직접 확인 | 계정·입금 주소 | 업무 API에서 생성하며 Admin이 DAW-CORE 입력을 전제로 안내하지 않음 | 로컬 입금 helper 또는 계정 API 사용 |
+
+상단 환경 표시는 `FIREBLOCKS+TESTNET`과 `STUB+LOCAL`을 명시적으로 구분하고 현재 BCM 데이터셋도 함께 표시한다. Fireblocks
+모드에서 Stub 데이터셋의 `LOCAL` 네트워크·테스트 거래를 보여 주거나 반대로 Stub 모드에서 Fireblocks 테스트 workspace 데이터를
+보여 주면 준비 완료로 판정하지 않는다. 로컬 실행 스크립트의 모드별 PostgreSQL·Kafka 격리는 10장이 정본이다.
 
 Webhook runtime 요약은 BCM DB의 안전한 집계만 반환한다. `NEVER_RECEIVED/HEALTHY/BACKLOG/POISONED` 상태, 마지막 수신 UTC,
 미처리·격리 인박스 수, 미발행·격리 outbox 수와 관찰 시각을 제공하고 raw payload·서명·오류 원문은 반환하지 않는다. 상태는 집계값에서
@@ -334,7 +338,7 @@ Webhook 서명·raw payload와 원문 로그는 응답에 포함하지 않는다
 - 채택/미채택, testnet, chainId, 동기화 시각으로 네트워크를 찾는다.
 - 자산 후보의 벤더 심볼과 온체인 컨트랙트 주소를 운영자가 나란히 대조한다.
 - 등록 단계는 네트워크 선택 → 후보 검색 → 주소 비교 → 영향 확인 → 사유 확인 → 등록 순서다.
-- 주소가 발급된 매핑은 삭제할 수 없다. 물리 삭제 감사 유실과 주소 발급 경합 문제는 실제 자산 운영 전에 해결한다.
+- 주소가 발급된 매핑은 해제할 수 없다. 매핑 해제는 주소 발급 요청을 차단하고 진행 중인 요청이 없는 유지보수 시간에만 수행하며, 변경 전후 snapshot을 남긴다.
 - 네트워크 출금 중지는 출금 제출만 막고 입금 감지·주소·잔액 조회는 유지하며 sweep은 미룬다. 이미 제출한 거래에는 적용하지 않는다.
 
 ### 거래 조사
