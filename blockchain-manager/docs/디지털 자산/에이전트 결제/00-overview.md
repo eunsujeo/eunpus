@@ -72,6 +72,7 @@ flowchart LR
 |---|---|
 | [x402 프로토콜](01-x402-protocol.md) | 402 흐름, PaymentRequirements·PaymentPayload, exact scheme(EIP-3009), facilitator 계약 |
 | [AWS AgentCore payments](02-agentcore-payments.md) | 관리형 자원 모델, credential 격리, 세션 한도, 결제 흐름 |
+| [세미나 확인 질문](03-seminar-questions.md) | 공개 자료로 확인 못 한 항목의 세션 질문 목록 |
 
 ## 공통 용어
 

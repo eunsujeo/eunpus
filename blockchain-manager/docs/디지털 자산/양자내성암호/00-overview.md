@@ -50,6 +50,7 @@ flowchart TB
 | 문서 | 다루는 경계 |
 |---|---|
 | [월렛·커스터디의 PQC 전환 경로](01-wallet-pqc-transition.md) | 체인 종속성 문제, 전환 가능한 평면 분리, Fireblocks 준비 4축, 한컴위드 접근 |
+| [세미나 확인 질문](02-seminar-questions.md) | 공개 자료로 확인 못 한 항목의 세션 질문 목록 |
 
 ## 공통 용어
 
