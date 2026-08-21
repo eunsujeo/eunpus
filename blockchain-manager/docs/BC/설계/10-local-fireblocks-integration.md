@@ -157,7 +157,7 @@ Universal Gasless는 Anvil Prague와 사용 라이브러리의 EIP-7702 type-4 �
 
 ## 전체 시스템 실행 원장과 진행 상태
 
-Phase 11의 개별 계약 테스트와 별도로 Admin → BCM API/BAT → PostgreSQL·Kafka → Stub → Anvil → Webhook·대사를 실제
+Phase 11의 개별 계약 테스트와 별도로 Admin → BCM API/Webhook/BAT → PostgreSQL·Kafka → Stub → Anvil → Webhook·대사를 실제
 프로세스로 조립한 전체 시스템 suite를 둔다. 자동 suite는 `STUB+LOCAL`만 사용하고 실제 Fireblocks 계약 검사는 아래 승인 경계의
 수동 lane으로 분리한다.
 
@@ -215,7 +215,7 @@ PEM·key 내용, Webhook 서명·raw payload, HTTP 원문 body는 기록하지 �
 
 `smoke`는 다음 최소 세로줄을 한 번에 검증한다.
 
-1. 전용 PostgreSQL·Kafka, Anvil, Stub, BCM API, Admin을 기동하고 readiness를 확인한다.
+1. 전용 PostgreSQL·Kafka, Anvil, Stub, BCM API, BCM Webhook, Admin을 각각 기동하고 readiness를 확인한다.
 2. BCM 공개 API로 계정·주소를 만들고 Stub 제어면으로 테스트 ERC-20 입금을 주입한다.
 3. 실제 Anvil receipt와 Stub 서명 Webhook을 거쳐 BCM 거래를 `FINALIZED`로 수렴시킨다.
 4. 고객 Kafka event와 Admin 거래 조사에서 같은 업무 식별자·금액·상태를 확인한다.
@@ -245,21 +245,24 @@ production 모듈의 빌드·실행 경로가 이 실행 원장에 의존하지 
 
 ```mermaid
 flowchart LR
-  BCM["기존 BCM"] -->|"Fireblocks HTTP · loopback"| STUB["Fireblocks Stub fat JAR"]
-  BCM -->|"기존 연결"| PG["기설치 PostgreSQL"]
-  BCM -->|"기존 연결"| KAFKA["기설치 Kafka"]
+  API["BCM API"] -->|"Fireblocks HTTP · loopback"| STUB["Fireblocks Stub fat JAR"]
+  API -->|"기존 연결"| PG["기설치 PostgreSQL"]
+  WH["BCM Webhook"] -->|"기존 연결"| PG
+  WH -->|"기존 연결"| KAFKA["기설치 Kafka"]
   STUB -->|"JSON-RPC · loopback"| ANVIL["고정 버전 Anvil"]
-  STUB -->|"RS512 Webhook · 내부 주소"| BCM
+  STUB -->|"RS512 Webhook · 내부 주소"| WH
 
   classDef ours fill:#dbeafe,stroke:#2563eb
   classDef local fill:#fef3c7,stroke:#d97706
-  class BCM,PG,KAFKA ours
+  class API,WH,PG,KAFKA ours
   class STUB,ANVIL local
 ```
 
 폐쇄망 반입물은 연결 환경에서 미리 빌드·검사한 버전 고정 `tar.gz`다. CPU 아키텍처별 Anvil, 전용 JRE·Stub JAR, chain bootstrap, contract artifact·배포 manifest, 설정 예시, systemd unit, start/stop/reset/health-check, checksum·license 정보를 포함한다. 설치·기동 중 외부 다운로드가 발생하면 실패다.
 
-systemd 기동 순서는 Anvil health → chain bootstrap/manifest 검증 → Stub health다. BCM은 Stub과 JWKS가 준비된 뒤 연결한다. PostgreSQL·Kafka는 패키지에 포함하지 않고 설치·초기화·reset하지 않는다.
+systemd 기동 순서는 Anvil health → chain bootstrap/manifest 검증 → Stub health다. 로컬 장치와 별개로 배포되는 BCM API와 BCM
+Webhook은 Stub·JWKS 준비 뒤 각자 기동하며, Fireblocks callback URL은 BCM Webhook listener만 가리킨다. PostgreSQL·Kafka는
+패키지에 포함하지 않고 설치·초기화·reset하지 않는다.
 
 ## 키와 신뢰 경계
 

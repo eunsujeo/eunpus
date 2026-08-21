@@ -72,7 +72,8 @@ sequenceDiagram
     participant CP as 컴플라이언스 게이트<br/>트래블룰
     participant MQC as 큐<br/>compliance 토픽
     box rgb(224,242,254) 블록체인 매니저
-    participant BM as 매니저<br/>API · 웹훅 수신
+    participant API as BCM API
+    participant WH as BCM Webhook
     end
     participant MQ as 큐<br/>withdrawal-events
     participant FB as Fireblocks<br/>정책 · Co-signer 서명 · 전파
@@ -82,12 +83,12 @@ sequenceDiagram
     CP-->>MQC: withdrawal-check.settled 발행 — verdict · travelRuleMessage (컴플라이언스 1장)
     MQC-->>BE: consume — verdict 로 진행
     Note over BE: APPROVED 여야 제출로 · REJECTED 면 반려
-    BE->>BM: submitTransaction — externalTxId · (대상이면) travelRuleMessage
-    BM->>FB: 제출 — 정책 통과 → Co-signer 공동서명 → 전파 (6장)
-    BM-->>BE: 접수 — 벤더 txId
+    BE->>API: submitTransaction — externalTxId · (대상이면) travelRuleMessage
+    API->>FB: 제출 — 정책 통과 → Co-signer 공동서명 → 전파 (6장)
+    API-->>BE: 접수 — 벤더 txId
     loop 웹훅 수신 (4장)
-        FB->>BM: 상태 변경 알림 push
-        BM-->>MQ: 상태 이벤트 publish — SUBMITTED → CONFIRMED → …
+        FB->>WH: 상태 변경 알림 push
+        WH-->>MQ: 상태 이벤트 publish — SUBMITTED → CONFIRMED → …
     end
     MQ-->>BE: consume — externalTxId 로 우리 출금 건 대응
     alt FINALIZED
@@ -104,7 +105,7 @@ sequenceDiagram
     autonumber
     participant CH as 온체인
     box rgb(224,242,254) 블록체인 매니저
-    participant BM as 매니저<br/>웹훅 수신
+    participant WH as BCM Webhook
     end
     participant MQ as 큐<br/>deposit-events
     box rgb(224,242,254) DAW-CORE
@@ -113,8 +114,8 @@ sequenceDiagram
     participant CP as 컴플라이언스 게이트<br/>트래블룰
 
     Note over BE: (사전) createDepositAddresses 로 주소 발급 — 고객에게 안내
-    CH->>BM: 입금 감지 — 웹훅 (4장)
-    BM-->>MQ: CONFIRMED → 확정 임계 도달 시 FINALIZED publish
+    CH->>WH: 입금 감지 — Fireblocks 웹훅 (4장)
+    WH-->>MQ: CONFIRMED → 확정 임계 도달 시 FINALIZED publish
     MQ-->>BE: consume
     BE->>BE: 귀속(주소↔계정) 판단 (5장)
     BE->>CP: 트래블룰 확인 (Create Deposit Check)

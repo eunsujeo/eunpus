@@ -477,7 +477,7 @@ multisig 서명을 만들지 않고, 인증 경계가 없는 기능 테스트 �
 |---|---|
 | 실행 | runId, `SMOKE/FULL`, `PENDING/RUNNING/PASSED/FAILED/ABORTED`, 시작·갱신·완료 UTC |
 | 진행 | 현재/전체 단계, 정수 percent, 현재 단계, 마지막 성공 단계, 경과 시간 |
-| component | PostgreSQL, Kafka, Anvil, Stub, BCM API, BCM BAT, Admin의 `STARTING/UP/DOWN/FAILED`와 마지막 관찰 시각 |
+| component | PostgreSQL, Kafka, Anvil, Stub, BCM API, BCM Webhook, BCM BAT, Admin의 `STARTING/UP/DOWN/FAILED`와 마지막 관찰 시각 |
 | 실패 | 안전한 오류 코드·요약, 실패 단계, 재시도 가능 여부, 서버가 판정한 다음 조치 |
 | 연관 ID | requestId, externalTxId, submissionId, vendorTxId, txHash, eventId, executionId, jobRunId |
 | 검증 분류 | `REAL_LOCAL`, `SIMULATED_VENDOR`. 실 Fireblocks 검증으로 오인할 수 없는 설명 |
