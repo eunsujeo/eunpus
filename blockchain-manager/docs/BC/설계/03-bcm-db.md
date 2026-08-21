@@ -1695,7 +1695,7 @@ version·evidence·요청·판단·action 6개 원장에는 `UPDATE OR DELETE`�
 
 ## 미확정
 
-- **`bcm_tx_l`·`bcm_whk_l`·`bcm_outbox_l` 보존** — 종결·처리 완료·발송 완료 건을 언제까지 두고 언제 정리할지 — `bcm_raw_tx_l` 원본 보관과 역할을 나눈 뒤 확정.
+- **`bcm_tx_l`·`bcm_whk_l`·`bcm_outbox_l` 보존** — 종결·처리 완료·발송 완료 건을 언제까지 두고 언제 정리할지 — `bcm_raw_tx_l` 원본 보관과 역할을 나눈 뒤 확정. 이는 [운영 로그 정책](11-operational-log-policy.md)의 중앙 로그 보존 기간과 별도로 결정한다.
 
 ## 확정 이력 (2026-08-14)
 

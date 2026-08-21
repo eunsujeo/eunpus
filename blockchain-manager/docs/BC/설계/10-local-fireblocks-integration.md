@@ -203,9 +203,13 @@ results/                 assertion·요약 결과
 ```
 
 `run.json`과 event에는 suite, 상태, 단계·component health, 시작·갱신·완료 시각, 안전한 실패 요약·다음 조치, 검증 분류와
-연관 `requestId/externalTxId/submissionId/vendorTxId/txHash/eventId/executionId/jobRunId`만 기록한다. Secret, API key, JWT,
+연관 `requestId/externalTxId/submissionId/vendorTxId/txHash/eventId/executionId/jobRunId`를 기록한다. 로컬 `SCENARIO`는 실제 생성한
+`accountId/address`도 결과 확인용으로 기록한다. 그 밖의 값을 임의로 추가하지 않는다. Secret, API key, JWT,
 PEM·key 내용, Webhook 서명·raw payload, HTTP 원문 body는 기록하지 않는다. component 원문 로그는 브라우저·BFF 응답에 싣지
 않고 로컬 `logs` 명령과 CI 접근 제한 artifact에서만 본다.
+
+이 로컬 artifact 계약은 운영 중앙 로그의 포맷과 보존 기간을 정하지 않는다. 운영 프로세스의 구조화 JSON 로그와 중앙 수집·삭제는
+[운영 로그 정책](11-operational-log-policy.md)을 따른다.
 
 실행기는 새 run 시작 때 완료된 오래된 artifact를 정리해 최근 20건만 남기고 진행 중 실행은 삭제하지 않는다. 로컬 실패는 artifact를
 보존하되 프로세스를 기본 정리한다. `--keep-on-failure`를 명시하면 조사할 component를 유지하며 `stop`으로 정리한다. CI는 성공·실패와
@@ -239,6 +243,18 @@ executionId/jobRunId` 순서다. 실제로 생긴 식별자만 기록하며 fixt
 `STUB+LOCAL`에서만 실행하며 각 단계의 시작·성공·실패와 다음 조치를 평문으로 출력한다. 공개 BCM API로 계정·주소를 준비하고,
 Stub 제어면으로 Anvil 입금을 주입한 뒤 독립 BCM Webhook 수신, `FINALIZED`, Kafka event까지 확인한다. 운영 코드·Domain Port에
 테스트 분기를 추가하지 않고 Fireblocks 실환경에서는 즉시 거부한다. API key·private key·Webhook 서명·raw payload는 출력하지 않는다.
+
+같은 상시 개발 환경에서 Admin이 시작하는 `asset-catalog`, `customer-vault`, `deposit-success`는 위 helper와 동일한 공개 API·Stub
+제어 계약을 사용하되 각 실행을 `suite=SCENARIO` 원장으로 남긴다. 자산 카탈로그는 상시 BAT가 자동으로 떠 있다고 표시하지 않는다.
+Admin에서 명시적으로 실행하면 `catalog-sync-once` 프로세스의 시작·성공·실패를 한 단계로 기록하고, 완료 뒤 후보·채택 네트워크·
+mapping을 다시 읽어 결과를 확인한다. 고객 vault는 공개 `POST /accounts`와 `POST /accounts/{accountId}/addresses`로 만들며
+Fireblocks 내부 vault를 Admin 전용 우회 경로로 생성하지 않는다.
+
+Admin BFF가 받을 수 있는 것은 고정 시나리오 ID와 길이·문자 allowlist를 통과한 입력뿐이다. BFF는 임의 실행 파일·shell·URL을
+받지 않으며 저장소의 고정 Python/shell 진입점을 `ProcessBuilder` 인자 배열로 비동기 기동한다. 동시에 중복 클릭된 같은 로컬
+mutation은 하나만 실행하고 나머지는 `409`로 거부한다. 실제 Fireblocks mode, 비-loopback Admin, 기능 비활성 설정에서는 시나리오
+카탈로그·실행 route가 존재하지 않는다. 실행 POST는 JSON과 전용 비단순 헤더를 요구하고 요청 `Origin`이 현재 loopback Admin
+origin과 정확히 같은지 서버가 검사해, 외부 웹 페이지가 개발자의 로컬 시나리오를 시작하지 못하게 한다.
 
 API와 Webhook의 장애 단위는 독립 검증한다. `stop api` 뒤에도 Webhook health가 유지되고, `stop webhook` 뒤에도 API health가
 유지돼야 한다. 중단 중 Stub의 서명 알림은 실패 queue에 남고 Webhook만 재기동한 뒤 `resend_failed`로 BCM 원장과 outbox를
@@ -307,7 +323,7 @@ Webhook은 Stub·JWKS 준비 뒤 각자 기동하며, Fireblocks callback URL은
 | 기존 Kafka topic·offset | - | X |
 | 실 Fireblocks workspace·실 체인 | - | X |
 
-안전한 순서는 BCM의 신규 제출·배치 작업 중지 → Stub 진행 중 작업 없음 확인 → Anvil snapshot 복원과 bootstrap manifest 검증 → Stub 상태 초기화·seed 재결합 → health check → BCM 작업 재개다. 활성 트래픽 중 reset은 허용하지 않는다. BCM DB에 남은 tx가 reset된 Stub 상태를 가리킬 수 있으므로, 전체 E2E 초기화는 실행별 전용 DB/topic·run id와 별도 BCM cleanup 절차가 소유한다.
+안전한 순서는 BCM의 신규 제출·배치 작업 중지 → Stub 진행 중 작업 없음 확인 → Anvil snapshot 복원과 bootstrap manifest 검증 → Stub 상태 초기화·seed 재결합 → health check → BCM 작업 재개다. 활성 트래픽 중 reset은 허용하지 않는다. BCM DB에 남은 tx가 reset된 Stub 상태를 가리킬 수 있으므로, 전체 E2E 초기화는 실행별 전용 DB/topic·run id와 별도 BCM cleanup 절차가 소유한다. 개발자 공유 BCM DB를 유지한 채 Stub만 재기동·reset해도 원장 PK가 충돌하지 않도록 Stub `vendorTxId`는 `externalTxId`에서 결정적으로 파생한다. Webhook `notificationId`는 프로세스 인스턴스 식별자와 단조 증가 순번으로 새 알림마다 유일하고 발생 순서대로 만들며, 재기동 전후 충돌을 피한다. 같은 알림의 재배달은 저장된 payload를 그대로 사용하므로 같은 `notificationId`를 유지한다.
 
 같은 seed와 같은 시나리오 입력은 같은 vault/address/asset/contract와 같은 의도된 상태 전이 순서를 만들어야 한다. 블록 hash처럼 실행 시각에 영향을 받는 값은 동일성 기준에서 제외하고 manifest와 논리 결과를 비교한다.
 

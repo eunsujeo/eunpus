@@ -21,6 +21,7 @@ status: To Do
 | [블록체인 매니저 Admin](08-bcm-admin.md) | 운영 조사·컨트랙트·실행 정책·밴드S·승인·비상 운영과 UI/UX 경계 |
 | [자산 이동 지도](09-asset-map.md) | 시나리오별 vault 간 이동 한 장 — 확정 이동·미정 이동·자산 경계 (조립 문서) |
 | [로컬 블록체인 + Fireblocks Stub](10-local-fireblocks-integration.md) | BCM의 실제 Fireblocks HTTP 계약과 Anvil 결과를 잇는 통합 테스트·폐쇄망 파일 배포 경계 |
+| [운영 로그 포맷·수집·보존 정책](11-operational-log-policy.md) | BCM 운영 JSON 로그 계약, 중앙 수집 책임, 민감정보와 보존·삭제 경계 |
 
 ## 구성 요소 — 한 장
 
