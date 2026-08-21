@@ -7,3 +7,6 @@
 # 칸반보드 단일 HTML 내보내기 (export-board.mjs 생성물 — 전달용, 커밋 안 함)
 blockchain-manager/board.html
 blockchain-manager/digital-assets.html
+
+# humanize-korean 스킬 실행 산출물 (검토용 임시 — 커밋 안 함)
+_workspace/

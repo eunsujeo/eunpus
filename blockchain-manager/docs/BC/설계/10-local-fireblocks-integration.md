@@ -229,6 +229,21 @@ PEM·key 내용, Webhook 서명·raw payload, HTTP 원문 body는 기록하지 �
 executionId/jobRunId` 순서다. 실제로 생긴 식별자만 기록하며 fixture가 존재하지 않는 운영 ID를 만들지 않는다. 각 assertion은
 `REAL_LOCAL` 또는 `SIMULATED_VENDOR`를 표시하고 `REAL_FIREBLOCKS_ONLY`를 통과했다고 보고하지 않는다.
 
+시스템 테스트 실행기와 별개로, 상시 개발 환경의 수명은 `./scripts/local.sh` 가 관리한다 — `configure [fireblocks]` · `up
+[fireblocks|stub]` · `status` · `stop [api|webhook|admin]` · `test deposit` · `logs [api|webhook|admin|chain|stub|infra]` ·
+`down` · `reset` · `purge`.
+기본 모드는 fireblocks 고, stub 은 실 Fireblocks 자격증명 없이 결정적 로컬 체인을 쓴다. `system-test.sh` 가 runId 단위 검증
+실행을 다룬다면 `local.sh` 는 환경 기동·점검·정리를 다룬다.
+
+이미 `local.sh up stub`으로 기동한 개발 환경의 빠른 입금 점검은 `local.sh test deposit`으로 제공한다. 이 helper는
+`STUB+LOCAL`에서만 실행하며 각 단계의 시작·성공·실패와 다음 조치를 평문으로 출력한다. 공개 BCM API로 계정·주소를 준비하고,
+Stub 제어면으로 Anvil 입금을 주입한 뒤 독립 BCM Webhook 수신, `FINALIZED`, Kafka event까지 확인한다. 운영 코드·Domain Port에
+테스트 분기를 추가하지 않고 Fireblocks 실환경에서는 즉시 거부한다. API key·private key·Webhook 서명·raw payload는 출력하지 않는다.
+
+API와 Webhook의 장애 단위는 독립 검증한다. `stop api` 뒤에도 Webhook health가 유지되고, `stop webhook` 뒤에도 API health가
+유지돼야 한다. 중단 중 Stub의 서명 알림은 실패 queue에 남고 Webhook만 재기동한 뒤 `resend_failed`로 BCM 원장과 outbox를
+수렴시킨다. 로컬 실행기는 검증된 process group만 신호 대상으로 삼아 Gradle client와 실제 애플리케이션 JVM을 함께 종료한다.
+
 PR CI는 smoke, nightly는 full을 실행한다. 실제 `FIREBLOCKS+TESTNET`은 일반 CI와 이 스크립트의 기본값에 포함하지 않고 사용자
 실행별 승인 뒤 기존 golden contract test로만 실행한다. Admin·Stub·Anvil·test-support가 없거나 기동되지 않은 상태에서도 BCM
 production 모듈의 빌드·실행 경로가 이 실행 원장에 의존하지 않는지를 아키텍처 테스트로 고정한다.
