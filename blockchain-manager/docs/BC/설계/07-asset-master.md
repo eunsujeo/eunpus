@@ -210,7 +210,11 @@ sequenceDiagram
 
 **이 경로의 호출 주체는 Blockchain Manager Admin BFF 하나다.** `/admin/*`는 같은 `bcm-api` 애플리케이션의 private listener/ingress에
 분리하고 공유 환경에서는 BFF→BCM mTLS와 5분 이하 단기 JWT를 함께 검증한다. 일반 업무 API의 내부망 신뢰와 별도 경계다.
-T10.2 읽기 전용 기능 테스트 profile은 loopback에서만 실행하고 이 절의 변경 API를 BFF에 노출하지 않는다.
+T10.2 기능 테스트 profile은 loopback에서만 실행한다. 기본은 읽기 전용이나, 로컬 자산 매핑 관리를
+명시적으로 활성화한 경우에만 후보 조회와 등록을 BFF에 노출한다. 이 예외는 `FUNCTION_TEST+loopback`에 고정하고,
+브라우저와 동일한 Origin과 JSON 요청, 단순 form이 만들 수 없는 전용 헤더를 모두 확인한다. BFF는 로컬 설정의
+감사 actor를 BCM에 전달하며 브라우저가 직원번호·부점코드 헤더를 직접 만들지 않는다. 공유 환경의 등록은 mTLS·단기 JWT
+인증·인가가 완성되기 전에는 계속 닫는다. 논리 해제·교체는 주소 발급과 변경 snapshot 운영 조건을 필요로 하므로 로컬 UI에서도 열지 않는다.
 
 ### 해제 운영 조건
 
