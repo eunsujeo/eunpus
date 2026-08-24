@@ -264,6 +264,13 @@ executionId/jobRunId` 순서다. 실제로 생긴 식별자만 기록하며 fixt
 기본 모드는 fireblocks 고, stub 은 실 Fireblocks 자격증명 없이 결정적 로컬 체인을 쓴다. `system-test.sh` 가 runId 단위 검증
 실행을 다룬다면 `local.sh` 는 환경 기동·점검·정리를 다룬다.
 
+`local.sh up fireblocks`는 로컬 PostgreSQL·Kafka를 준비한 뒤 API·Webhook·Admin을 시작하기 전에 실제 BCM
+`FireblocksClient`로 `GET /v1/blockchains` 읽기를 한 번 수행한다. 이 확인은 `.env`의 API key·PKCS#8 private key·공식 Base URL로
+만든 요청 JWT가 실제 Fireblocks에서 받아들여지는지만 판정하며 거래 생성 권한·TAP·Webhook JWKS까지 검증했다고 해석하지 않는다.
+성공하면 같은 읽기 결과를 로컬 블록체인 카탈로그에 동기화하고 다음 component를 기동한다. 인증·연결·응답 해석 중 하나라도 실패하면
+성공처럼 계속하지 않고 애플리케이션 기동 전에 중단한다. 콘솔에는 Secret·JWT·벤더 응답 원문을 내보내지 않고 권한이 제한된
+`build/local/fireblocks-preflight.log` 경로와 안전한 다음 조치만 안내한다.
+
 이미 `local.sh up stub`으로 기동한 개발 환경의 빠른 입금 점검은 `local.sh test deposit`으로 제공한다. 이 helper는
 `STUB+LOCAL`에서만 실행하며 각 단계의 시작·성공·실패와 다음 조치를 평문으로 출력한다. 공개 BCM API로 계정·주소를 준비하고,
 Stub 제어면으로 Anvil 입금을 주입한 뒤 독립 BCM Webhook 수신, `FINALIZED`, Kafka event까지 확인한다. 운영 코드·Domain Port에
