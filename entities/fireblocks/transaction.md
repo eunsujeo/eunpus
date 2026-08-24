@@ -150,7 +150,8 @@ Start:
 - ★ **timeout 은 설정 가능 (Stage 168)** — 승인·서명 만료를 기본은 **workspace-level timeout** 이 결정하고, **`transactionTimeout` 파라미터로 per-signer / per-transaction 재정의** 가능. 창 내 미승인·미서명 시 `FAILED` + sub-status `TIMEOUT`:
   > "it was not approved or signed within the expiration window. ... By default, Fireblocks applies the workspace-level timeout, but you can override it per signer or per transaction using the transactionTimeout parameter." (source: reference-sub-statuses.md, §FAILED sub-statuses)
 - 위 표의 2h 값(primary-transaction-statuses.md)과 workspace 기본값의 관계는 문서에 명시 없음 — 2h = 기본값으로 단정하지 않는다.
-- gasless 거래(Universal Gasless relay 경유)에도 동일 적용되는지 미확인 — [[open-questions/fireblocks#Q-2026-07-03-G01]] 잔여 항목.
+- ★ **gasless 에도 pre-broadcast 만료 적용 (Stage 169, CSM 확답)** — `configurations.expiresAfterSeconds` 가 공유 거래 생성 경로에 있어 gasless carve-out 이 없다. 기본 비활성(요청 시 활성화), 범위 10분~24시간(Console workspace 기본값도 같은 한도), 만료 시 유예 없이 거래 소멸 + 지정 signer 의 signing token 도 단축(enclave 강제). dev doc 의 '300' 은 오기('600'초로 수정 예정). `transactionTimeout` 과의 명칭 관계는 답변에 없음 — 동일 메커니즘으로 단정하지 않는다. (source: 2026-08-24__fireblocks-csm__universal-gasless-validity-window.txt)
+- ★ **Universal Gasless 온체인 유효 창 확답 (Stage 169)** — delegate 의 EIP-712 struct `AuthorizedExecutions(calls, deadline, mode, nonce, relayer)` 에 `deadline` = 서명 시각+2h 고정(enclave 계산, API 필드 없음). `execute()` 가 nonce 소비 전 검사, 4337 `validUntil` 동등. relayer 주소가 digest 에 바인딩·nonce 단회. [[open-questions/fireblocks#Q-2026-07-03-G01]] 잔여 2건 ANSWERED.
 
 ### Chain-Specific 처리 모델 (Q-P02 부분 응답)
 

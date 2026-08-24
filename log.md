@@ -7767,3 +7767,9 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - ANSWERED: 없음 (Q-2026-07-03-G01 잔여 확인 항목 2건 추가 — ① Universal Gasless 온체인 유효기간(validUntil 상당) 지원 여부 ② gasless 거래의 transactionTimeout 적용 여부)
 - 영향받은 페이지: entities/fireblocks/transaction.md (§시간 제약 ★ — transactionTimeout workspace 기본 + per-signer/per-tx 재정의, 2h=기본값 단정 보류) · open-questions/fireblocks.md (G01 잔여 확장 + Status 갱신)
 - 신규 entity: 0 (41 stage 연속)
+
+## Stage 169 (2026-08-24) — Universal Gasless 유효 창 CSM 확답 ingest: G01 잔여 2건 ANSWERED
+- source: 2026-08-24__fireblocks-csm__universal-gasless-validity-window.txt (사용자 제공 CSM Q&A — sources/ 루트에서 fireblocks/markdown/ 으로 정리)
+- ANSWERED: Q-2026-07-03-G01 잔여 2건 — ① 온체인 유효 창 있음·고정 (delegate EIP-712 deadline = 서명+2h, enclave 계산, nonce 소비 전 검사, relayer 바인딩·단회 nonce) ② gasless 에도 pre-broadcast 만료 적용 (configurations.expiresAfterSeconds, 기본 비활성, 10분~24h, dev doc 300 오기→600)
+- 영향받은 페이지: entities/fireblocks/transaction.md (§시간 제약 ★2건 추가) · open-questions/fireblocks.md (G01 확답 절 + Status 잔여 축소) · blockchain-manager/docs/디지털 자산/가스대납/03-fireblocks-gasless.md (§거래 유효 창 신설) · blockchain-manager/docs/BC/Fireblocks QnA/01-qna.md (§Universal Gasless 유효 창 확답)
+- 신규 entity: 0 (42 stage 연속)

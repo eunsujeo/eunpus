@@ -76,6 +76,21 @@ Relay는 On-chain transaction을 제출하면서 자신의 fee account에 있는
 
 Relay는 가스비를 부담하지만 토큰 이동 권한을 만들지 않는다. 자산 이동은 Vault의 서명과 Fireblocks Policy, 토큰 승인 또는 위임된 account code의 검증을 통과해야 한다.
 
+## 거래 유효 창
+
+거래가 언제까지 유효한지는 두 계층에서 따로 통제된다 (Fireblocks 담당자 확답 2026-08 — [Fireblocks QnA](../../BC/Fireblocks%20QnA/01-qna.md)).
+
+| 계층 | 메커니즘 | 값 | 검사 시점 |
+|---|---|---|---|
+| 온체인 | delegate 컨트랙트의 `deadline` | 서명 시각 + 2시간, 고정 | `execute()` 가 nonce 소비 전 검사, 늦으면 revert |
+| 브로드캐스트 전 | `configurations.expiresAfterSeconds` | 10분~24시간, 기본 비활성 (요청 시 활성화) | 창 안에 승인·서명되지 않으면 전파 전에 만료 |
+
+온체인 유효 창은 delegate 가 서명받는 EIP-712 구조체 `AuthorizedExecutions(Execution[] calls, uint256 deadline, bytes32 mode, uint256 nonce, address relayer)` 의 `deadline` 필드다. ERC-4337 `validUntil` 과 같은 의미이고, `validAfter` (하한) 와 블록 번호 기반 변형은 없다. deadline 은 enclave 안에서 계산되는 설계 고정값이라 조정하는 API 필드가 없다.
+
+같은 서명 구조가 두 가지를 더 보장한다. relayer 주소가 EIP-712 digest 에 포함되어 지정 relayer 만 그 서명을 제출할 수 있고 (유출된 서명은 제3자가 못 쓴다), nonce 는 단회 사용이라 재사용이 안 된다.
+
+`expiresAfterSeconds` 는 공유 거래 생성 경로에 있어 gasless 거래에도 예외 없이 적용된다. 만료 시 유예 없이 거래가 소멸하고, 지정 서명자에게 발급되는 signing token 도 그에 맞춰 짧아진다. 두 메커니즘은 독립이고 정렬할 수 없다 — 하나는 10분 하한, 하나는 2시간 고정이다.
+
 ## 지원 체인과 변동 경계
 
 2026-05-18 보관 원문의 Universal Gasless 통합 Mainnet은 Ethereum·Optimism·Base·Arbitrum One·Polygon PoS·BNB Smart Chain이다. Fireblocks Relay 문서는 더 넓은 EVM 호환 체인 지원을 설명하지만, Universal Gasless 통합 여부와 Relay 계약 지원 범위는 같은 목록이 아니다.

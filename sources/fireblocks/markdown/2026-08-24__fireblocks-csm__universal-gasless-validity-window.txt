@@ -1,0 +1,28 @@
+question: I have one question about Universal Gasless.
+My understanding is that Universal Gasless works by upgrading an EOA via EIP-7702. In this setup, is it possible to apply ERC-4337 validity constraints to the UserOperation?
+For example, ERC-4337 supports validity windows such as validUntil, which can be used to ensure that a UserOperation is no longer valid after a certain point.
+If Universal Gasless supports this mechanism, I think it could be very useful for controlling the transaction lifecycle and preventing transactions from being executed after a specified deadline.
+Could you let us know if this is supported with Universal Gasless?
+(Or, alternatively, whether there is any other way to define a validity window for a transaction based on either block number or time.)
+
+answer: Hi @emjay.x, your understanding of the EIP-7702 mechanism is correct. There is an on-chain validity window and it's already applied, though the value is fixed. Separately there's a pre-broadcast expiry mechanism at a different layer.
+
+1. Validity window in the delegated contract
+Yes, this is in place. Our delegate (UniversalGaslessDelegate) includes a deadline field in the EIP-712 struct your vault signs:
+AuthorizedExecutions(Execution[] calls, uint256 deadline, bytes32 mode, uint256 nonce, address relayer)It's enforced on-chain in execute(), before the nonce is spent:
+require(block.timestamp <= deadline, LibErrors.ExpiredSignature(deadline));So it's the same semantic as ERC-4337's validUntil - timestamp-based, checked at execution, hard revert if late. There's no validAfter (no lower bound) and no block-number variant.
+
+The deadline is set to signing time + 2 hours, computed inside the enclave. It's a property of the design rather than a configurable parameter, so there's no API field that reaches it.
+
+Two related guarantees worth highlighting:
+• Relayer address is bound into the signature: msg.sender is folded into the EIP-712 digest, so only the designated relayer can submit that authorization. A leaked signature is unusable by anyone else. ERC-4337 gives you nothing equivalent by default.
+• Nonces are single-use, so replay isn't possible.
+번역됨||[오전 10:11]2. Pre-broadcast expiry (configurations.expiresAfterSeconds): 
+Separate mechanism, and it does apply to gasless transactions. It sits on the shared transaction-creation path with no gasless carve-outs.
+(*This option is not enabled by default, so let us know if you'd like to test then we can arrange it for you.)
+• Valid range is 10 min to 24 hrs. Same limits apply to the workspace-level defaults in Console settings. (*The value '300' from the dev doc is incorrect and will be updated to '600' seconds)
+• Two layers, both pre-broadcast: the transaction expires at expiresAt with no grace period, and the signing token issued to the designated signer is shortened accordingly (enclave-enforced).
+번역됨||[오전 10:12]How the two relate
+Worth keeping distinct: expiresAfterSeconds is an approval/queue staleness control. An instruction not approved and signed within N minutes dies before broadcast. The contract deadline is the on-chain validity window.  A signed operation can't land after T. They're independent and can't be aligned, since one has a 10-minute floor and the other is fixed at 2 hours.
+
+So the controls available today: 2-hour on-chain validity (fixed), relayer-bound signatures, single-use nonces, and optionally a 10-min-to-24-hr pre-signature TTL where enabled on the workspace.

@@ -1139,7 +1139,10 @@
 - **잔여 확인 추가 (Stage 168 — validity window fact query)**:
   1. **Universal Gasless 의 온체인 유효기간(4337 `validUntil` 상당) 지원 여부** — 헬프센터 추출 6건·인덱스 15건·curated·sitemap 4-source 전수 검색에서 언급 0건. 구조상 7702 노선이라 UserOperation validUntil 이 실릴 자리가 없고, 위임 코드가 시간창 검증을 내장하는지는 MPC↔7702 내부 동작과 같은 묶음(위임 코드 내부 미공개).
   2. **gasless 거래에도 `transactionTimeout`(workspace 기본 + per-signer/per-tx 재정의 — [[entities/fireblocks/transaction]] §시간 제약, source: reference-sub-statuses.md)이 적용되는지** — 일반 거래 문서라 gasless 경유 명시 없음. 답에 따라 서명-전 층의 마감일 제어 커버리지가 갈림. CSM 질문 후보.
-- **Status**: ANSWERED (잔여 CSM/PoC: 정산 세부 단가·구독료 · MPC↔7702 위임 내부 동작 · 온체인 유효기간 지원 여부 · gasless 거래 transactionTimeout 적용 여부)
+- **잔여 2건 확답 (Stage 169 — CSM Q&A, `sources/fireblocks/markdown/2026-08-24__fireblocks-csm__universal-gasless-validity-window.txt`)**:
+  1. **온체인 유효기간 있음·고정** — delegate(UniversalGaslessDelegate) 의 EIP-712 struct `AuthorizedExecutions(Execution[] calls, uint256 deadline, bytes32 mode, uint256 nonce, address relayer)` 의 `deadline`. `execute()` 가 nonce 소비 전 `block.timestamp <= deadline` 검사(늦으면 revert) — 4337 `validUntil` 동등. `validAfter`·블록번호 변형 없음. **deadline = 서명 시각+2시간, enclave 계산, API 필드 없음**(설계 고정값). 부가 보장: relayer 주소가 digest 에 바인딩(지정 relayer 만 제출 가능, 유출 서명 무력)·nonce 단회. → Stage 168 의 "위임 코드가 시간창 검증을 내장하는지" 가설이 사실로 확정.
+  2. **gasless 에도 pre-broadcast 만료 적용** — `configurations.expiresAfterSeconds`, 공유 거래 생성 경로라 gasless carve-out 없음. 기본 비활성(요청 시 활성화)·10분~24시간(workspace 기본값 동일 한도)·dev doc '300' 오기(→'600'초 수정 예정). 두 층 모두 pre-broadcast: 거래 expiresAt 만료(유예 없음) + signing token 단축(enclave 강제). 두 메커니즘은 독립·정렬 불가(10분 floor vs 2h 고정). ※ `transactionTimeout` 과의 명칭 관계는 답변에 없음 — 미확인으로 유지.
+- **Status**: ANSWERED (잔여 CSM/PoC: 정산 세부 단가·구독료 · MPC↔7702 위임 내부 동작 · expiresAfterSeconds↔transactionTimeout 명칭 관계)
 
 ### Stage 96 Summary
 
