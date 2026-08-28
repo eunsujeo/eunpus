@@ -879,7 +879,8 @@
 
 - **Why it matters**: Key Link 의 자산군 — MPC 와 동일? 별도 매트릭스?
 - **Answer (partial)**: **ECDSA + EdDSA 알고리즘 단위 지원** (MPC-CMP 와 동일 algorithm 매트릭스). Vault account 당 ECDSA 1 + EdDSA 1 = 2 key 전용. Asset wallet 활성화 = 해당 asset 의 underlying protocol algorithm 의 key 가 vault 에 assigned 여부. Specific chain matrix 는 algorithm 결정 (별도 chain whitelist 미명시 → Mode C 추가 필요)
-- **Status**: partial
+- **보강 (Stage 170, CSM 확답 — `2026-08-28__fireblocks-csm__key-link-thales-luna-qna.txt`)**: API 가 받는 서명 알고리즘은 **ECDSA secp256k1 · EdDSA ed25519 딱 2종**, HSM 은 이를 **PKCS#11** 로 노출, validation key = **RSA-2048**. Luna 펌웨어 제약(2차, Thales 가이드 인용): ed25519 는 7.8.9+, secp256k1 은 7.x 전부. Applied to [[vendors/fireblocks/security]] §"Stage 170"
+- **Status**: partial (알고리즘 2종·인터페이스 확정, 체인 단위 매트릭스는 여전히 알고리즘 결정 — 별도 whitelist 미명시)
 - **Sources**: `set-up-your-fireblocks-vault-with-key-link-extracted.txt` p.2-3, `getting-started-with-fireblocks-key-link-extracted.txt` p.4
 - **Applied to**: [[entities/fireblocks/vault-account]] §"Stage 36"
 
@@ -893,12 +894,14 @@
 - **Sources**: `2026-05-22__support-fireblocks-io__hosted-mpc-workspace-configuration-extracted.txt` p.1, `hosted-mpc-customer-side-setup-extracted.txt` p.2
 - **Status**: partial — Key Link 자체 invariant 의 직접 명시는 후속 ingest 필요
 
-#### Q-2026-05-22-KL02: Customer Server fail 시 transaction signing fallback?
+#### Q-2026-05-22-KL02: Customer Server fail 시 transaction signing fallback? — **ANSWERED (Stage 170)**
 
 - **Why it matters**: Risk-KL01 의 mitigation 명시 부재 — Active-Active HA 권장 여부, Retry policy, Stage 9 의 Pending Signature 2h timeout 과의 호환성
 - **Where this came up**: [[vendors/fireblocks/risks]] §"Risk-KL01"
 - **Sources to check**: Fireblocks Agent open-source repo, Key Link advanced ops PDF
-- **Status**: open
+- **답 (Stage 170, CSM 확답 2026-08-28 — `2026-08-28__fireblocks-csm__key-link-thales-luna-qna.txt`)**: ① 다중 Agent 를 한 workspace 에 페어링 가능. 제약 = Agent 별 고유 identity + Fireblocks 측 전용 큐, 서명키는 특정 Agent user 에 바인딩(요청이 그 Agent 로 라우팅) → **권장 토폴로지 active/passive** (active/active 아님) ② Key Link 에 Agent·Customer Server 의 **내장 HA/DR 자동화 없음** — 감시·failover 는 고객 설계(PS 범위) ③ 미전달 서명 요청은 **Fireblocks 큐에 최대 7일 durable · at-least-once** — Agent 중단·재시작으로 유실 없음 ④ 키 복구는 Luna 네이티브(HA group·partition cloning·Backup HSM), Fireblocks 측 DR 서비스 불요. Pending Signature 2h 와 7일 큐의 관계는 별도 → Q-2026-08-28-KL07
+- **Applied to**: [[vendors/fireblocks/risks]] §Risk-KL01 · [[entities/fireblocks/cosigner]] §"Stage 170" · [[entities/fireblocks/transaction]] §"Stage 36"
+- **Status**: ANSWERED (레퍼런스 아키텍처 문서 유무는 미답)
 
 #### Q-2026-05-22-KL03: Fireblocks Agent (open-source TS) update 정책?
 
@@ -1258,3 +1261,25 @@
 - **부분 답 (2026-08-20)**: Fireblocks 공식 블로그 (2026-04-01, VP Research Michael Gutkin) 수집 — PQC 계획 있음 (4축: 체인 계층 추적(BIP 360/P2MR 등·재단 협의) · PQC 서명의 co-signer 모델 통합 연구 · 내부 스택 감사(인증서·at-rest·인증·TLS·3rd-party) · 표준 기구 참여). 코드 기반·다변수 PQC 가 MPC 에 자연스럽게 적합할 수 있다 평가, NIST ML-DSA·SLH-DSA·FN-DSA + Round 2 후보 검토. 현재 조치는 주소 위생 (P2WPKH 공개키 은닉 · Network 자동 주소 로테이션 · 주소 재사용 금지). 체인 쪽 전환은 프로토콜 결정 종속 — "수렴 시점에 MPC 구성이 준비돼 있게 한다". (source: 2026-08-20__fireblocks-com__google-quantum-research-institutional-crypto-security.md)
 - **잔여**: 하이브리드 (기존 채널 위 PQC 계층) 접근 여부 · key backup 평면의 계획 — 전체 PQC 전략 문서 (2026 하반기 공개 예고) 대기
 - **Status**: partial-answered
+
+### Q-2026-08-28-KL06: KeyLink Flow 의 정체·통제 범위·가격
+
+- **Why it matters**: CSM 확답(2026-08-28)이 Customer Server 를 직접 구축하지 않을 때의 제품화 대안으로 **KeyLink Flow** (운영 콘솔을 갖춘 패키지형 온라인 서버, 맞춤 개발 대부분 대체) 를 제시. 채택 시 Customer Server 구축·소유 부담(Risk-KL01·KL02)의 상당 부분이 벤더 패키지로 이동하나, 공개 자료·wiki 4-source 에 KeyLink Flow 문서 없음.
+- **확인 질문**: 호스팅 주체(고객 인프라 vs Fireblocks)? HSM 연결 방식(PKCS#11 Luna 포함?)과 지원 HSM? Policy·Audit Log 연동 범위? 커스텀 검증 로직 삽입 가능 여부? 과금(add-on 별도?)? Cold(offline) 모드 지원?
+- **Sources to check**: CSM 후속 · support.fireblocks.io Key Link 섹션 재검색
+- **Status**: open
+
+### Q-2026-08-28-KL07: 7일 durable 서명 요청 큐와 Pending Signature 2h timeout 의 관계
+
+- **Why it matters**: CSM 확답 — 미전달 서명 요청은 Fireblocks 측 큐에 최대 7일 보존·at-least-once. 반면 transaction state machine 은 Pending Signature 2h 미서명 시 fail ([[entities/fireblocks/transaction]] §"시간 제약"). 두 수치가 다른 층(전달 큐 vs tx 수명)인지에 따라 Agent 장애 허용 시간이 2h 인지 7일인지 갈림 — Risk-KL01 의 실제 RTO 기준.
+- **확인 질문**: Agent 가 3h 뒤 재접속하면 큐의 요청은 재전달되나, 이미 TIMEOUT 된 tx 는 어떻게 되나? `transactionTimeout` 재정의가 이 창을 늘리나? 7일 보존은 Key Link 전용인가?
+- **Sources to check**: CSM 후속 · fireblocks-agent 저장소 README (큐 semantics)
+- **Status**: open
+
+### Q-2026-08-28-KL08: Key Link 가격 구조
+
+- **Why it matters**: 도입 예산 산정. CSM 은 가격을 담당자(Ben Han · Shane Verner)에게 위임.
+- **확정 조각 (CSM 2026-08-28, `2026-08-28__fireblocks-csm__key-link-thales-luna-qna.txt`)**: Key Link = Fireblocks 구독의 **유료 add-on** · Professional Services 구현 패키지 **별도 견적** · Luna 하드웨어·Thales 라이선스는 **Thales 직접 구매, Fireblocks 계약 외**
+- **확인 질문**: add-on 단가 체계(workspace 당? 키 당? 거래량?) · 개발·UAT·운영·DR workspace 별 견적 · PS 패키지 범위·필수 여부 · KeyLink Flow 별도 과금 여부
+- **Sources to check**: Fireblocks 영업 담당 회신
+- **Status**: open

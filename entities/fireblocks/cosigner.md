@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [signing, integration, key-link]
 stage_introduced: 4
-last_updated_stage: 36
-source_count: 6
+last_updated_stage: 170
+source_count: 7
 related: [api-co-signer, api-user, callback-handler, cosigner, non-signing-admin, signer]
 ---
 # Entity: Cosigner (Fireblocks)
@@ -156,9 +156,34 @@ Key Link workspace 의 customer-held key plane 에서 작동하는 **별도 cosi
 
 → Fireblocks Agent 는 cosigner 의 *messaging layer only* — 실제 signing 은 Customer Server → HSM 으로 위임. cryptographic 책임이 customer 측 HSM 으로 100% 이동.
 
+### Stage 170 — Agent 호스트 사양·HA CSM 확답 (2026-08-28)
+
+**호스트 사양** — CSM 명시: "deployment guidance rather than a hard minimum":
+
+| 항목 | 가이드 |
+|---|---|
+| OS | Ubuntu 22.04 LTS 이상, 또는 Docker 지원 Linux 배포판 |
+| 메모리 | 환경당 8 GB RAM |
+| 스토리지 | 100 GB SSD, 암호화 |
+| 런타임 | Docker |
+| 네트워크 | Fireblocks 엔드포인트로 안정적 아웃바운드, 방화벽은 그 엔드포인트로 한정. air-gap cold 환경은 완전 네트워크 격리 + 암호화 매체·SFTP·data diode 전달 |
+
+- **VM·컨테이너 완전 지원** — Docker 가 표준 배포 모델. **Agent 는 stateless** 설계로 재시작·재배포 용이
+- Luna client 는 Agent 가 아니라 **Customer Server 호스트**에 설치 (NTLS 연결·Luna client 등록) — [[vendors/fireblocks/architecture]] §"Stage 170"
+
+**다중 Agent · HA/DR** (키 복구는 별개 — [[vendors/fireblocks/security]] §"Stage 170"):
+- 한 workspace 에 다중 Agent 페어링 가능. 제약 2: ① Agent 마다 고유 identity + Fireblocks 측 전용 메시지 큐 ② **서명키는 특정 Agent user 에 바인딩** → 그 키의 요청은 그 Agent 로 라우팅
+- → 현재 권장 토폴로지 = **active/passive** (active/active 아님)
+- Key Link 에 Agent·Customer Server 의 **내장 HA/DR 자동화 없음** — 프로세스 감시·failover 는 고객 설계 (Professional Services 범위)
+- **미전달 서명 요청은 Fireblocks 측 큐에 최대 7일 durable 보존, at-least-once 전달** — Agent 중단·재시작으로 요청이 유실되지 않고 재접속 시 재전달. Pending Signature 2h timeout 과의 관계는 미확인 → [[open-questions/fireblocks#Q-2026-08-28-KL07]]
+- 운영·DR 레퍼런스 아키텍처 문서 제공 여부는 답변에 없음
+
+(source: CSM 확답 2026-08-28, `2026-08-28__fireblocks-csm__key-link-thales-luna-qna.txt`)
+
 ## Sources (Stage 36 추가)
 - `2026-05-22__support-fireblocks-io__fireblocks-key-link-overview-extracted.txt`, p.2-3 (Stage 36: 4-component architecture, Agent open-source TS)
 - `2026-05-22__support-fireblocks-io__getting-started-with-fireblocks-key-link-extracted.txt`, p.1-2 (Stage 36: Agent setup, pairing token, re-enroll)
+- `2026-08-28__fireblocks-csm__key-link-thales-luna-qna.txt` (Stage 170: Agent 호스트 가이드·VM/컨테이너·다중 Agent active/passive·7일 큐 — CSM 확답)
 
 ## Stage 36 — API Co-signer Deployment Matrix (`api-cosigner-installation-flow.md`)
 

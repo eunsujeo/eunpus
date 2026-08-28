@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [architecture, key-link]
 stage_introduced: 1
-last_updated_stage: 36
-source_count: 11
+last_updated_stage: 170
+source_count: 12
 related:
   - authentication
   - callback-handler
@@ -349,7 +349,17 @@ Stage 9 의 14-step transaction flow 에서 **step 10 (Co-Signer Engine → Co-S
 
 → Stage 9 의 zero-trust handoff + chain of trust 가 Key Link plane 까지 적용 (Auth Engine 의 derived cert 검증).
 
+### Stage 170 — Customer Server 제공 범위 CSM 확답 (2026-08-28)
+
+- **인터페이스 계약** = `api/customer-server.api.yml` — 오픈소스 [fireblocks/fireblocks-agent](https://github.com/fireblocks/fireblocks-agent) 저장소
+- **참조 구현** = 같은 저장소 `examples/server` — 완전한 참조 서버, **Thales Luna 빌드 포함**. 명시적으로 참조용이며 프로덕션 소프트웨어 아님 → 프로덕션 구현은 고객이 구축·소유
+- **KeyLink Flow** = 직접 구축을 원치 않을 때의 제품화 대안 — 운영 콘솔을 갖춘 패키지형 온라인 서버, 맞춤 개발 대부분을 대체. 호스팅 주체·HSM 연결·통제 범위·과금은 미확인 → [[open-questions/fireblocks#Q-2026-08-28-KL06]]
+- Luna client 는 **Customer Server 호스트**에 설치 — 그 호스트가 어플라이언스와 NTLS 연결 + Luna client 등록 필요 (Agent 호스트 사양은 [[entities/fireblocks/cosigner]] §"Stage 170")
+
+(source: CSM 확답 2026-08-28, `2026-08-28__fireblocks-csm__key-link-thales-luna-qna.txt`)
+
 ## Sources (Stage 36 추가)
 - `2026-05-22__support-fireblocks-io__fireblocks-key-link-overview-extracted.txt`, p.1-3 (Stage 36: Key Link architecture, 4-component, FIPS-HSM)
 - `2026-05-22__support-fireblocks-io__getting-started-with-fireblocks-key-link-extracted.txt`, p.1-9 (Stage 36: Onboarding, Agent setup, Proof of Ownership)
 - `2026-05-22__support-fireblocks-io__set-up-your-fireblocks-vault-with-key-link-extracted.txt`, p.1-4 (Stage 36: Vault account ECDSA+EdDSA binding)
+- `2026-08-28__fireblocks-csm__key-link-thales-luna-qna.txt` (Stage 170: Customer Server 계약·참조 구현(Luna 빌드)·KeyLink Flow — CSM 확답)

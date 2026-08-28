@@ -7773,3 +7773,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - ANSWERED: Q-2026-07-03-G01 잔여 2건 — ① 온체인 유효 창 있음·고정 (delegate EIP-712 deadline = 서명+2h, enclave 계산, nonce 소비 전 검사, relayer 바인딩·단회 nonce) ② gasless 에도 pre-broadcast 만료 적용 (configurations.expiresAfterSeconds, 기본 비활성, 10분~24h, dev doc 300 오기→600)
 - 영향받은 페이지: entities/fireblocks/transaction.md (§시간 제약 ★2건 추가) · open-questions/fireblocks.md (G01 확답 절 + Status 잔여 축소) · blockchain-manager/docs/디지털 자산/가스대납/03-fireblocks-gasless.md (§거래 유효 창 신설) · blockchain-manager/docs/BC/Fireblocks QnA/01-qna.md (§Universal Gasless 유효 창 확답)
 - 신규 entity: 0 (42 stage 연속)
+
+## Stage 170 (2026-08-28) — Key Link × Thales Luna CSM 확답 5문항 ingest: KL02 ANSWERED · A08 보강 · 신규 Q 3
+- source: 2026-08-28__fireblocks-csm__key-link-thales-luna-qna.txt (사용자 제공 CSM Q&A. Luna 펌웨어 수치는 CSM 의 Thales 가이드 인용 = 2차 표기)
+- ANSWERED: Q-2026-05-22-KL02 (다중 Agent 가능·서명키 Agent 바인딩 → active/passive 권장·내장 HA/DR 없음·7일 durable 큐 at-least-once·키 복구 Luna 네이티브) · Q-2026-05-19-A08 보강 (secp256k1+ed25519 over PKCS#11 · RSA-2048 validation key · ed25519 = Luna 7.8.9+ [2차])
+- 신규 Q: Q-2026-08-28-KL06 KeyLink Flow 정체 · KL07 7일 큐 vs Pending Signature 2h · KL08 가격 구조 (CSM 유보)
+- 영향받은 페이지: vendors/fireblocks/security.md (§Stage 170 HSM 요건·키 복구) · architecture.md (§Stage 170 Customer Server 계약·참조 구현·KeyLink Flow) · risks.md (Risk-KL01 mitigation·비용) · entities/fireblocks/cosigner.md (§Stage 170 호스트 사양·HA) · transaction.md (§Stage 36 7일 큐 주석) · open-questions/fireblocks.md · blockchain-manager/docs/BC/Fireblocks QnA/01-qna.md (KeyLink 담당자 확답 절)
+- 신규 entity: 0 (43 stage 연속 — KeyLink Flow 는 architecture hub 흡수)

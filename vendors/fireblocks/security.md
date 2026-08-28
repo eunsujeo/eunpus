@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [risks, security, key-link]
 stage_introduced: 1
-last_updated_stage: 36
-source_count: 9
+last_updated_stage: 170
+source_count: 10
 related:
   - admin-quorum
   - approval-group
@@ -444,5 +444,20 @@ Fireblocks 공식 블로그 ("Enterprise Digital Asset Security with Fireblocks 
 
 자세히: [[open-questions/fireblocks]] §"Stage 38" · [[vendors/fireblocks/risks]] §"Stage 38"
 
+### Stage 170 — HSM 요건 CSM 확답 (2026-08-28)
+
+Key Link 는 **HSM-agnostic** — 지정·인증된 Luna 모델 없음. 요건은 하드웨어가 아니라 알고리즘·인터페이스 층 (source: CSM 확답 2026-08-28, `2026-08-28__fireblocks-csm__key-link-thales-luna-qna.txt`):
+
+| 항목 | 요건 |
+|---|---|
+| Signing key 알고리즘 | **ECDSA secp256k1 + EdDSA ed25519** — API 가 받는 유일한 2종 |
+| 인터페이스 | **PKCS#11** 로 노출 |
+| Validation key (trust root) | **RSA-2048** |
+
+Luna 펌웨어 (★ 2차 — CSM 이 Thales 의 Fireblocks 통합 가이드를 인용, Thales 문서 직접 미확인): secp256k1 은 Luna 7.x 전 펌웨어 · **ed25519 는 7.8.9 이상** · Thales 검증 구성 = Luna Network HSM 펌웨어 7.8.4 + Luna Client 10.3.0, 그 Client 와 호환되는 펌웨어면 다른 Luna 모델도 지원. CSM 권고: BTC·EVM 만이면 현행 7.x 로 충분, Solana 등 ed25519 체인 예정이면 조달 시 7.8.9+ 명시.
+
+**키 복구 (DR)**: 키가 HSM 안에만 존재하므로 MPC workspace 의 별도 DR 서비스 요건이 구조적으로 없음 — 백업·복구는 **Luna 네이티브 (HA group · partition cloning · Luna Backup HSM)**. Fireblocks 측 장애로 고객이 자기 키에 접근 못 하는 시나리오 없음 (source: 같은 CSM 확답). Agent·Customer Server 의 이중화는 [[entities/fireblocks/cosigner]] §"Stage 170".
+
 ## Sources (Stage 38 추가)
 - `2026-05-22__fireblocks-com__enterprise-digital-asset-security-thales.md` (Stage 38: Thales Luna HSM 통합, Hot/Warm/Cold 3-mode, air-gap transport, PQC, HKMA/HKSFC/JFSA)
+- `2026-08-28__fireblocks-csm__key-link-thales-luna-qna.txt` (Stage 170: HSM 요건 secp256k1+ed25519/PKCS#11/RSA-2048 · Luna 펌웨어 [2차] · Luna 네이티브 키 복구 — CSM 확답)

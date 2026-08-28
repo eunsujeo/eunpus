@@ -4,7 +4,7 @@ vendor: fireblocks
 status: stable
 tags: [transaction, key-link]
 stage_introduced: 5
-last_updated_stage: 168
+last_updated_stage: 170
 source_count: 11
 related: [approver, designated-signer, policy, signer, tap, vault-account]
 ---
@@ -265,6 +265,8 @@ Stage 9 step 10 (Co-Signer Engine → Co-Signers) 대체:
 | 12-14. Vault → Node → Blockchain | 동일 | 동일 |
 
 → Stage 9 의 **transaction state machine (17 status, 2h timeout, Outgoing/Incoming flow) 는 Key Link 에서도 동일 적용** — 키 plane 만 분기, transaction lifecycle 은 share 됨.
+
+- (Stage 170, CSM 확답) Agent 미접속 시 미전달 서명 요청은 Fireblocks 측 큐에 **최대 7일 durable · at-least-once** 보존 후 재접속 시 재전달. 이 7일 큐와 위 Pending Signature 2h timeout 의 관계는 문서·확답 어디에도 없음 → [[open-questions/fireblocks#Q-2026-08-28-KL07]] (source: `2026-08-28__fireblocks-csm__key-link-thales-luna-qna.txt`)
 
 ### Algorithm 제약 (`set-up-your-fireblocks-vault-with-key-link.md`, p.2-3)
 

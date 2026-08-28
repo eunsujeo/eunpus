@@ -4,7 +4,7 @@ vendor: fireblocks
 status: stable
 tags: [risks, security, key-link]
 stage_introduced: 1
-last_updated_stage: 36
+last_updated_stage: 170
 source_count: 26
 related:
   - admin-quorum
@@ -476,7 +476,8 @@ Key Link plane 도입으로 **6 가지 신규 risk** 식별. 모두 MPC plane �
 - Stage 8 의 trust boundary 가 Key Link 에서 **Customer Server 까지 확장** — Server fail 시 모든 signing 중단
 - Stage 9 의 17-status transaction state machine 에서 **Pending Signature (2h timeout)** 가 timeout → tx fail
 - → Customer 측 Active-Active / Active-Passive HA 필수, Stage 8 의 BCM 패턴과 유사한 보수성 요구
-- Mitigation 미명시 (PDFs 에 customer server HA recommendation 없음) → **Q-2026-05-22-KL02**
+- ~~Mitigation 미명시~~ → **Q-2026-05-22-KL02 ANSWERED (Stage 170, CSM 확답)**: 다중 Agent 페어링 가능하나 서명키가 특정 Agent user 에 바인딩되어 권장 = **active/passive**. 내장 HA/DR 자동화 없음 — Agent·Customer Server 의 감시·failover 는 고객 설계 (PS 범위). 미전달 요청은 Fireblocks 큐에 7일 durable·at-least-once → Agent 중단 시 요청 유실은 없음. 이 7일과 위 2h timeout 의 관계는 미확인 → **Q-2026-08-28-KL07**. 상세 [[entities/fireblocks/cosigner]] §"Stage 170"
+- 비용 (Stage 170, CSM): Key Link = 유료 add-on, PS 구현 패키지 별도 견적, Luna 하드웨어·Thales 라이선스는 Thales 직접 구매 (Fireblocks 계약 외). 견적은 CSM 유보 → **Q-2026-08-28-KL08**
 
 ### Risk-KL02: Fireblocks Agent Open-Source Update Burden
 

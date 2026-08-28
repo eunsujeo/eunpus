@@ -1,0 +1,39 @@
+source: Fireblocks CSM 메신저 답변 (사용자 제공, 2026-08-28). 5번 가격은 담당자(Ben Han · Shane Verner)에게 위임.
+note: 1번의 Luna 펌웨어 수치(7.8.9 / 7.8.4 / Luna Client 10.3.0)는 CSM 이 Thales 의 Fireblocks 통합 가이드를 인용한 2차 정보.
+
+question: We're also evaluating whether to adopt KeyLink and have a few questions covering both technical and pricing topics
+1. Is there a supported or recommended Thales Luna model? If no specific model is required, what cryptographic algorithms and interface requirements must the HSM meet?
+2. Does Fireblocks provide either a production-ready Customer Server implementation or reference code with Thales Luna integration, or is the customer expected to build it based on the Fireblocks interface specifications?
+3. What are the recommended host specifications and supported operating systems for the Fireblocks Agent? Are there any restrictions on running it in a VM or container?
+4. Can multiple Agent instances be connected to one workspace for HA and DR? Do you have a reference architecture for production and DR deployments?
+5. How is KeyLink priced? Are there any additional fees for using it?
+
+answer:
+1. There is no mandated or certified Luna model, Key Link is deliberately HSM-agnostic, and the requirements sit at the algorithm and interface level rather than the hardware level. The HSM must support ECDSA secp256k1 and EdDSA ed25519 for signing keys, which are the only two algorithms our API accepts, and expose them over PKCS#11. The validation key that acts as your trust root is RSA-2048. Thales's own Fireblocks integration guide notes that ECDSA secp256k1 works across all Luna 7.x firmware, but EdDSA ed25519 requires Luna firmware 7.8.9 or later. Thales tested the integration on a Luna Network HSM at firmware 7.8.4 with Luna Client 10.3.0 and states other Luna models are supported provided their firmware is compatible with that client. So if your asset scope is Bitcoin and EVM chains, any current Luna 7.x will do; if you intend to support ed25519 chains such as Solana, specify 7.8.9 or later at procurement.
+
+2. We publish the interface contract and working reference code, and you build and own the production implementation. The contract is api/customer-server.api.yml in the open-source https://github.com/fireblocks/fireblocks-agent
+The same repository contains a complete reference server under examples/server, and relevant to your question, it includes a Thales Luna build
+That code is explicitly a reference rather than production software
+If you would rather not build it at all, KeyLink Flow is the productised alternative: a packaged online server with an operator console that replaces most of the bespoke work
+Some good help center articles to review as well https://support.fireblocks.io/hc/en-us/articles/14228517105052-Fireblocks-Key-Link-Overview
+
+3. Fireblocks Agent host specifications and OS
+As deployment guidance rather than a hard minimum:
+- OS: Ubuntu 22.04 LTS or later, or any Linux distribution with Docker support
+- Memory: 8 GB RAM per environment
+- Storage: 100 GB SSD, with encryption
+- Runtime: Docker
+- Network: stable outbound connectivity to Fireblocks endpoints, with the firewall restricted to those endpoints. The Luna client is installed on the Customer Server host, so that host also needs NTLS connectivity to the appliance and to be registered as a Luna client. For an air-gapped cold environment, complete network isolation, with transfer via encrypted media, SFTP or a data diode.
+VMs and containers are fully supported - Docker is in fact the standard deployment model, and the Agent is stateless by design which makes it straightforward to restart or redeploy.
+
+4. Multiple Agent instances, HA and DR
+It is worth separating two things here, since they have different answers: key recovery and component redundancy.
+Key recovery. In an MPC workspace, a separate disaster-recovery service is needed to back up and restore key material. With Key Link that requirement does not arise structurally: the keys exist only inside your HSM, so backup and recovery are handled entirely by Luna-native mechanisms (HA groups, partition cloning, Luna Backup HSM). There is also no scenario in which a Fireblocks-side problem leaves you unable to access your own keys.
+Component redundancy. Multiple Agents can be paired to one workspace, with two constraints:
+- Each Agent has a distinct identity and its own message queue on the Fireblocks side.
+- Each signing key is bound to a specific Agent user, so requests for a given key are routed to that Agent.
+Because of this, our recommended topology today is active/passive rather than active/active. Key Link has no built-in HA or DR automation for these components, so process supervision and failover for the Agent and Customer Server are designed on your side - another area the Professional Services engagement would cover.
+One point that helps here: undelivered signing requests are held durably in a Fireblocks-side queue for up to 7 days, and delivery is at-least-once. An Agent outage or restart therefore does not lose requests. They are redelivered once it reconnects.
+
+5. Pricing - I'll defer to @Ben Han @Shane Verner
+Key Link is a paid add-on to your Fireblocks subscription, and the Professional Services implementation package is quoted separately. The Luna hardware and Thales licences are purchased directly from Thales and are not part of the Fireblocks agreement.
