@@ -238,6 +238,7 @@ Key Link는 signing plane을 바꾸지만 Fireblocks의 transaction 상태·webh
 - Luna hardware와 Thales license는 Thales에서 직접 구매하며 Fireblocks 계약에 포함되지 않는다.
 
 세부 견적과 계약 조건은 아래 벤더 확인 항목에 남긴다.
+고객이 직접 구축하는 Customer Server·Agent·HSM의 예산은 [Key Link 고객 구축비 예산 산정](../예산산정/00-keylink-customer-build-cost.md)에 분리했다.
 
 ## 벤더에 확인할 것
 
