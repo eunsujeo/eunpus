@@ -29,10 +29,34 @@ Key Link가 맞는 경우는 분명하다.
 
 **현재 판단은 조건부 검토 계속**이다. 기능 적합성은 있지만 다음 넷이 도입 관문이다.
 
-1. 직접 Customer Server를 구축할지, 패키지형 **KeyLink Flow**를 살지
+1. 고객이 개발·호스팅하는 Customer Server의 production 구현 범위
 2. 주 Agent 장애 시 대기 Agent로 Signing Key 요청을 어떻게 넘길지
 3. 7일 message queue와 Fireblocks transaction timeout의 관계
-4. Key Link add-on·Professional Services·KeyLink Flow·Thales의 총비용
+4. Key Link add-on·Customer Server 구축·Professional Services·Thales의 총비용
+
+## Hosted MPC 대비 고객 준비사항
+
+Hosted MPC에서도 고객이 Co-Signer 실행 환경, network, HA·DR, patch, monitoring을 준비한다. 이 공통 항목을 Key Link 준비사항으로 다시 나열할 필요는 없다. **Hosted MPC에서 Key Link로 바꿀 때 달라지는 준비**는 다음과 같다.
+
+| 비교 항목 | Hosted MPC | Key Link에서 고객이 준비할 것 |
+|---|---|---|
+| 서명키 보관 | 고객 환경의 Co-Signer가 MPC share 3개 보관 | PKCS#11 HSM과 `secp256k1`·`ed25519` 지원 여부, Luna firmware·Client·NTLS 연결 |
+| 실행 구성요소 | Hosted Co-Signer 배포 | Fireblocks Agent 배포와 Customer Server 개발·호스팅 |
+| 키 생성·등록 | MPC key generation과 share backup | Validation Key·Signing Key 생성, Proof of Ownership, Agent 지정, vault별 key 할당 |
+| 키 수량 | MPC master key에서 주소 파생 | vault마다 ECDSA key·EdDSA key를 별도로 준비하며 다른 vault에 재사용 불가 |
+| 서명 전 검증 | Co-Signer Callback Handler | Customer Server에서 요청 검증·거절과 HSM 호출 구현. 기존 검증 기준을 옮길지 결정 |
+| 키 HA·복구 | Co-Signer share의 backup·DR | Luna HA group·partition cloning·Luna Backup HSM 등 HSM 자체 방식으로 구성 |
+| 구성요소 전환 | Hosted MPC의 HA 구성 | Signing Key가 특정 Agent user에 결속되므로 주 Agent 장애 시 대기 Agent 전환 절차를 별도 확정 |
+| 추가 비용 | Hosted MPC 계약 범위 | Key Link add-on, Customer Server 구축·Professional Services, Luna·Thales 비용 |
+
+따라서 고객이 새로 준비할 핵심은 네 가지다.
+
+1. **HSM 호환성** — 현재 Luna가 필요한 알고리즘과 PKCS#11을 지원하는지 확인한다.
+2. **Customer Server 구현** — production code의 개발·운영 범위와 담당 조직을 정한다.
+3. **외부 키 운영** — vault 수에 맞춘 Signing Key 수량과 등록·backup 방식을 정한다.
+4. **Agent 전환과 비용** — 대기 Agent 전환 절차와 Key Link 추가 비용을 Fireblocks에서 확정한다.
+
+일반적인 server sizing, firewall 신청, monitoring, 운영 조직은 Hosted MPC와 공통이므로 이 절의 별도 준비사항에서는 제외한다.
 
 ## 제품 경계
 
@@ -80,7 +104,13 @@ flowchart LR
 
 Fireblocks는 [`fireblocks-agent`](https://github.com/fireblocks/fireblocks-agent) 저장소에 interface contract와 동작하는 예제 서버, Thales Luna build를 제공한다고 답했다. 다만 예제는 **reference code이지 production software가 아니다.**
 
-직접 구축을 줄이는 대안으로 담당자는 **KeyLink Flow**를 제시했다. packaged online server와 operator console이라고 설명했지만 지원 topology·cold mode·HA·배포 위치·가격은 이번 답변에서 확인되지 않았다.
+`Fireblocks Key Link Overview` PDF는 Customer Server를 **고객이 개발하고 호스팅하는 구성요소**로 설명하며 KeyLink Flow는 언급하지 않는다. KeyLink Flow는 이후 담당자 Q&A와 별도 배치 제안서에서 packaged online server와 operator console을 갖춘 대안으로 제시됐을 뿐이다. 별도 구매 제품인지, Key Link 계약·Professional Services에 포함되는지, 지원 topology·cold mode·HA·배포 위치·가격은 확인되지 않았다. 따라서 현재 기본안은 고객 구현 Customer Server이며, KeyLink Flow는 계약 형태가 확인되기 전까지 대체안으로 확정하지 않는다.
+
+### Key Management Dashboard와 KeyLink Flow
+
+Key Management Dashboard는 별도 서버가 아니라 **Fireblocks Console의 `Settings > External Keys` 화면**이다. Validation Key·Signing Key 등록, PoO 상태 확인, Agent user 연결, vault key 할당을 제공하며 같은 작업을 REST API로도 수행할 수 있다.
+
+이 화면이 있어도 Fireblocks Agent·Customer Server·HSM은 그대로 필요하다. Dashboard 문서의 장애 확인 절차도 Agent 실행 상태와 Customer Server·HSM의 정상 동작을 확인하도록 안내한다. 따라서 Dashboard는 Key Link workspace에 포함된 **키 관리 UI**이며 packaged server를 대신하지 않는다. KeyLink Flow의 operator console이 이 Dashboard를 뜻하는지, 별도 UI인지는 제공된 자료만으로 확인되지 않는다.
 
 ## 키 모델과 등록
 
@@ -218,7 +248,7 @@ Key Link는 signing plane을 바꾸지만 Fireblocks의 transaction 상태·webh
 | 제품 지원 | Key Link API의 GA 여부, 지원 수준, version compatibility·deprecation policy | production 지원 조건을 확정해야 한다 |
 | 장애 처리 | Agent queue의 최대 7일 보존과 transaction signing timeout이 충돌할 때 최종 상태·재전달 처리는 무엇인가 | 장기 장애 뒤 만료된 거래가 다시 서명되는 일을 막아야 한다 |
 | HA·DR | 활성화된 Signing Key의 주 Agent가 장애일 때 대기 Agent로 전환하는 공식 절차는 무엇인가 | 활성화된 key는 Agent user 변경이 제한된다 |
-| KeyLink Flow | online·warm·cold 중 지원 범위, hosting 주체, HSM 연결 방식, HA·DR 책임은 어디까지인가 | 직접 구축과 제품 구매의 경계를 가른다 |
+| KeyLink Flow | 별도 구매 제품인지, Key Link 계약·Professional Services에 포함되는지, online·warm·cold 중 지원 범위, hosting 주체, HSM 연결 방식, HA·DR 책임은 어디까지인가 | 직접 구축과 Fireblocks 제공 범위를 가른다 |
 | Customer Server | reference code의 production hardening, 보안 패치, 호환성 변경 대응과 Professional Services 책임은 어디까지인가 | 고객과 Fireblocks의 유지보수 경계를 확정해야 한다 |
 | Validation Key | 허용 알고리즘은 RSA-2048만인지, 마지막 활성 상태의 key가 분실·만료됐을 때 공식 복구 절차는 무엇인지 | 담당자 답변과 공개 예제의 정합 및 trust root 복구 경로가 필요하다 |
 | Signing Key | vault 할당 후 해제·교체·폐기와 HSM migration의 공식 절차는 무엇인가 | key compromise와 장비 교체 절차에 필요하다 |
@@ -229,9 +259,10 @@ Key Link는 signing plane을 바꾸지만 Fireblocks의 transaction 상태·webh
 
 | ID | 출처 | 반영 범위 |
 |---|---|---|
-| FB-KL-001 | [Fireblocks Key Link Overview](https://support.fireblocks.io/hc/en-us/articles/14228517105052-Fireblocks-Key-Link-Overview) | 구성요소·고객 관리 HSM·hot/warm/cold |
-| FB-KL-002 | [Getting started with Fireblocks Key Link](https://support.fireblocks.io/hc/en-us/articles/14228779100572-Getting-started-with-Fireblocks-Key-Link) | Agent pairing·Validation/Signing Key·PoO·Policy |
-| FB-KL-003 | [Set up your Fireblocks Vault with Key Link](https://support.fireblocks.io/hc/en-us/articles/14231441357340-Set-up-your-Fireblocks-Vault-with-Key-Link) | vault별 ECDSA·EdDSA key 할당·asset wallet 제약 |
+| FB-KL-001 | [Fireblocks Key Link Overview — source PDF](../../../../sources/fireblocks/pdf/2026-05-19__support-fireblocks-io__fireblocks-key-link-overview.pdf) · [공식 페이지](https://support.fireblocks.io/hc/en-us/articles/14228517105052-Fireblocks-Key-Link-Overview) | Customer Server의 고객 개발·호스팅, 구성요소·고객 관리 HSM·hot/warm/cold |
+| FB-KL-002 | [Getting started — source PDF](../../../../sources/fireblocks/pdf/2026-05-19__support-fireblocks-io__getting-started-with-fireblocks-key-link.pdf) · [공식 페이지](https://support.fireblocks.io/hc/en-us/articles/14228779100572-Getting-started-with-Fireblocks-Key-Link) | Agent pairing·Dashboard/API key 등록·Validation/Signing Key·PoO·Policy |
+| FB-KL-003 | [Vault setup — source PDF](../../../../sources/fireblocks/pdf/2026-05-19__support-fireblocks-io__set-up-your-fireblocks-vault-with-key-link.pdf) · [공식 페이지](https://support.fireblocks.io/hc/en-us/articles/14231441357340-Set-up-your-Fireblocks-Vault-with-Key-Link) | Dashboard/API를 통한 vault별 ECDSA·EdDSA key 할당·asset wallet 제약 |
+| FB-KL-004 | [Key Management Dashboard — source PDF](../../../../sources/fireblocks/pdf/Managing%20keys%20with%20the%20Key%20Management%20Dashboard%20%E2%80%93%20Fireblocks%20Help%20Center.pdf) · [공식 페이지](https://support.fireblocks.io/hc/en-us/articles/23115386650780-Managing-keys-with-the-Key-Management-Dashboard) | Fireblocks Console의 External Keys 화면·key 상태·vault 할당·API 대안 |
 | FB-SUP-005 | Fireblocks 담당자 기술 질의응답, 2026-08-28 | Luna 요구사항·reference code·Agent host·HA/DR·가격 구조 |
 
 담당자 대화의 출처와 SHA-256은 `blockchain-manager/sources/fireblocks-support/manifest.yml`에 기록한다.
