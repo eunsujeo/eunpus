@@ -629,7 +629,8 @@ PDF 그림은 Online Server 측과 Offline Server 측의 관계를 점선으로 
 |---|---|---|
 | PAAS-DEPLOY-001 | 제공받은 Fireblocks Deployment Options v1.0 PDF, 17페이지 | 표지·목차·요구사항·3개 배치안·기술 스택·상세 아키텍처·네트워크·MPC DR·Hardware Isolation·KeyLink 제품 설명·Online/Offline HSM Signing |
 
-- SHA-256: `84cc5f02f4025262be287fd9788cf72de184332f42c81ca221e958a059eed1ff`
+- SHA-256: `3952bb7417f4f659bbf1092dab635dc70ee3396b1ac6a859eb6da61876b169cb`
 - 이 문서에는 위 PDF 외의 공식 문서나 외부 자료를 사용하지 않았다.
 - 고객명은 제거했지만 AWS 사용, 국내 배치, 구성요소, 연결 방향, port, endpoint 등 아키텍처 내용은 보존했다.
+- 원본 PDF의 페이지 내용은 유지하고, 저장 파일명과 PDF 제목 메타데이터만 중립적인 명칭으로 변경했다.
 - 그림은 원본 이미지를 삽입하지 않고 표와 Mermaid로 다시 표현했다.
