@@ -25,3 +25,8 @@ sources:
     provenance: user-provided conversation transcript (received 2026-08-18)
     verification: billing terms are vendor statements; boost/manual-RBF cross-checked against public help center article 23508430639516
     sha256: 2f40a8fee03ca3602649457afa7c44c8b3acc79a89eb9b39b3d98bc427d903bd
+  - id: FB-SUP-005
+    file: 2026-08-28__key-link-thales-luna-qna.md
+    provenance: normalized snapshot of user-provided Fireblocks CSM technical and commercial Q&A (received 2026-08-28)
+    verification: vendor statements; Luna firmware values are second-hand citations of a Thales integration guide and require procurement-time confirmation
+    sha256: a879626067ebc3eb74c5efd9d407f5825bbc7cee614780c050a7bf903f9df96b
