@@ -15,6 +15,11 @@ if [ ! -x "$WRANGLER_BIN" ]; then
   exit 1
 fi
 
+if [ -f .dev.vars ]; then
+  echo "⚠  사용하지 않는 .dev.vars가 남아 있습니다. 다른 이름으로 옮기거나 삭제한 뒤 다시 실행하세요."
+  exit 1
+fi
+
 # 로컬 문서 경로 — wrangler.toml 의 DOCS_PATH(저장소 루트 기준) 를 파일시스템 절대경로로 환산
 # (grep 무매치가 pipefail+set -e 로 스크립트를 죽이지 않도록 || true 로 보호)
 DOCS_PATH="$(grep -E '^DOCS_PATH[[:space:]]*=' wrangler.toml 2>/dev/null | head -1 | sed -E 's/[^=]*=[[:space:]]*"?([^"#]*)"?.*/\1/' | tr -d '\r' | sed 's/[[:space:]]*$//' || true)"

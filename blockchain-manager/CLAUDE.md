@@ -136,7 +136,7 @@ date: 2026-07-19               # 선택: 카드에 고정할 작성일(YYYY-MM-D
   wiki raw source 전체가 유출된다.
 - ★ **wrangler 커밋 메시지는 ASCII 만** — `--commit-message="<ASCII-only>"` 필수 (한글 시 Invalid UTF-8 거절).
 - 런타임 비밀값은 사용하지 않는다. GitHub 토큰도 필요 없다. 예전 `.dev.vars*`·`.env*` 파일은
-  실수로 커밋되지 않도록 `.gitignore`로 차단하며, `wrangler.toml`의 빈 `secrets.required` 목록으로 바인딩하지 않는다.
+  실수로 커밋되지 않도록 `.gitignore`로 차단한다. 앱 루트에 예전 `.dev.vars`가 남아 있으면 `dev.sh`가 기동을 중단한다.
 - 상태·순서는 KV 에 저장되므로 칸반 조작이 더는 git 커밋을 만들지 않는다. 문서 내용 편집만 커밋 대상.
 - `.wrangler/` 로컬 상태가 깨지면(예: `_cf_ALARM` SQLite 오류) `rm -rf .wrangler` 후 재기동.
 
