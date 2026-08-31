@@ -11,13 +11,14 @@
 //   node scripts/export-board.mjs --only "디지털 자산,블록체인매니저/API,컴플라이언스/API" --out ../digital-assets.html
 //   node scripts/export-board.mjs --with-ref            → 참고 문서(ref:)까지 포함
 //     --only : 지정한 대카테고리(또는 대/중카테고리)만 담는다 — embed 뷰어도 그 카드 것만 내장
-import { access, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { join, resolve, relative, sep, dirname } from 'node:path';
+import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { assembleBoardHtml, attachCardMeta, excludeRefDocs } from '../public/export.js';
+import { buildBoardBase, materializeBoard, parseFrontmatter } from './docs-data.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PUB = join(HERE, '..', 'public');
@@ -33,27 +34,6 @@ const DOCS_PATH = (args.get('docs-path') || 'blockchain-manager/docs').replace(/
 const FROM = args.get('from') || 'http://127.0.0.1:8788';
 const OUT = resolve(HERE, args.get('out') || '../../board.html');
 const execFileAsync = promisify(execFile);
-
-const STATUSES = ['To Do', 'In Progress', 'Done', '아카이브'];
-const norm = (s) => (STATUSES.includes(s) ? s : 'To Do');
-const isMd = (n) => n.endsWith('.md');
-
-function parseFrontmatter(text) {
-  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(text);
-  if (!m) return { meta: {}, body: text };
-  const meta = {};
-  for (const line of m[1].split(/\r?\n/)) {
-    const kv = /^([A-Za-z_][\w-]*):\s*(.*)$/.exec(line);
-    if (kv) meta[kv[1]] = kv[2].trim().replace(/^["']|["']$/g, '');
-  }
-  return { meta, body: text.slice(m[0].length) };
-}
-
-function cardDate(meta, fallback) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(meta.date || '')
-    ? `${meta.date}T00:00:00.000Z`
-    : fallback;
-}
 
 function mermaidJobs(data) {
   const fence = /^```mermaid\s*\r?\n([\s\S]*?)\r?\n```\s*$/gim;
@@ -145,82 +125,9 @@ mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'stric
   }
 }
 
-async function entries(dir) {
-  try {
-    return await readdir(dir, { withFileTypes: true });
-  } catch {
-    return [];
-  }
-}
-
-// order 배열 기준 정렬 — 없는 항목은 뒤에 가나다순 (board.js 의 byManifest 와 동일)
-function byManifest(items, order) {
-  const idx = (x) => {
-    const i = (order || []).indexOf(x);
-    return i === -1 ? Number.MAX_SAFE_INTEGER : i;
-  };
-  return [...items].sort((a, b) => {
-    const d = idx(a) - idx(b);
-    return d !== 0 ? d : a.localeCompare(b);
-  });
-}
-
-async function card(absFile, category, subcategory) {
-  const raw = await readFile(absFile, 'utf8');
-  const { meta, body } = parseFrontmatter(raw);
-  const summary = body
-    .split(/\r?\n/)
-    .map((s) => s.trim())
-    .filter((s) => s && !s.startsWith('#'))
-    .slice(0, 2);
-  const st = await stat(absFile);
-  const name = absFile.split(sep).pop();
-  return {
-    path: `${DOCS_PATH}/${relative(DIR, absFile).split(sep).join('/')}`,
-    name,
-    title: meta.title || name.replace(/\.md$/, ''),
-    category,
-    subcategory,
-    status: norm(meta.status),
-    view: meta.view || '',
-    embed: meta.embed || '',
-    group: meta.group || '',
-    summary,
-    updatedAt: cardDate(meta, st.mtime.toISOString()),
-  };
-}
-
 // /api/board 와 같은 모양을 파일시스템에서 만든다 (상태 = frontmatter seed)
 async function buildBoardFromFs() {
-  const treeDirs = {};
-  const cards = [];
-  let order = { categories: [], subcategories: {} };
-  try {
-    order = JSON.parse(await readFile(join(DIR, '.board-order.json'), 'utf8'));
-  } catch {
-    /* 없으면 가나다순 */
-  }
-
-  for (const cat of (await entries(DIR)).filter((e) => e.isDirectory())) {
-    const catDir = join(DIR, cat.name);
-    const inCat = await entries(catDir);
-    treeDirs[cat.name] = inCat.filter((e) => e.isDirectory()).map((e) => e.name);
-    for (const f of inCat.filter((e) => e.isFile() && isMd(e.name))) {
-      cards.push(await card(join(catDir, f.name), cat.name, ''));
-    }
-    for (const sub of inCat.filter((e) => e.isDirectory())) {
-      for (const f of (await entries(join(catDir, sub.name))).filter((e) => e.isFile() && isMd(e.name))) {
-        cards.push(await card(join(catDir, sub.name, f.name), cat.name, sub.name));
-      }
-    }
-  }
-
-  const tree = {};
-  for (const cat of byManifest(Object.keys(treeDirs), order.categories)) {
-    tree[cat] = byManifest(treeDirs[cat], order.subcategories && order.subcategories[cat]);
-  }
-  cards.sort((a, b) => a.name.localeCompare(b.name));
-  return { tree, cards };
+  return materializeBoard(await buildBoardBase({ dir: DIR, docsPath: DOCS_PATH }));
 }
 
 // --- 1) 보드 데이터: 실행 중인 앱 우선, 없으면 fs ---

@@ -1,12 +1,10 @@
 import {
-  ghRaw,
   json,
-  GhError,
-  encodePath,
   parseFrontmatter,
   normalizeStatus,
   validDocPath,
-  requireEnv,
+  requireDocsConfig,
+  generatedDocAssetUrl,
   STATUSES,
   readState,
   putState,
@@ -15,6 +13,8 @@ import {
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const path = url.searchParams.get('path');
+  const bad = requireDocsConfig(env);
+  if (bad) return bad;
   if (!validDocPath(env, path)) return json({ error: '잘못된 path' }, 400);
 
   try {
@@ -22,15 +22,14 @@ export async function onRequestGet({ request, env }) {
     if (env.LOCAL_DOCS_URL) {
       // 로컬 모드: 사이드카가 파일시스템에서 읽은 원문을 쓴다 (push 불필요)
       const r = await fetch(`${env.LOCAL_DOCS_URL}/doc?path=${encodeURIComponent(path)}`);
-      if (!r.ok) throw new GhError(r.status, await r.text());
+      if (!r.ok) return json({ error: await r.text() }, r.status === 404 ? 404 : 500);
       raw = await r.text();
     } else {
-      const bad = requireEnv(env);
-      if (bad) return bad;
-      const owner = env.GITHUB_OWNER;
-      const repo = env.GITHUB_REPO;
-      const branch = env.GITHUB_BRANCH || 'main';
-      raw = await ghRaw(env, `/repos/${owner}/${repo}/contents/${encodePath(path)}?ref=${encodeURIComponent(branch)}`);
+      const asset = await env.ASSETS.fetch(generatedDocAssetUrl(request, env, path));
+      if (!asset.ok) {
+        return json({ error: `문서 자산 ${asset.status}` }, asset.status === 404 ? 404 : 500);
+      }
+      raw = await asset.text();
     }
     const state = await readState(env);
     const { meta, body } = parseFrontmatter(raw);
@@ -47,14 +46,13 @@ export async function onRequestGet({ request, env }) {
       raw, // 복사·다운로드용 원문 (frontmatter 포함)
     });
   } catch (e) {
-    const status = e instanceof GhError ? (e.status === 404 ? 404 : 502) : 500;
-    return json({ error: String(e.message || e) }, status);
+    return json({ error: String(e.message || e) }, 500);
   }
 }
 
 // 상태 변경은 git 커밋이 아니라 KV(BOARD) 오버레이에 기록한다 — 커밋 노이즈 0.
 export async function onRequestPatch({ request, env }) {
-  const bad = requireEnv(env);
+  const bad = requireDocsConfig(env);
   if (bad) return bad;
 
   let payload;

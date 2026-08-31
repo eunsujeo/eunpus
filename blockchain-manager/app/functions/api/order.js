@@ -1,10 +1,7 @@
-import { json, requireEnv, readState, putState } from './_lib.js';
+import { json, readState, putState } from './_lib.js';
 
 // 대·중카테고리 순서를 KV(BOARD) 오버레이에 기록한다 — 커밋 없음.
 export async function onRequestPut({ request, env }) {
-  const bad = requireEnv(env);
-  if (bad) return bad;
-
   let payload;
   try {
     payload = await request.json();

@@ -1,13 +1,14 @@
 name = "blockchain-manager"
-compatibility_date = "2026-01-01"
+compatibility_date = "2026-08-31"
 pages_build_output_dir = "public"
 
-# GITHUB_TOKEN 은 secret 으로만 관리 (dashboard 또는 wrangler pages secret put)
+# 문서 논리 경로. 원문은 배포 전에 public/_generated 정적 자산으로 생성한다.
 [vars]
-GITHUB_OWNER = "eunsujeo"
-GITHUB_REPO = "eunpus"
-GITHUB_BRANCH = "main"
 DOCS_PATH = "blockchain-manager/docs"
+
+# 런타임 비밀값은 사용하지 않는다. 로컬에 예전 .dev.vars가 남아 있어도 바인딩하지 않는다.
+[secrets]
+required = []
 
 # 상태·순서 오버레이용 KV. 로컬은 `wrangler pages dev public --kv BOARD` 로 대체 가능.
 [[kv_namespaces]]

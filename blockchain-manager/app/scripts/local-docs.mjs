@@ -4,8 +4,9 @@
 // LOCAL_DOCS_URL 이 설정된 로컬 모드에서만 쓰이며 배포에는 포함되지 않는다.
 // 매 요청마다 fs 를 새로 읽으므로, 문서를 고치면 브라우저 새로고침만으로 반영된다(커밋·push 불필요).
 import { createServer } from 'node:http';
-import { readFile, readdir, stat } from 'node:fs/promises';
-import { join, resolve, relative, sep } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { buildBoardBase, resolveDocPath } from './docs-data.mjs';
 
 const args = new Map();
 for (let i = 2; i < process.argv.length; i += 2) {
@@ -15,110 +16,18 @@ const DIR = resolve(args.get('dir') || '../docs'); // docs 폴더 절대경로
 const DOCS_PATH = (args.get('docs-path') || 'blockchain-manager/docs').replace(/\/+$/, ''); // 논리 prefix
 const PORT = Number(args.get('port') || 8790);
 
-const STATUSES = ['To Do', 'In Progress', 'Done', '아카이브'];
-const norm = (s) => (STATUSES.includes(s) ? s : 'To Do');
-const isMd = (n) => n.endsWith('.md');
-
-function parseFrontmatter(text) {
-  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(text);
-  if (!m) return { meta: {}, body: text };
-  const meta = {};
-  for (const line of m[1].split(/\r?\n/)) {
-    const kv = /^([A-Za-z_][\w-]*):\s*(.*)$/.exec(line);
-    if (kv) meta[kv[1]] = kv[2].trim().replace(/^["']|["']$/g, '');
-  }
-  return { meta, body: text.slice(m[0].length) };
-}
-
-function cardDate(meta, fallback) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(meta.date || '')
-    ? `${meta.date}T00:00:00.000Z`
-    : fallback;
-}
-
-async function entries(dir) {
-  try {
-    return await readdir(dir, { withFileTypes: true });
-  } catch {
-    return [];
-  }
-}
-
-function toLogicalPath(absFile) {
-  return `${DOCS_PATH}/${relative(DIR, absFile).split(sep).join('/')}`;
-}
-
-async function card(absFile, category, subcategory) {
-  const raw = await readFile(absFile, 'utf8');
-  const { meta, body } = parseFrontmatter(raw);
-  const summary = body
-    .split(/\r?\n/)
-    .map((s) => s.trim())
-    .filter((s) => s && !s.startsWith('#'))
-    .slice(0, 2);
-  const st = await stat(absFile);
-  const name = absFile.split(sep).pop();
-  return {
-    path: toLogicalPath(absFile),
-    name,
-    title: meta.title || name.replace(/\.md$/, ''),
-    category,
-    subcategory,
-    seedStatus: norm(meta.status), // frontmatter 기본값 — 라이브 status 는 KV 오버레이
-    view: meta.view || '', // 'doc' = 원문, 'grid' = 상태 컬럼 없는 카드 목록
-    embed: meta.embed || '', // 앱 public/ 내 HTML — iframe 으로 원본 뷰어를 그대로 띄운다
-    group: meta.group || '', // grid 뷰의 카드 묶음 제목
-    summary,
-    updatedAt: cardDate(meta, st.mtime.toISOString()),
-  };
-}
-
-// board.js 의 buildBase 와 같은 모양을 파일시스템에서 만든다.
-async function buildBoard() {
-  const treeDirs = {};
-  const cards = [];
-  let gitOrder = null;
-  try {
-    gitOrder = JSON.parse(await readFile(join(DIR, '.board-order.json'), 'utf8'));
-  } catch {
-    /* 없으면 null */
-  }
-
-  for (const cat of (await entries(DIR)).filter((e) => e.isDirectory())) {
-    const catDir = join(DIR, cat.name);
-    const inCat = await entries(catDir);
-    treeDirs[cat.name] = inCat.filter((e) => e.isDirectory()).map((e) => e.name);
-    for (const f of inCat.filter((e) => e.isFile() && isMd(e.name))) {
-      cards.push(await card(join(catDir, f.name), cat.name, ''));
-    }
-    for (const sub of inCat.filter((e) => e.isDirectory())) {
-      const subDir = join(catDir, sub.name);
-      for (const f of (await entries(subDir)).filter((e) => e.isFile() && isMd(e.name))) {
-        cards.push(await card(join(subDir, f.name), cat.name, sub.name));
-      }
-    }
-  }
-  return { treeDirs, cards, gitOrder };
-}
-
-// 논리 path → 절대 파일경로. docs 폴더 밖 접근 차단.
-function resolveDocPath(logical) {
-  if (typeof logical !== 'string' || !logical.startsWith(DOCS_PATH + '/') || logical.includes('..')) {
-    return null;
-  }
-  const abs = resolve(DIR, logical.slice(DOCS_PATH.length + 1));
-  if (abs !== DIR && !abs.startsWith(DIR + sep)) return null;
-  return abs;
-}
-
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://127.0.0.1:${PORT}`);
   try {
     if (url.pathname === '/board') {
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.end(JSON.stringify(await buildBoard()));
+      res.end(JSON.stringify(await buildBoardBase({ dir: DIR, docsPath: DOCS_PATH })));
     } else if (url.pathname === '/doc') {
-      const abs = resolveDocPath(url.searchParams.get('path'));
+      const abs = resolveDocPath({
+        dir: DIR,
+        docsPath: DOCS_PATH,
+        logicalPath: url.searchParams.get('path'),
+      });
       if (!abs) {
         res.statusCode = 400;
         res.end('bad path');

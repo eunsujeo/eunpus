@@ -6,8 +6,8 @@
 
 ## 1. 정체성
 
-- **무엇**: GitHub 저장소의 마크다운 문서를 칸반보드로 보여주고, 드래그로 상태를 바꾸면
-  GitHub API 로 frontmatter 를 커밋해 실제 반영하는 웹앱 + 관리 대상 문서 묶음.
+- **무엇**: 저장소의 마크다운 문서를 칸반보드로 보여주는 웹앱 + 관리 대상 문서 묶음.
+  문서 원문은 배포 전에 정적 자산으로 만들고, 드래그로 바꾼 상태·순서는 KV에 저장한다.
 - **배포**: Cloudflare Pages (정적 프론트 + Pages Functions).
 - **첫 문서 세트**: `docs-site/wallet-design-walkthrough/` 11개 장을 요약한 마크다운 문서.
 
@@ -25,9 +25,10 @@ blockchain-manager/
   sources/                   ← 독립 모듈 리서치 원본. 날짜별 immutable snapshot + manifest
     travel-rule-solutions/   ← BC/트래블룰솔루션 카드의 공식 원문과 SHA-256
   app/                       ← 웹앱. Cloudflare Pages 프로젝트 루트.
-    public/                  ← 정적 프론트엔드 (빌드 스텝 없음)
-    functions/api/           ← Pages Functions. GitHub API 프록시 (토큰은 서버사이드만)
-    .dev.vars.example        ← 로컬 개발 환경변수 템플릿 (.dev.vars 는 git 커밋 금지)
+    public/                  ← 정적 프론트엔드 + 배포 직전 생성하는 _generated 문서 자산
+    functions/api/           ← Pages Functions. 정적 문서 조회 + KV 오버레이
+    scripts/                 ← 문서 자산 생성·로컬 사이드카·HTML 내보내기
+    package.json             ← 로컬 Wrangler 버전 고정
 ```
 
 ## 3. 문서 규약 (docs/)
@@ -67,8 +68,8 @@ date: 2026-07-19               # 선택: 카드에 고정할 작성일(YYYY-MM-D
 - ★ **추측 금지** — 확인 안 된 필드·값·동작·순서를 문서에 쓰지 않는다. 원본(공식 스펙·확정 결정)에서
   확인되면 쓰고, 확인 불가면 생략하거나 "확인 필요/미확정" 절에만 둔다. 그럴듯한 부연을 지어내지 않는다.
 - 카드 요약은 frontmatter 다음 본문 첫 2줄에서 자동 추출 — 문서 첫 단락을 요약답게 쓸 것.
-- 카드 날짜는 기본적으로 GitHub 마지막 커밋일을 사용한다. 작성일을 고정해야 하는 문서만 frontmatter의
-  `date: YYYY-MM-DD`를 쓰며, 로컬·GitHub·정적 HTML 모두 이 값을 우선한다.
+- 카드 날짜는 기본적으로 로컬 git의 파일 마지막 커밋일을 빌드 시 기록한다. 작성일을 고정해야 하는 문서만
+  frontmatter의 `date: YYYY-MM-DD`를 쓰며, 로컬 앱·배포 앱·정적 HTML 모두 이 값을 우선한다.
 - **리서치 카드의 원본 분리** — 조사 결과는 `docs/`, 공식 원문은 `sources/<topic>/` 에 둔다.
   원본은 날짜가 붙은 snapshot 으로 보존하고 덮어쓰지 않는다. 각 source ID 의 URL·수집일·자료 등급·SHA-256은
   `manifest.yml` 에 기록한다. 카드의 사실은 source ID와 공식 URL 또는 원문 절에 연결하고, 가격·SLA·도달성처럼
@@ -82,22 +83,19 @@ date: 2026-07-19               # 선택: 카드에 고정할 작성일(YYYY-MM-D
 - **프론트**: 프레임워크 없는 정적 HTML/JS/CSS. 4컬럼 (To Do / In Progress / Done / 아카이브),
   HTML5 드래그앤드롭, 카드 클릭 시 마크다운 미리보기 모달.
 - **API (Pages Functions)**:
-  - `GET /api/board` — docs/ 트리 + 카드(제목·요약·수정일) + KV 상태·순서 오버레이 적용
-  - `GET /api/doc?path=<file>` — 문서 원문 (미리보기). status 는 KV 오버레이 적용
+  - `GET /api/board` — 빌드된 정적 board 데이터 + KV 상태·순서 오버레이 적용
+  - `GET /api/doc?path=<file>` — 빌드된 정적 문서 원문 (미리보기). status 는 KV 오버레이 적용
   - `PATCH /api/doc` — status 를 **KV(BOARD)** 에 기록 (커밋 없음)
   - `PUT /api/order` — 대·중카테고리 순서를 **KV(BOARD)** 에 기록 (커밋 없음)
 - **상태·순서 저장 = KV 오버레이.** 단일 키 `state` = `{ statuses: {<path>: status}, order: {categories, subcategories} }`.
   문서 마크다운은 git 이 정본, 자주 바뀌는 상태만 KV. 순서는 KV → git `.board-order.json`(seed) → 가나다 순 fallback.
-- **GitHub 토큰은 브라우저에 절대 노출하지 않는다.** 모든 GitHub 호출은 Functions 가 대행.
+- **런타임 GitHub API를 사용하지 않는다.** 배포 전에 `docs/`를 `public/_generated/` 정적 자산으로 만들며,
+  Functions 는 ASSETS binding으로 읽는다. 생성 자산의 직접 URL 접근은 막고 `/api/*`로만 제공한다.
 
-### 환경변수 / 바인딩 (Cloudflare Pages 설정 / 로컬 .dev.vars·플래그)
+### 환경변수 / 바인딩 (Cloudflare Pages 설정 / 로컬 Wrangler)
 
 | 변수·바인딩 | 값 예시 | 설명 |
 |---|---|---|
-| `GITHUB_TOKEN` | (secret) | Fine-grained PAT. 대상 저장소 Contents Read/Write 권한만 |
-| `GITHUB_OWNER` | `eunsujeo` | 저장소 소유자 |
-| `GITHUB_REPO` | `eunpus` | 저장소 이름 |
-| `GITHUB_BRANCH` | `main` | 대상 브랜치 |
 | `DOCS_PATH` | `blockchain-manager/docs` | 문서 폴더 경로 |
 | `BOARD` (KV) | (namespace) | 상태·순서 오버레이. 로컬 `--kv BOARD`, 배포 시 KV namespace 바인딩 |
 
@@ -137,7 +135,8 @@ date: 2026-07-19               # 선택: 카드에 고정할 작성일(YYYY-MM-D
 - ★ **wrangler 는 반드시 `blockchain-manager/app/` 에서만 실행** — 저장소 루트에서 배포하면
   wiki raw source 전체가 유출된다.
 - ★ **wrangler 커밋 메시지는 ASCII 만** — `--commit-message="<ASCII-only>"` 필수 (한글 시 Invalid UTF-8 거절).
-- ★ **`.dev.vars` (실제 토큰) 은 git 에 커밋 금지** — `.gitignore` 로 차단.
+- 런타임 비밀값은 사용하지 않는다. GitHub 토큰도 필요 없다. 예전 `.dev.vars*`·`.env*` 파일은
+  실수로 커밋되지 않도록 `.gitignore`로 차단하며, `wrangler.toml`의 빈 `secrets.required` 목록으로 바인딩하지 않는다.
 - 상태·순서는 KV 에 저장되므로 칸반 조작이 더는 git 커밋을 만들지 않는다. 문서 내용 편집만 커밋 대상.
 - `.wrangler/` 로컬 상태가 깨지면(예: `_cf_ALARM` SQLite 오류) `rm -rf .wrangler` 후 재기동.
 
@@ -148,8 +147,8 @@ KV 바인딩은 `wrangler.toml` 의 `[[kv_namespaces]] binding = "BOARD"` 로 �
 
 ```bash
 cd blockchain-manager/app
-cp .dev.vars.example .dev.vars   # 최초 1회 — 토큰 채우기
 
+npm ci            # 최초 1회: 프로젝트에 고정된 Wrangler 설치 (Node.js 22 이상)
 ./dev.sh          # 로컬 기동 (포트·캐시 정리 포함). http://localhost:8788
 ./dev.sh clean    # 캐시 손상(_cf_ALARM·middleware build 오류) 시 .wrangler 전체 초기화 후 기동
 
@@ -159,11 +158,13 @@ cp .dev.vars.example .dev.vars   # 최초 1회 — 토큰 채우기
 #   빠진 문서를 가리키던 링크는 라벨만 남긴 평문으로 바뀐다. 포함하려면 --with-ref.
 node scripts/export-board.mjs
 
+# 배포 준비 — docs 원문과 board metadata를 public/_generated 에 생성(산출물은 git 제외)
+npm run build:docs
+
 # 배포 (사용자 지시 후에만) — toml 이 BOARD KV 를 함께 바인딩
-npx wrangler pages deploy public --project-name=blockchain-manager \
+npm exec wrangler -- pages deploy public --project-name=blockchain-manager \
   --commit-message="deploy blockchain manager kanban"
-npx wrangler pages secret put GITHUB_TOKEN --project-name=blockchain-manager
 ```
 
-`dev.sh` 가 하는 일: `.dev.vars` 확인 → 남은 wrangler·포트 점유 정리 → `.wrangler/tmp` 비움
-(로컬 KV state 는 보존; `clean` 인자면 `.wrangler` 전체 삭제) → `wrangler pages dev` 기동.
+`dev.sh` 가 하는 일: 남은 wrangler·포트 점유 정리 → `.wrangler/tmp` 비움
+(로컬 KV state 는 보존; `clean` 인자면 `.wrangler` 전체 삭제) → 로컬 docs 사이드카와 `wrangler pages dev` 기동.
