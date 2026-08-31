@@ -15,4 +15,4 @@ date: 2026-08-31
 발표 자료는 통신·저장·백업·인증의 전환 순서를 제시하지만, 국내 금융회사가 어느 범위까지 마쳐야 전환 완료로 인정되는지는 다루지 않는다.
 
 **Q3. 서명 키의 하이브리드 (전통+PQC 병행) 적용 사례를 보고 있나?**
-Fireblocks 의 하이브리드 채택 여부·key backup 평면은 공개 자료에 없어 wiki open question 으로 추적 중이다 ([월렛 PQC 전환](01-wallet-pqc-transition.md) 확인할 항목 절). 업계 일반의 흐름을 세미나에서 들을 수 있으면 참고로 기록한다.
+Fireblocks 의 하이브리드 채택 여부·key backup 평면은 공개 자료에 없어 wiki open question 으로 추적 중이다 ([월렛 PQC 전환](01-wallet-pqc-transition.md) 확인할 항목 절). 벤더가 지원하는 병행 방식과 적용 범위를 별도로 확인한다.
