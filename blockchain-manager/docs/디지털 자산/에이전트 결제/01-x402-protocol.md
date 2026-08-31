@@ -140,6 +140,6 @@ merchant 는 verify 만 먼저 호출해 콘텐츠를 줄지 판단하고, settl
 
 ## v1 과 v2
 
-v2 에서 네트워크 식별자가 CAIP-2 형식이 됐고 PaymentRequired·PaymentPayload 구조가 재편성됐으며(ResourceInfo 분리) extensions 확장이 추가됐다. AWS AgentCore payments 는 두 버전을 모두 지원한다.
+v2 에서 네트워크 식별자가 CAIP-2 형식이 됐고 PaymentRequired·PaymentPayload 구조가 재편성됐으며(ResourceInfo 분리) extensions 확장이 추가됐다. AgentCore Payments는 두 버전을 모두 지원한다.
 
 출처: [x402 v2 원문 스펙 (기준 고정본)](https://github.com/x402-foundation/x402/blob/7d5363a6d51750dc246041f2b0ed5819dd46a0d7/specs/x402-specification-v2.md) · [x402 공식 저장소](https://github.com/x402-foundation/x402)

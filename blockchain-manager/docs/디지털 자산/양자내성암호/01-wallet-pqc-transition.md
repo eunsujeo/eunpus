@@ -41,10 +41,10 @@ flowchart LR
 
 현재 조치는 주소 위생이다: P2WPKH 기본값 (지출 전까지 공개키 은닉), 주소 재사용 금지, Fireblocks Network 의 자동 주소 로테이션. at-rest 공격 면적을 줄이는 지금의 방어다. 전체 PQC 전략 문서는 2026 하반기 공개 예고.
 
-## 한컴위드의 접근 — 지금 가능한 평면부터
+## 통신 보안 제품의 접근 — 지금 가능한 평면부터
 
-한컴 엑스에프웹(xFWeb)은 월렛이 아니라 웹 통신 구간 제품이지만, "지금 가능한 평면" 전환의 사례다: 기존 TLS 채널 위에 **애플리케이션 계층의 PQC 암호 통신을 얹는 계층형 하이브리드** — 인프라 전면 교체 없이 HNDL 에 대응한다. **암호 민첩성** 기반 설계로 레거시 수정을 최소화하고 KCMVP 암호 모듈에 KCMVP 검증은 아직 받지 않은 PQC 알고리즘 모듈을 추가 개발해 자사 디지털 금융 플랫폼(온토리움 등)에 적용한다는 전략이다.
+xFWeb은 월렛이 아니라 웹 통신 구간 제품이지만, "지금 가능한 평면" 전환의 사례다: 기존 TLS 채널 위에 **애플리케이션 계층의 PQC 암호 통신을 얹는 계층형 하이브리드** — 인프라 전면 교체 없이 HNDL 에 대응한다. **암호 민첩성** 기반 설계로 레거시 수정을 최소화하고 KCMVP 암호 모듈에 KCMVP 검증은 아직 받지 않은 PQC 알고리즘 모듈을 추가 개발해 디지털 금융 플랫폼에 적용한다는 전략이다.
 
 두 회사의 방향은 같다 — 서명 키(체인 종속)는 기다리며 준비하고 통신·저장(HNDL 대상)은 하이브리드로 지금 전환한다.
 
-출처: [Fireblocks 공식 블로그](https://www.fireblocks.com/blog/google-quantum-research-institutional-crypto-security) · [한컴 xFWeb 출시 기사](https://www.dailysecu.com/news/articleView.html?idxno=207405) · [한컴위드 THE SHIFT 기사](https://www.newstheai.com/news/articleView.html?idxno=20703).
+출처: [Fireblocks 공식 블로그](https://www.fireblocks.com/blog/google-quantum-research-institutional-crypto-security) · [xFWeb 출시 기사](https://www.dailysecu.com/news/articleView.html?idxno=207405) · [PQC 발표회 기사](https://www.newstheai.com/news/articleView.html?idxno=20703).

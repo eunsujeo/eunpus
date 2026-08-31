@@ -1,5 +1,5 @@
 ---
-title: AWS의 Web3 키 격리와 AI 에이전트 결제 구조
+title: Web3 키 격리와 AI 에이전트 결제 구조
 status: Done
 date: 2026-08-31
 view: grid
@@ -8,7 +8,7 @@ group: 에이전트 결제
 
 # 평문 키를 노출하지 않는 서명과 자율 결제
 
-AWS 담당자의 「Do Agents Dream of Electronic Payments?」 발표는 Web3 월렛 키 관리와 AI 에이전트 결제를 하나의 실행 구조로 연결한다. 첫 부분은 KMS와 Nitro Enclaves를 이용해 개인키 평문을 격리하고, 두 번째 부분은 AgentCore Payments와 x402를 이용해 한도 안에서 결제를 자동 실행하는 구조다.
+「Do Agents Dream of Electronic Payments?」 발표는 Web3 월렛 키 관리와 AI 에이전트 결제를 하나의 실행 구조로 연결한다. 첫 부분은 KMS와 Nitro Enclaves를 이용해 개인키 평문을 격리하고, 두 번째 부분은 AgentCore Payments와 x402를 이용해 한도 안에서 결제를 자동 실행하는 구조다.
 
 ## Web3 키 관리 선택지
 
@@ -39,7 +39,7 @@ sequenceDiagram
     participant S as S3<br/>암호화된 키 저장
     participant P as EC2 부모 인스턴스
     participant E as Nitro Enclave
-    participant K as AWS KMS
+    participant K as KMS
     B->>B: secp256k1 개인키 생성
     B->>K: CMK로 개인키 암호화 요청
     K-->>B: 암호화된 개인키 blob
@@ -59,7 +59,7 @@ secp256k1 개인키는 32바이트 데이터 키이며, KMS 고객 관리 키(CM
 
 ## PCR0가 통제하는 실행 코드
 
-PCR0는 Enclave Image File(EIF), 즉 enclave에서 실행할 코드와 운영체제 이미지 전체의 SHA-384 측정값이다. 한 바이트만 달라도 값이 달라진다. attestation 문서에는 PCR 값, enclave 공개키와 nonce가 들어가고 AWS 루트 인증서로 서명되어 위조할 수 없다. KMS 키 정책의 `RecipientAttestation:PCR0` 조건과 일치하면 `Decrypt`를 허용하고, 불일치하면 승인되지 않은 코드로 판단해 거부한다.
+PCR0는 Enclave Image File(EIF), 즉 enclave에서 실행할 코드와 운영체제 이미지 전체의 SHA-384 측정값이다. 한 바이트만 달라도 값이 달라진다. attestation 문서에는 PCR 값, enclave 공개키와 nonce가 들어가고 서비스 루트 인증서로 서명되어 위조할 수 없다. KMS 키 정책의 `RecipientAttestation:PCR0` 조건과 일치하면 `Decrypt`를 허용하고, 불일치하면 승인되지 않은 코드로 판단해 거부한다.
 
 같은 바이트의 EIF에서는 배포 시간·인스턴스·리전이 달라도 같은 PCR0가 나온다. PCR0가 달라 보이는 원인은 세 가지다.
 
@@ -88,7 +88,7 @@ PCR0는 Enclave Image File(EIF), 즉 enclave에서 실행할 코드와 운영체
 | Browser | 관리형 브라우저 자동화 |
 | Payments | 결제 세션과 서명·결제 처리 |
 
-지갑은 Coinbase CDP 또는 Stripe Privy를 연결하고, 외부 지갑 credential은 Identity에서 관리한다. 에이전트 코드가 지갑 비밀 값을 직접 보관하지 않는다.
+지갑은 지원되는 외부 지갑 커넥터를 연결하고, credential은 Identity에서 관리한다. 에이전트 코드가 지갑 비밀 값을 직접 보관하지 않는다.
 
 ## HTTP 402 결제 핸드셰이크
 
@@ -108,7 +108,7 @@ sequenceDiagram
 
 이 그림은 발표 자료가 제시한 x402 핸드셰이크의 요약이다. 발표 자료는 x402와 MPP가 모두 HTTP `402 Payment Required`를 사용하며, 요청 수신부터 지갑 서명과 결제 증명 반환까지 에이전트 측 전 과정을 관리한다고 설명한다.
 
-PaymentSession은 `maxSpendAmount`와 만료 시간으로 에이전트가 사용할 수 있는 범위를 제한하고 초과 시 거절한다. 지갑은 Coinbase CDP 또는 Stripe Privy를 사용하며 credential은 AgentCore Identity에 보관한다.
+PaymentSession은 `maxSpendAmount`와 만료 시간으로 에이전트가 사용할 수 있는 범위를 제한하고 초과 시 거절한다. 지갑 credential은 AgentCore Identity에 보관한다.
 
 ## EIP-3009 서명과 온체인 정산
 
@@ -155,7 +155,7 @@ flowchart LR
     LIMIT -->|통과| TESTS[계획한 순서로 OFAC·AML·KYC를<br/>x402 호출·결제]
     LIMIT -->|초과| STOP[자산 이전 전 중단<br/>지출 0]
     TESTS --> RESULT{세 검사 결과}
-    RESULT -->|모두 통과| TRANSFER[원금 AWSD와 수수료 USDC 송금]
+    RESULT -->|모두 통과| TRANSFER[원금 스테이블코인과 수수료 USDC 송금]
     RESULT -->|하나라도 불통과| STOP
 ```
 
@@ -165,7 +165,7 @@ flowchart LR
 | AML | 자금세탁 방지 스크리닝 | 0.20 USDC |
 | OFAC | 제재 대상 조회 | 0.05 USDC |
 
-결제 전에 로컬 정책 게이트가 원금 한도와 수수료 한도를 모두 확인한다. PaymentSession에서 지출 한도와 결제 그룹을 적용한다. 세 검사와 정책 한도를 모두 통과해야 원금 AWSD와 수수료 USDC를 송금한다. 한도 초과나 검사 불통과 시 지출 0으로 중단하고, 승인권자가 조건을 해제한 뒤 다음 시도에서 다시 진행할 수 있다.
+결제 전에 로컬 정책 게이트가 원금 한도와 수수료 한도를 모두 확인한다. PaymentSession에서 지출 한도와 결제 그룹을 적용한다. 세 검사와 정책 한도를 모두 통과해야 원금 스테이블코인과 수수료 USDC를 송금한다. 한도 초과나 검사 불통과 시 지출 0으로 중단하고, 승인권자가 조건을 해제한 뒤 다음 시도에서 다시 진행할 수 있다.
 
 결제 세션과 서명 오케스트레이션은 온체인 정산과 분리된다. 성공한 각 컴플라이언스 결제와 최종 송금은 각각 BaseScan 거래로 남아 `감사 1건 = 거래 1건`으로 확인할 수 있다. CloudWatch와 X-Ray에서는 전체 결제 호출을 추적하고, 온체인에서는 서비스별 수취 지갑을 통해 누가 얼마를 받았는지 확인한다. 발표 예시의 총 검사비는 `0.55 USDC = OFAC 0.05 + AML 0.20 + KYC 0.30`이다.
 
@@ -175,11 +175,11 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    USD[회사가 은행 계좌에 USD 예치] --> MINT[민터가 AWSD 스테이블코인 발행]
+    USD[회사가 은행 계좌에 USD 예치] --> MINT[민터가 스테이블코인 발행]
     MINT --> TREASURY[Treasury 지갑]
     TREASURY -->|CEO·CFO 다중서명 승인| OPER[Operation 지갑]
     OPER --> AGENT[AI 에이전트<br/>KYC·AML·OFAC 수행]
-    AGENT -->|검사 통과 후 AWSD 지급| PARTNER[파트너 지갑]
+    AGENT -->|검사 통과 후 스테이블코인 지급| PARTNER[파트너 지갑]
     INSTRUMENT[Instrument 지갑의 USDC] -->|AgentCore Payments x402 결제| VENDOR[컴플라이언스 벤더 지갑]
 ```
 
@@ -188,13 +188,13 @@ flowchart LR
 ```mermaid
 flowchart LR
     USER[사용자] --> CF[CloudFront]
-    CF <-->|Web ACL| WAF[AWS WAF]
+    CF <-->|Web ACL| WAF[Web Application Firewall]
     CF --> ALB[Application Load Balancer]
     ALB --> PARENT[EC2 부모 인스턴스<br/>Web · API]
     PARENT -->|vsock으로 서명 요청·대사 데이터 전달| ENCLAVE[Nitro Enclave<br/>vsock_server.py · 거래 서명 · 대사]
     PARENT <-->|에이전트 실행 요청·결과| RUNTIME[AgentCore Runtime]
     PAY[AgentCore Payments] -->|plugin| RUNTIME
-    CDP[Coinbase CDP] -->|지갑 연결| PAY
+    WALLET[외부 지갑 인프라] -->|지갑 연결| PAY
     RUNTIME <-->|x402| CONTENT[유료 콘텐츠·API]
     PARENT <-->|Private 연결| VPCE[VPC Endpoints]
     VPCE --> ECR[(ECR)]
@@ -209,4 +209,4 @@ flowchart LR
 2. AI 에이전트는 PaymentSession의 규칙과 예산 안에서만 자율 결제한다.
 3. 결제와 자산 이전 결과를 온체인 거래와 감사 로그로 추적한다.
 
-출처: AWS Korea 김훈 Sr. Solutions Architect, 「Do Agents Dream of Electronic Payments? — Web3 Wallet Key Management & AI Agent Autonomous Payments」 세미나 발표 자료, 19쪽.
+출처: 「Do Agents Dream of Electronic Payments? — Web3 Wallet Key Management & AI Agent Autonomous Payments」 세미나 발표 자료, 19쪽.

@@ -41,7 +41,7 @@ Workspace·Vault·MPC·Policy·자동 서명·Webhook 운영을 여러 문서로
 
 ### [에이전트 결제](../에이전트%20결제/00-overview.md)
 
-x402·MPP 프로토콜과 AWS AgentCore payments 의 승인·서명·정산 분리, KMS·Nitro Enclaves의 Web3 키 격리 구조를 다룬다.
+x402·MPP 프로토콜과 AgentCore Payments의 승인·서명·정산 분리, KMS·Nitro Enclaves의 Web3 키 격리 구조를 다룬다.
 
 ### [양자내성암호](../양자내성암호/00-overview.md)
 

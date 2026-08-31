@@ -7,11 +7,11 @@ view: grid
 
 # 승인·서명·정산의 분리
 
-에이전트 결제는 AI 에이전트가 HTTP 요청 과정에서 유료 자원의 대가를 사람 개입 없이 지불하는 구조다. 여기서 유료 자원은 API·MCP 서버·웹 콘텐츠다. 결제 수단의 중심은 스테이블코인이고 — x402 v2 는 asset 에 법정화폐 통화 코드(ISO 4217)도 허용하며 AWS 는 법정화폐 지원을 로드맵에 두고 있다 — 전통 결제 시스템이 감당하지 못하는 소액(센트 단위 이하) 마이크로트랜잭션이 첫 용도다.
+에이전트 결제는 AI 에이전트가 HTTP 요청 과정에서 유료 자원의 대가를 사람 개입 없이 지불하는 구조다. 여기서 유료 자원은 API·MCP 서버·웹 콘텐츠다. 결제 수단의 중심은 스테이블코인이고 — x402 v2 는 asset 에 법정화폐 통화 코드(ISO 4217)도 허용하며 AgentCore Payments는 법정화폐 지원을 로드맵에 두고 있다 — 전통 결제 시스템이 감당하지 못하는 소액(센트 단위 이하) 마이크로트랜잭션이 첫 용도다.
 
 구체 예로: 리서치 에이전트가 유료 시세 API 를 호출하면, 서버가 데이터 대신 HTTP `402 Payment Required` 와 "이 응답은 0.01 USDC" 라는 결제 요구를 돌려준다. 에이전트는 지갑으로 결제 증명에 서명한 뒤, **실패했던 그 요청을 결제 증명 헤더만 더해 그대로 다시 보내고** 이번에는 데이터를 받는다. 사전 충전·권한 부여(지갑 hub 화면 — 아래 역할 표)를 마친 뒤에는, 개별 결제가 별도 화면 없이 이 왕복 안에서 끝난다 — 402 는 HTTP 표준에 예약만 돼 있던 상태 코드이고 이 프로토콜들이 그 자리를 실제 결제에 사용한다.
 
-사람이 가입해 월정액을 내는 구독(스트리밍 등)을 대체한다기보다, AWS 프리뷰의 초점은 기계가 소비하는 자원의 **건당** 사용이다 — 시세 데이터 조회 1건, 페이월 기사 1건, 유료 MCP tool 호출 1번, 비공개 패키지 레지스트리·샌드박스 실행 환경 (AWS 프리뷰가 명시한 대상). 소비자 구매(항공권·호텔 등)는 AWS 가 확장 로드맵으로만 언급했다.
+사람이 가입해 월정액을 내는 구독(스트리밍 등)을 대체한다기보다, 프리뷰의 초점은 기계가 소비하는 자원의 **건당** 사용이다 — 시세 데이터 조회 1건, 페이월 기사 1건, 유료 MCP tool 호출 1번, 비공개 패키지 레지스트리·샌드박스 실행 환경. 소비자 구매(항공권·호텔 등)는 확장 로드맵으로만 언급됐다.
 
 ## 세 역할
 
@@ -31,9 +31,9 @@ view: grid
 | 결제 증명 재시도 | `PAYMENT-SIGNATURE` 헤더 | `X-PAYMENT` 헤더 | `Authorization` 헤더 |
 | 정산 결과 | `PAYMENT-RESPONSE` 헤더 | `X-PAYMENT-RESPONSE` 헤더 | — |
 
-x402 의 표준 관리는 x402 Foundation (Coinbase 개발 후 이전), MPP 는 오픈 표준이다.
+x402의 표준 관리는 x402 Foundation이 맡고, MPP는 오픈 표준이다.
 
-AWS AgentCore payments 는 x402 v1·v2 와 MPP 를 모두 지원한다.
+AgentCore Payments는 x402 v1·v2와 MPP를 모두 지원한다.
 
 ## 이 구조에서 분리해서 볼 세 단계
 
@@ -50,7 +50,7 @@ AWS AgentCore payments 는 x402 v1·v2 와 MPP 를 모두 지원한다.
 ```mermaid
 flowchart LR
     subgraph USER[End user — 승인]
-        FUND[지갑 충전<br/>카드 · Apple Pay · crypto]
+        FUND[지갑 충전<br/>카드 · 간편결제 · crypto]
         GRANT[에이전트 권한 부여·회수]
     end
     subgraph AGENT[에이전트 — 서명]
@@ -71,9 +71,8 @@ flowchart LR
 | 문서 | 다루는 경계 |
 |---|---|
 | [x402 프로토콜](01-x402-protocol.md) | 402 흐름, PaymentRequirements·PaymentPayload, exact scheme(EIP-3009), facilitator 계약 |
-| [AWS AgentCore payments](02-agentcore-payments.md) | 관리형 자원 모델, credential 격리, 세션 한도, 결제 흐름 |
-| [발표 자료 이후 남은 확인 질문](03-seminar-questions.md) | 발표 자료에도 나오지 않은 비용·운영 주체·확장 일정 |
-| [AWS의 Web3 키 격리와 AI 에이전트 결제 구조](04-aws-wallet-key-and-agent-payment.md) | KMS·Nitro Enclaves 키 격리, PCR0 통제, x402 결제, 유료 컴플라이언스 데모 |
+| [AgentCore Payments](02-agentcore-payments.md) | 관리형 자원 모델, credential 격리, 세션 한도, 결제 흐름 |
+| [Web3 키 격리와 AI 에이전트 결제 구조](04-wallet-key-and-agent-payment.md) | KMS·Nitro Enclaves 키 격리, PCR0 통제, x402 결제, 유료 컴플라이언스 데모 |
 
 ## 공통 용어
 
@@ -87,4 +86,4 @@ flowchart LR
 | **EIP-712** | 구조화 데이터 서명 표준 — 도메인(컨트랙트·체인)과 타입 필드를 정해 서명해서, 지갑이 서명 내용을 구조화해 표시할 수 있게 하고 서로 다른 체인·컨트랙트·앱 문맥 간 서명 충돌을 막는다. 같은 문맥 안의 재사용 방지는 EIP-3009 의 nonce·유효 시간 창 몫이다. 서명된 이체 승인을 이 서식으로 만든다 |
 | **Microtransaction** | 센트 단위 이하 소액 결제 — 전통 결제망의 최소 거래 비용 때문에 스테이블코인을 쓰는 이유 |
 
-출처: [x402 공식 저장소](https://github.com/x402-foundation/x402) · [AWS AgentCore payments 동작 방식](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-how-it-works.html) · [AWS AgentCore payments 핵심 개념](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-concepts.html)
+출처: [x402 공식 저장소](https://github.com/x402-foundation/x402) · [AgentCore Payments 동작 방식](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-how-it-works.html) · [AgentCore Payments 핵심 개념](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-concepts.html)

@@ -11,7 +11,7 @@ view: grid
 
 ## 위협의 규모
 
-한컴위드 발표 자료가 인용한 Google Quantum AI 연구는 secp256k1을 대상으로 회로 A `논리 큐빗 1,200개·Toffoli 게이트 9,000만 회`, 회로 B `논리 큐빗 1,450개·Toffoli 게이트 7,000만 회`를 제시한다. 여기서 구분할 것은 **논리 큐빗 ≠ 물리 큐빗** 이다 — 발표 자료는 논리 큐빗 1,200개 규모의 회로에 필요한 물리 큐빗을 50만 개 미만으로 설명하며, 그 규모의 양자 컴퓨터(CRQC)는 현존하지 않는다. 즉각적 위험이 아니라 전환 기간을 역산해 준비할 엔지니어링 문제다.
+발표 자료가 인용한 2026년 연구는 secp256k1을 대상으로 회로 A `논리 큐빗 1,200개·Toffoli 게이트 9,000만 회`, 회로 B `논리 큐빗 1,450개·Toffoli 게이트 7,000만 회`를 제시한다. 여기서 구분할 것은 **논리 큐빗 ≠ 물리 큐빗** 이다 — 발표 자료는 논리 큐빗 1,200개 규모의 회로에 필요한 물리 큐빗을 50만 개 미만으로 설명하며, 그 규모의 양자 컴퓨터(CRQC)는 현존하지 않는다. 즉각적 위험이 아니라 전환 기간을 역산해 준비할 엔지니어링 문제다.
 
 ## 공격 시나리오 둘 + 지금 진행 중인 것
 
@@ -20,7 +20,7 @@ view: grid
 | **at-rest 공격** | 이미 노출된 공개키 (재사용된 주소, 지출 이력이 있는 주소) | 더 가까움 |
 | **on-spend 공격** | 트랜잭션이 전파되고 검증되기 전 짧은 창에서의 조작 | 더 멂 |
 
-그리고 **HNDL (Harvest Now, Decrypt Later)** 이 있다. 암호화된 통신·데이터를 지금 수집해 두었다가 CRQC 가 등장하면 일괄 해독하는 공격이다. 수집 행위는 지금 일어날 수 있어서 "이미 현실에서 진행 중인 위협"으로 설명된다 (한컴위드 발표회 기사). 통신·저장 구간이 HNDL 의 대상이고, 이 평면은 체인을 기다릴 필요 없이 지금 전환할 수 있다 — Fireblocks 의 내부 스택 감사(인증서·저장 암호화·TLS)가 그 예다.
+그리고 **HNDL (Harvest Now, Decrypt Later)** 이 있다. 암호화된 통신·데이터를 지금 수집해 두었다가 CRQC 가 등장하면 일괄 해독하는 공격이다. 수집 행위는 지금 일어날 수 있어서 "이미 현실에서 진행 중인 위협"으로 설명된다. 통신·저장 구간이 HNDL 의 대상이고, 이 평면은 체인을 기다릴 필요 없이 지금 전환할 수 있다 — Fireblocks 의 내부 스택 감사(인증서·저장 암호화·TLS)가 그 예다.
 
 ```mermaid
 flowchart TB
@@ -43,14 +43,13 @@ flowchart TB
 
 ## 국내 정책 일정
 
-2025-09 관계부처 합동 「범국가 양자내성암호 체계 전환 종합 추진계획」 — **2035년까지 전체 IT 인프라 전환** 목표. 양자 과학기술·양자산업 육성법 개정안이 국회 통과·국무회의 의결을 마쳤다 (한컴위드 발표회 기사 기준). 공공·금융의 암호 체계 전환 요구가 이 일정에서 나온다.
+2025-09 관계부처 합동 「범국가 양자내성암호 체계 전환 종합 추진계획」 — **2035년까지 전체 IT 인프라 전환** 목표. 양자 과학기술·양자산업 육성법 개정안이 국회 통과·국무회의 의결을 마쳤다. 공공·금융의 암호 체계 전환 요구가 이 일정에서 나온다.
 
 ## 문서 구성
 
 | 문서 | 다루는 경계 |
 |---|---|
-| [월렛·커스터디의 PQC 전환 경로](01-wallet-pqc-transition.md) | 체인 종속성 문제, 전환 가능한 평면 분리, Fireblocks 준비 4축, 한컴위드 접근 |
-| [발표 자료 이후 남은 확인 질문](02-seminar-questions.md) | 발표 자료에도 나오지 않은 벤더·금융권 적용 항목 |
+| [월렛·커스터디의 PQC 전환 경로](01-wallet-pqc-transition.md) | 체인 종속성 문제, 전환 가능한 평면 분리, Fireblocks 준비 4축, 통신 보안 제품의 접근 |
 | [디지털 월렛의 PQC 전환 범위와 실행 순서](03-wallet-pqc-seminar.md) | On-Spend 공격, 알고리즘·계층별 경계, 스마트 계정 경로, 인벤토리와 전환 순서 |
 
 ## 공통 용어
@@ -63,4 +62,4 @@ flowchart TB
 | **ML-DSA · SLH-DSA · FN-DSA** | NIST PQC 서명 알고리즘 — 앞 둘은 최종 표준(FIPS 204·205), FN-DSA 는 FIPS 206 개발 중 |
 | **암호 민첩성 (crypto agility)** | 알고리즘을 시스템 개조 없이 교체할 수 있게 하는 설계 성질 |
 
-출처: [Fireblocks 공식 블로그 (2026-04, VP Research)](https://www.fireblocks.com/blog/google-quantum-research-institutional-crypto-security) · [한컴위드 THE SHIFT 발표회 기사](https://www.newstheai.com/news/articleView.html?idxno=20703)
+출처: [Fireblocks 공식 블로그 (2026-04, VP Research)](https://www.fireblocks.com/blog/google-quantum-research-institutional-crypto-security) · [PQC 발표회 기사](https://www.newstheai.com/news/articleView.html?idxno=20703)
