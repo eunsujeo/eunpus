@@ -50,7 +50,8 @@ flowchart TB
 | 문서 | 다루는 경계 |
 |---|---|
 | [월렛·커스터디의 PQC 전환 경로](01-wallet-pqc-transition.md) | 체인 종속성 문제, 전환 가능한 평면 분리, Fireblocks 준비 4축, 한컴위드 접근 |
-| [세미나 확인 질문](02-seminar-questions.md) | 공개 자료로 확인 못 한 항목의 세션 질문 목록 |
+| [발표 자료 이후 남은 확인 질문](02-seminar-questions.md) | 발표 자료에도 나오지 않은 벤더·금융권 적용 항목 |
+| [디지털 월렛의 PQC 전환 범위와 실행 순서](03-wallet-pqc-seminar.md) | On-Spend 공격, 알고리즘·계층별 경계, 스마트 계정 경로, 인벤토리와 전환 순서 |
 
 ## 공통 용어
 

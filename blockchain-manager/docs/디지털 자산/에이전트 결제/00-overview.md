@@ -72,7 +72,8 @@ flowchart LR
 |---|---|
 | [x402 프로토콜](01-x402-protocol.md) | 402 흐름, PaymentRequirements·PaymentPayload, exact scheme(EIP-3009), facilitator 계약 |
 | [AWS AgentCore payments](02-agentcore-payments.md) | 관리형 자원 모델, credential 격리, 세션 한도, 결제 흐름 |
-| [세미나 확인 질문](03-seminar-questions.md) | 공개 자료로 확인 못 한 항목의 세션 질문 목록 |
+| [발표 자료 이후 남은 확인 질문](03-seminar-questions.md) | 발표 자료에도 나오지 않은 비용·운영 주체·확장 일정 |
+| [AWS의 Web3 키 격리와 AI 에이전트 결제 구조](04-aws-wallet-key-and-agent-payment.md) | KMS·Nitro Enclaves 키 격리, PCR0 통제, x402 결제, 유료 컴플라이언스 데모 |
 
 ## 공통 용어
 
