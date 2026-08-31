@@ -257,8 +257,11 @@ Fireblocks 접수·거래 완료나 로컬 `REVOKED` 상태는 회수 완료 근
 순으로 후보를 고른다. 예상 gas가 블록 gas limit 대비 운영 상한을 넘지 않는 최대 M개만 고른 뒤, 실행 의도와 calldata는
 위 ABI 규칙대로 원천 주소 오름차순으로 다시 정렬해 `SweepExecution` 하나에 넣는다. 한 DAW 요청이 M보다 크면 여러
 실행으로 분할한다. 성공 항목은 잔액을 재확인해 요청 항목을 완료하고, 실패·잔액 잔존 항목은 같은 요청 항목의 다음 실행으로
-되돌린 뒤 loop한다. 항목 하나인 경우도 같은 1:N 모델에서 N=1로 처리한다. DAW 요청 없이 잔액만 발견한 계정은 경보·조회
-대상일 뿐 자동 실행하지 않는다.
+되돌린 뒤 loop한다. 앞 요청의 실제 sweep이 후속 요청 source event의 입금까지 함께 옮겨 가장 오래된 대기 항목을 평가할
+때 가용 잔액이 정확히 0이면 실행·항목·calldata를 새로 만들지 않고 요청 항목을 `COMPLETED`로 종결한다. 이는 요청 항목을
+금액 귀속이 아니라 source event 처리 후 vault sweep 완료 보장으로 정의한 결과다. 0보다 크지만 최소 금액 미만인 dust는
+`PENDING`으로 유지한다. 항목 하나인 경우도 같은 1:N 모델에서 N=1로 처리한다. DAW 요청 없이 잔액만 발견한 계정은
+경보·조회 대상일 뿐 자동 실행하지 않는다.
 
 ### DAW 요청·이벤트 결과 계약
 
@@ -273,6 +276,10 @@ Fireblocks 접수·거래 완료나 로컬 `REVOKED` 상태는 회수 완료 근
 - 항목 상태 이벤트는 `sweep-events`에 accountId 파티션으로 보낸다. `chainStatus`와 `itemOutcome`을 분리해 최상위 거래
   FINALIZED와 leg 실패를 동시에 표현한다. 상태 전이마다 BCM이 새 `eventId`를 발급하고 DAW-CORE 업무 처리 뒤
   `PUT /events/{eventId}/completion`으로 확인한다.
+- 온체인 제출 없이 0잔액으로 완료한 항목도 같은 topic에 `chainStatus=NOT_SUBMITTED`,
+  `itemOutcome=NO_SWEEP_REQUIRED`, 요청·실제 금액 `0`, 물리 거래 식별자 `null`인 최종 이벤트를 보낸다.
+- 실행 실패는 주기 작업 간격으로 재시도하되 `bcm_swp_trgt.try_cnt`가 운영 임계에 도달하면 별도 gauge와 경보를 올린다.
+  자금 이동 필요성을 숨기는 자동 성공·실패 종결은 하지 않으며 운영자는 실행 게이트를 중지하고 원인을 조치한다.
 
 ## ② 밴드S — 어떻게 처리하나
 

@@ -300,9 +300,13 @@ DAW-CORE 완료 확인이 끝나야 하며 다른 sweep 요청이 이미 소비�
 
 실행 게이트가 중지된 동안에도 요청 원장은 `BLOCKED`로 안전하게 접수할 수 있으나 allowance·제출 intent를 만들지 않는다.
 재개 뒤 BAT가 다시 검증해 실행한다. 한 DAW 요청은 활성 정책의 batch 최대 M·가스 상한에 따라 여러 `executionId`로
-나뉠 수 있고, 같은 계정의 후속 요청은 기존 실행이 종결된 뒤 처리한다.
+나뉠 수 있고, 같은 계정의 후속 요청은 기존 실행이 종결된 뒤 처리한다. 앞 요청의 실제 sweep이 후속 요청 source event의
+입금까지 함께 옮겨 후속 항목 처리 시점의 가용 잔액이 정확히 0이면 새 온체인 거래를 만들지 않고 그 항목을
+`NO_SWEEP_REQUIRED`로 완료한다. sweep 요청 항목은 특정 금액의 소유권이 아니라 "source event 반영 뒤 해당 vault가
+sweep 완료 상태임을 보장"하는 업무 의도다. 0보다 크지만 최소 금액 미만인 dust는 자동 완료하지 않고 후속 입금과 함께
+처리되도록 `PENDING`을 유지한다.
 
-최상위 batch 거래의 `COMPLETED`만으로 N개 항목을 모두 성공 처리하지 않는다. `transaction.network_records.processing_completed` 뒤 network records와 receipt의 항목별 이벤트를 요청 목록과 대조한다. 성공 항목은 잔액을 재확인해 완료하고 실패하거나 잔액이 남은 항목은 같은 요청 item의 다음 실행으로 재시도한다. 항목별 `sweep-events`는 `accountId`를 파티션 키로 사용하며 `chainStatus`와 `itemOutcome`을 분리한다. 거래가 FINALIZED여도 일부 leg는 `FAILED`일 수 있다. 각 전이 이벤트도 BCM이 새 `eventId`를 발급하며 DAW-CORE가 업무 반영 뒤 같은 완료 확인 API로 확인한다. sweep 거래도 막힘 점검 대상이지만 Universal Gasless + RBF는 별도 기능 게이트를 따른다.
+최상위 batch 거래의 `COMPLETED`만으로 N개 항목을 모두 성공 처리하지 않는다. `transaction.network_records.processing_completed` 뒤 network records와 receipt의 항목별 이벤트를 요청 목록과 대조한다. 성공 항목은 잔액을 재확인해 완료하고 실패하거나 잔액이 남은 항목은 같은 요청 item의 다음 실행으로 재시도한다. 항목별 `sweep-events`는 `accountId`를 파티션 키로 사용하며 `chainStatus`와 `itemOutcome`을 분리한다. 거래가 FINALIZED여도 일부 leg는 `FAILED`일 수 있다. 온체인 제출이 필요 없던 0잔액 완료는 `chainStatus=NOT_SUBMITTED`, `itemOutcome=NO_SWEEP_REQUIRED`로 발행하고 물리 거래 식별자는 `null`이다. 각 전이 이벤트도 BCM이 새 `eventId`를 발급하며 DAW-CORE가 업무 반영 뒤 같은 완료 확인 API로 확인한다. sweep 거래도 막힘 점검 대상이지만 Universal Gasless + RBF는 별도 기능 게이트를 따른다.
 
 ## 출금
 

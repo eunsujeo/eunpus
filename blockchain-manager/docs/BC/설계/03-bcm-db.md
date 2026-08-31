@@ -497,6 +497,7 @@ CREATE TABLE bcm_outbox_l (
   last_chng_brcd  VARCHAR(4)  NOT NULL
 );
 CREATE INDEX idx_bcm_outbox_send ON bcm_outbox_l (evnt_stcd, evnt_id);  -- 미발행(P) 오래된 순 = 시간정렬 UUID v7
+CREATE INDEX idx_bcm_outbox_sweep_operations ON bcm_outbox_l (topic, evnt_stcd, evnt_id); -- sweep 운영 신호·완료 anti-join
 ```
 
 | 컬럼 | 뜻 |
@@ -525,6 +526,9 @@ CREATE TABLE bcm_evnt_cmpl_l (
   PRIMARY KEY (evnt_id, cnsmr_dvcd),
   CHECK (cnsmr_dvcd IN ('DAW_CORE'))
 );
+
+CREATE INDEX idx_bcm_evnt_cmpl_consumer_time
+  ON bcm_evnt_cmpl_l (cnsmr_dvcd, cmpl_dttm, evnt_id);
 ```
 
 - `PUT /events/{eventId}/completion`은 outbox 행을 잠근 뒤 `evnt_stcd='S'`이고 DAW-CORE 대상 topic인지 검사한다.
@@ -576,12 +580,17 @@ CREATE TABLE bcm_swp_req_src_l (
   last_chng_empno  VARCHAR(6)  NOT NULL,
   last_chng_brcd   VARCHAR(4)  NOT NULL
 );
+
+CREATE INDEX idx_bcm_swp_req_src_item
+  ON bcm_swp_req_src_l (swp_req_item_id, evnt_id);
 ```
 
 - `req_hash`는 `sweep-request-v1`·network·symbol과 `accountId` 오름차순, 각 계정의 `sourceEventId` 오름차순을 LF로
   이은 UTF-8 바이트의 SHA-256 소문자 hex다. 배열 순서만 바꾼 재시도는 같은 요청이다.
-- 접수 트랜잭션에서 source outbox 행을 잠그고 `DEPOSIT/FINALIZED`, 계정·network·symbol 일치, `DAW_CORE` 완료 확인,
-  다른 요청 미소비를 모두 검사한 뒤 세 테이블과 실행 후보를 함께 기록한다.
+- 접수 트랜잭션에서 source eventId 오름차순으로 트랜잭션 advisory lock을 잡은 뒤 source outbox 행을 잠그고
+  `DEPOSIT/FINALIZED`, 계정·network·symbol 일치, `DAW_CORE` 완료 확인, 다른 요청 미소비를 모두 검사한 뒤 세
+  테이블과 실행 후보를 함께 기록한다. 서로 다른 외부 요청이 같은 source event를 동시에 제시해도 뒤 요청은 앞 요청 커밋
+  뒤 새 statement snapshot에서 소비 여부를 다시 읽어 `409`로 종결하며 PK 예외를 API 500으로 노출하지 않는다.
 - 실행 게이트가 중지됐으면 `BLOCKED`, 아니면 `ACCEPTED`로 접수한다. `BLOCKED`는 자금 실행 의도가 아니며 재개 뒤
   BAT가 최신 정책·컨트랙트·증적·게이트를 다시 검사해야 `PROCESSING`으로 바뀐다.
 
@@ -613,10 +622,10 @@ CREATE TABLE bcm_swp_trgt (
 
 | 컬럼 | 뜻 |
 |---|---|
-| 삭제 기준 | batch 제출 성공이 아니라 **항목 성공 뒤 vault 잔액이 최소 미만임을 확인**했을 때 삭제한다. vault 잔액이 진실이고 이 테이블은 작업 큐다 |
-| 행 생성·삭제 | 요청 접수 → insert(있으면 유지) · 실행/항목 선기록과 같은 트랜잭션에서 claim · 해당 계정의 미완료 요청 item과 잔액이 모두 없으면 삭제 · 실패 또는 잔액 잔존이면 claim을 NULL로 풀어 재선정 |
+| 삭제 기준 | batch 제출 성공이 아니라 **항목 성공 뒤 vault 잔액이 최소 미만임을 확인**했을 때 삭제한다. 가용 잔액이 정확히 0이면 가장 오래된 미완료 요청 항목 하나를 온체인 실행 없이 완료한 뒤 나머지 요청을 다시 평가한다. vault 잔액이 진실이고 이 테이블은 작업 큐다 |
+| 행 생성·삭제 | 요청 접수 → insert(있으면 유지) · 실행/항목 선기록과 같은 트랜잭션에서 claim · 해당 계정의 미완료 요청 item과 잔액이 모두 없으면 삭제 · 실패 또는 양의 잔액 잔존이면 claim을 NULL로 풀어 재선정 |
 | `actv_swp_exec_id`·`actv_item_seq` | 한 최상위 batch tx 아래 어느 원천 이동으로 처리 중인지 가리키는 1:N 링크. 둘 다 NULL이거나 둘 다 값이어야 한다 |
-| `try_cnt` | 반복 실패가 임계(운영 설정값)를 넘으면 경보 — externalTxId 멱등이라 재제출은 안전하다 |
+| `try_cnt` | 최초 target claim을 첫 제출 시도 1회로 세고, 같은 `SUBMITTING` 실행의 실패 submission을 같은 externalTxId로 다시 획득할 때마다 target 행 잠금 아래 1씩 증가시켜 `last_try_dttm`도 갱신한다. 반복 실패가 임계(운영 설정값)를 넘으면 별도 gauge와 경보를 올린다. 재시도는 주기 작업 간격으로 제한되고 externalTxId 멱등으로 같은 실행의 중복 제출을 막는다. 자동 `FAILED` 종결은 자금 이동 필요성을 없애지 못하므로 하지 않으며 운영자는 실행 게이트 중지 뒤 원인을 조치한다 |
 
 ### bcm_swp_auth_m — sweep 승인 관찰 상태
 
@@ -722,7 +731,10 @@ ALTER TABLE bcm_swp_trgt
 - 항목 상태가 바뀔 때 `sweep-events`용 outbox를 같은 트랜잭션에 적재한다. payload에는 `eventId`, `sweepRequestId`,
   `sweepItemId`, `executionId`, `txId`, `vendorTxId`, `txHash`, `accountId`, `network`, `symbol`, 요청·실제 금액,
   `chainStatus`, `itemOutcome`, 실패 코드를 싣는다. 아직 결정되지 않은 값은 `null`이며 `chainStatus=FINALIZED`와
-  `itemOutcome=FAILED` 조합을 허용한다.
+  `itemOutcome=FAILED` 조합을 허용한다. 앞 실행이 잔액을 이미 모두 옮긴 후속 요청은 새 실행 항목을 만들지 않고 요청
+  항목과 요청 상태를 같은 트랜잭션에서 완료하며 `chainStatus=NOT_SUBMITTED`,
+  `itemOutcome=NO_SWEEP_REQUIRED`, 요청·실제 금액 `0`, 물리 거래 식별자 `null`인 이벤트를 적재한다. 이 경우 기존
+  outbox의 non-null 내부 정렬 키에는 `sweepItemId`를 사용하지만 고객 payload에 가짜 거래 식별자를 만들지 않는다.
 
 ### bcm_boost_l — boost 이력
 
