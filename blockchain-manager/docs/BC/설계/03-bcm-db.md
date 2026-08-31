@@ -365,7 +365,8 @@ CREATE TABLE bcm_whk_l (
   frst_reg_brcd   VARCHAR(4)  NOT NULL,
   last_chng_empno VARCHAR(6)  NOT NULL,
   last_chng_brcd  VARCHAR(4)  NOT NULL,
-  CHECK (vndr_cmpl_yn IN ('Y', 'N'))
+  CHECK (vndr_cmpl_yn IN ('Y', 'N')),
+  CHECK (vndr_cmpl_yn IS NOT NULL)       -- 온라인 NOT NULL 검증 증명 — V18 재실행 안전을 위해 유지
 );
 CREATE INDEX idx_bcm_whk_pick ON bcm_whk_l (prcs_stcd, rcv_dttm);  -- 판단 워커의 집기 — 미처리(P) 오래된 순
 CREATE INDEX idx_bcm_whk_completed_archive
