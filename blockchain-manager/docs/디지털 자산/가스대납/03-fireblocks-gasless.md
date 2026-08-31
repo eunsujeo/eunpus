@@ -39,7 +39,7 @@ Universal Gasless는 첫 Gasless 거래 과정에서 Vault Account에 EIP-7702 �
 | External Workspace | 다른 Workspace·법인 | 법인·규제 경계 밖에서 가스비 부담 | Workspace 간 계약·정책·비용 귀속 |
 | Fireblocks Relay | Fireblocks | Workspace 안의 기본 자산 보유를 제거 | 프리미엄 계약·사용량·월 청구 대사 |
 
-External Workspace는 다른 조직의 Relay 서비스를 뜻할 수도 있고, 같은 조직의 별도 법인이 비용을 부담하는 구조일 수도 있다. 어느 경우든 자산 소유 Workspace와 비용 부담 Workspace의 감사·계약 관계를 기록해야 한다.
+External Workspace는 다른 조직의 Relay 서비스를 뜻할 수도 있고, 같은 조직의 별도 법인이 비용을 부담하는 구조일 수도 있다.
 
 ## 거래 흐름
 
@@ -131,8 +131,6 @@ Fireblocks [Create Transaction API](https://developers.fireblocks.com/api-refere
 | `useGasless: true` | 해당 거래를 Gasless 경로로 요청 |
 | `useGasless: false` | 기본 설정과 달리 직접 수수료 경로 요청 |
 | Error 1455 | Workspace 또는 Asset에 Gasless 구성이 없음 |
-
-Gasless 요청 실패를 일반 거래로 자동 재제출하면 동일 업무가 서로 다른 수수료·정책 경로로 실행될 수 있다. 직접 지불 Fallback은 호출 시스템이 명시적으로 결정하고 멱등키와 기존 거래 접수 여부를 확인해야 한다.
 
 ## 네이티브 자산과 Non-EVM
 

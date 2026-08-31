@@ -27,7 +27,7 @@ EIP-7702 Relay와 ERC-4337 Paymaster는 같은 흐름의 옵션이 아니다. �
 sequenceDiagram
     autonumber
     box Off-chain
-        participant C as 업무 시스템
+        participant C as API Client
         participant F as Fireblocks
         participant P as Transaction Policy
         participant R as 지정 Relay
@@ -96,17 +96,6 @@ sequenceDiagram
 
 [ERC-4337 명세](https://eips.ethereum.org/EIPS/eip-4337)는 Bundler가 `handleOps` transaction을 제출하고, EntryPoint가 각 UserOperation의 비용을 Account 또는 Paymaster deposit에서 모은 뒤 Bundler가 지정한 `beneficiary`에 지급하도록 정의한다. Paymaster는 Bundler transaction의 sender가 아니며, Fireblocks Universal Gasless가 Paymaster를 사용한다는 근거도 없다.
 
-## 거래를 볼 때 분리할 항목
-
-| 확인 항목 | 의미 |
-|---|---|
-| 자산 실행 승인자 | Transfer·Contract Call을 허용한 계정과 서명 |
-| On-chain transaction sender | transaction을 네트워크에 제출한 주소 |
-| Protocol fee payer | transaction 처리에 필요한 native token을 제공한 계정·예치금 |
-| Sponsorship 승인자 | 어떤 요청의 비용을 부담할지 결정한 Policy·Service·Paymaster |
-| 최종 비용 부담자 | 실비·구독료를 회사·고객·외부 법인 중 누구에게 귀속할지 결정 |
-| 정산 근거 | Transaction Hash·Receipt·Relay 사용 내역·인보이스 |
-
 자산을 옮길 권한과 가스비를 내는 권한은 별개다. Relay가 수수료를 부담해도 임의로 고객 자산을 이동할 권한이 생기지 않는다. 반대로 자산 소유자의 서명이 유효해도 Gasless Policy·Relay·Paymaster 검증에서 거절되면 거래는 제출되지 않을 수 있다.
 
 ## 대납 구조가 해결하는 운영 문제
@@ -128,7 +117,7 @@ EVM 토큰 전송은 토큰과 별도로 체인의 기본 자산을 수수료로
 | [가스비 지불 모델](01-fee-payment-models.md) | 직접 지불·자동 충전·Relay·Paymaster의 자산 보유와 정산 차이 |
 | [승인·계정 실행 모델](02-authorization-and-account-models.md) | ERC-3009·ERC-2771·ERC-4337·EIP-7702의 권한 검증과 실행 경로 |
 | [Fireblocks Gasless](03-fireblocks-gasless.md) | Gas Station과 Gasless Service, Relay 구성, Policy·API 경계 |
-| [보안·비용·운영](04-security-cost-operations.md) | 실패 시점, 위임 코드, 비용 청구, 모니터링과 대사 |
+| [보안·비용](04-security-cost-operations.md) | 실패 시점, 위임 코드와 비용 청구 |
 
 블록체인 매니저가 채택한 방식과 Sweep·출금 적용은 [블록체인매니저 가스 대납 적용](../../블록체인매니저/가스대납/00-overview.md)에 별도로 기록한다.
 

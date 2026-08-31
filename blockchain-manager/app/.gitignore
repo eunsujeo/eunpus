@@ -1,5 +1,6 @@
 .dev.vars*
 .env*
 .wrangler/
+.local/
 node_modules/
 public/_generated/

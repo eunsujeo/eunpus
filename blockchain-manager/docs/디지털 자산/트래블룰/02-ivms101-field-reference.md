@@ -313,25 +313,3 @@ flowchart LR
     class JUR,CP,API rule
     class SEND result
 ```
-
-실제 payload를 만들 때는 다음 순서를 사용한다.
-
-1. 송금인·수취인이 개인인지 법인인지 결정한다.
-2. 표준의 최소 구조와 C1~C12를 만족시킨다.
-3. 송신·수신 관할의 추가 의무를 적용한다.
-4. 상대 VASP가 요청한 필드를 적용한다.
-5. VerifyVASP·CODE·Notabene 등 제품 API의 직렬화 이름과 필수 조건을 적용한다.
-6. 전송 직전 스키마 검증과 개인정보 최소화 검사를 수행한다.
-
-## 정본과 제품 구현을 구분하는 기준
-
-| 판단 | 우선 기준 |
-|---|---|
-| IVMS101 적합성 | [InterVASP IVMS101.2023](https://www.intervasp.org/) |
-| VerifyVASP 요청 JSON | VerifyVASP의 해당 API·OpenAPI 스키마 |
-| CODE 요청 JSON | CODE의 해당 API와 Cipher 문서 |
-| Notabene transfer·PII | Notabene Transact API 문서 |
-| 국내 법적 최소 정보 | 국가법령정보센터 현행 조문과 FIU 고시 |
-| 상대가 추가로 요구하는 정보 | 상대 VASP의 `requiredBeneficiaryInfo`와 양자 운영 규칙 |
-
-표준과 제품 문서가 다르면 하나를 임의로 정답으로 만들지 않는다. 표준 적합성 검사는 InterVASP 이름으로, 실제 API 요청은 제품 이름으로 수행하고 두 모델 사이의 명시적 매핑을 둔다.

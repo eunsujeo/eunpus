@@ -137,20 +137,21 @@ date: 2026-07-19               # 선택: 카드에 고정할 작성일(YYYY-MM-D
 - ★ **wrangler 커밋 메시지는 ASCII 만** — `--commit-message="<ASCII-only>"` 필수 (한글 시 Invalid UTF-8 거절).
 - 런타임 비밀값은 사용하지 않는다. GitHub 토큰도 필요 없다. 예전 `.dev.vars*`·`.env*` 파일은
   실수로 커밋되지 않도록 `.gitignore`로 차단한다. 앱 루트에 예전 `.dev.vars`가 남아 있으면 `dev.sh`가 기동을 중단한다.
-- 상태·순서는 KV 에 저장되므로 칸반 조작이 더는 git 커밋을 만들지 않는다. 문서 내용 편집만 커밋 대상.
-- `.wrangler/` 로컬 상태가 깨지면(예: `_cf_ALARM` SQLite 오류) `rm -rf .wrangler` 후 재기동.
+- 상태·순서는 배포에서 KV, 로컬에서 `app/.local/state.json`에 저장되므로 칸반 조작이 git 커밋을 만들지 않는다. 문서 내용 편집만 커밋 대상.
+- 로컬 실행은 Cloudflare 런타임과 GitHub를 사용하지 않는다. 보드 상태·순서는 `app/.local/state.json`에 저장한다.
 
 ## 7. 로컬 개발 / 배포 빠른 참조
 
-KV 바인딩은 `wrangler.toml` 의 `[[kv_namespaces]] binding = "BOARD"` 로 로컬·배포 공통 적용된다
-(네임스페이스 id `6596a99a23af485983828d35c4fea875` 이미 등록됨).
+배포 환경의 KV 바인딩은 `wrangler.toml` 의 `[[kv_namespaces]] binding = "BOARD"` 로 적용된다
+(네임스페이스 id `6596a99a23af485983828d35c4fea875` 이미 등록됨). 로컬은 Node 서버와
+`app/.local/state.json`을 사용하므로 Wrangler·Cloudflare 로그인·GitHub 토큰이 필요 없다.
 
 ```bash
 cd blockchain-manager/app
 
-npm ci            # 최초 1회: 프로젝트에 고정된 Wrangler 설치 (Node.js 22 이상)
-./dev.sh          # 로컬 기동 (포트·캐시 정리 포함). http://localhost:8788
-./dev.sh clean    # 캐시 손상(_cf_ALARM·middleware build 오류) 시 .wrangler 전체 초기화 후 기동
+npm ci            # 배포 도구 설치가 필요할 때 최초 1회 (Node.js 22 이상)
+./dev.sh          # Node 로컬 서버 기동. http://localhost:8788 (Wrangler 미사용)
+./dev.sh clean    # 로컬 보드 상태·순서 초기화 후 기동
 
 # 보드 전체를 단일 HTML 로 내보내기 (읽기 전용 · 파일 하나로 전달) → ../board.html (커밋 안 함)
 # 앱이 떠 있으면 KV 상태·순서 반영, 아니면 frontmatter seed
@@ -166,5 +167,7 @@ npm exec wrangler -- pages deploy public --project-name=blockchain-manager \
   --commit-message="deploy blockchain manager kanban"
 ```
 
-`dev.sh` 가 하는 일: 남은 wrangler·포트 점유 정리 → `.wrangler/tmp` 비움
-(로컬 KV state 는 보존; `clean` 인자면 `.wrangler` 전체 삭제) → 로컬 docs 사이드카와 `wrangler pages dev` 기동.
+`dev.sh` 가 하는 일: 이전 로컬 서버·포트 점유 정리 → API 문서 워처 기동 → Node 로컬 서버 기동.
+Node 서버가 `public/` 정적 파일과 `/api/board`·`/api/doc`·`/api/order`를 제공한다. 문서는 파일시스템에서
+매 요청마다 읽어 push 없이 반영하며, 상태·순서는 `.local/state.json`에 보존한다. 이 파일이 없는 최초
+실행에서는 기존 `.wrangler` 로컬 KV의 보드 상태가 있으면 자동으로 한 번 이관한다.

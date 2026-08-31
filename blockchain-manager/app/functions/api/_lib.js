@@ -83,6 +83,6 @@ export async function readState(env) {
 
 export async function putState(env, state) {
   const ns = kvNs(env);
-  if (!ns) throw new Error('KV(BOARD) 바인딩이 없습니다 — wrangler --kv BOARD 또는 Pages KV 바인딩 필요');
+  if (!ns) throw new Error('KV(BOARD) 바인딩이 없습니다 — Pages KV 바인딩 필요');
   await ns.put('state', JSON.stringify(state));
 }

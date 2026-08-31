@@ -6,7 +6,7 @@ pages_build_output_dir = "public"
 [vars]
 DOCS_PATH = "blockchain-manager/docs"
 
-# 상태·순서 오버레이용 KV. 로컬은 `wrangler pages dev public --kv BOARD` 로 대체 가능.
+# 배포 환경의 상태·순서 오버레이용 KV. 로컬 dev.sh는 .local/state.json을 사용한다.
 [[kv_namespaces]]
 binding = "BOARD"
 id = "6596a99a23af485983828d35c4fea875"

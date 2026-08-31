@@ -12,7 +12,7 @@ InterVASP 정본과 VerifyVASP API는 같은 개인정보 의미를 사용하지
 
 ```mermaid
 flowchart LR
-    KYC[KYC·고객 데이터] --> STD[내부 IVMS101 표준 모델]
+    KYC[KYC·고객 데이터] --> STD[IVMS101 표준 모델]
     STD --> RULE[관할·상대 요구 필드 적용]
     RULE --> MAP[VerifyVASP 매퍼]
     MAP --> API[User Verification Payload]
@@ -105,7 +105,7 @@ VerifyVASP 한국어 예시에 보이는 `registrationAuthority: "RA0000099"`는
 | 필드 | 필수 | 값의 출처 |
 |---|---|---|
 | `keyType` | 필수 | 공개키 운용 정책. `PerVasp`, `PerAddress`, `PerVerification` |
-| `beneficiaryVaspId` | 필수 | VerifyVASP 목록과 내부 VASP 마스터의 매핑 |
+| `beneficiaryVaspId` | 필수 | VerifyVASP가 부여한 수신 VASP 식별자 |
 | `assetInfo.symbol` | 필수 | 출금 자산 |
 | `assetInfo.network` | 조건부 | 실제 출금 네트워크 |
 | `assetInfo.amount` | 필수 | 출금 수량 |
@@ -115,7 +115,7 @@ VerifyVASP 한국어 예시에 보이는 `registrationAuthority: "RA0000099"`는
 | `assetInfo.tradeISODatetime` | 필수 | 시세 적용 시각 |
 | `requiredBeneficiaryInfo` | 조건부 | 상대에게 반환받을 개인정보 코드 |
 | `payload.version` | 필수 | VerifyVASP envelope 버전 |
-| `payload.ivms101.originator` | 필수 | 우리 송금 고객 KYC와 계정 식별자 |
+| `payload.ivms101.originator` | 필수 | 송금 고객 KYC와 계정 식별자 |
 | `payload.ivms101.beneficiary` | 필수 | 수취인 입력값과 목적지 주소 |
 
 ### 자연인 출금 예시
@@ -193,8 +193,8 @@ VerifyVASP 한국어 예시에 보이는 `registrationAuthority: "RA0000099"`는
 | `requiredBeneficiaryInfo` | 반환할 수취인 필드의 최소 범위 |
 | `originatingVaspId` | 송신 VASP 실사·정책 조회 |
 | `ivms101.originator` | 송금인 AML·제재·위험 검토 |
-| `ivms101.beneficiary.beneficiaryPersons[]` | 우리 고객 정보와 이름 대조 |
-| `ivms101.beneficiary.accountNumber[]` | 우리 소유 주소·계정인지 확인 |
+| `ivms101.beneficiary.beneficiaryPersons[]` | 수취인 정보와 이름 대조 |
+| `ivms101.beneficiary.accountNumber[]` | 수신 VASP 소유 주소·계정인지 확인 |
 
 수신 VASP는 받은 주소를 다른 주소로 고쳐서 승인하지 않는다. 주소·이름·KYC 상태가 맞지 않으면 명시적으로 거절한다.
 
@@ -212,13 +212,13 @@ VerifyVASP 한국어 예시에 보이는 `registrationAuthority: "RA0000099"`는
 |---|---|
 | `UNKNOWN-SYMBOL` | 지원하지 않는 자산 |
 | `UNKNOWN-NETWORK` | 지원하지 않거나 확인 불가능한 네트워크 |
-| `UNKNOWN-ADDRESS` | 우리 VASP의 주소가 아님 |
+| `UNKNOWN-ADDRESS` | 수신 VASP의 주소가 아님 |
 | `LACK-OF-INFORMATION` | 송금인 검증 정보 부족 |
 | `UNAVAILABLE-INFORMATION` | 요청받은 수취인 정보를 제공할 수 없음 |
 | `BLACKLISTED` | 제재·차단 정책에 해당 |
 | `UNVERIFIED-KYC` | 수취 고객 KYC 미완료 |
 | `MISMATCHED-NAME` | 수취인 이름 불일치 |
-| `NOT-ALLOWED` | 내부 정책상 거절 |
+| `NOT-ALLOWED` | 정책상 거절 |
 | `UNDEFINED-ERROR` | 별도 코드가 없는 오류 |
 
 `requiredBeneficiaryInfo`에 없는 개인정보를 편의상 추가 반환하지 않는다. 필요한 값이 없으면 승인 대신 `UNAVAILABLE-INFORMATION`으로 처리한다.
@@ -234,26 +234,3 @@ VerifyVASP 한국어 예시에 보이는 `registrationAuthority: "RA0000099"`는
 | `vout` | 선택 | UTXO 출력 인덱스 |
 
 수신 VASP는 `TX_REPORT` 콜백의 `verificationUuid`, `txHash`, `vout`을 감지한 입금과 대조한다. 검증은 있었지만 보고가 누락되면 verification UUID를 이용한 상태 조회 경로를 사용한다.
-
-## 구현 구조
-
-표준과 제품 모델을 한 DTO로 합치지 않는다.
-
-```text
-KycPerson
-  → IvmsPerson               표준 의미·제약 C1~C12
-  → JurisdictionProfile      관할별 필수 개인정보
-  → CounterpartyRequirement  상대 요청 필드
-  → VerifyVaspPayload        제품 JSON 이름·필수 조건
-```
-
-각 변환 단계는 다음을 기록한다.
-
-- 입력 스키마와 출력 스키마 버전
-- 추가·삭제·이동한 필드
-- 필드 값의 원천 시스템
-- 적용한 관할 프로필과 상대 요구
-- 검증 실패 경로와 오류 코드
-- 개인정보 원문을 남기지 않는 요청 해시
-
-IVMS101 적합성 테스트는 표준 모델에서, VerifyVASP 계약 테스트는 제품 payload에서 각각 수행한다.

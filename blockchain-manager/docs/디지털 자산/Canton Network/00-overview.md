@@ -9,27 +9,19 @@ view: grid
 
 Canton Network는 Daml로 표현한 자산과 업무 계약을 여러 기관이 하나의 거래로 처리하는 분산 원장 네트워크다. 각 기관의 `Participant`가 원장 신원인 `Party`를 호스팅하고, `Synchronizer` 계층이 관련 Participant 사이의 메시지 순서와 거래 확정을 조정한다.
 
-우리 수탁 시스템은 Ledger API를 통해 우리 Participant에 명령을 제출한다. 확정된 원장 결과는 Update Stream으로 수신하여 내부 거래 상태와 잔액에 반영한다.
-
-## 우리 시스템과 Canton의 연결
-
-우리 Participant는 고객과 회사의 Party를 호스팅하고, 해당 Party 권한으로 Daml Contract를 생성하거나 행사한다. 상대 기관과의 거래는 Synchronizer를 거쳐 상대 Participant에 전달된다. 우리 시스템이 상대 Participant나 Synchronizer의 내부 데이터에 직접 접근하지는 않는다.
-
-`Validator`는 Participant와 네트워크 연동 서비스를 포함하는 배포·운영 구성이다. External Party를 사용하는 경우에는 명령 제출 전에 Prepared Transaction 검증과 외부 서명이 추가된다.
-
 ## 거래 제출과 확정 흐름
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant APP as 우리 수탁 시스템
-    participant PA as 우리 Participant
+    participant APP as 기관 A 애플리케이션
+    participant PA as 기관 A Participant
     participant SYNC as Synchronizer 계층
     participant PB as 상대 Participant
 
     Note over PA: 기관 A Party 호스팅
     Note over PB: 기관 B Party 호스팅
-    APP->>PA: 기관 A Party 권한으로 거래 명령 제출
+    APP->>PA: Party 권한으로 거래 명령 제출
     PA->>PA: 권한·입력 Contract 검증<br/>수신자별 거래 데이터 생성
     PA->>SYNC: 암호화된 거래 데이터 제출
     SYNC->>PA: 기관 A에 허용된 거래 정보 전달
@@ -41,7 +33,7 @@ sequenceDiagram
     PA-->>APP: Update Stream으로 원장 결과 전달
 ```
 
-Synchronizer 계층의 Sequencer가 암호화된 메시지의 순서를 정하고, Mediator가 관련 Participant의 확인 결과를 모아 Commit 또는 Reject를 판정한다. 원장 커밋이 끝난 뒤에도 우리 수탁 시스템의 내부 계정 반영과 대사가 별도 단계로 남는다.
+Synchronizer 계층의 Sequencer가 암호화된 메시지의 순서를 정하고, Mediator가 관련 Participant의 확인 결과를 모아 Commit 또는 Reject를 판정한다.
 
 ## 거래 정보 전달 범위
 
@@ -80,17 +72,15 @@ Canton은 하나의 트랜잭션을 권한 범위에 따라 여러 부분으로 
 | 기관 B Party | 자산 수신자 | 관련 View를 검증하고 Token workflow가 수신자 수락을 요구하면 전송을 수락한다 |
 | 감독기관 Party | Observer | Observer로 선언된 Contract와 관련 원장 효과를 관찰한다 |
 | 기관 C Party | 거래와 무관 | 해당 거래의 View를 받지 않는다 |
-| 우리 수탁 시스템 | 원장 외부 업무 시스템 | 고객 요청을 원장 명령으로 바꾸고 결과를 내부 원장에 반영한다 |
-
 ## 주요 구성요소
 
-| 구성요소 | 역할 | 우리 시스템에서 구분할 대상 |
-|---|---|---|
-| Party | 원장 위에서 권리와 의무를 갖는 업무 신원 | 고객 계정·로그인 사용자·주소와 구분한다 |
-| Participant | Party의 Contract를 저장하고 명령을 실행·검증하는 노드 | Synchronizer와 구분한다 |
-| Synchronizer | 관련 Participant 사이에서 암호화 메시지의 순서와 판정 결과를 조정한다 | 업무 데이터 저장소로 사용하지 않는다 |
-| Daml Contract | 데이터, 가시성, 허용된 행동을 함께 표현하는 원장 객체 | 내부 DB Row와 구분한다 |
-| Validator | Participant와 네트워크 연동 서비스를 포함하는 운영 구성 | 장애 시 실제 실패한 서비스와 Participant를 구체적으로 식별한다 |
+| 구성요소 | 역할 |
+|---|---|
+| Party | 원장 위에서 권리와 의무를 갖는 업무 신원 |
+| Participant | Party의 Contract를 저장하고 명령을 실행·검증하는 노드 |
+| Synchronizer | 관련 Participant 사이에서 암호화 메시지의 순서와 판정 결과를 조정한다 |
+| Daml Contract | 데이터, 가시성, 허용된 행동을 함께 표현하는 원장 객체 |
+| Validator | Participant와 네트워크 연동 서비스를 포함하는 운영 구성 |
 
 ## 퍼블릭 체인과의 개념 차이
 
@@ -112,4 +102,3 @@ Canton은 하나의 트랜잭션을 권한 범위에 따라 여러 부분으로 
 | [Party와 노드](./02-party-participant-synchronizer.md) | Party 호스팅, Participant·Validator·Synchronizer 책임, External Party |
 | [Daml Contract와 원장](./03-daml-contract-and-ledger.md) | Contract 생성·소비, ACS, Update Stream, 동시성 |
 | [Holding과 전송·정산](./04-token-and-transfer-flow.md) | Holding 잔액, 전송 상태, DvP, Traffic |
-| [수탁 시스템 연동](./05-custody-integration-and-operations.md) | 고객 매핑, 입금·출금, 외부 서명, 인덱싱·대사 |
