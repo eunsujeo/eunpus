@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [workspace, governance, key-link]
 stage_introduced: 1
-last_updated_stage: 36
-source_count: 5
+last_updated_stage: 171
+source_count: 6
 related:
   - admin-quorum
   - overview
@@ -236,3 +236,12 @@ Stage 9 의 [[entities/fireblocks/workspace]] §"5-Level 계층": Customer Domai
 ## Sources (Stage 36 KL01 추가)
 - `2026-05-22__support-fireblocks-io__hosted-mpc-workspace-configuration-extracted.txt`, p.1 (Stage 36: workspace type immutability)
 - `2026-05-22__support-fireblocks-io__hosted-mpc-customer-side-setup-extracted.txt`, p.1-3 (Stage 36: HA + Cold Signing variant)
+
+## Stage 171 — Cold Wallet workspace 공개 절차
+
+- Fireblocks workspace는 생성 전에 Hot·Warm 또는 Cold Wallet-only로 정해지며 하나의 workspace에는 두 유형을 함께 구성하지 않는다.
+- Cold Wallet workspace를 생성하려면 Customer Success Manager와 onboarding 일정을 잡아야 한다. Cold Wallet은 계약에 해당 제품이 포함된 경우에 제공된다.
+- Hot과 Cold workspace를 함께 사용하면 Console에서 로그아웃하지 않고 workspace를 전환할 수 있다.
+- Hot·Cold workspace 간 자산 이동에는 Fireblocks P2P Network를 사용할 수 있다. 새 P2P Network connection은 요청자와 상대방의 Admin Quorum이 모두 승인해야 한다.
+
+출처: `sources/fireblocks/source-notes/cold-wallet-operating-model.md` (`FB-CW-01`, `FB-CW-02`, `FB-CW-06`, Stage 171)

@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [transaction, key-link]
 stage_introduced: 5
-last_updated_stage: 170
-source_count: 11
+last_updated_stage: 171
+source_count: 12
 related: [approver, designated-signer, policy, signer, tap, vault-account]
 ---
 # Entity: Transaction (Fireblocks)
@@ -586,3 +586,17 @@ Blockchain issues 카테고리. 토큰 컨트랙트 blacklist 에 걸린 ERC-20 
 
 - `2026-07-28__developers-fireblocks-com__reference-sub-statuses.md` — 종결 4종 sub-status 전체 enumeration (124개)
   - 원본 URL: https://developers.fireblocks.com/reference/sub-statuses
+
+## Stage 171 — Cold Wallet 양방향 QR 서명
+
+Cold Wallet 거래는 다음 순서로 서명한다.
+
+1. Vault에서 transfer를 생성하면 Console의 Cold Wallet signing panel에 요청이 나타난다.
+2. Console에서 Sign을 선택하면 거래 정보가 담긴 QR animation이 표시된다.
+3. Signer는 Cold Wallet app으로 Console QR animation을 스캔한 뒤 Approve를 선택하고 PIN과 biometric ID로 인증한다.
+4. Cold Wallet app이 transaction confirmation QR animation을 만든다.
+5. Console에서 Confirm mobile scan을 선택한 뒤 컴퓨터 카메라로 transaction confirmation QR animation을 스캔한다. Console은 서명 성공을 확인하고 Recent activity에 거래 상태를 표시한다.
+
+Cold Wallet 거래는 생성 후 8시간 안에 서명되지 않으면 timeout으로 취소된다. Non-Signing Admin과 Approver는 Cold Wallet app이 아니라 온라인 Fireblocks mobile app으로 workspace 변경 승인 알림을 받는다.
+
+출처: `sources/fireblocks/source-notes/cold-wallet-operating-model.md` (`FB-CW-05`, Stage 171)

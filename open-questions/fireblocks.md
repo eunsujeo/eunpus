@@ -18,6 +18,8 @@
 
 ## Summary
 
+- **Stage 171** (2026-09-01) — Cold Wallet 공식 문서 Mode C promote. Q-M05·Q-G06 **부분 ANSWERED**. 신규 질문·entity 없음.
+
 - **Stage 1** (2026-05-18) — 13건 추가 (G01–G04, M01–M02, C01–C02, P01–P03, W01, O01)
 - **Stage 2** (2026-05-18) — G02 **ANSWERED**; 신규 9건 추가 (L01–L07, M03–M04)
 - **Stage 4** (2026-05-18) — C02 **ANSWERED**; 신규 12건 추가 (A01–A07, AU01–AU05)
@@ -794,18 +796,18 @@
 
 - **Why it matters**: Stage 8 의 Hot Wallet MPC 분포 = 2 cloud + 1 mobile device (Q-M01/M02/M03 ANSWERED). Cold Wallet 은 별도 device 필요 (`cold-wallet-device-requirements`) — 그렇다면 share 분포가 (a) 2 cloud + 1 Cold Wallet device 인지, (b) 3 Cold Wallet device (Fireblocks cloud 무관여) 인지, (c) 다른 구조인지가 Cold 의 신뢰 모델 + offline 성격을 결정.
 - **Where this came up**: [[entities/fireblocks/mpc-key-share]], [[vendors/fireblocks/mpc]], [[entities/fireblocks/workspace]]
-- **Sources to check**: `cold-wallet-mobile-key-share-backup-and-recovery.pdf` + `cold-wallet-device-requirements.pdf` + `provisioning-an-owners-cold-wallet-device.pdf` (TIER 1 lightweight index, Stage 14)
-- **Hypotheses (unverified)**: Cold Wallet 은 cloud share 없이 air-gapped device 만으로 signing (그래서 별도 device 필요). Cloud key share 가 없다면 Fireblocks 가 cold workspace 의 transaction 에 cryptographic 참여 불가 — 완전 customer-controlled signing plane.
-- **Status**: open
+- **Sources checked**: `2026-09-01__fireblocks__cold-wallet-primary-docs-extracted.md` (`FB-CW-02`, `FB-CW-04`)
+- **Answer (partial)**: Fireblocks는 Hot·Warm·Cold를 세 번째 MPC key share의 위치와 승인 방식으로 구분한다. Cold Wallet의 세 번째 share는 air-gapped 모바일 기기에 있고 양방향 QR로 승인한다. Signer 등록 때 Fireblocks cloud co-signer와 통신해 MPC-CMP 통신 4 round 중 처음 3 round를 pre-processing하고 실제 거래에서는 마지막 round를 QR로 완료한다. 공식 문서에서 확인되는 범위는 세 번째 share의 위치와 cloud co-signer의 pre-processing 참여까지다. 첫 번째·두 번째 share의 위치와 전체 share 분포는 원본 추출본에 직접 나와 있지 않으므로 Cold Wallet의 전체 분포가 Hot Wallet과 같은지는 확정할 수 없다.
+- **Status**: **partial answered (2026-09-01, Stage 171)**
 - **Cluster**: Stage 14 Cold Wallet
 
 ### Q-2026-05-19-G06: Cold ↔ Hot rebalancing 의 governance approval flow
 
 - **Why it matters**: Stage 9 Vault Structure BP 가 "Cold Wallet 별도 workspace + rebalancing" 권장. Stage 14 catalog 의 `connecting-cold-wallet-with-hot-workspaces-via-p2p.pdf` 가 rebalancing path 의 P2P connection 모델 시사. 그러나 (a) rebalancing transaction 의 approval flow (Admin Quorum / Approval Group 적용), (b) Hot → Cold 와 Cold → Hot 의 비대칭 거버넌스 (Cold → Hot 은 더 strict?), (c) Cold Wallet 의 approval-group 미지원 (Risk-G07) 환경에서 어떻게 작동하는지가 운영 모델 핵심.
 - **Where this came up**: [[entities/fireblocks/workspace]], [[entities/fireblocks/admin-quorum]], [[entities/fireblocks/transaction]], [[vendors/fireblocks/risks]]
-- **Sources to check**: `connecting-cold-wallet-with-hot-workspaces-via-p2p.pdf` + `cold-wallet-security-and-operational-best-practices.pdf` (TIER 1 lightweight index, Stage 14)
-- **Hypotheses (unverified)**: Cold workspace 는 approval-group 미지원이므로 Cold-side 의 outbound (Cold → Hot) 은 Admin Quorum 단독 + Support 경유 필수. Hot → Cold inbound 는 Hot workspace 의 일반 TAP 따름.
-- **Status**: open
+- **Sources checked**: `2026-09-01__fireblocks__cold-wallet-primary-docs-extracted.md` (`FB-CW-01`, `FB-CW-06`)
+- **Answer (partial)**: Hot·Cold workspace 간 자산 이동에는 Fireblocks P2P Network를 사용할 수 있다. 새 P2P Network connection은 요청 측과 상대 측 Admin Quorum의 승인이 모두 필요하다. 이는 connection 생성에 관한 승인 요건이다. 공개 문서에서는 개별 transfer의 approval flow, Hot→Cold와 Cold→Hot의 비대칭 규칙, Support 개입 여부를 확인하지 못했다.
+- **Status**: **partial answered (2026-09-01, Stage 171)**
 - **Cluster**: Stage 14 Cold Wallet
 - **Related**: Risk-G07 (Cold Wallet approval-group 미지원)
 

@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [authentication, identity]
 stage_introduced: 1
-last_updated_stage: 8
-source_count: 14
+last_updated_stage: 171
+source_count: 15
 related:
   - 2fa
   - admin-quorum
@@ -281,3 +281,17 @@ Signing ceremony 중 mobile device 의 동작:
 - Q-2026-05-18-D05 — Device migration의 admin approval bypass 거버넌스 (Stage 5)
 - ~~Q-2026-05-18-AU04~~ — **ANSWERED (Stage 8)**: Yubikey + biometric 두 옵션 명세. FIDO2/WebAuthn 은 명시 안 됨 — Yubico OTP mode 사용
 - ~~Q-2026-05-18-M02~~ — **ANSWERED (Stage 8)**: 3-endpoint signing 모델 (1 mobile + 2 cloud, cloud-based mediator)
+
+## Stage 171 — Cold Wallet 기기 등록과 오프라인 전환
+
+Cold Wallet 전용 iOS 기기는 다음 절차로 등록해 오프라인으로 전환한다.
+
+1. Owner 기기를 Signer 기기보다 먼저 구성한다.
+2. 새 iOS 기기를 Apple Configurator의 Supervised Mode로 준비하고 MDM에는 enroll하지 않는다. Cold Wallet 기기에는 SIM card도 설치하지 않는다.
+3. 초기 설정과 Cold Wallet app 다운로드, workspace 등록, Signer의 signature pre-processing 단계에서는 인터넷 연결을 사용한다.
+4. Owner 기기는 등록을 마친 뒤, Signer 기기는 signature pre-processing까지 마친 뒤 각각 Apple ID에서 로그아웃하고 Bluetooth·Wi-Fi를 끈 다음 Airplane Mode를 켠다.
+5. 재시작 후에도 Bluetooth와 Wi-Fi가 꺼져 있도록 제한 profile을 적용하고 해당하는 기기·iOS version에는 Single App Mode를 적용한다.
+
+Signer 기기의 signature pre-processing은 MPC-CMP 통신 4 round 중 처음 3 round를 미리 완료한다. 실제 거래에서는 마지막 round를 QR 스캔으로 완료한다.
+
+출처: `sources/fireblocks/source-notes/cold-wallet-operating-model.md` (`FB-CW-03`, `FB-CW-04`, Stage 171)

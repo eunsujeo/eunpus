@@ -7780,3 +7780,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 신규 Q: Q-2026-08-28-KL06 KeyLink Flow 정체 · KL07 7일 큐 vs Pending Signature 2h · KL08 가격 구조 (CSM 유보)
 - 영향받은 페이지: vendors/fireblocks/security.md (§Stage 170 HSM 요건·키 복구) · architecture.md (§Stage 170 Customer Server 계약·참조 구현·KeyLink Flow) · risks.md (Risk-KL01 mitigation·비용) · entities/fireblocks/cosigner.md (§Stage 170 호스트 사양·HA) · transaction.md (§Stage 36 7일 큐 주석) · open-questions/fireblocks.md · blockchain-manager/docs/BC/Fireblocks QnA/01-qna.md (KeyLink 담당자 확답 절)
 - 신규 entity: 0 (43 stage 연속 — KeyLink Flow 는 architecture hub 흡수)
+
+## Stage 171 (2026-09-01) — Fireblocks Cold Wallet 공식 문서·외부 공개자료 Mode C promote
+- source: `2026-09-01__fireblocks__cold-wallet-primary-docs-extracted.md` · `2026-09-01__cold-wallet-regulation-exchange-disclosures.md` · `sources/fireblocks/source-notes/cold-wallet-operating-model.md`
+- 신규 fact: Cold Wallet-only workspace · Owner 선행 등록 · Supervised iOS/No SIM/No MDM · 등록·pre-processing 중 온라인 연결 후 오프라인 전환 · MPC-CMP 3개 round 사전 처리와 마지막 QR round · 거래 생성 후 8시간 timeout · P2P 양쪽 Admin Quorum 승인 · pre-processed signature 10% 미만 Audit Log event
+- 부분 ANSWERED: Q-2026-05-19-M05 (세 번째 MPC share 위치와 cloud co-signer의 pre-processing 참여 확인, 전체 share 분포는 미확인) · Q-2026-05-19-G06 (P2P connection 양쪽 Admin Quorum 승인. 개별 transfer approval과 방향별 차이는 미확인)
+- 영향받은 페이지: entities/fireblocks/workspace.md · mobile-device.md · transaction.md · workspace-keys-backup.md · vendors/fireblocks/security.md · architecture.md · open-questions/fireblocks.md
+- 신규 entity: 0 (44 stage 연속)

@@ -1,0 +1,15 @@
+topic: fireblocks-cold-wallet
+collected_at: 2026-09-01
+files:
+  - id: FB-CW-PUBLIC-20260901
+    path: 2026-09-01__fireblocks-public-docs.md
+    source_type: official-docs-index
+    grade: primary
+    sha256: 91a8ba636f970cb373b1802b5a9d54958d41498af3a9a31d9f3552ac199b0861
+    canonical_extract: ../../../sources/fireblocks/markdown/2026-09-01__fireblocks__cold-wallet-primary-docs-extracted.md
+  - id: CW-EXTERNAL-DISCLOSURES-20260901
+    path: 2026-09-01__regulation-exchange-disclosures.md
+    source_type: regulation-and-official-disclosures-index
+    grade: primary-mixed
+    sha256: 062bf3dd33dad026a61cfebfd194e65b6798094459f2a48c0605e0b8d2fb54cb
+    canonical_extract: ../../../sources/monitoring/2026-09-01__cold-wallet-regulation-exchange-disclosures.md

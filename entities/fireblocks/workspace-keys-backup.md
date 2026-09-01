@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [recovery, backup, security, workspace, governance]
 stage_introduced: 1
-last_updated_stage: 153
-source_count: 8
+last_updated_stage: 171
+source_count: 9
 related:
   - admin-quorum
   - architecture
@@ -339,3 +339,14 @@ RECONSTRUCTION (Stage 31):
 - Q-2026-05-18-D04 — Cloud backup의 cryptographic 세부
 - Q-2026-05-18-D07 — Workspace Keys Recovery 절차·메커니즘 (paired Mode C `generating-a-workspace-key-backup-package-...` 필요)
 - (board resolution path에서 backup 결정 권한 위임 — 본 자료에 명시 없음)
+
+## Stage 171 — Cold Wallet 관련 mobile recovery의 경계
+
+Fireblocks의 `Mobile Key Share Backup and Recovery`는 일반 mobile key share 복구 문서다. 다음 내용은 확인되지만 Cold Wallet 전용 workspace key backup 절차와 같다고 단정할 수 없다.
+
+- 기기 OS cloud backup에는 Fireblocks key share material이 포함되지 않는다.
+- Biometric 설정 변경, PIN 분실, 기기 분실·파손·교체, Fireblocks app 삭제는 mobile key share에 접근할 수 없게 되는 사유다.
+- Owner 기기의 mobile key share recovery에는 Fireblocks Support와 경우에 따라 Disaster Recovery Service provider의 도움이 필요하다.
+- Owner recovery에는 recovery passphrase를 쓰거나 다른 signing user의 mobile device를 쓰는 방법이 안내된다.
+
+출처: `sources/fireblocks/source-notes/cold-wallet-operating-model.md` (`FB-CW-07`, Stage 171)

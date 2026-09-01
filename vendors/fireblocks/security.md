@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [risks, security, key-link]
 stage_introduced: 1
-last_updated_stage: 170
-source_count: 10
+last_updated_stage: 171
+source_count: 11
 related:
   - admin-quorum
   - approval-group
@@ -461,3 +461,12 @@ Luna 펌웨어 (★ 2차 — CSM 이 Thales 의 Fireblocks 통합 가이드를 �
 ## Sources (Stage 38 추가)
 - `2026-05-22__fireblocks-com__enterprise-digital-asset-security-thales.md` (Stage 38: Thales Luna HSM 통합, Hot/Warm/Cold 3-mode, air-gap transport, PQC, HKMA/HKSFC/JFSA)
 - `2026-08-28__fireblocks-csm__key-link-thales-luna-qna.txt` (Stage 170: HSM 요건 secp256k1+ed25519/PKCS#11/RSA-2048 · Luna 펌웨어 [2차] · Luna 네이티브 키 복구 — CSM 확답)
+
+## Stage 171 — Cold Wallet에서 확인되는 보안 속성
+
+- 세 번째 MPC key share는 air-gapped 모바일 기기에 있고 Console과의 거래 데이터 이동에는 양방향 QR animation을 사용한다.
+- Signature pre-processing은 MPC-CMP 통신 4 round 중 처음 3 round를 미리 완료하고 pre-processed signature를 Signer 기기에 저장한다. Fireblocks는 일반적으로 2년 이상 사용할 수 있는 분량을 적재한다고 설명한다.
+- ECDSA 또는 EdDSA pre-processed signature의 잔여량이 초기 용량의 10% 미만이면 Fireblocks가 Audit Log event를 발행한다.
+- P2P Network transfer는 secure hardware enclave 안의 encrypted tunnel로 routing된다. 새 P2P Network connection은 요청자와 상대방의 Admin Quorum이 모두 승인해야 한다.
+
+출처: `sources/fireblocks/source-notes/cold-wallet-operating-model.md` (`FB-CW-02`, `FB-CW-04`, `FB-CW-06`, Stage 171)

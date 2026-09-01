@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [architecture, key-link]
 stage_introduced: 1
-last_updated_stage: 170
-source_count: 12
+last_updated_stage: 171
+source_count: 13
 related:
   - authentication
   - callback-handler
@@ -363,3 +363,20 @@ Stage 9 의 14-step transaction flow 에서 **step 10 (Co-Signer Engine → Co-S
 - `2026-05-22__support-fireblocks-io__getting-started-with-fireblocks-key-link-extracted.txt`, p.1-9 (Stage 36: Onboarding, Agent setup, Proof of Ownership)
 - `2026-05-22__support-fireblocks-io__set-up-your-fireblocks-vault-with-key-link-extracted.txt`, p.1-4 (Stage 36: Vault account ECDSA+EdDSA binding)
 - `2026-08-28__fireblocks-csm__key-link-thales-luna-qna.txt` (Stage 170: Customer Server 계약·참조 구현(Luna 빌드)·KeyLink Flow — CSM 확답)
+
+## Stage 171 — SaaS Cold Wallet 서명 경로
+
+Cold Wallet은 Hot·Warm workspace와 달리 세 번째 MPC key share를 air-gapped 모바일 기기에 둔다. Console과 기기 사이의 서명 데이터는 QR animation으로 왕복한다.
+
+```text
+Console: 미서명 거래 QR 표시
+  → Cold Wallet 기기: QR 스캔, 거래 확인, PIN·biometric 인증
+  → Cold Wallet 기기: 마지막 MPC round 완료, transaction confirmation QR animation 생성
+  → Console: transaction confirmation QR animation 스캔, 서명 완료
+```
+
+위 화살표는 네트워크 연결이 아니라 Console과 Cold Wallet 기기가 상대 화면의 QR animation을 스캔하는 데이터 이동 방향을 나타낸다.
+
+Signer 등록 때는 Fireblocks cloud co-signer와 통신해 MPC-CMP 통신 4 round 중 처음 3 round를 미리 처리한다. 이 단계에서는 인터넷을 사용하며 이후 기기를 오프라인 상태로 전환한다. 실제 거래에서는 마지막 round만 QR로 처리한다.
+
+출처: `sources/fireblocks/source-notes/cold-wallet-operating-model.md` (`FB-CW-02`, `FB-CW-04`, `FB-CW-05`, Stage 171)

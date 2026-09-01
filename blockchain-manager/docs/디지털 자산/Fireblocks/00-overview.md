@@ -61,3 +61,4 @@ Customer Domain
 | [API Co-signer](./03-api-cosigner-callback.md) | 자동 서명 구조와 Callback Handler |
 | [API·Webhooks v2](./04-api-webhooks-operations.md) | API 인증과 Webhooks v2 서명 방식 |
 | [Network·컴플라이언스·경계](./05-integrations-and-boundaries.md) | 기관 연결과 AML·트래블룰 연동 범위 |
+| [Cold Wallet 공개 운영 절차](./06-cold-wallet-operations.md) | 기기 등록, QR 서명, 복구 범위, 규제와 거래소 공개 사례 |
