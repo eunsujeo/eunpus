@@ -70,8 +70,14 @@ BIOS 설정 — 설치 전에 인프라 팀에 요청해야 하는 항목:
 
 설치가 끝난 뒤 Policy 한 곳으로 병렬화한다.
 
+전제: Co-signer 는 Policy 에 직접 등장하지 않는다. Policy 에 등장하는 것은 각 Co-signer 와 페어링된
+**API user** 다 — 장비 1 ↔ API user S1, 장비 2 ↔ API user S2 처럼 1:1 로 묶여 있고,
+어느 Co-signer 가 서명하는지는 rule 에 어느 API user 가 지정됐는지로 결정된다.
+
 1. 각 Co-signer 에 Signer role API user 최소 1개 (3절에서 생성한 것).
-2. 대상 거래 유형의 Policy rule 에서 **Designated Signers / Groups** 필드에 두 API user 를 개별 추가하거나 user group 으로 추가.
+2. Co-signer 가 자동 서명할 거래 범위를 다루는 Policy rule 에서 **Designated Signers / Groups** 필드에 두 API user 를 넣는다. 넣는 방법은 두 가지고 결과는 같다:
+   - S1·S2 를 필드에 하나씩 직접 나열
+   - S1+S2 를 미리 user group 으로 묶어 두고 필드에는 그 그룹 하나만 지정
 3. 해당 rule 의 designated signer 는 **전원 API user 여야 한다** — Console 사용자와 혼합 금지.
 4. Owner + Admin Quorum 이 Policy 변경을 승인하면 병렬 동작이 시작된다.
 
