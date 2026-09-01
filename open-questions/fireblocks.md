@@ -1285,3 +1285,11 @@
 - **확인 질문**: add-on 단가 체계(workspace 당? 키 당? 거래량?) · 개발·UAT·운영·DR workspace 별 견적 · PS 패키지 범위·필수 여부 · KeyLink Flow 별도 과금 여부
 - **Sources to check**: Fireblocks 영업 담당 회신
 - **Status**: open
+
+### Q-2026-09-01-C01: SGX enclave 키로 암호화된 secrets.db 의 cross-machine 복호화 메커니즘
+
+- **Why it matters**: 장비 교체(migration) 절차의 신뢰 경계. `secrets.db` 는 "encrypted with a key generated in a secure SGX enclave" 인데, 공식 절차는 `secrets.db` + `ra_loader_enclave.signed.so` 를 **다른 물리 장비**에 복사 후 `./cosigner start` 로 복구된다고 명시 — SGX sealing 은 통상 machine-bound 인데 어떤 메커니즘(remote attestation 재발급? loader 를 통한 re-seal? Fireblocks 서버 개입?)으로 이동성이 성립하는지 미명세. PM 2대 HA 운영 시 백업 반출·복구 설계의 전제가 됨.
+- **Where this came up**: [[entities/fireblocks/cosigner]] §"Stage 172 — SGX Co-signer 백업·장비 교체"
+- **확인 질문**: 새 장비에서 첫 start 시 Fireblocks 측 재승인(Owner key share 승인 등)이 필요한가? 복사만으로 기존 페어링·key share 가 그대로 유효한가?
+- **Sources to check**: `api-cosigner-troubleshooting.md` (저장본) · Fireblocks Support/CSM
+- **Status**: open

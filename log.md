@@ -7787,3 +7787,11 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 부분 ANSWERED: Q-2026-05-19-M05 (세 번째 MPC share 위치와 cloud co-signer의 pre-processing 참여 확인, 전체 share 분포는 미확인) · Q-2026-05-19-G06 (P2P connection 양쪽 Admin Quorum 승인. 개별 transfer approval과 방향별 차이는 미확인)
 - 영향받은 페이지: entities/fireblocks/workspace.md · mobile-device.md · transaction.md · workspace-keys-backup.md · vendors/fireblocks/security.md · architecture.md · open-questions/fireblocks.md
 - 신규 entity: 0 (44 stage 연속)
+
+## Stage 172 (2026-09-01) — Multi Co-signer HA(active-active) + SGX 백업·교체 절차 Mode C promote
+- source: `2026-09-01__developers-fireblocks-com__docs-multiple-cosigners-high-availability.md` (신규 fetch) · `2026-05-22__developers-fireblocks-com__reference-api-cosigner-maintenance-sgx.md` (Mode B→C 승격)
+- 신규 fact: 다중 API Co-signer HA = **active-active** · Policy rule 의 Designated Signers/Groups 에 API user 개별/그룹 등록으로 병렬 구성 (전원 API user, Console user 혼합 금지) · 런타임 = 페어링된 전체 Co-signer 가용성 확인 후 first available 로 서명 전송 · Source=exchange/fiat rule 은 단일 API user 만 (다중 지정 시 자동 실패) · active-active-passive 3대 예시 (cloud AZ 2 + on-prem passive 1) · SGX 백업 3파일 (secrets.db / backup 폴더 / ra_loader_enclave.signed.so) · migration = 파일 복사 + start, 백업 없으면 re-enroll
+- Stage 36 잔여 "HA 문서 미ingest" 해소
+- 신규 Q: Q-2026-09-01-C01 (sealed secrets.db 의 cross-machine 복호화 메커니즘)
+- 영향받은 페이지: entities/fireblocks/cosigner.md · entities/fireblocks/policy.md (backlink) · open-questions/fireblocks.md
+- 신규 entity: 0 (45 stage 연속)

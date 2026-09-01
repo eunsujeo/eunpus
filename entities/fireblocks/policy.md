@@ -9,6 +9,7 @@ source_count: 6
 related:
   - admin-quorum
   - approver
+  - cosigner
   - designated-signer
   - non-signing-admin
   - owner
@@ -95,6 +96,7 @@ API user를 Policy rule이 참조한다면 그 API user를 삭제하기 전에 �
 - [[entities/fireblocks/user-roles/non-signing-admin]]
 - [[entities/fireblocks/user-roles/approver]]
 - [[entities/fireblocks/transaction]]
+- [[entities/fireblocks/cosigner]] (Stage 172 — multi Co-signer HA 는 Designated Signers/Groups 로 구성)
 - [[vendors/fireblocks/policy-engine]]
 - [[vendors/fireblocks/tap]]
 

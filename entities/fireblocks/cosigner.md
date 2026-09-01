@@ -4,9 +4,9 @@ vendor: fireblocks
 status: stable
 tags: [signing, integration, key-link]
 stage_introduced: 4
-last_updated_stage: 170
-source_count: 7
-related: [api-co-signer, api-user, callback-handler, cosigner, non-signing-admin, signer]
+last_updated_stage: 172
+source_count: 9
+related: [api-co-signer, api-user, callback-handler, cosigner, non-signing-admin, policy, signer]
 ---
 # Entity: Cosigner (Fireblocks)
 
@@ -40,6 +40,7 @@ Fireblocks의 자동 서명 컴포넌트군. 본 자료에서는 **API Co-signer
 - [[entities/fireblocks/api-user]]
 - [[entities/fireblocks/user-roles/signer]]
 - [[entities/fireblocks/user-roles/non-signing-admin]]
+- [[entities/fireblocks/policy]]
 - [[vendors/fireblocks/cosigner]]
 
 ## Sources
@@ -215,7 +216,7 @@ Key Link workspace 의 customer-held key plane 에서 작동하는 **별도 cosi
 `hosted-mpc-customer-side-setup.md` (Stage 36) 와 결합 시:
 - Hosted MPC **최소 3 Co-Signer** 모두 SGX-enabled
 - 6 deployment option 중 어느 조합도 가능 (cross-cloud HA 가능)
-- "Configuring multiple API Co-Signers in high availability mode" 별도 article (본 wiki 아직 미ingest — KL02 retain)
+- "Configuring multiple API Co-Signers in high availability mode" 별도 article — **Stage 172 에서 Mode C ingest 완료** (§"Stage 172")
 - Azure Availability Zones (A & B) 가 typical HA 패턴
 
 ### Maintenance / Versioning (paired pages)
@@ -229,3 +230,42 @@ Key Link workspace 의 customer-held key plane 에서 작동하는 **별도 cosi
 
 ## Sources (Stage 36 cosigner 추가)
 - `2026-05-22__developers-fireblocks-com__reference-api-cosigner-installation-flow.md`, p.1-2 (Stage 36: 3-step flow, 6 deployment options)
+
+## Stage 172 — Multi Co-signer HA = active-active + SGX 백업·교체 절차 (★)
+
+Stage 36 부터 미ingest 로 남아 있던 HA 전용 문서를 Mode C promote (2026-09-01). 함께 `api-cosigner-maintenance-sgx.md` 를 Mode B → C 승격.
+
+### HA = active-active (★)
+
+직접 인용: *"You can configure multiple API Co-signers to operate in an active-active state... If one API Co-signer fails or becomes impaired, the remaining Co-signer(s) will continue signing transactions seamlessly."* (source: `2026-09-01__developers-fireblocks-com__docs-multiple-cosigners-high-availability.md`)
+
+**병렬 구성 방법** — [[entities/fireblocks/policy]] 로 묶는다:
+1. 각 Co-signer 에 Signer role API user 최소 1개
+2. 대상 Policy rule 의 Designated Signers/Groups 필드에 그 API user 들을 개별 또는 user group 으로 추가
+3. ★ 해당 rule 의 designated signer 는 **전원 API user** — Console user 와 혼합 금지
+4. Owner + Admin Quorum 이 Policy 변경 승인 → 병렬 동작 개시
+
+**런타임 5-step**: 거래 개시 → Policy rule 매칭 → rule 의 API user 들과 페어링된 **모든 Co-signer 에 가용성 확인 호출** → **first available** API user 의 Co-signer 로 서명 전송 → Callback Handler 설정 시 그 로직으로 sign/reject, 미설정 시 자동 서명.
+
+**제약 (★)**: Source 가 exchange/fiat 계정인 rule 에 다중 API user/그룹 지정 금지 — 매칭 거래 자동 실패. 단일 API user 만 지정. First-match 원칙과 결합한 포함식/배제식 rule 설계 예시 2종이 원문에 있음.
+
+**배포 예시 (원문)**: active-active-passive 3대 클러스터 — cloud 서로 다른 AZ 에 active 2대 + on-prem passive 1대 (failover, cloud 측 업데이트·유지보수 중 무중단). Best practice: 가능하면 on-prem 데이터센터와 cloud provider 를 병행, 단일 provider 라면 cross-region replication + on-prem 은 서로 다른 데이터센터.
+
+### SGX Co-signer 백업·장비 교체 (source: `2026-05-22__developers-fireblocks-com__reference-api-cosigner-maintenance-sgx.md`)
+
+백업 대상 3개:
+1. `/databases/cosigner/db/secrets.db` — Co-signer 비밀 DB. **SGX enclave 에서 생성된 키로 암호화**
+2. `/databases/cosigner/backup/` — DB 변경 시마다 `%Y%m%d%H%M%S.db` 형식 자동 백업 (로컬)
+3. `/databases/cosigner/enclave/ra_loader_enclave.signed.so` — enclave loader
+
+**장비 교체(migration)**: 새 SGX 장비 준비 → `secrets.db` + `ra_loader_enclave.signed.so` 를 동일 경로에 복사 → `./cosigner start`. 백업이 없으면 연결된 API user 를 re-enroll(unpair) 하고 새 Co-signer 를 신규 설치.
+
+**DR 우선순위 (HA 문서)**: 백업은 DR 로 쓸 수 있으나 권장은 "추가 Co-signer 를 active-active 로 두고 장애 시 그걸 쓰는 것" — 백업의 1차 용도는 장비 업데이트·교체 시 다운타임 최소화.
+
+**운영 명령**: `./cosigner logs / list-users / print-public-key / stop / start / restart`. 로그 2종 — `run.log` (설치·설정 이력), `customer_cosigner.log` (서명·승인 이력, 4.1MB × 10 순환). ELK/Splunk/Datadog 스트리밍 가능. Docker 기반, root 권한 필요.
+
+**미명세** → [[open-questions/fireblocks#Q-2026-09-01-C01]]: SGX enclave 키로 암호화된 `secrets.db` 가 다른 물리 장비의 enclave 에서 복호화되는 메커니즘.
+
+## Sources (Stage 172 추가)
+- `2026-09-01__developers-fireblocks-com__docs-multiple-cosigners-high-availability.md` (Stage 172: active-active, first-available 라우팅, API user 전원 요건, exchange/fiat 제약, active-active-passive 예시)
+- `2026-05-22__developers-fireblocks-com__reference-api-cosigner-maintenance-sgx.md` (Stage 172 B→C 승격: 백업 3파일, migration, 운영 명령·로그)
