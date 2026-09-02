@@ -134,6 +134,25 @@ Cold Wallet 은 마지막 라운드만 QR 로 오프라인 기기와 주고받�
 
 vault account·vault wallet·입금 주소 생성은 키 생성이 아니다. master key 에서 `m/44/coinType/vaultAccountId/change/index` 로 결정론적 파생이고, 새 엔트로피·새 조각·MPC 세션이 없다. Co-signer 나 모바일 서명 기기가 개입하지 않는다.
 
+### 5.1 "파생" 이 두 가지 — 서명키 파생과 주소 파생
+
+같은 말이 두 곳에 쓰여 헷갈리기 쉽다. 둘은 다른 일이다.
+
+| | 서명키 파생 | 주소 파생 |
+|---|---|---|
+| 무엇이 나오나 | 새 장치용 조각 3개 (서명키 B·C·D…) | vault 별 주소와 그 주소의 자식 키 |
+| 뿌리 | Owner 서명키 A | 워크스페이스 master key |
+| 언제 | 서명 권한 장치가 합류할 때 | vault account·wallet·주소를 만들 때 |
+| 누가 개입 | Fireblocks co-signer 들 + Owner 모바일, Owner 승인 1회 | 아무도. 새 조각·MPC 세션 없음 |
+| 지갑 주소 | 바뀌지 않음 | 경로마다 하나씩 생김 |
+
+**주소마다 자기 키가 있다.** 주소는 master key 에서 `m/44/coinType/vaultAccountId/change/index` 경로로 파생된 자식 키의 주소이고, 그 자식 키로 서명해야 그 주소의 자산이 움직인다. 다만 자식 키는 "master key + 경로" 로 계산되는 값이라 따로 저장되지 않고, master key 가 조각 3개로만 존재하므로 자식 키도 조립된 형태로는 존재하지 않는다. 공식 문서에서 확인되는 것은 다음 둘이다.
+
+- 주소 생성 때 새 조각·MPC 세션이 생기지 않고 모바일·Co-signer 가 개입하지 않는다 (담당자 확답 2026-08).
+- 재해 복구 산출물이 개별 주소 키가 아니라 확장 개인키 xprv·fprv 다 — 뿌리 하나에서 모든 주소 키가 나온다는 뜻이다 ([Fireblocks cloud architecture](https://support.fireblocks.io/hc/en-us/articles/6983991259036-Fireblocks-cloud-architecture)).
+
+**추측 — 공식 문서 미공개.** 트랜잭션이 vault X 에서 나갈 때 조각 3개가 "경로 X 의 자식 키" 로 서명하는 구체 방법은 Fireblocks 가 공개하지 않았다. HD 지갑과 MPC 를 결합한 일반 원리로는 각 조각 보유자가 자기 조각에 파생 경로를 적용해 자식 키의 조각을 계산하고, 그 조각들로 부분 서명을 만들어 합치는 방식이 알려져 있다. Fireblocks 가 이 방식을 쓰는지는 확인되지 않았고, 위 문단은 추측이다. 확정되는 것은 "어느 장치의 서명키든 조각 3개가 모이면 어떤 vault 주소에도 서명할 수 있고, vault 마다 조각을 따로 갖지 않는다" 까지다.
+
 ## 6. 장치별 서명키와 사용자
 
 - **서명키(key share set)는 서명 장치 단위.** 공식 문구: "Admins and Signers have their own unique key share set. No two signing devices share the same key share set."
@@ -227,6 +246,7 @@ Hosted MPC 공식 문구: "completely control the MPC key shares by hosting all 
 - 모바일 재등록 2일 창이 만료됐을 때의 동작.
 - API user 를 unpair·삭제할 때 그 서명키의 cloud 조각이 삭제되는지 — Console 사용자 삭제 경로만 확인됨.
 - 담당자가 말한 Disaster Recovery Kit 이 Workspace Keys Backup 패키지와 같은 것인지.
+- 조각 3개가 특정 vault 경로의 자식 키로 서명하는 구현 방법 — 5.1 절의 추측 문단. 공식 문서 미공개.
 
 ## 출처
 
