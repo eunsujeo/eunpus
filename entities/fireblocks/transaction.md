@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [transaction, key-link]
 stage_introduced: 5
-last_updated_stage: 171
-source_count: 12
+last_updated_stage: 173
+source_count: 13
 related: [approver, designated-signer, policy, signer, tap, vault-account]
 ---
 # Entity: Transaction (Fireblocks)
@@ -600,3 +600,16 @@ Cold Wallet 거래는 다음 순서로 서명한다.
 Cold Wallet 거래는 생성 후 8시간 안에 서명되지 않으면 timeout으로 취소된다. Non-Signing Admin과 Approver는 Cold Wallet app이 아니라 온라인 Fireblocks mobile app으로 workspace 변경 승인 알림을 받는다.
 
 출처: `sources/fireblocks/source-notes/cold-wallet-operating-model.md` (`FB-CW-05`, Stage 171)
+
+## Stage 173 — vault 간 이동의 거래·웹훅 형태 (PoC 실측)
+
+같은 workspace 의 vault 82 → 83 으로 TRANSFER 를 두 방식으로 제출해 확인했다 (2026-09-04, Sepolia, KBKRW 10).
+
+- destination 을 `VAULT_ACCOUNT` 로 지정하면 **거래 1건**이 생기고 source·destination 이 모두 vault 로 채워진다. 웹훅은 그 거래에 대해 created 1 + status.updated 6 이 오고, 받는 vault 기준 입금 거래는 생기지 않는다.
+- destination 을 받는 vault 의 주소(`ONE_TIME_ADDRESS`)로 지정하면 같은 txHash 로 **거래 2건**이 생긴다. 출금 거래(source vault, destination ONE_TIME_ADDRESS, externalTxId 있음)와 체인 반영 뒤 새로 만들어지는 입금 거래(source `UNKNOWN`/`External`, destination vault 83, externalTxId 없음). Fireblocks 는 자기 주소를 vault 로 되돌려 인식하지 않는다.
+- 두 방식 모두 conf 3 에서 `COMPLETED/CONFIRMED` 가 됐다. 공식 문서가 허용하는 vault-to-vault 0 conf 는 이 workspace 에 적용돼 있지 않았다 (DCCP 설정값 미확인).
+- Stage 36 의 "vault-to-vault 는 한 거래에 양쪽이 기록된다" 간접 근거(`reference-transaction-webhooks.md` rewardsInfo 설명)가 실측으로 확정됐다. (★ Q-2026-09-04-T01 ANSWERED)
+
+## Sources (Stage 173 추가)
+
+- `blockchain-manager/docs/BC/설계/92-vault-to-vault-poc-result.md` (Stage 173: 거래 객체 3건 · 웹훅 알림 이력 16건 · 인박스 16행. 원문은 fbhook `docs/payload-samples/vault-to-vault/`)

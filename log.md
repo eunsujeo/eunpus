@@ -7795,3 +7795,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 신규 Q: Q-2026-09-01-C01 (sealed secrets.db 의 cross-machine 복호화 메커니즘)
 - 영향받은 페이지: entities/fireblocks/cosigner.md · entities/fireblocks/policy.md (backlink) · open-questions/fireblocks.md
 - 신규 entity: 0 (45 stage 연속)
+
+## Stage 173 (2026-09-04) — vault→vault 이동의 거래·웹훅 형태 PoC 실측
+- source: `blockchain-manager/docs/BC/설계/92-vault-to-vault-poc-result.md` (fbhook `docs/payload-samples/vault-to-vault/` 거래 객체 3건 · 인박스 16행 · `GET /v1/webhooks/{id}/notifications` 16건 일치)
+- 신규 fact: destination `VAULT_ACCOUNT` 지정 = 거래 1건(양쪽 vault) · 받는 vault 입금 거래 없음 · 웹훅 7건 / destination `ONE_TIME_ADDRESS`(자기 주소) = 같은 txHash 거래 2건, 입금 거래는 source `UNKNOWN`/`External`·externalTxId 없음 · Fireblocks 는 자기 주소를 vault 로 인식 안 함 / 두 방식 모두 conf 3 COMPLETED
+- ANSWERED: Q-2026-09-04-T01 (등록 즉시 실측으로 닫음)
+- 영향받은 페이지: entities/fireblocks/transaction.md (§Stage 173) · 블록체인매니저/설계/04-detect-confirm.md (내부 이동 VAULT_ACCOUNT 지정 규칙 · sourceAddress 2차 방어) · BC/설계/99-detection-detail.md · BC/Fireblocks QnA/01-qna.md (실측 절 신설) · BC/설계/92 (신규 참고 문서) · open-questions/fireblocks.md
+- 신규 entity: 0 (46 stage 연속)

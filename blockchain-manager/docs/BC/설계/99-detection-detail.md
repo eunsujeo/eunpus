@@ -38,7 +38,7 @@ PostgreSQL·Kafka 계약은 공유하지만 endpoint·scheduler·프로세스 �
 | 단계 | 판단 워커가 하는 일 |
 |---|---|
 | 집기 | 인박스(`bcm_whk_l`)에서 미처리 알림을 오래된 것부터 꺼낸다 — **tx 단위 잠금**으로 같은 tx 의 동시 처리·대사 겹침을 막는다 |
-| 분류·귀속 | 방향을 가린다(발신자가 우리 vault? 목적지가 매핑된 입금 주소?) + accountId 귀속(주소→계정 조회) |
+| 분류·귀속 | 방향을 가린다(발신자가 우리 vault? 목적지가 매핑된 입금 주소?) + accountId 귀속(주소→계정 조회). `sourceAddress` 가 우리 vault 주소인 입금은 DEPOSIT 으로 발행하지 않는다. 내부 이동을 주소로 보내면 source External 인 입금 거래가 따로 생기기 때문([vault 간 이동 PoC](92-vault-to-vault-poc-result.md)) |
 | 전이 비교 | 마지막 발행 상태(`bcm_tx_l.last_pub_stcd`)와 견줘 **[허용 전이 표](02-bcm-flow.md)에 있는 전이만** 가려낸다 (중간 컨펌 갱신은 기록만 · `cnfm_cnt` 는 큰 값으로만 갱신) |
 | 원자 기록 | **한 트랜잭션**으로 `bcm_tx_l` 갱신 + `bcm_outbox_l` 에 발행 이벤트 적재 + 알림 처리 완료(`prcs_stcd=S`)를 함께 커밋 |
 

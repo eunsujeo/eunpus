@@ -19,6 +19,7 @@
 ## Summary
 
 - **Stage 171** (2026-09-01) — Cold Wallet 공식 문서 Mode C promote. Q-M05·Q-G06 **부분 ANSWERED**. 신규 질문·entity 없음.
+- **Stage 173** (2026-09-04) — vault 간 이동의 거래·웹훅 형태 PoC 실측. Q-2026-09-04-T01 등록 즉시 **ANSWERED**. 신규 entity 없음.
 
 - **Stage 1** (2026-05-18) — 13건 추가 (G01–G04, M01–M02, C01–C02, P01–P03, W01, O01)
 - **Stage 2** (2026-05-18) — G02 **ANSWERED**; 신규 9건 추가 (L01–L07, M03–M04)
@@ -1293,3 +1294,13 @@
 - **확인 질문**: 새 장비에서 첫 start 시 Fireblocks 측 재승인(Owner key share 승인 등)이 필요한가? 복사만으로 기존 페어링·key share 가 그대로 유효한가?
 - **Sources to check**: `api-cosigner-troubleshooting.md` (저장본) · Fireblocks Support/CSM
 - **Status**: open
+
+### Q-2026-09-04-T01: vault → vault 이동은 입금 감지에 잡히나 (거래 1건 vs 출금+입금 2건, 자기 주소 인식 여부) — **ANSWERED (Stage 173)**
+
+- **Why it matters**: 내부 이동(sweep·delta·rebalancing)이 고객 입금으로 오발행되면 유령 입금이 된다. 방향 판정 규칙([[entities/fireblocks/transaction]] §"Stage 173", 블록체인매니저/설계/04)이 내부 이동에도 맞는지 확정해야 한다.
+- **Where this came up**: [[entities/fireblocks/transaction]], [[entities/fireblocks/vault-account]], blockchain-manager/docs/블록체인매니저/설계/04-detect-confirm.md
+- **이전 근거**: `2026-05-22__developers-fireblocks-com__reference-transaction-webhooks.md` rewardsInfo 설명의 부수 문장("vault-to-vault 거래에만 양쪽 필드가 나타난다")만 있어 간접 근거로 분류.
+- **답 (PoC 실측 2026-09-04, `blockchain-manager/docs/BC/설계/92-vault-to-vault-poc-result.md`)**: ① destination `VAULT_ACCOUNT` 지정 → 거래 1건, source·destination 모두 vault, 받는 vault 기준 입금 거래 없음, 웹훅 7건. ② destination `ONE_TIME_ADDRESS`(자기 vault 주소) → 같은 txHash 로 거래 2건. 출금 거래 + 체인 반영 44초 뒤 생성되는 입금 거래(source `UNKNOWN`/`External`, externalTxId 없음). Fireblocks 는 자기 주소를 vault 로 되돌려 인식하지 않는다. 웹훅 7 + 2 = 9건. ③ 두 방식 모두 conf 3 에서 COMPLETED.
+- **Applied to**: [[entities/fireblocks/transaction]] §"Stage 173" · 블록체인매니저/설계/04-detect-confirm.md (내부 이동 VAULT_ACCOUNT 지정 규칙 · sourceAddress 2차 방어) · BC/설계/99-detection-detail.md · BC/Fireblocks QnA/01-qna.md
+- **남은 것**: DCCP vault-to-vault 0 conf 적용 시 웹훅 형태 · 다른 workspace 의 vault 주소로 보낸 경우 · Universal Gasless 경로. 별도 Q 로 승격할 만큼의 필요는 아직 없음.
+- **Status**: **answered (2026-09-04, Stage 173)**

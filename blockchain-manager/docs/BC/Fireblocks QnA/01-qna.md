@@ -217,6 +217,16 @@ Fireblocks-managed Relay 의 과금·정산 조건. 원문은 [sources/fireblock
 - [`resend_by_query`](https://developers.fireblocks.com/api-reference/webhooks-v2/resend-notifications-by-query)는 현재 endpoint reference 기준 최근 72시간 안에서 조회하고, 한 요청의 `startTime`~`endTime` 구간은 최대 24시간이다. 30일 일반 문구를 query endpoint의 계약으로 확대하지 않는다.
 - Blockchain Manager 수동 복구는 `resend_failed`만 사용하므로 기본 24시간을 유지하고, 그보다 오래된 거래 공백은 tx 대사로 회수한다.
 
+## vault 간 이동의 거래·웹훅 형태 — PoC 실측 (2026-09-04)
+
+같은 워크스페이스의 vault 82 → 83 으로 kbKRW 10 을 두 방식으로 보내 확인했다. 상세와 원문은 [vault 간 이동 PoC 결과](../설계/92-vault-to-vault-poc-result.md).
+
+**Q.** 우리 vault 에서 우리 vault 로 보내면 입금 감지에 잡히나?
+**A.** destination 을 `VAULT_ACCOUNT` 로 지정하면 **안 잡힌다.** 거래 1건이 source·destination 을 모두 들고 가고 웹훅도 그 거래에만 온다(created 1 + status.updated 6). 받는 vault 기준 입금 거래는 만들어지지 않는다.
+
+**Q.** 받는 vault 의 입금 주소를 `ONE_TIME_ADDRESS` 로 지정해 보내면?
+**A.** 같은 `txHash` 로 **거래 2건**이 생긴다. 출금 거래(source vault 82, destination ONE_TIME_ADDRESS, externalTxId 있음)와, 체인 반영 44초 뒤 새로 만들어지는 입금 거래(source `UNKNOWN`/`External`, destination vault 83, externalTxId 없음). Fireblocks 는 자기 주소를 vault 로 되돌려 인식하지 않는다. 이 입금 거래는 외부 입금과 모양이 같아 방향 규칙대로면 DEPOSIT 으로 오발행된다. 그래서 내부 이동은 반드시 VAULT_ACCOUNT 지정으로 제출하고, 2차 방어로 `sourceAddress` 가 우리 vault 주소인 입금은 DEPOSIT 발행을 막는다.
+
 ## 대기 중인 문의 (회신 전)
 
 **Q.** 웹훅 전달에 순서 보장이 있나? 한 알림이 전달 실패로 재시도 중일 때, 그 뒤에 생긴 알림은 먼저 전달되나?
