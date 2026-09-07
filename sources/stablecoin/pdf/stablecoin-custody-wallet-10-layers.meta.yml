@@ -1,0 +1,25 @@
+source_url: (internal — 디지털자산사업팀 내부 검토용, HeadlessChrome 인쇄 PDF)
+downloaded_at: 2026-09-02
+doc_type: internal-architecture-review
+title: 스테이블코인 전용 수탁 지갑 시스템 — 10개 계층 구조와 은행 시스템 접점
+authors:
+  - 디지털자산사업팀 (내부)
+doc_date: 2026-08-28
+doc_status: 내부 검토용 (구조·사실관계·쟁점 정리 목적, 채택 판단 미포함 — 표지 명시)
+distribution: internal
+pages: 34
+language: ko
+tier: 1
+domain: stablecoin / custody architecture / bank-system integration
+mode: B (lightweight-index — 본문 deep ingest 보류)
+stage_ingested: (제안) 174
+crawl_status: full-text-extracted (pdftotext, 본문 LLM 미로드 — 표지·목차·장 제목만 확인)
+extract: ../markdown/2026-08-28__internal-digital-asset-team__stablecoin-custody-wallet-10-layers.md
+index: ../source-notes/2026-08-28__stablecoin-custody-wallet-10-layers__lightweight-index.md
+evidence_grade: internal working paper — 벤더 공식 근거 아님. 인용 시 "내부 검토 문서" 로 표기하고 Fireblocks fact 와 혼합 금지.
+notes: |
+  CEX 지갑 구조를 참고 모델로 두고 스테이블코인 전용 수탁 지갑을 10개 계층으로 정리,
+  각 계층이 은행 시스템(계정계·기간계·정보계·운영계·대외계)과 맞닿는 접점을 매핑한 내부 문서.
+  구성: 0 개요 / 1 참고 모델 / 2 접점 총괄 매트릭스 / 3~12 계층 ①~⑩ / 13 은행 시스템별 종합 /
+  14 선결 결정과 협의 출발점 / 부록 A 규제 기준선 / 부록 B 용어.
+  Mode C promote 시 후보 흡수처: docs/architecture/ (vendor-neutral) · blockchain-manager/docs/BC/ 설계 대조.
