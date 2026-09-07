@@ -30,3 +30,8 @@ sources:
     provenance: normalized snapshot of user-provided Fireblocks CSM technical and commercial Q&A (received 2026-08-28)
     verification: vendor statements; Luna firmware values are second-hand citations of a Thales integration guide and require procurement-time confirmation
     sha256: a879626067ebc3eb74c5efd9d407f5825bbc7cee614780c050a7bf903f9df96b
+  - id: FB-SUP-006
+    file: 2026-09-07__gasless-pricing-ranges-conversation.md
+    provenance: user-provided conversation transcript (received 2026-09-07)
+    verification: vendor initial pricing guideline; totals only, subscription/gas split and gas assumptions not provided; interpreted as subscription tiers pending vendor confirmation
+    sha256: 892a8facfa1694ac44ff430ddb8564e9f0f0853128d0dd698d2d370ddde5dcd5
