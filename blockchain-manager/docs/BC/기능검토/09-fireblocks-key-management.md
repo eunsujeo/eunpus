@@ -2,7 +2,6 @@
 title: Fireblocks 키 관리 — 키가 어디에 있고 어떻게 서명하나
 status: To Do
 group: Fireblocks 키 관리
-date: 2026-08-01
 ---
 
 Fireblocks 가 지갑 개인키를 어떻게 만들고, 어디에 두고, 어떻게 서명하고, 잃었을 때 어떻게 되살리는지를 한 문서로 정리한다.
@@ -16,11 +15,11 @@ Fireblocks 가 지갑 개인키를 어떻게 만들고, 어디에 두고, 어떻
 - **vault·주소 생성은 키 생성이 아니다.** master seed 에서 BIP44 규칙으로 결정론적으로 파생한다. 이때 모바일·Co-signer 는 개입하지 않는다.
 - **복구는 두 층이다.** 장치 하나를 잃으면 recovery passphrase 로 암호화된 cloud 백업으로 그 장치 조각을 되살린다. 전부 잃으면 Owner 가 만든 Workspace Keys Backup 으로 개인키 전체를 오프라인에서 재구성한다. 후자는 그 자체가 단일 침해 지점이라 평소에 쓰지 않는다.
 
-비유로 보면 이렇다. 워크스페이스는 **금고 하나**(지갑 주소 하나)이고, 금고를 열 수 있는 **열쇠가 장치마다 한 개씩** 있다. 각 열쇠는 **3조각으로 쪼개져** 있어 1조각은 그 장치가, 2조각은 Fireblocks 가 갖고, 3조각이 함께 있어야 열쇠 하나가 된다. 어느 열쇠로 열어도 같은 금고가 열리고, 한 열쇠의 조각을 다른 열쇠와 나눠 쓰지 않는다.
+비유로 보면 이렇다. 워크스페이스는 **금고 하나**(master key 하나. 금고 안의 칸들이 vault 주소다)이고, 금고를 열 수 있는 **열쇠가 장치마다 한 개씩** 있다. 각 열쇠는 **3조각으로 쪼개져** 있어 1조각은 그 장치가, 2조각은 Fireblocks 가 갖고, 3조각이 함께 있어야 열쇠 하나가 된다. 어느 열쇠로 열어도 같은 금고가 열리고, 한 열쇠의 조각을 다른 열쇠와 나눠 쓰지 않는다.
 
 ```mermaid
 flowchart TB
-  WS["워크스페이스 지갑 — 주소 하나"]
+  WS["워크스페이스 master key 하나<br/>모든 vault 주소의 뿌리"]
   subgraph OWN["Owner 모바일"]
     A["서명키 A<br/>A1 — Owner 모바일<br/>A2 · A3 — Fireblocks SGX"]
   end
@@ -146,10 +145,45 @@ vault account·vault wallet·입금 주소 생성은 키 생성이 아니다. ma
 | 누가 개입 | Fireblocks co-signer 들 + Owner 모바일, Owner 승인 1회 | 아무도. 새 조각·MPC 세션 없음 |
 | 지갑 주소 | 바뀌지 않음 | 경로마다 하나씩 생김 |
 
+```mermaid
+flowchart TB
+  subgraph SK["서명키 파생 — 서명 권한 장치가 합류할 때"]
+    direction LR
+    A["Owner 서명키 A<br/>3조각 · A1 Owner 모바일 · A2·A3 Fireblocks SGX"]
+    APR["Owner 승인 1회<br/>Fireblocks co-signer + Owner 모바일 참여"]
+    B["서명키 B — Signer 모바일<br/>새 3조각 B1·B2·B3"]
+    C["서명키 C — API Co-signer<br/>새 3조각 C1·C2·C3"]
+    A --> APR
+    APR --> B
+    APR --> C
+  end
+  subgraph AD["주소 파생 — vault·wallet·주소를 만들 때"]
+    direction LR
+    MK["워크스페이스 master key<br/>Owner 최초 DKG 의 3조각"]
+    P1["m/44/coinType/0/0/0<br/>vault 0 의 주소"]
+    P2["m/44/coinType/7/0/0<br/>vault 7 의 주소"]
+    P3["m/44/coinType/7/0/1<br/>vault 7 의 두 번째 주소"]
+    MK -->|"BIP44 결정론적 계산<br/>새 조각·MPC 세션·장치 개입 없음"| P1
+    MK --> P2
+    MK --> P3
+  end
+  A -. "같은 master seed (담당자 확답 2026-08)" .- MK
+  SK -. "어느 서명키든 3조각이 모이면 어떤 vault 주소에도 서명<br/>내부 방법은 미공개" .-> AD
+
+  classDef key fill:#e0e7ff,stroke:#6366f1
+  classDef addr fill:#dbeafe,stroke:#2563eb
+  classDef gate fill:#fef3c7,stroke:#d97706
+  class A,B,C,MK key
+  class P1,P2,P3 addr
+  class APR gate
+```
+
+읽는 법: "서명키 파생" 칸은 사람·서버가 늘 때마다 일어나고, "주소 파생" 칸은 vault·주소가 늘 때마다 일어난다. 보라색은 3조각으로만 존재하는 키, 파란색은 경로마다 하나씩 생기는 주소, 노란색은 Owner 의 승인 관문이다. 서명키 파생 칸에는 새 조각과 MPC 세션과 Owner 승인이 생기고, 주소 파생 칸에는 아무것도 생기지 않는다. 점선 두 개는 확정 사실이지만 내부 절차는 공식 문서에 없다. 서명키 파생의 암호학적 절차와 조각 3개가 특정 경로의 자식 키로 서명하는 방법은 미확정 절 참조.
+
 **주소마다 자기 키가 있다.** 주소는 master key 에서 `m/44/coinType/vaultAccountId/change/index` 경로로 파생된 자식 키의 주소이고, 그 자식 키로 서명해야 그 주소의 자산이 움직인다. 다만 자식 키는 "master key + 경로" 로 계산되는 값이라 따로 저장되지 않고, master key 가 조각 3개로만 존재하므로 자식 키도 조립된 형태로는 존재하지 않는다. 공식 문서에서 확인되는 것은 다음 둘이다.
 
 - 주소 생성 때 새 조각·MPC 세션이 생기지 않고 모바일·Co-signer 가 개입하지 않는다 (담당자 확답 2026-08).
-- 재해 복구 산출물이 개별 주소 키가 아니라 확장 개인키 xprv·fprv 다 — 뿌리 하나에서 모든 주소 키가 나온다는 뜻이다 ([Fireblocks cloud architecture](https://support.fireblocks.io/hc/en-us/articles/6983991259036-Fireblocks-cloud-architecture)).
+- 재해 복구 산출물이 개별 주소 키가 아니라 확장 개인키 {{xprv::extended private key — BIP32 확장 개인키. 이 값 하나에서 모든 하위 주소의 개인키가 파생된다. ECDSA 계열(비트코인·EVM 등)}}·{{fprv::Fireblocks 가 EdDSA 계열(Solana 등)에 쓰는 확장 개인키. 역할은 xprv 와 같다}} 다 — 뿌리 하나에서 모든 주소 키가 나온다는 뜻이다 ([Fireblocks cloud architecture](https://support.fireblocks.io/hc/en-us/articles/6983991259036-Fireblocks-cloud-architecture)).
 
 **추측 — 공식 문서 미공개.** 트랜잭션이 vault X 에서 나갈 때 조각 3개가 "경로 X 의 자식 키" 로 서명하는 구체 방법은 Fireblocks 가 공개하지 않았다. HD 지갑과 MPC 를 결합한 일반 원리로는 각 조각 보유자가 자기 조각에 파생 경로를 적용해 자식 키의 조각을 계산하고, 그 조각들로 부분 서명을 만들어 합치는 방식이 알려져 있다. Fireblocks 가 이 방식을 쓰는지는 확인되지 않았고, 위 문단은 추측이다. 확정되는 것은 "어느 장치의 서명키든 조각 3개가 모이면 어떤 vault 주소에도 서명할 수 있고, vault 마다 조각을 따로 갖지 않는다" 까지다.
 
@@ -182,6 +216,38 @@ Audit Log 에는 MPC key set 의 Created / Enabled / Activated 이벤트가 남�
 
 ## 8. 백업과 복구
 
+무엇을 잃었느냐에 따라 길이 둘이다. 장치 하나만 잃으면 그 장치의 조각만 되살리고(8.1), 전부 잃거나 Fireblocks 가 중단되면 미리 만들어 둔 백업(8.2)으로 개인키 전체를 오프라인에서 재구성한다(8.3).
+
+```mermaid
+flowchart LR
+  subgraph L1["장치 하나를 잃음 — 장치 조각 복구 (담당자 용어: Soft Key Recovery)"]
+    direction LR
+    A1["Owner 기기 분실"] --> A2["본인 recovery passphrase<br/>또는 password-less"]
+    B1["Admin·Signer 기기 분실"] --> B2["다른 authorized signer 의 기기<br/>+ 본인 recovery passphrase"]
+    A2 --> R1["cloud 의 암호화 백업 복호화<br/>새 기기에 그 장치 조각 복원"]
+    B2 --> R1
+  end
+  subgraph L2["전부 잃음 또는 Fireblocks 중단 — 개인키 전체 재구성 (Hard Key Recovery)"]
+    direction LR
+    C1["평소에 만들어 둠<br/>Workspace Keys Backup<br/>Owner + Admin Quorum · 48시간 · 다운로드 1회"] --> C2["오프라인 보관<br/>6 파일 ZIP · RSA 개인키 · passphrase 2종"]
+    C2 --> C3["네트워크 분리 기기에서 Recovery Utility<br/>비밀 4~5개 전부 필요"]
+    C3 --> C4["xprv · fprv 재구성<br/>단일 침해 지점 — 평소 사용 금지"]
+    C3 -. "하나라도 잃으면" .-> CX["재구성 불가"]
+  end
+  R1 --> OK["같은 지갑 주소로 서명 재개"]
+
+  classDef good fill:#dcfce7,stroke:#16a34a
+  classDef bad fill:#fee2e2,stroke:#dc2626
+  classDef wait fill:#fef3c7,stroke:#d97706
+  classDef special fill:#e0e7ff,stroke:#6366f1
+  class R1,OK good
+  class CX bad
+  class C1 wait
+  class C4 special
+```
+
+읽는 법: "장치 하나를 잃음" 칸은 조각 3개 중 장치 조각 1개만 잃은 경우로, cloud 에 있는 암호화 백업으로 그 조각만 되살린다. 개인키는 여전히 조각 상태이고 지갑 주소는 바뀌지 않는다(초록). "전부 잃음" 칸은 개인키 전체를 오프라인에서 재구성하는 길로, 백업은 평소에 만들어 두어야 하고(노랑) 결과물인 확장 개인키는 그 자체가 단일 침해 지점이라 평소에 쓰지 않는다(보라). 비밀 4~5개 중 하나라도 잃으면 이 길은 막힌다(빨강). Disaster Recovery Kit 과 Workspace Keys Backup 이 같은 것인지, cloud 백업의 암호 규격은 미확정 절 참조.
+
 ### 8.1 장치 조각의 cloud 백업 — recovery passphrase
 
 - 사용자 설정 때 모바일 조각을 recovery passphrase 로 암호화한 백업이 Fireblocks cloud 에 만들어진다. Owner·Admin·Signer 필수. 공식 문구: "Fireblocks uses the recovery passphrase to create an encrypted backup of the mobile device's private key share, which is stored securely in Fireblocks' cloud servers."
@@ -209,7 +275,7 @@ Owner 가 Recovery Utility 앱으로 만드는 백업 패키지. 담당자 확�
 
 - **오프라인 기기에서만.** 공식 문구: "Performing this procedure on an online machine will result in your private key being considered exposed and compromised."
 - 필요한 비밀 4개: 백업 ZIP, RSA 개인키 파일, 모바일 recovery passphrase, RSA 개인키 passphrase. 워크스페이스 설정 때 자동 생성 passphrase 를 썼다면 그 passphrase 를 암호화한 RSA 개인키가 하나 더 필요해 5개. **하나라도 잃으면 재구성 불가.**
-- 결과는 확장 개인키 xprv(ECDSA)·fprv(EdDSA). 공식 문구: "Should not be used regularly since reconstruction of the extended private keys introduces a single point of compromise." 백업과 재구성 산출물은 접근이 통제된 오프라인 기기에만 둔다.
+- 결과는 확장 개인키 {{xprv::extended private key — BIP32 확장 개인키. 이 값 하나에서 모든 하위 주소의 개인키가 파생된다. ECDSA 계열(비트코인·EVM 등)}}(ECDSA)·{{fprv::Fireblocks 가 EdDSA 계열(Solana 등)에 쓰는 확장 개인키. 역할은 xprv 와 같다}}(EdDSA). 공식 문구: "Should not be used regularly since reconstruction of the extended private keys introduces a single point of compromise." 백업과 재구성 산출물은 접근이 통제된 오프라인 기기에만 둔다.
 - 담당자 확답(2026-07): 복구는 두 층 — **Soft Key Recovery** 는 장치·조각 단위로 접근 가능한 조각 1개 이상이 남아 있을 때, **Hard Key Recovery** 는 모든 기기 접근 불가 또는 Fireblocks 영구 중단 같은 파국 상황의 전체 복원으로 자체 수행 또는 Station70·Coin Cover 등 파트너 위탁. Fireblocks 측 지표는 RTO 6시간, RPO 0, 가용성 99.9%, 일 단위 백업, 연 1회 이상 복구 테스트, ISO 22301·SOC2 Type 2.
 
 원문: [Recovering private key material](https://support.fireblocks.io/hc/en-us/articles/9716757315996-Recovering-private-key-material) · [Fireblocks cloud architecture](https://support.fireblocks.io/hc/en-us/articles/6983991259036-Fireblocks-cloud-architecture)
@@ -247,6 +313,7 @@ Hosted MPC 공식 문구: "completely control the MPC key shares by hosting all 
 - API user 를 unpair·삭제할 때 그 서명키의 cloud 조각이 삭제되는지 — Console 사용자 삭제 경로만 확인됨.
 - 담당자가 말한 Disaster Recovery Kit 이 Workspace Keys Backup 패키지와 같은 것인지.
 - 조각 3개가 특정 vault 경로의 자식 키로 서명하는 구현 방법 — 5.1 절의 추측 문단. 공식 문서 미공개.
+- Owner 서명키 A 와 워크스페이스 master key 의 관계 — 5절 표는 Owner 최초 온보딩 산출물을 master key 로, 1절은 Owner 서명키를 첫 서명키로 적는다. 같은 것을 두 이름으로 부르는지, 담당자 확답의 "같은 master seed" 가 어느 층을 가리키는지 공식 문서에 명시가 없다. 5.1 다이어그램은 두 상자를 따로 두고 점선으로만 이었다.
 
 ## 출처
 
