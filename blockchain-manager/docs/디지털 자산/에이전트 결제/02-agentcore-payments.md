@@ -1,7 +1,6 @@
 ---
 title: AgentCore Payments — 관리형 에이전트 결제
 status: Done
-date: 2026-08-20
 view: grid
 ---
 

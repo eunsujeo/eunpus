@@ -1,7 +1,6 @@
 ---
 title: 트래블룰 출금 — 사전 검증부터 결과 보고까지
 status: Done
-date: 2026-08-19
 view: grid
 group: 업무 흐름
 ---

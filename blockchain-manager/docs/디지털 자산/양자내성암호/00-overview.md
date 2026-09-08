@@ -1,7 +1,6 @@
 ---
 title: 양자 위협과 PQC — 개념
 status: Done
-date: 2026-08-20
 view: grid
 ---
 

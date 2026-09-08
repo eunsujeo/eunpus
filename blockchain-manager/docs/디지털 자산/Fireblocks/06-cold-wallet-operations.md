@@ -1,7 +1,6 @@
 ---
 title: Fireblocks — Cold Wallet 공개 운영 절차
 status: Done
-date: 2026-09-01
 view: grid
 group: 보관·서명
 ---

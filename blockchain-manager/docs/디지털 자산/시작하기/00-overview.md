@@ -1,7 +1,6 @@
 ---
 title: 디지털 자산 — 문서 안내
 status: Done
-date: 2026-08-19
 view: grid
 ---
 

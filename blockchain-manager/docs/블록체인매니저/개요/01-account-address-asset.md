@@ -1,7 +1,6 @@
 ---
 title: 블록체인 매니저 — 계정·주소·자산
 status: Done
-date: 2026-08-19
 view: grid
 group: 시스템 구조
 ---

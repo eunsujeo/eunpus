@@ -1,7 +1,6 @@
 ---
 title: Fireblocks — API Co-signer와 Callback Handler
 status: Done
-date: 2026-08-18
 view: grid
 group: 플랫폼 기능
 ---

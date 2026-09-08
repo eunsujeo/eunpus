@@ -1,7 +1,6 @@
 ---
 title: 스테이블코인 PoC의 운영·통제와 온체인 실행 위험
 status: Done
-date: 2026-08-31
 view: grid
 group: 스테이블코인 결제
 ---

@@ -1,7 +1,6 @@
 ---
 title: Fireblocks — Transaction·Policy·승인
 status: Done
-date: 2026-08-19
 view: grid
 group: 거래 통제
 ---

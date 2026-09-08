@@ -1,7 +1,6 @@
 ---
 title: Fireblocks — Workspace·Vault·키 모델
 status: Done
-date: 2026-08-19
 view: grid
 group: 플랫폼
 ---

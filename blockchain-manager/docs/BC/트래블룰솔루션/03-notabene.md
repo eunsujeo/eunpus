@@ -1,7 +1,6 @@
 ---
 title: Notabene — API·정책·웹훅 기반 트래블룰 플랫폼
 status: To Do
-date: 2026-07-19
 group: 솔루션별 조사
 ---
 

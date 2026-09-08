@@ -1,7 +1,6 @@
 ---
 title: 가스 대납 — 보안·비용
 status: Done
-date: 2026-08-19
 view: grid
 group: 보안과 비용
 ---

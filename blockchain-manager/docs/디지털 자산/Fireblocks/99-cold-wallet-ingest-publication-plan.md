@@ -1,7 +1,6 @@
 ---
 title: Fireblocks Cold Wallet — ingest·promote·문서화 계획
 status: Done
-date: 2026-09-01
 ref: 참고
 ---
 

@@ -1,7 +1,6 @@
 ---
 title: 블록체인 매니저 — 운영·보안
 status: Done
-date: 2026-08-19
 view: grid
 group: 상태와 운영
 ---

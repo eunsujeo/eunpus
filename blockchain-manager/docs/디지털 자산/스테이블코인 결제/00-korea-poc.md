@@ -1,7 +1,6 @@
 ---
 title: 스테이블코인 결제 — 국내 결제망 연계 PoC 구조
 status: Done
-date: 2026-08-20
 view: grid
 ---
 

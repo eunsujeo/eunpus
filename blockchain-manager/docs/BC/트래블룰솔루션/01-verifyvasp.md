@@ -1,7 +1,6 @@
 ---
 title: VerifyVASP — Enclave 기반 트래블룰 프로토콜
 status: To Do
-date: 2026-07-19
 group: 솔루션별 조사
 ---
 

@@ -1,7 +1,6 @@
 ---
 title: 에이전트 결제 — 개념과 프로토콜 경계
 status: Done
-date: 2026-08-20
 view: grid
 ---
 

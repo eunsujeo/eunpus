@@ -1,7 +1,6 @@
 ---
 title: Fireblocks — API·Webhooks v2
 status: Done
-date: 2026-08-19
 view: grid
 group: 플랫폼 기능
 ---

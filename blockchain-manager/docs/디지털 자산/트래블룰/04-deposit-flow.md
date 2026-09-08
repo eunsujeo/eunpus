@@ -1,7 +1,6 @@
 ---
 title: 트래블룰 입금 — 사전 메시지 대조와 가용 보류
 status: Done
-date: 2026-08-18
 view: grid
 group: 업무 흐름
 ---

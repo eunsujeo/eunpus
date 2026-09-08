@@ -1,7 +1,6 @@
 ---
 title: Canton Network — 개요
 status: Done
-date: 2026-08-19
 view: grid
 ---
 

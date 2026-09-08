@@ -1,7 +1,6 @@
 ---
 title: 개인지갑 — 소유 증명과 위험 기반 통제
 status: Done
-date: 2026-08-19
 view: grid
 group: 개인지갑
 ---

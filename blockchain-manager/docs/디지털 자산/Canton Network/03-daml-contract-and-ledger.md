@@ -1,7 +1,6 @@
 ---
 title: Canton — Daml Contract와 원장
 status: Done
-date: 2026-08-19
 view: grid
 group: 원장과 거래
 ---

@@ -1,7 +1,6 @@
 ---
 title: Web3 키 격리와 AI 에이전트 결제 구조
 status: Done
-date: 2026-08-31
 view: grid
 group: 에이전트 결제
 ---

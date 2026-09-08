@@ -1,7 +1,6 @@
 ---
 title: 가스 대납 — 가스비 지불 모델
 status: Done
-date: 2026-08-19
 view: grid
 group: 비용과 실행 구조
 ---

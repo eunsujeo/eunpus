@@ -1,7 +1,6 @@
 ---
 title: 가스 대납 — 구조와 문서 안내
 status: Done
-date: 2026-08-19
 view: grid
 ---
 

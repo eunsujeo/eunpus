@@ -1,7 +1,6 @@
 ---
 title: x402 프로토콜 — 402 흐름과 exact scheme
 status: Done
-date: 2026-08-20
 view: grid
 ---
 

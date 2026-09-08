@@ -1,7 +1,6 @@
 ---
 title: 블록체인 매니저 — 출금 처리
 status: Done
-date: 2026-08-19
 view: grid
 group: 업무 흐름
 ---

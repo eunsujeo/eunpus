@@ -1,7 +1,6 @@
 ---
 title: 블록체인 매니저 — 가스 대납 PoC·출시 기준
 status: Done
-date: 2026-08-19
 view: grid
 group: 검증과 출시
 ---

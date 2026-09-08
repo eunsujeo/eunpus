@@ -1,7 +1,6 @@
 ---
 title: 트래블룰 솔루션 — 구조와 상대 VASP 도달성
 status: Done
-date: 2026-08-19
 view: grid
 group: 솔루션과 운영
 ---

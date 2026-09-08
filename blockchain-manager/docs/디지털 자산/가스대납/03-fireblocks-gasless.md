@@ -1,7 +1,6 @@
 ---
 title: 가스 대납 — Fireblocks Gasless
 status: Done
-date: 2026-08-19
 view: grid
 group: Fireblocks
 ---

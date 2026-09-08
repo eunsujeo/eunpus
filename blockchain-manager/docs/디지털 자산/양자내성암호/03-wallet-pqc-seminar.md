@@ -1,7 +1,6 @@
 ---
 title: 디지털 월렛의 PQC 전환 범위와 실행 순서
 status: Done
-date: 2026-08-31
 view: grid
 group: 양자내성암호
 ---

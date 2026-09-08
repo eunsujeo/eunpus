@@ -1,7 +1,6 @@
 ---
 title: IVMS101 — 데이터 모델과 필드
 status: Done
-date: 2026-08-19
 view: grid
 group: IVMS101
 ---

@@ -1,7 +1,6 @@
 ---
 title: IVMS101 — 전체 교환 데이터 필드
 status: To Do
-date: 2026-08-07
 group: 공통 데이터 표준
 layout: schema
 ---

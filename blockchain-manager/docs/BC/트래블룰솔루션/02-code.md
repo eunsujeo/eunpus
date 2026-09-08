@@ -1,7 +1,6 @@
 ---
 title: CODE — 사전 승인·TXID 역추적 트래블룰 프로토콜
 status: To Do
-date: 2026-07-19
 group: 솔루션별 조사
 ---
 

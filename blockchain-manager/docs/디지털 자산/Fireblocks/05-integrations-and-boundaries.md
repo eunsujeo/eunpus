@@ -1,7 +1,6 @@
 ---
 title: Fireblocks — Network·컴플라이언스·책임 경계
 status: Done
-date: 2026-08-18
 view: grid
 group: 외부 연동
 ---

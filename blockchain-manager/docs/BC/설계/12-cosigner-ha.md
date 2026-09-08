@@ -2,7 +2,6 @@
 title: Co-signer HA 구성 — 물리 장비 2대
 status: To Do
 group: 운영 설계
-date: 2026-08-01
 ---
 
 물리 장비(PM) 2대에 API Co-signer 를 설치해 active-active 로 운영하는 구성·설치·운영 절차를 정한다.

@@ -1,7 +1,6 @@
 ---
 title: 블록체인 매니저 — Sweep과 자금 배치
 status: Done
-date: 2026-08-19
 view: grid
 group: 자산 운영
 ---

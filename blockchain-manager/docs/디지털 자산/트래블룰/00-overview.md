@@ -1,7 +1,6 @@
 ---
 title: 트래블룰 — 업무 구조와 문서 안내
 status: Done
-date: 2026-08-19
 view: grid
 ---
 

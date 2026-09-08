@@ -1,7 +1,6 @@
 ---
 title: 월렛·커스터디의 PQC 전환 경로
 status: Done
-date: 2026-08-20
 view: grid
 ---
 

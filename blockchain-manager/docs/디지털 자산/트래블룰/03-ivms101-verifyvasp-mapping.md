@@ -1,7 +1,6 @@
 ---
 title: IVMS101과 VerifyVASP — 필드 매핑과 실제 Payload
 status: Done
-date: 2026-08-18
 view: grid
 group: IVMS101
 ---

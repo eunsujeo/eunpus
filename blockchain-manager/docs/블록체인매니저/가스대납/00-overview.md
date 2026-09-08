@@ -1,7 +1,6 @@
 ---
 title: 블록체인 매니저 — 가스 대납 적용
 status: Done
-date: 2026-08-19
 view: grid
 ---
 

@@ -1,7 +1,6 @@
 ---
 title: Canton — Party와 노드
 status: Done
-date: 2026-08-19
 view: grid
 group: 개념과 구조
 ---

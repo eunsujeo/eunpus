@@ -1,7 +1,6 @@
 ---
 title: Canton — 프라이버시와 무결성
 status: Done
-date: 2026-08-19
 view: grid
 group: 개념과 구조
 ---

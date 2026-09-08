@@ -1,7 +1,6 @@
 ---
 title: Canton — Holding과 전송·정산
 status: Done
-date: 2026-08-19
 view: grid
 group: 원장과 거래
 ---

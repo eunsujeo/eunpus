@@ -1,7 +1,6 @@
 ---
 title: vault 간 이동 PoC 결과보고 — 거래·웹훅 형태
 status: Done
-date: 2026-09-04
 ref: 참고
 ---
 
