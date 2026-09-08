@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [workspace, governance, key-link]
 stage_introduced: 1
-last_updated_stage: 161
-source_count: 7
+last_updated_stage: 174
+source_count: 9
 related: [architecture, editor, mpc, owner, policy, transaction, workspace]
 ---
 # Entity: Vault Account (Fireblocks)
@@ -307,3 +307,52 @@ GasStationConfiguration {
 ## Sources (Stage 131 추가)
 - `2026-07-03__support-fireblocks-io__gasless-service-extract.md` (헬프센터 PDF 6건 — About·Universal Gasless·integrated chains·Configuring·Fireblocks Relay·fee contingencies)
 - `2026-07-03__support-fireblocks-io__gasless-service-index.md` (Gasless 문서 15건 URL 인덱스)
+
+## Stage 174 — Wallet Pool (vault 묶음 source) · Universal Gasless 담당자 확답 (★)
+
+### Wallet Pool — 여러 vault account 를 하나의 논리 source 로
+
+**정의**: `WALLET_POOL` 타입의 **protected tag**. 여러 vault account 를 묶어 그 묶음을 거래 source 로 쓰면, Fireblocks 가 거래마다 멤버 vault 하나를 골라 그 vault 로 보낸다. protected tag 라서 승인·거버넌스 통제를 그대로 받는다 (source: `2026-09-07__support-fireblocks-io__wallet-pools.md`, p.1).
+
+**왜 있나**: EVM 에서 vault account 하나는 nonce 스트림 하나라, 막힌 거래 한 건이 그 vault 의 뒤 거래를 전부 막는다. pool 은 거래를 여러 vault 에 분산하고 막힌 vault 를 피해 라우팅한다. 부수 효과로 온체인 주소 회전(프라이버시), 자체 vault 회전 로직 불필요 (p.1).
+
+**용도 3곳** (p.1–2):
+
+| 용도 | 병목 | 설정 위치 |
+|---|---|---|
+| 출금 vault 묶음 | 소수 핫 vault 의 nonce 직렬 | 거래 source 를 pool 로 |
+| **Gas Station tank** | 전 vault fueling 이 단일 tank 의 nonce 하나를 공유 | Settings > Gas station tank 에서 vault 또는 pool 선택 |
+| **Gasless relayer source** | "a relayer vault account signs and pays gas … one vault account with one nonce stream" | Settings > Initiate gasless transactions > EVM 의 relayer source selector |
+
+→ relayer 설명은 **우리 워크스페이스의 relayer vault** 기준. Fireblocks Relay(프리미엄, Stage 131) 에서 고객 측 relayer pool 이 필요한지는 문서에 없음 ([[open-questions/fireblocks#Q-2026-09-07-WP01]]).
+
+**4 단계** (p.2–4):
+1. tag 생성 — Console(Utilities > Tags) 또는 `POST /v1/tags {type: WALLET_POOL}`. Owner/Admin/Non-Signing Admin/Editor, **quorum 승인 불요**. 이름은 workspace 전체에서 유일(protected tag 와도 충돌 불가).
+2. vault 부착 — `POST /v1/vault/accounts/attached_tags {vaultAccountIds, tagIdsToAttach}`. protected tag 라 응답은 `pendingOperations` + `approvalRequestId`, `GET /v1/tags/approval_requests/{id}` 로 추적. 승인 완료 후에만 트래픽 수신. Editor 는 제출만 가능, 승인은 Owner/Admin/Non-Signing Admin.
+3. **Policy 가 pool 을 source 로 허용하는지 확인** — "the most common reason a first pool transaction fails". 거래는 멤버 vault 하나로 resolve 된 뒤 그 vault 기준으로 Policy 평가되므로, 개별 vault ID 룰이면 라우팅될 때마다 막힐 수 있다. 룰의 source 를 pool 로 쓴다 (상세 [[entities/fireblocks/policy]] §Stage 174).
+4. 제출 — `POST /v1/transactions` 의 `source: {type: WALLET_POOL, id: <poolId>}`. 응답은 txId·status 만. 조회하면 `source.id` 가 실제 보낸 vault 로 재기록되고, pool 은 `source.tags` 와 `extraParameters.walletPoolId` 에 남는다 (상세 [[entities/fireblocks/transaction]] §Stage 174).
+
+**선택 알고리즘** (p.5–6): ① 요청 자산을 보유하고 **단독으로** 금액을 감당하는 vault 만 후보(없으면 거절) → ② gas 자산 보유 vault 선호(요건 아님, fee 추정 불가 체인은 생략) → ③ **Account Traffic Control(ATC)** 건강 상태: 정상 > 혼잡 조짐 > stuck 보유 → ④ 최상 그룹에서 round-robin. 건강한 vault 가 없어도 거절하지 않고 최선 vault 로 보냄 → ⑤ ATC 불가 시 잔액 점수(locked tx 최소·available 최대, 결정적).
+
+**승인 표** (p.6): 생성 No · vault 추가/제거 Yes · 이름 변경 Yes · 삭제 Yes(비어 있어야).
+
+**제약** (p.7):
+- 건강 기반 라우팅은 **EVM 만**. 비EVM 은 잔액 점수(결정적) → 단일 논리 source·단일 Policy 대상만 얻고 혼잡 회피·주소 회전은 없음. 향후 릴리스 예정.
+- 한 vault 가 여러 pool 소속 가능, 건강 상태는 공유됨.
+- vault 제거 시 round-robin 포인터 리셋. round-robin 은 엄격 순서 아님 — 고정 순서를 가정한 대사 로직 금지.
+- **잔액 합산 없음** — 1 ETH × 10 vault pool 은 5 ETH 거래 불가. 멤버 잔액은 최대 단건 금액 기준으로.
+- 조회 전용 pool 엔드포인트 없음 — `GET /v1/tags?type=WALLET_POOL` · `GET /v1/vault/accounts_paged?includeTagIds=<poolId>` (p.5).
+
+### Universal Gasless — 담당자 확답으로 보강된 3 fact (2026-09-07)
+
+source: `2026-09-07__fireblocks-csm__batch-sweep-universal-gasless-reply.txt`
+
+- **7702 upgrade 는 비가역** — "Once you upgrade a vault to EIP7702 you cant reverse it". Stage 131 의 "첫 gasless tx 때 자동 승격" 에 붙는 단서. 4-source 기존 문서에는 없던 사실.
+- **approve 는 정책에 금액 0 의 contract call 로 읽힘** — "an approve reads as a zero-value contract call so amount-based rules won't catch it". PoC(BC/설계/95) 에서 조회 기록에는 `operation=APPROVE`·amount 가 찍혔으나, 정책 평가는 금액을 보지 못한다는 뜻. Approve Amount Cap·`applyForApprove` 의 API 제출 적용 여부는 계속 미확인 ([[open-questions/fireblocks#Q-2026-09-07-P01]]).
+- **relayer 병목 대책 = Wallet Pool** — "a single relayer vault is one nonce stream and will bottleneck. Use a Wallet Pool as the relayer source" (위 Wallet Pool 절).
+- 재확인(기존 fact 와 일치): Transfer/Contract Call/Mint/Burn 대납 · 네이티브 ETH relay 불가 · Vault account upgrade rule + relay 워크스페이스의 Gasless-Orchestrator initiator Contract call rule(anyone 룰이 있어도 별도 필요, initiator ≠ signer).
+- 벤더 권장 sweep 패턴 = vault 당 거래 1건 + API Co-Signer + Gas Station 또는 Universal Gasless(Stage 137 sweep-to-omnibus 와 동일). 배치 컨트랙트 reference architecture 는 **없음**. 설계 판단은 `blockchain-manager/docs/BC/설계/98-batch-sweep.md` 10절.
+
+## Sources (Stage 174 추가)
+- `2026-09-07__support-fireblocks-io__wallet-pools.md`, p.1–7 (Wallet Pool 정의·용도 3곳·4 단계·선택 알고리즘·승인 표·제약)
+- `2026-09-07__fireblocks-csm__batch-sweep-universal-gasless-reply.txt` (담당자 회신 2026-09-07: 7702 비가역·approve 정책 노출·relayer Wallet Pool·권장 sweep 패턴)

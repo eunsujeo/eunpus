@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [governance, policy]
 stage_introduced: 1
-last_updated_stage: 10
-source_count: 6
+last_updated_stage: 174
+source_count: 8
 related:
   - admin-quorum
   - approver
@@ -16,6 +16,7 @@ related:
   - policy-engine
   - tap
   - transaction
+  - vault-account
 ---
 # Entity: Policy (Fireblocks)
 
@@ -99,6 +100,7 @@ API user를 Policy rule이 참조한다면 그 API user를 삭제하기 전에 �
 - [[entities/fireblocks/cosigner]] (Stage 172 — multi Co-signer HA 는 Designated Signers/Groups 로 구성)
 - [[vendors/fireblocks/policy-engine]]
 - [[vendors/fireblocks/tap]]
+- [[entities/fireblocks/vault-account]] (Stage 174 — Wallet Pool 을 source 로 하는 rule · Gasless upgrade rule)
 
 ## Sources
 
@@ -302,3 +304,25 @@ Admin Quorum  (workspace-level default)
 - ~~Q-2026-05-18-P02~~ — **부분 ANSWERED (Stage 9)**: blockchain-standard 직렬화 + Solana 5-tx queue 의 tx 분류 모델 명세
 - Q-2026-05-18-G02 — Q+O에서 Owner와 Quorum의 정확한 카운팅
 - ~~Q-2026-05-18-S02~~ — **ANSWERED (Stage 10)**: DCCP 정식 정의 — confirmation count 정책, inflow/outflow lock state
+
+## Stage 174 — Wallet Pool source rule · approve 의 정책 노출 (★)
+
+### Wallet Pool 을 source 로 하는 rule
+
+source: `2026-09-07__support-fireblocks-io__wallet-pools.md`, p.4
+
+- pool 거래는 **멤버 vault 하나로 resolve 된 뒤 그 vault 기준으로 Policy 평가**된다. 기존 룰이 특정 vault ID 만 source 로 허용하면, 다른 멤버로 라우팅된 거래는 pool 설정이 맞아도 차단된다. 라우팅이 멤버 사이를 옮겨 다니므로 "한 번 통과한 룰이 다음 거래를 막는" 일이 생긴다 — 문서가 "first pool transaction fails 의 가장 흔한 원인" 으로 지목.
+- 해법: 룰의 **source 를 Wallet Pool 로** 쓴다 (Console: Policies > rule > source 의 Wallet Pools 카테고리). 멤버 추가·제거는 승인 흐름으로만 하고 정책 수정 없이 라우팅·정책 적용이 따라온다.
+- 함의: pool 은 Policy 의 **source 카테고리 하나**로 노출된다. [[vendors/fireblocks/tap]] 의 source type enumeration 에 이 값이 있는지는 미확인(우리 OpenAPI 스펙 2026-05 판에 없음).
+
+### approve 거래의 정책 노출 — 담당자 확답
+
+source: `2026-09-07__fireblocks-csm__batch-sweep-universal-gasless-reply.txt`
+
+- "an approve reads as a zero-value contract call so amount-based rules won't catch it" — approve 는 정책에 **금액 0 의 contract call** 로 보이므로 금액 기반 룰이 allowance 를 제한하지 못한다.
+- Stage 10 의 default rule "Allow Web3 Approve tx" 및 `applyForApprove`·Approve Amount Cap 이 API 로 낸 `CONTRACT_CALL + approve calldata` 에 걸리는지는 여전히 미확인 → [[open-questions/fireblocks#Q-2026-09-07-P01]]. 확인 전까지 allowance 상한의 실질 통제는 API Co-Signer Callback 의 calldata 검증(`blockchain-manager/docs/BC/설계/06-sweep.md` 보안 권한 정책) 이다.
+- Universal Gasless 도입 시 필요한 룰 2종 재확인: Vault account upgrade rule · relay 워크스페이스의 Gasless-Orchestrator initiator Contract call rule(anyone initiator 룰이 있어도 별도 필요, initiator ≠ signer).
+
+## Sources (Stage 174 추가)
+- `2026-09-07__support-fireblocks-io__wallet-pools.md`, p.4 (Step 3 — Policy 가 pool 을 source 로 허용해야; resolve 후 평가)
+- `2026-09-07__fireblocks-csm__batch-sweep-universal-gasless-reply.txt` (approve = zero-value contract call · Gasless 룰 2종)

@@ -213,7 +213,7 @@ event SweepDone(
 - 배치 최대 M, 건별·배치 총액, 실행 빈도, 토큰 allowlist, 컨트랙트 코드 해시를 다시 확인한다.
 - DB·정책 스냅샷을 조회할 수 없거나 해석하지 못한 calldata면 승인하지 않는다.
 
-Fireblocks의 `APPROVE`·`applyForApprove`·Approve Amount Cap이 `CONTRACT_CALL + approve calldata` 제출에 실제로 어떻게 매칭되는지는 운영 전 정책 PoC로 확정한다. 확인 전에는 Fireblocks Amount Cap만으로 spender·승인금액 통제가 끝났다고 보지 않는다.
+Fireblocks의 `APPROVE`·`applyForApprove`·Approve Amount Cap이 `CONTRACT_CALL + approve calldata` 제출에 실제로 어떻게 매칭되는지는 운영 전 정책 PoC로 확정한다. 확인 전에는 Fireblocks Amount Cap만으로 spender·승인금액 통제가 끝났다고 보지 않는다. 담당자 회신(2026-09-07)은 approve 가 정책에 **금액 0 의 contract call 로 읽혀 금액 기반 룰이 못 잡는다**고 했다. Amount Cap·`applyForApprove` 의 API 적용 여부는 후속 문의 중이며, 확인 전까지 allowance 상한의 실질 통제는 위 Callback 검증이다([QnA](../Fireblocks%20QnA/01-qna.md) 배치 sweep 절).
 
 **Sweep 컨트랙트가 마지막 경계를 강제**한다.
 

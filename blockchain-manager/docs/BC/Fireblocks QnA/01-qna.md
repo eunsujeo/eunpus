@@ -237,9 +237,11 @@ Fireblocks-managed Relay 의 과금·정산 조건. 원문은 [sources/fireblock
 **Q.** 받는 vault 의 입금 주소를 `ONE_TIME_ADDRESS` 로 지정해 보내면?
 **A.** 같은 `txHash` 로 **거래 2건**이 생긴다. 출금 거래(source vault 82, destination ONE_TIME_ADDRESS, externalTxId 있음)와, 체인 반영 44초 뒤 새로 만들어지는 입금 거래(source `UNKNOWN`/`External`, destination vault 83, externalTxId 없음). Fireblocks 는 자기 주소를 vault 로 되돌려 인식하지 않는다. 이 입금 거래는 외부 입금과 모양이 같아 방향 규칙대로면 DEPOSIT 으로 오발행된다. 그래서 내부 이동은 반드시 VAULT_ACCOUNT 지정으로 제출하고, 2차 방어로 `sourceAddress` 가 우리 vault 주소인 입금은 DEPOSIT 발행을 막는다.
 
-## 배치 sweep 설계 — 담당자 문의 (2026-09-04 확정 문안) · 회신 대기
+## 배치 sweep 설계 — 담당자 회신 (2026-09-07)
 
-[sweep 설계 06](../설계/06-sweep.md)의 채택안(approve + transferFrom 배치)에 대해 벤더 의견을 묻는다. 우리 PoC 로 이미 확인한 항목(제출 경로·networkRecords 귀속·부분 실패, [95](../설계/95-approve-pull-poc-result.md))과 통제 목록은 문안에서 뺐다. CSM 이 되물으면 그때 보낸다. 질문은 둘로 줄였다 — Universal Gasless 적용 가능 여부와 제약, 벤더 권장 방식과 우리 설계의 차이.
+[sweep 설계 06](../설계/06-sweep.md)의 채택안(approve + transferFrom 배치)에 대해 2026-09-04 에 보낸 문의와 2026-09-07 회신. 원문: `sources/fireblocks/markdown/2026-09-07__fireblocks-csm__batch-sweep-universal-gasless-reply.txt`. 우리 PoC 로 이미 확인한 항목(제출 경로·networkRecords 귀속·부분 실패, [95](../설계/95-approve-pull-poc-result.md))은 문안에서 뺐다.
+
+**보낸 문의**
 
 > Hi, we'd like your view on a batch sweep design we're considering.
 >
@@ -251,7 +253,43 @@ Fireblocks-managed Relay 의 과금·정산 조건. 원문은 [sources/fireblock
 >
 > 2. Is there a Fireblocks-recommended approach or reference architecture for sweeping assets from many vaults into an omnibus vault? If it differs from the approach above, we'd appreciate understanding how and why.
 
-회신이 오면 [98 출시 게이트](../설계/98-batch-sweep.md)의 "벤더 실측 — 남은 것"과 아래 대기 중인 문의의 7702 운영자 인출·approve 정책 상한 항목을 함께 갱신한다.
+**Q.** Universal Gasless 가 고객 vault 의 `approve` 와 운영 계정의 배치 contract call 을 둘 다 대납할 수 있나?
+**A.** **둘 다 가능.** Universal Gasless 는 이더리움 계열 전 토큰에 대해 Transfer·Contract Call·Mint·Burn 을 지원한다. 제약은 여섯이다.
+- 체인은 EIP-7702 적용 체인만(integrated chains 목록).
+- 네이티브 ETH 는 relay 안 함. ETH 자체를 sweep 하려면 Gas Station 이 여전히 필요.
+- vault 는 첫 gasless 거래 때 smart contract wallet 로 upgrade 된다.
+- **upgrade 는 되돌릴 수 없다.**
+- 정책: Vault account upgrade rule + relay 워크스페이스에 Gasless-Orchestrator 를 initiator 로 명시한 Contract call rule. "anyone" initiator 룰이 있어도 별도 필요하고 initiator ≠ signer.
+- 우리 물량이면 **relayer vault 하나는 nonce 스트림 하나라 병목**이 된다. Wallet Pool 을 relayer source 로 쓰라.
+
+**Q.** 다수 vault → 옴니버스 sweep 의 벤더 권장 방식·reference architecture 가 있나? 우리 설계와 다르면 왜?
+**A.** 권장 패턴은 **vault 당 거래 1건**이다 — 잔액 임계값으로 거른 vault 를 돌며 `POST /v1/transactions`, API Co-Signer 로 자동화, gas 는 Gas Station 또는 Universal Gasless (Sweep to Omnibus 문서). 우리 설계에 대한 평은 넷.
+- 3009/2612 를 배제한 이유가 토큰 지원이라면, 그건 구 Limited Gasless 의 제약이고 Universal Gasless 는 어떤 ERC-20/721/1155 에도 되므로 "토큰 무관" 요건은 이미 충족된다.
+- 상시 allowance 가 운영자에게 새 권한을 주는 건 아니다(세 vault 모두 우리 워크스페이스·Policy 아래). 바뀌는 건 **배치 한 건이 Policy 를 통과하면 N vault 가 빠져 개별 인출이 거래 단위로 평가되지 않는 것**, 그리고 **approve 가 금액 0 contract call 로 읽혀 금액 기반 룰이 못 잡는 것**.
+- approve 는 vault·토큰마다 온체인 1건이고 cap 소진 시 재승인이 붙어, 절감은 "N to 1" 이 아니라 **"N 한 번, 이후 회차당 1"** 이다.
+- 제안: 건별 전송 + Universal Gasless + API Co-Signer + relayer Wallet Pool. API 호출 수는 vault 수에 비례하는데, 그게 진짜 제약이면 **sweep 임계값 상향·수수료 조건 게이트**가 컨트랙트보다 위험이 낮은 레버다.
+
+**우리 판단 (2026-09-07)**
+
+- 회신은 채택안을 막지 않는다. 닫힌 게이트는 "Gasless 적용 가능" 하나. [98 출시 게이트](../설계/98-batch-sweep.md) 10절 갱신.
+- 벤더의 3009/2612 논평은 오독이다 — 우리 요건은 **토큰 컨트랙트가 3009/2612 확장을 구현했는가**이고, Gasless 의 토큰 무관성은 가스 대납 얘기다. 배치를 포기하면 요건이 저절로 충족된다는 논리라 배치 이득 자체에는 답이 아니다.
+- "approve 를 금액 룰이 못 잡는다" 는 아래 대기 문의(정책 상한)의 부분 답이다. 06 이 "Amount Cap 만으로 통제 끝났다고 보지 않는다" 고 둔 판단 유지. **Callback calldata 검증이 실질 방어선.** 무한 approve 금지(06 allowance 운영) 유지.
+- Wallet Pool 조언은 Local relay 전제로 읽힌다(Wallet Pools 문서의 relayer 설명이 전부 우리 워크스페이스 vault 기준). Fireblocks Relay 에서도 해당하는지가 후속 1번.
+- 남는 결정 입력은 **06 정책 기준 회차당 대상 vault 수**와 **WRITE rate limit·relay 처리량**. 이 둘이 건별 vs 배치를 가른다.
+
+**후속 문의 문안 (초안 · 미발송)**
+
+> Thanks for the detailed reply. Four follow-ups:
+>
+> 1. Your Wallet Pool advice for the relayer — does it assume a local gasless relay (a relayer vault in our workspace)? We plan to use the Fireblocks-managed Relay. In that case, is the relayer nonce bottleneck handled on your side, or is there anything we need to configure?
+> 2. You mentioned that an approve reads as a zero-value contract call, so amount-based rules won't catch it. Does the Console "Approve Amount Cap" or a Contract Call rule with `applyForApprove` apply to approves submitted via API as CONTRACT_CALL with approve calldata? If not, what is the recommended Fireblocks-side control for capping allowances?
+> 3. Does the UniversalGaslessDelegate (or any roadmap item) allow a designated operator to pull balances from upgraded vaults without a per-execution vault signature? Or is there a path to delegate to a customer-audited contract? A clear yes/no would help us close this design branch.
+> 4. What are the per-minute limits for POST /v1/transactions (write path) and the throughput of the Fireblocks Relay for gasless submissions? We need both to size per-vault sweep cycles.
+
+> 1. relayer 에 Wallet Pool 을 쓰라는 조언은 Local gasless relay(우리 워크스페이스의 relayer vault) 를 전제한 것인가? 우리는 Fireblocks 관리형 Relay 를 쓸 계획이다. 그 경우 relayer nonce 병목은 벤더 쪽에서 처리되나, 아니면 우리가 설정할 것이 있나?
+> 2. approve 가 금액 0 contract call 로 읽혀 금액 기반 룰이 못 잡는다고 했다. Console 의 Approve Amount Cap 이나 `applyForApprove` 가 켜진 Contract Call 룰이 API 로 CONTRACT_CALL + approve calldata 로 낸 approve 에도 적용되나? 안 되면 allowance 상한을 거는 Fireblocks 측 권장 통제는 무엇인가?
+> 3. UniversalGaslessDelegate(또는 로드맵) 가 지정 운영자가 upgrade 된 vault 의 잔액을 실행마다 vault 서명 없이 인출하는 것을 허용하나? 아니면 고객이 감사한 컨트랙트로 위임하는 경로가 있나? 이 설계 분기를 닫으려면 명확한 yes/no 가 필요하다.
+> 4. POST /v1/transactions(쓰기 경로) 의 분당 한도와 gasless 제출에 대한 Fireblocks Relay 처리량은 얼마인가? 건별 sweep 회차를 산정하려면 둘 다 필요하다.
 
 ## 대기 중인 문의 (회신 전)
 
@@ -274,7 +312,7 @@ Fireblocks-managed Relay 의 과금·정산 조건. 원문은 [sources/fireblock
 **A.** **실측으로 답 나옴 (2026-08-10)** — 위 "PoC 실측으로 확정한 사실" 절 참조. 우리 vault 가 제출한 배치라면 `networkRecords` 에 원천 vault·금액이 귀속되고 `network_records.processing_completed` 도 온다. 남은 것은 한 배치의 이동을 수십 건으로 올렸을 때의 레코드 개수·이벤트 지연이다.
 
 **Q.** Universal Gasless 로 upgrade 된 vault 의 위임 지갑 코드가, 지정 운영자(감사된 배치 sweep 컨트랙트)의 일괄 인출을 허용하는 구성이 가능한가? 안 되면 로드맵에 있거나, 우리가 지정한 감사된 코드로의 위임을 허용하는 경로가 있나?
-**A.** 미확인. 7702 배치 노선의 성립 조건 — 안 되면 그 노선 자체가 닫힌다. 현재 결정은 자산 구분 없이 건별 전송이다. 2026-09-04 배치 sweep 문의(위 절)의 2번 질문에 포함해 보냈다.
+**A.** **명시 확답 없음 (2026-09-07 회신)** — 2번 질문에 포함했으나 회신은 건별 전송 권장으로 답했다. 권장안이 건별인 점에서 "없다" 로 읽히지만 로드맵·커스텀 위임 허용은 미확인. 후속 문의 3번으로 명시 yes/no 를 요청한다(초안 위 절). Stage 169 확답의 delegate struct(`relayer` 바인딩·`deadline` 2h·단회 nonce) 는 매 실행마다 vault 서명을 요구하는 구조라 상시 운영자 권한과 방향이 다르다.
 
 **Q.** TYPED_MESSAGE(EIP-712) 서명에 TAP 으로 내용 기반 제약(특정 컨트랙트·도메인·수신 주소 한정 등)을 걸 수 있나? 분당 서명 처리량과 권장 상한은?
 **A.** 미확인. 3009 배치 노선의 성립 조건 — 이 서명은 곧 자금 이동 권한이라 정책 통제가 보안의 핵심이고, 처리량이 배치 크기(M)·주기 설계의 상한이 된다. 배치 재검토 시에 판단할 항목이다.
@@ -282,7 +320,7 @@ Fireblocks-managed Relay 의 과금·정산 조건. 원문은 [sources/fireblock
 **Q.** ERC-20 `approve` 를 API 로 낼 때 별도 `APPROVE` operation 과 approve calldata 를 넣은 `CONTRACT_CALL` 중 어느 경로를 써야 하나? TAP 이 승인 대상·토큰·**승인 금액(allowance) 상한**을 어디까지 강제하고, 제3자 `transferFrom` 은 vault 별 거래 레코드·웹훅에 어떤 형태로 잡히나?
 **A.** 제출 경로와 기록 형태는 **실측 완료 (2026-08-10)** — 위 실측 절 참조. `APPROVE` 로는 제출 불가(400·1401), `CONTRACT_CALL` 로 내면 통하고 기록은 `operation=APPROVE`. 스키마 enum 에 이름이 있는 것과 제출 경로로 쓸 수 있는 것이 다르다.
 
-**남은 미확인은 정책 쪽** (2026-09-04 배치 sweep 문의의 1번 질문에 Gasless 적용 여부를 포함해 보냈다. 정책 상한은 회신 후 후속 문의) — `APPROVE` transactionType·`applyForApprove` 로 승인 대상·토큰을 넘어 **승인 금액 상한**까지 강제할 수 있는가([정책](https://developers.fireblocks.com/reference/configure-transaction-authorization-policy)), Console 의 Approve Amount Cap 이 API 제출에도 적용되는가([Amount Cap](https://developers.fireblocks.com/docs/interact-with-smart-contracts)), CONTRACT_CALL approve 에 Universal Gasless 를 적용할 수 있고 relay 처리량은 얼마인가. 정책 상한이 없어도 유한 allowance 는 calldata 로 지정할 수 있지만 독립적인 오승인 방어선이 약해진다.
+**남은 미확인은 정책 쪽** (Gasless 적용 여부는 2026-09-07 회신으로 **가능** 확정. 정책 상한은 부분 답 — "approve 는 금액 0 contract call 로 읽혀 금액 룰이 못 잡는다". Amount Cap·`applyForApprove` 의 API 적용은 후속 문의 2번) — `APPROVE` transactionType·`applyForApprove` 로 승인 대상·토큰을 넘어 **승인 금액 상한**까지 강제할 수 있는가([정책](https://developers.fireblocks.com/reference/configure-transaction-authorization-policy)), Console 의 Approve Amount Cap 이 API 제출에도 적용되는가([Amount Cap](https://developers.fireblocks.com/docs/interact-with-smart-contracts)), CONTRACT_CALL approve 에 Universal Gasless 를 적용할 수 있고 relay 처리량은 얼마인가. 정책 상한이 없어도 유한 allowance 는 calldata 로 지정할 수 있지만 독립적인 오승인 방어선이 약해진다.
 
 ## Universal Gasless 유효 창 — 담당자 확답 (2026-08)
 

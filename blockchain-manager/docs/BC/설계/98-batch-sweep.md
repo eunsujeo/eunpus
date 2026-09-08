@@ -433,7 +433,9 @@ operator 거래 아래 `networkRecords` 7개가 붙고, **원천 vault 가 귀�
 ## 10. 출시 게이트와 확인 목록
 
 - **실측 완료 (2026-08-10)** — ① approve 제출 경로는 CONTRACT_CALL, 기록은 `operation=APPROVE`(5절). ② **우리 vault 가 제출한 배치는 `networkRecords` 에 원천 vault·금액이 귀속되고 `transaction.network_records.processing_completed` 도 온다** — 감지·대사 성립(8절).
-- **벤더 실측 — 남은 것** — TAP의 `APPROVE`·`applyForApprove`가 승인 대상·토큰·승인 금액을 어디까지 제한하는가 · Console Amount Cap이 API 제출에도 걸리는가 · CONTRACT_CALL approve와 batch 호출에 Universal Gasless를 적용할 수 있는가 · 한 배치 M=수십 건에서 network records 개수·이벤트 지연이 얼마인가.
+- **벤더 회신 (2026-09-07, [QnA](../Fireblocks%20QnA/01-qna.md) 배치 sweep 절)** — ① **approve 와 batch CONTRACT_CALL 모두 Universal Gasless 대납 가능** — 게이트 하나 닫힘. ② 7702 upgrade 는 **비가역**. ③ **approve 는 정책에 금액 0 contract call 로 읽혀 금액 기반 룰이 못 잡는다** — allowance 상한의 독립 방어선은 Fireblocks 정책이 아니라 Callback calldata 검증이라는 뜻. ④ relayer vault 하나는 nonce 병목 — Wallet Pool 을 relayer source 로(Local relay 전제로 읽힘). ⑤ 벤더 권장은 vault 당 거래 1건 + Gasless + API Co-Signer, 배치 reference architecture 는 없다. 배치 이득은 "N to 1" 이 아니라 "N 한 번, 이후 회차당 1" 이라는 지적은 1절·5절과 같다.
+- **벤더 실측 — 남은 것** — Console Amount Cap·`applyForApprove` 가 API 로 낸 CONTRACT_CALL approve 에 걸리는가(후속 문의 2) · 7702 위임 코드의 운영자 인출 지원 여부 명시 확답(후속 문의 3) · WRITE rate limit·relay 처리량(후속 문의 4) · 운영 계정을 Wallet Pool 로 둘 때 CONTRACT_CALL 에 `WALLET_POOL` source 가 되는가 · 한 배치 M=수십 건에서 network records 개수·이벤트 지연이 얼마인가.
+- **결정 입력 — 회차당 대상 vault 수** — 벤더 권장(건별)과 채택안(배치)을 가르는 수치. [06](06-sweep.md) 정책(총자산 대비 비율 임계·가스비 한도)을 예상 고객 수·입금 빈도에 넣어 한 회차에 몇 vault 가 대상이 되는지 추정한다. 수십 건 수준이면 건별 + Gasless 로도 감당되고 배치 컨트랙트의 감사·allowance 관리·긴급 회수 비용이 더 클 수 있다. 매 회차 수백 건 이상이면 임계값으로는 안 눌리고 배치가 필요하다.
 - **토큰** — 자산별 ERC-20 approve/transferFrom 호환, 0 선행 allowance 변경 요구, 반환값·pause·blocklist·fee-on-transfer 동작을 온보딩마다 판정한다.
 - **컨트랙트** — 옴니버스 목적지 불변, 권한 분리, pause, batch 상한, 이동 건별 이벤트, 부분 실패 정책을 확정하고 독립 감사를 통과한다.
 - **매니저 모델** — batch tx 1건 ↔ 원천 이동 M건의 DB 식별·멱등·claim·웹훅·영수증·재처리·대사를 설계하고 장애 테스트를 통과한다. 보낸 쪽 기준 레코드에 원천 vault id 가 들어 있으므로 주소 매핑은 필요 없다. 대신 **요청 목록과 레코드를 맞추는 처리**가 필수다 — 되돌려진 이동은 레코드에 안 나온다.

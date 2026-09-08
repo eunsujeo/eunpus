@@ -1,0 +1,27 @@
+question (sent 2026-09-04): Hi, we'd like your view on a batch sweep design we're considering.
+Customer deposits land in per-customer vaults and are swept to an omnibus vault regularly. Rather than submitting one transfer per vault, each customer vault gives a capped ERC-20 approve to an audited sweep contract, and an operator vault calls the contract once to move balances from multiple vaults to the omnibus in a single transaction via transferFrom.
+We chose this approach over EIP-3009 / EIP-2612 because it works with any ERC-20 token and reduces the number of transactions and API calls required for each sweep from one per vault to a single batch transaction.
+
+Can Universal Gasless sponsor both the customer vaults' approve transactions and the operator vault's batch contract call? Are there any constraints or limitations we should be aware of?
+Is there a Fireblocks-recommended approach or reference architecture for sweeping assets from many vaults into an omnibus vault? If it differs from the approach above, we'd appreciate understanding how and why.
+
+answer (received 2026-09-07): 1. Can Universal Gasless sponsor both?
+Yes. Universal Gasless supports Transfer, Contract Call, Mint and Burn across all Ethereum-based tokens, so both the vaults' approve and the operator's batch call are eligible.
+
+Constraints to plan around:
+• Chains: EIP-7702 only. Full list
+• No native ETH relay. Gas Station is still needed if you sweep ETH itself.
+• Vaults get upgraded to smart contract wallets on their first gasless transaction.
+• Once you upgrade a vault to EIP7702 you cant reverse it
+• Policy setup: a Vault account upgrade rule, plus an explicit Contract call rule with Gasless-Orchestrator as initiator in the relay workspace. That rule is required even if you already allow "anyone" as initiator, and initiator ≠ signer.
+• At your volume: a single relayer vault is one nonce stream and will bottleneck. Use a Wallet Pool as the relayer source.
+
+2. Recommended architecture
+Our reference pattern for omnibus sweeping is one transaction per vault (POST /v1/transactions in a loop over vaults filtered by balance threshold), automated with an API Co-Signer, with gas handled by either Gas Station or Universal Gasless. Docs: Sweep to Omnibus
+
+You ruled out EIP-3009/2612 because they depend on token support - that was true of our previous Limited Gasless, which only covered specific tokens via 3009 and mint/burn via 2771. Universal Gasless was built on EIP-7702 specifically to remove that limitation and works with any ERC-20/721/1155. So the token-agnostic requirement that drove the contract design is already met natively.
+
+That matters because the standing allowance doesn't grant the operator anything it doesn't already have.  All three vault types are in your workspace and under your Policy engine. What it does change is that one batch call passing Policy drains N vaults, so individual withdrawals are no longer evaluated per transaction, and an approve reads as a zero-value contract call so amount-based rules won't catch it. Also, approve is still one on-chain tx per vault per token plus re-approval when the cap is consumed, so the saving is closer to "N once, then 1 per sweep" than "N to 1".
+
+What we'd suggest
+Per-vault transactions + Universal Gasless + API Co-Signer + Wallet Pools for the relayer. That removes the per-vault ETH funding entirely, works with any token, and keeps per-transaction Policy control. API call count still scales with vault count — if that's the real constraint, raising the sweep threshold or gating on fee conditions is a lower-risk lever than the contract.

@@ -7802,3 +7802,13 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - ANSWERED: Q-2026-09-04-T01 (등록 즉시 실측으로 닫음)
 - 영향받은 페이지: entities/fireblocks/transaction.md (§Stage 173) · 블록체인매니저/설계/04-detect-confirm.md (내부 이동 VAULT_ACCOUNT 지정 규칙 · sourceAddress 2차 방어) · BC/설계/99-detection-detail.md · BC/Fireblocks QnA/01-qna.md (실측 절 신설) · BC/설계/92 (신규 참고 문서) · open-questions/fireblocks.md
 - 신규 entity: 0 (46 stage 연속)
+
+## Stage 174 (2026-09-07) — 배치 sweep 담당자 회신 ingest + Wallet Pools Mode C + Fireblocks Flow Mode B
+- source: `2026-09-07__fireblocks-csm__batch-sweep-universal-gasless-reply.txt` (2026-09-04 문의 회신) · `2026-09-07__support-fireblocks-io__wallet-pools.pdf` → `.md` (Mode C, pdftotext 9p) · `2026-09-07__support-fireblocks-io__fireblocks-flow.pdf` (Mode B, source-notes 색인만). Help Center 원명 PDF 2건 rename + meta.yml
+- ANSWERED: 2026-09-04 배치 sweep 문의 1번(approve·batch CONTRACT_CALL 모두 Universal Gasless 대납 **가능**) · 2번(벤더 권장 = vault 당 1건 + Gasless + API Co-Signer, 배치 reference architecture 없음)
+- 신규 fact: 7702 upgrade **비가역** · approve 는 정책에 **금액 0 contract call** 로 읽힘(금액 룰 무효) · relayer 병목 대책 = **Wallet Pool**(`WALLET_POOL` protected tag, 용도 3곳: 출금 묶음·Gas Station tank·gasless relayer source, ATC 건강 등급 round-robin, Policy source 를 pool 로, 조회 시 source 재기록 + `extraParameters.walletPoolId`, 잔액 합산 없음, EVM 만 건강 라우팅)
+- 벤더 논평 정정: "3009/2612 배제 이유 = 토큰 지원" 오독 — 우리 요건은 토큰 컨트랙트의 확장 구현 여부, Gasless 는 가스 대납의 토큰 무관성. 절감 "N 한 번 이후 회차당 1" 지적은 98 1·5절과 일치
+- 신규 Q: Q-2026-09-07-WP01 (Fireblocks Relay 에서 고객 측 relayer pool 필요 여부) · WP02 (CONTRACT_CALL 의 WALLET_POOL source) · P01 (Amount Cap·applyForApprove 의 API 적용) · G02 (7702 위임 코드 운영자 인출 명시 확답). KL06 에 "Fireblocks Flow ≠ KeyLink Flow" 주석
+- 영향받은 페이지: entities/fireblocks/vault-account.md (§Stage 174 Wallet Pool + Gasless 3 fact) · transaction.md (§Stage 174 WALLET_POOL 거래 기록) · policy.md (§Stage 174 pool source rule · approve 정책 노출) · vendors/fireblocks/api.md (§Stage 174 tags 기반 엔드포인트, OpenAPI 스펙 갱신 대상) · open-questions/fireblocks.md (G01 보강·신규 4·KL06 주석) · BC/Fireblocks QnA/01-qna.md (회신 기록·판단·후속 문의 4건 초안 EN+KO·대기 문의 2건 갱신) · BC/설계/98-batch-sweep.md (10절 벤더 회신·남은 것·결정 입력) · BC/설계/06-sweep.md (정책 매칭 단서) · sources/fireblocks/source-notes/fireblocks-flow-lightweight-index.md (신규)
+- 후속: 후속 문의 4건 발송(사용자) · 06 정책 기준 회차당 대상 vault 수 추정 · OpenAPI 스펙 재수집(WALLET_POOL)
+- 신규 entity: 0 (47 stage 연속 — Wallet Pool 은 vault-account 흡수, Fireblocks Flow 는 색인만)

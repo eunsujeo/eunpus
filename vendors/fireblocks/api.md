@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [api, identity, data-objects, integration]
 stage_introduced: 1
-last_updated_stage: 159
-source_count: 22
+last_updated_stage: 174
+source_count: 23
 related:
   - api-co-signer
   - api-key
@@ -457,3 +457,23 @@ lifecycle: created → counterparty added → term added → submitted → **ful
 - `2026-05-22__developers-fireblocks-com__reference-webhook-protection-guide.md` + `reference-webhooks-ip-allowlisting.md` — 보안 3중·발신 IP
 - `2026-05-22__developers-fireblocks-com__reference-validating-webhooks.md` — JWKS 서명 검증 (RS512 detached JWS)
 - `2026-05-22__developers-fireblocks-com__reference-resend-webhook-notifications.md` — 재전송 API 2종
+
+## Stage 174 — Wallet Pool 엔드포인트 (tags 기반, 전용 pool 엔드포인트 없음)
+
+source: `2026-09-07__support-fireblocks-io__wallet-pools.md`, p.2–5. 우리가 보관한 OpenAPI 스펙(2026-05) 에는 `WALLET_POOL` 이 없어 스펙 갱신 대상.
+
+| 동작 | 엔드포인트 | 비고 |
+|---|---|---|
+| pool 생성 | `POST /v1/tags` `{label, description, type: "WALLET_POOL"}` | 응답 `id` = poolId. quorum 승인 불요 |
+| vault 부착·탈착 | `POST /v1/vault/accounts/attached_tags` `{vaultAccountIds[], tagIdsToAttach[] | tagIdsToDetach[]}` | protected tag → `pendingOperations[].approvalRequestId` |
+| 승인 추적 | `GET /v1/tags/approval_requests/{id}` | 승인 완료 후에만 라우팅 대상 |
+| pool 목록 | `GET /v1/tags?type=WALLET_POOL` | |
+| 멤버 목록 | `GET /v1/vault/accounts_paged?includeTagIds=<poolId>` | |
+| pool 로 제출 | `POST /v1/transactions` `source: {type: "WALLET_POOL", id}` | 응답은 txId·status 만. 조회 시 source 재기록 + `extraParameters.walletPoolId` ([[entities/fireblocks/transaction]] §Stage 174) |
+
+- Console 진입점: Utilities > Tags(또는 Settings > Tags) · Accounts > Vault 의 Wallet Pools 위젯 · Settings > Gas station tank · Settings > Initiate gasless transactions > EVM (relayer source selector).
+- 문서 예시는 TRANSFER 만이라 `CONTRACT_CALL` 에 `WALLET_POOL` source 가 허용되는지는 미확인 ([[open-questions/fireblocks#Q-2026-09-07-WP02]]).
+
+## Sources (Stage 174 추가)
+
+- `2026-09-07__support-fireblocks-io__wallet-pools.md`, p.2–5 (tags·attached_tags·approval_requests·accounts_paged includeTagIds·WALLET_POOL source)

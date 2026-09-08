@@ -1148,6 +1148,7 @@
 - **잔여 2건 확답 (Stage 169 — CSM Q&A, `sources/fireblocks/markdown/2026-08-24__fireblocks-csm__universal-gasless-validity-window.txt`)**:
   1. **온체인 유효기간 있음·고정** — delegate(UniversalGaslessDelegate) 의 EIP-712 struct `AuthorizedExecutions(Execution[] calls, uint256 deadline, bytes32 mode, uint256 nonce, address relayer)` 의 `deadline`. `execute()` 가 nonce 소비 전 `block.timestamp <= deadline` 검사(늦으면 revert) — 4337 `validUntil` 동등. `validAfter`·블록번호 변형 없음. **deadline = 서명 시각+2시간, enclave 계산, API 필드 없음**(설계 고정값). 부가 보장: relayer 주소가 digest 에 바인딩(지정 relayer 만 제출 가능, 유출 서명 무력)·nonce 단회. → Stage 168 의 "위임 코드가 시간창 검증을 내장하는지" 가설이 사실로 확정.
   2. **gasless 에도 pre-broadcast 만료 적용** — `configurations.expiresAfterSeconds`, 공유 거래 생성 경로라 gasless carve-out 없음. 기본 비활성(요청 시 활성화)·10분~24시간(workspace 기본값 동일 한도)·dev doc '300' 오기(→'600'초 수정 예정). 두 층 모두 pre-broadcast: 거래 expiresAt 만료(유예 없음) + signing token 단축(enclave 강제). 두 메커니즘은 독립·정렬 불가(10분 floor vs 2h 고정). ※ `transactionTimeout` 과의 명칭 관계는 답변에 없음 — 미확인으로 유지.
+- **보강 (Stage 174 — 담당자 배치 sweep 회신, `2026-09-07__fireblocks-csm__batch-sweep-universal-gasless-reply.txt`)**: ① **7702 upgrade 비가역** ("Once you upgrade a vault to EIP7702 you cant reverse it") ② **approve 는 정책에 금액 0 contract call 로 읽혀 금액 룰이 못 잡음** ③ relayer 병목 대책 = **Wallet Pool** 을 relayer source 로 (Wallet Pools 문서 Mode C: [[entities/fireblocks/vault-account]] §Stage 174) ④ approve·batch CONTRACT_CALL 모두 Universal Gasless 대납 가능(확답) ⑤ 벤더 권장 sweep = vault 당 1건, 배치 reference architecture 없음. 파생 Q: WP01 · WP02 · P01 · G02 (아래).
 - **Status**: ANSWERED (잔여 CSM/PoC: 정산 세부 단가·구독료 · MPC↔7702 위임 내부 동작 · expiresAfterSeconds↔transactionTimeout 명칭 관계)
 
 ### Stage 96 Summary
@@ -1270,6 +1271,7 @@
 - **Why it matters**: CSM 확답(2026-08-28)이 Customer Server 를 직접 구축하지 않을 때의 제품화 대안으로 **KeyLink Flow** (운영 콘솔을 갖춘 패키지형 온라인 서버, 맞춤 개발 대부분 대체) 를 제시. 채택 시 Customer Server 구축·소유 부담(Risk-KL01·KL02)의 상당 부분이 벤더 패키지로 이동하나, 공개 자료·wiki 4-source 에 KeyLink Flow 문서 없음.
 - **확인 질문**: 호스팅 주체(고객 인프라 vs Fireblocks)? HSM 연결 방식(PKCS#11 Luna 포함?)과 지원 HSM? Policy·Audit Log 연동 범위? 커스텀 검증 로직 삽입 가능 여부? 과금(add-on 별도?)? Cold(offline) 모드 지원?
 - **Sources to check**: CSM 후속 · support.fireblocks.io Key Link 섹션 재검색
+- **주의 (Stage 174)**: 헬프센터의 **"Fireblocks Flow"**(Dynamic 기반 checkout 프리미티브, Early Access — `sources/fireblocks/source-notes/fireblocks-flow-lightweight-index.md`) 는 **다른 제품**. 이 문서로 KL06 은 닫히지 않는다.
 - **Status**: open
 
 ### Q-2026-08-28-KL07: 7일 durable 서명 요청 큐와 Pending Signature 2h timeout 의 관계
@@ -1304,3 +1306,35 @@
 - **Applied to**: [[entities/fireblocks/transaction]] §"Stage 173" · 블록체인매니저/설계/04-detect-confirm.md (내부 이동 VAULT_ACCOUNT 지정 규칙 · sourceAddress 2차 방어) · BC/설계/99-detection-detail.md · BC/Fireblocks QnA/01-qna.md
 - **남은 것**: DCCP vault-to-vault 0 conf 적용 시 웹훅 형태 · 다른 workspace 의 vault 주소로 보낸 경우 · Universal Gasless 경로. 별도 Q 로 승격할 만큼의 필요는 아직 없음.
 - **Status**: **answered (2026-09-04, Stage 173)**
+
+### Q-2026-09-07-WP01: Fireblocks Relay(프리미엄) 사용 시에도 고객 측 relayer Wallet Pool 이 필요한가
+
+- **Why it matters**: 담당자 회신(2026-09-07) "single relayer vault is one nonce stream … Use a Wallet Pool as the relayer source" 와 Wallet Pools 문서(p.2) 의 relayer 설명은 모두 **우리 워크스페이스의 relayer vault** 기준(Local gasless relay). 우리는 Fireblocks Relay(벤더가 gas 선지불, 월 인보이스, "no ETH holding required anywhere" — Stage 131·137) 를 전제해 왔다. Fireblocks Relay 에서도 고객 측 pool 이 필요하다면 "ETH 보유 없이" 전제가 깨지고 relayer 멤버마다 네이티브 자산 여유가 필요해진다(문서 p.2 "relayer pools require more native-asset headroom").
+- **Where this came up**: [[entities/fireblocks/vault-account]] §Stage 174 · BC/Fireblocks QnA/01-qna.md (후속 문의 1)
+- **확인 질문**: 담당자 조언이 가정한 relay 모드는? Fireblocks Relay 의 relayer nonce 병목은 벤더가 처리하나? 우리가 설정할 항목이 있나?
+- **Sources to check**: CSM 후속 회신 · Using the Fireblocks Gasless Relay 헬프센터 문서(Source Lake PDF, Stage 131 추출분 재확인)
+- **Status**: open
+
+### Q-2026-09-07-WP02: `CONTRACT_CALL` 에 `WALLET_POOL` source 가 허용되는가
+
+- **Why it matters**: 배치 sweep 운영 계정을 pool 로 두면 운영 계정 nonce 직렬을 피할 수 있으나, Wallet Pools 문서 예시는 TRANSFER(`assetId: ETH`) 만이다(p.4). 선택 알고리즘 1단계가 "요청 자산을 단독 감당하는 vault" 라서 amount 0 의 contract call 에 어떻게 적용되는지도 미명세. 06 출금 풀의 자체 round-robin 을 벤더 기능으로 대체할지 판단에도 필요.
+- **Where this came up**: [[vendors/fireblocks/api]] §Stage 174 · [[entities/fireblocks/transaction]] §Stage 174
+- **확인 질문**: `operation: CONTRACT_CALL` + `source.type: WALLET_POOL` 제출 가능? Solana·비EVM 은? pool 라우팅 처리량(분당) 상한?
+- **Sources to check**: sandbox 실측(testnet pool 생성 → CONTRACT_CALL 제출) · CSM
+- **Status**: open
+
+### Q-2026-09-07-P01: approve 의 allowance 상한을 Fireblocks 정책이 강제할 수 있는가
+
+- **Why it matters**: 담당자 회신 "an approve reads as a zero-value contract call so amount-based rules won't catch it" → 금액 룰은 allowance 를 못 본다. 그런데 Console 에는 Approve Amount Cap(interact-with-smart-contracts 문서), 정책 API 에는 `APPROVE` transactionType·`applyForApprove` 가 있다. 이들이 API 로 낸 `CONTRACT_CALL + approve calldata`(PoC 확정 제출 경로, BC/설계/95) 에 걸리는지에 따라 무한·과대 allowance 의 독립 방어선이 있는지가 갈린다. 없으면 Callback calldata 검증이 유일한 통제.
+- **Where this came up**: [[entities/fireblocks/policy]] §Stage 174 · BC/설계/06-sweep.md 보안 권한 정책 · BC/설계/98 10절
+- **확인 질문**: Approve Amount Cap 은 Console 제출 전용인가, API 제출에도 적용되나? `applyForApprove` 가 켜진 Contract_Call 룰에서 amount 조건은 approve 의 value 인가 0 인가? 승인 대상(spender) 을 룰 조건으로 걸 수 있나?
+- **Sources to check**: CSM 후속 회신 · sandbox 정책 PoC(BC/설계/95 다음 시나리오)
+- **Status**: open
+
+### Q-2026-09-07-G02: Universal Gasless 의 7702 위임 코드(UniversalGaslessDelegate)가 지정 운영자의 일괄 인출을 허용하는가 (명시 확답 요청)
+
+- **Why it matters**: 98 6절의 "7702 운영자" 배치 노선 성립 조건. 2026-09-04 문의 2번에 포함했으나 회신은 건별 전송 권장으로 답해 **명시 확답이 없다**. 권장안이 건별인 점에서 "없다" 로 읽히지만 로드맵·커스텀 위임 허용 여부는 미확인. Stage 169 확답으로 delegate 의 EIP-712 struct 에 `relayer` 바인딩·`deadline` 2h·단회 nonce 가 있음은 확정 — 즉 위임 코드는 **매 실행마다 vault 서명을 요구**하는 구조라 상시 운영자 권한과는 설계 방향이 다르다(추정 아님, struct 에서 도출).
+- **Where this came up**: BC/설계/98-batch-sweep.md 6절 · BC/Fireblocks QnA/01-qna.md 대기 문의
+- **확인 질문**: delegate 에 운영자 인출 함수가 있나? 고객 지정 감사 코드로의 위임을 허용하는 경로·로드맵이 있나?
+- **Sources to check**: CSM 후속 회신(명시 질문) · UniversalGaslessDelegate 소스 공개 여부
+- **Status**: open

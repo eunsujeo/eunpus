@@ -7,7 +7,7 @@
 
 | 워크스트림 | 상태 |
 |---|---|
-| wiki (Layer 1–2) | Stage 165 까지 log.md 기록. 신규 entity 0 streak 38 stage 연속 |
+| wiki (Layer 1–2) | Stage 174 까지 log.md 기록 (2026-09-07). 신규 entity 0 streak 47 stage 연속 |
 | docs-site | 15 폴더. Key Link 포함 완료. 배지/날짜 전환은 사용자 지시 시에만 |
 | blockchain-manager/docs (칸반 모듈) | `디지털 자산` 카테고리 전부 Done (Canton·Fireblocks·가스대납·시작하기·트래블룰). `In Progress` 문서 없음. `To Do` 표기 문서 (13·14·16·99 등) 도 본문은 작성돼 있음 — 칸반 status 전환은 사용자가 드래그로 |
 | 상세 설계 3주제 (2026-07-23 예정분) | **작성 완료** — 입금 폭주·유실 복구 = `BC/설계/99-detection-detail.md` · DB 관리(보존·파티셔닝·아카이브) = `BC/설계/03-bcm-db.md` + `블록체인매니저/설계/15-raw-tx-archive.md` |
@@ -22,6 +22,13 @@
 - `15-raw-tx-archive.md` — 보존 연한 (규제 요구 확인) · 일 활성률 실측 · 체인 원문 2단계 (자체 RPC 여부)
 - `03-bcm-db.md` §미확정 절 항목
 - `블록체인매니저/설계` 13 (DB 스키마 점검)·14 (API 레퍼런스)·16 (인터페이스) — 본문 작성돼 있으나 칸반 To Do. 확정·리뷰가 남았는지는 사용자 판단
+
+### 2.1a 배치 sweep — 담당자 회신 후속 (Stage 174, 2026-09-07)
+
+- **후속 문의 4건 발송** — 문안(EN+KO 초안)은 `BC/Fireblocks QnA/01-qna.md` "배치 sweep 설계 — 담당자 회신" 절. ① Wallet Pool 조언의 relay 모드 전제 ② Amount Cap·applyForApprove 의 API 적용 ③ 7702 위임 코드 운영자 인출 yes/no ④ WRITE rate limit·relay 처리량
+- **회차당 대상 vault 수 추정** — `BC/설계/06-sweep.md` 정책(비율 임계·가스비 한도) × 예상 고객 수·입금 빈도. 건별(벤더 권장) vs 배치(채택안) 을 가르는 수치. 98 10절 "결정 입력"
+- **OpenAPI 스펙 재수집** — `WALLET_POOL` source type·`POST /v1/tags`·`attached_tags` 가 2026-05 스펙에 없음 (`vendors/fireblocks/api.md` §Stage 174)
+- Open Q: Q-2026-09-07-WP01 · WP02 · P01 · G02
 
 ### 2.1b svc 세션 후속: AdminReadService 에 Webhook health 조건 추가 (2026-08-21 리뷰)
 

@@ -1,0 +1,12 @@
+source_url: https://support.fireblocks.io/hc/en-us/articles/27776980063260-Wallet-Pools
+url_status: confirmed (PDF 푸터)
+downloaded_at: 2026-09-07
+doc_type: docs
+pages: 9
+language: en
+domain: workspace
+tier: 1
+status: markdown-extracted
+title: "Wallet Pools"
+ingest_log: "Stage 174 (2026-09-07) — Mode C full ingest. pdftotext -layout 로 markdown 추출 후 적재"
+note: "담당자 배치 sweep 회신(2026-09-07)의 'Wallet Pool as relayer source' 용어 확인용. 2026-05-19 sitemap·OpenAPI 스펙에 없던 신기능."

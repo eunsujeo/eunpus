@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [transaction, key-link]
 stage_introduced: 5
-last_updated_stage: 173
-source_count: 13
+last_updated_stage: 174
+source_count: 14
 related: [approver, designated-signer, policy, signer, tap, vault-account]
 ---
 # Entity: Transaction (Fireblocks)
@@ -613,3 +613,17 @@ Cold Wallet 거래는 생성 후 8시간 안에 서명되지 않으면 timeout�
 ## Sources (Stage 173 추가)
 
 - `blockchain-manager/docs/BC/설계/92-vault-to-vault-poc-result.md` (Stage 173: 거래 객체 3건 · 웹훅 알림 이력 16건 · 인박스 16행. 원문은 fbhook `docs/payload-samples/vault-to-vault/`)
+
+## Stage 174 — Wallet Pool 을 source 로 낸 거래의 기록 형태
+
+source: `2026-09-07__support-fireblocks-io__wallet-pools.md`, p.4–6
+
+- 제출: `POST /v1/transactions` 의 `source: {type: "WALLET_POOL", id: "<poolId>"}`. 생성 응답은 **txId 와 status 만** 돌려주고 어느 vault 가 선택됐는지는 알려주지 않는다.
+- 조회(`GET /v1/transactions/{txId}`) 또는 웹훅에서: `source` 가 **선택된 vault account 로 재기록**된다 — `source.id`/`source.name` = 실제 보낸 vault. pool 은 `source.tags` 에 나타나고, 거래 레코드에 **`extraParameters.walletPoolId`** 가 기록된다. 이 필드가 "pool 라우팅 거래" 표시이자 export·웹훅 대사 키다.
+- 시간대별 분포는 거래를 `extraParameters.walletPoolId` 로 묶어 본다. round-robin 은 엄격 순서가 아니므로 **고정 반복 순서를 가정한 대사 로직은 금지** (p.7).
+- 거절 사유 2종: `insufficient balance`(멤버 중 단독 감당 vault 없음 — 잔액 합산 안 됨) · `asset not found in pool`. gas 자산 없는 vault 로 나가면 거래가 stall·fail 할 수 있다 (p.7).
+- 설계 함의: 제출 원장이 "요청 source = pool id" 와 "실제 source = vault id" 를 분리 저장해야 한다. 감지 측(Stage 173 내부 이동 규칙)은 source.id 가 vault 이므로 방향 판정은 그대로 성립한다.
+
+## Sources (Stage 174 추가)
+
+- `2026-09-07__support-fireblocks-io__wallet-pools.md`, p.4–7 (WALLET_POOL source 제출·조회 시 source 재기록·extraParameters.walletPoolId·거절 사유)
