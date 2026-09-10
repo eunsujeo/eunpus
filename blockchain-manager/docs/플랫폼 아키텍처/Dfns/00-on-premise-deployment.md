@@ -1,0 +1,362 @@
+---
+title: Dfns 온프레미스 배치 — 고객 AWS 계정 안에서 플랫폼 전체를 운영하는 모델
+status: To Do
+---
+
+Dfns 가 평가용으로 제공한 "On-Premise Deployment · Technical Overview v1.0 (2026년 9월)" 17쪽을 페이지 순서대로 옮긴 전환본이다. Dfns 는 자기 제품을 "Onchain Core Banking" 플랫폼이라 부르고, 이 문서는 그 플랫폼 전체를 고객이 소유·운영하는 AWS 계정 안에서 돌리는 완전 온프레미스 모델을 다룬다.
+
+## 읽는 방법
+
+- PDF 1쪽부터 17쪽까지의 흐름을 유지한 상세 전환본이다. 표와 Mermaid 다이어그램은 PDF 의 표·배치도를 문서 형식에 맞게 다시 그린 것이다.
+- 페이지 번호는 추출된 물리 페이지 기준(p.1~p.17)이다. PDF 푸터는 18쪽 기준으로 매겨져 있고 "06 / 18" 이 없다. 고객명 제거본을 만들 때 한 쪽이 빠진 것으로 보이며, 원본에서 확인이 필요하다.
+- 제품 우수성·보안성에 관한 표현은 PDF 가 제시한 주장이다. 별도 근거로 검증된 결론이 아니다.
+- PDF 에 없는 제품 상태·가격·계약 조건·국내 제공 여부는 추가하지 않았다. Fireblocks 자료와의 대조는 마지막 절에 저자 정리로 분리했다.
+- Governance Engine 은 이 문서에서 "선택 구성요소" 로만 나온다. 상세는 [Dfns Governance Engine](01-governance-engine.md) 에 있다.
+
+## p.1 — 표지
+
+제목은 `Onchain Core Banking · Technical Overview · v1.0 · September 2026 · On-Premise Deployment`. 표지가 밝힌 범위는 아키텍처, 서명 계층, 키 보관, 배포 절차, 연동, Day-2 운영, 범위와 한계다. 인프라·SRE·보안 팀이 도입을 평가하거나 준비할 때 읽는 "Technical evaluation material" 로 표기돼 있다.
+
+## p.2 — 문서 소개
+
+Dfns 플랫폼이 제공한다고 밝힌 서비스는 인증과 사용자 생애주기, 여러 체인의 지갑, 키를 보관하는 서명 계층, 승인·컴플라이언스 엔진, 블록체인 연동과 인덱싱, 운영자 대시보드다.
+
+완전 온프레미스 모델에서는 이 플랫폼 전체가 고객이 소유·운영하는 AWS 계정 안에서 돈다. 이 문서는 무엇이 있고 어떻게 맞물리며 운영에 무엇이 필요한지를 설명하고, 단계별 절차는 릴리스마다 함께 배포되는 deployment handbook 에 있다.
+
+독자는 인프라·SRE·보안 엔지니어이고 Kubernetes, Terraform, DNS, PKI 를 안다고 전제한다. 목차는 11개 절이다.
+
+| 절 | 제목 | 내용 |
+|---|---|---|
+| 01 | Where the on-premise model sits | 배치 형태들과 완전 온프레미스의 위치 |
+| 02 | Architecture: four layers | 순서가 정해진 4개 인프라 계층 |
+| 03 | The moving pieces | 애플리케이션 서비스, 공유 인프라, 서명 계층 |
+| 04 | Trust and key material | 4개 신뢰 도메인과 키가 있는 곳 |
+| 05 | What DFNS delivers | 서명된 번들과 이미지 배포 |
+| 06 | The deployment flow | 사람이 붙어 진행하는 관문식 절차 |
+| 07 | What you provide | 사전 요건과 day-0 결정 |
+| 08 | Integration capabilities | 이메일, 신원, 체인, 관측 등 |
+| 09 | Day-2 operations | 업그레이드, 로테이션, 이중화, 진단 |
+| 10 | Scope boundaries and current limits | 아키텍처 검토가 의지할 수 있는 한계 |
+| 11 | Companion guides | 참조하는 상세 자료 |
+
+## p.3 — 배치 형태와 온프레미스 모델의 위치
+
+Dfns 는 "누가 무엇을 운영하는가" 로 갈리는 여러 배치 형태를 지원한다. 서명 인프라(키를 보관하고 서명을 만드는 계층)와 플랫폼(API·대시보드)이 각각 Dfns 에 있을 수도, 고객에게 있을 수도 있다.
+
+| 형태 | 서명 인프라 | 플랫폼 (API·대시보드) |
+|---|---|---|
+| Dfns 호스팅 (SaaS) | Dfns | Dfns |
+| Hybrid MPC, shared quorum | 분할. 고객이 일부 MPC signer 운영, 나머지는 Dfns | Dfns |
+| Hybrid MPC, full quorum | 고객이 모든 MPC signer 운영 | Dfns |
+| Client-hosted HSM | 고객 HSM + 고객이 운영하는 driver. proxy 는 Dfns 운영 | Dfns |
+| **완전 온프레미스 (이 문서)** | 고객 (클러스터 안 MPC 또는 고객 HSM) | 고객 |
+
+완전 온프레미스에서는 API 서비스, 대시보드, 데이터베이스, 메시지 버스, 시크릿 저장소, 서명 계층이 전부 고객 AWS 계정에서 돈다. 서명 계층은 MPC 와 HSM 두 선택지가 있고, 둘 다 이 문서 범위다. Hybrid 형태들은 별도 가이드가 있다.
+
+**런타임 독립.** 인도가 끝나면 환경은 Dfns 인프라에 런타임 의존 없이 돈다. Dfns 와 연결 없이 운영되고, 컨테이너 이미지는 오프라인으로 고객 레지스트리에 들여올 수 있다.
+
+## p.4 — 배치 형태 그림
+
+완전 온프레미스에서는 모든 런타임 구성요소가 고객 환경 안에 있고, Dfns 는 서명된 번들과 지식(워크숍)만 보낸다. 트래픽은 오가지 않는다. 대비용으로 그린 SaaS 와 Hybrid MPC 는 서명 계층과 플랫폼이 어디서 도는지만 다르다.
+
+```mermaid
+flowchart LR
+  subgraph CUST["고객 환경"]
+    direction TB
+    APP["고객 애플리케이션<br/>내부 네트워크"]
+    CP["컨트롤 플레인<br/>API · 정책 · 감사"]
+    DATA["데이터 계층<br/>Postgres · Kafka · Vault"]
+    SIGN["서명 계층<br/>MPC 3-of-5 또는 고객 HSM"]
+    HSM["HSM / KMS<br/>고객 하드웨어"]
+    APP --> CP --> DATA
+    CP --> SIGN
+    SIGN --- HSM
+  end
+  subgraph DFNS["Dfns"]
+    BUNDLE["서명된 번들<br/>버전·digest 고정<br/>인도용, 런타임 아님"]
+    WS["워크숍<br/>지식 이전 · 접근 없음"]
+  end
+  subgraph CHAIN["체인"]
+    NODE["고객 노드<br/>직접 운영"]
+  end
+  BUNDLE -.-> CP
+  SIGN -->|"서명된 tx"| NODE
+  classDef vault fill:#dbeafe,stroke:#2563eb
+  classDef special fill:#e0e7ff,stroke:#6366f1
+  class SIGN,HSM vault
+  class BUNDLE,WS special
+```
+
+파란색은 키가 있는 서명 계층과 HSM, 보라색은 인도 시점에만 관여하는 Dfns 쪽 요소다. PDF 그림에서 Dfns 호스팅 형태는 고객 앱이 HTTPS 443 으로 Dfns 컨트롤 플레인에 서명된 액션을 보내고 MPC signer 5개(3-of-5)가 Dfns 관리형으로 도는 모양, Hybrid MPC 는 고객이 party 1~3 을 자기 keyshare DB 와 함께 운영하고 Dfns 가 party 4~5 를 운영하며 signer 가 outbound mTLS 로만 job 을 pull 하는 모양이다.
+
+## p.5 — 아키텍처: 4개 계층
+
+배치는 순서가 정해진 4개 인프라 계층으로 구성된다. 각 계층은 자기 state 를 가진 별도 Terraform root 이고, 뒤 계층이 앞 계층의 output 을 읽기 때문에 순서가 고정되며 도구가 이를 강제한다. 첫 계층 위는 전부 표준 Kubernetes 다. 애플리케이션은 Helm chart 와 컨테이너 이미지로 인도돼 첫 계층이 만든 클러스터에 배포된다.
+
+| 계층 | 프로비저닝 대상 |
+|---|---|
+| L1 · Substrate | VPC 와 네트워킹, EKS 클러스터, 관리형 PostgreSQL(Aurora Serverless v2), 관리형 Kafka(MSK), 관리형 Redis(ElastiCache), Route53 호스팅 존과 ACM TLS 인증서, SSM bastion, 선택으로 CloudFront CDN + WAF |
+| L2 · Platform | Istio 서비스 메시(strict mutual TLS)와 ingress gateway, 시크릿 저장소(raft HA + AWS KMS auto-unseal 의 Vault, 또는 AWS 네이티브 시크릿 백엔드), 네임스페이스와 RBAC, storage class, 레지스트리 pull secret, 선택으로 노드 autoscaling |
+| L3 · Product | 공유 PostgreSQL 위의 서비스별 데이터베이스, Kafka 토픽과 접근 통제, 시크릿 저장소 seeding, 플랫폼 Helm umbrella release(모든 애플리케이션 서비스, 초기화 job, 대시보드) |
+| L4 · Signing | 선택한 서명 계층. 클러스터 안 MPC signer 클러스터, 또는 고객 HSM 앞의 HSM proxy + driver 쌍. 선택으로 governance engine |
+
+계층 순서가 곧 배포 경로다. 도구는 한 계층 안에서는 무인으로 돌지만 고객만 할 수 있는 정해진 pause 지점에서 멈춘다(06절). 계층을 위에서 아래로 읽는 것이 시스템을 이해하는 가장 빠른 길이라고 PDF 는 적었다. substrate, 플랫폼 fabric, 애플리케이션, 키 순서다.
+
+## p.6 — 구성요소 1: 애플리케이션 서비스와 공유 인프라
+
+### 애플리케이션 서비스
+
+Product 계층은 Helm umbrella release 하나로 약 20개 workload 를 배포한다.
+
+- **핵심 API 서비스 12개** — 인증과 조직·사용자 생애주기(WebAuthn passkey 기반), 지갑(생애주기·이체·broadcast), signer 조정(서명 계층 구동), 정책(승인·컴플라이언스 규칙), 블록체인 연동(멀티체인 트랜잭션 구성·수수료·네트워크 메타데이터), 블록체인 인덱싱(블록 수집과 트랜잭션 확정), admin, webhook, alias, 시세, 메트릭. 여러 서비스가 같은 이미지에서 cron 이나 indexer workload 를 함께 돌린다.
+- **초기화 job 2개** — 데이터베이스 스키마 마이그레이션, 그리고 issuer key 와 초기 staff 조직을 만드는 1회성 플랫폼 bootstrap.
+- **대시보드 2개** — 최종 사용자 대시보드, 운영자용 staff 대시보드.
+
+모든 애플리케이션 이미지는 distroless Node.js 기반이고 non-root 로 돌며 arm64(Graviton 계열 노드)용으로 배포된다. 릴리스의 모든 서비스가 같은 버전 번호를 갖는 단일 플랫폼 버전이고, 이미지는 digest 로 고정된다.
+
+### 공유 인프라
+
+- **PostgreSQL** — 서비스 도메인별 논리 DB 9개(auth, permissions, wallets, keystores, policies, blockchain integrations, aliases, markets, events).
+- **Kafka** — 플랫폼 이벤트 버스. 토픽과 서비스별 자격증명은 Product 계층에서 프로비저닝. indexer 와 cron workload 가 Kafka consumer 다.
+- **Redis** — 캐시 계층.
+- **시크릿 저장소** — Vault 또는 AWS 네이티브 백엔드. day 0 에 고른다(07절). 서비스 시크릿, 서비스별 transit 또는 KMS 키, Vault 일 때는 서명 계층이 쓰는 PKI mount 를 보관.
+- **Istio** — 모든 서비스 사이 클러스터 내 mutual TLS(strict) 와 ingress gateway. 앞에 AWS NLB.
+
+## p.7 — 구성요소 2: 서명 계층 선택지
+
+서명 계층은 키를 보관하고 서명을 만드는 구성요소다. 온프레미스 모델은 day 0 에 고르는 두 선택지와 선택 구성요소 하나를 제공한다.
+
+**MPC, 클러스터 안.** signer party 5개와 3-of-5 서명 임계값(다른 구성은 협의로 지원). party 사이에 프로토콜 라운드를 전달하는 delivery relay 가 함께 있다. 키 조각은 프로비저닝 시 분산 키 생성으로 signer 안에서 만들어지므로 완전한 개인키가 한곳에 존재하는 순간이 없다. 각 party 의 인증서는 고객 시크릿 저장소의 전용 PKI mount 에서 발급된다.
+
+**HSM.** 클러스터 안 hsm-proxy 와 고객 HSM 옆에서 도는 hsm-driver. driver 는 보통 별도 amd64 호스트에 두고, 클러스터 밖이나 VPC 밖에도 둘 수 있다. driver 가 proxy 로 mutual TLS 로 dial out 하므로 HSM 쪽으로 들어오는 연결은 필요 없다. 지원 HSM 은 Securosys Primus(온프레미스 어플라이언스 또는 CloudsHSM 서비스), Thales Luna, AWS CloudHSM, IBM EP11 또는 HPCS 급 장비다. 지갑 개인키는 HSM 안에서 생성되고, HSM 을 떠나지 않는 비추출 root wrap key 로 AES-GCM 래핑한 blob 형태로만 고객이 운영하는 PostgreSQL keystore DB 에 저장된다. ECDSA secp256k1 과 Ed25519 서명을 모두 지원한다.
+
+**Governance engine, 선택.** 거버넌스 결정에 자기 키로 서명하는 추가 승인·증명 구성요소. HSM 계층이 있으면 그 키도 HSM 으로 래핑된다.
+
+**키 보관.** 지갑 서명키는 플랫폼 API 서비스가 보관하지 않고 Dfns 도 보관하지 않는다. MPC 에서는 signer party 들에 조각으로 나뉘고, HSM 에서는 HSM 안에 있으며 keystore DB 에는 래핑된 blob 만 들어간다.
+
+## p.8 — 구성요소 지도
+
+03·04절의 모든 런타임 구성요소를 영역별로 그린 그림이다. 네 영역 전부 고객 환경 안에 있고, 서명 영역은 들어오는 연결을 받지 않는다. signer 가 delivery relay 에서 mTLS 로 job 을 pull 한다.
+
+```mermaid
+flowchart TB
+  subgraph CLI["클라이언트와 운영자"]
+    direction LR
+    A1["고객 애플리케이션<br/>REST API · SDK"]
+    A2["대시보드<br/>admin · 최종 사용자"]
+    A3["운영자<br/>bastion · 인바운드 0"]
+  end
+  subgraph CPL["컨트롤 플레인 · L3 — 4개 endpoint 뒤 약 20개 서비스"]
+    direction LR
+    C1["API 진입<br/>endpoint 4개 · LB 하나"]
+    C2["신원·접근<br/>passkey · 권한"]
+    C3["지갑·자산<br/>지갑 · 인덱싱"]
+    C4["정책·거버넌스<br/>규칙 · 승인"]
+    C5["웹훅·감사<br/>이벤트 · 감사 추적"]
+  end
+  subgraph FND["기반 · L1–L2"]
+    direction LR
+    F1["Kubernetes + 메시<br/>private · strict mTLS"]
+    F2["Vault<br/>시크릿 · PKI"]
+    F3["PostgreSQL ×9<br/>서비스당 DB 하나"]
+    F4["Kafka + Redis<br/>이벤트 · 캐시"]
+  end
+  subgraph SZ["서명 영역 · L4 — 인바운드 닫힘"]
+    direction LR
+    R["Delivery relay<br/>signer 가 job 을 pull"]
+    S["MPC signer s1~s5<br/>임계값 3 of 5"]
+    K["Keyshares DB<br/>암호화된 조각"]
+    H["HSM 선택지<br/>PKCS#11 · FIPS 140-2 L3"]
+    S -->|"outbound pull · mTLS"| R
+    S --- K
+    S -.- H
+  end
+  CLI -->|"HTTPS 443 · 사용자 서명 액션"| CPL
+  CPL -->|"승인된 서명 job"| R
+  CPL --- FND
+  classDef vault fill:#dbeafe,stroke:#2563eb
+  classDef special fill:#e0e7ff,stroke:#6366f1
+  class S,K,H vault
+  class R special
+```
+
+파란색이 키 자료가 있는 곳(signer, keyshare DB, HSM)이고 보라색 relay 는 job 통로다. PDF 원그림은 HSM 을 "선택 또는 대체 계층" 으로 표시했다.
+
+## p.9 — 신뢰 도메인과 키 자료
+
+플랫폼의 암호 자료는 서로 독립인 네 신뢰 도메인으로 나뉜다. 각 키가 어디 있는지 아는 것이 보안 검토의 대부분이라고 PDF 는 적었다.
+
+| 신뢰 도메인 | 자료 | 있는 곳 |
+|---|---|---|
+| 지갑 서명키 | ECDSA secp256k1 / Ed25519 | MPC: signer party 들에 조각으로 분산. HSM: 고객 HSM 안, keystore DB 에는 래핑된 blob 만. 플랫폼 API 도 Dfns 도 보관하지 않음 |
+| 플랫폼 인증키 | Ed25519 토큰 서명(issuer) 키 | 고객 시크릿 저장소(Vault KV 또는 AWS Secrets Manager), 고객 KMS 로 envelope 암호화. auth 서비스만 읽음 |
+| 서명 계층 mutual TLS | 환경별 private CA 와 intermediate, 구성요소별 ECDSA P-256 leaf 인증서 | CA·intermediate 는 시크릿 저장소, leaf 는 서명 계층 pod 에 마운트. leaf 의 common name 이 구성요소 신원을 담고 TLS handshake 에서 강제됨 |
+| 서비스 메시 | Istio workload 인증서(단기) | 클러스터 내 CA, 자동 로테이션 |
+
+**키 보관에 관한 두 가지.** 첫째, Vault recovery key 와 root token(초기화 때 받음, 06절)을 가진 쪽이 시크릿 저장소를 통제한다. 이 값의 보관은 배포 중에 고객 몫으로 정해지고 root token 은 day 0 뒤 폐기한다. 둘째, HSM 경로에서는 root wrap key 와 keystore DB 가 함께 있어야만, 그리고 함께 있으면 충분히 모든 지갑 키를 복구할 수 있다. 둘 다 백업해야 한다. 키는 HSM 네이티브 파티션 백업이나 복제로, DB 는 표준 PostgreSQL 백업으로. HSM 백업 없이 root wrap key 를 잃으면 래핑된 모든 키가 영구히 복구 불가다.
+
+**고객 보관 암호화 백업 (MPC).** MPC 배치에는 선택 백업 계층이 있다. 모든 키 조각을 고객이 생성해 오프라인에 보관하는 공개키로 추가 암호화해 버전 관리되는 S3 버킷에 쓴다. 이 백업으로부터의 복구는 Dfns 와 완전히 독립이다.
+
+## p.10 — Dfns 가 인도하는 것
+
+배치는 서명된 버전 번들 하나로 인도된다.
+
+- **Handbook 과 runbook** — 오프라인으로 읽을 수 있는 deployment handbook 과 주제별 runbook(day-0 walkthrough, 연결성, DNS 위임, Vault 초기화, 서드파티 시크릿, HSM 세레모니, 조직 bootstrap, day-2 운영, 진단, sizing).
+- **Terraform root 와 module** — 4개 계층 root 와 모든 module 의존성이 번들에 vendoring 돼 있고, preflight 검사와 계층 순서를 강제하는 Makefile 이 있다. 서드파티 provider 는 egress 제한 환경용으로 번들에 미러링할 수 있다.
+- **Helm chart** — 플랫폼 umbrella 와 서명 계층 chart(signer, HSM, HSM driver, governance, 초기화), 전부 vendoring.
+- **Values 템플릿** — 주석 달린 terraform.tfvars.example 과 고객 values seed. 고객이 편집하는 파일은 이 둘뿐이다.
+- **이미지 manifest** — 모든 컨테이너 이미지의 레지스트리 경로, tag, sha256 digest. 릴리스 시점에 찍힌다.
+- **무결성 자료** — 번들 모든 파일의 서명된 체크섬 목록, 검증용 릴리스 공개키, 각 컨테이너 이미지 서명을 검증할 cosign 공개키.
+
+**이미지 배포.** 환경별로 세 채널 중 하나를 고른다. Dfns 제공 레지스트리 자격증명(pull-through), 고객 아티팩트 저장소로 복제, 완전 오프라인 OCI tarball 을 제공 스크립트로 고객 레지스트리에 import. 에어갭 운영 환경에는 오프라인 채널이 권장이다.
+
+**업그레이드**도 같은 방식이다. 릴리스마다 in-place diff 가 아닌 완전한 새 번들이 오고, 풀기 전에 검증한 뒤 계층별로 적용한다.
+
+## p.11–12 — 배포 절차
+
+배포는 사람이 붙어 진행하는 관문식 절차다. 도구는 계층 안에서는 무인으로 돌고, 고객만 할 수 있는 pause 지점에서 멈춘다. 사전 요건이 준비돼 있으면 첫 배포는 1~2 근무일에 끝난다.
+
+| 순서 | 단계 | 내용 |
+|---|---|---|
+| 01 | Preflight | 제공된 검사가 자격증명, 리전 서비스 지원, quota, 레지스트리 접근, 도구 버전, 도메인을 생성 전에 검증 |
+| 02 | L1 apply | Substrate 생성. 가장 오래 걸리는 단계로 관리형 Kafka 클러스터가 시간의 대부분. Terraform 이 nameserver 4개를 출력 |
+| 03 | DNS 위임 · **PAUSE 1** | 고객이 배치 도메인을 그 nameserver 로 위임. 인증서 검증, 따라서 TLS 전부가 여기에 걸림 |
+| 04 | L2 apply | 서비스 메시, ingress, 시크릿 저장소 |
+| 05 | 연결성 · **PAUSE 2** | private 클러스터 endpoint 로의 경로 확인. 제공된 SSM bastion 터널이 기본, 고객 VPN 이나 VPC 내 runner 도 가능 |
+| 06 | Vault 초기화와 키 보관 · **PAUSE 2B** | 고객이 vault operator init 을 실행하고 recovery key 와 초기 root token 을 즉시 자기 키 보관 계획대로 보관. root token 은 PAUSE 3 에서 한 번 더 쓰고 폐기 |
+| 07 | L3 stage 1 | 데이터베이스, 토픽, 시크릿 seeding |
+| 08 | 서드파티 시크릿 · **PAUSE 3** | 고객만 줄 수 있는 자격증명을 시크릿 저장소에 채움. 체인 RPC endpoint, 이메일 provider, OIDC 클라이언트 설정, 선택 연동(08절). 계약별 목록이 번들에 있고, 필수 항목이 없으면 다음 단계가 plan 을 거부 |
+| 09 | L3 stage 2 | 애플리케이션 배포. 스키마 마이그레이션, 플랫폼 bootstrap, umbrella release. 검증은 api.<도메인> 응답, 두 대시보드 로드, 첫 staff 관리자의 passkey 등록 |
+| 10 | L4 apply | 서명 계층. MPC 는 apply 한 번. HSM 은 **PAUSE 4 · 인증서 세레모니** 추가. 고객이 제공 스크립트로 CSR 을 만들고(개인키는 고객 보관을 떠나지 않음) Dfns 가 환경별 CA 로 서명하며, 고객이 서명된 인증서를 넣은 뒤 두 번째 apply. HSM 경로에서는 첫 driver 시작 때 root wrap key 세레모니도 수행. driver 가 HSM 파티션에 root key 를 자동 프로비저닝하고, 지갑이 하나라도 생기기 전에 고객이 백업 |
+| 11 | Keystore 등록과 end-to-end 증명 | staff 대시보드에서 서명 클러스터를 key store 로 등록(WebAuthn 게이트). 조직을 연결하고, 지갑을 만들어 트랜잭션 하나를 끝까지 서명해 배포를 증명 |
+
+**완료 기준.** 고객이 운영하는 환경에서 지갑이 만들어지고 트랜잭션 하나가 끝까지 서명됐을 때만 배포가 끝난 것으로 본다.
+
+## p.13 — 트랜잭션 하나, 여섯 개의 통제 지점
+
+배포 절차 마지막의 end-to-end 증명이 지나는 경로다. 모든 hop 이 고객 환경 안에 있고 어느 단계도 건너뛸 수 없으며, 서명 영역은 pull 만 한다.
+
+```mermaid
+flowchart LR
+  U["01 사용자가 intent 에 서명<br/>요청 자체를 서명"] --> A["02 Auth 가 신원 검증<br/>신원 · intent 확인"]
+  A --> P["03 정책 엔진이 규칙 평가<br/>rulebook"]
+  P -->|"정책이 요구하면"| Q["04 승인자 정족수<br/>quorum sign-off"]
+  Q -->|"승인된 job · 대기열"| R["Delivery relay<br/>job mailbox"]
+  P -->|"승인 불필요 시"| R
+  R -->|"pull"| S["05 임계값 서명<br/>MPC 3-of-5"]
+  S -->|"서명된 tx"| N["06 고객 노드가 broadcast<br/>온프레미스 노드"]
+  classDef vault fill:#dbeafe,stroke:#2563eb
+  classDef special fill:#e0e7ff,stroke:#6366f1
+  classDef good fill:#dcfce7,stroke:#16a34a
+  class S vault
+  class R special
+  class N good
+```
+
+PDF 는 사용자 서명, 신원 검증, 정책 평가, 정족수 승인, 임계값 서명, 노드 broadcast 를 여섯 통제 지점으로 세고, 그중 서명 hop 을 "custody-critical" 로 표시했다. 승인자 단계는 정책이 요구할 때만 들어간다.
+
+## p.14 — 고객이 제공하는 것
+
+- EKS 와 MSK 를 모두 제공하는 리전의 전용 AWS 계정, quota 여유 포함. 참조 배치는 작은 arm64 노드 그룹에서 on-demand vCPU 약 32개를 쓰고, HSM 경로는 driver 쪽 구성요소용 amd64 용량이 추가된다.
+- 부모 존을 고객이 통제하는 도메인 또는 위임된 서브도메인. 환경이 apex 와 wildcard 를 서빙하므로 전용으로 둔다.
+- 계층별 deployer 신원. 계층마다 별개의 deployer 신원 하나와 사람 운영자용 읽기 전용 신원. day 0 는 넓은 권한으로 돌고, 최소 권한으로 줄이는 것은 day 0 이후의 문서화된 hardening 단계다.
+- Terraform state 백엔드. 버전 관리·KMS 암호화된 S3 버킷 하나. 서명 계층의 state 에는 전용 KMS 키가 필요하다.
+- 운영자 워크스테이션. macOS 또는 Linux 에 표준 도구(AWS CLI v2, OpenTofu 또는 Terraform, kubectl, Helm, jq, dig, SSM session plugin). bootstrap 스크립트가 설치하고 preflight 가 검증한다.
+- 고객이 소유하는 시크릿. Vault 보관 값(04절), 파일이나 state 가 아니라 고객 시크릿 매니저에 두는 DB 마스터 자격증명, pull-through 채널을 쓸 때의 레지스트리 자격증명, 08절의 서드파티 자격증명.
+- HSM 경로 한정. 프로비저닝된 HSM(파티션, 사용자, PIN), 벤더 PKCS#11 클라이언트 설정, driver 호스트, keystore DB 용 PostgreSQL 인스턴스, 그리고 협상 불가 항목으로 root wrap key 백업 방안.
+
+**Day-0 결정 7개.** 서명 프로필(MPC, HSM, governance 포함 여부), 컴퓨트 모델(정적 노드 그룹 또는 autoscaling), 도메인 시나리오, 네트워크 경로, 이미지 레지스트리 채널, 선택인 CloudFront + WAF edge, 선택 기능(메트릭, captcha). 생성 전에 결정 시트에 기록한다.
+
+**되돌릴 수 없는 결정 하나.** 시크릿 백엔드(Vault 대 AWS 네이티브)는 day 0 에 고정되고 백엔드 간 마이그레이션이 없다.
+
+## p.15 — 연동
+
+이메일과 체인 endpoint 하나 이상은 사실상 사전 요건이고, 나머지는 선택이며 provider 에 묶이지 않는다.
+
+| 연동 | 용도 | 비고 |
+|---|---|---|
+| 이메일 (SMTP 또는 SendGrid) | 가입·복구·로그인 메일. 온보딩 사전 요건에 해당 | 고객 relay 와 STARTTLS 또는 TLS 로 동작. 별도 온프레미스 이메일 가이드 있음. 이메일 전 온보딩용 break-glass 절차 문서화 |
+| OIDC | 고객 IdP 로 위임 로그인 | OIDC 강제 조직은 가입 메일 없이 온보딩. admin 매핑 claim 을 가진 첫 IdP 사용자가 조직 admin |
+| 체인 RPC endpoint | 활성화한 블록체인 네트워크당 하나 | 자격증명이 포함된 endpoint 는 설정 파일이 아니라 시크릿 저장소에 |
+| 시세·가격 API | 수수료 추정, 가격, 스테이킹 데이터 | 선택. provider 무관 설정 |
+| 웹훅 | 고객 시스템으로 이벤트 전달 | 내장 서비스 |
+| 관측 | 구조화 JSON 로그, OTLP trace export | 로그는 컨테이너 방식으로 고객 SIEM 에, OTLP exporter 는 고객 collector(Datadog 또는 OpenTelemetry 호환)로. Prometheus·Grafana 는 번들에 없음 |
+| Captcha (reCAPTCHA) | 로그인 보호 | 선택 |
+| Slack | 운영 알림 | 선택 |
+| 컨테이너 레지스트리 | 이미지 공급 | 고객 레지스트리(오프라인 import), 복제 대상, 또는 Dfns 제공 pull 자격증명(05절) |
+
+## p.16 — Day-2 운영
+
+환경이 살아난 뒤의 운영은 작고 정해진 루틴이며, 운영 팀이 Dfns 런타임 의존 없이 소유하도록 설계됐다고 PDF 는 적었다.
+
+- **업그레이드** — 릴리스마다 새 서명 번들. 검증 뒤 vendoring 된 module 과 chart 를 통째로 교체하고 계층별로 plan·apply. 애플리케이션만 올리는 버전 변경은 values 변경이다.
+- **롤백** — 버전 관리되는 Terraform state 와 digest 고정 이미지. runbook 이 인프라·애플리케이션 롤백을 다루고 스키마 마이그레이션에 롤백 스크립트가 딸려 온다.
+- **인증서 로테이션** — edge 인증서는 DNS 위임이 유지되면 자동 갱신. 서명 계층 CA·leaf 로테이션은 시크릿 저장소 절차 뒤 pod 재시작. 메시 인증서는 자동.
+- **시크릿 저장소 위생** — day 0 뒤 초기 root token 폐기, 범위 제한 운영자 토큰과 Kubernetes 인증으로 전환, 감사 로깅 활성화.
+- **진단** — 흔한 실패 유형(초기화 job 실패, DB TLS 신뢰, 시크릿 저장소 접근, 노드 아키텍처 불일치)을 다루는 runbook. 모든 서비스가 상관 가능한 구조화 로그를 낸다.
+- **HSM 이중화** — 운영 환경은 벤더 네이티브 복제로 같은 root wrap key 를 가진 HSM 쌍에 driver 2개 이상을 붙여 돌린다. driver 마다 자기 leaf 인증서, keystore DB 는 공유. pull 모델이라 로드밸런서 없이 부하가 나뉜다.
+
+**주기적으로 시험할 불변식.** driver 하나나 HSM endpoint 하나가 죽어도 서명은 계속된다. 이 failover 를 일정에 따라 실제로 일으켜 보는 것이 이중화 구성을 믿을 수 있게 하는 가장 단순한 방법이라고 PDF 는 권한다.
+
+## p.17 — 범위 한계와 동반 가이드
+
+### 범위 한계 (아키텍처 검토가 의지할 수 있는 것)
+
+- Kafka 와 Istio 는 필수다. 플랫폼 메시징은 Kafka 만, ingress 와 클러스터 내 mutual TLS 는 Istio 네이티브. 교체나 유예 불가.
+- Terraform 계층이 배포 경로다. 렌더링된 Kubernetes manifest 를 검사·보안 검토용으로 뽑을 수는 있지만, chart 만으로 설치하면 DB·토픽·시크릿·DNS 를 프로비저닝할 수 없고, 직접 만든 클러스터에 kit 을 얹는 것은 지원 경로가 아니다.
+- 아키텍처는 의도적으로 혼합이다. 애플리케이션 계층은 arm64 전용, HSM driver 구성요소는 amd64. HSM 경로면 둘 다 노드 용량을 계획해야 한다.
+- 시크릿 백엔드는 되돌릴 수 없다(07절).
+- edge TLS 는 인증서 검증을 위해 실제 DNS 위임이 필요하다. edge TLS 없는 내부 전용 도메인이 지원되는 대안이다.
+- 최소 권한은 시작점이 아니라 hardening 단계다.
+- HD 지갑은 현재 HSM 서명 경로에서 제공되지 않는다.
+- 에어갭·오프라인 서명 계층과 HSM root key 로테이션은 셀프서비스 기능이 아니라 계약 범위에서 다루는 절차다. Dfns solutions engineer 와 scoping 때 제기해야 한다.
+
+### 동반 가이드
+
+| 가이드 | 내용 |
+|---|---|
+| DFNS Outbound Email On-Premise | 고객 SMTP relay 에 대한 발신 이메일 설정(full·Essentials 에디션) |
+| User Onboarding Without Email | 고객이 운영하는 DB 에 가입 코드를 직접 넣는 break-glass 온보딩 |
+| Deployment handbook (번들 안) | 권위 있는 day-0 단계별 절차, 계층별 runbook, 진단 |
+
+sizing, 비표준 토폴로지, 추가 HSM 벤더, 컴플라이언스 설문 등 이 개요가 열어 둔 것은 Dfns solutions engineer 에게 문의하라고 적혀 있다.
+
+## Fireblocks 배치 옵션과 나란히 보기 (저자 정리)
+
+아래는 PDF 의 사실이 아니라, [Fireblocks PaaS 배치 옵션](../Fireblocks%20PaaS/00-deployment-options.md) 문서와 이 문서를 저자가 나란히 놓은 것이다. 3-way 비교(SaaS / 설치형 WaaS / 직접 구축)에서 설치형 WaaS 자리의 1차 자료가 이것으로 처음 생겼다.
+
+| 항목 | Fireblocks (배치 제안서 v1.0) | Dfns 완전 온프레미스 (이 문서) |
+|---|---|---|
+| 플랫폼(API·정책·대시보드)이 도는 곳 | Fireblocks SaaS. 고객은 그 위에 애플리케이션 계층 | 고객 AWS 계정. 약 20개 서비스를 고객이 운영 |
+| 벤더 런타임 의존 | 있음. Fireblocks 클라우드가 MPC 조각 일부와 정책 평가를 가짐 | 없음. 인도 후 Dfns 와 연결 없이 동작 (p.3) |
+| 서명키 위치 | Cloud PaaS MPC: Fireblocks 클라우드 조각 + 고객 API Co-Signer 조각. KeyLink: 고객 HSM | MPC: 클러스터 안 signer 5개(3-of-5). HSM: 고객 HSM, keystore DB 에는 래핑 blob (p.7) |
+| 서명 직전 고객 통제 | Callback Handler 가 승인·거부 | 정책 엔진과 승인자 정족수가 고객 환경 안에 있음. 선택인 governance engine 은 별도 자료 (p.13) |
+| 복구 자료 | Cloud PaaS MPC 한정: 국내 보관 Disaster Recovery Kit + Recovery Utility. KeyLink HSM 의 백업·복구는 제안서가 설명하지 않음 | MPC: 고객 오프라인 공개키로 암호화한 조각의 S3 백업. HSM: root wrap key + keystore DB (p.9) |
+| 운영 부담 | Co-Signer 장비·Owner 운영 | Kubernetes·Kafka·Istio·Vault·PostgreSQL·HSM driver 를 포함한 플랫폼 전체 운영 (p.5, p.16) |
+
+이 대응은 두 문서의 서술 수준이 달라(Fireblocks 는 제안서, Dfns 는 기술 개요) 항목별 깊이가 같지 않다. 결정에 쓰려면 Dfns 의 SaaS·Hybrid 형태와 Fireblocks 의 대응 옵션까지 같은 축에서 다시 놓아야 한다.
+
+## PDF만으로 확정할 수 없는 내용
+
+- MPC "다른 토폴로지" 의 구체 구성과 조건
+- Governance engine 이 완전 온프레미스 배치에서 어디에 놓이는지. 동작과 키 관리는 [Dfns Governance Engine](01-governance-engine.md) 에 있다
+- 국내 리전에서 EKS + MSK 요건을 충족하는지, 국내 배치 사례 여부
+- 가격, 계약 조건, 지원 SLA, 릴리스 주기
+- 지원 HSM 의 펌웨어·클라이언트 버전 요건, "FIPS 140-2 L3" 표기의 인증 대상
+- Kafka·Istio·Vault·PostgreSQL 의 버전과 sizing 상세 (p.14 의 vCPU 약 32개만 있음)
+- 지원 체인 목록, 인덱싱 범위, webhook 이벤트 스키마
+- MPC 경로의 HD 지갑 지원 여부 (HSM 경로 미지원만 명시)
+- 정책 엔진의 규칙 표현과 평가 순서
+- 푸터 번호 "06 / 18" 에 해당하는 빠진 쪽의 내용
+
+## 출처와 보존 범위
+
+| ID | 자료 | 사용 범위 |
+|---|---|---|
+| DFNS-ONPREM-001 | Dfns 제공 On-Premise Deployment Technical Overview v1.0 PDF, 물리 17쪽 | 표지·소개·배치 형태·4계층·구성요소·서명 계층·신뢰 도메인·인도물·배포 절차·트랜잭션 흐름·고객 제공 사항·연동·Day-2 운영·범위 한계·동반 가이드 |
+
+- 파일: `blockchain-manager/sources/dfns/2026-09-08__dfns__on-premise-deployment-overview-v1.0.pdf`
+- SHA-256: `146c5a5f415b58588667d5d543f134ab4843742304df708840ab56dd51288567`
+- 텍스트는 pdftotext 로 추출했고, 그림 3개는 추출된 라벨을 바탕으로 다시 그렸다.
+- 이 문서에는 위 PDF 와 저자 정리 절에서 밝힌 Fireblocks PaaS 문서 외의 자료를 사용하지 않았다.
+- 고객명은 원본 단계에서 이미 제거돼 있었고("_clean"), 본문에 고객 식별 정보는 없다.
