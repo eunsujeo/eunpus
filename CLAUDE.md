@@ -77,6 +77,8 @@ Fireblocks 공식 근거 vs LLM 일반 지식 **절대 혼합 금지**. "wiki �
 
 자세히: [prompts/update-wiki.md](prompts/update-wiki.md)
 
+한국어 문서 작성·번역·수정·검토에는 [한글 기술 문서 작성 규칙](prompts/korean-writing.md)을 적용한다. 자연스러운 표현으로 쓰되 원문의 조건·시점·책임 범위를 유지하고, 작성 후 번역투를 검토한다. 자료 정리에는 해당 규칙의 근거·범위 기준도 적용하며, 추측은 포함하지 않는다.
+
 모든 entity / vendor page 는 **YAML frontmatter + 6-section template**.
 
 ### YAML Frontmatter (Stage 35+)
