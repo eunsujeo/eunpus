@@ -3,7 +3,7 @@ title: Fireblocks·Dfns API 비교 — 지갑·전송·상태·웹훅
 status: To Do
 ---
 
-Fireblocks의 Vault·Transaction API와 Dfns의 Wallet·Transfer API를 인증·지갑·잔액·전송·거래 상태·웹훅 관점에서 비교한다. Dfns는 Ethereum Sepolia 지갑 생성, 0.1 ETH 입금 이력, 0.01 ETH 전송과 수수료를 포함한 잔액 대사까지 확인했다. 웹훅은 공식 명세를 비교했으며 실수신 시험은 보류했다.
+Fireblocks의 Vault·Transaction API와 Dfns의 Wallet·Transfer API를 인증·지갑·잔액·전송·거래 상태·웹훅 관점에서 비교한다. Dfns는 Ethereum Sepolia 지갑 생성, 0.1 ETH 입금 이력, 0.01 ETH 일반 전송과 대납 전송을 각각 1회 실행하고, 출금 지갑·대납 지갑의 잔액과 수수료를 대사했다. 웹훅은 공식 명세를 비교했으며 실수신 시험은 보류했다.
 
 **잔액 수량은 단위를 맞춰 비교할 수 있지만, 지갑 식별자와 가용 잔액 필드를 그대로 치환할 수는 없다.** 이 차이를 DAWBC 어댑터와 업무 원장 설계에 반영해야 한다.
 
@@ -20,7 +20,7 @@ Fireblocks의 Vault·Transaction API와 Dfns의 Wallet·Transfer API를 인증·
 | 네이티브 전송·거래 추적 | 0.01 ETH 전송, `Broadcasted → Confirmed`, 입출금 이력·수수료·잔액 대사 확인 | Transaction 생성·조회·상태·수수료 명세 |
 | ERC-20 잔액·전송 | 아직 시험하지 않음 | 후속 비교 대상 |
 | 웹훅 | 공식 이벤트·상태 명세 비교. 실수신 시험은 보류 | Webhooks V2의 이벤트·거래 상태·알림 전달 상태 |
-| 가스 대납 | 후속 검증으로 보류 | 실행·운영 조건을 별도로 비교 |
+| 가스 대납 | Fee Sponsor를 지정한 0.01 ETH 전송 확정. 출금 원금과 대납 수수료의 분리 차감 확인 | 이번 대납 실호출 없음. 실행·정산 조건은 별도 비교 |
 
 이번 Dfns 시험은 `https://api.dfns.io`의 제공 환경을 사용했다. **사내 Baseline에 설치한 API 서버를 시험한 결과가 아니다.** 같은 기능을 사내에서 사용할 수 있는지는 지원 릴리스·배포 패키지·고객 지정 RPC 조건으로 다시 확인한다. 사내 배치는 [Baseline 구성도](../Dfns/03-baseline-datacenter-design.md), 전체 업무 경계는 [DAW 통합 설계](../DAW%20구축%20설계/00-integration-plan.md)에서 다룬다.
 
@@ -143,7 +143,7 @@ Fireblocks 비교 API는 `GET /v1/vault/accounts/{vaultAccountId}/{assetId}`다.
 
 위 항목이 Dfns 응답에 없다는 이유로 `0`을 채우거나, `balance`를 그대로 `available`로 복사하지 않는다. 또한 이 응답만으로 Dfns 전체 제품에 잠금·승인·동결 기능이 없다고 결론 내리지 않는다. 별도 API와 동작 검증이 필요하다. [Dfns 자산 조회](https://docs.dfns.co/api-reference/wallets/get-wallet-assets) · [Fireblocks 잔액 필드](https://developers.fireblocks.com/api-reference/vaults/get-the-asset-balance-for-a-vault-account)
 
-## 전송·거래 조회 실측
+## 일반 전송·거래 조회 실측
 
 ### 호출 순서와 전송 요청
 
@@ -189,7 +189,7 @@ Fireblocks 비교 API는 `GET /v1/vault/accounts/{vaultAccountId}/{assetId}`다.
 | 실제 수수료 | `24049820046000` | 0.000024049820046 |
 | 전송 후 조회 잔액 | `89975950179954000` | 0.089975950179954 |
 
-**전송 전 잔액 − 전송 수량 − 실제 수수료 = 전송 후 조회 잔액**이 정수 연산으로 일치했다. 이 결과는 네이티브 자산의 일반 전송 1건에 대한 검증이다. 실패·대체 거래·동시 출금·가스 대납의 차감 규칙까지 검증한 것은 아니다.
+**전송 전 잔액 − 전송 수량 − 실제 수수료 = 전송 후 조회 잔액**이 정수 연산으로 일치했다. 이 결과는 네이티브 자산의 일반 전송 1건에 대한 검증이다. 실패·대체 거래·동시 출금은 미검증이며, 가스 대납은 다음 절에서 별도로 검증했다.
 
 전파 대기 중에는 잔액 API가 여전히 0.1 ETH를 반환했고, 이력 API에는 입금 1건만 보였다. `Confirmed` 반영 후에는 출금 이력과 차감 잔액이 조회됐다. **진행 중 출금은 이력이나 잔액만 보고 판단하지 말고 Transfer 조회로 추적해야 한다.** 공식 이력 API도 인덱싱된 확정 거래를 제공하며, 진행 중·실패 요청은 관련 요청 목록 API에서 조회하도록 안내한다. [Dfns 거래 이력](https://docs.dfns.co/api-reference/wallets/get-wallet-history)
 
@@ -216,6 +216,67 @@ Fireblocks의 일반 전송은 `POST /v1/transactions`, 단건 조회는 `GET /v
 Fireblocks는 전송액을 자산 단위로 받으며, `treatAsGrossAmount: true`이면 네이티브 자산 전송에서 요청 수량에 수수료가 포함된다. 이번 Dfns 시험은 **수신액 0.01 ETH와 수수료를 별도로 차감**한 결과이므로, Fireblocks 비교에서도 수수료 포함 여부를 맞춰야 한다. [Fireblocks 거래 생성](https://developers.fireblocks.com/api-reference/transactions/create-a-new-transaction) · [Fireblocks 거래 조회](https://developers.fireblocks.com/api-reference/transactions/get-a-specific-transaction-by-fireblocks-transaction-id)
 
 Dfns의 `Confirmed`는 인덱서가 온체인 거래를 확인했다는 상태다. Fireblocks의 `COMPLETED`는 확인 정책을 포함한 처리 상태이므로 **두 값을 동일한 체인 최종성으로 취급하지 않는다.** Dfns의 `Pending`도 일반적인 모든 대기를 뜻하지 않고 정책 승인 대기를 가리킨다. 체인별 완료 기준과 재조직 대응을 별도로 검증한다. [Dfns Transfer 상태](https://docs.dfns.co/api-reference/wallets/get-transfer) · [Fireblocks 상태](https://developers.fireblocks.com/reference/statuses)
+
+## 가스 대납 실측
+
+### 대납 ID를 지정한 전송
+
+일반 전송을 마친 같은 지갑에서 같은 수신 주소로 **0.01 Sepolia ETH를 추가로 한 번 전송**했다. 사전에 `GET /fee-sponsors/{feeSponsorId}`로 대납 설정의 `Active` 상태와 `EthereumSepolia` 네트워크를 확인했다. 연결된 대납 지갑은 출금 지갑과 다른 지갑이며, 전송 전 잔액은 2 Sepolia ETH였다.
+
+일반 전송과 같은 `POST /wallets/{walletId}/transfers`를 호출하되, 요청 본문에 `feeSponsorId`를 추가했다. 아래 식별자와 주소는 공유용으로 일반화했다.
+
+```json
+{
+  "kind": "Native",
+  "to": "<사용자가 지정한 Sepolia 수신 주소>",
+  "amount": "10000000000000000",
+  "priority": "Standard",
+  "feeSponsorId": "<등록된 Fee Sponsor ID · fs-...>"
+}
+```
+
+**대납 지갑을 등록하고 충전하는 것만으로 모든 출금에 대납이 적용되지는 않는다.** 요청에 `feeSponsorId`를 지정해야 하며, 이 값은 대납 지갑의 `wa-...` ID나 주소가 아닌 대납 설정의 `fs-...` ID다. 출금 지갑과 대납 지갑은 같은 네트워크여야 한다. [Dfns Fee Sponsors](https://docs.dfns.co/features/fee-sponsors) · [대납 설정 조회](https://docs.dfns.co/api-reference/fee-sponsors/get-fee-sponsor)
+
+이번 시험은 관리자 권한의 서비스 계정으로 수행했다. 공식 명세상 대납 전송에는 `Wallets:Transfers:Create` 외에 `FeeSponsors:Use` 권한이 필요하다. 최소 권한 조합은 별도로 시험하지 않았다. [Dfns 전송 API](https://docs.dfns.co/api-reference/wallets/transfer-asset)
+
+### 출금 원금과 대납 수수료 대사
+
+생성 응답의 `Broadcasted`에서 단건 조회의 `Confirmed`로 바뀐 뒤 두 지갑의 자산 잔액을 다시 조회했다. Transfer의 실제 `fee`는 `83048666008826` wei였다.
+
+| 지갑 | 전송 전 잔액 · ETH | 전송 후 잔액 · ETH | 차감액 · ETH |
+|---|---|---|---|
+| 출금 지갑 | 0.089975950179954 | 0.079975950179954 | **0.01 — 전송 원금만 차감** |
+| 대납 지갑 | 2 | 1.999916951333991174 | **0.000083048666008826 — 가스비 차감** |
+
+출금 지갑의 잔액 감소는 요청한 0.01 ETH와 일치했고, 대납 지갑의 잔액 감소는 Transfer의 `fee`와 일치했다. 이어 `GET /fee-sponsors/{feeSponsorId}/fees`에서 이번 Transfer ID를 가리키는 수수료 항목 1건을 확인했다. 전송 전 조회에서는 항목이 없었다. 아래는 응답의 주요 필드 발췌다. [Dfns 대납 수수료 조회](https://docs.dfns.co/api-reference/fee-sponsors/list-sponsored-fees)
+
+```json
+{
+  "items": [
+    {
+      "feeSponsorId": "<요청에 지정한 Fee Sponsor ID · fs-...>",
+      "sponsoreeId": "<출금 walletId · wa-...>",
+      "requestId": "<이번 transferId · xfr-...>",
+      "fee": "83048666008826"
+    }
+  ]
+}
+```
+
+**출금 이력에도 같은 `fee`가 있었지만, 출금 지갑이 그 비용을 지불한 것은 아니다.** 이번 조회에서는 Transfer 응답 최상위에 `feeSponsorId`가 없었고 `requestBody.feeSponsorId`에 들어 있었다. 대납 여부와 비용 대사는 요청의 대납 ID, 수수료 목록의 `requestId`·`sponsoreeId`, 두 지갑의 잔액을 함께 확인했다. 대납 지갑의 일반 `/history` 조회에는 해당 비용이 별도 출금 항목으로 나타나지 않았으므로, 이력만으로 대납 비용을 집계하지 않는다. 이는 이번 조회 시점의 관찰 결과다.
+
+| 비교 항목 | 일반 전송 1건 | 대납 전송 1건 |
+|---|---|---|
+| 요청 `feeSponsorId` | 미지정 | 지정 |
+| 수신 주소로 보낸 수량 | 0.01 ETH | 0.01 ETH |
+| 출금 지갑에서 차감한 수량 | 원금 + 가스비 | 원금만 |
+| 가스비 지불 지갑 | 출금 지갑 | 대납 지갑 |
+| 실측 가스비 | 0.000024049820046 ETH | 0.000083048666008826 ETH |
+| 최종 Transfer 상태 | `Confirmed` | `Confirmed` |
+
+대납 응답의 `details.authorization.kind`는 `Eip7702`, `details.message.kind`는 `Eip712`였으며, `details.userOperations`에는 목적지와 전송 수량이 들어 있었다. 일반 전송과 거래 구조가 다르고 실행 시점도 다르므로, **두 건의 비용 차이를 대납 서비스 수수료나 고정 배율로 해석하지 않는다.** 최초 위임과 이후 반복 전송의 비용 차이는 후속 검증 대상이다.
+
+이번에 확인한 것은 **대납 지갑의 네이티브 자산으로 가스비를 지불하는 기능**이다. 법정화폐 청구·환산·정산이나 Fireblocks와의 대납 비용 비교를 시험한 결과는 아니다. 법정화폐 대납은 [가스 대납·정산 설계](../DAW%20구축%20설계/03-fiat-gas-sponsorship.md), 사내 Baseline에서의 지원 여부는 [Dfns 담당자 질문](../Dfns/04-vendor-questions.md)에서 별도로 확인한다.
 
 ## 트랜잭션 상태와 웹훅 비교
 
@@ -305,7 +366,8 @@ DAWBC에서는 원본 이벤트와 벤더 상태를 보존하고, 중복·순서
 2. **벤더 잔액과 고객 가용 잔액을 구분한다.** 이번 시험에서도 전파 대기 중에는 잔액이 전송 전 값으로 조회됐다. 고객 출금 가능 금액은 DAW-CORE의 원장·출금 예약·보류 상태와 가스 비용을 함께 고려해 결정한다.
 3. **미제공 값은 미확인 상태로 보존한다.** 기존 계약에서 필수인 가용·잠금·확정 정보를 Dfns가 같은 의미로 제공하는지 확인하고, 없으면 산출 책임과 조회 경로를 별도로 정한다. 고객 원장을 벤더 잔액으로 덮어쓰지 않는다.
 4. **조회 성공과 거래 확정을 분리한다.** 잔액 증가만으로 개별 입금의 최종 확정이나 원장 반영 완료를 판단하지 않는다. 거래 식별·중복·재조직 처리는 별도 계약으로 검증한다.
-5. **인증·승인·재시도를 분리한다.** SDK가 요청 서명을 처리하더라도 업무 승인과 멱등 처리는 남는다. 생성 응답이 유실되면 새 요청을 반복하기 전에 기존 생성 결과를 대사한다.
+5. **대납 비용과 고객 출금 원금을 분리한다.** 대납 ID·실제 지불 지갑·요청 ID와 비용을 연결하고, Transfer나 출금 이력의 `fee`를 고객 원금에서 다시 차감하지 않는다. 온체인 가스비와 고객에게 청구할 법정화폐 금액은 별도 항목으로 관리한다.
+6. **인증·승인·재시도를 분리한다.** SDK가 요청 서명을 처리하더라도 업무 승인과 멱등 처리는 남는다. 생성 응답이 유실되면 새 요청을 반복하기 전에 기존 생성 결과를 대사한다.
 
 이 제안의 상세 모델과 기존 API 호환 조건은 [DAW 계정·멀티체인·API·이벤트](../DAW%20구축%20설계/01-core-contracts.md)에 연결한다.
 
@@ -314,10 +376,11 @@ DAWBC에서는 원본 이벤트와 벤더 상태를 보존하고, 중복·순서
 | 검증 항목 | 확인할 내용 |
 |---|---|
 | ERC-20 잔액 조회 | contract·decimals·자산 식별 필드와 토큰 잔액 변환 |
-| ERC-20 전송·예외 | 네이티브 전송 1건은 완료. ERC-20 수량·실제 이동과 실패·대체 거래의 수수료 확인 |
+| ERC-20 전송·예외 | 네이티브 일반·대납 전송 각 1건은 완료. ERC-20 수량·실제 이동과 실패·대체 거래의 수수료 확인 |
 | 거래 상태·입금 이력 심화 | 입출금 이력·전송 상태·잔액 대사는 완료. 확인 수·최종성·중복·재조직 검증은 남음 |
+| 가스 대납 심화 | ERC-20·반복 전송·실패·대체 거래의 비용, 최초 위임 비용, 대납 잔액 부족·정책·최소 권한 검증 |
 | 사용 가능 잔액 | 진행 중 출금·예약·수수료가 있는 상태에서의 잔액 의미 |
 | `verified` | 테스트넷 네이티브 자산에 `false`를 반환한 기준과 적용 범위 |
 | 최소 권한·멱등 | 필요한 권한, 같은 요청 재시도와 응답 유실 시 중복 생성 방지 |
 
-웹훅 수신·재전송과 가스 대납은 현재 보류한 후속 검증 항목이다. 이번 일반 전송은 테스트넷 ETH로 수수료를 지불했으며, 운영 설계의 법정화폐 대납 방향은 유지한다. Dfns 제공 환경의 시험 결과를 사내 Baseline 지원 보장으로 확대하지 않는다.
+웹훅 수신·재전송 시험은 보류 중이다. 네이티브 대납 전송 1건은 검증했지만 ERC-20·Base·Solana 대납과 법정화폐 정산은 아직 검증하지 않았다. 운영 설계의 법정화폐 대납 방향은 유지한다. Dfns 제공 환경의 시험 결과를 사내 Baseline 지원 보장으로 확대하지 않는다.
