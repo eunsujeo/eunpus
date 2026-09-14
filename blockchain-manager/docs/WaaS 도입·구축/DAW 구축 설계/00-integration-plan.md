@@ -14,6 +14,7 @@ status: To Do
 | [노드 연결 명세](02-node-rpc-spec.md) | 우리가 제안하는 RPC·장애 대응·인수 기준 |
 | [법정화폐 가스 대납](03-fiat-gas-sponsorship.md) | 대납 경로·예산·실비·청구 대사 |
 | [Dfns 인프라·구성도](../Dfns/03-baseline-datacenter-design.md) | 사내 Baseline의 서버·Vault·저장소·복구 |
+| [Fireblocks·Dfns API 비교](../API%20비교/00-fireblocks-dfns-api.md) | 인증·지갑·잔액·전송 실측과 거래 상태·웹훅 비교 |
 
 ## 1. 설계 범위
 

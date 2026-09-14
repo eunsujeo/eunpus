@@ -47,6 +47,9 @@
 
 ### 2.1c Dfns Baseline·DAW 구축 설계 (2026-09-14)
 
+- 상태·웹훅 비교: API 비교 문서에 Fireblocks 상태/subStatus와 Dfns Transfer 6개 상태, Included 입금 이벤트, V2 eventType/data.status와 Dfns kind/중첩 status, 알림 전달 상태·재전송 ID 구분 추가. Pending/Rejected/Failed 및 abort·대체 취소 의미 차이, API 인증 서명과 거래 서명·전파 구분 보강. 공식 명세 검토만 수행했으며 웹훅·취소 실호출 없음. 앱/HTML·180문서 빌드 검증 완료. 이번 커밋에 포함하며 운영 배포 대기.
+- 전송 시험 추가: 사용자 지정 주소로 0.01 Sepolia ETH 1회 전송, Transfer `Broadcasted → Confirmed`와 입출금 이력 확인. 수수료 0.000024049820046 ETH, 잔액 0.089975950179954 ETH 대사 일치. API 비교 문서에 요청/응답 발췌·Fireblocks 대응·진행 중 거래 조회 차이 추가. ERC-20·웹훅·대납은 미검증. 근거는 Git 제외 `_workspace/dfns-api/`의 전송 결과·이력·잔액 JSON.
+- API 비교: `WaaS 도입·구축/API 비교/00-fireblocks-dfns-api.md` 신설. Dfns 제공 환경에서 서비스 계정 조회·요청 서명·Sepolia 지갑 생성/재조회·0.1 ETH 잔액 확인 완료. Fireblocks는 공식 Vault API 명세 비교이며 실호출하지 않음. 단위·식별 모델·미제공 available/pending/locked/frozen/블록 정보 차이, verified 확인 필요와 후속 시험 정리. 웹훅·가스 대납은 보류. 앱/단독 HTML·180문서 빌드 검증 완료. 이번 커밋에 포함하며 운영 배포 대기.
 - 사용자 전제: 고객 소유 노드의 운영 위탁 + 사내 데이터센터의 Dfns 전체 플랫폼 Baseline + DAWBC + DAW-CORE. AWS 배치로 변경하지 않음.
 - 문서 구조: `blockchain-manager/docs/WaaS 도입·구축/Dfns/` 5개(제공 자료 3개·인프라/구성도·담당자 질문), 같은 카테고리의 `DAW 구축 설계/` 4개(통합 구성/계획·핵심 계약·노드 연결·법정화폐 대납). 기존 13개를 9개로 통합. 이후 상세 내용은 이 문서들에 보강.
 - 인프라: `Dfns/03-baseline-datacenter-design.md`. Kubernetes·외부 Vault 5노드·PG/Kafka/Redis·MPC 5-party / 3-of-5, 핵심 노드 36개 자원 예약안. 전체 DAW 플랫폼/체인 노드 총량이 아님.
