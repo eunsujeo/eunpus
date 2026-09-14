@@ -13,6 +13,7 @@ Dfns 가 평가용으로 제공한 "On-Premise Deployment · Technical Overview 
 - 제품 우수성·보안성에 관한 표현은 PDF 가 제시한 주장이다. 별도 근거로 검증된 결론이 아니다.
 - PDF 에 없는 제품 상태·가격·계약 조건·국내 제공 여부는 추가하지 않았다. 저자의 추측·평가는 포함하지 않는다. 확인되지 않은 사항은 확인 질문으로만 남긴다.
 - Governance Engine은 선택 구성요소로 소개되며, 결정 서명과 키 보호만 간략히 설명한다. 상세는 [Dfns Governance Engine](01-governance-engine.md) 에 있다.
+- 별도 제공된 [Dfns 배포 백엔드 비교](02-deployment-backends.md)는 Vault 기반 Baseline과 Enterprise AWS-Native의 구성 차이를 설명한다. 이 문서의 페이지별 정리는 원문 구성을 유지하며, AWS-Native의 시크릿 전달·인증·bootstrap 차이는 비교 문서에서 확인한다.
 
 ## p.1 — 표지
 
@@ -360,6 +361,8 @@ signer에서 relay로 향하는 화살표는 작업을 가져오기 위한 접�
 **Day-0 결정 7개.** 서명 프로필(MPC, HSM, governance 포함 여부), 컴퓨트 모델(정적 노드 그룹 또는 autoscaling), 도메인 시나리오, 네트워크 경로, 이미지 레지스트리 채널, 선택인 CloudFront + WAF edge, 선택 기능(메트릭, captcha). 생성 전에 결정 시트에 기록한다.
 
 **되돌릴 수 없는 결정 하나.** 시크릿 백엔드(Vault 대 AWS 네이티브)는 day 0 에 고정되고 백엔드 간 마이그레이션이 없다.
+
+후속 제공 자료인 [배포 백엔드 비교](02-deployment-backends.md)에 따르면 기본 배포 프로필은 Baseline(Vault + SCRAM, 최소 릴리스 1.929)이다. Enterprise AWS-Native는 Vault 없이 Secrets Manager·KMS·IAM 및 cert-manager를 사용하고, 명시적 설정 override와 릴리스 1.935 이상이 필요하다. AWS-Native의 시크릿 bootstrap 흐름은 Vault 구성과 다르며, 기존 p.12의 Vault 초기화 절차를 그대로 적용하는 근거가 아니다. 이 자료도 백엔드 간 마이그레이션 절차는 제공하지 않는다. (출처: 배포 백엔드 가이드 p.2~3)
 
 ## p.15 — 연동
 

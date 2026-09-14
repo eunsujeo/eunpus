@@ -54,7 +54,7 @@ LLM 이 사용자 메시지를 받으면 다음 3 trigger 중 하나로 분류:
 
 ### Trigger 3 — fact query (reference-ready)
 **Phrases**: "Fireblocks 의 X 는?", "MPC 분포", "Policy Q+O", "Workspace freeze"
-**Route**: [.claude/skills/waas-wiki-curator/SKILL.md](.claude/skills/waas-wiki-curator/SKILL.md) §"Reference-ready 답변 모드"
+**Route**: [.claude/skills/waas-wiki-curator/SKILL.md](.claude/skills/waas-wiki-curator/SKILL.md)의 "Reference-ready 답변 모드" 절
 **★ LLM 일반 지식 단독 답변 금지** — wiki grep 필수
 
 ## 4. 핵심 Discipline (어겨선 안 되는 것)
@@ -78,6 +78,8 @@ Fireblocks 공식 근거 vs LLM 일반 지식 **절대 혼합 금지**. "wiki �
 자세히: [prompts/update-wiki.md](prompts/update-wiki.md)
 
 한국어 문서 작성·번역·수정·검토에는 [한글 기술 문서 작성 규칙](prompts/korean-writing.md)을 적용한다. 자연스러운 표현으로 쓰되 원문의 조건·시점·책임 범위를 유지하고, 작성 후 번역투를 검토한다. 자료 정리에는 해당 규칙의 근거·범위 기준도 적용하며, 추측은 포함하지 않는다.
+
+절을 가리킬 때는 기호 대신 **“1절”, “3~5절”, “2쪽 1절”**처럼 단어로 쓴다. 본문·표·제목·그림 설명·출처 표기에 동일하게 적용한다.
 
 모든 entity / vendor page 는 **YAML frontmatter + 6-section template**.
 

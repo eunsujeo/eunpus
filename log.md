@@ -7835,3 +7835,10 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 영향받은 페이지: BC/Fireblocks QnA/01-qna.md · 블록체인매니저/가스대납/02-state-failures-monitoring.md · 03-poc-and-release-gates.md · 블록체인매니저/설계/07-estimate-fee.md · 디지털 자산/가스대납/04-security-cost-operations.md · entities/fireblocks/transaction.md · open-questions/fireblocks.md (G01)
 - 미확정: 정산용 USD 환율 출처·기준 시각, 인보이스 연결 필드, 우리 Workspace의 API·Webhook payload 재현. PoC 항목만 추가하고 검증 완료로 표시하지 않음.
 - 신규 entity: 0 (50 stage 연속)
+
+## Stage 178 (2026-09-14) — Dfns 배포 백엔드 비교 자료 Mode C ingest
+- source: `blockchain-manager/sources/dfns/2026-09-08__dfns__deployment-backends-baseline-vs-aws-native-v1.0.pdf` (사용자가 ingest 요청한 Dfns 제공 Deployment Guide v1.0, 3p). 원명 보존·표준 파일명으로 변경, SHA-256 동일 확인. pdftotext 페이지별 추출본 보존, p.2 비교표 이미지 대조.
+- 신규 fact (제공 자료 기준): Baseline은 Vault 기반, Enterprise AWS-Native에는 Vault 없음 · Secrets Manager/KMS/IAM/cert-manager/External Secrets Operator로 시크릿·인증·PKI 구성 · Kafka/DB/캐시 인증에 단기 IAM 사용 · 두 구성의 이미지·MPC 서명·데이터 모델 동일 · 기본 프로필 Baseline(Vault+SCRAM), 최소 릴리스 1.929 / AWS-Native는 명시적 override 및 1.935 이상 · Kafka 이벤트 처리 유지
+- 영향받은 페이지: 플랫폼 아키텍처/Dfns/02-deployment-backends.md (신규, 3쪽 순서 정리·11개 항목 비교표·원문 p.2~3 기반 두 프로필 비교 구성도) · 00-on-premise-deployment.md (두 백엔드 상세 연결, Vault bootstrap 적용 범위) · sources/dfns/README.md·manifest.yml (4번째 자료 색인)
+- 미확정: Baseline의 AWS 외 환경 지원 범위 · 상세 override/IAM/인증서/bootstrap 설정 · 별도 자체 점검표·배치도 · Hybrid MPC full quorum 및 HSM/Governance Engine 적용 범위. 기존 day-0 백엔드 고정·마이그레이션 부재 설명은 유지.
+- 신규 entity: 0 (51 stage 연속)

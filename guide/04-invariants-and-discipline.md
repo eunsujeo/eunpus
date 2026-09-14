@@ -65,7 +65,7 @@ source 에서 ≠ proposition 을 어떻게 뽑는가:
 | 형태 | 의미 | 마커 |
 |------|------|------|
 | **[Source Fact]** | vendor / regulator / 공식 문서가 명시한 사실 | `[Source Fact]` |
-| **[Source Fact, cite]** | 위 + 특정 출처 cite | `[Source Fact, NodeInfra index.md §1]` |
+| **[Source Fact, cite]** | 위 + 특정 출처 cite | `[Source Fact, NodeInfra index.md 1절]` |
 | **[Generalized Mapping]** | 우리가 source 를 generalize 한 결과 | `[Generalized Mapping]` |
 | **[★ Hypothesis]** | 증거 부족 상태에서의 추측 | `★ Hypothesis` |
 
@@ -120,7 +120,7 @@ corpus 의 reader 는 **어떤 라벨인지** 만 봐도 그 주장의 **신뢰 
 
 이미 publish 된 내용을 **silent 하게 수정하지 않습니다**:
 
-- 새 fact 가 나오면 → amendment 추가 (`§N. Stage XX Amendment`)
+- 새 fact 가 나오면 → amendment 추가 (`N절. Stage XX Amendment`)
 - 새 사고가 나오면 → supersession + R7 snapshot
 - 잘못된 것을 발견하면 → 정정 amendment + R7 snapshot 으로 이전 worldview 보존
 
@@ -297,6 +297,12 @@ graph TB
 이 5 가지가 무너지면 corpus 는 단순 wiki 로 전락합니다.
 
 ---
+
+## 8. 한국어 문서의 절 참조 표기
+
+절을 가리킬 때는 기호 대신 **“1절”, “3~5절”, “2쪽 1절”**처럼 쓴다. 제목으로 참조할 때도 **“배포 시 확인할 것 절”**처럼 단어를 사용한다. 본문·표·제목·그림 설명·출처 표기에 동일하게 적용한다.
+
+한국어 문서를 작성하거나 수정할 때는 [한글 기술 문서 작성 규칙](../prompts/korean-writing.md)을 함께 따른다.
 
 ## 다음 읽을 글
 
