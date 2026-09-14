@@ -75,6 +75,15 @@ group: 검증과 출시
 
 ### 5. 비용
 
+[타인의 담당자 Q&A](../../../sources/fireblocks-support/2026-09-14__gasless-feeinfo-third-party-qna.md)(2026-09-14 사용자 전달)의 필드 동작도 우리 Workspace에서 확인한다.
+
+- 고객 거래의 `feeInfo`·Relay 식별 정보와 실제 JSON 필드 위치 확인
+- Webhook의 self-relay `relayType=THIRD_PARTY`와 REST 단건 조회의 `LOCAL` 구분 재현
+- `relayName` 변경에 분기 로직이 의존하지 않고, Fireblocks-managed `relayId`를 우리 Vault로 조회하지 않는지 확인
+- Gasless REST의 최상위 `fee` 부재와 Webhook 잔존에도 `feeInfo`로 처리
+- Revert의 실제 수수료 보존, 최상위 `fee=-1`과 `feeInfo` 내부 필드 누락 구분
+- `feeUSD` 누락을 허용하고 인보이스 대사·정산 금액에 사용하지 않는지 확인
+
 - 성공 거래의 Receipt 실비와 Relay 사용 내역 일치
 - Revert 거래 청구
 - Broadcast 전 거절 미청구

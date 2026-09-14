@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [transaction, key-link]
 stage_introduced: 5
-last_updated_stage: 174
-source_count: 14
+last_updated_stage: 177
+source_count: 15
 related: [approver, designated-signer, policy, signer, tap, vault-account]
 ---
 # Entity: Transaction (Fireblocks)
@@ -627,3 +627,16 @@ source: `2026-09-07__support-fireblocks-io__wallet-pools.md`, p.4–6
 ## Sources (Stage 174 추가)
 
 - `2026-09-07__support-fireblocks-io__wallet-pools.md`, p.4–7 (WALLET_POOL source 제출·조회 시 source 재기록·extraParameters.walletPoolId·거절 사유)
+
+## Stage 177 — Gasless Relay 수수료 필드 (타인의 담당자 Q&A)
+
+출처: [2026-09-14 사용자 전달 답변](../../blockchain-manager/sources/fireblocks-support/2026-09-14__gasless-feeinfo-third-party-qna.md). 실제 회신 일시와 우리 Workspace 실측은 미확인이다.
+
+- Relay의 가스비는 고객 거래의 `feeInfo`에도 포함된다. Relay 식별 정보는 고객 거래 생성 시 연결된다. Gasless REST에서 최상위 `fee`는 더 이상 노출되지 않지만 Webhook에는 남아 있으므로 `feeInfo`를 읽는다.
+- Webhook의 `relayType`은 self-relay도 `THIRD_PARTY`로 반환된다. `LOCAL` 구분은 REST 단건 조회를 사용한다. `relayName`은 Relay Workspace 표시 이름이고, `relayId`는 그 Workspace 내부의 Vault Account ID다.
+- `feeUSD`는 표시 전용이며 청구·정산에 사용하지 않는다. 거래 생성 시점의 캐시 환율과 확정 시점의 가스 사용량을 사용하고, 환율 조회 실패 시 값이 없을 수 있다. 월 가스비 상환은 실제 소비 가스를 기준으로 별도 계산하며 `feeUSD`를 사용하지 않는다.
+- 온체인 Revert는 실제 가스비를 기록한 뒤 실패 처리하므로 `feeInfo`에 실비가 남는다. 체인에 도달하지 않은 거래의 `-1`은 최상위 `fee`에만 쓰이며, `feeInfo` 내부의 미확인 값은 필드가 생략된다.
+
+## Sources (Stage 177 추가)
+
+- [2026-09-14__gasless-feeinfo-third-party-qna.md](../../blockchain-manager/sources/fireblocks-support/2026-09-14__gasless-feeinfo-third-party-qna.md) (타인의 질문·담당자 답변, 사용자 전달. 질문과 답변의 항목 불일치 보존)

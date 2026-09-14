@@ -73,6 +73,22 @@ stateDiagram-v2
 - Replaced: 최종 포함된 교체 거래의 비용을 대사
 - Invoiced: 월 구독료와 가스 실비를 분리
 
+## Relay 수수료 필드 처리
+
+다음은 2026-09-14 사용자가 전달한 [다른 사람의 Fireblocks 질의응답](../../../sources/fireblocks-support/2026-09-14__gasless-feeinfo-third-party-qna.md)에 따른다. 우리 Workspace의 실측 결과는 아니므로 [Gasless PoC](03-poc-and-release-gates.md)에서 재현을 확인한다.
+
+| 필드·응답 | 담당자 설명과 처리 기준 |
+|---|---|
+| `feeInfo` | Relay가 대납한 가스비도 포함한다. 수수료는 이 객체에서 읽는다. |
+| 최상위 `fee` | 폐기 예정 필드. Gasless REST 응답에서는 빠졌지만 Webhook에는 남아 있으므로 수수료 처리 기준으로 쓰지 않는다. |
+| Relay 식별 정보 | Relay의 Contract Call뿐 아니라 고객 거래에도 생성 시 연결된다. Webhook에서 `paidByRelay: true`, `relayId`, `relayType`, `relayName`을 받는다. |
+| Webhook `relayType` | Self-relay도 항상 `THIRD_PARTY`로 반환된다는 설명이다. `LOCAL`과 `THIRD_PARTY` 구분은 REST 단건 조회(`GET /transactions/{id}`, 답변 표기)를 사용한다. |
+| `relayName` | Relay Workspace의 표시 이름이다. 특정 문자열로 Relay 종류를 판별하지 않는다. |
+| `relayId` | Relay Workspace 안의 Vault Account ID다. Fireblocks-managed Relay ID를 우리 Workspace의 Vault ID로 조회하지 않고 식별자로 보존한다. |
+| `feeUSD` | 표시 전용 값이다. 누락될 수 있으며 정산·인보이스 대사 금액으로 쓰지 않는다. |
+
+온체인 Revert는 `FAILED` 처리 전에 실제 소비한 가스비가 기록되므로 `feeInfo`에 실비가 남는다. 실패 상태만 보고 비용을 0으로 덮어쓰지 않는다. 체인에 도달하지 않은 거래에서 쓰는 `-1`은 **최상위 `fee`에만** 해당한다. `feeInfo` 내부의 미확인 값은 `-1` 대신 필드가 생략되므로, 누락과 실제 0을 구분한다. 위 답변은 정확한 JSON 중첩 구조를 제공하지 않았으므로 필드 경로는 실제 payload로 확인한다.
+
 ## 모니터링
 
 | 지표·경보 | 목적 |
@@ -90,6 +106,8 @@ stateDiagram-v2
 ## 비용 대사
 
 블록체인 매니저는 거래 실행 근거를 제공하고, 회계 정산 시스템이 월 인보이스와 연결한다.
+
+**`feeUSD` 합계를 인보이스 금액으로 사용하지 않는다.** 위 담당자 답변에 따르면 `feeUSD`의 USD 환율은 거래 생성 시점에 저장한 캐시 현물 시세이고, 가스 사용량은 확정 시점에 결정된다. 환율 조회 실패 시 값이 없을 수도 있다. 월 가스비 상환은 실제 가스 소비를 기준으로 별도 재무 절차에서 계산하며 `feeUSD`를 사용하지 않는다. 정산용 환율의 출처·기준 시각과 인보이스 연결 필드는 여전히 확인이 필요하다.
 
 대사 키에는 다음 정보가 필요하다.
 

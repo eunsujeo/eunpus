@@ -7821,3 +7821,17 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 미확정: PDF 푸터 "06/18" 누락 쪽 · 완전 온프레미스에서 governance proxy 의 위치 · MPC 경로의 엔진 서명 강제 방식 · 국내 리전 EKS+MSK 충족 여부 · 가격·SLA
 - 후속: WaaS SDK QnA 4번(서명 장치와 승인 경계) 답이 오면 Dfns 엔진 배치 위치와 대조 · docs/architecture 3-way 비교에 설치형 WaaS 1차 자료로 연결
 - 신규 entity: 0 (48 stage 연속 — Dfns 는 wiki 벤더 hub 없이 blockchain-manager 플랫폼 아키텍처 문서로 배치)
+
+## Stage 176 (2026-09-14) — Universal Gasless 구독료 티어·업그레이드 거래 건수 확답
+- source: `blockchain-manager/sources/fireblocks-support/2026-09-14__gasless-pricing-tier-confirmation.md` (사용자 전달 담당자 답변, 실제 회신 일시 미제공)
+- 확정: 9월 7일 가격 범위는 월 구독료 티어·실제 가스비 별도 상환. 티어 건수는 최초 EIP-7702 업그레이드를 포함해 Fireblocks가 가스비를 지불한 모든 거래.
+- 영향받은 페이지: BC/Fireblocks QnA/01-qna.md · 디지털 자산/가스대납/04-security-cost-operations.md · entities/fireblocks/vault-account.md · open-questions/fireblocks.md (G01 과금 잔여 항목 갱신)
+- 미확정: 정확한 계약 금액·가스비 USD 환산 기준·최초 업그레이드와 전송의 별도 거래 처리 여부. 9월 7일 원본은 보존.
+- 신규 entity: 0 (49 stage 연속)
+
+## Stage 177 (2026-09-14) — 타인의 Universal Gasless feeInfo·feeUSD 질의응답 반영
+- source: `blockchain-manager/sources/fireblocks-support/2026-09-14__gasless-feeinfo-third-party-qna.md` (사용자 전달. 실제 회신 일시 미제공, 과금 질문 5건과 수수료 필드 답변 3건의 불일치 보존)
+- 담당자 설명: 고객 거래에도 Relay 수수료·식별 정보 포함 · Webhook relayType은 self-relay도 THIRD_PARTY · REST 단건 조회로 LOCAL 구분 · feeInfo 사용 · relayName은 표시 이름, relayId는 Relay Workspace 내부 Vault ID · feeUSD는 표시 전용이며 월 청구에서 미사용 · Revert 실비 보존 · 최상위 fee의 -1과 feeInfo 내부 필드 누락 구분
+- 영향받은 페이지: BC/Fireblocks QnA/01-qna.md · 블록체인매니저/가스대납/02-state-failures-monitoring.md · 03-poc-and-release-gates.md · 블록체인매니저/설계/07-estimate-fee.md · 디지털 자산/가스대납/04-security-cost-operations.md · entities/fireblocks/transaction.md · open-questions/fireblocks.md (G01)
+- 미확정: 정산용 USD 환율 출처·기준 시각, 인보이스 연결 필드, 우리 Workspace의 API·Webhook payload 재현. PoC 항목만 추가하고 검증 완료로 표시하지 않음.
+- 신규 entity: 0 (50 stage 연속)

@@ -134,7 +134,7 @@ Fireblocks-managed Relay 의 과금·정산 조건. 원문은 [sources/fireblock
 **Q.** gas 실비 외 추가 수수료가 있나?
 **A.** 프리미엄 기능이라 청구는 두 항목 — **월 구독료 + gas 실비 상환.** 건별 relay 수수료 없음, gas 에 대한 퍼센트 마크업 없음.
 
-### 과금 후속 문의 — 확정 문안 (2026-08-27) · 1차 회신 (2026-09-07) · 확인 문의 회신 대기
+### 과금 후속 문의 — 확정 문안 (2026-08-27) · 1차 회신 (2026-09-07) · 티어 확인 (2026-09-14 사용자 전달)
 
 기존 확답과 겹치지 않는 잔여 3건으로 추림 — 마크업·revert/RBF 청구·USD 청구·월말 인보이스는 이미 확답이라 제외.
 
@@ -144,10 +144,10 @@ Fireblocks-managed Relay 의 과금·정산 조건. 원문은 [sources/fireblock
 > 3. Could you provide estimated monthly cost ranges for 100K / 1M / 10M Universal Gasless transactions per month on Ethereum and Base, separating the subscription fee from estimated gas, with the gas-price and per-transaction gas usage assumptions used — including first-time EIP-7702 account upgrade transactions? Ranges are sufficient.
 
 **Q.** 월 구독료의 정확한 금액과 Workspace 단위 부과 여부는?
-**A.** Workspace 단위 부과는 확인. 금액은 아래 가격 범위 회신에 포함된 것으로 보이며, 확인 문의 회신 대기.
+**A.** Workspace 단위 부과는 확인. 아래 가격 범위가 월 구독료 티어라는 점도 후속 답변으로 확인됐다(2026-09-14 사용자 전달). 정확한 계약 금액은 아직 미확정이다. [답변 원문](../../../sources/fireblocks-support/2026-09-14__gasless-pricing-tier-confirmation.md)
 
 **Q.** 네이티브 가스 USD 환산의 가격 출처·기준 시각은?
-**A.** 미답. 재문의 보류.
+**A.** 인보이스 정산용 환율의 출처·기준 시각은 미답. 재문의 보류. 타인의 Q&A에서 `feeUSD`는 거래 생성 시점의 캐시 현물 시세를 사용하고 월 청구에는 쓰이지 않는다고 설명했으므로, 이를 정산 환율 답변으로 대신하지 않는다. [타인 Q&A 원문](../../../sources/fireblocks-support/2026-09-14__gasless-feeinfo-third-party-qna.md)
 
 **Q.** Ethereum·Base 월 10만/100만/1,000만 건 시나리오의 월 비용 범위는? (구독료·가스 분리, 가스 가격·건당 가스 사용량 가정, 최초 EIP-7702 업그레이드 거래 포함)
 **A.** 1차 회신 (2026-09-07). 초기 가격 가이드라인이며 일부 티어는 팀과 재확인 중, 다음 날 회신 예정. 원문은 [sources/fireblocks-support/2026-09-07](https://github.com/eunsujeo/eunpus/blob/main/blockchain-manager/sources/fireblocks-support/2026-09-07__gasless-pricing-ranges-conversation.md).
@@ -155,12 +155,34 @@ Fireblocks-managed Relay 의 과금·정산 조건. 원문은 [sources/fireblock
 - 100만 건/월: $90,000~110,000/월 (건당 약 $0.09~0.11)
 - 1,000만 건/월: $350,000~450,000/월 (건당 약 $0.035~0.045)
 
-구독료·가스 분리, 체인 분리, 가스 가정, 7702 업그레이드 포함 여부는 미제공. 벤더가 "pricing guideline"·"tier" 로 표현했고 가스 가정이 없으며 건당 단가가 물량에 따라 내려가므로, **월 구독료 티어로 추정**한다. 8월 18일 확답(구독료 + 가스 실비 두 항목) 기준이면 가스 실비는 이 위에 별도로 붙는다. 확인 문의를 보냈다.
+**후속 답변으로 위 금액은 월 구독료 티어이며, 실제 가스비는 별도 상환한다는 점이 확정됐다**(2026-09-14 사용자 전달). 위 건당 금액은 월 구독료를 해당 거래 건수로 나눈 값이다. 체인별 가스비 추정치·가스 가격·건당 가스 사용량은 미제공이며, 가격 범위 자체는 9월 7일의 초기 가이드라인이다. 출처: [구독료·거래 건수 확인](../../../sources/fireblocks-support/2026-09-14__gasless-pricing-tier-confirmation.md).
 
 > Thank you for sending the ranges. Just to make sure we're reading them correctly: are these monthly subscription fee tiers only, with the actual gas costs reimbursed separately on top? And does the transaction count for each tier include first-time EIP-7702 account upgrade transactions?
 
 **Q.** 위 범위는 구독료 티어만인가, 가스 실비는 별도 상단 청구인가? 티어 건수에 최초 EIP-7702 업그레이드 거래가 포함되나?
-**A.** 회신 대기.
+**A.** 두 질문 모두 **Yes**로 확인됐다(2026-09-14 사용자 전달). **월 구독료 + 실제 가스비 별도 상환**이며, 티어 건수는 **Fireblocks가 가스비를 지불한 모든 거래**를 포함한다. 최초 EIP-7702 계정 업그레이드 거래도 포함된다. 원문: “Yes, correct” / “Yes, it's any tx that fireblocks pays the fees for”. [답변 원문](../../../sources/fireblocks-support/2026-09-14__gasless-pricing-tier-confirmation.md)
+
+최초 업그레이드와 전송이 별도 거래로 처리되는지는 이번 답변에 명시되지 않았다. 따라서 첫 전송을 일괄 2건으로 계산하는 근거로 쓰지 않는다.
+
+## Gasless 수수료 필드 — 타인의 질의응답 (2026-09-14 사용자 전달)
+
+출처: [사용자 전달 원문](../../../sources/fireblocks-support/2026-09-14__gasless-feeinfo-third-party-qna.md). 실제 회신 일시는 미제공이다. 전달된 질문은 과금 5개 항목이지만 답변은 아래 수수료 필드 3개 항목으로 구성돼 있어, 질문과 답변을 일대일로 대응시키지 않는다. 우리 Workspace의 실측과도 구분한다.
+
+**Q.** `feeInfo`에 Relay가 지불한 가스비가 포함되나?
+**A.** 포함된다. Relay 식별 정보는 Relay의 Contract Call뿐 아니라 고객 거래에도 생성 시 연결되며, Webhook에서 `paidByRelay: true`, `relayId`, `relayType`, `relayName`, `feeUSD`를 받는다. 단, `feeUSD`는 환율 조회 실패 시 없을 수 있다.
+
+- Webhook의 `relayType`은 self-relay도 항상 `THIRD_PARTY`다. `LOCAL`과 `THIRD_PARTY` 구분에는 REST 단건 조회(`GET /transactions/{id}`, 답변 표기)를 사용한다.
+- Gasless REST API는 폐기 예정인 최상위 `fee`를 더 이상 노출하지 않지만 Webhook에는 남아 있다. 수수료는 `feeInfo`에서 읽는다.
+- `relayName`은 Relay Workspace의 표시 이름이므로 특정 문자열에 의존하지 않는다.
+- `relayId`는 Relay Workspace 내부의 Vault Account ID다. Fireblocks-managed Relay ID를 우리 Workspace에서 조회하지 않고 식별자로 취급한다.
+
+**Q.** `feeUSD`를 청구·정산 금액으로 쓸 수 있나?
+**A.** **표시 전용이며 정산에 사용할 수 없다.** 환율은 거래 생성 시점에 저장한 캐시 현물 시세이고, 가스 사용량은 확정 시점 값이다. 환율 조회 실패로 값이 없을 수도 있다. 월 가스비 상환은 실제 가스 소비를 기준으로 별도 재무 절차에서 계산하며 `feeUSD`를 사용하지 않는다. 정산용 환율의 출처·기준 시각은 이 답변에도 없다.
+
+**Q.** 온체인 실패 거래에도 `feeInfo`가 남나?
+**A.** Revert는 실제 소비 가스비를 기록한 뒤 `FAILED` 처리하므로 실비가 남는다. `-1`은 체인에 도달하지 않은 거래의 **최상위 `fee`**에만 쓰인다. `feeInfo` 내부에서는 값이 없으면 필드를 생략하며 `-1`을 넣지 않는다.
+
+설계 반영: [Relay 상태·수수료 파싱·비용 대사](../../블록체인매니저/가스대납/02-state-failures-monitoring.md). 실제 payload의 필드 위치와 재현 여부는 [Gasless PoC](../../블록체인매니저/가스대납/03-poc-and-release-gates.md)에서 확인한다.
 
 ## KeyLink — 공식 자료 확정·담당자 문의 (2026-08-27)
 

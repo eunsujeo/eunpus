@@ -4,8 +4,8 @@ vendor: fireblocks
 status: stable
 tags: [workspace, governance, key-link]
 stage_introduced: 1
-last_updated_stage: 174
-source_count: 9
+last_updated_stage: 176
+source_count: 10
 related: [architecture, editor, mpc, owner, policy, transaction, workspace]
 ---
 # Entity: Vault Account (Fireblocks)
@@ -267,7 +267,8 @@ GasStationConfiguration {
 - Console: Settings > General > Gasless transactions — relay 3택 + 기본값 3모드(On/Off by default/Off, per-tx 재정의) + Policies 연동
 - API 표면: error **1455** (400, "Transaction, Gasless (meta-tx)") — "Missing Gasless configuration ... Configure Gasless (relayer/fee payer)" (`reference-api-error-codes.md`)
 - "이더 없이"는 **토큰 전송 기준** — ETH 자체 출금은 보내는 자산이 ETH 라 별도. ★ **ETH 네이티브 전송은 gasless 대납 불가(공식 확정)** — "does not relay native ETH transfers — Gas Station remains the right choice for sweeping ETH itself" (source: `2026-07-03__developers-fireblocks-com__sweep-funds-omnibus.md`)
-- 잔여 미확정: 인보이스 단가·구독료, MPC 서명 ↔ 7702 위임 내부 동작 → CSM/PoC ([[open-questions/fireblocks#Q-2026-07-03-G01]] 참조)
+- **과금 후속 확답 (Stage 176, 2026-09-14 사용자 전달)**: 제시된 가격 범위는 월 구독료 티어이며 실제 가스비는 별도 상환한다. 티어 건수에는 최초 EIP-7702 업그레이드를 포함해 Fireblocks가 가스비를 지불한 모든 거래가 들어간다. (source: [담당자 답변](../../blockchain-manager/sources/fireblocks-support/2026-09-14__gasless-pricing-tier-confirmation.md))
+- 잔여 미확정: 정확한 계약 금액·가스비 USD 환산 기준, MPC 서명 ↔ 7702 위임 내부 동작 → CSM/PoC ([[open-questions/fireblocks#Q-2026-07-03-G01]] 참조)
 
 ### 인접 개념 구분 — GSN · ERC-4337 Paymaster (일반 지식, Fireblocks fact 아님)
 
@@ -356,3 +357,6 @@ source: `2026-09-07__fireblocks-csm__batch-sweep-universal-gasless-reply.txt`
 ## Sources (Stage 174 추가)
 - `2026-09-07__support-fireblocks-io__wallet-pools.md`, p.1–7 (Wallet Pool 정의·용도 3곳·4 단계·선택 알고리즘·승인 표·제약)
 - `2026-09-07__fireblocks-csm__batch-sweep-universal-gasless-reply.txt` (담당자 회신 2026-09-07: 7702 비가역·approve 정책 노출·relayer Wallet Pool·권장 sweep 패턴)
+
+## Sources (Stage 176 추가)
+- [2026-09-14__gasless-pricing-tier-confirmation.md](../../blockchain-manager/sources/fireblocks-support/2026-09-14__gasless-pricing-tier-confirmation.md) (사용자 전달 담당자 답변: 월 구독료 티어·가스 실비 별도·최초 업그레이드 거래 건수 포함)
