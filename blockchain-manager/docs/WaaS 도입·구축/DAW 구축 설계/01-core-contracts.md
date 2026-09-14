@@ -160,6 +160,8 @@ API별 멱등 범위·보존 기간·응답 유실 시 조회 방법은 확인 �
 | 토픽 | `deposit-events`·`withdrawal-events`·`internal-events`·`sweep-events`를 각각 계약 목록에 유지 |
 | 소비 완료 | 원장 반영 커밋 후 `completeEvent(eventId)`, 성공 확인 후 offset 커밋. 반복 호출·소비에도 한 번만 반영 |
 
+중복 제거는 세 단계로 나눈다. 수신 알림의 중복, 같은 자산 이동·상태 전이를 Webhook과 조회 대사에서 다시 발견한 경우, 발행한 업무 이벤트의 재전달을 각각 처리한다. 같은 상태 전이에 대한 `eventId`는 최초 outbox 적재 때 한 번 발급·영속화하고 재발행에도 유지한다. 수신 알림 ID만으로 입금을 식별하거나, 재조회할 때마다 새 `eventId`를 만들어 동일 입금을 다시 발행하지 않는다. 한 거래의 여러 자산 이동은 별도 항목으로 보존한다.
+
 Dfns Webhook은 검증 후 inbox에 영속화한다. inbox 처리와 실행 상태 갱신·outbox 적재를 같은 로컬 transaction에 묶고, outbox relay가 내부 큐로 발행한다. 수신 영속화 이전에 정상 수신으로 응답하지 않는다. 실제 Webhook 서명 규격·응답 제한 시간은 Dfns 릴리스 계약에 맞춘다.
 
 큐 순서만으로 벤더의 역순 알림을 해결하지 않는다. Webhook과 조회 대사를 같은 상태 판단 경로로 보내고, 거래별 전이 버전·체인 관측을 검증한다. 필요한 앞선 이벤트를 먼저 발행하는 기존 계약을 대조한다. 단순 상태 숫자 비교로 과거처럼 보이는 알림을 모두 버리지 않는다.
@@ -189,6 +191,8 @@ Dfns Webhook은 검증 후 inbox에 영속화한다. inbox 처리와 실행 상�
 
 ### 내부 확정과 원장 반영
 
+**거래 포함·실행 성공·자산 이동을 따로 판정한다.** ERC-4337 경로는 bundle 거래의 receipt가 성공해도 개별 UserOperation의 성공을 별도로 검증한다. 계약한 EntryPoint 주소·버전과 `userOpHash`에 대응하는 실행 결과를 확인하고, 등록한 토큰의 실제 이동 항목을 승인된 자산·송신자·목적지·금액과 대조한다. 외부 relay의 묶음 실행도 항목별 결과를 확인한다. 전체 거래의 성공만으로 포함된 모든 송금을 성공 처리하지 않는다. 필요한 증빙을 얻을 수 없는 경로는 운영 활성화를 보류한다.
+
 **내부 `FINALIZED`는 현행 DCCP 정책 통과 상태다.** 네트워크의 finalized block tag, Dfns `Confirmed`, 내부 `FINALIZED`, 고객 가용 잔액은 서로 다른 판단이다. 기존 OpenAPI에는 `FINALIZED → FAILED` 무효화 전이도 명시돼 있다.
 
 - 블록 번호·해시·확인 수·관측 시각·확정 정책 버전을 보존한다. 필요한 체인별 데이터가 Dfns에서 오지 않으면 보완 조회 경로를 설계한다.
@@ -211,9 +215,12 @@ Dfns Webhook은 검증 후 inbox에 영속화한다. inbox 처리와 실행 상�
 | execution_attempt | operationId·attemptSequence 유일. route·vendorOperationType/Id·재시도 사유·전파 주체 기록 |
 | chain_reference | networkId·referenceType·value로 체인 참조 식별. attempt와 다대다 연결 가능: 묶음 거래 하나에 여러 의도 포함 가능 |
 | chain_observation | 체인 참조·block identity·항목 위치·관측 세대. 재편입 이전 관측도 보존 |
+| movement / state_transition / outbox | 자산 이동 항목·상태 전이·발행 이벤트를 연결. 같은 전이는 Webhook과 조회 대사가 경합해도 한 번만 생성하고 eventId를 유지. 재편 무효화·재편입은 새 전이로 기록 |
 | fee_authorization / fee_charge | 대납 승인과 발생 비용을 분리. invoiceLine과 chain_reference 연결, 비용 수정은 이력 보존 |
 
 온체인 원금은 최소 단위 정수 문자열로 전달·저장하며 계산은 임의 정밀도 정수로 한다. SQL 고정 정밀도 숫자를 채택할 때에는 최대 자산 단위까지 범위를 검증한다. 기존 공개 API의 decimal 문자열은 유지하고, 내부 최소 단위와 정확히 왕복 변환한다. 법정화폐 금액은 통화·정밀도·반올림 규칙을 별도 정의한다.
+
+자산 이동의 항목 식별 규칙은 체인·실행 경로별로 확정한다. 블록 안의 위치가 달라진 재편입과 원래 거래에 포함된 서로 다른 이동을 구별하는 계약 시험이 필요하다. 벤더 ID나 로그 위치가 이 조건을 만족하는지 검증하기 전에는 `txHash`만으로 입금 항목을 유일하게 식별하지 않는다.
 
 일반 EVM txHash, ERC-4337 userOpHash, 이를 포함하는 bundle txHash, Solana transaction signature를 하나의 `txHash` 의미로 뭉치지 않는다. 참조 유형을 보존하고, 공개 API가 단일 거래 ID만 표현할 수 있으면 호환성 검토 항목으로 남긴다.
 
@@ -233,7 +240,8 @@ Dfns Webhook은 검증 후 inbox에 영속화한다. inbox 처리와 실행 상�
 | 생성·조회·전송 | 사내 릴리스 OpenAPI와 정상/실패 응답으로 9개 인터페이스 대응표 검증 |
 | 자산 변환 | 소수 정밀도 초과 거절, 여러 체인의 같은 symbol 분리, Solana mint·program 식별 |
 | 멱등·복구 | 접수 후 timeout·프로세스 재시작·동시 제출에도 같은 출금과 같은 대납 예약으로 수렴 |
-| 이벤트·확정 | 필수 필드·중복·역순·누락·재편입·DCCP 무효화 계약 시험 |
+| 이벤트·확정 | 필수 필드·역순·누락을 검증하고 Webhook·조회 동시 발견과 outbox 재전달에도 동일 이동·전이는 한 번만 반영. 여러 이동·재편입·DCCP 무효화는 각각 추적 |
+| 대납 실행 결과 | bundle 성공·개별 UserOperation 실패, relay 부분 실패, 토큰 이동 불일치 시 잘못된 출금 완료 없음 |
 | 대납 | 가스 잔액 없는 송신 지갑, 실제 payer, 비용 상한·실패 비용·정산 대사 확인 |
 | 노드 경로 | Dfns와 대납업체의 조회·시뮬레이션·전파가 합의한 RPC 경로 사용 |
 

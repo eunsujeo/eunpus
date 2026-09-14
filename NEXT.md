@@ -46,6 +46,9 @@
 - 핵심 계약: `DAW 구축 설계/01-core-contracts.md`. Base·Solana 포함 체인별 자산·계정·주소·의도/시도·멱등·공개 API·Dfns 대응·이벤트·확정·영속 제약. 기존 OpenAPI의 금액·eventId/amount·DCCP FINALIZED·벤더 txId 의미 보존.
 - 노드: `DAW 구축 설계/02-node-rpc-spec.md`. 고객이 명세를 제안, Dfns·업체가 호환성과 제공 조건 확인. EVM·Base·Solana와 외부 대납 전파 경로 포함.
 - 대납: `DAW 구축 설계/03-fiat-gas-sponsorship.md`. 사용자 네이티브 잔액 없는 법정화폐 정산형 대납. 지불자 선택은 답변 대기. 외부업체 조달·지불 + 회사 법정화폐 정산을 제안 시나리오로 작성했으며 사용자 확정으로 취급하지 않음. Dfns 내장 기능만으로 법정화폐 청구·외부 대납 호환성이 확인된 것은 아님.
+- 독자 문서 정비: Dfns 제공 자료 3개의 제목은 주제 중심으로 변경했고, 사용자 요청으로 원본 페이지/슬라이드 번호와 출처 표시를 제거. 원본 파일·기능 범위·미확정 조건은 유지.
+- 내용 검토: 제공 자료 3개의 검증 범위를 재검토. Governance의 정책/거래 해시 검증 로드맵·HSM/MPC 범위·요청 재실행/credCounter 예외, AWS-Native 전용 점검과 Vault/TLS 적용 범위를 보완. 검토 기록은 `_workspace/dfns-content-review/review.md`.
+- 추가 교차 검토: 묶음 거래/개별 자산 이동의 성공 판정, operation 누적 대납 한도, 동일 이동·전이의 eventId 유지, 복구 후 CORE·외부 대납 대사, 내장 대납 지갑 정책 제약을 기존 문서와 Q05·Q06에 보강. `_workspace/dfns-cross-review/review.md`에 근거·시나리오·검증 기록.
 - 다음: S3 물리 DB·이벤트 스키마·상태 전이 상세화와 지원 릴리스/대납 계약 검증. 기존 공개 API·구현 저장소·인프라는 변경하지 않음.
 
 ### 2.2 wiki: 컨퍼런스 세션 자료 promote 대기 (Stage 164–165 후속)
