@@ -15,6 +15,8 @@
 
 ### HTML 선택 내보내기 (2026-09-14)
 
+- 목차 번호 중복 수정: md.js가 제목의 절 번호를 목차 번호 칸에 한 번만 표시하고 번호 없는 제목에만 자동 번호를 사용. 앱/HTML 검증 완료. 이번 커밋에 포함하며 운영 배포는 대기 중(현재 배포 78dfbdf). `_workspace/toc-numbering/` 참고.
+
 - `HTML ↓`에서 중카테고리를 체크해 내보낼 수 있다. `WaaS 도입·구축`의 Fireblocks PaaS·Dfns만 고르면 DAW 구축 설계 4문서는 제외된다.
 - 문서 주제 묶음: Dfns는 배포 방식·운영 환경 / 서명 보안·검증 / 사내 구축·도입 검토, DAW는 개요 아래 계정·노드 연동 / 가스 대납·정산. frontmatter `group`으로 지정하며 HTML 카드와 이전·다음이 같은 묶음 순서를 사용한다.
 - 브라우저와 CLI `--only`는 명시한 범위만 포함하며 연결된 다른 분류를 자동 추가하지 않는다. 제외된 문서·분류 링크는 텍스트로 남는다.
@@ -48,6 +50,7 @@
 - 사용자 전제: 고객 소유 노드의 운영 위탁 + 사내 데이터센터의 Dfns 전체 플랫폼 Baseline + DAWBC + DAW-CORE. AWS 배치로 변경하지 않음.
 - 문서 구조: `blockchain-manager/docs/WaaS 도입·구축/Dfns/` 5개(제공 자료 3개·인프라/구성도·담당자 질문), 같은 카테고리의 `DAW 구축 설계/` 4개(통합 구성/계획·핵심 계약·노드 연결·법정화폐 대납). 기존 13개를 9개로 통합. 이후 상세 내용은 이 문서들에 보강.
 - 인프라: `Dfns/03-baseline-datacenter-design.md`. Kubernetes·외부 Vault 5노드·PG/Kafka/Redis·MPC 5-party / 3-of-5, 핵심 노드 36개 자원 예약안. 전체 DAW 플랫폼/체인 노드 총량이 아님.
+- 구성도 보강: Baseline의 전체 구성 첫머리에 고객 소유 환경의 DAW-CORE → DAWBC → Dfns API → MPC signer/위탁 노드 그림 추가. 통합 설계에서 해당 절 연결. 소유권과 설치 장소·논리 요청과 실제 통신 구분, 비AWS·지정 RPC 지원 확인 조건 유지. 로컬 렌더링·179문서 빌드 확인. 이번 커밋에 포함하며 운영 배포 대기.
 - 지원 확인: `Dfns/04-vendor-questions.md` Q01~Q07. 비AWS 번들·CPU·외부 Vault/DB·Keyshares·지정 RPC·사내 API·대납·다중 자산. 아직 미발송·미답변.
 - 설계 진입점: `DAW 구축 설계/00-integration-plan.md`. 운영 책임·결정·S0~S6 단계. 1차 검증은 사용자 선택 EVM 체인 1개 + ERC-20 자산 1개. 구체 네트워크·토큰은 후속 확정.
 - 핵심 계약: `DAW 구축 설계/01-core-contracts.md`. Base·Solana 포함 체인별 자산·계정·주소·의도/시도·멱등·공개 API·Dfns 대응·이벤트·확정·영속 제약. 기존 OpenAPI의 금액·eventId/amount·DCCP FINALIZED·벤더 txId 의미 보존.

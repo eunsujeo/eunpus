@@ -32,6 +32,28 @@ AWS에서도 Baseline을 사용하므로 플랫폼 역할은 유사하지만, �
 
 ## 2. 전체 구성
 
+먼저 DAW-CORE·DAWBC·Dfns·체인 노드의 관계를 보면 다음과 같다. **DAWBC는 우리가 개발하고, Dfns API 서버와 MPC signer는 Dfns가 제공하는 소프트웨어를 고객 환경에 설치하는 설계다.** 노드도 고객 소유이며 운영을 업체에 맡긴다.
+
+```mermaid
+flowchart TB
+    subgraph CUSTOMER["고객 소유 환경"]
+        CORE["DAW-CORE"]
+        BC["DAWBC · 우리가 개발"]
+        API["Dfns API 서버 · Dfns 제공 소프트웨어"]
+        SIGN["Dfns MPC signer · 지갑 서명"]
+        NODE["고객 소유 블록체인 노드 · 업체가 운영"]
+
+        CORE --> BC
+        BC -->|"내부 API 호출"| API
+        API -->|"서명 요청 · 논리 흐름"| SIGN
+        API -->|"RPC 조회·거래 전송"| NODE
+    end
+```
+
+고객 소유 환경은 소유 범위를 나타낸다. 노드를 사내에 설치할지 업체 시설에 설치할지는 운영 계약에서 확정한다. API에서 signer와 노드로 향하는 화살표는 Dfns 내부 구성요소를 생략한 **논리 흐름**이다. MPC Coordinator·Delivery Relay·Indexer·Worker 등의 실제 연결은 아래 상세 구성에서 다룬다. 일반 전송을 기준으로 한 그림이며, 외부 가스 대납 경로는 [법정화폐 가스 대납](../DAW%20구축%20설계/03-fiat-gas-sponsorship.md)에서 별도로 다룬다.
+
+이 그림은 사내 Baseline 구축 제안이다. 비AWS 배포 패키지와 고객 지정 RPC 지원은 구축 전에 Dfns의 확인이 필요하다.
+
 DAWBC·DAW-CORE와 위탁 운영 노드까지 연결하는 업무 흐름과 운영 책임은 [DAW 통합 설계](../DAW%20구축%20설계/00-integration-plan.md)에 정리했다.
 
 이 절은 사내 배치 구역과 Baseline 서비스 관계를 함께 보여 준다. 2.1절은 물리 배치 제안, 2.2절은 서비스·데이터·MPC의 논리 관계다. Vault 연결은 4절에서 다룬다.

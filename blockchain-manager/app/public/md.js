@@ -1436,7 +1436,13 @@ window.MD = (() => {
         let num;
         if (h.tagName === 'H2') { h2n += 1; h3n = 0; num = `${h2n}`; }
         else { h3n += 1; num = `${h2n}.${h3n}`; }
-        return `<a href="#${h.id}" class="lv${h.tagName[1]}" data-i="${i}"><span class="doc-toc-n">${num}</span>${esc(h.textContent)}</a>`;
+        // 제목에 적힌 절 번호는 번호 칸으로 옮겨 자동 번호와 겹치지 않게 한다.
+        // 본문 제목과 앵커는 그대로 두고, 32바이트·2026 같은 일반 숫자는 보존한다.
+        const title = h.textContent.trim();
+        const numbered = /^(\d+(?:\.\d+)+\.?|\d+[.)])\s+(.+)$/.exec(title);
+        const label = numbered ? numbered[2] : title;
+        if (numbered) num = numbered[1].replace(/[.)]$/, '');
+        return `<a href="#${h.id}" class="lv${h.tagName[1]}" data-i="${i}"><span class="doc-toc-n">${num}</span>${esc(label)}</a>`;
       }).join('');
     nav.addEventListener('click', (e) => {
       const a = e.target.closest('a');

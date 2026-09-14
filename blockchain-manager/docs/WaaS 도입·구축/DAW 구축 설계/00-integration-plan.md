@@ -37,6 +37,8 @@ status: To Do
 
 **Dfns API는 고객 인프라에 설치한 Dfns API 서버의 내부 주소다.** DAWBC는 Dfns가 제공한 소프트웨어를 내부 네트워크로 호출한다. 노드와 서버의 소유권이 고객에게 있어도 소프트웨어가 제공하는 API를 사용하는 구조는 같다.
 
+API 서버·MPC signer·고객 소유 노드를 구분한 간단한 그림은 [Baseline 전체 구성](../Dfns/03-baseline-datacenter-design.md#2-전체-구성)에서 볼 수 있다. 아래 그림은 플랫폼 내부를 한 상자로 묶고 노드 운영 구역과 블록체인 네트워크까지 보여 준다.
+
 ```mermaid
 flowchart TB
     USER["고객 채널 · 운영 화면"]
