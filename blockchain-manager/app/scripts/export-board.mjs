@@ -17,7 +17,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { assembleBoardHtml, attachCardMeta, excludeRefDocs } from '../public/export.js';
+import { assembleBoardHtml, attachCardMeta, excludeRefDocs, selectExportScope } from '../public/export.js';
 import { buildBoardBase, materializeBoard, parseFrontmatter } from './docs-data.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -150,27 +150,10 @@ if (!board) board = await buildBoardFromFs();
 // --- 1.5) --only 필터: 지정한 대카테고리(또는 대/중카테고리)만 남긴다 ---
 const ONLY = new Set((args.get('only') || '').split(',').map((s) => s.trim()).filter(Boolean));
 if (ONLY.size) {
-  const onlyArg = [...ONLY]; // ref-scan 확장 전 원본 — 홈에 보일 카테고리 산출용
-  const allCards = board.cards.slice();
-  const inScope = (c) => ONLY.has(c.category) || ONLY.has(`${c.category}/${c.subcategory}`);
-  // 담긴 문서가 ?cat=…&sub=… 로 가리키는 카테고리를 자동으로 함께 담는다 (상호참조 링크 유지)
-  const refRe = /\?cat=([^&\s)]+)&sub=([^)\s&]+)/g;
-  for (const c of allCards.filter(inScope)) {
-    const raw = await readFile(join(DIR, c.path.slice(DOCS_PATH.length + 1)), 'utf8');
-    let m;
-    while ((m = refRe.exec(raw))) ONLY.add(`${decodeURIComponent(m[1])}/${decodeURIComponent(m[2])}`);
-  }
-  board.cards = allCards.filter(inScope);
-  const tree = {};
-  for (const [cat, subs] of Object.entries(board.tree)) {
-    if (ONLY.has(cat)) { tree[cat] = subs; continue; }
-    const keep = subs.filter((s) => ONLY.has(`${cat}/${s}`));
-    if (keep.length) tree[cat] = keep;
-  }
-  board.tree = tree;
-  // 홈에 타일로 보일 카테고리 = 명시적으로 고른 것만 (ref-scan 으로 딸려온 건 숨김)
-  board.homeCats = [...new Set(onlyArg.map((o) => o.split('/')[0]))];
+  board = selectExportScope(board, ONLY);
 }
+
+if (!board.cards.length) throw new Error('선택한 범위에 내보낼 문서가 없습니다');
 
 // --- 2) 문서 본문: /api/doc 응답과 같은 모양으로 내장 ---
 // 내보내기는 공유용이라 `ref:` 가 붙은 참고 문서(판단 재료·심화)는 기본으로 뺀다. --with-ref 로 포함.
@@ -186,7 +169,9 @@ for (const c of board.cards) {
   };
 }
 attachCardMeta({ board, docs });
-for (const p of excludeRefDocs({ board, docs }, WITH_REF)) console.log(`  제외(참고): ${p}`);
+const filtered = { board, docs };
+for (const p of excludeRefDocs(filtered, WITH_REF)) console.log(`  제외(참고): ${p}`);
+board = filtered.board;
 
 // --- 3) 앱 UI 인라인 + fetch shim 조립 (export.js — 앱의 "HTML ↓" 버튼과 공용) ---
 const [html, css, mermaid, md, theme, app] = await Promise.all(
@@ -205,6 +190,7 @@ for (const name of new Set(board.cards.map((c) => c.embed).filter(Boolean))) {
   }
 }
 const data = { board, docs, embeds };
+if (!board.cards.length) throw new Error('참고 문서를 제외하면 내보낼 문서가 없습니다');
 const svgCount = await preRenderMermaidWithChrome(data, mermaid);
 if (svgCount) console.log(`  Mermaid SVG ${svgCount}개 사전 생성`);
 const out = assembleBoardHtml({ html, css, mermaid, md, theme, app }, data);

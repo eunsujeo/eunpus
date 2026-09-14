@@ -1,6 +1,7 @@
 ---
 title: Dfns Governance Engine — 서명 전 신원·권한 검증 구조
 status: To Do
+group: 서명 보안·검증
 ---
 
 Dfns Governance Engine은 고객 환경에서 요청자의 신원·권한과 검증 대상 데이터의 무결성을 확인하는 구성요소다. Integrity Framework라고도 부른다. 이 문서는 신뢰 경계, Merkle 기반 검증, 엔진 키와 복구, 검증 범위와 한계를 설명한다.

@@ -51,6 +51,7 @@ date: 2026-07-19               # 선택: 카드에 고정할 작성일(YYYY-MM-D
 - `group: <묶음 이름>` (선택) — **내보낸 문서집에서 묶음 소제목으로 갈라 준다.** 칸반에는 영향 없다.
   같은 값이 붙은 문서끼리 한 격자로 묶이고, `group` 이 없는 문서(진입점 개요 등)는 소제목 없이 맨 위에 온다.
   묶음 순서는 문서 정렬 순서에서 처음 나온 순 — 파일 번호를 따른다. 예: `BC/설계` 는 개요 · 블록체인 매니저 · 컴플라이언스 게이트 · 운영 설계.
+  내보낸 문서의 이전·다음 이동도 묶음 표시 순서를 따른다. `WaaS 도입·구축/Dfns`는 배포 방식·운영 환경 / 서명 보안·검증 / 사내 구축·도입 검토로 묶는다.
 - `layout: schema` (선택) — 필드 사전처럼 계층 탐색이 필요한 문서의 카드 미리보기를 **고정 구조 목차 + 본문**으로 나눈다.
   데스크톱 목차는 스크롤 위치를 따라가고, 좁은 화면에서는 접힌다. 라이브 앱과 단일 HTML 내보내기에 동일하게 적용된다.
 - `ref: 참고` (선택) — **참고 문서 표시.** 판단 재료·심화 설명처럼 설계 본문과 붙어 읽히지만 공유 대상은 아닌 문서에 붙인다.
@@ -162,6 +163,12 @@ npm ci            # 배포 도구 설치가 필요할 때 최초 1회 (Node.js 2
 #   빠진 문서를 가리키던 링크는 라벨만 남긴 평문으로 바뀐다. 포함하려면 --with-ref.
 node scripts/export-board.mjs
 
+# 지정한 중카테고리만 포함 — 연결된 다른 분류는 자동 추가하지 않는다.
+node scripts/export-board.mjs --only "WaaS 도입·구축/Fireblocks PaaS,WaaS 도입·구축/Dfns"
+
+# 내보내기 범위·링크·참고 문서 제외 회귀 검사
+node --test scripts/export.test.mjs
+
 # 배포 준비 — docs 원문과 board metadata를 public/_generated 에 생성(산출물은 git 제외)
 npm run build:docs
 
@@ -169,6 +176,12 @@ npm run build:docs
 npm exec wrangler -- pages deploy public --project-name=blockchain-manager \
   --commit-message="deploy blockchain manager kanban"
 ```
+
+앱의 `HTML ↓`는 중카테고리 선택 창을 연다. 홈에서는 모든 대카테고리의 중카테고리를,
+대카테고리 안에서는 해당 분류만 표시한다. 중카테고리를 보고 있으면 그 묶음만 기본 선택하고,
+대카테고리 화면에서는 하위 묶음을 모두 기본 선택한다. 전체 선택·해제와 취소·Esc를 지원하며,
+하나도 선택하지 않으면 저장할 수 없다. 선택한 문서는 하나의 HTML에 기존 분류 구조로 담는다.
+선택 밖 문서와 `ref:` 참고 문서는 포함하지 않으며, 제외 문서·분류를 가리키는 본문 링크는 텍스트로 남긴다.
 
 `dev.sh` 가 하는 일: 이전 로컬 서버·포트 점유 정리 → API 문서 워처 기동 → Node 로컬 서버 기동.
 Node 서버가 `public/` 정적 파일과 `/api/board`·`/api/doc`·`/api/order`를 제공한다. 문서는 파일시스템에서

@@ -1,6 +1,7 @@
 ---
 title: Dfns 배포 백엔드 — Baseline과 Enterprise AWS-Native
 status: To Do
+group: 배포 방식·운영 환경
 ---
 
 Baseline과 Enterprise AWS-Native는 같은 애플리케이션 이미지·MPC 서명 모델·데이터 모델을 사용한다. 시크릿 저장·서비스 인증·인증서·데이터 서비스 연동 방식이 다르다.

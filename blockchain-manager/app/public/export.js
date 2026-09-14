@@ -3,7 +3,7 @@
 
 // 내보내기는 공유용이라 frontmatter 에 `ref:` 가 붙은 참고 문서(판단 재료·심화)를 뺀다.
 // 두 내보내기 경로가 같은 규칙을 쓰도록 여기 한 곳에만 둔다. 반환값 = 빠진 경로들.
-const MD_LINK = /\[([^\]]+)\]\(([^)\s]+\.md)(#[^)]*)?\)/g;
+const MD_LINK = /(?<!!)\[([^\]]+)\]\((<[^>]+>|[^)\s]+)\)/g;
 const MERMAID_FENCE = /^```mermaid\s*\r?\n([\s\S]*?)\r?\n```\s*$/gim;
 
 function mermaidBlocks(markdown) {
@@ -53,6 +53,55 @@ export function attachCardMeta(data) {
   }
 }
 
+// 사용자가 선택한 범위만 포함한다. 본문 링크로 다른 중카테고리를 자동 추가하지 않는다.
+export function selectExportScope(board, only) {
+  const selected = new Set(only);
+  const cards = board.cards.filter((c) => selected.has(c.category) || selected.has(`${c.category}/${c.subcategory}`));
+  const tree = {};
+  for (const [cat, subs] of Object.entries(board.tree)) {
+    const keep = subs.filter((sub) => cards.some((c) => c.category === cat && c.subcategory === sub));
+    if (keep.length) tree[cat] = keep;
+  }
+  return { ...board, cards, tree, homeCats: Object.keys(tree) };
+}
+
+// 선택 밖의 문서는 파일에 내장하지 않고, 그 문서/분류를 가리키는 링크는 라벨만 남긴다.
+export function stripUnavailableLinks(data) {
+  const available = new Set(Object.keys(data.docs));
+  const strip = (text, ownPath) => text.split(/(^```[^\n]*\n[\s\S]*?^```[^\n]*(?:\n|$))/gm)
+    .map((part, index) => index % 2 ? part : part.replace(MD_LINK, (whole, label, target) => {
+      const href = target.startsWith('<') ? target.slice(1, -1) : target;
+      if (/^[a-z][a-z\d+.-]*:|^\/\//i.test(href)) return whole;
+      if (href.startsWith('?')) {
+        const q = new URLSearchParams(href.slice(1));
+        if (!q.has('cat')) return whole;
+        const subs = data.board.tree[q.get('cat')];
+        return subs && (!q.has('sub') || subs.includes(q.get('sub'))) ? whole : label;
+      }
+      let path;
+      if (/^\/?doc(?:\.html)?\?/.test(href)) {
+        path = new URLSearchParams(href.split('?')[1]).get('path');
+        if (!path) return whole;
+        path = path.split('#')[0];
+      } else {
+        let relative;
+        try { relative = decodeURIComponent(href.split('#')[0]); } catch { return whole; }
+        if (!relative.endsWith('.md')) return whole;
+        const segs = relative.startsWith('/') ? [] : ownPath.split('/').slice(0, -1);
+        for (const seg of relative.split('/')) {
+          if (seg === '..') segs.pop();
+          else if (seg && seg !== '.') segs.push(seg);
+        }
+        path = segs.join('/');
+      }
+      return available.has(path) ? whole : label;
+    })).join('');
+  for (const [path, doc] of Object.entries(data.docs)) {
+    if (doc.body) doc.body = strip(doc.body, path);
+    if (doc.raw) doc.raw = strip(doc.raw, path);
+  }
+}
+
 export function excludeRefDocs(data, withRef) {
   if (withRef) return [];
   const dropped = Object.keys(data.docs).filter((p) => (data.docs[p].meta || {}).ref);
@@ -62,26 +111,13 @@ export function excludeRefDocs(data, withRef) {
   data.board.cards = data.board.cards.filter((c) => !droppedSet.has(c.path));
   for (const p of dropped) delete data.docs[p];
 
-  // 빠진 문서를 가리키던 링크는 죽은 링크가 되므로 라벨만 남긴 평문으로 바꾼다
-  const strip = (text, ownPath) =>
-    text.replace(MD_LINK, (whole, label, href) => {
-      const segs = ownPath.split('/').slice(0, -1);
-      for (const seg of href.split('/')) {
-        if (seg === '..') segs.pop();
-        else if (seg !== '.') segs.push(seg);
-      }
-      return droppedSet.has(segs.join('/')) ? label : whole;
-    });
-
-  for (const p of Object.keys(data.docs)) {
-    const d = data.docs[p];
-    if (d.body) d.body = strip(d.body, p);
-    if (d.raw) d.raw = strip(d.raw, p);
-  }
+  data.board = selectExportScope(data.board, Object.keys(data.board.tree));
+  stripUnavailableLinks(data);
   return dropped;
 }
 export function assembleBoardHtml(assets, data) {
   const { html, css, mermaid, md, theme, app } = assets;
+  stripUnavailableLinks(data);
 
   // embed 뷰어는 data.embeds 에 HTML 원문이 내장된 것만 srcdoc 으로 띄운다 — 없으면 마크다운 뷰로 대체
   for (const c of data.board.cards) {

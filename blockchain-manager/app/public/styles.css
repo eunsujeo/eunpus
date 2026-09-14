@@ -179,6 +179,38 @@ body {
 .btn-secondary:hover { background: var(--surface-elevated); }
 .btn-secondary:disabled { opacity: 0.35; cursor: default; }
 
+/* HTML 내보내기 — 중카테고리 선택 */
+.export-dialog {
+  width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px);
+  padding: 24px; border: 1px solid var(--border-hover); border-radius: 12px;
+  background: var(--canvas); color: var(--body); overflow: auto;
+}
+.export-dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+.export-dialog form { display: flex; flex-direction: column; gap: 16px; }
+.export-head, .export-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.export-head h2 { margin: 0; color: var(--text-strong); font-size: 20px; }
+.export-dialog p { margin: 0; }
+#export-description, .export-note { color: var(--muted-strong); font-size: 13px; }
+.export-tools, .export-actions { display: flex; gap: 8px; }
+.export-options { max-height: 45dvh; overflow-y: auto; overscroll-behavior: contain; }
+.export-options fieldset { border: 0; margin: 0 0 16px; padding: 0; min-width: 0; }
+.export-options fieldset:last-child { margin-bottom: 0; }
+.export-options legend { padding: 0 0 8px; font-weight: 600; color: var(--text-strong); }
+.export-option { display: flex; align-items: center; gap: 12px; padding: 12px; cursor: pointer; border-radius: 6px; }
+.export-option:hover { background: var(--surface); }
+.export-option input { width: 18px; height: 18px; flex: 0 0 auto; margin: 0; accent-color: var(--primary-active); }
+.export-option span { overflow-wrap: anywhere; }
+.export-dialog :focus-visible { outline: 2px solid var(--primary-active); outline-offset: 3px; }
+.export-footer { border-top: 1px solid var(--hairline); padding-top: 16px; }
+#export-selection-count { color: var(--muted-strong); font-size: 13px; }
+.export-confirm { background: var(--primary); color: var(--ink); }
+.export-confirm:hover { background: var(--primary-active); }
+@media (max-width: 480px) {
+  .export-dialog { padding: 20px; }
+  .export-footer { align-items: stretch; flex-direction: column; }
+  .export-actions { justify-content: flex-end; }
+}
+
 /* ---- 테마 토글 ---- */
 .theme-toggle {
   background: var(--surface);

@@ -1,6 +1,7 @@
 ---
 title: Dfns Baseline — 인프라·구성도
 status: To Do
+group: 사내 구축·도입 검토
 ---
 
 사내 데이터센터에 Dfns 전체 플랫폼을 두고, Kubernetes + Istio + 자체 운영 Vault·PostgreSQL·Kafka·Redis + MPC 5-party / 3-of-5로 구성하는 제안이다. 고객 소유 AWS 계정 배치나 Hybrid MPC가 아니라, 사용자가 선택한 사내 데이터센터 전체 플랫폼 배치를 대상으로 한다.

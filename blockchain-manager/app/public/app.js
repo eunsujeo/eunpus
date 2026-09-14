@@ -228,6 +228,18 @@ function boardCards() {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+// 개요를 먼저 두고, 파일명 순서에서 처음 등장한 주제 순으로 묶는다.
+// 카드 표시와 미리보기 이전/다음이 동일한 순서를 사용한다.
+function topicGroups(items) {
+  const groups = new Map([['', []]]);
+  for (const card of items) {
+    const topic = card.group || '';
+    if (!groups.has(topic)) groups.set(topic, []);
+    groups.get(topic).push(card);
+  }
+  return [...groups].filter(([, subset]) => subset.length);
+}
+
 function renderBoard() {
   const items = boardCards();
 
@@ -316,17 +328,14 @@ function renderCardGrid(items) {
   // group 없는 문서(개요 등)를 먼저, 그 뒤로 group 별 소제목 + 격자.
   // 순서는 문서 정렬 순서에서 처음 나온 group 순 — 파일 번호 순서를 따른다.
   view.className = 'view card-grid-groups';
-  const ungrouped = items.filter((c) => !c.group);
-  if (ungrouped.length) view.appendChild(gridOf(ungrouped));
-
-  const seen = [];
-  for (const c of items) if (c.group && !seen.includes(c.group)) seen.push(c.group);
-  for (const g of seen) {
-    const h = document.createElement('h2');
-    h.className = 'grid-group';
-    h.textContent = g;
-    view.appendChild(h);
-    view.appendChild(gridOf(items.filter((c) => c.group === g)));
+  for (const [topic, subset] of topicGroups(items)) {
+    if (topic) {
+      const h = document.createElement('h2');
+      h.className = 'grid-group';
+      h.textContent = topic;
+      view.appendChild(h);
+    }
+    view.appendChild(gridOf(subset));
   }
 }
 
@@ -757,10 +766,14 @@ function openPreview(c, pushURL = true) {
     nav = { cat: c.category, sub: c.subcategory };
     render();
   }
-  // 형제 = 같은 대·중카테고리, 파일명 순
+  // 형제 = 같은 대·중카테고리. 문서집에서는 주제별 카드 표시 순서를 따른다.
   previewList = cards
     .filter((x) => x.category === c.category && x.subcategory === c.subcategory)
     .sort((a, b) => a.name.localeCompare(b.name));
+  if ((window.__STATIC_BOARD__ && !previewList.every((x) => x.view === 'doc')) ||
+      previewList.every((x) => x.view === 'grid')) {
+    previewList = topicGroups(previewList).flatMap(([, subset]) => subset);
+  }
   previewIdx = previewList.findIndex((x) => x.path === c.path);
   if (pushURL) setPreviewURL(c, 'push');
   else setPreviewURL(c, 'replace');
@@ -918,7 +931,7 @@ document.addEventListener('click', (e) => {
   goTo(q.get('cat') || null, q.get('sub') || null);
 });
 document.addEventListener('keydown', (e) => {
-  if (modal.classList.contains('hidden')) return;
+  if (modal.classList.contains('hidden') || document.getElementById('export-dialog').open) return;
   if (e.key === 'Escape') closePreview();
   else if (e.key === 'ArrowLeft') showPreviewAt(previewIdx - 1);
   else if (e.key === 'ArrowRight') showPreviewAt(previewIdx + 1);
@@ -932,7 +945,7 @@ async function exportBoardHtml(opts = {}) {
   btn.disabled = true;
   showToast('보드 내보내는 중…');
   try {
-    const { assembleBoardHtml, attachCardMeta, excludeRefDocs, preRenderMermaid } = await import('./export.js');
+    const { assembleBoardHtml, attachCardMeta, excludeRefDocs, preRenderMermaid, selectExportScope } = await import('./export.js');
     const [html, css, mermaid, md, theme, app] = await Promise.all(
       ['index.html', 'styles.css', 'vendor/mermaid.min.js', 'md.js', 'theme.js', 'app.js'].map((f) =>
         fetch(f).then((r) => {
@@ -941,8 +954,7 @@ async function exportBoardHtml(opts = {}) {
         })
       )
     );
-    const board = await api('/api/board');
-    const allCards = board.cards.slice();
+    let board = await api('/api/board');
     const docs = {};
     const fetchDocs = async (paths) => {
       const todo = paths.filter((p) => !docs[p]);
@@ -955,38 +967,21 @@ async function exportBoardHtml(opts = {}) {
       }
     };
     if (opts.only && opts.only.length) {
-      const only = new Set(opts.only);
-      const inScope = (c) => only.has(c.category) || only.has(`${c.category}/${c.subcategory}`);
-      // 담긴 문서가 ?cat=…&sub=… 로 가리키는 카테고리를 자동으로 함께 담는다
-      // (BC 문서가 참조하는 API 뷰어 등 상호참조 링크가 export 에서 끊기지 않게)
-      await fetchDocs(allCards.filter(inScope).map((c) => c.path));
-      const refRe = /\?cat=([^&\s)]+)&sub=([^)\s&]+)/g;
-      for (const p of Object.keys(docs)) {
-        let m;
-        while ((m = refRe.exec(docs[p].body || ''))) only.add(`${decodeURIComponent(m[1])}/${decodeURIComponent(m[2])}`);
-      }
-      board.cards = allCards.filter(inScope);
-      const tree = {};
-      for (const [cat, subs] of Object.entries(board.tree)) {
-        if (only.has(cat)) { tree[cat] = subs; continue; }
-        const keep = subs.filter((sub) => only.has(`${cat}/${sub}`));
-        if (keep.length) tree[cat] = keep;
-      }
-      board.tree = tree;
-      // 홈에 타일로 보일 카테고리 = 명시적으로 고른 것만 (ref-scan 으로 딸려온 건 숨김)
-      board.homeCats = [...new Set(opts.only.map((o) => o.split('/')[0]))];
+      board = selectExportScope(board, opts.only);
     }
+    if (!board.cards.length) throw new Error('선택한 중카테고리에 내보낼 문서가 없습니다');
     await fetchDocs(board.cards.map((c) => c.path));
-    // embed 뷰어(예: api.html)도 내장 — 정적 파일에서 원본 디자인 그대로 뜨게
     const embeds = {};
-    for (const name of new Set(board.cards.map((c) => c.embed).filter(Boolean))) {
-      const r = await fetch(name);
-      if (r.ok) embeds[name] = await r.text();
-    }
     // 공유용이라 참고 문서(ref:)는 뺀다 — Node 내보내기와 같은 규칙 (export.js)
     const data = { board, docs, embeds };
     attachCardMeta(data);
     excludeRefDocs(data, opts.withRef);
+    if (!data.board.cards.length) throw new Error('참고 문서를 제외하면 내보낼 문서가 없습니다');
+    // embed 뷰어(예: api.html)도 내장 — 정적 파일에서 원본 디자인 그대로 뜨게
+    for (const name of new Set(data.board.cards.map((c) => c.embed).filter(Boolean))) {
+      const r = await fetch(name);
+      if (r.ok) embeds[name] = await r.text();
+    }
     await preRenderMermaid(data, (done, total) => showToast(`다이어그램 SVG 만드는 중… ${done}/${total}`));
     const out = assembleBoardHtml({ html, css, mermaid, md, theme, app }, data);
     const blob = new Blob([out], { type: 'text/html;charset=utf-8' });
@@ -995,18 +990,74 @@ async function exportBoardHtml(opts = {}) {
     a.download = opts.filename || 'board.html';
     a.click();
     URL.revokeObjectURL(a.href);
-    showToast(`${opts.filename || 'board.html'} 저장됨 — 파일을 더블클릭으로 열면 됩니다`);
+    showToast(`${opts.filename || 'board.html'} 저장됨 — 문서 ${data.board.cards.length}개 · 파일을 더블클릭으로 열면 됩니다`);
   } catch (e) {
     showToast(`내보내기 실패: ${e.message}`, true);
   } finally {
     btn.disabled = false;
   }
 }
-// 위치 인식 — 홈에서는 보드 전체, 대카테고리 안에서는 그 카테고리만 내보낸다
-document.getElementById('export-html').addEventListener('click', () =>
-  nav.cat
-    ? exportBoardHtml({ filename: `${nav.cat}.html`, only: [nav.cat] })
-    : exportBoardHtml()
-);
+// 현재 대카테고리의 중카테고리를 선택한다. 홈에서는 전체 분류를 제공한다.
+const exportDialog = document.getElementById('export-dialog');
+const exportOptions = document.getElementById('export-options');
+const exportConfirm = document.getElementById('export-confirm');
+let exportFilename = 'board.html';
+
+function updateExportSelection() {
+  const count = exportOptions.querySelectorAll('input:checked').length;
+  document.getElementById('export-selection-count').textContent = count
+    ? `중카테고리 ${count}개 선택` : '중카테고리를 하나 이상 선택하세요';
+  exportConfirm.disabled = count === 0;
+}
+
+function openExportDialog() {
+  const categories = nav.cat ? [nav.cat] : catOrder;
+  exportOptions.innerHTML = categories.map((cat) => {
+    const subs = (tree[cat] || []).filter((sub) => cards.some((c) => c.category === cat && c.subcategory === sub));
+    if (!subs.length) return '';
+    return `<fieldset><legend>${esc(cat)}</legend>${subs.map((sub) =>
+      `<label class="export-option"><input type="checkbox" value="${esc(`${cat}/${sub}`)}"${!nav.sub || nav.sub === sub ? ' checked' : ''}><span>${esc(sub)}</span></label>`
+    ).join('')}</fieldset>`;
+  }).join('');
+  if (!exportOptions.querySelector('input')) {
+    showToast('내보낼 중카테고리가 없습니다', true);
+    return;
+  }
+  exportFilename = nav.cat ? `${nav.cat}.html` : 'board.html';
+  updateExportSelection();
+  exportDialog.showModal();
+}
+
+document.getElementById('export-html').addEventListener('click', openExportDialog);
+exportOptions.addEventListener('change', updateExportSelection);
+exportDialog.addEventListener('keydown', (event) => {
+  if (event.key !== 'Tab') return;
+  const controls = [...exportDialog.querySelectorAll('button:not(:disabled), input:not(:disabled)')];
+  const first = controls[0];
+  const last = controls.at(-1);
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+});
+for (const [id, checked] of [['export-select-all', true], ['export-select-none', false]]) {
+  document.getElementById(id).addEventListener('click', () => {
+    exportOptions.querySelectorAll('input').forEach((input) => { input.checked = checked; });
+    updateExportSelection();
+  });
+}
+for (const id of ['export-close', 'export-cancel']) {
+  document.getElementById(id).addEventListener('click', () => exportDialog.close());
+}
+document.getElementById('export-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const only = [...exportOptions.querySelectorAll('input:checked')].map((input) => input.value);
+  if (!only.length) return;
+  exportDialog.close();
+  exportBoardHtml({ filename: exportFilename, only });
+});
 
 loadBoard();

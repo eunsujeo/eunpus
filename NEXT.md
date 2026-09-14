@@ -13,6 +13,13 @@
 | 상세 설계 3주제 (2026-07-23 예정분) | **작성 완료** — 입금 폭주·유실 복구 = `BC/설계/99-detection-detail.md` · DB 관리(보존·파티셔닝·아카이브) = `BC/설계/03-bcm-db.md` + `블록체인매니저/설계/15-raw-tx-archive.md` |
 | fbhook (별도 저장소 ~/Workspace/fbhook) | 웹훅 v2 수신 PoC **전 시나리오 완료**. 관찰 → waas-wiki 정정도 반영 완료 (99·03·QnA·93~98, 커밋 c49d70d·6c9b8ee 등). 결과보고 = `BC/설계/97-webhook-poc-result.md`·`95-approve-pull-poc-result.md` |
 
+### HTML 선택 내보내기 (2026-09-14)
+
+- `HTML ↓`에서 중카테고리를 체크해 내보낼 수 있다. `WaaS 도입·구축`의 Fireblocks PaaS·Dfns만 고르면 DAW 구축 설계 4문서는 제외된다.
+- 문서 주제 묶음: Dfns는 배포 방식·운영 환경 / 서명 보안·검증 / 사내 구축·도입 검토, DAW는 개요 아래 계정·노드 연동 / 가스 대납·정산. frontmatter `group`으로 지정하며 HTML 카드와 이전·다음이 같은 묶음 순서를 사용한다.
+- 브라우저와 CLI `--only`는 명시한 범위만 포함하며 연결된 다른 분류를 자동 추가하지 않는다. 제외된 문서·분류 링크는 텍스트로 남는다.
+- 단위 검사: `node --test blockchain-manager/app/scripts/export.test.mjs`. 실제 UI·다운로드·독립 HTML·모바일 검증 기록은 `_workspace/export-selection/`.
+
 ## 2. 이어갈 작업 후보 (우선순위 순)
 
 ### 2.1 blockchain-manager 설계 문서의 미확정 항목 닫기
