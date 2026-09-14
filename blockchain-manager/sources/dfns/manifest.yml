@@ -14,7 +14,7 @@ files:
     source_type: vendor-technical-overview
     grade: primary-vendor
     mode: C (full ingest — pdftotext 전문 추출, 페이지 순서 전환본 작성)
-    extract: ../../docs/플랫폼 아키텍처/Dfns/00-on-premise-deployment.md
+    extract: ../../docs/WaaS 도입·구축/Dfns/00-on-premise-deployment.md
     sha256: 146c5a5f415b58588667d5d543f134ab4843742304df708840ab56dd51288567
   - id: DFNS-GOVENG-DECK-001
     path: 2026-08-26__dfns__governance-engine-architecture-deck-v1.0.pdf
@@ -25,7 +25,7 @@ files:
     source_type: vendor-slide-deck
     grade: primary-vendor
     mode: C (full ingest — pdftoppm 90dpi 22장 이미지로 읽음)
-    extract: ../../docs/플랫폼 아키텍처/Dfns/01-governance-engine.md
+    extract: ../../docs/WaaS 도입·구축/Dfns/01-governance-engine.md
     sha256: 5e239e6c61c0af5dc249a644b4bf6702072158b44428cebef57279ab2ba5cf64
   - id: DFNS-GOVENG-SUMMARY-001
     path: 2026-08-28__dfns__governance-engine-summary-2p.pdf
@@ -36,7 +36,7 @@ files:
     source_type: vendor-summary (Dfns 제공, 사용자 확인 2026-09-10)
     grade: primary-vendor
     mode: C (full ingest — pdftotext 전문, deck 전환본에 합침)
-    extract: ../../docs/플랫폼 아키텍처/Dfns/01-governance-engine.md
+    extract: ../../docs/WaaS 도입·구축/Dfns/01-governance-engine.md
     sha256: e2d3c3aaf4f0fa1813fbdf2dc34b14dded7d7bd3cdb140d93e639891a5bf0c65
   - id: DFNS-BACKENDS-001
     path: 2026-09-08__dfns__deployment-backends-baseline-vs-aws-native-v1.0.pdf
@@ -48,6 +48,6 @@ files:
     source_type: vendor-deployment-guide
     grade: primary-vendor
     mode: C (full ingest — pdftotext 페이지별 추출, p.2 비교표 이미지 대조)
-    extract: ../../docs/플랫폼 아키텍처/Dfns/02-deployment-backends.md
+    extract: ../../docs/WaaS 도입·구축/Dfns/02-deployment-backends.md
     raw_extract: 2026-09-14__dfns__deployment-backends-extracted.md
     sha256: 1b75d145abb61b009c773dc4ea2e7c0ad50c25a7c86f4b82f1ff28d554596756

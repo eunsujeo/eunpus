@@ -7842,3 +7842,24 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 영향받은 페이지: 플랫폼 아키텍처/Dfns/02-deployment-backends.md (신규, 3쪽 순서 정리·11개 항목 비교표·원문 p.2~3 기반 두 프로필 비교 구성도) · 00-on-premise-deployment.md (두 백엔드 상세 연결, Vault bootstrap 적용 범위) · sources/dfns/README.md·manifest.yml (4번째 자료 색인)
 - 미확정: Baseline의 AWS 외 환경 지원 범위 · 상세 override/IAM/인증서/bootstrap 설정 · 별도 자체 점검표·배치도 · Hybrid MPC full quorum 및 HSM/Governance Engine 적용 범위. 기존 day-0 백엔드 고정·마이그레이션 부재 설명은 유지.
 - 신규 entity: 0 (51 stage 연속)
+
+## Stage 179 (2026-09-14) — Dfns Baseline 사내 데이터센터 전체 플랫폼 설계안
+- 요청: 사용자가 Baseline 인프라 구성을 요청하고 사내 데이터센터 전체 플랫폼 배치를 선택.
+- 근거: Dfns 온프레미스 개요·배포 백엔드 비교, Kubernetes/HashiCorp/PostgreSQL/Patroni/Kafka/Redis 공식 문서 확인. 벤더 확정 사양과 설계 제안을 분리.
+- 설계: 3개 랙 장애 구역 · K8s 앱/MPC와 외부 Vault·데이터 서비스 분리 · Vault Raft 5노드, Shamir 5개 중 3개 잠금 해제 · MPC 5-party / 3-of-5 · 서비스별 KV/Transit/PKI · PG 동기 복제·Kafka KRaft·Redis Sentinel 후보 · 핵심 36노드/176 vCPU/648 GiB 예약안(별도 Keyshares·공용 인프라·DR 제외) · 연결표·백업·복구·출시 검증 포함.
+- 영향받은 페이지: 플랫폼 아키텍처/Dfns/03-baseline-datacenter-design.md (신규 제안) · 00-on-premise-deployment.md·02-deployment-backends.md (연결) · NEXT.md (확인할 구현 입력).
+- 미확정: 비AWS 지원 배포 경로·arm64 실행 자원·외부 Vault와 Shamir·Keyshares store·제품 버전/HA endpoint/시크릿 스키마. 실제 인프라 프로비저닝·Dfns 배포·성능 검증은 수행하지 않음.
+- 신규 entity: 0 (52 stage 연속)
+
+## Stage 180 (2026-09-14) — WaaS 도입·구축 카테고리 개편과 Baseline 설계 재검토
+- 요청: 카테고리를 “WaaS 도입·구축”으로 변경하고 구성도를 재검토. Dfns 암호화 설명은 “데이터 키 암호화”로 풀어 쓰고, 상위 키로 데이터 키를 보호한다는 툴팁 추가.
+- 반영: 기존 플랫폼 아키텍처 폴더의 Fireblocks PaaS·Dfns 문서를 함께 이동. 보드 순서·Dfns 자료 색인/manifest·NEXT 경로 갱신. 기존 로그의 당시 경로는 이력으로 보존.
+- 검토 수정: 배치 분류와 요청/서명 경로를 두 그림으로 분리 · Keyshares store 배치 미확정 표시 · L4 진입 경로와 Istio/IdP 접근 제어 구분 · ingress를 앱 worker에 배치해 36노드 자원표와 일치 · 원센터 격리와 복구 환경의 서명/전송 차단을 복구 절차 앞단으로 이동.
+- 로컬 보드: 상태 파일 사본을 _workspace에 보관하고 기존 카드 상태 5건과 사용자 지정 순서를 새 카테고리 경로로 이관.
+- 미확정: Stage 179의 Dfns 비AWS 지원·이미지/저장소/HA 사양 확인은 그대로 필요. 실제 배포와 성능·복구 시험 결과를 뜻하지 않음.
+
+## Stage 181 (2026-09-14) — Dfns 담당자 질의와 AWS Baseline 비교
+- 요청: 비AWS 배포 확인 사항을 담당자 질문으로 추가하고 AWS 구성과의 유사성 검토.
+- 반영: WaaS 도입·구축/Dfns/04-vendor-questions.md에 배치 환경과 프로필을 구분한 비교표, 사내 지원 경로·AWS 대비 계층별 변경·외부 Vault/DB/Keyshares 배치 및 복구 질문 3건 작성. 02·03 문서와 NEXT에서 연결.
+- 근거: 기존 Dfns 제공 자료와 사내 설계안 대조. AWS Baseline과 사내 Baseline의 역할은 유사하나 동일 설치 패키지 사용·L1만 교체 가능 여부는 미확정. 사내 배치라는 사용자 선택 유지.
+- 상태: 질의 초안 작성만 완료. 담당자 발송·답변 수신 없음.

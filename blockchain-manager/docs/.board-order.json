@@ -1,14 +1,14 @@
 {
   "categories": [
     "디지털 자산",
-    "플랫폼 아키텍처",
+    "WaaS 도입·구축",
     "BC",
     "블록체인매니저",
     "캔톤네트워크",
     "트래블룰"
   ],
   "subcategories": {
-    "플랫폼 아키텍처": [
+    "WaaS 도입·구축": [
       "Fireblocks PaaS",
       "Dfns"
     ],

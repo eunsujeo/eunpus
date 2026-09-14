@@ -29,7 +29,7 @@ Enterprise AWS-Native 구성에는 Vault가 없다. 서비스는 고정 비밀�
 
 ### 구성요소별 비교
 
-아래 구성도는 원문 p.2 2절와 p.3 3~5절를 바탕으로 재구성했다. 위쪽은 공통 플랫폼, 아래 두 열은 선택할 배포 프로필이다. 연결선은 구성 선택을 나타낸다.
+아래 구성도는 원문 p.2 2절과 p.3 3~5절을 바탕으로 재구성했다. 위쪽은 공통 플랫폼, 아래 두 열은 선택할 배포 프로필이다. 연결선은 구성 선택을 나타낸다.
 
 ```mermaid
 flowchart TB
@@ -69,7 +69,7 @@ flowchart TB
 | 항목 | Baseline | Enterprise AWS-Native |
 |---|---|---|
 | 시크릿 저장소 | HashiCorp Vault KV | AWS Secrets Manager |
-| 봉투 암호화·KMS | Vault Transit | AWS KMS |
+| {{데이터 키 암호화::데이터를 암호화하는 키를 별도의 상위 키로 다시 암호화해 보호하는 방식.}}·KMS | Vault Transit | AWS KMS |
 | 서비스 신원 | Vault Kubernetes 인증, 서비스마다 역할 1개 | AWS IAM, IRSA 또는 Pod Identity |
 | 클러스터에 시크릿 전달 | Vault Agent injector | External Secrets Operator |
 | PKI·mTLS | Vault PKI | ACME를 사용하는 cert-manager와 Istio 메시 |
@@ -93,7 +93,7 @@ flowchart TB
 
 ### AWS-Native에서 달라지는 것 (4절)
 
-1. **Vault의 역할 전체를 다른 구성요소가 맡는다.** 시크릿 저장은 AWS Secrets Manager, 봉투 암호화는 AWS KMS, PKI는 cert-manager가 담당한다. External Secrets Operator가 시크릿을 클러스터에 전달한다.
+1. **Vault의 역할 전체를 다른 구성요소가 맡는다.** 시크릿 저장은 AWS Secrets Manager, 데이터 키 암호화는 AWS KMS, PKI는 cert-manager가 담당한다. External Secrets Operator가 시크릿을 클러스터에 전달한다.
 2. **서비스 인증에 IAM을 사용한다.** Kafka·캐시·데이터베이스·Secrets Manager·KMS 호출은 모두 비밀번호 없는 단기 IAM 자격증명을 사용한다고 설명한다.
 3. **이벤트 처리는 Kafka로 통일한다.** Dfns 호스팅 SaaS에서 사용하던 SQS·SNS·DynamoDB 경로를 끄고 Kafka와 PostgreSQL을 사용한다.
 4. **고객 소유 AWS 계정에서 운영한다.** Dfns는 이미지·chart·설정을 제공하고, 고객은 인프라를 운영한다.
@@ -118,6 +118,10 @@ flowchart TB
 
 온프레미스 개요 p.12의 Vault 초기화·recovery key 보관 절차는 Vault를 사용하는 흐름이다. 이번 자료는 AWS-Native에 Vault가 없고 시크릿 bootstrap 흐름도 다르다고 설명하지만, 대체 bootstrap의 상세 절차는 제공하지 않는다. (배포 백엔드 p.2 1절·p.3 5절)
 
+## 사내 데이터센터 적용 설계
+
+사용자가 요청한 전체 플랫폼의 사내 배치는 [Baseline 사내 데이터센터 인프라 설계안](03-baseline-datacenter-design.md)에 별도로 정리했다. 그 문서의 노드 수·망 분리·키 운영 정책은 제안이며, 이 자료에서 확정한 지원 사양과 구분한다.
+
 ## 자료만으로 확정할 수 없는 내용
 
 - Baseline의 AWS 외 환경 지원 여부와 해당 환경의 배포·지원 요건
@@ -128,4 +132,4 @@ flowchart TB
 - HSM 서명 경로·Governance Engine에 적용할 때의 구체 구성. 이번 자료의 공통 서명 모델 설명은 MPC 기준이다.
 - 프로필별 자원 규모·성능·비용·고가용성·재해 복구 절차와 서비스 버전 조합
 
-위 항목은 자료에 답이 없거나 상세가 부족해 남기는 확인 질문이며, 미지원으로 판정한 항목이 아니다.
+위 항목은 자료에 답이 없거나 상세가 부족해 남기는 확인 질문이며, 미지원으로 판정한 항목이 아니다. 사내 배포 지원과 AWS Baseline의 차이에 관한 전달용 질의는 [Dfns 담당자 확인 질문](04-vendor-questions.md)에 정리했다.

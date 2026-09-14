@@ -36,6 +36,14 @@
 (DB 집계 HEALTHY 만으로는 중지된 프로세스를 걸러내지 못함). 문서는 반영 완료 — svc 의
 `bcm-admin/.../AdminReadService.kt` `preparationChecks` (`ready = webhook?.state == "HEALTHY"`) 구현 변경이 남았고, 이는 svc 세션 몫.
 
+### 2.1c Dfns Baseline — 사내 데이터센터 전체 플랫폼 설계 (2026-09-14)
+
+- 사용자 선택: 사내 데이터센터에 전체 플랫폼 배치. AWS 전체 배치나 Hybrid MPC가 아님.
+- 설계안: `blockchain-manager/docs/WaaS 도입·구축/Dfns/03-baseline-datacenter-design.md`. Kubernetes·외부 Vault 5노드·자체 운영 PG/Kafka/Redis·MPC 5-party / 3-of-5, 핵심 노드 36개 자원 예약안.
+- 미확정: 비AWS 지원 설치 번들, 사내 arm64 자원 또는 지원 amd64 이미지, 외부 Vault·Shamir 연결, Keyshares store 엔진·배치·백업, Sentinel/HA endpoint 지원, 부하 기반 최종 sizing.
+- 담당자 질의 초안: `blockchain-manager/docs/WaaS 도입·구축/Dfns/04-vendor-questions.md`. 사내 전체 플랫폼 지원, AWS Baseline 대비 L1~L4 변경 범위, 외부 Vault·DB·Keyshares 배치와 복구 요건. 아직 미발송·미답변.
+- 다음 단계: 사내 가상화·CPU·장애 구역·CIDR·PKI 현황과 Dfns 배포 계약을 맞춘 뒤 IaC 구현. 현재 실장비·VM·클러스터 생성 없음.
+
 ### 2.2 wiki: 컨퍼런스 세션 자료 promote 대기 (Stage 164–165 후속)
 
 세션 발표 자료 (슬라이드/영상) 확보 시:
