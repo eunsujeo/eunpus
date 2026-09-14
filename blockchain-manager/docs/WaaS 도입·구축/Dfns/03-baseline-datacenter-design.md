@@ -1,11 +1,11 @@
 ---
-title: Dfns Baseline — 사내 데이터센터 인프라 설계안
+title: Dfns Baseline — 인프라·구성도
 status: To Do
 ---
 
-사내 데이터센터에 Dfns 전체 플랫폼을 두고, **Kubernetes + Istio + 자체 운영 Vault·PostgreSQL·Kafka·Redis + MPC 5-party / 3-of-5**로 구성하는 제안이다. 고객 소유 AWS 계정 배치나 Hybrid MPC가 아니라, 사용자가 선택한 **사내 데이터센터 전체 플랫폼 배치**를 대상으로 한다.
+사내 데이터센터에 Dfns 전체 플랫폼을 두고, Kubernetes + Istio + 자체 운영 Vault·PostgreSQL·Kafka·Redis + MPC 5-party / 3-of-5로 구성하는 제안이다. 고객 소유 AWS 계정 배치나 Hybrid MPC가 아니라, 사용자가 선택한 사내 데이터센터 전체 플랫폼 배치를 대상으로 한다.
 
-이 문서는 벤더 원문을 옮긴 문서가 아니라 **사용자 요청에 따라 작성한 인프라 설계안**이다. 아래 노드 수·용량·망 분리·운영 정책은 제안값이며 Dfns의 확정 지원 사양이나 배포 완료 상태를 뜻하지 않는다. 벤더 근거는 [온프레미스 개요](00-on-premise-deployment.md)와 [배포 백엔드 비교](02-deployment-backends.md), 기반 제품의 동작은 각 절의 공식 문서를 따른다.
+이 문서는 벤더 원문을 옮긴 문서가 아니라 사용자 요청에 따라 작성한 인프라 설계안이다. 아래 노드 수·용량·망 분리·운영 정책은 제안값이며 Dfns의 확정 지원 사양이나 배포 완료 상태를 뜻하지 않는다. 벤더 근거는 [온프레미스 개요](00-on-premise-deployment.md)와 [배포 백엔드 비교](02-deployment-backends.md), 기반 제품의 동작은 각 절의 공식 문서를 따른다.
 
 ## 1. 설계 전제와 구축 전 확인
 
@@ -30,6 +30,10 @@ Baseline이라는 이름만으로 비AWS 배포 지원이 확정되는 것은 �
 AWS에서도 Baseline을 사용하므로 플랫폼 역할은 유사하지만, 기반 서비스와 Vault 잠금 해제 방식의 대체가 필요하다. **L1 교체만으로 충분한지, L2~L4도 변경해야 하는지**를 [Dfns 담당자 확인 질문](04-vendor-questions.md)에 정리했다. 같은 문서에서 비AWS 지원 경로와 외부 Vault·DB·Keyshares 배치 지원도 확인한다.
 
 ## 2. 전체 구성
+
+DAWBC·DAW-CORE와 위탁 운영 노드까지 연결하는 업무 흐름과 운영 책임은 [DAW 통합 설계](../DAW%20구축%20설계/00-integration-plan.md)에 정리했다.
+
+이 절은 사내 배치 구역과 Baseline 서비스 관계를 함께 보여 준다. 2.1절은 물리 배치 제안, 2.2절은 서비스·데이터·MPC의 논리 관계다. Vault 연결은 4절에서 다룬다.
 
 애플리케이션과 MPC는 Kubernetes에 배치하고, Vault와 데이터 서비스는 별도 VM에서 운영하는 제안이다. Kubernetes 장애가 Vault까지 함께 중단시키는 상황을 줄이려는 선택이다. Vault 자체의 TLS 키와 복구 자격증명은 별도로 확보한다. **외부 Vault·DB endpoint 연결을 Dfns 배포 패키지가 지원하는지는 구축 전 확인한다.**
 
@@ -58,29 +62,44 @@ flowchart TB
 
 잠금 해제 담당자 5명은 서버 배치와 별개인 운영 역할이다. 재시작한 Vault 노드마다 3명이 참여하는 Shamir 절차는 4.1절에서 설명한다. 독립 백업 저장소와 보조센터 복사 경로는 7절에서 별도로 다룬다.
 
-### 2.2 요청과 서명 경로
+### 2.2 서비스·데이터·MPC 서명
 
-아래 그림은 요청과 작업 수신의 주요 방향이다. Coordinator와 Delivery Relay는 역할이 다르며, 실제 서비스 간 API와 배포 단위는 Dfns 명세로 확정한다. **Signer가 Relay에 연결해 작업을 가져오는 방향**을 표시했다.
+API·대시보드·정책·MPC signer는 Kubernetes에서 실행한다. 데이터 서비스는 PostgreSQL·Kafka·Redis로 구성한다. **PostgreSQL·Redis는 비밀번호, Kafka는 SCRAM으로 인증**한다. Vault의 시크릿 전달·암호화·인증서 기능은 4절에서 설명한다.
 
 ```mermaid
 flowchart TB
-    USER["기관 서비스 · 운영자"]
-    ENTRY["내부 L4 VIP 이중화<br/>Istio Ingress · TLS"]
-    APP["Dfns API · 정책 처리"]
-    COORD["MPC Coordinator<br/>서명 작업 조율"]
-    RELAY["Delivery Relay<br/>작업 · 프로토콜 메시지 전달"]
-    SIGN["MPC signer 5개 party<br/>서명 임계값 3"]
-    KEYS["MPC Keyshares store<br/>배치 · 엔진 미확정"]
-    USER --> ENTRY --> APP
-    APP -->|"승인된 서명 요청"| COORD
-    COORD -->|"작업 전달 · 논리 관계"| RELAY
-    SIGN -->|"mTLS · 작업 가져오기"| RELAY
-    SIGN -->|"키 조각 읽기 · 쓰기"| KEYS
+    CLIENT["고객 서비스 · 운영자"]
+    subgraph ENV["고객 전용 운영 환경 · Baseline"]
+        LB["서비스 진입점 · 로드밸런서"]
+        subgraph K8S["Kubernetes · Dfns 플랫폼"]
+            INGRESS["Istio Ingress · TLS"]
+            APP["API · Dashboard · 정책<br/>Indexer · Worker"]
+            COORD["MPC Coordinator<br/>서명 작업 조율"]
+            RELAY["Delivery Relay<br/>작업 · 메시지 전달"]
+            SIGN["MPC signer 5개 party<br/>서명 임계값 3"]
+            INGRESS --> APP
+            APP -->|"승인된 서명 요청"| COORD
+            COORD -->|"작업 전달 · 논리 관계"| RELAY
+            SIGN -->|"mTLS · 작업 가져오기"| RELAY
+        end
+        DATA["데이터 서비스<br/>PostgreSQL · 서비스 데이터<br/>Kafka · 이벤트<br/>Redis · 캐시"]
+        KEYS["MPC Keyshares store<br/>암호화된 키 조각<br/>엔진 · 상세 배치 확인 필요"]
+        LB --> INGRESS
+        APP -->|"비밀번호 · SCRAM"| DATA
+        SIGN -->|"키 조각 읽기 · 쓰기"| KEYS
+    end
+    CLIENT -->|"HTTPS"| LB
     classDef signing fill:#ecfdf5,stroke:#047857,color:#064e3b
+    classDef data fill:#eff6ff,stroke:#2563eb,color:#1e3a8a
     classDef pending fill:#fffbeb,stroke:#b45309,color:#78350f,stroke-dasharray:5 5
+    style ENV fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style K8S fill:#fff,stroke:#64748b,color:#0f172a
     class SIGN signing
+    class DATA data
     class KEYS pending
 ```
+
+Coordinator에서 Relay로 이어지는 선은 작업 전달의 논리 관계다. Signer는 Relay에 mTLS로 연결해 작업을 가져오며, 각자의 키 조각으로 공동 서명한다. 5개 party·3-of-5는 온프레미스 개요 p.7의 기본 구성이다. Keyshares store의 엔진이나 일반 서비스 DB와의 공유 여부는 확정하지 않았으며, 엔진·party별 접근·복제·복구 요건은 [담당자 질문 Q03](04-vendor-questions.md)에 남겼다.
 
 API와 운영 화면은 별도 VIP·호스트로 진입 경로를 나누고, 방화벽·Istio 정책·기관 IdP로 접근을 제한한다. L4만으로 사용자 인증이나 URL별 접근 제어를 수행하는 구성은 아니다. VIP 수와 ingress 배포 방식은 벤더의 호스트 구성과 맞춘다.
 
@@ -110,7 +129,7 @@ API와 운영 화면은 별도 VIP·호스트로 진입 경로를 나누고, 방
 | Kafka KRaft controller | 3 | 2 vCPU / 4 GiB | 랙마다 1개, broker와 별도 VM |
 | Redis + Sentinel | 3 | 4 vCPU / 16 GiB | 랙마다 1개. primary 1 + replica 2, Sentinel은 각 VM에 1개 |
 
-표의 합계는 **36개 VM 또는 노드, 176 vCPU, 648 GiB 메모리**다. 물리 서버 수나 구매 수량을 뜻하지 않는다. **Keyshares store 전용 자원, 레지스트리, 백업, 모니터링, 사내 DNS·PKI·시간 서버, 보조센터는 합계에 포함하지 않았다.** 기존 공용 인프라를 사용할지 별도 증설할지 실사해 더한다.
+표의 합계는 **36개 VM 또는 노드, 176 vCPU, 648 GiB 메모리**다. 물리 서버 수나 구매 수량을 뜻하지 않는다. **DAW-CORE·DAWBC·위탁 체인 노드, Keyshares store 전용 자원, 레지스트리, 백업, 모니터링, 사내 DNS·PKI·시간 서버, 보조센터는 합계에 포함하지 않았다.** 기존 공용 인프라를 사용할지 별도 증설할지 실사해 더한다.
 
 각 replica를 같은 물리 호스트나 단일 스토리지 장비에 몰아두지 않는다. 특히 MPC worker 5개와 Vault 노드 5개는 각각 서로 다른 물리 호스트에 배치한다. VM 이름만 다르게 만드는 것으로 장애·권한 경계가 분리되지는 않는다.
 
@@ -123,6 +142,29 @@ API와 운영 화면은 별도 VIP·호스트로 진입 경로를 나누고, 방
 이 배치는 한 랙을 잃어도 Vault Raft와 MPC에 각각 3개 이상이 남도록 한 것이다. **전체 서비스의 무중단을 보장하는 수치는 아니다.** ingress·DB·저장소·네트워크도 함께 살아 있어야 한다. Vault의 5노드·3개 장애 구역 근거는 [HashiCorp Raft 참조 구성](https://docs.hashicorp.com/vault/tutorials/day-one-raft/raft-reference-architecture), Kubernetes control plane 3개 구성은 [Kubernetes HA 가이드](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/)를 참고했다.
 
 ## 4. Vault와 키 구성
+
+Baseline은 Vault KV·Transit·PKI를 사용한다. Vault Agent injector는 Pod에 Agent를 주입하고, Agent는 허용된 시크릿을 가져온다. 서비스 신원에는 Vault Kubernetes 인증과 서비스별 role을 사용한다. Vault 서버의 배치와 잠금 해제 방식은 실제 구축 환경에 맞춰 확정한다. ([배포 백엔드 비교](02-deployment-backends.md) 2쪽)
+
+```mermaid
+flowchart TB
+    subgraph BASELINE["Baseline · 시크릿과 키 관리"]
+        direction TB
+        subgraph POD["Kubernetes · 서비스 Pod"]
+            SERVICE["Dfns 서비스<br/>서비스별 ServiceAccount"]
+            AGENT["Vault Agent<br/>injector로 주입"]
+            AGENT -->|"시크릿 전달"| SERVICE
+        end
+        VAULT["고객 운영 Vault<br/>KV · Transit · PKI<br/>Kubernetes 인증 · role · policy"]
+        AGENT -->|"인증 · 허용된 KV 조회"| VAULT
+        SERVICE -->|"허용된 암호화 · 인증서 기능"| VAULT
+    end
+    classDef trust fill:#eff6ff,stroke:#2563eb,color:#1e3a8a
+    style BASELINE fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style POD fill:#fff,stroke:#64748b,color:#0f172a
+    class VAULT trust
+```
+
+서비스에서 Vault로 향하는 선은 기능 의존을 나타낸다. 각 서비스와 발급 구성요소는 허용된 기능만 사용하며, 실제 호출 주체·주입 방식·권한은 배포 패키지로 확정한다. Vault 상자는 역할을 구분한 것으로, Kubernetes 내부·외부의 물리 배치 위치를 지정하지 않는다.
 
 ### 4.1 Vault 자체의 잠금 해제
 

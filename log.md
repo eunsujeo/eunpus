@@ -7863,3 +7863,50 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 반영: WaaS 도입·구축/Dfns/04-vendor-questions.md에 배치 환경과 프로필을 구분한 비교표, 사내 지원 경로·AWS 대비 계층별 변경·외부 Vault/DB/Keyshares 배치 및 복구 질문 3건 작성. 02·03 문서와 NEXT에서 연결.
 - 근거: 기존 Dfns 제공 자료와 사내 설계안 대조. AWS Baseline과 사내 Baseline의 역할은 유사하나 동일 설치 패키지 사용·L1만 교체 가능 여부는 미확정. 사내 배치라는 사용자 선택 유지.
 - 상태: 질의 초안 작성만 완료. 담당자 발송·답변 수신 없음.
+
+## Stage 182 (2026-09-14) — AWS Baseline 구성도 추가
+- 요청: Baseline 구성도 작성. 직전 AWS 비교 논의에 맞춰 AWS에서 Baseline을 사용하는 전체 플랫폼을 시각화.
+- 반영: WaaS 도입·구축/Dfns/05-baseline-aws-diagram.md 신규 카드. 서비스·관리형 데이터·MPC 흐름과 Vault·인증·키 관리 흐름을 Mermaid 2개로 분리. AWS KMS auto-unseal과 Vault Transit 역할 구분, 사내 Baseline과의 대체 요소 비교표 포함. 00~04 관련 문서에서 연결.
+- 근거: 기존 Dfns 온프레미스 개요 p.5~8·12~13, 배포 백엔드 비교 p.2~3. Keyshares 저장 엔진·상세 배치, Vault의 EKS 외부 배치 지원은 미확정으로 유지. AWS로 설계 대상을 변경하거나 실제 배포하지 않음.
+- 검증: 번들 Mermaid의 두 그림 렌더링과 화면 확인, Dfns 문서 링크·Markdown·새 카드 등록, git diff 공백 검사 통과.
+
+## Stage 183 (2026-09-14) — Baseline 전용 구성도로 범위 정정
+- 사용자 정정: AWS 구성도는 기존 문서에 있으므로 Baseline 자체의 구성만 요청한 것임.
+- 반영: 직전 추가한 05-baseline-aws-diagram.md를 05-baseline-diagram.md로 바꾸고 제목을 “Dfns Baseline 구성도”로 수정. EKS·Aurora·MSK·ElastiCache·AWS KMS와 클라우드 비교표를 제거하고 Kubernetes·PostgreSQL·Kafka·Redis·Vault·MPC의 논리 관계로 다시 작성. 기존 00 문서의 AWS 그림은 보존.
+- 연결: 00·02·03·04의 구성도 링크와 설명 갱신. Vault 배치·잠금 해제·노드 수는 사내 설계안으로 연결하고 제품 지원 확정과 구분.
+- 검증: 두 Mermaid 그림 렌더링·화면 확인, Dfns 문서 링크·Markdown·카드 제목/경로 확인 통과.
+
+## Stage 184 (2026-09-14) — 노드 운영 위탁·Dfns Baseline·DAWBC·DAW-CORE 통합 설계
+- 요청: 노드 운영업체 + Dfns Baseline + DAWBC + DAW-CORE 조합의 구축 방식 검토.
+- 반영: 06-daw-integration-design.md 신규. 요청/이벤트 경로, 네 계층 책임, 노드 운영과 플랫폼 운영 분리, DAWBC Dfns 어댑터 범위, 입출금·멱등·대사, 업체 RPC 계약, 단계별 PoC·출시 기준. 03·05·NEXT 연결과 04 담당자 질문 Q04·Q05 추가.
+- 근거: 기존 DAWBC 구조·이벤트/원장 경계, Dfns 제공 개요의 API·인덱싱·네트워크별 RPC 요건, Dfns 공식 FAQ·멱등·Backend SDK·입금 감지 문서(2026-09-14 확인). 공개 API 기능과 사내 릴리스 지원 확정을 구분.
+- 선택: 일반 송금은 Dfns 전송 API를 통한 거래 구성·서명·전파, DAWBC는 업무 의도·매핑·상태·멱등·대사 담당. Sign 전용/직접 전파를 기본으로 확대하지 않음. Fireblocks 전용 기능은 어댑터 지원 대조 필요.
+- 미확정: 사내 전체 플랫폼 지원, 위탁 노드 설치 위치·소유/운영 계약, 지정 RPC로 전체 기능 실행 가능 여부·체인별 명세, Dfns 릴리스 API/이벤트·승인 계약. 실제 인프라·어댑터 구현·업체 발송 없음.
+- 검증: 통합 Mermaid 렌더링·화면 확인, Dfns 문서 링크·Markdown·카드 등록 및 공백 검사.
+
+## Stage 185 (2026-09-14) — Dfns Baseline·DAW 설계 착수와 1차 범위 확정
+- 요청: 시니어 지갑 개발 관점에서 설계부터 착수. 사용자 답변으로 1차 범위 EVM 체인 1개 + ERC-20 자산 1개 확정(가스용 네이티브 자산 포함).
+- 산출물: Dfns/07-design-plan.md(설계 단계·결정 목록·검증 기준·기존 계약 대조), 08-core-contract-design.md(계정·주소·자산·실행 의도/시도/벤더 ID·응답 불명·이벤트·확정/원장), 09-node-rpc-proposal.md(고객이 제안하는 RPC 연결·권한·메서드 후보·장애 전환·SLO·인수 시험).
+- 사용자 설명 반영: Dfns API는 고객 환경에 설치된 API 서버임을 06 본문·그림에 명시. RPC 계약은 고객이 먼저 제안하고 Dfns 호환성·업체 제공 조건으로 확정. 04·05·06·NEXT 연결 갱신.
+- 현행 계약 검토: OpenAPI의 금액 decimal 문자열, 필수 eventId/amount, DCCP FINALIZED의 reorg 무효화, 공개 txId의 벤더 ID 의미, sweep-events 포함을 S3 대조 대상으로 기록. 기존 API/구현은 변경하지 않음.
+- 기술 근거: 기존 DAWBC OpenAPI·인터페이스·감지/확정 문서, Ethereum JSON-RPC·EIP-1898 확인(2026-09-14). RPC 메서드와 운영 수치는 고객 제안이며 Dfns 확정 요구 목록으로 표시하지 않음.
+- 검증: Dfns Markdown·상대 링크 84건·새 카드 3건, Mermaid 2개 렌더링·화면 확인, 전체 180문서 빌드·공백 검사 통과.
+- 다음: 구체 체인·자산·물량/운영 모델 입력과 Dfns API 샘플을 바탕으로 S3 대응표·논리/물리 데이터 모델 상세화. 아직 인프라 생성·구현 저장소 수정·업체 발송·운영 시험 없음.
+
+## Stage 186 (2026-09-14) — 멀티체인·스테이블코인과 법정화폐 가스 대납 상세 설계
+- 요청: EVM·ERC-20 1차 검증을 유지하면서 향후 Base·Solana와 여러 스테이블코인을 지원하고, 사용자 네이티브 가스 잔액 대신 법정화폐 정산형 대납을 설계.
+- 산출물: Dfns/10-multichain-asset-design.md(자산 상품과 체인별 자산·지갑 모델·체인 참조·영속 제약), 11-fiat-gas-sponsorship.md(대납 구성도·실행 경로·견적/예약/예산·실패 비용·청구 대사), 12-dfns-api-mapping.md(기존 9개 인터페이스·공개 Dfns API·상태·이벤트 호환성).
+- 연결: 06·07·08의 범위·실행 주체·모델을 갱신하고 09에 Base/Solana RPC와 외부 대납 전파 경로 부록 추가. 04에 Q06 대납·법정화폐 정산, Q07 다중 체인·자산 질문 추가. NEXT 갱신.
+- 근거: Dfns Fee Sponsors·Create Wallet·Transfer/Get Transfer·Wallet Assets/History·SDK/Idempotency, ERC-4337 Paymasters, Solana fee abstraction·RPC·Token-2022 transfer fees 공식 자료(2026-09-14 확인). 고객 설계와 공개 기능, 사내 Baseline 지원 확정을 구분.
+- 미확정: 대납 자금 지불자 선택은 답변 대기. 외부업체가 네이티브 자산을 조달·지불하고 회사가 법정화폐 정산하는 제안 시나리오로 작성. Dfns 내장 대납만으로 법정화폐 선지급·청구를 제공한다고 간주하지 않음. 외부 relay/paymaster/fee payer와 사내 릴리스·지정 RPC 호환성은 검증 필요.
+- 검증: Dfns 문서 상대 링크 115건, Markdown 렌더링·신규 카드 3개, 구성도 2개 렌더링·화면 확인, 전체 183문서 빌드·공백 검사 통과. 실제 체인 인수 시험·인프라 생성·SDK 구현·업체 발송은 수행하지 않음.
+- 다음: 물리 DB·이벤트 스키마·전이/복구 명세를 상세화하고 지원 릴리스 및 대납업체 자료로 계약 검증.
+
+## Stage 187 (2026-09-14) — Dfns·DAW 문서 통합과 3차 리뷰
+- 요청: Dfns 13개 문서를 Dfns 5개 + DAW 구축 설계 4개로 정리하고 세 차례 리뷰·수정.
+- 구조: Dfns 제공 자료 3개 보존, 03 인프라에 05 Baseline 구성도 통합, 04 담당자 질문 유지. 새 DAW 구축 설계 묶음의 00 통합 구성/계획(기존 06·07), 01 계정/멀티체인/API/이벤트(08·10·12), 02 노드 RPC(09), 03 법정화폐 대납(11)으로 통합·이동. 중복 표·안내·링크 정리.
+- 1차 내용 리뷰: 사내 Baseline·멀티체인·대납 요구와 지원 미확정 경계 보존. 출금 흐름의 대납 예산/예약, 같은 송신 주소의 nonce 관리 주체, balancesOf의 관찰 잔액/업무 상태 차이, 36노드 합계 제외 범위 보완. 기존 OpenAPI의 금액·eventId/amount·벤더 txId·DCCP 의미 대조.
+- 2차 구조 리뷰: 활성 문서/NEXT의 구형 경로 제거, 상대 링크·앵커·새 폴더 공백 인코딩 검증. 비교 자료·질의·노드 문서의 중복 연결 정리, 질문 제목 범위 보완. 로컬 칸반 상태 보존 및 구성도 상태 키 통합, 중카테고리 순서 등록. 원본 PDF와 역사 로그 보존.
+- 3차 화면 리뷰: 실제 로컬 보드의 5개/4개 카드·통합 계약 문서 확인, Mermaid 7개 렌더링·화면 확인. 카드 요약에 노출되는 강조 기호와 그림의 단어 중간 줄바꿈 수정.
+- 최종 검증: 9문서 Markdown, 상대 링크/앵커 75건(앱 문서 링크 73건), 구형 경로 없음, 179문서 빌드, 공백 검사 통과. 검토 기록·변경 전 사본·스크린샷은 _workspace/dfns-doc-consolidation/에 보관.
+- 범위: 문서·분류 정리만 수행. 인프라·SDK·기존 공개 API 구현 변경, 업체 발송, 커밋·푸시·배포 없음. 사내 릴리스·외부 대납 호환성·운영 주체는 기존 미확정 상태 유지.

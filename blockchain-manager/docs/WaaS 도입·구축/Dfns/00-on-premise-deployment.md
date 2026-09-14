@@ -108,6 +108,8 @@ flowchart LR
 
 ### AWS 구성도 — 선택 항목과 두 서명 방식
 
+Vault와 MPC를 사용하는 Baseline의 구성요소 관계는 [Baseline 구성도](03-baseline-datacenter-design.md#2-전체-구성)를 참고한다.
+
 아래는 p.5~8의 구성요소를 AWS 서비스 이름에 맞춰 정리한 Full on-premise 구조다. **API와 대시보드도 고객 AWS 계정에서 실행된다.** 서명 계층은 MPC 또는 HSM 중 하나를 선택하며, Governance Engine은 별도의 선택 구성요소다.
 
 ```mermaid

@@ -36,13 +36,17 @@
 (DB 집계 HEALTHY 만으로는 중지된 프로세스를 걸러내지 못함). 문서는 반영 완료 — svc 의
 `bcm-admin/.../AdminReadService.kt` `preparationChecks` (`ready = webhook?.state == "HEALTHY"`) 구현 변경이 남았고, 이는 svc 세션 몫.
 
-### 2.1c Dfns Baseline — 사내 데이터센터 전체 플랫폼 설계 (2026-09-14)
+### 2.1c Dfns Baseline·DAW 구축 설계 (2026-09-14)
 
-- 사용자 선택: 사내 데이터센터에 전체 플랫폼 배치. AWS 전체 배치나 Hybrid MPC가 아님.
-- 설계안: `blockchain-manager/docs/WaaS 도입·구축/Dfns/03-baseline-datacenter-design.md`. Kubernetes·외부 Vault 5노드·자체 운영 PG/Kafka/Redis·MPC 5-party / 3-of-5, 핵심 노드 36개 자원 예약안.
-- 미확정: 비AWS 지원 설치 번들, 사내 arm64 자원 또는 지원 amd64 이미지, 외부 Vault·Shamir 연결, Keyshares store 엔진·배치·백업, Sentinel/HA endpoint 지원, 부하 기반 최종 sizing.
-- 담당자 질의 초안: `blockchain-manager/docs/WaaS 도입·구축/Dfns/04-vendor-questions.md`. 사내 전체 플랫폼 지원, AWS Baseline 대비 L1~L4 변경 범위, 외부 Vault·DB·Keyshares 배치와 복구 요건. 아직 미발송·미답변.
-- 다음 단계: 사내 가상화·CPU·장애 구역·CIDR·PKI 현황과 Dfns 배포 계약을 맞춘 뒤 IaC 구현. 현재 실장비·VM·클러스터 생성 없음.
+- 사용자 전제: 고객 소유 노드의 운영 위탁 + 사내 데이터센터의 Dfns 전체 플랫폼 Baseline + DAWBC + DAW-CORE. AWS 배치로 변경하지 않음.
+- 문서 구조: `blockchain-manager/docs/WaaS 도입·구축/Dfns/` 5개(제공 자료 3개·인프라/구성도·담당자 질문), 같은 카테고리의 `DAW 구축 설계/` 4개(통합 구성/계획·핵심 계약·노드 연결·법정화폐 대납). 기존 13개를 9개로 통합. 이후 상세 내용은 이 문서들에 보강.
+- 인프라: `Dfns/03-baseline-datacenter-design.md`. Kubernetes·외부 Vault 5노드·PG/Kafka/Redis·MPC 5-party / 3-of-5, 핵심 노드 36개 자원 예약안. 전체 DAW 플랫폼/체인 노드 총량이 아님.
+- 지원 확인: `Dfns/04-vendor-questions.md` Q01~Q07. 비AWS 번들·CPU·외부 Vault/DB·Keyshares·지정 RPC·사내 API·대납·다중 자산. 아직 미발송·미답변.
+- 설계 진입점: `DAW 구축 설계/00-integration-plan.md`. 운영 책임·결정·S0~S6 단계. 1차 검증은 사용자 선택 EVM 체인 1개 + ERC-20 자산 1개. 구체 네트워크·토큰은 후속 확정.
+- 핵심 계약: `DAW 구축 설계/01-core-contracts.md`. Base·Solana 포함 체인별 자산·계정·주소·의도/시도·멱등·공개 API·Dfns 대응·이벤트·확정·영속 제약. 기존 OpenAPI의 금액·eventId/amount·DCCP FINALIZED·벤더 txId 의미 보존.
+- 노드: `DAW 구축 설계/02-node-rpc-spec.md`. 고객이 명세를 제안, Dfns·업체가 호환성과 제공 조건 확인. EVM·Base·Solana와 외부 대납 전파 경로 포함.
+- 대납: `DAW 구축 설계/03-fiat-gas-sponsorship.md`. 사용자 네이티브 잔액 없는 법정화폐 정산형 대납. 지불자 선택은 답변 대기. 외부업체 조달·지불 + 회사 법정화폐 정산을 제안 시나리오로 작성했으며 사용자 확정으로 취급하지 않음. Dfns 내장 기능만으로 법정화폐 청구·외부 대납 호환성이 확인된 것은 아님.
+- 다음: S3 물리 DB·이벤트 스키마·상태 전이 상세화와 지원 릴리스/대납 계약 검증. 기존 공개 API·구현 저장소·인프라는 변경하지 않음.
 
 ### 2.2 wiki: 컨퍼런스 세션 자료 promote 대기 (Stage 164–165 후속)
 
