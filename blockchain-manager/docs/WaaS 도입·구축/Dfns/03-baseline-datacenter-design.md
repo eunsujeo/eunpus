@@ -32,13 +32,13 @@ AWS에서도 Baseline을 사용하므로 플랫폼 역할은 유사하지만, �
 
 ## 2. 전체 구성
 
-먼저 DAW-CORE·DAWBC·Dfns·체인 노드의 관계를 보면 다음과 같다. **DAWBC는 우리가 개발하고, Dfns API 서버와 MPC signer는 Dfns가 제공하는 소프트웨어를 고객 환경에 설치하는 설계다.** 노드도 고객 소유이며 운영을 업체에 맡긴다.
+먼저 DAW-CORE·DAWBC·Dfns·체인 노드의 관계를 보면 다음과 같다. **Dfns API 서버와 MPC signer는 Dfns가 제공하는 소프트웨어를 고객 환경에 설치하는 설계다.** 노드도 고객 소유이며 운영을 업체에 맡긴다.
 
 ```mermaid
 flowchart TB
     subgraph CUSTOMER["고객 소유 환경"]
         CORE["DAW-CORE"]
-        BC["DAWBC · 우리가 개발"]
+        BC["DAWBC"]
         API["Dfns API 서버 · Dfns 제공 소프트웨어"]
         SIGN["Dfns MPC signer · 지갑 서명"]
         NODE["고객 소유 블록체인 노드 · 업체가 운영"]
