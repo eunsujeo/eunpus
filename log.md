@@ -8014,3 +8014,27 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 반영: 사내 구성안의 배치 구역 앞에 서비스 연결도 추가. 내부 L4·Istio·API·Coordinator·Relay·MPC, 별도 Vault/데이터 VM, Shamir 담당자·독립 백업·위탁 RPC 연결 표시. 미확정 Keyshares 저장소 위치와 외부 endpoint 지원 조건 유지.
 - 검증: 179문서 빌드·공백 검사, 로컬 Baseline Mermaid 6개 렌더링과 핵심 라벨 확인. Dfns 선택 HTML은 4문서·Mermaid 12개로 갱신. `_workspace/dfns-consolidation/datacenter-services.png` 시각 확인.
 - 상태: 문서 반영 완료. 커밋·푸시·배포 없음.
+
+
+## Stage 202 (2026-09-15) — 사내 Baseline 구성도 가독성 개선
+- 요청: 캡처에서 지적한 긴 연결선·작은 글씨·연결 오해를 수정.
+- 반영: 서비스 연결을 Mermaid 고정 열 배치로 변경. 중앙에 API·서명 작업, 왼쪽에 각 데이터 서비스와 외부 연결, 오른쪽에 Vault·Keyshares를 표시. 잠금 해제·백업은 하단 별도 그림으로 분리하고 같은 자원의 운영 관점임을 명시.
+- 의미 보존: 데이터 서비스별 독립 연결, signer의 Relay pull 및 Vault/Keyshares 개별 접근, 외부 VM 제안과 벤더 확인 조건 유지. 자원 수량·배포 전제 변경 없음.
+- 검증: 179문서 빌드·공백 검사 통과. 앱과 Dfns 선택 HTML에서 Baseline 7개·전체 13개 Mermaid 렌더링 확인. 브라우저 오류 없음. 새 서비스 그림의 SVG 크기와 줄 간격을 일치시켜 내보내기에서 두 번째 줄이 잘리는 문제 수정. 검증 화면·HTML은 `_workspace/dfns-consolidation/`에 보관.
+- 상태: 문서 수정 완료. 커밋·푸시·배포 없음.
+
+
+## Stage 203 (2026-09-15) — 사내 Baseline 구성도를 계층별로 구분
+- 요청: 구성 요소를 layer별로 묶기.
+- 반영: 진입·애플리케이션·서명·데이터·키 관리·외부 연동의 경계 상자와 계층 제목 추가. 하단 잠금 해제·백업 그림은 운영 계층으로 묶음. 역할별 구분이며 Dfns L1~L4 배포 단계 또는 물리 배치 경계가 아님을 명시.
+- 연결 의미: 데이터 계층의 각 서비스에 개별 연결, API의 Vault 접근, signer의 Keyshares/Vault 접근 대상을 간선·본문에 표시. signer가 Relay에 연결하는 방향과 배치 미확정 조건 유지.
+- 검증: 179문서 빌드·공백 검사, 앱과 선택 HTML의 Baseline 7개 및 전체 13개 Mermaid 렌더링 확인. 브라우저 오류 없음, 서비스 그림의 앱·내보내기 SVG 크기 일치. `_workspace/dfns-consolidation/`에 계층별 화면 기록.
+- 상태: 문서 수정 완료. 커밋·푸시·배포 없음.
+
+
+## Stage 204 (2026-09-15) — Baseline 나머지 구성도에 계층 구분 적용
+- 요청: 다른 구성도도 layer별로 묶기.
+- 범위: 같은 Baseline 문서의 공통 업무 연결·플랫폼 내부·Vault·사내 배치 구역·AWS 구성도. 업무·진입·애플리케이션·서명·데이터·키 관리·외부 연동·운영 중 해당 역할을 경계 상자로 표시.
+- AWS: 사내안과 같은 계층 기준 적용. KMS auto-unseal·MSK SCRAM 등록·S3 백업을 별도 운영 그림으로 분리. AWS 계정·VPC 범위와 EKS private worker, 독립 백업 계정·Keyshares 배치 미확정 조건은 본문에 유지.
+- 검증: 자원·인증·복구를 포함한 모든 표와 frontmatter 원문 일치. 179문서 빌드·공백 검사, 앱·선택 HTML에서 Baseline 8개·Dfns 전체 14개 Mermaid 확인. 8개 그림의 SVG 크기 모두 일치·브라우저 오류 없음. 겹치던 긴 계층 제목 수정 후 화면 재확인.
+- 상태: 문서 반영 완료. 커밋·푸시·배포 없음.

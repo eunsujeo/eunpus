@@ -47,7 +47,7 @@
 
 ### 2.1c Dfns Baseline·DAW 구축 설계 (2026-09-15)
 
-- 사내 연결 구성도: Baseline 사내 구성안에 AWS 그림과 같은 관점의 상세 연결도 추가. 별도 Vault/데이터 VM·MPC pull·Shamir·독립 백업과 미확정 Keyshares 배치를 구분. 앱 SVG 및 선택 HTML 확인, 스크린샷 `_workspace/dfns-consolidation/datacenter-services.png`.
+- Baseline 계층별 구성도: 공통 업무 연결·내부 서비스·Vault·사내 배치 구역·사내/AWS 서비스·운영 그림을 역할별 계층으로 통일. 계층과 Dfns 배포 단계·물리 구역을 구분. AWS 자동 잠금 해제·MSK 등록·백업은 운영 그림으로 분리. 앱·선택 HTML에서 Baseline 8개·Dfns 전체 14개 렌더링 확인. 화면은 `_workspace/dfns-consolidation/export-all-layers-0.png`~`7.png`.
 - 중복 정리: Dfns 6→4문서, 전체 179문서. 프로필 비교는 개요 한곳, Baseline 공통 연결·Vault는 한곳에 두고 환경별 자원·인증·복구 절차 보존. 기존 대표 파일 경로를 유지해 해당 카드의 상태 매핑 보존. 신규 배포·인프라 실행 없음.
 
 - AWS Baseline 추가안: `Dfns/03-baseline-datacenter-design.md`의 AWS 구성안. EKS·Aurora·MSK·ElastiCache와 Vault 유지, KMS auto-unseal·SCRAM 자격증명·3 AZ·MPC·백업·복구·인수 조건 정리. 16 EC2 / 88 vCPU / 352 GiB는 worker 예약 제안이며 관리형 서비스 등 제외. AWS-Native와 설치 장소를 구분하도록 개요·백엔드 비교·사내 설계·질의 연결. 기존 사내 설계 채택 전제 유지, AWS 리소스 생성 없음.

@@ -25,22 +25,38 @@ Vault 기반 Dfns Baseline의 공통 서비스·키 관리와 **사내 데이터
 
 ## 공통 연결과 서비스
 
+이 문서의 계층은 역할별 묶음이다. Dfns의 L1~L4 배포 단계나 물리 네트워크 경계를 뜻하지 않으며, 각 그림에서는 필요한 계층만 표시한다.
+
 먼저 DAW-CORE·DAWBC·Dfns·체인 노드의 관계를 보면 다음과 같다. **Dfns API 서버와 MPC signer는 Dfns가 제공하는 소프트웨어를 고객 환경에 설치하는 설계다.** 노드도 고객 소유이며 운영을 업체에 맡긴다.
 
 ```mermaid
+%%{init: {"themeCSS": "foreignObject { line-height: 1.5; }"}}%%
 flowchart TB
     subgraph CUSTOMER["고객 소유 환경"]
-        CORE["DAW-CORE"]
-        BC["DAWBC"]
-        API["Dfns API 서버 · Dfns 제공 소프트웨어"]
-        SIGN["Dfns MPC signer · 지갑 서명"]
-        NODE["고객 소유 블록체인 노드 · 업체가 운영"]
-
-        CORE --> BC
+        subgraph BUSINESS["업무 계층"]
+            CORE["DAW-CORE"]
+            BC["DAWBC"]
+            CORE --> BC
+        end
+        subgraph APPLICATION["애플리케이션 계층"]
+            API["Dfns API 서버<br/>Dfns 제공 소프트웨어"]
+        end
+        subgraph SIGNING["서명 계층"]
+            SIGN["Dfns MPC signer<br/>지갑 서명"]
+        end
+        subgraph EXTERNAL["외부 연동 계층"]
+            NODE["고객 소유 블록체인 노드<br/>업체가 운영"]
+        end
         BC -->|"내부 API 호출"| API
         API -->|"서명 요청 · 논리 흐름"| SIGN
         API -->|"RPC 조회·거래 전송"| NODE
     end
+
+    style CUSTOMER fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style BUSINESS fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style APPLICATION fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style SIGNING fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style EXTERNAL fill:#f8fafc,stroke:#94a3b8,color:#0f172a
 ```
 
 고객 소유 환경은 소유 범위를 나타낸다. 노드를 AWS·사내·업체 시설 중 어디에 설치할지는 운영 계약에서 확정한다. API에서 signer와 노드로 향하는 화살표는 Dfns 내부 구성요소를 생략한 **논리 흐름**이다. MPC Coordinator·Delivery Relay·Indexer·Worker 등의 실제 연결은 아래 상세 구성에서 다룬다. 일반 전송을 기준으로 한 그림이며, 외부 가스 대납 경로는 [법정화폐 가스 대납](../DAW%20구축%20설계/03-fiat-gas-sponsorship.md)에서 별도로 다룬다.
@@ -54,37 +70,49 @@ DAWBC·DAW-CORE와 위탁 운영 노드까지 연결하는 업무 흐름과 운�
 API·대시보드·정책·MPC signer는 Kubernetes에서 실행한다. 데이터 서비스는 PostgreSQL·Kafka·Redis로 구성한다. **PostgreSQL·Redis는 비밀번호, Kafka는 SCRAM으로 인증**한다. Vault의 시크릿 전달·암호화·인증서 기능은 다음 절에서 설명한다.
 
 ```mermaid
+%%{init: {"themeCSS": "foreignObject { line-height: 1.5; }"}}%%
 flowchart TB
     CLIENT["고객 서비스 · 운영자"]
-    subgraph ENV["고객 전용 운영 환경 · Baseline"]
-        LB["서비스 진입점 · 로드밸런서"]
-        subgraph K8S["Kubernetes · Dfns 플랫폼"]
-            INGRESS["Istio Ingress · TLS"]
-            APP["API · Dashboard · 정책<br/>Indexer · Worker"]
+    subgraph ENV["고객 전용 환경 · Baseline"]
+        subgraph ENTRY["진입 계층"]
+            LB["서비스 진입점 · 로드밸런서"]
+            INGRESS["Istio Ingress · TLS<br/>Kubernetes"]
+            LB --> INGRESS
+        end
+        subgraph APPLICATION["애플리케이션 계층"]
+            APP["API · Dashboard · 정책<br/>Indexer · Worker<br/>Kubernetes"]
+        end
+        subgraph SIGNING["서명 계층 · Kubernetes"]
             COORD["MPC Coordinator<br/>서명 작업 조율"]
             RELAY["Delivery Relay<br/>작업 · 메시지 전달"]
             SIGN["MPC signer 5개 party<br/>서명 임계값 3"]
-            INGRESS --> APP
-            APP -->|"승인된 서명 요청"| COORD
             COORD -->|"작업 전달 · 논리 관계"| RELAY
             SIGN -->|"mTLS · 작업 가져오기"| RELAY
         end
-        DATA["데이터 서비스<br/>PostgreSQL · 서비스 데이터<br/>Kafka · 이벤트<br/>Redis · 캐시"]
-        KEYS["MPC Keyshares store<br/>암호화된 키 조각<br/>엔진 · 상세 배치 확인 필요"]
-        LB --> INGRESS
-        APP -->|"비밀번호 · SCRAM"| DATA
+        subgraph DATA["데이터 계층"]
+            STORES["PostgreSQL · 서비스 데이터<br/>Kafka · 이벤트<br/>Redis · 캐시"]
+        end
+        subgraph KEYMGMT["키 관리 계층 · 키 조각 저장"]
+            KEYS["MPC Keyshares store<br/>암호화된 키 조각<br/>엔진 · 상세 배치 확인 필요"]
+        end
+        INGRESS --> APP
+        APP -->|"승인된 서명 요청"| COORD
+        APP -->|"각 서비스에 개별 연결<br/>비밀번호 · SCRAM"| STORES
         SIGN -->|"키 조각 읽기 · 쓰기"| KEYS
     end
     CLIENT -->|"HTTPS"| LB
-    classDef signing fill:#ecfdf5,stroke:#047857,color:#064e3b
-    classDef data fill:#eff6ff,stroke:#2563eb,color:#1e3a8a
     classDef pending fill:#fffbeb,stroke:#b45309,color:#78350f,stroke-dasharray:5 5
-    style ENV fill:#f8fafc,stroke:#94a3b8,color:#0f172a
-    style K8S fill:#fff,stroke:#64748b,color:#0f172a
-    class SIGN signing
-    class DATA data
     class KEYS pending
+
+    style ENV fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style ENTRY fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style APPLICATION fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style SIGNING fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style DATA fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style KEYMGMT fill:#f8fafc,stroke:#94a3b8,color:#0f172a
 ```
+
+Vault의 키 관리 기능은 다음 그림에서 따로 다룬다. 위 키 관리 계층에는 키 조각 저장소만 표시했다.
 
 Coordinator에서 Relay로 이어지는 선은 작업 전달의 논리 관계다. Signer는 Relay에 mTLS로 연결해 작업을 가져오며, 각자의 키 조각으로 공동 서명한다. 5개 party·3-of-5는 온프레미스 개요 p.7의 기본 구성이다. Keyshares store의 엔진이나 일반 서비스 DB와의 공유 여부는 확정하지 않았으며, 엔진·party별 접근·복제·복구 요건은 [담당자 질문 Q03](04-vendor-questions.md)에 남겼다.
 
@@ -104,15 +132,18 @@ API와 운영 화면은 별도 VIP·호스트로 진입 경로를 나누고, 방
 Baseline은 Vault KV·Transit·PKI를 사용한다. Vault Agent injector는 Pod에 Agent를 주입하고, Agent는 허용된 시크릿을 가져온다. 서비스 신원에는 Vault Kubernetes 인증과 서비스별 role을 사용한다. Vault 서버의 배치와 잠금 해제 방식은 실제 구축 환경에 맞춰 확정한다. ([배포 프로필 비교](00-on-premise-deployment.md#baseline과-aws-native-선택))
 
 ```mermaid
+%%{init: {"themeCSS": "foreignObject { line-height: 1.5; }"}}%%
 flowchart TB
     subgraph BASELINE["Baseline · 시크릿과 키 관리"]
         direction TB
-        subgraph POD["Kubernetes · 서비스 Pod"]
-            SERVICE["Dfns 서비스<br/>서비스별 ServiceAccount"]
+        subgraph POD["서비스 실행 계층"]
+            SERVICE["Dfns 서비스 · Kubernetes Pod<br/>서비스별 ServiceAccount"]
             AGENT["Vault Agent<br/>injector로 주입"]
             AGENT -->|"시크릿 전달"| SERVICE
         end
+        subgraph KEYMGMT["키 관리 계층"]
         VAULT["고객 운영 Vault<br/>KV · Transit · PKI<br/>Kubernetes 인증 · role · policy"]
+        end
         AGENT -->|"인증 · 허용된 KV 조회"| VAULT
         SERVICE -->|"허용된 암호화 · 인증서 기능"| VAULT
     end
@@ -120,9 +151,10 @@ flowchart TB
     style BASELINE fill:#f8fafc,stroke:#94a3b8,color:#0f172a
     style POD fill:#fff,stroke:#64748b,color:#0f172a
     class VAULT trust
+    style KEYMGMT fill:#f8fafc,stroke:#94a3b8,color:#0f172a
 ```
 
-서비스에서 Vault로 향하는 선은 기능 의존을 나타낸다. 각 서비스와 발급 구성요소는 허용된 기능만 사용하며, 실제 호출 주체·주입 방식·권한은 배포 패키지로 확정한다. Vault 상자는 역할을 구분한 것으로, Kubernetes 내부·외부의 물리 배치 위치를 지정하지 않는다.
+서비스에서 Vault로 향하는 선은 기능 의존을 나타낸다. 각 서비스와 발급 구성요소는 허용된 기능만 사용하며, 실제 호출 주체·주입 방식·권한은 배포 패키지로 확정한다. 서비스 실행 계층은 Vault를 사용하는 Pod의 역할을 묶은 것으로, 애플리케이션·서명 계층 중 허용된 서비스에 해당한다. Vault 상자는 역할을 구분한 것으로, Kubernetes 내부·외부의 물리 배치 위치를 지정하지 않는다.
 
 ### Vault 안의 역할
 
@@ -170,71 +202,123 @@ AWS에서도 Baseline을 사용하므로 플랫폼 역할은 유사하지만, �
 
 ### 사내 서비스와 플랫폼의 연결
 
-AWS 구성도와 같은 관점에서 진입점·애플리케이션·서명·데이터·키 관리·백업의 연결을 보여 준다. 앱과 MPC는 Kubernetes에, Vault·PostgreSQL·Kafka·Redis는 각각 별도 VM에 배치하는 기존 제안이다. 실선은 서비스 연결 또는 운영 작업, 점선은 백업 경로이며 모든 내부 통신을 나열한 그림은 아니다.
+진입·애플리케이션·서명·데이터·키 관리·외부 연동을 **역할별 계층**으로 묶었다. 잠금 해제·백업은 다음 그림의 운영 계층에 모았다. 이 구분은 Dfns의 L1~L4 배포 단계나 물리 네트워크 구역을 뜻하지 않는다.
+
+사내 주센터의 랙 A·B·C에 분산하는 기존 제안이다. 앱과 MPC는 Kubernetes에, Vault·PostgreSQL·Kafka·Redis는 각각 별도 VM에 배치한다. Keyshares store와 위탁 노드의 실제 설치 장소는 별도 확인하며, 계층 상자 안에 함께 있다고 같은 서버에 배치하는 것은 아니다.
+
+```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 28, "rankSpacing": 45, "curve": "linear"}, "themeCSS": "foreignObject { line-height: 1.5; }"}}%%
+flowchart TB
+    CLIENT["DAWBC · 허용된 운영자"]
+    subgraph ENTRY["진입 계층"]
+        LB["내부 L4 · 이중화<br/>API · 운영 화면 접근 분리"]
+        INGRESS["Istio Ingress · TLS<br/>Kubernetes"]
+        LB --> INGRESS
+    end
+    subgraph APPLICATION["애플리케이션 계층"]
+        APP["Dfns API · 정책 · Dashboard<br/>Indexer · Worker<br/>Kubernetes"]
+    end
+    subgraph SIGNING["서명 계층 · Kubernetes"]
+        COORD["MPC Coordinator"]
+        RELAY["Delivery Relay"]
+        SIGN["MPC signer · 5개 party<br/>3-of-5 · 전용 노드"]
+        COORD -->|"작업 전달 · 논리 관계"| RELAY
+        SIGN -->|"mTLS · 작업 가져오기"| RELAY
+    end
+    subgraph DATA["데이터 계층 · 각각 별도 VM"]
+        DB["PostgreSQL 3 · Patroni<br/>전용 etcd 3"]
+        KAFKA["Kafka broker 3<br/>KRaft controller 3"]
+        CACHE["Redis 3 · Sentinel 3"]
+    end
+    subgraph KEYMGMT["키 관리 계층"]
+        KEYS["MPC Keyshares store<br/>party별 접근 분리<br/>배치 미확정"]
+        VAULT["Vault 5노드 · Raft · 별도 VM<br/>KV · Transit · PKI"]
+    end
+    subgraph EXTERNAL["외부 연동 계층"]
+        OUT["통제된 외부 연결"]
+        RPC["위탁 노드 RPC · 웹훅 목적지<br/>설치 장소 별도 확인"]
+        OUT --> RPC
+    end
+    CLIENT -->|"사설 경로 · HTTPS"| LB
+    INGRESS --> APP
+    APP -->|"승인된 작업"| COORD
+    APP -->|"각 서비스에 개별 연결"| DATA
+    APP --> OUT
+    APP -->|"Vault 인증 · 허용 기능"| KEYMGMT
+    SIGN -->|"Keyshares 읽기·쓰기<br/>Vault 키 보호·인증서"| KEYMGMT
+    classDef runtime fill:#eff6ff,stroke:#2563eb,color:#1e3a8a
+    classDef data fill:#ecfdf5,stroke:#047857,color:#064e3b
+    classDef pending fill:#fffbeb,stroke:#b45309,color:#78350f,stroke-dasharray:5 5
+    class INGRESS,APP,COORD,RELAY,SIGN runtime
+    class DB,KAFKA,CACHE,VAULT data
+    class KEYS pending
+    style ENTRY fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style APPLICATION fill:#eff6ff,stroke:#93b4ee,color:#1e3a8a
+    style SIGNING fill:#eff6ff,stroke:#93b4ee,color:#1e3a8a
+    style DATA fill:#f0fdf4,stroke:#86bda5,color:#064e3b
+    style KEYMGMT fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style EXTERNAL fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+```
+
+계층 경계로 향하는 선은 라벨에 적힌 대상과의 연결을 묶어 표시한 것이다. API는 PostgreSQL·Kafka·Redis에 각각 연결하고, 키 관리 계층에서는 Vault에 접근한다. 세 데이터 서비스를 차례로 거치는 구조가 아니다. signer도 Vault와 Keyshares store에 각각 접근하며, Relay에서 작업을 가져오는 mTLS 연결은 signer가 시작한다. Coordinator에서 Relay로 향하는 선은 작업 전달의 논리 관계다.
+
+PostgreSQL은 서비스별 DB와 비밀번호·TLS, Kafka는 SCRAM·TLS, Redis는 비밀번호·TLS를 적용한다. Vault·데이터 서비스의 외부 endpoint, signer별 Vault 기능과 Keyshares 접근 방식은 Dfns 지원 명세로 확정한다. Keyshares store의 엔진·배치·복구 방식과 위탁 노드의 설치 장소는 미확정이다. 모든 내부 통신과 방화벽 경로를 나열한 그림은 아니다.
+
+**운영 계층 — 잠금 해제와 백업**은 아래에 따로 표시했다. 위 그림과 같은 Vault·데이터 저장소를 운영 관점에서 다시 그린 것이며, 추가 서버를 뜻하지 않는다. 실선은 잠금 해제 작업, 점선은 백업 경로다.
 
 ```mermaid
 flowchart TB
-    CLIENT["DAWBC · 허용된 운영자"]
-    subgraph CUSTOMER["고객 운영 환경"]
-        subgraph SITE["사내 주센터 · 랙 A · B · C"]
-            LB["내부 L4 · 이중화<br/>API · 운영 화면 접근 분리"]
-            subgraph K8S["Kubernetes · 앱과 서명 전용 worker"]
-                INGRESS["Istio Ingress · TLS"]
-                APP["Dfns API · 정책 · Dashboard<br/>Indexer · Worker"]
-                COORD["MPC Coordinator"]
-                RELAY["Delivery Relay"]
-                SIGN["MPC signer 5개 party<br/>3-of-5 · 전용 노드"]
-                INGRESS --> APP
-                APP -->|"승인된 작업"| COORD
-                COORD -->|"작업 전달 · 논리 관계"| RELAY
-                SIGN -->|"mTLS · 작업 가져오기"| RELAY
-            end
-            subgraph VAULTZONE["Vault 전용 VM 구역"]
-                VAULT["Vault 5노드 · Raft<br/>KV · Transit · PKI"]
-            end
-            subgraph DATA["데이터 전용 VM 구역"]
-                DB["PostgreSQL 3 · Patroni<br/>전용 etcd 3<br/>서비스별 DB · 비밀번호 · TLS"]
-                KAFKA["Kafka broker 3<br/>KRaft controller 3<br/>SCRAM · TLS"]
-                CACHE["Redis 3 · Sentinel 3<br/>비밀번호 · TLS"]
-            end
-            OUT["통제된 외부 연결"]
-            LB --> INGRESS
-            APP -->|"서비스별 인증 · 허용 기능"| VAULT
-            SIGN -->|"허용된 키 보호 · 인증서 기능"| VAULT
-            APP --> DB
-            APP --> KAFKA
-            APP --> CACHE
-            APP --> OUT
-        end
-        KEYS["MPC Keyshares store<br/>party별 접근 분리<br/>엔진 · 배치 · 복구 확인 필요"]
-        CUSTODIANS["Vault 잠금 해제 담당자 5명<br/>3명 참여 · Shamir"]
-        BACKUP["독립 백업 저장소<br/>별도 자격증명 · 보조센터 복사"]
-        SIGN -->|"키 조각 읽기 · 쓰기"| KEYS
-        CUSTODIANS -->|"재시작한 Vault 노드별 잠금 해제"| VAULT
-        VAULT -.->|"Raft snapshot"| BACKUP
-        DB -.->|"기본 백업 · WAL"| BACKUP
-        KAFKA -.->|"설정 · 필요 이벤트 보존"| BACKUP
-        KEYS -.->|"벤더 복구 절차 확인 후"| BACKUP
+    subgraph OPERATIONS["운영 계층"]
+    subgraph UNSEAL["Vault 잠금 해제 · 운영 역할"]
+        direction LR
+        PEOPLE["담당자 5명 중 3명 참여<br/>Shamir unseal 조각"]
+        V["재시작한 Vault 노드<br/>노드별 잠금 해제"]
+        PEOPLE --> V
     end
-    CLIENT -->|"사설 경로 · HTTPS"| LB
-    OUT --> RPC["위탁 노드 RPC · 웹훅 목적지"]
+    subgraph BACKUPS["백업 · 별도 자격증명으로 관리"]
+        direction TB
+        PG["PostgreSQL<br/>기본 백업 · WAL"]
+        K["Kafka<br/>설정 · 필요 이벤트 보존"]
+        VR["Vault<br/>Raft snapshot"]
+        KS["Keyshares store<br/>벤더 복구 절차 확인 후"]
+        STORE["독립 백업 저장소<br/>보조센터 복사"]
+        PG -.-> STORE
+        K -.-> STORE
+        VR -.-> STORE
+        KS -.-> STORE
+    end
+    end
+    style OPERATIONS fill:#ffffff,stroke:#94a3b8,color:#0f172a
+    classDef data fill:#ecfdf5,stroke:#047857,color:#064e3b
+    classDef pending fill:#fffbeb,stroke:#b45309,color:#78350f,stroke-dasharray:5 5
+    class V,PG,K,VR,STORE data
+    class KS pending
+    style UNSEAL fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style BACKUPS fill:#f8fafc,stroke:#94a3b8,color:#0f172a
 ```
 
-Shamir 담당자는 서버가 아닌 운영 역할이다. AWS KMS의 자동 잠금 해제 대신 담당자가 재시작한 Vault 노드의 잠금을 해제한다. Keyshares store는 실제 배치가 미확정이므로 주센터 상자 밖에 따로 표시했으며, 외부 시설에 두기로 결정한 뜻은 아니다. 위탁 노드의 설치 장소도 운영 계약에서 정한다.
-
-Vault·데이터 서비스의 외부 endpoint, signer별 Vault 기능과 Keyshares 접근 방식은 Dfns 지원 명세로 확정한다. Kafka·Redis의 상세 장애 전환 조건, Redis·Kubernetes의 백업 여부와 전체 방화벽 경로는 아래 해당 절을 따른다.
+Shamir 담당자는 서버가 아닌 운영 역할이다. 담당자 5명 중 3명이 참여해 재시작한 Vault 노드마다 잠금을 해제한다. 백업 저장소는 별도 자격증명으로 접근하고 보조센터로 복사한다. Kafka·Redis의 상세 장애 전환 조건, Redis·Kubernetes의 백업 여부와 전체 방화벽 경로는 아래 해당 절을 따른다.
 
 ### 배치 구역
 
 아래 선은 배치 구역의 분류다. 네트워크 연결이나 호출 순서를 뜻하지 않는다. 데이터 운영 구역 안의 PostgreSQL·Kafka·Redis도 각각 별도 VM으로 구성하며, 상세 수량은 아래 자원표에 적었다.
 
 ```mermaid
+%%{init: {"themeCSS": "foreignObject { line-height: 1.5; }"}}%%
 flowchart TB
     SITE["사내 주센터<br/>랙 A · B · C"]
+    subgraph EXECUTION["앱·서명 계층"]
     K8S["Kubernetes 구역<br/>Control plane 3개<br/>앱 worker 6개<br/>MPC worker 5개"]
+    end
+    subgraph VAULTZONE["키 관리 계층 · Vault"]
     VAULT["Vault 전용 VM 구역<br/>Vault 5노드 · Raft<br/>KV · Transit · PKI"]
+    end
+    subgraph DATAZONE["데이터 계층"]
     DATA["데이터 전용 VM 구역<br/>PostgreSQL 3 · etcd 3<br/>Kafka broker 3<br/>KRaft controller 3<br/>Redis 3 · Sentinel 3"]
+    end
+    subgraph KEYSTORE["키 관리 계층 · 키 조각"]
     KEYS["MPC Keyshares store<br/>party별 접근 분리 필요<br/>배치 · 엔진 · 복제 방식 미확정"]
+    end
     SITE --- K8S
     SITE --- VAULT
     SITE --- DATA
@@ -245,6 +329,10 @@ flowchart TB
     class K8S,VAULT runtime
     class DATA data
     class KEYS pending
+    style EXECUTION fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style VAULTZONE fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style DATAZONE fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style KEYSTORE fill:#f8fafc,stroke:#94a3b8,color:#0f172a
 ```
 
 잠금 해제 담당자 5명은 서버 배치와 별개인 운영 역할이다. 재시작한 Vault 노드마다 3명이 참여하는 Shamir 절차는 아래 「Vault 자체의 잠금 해제」에서 설명한다. 독립 백업 저장소와 보조센터 복사 경로는 아래 「백업·복구·운영」에서 다룬다.
@@ -411,53 +499,102 @@ DAW-CORE·DAWBC가 사내에 있으면 AWS까지 전용 회선 또는 VPN 경로
 
 ### AWS 서비스와 플랫폼의 연결
 
-아래는 기능별 연결도다. AZ 분산 수량은 다음 절에서 다룬다. KMS와 S3는 VPC 안에 설치하는 서버가 아니라 AWS 서비스이며, 필요한 VPC endpoint를 통해 접근하도록 설계한다.
+사내 구성안과 같은 역할별 계층으로 묶었다. 진입점·EKS·데이터 서비스는 고객 AWS 플랫폼 VPC의 3개 AZ에 배치하는 제안이며, Keyshares store의 엔진·상세 배치는 벤더 확인이 필요하다. EKS worker는 private subnet에 둔다. 계층 상자는 계정·VPC 경계가 아니다. AZ별 수량은 다음 절에서 다룬다.
+
+API는 데이터 계층의 각 서비스에 개별 연결하며 키 관리 계층에서는 Vault에 접근한다. signer는 Keyshares store와 허용된 Vault 기능을 각각 사용한다. KMS·Secrets Manager·S3는 VPC 안에 설치하는 서버가 아니라 AWS 서비스이며, 필요한 VPC endpoint를 통해 접근하도록 설계한다.
 
 ```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 28, "rankSpacing": 45, "curve": "linear"}, "themeCSS": "foreignObject { line-height: 1.5; }"}}%%
 flowchart TB
     CLIENT["DAWBC · 허용된 운영자"]
-    subgraph ACCOUNT["고객 소유 AWS 환경"]
-        subgraph VPC["플랫폼 VPC · 3개 AZ"]
-            LB["내부 NLB<br/>API · 운영 화면 접근 분리"]
-            subgraph EKS["EKS · private worker"]
-                INGRESS["Istio Ingress · TLS"]
-                APP["Dfns API · 정책 · Dashboard<br/>Indexer · Worker"]
-                COORD["MPC Coordinator"]
-                RELAY["Delivery Relay"]
-                SIGN["MPC signer 5개 party<br/>3-of-5 · 전용 노드"]
-                VAULT["Vault 5노드 · Raft<br/>전용 노드 · EBS<br/>KV · Transit · PKI"]
-                INGRESS --> APP
-                APP -->|"승인된 작업"| COORD
-                COORD -->|"작업 전달 · 논리 관계"| RELAY
-                SIGN -->|"mTLS · 작업 가져오기"| RELAY
-                APP -->|"서비스별 인증 · 허용 기능"| VAULT
-                SIGN -->|"허용된 키 보호 · 인증서 기능"| VAULT
-            end
-            DB["Aurora PostgreSQL<br/>서비스별 DB · 비밀번호"]
-            MSK["MSK Provisioned<br/>SCRAM · TLS"]
-            CACHE["ElastiCache Redis OSS<br/>비밀번호 · TLS"]
-            KEYS["MPC Keyshares store<br/>엔진 · 배치 · 복구 확인 필요"]
-            OUT["통제된 외부 연결"]
-            LB --> INGRESS
-            APP --> DB
-            APP --> MSK
-            APP --> CACHE
-            SIGN --> KEYS
-            APP --> OUT
-        end
-        KMS["AWS KMS<br/>Vault auto-unseal 전용 키"]
-        SCRAM["Secrets Manager<br/>MSK SCRAM 등록용"]
-        BACKUP["독립 백업 계정 · S3<br/>별도 접근 권한 · 복구 키 관리"]
-        VAULT -->|"자동 잠금 해제"| KMS
-        SCRAM -.->|"자격증명 연결"| MSK
-        VAULT -.->|"Raft snapshot"| BACKUP
-        KEYS -.->|"벤더 복구 절차 확인 후"| BACKUP
+    subgraph ENTRY["진입 계층"]
+        LB["내부 NLB<br/>API · 운영 화면 접근 분리"]
+        INGRESS["Istio Ingress · TLS<br/>EKS"]
+        LB --> INGRESS
+    end
+    subgraph APPLICATION["애플리케이션 계층"]
+        APP["Dfns API · 정책 · Dashboard<br/>Indexer · Worker<br/>EKS"]
+    end
+    subgraph SIGNING["서명 계층 · EKS"]
+        COORD["MPC Coordinator"]
+        RELAY["Delivery Relay"]
+        SIGN["MPC signer · 5개 party<br/>3-of-5 · 전용 노드"]
+        COORD -->|"작업 전달 · 논리 관계"| RELAY
+        SIGN -->|"mTLS · 작업 가져오기"| RELAY
+    end
+    subgraph DATA["데이터 계층 · AWS 관리형 서비스"]
+        DB["Aurora PostgreSQL<br/>서비스별 DB · 비밀번호"]
+        KAFKA["MSK Provisioned<br/>SCRAM · TLS"]
+        CACHE["ElastiCache Redis OSS<br/>비밀번호 · TLS"]
+    end
+    subgraph KEYMGMT["키 관리 계층"]
+        KEYS["MPC Keyshares store<br/>party별 접근 분리<br/>배치 미확정"]
+        VAULT["Vault 5노드 · Raft<br/>EKS 전용 노드 · EBS<br/>KV · Transit · PKI"]
+    end
+    subgraph EXTERNAL["외부 연동 계층"]
+        OUT["통제된 외부 연결"]
+        RPC["위탁 노드 RPC · 웹훅 목적지<br/>설치 장소 별도 확인"]
+        OUT --> RPC
     end
     CLIENT -->|"사설 경로 · HTTPS"| LB
-    OUT --> RPC["위탁 노드 RPC · 웹훅 목적지"]
+    INGRESS --> APP
+    APP -->|"승인된 작업"| COORD
+    APP -->|"각 서비스에 개별 연결"| DATA
+    APP --> OUT
+    APP -->|"Vault 인증 · 허용 기능"| KEYMGMT
+    SIGN -->|"Keyshares 읽기·쓰기<br/>Vault 키 보호·인증서"| KEYMGMT
+    classDef runtime fill:#eff6ff,stroke:#2563eb,color:#1e3a8a
+    classDef data fill:#ecfdf5,stroke:#047857,color:#064e3b
+    classDef pending fill:#fffbeb,stroke:#b45309,color:#78350f,stroke-dasharray:5 5
+    class INGRESS,APP,COORD,RELAY,SIGN runtime
+    class DB,KAFKA,CACHE,VAULT data
+    class KEYS pending
+    style ENTRY fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style APPLICATION fill:#eff6ff,stroke:#93b4ee,color:#1e3a8a
+    style SIGNING fill:#eff6ff,stroke:#93b4ee,color:#1e3a8a
+    style DATA fill:#f0fdf4,stroke:#86bda5,color:#064e3b
+    style KEYMGMT fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style EXTERNAL fill:#f8fafc,stroke:#94a3b8,color:#0f172a
 ```
 
-백업 계정은 플랫폼 운영 계정과 분리한다. 그림의 바깥 계정 경계는 고객이 소유하는 계정들의 범위다. Aurora·Kafka 등 데이터별 백업 경로는 복구 절에서 구분한다. Vault에 연결하는 주체와 권한은 Dfns 패키지의 서비스별 명세로 제한하며, 모든 서비스가 모든 Vault 기능을 호출한다는 뜻이 아니다.
+**운영 계층**은 아래에 따로 표시했다. 위 연결도와 같은 Vault·MSK·Keyshares store를 운영 관점에서 다시 그린 것이며, 추가 인스턴스를 뜻하지 않는다. 실선은 자동 잠금 해제, 점선은 자격증명 연결 또는 백업 경로다.
+
+```mermaid
+%%{init: {"themeCSS": "foreignObject { line-height: 1.5; }"}}%%
+flowchart TB
+    subgraph OPERATIONS["운영 계층 · AWS"]
+        direction LR
+        subgraph UNSEAL["Vault 자동 잠금 해제"]
+            direction TB
+            VAULT["Vault · EKS 전용 노드"]
+            KMS["AWS KMS<br/>Vault auto-unseal 전용 키"]
+            VAULT -->|"자동 잠금 해제"| KMS
+        end
+        subgraph CREDENTIALS["MSK 자격증명 등록"]
+            direction TB
+            SCRAM["Secrets Manager<br/>MSK SCRAM 등록용"]
+            MSK["MSK Provisioned"]
+            SCRAM -.->|"자격증명 연결"| MSK
+        end
+        subgraph BACKUPS["백업 · 독립 계정"]
+            direction TB
+            VR["Vault<br/>Raft snapshot"]
+            KEYS["Keyshares store<br/>벤더 복구 절차 확인 후"]
+            BACKUP["독립 백업 계정 · S3<br/>별도 접근 권한 · 복구 키 관리"]
+            VR -.-> BACKUP
+            KEYS -.-> BACKUP
+        end
+    end
+    classDef pending fill:#fffbeb,stroke:#b45309,color:#78350f,stroke-dasharray:5 5
+    class KEYS pending
+
+    style OPERATIONS fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style UNSEAL fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style CREDENTIALS fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style BACKUPS fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+```
+
+백업 계정은 플랫폼 운영 계정과 분리한다. 플랫폼 운영 계정과 독립 백업 계정 모두 고객 소유 AWS 환경에 해당한다. Aurora·Kafka 등 데이터별 백업 경로는 복구 절에서 구분한다. Vault에 연결하는 주체와 권한은 Dfns 패키지의 서비스별 명세로 제한하며, 모든 서비스가 모든 Vault 기능을 호출한다는 뜻이 아니다.
 
 ### 초기 자원과 가용 영역 배치
 
