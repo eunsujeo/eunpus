@@ -7993,3 +7993,24 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 범위: 네이티브 테스트넷 대납 1건. ERC-20·타 체인·반복/실패/대체 거래·웹훅·법정화폐 정산·Baseline 지원은 미검증. 공유 문서의 식별자·주소는 일반화.
 - 검증: 원시 JSON과 금액·요청 ID·정수 잔액 대사 일치. JSON 예제·상대 링크·180문서 빌드·공백 검사와 로컬 브라우저의 추가 절·잔액 표 렌더링 확인. 근거는 Git 제외 `_workspace/dfns-api/`, 화면은 `sponsorship-doc.png`.
 - 상태: 문서 반영 완료. 커밋·푸시·배포는 수행하지 않음.
+
+## Stage 199 (2026-09-15) — AWS Baseline 인프라 설계와 프로필 구분
+- 요청: 기존 Baseline 인프라·구성도를 AWS 기준으로도 작성하고, 고객 AWS 계정 배치 개요와 AWS-Native의 관계 설명.
+- 반영: Dfns 묶음에 AWS Baseline 상세안 추가. 업무 연결·서비스 구성도, 3 AZ 자원 예약, Vault/KMS·MSK SCRAM·네트워크·복구·구축/인수 조건 정리. 기존 사내안 제목에 환경 명시, 개요·백엔드 비교·담당자 질문에서 연결.
+- 근거: 제공된 Dfns 개요·백엔드 비교와 AWS/HashiCorp 공식 문서. AWS는 설치 장소, Baseline/AWS-Native는 구성 프로필로 구분. KMS auto-unseal은 Transit 대체가 아니며 MSK 등록용 Secrets Manager와 Vault의 자격증명 관리 경계는 벤더 확인 필요.
+- 범위: 16 EC2 / 88 vCPU / 352 GiB는 worker 초기 예약 제안. 관리형 데이터 서비스·업무 서비스·체인 노드 등 제외. AWS 자원 생성·제품 설치·실환경 검증·사내안의 AWS 전환 결정 없음.
+- 검증: 181문서 빌드·상대 링크·수량 산술·공백 검사 통과. 로컬 앱에서 새 카드와 Mermaid 2개 렌더링 확인. `_workspace/dfns-api/aws-baseline-design.png` 기록.
+- 상태: 문서 작성 완료. 커밋·푸시·배포 없음.
+
+## Stage 200 (2026-09-15) — Dfns 중복 문서 6개를 4개로 통합
+- 요청: Dfns 문서 6개의 중복을 줄이고 합치기.
+- 구조: 도입·배포 개요에 Baseline/AWS-Native 비교 흡수. 기존 Baseline 문서에 공통 연결·Vault를 먼저 두고 사내·AWS 구성안을 분리. Governance Engine과 전달용 질문은 각각 유지.
+- 중복 정리: 별도 배포 백엔드 카드와 AWS 설계 카드 제거, 반복 프로필 설명·개략 구성도·Vault 역할표 축소. 두 환경의 자원표·인증·잠금 해제·복구 조건과 질문 Q01~Q07 보존. 대표 파일 경로 유지, 문서·원본 색인 링크와 묶음 이름 갱신.
+- 검증: 두 자원표·전체 백엔드 비교표 원문 보존, Governance 본문 동일, Q01~Q07 존재, 제거 경로 링크 잔존 점검. 179문서 빌드·공백 검사 통과. 로컬 앱과 Dfns 선택 HTML에서 카드 4개·Mermaid 11개·환경별 절·내부 앵커 확인.
+- 근거·산출물: `_workspace/dfns-consolidation/`에 통합 전 원문·검증용 HTML·화면 기록 보관. 문서 4개 구조 반영 완료, 커밋·푸시·배포 없음.
+
+## Stage 201 (2026-09-15) — 사내 Baseline 서비스 연결 구성도 추가
+- 요청: 사내 데이터센터 구성안에도 첨부한 AWS 그림과 같은 상세 구성도 추가.
+- 반영: 사내 구성안의 배치 구역 앞에 서비스 연결도 추가. 내부 L4·Istio·API·Coordinator·Relay·MPC, 별도 Vault/데이터 VM, Shamir 담당자·독립 백업·위탁 RPC 연결 표시. 미확정 Keyshares 저장소 위치와 외부 endpoint 지원 조건 유지.
+- 검증: 179문서 빌드·공백 검사, 로컬 Baseline Mermaid 6개 렌더링과 핵심 라벨 확인. Dfns 선택 HTML은 4문서·Mermaid 12개로 갱신. `_workspace/dfns-consolidation/datacenter-services.png` 시각 확인.
+- 상태: 문서 반영 완료. 커밋·푸시·배포 없음.

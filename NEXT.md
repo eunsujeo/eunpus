@@ -45,7 +45,12 @@
 (DB 집계 HEALTHY 만으로는 중지된 프로세스를 걸러내지 못함). 문서는 반영 완료 — svc 의
 `bcm-admin/.../AdminReadService.kt` `preparationChecks` (`ready = webhook?.state == "HEALTHY"`) 구현 변경이 남았고, 이는 svc 세션 몫.
 
-### 2.1c Dfns Baseline·DAW 구축 설계 (2026-09-14)
+### 2.1c Dfns Baseline·DAW 구축 설계 (2026-09-15)
+
+- 사내 연결 구성도: Baseline 사내 구성안에 AWS 그림과 같은 관점의 상세 연결도 추가. 별도 Vault/데이터 VM·MPC pull·Shamir·독립 백업과 미확정 Keyshares 배치를 구분. 앱 SVG 및 선택 HTML 확인, 스크린샷 `_workspace/dfns-consolidation/datacenter-services.png`.
+- 중복 정리: Dfns 6→4문서, 전체 179문서. 프로필 비교는 개요 한곳, Baseline 공통 연결·Vault는 한곳에 두고 환경별 자원·인증·복구 절차 보존. 기존 대표 파일 경로를 유지해 해당 카드의 상태 매핑 보존. 신규 배포·인프라 실행 없음.
+
+- AWS Baseline 추가안: `Dfns/03-baseline-datacenter-design.md`의 AWS 구성안. EKS·Aurora·MSK·ElastiCache와 Vault 유지, KMS auto-unseal·SCRAM 자격증명·3 AZ·MPC·백업·복구·인수 조건 정리. 16 EC2 / 88 vCPU / 352 GiB는 worker 예약 제안이며 관리형 서비스 등 제외. AWS-Native와 설치 장소를 구분하도록 개요·백엔드 비교·사내 설계·질의 연결. 기존 사내 설계 채택 전제 유지, AWS 리소스 생성 없음.
 
 - 대납 실측 추가: 같은 주소로 0.01 Sepolia ETH를 Fee Sponsor 지정 후 추가 1회 전송, Confirmed 확인. 출금 지갑은 원금만 차감(잔액 0.079975950179954 ETH), 대납 지갑은 수수료 0.000083048666008826 ETH 차감(잔액 1.999916951333991174 ETH). 대납 수수료 목록의 requestId·fee와 잔액 감소 일치. API 비교에 요청·대사·일반 전송 대비·EIP-7702 응답 관찰을 반영. ERC-20·타 체인·웹훅·법정화폐 정산·Baseline 지원은 미검증. 원본은 Git 제외 `_workspace/dfns-api/sponsored-transfer-before.json`과 `sponsored-transfer-latest.json`.
 
@@ -53,7 +58,7 @@
 - 전송 시험 추가: 사용자 지정 주소로 0.01 Sepolia ETH 1회 전송, Transfer `Broadcasted → Confirmed`와 입출금 이력 확인. 수수료 0.000024049820046 ETH, 잔액 0.089975950179954 ETH 대사 일치. API 비교 문서에 요청/응답 발췌·Fireblocks 대응·진행 중 거래 조회 차이 추가. ERC-20·웹훅은 미검증이며 대납은 위 추가 시험에서 확인. 근거는 Git 제외 `_workspace/dfns-api/`의 전송 결과·이력·잔액 JSON.
 - API 비교: `WaaS 도입·구축/API 비교/00-fireblocks-dfns-api.md` 신설. Dfns 제공 환경에서 서비스 계정 조회·요청 서명·Sepolia 지갑 생성/재조회·0.1 ETH 잔액 확인 완료. Fireblocks는 공식 Vault API 명세 비교이며 실호출하지 않음. 단위·식별 모델·미제공 available/pending/locked/frozen/블록 정보 차이, verified 확인 필요와 후속 시험 정리. 웹훅은 보류, 가스 대납은 위 추가 시험 반영. 앱/단독 HTML·180문서 빌드 검증 완료. 이번 커밋에 포함하며 운영 배포 대기.
 - 사용자 전제: 고객 소유 노드의 운영 위탁 + 사내 데이터센터의 Dfns 전체 플랫폼 Baseline + DAWBC + DAW-CORE. AWS 배치로 변경하지 않음.
-- 문서 구조: `blockchain-manager/docs/WaaS 도입·구축/Dfns/` 5개(제공 자료 3개·인프라/구성도·담당자 질문), 같은 카테고리의 `DAW 구축 설계/` 4개(통합 구성/계획·핵심 계약·노드 연결·법정화폐 대납). 기존 13개를 9개로 통합. 이후 상세 내용은 이 문서들에 보강.
+- 문서 구조: `WaaS 도입·구축/Dfns/`는 4개(도입·배포/프로필 비교, Governance Engine, 사내·AWS 통합 Baseline 설계, 담당자 질문). 2026-09-15 AWS안 추가 후 6개에서 4개로 통합. 배포 백엔드 별도 문서는 개요로, AWS 별도 설계는 기존 Baseline 문서로 흡수하고 내부 링크 갱신. `DAW 구축 설계/` 4개와 API 비교 1개는 유지.
 - 인프라: `Dfns/03-baseline-datacenter-design.md`. Kubernetes·외부 Vault 5노드·PG/Kafka/Redis·MPC 5-party / 3-of-5, 핵심 노드 36개 자원 예약안. 전체 DAW 플랫폼/체인 노드 총량이 아님.
 - 구성도 보강: Baseline의 전체 구성 첫머리에 고객 소유 환경의 DAW-CORE → DAWBC → Dfns API → MPC signer/위탁 노드 그림 추가. 통합 설계에서 해당 절 연결. 소유권과 설치 장소·논리 요청과 실제 통신 구분, 비AWS·지정 RPC 지원 확인 조건 유지. 로컬 렌더링·179문서 빌드 확인. 이번 커밋에 포함하며 운영 배포 대기.
 - 지원 확인: `Dfns/04-vendor-questions.md` Q01~Q07. 비AWS 번들·CPU·외부 Vault/DB·Keyshares·지정 RPC·사내 API·대납·다중 자산. 아직 미발송·미답변.

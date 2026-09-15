@@ -1,22 +1,12 @@
 ---
 title: Dfns 담당자 확인 질문 — 배포·연동·대납
 status: To Do
-group: 사내 구축·도입 검토
+group: 구축·도입 검토
 ---
 
 사내 데이터센터 전체 플랫폼 설계를 확정하기 위해 Dfns 담당자에게 확인할 질문이다. 아래는 질의 초안이며 아직 발송하거나 답변받지 않았다. AWS 배치와 비교하되, 현재 설계 대상은 사내 데이터센터로 유지한다.
 
-## AWS에서 구성해도 유사한가?
-
-**제공 자료를 기준으로 보면 AWS에서도 Baseline을 사용하므로 플랫폼의 역할과 구조는 유사하다.** 온프레미스 개요는 고객 AWS 계정의 EKS·관리형 데이터 서비스 위에 Vault 또는 AWS 네이티브 시크릿 백엔드를 선택하는 구성을 설명한다. 배포 백엔드 자료는 Baseline을 기본 프로필로 명시한다. 따라서 **배치 장소인 AWS와 배포 프로필인 Enterprise AWS-Native를 구분**해야 한다. (온프레미스 개요 p.5·7, 배포 백엔드 p.2~3)
-
-| 비교 대상 | 플랫폼·시크릿 구성 | 차이가 나는 부분 |
-|---|---|---|
-| AWS + Baseline | Kubernetes 위 앱·MPC, Vault KV·Transit·PKI | 제공 개요의 기반은 EKS·Aurora·MSK·ElastiCache 등. Vault는 AWS KMS auto-unseal 사용 |
-| 사내 데이터센터 + Baseline | 같은 역할의 앱·MPC·Vault를 배치하는 설계 제안 | 자체 운영 Kubernetes·DB·Kafka·Redis, 사내 DNS·PKI, Vault Shamir unseal 등으로 대체. Dfns 지원 여부와 배포 변경 범위 확인 필요 |
-| AWS + Enterprise AWS-Native | 자료상 앱 이미지·MPC·데이터 모델은 동일 | Vault 없이 Secrets Manager·KMS·IAM·cert-manager 등을 사용. 시크릿 전달·인증·초기화 구성이 달라짐 |
-
-이는 제공 자료와 [사내 설계안](03-baseline-datacenter-design.md)을 대조한 설명이다. 구조가 유사하다는 점만으로 같은 설치 패키지·설정·노드 수를 그대로 사용할 수 있다고 판단하지 않는다. 특히 사내 설계안의 36노드 자원표는 AWS 배치 수량으로 제시한 값이 아니다.
+배포 프로필 차이는 [도입·배포 개요](00-on-premise-deployment.md), AWS와 사내의 자원·키·복구 차이는 [Baseline 인프라 설계](03-baseline-datacenter-design.md)에서 다룬다. 아래 질의는 사내 구축을 전제로 AWS와의 차이를 확인한다.
 
 ## 담당자에게 전달할 질문
 
@@ -37,6 +27,8 @@ group: 사내 구축·도입 검토
 Kubernetes와 Vault가 함께 중단되는 상황을 줄이기 위해, 앱·MPC는 Kubernetes에 두고 **Vault와 PostgreSQL·Kafka·Redis는 별도 VM 또는 외부 서비스로 연결**하는 구성을 제안했습니다. 이 배치가 AWS Baseline과 사내 Baseline 각각에서 지원되나요? 권장 구성과 외부 endpoint·TLS·인증·초기화 설정 방법을 안내해 주세요.
 
 MPC Keyshares store도 함께 확인 부탁드립니다. 지원 저장 엔진과 배치 위치, party별 접근 분리, 복제·백업·복구 방식은 무엇이며 두 환경에서 같은 구성을 사용할 수 있나요? Vault·일반 서비스 DB·키 조각 저장소를 함께 복구할 때 필요한 일관성 조건과 공식 복구 순서가 있다면 제공 부탁드립니다.
+
+AWS Baseline에서는 MSK SCRAM 등록용 Secrets Manager와 애플리케이션 전달용 Vault의 자격증명을 누가 생성·회전하나요? 배포 패키지가 담당하는 동기화 범위와 갱신 실패 시 복구 절차도 확인 부탁드립니다.
 
 ### Q04. 위탁 운영하는 전용 노드 RPC로 전체 기능을 실행할 수 있나요?
 
@@ -82,8 +74,7 @@ DAWBC는 계정·주소 매핑, 멱등 제출, 입출금 상태 이벤트를 DAW
 ## 근거와 연결 문서
 
 - [Dfns 온프레미스 배치 개요](00-on-premise-deployment.md): 원문 계층·설치 제약·Vault 초기화
-- [Dfns 배포 백엔드 비교](02-deployment-backends.md): Baseline과 AWS-Native의 공통 구성·차이
-- [Baseline 인프라·구성도](03-baseline-datacenter-design.md): 사내 배치·자원·Vault·저장소·복구 제안
+- [Baseline 인프라·구성도](03-baseline-datacenter-design.md): 사내·AWS 배치·자원·Vault·저장소·복구 제안
 - [DAW 통합 구성·계획](../DAW%20구축%20설계/00-integration-plan.md): 범위·역할·설계 결정·진행 단계
 - [DAW 핵심 계약](../DAW%20구축%20설계/01-core-contracts.md): 계정·멀티체인·API·이벤트
 - [노드 연결 명세](../DAW%20구축%20설계/02-node-rpc-spec.md), [법정화폐 대납](../DAW%20구축%20설계/03-fiat-gas-sponsorship.md)

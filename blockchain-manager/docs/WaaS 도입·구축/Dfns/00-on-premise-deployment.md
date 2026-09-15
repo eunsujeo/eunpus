@@ -1,17 +1,17 @@
 ---
-title: Dfns 온프레미스 배치 — 고객 AWS 계정 안에서 플랫폼 전체를 운영하는 모델
+title: Dfns 도입·배포 — 운영 모델과 Baseline·AWS-Native
 status: To Do
 group: 배포 방식·운영 환경
 ---
 
-Dfns 플랫폼 전체를 고객 소유 AWS 계정에서 운영하는 완전 온프레미스 모델을 설명한다. 인증·사용자 관리, 멀티체인 지갑, 서명·키 관리, 승인·컴플라이언스, 블록체인 연동·인덱싱, 운영자 대시보드의 배치와 운영 요건을 다룬다.
+Dfns를 누가 운영할지, 어디에 설치할지, 어떤 시크릿·인증 기반을 사용할지 정리한 문서다. 고객 AWS 계정의 전체 플랫폼 배치 개요와 Baseline·Enterprise AWS-Native 비교를 함께 다룬다. 제품 구성·지원 범위는 제공 자료 기준이며 계약한 릴리스로 다시 확인한다.
 
-## 문서 범위
-
-- 인프라·SRE·보안 엔지니어를 위한 구성 설명이다. 세부 설치 절차는 계약한 릴리스의 배포 안내서로 확인한다.
-- 기능·보안 보장·로드맵은 Dfns의 설명이며, 우리 환경에서 구현·배포·검증을 완료했다는 뜻은 아니다. 현재 지원 여부와 계약 조건은 별도 확인한다.
-- [Governance Engine](01-governance-engine.md)은 선택 구성요소다. 시크릿 전달·서비스 인증·초기화 방식의 차이는 [배포 백엔드 비교](02-deployment-backends.md)에서 다룬다.
-- 사내 데이터센터 배치는 [Baseline 인프라·구성도](03-baseline-datacenter-design.md)에 정리한 별도 설계안이다.
+| 읽는 순서 | 문서에서 확인할 내용 |
+|---|---|
+| 이 문서 | 운영 모델·배포 프로필·제품 구성·설치와 운영 제약 |
+| [Baseline 인프라 설계](03-baseline-datacenter-design.md) | 공통 서비스·키 관리와 사내 데이터센터·AWS 배치안 |
+| [Governance Engine](01-governance-engine.md) | 서명 전 신원·권한·무결성 검증 범위와 한계 |
+| [담당자 확인 질문](04-vendor-questions.md) | 지원·연동·대납·다중 체인에 관한 전달용 질의 |
 
 ## 배치 형태와 운영 주체
 
@@ -29,41 +29,51 @@ Dfns 는 "누가 무엇을 운영하는가" 로 갈리는 여러 배치 형태�
 
 **운영 중 Dfns 연결 불필요.** Dfns는 “After delivery” 이후 환경이 Dfns 인프라에 의존하지 않고 실행된다고 설명한다. Dfns 와 연결 없이 운영되고, 컨테이너 이미지는 오프라인으로 고객 레지스트리에 들여올 수 있다.
 
+## Baseline과 AWS-Native 선택
+
+**AWS는 설치 장소이고, Baseline과 Enterprise AWS-Native는 시크릿·인증 기반을 선택하는 방식이다.** 고객 AWS 계정에서도 둘 중 하나를 선택한다. 사내 데이터센터의 Baseline 배포는 별도 지원 확인이 필요한 설계안이다.
+
+- **Baseline — Vault 기반 구성.** 고객이 운영하는 Vault에 서비스 비밀번호를 보관하고 암호화·인증서 기능을 맡긴다.
+- **AWS-Native — Vault 없이 AWS 서비스로 구성.** Secrets Manager·KMS·IAM과 인증서 도구가 해당 기능을 맡는다.
+
+예를 들어 DB 연결 시 Baseline은 비밀번호를 사용하고, AWS-Native는 IAM 인증을 사용한다. 애플리케이션 이미지·API·Worker·MPC 서명 모델·데이터 모델은 제공 자료상 동일하다. 지갑 서비스가 Dfns SaaS로 옮겨간다는 뜻이 아니다.
+
+### 기반 서비스 비교
+
+| 항목 | Baseline | Enterprise AWS-Native |
+|---|---|---|
+| 시크릿 저장소 | HashiCorp Vault KV | AWS Secrets Manager |
+| {{데이터 키 암호화::데이터를 암호화하는 키를 별도의 상위 키로 다시 암호화해 보호하는 방식.}}·KMS | Vault Transit | AWS KMS |
+| 서비스 신원 | Vault Kubernetes 인증, 서비스마다 역할 1개 | AWS IAM, IRSA 또는 Pod Identity |
+| 클러스터에 시크릿 전달 | Vault Agent injector | External Secrets Operator |
+| PKI·mTLS | Vault PKI | ACME를 사용하는 cert-manager와 Istio 메시 |
+| Kafka 인증 | SCRAM, 비밀번호 방식 | IAM, `aws-msk-iam`, 비밀번호 없음 |
+| 데이터베이스 인증 | PostgreSQL 비밀번호 | RDS 또는 Aurora IAM 인증, TLS 검증 실패 시 연결 차단(fail-closed) |
+| 캐시 인증 | Redis 비밀번호 | ElastiCache IAM |
+| 이벤트 처리 | Kafka | Kafka만 사용, SQS·SNS·DynamoDB 미사용 |
+| 호스팅 | {{단일 테넌트::Dfns를 도입하는 한 고객 조직(예: 우리 회사나 은행) 전용으로 플랫폼을 배치·운영하는 구성. 여기서 테넌트는 개인 고객이나 지갑이 아니라 도입 조직을 뜻한다.}} | 고객 소유 AWS 계정의 {{단일 테넌트::Dfns를 도입하는 한 고객 조직(예: 우리 회사나 은행) 전용으로 플랫폼을 배치·운영하는 구성. 여기서 테넌트는 개인 고객이나 지갑이 아니라 도입 조직을 뜻한다.}} |
+| 최소 플랫폼 릴리스 | **1.929 이상** | **1.935 이상** |
+
+두 프로필 모두 {{단일 테넌트::Dfns를 도입하는 한 고객 조직(예: 우리 회사나 은행) 전용으로 플랫폼을 배치·운영하는 구성. 여기서 테넌트는 개인 고객이나 지갑이 아니라 도입 조직을 뜻한다.}}이며 같은 플랫폼 이미지를 실행한다. 표의 기반 서비스와 인증 구성이 달라지고, 애플리케이션과 서명 계층은 같다. Baseline의 호스팅 행에는 AWS 이외 환경의 지원 범위나 설치 요건이 명시돼 있지 않다.
+
+
+{{데이터 키 암호화::데이터를 암호화하는 키를 별도의 상위 키로 다시 암호화해 보호하는 방식.}}는 데이터 보호 기능이며 지갑 거래 서명과 구분한다. External Secrets Operator는 AWS Secrets Manager에서 읽은 시크릿을 Kubernetes Secret으로 전달한다. Keyshares store는 MPC 키 조각 저장소로, 일반 서비스 DB와의 공유 여부·엔진·물리 배치는 확인이 필요하다.
+
+### 공통 부분과 초기 선택의 영향
+
+컨테이너 이미지·Pod 구성, Coordinator·signer·전달 방식, 서비스 의존 순서·DB/플랫폼 bootstrap, 서비스별 DB·Keyshares store·ingress 호스트 모델은 같다. 변경되는 것은 시크릿 저장·전달, 서비스 신원, PKI와 데이터 서비스 인증이다.
+
+**배포 키트 기본값은 Baseline이며, AWS-Native는 명시적 설정 override가 필요하다.** 표의 최소 릴리스는 제공 자료의 기준이다. 현재 지원 버전은 패키지와 계약으로 확정한다. AWS-Native는 Kafka·DB·캐시의 IAM 연결, External Secrets Operator 동기화, 인증서 발급을 점검한다. Kafka만 사용하며 Dfns 호스팅 SaaS의 SQS·SNS·DynamoDB 경로는 사용하지 않는다고 설명한다.
+
+**시크릿 백엔드는 초기 배포 시 고정되고, 제공 자료상 백엔드 간 마이그레이션은 없다.** AWS-Native에는 Vault가 없으므로 Vault 초기화·recovery key 보관 절차를 그대로 적용하지 않는다. 프로필별 bootstrap은 배포 안내서로 확인한다.
+
+AWS Baseline이 Vault 잠금 해제에 KMS를 쓰거나 MSK SCRAM 등록에 Secrets Manager를 쓰더라도 AWS-Native로 바뀌는 것은 아니다. 이 서비스들의 역할은 [Baseline 인프라 설계](03-baseline-datacenter-design.md)에서 구분한다.
+
 ## 전체 배치 구성
 
 완전 온프레미스에서는 모든 런타임 구성요소가 고객 환경 안에 있고, Dfns는 서명된 배포 파일 묶음을 제공하고 기술 교육(워크숍)으로 지식을 전달한다. 원문은 교육 내용·일정·진행 방식을 구체적으로 설명하지 않는다. 운영 중 Dfns와 연결할 필요는 없다. 대비용으로 그린 SaaS 와 Hybrid MPC 는 서명 계층과 플랫폼의 실행 위치가 다르다.
 
-```mermaid
-flowchart LR
-  subgraph CUST["고객 환경"]
-    direction TB
-    APP["고객 애플리케이션<br/>내부 네트워크"]
-    CP["컨트롤 플레인<br/>API · 정책 · 감사"]
-    DATA["데이터 계층<br/>Postgres · Kafka · Vault"]
-    SIGN["서명 계층<br/>MPC 3-of-5 또는 고객 HSM"]
-    HSM["HSM / KMS<br/>고객 하드웨어"]
-    APP --> CP
-  end
-  subgraph DFNS["Dfns"]
-    BUNDLE["서명된 배포 파일 묶음<br/>버전·digest 고정<br/>자료 제공 · 운영 중 연결 없음"]
-    WS["기술 교육 · 워크숍<br/>지식 전달 · 환경 접근 없음"]
-  end
-  subgraph CHAIN["체인"]
-    NODE["고객 노드 · 직접 운영<br/>직접 운영 필수 여부 확인 필요"]
-  end
-  BUNDLE -.-> CP
-  SIGN -->|"서명된 tx"| NODE
-  classDef vault fill:#dbeafe,stroke:#2563eb
-  classDef special fill:#e0e7ff,stroke:#6366f1
-  classDef optional stroke-dasharray:5 5
-  class SIGN vault
-  class HSM optional
-  class BUNDLE,WS special
-```
-
-그림은 고객이 노드를 직접 운영하는 구성을 보여 준다. 활성화한 체인마다 RPC 엔드포인트가 하나 필요하다. 고객의 노드 직접 운영이 필수인지는 제공된 자료만으로 확정할 수 없다.
-
-파란색은 서명 계층, 점선 상자는 HSM/KMS 선택 항목, 보라색은 Dfns가 제공하는 배포 파일과 기술 교육이다. 연결선은 원문 배치도에 표시된 관계만 옮겼다. Dfns 호스팅 형태는 고객 앱이 HTTPS 443 으로 Dfns 컨트롤 플레인에 서명된 액션을 보내고 MPC signer 5개(3-of-5)가 Dfns 관리하에 실행되는 구성이다. Hybrid MPC 는 고객이 party 1~3 을 자기 keyshare DB 와 함께 운영하고 Dfns 가 party 4~5 를 운영하며 signer 가 outbound mTLS 로만 작업을 가져오는 구성이다.
+활성화한 체인마다 RPC endpoint 하나가 필요하며, 고객의 노드 직접 운영이 필수인지는 제공 자료만으로 확정할 수 없다. Hybrid MPC에서는 고객과 Dfns가 signer와 keyshare DB의 운영을 나누며 signer가 outbound mTLS로 작업을 가져온다. 고객 AWS 계정의 상세 배치는 아래 구성도에서 다룬다.
 
 ## 아키텍처의 네 계층
 
@@ -80,7 +90,7 @@ flowchart LR
 
 ### AWS 구성도 — 선택 항목과 두 서명 방식
 
-Vault와 MPC를 사용하는 Baseline의 구성요소 관계는 [Baseline 구성도](03-baseline-datacenter-design.md#2-전체-구성)를 참고한다.
+Vault와 MPC를 사용하는 AWS Baseline의 상세 제안은 [AWS Baseline 구성도](03-baseline-datacenter-design.md#aws-구성안)에서 다룬다.
 
 아래는 고객 AWS 계정에서 운영하는 전체 플랫폼 구성이다. **API와 대시보드도 고객 AWS 계정에서 실행된다.** 서명 계층은 MPC 또는 HSM 중 하나를 선택하며, Governance Engine은 별도의 선택 구성요소다.
 
@@ -334,9 +344,7 @@ signer에서 relay로 향하는 화살표는 작업을 가져오기 위한 접�
 
 **Day-0 결정 7개.** 서명 프로필(MPC, HSM, governance 포함 여부), 컴퓨트 모델(정적 노드 그룹 또는 autoscaling), 도메인 시나리오, 네트워크 경로, 이미지 레지스트리 채널, 선택인 CloudFront + WAF edge, 선택 기능(메트릭, captcha). 생성 전에 결정 시트에 기록한다.
 
-**되돌릴 수 없는 결정 하나.** 시크릿 백엔드(Vault 대 AWS 네이티브)는 day 0 에 고정되고 백엔드 간 마이그레이션이 없다.
-
-후속 제공 자료인 [배포 백엔드 비교](02-deployment-backends.md)에 따르면 기본 배포 프로필은 Baseline(Vault + SCRAM, 최소 릴리스 1.929)이다. Enterprise AWS-Native는 Vault 없이 Secrets Manager·KMS·IAM 및 cert-manager를 사용하고, 명시적 설정 override와 릴리스 1.935 이상이 필요하다. AWS-Native의 시크릿 bootstrap 흐름은 Vault 구성과 다르며, Vault 초기화 절차를 그대로 적용하는 근거가 아니다. 이 자료도 백엔드 간 마이그레이션 절차는 제공하지 않는다.
+시크릿 백엔드의 초기 고정과 프로필별 bootstrap 차이는 앞의 「Baseline과 AWS-Native 선택」을 따른다.
 
 ## 외부 시스템 연동
 
@@ -390,9 +398,9 @@ PDF는 환경 가동 후의 운영이 소수의 정해진 작업으로 구성되
 
 필요한 자원 규모(sizing), 비표준 구성, 추가 HSM 벤더, 컴플라이언스 설문 등 이 개요에서 확정하지 않은 사항은 Dfns 솔루션 엔지니어에게 문의하도록 안내한다.
 
-## 사내 데이터센터 적용 설계
+## 인프라 설계와 지원 확인
 
-AWS를 사용하는 이 원문과 별도로, [Baseline 사내 데이터센터 인프라 설계안](03-baseline-datacenter-design.md)을 작성했다. 비AWS 설치 번들·이미지 아키텍처·외부 Vault·Keyshares 저장소의 지원 여부를 확인한 뒤 적용할 제안이다.
+제품 설명과 별도로, [Baseline 인프라 설계안](03-baseline-datacenter-design.md)에 사내 데이터센터와 AWS의 배치를 정리했다. 비AWS 설치 번들·이미지 아키텍처·외부 Vault·Keyshares 저장소의 지원 여부를 확인한 뒤 적용할 제안이다.
 
 ## 내부 검토 항목
 
@@ -412,3 +420,10 @@ AWS를 사용하는 이 원문과 별도로, [Baseline 사내 데이터센터 �
 - 지원 체인 목록, 인덱싱 범위, webhook 이벤트 스키마
 - MPC 경로의 HD 지갑 지원 여부 (HSM 경로 미지원만 명시)
 - 정책 엔진의 규칙 표현과 평가 순서
+
+- AWS-Native override의 정확한 키·값·IAM 권한과 프로필별 초기화·자체 점검표
+- 인증서 발급 대상·CA·수명·회전과 cert-manager·Istio의 역할 분담
+- 백엔드 선택이 Hybrid MPC·HSM·Governance Engine에 적용되는 범위와 상세 배치
+- 프로필별 자원·성능·비용·고가용성·재해 복구와 서비스 버전 조합
+
+미확정 항목을 기능 부재로 단정하지 않는다. 환경별 지원과 실제 연동 조건은 [담당자 확인 질문](04-vendor-questions.md)으로 확인한다.
