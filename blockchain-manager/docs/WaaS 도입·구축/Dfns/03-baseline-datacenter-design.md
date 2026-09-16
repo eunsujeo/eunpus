@@ -6,7 +6,7 @@ group: 구축·도입 검토
 
 Vault 기반 Dfns Baseline의 공통 서비스·키 관리와 **사내 데이터센터·AWS 배치안**을 한곳에서 비교한다. 기존 사내안과 추가 AWS안은 검토 대안이며, 인프라를 생성하거나 AWS로 전환하기로 확정한 결과가 아니다.
 
-노드 수·자원·망 분리·복구 목표는 고객 설계 제안이다. Dfns 제품 구성과 릴리스 제약은 [도입·배포 개요](00-on-premise-deployment.md), 기능 지원의 전달용 질의는 [담당자 질문](04-vendor-questions.md)에서 확인한다. AWS-Native의 의미와 Baseline 비교도 개요 문서에서 다룬다.
+노드 수·자원·망 분리·복구 목표는 고객 설계 제안이다. Dfns 제품 구성과 릴리스 제약은 [도입 개요](00-on-premise-deployment.md), 벤더가 제시한 배포 번들·설치 절차는 [배포 준비와 절차](02-deployment-procedure.md), 기능 지원의 전달용 질의는 [담당자 질문](04-vendor-questions.md)에서 확인한다. AWS-Native의 의미와 Baseline 비교도 개요 문서에서 다룬다.
 
 ## 환경별 차이
 
@@ -457,6 +457,8 @@ DB RPO 5분은 최근 5분의 업무 요청·원장·이벤트 중복 제거 기
 
 ### 구축 순서와 완료 조건
 
+아래는 **사내 배치를 전제로 우리가 제안하는 순서**다. 벤더 자료가 AWS 기준으로 설명한 설치 절차는 [배포 준비와 절차](02-deployment-procedure.md)에 따로 있으며, 0단계의 지원 경로가 확정되면 두 순서를 대조한다.
+
 | 단계 | 실행 내용 | 완료 조건 |
 |---|---|---|
 | 0. 지원 경로 확정 | 비AWS 번들·CPU·버전·외부 데이터 서비스·Keyshares 사양 확보 | 사내 배포가 지원되는 조합과 설정 계약 확보 |
@@ -699,7 +701,7 @@ NAT Gateway는 주소 변환 경로이며 목적지 허용 목록을 집행하�
 
 ## 확인한 자료
 
-- Dfns 제공 자료: [온프레미스 배치 개요](00-on-premise-deployment.md) 5~9·11~17쪽, [Baseline / AWS-Native 비교](00-on-premise-deployment.md#baseline과-aws-native-선택) 2~3쪽
+- Dfns 제공 자료: [온프레미스 배치 개요](00-on-premise-deployment.md) 5~9·11~17쪽, [Baseline / AWS-Native 비교](00-on-premise-deployment.md#baseline과-aws-native-선택) 2~3쪽, [배포 준비와 절차](02-deployment-procedure.md)
 - Kubernetes: [HA 클러스터](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/)
 - HashiCorp: [Raft 참조 구성](https://docs.hashicorp.com/vault/tutorials/day-one-raft/raft-reference-architecture), [Seal/Unseal](https://developer.hashicorp.com/vault/docs/concepts/seal), [Transit](https://developer.hashicorp.com/vault/docs/secrets/transit), [Kubernetes 인증](https://developer.hashicorp.com/vault/docs/auth/kubernetes), [운영 강화](https://developer.hashicorp.com/vault/docs/concepts/production-hardening)
 - 데이터 서비스: [Patroni 동기 복제](https://patroni.readthedocs.io/en/latest/replication_modes.html), [PostgreSQL PITR](https://www.postgresql.org/docs/17/continuous-archiving.html), [Kafka KRaft](https://kafka.apache.org/41/operations/kraft/), [Kafka 복제 설정](https://kafka.apache.org/41/generated/topic_config.html), [Redis Sentinel](https://redis.io/docs/latest/operate/oss_and_stack/management/sentinel/)
