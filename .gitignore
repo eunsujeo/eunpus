@@ -10,3 +10,14 @@ blockchain-manager/digital-assets.html
 
 # humanize-korean 스킬 실행 산출물 (검토용 임시 — 커밋 안 함)
 _workspace/
+
+# 키·자격증명 — 저장소 안에 파일이 있어도 추적하지 않는다
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+.env
+.env.*
+.dev.vars
+.dev.vars.*
