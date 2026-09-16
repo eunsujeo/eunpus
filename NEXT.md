@@ -17,7 +17,7 @@
 
 - 목차 번호 중복 수정: md.js가 제목의 절 번호를 목차 번호 칸에 한 번만 표시하고 번호 없는 제목에만 자동 번호를 사용. 앱/HTML 검증 완료. 이번 커밋에 포함하며 운영 배포는 대기 중(현재 배포 78dfbdf). `_workspace/toc-numbering/` 참고.
 
-- `HTML ↓`에서 중카테고리를 체크해 내보낼 수 있다. `WaaS 도입·구축`의 Fireblocks PaaS·Dfns만 고르면 DAW 구축 설계 4문서는 제외된다.
+- `HTML ↓`에서 중카테고리를 체크해 내보낼 수 있다. `WaaS 도입·구축`의 Fireblocks·Dfns만 고르면 DAW 구축 설계 4문서는 제외된다. (중카테고리 `Fireblocks PaaS`는 2026-09-16 `Fireblocks`로 개명)
 - 문서 주제 묶음: Dfns는 배포 방식·운영 환경 / 서명 보안·검증 / 사내 구축·도입 검토, DAW는 개요 아래 계정·노드 연동 / 가스 대납·정산. frontmatter `group`으로 지정하며 HTML 카드와 이전·다음이 같은 묶음 순서를 사용한다.
 - 브라우저와 CLI `--only`는 명시한 범위만 포함하며 연결된 다른 분류를 자동 추가하지 않는다. 제외된 문서·분류 링크는 텍스트로 남는다.
 - 단위 검사: `node --test blockchain-manager/app/scripts/export.test.mjs`. 실제 UI·다운로드·독립 HTML·모바일 검증 기록은 `_workspace/export-selection/`.
@@ -58,10 +58,10 @@
 - 전송 시험 추가: 사용자 지정 주소로 0.01 Sepolia ETH 1회 전송, Transfer `Broadcasted → Confirmed`와 입출금 이력 확인. 수수료 0.000024049820046 ETH, 잔액 0.089975950179954 ETH 대사 일치. API 비교 문서에 요청/응답 발췌·Fireblocks 대응·진행 중 거래 조회 차이 추가. ERC-20·웹훅은 미검증이며 대납은 위 추가 시험에서 확인. 근거는 Git 제외 `_workspace/dfns-api/`의 전송 결과·이력·잔액 JSON.
 - API 비교: `WaaS 도입·구축/API 비교/00-fireblocks-dfns-api.md` 신설. Dfns 제공 환경에서 서비스 계정 조회·요청 서명·Sepolia 지갑 생성/재조회·0.1 ETH 잔액 확인 완료. Fireblocks는 공식 Vault API 명세 비교이며 실호출하지 않음. 단위·식별 모델·미제공 available/pending/locked/frozen/블록 정보 차이, verified 확인 필요와 후속 시험 정리. 웹훅은 보류, 가스 대납은 위 추가 시험 반영. 앱/단독 HTML·180문서 빌드 검증 완료. 이번 커밋에 포함하며 운영 배포 대기.
 - 사용자 전제: 고객 소유 노드의 운영 위탁 + 사내 데이터센터의 Dfns 전체 플랫폼 Baseline + DAWBC + DAW-CORE. AWS 배치로 변경하지 않음.
-- 문서 구조: `WaaS 도입·구축/Dfns/`는 4개(도입·배포/프로필 비교, Governance Engine, 사내·AWS 통합 Baseline 설계, 담당자 질문). 2026-09-15 AWS안 추가 후 6개에서 4개로 통합. 배포 백엔드 별도 문서는 개요로, AWS 별도 설계는 기존 Baseline 문서로 흡수하고 내부 링크 갱신. `DAW 구축 설계/` 4개와 API 비교 1개는 유지.
+- 문서 구조: `WaaS 도입·구축/Dfns/`는 5개(도입 개요/프로필 비교, Governance Engine, 배포 준비와 절차, 사내·AWS 통합 Baseline 설계, 담당자 질문). 2026-09-15 AWS안 추가 후 6개에서 4개로 통합했고, 2026-09-16 개요에서 배포 실행 절차만 `02-deployment-procedure.md`로 분리해 5개. 프로필 비교는 개요에 그대로 두어 중복 없음. `DAW 구축 설계/` 4개와 API 비교 1개는 유지.
 - 인프라: `Dfns/03-baseline-datacenter-design.md`. Kubernetes·외부 Vault 5노드·PG/Kafka/Redis·MPC 5-party / 3-of-5, 핵심 노드 36개 자원 예약안. 전체 DAW 플랫폼/체인 노드 총량이 아님.
 - 구성도 보강: Baseline의 전체 구성 첫머리에 고객 소유 환경의 DAW-CORE → DAWBC → Dfns API → MPC signer/위탁 노드 그림 추가. 통합 설계에서 해당 절 연결. 소유권과 설치 장소·논리 요청과 실제 통신 구분, 비AWS·지정 RPC 지원 확인 조건 유지. 로컬 렌더링·179문서 빌드 확인. 이번 커밋에 포함하며 운영 배포 대기.
-- 지원 확인: `Dfns/04-vendor-questions.md` Q01~Q07. 비AWS 번들·CPU·외부 Vault/DB·Keyshares·지정 RPC·사내 API·대납·다중 자산. 아직 미발송·미답변.
+- 지원 확인: `Dfns/04-vendor-questions.md` Q01~Q09. 비AWS 번들·CPU·외부 Vault/DB·Keyshares·지정 RPC·사내 API·대납·다중 자산, 그리고 2026-09-16 추가한 번들 전달 경로·채널별 외부 연결(Q08)과 Preflight 범위·도메인 시나리오(Q09). 아직 미발송·미답변.
 - 설계 진입점: `DAW 구축 설계/00-integration-plan.md`. 운영 책임·결정·S0~S6 단계. 1차 검증은 사용자 선택 EVM 체인 1개 + ERC-20 자산 1개. 구체 네트워크·토큰은 후속 확정.
 - 핵심 계약: `DAW 구축 설계/01-core-contracts.md`. Base·Solana 포함 체인별 자산·계정·주소·의도/시도·멱등·공개 API·Dfns 대응·이벤트·확정·영속 제약. 기존 OpenAPI의 금액·eventId/amount·DCCP FINALIZED·벤더 txId 의미 보존.
 - 노드: `DAW 구축 설계/02-node-rpc-spec.md`. 고객이 명세를 제안, Dfns·업체가 호환성과 제공 조건 확인. EVM·Base·Solana와 외부 대납 전파 경로 포함.
@@ -70,6 +70,14 @@
 - 내용 검토: 제공 자료 3개의 검증 범위를 재검토. Governance의 정책/거래 해시 검증 로드맵·HSM/MPC 범위·요청 재실행/credCounter 예외, AWS-Native 전용 점검과 Vault/TLS 적용 범위를 보완. 검토 기록은 `_workspace/dfns-content-review/review.md`.
 - 추가 교차 검토: 묶음 거래/개별 자산 이동의 성공 판정, operation 누적 대납 한도, 동일 이동·전이의 eventId 유지, 복구 후 CORE·외부 대납 대사, 내장 대납 지갑 정책 제약을 기존 문서와 Q05·Q06에 보강. `_workspace/dfns-cross-review/review.md`에 근거·시나리오·검증 기록.
 - 다음: S3 물리 DB·이벤트 스키마·상태 전이 상세화와 지원 릴리스/대납 계약 검증. 기존 공개 API·구현 저장소·인프라는 변경하지 않음.
+
+### 2.1d Fireblocks Private Cloud 검토 (2026-09-16)
+
+- 문서: `WaaS 도입·구축/Fireblocks/01-private-cloud-aws-design.md`. 담당자 서면 답변 3회를 배치 기반·구성·책임 분담·런타임 연결·키 위치·노드 운영·go-live로 재구성. 중카테고리는 `Fireblocks PaaS` → `Fireblocks`.
+- 확정: AWS 전용(Azure 2028 계획, 베어메탈·on-prem 없음). 모든 컴포넌트가 우리 AWS 테넌트. 키 자료는 MPC·HSM 모두 테넌트 내이며 Fireblocks 보유 셰어 없음. 상시 연결 의존성은 소프트웨어 업데이트 pull(outbound HTTPS·API 키) 하나.
+- **Fireblocks 회신 대기** — 시세 데이터·자산 메타데이터 의존성의 정확한 답, shared responsibility matrix, 아키텍처·데이터 플로우 도면, 운영·업데이트 모델, BNYM 규제 자료(NDA). 수령하면 문서의 「출시 전 확인」 체크리스트로 대조.
+- **우리 측 숙제** — 요구 사항 노트(체인 목록 포함) 발송, 규제기관 협의 후 Fireblocks 호스팅 노드 수용 여부 회신, MPC 대 HSM 선택 의견.
+- 미확인: Private Cloud와 배치 옵션 문서의 Korean Local Instance 관계, Secure Tier 실행 기반·Key Share 배치, AWS 계정 수·자원 수량, 리드타임·예산.
 
 ### 2.2 wiki: 컨퍼런스 세션 자료 promote 대기 (Stage 164–165 후속)
 
