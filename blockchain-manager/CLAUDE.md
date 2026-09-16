@@ -164,7 +164,7 @@ npm ci            # 배포 도구 설치가 필요할 때 최초 1회 (Node.js 2
 node scripts/export-board.mjs
 
 # 지정한 중카테고리만 포함 — 연결된 다른 분류는 자동 추가하지 않는다.
-node scripts/export-board.mjs --only "WaaS 도입·구축/Fireblocks PaaS,WaaS 도입·구축/Dfns"
+node scripts/export-board.mjs --only "WaaS 도입·구축/Fireblocks,WaaS 도입·구축/Dfns"
 
 # 내보내기 범위·링크·참고 문서 제외 회귀 검사
 node --test scripts/export.test.mjs
