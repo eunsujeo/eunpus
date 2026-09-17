@@ -117,3 +117,22 @@ sequenceDiagram
 - **4-leg** — 통화·상대가 안 맞아 유동성이 필요할 때(A↔MM↔B). 마켓메이커를 끼워 다리가 넷으로 는다.
 
 **원자성·프라이버시·되돌림 없는 확정은 둘 다 동일**하고, 다리 수만 늘 뿐이다. MM은 견적요청이 익명이라 송수신자 신원을 못 본 채 유동성만 댄다.
+
+## 토큰 표준에는 V2가 있다 — 이 장은 V1 기준이다
+
+위 흐름의 잠금(`AllocationFactory_Allocate`)과 실행은 Canton Network 토큰 표준([CIP-0056](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md))의 **V1** 인터페이스를 쓴다. 그 뒤 **V2**가 [CIP-0112](https://github.com/canton-foundation/cips/blob/main/cip-0112/cip-0112.md)로 나왔다(2026-06-12 승인). V1을 대체하는 게 아니라 **하위 호환을 지키며 확장한 별도 메이저 버전**이라, 지금은 두 버전이 함께 있다. 이 장의 서술은 V1 기준이고, 새로 만들 때는 어느 버전을 쓸지 먼저 정해야 한다.
+
+바뀐 것 중 이 장의 내용과 직접 맞물리는 셋만 든다.
+
+| 갈리는 지점 | V1 (이 장) | V2 |
+|---|---|---|
+| **실행 권한** | `Allocation_ExecuteTransfer` 의 controller 가 `[executor, sender, receiver]` 로 **고정**이다. 낮은 신뢰에 맞춘 설계 — 송신·수신이 자기 다리와 상대 다리가 함께 일어나는 것을 직접 확인한다. | choice 의 controller 와 이벤트 observer 를 **구성 가능**하게 열었다. |
+| **묶음 정산의 프라이버시** | 세 파티가 그 정산의 결과를 모두 보게 되므로, 여러 건을 묶은 **배치 정산에서 프라이버시를 온전히 지킬 수 없다.** | 배치 정산을 프라이버시를 지키며 하도록 겨냥한다. |
+| **레지스트리 API 모양** | 잠금 건마다 `POST /registry/allocations/v1/{allocationId}/choice-contexts/execute-transfer` 로 실행 맥락을 받는다(10장). | 같은 자리의 실행 엔드포인트가 없다. 대신 `POST /registry/allocation/v2/settlement-factory` 로 **배치 정산**(`SettlementFactory_SettleBatch`) 맥락을 받는다. 레지스트리는 **최소 25개 다리**까지 지원해야 한다. 회수·취소는 v2 경로에 그대로 있다. |
+
+V2 는 **확정 잠금(committed allocation)** 도 들여왔다 — 잠긴 자금이 정산 기한까지 실행자의 통제 아래 놓여 일방적으로 회수되지 않게 하는 선택지로, 선납 거래나 여러 번에 나눠 하는 정산에 쓴다.
+
+## 이 페이지의 출처
+
+- **토큰 표준 V2** — [CIP-0112](https://github.com/canton-foundation/cips/blob/main/cip-0112/cip-0112.md) 원문(CIP-0112-TOKEN-STANDARD-V2-001, 확인 2026-09-17)과 Canton 공식 문서 [Token Standard](https://docs.canton.network/appdev/deep-dives/token-standard) (CF-DOCS-TOKEN-STANDARD-001). V1·V2 레지스트리 경로는 각 버전 OpenAPI(CF-DOCS-ALLOCATION-V1-OPENAPI-001 · CF-DOCS-ALLOCATION-V2-OPENAPI-001)를 따른다.
+- 2-leg·4-leg 흐름과 choice 이름은 이 세트가 기준으로 삼은 정산 패키지 `Settlement.FxDvp` 와 그 테스트에서 가져왔다.

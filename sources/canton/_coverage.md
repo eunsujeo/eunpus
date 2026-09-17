@@ -69,3 +69,25 @@ note: 500+ 페이지 중 수탁형 Canton 위키 관련 묶음만 추적. Daml s
 
 ## SWEEP 완료 (Stage 57~62)
 content 페이지(Overview/Integrations/GS 운영·개념/관련 deep-dive) 전수 검증. 자동생성 ref(API/gRPC/Java/JSON/Daml stdlib)는 표본 점검 후 일괄 범위 밖 확정. Canton open Q: A11(Fireblocks status 매핑)만 open, 나머지 ANSWERED.
+
+## 2026-09-17 노후화 점검 — 출처 URL 재확인
+
+Canton 문서 사이트가 **2026-05-18 통합**됐다. `docs.canton.network` 가 단일 정본이 되고,
+`docs.digitalasset.com` 은 Digital Asset 제품 전용으로 줄었으며, Splice 문서(`docs.sync.global` 계열)는
+갱신 중단 후 폐기 예고 상태다.
+
+canton 관련 자료 전체(`sources/canton/` · `entities/canton/` · `docs-site/canton-network/` ·
+`blockchain-manager/sources/canton-network/` · `blockchain-manager/docs/캔톤네트워크/`)의 URL 86건을
+HTTP 확인한 결과는 다음과 같다.
+
+- **끊긴 링크 7건은 전부 `docs.digitalasset.com` 이고, 전부 불변 원본 스냅샷 안에 있다** —
+  `2026-06-09__digitalasset-docs-canton-model.md` 의 `build/3.4/…` · `integrate/devnet/…` ·
+  `overview/3.4/…` · `subnet/3.4/…`. 원본은 수집 시점의 기록이라 **고치지 않는다.**
+  이 문서들을 다시 인용할 때는 `docs.canton.network` 의 대응 페이지를 새로 확인해 쓴다.
+- **큐레이티드 위키·docs-site·개념 문서에는 끊긴 링크가 없다.**
+- 확인 불가 3건은 부패가 아니다 — `DACH-NY/canton` 이슈(비공개 저장소),
+  `scan.sv-1…/acs/YOU`(자리표시자가 든 API 경로), `support.fireblocks.io`(봇 차단, 브라우저로는 열림).
+
+같은 점검에서 `blockchain-manager/docs/캔톤네트워크/개념/` 12장의 사실을 공식 문서와 대조해
+7장(컨트랙트 키)·9장(토큰 표준 V2)·10장(수수료·보상)을 고쳤다. 근거 원문 6건은
+`blockchain-manager/sources/canton-network/` 에 2026-09-17 스냅샷으로 넣고 manifest 에 SHA-256 을 기록했다.

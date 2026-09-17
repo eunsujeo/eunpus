@@ -80,13 +80,18 @@ Transfer 를 실행하면 옛 자산(Asset#1)이 보관되고, 그 연쇄로 새
 
 ## 개발자 시점 — 컨트랙트 키 & 원장 시간
 
-**컨트랙트 키**: 컨트랙트 ID 를 몰라도 `(은행, 계좌번호)` 같은 키로 컨트랙트를 조회한다. 키마다 그것을 책임지는 **maintainer** 가 있다.
+**컨트랙트 키**: 컨트랙트 ID 를 몰라도 `(은행, 계좌번호)` 같은 키로 컨트랙트를 조회한다. 키마다 그것을 책임지는 **maintainer** 가 있고, maintainer 는 그 컨트랙트의 signatory 여야 한다. 키는 템플릿의 선택 기능이라 **Daml-LF 2.3 이상을 컴파일 대상으로 명시**해야 쓸 수 있다 — `daml.yaml` 의 `build-options` 에 `--target=2.3` 을 넣는다. 이 설정을 바꾸면 패키지 ID 가 달라지므로 버전도 함께 올린다.
 
 ```daml
 key (bank, accountNumber) : (Party, Text)
 maintainer key._1   -- bank가 키를 유지
 ```
 
-**주의**: 키는 Synchronizer 내에서 **전역**이라, 컨트랙트 존재 정보가 새지 않게 신중히 설계한다.
+**주의 — 키는 유일하지 않다.** Canton 3.x 에서는 **같은 키를 가진 활성 컨트랙트가 여럿 있을 수 있다.** 키의 유일성은 Daml 엔진이 아니라 그 바깥(업무 로직이나 백엔드의 계좌번호·전표번호 채번)에서 보장한다는 전제다. 그래서 `fetchByKey` · `lookupByKey` · `exerciseByKey` 는 "그 키의 컨트랙트"가 아니라 정해진 조회 순서의 **첫 번째** 컨트랙트를 돌려준다. 조회 순서는 ① 이번 트랜잭션에서 생성된 것(최근 것부터) ② 커맨드에 명시적으로 실어 보낸(disclosed) 컨트랙트(커맨드에 실은 순서대로) ③ 참여자가 알고 있는 나머지(순서 보장 없음)다. 한 키에 여러 건이 있을 수 있는 업무라면 `DA.ContractKeys` 의 `lookupNByKey`(최대 n건)·`lookupAllByKey`(전부)를 쓴다 — 이 둘은 기본 import 가 아니라 `import DA.ContractKeys` 가 필요하다. 성능은 "키당 0~1건"이 흔한 경우에 맞춰 최적화돼 있어, 한 키에 많은 컨트랙트가 몰리면 느려진다.
 
 **원장 시간(ledger time)**: Synchronizer 가 부여하고 Synchronizer 별로 **단조 증가**한다. 마감·만기 같은 시간 기반 로직에 쓴다(예: `assertDeadlineExceeded` 로 마감 경과 확인).
+
+## 이 페이지의 출처
+
+- **컨트랙트 키** — Canton 공식 문서 [Reference: Contract Keys](https://docs.canton.network/appdev/modules/m3-contract-keys) (CF-DOCS-CONTRACT-KEYS-001, 확인 2026-09-17). 컴파일 대상(Daml-LF 2.3)·키 비유일성·조회 순서·`DA.ContractKeys` 는 이 문서를 따른다.
+- 나머지 원장 모델 서술(불변 컨트랙트·ACS·offset·액션 트리)은 이 세트의 다른 장과 같은 개념 설명이라 별도 출처 표기를 두지 않았다.

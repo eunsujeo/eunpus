@@ -8149,3 +8149,22 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 용어 주의(문서에는 넣지 않음): 원본은 네 계층을 모두 "four sequenced infrastructure layers"라 부른다. 벤더 표현으로는 L3도 인프라 계층이나, 한국어 "인프라 세팅"으로 옮기면 범위가 좁게 전달되므로 계층별 역할로 서술했다.
 - 검증: 181문서 빌드, WaaS 도입·구축 내부 링크 0건 깨짐.
 - 상태: 문서 수정 완료. 커밋·푸시·배포 없음 — 배포본은 8dc4754 기준이라 이 문단이 아직 반영돼 있지 않다.
+
+## Stage 216 (2026-09-17) — 캔톤네트워크 개념 12장 노후화 점검과 정정
+- 요청: "캔톤 네트워크 문서가 노후화되지 않았는지 확인해줘 (홈 › 캔톤네트워크 › 개념)" → 대조 보고 후 "모두 진행" 승인, 이어서 docs-site 정정도 승인.
+- 대상: `blockchain-manager/docs/캔톤네트워크/개념/` 12장(2026-07 작성, Canton 3.4 기준). 현재 Canton 3.5 라인.
+- 신규 source 8건 → `blockchain-manager/sources/canton-network/` (cf-docs·CIP 저장소, 커밋 SHA 고정 + SHA-256):
+  contract-keys · canton-coin-tokenomics · tokenomics-of-gs · synchronizer-traffic · token-standard · allocation v1/v2 OpenAPI · CIP-0112
+- **정정 5건**:
+  - 7장 컨트랙트 키 — "키는 Synchronizer 내에서 전역"(=유일) 삭제. 실제는 LF 2.3 opt-in(`--target=2.3`), **비유일**(같은 키에 활성 컨트랙트 복수 가능), `fetchByKey`/`lookupByKey`/`exerciseByKey` 는 조회 순서상 첫 건만, 복수는 `DA.ContractKeys`. **1차 판정("3.x 미지원")은 3.4 시절 문장을 검색 요약으로 읽은 오류 — 원문으로 정정**
+  - 10장 CC 잔액 — "잔액까지 비공개" 삭제. 공식 문서는 CC 보유·이력이 scan 서비스로 **공개**라고 명시. 앞 장 프라이버시는 Daml 앱 거래의 성질이고 CC 에는 적용되지 않는다
+  - 10장 수수료 — 트래픽 단일 → **트래픽 + 보유(holding)** 2종. 전송·잠금 수수료는 CIP-0078 로 폐지
+  - 10장 보상 — "닫힌 경제 루프(수수료가 곧 수입)" → **burn-mint**(소각과 신규 발행). 보상 주체를 SV·**앱 제공자**·밸리데이터 3축으로 교체. **라이브니스 보상은 CIP-0096 으로 2026-04-30 부터 상한 $0**, 앱 보상은 CIP-0104 트래픽 기반(미적용 망은 legacy marker)
+  - 10장 레지스트리 API — `GET` → **`POST`** `/registry/allocations/v1/{allocationId}/choice-contexts/execute-transfer`
+- **보강 2건**: 9장에 토큰 표준 V2 절(CIP-0112, 2026-06-12 승인 — controller 구성 가능·배치 정산 프라이버시·v2 는 건별 execute 대신 `settlement-factory`, 최소 25 다리·확정 잠금) / 0장에 기준 시점 절
+- **docs-site**: `canton-network/operations.html` 토큰경제 문단에서 liveness 기여·"가동 보상 라운드당 약 $2.85" 정정, 폐지 사실을 별도 문단으로 명시. 같은 페이지 traffic 파라미터 4개(400,000 byte/20분 · $60/MB · factor 4bp · 최소 top-up 200,000 byte)와 개발 기금 5%·10분 라운드·SV 중앙값 환율은 **현행과 일치 확인**. `~10 UTXO` 권장도 유효
+- **손대지 않은 것**: Canton 3.5/BFT(문서에 틀린 서술 없음) · JSON Ledger API 3.5 deprecation(3.5 OpenAPI 원문에서 확인 불가 → 추측 금지로 제외). 문서가 쓰는 `/v2/commands/submit-and-wait`·`/v2/state/active-contracts`·`/v2/state/ledger-end`·`POST /v2/parties` 는 3.5 스펙에 존재 확인
+- **링크 감사**: canton 관련 URL 86건 전수 확인. 끊긴 7건은 전부 `docs.digitalasset.com` 이고 **전부 불변 원본 스냅샷 안** → 원본 유지, 경위를 `sources/canton/_coverage.md` 에 기록. 큐레이티드 위키·docs-site·개념 문서는 0건. 문서 사이트는 2026-05-18 `docs.canton.network` 로 통합
+- 검증: 217문서 빌드 성공, `check-consistency.py` PASS(7페이지)
+- 신규 entity: 0
+- 상태: 파일 수정 완료. 커밋·푸시·배포 없음 — 작업트리에 이번 건과 무관한 트래블룰 수정이 함께 올라와 있다

@@ -14,3 +14,62 @@ sources:
     file: 2026-08-19__external-party-v3.4.11.rst
     url: https://raw.githubusercontent.com/digital-asset/canton/v3.4.11/docs-open/src/sphinx/overview/explanations/canton/external-party.rst
     sha256: ddea6e86db74f62d2f59645e11a2b3a82eb4cf17187b079381403b689e891af2
+
+# 2026-09-17 수집분 — 통합 문서 저장소(canton-network/cf-docs)와 CIP 저장소로 출처가 옮겨져
+# 위의 upstream_repository·upstream_ref·accessed_at 가 적용되지 않는다. 항목마다 따로 적는다.
+  - id: CF-DOCS-CONTRACT-KEYS-001
+    file: 2026-09-17__contract-keys-cf-docs.mdx
+    repository: https://github.com/canton-network/cf-docs
+    ref: 09e7877b02d99f57abd29d7baeb2e3557b8c7943
+    accessed_at: 2026-09-17
+    url: https://raw.githubusercontent.com/canton-network/cf-docs/09e7877b02d99f57abd29d7baeb2e3557b8c7943/docs-main/appdev/modules/m3-contract-keys.mdx
+    sha256: c851d662db3ef82e32ebdf9b1d952b7733851948c647a77aeac7c6e594c39f45
+  - id: CF-DOCS-CC-TOKENOMICS-001
+    file: 2026-09-17__canton-coin-tokenomics-cf-docs.mdx
+    repository: https://github.com/canton-network/cf-docs
+    ref: 09e7877b02d99f57abd29d7baeb2e3557b8c7943
+    accessed_at: 2026-09-17
+    url: https://raw.githubusercontent.com/canton-network/cf-docs/09e7877b02d99f57abd29d7baeb2e3557b8c7943/docs-main/overview/reference/canton-coin-tokenomics.mdx
+    sha256: 3809dbcff64a0ca859063a7786e5865388f4ae7ecc59352c3adaa8016c631e37
+  - id: CF-DOCS-TOKEN-STANDARD-001
+    file: 2026-09-17__token-standard-cf-docs.mdx
+    repository: https://github.com/canton-network/cf-docs
+    ref: 09e7877b02d99f57abd29d7baeb2e3557b8c7943
+    accessed_at: 2026-09-17
+    url: https://raw.githubusercontent.com/canton-network/cf-docs/09e7877b02d99f57abd29d7baeb2e3557b8c7943/docs-main/appdev/deep-dives/token-standard.mdx
+    sha256: 2d7f1367b661b29528feb462b85ae741918cb303d536e2d0261c0b5cf1ba76be
+  - id: CF-DOCS-ALLOCATION-V1-OPENAPI-001
+    file: 2026-09-17__allocation-v1-openapi-cf-docs.yaml
+    repository: https://github.com/canton-network/cf-docs
+    ref: 09e7877b02d99f57abd29d7baeb2e3557b8c7943
+    accessed_at: 2026-09-17
+    url: https://raw.githubusercontent.com/canton-network/cf-docs/09e7877b02d99f57abd29d7baeb2e3557b8c7943/docs-main/openapi/splice/token-standard/allocation-v1.yaml
+    sha256: b28762a1d8f94a300904f20ed9c3f42babad4120b112593a17167f544f24fdd3
+  - id: CF-DOCS-ALLOCATION-V2-OPENAPI-001
+    file: 2026-09-17__allocation-v2-openapi-cf-docs.yaml
+    repository: https://github.com/canton-network/cf-docs
+    ref: 09e7877b02d99f57abd29d7baeb2e3557b8c7943
+    accessed_at: 2026-09-17
+    url: https://raw.githubusercontent.com/canton-network/cf-docs/09e7877b02d99f57abd29d7baeb2e3557b8c7943/docs-main/openapi/splice/token-standard/allocation-v2.yaml
+    sha256: 772dbc53b5b00959eead4d10b9e85b7145dd8522615f441e7f2169e575504aae
+  - id: CIP-0112-TOKEN-STANDARD-V2-001
+    file: 2026-09-17__cip-0112-token-standard-v2.md
+    repository: https://github.com/canton-foundation/cips
+    ref: 6f37c896a5a76ec3bc1aa67bc045623ae5df41e5
+    accessed_at: 2026-09-17
+    url: https://raw.githubusercontent.com/canton-foundation/cips/6f37c896a5a76ec3bc1aa67bc045623ae5df41e5/cip-0112/cip-0112.md
+    sha256: f1fa0e0177c562a581dfd235303612a641827380c40e3a3b9ab2a27ce5e1308e
+  - id: CF-DOCS-TOKENOMICS-OF-GS-001
+    file: 2026-09-17__tokenomics-of-gs-cf-docs.mdx
+    repository: https://github.com/canton-network/cf-docs
+    ref: 09e7877b02d99f57abd29d7baeb2e3557b8c7943
+    accessed_at: 2026-09-17
+    url: https://raw.githubusercontent.com/canton-network/cf-docs/09e7877b02d99f57abd29d7baeb2e3557b8c7943/docs-main/overview/reference/tokenomics-of-gs.mdx
+    sha256: 6a67732a72b2bd55b7c07b67261e1be498d36fc6203a13912c1ed6725bf39b60
+  - id: CF-DOCS-SYNCHRONIZER-TRAFFIC-001
+    file: 2026-09-17__synchronizer-traffic-cf-docs.mdx
+    repository: https://github.com/canton-network/cf-docs
+    ref: 09e7877b02d99f57abd29d7baeb2e3557b8c7943
+    accessed_at: 2026-09-17
+    url: https://raw.githubusercontent.com/canton-network/cf-docs/09e7877b02d99f57abd29d7baeb2e3557b8c7943/docs-main/global-synchronizer/deployment/synchronizer-traffic.mdx
+    sha256: 872802ac29d8d2415f4b3b61a9e1217d4dccfeb52caf439b6b89b9dce161493c
