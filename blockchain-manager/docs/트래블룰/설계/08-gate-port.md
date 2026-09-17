@@ -91,7 +91,7 @@ interface TravelRuleChannel {
 }
 
 enum class TrVerdict {
-  NOT_REQUIRED,  // 임계 미만·면제 — 정보 교환 없이 진행
+  NOT_REQUIRED,  // 적용 규정상 정보 교환 대상이 아님 — 정책 근거를 기록
   APPROVED,      // 통과 — 제출(출금)·가용 전이(입금) 진행
   PENDING,       // 확인 중 — 비동기 승인 대기 (시간 규칙은 4장)
   REJECTED,      // 거절 — 출금 반려·입금 보류
@@ -105,8 +105,8 @@ fun channelOf(counterparty: Destination): TravelRuleChannel
 
 | 우리 `TrVerdict` | Fireblocks validate/full · Notabene 판정 | VerifyVASP (비동기) | CODE (동기) | 개인지갑 |
 |---|---|---|---|---|
-| `NOT_REQUIRED` | validate/full `BELOW_THRESHOLD`·`NON_CUSTODIAL` · Notabene `Saved` | 한국 기준(100만원) 미만 — 보내는 쪽이 원화 환산가 필드(tradePrice·KRW)를 채워 보냄 | 한국 기준(100만원) 미만 — 원화 환산가 필드 동일 | 정보 교환 없음 |
-| `APPROVED` | 출금 — validate/full 검증 통과(`isValid`) · 입금 — 벤더 스크리닝 통과(`Completed` → Post-Screening Accept)로 도착 | User Verification 승인 (Callback 도착) | Asset Transfer Authorization 승인 — 동기 즉답 | 등록 지갑 목록(DAW-CORE DB) 등록·소유 인증 — DAW-CORE 자체 확인 |
+| `NOT_REQUIRED` | 제품의 `BELOW_THRESHOLD`·`NON_CUSTODIAL`을 바로 매핑하지 않음. 시행일·관할권·상대 유형 정책상 제외일 때만 사용 | 국내 VASP는 2027-02-19부터 금액 제외 없음 | 국내 VASP는 2027-02-19부터 금액 제외 없음 | VASP 간 정보 교환 대신 별도 위험기반 확인 경로 사용 |
+| `APPROVED` | 출금 — validate/full 검증 통과(`isValid`) · 입금 — 벤더 스크리닝 통과(`Completed` → Post-Screening Accept)로 도착 | User Verification 승인 (Callback 도착) | Asset Transfer Authorization 승인 — 동기 즉답 | 승인된 위험기반 정책 통과 — DAW-CORE 자체 확인 |
 | `PENDING` | — 출금 검증은 동기 즉답이라 없음. 벤더 안 `Pending`(Wait)의 결과는 블록체인 매니저의 거래 상태 이벤트로 온다 | 접수 번호(UUID) 반환 · Callback 대기 | — (동기 즉답이라 없음) | — |
 | `REJECTED` | — 검증 실패는 요청 오류로 응답. 벤더 게이트의 `Rejected`·`Blocking Time Expired` 는 제출 뒤 블록체인 매니저의 거래 상태 이벤트(REJECTED)로 온다 | 상대 거절 · PENDING 만료 | 상대 거절 | 미등록·미인증 |
 
@@ -115,7 +115,7 @@ fun channelOf(counterparty: Destination): TravelRuleChannel
 VerifyVASP 의 사전 승인은 상대 VASP 의 응답(사람 심사일 수도 있다)을 기다리는 비동기라, 출금 상태에 **트래블룰 확인 중** 단계가 필요하다. 동기 솔루션(Notabene 의 validate/full·개인지갑 조회)도 같은 상태를 즉시 통과하는 것으로 접는다 — 상태 흐름을 솔루션별로 두 벌 만들지 않는다.
 
 ```
-출금 접수 → 업무 승인 → 트래블룰 확인 중 ──APPROVED·NOT_REQUIRED──→ 제출 (매니저 submitTransaction)
+출금 접수 → 업무 승인 → 트래블룰 확인 중 ──APPROVED·정책상 NOT_REQUIRED──→ 제출 (매니저 submitTransaction)
                               │
                               ├─REJECTED──→ 반려 — 잠긴 금액 가용 복귀 · 고객 안내
                               └─PENDING 만료(4장 시간 규칙)──→ 반려 — 같은 처리
@@ -143,7 +143,7 @@ VerifyVASP 의 사전 승인은 상대 VASP 의 응답(사람 심사일 수도 �
 | 4 | **벤더(Notabene) 스크리닝 통과** 상태로 도착 | 해외 — APPROVED. 단 "국내 상대인데 VerifyVASP 보고가 안 온 건"이 여기 섞일 수 있다 — 통과로 볼지 보류로 볼지는 **정책 결정**(4장) |
 | 5 | 어느 것도 아님 | **PENDING — 가용 보류**. 사전 검증 기록은 있는데 보고만 누락된 건은 **Check Transaction Status 로 능동 조회**해 푼다 — 단 이 API 의 입력은 verificationUuid 뿐(공식 명세)이라, 사전 검증 기록 자체가 없는 입금은 조회할 열쇠가 없어 바로 소명·사후 등록·반환 정책으로 간다 (7.4) |
 
-- 2~3 은 우리 기록과의 대조라 확실하고, 4 가 정책이 걸리는 자리다 — 벤더 통과를 어디까지 믿을지가 국내 규제 의무(수신 정보 확보)와 부딪힌다. 2026 개정이 수신거래소의 정보 확보 의무를 신설하는 방향이라(개념 세트 7장), 이 결정은 보류(보수) 쪽으로 기운다.
+- 2~3 은 우리 기록과의 대조이고, 4 가 정책이 걸리는 자리다 — 벤더 통과를 어디까지 믿을지가 국내 규제 의무(수신 정보 확보)와 부딪힌다. 2027년 2월 19일부터 수신 VASP는 정보 누락 시 제공을 요구하고, 계속 부족하면 거래를 거절해야 하므로 국내 상대를 벤더 통과만으로 가용 처리하지 않는다.
 - 기본값은 보류다 — **명시적으로 확인된 것만 가용**으로 보낸다(화이트리스트 방식). PENDING 의 만료·해소는 4장 시간 규칙.
 - **반환의 실행은 미설계다** — 위 판별의 출구들(소명 실패·미등록 개인지갑·동결 종결)이 가리키는 "반환"은 결국 출금이다. 일반 출금 경로를 타는지, 원 송신 주소로 되돌리는 출금의 트래블룰 확인(상대 판별)은 어떻게 하는지 — 흐름 설계 대상으로 남긴다.
 
@@ -154,7 +154,7 @@ VerifyVASP 의 사전 승인은 상대 VASP 의 응답(사람 심사일 수도 �
 | 솔루션 추가 (예: **CODE 직접 연동** — 상호연동 실효가 부족하면 · 6장 비교 표) | 어댑터 1개 + 라우팅 규칙 — CODE 는 사전 승인이 동기라 어댑터가 오히려 단순 |
 | VerifyVASP 연동 방식 변화 (직접 연동 B 확정 — 6장) | VerifyVASP 어댑터 내부만 |
 | 같은 상대가 두 솔루션 모두 회원 — 우선순위 변경 | 라우터 정책 데이터만 |
-| 임계·면제 기준 변경 | 어댑터의 NOT_REQUIRED 판정만 |
+| 시행일·관할권·면제 기준 변경 | 정책 데이터와 NOT_REQUIRED 매핑 — 국내 VASP의 금액 면제는 2027-02-19 종료 |
 
 출금·입금 유스케이스, 매니저 포트·어댑터는 전부 0줄 — 매니저와의 접점이 둘뿐(6장: travelRule 운반 · 동결 상태 수신)인 것도 그대로다.
 

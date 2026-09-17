@@ -68,7 +68,7 @@ sequenceDiagram
 
 | TrVerdict | 뜻 |
 |---|---|
-| `NOT_REQUIRED` | 트래블룰 대상 아님 — 금액이 한국 기준(원화 100만원) 미만이거나, 수취가 개인지갑이라 교환할 상대 VASP 가 없다 |
+| `NOT_REQUIRED` | 적용 규정상 VASP 간 정보 교환 대상이 아님 — 시행일·관할권·상대 유형·정책 버전을 근거로 판정. 국내 VASP의 금액 제외는 2027-02-19 종료 |
 | `APPROVED` | 통과 — 정보 교환·검증이 승인됐다 |
 | `PENDING` | 아직 결과 없음 — 결과가 나면 `withdrawal-check.settled` 로 알린다 |
 | `REJECTED` | 거절 — 상대 거절 또는 PENDING 만료 |

@@ -118,9 +118,9 @@ sequenceDiagram
         NB-->>FB: 트래블룰 상태 판정
         Note over FB: Post-Screening Policy(4장) — Accept 후에야 서명·전파
     else BELOW_THRESHOLD · NON_CUSTODIAL(개인지갑)
-        Note over GT: 개인지갑 선택 출금은 게이트에 오지 않는다 — DAW-CORE가 등록 지갑 목록으로 자체 확인 (7.8)
-        GT-->>BE: 임계 미만·등록 지갑 = APPROVED · 미등록 개인지갑 = REJECTED
-        BE->>BM: submitTransaction — 동봉 없음 (미등록이면 반려 · 등록·인증부터)
+        Note over GT: 제품 분류를 법적 면제로 직접 쓰지 않음<br/>시행일 · 관할권 · 상대 유형 정책으로 재판정
+        GT-->>BE: 국내 VASP BELOW_THRESHOLD = 정보 교환 경로<br/>개인지갑 = 위험기반 확인 결과
+        BE->>BM: 정책 승인 건만 submitTransaction
     end
 ```
 
@@ -279,7 +279,7 @@ sequenceDiagram
     end
 
     BE->>GT: 트래블룰 확인 — "트래블룰 확인 중"
-    GT->>NB: 사전 판정 직접 호출 — 임계·수취 주소 유형 · 수취 VASP 식별
+    GT->>NB: 사전 판정 직접 호출 — 금액·수취 주소 유형 · 수취 VASP 식별
     NB-->>GT: 대상 여부 + 수취 VASP(DID) · 유효성
     alt 트래블룰 대상
         GT->>GT: 수취인 정보 수집 · PII 암호화
@@ -293,9 +293,9 @@ sequenceDiagram
             RV-->>NB: 승인 · 거절 (사람 심사)
             NB->>GT: 웹훅 — 결과 도착 (우리 수신 엔드포인트 · 참조키로 대조)
         end
-    else 임계 미만 · 개인지갑(NON_CUSTODIAL)
-        Note over GT: 정보 교환 불필요 — 개인지갑은 화이트리스트·소유 인증
-        GT-->>GT: APPROVED (미등록 개인지갑은 REJECTED)
+    else BELOW_THRESHOLD · 개인지갑(NON_CUSTODIAL)
+        Note over GT: 제품 분류를 자동 승인하지 않음<br/>국내 VASP는 전건 경로 · 개인지갑은 위험기반 확인
+        GT-->>GT: 정책 재판정 결과 — APPROVED · PENDING · REJECTED
     end
     alt APPROVED
         GT-->>BE: APPROVED — 서명·전파 허용

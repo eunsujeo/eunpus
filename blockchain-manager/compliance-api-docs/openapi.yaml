@@ -484,7 +484,7 @@ components:
       description: verdict 의 값 — 솔루션 원어를 이 넷으로 번역한다 ([트래블룰 8장](../../트래블룰/설계/08-gate-port.md)).
       enum: [NOT_REQUIRED, APPROVED, PENDING, REJECTED]
       x-enumDescriptions:
-        NOT_REQUIRED: 트래블룰 대상 아님 — 한국 기준(원화 100만원) 미만이거나 솔루션이 수취를 개인지갑으로 판별
+        NOT_REQUIRED: 적용 규정상 VASP 간 정보 교환 대상이 아님 — 시행일·관할권·상대 유형·정책 버전을 근거로 판정. 국내 VASP의 금액 제외는 2027-02-19 종료
         APPROVED: 통과 — 정보 교환·검증이 승인됐다
         PENDING: 아직 결과가 없다 — 결과가 나면 큐 이벤트(`withdrawal-check.settled`)로 알린다
         REJECTED: 거절 — 상대 거절 또는 PENDING 만료
