@@ -353,6 +353,9 @@ function renderDocEmbed(c) {
 
   const frame = document.createElement('iframe');
   frame.className = 'embed-frame';
+  // 발표자료처럼 자체 전체화면 제어를 제공하는 embed가 브라우저 권한 정책에 막히지 않게 한다.
+  frame.allowFullscreen = true;
+  frame.setAttribute('allow', 'fullscreen');
   // 정적 내보내기 파일은 뷰어 HTML 이 내장돼 있다 — srcdoc 으로 띄운다 (파일 하나로 동작)
   const inlined =
     window.__STATIC_BOARD__ && window.__STATIC_BOARD__.embeds && window.__STATIC_BOARD__.embeds[c.embed];
