@@ -8168,3 +8168,26 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 검증: 217문서 빌드 성공, `check-consistency.py` PASS(7페이지)
 - 신규 entity: 0
 - 상태: 파일 수정 완료. 커밋·푸시·배포 없음 — 작업트리에 이번 건과 무관한 트래블룰 수정이 함께 올라와 있다
+
+## Stage 217 (2026-09-18) — Taurus 은행급 커스터디 리포트 ingest (mode C)
+- 요청: `blockchain-manager/sources/Taurus-Banking-Grade-Custody-June-2023_en.pdf` ingest. 처리 모드·위치·원본 커밋 여부는 질문 후 승인받음 — Mode C · `WaaS 도입·구축/Taurus` · 원본 커밋.
+- source: TAURUS-CUSTODY-001 — Taurus SA, `Banking-grade digital asset custody` (Technology report, 2023-06, 17쪽, 저자 Jean-Philippe Aumasson CSO). 2020-10 판의 갱신본. sha256 `769cc3b0…`. 벤더 공개 기술 리포트이며 제품 명세·계약 문서가 아니다. Taurus 는 wiki·docs 첫 등장.
+- 추출 방법: pdftotext 로 17쪽 전문 추출(PDF 직접 read 아님). 텍스트로 나오지 않는 도형은 pdftoppm 110dpi 로 6쪽 Figure 1(공유 책임 모델)·13쪽 Figure 3(분리 모델 3종)만 확인해 표·mermaid 로 재구성. 8쪽 Figure 2(NSA 1998 도해)는 읽지 않았고 반영하지 않았다.
+- 저작권 처리: 17쪽에 "명시 허가 없는 전부·일부 복제 금지" 문구가 있어 **Fireblocks·Dfns 에 쓴 쪽별 전문 전환 방식을 적용하지 않았다.** 쪽을 밝힌 요약과 짧은 인용으로만 작성. manifest 의 `copyright_note` 에 기록.
+- 신규 파일 4건: `sources/taurus/2023-06-22__taurus__banking-grade-custody-v2.pdf` (원본 이동·개명) · `sources/taurus/manifest.yml` · `sources/taurus/README.md` · `docs/WaaS 도입·구축/Taurus/00-banking-grade-custody.md`
+- 정리 문서에 담은 범위: 커스터디 정의(5쪽) · 공유 책임 모델 3분류와 Figure 1 표(5~6쪽) · 8개 통제 블록(7쪽) · 보안 목표 10가지(8~11쪽) · HSM 과 MPC 역할 구분표와 MPC 한계 3가지·확인 5항목·분리 모델 3종(12~13쪽) · Taurus 자신의 선택(14쪽) · 증권 자산 서비싱(15쪽) · 참고 문헌 중 CMTA·NIST·TSS 논문(16쪽)
+- 리포트에서 우리 판단에 직접 쓰이는 대목: 정족수가 모이면 MPC 는 거래 내용 통제를 우회하고 키를 복원할 수 있다(10쪽) · 블랙박스 키 생성 의식·백업은 피하라(13쪽) · 제공자가 shard 를 갖는 SaaS 구성은 일부 Taurus 고객에게 수용 불가(13쪽) · 데이터센터와 운영 팀이 둘 다 나뉘어야 한다, 3-DC 모델 권장(13쪽) · MPC 여부와 무관하게 하드웨어 신뢰 기점 필수(14쪽)
+- 벤더 주장과 일반 원칙을 본문에서 분리 표기. Fireblocks·Dfns 근거와 같은 문장에 섞지 않았다.
+- 영향받은 페이지: `docs/.board-order.json` (WaaS 도입·구축 하위분류에 `Taurus` 를 Dfns 뒤에 등록). 기존 문서 본문 수정 0건 — 신규 문서에서 Fireblocks 00 · Dfns 00 · 지갑보안 02·03 으로 나가는 링크만 걸었다.
+- 확인이 필요한 것(정리 문서 말미에 질문으로만 기재, 우리 구성에 대한 판단은 넣지 않음): 8개 통제 블록 중 blockchain-manager·DAW 가 덮는 범위 · Fireblocks·Dfns 구성의 13쪽 분리 기준 충족 여부 · 두 벤더의 키 생성 의식·백업이 블랙박스인지 · 정족수 우회를 각 벤더가 어떻게 막는지 · CMTA Custody Standard v2.0 을 점검 기준으로 쓸지
+- 검증: 219문서 빌드 성공. 신규 문서의 상대 링크 5건 전부 해석됨. `export-board.mjs --only "WaaS 도입·구축/Taurus"` 로 Chrome 사전 렌더 — mermaid 1블록 SVG 생성 확인.
+- 신규 entity: 0 (Fireblocks entity spine 과 무관한 타사 자료라 `entities/` · `vendors/` 미수정)
+- **재검토 5회 (같은 날, 사용자 지시).** 초점을 달리해 원문 대조 → 정합성 → 윤문 → 렌더 → 증거 경계 순으로 돌렸고 46건을 고쳤다.
+  - **1회 원문 대조 (14건). 정정 1건이 실질적이다** — 6쪽 Figure 1 의 오른쪽 열 6개를 전부 "외부 구성요소" 로 묶어 놓았으나, 220dpi 로 범례를 다시 렌더해 보니 색이 세 부류다(민트=솔루션 내부, 분홍=외부, 회색=공동 책임). 실제로는 **보안 실행 환경(HSM·TEE)만 솔루션 내부**, 인증과 블록체인 노드는 공동 책임, 규제·내부 정책·코어뱅킹 네트워크가 외부다. 표를 3열로 바꾸고 색 대조 사실을 출처 절에 명시. 1차에서 110dpi 전체 쪽 이미지만 보고 색을 확인하지 않은 채 좌우 2열 구조로 단정한 것이 원인.
+    나머지는 강도·범위 드리프트 — `potentially`·`tends to` 등 힌지 누락 복원(로그 다중 사이트 분산, MPC 키 관리 부담), "one of our conclusions" 를 "리포트의 결론" 으로 단정한 것 정정, `complementarily`("KMS 와 별도로" → "KMS 를 보완하는"), "simply inadequate" 를 "감당되지 않았다" 로 옮긴 것 정정, 네 영역의 주어를 금융기관에서 솔루션으로 되돌림(`including but not limited to` 도 복원), "8쪽부터 열 가지 목표" → 8쪽 총론·9~11쪽 목표. HSM 의 "잘 맞는 자리" 와 "MPC 가 푸는 문제는 …" 두 문장은 원문에 없는 저자 추론이라 출처 있는 서술로 교체.
+  - **2회 정합성 (3건)** — log 의 "신규 파일 3건" 이 4건 나열(수정), 문서의 "8쪽 Figure 2 미반영" 표기가 8쪽 본문을 인용하게 된 뒤 오해 소지(문구 분리), 출처 표의 사용 범위 `5~16쪽` → `3~16쪽`(3·4쪽 인용 반영). sha256·extract 경로·상대 링크 5건은 일치 확인.
+  - **3회 윤문 (24건)** — `quick-rules.md` A·B·D 계열 0건. C-11(연결어미 뒤 쉼표)이 19건으로 임계 6건 초과라 21곳 정리해 2건으로 낮춤. F-4 명사화 2건 환원("감사 가능성을 확보한다" → "감사할 수 있게 만든다"), "되살릴" → "복원할".
+  - **4회 렌더 (2건)** — 표 6개 열 수 일치 확인. HSM·MPC 표의 빈 머리 칸에 "구분" 부여, 8쪽 총론 한 문장(4절 병렬 168자)을 세 문장으로 분리.
+  - **5회 증거 경계·누락 (3건)** — 원문에 있으나 빠뜨린 것 보강: Taurus 3제품(PROTECT·EXPLORER·CAPITAL, 4쪽) · 멀티시그와 MPC 는 다른 것이라는 명시(9쪽) · 참고 문헌의 NSA Kubernetes Hardening Guide(16쪽). Fireblocks·Dfns 에 관한 단정은 0건, 우리 구성에 대한 판단도 0건으로 유지 확인.
+  - 재검증: 219문서 빌드, mermaid 1블록 SVG 재생성, 표 6개 불일치 0, 링크 5건 정상.
+- 상태: 파일 생성·수정 완료. 커밋·푸시·배포 없음.

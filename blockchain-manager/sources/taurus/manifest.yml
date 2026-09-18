@@ -1,0 +1,26 @@
+topic: taurus
+vendor: Taurus SA (taurushq.com) — 스위스 디지털 자산 커스터디·토큰화 플랫폼 업체
+collected_at: 2026-09-18
+authority_grade: vendor public technology report (제품 명세·계약 문서가 아니며, 자사 제품 우수성 주장을 포함한다)
+immutable: true
+files:
+  - id: TAURUS-CUSTODY-001
+    path: 2023-06-22__taurus__banking-grade-custody-v2.pdf
+    original_name: Taurus-Banking-Grade-Custody-June-2023_en.pdf
+    title: "Banking-grade digital asset custody — Our multi-layer custody framework, beyond signing machines (Technology report, June 2023)"
+    author: Dr. Jean-Philippe Aumasson (CSO·공동창업자, Taurus SA)
+    pages: 17
+    pdf_created: 2023-06-22 (Canva)
+    pdf_modified: 2024-09-04
+    edition: 2020-10 판의 갱신본 (3쪽 머리말)
+    source_url: 확인 필요 — 사용자 제공본이며 Taurus 공개 URL 은 대조하지 않았다
+    source_type: vendor-technology-report
+    grade: vendor-public
+    mode: C (full ingest — pdftotext 로 17쪽 전문 추출, 도형은 pdftoppm 110dpi 로 6·13쪽만 확인)
+    extract: ../../docs/WaaS 도입·구축/Taurus/00-banking-grade-custody.md
+    sha256: 769cc3b0aced166d466150c3cbca210e3f043c412e2e58c74eb355eb20529044
+    copyright_note: 17쪽에 "명시 허가 없는 전부·일부 복제 금지" 문구가 있다. 정리 문서는 쪽을 밝힌 요약과 짧은 인용으로만 작성하고 쪽별 전문 전환은 하지 않는다.
+    figures:
+      - "Figure 1 (6쪽) — 공유 책임 모델. 텍스트 추출 불가, 이미지로 확인해 표로 재구성"
+      - "Figure 2 (8쪽) — NSA 1998 History of Computer Security 도해. 읽지 않았다"
+      - "Figure 3 (13쪽) — IT 구성요소 분리 모델 3종. 텍스트 추출 불가, 이미지로 확인해 도식으로 재구성"
