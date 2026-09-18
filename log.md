@@ -8190,4 +8190,4 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
   - **4회 렌더 (2건)** — 표 6개 열 수 일치 확인. HSM·MPC 표의 빈 머리 칸에 "구분" 부여, 8쪽 총론 한 문장(4절 병렬 168자)을 세 문장으로 분리.
   - **5회 증거 경계·누락 (3건)** — 원문에 있으나 빠뜨린 것 보강: Taurus 3제품(PROTECT·EXPLORER·CAPITAL, 4쪽) · 멀티시그와 MPC 는 다른 것이라는 명시(9쪽) · 참고 문헌의 NSA Kubernetes Hardening Guide(16쪽). Fireblocks·Dfns 에 관한 단정은 0건, 우리 구성에 대한 판단도 0건으로 유지 확인.
   - 재검증: 219문서 빌드, mermaid 1블록 SVG 재생성, 표 6개 불일치 0, 링크 5건 정상.
-- 상태: 파일 생성·수정 완료. 커밋·푸시·배포 없음.
+- 상태: 커밋 `3603674` · push 완료 · 칸반 앱 배포 완료 (사용자 지시). `app/` 에서 `wrangler pages deploy public --project-name=blockchain-manager --branch=main`, Uploaded 2 files (229 already) → 배포 `c5f9871b`. `deployment list` 로 Environment=Production · Branch=main · Source=3603674 확인.
