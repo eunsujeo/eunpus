@@ -5,8 +5,8 @@ status: stable
 tags: [authentication, identity]
 stage_introduced: 4
 last_updated_stage: 8
-source_count: 4
-related: [api-key, api-user, authentication, owner, security-admin]
+source_count: 5
+related: [api, api-key, api-user, architecture, authentication, lifecycle-events, owner, risks, security, security-admin]
 ---
 # Entity: IP Allowlist (API user)
 
@@ -41,6 +41,11 @@ API user의 API 호출을 사전 지정한 IP 주소로만 제한하는 네트�
 - [[entities/fireblocks/user-roles/owner]]
 - [[entities/fireblocks/user-roles/security-admin]] — 권한표상 함께 수정 가능
 - [[vendors/fireblocks/authentication]]
+- [[vendors/fireblocks/api]]
+- [[vendors/fireblocks/lifecycle-events]]
+- [[vendors/fireblocks/risks]]
+- [[vendors/fireblocks/security]]
+- [[vendors/fireblocks/architecture]]
 
 ## Sources
 

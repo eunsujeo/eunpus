@@ -5,7 +5,7 @@ status: stable
 tags: [risks, security, key-link]
 stage_introduced: 1
 last_updated_stage: 171
-source_count: 11
+source_count: 26
 related:
   - admin-quorum
   - approval-group
@@ -15,9 +15,14 @@ related:
   - ip-allowlist
   - lifecycle-events
   - mobile-app
+  - mobile-device
+  - policy
   - policy-engine
   - recovery-passphrase
   - risks
+  - security-admin
+  - security-auditor
+  - sso
   - user-management
   - workspace
 ---
@@ -172,6 +177,12 @@ related:
 - [[entities/fireblocks/ip-allowlist]] — API + Console 두 평면
 - [[entities/fireblocks/workspace]] — Freeze 모델
 - [[entities/fireblocks/admin-quorum]] · [[entities/fireblocks/approval-group]] — Security & compliance 위임 메뉴
+- [[entities/fireblocks/cosigner]]
+- [[entities/fireblocks/mobile-device]]
+- [[entities/fireblocks/user-roles/security-admin]]
+- [[entities/fireblocks/user-roles/security-auditor]]
+- [[entities/fireblocks/policy]]
+- [[entities/fireblocks/sso]]
 
 ## Sources
 

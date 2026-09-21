@@ -5,22 +5,28 @@ status: stable
 tags: [risks, security, key-link]
 stage_introduced: 1
 last_updated_stage: 170
-source_count: 26
+source_count: 27
 related:
   - admin-quorum
   - api
+  - api-co-signer
   - api-key
   - approval-group
   - authentication
   - blockchains
+  - compliance
+  - cosigner
   - csr
   - ip-allowlist
   - lifecycle-events
   - mobile-app
   - mobile-device
+  - mpc
+  - overview
   - owner
   - recovery-passphrase
   - security
+  - user-management
   - workspace-keys-backup
 ---
 # Fireblocks — Risks
@@ -260,6 +266,13 @@ Chain별 quirks가 트랜잭션 성공률·승인 워크플로우·계정 lifecy
 - [[vendors/fireblocks/mobile-app]] — Mobile app 비가역성·Batch·UX
 - [[vendors/fireblocks/security]] — Security best practices hub (Stage 6)
 - [[vendors/fireblocks/blockchains]] — Chain catalog + SLA + Node Router (Stage 7)
+- [[vendors/fireblocks/compliance]]
+- [[vendors/fireblocks/cosigner]]
+- [[vendors/fireblocks/mpc]]
+- [[vendors/fireblocks/overview]]
+- [[vendors/fireblocks/user-management]]
+- [[entities/fireblocks/api-co-signer]]
+- [[entities/fireblocks/cosigner]]
 
 ## Sources
 

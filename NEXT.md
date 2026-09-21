@@ -7,7 +7,8 @@
 
 | 워크스트림 | 상태 |
 |---|---|
-| wiki (Layer 1–2) | Stage 174 까지 log.md 기록 (2026-09-07). 신규 entity 0 streak 47 stage 연속 |
+| wiki (Layer 1–2) | Stage 223 까지 log.md 기록 (2026-09-21). 신규 entity 0 streak 96 stage 연속 (Stage 127 기준) |
+| wiki lint | `python3 scripts/wiki_lint.py` 로 주기 실행 (Stage 222 신설). 최신 결과 = [lint-report.md](lint-report.md). 미해결 부채는 아래 2.4 |
 | docs-site | 15 폴더. Key Link 포함 완료. 배지/날짜 전환은 사용자 지시 시에만 |
 | blockchain-manager/docs (칸반 모듈) | `디지털 자산` 카테고리 전부 Done (Canton·Fireblocks·가스대납·시작하기·트래블룰). `In Progress` 문서 없음. `To Do` 표기 문서 (13·14·16·99 등) 도 본문은 작성돼 있음 — 칸반 status 전환은 사용자가 드래그로 |
 | 상세 설계 3주제 (2026-07-23 예정분) | **작성 완료** — 입금 폭주·유실 복구 = `BC/설계/99-detection-detail.md` · DB 관리(보존·파티셔닝·아카이브) = `BC/설계/03-bcm-db.md` + `블록체인매니저/설계/15-raw-tx-archive.md` |
@@ -78,6 +79,17 @@
 - **Fireblocks 회신 대기** — 시세 데이터·자산 메타데이터 의존성의 정확한 답, shared responsibility matrix, 아키텍처·데이터 플로우 도면, 운영·업데이트 모델, BNYM 규제 자료(NDA). 수령하면 문서의 「출시 전 확인」 체크리스트로 대조.
 - **우리 측 숙제** — 요구 사항 노트(체인 목록 포함) 발송, 규제기관 협의 후 Fireblocks 호스팅 노드 수용 여부 회신, MPC 대 HSM 선택 의견.
 - 미확인: Private Cloud와 배치 옵션 문서의 Korean Local Instance 관계, Secure Tier 실행 기반·Key Share 배치, AWS 계정 수·자원 수량, 리드타임·예산.
+
+### 2.4 wiki lint 부채 — 기계적 항목 교정 완료 (Stage 223), 내용 판단 항목 잔여
+
+`python3 scripts/wiki_lint.py --fix` 로 교정 완료: 단방향 wikilink 178→0 · frontmatter source_count 19 · related 45 · last_updated_stage 2 · log.md Stage 1 표기.
+
+남은 것은 결정이 필요한 항목:
+
+- **6-section 누락 14 페이지** — user-role 9 장 전부가 Key Concepts / Details 부재 (본문은 Permissions / Restrictions 절로 구성). **결정 대상**: 템플릿을 맞출지, user-role 만 별도 템플릿으로 schema 에 인정할지
+- **Sources 부재 + 본문 주장 1** — `vendors/fireblocks/policy-engine.md`. 출처를 찾아 붙이거나 주장을 open-question 으로 내려야 함
+- **답변 라벨 1** — Q-2026-05-18-S01 이 `**Stage 31 partial signal**` 이라 lint heuristic 미탐지. 라벨을 표준화할지 판단
+- **last_updated_stage 6** — 본문에 Stage 언급이 없어 유도 불가 (api-key · csr · sso · approver · editor · viewer)
 
 ### 2.2 wiki: 컨퍼런스 세션 자료 promote 대기 (Stage 164–165 후속)
 

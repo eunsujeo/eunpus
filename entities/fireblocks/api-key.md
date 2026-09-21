@@ -4,7 +4,7 @@ vendor: fireblocks
 status: stable
 tags: [api, identity]
 source_count: 3
-related: [api, api-co-signer, api-user, authentication, csr, ip-allowlist]
+related: [api, api-co-signer, api-user, authentication, csr, ip-allowlist, lifecycle-events, risks]
 ---
 # Entity: API Key
 
@@ -40,6 +40,8 @@ API user를 식별하는 자격증명. CSR로 발급되며 Console의 API users 
 - [[entities/fireblocks/api-co-signer]]
 - [[vendors/fireblocks/authentication]]
 - [[vendors/fireblocks/api]]
+- [[vendors/fireblocks/lifecycle-events]]
+- [[vendors/fireblocks/risks]]
 
 ## Sources
 

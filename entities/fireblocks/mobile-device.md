@@ -5,15 +5,22 @@ status: stable
 tags: [authentication, identity]
 stage_introduced: 1
 last_updated_stage: 171
-source_count: 15
+source_count: 18
 related:
   - 2fa
   - admin-quorum
+  - architecture
+  - authentication
   - console-user
   - lifecycle-events
+  - mobile-app
+  - mpc
   - mpc-key-share
   - owner
+  - recovery-passphrase
+  - risks
   - sandbox-workspace
+  - security
   - user
   - user-management
 ---
@@ -104,6 +111,13 @@ Sandbox workspace는 **모바일 서명 디바이스 불필요**, 모든 트랜�
 - [[entities/fireblocks/sandbox-workspace]] — mobile 불필요
 - [[vendors/fireblocks/lifecycle-events]] — Mobile Device lifecycle 절
 - [[vendors/fireblocks/user-management]] — 권한 매트릭스
+- [[vendors/fireblocks/architecture]]
+- [[vendors/fireblocks/authentication]]
+- [[vendors/fireblocks/mobile-app]]
+- [[vendors/fireblocks/mpc]]
+- [[vendors/fireblocks/risks]]
+- [[entities/fireblocks/recovery-passphrase]]
+- [[vendors/fireblocks/security]]
 
 ## Sources
 

@@ -7,12 +7,17 @@ stage_introduced: 1
 last_updated_stage: 161
 source_count: 8
 related:
+  - 2fa
   - api-co-signer
   - architecture
+  - blockchains
   - cosigner
+  - csr
+  - krw-stablecoin-architecture-reference
   - mobile-app
   - mobile-device
   - mpc-key-share
+  - overview
   - recovery-passphrase
   - risks
   - vault-account
@@ -142,6 +147,11 @@ Vault account / vault wallet / 입금 주소 생성은 **키 생성이 아님** 
 - [[entities/fireblocks/mobile-device]] — Primary host
 - [[entities/fireblocks/api-co-signer]] — Co-signer 측 key share
 - [[docs/architecture/krw-stablecoin-architecture-reference]] — 원화 스테이블코인 MPC-TSS 3주체 키분산과 3-cloud 분할 대비 (Stage 45)
+- [[vendors/fireblocks/blockchains]]
+- [[vendors/fireblocks/overview]]
+- [[entities/fireblocks/vault-account]]
+- [[entities/fireblocks/2fa]]
+- [[entities/fireblocks/csr]]
 
 ## Sources
 

@@ -6,7 +6,7 @@ tags: [signing, integration]
 stage_introduced: 1
 last_updated_stage: 154
 source_count: 6
-related: [api-co-signer, api-user, callback-handler, cosigner, policy-engine, transaction]
+related: [api, api-co-signer, api-user, authentication, callback-handler, cosigner, policy-engine, signer, transaction, user-management]
 ---
 # Entity: Callback Handler (Fireblocks)
 
@@ -114,6 +114,11 @@ Fireblocks 공식 boilerplate 가 사전 구성 plugin 4종으로 예시하는 �
 - [[entities/fireblocks/cosigner]]
 - [[entities/fireblocks/api-user]]
 - [[entities/fireblocks/transaction]]
+- [[vendors/fireblocks/api]]
+- [[vendors/fireblocks/authentication]]
+- [[vendors/fireblocks/cosigner]]
+- [[vendors/fireblocks/user-management]]
+- [[entities/fireblocks/user-roles/signer]]
 
 ## Sources
 

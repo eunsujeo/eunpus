@@ -5,18 +5,26 @@ status: stable
 tags: [api, identity, data-objects, integration]
 stage_introduced: 1
 last_updated_stage: 174
-source_count: 23
+source_count: 27
 related:
   - api-co-signer
   - api-key
   - api-user
   - architecture
   - authentication
+  - blockchains
   - callback-handler
+  - canton-network
+  - compliance
   - csr
   - ip-allowlist
   - lifecycle-events
+  - overview
+  - policy
+  - risks
+  - tap
   - transaction
+  - vault-account
   - workspace
 ---
 # Fireblocks — API
@@ -78,6 +86,14 @@ Fireblocks는 자체 지갑을 EVM 개발 스택에 붙이기 위한 **개발자
 - [[entities/fireblocks/api-co-signer]] · [[entities/fireblocks/callback-handler]]
 - [[entities/fireblocks/transaction]] · [[entities/fireblocks/workspace]]
 - [[entities/canton/canton-network]] — Canton 체인 모델 (2-step transfer·traffic 수수료·PartyId). transactionType·traceableId 의 원본 (Stage 52)
+- [[vendors/fireblocks/blockchains]]
+- [[vendors/fireblocks/callback-handler]]
+- [[vendors/fireblocks/overview]]
+- [[vendors/fireblocks/risks]]
+- [[vendors/fireblocks/tap]]
+- [[vendors/fireblocks/compliance]]
+- [[entities/fireblocks/policy]]
+- [[entities/fireblocks/vault-account]]
 
 ## Sources
 

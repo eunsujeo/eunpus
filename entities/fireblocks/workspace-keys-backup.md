@@ -5,16 +5,18 @@ status: stable
 tags: [recovery, backup, security, workspace, governance]
 stage_introduced: 1
 last_updated_stage: 171
-source_count: 9
+source_count: 8
 related:
   - admin-quorum
   - architecture
   - cosigner
   - lifecycle-events
+  - mpc
   - mpc-key-share
   - owner
   - recovery-passphrase
   - risks
+  - user
 ---
 # Entity: Workspace Keys Backup
 
@@ -307,6 +309,8 @@ RECONSTRUCTION (Stage 31):
 - [[vendors/fireblocks/architecture]] — DR Service spec (xprv+fprv = 6 files)
 - [[vendors/fireblocks/lifecycle-events]] — Owner Transfer 절
 - [[vendors/fireblocks/risks]] — DR/Owner SPOF, Risk-S09 (48h + once-only fragility)
+- [[vendors/fireblocks/mpc]]
+- [[entities/fireblocks/user]]
 
 ## Sources
 

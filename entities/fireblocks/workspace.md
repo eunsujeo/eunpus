@@ -5,13 +5,18 @@ status: stable
 tags: [workspace, governance, key-link]
 stage_introduced: 1
 last_updated_stage: 171
-source_count: 6
+source_count: 9
 related:
   - admin-quorum
+  - api
+  - blockchains
+  - lifecycle-events
   - overview
   - owner
   - policy
   - sandbox-workspace
+  - security
+  - user
   - user-management
   - vault-account
 ---
@@ -49,6 +54,11 @@ Fireblocks의 최상위 격리·거버넌스 단위. 모든 사용자·role·Pol
 - [[entities/fireblocks/vault-account]]
 - [[vendors/fireblocks/user-management]]
 - [[vendors/fireblocks/overview]]
+- [[vendors/fireblocks/api]]
+- [[vendors/fireblocks/blockchains]]
+- [[vendors/fireblocks/lifecycle-events]]
+- [[vendors/fireblocks/security]]
+- [[entities/fireblocks/user]]
 
 ## Sources
 

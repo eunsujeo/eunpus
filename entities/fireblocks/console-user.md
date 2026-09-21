@@ -6,7 +6,7 @@ tags: [user, identity]
 stage_introduced: 3
 last_updated_stage: 5
 source_count: 6
-related: [2fa, api-user, authentication, mobile-device, sso, user-management]
+related: [2fa, api-user, authentication, mobile-device, sso, user, user-management]
 ---
 # Entity: Console User (Fireblocks)
 
@@ -61,6 +61,7 @@ password 재설정은 self-service `Forgot password?` (`reset-your-password.md`,
 - [[entities/fireblocks/sso]] · [[entities/fireblocks/2fa]]
 - [[vendors/fireblocks/authentication]]
 - [[vendors/fireblocks/user-management]]
+- [[entities/fireblocks/user]]
 
 ## Sources
 

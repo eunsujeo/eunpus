@@ -11,7 +11,12 @@ related:
   - architecture
   - callback-handler
   - cosigner
+  - lifecycle-events
+  - mobile-app
   - mpc
+  - overview
+  - risks
+  - security
   - signer
   - user-management
 ---
@@ -89,6 +94,11 @@ API user 삭제 시에도 **Co-signer 페어링은 그대로 유지**되며 unpa
 - [[entities/fireblocks/api-co-signer]]
 - [[entities/fireblocks/callback-handler]]
 - [[entities/fireblocks/user-roles/signer]]
+- [[vendors/fireblocks/lifecycle-events]]
+- [[vendors/fireblocks/mobile-app]]
+- [[vendors/fireblocks/overview]]
+- [[vendors/fireblocks/security]]
+- [[vendors/fireblocks/risks]]
 
 ## Stage 24 — Callback Handler Authentication 통합 framing
 

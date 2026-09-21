@@ -14,7 +14,9 @@ related:
   - callback-handler
   - compliance
   - cosigner
+  - lifecycle-events
   - mpc
+  - overview
   - policy-engine
   - risks
   - tap
@@ -70,6 +72,7 @@ _TODO: 회사·제품 라인업, 주요 사용처(거래소·커스터디·핀�
 - [[entities/fireblocks/workspace]]
 - [[entities/fireblocks/admin-quorum]]
 - [[vendors/wallet-bank/overview]] — Fireblocks 를 커스터디 제공사로 참조하는 은행 자체 코어(daw-core) (cross-vendor)
+- [[vendors/fireblocks/lifecycle-events]]
 
 ## Sources
 

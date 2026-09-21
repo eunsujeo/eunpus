@@ -7,6 +7,7 @@ source_count: 12
 last_updated_stage: 142
 related:
   - api
+  - api-co-signer
   - architecture
   - mpc
   - overview
@@ -274,6 +275,7 @@ Fireblocks 의 DCCP 는 본 wiki 의 [[docs/architecture/blockchain-indexer-arch
 - [[entities/fireblocks/vault-account]] — 자산 보유 단위
 - [[entities/fireblocks/transaction]] — Internal transaction 개념 + Minimum amounts
 - [[entities/fireblocks/workspace]] — Node Router는 tenant(workspace) 단위
+- [[entities/fireblocks/api-co-signer]]
 
 ## Sources
 

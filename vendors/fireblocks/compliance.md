@@ -5,8 +5,9 @@ status: draft
 tags: [compliance, aml]
 stage_introduced: 1
 last_updated_stage: 157
-source_count: 27
+source_count: 12
 related:
+  - api
   - overview
   - policy
   - policy-engine
@@ -14,6 +15,7 @@ related:
   - security
   - security-admin
   - security-auditor
+  - travel-rule-flow
 ---
 # Fireblocks — Compliance
 
@@ -163,6 +165,7 @@ _TODO: SOC 2 / ISO 27001 / 보험 / 라이선스 — 추후 자료_
 - [[entities/fireblocks/user-roles/security-auditor]] · [[entities/fireblocks/user-roles/security-admin]] — Audit log 접근권
 - docs/architecture/travel-rule-kr-reference.md — 트래블룰 규제 도메인 reference (한국 특금법·솔루션 지형·거래소 실무, Stage 148)
 - [[entities/wallet-bank/travel-rule-flow]] — daw-core 측 VASP 이체 5종·순서 강제 (cross-vendor)
+- [[vendors/fireblocks/api]]
 
 ## Sources
 

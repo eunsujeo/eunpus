@@ -7,22 +7,35 @@ stage_introduced: 2
 last_updated_stage: 6
 source_count: 9
 related:
+  - admin
   - admin-quorum
   - api-co-signer
   - api-user
   - approval-group
+  - approver
+  - authentication
   - callback-handler
   - console-user
   - cosigner
   - designated-signer
+  - editor
   - lifecycle-events
+  - mobile-device
   - mpc-key-share
+  - non-signing-admin
   - overview
+  - owner
   - policy
+  - risks
   - sandbox-workspace
+  - security
+  - security-admin
+  - security-auditor
+  - signer
   - transaction
   - user
   - vault-account
+  - viewer
   - workspace
 ---
 # Fireblocks — User Management
@@ -166,6 +179,19 @@ Sandbox workspace는 무료, 개발용으로 다음 특성을 갖는다 (p.8):
 - [[entities/fireblocks/cosigner]] · [[entities/fireblocks/api-co-signer]] · [[entities/fireblocks/callback-handler]]
 - [[vendors/fireblocks/overview]] — 벤더 개요
 - [[vendors/fireblocks/cosigner]] — Cosigner 벤더 페이지
+- [[vendors/fireblocks/authentication]]
+- [[vendors/fireblocks/security]]
+- [[entities/fireblocks/mobile-device]]
+- [[entities/fireblocks/user-roles/admin]]
+- [[entities/fireblocks/user-roles/approver]]
+- [[entities/fireblocks/user-roles/editor]]
+- [[entities/fireblocks/user-roles/non-signing-admin]]
+- [[entities/fireblocks/user-roles/owner]]
+- [[entities/fireblocks/user-roles/security-admin]]
+- [[entities/fireblocks/user-roles/security-auditor]]
+- [[entities/fireblocks/user-roles/signer]]
+- [[entities/fireblocks/user-roles/viewer]]
+- [[vendors/fireblocks/risks]]
 
 ## Sources
 

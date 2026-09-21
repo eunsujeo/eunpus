@@ -5,18 +5,30 @@ status: stable
 tags: [governance, policy]
 stage_introduced: 1
 last_updated_stage: 174
-source_count: 8
+source_count: 17
 related:
+  - admin
   - admin-quorum
+  - api
+  - api-user
   - approver
+  - compliance
   - cosigner
   - designated-signer
+  - editor
+  - lifecycle-events
+  - mobile-app
   - non-signing-admin
   - owner
   - policy-engine
+  - security
+  - signer
   - tap
   - transaction
+  - user
+  - user-management
   - vault-account
+  - workspace
 ---
 # Entity: Policy (Fireblocks)
 
@@ -101,6 +113,18 @@ API user를 Policy rule이 참조한다면 그 API user를 삭제하기 전에 �
 - [[vendors/fireblocks/policy-engine]]
 - [[vendors/fireblocks/tap]]
 - [[entities/fireblocks/vault-account]] (Stage 174 — Wallet Pool 을 source 로 하는 rule · Gasless upgrade rule)
+- [[vendors/fireblocks/api]]
+- [[vendors/fireblocks/compliance]]
+- [[vendors/fireblocks/lifecycle-events]]
+- [[vendors/fireblocks/mobile-app]]
+- [[vendors/fireblocks/security]]
+- [[vendors/fireblocks/user-management]]
+- [[entities/fireblocks/user]]
+- [[entities/fireblocks/workspace]]
+- [[entities/fireblocks/user-roles/admin]]
+- [[entities/fireblocks/user-roles/editor]]
+- [[entities/fireblocks/user-roles/signer]]
+- [[entities/fireblocks/api-user]]
 
 ## Sources
 

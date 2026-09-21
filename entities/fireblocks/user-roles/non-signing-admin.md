@@ -10,7 +10,10 @@ related:
   - admin-quorum
   - api-co-signer
   - api-user
+  - cosigner
   - designated-signer
+  - lifecycle-events
+  - mpc-key-share
   - policy
   - sandbox-workspace
   - user-management
@@ -64,6 +67,9 @@ related:
 - [[entities/fireblocks/api-co-signer]]
 - [[entities/fireblocks/sandbox-workspace]] — Sandbox에서는 NSA의 권한이 다름
 - [[vendors/fireblocks/user-management]]
+- [[vendors/fireblocks/lifecycle-events]]
+- [[entities/fireblocks/cosigner]]
+- [[entities/fireblocks/mpc-key-share]]
 
 ## Sources
 

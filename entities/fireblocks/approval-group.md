@@ -5,8 +5,8 @@ status: stable
 tags: [governance, policy]
 stage_introduced: 2
 last_updated_stage: 10
-source_count: 5
-related: [admin, admin-quorum, lifecycle-events, owner, user-management]
+source_count: 8
+related: [admin, admin-quorum, lifecycle-events, owner, risks, security, tap, user, user-management]
 ---
 # Entity: Approval Group (Fireblocks)
 
@@ -76,6 +76,9 @@ Edit user의 기본 흐름은 Owner + Admin Quorum 승인이지만 Approval grou
 - [[vendors/fireblocks/lifecycle-events]] — Add/Edit/Delete의 거버넌스 customize 위치
 - [[vendors/fireblocks/user-management]]
 - [[vendors/fireblocks/tap]] — API rule object 의 `authorizationGroups` (th N-of-M sub-quorum) (Stage 156)
+- [[vendors/fireblocks/risks]]
+- [[vendors/fireblocks/security]]
+- [[entities/fireblocks/user]]
 
 ## Sources
 

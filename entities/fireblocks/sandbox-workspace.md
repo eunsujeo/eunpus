@@ -6,7 +6,7 @@ tags: [workspace, governance]
 stage_introduced: 4
 last_updated_stage: 4
 source_count: 2
-related: [api-user, editor, non-signing-admin, user-management, viewer, workspace]
+related: [api-user, csr, editor, mobile-device, non-signing-admin, user-management, viewer, workspace]
 ---
 # Entity: Sandbox Workspace (Fireblocks Developer Sandbox)
 
@@ -43,6 +43,8 @@ related: [api-user, editor, non-signing-admin, user-management, viewer, workspac
 - [[entities/fireblocks/user-roles/viewer]]
 - [[entities/fireblocks/api-user]]
 - [[vendors/fireblocks/user-management]]
+- [[entities/fireblocks/csr]]
+- [[entities/fireblocks/mobile-device]]
 
 ## Sources
 

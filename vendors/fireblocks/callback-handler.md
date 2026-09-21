@@ -6,7 +6,7 @@ tags: [signing, integration]
 stage_introduced: 24
 last_updated_stage: 154
 source_count: 5
-related: [api, api-co-signer, api-user, callback-handler, cosigner, policy-engine]
+related: [api, api-co-signer, api-user, architecture, callback-handler, cosigner, overview, policy-engine]
 ---
 # Fireblocks — Callback Handler
 
@@ -96,6 +96,8 @@ Callback Handler 미설정 = Co-signer 자동 sign/approve. 외부 validation �
 - [[entities/fireblocks/callback-handler]]
 - [[entities/fireblocks/api-co-signer]]
 - [[entities/fireblocks/api-user]]
+- [[vendors/fireblocks/architecture]]
+- [[vendors/fireblocks/overview]]
 
 ## Sources
 

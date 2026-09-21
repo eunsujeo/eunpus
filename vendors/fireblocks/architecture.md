@@ -5,17 +5,22 @@ status: stable
 tags: [architecture, key-link]
 stage_introduced: 1
 last_updated_stage: 171
-source_count: 13
+source_count: 23
 related:
+  - api
   - authentication
+  - blockchains
   - callback-handler
   - cosigner
+  - ip-allowlist
   - mobile-app
   - mobile-device
   - mpc
   - mpc-key-share
   - overview
   - policy-engine
+  - vault-account
+  - workspace-keys-backup
 ---
 # Fireblocks — Architecture
 
@@ -95,6 +100,12 @@ _TODO: 컴포넌트 다이어그램·신뢰 경계 다이어그램·완전한 �
 - [[vendors/fireblocks/authentication]] — Auth0 / IdP / 2FA
 - [[vendors/fireblocks/policy-engine]]
 - [[entities/fireblocks/mpc-key-share]] · [[entities/fireblocks/mobile-device]]
+- [[vendors/fireblocks/api]]
+- [[vendors/fireblocks/blockchains]]
+- [[entities/fireblocks/cosigner]]
+- [[entities/fireblocks/ip-allowlist]]
+- [[entities/fireblocks/vault-account]]
+- [[entities/fireblocks/workspace-keys-backup]]
 
 ## Sources
 

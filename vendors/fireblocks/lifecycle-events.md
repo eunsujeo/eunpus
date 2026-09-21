@@ -10,7 +10,9 @@ related:
   - admin
   - admin-quorum
   - api
+  - api-co-signer
   - api-key
+  - api-user
   - approval-group
   - authentication
   - cosigner
@@ -27,8 +29,11 @@ related:
   - risks
   - security
   - security-admin
+  - sso
+  - transaction
   - user
   - user-management
+  - workspace
   - workspace-keys-backup
 ---
 # Fireblocks — Lifecycle Events
@@ -513,6 +518,11 @@ Stage 3은 admin-driven device 재등록을 다루고, Stage 5는 **mobile app �
 - [[vendors/fireblocks/cosigner]] — Co-signer 페어링
 - [[entities/fireblocks/csr]] · [[entities/fireblocks/api-key]] · [[entities/fireblocks/ip-allowlist]]
 - [[vendors/fireblocks/overview]]
+- [[entities/fireblocks/api-co-signer]]
+- [[entities/fireblocks/api-user]]
+- [[entities/fireblocks/sso]]
+- [[entities/fireblocks/workspace]]
+- [[entities/fireblocks/transaction]]
 
 ## Sources
 

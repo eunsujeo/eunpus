@@ -6,10 +6,12 @@ tags: [transaction, policy, governance, api]
 last_updated_stage: 156
 source_count: 1
 related:
+  - api
+  - approval-group
+  - designated-signer
+  - overview
   - policy
   - policy-engine
-  - designated-signer
-  - approval-group
   - transaction
 ---
 # Fireblocks — TAP (Transaction Authorization Policy)
@@ -69,6 +71,7 @@ publish 제출 시 Fireblocks 가 rule 을 검증하고 응답에 반환 (§"Pol
 - [[entities/fireblocks/designated-signer]] — rule object 의 `designatedSigners` 키
 - [[entities/fireblocks/approval-group]] — rule object 의 `authorizationGroups` (th N-of-M)
 - [[entities/fireblocks/transaction]]
+- [[vendors/fireblocks/overview]]
 
 ## Sources
 

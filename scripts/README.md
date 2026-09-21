@@ -13,6 +13,7 @@ waas-wiki 의 retrieval quality 측정 + gap detection + promote recommendation 
 | `retrieval_gap_detector.py` | P4 (Stage 21) | Non-PASS 질문의 gap signal 추출 + 후보 evidence 매칭 |
 | `promote_candidates.py` | P4 (Stage 21) | Source 후보별 aggregate + priority tier + Mode 추천 (H3 already-cited 통합) |
 | `source_triage.py` | P5 (Stage 25) | 신규 raw PDF 자동 탐지 + rename + meta.yml + Mode 추천 (approval-gated, dry-run default) |
+| `wiki_lint.py` | lint (Stage 222–223) | Curated Wiki 6-section / Sources / 양방향 link / open-Q Status / 중복 entity / Stage 정합 / frontmatter 점검 → `lint-report.md` |
 
 ### Usage
 
@@ -22,6 +23,11 @@ python3 scripts/generate_questions.py        # → tests/questions/
 python3 scripts/retrieval_eval.py            # → tests/retrieval/retrieval-eval.{yml,md}
 python3 scripts/retrieval_gap_detector.py    # → tests/retrieval/gap-report.{yml,md}
 python3 scripts/promote_candidates.py        # → tests/retrieval/promote-candidates.{yml,md}
+
+# === Wiki lint (주기 실행) ===
+python3 scripts/wiki_lint.py           # → lint-report.md 재생성
+python3 scripts/wiki_lint.py --check   # 파일 안 쓰고 요약만
+python3 scripts/wiki_lint.py --fix     # 기계적 교정 적용 (역링크·frontmatter·log Stage 표기)
 
 # === Source Lake triage (P5, approval-gated) ===
 python3 scripts/source_triage.py                          # dry-run report only

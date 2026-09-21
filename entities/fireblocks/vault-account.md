@@ -5,8 +5,8 @@ status: stable
 tags: [workspace, governance, key-link]
 stage_introduced: 1
 last_updated_stage: 176
-source_count: 10
-related: [architecture, editor, mpc, owner, policy, transaction, workspace]
+source_count: 17
+related: [api, architecture, blockchains, custody-mapping, editor, mpc, owner, policy, transaction, user-management, workspace]
 ---
 # Entity: Vault Account (Fireblocks)
 
@@ -44,6 +44,9 @@ Fireblocks workspace에서 자산을 보유하는 단위. 본 자료에서 확�
 - [[entities/fireblocks/user-roles/editor]]
 - [[vendors/fireblocks/architecture]]
 - [[entities/wallet-bank/custody-mapping]] — daw-core 가 `ext_acnt_id`(vaultAccountId)로 참조 (cross-vendor)
+- [[vendors/fireblocks/api]]
+- [[vendors/fireblocks/blockchains]]
+- [[vendors/fireblocks/user-management]]
 
 ## Sources
 

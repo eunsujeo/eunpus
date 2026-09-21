@@ -5,8 +5,8 @@ status: stable
 tags: [signing, integration, key-link]
 stage_introduced: 4
 last_updated_stage: 172
-source_count: 9
-related: [api-co-signer, api-user, callback-handler, cosigner, non-signing-admin, policy, signer]
+source_count: 15
+related: [api-co-signer, api-user, architecture, callback-handler, cosigner, non-signing-admin, policy, risks, security, signer, user-management, workspace-keys-backup]
 ---
 # Entity: Cosigner (Fireblocks)
 
@@ -42,6 +42,11 @@ Fireblocks의 자동 서명 컴포넌트군. 본 자료에서는 **API Co-signer
 - [[entities/fireblocks/user-roles/non-signing-admin]]
 - [[entities/fireblocks/policy]]
 - [[vendors/fireblocks/cosigner]]
+- [[vendors/fireblocks/architecture]]
+- [[vendors/fireblocks/risks]]
+- [[vendors/fireblocks/security]]
+- [[vendors/fireblocks/user-management]]
+- [[entities/fireblocks/workspace-keys-backup]]
 
 ## Sources
 

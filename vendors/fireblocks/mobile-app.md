@@ -10,6 +10,7 @@ related:
   - 2fa
   - admin-quorum
   - api-co-signer
+  - architecture
   - authentication
   - cosigner
   - lifecycle-events
@@ -19,6 +20,7 @@ related:
   - policy
   - recovery-passphrase
   - risks
+  - security
 ---
 # Fireblocks — Mobile App
 
@@ -201,6 +203,8 @@ Expired requests 자동 제거.
 - [[vendors/fireblocks/risks]] — Mobile uninstall 등 SPOF
 - [[vendors/fireblocks/cosigner]]
 - [[vendors/fireblocks/mpc]]
+- [[vendors/fireblocks/architecture]]
+- [[vendors/fireblocks/security]]
 
 ## Sources
 

@@ -4,8 +4,8 @@ Fireblocks-focused **Wallet-as-a-Service (WaaS)** 리서치 LLM wiki 의 전체 
 
 - 패턴 메타: [llm-wiki.md](llm-wiki.md)
 - 운영 진입점: [CLAUDE.md](CLAUDE.md)
-- 변경 이력: [log.md](log.md) (39 stage)
-- Wiki health check: [lint-report.md](lint-report.md) (Stage 35)
+- 변경 이력: [log.md](log.md) (223 stage)
+- Wiki health check: [lint-report.md](lint-report.md) (Stage 223 · `python3 scripts/wiki_lint.py` 로 재생성)
 - 프로젝트 개요: [README.md](README.md)
 
 ## Curated Wiki (LLM-authored)
@@ -98,13 +98,14 @@ _확정 불가 fact 의 격리 영역. 71 Q-number pending (status 통일은 Pla
 
 > Stage 32+ 의 generalized architecture publication. 33 D-series + 6 C-series + 5 E-series + 11 R-series + 6 T-series = 61 docs.
 
-### docs/architecture/ — 61 docs (D/C/E/R/T series)
+### docs/architecture/ — 66 docs (D/C/E/R/T series)
 _D = corpus / C = consolidation / E = evolution / R = reasoning ops / T = theory stewardship_
 
 - [Custody Wallet — AI-assisted Operational Governance Reasoning](docs/architecture/ai-assisted-operational-governance.md) — 본 문서의 위치 (Frontier Cluster D30): D3 governance + D12 operational + D29 autonomous treasury 위의 AI-assisted decision support specialization...
 - [Custody Wallet — Approval State Machine & Governance Workflow Reasoning](docs/architecture/approval-state-machine-governance.md) — 본 문서의 위치: D2 의 "Approval success ≠ Signing success" 명제를 governance 관점으로 확장. Approval / Quorum / Policy / Escalation / Break-glass / Audit...
 - [Custody Wallet — Audit / Event Sourcing / Evidence Chain Reasoning](docs/architecture/audit-event-sourcing-evidence-chain.md) — 본 문서의 위치: D1a (ledger truth) + D2 (signing truth) + D3 (governance truth) + D4 (recovery truth) 의 5 가지 truth domain 을 Unified Evidence Sp...
 - [Custody Wallet — Autonomous Treasury Governance Reasoning](docs/architecture/autonomous-treasury-governance.md) — 본 문서의 위치 (Frontier Cluster D29): D17 treasury + D3 governance + D28 intent 위의 autonomous treasury specialization. Programmable treasury 의...
+- [Blockchain Indexer — Architecture Reference (vendor-neutral)](docs/architecture/blockchain-indexer-architecture-reference.md) — vendor-neutral 인덱서 reference (Stage 41): 5 ecosystem 사례 대비 + Fireblocks 와의 차이. reorg/finality 진실 판정과 projection 평면.
 - [C1 — Master Corpus Index](docs/architecture/c1-master-corpus-index.md) — 본 문서의 위치 (Consolidation C1): 33-document D-series corpus 의 navigation layer. Document list 가 아닌 conceptual dependency map + reasoning pro...
 - [C2 — Invariant Catalog](docs/architecture/c2-invariant-catalog.md) — 본 문서의 위치 (Consolidation C2): 33 documents 전체의 invariant extraction + categorization. Document-specific 가 아닌 cross-corpus 의 underlying law...
 - [C3 — Cross-reference / Dependency Graph](docs/architecture/c3-dependency-graph.md) — 본 문서의 위치 (Consolidation C3): 33 documents 의 conceptual dependency map. Sequential reading order 가 아닌 graph topology + propagation. C-seri...
@@ -129,7 +130,9 @@ _D = corpus / C = consolidation / E = evolution / R = reasoning ops / T = theory
 - [Custody Wallet — Intent-based Settlement / Solver Networks Reasoning](docs/architecture/intent-based-settlement-solver-networks.md) — 본 문서의 위치 (Frontier Cluster D28): D8 withdrawal + D20 cross-institution + D27 sovereign + Liquidity cluster 위의 delegated execution market ...
 - [Custody Wallet — Internal Netting / Internal Settlement Reasoning](docs/architecture/internal-netting-settlement.md) — 본 문서의 위치 (Liquidity Cluster D19): D18 의 internalized settlement 의 multi-party 확장. D17 treasury optimization 의 efficiency mechanism. Netti...
 - [jurisdiction-split-regulatory-attack](docs/architecture/jurisdiction-split-regulatory-attack.md)
+- [원화 스테이블코인 아키텍처 — Reference (K-STAR 컨소시엄 제안서 기반)](docs/architecture/krw-stablecoin-architecture-reference.md) — 단일 1차 자료 기반 reference (Stage 45, status=draft): MPC-TSS 기관 분산 · 정책 사전검증 · 운영 모드 4단계. SaaS / 설치형 / 직접구축 3-way 대비.
 - [Custody Wallet — Multi-chain Adapter Pattern Reasoning](docs/architecture/multi-chain-adapter-pattern.md) — 본 문서의 위치: D1a-D8 + D6 의 generalized custody skeleton 을 chain semantic variance 관점에서 specialize. Multi-chain support 의 핵심은 RPC adapter 가 아...
+- [EVM 트랜잭션 Nonce 관리 — Reference](docs/architecture/nonce-management-reference.md) — EVM per-account nonce ordering / replacement (Stage 46, status=draft). fact_tier = tool-extracted — 1차 원문 재확인 시 fact 승격.
 - [operational-maturity-incident-command](docs/architecture/operational-maturity-incident-command.md)
 - [Custody Wallet — Post-quantum Custody Survivability Reasoning](docs/architecture/post-quantum-custody-survivability.md) — 본 문서의 위치 (Frontier Cluster D32 — closing): D14 security + D4 recovery + D5 evidence + D31 confidentiality 위의 post-quantum (PQ) survivabil...
 - [R0 — Reasoning Operations Charter](docs/architecture/r0-reasoning-operations-charter.md) — Generalized — institutional WaaS architecture corpus, reasoning operations layer.
@@ -162,6 +165,7 @@ _D = corpus / C = consolidation / E = evolution / R = reasoning ops / T = theory
 - [Custody Wallet — Treasury Optimization / Capital Efficiency Reasoning](docs/architecture/treasury-optimization-capital-efficiency.md) — 본 문서의 위치 (Liquidity Cluster D17): D10 treasury (mint/burn governance) + D13 cross-border (FX/liquidity routing) 위의 treasury optimization ...
 - [treasury-reserve-mint-burn](docs/architecture/treasury-reserve-mint-burn.md)
 - [Custody Wallet — Vault / Wallet / Ledger DB Schema Reasoning](docs/architecture/vault-wallet-ledger-db-schema.md) — 본 문서의 위치: Curated Wiki / Source Lake 와 별도의 architecture reasoning layer. Fireblocks vendor docs 의 정리/요약 문서가 아님. custody wallet backend 의 ...
+- [Vendor-Specific Indexer Implementations — Hypothesis (UNVERIFIED)](docs/architecture/vendor-indexer-implementations-hypothesis.md) — ★ hypothesis tier (Stage 42): LLM-generated vendor 분석이며 Fireblocks/BitGo/Coinbase 공식 자료 아님. 확정 사실로 인용 금지.
 - [withdrawal-lifecycle](docs/architecture/withdrawal-lifecycle.md)
 
 ### Persistence Architecture (persistence-architecture/) — 16 docs
@@ -275,4 +279,4 @@ _자동 trigger 정의 — wiki query / source ingest / 새 entity 요청 시 �
 
 ---
 
-_Generated: Plan 1 of llm-wiki principle alignment (Stage 35 prep). 갱신은 매 ingest stage 종료 시 또는 lint stage 에서._
+_Generated: Plan 1 of llm-wiki principle alignment (Stage 35 prep), Stage 222–223 에서 수치·누락 항목 동기화. 갱신은 매 ingest stage 종료 시 또는 lint stage 에서._

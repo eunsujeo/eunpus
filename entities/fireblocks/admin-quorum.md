@@ -5,15 +5,24 @@ status: stable
 tags: [governance, policy]
 stage_introduced: 1
 last_updated_stage: 10
-source_count: 14
+source_count: 20
 related:
   - admin
   - approval-group
+  - lifecycle-events
+  - mobile-app
+  - mobile-device
   - non-signing-admin
+  - overview
   - owner
   - policy
+  - risks
+  - security
   - security-admin
+  - user
   - user-management
+  - workspace
+  - workspace-keys-backup
 ---
 # Entity: Admin Quorum (Fireblocks)
 
@@ -73,6 +82,15 @@ API user **Delete**는 default Owner-only, 즉시, mobile approval 없음 — Co
 - [[entities/fireblocks/approval-group]]
 - [[entities/fireblocks/policy]]
 - [[vendors/fireblocks/user-management]]
+- [[vendors/fireblocks/lifecycle-events]]
+- [[vendors/fireblocks/mobile-app]]
+- [[vendors/fireblocks/overview]]
+- [[vendors/fireblocks/risks]]
+- [[vendors/fireblocks/security]]
+- [[entities/fireblocks/mobile-device]]
+- [[entities/fireblocks/user]]
+- [[entities/fireblocks/workspace-keys-backup]]
+- [[entities/fireblocks/workspace]]
 
 ## Sources
 

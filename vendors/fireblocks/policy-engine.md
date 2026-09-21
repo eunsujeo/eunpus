@@ -4,6 +4,8 @@ vendor: fireblocks
 status: draft
 tags: [governance, policy]
 source_count: 0
+related: [architecture, callback-handler, compliance, krw-stablecoin-architecture-reference, overview, policy, security, tap]
+last_updated_stage: 154
 ---
 # Fireblocks — Policy Engine
 
@@ -30,6 +32,13 @@ _TODO: 룰 평가 순서, 조건 표현 방식, 정책 변경 자체에 대한 �
 - [Transaction](../../entities/fireblocks/transaction.md)
 - [[docs/architecture/krw-stablecoin-architecture-reference]] — 스테이블코인 "서명 이전 사전통제" 와 First-Match ordering 대비 (Stage 45)
 - [[entities/fireblocks/callback-handler]] — Callback Handler 측 `TxPolicyValidation` plugin 이 TAP 과 독립된 자체 PolicyEngine 재평가 (Stage 154)
+- [[vendors/fireblocks/architecture]]
+- [[vendors/fireblocks/callback-handler]]
+- [[vendors/fireblocks/compliance]]
+- [[vendors/fireblocks/overview]]
+- [[vendors/fireblocks/security]]
+- [[vendors/fireblocks/tap]]
+- [[entities/fireblocks/policy]]
 
 ## Sources
 

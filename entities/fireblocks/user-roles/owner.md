@@ -5,18 +5,25 @@ status: stable
 tags: [user-role, owner, governance]
 stage_introduced: 1
 last_updated_stage: 8
-source_count: 13
+source_count: 17
 related:
+  - 2fa
   - admin
   - admin-quorum
+  - approval-group
+  - ip-allowlist
   - lifecycle-events
   - mobile-device
   - mpc-key-share
   - policy
   - recovery-passphrase
   - risks
+  - security-admin
   - signer
+  - sso
+  - user
   - user-management
+  - vault-account
   - workspace
   - workspace-keys-backup
 ---
@@ -138,6 +145,13 @@ Owner는 Fireblocks의 거버넌스 신뢰 루트로, **본인 관련 모든 절
 - [[vendors/fireblocks/user-management]] — 9 role 비교
 - [[vendors/fireblocks/lifecycle-events]] — Owner Transfer 절차
 - [[vendors/fireblocks/risks]] — Owner SPOF 분석
+- [[entities/fireblocks/2fa]]
+- [[entities/fireblocks/approval-group]]
+- [[entities/fireblocks/ip-allowlist]]
+- [[entities/fireblocks/sso]]
+- [[entities/fireblocks/user]]
+- [[entities/fireblocks/vault-account]]
+- [[entities/fireblocks/user-roles/security-admin]]
 
 ## Sources
 

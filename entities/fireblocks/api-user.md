@@ -13,11 +13,15 @@ related:
   - authentication
   - callback-handler
   - console-user
+  - cosigner
   - csr
+  - editor
   - ip-allowlist
   - lifecycle-events
   - non-signing-admin
+  - policy
   - sandbox-workspace
+  - user
   - user-management
 ---
 # Entity: API User (Fireblocks)
@@ -95,6 +99,11 @@ Fireblocks 플랫폼을 API를 통해 사용하는 사용자 유형. 할당된 r
 - [[vendors/fireblocks/api]]
 - [[vendors/fireblocks/lifecycle-events]]
 - [[vendors/fireblocks/user-management]]
+- [[vendors/fireblocks/callback-handler]]
+- [[entities/fireblocks/cosigner]]
+- [[entities/fireblocks/policy]]
+- [[entities/fireblocks/user]]
+- [[entities/fireblocks/user-roles/editor]]
 
 ## Sources
 

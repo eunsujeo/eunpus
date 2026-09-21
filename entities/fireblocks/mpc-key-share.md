@@ -6,7 +6,7 @@ tags: [mpc, cryptography, key-link]
 stage_introduced: 1
 last_updated_stage: 161
 source_count: 13
-related: [mobile-device, mpc, non-signing-admin, owner, signer, workspace-keys-backup]
+related: [architecture, lifecycle-events, mobile-app, mobile-device, mpc, non-signing-admin, owner, recovery-passphrase, signer, user, user-management, workspace-keys-backup]
 ---
 # Entity: MPC Key Share (Fireblocks)
 
@@ -70,6 +70,13 @@ API user를 Co-signer와 페어링한 후 **Owner가 Co-signer의 key shares를 
 - [[entities/fireblocks/user-roles/signer]]
 - [[entities/fireblocks/user-roles/non-signing-admin]] — 보유하지 않는 대표 role
 - [[vendors/fireblocks/mpc]]
+- [[vendors/fireblocks/architecture]]
+- [[vendors/fireblocks/lifecycle-events]]
+- [[vendors/fireblocks/mobile-app]]
+- [[vendors/fireblocks/user-management]]
+- [[entities/fireblocks/recovery-passphrase]]
+- [[entities/fireblocks/user]]
+- [[entities/fireblocks/workspace-keys-backup]]
 
 ## Sources
 

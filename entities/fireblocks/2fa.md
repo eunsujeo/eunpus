@@ -5,8 +5,8 @@ status: stable
 tags: [authentication, identity]
 stage_introduced: 3
 last_updated_stage: 8
-source_count: 5
-related: [authentication, console-user, owner, security-admin, sso]
+source_count: 7
+related: [authentication, console-user, mobile-app, mobile-device, mpc, owner, security-admin, sso]
 ---
 # Entity: 2FA (Two-Factor Authentication)
 
@@ -81,6 +81,9 @@ SSO 사용 시에도 2FA는 별도로 필요 — SSO는 1차 authentication만 �
 - [[entities/fireblocks/console-user]]
 - [[entities/fireblocks/user-roles/owner]] · [[entities/fireblocks/user-roles/security-admin]] — Reset 2FA 권한
 - [[vendors/fireblocks/authentication]]
+- [[vendors/fireblocks/mobile-app]]
+- [[vendors/fireblocks/mpc]]
+- [[entities/fireblocks/mobile-device]]
 
 ## Sources
 

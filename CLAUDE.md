@@ -7,7 +7,8 @@
 
 - **무엇**: Fireblocks-focused **Wallet-as-a-Service (WaaS)** 리서치 LLM wiki. [llm-wiki.md](llm-wiki.md) 패턴의 instance.
 - **누가 쓰는가**: 사용자 1명 + LLM 1대 (Claude Code). LLM 이 모든 wiki 본문을 쓰고 사용자는 source / direction / approval 담당.
-- **현재 상태**: 165 stage 진행 (log.md 가 정확한 counter). 5 priority domain (Workspace / Identity / Governance / Mobile / Security) deep ingest 완료 후 Architecture Reasoning Mode. 신규 entity 0 streak 38 stage 연속.
+- **현재 상태**: 223 stage 진행 (log.md 가 정확한 counter). 5 priority domain (Workspace / Identity / Governance / Mobile / Security) deep ingest 완료 후 Architecture Reasoning Mode. 신규 entity 0 streak 96 stage 연속 (Stage 127 기준).
+- **수치 갱신**: 아래 수치는 `python3 scripts/wiki_lint.py` 의 "카운트 요약" 절이 실측값 — 손으로 세지 말 것.
 - **전체 catalog**: [index.md](index.md)
 
 ## 2. 3-Layer Architecture
@@ -19,9 +20,9 @@ Layer 1 — Raw Sources (immutable)
 
 Layer 2 — Curated Wiki (LLM-authored)
   vendors/<vendor>/*.md          ← 도메인 hub (Fireblocks: 16)
-  entities/<vendor>/*.md         ← 명사 단위 entity (Fireblocks: 23 + 9 user-roles)
-  open-questions/<vendor>.md     ← uncertainty 격리 (71 Q pending)
-  docs/architecture/             ← Stage 32+ generalized publication (61 docs)
+  entities/<vendor>/*.md         ← 명사 단위 entity (Fireblocks 23 + 9 user-roles, canton 1, wallet-bank 3)
+  open-questions/<vendor>.md     ← uncertainty 격리 (129 Q, 그중 pending 102)
+  docs/architecture/             ← Stage 32+ generalized publication (66 docs)
   persistence-architecture/      ← 영속화 reference (16 docs)
   reference-architecture/        ← direct-build reference (7 docs)
   guide/                         ← onboarding (11 docs)
@@ -50,7 +51,7 @@ LLM 이 사용자 메시지를 받으면 다음 3 trigger 중 하나로 분류:
 ### Trigger 2 — wiki 수정 요청
 **Phrases**: "wiki 에 추가", "새 entity 만들어줘", "open-question 답", "log entry", "page 수정"
 **Route**: [prompts/extract-entities.md](prompts/extract-entities.md) (entity 후보) 또는 [prompts/update-wiki.md](prompts/update-wiki.md) (기존 페이지)
-**★ 신규 entity 요청 시 default = 거절 + 흡수 분석** (Stage 6+ 28 stage 연속 0 streak 유지)
+**★ 신규 entity 요청 시 default = 거절 + 흡수 분석** (Stage 127 이후 96 stage 연속 0 streak 유지)
 
 ### Trigger 3 — fact query (reference-ready)
 **Phrases**: "Fireblocks 의 X 는?", "MPC 분포", "Policy Q+O", "Workspace freeze"
@@ -63,12 +64,13 @@ LLM 이 사용자 메시지를 받으면 다음 3 trigger 중 하나로 분류:
 
 - ★ **PDF 직접 Read 금지** — 외부 도구 chunked extract 만 (context 보호)
 - ★ **fact 추측 금지** — 본문에 없으면 `open-questions/` 로 분리
-- ★ **신규 entity 생성 최소화** — 24 기존 entity + 16 vendor hub 에 흡수 가능성 먼저 점검
+- ★ **신규 entity 생성 최소화** — 23 기존 entity + 9 user-role + 16 vendor hub 에 흡수 가능성 먼저 점검
 - ★ **양방향 wikilink 갱신** — A→B 추가 시 B 의 Related Pages 에도 A 추가
 - ★ **모든 fact 진술에 출처** — `(source: <filename>.md, p.N)` 또는 wiki 경로
 - ★ **Source Lake 본문 일괄 load 금지** — selective lazy-load 만
 - ★ **curated wiki 자동 수정 금지** — diff 보여주고 승인 후만
 - ★ **Mode C auto entry 금지** — 사용자 promote 승인 후만
+- ★ **lint 는 주기 실행** — `python3 scripts/wiki_lint.py` 로 [lint-report.md](lint-report.md) 재생성. 1회성 수작업 점검 금지 (Stage 35→221 사이 186 stage 동안 미실행된 전례)
 
 ### Evidence Isolation (auto-memory)
 Fireblocks 공식 근거 vs LLM 일반 지식 **절대 혼합 금지**. "wiki 에 없음" 결론은 4 source 전수 검색 후만 (curated / raw PDF / markdown / Stage 15 sitemap).
@@ -148,6 +150,7 @@ Fireblocks deepening 종료 후 mode. **3-way 비교 (SaaS / 설치형 WaaS / �
    - 영향받은 페이지: …
    - 신규 entity: 0 (또는 +N 사유 포함)
    ```
+4. **답변 filing-back 판단** — Trigger 3 답변이 (a) 2개 이상 페이지를 종합했고 (b) 재사용될 성질이면, chat 에만 두지 말고 페이지로 승격할지 제안한다. 승격 위치는 `docs/architecture/` (일반화된 결론) 또는 해당 vendor hub 의 절. 단발 사실 조회는 승격 대상이 아니다.
 
 ## 8. 주요 파일 빠른 접근
 
@@ -158,7 +161,8 @@ Fireblocks deepening 종료 후 mode. **3-way 비교 (SaaS / 설치형 WaaS / �
 | 운영 방침 | [prompts/operating-principles.md](prompts/operating-principles.md) |
 | 3-mode ingest | [prompts/ingest-pdf.md](prompts/ingest-pdf.md) |
 | Entity 추출 | [prompts/extract-entities.md](prompts/extract-entities.md) |
-| Wiki 수정 + lint | [prompts/update-wiki.md](prompts/update-wiki.md) |
+| Wiki 수정 + lint 규칙 | [prompts/update-wiki.md](prompts/update-wiki.md) |
+| lint 실행 + 최신 결과 | `scripts/wiki_lint.py` → [lint-report.md](lint-report.md) |
 | 자동 trigger skill | [.claude/skills/waas-wiki-curator/SKILL.md](.claude/skills/waas-wiki-curator/SKILL.md) |
 | Stage 이력 | [log.md](log.md) |
 | Open Q | [open-questions/fireblocks.md](open-questions/fireblocks.md) |

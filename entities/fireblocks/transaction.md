@@ -5,8 +5,8 @@ status: stable
 tags: [transaction, key-link]
 stage_introduced: 5
 last_updated_stage: 177
-source_count: 15
-related: [approver, designated-signer, policy, signer, tap, vault-account]
+source_count: 29
+related: [api, approver, blockchains, callback-handler, canton-network, designated-signer, editor, lifecycle-events, nonce-management-reference, policy, signer, tap, user-management, vault-account]
 ---
 # Entity: Transaction (Fireblocks)
 
@@ -86,6 +86,12 @@ Owner/Admin Quorum approval 흐름과 시간 경합 가능.
 - [[vendors/fireblocks/tap]]
 - [[docs/architecture/nonce-management-reference]] — EVM 트랜잭션 nonce 운영 (failOnLowFee 의 stuck-cascade 맥락) (Stage 46)
 - [[entities/canton/canton-network]] — Canton 2-step transfer 모델 (transactionType OFFER/ACCEPT/REJECT/WITHDRAW/PRE_APPROVAL 의 원본 체인) (Stage 52)
+- [[vendors/fireblocks/api]]
+- [[vendors/fireblocks/blockchains]]
+- [[vendors/fireblocks/lifecycle-events]]
+- [[vendors/fireblocks/user-management]]
+- [[entities/fireblocks/callback-handler]]
+- [[entities/fireblocks/user-roles/editor]]
 
 ## Sources
 

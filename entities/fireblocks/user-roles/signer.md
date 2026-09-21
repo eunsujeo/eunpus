@@ -9,9 +9,13 @@ source_count: 5
 related:
   - admin
   - api-co-signer
+  - approver
   - callback-handler
+  - cosigner
   - mpc-key-share
+  - owner
   - policy
+  - recovery-passphrase
   - transaction
   - user-management
 ---
@@ -58,6 +62,11 @@ related:
 - [[entities/fireblocks/policy]]
 - [[entities/fireblocks/user-roles/admin]] — Admin은 Signer 권한을 상속
 - [[vendors/fireblocks/user-management]]
+- [[vendors/fireblocks/cosigner]]
+- [[entities/fireblocks/cosigner]]
+- [[entities/fireblocks/recovery-passphrase]]
+- [[entities/fireblocks/user-roles/approver]]
+- [[entities/fireblocks/user-roles/owner]]
 
 ## Sources
 

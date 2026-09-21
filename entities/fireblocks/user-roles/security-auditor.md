@@ -5,8 +5,8 @@ status: stable
 tags: [user-role, security-auditor, audit, security]
 stage_introduced: 8
 last_updated_stage: 10
-source_count: 1
-related: [security, security-admin, user-management, viewer]
+source_count: 2
+related: [compliance, security, security-admin, user-management, viewer]
 ---
 # Entity: Security Auditor (Fireblocks user role)
 
@@ -38,6 +38,7 @@ related: [security, security-admin, user-management, viewer]
 - [[entities/fireblocks/user-roles/security-admin]] — Security Admin은 같은 영역을 관리(쓰기) 가능
 - [[entities/fireblocks/user-roles/viewer]] — 더 좁은 view-only
 - [[vendors/fireblocks/user-management]]
+- [[vendors/fireblocks/compliance]]
 
 ## Stage 10 — FSPM Access 정식 명세 (★ Q-S13 부분 ANSWERED)
 

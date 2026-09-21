@@ -4,7 +4,7 @@ vendor: fireblocks
 status: stable
 tags: [api, identity]
 source_count: 2
-related: [api, api-key, api-user, authentication, sandbox-workspace]
+related: [api, api-co-signer, api-key, api-user, authentication, lifecycle-events, mpc, risks, sandbox-workspace]
 ---
 # Entity: CSR (Certificate Signing Request)
 
@@ -39,6 +39,10 @@ API user를 Fireblocks에 인증하는 1차 자산. **RSA 4096** 키쌍을 생�
 - [[entities/fireblocks/sandbox-workspace]] — CSR 자동 생성 사례
 - [[vendors/fireblocks/authentication]]
 - [[vendors/fireblocks/api]]
+- [[vendors/fireblocks/lifecycle-events]]
+- [[vendors/fireblocks/mpc]]
+- [[vendors/fireblocks/risks]]
+- [[entities/fireblocks/api-co-signer]]
 
 ## Sources
 

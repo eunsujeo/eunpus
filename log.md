@@ -11,7 +11,7 @@ grep "^## \[" log.md | tail -5
 
 ---
 
-## [2026-05-18] ingest | fireblocks | User roles (Help Center)
+## [2026-05-18] ingest | fireblocks | User roles (Help Center) (Stage 1)
 
 - **Source PDF**: `sources/fireblocks/pdf/2026-05-18__support-fireblocks-io__user-roles.pdf`
 - **Markdown**: `sources/fireblocks/markdown/2026-05-18__support-fireblocks-io__user-roles.md`
@@ -8191,3 +8191,81 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
   - **5회 증거 경계·누락 (3건)** — 원문에 있으나 빠뜨린 것 보강: Taurus 3제품(PROTECT·EXPLORER·CAPITAL, 4쪽) · 멀티시그와 MPC 는 다른 것이라는 명시(9쪽) · 참고 문헌의 NSA Kubernetes Hardening Guide(16쪽). Fireblocks·Dfns 에 관한 단정은 0건, 우리 구성에 대한 판단도 0건으로 유지 확인.
   - 재검증: 219문서 빌드, mermaid 1블록 SVG 재생성, 표 6개 불일치 0, 링크 5건 정상.
 - 상태: 커밋 `3603674` · push 완료 · 칸반 앱 배포 완료 (사용자 지시). `app/` 에서 `wrangler pages deploy public --project-name=blockchain-manager --branch=main`, Uploaded 2 files (229 already) → 배포 `c5f9871b`. `deployment list` 로 Environment=Production · Branch=main · Source=3603674 확인.
+
+## Stage 218 (2026-09-21) — Canton 발표자료 스토리보드와 핵심 3장 시안
+- 요청: "홈 › 캔톤네트워크 › 발표자료" 를 슬라이드 포맷으로도 추가 가능한지 → 권장안대로 진행 승인.
+- 가능 여부 확인: 앱에 이미 장치가 있다. frontmatter `view: doc` + `embed: <파일>.html` 이면 `app/public/` 의 HTML 을 iframe 으로 띄운다 (`app.js` renderDocEmbed, 높이 `calc(100vh - 65px)`, `data-theme` 동기화, 정적 내보내기는 srcdoc 내장). 기존 사례 = `bcm-api-doc.html` · `compliance-api-doc.html`.
+- **제약**: `items.length === 1 && items[0].embed` 라 **중카테고리에 문서가 정확히 1개**여야 iframe 이 뜬다. 지금 발표자료에는 개편 계획 문서가 있어, 슬라이드를 나란히 두면 마크다운 뷰로 떨어진다. 세 안(A 발표자료를 슬라이드 1개로 / B 계획을 슬라이드에 흡수 / C app.js 수정) 중 **A 채택** — C 는 API 문서 2건이 함께 걸린다.
+- 폰트: 계획 4절의 "CDN·웹폰트 금지" 와 3절의 Pretendard·IBM Plex Mono 지정이 충돌. 자체 완결을 택해 **운영체제 기본 서체 스택**으로 확정.
+- 산출물 1 — **스토리보드 10장** (계획 5절 1단계). 개편 계획 문서에 "부록 — 스토리보드" 로 추가. 장별 제목·결론 문장·발표자 노트.
+  - **계획 2절 표의 8장 흐름 정정**: "제출 → 당사자별 뷰 → 순서화" 로 적혀 있었으나 개념 문서 8장은 **제출 → 순서화 → 분배 → 확인 → 커밋** 이다. 완료 조건이 "개념 문서와 일치" 라 개념 문서를 따랐고 경위를 부록 머리에 남겼다. 7장 용어도 "Participant" → 저장소 표기인 **밸리데이터(참여자 노드)** 로.
+- 산출물 2 — **핵심 3장 시안** `app/public/canton-slides.html` (계획 5절 2단계, 2·5·8장). 20.3KB 단일 파일, 외부 참조 0.
+  - 1280×720 무대를 뷰포트에 맞춰 축소 · 키보드(←→ Space Home End F S P)·좌우 1/4 클릭·터치 스와이프·전체화면 · `#2` 딥링크 · 발표자 노트 토글 · `@page 1280×720` 로 한 장이 한 쪽
+  - 애니메이션은 8장에만, `prefers-reduced-motion` 지원
+- 화면 검증에서 고친 것 4건: 2장 3행이 viewBox 밖으로 잘림(9칩 3행 → 6칩 2행 + 말줄임 문구, 화살표를 행 중심에 맞춤) · 2장 하단 문구 오른쪽 잘림(가운데 정렬) · 5장 수신자 상자 4개가 20px 씩 겹침(w240/간격220 → w250/간격290) · 8장 애니메이션 지연이 `nth-of-type` 오산정으로 미적용(형제 `<g class="flow">` 를 함께 셈 → step 별 `--d` 변수로 교체). 5장에서 제3자로 내려가던 점선은 "뭔가 간다" 로 읽혀 제거.
+- 검증: 외부 참조 0 · `@import`/`url()` 0 · SVG 3개 XML 파싱 · JS `node --check` · 로컬 200 · Chrome 헤드리스로 3장 캡처 + reduced-motion(5개 fill 정상) + 다크 테마 확인. 화면은 `_workspace/canton-slides/` (git 제외).
+- 보드 미연결: 3장 시안이라 `발표자료` 분류와 `.board-order.json` 은 건드리지 않았다. 시안 승인 후 나머지 7장 → A안 적용(계획 문서 이동) → `view: doc`+`embed` 연결 순서.
+- 상태: 파일 생성·수정 완료. 커밋·푸시·배포 없음.
+
+## Stage 219 (2026-09-21) — 발표자료 색 사용 규칙 실측 후 3건 반영
+- 요청: "컬러는 어떻게 생각해?" → 대비 실측 보고 후 "셋 다 반영" 승인.
+- 실측 (WCAG 상대휘도, 채움 위 글자는 합성 배경으로 재계산):
+  - **시안 글자 2.03:1 — 미달.** 계획 3절은 시안을 "Canton 의 선택적 연결" = 획·면 색으로 정의했는데, 5장 `confirm (서명자)` 를 시안 글자로 쓴 구현 오류였다.
+  - **결론 문장 4.67:1** — 기준은 넘지만 제목 15.73:1 과 격차가 커, 매 장의 핵심 한 줄이 가장 먼저 흐려진다.
+  - 코발트 글자 4.87 · 코발트 판 위 흰 글자 5.19 · 캡션 4.67 — 통과.
+- 반영 3건: ① 시안을 글자에서 제거(획·면 전용, `fill:var(--cyan)` 0건 확인) ② 결론 문장을 남색으로, 강약은 굵기로만(`.lede` muted→fg, 500→400) ③ 모델 구분을 색조에서 채움 여부로 이동 — 퍼블릭(2장) 노드 칩은 윤곽만, Canton(5장) 수신자는 채움. 받는 쪽은 3단계(서명자 채움 .22 / 관찰자 옅은 채움 .10 / 제3자 점선 윤곽).
+- 연쇄로 나온 것 2건: 시안 채움이 배경을 어둡게 해 **슬레이트가 4.35:1 로 내려갔다** → `#667085` → `#565F73` (종이 6.01 · 관찰자칸 5.59 · 서명자칸 5.11). 다크도 같은 현상이라 **보조색 `#94A2BC` → `#A8B5CC`, 채움 .30 → .24** (합성 배경 대비 5.27).
+- 반영 후: 시안 글자 2.03 → **13.36** · 결론 문장 4.67 → **15.73** · 전 항목 4.5:1 이상.
+- 계획서 3절 갱신 — 팔레트 표의 슬레이트 값과 사유, 서체를 운영체제 기본 스택으로 확정(Pretendard·IBM Plex Mono 지정은 4절 웹폰트 금지와 충돌), "색을 쓰는 규칙" 4항 신설.
+- 검증: 외부 참조 0 · SVG 3개 파싱 · 라이트 3장·다크 1장 재캡처. 화면은 `_workspace/canton-slides/` (git 제외).
+- 상태: 파일 수정 완료. 커밋·푸시·배포 없음.
+
+## Stage 220 (2026-09-21) — "암호봉투" 비유를 평이한 서술로 교체 (17건)
+- 요청: "봉투라는 말이 어색하네요" (발표자료 시안 검토 중).
+- 확인: **`암호봉투` 는 Canton 원문에 근거가 없다.** `sources/canton-network/` 8건 어디에도 `envelope` 가 없고, 저장소 안의 `envelope` hit 는 Dfns 의 envelope encryption 뿐이다. 위키 작성자가 붙인 비유이며, auto-memory 의 `feedback_plain_wording`(은유·의역투 금지, 동작을 그대로 서술)에 어긋난다.
+- 범위: 한글 작성 규칙 7항("지적받은 표현은 문서 전체에서 확인한다")에 따라 발표 시안만이 아니라 캔톤 문서 전체를 훑었다. 1차 치환 16건 후 **재검색에서 2건이 더 나왔다** (02-three-pillars 의 mermaid 라벨, 06-architecture 본문) — 첫 grep 이 150자에서 잘려 놓친 것. 규칙 7항의 "수정 후 다시 검색" 이 실제로 걸러 냈다.
+- 교체 (총 17건):
+  - `app/public/canton-slides.html` 4건 — "암호봉투로 순서만 맞춘다" → "암호화된 채로 받아 순서만 맞춘다" · 8장 02단계 "암호화한 채로 시퀀서에" · 괄호 라벨 "내용은 암호화된 채로 지나간다" · 발표자 노트
+  - `개념/08-transaction-flow.md` 9건 — 요약문·본문·mermaid 메시지·표 3행. 절 제목 `## 가운데는 암호봉투만 본다` → `## 가운데는 내용을 못 읽는다` (이 제목으로 들어오는 앵커 링크 0건 확인 후 변경)
+  - `개념/02-three-pillars.md` 2건 (표 + mermaid 라벨) · `개념/06-architecture.md` 2건 (본문 + 표) · `발표자료/00-presentation-rebuild-plan.md` 1건
+- 사실 변경 없음. "시퀀서·미디에이터가 내용을 못 읽는다" 는 주장 자체는 그대로 두고 표현만 바꿨다.
+- 손대지 않은 "봉투": EVM 거래 봉투(docs-site/gas-delegation) · 물리 키 봉투(nodewallet-bank-design) · API `data`/`meta` 봉투(컴플라이언스) · 명시적 비유 1건(cosigner-callback-network/proxy). 뜻이 다르거나 실제 봉투라 유지.
+- 검증: 캔톤 범위 `봉투` 0건 · 219문서 빌드 · `캔톤네트워크/개념` 내보내기에서 **Mermaid 16개 재렌더** 후 바뀐 라벨이 SVG 안에 들어간 것 확인, 내보낸 HTML 에 `봉투` 0건 · 발표 시안 5·8장 재캡처.
+- 상태: 파일 수정 완료. 커밋·푸시·배포 없음.
+
+## Stage 221 (2026-09-21) — 캔톤 문서 비유 표현 전수 점검 (14건 교체)
+- 요청: 봉투 정정 후 "다른 곳에도 이런 비유가 있을 수 있다" 제안에 승인.
+- 방법: `캔톤네트워크/` 20문서 2,165줄. 비유 어휘 후보 60여 개로 1차 grep → 개념 12장 본문 통독 → 확인된 어간으로 재검색. **어미 변화 때문에 2차에서 3건이 더 나왔다** (`떠받치` 로 검색해 `떠받친다` 를 놓침, `박히` 로 검색해 `박혀` 를 놓침). 어간으로 다시 돌려 마감.
+- 교체 14건:
+  - `05-daml.md` 8건 — "타입에 박힌다"(절 제목 포함 3곳) → "타입 선언에 들어간다" · "원장 위에서 살아 움직인다" ×2 → "원장 위에서 동작한다" · "솔리디티는 문을 열어 두고" → "누구나 호출할 수 있게 두고" · "컨트랙트를 떠받치고" ×2 → "존재와 소멸을 좌우하고"·"컨트랙트의 권한자이고" · "choice 안에 못 박혀" → "choice 안에 고정돼"
+  - `01-problem.md` 2건 — "거래 당사자의 손을 떠난다" → "거래 당사자는 그 내용을 더는 통제하지 못한다" · "문제의 뿌리" → "문제의 원인"
+  - `02-three-pillars.md` 1건 — "내용을 가지고 장난칠 수단이 없다" → "그 내용을 이용해 거래를 조작할 수단이 없다"
+  - `04-parties-and-components.md` 1건 — "키가 박혀 있다" → "키가 들어 있다"
+  - `06-architecture.md` 1건 — "노드와 대화한다" → "노드에 요청을 보낸다"
+  - `11-trust-model.md` 1건 — "암호로 못 박는다" → "암호로 강제한다"
+- 절 제목 1건(`## 권한이 타입에 박힌다`) 변경 — 해당 앵커로 들어오는 링크 0건 확인 후.
+- **근거가 있어 남긴 것**: `다리` = DvP 의 leg, 코드 식별자 `legKRW`·`legJPY` 와 짝 · `잠근다` = allocation lock, `AllocationFactory_Allocate` 의 동작 · "일종의 주소록 + PKI" = 비유임을 문면에 밝힌 것 · "틀로 찍힌 컨트랙트" = 템플릿·인스턴스 관계를 직접 설명 · `자산이 움직인다` = 자산 이동의 일상어.
+- **판단 보류 2건**: `세 기둥`(2장 제목이자 세트 전반의 구성 장치, 0·1·2·6장에서 상호 참조)과 그에 딸린 `떠받친다` 2건. 바꾸면 장 제목과 교차 참조가 함께 움직여 사용자 판단 필요.
+- 사실 변경 없음. 표현만 교체했다.
+- 검증: 219문서 빌드 · `캔톤네트워크/개념` 내보내기 Mermaid 16개 재렌더 · 바뀐 문구가 내보낸 HTML 에 반영 확인 · 대상 어간 재검색 0건(기둥 2건 제외).
+- 상태: 파일 수정 완료. 커밋·푸시·배포 없음.
+
+## Stage 222 (2026-09-21) — lint 스크립트화 + schema layer(CLAUDE.md·index.md) 수치 동기화
+- 계기: LangChain "Wiki Memory" (langchain.com/blog/wiki-memory) 대조. 패턴 자체는 구현돼 있으나 글이 상시 작업으로 규정한 lint·index 갱신이 Stage 35 이후 186 stage 동안 미실행이었음.
+- 신규: `scripts/wiki_lint.py` — 기존 1회성 수작업 lint-report.md 를 재현 가능한 스크립트로 대체. 8 항목 (6-section / Sources 부재 / 단방향 wikilink / open-Q Status·답변기록 / 중복 entity / Stage 정합 / frontmatter 정합 / 카운트 요약). `--check` 는 파일 미기록 요약.
+- 파서 실측 반영: log.md 두 형식 (`## [날짜] … (Stage N)` 12 건 + `## Stage N` 219 건) · open-Q heading 3 형식 (`### Q-…:` / `## Q-…—` / `Q-CMP-NN`) · Status 의 bullet 유무 · Sources 변형 heading (`## Sources (Stage N 추가)` 45 건) · 자유 형식 답변 라벨. 초기 오탐 (Status 부재 23 → 0, Stage orphan 11 → 1, 답변 미탐지 24 → 1) 제거.
+- lint 결과 (Stage 221 기준, 48 페이지): 6-section 누락 14 · Sources 부재+본문주장 1 (policy-engine) · 단방향 wikilink 178 (39 페이지) · frontmatter source_count 불일치 19 · related 불일치 10 · last_updated_stage 부재 8 · 중복 entity 0 · Status 표기 불일치 0.
+- 영향받은 페이지: CLAUDE.md (1절 stage 165→221·streak 38→94(Stage 127 기준)·수치 출처 명시, 2절 open-Q 71→129(pending 102)·docs/architecture 61→66·entity namespace 3종, 4절 lint 주기 실행 규율 + entity 수 정정, 7절 답변 filing-back 판단 규약 신설, 8절 lint 행) · index.md (헤더 39→221 stage·lint Stage 221, docs/architecture 61→66 + 미등재 4 문서 등재: blockchain-indexer-architecture-reference · krw-stablecoin-architecture-reference · nonce-management-reference · vendor-indexer-implementations-hypothesis) · lint-report.md (재생성) · scripts/README.md.
+- ANSWERED: 없음
+- 신규 entity: 0 (95 stage 연속)
+- 미확정: lint 가 찾아낸 부채는 본 stage 에서 미수정 — 기계적 항목은 Stage 223 에서 교정.
+
+## Stage 223 (2026-09-21) — lint `--fix` 모드 + 기계적 부채 교정 (역링크 178 · frontmatter 37)
+- 신규: `scripts/wiki_lint.py --fix` — 판단이 필요 없는 drift 만 교정. 6-section 누락·Sources 부재·답변 라벨 등 내용 판단 항목은 건드리지 않는다.
+- 교정 범위: 단방향 wikilink 178→0 (45 페이지에 역링크 추가) · frontmatter source_count 19건 재계산 · related 45건을 Related Pages 기준으로 재동기화 · last_updated_stage 2건을 본문 최대 Stage 로 유도 · log.md 첫 entry 에 `(Stage 1)` 표기 추가 (Stage orphan 1→0).
+- 구현 중 정정 3건: ① 역링크 추가가 새 outbound 를 만들어 1-pass 로는 20건이 남음 → 고정점까지 반복. ② `\s*$` 가 개행을 삼켜 `## Related Pages` 뒤 빈 줄이 증식 → `[ \t]*$` 로 교체. ③ 블록 표기 `related:` 를 인라인으로 덮어써 옛 목록이 잔존, YAML 파손 → 파일별 표기(블록 28 / 인라인 20)를 보존하도록 재구현. 세 경우 모두 백업에서 원복 후 재적용.
+- 검증: 48 파일 frontmatter 를 pyyaml 로 전수 파싱 48/48 정상 · 삭제된 줄이 frontmatter `source_count`/`related` 뿐임을 diff 전수 확인 (본문 손실 없음) · lint 재실행 시 해당 항목 전부 0.
+- 영향받은 페이지: vendors/fireblocks/ + entities/fireblocks/ 45 파일 (frontmatter·Related Pages) · log.md · lint-report.md · scripts/wiki_lint.py.
+- ANSWERED: 없음
+- 신규 entity: 0 (96 stage 연속)
+- 남은 부채 (내용 판단 필요, 미수정): 6-section 누락 14 (user-role 9 장이 Key Concepts/Details 없이 Permissions/Restrictions 절 구성 — 템플릿 통일 여부가 결정 대상) · `vendors/fireblocks/policy-engine.md` Sources 부재 · Q-2026-05-18-S01 답변 라벨(`**Stage 31 partial signal**`) 비표준 · last_updated_stage 6건은 본문에 Stage 언급이 없어 유도 불가.

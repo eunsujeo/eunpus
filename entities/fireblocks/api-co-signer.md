@@ -5,16 +5,23 @@ status: stable
 tags: [signing, integration, api, identity]
 stage_introduced: 1
 last_updated_stage: 51
-source_count: 5
+source_count: 7
 related:
+  - api
   - api-key
   - api-user
+  - authentication
+  - blockchains
   - callback-handler
   - cosigner
   - csr
   - lifecycle-events
+  - mobile-app
+  - mpc
   - non-signing-admin
+  - risks
   - signer
+  - user-management
 ---
 # Entity: API Co-signer (Fireblocks)
 
@@ -105,6 +112,14 @@ vault 별로 다른 Callback Handler 를 호출하는 구성("vault 별 CH 라�
 - [[vendors/fireblocks/cosigner]]
 - [[vendors/fireblocks/lifecycle-events]]
 - [[entities/fireblocks/cosigner]]
+- [[vendors/fireblocks/api]]
+- [[vendors/fireblocks/authentication]]
+- [[vendors/fireblocks/callback-handler]]
+- [[vendors/fireblocks/mobile-app]]
+- [[vendors/fireblocks/mpc]]
+- [[vendors/fireblocks/user-management]]
+- [[vendors/fireblocks/blockchains]]
+- [[vendors/fireblocks/risks]]
 
 ## Sources
 

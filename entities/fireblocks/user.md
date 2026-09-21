@@ -13,11 +13,14 @@ related:
   - console-user
   - designated-signer
   - lifecycle-events
+  - mobile-device
   - mpc-key-share
   - owner
   - policy
+  - recovery-passphrase
   - user-management
   - workspace
+  - workspace-keys-backup
 ---
 # Entity: User (Fireblocks)
 
@@ -143,6 +146,9 @@ User
 - [[entities/fireblocks/mpc-key-share]]
 - [[entities/fireblocks/policy]] · [[entities/fireblocks/designated-signer]]
 - 9 role entities — [[entities/fireblocks/user-roles/owner]] 외
+- [[entities/fireblocks/mobile-device]]
+- [[entities/fireblocks/recovery-passphrase]]
+- [[entities/fireblocks/workspace-keys-backup]]
 
 ## Sources
 

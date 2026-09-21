@@ -4,7 +4,7 @@ vendor: fireblocks
 status: stable
 tags: [authentication, identity]
 source_count: 3
-related: [2fa, authentication, console-user, lifecycle-events, owner]
+related: [2fa, authentication, console-user, lifecycle-events, owner, security]
 ---
 # Entity: SSO (Single Sign-On)
 
@@ -66,6 +66,7 @@ Fireblocks Support 경유. **Workspace Owner 승인 필요** (`configure-sso.md`
 - [[entities/fireblocks/user-roles/owner]] — SSO 변경 승인자
 - [[vendors/fireblocks/authentication]]
 - [[vendors/fireblocks/lifecycle-events]] — user add/remove는 SSO와 분리
+- [[vendors/fireblocks/security]]
 
 ## Sources
 

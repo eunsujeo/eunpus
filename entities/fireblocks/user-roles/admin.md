@@ -6,7 +6,7 @@ tags: [user-role, admin, governance]
 stage_introduced: 3
 last_updated_stage: 6
 source_count: 10
-related: [admin-quorum, approval-group, owner, policy, signer, user-management]
+related: [admin-quorum, approval-group, lifecycle-events, owner, policy, recovery-passphrase, signer, user-management]
 ---
 # Entity: Admin (Fireblocks user role)
 
@@ -53,6 +53,8 @@ related: [admin-quorum, approval-group, owner, policy, signer, user-management]
 - [[entities/fireblocks/approval-group]] — Delete users `Y (AG)`의 위임 근거
 - [[entities/fireblocks/policy]]
 - [[vendors/fireblocks/user-management]]
+- [[vendors/fireblocks/lifecycle-events]]
+- [[entities/fireblocks/recovery-passphrase]]
 
 ## Sources
 

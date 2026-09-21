@@ -12,12 +12,16 @@ related:
   - api-co-signer
   - api-key
   - api-user
+  - architecture
   - callback-handler
   - console-user
   - csr
   - ip-allowlist
   - lifecycle-events
   - mobile-app
+  - mobile-device
+  - risks
+  - security
   - sso
   - user-management
 ---
@@ -182,6 +186,10 @@ openssl req -new -newkey rsa:4096 -nodes -keyout fireblocks_secret.key
 - [[vendors/fireblocks/lifecycle-events]] — user/API user lifecycle
 - [[vendors/fireblocks/api]] — API surface
 - [[vendors/fireblocks/mobile-app]] — Mobile app 전반 (Stage 5)
+- [[vendors/fireblocks/architecture]]
+- [[vendors/fireblocks/risks]]
+- [[vendors/fireblocks/security]]
+- [[entities/fireblocks/mobile-device]]
 
 ## Sources
 

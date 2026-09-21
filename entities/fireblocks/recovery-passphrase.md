@@ -11,10 +11,13 @@ related:
   - lifecycle-events
   - mobile-app
   - mobile-device
+  - mpc
   - mpc-key-share
   - owner
   - risks
+  - security
   - signer
+  - user
   - workspace-keys-backup
 ---
 # Entity: Recovery Passphrase
@@ -165,6 +168,9 @@ Mobile app이 client-side validate.
 - [[vendors/fireblocks/lifecycle-events]] — Recovery Passphrase Reset 절
 - [[vendors/fireblocks/mobile-app]] — Verify / Periodic 흐름
 - [[vendors/fireblocks/risks]] — Lockout / Periodic의 운영 함의
+- [[vendors/fireblocks/mpc]]
+- [[vendors/fireblocks/security]]
+- [[entities/fireblocks/user]]
 
 ## Sources
 

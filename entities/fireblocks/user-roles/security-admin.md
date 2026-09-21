@@ -9,7 +9,9 @@ source_count: 5
 related:
   - 2fa
   - admin-quorum
+  - compliance
   - ip-allowlist
+  - lifecycle-events
   - owner
   - security
   - security-auditor
@@ -58,6 +60,8 @@ IT/보안 인력을 위한 플랫폼 보안·운영 관리 role. user/2FA/IP all
 - [[entities/fireblocks/user-roles/security-auditor]]
 - [[entities/fireblocks/user-roles/owner]] — Reset 2FA·IP Allowlist를 공유
 - [[vendors/fireblocks/user-management]]
+- [[vendors/fireblocks/compliance]]
+- [[vendors/fireblocks/lifecycle-events]]
 
 ## Sources
 
