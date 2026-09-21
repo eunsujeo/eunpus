@@ -4,8 +4,8 @@ Fireblocks-focused **Wallet-as-a-Service (WaaS)** 리서치 LLM wiki 의 전체 
 
 - 패턴 메타: [llm-wiki.md](llm-wiki.md)
 - 운영 진입점: [CLAUDE.md](CLAUDE.md)
-- 변경 이력: [log.md](log.md) (223 stage)
-- Wiki health check: [lint-report.md](lint-report.md) (Stage 223 · `python3 scripts/wiki_lint.py` 로 재생성)
+- 변경 이력: [log.md](log.md) (224 stage)
+- Wiki health check: [lint-report.md](lint-report.md) (Stage 224 · `python3 scripts/wiki_lint.py` 로 재생성)
 - 프로젝트 개요: [README.md](README.md)
 
 ## Curated Wiki (LLM-authored)
@@ -279,4 +279,4 @@ _자동 trigger 정의 — wiki query / source ingest / 새 entity 요청 시 �
 
 ---
 
-_Generated: Plan 1 of llm-wiki principle alignment (Stage 35 prep), Stage 222–223 에서 수치·누락 항목 동기화. 갱신은 매 ingest stage 종료 시 또는 lint stage 에서._
+_Generated: Plan 1 of llm-wiki principle alignment (Stage 35 prep), Stage 222–224 에서 수치·누락 항목 동기화. 갱신은 매 ingest stage 종료 시 또는 lint stage 에서._

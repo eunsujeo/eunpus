@@ -75,3 +75,8 @@ FSPM 의 monitoring scope (6 영역) 중 Security Auditor 의 read-only 책임�
 ## Sources
 
 - `2026-05-18__support-fireblocks-io__user-roles.md`, p.4, p.5–8
+
+## Open Questions
+
+- ~~Q-2026-05-18-S07~~ — **ANSWERED (Stage 10)**: FSPM 명세 확보. 본 페이지 "Stage 10 — FSPM Access 정식 명세" 절에 반영
+- Q-2026-05-18-S13 — **partial (Stage 10)**: Security Auditor / Security Admin 의 Audit Log access. read-only 범위까지는 확인, 로그 보존·내보내기 범위는 미확인

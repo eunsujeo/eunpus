@@ -8269,3 +8269,14 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - ANSWERED: 없음
 - 신규 entity: 0 (96 stage 연속)
 - 남은 부채 (내용 판단 필요, 미수정): 6-section 누락 14 (user-role 9 장이 Key Concepts/Details 없이 Permissions/Restrictions 절 구성 — 템플릿 통일 여부가 결정 대상) · `vendors/fireblocks/policy-engine.md` Sources 부재 · Q-2026-05-18-S01 답변 라벨(`**Stage 31 partial signal**`) 비표준 · last_updated_stage 6건은 본문에 Stage 언급이 없어 유도 불가.
+
+## Stage 224 (2026-09-21) — lint 잔여 부채 해소: user-role 템플릿 schema 인정 + 오탐 2종 제거
+- 결정 (사용자): user-role 9 장의 절 구성을 표준 6-section 으로 고치지 않고 **schema 에 변형으로 인정**. 역할 페이지에서는 권한·제약이 곧 핵심 개념이고 9/9 가 균일하므로 페이지를 바꾸는 쪽이 아니라 schema 를 맞춘다.
+- lint 오탐 2종 추가 제거: ① `## Key Concepts (verb vocabulary)` 처럼 괄호 접미사가 붙은 절을 누락으로 오판 (3 건) → 접미사 제거 후 대조. ② `vendors/fireblocks/policy-engine.md` 는 본문이 전부 `_TODO:_` 인 placeholder 인데 "Sources 부재 + 본문 주장" 으로 오판 → placeholder 본문을 주장으로 세지 않도록 수정.
+- Open Questions 절 신설 4 장: `api-user` (A01·S05) · `console-user` (AU03·AU05·D02 partial) · `security-auditor` (S07 ANSWERED Stage 10 · S13 partial) · `viewer` (매핑된 미해결 Q 없음 명시). 기존 open-questions/fireblocks.md 의 Q 를 가리키며 신규 Q 생성 없음.
+- 답변 라벨 heuristic 에 `signal`·`근거` 추가 — Q-2026-05-18-S01 의 `**Stage 31 partial signal**` 형태를 답변 기록으로 인정.
+- last_updated_stage 6 건 설정 (api-key · csr · sso · approver · editor · viewer): 6 장 모두 Stage 223 작업에서 실제로 수정된 페이지라 223 으로 기록. `stage_introduced` 는 근거가 없어 미기입 (git 이력 squash, 본문에 Stage 언급 없음).
+- 영향받은 페이지: CLAUDE.md (5절 user-role 변형 템플릿 + 괄호 접미사 관행 명문화) · scripts/wiki_lint.py (user-role 분기·접미사·placeholder·라벨) · entities/fireblocks 4 장 (Open Questions) + 6 장 (frontmatter) · lint-report.md.
+- 검증: lint 전 항목 0 (6-section·Sources·단방향 link·Status·답변기록·중복 entity·Stage orphan·frontmatter 4종) · frontmatter YAML 48/48 정상.
+- ANSWERED: 없음
+- 신규 entity: 0 (97 stage 연속)

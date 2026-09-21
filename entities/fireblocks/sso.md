@@ -5,6 +5,7 @@ status: stable
 tags: [authentication, identity]
 source_count: 3
 related: [2fa, authentication, console-user, lifecycle-events, owner, security]
+last_updated_stage: 223
 ---
 # Entity: SSO (Single Sign-On)
 

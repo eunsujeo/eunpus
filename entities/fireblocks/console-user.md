@@ -71,3 +71,9 @@ password 재설정은 self-service `Forgot password?` (`reset-your-password.md`,
 - `2026-05-18__support-fireblocks-io__reset-your-password.md`, p.1 (Stage 4)
 - `2026-05-18__support-fireblocks-io__re-enroll-a-users-mobile-device.md`, p.1 (Stage 3)
 - `2026-05-18__support-fireblocks-io__about-the-fireblocks-mobile-app.md`, p.1–2 (Stage 5)
+
+## Open Questions
+
+- Q-2026-05-18-AU03 — SSO domain 기반 authorization 과 workspace user list 의 연결 방식
+- Q-2026-05-18-AU05 — 비밀번호 정책 (length / complexity / rotation / lockout). SSO 미사용 사용자에 적용되는 룰
+- Q-2026-05-18-D02 — **partial (Stage 5)**: Linked users / linked workspaces 의 격리 모델. 전체 명세는 미확보

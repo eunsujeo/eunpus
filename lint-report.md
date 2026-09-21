@@ -8,28 +8,11 @@ Lint 항목 출처: [prompts/update-wiki.md](prompts/update-wiki.md) 의 Lint �
 
 ## 1. 6-section template 누락
 
-⚠️ 14 / 48 페이지에서 누락:
-
-- `vendors/fireblocks/architecture.md` — 누락: ## Key Concepts
-- `entities/fireblocks/api-user.md` — 누락: ## Open Questions
-- `entities/fireblocks/console-user.md` — 누락: ## Open Questions
-- `entities/fireblocks/transaction.md` — 누락: ## Key Concepts
-- `entities/fireblocks/vault-account.md` — 누락: ## Key Concepts
-- `entities/fireblocks/user-roles/admin.md` — 누락: ## Key Concepts, ## Details
-- `entities/fireblocks/user-roles/approver.md` — 누락: ## Key Concepts, ## Details
-- `entities/fireblocks/user-roles/editor.md` — 누락: ## Key Concepts, ## Details
-- `entities/fireblocks/user-roles/non-signing-admin.md` — 누락: ## Key Concepts, ## Details
-- `entities/fireblocks/user-roles/owner.md` — 누락: ## Key Concepts, ## Details
-- `entities/fireblocks/user-roles/security-admin.md` — 누락: ## Key Concepts, ## Details
-- `entities/fireblocks/user-roles/security-auditor.md` — 누락: ## Key Concepts, ## Details, ## Open Questions
-- `entities/fireblocks/user-roles/signer.md` — 누락: ## Key Concepts, ## Details
-- `entities/fireblocks/user-roles/viewer.md` — 누락: ## Key Concepts, ## Details, ## Open Questions
+✅ 전 페이지 6-section 충족
 
 ## 2. Sources 비어있는데 본문 주장 있는 페이지
 
-⚠️ 1 페이지:
-
-- `vendors/fireblocks/policy-engine.md`
+✅ 본문 주장이 있는 페이지는 모두 Sources bullet 보유
 
 ## 3. 단방향 wikilink (양방향 갱신 누락)
 
@@ -44,9 +27,7 @@ Lint 항목 출처: [prompts/update-wiki.md](prompts/update-wiki.md) 의 Lint �
 
 ✅ **표기 일관** — 모든 Q entry 가 `**Status**:` field 보유
 
-⚠️ answered/partial 인데 답변 기록이 탐지되지 않은 Q 1 건 — **수동 확인 대상** (라벨이 자유 형식이라 미탐지일 수 있음):
-
-- fireblocks.md / Q-2026-05-18-S01
+✅ answered/partial Q 는 모두 답변 기록 보유
 
 ## 5. 중복 entity 정의 (동일 h1 title 다중 위치)
 
@@ -55,9 +36,9 @@ Lint 항목 출처: [prompts/update-wiki.md](prompts/update-wiki.md) 의 Lint �
 ## 6. Stage 라벨 정합 (wiki ↔ log.md)
 
 - log.md stage 수: 216 (최대 Stage 223)
-- wiki 페이지에서 참조된 stage 수: 58
+- wiki 페이지에서 참조된 stage 수: 59
 - ✅ wiki 가 참조하는 stage 는 모두 log.md 에 존재
-- ℹ️ log 에 있지만 wiki 미참조 stage (최근 10개): [214, 215, 216, 217, 218, 219, 220, 221, 222, 223] (총 158 개)
+- ℹ️ log 에 있지만 wiki 미참조 stage (최근 10개): [213, 214, 215, 216, 217, 218, 219, 220, 221, 222] (총 157 개)
 
 ## 7. Frontmatter ↔ 본문 정합
 
@@ -67,14 +48,7 @@ Lint 항목 출처: [prompts/update-wiki.md](prompts/update-wiki.md) 의 Lint �
 
 ✅ related ↔ Related Pages 불일치: 0 건
 
-⚠️ **last_updated_stage 문제** — 6 건
-
-- `entities/fireblocks/api-key.md (last_updated_stage 없음)`
-- `entities/fireblocks/csr.md (last_updated_stage 없음)`
-- `entities/fireblocks/sso.md (last_updated_stage 없음)`
-- `entities/fireblocks/user-roles/approver.md (last_updated_stage 없음)`
-- `entities/fireblocks/user-roles/editor.md (last_updated_stage 없음)`
-- `entities/fireblocks/user-roles/viewer.md (last_updated_stage 없음)`
+✅ last_updated_stage 문제: 0 건
 
 ## 8. 카운트 요약 (CLAUDE.md / index.md 동기화용)
 
@@ -95,9 +69,9 @@ Lint 항목 출처: [prompts/update-wiki.md](prompts/update-wiki.md) 의 Lint �
 
 | Issue | 건수 | Priority |
 |---|---|---|
-| 6-section 누락 | 14 | high |
-| Sources 부재 + 본문 주장 | 1 | high |
-| answered/partial 답변 기록 미탐지 (수동 확인) | 1 | medium |
+| 6-section 누락 | 0 | - |
+| Sources 부재 + 본문 주장 | 0 | - |
+| answered/partial 답변 기록 미탐지 (수동 확인) | 0 | - |
 | 단방향 wikilink | 0 | - |
 | Status field 부재 | 0 | - |
 | frontmatter source_count 불일치 | 0 | - |

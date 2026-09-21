@@ -5,6 +5,7 @@ status: stable
 tags: [user-role, approver, governance]
 source_count: 1
 related: [policy, signer, transaction, user-management]
+last_updated_stage: 223
 ---
 # Entity: Approver (Fireblocks user role)
 

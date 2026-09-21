@@ -41,6 +41,16 @@ REQUIRED_SECTIONS = [
     "Open Questions",
 ]
 
+# user-role 페이지는 Key Concepts / Details 대신 권한·제약 두 절을 쓴다 (CLAUDE.md 5절).
+USER_ROLE_SECTIONS = [
+    "Summary",
+    "Permissions / Capabilities",
+    "Restrictions",
+    "Related Pages",
+    "Sources",
+    "Open Questions",
+]
+
 WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]")
 YAML_FM_RE = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 H1_RE = re.compile(r"^# (.+)$", re.MULTILINE)
@@ -57,7 +67,7 @@ Q_STATUS_RE = re.compile(r"^(?:-\s+)?\*\*Status\*\*:\s*(.+)$", re.MULTILINE)
 # 답변 기록 라벨은 자유 형식이다: `**Answer**:` `**Stage 161 partial answer**:` `**부분 답 (2026-08-20)**:`
 # `**진전 (Stage 149)**:` 등. 아래는 heuristic — 미탐지 = "확인 필요" 이지 "미반영" 확정이 아니다.
 Q_ANSWER_RE = re.compile(
-    r"^(?:-\s+)?\*\*[^*]*(?:answer|답|진전|확인됨|결론)[^*]*\*\*:",
+    r"^(?:-\s+)?\*\*[^*]*(?:answer|답|진전|확인됨|결론|signal|근거)[^*]*\*\*:",
     re.MULTILINE | re.IGNORECASE,
 )
 STATUS_WORD_RE = re.compile(r"(answered|partial|abandoned|open)", re.IGNORECASE)
@@ -160,17 +170,29 @@ def load_pages() -> list[Page]:
 
 
 def check_sections(pages: list[Page]) -> list[tuple[str, list[str]]]:
-    """1. 6-section template 누락."""
+    """1. 6-section template 누락.
+
+    `## Key Concepts (verb vocabulary)` `## Sources (Stage 36 추가)` 처럼 괄호 접미사를
+    붙이는 것이 이 위키의 관행이라, 접미사를 떼고 대조한다.
+    """
     out = []
     for p in pages:
-        missing = [s for s in REQUIRED_SECTIONS if s not in p.sections]
+        present = {re.sub(r"\s*\(.*\)\s*$", "", sec).strip() for sec in p.sections}
+        required = USER_ROLE_SECTIONS if p.kind == "user-role" else REQUIRED_SECTIONS
+        missing = [s for s in required if s not in present]
         if missing:
             out.append((p.rel, missing))
     return out
 
 
+PLACEHOLDER_RE = re.compile(r"^\s*[-*]?\s*_TODO[^_]*_\s*$", re.MULTILINE)
+
+
 def check_empty_sources(pages: list[Page]) -> list[str]:
-    """2. Sources 가 비었는데 본문에 주장이 있는 페이지."""
+    """2. Sources 가 비었는데 본문에 주장이 있는 페이지.
+
+    `_TODO: …_` 만 채워진 placeholder 페이지는 주장이 없으므로 대상이 아니다.
+    """
     out = []
     for p in pages:
         has_source_bullet = any(
@@ -179,7 +201,10 @@ def check_empty_sources(pages: list[Page]) -> list[str]:
         if has_source_bullet:
             continue
         # 본문 주장 유무 = Summary/Key Concepts/Details 에 실질 텍스트가 있는가
-        substance = "".join(_section_body(p.body, s) for s in ("Summary", "Key Concepts", "Details"))
+        substance = "".join(
+            _sections_by_prefix(p.body, sec) for sec in ("Summary", "Key Concepts", "Details")
+        )
+        substance = PLACEHOLDER_RE.sub("", substance)
         if len(substance.strip()) > 100:
             out.append(p.rel)
     return out

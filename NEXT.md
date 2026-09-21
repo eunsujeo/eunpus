@@ -7,7 +7,7 @@
 
 | 워크스트림 | 상태 |
 |---|---|
-| wiki (Layer 1–2) | Stage 223 까지 log.md 기록 (2026-09-21). 신규 entity 0 streak 96 stage 연속 (Stage 127 기준) |
+| wiki (Layer 1–2) | Stage 224 까지 log.md 기록 (2026-09-21). 신규 entity 0 streak 97 stage 연속 (Stage 127 기준) |
 | wiki lint | `python3 scripts/wiki_lint.py` 로 주기 실행 (Stage 222 신설). 최신 결과 = [lint-report.md](lint-report.md). 미해결 부채는 아래 2.4 |
 | docs-site | 15 폴더. Key Link 포함 완료. 배지/날짜 전환은 사용자 지시 시에만 |
 | blockchain-manager/docs (칸반 모듈) | `디지털 자산` 카테고리 전부 Done (Canton·Fireblocks·가스대납·시작하기·트래블룰). `In Progress` 문서 없음. `To Do` 표기 문서 (13·14·16·99 등) 도 본문은 작성돼 있음 — 칸반 status 전환은 사용자가 드래그로 |
@@ -80,16 +80,21 @@
 - **우리 측 숙제** — 요구 사항 노트(체인 목록 포함) 발송, 규제기관 협의 후 Fireblocks 호스팅 노드 수용 여부 회신, MPC 대 HSM 선택 의견.
 - 미확인: Private Cloud와 배치 옵션 문서의 Korean Local Instance 관계, Secure Tier 실행 기반·Key Share 배치, AWS 계정 수·자원 수량, 리드타임·예산.
 
-### 2.4 wiki lint 부채 — 기계적 항목 교정 완료 (Stage 223), 내용 판단 항목 잔여
+### 2.4 wiki lint — 전 항목 해소 (Stage 222–224)
 
-`python3 scripts/wiki_lint.py --fix` 로 교정 완료: 단방향 wikilink 178→0 · frontmatter source_count 19 · related 45 · last_updated_stage 2 · log.md Stage 1 표기.
+`python3 scripts/wiki_lint.py` 기준 8 항목 전부 0. 새 stage 마다 실행해 유지한다.
 
-남은 것은 결정이 필요한 항목:
+| 항목 | Stage 221 | 현재 |
+|---|---|---|
+| 6-section 누락 | 14 | 0 |
+| Sources 부재 + 본문 주장 | 1 | 0 |
+| 단방향 wikilink | 178 | 0 |
+| frontmatter (source_count·related·stage) | 37 | 0 |
+| Stage orphan | 1 | 0 |
 
-- **6-section 누락 14 페이지** — user-role 9 장 전부가 Key Concepts / Details 부재 (본문은 Permissions / Restrictions 절로 구성). **결정 대상**: 템플릿을 맞출지, user-role 만 별도 템플릿으로 schema 에 인정할지
-- **Sources 부재 + 본문 주장 1** — `vendors/fireblocks/policy-engine.md`. 출처를 찾아 붙이거나 주장을 open-question 으로 내려야 함
-- **답변 라벨 1** — Q-2026-05-18-S01 이 `**Stage 31 partial signal**` 이라 lint heuristic 미탐지. 라벨을 표준화할지 판단
-- **last_updated_stage 6** — 본문에 Stage 언급이 없어 유도 불가 (api-key · csr · sso · approver · editor · viewer)
+처리 방식: 기계적 drift 는 `--fix` 로 교정 (Stage 223) · user-role 9 장의 절 구성은 페이지를 고치지 않고 schema 변형으로 인정 (Stage 224, CLAUDE.md 5절) · 오탐 5종은 lint 파서 수정.
+
+잔여 (근거 없어 미기입): `stage_introduced` 가 6 장에 없음 (api-key · csr · sso · approver · editor · viewer). git 이력이 squash 돼 있고 본문에 Stage 언급이 없어 유도 불가 — 해당 페이지를 다음에 실제로 손볼 때 채우면 된다.
 
 ### 2.2 wiki: 컨퍼런스 세션 자료 promote 대기 (Stage 164–165 후속)
 

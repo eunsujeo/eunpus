@@ -5,6 +5,7 @@ status: stable
 tags: [user-role, viewer]
 source_count: 1
 related: [sandbox-workspace, security-auditor, user-management]
+last_updated_stage: 223
 ---
 # Entity: Viewer (Fireblocks user role)
 
@@ -37,3 +38,7 @@ Workspace activity 전반에 대한 **view-only** 권한만 가지는 role. Sett
 ## Sources
 
 - `2026-05-18__support-fireblocks-io__user-roles.md`, p.3–4, p.5–8
+
+## Open Questions
+
+- 현재 이 페이지에 매핑된 미해결 Q 없음 (Stage 223 점검). Viewer 는 권한표에서 전 항목 read-only 로 확정돼 미해결 지점이 남지 않았다.

@@ -112,3 +112,8 @@ Fireblocks 플랫폼을 API를 통해 사용하는 사용자 유형. 할당된 r
 - `2026-05-18__support-fireblocks-io__re-enrolling-api-users.md`, p.1–2
 - `2026-05-18__support-fireblocks-io__rename-and-delete-api-users.md`, p.1–2
 - `2026-05-18__support-fireblocks-io__allowlist-ip-addresses-for-api-user-requests.md`, p.1
+
+## Open Questions
+
+- Q-2026-05-18-A01 — "Admin-level users" 가 API user rename·re-enroll 에도 등장. Q-L01 과 같은 정의 집합인지 미확인
+- Q-2026-05-18-S05 — Withdrawal address whitelisting suspension 의 정확한 동작 (API user 영향 범위 포함)

@@ -7,7 +7,7 @@
 
 - **무엇**: Fireblocks-focused **Wallet-as-a-Service (WaaS)** 리서치 LLM wiki. [llm-wiki.md](llm-wiki.md) 패턴의 instance.
 - **누가 쓰는가**: 사용자 1명 + LLM 1대 (Claude Code). LLM 이 모든 wiki 본문을 쓰고 사용자는 source / direction / approval 담당.
-- **현재 상태**: 223 stage 진행 (log.md 가 정확한 counter). 5 priority domain (Workspace / Identity / Governance / Mobile / Security) deep ingest 완료 후 Architecture Reasoning Mode. 신규 entity 0 streak 96 stage 연속 (Stage 127 기준).
+- **현재 상태**: 224 stage 진행 (log.md 가 정확한 counter). 5 priority domain (Workspace / Identity / Governance / Mobile / Security) deep ingest 완료 후 Architecture Reasoning Mode. 신규 entity 0 streak 97 stage 연속 (Stage 127 기준).
 - **수치 갱신**: 아래 수치는 `python3 scripts/wiki_lint.py` 의 "카운트 요약" 절이 실측값 — 손으로 세지 말 것.
 - **전체 catalog**: [index.md](index.md)
 
@@ -51,7 +51,7 @@ LLM 이 사용자 메시지를 받으면 다음 3 trigger 중 하나로 분류:
 ### Trigger 2 — wiki 수정 요청
 **Phrases**: "wiki 에 추가", "새 entity 만들어줘", "open-question 답", "log entry", "page 수정"
 **Route**: [prompts/extract-entities.md](prompts/extract-entities.md) (entity 후보) 또는 [prompts/update-wiki.md](prompts/update-wiki.md) (기존 페이지)
-**★ 신규 entity 요청 시 default = 거절 + 흡수 분석** (Stage 127 이후 96 stage 연속 0 streak 유지)
+**★ 신규 entity 요청 시 default = 거절 + 흡수 분석** (Stage 127 이후 97 stage 연속 0 streak 유지)
 
 ### Trigger 3 — fact query (reference-ready)
 **Phrases**: "Fireblocks 의 X 는?", "MPC 분포", "Policy Q+O", "Workspace freeze"
@@ -119,6 +119,25 @@ Tag taxonomy: `mpc / cryptography / signing / integration / recovery / backup / 
 ```
 
 `(★ Stage N)` 마커로 invariant / open question ANSWERED 표시.
+
+절 제목에 괄호 접미사를 붙여도 된다 (`## Key Concepts (verb vocabulary)`, `## Sources (Stage 36 추가)`). Stage 별 추가 인용은 `## Sources (Stage N 추가)` 로 덧붙이는 것이 관행.
+
+### user-role 변형 (type: user-role)
+
+`entities/<vendor>/user-roles/` 의 9 페이지는 Key Concepts / Details 대신 아래 두 절을 쓴다. 역할 페이지에서는 권한·제약이 곧 핵심 개념이라 의미상 맞고, 9 페이지가 균일하게 이 형태다 (Stage 223 확인).
+
+```
+# <Title>
+
+## Summary
+## Permissions / Capabilities   ← Key Concepts 대체
+## Restrictions                 ← Details 대체
+## Related Pages
+## Sources
+## Open Questions
+```
+
+`scripts/wiki_lint.py` 는 `type: user-role` 페이지를 이 템플릿으로 검사한다.
 
 ## 6. Reference-ready 답변 형식
 
