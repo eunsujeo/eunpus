@@ -8280,3 +8280,13 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 검증: lint 전 항목 0 (6-section·Sources·단방향 link·Status·답변기록·중복 entity·Stage orphan·frontmatter 4종) · frontmatter YAML 48/48 정상.
 - ANSWERED: 없음
 - 신규 entity: 0 (97 stage 연속)
+
+## Stage 225 (2026-09-21) — Canton 시안·비유 교체 커밋과 칸반 앱 배포
+- 요청: Stage 218~221 작업물 커밋 → 배포 지시.
+- **커밋 전 발견 — 다른 세션이 같은 워크트리에서 작업 중.** 사용자가 IDE 로 `lint-report.md` 를 연 것이 실마리. 확인해 보니 `c40ce8f`·`a6feaf9` (Stage 222~224, lint 스크립트화와 기계적 부채 교정) 이 이미 커밋·푸시돼 있었고, **내가 작성한 log.md Stage 218~221 이 그 커밋에 함께 담겨 있었다** (저쪽이 `git add -A` 를 쓴 것으로 보임).
+- 그래서 이번에는 `-A` 를 쓰지 않고 **경로 9개를 지정해** 담았다. 작업트리의 `NEXT.md` 는 다른 세션이 내 작업을 기록해 둔 미커밋 편집이라 담지 않았다.
+- 커밋 `e2bdd3f` — 9 파일 +515/−28. `app/public/canton-slides.html` 신규 · 개편 계획(스토리보드 10장 + 색 사용 규칙) · 캔톤 개념 7문서 비유 표현 교체.
+- 배포: `app/` 에서 `npm run build:docs` 후 `wrangler pages deploy public --project-name=blockchain-manager --branch=main`. Uploaded 10 files (222 already) → 배포 `c49640fd`. `deployment list` 로 Environment=Production · Branch=main · Source=`e2bdd3f` 확인. 직전 production 은 `3603674`(Stage 217) 였으므로 Stage 218~224 의 문서 변경이 이번에 함께 반영됐다.
+- 운영 규칙 추가 (auto-memory `git-stage-by-path`): 이 저장소는 여러 세션이 한 워크트리를 공유하므로 `git add -A` 를 쓰지 않는다. 담기 전 `git status --short` 로 남의 변경을 확인하고, `git log --oneline -5` 로 그 사이 다른 세션 커밋이 있었는지 본다.
+- 남은 것: 발표자료는 아직 3장 시안이고 보드에 연결하지 않았다. 나머지 7장 → A안 적용(계획 문서 이동) → `view: doc`+`embed` 연결 순서. `세 기둥` 비유 유지 여부도 사용자 판단 대기.
+- 상태: 커밋·푸시·배포 완료.
