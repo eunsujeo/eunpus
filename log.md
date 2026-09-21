@@ -8307,4 +8307,5 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - **인쇄 실측**: `--print-to-pdf` 결과 **10쪽 · 960×540pt(16:9)**, 한 장이 한 쪽. 5쪽 렌더해 앱 크롬 없이 슬라이드만 들어간 것 확인. 계획 4절 조건 충족
 - 화면·PDF: `_workspace/canton-slides/` (git 제외)
 - 남은 판단: `세 기둥` 비유 유지 여부(2장 제목이자 세트 구성 장치). 리허설(계획 5절 4단계)과 3차 리뷰(6절)는 사용자 몫
-- 상태: 파일 생성·수정 완료. 커밋·푸시·배포 없음.
+- 커밋 `781c0e7` (경로 지정 스테이징 — 다른 세션의 미커밋 `NEXT.md` 는 제외) · push 완료 · 배포 `1fb3b720`, Uploaded 3 files (229 already). `deployment list` 로 Environment=Production · Branch=main · Source=`781c0e7` 확인.
+- 상태: 커밋·푸시·배포 완료.
