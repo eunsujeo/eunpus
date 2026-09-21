@@ -8290,3 +8290,21 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 운영 규칙 추가 (auto-memory `git-stage-by-path`): 이 저장소는 여러 세션이 한 워크트리를 공유하므로 `git add -A` 를 쓰지 않는다. 담기 전 `git status --short` 로 남의 변경을 확인하고, `git log --oneline -5` 로 그 사이 다른 세션 커밋이 있었는지 본다.
 - 남은 것: 발표자료는 아직 3장 시안이고 보드에 연결하지 않았다. 나머지 7장 → A안 적용(계획 문서 이동) → `view: doc`+`embed` 연결 순서. `세 기둥` 비유 유지 여부도 사용자 판단 대기.
 - 상태: 커밋·푸시·배포 완료.
+
+## Stage 226 (2026-09-21) — Canton 발표자료 10장 완성 + 보드 연결 (A안)
+- 요청: "다음 진행해줘" — 남은 두 항목 중 발표자료 확장.
+- **나머지 7장 제작** (계획 5절 3단계). 1·3·4·6·7·9·10장을 시안과 같은 규칙으로 확장해 10장 완성. `app/public/canton-slides.html` 20.5KB → 37.7KB, 여전히 단일 파일·외부 참조 0.
+  - 1·10장은 선언 슬라이드(`.stage.statement`) — 1장이 던진 질문("검증하는 주체 = 내용을 보는 주체?")에 10장이 답(`≠`)하는 수미상관
+  - 3장에서 경고색 첫 사용. **경고색도 종이 위 2.99:1 이라 글자로 쓰지 않고** `--fill-warn` 채움으로만 (합성 배경 위 navy 13.31 · slate 5.09)
+  - 6장은 SVG 대신 비교표 — Canton 열만 시안 채움, 퍼블릭 열은 코발트 밑줄, 프라이빗 열은 void. 색조가 아니라 채움으로 구분하는 규칙을 표에도 적용
+  - 2·4·5장이 같은 거래 한 건(기관 A → 기관 B · 100)을 계속 쓰는 것 확인 — 계획 완료 조건
+  - 7·9장 용어는 개념 4장·9장 대조 (파티/밸리데이터/Synchronizer · leg·venue·원자적 동시 실행)
+- **A안 적용** — 중카테고리에 카드가 1개일 때만 iframe 이 뜨므로:
+  - `docs/캔톤네트워크/발표자료/00-presentation-rebuild-plan.md` → `blockchain-manager/canton-presentation-plan.md` 로 이동 (`claude-code-loops-guide.md` 와 같은 "칸반 관리 대상 아님" 자리). frontmatter 를 머리말로 바꾸고 상대 링크 1건 보정
+  - `docs/캔톤네트워크/발표자료/00-canton-network-slides.md` 신설 — `view: doc` + `embed: canton-slides.html`. 본문은 10장 흐름 표와 조작법(내보내기 fallback 용)
+  - `.board-order.json` 변경 불필요 (기존 하위분류)
+- 검증: 발표자료 카드 1건·`view=doc`·`embed` 확인(iframe 분기 조건 충족) · 219문서 빌드 · export 단위 검사 5개 통과 · 내보낸 보드에 슬라이드 HTML 이 srcdoc 으로 내장됨 · **앱 화면에서 실제로 iframe 렌더 확인**(`?cat=캔톤네트워크&sub=발표자료`, 다크 테마 전파 정상) · SVG 9개 XML 파싱 · JS `node --check`
+- **인쇄 실측**: `--print-to-pdf` 결과 **10쪽 · 960×540pt(16:9)**, 한 장이 한 쪽. 5쪽 렌더해 앱 크롬 없이 슬라이드만 들어간 것 확인. 계획 4절 조건 충족
+- 화면·PDF: `_workspace/canton-slides/` (git 제외)
+- 남은 판단: `세 기둥` 비유 유지 여부(2장 제목이자 세트 구성 장치). 리허설(계획 5절 4단계)과 3차 리뷰(6절)는 사용자 몫
+- 상태: 파일 생성·수정 완료. 커밋·푸시·배포 없음.
