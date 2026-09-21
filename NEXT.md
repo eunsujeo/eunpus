@@ -16,7 +16,7 @@
 
 ### HTML 선택 내보내기 (2026-09-14)
 
-- 목차 번호 중복 수정: md.js가 제목의 절 번호를 목차 번호 칸에 한 번만 표시하고 번호 없는 제목에만 자동 번호를 사용. 앱/HTML 검증 완료. 이번 커밋에 포함하며 운영 배포는 대기 중(현재 배포 78dfbdf). `_workspace/toc-numbering/` 참고.
+- 목차 번호 중복 수정: md.js가 제목의 절 번호를 목차 번호 칸에 한 번만 표시하고 번호 없는 제목에만 자동 번호를 사용. 앱/HTML 검증 완료. **배포 반영됨** (배포 기준은 아래 2.1b-2). `_workspace/toc-numbering/` 참고.
 
 - `HTML ↓`에서 중카테고리를 체크해 내보낼 수 있다. `WaaS 도입·구축`의 Fireblocks·Dfns만 고르면 DAW 구축 설계 4문서는 제외된다. (중카테고리 `Fireblocks PaaS`는 2026-09-16 `Fireblocks`로 개명)
 - 문서 주제 묶음: Dfns는 배포 방식·운영 환경 / 서명 보안·검증 / 사내 구축·도입 검토, DAW는 개요 아래 계정·노드 연동 / 가스 대납·정산. frontmatter `group`으로 지정하며 HTML 카드와 이전·다음이 같은 묶음 순서를 사용한다.
@@ -45,6 +45,14 @@
 `BC/설계/08-bcm-admin.md` 준비 카드 기준으로, Webhook 연결 완료 판단에 **Webhook 프로세스 health 응답**을 별도 조건으로 추가하기로 확정
 (DB 집계 HEALTHY 만으로는 중지된 프로세스를 걸러내지 못함). 문서는 반영 완료 — svc 의
 `bcm-admin/.../AdminReadService.kt` `preparationChecks` (`ready = webhook?.state == "HEALTHY"`) 구현 변경이 남았고, 이는 svc 세션 몫.
+
+### 2.1b-2 칸반 앱 배포 기준 (2026-09-21)
+
+**마지막 배포 = `1fb3b720`** (Source 커밋 `781c0e7`, Production/main 확인). 직전 이력: `c49640fd` (Source `e2bdd3f`, Stage 218–224 문서 변경 일괄 반영) → 그 전이 `c5f9871b` (Source `3603674`, Stage 217).
+
+**본 문서 곳곳의 "운영 배포 대기" 표기는 모두 그 시점 기준이며 현재는 반영 완료**다. 배포 여부는 이 절만 보면 된다 — 개별 항목의 표기를 믿지 말 것.
+
+배포 절차: `app/` 에서 `npm run build:docs` → `wrangler pages deploy public --project-name=blockchain-manager --branch=main`. `public/_generated/` 가 gitignore 대상이라 빌드 선행이 필수고, `--branch=main` 을 빼면 Preview 로만 올라가 production 에 반영되지 않는다.
 
 ### 2.1c Dfns Baseline·DAW 구축 설계 (2026-09-15)
 
