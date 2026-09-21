@@ -8321,3 +8321,28 @@ B4 는 Stage 42 hypothesis 페이지의 §6 으로 흡수, 별도 페이지 안 
 - 검증: 220문서 빌드 · 상대 링크 7건 전부 해석 · `캔톤네트워크/운영 검토` 내보내기에서 본문 렌더 확인
 - 커밋 `79f758d` · push · 배포 `8794dde9` (Environment=Production · Branch=main · Source=`79f758d` 확인). 담기 직전 다른 세션이 `9b5487a`(NEXT.md 배포 기준 정리)를 올린 것을 확인했고, 경로 지정 스테이징이라 서로 섞이지 않았다.
 - 상태: 커밋·푸시·배포 완료.
+
+## Stage 228 (2026-09-21) — 참여자 노드 운영 공백을 공식 문서로 채움 (6건 중 5건 해소)
+- 요청: Stage 227 에서 남긴 확인 필요 항목을 "채워보자".
+- 방법: `gh` 로 `digital-asset/canton` 저장소 코드 검색해 원본 `.rst` 위치를 찾고 **태그 `v3.5.18`(커밋 `c548c9ba`) 로 고정해** 8건, `canton-network/cf-docs`(ref `f28d96c3`) 에서 Pruning 개요 1건을 스냅샷. `sources/canton-network/` 에 보존하고 manifest 에 SHA-256 9건 추가 (총 19 source).
+  - `docs.digitalasset.com` 렌더 페이지는 세 번 다 404 라 GitHub 원본 경로로 우회했다.
+- **Q1 분기 탐지 — 해소.** 장치가 있다. 참여자는 ACS 에 대한 commitment(SHA-256)를 정기 간격으로 counter-participant 와 교환해 공통 ACS 상태의 non-repudiation 을 세운다. 경보 4종 — `ACS_COMMITMENT_MISMATCH`(fork) · **`ACS_COMMITMENT_ALARM`(원문이 "malicious behavior" 라고 명시. 서명 무효 또는 같은 구간에 올바로 서명된 서로 다른 commitment 2개 수신)** · `ACS_MISMATCH_NO_SHARED_CONTRACTS` · `ACS_COMMITMENT_DEGRADATION`. 조사 명령 `commitments.lookup_received_acs_commitments`·`lookup_sent_acs_commitments`. pruning 이 이 장치에 묶여 있다 — 전 counter-participant 의 일치 commitment 없이는 prune 불가. 한계는 대조 대상이 **공유 ACS** 이고 주기가 reconciliation interval 이라는 점.
+- **Q2 백업·복구 — 해소.** 복구는 synchronizer 재생으로 하되 "synchronizer 백업이 참여자 것보다 최신인 한". 백업 순서가 프로토콜 요건 — mediator·participant 를 sequencer 보다 먼저(아니면 `ForkHappened`), 앱 상태는 participant 보다 먼저. 복구 후유증 2종(명령 중복제거 불일치로 중복 수락 가능 · ledger offset 변동과 거절 누락).
+- **Q3 보존·pruning — 해소.** 자동(cron+보존기간)/수동(`find_safe_offset`+`prune`) · `prune` vs `prune_internally` 분리 운용(예: API 이력 3개월·내부 1개월) · pruning 시마다 백업 전제 · 최소 보존은 `ledger-api.max-deduplication-duration` · 규제는 운영자가 보존 기간을 선언할 몫(GDPR·HIPAA).
+- **Q5 업그레이드 — 해소.** Flyway 스키마, 가이드는 minor·patch 기준(major 는 다를 수 있음), 프로토콜 하위호환이라 노드별 개별 업그레이드 가능, **HA 면 전 노드 정지**, 사전 백업으로 롤백, 중단 시간은 직접 측정.
+- **Q6 가용성 — 해소 + 개념 정리.** 이름이 비슷한 둘을 구분했다. **노드 복제본 HA**(공유 DB, PostgreSQL·Oracle 만, `replication.enabled`, 2.4.0 부터 기본 활성, pruning 은 active 복제본에서만·failover 재개 없음) vs **party replication**(11장이 말한 다중 호스팅. 파티와 대상 참여자가 각각 topology transaction 으로 동의, 미사용 파티는 간단 절차·사용된 파티는 offline 절차). ★ **party offboarding 미지원 → party migration 불가** — 노드 교체 시나리오의 제약.
+- **Q4 용량 산정 — 미해소.** `optimize/storage.rst` 는 DB 커넥션 풀 튜닝이지 디스크 용량 산정이 아니다. pruning 이 크기 제한 수단이라는 데까지가 문서 범위. 자체 실측 또는 벤더 문의로 남긴다.
+- ★ **원문 대조에서 정정 1건.** 1차 작성 때 "sequencer 기본 30일 보존" 을 적었는데, Pruning 개요 원문을 직접 열어 보니 **그 서술이 없다.** 실제는 "멤버가 acknowledge 하기 전에는 지우지 않되, 응답 없는 멤버에 대비해 운영자가 보존 기간을 정해 확인 없이 prune 할 수 있고 그 경우 멤버는 복구할 수 없다" 이다. 30일은 요약 fetch 가 다른 문맥(Splice)을 섞은 것으로 보인다. **요약 도구 출력을 근거로 쓰지 않고 원문을 받아 대조한 것이 걸러 냈다.** 이 사실이 Q2 의 "오래된 참여자 백업은 못 쓸 수 있다" 와 직접 연결돼 본문에 함께 적었다.
+- 문서 갱신: `운영 검토/00-participant-node-operations.md` 를 확인 필요 목록에서 **답변 문서로 전환** (제목도 "무결성 확인·백업·보존·업그레이드" 로 변경). 절마다 근거 원문 경로를 출처 표에 매핑.
+- 검증: 220문서 빌드 · 표 열 수 불일치 0 · 상대 링크 7건 · 내보내기에서 핵심 용어 5종 렌더 확인
+- 상태: 파일 생성·수정 완료. 커밋·푸시·배포 없음.
+
+## Stage 229 (2026-09-21) — ACS 대조를 개념 6장으로 승격, 운영 문서와 층 분리
+- 요청: "개념 문서에 합쳐질 수 있을까요?" → 부분 병합 제안 후 승인.
+- 판단: **한 건만 개념으로 올리고 나머지는 운영에 남긴다.** ACS 대조는 6장의 구멍이었다 — "전체 사본이 없고 노드마다 샤드"까지 말해 놓고 "그럼 어긋나면 어떻게 아나"에 답하지 않았고, 11장도 "내 밸리데이터만 정직하면"의 확인 방법을 비워 뒀다. 반면 백업 순서·pruning 명령·업그레이드 절차·HA 설정은 (a) 0장이 선언한 대상("Canton 처음 보는 개발자·기획자")과 다르고 (b) 0장의 "개념 서술은 버전을 타지 않는다" 약속을 깨며(설정 키·오류 코드·"2.4.0부터 기본 활성") (c) 0장이 이미 "실전 적용·검증은 무스비 PoC 세트" 로 경계를 그어 뒀다.
+- 6장 신설 절 「노드끼리 어긋나면 어떻게 아나 — ACS 대조」 — 개념 수준만(요약 해시를 주기적으로 교환해 공통 상태 대조, 다르면 fork, 내용이 아니라 요약값이라 프라이버시 유지). mermaid 1개 추가. 오류 코드·명령어는 넣지 않고 운영 문서로 보냄.
+- ★ **기존 서술 정정 1건** — 6장 표의 "같은 사본이라 사후 **대조(reconciliation) 불필요**" 는 Canton 이 reconciliation interval 마다 실제로 대조를 돌린다는 사실과 부딪힌다. "기관끼리 잔액을 맞춰 보는 **업무** 대조가 없다. 다만 프로토콜은 사본이 어긋나지 않았는지 주기적으로 대조한다" 로 갈라 적었다. 개념 문서를 안 건드렸으면 남았을 오해다.
+- 11장 ② 에 6장 앵커 링크 한 줄 추가. 운영 문서 1절은 "개념은 6장, 여기서는 도구와 경보" 로 축약하고 중복된 pruning 결합 문단 삭제.
+- 앵커 검증: md.js 의 실제 규칙(`toLowerCase → [^\p{L}\p{N}\s-] 제거 → \s+ → -`)을 node 로 돌려 대조. **em-dash 가 제거되며 양옆 공백이 하나로 합쳐지므로 `아나--acs` 가 아니라 `아나-acs`** 다. 처음에 이중 하이픈으로 썼다가 두 파일 모두 정정.
+- 검증: 220문서 빌드 · 개념+운영 내보내기에서 **mermaid 16 → 17** (신규 그림 렌더 성공) · 신설 절·정정 문구·11장 연결 모두 렌더 확인
+- 상태: 파일 수정 완료. 커밋·푸시·배포 없음.

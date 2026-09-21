@@ -73,3 +73,69 @@ sources:
     accessed_at: 2026-09-17
     url: https://raw.githubusercontent.com/canton-network/cf-docs/09e7877b02d99f57abd29d7baeb2e3557b8c7943/docs-main/global-synchronizer/deployment/synchronizer-traffic.mdx
     sha256: 872802ac29d8d2415f4b3b61a9e1217d4dccfeb52caf439b6b89b9dce161493c
+
+# 2026-09-21 수집분 — 참여자 노드 운영(원장 무결성·백업·보존·HA·업그레이드) 확인용.
+# 상단 블록과 같은 digital-asset/canton 저장소이나 태그가 다르므로 항목마다 ref 를 적는다.
+  - id: DA-CANTON-OBSERVE-COMMITMENTS-001
+    file: 2026-09-21__observe-commitments-v3.5.18.rst
+    repository: https://github.com/digital-asset/canton
+    ref: v3.5.18 (c548c9ba15d1f22f820ec2409d972b2b9e04a73b)
+    accessed_at: 2026-09-21
+    url: https://raw.githubusercontent.com/digital-asset/canton/v3.5.18/docs-open/src/sphinx/participant/howtos/observe/commitments.rst
+    sha256: 2a2ad90f5ea7f8d07e6d17a8d5725e36c1de95a914372fef0dce2639525c2cf2
+  - id: DA-CANTON-TROUBLESHOOT-COMMITMENTS-001
+    file: 2026-09-21__troubleshoot-commitments-v3.5.18.rst
+    repository: https://github.com/digital-asset/canton
+    ref: v3.5.18 (c548c9ba15d1f22f820ec2409d972b2b9e04a73b)
+    accessed_at: 2026-09-21
+    url: https://raw.githubusercontent.com/digital-asset/canton/v3.5.18/docs-open/src/sphinx/participant/howtos/troubleshoot/commitments.rst
+    sha256: 5cfb8f990f3d9318068029e171340460e1dd7d13f459123acdba5816fbbbccc7
+  - id: DA-CANTON-BACKUP-RESTORE-001
+    file: 2026-09-21__backup-restore-v3.5.18.rst
+    repository: https://github.com/digital-asset/canton
+    ref: v3.5.18 (c548c9ba15d1f22f820ec2409d972b2b9e04a73b)
+    accessed_at: 2026-09-21
+    url: https://raw.githubusercontent.com/digital-asset/canton/v3.5.18/docs-open/src/sphinx/participant/howtos/recover/backup-restore.rst
+    sha256: 1fd6a0ae0607c17624d11527b070e1ac8b13e3a25f60de6c7b9ad95302f08f3b
+  - id: DA-CANTON-PARTICIPANT-PRUNING-001
+    file: 2026-09-21__participant-pruning-v3.5.18.rst
+    repository: https://github.com/digital-asset/canton
+    ref: v3.5.18 (c548c9ba15d1f22f820ec2409d972b2b9e04a73b)
+    accessed_at: 2026-09-21
+    url: https://raw.githubusercontent.com/digital-asset/canton/v3.5.18/docs-open/src/sphinx/participant/howtos/operate/pruning/pruning.rst
+    sha256: 1a610ee6f84cff84b52628b5f92a4acbe34ea126adc8f164d67a1acbfabfd39e
+  - id: DA-CANTON-PARTICIPANT-HA-001
+    file: 2026-09-21__participant-ha-v3.5.18.rst
+    repository: https://github.com/digital-asset/canton
+    ref: v3.5.18 (c548c9ba15d1f22f820ec2409d972b2b9e04a73b)
+    accessed_at: 2026-09-21
+    url: https://raw.githubusercontent.com/digital-asset/canton/v3.5.18/docs-open/src/sphinx/participant/howtos/operate/ha/ha.rst
+    sha256: 86ff5eddae045a242952c9b64e935d24d9bec96ab2b9c7cfaa94b53d09129e2c
+  - id: DA-CANTON-PARTICIPANT-UPGRADE-001
+    file: 2026-09-21__participant-upgrade-v3.5.18.rst
+    repository: https://github.com/digital-asset/canton
+    ref: v3.5.18 (c548c9ba15d1f22f820ec2409d972b2b9e04a73b)
+    accessed_at: 2026-09-21
+    url: https://raw.githubusercontent.com/digital-asset/canton/v3.5.18/docs-open/src/sphinx/participant/howtos/upgrade/index.rst
+    sha256: ff034ac42814f6f314060a2c5aeb64315392322e632881eacc64a70a742943f7
+  - id: DA-CANTON-PARTICIPANT-STORAGE-001
+    file: 2026-09-21__participant-storage-v3.5.18.rst
+    repository: https://github.com/digital-asset/canton
+    ref: v3.5.18 (c548c9ba15d1f22f820ec2409d972b2b9e04a73b)
+    accessed_at: 2026-09-21
+    url: https://raw.githubusercontent.com/digital-asset/canton/v3.5.18/docs-open/src/sphinx/participant/howtos/optimize/storage.rst
+    sha256: 6a9f672f151d85ea377b0f96ef17415bb2da895acc545350fc34caed83e1e590
+  - id: DA-CANTON-PARTY-REPLICATION-001
+    file: 2026-09-21__party-replication-v3.5.18.rst
+    repository: https://github.com/digital-asset/canton
+    ref: v3.5.18 (c548c9ba15d1f22f820ec2409d972b2b9e04a73b)
+    accessed_at: 2026-09-21
+    url: https://raw.githubusercontent.com/digital-asset/canton/v3.5.18/docs-open/src/sphinx/participant/howtos/operate/parties/party_replication.rst
+    sha256: 842b24d2077e604b93b77b98eff1a03c939c90c9468a2ca8b72ef12a85c7b899
+  - id: CF-DOCS-PRUNING-OVERVIEW-001
+    file: 2026-09-21__pruning-overview-cf-docs.mdx
+    repository: https://github.com/canton-network/cf-docs
+    ref: f28d96c3d268f512884e830a4b14a9a58ae75d52
+    accessed_at: 2026-09-21
+    url: https://raw.githubusercontent.com/canton-network/cf-docs/f28d96c3d268f512884e830a4b14a9a58ae75d52/docs-main/overview/reference/pruning.mdx
+    sha256: bef6d1adcb9885639b15f6907da68fc422258e57573e6f1b2aec2d05fa8324c2
