@@ -117,7 +117,7 @@ flowchart TB
 
 Dfns 공식 API는 일반 송금을 위한 Transfer, 호출 측이 거래를 구성하는 Sign & Broadcast, 서명만 요청하는 Sign을 구분한다. 컨트랙트 호출 등 필요한 기능에 따라 DAWBC의 거래 구성 범위가 늘어날 수 있다. **노드를 직접 운영한다는 이유만으로 Sign만 사용하고 DAWBC가 모든 전파·인덱싱을 떠맡는 구조를 택할 필요는 없다.** [Dfns 거래 API 구분](https://docs.dfns.co/faq#transactions)
 
-공개 API 문서는 기능 검토 근거다. 해당 기능이 계약한 사내 Baseline 릴리스에서 동일하게 제공되는지는 별도로 확인한다.
+공개 API 문서는 기능 검토 근거다. 해당 기능이 계약한 Baseline 릴리스에서 동일하게 제공되는지는 별도로 확인한다.
 
 ### 제출 데이터 변환
 

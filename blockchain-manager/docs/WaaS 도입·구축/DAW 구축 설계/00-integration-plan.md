@@ -20,9 +20,10 @@ status: To Do
 
 | 항목 | 설계 기준 |
 |---|---|
-| 플랫폼 | Dfns 전체 플랫폼을 고객 사내 데이터센터에 배치하는 Baseline. 비AWS 지원 번들과 버전 조합은 벤더 확인 필요 |
+| 플랫폼 | Dfns 전체 플랫폼을 **고객 AWS 계정**에 배치 (2026-09-22 확정, 사내 데이터센터는 하지 않음). 프로필은 Baseline 과 AWS-Native 중 미정이며 배포 전에 정한다 |
 | Dfns API | 고객 인프라에 설치된 Dfns API 서버를 DAWBC가 호출. 소프트웨어 제공자와 API 서버 운영 위치를 구분 |
 | 노드 | 고객 소유 노드이며 운영은 업체에 위탁. **연결 명세는 우리가 제안**, Dfns 요구사항과 업체 제공 기능을 대조해 확정 |
+| DAW 설치 장소 | **정해지지 않았다.** 사내에 남을 수도 AWS 로 갈 수도 있어 이 문서는 어느 쪽으로도 단정하지 않는다. 사내에 둘 경우 AWS 까지 전용 회선 또는 VPN 경로가 필요하다 |
 | 업무 경계 | DAW-CORE가 고객·승인·원장, DAWBC가 외부 실행·매핑·이벤트 처리 |
 | 서명 | Dfns MPC를 기본 검토. API 요청 서명 자격증명·지갑 MPC 키·Vault 잠금 해제 자료는 각각 분리 |
 | 통합 방식 | 명령·조회는 API, 결과는 Webhook·내부 큐. Dfns 내부 DB·Kafka에 직접 결합하지 않음 |
@@ -43,13 +44,15 @@ API 서버·MPC signer·고객 소유 노드를 구분한 간단한 그림은 [B
 ```mermaid
 flowchart TB
     USER["고객 채널 · 운영 화면"]
-    subgraph OUR["사내 데이터센터"]
+    subgraph OUR["우리 업무 구역 · 설치 장소 미정"]
         CORE["DAW-CORE<br/>고객 · 계정 · 승인<br/>가용 잔액 · 업무 원장"]
         BC["DAWBC · 블록체인 매니저<br/>Dfns 어댑터 · 거래 추적<br/>주소 매핑 · 이벤트 처리"]
-        DFNS["Dfns Baseline<br/>지갑 API · 정책 · MPC 서명<br/>거래 전송 · 인덱싱<br/>Vault · DB · Kafka · Redis"]
         CORE -->|"업무 API · 제출과 조회"| BC
-        BC -->|"고객 내부 Dfns API"| DFNS
     end
+    subgraph AWSACC["고객 AWS 계정"]
+        DFNS["Dfns 플랫폼<br/>지갑 API · 정책 · MPC 서명<br/>거래 전송 · 인덱싱<br/>데이터 서비스 · 시크릿 저장소"]
+    end
+    BC -->|"고객 소유 Dfns API"| DFNS
     subgraph OUTSOURCED["노드 업체 운영 구역"]
         RPC["접근이 제한된 RPC endpoint<br/>조회 · 서명된 거래 접수"]
         NODE["체인별 전용 노드<br/>동기화 · 패치 · 모니터링"]
@@ -63,6 +66,7 @@ flowchart TB
     classDef platform fill:#ecfdf5,stroke:#047857,color:#064e3b
     classDef outsourced fill:#fff7ed,stroke:#c2410c,color:#7c2d12
     style OUR fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+    style AWSACC fill:#f0fdf4,stroke:#047857,color:#064e3b
     style OUTSOURCED fill:#fffaf5,stroke:#c2410c,color:#7c2d12
     class CORE,BC ours
     class DFNS platform

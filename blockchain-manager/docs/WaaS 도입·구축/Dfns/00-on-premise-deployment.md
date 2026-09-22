@@ -10,7 +10,7 @@ Dfns를 누가 운영할지, 어디에 설치할지, 어떤 시크릿·인증 �
 |---|---|
 | 이 문서 | 운영 모델·배포 프로필·제품 구성·아키텍처 계층 |
 | [배포 준비와 절차](02-deployment-procedure.md) | 사전 준비·배포 번들·설치 절차·배포 후 운영 |
-| [Baseline 인프라 설계](03-baseline-datacenter-design.md) | 공통 서비스·키 관리와 사내 데이터센터·AWS 배치안 |
+| [Baseline 인프라 설계](03-baseline-datacenter-design.md) | 공통 서비스·키 관리와 고객 AWS 계정 배치안 |
 | [Governance Engine](01-governance-engine.md) | 서명 전 신원·권한·무결성 검증 범위와 한계 |
 | [담당자 확인 질문](04-vendor-questions.md) | 지원·연동·대납·다중 체인에 관한 전달용 질의 |
 
@@ -59,13 +59,35 @@ Dfns 는 "누가 무엇을 운영하는가" 로 갈리는 여러 배치 형태�
 
 {{데이터 키 암호화::데이터를 암호화하는 키를 별도의 상위 키로 다시 암호화해 보호하는 방식.}}는 데이터 보호 기능이며 지갑 거래 서명과 구분한다. External Secrets Operator는 AWS Secrets Manager에서 읽은 시크릿을 Kubernetes Secret으로 전달한다. Keyshares store는 MPC 키 조각 저장소로, 일반 서비스 DB와의 공유 여부·엔진·물리 배치는 확인이 필요하다.
 
+### Vault 가 맡는 세 가지, 그리고 누가 대신 맡나
+
+표가 행별로 갈라 놓은 것을 Dfns 는 한 문장으로 묶어 설명한다. **Vault 하나가 세 가지를 하고 있고, AWS-Native 는 그 셋을 각각 다른 AWS 서비스에 넘긴다.**
+
+> Vault 의 세 역할, 곧 **시크릿 저장·envelope 암호화·PKI** 를 각각 AWS Secrets Manager·AWS KMS·cert-manager 가 맡고, External Secrets Operator 가 시크릿을 클러스터로 전달한다.
+
+배포 백엔드 자료의 「무엇이 달라지나」 절에 있는 서술이다. 같은 자료는 이것이 부분적으로 떼어 바꾸는 게 아니라 **Vault 평면을 통째로 교체**하는 것이라고 밝힌다.
+
+그래서 실제로 무엇이 어디에 들어가는지 보면 이렇다. 시크릿 저장소가 담는 것은 **서비스 시크릿, 서비스별 transit 또는 KMS 키, 그리고 Vault 를 쓸 때는 서명 계층이 사용하는 PKI mount** 다.
+
+| 무엇 | Baseline | AWS-Native |
+|---|---|---|
+| 플랫폼 인증키 (Ed25519 토큰 서명 issuer 키) | Vault KV 에 두고 **KMS 로 envelope 암호화**. auth 서비스만 읽는다 | Secrets Manager 에 두고 같은 방식으로 보호 |
+| 데이터베이스 자격증명 | PostgreSQL 비밀번호 | 비밀번호가 없다. RDS·Aurora **IAM 인증** |
+| Kafka 자격증명 | SCRAM 비밀번호 | `aws-msk-iam`, **비밀번호 없음** |
+| 서명 계층 인증서 | Vault PKI mount | cert-manager 가 ACME 로 발급 |
+| Vault 자체의 잠금 해제 | — | 해당 없음 (Vault 가 없다) |
+
+**AWS 에 배치하면서 Baseline 을 쓰면 Vault 의 잠금 해제에 AWS KMS 를 쓴다.** 자료는 시크릿 저장소를 "raft 고가용성 구성의 Vault + AWS KMS auto-unseal, 또는 AWS 네이티브 시크릿 백엔드" 중 하나로 적는다. 이때 KMS 는 Vault 를 여는 용도이고, 위 표의 envelope 암호화를 대신하는 것이 아니다.
+
+**envelope 암호화의 동작 원리는 Dfns 자료에 설명이 없다.** 아래는 일반적인 방식이라 참고로만 본다 — 데이터를 암호화한 키를 다시 상위 키로 암호화해 함께 저장하고, 상위 키는 KMS 나 Vault Transit 안에만 둔다. 저장되는 것은 암호화된 데이터와 암호화된 데이터 키뿐이고, 읽으려면 매번 상위 키를 가진 쪽에 복호화를 요청한다.
+
 ### 공통 부분과 초기 선택의 영향
 
 컨테이너 이미지·Pod 구성, Coordinator·signer·전달 방식, 서비스 의존 순서·DB/플랫폼 bootstrap, 서비스별 DB·Keyshares store·ingress 호스트 모델은 같다. 변경되는 것은 시크릿 저장·전달, 서비스 신원, PKI와 데이터 서비스 인증이다.
 
 **배포 키트 기본값은 Baseline이며, AWS-Native는 명시적 설정 override가 필요하다.** 표의 최소 릴리스는 제공 자료의 기준이다. 현재 지원 버전은 패키지와 계약으로 확정한다. AWS-Native는 Kafka·DB·캐시의 IAM 연결, External Secrets Operator 동기화, 인증서 발급을 점검한다. Kafka만 사용하며 Dfns 호스팅 SaaS의 SQS·SNS·DynamoDB 경로는 사용하지 않는다고 설명한다.
 
-**시크릿 백엔드는 초기 배포 시 고정되고, 제공 자료상 백엔드 간 마이그레이션은 없다.** AWS-Native에는 Vault가 없으므로 Vault 초기화·recovery key 보관 절차를 그대로 적용하지 않는다. 프로필별 bootstrap은 배포 안내서로 확인한다.
+★ **시크릿 백엔드는 초기 배포 시 고정되고, 제공 자료상 백엔드 간 마이그레이션은 없다.** 자료는 이 항목만 **"One-way door"** 라는 제목으로 따로 떼어 "되돌릴 수 없는 결정이니 신중히 정하라" 고 덧붙인다. 프로필 선택은 배포 전에 끝내야 하는 사안이다. AWS-Native에는 Vault가 없으므로 Vault 초기화·recovery key 보관 절차를 그대로 적용하지 않는다. 프로필별 bootstrap은 배포 안내서로 확인한다.
 
 AWS Baseline이 Vault 잠금 해제에 KMS를 쓰거나 MSK SCRAM 등록에 Secrets Manager를 쓰더라도 AWS-Native로 바뀌는 것은 아니다. 이 서비스들의 역할은 [Baseline 인프라 설계](03-baseline-datacenter-design.md)에서 구분한다.
 
@@ -328,7 +350,7 @@ signer에서 relay로 향하는 화살표는 작업을 가져오기 위한 접�
 
 ## 인프라 설계와 지원 확인
 
-제품 설명과 별도로, [Baseline 인프라 설계안](03-baseline-datacenter-design.md)에 사내 데이터센터와 AWS의 배치를 정리했다. 비AWS 설치 번들·이미지 아키텍처·외부 Vault·Keyshares 저장소의 지원 여부를 확인한 뒤 적용할 제안이다.
+제품 설명과 별도로, [Baseline 인프라 설계안](03-baseline-datacenter-design.md)에 고객 AWS 계정 배치를 정리했다. 계약 릴리스·AWS 서비스 조합·외부 Vault·Keyshares 저장소의 지원 여부를 확인한 뒤 적용할 제안이다.
 
 ## 내부 검토 항목
 

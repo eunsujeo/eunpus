@@ -66,19 +66,10 @@
 - 상태·웹훅 비교: API 비교 문서에 Fireblocks 상태/subStatus와 Dfns Transfer 6개 상태, Included 입금 이벤트, V2 eventType/data.status와 Dfns kind/중첩 status, 알림 전달 상태·재전송 ID 구분 추가. Pending/Rejected/Failed 및 abort·대체 취소 의미 차이, API 인증 서명과 거래 서명·전파 구분 보강. 공식 명세 검토만 수행했으며 웹훅·취소 실호출 없음. 앱/HTML·180문서 빌드 검증 완료. 이번 커밋에 포함하며 운영 배포 대기.
 - 전송 시험 추가: 사용자 지정 주소로 0.01 Sepolia ETH 1회 전송, Transfer `Broadcasted → Confirmed`와 입출금 이력 확인. 수수료 0.000024049820046 ETH, 잔액 0.089975950179954 ETH 대사 일치. API 비교 문서에 요청/응답 발췌·Fireblocks 대응·진행 중 거래 조회 차이 추가. ERC-20·웹훅은 미검증이며 대납은 위 추가 시험에서 확인. 근거는 Git 제외 `_workspace/dfns-api/`의 전송 결과·이력·잔액 JSON.
 - API 비교: `WaaS 도입·구축/API 비교/00-fireblocks-dfns-api.md` 신설. Dfns 제공 환경에서 서비스 계정 조회·요청 서명·Sepolia 지갑 생성/재조회·0.1 ETH 잔액 확인 완료. Fireblocks는 공식 Vault API 명세 비교이며 실호출하지 않음. 단위·식별 모델·미제공 available/pending/locked/frozen/블록 정보 차이, verified 확인 필요와 후속 시험 정리. 웹훅은 보류, 가스 대납은 위 추가 시험 반영. 앱/단독 HTML·180문서 빌드 검증 완료. 이번 커밋에 포함하며 운영 배포 대기.
-- 사용자 전제: 고객 소유 노드의 운영 위탁 + 사내 데이터센터의 Dfns 전체 플랫폼 Baseline + DAWBC + DAW-CORE. AWS 배치로 변경하지 않음.
-- 문서 구조: `WaaS 도입·구축/Dfns/`는 5개(도입 개요/프로필 비교, Governance Engine, 배포 준비와 절차, 사내·AWS 통합 Baseline 설계, 담당자 질문). 2026-09-15 AWS안 추가 후 6개에서 4개로 통합했고, 2026-09-16 개요에서 배포 실행 절차만 `02-deployment-procedure.md`로 분리해 5개. 프로필 비교는 개요에 그대로 두어 중복 없음. `DAW 구축 설계/` 4개와 API 비교 1개는 유지.
-- 인프라: `Dfns/03-baseline-datacenter-design.md`. Kubernetes·외부 Vault 5노드·PG/Kafka/Redis·MPC 5-party / 3-of-5, 핵심 노드 36개 자원 예약안. 전체 DAW 플랫폼/체인 노드 총량이 아님.
-- 구성도 보강: Baseline의 전체 구성 첫머리에 고객 소유 환경의 DAW-CORE → DAWBC → Dfns API → MPC signer/위탁 노드 그림 추가. 통합 설계에서 해당 절 연결. 소유권과 설치 장소·논리 요청과 실제 통신 구분, 비AWS·지정 RPC 지원 확인 조건 유지. 로컬 렌더링·179문서 빌드 확인. 이번 커밋에 포함하며 운영 배포 대기.
-- 지원 확인: `Dfns/04-vendor-questions.md` Q01~Q09. 비AWS 번들·CPU·외부 Vault/DB·Keyshares·지정 RPC·사내 API·대납·다중 자산, 그리고 2026-09-16 추가한 번들 전달 경로·채널별 외부 연결(Q08)과 Preflight 범위·도메인 시나리오(Q09). 아직 미발송·미답변.
-- 설계 진입점: `DAW 구축 설계/00-integration-plan.md`. 운영 책임·결정·S0~S6 단계. 1차 검증은 사용자 선택 EVM 체인 1개 + ERC-20 자산 1개. 구체 네트워크·토큰은 후속 확정.
-- 핵심 계약: `DAW 구축 설계/01-core-contracts.md`. Base·Solana 포함 체인별 자산·계정·주소·의도/시도·멱등·공개 API·Dfns 대응·이벤트·확정·영속 제약. 기존 OpenAPI의 금액·eventId/amount·DCCP FINALIZED·벤더 txId 의미 보존.
-- 노드: `DAW 구축 설계/02-node-rpc-spec.md`. 고객이 명세를 제안, Dfns·업체가 호환성과 제공 조건 확인. EVM·Base·Solana와 외부 대납 전파 경로 포함.
-- 대납: `DAW 구축 설계/03-fiat-gas-sponsorship.md`. 사용자 네이티브 잔액 없는 법정화폐 정산형 대납. 지불자 선택은 답변 대기. 외부업체 조달·지불 + 회사 법정화폐 정산을 제안 시나리오로 작성했으며 사용자 확정으로 취급하지 않음. Dfns 내장 기능만으로 법정화폐 청구·외부 대납 호환성이 확인된 것은 아님.
-- 독자 문서 정비: Dfns 제공 자료 3개의 제목은 주제 중심으로 변경했고, 사용자 요청으로 원본 페이지/슬라이드 번호와 출처 표시를 제거. 원본 파일·기능 범위·미확정 조건은 유지.
-- 내용 검토: 제공 자료 3개의 검증 범위를 재검토. Governance의 정책/거래 해시 검증 로드맵·HSM/MPC 범위·요청 재실행/credCounter 예외, AWS-Native 전용 점검과 Vault/TLS 적용 범위를 보완. 검토 기록은 `_workspace/dfns-content-review/review.md`.
-- 추가 교차 검토: 묶음 거래/개별 자산 이동의 성공 판정, operation 누적 대납 한도, 동일 이동·전이의 eventId 유지, 복구 후 CORE·외부 대납 대사, 내장 대납 지갑 정책 제약을 기존 문서와 Q05·Q06에 보강. `_workspace/dfns-cross-review/review.md`에 근거·시나리오·검증 기록.
-- 다음: S3 물리 DB·이벤트 스키마·상태 전이 상세화와 지원 릴리스/대납 계약 검증. 기존 공개 API·구현 저장소·인프라는 변경하지 않음.
+- 사용자 전제 (2026-09-22 **확정**): **Dfns 전체 플랫폼을 고객 AWS 계정에 배치한다. Dfns 는 사내 데이터센터에 두지 않는다.** 노드는 고객 소유이며 운영은 업체에 위탁한다.
+  ★ **확정 범위는 Dfns 배치까지다.** DAWBC·DAW-CORE 를 어디에 둘지는 **정해지지 않았다** — 사내에 남을 수도 AWS 로 갈 수도 있다. 문서에서 단정하지 않는다. 이전 표기("사내 데이터센터 … AWS 배치로 변경하지 않음")는 폐기.
+  **아직 안 정해진 것** — Baseline 프로필(고객 운영 Vault) vs Enterprise AWS-Native(Vault 없이 Secrets Manager·KMS·IAM). **시크릿 백엔드는 day 0 고정이고 마이그레이션이 없어** 배포 전에 정해야 한다. 가르는 입력은 ① 계약 릴리스가 1.935 이상인가(AWS-Native 최소) ② Vault 를 운영할 인력이 있는가 ③ AWS-Native 의 실제 도입 사례·지원 성숙도.
+  반영 완료 — `Dfns/03-baseline-datacenter-design.md` 는 AWS 설계로 정리하고 사내안 308행은 `Dfns/05-datacenter-design-archived.md`(status 아카이브 · ref 참고)로 분리. `Dfns/04-vendor-questions.md` 의 Q01~Q03 을 AWS 전제로 재작성(Q01 프로필 권장·릴리스, Q02 전환 불가 범위, Q03 Keyshares·Vault 배치). **미발송.**
 
 ### 2.1d Fireblocks Private Cloud 검토 (2026-09-16)
 
